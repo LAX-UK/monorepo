@@ -1,6 +1,8 @@
 import type {
   IConditionReportRequestRepository,
+  ICoverAnalysisReader,
   ILotFulfilmentRepository,
+  ISaleCoverRepository,
 } from "@auction/persistence/interfaces";
 import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
 import type { ArtistProfileService } from "../artist-profile.service.js";
@@ -17,6 +19,7 @@ import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { QrCodeAnalyticsService } from "../qr-code-analytics.service.js";
 import type { QrCodeService } from "../qr-code.service.js";
+import { SaleCoverService } from "../sale-cover/sale-cover.service.js";
 import { AdminCatalogApplicationService } from "./admin-catalog-application.service.js";
 import { AdminConditionReportsApplicationService } from "./admin-condition-reports-application.service.js";
 import type { AdminLotBrowseService } from "./admin-lot-browse.service.js";
@@ -43,6 +46,8 @@ export type CreateAdminCatalogServicesInput = {
   conditionReportRequestRepository: IConditionReportRequestRepository;
   mediaUrlResolver: MediaUrlResolver;
   mediaAssetEnricher: MediaAssetEnricher;
+  saleCoverRepository: ISaleCoverRepository;
+  coverAnalysisReader: ICoverAnalysisReader;
 };
 
 export function createAdminCatalogServices(
@@ -61,6 +66,11 @@ export function createAdminCatalogServices(
       input.lotTransitionOrchestrator,
       input.lotLifecycleQueryService,
     ),
+    saleCover: new SaleCoverService({
+      covers: input.saleCoverRepository,
+      media: input.mediaAssetEnricher,
+      analyses: input.coverAnalysisReader,
+    }),
     saleRegistrations: new AdminSaleRegistrationsApplicationService(input.saleRegistrationService),
     lotFulfilment: new AdminLotFulfilmentApplicationService(
       input.lotFulfilmentService,

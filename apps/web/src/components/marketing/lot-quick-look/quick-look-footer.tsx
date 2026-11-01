@@ -1,6 +1,6 @@
 import { ShareButton } from "@/components/marketing/share-button";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import { emitQuickLookCta } from "./lot-quick-look-analytics";
 import type { LotQuickLookOpenOptions, LotQuickLookVM } from "./types";
@@ -37,33 +37,31 @@ export function QuickLookFooter({ vm, options, onCtaNavigate }: Props) {
       </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
         {showBid ? (
-          <Button asChild className="h-11 min-h-11 w-full sm:w-auto">
-            <Link
-              href={bidHref}
-              onClick={() => {
-                emitQuickLookCta(vm.id, "bid");
-                onCtaNavigate();
-              }}
-            >
-              Bid
-            </Link>
-          </Button>
-        ) : null}
-        <Button
-          variant={showBid ? "outline" : "default"}
-          asChild
-          className="h-11 min-h-11 w-full sm:w-auto"
-        >
-          <Link
-            href={vm.href}
+          <ButtonLink
+            Link={Link}
+            variant="primary"
+            className="w-full sm:w-auto"
+            href={bidHref}
             onClick={() => {
-              emitQuickLookCta(vm.id, "view_lot");
+              emitQuickLookCta(vm.id, "bid");
               onCtaNavigate();
             }}
           >
-            View lot
-          </Link>
-        </Button>
+            Bid
+          </ButtonLink>
+        ) : null}
+        <ButtonLink
+          Link={Link}
+          variant={showBid ? "secondary" : "primary"}
+          className="w-full sm:w-auto"
+          href={vm.href}
+          onClick={() => {
+            emitQuickLookCta(vm.id, "view_lot");
+            onCtaNavigate();
+          }}
+        >
+          View lot
+        </ButtonLink>
       </div>
     </div>
   );

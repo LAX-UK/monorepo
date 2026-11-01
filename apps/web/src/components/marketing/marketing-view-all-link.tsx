@@ -1,15 +1,14 @@
-import { Button } from "@auction/ui/components/button";
-import { ChevronRight } from "lucide-react";
+import { TextLink, type TextLinkProps } from "@auction/ui/lax";
 import Link from "next/link";
-import type { ComponentProps, ReactNode } from "react";
+import type { ReactNode } from "react";
 
-type Props = Omit<ComponentProps<typeof Link>, "children"> & {
+type Props = Omit<TextLinkProps, "children" | "Link" | "chevron"> & {
   /** Screen-reader context after “View all” (e.g. “auctions and sales”). */
   srSuffix?: string;
   children?: ReactNode;
 };
 
-/** Canonical home-rail “View all” chevron link — one label, one layout. */
+/** Canonical “View all” link for a rail or list: ink, underlined, with the kit chevron. */
 export function MarketingViewAllLink({
   srSuffix,
   children = "View all",
@@ -17,18 +16,9 @@ export function MarketingViewAllLink({
   ...linkProps
 }: Props) {
   return (
-    <Button variant="chevron" asChild>
-      <Link
-        {...linkProps}
-        className={
-          className ??
-          "inline-flex items-center gap-[11px] py-[18px] text-base font-semibold leading-6 tracking-[0.05em] text-on-surface"
-        }
-      >
-        <span>{children}</span>
-        {srSuffix ? <span className="sr-only"> {srSuffix}</span> : null}
-        <ChevronRight className="size-5 shrink-0" aria-hidden />
-      </Link>
-    </Button>
+    <TextLink Link={Link} chevron {...linkProps} {...(className ? { className } : {})}>
+      <span>{children}</span>
+      {srSuffix ? <span className="sr-only"> {srSuffix}</span> : null}
+    </TextLink>
   );
 }

@@ -11,7 +11,7 @@ import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
-import { Button } from "@auction/ui/components/button";
+import { buttonVariants } from "@auction/ui/lax";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -92,14 +92,13 @@ export function SellTailoredLandingPage({
           title="Ready to begin?"
           description="Create an account and start your submission — our specialists review every item within 24 hours."
           actions={
-            <Button variant="cta" asChild>
-              <SellCtaLink
-                href={sellIntakeHref(categorySlug ? { categorySlug } : undefined)}
-                source={`${path}_submit`}
-              >
-                Start your submission
-              </SellCtaLink>
-            </Button>
+            <SellCtaLink
+              href={sellIntakeHref(categorySlug ? { categorySlug } : undefined)}
+              source={`${path}_submit`}
+              className={buttonVariants({ variant: "primary" })}
+            >
+              Start your submission
+            </SellCtaLink>
           }
         />
 

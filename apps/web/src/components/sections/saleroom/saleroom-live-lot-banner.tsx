@@ -101,7 +101,7 @@ export function SaleroomLiveLotBanner({
         </div>
         {canParticipate ? (
           <Link href={onBlockLot.href} className={saleroomBidNowCtaClassName}>
-            Bid now →
+            Bid now
           </Link>
         ) : null}
       </div>

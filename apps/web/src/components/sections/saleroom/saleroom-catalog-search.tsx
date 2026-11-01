@@ -1,8 +1,8 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
+import { Button } from "@auction/ui/lax";
 import { Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
@@ -60,13 +60,13 @@ export function SaleroomCatalogSearch({ className }: Props) {
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="icon-md"
           onClick={() => {
             setValue("");
             commit("");
           }}
           aria-label="Clear search"
-          className="absolute right-2 size-7 rounded-full text-on-surface-variant hover:text-on-surface"
+          className="absolute right-2 text-on-surface-variant hover:text-on-surface"
         >
           <X className="size-4" aria-hidden />
         </Button>

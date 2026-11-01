@@ -4,7 +4,7 @@ import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { useClientOrigin } from "@/lib/dom/use-client-origin";
 import { salePath } from "@/lib/seo/url";
 import type { Sale } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { CalendarPlus } from "lucide-react";
 import { useCallback } from "react";
 
@@ -55,7 +55,7 @@ export function AddSaleToCalendarButton({ sale, lotTitle, locationLine, classNam
   }, [lotTitle, locationLine, sale]);
 
   return (
-    <Button type="button" variant="outline" className={className} onClick={onClick}>
+    <Button type="button" variant="secondary" className={className} onClick={onClick}>
       <CalendarPlus className="mr-2 size-4" aria-hidden />
       Add to calendar
     </Button>

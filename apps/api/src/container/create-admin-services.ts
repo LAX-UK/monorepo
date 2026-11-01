@@ -200,6 +200,8 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     conditionReportRequestRepository: repos.conditionReportRequestRepository,
     mediaUrlResolver,
     mediaAssetEnricher,
+    saleCoverRepository: repos.saleCoverRepository,
+    coverAnalysisReader: repos.coverAnalysisReader,
     amlService,
     amlScreeningReader,
     adminSourceOfFundsQueryService,

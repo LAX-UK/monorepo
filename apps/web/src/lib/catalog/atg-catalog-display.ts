@@ -1,3 +1,8 @@
+import {
+  ATG_RESULT_PENDING_LABEL,
+  atgLiveBidLabel,
+  atgWhiteLabelUrl,
+} from "@/lib/catalog/atg-white-label";
 import type { LifecycleBadgeVM } from "@/lib/lot/lot-lifecycle";
 import type { Lot, Sale } from "@auction/types";
 import { isAtgOwnedCatalogSale } from "@auction/validators";
@@ -33,10 +38,17 @@ export function atgDisplaySale<T extends AtgSaleFields & Pick<Sale, "startTime">
 
 /** Lot state pill for ATG-owned sales; LAX lifecycle would read the draft lot as "Preview". */
 export function atgLotBadge(state: "live" | "ended", sold: boolean | undefined): LifecycleBadgeVM {
-  if (state === "live") return { label: "On ATG", tone: "live", pulse: false };
+  if (state === "live") {
+    return {
+      label: atgLiveBidLabel(),
+      tone: "live",
+      pulse: false,
+      href: atgWhiteLabelUrl().toString(),
+    };
+  }
   if (sold === true) return { label: "Sold", tone: "ended", pulse: false };
   if (sold === false) return { label: "No sale", tone: "ended", pulse: false };
-  return { label: "Ended on ATG", tone: "ended", pulse: false };
+  return { label: ATG_RESULT_PENDING_LABEL, tone: "ended", pulse: false };
 }
 
 /** Display copy of a lot in an ATG-owned sale, with Sold/Unsold from the ATG result. */

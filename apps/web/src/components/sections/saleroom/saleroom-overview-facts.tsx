@@ -5,7 +5,7 @@ import type { SaleOverviewVM } from "./view-models";
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1 border-b border-outline-variant/25 py-3">
       <dt>
         <LabelCaps className="text-on-surface-variant">{label}</LabelCaps>
       </dt>
@@ -45,62 +45,48 @@ export function SaleroomOverviewFacts({ overview }: Props) {
         Sale overview
       </h2>
       <dl className="grid grid-cols-1 gap-0">
-        {showStarts ? (
-          <div className="flex justify-between gap-6 border-b border-outline-variant/25 py-3">
-            <Fact label="Starts" value={overview.startLabel} />
-          </div>
-        ) : null}
-        <div className="flex justify-between gap-6 border-b border-outline-variant/25 py-3">
-          <Fact label={endFactLabel} value={overview.endLabel} />
-        </div>
-        {overview.previewLabel ? (
-          <div className="flex justify-between gap-6 border-b border-outline-variant/25 py-3">
-            <Fact label="Preview" value={overview.previewLabel} />
-          </div>
-        ) : null}
-        <div className="flex justify-between gap-6 border-b border-outline-variant/25 py-3">
-          <Fact label="Format" value={overview.formatLabel} />
-        </div>
-        <div className="flex justify-between gap-6 border-b border-outline-variant/25 py-3">
-          <Fact label="Buyer's premium" value={overview.buyerPremiumLabel} />
-        </div>
-        {tiers.length > 0 ? (
-          <div className="border-b border-outline-variant/25 py-3">
-            <LabelCaps className="mb-2 text-on-surface-variant">Premium tiers</LabelCaps>
-            <table className="w-full text-sm text-on-surface">
-              <tbody>
-                {tiers.map((tier) => (
-                  <tr
-                    key={`${tier.hammerThresholdMinor}-${tier.rate}`}
-                    className="border-t border-outline-variant/15 first:border-t-0"
-                  >
-                    <td className="py-2 pr-4">{formatBuyerPremiumTierLabel(tier)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-        {overview.categoryLabels.length > 0 ? (
-          <div className="border-b border-outline-variant/25 py-3">
-            <LabelCaps className="mb-2 text-on-surface-variant">Categories</LabelCaps>
-            <ul className="flex list-none flex-wrap gap-2 p-0">
-              {overview.categoryLabels.map((label) => (
-                <li
-                  key={label}
-                  className="inline-flex items-center rounded border border-outline-variant/40 px-2.5 py-1 text-xs font-medium text-on-surface"
-                >
-                  {label}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : overview.categoryLabel ? (
-          <div className="flex justify-between gap-6 border-b border-outline-variant/25 py-3">
-            <Fact label="Category" value={overview.categoryLabel} />
-          </div>
-        ) : null}
+        {showStarts ? <Fact label="Starts" value={overview.startLabel} /> : null}
+        <Fact label={endFactLabel} value={overview.endLabel} />
+        {overview.previewLabel ? <Fact label="Preview" value={overview.previewLabel} /> : null}
+        <Fact label="Format" value={overview.formatLabel} />
+        <Fact label="Buyer's premium" value={overview.buyerPremiumLabel} />
       </dl>
+      {tiers.length > 0 ? (
+        <div className="border-b border-outline-variant/25 py-3">
+          <LabelCaps className="mb-2 text-on-surface-variant">Premium tiers</LabelCaps>
+          <table className="w-full text-sm text-on-surface">
+            <tbody>
+              {tiers.map((tier) => (
+                <tr
+                  key={`${tier.hammerThresholdMinor}-${tier.rate}`}
+                  className="border-t border-outline-variant/15 first:border-t-0"
+                >
+                  <td className="py-2 pr-4">{formatBuyerPremiumTierLabel(tier)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {overview.categoryLabels.length > 0 ? (
+        <div className="border-b border-outline-variant/25 py-3">
+          <LabelCaps className="mb-2 text-on-surface-variant">Categories</LabelCaps>
+          <ul className="flex list-none flex-wrap gap-2 p-0">
+            {overview.categoryLabels.map((label) => (
+              <li
+                key={label}
+                className="inline-flex items-center rounded border border-outline-variant/40 px-2.5 py-1 text-xs font-medium text-on-surface"
+              >
+                {label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : overview.categoryLabel ? (
+        <dl>
+          <Fact label="Category" value={overview.categoryLabel} />
+        </dl>
+      ) : null}
       <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 font-label text-xs font-medium text-on-surface-variant">
         <Link href="/faq" className="text-on-surface underline-offset-4 hover:underline">
           How to bid

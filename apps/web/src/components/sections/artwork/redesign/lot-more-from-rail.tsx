@@ -20,8 +20,7 @@ import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { useClientClock } from "@/lib/time/use-client-clock";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
-import { ChevronRight } from "lucide-react";
+import { Button, TextLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 type Props = {
@@ -67,19 +66,9 @@ export function LotMoreFromRail({
           </h2>
         </div>
         {rail.viewAuctionHref ? (
-          <Button
-            variant="link"
-            asChild
-            className="h-auto min-h-0 p-0 text-base font-semibold text-on-surface"
-          >
-            <Link
-              href={rail.viewAuctionHref}
-              className="inline-flex items-center gap-1 !no-underline"
-            >
-              view auction
-              <ChevronRight className="size-5" aria-hidden />
-            </Link>
-          </Button>
+          <TextLink Link={Link} href={rail.viewAuctionHref} chevron>
+            View auction
+          </TextLink>
         ) : null}
       </div>
       <ul className="flex list-none gap-5 overflow-x-auto pb-3">
@@ -212,9 +201,9 @@ export function LotMoreFromRail({
                     <div className="flex flex-col gap-2 pt-1 w-full">
                       {c.deliveryMode !== "onsite" ? (
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           asChild
-                          className="h-10 min-h-10 w-full rounded border-outline-variant text-base font-semibold text-on-surface"
+                          className="w-full border-outline-variant text-on-surface"
                         >
                           <Link href={`${c.href}#lot-bid-entry`}>Bid</Link>
                         </Button>

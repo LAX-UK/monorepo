@@ -1,12 +1,3 @@
-/** B5 — Marketing copy for Private Sale Highlights (Figma B5 typography). */
-export const PRIVATE_SALE_COPY = {
-  heading: "Private Sale Highlights",
-  subtitle:
-    "Acquire exceptional works outside the auction calendar. Immediate purchase, total discretion.",
-  cta: "Enquire with a Specialist",
-  ctaHref: "/contact?intent=private-sale",
-} as const;
-
 /** B6 — Marketing copy for the home Consign strip. */
 export const CONSIGN_COPY = {
   kicker: "Consign with LAX",
@@ -15,4 +6,18 @@ export const CONSIGN_COPY = {
   cta: "Start your submission",
   ctaHref: "/selling/new",
   microcopy: "Response within 24 hours.",
+} as const;
+
+/** Home hero copy when no sale is live or scheduled. */
+export const BETWEEN_SEASONS_COPY = {
+  eyebrow: "Auction calendar",
+  title: "Our next sales are being prepared",
+  body: "Join the list to hear first when new sales open. Previews and early access arrive before the gavel falls.",
+} as const;
+
+/** Section copy for the home "More lots" strip. */
+export const MORE_LOTS_COPY = {
+  heading: "More lots",
+  ariaLabel: "More lots",
+  scrollLabel: "Scroll to see more lots",
 } as const;

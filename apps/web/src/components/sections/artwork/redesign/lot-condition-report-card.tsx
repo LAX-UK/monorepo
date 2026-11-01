@@ -3,7 +3,7 @@
 import { LotConditionReportStatePanel } from "@/components/sections/artwork/redesign/lot-condition-report-state-panel";
 import type { ConditionReportCardState } from "@/lib/condition-report/derive-condition-report-card-state";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import type { ConditionReportRequestFormValues } from "@auction/validators";
 import { ChevronDown, FileSearch, X } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
@@ -34,10 +34,10 @@ export function LotConditionReportRestoreLink({ onRestore }: { onRestore: () => 
   return (
     <Button
       type="button"
-      variant="link"
-      size="link"
+      variant="ghost"
+      size="sm"
       onClick={onRestore}
-      className="font-body text-xs font-medium text-link underline-offset-2 hover:underline"
+      className="underline underline-offset-4"
     >
       Show condition report
     </Button>
@@ -88,7 +88,7 @@ export function LotConditionReportCard({
         <Button
           type="button"
           variant="ghost"
-          className="flex min-w-0 flex-1 items-center gap-2 text-left font-body text-sm font-medium text-on-surface"
+          className="flex min-w-0 flex-1 items-center gap-2 text-left font-body text-on-surface"
           aria-expanded={expanded}
           aria-controls={panelId}
           onClick={() => setExpanded((e) => !e)}
@@ -105,9 +105,9 @@ export function LotConditionReportCard({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="icon-md"
           onClick={onHide}
-          className="shrink-0 rounded p-1 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+          className="shrink-0 p-1 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
           aria-label="Hide condition report for this lot"
         >
           <X className="size-4" aria-hidden />

@@ -1,5 +1,14 @@
-import type { IMediaAssetReader, MediaAssetRecord } from "@auction/persistence/interfaces";
-import type { GalleryImage } from "@auction/types";
+import type {
+  ICoverAnalysisReader,
+  IMediaAssetReader,
+  MediaAssetRecord,
+} from "@auction/persistence/interfaces";
+import type { GalleryImage, Sale, SaleCoverSlotAssets } from "@auction/types";
+import {
+  buildSaleCoverSlotAssets,
+  collectCoverAnalysisHashes,
+  collectCoverSlotKeys,
+} from "../lib/sale-cover-assets.js";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
 
 import type { IMediaAssetEnricher } from "./interfaces/media-asset-enricher.js";
@@ -11,6 +20,7 @@ export class MediaAssetEnricher implements IMediaAssetEnricher {
   constructor(
     private readonly mediaAssetReader: IMediaAssetReader,
     private readonly storage?: IObjectStorage,
+    private readonly coverAnalysisReader?: ICoverAnalysisReader,
   ) {}
 
   private normalizeKey(value: string): string {
@@ -55,5 +65,28 @@ export class MediaAssetEnricher implements IMediaAssetEnricher {
     });
 
     return assets.length > 0 ? assets : undefined;
+  }
+
+  async buildCoverSlotAssets(
+    sales: readonly Pick<Sale, "id" | "title" | "coverSlots" | "coverImages">[],
+    resolve: (key: string) => string,
+  ): Promise<Map<string, SaleCoverSlotAssets>> {
+    const keys = sales.flatMap((sale) => collectCoverSlotKeys(sale));
+    const hashes = sales.flatMap((sale) => collectCoverAnalysisHashes(sale));
+    const [media, analyses] = await Promise.all([
+      this.lookupByKeys(keys),
+      this.coverAnalysisReader?.lookupByHashes(hashes) ?? Promise.resolve(new Map()),
+    ]);
+    const lookups = {
+      media: (key: string) => media.get(this.normalizeKey(key)),
+      analysis: (hash: string) => analyses.get(hash),
+      resolve,
+    };
+    const out = new Map<string, SaleCoverSlotAssets>();
+    for (const sale of sales) {
+      const assets = buildSaleCoverSlotAssets(sale, lookups);
+      if (assets) out.set(sale.id, assets);
+    }
+    return out;
   }
 }

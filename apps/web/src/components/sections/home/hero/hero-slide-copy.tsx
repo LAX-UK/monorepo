@@ -1,9 +1,10 @@
 "use client";
 
+import { heroAction } from "@/components/sections/home/hero/hero-action";
 import type { HeroSaleSlideVM } from "@/components/sections/home/home-view-models";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { Countdown } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 
 type Props = {
@@ -59,8 +60,8 @@ export function HeroSlideCopy({ slide, slideIndex, slideCount }: Props) {
           </div>
         ) : null}
       </div>
-      <Button variant="cta" size="xl" className="pointer-events-auto min-h-[44px] w-fit" asChild>
-        <Link href={slide.href}>Open saleroom</Link>
+      <Button variant="primary" className="pointer-events-auto w-fit" asChild>
+        <Link href={slide.href}>{heroAction(slide).label}</Link>
       </Button>
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         {slide.title}

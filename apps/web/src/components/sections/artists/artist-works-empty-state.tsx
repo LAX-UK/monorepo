@@ -1,5 +1,5 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
-import { Button } from "@auction/ui";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 /** Shared empty state for artist profile works sections. */
@@ -20,9 +20,9 @@ export function ArtistWorksEmptyState() {
         </>
       }
       action={
-        <Button variant="outline" asChild>
-          <Link href="/search">Search lots</Link>
-        </Button>
+        <ButtonLink Link={Link} variant="secondary" href="/search">
+          Search lots
+        </ButtonLink>
       }
     />
   );

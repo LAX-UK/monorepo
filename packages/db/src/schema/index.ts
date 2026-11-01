@@ -82,6 +82,7 @@ export * from "./lax-staff-access-directory.js";
 export * from "./impersonation-sessions.js";
 export * from "./upload-objects.js";
 export * from "./media-assets.js";
+export * from "./cover-analysis.js";
 export * from "./email.js";
 export * from "./failed-jobs.js";
 export * from "./data-exports.js";

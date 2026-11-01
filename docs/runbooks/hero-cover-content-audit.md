@@ -12,6 +12,18 @@ Use this when a sale appears on the home hero rotator and edge decorations (pola
 
 Upload order in admin **Cover images** matches index order (first upload = `[0]`).
 
+## Named cover slots
+
+A sale also holds its covers in three named slots (`sale.cover_slots`): `default`, `wide` and `phone`. A slot that is set wins; a slot that is not set reads the picture at its old position above (`[0]` default, `[1]` phone, `[2]` wide).
+
+| Slot | Smallest picture, after the zoom | Used |
+|------|----------------------------------|------|
+| `default` | 2400 px wide | Desktop, and wide or phone when those slots are missing |
+| `wide` | 2880 × 1080 | Viewports from 1600 px |
+| `phone` | 1200 × 1200 | Phones |
+
+Each slot stores a focal point, an optional keep-in-frame area, a zoom (1 to 2.5), alt text and optional tone and text-side overrides. A worker measures every slot within a minute of it being set or changed (`cover_analysis`): the dominant and deepest colours, a 24 px preview and the weakest scrim at which every line of text passes WCAG AA. Existing sales are brought across with `pnpm --filter @auction/worker backfill:cover-data` (a dry run by default; `--apply` to change anything, and `--materialise-covers` to turn the old array into slots).
+
 ## Safe zone (desktop master)
 
 - Keep subject, logos, and props inside the **center 70%** of the frame.

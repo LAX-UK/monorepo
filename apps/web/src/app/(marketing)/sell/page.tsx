@@ -20,7 +20,7 @@ import { SELL_PAGE_TOC } from "@/lib/marketing/sell-page-toc";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { MarketingSectionReveal } from "@auction/marketing-ui";
-import { Button } from "@auction/ui";
+import { buttonVariants } from "@auction/ui/lax";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -66,11 +66,13 @@ export default function SellPage() {
           title="Start your submission"
           description="Create an account and complete the consignment wizard in about 3 minutes."
           actions={
-            <Button variant="cta" asChild>
-              <SellCtaLink href={sellIntakeHref()} source="sell_intro">
-                Start your submission
-              </SellCtaLink>
-            </Button>
+            <SellCtaLink
+              href={sellIntakeHref()}
+              source="sell_intro"
+              className={buttonVariants({ variant: "primary" })}
+            >
+              Start your submission
+            </SellCtaLink>
           }
         />
 

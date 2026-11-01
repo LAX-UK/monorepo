@@ -1,5 +1,6 @@
 import type { SaleAction } from "@/components/sections/sales/card/types";
-import { Button, cn } from "@auction/ui";
+import { cn } from "@auction/ui";
+import { ButtonLink, type ButtonProps } from "@auction/ui/lax";
 import Link from "next/link";
 
 type Props = {
@@ -7,18 +8,11 @@ type Props = {
   className?: string;
 };
 
-function mapVariant(v: SaleAction["variant"]) {
-  switch (v) {
-    case "cta":
-      return "cta" as const;
-    case "outline":
-      return "outline" as const;
-    case "ghost":
-      return "ghost" as const;
-    default:
-      return "outline" as const;
-  }
-}
+const BUTTON_VARIANT = {
+  cta: "primary",
+  outline: "secondary",
+  ghost: "ghost",
+} as const satisfies Record<SaleAction["variant"], ButtonProps["variant"]>;
 
 /** Renders configured actions (OCP: new actions = data only). */
 export function SaleCardActions({ actions, className }: Props) {
@@ -32,16 +26,16 @@ export function SaleCardActions({ actions, className }: Props) {
       )}
     >
       {actions.map((a) => (
-        <Button
+        <ButtonLink
+          Link={Link}
           key={a.id}
-          variant={mapVariant(a.variant)}
-          asChild
-          className="min-h-[44px] w-full justify-center sm:w-auto"
+          variant={BUTTON_VARIANT[a.variant]}
+          className="w-full justify-center sm:w-auto"
+          href={a.href}
+          aria-label={a.ariaLabel}
         >
-          <Link href={a.href} aria-label={a.ariaLabel}>
-            {a.label}
-          </Link>
-        </Button>
+          {a.label}
+        </ButtonLink>
       ))}
     </div>
   );

@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@auction/ui/components/button";
 import {
   Form,
   FormControl,
@@ -10,6 +9,7 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import { Textarea } from "@auction/ui/components/textarea";
+import { Button } from "@auction/ui/lax";
 import {
   CONDITION_REPORT_REQUEST_NOTE_MAX,
   type ConditionReportRequestFormValues,
@@ -105,9 +105,9 @@ export function ConditionReportRequestForm({
             </p>
           ) : null}
           <Button
+            variant="primary"
             type="submit"
-            size="default"
-            className="min-h-11 w-full"
+            className="w-full"
             disabled={busy}
             aria-busy={busy}
           >

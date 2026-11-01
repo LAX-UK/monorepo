@@ -13,7 +13,8 @@ import {
   MARKETING_PROSE_LINK,
 } from "@/lib/marketing/chrome";
 import { type PressHubStats, formatPressHubStatsLabel } from "@/lib/marketing/press-hub-stats";
-import { Button, DisplayHeading, cn } from "@auction/ui";
+import { DisplayHeading, cn } from "@auction/ui";
+import { ButtonLink } from "@auction/ui/lax";
 import { Rss } from "lucide-react";
 import Link from "next/link";
 
@@ -89,27 +90,15 @@ export function PressHubHero({ lastUpdated, stats }: Props) {
                 </Link>
               </div>
               <nav aria-label="Press page sections" className="flex flex-wrap gap-1.5 md:gap-2">
-                <Button
-                  variant="ghost"
-                  asChild
-                  className="h-9 rounded-full px-3 font-label text-xs"
-                >
-                  <Link href="#press-coverage">Coverage</Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  asChild
-                  className="h-9 rounded-full px-3 font-label text-xs"
-                >
-                  <Link href="#press-day-media">Photos</Link>
-                </Button>
-                <Button
-                  variant="ghost"
-                  asChild
-                  className="h-9 rounded-full px-3 font-label text-xs"
-                >
-                  <Link href="#press-media-kit">Media kit</Link>
-                </Button>
+                <ButtonLink Link={Link} variant="ghost" className="" href="#press-coverage">
+                  Coverage
+                </ButtonLink>
+                <ButtonLink Link={Link} variant="ghost" className="" href="#press-day-media">
+                  Photos
+                </ButtonLink>
+                <ButtonLink Link={Link} variant="ghost" className="" href="#press-media-kit">
+                  Media kit
+                </ButtonLink>
               </nav>
             </div>
           }
