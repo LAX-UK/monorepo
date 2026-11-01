@@ -7,6 +7,7 @@ import {
   lot,
   payment,
   payout,
+  payoutLine,
   sale,
   user,
 } from "@auction/db/schema";
@@ -246,14 +247,21 @@ async function seed(tx: Database) {
     netAmount: net,
     status,
   });
-  await tx
+  const payouts = await tx
     .insert(payout)
     .values([
       payoutRow("scheduled", "900", "2026-11-03T00:00:00Z"),
       payoutRow("in_transit", "100", "2026-10-31T00:00:00Z"),
       payoutRow("paid", "500", "2026-10-15T00:00:00Z"),
       payoutRow("scheduled", "7000", "2026-10-30T00:00:00Z", OTHER_ORG),
-    ]);
+    ])
+    .returning({ id: payout.id, amount: payout.netAmount });
+  // A payout pays out what its lines come to.
+  await tx
+    .insert(payoutLine)
+    .values(
+      payouts.map((row) => ({ payoutId: row.id, amount: row.amount, kind: "adjustment" as const })),
+    );
   await tx.insert(payment).values({
     lotId: L.wonPaid,
     buyerId: OWNER,
@@ -384,34 +392,14 @@ describe.skipIf(!HAS_DB)("organisation dashboard read models (integration)", () 
     });
   });
 
-  it("totals payouts still to arrive, with the soonest date", async () => {
+  it("lists payouts still to arrive with the lines they pay out", async () => {
     await inRollback(async (db) => {
+      const due = await new DrizzlePayoutsDueReader(db).listDue(ORG);
       expect(
-        await new DrizzlePayoutsDueReader(db).listDue(ORG, new Date("2026-10-29T00:00:00Z")),
+        due.map((row) => [row.periodEnd.toISOString(), row.lines.map((l) => l.amount)]).sort(),
       ).toEqual([
-        {
-          currency: "GBP",
-          count: 2,
-          amount: "1000.00",
-          nextDate: new Date("2026-10-31T00:00:00Z"),
-          overdueSince: null,
-        },
-      ]);
-    });
-  });
-
-  it("keeps the next date ahead when another payout is already overdue", async () => {
-    await inRollback(async (db) => {
-      expect(
-        await new DrizzlePayoutsDueReader(db).listDue(ORG, new Date("2026-11-01T00:00:00Z")),
-      ).toEqual([
-        {
-          currency: "GBP",
-          count: 2,
-          amount: "1000.00",
-          nextDate: new Date("2026-11-03T00:00:00Z"),
-          overdueSince: new Date("2026-10-31T00:00:00Z"),
-        },
+        ["2026-10-31T00:00:00.000Z", ["100.00"]],
+        ["2026-11-03T00:00:00.000Z", ["900.00"]],
       ]);
     });
   });

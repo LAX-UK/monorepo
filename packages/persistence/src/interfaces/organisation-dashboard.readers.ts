@@ -50,18 +50,23 @@ export interface ISoldWorksReader {
   soldBetween(legalEntityId: string, from: Date, to: Date): Promise<CurrencyCountRow[]>;
 }
 
-/** Payouts still to arrive in one currency, with their settlement dates either side of now. */
-export type PayoutsDueRow = CurrencyCountRow & {
-  /** The soonest settlement date still ahead of `now`. */
-  nextDate: Date | null;
-  /** The earliest settlement date already past `now` (overdue). */
-  overdueSince: Date | null;
+/** A payout still to arrive, with the lines its amount is built from. */
+export type DuePayoutRow = {
+  currency: string;
+  /** The settlement date. */
+  periodEnd: Date;
+  stripeFee: string;
+  lines: {
+    kind: string;
+    amount: string;
+    payment: { amount: string; platformFee: string } | null;
+  }[];
 };
 
 export interface IPayoutsDueReader {
   /**
-   * Net totals of payouts scheduled or in transit, with the soonest date ahead and the earliest
-   * date already past, so an overdue payout never hides the next one.
+   * Payouts scheduled or in transit with their lines. What each pays out is worked out from the
+   * lines by the domain, the same way the payout page shows it.
    */
-  listDue(legalEntityId: string, now: Date): Promise<PayoutsDueRow[]>;
+  listDue(legalEntityId: string): Promise<DuePayoutRow[]>;
 }
