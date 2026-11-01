@@ -36,7 +36,7 @@ export function LabelCaps({
 }: HTMLAttributes<HTMLSpanElement> & { children: ReactNode }) {
   return (
     <span
-      className={`font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.3em)] text-secondary ${className}`}
+      className={`font-label text-xs font-medium text-on-surface-variant ${className}`}
       {...props}
     >
       {children}
@@ -59,17 +59,14 @@ export function BodyText({
   );
 }
 
-/** Short uppercase kicker line (e.g. section eyebrow). */
+/** Short kicker line in sentence case (e.g. section eyebrow). */
 export function Kicker({
   children,
   className = "",
   ...props
 }: HTMLAttributes<HTMLParagraphElement> & { children: ReactNode }) {
   return (
-    <p
-      className={`font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.3em)] text-secondary ${className}`}
-      {...props}
-    >
+    <p className={`font-label text-xs font-medium text-on-surface-variant ${className}`} {...props}>
       {children}
     </p>
   );

@@ -15,7 +15,7 @@ const PILL_OVERLAY_POS =
 const PILL_INLINE_POS = "relative inline-flex max-w-full shrink-0 pointer-events-auto";
 
 const PILL_BASE_SHARED =
-  "items-center gap-1.5 rounded-full border px-2.5 py-1 font-label text-[10px] font-bold uppercase tracking-[0.1em] backdrop-blur-sm";
+  "items-center gap-1.5 rounded-full border px-2.5 py-1 font-label text-xs font-medium backdrop-blur-sm";
 
 const SHELL_LIVE =
   "border-transparent bg-brand-900/85 text-white dark:border-transparent dark:bg-black/80 dark:text-white";
@@ -35,7 +35,7 @@ const ENDING_SOON_COUNTDOWN =
   "min-w-0 tabular-nums text-base font-semibold leading-4 tracking-normal text-brand-100";
 
 const ENDING_SOON_MUTED_SHELL_SHARED =
-  "inline-flex h-8 items-center rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] backdrop-blur-[8px] font-supporting text-xs font-semibold uppercase leading-4 tracking-wide text-brand-100/85";
+  "inline-flex h-8 items-center rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] backdrop-blur-[8px] font-supporting text-xs font-medium leading-4 text-brand-100/85";
 
 function ariaLabelFor(state: LotTimerState, clockText?: string): string {
   switch (state.kind) {

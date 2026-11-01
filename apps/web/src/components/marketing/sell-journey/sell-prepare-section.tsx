@@ -35,7 +35,7 @@ export function SellPrepareSection() {
         <Accordion type="single" collapsible className="mt-4">
           {WIZARD_STEPS.map((step, index) => (
             <AccordionItem key={step.id} value={step.id}>
-              <AccordionTrigger className="font-label text-xs uppercase tracking-[0.14em]">
+              <AccordionTrigger className="font-label text-xs">
                 Step {index + 1} — {step.label}
               </AccordionTrigger>
               <AccordionContent className="font-body text-sm text-on-surface-variant">

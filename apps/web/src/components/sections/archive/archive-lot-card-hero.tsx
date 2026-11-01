@@ -70,14 +70,14 @@ function ArchiveHeroCardInner({
                   status={a.status}
                   context={{ lot: result.statusContext }}
                 />
-                <span className="font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                <span className="font-label text-xs font-medium text-on-surface-variant">
                   {closingSeason(a.endTime)}
                 </span>
               </div>
               <OverlayToneText
                 as="h3"
                 variant="display"
-                className="font-headline text-2xl font-light leading-tight tracking-tight drop-shadow-sm sm:text-3xl"
+                className="font-headline text-2xl font-medium leading-tight tracking-tight drop-shadow-sm sm:text-3xl"
               >
                 {a.title}
               </OverlayToneText>
@@ -95,7 +95,7 @@ function ArchiveHeroCardInner({
           </div>
           {result.hammer ? (
             <div className="text-right">
-              <p className="mb-1 font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+              <p className="mb-1 font-label text-xs font-medium text-on-surface-variant">
                 {result.hammer.label}
               </p>
               <p className="font-headline text-2xl tabular-nums text-on-surface">

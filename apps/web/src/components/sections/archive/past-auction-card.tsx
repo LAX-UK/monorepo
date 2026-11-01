@@ -53,7 +53,7 @@ export function PastAuctionCard({
                 context={{ lot: result.statusContext }}
                 size="sm"
               />
-              <span className="font-label text-[0.55rem] uppercase tracking-[0.15em] text-on-surface-variant md:text-[0.625rem] md:tracking-[0.2em]">
+              <span className="font-label text-[0.55rem] text-on-surface-variant md:text-xs">
                 {caption}
               </span>
             </div>
@@ -63,13 +63,13 @@ export function PastAuctionCard({
               </h3>
               <OwnerBadge owned={isOwner} />
             </div>
-            <p className="hidden text-sm font-light text-on-surface-variant md:block">
+            <p className="hidden text-sm font-normal text-on-surface-variant md:block">
               {sellerName}
             </p>
           </div>
           {result.hammer ? (
             <div className="shrink-0 text-right">
-              <span className="mb-0.5 block font-label text-[0.55rem] uppercase tracking-[0.15em] text-on-surface-variant md:mb-1 md:text-[0.625rem] md:tracking-[0.2em]">
+              <span className="mb-0.5 block font-label text-[0.55rem] text-on-surface-variant md:mb-1 md:text-xs">
                 {result.hammer.label}
               </span>
               <span className="font-headline text-base tabular-nums text-on-surface md:text-xl">

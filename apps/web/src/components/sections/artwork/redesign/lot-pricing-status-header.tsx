@@ -50,22 +50,18 @@ export function LotPricingStatusHeader({
       </h2>
       <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <div>
-          <p className="font-label text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
-            Estimate
-          </p>
+          <p className="font-label text-xs font-medium text-on-surface-variant">Estimate</p>
           <p className="mt-0.5 font-body text-sm font-medium text-on-surface">
             {seed.estimateLine ?? "—"}
           </p>
         </div>
         <div>
           <div className="flex flex-wrap items-baseline gap-1.5">
-            <p className="font-label text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
-              {price.label}
-            </p>
+            <p className="font-label text-xs font-medium text-on-surface-variant">{price.label}</p>
             {showBadge ? (
               <span
                 className={cn(
-                  "rounded-sm px-1 py-0.5 font-label text-[9px] font-bold uppercase tracking-wide",
+                  "rounded-sm px-1 py-0.5 font-label text-xs font-medium",
                   reserveContext.reserveMet
                     ? "bg-primary-container/40 text-primary"
                     : "bg-surface-container-high text-on-surface-variant",
@@ -84,7 +80,7 @@ export function LotPricingStatusHeader({
         </div>
         {showTimingColumn ? (
           <div className="col-span-2 sm:col-span-1">
-            <p className="font-label text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
+            <p className="font-label text-xs font-medium text-on-surface-variant">
               {scheduled
                 ? "Opens in"
                 : lifecycle.kind === "extended"
@@ -115,9 +111,7 @@ export function LotPricingStatusHeader({
           </div>
         ) : lotLifecycleIsClosed(lifecycle.kind) ? null : (
           <div>
-            <p className="font-label text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
-              Min. next bid
-            </p>
+            <p className="font-label text-xs font-medium text-on-surface-variant">Min. next bid</p>
             <p className="mt-0.5 font-body text-sm font-medium tabular-nums text-on-surface">
               {formatMoney(minNextBid)}
             </p>

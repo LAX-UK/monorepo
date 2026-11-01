@@ -60,7 +60,7 @@ export function SalesCalendarGridCard({ vm, index = 0 }: Props) {
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <SaleLifecycleBadge status={vm.status} />
               <SaleTypeBadge deliveryMode={vm.deliveryMode} size="sm" isLive={isLive} />
-              <span className="min-w-0 max-w-full break-words font-body text-[0.6rem] font-normal uppercase leading-snug text-on-surface-variant md:border-l md:border-on-surface-variant md:pl-2 md:text-xs">
+              <span className="min-w-0 max-w-full break-words font-body text-xs font-normal leading-snug text-on-surface-variant md:border-l md:border-on-surface-variant md:pl-2 md:text-xs">
                 {vm.dateLabel}
               </span>
             </div>
@@ -72,7 +72,7 @@ export function SalesCalendarGridCard({ vm, index = 0 }: Props) {
             />
 
             {metaLine ? (
-              <p className="line-clamp-2 min-w-0 max-w-full break-words font-body text-[10px] leading-snug text-on-surface-variant md:text-xs">
+              <p className="line-clamp-2 min-w-0 max-w-full break-words font-body text-xs leading-snug text-on-surface-variant md:text-xs">
                 {metaLine}
               </p>
             ) : null}

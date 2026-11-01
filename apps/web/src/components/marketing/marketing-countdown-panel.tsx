@@ -81,9 +81,7 @@ function SegmentChip({ value, unit, tier, ended, placeholder }: SegmentChipProps
       >
         {placeholder ? "\u00A0" : pad2(value)}
       </p>
-      <p className="text-[10px] font-body uppercase tracking-wider text-on-surface-variant">
-        {unit}
-      </p>
+      <p className="text-xs font-body text-on-surface-variant">{unit}</p>
     </div>
   );
 }

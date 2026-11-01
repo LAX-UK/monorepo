@@ -32,7 +32,7 @@ export function SaleCardHeader({
               key={segment}
               className="flex min-h-[1.25em] items-center border-l border-on-surface-variant/20 pl-2.5"
             >
-              <span className="font-body text-xs font-normal uppercase text-on-surface-variant sm:text-sm">
+              <span className="font-body text-xs font-normal text-on-surface-variant sm:text-sm">
                 {segment}
               </span>
             </div>
@@ -40,11 +40,11 @@ export function SaleCardHeader({
         </div>
       ) : (
         <>
-          <p className="font-body text-xs font-medium uppercase leading-snug text-on-surface-variant sm:text-sm">
+          <p className="font-body text-xs font-medium leading-snug text-on-surface-variant sm:text-sm">
             <span className="font-semibold text-on-surface">{scheduleLead}</span>
             <span className="hidden font-normal sm:inline">{scheduleRest}</span>
           </p>
-          <span className="font-body text-xs font-normal uppercase leading-snug text-on-surface-variant sm:text-sm">
+          <span className="font-body text-xs font-normal leading-snug text-on-surface-variant sm:text-sm">
             {auctionTypeLine}
           </span>
         </>

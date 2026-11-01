@@ -44,9 +44,7 @@ export function ViewAllSheet() {
     <BottomSheet open={viewAllOpen} onOpenChange={setViewAllOpen}>
       <BottomSheetContent className="max-h-[85dvh]">
         <BottomSheetHeader className="px-6 pt-2 text-left">
-          <BottomSheetTitle className="font-label text-sm uppercase tracking-wide">
-            All images
-          </BottomSheetTitle>
+          <BottomSheetTitle className="font-label text-sm">All images</BottomSheetTitle>
           <BottomSheetDescription>
             {images.length} images for {title}
           </BottomSheetDescription>

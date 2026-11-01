@@ -73,13 +73,13 @@ export function LotInfoStack({
         <InfoRow label="Estimate" value={estimateLine ?? "—"} valueClass="text-sm font-medium" />
         <div className="flex flex-col justify-center gap-2.5 sm:text-right">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 sm:justify-end">
-            <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+            <span className="font-label text-xs font-medium text-on-surface-variant">
               Current bid ({bidCount} {bidCount === 1 ? "bid" : "bids"})
             </span>
             {showReserveBadge ? (
               <span
                 className={cn(
-                  "rounded-sm px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide",
+                  "rounded-sm px-1.5 py-0.5 font-label text-xs font-medium",
                   reserveContext.reserveMet
                     ? "bg-primary-container/40 text-primary"
                     : "bg-surface-container-high text-on-surface-variant",
@@ -125,9 +125,7 @@ function InfoRow({
 }) {
   return (
     <div className="flex flex-col justify-center gap-2.5">
-      <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
-        {label}
-      </span>
+      <span className="font-label text-xs font-medium text-on-surface-variant">{label}</span>
       <span className={cn("tabular-nums leading-5 text-on-surface-variant", valueClass ?? "")}>
         {value}
       </span>
@@ -291,9 +289,7 @@ function OpensInBanner({
   return (
     <div className="mt-4 flex flex-col gap-3 rounded-lg border border-lot-orange/30 bg-lot-orange/10 px-4 py-3">
       <div className="flex flex-row items-center gap-2">
-        <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-lot-orange">
-          Opens in
-        </span>
+        <span className="font-label text-xs font-medium text-lot-orange">Opens in</span>
         <div className="ml-auto flex min-w-0 items-center gap-2">
           <Clock className="size-3.5 shrink-0 text-lot-orange" aria-hidden />
           <time
@@ -337,9 +333,7 @@ function EndedSoldBanner({
 
   return (
     <div className="mt-4 space-y-2 rounded-lg border border-primary/25 bg-primary-container/10 px-4 py-3 ring-1 ring-primary/15 dark:bg-primary/10">
-      <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-secondary">
-        Sold
-      </span>
+      <span className="font-label text-xs font-medium text-on-surface-variant">Sold</span>
       {youWon ? (
         <div className="space-y-2">
           <p className="font-body text-sm font-medium text-on-surface">
@@ -371,9 +365,7 @@ function EndedSoldBanner({
 function TerminalBanner({ label, detail }: { label: string; detail: string }) {
   return (
     <div className="mt-4 flex flex-row items-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-high/60 px-4 py-3 dark:bg-surface-container-high/30">
-      <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
-        {label}
-      </span>
+      <span className="font-label text-xs font-medium text-on-surface-variant">{label}</span>
       <span className="ml-auto truncate text-sm font-medium text-on-surface-variant">{detail}</span>
     </div>
   );

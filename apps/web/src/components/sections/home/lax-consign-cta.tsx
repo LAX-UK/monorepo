@@ -50,9 +50,7 @@ export function LaxConsignCTA() {
                 <ArrowRight className="size-5 shrink-0" aria-hidden />
               </SellCtaLink>
             </Button>
-            <p className="font-label text-xs uppercase tracking-[0.16em] text-on-surface-variant">
-              {CONSIGN_COPY.microcopy}
-            </p>
+            <p className="font-label text-xs text-on-surface-variant">{CONSIGN_COPY.microcopy}</p>
           </div>
         </MarketingSectionReveal>
       </div>

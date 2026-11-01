@@ -43,8 +43,7 @@ type ContactFormProps = {
 const underlineField =
   "font-body text-base placeholder:text-on-surface-variant/55 focus-visible:shadow-none";
 
-const labelClass =
-  "mb-1 block font-label text-[10px] font-bold uppercase tracking-[0.1em] text-on-surface-variant";
+const labelClass = "mb-1 block font-label text-xs font-medium text-on-surface-variant";
 
 const messageField =
   "min-h-[8rem] w-full resize-y rounded-none border-0 border-b-2 border-outline/40 bg-transparent py-3 font-body text-sm text-on-surface shadow-none transition-colors placeholder:text-on-surface-variant/55 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-0";

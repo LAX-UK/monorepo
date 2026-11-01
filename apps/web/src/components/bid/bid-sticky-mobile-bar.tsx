@@ -34,13 +34,12 @@ import {
 } from "./bid-sticky-mobile-bar.logic";
 
 const CTA_CLASS =
-  "shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-[0.65rem] font-bold text-cta-on shadow-sm";
+  "shrink-0 rounded-sm bg-cta-bg px-4 py-2 font-label text-xs font-bold text-cta-on shadow-sm";
 const CTA_CLASS_LG =
   "shrink-0 rounded-sm bg-cta-bg px-5 py-3 font-label text-xs font-bold text-cta-on shadow-sm";
 const OUTLINE_CLASS =
-  "shrink-0 border border-primary/40 px-4 py-2 font-label text-[0.65rem] font-bold text-primary";
-const STATUS_CLASS =
-  "shrink-0 px-2 py-3 font-label text-[0.65rem] font-bold text-on-surface-variant";
+  "shrink-0 border border-primary/40 px-4 py-2 font-label text-xs font-bold text-primary";
+const STATUS_CLASS = "shrink-0 px-2 py-3 font-label text-xs font-bold text-on-surface-variant";
 
 type Props = {
   live: boolean;
@@ -98,7 +97,7 @@ function StickyBlockerAction({
           }}
           className={
             action.href === "/admin"
-              ? "shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-[0.65rem] font-bold text-on-surface-variant transition-colors hover:border-link/40 hover:text-link"
+              ? "shrink-0 border border-outline-variant/40 px-4 py-3 font-label text-xs font-bold text-on-surface-variant transition-colors hover:border-link/40 hover:text-link"
               : ctaClass
           }
         >
@@ -205,7 +204,7 @@ export function BidStickyMobileBar({
       <MarketingStickyBidBar>
         <p
           className={cn(
-            "min-w-0 flex-1 text-center font-label text-xs font-semibold uppercase tracking-wider tabular-nums",
+            "min-w-0 flex-1 text-center font-label text-xs font-medium tabular-nums",
             statusLineClass,
           )}
         >
@@ -222,7 +221,7 @@ export function BidStickyMobileBar({
           </Button>
         ) : null}
         {!blockerAction && (autoBidLabel || positionLabel) ? (
-          <span className="shrink-0 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1.5 font-label text-[0.65rem] font-bold uppercase tracking-wider text-primary">
+          <span className="shrink-0 rounded-sm border border-primary/30 bg-primary/10 px-3 py-1.5 font-label text-xs font-medium text-primary">
             {autoBidLabel ?? positionLabel}
           </span>
         ) : null}
@@ -273,22 +272,20 @@ export function BidStickyMobileBar({
   return (
     <MarketingStickyBidBar>
       <div className="min-w-0">
-        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-          Current bid
-        </p>
+        <p className="font-label text-xs text-on-surface-variant">Current bid</p>
         <p
           className={`truncate font-headline text-lg text-on-surface ${priceFlash ? "motion-safe:animate-[bidPriceBump_0.45s_ease-out]" : ""}`}
         >
           {currentPriceLabel}
         </p>
         {autoBidLabel || positionLabel ? (
-          <p className="mt-0.5 truncate font-label text-[0.65rem] font-bold uppercase tracking-wider text-secondary">
+          <p className="mt-0.5 truncate font-label text-xs font-medium text-on-surface-variant">
             {autoBidLabel ?? positionLabel}
           </p>
         ) : null}
         <p
           className={cn(
-            "mt-0.5 truncate font-label text-[0.7rem] tabular-nums font-semibold uppercase tracking-wider",
+            "mt-0.5 truncate font-label text-xs tabular-nums font-medium",
             statusLineClass,
           )}
         >
@@ -307,9 +304,7 @@ function UpcomingBar({
   return (
     <MarketingStickyBidBar>
       <div className="min-w-0">
-        <p className="font-label text-[0.7rem] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-lot-orange">
-          Opens in
-        </p>
+        <p className="font-label text-xs font-medium text-lot-orange">Opens in</p>
         <p className="truncate font-headline text-lg tabular-nums text-on-surface">
           {countdownClock || "Soon"}
         </p>

@@ -45,14 +45,7 @@ export function BidErrorView({
       role="alert"
     >
       {error.title ? (
-        <p
-          className={cn(
-            "font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
-            tone,
-          )}
-        >
-          {error.title}
-        </p>
+        <p className={cn("font-label text-xs font-medium", tone)}>{error.title}</p>
       ) : null}
       <p className={cn("text-sm", tone, error.title ? "mt-1" : null)}>{error.message}</p>
       {showActionLink && actionHref ? (

@@ -80,7 +80,7 @@ export function PressHubHero({ lastUpdated, stats }: Props) {
                 <Link
                   href="/press/feed.xml"
                   className={cn(
-                    "inline-flex min-h-11 items-center gap-1.5 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary hover:underline",
+                    "inline-flex min-h-11 items-center gap-1.5 font-label text-xs text-secondary hover:underline",
                     FOCUS_RING,
                   )}
                 >

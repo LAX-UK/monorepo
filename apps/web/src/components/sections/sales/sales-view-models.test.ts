@@ -53,7 +53,7 @@ describe("mapSaleToCalendarGridCardVM", () => {
     expect(vm.itemsLabel).toBe("2 Items");
     expect(vm.lotsHref).toMatch(/spring-sale/i);
     expect(vm.showRegisterButton).toBe(true);
-    expect(vm.auctionTypeLabel).toBe("Online Auction");
+    expect(vm.auctionTypeLabel).toBe("Online auction");
     expect(vm.title).toBe("Spring Sale");
   });
 

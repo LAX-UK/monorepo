@@ -34,10 +34,10 @@ export function saleroomCatalogFilterLabel(value: SaleroomCatalogStatus): string
 /** Sales calendar primary tab labels. */
 export const SALES_CALENDAR_TAB_LABELS: Record<CalendarPrimaryTab, string> = {
   upcoming: "Upcoming",
-  live: "Live Now",
-  results: "Auction Results",
-  newLots: "New Lots",
-  privateSales: "Private Sales",
+  live: "Live now",
+  results: "Auction results",
+  newLots: "New lots",
+  privateSales: "Private sales",
 };
 
 export function salesCalendarTabLabel(tab: CalendarPrimaryTab): string {

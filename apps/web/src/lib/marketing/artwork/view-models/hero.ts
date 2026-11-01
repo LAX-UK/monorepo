@@ -39,7 +39,7 @@ export function mapLotToHeroVM(
       firstSegmentLabel,
       saleHref: null,
       saleTitle: null,
-      lotNumberLabel: lot.lotNumber != null ? `LOT ${lot.lotNumber}` : null,
+      lotNumberLabel: lot.lotNumber != null ? `Lot ${lot.lotNumber}` : null,
       prevHref: null,
       nextHref: null,
       positionLabel: null,
@@ -60,8 +60,8 @@ export function mapLotToHeroVM(
     saleTitle: parentSale.title,
     lotNumberLabel:
       lot.lotNumber != null
-        ? `LOT ${lot.lotNumber}`
-        : `LOT ${lot.id.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
+        ? `Lot ${lot.lotNumber}`
+        : `Lot ${lot.id.replace(/-/g, "").slice(0, 6).toUpperCase()}`,
     prevHref: prev ? resolveLotHref(prev, catalogLinkParams) : null,
     nextHref: next ? resolveLotHref(next, catalogLinkParams) : null,
     positionLabel,

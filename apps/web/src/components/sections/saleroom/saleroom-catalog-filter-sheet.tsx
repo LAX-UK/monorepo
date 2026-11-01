@@ -43,9 +43,7 @@ export function SaleroomCatalogFilterSheet({
       }}
     >
       <div>
-        <p className="mb-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Lot status
-        </p>
+        <p className="mb-3 font-label text-xs text-on-surface-variant">Lot status</p>
         <SaleroomCatalogStatusChips basePath={basePath} layout="list" onSelect={close} />
       </div>
     </MarketingFilterSheet>

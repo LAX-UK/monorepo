@@ -11,7 +11,6 @@ export type SaleTypePresentation = {
   title: string;
   tagline: string;
   description: string;
-  colorClass: string;
   iconName: "Laptop" | "MapPin";
   howToTakePart: Array<{
     stepKey: ParticipationStepKey;
@@ -38,10 +37,10 @@ export type ParticipationStepKey =
 export type OnsiteTimelineStepKey = "preview" | "paddle" | "absenteePhone" | "streamBroadcast";
 
 const ONSITE_TIMELINE_TITLES: Record<OnsiteTimelineStepKey, string> = {
-  preview: "Public Preview",
-  paddle: "Secure a Paddle",
-  absenteePhone: "Leave Absentee/Phone Bids",
-  streamBroadcast: "Watch Live Broadcast",
+  preview: "Public preview",
+  paddle: "Secure a paddle",
+  absenteePhone: "Leave absentee or phone bids",
+  streamBroadcast: "Watch the live broadcast",
 };
 
 const ANTI_SNIPE_RULE = formatAntiSnipingRuleSentence();
@@ -67,28 +66,26 @@ const PRESENTATION_STRATEGY: Record<SaleDeliveryMode, SaleTypePresentation> = {
   online: {
     key: "online",
     label: "Online",
-    title: "Online Auction",
+    title: "Online auction",
     tagline: "Bid online from anywhere",
     description: `This is a digital-only timed auction. Bidding takes place entirely online. Each lot has its own closing time, often staggered in catalogue order. Set a confidential maximum bid and the platform bids the minimum increment needed to keep you leading, when auto-bid is enabled for the lot. ${ANTI_SNIPE_RULE}`,
-    colorClass:
-      "bg-brand-50 text-brand-800 border-brand-200/50 dark:bg-brand-950/40 dark:text-brand-300 dark:border-brand-800/40",
     iconName: "Laptop",
     howToTakePart: [
       {
         stepKey: "register",
-        title: "Register to Bid",
+        title: "Register to bid",
         description:
           "Sign in with an approved buyer profile. Buyer agents must register and be approved for each sale before bidding. Identity verification may also be required.",
       },
       {
         stepKey: "maxBids",
-        title: "Place Max Bids",
+        title: "Place maximum bids",
         description:
           "Enter your maximum budget confidentially when auto-bid is enabled for the lot. The platform bids the minimum increment needed to keep you leading up to your limit.",
       },
       {
         stepKey: "lotClose",
-        title: "Timed Lot Close",
+        title: "Timed lot close",
         description: getOnlineCloseStepDescription(),
       },
     ],
@@ -96,34 +93,32 @@ const PRESENTATION_STRATEGY: Record<SaleDeliveryMode, SaleTypePresentation> = {
   onsite: {
     key: "onsite",
     label: "In-person",
-    title: "In-person Auction",
+    title: "In-person auction",
     tagline: "Attend the physical saleroom",
     description: `This is a live saleroom event at the listed venue. ${getOnsiteNoWebBiddingNote()}`,
-    colorClass:
-      "bg-amber-50 text-amber-800 border-amber-200/50 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-900/40",
     iconName: "MapPin",
     howToTakePart: [
       {
         stepKey: "attendLive",
-        title: "Attend & Bid Live",
+        title: "Attend and bid live",
         description:
           "Join us at the physical saleroom. Present your photo ID at the reception desk to register and receive your bidding paddle.",
       },
       {
         stepKey: "absenteeBid",
-        title: "Submit Absentee Bid",
+        title: "Submit an absentee bid",
         description:
           "Submit a confidential maximum bid request before the sale. Our team executes approved instructions in the saleroom.",
       },
       {
         stepKey: "phoneLine",
-        title: "Request a Phone Line",
+        title: "Request a phone line",
         description:
           "Submit a telephone bidding request before your lot opens. A representative calls you during the live session.",
       },
       {
         stepKey: "stream",
-        title: "Watch the Broadcast",
+        title: "Watch the broadcast",
         description:
           "When a live stream is available, watch the saleroom session from your computer or mobile device.",
       },
@@ -132,35 +127,33 @@ const PRESENTATION_STRATEGY: Record<SaleDeliveryMode, SaleTypePresentation> = {
   hybrid: {
     key: "hybrid",
     label: "Hybrid",
-    title: "Hybrid Auction",
+    title: "Hybrid auction",
     tagline: "Bid online or in the saleroom",
     description:
       "This sale supports online timed bidding and in-room participation. Register to bid on the website, or collect a paddle at reception and bid live in the saleroom. Telephone and absentee instructions are also available before lots open.",
-    colorClass:
-      "bg-violet-50 text-violet-900 border-violet-200/50 dark:bg-violet-950/30 dark:text-violet-200 dark:border-violet-900/40",
     iconName: "Laptop",
     howToTakePart: [
       {
         stepKey: "register",
-        title: "Register to Bid",
+        title: "Register to bid",
         description:
           "Sign in with an approved buyer profile to bid online, or check in at reception for an in-room paddle.",
       },
       {
         stepKey: "maxBids",
-        title: "Bid Online or In-Room",
+        title: "Bid online or in the room",
         description:
           "Place bids on the website when lots are live, or bid through a clerk with your paddle number in the saleroom.",
       },
       {
         stepKey: "phoneLine",
-        title: "Request a Phone Line",
+        title: "Request a phone line",
         description:
           "Submit a telephone bidding request before your lot opens if you cannot attend in person.",
       },
       {
         stepKey: "stream",
-        title: "Watch the Broadcast",
+        title: "Watch the broadcast",
         description:
           "When a live stream is available, follow the saleroom session from your device while bidding online.",
       },

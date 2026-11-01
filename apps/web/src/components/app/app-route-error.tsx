@@ -51,7 +51,7 @@ export function AppRouteError({
       role="alert"
     >
       <EmptyStateIllustration name={illustration} size="page" className="mb-8" />
-      <DisplayHeading as="h1" className="mb-4 text-3xl">
+      <DisplayHeading as="h1" className="mb-4 text-3xl font-medium">
         {resolvedTitle}
       </DisplayHeading>
       <p className="mb-8 font-body text-sm text-on-surface-variant">{message}</p>
@@ -61,7 +61,7 @@ export function AppRouteError({
         </Button>
         <Link
           href={homeHref}
-          className="inline-flex items-center justify-center rounded-md border border-outline-variant/30 bg-transparent px-10 py-4 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:bg-surface-container-low"
+          className="inline-flex items-center justify-center rounded-md border border-outline-variant/30 bg-transparent px-10 py-4 font-label text-xs font-medium text-on-surface transition-colors hover:bg-surface-container-low"
         >
           {homeLabel}
         </Link>

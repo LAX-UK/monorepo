@@ -1,8 +1,7 @@
 import { FOCUS_RING } from "@auction/branding";
 import { cn } from "@auction/ui";
 
-const filterGroupLabel =
-  "marketing-filter-group-title font-label text-xs uppercase tracking-[0.18em] text-on-surface-variant";
+const filterGroupLabel = "marketing-filter-group-title font-label text-xs text-on-surface-variant";
 
 /** Sticky scrollable filter rail on desktop catalogue hubs. */
 export const MARKETING_FILTER_RAIL_STICKY =
@@ -19,7 +18,7 @@ export const MARKETING_FILTER_ACCORDION_TRIGGER = cn(
 
 /** Result count strip above filter groups. */
 export const MARKETING_FILTER_RESULT_COUNT =
-  "font-body text-xs font-normal uppercase leading-5 tracking-wide text-on-surface-variant";
+  "font-body text-xs font-normal leading-5 text-on-surface-variant";
 
 /** Reset sticky rail behaviour inside mobile filter sheets. */
 export const MARKETING_FILTER_RAIL_IN_SHEET =

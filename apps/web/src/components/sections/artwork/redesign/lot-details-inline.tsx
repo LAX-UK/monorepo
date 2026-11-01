@@ -17,7 +17,7 @@ type Props = {
   variant?: "default" | "accordion";
 };
 
-/** Figma “LOT DETAILS” block: catalog + reserve + open/close, plus policy links.
+/** Figma “Lot details” block: catalog + reserve + open/close, plus policy links.
  */
 export function LotDetailsInline({
   lot,
@@ -42,7 +42,7 @@ export function LotDetailsInline({
       {embedded ? null : (
         <h2
           id="inline-lot-details"
-          className="text-center text-lg font-medium uppercase leading-[21px] text-on-surface"
+          className="text-center text-lg font-medium leading-[21px] text-on-surface"
         >
           Lot details
         </h2>
@@ -58,7 +58,7 @@ export function LotDetailsInline({
             {specParts.map((p, i) => (
               <Fragment key={p}>
                 {i > 0 ? " · " : null}
-                <span className="capitalize">{p}</span>
+                <span>{p}</span>
               </Fragment>
             ))}
           </li>

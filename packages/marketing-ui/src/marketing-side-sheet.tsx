@@ -34,7 +34,7 @@ export type MarketingSideSheetProps = {
 };
 
 const TITLE_CLASS = {
-  caps: "font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface",
+  caps: "font-label text-xs font-medium text-on-surface",
   sentence: "text-2xl font-medium leading-8 text-on-surface",
 } as const;
 

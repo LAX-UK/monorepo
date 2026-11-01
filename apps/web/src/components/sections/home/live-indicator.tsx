@@ -25,17 +25,11 @@ export function LiveIndicatorRow({
       {...(announceUpdates ? { role: "status", "aria-live": "polite" as const } : {})}
     >
       <LiveDot className="h-5 w-5" />
-      <span
-        className={`font-label text-xs font-semibold uppercase leading-[18px] tracking-[1.8px] ${textMuted}`}
-      >
+      <span className={`font-label text-xs font-medium leading-[18px] ${textMuted}`}>
         {progressLabel}
       </span>
       <span className={`mx-1 hidden h-px w-2.5 shrink-0 sm:block ${dividerBg}`} aria-hidden />
-      <span
-        className={`font-label text-[10px] font-semibold uppercase leading-3 tracking-[1.8px] ${textMuted}`}
-      >
-        {saleLine}
-      </span>
+      <span className={`font-label text-xs font-medium leading-4 ${textMuted}`}>{saleLine}</span>
     </div>
   );
 }

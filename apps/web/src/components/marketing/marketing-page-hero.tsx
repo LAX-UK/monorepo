@@ -85,7 +85,7 @@ export function MarketingPageHero(props: MarketingPageHeroProps) {
         >
           <div className="mt-auto max-w-[760px]">
             {eyebrow ? (
-              <div className="fade-up mb-4 flex flex-wrap items-center gap-2 font-label text-[length:var(--text-label-2)] font-bold uppercase tracking-[0.22em] text-white/55">
+              <div className="fade-up mb-4 flex flex-wrap items-center gap-2 font-label text-xs font-medium text-white/55">
                 {eyebrow}
               </div>
             ) : null}
@@ -123,7 +123,7 @@ export function MarketingPageHero(props: MarketingPageHeroProps) {
 
   const titleNode =
     typeof title === "string" ? (
-      <DisplayHeading as={titleAs} size={titleSize}>
+      <DisplayHeading as={titleAs} size={titleSize} className="font-medium">
         {title}
       </DisplayHeading>
     ) : (
@@ -133,11 +133,7 @@ export function MarketingPageHero(props: MarketingPageHeroProps) {
   return (
     <header className={cn(MARKETING_PAGE_INNER, "flex flex-col gap-4 py-8 md:py-10", className)}>
       {breadcrumb ? <div className="text-sm text-on-surface-variant">{breadcrumb}</div> : null}
-      {eyebrow ? (
-        <div className="text-[length:var(--text-label-3)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
-          {eyebrow}
-        </div>
-      ) : null}
+      {eyebrow ? <div className="text-[length:var(--text-label-3)]">{eyebrow}</div> : null}
       <div className={cn("grid gap-6", media && "lg:grid-cols-[1fr_minmax(0,1fr)] lg:items-end")}>
         <div className="flex min-w-0 flex-col gap-3">
           {titleNode}

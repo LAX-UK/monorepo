@@ -70,7 +70,7 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-6">
           <div className="space-y-1">
-            <p className="flex items-center gap-1.5 font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
+            <p className="flex items-center gap-1.5 font-label text-xs font-medium text-on-surface-variant">
               <Clock className="size-3.5" /> Opening hours
             </p>
             <p className="mt-1 text-sm font-medium text-on-surface-variant">{previewHoursLabel}</p>
@@ -78,7 +78,7 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
 
           <div className="space-y-4">
             <div className="space-y-1">
-              <dt className="font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
+              <dt className="font-label text-xs font-medium text-on-surface-variant">
                 Auction session
               </dt>
               <dd className="text-sm font-medium text-on-surface">
@@ -87,7 +87,7 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
             </div>
             {previewLabel ? (
               <div className="space-y-1">
-                <dt className="font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
+                <dt className="font-label text-xs font-medium text-on-surface-variant">
                   Preview from
                 </dt>
                 <dd className="text-sm font-medium text-on-surface">{previewLabel}</dd>
@@ -117,7 +117,7 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
               </p>
             ) : null}
             {addressLines.length > 0 ? (
-              <p className="mt-0.5 font-body text-xs font-light leading-relaxed text-on-surface-variant">
+              <p className="mt-0.5 font-body text-xs font-normal leading-relaxed text-on-surface-variant">
                 {addressLines.join(", ")}
               </p>
             ) : null}
@@ -125,7 +125,7 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
           {embedUrl ? (
             <div className="mt-4 aspect-video overflow-hidden rounded-lg border border-outline-variant/10 shadow-inner">
               <iframe
-                title="Saleroom Map"
+                title="Saleroom map"
                 src={embedUrl}
                 className="h-full w-full border-0"
                 allowFullScreen

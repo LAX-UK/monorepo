@@ -88,9 +88,7 @@ function SegmentChip({ value, unit, phase, tier, placeholder }: SegmentChipProps
       >
         {placeholder ? "\u00A0" : pad2(value)}
       </p>
-      <p className="text-[10px] font-body uppercase tracking-wider text-on-surface-variant">
-        {unit}
-      </p>
+      <p className="text-xs font-body text-on-surface-variant">{unit}</p>
     </div>
   );
 }
@@ -185,7 +183,7 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
   if (variant === "compact") {
     return (
       <div className={cn("text-left", className)}>
-        <p className="font-label text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+        <p className="font-label text-xs font-medium text-on-surface-variant">
           {phase === "during" ? (
             <span className="inline-flex items-center gap-1.5">
               <LiveDot className="live-dot-pulse h-2 w-2" aria-hidden />

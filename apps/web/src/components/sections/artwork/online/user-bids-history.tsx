@@ -62,10 +62,10 @@ export function UserBidsHistory({ vm, className, defaultOpen = true }: Props) {
                 key={row.id}
                 className="flex flex-wrap items-center gap-3 border-b border-outline-variant/30 pb-3 last:border-b-0 last:pb-0"
               >
-                <span className="rounded bg-surface-container-high px-2 py-1 font-body text-xs font-semibold uppercase leading-3 tracking-wide text-on-surface backdrop-blur-sm">
+                <span className="rounded bg-surface-container-high px-2 py-1 font-body text-xs font-medium leading-4 text-on-surface backdrop-blur-sm">
                   {statusLabel(row)}
                 </span>
-                <span className="font-body text-xs font-semibold uppercase leading-6 text-on-surface">
+                <span className="font-body text-xs font-medium leading-6 text-on-surface">
                   {row.amount}
                 </span>
               </li>

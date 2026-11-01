@@ -14,7 +14,7 @@ describe("sale-type-presentation helper", () => {
     const pres = getSaleTypePresentation("online");
     expect(pres.key).toBe("online");
     expect(pres.label).toBe("Online");
-    expect(pres.title).toBe("Online Auction");
+    expect(pres.title).toBe("Online auction");
     expect(pres.iconName).toBe("Laptop");
     expect(pres.howToTakePart).toHaveLength(3);
   });
@@ -23,7 +23,7 @@ describe("sale-type-presentation helper", () => {
     const pres = getSaleTypePresentation("onsite");
     expect(pres.key).toBe("onsite");
     expect(pres.label).toBe("In-person");
-    expect(pres.title).toBe("In-person Auction");
+    expect(pres.title).toBe("In-person auction");
     expect(pres.iconName).toBe("MapPin");
     expect(pres.howToTakePart).toHaveLength(4);
   });
@@ -52,7 +52,7 @@ describe("sale-type-presentation helper", () => {
 
   it("uses accurate anti-sniping copy for online format", () => {
     const pres = getSaleTypePresentation("online");
-    const closeStep = pres.howToTakePart.find((s) => s.title === "Timed Lot Close");
+    const closeStep = pres.howToTakePart.find((s) => s.title === "Timed lot close");
 
     expect(pres.description).toContain("30 seconds");
     expect(pres.description).toContain("final 2 minutes");
@@ -67,9 +67,9 @@ describe("sale-type-presentation helper", () => {
 
   it("uses request language and conditional stream copy for onsite format", () => {
     const pres = getSaleTypePresentation("onsite");
-    const absentee = pres.howToTakePart.find((s) => s.title === "Submit Absentee Bid");
-    const phone = pres.howToTakePart.find((s) => s.title === "Request a Phone Line");
-    const stream = pres.howToTakePart.find((s) => s.title === "Watch the Broadcast");
+    const absentee = pres.howToTakePart.find((s) => s.title === "Submit an absentee bid");
+    const phone = pres.howToTakePart.find((s) => s.title === "Request a phone line");
+    const stream = pres.howToTakePart.find((s) => s.title === "Watch the broadcast");
 
     expect(pres.description).toContain("listed venue");
     expect(pres.description).not.toContain("premier gallery");

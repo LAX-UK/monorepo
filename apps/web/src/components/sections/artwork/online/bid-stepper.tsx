@@ -68,7 +68,7 @@ export function BidStepper({
       >
         <span
           id={`${liveId}-label`}
-          className="text-center font-body text-[10px] font-semibold uppercase leading-[10px] text-on-surface-variant"
+          className="text-center font-body text-xs font-medium leading-4 text-on-surface-variant"
         >
           Your amount
         </span>

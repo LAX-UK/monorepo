@@ -41,22 +41,16 @@ export function HeroSlideCopy({ slide, slideIndex, slideCount }: Props) {
         <OverlayToneText
           as="h1"
           variant="display"
-          className="font-headline text-[length:var(--text-display-hero)] font-medium uppercase leading-[120%] tracking-tight"
+          className="font-headline text-[length:var(--text-display-hero)] font-medium leading-[120%] tracking-tight"
         >
           {slide.title}
         </OverlayToneText>
-        <OverlayToneText
-          variant="muted"
-          className="font-body text-sm font-semibold uppercase tracking-wide"
-        >
+        <OverlayToneText variant="muted" className="font-body text-sm font-semibold">
           {slide.dateLabel}
         </OverlayToneText>
         {countdown ? (
           <div className="flex items-baseline gap-2">
-            <OverlayToneText
-              variant="muted"
-              className="font-label text-xs font-bold uppercase tracking-[0.18em]"
-            >
+            <OverlayToneText variant="muted" className="font-label text-xs font-medium">
               {countdown.label}
             </OverlayToneText>
             <OverlayToneText className="font-headline text-lg font-semibold tabular-nums md:text-xl">

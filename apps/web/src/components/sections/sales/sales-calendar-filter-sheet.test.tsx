@@ -35,7 +35,7 @@ describe("SalesCalendarFilterSheet", () => {
     );
 
     clickFirstButton(/Filters/i);
-    expect(screen.getAllByText("Auction Type").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Auction type").length).toBeGreaterThan(0);
     clickFirstButton("Show 8 sales");
   });
 

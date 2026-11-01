@@ -49,7 +49,7 @@ export function MarketingPromoCta({
         as="h2"
         id={titleId}
         size="section"
-        className={cn("text-on-surface", titleClassName)}
+        className={cn("font-medium text-on-surface", titleClassName)}
       >
         {title}
       </DisplayHeading>
