@@ -1,90 +1,25 @@
-"use client";
-
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
-import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
-import { MarketingListToolbar } from "@/components/marketing/marketing-list-toolbar";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MediaImage } from "@/components/ui/media-image";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
-import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { lotPath } from "@/lib/seo/url";
 import { MarketingWorkCard, MarketingWorkGrid } from "@auction/marketing-ui";
 import type { Lot } from "@auction/types";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
 import { isPublicLotStatus } from "@auction/validators";
-import { useMemo, useState } from "react";
-
-type WorkFilter = "all" | "live" | "past";
 
 type Props = {
   lots: Lot[];
   currentUserId: string | null;
-};
-
-type WorkFilterOption = {
+  /** Names the list for assistive technology: "On sale" or "Past results". */
   label: string;
-  value: WorkFilter;
-  matches: (lot: Lot) => boolean;
 };
 
 type LotCatalogCardProps = {
   lot: Lot;
   currentUserId: string | null;
 };
-
-const ALL_FILTER: WorkFilterOption = { label: "All", value: "all", matches: () => true };
-
-const FILTERS: WorkFilterOption[] = [
-  ALL_FILTER,
-  {
-    label: "Upcoming",
-    value: "live",
-    matches: (lot) => lot.status === "active" || lot.status === "scheduled",
-  },
-  { label: "Past results", value: "past", matches: (lot) => lot.status === "ended" },
-];
-
-function getFilter(filter: WorkFilter) {
-  return FILTERS.find((item) => item.value === filter) ?? ALL_FILTER;
-}
-
-function WorkFilterControls({
-  value,
-  onChange,
-}: {
-  value: WorkFilter;
-  onChange: (value: WorkFilter) => void;
-}) {
-  return (
-    <fieldset className="m-0 flex flex-wrap gap-2 border-0 p-0">
-      <legend className="sr-only">Show lots</legend>
-      {FILTERS.map((item) => {
-        const selected = value === item.value;
-        return (
-          <Button
-            key={item.value}
-            type="button"
-            variant="ghost"
-            aria-pressed={selected}
-            onClick={() => onChange(item.value)}
-            className={cn(
-              "inline-flex items-center border font-body transition-colors motion-reduce:transition-none",
-              FOCUS_RING,
-              selected
-                ? "border-primary bg-primary text-on-primary"
-                : "border-outline-variant/40 text-on-surface-variant hover:border-on-surface/40 hover:text-on-surface",
-            )}
-          >
-            {item.label}
-          </Button>
-        );
-      })}
-    </fieldset>
-  );
-}
 
 function lotYearMedium(lot: Lot): string | null {
   const year = lot.createdAt instanceof Date ? lot.createdAt.getUTCFullYear() : null;
@@ -132,37 +67,12 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
   );
 }
 
-export function ArtistWorksGrid({ lots, currentUserId }: Props) {
-  const initial: WorkFilter = useMemo(() => {
-    const hasUpcoming = lots.some((l) => l.status === "active" || l.status === "scheduled");
-    return hasUpcoming ? "live" : "all";
-  }, [lots]);
-  const [filter, setFilter] = useState<WorkFilter>(initial);
-  const visibleLots = useMemo(() => lots.filter(getFilter(filter).matches), [filter, lots]);
-  const countLabel = `${visibleLots.length} lot${visibleLots.length === 1 ? "" : "s"}`;
-
+export function ArtistWorksGrid({ lots, currentUserId, label }: Props) {
   return (
-    <div>
-      <MarketingListToolbar
-        countLabel={countLabel}
-        gutter={false}
-        stackTrailingOnMobile
-        trailing={<WorkFilterControls value={filter} onChange={setFilter} />}
-      />
-      {visibleLots.length === 0 ? (
-        <MarketingEmptyState
-          variant="panel"
-          context="filtered"
-          title="No works match this filter"
-          description="Try another filter to browse this artist's catalogue."
-        />
-      ) : (
-        <MarketingWorkGrid className="mt-8" aria-label="Lots by this artist">
-          {visibleLots.map((lot) => (
-            <LotCatalogCard key={lot.id} lot={lot} currentUserId={currentUserId} />
-          ))}
-        </MarketingWorkGrid>
-      )}
-    </div>
+    <MarketingWorkGrid aria-label={label}>
+      {lots.map((lot) => (
+        <LotCatalogCard key={lot.id} lot={lot} currentUserId={currentUserId} />
+      ))}
+    </MarketingWorkGrid>
   );
 }
