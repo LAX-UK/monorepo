@@ -67,6 +67,22 @@ describe("MarketingHang", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("tells a function meta which mode the wall settled on", () => {
+    const meta = (mode: string) => (mode === "scale" ? "to scale line" : "salon line");
+    const { rerender } = render(
+      <MarketingHang title="In this sale" works={makeWorks(3)} meta={meta} />,
+    );
+    expect(screen.getByText("to scale line")).toBeInTheDocument();
+    rerender(
+      <MarketingHang
+        title="In this sale"
+        works={makeWorks(3, (i) => (i === 0 ? null : 80))}
+        meta={meta}
+      />,
+    );
+    expect(screen.getByText("salon line")).toBeInTheDocument();
+  });
+
   describe("one work", () => {
     it("hangs the single work with no arrows and no figure on home", () => {
       render(<MarketingHang title="In this sale" works={makeWorks(1)} />);

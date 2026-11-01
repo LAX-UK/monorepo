@@ -39,8 +39,11 @@ export type MarketingHangSeeAll = {
 export type MarketingHangProps = {
   title: ReactNode;
   headingLevel?: 2 | 3;
-  /** The line under the title: "8 lots · hung at true relative scale". */
-  meta?: ReactNode;
+  /**
+   * The line under the title: "8 lots · hung at true relative scale". A function receives the
+   * mode the wall settled on, so the line can say "Not to scale" when sizes are missing.
+   */
+  meta?: ReactNode | ((mode: HangLayout["mode"]) => ReactNode);
   works: readonly MarketingHangWork[];
   seeAll?: MarketingHangSeeAll | undefined;
   /** A single work beside a 170 cm figure. For the sale page; a home page leaves one work out. */
@@ -158,7 +161,7 @@ export function MarketingHang({
           </Heading>
           {meta ? (
             <p className="mt-0.5 font-body text-[13px] leading-5 text-on-surface-variant sm:mt-1 sm:text-sm">
-              {meta}
+              {typeof meta === "function" ? meta(desktop.mode) : meta}
             </p>
           ) : null}
         </div>
