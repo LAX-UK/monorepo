@@ -114,7 +114,7 @@ export default async function SubmissionDetailPage({
       <>
         <SetMobileShellTitle title="Consignment" />
         <WorkspacePageNoAccess
-          label="this consignment"
+          label={refusal.label}
           openedBy={refusal.openedBy}
           next={consignmentHref(id)}
         />

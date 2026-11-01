@@ -48,7 +48,7 @@ export default async function EditConsignmentPage({ params }: PageProps) {
       <>
         <SetMobileShellTitle title="Make changes" />
         <WorkspacePageNoAccess
-          label="this consignment"
+          label={refusal.label}
           openedBy={refusal.openedBy}
           next={consignmentHref(id)}
         />
@@ -99,7 +99,7 @@ export default async function EditConsignmentPage({ params }: PageProps) {
         }
       />
       {sentBack && submission.changesRequestedNote ? (
-        <Notice tone="warning" title="What your specialist asked for">
+        <Notice tone="warning" title="What your specialist asked for" className="mt-3">
           <span className="whitespace-pre-line">{submission.changesRequestedNote}</span>
         </Notice>
       ) : null}

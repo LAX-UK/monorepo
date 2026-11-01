@@ -358,7 +358,7 @@ export function SubmissionWizardView({
             e.preventDefault();
           }}
         >
-          {showAutosave ? (
+          {showAutosave && !isLastStep ? (
             <SubmissionDraftContextStrip
               autosaveStatus={autosaveStatus}
               lastSavedAt={lastSavedAt}
@@ -398,7 +398,8 @@ export function SubmissionWizardView({
           <Surface
             variant="section"
             padding="md"
-            className="border-border-hairline"
+            // Check answers is already a list of cards; a frame around them would double the edge.
+            className={isLastStep ? "border-0 bg-transparent p-0 sm:p-0" : "border-border-hairline"}
             data-testid={currentStep ? `submission-wizard-step-${currentStep.id}` : undefined}
             aria-labelledby={currentStep ? "submission-wizard-step-heading" : undefined}
           >
