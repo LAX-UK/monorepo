@@ -1,5 +1,6 @@
 import type { ActiveStaffMember } from "@auction/persistence/interfaces";
 import { vi } from "vitest";
+import { ConsignmentAssignmentService } from "../services/consignment-messages/consignment-assignment.service.js";
 import { ConsignmentInboxQueryService } from "../services/consignment-messages/consignment-inbox-query.service.js";
 import { ConsignmentMessageComposer } from "../services/consignment-messages/consignment-message-composer.js";
 import { ConsignmentMessagePresenter } from "../services/consignment-messages/consignment-message-presenter.js";
@@ -8,6 +9,7 @@ import { ConsignmentMessageService } from "../services/consignment-messages/cons
 import { ConsignmentSavedReplyService } from "../services/consignment-messages/consignment-saved-reply.service.js";
 import { ConsignmentThreadAudit } from "../services/consignment-messages/consignment-thread-audit.js";
 import { ConsignmentThreadCommandService } from "../services/consignment-messages/consignment-thread-command.service.js";
+import { ConsignmentThreadSweepService } from "../services/consignment-messages/consignment-thread-sweep.service.js";
 import { InMemoryConsignmentInbox } from "./in-memory-consignment-inbox.js";
 import { InMemoryConsignmentMessages } from "./in-memory-consignment-messages.js";
 import { InMemoryConsignmentSavedReplies } from "./in-memory-consignment-saved-replies.js";
@@ -85,6 +87,7 @@ export function consignmentThreadFixture(
     audit,
     now,
   });
+  const assignment = new ConsignmentAssignmentService({ messages, audit, now });
   const commands = new ConsignmentThreadCommandService({
     messages,
     inbox,
@@ -94,6 +97,13 @@ export function consignmentThreadFixture(
     notifier,
     delivery: options.delivery ?? delivery,
     audit,
+    assignment,
+    now,
+  });
+  const sweep = new ConsignmentThreadSweepService({
+    messages,
+    deliver: (messageId) => commands.deliver(messageId),
+    assignment,
     now,
   });
   const facts = {
@@ -133,6 +143,8 @@ export function consignmentThreadFixture(
     facts,
     client,
     commands,
+    assignment,
+    sweep,
     queries,
     savedReplyService,
     savedReplies,

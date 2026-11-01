@@ -243,5 +243,7 @@ export interface IPressArchiveReader {
 
 export interface CategoryReader {
   list(): Promise<Category[]>;
+  /** Categories with at least one published lot: the public browse and search filters. */
+  listWithPublishedLots(): Promise<Category[]>;
   tree(): Promise<CategoryNode[]>;
 }

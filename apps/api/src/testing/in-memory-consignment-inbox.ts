@@ -66,6 +66,7 @@ export class InMemoryConsignmentInbox implements IConsignmentInboxReader {
               name: this.store.names.get(thread.covering) ?? "A colleague",
             }
           : null,
+        coveringUntil: thread.covering ? (thread.coveringUntil ?? null) : null,
       });
     }
     return rows;

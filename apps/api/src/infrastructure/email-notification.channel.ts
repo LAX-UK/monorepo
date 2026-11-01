@@ -17,6 +17,11 @@ import {
 
 const OPT_OUTABLE = new Set(["outbid", "lot_won", "lot_ended_seller"]);
 
+/** The first word of a person's name, for "Hi Maya"; `null` when there is none. */
+function firstName(name: string): string | null {
+  return name.trim().split(/\s+/)[0] || null;
+}
+
 const PAYMENT_METHOD_WORDS: Record<"card" | "bank_transfer", string> = {
   card: "Card",
   bank_transfer: "Bank transfer",
@@ -259,6 +264,28 @@ export class EmailNotificationChannel implements INotificationChannel {
           bankLast4: payload.meta?.bankLast4 ?? null,
           payoutsUrl: `${this.baseUrl()}/organisation/payouts`,
         };
+      case "access-requested-notice": {
+        const ask = payload.meta?.accessRequest;
+        return {
+          recipientFirstName: firstName(userName),
+          requesterName: ask?.requesterName ?? "A member",
+          entityName: payload.meta?.organisationName ?? "your organisation",
+          requested: ask?.requested ?? "more access",
+          reason: ask?.reason ?? null,
+          teamUrl: this.accountUrl(payload, "/team"),
+        };
+      }
+      case "access-request-decided-notice": {
+        const ask = payload.meta?.accessRequest;
+        return {
+          recipientFirstName: firstName(userName),
+          entityName: payload.meta?.organisationName ?? "your organisation",
+          approved: ask?.approved === true,
+          grantedRole: ask?.grantedRole ?? null,
+          note: ask?.note ?? null,
+          workspaceUrl: this.accountUrl(payload, "/home"),
+        };
+      }
       default:
         throw new Error(`Notification payload cannot render template ${template}`);
     }
@@ -266,6 +293,17 @@ export class EmailNotificationChannel implements INotificationChannel {
 
   private baseUrl(): string {
     return this.apiBaseUrl.replace(/\/$/, "");
+  }
+
+  /**
+   * A workspace page opened in the notice's account: the switch to it happens on arrival, the
+   * same way opening the notification in the product does.
+   */
+  private accountUrl(payload: NotificationPayload, path: string): string {
+    const account = payload.legalEntityId
+      ? `?account=${encodeURIComponent(payload.legalEntityId)}`
+      : "";
+    return `${this.baseUrl()}${path}${account}`;
   }
 
   private lotUrl(payload: NotificationPayload): string {

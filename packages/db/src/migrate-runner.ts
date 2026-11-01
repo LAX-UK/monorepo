@@ -1,8 +1,10 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readMigrationFiles } from "drizzle-orm/migrator";
+import { type MigrationMeta, readMigrationFiles } from "drizzle-orm/migrator";
 import type pg from "pg";
 import { LATE_REGISTERED_FOLDER_MILLIS } from "./late-registered-migrations.js";
+import { adoptionFor, resolveReleaseLineageAdoptions } from "./release-lineage-adoption.js";
+import { readArchivedReleaseRows } from "./release-lineage-archive.js";
 
 const MIGRATIONS_SCHEMA = "drizzle";
 const MIGRATIONS_TABLE = "__drizzle_migrations";
@@ -21,9 +23,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  *
  * Idempotency is preserved by reusing Drizzle's `drizzle.__drizzle_migrations`
  * bookkeeping table and `folderMillis` ordering.
+ *
+ * On a production ledger normalised from the release lineage, a pending migration on the
+ * adoption allow-list whose release row is archived with the same hash is recorded without
+ * executing (see `release-lineage-adoption.ts`).
  */
 export async function runMigrationsPerTransaction(pool: pg.Pool): Promise<void> {
   return runMigrationsPerTransactionThrough(pool);
+}
+
+/** Main's journal migrations in order, with the SQL hash the ledger records. */
+export function readJournalMigrations(): MigrationMeta[] {
+  return readMigrationFiles({ migrationsFolder: path.join(__dirname, "../drizzle") });
 }
 
 export async function readLastAppliedFolderMillis(pool: pg.Pool): Promise<number | null> {
@@ -46,16 +57,45 @@ export async function readLastAppliedFolderMillis(pool: pg.Pool): Promise<number
   }
 }
 
+/** Record the ledger row, running the migration's SQL first unless it is adopted. */
+async function recordMigration(
+  pool: pg.Pool,
+  migration: MigrationMeta,
+  execute: boolean,
+): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    if (execute) {
+      for (const stmt of migration.sql) {
+        const trimmed = stmt.trim();
+        if (!trimmed) continue;
+        await client.query(trimmed);
+      }
+    }
+    await client.query(
+      `insert into "${MIGRATIONS_SCHEMA}"."${MIGRATIONS_TABLE}" ("hash", "created_at") values ($1, $2)`,
+      [migration.hash, migration.folderMillis],
+    );
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 export async function runMigrationsPerTransactionThrough(
   pool: pg.Pool,
   throughFolderMillis?: number,
 ): Promise<void> {
-  const migrationsFolder = path.join(__dirname, "../drizzle");
-  const migrations = readMigrationFiles({ migrationsFolder });
+  const migrations = readJournalMigrations();
 
   const setupClient = await pool.connect();
   let lastApplied: number | null;
   let appliedMigrations: { hash: string; created_at: string | number | null }[];
+  let adoptions: ReturnType<typeof resolveReleaseLineageAdoptions>;
   try {
     await setupClient.query(`CREATE SCHEMA IF NOT EXISTS "${MIGRATIONS_SCHEMA}"`);
     await setupClient.query(
@@ -76,6 +116,7 @@ export async function runMigrationsPerTransactionThrough(
     appliedMigrations = result.rows;
     const row = result.rows.at(-1);
     lastApplied = row?.created_at == null ? null : Number(row.created_at);
+    adoptions = resolveReleaseLineageAdoptions(await readArchivedReleaseRows(setupClient));
   } finally {
     setupClient.release();
   }
@@ -125,24 +166,12 @@ export async function runMigrationsPerTransactionThrough(
     ) {
       continue;
     }
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      for (const stmt of migration.sql) {
-        const trimmed = stmt.trim();
-        if (!trimmed) continue;
-        await client.query(trimmed);
-      }
-      await client.query(
-        `insert into "${MIGRATIONS_SCHEMA}"."${MIGRATIONS_TABLE}" ("hash", "created_at") values ($1, $2)`,
-        [migration.hash, migration.folderMillis],
+    const adoption = adoptionFor(migration, adoptions);
+    await recordMigration(pool, migration, adoption === null);
+    if (adoption) {
+      console.log(
+        `Adopted ${adoption.mainTag} without executing: production ran it as release ${adoption.releaseTag}.`,
       );
-      await client.query("COMMIT");
-    } catch (err) {
-      await client.query("ROLLBACK").catch(() => {});
-      throw err;
-    } finally {
-      client.release();
     }
     lastApplied = Math.max(lastApplied ?? 0, migration.folderMillis);
   }

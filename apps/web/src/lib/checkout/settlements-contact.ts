@@ -11,7 +11,7 @@ export function settlementsPhone(): string | null {
 
 /** Display copy when email env is unset — avoids fake placeholder addresses in production. */
 export function settlementsEmailDisplay(): string {
-  return settlementsEmail() ?? "Contact support through your account dashboard";
+  return settlementsEmail() ?? "Contact client services from the Contact us page";
 }
 
 export function formatSettlementsContactLine(): string {

@@ -19,7 +19,19 @@ import {
   otherSide,
 } from "@auction/domain";
 import type { LegalEntityStatus } from "@auction/types";
-import { type SQL, and, asc, desc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import {
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  or,
+  sql,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type {
   AssignThreadInput,
@@ -31,6 +43,7 @@ import type {
   ConsignmentThreadEventKind,
   ConsignmentThreadEventRecord,
   ConsignmentThreadSubject,
+  EndedCover,
   IConsignmentMessageRepository,
   NewConsignmentMessage,
   StaffPersonRecord,
@@ -76,6 +89,7 @@ export class DrizzleConsignmentMessageRepository implements IConsignmentMessageR
         specialistName: specialistDirectory.name,
         coveringId: consignmentThread.coveringUserId,
         coveringName: coveringDirectory.name,
+        coveringUntil: consignmentThread.coveringUntil,
         saleId: lot.saleId,
         threadId: consignmentThread.id,
         lastMessageAt: consignmentThread.lastMessageAt,
@@ -120,6 +134,7 @@ export class DrizzleConsignmentMessageRepository implements IConsignmentMessageR
           : null,
       specialist: personOf(row.specialistId, row.specialistName, "Your specialist"),
       covering: personOf(row.coveringId, row.coveringName, "A colleague"),
+      coveringUntil: row.coveringId ? row.coveringUntil : null,
       saleId: row.saleId ?? null,
       thread:
         row.threadId && row.lastMessageAt && row.lastMessageSide
@@ -526,7 +541,11 @@ export class DrizzleConsignmentMessageRepository implements IConsignmentMessageR
         .for("update");
       if (!submission) return { outcome: "no_thread" };
       const [thread] = await tx
-        .select({ id: consignmentThread.id, covering: consignmentThread.coveringUserId })
+        .select({
+          id: consignmentThread.id,
+          covering: consignmentThread.coveringUserId,
+          until: consignmentThread.coveringUntil,
+        })
         .from(consignmentThread)
         .where(eq(consignmentThread.submissionId, input.submissionId))
         .limit(1)
@@ -547,10 +566,15 @@ export class DrizzleConsignmentMessageRepository implements IConsignmentMessageR
 
       if (coversOnly) {
         if (!thread) return { outcome: "no_thread" };
-        if (thread.covering === target) return { outcome: "unchanged" };
+        if (
+          thread.covering === target &&
+          thread.until?.getTime() === input.coveringUntil?.getTime()
+        ) {
+          return { outcome: "unchanged" };
+        }
         await tx
           .update(consignmentThread)
-          .set({ coveringUserId: target })
+          .set({ coveringUserId: target, coveringUntil: input.coveringUntil })
           .where(eq(consignmentThread.id, thread.id));
         await recordEvent("covering");
         return { outcome: "changed", event: "covering" };
@@ -564,13 +588,80 @@ export class DrizzleConsignmentMessageRepository implements IConsignmentMessageR
       if (thread?.covering) {
         await tx
           .update(consignmentThread)
-          .set({ coveringUserId: null })
+          .set({ coveringUserId: null, coveringUntil: null })
           .where(eq(consignmentThread.id, thread.id));
       }
       const kind: ConsignmentThreadEventKind = target ? "assigned" : "unassigned";
       await recordEvent(kind);
       return { outcome: "changed", event: thread ? kind : null };
     });
+  }
+
+  endElapsedCovers(now: Date): Promise<EndedCover[]> {
+    return this.db.transaction(async (tx) => {
+      const due = await tx
+        .select({
+          threadId: consignmentThread.id,
+          submissionId: consignmentThread.submissionId,
+          specialistId: itemSubmission.assignedToUserId,
+          specialistName: specialistDirectory.name,
+        })
+        .from(consignmentThread)
+        .innerJoin(itemSubmission, eq(itemSubmission.id, consignmentThread.submissionId))
+        .leftJoin(
+          specialistDirectory,
+          eq(specialistDirectory.subjectId, itemSubmission.assignedToUserId),
+        )
+        .where(
+          and(
+            isNotNull(consignmentThread.coveringUserId),
+            isNotNull(consignmentThread.coveringUntil),
+            lte(consignmentThread.coveringUntil, now),
+          ),
+        )
+        .for("update", { of: consignmentThread, skipLocked: true });
+      if (due.length === 0) return [];
+      await tx
+        .update(consignmentThread)
+        .set({ coveringUserId: null, coveringUntil: null })
+        .where(
+          inArray(
+            consignmentThread.id,
+            due.map((row) => row.threadId),
+          ),
+        );
+      await tx.insert(consignmentThreadEvent).values(
+        due.map((row) => ({
+          threadId: row.threadId,
+          kind: row.specialistId ? ("assigned" as const) : ("unassigned" as const),
+          actorUserId: null,
+          subjectUserId: row.specialistId,
+          createdAt: now,
+        })),
+      );
+      return due.map((row) => ({
+        submissionId: row.submissionId,
+        specialist: personOf(row.specialistId, row.specialistName, "Your specialist"),
+      }));
+    });
+  }
+
+  async listOverdueReplyNotices(cutoff: Date, limit: number): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: consignmentMessage.id })
+      .from(consignmentMessage)
+      .where(
+        and(
+          isNull(consignmentMessage.notifiedAt),
+          eq(consignmentMessage.authorSide, "staff"),
+          eq(consignmentMessage.visibility, "thread"),
+          isNotNull(consignmentMessage.deliverAfter),
+          lte(consignmentMessage.deliverAfter, cutoff),
+        ),
+      )
+      .orderBy(asc(consignmentMessage.deliverAfter))
+      .limit(limit);
+    return rows.map((row) => row.id);
   }
 
   async listEvents(submissionId: string): Promise<ConsignmentThreadEventRecord[]> {

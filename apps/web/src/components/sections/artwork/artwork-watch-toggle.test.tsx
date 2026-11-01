@@ -30,4 +30,20 @@ describe("ArtworkWatchToggle", () => {
       "Unwatch",
     );
   });
+
+  it("gives a signed-out visitor a short label that fits the lot page block, never a cut-off one", () => {
+    render(
+      <ArtworkWatchToggle
+        lotId="l1"
+        initialWatching={false}
+        isAuthenticated={false}
+        appearance="outlined-block"
+        loginNextPath="/lot/1"
+      />,
+    );
+
+    const link = screen.getByRole("link", { name: "Sign in to follow" });
+    expect(link).toHaveTextContent("Follow");
+    expect(link.querySelector(".truncate")).toBeNull();
+  });
 });

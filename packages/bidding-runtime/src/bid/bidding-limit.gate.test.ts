@@ -185,6 +185,51 @@ describe("BiddingLimitGate", () => {
   });
 });
 
+describe("room under the limits", () => {
+  const roomInput = (authority: BidAuthorityDecision) => {
+    const { amount: _amount, ...rest } = check(0, authority);
+    return rest;
+  };
+
+  it("is null when nothing limits the bidder", async () => {
+    const { gate: g } = gate({});
+    expect(await g.room(roomInput(owner))).toBeNull();
+  });
+
+  it("is what an agent has left of their sale total, leaving out the lot being viewed", async () => {
+    const { gate: g, deps } = gate({
+      commitments: [
+        row("lot-1", "6000.00"),
+        row("lot-new", "3000.00"),
+        row("lot-3", "9000.00", { saleId: "sale-2" }),
+      ],
+    });
+    const binding = await g.room(roomInput(agent(null, { limit: 10_000, saleId: "sale-1" })));
+    expect(binding).toMatchObject({ kind: "authorisation_total", available: 4000 });
+    expect(deps.lock.lockForLegalEntity).not.toHaveBeenCalled();
+  });
+
+  it("names the limit with the least room", async () => {
+    const { gate: g } = gate({
+      organisationLimit: "7000.00",
+      commitments: [row("lot-1", "6000.00")],
+    });
+    const binding = await g.room(roomInput(agent(5000, { limit: 10_000, saleId: "sale-1" })));
+    expect(binding).toMatchObject({ kind: "organisation", available: 1000 });
+  });
+
+  it("is the per-lot limit when it is the only one", async () => {
+    const binding = await new PerLotBiddingLimitGate().room(roomInput(agent(2500, null)));
+    expect(binding).toMatchObject({ kind: "per_lot", available: 2500 });
+  });
+
+  it("is null for a refused authority", async () => {
+    const { gate: g } = gate({ organisationLimit: "1.00" });
+    const denied: BidAuthorityDecision = { allowed: false, role: null, reason: "not_member" };
+    expect(await g.room(roomInput(denied))).toBeNull();
+  });
+});
+
 describe("PerLotBiddingLimitGate", () => {
   it("applies only the per-lot limit", async () => {
     const g = new PerLotBiddingLimitGate();

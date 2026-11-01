@@ -2,6 +2,7 @@ import type { IBiddingAbsenteeBidHttpApplicationService } from "./bidding-absent
 import type { IBiddingAutoBidHttpApplicationService } from "./bidding-auto-bid-http.js";
 import type { IBiddingConditionReportHttpApplicationService } from "./bidding-condition-report-http.js";
 import type { IBiddingLotBidHistoryHttpApplicationService } from "./bidding-lot-bid-history-http.js";
+import type { IBiddingLotViewerHttpApplicationService } from "./bidding-lot-viewer-http.js";
 import type { IBiddingPlaceBidHttpApplicationService } from "./bidding-place-bid-http.js";
 import type { IBiddingSaleRegistrationHttpApplicationService } from "./bidding-sale-registration-http.js";
 import type { IBiddingSaleroomDisplayHttpApplicationService } from "./bidding-saleroom-display-http.js";
@@ -14,6 +15,7 @@ export type BiddingRouteServices = {
   saleRegistrationHttp: IBiddingSaleRegistrationHttpApplicationService;
   telephoneBookingHttp: IBiddingTelephoneBookingHttpApplicationService;
   lotBidHistoryHttp: IBiddingLotBidHistoryHttpApplicationService;
+  lotViewerHttp: IBiddingLotViewerHttpApplicationService;
   conditionReportHttp: IBiddingConditionReportHttpApplicationService;
   saleroomDisplayHttp: IBiddingSaleroomDisplayHttpApplicationService;
 };
@@ -23,6 +25,7 @@ export type {
   IBiddingAutoBidHttpApplicationService,
   IBiddingConditionReportHttpApplicationService,
   IBiddingLotBidHistoryHttpApplicationService,
+  IBiddingLotViewerHttpApplicationService,
   IBiddingPlaceBidHttpApplicationService,
   IBiddingSaleRegistrationHttpApplicationService,
   IBiddingSaleroomDisplayHttpApplicationService,

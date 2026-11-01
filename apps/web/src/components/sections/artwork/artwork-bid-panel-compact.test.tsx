@@ -123,7 +123,12 @@ function renderCompact(props: Partial<ComponentProps<typeof ArtworkBidPanel>> = 
       <LotBidHistoryProvider
         lotId={auction.id}
         initialHistory={props.initialHistory ?? []}
-        initialCurrentPrice={auction.currentPrice}
+        initialSnapshot={{
+          currentPrice: auction.currentPrice,
+          endTime: auction.endTime,
+          status: auction.status,
+          winnerId: auction.winnerId,
+        }}
         initialLeadingBidderId={null}
         currentUserId={props.sessionUser?.id ?? null}
       >

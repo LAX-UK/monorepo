@@ -25,6 +25,7 @@ export type CatalogLotReadHttpFixtureInput = {
   mediaAssetEnricher?: IMediaAssetEnricher;
   db?: Database;
   objectStorage?: IObjectStorage;
+  now?: () => Date;
 };
 
 const defaultMediaUrlResolver: IMediaUrlResolver = {
@@ -57,5 +58,6 @@ export function createCatalogLotReadHttpFixture(
     }) as IMediaAssetEnricher,
     (input.db ?? {}) as Database,
     (input.objectStorage ?? { getPublicUrl: vi.fn((k: string) => k) }) as IObjectStorage,
+    input.now,
   );
 }

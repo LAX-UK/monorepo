@@ -106,6 +106,11 @@ const ACTIVITY_SPECS = {
     group: "security",
     detailKeys: ["required"],
   },
+  "legal_entity.two_step_reminder_sent": {
+    kind: "two_step_reminder_sent",
+    group: "security",
+    detailKeys: ["recipient_count"],
+  },
 } as const satisfies Record<string, ActivitySpec>;
 
 export type ActivityEventType = keyof typeof ACTIVITY_SPECS;

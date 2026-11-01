@@ -25,7 +25,8 @@ export async function sumEndedLotHammer(
   const whereClause = and(...conditions);
   const [row] = await db
     .select({
-      total: sql<string>`coalesce(sum(${lot.currentPrice}), 0)::text`,
+      // Only a sold lot has a hammer price; an unsold lot's last bid is not part of the total.
+      total: sql<string>`coalesce(sum(${lot.currentPrice}) filter (where ${lot.winnerId} is not null), 0)::text`,
       cnt: sql<number>`count(*)::int`,
     })
     .from(lot)
@@ -94,7 +95,7 @@ export async function sumEndedLotHammerByDay(
   const rows = await db
     .select({
       dayKey: sql<string>`to_char(date_trunc('day', ${lot.endTime} AT TIME ZONE 'UTC'), 'YYYY-MM-DD')`,
-      total: sql<number>`coalesce(sum(${lot.currentPrice}), 0)::float8`,
+      total: sql<number>`coalesce(sum(${lot.currentPrice}) filter (where ${lot.winnerId} is not null), 0)::float8`,
     })
     .from(lot)
     .where(and(eq(lot.status, "ended"), lotNotDeleted(), gte(lot.endTime, rangeStart)))

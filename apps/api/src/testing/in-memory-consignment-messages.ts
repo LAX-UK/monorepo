@@ -17,6 +17,7 @@ import type {
   ConsignmentThreadEventKind,
   ConsignmentThreadEventRecord,
   ConsignmentThreadSubject,
+  EndedCover,
   IConsignmentMessageRepository,
   NewConsignmentMessage,
   StaffPersonRecord,
@@ -34,9 +35,10 @@ type StoredMessage = Omit<
 type StoredThread = ConsignmentThreadMarkers & {
   closedBy: string | null;
   covering: string | null;
+  coveringUntil: Date | null;
 };
 
-type SeededSubject = Omit<ConsignmentThreadSubject, "covering" | "thread">;
+type SeededSubject = Omit<ConsignmentThreadSubject, "covering" | "coveringUntil" | "thread">;
 
 /** Consignment threads in memory, for service and route tests. */
 export class InMemoryConsignmentMessages implements IConsignmentMessageRepository {
@@ -113,6 +115,7 @@ export class InMemoryConsignmentMessages implements IConsignmentMessageRepositor
     return {
       ...subject,
       covering: this.person(thread?.covering, "A colleague"),
+      coveringUntil: thread?.covering ? (thread.coveringUntil ?? null) : null,
       thread: thread
         ? {
             id: `t-${submissionId}`,
@@ -330,17 +333,61 @@ export class InMemoryConsignmentMessages implements IConsignmentMessageRepositor
     const coversOnly = input.covering && target !== null && target !== specialistId;
     if (coversOnly) {
       if (!thread) return { outcome: "no_thread" };
-      if (thread.covering === target) return { outcome: "unchanged" };
+      if (
+        thread.covering === target &&
+        thread.coveringUntil?.getTime() === input.coveringUntil?.getTime()
+      ) {
+        return { outcome: "unchanged" };
+      }
       thread.covering = target;
+      thread.coveringUntil = input.coveringUntil;
       this.recordEvent(input.submissionId, "covering", input.actorUserId, target, input.at);
       return { outcome: "changed", event: "covering" };
     }
     if (specialistId === target && !thread?.covering) return { outcome: "unchanged" };
     subject.specialist = this.person(target, "A colleague");
-    if (thread) thread.covering = null;
+    if (thread) {
+      thread.covering = null;
+      thread.coveringUntil = null;
+    }
     const kind: ConsignmentThreadEventKind = target ? "assigned" : "unassigned";
     if (thread) this.recordEvent(input.submissionId, kind, input.actorUserId, target, input.at);
     return { outcome: "changed", event: thread ? kind : null };
+  }
+
+  async endElapsedCovers(now: Date): Promise<EndedCover[]> {
+    const ended: EndedCover[] = [];
+    for (const [submissionId, thread] of this.threads) {
+      if (!thread.covering || !thread.coveringUntil) continue;
+      if (thread.coveringUntil.getTime() > now.getTime()) continue;
+      thread.covering = null;
+      thread.coveringUntil = null;
+      const specialist = this.subjects.get(submissionId)?.specialist ?? null;
+      this.recordEvent(
+        submissionId,
+        specialist ? "assigned" : "unassigned",
+        null,
+        specialist?.userId ?? null,
+        now,
+      );
+      ended.push({ submissionId, specialist });
+    }
+    return ended;
+  }
+
+  async listOverdueReplyNotices(cutoff: Date, limit: number): Promise<string[]> {
+    return this.messages
+      .filter(
+        (m) =>
+          !m.notifiedAt &&
+          m.authorSide === "staff" &&
+          m.visibility === "thread" &&
+          m.deliverAfter !== null &&
+          m.deliverAfter.getTime() <= cutoff.getTime(),
+      )
+      .sort((a, b) => (a.deliverAfter?.getTime() ?? 0) - (b.deliverAfter?.getTime() ?? 0))
+      .slice(0, limit)
+      .map((m) => m.id);
   }
 
   async listEvents(submissionId: string): Promise<ConsignmentThreadEventRecord[]> {
@@ -367,6 +414,7 @@ export class InMemoryConsignmentMessages implements IConsignmentMessageRepositor
     this.threads.set(submissionId, {
       closedBy: current?.closedBy ?? null,
       covering: current?.covering ?? null,
+      coveringUntil: current?.coveringUntil ?? null,
       ...markers,
     });
     return reopened;

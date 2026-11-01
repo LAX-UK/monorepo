@@ -254,3 +254,66 @@ describe("EmailNotificationChannel payout bank change", () => {
     ]);
   });
 });
+
+describe("EmailNotificationChannel access requests", () => {
+  it("emails a decider who asked, for what and why, linking to Team in that account", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(USER_ID, {
+      type: "access_requested",
+      legalEntityId: ORG_ID,
+      title: "Someone asked for access",
+      message: "Tom Whitfield asked for the buyer agent role.",
+      meta: {
+        organisationName: "Northbank Gallery",
+        accessRequest: {
+          requesterName: "Tom Whitfield",
+          requested: "the buyer agent role",
+          reason: "For the November sale.",
+        },
+      },
+    });
+    expect(enqueued).toEqual([
+      expect.objectContaining({
+        template: "access-requested-notice",
+        vars: {
+          recipientFirstName: "Ada",
+          requesterName: "Tom Whitfield",
+          entityName: "Northbank Gallery",
+          requested: "the buyer agent role",
+          reason: "For the November sale.",
+          teamUrl: `https://test.lax.bid/team?account=${ORG_ID}`,
+        },
+      }),
+    ]);
+  });
+
+  it("emails the requester the decision with the decider's note", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(USER_ID, {
+      type: "access_request_decided",
+      legalEntityId: ORG_ID,
+      title: "Your access request was approved",
+      message: "You now have the buyer agent role.",
+      meta: {
+        organisationName: "Northbank Gallery",
+        accessRequest: {
+          requesterName: "Ada",
+          requested: "the buyer agent role",
+          reason: null,
+          approved: true,
+          grantedRole: "buyer agent",
+          note: "Welcome aboard.",
+        },
+      },
+    });
+    expect(enqueued[0]).toMatchObject({
+      template: "access-request-decided-notice",
+      vars: {
+        approved: true,
+        grantedRole: "buyer agent",
+        note: "Welcome aboard.",
+        workspaceUrl: `https://test.lax.bid/home?account=${ORG_ID}`,
+      },
+    });
+  });
+});

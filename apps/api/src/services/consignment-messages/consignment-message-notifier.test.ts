@@ -10,6 +10,7 @@ const subject: ConsignmentThreadSubject = {
   account: { id: "acct", name: "Northbank Gallery", kind: "organisation", status: "approved" },
   specialist: { userId: "clara", name: "Clara Mendes" },
   covering: null,
+  coveringUntil: null,
   saleId: null,
   thread: null,
 };

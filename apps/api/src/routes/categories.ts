@@ -10,5 +10,11 @@ export function createCategoryRoutes(container: ContainerCategoryRoutesSlice) {
     return respondCatalogHttpJson(c, response);
   });
 
+  r.get("/with-published-lots", async (c) => {
+    const response =
+      await container.catalogRoutes.categoryReadHttp.listCategoriesWithPublishedLots();
+    return respondCatalogHttpJson(c, response);
+  });
+
   return r;
 }

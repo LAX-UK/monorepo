@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       migration_through:
-        description: Production migration ceiling (0159, 0160, or 0161)
+        description: Production migration ceiling (0159, 0160, 0161, or head)
         required: true
         type: choice
-        options: ["0159", "0160", "0161"]
+        options: ["0159", "0160", "0161", "head"]
       confirm_review:
         description: Confirm the migration diff and rollback evidence were reviewed
         required: true

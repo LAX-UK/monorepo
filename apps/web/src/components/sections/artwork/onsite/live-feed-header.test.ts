@@ -4,7 +4,7 @@ import { getLiveFeedHeaderMeta } from "./live-feed-header";
 describe("getLiveFeedHeaderMeta", () => {
   it("shows Live now when live without watcher count", () => {
     const m = getLiveFeedHeaderMeta("live");
-    expect(m.title).toBe("Live Feed");
+    expect(m.title).toBe("Live feed");
     expect(m.statusLabel).toBe("Live now");
     expect(m.pulse).toBe(true);
     expect(m.tone).toBe("live");
@@ -12,7 +12,7 @@ describe("getLiveFeedHeaderMeta", () => {
 
   it("shows live tone for hybrid saleroom session", () => {
     const m = getLiveFeedHeaderMeta("liveSaleroom");
-    expect(m.title).toBe("Live Feed");
+    expect(m.title).toBe("Live feed");
     expect(m.statusLabel).toBe("Live now");
     expect(m.pulse).toBe(true);
     expect(m.tone).toBe("live");
@@ -32,7 +32,7 @@ describe("getLiveFeedHeaderMeta", () => {
 
   it("shows opens countdown for scheduled", () => {
     const m = getLiveFeedHeaderMeta("scheduled", { countdownClock: "01:23:45" });
-    expect(m.title).toBe("Bid Activity");
+    expect(m.title).toBe("Bid activity");
     expect(m.statusLabel).toBe("Opens in 01:23:45");
     expect(m.tone).toBe("upcoming");
   });

@@ -30,6 +30,12 @@ export const REPLY_DUE_SOON_WORKING_MINUTES = 2 * 60;
 /** A reply can be taken back for this long; the client hears of it only afterwards. */
 export const CONSIGNMENT_REPLY_UNDO_MS = 10_000;
 
+/**
+ * A reply whose hold ended this long ago and still has not told the account is picked up by the
+ * sweep. The wait keeps the sweep from racing the delivery job that normally does it.
+ */
+export const REPLY_NOTICE_SWEEP_GRACE_MS = 2 * 60_000;
+
 export type ReplyClockState = "on_track" | "due_soon" | "overdue";
 
 export type ReplyClock = {
@@ -124,6 +130,33 @@ export function consignmentInboxAbilities(
     canManageSavedReplies:
       canRead && userHasAccessTo(role, staffRoles, CONSIGNMENT_SAVED_REPLIES_MANAGE_ACCESS),
   };
+}
+
+/** Replies held until before this moment, and still unannounced, are overdue for their notice. */
+export function replyNoticeSweepCutoff(now: Date): Date {
+  return new Date(now.getTime() - REPLY_NOTICE_SWEEP_GRACE_MS);
+}
+
+/** A reply is overdue for its notice once its hold ended before the cutoff and nobody was told. */
+export function isReplyNoticeOverdue(
+  reply: { deliverAfter: Date | null; notifiedAt: Date | null },
+  now: Date,
+): boolean {
+  return (
+    reply.notifiedAt === null &&
+    reply.deliverAfter !== null &&
+    reply.deliverAfter.getTime() <= replyNoticeSweepCutoff(now).getTime()
+  );
+}
+
+/** A cover with an end date is over once that moment has passed; without one it runs on. */
+export function coverHasEnded(coveringUntil: Date | null, now: Date): boolean {
+  return coveringUntil !== null && coveringUntil.getTime() <= now.getTime();
+}
+
+/** Why a cover end date cannot be used, or null when it can: it must be a future moment. */
+export function coverEndError(coveringUntil: Date, now: Date): string | null {
+  return coveringUntil.getTime() > now.getTime() ? null : "Choose an end date in the future.";
 }
 
 /** Who has a thread: whoever covers it for now, else the consignment's specialist. */

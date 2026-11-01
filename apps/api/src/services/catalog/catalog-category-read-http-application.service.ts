@@ -11,4 +11,9 @@ export class CatalogCategoryReadHttpApplicationService
     const data = await this.categoryService.list();
     return { status: 200, body: { data } };
   }
+
+  async listCategoriesWithPublishedLots(): Promise<CatalogHttpJson> {
+    const data = await this.categoryService.listWithPublishedLots();
+    return { status: 200, body: { data } };
+  }
 }

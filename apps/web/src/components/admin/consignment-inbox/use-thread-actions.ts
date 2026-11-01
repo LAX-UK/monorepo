@@ -7,6 +7,7 @@ import {
   reopenConsignmentThreadAction,
 } from "@/lib/actions/consignment-inbox";
 import { notify } from "@/lib/ui/notify";
+import { formatStaffDate } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";
 
@@ -20,7 +21,7 @@ type Person = { userId: string; name: string };
 export function useThreadActions(input: {
   submissionId: string;
   /** Who has it now, for Undo after an assignment. */
-  assignee: (Person & { covering: boolean }) | null;
+  assignee: (Person & { covering: boolean; coveringUntil?: string | null }) | null;
   specialist: Person | null;
   /** Called after a change lands (the page refreshes itself by default). */
   onChanged?: () => void;
@@ -30,10 +31,11 @@ export function useThreadActions(input: {
   const done = useCallback(() => (onChanged ? onChanged() : router.refresh()), [onChanged, router]);
 
   const assign = useCallback(
-    async (person: Person | null, covering: boolean) => {
+    async (person: Person | null, covering: boolean, coveringUntil: string | null = null) => {
       const result = await assignConsignmentThreadAction(submissionId, {
         assignedToUserId: person?.userId ?? null,
         covering,
+        ...(covering && coveringUntil ? { coveringUntil } : {}),
       });
       if (!result.ok) {
         notify.error("The thread was not assigned", { description: result.error });
@@ -43,7 +45,9 @@ export function useThreadActions(input: {
       const previous = assignee;
       const title = person
         ? covering
-          ? `${person.name} is covering this thread`
+          ? coveringUntil
+            ? `${person.name} is covering this thread until ${formatStaffDate(coveringUntil)}`
+            : `${person.name} is covering this thread`
           : `Assigned to ${person.name}`
         : "Unassigned";
       notify.action(title, {
@@ -51,6 +55,11 @@ export function useThreadActions(input: {
           void assignConsignmentThreadAction(submissionId, {
             assignedToUserId: previous?.userId ?? null,
             covering: previous?.covering ?? false,
+            ...(previous?.covering &&
+            previous.coveringUntil &&
+            new Date(previous.coveringUntil) > new Date()
+              ? { coveringUntil: previous.coveringUntil }
+              : {}),
           }).then((back) => {
             if (back.ok) done();
             else notify.error("The change was not undone", { description: back.error });

@@ -48,4 +48,22 @@ describe("StaffGlobalHotkeys", () => {
     expect(caps).toEqual(["?"]);
     expect(dialog.textContent).not.toMatch(/SHIFT/);
   });
+
+  it("sets the group headings in sentence case, with no uppercase styling", () => {
+    render(
+      <HotkeyProvider scope="page">
+        <StaffGlobalHotkeys />
+      </HotkeyProvider>,
+    );
+    act(() => {
+      fireEvent.keyDown(window, { key: "?", code: "Slash", shiftKey: true });
+    });
+    const dialog = screen.getByRole("dialog", { name: "Keyboard shortcuts" });
+    const headings = within(dialog).getAllByRole("heading", { level: 3 });
+    expect(headings.length).toBeGreaterThan(0);
+    for (const heading of headings) {
+      expect(heading.className).not.toMatch(/uppercase/);
+      expect(heading.textContent).not.toBe(heading.textContent?.toUpperCase());
+    }
+  });
 });

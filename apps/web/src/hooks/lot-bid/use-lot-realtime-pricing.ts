@@ -168,7 +168,7 @@ export function useLotRealtimePricing({
           }),
         );
       } else if (sessionUser?.id && p.winnerId === sessionUser.id) {
-        setEndedBanner("You won this lot — complete checkout from your dashboard.");
+        setEndedBanner("You won this lot. Pay for it in Purchases.");
       } else {
         setEndedBanner("This lot has sold — thank you for participating.");
       }

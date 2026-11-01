@@ -214,6 +214,10 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "legal_entity.member_left": new Set(["member_user_id", "role_at_leaving", "stopped_bids"]),
   /** invoice details changed: which fields, never their values. */
   "legal_entity.invoice_details_changed": new Set(["changed_fields"]),
+  /** a two-step reminder was emailed: how many members, never who. */
+  "legal_entity.two_step_reminder_sent": new Set(["recipient_count"]),
+  /** contact details changed: which fields, never their values. */
+  "legal_entity.contact_details_changed": new Set(["changed_fields"]),
   /** the payout bank account changed: the last four digits and the bank, as Stripe shows them. */
   "legal_entity.payout_bank_changed": new Set(["bank_last4", "bank_name"]),
   /** lot voided at close (anti-shilling). */

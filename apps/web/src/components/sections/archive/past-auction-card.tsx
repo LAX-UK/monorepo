@@ -1,15 +1,11 @@
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { DomainStatusBadge } from "@/components/ui/domain-status-badge";
 import { MediaImage } from "@/components/ui/media-image.server";
-import { formatMoney } from "@/lib/format-currency";
+import { archiveLotResult } from "@/lib/archive/archive-lot-result";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
 import Link from "next/link";
-
-function lotNo(id: string): string {
-  return id.replace(/-/g, "").slice(0, 6).toUpperCase();
-}
 
 function closingCaption(endTime: Date): string {
   return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric" }).format(endTime);
@@ -31,6 +27,10 @@ export function PastAuctionCard({
   isOwner = false,
 }: Props) {
   const img = auction.images[0];
+  const result = archiveLotResult(auction);
+  const caption = [result.lotNumberLabel, closingCaption(auction.endTime)]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <div className={`group ${gridOffsetClass}`}>
       <Link href={href} prefetch={false} className={cn("block rounded-sm", FOCUS_RING)}>
@@ -49,11 +49,11 @@ export function PastAuctionCard({
               <DomainStatusBadge
                 domain="lot"
                 status={auction.status}
-                context={{ lot: { winnerId: auction.winnerId } }}
+                context={{ lot: result.statusContext }}
                 size="sm"
               />
               <span className="font-label text-[0.55rem] uppercase tracking-[0.15em] text-on-surface-variant md:text-[0.625rem] md:tracking-[0.2em]">
-                Lot No. {lotNo(auction.id)} · {closingCaption(auction.endTime)}
+                {caption}
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
@@ -66,14 +66,16 @@ export function PastAuctionCard({
               {sellerName}
             </p>
           </div>
-          <div className="shrink-0 text-right">
-            <span className="mb-0.5 block font-label text-[0.55rem] uppercase tracking-[0.15em] text-on-surface-variant md:mb-1 md:text-[0.625rem] md:tracking-[0.2em]">
-              Hammer price
-            </span>
-            <span className="font-headline text-base tabular-nums text-on-surface md:text-xl">
-              {formatMoney(auction.currentPrice)}
-            </span>
-          </div>
+          {result.hammer ? (
+            <div className="shrink-0 text-right">
+              <span className="mb-0.5 block font-label text-[0.55rem] uppercase tracking-[0.15em] text-on-surface-variant md:mb-1 md:text-[0.625rem] md:tracking-[0.2em]">
+                {result.hammer.label}
+              </span>
+              <span className="font-headline text-base tabular-nums text-on-surface md:text-xl">
+                {result.hammer.value}
+              </span>
+            </div>
+          ) : null}
         </div>
       </Link>
     </div>

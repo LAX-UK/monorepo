@@ -44,9 +44,11 @@ export function SaleStatusBadge({
       {...overlayToneProps(tone)}
       aria-label={showTimer ? "Live auction, time remaining" : "Live auction"}
     >
+      {/* The badge dot is `bg-current`, so the overlay colour reaches it through `text-*`;
+          painting every inner span would fill the label too and hide the word. */}
       <SaleLifecycleBadge
         status="active"
-        className="border-transparent bg-transparent px-0 py-0 ring-0 text-[color:var(--overlay-fg)] [&_span]:bg-[color:var(--overlay-fg)]"
+        className="border-transparent bg-transparent px-0 py-0 ring-0 text-[color:var(--overlay-fg)]"
       />
       <CountdownFadeSlot visible={showTimer}>
         {showTimer ? (

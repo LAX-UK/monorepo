@@ -2,7 +2,12 @@
 
 import { listConsignmentAssigneesAction } from "@/lib/actions/consignment-inbox";
 import { assignableStaffItems } from "@/lib/admin/consignment-inbox/assign-options";
-import { CommandMenu, StaffAvatar } from "@auction/staff-ui";
+import {
+  earliestStaffRoleLastDay,
+  staffRoleEndsAtFromLastDay,
+} from "@/lib/admin/people/staff-roles.vm";
+import { CommandMenu, DateInput, StaffAvatar } from "@auction/staff-ui";
+import { Field } from "@auction/ui/lax";
 import type { ConsignmentAssignableStaff } from "@auction/validators";
 import { type ReactElement, useEffect, useState } from "react";
 
@@ -16,7 +21,11 @@ type Props = {
   specialist: { userId: string; name: string } | null;
   /** Covering moves only this thread; the consignment keeps its specialist. */
   mode: "assign" | "cover";
-  onChoose: (person: { userId: string; name: string } | null) => void;
+  /** `coveringUntil` is the moment a cover ends (ISO), when an end day was chosen. */
+  onChoose: (
+    person: { userId: string; name: string } | null,
+    options?: { coveringUntil: string | null },
+  ) => void;
   align?: "start" | "end";
 };
 
@@ -38,6 +47,11 @@ export function AssignMenu({
 }: Props) {
   const [staff, setStaff] = useState<ConsignmentAssignableStaff[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [lastDay, setLastDay] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) setLastDay(null);
+  }, [open]);
 
   useEffect(() => {
     if (!open || staff) return;
@@ -63,7 +77,11 @@ export function AssignMenu({
     checked: option.current,
     keywords: [option.name],
     leading: <StaffAvatar name={option.name} />,
-    onSelect: () => onChoose({ userId: option.userId, name: option.name }),
+    onSelect: () =>
+      onChoose(
+        { userId: option.userId, name: option.name },
+        mode === "cover" ? { coveringUntil: staffRoleEndsAtFromLastDay(lastDay) } : undefined,
+      ),
   }));
 
   const footer =
@@ -91,6 +109,24 @@ export function AssignMenu({
       {...(failed ? { error: "Colleagues could not load. Close the menu and try again." } : {})}
       emptyText="No colleague by that name can reply to clients."
       groups={[{ id: "staff", items }]}
+      {...(mode === "cover"
+        ? {
+            header: (
+              <Field
+                label="Last day of cover"
+                optional
+                description="Back to the specialist at midnight after this day. Leave empty to cover until you end it."
+              >
+                <DateInput
+                  value={lastDay}
+                  onValueChange={setLastDay}
+                  min={earliestStaffRoleLastDay(new Date())}
+                  placeholder="e.g. 30 Nov 2026"
+                />
+              </Field>
+            ),
+          }
+        : {})}
       footer={footer}
       note={
         mode === "cover"

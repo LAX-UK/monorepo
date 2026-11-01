@@ -1,3 +1,4 @@
+import type { PublicBidHistory } from "@auction/domain";
 import type { ISaleChannelReader, ITransactionRunner } from "@auction/persistence/interfaces";
 import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
@@ -32,6 +33,7 @@ import {
   countWatchersForPublicApi,
   listBidsForPublicApi,
   listLotsForPublicApi,
+  listPublicBidHistory,
 } from "./lot/lot-public-api.js";
 import { archiveEndedSummary, countMatching, getById, list } from "./lot/lot-read.js";
 import type { ListBidsForPublicApiResult, LotServiceDeps } from "./lot/lot-types.js";
@@ -208,6 +210,14 @@ export class LotService implements ILotService {
     limitQuery: string | undefined;
   }): Promise<ListBidsForPublicApiResult> {
     return listBidsForPublicApi(this.deps, input);
+  }
+
+  listPublicBidHistory(input: {
+    lotId: string;
+    viewerId: string | undefined;
+    limitQuery: string | undefined;
+  }): Promise<{ kind: "ok"; data: PublicBidHistory } | { kind: "not_found" }> {
+    return listPublicBidHistory(this.deps, input);
   }
 
   countWatchersForPublicApi(

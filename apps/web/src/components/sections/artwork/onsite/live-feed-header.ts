@@ -15,7 +15,7 @@ export function getLiveFeedHeaderMeta(
   const { countdownClock, watcherCount } = opts ?? {};
 
   if (lifecycleKind === "saleroomPaused") {
-    return { title: "Live Feed", statusLabel: "Auction paused", pulse: false, tone: "live" };
+    return { title: "Live feed", statusLabel: "Auction paused", pulse: false, tone: "live" };
   }
 
   if (
@@ -28,16 +28,16 @@ export function getLiveFeedHeaderMeta(
         watcherCount >= 1000
           ? `${Math.floor(watcherCount / 1000)}k watching`
           : `${watcherCount} watching`;
-      return { title: "Live Feed", statusLabel: label, pulse: false, tone: "live" };
+      return { title: "Live feed", statusLabel: label, pulse: false, tone: "live" };
     }
-    return { title: "Live Feed", statusLabel: "Live now", pulse: true, tone: "live" };
+    return { title: "Live feed", statusLabel: "Live now", pulse: true, tone: "live" };
   }
 
   if (lifecycleKind === "scheduled" || lifecycleKind === "preLaunch") {
     const opens =
       countdownClock && countdownClock.trim() !== "" ? `Opens in ${countdownClock}` : "Opens soon";
-    return { title: "Bid Activity", statusLabel: opens, pulse: false, tone: "upcoming" };
+    return { title: "Bid activity", statusLabel: opens, pulse: false, tone: "upcoming" };
   }
 
-  return { title: "Bid Activity", statusLabel: "Bidding closed", pulse: false, tone: "ended" };
+  return { title: "Bid history", statusLabel: "Bidding closed", pulse: false, tone: "ended" };
 }

@@ -169,3 +169,23 @@ describe("checklist facts", () => {
     ).toMatchObject({ saleStartsAt: null, agreement: { proposed: false, accepted: false } });
   });
 });
+
+describe("checklistItemView while the account holds accepting", () => {
+  const facts = {
+    identity: "verified",
+    agreement: { proposed: true, accepted: false },
+    payoutsReady: true,
+  } as const;
+
+  it("replaces the Review button with the reason", () => {
+    const held = { ...orgCtx, agreementHeld: "Accepting is paused for Northbank Gallery." };
+    const agreement = views(facts, held)[1];
+    expect(agreement?.state).toBe("action");
+    expect(agreement?.action).toBeNull();
+    expect(agreement?.waiting).toBe("Accepting is paused for Northbank Gallery.");
+  });
+
+  it("keeps the button when nothing is held", () => {
+    expect(views(facts, orgCtx)[1]?.action).toEqual({ label: "Review", href: "#agreement" });
+  });
+});

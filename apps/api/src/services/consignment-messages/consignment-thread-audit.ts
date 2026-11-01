@@ -16,6 +16,8 @@ export class ConsignmentThreadAudit {
     actorUserId: string | null;
     subjectUserId?: string | null | undefined;
     covering?: boolean | undefined;
+    /** When a cover ends, for the history of who covered until when. */
+    coveringUntil?: Date | undefined;
   }): Promise<void> {
     const eventType =
       input.kind === "closed"
@@ -31,7 +33,11 @@ export class ConsignmentThreadAudit {
         submissionId: input.submissionId,
         kind: input.kind,
         ...(input.kind === "assigned" || input.kind === "unassigned" || input.kind === "covering"
-          ? { assignedToUserId: input.subjectUserId ?? null, covering: input.kind === "covering" }
+          ? {
+              assignedToUserId: input.subjectUserId ?? null,
+              covering: input.kind === "covering",
+              ...(input.coveringUntil ? { coveringUntil: input.coveringUntil.toISOString() } : {}),
+            }
           : {}),
       },
       actorUserId: input.actorUserId,

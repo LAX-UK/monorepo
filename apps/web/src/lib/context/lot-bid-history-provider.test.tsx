@@ -66,7 +66,7 @@ function wrapper({ children }: { children: ReactNode }) {
       <LotBidHistoryProvider
         lotId={LOT_ID}
         initialHistory={[]}
-        initialCurrentPrice="100.00"
+        initialSnapshot={{ ...snapshot, currentPrice: "100.00" }}
         initialLeadingBidderId={null}
       >
         {children}

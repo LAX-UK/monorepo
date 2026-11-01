@@ -38,7 +38,8 @@ export type ListLotsFilter = {
   sort?: ListLotsSort | undefined;
 };
 
-export type ListSalesSort = "createdDesc" | "startAsc";
+/** `endDesc`: most recently ended first, for results. */
+export type ListSalesSort = "createdDesc" | "startAsc" | "endDesc";
 
 export type ListSalesFilter = {
   status?: SaleStatus | undefined;
