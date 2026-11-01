@@ -6,7 +6,7 @@ import { Cog, ImageOff } from "lucide-react";
 import type * as React from "react";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { formatStaffDate, formatStaffDateTime, formatStaffMoney } from "../lib/format.js";
-import { initialsOf } from "../shell/account-menu.js";
+import { initialsOf } from "../lib/initials.js";
 
 /*
  * The cells every staff list is made of, so the same value never looks two ways: the row's

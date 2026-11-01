@@ -1,5 +1,5 @@
 import { cn } from "../lib/cn.js";
-import { initialsOf } from "../shell/account-menu.js";
+import { initialsOf } from "../lib/initials.js";
 
 /**
  * A person as initials in a circle, beside their name in menus and cells: neutral for anyone,
