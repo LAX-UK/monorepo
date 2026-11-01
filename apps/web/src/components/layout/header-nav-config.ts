@@ -9,6 +9,8 @@ export type MegaMenuSection = {
   href: string;
   label: string;
   items: MegaMenuItem[];
+  /** Makes the section a plain link in the desktop bar instead of a menu. */
+  linkHref?: string;
   viewAllHref?: string;
   /** When set with `viewAllHref`, overrides default “View all …” copy in the mega panel. */
   viewAllLabel?: string;

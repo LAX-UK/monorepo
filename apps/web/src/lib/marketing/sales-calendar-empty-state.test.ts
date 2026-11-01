@@ -15,7 +15,7 @@ describe("resolveCalendarEmptyState", () => {
     expect(resolveCalendarEmptyState({ tab: "upcoming", hasActiveFilters: false })).toEqual({
       title: "No sales are scheduled yet",
       description: "New sales are announced here first.",
-      action: { label: "See recent results", href: "/archive" },
+      action: { label: "See recent results", href: "/results" },
     });
   });
 

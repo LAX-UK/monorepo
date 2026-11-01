@@ -33,9 +33,20 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
         { href: calendarSalesHref({ tab: "live" }), label: "Live now" },
         { href: calendarSalesHref({ tab: "upcoming" }), label: "Upcoming auctions" },
         { href: timedAuctionsHref, label: "Timed auctions" },
-        { href: calendarSalesHref({ tab: "results" }), label: "Past results" },
+        { href: "/results", label: "Past results" },
         { href: "/sales", label: "Auction calendar" },
         { href: "/settings#alerts", label: "Auction alerts" },
+      ],
+    },
+    {
+      id: "results",
+      href: "/results",
+      label: "Results",
+      // A plain link in the desktop bar; the phone drawer lists the two ways in.
+      linkHref: "/results",
+      items: [
+        { href: "/results", label: "Sale results" },
+        { href: "/results?view=lots", label: "Sold lots" },
       ],
     },
     {

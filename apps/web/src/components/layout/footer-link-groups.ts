@@ -17,7 +17,7 @@ export function buildBidFooterColumns(
       title: "Auctions",
       links: [
         { href: calendarSalesHref({ tab: "upcoming" }), label: "Upcoming" },
-        { href: "/archive", label: "Past auctions" },
+        { href: "/results", label: "Past auctions" },
         { href: "/artists", label: "Artists" },
         { href: "/search", label: "Search" },
       ],

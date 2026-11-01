@@ -14,7 +14,7 @@ test.describe("marketing pages smoke @a11y", () => {
   for (const path of [
     "/",
     "/search",
-    "/archive",
+    "/results",
     "/legal",
     "/about",
     "/privacy",
