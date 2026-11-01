@@ -2,6 +2,7 @@
 
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import { MarketingViewAllLink } from "@/components/marketing/marketing-view-all-link";
+import { MORE_LOTS_COPY } from "@/components/sections/home/home-copy";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { MarketingCardReveal } from "@auction/marketing-ui";
@@ -35,8 +36,8 @@ function EditorsPicksCarousel({
   return (
     <MarketingHorizontalRail
       id="home-editors-picks-rail"
-      ariaLabel="Editor's picks"
-      forwardAriaLabel="Scroll to see more editor's picks"
+      ariaLabel={MORE_LOTS_COPY.ariaLabel}
+      forwardAriaLabel={MORE_LOTS_COPY.scrollLabel}
       forwardButtonClassName="top-[170px]"
       scrollerAs="ul"
       scrollerClassName="m-0 flex list-none snap-x snap-mandatory gap-6 overflow-x-auto overflow-y-hidden overscroll-x-contain p-0 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -82,10 +83,9 @@ export function EditorsPicksMarketingClient({
               size="section"
               className="font-semibold text-on-surface"
             >
-              Editor&apos;s Picks
+              {MORE_LOTS_COPY.heading}
             </DisplayHeading>
           }
-          subtitle="Hand-selected pieces by LAX specialists"
           action={<MarketingViewAllLink href={VIEW_ALL_HREF} srSuffix="lots and catalogue" />}
         />
 

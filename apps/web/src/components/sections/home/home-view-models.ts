@@ -1,6 +1,5 @@
-import { formatLotAuctionLine, formatSaleDateRange } from "@/lib/format-auction-date";
-import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
-import { featuredLotHeading, lotLabelFromLot } from "@/lib/lot-label";
+import { formatSaleDateRange } from "@/lib/format-auction-date";
+import { lotLabelFromLot } from "@/lib/lot-label";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
 import { type HeroCoverSources, resolveHeroCoverSources } from "@/lib/media/hero-cover-sources";
@@ -11,47 +10,6 @@ import { lotPath, salePath } from "@/lib/seo/url";
 import type { Lot, LotCardTimingVM, Sale } from "@auction/types";
 import { toLotCardTimingVM, toOptionalIsoString, toSaleCountdownEndIso } from "@auction/validators";
 import type { StreamEmbedProvider } from "@auction/validators";
-import {
-  HERO_PLACEHOLDER_ARTIST,
-  HERO_PLACEHOLDER_FEATURED_HEADING,
-  HERO_PLACEHOLDER_SALE_LINE,
-  HERO_PLACEHOLDER_TITLE,
-} from "./home-defaults";
-
-export type HeroLotVM = {
-  id: string;
-  href?: string;
-  title: string;
-  artistName: string;
-  priceLabel: string;
-  priceFormatted: string;
-  currentBidFormatted: string;
-  bidCountDisplay: string;
-  heroImageUrl: string | null;
-  /** Optional portrait crop — typically `coverImages[1]` when uploaded. */
-  heroImageMobileUrl?: string | null;
-  /** Optional xl desktop crop — typically `coverImages[2]` when uploaded. */
-  heroImageDesktopWideUrl?: string | null;
-  /** Per-slide focal point override, e.g. `center 30%`. */
-  objectPosition?: string;
-  /** Descriptive alt for the hero artwork image */
-  imageAlt: string;
-  auctionDateLabel: string;
-  /** Second segment after live dot, e.g. sale title */
-  saleMetaLine: string;
-  featuredHeading: string;
-  lotLabel: string;
-  /** True when lot status is active (for live region announcements). */
-  isAuctionLive: boolean;
-  /** When present and the lot is live, the secondary hero CTA links to the
-   * saleroom. Falls back to the lot artwork URL otherwise.
-   */
-  saleroomHref?: string;
-  /** ISO 8601 — when the lot opens. Used for hero countdown when not yet live. */
-  startTime?: string;
-  /** ISO 8601 — when the lot closes. Used for hero countdown when live. */
-  endTime?: string;
-};
 
 export type HeroSaleSlideVM = {
   id: string;
@@ -97,7 +55,7 @@ export type HeroStateVM =
       objectPosition?: string | undefined;
     }
   | { kind: "rotator"; slides: HeroSaleSlideVM[] }
-  | { kind: "fallbackLot"; lot: HeroLotVM };
+  | { kind: "betweenSeasons" };
 
 export type LotPriceEmphasis = "estimate" | "currentBid" | "both";
 
@@ -180,24 +138,8 @@ export type EditorsPickLotCardVM = {
   estimateValue: string;
 };
 
-/** B5 — Single private-sale showcase item. Price displayed as `On request`. */
-export type PrivateSaleHighlightVM = {
-  id: string;
-  href: string;
-  title: string;
-  artistName: string;
-  imageUrl: string | null;
-  imageAlt: string;
-  /** Optional medium / period label, e.g. "Oil on canvas, 1932". */
-  caption?: string;
-};
-
 function artistLineFromLot(lot: Lot): string {
   return lot.medium?.trim() || lot.description?.trim()?.slice(0, 80) || "Contemporary";
-}
-
-function heroImageAlt(title: string, artistName: string): string {
-  return `${title} — artwork by ${artistName}`;
 }
 
 export function heroSaleSlideCoverSources(
@@ -211,20 +153,6 @@ export function heroSaleSlideCoverSources(
     mobileUrl: slide.coverImageMobileUrl,
     desktopWideUrl: slide.coverImageDesktopWideUrl,
     objectPosition: slide.objectPosition,
-  });
-}
-
-export function heroLotCoverSources(
-  lot: Pick<
-    HeroLotVM,
-    "heroImageUrl" | "heroImageMobileUrl" | "heroImageDesktopWideUrl" | "objectPosition"
-  >,
-): HeroCoverSources {
-  return resolveHeroCoverSources({
-    desktopUrl: lot.heroImageUrl,
-    mobileUrl: lot.heroImageMobileUrl,
-    desktopWideUrl: lot.heroImageDesktopWideUrl,
-    objectPosition: lot.objectPosition,
   });
 }
 
@@ -251,57 +179,6 @@ export function toHeroSaleSlideVM(
     status: sale.status,
     ...(startIso ? { startIso } : {}),
     ...(endIso ? { endIso } : {}),
-  };
-}
-
-export function createHeroFallbackVm(): HeroLotVM {
-  return {
-    id: "placeholder",
-    title: HERO_PLACEHOLDER_TITLE,
-    artistName: HERO_PLACEHOLDER_ARTIST,
-    priceLabel: "Catalogue",
-    priceFormatted: "—",
-    currentBidFormatted: "—",
-    bidCountDisplay: "—",
-    heroImageUrl: null,
-    imageAlt: "Hero artwork",
-    auctionDateLabel: HERO_PLACEHOLDER_SALE_LINE,
-    saleMetaLine: HERO_PLACEHOLDER_SALE_LINE,
-    featuredHeading: HERO_PLACEHOLDER_FEATURED_HEADING,
-    lotLabel: "Lot",
-    isAuctionLive: false,
-  };
-}
-
-export function toHeroLotVM(
-  lot: Lot,
-  saleTitle: string | null,
-  options?: { saleId?: string | null },
-): HeroLotVM {
-  const saleMetaLine = saleTitle?.trim() || formatLotAuctionLine(lot);
-  const artistName = artistLineFromLot(lot);
-  const primary = lotPriceDisplay(lot);
-  const saleId = options?.saleId?.trim();
-  const timing = toLotCardTimingVM(lot);
-  return {
-    id: lot.id,
-    href: lotPath(lot),
-    title: lot.title,
-    artistName,
-    priceLabel: primary.label,
-    priceFormatted: primary.value,
-    currentBidFormatted: formatMoney(lot.currentPrice, lotChargeCurrency(lot)),
-    bidCountDisplay: "—",
-    heroImageUrl: lot.images[0] ?? null,
-    imageAlt: heroImageAlt(lot.title, artistName),
-    auctionDateLabel: formatLotAuctionLine(lot),
-    saleMetaLine,
-    featuredHeading: featuredLotHeading(lot),
-    lotLabel: lotLabelFromLot(lot),
-    isAuctionLive: lot.status === "active",
-    ...(saleId ? { saleroomHref: salePath({ id: saleId, title: saleTitle ?? "sale" }) } : {}),
-    ...(timing.startTime ? { startTime: timing.startTime } : {}),
-    ...(timing.endTime ? { endTime: timing.endTime } : {}),
   };
 }
 
@@ -414,24 +291,4 @@ export function toEditorsPickLotCardVM(lot: Lot): EditorsPickLotCardVM {
 
 export function toEditorsPickLotCardVMs(lots: Lot[]): EditorsPickLotCardVM[] {
   return lots.map(toEditorsPickLotCardVM);
-}
-
-export function toPrivateSaleHighlightVM(lot: Lot): PrivateSaleHighlightVM {
-  const base = toLotCardVM(lot);
-  const caption =
-    lot.medium?.trim() ||
-    (lot.description?.trim() ? lot.description.trim().slice(0, 96) : undefined);
-  return {
-    id: base.id,
-    href: base.href,
-    title: base.title,
-    artistName: base.artistName,
-    imageUrl: base.imageUrl,
-    imageAlt: base.imageAlt,
-    ...(caption ? { caption } : {}),
-  };
-}
-
-export function toPrivateSaleHighlightVMs(lots: Lot[]): PrivateSaleHighlightVM[] {
-  return lots.map(toPrivateSaleHighlightVM);
 }
