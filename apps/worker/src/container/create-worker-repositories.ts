@@ -25,6 +25,7 @@ import type { IAdminImpersonationNotifyReader } from "../interfaces/admin-impers
 import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
 import type { IClearArtistBlocksRepository } from "../interfaces/clear-artist-blocks.repository.js";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
+import type { ICoverAnalysisJobRepository } from "../interfaces/cover-analysis-job.repository.js";
 import type { IDataExportJobRepository } from "../interfaces/data-export.repository.js";
 import type { IDomainEventProjectorReader } from "../interfaces/domain-event-projector.reader.js";
 import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
@@ -66,6 +67,7 @@ import { DrizzleAdminImpersonationNotifyReader } from "../repositories/drizzle-a
 import { DrizzleAdminReviewTaskProjectorRepository } from "../repositories/drizzle-admin-review-task-projector.repository.js";
 import { DrizzleClearArtistBlocksRepository } from "../repositories/drizzle-clear-artist-blocks.repository.js";
 import { DrizzleComplianceRecipientReader } from "../repositories/drizzle-compliance-recipient.reader.js";
+import { DrizzleCoverAnalysisJobRepository } from "../repositories/drizzle-cover-analysis-job.repository.js";
 import { DrizzleDataExportJobRepository } from "../repositories/drizzle-data-export.repository.js";
 import { DrizzleDomainEventProjectorReader } from "../repositories/drizzle-domain-event-projector.reader.js";
 import { DrizzleEmailOutboxRepository } from "../repositories/drizzle-email-outbox.repository.js";
@@ -115,6 +117,7 @@ export type WorkerRepositories = {
   staffOpsRecipientReader: IStaffOpsRecipientReader;
   complianceRecipientReader: IComplianceRecipientReader;
   mediaAssetProcessorRepo: IMediaAssetProcessorRepository;
+  coverAnalysisJobRepo: ICoverAnalysisJobRepository;
   mediaAssetCleanupRepo: IMediaAssetCleanupRepository;
   qrCodeScanPersister: IQrCodeScanPersister;
   qrCodeScanPurgeRepo: IQrCodeScanPurgeRepository;
@@ -170,6 +173,7 @@ export function createWorkerRepositories(
     staffOpsRecipientReader: new DrizzleStaffOpsRecipientReader(db),
     complianceRecipientReader: new DrizzleComplianceRecipientReader(db),
     mediaAssetProcessorRepo: new DrizzleMediaAssetProcessorRepository(db),
+    coverAnalysisJobRepo: new DrizzleCoverAnalysisJobRepository(db),
     mediaAssetCleanupRepo: new DrizzleMediaAssetCleanupRepository(db),
     qrCodeScanPersister: new DrizzleQrCodeScanPersister(db),
     qrCodeScanPurgeRepo: new DrizzleQrCodeScanPurgeRepository(db),
