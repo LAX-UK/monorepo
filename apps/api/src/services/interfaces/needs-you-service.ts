@@ -1,5 +1,5 @@
 import type { NeedsYouCounts, NeedsYouKind, NeedsYouLink, NeedsYouTask } from "@auction/domain";
-import type { LegalEntityStatus } from "@auction/types";
+import type { LegalEntityKind, LegalEntityStatus } from "@auction/types";
 import type { OrganisationMemberActor } from "./organisation-membership-service.js";
 
 /** A task with where its one button leads. */
@@ -16,11 +16,14 @@ export type NeedsYouView = {
   truncated: boolean;
 };
 
-/** The organisation's standing as Needs you reads it. */
+/**
+ * The acting account's standing as Needs you reads it: an organisation, or a person's own
+ * account, whose state the domain reads by its kind.
+ */
 export interface INeedsYouOrganisationReader {
   standing(
     legalEntityId: string,
-  ): Promise<{ status: LegalEntityStatus; payoutsReady: boolean } | null>;
+  ): Promise<{ kind: LegalEntityKind; status: LegalEntityStatus; payoutsReady: boolean } | null>;
 }
 
 /**

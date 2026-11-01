@@ -13,6 +13,8 @@ export type FileAttachmentProps = {
   kind: "image" | "pdf";
   /** "1.8 MB": shown after the type. */
   size?: string | null;
+  /** "Sent 27 Oct 2026": what tells this file from another of its kind, shown last. */
+  note?: string | null;
   /** A small preview of a photo; the icon is drawn without one. */
   thumbnailUrl?: string | null;
   className?: string;
@@ -30,13 +32,14 @@ export function FileAttachment({
   href,
   kind,
   size,
+  note,
   thumbnailUrl,
   className,
 }: FileAttachmentProps) {
   const Icon = kind === "pdf" ? FileText : ImageIcon;
   // A preview that cannot load falls back to the icon rather than a broken image.
   const [previewFailed, setPreviewFailed] = useState(false);
-  const meta = [TYPE_WORD[kind], size].filter(Boolean).join(" · ");
+  const meta = [TYPE_WORD[kind], size, note].filter(Boolean).join(" · ");
   return (
     <div
       className={cn(

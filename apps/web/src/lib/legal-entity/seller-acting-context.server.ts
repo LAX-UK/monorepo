@@ -57,6 +57,11 @@ export function sellerCan(ctx: SellerWorkspaceContext, capability: EntityCapabil
  */
 export function sellerCanStartSubmission(ctx: SellerWorkspaceContext): boolean {
   if (!sellerCan(ctx, "entity.submissions.create")) return false;
-  const account = ctx.memberships.find((membership) => membership.id === ctx.sellerEntityId);
+  const account = sellingAccount(ctx);
   return account ? sellerSubmissionAccess(account).canDraft : false;
+}
+
+/** The account the seller pages act for, with its kind and status; `null` when there is none. */
+export function sellingAccount(ctx: SellerWorkspaceContext): LegalEntitySummary | null {
+  return ctx.memberships.find((membership) => membership.id === ctx.sellerEntityId) ?? null;
 }

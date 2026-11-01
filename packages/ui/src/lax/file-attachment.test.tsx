@@ -23,4 +23,16 @@ describe("FileAttachment", () => {
     expect(container.querySelector("img")).toBeNull();
     expect(screen.getByText("PDF")).toBeInTheDocument();
   });
+
+  it("ends the line with a note that tells two files of a kind apart", () => {
+    render(
+      <FileAttachment
+        name="Consignment agreement"
+        href="/f/c"
+        kind="pdf"
+        note="Sent 27 Oct 2026"
+      />,
+    );
+    expect(screen.getByText("PDF · Sent 27 Oct 2026")).toBeInTheDocument();
+  });
 });

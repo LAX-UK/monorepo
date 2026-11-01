@@ -7,6 +7,7 @@ import {
   sellerRemoveSubmissionDocumentResultAction,
 } from "@/lib/actions/seller-submission-documents";
 import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
+import { sellerDocumentsPanelShows } from "@/lib/seller/seller-documents-visibility";
 import type { EntityDocument, ItemSubmission, SubmissionDocumentKind } from "@auction/types";
 import { Surface } from "@auction/ui/components/surface";
 
@@ -26,14 +27,6 @@ type Props = {
   canManage: boolean;
 };
 
-const UPLOAD_STATUSES = new Set<ItemSubmission["status"]>([
-  "submitted",
-  "under_review",
-  "changes_requested",
-  "approved",
-  "converted",
-]);
-
 export function SubmissionSellerDocumentsPanel({
   submissionId,
   status,
@@ -41,9 +34,16 @@ export function SubmissionSellerDocumentsPanel({
   loadFailure = null,
   canManage,
 }: Props) {
-  if (!UPLOAD_STATUSES.has(status)) return null;
-  // Someone who may not add documents has nothing to do here until there is one to read.
-  if (!canManage && !loadFailure && initialDocuments.length === 0) return null;
+  if (
+    !sellerDocumentsPanelShows({
+      status,
+      canManage,
+      failed: Boolean(loadFailure),
+      count: initialDocuments.length,
+    })
+  ) {
+    return null;
+  }
 
   return (
     <Surface variant="section" className="space-y-4">

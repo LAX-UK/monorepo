@@ -20,6 +20,6 @@ export class NeedsYouOrganisationReader implements INeedsYouOrganisationReader {
     if (!entity) return null;
     const payoutsReady =
       !this.deps.connectEnforced() || shouldSkipConnect(entity) || isSellerConnectReady(entity);
-    return { status: entity.status, payoutsReady };
+    return { kind: entity.kind, status: entity.status, payoutsReady };
   }
 }

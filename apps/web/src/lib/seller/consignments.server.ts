@@ -22,7 +22,6 @@ import {
   NO_CONSIGNMENT_TASKS,
   buildConsignmentRecords,
   consignmentTasksFromNeedsYou,
-  personalConsignmentTasks,
   visibleConsignedLots,
 } from "./consignment-records";
 
@@ -42,8 +41,9 @@ function orEmpty<T>(promise: Promise<T[]>): Promise<T[]> {
 
 /**
  * The acting account's consignments as one list: submissions, the lots they became (open and
- * ended), their agreements and unsold choices, and what waits on the member. Organisations read
- * "what waits" from the one Needs-you reader; a person's own list derives it from the same facts.
+ * ended), their agreements and unsold choices, and what waits on the member. Every account, a
+ * person's own as much as an organisation, reads "what waits" from the one Needs-you reader, so
+ * the list, its tab count and Home always agree.
  */
 export async function loadConsignments(
   ctx: SellerWorkspaceContext,
@@ -64,7 +64,7 @@ export async function loadConsignments(
     listServerUnsoldOutcomes({ limit, offset: 0 })
       .then((page) => [...page.rows])
       .catch((): SellerUnsoldOutcome[] => []),
-    ctx.sellingAsOrganisation ? getServerNeedsYou(sellerEntityId) : Promise.resolve(null),
+    getServerNeedsYou(sellerEntityId),
   ]);
   if (!submissions && !openLots) return { records: null, truncated: false };
 
@@ -75,11 +75,10 @@ export async function loadConsignments(
     scope: consignedLotScope(ctx.actor),
     viewerUserId,
   });
-  const tasks: ConsignmentTasks = ctx.sellingAsOrganisation
-    ? needsYou
-      ? consignmentTasksFromNeedsYou(needsYou.tasks)
-      : NO_CONSIGNMENT_TASKS
-    : personalConsignmentTasks({ submissions: submissions ?? [], agreements, unsold });
+  // Without the reader the list shows no tasks rather than ones that disagree with Home.
+  const tasks: ConsignmentTasks = needsYou
+    ? consignmentTasksFromNeedsYou(needsYou.tasks)
+    : NO_CONSIGNMENT_TASKS;
   const saleTitleById = await resolveSaleTitles(lots.map((lot) => lot.saleId));
   return {
     records: buildConsignmentRecords({
