@@ -92,6 +92,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     adminSaleReadinessReader,
     adminLegalEntityBrowseReader,
     adminDisputeCaseEnrichmentReader,
+    disputeAllocationQueueReader,
     impersonationSessionRepository,
     impersonationDomainEventReader,
   } = repos;
@@ -232,6 +233,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     adminSaleReadinessReader,
     adminLegalEntityBrowseReader,
     adminDisputeCaseEnrichmentReader,
+    disputeAllocationQueueReader,
     bidRepo: repoFactory.root.bid,
     payoutService: platform.payoutService,
     payoutSettlementService: platform.payoutSettlementService,
