@@ -3,6 +3,7 @@ import { isOperatorPlacement } from "@auction/domain";
 import type { Bid, Lot, NewBid } from "@auction/types";
 import { moneyGte } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
+import { amountRefusedError } from "../bid-amount-refusal.js";
 import { BidError } from "../bid-error.js";
 import { bidAmountBelowMinimum, lotMinIncrementMoney, minBidAmountMoney } from "../bid-money.js";
 import type { BidPolicyConfig } from "../bid-policy.js";
@@ -29,7 +30,13 @@ export class BuyItNowAuctionStrategy implements ILotStrategy {
     }
     const inc = lotMinIncrementMoney(lot);
     if (bidAmountBelowMinimum(bid.amount, lot.currentPrice, inc)) {
-      return err(new BidError(`Bid must be at least ${minBidAmountMoney(lot.currentPrice, inc)}`));
+      return err(
+        amountRefusedError(
+          `Bid must be at least ${minBidAmountMoney(lot.currentPrice, inc)}`,
+          lot,
+          ctx?.seenNextBid,
+        ),
+      );
     }
     return ok(undefined);
   }

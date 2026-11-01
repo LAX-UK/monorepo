@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { isBiddingClosedStatus } from "@auction/domain";
 import type {
   IAntiShillingGuard,
   IBidRepository,
@@ -61,14 +62,18 @@ export async function validateLotForBid(
     throw new BidError("Lot not found", 404);
   }
   if (lotRow.status !== "active") {
-    throw new BidError("Lot is not accepting bids", 400);
+    throw new BidError(
+      "Lot is not accepting bids",
+      400,
+      isBiddingClosedStatus(lotRow.status) ? "lot_closed" : undefined,
+    );
   }
 
   const skipCatalogEndTime =
     deps.saleroomSessionLookup != null &&
     (await deps.saleroomSessionLookup.shouldSkipAntiSnipeForLot(lotId));
   if (!skipCatalogEndTime && Date.now() > lotRow.endTime.getTime()) {
-    throw new BidError("Lot has ended", 400);
+    throw new BidError("Lot has ended", 400, "lot_closed");
   }
 
   const onBlock = await deps.saleroomBidGate.assertCanBidOnLot({
@@ -137,6 +142,7 @@ export function applyStrategyBidValidation(
     {
       currentWinnerId: prevWinnerId,
       placedVia: bidPlacement?.placedVia ?? null,
+      seenNextBid: input.seenNextBid ?? null,
     },
   );
   if (validation.isErr()) {

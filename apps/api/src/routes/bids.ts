@@ -61,6 +61,7 @@ export function createBidRoutes(
         ...(body.autoBidStepAmount !== undefined
           ? { autoBidStepAmount: body.autoBidStepAmount }
           : {}),
+        ...(body.seenNextBid !== undefined ? { seenNextBid: body.seenNextBid } : {}),
       });
       if (outcome.kind === "replay") {
         return c.json({ data: outcome.data }, 201);
