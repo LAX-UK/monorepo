@@ -53,7 +53,7 @@ export function DayMediaThumbnail({
       type="button"
       variant="ghost"
       className={cn(
-        "group relative h-auto w-full overflow-hidden bg-surface-container-low p-0 hover:bg-surface-container-low",
+        "group relative h-auto w-full overflow-hidden bg-surface-container-low p-0 in-data-[lax-density=client]:px-0 hover:bg-surface-container-low",
         isSheet ? "" : "",
         FOCUS_RING,
       )}

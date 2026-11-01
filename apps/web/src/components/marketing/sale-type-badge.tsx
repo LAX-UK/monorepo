@@ -73,7 +73,7 @@ export function SaleTypeBadge({
         <Button
           type="button"
           variant="ghost"
-          className="group inline-flex h-auto items-center p-0 text-left hover:bg-transparent"
+          className="group inline-flex h-auto items-center p-0 in-data-[lax-density=client]:px-0 text-left hover:bg-transparent"
           aria-label={`${pres.label} — format details`}
         >
           {badgeElement}

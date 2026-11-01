@@ -125,7 +125,7 @@ function QuickLookImageStrip({
             variant="ghost"
             onClick={() => onSelect(index)}
             className={cn(
-              "relative h-auto min-h-0 overflow-hidden border-2 p-0 font-normal transition-all motion-safe:duration-200 focus-visible:border-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0",
+              "relative h-auto min-h-0 overflow-hidden border-2 p-0 in-data-[lax-density=client]:px-0 font-normal transition-all motion-safe:duration-200 focus-visible:border-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0",
               index === activeIndex
                 ? "scale-100 border-primary hover:bg-transparent"
                 : "scale-95 border-transparent opacity-70 hover:scale-100 hover:opacity-100 hover:bg-transparent",
@@ -205,7 +205,7 @@ export function QuickLookBody({
           type="button"
           variant="ghost"
           onClick={onHeroClick}
-          className="absolute inset-0 z-0 h-full min-h-0 w-full cursor-zoom-in rounded-none border-0 p-0 hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0"
+          className="absolute inset-0 z-0 h-full min-h-0 w-full cursor-zoom-in rounded-none border-0 p-0 in-data-[lax-density=client]:px-0 hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0"
           aria-label={`Expand image for ${vm.title}`}
         >
           <MediaImage

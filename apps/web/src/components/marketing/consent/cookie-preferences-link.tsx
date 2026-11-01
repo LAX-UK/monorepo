@@ -17,7 +17,7 @@ export function CookiePreferencesLink({ className }: Props) {
       type="button"
       variant="ghost"
       className={cn(
-        "inline-flex h-auto w-fit px-0 items-center justify-start text-left font-footer-links text-on-surface/90 transition-colors hover:bg-transparent hover:text-link",
+        "inline-flex h-auto w-fit px-0 in-data-[lax-density=client]:px-0 items-center justify-start text-left font-footer-links text-on-surface/90 transition-colors hover:bg-transparent hover:text-link",
         FOCUS_RING,
         className,
       )}
