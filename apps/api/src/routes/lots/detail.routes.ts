@@ -38,6 +38,20 @@ export function attachLotDetailRoutes(r: LotHono, deps: LotReadRouteDeps): void 
     return c.json({ data: result.data });
   });
 
+  // Anyone may read this: it names no bidder, paddle or account, only what the room could see.
+  r.get("/:id/bid-history", optionalAuth, zValidator("param", lotIdParamSchema), async (c) => {
+    const { id } = c.req.valid("param");
+    const result = await container.bidding.lotBidHistoryHttp.listPublicForLot({
+      lotId: id,
+      viewerId: c.get("userId"),
+      limitQuery: c.req.query("limit"),
+    });
+    if (result.kind === "not_found") {
+      return c.json({ error: "Not found" }, 404);
+    }
+    return respondBiddingRouteOutcome(c, result);
+  });
+
   r.get("/:id/watch-count", optionalAuth, zValidator("param", lotIdParamSchema), async (c) => {
     const { id } = c.req.valid("param");
     const response = await lotReadHttp.getWatchCount({ lotId: id });

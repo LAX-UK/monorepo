@@ -14,6 +14,7 @@ import type { AddressService } from "../services/address.service.js";
 import type { ArtistWatchlistService } from "../services/artist-watchlist.service.js";
 import type { IAuthAuditPublisher } from "../services/interfaces/auth-audit-publisher.js";
 import type { IConditionReportService } from "../services/interfaces/condition-report.js";
+import type { ILotViewerStateService } from "../services/interfaces/lot-viewer-state.js";
 import type { IMarketingEventService } from "../services/interfaces/marketing-event-service.js";
 import type { IMediaAssetEnricher } from "../services/interfaces/media-asset-enricher.js";
 import type { IMediaUrlResolver } from "../services/interfaces/media-url-resolver.js";
@@ -32,6 +33,7 @@ import type { UserService } from "../services/user.service.js";
 import { UserAccountOnboardingHttpApplicationService } from "../services/user/user-account-onboarding-http-application.service.js";
 import { UserCategoryInterestsHttpApplicationService } from "../services/user/user-category-interests-http-application.service.js";
 import { UserDashboardHttpApplicationService } from "../services/user/user-dashboard-http-application.service.js";
+import { UserLotStatesHttpApplicationService } from "../services/user/user-lot-states-http-application.service.js";
 import { UserNotificationsHttpApplicationService } from "../services/user/user-notifications-http-application.service.js";
 import { UserPreferencesHttpApplicationService } from "../services/user/user-preferences-http-application.service.js";
 import { UserProfileHttpApplicationService } from "../services/user/user-profile-http-application.service.js";
@@ -75,6 +77,7 @@ export type CreateUserRouteServicesInput = {
   staffInvitationAccept: UserRouteServices["staffInvitationAccept"];
   requireBuyingAccount: UserRouteServices["requireBuyingAccount"];
   recordPeople: IRecordPeopleReader;
+  lotViewerState: ILotViewerStateService;
 };
 
 export function createUserRouteServices(input: CreateUserRouteServicesInput): UserRouteServices {
@@ -97,6 +100,7 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       saleService: input.saleService,
       recordPeople: input.recordPeople,
     }),
+    lotStatesHttp: new UserLotStatesHttpApplicationService(input.lotViewerState),
     laxPortfolioHttp: new LaxPortfolioHttpApplicationService({
       reader: input.bidPortfolioReader,
       mediaUrlResolver: input.mediaUrlResolver,

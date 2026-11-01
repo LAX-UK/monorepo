@@ -20,7 +20,34 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
     requireAccountOnboarding,
   } = deps;
 
-  const { autoBidHttp, absenteeBidHttp, conditionReportHttp } = container.bidding;
+  const { autoBidHttp, absenteeBidHttp, conditionReportHttp, lotViewerHttp } = container.bidding;
+
+  /**
+   * Where the acting account stands on this lot: registration, position, maximum, the invoice
+   * after a win and an agent's room under their limits. Private to the caller, never cached.
+   */
+  r.get(
+    "/:id/me",
+    requireAuth,
+    requireLegalEntity,
+    zValidator("param", lotIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const legalEntityContext = c.get("legalEntityContext");
+      if (!legalEntityContext) return c.json({ error: "missing_legal_entity_context" }, 400);
+      const { id } = c.req.valid("param");
+      const outcome = await lotViewerHttp.getMine({
+        actor: {
+          userId,
+          legalEntityId: legalEntityContext.legalEntityId,
+          memberRole: legalEntityContext.role,
+        },
+        lotId: id,
+      });
+      c.header("Cache-Control", "private, no-store");
+      return respondBiddingRouteOutcome(c, outcome);
+    },
+  );
 
   r.post(
     "/:id/absentee-bids",

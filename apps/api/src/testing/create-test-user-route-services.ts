@@ -12,6 +12,7 @@ export function createTestUserRouteServicesInput(
     env: { WEB_ORIGIN: "https://test.lax.bid", LAX_BID_LEGAL_NAME: "London Auction Xchange LTD" },
     bidPortfolioReader: { loadForPerson: vi.fn() },
     recordPeople: { namesFor: vi.fn(async () => new Map<string, string>()) },
+    lotViewerState: { forLot: vi.fn(), forLots: vi.fn() },
     categoryInterestsEligibilityReader: {
       getProfile: vi.fn(),
     } as never,
