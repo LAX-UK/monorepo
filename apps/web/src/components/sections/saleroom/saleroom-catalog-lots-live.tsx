@@ -8,6 +8,7 @@ import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/sa
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
+import { lotShowsBidAction } from "@/lib/lot/lot-bid-action";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { isSaleroomSessionActive } from "@/lib/saleroom/public-session-status";
 import { cn } from "@auction/ui";
@@ -91,7 +92,11 @@ export function SaleroomCatalogLotsLive({
         renderCorner={(lot) => (
           <SaleroomLotQuickLookCorner lot={lot} isAuthenticated={isAuthenticated} />
         )}
-        renderActions={(lot) => (canParticipate ? <SaleroomLotActions lotHref={lot.href} /> : null)}
+        renderActions={(lot) =>
+          canParticipate && lotShowsBidAction(lot.status) ? (
+            <SaleroomLotActions lotHref={lot.href} />
+          ) : null
+        }
       />
     </>
   );
