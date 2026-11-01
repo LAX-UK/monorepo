@@ -125,6 +125,7 @@ describe("ATG-owned sales on calendar cards", () => {
     const live = makeSale({
       status: "draft",
       sellingPlatform: "atg",
+      atgDistribution: "public_marketplace",
       atgAuctionState: "live",
       startTime: past,
     });

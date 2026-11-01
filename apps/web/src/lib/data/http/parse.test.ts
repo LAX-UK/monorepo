@@ -24,8 +24,20 @@ describe("ATG fields", () => {
     ).toMatchObject({ sellingPlatform: "atg", atgAuctionState: "ended" });
   });
 
+  it("keeps atgDistribution on sales", () => {
+    expect(parseSale({ ...saleRow, atgDistribution: "private_test" })).toMatchObject({
+      atgDistribution: "private_test",
+    });
+  });
+
   it("drops unknown values", () => {
-    const sale = parseSale({ ...saleRow, sellingPlatform: "ebay", atgAuctionState: "open" });
+    const sale = parseSale({
+      ...saleRow,
+      sellingPlatform: "ebay",
+      atgAuctionState: "open",
+      atgDistribution: "everywhere",
+    });
+    expect(sale).not.toHaveProperty("atgDistribution");
     expect(sale).not.toHaveProperty("sellingPlatform");
     expect(sale).not.toHaveProperty("atgAuctionState");
   });

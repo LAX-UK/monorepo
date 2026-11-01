@@ -221,11 +221,16 @@ export function parseSale(raw: unknown): Sale {
     updatedAt: toDate(o.updatedAt),
     ...(isSellingPlatform(o.sellingPlatform) ? { sellingPlatform: o.sellingPlatform } : {}),
     ...(isAtgState(o.atgAuctionState) ? { atgAuctionState: o.atgAuctionState } : {}),
+    ...(isAtgDistribution(o.atgDistribution) ? { atgDistribution: o.atgDistribution } : {}),
   };
 }
 
 function isSellingPlatform(v: unknown): v is NonNullable<Sale["sellingPlatform"]> {
   return v === "atg" || v === "lax" || v === "free";
+}
+
+function isAtgDistribution(v: unknown): v is NonNullable<Sale["atgDistribution"]> {
+  return v === "private_test" || v === "public_marketplace";
 }
 
 function isAtgState(v: unknown): v is "live" | "ended" {
