@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { formatLondonDateTime } from "@/lib/datetime/london-time";
 import { Countdown, cn } from "@auction/ui";
 
 type Props = {
@@ -22,7 +23,7 @@ export function SaleCalendarCountdown({ endIso, className }: Props) {
           className,
         )}
       >
-        {end.toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
+        {formatLondonDateTime(end)}
       </span>
     );
   }

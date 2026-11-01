@@ -3,6 +3,7 @@ import { LotDetailsInline } from "@/components/sections/artwork/redesign/lot-det
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import type { PublicUser } from "@/lib/data/contracts";
 import type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
+import { formatLondonDateTime } from "@/lib/datetime/london-time";
 import { resolveLotReserveContext } from "@/lib/lot/reserve-presentation";
 import {
   ARTWORK_PAGE_ACCORDION_IDS,
@@ -23,10 +24,7 @@ export function buildArtworkPageAccordionBlocks(args: {
   const { lot, artist, documents = [] } = args;
   const minNext = getMinNextBidAmount(lot, lot.currentPrice).toFixed(2);
   const reserveContext = resolveLotReserveContext(lot, lot.currentPrice);
-  const saleEndLocal = new Date(lot.endTime).toLocaleString("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  const saleEndLocal = formatLondonDateTime(new Date(lot.endTime));
 
   const documentsBlock: AccordionBlock | null =
     documents.length === 0

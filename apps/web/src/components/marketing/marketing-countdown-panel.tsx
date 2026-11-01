@@ -1,17 +1,15 @@
 "use client";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { formatLondonDateTime } from "@/lib/datetime/london-time";
 import {
   type CountdownTier,
   countdownTier,
   formatCountdownAriaLabel,
   parseCountdownSegments,
 } from "@/lib/format-countdown";
-import {
-  type LiveCountdownUrgency,
-  liveUrgencyPulseClass,
-  liveUrgencyTextClass,
-} from "@/lib/presenters/status-presentation";
+import { countdownToneClass, countdownToneForTier } from "@/lib/presenters/countdown-tone";
+import { liveUrgencyPulseClass } from "@/lib/presenters/status-presentation";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import { useClientClock } from "@/lib/time/use-client-clock";
 import type { SaleDeliveryMode } from "@auction/types";
@@ -58,34 +56,26 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-function tierToUrgency(isLive: boolean, tier: CountdownTier): LiveCountdownUrgency {
-  if (isLive) return "live";
-  if (tier === "critical") return "imminent";
-  if (tier === "urgent") return "soon";
-  return "normal";
-}
-
-function segmentDigitClass(isLive: boolean, tier: CountdownTier, ended: boolean): string {
+function segmentDigitClass(tier: CountdownTier, ended: boolean): string {
   if (ended) return "text-on-surface-variant";
-  return liveUrgencyTextClass(tierToUrgency(isLive, tier));
+  return countdownToneClass(countdownToneForTier(tier));
 }
 
 type SegmentChipProps = {
   value: number;
   unit: string;
-  isLive: boolean;
   tier: CountdownTier;
   ended: boolean;
   placeholder?: boolean;
 };
 
-function SegmentChip({ value, unit, isLive, tier, ended, placeholder }: SegmentChipProps) {
+function SegmentChip({ value, unit, tier, ended, placeholder }: SegmentChipProps) {
   return (
     <div className="rounded-lg border border-outline-variant/15 bg-surface-container-low/50 px-2 py-2 backdrop-blur-sm">
       <p
         className={cn(
           "text-2xl font-bold tabular-nums",
-          segmentDigitClass(isLive, tier, ended),
+          segmentDigitClass(tier, ended),
           tier === "critical" && !ended && !placeholder && liveUrgencyPulseClass,
         )}
       >
@@ -163,10 +153,7 @@ export function MarketingCountdownPanel({
   }
 
   if (reduced && Number.isFinite(endMs) && effectiveEndIso != null) {
-    const formatted = toDisplayDate(effectiveEndIso).toLocaleString("en-GB", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    });
+    const formatted = formatLondonDateTime(toDisplayDate(effectiveEndIso));
     return (
       <div className={cn("text-left", className)}>
         <LabelCaps className="inline-flex items-center gap-2 text-on-surface-variant">
@@ -215,7 +202,6 @@ export function MarketingCountdownPanel({
                 <SegmentChip
                   value={segments?.days ?? 0}
                   unit="Days"
-                  isLive={showLiveDot}
                   tier={tier}
                   ended={ended}
                   placeholder={placeholder}
@@ -224,7 +210,6 @@ export function MarketingCountdownPanel({
               <SegmentChip
                 value={segments?.hours ?? 0}
                 unit="Hours"
-                isLive={showLiveDot}
                 tier={tier}
                 ended={ended}
                 placeholder={placeholder}
@@ -232,7 +217,6 @@ export function MarketingCountdownPanel({
               <SegmentChip
                 value={segments?.minutes ?? 0}
                 unit="Min"
-                isLive={showLiveDot}
                 tier={tier}
                 ended={ended}
                 placeholder={placeholder}
@@ -240,7 +224,6 @@ export function MarketingCountdownPanel({
               <SegmentChip
                 value={segments?.seconds ?? 0}
                 unit="Sec"
-                isLive={showLiveDot}
                 tier={tier}
                 ended={ended}
                 placeholder={placeholder}
@@ -265,6 +248,5 @@ export function formatCountdownSecondaryLine(
   if (!iso) return null;
   const d = toDisplayDate(iso);
   if (Number.isNaN(d.getTime())) return null;
-  const formatted = d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-  return `${prefix} · ${formatted}`;
+  return `${prefix} ${formatLondonDateTime(d)}`;
 }

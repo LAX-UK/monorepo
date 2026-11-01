@@ -17,9 +17,8 @@ export function SaleCardHeader({
   deliveryMode,
   isLive = false,
 }: Props) {
-  const cleanRest = scheduleRest.replace(/^(\s*\|\s*)+/, "");
-  const segments = cleanRest
-    .split("|")
+  const segments = scheduleRest
+    .split("·")
     .map((s) => s.trim())
     .filter(Boolean);
 

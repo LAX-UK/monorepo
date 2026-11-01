@@ -1,5 +1,6 @@
 "use client";
 
+import { formatLondonTime } from "@/lib/datetime/london-time";
 import { useEffect, useState } from "react";
 
 type Props = {
@@ -8,10 +9,7 @@ type Props = {
 };
 
 function formatClockTime(date: Date): string {
-  return date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatLondonTime(date);
 }
 
 function formatLiveSince(iso: string): string {
@@ -19,10 +17,7 @@ function formatLiveSince(iso: string): string {
   if (Number.isNaN(date.getTime())) {
     return "";
   }
-  return date.toLocaleTimeString(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatLondonTime(date);
 }
 
 export function SaleroomDisplayClock({ sessionStartedAt, sessionStatus }: Props) {

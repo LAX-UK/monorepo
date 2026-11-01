@@ -1,5 +1,6 @@
 import { SaleAgendaLiveCountdown } from "@/components/sections/sales/sale-agenda-live-countdown";
 import type { SaleAgendaItemVM } from "@/components/sections/sales/sales-view-models";
+import { formatLondonMonthYear, londonDayKey } from "@/lib/datetime/london-time";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { LiveDot, cn } from "@auction/ui";
 import { ChevronRight } from "lucide-react";
@@ -12,12 +13,11 @@ type MonthBucket = {
 };
 
 function monthKey(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return londonDayKey(new Date(iso)).slice(0, 7);
 }
 
 function monthLabel(iso: string): string {
-  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(new Date(iso));
+  return formatLondonMonthYear(new Date(iso));
 }
 
 function groupByMonth(items: readonly SaleAgendaItemVM[]): MonthBucket[] {

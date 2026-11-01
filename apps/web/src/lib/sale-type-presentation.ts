@@ -1,3 +1,4 @@
+import { formatLondonDate } from "@/lib/datetime/london-time";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import {
   formatAntiSnipingClosingRuleParagraph,
@@ -58,11 +59,7 @@ export function getOnlineCloseStepDescription(saleEndDate?: Date | string | null
   const end = saleEndDate instanceof Date ? saleEndDate : new Date(saleEndDate);
   if (Number.isNaN(end.getTime())) return base;
 
-  const endLabel = end.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const endLabel = formatLondonDate(end);
   return `${base} The sale catalogue closes on ${endLabel}.`;
 }
 

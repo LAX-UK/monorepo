@@ -1,13 +1,14 @@
 import { maskPaddleFromBidderId } from "@/components/sections/artwork/artwork-view-models";
-import {
-  type CountdownTier,
-  countdownTier,
-  formatCountdownAriaLabel,
-} from "@/lib/format-countdown";
+import { formatCountdownAriaLabel } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import type { LotLifecycle } from "@/lib/lot/lot-lifecycle";
 import type { LotReserveContext } from "@/lib/lot/reserve-presentation";
 import { reserveBadgeLabel, resolveEndedBanner } from "@/lib/lot/reserve-presentation";
+import {
+  COUNTDOWN_TONE_SURFACE_CLASS,
+  COUNTDOWN_TONE_TEXT_CLASS,
+  countdownToneForRemaining,
+} from "@/lib/presenters/countdown-tone";
 import type { LotEndedNoSaleReason } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Clock } from "lucide-react";
@@ -165,10 +166,8 @@ function LifecycleBanner({
     case "live":
     case "extended": {
       const ms = lifecycle.msLeft ?? 0;
-      const tier = countdownTier(ms);
       return (
         <ClosingBanner
-          tier={tier}
           countdownClock={countdownClock}
           endAtIso={endAtIso}
           msLeft={ms}
@@ -228,37 +227,40 @@ function LifecycleBanner({
 }
 
 function ClosingBanner({
-  tier,
   countdownClock,
   endAtIso,
   msLeft,
   saleEndLocalLabel,
   extended,
 }: {
-  tier: CountdownTier;
   countdownClock: string;
   endAtIso: string;
   msLeft: number;
   saleEndLocalLabel: string;
   extended: boolean;
 }) {
-  const rowHighlight = tier === "critical";
+  const tone = countdownToneForRemaining(msLeft, { extended });
   return (
     <div
       className={cn(
-        "mt-4 flex flex-row items-center gap-2 rounded-lg border border-error/20 bg-error/10 px-4 py-3",
-        rowHighlight && "bg-error/15",
+        "mt-4 flex flex-row items-center gap-2 rounded-lg border px-4 py-3",
+        COUNTDOWN_TONE_SURFACE_CLASS[tone],
       )}
     >
-      <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-error">
-        {extended ? "Extended · closing in" : "Closing in"}
+      <span className={cn("font-label text-xs font-medium", COUNTDOWN_TONE_TEXT_CLASS[tone])}>
+        {extended ? "Extended, closing in" : "Closing in"}
       </span>
       <div className="ml-auto flex min-w-0 items-center gap-2">
-        <span className="live-dot-pulse size-1.5 shrink-0 rounded-full bg-error" aria-hidden />
+        {tone === "calm" ? null : (
+          <span className="live-dot-pulse size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
+        )}
         <time
           dateTime={endAtIso}
           aria-label={formatCountdownAriaLabel(msLeft)}
-          className="min-w-0 text-xl font-bold tabular-nums leading-5 text-error"
+          className={cn(
+            "min-w-0 text-xl font-semibold tabular-nums leading-5",
+            COUNTDOWN_TONE_TEXT_CLASS[tone],
+          )}
         >
           {countdownClock}
         </time>

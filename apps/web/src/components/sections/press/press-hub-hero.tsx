@@ -5,6 +5,7 @@ import {
 import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
 import { MarketingPageShell } from "@/components/marketing/marketing-page-shell";
 import { SITE_NAME, SITE_PRESS_EMAIL } from "@/lib/brand";
+import { formatLondonDate } from "@/lib/datetime/london-time";
 import {
   FOCUS_RING,
   LABEL_LINK,
@@ -25,14 +26,7 @@ type Props = {
 };
 
 export function PressHubHero({ lastUpdated, stats }: Props) {
-  const lastUpdatedLabel =
-    lastUpdated != null
-      ? new Intl.DateTimeFormat("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        }).format(lastUpdated)
-      : null;
+  const lastUpdatedLabel = lastUpdated != null ? formatLondonDate(lastUpdated) : null;
   const statsLabel = stats ? formatPressHubStatsLabel(stats) : null;
 
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { formatLondonDateTime } from "@/lib/datetime/london-time";
 import {
   type CountdownTier,
   countdownTier,
@@ -8,11 +9,8 @@ import {
   formatCountdownForDisplay,
   parseCountdownSegments,
 } from "@/lib/format-countdown";
-import {
-  type LiveCountdownUrgency,
-  liveUrgencyPulseClass,
-  liveUrgencyTextClass,
-} from "@/lib/presenters/status-presentation";
+import { countdownToneClass, countdownToneForTier } from "@/lib/presenters/countdown-tone";
+import { liveUrgencyPulseClass } from "@/lib/presenters/status-presentation";
 import { useClientClock } from "@/lib/time/use-client-clock";
 import type { Sale } from "@auction/types";
 import { LiveDot, cn } from "@auction/ui";
@@ -58,23 +56,16 @@ function formatStartsAriaLabel(ms: number): string {
 function formatTargetDatetime(value: Date | string): string {
   const d = toDisplayDate(value);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+  return formatLondonDateTime(d);
 }
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-function tierToUrgency(phase: Phase, tier: CountdownTier): LiveCountdownUrgency {
-  if (phase === "during" || phase === "livePastEnd") return "live";
-  if (tier === "critical") return "imminent";
-  if (tier === "urgent") return "soon";
-  return "normal";
-}
-
 function segmentDigitClass(phase: Phase, tier: CountdownTier): string {
   if (phase === "ended") return "text-on-surface-variant";
-  return liveUrgencyTextClass(tierToUrgency(phase, tier));
+  return countdownToneClass(countdownToneForTier(tier));
 }
 
 type SegmentChipProps = {
@@ -218,7 +209,7 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
             className={cn(
               "mt-0.5 block font-body text-sm font-semibold tabular-nums",
               phase === "during" || tier !== "normal"
-                ? liveUrgencyTextClass(tierToUrgency(phase, tier))
+                ? countdownToneClass(countdownToneForTier(tier))
                 : "text-on-surface",
             )}
             suppressHydrationWarning
