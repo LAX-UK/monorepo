@@ -286,17 +286,19 @@ export function MessageThread({ items, label, earlier, empty, className }: Messa
           </StaffButton>
         </div>
       ) : null}
-      <ol role="log" aria-label={label} aria-live="polite" className="flex flex-col gap-4">
-        {items.map((item) =>
-          item.type === "message" ? (
-            <MessageRow key={item.id} message={item} />
-          ) : item.type === "event" ? (
-            <EventRow key={item.id} event={item} />
-          ) : (
-            <DividerRow key={item.id} divider={item} />
-          ),
-        )}
-      </ol>
+      <div role="log" aria-label={label} aria-live="polite">
+        <ol className="flex flex-col gap-4">
+          {items.map((item) =>
+            item.type === "message" ? (
+              <MessageRow key={item.id} message={item} />
+            ) : item.type === "event" ? (
+              <EventRow key={item.id} event={item} />
+            ) : (
+              <DividerRow key={item.id} divider={item} />
+            ),
+          )}
+        </ol>
+      </div>
       <div ref={end} aria-hidden className="h-px" />
       {!endVisible && items.length > 0 ? (
         <div className="pointer-events-none sticky bottom-3 flex justify-center">

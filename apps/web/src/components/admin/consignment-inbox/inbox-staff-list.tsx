@@ -53,7 +53,7 @@ import type {
   ConsignmentInboxRow,
   ConsignmentInboxSummary,
 } from "@auction/validators";
-import { Archive, CircleAlert, MessageSquareText, Paperclip, UserPlus } from "lucide-react";
+import { Archive, MessageSquareText, Paperclip, UserPlus } from "lucide-react";
 import NextLinkBase from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -100,12 +100,7 @@ function Waiting({ row, now }: { row: ConsignmentInboxRow; now: Date }) {
         {workingDuration(row.clock.waitedMinutes)}
       </span>
       {cue.kind === "badge" ? (
-        <StatusBadge tone={cue.tone}>
-          {cue.tone === "danger" ? (
-            <CircleAlert aria-hidden className="size-3" strokeWidth={2} />
-          ) : null}
-          {cue.label}
-        </StatusBadge>
+        <StatusBadge tone={cue.tone}>{cue.label}</StatusBadge>
       ) : (
         <span className="text-staff-xs text-staff-muted">{cue.label}</span>
       )}
