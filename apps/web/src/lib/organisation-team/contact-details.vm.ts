@@ -24,7 +24,7 @@ export const CONTACT_FIELDS: readonly {
     field: "website",
     label: "Website",
     empty: "None",
-    description: "For example northbank.gallery. Leave empty for none.",
+    description: "Your website's address. Leave empty for none.",
   },
   {
     field: "phone",

@@ -65,7 +65,13 @@ describe("ContactDetailsCard", () => {
   });
 
   it("offers no changes to a member who only reads", () => {
-    render(<ContactDetailsCard legalEntityId="org" details={{ ...details, canEdit: false }} />);
+    render(
+      <ContactDetailsCard
+        legalEntityId="org"
+        details={{ ...details, phone: null, canEdit: false }}
+      />,
+    );
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getByText("None")).toBeInTheDocument();
   });
 });

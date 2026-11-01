@@ -92,7 +92,16 @@ export function ContactDetailsCard({ legalEntityId, details }: Props) {
           <SettingsRow
             key={field}
             label={label}
-            value={value ? (field === "website" ? websiteLabel(value) : value) : empty}
+            // Someone who can't add one is not asked to.
+            value={
+              value
+                ? field === "website"
+                  ? websiteLabel(value)
+                  : value
+                : details.canEdit
+                  ? empty
+                  : "None"
+            }
             muted={!value}
             action={
               details.canEdit && editing === null ? (
