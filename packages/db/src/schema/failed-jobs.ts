@@ -13,12 +13,22 @@ export const failedJobs = pgTable(
     errorMessage: text("error_message"),
     attempts: integer("attempts").notNull(),
     failedAt: timestamp("failed_at", { mode: "date", withTimezone: true }).notNull(),
+    /** The first time the job ran out of attempts; `failedAt` keeps the latest. */
+    firstFailedAt: timestamp("first_failed_at", { mode: "date", withTimezone: true })
+      .notNull()
+      .defaultNow(),
     reviewedAt: timestamp("reviewed_at", { mode: "date", withTimezone: true }),
     reviewedBy: text("reviewed_by"),
     replayedAt: timestamp("replayed_at", { mode: "date", withTimezone: true }),
     replayedBy: text("replayed_by"),
+    discardedAt: timestamp("discarded_at", { mode: "date", withTimezone: true }),
+    discardedBy: text("discarded_by"),
+    /** One of the discard reason codes; set together with `discardedAt`. */
+    discardReason: text("discard_reason"),
+    discardNote: text("discard_note"),
   },
   (table) => [
     index("failed_jobs_original_queue_failed_at_idx").on(table.originalQueue, table.failedAt),
+    index("failed_jobs_failed_at_idx").on(table.failedAt.desc()),
   ],
 );

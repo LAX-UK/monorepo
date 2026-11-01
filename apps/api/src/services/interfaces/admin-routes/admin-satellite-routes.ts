@@ -1,4 +1,13 @@
-import type { adminMarketingEventsReplayBodySchema } from "@auction/validators";
+import type {
+  FailedJobBatchResult,
+  FailedJobDetail,
+  FailedJobDiscardReason,
+  FailedJobList,
+} from "@auction/types";
+import type {
+  AdminFailedJobsQuery,
+  adminMarketingEventsReplayBodySchema,
+} from "@auction/validators";
 import type { z } from "zod";
 import type { AdminMarketingEventsService } from "../../admin/admin-marketing-events.service.js";
 import type { AdminSavedViewService } from "../../admin/admin-saved-view.service.js";
@@ -41,6 +50,24 @@ export interface IAdminJobQueuesApplicationService {
   replayFromDlq(dlqJobId: string, actor: ActorContext, confirmIdempotency: boolean): Promise<void>;
 }
 
+/** Staff review of failed background jobs (see AdminFailedJobsService). */
+export interface IAdminFailedJobsService {
+  list(query: AdminFailedJobsQuery): Promise<FailedJobList>;
+  detail(id: string): Promise<FailedJobDetail | null>;
+  retry(
+    ids: readonly string[],
+    confirmRepeat: boolean,
+    actor: ActorContext,
+  ): Promise<FailedJobBatchResult>;
+  discard(
+    ids: readonly string[],
+    reason: FailedJobDiscardReason,
+    note: string | undefined,
+    actor: ActorContext,
+  ): Promise<FailedJobBatchResult>;
+  restore(ids: readonly string[], actor: ActorContext): Promise<FailedJobBatchResult>;
+}
+
 export interface IAdminMarketingEventsApplicationService {
   replay(body: AdminMarketingEventsReplayBody): ReturnType<AdminMarketingEventsService["replay"]>;
   stats(days: number): ReturnType<AdminMarketingEventsService["stats"]>;
@@ -51,6 +78,7 @@ export type IAdminOnsiteEventsApplicationService = IOnsiteEventAdminService &
 
 export type AdminSatelliteRouteServices = {
   jobQueues: IAdminJobQueuesApplicationService;
+  failedJobs: IAdminFailedJobsService;
   marketingEvents: IAdminMarketingEventsApplicationService;
   onsiteEvents: IAdminOnsiteEventsApplicationService;
   deliveryOps: DeliveryOpsApplicationService;

@@ -14,6 +14,8 @@ import type { ActorContext, IQueueMutator } from "../interfaces/queue-inspector.
 import type { IQueueAuditService } from "./queue-audit.service.js";
 
 const MUTATION_RATE_LIMIT = 10;
+/** Failed jobs are retried in batches of up to 50, so replays get their own, wider allowance. */
+const REPLAY_RATE_LIMIT = 60;
 const MUTATION_WINDOW_SEC = 60;
 
 /** Stable BullMQ job id for DLQ replay (dedupes concurrent/partial retries). */
@@ -40,13 +42,17 @@ export class BullMQQueueMutator implements IQueueMutator {
     return queue;
   }
 
-  private async assertRateLimit(actor: ActorContext): Promise<void> {
-    const key = `admin:queue-mutation:${actor.userId}`;
+  private async assertRateLimit(
+    actor: ActorContext,
+    scope: "mutation" | "replay" = "mutation",
+  ): Promise<void> {
+    const limit = scope === "replay" ? REPLAY_RATE_LIMIT : MUTATION_RATE_LIMIT;
+    const key = `admin:queue-${scope}:${actor.userId}`;
     const count = await this.redis.incr(key);
     if (count === 1) {
       await this.redis.expire(key, MUTATION_WINDOW_SEC);
     }
-    if (count > MUTATION_RATE_LIMIT) {
+    if (count > limit) {
       throw new Error("rate_limit_exceeded");
     }
   }
@@ -115,7 +121,7 @@ export class BullMQQueueMutator implements IQueueMutator {
     if (!confirmIdempotency) throw new Error("idempotency_confirmation_required");
 
     try {
-      await this.assertRateLimit(actor);
+      await this.assertRateLimit(actor, "replay");
 
       const auditRow = await this.failedJobs.findById(dlqJobId);
 

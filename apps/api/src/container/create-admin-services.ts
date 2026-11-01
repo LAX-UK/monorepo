@@ -32,6 +32,8 @@ import {
   createAdminRouteServices,
 } from "../services/admin/create-admin-route-services.js";
 import { attachAdminSatelliteServices } from "../services/admin/create-admin-satellite-services.js";
+import { AdminFailedJobsService } from "../services/admin/failed-jobs/admin-failed-jobs.service.js";
+import { DomainEventFailedJobAuditTrail } from "../services/admin/failed-jobs/failed-job-audit-trail.js";
 import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
 import type { IPayoutStatementApplicationService } from "../services/interfaces/finance-routes/finance-payout-statement.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
@@ -96,6 +98,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     disputeAllocationQueueReader,
     impersonationSessionRepository,
     impersonationDomainEventReader,
+    failedJobReviewRepository,
   } = repos;
   const {
     domainEventSink,
@@ -339,6 +342,13 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
       db,
       queueInspector: userMisc.queueAdmin.inspector,
       queueMutator: userMisc.queueAdmin.mutator,
+      failedJobs: new AdminFailedJobsService({
+        reader: failedJobReviewRepository,
+        disposition: failedJobReviewRepository,
+        retrier: userMisc.queueAdmin.mutator,
+        audit: new DomainEventFailedJobAuditTrail(domainEventSink, adminDomainEventReader),
+        actionsEnabled: env.FAILED_JOB_ACTIONS_ENABLED,
+      }),
       adminMarketingEventsService: userMisc.adminMarketingEventsService,
       onsiteEventAdminService: catalog.onsiteEventAdminService,
       onsiteEventStaffCheckInService: catalog.onsiteEventStaffCheckInService,

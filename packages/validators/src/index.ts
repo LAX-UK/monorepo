@@ -52,6 +52,7 @@ export * from "./xero.js";
 export * from "./admin-email.js";
 export * from "./admin-marketing-events.js";
 export * from "./admin-audit.js";
+export * from "./admin-failed-jobs.js";
 export * from "./admin-lot.js";
 export * from "./admin-kpi.js";
 export * from "./admin-work-items.js";
