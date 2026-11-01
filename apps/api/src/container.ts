@@ -3,7 +3,11 @@ import {
   DrizzleAdminSavedViewRepository,
   DrizzleBiddingExposureReader,
   DrizzleBuyerAgentAuthorisationRepository,
+  DrizzleConsignmentInboxReader,
   DrizzleConsignmentMessageRepository,
+  DrizzleConsignmentSavedReplyRepository,
+  DrizzleConsignmentStaffDirectory,
+  DrizzleConsignmentThreadFactsReader,
   DrizzleLaxAdminRolesRepository,
   DrizzleLaxStaffAccessRepository,
   DrizzleOrganisationBiddingLimitRepository,
@@ -22,6 +26,7 @@ import { createCatalogRouteServices } from "./container/create-catalog-route-ser
 import { createCatalogServices } from "./container/create-catalog-services.js";
 import { createComplianceMedia } from "./container/create-compliance-media.js";
 import { createComplianceRouteServices } from "./container/create-compliance-route-services.js";
+import { createConsignmentMessageServices } from "./container/create-consignment-message-services.js";
 import { createCronServices } from "./container/create-cron-services.js";
 import { createFinanceRouteServices } from "./container/create-finance-route-services.js";
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
@@ -249,6 +254,19 @@ export function createContainer(env: Env): Container {
     artistDeleteService: catalog.artistDeleteService,
     venueService: catalog.venueService,
   });
+  const consignmentMessages = createConsignmentMessageServices({
+    messages: new DrizzleConsignmentMessageRepository(db),
+    inbox: new DrizzleConsignmentInboxReader(db),
+    facts: new DrizzleConsignmentThreadFactsReader(db),
+    savedReplies: new DrizzleConsignmentSavedReplyRepository(db),
+    staff: new DrizzleConsignmentStaffDirectory(db),
+    dispatcher: platform.notificationDispatcher,
+    recipients: repos.legalEntityNotificationRecipients,
+    storage: infra.objectStorage,
+    media: complianceMedia.mediaUrlResolver,
+    events: platform.domainEventSink,
+    bullConnection: infra.bullConnection,
+  });
   const submissionRoutes = createSubmissionRouteServices({
     itemSubmissionSellerApi: catalog.itemSubmissionSellerApi,
     itemSubmissionAdminApi: catalog.itemSubmissionAdminApi,
@@ -257,13 +275,7 @@ export function createContainer(env: Env): Container {
     submissionAccess: new SubmissionAccessGuard(repos.itemSubmissionRepository),
     consignmentAfterSaleHttp: catalog.consignmentAfterSaleHttp,
     recordPeople: new DrizzleRecordPeopleReader(db),
-    consignmentMessages: {
-      repository: new DrizzleConsignmentMessageRepository(db),
-      dispatcher: platform.notificationDispatcher,
-      recipients: repos.legalEntityNotificationRecipients,
-      storage: infra.objectStorage,
-      media: complianceMedia.mediaUrlResolver,
-    },
+    consignmentMessages,
   });
   const admin = createAdminServices({
     env,
@@ -431,6 +443,7 @@ export function createContainer(env: Env): Container {
     lotFulfilmentService: payments.lotFulfilmentService,
     saleLifecycleService: lotLifecycle.saleLifecycleService,
     lotJobScheduler: catalog.lotJobScheduler,
+    consignmentReply: consignmentMessages.replyRuntime,
     saleStatusTransitionService: catalog.saleStatusTransitionService,
     bidService: biddingSaleroom.bidService,
     autoBidService: biddingSaleroom.autoBidService,

@@ -1,3 +1,4 @@
+import { threadAssignee } from "@auction/domain";
 import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type {
@@ -51,13 +52,17 @@ export class ConsignmentMessageNotifier implements IConsignmentMessageNotifier {
   }
 
   async clientWrote(notice: ConsignmentMessageNotice): Promise<void> {
-    const specialist = notice.subject.specialist;
-    if (!specialist) return;
+    // Whoever has the thread hears of it: a covering colleague, else the specialist.
+    const assignee = threadAssignee({
+      specialist: notice.subject.specialist,
+      covering: notice.subject.covering,
+    });
+    if (!assignee) return;
     const from = notice.subject.account
       ? `${notice.authorName} (${notice.subject.account.name})`
       : notice.authorName;
     await this.dispatcher
-      .dispatch(specialist.userId, {
+      .dispatch(assignee.userId, {
         type: CONSIGNMENT_MESSAGE_NOTIFICATION,
         title: `${from} wrote about “${notice.subject.title}”`,
         message: noticeExcerpt(notice),

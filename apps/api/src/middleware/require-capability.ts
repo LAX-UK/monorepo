@@ -13,6 +13,9 @@ import {
   CLIENT_KYC_ACCESS,
   CONDITION_REPORTS_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
+  CONSIGNMENT_INBOX_READ_ACCESS,
+  CONSIGNMENT_INBOX_REPLY_ACCESS,
+  CONSIGNMENT_SAVED_REPLIES_MANAGE_ACCESS,
   type CapabilityRequirement,
   DELIVERY_REPLAY_ACCESS,
   EMAIL_ADMIN_ACCESS,
@@ -168,6 +171,11 @@ export const requireSaleroomOperate = createRequireAccess(SALEROOM_ACCESS);
 export const requireLotsRead = createRequireAccess(LOTS_READ_ACCESS);
 export const requireLotWorkRead = createRequireAccess(LOT_WORK_READ_ACCESS);
 export const requireSubmissionsRead = createRequireAccess(SUBMISSIONS_READ_ACCESS);
+export const requireConsignmentInboxRead = createRequireAccess(CONSIGNMENT_INBOX_READ_ACCESS);
+export const requireConsignmentInboxReply = createRequireAccess(CONSIGNMENT_INBOX_REPLY_ACCESS);
+export const requireSavedRepliesManage = createRequireAccess(
+  CONSIGNMENT_SAVED_REPLIES_MANAGE_ACCESS,
+);
 export const requireCategoriesRead = createRequireAccess(CATEGORIES_READ_ACCESS);
 export const requireConditionReportsRead = createRequireAccess(CONDITION_REPORTS_READ_ACCESS);
 export const requireQrCodesRead = createRequireAccess(QR_CODES_READ_ACCESS);
