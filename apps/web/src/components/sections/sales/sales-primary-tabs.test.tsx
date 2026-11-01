@@ -12,30 +12,24 @@ const baseState: CalendarSalesUrlState = {
 };
 
 describe("SalesPrimaryTabs", () => {
-  it("renders all five section tabs", () => {
+  it("renders all five section tabs in sentence case", () => {
     render(<SalesPrimaryTabs state={baseState} />);
-    expect(screen.getByRole("link", { name: /^Upcoming$/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Live now/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Auction Results/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /New Lots/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Private Sales/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Upcoming" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Live now" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Auction results" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "New lots" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Private sales" })).toBeInTheDocument();
+  });
+
+  it("is a labelled navigation", () => {
+    render(<SalesPrimaryTabs state={baseState} />);
+    expect(screen.getByRole("navigation", { name: "Calendar sections" })).toBeInTheDocument();
   });
 
   it("marks the active tab with aria-current=page", () => {
     render(<SalesPrimaryTabs state={{ ...baseState, tab: "live" }} />);
-    expect(screen.getByRole("link", { name: /Live now/i })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: /^Upcoming$/i })).not.toHaveAttribute("aria-current");
-  });
-
-  it("uses horizontal scroll snap on the scroller", () => {
-    const { container } = render(<SalesPrimaryTabs state={baseState} />);
-    const scroller = container.firstElementChild;
-    expect(scroller).toHaveClass("snap-x", "snap-mandatory", "scroll-pl-4", "scroll-pr-4");
-  });
-
-  it("applies snap-start to each tab link", () => {
-    render(<SalesPrimaryTabs state={baseState} />);
-    expect(screen.getByRole("link", { name: /^Upcoming$/i })).toHaveClass("snap-start");
+    expect(screen.getByRole("link", { name: "Live now" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Upcoming" })).not.toHaveAttribute("aria-current");
   });
 
   it("puts Live now first when hasLiveSales is true", () => {
@@ -48,7 +42,7 @@ describe("SalesPrimaryTabs", () => {
   it("clears stale page params when changing tabs", () => {
     render(<SalesPrimaryTabs state={{ ...baseState, page: 3 }} />);
 
-    expect(screen.getByRole("link", { name: /New Lots/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "New lots" })).toHaveAttribute(
       "href",
       "/sales?tab=newLots",
     );

@@ -108,7 +108,15 @@ export type StatusBadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
   shape?: StatusBadgeShape;
   /** Something happening now: a pulsing dot (red on a tinted badge). The `live` tone always is. */
   live?: boolean;
+  /** A glyph in place of the status cue, for a tag that names a kind rather than a state. */
+  icon?: React.ReactNode;
+  /** An opaque surface with a hairline, so the badge reads on any picture it sits over. */
+  onImage?: boolean;
 };
+
+/** The on-image treatment: the page surface and a hairline, whatever the tone. */
+const ON_IMAGE_CLASSES =
+  "bg-[var(--lax-surface,var(--color-surface))] text-[var(--lax-fg,var(--color-on-surface))] shadow-[inset_0_0_0_1px_var(--lax-line,var(--color-outline-variant))]";
 
 /**
  * A status as a tinted badge: tone, cue and words together. Labels are written in sentence case
@@ -120,17 +128,29 @@ export function StatusBadge({
   tone = "neutral",
   shape,
   live = false,
+  icon,
+  onImage = false,
   children,
   ...props
 }: StatusBadgeProps) {
   const pulsing = live || tone === "live";
   return (
-    <span className={cn(statusBadgeVariants({ tone }), className)} data-tone={tone} {...props}>
-      <StatusBadgeCue
-        shape={live ? "dot" : (shape ?? STATUS_BADGE_DEFAULT_SHAPE[tone])}
-        pulse={pulsing}
-        liveDot={live && tone !== "live"}
-      />
+    <span
+      className={cn(statusBadgeVariants({ tone }), onImage && ON_IMAGE_CLASSES, className)}
+      data-tone={tone}
+      {...props}
+    >
+      {icon ? (
+        <span className={SHAPE_FRAME} aria-hidden data-shape="icon">
+          {icon}
+        </span>
+      ) : (
+        <StatusBadgeCue
+          shape={live ? "dot" : (shape ?? STATUS_BADGE_DEFAULT_SHAPE[tone])}
+          pulse={pulsing}
+          liveDot={live && tone !== "live"}
+        />
+      )}
       <span>{children}</span>
     </span>
   );

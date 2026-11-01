@@ -1,17 +1,6 @@
 {
   "entries": [
-    "app/(marketing)/unsubscribe/page.tsx::Alert",
-    "components/bid/bid-blocker-notice.tsx::Alert",
-    "components/marketing/contact-form.tsx::Input",
-    "components/marketing/policy-notice.tsx::Alert",
     "components/marketing/sale-telephone-booking-panel.tsx::Input",
-    "components/marketing/sale-type-badge.tsx::Badge",
-    "components/marketing/search-filter-form.tsx::Input",
-    "components/sections/artwork/onsite/onsite-participation-forms.tsx::Input",
-    "components/sections/home/newsletter-signup-form.tsx::Alert",
-    "components/sections/home/newsletter-signup-form.tsx::Input",
-    "components/sections/press/press-filter-form.tsx::Input",
-    "components/sections/saleroom/saleroom-catalog-search.tsx::Input",
-    "components/sections/saleroom/saleroom-register-to-bid.tsx::Input"
+    "components/sections/artwork/onsite/onsite-participation-forms.tsx::Input"
   ]
 }

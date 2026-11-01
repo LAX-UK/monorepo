@@ -38,6 +38,8 @@
   /* Semantic aliases (layer 2) */
   --color-ink: var(--color-brand-obsidian);
   --color-paper: var(--color-brand-light-cream);
+  /* Warm paper, shared with lax.art and Shop (--brand-paper in @auction/branding). */
+  --color-surface-paper: var(--brand-paper);
   --color-link: var(--color-brand-midnight);
   /* Bid's product accent, the shared name every LAX product defines (Shop aubergine, Account teal). */
   --color-product-accent: var(--color-brand-midnight);

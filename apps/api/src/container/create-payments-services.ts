@@ -12,6 +12,7 @@ import { XeroPaymentRecorder } from "../services/accounting/xero-payment-recorde
 import { XeroPayoutBillWriter } from "../services/accounting/xero-payout-bill.writer.js";
 import { AdminMetricsService } from "../services/admin-metrics.service.js";
 import { AmlSettlementCompliancePolicy } from "../services/aml/settlement-compliance.policy.js";
+import type { DisputeAllocationService } from "../services/disputes/dispute-allocation.service.js";
 import type { IErrorReporter } from "../services/interfaces/error-handling.js";
 import type { IInvoiceAccountingProvider } from "../services/interfaces/invoice-accounting.js";
 import type {
@@ -39,7 +40,10 @@ import { StripePaymentGateway } from "../services/stripe/stripe-payment-gateway.
 import { XeroOAuthService } from "../services/xero-oauth.service.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
-import { createDisputeCaseRecorder } from "./create-dispute-services.js";
+import {
+  createDisputeAllocationService,
+  createDisputeCaseRecorder,
+} from "./create-dispute-services.js";
 import type { ContainerInfra } from "./create-infra.js";
 import {
   type PaymentGroupServices,
@@ -67,6 +71,8 @@ export type ContainerPaymentsServices = {
   adminMetricsService: AdminMetricsService;
   /** "Pay several": one checkout for several invoices of an account. */
   paymentGroupCheckout: PaymentGroupServices["checkout"];
+  /** Allocates a dispute across the invoices it falls on, moving each seller's payout. */
+  disputeAllocationService: DisputeAllocationService;
   paymentTierPolicy: PaymentTierPolicy;
   settlementCompliancePolicy: AmlSettlementCompliancePolicy;
 };
@@ -356,6 +362,12 @@ export function createPaymentsServices(
     xeroOAuthService,
     adminMetricsService,
     paymentGroupCheckout: paymentGroups.checkout,
+    disputeAllocationService: createDisputeAllocationService({
+      db,
+      transactionRunner: platform.transactionRunner,
+      payoutAdjustments: payoutAdjustmentService,
+      events: domainEventSink,
+    }),
     paymentTierPolicy,
     settlementCompliancePolicy,
   };

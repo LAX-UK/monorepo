@@ -1,4 +1,3 @@
-import { ArtistBadges } from "@/components/marketing/artist-badges";
 import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-frame";
 import { ArtistWatchHeart } from "@/components/marketing/artist-watch-heart";
 import { ArtistDirectoryCard } from "@/components/sections/artists/artist-directory-card";
@@ -13,6 +12,7 @@ import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { MARKETING_ARTIST_GRID_CLASS } from "@auction/marketing-ui";
 import type { PublicArtistDirectoryRow } from "@auction/types";
 import { cn } from "@auction/ui";
+import { StatusBadge } from "@auction/ui/lax";
 import Link from "next/link";
 
 export function ArtistBrowseGrid({
@@ -148,12 +148,13 @@ export function ArtistBrowseCard({
                   imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
                 />
                 <div className="absolute left-3 top-3 flex flex-wrap gap-1">
-                  <ArtistBadges
-                    featured={artist.featured}
-                    verified={artist.verified}
-                    kindLabel={kindBadge}
-                    onImage
-                  />
+                  {artist.featured ? <StatusBadge tone="info">Featured</StatusBadge> : null}
+                  {artist.verified ? <StatusBadge tone="success">Verified</StatusBadge> : null}
+                  {kindBadge ? (
+                    <StatusBadge tone="neutral" onImage>
+                      {kindBadge}
+                    </StatusBadge>
+                  ) : null}
                 </div>
                 <div className="pointer-events-auto absolute bottom-3 right-3 z-10">
                   <ArtistWatchHeart

@@ -37,7 +37,7 @@ describe("buildSaleDetailNav", () => {
         lots: ["lots"],
         bidders: ["registrations", "telephone-bookings"],
         "sale-day": ["operations"],
-        content: ["media", "press", "documents"],
+        content: ["cover", "media", "press", "documents"],
         settings: ["schedule", "atg"],
       });
       expect(groups.map((group) => group.label)).toEqual([
@@ -57,7 +57,7 @@ describe("buildSaleDetailNav", () => {
       overview: ["overview"],
       lots: ["lots"],
       bidders: ["registrations"],
-      content: ["press", "documents"],
+      content: ["cover", "press", "documents"],
       settings: ["schedule", "atg"],
     });
   });
@@ -67,7 +67,7 @@ describe("buildSaleDetailNav", () => {
     expect(shape(groups)).toEqual({
       overview: ["overview"],
       lots: ["lots"],
-      content: ["media", "press", "documents"],
+      content: ["cover", "media", "press", "documents"],
       settings: ["schedule"],
     });
   });
@@ -77,7 +77,7 @@ describe("buildSaleDetailNav", () => {
     const byId = Object.fromEntries(groups.map((group) => [group.id, group]));
     expect(byId.overview?.href).toBe("/admin/sales/sale-1");
     expect(byId.bidders?.href).toBe("/admin/sales/sale-1/registrations");
-    expect(byId.content?.href).toBe("/admin/sales/sale-1/media");
+    expect(byId.content?.href).toBe("/admin/sales/sale-1/cover");
     expect(byId.settings?.pages.map((page) => page.href)).toEqual([
       "/admin/sales/sale-1/schedule",
       "/admin/sales/sale-1/atg",
@@ -143,6 +143,7 @@ describe("resolveSaleDetailNav", () => {
       "/admin/sales/sale-1/registrations": ["bidders", "registrations"],
       "/admin/sales/sale-1/telephone-bookings": ["bidders", "telephone-bookings"],
       "/admin/sales/sale-1/operations": ["sale-day", "operations"],
+      "/admin/sales/sale-1/cover": ["content", "cover"],
       "/admin/sales/sale-1/media": ["content", "media"],
       "/admin/sales/sale-1/press": ["content", "press"],
       "/admin/sales/sale-1/documents": ["content", "documents"],
@@ -158,6 +159,7 @@ describe("resolveSaleDetailNav", () => {
 
   it("shows secondary tabs only for a group with more than one page", () => {
     expect(at("/admin/sales/sale-1/press").pages.map((page) => page.id)).toEqual([
+      "cover",
       "media",
       "press",
       "documents",

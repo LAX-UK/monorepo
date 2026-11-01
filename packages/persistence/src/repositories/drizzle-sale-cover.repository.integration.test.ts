@@ -132,6 +132,8 @@ describe.skipIf(!HAS_DB)("DrizzleSaleCoverRepository (integration)", () => {
         await covers.replaceHomePins([saleB, saleA]);
         expect((await covers.getHome(saleB))?.homePinOrder).toBe(1);
         expect((await covers.getHome(saleA))?.homePinOrder).toBe(2);
+        const pinned = (await covers.listHomePins()).map((pin) => pin.saleId);
+        expect(pinned).toEqual([saleB, saleA]);
         await covers.replaceHomePins([saleA]);
         expect((await covers.getHome(saleB))?.homePinOrder).toBeNull();
         expect((await covers.getHome(saleA))?.homePinOrder).toBe(1);

@@ -1,9 +1,9 @@
 "use client";
 
-import { MarketingUnderlineTabs } from "@/components/marketing/marketing-underline-tabs";
 import { SALE_ANCHOR_STICKY_CLASS } from "@/lib/marketing/chrome";
 import { activeSectionId } from "@/lib/marketing/sale-anchor-active";
 import { cn } from "@auction/ui";
+import { OverflowTabs, PlainLink } from "@auction/ui/lax";
 import { useCallback, useEffect, useState } from "react";
 
 /** Where a section counts as being read: a third of the way down the viewport. */
@@ -64,20 +64,26 @@ export function SaleAnchorTabs({ tabs, className }: Props) {
   }, []);
 
   return (
-    <MarketingUnderlineTabs
-      variant="anchor"
-      ariaLabel="Sale sections"
+    <div
       className={cn(
-        `${SALE_ANCHOR_STICKY_CLASS} border-b border-outline-variant/30 bg-page-bg/90 backdrop-blur-md dark:bg-background/90`,
+        `${SALE_ANCHOR_STICKY_CLASS} border-b border-lax-line bg-page-bg/90 backdrop-blur-md dark:bg-background/90`,
         className,
       )}
-      tabs={tabs.map((tab) => ({
-        id: tab.id,
-        label: tab.label,
-        href: `#${tab.id}`,
-        active: tab.id === activeId,
-        onClick: (e) => onClick(e, tab.id),
-      }))}
-    />
+    >
+      <div className="mx-auto flex max-w-[var(--container-max,1440px)] px-4 md:px-6 lg:px-10">
+        <OverflowTabs
+          label="Sale sections"
+          Link={PlainLink}
+          currentId={activeId}
+          tabs={tabs.map((tab) => ({
+            id: tab.id,
+            label: tab.label,
+            href: `#${tab.id}`,
+            currentKind: "true",
+            onClick: (e) => onClick(e, tab.id),
+          }))}
+        />
+      </div>
+    </div>
   );
 }

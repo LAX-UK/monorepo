@@ -1,4 +1,5 @@
 import { HOME_HERO_BLEED, HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
+import { MarketingHangSkeleton } from "@auction/marketing-ui";
 import { Skeleton, cn } from "@auction/ui";
 
 /** F5b — Per-section skeleton mirroring the actual home composition.
@@ -13,6 +14,7 @@ export function HomeSkeleton() {
       <div className={HOME_HERO_BLEED}>
         <Skeleton className={cn("w-full rounded-none shimmer-sweep", HOME_HERO_MIN_H)} />
       </div>
+      <MarketingHangSkeleton />
       <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-12 md:px-6 lg:px-10">
         <Skeleton className="mb-8 h-10 w-64" />
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">

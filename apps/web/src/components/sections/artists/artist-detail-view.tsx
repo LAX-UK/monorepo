@@ -1,4 +1,3 @@
-import { ArtistBadges } from "@/components/marketing/artist-badges";
 import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-frame";
 import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
@@ -18,7 +17,7 @@ import {
   marketingArtistFacts,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink, StatusBadge } from "@auction/ui/lax";
 import Link from "next/link";
 
 type ArtistDetailViewProps = ArtistDetailPageData;
@@ -33,7 +32,6 @@ const KIND_BADGE_KINDS = new Set(["brand", "marque", "maker", "studio", "manufac
 
 export function ArtistDetailView({ vm, jsonLdText }: ArtistDetailViewProps) {
   const kind = vm.registry.kind ?? null;
-  const kindLabel = kind && KIND_BADGE_KINDS.has(kind) ? artistKindMeta(kind).badge : null;
   const facts = marketingArtistFacts({
     nationality: vm.registry.nationality,
     birthYear: vm.registry.birthYear,
@@ -90,8 +88,13 @@ export function ArtistDetailView({ vm, jsonLdText }: ArtistDetailViewProps) {
           </>
         }
         badges={
-          vm.registry.verified || kindLabel ? (
-            <ArtistBadges verified={vm.registry.verified} kindLabel={kindLabel} />
+          vm.registry.verified || (kind && KIND_BADGE_KINDS.has(kind)) ? (
+            <>
+              {vm.registry.verified ? <StatusBadge tone="success">Verified</StatusBadge> : null}
+              {kind && KIND_BADGE_KINDS.has(kind) ? (
+                <StatusBadge tone="neutral">{artistKindMeta(kind).badge}</StatusBadge>
+              ) : null}
+            </>
           ) : null
         }
         summary={

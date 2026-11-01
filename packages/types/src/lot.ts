@@ -145,6 +145,30 @@ export type PublicLotView = Omit<Lot, "reservePrice"> & {
   reserveMet: boolean | null;
 };
 
+/**
+ * A withdrawn lot as the public reads it: who and what it was, so a catalogue keeps its
+ * numbering, and nothing about its sale. No price, estimate, timing, bidding or winner.
+ */
+export type WithdrawnLotView = Pick<
+  Lot,
+  | "id"
+  | "saleId"
+  | "lotNumber"
+  | "title"
+  | "description"
+  | "medium"
+  | "dimensions"
+  | "images"
+  | "imageAssets"
+  | "artistId"
+  | "categoryId"
+  | "categoryIds"
+  | "auctionType"
+> & {
+  /** The public word for a cancelled lot. */
+  status: "withdrawn";
+};
+
 /** Lot timing as received over the wire or after RSC serialization. */
 export type LotTimingValue = AuctionTimingValue;
 

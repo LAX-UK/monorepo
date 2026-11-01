@@ -1,4 +1,5 @@
 import type {
+  HomePinnedSale,
   ISaleCoverRepository,
   SaleCoverState,
   SaleHomePatch,
@@ -95,6 +96,16 @@ export class InMemorySaleCoverRepository implements ISaleCoverRepository {
         return found ? [[id, found.status] as const] : [];
       }),
     );
+  }
+
+  async listHomePins(): Promise<HomePinnedSale[]> {
+    return [...this.sales.values()]
+      .flatMap((found) =>
+        found.homePinOrder === null
+          ? []
+          : [{ saleId: found.id, title: `Sale ${found.id}`, position: found.homePinOrder }],
+      )
+      .sort((a, b) => a.position - b.position);
   }
 
   async replaceHomePins(saleIds: readonly string[]): Promise<void> {

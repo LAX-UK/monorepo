@@ -1,5 +1,5 @@
 import { CircleAlert, CircleCheck, Info, TriangleAlert } from "lucide-react";
-import type * as React from "react";
+import * as React from "react";
 import { cn } from "../lib/utils.js";
 
 /**
@@ -45,7 +45,8 @@ export function Notice({
   actions,
   alert = false,
   className,
-}: {
+  ...rest
+}: Omit<React.HTMLAttributes<HTMLDivElement>, "title" | "role" | "children"> & {
   tone?: NoticeTone;
   title: React.ReactNode;
   children?: React.ReactNode;
@@ -55,9 +56,12 @@ export function Notice({
   className?: string;
 }) {
   const { box, icon, Icon } = toneClass[tone];
+  const titleId = React.useId();
   return (
     <div
+      {...rest}
       role={alert ? "alert" : "status"}
+      aria-labelledby={titleId}
       data-tone={tone}
       className={cn(
         "flex flex-col gap-3 rounded-lax-card border px-3 py-2.5 text-lax-ui sm:flex-row sm:items-center",
@@ -69,7 +73,9 @@ export function Notice({
       <div className="flex min-w-0 flex-1 gap-2.5 in-data-[lax-density=client]:gap-3">
         <Icon aria-hidden className={cn("mt-0.5 size-4 shrink-0", icon)} strokeWidth={1.75} />
         <div className="min-w-0">
-          <p className="font-medium in-data-[lax-density=client]:font-semibold">{title}</p>
+          <p id={titleId} className="font-medium in-data-[lax-density=client]:font-semibold">
+            {title}
+          </p>
           {children ? <div className="mt-0.5 opacity-90">{children}</div> : null}
         </div>
       </div>

@@ -2,13 +2,17 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { workspaceSourceAliases } from "./workspace-source-aliases.mjs";
 
-test("maps @auction/marketing-ui root and MediaImage subpath exports to src", () => {
+test("maps @auction/marketing-ui root and cover fixture exports to src", () => {
   const aliases = workspaceSourceAliases(["@auction/marketing-ui"]);
   const root = aliases.find((a) => a.find === "@auction/marketing-ui");
   assert.ok(root, "root alias");
   assert.match(root.replacement, /marketing-ui\/src\/index\.ts$/);
 
-  assert.equal(aliases.filter((a) => a.find.startsWith("@auction/marketing-ui")).length, 1);
+  const fixtures = aliases.find((a) => a.find === "@auction/marketing-ui/cover-fixtures");
+  assert.ok(fixtures, "cover fixtures alias");
+  assert.match(fixtures.replacement, /marketing-ui\/src\/cover\/cover-fixtures\.ts$/);
+
+  assert.equal(aliases.filter((a) => a.find.startsWith("@auction/marketing-ui")).length, 2);
 });
 
 test("maps @auction/shop-portal subpath exports to src", () => {

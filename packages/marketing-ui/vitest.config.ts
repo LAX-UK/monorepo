@@ -5,7 +5,7 @@ import { workspaceSourceAliases } from "../../scripts/vitest/workspace-source-al
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: [...workspaceSourceAliases(["@auction/ui"])],
+    alias: [...workspaceSourceAliases(["@auction/ui", "@auction/domain", "@auction/types"])],
   },
   test: {
     environment: "jsdom",

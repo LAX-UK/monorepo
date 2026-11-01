@@ -3,16 +3,15 @@
 import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import { useViewQueryNavigation } from "@/lib/hooks/use-view-query-navigation";
 import { salesBrowseViewCookieValue } from "@/lib/preferences/view-query-navigation";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { type SegmentOption, SegmentedControl } from "@auction/ui/lax";
 import { CalendarDays, LayoutGrid, Rows3 } from "lucide-react";
 
 export type SalesBrowseView = "grid" | "list" | "calendar";
 
-const MODES: ReadonlyArray<{ value: SalesBrowseView; label: string; Icon: typeof LayoutGrid }> = [
-  { value: "grid", label: "Grid", Icon: LayoutGrid },
-  { value: "list", label: "List", Icon: Rows3 },
-  { value: "calendar", label: "Calendar", Icon: CalendarDays },
+const MODES: readonly SegmentOption<SalesBrowseView>[] = [
+  { value: "grid", label: "Grid", icon: <LayoutGrid aria-hidden />, iconOnly: true },
+  { value: "list", label: "List", icon: <Rows3 aria-hidden />, iconOnly: true },
+  { value: "calendar", label: "Calendar", icon: <CalendarDays aria-hidden />, iconOnly: true },
 ];
 
 /** Sales calendar view toggle (grid / list / agenda-by-month). Uses the same URL + scroll
@@ -32,46 +31,12 @@ export function SalesViewSwitcher({
   });
 
   return (
-    <div className="inline-flex items-center gap-1">
-      <span className="sr-only" aria-live="polite">
-        {liveView === "calendar"
-          ? "Calendar view"
-          : liveView === "list"
-            ? "List view"
-            : "Grid view"}
-      </span>
-      <div
-        role="radiogroup"
-        aria-label="View"
-        className="inline-flex min-w-0 items-center gap-1 rounded-full border border-outline-variant/40 bg-surface-container-low p-1"
-      >
-        {MODES.map(({ value: m, label, Icon }) => {
-          const selected = liveView === m;
-          return (
-            <Button
-              key={m}
-              type="button"
-              variant="ghost"
-              size="icon-md"
-              // biome-ignore lint/a11y/useSemanticElements: icon toggle uses button radios to match the shared ViewSwitcher
-              role="radio"
-              aria-checked={selected}
-              disabled={pending}
-              onClick={() => navigate(m)}
-              title={label}
-              className={cn(
-                "",
-                selected
-                  ? "bg-primary text-on-primary hover:bg-primary"
-                  : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",
-              )}
-            >
-              <Icon className="size-4 shrink-0" aria-hidden />
-              <span className="sr-only">{label}</span>
-            </Button>
-          );
-        })}
-      </div>
-    </div>
+    <SegmentedControl
+      label="View"
+      value={liveView}
+      onValueChange={navigate}
+      options={MODES}
+      disabled={pending}
+    />
   );
 }

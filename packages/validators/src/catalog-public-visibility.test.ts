@@ -1,9 +1,14 @@
 import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
+  PUBLIC_BROWSE_LOT_STATUSES,
+  PUBLIC_CATALOGUE_LOT_STATUSES,
+  PUBLIC_LOT_STATUSES,
   filterLotsForPublicCatalog,
   isPublicCatalogLot,
   isPublicCatalogSale,
+  isPublicCatalogueLot,
+  isWithdrawnLot,
   resolvePublicLotListFilter,
   resolvePublicSaleListFilter,
   viewerCanSeeNonPublicCatalog,
@@ -198,5 +203,48 @@ describe("viewerCanSeeNonPublicCatalog", () => {
 
   it("is false for anonymous clients", () => {
     expect(viewerCanSeeNonPublicCatalog(undefined)).toBe(false);
+  });
+});
+
+describe("withdrawn lots", () => {
+  const publicSale = { status: "ended" } as const;
+
+  it("reads a withdrawn lot of a public sale on its page and in the catalogue", () => {
+    expect(isPublicCatalogueLot({ status: "cancelled", saleId: "s1" }, publicSale)).toBe(true);
+    expect(isWithdrawnLot({ status: "cancelled" })).toBe(true);
+    expect(isWithdrawnLot({ status: "voided" })).toBe(false);
+  });
+
+  it("keeps a withdrawn lot out of the browse-style check", () => {
+    expect(isPublicCatalogLot({ status: "cancelled", saleId: "s1" }, publicSale)).toBe(false);
+  });
+
+  it("hides a withdrawn lot whose sale is not public or that has no sale", () => {
+    expect(isPublicCatalogueLot({ status: "cancelled", saleId: "s1" }, { status: "draft" })).toBe(
+      false,
+    );
+    expect(isPublicCatalogueLot({ status: "cancelled", saleId: "s1" }, null)).toBe(false);
+    expect(isPublicCatalogueLot({ status: "cancelled", saleId: null }, null)).toBe(false);
+  });
+
+  it("keeps voided and draft lots hidden", () => {
+    expect(isPublicCatalogueLot({ status: "voided", saleId: "s1" }, publicSale)).toBe(false);
+    expect(isPublicCatalogueLot({ status: "draft", saleId: "s1" }, publicSale)).toBe(false);
+  });
+
+  it("leaves other statuses to the existing rule", () => {
+    expect(isPublicCatalogueLot({ status: "active", saleId: "s1" }, publicSale)).toBe(true);
+  });
+
+  it("adds cancelled only to the catalogue statuses, never to browse or archive", () => {
+    expect(PUBLIC_CATALOGUE_LOT_STATUSES).toContain("cancelled");
+    expect(PUBLIC_LOT_STATUSES).not.toContain("cancelled");
+    expect(PUBLIC_BROWSE_LOT_STATUSES).not.toContain("cancelled");
+  });
+
+  it("does not let an anonymous list filter ask for withdrawn lots", () => {
+    expect(
+      resolvePublicLotListFilter({ status: "cancelled", viewerCanSeeNonPublic: false }),
+    ).toEqual({ statuses: [] });
   });
 });

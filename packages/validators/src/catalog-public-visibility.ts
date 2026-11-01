@@ -39,6 +39,17 @@ export const PUBLIC_SALE_STATUSES = [
   "ended",
 ] as const satisfies readonly SaleStatus[];
 
+/**
+ * A lot's own page and its row in the sale catalogue. A withdrawn (cancelled) lot stays
+ * readable here so a catalogue keeps its numbering, but it is never in {@link PUBLIC_LOT_STATUSES}:
+ * browse, search, archive, sitemap and counts do not list it. A voided lot is an invalidated
+ * result, not a withdrawal, so it stays off every public surface.
+ */
+export const PUBLIC_CATALOGUE_LOT_STATUSES = [
+  ...PUBLIC_LOT_STATUSES,
+  "cancelled",
+] as const satisfies readonly LotStatus[];
+
 const NON_PUBLIC_LOT_STATUSES: readonly LotStatus[] = ["draft", "cancelled", "voided"];
 const NON_PUBLIC_SALE_STATUSES: readonly SaleStatus[] = ["draft", "cancelled"];
 
@@ -89,6 +100,26 @@ export function isPublicCatalogLot(
   if (!isPublicLotStatus(lot.status)) return false;
   if (lot.saleId && (!parentSale || !isPublicCatalogSale(parentSale))) return false;
   return true;
+}
+
+/** Withdrawn lots are shown without price, history or actions. */
+export function isWithdrawnLot(lot: Pick<Lot, "status">): boolean {
+  return lot.status === "cancelled";
+}
+
+/**
+ * Whether a lot may be read on its own page and in its sale's catalogue. Everything
+ * {@link isPublicCatalogLot} allows, plus a withdrawn lot that belongs to a public sale. A withdrawn
+ * lot with no sale is inventory, not a catalogue entry, so it stays hidden.
+ */
+export function isPublicCatalogueLot(
+  lot: Pick<Lot, "status" | "saleId">,
+  parentSale?: PublicCatalogSaleContext | null,
+): boolean {
+  if (isWithdrawnLot(lot)) {
+    return Boolean(lot.saleId && parentSale && isPublicCatalogSale(parentSale));
+  }
+  return isPublicCatalogLot(lot, parentSale);
 }
 
 export function viewerCanSeeNonPublicCatalog(

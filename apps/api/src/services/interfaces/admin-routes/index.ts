@@ -39,6 +39,7 @@ export type {
   DisputeCaseListFilter,
   IAdminAmlApplicationService,
   IAdminDisputeCaseQueryService,
+  IAdminDisputeDeskService,
   IAdminLegalEntityLifecycleApplicationService,
   IAdminSourceOfFundsApplicationService,
 } from "./admin-compliance-routes.js";
