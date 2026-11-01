@@ -1,4 +1,5 @@
 import {
+  CONSIGNMENT_REPLY_DELIVERY_QUEUE_NAME,
   DATA_EXPORT_QUEUE_NAME,
   DEAD_LETTER_QUEUE_NAME,
   EMAIL_QUEUE_NAME,
@@ -59,6 +60,25 @@ export const QUEUE_REGISTRY = {
     },
     description:
       "Lot activate/end scheduling (worker consumer when LIFECYCLE_EXECUTION_OWNER=worker; API consumer when api)",
+  },
+  [CONSIGNMENT_REPLY_DELIVERY_QUEUE_NAME]: {
+    producers: ["api"],
+    consumer: "api",
+    criticality: "normal",
+    pauseOrder: null,
+    heartbeatKey: null,
+    dlq: false,
+    showInUi: true,
+    allowUiRetries: false,
+    repeatable: false,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 2000 },
+      removeOnComplete: 200,
+      removeOnFail: 500,
+    },
+    description:
+      "Tells an account about a specialist's reply once its short hold for taking it back has ended",
   },
   [VALIDATE_UPLOAD_QUEUE_NAME]: {
     producers: ["api"],

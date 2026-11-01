@@ -2,6 +2,7 @@
 export const DEAD_LETTER_QUEUE_NAME = "dead-letter" as const;
 
 export const LOT_LIFECYCLE_QUEUE_NAME = "lot-lifecycle" as const;
+export const CONSIGNMENT_REPLY_DELIVERY_QUEUE_NAME = "consignment-reply-delivery" as const;
 export const EMAIL_QUEUE_NAME = "email" as const;
 export const VALIDATE_UPLOAD_QUEUE_NAME = "validate-upload" as const;
 export const PROCESS_IMAGE_QUEUE_NAME = "process-image" as const;

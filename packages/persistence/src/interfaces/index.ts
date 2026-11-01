@@ -997,15 +997,43 @@ export type {
   NewAccessRequest,
 } from "./access-request.repository.js";
 export type {
+  AssignThreadInput,
+  AssignThreadResult,
   AttachableUpload,
+  ClaimedReplyNotice,
   ConsignmentMessageAttachmentRow,
+  ConsignmentMessageAudience,
   ConsignmentMessageRow,
-  ConsignmentThreadInboxQuery,
+  ConsignmentThreadEventKind,
+  ConsignmentThreadEventRecord,
+  ConsignmentThreadState,
   ConsignmentThreadSubject,
-  ConsignmentThreadSummaryRow,
   IConsignmentMessageRepository,
   NewConsignmentMessage,
+  StaffPersonRecord,
+  UndoHeldReplyResult,
 } from "./consignment-message.repository.js";
+export type {
+  ConsignmentInboxFacetRecord,
+  ConsignmentInboxFacetsRecord,
+  ConsignmentInboxQueryFilter,
+  ConsignmentInboxRowRecord,
+  ConsignmentInboxSummaryRecord,
+  IConsignmentInboxReader,
+} from "./consignment-inbox.reader.js";
+export type {
+  ConsignmentThreadFactsRecord,
+  IConsignmentThreadFactsReader,
+} from "./consignment-thread-facts.reader.js";
+export type {
+  IConsignmentSavedReplyRepository,
+  SavedReplyRecord,
+  SavedReplyWriteResult,
+} from "./consignment-saved-reply.repository.js";
+export type {
+  ActiveStaffMember,
+  IConsignmentStaffDirectory,
+} from "./consignment-staff-directory.reader.js";
 export type {
   ClaimPaymentGroupInput,
   ClaimPaymentGroupResult,
