@@ -1,3 +1,4 @@
+import { staffRoleLastDay } from "@/lib/admin/people/staff-roles.vm";
 import { FIRST_REPLY_TARGET_WORKING_MINUTES } from "@auction/domain";
 import type { ConsignmentReplyClockView, ConsignmentThreadAssigneeView } from "@auction/validators";
 
@@ -104,14 +105,19 @@ export function waitingCue(clock: ConsignmentReplyClockView, now: Date): Waiting
   return { kind: "text", label: `${due.prefix} ${due.text}` };
 }
 
-/** "Clara Mendes (you)", "James Hale, covering", or null when nobody has it. */
+/**
+ * "Clara Mendes (you)", "James Hale, covering", "James Hale, covering until 30 Nov 2026", or null
+ * when nobody has it.
+ */
 export function assigneeLabel(
   assignee: ConsignmentThreadAssigneeView | null,
   viewerUserId: string,
 ): string | null {
   if (!assignee) return null;
   const you = assignee.userId === viewerUserId ? " (you)" : "";
-  return assignee.covering ? `${assignee.name}${you}, covering` : `${assignee.name}${you}`;
+  if (!assignee.covering) return `${assignee.name}${you}`;
+  const until = assignee.coveringUntil ? ` until ${staffRoleLastDay(assignee.coveringUntil)}` : "";
+  return `${assignee.name}${you}, covering${until}`;
 }
 
 /** "Lena: Is the 19 November date fixed?", or "Clara: …" for our own last reply. */

@@ -87,6 +87,17 @@ describe("assigneeLabel", () => {
     expect(assigneeLabel({ userId: "u2", name: "James Hale", covering: true }, "u1")).toBe(
       "James Hale, covering",
     );
+    expect(
+      assigneeLabel(
+        {
+          userId: "u2",
+          name: "James Hale",
+          covering: true,
+          coveringUntil: "2026-12-01T00:00:00.000Z",
+        },
+        "u1",
+      ),
+    ).toBe("James Hale, covering until 30 Nov 2026");
     expect(assigneeLabel(null, "u1")).toBeNull();
   });
 });
