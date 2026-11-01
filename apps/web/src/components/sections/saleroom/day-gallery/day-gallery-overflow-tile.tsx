@@ -3,7 +3,7 @@
 import { MediaImage } from "@/components/ui/media-image";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 
 export type DayGalleryOverflowTileProps = {
   overflowCount: number;
@@ -28,7 +28,7 @@ export function DayGalleryOverflowTile({
       type="button"
       variant="ghost"
       className={cn(
-        "group relative aspect-square h-auto w-full overflow-hidden rounded-lg bg-surface-container p-0 hover:bg-surface-container",
+        "group relative aspect-square h-auto w-full overflow-hidden bg-surface-container p-0 in-data-[lax-density=client]:px-0 hover:bg-surface-container",
         FOCUS_RING,
       )}
       aria-label={`View all ${total} auction day ${mediaNoun}`}

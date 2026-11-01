@@ -1,7 +1,7 @@
 "use client";
 
 import { MediaImage } from "@/components/ui/media-image";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { useMemo, useState } from "react";
 
 type Props = {
@@ -68,9 +68,9 @@ export function DeferredLiveIframe({
       <div className="absolute inset-0 flex items-center justify-center p-6">
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={() => setPlay(true)}
-          className="h-auto rounded-md border-2 border-white/90 bg-black/40 px-8 py-4 font-label text-sm font-bold text-white backdrop-blur-sm hover:bg-black/55 hover:text-white"
+          className="h-auto border-2 border-white/90 bg-black/40 text-white backdrop-blur-sm hover:bg-black/55 hover:text-white"
         >
           {ctaLabel}
         </Button>

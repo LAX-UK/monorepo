@@ -1,4 +1,4 @@
-import { Button } from "@auction/ui";
+import { ButtonLink } from "@auction/ui/lax";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 
@@ -91,24 +91,20 @@ export function MarketingLoadMore({
         </div>
         {hasMore ? (
           <div className="flex justify-center">
-            <Button
-              asChild
+            <ButtonLink
+              Link={Link}
               variant="ghost"
-              className="h-10 w-[148px] min-w-0 border border-outline-variant/50 bg-transparent font-body text-base font-semibold leading-6 tracking-wide text-on-surface hover:bg-transparent dark:hover:bg-transparent"
+              className="w-[148px] min-w-0 border border-outline-variant/50 bg-transparent font-body text-on-surface hover:bg-transparent dark:hover:bg-transparent inline-flex items-center justify-center"
+              href={nextHref}
+              rel="next"
+              prefetch={false}
             >
-              <Link
-                href={nextHref}
-                rel="next"
-                prefetch={false}
-                className="inline-flex items-center justify-center"
-              >
-                Load More
-                <ChevronDown className="ml-1 size-4" aria-hidden />
-                <span className="sr-only">
-                  — next {remaining} {unitLabel}
-                </span>
-              </Link>
-            </Button>
+              Load More
+              <ChevronDown className="ml-1 size-4" aria-hidden />
+              <span className="sr-only">
+                — next {remaining} {unitLabel}
+              </span>
+            </ButtonLink>
           </div>
         ) : null}
         {canLoadAll && hasMore ? (

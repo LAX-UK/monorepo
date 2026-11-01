@@ -12,8 +12,8 @@ import {
   patchNotificationsReadAll,
 } from "@/lib/services/client/notifications-inbox.client";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { Button } from "@auction/ui/lax";
 import { Bell } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useRef, useState } from "react";
@@ -91,8 +91,7 @@ export function NotificationBell({ headerTone = "on-light" }: { headerTone?: Sit
               <Button
                 type="button"
                 variant="ghost"
-                size="default"
-                className="h-auto px-0 py-0 font-label text-xs text-link hover:bg-transparent hover:underline"
+                className="h-auto text-link hover:bg-transparent hover:underline"
                 onClick={() => void markAllRead()}
               >
                 Mark all read
@@ -132,8 +131,7 @@ export function NotificationBell({ headerTone = "on-light" }: { headerTone?: Sit
                     <Button
                       type="button"
                       variant="ghost"
-                      size="default"
-                      className="mt-2 h-auto px-0 py-0 font-label text-xs text-secondary hover:bg-transparent hover:text-link"
+                      className="mt-2 h-auto text-secondary hover:bg-transparent hover:text-link"
                       onClick={() => void markRead(n.id)}
                     >
                       Mark read

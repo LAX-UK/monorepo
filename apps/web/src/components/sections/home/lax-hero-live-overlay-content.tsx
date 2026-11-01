@@ -4,9 +4,8 @@ import type { HeroStateVM } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { HOME_HERO_CONTENT_PT, HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
-import { LiveDot } from "@auction/ui";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 
 type LiveVm = Extract<HeroStateVM, { kind: "live" }>;
@@ -46,14 +45,11 @@ export function LaxHeroLiveOverlayContent({
           </OverlayToneText>
         </div>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <Button variant="liveJoin" size="xl" className="min-h-[44px] w-fit" asChild>
-            <Link href={vm.saleroomHref} className="inline-flex items-center justify-center gap-2">
-              <LiveDot className="h-5 w-5" />
-              Open saleroom
-            </Link>
+          <Button variant="primary" className="w-fit" asChild>
+            <Link href={vm.saleroomHref}>Join the saleroom</Link>
           </Button>
           {watchOnYoutubeHref ? (
-            <Button variant="secondary" size="xl" className="min-h-[44px] w-fit" asChild>
+            <Button variant="secondary" className="w-fit" asChild>
               <a href={watchOnYoutubeHref} target="_blank" rel="noreferrer noopener">
                 Watch on YouTube<span className="sr-only"> (opens in new tab)</span>
               </a>

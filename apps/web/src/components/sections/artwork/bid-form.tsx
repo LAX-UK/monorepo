@@ -8,7 +8,7 @@ import { getArtworkAuctionTypeProfile } from "@/lib/marketing/artwork/auction-ty
 import type { BidErrorPresentation } from "@/lib/ui/bid-error";
 import type { LotAuctionType } from "@auction/types";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { useId } from "react";
 
 type Props = {
@@ -75,10 +75,9 @@ export function BidForm({
         <Button
           type="button"
           variant="secondary"
-          size="default"
           disabled={biddingDisabled}
           onClick={onUseMinimum}
-          className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold text-secondary ring-1 ring-outline-variant/15 hover:bg-surface-container"
+          className="h-auto bg-surface-container-high text-secondary ring-1 ring-outline-variant/15 hover:bg-surface-container"
         >
           {typeProfile.minButtonLabel === "accept"
             ? `Accept ${formatMoney(minStr)}`
@@ -93,10 +92,9 @@ export function BidForm({
                   key={add}
                   type="button"
                   variant="secondary"
-                  size="default"
                   disabled={biddingDisabled}
                   onClick={() => onAmountChange(v.toFixed(2))}
-                  className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold text-on-surface ring-1 ring-outline-variant/15 hover:bg-primary hover:text-on-primary"
+                  className="h-auto bg-surface-container-high text-on-surface ring-1 ring-outline-variant/15 hover:bg-primary hover:text-on-primary"
                 >
                   {label}
                 </Button>
@@ -107,8 +105,7 @@ export function BidForm({
           <Button
             type="button"
             variant="ghost"
-            size="default"
-            className="h-auto font-label text-xs font-bold text-on-surface-variant hover:text-link"
+            className="h-auto text-on-surface-variant hover:text-link"
             onClick={() => document.getElementById(amountInputId)?.focus()}
           >
             Enter custom
@@ -182,9 +179,9 @@ export function BidForm({
               {" "}
               <Button
                 type="button"
-                variant="link"
-                size="link"
-                className="font-semibold text-link underline-offset-2 hover:underline"
+                variant="ghost"
+                size="sm"
+                className="underline underline-offset-4"
                 onClick={activeAutoBidNote.onChangeAutoBid}
               >
                 Change auto-bid
@@ -208,8 +205,9 @@ export function BidForm({
       ) : null}
       <div className="space-y-2">
         <Button
+          variant="primary"
           type="button"
-          className={cn("h-auto w-full py-6", reviewButtonClassName)}
+          className={cn("h-auto w-full", reviewButtonClassName)}
           disabled={biddingDisabled || Boolean(manualBidBlockedReason)}
           onClick={onReview}
         >

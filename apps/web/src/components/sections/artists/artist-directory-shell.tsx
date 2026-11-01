@@ -25,7 +25,7 @@ import {
   MarketingLinkFilterSheet,
   MarketingSortLinks,
 } from "@auction/marketing-ui";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 const SORT_OPTIONS = [
@@ -247,12 +247,12 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
               description="Request a valuation or submit work to be considered for an upcoming auction."
               actions={
                 <>
-                  <Button variant="cta" asChild>
-                    <Link href="/selling/new">Submit work</Link>
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link href="/sell">Selling guide</Link>
-                  </Button>
+                  <ButtonLink Link={Link} variant="primary" href="/selling/new">
+                    Submit work
+                  </ButtonLink>
+                  <ButtonLink Link={Link} variant="secondary" href="/sell">
+                    Selling guide
+                  </ButtonLink>
                 </>
               }
             />
@@ -272,12 +272,12 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
           }
           action={
             <>
-              <Button asChild>
-                <Link href={preset.canonicalPath}>Clear filters</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/artists">Browse all artists</Link>
-              </Button>
+              <ButtonLink Link={Link} variant="primary" href={preset.canonicalPath}>
+                Clear filters
+              </ButtonLink>
+              <ButtonLink Link={Link} variant="secondary" href="/artists">
+                Browse all artists
+              </ButtonLink>
             </>
           }
         />

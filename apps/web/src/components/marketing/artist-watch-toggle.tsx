@@ -7,7 +7,7 @@ import {
 } from "@/lib/data/http/artist-watchlist.client";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { Bookmark, BookmarkPlus, Eye } from "lucide-react";
 import { useCallback, useState } from "react";
 
@@ -69,7 +69,7 @@ export function ArtistWatchToggle({
       aria-pressed={watching}
       onClick={() => void toggle()}
       className={cn(
-        "h-auto min-h-11 gap-2 rounded-md px-4 py-2 font-body text-sm font-medium",
+        "h-auto gap-2 font-body",
         FOCUS_RING,
         watching
           ? "bg-primary-container/30 text-primary hover:bg-primary-container/30"

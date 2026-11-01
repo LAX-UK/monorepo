@@ -4,7 +4,7 @@ import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import { useViewQueryNavigation } from "@/lib/hooks/use-view-query-navigation";
 import { salesBrowseViewCookieValue } from "@/lib/preferences/view-query-navigation";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { CalendarDays, LayoutGrid, Rows3 } from "lucide-react";
 
 export type SalesBrowseView = "grid" | "list" | "calendar";
@@ -52,7 +52,7 @@ export function SalesViewSwitcher({
               key={m}
               type="button"
               variant="ghost"
-              size="icon"
+              size="icon-md"
               // biome-ignore lint/a11y/useSemanticElements: icon toggle uses button radios to match the shared ViewSwitcher
               role="radio"
               aria-checked={selected}
@@ -60,7 +60,7 @@ export function SalesViewSwitcher({
               onClick={() => navigate(m)}
               title={label}
               className={cn(
-                "size-9 rounded-full md:size-8",
+                "",
                 selected
                   ? "bg-primary text-on-primary hover:bg-primary"
                   : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type Props = {
@@ -41,7 +41,7 @@ export function LotQuickLookDeckNav({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="icon-md"
           className={cn(
             navButtonClass,
             "pointer-events-auto focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-5",
@@ -55,7 +55,7 @@ export function LotQuickLookDeckNav({
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="icon-md"
           className={cn(
             navButtonClass,
             "pointer-events-auto focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-5",
@@ -78,7 +78,7 @@ export function LotQuickLookDeckNav({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size="icon-md"
         className={cn(
           navButtonClass,
           "focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-5",
@@ -93,7 +93,7 @@ export function LotQuickLookDeckNav({
       <Button
         type="button"
         variant="ghost"
-        size="icon"
+        size="icon-md"
         className={cn(
           navButtonClass,
           "focus-visible:ring-0 focus-visible:ring-offset-0 [&_svg]:size-5",

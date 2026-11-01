@@ -4,9 +4,9 @@ import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
 import { cn } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
+import { Button } from "@auction/ui/lax";
 import { type NewsletterSubscribeInput, newsletterSubscribeSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
@@ -65,7 +65,7 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
             <AlertDescription>{bannerError}</AlertDescription>
           </Alert>
         ) : null}
-        <div className="flex flex-col sm:flex-row">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <div className="min-w-0 flex-1">
             <FormField
               control={form.control}
@@ -80,7 +80,7 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
                       placeholder="your@email.com"
                       aria-label="Email address"
                       disabled={loading}
-                      className="h-12 rounded-b-none rounded-t-sm border-outline-variant bg-surface px-4 font-body text-sm text-on-surface sm:rounded-l-sm sm:rounded-r-none sm:border-r-0"
+                      className="h-11 rounded-sm border-outline-variant bg-surface px-4 font-body text-sm text-on-surface sm:h-9"
                     />
                   </FormControl>
                   <FormMessage
@@ -92,11 +92,13 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
           </div>
           <Button
             type="submit"
-            variant="cta"
+            variant={onDark ? "secondary" : "primary"}
             disabled={loading}
+            // The hero ground is near-black in both themes, so its button is a fixed light fill with dark text in both
+            // (theme-aware cream tokens turn dark in dark mode).
             className={cn(
-              "h-12 rounded-b-sm rounded-t-none px-6 font-label text-xs sm:rounded-l-none sm:rounded-r-sm",
-              onDark && "bg-hero-cream text-brand-900 hover:bg-brand-100",
+              onDark &&
+                "border-transparent bg-white text-brand-900 hover:bg-brand-100 active:bg-brand-100",
             )}
           >
             {loading ? "Subscribing…" : "Subscribe"}

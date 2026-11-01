@@ -2,8 +2,8 @@
 
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-params";
-import { Button } from "@auction/ui";
 import { Slider } from "@auction/ui/components/slider";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -57,10 +57,10 @@ export function SalesPriceSlider({ state, min = DEFAULT_MIN, max = DEFAULT_MAX }
         className="py-2"
       />
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="default" className="h-8 text-xs" asChild>
+        <Button variant="secondary" className="" asChild>
           <Link href={applyHref}>Apply</Link>
         </Button>
-        <Button variant="ghost" size="default" className="h-8 text-xs" asChild>
+        <Button variant="ghost" className="" asChild>
           <Link href={clearHref}>Reset</Link>
         </Button>
       </div>

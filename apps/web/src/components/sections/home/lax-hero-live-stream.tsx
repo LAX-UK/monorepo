@@ -7,9 +7,9 @@ import { HeroHorizontalScrim } from "@/components/ui/hero-tone-scrim";
 import { HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
 import { resolveHeroCoverSources } from "@/lib/media/hero-cover-sources";
 import { RevealOnMount } from "@auction/marketing-ui";
-import { DisplayHeading, LabelCaps, LiveDot } from "@auction/ui";
+import { DisplayHeading, LabelCaps } from "@auction/ui";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 type LiveVm = Extract<HeroStateVM, { kind: "live" }>;
@@ -100,15 +100,9 @@ function LaxHeroLiveSplitEmbed({ vm }: Props) {
               </DisplayHeading>
             </div>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <Button variant="liveJoin" size="xl" className="min-h-[44px] w-fit" asChild>
-                <Link
-                  href={vm.saleroomHref}
-                  className="inline-flex items-center justify-center gap-2"
-                >
-                  <LiveDot className="h-5 w-5" />
-                  Open saleroom
-                </Link>
-              </Button>
+              <ButtonLink Link={Link} variant="primary" className="w-fit" href={vm.saleroomHref}>
+                Join the saleroom
+              </ButtonLink>
             </div>
           </div>
         </div>

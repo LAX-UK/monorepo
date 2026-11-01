@@ -1,7 +1,7 @@
 "use client";
 
 import { useLogout } from "@/lib/auth/use-logout";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import type { ButtonHTMLAttributes } from "react";
 
 type LogoutButtonProps = Omit<

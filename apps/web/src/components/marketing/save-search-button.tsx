@@ -3,11 +3,11 @@
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { notify } from "@/lib/ui/notify";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { Bookmark, BookmarkCheck } from "lucide-react";
 import { useState } from "react";
 
 import { createSavedSearch } from "@/lib/data/http/saved-searches.client";
+import { Button } from "@auction/ui/lax";
 
 type Props = {
   label: string;
@@ -46,11 +46,11 @@ export function SaveSearchButton({ label, query, compact = false, className }: P
     return (
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         disabled={saving}
         onClick={() => void save()}
         className={cn(
-          "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border-outline-variant/40 px-4 font-label text-xs font-medium text-on-surface-variant hover:border-link/40 hover:text-link",
+          "inline-flex shrink-0 items-center gap-2 border-outline-variant/40 text-on-surface-variant hover:border-link/40 hover:text-link",
           className,
         )}
       >
@@ -67,8 +67,8 @@ export function SaveSearchButton({ label, query, compact = false, className }: P
   return (
     <Button
       type="button"
-      variant="outline"
-      className={cn("min-h-10 w-full", className)}
+      variant="secondary"
+      className={cn("w-full", className)}
       disabled={saving}
       onClick={() => void save()}
     >
