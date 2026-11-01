@@ -83,7 +83,7 @@ export function ConsignmentDocumentsTab({ view, failed, retryHref, sellerDocumen
           </ul>
         ) : (
           <p className="mx-4 mb-5 rounded-lax-card bg-lax-sunken px-4 py-3 text-lax-14 leading-5 text-lax-fg sm:mx-6">
-            Nothing from us yet. The agreement arrives here once your specialist sets its terms.
+            The agreement arrives here once your specialist sets its terms.
           </p>
         )}
         {view.statementHidden ? (
