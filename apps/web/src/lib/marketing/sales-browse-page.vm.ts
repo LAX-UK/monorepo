@@ -70,8 +70,10 @@ export type BuildSalesBrowsePageVMInput = {
 export function buildSalesBrowsePageVM(input: BuildSalesBrowsePageVMInput): SalesBrowsePageVM {
   const featuredVms = input.featuredRows.map((row) => mapSaleToFeaturedAuctionCardVM(row));
   const yearOptions = collectYears(input.saleRows.length > 0 ? input.saleRows : input.featuredRows);
+  // After a failed load the error state stands alone: no "0 sales" toolbar or filter rail.
   const showSalesBrowse =
-    input.tab === "upcoming" || input.tab === "live" || input.tab === "results";
+    !input.loadFailed &&
+    (input.tab === "upcoming" || input.tab === "live" || input.tab === "results");
   const rowVms = input.filteredSales.map((row) =>
     mapSaleToAuctionRowVM(row, {
       showRegisterButton:
