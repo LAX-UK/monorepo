@@ -41,7 +41,7 @@ export function PressCoverageCard({ item, saleContext, className }: Props) {
             {item.outletName}
           </span>
           {item.mentionType ? (
-            <span className="shrink-0 rounded-full border border-outline-variant/30 px-2 py-0.5 font-label text-xs text-on-surface-variant/70">
+            <span className="shrink-0 rounded-full border border-outline-variant/30 px-2 py-0.5 font-label text-xs text-on-surface-variant">
               {getPressMentionTypeLabel(item.mentionType)}
             </span>
           ) : null}
@@ -71,7 +71,7 @@ export function PressCoverageCard({ item, saleContext, className }: Props) {
             </p>
           ) : null}
           <div className="flex items-center justify-between gap-2">
-            <span className="font-body text-xs text-on-surface-variant/60">{item.domain}</span>
+            <span className="font-body text-xs text-on-surface-variant">{item.domain}</span>
             <PressCoverageCardActions
               url={item.url}
               headline={item.headline}
