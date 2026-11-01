@@ -15,7 +15,7 @@ export function AutoBidRangeVisual({
   const pct = Math.min(100, Math.max(8, (currentN / maxN) * 100));
   return (
     <div className="mt-3 space-y-2" aria-hidden>
-      <div className="flex justify-between font-label text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
+      <div className="flex justify-between font-label text-xs font-medium text-on-surface-variant">
         <span>Current {formatMoney(currentPrice)}</span>
         <span>Your max {formatMoney(maxAuto)}</span>
       </div>

@@ -141,8 +141,7 @@ type ResultsState =
 
 type FlatOption = { id: string; href: string; searchAll: boolean };
 
-const SECTION_TITLE =
-  "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant";
+const SECTION_TITLE = "font-label text-xs text-on-surface-variant";
 const SUGGESTION_LINK = cn(
   "inline-flex min-h-11 items-center rounded-sm font-body text-base font-medium text-on-surface underline-offset-4 hover:underline",
   FOCUS_RING,

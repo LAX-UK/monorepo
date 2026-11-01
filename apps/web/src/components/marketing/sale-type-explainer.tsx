@@ -43,14 +43,14 @@ export function SaleFormatExplainerPanel({ context, className }: PanelProps) {
 
       {vm.steps.length > 0 ? (
         <div className="space-y-1.5 border-t border-outline-variant/20 pt-2.5">
-          <p className="font-label text-[10px] font-bold uppercase tracking-wider text-secondary">
+          <p className="font-label text-xs font-medium text-on-surface-variant">
             How to participate
           </p>
           <ul className="list-none space-y-1.5 pl-0">
             {vm.steps.map((step) => (
               <li
                 key={step.title}
-                className="flex items-start gap-1 font-body text-[11px] leading-normal text-on-surface-variant"
+                className="flex items-start gap-1 font-body text-xs leading-normal text-on-surface-variant"
               >
                 <span className="select-none font-medium text-secondary" aria-hidden>
                   •
@@ -66,7 +66,7 @@ export function SaleFormatExplainerPanel({ context, className }: PanelProps) {
       ) : null}
 
       {vm.footnotes.map((note) => (
-        <p key={note} className="font-body text-[10px] leading-relaxed text-on-surface-variant/80">
+        <p key={note} className="font-body text-xs leading-relaxed text-on-surface-variant/80">
           {note}
         </p>
       ))}

@@ -25,9 +25,7 @@ export function SellPhotosSection() {
 
       <Accordion type="single" collapsible>
         <AccordionItem value="watches">
-          <AccordionTrigger className="font-label text-xs uppercase tracking-[0.14em]">
-            Watches &amp; clocks
-          </AccordionTrigger>
+          <AccordionTrigger className="font-label text-xs">Watches &amp; clocks</AccordionTrigger>
           <AccordionContent>
             <LegalUL>
               {(SELL_DEPARTMENT_PHOTO_HINTS["watches-clocks"] ?? []).map((tip) => (
@@ -37,9 +35,7 @@ export function SellPhotosSection() {
           </AccordionContent>
         </AccordionItem>
         <AccordionItem value="motor-cars">
-          <AccordionTrigger className="font-label text-xs uppercase tracking-[0.14em]">
-            Motor cars
-          </AccordionTrigger>
+          <AccordionTrigger className="font-label text-xs">Motor cars</AccordionTrigger>
           <AccordionContent>
             <LegalUL>
               {(SELL_DEPARTMENT_PHOTO_HINTS["motor-cars"] ?? []).map((tip) => (

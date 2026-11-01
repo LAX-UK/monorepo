@@ -10,6 +10,7 @@ import { LotCardTimer, type LotCardTimerProps } from "@/components/lot-timer";
 import { type LotTimerInputs, classifyLotTimerState } from "@/components/lot-timer/classify";
 import { formatRemaining } from "@/components/lot-timer/format";
 import { useNow } from "@/hooks/use-now";
+import { toPublicStatusBadgeProps } from "@/lib/presenters/public-status-badge";
 import {
   liveStatusCountdownClassName,
   resolveLotStatusPresentation,
@@ -55,12 +56,7 @@ export function LotStatusBadge({ winnerId, hasWinner, ...inputs }: LotStatusBadg
       ...(hasWinner !== undefined ? { hasWinner } : {}),
     });
     return (
-      <StatusBadge
-        tone={presentation.variant}
-        {...(presentation.dot ? { shape: "dot" as const } : {})}
-      >
-        {presentation.label}
-      </StatusBadge>
+      <StatusBadge {...toPublicStatusBadgeProps(presentation)}>{presentation.label}</StatusBadge>
     );
   }
 

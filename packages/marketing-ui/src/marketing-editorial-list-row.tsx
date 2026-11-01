@@ -42,9 +42,7 @@ export function MarketingEditorialListRow({
       data-tone={tone}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        {kicker ? (
-          <p className={cn("m-0 font-label text-xs uppercase", secondary)}>{kicker}</p>
-        ) : null}
+        {kicker ? <p className={cn("m-0 font-label text-xs", secondary)}>{kicker}</p> : null}
         <p className="m-0 font-body text-base font-medium leading-6 md:text-lg">
           <LinkComponent
             href={href}

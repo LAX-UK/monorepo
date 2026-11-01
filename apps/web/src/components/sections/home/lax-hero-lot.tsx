@@ -71,13 +71,13 @@ export function LaxHeroLot({ lot }: Props) {
                     <OverlayToneText
                       as="h1"
                       variant="display"
-                      className="font-headline text-4xl font-medium uppercase leading-[120%] tracking-tight md:text-[60px] md:leading-[72px]"
+                      className="font-headline text-4xl font-medium leading-[120%] tracking-tight md:text-[60px] md:leading-[72px]"
                     >
                       {lot.title}
                     </OverlayToneText>
                     <OverlayToneText
                       variant="muted"
-                      className="font-body text-sm font-semibold uppercase leading-4 tracking-[1.8px]"
+                      className="font-body text-sm font-semibold leading-4"
                     >
                       {lot.artistName}
                     </OverlayToneText>
@@ -90,7 +90,7 @@ export function LaxHeroLot({ lot }: Props) {
                       <div className="flex min-w-0 flex-col gap-2 border-l-2 border-accent-brand pl-4">
                         <OverlayToneText
                           variant="muted"
-                          className="font-label text-[13px] font-medium uppercase leading-4"
+                          className="font-label text-[13px] font-medium leading-4"
                         >
                           Closes in
                         </OverlayToneText>
@@ -116,7 +116,7 @@ export function LaxHeroLot({ lot }: Props) {
                         href={buildHostedLoginStartHref({ intent: "signup" })}
                         className="inline-flex items-center justify-center gap-[11px]"
                       >
-                        Register to Bid
+                        Register to bid
                         <ArrowRight className="!size-5 shrink-0 text-cta-on" aria-hidden />
                       </a>
                     </Button>
@@ -160,7 +160,7 @@ export function LaxHeroLot({ lot }: Props) {
               >
                 <OverlayToneText
                   variant="muted"
-                  className="font-label text-[10px] font-bold uppercase tracking-[0.2em] opacity-60"
+                  className="font-label text-xs font-medium opacity-60"
                 >
                   Lot
                 </OverlayToneText>
@@ -179,7 +179,7 @@ export function LaxHeroLot({ lot }: Props) {
 function HeroStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <OverlayToneText variant="muted" className="font-label text-[13px] font-medium uppercase">
+      <OverlayToneText variant="muted" className="font-label text-[13px] font-medium">
         {label}
       </OverlayToneText>
       <OverlayToneText className="font-headline text-2xl font-normal leading-none tracking-[-0.96px] md:text-[28px]">

@@ -12,6 +12,7 @@ import type { IUserProfileHttpApplicationService } from "./user-profile-http.js"
 import type { IUserPublicHttpApplicationService } from "./user-public-http.js";
 import type { IUserSecurityHttpApplicationService } from "./user-security-http.js";
 import type { IUserWatchlistHttpApplicationService } from "./user-watchlist-http.js";
+import type { IUserWatchlistRemindersHttpApplicationService } from "./user-watchlist-reminders-http.js";
 
 export type UserRouteServices = {
   categoryInterestsHttp: IUserCategoryInterestsHttpApplicationService;
@@ -20,6 +21,8 @@ export type UserRouteServices = {
   laxPortfolioHttp: IUserLaxPortfolioHttpApplicationService;
   lotStatesHttp: IUserLotStatesHttpApplicationService;
   watchlistHttp: IUserWatchlistHttpApplicationService;
+  /** Reminders and notes on the person's watched lots. */
+  watchlistRemindersHttp: IUserWatchlistRemindersHttpApplicationService;
   notificationsHttp: IUserNotificationsHttpApplicationService;
   preferencesHttp: IUserPreferencesHttpApplicationService;
   profileHttp: IUserProfileHttpApplicationService;

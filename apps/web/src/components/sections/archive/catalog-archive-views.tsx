@@ -133,9 +133,7 @@ export function ArchiveLotListView({
                   </div>
                   {hammer ? (
                     <div className="text-right">
-                      <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
-                        {hammer.label}
-                      </p>
+                      <p className="font-label text-xs text-on-surface-variant">{hammer.label}</p>
                       <p className="font-headline text-lg tabular-nums text-on-surface">
                         {hammer.value}
                       </p>

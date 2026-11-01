@@ -19,7 +19,7 @@ type LotDetailsSectionProps = {
   className?: string;
 };
 
-/** Always-open LOT DETAILS block (extracted from `artworkCenter` accordion variant). */
+/** Always-open lot details block (extracted from `artworkCenter` accordion variant). */
 export function LotDetailsSection({ block, compact = false, className }: LotDetailsSectionProps) {
   if (!block) return null;
 
@@ -35,11 +35,11 @@ export function LotDetailsSection({ block, compact = false, className }: LotDeta
     >
       <h2
         className={cn(
-          "mb-4 font-body font-medium uppercase tracking-wide text-on-surface",
+          "mb-4 font-body font-medium text-on-surface",
           compact ? "text-base leading-6" : "text-lg leading-7",
         )}
       >
-        LOT DETAILS
+        Lot details
       </h2>
       <div className="text-sm leading-7 text-on-surface-variant">
         {block.contentNode != null ? block.contentNode : <BodyText>{block.content ?? ""}</BodyText>}
@@ -52,7 +52,7 @@ type Props = {
   blocks: AccordionBlock[];
   /** e.g. bid history slot */
   extraItem?: { id: string; title: string; content: ReactNode } | null;
-  /** Online artwork: first “lot details” block is always-open LOT DETAILS; rest stay accordion. */
+  /** Online artwork: first “lot details” block is always open; rest stay accordion. */
   variant?: "default" | "artworkCenter";
 };
 
@@ -76,7 +76,7 @@ export function LotMarketingAccordion({ blocks, extraItem = null, variant = "def
                   value={b.id}
                   className="border-b border-outline-variant/40"
                 >
-                  <AccordionTrigger className="py-4 text-left font-label text-sm font-semibold uppercase tracking-[0.1em] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
+                  <AccordionTrigger className="py-4 text-left font-label text-sm font-semibold text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
                     {b.title}
                   </AccordionTrigger>
                   <AccordionContent>
@@ -94,7 +94,7 @@ export function LotMarketingAccordion({ blocks, extraItem = null, variant = "def
               ))}
               {extraItem ? (
                 <AccordionItem value={extraItem.id} className="border-b border-outline-variant/40">
-                  <AccordionTrigger className="py-4 text-left text-sm font-semibold uppercase tracking-[0.1em] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
+                  <AccordionTrigger className="py-4 text-left text-sm font-semibold text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
                     {extraItem.title}
                   </AccordionTrigger>
                   <AccordionContent>
@@ -114,7 +114,7 @@ export function LotMarketingAccordion({ blocks, extraItem = null, variant = "def
       <Accordion type="multiple" className="w-full space-y-0">
         {visible.map((b) => (
           <AccordionItem key={b.id} value={b.id} className="border-b border-outline-variant/40">
-            <AccordionTrigger className="py-4 text-left font-label text-sm font-semibold uppercase tracking-[0.1em] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
+            <AccordionTrigger className="py-4 text-left font-label text-sm font-semibold text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
               {b.title}
             </AccordionTrigger>
             <AccordionContent>
@@ -132,7 +132,7 @@ export function LotMarketingAccordion({ blocks, extraItem = null, variant = "def
         ))}
         {extraItem ? (
           <AccordionItem value={extraItem.id} className="border-b border-outline-variant/40">
-            <AccordionTrigger className="py-4 text-left text-sm font-semibold uppercase tracking-[0.1em] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
+            <AccordionTrigger className="py-4 text-left text-sm font-semibold text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
               {extraItem.title}
             </AccordionTrigger>
             <AccordionContent>

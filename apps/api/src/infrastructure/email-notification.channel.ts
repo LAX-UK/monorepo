@@ -4,7 +4,11 @@ import type { IEmailService } from "@auction/email";
 import type { IInvoiceDetailsReader, IUserRepository } from "@auction/persistence/interfaces";
 import { notificationTypeToTemplate } from "@auction/persistence/lib";
 import type { BillToContext } from "@auction/types";
-import { createUnsubscribeToken } from "../lib/email-unsubscribe-token.js";
+import {
+  OPT_OUT_TYPES,
+  type OptOutType,
+  createUnsubscribeToken,
+} from "../lib/email-unsubscribe-token.js";
 import type {
   INotificationChannel,
   NotificationPayload,
@@ -15,7 +19,16 @@ import {
   notificationWebPath,
 } from "../services/notification-payload.js";
 
-const OPT_OUTABLE = new Set(["outbid", "lot_won", "lot_ended_seller"]);
+const OPT_OUTABLE: ReadonlySet<string> = new Set(OPT_OUT_TYPES);
+
+const CLOSES_AT = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Europe/London",
+});
 
 /** The first word of a person's name, for "Hi Maya"; `null` when there is none. */
 function firstName(name: string): string | null {
@@ -257,6 +270,19 @@ export class EmailNotificationChannel implements INotificationChannel {
           unsubscribeUrl,
         };
       }
+      case "watched-lot-reminder": {
+        const reminder = payload.meta?.watchedLotReminder;
+        const closes = reminder?.closesAt ? new Date(reminder.closesAt) : null;
+        return {
+          userName,
+          lotTitle,
+          lotUrl,
+          unsubscribeUrl,
+          kind: reminder?.kind ?? "hour_before_close",
+          note: reminder?.note ?? null,
+          closesAt: closes && !Number.isNaN(closes.getTime()) ? CLOSES_AT.format(closes) : null,
+        };
+      }
       case "payout-bank-changed-notice":
         return {
           userName,
@@ -323,7 +349,7 @@ export class EmailNotificationChannel implements INotificationChannel {
         ? {
             scope: "type",
             userId,
-            notificationType: type as "outbid" | "lot_won" | "lot_ended_seller",
+            notificationType: type as OptOutType,
           }
         : { scope: "global", userId },
       this.unsubscribeSecret,

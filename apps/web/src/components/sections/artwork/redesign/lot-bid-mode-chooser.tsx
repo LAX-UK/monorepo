@@ -35,7 +35,7 @@ const MODES: {
 export function LotBidModeChooser({ mode, onModeChange, disabled = false, className }: Props) {
   return (
     <fieldset className={cn("space-y-2 border-0 p-0", className)} aria-label="How to bid">
-      <legend className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+      <legend className="font-label text-xs font-medium text-on-surface-variant">
         How do you want to bid?
       </legend>
       <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 [&>*]:min-w-0">
@@ -69,7 +69,7 @@ export function LotBidModeChooser({ mode, onModeChange, disabled = false, classN
                 />
                 <span
                   className={cn(
-                    "min-w-0 flex-1 break-words font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)]",
+                    "min-w-0 flex-1 break-words font-label text-xs font-medium",
                     selected ? "text-primary" : "text-on-surface",
                   )}
                 >

@@ -61,7 +61,7 @@ export function UrgencyLotCard({ item, isAuthenticated, watchedLotIds, loginNext
             >
               {item.title}
             </LotViewTransitionLink>
-            <p className="line-clamp-1 min-h-4 text-sm font-light leading-4 text-on-surface-variant">
+            <p className="line-clamp-1 min-h-4 text-sm font-normal leading-4 text-on-surface-variant">
               {item.artistName}
             </p>
           </div>

@@ -177,11 +177,11 @@ export function SaleMobileSummaryBar({
           ) : null}
         </CountdownFadeSlot>
         {saleroomMode?.kind === "live_no_lot" ? (
-          <p className="mt-0.5 font-label text-[0.6rem] uppercase tracking-[0.18em] text-on-surface-variant">
+          <p className="mt-0.5 font-label text-xs text-on-surface-variant">
             Saleroom live · {saleroomMode.progressLabel}
           </p>
         ) : !isUpcoming && typeof liveLotsCount === "number" && liveLotsCount > 0 ? (
-          <p className="mt-0.5 font-label text-[0.6rem] uppercase tracking-[0.18em] text-on-surface-variant">
+          <p className="mt-0.5 font-label text-xs text-on-surface-variant">
             {liveLotsCount} lots active
           </p>
         ) : null}

@@ -68,7 +68,7 @@ export function SaleroomFollowToggle({
   }, [saleId, busy, isAuthenticated, following]);
 
   const sizeClasses =
-    size === "lg" ? "min-h-11 px-5 py-2.5 text-xs" : "min-h-9 px-3 py-1.5 text-[0.7rem]";
+    size === "lg" ? "min-h-11 px-5 py-2.5 text-xs" : "min-h-9 px-3 py-1.5 text-xs";
 
   if (!isAuthenticated) {
     if (appearance === "outlined-block") {
@@ -89,7 +89,7 @@ export function SaleroomFollowToggle({
     return (
       <a
         href={buildHostedLoginStartHref({ next: loginNextPath })}
-        className={`inline-flex items-center gap-2 rounded-full border border-outline-variant/60 bg-surface-container-high font-label font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:border-link hover:text-link focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${sizeClasses}`}
+        className={`inline-flex items-center gap-2 rounded-full border border-outline-variant/60 bg-surface-container-high font-label font-bold text-on-surface transition-colors hover:border-link hover:text-link focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${sizeClasses}`}
       >
         <BellRing className="size-4" aria-hidden />
         {label ?? "Sign in to follow"}

@@ -35,7 +35,7 @@ function accountInitials(displayName: string, email: string): string {
 
 function menuItemClass(headerTone: MarketingHeaderTone): string {
   return cn(
-    "min-h-11 cursor-pointer font-label text-sm font-medium uppercase tracking-wide",
+    "min-h-11 cursor-pointer font-label text-sm font-medium",
     headerTone === "on-dark"
       ? "text-brand-900 focus:bg-page-bg"
       : "text-brand-900 focus:bg-page-bg dark:text-on-surface dark:focus:bg-surface-container-low",
@@ -178,7 +178,7 @@ export function MarketingAuthenticatedAccountMenu({
           >
             <span
               className={cn(
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-label text-xs font-semibold uppercase",
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-label text-xs font-medium",
                 headerTone === "on-dark"
                   ? "bg-hero-foreground/15 text-hero-foreground"
                   : "bg-surface-container-high text-brand-900 dark:text-on-surface",
@@ -221,7 +221,7 @@ export function MarketingAuthenticatedAccountMenu({
           <div className="py-1">
             {otherProducts.length > 0 ? (
               <>
-                <DropdownMenuLabel className="px-3 py-1.5 font-label text-[10px] font-bold uppercase tracking-[0.12em] text-brand-400 dark:text-on-surface-variant">
+                <DropdownMenuLabel className="px-3 py-1.5 font-label text-xs font-medium text-brand-400 dark:text-on-surface-variant">
                   LAX products
                 </DropdownMenuLabel>
                 {otherProducts.map((item) => (

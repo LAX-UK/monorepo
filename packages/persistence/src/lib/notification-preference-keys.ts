@@ -88,6 +88,17 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     whatsapp: "watchlistWhatsapp",
     template: null,
   },
+  /**
+   * A reminder the person set on a watched lot: it follows their "Lots you watch" switches, in
+   * the app and by email.
+   */
+  watchlist_reminder: {
+    inApp: "watchlistInApp",
+    push: null,
+    email: "watchlistEmail",
+    whatsapp: null,
+    template: "watched-lot-reminder",
+  },
   watchlist_ending_soon: {
     inApp: "endingSoonInApp",
     push: "endingSoonPush",

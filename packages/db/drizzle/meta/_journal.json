@@ -1877,6 +1877,13 @@
       "when": 1798531200000,
       "tag": "0267_dispute_cases",
       "breakpoints": true
+    },
+    {
+      "idx": 268,
+      "version": "7",
+      "when": 1798617600000,
+      "tag": "0268_watchlist_reminders",
+      "breakpoints": true
     }
   ]
 }

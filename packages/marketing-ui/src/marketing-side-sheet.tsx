@@ -22,8 +22,8 @@ export type MarketingSideSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  /** `sentence` sets the title as a plain heading (Figma enquiry panels); `caps` is the default label style. */
-  titleCase?: "caps" | "sentence";
+  /** `sentence` sets the title as a plain heading (Figma enquiry panels); `label` is the default 12px label style. */
+  titleCase?: "label" | "sentence";
   description?: string;
   children: ReactNode;
   /** Sticky actions below the scroll body. */
@@ -34,7 +34,7 @@ export type MarketingSideSheetProps = {
 };
 
 const TITLE_CLASS = {
-  caps: "font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface",
+  label: "font-label text-xs font-medium text-on-surface",
   sentence: "text-2xl font-medium leading-8 text-on-surface",
 } as const;
 
@@ -43,7 +43,7 @@ export function MarketingSideSheet({
   open,
   onOpenChange,
   title,
-  titleCase = "caps",
+  titleCase = "label",
   description,
   children,
   footer,

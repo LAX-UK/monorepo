@@ -108,9 +108,9 @@ describe("StatusBadge", () => {
 });
 
 describe("LiveBadge", () => {
-  it("is the live tone with a dot, labelled Live by default", () => {
+  it("is the neutral badge with the live dot, labelled Live by default", () => {
     render(<LiveBadge />);
-    expect(badge("Live")).toHaveAttribute("data-tone", "live");
+    expect(badge("Live")).toHaveAttribute("data-tone", "neutral");
     expect(badge("Live").querySelector("[data-shape]")).toHaveAttribute("data-shape", "dot");
   });
 });

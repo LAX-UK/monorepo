@@ -43,7 +43,7 @@ export function AtgExternalBiddingPanel({ sale, lot }: Props) {
       className="space-y-3 rounded-lg border border-border-hairline bg-surface-container-low px-4 py-4"
       aria-label={live ? "Bidding on ATG" : "ATG results"}
     >
-      <p className="font-label text-xs uppercase tracking-wide text-on-surface-variant">
+      <p className="font-label text-xs text-on-surface-variant">
         {live ? atgLiveBidLabel() : ATG_RESULT_PENDING_LABEL}
       </p>
       <p className="text-sm text-on-surface">{copy}</p>

@@ -29,9 +29,7 @@ export function SearchSortSheetGroup({ value, onSelect }: Props) {
 
   return (
     <fieldset className="space-y-2" disabled={pending}>
-      <legend className="mb-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Sort by
-      </legend>
+      <legend className="mb-2 font-label text-xs text-on-surface-variant">Sort by</legend>
       <RadioGroup
         value={value}
         onValueChange={(next) => {

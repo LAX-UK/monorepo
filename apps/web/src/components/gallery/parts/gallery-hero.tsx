@@ -165,7 +165,7 @@ function HeroControlsCluster({
   const tone = useOverlayTone("bottomRight");
   const pillBase = cn(
     overlayPillClasses(tone),
-    "pointer-events-auto inline-flex h-auto items-center gap-1.5 rounded-full px-3 py-1.5 font-label text-xs font-semibold uppercase tracking-wide shadow-md transition-opacity hover:opacity-90 motion-reduce:transition-none",
+    "pointer-events-auto inline-flex h-auto items-center gap-1.5 rounded-full px-3 py-1.5 font-label text-xs font-medium shadow-md transition-opacity hover:opacity-90 motion-reduce:transition-none",
   );
 
   return (

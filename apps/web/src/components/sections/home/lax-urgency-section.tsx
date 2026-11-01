@@ -25,19 +25,19 @@ type Props = {
 
 const COPY = {
   endingSoon: {
-    heading: "Ending Soon",
+    heading: "Ending soon",
     viewAllHref: "/search?ending=24h",
     headingId: "home-ending-soon-heading",
     srAction: "lots ending in the next 24 hours",
   },
   liveNow: {
-    heading: "Live Now",
+    heading: "Live now",
     viewAllHref: "/search?status=active",
     headingId: "home-live-now-heading",
     srAction: "live lots accepting bids",
   },
   upcoming: {
-    heading: "Upcoming Lots",
+    heading: "Upcoming lots",
     viewAllHref: "/search?status=scheduled",
     headingId: "home-upcoming-lots-heading",
     srAction: "lots scheduled to open soon",

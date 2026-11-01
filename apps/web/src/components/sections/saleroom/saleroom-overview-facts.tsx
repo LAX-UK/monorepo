@@ -101,7 +101,7 @@ export function SaleroomOverviewFacts({ overview }: Props) {
           </div>
         ) : null}
       </dl>
-      <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 font-label text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+      <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 font-label text-xs font-medium text-on-surface-variant">
         <Link href="/faq" className="text-on-surface underline-offset-4 hover:underline">
           How to bid
         </Link>

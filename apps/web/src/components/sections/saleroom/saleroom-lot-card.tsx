@@ -89,7 +89,7 @@ export function SaleroomLotCard({
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {lot.lotLabel ? (
-              <p className="text-xs font-bold uppercase leading-4 text-lot-orange">
+              <p className="font-label text-xs font-medium leading-4 text-on-surface-variant">
                 {lot.lotLabel}
               </p>
             ) : null}
@@ -110,7 +110,7 @@ export function SaleroomLotCard({
                 {lot.title}
               </Link>
               {lot.artistOrMedium ? (
-                <p className="line-clamp-1 mt-0.5 text-xs font-light leading-4 text-brand-500 dark:text-on-surface-variant">
+                <p className="line-clamp-1 mt-0.5 text-xs font-normal leading-4 text-brand-500 dark:text-on-surface-variant">
                   {lot.artistOrMedium}
                 </p>
               ) : null}
@@ -184,7 +184,7 @@ export function SaleroomLotCard({
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         <p
           className={cn(
-            "min-h-5 text-sm font-bold uppercase leading-4 text-lot-orange",
+            "min-h-4 font-label text-xs font-medium leading-4 text-on-surface-variant",
             !lot.lotLabel && "invisible",
           )}
         >
@@ -200,7 +200,7 @@ export function SaleroomLotCard({
           >
             {lot.title}
           </Link>
-          <p className="line-clamp-1 mt-1 min-h-4 text-sm font-light leading-4 text-brand-500 dark:text-on-surface-variant">
+          <p className="line-clamp-1 mt-1 min-h-4 text-sm font-normal leading-4 text-brand-500 dark:text-on-surface-variant">
             {lot.artistOrMedium ?? "\u00a0"}
           </p>
         </div>

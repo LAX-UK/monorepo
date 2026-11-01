@@ -41,7 +41,7 @@ export function MarketingVideoPoster({
           <MarketingPlayIcon className="ml-1 size-7" />
         </span>
       </span>
-      <span className="absolute bottom-3 left-4 right-4 font-label text-xs uppercase tracking-widest text-white">
+      <span className="absolute bottom-3 left-4 right-4 font-label text-xs text-white">
         {watchLabel}
       </span>
     </a>

@@ -61,9 +61,9 @@ export function resolveHeroCountdownEnd(
 export function buildSaleroomHeroStats(
   hero: Pick<SaleHeroVM, "itemsLabel" | "estimatedTotalLabel" | "registeredBidderCount">,
 ): readonly (readonly [string, string])[] {
-  const stats: (readonly [string, string])[] = [["Total Lots", hero.itemsLabel]];
+  const stats: (readonly [string, string])[] = [["Total lots", hero.itemsLabel]];
   if (hero.estimatedTotalLabel) {
-    stats.push(["Est. Total", hero.estimatedTotalLabel]);
+    stats.push(["Est. total", hero.estimatedTotalLabel]);
   }
   if (typeof hero.registeredBidderCount === "number" && hero.registeredBidderCount > 0) {
     stats.push([

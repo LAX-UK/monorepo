@@ -47,9 +47,7 @@ export function DayGalleryOverflowTile({
 
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/55 px-3 text-center">
         <span className="font-headline text-2xl font-semibold text-white">+{overflowCount}</span>
-        <span className="mt-1 font-body text-xs font-medium uppercase tracking-wide text-white/90">
-          more
-        </span>
+        <span className="mt-1 font-body text-xs font-medium text-white/90">more</span>
       </div>
     </Button>
   );

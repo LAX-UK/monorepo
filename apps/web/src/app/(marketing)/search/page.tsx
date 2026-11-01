@@ -283,7 +283,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
             description="Browse live inventory by title, medium, and category. Save lots to your watch list to follow them in Watching."
             meta={
               !loadError ? (
-                <p className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                <p className="font-label text-xs font-medium text-on-surface-variant">
                   {endingWindow
                     ? searchEndingLabel(endingWindow)
                     : statusFilter

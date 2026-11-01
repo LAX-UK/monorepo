@@ -77,7 +77,7 @@ export function ConditionReportRequestForm({
             name="requestNote"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                <FormLabel className="font-label text-xs font-medium text-on-surface-variant">
                   Note for specialists (optional)
                 </FormLabel>
                 <FormControl>

@@ -1,3 +1,4 @@
+import type { IWatchedLotReminderJob } from "../../watchlist-reminders/watched-lot-reminder.job.js";
 import type { IPlatformConsignmentThreadsCronApplicationService } from "./platform-consignment-threads-cron.js";
 
 export type {
@@ -15,6 +16,7 @@ export type PlatformCronRouteServices = {
   lifecycle: import("./platform-lifecycle-cron.js").IPlatformLifecycleCronApplicationService;
   hygiene: import("./platform-hygiene-cron.js").IPlatformHygieneCronApplicationService;
   staffRoles: import("./platform-staff-roles-cron.js").IPlatformStaffRolesCronApplicationService;
+  watchedLotReminders: IWatchedLotReminderJob;
   consignmentThreads: IPlatformConsignmentThreadsCronApplicationService;
 };
 

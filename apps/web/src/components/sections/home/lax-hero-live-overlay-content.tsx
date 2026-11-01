@@ -40,7 +40,7 @@ export function LaxHeroLiveOverlayContent({
           <OverlayToneText
             as="h1"
             variant="display"
-            className="font-headline text-4xl font-medium uppercase leading-[120%] tracking-tight md:text-[60px] md:leading-[72px]"
+            className="font-headline text-4xl font-medium leading-[120%] tracking-tight md:text-[60px] md:leading-[72px]"
           >
             Live · {vm.saleTitle}
           </OverlayToneText>

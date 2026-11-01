@@ -58,7 +58,7 @@ export function OnsiteLotHero({
               className="border-outline-variant/30 bg-surface-container-low text-on-surface-variant"
             />
             {auction.lotNumber != null && (
-              <span className="font-label text-xs font-bold uppercase tracking-widest text-secondary">
+              <span className="font-label text-xs font-medium text-on-surface-variant">
                 Lot {auction.lotNumber}
               </span>
             )}
@@ -73,7 +73,7 @@ export function OnsiteLotHero({
           />
 
           <div className="space-y-2">
-            <p className="font-body text-xs uppercase tracking-wide text-on-surface-variant/80">
+            <p className="font-body text-xs text-on-surface-variant/80">
               <Link href={salePath(sale)} className="hover:text-link hover:underline">
                 {sale.title}
               </Link>
@@ -97,16 +97,14 @@ export function OnsiteLotHero({
 
           <div className="grid grid-cols-2 gap-6 border-b border-t border-outline-variant/10 py-5">
             <div>
-              <p className="font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
-                Estimate
-              </p>
+              <p className="font-label text-xs font-medium text-on-surface-variant">Estimate</p>
               <p className="mt-1 font-body text-lg font-semibold text-on-surface">
                 {summarySeed.estimateLine ?? "—"}
               </p>
             </div>
             {auction.startingPrice ? (
               <div>
-                <p className="font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
+                <p className="font-label text-xs font-medium text-on-surface-variant">
                   Opening price
                 </p>
                 <p className="mt-1 font-body text-lg font-semibold text-on-surface">

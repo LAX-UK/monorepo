@@ -19,7 +19,7 @@ export function SearchSortSelect({ value: _value }: { value: SearchSortValue }) 
       options={[...SORT_OPTIONS]}
       resetParams={{ offset: "0" }}
       usePendingNavigation={useSearchCatalogPending}
-      className="min-h-[var(--tap-target-min,44px)] h-[var(--tap-target-min,44px)] w-auto min-w-[9.5rem] max-w-[12rem] cursor-pointer border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider shadow-none focus:ring-primary"
+      className="min-h-[var(--tap-target-min,44px)] h-[var(--tap-target-min,44px)] w-auto min-w-[9.5rem] max-w-[12rem] cursor-pointer border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-xs font-medium shadow-none focus:ring-primary"
       ariaLabel="Sort results"
     />
   );

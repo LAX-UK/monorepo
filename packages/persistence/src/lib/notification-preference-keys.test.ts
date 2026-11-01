@@ -38,6 +38,7 @@ const NOTIFICATION_TYPES = [
   "bid_refused_limit",
   "access_requested",
   "access_request_decided",
+  "watchlist_reminder",
 ] as const;
 
 type ExpectedRow = {
@@ -160,6 +161,13 @@ const EXPECTED: Record<(typeof NOTIFICATION_TYPES)[number], ExpectedRow> = {
     inApp: null,
     push: null,
     template: "access-request-decided-notice",
+  },
+  watchlist_reminder: {
+    email: "watchlistEmail",
+    whatsapp: null,
+    inApp: "watchlistInApp",
+    push: null,
+    template: "watched-lot-reminder",
   },
   bid_refused_limit: {
     email: null,

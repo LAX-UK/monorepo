@@ -10,9 +10,9 @@ describe("resolveSaleFormatExplainer", () => {
   it("returns only online steps — no other mode titles present", () => {
     const vm = resolveSaleFormatExplainer({ deliveryMode: "online" });
     expect(vm.mode).toBe("online");
-    expect(vm.title).toBe("Online Auction");
-    expect(vm.steps.every((s) => s.title !== "Attend & Bid Live")).toBe(true);
-    expect(vm.steps.every((s) => s.title !== "Bid Online or In-Room")).toBe(true);
+    expect(vm.title).toBe("Online auction");
+    expect(vm.steps.every((s) => s.title !== "Attend and bid live")).toBe(true);
+    expect(vm.steps.every((s) => s.title !== "Bid online or in the room")).toBe(true);
   });
 
   it("online close step includes sale end date when provided", () => {
@@ -20,7 +20,7 @@ describe("resolveSaleFormatExplainer", () => {
       deliveryMode: "online",
       saleEndTime: new Date("2026-07-15T14:00:00Z"),
     });
-    const closeStep = vm.steps.find((s) => s.title === "Timed Lot Close");
+    const closeStep = vm.steps.find((s) => s.title === "Timed lot close");
     expect(closeStep).toBeDefined();
     expect(closeStep?.description).toContain("catalogue closes on");
     expect(closeStep?.description).toContain("Jul 2026");
@@ -28,7 +28,7 @@ describe("resolveSaleFormatExplainer", () => {
 
   it("online close step omits date when saleEndTime is absent", () => {
     const vm = resolveSaleFormatExplainer({ deliveryMode: "online" });
-    const closeStep = vm.steps.find((s) => s.title === "Timed Lot Close");
+    const closeStep = vm.steps.find((s) => s.title === "Timed lot close");
     expect(closeStep?.description).not.toContain("catalogue closes on");
   });
 
@@ -37,7 +37,7 @@ describe("resolveSaleFormatExplainer", () => {
       deliveryMode: "online",
       streamUrl: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
     });
-    expect(vm.steps.every((s) => s.title !== "Watch the Broadcast")).toBe(true);
+    expect(vm.steps.every((s) => s.title !== "Watch the broadcast")).toBe(true);
     expect(vm.footnotes).toHaveLength(0);
   });
 
@@ -45,7 +45,7 @@ describe("resolveSaleFormatExplainer", () => {
     const vm = resolveSaleFormatExplainer({
       deliveryMode: "online",
     });
-    expect(vm.steps.every((s) => s.title !== "Watch the Broadcast")).toBe(true);
+    expect(vm.steps.every((s) => s.title !== "Watch the broadcast")).toBe(true);
     expect(vm.footnotes).toHaveLength(0);
   });
 
@@ -55,7 +55,7 @@ describe("resolveSaleFormatExplainer", () => {
       allowOnlineBidsBeforeGoLive: false,
     });
     expect(vm.description).toContain("on the block");
-    const bidStep = vm.steps.find((s) => s.title === "Bid Online or In-Room");
+    const bidStep = vm.steps.find((s) => s.title === "Bid online or in the room");
     expect(bidStep?.description).toContain("on the block");
   });
 
@@ -65,7 +65,7 @@ describe("resolveSaleFormatExplainer", () => {
       allowOnlineBidsBeforeGoLive: true,
     });
     expect(vm.description).not.toContain("on the block");
-    const bidStep = vm.steps.find((s) => s.title === "Bid Online or In-Room");
+    const bidStep = vm.steps.find((s) => s.title === "Bid online or in the room");
     expect(bidStep?.description).not.toContain("on the block");
   });
 
@@ -79,7 +79,7 @@ describe("resolveSaleFormatExplainer", () => {
       deliveryMode: "onsite",
       streamUrl: "https://stream.example.com",
     });
-    const streamStep = vm.steps.find((s) => s.title === "Watch the Broadcast");
+    const streamStep = vm.steps.find((s) => s.title === "Watch the broadcast");
     expect(streamStep).toBeDefined();
     expect(streamStep?.description).toContain("live stream is available for this sale");
     expect(vm.footnotes).toHaveLength(0);
@@ -87,7 +87,7 @@ describe("resolveSaleFormatExplainer", () => {
 
   it("onsite omits stream step and adds unavailable footnote when no streamUrl", () => {
     const vm = resolveSaleFormatExplainer({ deliveryMode: "onsite" });
-    expect(vm.steps.every((s) => s.title !== "Watch the Broadcast")).toBe(true);
+    expect(vm.steps.every((s) => s.title !== "Watch the broadcast")).toBe(true);
     expect(vm.footnotes).toHaveLength(1);
     expect(vm.footnotes[0]).toContain("not listed for this sale");
   });
@@ -98,7 +98,7 @@ describe("resolveSaleFormatExplainer", () => {
       streamUrl: "https://stream.example.com",
       allowOnlineBidsBeforeGoLive: true,
     });
-    const streamStep = vm.steps.find((s) => s.title === "Watch the Broadcast");
+    const streamStep = vm.steps.find((s) => s.title === "Watch the broadcast");
     expect(streamStep).toBeDefined();
     expect(vm.footnotes).toHaveLength(0);
   });
@@ -112,16 +112,12 @@ describe("resolveSaleFormatExplainer", () => {
     expect(vm.footnotes[0]).toContain("not listed for this sale");
   });
 
-  it("online has correct iconName and colorClass", () => {
-    const vm = resolveSaleFormatExplainer({ deliveryMode: "online" });
-    expect(vm.iconName).toBe("Laptop");
-    expect(vm.colorClass).toContain("brand");
+  it("online has the laptop icon", () => {
+    expect(resolveSaleFormatExplainer({ deliveryMode: "online" }).iconName).toBe("Laptop");
   });
 
-  it("onsite has MapPin iconName and amber colorClass", () => {
-    const vm = resolveSaleFormatExplainer({ deliveryMode: "onsite" });
-    expect(vm.iconName).toBe("MapPin");
-    expect(vm.colorClass).toContain("amber");
+  it("onsite has the map pin icon", () => {
+    expect(resolveSaleFormatExplainer({ deliveryMode: "onsite" }).iconName).toBe("MapPin");
   });
 });
 
