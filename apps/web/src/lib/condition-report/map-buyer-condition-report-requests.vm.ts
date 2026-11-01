@@ -1,6 +1,7 @@
 import { conditionReportStatusLabel } from "@/lib/condition-report/condition-report-status-labels";
 import type { ConditionReportRequestStatus } from "@/lib/condition-report/condition-report-types";
 import { lotPath } from "@/lib/seo/url";
+import { formatDateInline } from "@/lib/ui/format";
 
 export type BuyerConditionReportRequestRowDto = {
   id: string;
@@ -28,12 +29,6 @@ export type BuyerConditionReportRequestVM = {
   downloadUrl: string | null;
 };
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-}
-
 function isSafeDownloadUrl(url: string | null): url is string {
   if (!url || url.trim() === "") return false;
   try {
@@ -55,7 +50,7 @@ export function mapBuyerConditionReportRequestsVM(
     lotNumberLabel: row.lotNumber != null ? `Lot ${row.lotNumber}` : null,
     status: row.status,
     statusLabel: conditionReportStatusLabel(row.status),
-    requestedAtLabel: formatDate(row.createdAt),
+    requestedAtLabel: formatDateInline(row.createdAt),
     responseNote: row.responseNote,
     downloadUrl: isSafeDownloadUrl(row.downloadUrl) ? row.downloadUrl : null,
   }));

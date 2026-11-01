@@ -11,6 +11,7 @@ import {
   switchOrganisation,
   undoOf,
 } from "./helpers/organisation-journeys";
+import { expectWorkspaceBaselines } from "./helpers/workspace-baselines";
 
 /**
  * An owner of Northbank Gallery runs the organisation: invites someone who accepts from their own
@@ -117,5 +118,17 @@ test.describe("organisation owner journey @roles", () => {
     });
 
     await owner.close();
+  });
+});
+
+test.describe("organisation owner baselines @a11y", () => {
+  test.skip(!e2eEnabled, e2eSkipReason);
+
+  test("every workspace page passes axe in light and dark at 1440 and 375", async ({
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(300_000);
+    await expectWorkspaceBaselines(browser, roleAuthState.buyer, approved, baseURL);
   });
 });

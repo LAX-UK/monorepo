@@ -11,6 +11,7 @@ import {
   openAs,
   placeBid,
 } from "./helpers/organisation-journeys";
+import { expectWorkspaceBaselines } from "./helpers/workspace-baselines";
 
 /**
  * A buyer agent bids for Northbank Gallery through an authorisation with a limit: a bid inside it
@@ -59,5 +60,17 @@ test.describe("organisation buyer agent journey @roles", () => {
     });
 
     await agent.close();
+  });
+});
+
+test.describe("organisation buyer agent baselines @a11y", () => {
+  test.skip(!e2eEnabled, e2eSkipReason);
+
+  test("every workspace page passes axe in light and dark at 1440 and 375", async ({
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(300_000);
+    await expectWorkspaceBaselines(browser, roleAuthState.orgBuyerAgent, approved, baseURL);
   });
 });
