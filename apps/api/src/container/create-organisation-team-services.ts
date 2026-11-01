@@ -28,6 +28,7 @@ import { MemberLastActiveService } from "../services/organisation-team/member-la
 import { OrganisationActivityService } from "../services/organisation-team/organisation-activity.service.js";
 import { OrganisationStatementsService } from "../services/organisation-team/organisation-statements.service.js";
 import { PayoutAccountService } from "../services/organisation-team/payout-account.service.js";
+import { SamplePayoutBankAccountProvider } from "../services/organisation-team/sample-payout-bank-account.provider.js";
 import { StripePayoutBankAccountProvider } from "../services/stripe/connect/stripe-payout-bank-account.provider.js";
 
 /** Team and Profile reads and changes for the acting organisation (`container.organisationTeam`). */
@@ -46,6 +47,8 @@ export function createOrganisationTeamServices(input: {
   payouts: Pick<IPayoutReadRepository, "list">;
   connect: Pick<ILegalEntityConnectReader, "findLegalEntityRowById">;
   stripeClientFactory: IStripeClientFactory;
+  /** Local development without Stripe keys reads a sample bank account instead. */
+  useSamplePayoutProvider?: boolean;
   members: Pick<ILegalEntityMemberRepository, "listMembersWithUsers">;
   identity: Pick<IIdentityTwoFactorPolicyClient, "readSecuritySummaries">;
   log?: { warn: (obj: object, msg: string) => void };
@@ -67,7 +70,9 @@ export function createOrganisationTeamServices(input: {
     statements: new OrganisationStatementsService({ payouts: input.payouts }),
     payoutAccount: new PayoutAccountService({
       connect: input.connect,
-      provider: new StripePayoutBankAccountProvider(input.stripeClientFactory),
+      provider: input.useSamplePayoutProvider
+        ? new SamplePayoutBankAccountProvider()
+        : new StripePayoutBankAccountProvider(input.stripeClientFactory),
       onProviderError: warn("payout_bank_account_read_failed"),
     }),
     memberLastActive: new MemberLastActiveService({

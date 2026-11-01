@@ -392,6 +392,8 @@ export function createContainer(env: Env): Container {
     payouts: repos.payoutRepository,
     connect: repos.legalEntityConnectReader,
     stripeClientFactory: infra.stripeClientFactory,
+    useSamplePayoutProvider:
+      env.APP_ENV === "development" && infra.stripeClientFactory.get() === null,
     members: repos.legalEntityMemberRepository,
     identity: identityIssuer,
     log: createAppLogger(env),
