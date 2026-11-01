@@ -69,7 +69,8 @@ console.
       unless you are deliberately promoting `0160` or `0161` after the
       documented directory soak. A normal production migrate must not apply
       those revokes. After a grant rollback, lower or clear the variable before
-      the next Job.
+      the next Job. `head` is only for the main-to-release cutover window (see
+      `docs/engineering/release-main-parity.md`).
 - [ ] Watch `/health/ready` for every component during the rolling restart.
 - [ ] Smoke test the changed path against `lax.bid`.
 - [ ] Confirm required production Identity/BFF/client secrets are bound under
