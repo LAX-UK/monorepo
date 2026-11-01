@@ -4,6 +4,7 @@ import { LotActionArea, type LotActionContext } from "@/components/lot-page/lot-
 import { LotFactGrid } from "@/components/lot-page/lot-fact-grid";
 import { useLotPageViewContext } from "@/components/lot-page/lot-page-view-context";
 import { LotStateLine } from "@/components/lot-page/lot-state-line";
+import type { LotPageView } from "@/lib/lot-page/build-lot-page-view";
 import { cn } from "@auction/ui";
 
 /**
@@ -11,8 +12,13 @@ import { cn } from "@auction/ui";
  * figure, the fact line, the estimate and the clock, the viewer's position, and the action. The
  * lifecycle decides every word; nothing here asks what state the lot is in.
  */
-export function LotPriceBlock({ actions }: { actions: LotActionContext }) {
-  const { view } = useLotPageViewContext();
+export function LotPriceBlockView({
+  view,
+  actions,
+}: {
+  view: LotPageView;
+  actions: LotActionContext;
+}) {
   const { price } = view;
 
   if (view.withdrawn) {
@@ -64,4 +70,10 @@ export function LotPriceBlock({ actions }: { actions: LotActionContext }) {
       <LotActionArea surface={view.actionSurface} context={actions} />
     </section>
   );
+}
+
+/** The price block of the lot in the page's live view. */
+export function LotPriceBlock({ actions }: { actions: LotActionContext }) {
+  const { view } = useLotPageViewContext();
+  return <LotPriceBlockView view={view} actions={actions} />;
 }

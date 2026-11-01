@@ -28,17 +28,17 @@ export function LotBidHistory() {
       className={cn("mt-6 border-t border-lax-line", !open && "border-b")}
     >
       <h2 className="m-0">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           aria-expanded={open}
           aria-controls={listId}
           onClick={() => setOpen((value) => !value)}
-          className="lax-focus -mx-1 flex h-13 w-[calc(100%+0.5rem)] items-center gap-2 rounded-md px-1 text-left text-lax-14 transition-colors duration-150 hover:bg-lax-hover active:bg-lax-pressed"
+          className="-mx-1 h-13 w-[calc(100%+0.5rem)] justify-start gap-2 px-1 text-left font-normal"
         >
-          <Chevron aria-hidden className="size-4 shrink-0 text-lax-muted" />
+          <Chevron aria-hidden className="text-lax-muted" />
           <span className="font-semibold text-lax-fg">Bid history</span>
           <span className="flex-1 text-lax-muted">{content.summary}</span>
-        </button>
+        </Button>
       </h2>
       <div id={listId} hidden={!open}>
         {content.rows.length > 0 ? (
@@ -62,7 +62,7 @@ export function LotBidHistory() {
           </ol>
         ) : (
           <p className="m-0 border-t border-lax-line-subtle px-1 py-3 text-lax-13 leading-5 text-lax-muted">
-            No bids yet.
+            The first bid will appear here.
           </p>
         )}
         {!showAll && content.hiddenCount > 0 ? (

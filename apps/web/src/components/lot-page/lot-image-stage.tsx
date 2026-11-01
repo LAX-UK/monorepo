@@ -75,14 +75,14 @@ export function LotImageStage({ title, images }: Props) {
         <ul className="mt-3 flex list-none gap-2 overflow-x-auto p-0 pb-1" aria-label="Images">
           {images.map((image, i) => (
             <li key={image.src}>
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 aria-label={`Image ${i + 1} of ${images.length}`}
                 aria-current={i === index ? "true" : undefined}
                 onClick={() => setIndex(i)}
                 className={cn(
-                  "lax-focus relative block size-16 overflow-hidden rounded-md bg-lax-paper p-2.5",
-                  "ring-1 ring-lax-line ring-inset transition-shadow duration-150 hover:ring-lax-line-hover",
+                  "size-16 overflow-hidden rounded-md bg-lax-paper p-2.5 hover:bg-lax-paper",
+                  "ring-1 ring-lax-line ring-inset hover:ring-lax-line-hover",
                   "aria-[current=true]:ring-2 aria-[current=true]:ring-lax-fg",
                 )}
               >
@@ -95,7 +95,7 @@ export function LotImageStage({ title, images }: Props) {
                     imgClassName="object-contain"
                   />
                 </span>
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
