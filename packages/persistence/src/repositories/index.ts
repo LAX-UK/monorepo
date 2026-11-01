@@ -56,6 +56,7 @@ export {
   createDrizzleLotTransitionRepository,
   DrizzleLotTransitionRepository,
 } from "./drizzle-lot-transition.repository.js";
+export { DrizzleAdminDisputeDeskReader } from "./drizzle-admin-dispute-desk.reader.js";
 export { DrizzleAdminDisputeCaseEnrichmentReader } from "./drizzle-admin-dispute-case-enrichment.reader.js";
 export { DrizzleAdminMarketingEventOutboxRepository } from "./drizzle-admin-marketing-event-outbox.repository.js";
 export { DrizzleAdminSaleOperationsSnapshotReader } from "./drizzle-admin-sale-operations-snapshot.reader.js";

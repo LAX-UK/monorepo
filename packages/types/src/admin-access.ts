@@ -183,6 +183,12 @@ export const PAYMENT_WRITE_ACCESS: CapabilityRequirement = {
 export const PAYMENT_MANUAL_REVIEW_WRITE_ACCESS: CapabilityRequirement = "finance.platform.write";
 
 /**
+ * Allocate a card dispute to the invoices it falls on. It moves each seller's payout, so it is
+ * platform-wide finance write, like releasing or refunding a held payment.
+ */
+export const DISPUTE_ALLOCATION_WRITE_ACCESS: CapabilityRequirement = "finance.platform.write";
+
+/**
  * Approve or decline a seller's request to withdraw a lot. Withdrawing cancels the lot and
  * can pull it out of a sale, so it follows `auction.manage`, not the wider catalogue access.
  */

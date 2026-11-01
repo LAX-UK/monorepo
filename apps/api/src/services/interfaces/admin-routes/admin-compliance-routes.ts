@@ -1,7 +1,10 @@
+import type { DisputeDeskListInput } from "@auction/persistence/interfaces";
 import type {
   AdminDisputeCaseRow,
   AdminDisputeCaseSummary,
   DisputeCaseListFilter,
+  DisputeDeskCase,
+  DisputeDeskPage,
   LegalEntity,
   LegalEntityStatus,
 } from "@auction/types";
@@ -14,6 +17,10 @@ import type {
   LegalEntityDocumentAdminService,
 } from "../../admin/legal-entity-document-admin.service.js";
 import type { AmlService } from "../../aml/aml.service.js";
+import type {
+  DisputeAllocationError,
+  DisputeAllocationInput,
+} from "../../disputes/dispute-allocation.service.js";
 import type { LegalEntityLifecycleFailure } from "../../legal-entity-lifecycle-admin.service.js";
 import type { SourceOfFundsDocumentCollectionService } from "../../source-of-funds/source-of-funds-document-collection.service.js";
 import type { SourceOfFundsDocumentReviewService } from "../../source-of-funds/source-of-funds-document-review.service.js";
@@ -32,6 +39,16 @@ export interface IAdminDisputeCaseQueryService {
     summary: AdminDisputeCaseSummary;
   }>;
   countOpenCases(): Promise<number>;
+}
+
+export type AdminDisputeDeskListInput = DisputeDeskListInput;
+
+export interface IAdminDisputeDeskService {
+  listCases(input: AdminDisputeDeskListInput): Promise<DisputeDeskPage>;
+  getCase(caseId: string): Promise<DisputeDeskCase | null>;
+  allocate(
+    input: DisputeAllocationInput,
+  ): Promise<Result<{ caseId: string; version: number }, DisputeAllocationError>>;
 }
 
 export interface IAdminLegalEntityLifecycleApplicationService {
@@ -78,6 +95,7 @@ export interface IAdminSourceOfFundsApplicationService {
 
 export type AdminComplianceRouteServices = {
   disputeCases: IAdminDisputeCaseQueryService;
+  disputeDesk: IAdminDisputeDeskService;
   legalEntityLifecycle: IAdminLegalEntityLifecycleApplicationService;
   aml: IAdminAmlApplicationService;
   sourceOfFunds: IAdminSourceOfFundsApplicationService;

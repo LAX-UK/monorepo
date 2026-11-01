@@ -20,6 +20,7 @@
     "lint": "biome check . && node scripts/check-org-routes-dip.mjs && node scripts/check-admin-routes-dip.mjs && node scripts/check-bidding-routes-dip.mjs && node scripts/check-user-routes-dip.mjs && node scripts/check-finance-routes-dip.mjs && node scripts/check-catalog-read-routes-dip.mjs && node scripts/check-catalog-lifecycle-routes-dip.mjs && node scripts/check-catalog-adjacent-routes-dip.mjs && node scripts/check-submissions-routes-dip.mjs && node scripts/check-compliance-routes-dip.mjs && node scripts/check-route-dip-coverage.mjs && node scripts/check-error-status.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "backfill:dispute-cases": "tsx scripts/backfill-dispute-cases.ts",
     "check:admin-dip": "node scripts/check-admin-routes-dip.mjs",
     "check:bidding-dip": "node scripts/check-bidding-routes-dip.mjs",
     "check:org-dip": "node scripts/check-org-routes-dip.mjs",
