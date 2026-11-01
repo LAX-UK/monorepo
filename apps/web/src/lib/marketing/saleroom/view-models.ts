@@ -9,6 +9,8 @@ import type { LotCardTimingVM, Sale, SaleDayMedia } from "@auction/types";
 export type SaleHeroVM = {
   id: string;
   title: string;
+  /** One line of fact under the title, set by staff; null when none. */
+  subtitle: string | null;
   coverImage: string | null;
   startEndLabel: string;
   status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
@@ -19,7 +21,13 @@ export type SaleHeroVM = {
   isLive: boolean;
   shareUrl: string;
   itemsLabel: string;
-  /** Uppercased one-line: date range | time | location (or empty tail if unknown). */
+  /** Lots in the sale, withdrawn included. */
+  lotCount: number;
+  /** The sale's format in words: "Online", "In-person" or "Hybrid". */
+  formatLabel: string;
+  /** Where it happens; null for an online sale, whose format says so. */
+  placeLabel: string | null;
+  /** The one time line: date range and start time, e.g. "29 Oct – 3 Nov 2026 · 21:00 GMT". */
   dateLine: string;
   /** Relative time until preview opens when `previewStartTime` is set (Figma: left detail cell).
    */
@@ -100,14 +108,6 @@ export type RelatedSaleVM = {
   dateLine: string;
 };
 
-export type EndedSaleSummaryVM = {
-  soldCount: number;
-  unsoldCount: number;
-  hammerTotalLabel: string;
-  /** Set when catalogue was not fully loaded for aggregation. */
-  partialLabel?: string;
-};
-
 /** Overview tab: all salient sale fields for the read-only marketing panel. */
 export type SaleOverviewVM = {
   status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
@@ -140,8 +140,6 @@ export type SaleOverviewVM = {
   /** Google Maps embed URL for click-to-load preview (no API key). */
   locationEmbedUrl: string | null;
   showLocation: boolean;
-  /** Aggregated ended-sale stats when sale has ended and lots are loaded. */
-  endedSaleSummary?: EndedSaleSummaryVM | null;
 };
 
 /** View-model for the auction-day media gallery section (ended onsite/hybrid only). */

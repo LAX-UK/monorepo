@@ -1,3 +1,4 @@
+import { SaleroomCancelledNotice } from "@/components/sections/saleroom/saleroom-cancelled-notice";
 import { SaleroomDetailView } from "@/components/sections/saleroom/saleroom-detail-view";
 import {
   loadSaleroomDetailMetadataShell,
@@ -20,6 +21,9 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   if (!shell) {
     return metadataForNotFound("Sale not found");
   }
+  if (shell.sale.status === "cancelled") {
+    return metadataForNotFound(`${shell.sale.title} was cancelled`);
+  }
   return metadataForSale(shell.sale, {
     hasPress: (shell.sale.pressCoverage?.length ?? 0) > 0,
     hasDayMedia:
@@ -32,6 +36,7 @@ export default async function SaleDetailPage({ params, searchParams }: PageProps
   const { id, slug } = await params;
   const sp = await searchParams;
   const data = await loadSaleroomDetailPage({ id, slug, searchParams: sp });
+  if (data.kind === "cancelled") return <SaleroomCancelledNotice saleTitle={data.saleTitle} />;
   return <SaleroomDetailView {...data} />;
 }
 

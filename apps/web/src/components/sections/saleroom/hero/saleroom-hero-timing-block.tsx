@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  MarketingCountdownPanel,
-  formatCountdownSecondaryLine,
-} from "@/components/marketing/marketing-countdown-panel";
+import { MarketingCountdownPanel } from "@/components/marketing/marketing-countdown-panel";
 import { resolveHeroCountdownEnd } from "@/components/sections/saleroom/hero/saleroom-hero-copy";
 import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
 
@@ -31,9 +28,6 @@ export function SaleroomHeroTimingBlock({ hero }: Props) {
 
   const isActive = hero.status === "active";
   const countdownLabel = isActive ? "Closes in" : "Opens in";
-  const secondaryLine = isActive
-    ? formatCountdownSecondaryLine("Ends", hero.endTime)
-    : formatCountdownSecondaryLine("Starts", hero.startTime);
 
   return (
     <fieldset className="fade-up-d3 m-0 flex min-w-0 flex-col gap-3 border-0 p-0">
@@ -49,7 +43,6 @@ export function SaleroomHeroTimingBlock({ hero }: Props) {
           label={countdownLabel}
           endIso={countdownEnd}
           showLiveDot={isActive}
-          secondaryLine={secondaryLine}
           className="pt-1"
           status={hero.status}
           deliveryMode={hero.deliveryMode}

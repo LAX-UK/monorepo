@@ -71,7 +71,8 @@ describe.skipIf(!HAS_DB)("sale results and withdrawn lots (integration)", () => 
           sellerLegalEntityId: ids.le,
           auctionType: "english" as const,
           startingPrice: "100",
-          currentPrice: "250",
+          // A withdrawn lot keeps a high price so only the pinning keeps it last on price sorts.
+          currentPrice: status === "cancelled" ? "999" : "250",
           status,
           ...(winnerId ? { winnerId } : {}),
           startTime: start,
@@ -111,6 +112,17 @@ describe.skipIf(!HAS_DB)("sale results and withdrawn lots (integration)", () => 
         });
         expect(catalogue.items.map((l) => l.id)).toEqual([ids.sold, ids.unsold, ids.withdrawn]);
         expect(catalogue.total).toBe(3);
+
+        for (const sort of ["priceDesc", "priceAsc", "endingAsc"] as const) {
+          const sorted = await lots.listCatalogLotsBySalePage({
+            saleId: ids.sale,
+            sort,
+            limit: 50,
+            offset: 0,
+            requirePublicSale: true,
+          });
+          expect(sorted.items.map((l) => l.id)).toEqual([ids.sold, ids.unsold, ids.withdrawn]);
+        }
 
         const hiddenSale = await lots.listCatalogLotsBySalePage({
           saleId: ids.draftSale,

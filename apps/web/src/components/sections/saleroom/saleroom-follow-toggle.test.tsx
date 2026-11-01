@@ -1,46 +1,64 @@
 import { SaleroomFollowToggle } from "@/components/sections/saleroom/saleroom-follow-toggle";
-import { OverlayToneProvider } from "@/components/ui/overlay-tone-context";
-import { DEFAULT_OVERLAY_TONE } from "@/hooks/use-image-overlay-tones";
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const toggleSaleFollow = vi.fn();
+vi.mock("@/lib/data/http/sale-follow.client", () => ({
+  toggleSaleFollow: (...args: unknown[]) => toggleSaleFollow(...args),
+}));
+
+beforeEach(() => toggleSaleFollow.mockReset());
 
 describe("SaleroomFollowToggle", () => {
-  it("uses overlay-tone chrome for outlined-block hero when inside AdaptiveMediaFrame", () => {
-    render(
-      <OverlayToneProvider
-        value={{ tones: { contentBlock: DEFAULT_OVERLAY_TONE }, resolved: true }}
-      >
-        <SaleroomFollowToggle
-          saleId="sale-1"
-          initialFollowing={false}
-          isAuthenticated={false}
-          loginNextPath="/sales/test/sale-1"
-          appearance="outlined-block"
-          label="Follow"
-        />
-      </OverlayToneProvider>,
-    );
-
-    const link = screen.getByRole("link", { name: /follow/i });
-    expect(link).toHaveAttribute("data-overlay-tone");
-    expect(link.className).toContain("var(--overlay-fg)");
-    expect(link.className).not.toContain("text-brand-800");
-  });
-
-  it("keeps on-surface styling for outlined-block outside an overlay frame", () => {
+  it("sends a visitor to sign in and back to the sale", () => {
     render(
       <SaleroomFollowToggle
         saleId="sale-1"
         initialFollowing={false}
         isAuthenticated={false}
         loginNextPath="/sales/test/sale-1"
-        appearance="outlined-block"
-        label="Follow"
+        label="Notify me"
       />,
     );
+    const link = screen.getByRole("link", { name: "Notify me" });
+    expect(link.getAttribute("href")).toContain("next=%2Fsales%2Ftest%2Fsale-1");
+  });
 
-    const link = screen.getByRole("link", { name: /follow/i });
-    expect(link).not.toHaveAttribute("data-overlay-tone");
-    expect(link.className).toContain("text-brand-800");
+  it("follows the sale and then reads Following", async () => {
+    toggleSaleFollow.mockResolvedValue(true);
+    render(
+      <SaleroomFollowToggle
+        saleId="sale-1"
+        initialFollowing={false}
+        isAuthenticated
+        loginNextPath="/sales/test/sale-1"
+        label="Notify me"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Notify me" }));
+    expect(toggleSaleFollow).toHaveBeenCalledWith("sale-1", false);
+    expect(await screen.findByRole("button", { name: "Following" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  it("stays as it was when following fails", async () => {
+    toggleSaleFollow.mockResolvedValue(false);
+    render(
+      <SaleroomFollowToggle
+        saleId="sale-1"
+        initialFollowing={false}
+        isAuthenticated
+        loginNextPath="/sales/test/sale-1"
+        label="Notify me"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Notify me" }));
+    await waitFor(() => expect(toggleSaleFollow).toHaveBeenCalled());
+    expect(await screen.findByRole("button", { name: "Notify me" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
   });
 });

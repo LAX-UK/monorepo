@@ -1,5 +1,4 @@
 import type { Sale } from "@auction/types";
-import { SaleroomEndedSaleSummary } from "./saleroom-ended-sale-summary";
 import { SaleroomOverviewAbout } from "./saleroom-overview-about";
 import { SaleroomOverviewFacts } from "./saleroom-overview-facts";
 import { SaleroomOverviewPlanVisit } from "./saleroom-overview-plan-visit";
@@ -19,12 +18,6 @@ type Props = {
 export function SaleroomOverviewPanel({ overview, sale, hideDescription = false }: Props) {
   return (
     <div className="mx-auto grid w-full max-w-[var(--container-max,1440px)] grid-cols-1 gap-6 lg:grid-cols-2">
-      {overview.endedSaleSummary ? (
-        <div className="lg:col-span-2">
-          <SaleroomEndedSaleSummary summary={overview.endedSaleSummary} />
-        </div>
-      ) : null}
-
       {sale ? <SaleroomOverviewPlanVisit sale={sale} /> : null}
 
       <SaleroomOverviewFacts overview={overview} />

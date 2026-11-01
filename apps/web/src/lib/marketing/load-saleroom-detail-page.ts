@@ -25,12 +25,20 @@ import {
 } from "@/lib/marketing/saleroom-page.query";
 import { buildSaleroomPageJsonLd } from "@/lib/marketing/saleroom-page.seo";
 import { buildSaleroomPageVM } from "@/lib/marketing/saleroom-page.vm";
+import { resolveSalePageState } from "@/lib/marketing/saleroom/sale-page-state";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { saleFormatExplainerContextFromSale } from "@/lib/sale-format-explainer";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import { notFound, permanentRedirect, redirect } from "next/navigation";
 
+/** A sale that will not take place: its address answers with a notice, not a catalogue. */
+export type SaleroomCancelledPageData = {
+  kind: "cancelled";
+  saleTitle: string;
+};
+
 export type SaleroomDetailPageData = {
+  kind: "sale";
   vm: ReturnType<typeof buildSaleroomPageVM>;
   jsonLdText: string;
   session: Awaited<ReturnType<typeof getServerSessionUser>>;
@@ -41,7 +49,7 @@ export async function loadSaleroomDetailPage(input: {
   id: string;
   slug: string;
   searchParams: Record<string, string | string[] | undefined>;
-}): Promise<SaleroomDetailPageData> {
+}): Promise<SaleroomDetailPageData | SaleroomCancelledPageData> {
   const query = parseSaleroomPageQuery(input.searchParams);
 
   const [loaded, session] = await Promise.all([
@@ -66,8 +74,11 @@ export async function loadSaleroomDetailPage(input: {
     items: loaded.lotsPage.items.map((lot) => atgDisplayLot(lot, shell.sale)),
   };
 
+  // A cancelled sale keeps its address for people who were given the link.
+  const cancelled =
+    resolveSalePageState({ status: shell.sale.status, lotCount: 0 }) === "cancelled";
   const canPreviewCatalog = viewerCanSeeNonPublicCatalog(session?.role, session?.staffRoles);
-  if (!canPreviewCatalog && !isPublicCatalogSale(shell.sale)) {
+  if (!cancelled && !canPreviewCatalog && !isPublicCatalogSale(shell.sale)) {
     notFound();
   }
 
@@ -75,6 +86,7 @@ export async function loadSaleroomDetailPage(input: {
   if (slugMismatch) {
     permanentRedirect(canonicalSalePathWithQuery(shell.sale, input.searchParams));
   }
+  if (cancelled) return { kind: "cancelled", saleTitle: shell.sale.title };
   if (firstSearchParam(input.searchParams.tab) === "overview") {
     redirect(canonicalSalePathWithQuery(shell.sale, input.searchParams));
   }
@@ -135,6 +147,7 @@ export async function loadSaleroomDetailPage(input: {
   });
 
   return {
+    kind: "sale",
     vm,
     jsonLdText,
     session,

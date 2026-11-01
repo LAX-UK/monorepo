@@ -55,9 +55,11 @@ export function SaleMetaBadges({
     <div className={cn("flex flex-col gap-2", className)}>
       {withScheduleRow ? <SaleScheduleBadges isLive={isLive} startsSoon={startsSoon} /> : null}
       <div className="flex flex-wrap items-center gap-2">
-        {!withScheduleRow && showRegistryLifecycle ? <SaleLifecycleBadge status={status} /> : null}
-        {!withScheduleRow && startsSoon && !isLive && status === "scheduled" ? (
-          <SaleLifecycleBadge status="scheduled" label="Starts soon" />
+        {!withScheduleRow && showRegistryLifecycle ? (
+          <SaleLifecycleBadge
+            status={status}
+            {...(startsSoon && !isLive && status === "scheduled" ? { label: "Starts soon" } : {})}
+          />
         ) : null}
         <SaleTypeBadge
           deliveryMode={deliveryMode}
