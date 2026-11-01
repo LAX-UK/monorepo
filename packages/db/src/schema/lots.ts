@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -54,6 +55,11 @@ export const lot = pgTable(
     medium: text("medium"),
     dimensions: text("dimensions"),
     images: text("images").array().notNull().default([]),
+    /** The photograph shows the work in its frame, so its size is the framed size. */
+    photoIncludesFrame: boolean("photo_includes_frame").notNull().default(false),
+    /** Framed size in centimetres, when the work is sold framed. */
+    framedWidthCm: numeric("framed_width_cm", { precision: 7, scale: 1 }),
+    framedHeightCm: numeric("framed_height_cm", { precision: 7, scale: 1 }),
     auctionType: lotAuctionTypeEnum("auction_type").notNull(),
     startingPrice: numeric("starting_price", { precision: 18, scale: 2 }).notNull(),
     reservePrice: numeric("reserve_price", { precision: 18, scale: 2 }),
@@ -111,6 +117,10 @@ export const lot = pgTable(
     index("lot_sale_id_status_idx").on(table.saleId, table.status),
     index("lot_not_deleted_idx").on(table.id).where(sql`${table.deletedAt} IS NULL`),
     index("lot_sale_id_not_deleted_idx").on(table.saleId).where(sql`${table.deletedAt} IS NULL`),
+    check(
+      "lot_framed_size_check",
+      sql`(${table.framedWidthCm} IS NULL) = (${table.framedHeightCm} IS NULL) AND (${table.framedWidthCm} IS NULL OR (${table.framedWidthCm} > 0 AND ${table.framedHeightCm} > 0))`,
+    ),
     uniqueIndex("lot_sale_id_lot_number_uid")
       .on(table.saleId, table.lotNumber)
       .where(sql`${table.saleId} IS NOT NULL AND ${table.lotNumber} IS NOT NULL`),

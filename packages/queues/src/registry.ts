@@ -1,5 +1,6 @@
 import {
   CONSIGNMENT_REPLY_DELIVERY_QUEUE_NAME,
+  COVER_ANALYSIS_QUEUE_NAME,
   DATA_EXPORT_QUEUE_NAME,
   DEAD_LETTER_QUEUE_NAME,
   EMAIL_QUEUE_NAME,
@@ -115,6 +116,24 @@ export const QUEUE_REGISTRY = {
       removeOnFail: 500,
     },
     description: "Extract image dimensions and LQIP after upload validation",
+  },
+  [COVER_ANALYSIS_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    heartbeatKey: "cover-analysis",
+    dlq: false,
+    showInUi: false,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60_000 },
+      removeOnComplete: 50,
+      removeOnFail: 50,
+    },
+    description: "Measure the colours and text scrim of sale cover pictures staff set or change",
   },
   [QR_CODE_SCAN_QUEUE_NAME]: {
     producers: ["api"],
