@@ -1,8 +1,15 @@
 import { parseLot, parseSale } from "@/lib/data/http/parse";
+import { type SaleResultsSummaryView, parseSaleResultsSummary } from "@/lib/sale-results-summary";
 import type { Lot, Sale } from "@auction/types";
 
 /** Public catalogue sales list row: sale metadata + preview lots + total lot count. */
-export type SaleListRow = { sale: Sale; lots: Lot[]; lotCount: number };
+export type SaleListRow = {
+  sale: Sale;
+  lots: Lot[];
+  lotCount: number;
+  /** Results of an ended sale; absent before it has any. */
+  resultsSummary?: SaleResultsSummaryView;
+};
 
 /** Resolve API lotCount with safe fallback to preview array length. */
 export function resolveSaleLotCount(lotCount: unknown, previewLength: number): number {
@@ -23,12 +30,19 @@ export function formatSaleLotsLabel(count: number): string {
 
 /** Parse one row from `GET /sales` list payload. */
 export function parseSaleListRowApiPayload(row: unknown): SaleListRow {
-  const o = row as { sale: unknown; lots?: unknown[]; lotCount?: unknown };
+  const o = row as {
+    sale: unknown;
+    lots?: unknown[];
+    lotCount?: unknown;
+    resultsSummary?: unknown;
+  };
   const lots = (o.lots ?? []).map(parseLot);
+  const resultsSummary = parseSaleResultsSummary(o.resultsSummary);
   return {
     sale: parseSale(o.sale),
     lots,
     lotCount: resolveSaleLotCount(o.lotCount, lots.length),
+    ...(resultsSummary ? { resultsSummary } : {}),
   };
 }
 

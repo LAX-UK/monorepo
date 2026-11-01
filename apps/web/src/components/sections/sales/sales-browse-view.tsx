@@ -1,20 +1,16 @@
-import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { MarketingBidPromoCta } from "@/components/marketing/marketing-bid-promo-cta";
 import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catalog-hub-shell";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { FeaturedAuctionsGrid } from "@/components/sections/sales/featured-auctions-grid";
 import { SalesBrowseResults } from "@/components/sections/sales/sales-browse-results";
 import { SalesCalendarBrowse } from "@/components/sections/sales/sales-calendar-browse";
+import { SalesCalendarEmpty } from "@/components/sections/sales/sales-calendar-empty";
 import { SalesCalendarPagination } from "@/components/sections/sales/sales-calendar-pagination";
 import { SalesHeroHeader } from "@/components/sections/sales/sales-hero-header";
-import { SalesNewLotsGrid } from "@/components/sections/sales/sales-new-lots-grid";
-import { SalesNewLotsToolbar } from "@/components/sections/sales/sales-new-lots-toolbar";
 import { SalesPrimaryTabs } from "@/components/sections/sales/sales-primary-tabs";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { SalesBrowsePageData } from "@/lib/marketing/load-sales-browse-page";
-import type { SalesBrowsePageVM } from "@/lib/marketing/sales-browse-page.vm";
-import { resolveCalendarEmptyState } from "@/lib/marketing/sales-calendar-empty-state";
-import { calendarClearFiltersHref, calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
+import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { MarketingSectionReveal } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { ButtonLink } from "@auction/ui/lax";
@@ -23,8 +19,6 @@ import Link from "next/link";
 type SalesBrowseViewProps = SalesBrowsePageData;
 
 export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewProps) {
-  const session = vm.session;
-
   return (
     <MarketingCatalogHubShell
       jsonLd={
@@ -45,9 +39,11 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
         >
           <div className="flex flex-col gap-10 sm:gap-12 lg:gap-12">
             <SalesHeroHeader />
-            <div className="hidden md:block">
-              <FeaturedAuctionsGrid vms={vm.featuredVms} />
-            </div>
+            {vm.featuredVms.length > 0 ? (
+              <div className="hidden md:block">
+                <FeaturedAuctionsGrid vms={vm.featuredVms} />
+              </div>
+            ) : null}
           </div>
         </section>
       }
@@ -56,9 +52,9 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
         index={0}
         className="flex flex-col gap-6 pb-8 sm:gap-8 sm:pb-10 lg:gap-10 lg:pb-10"
       >
-        <SalesPrimaryTabs state={vm.calendarState} hasLiveSales={vm.hasLiveSales} />
+        <SalesPrimaryTabs state={vm.calendarState} tabs={vm.tabs} />
 
-        {vm.loadFailed ? (
+        {vm.listState === "error" ? (
           <MarketingEmptyState
             variant="marketing"
             context="error"
@@ -81,45 +77,9 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
           />
         ) : null}
 
-        {vm.tab === "privateSales" ? (
-          <MarketingEmptyState
-            variant="marketing"
-            title="Private sales"
-            description="Acquire exceptional works outside the auction calendar. Contact our specialists to find out more."
-            action={
-              <ButtonLink Link={Link} variant="primary" href="/contact?intent=private-sale">
-                Contact a specialist
-              </ButtonLink>
-            }
-          />
-        ) : null}
+        {vm.listState === "empty" ? <SalesCalendarEmpty vm={vm} /> : null}
 
-        {vm.tab === "newLots" ? (
-          <div className="flex flex-col gap-6">
-            {!session ? (
-              <MarketingBidPromoCta className="rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40" />
-            ) : null}
-            <SalesNewLotsToolbar resultCount={vm.newLots.length} />
-            <ViewItemListTracker
-              listId="sales_hub"
-              listName="New lots"
-              itemIds={vm.newLots.map((l) => l.id)}
-            />
-            <SalesNewLotsGrid
-              lots={vm.newLotVMs}
-              {...(vm.newLotsCatalogLinkParams
-                ? { catalogLinkParams: vm.newLotsCatalogLinkParams }
-                : {})}
-            />
-            <SalesCalendarPagination
-              state={vm.calendarState}
-              page={vm.calendarPage}
-              hasMore={vm.newLotsHasMore}
-            />
-          </div>
-        ) : null}
-
-        {vm.showSalesBrowse ? (
+        {vm.showBrowseControls ? (
           <SalesCalendarBrowse
             state={vm.calendarState}
             resultCount={vm.filteredSalesCount}
@@ -127,20 +87,21 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
             years={vm.yearOptions}
             calendarView={vm.calendarView}
           >
-            {!session ? (
-              <MarketingBidPromoCta className="mb-6 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40" />
-            ) : null}
-
-            {vm.filteredSalesCount === 0 && !vm.loadFailed ? (
-              <CalendarEmpty vm={vm} />
+            {vm.listState === "filteredEmpty" ? (
+              <SalesCalendarEmpty vm={vm} />
             ) : (
-              <SalesBrowseResults
-                initialView={vm.calendarView}
-                defaultView="grid"
-                agendaVms={vm.agendaVms}
-                gridVms={vm.gridVms}
-                rowVms={vm.rowVms}
-              />
+              <>
+                {!vm.session ? (
+                  <MarketingBidPromoCta className="mb-6 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40" />
+                ) : null}
+                <SalesBrowseResults
+                  initialView={vm.calendarView}
+                  defaultView="grid"
+                  agendaVms={vm.agendaVms}
+                  gridVms={vm.gridVms}
+                  rowVms={vm.rowVms}
+                />
+              </>
             )}
             <SalesCalendarPagination
               state={vm.calendarState}
@@ -151,40 +112,5 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
         ) : null}
       </MarketingSectionReveal>
     </MarketingCatalogHubShell>
-  );
-}
-
-function CalendarEmpty({ vm }: { vm: SalesBrowsePageVM }) {
-  const empty = resolveCalendarEmptyState({
-    tab: vm.tab,
-    hasActiveFilters: vm.hasActiveCalendarFilters,
-  });
-  return (
-    <MarketingEmptyState
-      variant="marketing"
-      context={vm.hasActiveCalendarFilters ? "filtered" : "noResults"}
-      title={empty.title}
-      description={empty.description}
-      action={
-        empty.action === "clearFilters" ? (
-          <>
-            <ButtonLink
-              Link={Link}
-              variant="primary"
-              href={calendarClearFiltersHref(vm.calendarState)}
-            >
-              Clear filters
-            </ButtonLink>
-            <ButtonLink Link={Link} variant="secondary" href="/sales">
-              Browse all sales
-            </ButtonLink>
-          </>
-        ) : empty.action ? (
-          <ButtonLink Link={Link} variant="secondary" href={empty.action.href}>
-            {empty.action.label}
-          </ButtonLink>
-        ) : undefined
-      }
-    />
   );
 }
