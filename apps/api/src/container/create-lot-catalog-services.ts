@@ -1,6 +1,9 @@
 import type { Database } from "@auction/db";
 import type { ILotCancelledLifecycleRecorder } from "@auction/persistence/interfaces";
-import { DrizzleConsignmentAgreementRepository } from "@auction/persistence/repositories";
+import {
+  DrizzleConsignmentAgreementRepository,
+  DrizzleConsignmentMessageRepository,
+} from "@auction/persistence/repositories";
 import {
   DrizzleLotSoftDeleteGuardReader,
   DrizzleLotSoftDeleteSideEffects,
@@ -26,6 +29,8 @@ import {
   ConsignmentAgreementService,
   type IConsignmentAgreementService,
 } from "../services/consignment-agreement/consignment-agreement.service.js";
+import { ConsignmentAssignmentService } from "../services/consignment-messages/consignment-assignment.service.js";
+import { ConsignmentThreadAudit } from "../services/consignment-messages/consignment-thread-audit.js";
 import type {
   IItemSubmissionAdminApi,
   IItemSubmissionSellerApi,
@@ -347,6 +352,10 @@ export function createLotCatalogServices(
     consignmentAgreementRepository,
     sellerIdentity,
     repos.staffRoster,
+    new ConsignmentAssignmentService({
+      messages: new DrizzleConsignmentMessageRepository(db),
+      audit: new ConsignmentThreadAudit(domainEventSink),
+    }),
   );
   const consignmentAgreementService = new ConsignmentAgreementService({
     agreements: consignmentAgreementRepository,

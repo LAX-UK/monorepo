@@ -1,5 +1,9 @@
-import type { EntityActor } from "@auction/domain";
-import type { IConsignmentMessageRepository } from "@auction/persistence/interfaces";
+import { type EntityActor, threadAssignee } from "@auction/domain";
+import type {
+  ConsignmentThreadSubject,
+  IConsignmentMessageRepository,
+} from "@auction/persistence/interfaces";
+import type { ConsignmentThreadAssigneeView } from "@auction/validators";
 
 /** The upload kind a message's files are uploaded as (`upload.policy.ts`). */
 export const CONSIGNMENT_MESSAGE_UPLOAD_KIND = "consignment_message_attachment";
@@ -72,4 +76,15 @@ export async function checkUploads(
     }
   }
   return null;
+}
+
+/** Who has the thread now; a cover shows when it ends, if it has an end date. */
+export function assigneeView(
+  subject: Pick<ConsignmentThreadSubject, "specialist" | "covering" | "coveringUntil">,
+): ConsignmentThreadAssigneeView | null {
+  const assignee = threadAssignee({ specialist: subject.specialist, covering: subject.covering });
+  if (!assignee) return null;
+  return assignee.covering && subject.coveringUntil
+    ? { ...assignee, coveringUntil: subject.coveringUntil.toISOString() }
+    : assignee;
 }

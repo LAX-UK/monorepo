@@ -79,8 +79,17 @@ export const consignmentThreadAssignBodySchema = z
      * cover is assigning back to the specialist.
      */
     covering: z.boolean().default(false),
+    /**
+     * When the cover ends and the thread goes back to the specialist (a moment in the future).
+     * Leave it out for a cover that runs until someone ends it.
+     */
+    coveringUntil: z.string().datetime({ offset: true }).nullable().optional(),
   })
-  .strict();
+  .strict()
+  .refine((body) => !body.coveringUntil || body.covering, {
+    message: "An end date only applies to a cover.",
+    path: ["coveringUntil"],
+  });
 export type ConsignmentThreadAssignBody = z.infer<typeof consignmentThreadAssignBodySchema>;
 
 export const consignmentInboxBulkBodySchema = z
@@ -118,7 +127,11 @@ export const savedReplyParamSchema = z.object({ id: z.string().uuid() });
 export type StaffPersonRef = { userId: string; name: string };
 
 /** Who has a thread; `covering` when it is a colleague standing in for the specialist. */
-export type ConsignmentThreadAssigneeView = StaffPersonRef & { covering: boolean };
+export type ConsignmentThreadAssigneeView = StaffPersonRef & {
+  covering: boolean;
+  /** When a cover ends (ISO), if it has an end date. */
+  coveringUntil?: string | null;
+};
 
 /** How long the client has waited and when the answer is due, in working time. */
 export type ConsignmentReplyClockView = {

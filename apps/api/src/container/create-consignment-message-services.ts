@@ -8,6 +8,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { ConnectionOptions } from "bullmq";
 import { ConsignmentReplyDeliveryQueue } from "../jobs/consignment-reply-delivery.js";
+import { ConsignmentAssignmentService } from "../services/consignment-messages/consignment-assignment.service.js";
 import { ConsignmentInboxQueryService } from "../services/consignment-messages/consignment-inbox-query.service.js";
 import {
   ImageLinks,
@@ -24,6 +25,7 @@ import { ConsignmentMessageService } from "../services/consignment-messages/cons
 import { ConsignmentSavedReplyService } from "../services/consignment-messages/consignment-saved-reply.service.js";
 import { ConsignmentThreadAudit } from "../services/consignment-messages/consignment-thread-audit.js";
 import { ConsignmentThreadCommandService } from "../services/consignment-messages/consignment-thread-command.service.js";
+import { ConsignmentThreadSweepService } from "../services/consignment-messages/consignment-thread-sweep.service.js";
 import type { IDomainEventSink } from "../services/domain-event-sink.js";
 import type { IObjectStorage } from "../services/interfaces/object-storage.js";
 import type {
@@ -57,6 +59,8 @@ export type ConsignmentMessageServices = {
   messageHttp: IConsignmentMessageHttpApplicationService;
   savedReplyHttp: IConsignmentSavedReplyHttp;
   replyRuntime: ConsignmentReplyRuntime;
+  /** Catches replies whose delivery job was lost and covers that have reached their end date. */
+  sweep: ConsignmentThreadSweepService;
 };
 
 export function createConsignmentMessageServices(
@@ -69,6 +73,7 @@ export function createConsignmentMessageServices(
   const audit = new ConsignmentThreadAudit(input.events);
   const delivery = new ConsignmentReplyDeliveryQueue(input.bullConnection);
 
+  const assignment = new ConsignmentAssignmentService({ messages: input.messages, audit });
   const commands = new ConsignmentThreadCommandService({
     messages: input.messages,
     inbox: input.inbox,
@@ -78,6 +83,7 @@ export function createConsignmentMessageServices(
     notifier,
     delivery,
     audit,
+    assignment,
   });
   const queries = new ConsignmentInboxQueryService({
     inbox: input.inbox,
@@ -102,6 +108,15 @@ export function createConsignmentMessageServices(
     savedReplyHttp: new ConsignmentSavedReplyHttpApplicationService(
       new ConsignmentSavedReplyService({ replies: input.savedReplies, audit }),
     ),
-    replyRuntime: { jobs: delivery, deliver: (messageId) => commands.deliver(messageId) },
+    replyRuntime: {
+      jobs: delivery,
+      deliver: (messageId) => commands.deliver(messageId).then(() => undefined),
+    },
+    sweep: new ConsignmentThreadSweepService({
+      messages: input.messages,
+      deliver: (messageId) => commands.deliver(messageId),
+      assignment,
+      onError: (message, error) => console.error(`[consignment-sweep] ${message}`, error),
+    }),
   };
 }
