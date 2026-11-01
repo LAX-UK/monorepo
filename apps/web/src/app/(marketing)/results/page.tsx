@@ -38,6 +38,8 @@ type PageProps = {
 
 type Shell = {
   jsonLd: string;
+  /** Tab counts that are known without a second read. */
+  counts?: { sales?: number };
   toolbar?: ReactNode;
   footer?: ReactNode;
   body: ReactNode;
@@ -66,6 +68,7 @@ async function salesShell(page: number): Promise<Shell> {
   }
   return {
     jsonLd: breadcrumbsLd(),
+    counts: hasMore || page > 1 ? {} : { sales: rows.length },
     body: <ResultsSalesList rows={rows} />,
     footer: <ResultsSalesPagination page={page} hasMore={hasMore} />,
   };
@@ -121,7 +124,7 @@ export default async function ResultsPage({ searchParams }: PageProps) {
       hero={<ResultsHero />}
       toolbar={
         <>
-          <ResultsViewTabs active={view} className="mb-6" />
+          <ResultsViewTabs active={view} counts={shell.counts ?? {}} className="mb-6" />
           {shell.toolbar}
         </>
       }
