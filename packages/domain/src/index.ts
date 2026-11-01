@@ -877,3 +877,12 @@ export {
   type FeaturedLotsRefusal,
   type HomePinsRefusal,
 } from "./sale-home.js";
+export {
+  EXTERNAL_RESULTS_SETTLING_MS,
+  saleHasResultsPhase,
+  summariseSaleResults,
+  type SaleResultLot,
+  type SaleResultsSaleContext,
+  type SaleResultsSummary,
+} from "./sale-results-summary.js";
+export { toWithdrawnLotView } from "./withdrawn-lot-view.js";

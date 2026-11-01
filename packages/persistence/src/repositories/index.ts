@@ -211,6 +211,7 @@ export { DrizzleAttentionFeedReader } from "./drizzle-attention-feed.reader.js";
 export { DrizzleAdminWorkItemsReader } from "./drizzle-admin-work-items.reader.js";
 export { DrizzleAdminSaleReadinessReader } from "./drizzle-admin-sale-readiness.reader.js";
 export { DrizzleSaleAttentionSignalsReader } from "./drizzle-sale-attention-signals.reader.js";
+export { DrizzleSaleResultLotsReader } from "./drizzle-sale-result-lots.reader.js";
 export { DrizzleSaleOverviewKpiTrendReader } from "./drizzle-sale-overview-kpi-trend.reader.js";
 export { DrizzleSaleRevenueSnapshotReader } from "./drizzle-sale-revenue-snapshot.reader.js";
 

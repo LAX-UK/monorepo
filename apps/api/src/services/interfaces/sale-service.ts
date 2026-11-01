@@ -1,5 +1,5 @@
 import type { ISaleRepository } from "@auction/persistence/interfaces";
-import type { Lot, Sale, StaffRoles } from "@auction/types";
+import type { Lot, Sale, StaffRoles, WithdrawnLotView } from "@auction/types";
 import type {
   CreateNestedLotForSaleInput,
   CreateSaleInput as ValidatorCreateSale,
@@ -9,6 +9,9 @@ import type { LotAttachedToSalePayload } from "../../domain/lot-events.js";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 import type { presentSaleAdminImages } from "../../lib/media-presenters.js";
 import type { UpdateSaleBody } from "../sale/sale-update-draft.js";
+
+/** A catalogue row for the public: a lot, or a withdrawn lot reduced to its identity. */
+export type PublicCatalogueLot = Lot | WithdrawnLotView;
 
 export interface ISaleReadService {
   getById(id: string): Promise<Sale | null>;
@@ -28,7 +31,9 @@ export interface ISaleReadService {
     saleId: string,
     viewerUserId: string | undefined,
     viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
-  ): Promise<{ data: { sale: Sale; lots: Lot[]; viewer: { isFollowing: boolean } } } | null>;
+  ): Promise<{
+    data: { sale: Sale; lots: PublicCatalogueLot[]; viewer: { isFollowing: boolean } };
+  } | null>;
 
   listSalesForPublicApi(
     filter: Parameters<ISaleRepository["list"]>[0],
@@ -41,7 +46,7 @@ export interface ISaleReadService {
     viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<{
     data: {
-      items: Lot[];
+      items: PublicCatalogueLot[];
       total: number;
       limit: number;
       offset: number;

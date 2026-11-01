@@ -67,6 +67,47 @@ describe("SaleListReadService", () => {
   });
 });
 
+describe("SaleListReadService results summaries", () => {
+  it("attaches the summary of each visible sale and null when it has none", async () => {
+    const ended = { ...sale("s-ended"), status: "ended" } as Sale;
+    const saleRepo = { list: vi.fn(async () => [ended, sale("s-live")]) };
+    const lotRepo = {
+      countLotsBySaleIds: vi.fn(async () => new Map<string, number>()),
+      findPreviewLotsBySaleIds: vi.fn(async () => []),
+    };
+    const summary = {
+      state: "final" as const,
+      lotCount: 10,
+      soldCount: 8,
+      currency: "GBP",
+      totalWithPremium: "12000.00",
+      topLot: null,
+      endedAt: "2026-10-31T18:00:00.000Z",
+    };
+    const summarise = vi.fn(async () => new Map([["s-ended", summary]]));
+    const svc = new SaleListReadService(
+      saleRepo as never,
+      lotRepo as never,
+      { resolveManyUnique: vi.fn(async () => new Map()) } as never,
+      {
+        lookupByKeys: vi.fn(async () => new Map()),
+        buildGalleryImages: vi.fn(async () => []),
+        buildGalleryImagesWithLookup: vi.fn(async () => []),
+      } as never,
+      null,
+      { summarise },
+    );
+
+    const { data } = await svc.listForPublicApi({ limit: 20, offset: 0, status: "ended" });
+
+    expect(summarise).toHaveBeenCalledTimes(1);
+    expect(data.map((row) => [row.sale.id, row.resultsSummary])).toEqual([
+      ["s-ended", summary],
+      ["s-live", null],
+    ]);
+  });
+});
+
 describe("SaleListReadService ATG-owned drafts", () => {
   function atgListService(distribution: "public_marketplace" | "private_test") {
     const atgDraft = { ...sale("s-atg"), status: "draft" } as Sale;

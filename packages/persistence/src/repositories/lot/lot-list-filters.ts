@@ -10,7 +10,7 @@ import type {
 } from "../../interfaces/index.js";
 import {
   atgOwnedDraftLotForStatusesSql,
-  publicLotCondition,
+  publicCatalogueLotCondition,
   publicSaleCondition,
   saleIsAtgOwnedSql,
 } from "../atg-public-catalog.sql.js";
@@ -138,7 +138,7 @@ export function catalogLotsBySaleWhere(
   if (input.requirePublicSale) {
     conditions.push(eq(sale.id, lot.saleId), saleNotDeleted());
     conditions.push(publicSaleCondition());
-    conditions.push(publicLotCondition());
+    conditions.push(publicCatalogueLotCondition());
   }
   return and(...conditions);
 }
