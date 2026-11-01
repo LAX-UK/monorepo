@@ -5,17 +5,17 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0265_organisation_contact_details.sql");
-const rollback = read("0265_rollback.sql");
+const migration = read("0266_organisation_contact_details.sql");
+const rollback = read("0266_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0265 organisation contact details", () => {
-  it("is journal entry 265, after 0264", () => {
-    const entry = journal.entries.find((e) => e.tag === "0265_organisation_contact_details");
+describe("migration 0266 organisation contact details", () => {
+  it("is journal entry 266, after 0264", () => {
+    const entry = journal.entries.find((e) => e.tag === "0266_organisation_contact_details");
     const previous = journal.entries.find((e) => e.tag === "0264_consignment_inbox");
-    expect(entry?.idx).toBe(265);
+    expect(entry?.idx).toBe(266);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
   });
 
