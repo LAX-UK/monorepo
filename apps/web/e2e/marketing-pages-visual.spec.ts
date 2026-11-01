@@ -17,7 +17,7 @@ test.describe("marketing pages visual @optin", () => {
   for (const path of [
     "/",
     "/sales",
-    "/archive",
+    "/results",
     "/legal",
     "/privacy",
     "/terms",

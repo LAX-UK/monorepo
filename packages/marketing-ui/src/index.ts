@@ -631,3 +631,5 @@ export {
   accountSubNavCountText,
   visibleAccountSubNavCount,
 } from "./account/index.js";
+
+export * from "./cover/index.js";

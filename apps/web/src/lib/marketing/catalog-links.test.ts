@@ -115,12 +115,12 @@ describe("view persistence matrix", () => {
     );
   });
 
-  it("lot back restores archive list view", () => {
-    expect(archiveCatalogBackHref({ from: "archive", view: "list" })).toBe("/archive?view=list");
+  it("lot back from a sold lot returns to the Lots view of Results", () => {
+    expect(archiveCatalogBackHref()).toBe("/results?view=lots");
   });
 
   it("lot back label reflects origin", () => {
-    expect(lotCatalogBackLabel({ from: "archive" })).toBe("Back to archive");
+    expect(lotCatalogBackLabel({ from: "archive" })).toBe("Back to results");
     expect(lotCatalogBackLabel({ from: "sale" }, { id: "s1", title: "Sale" })).toBe("Back to sale");
     expect(lotCatalogBackHref({ view: "list" })).toBe("/search?view=list");
   });

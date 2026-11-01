@@ -6,25 +6,19 @@ import {
   archiveClearFiltersHref,
   buildArchiveActiveFilterChips,
 } from "@/lib/archive/build-archive-params";
-import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 
 type Category = { id: string; name: string };
 
 type Props = {
   query: Pick<ArchivePageQuery, "endYear" | "categoryId" | "sortMode">;
   categories: Category[];
-  layoutView: CatalogLayoutView;
   className?: string;
 };
 
 /** Removable active filter chips for the archive catalogue. */
-export function ArchiveActiveFilters({ query, categories, layoutView, className }: Props) {
-  const chips = buildArchiveActiveFilterChips(
-    query,
-    categories,
-    layoutView === "list" ? "list" : undefined,
-  );
-  const clearHref = archiveClearFiltersHref(layoutView === "list" ? "list" : undefined);
+export function ArchiveActiveFilters({ query, categories, className }: Props) {
+  const chips = buildArchiveActiveFilterChips(query, categories);
+  const clearHref = archiveClearFiltersHref();
 
   return (
     <CatalogActiveFilterChips

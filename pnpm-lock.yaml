@@ -1715,6 +1715,12 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../branding
+      '@auction/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@auction/types':
+        specifier: workspace:*
+        version: link:../types
       '@auction/ui':
         specifier: workspace:*
         version: link:../ui
