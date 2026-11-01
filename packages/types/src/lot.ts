@@ -116,6 +116,8 @@ export type Lot = {
   dutchLastDecrementAt: Date | null;
   startTime: Date;
   endTime: Date;
+  /** Set when a late bid extended the close; null while the lot has kept its scheduled end. */
+  extendedUntil?: Date | null;
   status: LotStatus;
   /** populated when status is voided. */
   voidedReason?: string | null;

@@ -58,6 +58,7 @@ export function mapLotRow(row: LotRow, categoryIds: string[] = []): Lot {
     dutchLastDecrementAt: row.dutchLastDecrementAt ?? null,
     startTime: row.startTime,
     endTime: row.endTime,
+    extendedUntil: row.extendedUntil ?? null,
     status: row.status as LotStatus,
     voidedReason: row.voidedReason ?? null,
     archivedSeller: row.archivedSeller ?? false,

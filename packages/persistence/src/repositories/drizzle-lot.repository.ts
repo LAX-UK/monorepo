@@ -268,6 +268,13 @@ export class DrizzleLotRepository implements ILotRepository {
     await this.db.update(lot).set({ endTime, updatedAt: new Date() }).where(eq(lot.id, id));
   }
 
+  async extendEndTime(id: string, endTime: Date) {
+    await this.db
+      .update(lot)
+      .set({ endTime, extendedUntil: endTime, updatedAt: new Date() })
+      .where(eq(lot.id, id));
+  }
+
   async updateStatus(id: string, status: Lot["status"]) {
     await this.db.update(lot).set({ status, updatedAt: new Date() }).where(eq(lot.id, id));
   }

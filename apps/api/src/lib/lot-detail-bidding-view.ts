@@ -14,6 +14,8 @@ import type { Lot, PublicLotView, Sale } from "@auction/types";
 export type LotDetailBiddingView = {
   /** The server clock when the response was made, so the page can correct for a skewed device. */
   serverNow: string;
+  /** The close a late bid moved the lot to, or `null` while it keeps its scheduled end. */
+  extendedUntil: string | null;
   /** The next valid bid; `null` once bidding can no longer happen. */
   nextBidAmount: string | null;
   /** The next valid amounts, lowest first: the choices for a maximum bid. */
@@ -46,6 +48,7 @@ export function buildLotDetailBiddingView(input: {
   const sold = lotSold(lot);
   return {
     serverNow: input.now.toISOString(),
+    extendedUntil: lot.extendedUntil ? new Date(lot.extendedUntil).toISOString() : null,
     nextBidAmount: biddable ? nextBidAmount(lot) : null,
     validBidAmounts: biddable ? validBidAmounts(lot) : [],
     buyersPremium: buyersPremiumTerms({

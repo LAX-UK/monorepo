@@ -176,4 +176,25 @@ describe("EnglishAuctionStrategy", () => {
     );
     expect(r.isOk()).toBe(true);
   });
+
+  describe("typed refusals", () => {
+    const lot = mkLot({ currentPrice: "100.00", minBidIncrement: "10.00" });
+    const bid = (amount: number) => ({ placedByUserId: "u1", bidderId: "u1", amount });
+
+    it("names the nearest valid amount for a bid below the minimum", () => {
+      const r = new EnglishAuctionStrategy().validateBid(lot, bid(105));
+      expect(r._unsafeUnwrapErr()).toMatchObject({
+        code: "amount_invalid",
+        details: { nearestValidAmount: "110.00" },
+      });
+    });
+
+    it("says the bidder was outbid while confirming when they saw an older next bid", () => {
+      const r = new EnglishAuctionStrategy().validateBid(lot, bid(100), { seenNextBid: "100.00" });
+      expect(r._unsafeUnwrapErr()).toMatchObject({
+        code: "outbid_during_confirm",
+        details: { nextBidAmount: "110.00" },
+      });
+    });
+  });
 });

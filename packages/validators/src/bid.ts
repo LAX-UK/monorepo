@@ -14,6 +14,11 @@ export const placeBidSchema = z
     amount: moneyAmount,
     maxAutoBidAmount: moneyAmount.optional(),
     autoBidStepAmount: moneyAmount.optional(),
+    /** The next bid the bidder was shown when they confirmed (e.g. "110.00"). */
+    seenNextBid: z
+      .string()
+      .regex(/^\d{1,15}(\.\d{1,2})?$/)
+      .optional(),
     /** Client-generated id for Meta / GA4 deduplication (optional). */
     marketingEventId: z.string().max(128).optional(),
   })

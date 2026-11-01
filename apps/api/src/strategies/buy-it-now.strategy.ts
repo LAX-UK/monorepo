@@ -1,3 +1,4 @@
+import { amountRefusedError } from "@auction/bidding-runtime";
 import { hasConfiguredReserve } from "@auction/domain";
 import type { Bid, Lot, NewBid } from "@auction/types";
 import { moneyGte } from "@auction/validators";
@@ -37,7 +38,13 @@ export class BuyItNowAuctionStrategy implements ILotStrategy {
     }
     const inc = lotMinIncrementMoney(lot);
     if (bidAmountBelowMinimum(bid.amount, lot.currentPrice, inc)) {
-      return err(new BidError(`Bid must be at least ${minBidAmountMoney(lot.currentPrice, inc)}`));
+      return err(
+        amountRefusedError(
+          `Bid must be at least ${minBidAmountMoney(lot.currentPrice, inc)}`,
+          lot,
+          ctx?.seenNextBid,
+        ),
+      );
     }
     return ok(undefined);
   }

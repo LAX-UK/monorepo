@@ -70,6 +70,8 @@ export const lot = pgTable(
       .default("0.25"),
     startTime: timestamp("start_time", { mode: "date", withTimezone: true }).notNull(),
     endTime: timestamp("end_time", { mode: "date", withTimezone: true }).notNull(),
+    /** Set when a late bid extends the close (anti-sniping): the end time the extension produced. */
+    extendedUntil: timestamp("extended_until", { mode: "date", withTimezone: true }),
     status: lotStatusEnum("status").notNull().default("draft"),
     /** set when lot is voided (e.g. `no_valid_winner` after anti-shilling at close). */
     voidedReason: text("voided_reason"),

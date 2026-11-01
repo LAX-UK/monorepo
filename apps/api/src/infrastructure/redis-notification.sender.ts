@@ -1,4 +1,4 @@
-import { deriveNoSaleReason, deriveReserveStatus } from "@auction/domain";
+import { deriveNoSaleReason, deriveReserveStatus, nextBidAmount } from "@auction/domain";
 import type { Bid, Lot, LotEndedTrigger } from "@auction/types";
 import {
   encodeBidPlacedPublicRedisMessage,
@@ -33,6 +33,7 @@ export class RedisNotificationSender implements IBidNotificationSender, ILotNoti
         currentPrice: lot.currentPrice,
         emittedAt: Date.now(),
         ...(meta?.outbidUserId ? { outbidUserId: meta.outbidUserId } : {}),
+        nextBidAmount: nextBidAmount(lot),
         ...(meta?.bidCount != null ? { bidCount: meta.bidCount } : {}),
         ...(reserveMet !== undefined ? { reserveMet } : {}),
       }),

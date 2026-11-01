@@ -1,3 +1,4 @@
+import { amountRefusedError } from "@auction/bidding-runtime";
 import type { Bid, Lot, NewBid } from "@auction/types";
 import { moneyEq } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
@@ -6,13 +7,16 @@ import type { BidPolicyConfig } from "../services/bid/bid-policy.js";
 import type {
   EarlyCloseResolution,
   ILotStrategy,
+  ValidateBidContext,
 } from "../services/interfaces/auction-strategy.js";
 
 /** First acceptance at current dutch price wins — modeled as bid amount === currentPrice. */
 export class DutchAuctionStrategy implements ILotStrategy {
-  validateBid(lot: Lot, bid: NewBid): Result<void, BidError> {
+  validateBid(lot: Lot, bid: NewBid, ctx?: ValidateBidContext): Result<void, BidError> {
     if (!moneyEq(String(bid.amount), lot.currentPrice)) {
-      return err(new BidError("Bid must match current dutch price to accept"));
+      return err(
+        amountRefusedError("Bid must match current dutch price to accept", lot, ctx?.seenNextBid),
+      );
     }
     if (
       bid.buyerLegalEntityId && lot.sellerLegalEntityId

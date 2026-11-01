@@ -1,3 +1,4 @@
+import { amountRefusedError } from "@auction/bidding-runtime";
 import type { Bid, Lot, NewBid } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "../lib/errors.js";
@@ -15,7 +16,13 @@ export class EnglishAuctionStrategy implements ILotStrategy {
   validateBid(lot: Lot, bid: NewBid, ctx?: ValidateBidContext): Result<void, BidError> {
     const inc = lotMinIncrementMoney(lot);
     if (bidAmountBelowMinimum(bid.amount, lot.currentPrice, inc)) {
-      return err(new BidError(`Bid must be at least ${minBidAmountMoney(lot.currentPrice, inc)}`));
+      return err(
+        amountRefusedError(
+          `Bid must be at least ${minBidAmountMoney(lot.currentPrice, inc)}`,
+          lot,
+          ctx?.seenNextBid,
+        ),
+      );
     }
     const winnerId = ctx?.currentWinnerId;
     const bidderKey = bid.placedByUserId ?? bid.bidderId;

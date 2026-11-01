@@ -1,3 +1,5 @@
+import { typedPlaceBidRefusal } from "@auction/domain";
+import type { LegalEntityMemberRole } from "@auction/types";
 import { resolveActingBuyerLegalEntity } from "../../lib/resolve-acting-buyer-legal-entity.js";
 import type { AbsenteeBidService } from "../absentee-bid.service.js";
 import type { IBiddingAbsenteeBidHttpApplicationService } from "../interfaces/bidding-routes/bidding-absentee-bid-http.js";
@@ -16,6 +18,7 @@ export class BiddingAbsenteeBidHttpApplicationService
     lotId: string;
     actingLegalEntityId?: string | undefined;
     bodyLegalEntityId?: string | undefined;
+    memberRole?: LegalEntityMemberRole | undefined;
     maxAmount: number;
   }): Promise<BiddingRouteOutcome<{ id: string }>> {
     const entity = resolveActingBuyerLegalEntity({
@@ -28,8 +31,14 @@ export class BiddingAbsenteeBidHttpApplicationService
       userId: input.userId,
       lotId: input.lotId,
       buyerLegalEntityId: entity.value,
+      memberRole: input.memberRole,
       maxAmount: input.maxAmount,
     });
-    return biddingRouteFromServiceResult(result, 201);
+    const outcome = biddingRouteFromServiceResult(result, 201);
+    if (outcome.kind !== "err") return outcome;
+    const typed = typedPlaceBidRefusal(outcome.error.code, outcome.error.details);
+    return typed
+      ? { kind: "err", error: { ...outcome.error, code: typed.code, details: typed.details } }
+      : outcome;
   }
 }
