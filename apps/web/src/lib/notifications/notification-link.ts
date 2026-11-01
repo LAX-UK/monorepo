@@ -31,6 +31,13 @@ export function notificationHref(item: UserNotification): string | null {
   if (FULFILMENT_NOTIFICATION_TYPES.has(item.type)) return "/purchases";
   const page = PAGE_BY_TYPE[item.type];
   if (page) return page;
+  // A message on a consignment opens its thread: the account's Messages tab, or, for the
+  // specialist (a notice outside any account), the submission in Bid admin.
+  if (item.submissionId && item.type === "consignment_message") {
+    return item.legalEntityId
+      ? `/selling/consignments/${item.submissionId}?tab=messages`
+      : `/admin/submissions/${item.submissionId}`;
+  }
   if (item.submissionId && STAFF_SUBMISSION_NOTIFICATION_TYPES.has(item.type)) {
     return `/admin/submissions/${item.submissionId}`;
   }

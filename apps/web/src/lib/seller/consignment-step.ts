@@ -5,6 +5,7 @@ const TASK_STEP: Record<ConsignmentTask, { label: string; anchor: string }> = {
   changes: { label: "Make changes", anchor: "" },
   agreement: { label: "Review", anchor: "#agreement" },
   unsold: { label: "Choose", anchor: "#unsold" },
+  reply: { label: "Read reply", anchor: "?tab=messages" },
 };
 
 export type ConsignmentStep = { label: string; href: string; blockedReason: string | null };

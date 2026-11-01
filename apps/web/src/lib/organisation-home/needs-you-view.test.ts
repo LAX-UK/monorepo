@@ -46,6 +46,12 @@ const EVERY_TASK: NeedsYouTaskWithLink[] = [
     link: { page: "consignment", id: "s1" },
   },
   {
+    kind: "reply",
+    consignment: { id: "c2", title: "Thames at low tide" },
+    from: "Clara Mendes",
+    link: { page: "consignment_messages", id: "c2" },
+  },
+  {
     kind: "unsold",
     lots: [{ id: "u2", title: "Quiet tide" }],
     link: { page: "consignments", view: "unsold" },
@@ -118,6 +124,7 @@ describe("needsYouRowView", () => {
       unsold_due: "/selling/consignments?tab=unsold",
       agreement: "/selling/consignments/c1#agreement",
       changes: "/selling/consignments/s1",
+      reply: "/selling/consignments/c2?tab=messages",
       register: "/sales/contemporary/sale1",
       authorisation_ending: "/team/bidding",
       invitations_expired: "/team/invitations",

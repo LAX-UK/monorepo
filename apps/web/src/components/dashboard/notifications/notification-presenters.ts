@@ -10,6 +10,7 @@ import {
   Gavel,
   Landmark,
   type LucideIcon,
+  MessageSquare,
   PackageCheck,
   ShieldAlert,
   Trophy,
@@ -112,6 +113,9 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   }
   if (type === "consignment_update") {
     return { label: "Consignment update", Icon: FileText, tone: "neutral" };
+  }
+  if (type === "consignment_message") {
+    return { label: "Message", Icon: MessageSquare, tone: "info" };
   }
   if (type === "source_of_funds_documents_requested") {
     return { label: "Source of funds", Icon: ShieldAlert, tone: "warn" };

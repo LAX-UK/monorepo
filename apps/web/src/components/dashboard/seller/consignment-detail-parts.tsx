@@ -2,7 +2,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import type { ConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
 import { AccountProgress } from "@auction/marketing-ui";
 import { Button } from "@auction/ui/components/button";
-import { ChevronLeft, Mail } from "lucide-react";
+import { ChevronLeft, MessageSquare } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -79,7 +79,8 @@ export function AboutTheWork({ vm }: { vm: ConsignmentDetailVm }) {
 }
 
 /** Who to ask: the specialists reply within a working day. */
-export function AskYourSpecialist() {
+/** Questions go to the consignment's own messages, where the specialist answers. */
+export function AskYourSpecialist({ messagesHref }: { messagesHref: string }) {
   return (
     <section aria-labelledby="specialist-heading" className={ASIDE_CARD}>
       <h2 id="specialist-heading" className="font-headline text-base font-semibold text-on-surface">
@@ -90,8 +91,8 @@ export function AskYourSpecialist() {
         working day.
       </p>
       <Button variant="secondaryOutline" size="default" asChild className="mt-4 w-full">
-        <Link href="/contact?intent=selling">
-          <Mail aria-hidden />
+        <Link href={messagesHref}>
+          <MessageSquare aria-hidden />
           Send a message
         </Link>
       </Button>

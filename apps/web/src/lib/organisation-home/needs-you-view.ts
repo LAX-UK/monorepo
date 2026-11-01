@@ -5,6 +5,7 @@ import {
   teamHref,
 } from "@/lib/navigation/client-routes";
 import { bidSettingsHref } from "@/lib/navigation/settings-links";
+import { consignmentMessagesHref } from "@/lib/seller/consignment-records";
 import { formatDateInline, formatDateTimeShort, formatMoney } from "@/lib/ui/format";
 import type { NeedsYouTaskWithLink } from "@/lib/workspace/needs-you-read";
 import {
@@ -93,6 +94,8 @@ export function needsYouHref(task: NeedsYouTaskWithLink): string {
       return task.kind === "agreement"
         ? `${CLIENT_ROUTES.consignments}/${link.id}#agreement`
         : `${CLIENT_ROUTES.consignments}/${link.id}`;
+    case "consignment_messages":
+      return consignmentMessagesHref(link.id);
     case "consignments":
       return `${CLIENT_ROUTES.consignments}?tab=${link.view}`;
     case "sale":
@@ -176,6 +179,13 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
       : `${quoted(task.submission)} · see the specialist's note`,
     due: null,
     label: "Edit and resubmit",
+  }),
+  reply: (task) => ({
+    topic: "consignment",
+    title: `Reply from ${task.from}`,
+    detail: `${quoted(task.consignment)} · a new message about this work`,
+    due: null,
+    label: "Read",
   }),
   unsold: (task) => ({
     topic: "consignment",
@@ -316,6 +326,8 @@ function rowKey(task: NeedsYouTask): string {
       return `agreement:${task.consignment.id}`;
     case "changes":
       return `changes:${task.submission.id}`;
+    case "reply":
+      return `reply:${task.consignment.id}`;
     case "register":
       return `register:${task.sale.id}`;
     default:
