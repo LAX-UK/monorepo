@@ -64,6 +64,13 @@ export function createMinimalShopApiTestDeps(
       eligibility: { listBlockers: async () => [] },
       machine: { clientId: undefined, clientSecret: undefined },
     },
+    identitySubjectExport: {
+      exports: {
+        manifest: async () => ({ product: "shop" as const, categories: [] }),
+        page: async () => ({ records: [], nextCursor: null }),
+      },
+      machine: { clientId: undefined, clientSecret: undefined },
+    },
     stripeWebhook: {
       webhookSecret: undefined,
       verifyWebhook: () => {

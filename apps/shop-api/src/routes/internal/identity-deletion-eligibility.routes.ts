@@ -1,30 +1,12 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import {
   DELETION_ELIGIBILITY_SUBROUTE,
   INTERNAL_IDENTITY_ROUTE_PREFIX,
   type ProductDeletionEligibility,
 } from "@auction/identity-contracts";
 import { Type } from "@sinclair/typebox";
-import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import type { IdentityDeletionRouteDeps } from "../../identity-route-deps.js";
-
-/** Compares digests so neither the content nor the length of the secret is revealed by timing. */
-function sameSecret(supplied: unknown, expected: string): boolean {
-  if (typeof supplied !== "string") return false;
-  const digest = (value: string) => createHash("sha256").update(value).digest();
-  return timingSafeEqual(digest(supplied), digest(expected));
-}
-
-function machineCallerStatus(
-  request: FastifyRequest,
-  machine: IdentityDeletionRouteDeps["machine"],
-): 200 | 401 | 503 {
-  if (!machine.clientId || !machine.clientSecret) return 503;
-  const authorised =
-    sameSecret(request.headers["x-identity-client-id"], machine.clientId) &&
-    sameSecret(request.headers["x-identity-client-secret"], machine.clientSecret);
-  return authorised ? 200 : 401;
-}
+import { machineCallerStatus } from "./machine-client-auth.js";
 
 /**
  * Answers Identity's question "can this person delete their account, as far as LAX Shop and

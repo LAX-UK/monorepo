@@ -46,13 +46,17 @@ import type {
 import type { RecordThirdPartySaleCommand } from "./application/ports/third-party-sale.writer.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
 import { createSavedViewService } from "./application/saved-view.service.js";
+import { SubjectExportService } from "./application/subject-export/subject-export.service.js";
 import type { CatalogueRoutesDeps } from "./catalogue-route-deps.js";
 import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-deps.js";
 import { createCommerceServices } from "./create-commerce-services.js";
 import { resolveStorefrontOrigins } from "./domain/storefront-origins.js";
 import type { EditorialRoutesDeps } from "./editorial-route-deps.js";
 import type { ShopApiEnv } from "./env.js";
-import type { IdentityDeletionRouteDeps } from "./identity-route-deps.js";
+import type {
+  IdentityDeletionRouteDeps,
+  IdentitySubjectExportRouteDeps,
+} from "./identity-route-deps.js";
 import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtistCatalogueWriter } from "./infrastructure/drizzle-artist-catalogue.writer.js";
@@ -137,6 +141,11 @@ import { assertShopVatPolicyWhenPayoutsEnabled } from "./infrastructure/shop-vat
 import { createStripeShopConnectGateway } from "./infrastructure/stripe-shop-connect.gateway.js";
 import { createStripeShopInvoiceGateway } from "./infrastructure/stripe-shop-invoice.gateway.js";
 import { constructStripeWebhookEvent } from "./infrastructure/stripe-webhook-verifier.js";
+import { createShopSubjectExportRegistry } from "./infrastructure/subject-export/create-shop-subject-export-categories.js";
+import {
+  SubjectExportFileSigner,
+  unconfiguredSubjectExportStorage,
+} from "./infrastructure/subject-export/subject-export-file-signer.js";
 import type { InterestRoutesDeps } from "./interest-route-deps.js";
 import type { MerchandiseRoutesDeps } from "./merchandise-route-deps.js";
 import type { PortalRoutesDeps } from "./portal-route-deps.js";
@@ -164,6 +173,7 @@ export type ShopApiAppDeps = {
   admin: AdminRoutesDeps;
   portal: PortalRoutesDeps;
   identityDeletion: IdentityDeletionRouteDeps;
+  identitySubjectExport: IdentitySubjectExportRouteDeps;
   payeeConnect: ShopPayeeConnectPort;
   stripeConnectWebhook: StripeConnectWebhookDeps;
   staffReader: AdminRoutesDeps["staffReader"];
@@ -558,6 +568,21 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         machine: {
           clientId: env.IDENTITY_MACHINE_CLIENT_ID,
           clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
+        },
+      },
+      identitySubjectExport: {
+        exports: new SubjectExportService(
+          createShopSubjectExportRegistry({
+            db,
+            origins: storefrontOrigins,
+            files: new SubjectExportFileSigner(
+              shopMediaStorage?.storage ?? unconfiguredSubjectExportStorage,
+            ),
+          }),
+        ),
+        machine: {
+          clientId: env.IDENTITY_SUBJECT_EXPORT_CLIENT_ID,
+          clientSecret: env.IDENTITY_SUBJECT_EXPORT_CLIENT_SECRET,
         },
       },
       payeeConnect,
