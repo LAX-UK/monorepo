@@ -7,6 +7,7 @@ import { HomeHangSection } from "@/components/home/sections/home-hang-section";
 import { NewEditionsSection } from "@/components/home/sections/home-new-editions";
 import { HomeTrustStrip } from "@/components/home/sections/home-trust-strip";
 import { ShopProductDoors } from "@/components/product-doors/shop-product-doors";
+import { ShopReleaseAlertsBand } from "@/components/release-alerts/shop-release-alerts-band";
 import { loadCheckoutDeliveryTimes } from "@/lib/checkout/checkout-delivery.server";
 import {
   loadShopArtBaseUrl,
@@ -52,6 +53,8 @@ function HomeSection({ id, vm, now }: { id: HomeSectionId; vm: HomePageViewModel
       return <HomeArtistsSection artists={vm.artists} />;
     case "collections":
       return <HomeCollectionsSection collections={vm.collections} />;
+    case "release-alerts":
+      return <ShopReleaseAlertsBand tinted={vm.layout.surfaces["release-alerts"] === "band"} />;
     case "product-doors":
       return <ShopProductDoors doors={vm.doors} />;
     case "gallery-team":

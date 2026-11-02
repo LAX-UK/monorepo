@@ -1933,6 +1933,13 @@
       "when": 1799222400000,
       "tag": "0275_visitor_sale_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 276,
+      "version": "7",
+      "when": 1799308800000,
+      "tag": "0276_shop_release_alerts",
+      "breakpoints": true
     }
   ]
 }

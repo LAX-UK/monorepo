@@ -111,6 +111,8 @@ export async function setArtworkVisibility(input: {
   artworkId: string;
   action: AdminArtworkVisibilityAction;
   idempotencyKey: string;
+  /** Publishing an edition: also email the release alert list. */
+  sendReleaseAlert?: boolean;
 }): Promise<AdminMutationResult<AdminArtworkVersionResponse>> {
   const path = artworkPath(input.artworkId);
   if (!path || !VISIBILITY.has(input.action)) return invalidInput;
@@ -118,6 +120,9 @@ export async function setArtworkVisibility(input: {
     bffPath: `${path}/${input.action}`,
     method: "POST",
     idempotencyKey: input.idempotencyKey,
+    ...(input.action === "publish"
+      ? { jsonBody: { sendReleaseAlert: input.sendReleaseAlert === true } }
+      : {}),
   });
 }
 

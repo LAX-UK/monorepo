@@ -1,0 +1,125 @@
+/* Release alerts: the home band, the empty-state form and its states. */
+.shop-release-alerts-band {
+  scroll-margin-top: var(--shop-space-24);
+}
+
+/* The band stands on the page container; the tint comes from the split feature's tone. */
+.shop-release-alerts-feature {
+  border-radius: var(--radius-card);
+}
+
+.shop-release-alerts-feature > div {
+  padding-block: var(--shop-space-12);
+}
+
+@media (min-width: 64rem) {
+  .shop-release-alerts-feature > div {
+    padding-block: var(--shop-space-16);
+  }
+}
+
+.shop-release-alerts {
+  display: flex;
+  width: 100%;
+  max-width: 35rem;
+  flex-direction: column;
+  gap: var(--shop-space-3);
+  text-align: start;
+}
+
+.shop-release-alerts__status:empty {
+  display: none;
+}
+
+.shop-release-alerts__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-3);
+}
+
+.shop-release-alerts__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-3);
+}
+
+@media (min-width: 30rem) {
+  .shop-release-alerts__row {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+}
+
+.shop-release-alerts__field {
+  flex: 1 1 auto;
+}
+
+.shop-release-alerts__input {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Matches the field beside it, so the pair reads as one control. */
+.shop-release-alerts__submit.shop-button {
+  min-height: var(--shop-control-height);
+  flex: 0 0 auto;
+}
+
+.shop-release-alerts__trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.shop-release-alerts__note {
+  margin: 0;
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+  line-height: 1.5;
+}
+
+.shop-release-alerts__email {
+  color: var(--color-on-surface);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.shop-release-alerts__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shop-space-3) var(--shop-space-4);
+}
+
+.shop-release-alerts__done {
+  display: flex;
+  gap: var(--shop-space-3);
+  align-items: flex-start;
+  color: var(--color-on-surface);
+  font-size: var(--shop-text-sm);
+  line-height: 1.5;
+}
+
+.shop-release-alerts__done p {
+  margin: 0;
+}
+
+.shop-release-alerts__done-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  margin-top: 0.0625rem;
+  color: var(--color-success);
+}
+
+.shop-release-alerts__done-title {
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+}
+
+/* In the band the copy is centred; the form stays a left-aligned block under it. */
+.shop-release-alerts--band {
+  margin-inline: auto;
+}

@@ -104,6 +104,33 @@ export type ShopNotificationPublisher = {
     },
   ): Promise<void>;
 
+  /** Release alert double opt-in: the link that confirms an address. */
+  queueReleaseAlertConfirmation(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      to: string;
+      confirmUrl: string;
+      expirationHours: number;
+      /** Stops alerts for the address; also sent as List-Unsubscribe. */
+      unsubscribeUrl: string;
+    },
+  ): Promise<void>;
+
+  /** Release alert: a new edition has been published. */
+  queueReleaseAlert(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      to: string;
+      artworkTitle: string;
+      artistName: string;
+      artworkUrl: string;
+      /** Stops alerts for the address; also sent as List-Unsubscribe. */
+      unsubscribeUrl: string;
+    },
+  ): Promise<void>;
+
   queueCheckoutOpsAlert(
     tx: ShopNotificationTx,
     input: {
