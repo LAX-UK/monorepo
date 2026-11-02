@@ -30,7 +30,7 @@ const NextLink: StaffLinkComponent = Link;
 export function EnquiryView({ enquiry, canAct }: { enquiry: AdminEnquiry; canAct: boolean }) {
   const router = useRouter();
   const [busy, startTransition] = useTransition();
-  const handled = enquiry.status === "handled";
+  const handled = enquiry.status === "closed";
 
   const markHandled = () =>
     startTransition(async () => {

@@ -12,7 +12,7 @@ const valid = {
 };
 
 function setup(store?: IRateLimitStore) {
-  const submit = vi.fn().mockResolvedValue({ id: "enq-1" });
+  const submit = vi.fn().mockResolvedValue({ id: "enq-1", reference: "E-1042" });
   const rateLimitStore: IRateLimitStore = store ?? {
     increment: vi.fn().mockResolvedValue({ allowed: true, remaining: 4 }),
   };
@@ -36,10 +36,58 @@ describe("POST /contact-enquiries", () => {
     const res = await post(valid);
 
     expect(res.status).toBe(201);
-    expect(await res.json()).toEqual({ data: { id: "enq-1" } });
+    expect(await res.json()).toEqual({ data: { id: "enq-1", reference: "E-1042" } });
     expect(submit).toHaveBeenCalledWith(
-      expect.objectContaining({ email: "ada@example.com", topic: "selling" }),
+      expect.objectContaining({ intent: "general", email: "ada@example.com", topic: "selling" }),
     );
+  });
+
+  it("accepts a private sale seller's structured enquiry", async () => {
+    const { post, submit } = setup();
+    const res = await post({
+      intent: "private_sale_sell",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      departmentSlug: "modern-british",
+      artist: "David Hockney",
+      title: "Pool study",
+      locationTown: "Bath",
+      locationCountry: "United Kingdom",
+      marketingOptIn: true,
+    });
+    expect(res.status).toBe(201);
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        intent: "private_sale_sell",
+        departmentSlug: "modern-british",
+        marketingOptIn: true,
+      }),
+    );
+  });
+
+  it("accepts a private sale buyer's structured enquiry", async () => {
+    const { post, submit } = setup();
+    const res = await post({
+      intent: "private_sale_buy",
+      name: "Charlotte Hale",
+      email: "charlotte@example.com",
+      lookingFor: "Post-war British painting",
+      budgetBand: "50000_to_250000",
+      timing: "urgent",
+    });
+    expect(res.status).toBe(201);
+    expect(submit).toHaveBeenCalledWith(expect.objectContaining({ intent: "private_sale_buy" }));
+  });
+
+  it("refuses a structured enquiry that leaves out what its path needs", async () => {
+    const { post, submit } = setup();
+    const res = await post({
+      intent: "private_sale_sell",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+    });
+    expect(res.status).toBe(400);
+    expect(submit).not.toHaveBeenCalled();
   });
 
   it("accepts a phone number when one is given", async () => {

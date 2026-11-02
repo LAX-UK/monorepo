@@ -159,6 +159,10 @@ const LABELS: Record<string, string> = {
   "payout.transfer_failed": "Payout transfer failed",
   "marketing_enquiry.received": "Contact enquiry received",
   "marketing_enquiry.handled": "Contact enquiry handled",
+  "marketing_enquiry.assigned": "Enquiry assigned",
+  "marketing_enquiry.status_changed": "Enquiry status changed",
+  "marketing_enquiry.converted": "Enquiry converted",
+  "enquiry_routing.changed": "Enquiry routing changed",
   "payout.transfer_reversed": "Payout transfer reversed",
   "purchase_problem.reported": "Purchase problem reported",
 

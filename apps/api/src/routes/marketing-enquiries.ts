@@ -1,11 +1,11 @@
-import { contactEnquirySchema } from "@auction/validators";
+import { enquiryIntakeSchema } from "@auction/validators";
 import { Hono } from "hono";
 import type { ContainerMarketingEnquiryRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createContactEnquiryRateLimitMiddleware } from "../middleware/contact-enquiry-rate-limit.js";
 
 /**
- * The public contact form's endpoint. The web form checks its honeypot and its own rate limit
+ * The public enquiry endpoint, for the contact form and the private sale enquiry page. The web form checks its honeypot and its own rate limit
  * before calling; this endpoint limits per client address again and validates the message.
  */
 export function createMarketingEnquiryRoutes(container: ContainerMarketingEnquiryRoutesSlice) {
@@ -14,10 +14,10 @@ export function createMarketingEnquiryRoutes(container: ContainerMarketingEnquir
   r.post(
     "/",
     createContactEnquiryRateLimitMiddleware(container.rateLimitStore),
-    zValidator("json", contactEnquirySchema),
+    zValidator("json", enquiryIntakeSchema),
     async (c) => {
-      const { id } = await container.marketingEnquiryService.submit(c.req.valid("json"));
-      return c.json({ data: { id } }, 201);
+      const { id, reference } = await container.marketingEnquiryService.submit(c.req.valid("json"));
+      return c.json({ data: { id, reference } }, 201);
     },
   );
 
