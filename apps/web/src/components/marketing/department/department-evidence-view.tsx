@@ -37,14 +37,8 @@ export function DepartmentEvidenceView({ evidence, department, noun }: Props) {
             itemIds={sold.map((work) => work.lot.id)}
           />
           <MarketingWorkGrid aria-label={`Recently sold in ${noun}`}>
-            {sold.map(({ lot, priceWithPremium }) => (
-              <DepartmentWorkCard
-                key={lot.id}
-                lot={lot}
-                {...(priceWithPremium
-                  ? { price: { label: "Sold for", value: priceWithPremium } }
-                  : {})}
-              />
+            {sold.map(({ lot }) => (
+              <DepartmentWorkCard key={lot.id} lot={lot} />
             ))}
           </MarketingWorkGrid>
         </DepartmentSection>

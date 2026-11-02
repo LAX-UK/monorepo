@@ -311,7 +311,7 @@ describe("mapLotToCardVM", () => {
       { ...baseLot, status: "ended", hasWinner: true },
       { viewerUserId: null, now },
     );
-    expect(sold.currentBidLabel).toBe("Hammer price");
+    expect(sold.currentBidLabel).toBe("Sold for");
     const vm = mapLotToCardVM(
       { ...baseLot, status: "ended", winnerId: null, hasWinner: false },
       { viewerUserId: null, now },

@@ -1,13 +1,15 @@
 import { hangLabelModel } from "@/lib/hang/hang-label";
 import type { HomeLotCard } from "@/lib/home-sections/types";
+import { lotCardLineModel } from "@/lib/lot-card/lot-card-line";
+import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
 
 export type ArtistNames = Readonly<Record<string, string>>;
 
 /**
- * A lot as a home card. The price is the wall label's: the sold price with the buyer's premium
- * for an ended lot, the bid or opening bid while it is live, the estimate before it opens.
+ * A lot as a home card. The price and clock are the shared card line, so a lot reads the same
+ * here as on its sale page and its own page.
  */
 export function homeLotCard(
   lot: Lot,
@@ -24,8 +26,7 @@ export function homeLotCard(
     imageUrl: lot.images[0] ?? null,
     watchable: lot.status === "active" || lot.status === "scheduled",
     details: [label.eyebrow],
-    price: label.price
-      ? { qualifier: label.price.qualifier ?? null, value: label.price.value }
-      : null,
+    estimate: lotEstimateLine(lot),
+    line: lotCardLineModel(lot, now, { premiumTiers: sale?.buyerPremiumTiers ?? null }),
   };
 }

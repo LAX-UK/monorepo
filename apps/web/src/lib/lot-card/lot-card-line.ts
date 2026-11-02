@@ -1,4 +1,5 @@
-import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
+import { formatWholeMoney, lotChargeCurrency } from "@/lib/format-currency";
+import { soldPriceWithPremium } from "@/lib/hang/hang-label";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import { type CardPriceLine, cardPriceLine, lotPriceHasBids } from "@auction/domain";
 import type { Lot, LotTimingSource, Sale } from "@auction/types";
@@ -19,7 +20,9 @@ export type LotCardLineSource = Pick<
   | "auctionType"
   | "buyNowPrice"
   | "marketingDetails"
+  | "buyerPremiumRate"
 > &
+  Partial<Pick<Lot, "checkoutPricing">> &
   LotTimingSource & {
     hasWinner?: boolean | undefined;
   };
@@ -35,6 +38,23 @@ export type LotCardLineModel = {
   endsAt: string | null;
 };
 
+/** The buyer's price of a sold lot: the server's total when it sent one, else hammer plus premium. */
+function soldForWithPremium(
+  lot: LotCardLineSource,
+  lifecycle: string,
+  tiers: Sale["buyerPremiumTiers"] | undefined,
+): string | null {
+  if (lifecycle !== "endedSold") return null;
+  if (lot.checkoutPricing) return lot.checkoutPricing.totalMajor;
+  if (tiers === undefined && lot.buyerPremiumRate == null) return null;
+  return soldPriceWithPremium(lot, { buyerPremiumTiers: tiers ?? null });
+}
+
+/** Whether a status badge still earns its place: the line already says anything with a clock. */
+export function lotCardShowsStatusBadge(model: LotCardLineModel): boolean {
+  return model.time === "ended" || model.time === "none";
+}
+
 function estimateOf(lot: LotCardLineSource): { low: string; high: string } | null {
   const estimate = lot.marketingDetails?.estimate;
   return estimate?.low && estimate.high ? { low: estimate.low, high: estimate.high } : null;
@@ -47,8 +67,14 @@ function estimateOf(lot: LotCardLineSource): { low: string; high: string } | nul
 export function lotCardLineModel(
   lot: LotCardLineSource,
   now: Date,
-  sale: LotCardLineSale = null,
+  opts: {
+    /** The parent sale, when known, so the lifecycle knows about the room. */
+    sale?: LotCardLineSale;
+    /** The sale's premium tiers, so a sold lot reads the buyer's price, as the lot page does. */
+    premiumTiers?: Sale["buyerPremiumTiers"];
+  } = {},
 ): LotCardLineModel {
+  const sale = opts.sale ?? null;
   const lifecycle = classifyLotLifecycle(lot, sale, now.getTime()).kind;
   const currency = lotChargeCurrency(lot);
   const line = cardPriceLine({
@@ -58,10 +84,11 @@ export function lotCardLineModel(
       starting: lot.startingPrice,
       current: lot.currentPrice,
       hammer: lifecycle === "endedSold" ? lot.currentPrice : null,
-      soldForWithPremium: null,
+      soldForWithPremium: soldForWithPremium(lot, lifecycle, opts.premiumTiers),
     },
     estimate: estimateOf(lot),
-    format: { money: (amount) => formatMoney(amount, currency) },
+    // Cards print whole pounds; invoices and receipts keep their pence elsewhere.
+    format: { money: (amount) => formatWholeMoney(amount, currency) },
   });
   const timing = toLotCardTimingVM(lot);
   return {

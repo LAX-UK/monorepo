@@ -228,12 +228,16 @@ export function mapLotToCardVM(
     catalogLinkParams?: CatalogLinkParams;
     /** Sale is selling on ATG: LAX prices are not the ATG bids, so show where to bid or the result. */
     atgState?: "live" | "ended";
+    /** The sale's premium tiers, so a sold lot reads the buyer's price like the lot page. */
+    premiumTiers?: Sale["buyerPremiumTiers"];
   },
 ): SaleLotCardVM {
   const estimate = lotEstimateLine(lot);
   const cardLine = opts.atgState
     ? atgCardLine(opts.atgState, lot)
-    : lotCardLineModel(lot, opts.now);
+    : lotCardLineModel(lot, opts.now, {
+        ...(opts.premiumTiers !== undefined ? { premiumTiers: opts.premiumTiers } : {}),
+      });
   // Quick look and the image overlay read a label and a value: a lot with no price says its
   // outcome as the value.
   const price = cardLine.value

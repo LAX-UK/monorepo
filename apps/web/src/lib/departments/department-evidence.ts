@@ -1,5 +1,4 @@
 import { formatLondonDate } from "@/lib/datetime/london-time";
-import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
 import type { SaleListRow } from "@/lib/sale-list-row";
 import type { Category, Lot } from "@auction/types";
@@ -16,8 +15,6 @@ export type DepartmentDeadline = {
 
 export type DepartmentSoldWork = {
   lot: Lot;
-  /** The price the buyer paid with the buyer's premium; null when the server sent no total. */
-  priceWithPremium: string | null;
 };
 
 export type DepartmentEvidence = {
@@ -39,7 +36,7 @@ export function findDepartmentCategory(
   return categories.find((category) => category.slug === slug && !category.archived) ?? null;
 }
 
-/** Sold works only, each with its premium-inclusive price when the server provided one. */
+/** Sold works only; the card reads the buyer's price from the lot's own total. */
 export function soldWorks(
   lots: readonly Lot[],
   limit = DEPARTMENT_ROW_LIMIT,
@@ -47,12 +44,7 @@ export function soldWorks(
   return lots
     .filter((lot) => lot.status === "ended" && lotWasSold(lot))
     .slice(0, limit)
-    .map((lot) => ({
-      lot,
-      priceWithPremium: lot.checkoutPricing
-        ? formatMoney(lot.checkoutPricing.totalMajor, lotChargeCurrency(lot))
-        : null,
-    }));
+    .map((lot) => ({ lot }));
 }
 
 /** Works open for bidding or coming up, the next to close first. */
