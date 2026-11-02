@@ -90,7 +90,7 @@ describe("ConsentBar", () => {
       </>,
     );
     fireEvent.click(screen.getByRole("button", { name: /customise/i }));
-    expect(await screen.findByRole("heading", { name: /cookie preferences/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /cookie settings/i })).toBeInTheDocument();
   });
 
   it("underlines the policy links at rest, so they stand out from the paragraph", () => {

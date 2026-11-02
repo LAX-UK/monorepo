@@ -319,7 +319,7 @@ the column contents differ. No tagline, no second logo, sentence-case labels.
   (Shop and Art only), LAX products, Legal, Connect. The desktop grid sizes
   itself so every column sits on one row.
 - Guest account links are "Sign in" and "Create account".
-- "Cookie preferences" is the last Legal entry wherever a consent dialog exists.
+- "Cookie settings" is the last Legal entry wherever a consent dialog exists.
 
 ### Home `/`
 

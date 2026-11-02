@@ -19,7 +19,7 @@ import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-/** Preferences dialog (banner &ldquo;Customise&rdquo; + footer &ldquo;Cookie preferences&rdquo;). */
+/** Preferences dialog (banner &ldquo;Customise&rdquo; + footer &ldquo;Cookie settings&rdquo;). */
 export function ConsentPreferencesDialog() {
   const { preferencesOpen, closePreferences, snapshot, saveCustom, rejectAll } = useConsent();
   const [analytics, setAnalytics] = useState(false);
@@ -42,7 +42,7 @@ export function ConsentPreferencesDialog() {
     >
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Cookie preferences</DialogTitle>
+          <DialogTitle>Cookie settings</DialogTitle>
           <DialogDescription>
             Choose which optional cookies we may set. Strictly necessary cookies are always on. See
             the{" "}

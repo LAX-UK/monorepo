@@ -93,7 +93,7 @@ describe("ConsentPreferencesDialog", () => {
       </>,
       buildConsentSnapshot({ analytics: true, marketing: true }),
     );
-    fireEvent.click(screen.getByRole("button", { name: /cookie preferences/i }));
+    fireEvent.click(screen.getByRole("button", { name: /cookie settings/i }));
     expect(await screen.findByRole("switch", { name: /analytics/i })).toBeChecked();
     expect(screen.getByRole("switch", { name: /marketing/i })).toBeChecked();
   });
