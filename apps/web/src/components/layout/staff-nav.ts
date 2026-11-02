@@ -1,5 +1,6 @@
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import { inboxNavCount } from "@/lib/admin/consignment-inbox/inbox-presenters";
+import { dataRequestsNavCount } from "@/lib/admin/data-requests/data-requests.vm";
 import { STAFF_ACCESS_REVIEW_PATH } from "@/lib/admin/people/staff-access-review.vm";
 import {
   type AdminNavCounts,
@@ -17,6 +18,7 @@ import {
   CATEGORIES_READ_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
   CONSIGNMENT_INBOX_READ_ACCESS,
+  DATA_REQUESTS_MANAGE_ACCESS,
   FAILED_JOBS_READ_ACCESS,
   FINANCE_ACCESS,
   INVITATIONS_ACCESS,
@@ -42,6 +44,7 @@ import {
   Building2,
   ClipboardCheck,
   ClipboardList,
+  FileLock2,
   Gauge,
   History,
   Inbox,
@@ -87,6 +90,16 @@ function navBadge(
   tone: NavBadgeTone = "default",
 ): Pick<StaffNavItemSpec, "badge" | "badgeTone"> | Record<string, never> {
   return count > 0 ? { badge: count, badgeTone: tone } : {};
+}
+
+function dataRequestsBadge(
+  counts: AdminNavCounts,
+): Pick<StaffNavItemSpec, "badge" | "badgeTone"> | Record<string, never> {
+  const badge = dataRequestsNavCount({
+    dueSoon: counts.dataRequestsDueSoon,
+    overdue: counts.dataRequestsOverdue,
+  });
+  return badge ? { badge: badge.count, badgeTone: badge.tone } : {};
 }
 
 export type StaffNavGroupSpec = {
@@ -280,6 +293,16 @@ function buildStaffNavGroupSpecs(
           match: (pathname) => pathname.startsWith("/admin/compliance/source-of-funds"),
           requirement: AML_REVIEW_ACCESS,
           ...navBadge(navCounts.sourceOfFundsPending, "warning"),
+        },
+        {
+          // Open requests that are overdue or due within 7 days; nothing when none is close.
+          id: "compliance-data-requests",
+          href: "/admin/compliance/data-requests",
+          label: "Data requests",
+          icon: FileLock2,
+          match: (pathname) => pathname.startsWith("/admin/compliance/data-requests"),
+          requirement: DATA_REQUESTS_MANAGE_ACCESS,
+          ...dataRequestsBadge(navCounts),
         },
       ],
     },

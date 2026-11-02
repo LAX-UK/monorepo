@@ -18,6 +18,9 @@ export type AdminNavCounts = {
   legalEntityStripeRequirementsCount: number;
   /** Unanswered client messages the signed-in person has (per person, not from the shared cache). */
   inboxWaitingForYou: number;
+  /** Open data requests due within 7 days, and those already overdue (per person, from Identity). */
+  dataRequestsDueSoon: number;
+  dataRequestsOverdue: number;
 };
 
 export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
@@ -39,4 +42,6 @@ export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
   telephoneBookingsPending: 0,
   legalEntityStripeRequirementsCount: 0,
   inboxWaitingForYou: 0,
+  dataRequestsDueSoon: 0,
+  dataRequestsOverdue: 0,
 };
