@@ -646,6 +646,13 @@ export {
   type PurchaseInvoiceStatus,
 } from "./purchase-invoice-state.js";
 export {
+  PURCHASE_PROBLEM_CATEGORIES,
+  PURCHASE_PROBLEM_STATUSES,
+  purchaseProblemReference,
+  type PurchaseProblemCategory,
+  type PurchaseProblemStatus,
+} from "./purchase-problem.js";
+export {
   DELIVERY_QUOTE_STATUSES,
   deliveryQuoteActionsFor,
   deliveryQuoteTransition,

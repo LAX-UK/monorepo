@@ -1,6 +1,7 @@
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { DeliveryPanelVm } from "@/lib/purchases/purchase-delivery.vm";
+import type { PurchaseProblemPanelVm } from "@/lib/purchases/purchase-problem";
 import type { PurchaseCardVm } from "@/lib/purchases/purchases.vm";
 import { cn } from "@auction/ui";
 import { ButtonLink, StatusBadge } from "@auction/ui/lax";
@@ -81,12 +82,15 @@ export function PurchaseDetail({
   card,
   subtitle,
   panel,
+  problem,
   shipperEmail,
 }: {
   card: PurchaseCardVm;
   subtitle: string;
   /** `null` when the account's delivery state could not be read. */
   panel: DeliveryPanelVm | null;
+  /** The open report on this purchase, or `null` when none is open. */
+  problem: PurchaseProblemPanelVm | null;
   shipperEmail: string;
 }) {
   const action = card.payable
@@ -179,7 +183,20 @@ export function PurchaseDetail({
               </p>
             )}
           </Panel>
-          {card.problemHref ? (
+          {problem ? (
+            <Panel title={problem.title}>
+              <p className="text-lax-14 font-medium text-lax-fg">Reference {problem.reference}</p>
+              <dl className="mt-3 flex flex-col gap-2 text-lax-14">
+                {problem.facts.map((fact) => (
+                  <div key={fact.label} className="flex justify-between gap-4">
+                    <dt className="text-lax-muted">{fact.label}</dt>
+                    <dd className="text-lax-fg">{fact.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-3 text-lax-13 text-lax-muted">{problem.nextStep}</p>
+            </Panel>
+          ) : card.problemHref ? (
             <Link
               href={card.problemHref}
               className="w-fit text-lax-14 text-lax-fg underline underline-offset-4"

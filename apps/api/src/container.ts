@@ -377,6 +377,8 @@ export function createContainer(env: Env): Container {
     env,
     lots: repos.lotRepo,
     sales: repos.saleRepo,
+    transactionRunner: platform.transactionRunner,
+    events: platform.domainEventSink,
     notificationDispatcher: platform.notificationDispatcher,
     notificationFactory: platform.notificationFactory,
     payments: {

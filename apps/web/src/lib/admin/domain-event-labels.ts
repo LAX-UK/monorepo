@@ -157,6 +157,7 @@ const LABELS: Record<string, string> = {
   "payout.transfer_blocked": "Payout transfer blocked",
   "payout.transfer_failed": "Payout transfer failed",
   "payout.transfer_reversed": "Payout transfer reversed",
+  "purchase_problem.reported": "Purchase problem reported",
 
   "sale.created": "Sale created",
   "sale.published": "Sale published",

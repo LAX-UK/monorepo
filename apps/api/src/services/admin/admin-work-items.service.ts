@@ -101,6 +101,8 @@ function stampActions(
       break;
     case "unsold_lot_choice":
       break;
+    case "purchase_problem":
+      break;
   }
 
   return actions;
@@ -182,6 +184,10 @@ export class AdminWorkItemsService {
       {
         access: SUBMISSIONS_ACCESS,
         fetch: () => this.reader.listUnsoldLotChoices(perSourceLimit),
+      },
+      {
+        access: FINANCE_ACCESS,
+        fetch: () => this.reader.listPurchaseProblems(perSourceLimit),
       },
     ];
 
