@@ -340,11 +340,9 @@
   --z-toast: 70;
 
   /* Fixed bottom chrome heights */
-  --bottom-chrome-bid: 5rem;
   --bottom-chrome-tab: var(--bottom-nav-height, 4rem);
   --bottom-chrome-consent: 5.5rem;
   --bottom-chrome-consent-offset: 0px;
-  --sticky-bid-bar-bottom: var(--bottom-chrome-consent-offset);
   --bottom-tab-bar-bottom: var(--bottom-chrome-consent-offset);
   --page-bottom-padding: calc(1.5rem + var(--bottom-chrome-consent-offset));
 

@@ -8,13 +8,27 @@ import { useId } from "react";
 
 export type BidEntryHrefs = Readonly<Record<BidEntryDestination, string>>;
 
-type Emphasis = "primary" | "secondary" | "text";
+/** `bar` and `barSecondary` are the phone bar's button: the same control, sized to its column. */
+type Emphasis = "primary" | "secondary" | "text" | "bar" | "barSecondary";
 
-const VARIANT = { primary: "primary", secondary: "secondary", text: "ghost" } as const;
-const SIZE = { primary: "lg", secondary: "lg", text: "sm" } as const;
-const WIDTH = { primary: "w-full", secondary: "w-full", text: "" } as const;
+const VARIANT = {
+  primary: "primary",
+  secondary: "secondary",
+  text: "ghost",
+  bar: "primary",
+  barSecondary: "secondary",
+} as const;
+const SIZE = { primary: "lg", secondary: "lg", text: "sm", bar: "lg", barSecondary: "lg" } as const;
+const BAR_WIDTH = "w-auto min-w-[8.25rem] shrink-0";
+const WIDTH = {
+  primary: "w-full",
+  secondary: "w-full",
+  text: "",
+  bar: BAR_WIDTH,
+  barSecondary: BAR_WIDTH,
+} as const;
 
-function Control({
+export function BidControlButton({
   control,
   emphasis,
   hrefs,
@@ -69,7 +83,7 @@ export function BidEntryControls({
     <div className="grid gap-3">
       {primary ? (
         <>
-          <Control
+          <BidControlButton
             control={primary.control}
             emphasis="primary"
             hrefs={hrefs}
@@ -89,11 +103,11 @@ export function BidEntryControls({
         </>
       ) : null}
       {secondary ? (
-        <Control control={secondary} emphasis="secondary" hrefs={hrefs} onOpen={onOpen} />
+        <BidControlButton control={secondary} emphasis="secondary" hrefs={hrefs} onOpen={onOpen} />
       ) : null}
       {alt ? (
         <div className="flex justify-center">
-          <Control control={alt} emphasis="text" hrefs={hrefs} onOpen={onOpen} />
+          <BidControlButton control={alt} emphasis="text" hrefs={hrefs} onOpen={onOpen} />
         </div>
       ) : null}
       {help ? (
