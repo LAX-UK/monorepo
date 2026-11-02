@@ -200,6 +200,13 @@ const ACTIONS: AdminAction[] = [
     expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
   },
   {
+    name: "list who an enquiry may be given to",
+    rule: ENQUIRIES_ACCESS,
+    method: "GET",
+    path: "/admin/enquiry-assignees",
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
     name: "change the enquiry routing",
     rule: ENQUIRY_ROUTING_MANAGE_ACCESS,
     method: "PUT",

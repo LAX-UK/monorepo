@@ -15,6 +15,7 @@ import type {
   AdminEnquiryPatch,
   EnquiryIntakeInput,
 } from "@auction/validators";
+import type { EnquiryAssignee } from "../marketing-enquiry/enquiry-assignee-directory.js";
 import type { EnquirerAccount } from "../marketing-enquiry/enquiry-intake.mapper.js";
 
 export type EnquiryNoteView = {
@@ -133,6 +134,8 @@ export type EnquiryRoutingUpdateResult =
 /** Who receives each department's enquiries. */
 export interface IEnquiryRouting {
   rules(): Promise<EnquiryRoutingRule[]>;
+  /** The staff an enquiry may be given to, for the assignee and routing pickers. */
+  assignees(): Promise<EnquiryAssignee[]>;
   replace(
     actorUserId: string,
     rules: readonly EnquiryRoutingRule[],

@@ -14,6 +14,7 @@ function createApp(staffRoles: StaffRoles | undefined) {
   };
   const enquiryRouting = {
     rules: vi.fn().mockResolvedValue([]),
+    assignees: vi.fn().mockResolvedValue([{ id: "u1", name: "Sofia Okafor" }]),
     replace: vi.fn().mockResolvedValue({ ok: true, rules: [] }),
   };
   const app = new Hono<{
@@ -228,6 +229,24 @@ describe("enquiry routing", () => {
   });
 });
 
+describe("GET /enquiry-assignees", () => {
+  it("names the staff an enquiry may be given to, for everyone who opens the desk", async () => {
+    for (const role of [
+      "administrator",
+      "sales_manager",
+      "specialist",
+      "client_services",
+    ] as const) {
+      const { app } = createApp([role]);
+      const res = await app.request("http://test/enquiry-assignees");
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        data: { assignees: [{ id: "u1", name: "Sofia Okafor" }] },
+      });
+    }
+  });
+});
+
 describe("who may open the Enquiries routes", () => {
   it.each([
     ["finance"],
@@ -244,6 +263,7 @@ describe("who may open the Enquiries routes", () => {
       ["/enquiries/E-1042", json({ version: 1, note: "x" })],
       [`/enquiries/${ID}/handled`, { method: "POST" }],
       ["/enquiry-routing", undefined],
+      ["/enquiry-assignees", undefined],
     ] as const) {
       expect((await app.request(`http://test${path}`, init)).status).toBe(403);
     }
@@ -251,5 +271,6 @@ describe("who may open the Enquiries routes", () => {
     expect(marketingEnquiries.update).not.toHaveBeenCalled();
     expect(marketingEnquiries.markHandled).not.toHaveBeenCalled();
     expect(enquiryRouting.rules).not.toHaveBeenCalled();
+    expect(enquiryRouting.assignees).not.toHaveBeenCalled();
   });
 });

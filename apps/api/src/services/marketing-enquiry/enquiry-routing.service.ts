@@ -8,7 +8,7 @@ import type {
   EnquiryRoutingUpdateResult,
   IEnquiryRouting,
 } from "../interfaces/marketing-enquiry-service.js";
-import type { IEnquiryAssigneeDirectory } from "./enquiry-assignee-directory.js";
+import type { EnquiryAssignee, IEnquiryAssigneeDirectory } from "./enquiry-assignee-directory.js";
 
 export type EnquiryRoutingServiceDeps = {
   routing: IEnquiryRoutingRepository;
@@ -27,6 +27,10 @@ export class EnquiryRoutingService implements IEnquiryRouting {
 
   rules(): Promise<EnquiryRoutingRule[]> {
     return this.deps.routing.listRules();
+  }
+
+  assignees(): Promise<EnquiryAssignee[]> {
+    return this.deps.assignees.list();
   }
 
   async replace(

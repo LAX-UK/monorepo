@@ -10,7 +10,13 @@ function setup() {
   const events: IDomainEventSink = { publish, withTx: () => events };
   const service = new EnquiryRoutingService({
     routing,
-    assignees: { isStaff: async (id) => ["sofia", "tom", "ben"].includes(id) },
+    assignees: {
+      isStaff: async (id) => ["sofia", "tom", "ben"].includes(id),
+      list: async () => [
+        { id: "sofia", name: "Sofia Okafor" },
+        { id: "tom", name: "Tom Reid" },
+      ],
+    },
     transactionRunner: {
       runInTransaction: (fn: (tx: unknown) => Promise<unknown>) => fn({}),
     } as unknown as ITransactionRunner,
@@ -20,6 +26,14 @@ function setup() {
 }
 
 describe("EnquiryRoutingService", () => {
+  it("offers the staff an enquiry may be given to", async () => {
+    const { service } = setup();
+    expect(await service.assignees()).toEqual([
+      { id: "sofia", name: "Sofia Okafor" },
+      { id: "tom", name: "Tom Reid" },
+    ]);
+  });
+
   it("saves the table and audits each changed row with the person who changed it", async () => {
     const { service, publish } = setup();
 
