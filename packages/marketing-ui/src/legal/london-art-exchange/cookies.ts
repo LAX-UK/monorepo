@@ -161,7 +161,7 @@ export const COOKIES_POLICY: LegalPolicyDocument<"cookies"> = {
       blocks: [
         {
           type: "paragraph",
-          text: "You can reopen Cookie preferences from the footer of every page and withdraw or change consent as easily as you gave it. Withdrawal stops future non-exempt access and is passed to relevant tags and partners. It does not make earlier consented processing unlawful.",
+          text: "You can reopen Cookie settings from the footer of every page and withdraw or change consent as easily as you gave it. Withdrawal stops future non-exempt access and is passed to relevant tags and partners. It does not make earlier consented processing unlawful.",
         },
       ],
     },

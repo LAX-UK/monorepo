@@ -7,7 +7,7 @@ export const FOOTER_LEGAL = {
   terms: "Terms",
   privacy: "Privacy",
   cookies: "Cookies",
-  cookiePreferences: "Cookie preferences",
+  cookiePreferences: "Cookie settings",
 } as const;
 
 const LEGAL_LINK_ORDER = ["index", "terms", "privacy", "cookies", "cookiePreferences"] as const;
