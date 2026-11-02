@@ -1,3 +1,4 @@
+import { MediaImage } from "@/components/ui/media-image";
 import type { UpcomingSaleView } from "@/lib/organisation-home/organisation-dashboard-view";
 import { StatusBadge } from "@auction/ui/lax";
 import Link from "next/link";
@@ -8,9 +9,35 @@ type Props = {
   seeAllHref: string;
 };
 
+/** The works on a card's mat: up to three, side by side, or the placeholder when none has a photo. */
+function SaleMat({ sale }: { sale: UpcomingSaleView }) {
+  return (
+    <div className="relative flex h-36 items-end justify-center gap-3 bg-lax-paper px-6 py-5 sm:h-44 sm:px-8 lg:h-48">
+      {(sale.images.length > 0 ? sale.images : [null]).map((src) => (
+        <div key={src ?? "none"} className="relative h-full max-w-56 min-w-0 flex-1 basis-0">
+          <MediaImage
+            src={src}
+            alt=""
+            placeholderTitle={sale.title}
+            sizes="224px"
+            className="size-full"
+            imgClassName="object-contain object-bottom"
+          />
+        </div>
+      ))}
+      {sale.live ? (
+        <StatusBadge tone="live" className="absolute top-3 left-3">
+          Live
+        </StatusBadge>
+      ) : null}
+    </div>
+  );
+}
+
 /**
- * The next sales with the organisation's works, as cards: title, date and how many of its works
- * are in each. Two across in the column; a row to swipe on phones.
+ * The next sales with the organisation's works, as cards: the works on a paper mat, the title,
+ * when the sale opens or, while it is live, when it closes, and how many of the works are in it.
+ * Two across in the column; a row to swipe on phones.
  */
 export function HomeUpcomingSales({ sales, seeAllHref }: Props) {
   if (sales.length === 0) return null;
@@ -28,17 +55,20 @@ export function HomeUpcomingSales({ sales, seeAllHref }: Props) {
           <li key={sale.id} className="snap-start">
             <Link
               href={sale.href}
-              className="block h-full rounded-lax-card border border-lax-line bg-lax-surface px-5 pt-4 pb-5 transition-colors duration-150 hover:border-lax-line-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lax-focus"
+              className="block h-full overflow-hidden rounded-lax-card border border-lax-line bg-lax-surface transition-colors duration-150 hover:border-lax-line-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lax-focus"
             >
-              <span className="block font-lax-display text-lax-16 font-semibold text-lax-fg">
-                {sale.title}
+              <SaleMat sale={sale} />
+              <span className="block px-5 pt-4 pb-5">
+                <span className="block font-lax-display text-lax-16 font-semibold text-lax-fg">
+                  {sale.title}
+                </span>
+                <time dateTime={sale.dateTime} className="mt-0.5 block text-lax-13 text-lax-muted">
+                  {sale.timing}
+                </time>
+                <StatusBadge tone="info" shape="dot" className="mt-3">
+                  {sale.works}
+                </StatusBadge>
               </span>
-              <time dateTime={sale.dateTime} className="mt-0.5 block text-lax-13 text-lax-muted">
-                {sale.date}
-              </time>
-              <StatusBadge tone="info" shape="dot" className="mt-3">
-                {sale.works}
-              </StatusBadge>
             </Link>
           </li>
         ))}

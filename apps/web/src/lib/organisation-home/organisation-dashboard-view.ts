@@ -33,9 +33,15 @@ export type DashboardTileView = {
 export type UpcomingSaleView = {
   id: string;
   title: string;
-  date: string;
+  /** When it opens, or while it is live when it closes: "Closes 3 Nov, 21:14". */
+  timing: string;
+  /** The moment `timing` names, for the `time` element. */
   dateTime: string;
+  /** Open for bidding now: the card says so. */
+  live: boolean;
   works: string;
+  /** The organisation's works in the sale, shown on the card's mat; may be empty. */
+  images: string[];
   href: string;
 };
 
@@ -43,6 +49,8 @@ export type ConsignmentStageView = {
   id: string;
   label: string;
   count: number;
+  /** A stage with no works stays in the row, quietly. */
+  empty: boolean;
   /** The Consignments list filtered to this stage. */
   href: string;
 };
@@ -75,12 +83,15 @@ const money = (totals: readonly MoneyTotal[]) =>
 const estimateRange = (estimate: EstimateTotal) =>
   `${formatKpiMoney(estimate.low, estimate.currency)}–${formatKpiMoney(estimate.high, estimate.currency)}`;
 
-/** "Overdue since 12 Oct 2026 · next 4 Nov 2026": both dates when one is past and one ahead. */
+/**
+ * A payout past its date is LAX's to settle, so it is never called overdue: it reads as delayed,
+ * with the next expected date when there is one ("Delayed · we're on it · next 4 Nov 2026").
+ */
 function payoutDatesLine(overdueSince: Date | null, nextDate: Date | null): string[] {
-  if (overdueSince && nextDate) {
-    return [`Overdue since ${formatDateInline(overdueSince)} · next ${formatDateInline(nextDate)}`];
+  if (overdueSince) {
+    const expected = nextDate ? ` · next ${formatDateInline(nextDate)}` : "";
+    return [`Delayed · we're on it${expected}`];
   }
-  if (overdueSince) return [`Overdue since ${formatDateInline(overdueSince)}`];
   return nextDate ? [`Next on ${formatDateInline(nextDate)}`] : [];
 }
 
@@ -208,13 +219,37 @@ export function dashboardTileView(tile: DashboardTile, ctx: Ctx): DashboardTileV
   };
 }
 
-function upcomingSaleView(sale: UpcomingSaleFigure): UpcomingSaleView {
+/** Sale times are UK time, the same on the server and in every browser. */
+const SALE_TIME = { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit" } as const;
+const OPENS_AT = new Intl.DateTimeFormat("en-GB", {
+  ...SALE_TIME,
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+const CLOSES_AT = new Intl.DateTimeFormat("en-GB", {
+  ...SALE_TIME,
+  day: "numeric",
+  month: "short",
+});
+
+/** A live sale says when it closes; one still to open says when it opens. */
+function saleTiming(sale: UpcomingSaleFigure): Pick<UpcomingSaleView, "timing" | "dateTime"> {
+  return sale.live
+    ? { timing: `Closes ${CLOSES_AT.format(sale.endsAt)}`, dateTime: sale.endsAt.toISOString() }
+    : { timing: `Opens ${OPENS_AT.format(sale.startsAt)}`, dateTime: sale.startsAt.toISOString() };
+}
+
+function upcomingSaleView(sale: UpcomingSaleFigure, own: boolean): UpcomingSaleView {
+  const works = sale.works.toLocaleString("en-GB");
   return {
     id: sale.id,
     title: sale.title,
-    date: formatDateInline(sale.startsAt),
-    dateTime: sale.startsAt.toISOString(),
-    works: `${sale.works.toLocaleString("en-GB")} of your works`,
+    ...saleTiming(sale),
+    live: sale.live,
+    // "Your works" for a member who sees only what they sent; the organisation's otherwise.
+    works: own ? `${works} of your works` : `${works} ${sale.works === 1 ? "work" : "works"}`,
+    images: sale.images,
     href: salePath({ id: sale.id, title: sale.title }),
   };
 }
@@ -249,25 +284,27 @@ export function organisationDashboardView(
     firstRun: model.firstRun ? firstRunView(model.firstRun, firstRunKey, ctx) : null,
     // Thin data: a row of "No …" cells says nothing, so the figures show from the first one.
     tiles: tiles.some((tile) => tile.figures.length > 0) ? tiles : [],
-    upcomingSales: model.upcomingSales.map(upcomingSaleView),
+    upcomingSales: model.upcomingSales.map((sale) => upcomingSaleView(sale, model.ownWorks)),
     upcomingSalesHref: consignmentStageHref("in_sale"),
     stages: progress ? stageViews(progress) : null,
   };
 }
 
 /**
- * Only the stages with works in them, in pipeline order, each opening the filtered list; a row of
- * zeros says nothing. `null` with fewer than two stages, so the section is left out.
+ * Every stage in pipeline order, so the row always has the same six cells and a stage is found
+ * in the same place each time; those with nothing in them are marked quiet. Each opens the
+ * filtered list. `progress` is already `null` when the member has no works in progress.
  */
-function stageViews(progress: NonNullable<OrganisationDashboardModel["progress"]>) {
-  const stages = CONSIGNMENT_PROGRESS_STAGES.filter((stage) => progress[stage] > 0).map(
+function stageViews(
+  progress: NonNullable<OrganisationDashboardModel["progress"]>,
+): ConsignmentStageView[] {
+  return CONSIGNMENT_PROGRESS_STAGES.map(
     (stage): ConsignmentStageView => ({
       id: stage,
       label: CONSIGNMENT_STAGE_LABEL[stage],
       count: progress[stage],
+      empty: progress[stage] === 0,
       href: consignmentStageHref(stage),
     }),
   );
-  // One stage is a lone number, not a breakdown: the section shows from two.
-  return stages.length > 1 ? stages : null;
 }
