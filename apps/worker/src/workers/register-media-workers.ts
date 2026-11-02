@@ -10,6 +10,7 @@ import type { QrCodeScanJobPayload } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
 import { analyseSaleCoversJob } from "../jobs/analyse-sale-covers.js";
 import { cleanupImageJob } from "../jobs/image-cleanup.js";
+import { measureExternalPicturesJob } from "../jobs/measure-external-pictures.js";
 import { processImageJob } from "../jobs/process-image.js";
 import { purgeSourceOfFundsDocumentsJob } from "../jobs/purge-source-of-funds-documents.js";
 import { recordQrCodeScanJob } from "../jobs/qr-code-scan.js";
@@ -103,9 +104,18 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
     COVER_ANALYSIS_QUEUE_NAME,
     queueOpts(COVER_ANALYSIS_QUEUE_NAME),
   );
+  // Lot photographs held as full https addresses (seeded or imported) never pass through an
+  // upload, so their size is read here, on the same tick, and kept under the address.
+  const unreadablePictures = new Set<string>();
   const coverAnalysisWorker = new Worker(
     COVER_ANALYSIS_QUEUE_NAME,
     async () => {
+      await measureExternalPicturesJob({
+        repo: mediaAssetProcessorRepo,
+        processor: imageProcessor,
+        log,
+        failed: unreadablePictures,
+      });
       await analyseSaleCoversJob({
         repo: coverAnalysisJobRepo,
         storage: uploadStorage,
