@@ -9,6 +9,7 @@ const identity = {
   confirmEmailChange: vi.fn(),
   sendPhoneCode: vi.fn(),
   verifyPhone: vi.fn(),
+  removePhone: vi.fn(),
   regenerateBackupCodes: vi.fn(),
   requestDeletion: vi.fn(),
   cancelDeletion: vi.fn(),
@@ -29,6 +30,7 @@ const {
   signOutDeviceAction,
   signOutOtherDevicesAction,
   startEmailChangeAction,
+  removePhoneAction,
   verifyPhoneAction,
 } = await import("./account-identity-actions.server");
 
@@ -235,6 +237,28 @@ describe("account identity actions", () => {
         status: "error",
         message: expect.stringContaining(text),
       });
+    });
+
+    it("removes the number as the signed-in person", async () => {
+      identity.removePhone.mockResolvedValue({ status: "ok", value: true });
+      expect(await removePhoneAction()).toEqual({
+        status: "ok",
+        message: "Your phone number has been removed.",
+      });
+      expect(identity.removePhone).toHaveBeenCalledWith(ACTOR);
+    });
+
+    it("explains a removal refused because there is no number", async () => {
+      identity.removePhone.mockResolvedValue({ status: "rejected", reason: "no_phone" });
+      expect(await removePhoneAction()).toMatchObject({
+        status: "error",
+        message: expect.stringContaining("no phone number"),
+      });
+    });
+
+    it("sends the person through a fresh sign-in when removal needs one", async () => {
+      identity.removePhone.mockResolvedValue({ status: "reauth_required" });
+      expect(await removePhoneAction()).toEqual({ status: "reauth_required" });
     });
 
     it("sends the person through a fresh sign-in when the issuer asks for one", async () => {

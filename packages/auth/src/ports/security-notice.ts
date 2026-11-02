@@ -27,6 +27,7 @@ export type SecurityNoticeEvent =
     }
   | { kind: "account_deletion_cancelled"; userId: string; at: Date; userAgent?: string | null }
   | { kind: "phone_verified"; userId: string; at: Date; phone: string; userAgent?: string | null }
+  | { kind: "phone_removed"; userId: string; at: Date; phone: string; userAgent?: string | null }
   | {
       kind: "email_changed";
       userId: string;

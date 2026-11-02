@@ -145,6 +145,17 @@ describe("SecurityNoticeService", () => {
     expect(input?.vars.maskedPhone).toBe("+44******23");
   });
 
+  it("masks the phone number on removal", async () => {
+    const { service, email } = setup();
+
+    await service.notify({ kind: "phone_removed", userId: USER, at: AT, phone: "+447700900123" });
+
+    const input = email.enqueue.mock.calls[0]?.[0];
+    expect(input?.template).toBe("phone-removed");
+    expect(JSON.stringify(input)).not.toContain("7700900123");
+    expect(input?.vars.maskedPhone).toBe("+44******23");
+  });
+
   it("tells both the old and the new address about an email change", async () => {
     const { service, email } = setup();
 
