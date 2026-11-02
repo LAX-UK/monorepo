@@ -1,6 +1,7 @@
 "use client";
 
 import { CountdownFadeSlot } from "@/components/marketing/countdown-fade-slot";
+import { formatCountdownShort } from "@/lib/format-countdown";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import type { Sale } from "@auction/types";
 import { Countdown } from "@auction/ui";
@@ -35,7 +36,7 @@ export function SaleAgendaLiveCountdown({
       visible
       className="hidden font-label text-xs font-semibold tabular-nums text-cta-bg sm:inline"
     >
-      <Countdown end={new Date(reactiveEndIso)} announce={false} />
+      <Countdown end={new Date(reactiveEndIso)} format={formatCountdownShort} announce={false} />
     </CountdownFadeSlot>
   );
 }

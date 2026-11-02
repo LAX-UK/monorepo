@@ -41,6 +41,32 @@ export function formatCountdownShort(ms: number): string {
   return `${seconds}s`;
 }
 
+export type CountdownTile = { unit: "Days" | "Hours" | "Min" | "Sec"; value: number };
+
+/**
+ * The tiles of a segmented countdown, by the time rule: the two largest units only. Days and
+ * hours, hours and minutes, then minutes and seconds in the final hour.
+ */
+export function countdownTiles(ms: number): readonly [CountdownTile, CountdownTile] {
+  const { days, hours, minutes, seconds } = parseCountdownSegments(ms);
+  if (days > 0) {
+    return [
+      { unit: "Days", value: days },
+      { unit: "Hours", value: hours },
+    ];
+  }
+  if (hours > 0) {
+    return [
+      { unit: "Hours", value: hours },
+      { unit: "Min", value: minutes },
+    ];
+  }
+  return [
+    { unit: "Min", value: minutes },
+    { unit: "Sec", value: seconds },
+  ];
+}
+
 export type CountdownTier = "normal" | "urgent" | "critical";
 
 export type CountdownSegments = {

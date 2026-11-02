@@ -1311,6 +1311,9 @@ importers:
       '@auction/domain':
         specifier: workspace:*
         version: link:../domain
+      '@auction/email':
+        specifier: workspace:^
+        version: link:../email
       '@auction/persistence':
         specifier: workspace:*
         version: link:../persistence

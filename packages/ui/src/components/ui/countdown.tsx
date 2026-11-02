@@ -18,22 +18,12 @@ function formatAnnounceBucket(secondsRemaining: number): string {
   return `${m} minute${m === 1 ? "" : "s"}`;
 }
 
-function formatDisplay(secondsRemaining: number): string {
-  if (secondsRemaining <= 0) return "Ended";
-  const d = Math.floor(secondsRemaining / 86400);
-  const h = Math.floor((secondsRemaining % 86400) / 3600);
-  const m = Math.floor((secondsRemaining % 3600) / 60);
-  const s = secondsRemaining % 60;
-  if (d > 0)
-    return `${d}d ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
 export type CountdownUrgency = "normal" | "soon" | "imminent";
 
 export type CountdownProps = {
   end: Date;
+  /** The one time wording, from milliseconds left: the app passes its countdown formatter. */
+  format: (msRemaining: number) => string;
   className?: string;
   /** When false, no live region (visual only). */
   announce?: boolean;
@@ -56,6 +46,7 @@ export type CountdownProps = {
  */
 export function Countdown({
   end,
+  format,
   className,
   announce = true,
   soonThresholdSec = 300,
@@ -74,7 +65,12 @@ export function Countdown({
   }, []);
 
   const secondsRemaining = now == null ? null : clampMs(Math.floor((endMs - now) / 1000));
-  const display = secondsRemaining == null ? "…" : formatDisplay(secondsRemaining);
+  const display =
+    secondsRemaining == null
+      ? "…"
+      : secondsRemaining <= 0
+        ? "Ended"
+        : format(secondsRemaining * 1000);
   const bucket = secondsRemaining == null ? "" : formatAnnounceBucket(secondsRemaining);
 
   const urgency: CountdownUrgency =

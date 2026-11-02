@@ -7,6 +7,7 @@ import { SaleroomMobileSummaryBar } from "@/components/marketing/saleroom-mobile
 import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { formatLondonWhen } from "@/lib/datetime/london-time";
+import { formatCountdownShort } from "@/lib/format-countdown";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import {
@@ -192,6 +193,7 @@ export function SaleMobileSummaryBar({
           {showCountdown && !isUpcoming ? (
             <Countdown
               end={target}
+              format={formatCountdownShort}
               announce={isUpcoming || deliveryMode === "online"}
               className="font-headline text-sm text-on-surface tabular-nums md:text-base"
             />

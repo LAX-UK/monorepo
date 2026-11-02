@@ -66,7 +66,7 @@ describe("buildWatchedLots", () => {
       now: NOW,
     });
     expect(rows.map((row) => [row.standing.label, row.figure.label, row.moment])).toEqual([
-      ["Winning", "current bid", "closes Today 15:00"],
+      ["Winning", "current bid", "closes today 15:00"],
       ["Not bidding", "estimate", "opens 20 Nov"],
       ["Sold", "sold for", "closed 30 Oct"],
     ]);

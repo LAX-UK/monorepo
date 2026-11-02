@@ -47,7 +47,7 @@ async function enquirySenderVars(db: Database, sender: EnquirySender) {
 }
 
 function formatPence(pence: number): string {
-  return `£${(pence / 100).toFixed(2)}`;
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
 }
 
 /** Queues one transactional email in the same transaction as the change it reports. */

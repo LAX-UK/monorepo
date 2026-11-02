@@ -31,6 +31,22 @@ describe("MarketingCountdownPanel beyond a week", () => {
   it("shows tiles from exactly seven days down", () => {
     renderClosing(7 * DAY);
     expect(screen.getByText("Days")).toBeTruthy();
+    expect(screen.queryByText("Sec")).toBeNull();
     expect(screen.queryByText(/GMT/)).toBeNull();
+  });
+});
+
+describe("MarketingCountdownPanel seconds", () => {
+  it("shows no seconds tile two days out", () => {
+    renderClosing(2 * DAY + 5 * 3_600_000);
+    expect(screen.getByText("Hours")).toBeTruthy();
+    expect(screen.queryByText("Sec")).toBeNull();
+    expect(screen.queryByText("Min")).toBeNull();
+  });
+
+  it("shows seconds in the final hour", () => {
+    renderClosing(42 * 60_000);
+    expect(screen.getByText("Min")).toBeTruthy();
+    expect(screen.getByText("Sec")).toBeTruthy();
   });
 });

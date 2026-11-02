@@ -119,7 +119,7 @@ export function boughtWork(
     meta: [
       Number.isNaN(at)
         ? null
-        : `bought ${formatLotMoment(new Date(at), input.now, { time: false })}`,
+        : `bought ${formatLotMoment(new Date(at), input.now, { time: false, inSentence: true })}`,
       win.lotNumber == null ? null : `lot ${win.lotNumber}`,
     ].filter((fact): fact is string => Boolean(fact)),
     price: win.hammerPrice == null ? null : formatMoney(win.hammerPrice, "GBP"),
@@ -150,7 +150,7 @@ export function returnedWork(work: ReturnedWork, input: { now: Date }): Collecti
     image: null,
     meta: [
       work.returnedAt
-        ? `returned unsold ${formatLotMoment(work.returnedAt, input.now, { time: false })}`
+        ? `returned unsold ${formatLotMoment(work.returnedAt, input.now, { time: false, inSentence: true })}`
         : "returned unsold",
       work.reference,
     ],

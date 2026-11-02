@@ -1,3 +1,4 @@
+import { formatMoneyMajor } from "@auction/email";
 import type { CreateNotificationRow } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import type { INotificationFactory } from "./ports.js";
@@ -57,7 +58,7 @@ export class NotificationFactory implements INotificationFactory {
       type: "lot_ended_seller",
       title: sold ? "Your lot has sold" : "Your lot closed unsold",
       message: sold
-        ? `"${lot.title}" sold with a hammer price of ${opts?.hammerPrice} GBP.`
+        ? `"${lot.title}" sold with a hammer price of ${formatMoneyMajor(opts?.hammerPrice) ?? opts?.hammerPrice}.`
         : `"${lot.title}" closed without a sale.`,
       lotId: lot.id,
       legalEntityId: lot.sellerLegalEntityId ?? null,

@@ -75,12 +75,8 @@ export function payoutDetailVm(
 ): PayoutDetailVm {
   const status = PAYOUT_STATUS_BADGE[isPayoutStatus(detail.status) ? detail.status : "scheduled"];
   const money = (amount: string) => formatMoney(amount, detail.currency);
-  // Mid-sentence, "Yesterday" reads "sent yesterday".
   const sent = detail.processedAt
-    ? formatLotMoment(detail.processedAt, input.now, { time: false }).replace(
-        /^(Today|Yesterday|Tomorrow)/,
-        (word) => word.toLowerCase(),
-      )
+    ? formatLotMoment(detail.processedAt, input.now, { time: false, inSentence: true })
     : null;
   const period = `${formatLotMoment(detail.periodStart, input.now, { time: false })} to ${formatLotMoment(detail.periodEnd, input.now, { time: false })}`;
   const statusNote =

@@ -4,10 +4,10 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { formatLondonWhen } from "@/lib/datetime/london-time";
 import {
   COUNTDOWN_DATE_BEYOND_MS,
+  countdownTiles,
   formatCountdownAnnounce,
   formatCountdownAriaLabel,
   formatCountdownSpoken,
-  parseCountdownSegments,
 } from "@/lib/format-countdown";
 import {
   type CountdownTone,
@@ -75,7 +75,7 @@ function SegmentChip({ value, unit, tone, ended, placeholder }: SegmentChipProps
   );
 }
 
-/** Segmented marketing countdown (Days / Hours / Min / Sec) with urgency styling. */
+/** Segmented marketing countdown (the two largest units; seconds only in the final hour) with urgency styling. */
 export function MarketingCountdownPanel({
   label,
   endIso,
@@ -113,7 +113,7 @@ export function MarketingCountdownPanel({
   }, [nowMs, endMs]);
 
   const ended = msLeft === 0 && nowMs != null;
-  const segments = msLeft != null ? parseCountdownSegments(msLeft) : null;
+  const tiles = countdownTiles(msLeft ?? 0);
   const tone: CountdownTone = msLeft != null ? countdownTone(msLeft) : "calm";
 
   const ariaLabel =
@@ -132,8 +132,7 @@ export function MarketingCountdownPanel({
     setLiveMessage((prev) => (prev === msg ? prev : msg));
   }, [bucket, ended, label, secondsRemaining]);
 
-  const showDays = segments != null && segments.days > 0;
-  const placeholder = segments == null && !ended;
+  const placeholder = msLeft == null && !ended;
 
   if (isActiveSaleroomCountdown && effectiveEndIso == null) {
     return null;
@@ -212,40 +211,17 @@ export function MarketingCountdownPanel({
           </span>
           <time dateTime={effectiveEndIso} className="mt-3 block" suppressHydrationWarning>
             <span className="sr-only">{ariaLabel}</span>
-            <div
-              className={cn("grid max-w-xs gap-2", showDays ? "grid-cols-4" : "grid-cols-3")}
-              aria-hidden
-            >
-              {showDays ? (
+            <div className="grid max-w-[11rem] grid-cols-2 gap-2" aria-hidden>
+              {tiles.map((tile) => (
                 <SegmentChip
-                  value={segments?.days ?? 0}
-                  unit="Days"
+                  key={tile.unit}
+                  value={tile.value}
+                  unit={tile.unit}
                   tone={tone}
                   ended={ended}
                   placeholder={placeholder}
                 />
-              ) : null}
-              <SegmentChip
-                value={segments?.hours ?? 0}
-                unit="Hours"
-                tone={tone}
-                ended={ended}
-                placeholder={placeholder}
-              />
-              <SegmentChip
-                value={segments?.minutes ?? 0}
-                unit="Min"
-                tone={tone}
-                ended={ended}
-                placeholder={placeholder}
-              />
-              <SegmentChip
-                value={segments?.seconds ?? 0}
-                unit="Sec"
-                tone={tone}
-                ended={ended}
-                placeholder={placeholder}
-              />
+              ))}
             </div>
           </time>
         </>
