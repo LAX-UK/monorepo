@@ -1,5 +1,9 @@
-import { type EntityActor, needsYouCounts, visibleNeedsYouTasks } from "@auction/domain";
-import type { NeedsYouResponse } from "./needs-you-read";
+import {
+  type EntityActor,
+  type NeedsYouTask,
+  needsYouCounts,
+  visibleNeedsYouTasks,
+} from "@auction/domain";
 
 /**
  * The sidebar's counts come from the one Needs-you reader (`GET /legal-entities/needs-you`), the
@@ -46,7 +50,11 @@ export function navCountsFrom(counts: NeedsYouCounts | null): Readonly<Record<st
  * short keeps the reader's own counts, which cover what it did not send.
  */
 export function visibleNeedsYouCounts(
-  response: NeedsYouResponse,
+  response: {
+    readonly tasks: readonly NeedsYouTask[];
+    readonly truncated: boolean;
+    readonly counts: NeedsYouCounts;
+  },
   actor: EntityActor,
 ): NeedsYouCounts {
   if (response.truncated) return response.counts;
