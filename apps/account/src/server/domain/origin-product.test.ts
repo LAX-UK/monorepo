@@ -1,11 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildBackToProduct, detectOriginProduct, productForOrigin } from "./origin-product";
 
-const config = {
-  bidPublicUrl: "https://lax.bid",
-  shopPublicUrl: "https://shop.lax.bid",
-  laxArtPublicUrl: "https://lax.art",
-};
+const config = { bid: "https://lax.bid", shop: "https://shop.lax.bid", art: "https://lax.art" };
 
 describe("productForOrigin", () => {
   it("matches the configured origins, whatever the path", () => {
@@ -40,9 +36,7 @@ describe("detectOriginProduct", () => {
   });
 
   it("knows nothing for a product that is not configured", () => {
-    expect(detectOriginProduct({ from: "art" }, { ...config, laxArtPublicUrl: undefined })).toBe(
-      null,
-    );
+    expect(detectOriginProduct({ from: "art" }, { ...config, art: undefined })).toBe(null);
   });
 
   it("knows nothing without a hint", () => {
@@ -65,6 +59,6 @@ describe("buildBackToProduct", () => {
     expect(buildBackToProduct(undefined, config)).toBeNull();
     expect(buildBackToProduct("https://evil.example", config)).toBeNull();
     expect(buildBackToProduct("account", config)).toBeNull();
-    expect(buildBackToProduct("art", { ...config, laxArtPublicUrl: undefined })).toBeNull();
+    expect(buildBackToProduct("art", { ...config, art: undefined })).toBeNull();
   });
 });

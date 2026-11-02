@@ -1,10 +1,10 @@
-import { ORIGIN_PRODUCT_COOKIE } from "@/lib/session-cookie";
+import { ORIGIN_PRODUCT_COOKIE } from "@/lib/origin-product";
 import { loadAccountSession } from "@/server/application/load-account-session";
 import { loadMenuSellerAccess } from "@/server/application/load-selling";
 import { getLaxAccountContainer } from "@/server/container";
 import { buildAccountLinks } from "@/server/domain/account-links";
 import { buildAccountNav, buildProductBar } from "@/server/domain/account-nav.vm";
-import { buildBackToProduct } from "@/server/domain/origin-product";
+import { buildBackToProduct, originProductUrls } from "@/server/domain/origin-product";
 import { showsSelling } from "@/server/domain/selling/selling-access";
 import { cookies } from "next/headers";
 import { cache } from "react";
@@ -38,7 +38,7 @@ export async function AccountShell({
   const sellerAccess = viewer ? await loadMenuSellerAccess() : null;
   const backToProduct = buildBackToProduct(
     (await cookies()).get(ORIGIN_PRODUCT_COOKIE)?.value,
-    config,
+    originProductUrls(config),
   );
   return (
     <AccountFrame

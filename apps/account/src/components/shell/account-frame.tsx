@@ -5,13 +5,13 @@ import type { BackToProductVm } from "@/server/domain/origin-product";
 import { legalOperatorSentence, siteCopyrightYear } from "@auction/branding";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { LaxFamilyBar, LaxLockup } from "@auction/marketing-ui";
-import { TextLink } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 import { AccountAvatarMenu } from "./account-avatar-menu.client";
 import { AccountMenuSheet } from "./account-menu-sheet.client";
 import { AccountNav } from "./account-nav.client";
 import { AccountThemeToggle } from "./account-theme-toggle.client";
 import type { AccountViewer } from "./account-viewer";
+import { BackToProductLink } from "./back-to-product-link";
 
 /**
  * The page widths, defined once. `narrow` is the column for forms and settings (Personal details,
@@ -88,10 +88,7 @@ export function AccountFrame({
       </header>
       {backToProduct ? (
         <div className={`${CONTAINER} pt-4`}>
-          <TextLink href={backToProduct.href} className="min-h-11">
-            <span aria-hidden="true">←</span>
-            {backToProduct.label}
-          </TextLink>
+          <BackToProductLink product={backToProduct} />
         </div>
       ) : null}
       <div className={`${CONTAINER} flex flex-1 gap-10 lg:gap-14`}>
