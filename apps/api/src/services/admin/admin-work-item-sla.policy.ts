@@ -30,6 +30,7 @@ const SLA_MS: Partial<Record<AdminWorkItemSourceKind, number>> = {
   sof_case: 24 * 60 * 60 * 1000,
   legal_entity_kyb: 72 * 60 * 60 * 1000,
   unsold_lot_choice: 72 * 60 * 60 * 1000,
+  purchase_problem: 48 * 60 * 60 * 1000,
 };
 
 const BASE_SEVERITY: Record<AdminWorkItemSourceKind, WorkItemSeverity> = {
@@ -45,6 +46,7 @@ const BASE_SEVERITY: Record<AdminWorkItemSourceKind, WorkItemSeverity> = {
   lot_withdrawal: "medium",
   lot_draft_past_start: "critical",
   unsold_lot_choice: "medium",
+  purchase_problem: "high",
 };
 
 export function applyWorkItemSla(

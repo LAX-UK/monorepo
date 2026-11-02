@@ -32,6 +32,7 @@ function createReader(overrides: Partial<IAdminWorkItemsReader> = {}): IAdminWor
     listPendingTelephoneBookings: vi.fn().mockResolvedValue([]),
     listDraftLotsPastStart: vi.fn().mockResolvedValue([]),
     listUnsoldLotChoices: vi.fn().mockResolvedValue([]),
+    listPurchaseProblems: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
 }

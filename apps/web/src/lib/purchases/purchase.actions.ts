@@ -2,6 +2,12 @@
 
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import {
+  type ActionResult,
+  actionFailure,
+  actionSuccess,
+  zodErrorToFieldErrors,
+} from "@/lib/forms/form-result";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
@@ -15,11 +21,20 @@ import {
   type PaySeveralPlanView,
   type PaySeveralStart,
 } from "./pay-several";
+import { purchaseRequestAccountId } from "./purchase-account";
+import { type PurchaseProblemFormValues, purchaseProblemFormSchema } from "./purchase-problem";
 
-/** Posts for the account in use; the API checks the member's role on every step. */
-async function post(path: string, body: unknown): Promise<Response> {
+/**
+ * Posts for the account in use; the API checks the member's role on every step. A person's own
+ * account is named only when `includePersonal` is set.
+ */
+async function post(
+  path: string,
+  body: unknown,
+  options: { includePersonal?: boolean } = {},
+): Promise<Response> {
   const scope = await (await getServerDataContainer()).buying.scope();
-  const account = scope.account.kind === "organisation" ? scope.account.id : null;
+  const account = purchaseRequestAccountId(scope.account, options);
   return authedServerFetch(path, {
     method: "POST",
     headers: {
@@ -160,6 +175,7 @@ async function quoteStep(path: string, body: unknown, lotId: string): Promise<Qu
 }
 
 const lotIdSchema = z.string().uuid();
+const problemSentSchema = z.object({ problem: z.object({ reference: z.string() }) });
 const destinationSchema = z.string().trim().min(5).max(500);
 
 /** Asks the saleroom team to price insured delivery to `destination`. */
@@ -203,5 +219,51 @@ export async function withdrawDeliveryQuoteAction(lotId: string): Promise<QuoteS
       {},
       id.data,
     );
+  });
+}
+
+const PROBLEM_FAILURES: Record<string, string> = {
+  problem_purchase_not_paid: "You can report a problem once the purchase is paid.",
+  purchase_not_found: "This purchase isn't in the account you're using.",
+  insufficient_entity_role: "Your role in this account can't report a problem on its purchases.",
+};
+
+const PROBLEM_FAILED = "Something went wrong on our side. Try again in a moment.";
+
+/**
+ * Reports a problem with a paid purchase to the client services team. Sending again while a
+ * report is open returns that report, so a second send never opens a second case.
+ */
+export async function reportPurchaseProblemAction(
+  lotId: string,
+  values: PurchaseProblemFormValues,
+): Promise<ActionResult<{ reference: string }>> {
+  return instrumentServerAction("reportPurchaseProblemAction", async () => {
+    const id = lotIdSchema.safeParse(lotId);
+    if (!id.success) return actionFailure(PROBLEM_FAILURES.purchase_not_found as string);
+    const parsed = purchaseProblemFormSchema.safeParse(values);
+    if (!parsed.success) {
+      return actionFailure("Check the form and try again.", zodErrorToFieldErrors(parsed.error));
+    }
+    const scope = await (await getServerDataContainer()).buying.scope();
+    if (!purchaseRequestAccountId(scope.account, { includePersonal: true })) {
+      return actionFailure(
+        "We couldn't tell which account this purchase is in. Refresh and try again.",
+      );
+    }
+    const res = await post(
+      `/legal-entities/purchases/${encodeURIComponent(id.data)}/problem`,
+      parsed.data,
+      { includePersonal: true },
+    );
+    if (!res.ok) {
+      const code = await errorCode(res);
+      return actionFailure((code && PROBLEM_FAILURES[code]) || PROBLEM_FAILED);
+    }
+    const body = (await res.json().catch(() => null)) as { data?: unknown } | null;
+    const sent = problemSentSchema.safeParse(body?.data);
+    if (!sent.success) return actionFailure(PROBLEM_FAILED);
+    revalidatePath(`${CLIENT_ROUTES.purchases}/${id.data}`);
+    return actionSuccess({ reference: sent.data.problem.reference });
   });
 }

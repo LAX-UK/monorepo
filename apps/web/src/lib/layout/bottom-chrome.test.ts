@@ -13,35 +13,10 @@ describe("bottom-chrome", () => {
     expect(consentOffset(false)).toBe("0px");
   });
 
-  it("includes bid bar height on lot routes when bar is active", () => {
-    const padding = pageBottomPadding({
-      consentBannerVisible: false,
-      dashboardTabBarActive: false,
-      marketingBidBarRoute: true,
-      marketingBidBarActive: true,
-      fixedPayBarRoute: false,
-      hideDashboardTabBar: false,
-    });
-    expect(padding).toContain("5rem");
-  });
-
-  it("omits bid bar height on lot routes when bar is hidden", () => {
-    const padding = pageBottomPadding({
-      consentBannerVisible: false,
-      dashboardTabBarActive: false,
-      marketingBidBarRoute: true,
-      marketingBidBarActive: false,
-      fixedPayBarRoute: false,
-      hideDashboardTabBar: false,
-    });
-    expect(padding).toBe("1.5rem");
-  });
-
   it("leaves the open cookie dock to the body, not the page padding", () => {
     const padding = pageBottomPadding({
       consentBannerVisible: true,
       dashboardTabBarActive: false,
-      marketingBidBarRoute: false,
       fixedPayBarRoute: false,
       hideDashboardTabBar: false,
     });
@@ -60,7 +35,6 @@ describe("bottom-chrome", () => {
     const padding = pageBottomPadding({
       consentBannerVisible: false,
       dashboardTabBarActive: true,
-      marketingBidBarRoute: false,
       fixedPayBarRoute: true,
       hideDashboardTabBar: true,
     });

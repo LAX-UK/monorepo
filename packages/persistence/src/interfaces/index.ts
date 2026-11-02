@@ -1002,6 +1002,11 @@ export type {
   RecordPerson,
 } from "./workspace-buying.readers.js";
 export type {
+  IPurchaseProblemRepository,
+  NewPurchaseProblem,
+  PurchaseProblemRecord,
+} from "./purchase-problem.repository.js";
+export type {
   AccountSearchCriteria,
   AccountSearchHits,
   BidSearchHit,
