@@ -4,12 +4,15 @@
 --     one open request per person even under concurrent requests.
 --   subject_data_export_audit: append-only record of what happened to each request (ids, counts,
 --     sizes, hashes, addresses and times; never record content).
+-- The request keeps its record if the user row is ever hard-deleted (the foreign key sets the
+-- subject to null), so proof that a request was answered survives; the audit table holds the
+-- subject as plain text with no foreign key to the user.
 -- Additive: two new tables, so the running services keep working until they restart.
 SET LOCAL lock_timeout = '30s';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "subject_data_export" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-  "subject_id" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  "subject_id" text REFERENCES "user"("id") ON DELETE SET NULL,
   "status" text DEFAULT 'requested' NOT NULL,
   "product_progress" jsonb NOT NULL,
   "requested_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -53,7 +56,7 @@ CREATE INDEX IF NOT EXISTS "subject_data_export_purge_idx"
 CREATE TABLE IF NOT EXISTS "subject_data_export_audit" (
   "id" bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   "export_id" uuid NOT NULL REFERENCES "subject_data_export"("id") ON DELETE CASCADE,
-  "subject_id" text NOT NULL,
+  "subject_id" text,
   "event" text NOT NULL,
   "session_id" text,
   "ip_address" text,
