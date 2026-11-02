@@ -3,16 +3,18 @@
 import { cn } from "@auction/ui";
 import { Button, textLinkClass } from "@auction/ui/lax";
 import { X } from "lucide-react";
-import { ON_IMAGE_BUTTON, ON_IMAGE_FOCUS } from "./cover-on-image.js";
+import { onImageButton, onImageFocus } from "./cover-on-image.js";
 import type { CoverFilm, CoverTone } from "./cover-types.js";
 
 /** The "Play film" action: an ink link that is a button, because it starts something. */
 export function CoverFilmButton({
   tone,
+  swap = false,
   onPlay,
 }: {
   /** The tone of the picture the button sits on; null on the page's own surface. */
   tone: CoverTone | null;
+  swap?: boolean;
   onPlay: () => void;
 }) {
   return (
@@ -22,7 +24,7 @@ export function CoverFilmButton({
       className={cn(
         textLinkClass,
         "max-md:min-h-11 max-md:justify-center",
-        tone && ["md:text-[color:var(--cover-link)]", ON_IMAGE_FOCUS[tone]],
+        tone && ["md:text-[color:var(--cover-link)]", onImageFocus(tone, swap)],
       )}
     >
       Play film
@@ -37,10 +39,12 @@ export function CoverFilmButton({
 export function CoverFilmPlayer({
   film,
   tone,
+  swap = false,
   onClose,
 }: {
   film: CoverFilm;
   tone: CoverTone | null;
+  swap?: boolean;
   onClose: () => void;
 }) {
   return (
@@ -62,7 +66,7 @@ export function CoverFilmPlayer({
         aria-label="Close film"
         className={cn(
           "absolute right-4 top-4",
-          tone && [ON_IMAGE_BUTTON[tone], ON_IMAGE_FOCUS[tone]],
+          tone && [onImageButton(tone, swap), onImageFocus(tone, swap)],
         )}
         onClick={onClose}
       >

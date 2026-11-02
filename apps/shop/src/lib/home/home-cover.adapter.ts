@@ -1,4 +1,5 @@
 import type { HomeHeroVm } from "@/lib/home/home-page.vm";
+import { nextImageSrcSet } from "@/lib/media/next-image-src-set";
 import type { CoverPlateMedia, CoverSlide } from "@auction/marketing-ui";
 import { neutralCoverSlide } from "@auction/marketing-ui";
 
@@ -9,7 +10,12 @@ export type ShopCoverPlate = {
   blurDataURL?: string;
   /** A pale field taken from the print, so the type on it is dark. */
   field: string;
+  /** A deep version of the field for the dark theme, where the type turns light. */
+  fieldDark: string;
 };
+
+/** The plate is drawn at most 600px wide on desktop and 290px on a phone. */
+const PLATE_SIZES = "(min-width: 768px) 600px, 290px";
 
 /** The words for a catalogue that could not be read. */
 const CATALOGUE_UNAVAILABLE = {
@@ -29,10 +35,13 @@ export function plateFromRelease(
     alt: release.imageAlt,
     side: "left",
     src: release.imageUrl,
+    srcSet: nextImageSrcSet(release.imageUrl),
+    sizes: PLATE_SIZES,
     width: plate.width,
     height: plate.height,
     ...(plate.blurDataURL ? { blurDataURL: plate.blurDataURL } : {}),
     field: plate.field,
+    fieldDark: plate.fieldDark,
     tone: "dark",
   };
 }

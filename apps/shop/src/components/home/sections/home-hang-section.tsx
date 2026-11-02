@@ -1,7 +1,11 @@
 "use client";
 
 import type { HomeHangVm } from "@/lib/home/home-hang";
+import { nextImageSrcSet } from "@/lib/media/next-image-src-set";
 import { MarketingHang, MarketingHangLabel } from "@auction/marketing-ui";
+
+/** The widest a work is drawn: a tall landscape print on desktop, a phone-width slot otherwise. */
+const HANG_IMAGE_SIZES = "(min-width: 640px) 480px, 240px";
 
 /**
  * "New editions" hung on their sheets under the cover. The meta line says whether the wall is to
@@ -18,6 +22,8 @@ export function HomeHangSection({ hang }: { hang: HomeHangVm }) {
         id: work.slug,
         href: work.href,
         imageSrc: work.imageSrc,
+        imageSrcSet: nextImageSrcSet(work.imageSrc),
+        imageSizes: HANG_IMAGE_SIZES,
         aspect: work.aspect,
         longSideCm: work.longSideCm,
         sourceWidthPx: work.sourceWidthPx,

@@ -15,7 +15,11 @@ import {
 import type { ShopCoverPlate } from "@/lib/home/home-cover.adapter";
 import { editionSizeCm, editionSizeLabel } from "@/lib/home/home-edition-size";
 import { type HomeHangVm, buildHomeHang } from "@/lib/home/home-hang";
-import { type ShopImageFacts, paleFieldFromMean } from "@/lib/home/home-image-facts";
+import {
+  type ShopImageFacts,
+  deepFieldFromMean,
+  paleFieldFromMean,
+} from "@/lib/home/home-image-facts";
 import { type HomeNewEditionsVm, buildHomeNewEditions } from "@/lib/home/home-new-editions";
 import type { HomePageComposerResult, HomeSectionKey } from "@/lib/home/home-page.composer";
 import { homeReleaseEyebrow, isNewReleaseChoice, selectHomeRelease } from "@/lib/home/home-release";
@@ -235,6 +239,7 @@ export function buildHomePageViewModel(
         width: releaseFacts.width,
         height: releaseFacts.height,
         field: paleFieldFromMean(releaseFacts.mean),
+        fieldDark: deepFieldFromMean(releaseFacts.mean),
       }
     : null;
   const hang = empty

@@ -21,7 +21,7 @@ const hero = (over: Partial<HomeHeroVm> = {}): HomeHeroVm => ({
   ...over,
 });
 
-const plate = { width: 800, height: 1000, field: "#eee3df" };
+const plate = { width: 800, height: 1000, field: "#eee3df", fieldDark: "#2a2523" };
 
 describe("toShopCoverSlide", () => {
   it("leads with the release as a plate on a pale field, credited to it", () => {
@@ -32,7 +32,12 @@ describe("toShopCoverSlide", () => {
     expect(slide.link).toEqual({ label: "Browse all editions", href: "/artworks" });
     expect(slide.credit).toEqual({ text: release.line, href: release.href });
     expect(slide.media).toEqual([
-      expect.objectContaining({ kind: "plate", field: "#eee3df", tone: "dark" }),
+      expect.objectContaining({
+        kind: "plate",
+        field: "#eee3df",
+        fieldDark: "#2a2523",
+        tone: "dark",
+      }),
     ]);
   });
 

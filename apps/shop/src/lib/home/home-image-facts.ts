@@ -18,6 +18,23 @@ function hex(channel: number): string {
     .padStart(2, "0");
 }
 
+/** The dark theme's surface ink the deep field is mixed toward. */
+const DARK_INK = [24, 26, 26] as const;
+/** How much of the print's colour the deep field keeps. */
+const DEEP_KEEP = 0.22;
+
+/**
+ * The deep field the print sits on in the dark theme: its mean colour mixed toward the dark
+ * surface ink, so it reads as a deep mat of the print's own hue. White type reaches AA on it for
+ * any print, white included.
+ */
+export function deepFieldFromMean(mean: ShopImageFacts["mean"]): string {
+  const mixed = mean.map(
+    (channel, i) => (DARK_INK[i] ?? 0) * (1 - DEEP_KEEP) + channel * DEEP_KEEP,
+  );
+  return `#${mixed.map(hex).join("")}`;
+}
+
 /**
  * The pale field the print sits on, taken from the print's own colour: white with a measure of the
  * mean mixed in. At this strength dark type passes AA on any print, from black to saturated.

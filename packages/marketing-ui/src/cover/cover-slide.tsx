@@ -9,9 +9,10 @@ import { CoverFilmButton, CoverFilmPlayer } from "./cover-film.js";
 import { coverSettles } from "./cover-motion.js";
 import {
   ON_IMAGE_BADGE,
-  ON_IMAGE_BUTTON,
-  ON_IMAGE_FOCUS,
+  ON_IMAGE_DARK_THEME,
   PHONE_IMAGE_BADGE,
+  onImageButton,
+  onImageFocus,
 } from "./cover-on-image.js";
 import { CoverPager } from "./cover-pager.js";
 import { CoverPhoto, CoverPlate } from "./cover-picture.js";
@@ -19,6 +20,7 @@ import {
   CREDIT_BAND_HEIGHT_PX,
   coverTextVars,
   creditBandBackground,
+  darkThemeTextVars,
   scrimBackground,
   scrimsForPhoto,
 } from "./cover-scrim.js";
@@ -39,12 +41,25 @@ type Ground =
       tone: CoverTone;
       scrims: PhotoScrims;
     }
-  | { mode: "plate"; media: Extract<CoverMedia, { kind: "plate" }>; tone: CoverTone }
+  | {
+      mode: "plate";
+      media: Extract<CoverMedia, { kind: "plate" }>;
+      tone: CoverTone;
+      /** The field and the type switch to a deep field and light type in the dark theme. */
+      swap: boolean;
+    }
   | { mode: "type" };
 
 function groundFor(media: CoverMedia | null): Ground {
   if (!media) return { mode: "type" };
-  if (media.kind === "plate") return { mode: "plate", media, tone: media.tone };
+  if (media.kind === "plate") {
+    return {
+      mode: "plate",
+      media,
+      tone: media.tone,
+      swap: media.tone === "dark" && Boolean(media.fieldDark),
+    };
+  }
   const scrims = scrimsForPhoto(media);
   return scrims ? { mode: "photo", media, tone: scrims.tone, scrims } : { mode: "type" };
 }
@@ -96,7 +111,12 @@ function Scrims({ scrims, side }: { scrims: PhotoScrims; side: CoverSide }) {
 
 function Badge({ label, ground }: { label: string; ground: Ground }) {
   const surface =
-    ground.mode === "type" ? "md:bg-on-surface md:text-surface" : ON_IMAGE_BADGE[ground.tone];
+    ground.mode === "type"
+      ? "md:bg-on-surface md:text-surface"
+      : cn(
+          ON_IMAGE_BADGE[ground.tone],
+          ground.mode === "plate" && ground.swap && ON_IMAGE_DARK_THEME.badge,
+        );
   return (
     <>
       {/* On a phone the badge sits on the picture; this copy is for screen readers there. */}
@@ -137,9 +157,13 @@ export function CoverSlideView({
   const ground = groundFor(media);
   const side: CoverSide = ground.mode === "type" ? "left" : ground.media.side;
   const onImage = ground.mode === "type" ? null : ground.tone;
+  const swap = ground.mode === "plate" && ground.swap;
   const textLeft = side === "left";
   const vars: CSSProperties | undefined = onImage
-    ? (coverTextVars(onImage) as CSSProperties)
+    ? ({
+        ...coverTextVars(onImage),
+        ...(swap ? darkThemeTextVars() : {}),
+      } as CSSProperties)
     : undefined;
   const settles = coverSettles(media);
   const [playing, setPlaying] = useState(false);
@@ -150,7 +174,7 @@ export function CoverSlideView({
         {...(Link ? { Link } : {})}
         className={cn(
           "inline max-w-full truncate text-xs font-normal leading-4 text-inherit",
-          onImage && ON_IMAGE_FOCUS[onImage],
+          onImage && onImageFocus(onImage, swap),
         )}
       >
         {slide.credit.text}
@@ -163,6 +187,7 @@ export function CoverSlideView({
   return (
     <div
       data-cover-mode={ground.mode}
+      {...(swap ? { "data-cover-swap": "" } : {})}
       data-cover-side={side}
       className={cn(
         "relative isolate md:h-[640px] min-[1600px]:h-[720px] md:overflow-hidden",
@@ -174,7 +199,12 @@ export function CoverSlideView({
         : {})}
     >
       {playing && slide.film ? (
-        <CoverFilmPlayer film={slide.film} tone={onImage} onClose={() => setPlaying(false)} />
+        <CoverFilmPlayer
+          film={slide.film}
+          tone={onImage}
+          swap={swap}
+          onClose={() => setPlaying(false)}
+        />
       ) : null}
       {ground.mode === "type" ? (
         <div
@@ -265,7 +295,12 @@ export function CoverSlideView({
         ) : null}
         <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:gap-6">
           {slide.alert ? (
-            <CoverAlertField alert={slide.alert} submitLabel={slide.primary.label} tone={onImage} />
+            <CoverAlertField
+              alert={slide.alert}
+              submitLabel={slide.primary.label}
+              tone={onImage}
+              swap={swap}
+            />
           ) : (
             <ButtonLink
               href={slide.primary.href}
@@ -274,7 +309,7 @@ export function CoverSlideView({
               size="md"
               className={cn(
                 "max-md:h-lax-control-lg max-md:w-full",
-                onImage && [ON_IMAGE_BUTTON[onImage], ON_IMAGE_FOCUS[onImage]],
+                onImage && [onImageButton(onImage, swap), onImageFocus(onImage, swap)],
               )}
             >
               {slide.primary.label}
@@ -286,14 +321,14 @@ export function CoverSlideView({
               {...(Link ? { Link } : {})}
               className={cn(
                 "max-md:min-h-11 max-md:justify-center",
-                onImage && ["md:text-[color:var(--cover-link)]", ON_IMAGE_FOCUS[onImage]],
+                onImage && ["md:text-[color:var(--cover-link)]", onImageFocus(onImage, swap)],
               )}
             >
               {slide.link.label}
             </TextLink>
           ) : null}
           {slide.film && !playing ? (
-            <CoverFilmButton tone={onImage} onPlay={() => setPlaying(true)} />
+            <CoverFilmButton tone={onImage} swap={swap} onPlay={() => setPlaying(true)} />
           ) : null}
         </div>
         {pager ? (
@@ -301,6 +336,7 @@ export function CoverSlideView({
             index={pager.index}
             count={pager.count}
             tone={onImage}
+            swap={swap}
             onStep={pager.onStep}
             className={cn(
               "mt-4 md:absolute md:bottom-[-40px] md:mt-0",

@@ -23,6 +23,10 @@ export type MarketingHangWork = HangWorkInput & {
   imageSrc: string;
   /** Alt text for the picture. Empty by default: the wall label already names the work. */
   imageAlt?: string;
+  /** Resized files to choose from, so the browser fetches one that fits the box. */
+  imageSrcSet?: string | undefined;
+  /** What `imageSrcSet` means in layout terms, for example "(min-width: 640px) 480px, 240px". */
+  imageSizes?: string | undefined;
   /** Source picture size in pixels, so the box is sized before the picture arrives. */
   sourceWidthPx?: number | null | undefined;
   /**
@@ -264,6 +268,8 @@ export function MarketingHang({
                       >
                         <img
                           src={work.imageSrc}
+                          srcSet={work.imageSrcSet}
+                          sizes={work.imageSrcSet ? work.imageSizes : undefined}
                           alt={work.imageAlt ?? ""}
                           width={work.sourceWidthPx ?? undefined}
                           height={work.sourceHeightPx ?? undefined}
