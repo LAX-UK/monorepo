@@ -14,7 +14,7 @@ import {
   parseContactFormData,
   resolveContactName,
 } from "@/lib/contact/contact-input";
-import { httpContactDispatcher } from "@/lib/contact/http-contact-dispatcher";
+import { httpContactDispatcher } from "@/lib/contact/http-contact-dispatcher.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { createInMemorySlidingWindowRateLimiter } from "@/lib/rate-limit/in-memory-rate-limiter";
 import { headers } from "next/headers";

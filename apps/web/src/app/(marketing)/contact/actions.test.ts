@@ -12,7 +12,7 @@ vi.mock("next/headers", () => ({
     }),
 }));
 const dispatch = vi.fn();
-vi.mock("@/lib/contact/http-contact-dispatcher", () => ({
+vi.mock("@/lib/contact/http-contact-dispatcher.server", () => ({
   httpContactDispatcher: { dispatch: (input: unknown) => dispatch(input) },
 }));
 
