@@ -1,7 +1,7 @@
 import {
-  formatLondonDateTime,
   formatLondonDayMonth,
   formatLondonWeekday,
+  formatLondonWhen,
 } from "@/lib/datetime/london-time";
 import { COUNTDOWN_DATE_BEYOND_MS, formatCountdownForDisplay } from "@/lib/format-countdown";
 
@@ -15,7 +15,7 @@ export type OpensLine = {
 };
 
 /**
- * When something opens, by the time rule: beyond a week the date ("Opens 27 Nov 2026, 20:19 GMT");
+ * When something opens, by the time rule: beyond a week the date ("Opens Fri 27 Nov, 20:19 GMT");
  * within a week days and hours ("Opens in 2 days 14 hours"); within a day hours and minutes; seconds
  * only in the final hour. Also serves "Closes" through `prefix`.
  */
@@ -23,7 +23,7 @@ export function opensLine(target: Date, now: Date, prefix = "Opens"): OpensLine 
   const ms = target.getTime() - now.getTime();
   if (ms <= 0) return { label: prefix, value: "now" };
   if (ms > OPENS_COUNTDOWN_WITHIN_MS) {
-    return { label: prefix, value: formatLondonDateTime(target) };
+    return { label: prefix, value: formatLondonWhen(target, now) };
   }
   return { label: `${prefix} in`, value: formatCountdownForDisplay(ms) };
 }

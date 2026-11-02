@@ -10,8 +10,14 @@ describe("opensLine", () => {
   it("tells a date beyond a week", () => {
     expect(opensLine(new Date("2026-11-27T20:19:00Z"), now)).toEqual({
       label: "Opens",
-      value: "27 Nov 2026, 20:19 GMT",
+      value: "Fri 27 Nov, 20:19 GMT",
     });
+  });
+
+  it("adds the year only when the date is not this year's", () => {
+    expect(opensLine(new Date("2027-01-12T10:00:00Z"), now).value).toBe(
+      "Tue 12 Jan 2027, 10:00 GMT",
+    );
   });
 
   it("counts days and hours within a week", () => {

@@ -1,8 +1,9 @@
 "use client";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import { formatLondonDateTime } from "@/lib/datetime/london-time";
+import { formatLondonWhen } from "@/lib/datetime/london-time";
 import {
+  COUNTDOWN_DATE_BEYOND_MS,
   formatCountdownAnnounce,
   formatCountdownAriaLabel,
   formatCountdownSpoken,
@@ -138,15 +139,21 @@ export function MarketingCountdownPanel({
     return null;
   }
 
-  // Something that has not opened is told by the time rule, not by ticking segments: a date
-  // beyond a week, then days and hours, hours and minutes, minutes. Before the clock is known the
+  // Something that has not opened, or that closes beyond a week, is told by the time rule, not by
+  // ticking segments: a date beyond a week, then days and hours, hours and minutes, minutes. Before the clock is known the
   // date is always true.
-  if (!showLiveDot && !ended && Number.isFinite(endMs) && effectiveEndIso != null) {
+  const beyondAWeek = msLeft != null && msLeft > COUNTDOWN_DATE_BEYOND_MS;
+  if (
+    (!showLiveDot || beyondAWeek) &&
+    !ended &&
+    Number.isFinite(endMs) &&
+    effectiveEndIso != null
+  ) {
     const target = new Date(endMs);
     const line =
       nowMs != null
         ? opensLine(target, new Date(nowMs), label.replace(/ in$/, ""))
-        : { label: label.replace(/ in$/, ""), value: formatLondonDateTime(target) };
+        : { label: label.replace(/ in$/, ""), value: formatLondonWhen(target) };
     return (
       <div className={cn("text-left", className)}>
         <p className="font-body text-base text-on-surface">
@@ -168,7 +175,7 @@ export function MarketingCountdownPanel({
   }
 
   if (reduced && Number.isFinite(endMs) && effectiveEndIso != null) {
-    const formatted = formatLondonDateTime(toDisplayDate(effectiveEndIso));
+    const formatted = formatLondonWhen(toDisplayDate(effectiveEndIso));
     return (
       <div className={cn("text-left", className)}>
         <LabelCaps className="inline-flex items-center gap-2 text-on-surface-variant">
@@ -263,5 +270,5 @@ export function formatCountdownSecondaryLine(
   if (!iso) return null;
   const d = toDisplayDate(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return `${prefix} ${formatLondonDateTime(d)}`;
+  return `${prefix} ${formatLondonWhen(d)}`;
 }

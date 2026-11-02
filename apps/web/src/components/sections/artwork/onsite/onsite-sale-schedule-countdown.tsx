@@ -2,8 +2,9 @@
 
 import { timerText } from "@/components/lot-timer/format";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import { formatLondonDateTime } from "@/lib/datetime/london-time";
+import { formatLondonWhen } from "@/lib/datetime/london-time";
 import {
+  COUNTDOWN_DATE_BEYOND_MS,
   formatCountdownAnnounce,
   formatCountdownAriaLabel,
   formatCountdownForDisplay,
@@ -45,7 +46,7 @@ function formatStartsAriaLabel(ms: number): string {
 function formatTargetDatetime(value: Date | string): string {
   const d = toDisplayDate(value);
   if (Number.isNaN(d.getTime())) return "";
-  return formatLondonDateTime(d);
+  return formatLondonWhen(d);
 }
 
 function pad2(n: number): string {
@@ -216,11 +217,17 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
     );
   }
 
-  if (reduced && (phase === "before" || phase === "during") && targetIso) {
+  // Beyond a week the date is the answer; the tiles start from a week down.
+  const beyondAWeek = msLeft != null && msLeft > COUNTDOWN_DATE_BEYOND_MS;
+  if ((reduced || beyondAWeek) && (phase === "before" || phase === "during") && targetIso) {
     return (
       <div className={cn("text-center", className)}>
         <p className="font-body text-sm font-medium text-on-surface-variant sm:text-base">
-          {labelRow}
+          {beyondAWeek
+            ? phase === "before"
+              ? "Live event starts"
+              : "Auction in progress · ends"
+            : labelRow}
         </p>
         <time
           dateTime={targetIso}

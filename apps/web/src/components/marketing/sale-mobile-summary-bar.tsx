@@ -6,7 +6,7 @@ import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge"
 import { SaleroomMobileSummaryBar } from "@/components/marketing/saleroom-mobile-summary-bar";
 import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
-import { formatLondonDateTime } from "@/lib/datetime/london-time";
+import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import {
@@ -26,7 +26,7 @@ function OpensText({ start }: { start: Date }) {
   const line =
     nowMs != null
       ? opensLine(start, new Date(nowMs))
-      : { label: "Opens", value: formatLondonDateTime(start) };
+      : { label: "Opens", value: formatLondonWhen(start) };
   return (
     <p className="font-body text-sm text-on-surface">
       <span className="text-on-surface-variant">{line.label} </span>
