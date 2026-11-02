@@ -75,6 +75,7 @@ import type {
   IUserSuspensionChecker,
 } from "../services/interfaces/user-suspension.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
+import type { SubjectExportService } from "../subject-export/subject-export.service.js";
 import type { ContainerAdminServices } from "./create-admin-services.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
 import type { ContainerCatalogAdminReaders } from "./create-catalog-admin-readers.js";
@@ -311,6 +312,9 @@ export type ContainerCronSlice = Pick<
   "accountDeletionEligibilityService" | "brevoWebhookIngestService"
 >;
 
+/** "Download my data" readers for LAX Bid. */
+export type ContainerSubjectExportSlice = { subjectExportService: SubjectExportService };
+
 /** Route-facing admin bag (mirrors `container.admin`). */
 export type ContainerAdminRoutesSlice = {
   admin: AdminRouteServices & AdminStaffSecurityRouteServices & AdminIntegrationRouteServices;
@@ -399,6 +403,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerUserNotificationSlice &
   ContainerAdminSlice &
   ContainerCronSlice &
+  ContainerSubjectExportSlice &
   ContainerFinanceSlice &
   ContainerPlatformCronSlice &
   ContainerComplianceSlice &
@@ -545,6 +550,12 @@ export type ContainerAdminMyStaffToolsRoutesSlice = {
 export type ContainerInternalIdentityDeletionEligibilityRoutesSlice = Pick<
   Container,
   "accountDeletionEligibilityService"
+>;
+
+/** Machine-authenticated Identity "download my data" boundary. */
+export type ContainerInternalIdentitySubjectExportRoutesSlice = Pick<
+  Container,
+  "subjectExportService"
 >;
 
 /** Brevo marketing webhook ingest. */

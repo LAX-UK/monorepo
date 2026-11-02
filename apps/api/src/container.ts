@@ -82,6 +82,8 @@ import { LaxAdminRolesService } from "./services/staff/lax-admin-roles.service.j
 import { StaffRoleAssignmentService } from "./services/staff/staff-role-assignment.service.js";
 import { StaffRolesAdminService } from "./services/staff/staff-roles-admin.service.js";
 import { SubmissionAccessGuard } from "./services/submission/submission-access-guard.js";
+import { createBidSubjectExportService } from "./subject-export/create-bid-subject-export-categories.js";
+import { SubjectExportFileSigner } from "./subject-export/subject-export-file-signer.js";
 
 export type { Container, ContainerComposedSlices };
 
@@ -615,6 +617,11 @@ export function createContainer(env: Env): Container {
     postmarkWebhookService: userMisc.postmarkWebhookService,
     brevoWebhookIngestService: cron.brevoWebhookIngestService,
     accountDeletionEligibilityService: cron.accountDeletionEligibilityService,
+    subjectExportService: createBidSubjectExportService({
+      db,
+      files: new SubjectExportFileSigner(infra.objectStorage),
+      webOrigin: env.WEB_ORIGIN,
+    }),
     adminMarketingEventsService: userMisc.adminMarketingEventsService,
     emailUnsubscribeService: userMisc.emailUnsubscribeService,
     bidding: createBiddingRouteServices({
@@ -757,6 +764,7 @@ export type {
   ContainerInternalCronRoutesSlice,
   ContainerInternalIdentityEmailRoutesSlice,
   ContainerInternalIdentityDeletionEligibilityRoutesSlice,
+  ContainerInternalIdentitySubjectExportRoutesSlice,
   ContainerInternalIdentitySubjectUsageRoutesSlice,
   ContainerKycRoutesSlice,
   ContainerLegalEntityBuyerAgentRoutesSlice,
