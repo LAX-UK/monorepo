@@ -272,6 +272,21 @@ export const WORKER_FULL_TABLES = [
   "atg_auction_link",
   "atg_lot_link",
 ] as const;
+/**
+ * The KYC, AML and source-of-funds retention purge reads and deletes these once five years have passed since
+ * the relationship ended, and writes a tombstone. Reading what decides "ended" (domain_events, bid,
+ * payment, payout, legal_entity) and the file rows (upload_object) is granted elsewhere.
+ */
+export const WORKER_KYC_RETENTION_PURGE_TABLES = [
+  "kyc_verification",
+  "kyc_watchlist_screening",
+  "source_of_funds",
+  "source_of_funds_document",
+  "legal_entity_document",
+  "admin_review_task",
+] as const;
+/** Append-only proof of each purge: no personal data. */
+export const WORKER_KYC_RETENTION_TOMBSTONE_TABLES = ["kyc_retention_tombstone"] as const;
 /** Worker persists async QR scan events (qr-code-scan job via persistQrCodeScan). */
 export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;
 /** The unsold-choice projector stores each unsold outcome's choose-by date, once. */
@@ -457,6 +472,7 @@ async function grantIfExists(
   privileges:
     | "SELECT"
     | "SELECT, UPDATE"
+    | "SELECT, DELETE"
     | "SELECT, UPDATE, DELETE"
     | "INSERT"
     | "INSERT, SELECT"
@@ -612,15 +628,19 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         await grantIfExists(client, "worker_app", "admin_review_task", "INSERT, SELECT, UPDATE");
         /** SoF documents projector inserts buyer in-app notifications (documents requested / closure). */
         await grantIfExists(client, "worker_app", "notification", "INSERT, SELECT");
-        /** Retention job anonymizes buyer-supplied SoF evidence after AML window. */
-        await grantIfExists(client, "worker_app", "source_of_funds_document", "SELECT, UPDATE");
-        /** The SoF review projector upserts reviews; the document purge job deletes them. */
+        /** The SoF review projector upserts reviews; the retention purge deletes them. */
         await grantIfExists(
           client,
           "worker_app",
           "source_of_funds_document_review",
           "INSERT, SELECT, UPDATE, DELETE",
         );
+        for (const tableName of WORKER_KYC_RETENTION_PURGE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
+        }
+        for (const tableName of WORKER_KYC_RETENTION_TOMBSTONE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
         /** The impersonation sweeper ends sessions that have expired. */
         await grantIfExists(client, "worker_app", "impersonation_session", "SELECT, UPDATE");
         /** worker send-email reads suppression list and inserts manual suppressions for missing users. */
