@@ -244,6 +244,9 @@ import SubmissionRejectedEmail, {
   subject as submissionRejectedSubject,
 } from "./templates/submission-rejected.js";
 import VerifyEmail, { subject as verifyEmailSubject } from "./templates/verify-email.js";
+import VisitorAlertConfirmEmail, {
+  subject as visitorAlertConfirmSubject,
+} from "./templates/visitor-alert-confirm.js";
 import WatchedLotReminderEmail, {
   subject as watchedLotReminderSubject,
 } from "./templates/watched-lot-reminder.js";
@@ -544,6 +547,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-order-receipt": {
     subject: shopOrderReceiptSubject,
     component: (vars) => <ShopOrderReceiptEmail {...vars} />,
+  },
+  "visitor-alert-confirm": {
+    subject: visitorAlertConfirmSubject,
+    component: (vars) => <VisitorAlertConfirmEmail {...vars} />,
   },
   "shop-guest-order-link": {
     subject: shopGuestOrderLinkSubject,
