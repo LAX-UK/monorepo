@@ -10,7 +10,7 @@ import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import { SellCtaLink } from "@/components/marketing/sell-cta-link";
 import { hasDepartmentEvidence } from "@/lib/departments/department-evidence";
 import { loadDepartmentEvidence } from "@/lib/departments/load-department-evidence";
-import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
+import { MARKETING_PAGE_SHELL, MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -65,6 +65,31 @@ export async function SellTailoredLandingPage({
     ]),
   );
 
+  const closing = (
+    <>
+      <MarketingPromoCta
+        className={evidence ? "" : "mt-8"}
+        title="Ready to begin?"
+        description="Create an account and start your submission — our specialists review every item within 24 hours."
+        actions={
+          <SellCtaLink
+            href={sellIntakeHref(categorySlug ? { categorySlug } : undefined)}
+            source={`${path}_submit`}
+            className={buttonVariants({ variant: "primary" })}
+          >
+            Start your submission
+          </SellCtaLink>
+        }
+      />
+      <p className="mt-6 font-body text-sm text-on-surface-variant">
+        Back to{" "}
+        <Link href="/sell" className={MARKETING_PROSE_LINK}>
+          Selling with LAX
+        </Link>
+      </p>
+    </>
+  );
+
   return (
     <>
       <PolicyHubLayout>
@@ -110,36 +135,19 @@ export async function SellTailoredLandingPage({
             </ul>
           </div>
 
-          <MarketingPromoCta
-            className="mt-8"
-            title="Ready to begin?"
-            description="Create an account and start your submission — our specialists review every item within 24 hours."
-            actions={
-              <SellCtaLink
-                href={sellIntakeHref(categorySlug ? { categorySlug } : undefined)}
-                source={`${path}_submit`}
-                className={buttonVariants({ variant: "primary" })}
-              >
-                Start your submission
-              </SellCtaLink>
-            }
-          />
-
-          <p className="mt-6 font-body text-sm text-on-surface-variant">
-            Back to{" "}
-            <Link href="/sell" className={MARKETING_PROSE_LINK}>
-              Selling with LAX
-            </Link>
-          </p>
+          {evidence ? null : closing}
         </LegalPage>
       </PolicyHubLayout>
       {evidence && departmentNoun ? (
         <div className="bg-page-bg pb-16 dark:bg-background md:pb-24">
-          <DepartmentEvidenceView
-            evidence={evidence}
-            department={breadcrumbLabel}
-            noun={departmentNoun}
-          />
+          <div className="-mt-16">
+            <DepartmentEvidenceView
+              evidence={evidence}
+              department={breadcrumbLabel}
+              noun={departmentNoun}
+            />
+          </div>
+          <div className={`${MARKETING_PAGE_SHELL} pt-16 md:pt-24`}>{closing}</div>
         </div>
       ) : null}
     </>
