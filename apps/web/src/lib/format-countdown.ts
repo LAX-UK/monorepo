@@ -1,11 +1,7 @@
-import { formatTimeLeft } from "@auction/domain";
+import { TIME_LEFT_DATE_BEYOND_MS, formatTimeLeft, timeLeftShowsSeconds } from "@auction/domain";
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-/** Beyond this a moment is told as a date, not counted down (S14). */
-export const COUNTDOWN_DATE_BEYOND_MS = 7 * MS_PER_DAY;
-/** Seconds appear only inside the final hour (S14). */
-export const COUNTDOWN_SECONDS_WITHIN_MS = 60 * 60 * 1000;
+/** Beyond this a moment is told as a date, not counted down (S14); one table in the domain. */
+export const COUNTDOWN_DATE_BEYOND_MS = TIME_LEFT_DATE_BEYOND_MS;
 
 /**
  * The one countdown wording for cards, pills and heroes, by the time rule: days and hours, hours and
@@ -14,7 +10,18 @@ export const COUNTDOWN_SECONDS_WITHIN_MS = 60 * 60 * 1000;
  * tell a date instead (see `opensLine`).
  */
 export function formatCountdownForDisplay(ms: number): string {
-  return formatTimeLeft(ms, { showSeconds: ms < COUNTDOWN_SECONDS_WITHIN_MS });
+  return formatTimeLeft(ms, { showSeconds: timeLeftShowsSeconds(ms) });
+}
+
+/**
+ * The same value in the least width, for a chip too narrow for words: a clock in the final hour
+ * ("42:09", tabular so it holds its width while it ticks), then the short form ("5h 12m", "2d 14h").
+ */
+export function formatCountdownCompact(ms: number): string {
+  if (ms >= 60 * 60 * 1000) return formatCountdownShort(ms);
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
 }
 
 /** The same wording to the minute, for polite live-region announcements that must not chatter. */

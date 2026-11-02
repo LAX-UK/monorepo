@@ -11,7 +11,14 @@ import {
 import { resolveLotAction } from "./lot-action.js";
 import { nextBidAmount, validBidAmounts } from "./next-bid.js";
 import { publicBidChannel, toPublicBidHistory } from "./public-bid-history.js";
-import { formatTimeLeft, timeLeftBand, timeLeftView, timeMarkCrossed } from "./time-left.js";
+import {
+  TIME_LEFT_DATE_BEYOND_MS,
+  formatTimeLeft,
+  timeLeftBand,
+  timeLeftShowsSeconds,
+  timeLeftView,
+  timeMarkCrossed,
+} from "./time-left.js";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -79,6 +86,20 @@ describe("time-left tones", () => {
     expect(formatTimeLeft(90_000, { showSeconds: true })).toBe("1 minute 30 seconds");
     expect(formatTimeLeft(45_000, { showSeconds: true })).toBe("45 seconds");
     expect(timeLeftView(90_000).text).toBe("1 minute 30 seconds");
+  });
+
+  it("counts seconds through the whole final hour, not from the last two minutes", () => {
+    expect(timeLeftView(HOUR).text).toBe("1 hour");
+    expect(timeLeftView(HOUR - 1000).text).toBe("59 minutes 59 seconds");
+    expect(timeLeftView(42 * MIN + 10_000).text).toBe("42 minutes 10 seconds");
+    expect(timeLeftView(2 * MIN + 5000).text).toBe("2 minutes 5 seconds");
+    expect(timeLeftShowsSeconds(HOUR)).toBe(false);
+    expect(timeLeftShowsSeconds(HOUR - 1)).toBe(true);
+    expect(timeLeftShowsSeconds(0)).toBe(true);
+  });
+
+  it("tells a date beyond seven days", () => {
+    expect(TIME_LEFT_DATE_BEYOND_MS).toBe(7 * DAY);
   });
 
   it("announces a time mark once, when the clock crosses it", () => {

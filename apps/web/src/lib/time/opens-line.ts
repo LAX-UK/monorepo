@@ -28,7 +28,12 @@ export function opensLine(target: Date, now: Date, prefix = "Opens"): OpensLine 
   return { label: `${prefix} in`, value: formatCountdownForDisplay(ms) };
 }
 
-/** "Tue 10 Nov": the weekday and day, for a badge that says when something opens. */
+/** "Tue 10 Nov": the weekday and day, the short date for a chip or badge. */
+export function shortMoment(target: Date, now: Date): string {
+  return `${formatLondonWeekday(target)} ${formatLondonDayMonth(target, now)}`;
+}
+
+/** "Opens Tue 10 Nov": for a badge that says when something opens. */
 export function opensBadgeLabel(target: Date, now: Date): string {
-  return `Opens ${formatLondonWeekday(target)} ${formatLondonDayMonth(target, now)}`;
+  return `Opens ${shortMoment(target, now)}`;
 }

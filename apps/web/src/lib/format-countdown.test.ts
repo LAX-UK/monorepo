@@ -3,6 +3,7 @@ import {
   countdownTier,
   formatCountdownAnnounce,
   formatCountdownAriaLabel,
+  formatCountdownCompact,
   formatCountdownForDisplay,
   formatCountdownShort,
   parseCountdownSegments,
@@ -62,6 +63,20 @@ describe("formatCountdownForDisplay: the time rule", () => {
     ["negative", -5 * S, "0 seconds"],
   ])("%s", (_name, ms, expected) => {
     expect(formatCountdownForDisplay(ms)).toBe(expected);
+  });
+});
+
+describe("formatCountdownCompact", () => {
+  it.each([
+    ["final hour is a clock", 42 * M + 9 * S, "42:09"],
+    ["a second under the hour", H - S, "59:59"],
+    ["under a minute pads", 45 * S, "00:45"],
+    ["zero", 0, "00:00"],
+    ["an hour is the short form", H, "1h 0m"],
+    ["hours and minutes", 5 * H + 12 * M, "5h 12m"],
+    ["days and hours", 2 * D + 14 * H, "2d 14h"],
+  ])("%s", (_name, ms, expected) => {
+    expect(formatCountdownCompact(ms)).toBe(expected);
   });
 });
 

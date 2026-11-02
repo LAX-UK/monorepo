@@ -1,5 +1,6 @@
 "use client";
 
+import { timerText } from "@/components/lot-timer/format";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { formatLondonDateTime } from "@/lib/datetime/london-time";
 import {
@@ -172,8 +173,8 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
       ? opensLine(new Date(startMs), new Date(now), "Starts")
       : null;
   const clock =
-    phase === "during" && msLeft != null
-      ? formatCountdownForDisplay(msLeft)
+    phase === "during" && msLeft != null && now != null
+      ? (timerText(msLeft, now).date ?? formatCountdownForDisplay(msLeft))
       : (startsLine?.value ?? null);
 
   if (variant === "compact") {
