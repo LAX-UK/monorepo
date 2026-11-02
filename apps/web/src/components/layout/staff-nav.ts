@@ -531,15 +531,21 @@ export function staffNavItemToAppShellItem(spec: StaffNavItemSpec): AppShellNavI
   };
 }
 
+/** The admin root: every staff page sits under it, so it names only itself, never a descendant. */
+const ADMIN_ROOT = "/admin";
+
 /**
  * The navigation item a path belongs to (longest matching link), whatever the person's role:
- * the page's name and the capability it needs, e.g. to explain an access refusal.
+ * the page's name and the capability it needs, e.g. to explain an access refusal. A detail
+ * route resolves to its parent section; a route with no section of its own resolves to null
+ * (the Dashboard is matched only by `/admin` itself).
  */
 export function findStaffNavItemForPath(pathname: string): StaffNavItemSpec | null {
   const path = pathname.split(/[?#]/)[0] ?? pathname;
   let best: StaffNavItemSpec | null = null;
   for (const item of buildStaffNavGroupSpecs(0).flatMap((group) => group.items)) {
-    const matches = path === item.href || path.startsWith(`${item.href}/`);
+    const matches =
+      path === item.href || (item.href !== ADMIN_ROOT && path.startsWith(`${item.href}/`));
     if (matches && (!best || item.href.length > best.href.length)) best = item;
   }
   return best;
