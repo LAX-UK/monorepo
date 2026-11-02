@@ -2,6 +2,7 @@ import { getHomeData } from "@/components/sections/home/get-home-data";
 import { HomeAlertsNotice } from "@/components/sections/home/home-alerts-notice";
 import { HomeCover } from "@/components/sections/home/home-cover";
 import { HomeHangSection } from "@/components/sections/home/home-hang/home-hang-section";
+import { HomeLiveNowSection } from "@/components/sections/home/home-hang/home-live-now-section";
 import { HomeSectionsView } from "@/components/sections/home/sections/home-sections-view";
 import { HomeSkeleton } from "@/components/sections/home/skeletons/home-skeleton";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
@@ -43,6 +44,7 @@ async function MarketingHomeContent({ alerts }: { alerts: string | undefined }) 
     sections,
     upcomingSales,
     hang,
+    liveNow,
     isAuthenticated,
     watchedLotIds,
   } = data;
@@ -83,7 +85,11 @@ async function MarketingHomeContent({ alerts }: { alerts: string | undefined }) 
       ) : null}
       {alertsOutcome ? <HomeAlertsNotice outcome={alertsOutcome} /> : null}
       <HomeCover slides={cover.slides} leadSale={cover.leadSale} signedIn={isAuthenticated} />
-      <HomeHangSection hang={hang} />
+      {liveNow ? (
+        <HomeLiveNowSection liveNow={liveNow} signedIn={isAuthenticated} />
+      ) : (
+        <HomeHangSection hang={hang} />
+      )}
       <HomeSectionsView
         homeState={homeState}
         sections={sections}
