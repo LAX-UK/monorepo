@@ -884,6 +884,7 @@ export {
 export { assembleCoverAnalysis, type CoverImageMeasurements } from "./cover-analysis.js";
 export {
   COVER_ANALYSIS_VERSION,
+  COVER_PLATE_MIN_LONG_SIDE,
   COVER_SLOT_FLOORS,
   COVER_ZOOM_MAX,
   COVER_ZOOM_MIN,

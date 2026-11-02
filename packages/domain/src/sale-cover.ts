@@ -35,6 +35,12 @@ export const COVER_SLOT_FLOORS: Record<SaleCoverSlotName, { minWidth: number; mi
     phone: { minWidth: 1200, minHeight: 1200 },
   };
 
+/**
+ * The shortest long side a lead lot photograph needs to hang whole on the cover plate. Smaller
+ * photographs are not stretched; the cover falls back to type only.
+ */
+export const COVER_PLATE_MIN_LONG_SIDE = 800;
+
 /** The old array held the slots by position: the desktop master, then the phone, then the wide crop. */
 const LEGACY_POSITION: Record<SaleCoverSlotName, number> = { default: 0, phone: 1, wide: 2 };
 

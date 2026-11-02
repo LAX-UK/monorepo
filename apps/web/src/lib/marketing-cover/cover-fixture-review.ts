@@ -4,7 +4,14 @@
  */
 export const COVER_FIXTURE_REVIEW_PATH = "/dev/cover";
 
-/** Whether the review page may be served: local development and test runs only. */
-export function isCoverFixtureReviewAvailable(nodeEnv: string | undefined): boolean {
-  return nodeEnv !== "production";
+/**
+ * Whether the review page may be served: local development and test runs, or a production build
+ * started on purpose for the visual tests with `COVER_FIXTURE_REVIEW=1`. No deployed environment
+ * sets that variable.
+ */
+export function isCoverFixtureReviewAvailable(
+  nodeEnv: string | undefined,
+  optIn: string | undefined = undefined,
+): boolean {
+  return nodeEnv !== "production" || optIn === "1";
 }
