@@ -9,8 +9,7 @@ import {
   RecordRow,
   RecordRowMedia,
 } from "@auction/ui";
-import { Checkbox } from "@auction/ui/components/checkbox";
-import { StatusBadge } from "@auction/ui/lax";
+import { Checkbox, StatusBadge } from "@auction/ui/lax";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -77,7 +76,6 @@ export function PurchaseRow({
                 checked={selection.selected}
                 onCheckedChange={(checked) => selection.onSelectedChange(checked === true)}
                 aria-label={`Pay ${card.title}`}
-                className="size-5 rounded-[5px] border-lax-control-edge bg-lax-surface shadow-none data-[state=checked]:border-lax-ink data-[state=checked]:bg-lax-ink data-[state=checked]:text-lax-on-ink focus-visible:ring-lax-focus"
               />
             </span>
           ) : selectColumn ? (

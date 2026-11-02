@@ -36,8 +36,8 @@ import { normalizeKycReturnUrl } from "@/lib/kyc";
 import { dashboardIdentityOnboardingHref } from "@/lib/kyc/identity-onboarding";
 import { isActionableStripeDisabledReason, shouldSkipConnect } from "@auction/connect";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
+import { Button } from "@auction/ui/lax";
 import { useCallback, useMemo } from "react";
 
 type Props = {
@@ -204,7 +204,7 @@ export function ConnectWorkspace({
               kycSummary={kycSummary}
             />
           ) : (
-            <Button asChild variant="cta" size="default">
+            <Button asChild variant="primary" size="md">
               <a href={dashboardIdentityOnboardingHref("/selling/payout-setup")}>Verify identity</a>
             </Button>
           )}

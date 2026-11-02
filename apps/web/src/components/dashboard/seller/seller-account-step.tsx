@@ -2,9 +2,9 @@
 
 import type { SellerAccountOption } from "@/lib/seller/seller-account-options";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { RadioCardGroup } from "@auction/ui/components/radio-card-group";
 import { Surface } from "@auction/ui/components/surface";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 
 type Props = {
@@ -122,7 +122,7 @@ export function SellerAccountStep({
         </div>
       ) : (
         <div className="flex flex-col-reverse gap-3 border-t border-border-hairline pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <Button type="button" variant="outline" onClick={() => onBack?.()} disabled={busy}>
+          <Button type="button" variant="secondary" onClick={() => onBack?.()} disabled={busy}>
             Back to the work
           </Button>
           {blocked ? (

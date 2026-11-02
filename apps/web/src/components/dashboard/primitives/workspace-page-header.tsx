@@ -1,12 +1,11 @@
 import { cn } from "@auction/ui";
 import type { PageHeaderProps } from "@auction/ui/components/page-header";
+import { pageTitleClass } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 
 export type WorkspacePageHeaderProps = Omit<PageHeaderProps, "title"> & {
   title: ReactNode;
   meta?: ReactNode;
-  /** `display` — larger welcome-style title on overview. */
-  titleScale?: "default" | "display";
   listHeadingId?: string;
 };
 
@@ -17,27 +16,12 @@ export type WorkspacePageHeaderProps = Omit<PageHeaderProps, "title"> & {
 export function WorkspacePageHeader({
   meta,
   title,
-  titleScale = "default",
   listHeadingId,
   className,
   description,
   breadcrumbs,
   actions,
 }: WorkspacePageHeaderProps) {
-  const metaNode =
-    meta && typeof meta === "string" ? (
-      <span className="font-label text-[11px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-        {meta}
-      </span>
-    ) : (
-      meta
-    );
-
-  const titleClass =
-    titleScale === "display"
-      ? "font-headline text-3xl font-semibold tracking-tight text-on-surface lg:text-4xl"
-      : "font-headline text-xl font-semibold tracking-tight text-on-surface sm:text-2xl lg:text-[1.75rem]";
-
   return (
     <div
       className={cn(
@@ -52,8 +36,8 @@ export function WorkspacePageHeader({
             {breadcrumbs}
           </div>
         ) : null}
-        {metaNode ? <div className="mb-2 text-on-surface-variant">{metaNode}</div> : null}
-        <h1 id={listHeadingId} className={titleClass} data-page-title="">
+        {meta ? <div className="mb-2 text-on-surface-variant">{meta}</div> : null}
+        <h1 id={listHeadingId} className={pageTitleClass} data-page-title="">
           {title}
         </h1>
         {description ? (
