@@ -11,7 +11,7 @@ vi.mock("next/headers", () => ({
   headers: async () => new Headers({ "x-forwarded-for": "203.0.113.9, 10.0.0.1" }),
 }));
 
-const { httpContactDispatcher } = await import("./http-contact-dispatcher");
+const { httpContactDispatcher } = await import("./http-contact-dispatcher.server");
 const { ContactDispatchError } = await import("./contact-dispatcher");
 
 const payload = {
