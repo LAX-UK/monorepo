@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import {
   IDENTITY_EMAIL_REGISTRATION_PATH,
+  SUBJECT_EXPORT_MACHINE_SCOPE,
   emailRegistrationRequestSchema,
 } from "@auction/identity-contracts";
 import { type Context, Hono } from "hono";
@@ -20,6 +21,11 @@ import {
   type InternalAddressRouteDeps,
   mountInternalAddressRoutes,
 } from "./internal-addresses.routes.js";
+import {
+  type SubjectExportMachineDeps,
+  mountSubjectExportMachineRoutes,
+  subjectExportTokenKey,
+} from "./internal-subject-export.routes.js";
 import {
   type TwoFactorPolicyRouteDeps,
   mountTwoFactorPolicyRoutes,
@@ -128,6 +134,11 @@ export function createInternalIdentityRoutes(options: {
   ) => void;
   twoFactorPolicy?: TwoFactorPolicyRouteDeps;
   addresses?: InternalAddressRouteDeps;
+  /**
+   * The worker's credential for the export routes, separate from the lifecycle credential so a
+   * leak of one cannot reach what the other guards. Left out, the scope is not offered.
+   */
+  subjectExport?: SubjectExportMachineDeps;
 }) {
   const app = new Hono();
   const credentialRateLimiter = new MachineCredentialRateLimiter(options.redis);
@@ -135,10 +146,27 @@ export function createInternalIdentityRoutes(options: {
   app.post("/oauth/token", async (c) => {
     const credentials = parseBasicCredentials(c.req.header("authorization"));
     const body = await c.req.parseBody();
+    // The export scope has its own client, so its credential is checked and rate-limited apart.
+    const exportScope =
+      body.scope === SUBJECT_EXPORT_MACHINE_SCOPE && options.subjectExport !== undefined;
+    const target =
+      exportScope && options.subjectExport
+        ? {
+            clientId: options.subjectExport.clientId,
+            clientSecret: options.subjectExport.clientSecret,
+            scope: SUBJECT_EXPORT_MACHINE_SCOPE,
+            key: subjectExportTokenKey,
+          }
+        : {
+            clientId: options.machineClientId,
+            clientSecret: options.machineClientSecret,
+            scope: MACHINE_SCOPE,
+            key: tokenKey,
+          };
     const authentication = await authenticateMachineClient({
       credentials,
-      expectedClientId: options.machineClientId,
-      expectedClientSecret: options.machineClientSecret,
+      expectedClientId: target.clientId,
+      expectedClientSecret: target.clientSecret,
       limiter: credentialRateLimiter,
       onLimiterError: options.onCredentialRateLimitError,
     });
@@ -150,20 +178,20 @@ export function createInternalIdentityRoutes(options: {
     if (
       !authentication.valid ||
       body.grant_type !== "client_credentials" ||
-      body.scope !== MACHINE_SCOPE
+      body.scope !== target.scope
     ) {
       c.header("Cache-Control", "no-store");
       return c.json({ error: "invalid_client" }, 401);
     }
 
     const token = randomBytes(32).toString("base64url");
-    await options.redis.set(tokenKey(token), options.machineClientId, "EX", MACHINE_TOKEN_TTL_SEC);
+    await options.redis.set(target.key(token), target.clientId, "EX", MACHINE_TOKEN_TTL_SEC);
     c.header("Cache-Control", "no-store");
     return c.json({
       access_token: token,
       token_type: "Bearer",
       expires_in: MACHINE_TOKEN_TTL_SEC,
-      scope: MACHINE_SCOPE,
+      scope: target.scope,
     });
   });
 
@@ -222,6 +250,9 @@ export function createInternalIdentityRoutes(options: {
       scope: MACHINE_SCOPE,
     });
   });
+
+  // Before the lifecycle authentication below, which would refuse an export-scope token.
+  if (options.subjectExport) mountSubjectExportMachineRoutes(app, options.subjectExport);
 
   app.use("/identity/*", async (c, next) => {
     const authorization = c.req.header("authorization");

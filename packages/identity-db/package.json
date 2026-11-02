@@ -47,6 +47,10 @@
     "./schema/address": {
       "types": "./dist/schema/address.d.ts",
       "default": "./dist/schema/address.js"
+    },
+    "./schema/subject-export": {
+      "types": "./dist/schema/subject-export.d.ts",
+      "default": "./dist/schema/subject-export.js"
     }
   },
   "scripts": {

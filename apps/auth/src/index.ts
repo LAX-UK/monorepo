@@ -23,11 +23,17 @@ import {
 } from "./container/create-security-services.js";
 import { loadAuthEnv } from "./env.js";
 import { withAlertingLog } from "./infrastructure/alerting-log.js";
+import { DrizzleSubjectExportRepository } from "./infrastructure/drizzle-subject-export.repository.js";
+import { createSubjectExportReadSigner } from "./infrastructure/s3-subject-export-read-signer.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
 import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
 import { AccountDeletionService } from "./services/account-deletion.service.js";
 import { EmailChangeService } from "./services/email-change.service.js";
+import { SubjectExportService } from "./services/subject-export.service.js";
+import { createSubjectReadRateLimiter } from "./services/subject-read-rate-limiter.js";
 import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
+import { createAccountSubjectExportRegistry } from "./subject-export/create-account-subject-export-categories.js";
+import { SubjectExportReader } from "./subject-export/subject-export-reader.service.js";
 
 /** LAX Account's production origin, used for the security-notice link when `LAX_ACCOUNT_ORIGIN` is unset. */
 const DEFAULT_LAX_ACCOUNT_ORIGIN = "https://account.lax.bid";
@@ -85,6 +91,7 @@ const securityNotices = createSecurityNoticeService({
   email: emailSender,
   secureAccountUrl: `${accountOrigin}/account/security`,
   cancelDeletionUrl: `${accountOrigin}/account/security/delete`,
+  dataExportUrl: `${accountOrigin}/account/privacy/download`,
   log,
 });
 const accountAccessClaims = createAccountAccessClaimsResolver({
@@ -147,6 +154,25 @@ const accountDeletion = new AccountDeletionService({
   onProductUnavailable: (product, error) =>
     log.warn({ err: error, product }, "account_deletion_product_unavailable"),
 });
+const subjectExports = new SubjectExportService({
+  operations: identityOperations,
+  repository: new DrizzleSubjectExportRepository(db, repositories.identityEventPublisher),
+  signer: createSubjectExportReadSigner(
+    env.SUBJECT_EXPORT_BUCKET &&
+      env.SUBJECT_EXPORT_REGION &&
+      env.SUBJECT_EXPORT_READ_ACCESS_KEY_ID &&
+      env.SUBJECT_EXPORT_READ_SECRET_ACCESS_KEY
+      ? {
+          bucket: env.SUBJECT_EXPORT_BUCKET,
+          region: env.SUBJECT_EXPORT_REGION,
+          endpoint: env.SUBJECT_EXPORT_ENDPOINT,
+          accessKeyId: env.SUBJECT_EXPORT_READ_ACCESS_KEY_ID,
+          secretAccessKey: env.SUBJECT_EXPORT_READ_SECRET_ACCESS_KEY,
+        }
+      : null,
+  ),
+  notices: securityNotices,
+});
 const identityLifecycle = createIdentityLifecycleService({
   db,
   identityEventPublisher: repositories.identityEventPublisher,
@@ -169,6 +195,8 @@ const schedules = await createAuthSchedules({
   securityEffects: durableSecurityEffects,
   ssfStreams: services.ssf.streams,
   ssfDelivery: services.ssf.delivery,
+  subjectExports,
+  alertLog: withAlertingLog(log),
   ssfEnabled: env.SSF_DELIVERY_ENABLED,
   ssfTimeoutMs: env.SSF_DELIVERY_TIMEOUT_MS,
   ssfMaxAttempts: env.SSF_DELIVERY_MAX_ATTEMPTS,
@@ -195,6 +223,38 @@ const internal =
           addresses: {
             addresses: createIdentityAddressService(db),
           },
+          ...(env.SUBJECT_EXPORT_MACHINE_CLIENT_ID && env.SUBJECT_EXPORT_MACHINE_CLIENT_SECRET
+            ? {
+                subjectExport: {
+                  exports: subjectExports,
+                  reader: new SubjectExportReader(createAccountSubjectExportRegistry(db)),
+                  redis,
+                  clientId: env.SUBJECT_EXPORT_MACHINE_CLIENT_ID,
+                  clientSecret: env.SUBJECT_EXPORT_MACHINE_CLIENT_SECRET,
+                  // Worker reports for one export are few; this caps a runaway retry loop.
+                  rateLimit: createSubjectReadRateLimiter({
+                    redis,
+                    keyPrefix: "rl:auth-issuer:subject-export-progress",
+                    windowSec: 60,
+                    max: 120,
+                    failClosed: true,
+                    onError: (error) =>
+                      log.warn({ err: error }, "subject_export_progress_rate_limit_unavailable"),
+                  }),
+                  // A copy is a few dozen pages per person; this caps a runaway loop, not a real run.
+                  readRateLimit: createSubjectReadRateLimiter({
+                    redis,
+                    keyPrefix: "rl:auth-issuer:subject-export-read",
+                    windowSec: 60,
+                    max: 600,
+                    failClosed: true,
+                    onError: (error) =>
+                      log.warn({ err: error }, "subject_export_read_rate_limit_unavailable"),
+                  }),
+                  onFailure: (error) => log.error({ err: error }, "subject_export_failed"),
+                },
+              }
+            : {}),
           twoFactorPolicy: {
             store: identityPorts.twoFactorPolicyStore,
             readRequirement: readTwoFactorRequirement,
@@ -249,6 +309,7 @@ const app = createAuthApp({
     identityOperations,
     emailChange,
     accountDeletion,
+    subjectExports,
     emailSender,
     securityNotices,
     durableSecurityEffects,

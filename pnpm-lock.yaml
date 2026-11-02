@@ -409,6 +409,9 @@ importers:
       '@auction/identity-db':
         specifier: workspace:*
         version: link:../../packages/identity-db
+      '@auction/object-storage':
+        specifier: workspace:*
+        version: link:../../packages/object-storage
       '@auction/observability':
         specifier: workspace:*
         version: link:../../packages/observability

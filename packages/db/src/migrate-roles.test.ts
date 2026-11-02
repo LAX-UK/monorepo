@@ -7,6 +7,8 @@ import {
   API_DENY_TABLES,
   API_READ_TABLES,
   AUTH_ADDRESS_TABLES,
+  AUTH_EXPORT_AUDIT_TABLES,
+  AUTH_EXPORT_TABLES,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
   AUTH_POLICY_TABLES,
@@ -348,6 +350,16 @@ describe("migrate-roles invariants", () => {
     expect([...AUTH_ADDRESS_TABLES]).toEqual(["identity_address"]);
     expect([...API_DENY_TABLES]).toContain("identity_address");
     expect([...AUTH_FULL_TABLES]).not.toContain("identity_address");
+  });
+
+  it("gives auth_app the data export requests, with an append-only audit trail, and denies api_app", () => {
+    expect([...AUTH_EXPORT_TABLES]).toEqual(["subject_data_export"]);
+    expect([...AUTH_EXPORT_AUDIT_TABLES]).toEqual(["subject_data_export_audit"]);
+    for (const table of [...AUTH_EXPORT_TABLES, ...AUTH_EXPORT_AUDIT_TABLES]) {
+      expect([...API_DENY_TABLES]).toContain(table);
+      expect([...WORKER_DENY_TABLES]).toContain(table);
+      expect([...AUTH_FULL_TABLES]).not.toContain(table);
+    }
   });
 
   it("AUTH_FULL_TABLES includes two_factor (Better Auth twoFactor plugin uses auth_app)", () => {

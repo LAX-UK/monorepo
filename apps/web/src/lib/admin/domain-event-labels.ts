@@ -206,6 +206,7 @@ const LABELS: Record<string, string> = {
   "source_of_funds.document_downloaded": "Source of Funds document downloaded",
   "source_of_funds.document_reviewed": "Source of Funds document reviewed",
   "source_of_funds.reviewed": "Source of Funds reviewed",
+  "subject.data_export_requested": "Data download requested",
   "source_of_funds.approved": "Source of Funds approved",
   "source_of_funds.rejected": "Source of Funds rejected",
 

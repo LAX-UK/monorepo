@@ -15,6 +15,7 @@
     "@auction/auth": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
     "@auction/identity-db": "workspace:*",
+    "@auction/object-storage": "workspace:*",
     "@auction/observability": "workspace:*",
     "@better-auth/utils": "0.4.2",
     "@hono/node-server": "^1.13.7",

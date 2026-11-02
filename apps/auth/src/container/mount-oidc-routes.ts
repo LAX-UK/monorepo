@@ -44,6 +44,7 @@ import { createResilientSlidingWindowStore } from "../middleware/resilient-slidi
 import { createAccountAddressRoutes } from "../routes/account-addresses.routes.js";
 import { createAccountBackupCodesRoutes } from "../routes/account-backup-codes.routes.js";
 import { createAccountContactRoutes } from "../routes/account-contact.routes.js";
+import { createAccountDataExportRoutes } from "../routes/account-data-exports.routes.js";
 import { createAccountDeletionRoutes } from "../routes/account-deletion.routes.js";
 import { createAccountIdentityRoutes } from "../routes/account-identity.routes.js";
 import { createAccountSecurityFactsRoutes } from "../routes/account-security-facts.routes.js";
@@ -63,6 +64,7 @@ import type { IdentityOperationsService } from "../services/identity-operations.
 import { RecentSessionGuard } from "../services/recent-session-guard.js";
 import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
 import type { RefreshedIdTokenService } from "../services/refreshed-id-token.service.js";
+import type { SubjectExportService } from "../services/subject-export.service.js";
 import { createSubjectReadRateLimiter } from "../services/subject-read-rate-limiter.js";
 import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
 import type { AuthRouteServicesSlice } from "./auth-container-slices.js";
@@ -90,6 +92,7 @@ export type OidcRouteMountOptions = {
   identityOperations: IdentityOperationsService;
   emailChange: EmailChangeService;
   accountDeletion: AccountDeletionService;
+  subjectExports: SubjectExportService;
   emailSender: EmailSender;
   securityNotices: SecurityNoticePublisher;
   durableSecurityEffects: Pick<DurableSecurityEffects, "settle">;
@@ -355,6 +358,18 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
       statusRateLimit: accountRateLimit("account-deletion-status", 30),
       changeRateLimit: strictRateLimit("account-deletion-change", 60 * 60, 10),
       onFailure: (error) => options.log.error({ err: error }, "account_deletion_request_failed"),
+    }),
+  );
+  app.route(
+    "/api/auth",
+    createAccountDataExportRoutes({
+      clients: services.oidc.confidentialClients,
+      tokens: services.oidc.tokenManagement,
+      exports: options.subjectExports,
+      readRateLimit: accountRateLimit("account-data-exports-read", 60),
+      // Each request starts a job that reads from every product; each download opens a signed link.
+      changeRateLimit: strictRateLimit("account-data-exports-change", 60 * 60, 20),
+      onFailure: (error) => options.log.error({ err: error }, "account_data_export_failed"),
     }),
   );
   app.route(
