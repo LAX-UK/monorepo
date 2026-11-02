@@ -3,6 +3,7 @@ import { ArtistWatchHeart } from "@/components/marketing/artist-watch-heart";
 import { ArtistDirectoryCard } from "@/components/sections/artists/artist-directory-card";
 import { ArtistDirectoryLotsLink } from "@/components/sections/artists/artist-directory-lots-link";
 import { MediaImage } from "@/components/ui/media-image";
+import { groupDirectoryRows } from "@/lib/artists/group-directory-rows";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { formatArtistLifespan } from "@/lib/artists/lifespan-presenter";
 import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
@@ -25,22 +26,41 @@ export function ArtistBrowseGrid({
   isAuthenticated: boolean;
   profileLinkContext?: ArtistProfileLinkContext;
 }) {
+  const groups = groupDirectoryRows(rows);
   return (
-    <ul className={MARKETING_ARTIST_GRID_CLASS} aria-label="Artists">
-      {rows.map((a) => (
-        <ArtistDirectoryCard
-          key={a.id}
-          artist={a}
-          watching={watchSet.has(a.id)}
-          isAuthenticated={isAuthenticated}
-          {...(profileLinkContext ? { profileLinkContext } : {})}
-        />
+    <div className="flex flex-col gap-12">
+      {groups.map((group) => (
+        <section
+          key={group.id}
+          {...(group.heading ? { "aria-labelledby": `artist-group-${group.id}` } : {})}
+        >
+          {group.heading ? (
+            <h2
+              id={`artist-group-${group.id}`}
+              className="mb-6 font-headline text-xl font-medium text-on-surface"
+            >
+              {group.heading}
+            </h2>
+          ) : null}
+          <ul className={MARKETING_ARTIST_GRID_CLASS} aria-label={group.heading ?? "Artists"}>
+            {group.rows.map((a) => (
+              <ArtistDirectoryCard
+                key={a.id}
+                artist={a}
+                watching={watchSet.has(a.id)}
+                isAuthenticated={isAuthenticated}
+                {...(group.heading ? { nameAs: "h3" as const } : {})}
+                {...(profileLinkContext ? { profileLinkContext } : {})}
+              />
+            ))}
+          </ul>
+        </section>
       ))}
-    </ul>
+    </div>
   );
 }
 
-/** Profile-page horizontal rail — compact directory cards for related artists. */
+/** Profile-page horizontal rails: compact directory cards, artists apart from makers and brands. */
 export function ArtistRelatedBrowseRail({
   rows,
   watchSet,
@@ -52,20 +72,31 @@ export function ArtistRelatedBrowseRail({
   isAuthenticated: boolean;
   profileLinkContext?: ArtistProfileLinkContext;
 }) {
+  const groups = groupDirectoryRows(rows);
   return (
-    <ul className="m-0 flex list-none snap-x snap-mandatory gap-4 overflow-x-auto p-0 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {rows.map((a) => (
-        <ArtistDirectoryCard
-          key={a.id}
-          artist={a}
-          watching={watchSet.has(a.id)}
-          isAuthenticated={isAuthenticated}
-          density="compact"
-          className="w-[180px] shrink-0 snap-start sm:w-[200px]"
-          {...(profileLinkContext ? { profileLinkContext } : {})}
-        />
+    <div className="flex flex-col gap-8">
+      {groups.map((group) => (
+        <div key={group.id}>
+          {group.heading ? (
+            <h3 className="mb-3 font-body text-sm font-medium text-on-surface">{group.heading}</h3>
+          ) : null}
+          <ul className="m-0 flex list-none snap-x snap-mandatory gap-4 overflow-x-auto p-0 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {group.rows.map((a) => (
+              <ArtistDirectoryCard
+                key={a.id}
+                artist={a}
+                watching={watchSet.has(a.id)}
+                isAuthenticated={isAuthenticated}
+                density="compact"
+                nameAs={group.heading ? "h4" : "h3"}
+                className="w-[180px] shrink-0 snap-start sm:w-[200px]"
+                {...(profileLinkContext ? { profileLinkContext } : {})}
+              />
+            ))}
+          </ul>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
 

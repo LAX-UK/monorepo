@@ -17,13 +17,14 @@ import {
   sourceOfFunds,
   userInvitation,
 } from "@auction/db/schema";
-import type {
-  EndingAuthorisation,
-  ExpiredInvitation,
-  HomeSubject,
-  PendingAccessRequest,
-  PurchaseNextStepFacts,
-  UnreadReply,
+import {
+  type EndingAuthorisation,
+  type ExpiredInvitation,
+  type HomeSubject,
+  OWED_PAYMENT_STATUSES,
+  type PendingAccessRequest,
+  type PurchaseNextStepFacts,
+  type UnreadReply,
 } from "@auction/domain";
 import type { PaymentStatus } from "@auction/types";
 import {
@@ -57,8 +58,8 @@ const OPEN_CONSIGNMENT = [
   "converted",
 ] as const;
 
-/** Payment states that leave a won lot still to pay (as `purchaseNextStep`). */
-const TO_PAY: PaymentStatus[] = ["pending", "cancelled", "requires_manual_review"];
+/** Payment states that leave a won lot still to pay (the domain's `purchaseIsToPay`). */
+const TO_PAY: readonly PaymentStatus[] = OWED_PAYMENT_STATUSES;
 
 const KYC_IDENTITY = { approved: "verified", pending: "checking" } as const;
 
@@ -119,12 +120,16 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
       where ${payment.lotId} = ${lot.id} and ${payment.buyerLegalEntityId} = ${input.legalEntityId}
       order by ${payment.createdAt} desc limit 1
     )`;
-    const toPay = or(
-      sql`${latestStatus} is null`,
-      sql`${latestStatus} in (${sql.join(
-        TO_PAY.map((status) => sql`${status}`),
-        sql`, `,
-      )})`,
+    // Still to pay: nothing paid or one waiting, and the purchase not cancelled on delivery.
+    const toPay = and(
+      or(
+        sql`${latestStatus} is null`,
+        sql`${latestStatus} in (${sql.join(
+          TO_PAY.map((status) => sql`${status}`),
+          sql`, `,
+        )})`,
+      ),
+      or(isNull(lotFulfilment.status), sql`${lotFulfilment.status} <> 'cancelled'`),
     );
     const paidNotFinished = and(
       sql`${latestStatus} = 'captured'`,

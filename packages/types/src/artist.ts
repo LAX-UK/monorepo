@@ -100,6 +100,10 @@ export type AdminArtistStats = {
 /** Public directory card with public catalogue lot count for "X lots" links (#works All). */
 export type PublicArtistDirectoryRow = ArtistProfile & {
   lotCount: number;
+  /** Public lots that have ended; with `lotCount` it tells a card "2 results" from "3 lots". */
+  resultCount: number;
+  /** First image of a representative public lot, for cards of artists without a portrait. */
+  workImageUrl: string | null;
 };
 
 /** Per-letter facet bucket for the A–Z jump bar. */

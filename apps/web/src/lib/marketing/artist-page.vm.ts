@@ -1,4 +1,10 @@
 import {
+  type ArtistWorks,
+  type ArtistWorksTab,
+  parseArtistWorksTab,
+  splitArtistWorks,
+} from "@/lib/artists/artist-works";
+import {
   kindDirectorySlug,
   normalizeDecadeSegment,
   slugifyNationality,
@@ -23,6 +29,9 @@ export type ArtistDetailPageVM = {
   id: string;
   registry: RegistryArtist;
   artistLots: Lot[];
+  /** The lots split into on sale and sold results, for the works tabs. */
+  works: ArtistWorks;
+  activeWorksTab: ArtistWorksTab;
   aliasesList: string[];
   session: SessionUser | null;
   watchedArtistIds: string[];
@@ -128,6 +137,8 @@ export function buildArtistPageVM(input: BuildArtistPageVMInput): ArtistDetailPa
     id,
     registry,
     artistLots,
+    works: splitArtistWorks(artistLots),
+    activeWorksTab: parseArtistWorksTab(input.searchParams.tab),
     aliasesList,
     session,
     watchedArtistIds,

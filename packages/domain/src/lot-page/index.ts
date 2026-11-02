@@ -82,6 +82,7 @@ export {
   resolveLotAction,
   type LotActionInput,
   type ResolvedLotAction,
+  type WonPurchaseStatus,
 } from "./lot-action.js";
 export {
   PLACE_BID_ERROR_CODES,

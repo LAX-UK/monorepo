@@ -1,10 +1,10 @@
 import type {
   EditorsPickLotCardVM,
-  HeroStateVM,
   HomeUpcomingAuctionTileVM,
   LotCardVM,
 } from "@/components/sections/home/home-view-models";
 import type { HomeHangVM } from "@/lib/hang/home-hang";
+import type { HomeCover } from "@/lib/marketing-cover/home-cover";
 import type { HomeStateResult } from "@auction/domain";
 import type { Sale } from "@auction/types";
 
@@ -22,7 +22,8 @@ export type HomePageData = {
   homeState: HomeStateResult;
   /** The works hung under the hero; `null` when fewer than two have photographs. */
   hang: HomeHangVM | null;
-  heroState: HeroStateVM;
+  /** The cover slides, built for a visitor who is not signed in. */
+  cover: HomeCover;
   /** Lots promoted for structured data when `upcomingAuctionTiles` is empty. */
   jsonLdListFallback: HomeJsonLdListEntry[];
   urgencySection: HomeUrgencySection;
@@ -35,5 +36,3 @@ export type HomePageData = {
   /** Lot IDs on the signed-in user’s watchlist (empty when logged out). */
   watchedLotIds: string[];
 };
-
-export type { HeroStateVM };

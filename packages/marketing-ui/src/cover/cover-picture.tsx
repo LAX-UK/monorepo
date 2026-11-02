@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import { type CSSProperties, useCallback, useState } from "react";
+import { type CSSProperties, type ReactNode, useCallback, useState } from "react";
 import { COVER_WIDE_FROM_PX, planCoverBoxes } from "./cover-crop.js";
 import type { CoverPhotoMedia, CoverPlateMedia } from "./cover-types.js";
 
@@ -106,15 +106,19 @@ export function CoverPhoto({
 }
 
 /**
- * The lead work, whole, on a flat field of its own deepest colour. The work sits on the third
- * away from the type, as large as the box allows with room around it, like a catalogue plate.
+ * The lead work, whole, on a flat field of its own deepest colour. The work floats on the third
+ * away from the type with room above and below, like a catalogue plate; on a desktop its credit
+ * hangs centred under it.
  */
 export function CoverPlate({
   media,
+  credit,
   priority,
   onFail,
 }: {
   media: CoverPlateMedia;
+  /** The credit shown under the work from the desktop width up. */
+  credit?: ReactNode;
   priority: boolean;
   onFail: () => void;
 }) {
@@ -123,28 +127,36 @@ export function CoverPlate({
     <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: media.field }}>
       <div
         className={cn(
-          "absolute inset-x-16 inset-y-8 flex items-center justify-center",
-          "md:inset-x-auto md:inset-y-14 md:w-1/2 md:px-16",
+          "absolute inset-x-8 inset-y-8 flex items-center justify-center",
+          "md:inset-x-auto md:inset-y-0 md:w-[41.67%] md:pb-10",
           media.side === "left" ? "md:left-1/2" : "md:right-1/2",
         )}
       >
-        <img
-          ref={ref}
-          src={media.src}
-          alt={media.alt}
-          width={media.width}
-          height={media.height}
-          decoding="async"
-          fetchPriority={priority ? "high" : "auto"}
-          loading={priority ? "eager" : "lazy"}
-          onLoad={onLoad}
-          onError={onFail}
-          className={cn(
-            "max-h-full max-w-full object-contain shadow-[0_18px_48px_rgba(0,0,0,0.38)]",
-            FADE_CLASS,
-            hidden ? "opacity-0" : "opacity-100",
-          )}
-        />
+        <div className="relative">
+          <img
+            ref={ref}
+            src={media.src}
+            alt={media.alt}
+            width={media.width}
+            height={media.height}
+            decoding="async"
+            fetchPriority={priority ? "high" : "auto"}
+            loading={priority ? "eager" : "lazy"}
+            onLoad={onLoad}
+            onError={onFail}
+            className={cn(
+              "block h-auto max-h-[270px] w-auto max-w-[290px] object-contain md:max-h-[470px] md:max-w-[600px]",
+              "shadow-[0_2px_4px_rgba(0,0,0,0.28),0_28px_56px_-18px_rgba(0,0,0,0.6)]",
+              FADE_CLASS,
+              hidden ? "opacity-0" : "opacity-100",
+            )}
+          />
+          {credit ? (
+            <p className="absolute left-1/2 top-full mt-[18px] hidden -translate-x-1/2 whitespace-nowrap font-body text-xs leading-4 text-[color:var(--cover-credit)] md:block">
+              {credit}
+            </p>
+          ) : null}
+        </div>
       </div>
     </div>
   );

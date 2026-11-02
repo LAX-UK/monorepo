@@ -15,15 +15,24 @@ const fulfilment = (
 ) => ({ status, method, collectedAt });
 
 describe("purchaseNextStep", () => {
-  it.each([null, "pending", "cancelled", "requires_manual_review"] as const)(
+  it.each([null, "pending", "requires_manual_review"] as const)(
     "payment %s: still to pay",
     (paymentStatus) => {
       expect(purchaseNextStep(facts({ paymentStatus }))).toBe("pay");
     },
   );
 
-  it.each(["authorized", "refunded"] as const)("payment %s: nothing for the buyer", (status) => {
-    expect(purchaseNextStep(facts({ paymentStatus: status }))).toBeNull();
+  it.each(["authorized", "refunded", "cancelled"] as const)(
+    "payment %s: nothing for the buyer",
+    (status) => {
+      expect(purchaseNextStep(facts({ paymentStatus: status }))).toBeNull();
+    },
+  );
+
+  it("an unpaid purchase whose delivery was cancelled is not to pay", () => {
+    expect(
+      purchaseNextStep(facts({ paymentStatus: "pending", fulfilment: fulfilment("cancelled") })),
+    ).toBeNull();
   });
 
   it("paid with no delivery chosen: choose delivery", () => {

@@ -18,6 +18,7 @@ export function FullBidCard() {
     connectivityScope,
     biddingLive,
     omitPricingHeader,
+    entryOnly,
     summarySeed,
     auction,
     currentPrice,
@@ -40,6 +41,18 @@ export function FullBidCard() {
   } = useBidPanelContext();
 
   const { minNumeric, loginNext, englishOnlySurfaceLock, supportsAutoBid, switchEntryMode } = panel;
+
+  if (entryOnly) {
+    return (
+      <div className="min-w-0">
+        {biddingLive ? (
+          <ConnectionStatusBannerContainer scope={connectivityScope} className="mb-4" />
+        ) : null}
+        <BidEntryRegion />
+        {!englishOnlySurfaceLock ? <BidPanelStickyMobileBar /> : null}
+      </div>
+    );
+  }
 
   return (
     <div className={cn("min-w-0", omitPricingHeader ? "w-full max-w-none" : "max-w-[480px]")}>

@@ -37,6 +37,8 @@ function row(id: string, displayName: string): PublicArtistDirectoryRow {
     createdAt: new Date(),
     updatedAt: new Date(),
     lotCount: 1,
+    resultCount: 0,
+    workImageUrl: null,
   };
 }
 

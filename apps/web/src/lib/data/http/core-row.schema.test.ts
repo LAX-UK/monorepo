@@ -125,6 +125,7 @@ describe("core row schema parity", () => {
       streamUrl: null,
       heroPresentation: "cover",
       heroVideoUrl: null,
+      homePinOrder: null,
       locationName: null,
       locationAddress: null,
       locationMapUrl: null,

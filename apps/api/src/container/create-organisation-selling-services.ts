@@ -16,7 +16,10 @@ import type {
 import type { ISubmissionAccessGuard } from "../services/interfaces/submission-routes/submission-access.js";
 import { AgreementDocumentService } from "../services/organisation-selling/agreement-document.service.js";
 import { ReturnedWorksService } from "../services/organisation-selling/returned-works.service.js";
-import { SoldAndPayoutsService } from "../services/organisation-selling/sold-and-payouts.service.js";
+import {
+  type PayoutTotalsMismatch,
+  SoldAndPayoutsService,
+} from "../services/organisation-selling/sold-and-payouts.service.js";
 
 /** The client workspace's selling modules for the acting account. */
 export type OrganisationSellingServices = {
@@ -29,11 +32,14 @@ export function createOrganisationSellingServices(input: {
   db: Database;
   /** Who may see which consignment, the same guard every submission endpoint uses. */
   submissionAccess: ISubmissionAccessGuard;
+  /** Told when a payout's stored totals differ from its lines. */
+  onPayoutTotalsMismatch?: (report: PayoutTotalsMismatch) => void;
 }): OrganisationSellingServices {
   return {
     soldAndPayouts: new SoldAndPayoutsService({
       sold: new DrizzleSoldLotsReader(input.db),
       payouts: new DrizzlePayoutLinesReader(input.db),
+      ...(input.onPayoutTotalsMismatch ? { onTotalsMismatch: input.onPayoutTotalsMismatch } : {}),
     }),
     returnedWorks: new ReturnedWorksService({
       reader: new DrizzleReturnedWorksReader(input.db),

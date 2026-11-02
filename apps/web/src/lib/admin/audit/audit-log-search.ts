@@ -1,4 +1,5 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
+import { dayRangeLabel } from "@/lib/admin/day-range-label";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
 import { searchChipLabel } from "@auction/staff-ui";
 import { type AuditLogView, isAuditLogView } from "@auction/types";
@@ -88,17 +89,6 @@ export function auditLogSortHref(current: AuditLogSearch, sort: AuditLogSort): s
 
 export type AuditFilterChip = { id: string; label: string; clearHref: string };
 
-const DAY_LABEL = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-function dayLabel(day: string): string {
-  return DAY_LABEL.format(new Date(`${day}T00:00:00Z`));
-}
-
 /** One removable chip per filter that is on, worded as the filter reads in the toolbar. */
 export function buildAuditFilterChips(
   filters: AuditLogFilters,
@@ -134,17 +124,9 @@ export function buildAuditFilterChips(
     });
   }
   if (filters.from || filters.to) {
-    const label =
-      filters.from && filters.to
-        ? filters.from === filters.to
-          ? dayLabel(filters.from)
-          : `${dayLabel(filters.from)} – ${dayLabel(filters.to)}`
-        : filters.from
-          ? `From ${dayLabel(filters.from)}`
-          : `Until ${dayLabel(filters.to)}`;
     chips.push({
       id: "date",
-      label,
+      label: dayRangeLabel(filters.from, filters.to),
       clearHref: auditLogHref(current, { from: null, to: null }),
     });
   }

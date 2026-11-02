@@ -152,6 +152,7 @@ export { DrizzleQrCodeScanPersister } from "./drizzle-qr-code-scan.persister.js"
 export { DrizzleSaleroomOnBlockReader } from "./drizzle-saleroom-on-block.reader.js";
 export { DrizzleSaleroomLiveSessionCounter } from "./drizzle-saleroom-live-session-counter.js";
 export { DrizzleFailedJobRepository } from "./drizzle-failed-job.repository.js";
+export { DrizzleFailedJobReviewRepository } from "./drizzle-failed-job-review.repository.js";
 export { DrizzleUserEmailVerifiedPublisher } from "./drizzle-user-email-verified.publisher.js";
 export {
   DrizzlePlatformCatalogLegalEntityReader,

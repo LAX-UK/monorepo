@@ -30,8 +30,8 @@ export type EmptyStateProps = {
   size?: "default" | "compact";
   /** `error` is a calm "something went wrong": the askew drawing, announced to assistive tech. */
   variant?: "empty" | "error";
-  /** h2 when the state replaces a section's content, h3 inside a section. A page layout is always h1. */
-  headingLevel?: "h2" | "h3";
+  /** h1 when the state is the whole page (a page layout is always h1), h2 when it replaces a section's content, h3 inside a section. */
+  headingLevel?: "h1" | "h2" | "h3";
   className?: string;
 };
 

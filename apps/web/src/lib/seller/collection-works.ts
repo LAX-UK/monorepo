@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/format-currency";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { lotPath } from "@/lib/seo/url";
 import { matchesEveryWord, searchParam } from "@/lib/workspace/list-search";
+import { purchaseIsOwned } from "@auction/domain";
 import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
 
 type Badge = { label: string; tone: StatusBadgeTone; shape: StatusBadgeShape };
@@ -51,6 +52,20 @@ export type CollectionWork = {
   href: string;
   at: number;
 };
+
+/** The wins the organisation owns: paid for, and not cancelled or refunded. */
+export function ownedWins(
+  wins: readonly EntityWonLot[],
+  factsByLot: ReadonlyMap<string, AccountPurchaseFacts>,
+): EntityWonLot[] {
+  return wins.filter((win) => {
+    const purchase = factsByLot.get(win.lotId);
+    return (
+      purchase !== undefined &&
+      purchaseIsOwned({ invoice: purchase.invoice.status, deliveryStage: purchase.delivery.stage })
+    );
+  });
+}
 
 export function boughtWork(
   win: EntityWonLot,

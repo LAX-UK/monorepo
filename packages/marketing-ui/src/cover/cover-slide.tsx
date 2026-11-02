@@ -2,9 +2,10 @@
 
 import { cn } from "@auction/ui";
 import { ButtonLink, TextLink } from "@auction/ui/lax";
-import { Check, Clock } from "lucide-react";
-import type { CSSProperties, ElementType } from "react";
+import { Check, Clock, Info } from "lucide-react";
+import { type CSSProperties, type ElementType, useState } from "react";
 import { CoverAlertField } from "./cover-alert.js";
+import { CoverFilmButton, CoverFilmPlayer } from "./cover-film.js";
 import { coverSettles } from "./cover-motion.js";
 import {
   ON_IMAGE_BADGE,
@@ -106,6 +107,13 @@ function Badge({ label, ground }: { label: string; ground: Ground }) {
   );
 }
 
+const STATUS_ICON = { check: Check, clock: Clock, info: Info } as const;
+
+function StatusIcon({ icon }: { icon: keyof typeof STATUS_ICON }) {
+  const Icon = STATUS_ICON[icon];
+  return <Icon aria-hidden className="size-4 shrink-0" />;
+}
+
 export type CoverSlideViewProps = {
   slide: CoverSlide;
   media: CoverMedia | null;
@@ -134,6 +142,23 @@ export function CoverSlideView({
     ? (coverTextVars(onImage) as CSSProperties)
     : undefined;
   const settles = coverSettles(media);
+  const [playing, setPlaying] = useState(false);
+  const creditNode = slide.credit ? (
+    slide.credit.href ? (
+      <TextLink
+        href={slide.credit.href}
+        {...(Link ? { Link } : {})}
+        className={cn(
+          "inline max-w-full truncate text-xs font-normal leading-4 text-inherit",
+          onImage && ON_IMAGE_FOCUS[onImage],
+        )}
+      >
+        {slide.credit.text}
+      </TextLink>
+    ) : (
+      slide.credit.text
+    )
+  ) : null;
 
   return (
     <div
@@ -148,6 +173,9 @@ export function CoverSlideView({
         ? { role: "group", "aria-roledescription": "slide", "aria-label": group.label }
         : {})}
     >
+      {playing && slide.film ? (
+        <CoverFilmPlayer film={slide.film} tone={onImage} onClose={() => setPlaying(false)} />
+      ) : null}
       {ground.mode === "type" ? (
         <div
           aria-hidden
@@ -165,7 +193,12 @@ export function CoverSlideView({
             {ground.mode === "photo" ? (
               <CoverPhoto media={ground.media} priority={priority} onFail={onMediaFail} />
             ) : (
-              <CoverPlate media={ground.media} priority={priority} onFail={onMediaFail} />
+              <CoverPlate
+                media={ground.media}
+                credit={creditNode}
+                priority={priority}
+                onFail={onMediaFail}
+              />
             )}
           </div>
           {ground.mode === "photo" ? <Scrims scrims={ground.scrims} side={side} /> : null}
@@ -185,23 +218,14 @@ export function CoverSlideView({
           className={cn(
             "relative min-w-0 truncate px-4 pt-3 font-body text-xs leading-4 text-on-surface-variant",
             "md:absolute md:bottom-6 md:max-w-[520px] md:p-0 md:text-[color:var(--cover-credit)]",
-            onImage ? (textLeft ? "md:right-10" : "md:left-10") : "md:hidden",
+            onImage && ground.mode === "photo"
+              ? textLeft
+                ? "md:right-10"
+                : "md:left-10"
+              : "md:hidden",
           )}
         >
-          {slide.credit.href ? (
-            <TextLink
-              href={slide.credit.href}
-              {...(Link ? { Link } : {})}
-              className={cn(
-                "inline max-w-full truncate text-xs font-normal leading-4 text-inherit",
-                onImage && ON_IMAGE_FOCUS[onImage],
-              )}
-            >
-              {slide.credit.text}
-            </TextLink>
-          ) : (
-            slide.credit.text
-          )}
+          {creditNode}
         </p>
       ) : null}
 
@@ -235,11 +259,7 @@ export function CoverSlideView({
         {ground.mode === "type" && slide.seasons ? <CoverSeasons rows={slide.seasons} /> : null}
         {slide.status ? (
           <p className="mt-3 flex items-center gap-2 font-body text-sm leading-5 text-on-surface-variant md:text-[color:var(--cover-sub)]">
-            {slide.status.icon === "check" ? (
-              <Check aria-hidden className="size-4 shrink-0" />
-            ) : (
-              <Clock aria-hidden className="size-4 shrink-0" />
-            )}
+            <StatusIcon icon={slide.status.icon} />
             {slide.status.text}
           </p>
         ) : null}
@@ -271,6 +291,9 @@ export function CoverSlideView({
             >
               {slide.link.label}
             </TextLink>
+          ) : null}
+          {slide.film && !playing ? (
+            <CoverFilmButton tone={onImage} onPlay={() => setPlaying(true)} />
           ) : null}
         </div>
         {pager ? (

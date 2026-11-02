@@ -12,8 +12,6 @@ import { LaxDensityProvider, laxDensityAttributes } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 
 type BidSiteChromeProps = {
-  /** Paths where the header starts transparent over a hero (the home page). */
-  transparentPaths?: string[];
   /** Wraps the header and page in site-wide extras (quick look, hotkeys, palette, toasts). */
   wrap?: (content: ReactNode) => ReactNode;
   /**
@@ -30,7 +28,6 @@ type BidSiteChromeProps = {
  * The frame sets the client density, so kit controls are 36px on a desktop and 44px on a phone.
  */
 export async function BidSiteChrome({
-  transparentPaths,
   wrap = (content) => content,
   mainLandmark = false,
   children,
@@ -52,7 +49,6 @@ export async function BidSiteChrome({
                     nav={nav}
                     laxProductLinks={laxProductLinks}
                     familyLinks={familyLinks}
-                    {...(transparentPaths ? { transparentPaths } : {})}
                   />
                   {mainLandmark ? <main id="main-content">{children}</main> : children}
                 </>,

@@ -270,4 +270,18 @@ describe("EmptyState", () => {
       container.querySelector("[data-illustration=easel]")?.closest("[aria-hidden]"),
     ).not.toBeNull();
   });
+
+  it("is the page's h1 when it is the whole page", () => {
+    render(
+      <EmptyState
+        headingLevel="h1"
+        illustration="search"
+        title="We can't find that lot"
+        description="Search or browse."
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { level: 1, name: "We can't find that lot" }),
+    ).toBeInTheDocument();
+  });
 });

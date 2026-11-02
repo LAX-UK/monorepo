@@ -17,8 +17,8 @@ export async function computeDirectoryFacets(
     .select({
       total: sql<number>`count(*)::int`,
       featured: sql<number>`count(*) filter (where ${artistProfile.featured})::int`,
-      living: sql<number>`count(*) filter (where ${artistProfile.deathYear} is null)::int`,
-      historical: sql<number>`count(*) filter (where ${artistProfile.deathYear} is not null)::int`,
+      living: sql<number>`count(*) filter (where nullif(btrim(${artistProfile.deathYear}), '') is null)::int`,
+      historical: sql<number>`count(*) filter (where nullif(btrim(${artistProfile.deathYear}), '') is not null)::int`,
       hasUpcoming: sql<number>`count(*) filter (where ${artistHasPublicBrowseLotsExists()})::int`,
     })
     .from(artistProfile)

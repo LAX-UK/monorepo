@@ -8,6 +8,7 @@ export type {
   CoverSeasonRow,
   CoverTimeTick,
   CoverCredit,
+  CoverFilm,
   CoverMedia,
   CoverPhotoMedia,
   CoverPhotoSlot,

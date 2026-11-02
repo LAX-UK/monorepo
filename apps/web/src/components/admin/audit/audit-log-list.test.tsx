@@ -79,7 +79,7 @@ describe("AuditLogList", () => {
     );
   });
 
-  it("offers the four views as links and marks the current one", () => {
+  it("offers the five views as links and marks the current one", () => {
     render(<AuditLogList {...props({ filters: { ...filters, view: "finance" } })} />);
     const views = screen.getByRole("navigation", { name: "Views" });
 
@@ -87,7 +87,7 @@ describe("AuditLogList", () => {
       within(views)
         .getAllByRole("link")
         .map((l) => l.textContent),
-    ).toEqual(["All", "Finance", "Catalogue", "People"]);
+    ).toEqual(["All", "Finance", "Catalogue", "People", "Operations"]);
     expect(within(views).getByRole("link", { name: "Finance" })).toHaveAttribute(
       "aria-current",
       "page",

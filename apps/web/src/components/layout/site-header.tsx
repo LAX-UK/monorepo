@@ -29,7 +29,6 @@ type SiteHeaderChromeVariant = "solid" | "transparentUntilScroll";
 
 type SiteHeaderProps = {
   nav?: MegaMenuSection[];
-  transparentPaths?: string[];
   chromeVariant?: SiteHeaderChromeVariant;
   laxProductLinks?: LaxProductLinkVm[];
   /** The LAX top bar: the products, then LAX Account. */
@@ -42,7 +41,6 @@ type SiteHeaderShellProps = SiteHeaderProps & {
 
 function SiteHeaderShell({
   nav: navProp,
-  transparentPaths,
   chromeVariant,
   searchParams,
   laxProductLinks = [],
@@ -59,11 +57,7 @@ function SiteHeaderShell({
   const searchKey = searchParams == null ? "" : searchParams.toString();
   const { title: marketingPageTitle } = useMarketingHeaderTitle();
 
-  const resolvedVariant: SiteHeaderChromeVariant =
-    chromeVariant ??
-    (transparentPaths && pathname && transparentPaths.includes(pathname)
-      ? "transparentUntilScroll"
-      : "solid");
+  const resolvedVariant: SiteHeaderChromeVariant = chromeVariant ?? "solid";
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: close mobile menu when the route changes
   useEffect(() => {

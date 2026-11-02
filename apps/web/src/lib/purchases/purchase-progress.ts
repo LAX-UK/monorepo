@@ -1,4 +1,5 @@
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
+import { purchaseEnding, purchaseIsToPay } from "@auction/domain";
 import type { ManualReviewReason, PaymentStatus } from "@auction/types";
 
 /** The four steps every purchase goes through, in order. */
@@ -61,8 +62,6 @@ function deliveryState(fulfilment: PurchaseFacts["fulfilment"]): PurchaseState {
       return "in-transit";
     case "ready_for_collection":
       return "ready-for-collection";
-    case "cancelled":
-      return "cancelled";
     default:
       return fulfilment.fulfilmentMethod ? "preparing" : "choose-delivery";
   }
@@ -70,13 +69,17 @@ function deliveryState(fulfilment: PurchaseFacts["fulfilment"]): PurchaseState {
 
 /** Where a won lot stands, from its payment and delivery records. */
 export function purchaseState(facts: PurchaseFacts): PurchaseState {
+  // A refund or cancellation ends the purchase, whatever else the records say.
+  const ending = purchaseEnding({
+    paymentStatus: facts.paymentStatus,
+    fulfilmentStatus: facts.fulfilment?.status,
+  });
+  if (ending) return ending;
   switch (facts.paymentStatus) {
     case "captured":
       return deliveryState(facts.fulfilment);
     case "authorized":
       return "payment-processing";
-    case "refunded":
-      return "refunded";
     case "requires_manual_review":
       return "in-review";
     default:
@@ -86,13 +89,11 @@ export function purchaseState(facts: PurchaseFacts): PurchaseState {
 
 /**
  * Whether a won lot is still to pay: it sits in the To pay view (due, or held for checks before
- * it can be paid). A bank transfer on its way is not; nor is a paid or refunded lot. Home, the
- * menu counts and the Pay now banner use this, so they always match the To pay view.
+ * it can be paid). A bank transfer on its way is not; nor is a paid, refunded or cancelled lot.
+ * Home, the menu counts and the Pay now banner use this, so they always match the To pay view.
  */
 export function isToPay(paymentStatus: PaymentStatus | null): boolean {
-  return (
-    purchaseTab(purchaseState({ paymentStatus, reviewReason: null, fulfilment: null })) === "to-pay"
-  );
+  return purchaseIsToPay({ paymentStatus });
 }
 
 export function purchaseStep(state: PurchaseState): PurchaseStep {

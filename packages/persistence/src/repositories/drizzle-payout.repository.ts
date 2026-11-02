@@ -322,11 +322,22 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
 
   async listLines(payoutId: string): Promise<PayoutLine[]> {
     const rows = await this.db
-      .select()
+      .select({
+        line: payoutLine,
+        paymentAmount: payment.amount,
+        platformFee: payment.platformFee,
+      })
       .from(payoutLine)
+      .leftJoin(payment, eq(payment.id, payoutLine.paymentId))
       .where(eq(payoutLine.payoutId, payoutId))
       .orderBy(payoutLine.createdAt);
-    return rows.map(rowToLine);
+    return rows.map(({ line, paymentAmount, platformFee }) => ({
+      ...rowToLine(line),
+      payment:
+        paymentAmount != null && platformFee != null
+          ? { amount: String(paymentAmount), platformFee: String(platformFee) }
+          : null,
+    }));
   }
 
   async findUnlinkedCapturedPayments(legalEntityId: string): Promise<PendingPaymentRow[]> {

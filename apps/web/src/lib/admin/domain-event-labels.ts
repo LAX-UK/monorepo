@@ -54,6 +54,10 @@ const LABELS: Record<string, string> = {
 
   "export.requested": "Export requested",
 
+  "failed_job.retried": "Failed job retried",
+  "failed_job.discarded": "Failed job discarded",
+  "failed_job.restored": "Failed job restored",
+
   "item_submission.submitted": "Submission received",
   "item_submission.approved": "Submission approved",
   "item_submission.rejected": "Submission rejected",

@@ -1,6 +1,5 @@
-import { HOME_HERO_BLEED, HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
 import { MarketingHangSkeleton } from "@auction/marketing-ui";
-import { Skeleton, cn } from "@auction/ui";
+import { Skeleton } from "@auction/ui";
 
 /** F5b — Per-section skeleton mirroring the actual home composition.
  *
@@ -11,9 +10,8 @@ import { Skeleton, cn } from "@auction/ui";
 export function HomeSkeleton() {
   return (
     <div aria-hidden className="flex flex-col">
-      <div className={HOME_HERO_BLEED}>
-        <Skeleton className={cn("w-full rounded-none shimmer-sweep", HOME_HERO_MIN_H)} />
-      </div>
+      {/* The cover loads as a fixed, still box: no shimmer on the first screen. */}
+      <div className="h-[420px] w-full bg-surface-container-low md:h-[640px] min-[1600px]:h-[720px]" />
       <MarketingHangSkeleton />
       <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-12 md:px-6 lg:px-10">
         <Skeleton className="mb-8 h-10 w-64" />

@@ -4,7 +4,7 @@ import {
 } from "@/lib/dashboard/dashboard-copy";
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import type { ComplianceGateStatus, LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
-import { buildPayNow, isAwaitingCheckout } from "@/lib/data/view-models/dashboard-portfolio.vm";
+import { buildPayNow } from "@/lib/data/view-models/dashboard-portfolio.vm";
 import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
@@ -19,6 +19,7 @@ import { PURCHASE_STATE_LABEL } from "./purchase-labels";
 import {
   PURCHASE_STEPS,
   PURCHASE_TABS,
+  type PurchaseFacts,
   type PurchaseState,
   type PurchaseStep,
   type PurchaseTab,
@@ -290,7 +291,18 @@ const PAID_STATES: ReadonlySet<PurchaseState> = new Set([
 function amountLabel(state: PurchaseState): string {
   if (state === "payment-due" || state === "in-review") return "total due";
   if (state === "refunded") return "refunded";
+  if (state === "cancelled") return "was due";
   return "total paid";
+}
+
+/**
+ * Delivery records are only read for paid lots; for the rest the account's facts say whether the
+ * purchase was cancelled, so an unpaid purchase that was cancelled ends like any other.
+ */
+function cancelledDelivery(facts: AccountPurchaseFacts | null): PurchaseFacts["fulfilment"] {
+  return facts?.delivery.stage === "cancelled"
+    ? { status: "cancelled", fulfilmentMethod: null, collectedAt: null }
+    : null;
 }
 
 /** One purchase as its row and its page read it. */
@@ -302,7 +314,7 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
   const state = purchaseState({
     paymentStatus: row.payment?.status ?? null,
     reviewReason: reason,
-    fulfilment: fulfilment ?? null,
+    fulfilment: fulfilment ?? cancelledDelivery(facts),
   });
   const currency = lotChargeCurrency(lot);
   const informed = (sources.paymentRoleByLot[lot.id] ?? "payer") !== "payer";
@@ -407,12 +419,18 @@ export function buildPurchasesVm(sources: PurchaseSources): PurchasesVm {
   const cardsByTab = Object.fromEntries(
     PURCHASE_TABS.map((tab) => [tab, cards.filter((card) => card.tab === tab)]),
   ) as Record<PurchaseTab, PurchaseCardVm[]>;
+  // The Pay now banner follows the To pay view, so a cancelled purchase can never be in it.
+  const toPayLots = new Set((cardsByTab["to-pay"] ?? []).map((card) => card.lotId));
   const sales = new Map<string, string>();
   for (const card of cards)
     if (card.saleId && card.saleTitle) sales.set(card.saleId, card.saleTitle);
   return {
     cardsByTab,
-    payNow: payNowFor(cards, sources.rows.filter(isAwaitingCheckout), sources),
+    payNow: payNowFor(
+      cards,
+      sources.rows.filter((row) => toPayLots.has(row.lot.id)),
+      sources,
+    ),
     total: cards.length,
     sales: [...sales]
       .map(([id, title]) => ({ id, title }))
