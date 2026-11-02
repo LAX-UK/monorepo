@@ -5,7 +5,6 @@ import { type BiddingAccount, resolveBiddingAccount } from "@/lib/bid/bidding-ac
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
 import { splitBuyerMembershipsByState } from "@/lib/bid/buyer-entity-state";
 import { computeIsOwnLot } from "@/lib/bid/compute-is-own-lot";
-import { deriveInitialOutbid, deriveUserHasBid } from "@/lib/bid/derive-initial-outbid";
 import { mapBidToHistoryEntry } from "@/lib/bid/map-bid-to-history-entry";
 import { resolveKycSurfaceFeedback } from "@/lib/bid/resolve-kyc-bid-gate";
 import { buildLotConditionReportViewModel } from "@/lib/condition-report/build-lot-condition-report-vm";
@@ -60,15 +59,12 @@ export type LotPageViewModel = {
   saleBundle: LotPageShellData["saleBundle"];
   kycSummary: LotPageShellData["kycSummary"];
   kycUnavailable: boolean;
-  initialAutoBidSettings: LotPageShellData["initialAutoBidSettings"];
   watcherCount: LotPageShellData["watcherCount"];
   actingCtx: LotPageSecondaryData["actingCtx"];
   orgModuleEnabled: boolean;
   initialSaleroomStatus: LotPageSecondaryData["initialSaleroomStatus"];
   initialHistory: BidHistoryEntry[];
   initialLeadingBidderId: string | null;
-  initialOutbid: boolean;
-  initialUserHasBid: boolean;
   watching: boolean;
   watchedLotIds: string[];
   parentSale: { id: string; title: string; deliveryMode: Sale["deliveryMode"] } | null;
@@ -145,7 +141,6 @@ export function buildLotPageViewModel(input: {
     kycSummary,
     kycUnavailable,
     lotDocuments,
-    initialAutoBidSettings,
     watcherCount,
   } = shell;
   const {
@@ -168,13 +163,6 @@ export function buildLotPageViewModel(input: {
 
   const initialHistory = initialBids.map(mapBidToHistoryEntry);
   const initialLeadingBidderId = deriveLeadingBidderId(initialBids);
-  const initialUserHasBid = deriveUserHasBid(initialBids, session?.id ?? null);
-  const initialOutbid = deriveInitialOutbid({
-    lotStatus: auction.status,
-    sessionUserId: session?.id ?? null,
-    leadingBidderId: initialLeadingBidderId,
-    userHasBid: initialUserHasBid,
-  });
 
   const watching = watchlist.some((w) => w.lotId === auction.id);
   const watchedLotIds = watchlist.map((w) => w.lotId);
@@ -429,15 +417,12 @@ export function buildLotPageViewModel(input: {
     saleBundle,
     kycSummary,
     kycUnavailable,
-    initialAutoBidSettings,
     watcherCount,
     actingCtx,
     orgModuleEnabled,
     initialSaleroomStatus,
     initialHistory,
     initialLeadingBidderId,
-    initialOutbid,
-    initialUserHasBid,
     watching,
     watchedLotIds,
     parentSale,

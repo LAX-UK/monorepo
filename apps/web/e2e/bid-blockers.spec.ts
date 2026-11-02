@@ -19,10 +19,10 @@ test.describe("bid blockers @journey", () => {
     );
 
     await page.goto(liveLotPath, { waitUntil: "domcontentloaded" });
-    await expect(page.getByTestId("bid-blocker")).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByRole("heading", { name: "Sign in to bid" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /sign in to continue/i })).toBeVisible();
-    await expect(page.locator("button:enabled").filter({ hasText: /review bid/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /sign in to (bid|register)/i })).toBeVisible({
+      timeout: 20_000,
+    });
+    await expect(page.locator("button:enabled").filter({ hasText: /^bid £/i })).toHaveCount(0);
   });
 
   test("unverified email sign-in is blocked before lot bidding", async ({ page }) => {

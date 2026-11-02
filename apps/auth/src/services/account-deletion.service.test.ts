@@ -49,11 +49,12 @@ function setup(
     }),
   };
   const onProductUnavailable = vi.fn();
+  const notices = { notify: vi.fn(async () => undefined) };
   const service = new AccountDeletionService(
-    { operations: operations as never, products, onProductUnavailable },
+    { operations: operations as never, products, notices, onProductUnavailable },
     () => NOW,
   );
-  return { service, operations, products, onProductUnavailable };
+  return { service, operations, products, onProductUnavailable, notices };
 }
 
 describe("AccountDeletionService.status", () => {
@@ -119,6 +120,25 @@ describe("AccountDeletionService.requestDeletion", () => {
       requestedAt: NOW.toISOString(),
     });
     expect(operations.markDeletionRequested).toHaveBeenCalledWith(SUBJECT);
+  });
+
+  it("emails the person the day the grace period ends", async () => {
+    const { service, notices } = setup();
+    await service.requestDeletion(SUBJECT);
+    expect(notices.notify).toHaveBeenCalledWith({
+      kind: "account_deletion_requested",
+      userId: SUBJECT,
+      at: NOW,
+      effectiveAt: new Date("2026-11-22T12:00:00.000Z"),
+    });
+  });
+
+  it("sends no email when a product blocks the request", async () => {
+    const { service, notices } = setup({
+      answers: { bid: { product: "bid", blockers: [BLOCKER] } },
+    });
+    await service.requestDeletion(SUBJECT);
+    expect(notices.notify).not.toHaveBeenCalled();
   });
 
   it("changes nothing when a product has blockers", async () => {
@@ -187,7 +207,7 @@ describe("AccountDeletionService.requestDeletionWithStepUp", () => {
 
 describe("AccountDeletionService.cancelDeletion", () => {
   it("cancels a deletion in its grace period with any live sign-in", async () => {
-    const { service, operations } = setup({
+    const { service, operations, notices } = setup({
       deletionRequestedAt: new Date("2026-10-01T09:00:00.000Z"),
       sessionAgeMs: 3_600_000,
     });
@@ -196,15 +216,21 @@ describe("AccountDeletionService.cancelDeletion", () => {
       outcome: "cancelled",
     });
     expect(operations.cancelDeletionRequested).toHaveBeenCalledWith(SUBJECT);
+    expect(notices.notify).toHaveBeenCalledWith({
+      kind: "account_deletion_cancelled",
+      userId: SUBJECT,
+      at: NOW,
+    });
   });
 
   it("does nothing, and publishes nothing, when no deletion was requested", async () => {
-    const { service, operations } = setup();
+    const { service, operations, notices } = setup();
     expect(await service.cancelDeletion(SUBJECT, "current")).toEqual({
       ok: true,
       outcome: "not_requested",
     });
     expect(operations.cancelDeletionRequested).not.toHaveBeenCalled();
+    expect(notices.notify).not.toHaveBeenCalled();
   });
 
   it("needs a live sign-in of the person's own", async () => {

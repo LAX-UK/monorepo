@@ -47,7 +47,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref,
   ) => {
     const Comp = asChild ? Slot : "button";
-    const leading = loading ? <LoaderCircle aria-hidden className="animate-spin" /> : icon;
+    const leading = loading ? (
+      <LoaderCircle aria-hidden className="animate-spin motion-reduce:animate-none" />
+    ) : (
+      icon
+    );
     const explained = Boolean(disabledReason) && !loading;
     const button = (
       <Comp
