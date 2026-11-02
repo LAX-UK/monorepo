@@ -37,6 +37,9 @@ importers:
       '@lhci/cli':
         specifier: ^0.14.0
         version: 0.14.0
+      '@sentry/cli':
+        specifier: 2.58.6
+        version: 2.58.6
       '@types/pg':
         specifier: ^8.11.10
         version: 8.20.0

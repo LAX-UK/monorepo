@@ -22,6 +22,10 @@ COPY packages/identity-contracts ./packages/identity-contracts
 COPY packages/identity-db ./packages/identity-db
 COPY packages/observability ./packages/observability
 RUN pnpm --filter @auction/auth-app... --workspace-concurrency=1 build
+# Stamp debug IDs into the shipped JS and maps so source maps uploaded after the deploy
+# still match this build. Uses the lockfile-pinned CLI from the install above (no download here);
+# a failure only costs Sentry matching, so the image still builds.
+RUN pnpm exec sentry-cli sourcemaps inject apps/auth/dist || echo "WARNING: debug ID injection failed; building without debug IDs"
 
 FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
