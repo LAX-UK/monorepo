@@ -110,3 +110,19 @@ export const shopGuestLeadErasedPayloadSchemaV1 = z.object({
   leadSubjectId: z.string().min(1),
   erasedAt: rfc3339Timestamp,
 });
+
+/**
+ * A product anonymised a person's data after Identity purged the account. The audit trail for the
+ * purge: who (the subject, an opaque id), when, and how many rows each table changed. It carries
+ * no personal data. Bid and Shop each emit their own, so the product is part of the payload.
+ */
+export const userPersonalDataAnonymisedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  subjectId: z.string().min(1),
+  product: z.enum(["bid", "shop"]),
+  anonymisedAt: rfc3339Timestamp,
+  tables: z.record(z.string().min(1), z.number().int().nonnegative()),
+});
+export type UserPersonalDataAnonymisedPayloadV1 = z.infer<
+  typeof userPersonalDataAnonymisedPayloadSchemaV1
+>;

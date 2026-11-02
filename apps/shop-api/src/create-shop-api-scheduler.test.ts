@@ -27,6 +27,7 @@ describe("createShopApiScheduler", () => {
     expect(names).toContain("stale-checkout-reaper");
     expect(names).toContain("identity-merge");
     expect(names).toContain("staff-access");
+    expect(names).toContain("personal-data-anonymisation");
     expect(names).toContain("notify-me-dispatch");
     expect(names).not.toContain("payout-eligibility");
     expect(names).not.toContain("stock-hold-expiry");

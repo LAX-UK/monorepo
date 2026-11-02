@@ -5,6 +5,10 @@ import {
   processBidIdentityDirectory,
 } from "./bid-identity-directory.js";
 import {
+  BID_PERSONAL_DATA_ANONYMISATION_PROJECTOR,
+  processBidPersonalDataAnonymisation,
+} from "./bid-personal-data-anonymisation.js";
+import {
   BID_PROFILE_PROVISIONING_PROJECTOR,
   processBidProfileProvisioning,
 } from "./bid-profile-provisioning.js";
@@ -173,6 +177,12 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
       name: BID_IDENTITY_DIRECTORY_PROJECTOR,
       async run(ctx) {
         await processBidIdentityDirectory(ctx);
+      },
+    },
+    {
+      name: BID_PERSONAL_DATA_ANONYMISATION_PROJECTOR,
+      async run(ctx) {
+        await processBidPersonalDataAnonymisation(ctx);
       },
     },
     {
