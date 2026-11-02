@@ -21,14 +21,16 @@ worked by client services.
    success the API did not confirm.
 4. The enquiry appears in the staff work inbox as "Contact enquiry" with a due time two business
    days after it arrived, matching the "We reply within two business days" copy. It is visible to
-   client services and administrators. It opens at `/admin/enquiries/<id>`.
-5. Client services reply from their own mail, then choose **Mark handled**. That closes the
-   enquiry and records `marketing_enquiry.handled` with the person who did it in the audit log
-   (Operations view).
+   client services and administrators. It opens at `/admin/enquiries/<id>`, which redirects to the
+   record's reference address, `/admin/enquiries/E-1042`.
+5. Staff work it from **Enquiries** in Bid admin (People): the list, then the record, where they
+   assign it, change its status, add internal notes and close it with a reason. Client services
+   reply from their own mail until replies are sent from the record. Closing records
+   `marketing_enquiry.status_changed` with the reason and the person who did it in the audit log.
 
 ## Working an enquiry
 
-Staff use `GET /admin/enquiries` (views: assigned to me, open, unassigned, private sales, closed,
+The Enquiries screens (`/admin/enquiries`) use `GET /admin/enquiries` (views: assigned to me, open, unassigned, private sales, closed,
 all; filters on kind, department, status and assignee; cursor paging) and
 `GET /admin/enquiries/<reference or id>`. `PATCH /admin/enquiries/<reference>` assigns, changes the
 status (new, in progress, waiting on client, closed with a reason, converted by the convert flow
@@ -39,7 +41,14 @@ audited as `marketing_enquiry.assigned` and `.status_changed`.
 Private sale enquiries are visible only to roles holding `enquiries.private_sale.read`
 (administrator, sales manager, specialist, client services). The service hides them from everyone
 else, including the person they are assigned to. Administrators and sales managers set the routing
-table with `PUT /admin/enquiry-routing`; each changed row is audited as `enquiry_routing.changed`.
+table with `PUT /admin/enquiry-routing` from the **Routing** dialog on the list; each changed row is
+audited as `enquiry_routing.changed`. `GET /admin/enquiry-assignees` names the staff an enquiry may
+be given to, for the assignee and routing pickers.
+
+The waiting time on the list counts from arrival against the two business day reply: a warning in
+the last day, danger once it is overdue. It runs while an enquiry is new and stops once someone
+is working it.
+
 ## Alert email
 
 | Variable | Service | Meaning |

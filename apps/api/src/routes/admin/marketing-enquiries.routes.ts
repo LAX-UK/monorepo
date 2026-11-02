@@ -60,6 +60,7 @@ export function attachAdminMarketingEnquiryRoutes(
   platform.use("/enquiries", requireEnquiries);
   platform.use("/enquiries/*", requireEnquiries);
   platform.use("/enquiry-routing", requireEnquiries);
+  platform.use("/enquiry-assignees", requireEnquiries);
 
   /** GET /admin/enquiries — one page of a view, with filters. */
   platform.get("/enquiries", zValidator("query", adminEnquiryListQuerySchema), async (c) => {
@@ -114,6 +115,11 @@ export function attachAdminMarketingEnquiryRoutes(
       return c.json({ error: result.error }, result.error === "enquiry_not_found" ? 404 : 409);
     },
   );
+
+  /** GET /admin/enquiry-assignees — the staff an enquiry may be given to, by name. */
+  platform.get("/enquiry-assignees", async (c) => {
+    return c.json({ data: { assignees: await container.admin.enquiryRouting.assignees() } });
+  });
 
   /** GET /admin/enquiry-routing — who receives each department's enquiries. */
   platform.get("/enquiry-routing", async (c) => {
