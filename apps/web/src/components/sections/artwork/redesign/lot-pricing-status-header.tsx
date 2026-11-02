@@ -13,6 +13,8 @@ import { cn } from "@auction/ui";
 type Props = {
   seed: LotSummarySeedVM;
   currentPrice: string;
+  /** Whether anyone has bid: until then the figure is the starting bid. */
+  hasBids: boolean;
   minNextBid: string;
   lotNumber?: number | null;
   reserveContext: LotReserveContext;
@@ -26,6 +28,7 @@ type Props = {
 export function LotPricingStatusHeader({
   seed,
   currentPrice,
+  hasBids,
   minNextBid,
   lotNumber,
   reserveContext,
@@ -40,7 +43,7 @@ export function LotPricingStatusHeader({
   const live = lifecycle.kind === "live" || lifecycle.kind === "extended";
   const scheduled = lifecycle.kind === "scheduled";
   const showTimingColumn = live || scheduled;
-  const price = lotPriceLabel(lifecycle.kind);
+  const price = lotPriceLabel(lifecycle.kind, hasBids);
 
   return (
     <div className={cn("mb-4 border-b border-outline-variant/30 pb-4", className)}>

@@ -64,6 +64,7 @@ const rail: LotRelatedRailVM = {
       artistOrSellerName: "Artist One",
       estimateLine: "$1,000 – $2,000",
       currentPrice: "900.00",
+      priceLabel: "Current bid",
       endTime: "2026-06-01T18:00:00.000Z",
       status: "active",
       sellerId: "seller-1",

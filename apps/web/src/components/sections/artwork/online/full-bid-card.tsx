@@ -64,6 +64,7 @@ export function FullBidCard() {
           <LotPricingStatusHeader
             seed={summarySeed}
             currentPrice={currentPrice}
+            hasBids={history.length > 0}
             minNextBid={minNumeric.toFixed(2)}
             lotNumber={auction.lotNumber}
             reserveContext={reserveContext}

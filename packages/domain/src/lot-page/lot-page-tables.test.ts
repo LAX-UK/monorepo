@@ -6,7 +6,9 @@ import {
   LOT_LIFECYCLE_COPY,
   LOT_LIFECYCLE_KINDS,
   isLotLifecycleClosed,
+  lotHeadlineLabel,
   lotLifecycleHasCountdown,
+  lotPriceHasBids,
 } from "./lifecycle-copy.js";
 import { resolveLotAction } from "./lot-action.js";
 import { nextBidAmount, validBidAmounts } from "./next-bid.js";
@@ -329,5 +331,25 @@ describe("bidder attention", () => {
 
   it("is empty when nothing is waiting", () => {
     expect(groupBidderAttention([])).toEqual([]);
+  });
+});
+
+describe("lotHeadlineLabel", () => {
+  it("is Starting bid for every open kind until the first bid, and Current bid after", () => {
+    for (const kind of ["live", "extended", "liveSaleroom", "saleroomPaused"] as const) {
+      expect(lotHeadlineLabel(kind, false)).toBe("Starting bid");
+      expect(lotHeadlineLabel(kind, true)).toBe("Current bid");
+    }
+  });
+
+  it("does not change the words of kinds that never show a bid", () => {
+    for (const kind of ["endedSold", "endedNoSale", "cancelled", "withdrawn"] as const) {
+      expect(lotHeadlineLabel(kind, false)).toBe(lotHeadlineLabel(kind, true));
+    }
+  });
+
+  it("reads bids off the price moving past the starting price", () => {
+    expect(lotPriceHasBids({ currentPrice: "4200.00", startingPrice: "4200.00" })).toBe(false);
+    expect(lotPriceHasBids({ currentPrice: "4450.00", startingPrice: "4200.00" })).toBe(true);
   });
 });

@@ -1,6 +1,7 @@
 import { formatEstimateRange } from "@/lib/format-currency";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { salePath } from "@/lib/seo/url";
+import { lotHeadlineLabel, lotPriceHasBids } from "@auction/domain";
 import type { Lot, PublicLotView, Sale } from "@auction/types";
 import { normalizeAuctionTime } from "@auction/validators";
 import { resolveLotHref, sortSaleLotsForNav } from "./shared";
@@ -14,6 +15,8 @@ export type LotRailCardVM = {
   artistOrSellerName: string;
   estimateLine: string | null;
   currentPrice: string;
+  /** "Starting bid" until the first bid, then "Current bid". */
+  priceLabel: string;
   endTime: string | null;
   status: Lot["status"];
   sellerId: string;
@@ -43,6 +46,7 @@ function lotToRailCard(
     artistOrSellerName: artistName,
     estimateLine: est ? formatEstimateRange(est) : null,
     currentPrice: lot.currentPrice,
+    priceLabel: lotHeadlineLabel("live", lotPriceHasBids(lot)),
     endTime: normalizeAuctionTime(lot.endTime),
     status: lot.status,
     sellerId: lot.sellerId ?? lot.sellerLegalEntityId ?? "",
