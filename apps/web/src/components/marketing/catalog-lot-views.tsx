@@ -1,3 +1,6 @@
+import { LotCardBidderState } from "@/components/lot-card/lot-card-bidder-state";
+import { LotCardLine } from "@/components/lot-card/lot-card-line";
+import { LotEstimateLine } from "@/components/lot-card/lot-estimate-line";
 import { CatalogLotEditorialCalmCaption } from "@/components/marketing/catalog-lot-editorial-calm-caption";
 import { LotCardEditorialCalm, LotCardGrid, LotCardList } from "@/components/marketing/lot-card";
 import { CatalogLotQuickLookCorner } from "@/components/marketing/lot-quick-look/catalog-lot-quick-look-corner";
@@ -7,7 +10,7 @@ import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import { MediaImage } from "@/components/ui/media-image";
 import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
-import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
+import { lotCardLineModel, lotCardShowsStatusBadge } from "@/lib/lot-card/lot-card-line";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
@@ -66,6 +69,8 @@ function LotWatchlistHeart({
 
 function LotStatusOverlay({ lot }: { lot: CatalogLotVM }) {
   if (!isPublicLotStatus(lot.status)) return null;
+  // The price line carries the clock; the badge stays only for outcomes the line does not say.
+  if (!lotCardShowsStatusBadge(lotCardLineModel(lot, new Date()))) return null;
   return <LotStatusBadge {...lotStatusBadgeProps(lot)} />;
 }
 
@@ -117,20 +122,19 @@ export function CatalogLotGridView({
                 <h2 className="font-headline line-clamp-2 text-sm font-medium text-on-surface group-hover:text-link md:text-xl">
                   {a.title}
                 </h2>
-                <p className="mt-0.5 line-clamp-1 min-h-4 font-body text-xs text-on-surface-variant md:mt-1 md:text-sm">
-                  {subtitle ?? "\u00a0"}
-                </p>
+                {subtitle ? (
+                  <p className="mt-0.5 line-clamp-1 font-body text-xs text-on-surface-variant md:mt-1 md:text-sm">
+                    {subtitle}
+                  </p>
+                ) : null}
               </>
             }
             meta={
-              <>
-                <p className="mt-1 font-label text-xs text-on-surface-variant md:mt-2">
-                  {formatMoney(a.currentPrice, lotChargeCurrency(a))}
-                </p>
-                <p className="mt-0.5 hidden min-h-4 font-label text-xs text-on-surface-variant md:mt-1 md:block">
-                  {est ? `Est. ${est}` : "\u00a0"}
-                </p>
-              </>
+              <div className="mt-2 flex flex-col gap-1.5">
+                <LotEstimateLine value={est} />
+                <LotCardLine model={lotCardLineModel(a, new Date())} />
+                <LotCardBidderState lotId={a.id} />
+              </div>
             }
           />
         );
@@ -258,22 +262,10 @@ export function CatalogLotListView({
                   </div>
                 }
                 footer={
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="font-label text-xs text-on-surface-variant">
-                        {formatMoney(a.currentPrice, lotChargeCurrency(a))}
-                      </p>
-                      {est ? (
-                        <p className="mt-0.5 font-label text-xs text-on-surface-variant">
-                          Est. {est}
-                        </p>
-                      ) : null}
-                    </div>
-                    {isPublicLotStatus(a.status) ? (
-                      <div className="tabular-nums">
-                        <LotStatusBadge {...lotStatusBadgeProps(a)} />
-                      </div>
-                    ) : null}
+                  <div className="flex w-full min-w-0 flex-col gap-1.5">
+                    <LotEstimateLine value={est} />
+                    <LotCardLine model={lotCardLineModel(a, new Date())} />
+                    <LotCardBidderState lotId={a.id} />
                   </div>
                 }
               />
