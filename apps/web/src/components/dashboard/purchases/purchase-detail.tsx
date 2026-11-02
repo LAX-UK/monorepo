@@ -1,11 +1,10 @@
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
-import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { DeliveryPanelVm } from "@/lib/purchases/purchase-delivery.vm";
 import type { PurchaseProblemPanelVm } from "@/lib/purchases/purchase-problem";
 import type { PurchaseCardVm } from "@/lib/purchases/purchases.vm";
 import { cn } from "@auction/ui";
 import { ButtonLink, StatusBadge, pageTitleClass } from "@auction/ui/lax";
-import { ChevronLeft, Download, FileText } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { DeliveryPanel } from "./delivery-panel";
@@ -101,13 +100,6 @@ export function PurchaseDetail({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <Link
-          href={CLIENT_ROUTES.purchases}
-          className="inline-flex w-fit items-center gap-1 text-lax-13 text-lax-muted hover:text-lax-fg"
-        >
-          <ChevronLeft aria-hidden className="size-3.5" />
-          Purchases
-        </Link>
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <h1 className={pageTitleClass} data-page-title="">

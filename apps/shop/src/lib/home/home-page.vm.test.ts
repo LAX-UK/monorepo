@@ -141,7 +141,7 @@ describe("with nothing on sale", () => {
       emptyAction: { label: "See original works on lax.art", href: "https://art.test" },
     });
     expect(vm.hero.lead).toMatch(/^Every edition has found a home/);
-    expect(vm.layout.sections).toEqual(["hero", "product-doors", "gallery-team"]);
+    expect(vm.layout.sections).toEqual(["hero", "release-alerts", "product-doors", "gallery-team"]);
   });
 
   it("does not claim the Shop is empty when the editions read failed", () => {
@@ -239,11 +239,15 @@ describe("the home page's band sequence", () => {
       "trust",
       "new-editions",
       "artists",
+      "release-alerts",
       "product-doors",
       "gallery-team",
     ]);
     expect(vm.layout.surfaces.hero).toBe("plain");
     expect(vm.layout.surfaces["gallery-team"]).toBe("band");
+    // The doors between them keep the two tinted bands apart.
+    expect(vm.layout.surfaces["release-alerts"]).toBe("band");
+    expect(vm.layout.surfaces["product-doors"]).toBe("plain");
     expect(vm.galleryTeam.title).toBe("Help choosing a size, a frame or a gift");
   });
 });

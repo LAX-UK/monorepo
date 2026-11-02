@@ -1,5 +1,6 @@
 "use client";
 
+import { AddressFields } from "@/components/address/address-fields";
 import type { InvoiceDetailsView } from "@/lib/data/http/organisation-team.types";
 import {
   type InvoiceDetailsForm,
@@ -9,9 +10,8 @@ import {
   validateInvoiceDetails,
 } from "@/lib/organisation-team/invoice-details.vm";
 import { saveInvoiceDetailsAction } from "@/lib/organisation-team/organisation-team.actions";
-import { countriesByName } from "@/lib/ui/countries";
 import { notify } from "@/lib/ui/notify";
-import { Button, Field, Notice, SelectMenu, Switch, TextInput } from "@auction/ui/lax";
+import { Button, Field, Notice, Switch, TextInput } from "@auction/ui/lax";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { SettingsCard, SettingsRow } from "./settings-section";
@@ -34,7 +34,6 @@ export function InvoiceDetailsCard({ legalEntityId, details }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const errors = tried ? validateInvoiceDetails(form) : {};
-  const countries = useMemo(() => countriesByName(), []);
 
   const open = (row: Editing) => {
     setForm(saved);
@@ -133,58 +132,12 @@ export function InvoiceDetailsCard({ legalEntityId, details }: Props) {
             />
           </div>
           {form.ownAddress ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field label="Address line 1" error={errors.line1 ?? null} className="md:col-span-2">
-                <TextInput
-                  autoComplete="address-line1"
-                  value={form.address.line1}
-                  onChange={(e) => setAddress({ line1: e.target.value })}
-                  disabled={pending}
-                />
-              </Field>
-              <Field label="Address line 2" optional className="md:col-span-2">
-                <TextInput
-                  autoComplete="address-line2"
-                  value={form.address.line2}
-                  onChange={(e) => setAddress({ line2: e.target.value })}
-                  disabled={pending}
-                />
-              </Field>
-              <Field label="Town or city" error={errors.city ?? null}>
-                <TextInput
-                  autoComplete="address-level2"
-                  value={form.address.city}
-                  onChange={(e) => setAddress({ city: e.target.value })}
-                  disabled={pending}
-                />
-              </Field>
-              <Field label="County or region" optional>
-                <TextInput
-                  autoComplete="address-level1"
-                  value={form.address.region}
-                  onChange={(e) => setAddress({ region: e.target.value })}
-                  disabled={pending}
-                />
-              </Field>
-              <Field label="Postcode" error={errors.postalCode ?? null}>
-                <TextInput
-                  autoComplete="postal-code"
-                  value={form.address.postalCode}
-                  onChange={(e) => setAddress({ postalCode: e.target.value })}
-                  disabled={pending}
-                />
-              </Field>
-              <Field label="Country" error={errors.country ?? null}>
-                <SelectMenu
-                  label="Country"
-                  value={form.address.country}
-                  onValueChange={(country) => setAddress({ country })}
-                  options={countries.map((c) => ({ value: c.code, label: c.name }))}
-                  disabled={pending}
-                  className="w-full"
-                />
-              </Field>
-            </div>
+            <AddressFields
+              values={form.address}
+              onChange={setAddress}
+              errors={errors}
+              disabled={pending}
+            />
           ) : (
             <p className="text-lax-13 text-lax-muted">Invoices carry the registered address.</p>
           )}

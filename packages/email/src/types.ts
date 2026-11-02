@@ -16,6 +16,8 @@ import type { PaymentTemplateVars } from "./templates/types/payment.js";
 import { paymentTemplates } from "./templates/types/payment.js";
 import type { PayoutTemplateVars } from "./templates/types/payout.js";
 import { payoutTemplates } from "./templates/types/payout.js";
+import type { SaleAlertTemplateVars } from "./templates/types/sale-alerts.js";
+import { saleAlertTemplates } from "./templates/types/sale-alerts.js";
 import type { RecipientResolution, RenderedEmail } from "./templates/types/shared.js";
 import type { ShopTemplateVars } from "./templates/types/shop.js";
 import { shopTemplates } from "./templates/types/shop.js";
@@ -36,6 +38,7 @@ export const templateNames = [
   ...adminTemplates.names,
   ...enquiryTemplates.names,
   ...shopTemplates.names,
+  ...saleAlertTemplates.names,
 ] as const;
 
 export type TemplateName = (typeof templateNames)[number];
@@ -50,7 +53,8 @@ export type TemplateVarsByName = AuthTemplateVars &
   ComplianceTemplateVars &
   AdminTemplateVars &
   EnquiryTemplateVars &
-  ShopTemplateVars;
+  ShopTemplateVars &
+  SaleAlertTemplateVars;
 
 export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   ...authTemplates.recipientResolution,
@@ -64,4 +68,5 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   ...adminTemplates.recipientResolution,
   ...enquiryTemplates.recipientResolution,
   ...shopTemplates.recipientResolution,
+  ...saleAlertTemplates.recipientResolution,
 };

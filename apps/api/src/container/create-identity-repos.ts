@@ -27,6 +27,7 @@ import type {
   IUserInvitationRepository,
   IUserRepository,
   IUserSuspensionChecker,
+  IVisitorSaleAlertRepository,
 } from "@auction/persistence/interfaces";
 import {
   DrizzleAccountDeletionEligibilityReader,
@@ -53,6 +54,7 @@ import {
   DrizzleUserInvitationRepository,
   DrizzleUserRepository,
   DrizzleUserSuspensionChecker,
+  DrizzleVisitorSaleAlertRepository,
   createDrizzleLegalEntityRepository,
 } from "@auction/persistence/repositories";
 
@@ -85,6 +87,7 @@ export type IdentityRepositories = {
   accountDeletionEligibilityReader: IAccountDeletionEligibilityReader;
   savedSearchRepository: ISavedSearchRepository;
   newsletterSignupRepository: INewsletterSignupRepository;
+  visitorSaleAlertRepository: IVisitorSaleAlertRepository;
 };
 
 export function createIdentityRepositories(db: Database): IdentityRepositories {
@@ -115,6 +118,7 @@ export function createIdentityRepositories(db: Database): IdentityRepositories {
   const accountDeletionEligibilityReader = new DrizzleAccountDeletionEligibilityReader(db);
   const savedSearchRepository = new DrizzleSavedSearchRepository(db);
   const newsletterSignupRepository = new DrizzleNewsletterSignupRepository(db);
+  const visitorSaleAlertRepository = new DrizzleVisitorSaleAlertRepository(db);
 
   return {
     userRepo,
@@ -143,5 +147,6 @@ export function createIdentityRepositories(db: Database): IdentityRepositories {
     accountDeletionEligibilityReader,
     savedSearchRepository,
     newsletterSignupRepository,
+    visitorSaleAlertRepository,
   };
 }

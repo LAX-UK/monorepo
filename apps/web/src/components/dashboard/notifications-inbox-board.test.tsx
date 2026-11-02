@@ -61,6 +61,7 @@ const chrome: AccountChrome = {
     ],
     pendingInvitations: 0,
     invitationsHref: "/organisations/invitations",
+    accountsHref: "/organisations",
     registerHref: "/onboarding/organisation",
   },
 };

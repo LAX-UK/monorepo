@@ -27,8 +27,9 @@ export type RoleChangeTarget = { id: string; name: string };
 export const ROLE_CHANGE_UNDO_MS = 10_000;
 
 /**
- * A role change: the picker shows the new role while the server decides, the success toast
- * appears only once the server has agreed, and Undo sends the previous role back through the
+ * A role change, made from the "Change role" dialog: the row shows the new role while the server
+ * decides, the success toast appears only once the server has agreed (the outcome is returned so
+ * the dialog can stay open on a refusal), and Undo sends the previous role back through the
  * same change. A refusal (of the change or of the Undo) puts the saved role back and says why on
  * the row, where it stays; an error never lives only in a toast that disappears.
  */
@@ -38,8 +39,8 @@ export async function changeMemberRole(
   from: LegalEntityMemberRole,
   to: LegalEntityMemberRole,
   organisationName: string,
-): Promise<void> {
-  if (from === to) return;
+): Promise<MemberChangeResult> {
+  if (from === to) return { ok: true };
   ports.rowError(member.id, null);
   ports.show(member.id, to);
   ports.busy(member.id, true);
@@ -48,11 +49,12 @@ export async function changeMemberRole(
   if (!result.ok) {
     ports.show(member.id, null);
     ports.rowError(member.id, result.error);
-    return;
+    return result;
   }
   ports.toast(roleChangedCopy(member.name, from, to, organisationName), () => {
     void undoRoleChange(ports, member, to, from);
   });
+  return result;
 }
 
 async function undoRoleChange(

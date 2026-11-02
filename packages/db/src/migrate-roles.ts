@@ -112,6 +112,8 @@ export const SHOP_COMMERCE_TABLES = [
   /** Guest checkout: the guest and lead behind guest orders, and their emailed order links. */
   "shop_guest_customer",
   "shop_guest_order_link",
+  /** People who asked to hear about new editions: confirmed by email, stopped with one click. */
+  "shop_release_alert_subscription",
   /** How far shop-api has read the shared event log for each of its own projections. */
   "shop_projection_cursor",
 ] as const;

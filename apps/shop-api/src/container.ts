@@ -10,6 +10,7 @@ import { createEnquiryInboxService } from "./application/enquiry-inbox.service.j
 import {
   createEditionAlertRateLimiter,
   createEnquiryRateLimiter,
+  createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createCountArtworkFacetsHandler } from "./application/handlers/count-artwork-facets.handler.js";
@@ -27,6 +28,7 @@ import { createListPublicCategoriesHandler } from "./application/handlers/list-p
 import { createListPublicMerchandiseProductsHandler } from "./application/handlers/list-public-merchandise-products.handler.js";
 import { createPortalFavoritesHandlers } from "./application/handlers/portal-favorites.handler.js";
 import { createRegisterArtworkInterestHandler } from "./application/handlers/register-artwork-interest.handler.js";
+import { createReleaseAlertHandlers } from "./application/handlers/release-alerts.handler.js";
 import { createShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
 import { createLaxPortfolioHandlers } from "./application/lax-portfolio/lax-portfolio.handler.js";
@@ -81,6 +83,8 @@ import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle
 import { createDrizzlePortalPortfolioRepository } from "./infrastructure/drizzle-portal-portfolio.repository.js";
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
 import { createDrizzleProductionTaskRepository } from "./infrastructure/drizzle-production-task.repository.js";
+import { createDrizzleReleaseAlertAnnouncer } from "./infrastructure/drizzle-release-alert.announcer.js";
+import { createDrizzleReleaseAlertStore } from "./infrastructure/drizzle-release-alert.store.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
 import { createDrizzleSavedViewRepository } from "./infrastructure/drizzle-saved-view.repository.js";
 import { createDrizzleShopMediaAssetRepository } from "./infrastructure/drizzle-shop-media-asset.repository.js";
@@ -125,6 +129,7 @@ import { idempotentAdminCommand } from "./infrastructure/idempotent-admin-comman
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createDrizzleOriginalSaleWriter } from "./infrastructure/phase/drizzle-original-sale.writer.js";
 import { createRedisFixedWindowCounter } from "./infrastructure/redis-fixed-window-counter.js";
+import { resolveShopUserEmail } from "./infrastructure/resolve-shop-user-email.js";
 import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
@@ -247,6 +252,15 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
     }),
   });
+  const releaseAlertRateLimiter = createReleaseAlertRateLimiter(rateLimitCounter);
+  const releaseAlertStore = createDrizzleReleaseAlertStore(db, {
+    notifications,
+    shopOrigin: storefrontOrigins.shop,
+  });
+  const releaseAlerts = createReleaseAlertHandlers({
+    store: releaseAlertStore,
+    accountEmail: (identitySubjectId) => resolveShopUserEmail(db, identitySubjectId),
+  });
   const internalBase = env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL;
   const jwksUrl = `${internalBase.replace(/\/+$/, "")}/.well-known/jwks.json`;
   const staffReader = createDrizzleShopStaffMemberReader(db);
@@ -357,6 +371,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const artworkCatalogue = createDrizzleArtworkCatalogueWriter(shopUow, {
     resolveMediaUrl,
     editionRuns: editionRuns.recorder,
+    releaseAlerts: createDrizzleReleaseAlertAnnouncer({ notifications, storefrontOrigins }),
   });
   const artistCatalogue = createDrizzleArtistCatalogueWriter(shopUow);
   const homeFeatures = createHomeFeaturesService({
@@ -507,6 +522,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           staffReader,
         }),
         leads: new LeadsService(createDrizzleLeadReader(db)),
+        releaseAlertSummary: releaseAlertStore,
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {
             domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
@@ -588,6 +604,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         enquiryRateLimiter,
         editionAlerts,
         editionAlertRateLimiter,
+        releaseAlerts,
+        releaseAlertRateLimiter,
       },
       editorial,
     },

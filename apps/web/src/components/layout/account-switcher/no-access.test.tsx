@@ -31,6 +31,7 @@ const SWITCHER: AccountChrome["switcher"] = {
   options: [personal, gallery],
   pendingInvitations: 0,
   invitationsHref: "/organisations/invitations",
+  accountsHref: "/organisations",
   registerHref: "/onboarding/organisation?fresh=1",
 };
 

@@ -1,6 +1,6 @@
-import type { LegalEntitySummary } from "@auction/types";
+import type { LegalEntityStatus, LegalEntitySummary } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { sellerAccountChoice } from "./seller-account-options";
+import { actingForOrganisation, sellerAccountChoice } from "./seller-account-options";
 
 function membership(partial: Partial<LegalEntitySummary> & Pick<LegalEntitySummary, "id">) {
   return {
@@ -86,5 +86,33 @@ describe("sellerAccountChoice", () => {
       actingId: null,
     });
     expect(choice.options.map((o) => o.id)).toEqual(["me"]);
+  });
+
+  it("knows when the preselected account is an organisation", () => {
+    const inOrganisation = sellerAccountChoice({
+      memberships: [personal, membership({ id: "gallery" })],
+      personalName: "Jane Smith",
+      actingId: "gallery",
+    });
+    const asPerson = sellerAccountChoice({
+      memberships: [personal, membership({ id: "gallery" })],
+      personalName: "Jane Smith",
+      actingId: null,
+    });
+    expect(actingForOrganisation(inOrganisation)).toBe(true);
+    expect(actingForOrganisation(asPerson)).toBe(false);
+  });
+
+  it("words each draft-only state from the shared selling note", () => {
+    const note = (status: LegalEntityStatus) =>
+      sellerAccountChoice({
+        memberships: [personal, membership({ id: "o", status })],
+        personalName: "Jane Smith",
+        actingId: "o",
+      }).options.find((o) => o.id === "o")?.sellingNote?.summary;
+    expect(note("docs_requested")).toMatch(/Documents needed/);
+    expect(note("under_review")).toMatch(/Under review/);
+    expect(note("connect_pending")).toMatch(/Payouts not set up/);
+    expect(note("approved")).toBeUndefined();
   });
 });

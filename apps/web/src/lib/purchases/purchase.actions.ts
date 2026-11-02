@@ -1,7 +1,10 @@
 "use server";
 
+import { type AddressValues, validateAddress } from "@/lib/address/address-fields";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { profileAddressRowSchema } from "@/lib/data/http/addresses.schema";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import {
   type ActionResult,
   actionFailure,
@@ -14,6 +17,11 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 import type { PaySeveralSkipReason } from "@auction/domain";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import {
+  type DeliveryAddress,
+  deliveryAddressFromBook,
+  newDeliveryAddressBody,
+} from "./delivery-addresses.vm";
 import {
   PAY_SEVERAL_START_COPY,
   PAY_SEVERAL_START_FAILED,
@@ -172,6 +180,45 @@ async function quoteStep(path: string, body: unknown, lotId: string): Promise<Qu
     message:
       (code && QUOTE_MESSAGES[code]) ?? "We couldn't do that just now. Try again in a moment.",
   };
+}
+
+export type SaveDeliveryAddressResult =
+  | { ok: true; address: DeliveryAddress }
+  | { ok: false; message: string };
+
+/**
+ * Saves a new delivery address to the member's LAX Account address book, so it is offered again
+ * on the next purchase, and hands it back for the picker.
+ */
+export async function saveDeliveryAddressAction(
+  label: string,
+  address: AddressValues,
+): Promise<SaveDeliveryAddressResult> {
+  return instrumentServerAction("saveDeliveryAddressAction", async () => {
+    if (Object.keys(validateAddress(address)).length > 0) {
+      return { ok: false, message: "Check the address and try again." } as const;
+    }
+    const res = await authedServerFetch("/users/me/addresses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newDeliveryAddressBody(label, address)),
+    });
+    if (!res.ok) {
+      return {
+        ok: false,
+        message: "We couldn't save that address just now. Try again in a moment.",
+      } as const;
+    }
+    try {
+      const row = readDataEnvelope(await readJsonBody(res), profileAddressRowSchema);
+      return { ok: true, address: deliveryAddressFromBook(row) } as const;
+    } catch {
+      return {
+        ok: false,
+        message: "We couldn't save that address just now. Try again in a moment.",
+      } as const;
+    }
+  });
 }
 
 const lotIdSchema = z.string().uuid();

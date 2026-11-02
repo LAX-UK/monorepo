@@ -64,11 +64,11 @@ error is logged with the enquiry id.
 
 ## Rollback
 
-`packages/db/drizzle/0275_rollback.sql` removes the reference, intent, owner and workflow columns,
+`packages/db/drizzle/0277_rollback.sql` removes the reference, intent, owner and workflow columns,
 the private sale detail, attachment, note, message and routing tables, and returns every closed
 enquiry to `handled` and every other one to `new`. `packages/db/drizzle/0274_rollback.sql` drops
 `marketing_enquiry`; stored enquiries are lost. Roll back the application release first, and roll
-back `0275` before `0274`.
+back `0277` before `0274`.
 
-`packages/db/drizzle/0276_rollback.sql` deletes files uploaded for a draft (they have no user) and
-restores `owner_user_id NOT NULL`; roll it back before `0275`.
+`packages/db/drizzle/0278_rollback.sql` deletes files uploaded for a draft (they have no user) and
+restores `owner_user_id NOT NULL`; roll it back before `0277`.

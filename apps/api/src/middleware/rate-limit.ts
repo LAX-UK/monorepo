@@ -24,7 +24,12 @@ function sessionKey(authorization: string | undefined): string | null {
   return createHash("sha256").update(authorization).digest("base64url").slice(0, 32);
 }
 
-export function createRateLimitMiddleware(store: IRateLimitStore) {
+export type RateLimitOptions = {
+  /** Requests per client address, per path, per window. Defaults to the general budget. */
+  maxRequests?: number;
+};
+
+export function createRateLimitMiddleware(store: IRateLimitStore, options: RateLimitOptions = {}) {
   return createMiddleware(async (c, next) => {
     const sessionRead = c.req.method === "GET" ? SESSION_READS[c.req.path] : undefined;
     if (sessionRead === "skip") {
@@ -34,7 +39,8 @@ export function createRateLimitMiddleware(store: IRateLimitStore) {
     const ip = readForwardedClientIp((name) => c.req.header(name)) ?? "unknown";
     const session = sessionRead === undefined ? null : sessionKey(c.req.header("authorization"));
     const key = session ? `rl:session:${session}:${c.req.path}` : `rl:${ip}:${c.req.path}`;
-    const max = session && sessionRead !== undefined ? sessionRead : MAX_REQUESTS;
+    const max =
+      session && sessionRead !== undefined ? sessionRead : (options.maxRequests ?? MAX_REQUESTS);
     let result: Awaited<ReturnType<IRateLimitStore["increment"]>>;
     try {
       result = await store.increment(key, max, WINDOW_SEC);

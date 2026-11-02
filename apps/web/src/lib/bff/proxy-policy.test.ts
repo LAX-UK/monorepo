@@ -17,6 +17,7 @@ describe("Bid BFF proxy policy", () => {
   it("allows only named API roots and rejects traversal/open-proxy shapes", () => {
     expect(isApprovedProxyPath(["users", "me"])).toBe(true);
     expect(isApprovedProxyPath(["telephone-bookings", "booking-1"])).toBe(true);
+    expect(isApprovedProxyPath(["sale-alerts", "unsubscribe"])).toBe(true);
     expect(isApprovedProxyPath(["https:", "attacker.example"])).toBe(false);
     expect(isApprovedProxyPath(["internal", "jobs"])).toBe(false);
     expect(isApprovedProxyPath(["users", "..", "admin"])).toBe(false);

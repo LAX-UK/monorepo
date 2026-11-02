@@ -206,7 +206,7 @@ export function CollectionView({
         <ListNoResults query={query.q} onClear={clearAll} />
       ) : (
         <>
-          <RecordList aria-label="Works">
+          <RecordList aria-label="Collection">
             {shown.map((work) => (
               <WorkRow
                 key={work.key}

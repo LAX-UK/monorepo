@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { artworkInterestBodySchema } from "../../commerce-bodies.js";
+import { artworkInterestBodySchema, releaseAlertBodySchema } from "../../commerce-bodies.js";
 import type { CommerceRoutesDeps } from "./commerce-route-types.js";
 import { proxyAuthenticatedCommerce } from "./proxy-authenticated-commerce.js";
 import { proxyEnquiry } from "./proxy-enquiry.js";
@@ -54,6 +54,37 @@ export function registerCommerceInterestRoutes(app: Hono, deps: CommerceRoutesDe
     proxyAuthenticatedCommerce(c, deps, {
       method: "DELETE",
       path: `/v1/me/alerts/artworks/${encodeURIComponent(c.req.param("slug"))}`,
+      scopes: "shop.write",
+      requireCsrf: true,
+    }),
+  );
+
+  // Release alerts: a visitor confirms by email; a signed-in shopper is subscribed straight away.
+  app.post("/commerce/release-alerts", async (c) => {
+    const parsed = releaseAlertBodySchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+      return c.json({ error: "validation_failed" }, 400);
+    }
+    return proxyEnquiry(c, deps, {
+      path: "/v1/release-alerts",
+      body: parsed.data,
+      allowGuest: true,
+      guestContact: "email",
+    });
+  });
+
+  app.get("/commerce/me/release-alerts", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/release-alerts",
+      scopes: "shop.read",
+    }),
+  );
+
+  app.delete("/commerce/me/release-alerts", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "DELETE",
+      path: "/v1/me/release-alerts",
       scopes: "shop.write",
       requireCsrf: true,
     }),
