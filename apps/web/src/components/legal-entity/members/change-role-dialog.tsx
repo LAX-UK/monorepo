@@ -8,8 +8,8 @@ import {
   organisationRoleLabel,
 } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { Notice, PresetCards } from "@auction/ui/lax";
-import { useState } from "react";
+import { Notice, PresetCards, StatusBadge } from "@auction/ui/lax";
+import { useEffect, useRef, useState } from "react";
 import { MemberChangeDialog } from "./member-change-dialog";
 
 type Props = {
@@ -29,10 +29,10 @@ function RoleAbilities({ role }: { role: LegalEntityMemberRole }) {
   return (
     <dl
       aria-label={`What ${organisationRoleLabel(role)} can do`}
-      className="grid grid-cols-1 gap-x-4 gap-y-2 rounded-lax-md border border-lax-line bg-lax-surface-2 px-4 py-3 @md:grid-cols-3"
+      className="grid grid-cols-3 gap-x-4 rounded-lax-md border border-lax-line bg-lax-surface-2 px-4 py-3"
     >
       {roleAbilities(role).map((ability) => (
-        <div key={ability.id} className="flex items-baseline justify-between gap-3 @md:block">
+        <div key={ability.id} className="flex flex-col gap-0.5">
           <dt className="text-lax-12 text-lax-muted">{ability.label}</dt>
           <dd className="text-lax-ui font-medium text-lax-fg">{ability.answer}</dd>
         </div>
@@ -60,6 +60,13 @@ export function ChangeRoleDialog({
   const copy = changeRoleCopy(member.name, organisationName);
   const unchanged = role === currentRole;
   const consequence = copy.consequence(currentRole, role);
+  const summaryRef = useRef<HTMLDivElement>(null);
+
+  // On a phone the summary sits below the fold; bring it into view when the choice changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the chosen role changes.
+  useEffect(() => {
+    if (!unchanged) summaryRef.current?.scrollIntoView({ block: "nearest" });
+  }, [role]);
 
   async function confirm() {
     if (unchanged) return;
@@ -79,6 +86,7 @@ export function ChangeRoleDialog({
       lines={copy.lines}
       confirmLabel={copy.confirmLabel}
       tone="default"
+      wide
       pending={pending}
       error={error}
       confirmBlockedReason={unchanged ? copy.sameRoleReason : null}
@@ -88,7 +96,7 @@ export function ChangeRoleDialog({
         <legend className="sr-only">Role</legend>
         <PresetCards
           label="Role"
-          columns={1}
+          columns={2}
           compact
           value={role}
           onValueChange={(next) => {
@@ -99,11 +107,15 @@ export function ChangeRoleDialog({
             value,
             label: organisationRoleLabel(value),
             description: organisationRoleDescription(value),
-            ...(value === currentRole ? { tag: "Current" } : {}),
+            ...(value === currentRole
+              ? { tag: <StatusBadge tone="neutral">Current</StatusBadge> }
+              : {}),
           }))}
         />
-        <RoleAbilities role={role} />
-        {consequence ? <Notice tone="warning" title={consequence} /> : null}
+        <div ref={summaryRef} className="flex flex-col gap-3">
+          <RoleAbilities role={role} />
+          {consequence ? <Notice tone="warning" title={consequence} /> : null}
+        </div>
       </fieldset>
     </MemberChangeDialog>
   );
