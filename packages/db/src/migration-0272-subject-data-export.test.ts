@@ -34,6 +34,17 @@ describe("migration 0272 subject data export", () => {
     expect(quoted(index, '"status" IN (')).toEqual(["requested", "collecting", "delayed", "ready"]);
   });
 
+  it("keeps the request record when the user row is hard-deleted", () => {
+    const requestTable = migration.slice(
+      migration.indexOf('CREATE TABLE IF NOT EXISTS "subject_data_export" ('),
+      migration.indexOf('CREATE TABLE IF NOT EXISTS "subject_data_export_audit"'),
+    );
+    expect(requestTable).toContain('"subject_id" text REFERENCES "user"("id") ON DELETE SET NULL');
+    expect(requestTable).not.toContain("ON DELETE CASCADE");
+    const auditTable = migration.slice(migration.indexOf('"subject_data_export_audit" ('));
+    expect(auditTable).not.toMatch(/REFERENCES "user"/);
+  });
+
   it("is additive and can be rolled back", () => {
     expect(migration).not.toMatch(/DROP |ALTER TABLE "(?!subject_data_export)/);
     expect(rollback).toContain('DROP TABLE IF EXISTS "subject_data_export_audit"');
