@@ -28,6 +28,10 @@ export type RoleCapability =
   | "specialist.appraise"
   | "operations.fulfilment"
   | "support.respond"
+  /** Read private sale enquiries (personal data and the work offered); general enquiries stay with support.respond. */
+  | "enquiries.private_sale.read"
+  /** Own and progress private sales (deals). */
+  | "private_sale.manage"
   /** Read client/staff directory and profile detail (no moderation or role changes). */
   | "client.read"
   /** Read per-client bid transaction history in admin. */
