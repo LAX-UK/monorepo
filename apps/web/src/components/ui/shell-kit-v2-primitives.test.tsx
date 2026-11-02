@@ -188,6 +188,13 @@ describe("DashboardEmptyState (v3)", () => {
     expect(container.querySelector(".border-dashed")).toBeNull();
   });
 
+  it("a whole-page hero state can carry the page's one h1", () => {
+    render(<DashboardEmptyState variant="hero" headingLevel="h1" title="We couldn't load this" />);
+    expect(
+      screen.getByRole("heading", { level: 1, name: "We couldn't load this" }),
+    ).toBeInTheDocument();
+  });
+
   it("quiet variant keeps dashed frame", () => {
     const { container } = render(<DashboardEmptyState variant="quiet" title="No rows" />);
     expect(container.querySelector(".border-dashed")).not.toBeNull();
