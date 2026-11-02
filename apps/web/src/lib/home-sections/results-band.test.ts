@@ -82,4 +82,8 @@ describe("buildResultsBand", () => {
   it("leaves the artist out when the top lot was not read", () => {
     expect(buildResultsBand(input({ saleLots: [] }))?.facts.topLot?.note).toBeNull();
   });
+
+  it("gives sold lots no watch toggle", () => {
+    expect(buildResultsBand(input())?.lots.every((lot) => !lot.watchable)).toBe(true);
+  });
 });

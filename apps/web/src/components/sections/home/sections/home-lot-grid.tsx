@@ -21,17 +21,21 @@ function LotCard({ lot, watch }: { lot: HomeLotCard; watch: HomeLotWatch }) {
           sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
         />
       }
-      overlayAction={
-        <MarketingWatchlistHeart
-          lotId={lot.id}
-          lotTitle={lot.title}
-          initialWatching={watch.watchedLotIds.includes(lot.id)}
-          isAuthenticated={watch.isAuthenticated}
-          loginNextPath="/"
-          layout="inline"
-          surface="onImage"
-        />
-      }
+      {...(lot.watchable
+        ? {
+            overlayAction: (
+              <MarketingWatchlistHeart
+                lotId={lot.id}
+                lotTitle={lot.title}
+                initialWatching={watch.watchedLotIds.includes(lot.id)}
+                isAuthenticated={watch.isAuthenticated}
+                loginNextPath="/"
+                layout="inline"
+                surface="onImage"
+              />
+            ),
+          }
+        : {})}
       {...(lot.artistName ? { subtitle: <p className="line-clamp-1">{lot.artistName}</p> } : {})}
       details={lot.details.map((line) => (
         <p key={line} className="line-clamp-1">

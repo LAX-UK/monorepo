@@ -39,4 +39,16 @@ describe("buildLotRail", () => {
     const rail = buildLotRail({ ...base, lotCount: 0, kind: "inThisSale", lots: lots(5) });
     expect(rail?.seeAll.label).toBe("View all 5 lots");
   });
+
+  it("offers the watch toggle only on lots that can still be followed", () => {
+    const states = (["active", "scheduled", "ended", "cancelled"] as const).map(
+      (status) =>
+        buildLotRail({
+          ...base,
+          kind: "inThisSale",
+          lots: [...lots(3), hangLot({ id: "x", lotNumber: 9, status })],
+        })?.lots.find((lot) => lot.id === "x")?.watchable,
+    );
+    expect(states).toEqual([true, true, false, false]);
+  });
 });

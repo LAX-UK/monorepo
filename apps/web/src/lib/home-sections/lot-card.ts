@@ -22,6 +22,7 @@ export function homeLotCard(
     title: lot.title,
     artistName: (lot.artistId ? artistNames[lot.artistId] : undefined) ?? null,
     imageUrl: lot.images[0] ?? null,
+    watchable: lot.status === "active" || lot.status === "scheduled",
     details: [label.eyebrow],
     price: label.price
       ? { qualifier: label.price.qualifier ?? null, value: label.price.value }

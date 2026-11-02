@@ -9,6 +9,8 @@ export type HomeLotCard = {
   title: string;
   artistName: string | null;
   imageUrl: string | null;
+  /** Whether a person can still follow the lot: it is live or coming up, not sold or ended. */
+  watchable: boolean;
   /** "Lot 4", then the estimate while the lot is not yet sold. */
   details: string[];
   /** "Sold for £7,750", "Current bid £6,250"; null when the lot has no price to show. */
