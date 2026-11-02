@@ -11,6 +11,7 @@ import { SaleroomCatalogLotsLive } from "@/components/sections/saleroom/saleroom
 import { SaleroomCatalogToolbarRow } from "@/components/sections/saleroom/saleroom-catalog-toolbar-row";
 import { SaleroomCataloguePreparing } from "@/components/sections/saleroom/saleroom-catalogue-preparing";
 import { SaleroomDayGallery } from "@/components/sections/saleroom/saleroom-day-gallery";
+import { SaleroomHangSection } from "@/components/sections/saleroom/saleroom-hang-section";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
 import { SaleroomHeroActionRow } from "@/components/sections/saleroom/saleroom-hero-action-row";
 import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-hero-toolbar";
@@ -108,8 +109,10 @@ export function SaleroomDetailView({
           />
         }
       >
-        {/* The sale's cover slot (a marketing hang) sits here, between the hero and the results. */}
         {vm.resultsBand ? <SaleroomResultsBand band={vm.resultsBand} /> : null}
+
+        {/* The room first, then the lots: the hang opens the catalogue under the header. */}
+        {vm.hang ? <SaleroomHangSection hang={vm.hang} /> : null}
 
         <SaleAnchorTabs
           tabs={buildSaleAnchorTabs({
