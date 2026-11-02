@@ -50,6 +50,7 @@ function createRepositories(): IdentityOperationsRepositories {
       resetTwoFactorEnrollment: vi.fn().mockResolvedValue(true),
       deleteSubject: vi.fn().mockResolvedValue(true),
       setVerifiedPhone: vi.fn().mockResolvedValue("updated"),
+      clearPhone: vi.fn().mockResolvedValue({ status: "cleared", previous: "+447700900123" }),
     },
     credentials: {
       listProviders: vi.fn().mockResolvedValue([]),
@@ -520,6 +521,39 @@ describe("IdentityOperationsService", () => {
       expect(identityEventPublisher.publish).not.toHaveBeenCalled();
     },
   );
+
+  it("clears the phone and publishes the cleared profile in one transaction", async () => {
+    const repositories = createRepositories();
+    const { service, identityEventPublisher } = createService(repositories);
+
+    expect(await service.clearPhone("subject")).toBe("+447700900123");
+
+    expect(repositories.subjects.clearPhone).toHaveBeenCalledWith(transaction, "subject", now);
+    expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+      { type: "user.profile_updated", userId: "subject", phone: null, phoneVerified: false },
+      { producer: "apps/auth", transaction },
+    );
+  });
+
+  it("reports no phone and publishes nothing when there was none", async () => {
+    const repositories = createRepositories();
+    vi.mocked(repositories.subjects.clearPhone).mockResolvedValue({ status: "no_phone" });
+    const { service, identityEventPublisher } = createService(repositories);
+
+    expect(await service.clearPhone("subject")).toBeNull();
+    expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+  });
+
+  it("fails when the subject does not exist", async () => {
+    const repositories = createRepositories();
+    vi.mocked(repositories.subjects.clearPhone).mockResolvedValue({ status: "not_found" });
+    const { service, identityEventPublisher } = createService(repositories);
+
+    await expect(service.clearPhone("subject")).rejects.toMatchObject({
+      code: "subject_not_found",
+    });
+    expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+  });
 
   it("publishes deletion request and cancellation in their state transactions", async () => {
     const repositories = createRepositories();

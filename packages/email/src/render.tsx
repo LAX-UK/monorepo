@@ -155,6 +155,7 @@ import PayoutTransferBlockedNoticeEmail, {
 import PayoutTransferFailedNoticeEmail, {
   subject as payoutTransferFailedNoticeSubject,
 } from "./templates/payout-transfer-failed-notice.js";
+import PhoneRemovedEmail, { subject as phoneRemovedSubject } from "./templates/phone-removed.js";
 import PhoneVerifiedEmail, { subject as phoneVerifiedSubject } from "./templates/phone-verified.js";
 import ProxyCancelledNoticeEmail, {
   subject as proxyCancelledNoticeSubject,
@@ -296,6 +297,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "email-changed": {
     subject: emailChangedSubject,
     component: (vars) => <EmailChangedEmail {...vars} />,
+  },
+  "phone-removed": {
+    subject: phoneRemovedSubject,
+    component: (vars) => <PhoneRemovedEmail {...vars} />,
   },
   "phone-verified": {
     subject: phoneVerifiedSubject,

@@ -7,6 +7,7 @@ export const ACCOUNT_EMAIL_CHANGE_CANCEL_PATH = "/lax/account-email-change/cance
 export const ACCOUNT_EMAIL_CHANGE_CONFIRM_PATH = "/lax/account-email-change/confirm";
 export const ACCOUNT_PHONE_SEND_CODE_PATH = "/lax/account-phone/send-code";
 export const ACCOUNT_PHONE_VERIFY_PATH = "/lax/account-phone/verify";
+export const ACCOUNT_PHONE_REMOVE_PATH = "/lax/account-phone/remove";
 
 /** Length of the SMS code the verification provider sends. */
 export const ACCOUNT_PHONE_CODE_LENGTH = 6;
@@ -50,6 +51,8 @@ export const accountPhoneVerifiedSchema = z.object({
   verified: z.literal(true),
 });
 
+export const accountPhoneRemovedSchema = z.object({ removed: z.literal(true) });
+
 /** Reasons the issuer refuses an email, phone or backup-code change, returned as `{ error }` (HTTP 400, 409, 422 or 429). */
 export const ACCOUNT_CONTACT_ERRORS = [
   "email_taken",
@@ -59,6 +62,7 @@ export const ACCOUNT_CONTACT_ERRORS = [
   "stale_flow",
   "expired",
   "phone_taken",
+  "no_phone",
   "invalid_phone",
   "invalid_code",
   "rate_limited",
