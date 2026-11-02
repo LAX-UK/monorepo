@@ -58,7 +58,7 @@
   --color-outline: color-mix(in srgb, var(--brand-light-gray) 70%, white);
   --color-outline-variant: color-mix(in srgb, var(--brand-light-gray) 50%, white);
   --color-border-hairline: color-mix(in srgb, var(--brand-light-gray) 60%, white);
-  --color-success: #2ea043;
+  --color-success: #1f7a35;
   --color-success-container: oklch(0.94 0.06 145);
   --color-on-success-container: #0b3d1a;
   --color-info: #3a70e2;
