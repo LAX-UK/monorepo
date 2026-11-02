@@ -23,6 +23,7 @@ export function HomeHangSection({ hang }: { hang: HomeHangVM | null }) {
         label: seeAll.label,
         tile: { title: seeAll.label, ...(seeAll.tileNote ? { note: seeAll.tileNote } : {}) },
       }}
+      headingSize="section"
       rowLabel={`${hang.title}: works on the wall, scrolls sideways`}
     />
   );
