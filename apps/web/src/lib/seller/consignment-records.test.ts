@@ -229,10 +229,15 @@ describe("consignments list query", () => {
 describe("what waits on the member", () => {
   it("reads an organisation's from the one Needs-you reader", () => {
     const tasks = consignmentTasksFromNeedsYou([
-      { kind: "agreement", consignment: { id: "s1", title: "A" } },
-      { kind: "changes", submission: { id: "s2", title: "B" }, note: null },
-      { kind: "unsold_due", lots: [{ id: "l1", title: "C" }], dueBy: NOW },
-      { kind: "reply", consignment: { id: "s3", title: "D" }, from: "Clara Mendes" },
+      { kind: "agreement", consignment: { id: "s1", title: "A" }, raisedAt: null },
+      { kind: "changes", submission: { id: "s2", title: "B" }, note: null, raisedAt: null },
+      { kind: "unsold_due", lots: [{ id: "l1", title: "C" }], dueBy: NOW, raisedAt: null },
+      {
+        kind: "reply",
+        consignment: { id: "s3", title: "D" },
+        from: "Clara Mendes",
+        raisedAt: null,
+      },
     ]);
     expect([...tasks.agreements]).toEqual(["s1"]);
     expect([...tasks.changes]).toEqual(["s2"]);
@@ -242,7 +247,12 @@ describe("what waits on the member", () => {
 
   it("lists a person's reply from their specialist under Needs you, as the tab counts it", () => {
     const tasks = consignmentTasksFromNeedsYou([
-      { kind: "reply", consignment: { id: "s1", title: "Thames" }, from: "Clara Mendes" },
+      {
+        kind: "reply",
+        consignment: { id: "s1", title: "Thames" },
+        from: "Clara Mendes",
+        raisedAt: null,
+      },
     ]);
     const records = buildConsignmentRecords({
       submissions: [submission("s1", { status: "under_review" }), submission("s2")],

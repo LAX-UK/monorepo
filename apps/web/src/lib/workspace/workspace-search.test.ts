@@ -274,6 +274,7 @@ describe("Needs-you counts in the menu", () => {
         kind: "outbid",
         lots: [{ id: "l1", title: "Sun over Arles", endsAt: new Date("2026-10-30T18:12:00.000Z") }],
         link: { page: "lot", id: "l1" },
+        raisedAt: null,
       },
     ]);
     expect(read?.truncated).toBe(true);

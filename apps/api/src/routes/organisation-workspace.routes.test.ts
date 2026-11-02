@@ -126,6 +126,7 @@ describe("organisation workspace routes: needs you", () => {
         {
           kind: "outbid" as const,
           lots: [{ id: "l1", title: "Pool", endsAt: new Date("2026-11-10T14:00:00Z") }],
+          raisedAt: null,
           link: { page: "lot" as const, id: "l1" },
         },
       ],

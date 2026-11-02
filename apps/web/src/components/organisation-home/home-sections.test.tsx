@@ -21,6 +21,7 @@ function row(key: string, overrides: Partial<NeedsYouRowView> = {}): NeedsYouRow
     title: `Task ${key}`,
     detail: "Detail",
     due: null,
+    raised: null,
     action: { label: `Do ${key}`, href: `/${key}` },
     section: "purchases",
     items: 1,
