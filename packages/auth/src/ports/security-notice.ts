@@ -17,6 +17,15 @@ export type SecurityNoticeEvent =
   | { kind: "two_factor_disabled"; userId: string; at: Date; userAgent?: string | null }
   | { kind: "two_factor_reset_by_support"; userId: string; at: Date; userAgent?: string | null }
   | { kind: "backup_codes_regenerated"; userId: string; at: Date; userAgent?: string | null }
+  | {
+      kind: "account_deletion_requested";
+      userId: string;
+      at: Date;
+      /** When the grace period ends and the personal data is erased. */
+      effectiveAt: Date;
+      userAgent?: string | null;
+    }
+  | { kind: "account_deletion_cancelled"; userId: string; at: Date; userAgent?: string | null }
   | { kind: "phone_verified"; userId: string; at: Date; phone: string; userAgent?: string | null }
   | {
       kind: "email_changed";

@@ -14,6 +14,12 @@ import AccessInviteEmail, { subject as accessInviteSubject } from "./templates/a
 import AccountActivation, {
   subject as accountActivationSubject,
 } from "./templates/account-activation.js";
+import AccountDeletionCancelledEmail, {
+  subject as accountDeletionCancelledSubject,
+} from "./templates/account-deletion-cancelled.js";
+import AccountDeletionRequestedEmail, {
+  subject as accountDeletionRequestedSubject,
+} from "./templates/account-deletion-requested.js";
 import AccountSuspendedEmail, {
   subject as accountSuspendedSubject,
 } from "./templates/account-suspended.js";
@@ -274,6 +280,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "2fa-reset-by-support": {
     subject: twoFactorResetBySupportSubject,
     component: (vars) => <TwoFactorResetBySupportEmail {...vars} />,
+  },
+  "account-deletion-requested": {
+    subject: accountDeletionRequestedSubject,
+    component: (vars) => <AccountDeletionRequestedEmail {...vars} />,
+  },
+  "account-deletion-cancelled": {
+    subject: accountDeletionCancelledSubject,
+    component: (vars) => <AccountDeletionCancelledEmail {...vars} />,
   },
   "backup-codes-regenerated": {
     subject: backupCodesRegeneratedSubject,
