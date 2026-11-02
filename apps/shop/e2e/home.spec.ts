@@ -54,7 +54,7 @@ test.describe("Shop home @a11y", () => {
     await page.goto("/");
     const content = [
       page.getByRole("heading", { level: 1 }),
-      page.locator(".shop-home-editions").getByRole("link", { name: /\S/ }).first(),
+      page.locator("#home-new-editions").getByRole("link", { name: /\S/ }).first(),
       page.getByRole("heading", { name: "Across LAX" }),
     ];
     for (const locator of content) {
@@ -62,6 +62,31 @@ test.describe("Shop home @a11y", () => {
       await expect(locator).toHaveCSS("opacity", "1");
     }
     await expect(page.locator('[data-reveal-init="true"]')).toHaveCount(0);
+    await context.close();
+  });
+
+  test("lists new editions as links in the page itself, as a wall or as cards", async ({
+    browser,
+  }, testInfo) => {
+    test.skip(!enabled, skipReason);
+    test.skip(testInfo.project.name !== "chromium-desktop", "no-JS contract once on desktop");
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    await page.goto("/");
+    const section = page.locator("#home-new-editions");
+    await expect(section).toBeVisible();
+    const variant = await section.getAttribute("data-home-new-editions");
+    expect(["hang", "cards"]).toContain(variant);
+    const links = section.locator('a[href^="/artworks/"]');
+    // A wall needs two works; a row of cards can be a single feature.
+    expect(await links.count()).toBeGreaterThanOrEqual(variant === "hang" ? 2 : 1);
+    for (const link of await links.all()) {
+      await expect(link).toBeVisible();
+      await expect(link).toHaveCSS("opacity", "1");
+    }
+    if (variant === "hang") {
+      await expect(section.getByRole("region", { name: /prints on the wall/i })).toBeVisible();
+    }
     await context.close();
   });
 });

@@ -23,8 +23,17 @@ export type MarketingHangWork = HangWorkInput & {
   imageSrc: string;
   /** Alt text for the picture. Empty by default: the wall label already names the work. */
   imageAlt?: string;
+  /** Resized files to choose from, so the browser fetches one that fits the box. */
+  imageSrcSet?: string | undefined;
+  /** What `imageSrcSet` means in layout terms, for example "(min-width: 640px) 480px, 240px". */
+  imageSizes?: string | undefined;
   /** Source picture size in pixels, so the box is sized before the picture arrives. */
   sourceWidthPx?: number | null | undefined;
+  /**
+   * Draws the work on a sheet of paper: the margin as a share of the box's width. The box then
+   * is the sheet, so `aspect` and `longSideCm` describe the sheet and the picture sits inside it.
+   */
+  sheetInset?: number | undefined;
   /** The wall label beside the work. A live label can swap its text in place. */
   label: ReactNode;
 };
@@ -61,6 +70,8 @@ export type MarketingHangProps = {
   /** Keeps the heading for assistive technology only, when a tab or label already names the sale. */
   hideTitle?: boolean;
   className?: string;
+  /** An id and data attributes for the section, so a page or a test can find it. */
+  sectionProps?: { id?: string; [attribute: `data-${string}`]: string | undefined };
 };
 
 const HEADING_SIZE = {
@@ -86,10 +97,16 @@ function wallVars(desktop: HangLayout, phone: HangLayout): CSSProperties {
   return vars as CSSProperties;
 }
 
-function workVars(desktop: HangLayout, phone: HangLayout, index: number): CSSProperties {
+function workVars(
+  desktop: HangLayout,
+  phone: HangLayout,
+  index: number,
+  sheetInset: number | undefined,
+): CSSProperties {
   const d = desktop.items[index];
   const m = phone.items[index];
   return {
+    ...(sheetInset ? { "--sheet-inset": String(sheetInset) } : {}),
     "--w-d": `${d?.width ?? 0}px`,
     "--h-d": `${d?.height ?? 0}px`,
     "--w-m": `${m?.width ?? 0}px`,
@@ -116,6 +133,7 @@ export function MarketingHang({
   headingSize = "compact",
   hideTitle = false,
   className,
+  sectionProps,
 }: MarketingHangProps) {
   const headingId = useId();
   const rowId = useId();
@@ -155,7 +173,11 @@ export function MarketingHang({
   const scrollable = scroll.canScrollStart || scroll.canScrollEnd;
 
   return (
-    <section aria-labelledby={headingId} className={cn("pt-10 sm:pt-14", className)}>
+    <section
+      aria-labelledby={headingId}
+      className={cn("pt-10 sm:pt-14", className)}
+      {...sectionProps}
+    >
       <div
         className={cn(
           MARKETING_PAGE_SHELL,
@@ -241,7 +263,7 @@ export function MarketingHang({
               <li
                 key={work.id}
                 className="w-[max(var(--w-m),140px)] flex-none snap-start sm:w-[max(var(--w-d),168px)]"
-                style={workVars(desktop, phone, i)}
+                style={workVars(desktop, phone, i, work.sheetInset)}
               >
                 <Link
                   href={work.href}
@@ -251,16 +273,30 @@ export function MarketingHang({
                 >
                   <figure className="m-0 flex flex-col">
                     <span className="flex h-[var(--slot-m)] items-center sm:h-[var(--slot-d)]">
-                      <span className="relative block flex-none bg-surface-container-low shadow-[var(--hang-art-shadow)] transition-shadow duration-150 group-hover:shadow-[var(--hang-art-shadow-hover)]">
+                      <span
+                        className={cn(
+                          "relative block flex-none shadow-[var(--hang-art-shadow)] transition-shadow duration-150 group-hover:shadow-[var(--hang-art-shadow-hover)]",
+                          work.sheetInset
+                            ? "box-border ring-1 ring-[var(--color-work-mat-edge,transparent)] h-[var(--h-m)] w-[var(--w-m)] bg-surface p-[calc(var(--w-m)*var(--sheet-inset))] sm:h-[var(--h-d)] sm:w-[var(--w-d)] sm:p-[calc(var(--w-d)*var(--sheet-inset))]"
+                            : "bg-surface-container-low",
+                        )}
+                      >
                         <img
                           src={work.imageSrc}
+                          srcSet={work.imageSrcSet}
+                          sizes={work.imageSrcSet ? work.imageSizes : undefined}
                           alt={work.imageAlt ?? ""}
                           width={work.sourceWidthPx ?? undefined}
                           height={work.sourceHeightPx ?? undefined}
                           loading="lazy"
                           decoding="async"
                           onError={() => dropWork(work.id)}
-                          className="block h-[var(--h-m)] w-[var(--w-m)] object-cover sm:h-[var(--h-d)] sm:w-[var(--w-d)]"
+                          className={cn(
+                            "block object-cover",
+                            work.sheetInset
+                              ? "size-full"
+                              : "h-[var(--h-m)] w-[var(--w-m)] sm:h-[var(--h-d)] sm:w-[var(--w-d)]",
+                          )}
                         />
                       </span>
                     </span>

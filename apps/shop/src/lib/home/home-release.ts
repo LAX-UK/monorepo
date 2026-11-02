@@ -38,3 +38,26 @@ export function homeReleaseEyebrow(
   if (date && isNewRelease(choice.item.listedAt, now)) return `New release · ${date}`;
   return choice.featured ? "Featured edition" : null;
 }
+
+/** True inside the new-release window, which is what "A new limited edition" may claim. */
+export function isNewReleaseChoice(
+  choice: HomeReleaseChoice<PublicArtworkSummary>,
+  now: Date,
+): boolean {
+  return (
+    formatReleaseDate(choice.item.listedAt) !== null && isNewRelease(choice.item.listedAt, now)
+  );
+}
+
+/** The photographs the first screen and the wall may show: the release and the newest editions. */
+export function homePhotographAddresses(
+  data: {
+    featured: readonly PublicArtworkSummary[];
+    editions: readonly PublicArtworkSummary[];
+  },
+  addressOf: (item: PublicArtworkSummary) => string | null,
+): string[] {
+  const choice = selectHomeRelease(data.featured, data.editions);
+  const items = choice ? [choice.item, ...data.editions] : data.editions;
+  return items.flatMap((item) => addressOf(item) ?? []);
+}

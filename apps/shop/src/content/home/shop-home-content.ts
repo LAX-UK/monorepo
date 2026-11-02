@@ -12,6 +12,10 @@ export const SHOP_HOME_CONTENT = {
   hero: {
     title: "Limited-edition prints from our Marylebone gallery",
     primaryLabel: "Browse editions",
+    releaseLabel: "See the edition",
+    allEditionsLabel: "Browse all editions",
+    artistsLabel: "See the artists",
+    coverLabel: "Featured edition",
     browseByLabel: "Browse by",
     emptyTitle: "New editions are on their way",
     emptyLeadSoldOut:
