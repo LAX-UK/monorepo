@@ -95,3 +95,18 @@ On AWS S3 the equivalent is a bucket with Block Public Access on, default encryp
 - Identity row stuck in `collecting`: look for the job (`subject-data-export__{exportId}`) in Bull Board, then Failed jobs. A `delayed` request names the product in Identity's audit (`data_export.delayed`).
 - Nothing starts: confirm the worker logs "download-my-data is not configured" is absent, and that the Identity outbox relay is running (the projector runner drives it).
 - Download fails after ready: the object key in Identity must exist in the bucket and the read keys must be set on `apps/auth`.
+
+## Staff "Data requests" (Bid admin, Compliance)
+
+Compliance and Administrator (permission `data_requests.manage`) see every request for a copy of a person's data on one clock: the automatic downloads above, and the requests staff log themselves (a full copy with staff notes and outside systems, a request after the account was deleted, or a download taken over by hand). Bid's API reads and acts through Identity's `/internal/identity/data-requests/*` routes; it never reads Identity's tables.
+
+| Variable | On | Purpose |
+|---|---|---|
+| `DATA_REQUESTS_MACHINE_CLIENT_ID` / `_SECRET` | `apps/auth` | OAuth client for the `data_requests.staff` scope (secret at least 32 characters; the id must differ from the lifecycle and export clients). Both or neither: with neither the routes are not mounted |
+| `IDENTITY_DATA_REQUESTS_CLIENT_ID` / `_SECRET` | `apps/api` | The same pair, used by Bid's API. Without it the screen's routes answer 503 |
+| `DATA_REQUEST_CONTACT_RETENTION_DAYS` | `apps/auth` | Days after a manual request closes before its contact name and details are cleared (default 730). The dates, scope, outcome and audit stay. Working figure, lawyer to confirm |
+
+- A lifecycle or export token is refused by these routes, and this token is refused by theirs.
+- Manual requests are numbered `DR-0001` upwards; downloads are shown as `DL-` and the first six characters of their id. If two downloads ever share those six characters, the record answers `ambiguous_reference` and the request is found by its id in the database.
+- The 24-hour, 7-day and 21-day deadline alerts for downloads are also written to the request's audit trail (`data_export.deadline_alert`, with the tier and who is alerted).
+- Staff open a record: Bid's audit log gets `data_request.viewed` with the staff member and the reference only. Notes and contact details are never written to either audit trail.

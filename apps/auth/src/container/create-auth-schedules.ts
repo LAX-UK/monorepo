@@ -1,12 +1,14 @@
 import { type IdentityDatabase, startJwksRetirementSchedule } from "@auction/identity-db";
 import { Sentry } from "@auction/observability";
 import type pino from "pino";
+import { startDataRequestRetentionSchedule } from "../infrastructure/data-request-retention.schedule.js";
 import { startIdentityDeletionPurgeSchedule } from "../infrastructure/identity-deletion-purge.schedule.js";
 import { startIdentityLifecycleReconciliationSchedule } from "../infrastructure/identity-lifecycle-reconciliation.schedule.js";
 import { startIdentityRetentionSchedule } from "../infrastructure/identity-retention.schedule.js";
 import { startSubjectExportMaintenanceSchedule } from "../infrastructure/subject-export-maintenance.schedule.js";
 import type { BackchannelLogoutDeliveryWorker } from "../services/backchannel-logout-delivery.worker.js";
 import { startBackchannelLogoutSchedule } from "../services/backchannel-logout.schedule.js";
+import type { DataRequestWriter } from "../services/data-request.ports.js";
 import type { DurableSecurityEffects } from "../services/durable-security-effects.js";
 import type { SsfDeliveryWorker } from "../services/ssf-delivery.worker.js";
 import type { SsfStreamService } from "../services/ssf-stream.service.js";
@@ -21,6 +23,8 @@ export async function createAuthSchedules(options: {
   ssfStreams: Pick<SsfStreamService, "provisionRegisteredStreams">;
   ssfDelivery: Pick<SsfDeliveryWorker, "enqueueFromDomainEvents" | "deliverDue">;
   subjectExports: Pick<SubjectExportService, "expireDue" | "claimDeadlineAlerts">;
+  /** Clears contact details from manual data requests a set time after they close. */
+  dataRequestRetention: { writer: DataRequestWriter; retentionDays: number };
   /** The logger the overdue alerts go through, wrapped so they also reach Sentry. */
   alertLog: Pick<pino.Logger, "warn" | "error">;
   ssfEnabled: boolean;
@@ -107,6 +111,15 @@ export async function createAuthSchedules(options: {
       Sentry.captureException(err);
     },
   });
+  const dataRequestRetention = startDataRequestRetentionSchedule({
+    writer: options.dataRequestRetention.writer,
+    retentionDays: options.dataRequestRetention.retentionDays,
+    onError: (err) => {
+      options.log.error({ err }, "data_request_retention_failed");
+      Sentry.captureException(err);
+    },
+    onCleared: (count) => options.log.info({ count }, "data_request_contacts_cleared"),
+  });
   let ssfDrain: Promise<void> | null = null;
   const ssf = options.ssfEnabled
     ? setInterval(() => {
@@ -160,6 +173,7 @@ export async function createAuthSchedules(options: {
         deletionPurge.stop(),
         lifecycleReconciliation.stop(),
         subjectExportMaintenance.stop(),
+        dataRequestRetention.stop(),
         ssfDrain ?? Promise.resolve(),
       ]);
     },
