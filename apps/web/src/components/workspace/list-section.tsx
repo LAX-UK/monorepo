@@ -1,3 +1,4 @@
+import { cn } from "@auction/ui";
 import { formatCount } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 
@@ -9,6 +10,8 @@ type Props = {
   count?: number;
   /** One line under the heading saying what the list holds. */
   description?: string;
+  /** Spacing from the content above; the first section on a page has none. */
+  className?: string;
   children: ReactNode;
 };
 
@@ -17,9 +20,9 @@ type Props = {
  * optional count), one line of description, then the list or its state. Sections sit 40px under
  * the list before them.
  */
-export function ListSection({ id, title, count, description, children }: Props) {
+export function ListSection({ id, title, count, description, className, children }: Props) {
   return (
-    <section aria-labelledby={id} className="mt-10 min-w-0">
+    <section aria-labelledby={id} className={cn("mt-10 min-w-0", className)}>
       <div className="mb-3">
         <div className="flex min-h-6 items-baseline gap-2">
           <h2 id={id} className="font-lax-display text-lax-18 font-semibold text-lax-fg">

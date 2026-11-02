@@ -63,3 +63,10 @@ export function sellerAccountChoice(input: {
   const personal = options.find((option) => option.kind === "personal");
   return { options, defaultId: acting?.id ?? personal?.id ?? options[0]?.id ?? null };
 }
+
+/** The account preselected is an organisation: the person is already acting for one. */
+export function actingForOrganisation(choice: SellerAccountChoice): boolean {
+  return choice.options.some(
+    (option) => option.id === choice.defaultId && option.kind === "organisation",
+  );
+}

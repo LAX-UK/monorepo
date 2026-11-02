@@ -1,6 +1,6 @@
 import type { LegalEntitySummary } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { sellerAccountChoice } from "./seller-account-options";
+import { actingForOrganisation, sellerAccountChoice } from "./seller-account-options";
 
 function membership(partial: Partial<LegalEntitySummary> & Pick<LegalEntitySummary, "id">) {
   return {
@@ -86,5 +86,20 @@ describe("sellerAccountChoice", () => {
       actingId: null,
     });
     expect(choice.options.map((o) => o.id)).toEqual(["me"]);
+  });
+
+  it("knows when the preselected account is an organisation", () => {
+    const inOrganisation = sellerAccountChoice({
+      memberships: [personal, membership({ id: "gallery" })],
+      personalName: "Jane Smith",
+      actingId: "gallery",
+    });
+    const asPerson = sellerAccountChoice({
+      memberships: [personal, membership({ id: "gallery" })],
+      personalName: "Jane Smith",
+      actingId: null,
+    });
+    expect(actingForOrganisation(inOrganisation)).toBe(true);
+    expect(actingForOrganisation(asPerson)).toBe(false);
   });
 });

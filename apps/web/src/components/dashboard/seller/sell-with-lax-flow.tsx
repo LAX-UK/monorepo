@@ -15,7 +15,8 @@ type Props = {
   categories: SubmissionCategoryOption[];
   initialValues?: ItemSubmissionFormValues;
   choice: SellerAccountChoice;
-  registerHref: string;
+  /** "Register an organisation", or `null` once the person is acting for one. */
+  registerHref: string | null;
 };
 
 /** "Selling as" at the top of Check and send, with the way back to change it. */
@@ -80,7 +81,7 @@ export function SellWithLaxFlow({ categories, initialValues, choice, registerHre
 
   if (phase === "seller") {
     return (
-      <div ref={sellerRef} tabIndex={-1} className="space-y-6 pt-4 outline-none">
+      <div ref={sellerRef} tabIndex={-1} className="pt-4 outline-none">
         <SellerAccountStep
           options={choice.options}
           selectedId={accountId}

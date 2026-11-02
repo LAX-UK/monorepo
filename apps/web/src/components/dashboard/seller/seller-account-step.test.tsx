@@ -36,7 +36,11 @@ const newGallery: SellerAccountOption = {
   submitBlockedReason: "We're still checking this organisation's documents.",
 };
 
-function renderStep(options: SellerAccountOption[], selectedId: string) {
+function renderStep(
+  options: SellerAccountOption[],
+  selectedId: string,
+  registerHref: string | null = "/onboarding/organisation?fresh=1",
+) {
   const handlers = {
     onSelect: vi.fn(),
     onBack: vi.fn(),
@@ -47,7 +51,7 @@ function renderStep(options: SellerAccountOption[], selectedId: string) {
     <SellerAccountStep
       options={options}
       selectedId={selectedId}
-      registerHref="/onboarding/organisation?fresh=1"
+      registerHref={registerHref}
       busy={false}
       {...handlers}
     />,
@@ -73,8 +77,9 @@ describe("SellerAccountStep", () => {
     const handlers = renderStep([personal, gallery], "gallery");
     const radios = screen.getAllByRole("radio");
     expect(radios).toHaveLength(2);
-    expect(screen.getByRole("radio", { name: /Northbank Gallery · Admin/ })).toBeChecked();
-    fireEvent.click(screen.getByRole("radio", { name: /Personal · Jane Smith/ }));
+    expect(screen.getByRole("radio", { name: "Northbank Gallery" })).toBeChecked();
+    expect(screen.getByText("Admin")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Personal" }));
     expect(handlers.onSelect).toHaveBeenCalledWith("me");
     expect(screen.getByRole("button", { name: "Submit as Northbank Gallery" })).toBeEnabled();
   });
@@ -85,6 +90,14 @@ describe("SellerAccountStep", () => {
     expect(screen.queryByRole("button", { name: /Submit/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Save as draft" }));
     expect(handlers.onSaveDraft).toHaveBeenCalled();
+  });
+
+  it("does not offer to register an organisation to someone already acting for one", () => {
+    renderStep([personal, gallery], "gallery", null);
+    expect(screen.queryByText(/Selling for a business/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Register an organisation" }),
+    ).not.toBeInTheDocument();
   });
 
   it("goes back to the work", () => {

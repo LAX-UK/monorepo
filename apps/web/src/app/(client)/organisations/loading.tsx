@@ -1,12 +1,12 @@
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
+import { AccountPageLoading } from "@/components/dashboard/primitives/account-page-loading";
 
 export default function OrganisationsLoading() {
   return (
-    <DashboardPage>
-      <div className="mx-auto max-w-5xl">
-        <DashboardSkeleton variant="dashboard" />
-      </div>
-    </DashboardPage>
+    <AccountPageLoading
+      title="Your organisations"
+      label="Loading your accounts"
+      shape="rows"
+      tabs={false}
+    />
   );
 }
