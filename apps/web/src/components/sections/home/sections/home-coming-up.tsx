@@ -1,14 +1,14 @@
+import { MarketingSection } from "@/components/marketing/marketing-section";
 import type { HomeComingUp } from "@/lib/home-sections/types";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 import { TextLink } from "@auction/ui/lax";
 import Link from "next/link";
-import { HomeSection } from "./home-section";
 
 /** The sales still to come as an exhibition list: a typographic date, the sale, one action. */
 export function HomeComingUpSection({ comingUp }: { comingUp: HomeComingUp }) {
   return (
-    <HomeSection id="coming-up" heading="Coming up" action={comingUp.seeAll}>
+    <MarketingSection id="home-coming-up" heading="Coming up" action={comingUp.seeAll}>
       <ol className="m-0 list-none border-t border-border-hairline p-0">
         {comingUp.rows.map((row) => (
           <li
@@ -43,6 +43,6 @@ export function HomeComingUpSection({ comingUp }: { comingUp: HomeComingUp }) {
           </li>
         ))}
       </ol>
-    </HomeSection>
+    </MarketingSection>
   );
 }
