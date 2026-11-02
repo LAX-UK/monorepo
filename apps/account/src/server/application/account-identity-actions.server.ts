@@ -165,6 +165,14 @@ export async function verifyPhoneAction(phone: string, code: string): Promise<Ac
   );
 }
 
+export async function removePhoneAction(): Promise<AccountActionResult> {
+  const { identity } = getLaxAccountContainer();
+  return actAsSignedInPerson(
+    (actor) => identity.removePhone(actor),
+    () => "Your phone number has been removed.",
+  );
+}
+
 const INVALID_ADDRESS: AccountActionResult = {
   status: "error",
   message: addressRejectionMessage("invalid_address"),

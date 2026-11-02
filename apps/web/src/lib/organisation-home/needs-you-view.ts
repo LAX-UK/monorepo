@@ -6,6 +6,7 @@ import {
 } from "@/lib/navigation/client-routes";
 import { bidSettingsHref } from "@/lib/navigation/settings-links";
 import { consignmentMessagesHref } from "@/lib/seller/consignment-records";
+import { consignmentStepLabel } from "@/lib/seller/consignment-step";
 import { formatDateInline, formatDateTimeShort, formatMoney } from "@/lib/ui/format";
 import type { NeedsYouTaskWithLink } from "@/lib/workspace/needs-you-read";
 import {
@@ -162,14 +163,14 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
     ),
     detail: `Did not sell · choose by ${formatDateInline(task.dueBy)}`,
     due: due(task.dueBy, `Choose by ${formatDateInline(task.dueBy)}`, now),
-    label: "Choose",
+    label: consignmentStepLabel("unsold"),
   }),
   agreement: (task, ctx) => ({
     topic: "consignment",
     title: "Accept the consignment agreement",
     detail: `${quoted(task.consignment)} · the specialist's estimate and terms, for ${ctx.organisationName}`,
     due: null,
-    label: "Review",
+    label: consignmentStepLabel("agreement"),
   }),
   changes: (task) => ({
     topic: "consignment",
@@ -178,14 +179,14 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
       ? `${quoted(task.submission)} · “${task.note}”`
       : `${quoted(task.submission)} · see the specialist's note`,
     due: null,
-    label: "Edit and resubmit",
+    label: consignmentStepLabel("changes"),
   }),
   reply: (task) => ({
     topic: "consignment",
     title: `Reply from ${task.from}`,
     detail: `${quoted(task.consignment)} · a new message about this work`,
     due: null,
-    label: "Read",
+    label: consignmentStepLabel("reply"),
   }),
   unsold: (task) => ({
     topic: "consignment",
@@ -199,7 +200,7 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
         ? "Did not sell · offer it again, lower the reserve or have it returned"
         : `${listOf(task.lots)} did not sell`,
     due: null,
-    label: "Choose",
+    label: consignmentStepLabel("unsold"),
   }),
   choose_delivery: (task) => ({
     topic: "delivery",
@@ -210,7 +211,7 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
     ),
     detail: "Paid · choose a courier quote or collection from the saleroom",
     due: null,
-    label: "Choose",
+    label: "Choose delivery",
   }),
   quote_ready: (task) => ({
     topic: "delivery",

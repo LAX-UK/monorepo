@@ -31,6 +31,7 @@ function setup(options: { recent?: boolean; configured?: boolean } = {}) {
       mergedIntoSubjectId: null,
     })),
     setVerifiedPhone: vi.fn(async () => undefined),
+    clearPhone: vi.fn(async (): Promise<string | null> => PHONE),
   };
   const sms = {
     isConfigured: vi.fn(() => options.configured ?? true),
@@ -133,5 +134,42 @@ describe("AccountPhoneService.verify", () => {
       ok: false,
       kind: "rate_limited",
     });
+  });
+});
+
+describe("AccountPhoneService.remove", () => {
+  it("clears the number and tells the account's email what was removed", async () => {
+    const { service, operations, notices } = setup();
+    expect(await service.remove(SUBJECT, "current")).toEqual({ ok: true });
+    expect(operations.clearPhone).toHaveBeenCalledWith(SUBJECT);
+    expect(notices.notify).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "phone_removed", userId: SUBJECT, phone: PHONE, at: NOW }),
+    );
+  });
+
+  it("needs a recent sign-in and changes nothing without one", async () => {
+    const { service, operations, notices } = setup({ recent: false });
+    expect(await service.remove(SUBJECT, "current")).toEqual({
+      ok: false,
+      reason: "reauth_required",
+    });
+    expect(operations.clearPhone).not.toHaveBeenCalled();
+    expect(notices.notify).not.toHaveBeenCalled();
+  });
+
+  it("refuses a sign-in that is not one of the person's own sessions", async () => {
+    const { service, operations } = setup();
+    expect(await service.remove(SUBJECT, "someone-elses")).toEqual({
+      ok: false,
+      reason: "reauth_required",
+    });
+    expect(operations.clearPhone).not.toHaveBeenCalled();
+  });
+
+  it("reports that there is no number to remove, and sends no notice", async () => {
+    const { service, operations, notices } = setup();
+    operations.clearPhone.mockResolvedValueOnce(null);
+    expect(await service.remove(SUBJECT, "current")).toEqual({ ok: false, kind: "no_phone" });
+    expect(notices.notify).not.toHaveBeenCalled();
   });
 });

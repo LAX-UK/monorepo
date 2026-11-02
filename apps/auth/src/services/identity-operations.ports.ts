@@ -63,6 +63,14 @@ export interface IIdentitySubjectRepository {
     phone: string,
     now: Date,
   ): Promise<"updated" | "phone_taken" | "not_found">;
+  /** Clears the number and its verified flag, reporting the number that was removed. */
+  clearPhone(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    now: Date,
+  ): Promise<
+    { status: "cleared"; previous: string } | { status: "no_phone" } | { status: "not_found" }
+  >;
   markDeletionRequested(
     transaction: IdentityOperationTransaction,
     subjectId: string,

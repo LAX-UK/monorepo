@@ -12,6 +12,8 @@ export const IDENTITY_EVENT_TYPES = {
   IDENTITY_DELETED: "user.identity_deleted",
   SESSION_REVOKED: "user.session_revoked",
   CREDENTIAL_CHANGED: "user.credential_changed",
+  /** A person asked for a copy of their data; the worker starts collecting. Ids only, no personal fields. */
+  DATA_EXPORT_REQUESTED: "subject.data_export_requested",
 } as const;
 
 export type IdentityEventType = (typeof IDENTITY_EVENT_TYPES)[keyof typeof IDENTITY_EVENT_TYPES];
@@ -68,6 +70,13 @@ export const userIdentityDeletedPayloadSchemaV1 = identityEventBaseSchemaV1.exte
   deletedAt: rfc3339Timestamp,
 });
 
+export const subjectDataExportRequestedPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
+  exportId: z.string().min(1),
+});
+
+export type SubjectDataExportRequestedPayloadV1 = z.infer<
+  typeof subjectDataExportRequestedPayloadSchemaV1
+>;
 export type UserProfileUpdatedPayloadV1 = z.infer<typeof userProfileUpdatedPayloadSchemaV1>;
 export type UserDeletionRequestedPayloadV1 = z.infer<typeof userDeletionRequestedPayloadSchemaV1>;
 export type UserDeletionCancelledPayloadV1 = z.infer<typeof userDeletionCancelledPayloadSchemaV1>;
@@ -87,7 +96,8 @@ export type IdentityEventPayloadV1 =
   | UserIdentityMergedPayloadV1
   | UserSessionRevokedPayloadV1
   | UserCredentialChangedPayloadV1
-  | UserIdentityDeletedPayloadV1;
+  | UserIdentityDeletedPayloadV1
+  | SubjectDataExportRequestedPayloadV1;
 
 export const identityEventPayloadSchemasV1 = {
   [IDENTITY_EVENT_TYPES.PROFILE_UPDATED]: userProfileUpdatedPayloadSchemaV1,
@@ -99,4 +109,5 @@ export const identityEventPayloadSchemasV1 = {
   [IDENTITY_EVENT_TYPES.SESSION_REVOKED]: userSessionRevokedPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.CREDENTIAL_CHANGED]: userCredentialChangedPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.IDENTITY_DELETED]: userIdentityDeletedPayloadSchemaV1,
+  [IDENTITY_EVENT_TYPES.DATA_EXPORT_REQUESTED]: subjectDataExportRequestedPayloadSchemaV1,
 } as const;
