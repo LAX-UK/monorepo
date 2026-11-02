@@ -31,6 +31,31 @@ function input(over: Partial<PriceBlockInput> = {}): PriceBlockInput {
 
 const viewer = (over: Partial<LotViewerState>): LotViewerState => ({ ...NO_VIEWER_STATE, ...over });
 
+describe("live headline before and after the first bid", () => {
+  const LIVE_KINDS = ["live", "extended", "liveSaleroom", "saleroomPaused"] as const;
+
+  it.each(LIVE_KINDS)("%s: starting bid, at the starting price, until a bid is placed", (kind) => {
+    const vm = buildPriceBlock(
+      input({
+        lifecycle: kind,
+        bidCount: 0,
+        amounts: {
+          starting: "4200.00",
+          current: "4200.00",
+          hammer: null,
+          soldForWithPremium: null,
+        },
+      }),
+    );
+    expect(vm.label).toBe("Starting bid");
+    expect(vm.amountText).toBe("£4,200");
+  });
+
+  it.each(LIVE_KINDS)("%s: current bid once there is a bid", (kind) => {
+    expect(buildPriceBlock(input({ lifecycle: kind, bidCount: 3 })).label).toBe("Current bid");
+  });
+});
+
 describe("price block by lifecycle", () => {
   it("upcoming: starting bid with the estimate beneath", () => {
     const vm = buildPriceBlock(input({ lifecycle: "scheduled" }));
