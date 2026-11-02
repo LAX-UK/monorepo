@@ -8,6 +8,7 @@ import type {
   SaleRegistrationMineRow,
   SaleShell,
 } from "@/lib/data/http/sales.server";
+import { type SaleHangVM, buildSaleHang } from "@/lib/hang/sale-hang";
 import { saleroomLotLinkParams } from "@/lib/marketing/catalog-links";
 import type { SaleroomSecondaryData } from "@/lib/marketing/saleroom-page-data.service";
 import { SALE_CATALOG_LOAD_ALL_CAP } from "@/lib/marketing/saleroom-page-data.service";
@@ -96,6 +97,8 @@ export type SaleroomDetailPageVM = {
   pageState: SalePageState;
   /** Which catalogue controls this sale's size earns. */
   controls: CatalogueControls;
+  /** The hang that opens the catalogue; null when there is nothing honest to hang. */
+  hang: SaleHangVM | null;
   /** Server results of an ended sale, shown above the catalogue. */
   resultsBand: ResultsBandVM | null;
   /** Words for a scheduled sale whose lots are not online yet. */
@@ -168,6 +171,8 @@ export type BuildSaleroomPageVMInput = {
   initialSaleroomStatus: PublicSaleroomSessionStatus;
   categoryLabel: string | null;
   categoryLabels: string[];
+  /** The lots the hang chooses from (display copies); empty when the page is filtered or paged. */
+  hangLots?: readonly Lot[];
   now?: Date;
 };
 
@@ -187,6 +192,7 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     initialSaleroomStatus,
     categoryLabel,
     categoryLabels,
+    hangLots = [],
   } = input;
   const now = input.now ?? new Date();
   const bundle = shell;
@@ -261,6 +267,16 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     status: bundle.sale.status,
     lotCount: lotsPage.total,
   });
+  const hang =
+    pageState === "catalogue"
+      ? buildSaleHang({
+          sale: bundle.sale,
+          lots: hangLots,
+          lotCount: lotsPage.total,
+          status: displaySale.status,
+          now,
+        })
+      : null;
   const resultsBand = buildResultsBand(shell.resultsSummary, lotsPage.items);
 
   const viewer = resolveViewerParticipation(session);
@@ -385,6 +401,7 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     pageState,
     controls: catalogueControls(lotsPage.total),
     resultsBand,
+    hang,
     preparing: pageState === "preparing" ? cataloguePreparingCopy(bundle.sale, now) : null,
     atgReadOnly: atgState != null,
     displayStatus: displaySale.status,
