@@ -491,6 +491,7 @@ async function grantIfExists(
     | "INSERT"
     | "INSERT, SELECT"
     | "INSERT, SELECT, DELETE"
+    | "SELECT, DELETE"
     | "INSERT, SELECT, UPDATE"
     | "INSERT, SELECT, UPDATE, DELETE"
     | "ALL PRIVILEGES",
