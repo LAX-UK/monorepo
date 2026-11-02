@@ -4,7 +4,6 @@ import {
   NO_ATTENTION,
   attentionChip,
   attentionCountFor,
-  attentionTasks,
 } from "./client-attention";
 
 function attention(overrides: Partial<ClientAttention> = {}): ClientAttention {
@@ -75,28 +74,5 @@ describe("attentionCountFor", () => {
   it("has no count for pages where nothing can be due, or when nothing is", () => {
     expect(attentionCountFor("watchlist", due)).toBeNull();
     expect(attentionCountFor("bids", NO_ATTENTION)).toBeNull();
-  });
-});
-
-describe("attentionTasks", () => {
-  it("lists nothing when nothing is due", () => {
-    expect(attentionTasks(NO_ATTENTION)).toEqual([]);
-  });
-
-  it("lists every prompt the chip could show, outbid first, so Needs action is never empty beside it", () => {
-    expect(attentionTasks(attention({ outbidLots: ["2"], paymentsDue: 2 }))).toEqual([
-      {
-        kind: "outbid",
-        title: "Outbid on lot 2",
-        actionLabel: "Review your bids",
-        href: "/bids?tab=active",
-      },
-      {
-        kind: "payment-due",
-        title: "2 purchases to pay",
-        actionLabel: "Go to purchases",
-        href: "/purchases",
-      },
-    ]);
   });
 });

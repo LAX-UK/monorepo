@@ -88,7 +88,12 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
       : Promise.resolve({ ok: true as const, value: [] }),
     actingOrganisation ? Promise.resolve(false) : hasPersonalSubmissions(),
     // The menu's counts come from the one Needs-you reader Home reads.
-    actingOrganisation ? getServerNeedsYouCounts(actingOrganisation.id) : Promise.resolve(null),
+    actingOrganisation
+      ? getServerNeedsYouCounts(actingOrganisation.id, {
+          role: actingOrganisation.role,
+          isImpersonation: actingOrganisation.isImpersonation,
+        })
+      : Promise.resolve(null),
   ]);
   const pendingInvites = pendingR.ok ? pendingR.value : [];
   const layoutWarnings: { title: string; message: string }[] = [];

@@ -12,6 +12,11 @@ const TASK_STEP: Record<ConsignmentTask, { label: string; anchor: string }> = {
   reply: { label: "Read reply", anchor: "?tab=messages" },
 };
 
+/** The button's words for what a consignment waits on, shared by the list, Home and Notifications. */
+export function consignmentStepLabel(task: ConsignmentTask): string {
+  return TASK_STEP[task].label;
+}
+
 export type ConsignmentStep = { label: string; href: string; blockedReason: string | null };
 
 /**
