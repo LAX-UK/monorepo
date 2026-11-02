@@ -136,7 +136,11 @@ export function NotificationsInboxBoard({
   return (
     <DashboardListPage
       title="Notifications"
-      description="For every account you belong to. Opening one switches to its account."
+      description={
+        readerTab && needsAction
+          ? `What is waiting on you at ${needsAction.account.name}.`
+          : "For every account you belong to. Opening one switches to its account."
+      }
       actions={
         board.error || unread === 0 ? undefined : (
           <Button onClick={() => void board.markAllRead()}>Mark all as read</Button>
