@@ -70,6 +70,21 @@ describe("mapLotToSummary", () => {
   });
 });
 
+describe("mapLotToSummary image assets", () => {
+  const imageAssets = [
+    { src: "https://cdn.example/a.jpg", width: 1200, height: 800, blurDataURL: "data:x" },
+  ];
+
+  it("carries the measured size and blur preview so cards can reserve their plate", () => {
+    expect(mapLotToSummary(baseLot({ imageAssets })).imageAssets).toEqual(imageAssets);
+  });
+
+  it("leaves the field off when nothing is measured", () => {
+    expect(mapLotToSummary(baseLot())).not.toHaveProperty("imageAssets");
+    expect(mapLotToSummary(baseLot({ imageAssets: [] }))).not.toHaveProperty("imageAssets");
+  });
+});
+
 describe("mapLotToStaffListRow", () => {
   it("says whether an ended lot sold without naming the buyer", () => {
     const sold = mapLotToStaffListRow(baseLot({ status: "ended", winnerId: "user-9" }));
