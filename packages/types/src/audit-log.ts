@@ -11,6 +11,7 @@ export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly str
     "payment.",
     "payment_group.",
     "dispute_case.",
+    "purchase_problem.",
     "payout.",
     "xero.",
     "shop.refund.",

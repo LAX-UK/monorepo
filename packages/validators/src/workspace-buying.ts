@@ -1,3 +1,4 @@
+import { PURCHASE_PROBLEM_CATEGORIES } from "@auction/domain";
 import { z } from "zod";
 
 /** An amount in pounds as a decimal string, up to two decimal places (exact, never a float). */
@@ -48,6 +49,15 @@ export const requestDeliveryQuoteSchema = z
   .object({ destination: z.string().trim().min(5).max(500) })
   .strict();
 export type RequestDeliveryQuoteBody = z.infer<typeof requestDeliveryQuoteSchema>;
+
+/** A buyer's report of a problem with a paid purchase. */
+export const reportPurchaseProblemSchema = z
+  .object({
+    category: z.enum(PURCHASE_PROBLEM_CATEGORIES),
+    message: z.string().trim().min(10).max(2000),
+  })
+  .strict();
+export type ReportPurchaseProblemBody = z.infer<typeof reportPurchaseProblemSchema>;
 
 /** The saleroom team's price for a requested courier quote, with what it covers. */
 export const staffDeliveryQuoteSchema = z

@@ -7,10 +7,14 @@ import { SITE_CONTACT_EMAIL } from "@/lib/brand";
 import { buyingPageView } from "@/lib/buying/buying-pages";
 import { ACCOUNT_LOAD_ERROR } from "@/lib/dashboard/dashboard-copy";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { getServerCollectionOffer } from "@/lib/data/http/account-buying.server";
+import {
+  getServerCollectionOffer,
+  getServerPurchaseProblem,
+} from "@/lib/data/http/account-buying.server";
 import { openRecordInItsAccount } from "@/lib/legal-entity/open-record-in-account.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { deliveryPanel } from "@/lib/purchases/purchase-delivery.vm";
+import { purchaseProblemPanel } from "@/lib/purchases/purchase-problem";
 import { loadPurchaseSources } from "@/lib/purchases/purchase-sources.server";
 import { purchaseCard } from "@/lib/purchases/purchases.vm";
 import type { Metadata } from "next";
@@ -79,6 +83,11 @@ export default async function PurchaseDetailPage({ params }: PageProps) {
         payerTeam: organisation ? `${organisation.name}'s finance team` : "The account's payer",
       })
     : null;
+  const accountId = scope.account.id;
+  const reported =
+    accountId && card.problemHref
+      ? await getServerPurchaseProblem(accountId, lotId).catch(() => null)
+      : null;
   const wonOn = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
     day: "numeric",
@@ -94,6 +103,7 @@ export default async function PurchaseDetailPage({ params }: PageProps) {
           .filter(Boolean)
           .join(" · ")}
         panel={panel}
+        problem={reported ? purchaseProblemPanel(reported) : null}
         shipperEmail={collection?.kind === "email" ? collection.email : SITE_CONTACT_EMAIL}
       />
     </DashboardPage>

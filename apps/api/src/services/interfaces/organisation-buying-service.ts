@@ -7,6 +7,8 @@ import type {
   PurchaseDeliveryStage,
   PurchaseInvoiceStatus,
   PurchasePaymentRole,
+  PurchaseProblemCategory,
+  PurchaseProblemStatus,
 } from "@auction/domain";
 import type {
   AccountRegistrationRow,
@@ -22,6 +24,7 @@ export type OrganisationBuyingErrorCode =
   | "quote_step_not_allowed"
   | "quote_wrong_actor"
   | "quote_changed"
+  | "problem_purchase_not_paid"
   | "pay_several_empty"
   | "pay_several_too_many"
   | "pay_several_duplicate"
@@ -141,4 +144,29 @@ export interface IStaffDeliveryQuoteService {
 /** How to book a collection for a purchase: email for now, self-serve once switched on. */
 export interface ICollectionBookingService {
   offer(actor: OrganisationMemberActor, lotId: string): BuyingResult<CollectionBookingOffer>;
+}
+
+/** A reported problem as the buyer sees it on the purchase. */
+export type PurchaseProblemView = {
+  id: string;
+  /** The short reference quoted to the client services team. */
+  reference: string;
+  status: PurchaseProblemStatus;
+  category: PurchaseProblemCategory;
+  reportedAt: Date;
+};
+
+/** "Report a problem" on a paid purchase, for the members who follow it. */
+export interface IPurchaseProblemService {
+  /**
+   * Opens a report for the purchase. Reporting again while a report is open returns it, so a
+   * repeated send never opens a second case; `created` says which happened.
+   */
+  report(
+    actor: OrganisationMemberActor,
+    lotId: string,
+    input: { category: PurchaseProblemCategory; message: string },
+  ): BuyingResult<{ problem: PurchaseProblemView; created: boolean }>;
+  /** The open report for the purchase, or `null`. */
+  current(actor: OrganisationMemberActor, lotId: string): BuyingResult<PurchaseProblemView | null>;
 }
