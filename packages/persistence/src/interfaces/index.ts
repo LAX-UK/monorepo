@@ -998,10 +998,19 @@ export type {
   RecordPerson,
 } from "./workspace-buying.readers.js";
 export type {
+  EnquiryAttachmentRecord,
+  EnquiryListFilter,
+  EnquiryListScope,
+  EnquiryNoteRecord,
+  IEnquiryNoteRepository,
+  IEnquiryRoutingRepository,
   IMarketingEnquiryRepository,
+  MarketingEnquiryChange,
+  MarketingEnquiryDetailRecord,
   MarketingEnquiryRecord,
   MarketingEnquiryStatus,
   NewMarketingEnquiry,
+  PrivateSaleEnquiryDetail,
 } from "./marketing-enquiry.repository.js";
 export type {
   IPurchaseProblemRepository,
