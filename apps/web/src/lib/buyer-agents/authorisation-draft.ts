@@ -1,3 +1,4 @@
+import { parsePoundsToPence } from "@auction/staff-ui";
 import {
   type AuthoriseBuyerAgentInput,
   BUYER_AGENT_BID_LIMIT_MAX,
@@ -40,10 +41,9 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Pounds from what was typed ("£10,000.50" → 10000.5); `null` when empty, NaN when unreadable. */
 export function parsePounds(text: string): number | null {
-  const cleaned = text.replace(/[£,\s]/g, "");
-  if (cleaned === "") return null;
-  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return Number.NaN;
-  return Number.parseFloat(cleaned);
+  const parsed = parsePoundsToPence(text);
+  if (parsed.ok) return parsed.pence / 100;
+  return parsed.reason === "empty" ? null : Number.NaN;
 }
 
 /** Field errors in the words a person reads; empty when the draft can be sent. */

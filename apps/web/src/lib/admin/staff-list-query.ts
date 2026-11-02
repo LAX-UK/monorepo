@@ -1,5 +1,6 @@
-import { buildListHref, firstString } from "@/lib/admin/admin-list-params";
+import { firstString } from "@/lib/admin/admin-list-params";
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
+import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shared";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { GetAdminUserListParams } from "@/lib/data/http/admin-users.types";
 import { searchChipLabel } from "@auction/staff-ui";
@@ -9,8 +10,6 @@ import { adminUserListSortEnum } from "@auction/validators";
 import type { z } from "zod";
 
 export type StaffListSort = z.infer<typeof adminUserListSortEnum>;
-
-type SearchParams = Record<string, string | string[] | undefined>;
 
 export type StaffListFilters = {
   q?: string;
@@ -27,14 +26,6 @@ function isStaffRole(s: string | undefined): s is UserStaffRole {
 
 function isStaffListSort(s: string | undefined): s is StaffListSort {
   return s != null && (adminUserListSortEnum.options as readonly string[]).includes(s);
-}
-
-function omitParamsHref(basePath: string, sp: SearchParams, omit: readonly string[]): string {
-  const patch: Record<string, string | null> = { offset: "0" };
-  for (const key of omit) {
-    patch[key] = null;
-  }
-  return buildListHref(basePath, sp, patch);
 }
 
 export function parseStaffListFilters(sp: SearchParams): StaffListFilters {

@@ -62,7 +62,7 @@ export function mapAdminMutationErrorBody(
   return { ok: false, kind: "failed", message: readErrorMessage(body) ?? fallbackMessage };
 }
 
-function readErrorCode(body: unknown): string | undefined {
+export function readErrorCode(body: unknown): string | undefined {
   if (!body || typeof body !== "object") return undefined;
   const record = body as { code?: string };
   return typeof record.code === "string" ? record.code : undefined;
