@@ -270,8 +270,6 @@ function CheckoutLayout({ lot, description, children }: CheckoutLayoutProps) {
           <div className="mx-auto min-w-0 max-w-xl lg:mx-0">
             <DashboardDetailHeader
               title={lot.title}
-              backHref="/purchases"
-              backLabel="Back to purchases"
               compactOnMobile
               sticky={false}
               className="mb-8 border-0 bg-transparent px-0 py-0 backdrop-blur-none lg:mb-10"

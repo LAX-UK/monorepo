@@ -261,6 +261,9 @@ describe("tile figures", () => {
         saleId: "s1",
         title: "Modern British",
         startsAt: new Date("2026-11-20T10:00:00Z"),
+        endsAt: new Date("2026-11-27T10:00:00Z"),
+        live: false,
+        images: ["a.jpg", "b.jpg"],
         currency: "GBP",
         works: 2,
         estimatedWorks: 2,
@@ -271,6 +274,9 @@ describe("tile figures", () => {
         saleId: "s1",
         title: "Modern British",
         startsAt: new Date("2026-11-20T10:00:00Z"),
+        endsAt: new Date("2026-11-27T10:00:00Z"),
+        live: false,
+        images: ["b.jpg", "c.jpg", "d.jpg"],
         currency: "EUR",
         works: 1,
         estimatedWorks: 1,
@@ -281,6 +287,9 @@ describe("tile figures", () => {
         saleId: "s0",
         title: "Prints",
         startsAt: new Date("2026-11-05T10:00:00Z"),
+        endsAt: new Date("2026-11-12T10:00:00Z"),
+        live: true,
+        images: [],
         currency: "GBP",
         works: 1,
         estimatedWorks: 0,
@@ -293,6 +302,9 @@ describe("tile figures", () => {
       ["s1", 3],
     ]);
     expect(sales[0]?.estimates).toEqual([]);
+    expect(sales.map((sale) => sale.live)).toEqual([true, false]);
+    // A sale card shows a few works once each, in lot order, however many currencies they span.
+    expect(sales[1]?.images).toEqual(["a.jpg", "b.jpg", "c.jpg"]);
     expect(sales[1]?.estimates).toEqual([
       { currency: "GBP", low: "8000.00", high: "12000.00" },
       { currency: "EUR", low: "3000.00", high: "4000.00" },

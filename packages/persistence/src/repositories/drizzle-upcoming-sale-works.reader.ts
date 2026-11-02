@@ -13,6 +13,8 @@ import {
 } from "./organisation-dashboard.sql.js";
 
 const OPEN_LOT_STATUSES = ["scheduled", "active"] as const;
+/** Works shown on a sale's card. */
+const COVER_IMAGES = 3;
 const UPCOMING_SALE_STATUSES = ["scheduled", "active"] as const;
 
 /** The organisation's works in sales that have not ended, grouped by sale and currency. */
@@ -31,6 +33,11 @@ export class DrizzleUpcomingSaleWorksReader implements IUpcomingSaleWorksReader 
         saleId: sale.id,
         title: sale.title,
         startsAt: sale.startTime,
+        endsAt: sale.endTime,
+        saleStatus: sale.status,
+        images: sql<
+          string[]
+        >`coalesce((array_agg(${lot.images}[1] order by ${lot.lotNumber} nulls last, ${lot.id}) filter (where cardinality(${lot.images}) > 0))[1:${sql.raw(String(COVER_IMAGES))}], '{}')`,
         currency: lotCurrencySql,
         works: count(),
         estimatedWorks: sql<number>`count(*) filter (where ${low} is not null and ${high} is not null)`,
@@ -48,13 +55,16 @@ export class DrizzleUpcomingSaleWorksReader implements IUpcomingSaleWorksReader 
           gt(sale.endTime, now),
         ),
       )
-      .groupBy(sale.id, sale.title, sale.startTime, lotCurrencySql)
+      .groupBy(sale.id, sale.title, sale.startTime, sale.endTime, sale.status, lotCurrencySql)
       .orderBy(asc(sale.startTime), asc(sale.id))
       .limit(limit);
     return rows.map((row) => ({
       saleId: row.saleId,
       title: row.title,
       startsAt: row.startsAt,
+      endsAt: row.endsAt,
+      live: row.saleStatus === "active",
+      images: row.images,
       currency: row.currency,
       works: Number(row.works),
       estimatedWorks: Number(row.estimatedWorks),

@@ -1,29 +1,27 @@
 "use client";
 
 import type { MemberRowView } from "@/lib/legal-entity/member-row.vm";
-import type { LegalEntityMemberRole } from "@auction/types";
 import { RecordRow } from "@auction/ui";
+import { Button, Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from "@auction/ui/lax";
 import {
-  Button,
-  Menu,
-  MenuContent,
-  MenuItem,
-  MenuSeparator,
-  MenuTrigger,
-  SelectMenu,
-} from "@auction/ui/lax";
-import { ArrowLeftRight, Clock, Ellipsis, LogOut, UserMinus } from "lucide-react";
+  ArrowLeftRight,
+  Clock,
+  Ellipsis,
+  LogOut,
+  TriangleAlert,
+  UserCog,
+  UserMinus,
+} from "lucide-react";
 import Link from "next/link";
 import { MemberInitials } from "./member-initials";
 
 type Props = {
   row: MemberRowView;
-  /** The role the picker shows (the saved one, or one the server is deciding on). */
-  shownRole: LegalEntityMemberRole;
-  busy: boolean;
+  /** The role the row shows (the saved one, or one the server is deciding on). */
+  shownRole: string;
   error: string | null;
   organisationName: string;
-  onRoleChange: (role: LegalEntityMemberRole) => void;
+  onChangeRole: () => void;
   onTransfer: () => void;
   onRemove: () => void;
   onLeave: () => void;
@@ -33,11 +31,15 @@ type Props = {
 function MemberMenu({
   row,
   organisationName,
+  onChangeRole,
   onTransfer,
   onRemove,
   onLeave,
-}: Pick<Props, "row" | "organisationName" | "onTransfer" | "onRemove" | "onLeave">) {
-  const leading = [row.activityHref, row.transfer].some(Boolean);
+}: Pick<
+  Props,
+  "row" | "organisationName" | "onChangeRole" | "onTransfer" | "onRemove" | "onLeave"
+>) {
+  const leading = [row.roleOptions, row.activityHref, row.transfer].some(Boolean);
   const trailing = row.canRemove || row.leave !== null;
   // An empty slot the size of the button keeps every row's role in one column.
   if (!leading && !trailing) return <span aria-hidden className="block size-lax-control-md" />;
@@ -49,6 +51,12 @@ function MemberMenu({
         </Button>
       </MenuTrigger>
       <MenuContent className="w-72">
+        {row.roleOptions ? (
+          <MenuItem onSelect={onChangeRole}>
+            <UserCog aria-hidden />
+            Change role…
+          </MenuItem>
+        ) : null}
         {row.activityHref ? (
           <MenuItem asChild>
             <Link href={row.activityHref}>
@@ -85,18 +93,28 @@ function MemberMenu({
   );
 }
 
+/** "Two-step on" in the meta line; "Two-step off" as a warning, with a mark, not colour alone. */
+function TwoStepNote({ text, warning }: { text: string; warning: boolean }) {
+  if (!warning) return <>{text}</>;
+  return (
+    <span className="inline-flex items-center gap-1 font-medium text-lax-warning-fg">
+      <TriangleAlert aria-hidden className="size-3.5" strokeWidth={1.75} />
+      {text}
+    </span>
+  );
+}
+
 /**
- * One member: initials, name and email, whether they use two-step, the role (a picker when the
- * viewer may change it) and a "…" menu with what else the viewer may do. On a phone the role
- * sits under the name, so nothing runs past the card edge.
+ * One member: initials, name and email, two-step when it matters, the role as text and a "…"
+ * menu with what the viewer may do (change the role, view activity, hand over ownership, remove).
+ * On a phone the role sits under the name, so nothing runs past the card edge.
  */
 export function MemberRow({
   row,
   shownRole,
-  busy,
   error,
   organisationName,
-  onRoleChange,
+  onChangeRole,
   onTransfer,
   onRemove,
   onLeave,
@@ -112,27 +130,21 @@ export function MemberRow({
           ) : null}
         </>
       }
-      meta={[row.email, row.twoStep, row.lastActive]}
+      meta={[
+        row.email,
+        row.twoStep ? <TwoStepNote key="two-step" {...row.twoStep} /> : null,
+        row.lastActive,
+      ]}
       status={
-        row.roleOptions ? (
-          <SelectMenu
-            label={`Role for ${row.name}`}
-            options={row.roleOptions}
-            value={shownRole}
-            onValueChange={onRoleChange}
-            disabled={busy}
-            className="w-40"
-          />
-        ) : (
-          <span className="inline-flex items-center text-lax-ui text-lax-fg @2xl:h-lax-control-md @2xl:w-40 @2xl:px-3">
-            {row.roleLabel}
-          </span>
-        )
+        <span className="inline-flex items-center text-lax-ui text-lax-fg @2xl:h-lax-control-md @2xl:w-40 @2xl:px-3">
+          {shownRole}
+        </span>
       }
       menu={
         <MemberMenu
           row={row}
           organisationName={organisationName}
+          onChangeRole={onChangeRole}
           onTransfer={onTransfer}
           onRemove={onRemove}
           onLeave={onLeave}

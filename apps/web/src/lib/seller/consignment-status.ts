@@ -50,6 +50,8 @@ export type ConsignmentStatusPresentation = {
   tone: StatusBadgeTone;
   shape: StatusBadgeShape;
   stage: ConsignmentStage;
+  /** Happening now: the neutral badge with the pulsing live dot, never a red block. */
+  live?: boolean;
 };
 
 /**
@@ -71,7 +73,7 @@ export const CONSIGNMENT_STATUS: Record<ConsignmentStatus, ConsignmentStatusPres
   agreement: { label: "Accepted", tone: "warning", shape: "alert", stage: "accepted" },
   preparing: { label: "Accepted", tone: "info", shape: "dot", stage: "accepted" },
   in_sale: { label: "In a sale", tone: "info", shape: "dot", stage: "in-sale" },
-  live: { label: "In a sale", tone: "live", shape: "dot", stage: "in-sale" },
+  live: { label: "In a sale", tone: "neutral", shape: "dot", stage: "in-sale", live: true },
   sold: { label: "Sold", tone: "success", shape: "check", stage: "sold" },
   choose_unsold: {
     label: "Did not sell",

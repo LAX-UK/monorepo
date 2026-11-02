@@ -181,14 +181,30 @@ describe("the columns", () => {
           {
             id: "s1",
             title: "Modern British",
-            date: "20 Nov 2026",
+            timing: "Opens 20 Nov 2026, 10:00",
             dateTime: "2026-11-20T10:00:00.000Z",
+            live: false,
             works: "4 of your works",
+            images: ["a.jpg"],
             href: "/sales/modern-british/s1",
+          },
+          {
+            id: "s2",
+            title: "Prints",
+            timing: "Closes 3 Nov, 21:14",
+            dateTime: "2026-11-03T21:14:00.000Z",
+            live: true,
+            works: "1 work",
+            images: [],
+            href: "/sales/prints/s2",
           },
         ]}
       />,
     );
+    // Only the sale that is open now says so, and it says when it closes.
+    expect(screen.getAllByText("Live")).toHaveLength(1);
+    expect(screen.getByText("Closes 3 Nov, 21:14")).toBeVisible();
+    expect(screen.getByText("Opens 20 Nov 2026, 10:00")).toBeVisible();
     expect(screen.getByRole("link", { name: /Modern British/ })).toHaveAttribute(
       "href",
       "/sales/modern-british/s1",
@@ -200,12 +216,17 @@ describe("the columns", () => {
     render(
       <HomeConsignmentStages
         stages={[
-          { id: "in_review", label: "In review", count: 2, href: "/a" },
-          { id: "sold", label: "Sold", count: 23, href: "/b" },
+          { id: "under_review", label: "In review", count: 2, empty: false, href: "/a" },
+          { id: "sold", label: "Sold", count: 23, empty: false, href: "/b" },
+          { id: "unsold", label: "Did not sell", count: 0, empty: true, href: "/c" },
         ]}
       />,
     );
     expect(screen.getByRole("link", { name: /^Sold\W+23$/ })).toHaveAttribute("href", "/b");
+    // A stage with no works keeps its cell, marked quiet, and still opens its list.
+    expect(screen.getByTestId("home-stage-unsold")).toHaveAttribute("data-empty");
+    expect(screen.getByTestId("home-stage-sold")).not.toHaveAttribute("data-empty");
+    expect(screen.getByRole("link", { name: /^Did not sell\W+0$/ })).toHaveAttribute("href", "/c");
   });
 
   it("lists activity with how long ago and the full date on hover", () => {
