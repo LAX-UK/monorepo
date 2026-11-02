@@ -14,4 +14,18 @@ describe("contactIntentFromSearchParams", () => {
     expect(config.topic).toBe("buying");
     expect(config.headline).toMatch(/^Report a problem with a purchase/);
   });
+
+  it("words a private sale enquiry as buy or sell, tagged for staff", () => {
+    const config = contactIntentFromSearchParams({ intent: "private-sale" });
+    expect(config.topicField?.options.map((o) => o.value)).toEqual(["buying", "selling"]);
+    expect(config.messageTag).toBe("Private sale enquiry");
+    expect(config.submitLabel).toBe("Send enquiry");
+  });
+
+  it("leaves the general form untouched", () => {
+    const config = contactIntentFromSearchParams({});
+    expect(config.topicField).toBeNull();
+    expect(config.messageTag).toBeNull();
+    expect(config.submitLabel).toBe("Send message");
+  });
 });

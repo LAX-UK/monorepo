@@ -8,6 +8,7 @@ import {
   LEGACY_DASHBOARD_REDIRECTS,
   identitySettingsRedirects,
 } from "./src/lib/navigation/legacy-dashboard-redirects";
+import { PRIVATE_SALES_REDIRECTS } from "./src/lib/navigation/private-sales-redirects";
 
 const workspaceRoot = path.join(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -115,7 +116,11 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["lucide-react", "@auction/ui"],
   },
   async redirects() {
-    return [...LEGACY_DASHBOARD_REDIRECTS, ...identitySettingsRedirects(laxAccountOrigin())];
+    return [
+      ...PRIVATE_SALES_REDIRECTS,
+      ...LEGACY_DASHBOARD_REDIRECTS,
+      ...identitySettingsRedirects(laxAccountOrigin()),
+    ];
   },
 };
 
