@@ -2,7 +2,9 @@ export {
   LOT_LIFECYCLE_COPY,
   LOT_LIFECYCLE_KINDS,
   isLotLifecycleClosed,
+  lotHeadlineLabel,
   lotLifecycleCopy,
+  lotPriceHasBids,
   lotLifecycleHasCountdown,
   type LotActionKind,
   type LotBadgeCopy,
@@ -14,9 +16,11 @@ export {
 } from "./lifecycle-copy.js";
 export {
   TIME_LEFT_BANDS,
+  TIME_LEFT_DATE_BEYOND_MS,
   TIME_LEFT_MARKS,
   formatTimeLeft,
   timeLeftBand,
+  timeLeftShowsSeconds,
   timeLeftView,
   timeMarkCrossed,
   type TimeLeftBand,

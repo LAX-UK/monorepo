@@ -51,6 +51,8 @@ export type LotLifecycleCopy = {
   headline: LotHeadlineSource;
   /** The label above the headline figure. */
   headlineLabel: string;
+  /** The same label while the lot has no bids: the figure is still the starting bid. */
+  headlineLabelBeforeBids: string;
   timeLine: LotTimeLineKind;
   action: LotActionKind;
   /** Bidding is open or about to open, so a next bid and a live feed make sense. */
@@ -64,6 +66,7 @@ export const LOT_LIFECYCLE_COPY: Readonly<Record<LotLifecycleKind, LotLifecycleC
     badge: { label: "Preview", tone: "neutral", dot: false },
     headline: "starting",
     headlineLabel: "Starting bid",
+    headlineLabelBeforeBids: "Starting bid",
     timeLine: "none",
     action: "none",
     biddingOpen: false,
@@ -73,6 +76,7 @@ export const LOT_LIFECYCLE_COPY: Readonly<Record<LotLifecycleKind, LotLifecycleC
     badge: { label: "Opens soon", tone: "info", dot: false },
     headline: "starting",
     headlineLabel: "Starting bid",
+    headlineLabelBeforeBids: "Starting bid",
     timeLine: "opens",
     action: "register_or_set_maximum",
     biddingOpen: true,
@@ -82,6 +86,7 @@ export const LOT_LIFECYCLE_COPY: Readonly<Record<LotLifecycleKind, LotLifecycleC
     badge: { label: "Live", tone: "neutral", dot: true },
     headline: "current",
     headlineLabel: "Current bid",
+    headlineLabelBeforeBids: "Starting bid",
     timeLine: "closes",
     action: "bid",
     biddingOpen: true,
@@ -91,6 +96,7 @@ export const LOT_LIFECYCLE_COPY: Readonly<Record<LotLifecycleKind, LotLifecycleC
     badge: { label: "Extended", tone: "warning", dot: true },
     headline: "current",
     headlineLabel: "Current bid",
+    headlineLabelBeforeBids: "Starting bid",
     timeLine: "closes",
     action: "bid",
     biddingOpen: true,
@@ -100,6 +106,7 @@ export const LOT_LIFECYCLE_COPY: Readonly<Record<LotLifecycleKind, LotLifecycleC
     badge: { label: "Live · In the room", tone: "neutral", dot: true },
     headline: "current",
     headlineLabel: "Current bid",
+    headlineLabelBeforeBids: "Starting bid",
     timeLine: "none",
     action: "bid_and_watch_saleroom",
     biddingOpen: true,
@@ -109,6 +116,7 @@ export const LOT_LIFECYCLE_COPY: Readonly<Record<LotLifecycleKind, LotLifecycleC
     badge: { label: "Paused", tone: "warning", dot: false },
     headline: "current",
     headlineLabel: "Current bid",
+    headlineLabelBeforeBids: "Starting bid",
     timeLine: "none",
     action: "bid_disabled",
     biddingOpen: true,
@@ -118,6 +126,7 @@ export const LOT_LIFECYCLE_COPY: Readonly<Record<LotLifecycleKind, LotLifecycleC
     badge: { label: "Sold", tone: "neutral", dot: false },
     headline: "sold",
     headlineLabel: "Sold for",
+    headlineLabelBeforeBids: "Sold for",
     timeLine: "ended",
     action: "get_artist_alerts",
     biddingOpen: false,
@@ -127,6 +136,7 @@ export const LOT_LIFECYCLE_COPY: Readonly<Record<LotLifecycleKind, LotLifecycleC
     badge: { label: "Not sold", tone: "neutral", dot: false },
     headline: "result",
     headlineLabel: "Estimate",
+    headlineLabelBeforeBids: "Estimate",
     timeLine: "ended",
     action: "enquire",
     biddingOpen: false,
@@ -136,6 +146,7 @@ export const LOT_LIFECYCLE_COPY: Readonly<Record<LotLifecycleKind, LotLifecycleC
     badge: { label: "Cancelled", tone: "neutral", dot: false },
     headline: "none",
     headlineLabel: "No price",
+    headlineLabelBeforeBids: "No price",
     timeLine: "none",
     action: "back_to_sale",
     biddingOpen: false,
@@ -145,6 +156,7 @@ export const LOT_LIFECYCLE_COPY: Readonly<Record<LotLifecycleKind, LotLifecycleC
     badge: { label: "Withdrawn", tone: "neutral", dot: false },
     headline: "none",
     headlineLabel: "No price",
+    headlineLabelBeforeBids: "No price",
     timeLine: "none",
     action: "back_to_sale",
     biddingOpen: false,
@@ -164,4 +176,15 @@ export function isLotLifecycleClosed(kind: LotLifecycleKind): boolean {
 /** Lifecycles that run on a clock the page counts down (the room's auctioneer closes the rest). */
 export function lotLifecycleHasCountdown(kind: LotLifecycleKind): boolean {
   return LOT_LIFECYCLE_COPY[kind].timeLine === "closes";
+}
+
+/** The label above the headline figure: "Starting bid" until the first bid is placed. */
+export function lotHeadlineLabel(kind: LotLifecycleKind, hasBids: boolean): string {
+  const copy = LOT_LIFECYCLE_COPY[kind];
+  return hasBids ? copy.headlineLabel : copy.headlineLabelBeforeBids;
+}
+
+/** Whether a lot's price has moved off its starting price, which only a bid can do. */
+export function lotPriceHasBids(price: { currentPrice: string; startingPrice: string }): boolean {
+  return Number.parseFloat(price.currentPrice) > Number.parseFloat(price.startingPrice);
 }

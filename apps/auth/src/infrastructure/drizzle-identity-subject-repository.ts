@@ -101,6 +101,28 @@ export class DrizzleIdentitySubjectRepository implements IIdentitySubjectReposit
     }
   }
 
+  async clearPhone(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    now: Date,
+  ): Promise<
+    { status: "cleared"; previous: string } | { status: "no_phone" } | { status: "not_found" }
+  > {
+    const tx = identityOperationDb(this.db, transaction);
+    const [current] = await tx
+      .select({ phoneNumber: user.phoneNumber })
+      .from(user)
+      .where(eq(user.id, subjectId))
+      .for("update");
+    if (!current) return { status: "not_found" };
+    if (!current.phoneNumber) return { status: "no_phone" };
+    await tx
+      .update(user)
+      .set({ phoneNumber: null, phoneNumberVerified: false, updatedAt: now })
+      .where(eq(user.id, subjectId));
+    return { status: "cleared", previous: current.phoneNumber };
+  }
+
   async markDeletionRequested(
     transaction: IdentityOperationTransaction,
     subjectId: string,

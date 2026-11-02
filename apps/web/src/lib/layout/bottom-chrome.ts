@@ -3,6 +3,7 @@ import { isClientAreaPath } from "@/lib/navigation/client-routes";
 export const BOTTOM_CHROME = {
   bid: "5rem",
   tab: "var(--bottom-nav-height, 4rem)",
+  /** Until the dock has measured itself (first paint), a card's worth of space. */
   consent: "5.5rem",
 } as const;
 
@@ -24,21 +25,21 @@ export type BottomChromeState = {
 };
 
 export function consentOffset(visible: boolean): string {
-  return visible ? BOTTOM_CHROME.consent : "0px";
+  return visible ? `var(--cookie-dock-height, ${BOTTOM_CHROME.consent})` : "0px";
 }
 
+/** Padding for fixed bars only; the open cookie dock is reserved once, on the body. */
 export function pageBottomPadding(state: BottomChromeState): string {
-  const consent = consentOffset(state.consentBannerVisible);
   if (state.fixedPayBarRoute) {
-    return `calc(${CHECKOUT_PAY_BAR} + 1rem + env(safe-area-inset-bottom, 0px) + ${consent})`;
+    return `calc(${CHECKOUT_PAY_BAR} + 1rem + env(safe-area-inset-bottom, 0px))`;
   }
   if (state.dashboardTabBarActive && !state.hideDashboardTabBar) {
-    return `calc(${BOTTOM_CHROME.tab} + 1rem + env(safe-area-inset-bottom, 0px) + ${consent})`;
+    return `calc(${BOTTOM_CHROME.tab} + 1rem + env(safe-area-inset-bottom, 0px))`;
   }
   if (state.marketingBidBarRoute && state.marketingBidBarActive !== false) {
-    return `calc(${BOTTOM_CHROME.bid} + 1.5rem + ${consent})`;
+    return `calc(${BOTTOM_CHROME.bid} + 1.5rem)`;
   }
-  return `calc(1.5rem + ${consent})`;
+  return "1.5rem";
 }
 
 export function isMarketingBidBarRoute(pathname: string): boolean {

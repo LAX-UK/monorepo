@@ -1,16 +1,18 @@
-import type { IUserRepository } from "@auction/persistence/interfaces";
+import type { IPayoutRepository, IUserRepository } from "@auction/persistence/interfaces";
 import type {
   IPaymentExternalRefRepository,
   IXeroConnectionRepository,
   IXeroWebhookEventRepository,
 } from "@auction/persistence/interfaces";
 import type { Env } from "../../env.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { AdminFinanceRouteServices } from "../interfaces/admin-routes/admin-finance-routes.js";
 import type { IPayoutStatementApplicationService } from "../interfaces/finance-routes/finance-payout-statement.js";
 import type { IPaymentAdminService } from "../interfaces/payment-service.js";
 import type { IPayoutAdminService, IPayoutSettlementService } from "../interfaces/payout.js";
 import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
 import type { XeroOAuthService } from "../xero-oauth.service.js";
+import { AdminFailedPayoutRetryService } from "./admin-failed-payout-retry.service.js";
 import type { AdminPaymentListQueryService } from "./admin-payment-list-query.service.js";
 import { AdminPaymentsApplicationService } from "./admin-payments-application.service.js";
 import { AdminPayoutApplicationService } from "./admin-payout-application.service.js";
@@ -27,6 +29,8 @@ export type CreateAdminFinanceServicesInput = {
   paymentExternalRefRepository: IPaymentExternalRefRepository;
   userRepository: IUserRepository;
   payoutService: IPayoutAdminService;
+  payoutRepository: Pick<IPayoutRepository, "findById">;
+  domainEventSink: IDomainEventSink;
   payoutSettlementService: IPayoutSettlementService;
   payoutStatementApplication: IPayoutStatementApplicationService;
   env: Pick<
@@ -54,6 +58,11 @@ export function createAdminFinanceServices(
       input.payoutService,
       input.payoutSettlementService,
       input.payoutStatementApplication,
+      new AdminFailedPayoutRetryService(
+        input.payoutRepository,
+        input.stripeConnectService,
+        input.domainEventSink,
+      ),
     ),
     stripeConnect: new AdminStripeConnectApplicationService(
       input.stripeConnectService,

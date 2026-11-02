@@ -1,10 +1,14 @@
 "use client";
 
+import { timerText } from "@/components/lot-timer/format";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import { formatLondonDateTime } from "@/lib/datetime/london-time";
+import { formatLondonWhen } from "@/lib/datetime/london-time";
 import {
+  COUNTDOWN_DATE_BEYOND_MS,
+  formatCountdownAnnounce,
   formatCountdownAriaLabel,
   formatCountdownForDisplay,
+  formatCountdownSpoken,
   parseCountdownSegments,
 } from "@/lib/format-countdown";
 import {
@@ -13,6 +17,7 @@ import {
   countdownToneClass,
 } from "@/lib/presenters/countdown-tone";
 import { liveUrgencyPulseClass } from "@/lib/presenters/status-presentation";
+import { opensLine } from "@/lib/time/opens-line";
 import { useClientClock } from "@/lib/time/use-client-clock";
 import type { Sale } from "@auction/types";
 import { LiveDot, cn } from "@auction/ui";
@@ -33,32 +38,15 @@ type Props = {
 type Phase = "before" | "during" | "livePastEnd" | "ended";
 
 /** Coarse bucket for screen-reader announcements (same cadence as packages/ui Countdown). */
-function formatAnnounceBucket(secondsRemaining: number): string {
-  if (secondsRemaining <= 0) return "Ended";
-  const d = Math.floor(secondsRemaining / 86_400);
-  const h = Math.floor((secondsRemaining % 86_400) / 3600);
-  const m = Math.floor((secondsRemaining % 3600) / 60);
-  if (d > 0) return `${d} day${d === 1 ? "" : "s"} ${h} hour${h === 1 ? "" : "s"}`;
-  if (h > 0) return `${h} hour${h === 1 ? "" : "s"} ${m} minute${m === 1 ? "" : "s"}`;
-  return `${m} minute${m === 1 ? "" : "s"}`;
-}
-
 function formatStartsAriaLabel(ms: number): string {
   if (ms <= 0) return "Live event has started";
-  const { days, hours, minutes } = parseCountdownSegments(ms);
-  const parts: string[] = [];
-  if (days > 0) parts.push(`${days} day${days === 1 ? "" : "s"}`);
-  if (hours > 0) parts.push(`${hours} hour${hours === 1 ? "" : "s"}`);
-  if (minutes > 0 || parts.length === 0) {
-    parts.push(`${minutes} minute${minutes === 1 ? "" : "s"}`);
-  }
-  return `Live event starts in ${parts.join(", ")}`;
+  return `Live event starts in ${formatCountdownSpoken(ms)}`;
 }
 
 function formatTargetDatetime(value: Date | string): string {
   const d = toDisplayDate(value);
   if (Number.isNaN(d.getTime())) return "";
-  return formatLondonDateTime(d);
+  return formatLondonWhen(d);
 }
 
 function pad2(n: number): string {
@@ -161,7 +149,7 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
             : "This event has ended";
 
   const secondsRemaining = msLeft != null ? Math.floor(msLeft / 1000) : null;
-  const bucket = secondsRemaining != null ? formatAnnounceBucket(secondsRemaining) : "";
+  const bucket = secondsRemaining != null ? formatCountdownAnnounce(secondsRemaining * 1000) : "";
   const [liveMessage, setLiveMessage] = useState("");
   useEffect(() => {
     if (secondsRemaining == null || phase === "ended" || phase === "livePastEnd") return;
@@ -180,7 +168,15 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
       label
     );
 
-  const clock = msLeft != null && phase === "during" ? formatCountdownForDisplay(msLeft) : null;
+  // Before the start the time rule decides: a date beyond a week, then the time left.
+  const startsLine =
+    phase === "before" && now != null && Number.isFinite(startMs)
+      ? opensLine(new Date(startMs), new Date(now), "Starts")
+      : null;
+  const clock =
+    phase === "during" && msLeft != null && now != null
+      ? (timerText(msLeft, now).date ?? formatCountdownForDisplay(msLeft))
+      : (startsLine?.value ?? null);
 
   if (variant === "compact") {
     return (
@@ -197,7 +193,7 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
               Live
             </span>
           ) : phase === "before" ? (
-            "Starts in"
+            (startsLine?.label ?? "Starts in")
           ) : (
             "Ended"
           )}
@@ -205,14 +201,14 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
         {phase === "before" || phase === "during" ? (
           <time
             dateTime={targetIso ?? undefined}
-            aria-label={ariaLabel}
             className={cn(
               "mt-0.5 block font-body text-sm font-semibold tabular-nums",
               phase === "during" || tone !== "calm" ? countdownToneClass(tone) : "text-on-surface",
             )}
             suppressHydrationWarning
           >
-            {clock ?? "\u00A0"}
+            <span className="sr-only">{ariaLabel}</span>
+            <span aria-hidden>{clock ?? "\u00A0"}</span>
           </time>
         ) : phase === "livePastEnd" ? null : (
           <p className="mt-0.5 font-body text-sm text-on-surface-variant">This event has ended</p>
@@ -221,11 +217,17 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
     );
   }
 
-  if (reduced && (phase === "before" || phase === "during") && targetIso) {
+  // Beyond a week the date is the answer; the tiles start from a week down.
+  const beyondAWeek = msLeft != null && msLeft > COUNTDOWN_DATE_BEYOND_MS;
+  if ((reduced || beyondAWeek) && (phase === "before" || phase === "during") && targetIso) {
     return (
       <div className={cn("text-center", className)}>
         <p className="font-body text-sm font-medium text-on-surface-variant sm:text-base">
-          {labelRow}
+          {beyondAWeek
+            ? phase === "before"
+              ? "Live event starts"
+              : "Auction in progress · ends"
+            : labelRow}
         </p>
         <time
           dateTime={targetIso}
@@ -252,12 +254,8 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
           <span className="sr-only" aria-live="polite" aria-atomic="true">
             {liveMessage}
           </span>
-          <time
-            dateTime={targetIso ?? undefined}
-            aria-label={ariaLabel}
-            className="mt-3 block"
-            suppressHydrationWarning
-          >
+          <time dateTime={targetIso ?? undefined} className="mt-3 block" suppressHydrationWarning>
+            <span className="sr-only">{ariaLabel}</span>
             <div className={cn("grid gap-2", showDays ? "grid-cols-4" : "grid-cols-3")} aria-hidden>
               {showDays ? (
                 <SegmentChip

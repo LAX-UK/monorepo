@@ -35,6 +35,8 @@ const markPaidBodySchema = z.object({
   stripeTransferId: z.string().min(3).max(200),
 });
 
+const retryTransferBodySchema = z.object({ confirmed: z.literal(true) });
+
 function handleError(err: unknown) {
   if (err instanceof PayoutNotFoundError) return { status: 404 as const, code: err.code };
   if (err instanceof PayoutPermissionError) return { status: 403 as const, code: err.code };
@@ -249,6 +251,38 @@ export function createAdminPayoutRoutes(
       try {
         const result = await container.admin.payouts.markPaid(userId, payoutId, body);
         return c.json({ data: result });
+      } catch (err) {
+        const mapped = handleError(err);
+        if (mapped) return c.json({ error: mapped.code }, mapped.status);
+        throw err;
+      }
+    },
+  );
+
+  /** POST /admin/payouts/:payoutId/retry-transfer — send the Stripe transfer again after a failure. */
+  r.post(
+    "/:payoutId/retry-transfer",
+    requireAuth,
+    adminMutate,
+    requireStepUp,
+    idempotent("payouts.retry-transfer"),
+    zValidator("param", payoutIdParam),
+    zValidator("json", retryTransferBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { payoutId } = c.req.valid("param");
+      try {
+        const outcome = await container.admin.payouts.retryFailedTransfer(userId, payoutId);
+        if (!outcome.ok) {
+          return c.json(
+            {
+              error: outcome.reason,
+              ...(outcome.stripeErrorMessage ? { message: outcome.stripeErrorMessage } : {}),
+            },
+            409,
+          );
+        }
+        return c.json({ data: outcome.payout });
       } catch (err) {
         const mapped = handleError(err);
         if (mapped) return c.json({ error: mapped.code }, mapped.status);

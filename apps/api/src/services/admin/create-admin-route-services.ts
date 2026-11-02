@@ -1,4 +1,5 @@
 import type { SaleroomOnBlockPolicy } from "@auction/bidding-runtime";
+import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { IUserInvitationRepository } from "@auction/persistence/interfaces";
 import type { IBidRepository, ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
@@ -192,6 +193,7 @@ export type CreateAdminRouteServicesInput = {
   disputeDesk: IAdminDisputeDeskService;
   bidRepo: IBidRepository;
   payoutService: IPayoutAdminService;
+  payoutRepository: Pick<IPayoutRepository, "findById">;
   payoutSettlementService: IPayoutSettlementService;
   payoutStatementApplication: IPayoutStatementApplicationService;
   env: Pick<
@@ -271,6 +273,8 @@ export function createAdminRouteServices(
     paymentExternalRefRepository: input.paymentExternalRefRepository,
     userRepository: input.userRepository,
     payoutService: input.payoutService,
+    payoutRepository: input.payoutRepository,
+    domainEventSink: input.domainEventSink,
     payoutSettlementService: input.payoutSettlementService,
     payoutStatementApplication: input.payoutStatementApplication,
     env: input.env,

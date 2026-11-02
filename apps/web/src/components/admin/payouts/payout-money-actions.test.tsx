@@ -5,6 +5,7 @@ import { usePayoutMoneyActions } from "./payout-money-actions";
 
 const refresh = vi.fn();
 const markPaidAction = vi.fn();
+const retryAction = vi.fn();
 const adjustAction = vi.fn();
 const reverseAction = vi.fn();
 const notifySuccess = vi.fn();
@@ -14,6 +15,7 @@ const notifySuccess = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/lib/actions/admin/admin-payouts", () => ({
   adminMarkPayoutPaidResultAction: (...args: unknown[]) => markPaidAction(...args),
+  adminRetryPayoutTransferResultAction: (...args: unknown[]) => retryAction(...args),
   adminAddPayoutAdjustmentResultAction: (...args: unknown[]) => adjustAction(...args),
   adminReversePayoutResultAction: (...args: unknown[]) => reverseAction(...args),
 }));
@@ -47,6 +49,7 @@ const payout: PayoutsStaffRow = {
   canMarkPaid: true,
   canAdjust: true,
   canReverse: false,
+  canRetryTransfer: false,
 };
 
 function Harness({
@@ -81,7 +84,14 @@ function Harness({
 
 describe("usePayoutMoneyActions", () => {
   beforeEach(() => {
-    for (const fn of [refresh, markPaidAction, adjustAction, reverseAction, notifySuccess]) {
+    for (const fn of [
+      refresh,
+      markPaidAction,
+      retryAction,
+      adjustAction,
+      reverseAction,
+      notifySuccess,
+    ]) {
       fn.mockReset();
     }
   });
@@ -238,5 +248,66 @@ describe("usePayoutMoneyActions", () => {
       screen.getAllByRole("button", { name: "Mark £4,500.00 paid" }).at(-1) as HTMLElement,
     );
     expect(await screen.findByRole("heading", { name: "Confirm it’s you" })).toBeInTheDocument();
+  });
+
+  const failedPayout = {
+    ...payout,
+    status: "failed" as const,
+    canMarkPaid: false,
+    canAdjust: false,
+    canRetryTransfer: true,
+    failureReason: "stripe_transfer_failed: account_closed - Account closed",
+  };
+
+  it("offers a retry only for a failed payout, and only to someone who can process", () => {
+    const { unmount } = render(<Harness row={payout} />);
+    expect(screen.queryByRole("button", { name: "Retry transfer" })).not.toBeInTheDocument();
+    unmount();
+    const failed = render(<Harness row={failedPayout} canProcess={false} />);
+    expect(screen.queryByRole("button", { name: "Retry transfer" })).not.toBeInTheDocument();
+    failed.unmount();
+    render(<Harness row={failedPayout} />);
+    expect(screen.getByRole("button", { name: "Retry transfer" })).toBeEnabled();
+  });
+
+  it("confirms a retry with the amount, the seller and why it failed", async () => {
+    retryAction.mockResolvedValue({ ok: true });
+    render(<Harness row={failedPayout} />);
+    fireEvent.click(screen.getByRole("button", { name: "Retry transfer" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Retry the £4,500.00 transfer to Gallery One?" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/account_closed/)).toBeInTheDocument();
+    expect(retryAction).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry £4,500.00 transfer" }));
+    await waitFor(() =>
+      expect(retryAction).toHaveBeenCalledWith(
+        "payout_1",
+        expect.objectContaining({ idempotencyKey: expect.any(String) }),
+      ),
+    );
+    await waitFor(() =>
+      expect(notifySuccess).toHaveBeenCalledWith(
+        "Sent the £4,500.00 transfer to Gallery One again",
+      ),
+    );
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it("keeps the dialog open with the reason when the retry is refused", async () => {
+    retryAction.mockResolvedValue({
+      ok: false,
+      error: "The seller's Stripe account cannot receive transfers yet.",
+    });
+    render(<Harness row={failedPayout} />);
+    fireEvent.click(screen.getByRole("button", { name: "Retry transfer" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retry £4,500.00 transfer" }));
+
+    expect(
+      await screen.findByText("The seller's Stripe account cannot receive transfers yet."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry £4,500.00 transfer" })).toBeInTheDocument();
   });
 });

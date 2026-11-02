@@ -33,4 +33,9 @@ describe("buildBidFooterColumns", () => {
     ]);
     expect(legal?.links.at(-1)?.href).toBe(BID_COOKIE_PREFERENCES_HREF);
   });
+
+  it("lists private sales with the selling links", () => {
+    const services = buildBidFooterColumns([]).find((column) => column.id === "services");
+    expect(services?.links).toContainEqual({ href: "/sell/private-sales", label: "Private sales" });
+  });
 });

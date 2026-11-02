@@ -7,6 +7,7 @@ import type {
   PayoutReversalActor,
 } from "../interfaces/payout.js";
 import type { AdminListPayoutsFilter } from "../interfaces/payout.js";
+import type { AdminFailedPayoutRetryService } from "./admin-failed-payout-retry.service.js";
 import type { AdminPayoutListPage } from "./admin-payout-list-query.service.js";
 
 export class AdminPayoutApplicationService implements IAdminPayoutApplicationService {
@@ -14,6 +15,7 @@ export class AdminPayoutApplicationService implements IAdminPayoutApplicationSer
     private readonly payouts: IPayoutAdminService,
     private readonly settlements: IPayoutSettlementService,
     private readonly payoutStatement: IPayoutStatementApplicationService,
+    private readonly failedRetries: Pick<AdminFailedPayoutRetryService, "retry">,
   ) {}
 
   adminListPage(
@@ -39,6 +41,10 @@ export class AdminPayoutApplicationService implements IAdminPayoutApplicationSer
 
   markPaid(actorUserId: string, payoutId: string, body: { stripeTransferId: string }) {
     return this.payouts.markPaid(actorUserId, payoutId, body);
+  }
+
+  retryFailedTransfer(actorUserId: string, payoutId: string) {
+    return this.failedRetries.retry(actorUserId, payoutId);
   }
 
   adminManualReverse(actor: PayoutReversalActor, payoutId: string, input: { reason: string }) {

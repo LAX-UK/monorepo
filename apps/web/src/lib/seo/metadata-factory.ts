@@ -1,4 +1,10 @@
-import { SITE_NAME, SITE_SEO_NAME, SITE_TAGLINE, SITE_TWITTER_HANDLE } from "@/lib/brand";
+import {
+  LAX_PRODUCT_NAMES,
+  SITE_NAME,
+  SITE_SEO_NAME,
+  SITE_TAGLINE,
+  SITE_TWITTER_HANDLE,
+} from "@/lib/brand";
 import {
   isIndexingAllowedAtBuildTime,
   noindexRobotsMetadata,
@@ -180,9 +186,10 @@ export function metadataForLot(auction: Pick<Lot, "id" | "title" | "description"
 }
 
 export function metadataForNotFound(title: string, description?: string): Metadata {
+  const productTitle = `${title} \u00B7 ${LAX_PRODUCT_NAMES.bid}`;
   return {
-    title,
-    description: description ?? `${title} \u00B7 ${SITE_NAME}`,
+    title: { absolute: productTitle },
+    description: description ?? productTitle,
     robots: { index: false, follow: false, googleBot: { index: false, follow: false } },
   };
 }

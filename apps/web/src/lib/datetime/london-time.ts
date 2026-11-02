@@ -96,6 +96,15 @@ export function formatLondonDateTime(date: Date): string {
   return `${formatLondonDate(date)}, ${formatLondonTimeWithZone(date)}`;
 }
 
+/**
+ * "Thu 12 Nov, 04:31 GMT": the one full moment line, for a countdown beyond a week. The weekday
+ * leads and the year appears only when it is not `now`'s. Its short form is `formatLondonWeekday`
+ * plus `formatLondonDayMonth` ("Thu 12 Nov").
+ */
+export function formatLondonWhen(date: Date, now: Date = new Date()): string {
+  return `${formatLondonWeekday(date)} ${formatLondonDayMonth(date, now)}, ${formatLondonTimeWithZone(date)}`;
+}
+
 /** "November 2026" (calendar headings), or "Nov 2026" with `short`. */
 export function formatLondonMonthYear(date: Date, options: { short?: boolean } = {}): string {
   return (options.short ? SHORT_MONTH_YEAR : MONTH_YEAR).format(date);

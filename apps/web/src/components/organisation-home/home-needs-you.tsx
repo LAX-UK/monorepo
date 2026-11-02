@@ -22,7 +22,7 @@ import { HomePanel, HomeSection } from "./home-section";
 /** Rows shown before "View all"; the rest are one press away, never cut silently. */
 export const NEEDS_YOU_VISIBLE = 5;
 
-const TOPIC_ICON: Record<NeedsYouTopic, LucideIcon> = {
+export const TOPIC_ICON: Record<NeedsYouTopic, LucideIcon> = {
   bid: Gavel,
   purchase: Receipt,
   delivery: Truck,

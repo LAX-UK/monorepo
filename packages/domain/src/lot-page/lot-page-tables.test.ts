@@ -6,12 +6,21 @@ import {
   LOT_LIFECYCLE_COPY,
   LOT_LIFECYCLE_KINDS,
   isLotLifecycleClosed,
+  lotHeadlineLabel,
   lotLifecycleHasCountdown,
+  lotPriceHasBids,
 } from "./lifecycle-copy.js";
 import { resolveLotAction } from "./lot-action.js";
 import { nextBidAmount, validBidAmounts } from "./next-bid.js";
 import { publicBidChannel, toPublicBidHistory } from "./public-bid-history.js";
-import { formatTimeLeft, timeLeftBand, timeLeftView, timeMarkCrossed } from "./time-left.js";
+import {
+  TIME_LEFT_DATE_BEYOND_MS,
+  formatTimeLeft,
+  timeLeftBand,
+  timeLeftShowsSeconds,
+  timeLeftView,
+  timeMarkCrossed,
+} from "./time-left.js";
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -79,6 +88,20 @@ describe("time-left tones", () => {
     expect(formatTimeLeft(90_000, { showSeconds: true })).toBe("1 minute 30 seconds");
     expect(formatTimeLeft(45_000, { showSeconds: true })).toBe("45 seconds");
     expect(timeLeftView(90_000).text).toBe("1 minute 30 seconds");
+  });
+
+  it("counts seconds through the whole final hour, not from the last two minutes", () => {
+    expect(timeLeftView(HOUR).text).toBe("1 hour");
+    expect(timeLeftView(HOUR - 1000).text).toBe("59 minutes 59 seconds");
+    expect(timeLeftView(42 * MIN + 10_000).text).toBe("42 minutes 10 seconds");
+    expect(timeLeftView(2 * MIN + 5000).text).toBe("2 minutes 5 seconds");
+    expect(timeLeftShowsSeconds(HOUR)).toBe(false);
+    expect(timeLeftShowsSeconds(HOUR - 1)).toBe(true);
+    expect(timeLeftShowsSeconds(0)).toBe(true);
+  });
+
+  it("tells a date beyond seven days", () => {
+    expect(TIME_LEFT_DATE_BEYOND_MS).toBe(7 * DAY);
   });
 
   it("announces a time mark once, when the clock crosses it", () => {
@@ -329,5 +352,25 @@ describe("bidder attention", () => {
 
   it("is empty when nothing is waiting", () => {
     expect(groupBidderAttention([])).toEqual([]);
+  });
+});
+
+describe("lotHeadlineLabel", () => {
+  it("is Starting bid for every open kind until the first bid, and Current bid after", () => {
+    for (const kind of ["live", "extended", "liveSaleroom", "saleroomPaused"] as const) {
+      expect(lotHeadlineLabel(kind, false)).toBe("Starting bid");
+      expect(lotHeadlineLabel(kind, true)).toBe("Current bid");
+    }
+  });
+
+  it("does not change the words of kinds that never show a bid", () => {
+    for (const kind of ["endedSold", "endedNoSale", "cancelled", "withdrawn"] as const) {
+      expect(lotHeadlineLabel(kind, false)).toBe(lotHeadlineLabel(kind, true));
+    }
+  });
+
+  it("reads bids off the price moving past the starting price", () => {
+    expect(lotPriceHasBids({ currentPrice: "4200.00", startingPrice: "4200.00" })).toBe(false);
+    expect(lotPriceHasBids({ currentPrice: "4450.00", startingPrice: "4200.00" })).toBe(true);
   });
 });

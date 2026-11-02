@@ -1,3 +1,4 @@
+import { PRIVATE_SALES_PATH } from "@/lib/marketing/private-sales";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { sellDepartmentsAnchorHref } from "@/lib/marketing/sell-departments";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
@@ -30,6 +31,7 @@ export function buildBidFooterColumns(
         { href: "/sell", label: "How to sell" },
         { href: sellIntakeHref(), label: "Submit a consignment" },
         { href: sellDepartmentsAnchorHref(), label: "Departments we review" },
+        { href: PRIVATE_SALES_PATH, label: "Private sales" },
         { href: "/contact", label: "Client services" },
       ],
     },

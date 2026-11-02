@@ -1,16 +1,12 @@
 import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
+import { lotHeadlineLabel, lotPriceHasBids } from "@auction/domain";
 import type { Lot } from "@auction/types";
 
 export type LotPriceDisplay = {
   label: string;
   value: string;
 };
-
-function toNum(amount: string): number {
-  const n = Number.parseFloat(amount);
-  return Number.isNaN(n) ? 0 : n;
-}
 
 type LotPriceDisplaySource = Pick<
   Lot,
@@ -53,13 +49,11 @@ export function lotPriceDisplay(lot: LotPriceDisplaySource): LotPriceDisplay {
   }
 
   if (lot.auctionType === "english" || lot.auctionType === "sealed") {
-    const start = toNum(lot.startingPrice);
-    const current = toNum(lot.currentPrice);
-    if (lot.status === "active" && current > start) {
-      return { label: "Current bid", value: money(lot.currentPrice, lot) };
+    if (lot.status === "active" && lotPriceHasBids(lot)) {
+      return { label: lotHeadlineLabel("live", true), value: money(lot.currentPrice, lot) };
     }
-    return { label: "Starting bid", value: money(lot.startingPrice, lot) };
+    return { label: lotHeadlineLabel("live", false), value: money(lot.startingPrice, lot) };
   }
 
-  return { label: "Starting bid", value: money(lot.startingPrice, lot) };
+  return { label: lotHeadlineLabel("scheduled", false), value: money(lot.startingPrice, lot) };
 }

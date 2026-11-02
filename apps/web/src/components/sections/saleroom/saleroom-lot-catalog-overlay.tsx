@@ -1,6 +1,6 @@
 "use client";
 
-import { formatRemaining } from "@/components/lot-timer/format";
+import { timerText } from "@/components/lot-timer/format";
 import { LotTimerPill } from "@/components/lot-timer/lot-timer-pill";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { useNow } from "@/hooks/use-now";
@@ -115,14 +115,14 @@ export function SaleroomLotCatalogOverlay({
   }
 
   if (overlay.kind === "timer") {
-    const clockText =
-      overlay.timerState.kind === "live" || overlay.timerState.kind === "opensSoon"
-        ? formatRemaining(overlay.timerState.msLeft)
+    const timer =
+      now != null && (overlay.timerState.kind === "live" || overlay.timerState.kind === "opensSoon")
+        ? timerText(overlay.timerState.msLeft, now)
         : undefined;
     return (
       <LotTimerPill
         state={overlay.timerState}
-        {...(clockText !== undefined ? { clockText } : {})}
+        {...(timer !== undefined ? { timer } : {})}
         layout={pillLayout}
         useOverlayChrome={overlayChrome}
       />

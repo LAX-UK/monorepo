@@ -1,5 +1,5 @@
 import type { LotRailCardVM } from "@/components/sections/artwork/artwork-view-models";
-import type { EditorsPickLotCardVM, LotCardVM } from "@/components/sections/home/home-view-models";
+import type { LotCardVM } from "@/components/sections/home/home-view-models";
 import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
@@ -39,20 +39,6 @@ export function lotQuickLookFromLotCardVM(item: LotCardVM): LotQuickLookVM {
   };
 }
 
-export function lotQuickLookFromEditorsPick(item: EditorsPickLotCardVM): LotQuickLookVM {
-  return {
-    id: item.id,
-    href: item.href,
-    title: item.title,
-    subtitle: item.artistName,
-    imageUrl: item.imageUrl,
-    imageAlt: item.imageAlt,
-    status: "scheduled",
-    estimateLabel: item.estimateLabel,
-    estimateValue: item.estimateValue,
-  };
-}
-
 export function lotQuickLookFromRailCard(card: LotRailCardVM): LotQuickLookVM {
   const endTime = normalizeAuctionTime(card.endTime);
   return {
@@ -65,7 +51,7 @@ export function lotQuickLookFromRailCard(card: LotRailCardVM): LotQuickLookVM {
     status: card.status,
     ...(endTime ? { endTime } : {}),
     lotLabel: card.lotNumber != null ? `Lot ${card.lotNumber}` : null,
-    currentBidLabel: "Current bid",
+    currentBidLabel: card.priceLabel,
     currentBidValue: card.currentPrice,
     ...(card.estimateLine ? { estimateLabel: "Estimate", estimateValue: card.estimateLine } : {}),
   };

@@ -94,9 +94,15 @@ describe("payouts staff list view model", () => {
       canMarkPaid: true,
       canAdjust: true,
       canReverse: false,
+      canRetryTransfer: false,
     });
     expect(paid).toMatchObject({ canMarkPaid: false, canAdjust: false, canReverse: true });
-    expect(failed).toMatchObject({ canMarkPaid: false, canAdjust: false, canReverse: false });
+    expect(failed).toMatchObject({
+      canMarkPaid: false,
+      canAdjust: false,
+      canReverse: false,
+      canRetryTransfer: true,
+    });
     expect(toPayoutsStaffRows([row], new Map())[0]?.seller).toBe("Seller 11111111");
   });
 

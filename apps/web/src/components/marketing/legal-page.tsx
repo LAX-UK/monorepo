@@ -16,7 +16,7 @@ type Props = {
   lastUpdated?: string;
   /** Kept for existing callers: the shared header always rules off the title block. */
   dividerUnderDate?: boolean;
-  /** Inside `PolicyHubLayout`, which supplies `<main>` and the page gutters. */
+  /** Inside `PolicyHubLayout`, which supplies `<div>` and the page gutters. */
   embedded?: boolean;
   children: ReactNode;
 };
@@ -45,11 +45,7 @@ export function LegalPage({
 
   if (embedded) return document;
 
-  return (
-    <main id="main-content" className="lax-legal-hub pt-[calc(var(--header-height)+1.5rem)]">
-      {document}
-    </main>
-  );
+  return <div className="lax-legal-hub pt-[calc(var(--header-height)+1.5rem)]">{document}</div>;
 }
 
 /** Section heading for policy copy; with an `id` it carries a "#" link to itself. */

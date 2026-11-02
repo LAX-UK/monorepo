@@ -48,9 +48,9 @@ describe("hangLabelModel", () => {
     });
   });
 
-  it("says Opening bid until a bid is placed", () => {
+  it("says Starting bid until a bid is placed", () => {
     expect(hangLabelModel(hangLot(), ctx).price).toEqual({
-      qualifier: "Opening bid",
+      qualifier: "Starting bid",
       value: "£1,000",
     });
   });
@@ -67,7 +67,7 @@ describe("hangLabelModel", () => {
     expect(withEstimate.price?.qualifier).toBe("Estimate");
     expect(withEstimate.live).toBeUndefined();
     expect(hangLabelModel(upcoming, ctx).price).toEqual({
-      qualifier: "Opening bid",
+      qualifier: "Starting bid",
       value: "£1,000",
     });
     expect(hangLabelModel(upcoming, ctx).notes[0]).toMatch(/^Opens /);
