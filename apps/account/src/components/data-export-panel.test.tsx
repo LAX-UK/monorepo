@@ -49,6 +49,7 @@ describe("DataExportPanel", () => {
       requestedAt: "today at 14:02",
       email: "ada@example.com",
       products: [...PRODUCTS],
+      assembling: false,
     });
     const text = textOf(html);
     expect(text).toContain(
@@ -57,6 +58,21 @@ describe("DataExportPanel", () => {
     expect(text).toContain("One request at a time.");
     expect(html).toMatch(/<button[^>]*disabled/);
     expect(html).toContain(`href="${FULL}"`);
+    expect(text).not.toContain("Putting your file together");
+  });
+
+  it("C shows the assembly step on its own once every product is done", () => {
+    const done = PRODUCTS.map((p) => ({ ...p, state: "done", label: "Done" }));
+    const text = textOf(
+      render({
+        kind: "preparing",
+        requestedAt: "today at 14:02",
+        email: null,
+        products: done as never,
+        assembling: true,
+      }),
+    );
+    expect(text).toContain("Putting your file together");
   });
 
   it("D shows file, size and expiry, with download and delete", () => {

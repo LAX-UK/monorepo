@@ -107,9 +107,46 @@ describe("buildDataExportPageVm", () => {
     if (vm.kind !== "preparing") throw new Error("expected preparing");
     expect(vm.products.map((p) => [p.name, p.state, p.label])).toEqual([
       ["LAX Account", "done", "Done"],
-      ["LAX Bid", "collecting", "Putting your file together"],
+      ["LAX Bid", "collecting", "Collecting"],
       ["LAX Shop and lax.art", "waiting", "Waiting"],
     ]);
+  });
+
+  it("maps each product state one to one, with no assembly while any is unfinished", () => {
+    const vm = buildDataExportPageVm(
+      {
+        status: "ok",
+        view: view({
+          status: "collecting",
+          products: [
+            { product: "account", state: "waiting" },
+            { product: "bid", state: "collecting" },
+            { product: "shop", state: "retrying" },
+          ],
+        }),
+      },
+      NOW,
+    );
+    if (vm.kind !== "preparing") throw new Error("expected preparing");
+    expect(vm.products.map((p) => p.label)).toEqual(["Waiting", "Collecting", "Trying again"]);
+    expect(vm.assembling).toBe(false);
+    const done = buildDataExportPageVm(
+      {
+        status: "ok",
+        view: view({
+          status: "collecting",
+          products: [
+            { product: "account", state: "done" },
+            { product: "bid", state: "done" },
+            { product: "shop", state: "done" },
+          ],
+        }),
+      },
+      NOW,
+    );
+    if (done.kind !== "preparing") throw new Error("expected preparing");
+    expect(done.products.map((p) => p.label)).toEqual(["Done", "Done", "Done"]);
+    expect(done.assembling).toBe(true);
   });
 
   it("names the request day when it was not today", () => {

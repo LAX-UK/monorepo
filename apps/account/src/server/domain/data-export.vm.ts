@@ -99,7 +99,7 @@ export type DataExportProductVm = {
 
 const PROGRESS_LABEL: Record<DataExportProductVm["state"], string> = {
   waiting: "Waiting",
-  collecting: "Putting your file together",
+  collecting: "Collecting",
   done: "Done",
   retrying: "Trying again",
 };
@@ -134,6 +134,8 @@ export type DataExportPageVm =
       requestedAt: string;
       email: string | null;
       products: DataExportProductVm[];
+      /** Every product has answered; the file is being put together, the last step before ready. */
+      assembling: boolean;
     }
   | {
       kind: "ready";
@@ -165,13 +167,15 @@ export function buildDataExportPageVm(
     case "requested":
     case "collecting": {
       const requested = new Date(view.requestedAt);
+      const products = productProgress(view);
       return {
         kind: "preparing",
         requestedAt: sameLondonDay(requested, now)
           ? `today at ${clock(requested)}`
           : `${shortDate(requested)} at ${clock(requested)}`,
         email,
-        products: productProgress(view),
+        products,
+        assembling: products.every((entry) => entry.state === "done"),
       };
     }
     case "delayed":

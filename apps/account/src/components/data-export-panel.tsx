@@ -205,6 +205,9 @@ export function DataExportPanel({
               You can leave this page.
             </p>
             <Progress products={vm.products} />
+            {vm.assembling ? (
+              <p className="text-sm font-medium text-on-surface">Putting your file together</p>
+            ) : null}
           </StatusCard>
           <div className="flex flex-col gap-3">
             <Button
