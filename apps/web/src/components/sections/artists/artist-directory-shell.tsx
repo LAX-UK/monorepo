@@ -123,7 +123,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
 
   return (
     <MarketingDirectory
-      as="main"
+      as="div"
       railLabel="Artist directory filters"
       jsonLd={
         <>
@@ -263,13 +263,8 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
       {rows.length === 0 ? (
         <MarketingEmptyState
           variant="marketing"
-          className="rounded-2xl"
-          title="No artists match these filters."
-          description={
-            <p className="font-body text-sm text-on-surface-variant">
-              Try a broader scenario or clear your filters.
-            </p>
-          }
+          title="No artists match these filters"
+          description="Try a broader search or clear your filters."
           action={
             <>
               <ButtonLink Link={Link} variant="primary" href={preset.canonicalPath}>

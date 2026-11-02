@@ -9,8 +9,7 @@ import { LaxDensityProvider, Skeleton, laxDensityAttributes } from "@auction/ui/
 export function LotPageSkeleton() {
   return (
     <LaxDensityProvider density="client">
-      <main
-        id="main-content"
+      <section
         aria-busy="true"
         aria-label="Loading the lot"
         {...laxDensityAttributes("client")}
@@ -46,7 +45,7 @@ export function LotPageSkeleton() {
           </div>
         </div>
         <output className="sr-only">Loading the lot</output>
-      </main>
+      </section>
     </LaxDensityProvider>
   );
 }

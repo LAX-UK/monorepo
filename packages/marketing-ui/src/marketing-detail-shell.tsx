@@ -14,6 +14,8 @@ export type MarketingDetailShellProps = {
   shellClassName?: string;
   wrapChildren?: boolean;
   useCatalogPt?: boolean;
+  /** `div` when the app layout owns the page's main landmark. */
+  as?: "main" | "div";
 } & Omit<ComponentPropsWithoutRef<"main">, "children" | "className" | "id">;
 
 /** Shared layout chrome for marketing detail pages. */
@@ -29,11 +31,12 @@ export function MarketingDetailShell({
   shellClassName,
   wrapChildren = true,
   useCatalogPt = true,
+  as: Tag = "main",
   ...mainProps
 }: MarketingDetailShellProps) {
   return (
-    <main
-      id="main-content"
+    <Tag
+      {...(Tag === "main" ? { id: "main-content" } : {})}
       className={cn(
         useCatalogPt && MARKETING_CATALOG_PT,
         "bg-page-bg pb-[var(--page-bottom-padding)] dark:bg-background",
@@ -53,6 +56,6 @@ export function MarketingDetailShell({
         children
       )}
       {stickyChrome}
-    </main>
+    </Tag>
   );
 }
