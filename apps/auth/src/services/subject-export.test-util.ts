@@ -3,6 +3,7 @@ import type {
   CreateSubjectExportOutcome,
   SubjectExportAuditEntry,
   SubjectExportMutation,
+  SubjectExportPendingPurge,
   SubjectExportReadSigner,
   SubjectExportRepository,
   SubjectExportRow,
@@ -15,6 +16,7 @@ export class InMemorySubjectExportRepository implements SubjectExportRepository 
   readonly audit: (SubjectExportAuditEntry & { exportId: string })[] = [];
   readonly outbox: { type: string; userId: string; exportId: string }[] = [];
   readonly purgeQueued = new Set<string>();
+  readonly purged = new Set<string>();
   private sequence = 0;
 
   constructor(private readonly now: () => Date = () => new Date()) {}
@@ -105,6 +107,22 @@ export class InMemorySubjectExportRepository implements SubjectExportRepository 
     if (mutation.queueObjectPurge) this.purgeQueued.add(exportId);
     for (const entry of mutation.audit) this.audit.push({ ...entry, exportId });
     return { before, after };
+  }
+
+  async listPendingObjectPurges(limit: number): Promise<SubjectExportPendingPurge[]> {
+    return [...this.purgeQueued]
+      .filter((exportId) => !this.purged.has(exportId))
+      .flatMap((exportId) => {
+        const objectKey = this.rows.find((row) => row.id === exportId)?.objectKey;
+        return objectKey ? [{ exportId, objectKey }] : [];
+      })
+      .slice(0, limit);
+  }
+
+  async markObjectPurged(exportId: string): Promise<boolean> {
+    if (!this.purgeQueued.has(exportId) || this.purged.has(exportId)) return false;
+    this.purged.add(exportId);
+    return true;
   }
 
   async expireDue(now: Date, limit: number): Promise<SubjectExportRow[]> {

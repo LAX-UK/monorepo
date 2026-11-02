@@ -73,6 +73,10 @@ export const SUBJECT_EXPORT_MANIFEST_SUBROUTE = "/subjects/:subjectId/export";
 export const SUBJECT_EXPORT_PAGE_SUBROUTE = "/subjects/:subjectId/export/:category";
 /** The route the worker calls on Identity to report progress. */
 export const SUBJECT_EXPORT_PROGRESS_SUBROUTE = "/subject-exports/:exportId/progress";
+/** Stored copies Identity has asked to have deleted and the worker has not yet removed. */
+export const SUBJECT_EXPORT_PURGE_PENDING_SUBROUTE = "/subject-exports/purge-pending";
+/** The worker confirms one stored copy is gone. */
+export const SUBJECT_EXPORT_PURGED_SUBROUTE = "/subject-exports/:exportId/purged";
 
 export function subjectExportManifestPath(subjectId: string): string {
   return `${INTERNAL_IDENTITY_ROUTE_PREFIX}${SUBJECT_EXPORT_MANIFEST_SUBROUTE.replace(
@@ -96,6 +100,18 @@ export function subjectExportPagePath(
 
 export function subjectExportProgressPath(exportId: string): string {
   return `${INTERNAL_IDENTITY_ROUTE_PREFIX}${SUBJECT_EXPORT_PROGRESS_SUBROUTE.replace(
+    ":exportId",
+    encodeURIComponent(exportId),
+  )}`;
+}
+
+export function subjectExportPurgePendingPath(limit?: number): string {
+  const path = `${INTERNAL_IDENTITY_ROUTE_PREFIX}${SUBJECT_EXPORT_PURGE_PENDING_SUBROUTE}`;
+  return limit === undefined ? path : `${path}?limit=${limit}`;
+}
+
+export function subjectExportPurgedPath(exportId: string): string {
+  return `${INTERNAL_IDENTITY_ROUTE_PREFIX}${SUBJECT_EXPORT_PURGED_SUBROUTE.replace(
     ":exportId",
     encodeURIComponent(exportId),
   )}`;
@@ -803,6 +819,12 @@ export const subjectExportProgressSchema = z.discriminatedUnion("event", [
   }),
   z.object({ event: z.literal("failed"), errorCode: z.string().min(1) }),
 ]);
+
+/** What Identity answers on the purge-pending route: the stored copies the worker must delete. */
+export const subjectExportPurgePendingSchema = z.object({
+  items: z.array(z.object({ exportId: z.string().min(1), objectKey: z.string().min(1) })),
+});
+export type SubjectExportPurgePending = z.infer<typeof subjectExportPurgePendingSchema>;
 
 export type SubjectExportCategoryManifest = z.infer<
   typeof subjectExportManifestSchema

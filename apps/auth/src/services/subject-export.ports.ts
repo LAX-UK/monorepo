@@ -91,6 +91,9 @@ export type CreateSubjectExportOutcome =
   | { outcome: "already_open"; row: SubjectExportRow }
   | { outcome: "rate_limited"; retryAfter: Date };
 
+/** A stored copy Identity has asked to have deleted. */
+export type SubjectExportPendingPurge = { exportId: string; objectKey: string };
+
 export interface SubjectExportRepository {
   /**
    * Applies the one-open-request and per-window limits, inserts the request, writes the
@@ -109,6 +112,10 @@ export interface SubjectExportRepository {
     exportId: string,
     decide: (row: SubjectExportRow) => SubjectExportMutation | null,
   ): Promise<{ before: SubjectExportRow; after: SubjectExportRow } | null>;
+  /** Stored copies whose deletion was requested and not yet confirmed, oldest request first. */
+  listPendingObjectPurges(limit: number): Promise<SubjectExportPendingPurge[]>;
+  /** Records that the stored copy is gone. False when there was nothing pending for the request. */
+  markObjectPurged(exportId: string, at: Date): Promise<boolean>;
   /** Marks every ready copy past its expiry as expired and queues its file for deletion. */
   expireDue(now: Date, limit: number): Promise<SubjectExportRow[]>;
   /**
