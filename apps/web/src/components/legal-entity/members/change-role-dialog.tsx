@@ -68,7 +68,7 @@ export function ChangeRoleDialog({
     if (!unchanged) summaryRef.current?.scrollIntoView({ block: "nearest" });
   }, [role]);
 
-  async function confirm() {
+  async function submit() {
     if (unchanged) return;
     setPending(true);
     setError(null);
@@ -90,7 +90,7 @@ export function ChangeRoleDialog({
       pending={pending}
       error={error}
       confirmBlockedReason={unchanged ? copy.sameRoleReason : null}
-      onConfirm={() => void confirm()}
+      onConfirm={() => void submit()}
     >
       <fieldset className="flex flex-col gap-3" disabled={pending}>
         <legend className="sr-only">Role</legend>
