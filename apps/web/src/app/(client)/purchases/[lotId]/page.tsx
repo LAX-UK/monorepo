@@ -13,6 +13,7 @@ import {
 } from "@/lib/data/http/account-buying.server";
 import { openRecordInItsAccount } from "@/lib/legal-entity/open-record-in-account.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { loadDeliveryAddresses } from "@/lib/purchases/delivery-addresses.server";
 import { deliveryPanel } from "@/lib/purchases/purchase-delivery.vm";
 import { purchaseProblemPanel } from "@/lib/purchases/purchase-problem";
 import { loadPurchaseSources } from "@/lib/purchases/purchase-sources.server";
@@ -76,10 +77,17 @@ export default async function PurchaseDetailPage({ params }: PageProps) {
     organisation && facts && COLLECTION_STAGES.has(facts.delivery.stage)
       ? await getServerCollectionOffer(organisation.id, lotId).catch(() => null)
       : null;
+  // Only a payer choosing delivery picks an address, so only they need the list.
+  const addresses =
+    facts?.paymentRole === "payer" &&
+    (facts.delivery.stage === "awaiting_payment" || facts.delivery.stage === "choose")
+      ? await loadDeliveryAddresses(organisation?.id ?? null)
+      : [];
   const panel = facts
     ? deliveryPanel({
         facts,
         collection,
+        addresses,
         payerTeam: organisation ? `${organisation.name}'s finance team` : "The account's payer",
       })
     : null;
