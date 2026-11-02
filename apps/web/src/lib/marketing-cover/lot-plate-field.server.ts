@@ -1,7 +1,6 @@
 import "server-only";
 
 import { plateFieldColour, toHex } from "@auction/domain";
-import sharp from "sharp";
 
 /** Used when a lot photograph has no preview to read: a deep neutral that white passes 13:1 on. */
 export const DEFAULT_PLATE_FIELD = toHex(plateFieldColour([38, 42, 48]));
@@ -41,6 +40,7 @@ export async function plateFieldFromPreview(blurDataURL: string | undefined): Pr
   if (cached) return cached;
   try {
     const base64 = blurDataURL.slice(blurDataURL.indexOf(",") + 1);
+    const { default: sharp } = await import("sharp");
     const { data } = await sharp(Buffer.from(base64, "base64"))
       .removeAlpha()
       .toColourspace("srgb")
