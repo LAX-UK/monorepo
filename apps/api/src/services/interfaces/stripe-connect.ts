@@ -102,12 +102,22 @@ export interface IConnectSessionProvider {
   ): Promise<{ clientSecret: string }>;
 }
 
+/** How a transfer attempt treats the payout it starts from. */
+export type InitiateTransferOptions = {
+  keepScheduledOnTransferFailure?: boolean;
+  /**
+   * Start from a payout whose earlier transfer failed instead of a scheduled one. The payout stays
+   * failed until the new transfer is accepted, so the settlement cron never competes with it.
+   */
+  retryFailed?: boolean;
+};
+
 /** Payout transfer initiation + transfer webhooks. */
 export interface IConnectTransferInitiator {
   handleTransferEvent(event: Stripe.Event): Promise<{ processed: boolean }>;
   initiateTransfer(
     payoutId: string,
-    opts?: { keepScheduledOnTransferFailure?: boolean },
+    opts?: InitiateTransferOptions,
   ): Promise<InitiateTransferResult>;
 }
 
@@ -115,7 +125,7 @@ export interface IConnectTransferInitiator {
 export interface IConnectTransferInitiationService {
   initiateTransfer(
     payoutId: string,
-    opts?: { keepScheduledOnTransferFailure?: boolean },
+    opts?: InitiateTransferOptions,
   ): Promise<InitiateTransferResult>;
 }
 

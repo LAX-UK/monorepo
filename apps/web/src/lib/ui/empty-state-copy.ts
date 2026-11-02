@@ -30,19 +30,6 @@ export const EMPTY_STATE_VOICE = {
 export type AppSegment = "marketing" | "dashboard" | "admin" | "task" | "root";
 
 export const NOT_FOUND_PRESETS = {
-  marketing: {
-    kicker: "404",
-    title: "This page isn't in the gallery",
-    description:
-      "The page you requested may have moved or never existed. Browse the calendar or return home to keep exploring.",
-    primaryHref: "/",
-    primaryLabel: "Back to gallery",
-    secondaryHref: "/sales",
-    secondaryLabel: "Open calendar",
-    searchHref: "/search",
-    searchLabel: "Search lots",
-    illustration: "notFound" as const,
-  },
   root: {
     kicker: "404",
     title: "This lot has left the saleroom",

@@ -22,7 +22,7 @@ export default async function UnsubscribePage({
   const preview = token ? await getUnsubscribePreview(token) : null;
 
   return (
-    <main id="main-content">
+    <div>
       <AuthLayout
         title="Confirm unsubscribe"
         description="Choose whether to update this email preference."
@@ -48,7 +48,7 @@ export default async function UnsubscribePage({
           </div>
         )}
       </AuthLayout>
-    </main>
+    </div>
   );
 }
 
