@@ -1,15 +1,19 @@
 import { EditorsPicksMarketingClient } from "@/components/sections/home/editors-picks-marketing/editors-picks-marketing-client";
 import { getHomeData } from "@/components/sections/home/get-home-data";
+import { HomeAlertsNotice } from "@/components/sections/home/home-alerts-notice";
+import { HomeCover } from "@/components/sections/home/home-cover";
 import { HomeHangSection } from "@/components/sections/home/home-hang/home-hang-section";
 import { HomeNewsletter } from "@/components/sections/home/home-newsletter";
 import { LaxConsignCTA } from "@/components/sections/home/lax-consign-cta";
-import { LaxHero } from "@/components/sections/home/lax-hero";
 import { LaxUrgencySection } from "@/components/sections/home/lax-urgency-section";
 import { HomeSkeleton } from "@/components/sections/home/skeletons/home-skeleton";
 import { UpcomingAuctionsMarketingClient } from "@/components/sections/home/upcoming-auctions-marketing/upcoming-auctions-marketing-client";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { HOME_HERO_BLEED } from "@/lib/marketing/home-hero-layout";
+import {
+  COVER_ALERTS_PARAM,
+  parseCoverAlertsOutcome,
+} from "@/lib/marketing-cover/cover-alerts-outcome";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import {
@@ -38,8 +42,10 @@ function firstString(v: string | string[] | undefined): string | undefined {
 
 async function MarketingHomeContent({
   urlView,
+  alerts,
 }: {
   urlView: string | undefined;
+  alerts: string | undefined;
 }) {
   const [data, session] = await Promise.all([getHomeData(), getServerSessionUser()]);
   const [layoutView, urgencyLayoutView] = await Promise.all([
@@ -59,7 +65,8 @@ async function MarketingHomeContent({
     }),
   ]);
   const {
-    heroState,
+    homeState,
+    cover,
     jsonLdListFallback,
     urgencySection,
     upcomingAuctionTiles,
@@ -69,6 +76,7 @@ async function MarketingHomeContent({
     isAuthenticated,
     watchedLotIds,
   } = data;
+  const alertsOutcome = parseCoverAlertsOutcome(alerts);
   const base = getSiteUrl().replace(/\/$/, "");
   const homeUrl = `${base}/`;
   const breadcrumbId = `${homeUrl}#breadcrumb`;
@@ -103,9 +111,8 @@ async function MarketingHomeContent({
           {structuredData}
         </script>
       ) : null}
-      <div className={HOME_HERO_BLEED}>
-        <LaxHero state={heroState} />
-      </div>
+      {alertsOutcome ? <HomeAlertsNotice outcome={alertsOutcome} /> : null}
+      <HomeCover slides={cover.slides} leadSale={cover.leadSale} signedIn={isAuthenticated} />
       <HomeHangSection hang={hang} />
       {urgencySection.variant !== "none" ? (
         <LaxUrgencySection
@@ -133,8 +140,8 @@ async function MarketingHomeContent({
         />
       ) : null}
       <LaxConsignCTA />
-      {/* The between-seasons hero already carries the sign-up. */}
-      {heroState.kind !== "betweenSeasons" ? <HomeNewsletter /> : null}
+      {/* The between-seasons cover already carries the sign-up. */}
+      {homeState.state !== "betweenSeasons" ? <HomeNewsletter /> : null}
     </>
   );
 }
@@ -146,11 +153,12 @@ export default async function HomePage({
 }) {
   const sp = await searchParams;
   const urlView = firstString(sp.view);
+  const alerts = firstString(sp[COVER_ALERTS_PARAM]);
 
   return (
-    <main id="main-content" className="bg-page-bg">
+    <main id="main-content" className="bg-page-bg pt-[var(--header-height)]">
       <Suspense fallback={<HomeSkeleton />}>
-        <MarketingHomeContent urlView={urlView} />
+        <MarketingHomeContent urlView={urlView} alerts={alerts} />
       </Suspense>
     </main>
   );

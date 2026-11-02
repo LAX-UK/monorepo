@@ -65,6 +65,14 @@ export type CoverAlert = {
   fieldLabel: string;
 };
 
+/** A film shown in the cover's place when the person presses "Play film". */
+export type CoverFilm = {
+  /** The embed address, already set to start muted with captions on. Nothing loads until pressed. */
+  src: string;
+  /** Names the player for screen readers. */
+  title: string;
+};
+
 /** One row of the season list: "Consign by" / "Fri 4 Dec". */
 export type CoverSeasonRow = { label: string; value: string };
 
@@ -86,7 +94,9 @@ export type CoverSlide = {
   /** The season ahead, shown on a type cover only: ruled rows under the line of fact. */
   seasons?: readonly CoverSeasonRow[];
   /** Where the person stands, such as "You're approved to bid in this sale". */
-  status?: { text: string; icon: "check" | "clock" };
+  status?: { text: string; icon: "check" | "clock" | "info" };
+  /** A sale set to video: the cover stays as its poster and the film plays only when pressed. */
+  film?: CoverFilm;
   credit?: CoverCredit;
   media: readonly CoverMedia[];
 };

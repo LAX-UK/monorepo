@@ -29,6 +29,8 @@ export type HomePageLotsInput = {
    */
   hangLots?: readonly Lot[];
   hangLimit?: number;
+  /** The lots the hero shows or credits. They are placed first, so nothing below repeats them. */
+  heroLots?: readonly Lot[];
 };
 
 /** The hang needs two works with photographs: one is already the hero's work. */
@@ -51,7 +53,7 @@ function featuredLots(pool: Lot[], featuredLotIds: readonly string[]): Lot[] {
 }
 
 /**
- * Every lot appears once on the page, by priority: the hang under the hero, the sale rail, then
+ * Every lot appears once on the page, by priority: the hero, the hang under it, the sale rail, then
  * "More lots", which is empty (so the section is hidden) when fewer than
  * `HOME_MORE_LOTS_MIN` unseen lots remain.
  */
@@ -62,12 +64,14 @@ export function allocateHomePageLots({
   featuredLotIds = [],
   hangLots = [],
   hangLimit = 0,
+  heroLots = [],
 }: HomePageLotsInput): {
   hang: Lot[];
   rail: Lot[];
   more: Lot[];
 } {
   const slots = allocateHomeLots<Lot>([
+    { key: "hero", candidates: heroLots, limit: heroLots.length },
     { key: "hang", candidates: hangLots, limit: hangLimit, min: HOME_HANG_MIN_WORKS },
     {
       key: "rail",

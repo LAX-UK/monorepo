@@ -72,6 +72,22 @@ describe("allocateHomePageLots", () => {
     expect(ids(more)).toEqual(["lot-3", "lot-4", "lot-5", "lot-6", "lot-7"]);
   });
 
+  it("reserves the hero's lots first, so the hang, the rail and More lots never repeat them", () => {
+    const pool = lots(12);
+    const hero = pool[0] as Lot;
+    const { hang, rail, more } = allocateHomePageLots({
+      heroLots: [hero],
+      hangLots: pool.slice(0, 4),
+      hangLimit: 4,
+      railLots: pool.slice(0, 2),
+      pool,
+      moreLimit: 8,
+    });
+    expect(ids(hang)).toEqual(["lot-1", "lot-2", "lot-3"]);
+    expect(ids(rail)).not.toContain("lot-0");
+    expect(ids(more)).not.toContain("lot-0");
+  });
+
   it("hides More lots when fewer than four unseen lots remain", () => {
     const pool = lots(6);
     expect(allocateHomePageLots({ railLots: pool.slice(0, 3), pool, moreLimit: 8 }).more).toEqual(
