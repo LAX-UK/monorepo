@@ -15,6 +15,7 @@ import {
   countdownToneClass,
 } from "@/lib/presenters/countdown-tone";
 import { liveUrgencyPulseClass } from "@/lib/presenters/status-presentation";
+import { opensLine } from "@/lib/time/opens-line";
 import { useClientClock } from "@/lib/time/use-client-clock";
 import type { Sale } from "@auction/types";
 import { LiveDot, cn } from "@auction/ui";
@@ -165,7 +166,15 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
       label
     );
 
-  const clock = msLeft != null && phase === "during" ? formatCountdownForDisplay(msLeft) : null;
+  // Before the start the time rule decides: a date beyond a week, then the time left.
+  const startsLine =
+    phase === "before" && now != null && Number.isFinite(startMs)
+      ? opensLine(new Date(startMs), new Date(now), "Starts")
+      : null;
+  const clock =
+    phase === "during" && msLeft != null
+      ? formatCountdownForDisplay(msLeft)
+      : (startsLine?.value ?? null);
 
   if (variant === "compact") {
     return (
@@ -182,7 +191,7 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
               Live
             </span>
           ) : phase === "before" ? (
-            "Starts in"
+            (startsLine?.label ?? "Starts in")
           ) : (
             "Ended"
           )}

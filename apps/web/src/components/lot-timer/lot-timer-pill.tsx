@@ -25,7 +25,7 @@ const SHELL_MUTED =
 
 /** Ending-soon tag: glass chip; live shows red dot + countdown only (no “Live” copy). */
 const ENDING_SOON_TAG_GLASS_SHARED =
-  "inline-flex h-8 items-center gap-2 rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] backdrop-blur-[8px]";
+  "inline-flex min-h-8 items-center gap-2 rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] py-1 backdrop-blur-[8px]";
 
 const ENDING_SOON_OVERLAY_POS =
   "pointer-events-none absolute bottom-4 left-4 z-10 max-w-[calc(100%-2rem)]";
