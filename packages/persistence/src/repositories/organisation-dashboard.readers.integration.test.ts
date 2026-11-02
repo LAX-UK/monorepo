@@ -60,6 +60,7 @@ type LotSeed = {
   buyer?: string;
   estimate?: { low: string; high: string; currency: string };
   deleted?: boolean;
+  images?: string[];
 };
 
 const LOTS: LotSeed[] = [
@@ -69,6 +70,7 @@ const LOTS: LotSeed[] = [
     status: "scheduled",
     saleId: SALE_UPCOMING,
     estimate: { low: "1000", high: "1500", currency: "GBP" },
+    images: ["https://img.test/a-1.jpg", "https://img.test/a-2.jpg"],
   },
   {
     id: L.inSaleB,
@@ -76,6 +78,7 @@ const LOTS: LotSeed[] = [
     status: "active",
     saleId: SALE_UPCOMING,
     estimate: { low: "2000", high: "3000", currency: "eur" },
+    images: ["https://img.test/b-1.jpg"],
   },
   { id: L.inSaleStaff, seller: ORG, status: "scheduled", saleId: SALE_UPCOMING },
   {
@@ -184,6 +187,7 @@ async function seed(tx: Database) {
       status: seed.status,
       winnerId: seed.winnerId ?? null,
       buyerLegalEntityId: seed.buyer ?? null,
+      images: seed.images ?? [],
       marketingDetails: seed.estimate ? { estimate: seed.estimate } : {},
       deletedAt: seed.deleted ? T : null,
     });
@@ -337,6 +341,10 @@ describe.skipIf(!HAS_DB)("organisation dashboard read models (integration)", () 
           saleId: SALE_UPCOMING,
           title: "Modern British",
           startsAt: new Date("2026-11-20T10:00:00Z"),
+          endsAt: new Date("2026-11-21T18:00:00Z"),
+          live: false,
+          // One image per work: the first photograph of each.
+          images: ["https://img.test/b-1.jpg"],
           currency: "EUR",
           works: 1,
           estimatedWorks: 1,
@@ -347,6 +355,9 @@ describe.skipIf(!HAS_DB)("organisation dashboard read models (integration)", () 
           saleId: SALE_UPCOMING,
           title: "Modern British",
           startsAt: new Date("2026-11-20T10:00:00Z"),
+          endsAt: new Date("2026-11-21T18:00:00Z"),
+          live: false,
+          images: ["https://img.test/a-1.jpg"],
           currency: "GBP",
           works: 2,
           estimatedWorks: 1,
