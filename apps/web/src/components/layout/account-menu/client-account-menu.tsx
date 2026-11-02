@@ -8,7 +8,7 @@ import type {
   HeaderMenuLink,
 } from "@/lib/navigation/header-account-menu.vm";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { ArrowRight, Check, ExternalLink, LogOut, Mail } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";

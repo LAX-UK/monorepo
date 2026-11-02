@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 import { Component, type ErrorInfo } from "react";
 
@@ -41,7 +41,7 @@ export class ConnectErrorBoundary extends Component<Props, State> {
             contact support@lax.bid.
           </p>
           {this.props.onReload ? (
-            <Button type="button" variant="secondary" size="default" onClick={this.props.onReload}>
+            <Button type="button" variant="secondary" size="md" onClick={this.props.onReload}>
               Reload payout setup
             </Button>
           ) : null}

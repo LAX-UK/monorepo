@@ -121,17 +121,11 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
         onClick={() => setOpen((o) => !o)}
         onKeyDown={onTriggerKeyDown}
       >
-        <div className="relative shrink-0">
-          <PersonAvatar
-            src={user.image}
-            name={displayName}
-            initials={initials(user.name, user.email)}
-          />
-          <span
-            className="absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-surface-container-lowest bg-positive"
-            aria-hidden
-          />
-        </div>
+        <PersonAvatar
+          src={user.image}
+          name={displayName}
+          initials={initials(user.name, user.email)}
+        />
         <span className="hidden max-w-[10rem] truncate font-label text-sm font-medium text-on-surface lg:inline">
           {firstName}
         </span>

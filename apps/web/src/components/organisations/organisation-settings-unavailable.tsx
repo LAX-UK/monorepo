@@ -1,6 +1,6 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import { OrganisationPageNoAccess } from "./organisation-page-no-access";
 

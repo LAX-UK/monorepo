@@ -32,7 +32,6 @@ import {
 } from "@/lib/marketing/sell-flow-copy";
 import { HideBottomTabBarWhileMounted } from "@/lib/shell/shell-chrome-context";
 import { evaluateSubmissionQuality } from "@auction/domain";
-import { Button } from "@auction/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +43,7 @@ import {
 import { Form } from "@auction/ui/components/form";
 import { Surface } from "@auction/ui/components/surface";
 import type { WizardProgressStep } from "@auction/ui/components/wizard-progress";
+import { Button } from "@auction/ui/lax";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
@@ -316,7 +316,7 @@ export function SubmissionWizardView({
           <DialogFooter className="flex flex-col gap-2 sm:flex-col">
             <Button
               type="button"
-              variant="cta"
+              variant="primary"
               disabled={isSubmitting}
               onClick={() => {
                 setExitGuardOpen(false);
@@ -327,7 +327,7 @@ export function SubmissionWizardView({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               disabled={isSubmitting}
               onClick={() => {
                 setExitGuardOpen(false);

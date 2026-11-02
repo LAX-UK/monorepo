@@ -7,7 +7,6 @@ import { DOCUMENT_UPLOAD_HELPER, documentKindLabel } from "@/lib/admin/document-
 import type { ActionResult } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import type { DocumentEntityKind, EntityDocument } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import {
@@ -17,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
+import { Button } from "@auction/ui/lax";
 import { useCallback, useRef, useState } from "react";
 
 function uploadKindForEntity(entityKind: DocumentEntityKind): DocumentUploadKind {
@@ -162,7 +162,7 @@ export function DocumentUploadForm<TKind extends string>({
               <Button
                 type="button"
                 variant="secondary"
-                size="default"
+                size="md"
                 disabled={busy}
                 onClick={() => void retryLastUpload()}
               >

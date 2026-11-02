@@ -2,7 +2,8 @@ import { MediaImage } from "@/components/ui/media-image";
 import { SPECIALIST_RESPONSE_PROMISE } from "@/lib/marketing/sell-flow-copy";
 import type { ConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
 import { AccountProgress } from "@auction/marketing-ui";
-import { Button } from "@auction/ui/components/button";
+import { cn } from "@auction/ui";
+import { Button, pageTitleClass } from "@auction/ui/lax";
 import { MessageSquare } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -33,9 +34,7 @@ export function ConsignmentDetailHead({
         </span>
         <div className="min-w-0">
           {status}
-          <h1 className="mt-2 text-balance font-headline text-[1.625rem] font-semibold leading-[1.15] tracking-[-0.01em] text-on-surface md:text-[2rem]">
-            {title}
-          </h1>
+          <h1 className={cn("mt-2 text-balance", pageTitleClass)}>{title}</h1>
           {line.length > 0 ? (
             <p className="mt-1.5 font-body text-base text-on-surface-variant">
               {line.map((fact, index) => (
@@ -76,7 +75,7 @@ export function AboutTheWork({ vm }: { vm: ConsignmentDetailVm }) {
         ))}
       </dl>
       {vm.listingHref ? (
-        <Button variant="secondaryOutline" size="default" asChild className="mt-4 w-full">
+        <Button variant="secondary" size="md" asChild className="mt-4 w-full">
           <Link href={vm.listingHref}>View the lot</Link>
         </Button>
       ) : null}
@@ -107,7 +106,7 @@ export function AskYourSpecialist({
           ? "You can read the conversation with your specialist. Owners, admins and the person who sent this work can write."
           : `Questions about the estimate, the terms or the sale? ${SPECIALIST_RESPONSE_PROMISE}`}
       </p>
-      <Button variant="secondaryOutline" size="default" asChild className="mt-4 w-full">
+      <Button variant="secondary" size="md" asChild className="mt-4 w-full">
         <Link href={messagesHref}>
           <MessageSquare aria-hidden />
           {readOnly ? "Read messages" : "Send a message"}

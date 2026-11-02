@@ -3,8 +3,8 @@
 import { AccountTile } from "@/components/layout/account-switcher/account-tile";
 import type { InvitationLinkView } from "@/lib/organisations/invitation-link.vm";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { Button } from "@auction/ui/lax";
 import { AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -78,7 +78,7 @@ export function InvitationLinkState({ view, acceptAction }: Props) {
                 </Link>
               </Button>
             ) : null}
-            <Button asChild variant="secondaryOutline">
+            <Button asChild variant="secondary">
               <Link href={view.secondary.href}>{view.secondary.label}</Link>
             </Button>
           </>

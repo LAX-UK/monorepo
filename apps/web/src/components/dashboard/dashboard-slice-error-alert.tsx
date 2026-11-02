@@ -3,7 +3,7 @@
 import { DashboardErrorAlert } from "@/components/dashboard/primitives/dashboard-error-alert";
 import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { usePersonalProfileForSubmissions } from "@/lib/legal-entity/submissions-access-actions";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 
 type DashboardSliceErrorAlertProps = {

@@ -16,7 +16,8 @@ const statement = {
 describe("statementDocumentRows", () => {
   it("names the period and the amount, and links the PDF", () => {
     const [row] = statementDocumentRows("org-1", [statement]);
-    expect(row?.title).toMatch(/^Payout statement · 1.Oct.2026 → 31.Oct.2026$/);
+    expect(row?.title).toBe("Payout statement");
+    expect(row?.period).toMatch(/^1.Oct.2026 → 31.Oct.2026$/);
     expect(row?.detail).toBe("£12,860.00");
     expect(row?.href).toBe("/legal-entities/org-1/payouts/p1/statement");
     expect(row?.unavailable).toBe(false);

@@ -21,7 +21,7 @@ export function StatementDocuments({ rows }: { rows: readonly StatementDocumentR
             </span>
           }
           title={row.title}
-          meta={[row.detail, "PDF"]}
+          meta={[row.period, row.detail]}
           status={
             row.unavailable ? (
               <StatusBadge tone="neutral" shape="ring">
@@ -32,7 +32,7 @@ export function StatementDocuments({ rows }: { rows: readonly StatementDocumentR
           action={
             row.unavailable ? null : (
               <Button asChild variant="ghost" size="icon-md">
-                <a href={row.href} download aria-label={`Download ${row.title}`}>
+                <a href={row.href} download aria-label={`Download ${row.title}, ${row.period}`}>
                   <Download aria-hidden />
                 </a>
               </Button>

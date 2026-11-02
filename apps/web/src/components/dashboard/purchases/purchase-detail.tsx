@@ -3,7 +3,7 @@ import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { DeliveryPanelVm } from "@/lib/purchases/purchase-delivery.vm";
 import type { PurchaseCardVm } from "@/lib/purchases/purchases.vm";
 import { cn } from "@auction/ui";
-import { ButtonLink, StatusBadge } from "@auction/ui/lax";
+import { ButtonLink, StatusBadge, pageTitleClass } from "@auction/ui/lax";
 import { ChevronLeft, Download, FileText } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -106,10 +106,7 @@ export function PurchaseDetail({
         </Link>
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
-            <h1
-              className="font-lax-display text-lax-28 font-semibold text-lax-fg"
-              data-page-title=""
-            >
+            <h1 className={pageTitleClass} data-page-title="">
               {card.title}
             </h1>
             <p className="mt-1 text-lax-14 text-lax-muted">{subtitle}</p>

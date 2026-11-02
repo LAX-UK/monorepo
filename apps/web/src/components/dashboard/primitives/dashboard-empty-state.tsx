@@ -6,6 +6,7 @@ import {
 import { CONTEXT_DEFAULT_ILLUSTRATION, type EmptyStateContext } from "@/lib/ui/empty-state-copy";
 import { cn } from "@auction/ui";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { pageTitleClass } from "@auction/ui/lax";
 import { type ComponentProps, type ReactNode, useId } from "react";
 
 type EmptyProps = Omit<ComponentProps<typeof EmptyState>, "variant">;
@@ -51,7 +52,7 @@ export function DashboardEmptyState({
     return (
       <section
         className={cn(
-          "flex flex-col items-center justify-center rounded-2xl bg-surface-container-low/20 px-6 py-12 text-center sm:px-10 sm:py-16",
+          "flex flex-col items-center justify-center px-6 py-12 text-center sm:px-10 sm:py-16",
           className,
         )}
         aria-labelledby={headingId}
@@ -64,10 +65,7 @@ export function DashboardEmptyState({
             {icon}
           </div>
         ) : null}
-        <Heading
-          id={headingId}
-          className="font-headline text-2xl font-semibold tracking-tight text-on-surface md:text-3xl"
-        >
+        <Heading id={headingId} className={pageTitleClass}>
           {title}
         </Heading>
         {description ? (

@@ -3,7 +3,7 @@ import { supportMailto } from "@/lib/dashboard/dashboard-copy";
 import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import type { StripeConnectLoadError } from "@/lib/data/http/stripe-connect.types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 
 /**
  * Payout setup that did not load. An account LAX cannot reach is not the visitor's doing and

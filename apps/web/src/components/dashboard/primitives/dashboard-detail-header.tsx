@@ -1,6 +1,6 @@
 import { BACK_LINK_CLASS, EYEBROW_CLASS } from "@/lib/dashboard/accent-track";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button, pageTitleClass } from "@auction/ui/lax";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -53,13 +53,9 @@ export function DashboardDetailHeader({
         {backHref && !crumbs ? (
           <Button
             variant="ghost"
-            size="default"
+            size="md"
             asChild
-            className={cn(
-              "min-h-11 w-fit gap-1 px-2 font-label text-xs font-semibold",
-              BACK_LINK_CLASS,
-              compact && "hidden lg:inline-flex",
-            )}
+            className={cn("w-fit", BACK_LINK_CLASS, compact && "hidden lg:inline-flex")}
           >
             <Link href={backHref}>
               <ChevronLeft className="size-4" aria-hidden />
@@ -73,13 +69,9 @@ export function DashboardDetailHeader({
               <p className={cn(EYEBROW_CLASS, compact && "hidden lg:block")}>{eyebrow}</p>
             ) : null}
             {compact ? (
-              <h1 className="hidden font-headline text-2xl font-semibold tracking-tight text-on-surface sm:text-3xl lg:block">
-                {title}
-              </h1>
+              <h1 className={cn(pageTitleClass, "hidden lg:block")}>{title}</h1>
             ) : (
-              <h1 className="font-headline text-2xl font-semibold tracking-tight text-on-surface sm:text-3xl">
-                {title}
-              </h1>
+              <h1 className={pageTitleClass}>{title}</h1>
             )}
             {description ? (
               <p

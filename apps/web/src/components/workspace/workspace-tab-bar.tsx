@@ -46,7 +46,7 @@ function TabCount({ value }: { value: number }) {
   return (
     <span
       aria-hidden
-      className="absolute -top-1.5 left-[calc(50%+4px)] inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-lax-ink px-1 text-lax-2xs font-semibold text-lax-on-ink tabular-nums"
+      className="absolute -top-2 left-[calc(50%+4px)] inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-lax-ink px-1 text-lax-12 font-semibold text-lax-on-ink tabular-nums"
     >
       {value > 99 ? "99+" : value}
     </span>

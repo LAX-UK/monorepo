@@ -3,6 +3,14 @@
  * component can use them as well as a client one.
  */
 
+/**
+ * A page title: 24/32 on phones, 28/36 from tablet up, Montserrat at 600. Every workspace page
+ * (lists, details and access pages) draws its one h1 with this, so titles never change size
+ * between pages.
+ */
+export const pageTitleClass =
+  "font-lax-display text-lax-24 font-semibold tracking-tight text-lax-fg md:text-lax-28";
+
 /** The tooltip surface: a small ink label, 12/16 at 500, raised over everything. */
 export const tooltipClass =
   "flex items-center gap-2 rounded-lax-badge border-0 bg-lax-ink px-2 py-1 font-lax text-lax-12 font-medium text-lax-on-ink shadow-lax-md";

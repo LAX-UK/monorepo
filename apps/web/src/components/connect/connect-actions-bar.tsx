@@ -1,7 +1,7 @@
 "use client";
 
 import { openStripeDashboardLinkAction } from "@/lib/actions/stripe-connect.actions";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { useTransition } from "react";
 
 type Props = {
@@ -59,7 +59,7 @@ export function ConnectActionsBar({
           <Button
             type="button"
             variant="secondary"
-            size="default"
+            size="md"
             disabled={actionsPending}
             onClick={onSync}
           >
@@ -69,8 +69,8 @@ export function ConnectActionsBar({
         {showDashboardLink && hasStripeAccount ? (
           <Button
             type="button"
-            variant="outline"
-            size="default"
+            variant="secondary"
+            size="md"
             disabled={actionsPending}
             onClick={handleManageInStripe}
           >

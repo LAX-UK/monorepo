@@ -1,7 +1,7 @@
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
-import { Button } from "@auction/ui/components/button";
 import { Card, CardFooter, CardHeader, CardTitle } from "@auction/ui/components/card";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 
 type ListProps = {
@@ -35,7 +35,7 @@ export function InvitationCardList({ invitations }: ListProps) {
               </p>
             </CardHeader>
             <CardFooter className="justify-end border-t-0 pt-0">
-              <Button asChild size="default" variant="cta">
+              <Button asChild size="md" variant="primary">
                 <Link href={`/organisations/invitations/review/${encodeURIComponent(inv.id)}`}>
                   Review
                 </Link>

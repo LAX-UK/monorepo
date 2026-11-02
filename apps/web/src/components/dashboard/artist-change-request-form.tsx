@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import {
@@ -12,6 +11,7 @@ import {
 } from "@auction/ui/components/select";
 import { Surface } from "@auction/ui/components/surface";
 import { Textarea } from "@auction/ui/components/textarea";
+import { Button } from "@auction/ui/lax";
 import { ArrowRight, Send } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 

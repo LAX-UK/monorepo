@@ -5,9 +5,11 @@ import { formatPeriod } from "@/lib/ui/format";
 /** One statement in the Documents library. */
 export type StatementDocumentRow = {
   payoutId: string;
-  /** "Payout statement · 1 Oct 2026 → 31 Oct 2026". */
+  /** "Payout statement": short, so it stays on one line in a narrow list. */
   title: string;
-  /** The amount paid out: "£12,860.00" (the period is already in the title). */
+  /** The period it covers: "1 Oct 2026 → 31 Oct 2026". */
+  period: string;
+  /** The amount paid out: "£12,860.00". */
   detail: string;
   /** When the PDF can't be made; the row then says so instead of offering a download. */
   unavailable: boolean;
@@ -27,7 +29,8 @@ export function statementDocumentRows(
 ): StatementDocumentRow[] {
   return statements.map((statement) => ({
     payoutId: statement.payoutId,
-    title: `Payout statement · ${formatPeriod(statement.periodStart, statement.periodEnd)}`,
+    title: "Payout statement",
+    period: formatPeriod(statement.periodStart, statement.periodEnd),
     detail: formatMoney(statement.netAmount, statement.currency),
     unavailable: statement.availability === "unavailable",
     href: statementPdfHref(legalEntityId, statement.payoutId),
