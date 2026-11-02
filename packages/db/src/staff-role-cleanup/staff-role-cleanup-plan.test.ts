@@ -25,7 +25,6 @@ describe("staff role clean-up plan", () => {
       "specialist",
       "finance_ops",
       "operations_fulfilment",
-      "compliance_officer",
     ] as const) {
       const change = planStaffMemberCleanup(member([role]));
       expect(change.rolesAfter).toEqual(STAFF_ROLE_SUCCESSORS[role]);
@@ -33,9 +32,16 @@ describe("staff role clean-up plan", () => {
     }
   });
 
-  it("gives the administrator the two new permissions", () => {
+  it("renames the compliance officer and adds the data requests permission it now holds", () => {
+    const change = planStaffMemberCleanup(member(["compliance_officer"]));
+    expect(change.rolesAfter).toEqual(STAFF_ROLE_SUCCESSORS.compliance_officer);
+    expect(change.gained).toEqual(["data_requests.manage"]);
+  });
+
+  it("gives the administrator the permissions added since the old roles", () => {
     expect(planStaffMemberCleanup(member(["super_admin"])).gained).toEqual([
       "admin.read",
+      "data_requests.manage",
       "saleroom.operate",
     ]);
   });

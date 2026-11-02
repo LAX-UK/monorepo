@@ -34,11 +34,16 @@ export const AUTH_POLICY_TABLES = ["identity_mfa_policy"] as const;
 /** The LAX-wide address book. Products reach it through the issuer, never directly. */
 export const AUTH_ADDRESS_TABLES = ["identity_address"] as const;
 /**
- * "Download my data" requests, owned by Identity. Requests change state, so auth_app updates
- * them; the audit trail is append-only. Neither is ever deleted from, and api_app is denied.
+ * "Download my data" requests and the manual requests staff log, owned by Identity. Requests
+ * change state, so auth_app updates them; the audit trails are append-only. None is ever deleted
+ * from, and api_app and worker_app are denied: the Bid API reaches them through Identity's
+ * internal routes.
  */
-export const AUTH_EXPORT_TABLES = ["subject_data_export"] as const;
-export const AUTH_EXPORT_AUDIT_TABLES = ["subject_data_export_audit"] as const;
+export const AUTH_EXPORT_TABLES = ["subject_data_export", "subject_data_request"] as const;
+export const AUTH_EXPORT_AUDIT_TABLES = [
+  "subject_data_export_audit",
+  "subject_data_request_audit",
+] as const;
 export const AUTH_DENY_TABLES = [
   "email_outbox",
   "email_suppression",

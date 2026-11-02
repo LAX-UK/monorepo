@@ -38,26 +38,35 @@ export const SUBJECT_EXPORT_PRODUCT_RETRY_HOURS = 72;
 export const SUBJECT_EXPORT_MAX_PAGE_RECORDS = 500;
 
 /**
- * The legal due date: one calendar month after the request, counted as the ICO counts it. It is
- * the same date next month, or the month's last day when that date does not exist (31 January
- * is due 28 or 29 February). Computed in UTC and keeps the time of day.
+ * `months` calendar months after `at`, counted as the ICO counts them: the same date, or the
+ * month's last day when that date does not exist (31 January plus one month is 28 or 29
+ * February). Computed in UTC and keeps the time of day.
  */
-export function subjectExportDueAt(requestedAt: Date): Date {
-  const year = requestedAt.getUTCFullYear();
-  const month = requestedAt.getUTCMonth() + 1;
+export function addUtcMonthsClamped(at: Date, months: number): Date {
+  const year = at.getUTCFullYear();
+  const month = at.getUTCMonth() + months;
   const lastDayOfTarget = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  const day = Math.min(requestedAt.getUTCDate(), lastDayOfTarget);
+  const day = Math.min(at.getUTCDate(), lastDayOfTarget);
   return new Date(
     Date.UTC(
       year,
       month,
       day,
-      requestedAt.getUTCHours(),
-      requestedAt.getUTCMinutes(),
-      requestedAt.getUTCSeconds(),
-      requestedAt.getUTCMilliseconds(),
+      at.getUTCHours(),
+      at.getUTCMinutes(),
+      at.getUTCSeconds(),
+      at.getUTCMilliseconds(),
     ),
   );
+}
+
+/**
+ * The legal due date: one calendar month after the request, counted as the ICO counts it. It is
+ * the same date next month, or the month's last day when that date does not exist (31 January
+ * is due 28 or 29 February). Computed in UTC and keeps the time of day.
+ */
+export function subjectExportDueAt(requestedAt: Date): Date {
+  return addUtcMonthsClamped(requestedAt, 1);
 }
 
 // Paths -------------------------------------------------------------------------------------
