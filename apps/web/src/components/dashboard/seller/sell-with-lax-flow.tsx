@@ -39,8 +39,10 @@ function SellingAsSummary({
         <p className="mt-1 text-lax-14 text-lax-fg">
           {option.kind === "personal" ? `${option.name}, your personal account` : option.name}
         </p>
-        {option.submitBlockedReason ? (
-          <p className="mt-1 text-lax-13 text-lax-muted">{option.submitBlockedReason}</p>
+        {(option.sellingNote?.notice ?? option.submitBlockedReason) ? (
+          <p className="mt-1 text-lax-13 text-lax-muted">
+            {option.sellingNote?.notice ?? option.submitBlockedReason}
+          </p>
         ) : null}
       </div>
       {onChange ? (

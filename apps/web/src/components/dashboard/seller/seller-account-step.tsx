@@ -1,7 +1,7 @@
 "use client";
 
 import type { SellerAccountOption } from "@/lib/seller/seller-account-options";
-import { Button, Notice, PresetCards, TextLink } from "@auction/ui/lax";
+import { Button, ButtonLink, Notice, PresetCards, TextLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 type Props = {
@@ -29,9 +29,8 @@ function optionTitle(option: SellerAccountOption): string {
 
 function optionDescription(option: SellerAccountOption): string {
   if (option.kind === "personal") return `${option.name} · Sold under your own name, paid to you.`;
-  return option.canSubmit
-    ? `Sold by ${option.name}, paid to the organisation.`
-    : "Under review. You can save a draft now.";
+  if (option.canSubmit) return `Sold by ${option.name}, paid to the organisation.`;
+  return option.sellingNote?.summary ?? "You can save a draft now.";
 }
 
 /**
@@ -93,7 +92,19 @@ export function SellerAccountStep({
       </section>
 
       {blocked && selected?.submitBlockedReason ? (
-        <Notice tone="info" title={selected.submitBlockedReason} />
+        <Notice
+          tone="info"
+          title={selected.sellingNote?.notice ?? selected.submitBlockedReason}
+          {...(selected.sellingNote?.step
+            ? {
+                actions: (
+                  <ButtonLink href={selected.sellingNote.step.href} Link={Link} variant="secondary">
+                    {selected.sellingNote.step.label}
+                  </ButtonLink>
+                ),
+              }
+            : {})}
+        />
       ) : null}
 
       {registerHref ? (

@@ -1,5 +1,3 @@
-import { resumeOnboardingStepKey } from "@/components/organisations/org-onboarding-step-map";
-import { orgOnboardingStepHref } from "@/lib/legal-entity/org-onboarding-resume";
 import { accountHomePathForKind } from "@/lib/navigation/account-home";
 import { withAccount } from "@/lib/navigation/client-routes";
 import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
@@ -8,6 +6,7 @@ import { formatDate } from "@/lib/ui/format";
 import type { LegalEntityStatus } from "@auction/types";
 import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
 import { subkindLabel } from "./legal-entity-labels";
+import { type SetupStep, setupStep } from "./organisation-setup";
 
 /** The one badge a row shows, only while something about the account needs attention. */
 export type AccountAttention = {
@@ -15,9 +14,6 @@ export type AccountAttention = {
   tone: StatusBadgeTone;
   shape: StatusBadgeShape;
 };
-
-/** The one step a row offers instead of opening the account: finishing what setup still needs. */
-export type AccountStep = { label: string; href: string };
 
 /** One account on "Your organisations": the person's own, or an organisation they belong to. */
 export type AccountRowVm = {
@@ -32,7 +28,7 @@ export type AccountRowVm = {
   href: string;
   current: boolean;
   attention: AccountAttention | null;
-  step: AccountStep | null;
+  step: SetupStep | null;
 };
 
 export type OrganisationSource = {
@@ -60,15 +56,6 @@ function attentionFor(source: OrganisationSource): AccountAttention | null {
   return source.payoutDetailsNeeded
     ? { label: "Payout details needed", tone: "warning", shape: "alert" }
     : null;
-}
-
-function stepFor(source: OrganisationSource): AccountStep | null {
-  const key = resumeOnboardingStepKey(source.status);
-  if (!key) return null;
-  return {
-    label: source.status === "connect_pending" ? "Finish payout setup" : "Continue setup",
-    href: source.resumeHref ?? orgOnboardingStepHref(key, { entityId: source.id }),
-  };
 }
 
 /** The accounts as rows: the person's own first, then each organisation by name. */
@@ -111,7 +98,7 @@ export function accountRows(input: {
       href: withAccount(accountHomePathForKind("organisation"), source.id),
       current,
       attention: attentionFor(source),
-      step: stepFor(source),
+      step: setupStep(source.status, source.id, source.resumeHref),
     });
   }
   return rows;

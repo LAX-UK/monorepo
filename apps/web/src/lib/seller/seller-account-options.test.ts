@@ -1,4 +1,4 @@
-import type { LegalEntitySummary } from "@auction/types";
+import type { LegalEntityStatus, LegalEntitySummary } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { actingForOrganisation, sellerAccountChoice } from "./seller-account-options";
 
@@ -101,5 +101,18 @@ describe("sellerAccountChoice", () => {
     });
     expect(actingForOrganisation(inOrganisation)).toBe(true);
     expect(actingForOrganisation(asPerson)).toBe(false);
+  });
+
+  it("words each draft-only state from the shared selling note", () => {
+    const note = (status: LegalEntityStatus) =>
+      sellerAccountChoice({
+        memberships: [personal, membership({ id: "o", status })],
+        personalName: "Jane Smith",
+        actingId: "o",
+      }).options.find((o) => o.id === "o")?.sellingNote?.summary;
+    expect(note("docs_requested")).toMatch(/Documents needed/);
+    expect(note("under_review")).toMatch(/Under review/);
+    expect(note("connect_pending")).toMatch(/Payouts not set up/);
+    expect(note("approved")).toBeUndefined();
   });
 });

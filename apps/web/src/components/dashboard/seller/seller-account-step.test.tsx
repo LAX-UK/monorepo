@@ -18,6 +18,7 @@ const personal: SellerAccountOption = {
   roleLabel: null,
   canSubmit: true,
   submitBlockedReason: null,
+  sellingNote: null,
 };
 const gallery: SellerAccountOption = {
   id: "gallery",
@@ -26,6 +27,7 @@ const gallery: SellerAccountOption = {
   roleLabel: "Admin",
   canSubmit: true,
   submitBlockedReason: null,
+  sellingNote: null,
 };
 const newGallery: SellerAccountOption = {
   id: "new",
@@ -34,6 +36,24 @@ const newGallery: SellerAccountOption = {
   roleLabel: "Owner",
   canSubmit: false,
   submitBlockedReason: "We're still checking this organisation's documents.",
+  sellingNote: {
+    summary: "Under review. You can save a draft now.",
+    notice: "We're still checking this organisation's documents.",
+    step: null,
+  },
+};
+const documentsNeeded: SellerAccountOption = {
+  ...newGallery,
+  id: "docs",
+  name: "Crowley Fine Art Ltd",
+  sellingNote: {
+    summary: "Documents needed. You can save a draft now.",
+    notice: "We're waiting for this organisation's documents.",
+    step: {
+      label: "Continue setup",
+      href: "/onboarding/organisation/step/documents?entityId=docs",
+    },
+  },
 };
 
 function renderStep(
@@ -90,6 +110,22 @@ describe("SellerAccountStep", () => {
     expect(screen.queryByRole("button", { name: /Submit/ })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Save as draft" }));
     expect(handlers.onSaveDraft).toHaveBeenCalled();
+  });
+
+  it("tells an organisation waiting on documents what to do, with the step", () => {
+    renderStep([personal, documentsNeeded], "docs");
+    expect(screen.getByText("Documents needed. You can save a draft now.")).toBeInTheDocument();
+    expect(screen.getByText("We're waiting for this organisation's documents.")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Continue setup" })).toHaveAttribute(
+      "href",
+      "/onboarding/organisation/step/documents?entityId=docs",
+    );
+  });
+
+  it("offers no step while LAX is reviewing", () => {
+    renderStep([personal, newGallery], "new");
+    expect(screen.getByText("Under review. You can save a draft now.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Continue setup" })).not.toBeInTheDocument();
   });
 
   it("does not offer to register an organisation to someone already acting for one", () => {

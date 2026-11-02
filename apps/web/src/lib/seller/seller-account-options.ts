@@ -1,3 +1,7 @@
+import {
+  type OrganisationSellingNote,
+  organisationSellingNote,
+} from "@/lib/organisations/organisation-setup";
 import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { entityActorCan, sellerSubmissionAccess } from "@auction/domain";
 import type { LegalEntitySummary } from "@auction/types";
@@ -12,6 +16,8 @@ export type SellerAccountOption = {
   canSubmit: boolean;
   /** Why this account can save a draft but not submit yet. */
   submitBlockedReason: string | null;
+  /** What setup holds the account back, in words and with its step; `null` for a person. */
+  sellingNote: OrganisationSellingNote | null;
 };
 
 export type SellerAccountChoice = {
@@ -44,6 +50,7 @@ export function sellerAccountChoice(input: {
         roleLabel: null,
         canSubmit: access.canSubmit,
         submitBlockedReason: access.submitBlockedReason,
+        sellingNote: null,
       });
       continue;
     }
@@ -57,6 +64,9 @@ export function sellerAccountChoice(input: {
       roleLabel: organisationRoleLabel(membership.role),
       canSubmit: access.canSubmit,
       submitBlockedReason: access.submitBlockedReason,
+      sellingNote: access.canSubmit
+        ? null
+        : organisationSellingNote(membership.status, membership.id),
     });
   }
   const acting = options.find((option) => option.id === input.actingId);
