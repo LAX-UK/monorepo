@@ -12,10 +12,10 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0277 enquiry workflow", () => {
-  it("is journal entry 275, after 0274", () => {
+  it("is journal entry 277, after 0276", () => {
     const entry = journal.entries.find((e) => e.tag === "0277_enquiry_workflow");
-    const previous = journal.entries.find((e) => e.tag === "0274_marketing_enquiry");
-    expect(entry?.idx).toBe(275);
+    const previous = journal.entries.find((e) => e.tag === "0276_shop_release_alerts");
+    expect(entry?.idx).toBe(277);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
   });
 
