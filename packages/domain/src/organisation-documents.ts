@@ -46,12 +46,16 @@ const STATE_BY_REVIEW: Record<OrganisationDocumentReviewStatus, OrganisationDocu
   rejected: "needs_replacing",
 };
 
-/** Where one requested document is, from what was received and the organisation's status. */
+/**
+ * Where one requested document is, from what was received and the organisation's status. An
+ * approved organisation has passed its check, so nothing is outstanding: a document LAX asked for
+ * and holds no copy of is accepted too, not "not sent yet".
+ */
 export function organisationDocumentState(
   received: Pick<ReceivedOrganisationDocument, "reviewStatus"> | null,
   status: LegalEntityStatus,
 ): OrganisationDocumentState {
-  if (!received) return "requested";
+  if (!received) return status === "approved" ? "accepted" : "requested";
   const state = STATE_BY_REVIEW[received.reviewStatus];
   return state === "received" && UNDER_CHECK.has(status) ? "in_review" : state;
 }

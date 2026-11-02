@@ -1,6 +1,7 @@
 import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-frame";
 import { ArtistWatchHeart } from "@/components/marketing/artist-watch-heart";
 import { MediaImage } from "@/components/ui/media-image";
+import { artistCardCaption } from "@/lib/artists/artist-card-caption";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
 import { artistProfileHref } from "@/lib/marketing/catalog-links";
@@ -19,18 +20,6 @@ type Props = {
   nameAs?: "h2" | "h3" | "h4";
   className?: string;
 };
-
-/**
- * What the card says the house holds for the artist: "3 lots" when anything is listed, otherwise
- * "2 results" for sold work; null when there is neither.
- */
-export function artistCardCaption(input: { lotCount: number; resultCount: number }): string | null {
-  if (input.lotCount > 0) return `${input.lotCount} ${input.lotCount === 1 ? "lot" : "lots"}`;
-  if (input.resultCount > 0) {
-    return `${input.resultCount} ${input.resultCount === 1 ? "result" : "results"}`;
-  }
-  return null;
-}
 
 /** Public artist directory card: the shared `MarketingArtistCard` with Bid's watch heart. */
 export function ArtistDirectoryCard({

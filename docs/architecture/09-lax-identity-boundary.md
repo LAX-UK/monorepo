@@ -444,6 +444,22 @@ OIDC/BFF/logout/SSF probes, capacity evidence, rollback rehearsal, or cutover
 approval. A green portability job therefore means “code/extraction ready,” not
 “production promoted.”
 
+## Account purge in the products
+
+When the grace period ends, Identity scrubs its own rows and publishes `user.identity_deleted`.
+Each product follows that event and anonymises the personal data it holds about the person:
+
+- Bid: the worker projector `bid_personal_data_anonymisation`, with the field list in
+  `apps/worker/src/anonymisation/bid-personal-data-policy.ts`.
+- Shop: the shop-api scheduler task `personal-data-anonymisation`, with the field list in
+  `apps/shop-api/src/infrastructure/identity-purge/shop-personal-data-policy.ts`.
+
+Rows that only describe the person are deleted. Rows that financial, legal or auction records point
+at stay, with personal fields nulled or replaced by the stable pseudonym `Deleted user XXXX`
+(`deletedUserPseudonym`). Each product records `bid.user_anonymised` or `shop.user_anonymised`
+with the opaque subject id, the time and the rows changed per table, and no personal data. Every
+step is a delete or a set-to-fixed-value, so a replay changes nothing further.
+
 ## Standalone repository transition
 
 The staging extraction approved in D23 keeps the existing issuer and database

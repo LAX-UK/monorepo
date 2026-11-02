@@ -490,6 +490,7 @@ export {
   type MarketingGalleryTeamBandProps,
   type MarketingGalleryTeamDetail,
   type MarketingGalleryTeamDetailKind,
+  type MarketingGalleryTeamStep,
 } from "./marketing-gallery-team-band.js";
 export {
   type MarketingFaqPill,

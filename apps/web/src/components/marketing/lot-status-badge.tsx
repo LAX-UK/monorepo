@@ -8,7 +8,7 @@ import { LotCardTimer, type LotCardTimerProps } from "@/components/lot-timer";
  * @see docs/marketing-design-language.md
  */
 import { type LotTimerInputs, classifyLotTimerState } from "@/components/lot-timer/classify";
-import { formatRemaining } from "@/components/lot-timer/format";
+import { timerText } from "@/components/lot-timer/format";
 import { useNow } from "@/hooks/use-now";
 import { toPublicStatusBadgeProps } from "@/lib/presenters/public-status-badge";
 import {
@@ -31,21 +31,23 @@ export function LotStatusBadge({ winnerId, hasWinner, ...inputs }: LotStatusBadg
   const now = useNow(1000);
   const state = classifyLotTimerState(inputs, now);
 
-  if (state.kind === "live") {
-    const clock = formatRemaining(state.msLeft);
+  if (state.kind === "live" && now != null) {
+    const { words, date } = timerText(state.msLeft, now);
     return (
-      <span className="inline-flex max-w-full items-center gap-1.5">
+      <span className="inline-flex max-w-full items-center gap-1.5 whitespace-nowrap">
         <LiveBadge />
-        <span className={liveStatusCountdownClassName}>{clock}</span>
+        <span className={liveStatusCountdownClassName}>{date ? `Ends ${date}` : words}</span>
       </span>
     );
   }
 
-  if (state.kind === "opensSoon") {
-    const clock = formatRemaining(state.msLeft);
+  if (state.kind === "opensSoon" && now != null) {
+    const { words, date } = timerText(state.msLeft, now);
     return (
       <StatusBadge tone="info">
-        Opens in <span className="ml-1 tabular-nums">{clock}</span>
+        <span className="whitespace-nowrap tabular-nums">
+          {date ? `Opens ${date}` : `Opens in ${words}`}
+        </span>
       </StatusBadge>
     );
   }
