@@ -24,12 +24,12 @@ export function roleAbilities(role: LegalEntityMemberRole): RoleAbility[] {
     { id: "bid", label: "Bid", answer: bidAnswer(role) },
     {
       id: "pay",
-      label: "Pay for purchases",
+      label: "Pay",
       answer: yesNo(entityRoleCan(role, "entity.finance.write")),
     },
     {
       id: "sell",
-      label: "Send works to sell",
+      label: "Sell",
       answer: yesNo(entityRoleCan(role, "entity.submissions.create")),
     },
   ];
