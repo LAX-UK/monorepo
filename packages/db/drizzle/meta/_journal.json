@@ -1912,6 +1912,13 @@
       "when": 1798963200000,
       "tag": "0272_kyc_retention_tombstone",
       "breakpoints": true
+    },
+    {
+      "idx": 277,
+      "version": "7",
+      "when": 1799395200000,
+      "tag": "0277_visitor_sale_alerts",
+      "breakpoints": true
     }
   ]
 }

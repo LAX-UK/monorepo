@@ -113,6 +113,7 @@ const EXPLICIT_ALLOWLIST = new Set([
   "src/routes/email.ts",
   "src/routes/marketing.ts",
   "src/routes/newsletter.ts",
+  "src/routes/sale-alerts.ts",
   "src/routes/onsite-events.ts",
   "src/routes/qr.ts",
   "src/routes/webhooks/index.ts",
