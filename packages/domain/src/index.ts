@@ -822,9 +822,12 @@ export {
 } from "./access-request.js";
 export * from "./lot-page/index.js";
 export {
+  HOME_LIVE_TABS_MAX,
   HOME_SECTION_ORDER,
   HOME_STATE_WINDOWS,
+  defaultLiveTab,
   homeStates,
+  liveTabSaleIds,
   pruneEmptyHomeSections,
   resolveHomeState,
   resolveHomeViewerSwaps,
