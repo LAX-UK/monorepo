@@ -105,12 +105,7 @@ export function LotOnsiteMarketingLayout({
           Catalogue preview — bidding opens when the sale is published.
         </div>
       ) : null}
-      <div
-        className={cn(
-          MARKETING_PAGE_SHELL,
-          "pb-[calc(1.5rem+var(--bottom-chrome-consent-offset,0px))] pt-6",
-        )}
-      >
+      <div className={cn(MARKETING_PAGE_SHELL, "pb-6 pt-6")}>
         <OnsiteSessionHeader vm={sessionHeader} sale={sale} />
 
         <div

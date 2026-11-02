@@ -1,6 +1,7 @@
 "use client";
 
 import { setConsentAction } from "@/lib/analytics/consent/actions";
+import { acceptAllPrefs, isMarketingOffered } from "@/lib/analytics/consent/categories";
 import type { ConsentSnapshot } from "@/lib/analytics/consent/cookie";
 import { isAnalyticsEnabled } from "@/lib/analytics/is-enabled";
 import type { TrackPayload } from "@/lib/analytics/provider";
@@ -19,7 +20,7 @@ import {
 type ConsentContextValue = {
   /** Persisted choice from cookie; `null` means visitor has not chosen yet. */
   snapshot: ConsentSnapshot | null;
-  /** First-visit banner until Accept / Customise save (reject via preferences dialog). */
+  /** First-visit banner until a choice is saved (accept, reject or settings). */
   showBanner: boolean;
   preferencesOpen: boolean;
   openPreferences: () => void;
@@ -60,11 +61,11 @@ export function ConsentProvider({ children, initialSnapshot }: ConsentProviderPr
 
   const persist = useCallback(
     async (prefs: { analytics: boolean; marketing: boolean }) => {
-      const coerced = {
-        analytics: prefs.analytics || prefs.marketing,
-        marketing: prefs.marketing,
-      };
-      const res = await setConsentAction(coerced);
+      // The two choices are independent; marketing is only ever stored when the site offers it.
+      const res = await setConsentAction({
+        analytics: prefs.analytics,
+        marketing: prefs.marketing && isMarketingOffered(),
+      });
       if (!res.ok) return;
       setSnapshot(res.snapshot);
       setShowBanner(false);
@@ -76,7 +77,7 @@ export function ConsentProvider({ children, initialSnapshot }: ConsentProviderPr
   );
 
   const acceptAll = useCallback(async () => {
-    await persist({ analytics: true, marketing: true });
+    await persist(acceptAllPrefs());
   }, [persist]);
 
   const rejectAll = useCallback(async () => {

@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 
 describe("bottom-chrome", () => {
   it("offsets bid bar when consent banner is visible", () => {
-    expect(consentOffset(true)).toBe("5.5rem");
+    expect(consentOffset(true)).toBe("var(--cookie-dock-height, 5.5rem)");
     expect(consentOffset(false)).toBe("0px");
   });
 
@@ -34,7 +34,18 @@ describe("bottom-chrome", () => {
       fixedPayBarRoute: false,
       hideDashboardTabBar: false,
     });
-    expect(padding).toBe("calc(1.5rem + 0px)");
+    expect(padding).toBe("1.5rem");
+  });
+
+  it("leaves the open cookie dock to the body, not the page padding", () => {
+    const padding = pageBottomPadding({
+      consentBannerVisible: true,
+      dashboardTabBarActive: false,
+      marketingBidBarRoute: false,
+      fixedPayBarRoute: false,
+      hideDashboardTabBar: false,
+    });
+    expect(padding).toBe("1.5rem");
   });
 
   it("detects lot checkout pay bar routes", () => {

@@ -5,7 +5,7 @@ import { ConsentProvider } from "@/lib/analytics/consent/context";
 import { type ConsentSnapshot, buildConsentSnapshot } from "@/lib/analytics/consent/cookie";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockSetConsentAction = vi.fn();
 const mockRefresh = vi.fn();
@@ -42,7 +42,7 @@ function openPreferencesFromBanner() {
       <ConsentPreferencesDialog />
     </>,
   );
-  fireEvent.click(screen.getByRole("button", { name: /customise/i }));
+  fireEvent.click(screen.getByRole("button", { name: /^settings$/i }));
 }
 
 describe("ConsentPreferencesDialog", () => {
@@ -53,6 +53,10 @@ describe("ConsentPreferencesDialog", () => {
       ok: true,
       snapshot: buildConsentSnapshot({ analytics: false, marketing: false }),
     });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("calls setConsentAction with reject-all prefs", async () => {
@@ -66,7 +70,7 @@ describe("ConsentPreferencesDialog", () => {
 
   it("calls setConsentAction with all-off prefs when saving default toggles", async () => {
     openPreferencesFromBanner();
-    fireEvent.click(await screen.findByRole("button", { name: /save preferences/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /save choices/i }));
     await waitFor(() => {
       expect(mockSetConsentAction).toHaveBeenCalledWith({ analytics: false, marketing: false });
     });
@@ -79,13 +83,34 @@ describe("ConsentPreferencesDialog", () => {
     });
     openPreferencesFromBanner();
     fireEvent.click(await screen.findByRole("switch", { name: /analytics/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /save preferences/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /save choices/i }));
     await waitFor(() => {
       expect(mockSetConsentAction).toHaveBeenCalledWith({ analytics: true, marketing: false });
     });
   });
 
+  it("offers no marketing switch when no marketing tag is configured", async () => {
+    openPreferencesFromBanner();
+    await screen.findByRole("switch", { name: /analytics/i });
+    expect(screen.queryByRole("switch", { name: /marketing/i })).not.toBeInTheDocument();
+  });
+
+  it("keeps analytics and marketing independent", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MARKETING_TAGS", "true");
+    mockSetConsentAction.mockResolvedValueOnce({
+      ok: true,
+      snapshot: buildConsentSnapshot({ analytics: false, marketing: true }),
+    });
+    openPreferencesFromBanner();
+    fireEvent.click(await screen.findByRole("switch", { name: /marketing/i }));
+    fireEvent.click(screen.getByRole("button", { name: /save choices/i }));
+    await waitFor(() => {
+      expect(mockSetConsentAction).toHaveBeenCalledWith({ analytics: false, marketing: true });
+    });
+  });
+
   it("initialises toggles from an existing consent snapshot", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MARKETING_TAGS", "true");
     tree(
       <>
         <CookiePreferencesLink />
