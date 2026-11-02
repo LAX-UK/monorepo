@@ -273,9 +273,9 @@ html.dark {
   --color-on-surface: var(--color-brand-light-cream);
   --color-on-surface-variant: #c9c5bc;
   --color-on-background: var(--color-brand-light-cream);
-  --color-primary: var(--color-brand-light-cream);
+  --color-primary: var(--brand-paper);
   --color-on-primary: var(--color-brand-obsidian);
-  --color-cta-bg: var(--color-brand-light-cream);
+  --color-cta-bg: var(--brand-paper);
   --color-cta-on: var(--color-brand-obsidian);
   /* Light aubergine on dark surfaces: 9.2:1 on #121414, 6.7:1 on #2d2f2e. */
   --color-product-accent: #d6a8d4;
