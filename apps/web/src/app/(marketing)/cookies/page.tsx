@@ -167,7 +167,7 @@ export default function CookiesPage() {
         </LegalH2>
         <p>
           You can accept optional cookies using the banner when you first visit, or open{" "}
-          <strong>Cookie preferences</strong> from the site footer at any time. In the banner and in
+          <strong>Cookie settings</strong> from the site footer at any time. In the banner and in
           the settings you can choose <strong>Accept all</strong> or <strong>Reject all</strong>, or
           open <strong>Settings</strong> to turn categories on or off and{" "}
           <strong>Save choices</strong> (optional categories start off). You can also clear cookies
