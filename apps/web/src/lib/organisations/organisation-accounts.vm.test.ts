@@ -69,6 +69,16 @@ describe("accountRows", () => {
     expect(row?.step?.label).toBe("Continue setup");
   });
 
+  it("keeps the review badge but offers only Open while LAX reviews", () => {
+    const [, row] = accountRows({
+      personal,
+      organisations: [organisation({ id: "nb", status: "under_review" })],
+      actingId: null,
+    });
+    expect(row?.attention).toMatchObject({ label: "Documents under review" });
+    expect(row?.step).toBeNull();
+  });
+
   it("offers payout setup for an organisation waiting on it, at the resume step", () => {
     const [, row] = accountRows({
       personal,

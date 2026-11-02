@@ -15,8 +15,15 @@ describe("setupStep", () => {
     expect(setupStep("docs_requested", "o1")?.href).toContain("o1");
   });
 
-  it("has no step once approved or closed", () => {
-    for (const status of ["approved", "archived", "rejected", "restricted"] as const) {
+  it("has no step while LAX reviews, once approved, or when closed", () => {
+    for (const status of [
+      "docs_received",
+      "under_review",
+      "approved",
+      "archived",
+      "rejected",
+      "restricted",
+    ] as const) {
       expect(setupStep(status, "o1")).toBeNull();
     }
   });

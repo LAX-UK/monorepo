@@ -10,7 +10,8 @@ import type { LegalEntityStatus } from "@auction/types";
 export type SetupStep = { label: string; href: string };
 
 /**
- * The step an organisation still has to take, or `null` once setup is done or closed. The link
+ * The step an organisation still has to take, or `null` when there is none (approved, closed,
+ * or being reviewed by LAX). The link
  * resumes where the person left off when the onboarding read says so.
  */
 export function setupStep(
@@ -18,6 +19,8 @@ export function setupStep(
   entityId: string,
   resumeHref: string | null = null,
 ): SetupStep | null {
+  // Under review is LAX's to do: the person has nothing to finish until we reply.
+  if (status === "docs_received" || status === "under_review") return null;
   const key = resumeOnboardingStepKey(status);
   if (!key) return null;
   return {
