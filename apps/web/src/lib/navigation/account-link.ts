@@ -14,6 +14,16 @@ export function safeHopNext(next: string | null | undefined): string {
   return isAccountHop(path) ? CLIENT_ROUTES.home : next;
 }
 
+/**
+ * The page a person was refused, from `/no-access?next=…`, or `null` when there is none (a
+ * bookmark, a stale link): the access page then has nothing to deny and sends them to their Home.
+ */
+export function refusedPageTarget(next: string | null | undefined): string | null {
+  if (!next || !isSafeNextPath(next)) return null;
+  const path = next.split(/[?#]/)[0] ?? "";
+  return isAccountHop(path) ? null : next;
+}
+
 function isHop(path: string): boolean {
   return path === CLIENT_ROUTES.accountSwitch || path === CLIENT_ROUTES.accountRestore;
 }

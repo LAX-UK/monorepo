@@ -1,11 +1,10 @@
-import { buildListHref, firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
+import { firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
+import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shared";
 import type { AdminListQueryBase } from "@/lib/admin/i-admin-list-controller";
 import { searchChipLabel } from "@auction/staff-ui";
 import { adminInvitationsListSortValues } from "@auction/validators";
 import type { AdminInvitationsListSort } from "@auction/validators";
-
-type SearchParams = Record<string, string | string[] | undefined>;
 
 const INVITATION_STATUSES = ["pending", "accepted", "revoked", "expired"] as const;
 export type InvitationListStatus = (typeof INVITATION_STATUSES)[number];
@@ -38,14 +37,6 @@ function isInvitationStatus(s: string | undefined): s is InvitationListStatus {
 
 function parseInvitationsSort(raw: string | undefined): InvitationListSort {
   return adminInvitationsListSortValues.find((s) => s === raw) ?? INVITATIONS_DEFAULT_SORT;
-}
-
-function omitParamsHref(basePath: string, sp: SearchParams, omit: readonly string[]): string {
-  const patch: Record<string, string | null> = { offset: "0" };
-  for (const key of omit) {
-    patch[key] = null;
-  }
-  return buildListHref(basePath, sp, patch);
 }
 
 /** Parse invitations list URL params once (pagination, search, status). */
