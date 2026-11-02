@@ -21,6 +21,7 @@ import type { StaffRolesAdminService } from "../../staff/staff-roles-admin.servi
 import type { IAtgAdminService } from "../atg-admin-service.js";
 import type { IBuyerAgentAuthorisationService } from "../buyer-agent-authorisation-service.js";
 import type { IIdempotencyStore } from "../idempotency-store.js";
+import type { IEnquiryRouting, IMarketingEnquiryDesk } from "../marketing-enquiry-service.js";
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
 import type { IOnsiteEventStaffCheckInService } from "../onsite-event-staff-check-in-service.js";
 import type { IStaffDeliveryQuoteService } from "../organisation-buying-service.js";
@@ -82,6 +83,12 @@ export type AdminSatelliteRouteServices = {
   marketingEvents: IAdminMarketingEventsApplicationService;
   onsiteEvents: IAdminOnsiteEventsApplicationService;
   deliveryOps: DeliveryOpsApplicationService;
+};
+
+/** Contact form enquiries in the staff work inbox. */
+export type AdminEnquiryRouteServices = {
+  marketingEnquiries: IMarketingEnquiryDesk;
+  enquiryRouting: IEnquiryRouting;
 };
 
 /** Third-party integrations staff operate from the admin (composed in the container root). */

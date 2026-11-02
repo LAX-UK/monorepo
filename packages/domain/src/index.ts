@@ -101,6 +101,7 @@ export {
 } from "./legal-entity-lifecycle.js";
 export {
   INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES,
+  ORGANISATION_PAYOUTS_PENDING_SUBMIT_REASON,
   ORGANISATION_UNDER_REVIEW_SUBMIT_REASON,
   SELLER_ENTITY_WRITE_STATUSES,
   sellerSubmissionAccess,
@@ -596,6 +597,7 @@ export {
   type EndingAuthorisation,
   type ExpiredInvitation,
   type PendingAccessRequest,
+  type PurchaseNextStepTimes,
   type UnreadReply,
   type NeedsYouCounts,
   type NeedsYouFacts,
@@ -646,6 +648,13 @@ export {
   type PurchaseInvoiceState,
   type PurchaseInvoiceStatus,
 } from "./purchase-invoice-state.js";
+export {
+  PURCHASE_PROBLEM_CATEGORIES,
+  PURCHASE_PROBLEM_STATUSES,
+  purchaseProblemReference,
+  type PurchaseProblemCategory,
+  type PurchaseProblemStatus,
+} from "./purchase-problem.js";
 export {
   DELIVERY_QUOTE_STATUSES,
   deliveryQuoteActionsFor,
@@ -823,9 +832,12 @@ export {
 } from "./access-request.js";
 export * from "./lot-page/index.js";
 export {
+  HOME_LIVE_TABS_MAX,
   HOME_SECTION_ORDER,
   HOME_STATE_WINDOWS,
+  defaultLiveTab,
   homeStates,
+  liveTabSaleIds,
   pruneEmptyHomeSections,
   resolveHomeState,
   resolveHomeViewerSwaps,
@@ -881,6 +893,7 @@ export {
 export { assembleCoverAnalysis, type CoverImageMeasurements } from "./cover-analysis.js";
 export {
   COVER_ANALYSIS_VERSION,
+  COVER_PLATE_MIN_LONG_SIDE,
   COVER_SLOT_FLOORS,
   COVER_ZOOM_MAX,
   COVER_ZOOM_MIN,
@@ -910,3 +923,20 @@ export {
   type SaleResultsSummary,
 } from "./sale-results-summary.js";
 export { toWithdrawnLotView } from "./withdrawn-lot-view.js";
+export * from "./marketing-enquiry-vocabulary.js";
+export * from "./marketing-enquiry-status.js";
+export * from "./marketing-enquiry-routing.js";
+export * from "./marketing-enquiry-visibility.js";
+export * from "./marketing-enquiry-views.js";
+export {
+  VISITOR_ALERT_CONFIRM_TTL_MS,
+  VISITOR_ALERT_CONSENT_TEXT,
+  VISITOR_ALERT_RESEND_INTERVAL_MS,
+  evaluateConfirmation,
+  normaliseAlertEmail,
+  receivesSaleAlerts,
+  shouldSendConfirmation,
+  type VisitorAlertConfirmation,
+  type VisitorAlertSignupState,
+  type VisitorAlertStatus,
+} from "./visitor-sale-alerts.js";

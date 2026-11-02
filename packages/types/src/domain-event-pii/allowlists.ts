@@ -261,6 +261,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   /** an unanswered organisation invitation withdrawn, or reopened by its Undo. */
   "legal_entity.invitation_withdrawn": new Set(["invitation_id", "role"]),
   "legal_entity.invitation_restored": new Set(["invitation_id", "role"]),
+  /** A buyer reported a problem with a paid purchase; what they wrote stays on the report. */
+  "purchase_problem.reported": new Set(["lotId", "paymentId", "category"]),
   /** A member asked for a role or capability; the reason stays on the request, not the event. */
   "legal_entity.access_requested": new Set([
     "request_id",
@@ -372,6 +374,25 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "failed_job.retried": new Set(["queue", "jobName", "confirmRepeat"]),
   "failed_job.discarded": new Set(["queue", "jobName", "reason", "note"]),
   "failed_job.restored": new Set(["queue", "jobName"]),
+  /** A contact form message arrived or was handled: the topic only; what the sender wrote stays on the enquiry. */
+  "marketing_enquiry.received": new Set(["enquiryId", "intent", "department"]),
+  "marketing_enquiry.handled": new Set(["enquiryId", "intent"]),
+  /** Staff and status are identifiers and codes; the sender's details and staff notes never leave the enquiry. */
+  "marketing_enquiry.assigned": new Set([
+    "enquiryId",
+    "intent",
+    "assignedToUserId",
+    "previousAssignedToUserId",
+    "source",
+  ]),
+  "marketing_enquiry.status_changed": new Set(["enquiryId", "intent", "from", "to", "closeReason"]),
+  "marketing_enquiry.converted": new Set(["enquiryId", "intent", "from"]),
+  /** One event per changed routing row: a department slug (or none for the fallback) and staff user ids. */
+  "enquiry_routing.changed": new Set([
+    "departmentSlug",
+    "assignedToUserId",
+    "previousAssignedToUserId",
+  ]),
   "staff.role_assigned": new Set(["assignmentId", "role", "startsAt", "endsAt", "reason"]),
   "staff.role_removed": new Set(["assignmentId", "role", "reason"]),
   "staff.role_expired": new Set(["assignmentId", "role", "endedAt"]),

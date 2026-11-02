@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  type DeliveryAddress,
+  initialDeliveryAddressId,
+} from "@/lib/purchases/delivery-addresses.vm";
 import type { CollectionVm, DeliveryPanelVm } from "@/lib/purchases/purchase-delivery.vm";
 import {
   type QuoteStepResult,
@@ -7,9 +11,10 @@ import {
   requestDeliveryQuoteAction,
   withdrawDeliveryQuoteAction,
 } from "@/lib/purchases/purchase.actions";
-import { Button, ButtonLink, Field, Notice, PresetCards, TextArea } from "@auction/ui/lax";
+import { Button, ButtonLink, Notice, PresetCards } from "@auction/ui/lax";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { DeliveryAddressPicker } from "./delivery-address-picker";
 
 type Choice = "courier" | "shipper" | "collect";
 
@@ -86,28 +91,41 @@ function CollectionDetails({ collection }: { collection: CollectionVm | null }) 
   );
 }
 
-function CourierForm({ lotId, intro }: { lotId: string; intro: string | null }) {
-  const [destination, setDestination] = useState("");
+function CourierForm({
+  lotId,
+  intro,
+  addresses,
+}: {
+  lotId: string;
+  intro: string | null;
+  addresses: readonly DeliveryAddress[];
+}) {
+  // The address asked for is kept with its text, so one just added is usable before the page
+  // has been read again.
+  const [chosen, setChosen] = useState<DeliveryAddress | null>(() => {
+    const first = initialDeliveryAddressId(addresses);
+    return addresses.find((a) => a.id === first) ?? null;
+  });
   const { pending, error, run } = useStep();
-  const tooShort = destination.trim().length < 5;
   return (
     <div className="flex flex-col gap-4">
       {intro ? <p className="text-lax-14 text-lax-muted">{intro}</p> : null}
-      <Field label="Deliver to" description="The full address, with the postcode." error={error}>
-        <TextArea
-          value={destination}
-          onChange={(event) => setDestination(event.target.value)}
-          rows={3}
-          maxLength={500}
-          autoComplete="street-address"
+      <div className="flex flex-col gap-2">
+        <p className="text-lax-14 font-medium text-lax-fg">Deliver to</p>
+        <DeliveryAddressPicker
+          addresses={addresses}
+          value={chosen?.id ?? null}
+          onValueChange={(_, address) => setChosen(address)}
+          error={error}
+          disabled={pending}
         />
-      </Field>
+      </div>
       <div>
         <Button
           variant="primary"
           loading={pending}
-          onClick={() => run(() => requestDeliveryQuoteAction(lotId, destination))}
-          {...(tooShort ? { disabledReason: "Enter the delivery address first" } : {})}
+          onClick={() => chosen && run(() => requestDeliveryQuoteAction(lotId, chosen.detail))}
+          {...(chosen ? {} : { disabledReason: "Choose a delivery address first" })}
         >
           Ask for a quote
         </Button>
@@ -213,6 +231,7 @@ export function DeliveryPanel({
         return (
           <CourierForm
             lotId={lotId}
+            addresses={panel.addresses}
             intro="You can ask for a courier quote before you pay, so you know the full cost. Collection and your own shipper open once the invoice is paid."
           />
         );
@@ -225,7 +244,9 @@ export function DeliveryPanel({
             onValueChange={setChoice}
             options={CHOICES}
           />
-          {choice === "courier" ? <CourierForm lotId={lotId} intro={null} /> : null}
+          {choice === "courier" ? (
+            <CourierForm lotId={lotId} intro={null} addresses={panel.addresses} />
+          ) : null}
           {choice === "shipper" ? (
             <div className="flex flex-col gap-3">
               <p className="text-lax-14 text-lax-muted">

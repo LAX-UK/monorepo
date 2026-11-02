@@ -18,6 +18,7 @@ const APPROVED_ROOTS = new Set([
   "payouts",
   "press",
   "q",
+  "sale-alerts",
   "sales",
   "stripe-connect",
   "submissions",

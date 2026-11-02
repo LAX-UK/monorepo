@@ -8,6 +8,8 @@ import type {
   AccountDeletionOutcome,
   AccountDeletionStatus,
   AccountEmailChangeConfirmedResponse,
+  AccountPasswordChangedResponse,
+  AccountPasswordError,
   AccountSession,
 } from "@auction/identity-contracts";
 
@@ -22,7 +24,7 @@ import type {
 export type IdentityCallResult<T> =
   | { status: "ok"; value: T }
   | { status: "reauth_required" }
-  | { status: "rejected"; reason: AccountContactError | AccountAddressError }
+  | { status: "rejected"; reason: AccountContactError | AccountAddressError | AccountPasswordError }
   | { status: "unavailable" };
 
 /** The signed-in person's tokens: the access token names the person, `sid` names the sign-in. */
@@ -54,6 +56,14 @@ export type AccountIdentityGateway = {
   ): Promise<IdentityCallResult<string>>;
   /** Clears the phone number and its verified flag. Needs a recent sign-in. */
   removePhone(actor: IdentityActor): Promise<IdentityCallResult<true>>;
+  /**
+   * Changes the password, or sets the first one when `currentPassword` is null and the account
+   * has none. Needs a recent sign-in. Every other device is signed out; this one stays.
+   */
+  changePassword(
+    actor: IdentityActor,
+    input: { currentPassword: string | null; newPassword: string },
+  ): Promise<IdentityCallResult<AccountPasswordChangedResponse>>;
   /** What is in the way of deleting the account, per product; null when Identity could not answer. */
   readDeletionStatus(actor: IdentityActor): Promise<AccountDeletionStatus | null>;
   /**

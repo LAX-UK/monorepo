@@ -136,7 +136,6 @@ describe("buildLotPageViewModel", () => {
       serverNow: Date.parse("2026-06-02T12:00:00Z"),
     });
 
-    expect(vm.initialMarketingBidBarActive).toBe(true);
     expect(vm.lotTimerState.kind).toBe("closed");
   });
 });

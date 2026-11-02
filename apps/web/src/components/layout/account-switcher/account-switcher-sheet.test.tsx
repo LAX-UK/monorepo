@@ -33,6 +33,7 @@ const switcher: NonNullable<AccountChrome["switcher"]> = {
   ],
   pendingInvitations: 1,
   invitationsHref: "/organisations/invitations",
+  accountsHref: "/organisations",
   registerHref: "/onboarding/organisation?fresh=1",
 };
 

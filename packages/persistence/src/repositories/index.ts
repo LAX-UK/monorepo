@@ -6,6 +6,7 @@ export { DrizzleImpersonationSessionRepository } from "./drizzle-impersonation-s
 export { DrizzleEmailSuppressionRepository } from "./drizzle-email-suppression.repository.js";
 export { DrizzleEmailWebhookIngestRepository } from "./drizzle-email-webhook-ingest.repository.js";
 export { DrizzleNewsletterSignupRepository } from "./drizzle-newsletter-signup.repository.js";
+export { DrizzleVisitorSaleAlertRepository } from "./drizzle-visitor-sale-alert.repository.js";
 export { DrizzleWebhookEventRepository } from "./drizzle-webhook-event.repository.js";
 export { DrizzleExternalAccountRepository } from "./drizzle-external-account.repository.js";
 export { DrizzleUploadObjectReader } from "./drizzle-upload-object.reader.js";
@@ -244,7 +245,13 @@ export {
   DrizzleAccountRegistrationsReader,
   DrizzleRecordPeopleReader,
 } from "./drizzle-workspace-buying.readers.js";
+export { DrizzleMarketingEnquiryRepository } from "./drizzle-marketing-enquiry.repository.js";
+export {
+  DrizzleEnquiryNoteRepository,
+  DrizzleEnquiryRoutingRepository,
+} from "./drizzle-enquiry-workflow.repositories.js";
 export { DrizzleDeliveryQuoteRepository } from "./drizzle-delivery-quote.repository.js";
+export { DrizzlePurchaseProblemRepository } from "./drizzle-purchase-problem.repository.js";
 export { DrizzleAccountRecordSearchReader } from "./drizzle-account-record-search.reader.js";
 export { DrizzleNeedsYouFactsReader } from "./drizzle-needs-you-facts.reader.js";
 export {

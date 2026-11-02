@@ -16,6 +16,7 @@ import {
   type PortfolioRow,
 } from "@auction/types";
 import { PURCHASE_STATE_LABEL } from "./purchase-labels";
+import { purchaseProblemHref } from "./purchase-problem";
 import {
   PURCHASE_STEPS,
   PURCHASE_TABS,
@@ -32,8 +33,6 @@ import {
 import { type PurchaseBadge, purchaseBadge } from "./purchase-standing";
 
 export { PURCHASE_STATE_LABEL };
-
-export const REPORT_PROBLEM_HREF = "/contact?intent=purchase-problem";
 
 const STEP_LABEL: Record<PurchaseStep, string> = {
   won: "Won",
@@ -361,7 +360,7 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
     // Paying and arranging delivery belong to whoever pays; the member who won is only told.
     primaryAction: informed ? null : primaryActionFor(state, row, reason),
     invoiceHref: sources.invoiceByLot[lot.id] ?? null,
-    problemHref: canReportProblem(state) ? REPORT_PROBLEM_HREF : null,
+    problemHref: canReportProblem(state) ? purchaseProblemHref(lot.id) : null,
   };
 }
 

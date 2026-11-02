@@ -6,6 +6,7 @@ import {
   staffRolesCapabilities,
 } from "@auction/types";
 import {
+  CAPABILITIES_ADDED_AFTER_CLEANUP,
   LEGACY_STAFF_ROLE_CAPABILITIES,
   RETIRED_CAPABILITY_SUCCESSORS,
   type RetiredCapability,
@@ -60,7 +61,9 @@ function isRetired(capability: string): capability is RetiredCapability {
 export function planStaffMemberCleanup(member: StaffMemberRoles): StaffRoleCleanupChange {
   const rolesAfter = normalizeStaffRoles(member.roles.flatMap(successorsOf));
   const before = new Set(member.roles.flatMap(capabilitiesBefore));
-  const after = staffRolesCapabilities(rolesAfter);
+  const after = new Set(
+    [...staffRolesCapabilities(rolesAfter)].filter((c) => !CAPABILITIES_ADDED_AFTER_CLEANUP.has(c)),
+  );
   const keeps = (capability: string) =>
     after.has(capability as RoleCapability) ||
     (isRetired(capability) && after.has(RETIRED_CAPABILITY_SUCCESSORS[capability]));

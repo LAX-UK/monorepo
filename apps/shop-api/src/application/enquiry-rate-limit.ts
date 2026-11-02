@@ -25,6 +25,15 @@ export const EDITION_ALERT_RATE_LIMITS = {
   perSender: { max: 10, windowSeconds: 3600 },
 } as const satisfies RateLimits;
 
+/**
+ * Release alerts send an email to whatever address is typed, so an address gets only a few
+ * requests an hour: enough for a typo and a retry, not enough to be used to flood an inbox.
+ */
+export const RELEASE_ALERT_RATE_LIMITS = {
+  perClientIp: { max: 20, windowSeconds: 3600 },
+  perSender: { max: 5, windowSeconds: 3600 },
+} as const satisfies RateLimits;
+
 export type EnquiryRateDecision = { allowed: true } | { allowed: false; retryAfterSeconds: number };
 
 export type EnquiryRateLimiter = {
@@ -97,5 +106,12 @@ export function createEditionAlertRateLimiter(counter: FixedWindowCounter): Enqu
   return createEnquiryRateLimiter(counter, {
     keyPrefix: "edition-alert",
     limits: EDITION_ALERT_RATE_LIMITS,
+  });
+}
+
+export function createReleaseAlertRateLimiter(counter: FixedWindowCounter): EnquiryRateLimiter {
+  return createEnquiryRateLimiter(counter, {
+    keyPrefix: "release-alert",
+    limits: RELEASE_ALERT_RATE_LIMITS,
   });
 }

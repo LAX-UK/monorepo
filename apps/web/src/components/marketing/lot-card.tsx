@@ -145,7 +145,7 @@ export function LotCardGrid({
           ) : null}
         </AdaptiveMediaFrameContainer>
         <div className="flex flex-1 flex-col p-3 md:p-5">
-          <div className="min-h-[4.25rem] md:min-h-[5.75rem]">{title}</div>
+          <div>{title}</div>
           {meta ? <div className="mt-auto">{meta}</div> : null}
         </div>
       </LotCardNavLink>

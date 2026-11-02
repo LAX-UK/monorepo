@@ -1,4 +1,4 @@
-import { COVER_SLOT_FLOORS } from "@auction/domain/cover";
+import { COVER_PLATE_MIN_LONG_SIDE, COVER_SLOT_FLOORS } from "@auction/domain/cover";
 import type {
   CoverFilm,
   CoverMedia,
@@ -9,9 +9,6 @@ import type {
 } from "@auction/marketing-ui";
 import type { SaleCoverSlotAsset, SaleCoverSlotAssets, SaleDeliveryMode } from "@auction/types";
 import { type CoverSaleStatus, coverTimeLine } from "./cover-time";
-
-/** The shortest long side a lead lot photograph needs to hang on a plate. */
-const PLATE_MIN_LONG_SIDE = 800;
 
 /** The lot a cover is credited to, or whose photograph makes the plate. */
 export type BidCoverLot = {
@@ -189,7 +186,7 @@ export function photoFromCover(cover: SaleCoverSlotAssets | undefined): CoverPho
 export function plateFromLot(lot: BidCoverLot | null): CoverPlateMedia | null {
   const image = lot?.image;
   if (!lot || !image) return null;
-  if (Math.max(image.width, image.height) < PLATE_MIN_LONG_SIDE) return null;
+  if (Math.max(image.width, image.height) < COVER_PLATE_MIN_LONG_SIDE) return null;
   return {
     kind: "plate",
     alt: `${lot.title}, shown whole`,

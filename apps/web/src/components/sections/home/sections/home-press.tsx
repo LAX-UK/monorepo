@@ -1,12 +1,16 @@
+import { MarketingSection } from "@/components/marketing/marketing-section";
 import type { HomePressItem } from "@/lib/home-sections/types";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
-import { HomeSection } from "./home-section";
 
 /** The latest coverage of the house, each a ruled card that opens the article in a new tab. */
 export function HomePressSection({ items }: { items: readonly HomePressItem[] }) {
   return (
-    <HomeSection id="press" heading="In the press" action={{ href: "/press", label: "Press" }}>
+    <MarketingSection
+      id="home-press"
+      heading="In the press"
+      action={{ href: "/press", label: "Press" }}
+    >
       <ul className="m-0 grid list-none gap-4 p-0 md:grid-cols-3 md:gap-6">
         {items.map((item) => (
           <li key={item.id} className="min-w-0 border-t border-lax-line-strong pt-4">
@@ -25,6 +29,6 @@ export function HomePressSection({ items }: { items: readonly HomePressItem[] })
           </li>
         ))}
       </ul>
-    </HomeSection>
+    </MarketingSection>
   );
 }

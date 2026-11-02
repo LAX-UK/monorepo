@@ -32,7 +32,7 @@ describe("buildLotRail", () => {
     const rail = buildLotRail({ ...base, kind: "topLotsOfSale", lots: sold });
     expect(rail?.subtitle).toBe("Prices include buyer’s premium");
     expect(rail?.seeAll.label).toBe("All 12 results");
-    expect(rail?.lots[0]?.price?.qualifier).toBe("Sold for");
+    expect(rail?.lots[0]?.line.label).toBe("Sold for");
   });
 
   it("counts at least the lots it shows", () => {

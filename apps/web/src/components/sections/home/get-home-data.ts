@@ -16,12 +16,13 @@ import { cachedResolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { buildHomeHang, hangSaleIds, planHomeHang } from "@/lib/hang/home-hang";
+import { buildLiveNow } from "@/lib/hang/live-now";
 import { buildHomeSections } from "@/lib/home-sections/build-home-sections";
 import { HOME_SECTION_LIMITS } from "@/lib/home-sections/limits";
 import { catalogueOrder, soldOrder } from "@/lib/home-sections/lot-order";
 import { coverSaleIds } from "@/lib/marketing-cover/home-cover";
 import type { SaleListRow } from "@/lib/sale-list-row";
-import { resolveHomeState } from "@auction/domain";
+import { liveTabSaleIds, resolveHomeState } from "@auction/domain";
 import { HANG_MAX_WORKS } from "@auction/marketing-ui";
 import type { Lot } from "@auction/types";
 import { cache } from "react";
@@ -99,6 +100,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
       ...new Set([
         ...coverSaleIds(homeState, allSales),
         ...hangSaleIds(homeState),
+        ...liveTabSaleIds(homeState.liveSaleIds, homeState.leadSaleId),
         ...(resultsSaleId ? [resultsSaleId] : []),
       ]),
     ],
@@ -128,6 +130,13 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
     resultsMin: HOME_SECTION_LIMITS.resultsLots.min,
   });
   const hang = buildHomeHang(hangPlan, allocated.hang, now);
+  const liveNow = buildLiveNow(
+    homeState,
+    loaded,
+    hang,
+    new Set(cover.lots.map((lot) => lot.id)),
+    now,
+  );
 
   const extras = await getHomeExtras(homeState.sections);
   const summary = rows.find((row) => row.sale.id === resultsSaleId)?.resultsSummary;
@@ -159,6 +168,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
   return {
     homeState,
     hang,
+    liveNow,
     cover,
     sections,
     jsonLdListFallback,

@@ -8,6 +8,8 @@ import {
 } from "@/lib/ecosystem/product-directory.server";
 import { MarketingHeaderTitleProvider } from "@/lib/marketing/marketing-header-title-context";
 import { loadCachedMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
+import { NavActivityProvider } from "@/lib/marketing/nav-activity-context";
+import { loadNavActivity } from "@/lib/marketing/nav-activity.server";
 import { LaxDensityProvider, laxDensityAttributes } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 
@@ -32,7 +34,7 @@ export async function BidSiteChrome({
   mainLandmark = false,
   children,
 }: BidSiteChromeProps) {
-  const nav = await loadCachedMegaMenuSections();
+  const [nav, navActivity] = await Promise.all([loadCachedMegaMenuSections(), loadNavActivity()]);
   const laxProductLinks = loadBidProductDirectoryLinks();
   const crossProductFooterLinks = loadBidCrossProductFooterLinks();
   const familyLinks = loadBidFamilyLinks();
@@ -42,18 +44,20 @@ export async function BidSiteChrome({
       <AnnouncerProvider>
         <div {...laxDensityAttributes("client")} data-bid-site="">
           <div className="overflow-x-clip">
-            <MarketingHeaderTitleProvider>
-              {wrap(
-                <>
-                  <SiteHeader
-                    nav={nav}
-                    laxProductLinks={laxProductLinks}
-                    familyLinks={familyLinks}
-                  />
-                  {mainLandmark ? <main id="main-content">{children}</main> : children}
-                </>,
-              )}
-            </MarketingHeaderTitleProvider>
+            <NavActivityProvider activity={navActivity}>
+              <MarketingHeaderTitleProvider>
+                {wrap(
+                  <>
+                    <SiteHeader
+                      nav={nav}
+                      laxProductLinks={laxProductLinks}
+                      familyLinks={familyLinks}
+                    />
+                    {mainLandmark ? <main id="main-content">{children}</main> : children}
+                  </>,
+                )}
+              </MarketingHeaderTitleProvider>
+            </NavActivityProvider>
           </div>
           <SiteFooter crossProductLinks={crossProductFooterLinks} />
         </div>

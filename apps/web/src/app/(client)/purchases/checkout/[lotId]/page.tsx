@@ -27,7 +27,7 @@ import { openRecordInItsAccount } from "@/lib/legal-entity/open-record-in-accoun
 import { checkoutIntro } from "@/lib/purchases/checkout-intro";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -180,14 +180,16 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
                 message="We could not load pricing for this lot. Refresh the page or contact support if this keeps happening."
               >
                 <div className="flex flex-wrap gap-3">
-                  <Button variant="secondary" asChild>
-                    <Link href={dashboardCheckoutLotUrl(lotId)}>Retry</Link>
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link href={settlementsEmail() ? `mailto:${settlementsEmail()}` : "/purchases"}>
-                      Contact support
-                    </Link>
-                  </Button>
+                  <ButtonLink variant="secondary" Link={Link} href={dashboardCheckoutLotUrl(lotId)}>
+                    Retry
+                  </ButtonLink>
+                  <ButtonLink
+                    variant="secondary"
+                    Link={Link}
+                    href={settlementsEmail() ? `mailto:${settlementsEmail()}` : "/purchases"}
+                  >
+                    Contact support
+                  </ButtonLink>
                 </div>
               </DashboardErrorAlert>
             ) : (
@@ -268,8 +270,6 @@ function CheckoutLayout({ lot, description, children }: CheckoutLayoutProps) {
           <div className="mx-auto min-w-0 max-w-xl lg:mx-0">
             <DashboardDetailHeader
               title={lot.title}
-              backHref="/purchases"
-              backLabel="Back to purchases"
               compactOnMobile
               sticky={false}
               className="mb-8 border-0 bg-transparent px-0 py-0 backdrop-blur-none lg:mb-10"

@@ -578,6 +578,8 @@ describe("admin dashboard metrics routes", () => {
       listPendingTelephoneBookings: empty,
       listDraftLotsPastStart: empty,
       listUnsoldLotChoices: empty,
+      listMarketingEnquiries: empty,
+      listPurchaseProblems: empty,
     };
     const workItems = new AdminWorkItemsService(reader);
     const container = createDashboardMetricsContainer({}, {}, {}, {}, workItems);

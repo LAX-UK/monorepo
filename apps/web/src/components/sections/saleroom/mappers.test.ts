@@ -311,13 +311,14 @@ describe("mapLotToCardVM", () => {
       { ...baseLot, status: "ended", hasWinner: true },
       { viewerUserId: null, now },
     );
-    expect(sold.currentBidLabel).toBe("Hammer price");
+    expect(sold.currentBidLabel).toBe("Sold for");
     const vm = mapLotToCardVM(
       { ...baseLot, status: "ended", winnerId: null, hasWinner: false },
       { viewerUserId: null, now },
     );
     expect(vm.currentBidLabel).toBe("Result");
     expect(vm.currentBidValue).toBe("Not sold");
+    expect(vm.cardLine).toMatchObject({ label: "Not sold", value: null });
     expect(vm.closingLabel).toBeNull();
     expect(vm.isLive).toBe(false);
   });

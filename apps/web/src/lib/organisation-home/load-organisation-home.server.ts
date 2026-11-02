@@ -15,6 +15,7 @@ import { type PagedRead, readAllPages } from "@/lib/data/paging/read-all-pages";
 import { listMembersAction } from "@/lib/legal-entity/member-management.actions";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { visibleConsignedLots } from "@/lib/seller/consignment-records";
 import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server";
 import {
   type DashboardFigures,
@@ -25,6 +26,7 @@ import {
   accountPurchaseScope,
   bidAuthorityFigure,
   buildOrganisationHome,
+  consignedLotScope,
   dashboardFigureGroupsFor,
   entityActorCan,
   roleBidsThroughAuthorisation,
@@ -178,7 +180,13 @@ export async function loadOrganisationHome(
   ]);
 
   const submissions = submissionRead.rows;
-  const lots = lotRead.rows;
+  // A consignor's Home counts only the works they sent, the same rule as their Consignments list.
+  const lots = visibleConsignedLots({
+    lots: lotRead.rows,
+    submissions,
+    scope: consignedLotScope(actor),
+    viewerUserId: scope.actor.userId,
+  });
 
   const facts: OrganisationHomeFacts = {
     actor,

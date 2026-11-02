@@ -1,17 +1,17 @@
+import { MarketingSection } from "@/components/marketing/marketing-section";
 import { MediaImage } from "@/components/ui/media-image";
 import type { HomeDepartment } from "@/lib/home-sections/types";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { MarketingCardMedia } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import Link from "next/link";
-import { HomeSection } from "./home-section";
 
 /** What the house sells, one square mat per department with a work from it. */
 export function HomeDepartmentsSection({
   departments,
 }: { departments: readonly HomeDepartment[] }) {
   return (
-    <HomeSection id="departments" heading="Departments" subtitle="What we sell">
+    <MarketingSection id="home-departments" heading="Departments" subtitle="What we sell">
       <ul className="m-0 grid list-none grid-cols-2 gap-x-3 gap-y-5 p-0 md:grid-cols-3 md:gap-6 lg:grid-cols-6">
         {departments.map((department) => (
           <li key={department.id} className="min-w-0">
@@ -45,6 +45,6 @@ export function HomeDepartmentsSection({
           </li>
         ))}
       </ul>
-    </HomeSection>
+    </MarketingSection>
   );
 }

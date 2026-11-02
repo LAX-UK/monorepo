@@ -3,6 +3,7 @@ import type {
   CollectionBookingOffer,
 } from "@/lib/data/http/account-buying.types";
 import { formatMoney } from "@/lib/format-currency";
+import type { DeliveryAddress } from "./delivery-addresses.vm";
 
 const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/London",
@@ -24,7 +25,13 @@ export type CollectionVm = {
  */
 export type DeliveryPanelVm =
   | { kind: "told"; line: string }
-  | { kind: "choose"; beforePayment: boolean; collection: CollectionVm | null }
+  | {
+      kind: "choose";
+      beforePayment: boolean;
+      collection: CollectionVm | null;
+      /** Where a courier quote can be asked for; empty until the payer adds an address. */
+      addresses: readonly DeliveryAddress[];
+    }
   | { kind: "quote-requested"; line: string; canWithdraw: boolean }
   | {
       kind: "quote-ready";
@@ -53,8 +60,9 @@ export function deliveryPanel(input: {
   collection: CollectionBookingOffer | null;
   /** Who pays, when this member does not: "Northbank Gallery's finance team". */
   payerTeam: string;
+  addresses: readonly DeliveryAddress[];
 }): DeliveryPanelVm {
-  const { facts, payerTeam } = input;
+  const { facts, payerTeam, addresses } = input;
   const payer = facts.paymentRole === "payer";
   const { delivery } = facts;
   const quote = delivery.quote;
@@ -63,7 +71,12 @@ export function deliveryPanel(input: {
     case "awaiting_payment":
     case "choose":
       return payer
-        ? { kind: "choose", beforePayment: delivery.stage === "awaiting_payment", collection }
+        ? {
+            kind: "choose",
+            beforePayment: delivery.stage === "awaiting_payment",
+            collection,
+            addresses,
+          }
         : { kind: "told", line: `${payerTeam} chooses how the work is delivered.` };
     case "quote_requested":
       return {

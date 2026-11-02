@@ -1,7 +1,7 @@
 "use client";
 
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { RotateCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createAccountSecurityFactsRoutes } from "./account-security-facts.routes.js";
 
 const ACCOUNT_SUBJECT = "11111111-1111-4111-8111-111111111111";
-const FACTS = { twoFactorEnabled: true, backupCodesRemaining: 2 };
+const FACTS = { twoFactorEnabled: true, hasPassword: true, backupCodesRemaining: 2 };
 
 function basic(clientId: string): string {
   return `Basic ${Buffer.from(`${clientId}:client-secret`).toString("base64")}`;

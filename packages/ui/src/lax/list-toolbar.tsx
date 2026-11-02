@@ -72,7 +72,7 @@ export function FilterButton({
     >
       Filter
       {count > 0 ? (
-        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-lax-ink px-1.5 text-lax-2xs font-medium text-lax-on-ink tabular-nums">
+        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-lax-ink px-1.5 text-lax-12 font-medium text-lax-on-ink tabular-nums">
           {formatCount(count)}
           <span className="sr-only"> applied</span>
         </span>

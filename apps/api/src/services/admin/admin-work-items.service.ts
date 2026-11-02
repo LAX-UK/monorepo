@@ -10,6 +10,7 @@ import {
   LEGAL_ENTITY_BROWSE_ACCESS,
   LOTS_ACCESS,
   LOT_FULFILMENT_ACCESS,
+  MARKETING_ENQUIRIES_ACCESS,
   PAYMENT_WRITE_ACCESS,
   SALES_ACCESS,
   SUBMISSIONS_ACCESS,
@@ -136,6 +137,9 @@ function stampActions(
       break;
     case "unsold_lot_choice":
       break;
+    case "marketing_enquiry":
+    case "purchase_problem":
+      break;
   }
 
   return actions;
@@ -217,6 +221,14 @@ export class AdminWorkItemsService {
       {
         access: WORK_ITEM_KIND_ACCESS.unsold_lot_choice,
         fetch: () => this.reader.listUnsoldLotChoices(perSourceLimit),
+      },
+      {
+        access: MARKETING_ENQUIRIES_ACCESS,
+        fetch: () => this.reader.listMarketingEnquiries(perSourceLimit),
+      },
+      {
+        access: FINANCE_ACCESS,
+        fetch: () => this.reader.listPurchaseProblems(perSourceLimit),
       },
     ];
 

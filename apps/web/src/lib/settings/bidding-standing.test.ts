@@ -54,7 +54,7 @@ describe("Bid settings' Bidding card", () => {
     expect(rows[1]?.action).toMatchObject({ label: "Change limit", href: "/team/bidding" });
     expect(rows[2]).toMatchObject({
       value: { text: "3 members" },
-      action: { label: "Manage in Members", href: "/team" },
+      action: { label: "Manage in Team", href: "/team/bidding" },
     });
   });
 

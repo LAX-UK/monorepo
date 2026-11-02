@@ -38,9 +38,18 @@ export type CoverPlateMedia = {
   width: number;
   height: number;
   blurDataURL?: string;
+  /** Resized files of the picture and the sizes they are shown at, so a small plate is not served the original. */
+  srcSet?: string;
+  sizes?: string;
   field: string;
   /** Type colour on the field: light on a deep field, dark on a pale one. */
   tone: CoverTone;
+  /**
+   * A deep field for the dark theme, for a plate whose `field` is pale (tone "dark"). In the dark
+   * theme the field and the type switch to it, so the plate is never the brightest thing on the
+   * page. White type must reach AA on it; the light theme is unchanged.
+   */
+  fieldDark?: string;
 };
 
 /** Sources in order of preference. When one fails to load, the next is used; none left, type. */

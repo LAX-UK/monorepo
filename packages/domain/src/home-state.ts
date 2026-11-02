@@ -93,12 +93,17 @@ export type HomeStateInput = {
   windows?: HomeStateWindows;
 };
 
+/** Most live sales that get a tab in the "Live now" section; the rest sit behind a link. */
+export const HOME_LIVE_TABS_MAX = 3;
+
 export type HomeStateResult = {
   state: HomeState;
   /** The sale that leads the hero, or null between seasons with nothing to show. */
   leadSaleId: string | null;
   /** Sections below the hero, in order. */
   sections: readonly HomeSectionId[];
+  /** Every live sale by soonest close. The lead is one of them; `leadSaleId` marks it. */
+  liveSaleIds: readonly string[];
   /** Scheduled sales at any distance, soonest first. */
   comingUpSaleIds: readonly string[];
   /** Sales ended within the results-band window, newest first. */
@@ -128,10 +133,43 @@ function byTime(pick: (sale: HomeSaleFacts) => Date, direction: 1 | -1) {
     direction * (pick(a).getTime() - pick(b).getTime()) || a.id.localeCompare(b.id);
 }
 
+function bySoonestClose(live: readonly HomeSaleFacts[]): HomeSaleFacts[] {
+  return [...live].sort(byTime((s) => s.endTime, 1));
+}
+
 /** A staff pin wins among live sales; otherwise the soonest close. */
 function pickLive(live: HomeSaleFacts[], pinned: ReadonlySet<string>): HomeSaleFacts | null {
-  const bySoonestClose = [...live].sort(byTime((s) => s.endTime, 1));
-  return bySoonestClose.find((s) => pinned.has(s.id)) ?? bySoonestClose[0] ?? null;
+  const sorted = bySoonestClose(live);
+  return sorted.find((s) => pinned.has(s.id)) ?? sorted[0] ?? null;
+}
+
+/**
+ * The live sales that get a tab: the soonest closing, at most `max`. The lead always has a tab,
+ * taking the last place when it closes later than the others. Order is soonest close first.
+ */
+export function liveTabSaleIds(
+  liveSaleIds: readonly string[],
+  leadSaleId: string | null,
+  max: number = HOME_LIVE_TABS_MAX,
+): string[] {
+  const first = liveSaleIds.slice(0, max);
+  if (!leadSaleId || first.includes(leadSaleId) || !liveSaleIds.includes(leadSaleId)) return first;
+  return [...first.slice(0, max - 1), leadSaleId];
+}
+
+/**
+ * The tab open first. A visitor sees the lead sale. A signed-in bidder sees the first tab, in
+ * tab order, for a sale they are registered or bidding in; with none, the lead.
+ */
+export function defaultLiveTab(
+  tabSaleIds: readonly string[],
+  leadSaleId: string | null,
+  engagedSaleIds: ReadonlySet<string> = new Set(),
+): string | null {
+  const engaged = tabSaleIds.find((id) => engagedSaleIds.has(id));
+  if (engaged) return engaged;
+  if (leadSaleId && tabSaleIds.includes(leadSaleId)) return leadSaleId;
+  return tabSaleIds[0] ?? null;
 }
 
 export function resolveHomeState(input: HomeStateInput): HomeStateResult {
@@ -178,6 +216,7 @@ export function resolveHomeState(input: HomeStateInput): HomeStateResult {
     state,
     leadSaleId: lead?.id ?? null,
     sections: HOME_SECTION_ORDER[state],
+    liveSaleIds: bySoonestClose(live).map((s) => s.id),
     comingUpSaleIds: scheduled.map((s) => s.id),
     resultsBandSaleIds: band.map((s) => s.id),
     viewerSwaps: resolveHomeViewerSwaps(input.viewer),

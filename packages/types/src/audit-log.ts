@@ -11,6 +11,7 @@ export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly str
     "payment.",
     "payment_group.",
     "dispute_case.",
+    "purchase_problem.",
     "payout.",
     "xero.",
     "shop.refund.",
@@ -43,7 +44,7 @@ export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly str
     "bid.user_anonymised",
     "shop.user_anonymised",
   ],
-  operations: ["failed_job."],
+  operations: ["failed_job.", "marketing_enquiry.", "enquiry_routing."],
 };
 
 export function isAuditLogView(value: string): value is AuditLogView {

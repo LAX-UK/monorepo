@@ -1,6 +1,7 @@
 "use client";
 
 import { LotActionArea, type LotActionContext } from "@/components/lot-page/lot-action-area";
+import { LotConnectionNotice } from "@/components/lot-page/lot-connection-notice";
 import { LotFactGrid } from "@/components/lot-page/lot-fact-grid";
 import { useLotPageViewContext } from "@/components/lot-page/lot-page-view-context";
 import { LotStateLine } from "@/components/lot-page/lot-state-line";
@@ -44,6 +45,7 @@ export function LotPriceBlockView({
       aria-label="Price and bidding"
       className="mt-6 rounded-lax-card border border-lax-line bg-lax-surface p-5"
     >
+      <LotConnectionNotice className="mb-4 -mt-1" />
       <span className="block text-lax-13 leading-5 text-lax-muted">{price.label}</span>
       {price.amountText ? (
         <span

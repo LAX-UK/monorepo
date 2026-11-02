@@ -30,19 +30,11 @@ describe("DashboardPageHeader", () => {
     expect(block?.className).not.toMatch(/(^|\s)hidden(\s|$)/);
   });
 
-  it("uses compact title scale by default", () => {
+  it("draws the title on the one page-title scale: 24/32, 28/36 from tablet up", () => {
     render(<DashboardPageHeader title="Portfolio" />);
     const heading = screen.getByRole("heading", { level: 1, name: "Portfolio" });
-    expect(heading.className).toMatch(/text-xl/);
-    expect(heading.className).toMatch(/sm:text-2xl/);
-    expect(heading.className).toMatch(/lg:text-\[1\.75rem\]/);
-  });
-
-  it("uses display title scale for overview hero", () => {
-    render(<DashboardPageHeader title="Welcome back" titleScale="display" />);
-    const heading = screen.getByRole("heading", { level: 1, name: "Welcome back" });
-    expect(heading.className).toMatch(/text-3xl/);
-    expect(heading.className).toMatch(/lg:text-4xl/);
+    expect(heading.className).toMatch(/(^|\s)text-lax-24(\s|$)/);
+    expect(heading.className).toMatch(/md:text-lax-28/);
   });
 
   it("keeps the page title and description on phones, as the large title", () => {
@@ -76,7 +68,7 @@ describe("DashboardPageHeader on the public site", () => {
     const heading = screen.getByRole("heading", { level: 1, name: "My bids" });
     expect(heading.className).not.toMatch(/hidden/);
     expect(heading).toHaveAttribute("data-page-title");
-    expect(heading.className).toMatch(/sm:text-2xl/);
+    expect(heading.className).toMatch(/md:text-lax-28/);
     expect(screen.getByText("Your bids in current and past sales.").className).not.toMatch(
       /hidden/,
     );

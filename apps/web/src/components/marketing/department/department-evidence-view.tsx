@@ -1,6 +1,6 @@
 import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
-import { DepartmentSection } from "@/components/marketing/department/department-section";
 import { DepartmentWorkCard } from "@/components/marketing/department/department-work-card";
+import { MarketingSection } from "@/components/marketing/marketing-section";
 import type { DepartmentEvidence } from "@/lib/departments/department-evidence";
 import { MarketingWorkGrid } from "@auction/marketing-ui";
 import { ButtonLink, EmptyState } from "@auction/ui/lax";
@@ -25,7 +25,8 @@ export function DepartmentEvidenceView({ evidence, department, noun }: Props) {
   return (
     <>
       {sold.length > 0 ? (
-        <DepartmentSection
+        <MarketingSection
+          size="compact"
           id="department-sold"
           heading={`Recently sold in ${noun}`}
           subtitle="Prices include the buyer’s premium."
@@ -37,21 +38,16 @@ export function DepartmentEvidenceView({ evidence, department, noun }: Props) {
             itemIds={sold.map((work) => work.lot.id)}
           />
           <MarketingWorkGrid aria-label={`Recently sold in ${noun}`}>
-            {sold.map(({ lot, priceWithPremium }) => (
-              <DepartmentWorkCard
-                key={lot.id}
-                lot={lot}
-                {...(priceWithPremium
-                  ? { price: { label: "Sold for", value: priceWithPremium } }
-                  : {})}
-              />
+            {sold.map(({ lot }) => (
+              <DepartmentWorkCard key={lot.id} lot={lot} />
             ))}
           </MarketingWorkGrid>
-        </DepartmentSection>
+        </MarketingSection>
       ) : null}
 
       {onSale.length > 0 ? (
-        <DepartmentSection
+        <MarketingSection
+          size="compact"
           id="department-on-sale"
           heading="On sale now"
           action={{ href: evidence.onSaleHref, label: "View all", srSuffix: `on sale in ${noun}` }}
@@ -66,11 +62,11 @@ export function DepartmentEvidenceView({ evidence, department, noun }: Props) {
               <DepartmentWorkCard key={lot.id} lot={lot} />
             ))}
           </MarketingWorkGrid>
-        </DepartmentSection>
+        </MarketingSection>
       ) : null}
 
       {showOnSaleEmpty ? (
-        <DepartmentSection id="department-on-sale" heading="On sale now">
+        <MarketingSection size="compact" id="department-on-sale" heading="On sale now">
           <div className="rounded-xl border border-border-hairline bg-surface">
             <EmptyState
               illustration="frame"
@@ -84,7 +80,7 @@ export function DepartmentEvidenceView({ evidence, department, noun }: Props) {
               }
             />
           </div>
-        </DepartmentSection>
+        </MarketingSection>
       ) : null}
     </>
   );

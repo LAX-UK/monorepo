@@ -1,7 +1,7 @@
+import { MarketingSection } from "@/components/marketing/marketing-section";
 import type { HomeResultsBand } from "@/lib/home-sections/types";
 import { cn } from "@auction/ui";
 import { HomeLotGrid, type HomeLotWatch } from "./home-lot-grid";
-import { HomeSection } from "./home-section";
 
 function Fact({
   label,
@@ -52,8 +52,8 @@ export function HomeResultsBandSection({
 }) {
   const { facts } = band;
   return (
-    <HomeSection
-      id="recent-results"
+    <MarketingSection
+      id="home-recent-results"
       heading="Recent results"
       subtitle={band.subtitle}
       action={band.seeAll}
@@ -74,6 +74,6 @@ export function HomeResultsBandSection({
           <HomeLotGrid lots={band.lots} label="Top lots of the last sale" watch={watch} />
         </div>
       ) : null}
-    </HomeSection>
+    </MarketingSection>
   );
 }

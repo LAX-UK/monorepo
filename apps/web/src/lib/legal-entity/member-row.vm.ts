@@ -25,11 +25,14 @@ export type MemberRowView = {
   isYou: boolean;
   role: LegalEntityMemberRole;
   roleLabel: string;
-  /** "Two-step on"; `null` when the viewer does not see it or it is unknown. */
-  twoStep: string | null;
+  /**
+   * Two-step sign-in, for viewers who may see it. "Two-step on" is plain; "Two-step off" appears
+   * (as a warning) only when the organisation requires two-step. `null` otherwise.
+   */
+  twoStep: { text: string; warning: boolean } | null;
   /** "Active 28 Oct 2026" or "Not signed in yet"; `null` when the viewer does not see it. */
   lastActive: string | null;
-  /** The role picker's options, the current role first; `null` shows the role as text. */
+  /** The roles "Change role" offers, the current one first; `null` when the viewer may not change it. */
   roleOptions: { value: LegalEntityMemberRole; label: string }[] | null;
   /** Handing ownership over, with the phrase to type; owners only. */
   transfer: { confirmPhrase: string } | null;
@@ -45,15 +48,20 @@ type MemberRowsInput = {
   members: readonly MemberRow[];
   /** Two-step sign-in per user, for the people who may see it (owners and admins). */
   twoFactorByUserId?: Readonly<Record<string, boolean | null>> | undefined;
+  /** Whether the organisation requires two-step; a missing one only matters when it does. */
+  twoStepRequired?: boolean | undefined;
   /** Where one person's Activity opens, when the viewer may read Activity. */
   activityHrefFor?: ((userId: string) => string) | undefined;
   /** The day each person was last active (`YYYY-MM-DD`), for owners and admins. */
   lastActiveByUserId?: Readonly<Record<string, string | null>> | undefined;
 };
 
-function twoStepWords(enabled: boolean | null | undefined): string | null {
-  if (enabled === true) return "Two-step on";
-  if (enabled === false) return "Two-step off";
+function twoStepView(
+  enabled: boolean | null | undefined,
+  required: boolean,
+): MemberRowView["twoStep"] {
+  if (enabled === true) return { text: "Two-step on", warning: false };
+  if (enabled === false && required) return { text: "Two-step off", warning: true };
   return null;
 }
 
@@ -80,6 +88,7 @@ export function memberRowViews({
   actor,
   members,
   twoFactorByUserId,
+  twoStepRequired = false,
   activityHrefFor,
   lastActiveByUserId,
 }: MemberRowsInput) {
@@ -95,7 +104,9 @@ export function memberRowViews({
         isYou: actor.memberId === member.id,
         role: member.role,
         roleLabel: organisationRoleLabel(member.role),
-        twoStep: twoFactorByUserId ? twoStepWords(twoFactorByUserId[member.userId]) : null,
+        twoStep: twoFactorByUserId
+          ? twoStepView(twoFactorByUserId[member.userId], twoStepRequired)
+          : null,
         lastActive: lastActiveByUserId ? lastActiveWords(lastActiveByUserId[member.userId]) : null,
         roleOptions: controls.roleOptions.length > 0 ? pickerOptions(controls.roleOptions) : null,
         transfer: controls.transfer,
@@ -139,4 +150,15 @@ export function invitationRowViews(
       canManage: canManageInvitation(actor, invitation.role),
     };
   });
+}
+
+/**
+ * Invitations in the two groups the Invitations tab shows: those still waiting for an answer
+ * (what the tab's count counts) and those that ran out, which stay to be resent or removed.
+ */
+export function groupInvitations(rows: readonly InvitationRowView[]) {
+  return {
+    waiting: rows.filter((row) => !row.expired),
+    expired: rows.filter((row) => row.expired),
+  };
 }

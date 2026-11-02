@@ -3,8 +3,15 @@ import type { PaletteItem, PaletteSection } from "@/components/layout/palette/ty
 import { getStaffNavGroups } from "@/components/layout/staff-nav";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
+import { VISITOR_ALERTS_HREF } from "@/lib/marketing/mega-menu-catalog";
+import {
+  NO_NAV_ACTIVITY,
+  type NavActivity,
+  type NavActivityKey,
+} from "@/lib/marketing/nav-activity";
 import { PRIVATE_SALES_PATH } from "@/lib/marketing/private-sales";
 import { canOpenAdminRoute } from "@/lib/navigation/admin-route-access";
+import { bidSettingsHref } from "@/lib/navigation/settings-links";
 import {
   AML_REVIEW_ACCESS,
   ARTISTS_ACCESS,
@@ -34,25 +41,55 @@ import {
   WalletCards,
 } from "lucide-react";
 
-const marketingSections: PaletteSection[] = [
-  {
-    id: "pages",
-    heading: "Pages",
-    items: [
-      { id: "m-upcoming", href: "/", label: "Upcoming auctions", hint: "Home", kind: "page" },
-      { id: "m-search", href: "/search", label: "Search lots", kind: "page" },
-      { id: "m-results", href: "/results", label: "Results", kind: "page" },
-      { id: "m-artists", href: "/artists", label: "Browse artists", kind: "page" },
-      {
-        id: "m-private-sales",
-        href: PRIVATE_SALES_PATH,
-        label: "Private sales",
-        hint: "Sell",
-        kind: "page",
-      },
-    ],
-  },
-];
+type MarketingPaletteLink = PaletteItem & { requires?: NavActivityKey };
+
+/** The public pages, in the order the main navigation lists them. */
+function buildMarketingSections(activity: NavActivity, signedIn: boolean): PaletteSection[] {
+  const links: MarketingPaletteLink[] = [
+    {
+      id: "m-live",
+      href: "/sales?tab=live",
+      label: "Live now",
+      kind: "page",
+      requires: "liveSales",
+    },
+    {
+      id: "m-ending-soon",
+      href: "/search?ending=24h",
+      label: "Ending soon",
+      kind: "page",
+      requires: "endingSoon",
+    },
+    {
+      id: "m-upcoming",
+      href: "/sales",
+      label: "Upcoming auctions",
+      hint: "Auctions",
+      kind: "page",
+    },
+    { id: "m-results", href: "/results", label: "Results", kind: "page" },
+    { id: "m-artists", href: "/artists", label: "Browse artists", kind: "page" },
+    { id: "m-search", href: "/search", label: "Search lots", kind: "page" },
+    { id: "m-sell", href: "/sell", label: "Sell with LAX", hint: "Sell", kind: "page" },
+    {
+      id: "m-private-sales",
+      href: PRIVATE_SALES_PATH,
+      label: "Private sales",
+      hint: "Sell",
+      kind: "page",
+    },
+    {
+      id: "m-alerts",
+      href: signedIn ? bidSettingsHref("alerts") : VISITOR_ALERTS_HREF,
+      label: "Auction alerts",
+      kind: "page",
+    },
+  ];
+  const items = links
+    .filter((link) => link.requires === undefined || activity[link.requires])
+    .map(({ requires: _requires, ...item }) => item);
+  return [{ id: "pages", heading: "Pages", items }];
+}
 
 type QuickActionSpec = {
   id: string;
@@ -258,6 +295,7 @@ export function buildNavPaletteSections(
   pendingArtistCount = 0,
   orgModuleEnabled = true,
   navCounts?: AdminNavCounts,
+  navActivity: NavActivity = NO_NAV_ACTIVITY,
 ): PaletteSection[] {
   const base =
     variant === "dashboard"
@@ -271,7 +309,7 @@ export function buildNavPaletteSections(
           )
         : variant === "admin"
           ? []
-          : marketingSections;
+          : buildMarketingSections(navActivity, sessionUser != null);
   const out: PaletteSection[] = [];
   for (const sec of base) {
     const items = filterItems(sec.items, query);
