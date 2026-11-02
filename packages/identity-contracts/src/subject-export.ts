@@ -194,6 +194,7 @@ const ACCOUNT_CATEGORIES = [
       f("deletionRequestedAt", "When you asked for deletion, if you did; null otherwise."),
       f("language", "Your chosen language."),
       f("theme", "Your chosen colour theme: light, dark or system."),
+      f("image", "The address of your profile picture, or null."),
     ],
   ),
   category(
@@ -203,9 +204,11 @@ const ACCOUNT_CATEGORIES = [
     "Your email address, earlier email addresses, any phone number still held, and when each was verified.",
     [
       f("email", "Your current email address."),
-      f("emailVerifiedAt", "When you confirmed the current email address."),
+      f("emailVerified", "Whether you have confirmed the current email address."),
+      f("emailVerifiedAt", "When you confirmed the current email address, where we kept the date."),
       f("previousEmails", "Earlier email addresses, each with the date it changed."),
       f("phone", "The phone number still held, or null."),
+      f("phoneVerified", "Whether you have confirmed the phone number."),
       f("phoneVerifiedAt", "When you confirmed the phone number, or null."),
     ],
   ),
@@ -217,6 +220,7 @@ const ACCOUNT_CATEGORIES = [
     [
       f("label", "The name you gave the address."),
       f("recipient", "The name on the address."),
+      f("phone", "The phone number saved with the address for the courier, or null."),
       f("lines", "The street address lines."),
       f("city", "The town or city."),
       f("region", "The county, state or region, where given."),
@@ -236,7 +240,7 @@ const ACCOUNT_CATEGORIES = [
     [
       f(
         "kind",
-        "What the record describes: session, device, sign-in method, two-step or security notice.",
+        "What the record describes: session, device, sign-in method, two-step, security notice or security event.",
       ),
       f("device", "The device or browser."),
       f("ipAddress", "The IP address the activity came from, for sessions."),
@@ -245,12 +249,16 @@ const ACCOUNT_CATEGORIES = [
       f("endedAt", "When the session ended, or null if it is still active."),
       f("method", "The sign-in method: password, passkey or a social provider."),
       f(
+        "passwordSet",
+        "Whether a password is set on your account; the password itself is never included.",
+      ),
+      f(
         "methodName",
         "The name you gave a passkey, or the provider and email of a social sign-in.",
       ),
       f("twoStepEnabled", "Whether two-step verification is on."),
       f("changedAt", "When the method or setting last changed."),
-      f("noticeType", "The kind of security notice we sent."),
+      f("noticeType", "The kind of security notice we sent or security event that happened."),
       f("sentAt", "When the notice was sent."),
     ],
   ),
