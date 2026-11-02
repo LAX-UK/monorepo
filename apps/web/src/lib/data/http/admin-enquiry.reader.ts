@@ -6,6 +6,7 @@ import { z } from "zod";
 
 export const adminEnquirySchema = z.object({
   id: z.string(),
+  reference: z.string(),
   topic: z.string(),
   topicLabel: z.string(),
   name: z.string(),
@@ -13,7 +14,7 @@ export const adminEnquirySchema = z.object({
   phone: z.string().nullable(),
   message: z.string(),
   sourcePage: z.string().nullable(),
-  status: z.enum(["new", "handled"]),
+  status: z.enum(["new", "in_progress", "waiting_on_client", "converted", "closed"]),
   receivedAt: z.string(),
   handledAt: z.string().nullable(),
   replyDueAt: z.string(),

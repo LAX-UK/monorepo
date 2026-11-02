@@ -1,79 +1,77 @@
+import { type EnquiryRoutingRule, resolveEnquiryAssignee } from "@auction/domain";
 import type {
+  IEnquiryRoutingRepository,
   IMarketingEnquiryRepository,
   ITransactionRunner,
-  MarketingEnquiryRecord,
 } from "@auction/persistence/interfaces";
-import type { ContactEnquiryInput } from "@auction/validators";
-import { addBusinessDays } from "../admin/admin-work-item-sla.policy.js";
+import type { EnquiryIntakeInput } from "@auction/validators";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
-  IMarketingEnquiryDesk,
   IMarketingEnquiryIntake,
-  MarketingEnquiryHandledResult,
-  MarketingEnquiryView,
+  MarketingEnquirySubmitted,
 } from "../interfaces/marketing-enquiry-service.js";
+import { type EnquirerAccount, toNewEnquiry } from "./enquiry-intake.mapper.js";
 import type { IMarketingEnquiryAlert } from "./marketing-enquiry-alert.js";
 
-/** The reply promised on the contact page. */
-export const ENQUIRY_REPLY_BUSINESS_DAYS = 2;
-
-const TOPIC_LABELS: Record<string, string> = {
-  buying: "Buying",
-  selling: "Selling",
-  shipping: "Shipping",
-  press: "Press",
-  other: "Other",
-};
-
-export function enquiryTopicLabel(topic: string): string {
-  return TOPIC_LABELS[topic] ?? topic;
-}
+export { ENQUIRY_REPLY_BUSINESS_DAYS, enquiryTopicLabel } from "./enquiry-view.js";
 
 export type MarketingEnquiryServiceDeps = {
   enquiries: IMarketingEnquiryRepository;
+  routing: Pick<IEnquiryRoutingRepository, "listRules">;
   transactionRunner: ITransactionRunner;
   events: IDomainEventSink;
   alert: IMarketingEnquiryAlert;
   /** Called with the enquiry id when the staff alert could not be queued. */
   onAlertFailed?: (enquiryId: string, error: unknown) => void;
-  now: () => Date;
 };
 
-function toView(record: MarketingEnquiryRecord): MarketingEnquiryView {
-  return {
-    id: record.id,
-    topic: record.topic,
-    topicLabel: enquiryTopicLabel(record.topic),
-    name: record.name,
-    email: record.email,
-    phone: record.phone,
-    message: record.message,
-    sourcePage: record.sourcePage,
-    status: record.status,
-    receivedAt: record.createdAt.toISOString(),
-    handledAt: record.handledAt?.toISOString() ?? null,
-    replyDueAt: addBusinessDays(record.createdAt, ENQUIRY_REPLY_BUSINESS_DAYS).toISOString(),
-  };
-}
-
 /**
- * Contact form enquiries. An enquiry is stored, announced as a domain event (topic and id only:
- * what the sender wrote never leaves the enquiry) in one transaction. When a staff inbox is
- * configured an alert email follows. Staff mark an enquiry handled; that decision is an audited
- * event with the person who made it.
+ * Takes in an enquiry from the contact form or the enquiry page. It is stored, routed to the
+ * department's specialist (else the fallback) and announced as a domain event in one transaction:
+ * intent, department and id only, because what the sender wrote never leaves the enquiry. When a
+ * staff inbox is configured an alert email follows.
  */
-export class MarketingEnquiryService implements IMarketingEnquiryIntake, IMarketingEnquiryDesk {
+export class MarketingEnquiryService implements IMarketingEnquiryIntake {
   constructor(private readonly deps: MarketingEnquiryServiceDeps) {}
 
-  async submit(input: ContactEnquiryInput): Promise<{ id: string }> {
+  async submit(
+    input: EnquiryIntakeInput,
+    account?: EnquirerAccount,
+  ): Promise<MarketingEnquirySubmitted> {
+    const enquiry = toNewEnquiry(input, account);
+    const rules: EnquiryRoutingRule[] = await this.deps.routing.listRules();
+    const assignee = resolveEnquiryAssignee(rules, enquiry.departmentSlug ?? null);
+
     const record = await this.deps.transactionRunner.runInTransaction(async (tx) => {
-      const created = await this.deps.enquiries.createInTransaction(tx, input);
-      await this.deps.events.withTx(tx).publish({
+      const created = await this.deps.enquiries.createInTransaction(tx, {
+        ...enquiry,
+        ...(assignee ? { assignedToUserId: assignee } : {}),
+      });
+      const events = this.deps.events.withTx(tx);
+      await events.publish({
         aggregateType: "marketing_enquiry",
         aggregateId: created.id,
         eventType: "marketing_enquiry.received",
-        payload: { enquiryId: created.id, intent: created.topic },
+        payload: {
+          enquiryId: created.id,
+          intent: created.intent,
+          ...(created.departmentSlug ? { department: created.departmentSlug } : {}),
+        },
       });
+      if (created.assignedToUserId) {
+        await events.publish({
+          aggregateType: "marketing_enquiry",
+          aggregateId: created.id,
+          eventType: "marketing_enquiry.assigned",
+          payload: {
+            enquiryId: created.id,
+            intent: created.intent,
+            assignedToUserId: created.assignedToUserId,
+            previousAssignedToUserId: null,
+            source: "routing",
+          },
+        });
+      }
       return created;
     });
     // The enquiry is stored and in the work inbox; a failed email must not lose it or fail the form.
@@ -82,34 +80,6 @@ export class MarketingEnquiryService implements IMarketingEnquiryIntake, IMarket
     } catch (error) {
       this.deps.onAlertFailed?.(record.id, error);
     }
-    return { id: record.id };
-  }
-
-  async detail(id: string): Promise<MarketingEnquiryView | null> {
-    const record = await this.deps.enquiries.findById(id);
-    return record ? toView(record) : null;
-  }
-
-  async markHandled(id: string, actorUserId: string): Promise<MarketingEnquiryHandledResult> {
-    const updated = await this.deps.transactionRunner.runInTransaction(async (tx) => {
-      const record = await this.deps.enquiries.markHandledInTransaction(
-        tx,
-        id,
-        actorUserId,
-        this.deps.now(),
-      );
-      if (!record) return null;
-      await this.deps.events.withTx(tx).publish({
-        aggregateType: "marketing_enquiry",
-        aggregateId: record.id,
-        eventType: "marketing_enquiry.handled",
-        payload: { enquiryId: record.id, intent: record.topic },
-        actorUserId,
-      });
-      return record;
-    });
-    if (updated) return { ok: true, enquiry: toView(updated) };
-    const existing = await this.deps.enquiries.findById(id);
-    return { ok: false, error: existing ? "already_handled" : "enquiry_not_found" };
+    return { id: record.id, reference: record.reference };
   }
 }
