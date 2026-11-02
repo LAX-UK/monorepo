@@ -1,6 +1,7 @@
 import { Button } from "@/components/account-button";
 import type { SupportLinksVm } from "@/server/domain/account-links";
 import type { AccountNavItemVm } from "@/server/domain/account-nav.vm";
+import type { BackToProductVm } from "@/server/domain/origin-product";
 import { legalOperatorSentence, siteCopyrightYear } from "@auction/branding";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { LaxFamilyBar, LaxLockup } from "@auction/marketing-ui";
@@ -36,6 +37,8 @@ export type AccountFrameProps = {
   /** The LAX top bar: the products, then LAX Account (current). */
   products: LaxFamilyLinkVm[];
   support: SupportLinksVm | null;
+  /** The way back to the product the visitor came from; null when none is known. */
+  backToProduct?: BackToProductVm | null;
   width?: PageWidth;
   children: ReactNode;
 };
@@ -50,6 +53,7 @@ export function AccountFrame({
   nav,
   products,
   support,
+  backToProduct = null,
   width = "narrow",
   children,
 }: AccountFrameProps) {
@@ -81,6 +85,17 @@ export function AccountFrame({
           </div>
         </div>
       </header>
+      {backToProduct ? (
+        <div className={`${CONTAINER} pt-4`}>
+          <a
+            href={backToProduct.href}
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-sm text-sm text-on-surface-variant underline-offset-4 hover:text-on-surface hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <span aria-hidden="true">←</span>
+            {backToProduct.label}
+          </a>
+        </div>
+      ) : null}
       <div className={`${CONTAINER} flex flex-1 gap-10 lg:gap-14`}>
         {showMenu ? (
           <aside className="hidden w-60 shrink-0 py-8 lg:block">

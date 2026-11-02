@@ -17,3 +17,6 @@ export function accountCookiePolicy(publicOrigin: string): AccountCookiePolicy {
     sessionCookie: secure ? "__Host-lax-account-session" : "lax-account-session",
   };
 }
+
+/** The LAX product the visitor arrived from (`bid`, `shop` or `art`); a session cookie. */
+export const ORIGIN_PRODUCT_COOKIE = "lax-account-origin-product";
