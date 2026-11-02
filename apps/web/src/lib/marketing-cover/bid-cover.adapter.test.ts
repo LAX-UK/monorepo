@@ -7,10 +7,11 @@ import {
   plateFromLot,
   toBidCoverSlide,
   toBidCoverSlides,
+  withBidViewer,
 } from "./bid-cover.adapter";
 
 const now = new Date("2026-11-01T15:25:00Z");
-const links = { register: "/register", bids: "/account/bids", sell: "/sell" };
+const links = { register: "/register", bids: "/account/bids", sell: "/sell", contact: "/contact" };
 const context = { now, viewer: "anonymous" as const, links };
 
 const slot = (over: Partial<SaleCoverSlotAsset> = {}): SaleCoverSlotAsset => ({
@@ -155,8 +156,45 @@ describe("toBidCoverSlide", () => {
     expect(approved.link).toEqual({ label: "Your bids", href: "/account/bids" });
     expect(approved.status).toEqual({ icon: "check", text: "You’re approved to bid in this sale" });
     const pending = toBidCoverSlide(sale(), { ...context, viewer: "pending" });
-    expect(pending.link?.label).toBe("Check your registration");
+    expect(pending.link).toEqual({
+      label: "Check your registration",
+      href: "/sales/sale-1#register-to-bid",
+    });
     expect(pending.status?.icon).toBe("clock");
+    const declined = toBidCoverSlide(sale(), { ...context, viewer: "declined" });
+    expect(declined.link).toEqual({ label: "Contact us", href: "/contact" });
+    expect(declined.status).toEqual({
+      icon: "info",
+      text: "Your registration for this sale wasn’t approved.",
+    });
+  });
+
+  it("shows no registration status on a finished sale", () => {
+    const ended = toBidCoverSlide(
+      sale({ status: "ended", endsAt: new Date("2026-10-15T20:00:00Z") }),
+      { ...context, viewer: "approved" },
+    );
+    expect(ended.status).toBeUndefined();
+    expect(ended.link?.label).toBe("Sell with LAX");
+  });
+
+  it("applies a viewer to a rendered slide without touching anything else", () => {
+    const base = toBidCoverSlide(sale(), context);
+    const swapped = withBidViewer(base, sale(), "approved", links);
+    expect(swapped.link).toEqual({ label: "Your bids", href: "/account/bids" });
+    expect(swapped.status?.icon).toBe("check");
+    expect({ ...swapped, link: undefined, status: undefined }).toEqual({
+      ...base,
+      link: undefined,
+      status: undefined,
+    });
+    expect(withBidViewer(swapped, sale(), "anonymous", links).status).toBeUndefined();
+  });
+
+  it("carries a film on the slide", () => {
+    const film = { src: "https://www.youtube.com/embed/x", title: "Sale film" };
+    expect(toBidCoverSlide(sale({ film }), context).film).toEqual(film);
+    expect(toBidCoverSlide(sale(), context).film).toBeUndefined();
   });
 
   it("maps several pinned sales in order", () => {

@@ -56,7 +56,6 @@
     "better-auth": "^1.6.22",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
-    "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
     "hono": "^4.12.25",
     "ioredis": "^5.4.2",

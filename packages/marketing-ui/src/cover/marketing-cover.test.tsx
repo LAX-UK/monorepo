@@ -284,3 +284,34 @@ describe("the final-hour clock", () => {
     }
   });
 });
+
+describe("MarketingCover film", () => {
+  const film = { src: "https://www.youtube.com/embed/abc?autoplay=1&mute=1", title: "Sale film" };
+
+  function withFilm() {
+    const live = fixture(BID_COVER_FIXTURES, "live").slides[0];
+    if (!live) throw new Error("fixture");
+    return { ...live, film };
+  }
+
+  it("loads no player until Play film is pressed", () => {
+    const { container } = render(<MarketingCover slides={[withFilm()]} label="Featured sales" />);
+    expect(container.querySelector("iframe")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Play film" }));
+    expect(container.querySelector("iframe")).toHaveAttribute("src", film.src);
+    expect(screen.queryByRole("button", { name: "Play film" })).toBeNull();
+  });
+
+  it("closes the film and brings the action back", () => {
+    const { container } = render(<MarketingCover slides={[withFilm()]} label="Featured sales" />);
+    fireEvent.click(screen.getByRole("button", { name: "Play film" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close film" }));
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(screen.getByRole("button", { name: "Play film" })).toBeInTheDocument();
+  });
+
+  it("shows no film action on a slide without one", () => {
+    renderFixture(fixture(BID_COVER_FIXTURES, "live"));
+    expect(screen.queryByRole("button", { name: "Play film" })).toBeNull();
+  });
+});

@@ -20,6 +20,11 @@ export type DialogProps = {
   /** The actions, right-aligned on a hairline: Cancel, then the one primary. */
   footer?: React.ReactNode;
   /**
+   * `stacked` puts the footer's buttons one under another on a phone, the last (the primary) on
+   * top at full width, so a long label such as "Confirm maximum of £125,000" keeps its padding.
+   */
+  footerLayout?: "row" | "stacked";
+  /**
    * `center` is a dialog (520px, or 640px with `wide`); `side` is a sheet on the right (400px),
    * for filters. On a phone both become a bottom sheet with a grab handle.
    */
@@ -27,6 +32,11 @@ export type DialogProps = {
   wide?: boolean;
   /** Where focus lands on opening; by default the first focusable element. */
   initialFocusRef?: React.RefObject<HTMLElement | null>;
+  /**
+   * Where focus goes on closing when the control that opened the dialog is gone (a button that
+   * the action just replaced). Without it focus would fall back to the page.
+   */
+  returnFocusFallback?: () => HTMLElement | null;
 };
 
 /** Phone first: a bottom sheet; from 768px a centred dialog or a right-hand sheet. */
@@ -55,12 +65,14 @@ export function Dialog({
   description,
   children,
   footer,
+  footerLayout = "row",
   placement = "center",
   wide = false,
   initialFocusRef,
+  returnFocusFallback,
 }: DialogProps) {
   const layer = useLayerAttributes();
-  const returnFocus = useReturnFocus(open);
+  const returnFocus = useReturnFocus(open, returnFocusFallback);
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
@@ -129,7 +141,14 @@ export function Dialog({
             </div>
           ) : null}
           {footer ? (
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-lax-line px-4 py-3 md:px-6 md:py-4 [&>*]:max-md:flex-1">
+            <div
+              className={cn(
+                "flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-lax-line px-4 py-3 md:px-6 md:py-4",
+                footerLayout === "stacked"
+                  ? "max-md:flex-col-reverse max-md:items-stretch [&>*]:max-md:w-full"
+                  : "[&>*]:max-md:flex-1",
+              )}
+            >
               {footer}
             </div>
           ) : null}

@@ -1,5 +1,6 @@
 import { COVER_SLOT_FLOORS } from "@auction/domain/cover";
 import type {
+  CoverFilm,
   CoverMedia,
   CoverPhotoMedia,
   CoverPhotoSlot,
@@ -36,9 +37,12 @@ export type BidCoverLinks = {
   register: string;
   bids: string;
   sell: string;
+  /** Where someone whose registration was declined can ask why. */
+  contact: string;
 };
 
-export type BidCoverViewer = "anonymous" | "approved" | "pending";
+/** Where the viewer stands with the sale the cover leads with. */
+export type BidCoverViewer = "anonymous" | "approved" | "pending" | "declined";
 
 export type BidCoverSaleVM = {
   id: string;
@@ -54,6 +58,8 @@ export type BidCoverSaleVM = {
   cover: SaleCoverSlotAssets | undefined;
   /** The lot the cover photograph is a detail of, or the lead lot for the plate. */
   lot: BidCoverLot | null;
+  /** A sale set to video: the film behind "Play film". Never started before it is pressed. */
+  film?: CoverFilm | null;
 };
 
 const DELIVERY_LABEL: Record<SaleDeliveryMode, string> = {
@@ -85,26 +91,57 @@ function factLine(sale: BidCoverSaleVM): string {
   );
 }
 
-function secondaryLink(
-  status: CoverSaleStatus,
-  viewer: BidCoverViewer,
-  links: BidCoverLinks,
-): CoverSlide["link"] {
-  if (status === "ended") return { label: "Sell with LAX", href: links.sell };
-  if (viewer === "approved") return { label: "Your bids", href: links.bids };
-  if (viewer === "pending") return { label: "Check your registration", href: links.register };
-  return { label: "Register to bid", href: links.register };
+/** The sale facts a viewer's swap depends on. */
+export type BidViewerSale = Pick<BidCoverSaleVM, "status" | "href">;
+
+type ViewerSwap = {
+  status?: NonNullable<CoverSlide["status"]>;
+  link?: NonNullable<CoverSlide["link"]>;
+};
+
+/** One entry per viewer state: the status line and secondary link that replace the register prompt. */
+const VIEWER_SWAPS: Record<
+  BidCoverViewer,
+  (sale: BidViewerSale, links: BidCoverLinks) => ViewerSwap
+> = {
+  anonymous: (_sale, links) => ({ link: { label: "Register to bid", href: links.register } }),
+  approved: (_sale, links) => ({
+    status: { icon: "check", text: "You’re approved to bid in this sale" },
+    link: { label: "Your bids", href: links.bids },
+  }),
+  pending: (sale) => ({
+    status: { icon: "clock", text: "Registration pending. We’ll email you when it’s approved." },
+    link: { label: "Check your registration", href: `${sale.href}#register-to-bid` },
+  }),
+  declined: (_sale, links) => ({
+    status: { icon: "info", text: "Your registration for this sale wasn’t approved." },
+    link: { label: "Contact us", href: links.contact },
+  }),
+};
+
+/** A finished sale takes no bids: its link offers selling, and no registration status shows. */
+function viewerSwap(sale: BidViewerSale, viewer: BidCoverViewer, links: BidCoverLinks): ViewerSwap {
+  if (sale.status === "ended") return { link: { label: "Sell with LAX", href: links.sell } };
+  return VIEWER_SWAPS[viewer](sale, links);
 }
 
-function viewerStatus(status: CoverSaleStatus, viewer: BidCoverViewer): CoverSlide["status"] {
-  if (status === "ended") return undefined;
-  if (viewer === "approved") {
-    return { icon: "check", text: "You’re approved to bid in this sale" };
-  }
-  if (viewer === "pending") {
-    return { icon: "clock", text: "Registration pending. We’ll email you when it’s approved." };
-  }
-  return undefined;
+/**
+ * The same slide for a viewer who is signed in: the status line and the link change, nothing
+ * else. Used after the page has rendered, once the viewer's registration is known.
+ */
+export function withBidViewer(
+  slide: CoverSlide,
+  sale: BidViewerSale,
+  viewer: BidCoverViewer,
+  links: BidCoverLinks,
+): CoverSlide {
+  const { status: _status, link: _link, ...rest } = slide;
+  const swap = viewerSwap(sale, viewer, links);
+  return {
+    ...rest,
+    ...(swap.link ? { link: swap.link } : {}),
+    ...(swap.status ? { status: swap.status } : {}),
+  };
 }
 
 function toPhotoSlot(asset: SaleCoverSlotAsset): CoverPhotoSlot {
@@ -190,8 +227,7 @@ export function toBidCoverSlide(
     now: context.now,
   });
   const credit = creditFor(sale, photo);
-  const status = viewerStatus(sale.status, context.viewer);
-  const link = secondaryLink(sale.status, context.viewer, context.links);
+  const swap = viewerSwap(sale, context.viewer, context.links);
   return {
     id: sale.id,
     badge: BADGE[sale.status],
@@ -200,9 +236,10 @@ export function toBidCoverSlide(
     title: sale.title,
     fact: factLine(sale),
     primary: { label: PRIMARY_LABEL[sale.status], href: sale.href },
-    ...(link ? { link } : {}),
-    ...(status ? { status } : {}),
+    ...(swap.link ? { link: swap.link } : {}),
+    ...(swap.status ? { status: swap.status } : {}),
     ...(credit && media.length > 0 ? { credit } : {}),
+    ...(sale.film ? { film: sale.film } : {}),
     media,
   };
 }

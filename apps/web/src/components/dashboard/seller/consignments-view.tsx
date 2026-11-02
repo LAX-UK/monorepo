@@ -54,6 +54,10 @@ const EMPTY_VIEW: Record<ConsignmentView, { title: string; description: string }
     title: "Nothing in review",
     description: "Works our specialists are reviewing appear here.",
   },
+  accepted: {
+    title: "Nothing accepted",
+    description: "Works our specialists accepted appear here until they are in a sale.",
+  },
   "in-sale": {
     title: "Nothing in a sale",
     description: "Works catalogued for a sale appear here until it closes.",

@@ -8,11 +8,10 @@ export const CONSIGN_COPY = {
   microcopy: "Response within 24 hours.",
 } as const;
 
-/** Home hero copy when no sale is live or scheduled. */
+/** The cover's words when no sale is live or coming: one title and one sentence. */
 export const BETWEEN_SEASONS_COPY = {
-  eyebrow: "Auction calendar",
-  title: "Our next sales are being prepared",
-  body: "Join the list to hear first when new sales open. Previews and early access arrive before the gavel falls.",
+  title: "The next sales are being prepared",
+  fact: "Join the list to hear first when new sales open.",
 } as const;
 
 /** Section copy for the home "More lots" strip. */

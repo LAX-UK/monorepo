@@ -1,6 +1,5 @@
 "use client";
 
-import { ConfirmActionButton } from "@/components/dashboard/confirm-action-button";
 import {
   SUBMISSION_FINISH_LATER_LABEL,
   SUBMISSION_LEAVE_WITHOUT_SAVING_HINT,
@@ -19,16 +18,17 @@ import { useState } from "react";
 
 type Props = {
   isSubmitting: boolean;
+  /** False on the last step, which has its own "Save and finish later". */
+  showFinishLater?: boolean;
   onFinishLater: () => void;
   onLeaveWithoutSaving: () => void;
-  onWithdraw?: () => void;
 };
 
 export function WizardHeaderActions({
   isSubmitting,
+  showFinishLater = true,
   onFinishLater,
   onLeaveWithoutSaving,
-  onWithdraw,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -37,41 +37,22 @@ export function WizardHeaderActions({
     onLeaveWithoutSaving();
   };
 
-  const withdraw = () => {
-    setMenuOpen(false);
-    onWithdraw?.();
-  };
-
   return (
     <>
       <div className="hidden shrink-0 items-center gap-2 sm:flex">
-        {onWithdraw ? (
-          <ConfirmActionButton
+        {showFinishLater ? (
+          <Button
             type="button"
-            variant="secondaryOutline"
-            size="sm"
+            variant="outline"
+            size="default"
             className="font-label text-xs"
             disabled={isSubmitting}
-            confirmTitle="Withdraw this work"
-            confirmBody="We stop reviewing it. You can send it again later if you change your mind."
-            confirmLabel="Withdraw"
-            onConfirmed={withdraw}
-            data-testid="wizard-withdraw"
+            onClick={onFinishLater}
+            data-testid="wizard-finish-later"
           >
-            Withdraw
-          </ConfirmActionButton>
+            {SUBMISSION_FINISH_LATER_LABEL}
+          </Button>
         ) : null}
-        <Button
-          type="button"
-          variant="outline"
-          size="default"
-          className="font-label text-xs"
-          disabled={isSubmitting}
-          onClick={onFinishLater}
-          data-testid="wizard-finish-later"
-        >
-          {SUBMISSION_FINISH_LATER_LABEL}
-        </Button>
       </div>
 
       <BottomSheet open={menuOpen} onOpenChange={setMenuOpen}>
@@ -94,36 +75,21 @@ export function WizardHeaderActions({
             </BottomSheetTitle>
           </BottomSheetHeader>
           <ul className="mt-4 flex flex-col gap-1 px-6 pb-6">
-            <li>
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-12 w-full justify-start font-body text-base"
-                disabled={isSubmitting}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onFinishLater();
-                }}
-                data-testid="wizard-finish-later-mobile"
-              >
-                {SUBMISSION_FINISH_LATER_LABEL}
-              </Button>
-            </li>
-            {onWithdraw ? (
+            {showFinishLater ? (
               <li>
-                <ConfirmActionButton
+                <Button
                   type="button"
                   variant="ghost"
-                  className="h-12 w-full justify-start font-body text-base text-on-surface-variant"
+                  className="h-12 w-full justify-start font-body text-base"
                   disabled={isSubmitting}
-                  confirmTitle="Withdraw this work"
-                  confirmBody="We stop reviewing it. You can send it again later if you change your mind."
-                  confirmLabel="Withdraw"
-                  onConfirmed={withdraw}
-                  data-testid="wizard-withdraw-mobile"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onFinishLater();
+                  }}
+                  data-testid="wizard-finish-later-mobile"
                 >
-                  Withdraw
-                </ConfirmActionButton>
+                  {SUBMISSION_FINISH_LATER_LABEL}
+                </Button>
               </li>
             ) : null}
             <li>

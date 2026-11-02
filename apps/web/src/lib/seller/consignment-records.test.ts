@@ -207,7 +207,9 @@ describe("buildConsignmentRecords", () => {
     expect(defaultConsignmentView(records)).toBe("needs-you");
     const query = parseConsignmentsListQuery({ q: "s-agree" }, "all");
     expect(consignmentViewCounts(records, query)["needs-you"]).toBe(1);
-    expect(consignmentsInView(records, { ...query, view: "in-review" })).toHaveLength(1);
+    // An accepted work waiting on its agreement is in the Accepted stage.
+    expect(consignmentsInView(records, { ...query, view: "accepted" })).toHaveLength(1);
+    expect(consignmentsInView(records, { ...query, view: "in-review" })).toHaveLength(0);
   });
 });
 

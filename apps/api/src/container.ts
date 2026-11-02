@@ -59,6 +59,7 @@ import { RedisIdempotencyStore } from "./infrastructure/redis-idempotency.store.
 import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
 import { StaffAdministratorDirectory } from "./infrastructure/staff-administrators.js";
 import { StaffRoleChangeNotifier } from "./infrastructure/staff-role-change.notifier.js";
+import { createBaseLogger } from "./lib/logger.js";
 import { createAppLogger } from "./lib/logger.js";
 import { AdminSavedViewService } from "./services/admin/admin-saved-view.service.js";
 import { AdminTwoFactorResetService } from "./services/admin/admin-two-factor-reset.service.js";
@@ -418,6 +419,8 @@ export function createContainer(env: Env): Container {
   const organisationSelling = createOrganisationSellingServices({
     db,
     submissionAccess: new SubmissionAccessGuard(repos.itemSubmissionRepository),
+    onPayoutTotalsMismatch: (report) =>
+      createBaseLogger(env).warn(report, "payout totals differ from payout lines"),
   });
   const organisationWorkspace = createOrganisationWorkspaceServices({
     db,

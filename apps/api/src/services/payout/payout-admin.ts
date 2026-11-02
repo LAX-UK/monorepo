@@ -1,11 +1,11 @@
-import { type PayoutReversalRefusal, payoutReversalRefusal } from "@auction/domain";
+import { type PayoutReversalRefusal, payoutReversalRefusal, payoutTotals } from "@auction/domain";
 import type {
   IPayoutRepository,
   ReconcileStripeTransferPatch,
 } from "@auction/persistence/interfaces";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import { roleHasCapability } from "@auction/types";
-import { addDecimal, subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
+import { subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { AdminPayoutListPage } from "../admin/admin-payout-list-query.service.js";
 import { AdminPayoutListQueryService } from "../admin/admin-payout-list-query.service.js";
@@ -92,12 +92,11 @@ export async function addAdjustment(
   if (deps.payoutAdjustments) {
     await deps.payoutAdjustments.recalculateTotalsFromLines(deps.repo, payoutId);
   } else {
-    const newGross = addDecimal(found.grossAmount, input.amount);
-    const newNet = subtractDecimal(subtractDecimal(newGross, found.platformFee), found.stripeFee);
+    const totals = payoutTotals(await deps.repo.listLines(payoutId), found.stripeFee);
     await deps.repo.updateTotals(payoutId, {
-      grossAmount: newGross,
-      platformFee: found.platformFee,
-      netAmount: newNet,
+      grossAmount: totals.gross,
+      platformFee: totals.platformFee,
+      netAmount: totals.net,
     });
   }
 

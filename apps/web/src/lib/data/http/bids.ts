@@ -2,6 +2,7 @@ import { redirectForOnboardingRequired } from "@/lib/auth/account-onboarding-req
 import type { BidWriter, PlaceBidInput, PlaceBidResult } from "@/lib/data/contracts";
 import { getBrowserHc } from "@/lib/data/http/hc-browser";
 import { parseBid } from "@/lib/data/http/parse";
+import { parseRefusalDetails } from "@/lib/data/http/refusal-details";
 import { clearClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
 import { notifyAdminCannotBuyIfNeeded } from "@/lib/ui/admin-cannot-buy";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@auction/http-headers";
@@ -25,6 +26,7 @@ export function createHttpBidWriter(actingEntityId?: string): BidWriter {
           ...(input.autoBidStepAmount !== undefined
             ? { autoBidStepAmount: input.autoBidStepAmount }
             : {}),
+          ...(input.seenNextBid !== undefined ? { seenNextBid: input.seenNextBid } : {}),
         },
         ...(Object.keys(header).length > 0 ? { header } : {}),
       });
@@ -32,6 +34,7 @@ export function createHttpBidWriter(actingEntityId?: string): BidWriter {
         data?: unknown;
         error?: string;
         code?: string;
+        details?: unknown;
         summary?: {
           feedback?: {
             headline: string;
@@ -57,11 +60,13 @@ export function createHttpBidWriter(actingEntityId?: string): BidWriter {
         ) {
           clearClientActingLegalEntityId();
         }
+        const details = parseRefusalDetails(json.details);
         return {
           ok: false,
           error: errMsg,
           status: res.status,
           code: json.code ?? null,
+          ...(details ? { details } : {}),
           kycFeedback: json.summary?.feedback ?? null,
         };
       }

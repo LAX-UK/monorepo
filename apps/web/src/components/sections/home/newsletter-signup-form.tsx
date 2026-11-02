@@ -3,22 +3,13 @@
 import { publicFormResolver } from "@/lib/forms/public-form-resolver";
 import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter.client";
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
-import { cn } from "@auction/ui";
 import { Button, Field, Notice, TextInput } from "@auction/ui/lax";
 import { type NewsletterSubscribeInput, newsletterSubscribeSchema } from "@auction/validators";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-const ON_DARK_FOCUS = "[--color-lax-focus:#fff] [--lax-focus:#fff]";
-
-type Props = {
-  /** `onDark` for use on the near-black home hero. */
-  tone?: "default" | "onDark";
-};
-
-/** Email sign-up for the newsletter, shared by the home hero and the home footer band. */
-export function NewsletterSignupForm({ tone = "default" }: Props) {
-  const onDark = tone === "onDark";
+/** Email sign-up for the newsletter, in the home page's closing band. */
+export function NewsletterSignupForm() {
   const [status, setStatus] = useState<"subscribed" | "already_subscribed" | null>(null);
   const { run, loading, bannerError } = useNewsletterSubmit((email) =>
     defaultNewsletterSubmitter.submit(email),
@@ -55,11 +46,7 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
   return (
     <form
       onSubmit={onSubmit}
-      className={cn(
-        "mx-auto flex w-full max-w-[420px] flex-col gap-3 text-left",
-        // The focus outline is ink by default, which vanishes on the near-black hero ground: draw it white here.
-        onDark && ON_DARK_FOCUS,
-      )}
+      className="mx-auto flex w-full max-w-[420px] flex-col gap-3 text-left"
       noValidate
     >
       {bannerError ? <Notice tone="danger" alert title={bannerError} /> : null}
@@ -69,8 +56,7 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
           labelHidden
           id="newsletter-email"
           error={form.formState.errors.email?.message}
-          // The hero ground is near-black in both themes, so its message is white on it.
-          className={cn("flex-1", onDark && "[&>p:last-child]:text-white")}
+          className="flex-1"
         >
           <TextInput
             type="email"
@@ -80,18 +66,7 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
             {...form.register("email")}
           />
         </Field>
-        <Button
-          type="submit"
-          variant={onDark ? "secondary" : "primary"}
-          loading={loading}
-          // The hero ground is near-black in both themes, so its button is a fixed light fill with dark text in both
-          // (theme-aware cream tokens turn dark in dark mode).
-          className={cn(
-            "shrink-0",
-            onDark &&
-              "border-transparent bg-white text-brand-900 hover:bg-brand-100 active:bg-brand-100",
-          )}
-        >
+        <Button type="submit" variant="primary" loading={loading} className="shrink-0">
           {loading ? "Subscribing…" : "Subscribe"}
         </Button>
       </div>

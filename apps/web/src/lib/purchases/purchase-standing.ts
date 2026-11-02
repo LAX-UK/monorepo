@@ -2,7 +2,7 @@ import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types"
 import type { PurchaseDeliveryStage } from "@auction/domain";
 import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
 import { PURCHASE_STATE_LABEL } from "./purchase-labels";
-import type { PurchaseState } from "./purchase-progress";
+import { type PurchaseState, purchaseEndedEarly } from "./purchase-progress";
 
 export type PurchaseBadge = { label: string; tone: StatusBadgeTone; shape: StatusBadgeShape };
 
@@ -55,6 +55,10 @@ export function purchaseBadge(
 ): PurchaseBadge {
   if (informed && (state === "payment-due" || state === "in-review")) {
     return { label: "Awaiting payment", tone: "neutral", shape: "ring" };
+  }
+  // An ended purchase owes nothing, so no invoice date or delivery stage speaks for it.
+  if (purchaseEndedEarly(state)) {
+    return { label: PURCHASE_STATE_LABEL[state], ...STATE_BADGE[state] };
   }
   if (state === "in-review") return { label: PURCHASE_STATE_LABEL[state], ...STATE_BADGE[state] };
   const invoice = facts?.invoice;

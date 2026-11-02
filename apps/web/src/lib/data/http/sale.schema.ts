@@ -1,5 +1,6 @@
 import { parseGalleryImages } from "@/lib/data/http/gallery-image.schema";
 import { isIndexableObject, toObjectRecord } from "@/lib/data/http/object-guards";
+import { parseSaleCoverSlotAssets } from "@/lib/data/http/sale-cover-assets.schema";
 import { zCoerceDate, zStringArrayFromUnknown } from "@/lib/data/http/schema-coerce";
 import type {
   BuyerPremiumTier,
@@ -158,6 +159,7 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
   const dayImages = parseDayPhotoRefs(row.dayImages);
   const dayImageAssets = parseDayPhotoAssets(row.dayImageAssets);
   const pressCoverage = parsePressRefs(row.pressCoverage);
+  const coverSlotAssets = parseSaleCoverSlotAssets(row.coverSlotAssets);
 
   return {
     id: String(row.id),
@@ -165,6 +167,8 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
     description: row.description == null ? null : String(row.description),
     coverImages: zStringArrayFromUnknown.parse(row.coverImages),
     ...(coverImageAssets !== undefined ? { coverImageAssets } : {}),
+    ...(coverSlotAssets !== undefined ? { coverSlotAssets } : {}),
+    homePinOrder: typeof row.homePinOrder === "number" ? row.homePinOrder : null,
     ...(featuredLotIds.length > 0 ? { featuredLotIds } : {}),
     ...(dayImages !== undefined ? { dayImages } : {}),
     ...(dayImageAssets !== undefined ? { dayImageAssets } : {}),

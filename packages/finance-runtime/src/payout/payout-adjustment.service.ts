@@ -1,7 +1,8 @@
 import type { Database } from "@auction/db";
+import { payoutTotals } from "@auction/domain";
 import type { IPayoutRepository, ITransactionRunner } from "@auction/persistence/interfaces";
 import type { PayoutLineKind } from "@auction/types";
-import { subtractDecimal, sumDecimal } from "../decimal-money.js";
+import { sumDecimal } from "../decimal-money.js";
 import type { IPayoutAdjustmentPort } from "../payout-adjustment-port.js";
 import { payoutRepoForTx as defaultPayoutRepoForTx } from "./payout-helpers.js";
 
@@ -121,15 +122,12 @@ export class PayoutAdjustmentService implements IPayoutAdjustmentPort {
     const payout = await repo.findById(payoutId);
     if (!payout) return;
     const lines = await repo.listLines(payoutId);
-    const grossAmount = sumDecimal(lines.map((l) => l.amount));
-    const netAmount = subtractDecimal(
-      subtractDecimal(grossAmount, payout.platformFee),
-      payout.stripeFee,
-    );
+    // The stored totals are what is transferred, so they are always the lines added up.
+    const totals = payoutTotals(lines, payout.stripeFee);
     await repo.updateTotals(payoutId, {
-      grossAmount,
-      platformFee: payout.platformFee,
-      netAmount,
+      grossAmount: totals.gross,
+      platformFee: totals.platformFee,
+      netAmount: totals.net,
     });
   }
 }

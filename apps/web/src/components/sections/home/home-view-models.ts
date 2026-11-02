@@ -2,60 +2,12 @@ import { formatSaleDateRange } from "@/lib/format-auction-date";
 import { lotLabelFromLot } from "@/lib/lot-label";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPriceDisplay } from "@/lib/lot-price-display";
-import { type HeroCoverSources, resolveHeroCoverSources } from "@/lib/media/hero-cover-sources";
 import type { SaleListRow } from "@/lib/sale-list-row";
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { lotPath, salePath } from "@/lib/seo/url";
 import type { Lot, LotCardTimingVM, Sale } from "@auction/types";
 import { toLotCardTimingVM, toOptionalIsoString, toSaleCountdownEndIso } from "@auction/validators";
-import type { StreamEmbedProvider } from "@auction/validators";
-
-export type HeroSaleSlideVM = {
-  id: string;
-  href: string;
-  title: string;
-  dateLabel: string;
-  coverImageUrl: string | null;
-  /** Optional portrait crop — typically `coverImages[1]` when uploaded. */
-  coverImageMobileUrl?: string | null;
-  /** Optional xl desktop crop — typically `coverImages[2]` when uploaded. */
-  coverImageDesktopWideUrl?: string | null;
-  /** Per-slide focal point override, e.g. `center 30%`. */
-  objectPosition?: string;
-  coverImageAlt: string;
-  modeBadge: string;
-  deliveryMode?: Sale["deliveryMode"];
-  /** Sale lifecycle — drives the hero "Opens in" / "Closes in" countdown. */
-  status?: Sale["status"];
-  /** ISO start of bidding (for upcoming-sale countdown). */
-  startIso?: string;
-  /** ISO end of bidding (for live-sale countdown). */
-  endIso?: string;
-};
-
-export type HeroStateVM =
-  | {
-      kind: "live";
-      saleId: string;
-      saleTitle: string;
-      embedSrc: string;
-      provider: StreamEmbedProvider;
-      modeLabel: string;
-      saleroomHref: string;
-      /** Present when provider is youtube — used for background embed + watch link */
-      videoId?: string | undefined;
-      startSeconds?: number | undefined;
-      /** Sale cover for reduced-motion / visual fallback */
-      posterImageUrl?: string | null | undefined;
-      /** Optional portrait crop for mobile hero poster. */
-      posterImageMobileUrl?: string | null | undefined;
-      /** Optional xl desktop crop for live hero poster. */
-      posterImageDesktopWideUrl?: string | null | undefined;
-      objectPosition?: string | undefined;
-    }
-  | { kind: "rotator"; slides: HeroSaleSlideVM[] }
-  | { kind: "betweenSeasons" };
 
 export type LotPriceEmphasis = "estimate" | "currentBid" | "both";
 
@@ -140,46 +92,6 @@ export type EditorsPickLotCardVM = {
 
 function artistLineFromLot(lot: Lot): string {
   return lot.medium?.trim() || lot.description?.trim()?.slice(0, 80) || "Contemporary";
-}
-
-export function heroSaleSlideCoverSources(
-  slide: Pick<
-    HeroSaleSlideVM,
-    "coverImageUrl" | "coverImageMobileUrl" | "coverImageDesktopWideUrl" | "objectPosition"
-  >,
-): HeroCoverSources {
-  return resolveHeroCoverSources({
-    desktopUrl: slide.coverImageUrl,
-    mobileUrl: slide.coverImageMobileUrl,
-    desktopWideUrl: slide.coverImageDesktopWideUrl,
-    objectPosition: slide.objectPosition,
-  });
-}
-
-export function toHeroSaleSlideVM(
-  sale: Pick<
-    Sale,
-    "id" | "title" | "deliveryMode" | "status" | "startTime" | "endTime" | "coverImages"
-  >,
-): HeroSaleSlideVM {
-  const pres = getSaleTypePresentation(sale.deliveryMode);
-  const startIso = toOptionalIsoString(sale.startTime);
-  const endIso = toOptionalIsoString(sale.endTime);
-  return {
-    id: sale.id,
-    href: salePath(sale),
-    title: sale.title,
-    dateLabel: formatSaleDateRange(sale),
-    coverImageUrl: sale.coverImages[0] ?? null,
-    coverImageMobileUrl: sale.coverImages[1] ?? null,
-    coverImageDesktopWideUrl: sale.coverImages[2] ?? null,
-    coverImageAlt: `${sale.title} — auction cover`,
-    modeBadge: pres.label,
-    deliveryMode: sale.deliveryMode,
-    status: sale.status,
-    ...(startIso ? { startIso } : {}),
-    ...(endIso ? { endIso } : {}),
-  };
 }
 
 function priceEmphasisFromStatus(lot: Lot): LotPriceEmphasis {
