@@ -4,6 +4,7 @@ import {
   ACCOUNT_EMAIL_CHANGE_CANCEL_PATH,
   ACCOUNT_EMAIL_CHANGE_CONFIRM_PATH,
   ACCOUNT_EMAIL_CHANGE_PATH,
+  ACCOUNT_PHONE_REMOVE_PATH,
   ACCOUNT_PHONE_SEND_CODE_PATH,
   ACCOUNT_PHONE_VERIFY_PATH,
   ACCOUNT_REAUTH_REQUIRED,
@@ -23,7 +24,7 @@ import {
 
 export type AccountContactRouteDeps = Omit<AccountCallerDeps, "rateLimit"> & {
   contact: Pick<AccountContactService, "read" | "startEmailChange" | "cancelEmailChange">;
-  phone: Pick<AccountPhoneService, "sendCode" | "verify">;
+  phone: Pick<AccountPhoneService, "sendCode" | "verify" | "remove">;
   emailChange: Pick<EmailChangeService, "confirm">;
   /** Budget for reading the contact details. */
   readRateLimit: AccountCallerDeps["rateLimit"];
@@ -35,6 +36,8 @@ export type AccountContactRouteDeps = Omit<AccountCallerDeps, "rateLimit"> & {
   phoneNumberRateLimit: (numberHash: string) => Promise<number | null>;
   /** Per person: caps guessing of the six-digit code. */
   phoneVerifyRateLimit: AccountCallerDeps["rateLimit"];
+  /** Per person: removing a number is rare, and each one sends a security notice. */
+  phoneRemoveRateLimit: AccountCallerDeps["rateLimit"];
   onFailure?: (error: unknown) => void;
 };
 
@@ -55,6 +58,7 @@ const PHONE_FAILURE_STATUS = {
   phone_taken: 409,
   rate_limited: 429,
   unavailable: 503,
+  no_phone: 409,
 } as const;
 
 function reauthRequired(c: Context): Response {
@@ -78,6 +82,7 @@ export function createAccountContactRoutes(deps: AccountContactRouteDeps) {
     emailChange: { ...deps, rateLimit: deps.emailChangeRateLimit },
     phoneSend: { ...deps, rateLimit: deps.phoneSendRateLimit },
     phoneVerify: { ...deps, rateLimit: deps.phoneVerifyRateLimit },
+    phoneRemove: { ...deps, rateLimit: deps.phoneRemoveRateLimit },
   } satisfies Record<string, AccountCallerDeps>;
 
   /** Runs the handler, mapping an unexpected failure to a generic 503 that leaks nothing. */
@@ -175,6 +180,20 @@ export function createAccountContactRoutes(deps: AccountContactRouteDeps) {
       if ("reason" in result) return reauthRequired(c);
       return result.ok
         ? c.json({ phone: result.phone, verified: true })
+        : c.json({ error: result.kind }, PHONE_FAILURE_STATUS[result.kind]);
+    });
+  });
+
+  app.post(ACCOUNT_PHONE_REMOVE_PATH, async (c) => {
+    const caller = await authenticateAccountCaller(c, callers.phoneRemove);
+    if (caller instanceof Response) return caller;
+    const sid = caller.params.get("sid");
+    if (!sid) return c.json({ error: "invalid_request" }, 400);
+    return guarded(c, async () => {
+      const result = await deps.phone.remove(caller.subjectId, sid);
+      if ("reason" in result) return reauthRequired(c);
+      return result.ok
+        ? c.json({ removed: true })
         : c.json({ error: result.kind }, PHONE_FAILURE_STATUS[result.kind]);
     });
   });

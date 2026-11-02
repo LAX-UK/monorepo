@@ -4,7 +4,9 @@ import {
   HOME_STATE_WINDOWS,
   type HomeSaleFacts,
   type HomeViewer,
+  defaultLiveTab,
   homeStates,
+  liveTabSaleIds,
   pruneEmptyHomeSections,
   resolveHomeState,
   resolveHomeViewerSwaps,
@@ -225,5 +227,47 @@ describe("pruneEmptyHomeSections", () => {
     expect(
       pruneEmptyHomeSections(HOME_SECTION_ORDER.live, (s) => s !== "comingUp" && s !== "alerts"),
     ).toEqual(["inThisSale", "recentResults", "departments", "selling"]);
+  });
+});
+
+describe("live sales for the Live now tabs", () => {
+  it("lists every live sale by soonest close and leaves coming-up to scheduled sales", () => {
+    const r = resolve([
+      live("c", 9 * DAY),
+      live("a", DAY),
+      live("b", 4 * DAY),
+      scheduled("s", DAY),
+    ]);
+    expect(r.liveSaleIds).toEqual(["a", "b", "c"]);
+    expect(r.leadSaleId).toBe("a");
+    expect(r.comingUpSaleIds).toEqual(["s"]);
+  });
+
+  it("marks a pinned lead that is not the soonest closing", () => {
+    const r = resolve([live("late", 5 * DAY), live("soon", DAY)], { pinnedSaleIds: ["late"] });
+    expect(r.liveSaleIds).toEqual(["soon", "late"]);
+    expect(r.leadSaleId).toBe("late");
+  });
+
+  it("has no live sales when none is live", () => {
+    expect(resolve([scheduled("s", DAY)]).liveSaleIds).toEqual([]);
+  });
+
+  it("gives at most three tabs, soonest close first", () => {
+    expect(liveTabSaleIds(["a", "b", "c", "d"], "a")).toEqual(["a", "b", "c"]);
+  });
+
+  it("keeps a late-closing lead by giving it the last tab", () => {
+    expect(liveTabSaleIds(["a", "b", "c", "d"], "d")).toEqual(["a", "b", "d"]);
+  });
+
+  it("opens a visitor on the lead sale", () => {
+    expect(defaultLiveTab(["a", "b"], "b")).toBe("b");
+  });
+
+  it("opens a registered bidder on the sale they are in, else the lead", () => {
+    expect(defaultLiveTab(["a", "b", "c"], "a", new Set(["c"]))).toBe("c");
+    expect(defaultLiveTab(["a", "b", "c"], "a", new Set(["x"]))).toBe("a");
+    expect(defaultLiveTab(["a", "b", "c"], "a", new Set(["b", "c"]))).toBe("b");
   });
 });

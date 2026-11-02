@@ -11,6 +11,7 @@ export const emailSubjects = {
   accountDeletionCancelled: "Deletion of your LAX Account was cancelled",
   emailChanged: "The email address on your LAX Account was changed",
   phoneVerified: "A phone number was verified on your LAX Account",
+  phoneRemoved: "The phone number on your LAX Account was removed",
   socialAccountLinked: `A sign-in method was linked to your ${SITE_NAME} account`,
   socialAccountUnlinked: `A sign-in method was disconnected from your ${SITE_NAME} account`,
   newDeviceLogin: "New sign-in to your LAX Account",

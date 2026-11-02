@@ -103,6 +103,7 @@ function stampActions(
     case "unsold_lot_choice":
       break;
     case "marketing_enquiry":
+    case "purchase_problem":
       break;
   }
 
@@ -189,6 +190,10 @@ export class AdminWorkItemsService {
       {
         access: MARKETING_ENQUIRIES_ACCESS,
         fetch: () => this.reader.listMarketingEnquiries(perSourceLimit),
+      },
+      {
+        access: FINANCE_ACCESS,
+        fetch: () => this.reader.listPurchaseProblems(perSourceLimit),
       },
     ];
 

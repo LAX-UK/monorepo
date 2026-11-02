@@ -22,15 +22,20 @@ describe("buildBidFooterColumns", () => {
     expect(buildBidFooterColumns([]).map((column) => column.id)).not.toContain("lax-products");
   });
 
-  it("ends the legal column with cookie preferences", () => {
+  it("ends the legal column with cookie settings", () => {
     const legal = buildBidFooterColumns([]).find((column) => column.id === "legal");
     expect(legal?.links.map((link) => link.label)).toEqual([
       "Legal and policies",
       "Terms",
       "Privacy",
       "Cookies",
-      "Cookie preferences",
+      "Cookie settings",
     ]);
     expect(legal?.links.at(-1)?.href).toBe(BID_COOKIE_PREFERENCES_HREF);
+  });
+
+  it("lists private sales with the selling links", () => {
+    const services = buildBidFooterColumns([]).find((column) => column.id === "services");
+    expect(services?.links).toContainEqual({ href: "/sell/private-sales", label: "Private sales" });
   });
 });

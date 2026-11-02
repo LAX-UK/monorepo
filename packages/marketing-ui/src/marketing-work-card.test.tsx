@@ -50,3 +50,21 @@ describe("MarketingWorkGrid", () => {
     expect(inner?.parentElement?.className).toContain("h-full");
   });
 });
+
+describe("MarketingWorkCard overlay action", () => {
+  it("shows a control over the mat only when given one", () => {
+    const { rerender } = render(
+      <MarketingWorkCard href="/a" title="Reed Study" media={<img src="/x.webp" alt="" />} />,
+    );
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    rerender(
+      <MarketingWorkCard
+        href="/a"
+        title="Reed Study"
+        media={<img src="/x.webp" alt="" />}
+        overlayAction={<button type="button">Save</button>}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+  });
+});

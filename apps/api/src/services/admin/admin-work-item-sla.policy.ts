@@ -30,6 +30,7 @@ const SLA_MS: Partial<Record<AdminWorkItemSourceKind, number>> = {
   sof_case: 24 * 60 * 60 * 1000,
   legal_entity_kyb: 72 * 60 * 60 * 1000,
   unsold_lot_choice: 72 * 60 * 60 * 1000,
+  purchase_problem: 48 * 60 * 60 * 1000,
 };
 
 /** Kinds due in business days (Monday to Friday) rather than hours. */
@@ -64,6 +65,7 @@ const BASE_SEVERITY: Record<AdminWorkItemSourceKind, WorkItemSeverity> = {
   lot_draft_past_start: "critical",
   unsold_lot_choice: "medium",
   marketing_enquiry: "medium",
+  purchase_problem: "high",
 };
 
 export function applyWorkItemSla(

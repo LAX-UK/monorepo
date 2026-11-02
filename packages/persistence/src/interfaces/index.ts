@@ -1004,6 +1004,11 @@ export type {
   NewMarketingEnquiry,
 } from "./marketing-enquiry.repository.js";
 export type {
+  IPurchaseProblemRepository,
+  NewPurchaseProblem,
+  PurchaseProblemRecord,
+} from "./purchase-problem.repository.js";
+export type {
   AccountSearchCriteria,
   AccountSearchHits,
   BidSearchHit,

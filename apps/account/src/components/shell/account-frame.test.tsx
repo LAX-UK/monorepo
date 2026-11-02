@@ -146,3 +146,28 @@ describe("AccountFrame widths", () => {
     expect(frame("wide")).toContain(PAGE_WIDTH.wide);
   });
 });
+
+describe("AccountFrame back to product", () => {
+  const base = {
+    viewer,
+    nav: [],
+    products: buildProductBar(config),
+    support,
+    children: <p>Body</p>,
+  };
+
+  it("shows the link when a product is remembered", () => {
+    const html = renderToStaticMarkup(
+      <AccountFrame
+        {...base}
+        backToProduct={{ id: "shop", label: "Back to LAX Shop", href: "https://shop.lax.bid" }}
+      />,
+    );
+    expect(html).toContain('href="https://shop.lax.bid"');
+    expect(html).toContain("Back to LAX Shop");
+  });
+
+  it("shows nothing when no product is known", () => {
+    expect(renderToStaticMarkup(<AccountFrame {...base} />)).not.toContain("Back to");
+  });
+});

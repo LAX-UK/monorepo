@@ -14,7 +14,8 @@ export type AdminWorkItemSourceRow = {
     | "lot_withdrawal"
     | "lot_draft_past_start"
     | "unsold_lot_choice"
-    | "marketing_enquiry";
+    | "marketing_enquiry"
+    | "purchase_problem";
   domain: "finance" | "compliance" | "catalogue" | "saleroom" | "fulfilment" | "clients";
   title: string;
   subtitle: string | null;
@@ -48,4 +49,6 @@ export interface IAdminWorkItemsReader {
   listUnsoldLotChoices(limit: number): Promise<AdminWorkItemSourceRow[]>;
   /** Contact form enquiries waiting for client services. */
   listMarketingEnquiries(limit: number): Promise<AdminWorkItemSourceRow[]>;
+  /** Problems buyers reported on paid purchases, waiting for client services. */
+  listPurchaseProblems(limit: number): Promise<AdminWorkItemSourceRow[]>;
 }

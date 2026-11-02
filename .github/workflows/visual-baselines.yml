@@ -64,3 +64,33 @@ jobs:
           name: admin-visual-baseline-candidates-playwright-1.52.0
           path: apps/web/e2e/__snapshots__/admin-pages-visual.spec.ts
           retention-days: 14
+
+  cover-baselines:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_E2E: "1"
+      PLAYWRIGHT_VISUAL: "1"
+      PLAYWRIGHT_BASE_URL: http://localhost:3000
+      COVER_FIXTURE_REVIEW: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @auction/web exec playwright install chromium --with-deps
+      - run: pnpm --filter @auction/web build
+      - name: Start web
+        run: |
+          pnpm --filter @auction/web start &
+          npx --yes wait-on http://localhost:3000/dev/cover --timeout 120000
+      - name: Generate cover candidates
+        run: pnpm --filter @auction/web test:e2e:cover-visual-update
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cover-visual-baseline-candidates-playwright-1.52.0
+          path: apps/web/e2e/__snapshots__/cover-visual.spec.ts
+          retention-days: 14

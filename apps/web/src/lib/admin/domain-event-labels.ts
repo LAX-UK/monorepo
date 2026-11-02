@@ -160,12 +160,15 @@ const LABELS: Record<string, string> = {
   "marketing_enquiry.received": "Contact enquiry received",
   "marketing_enquiry.handled": "Contact enquiry handled",
   "payout.transfer_reversed": "Payout transfer reversed",
+  "purchase_problem.reported": "Purchase problem reported",
 
   "sale.created": "Sale created",
   "sale.published": "Sale published",
   "sale.unpublished": "Sale reverted to draft",
   "sale.cancelled": "Sale cancelled",
   "sale.ended": "Sale marked ended",
+  "sale_registration.decided": "Sale registration decided",
+  "sale_registration.bid_limit_changed": "Sale registration bidding limit changed",
   "sale.soft_deleted": "Sale deleted",
 
   "saleroom.display.paired": "Saleroom display paired",

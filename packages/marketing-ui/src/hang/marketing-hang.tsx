@@ -53,8 +53,20 @@ export type MarketingHangProps = {
   footerNote?: ReactNode;
   /** Accessible name of the row of works. */
   rowLabel?: string;
+  /**
+   * `compact` (default) is the sale page's heading; `section` is a home-page section heading
+   * (24/30 on a phone, 40/48 on a desktop), the same as the sections around it.
+   */
+  headingSize?: "compact" | "section";
+  /** Keeps the heading for assistive technology only, when a tab or label already names the sale. */
+  hideTitle?: boolean;
   className?: string;
 };
+
+const HEADING_SIZE = {
+  compact: "text-[22px] leading-7 sm:text-[28px] sm:leading-9",
+  section: "text-2xl leading-[30px] md:text-[40px] md:leading-[48px]",
+} as const;
 
 /** The gutter used by the page shell, so the wall lines up with the sections around it. */
 const GUTTER_VARS =
@@ -101,6 +113,8 @@ export function MarketingHang({
   figure = false,
   footerNote,
   rowLabel = "Works on the wall, scrolls sideways",
+  headingSize = "compact",
+  hideTitle = false,
   className,
 }: MarketingHangProps) {
   const headingId = useId();
@@ -151,12 +165,20 @@ export function MarketingHang({
         <div className="min-w-0">
           <Heading
             id={headingId}
-            className="font-headline text-[22px] font-medium leading-7 tracking-[-0.01em] text-on-surface sm:text-[28px] sm:leading-9"
+            className={cn(
+              "font-headline font-medium tracking-[-0.01em] text-on-surface",
+              hideTitle ? "sr-only" : HEADING_SIZE[headingSize],
+            )}
           >
             {title}
           </Heading>
           {meta ? (
-            <p className="mt-0.5 font-body text-[13px] leading-5 text-on-surface-variant sm:mt-1 sm:text-sm">
+            <p
+              className={cn(
+                "font-body text-[13px] leading-5 text-on-surface-variant sm:text-sm",
+                hideTitle ? "" : "mt-0.5 sm:mt-1",
+              )}
+            >
               {typeof meta === "function" ? meta(desktop.mode) : meta}
             </p>
           ) : null}

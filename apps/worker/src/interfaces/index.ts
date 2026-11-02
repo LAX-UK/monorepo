@@ -25,10 +25,12 @@ export type {
 } from "./data-export.repository.js";
 export type { INewsletterSignupSyncRepository } from "./newsletter-signup-sync.repository.js";
 export type {
-  ISourceOfFundsDocumentPurgeRepository,
-  SourceOfFundsDocumentToPurge,
-  SourceOfFundsTerminalCase,
-} from "./source-of-funds-document-purge.repository.js";
+  IKycRetentionSubjectStore,
+  PurgeContext,
+  RecordCounts,
+  RetentionCandidate,
+  RetentionHolding,
+} from "./kyc-retention-subject.store.js";
 export type {
   IMarketingContactSyncRepository,
   MarketingContactSyncAuditInput,

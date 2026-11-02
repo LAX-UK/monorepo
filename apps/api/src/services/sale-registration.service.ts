@@ -2,6 +2,7 @@ import type { IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { ISaleRegistrationRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ISaleRepository } from "@auction/persistence/interfaces";
+import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ISaleRegistrationService } from "./interfaces/sale-registration-service.js";
 import { SaleRegistrationAdminService } from "./sale-registration/sale-registration-admin.service.js";
 import { SaleRegistrationBuyerService } from "./sale-registration/sale-registration-buyer.service.js";
@@ -21,6 +22,7 @@ export class SaleRegistrationService implements ISaleRegistrationService {
     legalEntityRepository: ILegalEntityRepository,
     saleRepo: ISaleRepository,
     registrationRepo: ISaleRegistrationRepository,
+    events: IDomainEventSink,
     identityEligibilityGate: IBidIdentityEligibilityGate | null = null,
   ) {
     const ctx = createSaleRegistrationContext({
@@ -30,7 +32,7 @@ export class SaleRegistrationService implements ISaleRegistrationService {
       identityEligibilityGate,
     });
     this.buyer = new SaleRegistrationBuyerService(ctx);
-    this.admin = new SaleRegistrationAdminService(ctx);
+    this.admin = new SaleRegistrationAdminService(ctx, events);
   }
 
   listMineForSale(...args: Parameters<SaleRegistrationBuyerService["listMineForSale"]>) {

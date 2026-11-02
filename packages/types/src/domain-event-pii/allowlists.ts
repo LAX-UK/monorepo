@@ -109,6 +109,23 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** Seller requested to withdraw an active lot (admin queue). */
   "lot.withdrawal_requested": new Set(["sellerLegalEntityId"]),
+  /** A staff decision on a request to bid in a sale. `reason` is the staff-written explanation of a decline. */
+  "sale_registration.decided": new Set([
+    "saleId",
+    "userId",
+    "buyerLegalEntityId",
+    "decision",
+    "bidLimit",
+    "reason",
+  ]),
+  /** A staff change to the bidding limit on one sale registration; null means no limit. */
+  "sale_registration.bid_limit_changed": new Set([
+    "saleId",
+    "userId",
+    "buyerLegalEntityId",
+    "previousLimit",
+    "limit",
+  ]),
   /** Staff declined a seller's withdrawal request; the reason is shown to the seller. */
   "lot.withdrawal_declined": new Set(["sellerLegalEntityId", "reason"]),
   /** Pending payment cancelled by buyer or expired by cron. */
@@ -244,6 +261,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   /** an unanswered organisation invitation withdrawn, or reopened by its Undo. */
   "legal_entity.invitation_withdrawn": new Set(["invitation_id", "role"]),
   "legal_entity.invitation_restored": new Set(["invitation_id", "role"]),
+  /** A buyer reported a problem with a paid purchase; what they wrote stays on the report. */
+  "purchase_problem.reported": new Set(["lotId", "paymentId", "category"]),
   /** A member asked for a role or capability; the reason stays on the request, not the event. */
   "legal_entity.access_requested": new Set([
     "request_id",

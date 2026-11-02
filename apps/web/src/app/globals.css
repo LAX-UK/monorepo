@@ -366,11 +366,21 @@
 @layer base {
   body {
     @apply bg-background text-on-surface font-body antialiased;
+    /* Room for the cookie dock while it is open, so the last control on a page stays reachable. */
+    padding-bottom: var(--cookie-dock-height, 0px);
   }
 
-  /* A focused element is never hidden under the sticky header (WCAG 2.4.11). */
+  /* A focused element is never hidden under the sticky header or the cookie dock (WCAG 2.4.11). */
   html {
     scroll-padding-top: calc(var(--header-height) + 1rem);
+    scroll-padding-bottom: calc(var(--cookie-dock-height, 0px) + 1rem);
+  }
+
+  /* The phone card clears the home indicator when no bar sits under it in the dock. */
+  @media (max-width: 767px) {
+    [data-cookie-dock]:has([data-cookie-dock-slot]:empty) [data-cookie-banner] {
+      margin-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+    }
   }
 
   /* F6 — every in-page anchor target clears the fixed header. */

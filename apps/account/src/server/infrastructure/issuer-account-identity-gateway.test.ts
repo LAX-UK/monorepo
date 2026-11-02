@@ -200,6 +200,22 @@ describe("createIssuerAccountIdentityGateway", () => {
       expect(lastRequest(verify.fetchImpl).body.get("code")).toBe("123456");
     });
 
+    it("posts the phone removal for the signed-in sign-in and maps the answer", async () => {
+      const remove = gateway(async () => Response.json({ removed: true }));
+      expect(await remove.gateway.removePhone(actor)).toEqual({ status: "ok", value: true });
+      const request = lastRequest(remove.fetchImpl);
+      expect(request.url).toContain("/lax/account-phone/remove");
+      expect(Object.fromEntries(request.body)).toEqual({
+        token: "access-token",
+        sid: "current-sid",
+      });
+      const none = gateway(async () => Response.json({ error: "no_phone" }, { status: 409 }));
+      expect(await none.gateway.removePhone(actor)).toEqual({
+        status: "rejected",
+        reason: "no_phone",
+      });
+    });
+
     it.each([
       [409, "email_taken"],
       [409, "phone_taken"],

@@ -15,6 +15,7 @@ type Limits = Partial<{
   phoneSend: number | null;
   phoneNumber: number | null;
   phoneVerify: number | null;
+  phoneRemove: number | null;
 }>;
 
 function setup(
@@ -37,6 +38,7 @@ function setup(
   const phone = {
     sendCode: vi.fn().mockResolvedValue({ ok: true }),
     verify: vi.fn().mockResolvedValue({ ok: true, phone: "+447700900123" }),
+    remove: vi.fn().mockResolvedValue({ ok: true }),
   };
   const emailChange = {
     confirm: vi.fn().mockResolvedValue({
@@ -62,6 +64,7 @@ function setup(
     phoneSendRateLimit: async () => limits.phoneSend ?? null,
     phoneNumberRateLimit: async () => limits.phoneNumber ?? null,
     phoneVerifyRateLimit: async () => limits.phoneVerify ?? null,
+    phoneRemoveRateLimit: async () => limits.phoneRemove ?? null,
     onFailure,
   });
   const call = (path: string, body: string, auth = basic("lax-account-web")) =>
@@ -80,6 +83,7 @@ const PERSON_ROUTES: [string, string][] = [
   ["/lax/account-email-change/cancel", "token=t&sid=current"],
   ["/lax/account-phone/send-code", `token=t&sid=current&phone=${PHONE}`],
   ["/lax/account-phone/verify", `token=t&sid=current&phone=${PHONE}&code=123456`],
+  ["/lax/account-phone/remove", "token=t&sid=current"],
 ];
 
 describe("account contact routes", () => {
@@ -276,5 +280,51 @@ describe("email change confirmation route", () => {
     const response = await call("/lax/account-email-change/confirm", "email_token=s");
     expect(response.status).toBe(status);
     expect(await response.json()).toEqual({ error: kind });
+  });
+
+  describe("phone removal", () => {
+    it("removes the number for the token's owner and the sign-in named", async () => {
+      const { call, phone } = setup();
+      const response = await call("/lax/account-phone/remove", "token=t&sid=current");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ removed: true });
+      expect(phone.remove).toHaveBeenCalledWith(SUBJECT, "current");
+    });
+
+    it("needs the sign-in id", async () => {
+      const { call, phone } = setup();
+      expect((await call("/lax/account-phone/remove", "token=t")).status).toBe(400);
+      expect(phone.remove).not.toHaveBeenCalled();
+    });
+
+    it("answers 403 reauth_required when the sign-in is stale", async () => {
+      const { call, phone } = setup();
+      phone.remove.mockResolvedValueOnce({ ok: false, reason: "reauth_required" });
+      const response = await call("/lax/account-phone/remove", "token=t&sid=current");
+      expect(response.status).toBe(403);
+      expect(await response.json()).toEqual({ error: "reauth_required" });
+    });
+
+    it("answers 409 no_phone when there is no number", async () => {
+      const { call, phone } = setup();
+      phone.remove.mockResolvedValueOnce({ ok: false, kind: "no_phone" });
+      const response = await call("/lax/account-phone/remove", "token=t&sid=current");
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({ error: "no_phone" });
+    });
+
+    it("answers 429 when the person is over their budget", async () => {
+      const { call, phone } = setup({ limits: { phoneRemove: 30 } });
+      expect((await call("/lax/account-phone/remove", "token=t&sid=current")).status).toBe(429);
+      expect(phone.remove).not.toHaveBeenCalled();
+    });
+
+    it("answers a generic 503 when removal fails unexpectedly", async () => {
+      const { call, phone, onFailure } = setup();
+      phone.remove.mockRejectedValueOnce(new Error("db down"));
+      const response = await call("/lax/account-phone/remove", "token=t&sid=current");
+      expect(response.status).toBe(503);
+      expect(onFailure).toHaveBeenCalled();
+    });
   });
 });

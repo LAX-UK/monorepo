@@ -1,5 +1,6 @@
--- Rollback for 0272_marketing_enquiry. Roll back the application release first: the previous
--- release neither reads nor writes this table. Stored enquiries are lost.
+-- Rollback for 0272_kyc_retention_tombstone. Disable KYC_RETENTION_PURGE_ENABLED and roll back the
+-- worker first: the previous release does not write this table. The tombstones are lost; the
+-- purged records themselves are not restored.
 SET LOCAL lock_timeout = '30s';
---> statement-breakpoint
-DROP TABLE IF EXISTS "marketing_enquiry";
+
+DROP TABLE IF EXISTS "kyc_retention_tombstone";

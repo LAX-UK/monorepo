@@ -105,6 +105,9 @@ export class SecurityNoticeService implements SecurityNoticePublisher {
       case "phone_verified":
         await enqueue("phone-verified", subject.email, { maskedPhone: maskPhoneE164(event.phone) });
         return;
+      case "phone_removed":
+        await enqueue("phone-removed", subject.email, { maskedPhone: maskPhoneE164(event.phone) });
+        return;
       case "email_changed": {
         const addresses = { previousEmail: event.previousEmail, newEmail: event.newEmail };
         // Both inboxes hear about it: the old one is the one that can still stop a takeover.
