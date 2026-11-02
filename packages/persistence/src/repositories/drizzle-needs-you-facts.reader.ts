@@ -88,9 +88,11 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
         title: lot.title,
         endsAt: lot.endTime,
         // The bid now leading is the one that put the account behind.
+        // Written with explicit aliases: Drizzle leaves columns unqualified in a select list,
+        // so a correlated subquery there must name its own tables.
         outbidAt: sql<Date | null>`(
-          select max(${leading.createdAt}) from ${leading}
-          where ${leading.lotId} = ${lot.id} and ${leading.isWinning} = true
+          select max(winning_bid.created_at) from bid as winning_bid
+          where winning_bid.lot_id = "lot"."id" and winning_bid.is_winning = true
         )`.mapWith((value) => (value ? new Date(value) : null)),
       })
       .from(lot)
@@ -156,16 +158,18 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
         and ${deliveryQuote.buyerLegalEntityId} = ${input.legalEntityId}
         and ${deliveryQuote.status} = 'quoted'
     )`;
+    // Explicit aliases: these run in the select list, where Drizzle leaves columns unqualified.
     const paymentAt = sql<Date | null>`(
-      select ${payment.createdAt} from ${payment}
-      where ${payment.lotId} = ${lot.id} and ${payment.buyerLegalEntityId} = ${input.legalEntityId}
-      order by ${payment.createdAt} desc limit 1
+      select latest_payment.created_at from payment as latest_payment
+      where latest_payment.lot_id = "lot"."id"
+        and latest_payment.buyer_legal_entity_id = ${input.legalEntityId}
+      order by latest_payment.created_at desc limit 1
     )`.mapWith((value) => (value ? new Date(value) : null));
     const quotedAt = sql<Date | null>`(
-      select max(${deliveryQuote.quotedAt}) from ${deliveryQuote}
-      where ${deliveryQuote.lotId} = ${lot.id}
-        and ${deliveryQuote.buyerLegalEntityId} = ${input.legalEntityId}
-        and ${deliveryQuote.status} = 'quoted'
+      select max(open_quote.quoted_at) from delivery_quote as open_quote
+      where open_quote.lot_id = "lot"."id"
+        and open_quote.buyer_legal_entity_id = ${input.legalEntityId}
+        and open_quote.status = 'quoted'
     )`.mapWith((value) => (value ? new Date(value) : null));
     const rows = await this.db
       .select({
