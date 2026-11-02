@@ -1,8 +1,7 @@
 "use client";
 
 import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
-import { createSavedSearch } from "@/lib/data/http/saved-searches.client";
-import { searchAlertLabel, searchAlertQuery } from "@/lib/marketing/search-fallback";
+import { ensureSearchAlert } from "@/lib/marketing/search-alert";
 import { notify } from "@/lib/ui/notify";
 import { Button, ButtonLink } from "@auction/ui/lax";
 import { Bell, BellRing } from "lucide-react";
@@ -36,18 +35,18 @@ export function SearchAlertButton({
 
   const save = useCallback(async () => {
     setPhase("saving");
-    const result = await createSavedSearch({
-      label: searchAlertLabel(q),
-      query: searchAlertQuery(q, categoryId),
-      notifyEmail: true,
-    });
-    if (!result.ok) {
+    const outcome = await ensureSearchAlert(q, categoryId);
+    if (outcome === "failed") {
       setPhase("idle");
       notify.error("Could not set the alert. Try again in a moment.");
       return;
     }
     setPhase("saved");
-    notify.success("Alert set. We’ll email you when a lot matches.");
+    notify.success(
+      outcome === "existing"
+        ? "You already have an alert for this search."
+        : "Alert set. We’ll email you when a lot matches.",
+    );
   }, [q, categoryId]);
 
   useEffect(() => {
@@ -75,9 +74,10 @@ export function SearchAlertButton({
 
   if (phase === "saved") {
     return (
-      <Button variant="secondary" icon={<BellRing aria-hidden />} disabled>
+      <output className="inline-flex h-10 items-center gap-2 text-lax-14 font-medium text-lax-fg">
+        <BellRing className="size-4" aria-hidden />
         Alert set
-      </Button>
+      </output>
     );
   }
 
