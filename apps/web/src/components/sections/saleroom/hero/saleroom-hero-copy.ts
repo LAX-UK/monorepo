@@ -59,9 +59,14 @@ export function resolveHeroCountdownEnd(
 }
 
 export function buildSaleroomHeroStats(
-  hero: Pick<SaleHeroVM, "itemsLabel" | "estimatedTotalLabel" | "registeredBidderCount">,
+  hero: Pick<
+    SaleHeroVM,
+    "itemsLabel" | "lotCount" | "estimatedTotalLabel" | "registeredBidderCount"
+  >,
 ): readonly (readonly [string, string])[] {
-  const stats: (readonly [string, string])[] = [["Total lots", hero.itemsLabel]];
+  // A sale announced before its lots are online has no count worth showing.
+  const stats: (readonly [string, string])[] =
+    hero.lotCount > 0 ? [["Total lots", hero.itemsLabel]] : [];
   if (hero.estimatedTotalLabel) {
     stats.push(["Est. total", hero.estimatedTotalLabel]);
   }

@@ -6,6 +6,7 @@ import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge"
 import { SaleroomMobileSummaryBar } from "@/components/marketing/saleroom-mobile-summary-bar";
 import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
+import { formatLondonDateTime } from "@/lib/datetime/london-time";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import {
@@ -13,9 +14,28 @@ import {
   resolveSaleroomMobileSummaryBarMode,
   saleroomBidNowCtaClassName,
 } from "@/lib/saleroom/saleroom-mobile-chrome";
+import { opensLine } from "@/lib/time/opens-line";
+import { useClientClock } from "@/lib/time/use-client-clock";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot } from "@auction/ui";
 import Link from "next/link";
+
+/** When a sale opens, by the time rule: the date beyond a week, then days, hours and minutes. */
+function OpensText({ start }: { start: Date }) {
+  const nowMs = useClientClock(60_000);
+  const line =
+    nowMs != null
+      ? opensLine(start, new Date(nowMs))
+      : { label: "Opens", value: formatLondonDateTime(start) };
+  return (
+    <p className="font-body text-sm text-on-surface">
+      <span className="text-on-surface-variant">{line.label} </span>
+      <span className="font-semibold" suppressHydrationWarning>
+        {line.value}
+      </span>
+    </p>
+  );
+}
 
 type Props = {
   /** Bidding start instant. Required so we can render an "Opens in" countdown for upcoming sales. */
@@ -164,11 +184,12 @@ export function SaleMobileSummaryBar({
       <div className="min-w-0 flex flex-col gap-1">
         <SaleLifecycleBadge
           status={isUpcoming ? "scheduled" : "active"}
-          {...(!isUpcoming ? { label: kicker } : {})}
+          {...(isUpcoming ? { opensAt: start } : { label: kicker })}
         />
         <span className="sr-only">{saleTitle}</span>
-        <CountdownFadeSlot visible={showCountdown}>
-          {showCountdown ? (
+        {isUpcoming ? <OpensText start={start} /> : null}
+        <CountdownFadeSlot visible={showCountdown && !isUpcoming}>
+          {showCountdown && !isUpcoming ? (
             <Countdown
               end={target}
               announce={isUpcoming || deliveryMode === "online"}

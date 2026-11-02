@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 const state: CalendarSalesUrlState = {
-  tab: "newLots",
+  tab: "results",
   deliveryMode: "all",
   location: "all",
   sort: "startAsc",
@@ -12,7 +12,7 @@ const state: CalendarSalesUrlState = {
 };
 
 describe("SalesCalendarPagination", () => {
-  it("renders next-page navigation for paginated new lots", () => {
+  it("renders next-page navigation for paginated results", () => {
     render(<SalesCalendarPagination state={state} page={1} hasMore />);
 
     expect(
@@ -20,7 +20,7 @@ describe("SalesCalendarPagination", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Next/i })).toHaveAttribute(
       "href",
-      "/sales?tab=newLots&page=2",
+      "/sales?tab=results&page=2",
     );
   });
 

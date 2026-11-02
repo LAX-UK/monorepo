@@ -13,6 +13,7 @@ import {
 import type { z } from "zod";
 import { z as zod } from "zod";
 import { optionalBuyerPremiumRateSchema } from "./buyer-premium-rate";
+import { framedSizeIssues, readFramedCm } from "./lot-framed-size";
 
 const decimalString = zod
   .string()
@@ -104,6 +105,11 @@ export const adminLotFormValuesSchema = zod
     description: optionalStr,
     medium: optionalStr,
     dimensions: optionalStr,
+    /** The photograph shows the work in its frame, so its size is the framed size. */
+    photoIncludesFrame: zod.boolean(),
+    /** Framed size in centimetres as typed; both sides or neither. */
+    framedWidthCm: optionalStr,
+    framedHeightCm: optionalStr,
     /** Legal entity id — replaces legacy user-based sellerId. */
     sellerLegalEntityId: zod.string().uuid("Choose the seller"),
     /** Display label for the picker chip (not sent to API). */
@@ -157,6 +163,9 @@ export const adminLotFormValuesSchema = zod
         message: "Dimensions text is too long",
         path: ["dimensions"],
       });
+    }
+    for (const issue of framedSizeIssues(values.framedWidthCm, values.framedHeightCm)) {
+      ctx.addIssue({ code: zod.ZodIssueCode.custom, message: issue.message, path: [issue.field] });
     }
     const start = instantFromDatetimeFormString(values.startTime);
     const end = instantFromDatetimeFormString(values.endTime);
@@ -256,6 +265,17 @@ function parseAutoBidPresetsCsv(raw: string | undefined): number[] | null | unde
   return nums;
 }
 
+/** The framed size for the API: numbers, with an update clearing it by sending null. */
+function framedSizePayload(v: AdminLotFormValues, forUpdate: boolean) {
+  const width = readFramedCm(v.framedWidthCm);
+  const height = readFramedCm(v.framedHeightCm);
+  const w = width.ok ? width.value : null;
+  const h = height.ok ? height.value : null;
+  if (w === null && h === null)
+    return forUpdate ? { framedWidthCm: null, framedHeightCm: null } : {};
+  return { framedWidthCm: w, framedHeightCm: h };
+}
+
 function buildCreateLotRaw(v: AdminLotFormValues, opts?: { forUpdate?: boolean }) {
   const lotNumberRaw =
     v.lotNumber !== null && v.lotNumber !== undefined && v.lotNumber !== ""
@@ -266,6 +286,8 @@ function buildCreateLotRaw(v: AdminLotFormValues, opts?: { forUpdate?: boolean }
     description: (v.description && String(v.description).trim()) || undefined,
     medium: (v.medium && String(v.medium).trim()) || undefined,
     dimensions: (v.dimensions && String(v.dimensions).trim()) || undefined,
+    photoIncludesFrame: v.photoIncludesFrame,
+    ...framedSizePayload(v, opts?.forUpdate === true),
     sellerLegalEntityId: v.sellerLegalEntityId.trim(),
     categoryIds: v.categoryIds,
     auctionType: v.auctionType,

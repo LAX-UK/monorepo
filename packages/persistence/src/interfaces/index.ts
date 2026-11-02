@@ -58,6 +58,16 @@ export type {
 } from "./external-account.repository.js";
 
 export type { IFailedJobRepository, FailedJobReplayRow } from "./failed-job.repository.js";
+export type {
+  FailedJobFilter,
+  FailedJobRecord,
+  FailedJobRecordWithPayload,
+  FailedJobReviewView,
+  FailedJobSearch,
+  FailedJobSearchResult,
+  IFailedJobDisposition,
+  IFailedJobReviewReader,
+} from "./failed-job-review.js";
 
 export type { ISaleroomLiveSessionCounter } from "./saleroom-live-session-counter.js";
 
@@ -297,6 +307,12 @@ export type {
 } from "./lot-transition-guard.reader.js";
 
 export type { ILotTransitionRepository } from "./lot-transition.repository.js";
+
+export type {
+  DisputeDeskCaseRecord,
+  DisputeDeskListInput,
+  IAdminDisputeDeskReader,
+} from "./admin-dispute-desk.reader.js";
 
 export type {
   AdminDisputePaymentRow,
@@ -661,6 +677,7 @@ export type {
 export type { IMediaAssetReader, MediaAssetRecord } from "./media-asset.reader.js";
 export type { CoverAnalysisRecord, ICoverAnalysisReader } from "./cover-analysis.reader.js";
 export type {
+  HomePinnedSale,
   ISaleCoverRepository,
   SaleCoverState,
   SaleHomePatch,
@@ -914,6 +931,11 @@ export type {
   PaymentAttentionRow,
   SubmissionAttentionRow,
 } from "./attention-feed.reader.js";
+
+export type {
+  ISaleResultLotsReader,
+  SaleResultLotRow,
+} from "./sale-result-lots.reader.js";
 
 export type {
   ISaleAttentionSignalsReader,

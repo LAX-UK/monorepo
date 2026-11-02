@@ -1,22 +1,23 @@
 import "server-only";
 
+import { firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
 import {
   type DisputesListSearch,
   activeDisputesView,
   disputesListHref,
   disputesRangeSummary,
-  disputesViewTotal,
   toDisputesStaffRows,
 } from "@/lib/admin/finance/disputes-staff-list.vm";
-import { disputesListController } from "@/lib/admin/list-controllers/disputes-list-controller";
-import type { AdminDisputeCaseSummary } from "@auction/types";
+import { getDisputeDeskPage } from "@/lib/data/http/dispute-desk.server";
+import { parseStaffPageSize } from "@auction/staff-ui";
+import type { DisputeDeskCounts } from "@auction/types";
 
-const EMPTY_SUMMARY: AdminDisputeCaseSummary = {
+const EMPTY_COUNTS: DisputeDeskCounts = {
+  needs_allocation: 0,
   open: 0,
-  underReview: 0,
-  won: 0,
-  lost: 0,
+  under_review: 0,
   closed: 0,
+  all: 0,
 };
 
 /** Shown in place of the rows; the raw HTTP failure stays in the server logs. */
@@ -29,42 +30,48 @@ function plainSearch(sp: DisputesListSearch): Record<string, string> {
   );
 }
 
-export async function loadAdminDisputesListPage(sp: DisputesListSearch) {
-  const query = disputesListController.parseQuery(sp);
+export async function loadAdminDisputesListPage(sp: DisputesListSearch, now = new Date()) {
+  const base = parseListSearchParams(sp);
+  const limit = parseStaffPageSize(firstString(sp.limit));
   const search = plainSearch(sp);
   const view = activeDisputesView(search);
-  const base = { search, view, pageSize: query.limit };
+  const reason = firstString(sp.reason);
+  const shared = { search, view, pageSize: limit, filtered: Boolean(base.q || reason) };
 
   try {
-    const page = await disputesListController.fetch(query);
-    const rows = toDisputesStaffRows(page.rows);
-    const summary = page.summary ?? EMPTY_SUMMARY;
-    const { offset, limit } = query;
-    const total = Math.max(disputesViewTotal(view, summary), offset + rows.length);
+    const page = await getDisputeDeskPage({
+      view,
+      q: base.q,
+      reason,
+      limit,
+      offset: base.offset,
+    });
+    const rows = toDisputesStaffRows(page.rows, now);
+    const total = Math.max(page.counts[view], base.offset + rows.length);
     return {
-      ...base,
+      ...shared,
       rows,
-      summary,
+      counts: page.counts,
       loadError: null as string | null,
       pagination:
         rows.length > 0
           ? {
-              summary: disputesRangeSummary(offset, rows.length, total),
+              summary: disputesRangeSummary(base.offset, rows.length, total),
               prevHref:
-                offset > 0
-                  ? disputesListHref(search, { offset: Math.max(0, offset - limit) })
+                base.offset > 0
+                  ? disputesListHref(search, { offset: Math.max(0, base.offset - limit) })
                   : null,
               nextHref: page.hasNextPage
-                ? disputesListHref(search, { offset: offset + limit })
+                ? disputesListHref(search, { offset: base.offset + limit })
                 : null,
             }
           : null,
     };
   } catch {
     return {
-      ...base,
+      ...shared,
       rows: [],
-      summary: EMPTY_SUMMARY,
+      counts: EMPTY_COUNTS,
       loadError: DISPUTES_LOAD_ERROR as string | null,
       pagination: null,
     };

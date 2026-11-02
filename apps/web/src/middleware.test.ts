@@ -82,3 +82,13 @@ describe("middleware request path headers", () => {
     expect(response.headers.get("x-middleware-request-x-pathname")).toBeNull();
   });
 });
+
+describe("middleware archive redirect", () => {
+  it("moves the old archive to the Lots view with a permanent redirect, keeping its filters", async () => {
+    const response = await middleware(requestFor("lax.bid", "/archive?year=2026&sort=recent"));
+    expect(response.status).toBe(301);
+    expect(await redirectLocation(response)).toBe(
+      "https://lax.bid/results?view=lots&year=2026&sort=recent",
+    );
+  });
+});

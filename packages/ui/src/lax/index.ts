@@ -30,6 +30,8 @@ export type {
 } from "./shortcuts-dialog.js";
 export { Field, ReadOnlyView, useField, useReadOnlyView } from "./field.js";
 export type { FieldProps } from "./field.js";
+export { ErrorSummary } from "./error-summary.js";
+export type { ErrorSummaryItem, ErrorSummaryProps } from "./error-summary.js";
 export { TextArea, TextInput } from "./input.js";
 export { TokenInput } from "./token-input.js";
 export { splitTokens } from "./token-split.js";

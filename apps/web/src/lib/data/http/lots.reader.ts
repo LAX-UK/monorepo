@@ -15,6 +15,7 @@ import {
   publicLotViewEnvelopeSchema,
   watchCountSchema,
 } from "@/lib/data/http/lots.schema";
+import { isWithdrawnLotRow } from "@/lib/data/http/object-guards";
 import { NO_STORE_FETCH_POLICY } from "@/lib/data/http/server-fetch-policy";
 import type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
 import type { Bid, Lot, PublicLotView } from "@auction/types";
@@ -186,6 +187,9 @@ export async function getServerLotReader(): Promise<LotReader> {
         throw new Error(`Failed to load lot: ${res.status}`);
       }
       const body = await readJsonBody(res);
+      // A withdrawn lot is not a `Lot`: the lot page reads and draws it on its own path
+      // (`loadWithdrawnLotPage`), and every other surface skips it.
+      if (isWithdrawnLotRow((body as { data?: unknown } | null)?.data)) return null;
       return readDataEnvelope(body, publicLotViewEnvelopeSchema, `GET /lots/${id}`);
     },
   };

@@ -1153,6 +1153,37 @@ describe("LotService.listBidsForPublicApi", () => {
     expect(r.data[0]?.placedByUserId).toBeNull();
     expect(r.data[0]?.bidderRef).toBe(lotBidderRef(lotId, "bidder-user"));
   });
+
+  it("lists no bids on a withdrawn lot for the public, and all of them for an auction manager", async () => {
+    const lotRepo: ILotRepository = {
+      findById: vi.fn().mockResolvedValue({ ...baseLot, status: "cancelled" }),
+    } as unknown as ILotRepository;
+    const listForLot = vi.fn().mockResolvedValue([bidRow]);
+    const svc = new LotService({
+      lotRepo,
+      bids: { listForLot } as unknown as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
+    const asPublic = await svc.listBidsForPublicApi({
+      lotId,
+      viewerRole: "client",
+      viewerId: undefined,
+      limitQuery: undefined,
+    });
+    expect(asPublic).toEqual({ kind: "ok", data: [] });
+    expect(listForLot).not.toHaveBeenCalled();
+
+    const asManager = await svc.listBidsForPublicApi({
+      lotId,
+      viewerRole: "staff",
+      viewerStaffRoles: ["administrator"],
+      viewerId: "admin-1",
+      limitQuery: undefined,
+    });
+    expect(asManager.kind === "ok" && asManager.data).toHaveLength(1);
+  });
 });
 
 describe("LotService.listPublicBidHistory", () => {

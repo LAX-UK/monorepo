@@ -1,52 +1,54 @@
-import { SaleMetaBadges } from "@/components/marketing/sale-meta-badges";
+import { SaleFormatLine } from "@/components/marketing/sale-format-line";
+import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge";
 import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
 import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import type { SaleDeliveryMode } from "@auction/types";
+import { StatusBadge } from "@auction/ui/lax";
 
 type Props = {
   hero: SaleHeroVM;
   liveTrailing: string;
   deliveryMode: SaleDeliveryMode;
-  startsSoon?: boolean;
   showOnlineBiddingGatedBadge?: boolean;
   explainerContext?: SaleFormatExplainerContext;
 };
 
+const LIFECYCLE_STATUSES: ReadonlyArray<SaleHeroVM["status"]> = ["active", "scheduled", "ended"];
+
+/**
+ * What the sale is, in three plain lines: one status badge, the format with its place, and the
+ * time. Nothing is said twice: an online sale has no place line, and the date is not repeated in
+ * the countdown below.
+ */
 export function SaleroomHeroMetaRow({
   hero,
   liveTrailing,
   deliveryMode,
-  startsSoon = false,
   showOnlineBiddingGatedBadge = false,
   explainerContext,
 }: Props) {
-  const dateLabel = hero.startEndLabel;
+  const showStatus = LIFECYCLE_STATUSES.includes(hero.status);
 
   return (
-    <div className="fade-up flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-4 sm:gap-y-2">
-      <p className="font-label text-xs font-normal text-on-surface-variant sm:text-sm">
-        {hero.dateLine}
-      </p>
+    <div className="fade-up flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <SaleMetaBadges
-          status={hero.status}
-          deliveryMode={deliveryMode}
-          dateLabel={dateLabel}
-          isLive={hero.isLive}
-          startsSoon={startsSoon}
-          showLifecycleBadge
-          showDate={false}
-          withExplainer
-          showOnlineBiddingGatedBadge={showOnlineBiddingGatedBadge}
-          {...(explainerContext ? { explainerContext } : {})}
-          size="sm"
-        />
+        {showStatus ? <SaleLifecycleBadge status={hero.status} opensAt={hero.startTime} /> : null}
+        {showOnlineBiddingGatedBadge ? (
+          <StatusBadge tone="neutral">Online bidding opens when live</StatusBadge>
+        ) : null}
         {liveTrailing ? (
           <span className="font-label text-xs font-medium text-on-surface-variant">
             {liveTrailing}
           </span>
         ) : null}
       </div>
+      <SaleFormatLine
+        deliveryMode={deliveryMode}
+        place={hero.placeLabel}
+        withExplainer
+        {...(explainerContext ? { explainerContext } : {})}
+      />
+      <p className="font-body text-sm text-on-surface-variant">{hero.dateLine}</p>
     </div>
   );
 }

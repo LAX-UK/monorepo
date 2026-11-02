@@ -10,6 +10,7 @@ import {
 } from "@/lib/presenters/countdown-tone";
 import { liveUrgencyPulseClass } from "@/lib/presenters/status-presentation";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
+import { opensLine } from "@/lib/time/opens-line";
 import { useClientClock } from "@/lib/time/use-client-clock";
 import type { SaleDeliveryMode } from "@auction/types";
 import { LabelCaps, LiveDot, cn } from "@auction/ui";
@@ -147,6 +148,35 @@ export function MarketingCountdownPanel({
 
   if (isActiveSaleroomCountdown && effectiveEndIso == null) {
     return null;
+  }
+
+  // Something that has not opened is told by the time rule, not by ticking segments: a date
+  // beyond a week, then days and hours, hours and minutes, minutes. Before the clock is known the
+  // date is always true.
+  if (!showLiveDot && !ended && Number.isFinite(endMs) && effectiveEndIso != null) {
+    const target = new Date(endMs);
+    const line =
+      nowMs != null
+        ? opensLine(target, new Date(nowMs), label.replace(/ in$/, ""))
+        : { label: label.replace(/ in$/, ""), value: formatLondonDateTime(target) };
+    return (
+      <div className={cn("text-left", className)}>
+        <p className="font-body text-base text-on-surface">
+          <span className="text-on-surface-variant">{line.label} </span>
+          <time
+            dateTime={effectiveEndIso}
+            aria-label={`${line.label} ${line.value}`}
+            className="font-semibold tabular-nums"
+            suppressHydrationWarning
+          >
+            {line.value}
+          </time>
+        </p>
+        {secondaryLine ? (
+          <p className="mt-2 font-body text-xs text-on-surface-variant">{secondaryLine}</p>
+        ) : null}
+      </div>
+    );
   }
 
   if (reduced && Number.isFinite(endMs) && effectiveEndIso != null) {

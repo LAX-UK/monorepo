@@ -56,3 +56,17 @@ describe("MappedStatusBadge", () => {
     expect(screen.getByText("Paid")).toBeInTheDocument();
   });
 });
+
+describe("StatusBadge on an image", () => {
+  it("takes an opaque surface and a glyph in place of the status cue", () => {
+    render(
+      <StatusBadge tone="neutral" onImage icon={<svg data-testid="glyph" />}>
+        Your listing
+      </StatusBadge>,
+    );
+    const badge = screen.getByText("Your listing").parentElement as HTMLElement;
+    expect(badge.className).toContain("--lax-surface");
+    expect(screen.getByTestId("glyph")).toBeInTheDocument();
+    expect(badge.querySelector("[data-shape='ring']")).toBeNull();
+  });
+});

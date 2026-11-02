@@ -78,7 +78,7 @@ export async function resetLayoutPreferencesAction(): Promise<ActionResult<void>
     }
     revalidatePath("/settings");
     revalidatePath("/search");
-    revalidatePath("/archive");
+    revalidatePath("/results");
     revalidatePath("/sales");
     revalidatePath("/artists");
     return actionSuccess();

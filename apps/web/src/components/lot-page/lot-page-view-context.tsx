@@ -1,5 +1,7 @@
 "use client";
 
+import type { LotPageView } from "@/lib/lot-page/build-lot-page-view";
+import { NO_LOT_VIEWER } from "@/lib/lot-page/lot-viewer";
 import {
   type LotPageLive,
   type LotPageViewSource,
@@ -31,4 +33,31 @@ export function useLotPageViewContext(): LotPageViewContextValue {
   const ctx = useContext(LotPageViewContext);
   if (!ctx) throw new Error("useLotPageViewContext must be used within LotPageViewProvider");
   return ctx;
+}
+
+/**
+ * A lot page that draws a view which never changes (a withdrawn lot has no clock, no price and no
+ * bidding), so it needs none of the live providers.
+ */
+export function LotPageViewStaticProvider({
+  view,
+  children,
+}: {
+  view: LotPageView;
+  children: ReactNode;
+}) {
+  return (
+    <LotPageViewContext.Provider
+      value={{
+        view,
+        history: null,
+        nowMs: 0,
+        currentPrice: "0",
+        nextBid: null,
+        viewer: NO_LOT_VIEWER,
+      }}
+    >
+      {children}
+    </LotPageViewContext.Provider>
+  );
 }

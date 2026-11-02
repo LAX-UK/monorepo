@@ -1,33 +1,36 @@
 "use client";
 
-import { MarketingUnderlineTabs } from "@/components/marketing/marketing-underline-tabs";
 import {
   type CalendarSalesUrlState,
   calendarSalesHrefFromState,
-  getCalendarPrimaryTabDefinitions,
 } from "@/lib/marketing/sales-calendar-params";
+import type { CalendarTab } from "@/lib/marketing/sales-calendar-tabs";
+import { type LinkProps, TabNav } from "@auction/ui/lax";
+import Link from "next/link";
+
+/** A calendar tab changes what the list shows, so it keeps the reader's place on the page. */
+function CalendarTabLink({ prefetch: _prefetch, ...props }: LinkProps) {
+  return <Link {...props} scroll={false} prefetch={false} />;
+}
 
 type Props = {
   state: CalendarSalesUrlState;
-  hasLiveSales?: boolean;
+  tabs: readonly CalendarTab[];
 };
 
-export function SalesPrimaryTabs({ state, hasLiveSales = false }: Props) {
-  const tabs = getCalendarPrimaryTabDefinitions(hasLiveSales);
-
+/** The calendar's sections as kit tabs; the ones that do not fit go into "More". */
+export function SalesPrimaryTabs({ state, tabs }: Props) {
   return (
-    <div className="w-full overflow-x-auto scroll-pl-4 scroll-pr-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <MarketingUnderlineTabs
-        variant="route"
-        ariaLabel="Calendar sections"
-        tabs={tabs.map((t) => ({
-          id: t.id,
-          label: t.label,
-          href: calendarSalesHrefFromState(state, { tab: t.id, page: undefined }),
-          active: state.tab === t.id,
-          scroll: false,
-        }))}
-      />
-    </div>
+    <TabNav
+      label="Calendar sections"
+      Link={CalendarTabLink}
+      activeId={state.tab}
+      items={tabs.map((t) => ({
+        id: t.id,
+        label: t.label,
+        href: calendarSalesHrefFromState(state, { tab: t.id, page: undefined }),
+        ...(t.count !== undefined ? { count: t.count, countLabel: "sales" } : {}),
+      }))}
+    />
   );
 }

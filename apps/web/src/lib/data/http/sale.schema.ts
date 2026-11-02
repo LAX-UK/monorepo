@@ -1,8 +1,8 @@
+import { parseGalleryImages } from "@/lib/data/http/gallery-image.schema";
 import { isIndexableObject, toObjectRecord } from "@/lib/data/http/object-guards";
 import { zCoerceDate, zStringArrayFromUnknown } from "@/lib/data/http/schema-coerce";
 import type {
   BuyerPremiumTier,
-  GalleryImage,
   Sale,
   SaleDayMedia,
   SaleDayMediaRef,
@@ -44,25 +44,6 @@ function parseBuyerPremiumTiers(raw: unknown): BuyerPremiumTier[] | null {
     out.push({ hammerThresholdMinor: threshold, rate });
   }
   return out.length > 0 ? out : null;
-}
-
-function parseGalleryImages(raw: unknown): GalleryImage[] | undefined {
-  if (!Array.isArray(raw) || raw.length === 0) return undefined;
-  const out: GalleryImage[] = [];
-  for (const entry of raw) {
-    if (!isIndexableObject(entry)) continue;
-    const src =
-      typeof entry.src === "string" ? entry.src : typeof entry.url === "string" ? entry.url : null;
-    if (!src) continue;
-    const image: GalleryImage = { src };
-    if (typeof entry.alt === "string" && entry.alt.trim()) image.alt = entry.alt.trim();
-    if (typeof entry.width === "number") image.width = entry.width;
-    if (typeof entry.height === "number") image.height = entry.height;
-    if (typeof entry.blurDataURL === "string" && entry.blurDataURL)
-      image.blurDataURL = entry.blurDataURL;
-    out.push(image);
-  }
-  return out.length > 0 ? out : undefined;
 }
 
 function parsePressRefs(raw: unknown): SalePressRef[] | undefined {
@@ -173,6 +154,7 @@ function nullableString(value: unknown): string | null {
 
 const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transform((row): Sale => {
   const coverImageAssets = parseGalleryImages(row.coverImageAssets);
+  const featuredLotIds = zStringArrayFromUnknown.parse(row.featuredLotIds);
   const dayImages = parseDayPhotoRefs(row.dayImages);
   const dayImageAssets = parseDayPhotoAssets(row.dayImageAssets);
   const pressCoverage = parsePressRefs(row.pressCoverage);
@@ -183,6 +165,7 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
     description: row.description == null ? null : String(row.description),
     coverImages: zStringArrayFromUnknown.parse(row.coverImages),
     ...(coverImageAssets !== undefined ? { coverImageAssets } : {}),
+    ...(featuredLotIds.length > 0 ? { featuredLotIds } : {}),
     ...(dayImages !== undefined ? { dayImages } : {}),
     ...(dayImageAssets !== undefined ? { dayImageAssets } : {}),
     ...(pressCoverage !== undefined ? { pressCoverage } : {}),
@@ -209,6 +192,10 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
       row.previewStartTime == null || row.previewStartTime === ""
         ? null
         : zCoerceDate.parse(row.previewStartTime),
+    ...(nullableString(row.subtitle) !== null ? { subtitle: nullableString(row.subtitle) } : {}),
+    ...(row.consignmentDeadline != null && row.consignmentDeadline !== ""
+      ? { consignmentDeadline: zCoerceDate.parse(row.consignmentDeadline) }
+      : {}),
     buyerPremiumRate:
       row.buyerPremiumRate == null || row.buyerPremiumRate === ""
         ? "0.25"
@@ -218,6 +205,9 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
     createdBy: String(row.createdBy ?? ""),
     createdAt: zCoerceDate.parse(row.createdAt),
     updatedAt: zCoerceDate.parse(row.updatedAt),
+    ...(row.consignmentDeadline
+      ? { consignmentDeadline: zCoerceDate.parse(row.consignmentDeadline) }
+      : {}),
     ...(isSellingPlatform(row.sellingPlatform) ? { sellingPlatform: row.sellingPlatform } : {}),
     ...(isAtgState(row.atgAuctionState) ? { atgAuctionState: row.atgAuctionState } : {}),
     ...(isAtgDistribution(row.atgDistribution) ? { atgDistribution: row.atgDistribution } : {}),

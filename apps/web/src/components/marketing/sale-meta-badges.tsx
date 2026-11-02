@@ -4,6 +4,7 @@ import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { cn } from "@auction/ui";
+import { StatusBadge } from "@auction/ui/lax";
 
 type Props = {
   status: Sale["status"] | "voided";
@@ -11,6 +12,8 @@ type Props = {
   dateLabel: string;
   isLive: boolean;
   startsSoon?: boolean;
+  /** When the sale opens, for the badge of a scheduled sale. */
+  opensAt?: Date | string | null;
   locationLabel?: string | null;
   /** When true, render `SaleScheduleBadges` above the meta row (home tiles). */
   withScheduleRow?: boolean;
@@ -33,6 +36,7 @@ export function SaleMetaBadges({
   dateLabel,
   isLive,
   startsSoon = false,
+  opensAt,
   locationLabel,
   withScheduleRow = false,
   showLifecycleBadge = true,
@@ -54,20 +58,16 @@ export function SaleMetaBadges({
     <div className={cn("flex flex-col gap-2", className)}>
       {withScheduleRow ? <SaleScheduleBadges isLive={isLive} startsSoon={startsSoon} /> : null}
       <div className="flex flex-wrap items-center gap-2">
-        {!withScheduleRow && showRegistryLifecycle ? <SaleLifecycleBadge status={status} /> : null}
-        {!withScheduleRow && startsSoon && !isLive && status === "scheduled" ? (
-          <SaleLifecycleBadge status="scheduled" label="Starts soon" />
+        {!withScheduleRow && showRegistryLifecycle ? (
+          <SaleLifecycleBadge status={status} opensAt={opensAt} />
         ) : null}
         <SaleTypeBadge
           deliveryMode={deliveryMode}
-          size={size}
           withExplainer={withExplainer}
           {...(explainerContext ? { explainerContext } : {})}
         />
         {showOnlineBiddingGatedBadge ? (
-          <span className="inline-flex items-center rounded border border-outline-variant/50 bg-surface-container-low px-2 py-0.5 font-label text-xs font-medium text-on-surface-variant">
-            Online bidding opens when live
-          </span>
+          <StatusBadge tone="neutral">Online bidding opens when live</StatusBadge>
         ) : null}
         {showDate ? (
           <div

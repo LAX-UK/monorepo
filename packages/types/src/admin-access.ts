@@ -183,6 +183,12 @@ export const PAYMENT_WRITE_ACCESS: CapabilityRequirement = {
 export const PAYMENT_MANUAL_REVIEW_WRITE_ACCESS: CapabilityRequirement = "finance.platform.write";
 
 /**
+ * Allocate a card dispute to the invoices it falls on. It moves each seller's payout, so it is
+ * platform-wide finance write, like releasing or refunding a held payment.
+ */
+export const DISPUTE_ALLOCATION_WRITE_ACCESS: CapabilityRequirement = "finance.platform.write";
+
+/**
  * Approve or decline a seller's request to withdraw a lot. Withdrawing cancels the lot and
  * can pull it out of a sale, so it follows `auction.manage`, not the wider catalogue access.
  */
@@ -193,6 +199,15 @@ export const WITHDRAWAL_DECISION_ACCESS: CapabilityRequirement = "auction.manage
  * (emails, ledger writes), so they are an operations action, not an audit read.
  */
 export const DELIVERY_REPLAY_ACCESS: CapabilityRequirement = "platform.admin.full";
+
+/**
+ * Retry a failed background job or set it aside with a reason. A retry runs the job again, which
+ * can repeat something a client sees, so it is an operations action for administrators.
+ */
+export const FAILED_JOBS_WRITE_ACCESS: CapabilityRequirement = "platform.admin.full";
+
+/** Open the failed jobs list and a job: administrators, and read-only staff who may look but not act. */
+export const FAILED_JOBS_READ_ACCESS: CapabilityRequirement = readOrWrite(FAILED_JOBS_WRITE_ACCESS);
 
 export const PAYOUT_PROCESS_ACCESS: CapabilityRequirement = {
   anyOf: ["payout.process", "platform.admin.full"],

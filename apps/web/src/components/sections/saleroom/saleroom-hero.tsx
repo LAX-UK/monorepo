@@ -15,7 +15,6 @@ type Props = {
   catalogLotRefs?: Array<{ id: string; lotNumber: number | null; title: string }>;
   saleroomSession?: PublicSaleroomSessionStatus | null;
   coverBlurDataURL?: string | null;
-  saleStartsSoon?: boolean;
   showOnlineBiddingGatedBadge?: boolean;
   explainerContext?: SaleFormatExplainerContext;
 };

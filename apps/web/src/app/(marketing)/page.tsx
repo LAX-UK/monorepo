@@ -1,5 +1,6 @@
 import { EditorsPicksMarketingClient } from "@/components/sections/home/editors-picks-marketing/editors-picks-marketing-client";
 import { getHomeData } from "@/components/sections/home/get-home-data";
+import { HomeHangSection } from "@/components/sections/home/home-hang/home-hang-section";
 import { HomeNewsletter } from "@/components/sections/home/home-newsletter";
 import { LaxConsignCTA } from "@/components/sections/home/lax-consign-cta";
 import { LaxHero } from "@/components/sections/home/lax-hero";
@@ -64,6 +65,7 @@ async function MarketingHomeContent({
     upcomingAuctionTiles,
     upcomingSales,
     moreLots,
+    hang,
     isAuthenticated,
     watchedLotIds,
   } = data;
@@ -104,6 +106,7 @@ async function MarketingHomeContent({
       <div className={HOME_HERO_BLEED}>
         <LaxHero state={heroState} />
       </div>
+      <HomeHangSection hang={hang} />
       {urgencySection.variant !== "none" ? (
         <LaxUrgencySection
           variant={urgencySection.variant}

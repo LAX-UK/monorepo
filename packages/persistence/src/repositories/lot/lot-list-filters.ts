@@ -10,7 +10,7 @@ import type {
 } from "../../interfaces/index.js";
 import {
   atgOwnedDraftLotForStatusesSql,
-  publicLotCondition,
+  publicCatalogueLotCondition,
   publicSaleCondition,
   saleIsAtgOwnedSql,
 } from "../atg-public-catalog.sql.js";
@@ -111,16 +111,24 @@ export function listWhere(input: ListWhereInput) {
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
+const lotNumberOrder = sql`coalesce(${lot.lotNumber}, 999999)`;
+
+/**
+ * The order of a sale's catalogue page. On every sort but lot order a withdrawn (cancelled) lot is
+ * pinned last, since it has no price or close to place it by; lot order keeps it at its number.
+ * Ties fall back to lot number then id so pages never repeat or skip a row.
+ */
 export function catalogSalePageOrderBy(sort: SaleCatalogLotsSort) {
+  const withdrawnLast = asc(sql`(${lot.status} = 'cancelled')`);
   switch (sort) {
     case "priceAsc":
-      return asc(lot.currentPrice);
+      return [withdrawnLast, asc(lot.currentPrice), asc(lotNumberOrder), asc(lot.id)];
     case "priceDesc":
-      return desc(lot.currentPrice);
+      return [withdrawnLast, desc(lot.currentPrice), asc(lotNumberOrder), asc(lot.id)];
     case "endingAsc":
-      return asc(lot.endTime);
+      return [withdrawnLast, asc(lot.endTime), asc(lotNumberOrder), asc(lot.id)];
     default:
-      return asc(sql`coalesce(${lot.lotNumber}, 999999)`);
+      return [asc(lotNumberOrder), asc(lot.id)];
   }
 }
 
@@ -138,7 +146,7 @@ export function catalogLotsBySaleWhere(
   if (input.requirePublicSale) {
     conditions.push(eq(sale.id, lot.saleId), saleNotDeleted());
     conditions.push(publicSaleCondition());
-    conditions.push(publicLotCondition());
+    conditions.push(publicCatalogueLotCondition());
   }
   return and(...conditions);
 }

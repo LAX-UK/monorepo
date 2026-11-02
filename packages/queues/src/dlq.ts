@@ -97,6 +97,11 @@ export function attachDlq(
               failedAt: new Date(),
               replayedAt: null,
               replayedBy: null,
+              // A job that fails again needs a fresh look, whatever was decided before.
+              discardedAt: null,
+              discardedBy: null,
+              discardReason: null,
+              discardNote: null,
             },
           });
 

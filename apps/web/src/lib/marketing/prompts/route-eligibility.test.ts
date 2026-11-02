@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { isMarketingPromptRoute } from "./route-eligibility";
 
 describe("isMarketingPromptRoute", () => {
-  it.each(["/", "/archive", "/artists", "/buy", "/sales", "/search", "/artist/x", "/artists/x"])(
+  it.each(["/", "/results", "/artists", "/buy", "/sales", "/search", "/artist/x", "/artists/x"])(
     "allows %s",
     (pathname) => {
       expect(isMarketingPromptRoute(pathname)).toBe(true);

@@ -6,12 +6,16 @@ import {
   normalizeUserRoleOrClient,
   roleHasCapability,
 } from "@auction/types";
-import { isPublicCatalogLot, viewerCanSeeNonPublicCatalog } from "@auction/validators";
+import {
+  isPublicCatalogueLot,
+  isWithdrawnLot,
+  viewerCanSeeNonPublicCatalog,
+} from "@auction/validators";
 import { canReadCatalogueAdmin } from "../../lib/catalogue-auth.js";
 import { listLotDocumentsPublic } from "../../lib/list-lot-documents-public.js";
 import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
 import { buildLotDetailBiddingView } from "../../lib/lot-detail-bidding-view.js";
-import { maskLotForPublicView } from "../../lib/lot-public-view.js";
+import { maskLotForPublicView, presentCatalogueRowForPublic } from "../../lib/lot-public-view.js";
 import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js";
 import { mapLotToStaffListRow, mapLotToSummary } from "../../lib/mappers.js";
 import { presentLotImages } from "../../lib/media-presenters.js";
@@ -203,8 +207,12 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
       input.viewer.role ?? undefined,
       input.viewer.staffRoles,
     );
-    if (!canPreview && !isPublicCatalogLot(presented, sale)) {
+    if (!canPreview && !isPublicCatalogueLot(presented, sale)) {
       return { status: 404, body: { error: "Not found" } };
+    }
+    // A withdrawn lot keeps its page but nothing about its sale: no price, history or actions.
+    if (!canPreview && isWithdrawnLot(presented)) {
+      return { status: 200, body: { data: presentCatalogueRowForPublic(presented) } };
     }
     const viewerRole = normalizeUserRoleOrClient(input.viewer.role);
     const staff = input.viewer.staffRoles;

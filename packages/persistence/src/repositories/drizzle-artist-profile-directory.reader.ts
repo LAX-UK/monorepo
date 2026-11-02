@@ -8,6 +8,8 @@ import {
   buildPublicDirectoryWhere,
   publicDirectoryOrderBy,
   publicLotCountExpr,
+  publicResultCountExpr,
+  representativeWorkImageExpr,
 } from "./artist-profile/artist-profile-list-filters.js";
 import { mapArtist } from "./artist-profile/artist-profile-mappers.js";
 import { loadCategories } from "./artist-profile/artist-profile-read.helpers.js";
@@ -39,7 +41,12 @@ export class DrizzleArtistProfileDirectoryReader implements IArtistProfileDirect
     const total = Number(countRow?.n ?? 0);
 
     const rows = await this.db
-      .select({ ap: artistProfile, lotCount: publicLotCountExpr })
+      .select({
+        ap: artistProfile,
+        lotCount: publicLotCountExpr,
+        resultCount: publicResultCountExpr,
+        workImageUrl: representativeWorkImageExpr,
+      })
       .from(artistProfile)
       .where(whereClause)
       .orderBy(...publicDirectoryOrderBy(options))
@@ -53,6 +60,8 @@ export class DrizzleArtistProfileDirectoryReader implements IArtistProfileDirect
       rows: rows.map((r) => ({
         ...mapArtist(r.ap),
         lotCount: Number(r.lotCount ?? 0),
+        resultCount: Number(r.resultCount ?? 0),
+        workImageUrl: r.workImageUrl?.trim() || null,
       })),
       facets,
     };

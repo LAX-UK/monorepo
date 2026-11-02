@@ -33,6 +33,8 @@ export type AdminOpsDashboardRoutesContainer = AdminRoutePick<
 
 export type AdminPaymentsRoutesContainer = AdminRoutePick<"payments" | "manualReviewPayments">;
 
+export type AdminDisputeDeskRoutesContainer = AdminRoutePick<"disputeDesk">;
+
 export type AdminFinanceDisputesRoutesContainer = AdminRoutePick<
   "domainEvents" | "disputeCases" | "payments"
 >;
@@ -68,6 +70,8 @@ export type AdminFinancePayoutRoutesContainer = Pick<
 };
 
 export type AdminSatelliteJobQueuesRoutesContainer = AdminRoutePick<"jobQueues">;
+
+export type AdminSatelliteFailedJobsRoutesContainer = AdminRoutePick<"failedJobs">;
 
 export type AdminSatelliteMarketingEventsRoutesContainer = AdminRoutePick<"marketingEvents">;
 

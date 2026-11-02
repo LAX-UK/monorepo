@@ -1,11 +1,13 @@
 import type { ISaleRepository } from "@auction/persistence/interfaces";
-import type { Lot, Sale, StaffRoles } from "@auction/types";
+import type { Lot, Sale, StaffRoles, WithdrawnLotView } from "@auction/types";
 import {
   isPublicCatalogLot,
   isPublicCatalogSale,
+  isPublicCatalogueLot,
   resolvePublicSaleListFilter,
   viewerCanSeeNonPublicCatalog,
 } from "@auction/validators";
+import { presentCatalogueRowForPublic } from "../../lib/lot-public-view.js";
 import {
   presentLotsImages,
   presentSaleAdminImages,
@@ -53,13 +55,18 @@ export async function getSaleDetailForPublicApi(
   saleId: string,
   viewerUserId: string | undefined,
   viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
-): Promise<{ data: { sale: Sale; lots: Lot[]; viewer: { isFollowing: boolean } } } | null> {
+): Promise<{
+  data: { sale: Sale; lots: (Lot | WithdrawnLotView)[]; viewer: { isFollowing: boolean } };
+} | null> {
   const bundle = await getByIdWithLots(deps, saleId);
   if (!bundle) return null;
 
   const saleWithPlatform = await withSellingPlatform(deps.saleChannelReader, bundle.sale);
   const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRoles);
-  if (!canPreview && !isPublicCatalogSale(saleWithPlatform)) return null;
+  // A cancelled sale keeps its address so a link someone was given lands on a notice; it reads as
+  // the sale and nothing of its catalogue.
+  const cancelledNotice = !canPreview && saleWithPlatform.status === "cancelled";
+  if (!canPreview && !cancelledNotice && !isPublicCatalogSale(saleWithPlatform)) return null;
 
   const isFollowing =
     viewerUserId && deps.saleFollowReader
@@ -67,13 +74,17 @@ export async function getSaleDetailForPublicApi(
       : false;
   const [sale, lots] = await Promise.all([
     presentSaleImages(deps.mediaUrlResolver, saleWithPlatform, deps.mediaAssetEnricher),
-    withAtgLotResults(deps.saleChannelReader, saleWithPlatform, bundle.lots).then((rows) =>
-      presentLotsImages(deps.mediaUrlResolver, rows, deps.mediaAssetEnricher),
-    ),
+    cancelledNotice
+      ? Promise.resolve([])
+      : withAtgLotResults(deps.saleChannelReader, saleWithPlatform, bundle.lots).then((rows) =>
+          presentLotsImages(deps.mediaUrlResolver, rows, deps.mediaAssetEnricher),
+        ),
   ]);
   const visibleLots = canPreview
     ? lots
-    : lots.filter((lot) => isPublicCatalogLot(lot, saleWithPlatform));
+    : lots
+        .filter((lot) => isPublicCatalogueLot(lot, saleWithPlatform))
+        .map(presentCatalogueRowForPublic);
   return { data: { sale, lots: visibleLots, viewer: { isFollowing } } };
 }
 
@@ -143,7 +154,7 @@ export async function listSaleLotsPageForPublicApi(
   viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
 ): Promise<{
   data: {
-    items: Lot[];
+    items: (Lot | WithdrawnLotView)[];
     total: number;
     limit: number;
     offset: number;
@@ -175,7 +186,7 @@ export async function listSaleLotsPageForPublicApi(
   );
   return {
     data: {
-      items,
+      items: canPreview ? items : items.map(presentCatalogueRowForPublic),
       total: page.total,
       limit: opts.limit,
       offset: opts.offset,

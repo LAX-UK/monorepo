@@ -1,10 +1,20 @@
+import { errorCopy } from "@/lib/forms/error-copy";
 import { z } from "zod";
 
 export const contactSchema = z.object({
-  name: z.string().min(1).max(120),
-  email: z.string().email(),
-  topic: z.enum(["buying", "selling", "shipping", "press", "other"]),
-  message: z.string().min(10).max(5000),
+  name: z
+    .string()
+    .min(1, errorCopy.required("your name"))
+    .max(120, errorCopy.maxLength(120, "your name")),
+  email: z.string().min(1, errorCopy.required("your email address")).email(errorCopy.email),
+  topic: z.enum(["buying", "selling", "shipping", "press", "other"], {
+    errorMap: () => ({ message: errorCopy.requiredChoice("a topic") }),
+  }),
+  message: z
+    .string()
+    .min(1, errorCopy.required("your message"))
+    .min(10, errorCopy.minLength(10, "Tell us a little more"))
+    .max(5000, errorCopy.maxLength(5000, "your message")),
 });
 
 export type ContactInput = z.infer<typeof contactSchema>;
@@ -32,7 +42,7 @@ export const contactFormValuesSchema = contactSchema
       ctx.addIssue({
         code: "custom",
         path: ["firstName"],
-        message: "Please enter your name",
+        message: errorCopy.required("your first name"),
       });
     }
   });

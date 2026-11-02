@@ -4,6 +4,8 @@ import type {
   HomeUpcomingAuctionTileVM,
   LotCardVM,
 } from "@/components/sections/home/home-view-models";
+import type { HomeHangVM } from "@/lib/hang/home-hang";
+import type { HomeStateResult } from "@auction/domain";
 import type { Sale } from "@auction/types";
 
 /** Minimal shape for `itemList` JSON-LD when there are no upcoming-auction tiles. */
@@ -16,6 +18,10 @@ export type HomeUrgencySection =
   | { variant: "none"; lots: LotCardVM[] };
 
 export type HomePageData = {
+  /** Which content state the page is in, with its section order and lead sale. */
+  homeState: HomeStateResult;
+  /** The works hung under the hero; `null` when fewer than two have photographs. */
+  hang: HomeHangVM | null;
   heroState: HeroStateVM;
   /** Lots promoted for structured data when `upcomingAuctionTiles` is empty. */
   jsonLdListFallback: HomeJsonLdListEntry[];

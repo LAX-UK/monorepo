@@ -2390,7 +2390,7 @@ describe("SaleService one-platform-per-sale guards", () => {
     const detail = await svc.getSaleDetailForPublicApi("s1", undefined, undefined);
 
     expect(detail?.data.sale).toMatchObject({ sellingPlatform: "atg", atgAuctionState: "ended" });
-    expect(detail?.data.lots.map((l) => [l.id, l.atgSold])).toEqual([
+    expect(detail?.data.lots.map((l) => [l.id, "atgSold" in l ? l.atgSold : undefined])).toEqual([
       ["lot-1", true],
       ["lot-2", false],
     ]);

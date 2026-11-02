@@ -5,10 +5,8 @@ import {
   type ArtistWatchlistClient,
   defaultArtistWatchlistClient,
 } from "@/lib/data/http/artist-watchlist.client";
-import { FOCUS_RING } from "@/lib/marketing/chrome";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
-import { Bookmark, BookmarkPlus, Eye } from "lucide-react";
+import { Button, ButtonLink } from "@auction/ui/lax";
+import { Bookmark, BookmarkPlus } from "lucide-react";
 import { useCallback, useState } from "react";
 
 type Props = {
@@ -16,6 +14,8 @@ type Props = {
   initialWatching: boolean;
   isAuthenticated: boolean;
   loginNextPath: string;
+  /** `primary` when following is the page's main action (the empty works state). */
+  emphasis?: "primary" | "secondary";
   /** Injectable API transport (defaults to cookie-authenticated browser fetch). */
   client?: ArtistWatchlistClient;
 };
@@ -25,6 +25,7 @@ export function ArtistWatchToggle({
   initialWatching,
   isAuthenticated,
   loginNextPath,
+  emphasis = "secondary",
   client = defaultArtistWatchlistClient,
 }: Props) {
   const [watching, setWatching] = useState(initialWatching);
@@ -48,39 +49,25 @@ export function ArtistWatchToggle({
 
   if (!isAuthenticated) {
     return (
-      <a
+      <ButtonLink
+        variant={emphasis}
         href={buildHostedLoginStartHref({ next: loginNextPath })}
-        className={cn(
-          "inline-flex min-h-11 items-center gap-2 rounded-md bg-surface-container-high px-4 py-2 font-body text-sm font-medium text-on-surface transition-colors hover:bg-surface-container",
-          FOCUS_RING,
-        )}
+        icon={<BookmarkPlus />}
       >
-        <Eye className="size-4" aria-hidden />
-        Sign in to follow
-      </a>
+        Follow artist
+      </ButtonLink>
     );
   }
 
   return (
     <Button
       type="button"
-      variant="secondary"
+      variant={watching ? "secondary" : emphasis}
       disabled={busy}
       aria-pressed={watching}
       onClick={() => void toggle()}
-      className={cn(
-        "h-auto gap-2 font-body",
-        FOCUS_RING,
-        watching
-          ? "bg-primary-container/30 text-primary hover:bg-primary-container/30"
-          : "bg-surface-container-high text-on-surface hover:bg-surface-container",
-      )}
+      icon={watching ? <Bookmark /> : <BookmarkPlus />}
     >
-      {watching ? (
-        <Bookmark className="size-4" aria-hidden />
-      ) : (
-        <BookmarkPlus className="size-4" aria-hidden />
-      )}
       {watching ? "Following" : "Follow artist"}
     </Button>
   );

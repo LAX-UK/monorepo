@@ -24,7 +24,9 @@ import { attachAdminCatalogRoutes } from "./admin/catalog.routes.js";
 import { attachAdminComplianceRoutes } from "./admin/compliance.routes.js";
 import { attachAdminConditionReportsRoutes } from "./admin/condition-reports.routes.js";
 import { attachAdminDeliveryOpsRoutes } from "./admin/delivery-ops.routes.js";
+import { attachAdminDisputeDeskRoutes } from "./admin/dispute-desk.routes.js";
 import { attachAdminEmailRoutes } from "./admin/email.routes.js";
+import { attachAdminFailedJobsRoutes } from "./admin/failed-jobs.routes.js";
 import { attachAdminFinanceRoutes } from "./admin/finance.routes.js";
 import { attachAdminImpersonationRoutes } from "./admin/impersonation.routes.js";
 import { attachAdminLegalEntityBuyerAgentRoutes } from "./admin/legal-entity-buyer-agents.routes.js";
@@ -150,6 +152,8 @@ export function createAdminRoutes(
 
   attachAdminDeliveryOpsRoutes(platform, container);
 
+  attachAdminFailedJobsRoutes(platform, container);
+
   // Finance-shell routes must stay reachable for finance, who fails
   // `requirePlatformShell`. Guards are path-scoped (not `use("*")`) so they don't
   // leak onto platform paths once this sub-app is merged into the parent router.
@@ -165,6 +169,7 @@ export function createAdminRoutes(
   attachAdminPaymentsManualReviewRoutes(finance, container, guards);
   attachAdminFinanceIssueRoutes(finance, container);
   attachAdminFinanceRoutes(finance, container);
+  attachAdminDisputeDeskRoutes(finance, container, guards);
 
   // Mount finance first: its routes terminate the chain before platform's
   // `use("*", requirePlatformShell)` wildcard can 403 finance.

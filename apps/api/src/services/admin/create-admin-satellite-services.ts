@@ -4,6 +4,7 @@ import type {
   AdminRouteServices,
   AdminRouteServicesWithoutSatellites,
 } from "../interfaces/admin-routes.js";
+import type { IAdminFailedJobsService } from "../interfaces/admin-routes/admin-satellite-routes.js";
 import type { IOnsiteEventAdminService } from "../interfaces/onsite-event-admin-service.js";
 import type { IOnsiteEventStaffCheckInService } from "../interfaces/onsite-event-staff-check-in-service.js";
 import type { IQueueInspector, IQueueMutator } from "../interfaces/queue-inspector.js";
@@ -16,6 +17,7 @@ export type AttachAdminSatelliteServicesInput = {
   db: Database;
   queueInspector: IQueueInspector;
   queueMutator: IQueueMutator;
+  failedJobs: IAdminFailedJobsService;
   adminMarketingEventsService: AdminMarketingEventsService;
   onsiteEventAdminService: IOnsiteEventAdminService;
   onsiteEventStaffCheckInService: IOnsiteEventStaffCheckInService;
@@ -28,6 +30,7 @@ export function attachAdminSatelliteServices(
   return {
     ...admin,
     jobQueues: new AdminJobQueuesApplicationService(input.queueInspector, input.queueMutator),
+    failedJobs: input.failedJobs,
     marketingEvents: new AdminMarketingEventsApplicationService(input.adminMarketingEventsService),
     onsiteEvents: new AdminOnsiteEventsApplicationService(
       input.onsiteEventAdminService,

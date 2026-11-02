@@ -17,6 +17,14 @@
       "types": "./dist/lax/index.d.ts",
       "default": "./dist/lax/index.js"
     },
+    "./lax/button": {
+      "types": "./dist/lax/button.d.ts",
+      "default": "./dist/lax/button.js"
+    },
+    "./lax/text-link": {
+      "types": "./dist/lax/text-link.d.ts",
+      "default": "./dist/lax/text-link.js"
+    },
     "./lax/helpers": {
       "types": "./dist/lax/helpers.d.ts",
       "default": "./dist/lax/helpers.js"

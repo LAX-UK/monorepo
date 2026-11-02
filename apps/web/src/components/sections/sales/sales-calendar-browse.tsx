@@ -48,6 +48,7 @@ export function SalesCalendarBrowse({
             resultCount={resultCount}
             categories={categories}
             years={years}
+            showResultCount={false}
           />
         </div>
         <div

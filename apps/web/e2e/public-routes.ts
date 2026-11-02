@@ -14,7 +14,8 @@ export const STATIC_PUBLIC_ROUTES: readonly PublicRoute[] = [
   { name: "calendar-results", path: "/sales?tab=results" },
   { name: "search", path: "/search" },
   { name: "search-none", path: "/search?q=zzzzqxj" },
-  { name: "archive", path: "/archive" },
+  { name: "results", path: "/results" },
+  { name: "results-lots", path: "/results?view=lots" },
   { name: "contact", path: "/contact" },
   { name: "press", path: "/press" },
   { name: "artists", path: "/artists" },
@@ -57,7 +58,29 @@ export async function resolveLotRoutes(request: APIRequestContext): Promise<Publ
   return [...pick("lot-live", "active"), ...pick("lot-sold", "sold")];
 }
 
+type ArtistRow = { id: string; slug?: string | null; lotCount?: number };
+
+/** One artist with works and one without, so both states of the artist page are checked. */
+export async function resolveArtistRoutes(request: APIRequestContext): Promise<PublicRoute[]> {
+  const res = await request.get(`${apiBase()}/artists/browse?limit=48`);
+  if (!res.ok()) return [];
+  const body = (await res.json()) as { data?: { rows?: ArtistRow[] } };
+  const rows = body.data?.rows ?? [];
+  const pick = (name: string, match: (row: ArtistRow) => boolean): PublicRoute[] => {
+    const found = rows.find((row) => row.slug && match(row));
+    return found ? [{ name, path: `/artist/${found.slug}/${found.id}` }] : [];
+  };
+  return [
+    ...pick("artist-on-sale", (row) => (row.lotCount ?? 0) > 0),
+    ...pick("artist-no-works", (row) => (row.lotCount ?? 0) === 0),
+  ];
+}
+
 export async function resolvePublicRoutes(request: APIRequestContext): Promise<PublicRoute[]> {
-  const [sales, lots] = await Promise.all([resolveSaleRoutes(request), resolveLotRoutes(request)]);
-  return [...STATIC_PUBLIC_ROUTES, ...sales, ...lots];
+  const [sales, lots, artists] = await Promise.all([
+    resolveSaleRoutes(request),
+    resolveLotRoutes(request),
+    resolveArtistRoutes(request),
+  ]);
+  return [...STATIC_PUBLIC_ROUTES, ...sales, ...lots, ...artists];
 }

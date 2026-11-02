@@ -39,6 +39,7 @@ export type {
   DisputeCaseListFilter,
   IAdminAmlApplicationService,
   IAdminDisputeCaseQueryService,
+  IAdminDisputeDeskService,
   IAdminLegalEntityLifecycleApplicationService,
   IAdminSourceOfFundsApplicationService,
 } from "./admin-compliance-routes.js";
@@ -97,6 +98,7 @@ export type {
 export type {
   AdminMarketingEventsReplayBody,
   AdminSatelliteRouteServices,
+  IAdminFailedJobsService,
   IAdminJobQueuesApplicationService,
   IAdminMarketingEventsApplicationService,
   IAdminOnsiteEventsApplicationService,
@@ -153,6 +155,7 @@ export type {
   AdminPaymentsRoutesContainer,
   AdminPeopleImpersonationRoutesContainer,
   AdminPeopleUsersRoutesContainer,
+  AdminSatelliteFailedJobsRoutesContainer,
   AdminSatelliteJobQueuesRoutesContainer,
   AdminSatelliteMarketingEventsRoutesContainer,
   AdminSatelliteOnsiteEventsRoutesContainer,

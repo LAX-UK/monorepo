@@ -24,7 +24,7 @@ export function SaleCardHeader({
     <div className="flex flex-col gap-3">
       {deliveryMode ? (
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          <SaleTypeBadge deliveryMode={deliveryMode} size="sm" />
+          <SaleTypeBadge deliveryMode={deliveryMode} />
           {segments.map((segment) => (
             <div
               key={segment}

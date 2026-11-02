@@ -15,6 +15,7 @@ const baseProps = {
   layoutView: "grid" as const,
   countLabel: "24 lots",
   resultCountLabel: "Show 24 lots",
+  controls: { toolbar: true, search: true },
 };
 
 describe("SaleroomCatalogToolbarRow", () => {
@@ -24,7 +25,7 @@ describe("SaleroomCatalogToolbarRow", () => {
     render(<SaleroomCatalogToolbarRow {...baseProps} />);
 
     expect(screen.getAllByRole("button", { name: /Filters/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("radiogroup", { name: "View" }).length).toBe(1);
+    expect(screen.getAllByRole("group", { name: "View" }).length).toBe(1);
     expect(screen.queryByTestId("mobile-trailing-row")).not.toBeInTheDocument();
 
     const allLink = screen.getByRole("link", { name: "All" });
@@ -51,6 +52,43 @@ describe("SaleroomCatalogToolbarRow", () => {
     render(<SaleroomCatalogToolbarRow {...baseProps} />);
 
     expect(screen.queryByLabelText("Active filters")).not.toBeInTheDocument();
+  });
+
+  it("shows the lots alone, with no toolbar, for a small sale", () => {
+    searchParams = new URLSearchParams();
+
+    render(
+      <SaleroomCatalogToolbarRow {...baseProps} controls={{ toolbar: false, search: false }} />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Lots" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "All" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "View" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+  });
+
+  it("keeps a way to clear a filter left in the address of a small sale", () => {
+    searchParams = new URLSearchParams("status=live");
+
+    render(
+      <SaleroomCatalogToolbarRow {...baseProps} controls={{ toolbar: false, search: false }} />,
+    );
+
+    expect(screen.getByLabelText("Active filters")).toBeInTheDocument();
+  });
+
+  it("offers search only from the search threshold", () => {
+    searchParams = new URLSearchParams();
+
+    const { rerender } = render(
+      <SaleroomCatalogToolbarRow {...baseProps} controls={{ toolbar: true, search: false }} />,
+    );
+    expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+
+    rerender(
+      <SaleroomCatalogToolbarRow {...baseProps} controls={{ toolbar: true, search: true }} />,
+    );
+    expect(screen.getAllByRole("searchbox").length).toBeGreaterThan(0);
   });
 
   it("offsets sticky toolbar below anchor tabs", () => {
