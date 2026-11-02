@@ -166,47 +166,6 @@
   gap: var(--shop-space-3) var(--shop-space-6);
 }
 
-/* ── First screen ──────────────────────────────────────────────────────────────────────────── */
-.shop-home-hero {
-  padding-top: var(--shop-space-6);
-}
-
-@media (min-width: 48rem) {
-  .shop-home-hero {
-    padding-top: var(--shop-space-8);
-  }
-
-  .shop-home-hero[data-media-side] > :first-child {
-    min-height: min(40rem, calc(100svh - var(--header-height, 7rem)));
-  }
-}
-
-.shop-home-hero__lead {
-  margin: 0;
-  font-size: var(--shop-text-lg);
-  line-height: 1.75rem;
-}
-
-.shop-home-hero__now {
-  margin: var(--shop-space-3) 0 0;
-  font-size: var(--shop-text-md);
-  color: var(--color-on-surface);
-}
-
-.shop-home-hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--shop-space-3) var(--shop-space-6);
-  width: 100%;
-}
-
-@media (max-width: 39.99rem) {
-  .shop-home-hero__actions > .shop-button {
-    width: 100%;
-  }
-}
-
 /* "Browse by": one hairline row per way in, its count and an arrow on the right. */
 .shop-home-browse {
   width: 100%;

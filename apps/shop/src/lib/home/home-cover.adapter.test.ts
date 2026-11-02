@@ -14,7 +14,7 @@ const hero = (over: Partial<HomeHeroVm> = {}): HomeHeroVm => ({
   title: "Limited-edition prints",
   lead: "Editions by Flora Powers, from £42. Prices include VAT.",
   primary: { label: "Browse editions", href: "/artworks" },
-  workLink: { label: "See Vessel Study", href: "/artworks/vessel-study" },
+  link: { label: "Browse all editions", href: "/artworks" },
   release,
   browseRows: [],
   emptyAction: null,
@@ -29,7 +29,7 @@ describe("toShopCoverSlide", () => {
     expect(slide.time).toBe("New release · 28 Oct 2026");
     expect(slide.fact).toBe("Editions by Flora Powers, from £42. Prices include VAT.");
     expect(slide.primary).toEqual({ label: "Browse editions", href: "/artworks" });
-    expect(slide.link).toEqual({ label: "See Vessel Study", href: "/artworks/vessel-study" });
+    expect(slide.link).toEqual({ label: "Browse all editions", href: "/artworks" });
     expect(slide.credit).toEqual({ text: release.line, href: release.href });
     expect(slide.media).toEqual([
       expect.objectContaining({ kind: "plate", field: "#eee3df", tone: "dark" }),
@@ -43,7 +43,7 @@ describe("toShopCoverSlide", () => {
   });
 
   it("is type only when there is no release", () => {
-    const slide = toShopCoverSlide(hero({ release: null, workLink: null }), { plate });
+    const slide = toShopCoverSlide(hero({ release: null, link: null }), { plate });
     expect(slide.media).toEqual([]);
     expect(slide.link).toBeUndefined();
   });

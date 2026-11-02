@@ -7,6 +7,8 @@ import {
 /** The home page's sections, in page order. */
 export type HomeSectionId =
   | "hero"
+  | "hang"
+  | "browse"
   | "trust"
   | "new-editions"
   | "artists"
@@ -23,6 +25,8 @@ export type HomeSectionId =
  */
 const HOME_SECTION_SURFACE: Record<HomeSectionId, ShopSectionSurfaceRule<HomeSectionId>> = {
   hero: { surface: "plain", flexible: false },
+  hang: { surface: "plain", flexible: false },
+  browse: { surface: "plain", flexible: false },
   trust: { surface: "plain", flexible: false },
   "new-editions": { surface: "plain", flexible: false },
   artists: { surface: "plain", flexible: false },

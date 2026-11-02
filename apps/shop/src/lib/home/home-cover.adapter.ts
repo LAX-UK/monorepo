@@ -56,7 +56,7 @@ export function toShopCoverSlide(
     title: hero.title,
     fact: hero.lead,
     primary,
-    ...(hero.workLink ? { link: hero.workLink } : {}),
+    ...(hero.link ? { link: hero.link } : {}),
     ...(hero.release && plate
       ? { credit: { text: hero.release.line, href: hero.release.href } }
       : {}),
