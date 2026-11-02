@@ -3,7 +3,7 @@ import { supportMailto } from "@/lib/dashboard/dashboard-copy";
 import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import type { StripeConnectLoadError } from "@/lib/data/http/stripe-connect.types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax";
 
 /**
  * Payout setup that did not load. An account LAX cannot reach is not the visitor's doing and
@@ -17,9 +17,9 @@ export function ConnectLoadFailure({ error }: { error: StripeConnectLoadError })
         <AlertDescription className="flex flex-col gap-3 text-on-surface">
           <span>Your payout details are safe. Contact us and we will sort it out with you.</span>
           <div>
-            <Button variant="secondary" asChild>
-              <a href={supportMailto("Payout account")}>Contact us</a>
-            </Button>
+            <ButtonLink variant="secondary" href={supportMailto("Payout account")} prefetch={false}>
+              Contact us
+            </ButtonLink>
           </div>
         </AlertDescription>
       </Alert>
