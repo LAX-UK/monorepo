@@ -28,10 +28,13 @@ import { checkoutIntro } from "@/lib/purchases/checkout-intro";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
 import { z } from "zod";
+
+export const metadata: Metadata = { title: "Checkout" };
 
 type PageProps = {
   params: Promise<{ lotId: string }>;

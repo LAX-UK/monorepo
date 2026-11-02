@@ -52,6 +52,8 @@ export type OrganisationDocumentsInput = {
   organisationName: string;
   slots: readonly DocumentSlot[];
   received: readonly OrganisationDocumentRecord[];
+  /** When the organisation's check was approved, for "Checked on 9 May 2026". */
+  checkedOn?: Date | string | null;
 };
 
 const REVIEW_STATUSES: ReadonlySet<string> = new Set(["pending", "approved", "rejected"]);
@@ -79,7 +81,28 @@ const ACTION_BY_STATE: Record<OrganisationDocumentState, "Upload" | "Replace" | 
   needs_replacing: "Replace",
 };
 
-function hintFor(state: OrganisationDocumentState, canSend: boolean): string | null {
+const CHECK_DATE = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/London",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+/** "Checked on 9 May 2026", or `null` without a usable date. */
+export function checkedOnLine(checkedOn: Date | string | null | undefined): string | null {
+  if (!checkedOn) return null;
+  const date = checkedOn instanceof Date ? checkedOn : new Date(checkedOn);
+  return Number.isNaN(date.getTime()) ? null : `Checked on ${CHECK_DATE.format(date)}`;
+}
+
+function hintFor(
+  state: OrganisationDocumentState,
+  canSend: boolean,
+  checked: string | null,
+  received: boolean,
+): string | null {
+  // Accepted without a copy on file: the organisation's check is what accepted it.
+  if (state === "accepted" && !received) return checked;
   if (state === "needs_replacing") {
     return canSend
       ? "We couldn't accept this copy. Send a clear, current one."
@@ -110,6 +133,7 @@ export function buildOrganisationDocumentsView(
     label: doc.label,
     reviewStatus: reviewStatusOf(doc.reviewStatus),
   }));
+  const checked = status === "approved" ? checkedOnLine(input.checkedOn) : null;
   const items = organisationDocumentItems(slots, received, status);
   const rows = items.map((item, index): OrganisationDocumentRowView => {
     const slot = slots[index];
@@ -120,7 +144,7 @@ export function buildOrganisationDocumentsView(
       title,
       state: item.state,
       badge: organisationDocumentStateView(item.state),
-      hint: hintFor(item.state, canSend),
+      hint: hintFor(item.state, canSend, checked, item.received !== null),
       action: actionLabel
         ? {
             label: actionLabel,
