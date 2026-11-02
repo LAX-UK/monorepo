@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { hangLot, hangSale } from "./hang-fixtures";
 import type { HangSale } from "./home-hang";
-import { ALL_LIVE_SALES_LINK, buildLiveNow, liveTabLabel } from "./live-now";
+import { ALL_LIVE_SALES_LINK, buildLiveNow, liveTabName } from "./live-now";
 
 const NOW = new Date("2026-11-01T12:00:00.000Z");
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -81,12 +81,12 @@ describe("tab labels", () => {
   const label = (closesInMs: number) => {
     const vm = build([liveSale("a", closesInMs), liveSale("b", 30 * DAY)], "a");
     const tab = vm?.tabs[0];
-    return tab ? liveTabLabel(tab) : null;
+    return tab ? liveTabName(tab) : null;
   };
 
   it("tells days and hours within a week and a date one millisecond beyond it", () => {
-    expect(label(2 * DAY + 3 * 3_600_000)).toBe("Sale a · Closes in 2 days 3 hours");
-    expect(label(WEEK_MS)).toBe("Sale a · Closes in 7 days");
-    expect(label(WEEK_MS + 1)).toBe("Sale a · Closes Sun 8 Nov, 12:00 GMT");
+    expect(label(2 * DAY + 3 * 3_600_000)).toBe("Sale a, closes in 2 days 3 hours");
+    expect(label(WEEK_MS)).toBe("Sale a, closes in 7 days");
+    expect(label(WEEK_MS + 1)).toBe("Sale a, closes Sun 8 Nov, 12:00 GMT");
   });
 });

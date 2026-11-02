@@ -35,12 +35,12 @@ afterEach(() => {
 describe("HomeLiveNowSection", () => {
   it("opens a visitor on the lead sale and links to all live sales", () => {
     render(<HomeLiveNowSection liveNow={liveNow} signedIn={false} />);
-    expect(screen.getByRole("tab", { name: "Sale a · Closes in 2 days" })).toHaveAttribute(
+    expect(screen.getByRole("tab", { name: "Sale a, closes in 2 days" })).toHaveAttribute(
       "aria-selected",
       "true",
     );
     expect(screen.getAllByRole("tab")).toHaveLength(3);
-    expect(screen.getByRole("link", { name: "All live sales" })).toHaveAttribute(
+    expect(screen.getAllByRole("link", { name: "All live sales" })[0]).toHaveAttribute(
       "href",
       "/sales?tab=live",
     );

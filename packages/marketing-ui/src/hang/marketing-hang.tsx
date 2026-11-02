@@ -58,6 +58,8 @@ export type MarketingHangProps = {
    * (24/30 on a phone, 40/48 on a desktop), the same as the sections around it.
    */
   headingSize?: "compact" | "section";
+  /** Keeps the heading for assistive technology only, when a tab or label already names the sale. */
+  hideTitle?: boolean;
   className?: string;
 };
 
@@ -112,6 +114,7 @@ export function MarketingHang({
   footerNote,
   rowLabel = "Works on the wall, scrolls sideways",
   headingSize = "compact",
+  hideTitle = false,
   className,
 }: MarketingHangProps) {
   const headingId = useId();
@@ -164,13 +167,18 @@ export function MarketingHang({
             id={headingId}
             className={cn(
               "font-headline font-medium tracking-[-0.01em] text-on-surface",
-              HEADING_SIZE[headingSize],
+              hideTitle ? "sr-only" : HEADING_SIZE[headingSize],
             )}
           >
             {title}
           </Heading>
           {meta ? (
-            <p className="mt-0.5 font-body text-[13px] leading-5 text-on-surface-variant sm:mt-1 sm:text-sm">
+            <p
+              className={cn(
+                "font-body text-[13px] leading-5 text-on-surface-variant sm:text-sm",
+                hideTitle ? "" : "mt-0.5 sm:mt-1",
+              )}
+            >
               {typeof meta === "function" ? meta(desktop.mode) : meta}
             </p>
           ) : null}

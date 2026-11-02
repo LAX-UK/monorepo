@@ -23,8 +23,9 @@ export type LiveNowVM = {
 
 export const ALL_LIVE_SALES_LINK = { href: "/sales?tab=live", label: "All live sales" } as const;
 
-export function liveTabLabel(tab: Pick<LiveNowTab, "title" | "closes">): string {
-  return `${tab.title} · ${tab.closes}`;
+/** The tab's accessible name: "Works on Paper, closes in 2 days". */
+export function liveTabName(tab: Pick<LiveNowTab, "title" | "closes">): string {
+  return `${tab.title}, ${tab.closes.charAt(0).toLowerCase()}${tab.closes.slice(1)}`;
 }
 
 /**
