@@ -1,10 +1,6 @@
 import { ConsentBar } from "@/components/marketing/consent/consent-bar";
 import { ConsentPreferencesDialog } from "@/components/marketing/consent/consent-dialog";
-import {
-  CookieDock,
-  CookieDockProvider,
-  CookieDockSlot,
-} from "@/components/marketing/consent/cookie-dock";
+import { CookieDock, CookieDockSlot } from "@/components/marketing/consent/cookie-dock";
 import { ConsentProvider } from "@/lib/analytics/consent/context";
 import { buildConsentSnapshot } from "@/lib/analytics/consent/cookie";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -140,14 +136,12 @@ describe("CookieDock", () => {
   it("renders a slot child below the banner", () => {
     render(
       <ConsentProvider initialSnapshot={null}>
-        <CookieDockProvider>
-          <CookieDock>
-            <ConsentBar />
-          </CookieDock>
-          <CookieDockSlot>
-            <div>Placeholder bar</div>
-          </CookieDockSlot>
-        </CookieDockProvider>
+        <CookieDock>
+          <ConsentBar />
+        </CookieDock>
+        <CookieDockSlot>
+          <div>Placeholder bar</div>
+        </CookieDockSlot>
       </ConsentProvider>,
     );
     const banner = screen.getByRole("region", { name: "Cookies" });
@@ -158,11 +152,9 @@ describe("CookieDock", () => {
 
   it("renders nothing where there is no dock", () => {
     render(
-      <CookieDockProvider>
-        <CookieDockSlot>
-          <div>Placeholder bar</div>
-        </CookieDockSlot>
-      </CookieDockProvider>,
+      <CookieDockSlot>
+        <div>Placeholder bar</div>
+      </CookieDockSlot>,
     );
     expect(screen.queryByText("Placeholder bar")).not.toBeInTheDocument();
   });

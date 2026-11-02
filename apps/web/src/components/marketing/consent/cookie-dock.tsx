@@ -1,36 +1,35 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import {
-  type ReactNode,
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 
 /** Height of the whole dock (banner and anything in the slot); the page reserves this space. */
 export const COOKIE_DOCK_HEIGHT_VAR = "--cookie-dock-height";
 
-type DockContextValue = {
-  slotElement: HTMLElement | null;
-  registerSlot: (element: HTMLElement | null) => void;
-};
+/**
+ * The dock's slot element lives in a small module store, not in a provider around the app: a
+ * provider would put the whole page inside one more client boundary, which changes how the
+ * streamed page is revealed. The store is read with `useSyncExternalStore`.
+ */
+let slotElement: HTMLElement | null = null;
+const slotListeners = new Set<() => void>();
 
-const DockContext = createContext<DockContextValue | null>(null);
-
-/** Holds the dock's slot element so a bar elsewhere in the tree can render into it. */
-export function CookieDockProvider({ children }: { children: ReactNode }) {
-  const [slotElement, setSlotElement] = useState<HTMLElement | null>(null);
-  const value = useMemo<DockContextValue>(
-    () => ({ slotElement, registerSlot: setSlotElement }),
-    [slotElement],
-  );
-  return <DockContext.Provider value={value}>{children}</DockContext.Provider>;
+function registerSlot(element: HTMLElement | null): void {
+  if (slotElement === element) return;
+  slotElement = element;
+  for (const listener of slotListeners) listener();
 }
+
+function subscribeToSlot(listener: () => void): () => void {
+  slotListeners.add(listener);
+  return () => {
+    slotListeners.delete(listener);
+  };
+}
+
+const getSlot = (): HTMLElement | null => slotElement;
+const getServerSlot = (): HTMLElement | null => null;
 
 /** Publishes an element's rendered height as a CSS variable on the root, and clears it on unmount. */
 function usePublishedHeight(name: string): (element: HTMLElement | null) => void {
@@ -61,13 +60,7 @@ function usePublishedHeight(name: string): (element: HTMLElement | null) => void
  * pads by that much, so the last control on a page stays reachable while the banner is open.
  */
 export function CookieDock({ children }: { children?: ReactNode }) {
-  const ctx = useContext(DockContext);
   const publishHeight = usePublishedHeight(COOKIE_DOCK_HEIGHT_VAR);
-  const registerSlot = ctx?.registerSlot;
-  const setSlot = useCallback(
-    (element: HTMLElement | null) => registerSlot?.(element),
-    [registerSlot],
-  );
   return (
     <div
       ref={publishHeight}
@@ -76,7 +69,7 @@ export function CookieDock({ children }: { children?: ReactNode }) {
     >
       {children}
       <div
-        ref={setSlot}
+        ref={registerSlot}
         data-cookie-dock-slot=""
         className={cn("pointer-events-auto empty:hidden")}
       />
@@ -89,7 +82,7 @@ export function CookieDock({ children }: { children?: ReactNode }) {
  * dock exists (staff routes) or before it has mounted.
  */
 export function CookieDockSlot({ children }: { children: ReactNode }) {
-  const slotElement = useContext(DockContext)?.slotElement ?? null;
-  if (!slotElement) return null;
-  return createPortal(children, slotElement);
+  const slot = useSyncExternalStore(subscribeToSlot, getSlot, getServerSlot);
+  if (!slot) return null;
+  return createPortal(children, slot);
 }

@@ -13,7 +13,6 @@ import { ThemeInit } from "@/components/layout/theme-init";
 import { ThemeSystemListener } from "@/components/layout/theme-system-listener";
 import { WebVitalsReporter } from "@/components/layout/web-vitals-reporter";
 import { ConsentShell } from "@/components/marketing/consent/consent-shell";
-import { CookieDockProvider } from "@/components/marketing/consent/cookie-dock";
 import { BrowserOfflineBanner } from "@/components/pwa/browser-offline-banner";
 import { PushBootstrap } from "@/components/pwa/push-bootstrap";
 import { PwaInstallPrompt } from "@/components/pwa/pwa-install-prompt";
@@ -117,54 +116,52 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       </head>
       <body>
         <ConsentProvider key={consentProviderKey} initialSnapshot={consentSnapshot}>
-          <CookieDockProvider>
-            <GtmNoscript analyticsGranted={consentSnapshot?.analytics === true} />
-            <BottomChromeSync />
-            <SessionThemeSync
-              theme={resolveSessionThemeSyncProp({
-                user,
-                existingTheme,
-                defaultTheme: DEFAULT_THEME_PREFERENCE,
-              })}
-            />
-            <ThemeSystemListener />
-            {rootJsonLd ? (
-              <script
-                type="application/ld+json"
-                suppressHydrationWarning
-                {...(nonce ? { nonce } : {})}
-              >
-                {rootJsonLd}
-              </script>
-            ) : null}
-            <a href="#main-content" className="skip-link">
-              Skip to main content
-            </a>
-            <ConsentShell />
-            <AnalyticsBootstrap nonce={nonce} />
+          <GtmNoscript analyticsGranted={consentSnapshot?.analytics === true} />
+          <BottomChromeSync />
+          <SessionThemeSync
+            theme={resolveSessionThemeSyncProp({
+              user,
+              existingTheme,
+              defaultTheme: DEFAULT_THEME_PREFERENCE,
+            })}
+          />
+          <ThemeSystemListener />
+          {rootJsonLd ? (
+            <script
+              type="application/ld+json"
+              suppressHydrationWarning
+              {...(nonce ? { nonce } : {})}
+            >
+              {rootJsonLd}
+            </script>
+          ) : null}
+          <a href="#main-content" className="skip-link">
+            Skip to main content
+          </a>
+          <AnalyticsBootstrap nonce={nonce} />
+          <Suspense fallback={null}>
+            <AnalyticsPageView />
+            <AuthAnalyticsSync />
+          </Suspense>
+          <MarketingClickIdsSync />
+          <MarketingAttributionSync />
+          <BrowserOfflineBanner />
+          <AuthSessionProvider serverUser={user} authCookiePresent={authCookiePresent}>
             <Suspense fallback={null}>
-              <AnalyticsPageView />
-              <AuthAnalyticsSync />
+              <SilentSignInResultEmitter />
+              <SilentSignInNotice />
+              <SilentFedcmBootstrap fedcm={silentFedcmProps} />
             </Suspense>
-            <MarketingClickIdsSync />
-            <MarketingAttributionSync />
-            <BrowserOfflineBanner />
-            <AuthSessionProvider serverUser={user} authCookiePresent={authCookiePresent}>
-              <Suspense fallback={null}>
-                <SilentSignInResultEmitter />
-                <SilentSignInNotice />
-                <SilentFedcmBootstrap fedcm={silentFedcmProps} />
-              </Suspense>
-              <AppQueryProvider>
-                <PushBootstrap />
-                <PwaInstallPrompt />
-                {children}
-              </AppQueryProvider>
-            </AuthSessionProvider>
-            <Toaster />
-            <WebVitalsReporter />
-            <AnalyticsDebugPanel />
-          </CookieDockProvider>
+            <AppQueryProvider>
+              <PushBootstrap />
+              <PwaInstallPrompt />
+              {children}
+            </AppQueryProvider>
+          </AuthSessionProvider>
+          <Toaster />
+          <WebVitalsReporter />
+          <ConsentShell />
+          <AnalyticsDebugPanel />
         </ConsentProvider>
       </body>
     </html>
