@@ -3,6 +3,7 @@ import { lotChargeCurrency } from "@/lib/format-currency";
 import { formatHangMoney } from "@/lib/hang/hang-money";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
+import { lotHeadlineLabel, lotPriceHasBids } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
 import { buildBuyerPremiumPolicy, majorToMinor, minorToMajor } from "@auction/validators";
 
@@ -41,10 +42,6 @@ function lotEyebrow(lot: Pick<Lot, "lotNumber" | "id">): string {
   return `Lot ${lot.id.replace(/-/g, "").slice(0, 6).toUpperCase()}`;
 }
 
-function hasBids(lot: Pick<Lot, "currentPrice" | "startingPrice">): boolean {
-  return Number.parseFloat(lot.currentPrice) > Number.parseFloat(lot.startingPrice);
-}
-
 type PriceAndNotes = Pick<HangLabelModel, "price" | "notes" | "live">;
 
 function endedLabel(lot: Lot, ctx: HangLabelContext, currency: string): PriceAndNotes {
@@ -67,8 +64,11 @@ function biddingLabel(lot: Lot, ctx: HangLabelContext, currency: string): PriceA
   if (lot.status === "active") {
     return {
       price: {
-        qualifier: hasBids(lot) ? "Current bid" : "Opening bid",
-        value: formatHangMoney(hasBids(lot) ? lot.currentPrice : lot.startingPrice, currency),
+        qualifier: lotHeadlineLabel("live", lotPriceHasBids(lot)),
+        value: formatHangMoney(
+          lotPriceHasBids(lot) ? lot.currentPrice : lot.startingPrice,
+          currency,
+        ),
       },
       notes: [closes],
       live,
@@ -79,7 +79,10 @@ function biddingLabel(lot: Lot, ctx: HangLabelContext, currency: string): PriceA
   return {
     price: estimate
       ? { qualifier: "Estimate", value: estimate }
-      : { qualifier: "Opening bid", value: formatHangMoney(lot.startingPrice, currency) },
+      : {
+          qualifier: lotHeadlineLabel("scheduled", false),
+          value: formatHangMoney(lot.startingPrice, currency),
+        },
     notes: [`Opens ${formatLondonMoment(lot.startTime, ctx.now)}`],
     live: undefined,
   };

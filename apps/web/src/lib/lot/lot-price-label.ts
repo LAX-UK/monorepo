@@ -1,4 +1,5 @@
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
+import { lotHeadlineLabel } from "@auction/domain";
 
 /** How the price figure of a lot reads in one lifecycle. */
 export type LotPriceLabel = {
@@ -12,22 +13,19 @@ export type LotPriceLabel = {
 
 const AMOUNT = { kind: "amount" } as const;
 
-/** One row per lifecycle: the live words only while bidding is open. */
-const PRICE_LABEL: Record<LotLifecycleKind, LotPriceLabel> = {
-  preLaunch: { label: "Starting bid", value: AMOUNT },
-  scheduled: { label: "Starting bid", value: AMOUNT },
-  live: { label: "Current bid", value: AMOUNT },
-  extended: { label: "Current bid", value: AMOUNT },
-  liveSaleroom: { label: "Current bid", value: AMOUNT },
-  saleroomPaused: { label: "Current bid", value: AMOUNT },
+/** The catalogue's own words for the lifecycles where a lot is not open for bids. */
+const CLOSED_PRICE_LABEL: Partial<Record<LotLifecycleKind, LotPriceLabel>> = {
   endedSold: { label: "Hammer price", value: AMOUNT },
   endedNoSale: { label: "Result", value: { kind: "text", text: "Not sold" } },
   cancelled: { label: "Result", value: { kind: "text", text: "Cancelled" } },
   withdrawn: { label: "Result", value: { kind: "text", text: "Withdrawn" } },
 };
 
-export function lotPriceLabel(kind: LotLifecycleKind): LotPriceLabel {
-  return PRICE_LABEL[kind];
+/** The price label for a lifecycle; `hasBids` picks "Starting bid" or "Current bid" while open. */
+export function lotPriceLabel(kind: LotLifecycleKind, hasBids: boolean): LotPriceLabel {
+  const closed = CLOSED_PRICE_LABEL[kind];
+  if (closed) return closed;
+  return { label: lotHeadlineLabel(kind, hasBids), value: AMOUNT };
 }
 
 /** Lifecycles in which bidding is over: no next bid, no live feed. */
