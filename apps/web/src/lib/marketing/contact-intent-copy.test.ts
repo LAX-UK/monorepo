@@ -14,4 +14,10 @@ describe("contactIntentFromSearchParams", () => {
     expect(config.topic).toBe("buying");
     expect(config.headline).toMatch(/^Report a problem with a purchase/);
   });
+
+  it("frames a full-copy request under the other topic", () => {
+    const config = contactIntentFromSearchParams({ intent: "data-copy" });
+    expect(config.topic).toBe("other");
+    expect(config.headline).toMatch(/^Request a full copy of your data/);
+  });
 });

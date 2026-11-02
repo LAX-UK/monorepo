@@ -19,7 +19,7 @@ import type { AccountActionResult, BackupCodesActionResult } from "../domain/acc
 import { addressRejectionMessage, isAddressRejection } from "../domain/account-addresses.vm";
 import { contactRejectionMessage } from "../domain/account-contact.vm";
 import type { IdentityActor, IdentityCallResult } from "../ports/account-identity-gateway";
-import { loadAccountRecord } from "./load-account-record";
+import { loadActor } from "./load-account-actor";
 
 const UNAVAILABLE_MESSAGE =
   "We couldn't do that just now. Nothing was changed. Please try again in a moment.";
@@ -32,21 +32,6 @@ function rejectionMessage(reason: AccountContactError | AccountAddressError): st
 }
 
 type NotOk = Exclude<AccountActionResult, { status: "ok" }>;
-
-/**
- * Runs a change as the signed-in person. No session, or a session store that cannot be reached,
- * never reaches the issuer: the first sends the person to sign in again, the second reports
- * that nothing changed.
- */
-async function loadActor(): Promise<IdentityActor | "no_session" | "unavailable"> {
-  try {
-    const record = await loadAccountRecord();
-    return record ? { accessToken: record.accessToken, sid: record.sid } : "no_session";
-  } catch (error) {
-    console.error("account_session_load_failed", error);
-    return "unavailable";
-  }
-}
 
 async function asSignedInPerson<T>(
   change: (actor: IdentityActor) => Promise<IdentityCallResult<T>>,
