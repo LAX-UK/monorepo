@@ -254,6 +254,7 @@ export {
   subjectExportViewSchema,
   type SubjectExportCategoryDefinition,
   type SubjectExportCategoryManifest,
+  type SubjectExportControllerId,
   type SubjectExportCreateOutcome,
   type SubjectExportFieldDescription,
   type SubjectExportFile,
