@@ -1,8 +1,5 @@
 import type { ArtViewerState } from "@/lib/art-viewer-state";
-import {
-  type CatalogueArtistCardVm,
-  buildCatalogueArtistCards,
-} from "@/lib/catalogue/catalogue-artist-card.vm";
+import type { CatalogueArtistCardSource } from "@/lib/catalogue/catalogue-artist-card.vm";
 import {
   type CatalogueArtworkCardVm,
   buildCatalogueArtworkCards,
@@ -11,6 +8,12 @@ import type { ArtEditorialPlacement } from "@/lib/editorial/art-editorial.types"
 import { type EditorialCardVm, buildPlacementCards } from "@/lib/editorial/editorial-card.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
+import {
+  FEATURED_ARTISTS_LIMIT,
+  type FeaturedArtistsVm,
+  buildFeaturedArtists,
+  featuredArtistNeedsDetail,
+} from "@/lib/home/art-featured-artists.vm";
 import {
   type ArtHomeGalleryCardVm,
   type ArtHomeVenueEntry,
@@ -68,7 +71,8 @@ export type ArtHomePageVm = {
   /** One lead plus up to three (Figma `285:3008`). */
   whatsOn: EditorialCardVm[];
   featuredArtworks: CatalogueArtworkCardVm[];
-  featuredArtists: CatalogueArtistCardVm[];
+  /** Laid out for its count; null when no artist is featured. */
+  featuredArtists: FeaturedArtistsVm | null;
   productDoors: MarketingProductDoorVm[];
   /** One lead plus up to two (Figma `285:3061`). */
   stories: EditorialCardVm[];
@@ -143,6 +147,20 @@ function homeEditorial(result: Awaited<ReturnType<ArtEditorialPort["home"]>>): A
   };
 }
 
+/** The only featured artist is told at length, so its detail is read; a failed read keeps the card. */
+async function loadFeaturedArtists(
+  catalogue: Pick<ArtCataloguePort, "getArtist">,
+  artists: readonly CatalogueArtistCardSource[],
+  followedSlugs: ReadonlySet<string>,
+): Promise<FeaturedArtistsVm | null> {
+  const only = artists[0];
+  const soloDetail =
+    only && featuredArtistNeedsDetail(artists.length)
+      ? await catalogue.getArtist(only.slug).catch(() => null)
+      : null;
+  return buildFeaturedArtists({ artists, followedSlugs, soloDetail });
+}
+
 export async function composeArtHomePage(services: {
   catalogue: ArtCataloguePort;
   viewer: ArtViewerPort;
@@ -162,8 +180,12 @@ export async function composeArtHomePage(services: {
       () => services.catalogue.listArtworks({ limit: 8 }),
     ),
     curatedOrNewest(
-      () => services.catalogue.listArtists({ limit: 6, placement: "featured_artists" }),
-      () => services.catalogue.listArtists({ limit: 6 }),
+      () =>
+        services.catalogue.listArtists({
+          limit: FEATURED_ARTISTS_LIMIT,
+          placement: "featured_artists",
+        }),
+      () => services.catalogue.listArtists({ limit: FEATURED_ARTISTS_LIMIT }),
     ),
   ]);
   const [favorites, editorialResult, venuesResult] = await Promise.all([
@@ -175,10 +197,11 @@ export async function composeArtHomePage(services: {
   const editorial = homeEditorial(editorialResult);
   const whatsOn = editorial.kind === "ok" ? editorial.whatsOn.slice(0, WHATS_ON_LIMIT) : [];
   const stories = editorial.kind === "ok" ? editorial.stories.slice(0, STORIES_LIMIT) : [];
-  const featuredArtists =
-    artists.status === "fulfilled"
-      ? buildCatalogueArtistCards(artists.value.items, favorites.followedArtistSlugs)
-      : [];
+  const featuredArtists = await loadFeaturedArtists(
+    services.catalogue,
+    artists.status === "fulfilled" ? artists.value.items : [],
+    favorites.followedArtistSlugs,
+  );
   const productDoors = buildArtProductDoors(
     services.ecosystem.crossProductLinks(),
     editorial.kind === "ok" ? editorial.promos : [],
@@ -201,7 +224,7 @@ export async function composeArtHomePage(services: {
     "whats-on": whatsOn.length > 0,
     "curators-picks":
       sectionErrors.includes("artworks") || marketingRailHasEnough(featuredArtworks.length),
-    "featured-artists": marketingRailHasEnough(featuredArtists.length),
+    "featured-artists": featuredArtists !== null,
     "product-doors": productDoors.length > 0,
     stories: stories.length > 0,
     guide: true,
