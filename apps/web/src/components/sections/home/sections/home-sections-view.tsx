@@ -1,3 +1,4 @@
+import { MarketingSection } from "@/components/marketing/marketing-section";
 import { visibleHomeSections } from "@/lib/home-sections/build-home-sections";
 import type { HomeLotRail, HomeSections } from "@/lib/home-sections/types";
 import type { HomeSectionId, HomeState, HomeStateResult } from "@auction/domain";
@@ -9,7 +10,6 @@ import { HomeDepartmentsSection } from "./home-departments";
 import { HomeLotGrid, type HomeLotWatch } from "./home-lot-grid";
 import { HomePressSection } from "./home-press";
 import { HomeResultsBandSection } from "./home-results-band";
-import { HomeSection } from "./home-section";
 import { HomeSellingBand } from "./home-selling-band";
 
 type Render<K extends HomeSectionId> = (
@@ -20,9 +20,14 @@ type Render<K extends HomeSectionId> = (
 
 function lotRail(id: string) {
   return (rail: HomeLotRail, _state: HomeState, watch: HomeLotWatch): ReactNode => (
-    <HomeSection id={id} heading={rail.heading} subtitle={rail.subtitle} action={rail.seeAll}>
+    <MarketingSection
+      id={`home-${id}`}
+      heading={rail.heading}
+      subtitle={rail.subtitle}
+      action={rail.seeAll}
+    >
       <HomeLotGrid lots={rail.lots} label={rail.heading} watch={watch} />
-    </HomeSection>
+    </MarketingSection>
   );
 }
 

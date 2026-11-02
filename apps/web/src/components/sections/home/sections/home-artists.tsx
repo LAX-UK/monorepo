@@ -1,14 +1,14 @@
 import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-frame";
+import { MarketingSection } from "@/components/marketing/marketing-section";
 import { MediaImage } from "@/components/ui/media-image";
 import type { HomeArtistCard } from "@/lib/home-sections/types";
 import { MarketingArtistCard } from "@auction/marketing-ui";
-import { HomeSection } from "./home-section";
 
 /** Artists the house holds work by, as the shared artist card. */
 export function HomeArtistsSection({ artists }: { artists: readonly HomeArtistCard[] }) {
   return (
-    <HomeSection
-      id="artists"
+    <MarketingSection
+      id="home-artists"
       heading="Artists"
       subtitle="With works on sale or recently sold at LAX Bid"
       action={{ href: "/artists", label: "Browse artists" }}
@@ -49,6 +49,6 @@ export function HomeArtistsSection({ artists }: { artists: readonly HomeArtistCa
           </li>
         ))}
       </ul>
-    </HomeSection>
+    </MarketingSection>
   );
 }
