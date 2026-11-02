@@ -1905,6 +1905,13 @@
       "when": 1798876800000,
       "tag": "0271_failed_job_review",
       "breakpoints": true
+    },
+    {
+      "idx": 272,
+      "version": "7",
+      "when": 1798963200000,
+      "tag": "0272_kyc_retention_tombstone",
+      "breakpoints": true
     }
   ]
 }
