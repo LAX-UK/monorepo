@@ -6,7 +6,6 @@ import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title"
 import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { ACCOUNT_LOAD_ERROR } from "@/lib/dashboard/dashboard-copy";
-import { SETTINGS_CONTENT_MAX_WIDTH } from "@/lib/dashboard/settings-layout-classes";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
 import {
@@ -88,7 +87,7 @@ export default async function EditConsignmentPage({ params }: PageProps) {
   const complete = evaluateSubmissionQuality(submission).canSubmit;
   const sentBack = submission.status === "changes_requested";
   return (
-    <DashboardPage className={`mx-auto w-full space-y-6 ${SETTINGS_CONTENT_MAX_WIDTH}`}>
+    <DashboardPage className="w-full space-y-6 lg:max-w-[60rem]">
       <SetMobileShellTitle title="Make changes" />
       <DashboardPageHeader
         title="Make changes"
@@ -111,6 +110,7 @@ export default async function EditConsignmentPage({ params }: PageProps) {
           complete ? wizardStepIndex("review") : firstIncompleteWizardStepIndex(values)
         }
         readyToSubmit={complete}
+        bareReview
         submitLabel={sentBack ? SUBMISSION_CHANGES_SUBMIT_LABEL : SUBMISSION_SUBMIT_LABEL}
       />
     </DashboardPage>

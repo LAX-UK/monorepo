@@ -56,6 +56,8 @@ type Props = {
   initialStepIndex?: number;
   /** Show ready-to-submit toast instead of generic resume toast. */
   readyToSubmit?: boolean;
+  /** Check answers stands alone, without the progress bar: a page for checking, not a run. */
+  bareReview?: boolean;
   /** Label of the final button, for example "Send back for review" after changes. */
   submitLabel?: string;
 };
@@ -130,6 +132,7 @@ export function SubmissionWizardView({
   categories,
   initialStepIndex = 0,
   readyToSubmit = false,
+  bareReview = false,
   controller,
   primaryAction,
   submitLabel = SUBMISSION_SUBMIT_LABEL,
@@ -365,23 +368,25 @@ export function SubmissionWizardView({
               showAutosave={showAutosave}
             />
           ) : null}
-          <WizardStepper
-            activeIndex={stepIndex}
-            maxReachableIndex={maxReachableIndex}
-            onStepClick={(index) => {
-              if (index <= maxReachableIndex) goToStep(index);
-            }}
-            trailingSteps={trailingSteps}
-            actions={
-              <WizardHeaderActions
-                isSubmitting={isSubmitting}
-                // The last step carries its own "Save and finish later", beside the send button.
-                showFinishLater={!isLastStep}
-                onFinishLater={handleFinishLater}
-                onLeaveWithoutSaving={requestLeaveWithoutSaving}
-              />
-            }
-          />
+          {bareReview && isLastStep ? null : (
+            <WizardStepper
+              activeIndex={stepIndex}
+              maxReachableIndex={maxReachableIndex}
+              onStepClick={(index) => {
+                if (index <= maxReachableIndex) goToStep(index);
+              }}
+              trailingSteps={trailingSteps}
+              actions={
+                <WizardHeaderActions
+                  isSubmitting={isSubmitting}
+                  // The last step carries its own "Save and finish later", beside the send button.
+                  showFinishLater={!isLastStep}
+                  onFinishLater={handleFinishLater}
+                  onLeaveWithoutSaving={requestLeaveWithoutSaving}
+                />
+              }
+            />
+          )}
 
           {currentStep ? (
             <h2

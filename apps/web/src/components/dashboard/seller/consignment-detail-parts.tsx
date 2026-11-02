@@ -57,7 +57,8 @@ export function ConsignmentDetailHead({
   );
 }
 
-const ASIDE_CARD = "rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-5";
+export const ASIDE_CARD =
+  "rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-5";
 
 /** "About the work" beside the consignment: the known facts and the way to the full record. */
 export function AboutTheWork({ vm }: { vm: ConsignmentDetailVm }) {
