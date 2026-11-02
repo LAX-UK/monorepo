@@ -17,7 +17,7 @@ export function ConnectLoadFailure({ error }: { error: StripeConnectLoadError })
         <AlertDescription className="flex flex-col gap-3 text-on-surface">
           <span>Your payout details are safe. Contact us and we will sort it out with you.</span>
           <div>
-            <ButtonLink variant="secondary" href={supportMailto("Payout account")} prefetch={false}>
+            <ButtonLink variant="secondary" href={supportMailto("Payout account")}>
               Contact us
             </ButtonLink>
           </div>
