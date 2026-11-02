@@ -28,16 +28,12 @@ const SCHEMES = ["light", "dark"] as const;
 const found: FoundViolation[] = [];
 const routesChecked = new Set<string>();
 
-/** The not-found pages render outside the site shell today, so they have no shared main landmark. */
-async function settle(page: Page, route: PublicRoute) {
+/** Every route, not-found ones included, sits inside the site shell and its single main landmark. */
+async function settle(page: Page) {
   // A canonical redirect can stack loading shells; wait until one finished main remains.
-  await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
-  if (!route.name.includes("not-found")) {
-    await expect(page.locator("#main-content")).toHaveCount(1, { timeout: 15_000 });
-    await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0);
-  }
-  if (route.name.includes("not-found")) await expect(page.locator("body")).toBeVisible();
-  else await expect(page.locator("#main-content")).toBeVisible();
+  await expect(page.locator("#main-content")).toHaveCount(1, { timeout: 15_000 });
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.locator("#main-content")).toBeVisible();
 }
 
 /** Whole page, so the header, family bar, footer and cookie banner are checked with the content. */
@@ -50,9 +46,11 @@ async function scan(page: Page, route: string, variant: string) {
 
 async function open(page: Page, route: PublicRoute) {
   const res = await page.goto(route.path, { waitUntil: "domcontentloaded" });
-  // Not-found routes answer 404 on purpose; every other route must load.
-  if (!route.name.includes("not-found")) expect(res?.ok(), route.path).toBeTruthy();
-  await settle(page, route);
+  // An unknown address answers a real 404 on purpose. A lot, sale or artist that does not exist
+  // streams its not-found page behind the loading shell, so its status is already 200.
+  if (route.name === "not-found") expect(res?.status(), route.path).toBe(404);
+  else if (!route.name.includes("not-found")) expect(res?.ok(), route.path).toBeTruthy();
+  await settle(page);
 }
 
 test.describe("public site accessibility @a11y @public-a11y", () => {

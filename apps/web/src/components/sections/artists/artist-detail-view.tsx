@@ -1,5 +1,6 @@
 import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-frame";
 import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
+import { FactList } from "@/components/marketing/fact-list";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
@@ -148,14 +149,13 @@ export function ArtistDetailView({ vm, jsonLdText }: ArtistDetailViewProps) {
           >
             {vm.kindConfig.label} details
           </h2>
-          <dl className="grid grid-cols-1 gap-y-5 border-y border-border-hairline py-8 sm:grid-cols-2 md:grid-cols-3">
-            {vm.attributeRows.map((row) => (
-              <div key={row.label} className="flex flex-col gap-1 md:pr-5">
-                <dt className="font-body text-sm text-on-surface-variant">{row.label}</dt>
-                <dd className="font-headline text-lg text-on-surface">{row.value}</dd>
-              </div>
-            ))}
-          </dl>
+          <FactList
+            className="grid grid-cols-1 gap-y-5 border-y border-border-hairline py-8 sm:grid-cols-2 md:grid-cols-3"
+            factClassName="flex flex-col gap-1 md:pr-5"
+            termClassName="font-body text-sm text-on-surface-variant"
+            valueClassName="font-headline text-lg text-on-surface"
+            facts={vm.attributeRows}
+          />
         </section>
       ) : null}
 

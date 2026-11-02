@@ -8,13 +8,12 @@ import type { ReactNode } from "react";
 export function LotPageMessage({ children }: { children: ReactNode }) {
   return (
     <LaxDensityProvider density="client">
-      <main
-        id="main-content"
+      <div
         {...laxDensityAttributes("client")}
         className="mx-auto w-full max-w-[1100px] px-4 pt-[calc(var(--header-height)+2.5rem)] pb-[var(--page-bottom-padding)] font-lax text-lax-fg md:px-10"
       >
         {children}
-      </main>
+      </div>
     </LaxDensityProvider>
   );
 }

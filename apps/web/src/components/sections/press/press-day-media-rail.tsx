@@ -1,6 +1,7 @@
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
+import { RailArrows } from "@/components/marketing/rail/rail-arrows";
+import { ScrollRegion } from "@/components/marketing/rail/scroll-region";
 import type { PressDayMediaSaleVM } from "@/components/sections/press/mappers";
-import { HorizontalCarousel } from "@/components/ui/horizontal-carousel";
 import { SITE_NAME, SITE_PRESS_EMAIL } from "@/lib/brand";
 import {
   FOCUS_RING,
@@ -12,6 +13,8 @@ import { MarketingCardReveal } from "@auction/marketing-ui";
 import { DisplayHeading, cn } from "@auction/ui";
 import Image from "next/image";
 import Link from "next/link";
+
+const RAIL_ID = "press-day-media-rail";
 
 type Props = {
   items: PressDayMediaSaleVM[];
@@ -77,6 +80,9 @@ export function PressDayMediaRail({ items, variant = "carousel" }: Props) {
           </DisplayHeading>
         }
         subtitle="Saleroom photography and video from recent onsite and hybrid sales."
+        {...(variant === "carousel"
+          ? { action: <RailArrows targetId={RAIL_ID} noun="photos" /> }
+          : {})}
       />
       <p className="max-w-2xl font-body text-sm leading-relaxed text-on-surface-variant">
         Images on sale pages are available for editorial reporting on these auctions. Credit{" "}
@@ -87,13 +93,17 @@ export function PressDayMediaRail({ items, variant = "carousel" }: Props) {
         .
       </p>
       {variant === "carousel" ? (
-        <HorizontalCarousel ariaLabel="Auction day photos">
-          {items.map((item, index) => (
-            <MarketingCardReveal key={item.id} index={index} className="h-full min-w-0">
-              <DayMediaCard item={item} />
-            </MarketingCardReveal>
-          ))}
-        </HorizontalCarousel>
+        <ScrollRegion id={RAIL_ID} label="Auction day photos">
+          <ul className="m-0 flex list-none snap-x gap-4 p-0 pb-2">
+            {items.map((item, index) => (
+              <li key={item.id} className="w-[min(100vw-4rem,22rem)] shrink-0 snap-start">
+                <MarketingCardReveal index={index} className="h-full min-w-0">
+                  <DayMediaCard item={item} />
+                </MarketingCardReveal>
+              </li>
+            ))}
+          </ul>
+        </ScrollRegion>
       ) : (
         <ul className="grid list-none grid-cols-1 gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((item, index) => (
