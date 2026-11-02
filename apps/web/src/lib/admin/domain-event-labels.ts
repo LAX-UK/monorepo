@@ -39,6 +39,7 @@ const LABELS: Record<string, string> = {
   "bid.outbid": "Bidder outbid",
   "bid.placed": "Bid placed",
   "bid.proxy_cancelled": "Proxy bid cancelled",
+  "bid.user_anonymised": "Bid personal data anonymised",
   "bid.user_suspended": "Bidder suspended",
   "bid.user_unsuspended": "Bidder reactivated",
 
@@ -181,6 +182,7 @@ const LABELS: Record<string, string> = {
   "shop.guest_lead.recorded": "Guest lead recorded",
   "shop.guest_lead.claimed": "Guest orders and enquiries moved to an account",
   "shop.guest_lead.erased": "Guest personal data erased",
+  "shop.user_anonymised": "Shop personal data anonymised",
   "shop.sale_authority.changed": "Sale authority changed",
   "shop.production.started": "Production started",
   "shop.fulfilment.dispatched": "Order dispatched",
