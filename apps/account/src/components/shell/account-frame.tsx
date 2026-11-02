@@ -5,6 +5,7 @@ import type { BackToProductVm } from "@/server/domain/origin-product";
 import { legalOperatorSentence, siteCopyrightYear } from "@auction/branding";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { LaxFamilyBar, LaxLockup } from "@auction/marketing-ui";
+import { TextLink } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 import { AccountAvatarMenu } from "./account-avatar-menu.client";
 import { AccountMenuSheet } from "./account-menu-sheet.client";
@@ -87,13 +88,10 @@ export function AccountFrame({
       </header>
       {backToProduct ? (
         <div className={`${CONTAINER} pt-4`}>
-          <a
-            href={backToProduct.href}
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-sm text-sm text-on-surface-variant underline-offset-4 hover:text-on-surface hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
+          <TextLink href={backToProduct.href} className="min-h-11">
             <span aria-hidden="true">←</span>
             {backToProduct.label}
-          </a>
+          </TextLink>
         </div>
       ) : null}
       <div className={`${CONTAINER} flex flex-1 gap-10 lg:gap-14`}>
