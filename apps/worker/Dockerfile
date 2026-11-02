@@ -17,6 +17,9 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS builder
 COPY apps/worker ./apps/worker
 RUN pnpm turbo run build --filter=@auction/worker
+# Stamp debug IDs into the shipped JS and maps so source maps uploaded after the deploy
+# still match this build. IDs derive from file content; the CLI stays in the builder stage.
+RUN npm i -g @sentry/cli@2.58.4 && sentry-cli sourcemaps inject apps/worker/dist
 
 FROM node:22-alpine AS runner
 WORKDIR /app

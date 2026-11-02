@@ -23,6 +23,9 @@ COPY apps/api ./apps/api
 COPY apps/api/tsconfig.json apps/api/tsconfig.build.json ./apps/api/
 RUN pnpm install --frozen-lockfile
 RUN pnpm turbo run build --filter=@auction/api
+# Stamp debug IDs into the shipped JS and maps so source maps uploaded after the deploy
+# still match this build. IDs derive from file content; the CLI stays in the builder stage.
+RUN npm i -g @sentry/cli@2.58.4 && sentry-cli sourcemaps inject apps/api/dist
 
 FROM node:22-alpine AS runner
 WORKDIR /app

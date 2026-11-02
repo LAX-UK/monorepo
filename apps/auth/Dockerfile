@@ -22,6 +22,9 @@ COPY packages/identity-contracts ./packages/identity-contracts
 COPY packages/identity-db ./packages/identity-db
 COPY packages/observability ./packages/observability
 RUN pnpm --filter @auction/auth-app... --workspace-concurrency=1 build
+# Stamp debug IDs into the shipped JS and maps so source maps uploaded after the deploy
+# still match this build. IDs derive from file content; the CLI stays in the builder stage.
+RUN npm i -g @sentry/cli@2.58.4 && sentry-cli sourcemaps inject apps/auth/dist
 
 FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
