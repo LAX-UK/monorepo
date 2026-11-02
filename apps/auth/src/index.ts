@@ -79,10 +79,12 @@ const services = createOidcRouteServices({
     if (outcome !== "delivered") log.warn({ outcome }, "backchannel_logout_delivery_outcome");
   },
 });
+const accountOrigin = (env.LAX_ACCOUNT_ORIGIN ?? DEFAULT_LAX_ACCOUNT_ORIGIN).replace(/\/+$/, "");
 const securityNotices = createSecurityNoticeService({
   db,
   email: emailSender,
-  secureAccountUrl: `${(env.LAX_ACCOUNT_ORIGIN ?? DEFAULT_LAX_ACCOUNT_ORIGIN).replace(/\/+$/, "")}/account/security`,
+  secureAccountUrl: `${accountOrigin}/account/security`,
+  cancelDeletionUrl: `${accountOrigin}/account/security/delete`,
   log,
 });
 const accountAccessClaims = createAccountAccessClaimsResolver({
@@ -140,6 +142,7 @@ const emailChange = new EmailChangeService({
 });
 const accountDeletion = new AccountDeletionService({
   operations: identityOperations,
+  notices: securityNotices,
   products: infra.productDeletionEligibility,
   onProductUnavailable: (product, error) =>
     log.warn({ err: error, product }, "account_deletion_product_unavailable"),

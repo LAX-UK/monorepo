@@ -17,3 +17,8 @@ const TIME = new Intl.DateTimeFormat("en-GB", {
 export function formatLondonTime(at: Date): string {
   return `${DATE.format(at)} at ${TIME.format(at)}`;
 }
+
+/** "22 November 2026": the calendar day in London, for dates that are not a moment. */
+export function formatLondonDate(at: Date): string {
+  return DATE.format(at);
+}

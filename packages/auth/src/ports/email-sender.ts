@@ -21,6 +21,8 @@ export const IDENTITY_EMAIL_TEMPLATE_NAMES = [
   "password-changed-elsewhere",
   "password-changed-sessions-not-revoked",
   "change-email",
+  "account-deletion-requested",
+  "account-deletion-cancelled",
 ] as const;
 
 export type IdentityEmailTemplate = (typeof IDENTITY_EMAIL_TEMPLATE_NAMES)[number];

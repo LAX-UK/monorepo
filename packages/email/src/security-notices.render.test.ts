@@ -91,3 +91,29 @@ describe("LAX Account security emails", () => {
     expect(rendered.html).not.toContain("Device");
   });
 });
+
+describe("LAX Account deletion emails", () => {
+  it("renders the request with the deletion date and how to cancel", async () => {
+    const rendered = await renderEmail("account-deletion-requested", {
+      ...BASE,
+      effectiveDateDisplay: "22 November 2026",
+      graceDays: 30,
+      cancelDeletionUrl: "https://account.lax.bid/account/security/delete",
+    });
+    expect(rendered.subject).toBe("Your LAX Account is scheduled for deletion");
+    for (const body of [rendered.html, rendered.text]) {
+      expect(body).toContain("22 November 2026");
+      expect(body).toContain("Cancel deletion");
+      expect(body).toContain("https://account.lax.bid/account/security/delete");
+      expect(body).toContain("Secure your account");
+      expect(body).toContain("Chrome on macOS");
+    }
+  });
+
+  it("renders the cancellation", async () => {
+    const rendered = await renderEmail("account-deletion-cancelled", BASE);
+    expect(rendered.subject).toBe("Deletion of your LAX Account was cancelled");
+    expect(rendered.text).toContain("nothing will be erased");
+    expectSharedParts(rendered);
+  });
+});

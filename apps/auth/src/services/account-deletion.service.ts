@@ -1,4 +1,6 @@
+import type { SecurityNoticePublisher } from "@auction/auth";
 import {
+  ACCOUNT_DELETION_GRACE_DAYS,
   type AccountDeletionOutcome,
   type AccountDeletionProduct,
   type AccountDeletionStatus,
@@ -10,12 +12,16 @@ import type { ProductDeletionEligibilityProbe } from "./account-deletion.ports.j
 import type { IdentityOperationsService } from "./identity-operations.service.js";
 import { RecentSessionGuard } from "./recent-session-guard.js";
 
+const DAY_MS = 86_400_000;
+
 export type AccountDeletionPorts = {
   operations: Pick<
     IdentityOperationsService,
     "readSecurityStatus" | "markDeletionRequested" | "cancelDeletionRequested" | "listSessions"
   >;
   products: ProductDeletionEligibilityProbe;
+  /** Tells the person by email; it never throws, so a failed notice cannot undo the change. */
+  notices: SecurityNoticePublisher;
   /** Called with the product and the cause when one cannot be asked; deletion is then blocked. */
   onProductUnavailable?: (product: string, error: unknown) => void;
 };
@@ -37,7 +43,7 @@ export class AccountDeletionService {
 
   constructor(
     private readonly ports: AccountDeletionPorts,
-    now: () => Date = () => new Date(),
+    private readonly now: () => Date = () => new Date(),
   ) {
     this.sessions = new RecentSessionGuard(ports.operations, now);
   }
@@ -62,6 +68,12 @@ export class AccountDeletionService {
     }
     if (verdict !== "eligible") return { outcome: "not_eligible", status };
     const requestedAt = await this.ports.operations.markDeletionRequested(subjectId);
+    await this.ports.notices.notify({
+      kind: "account_deletion_requested",
+      userId: subjectId,
+      at: this.now(),
+      effectiveAt: new Date(requestedAt.getTime() + ACCOUNT_DELETION_GRACE_DAYS * DAY_MS),
+    });
     return { outcome: "requested", requestedAt: requestedAt.toISOString() };
   }
 
@@ -88,10 +100,23 @@ export class AccountDeletionService {
     if (!live.some((session) => session.id === currentSessionId)) {
       return { ok: false, reason: "reauth_required" };
     }
+    return { ok: true, outcome: await this.cancelForSubject(subjectId) };
+  }
+
+  /**
+   * Cancels for a caller that has already authenticated the person (LAX Bid also uses this).
+   * The confirmation email goes out only when a request was actually pending.
+   */
+  async cancelForSubject(subjectId: string): Promise<"cancelled" | "not_requested"> {
     const security = await this.ports.operations.readSecurityStatus(subjectId);
-    if (!security?.deletionRequestedAt) return { ok: true, outcome: "not_requested" };
+    if (!security?.deletionRequestedAt) return "not_requested";
     await this.ports.operations.cancelDeletionRequested(subjectId);
-    return { ok: true, outcome: "cancelled" };
+    await this.ports.notices.notify({
+      kind: "account_deletion_cancelled",
+      userId: subjectId,
+      at: this.now(),
+    });
+    return "cancelled";
   }
 
   private askProducts(subjectId: string): Promise<AccountDeletionProduct[]> {
