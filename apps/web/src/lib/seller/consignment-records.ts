@@ -99,6 +99,11 @@ export function consignmentHref(submissionId: string): string {
   return `${CLIENT_ROUTES.consignments}/${encodeURIComponent(submissionId)}`;
 }
 
+/** Where the member makes the changes: the Sell a work form on this consignment, at its last step. */
+export function consignmentEditHref(submissionId: string): string {
+  return `${consignmentHref(submissionId)}/edit`;
+}
+
 /** The agreement PDF, through the app so the member's session goes with it. */
 export function consignmentAgreementHref(submissionId: string): string {
   return `${consignmentHref(submissionId)}/agreement`;
@@ -176,7 +181,8 @@ function priceOf(
       ? { low: agreement.estimateLow, high: agreement.estimateHigh, currency: agreement.currency }
       : null);
   if (estimate) return { value: formatEstimateRangeShort(estimate), label: "estimate" };
-  const reviewing = CONSIGNMENT_STATUS[status].stage === "in-review" || status === "draft";
+  const stage = CONSIGNMENT_STATUS[status].stage;
+  const reviewing = stage === "in-review" || stage === "accepted" || stage === "drafts";
   return { empty: reviewing ? "Estimate after review" : "No estimate" };
 }
 

@@ -118,7 +118,7 @@ describe("At a glance words and links", () => {
     expect(works).toMatchObject({
       label: "Your works in progress",
       figures: ["6 works"],
-      supporting: ["3 in sale · 2 under review"],
+      supporting: ["3 in a sale · 2 in review"],
     });
     expect(works?.description).toMatch(/^Works you sent/);
   });
@@ -163,8 +163,8 @@ describe("sections", () => {
   it("shows only stages with works, each linking to the filtered list", () => {
     const stages = view("owner").stages;
     expect(stages?.map(({ label, count, href }) => [label, count, href])).toEqual([
-      ["Under review", 2, "/selling/consignments?tab=in-review&stage=under_review"],
-      ["In sale", 3, "/selling/consignments?tab=in-sale"],
+      ["In review", 2, "/selling/consignments?tab=in-review"],
+      ["In a sale", 3, "/selling/consignments?tab=in-sale"],
       ["Sold", 1, "/selling/consignments?tab=sold"],
     ]);
   });

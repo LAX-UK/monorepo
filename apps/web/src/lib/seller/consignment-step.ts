@@ -1,4 +1,8 @@
-import type { ConsignmentRecord, ConsignmentTask } from "./consignment-records";
+import {
+  type ConsignmentRecord,
+  type ConsignmentTask,
+  consignmentEditHref,
+} from "./consignment-records";
 
 /** The words of each step a consignment can wait on its seller for. */
 const TASK_STEP: Record<ConsignmentTask, { label: string; anchor: string }> = {
@@ -21,10 +25,15 @@ export function consignmentStep(
   const blockedReason = access.pausedReason;
   if (record.task) {
     const step = TASK_STEP[record.task];
-    return { label: step.label, href: `${record.href}${step.anchor}`, blockedReason };
+    const href =
+      record.task === "changes" && record.submissionId
+        ? consignmentEditHref(record.submissionId)
+        : `${record.href}${step.anchor}`;
+    return { label: step.label, href, blockedReason };
   }
   if (record.status === "draft" && (access.canSell || blockedReason)) {
-    return { label: "Continue", href: record.href, blockedReason };
+    const href = record.submissionId ? consignmentEditHref(record.submissionId) : record.href;
+    return { label: "Continue", href, blockedReason };
   }
   return null;
 }
