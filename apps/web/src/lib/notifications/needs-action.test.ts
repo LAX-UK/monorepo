@@ -15,11 +15,13 @@ const response: NeedsYouResponse = {
     {
       kind: "outbid",
       lots: [{ id: "l1", title: "Abstract in Cobalt", endsAt: new Date("2026-11-04T12:00:00Z") }],
+      raisedAt: null,
       link: { page: "lot", id: "l1" },
     },
     {
       kind: "pay",
       purchases: [{ id: "p1", title: "Estuary at Dusk" }],
+      raisedAt: null,
       link: { page: "purchase", id: "p1" },
     },
   ],
@@ -63,8 +65,8 @@ describe("Needs action, Home and the menu during setup", () => {
     kinds: ["outbid", "pay", "documents", "payouts"],
     tasks: [
       ...response.tasks,
-      { kind: "documents", link: { page: "organisation", view: "documents" } },
-      { kind: "payouts", link: { page: "organisation", view: "payouts" } },
+      { kind: "documents", raisedAt: null, link: { page: "organisation", view: "documents" } },
+      { kind: "payouts", raisedAt: null, link: { page: "organisation", view: "payouts" } },
     ],
     counts: { bids: 1, purchases: 1, organisation: 2 },
   };

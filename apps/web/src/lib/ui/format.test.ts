@@ -7,6 +7,7 @@ import {
   formatDateShort,
   formatDateTime,
   formatDateTimeShort,
+  formatEventTime,
   formatKpiMoney,
   formatMoney,
   formatPercent,
@@ -97,5 +98,30 @@ describe("formatPeriod", () => {
     );
     expect(formatPeriod(null, "2026-06-22T00:00:00Z")).toBe("Up to 22 Jun 2026");
     expect(formatPeriod(null, null)).toBe("—");
+  });
+});
+
+describe("formatEventTime", () => {
+  const now = new Date("2026-11-10T12:00:00Z");
+  const ago = (ms: number) => new Date(now.getTime() - ms);
+
+  it("reads the last day as relative time", () => {
+    expect(formatEventTime(ago(20_000), now)).toBe("just now");
+    expect(formatEventTime(ago(5 * 60_000), now)).toBe("5 minutes ago");
+    expect(formatEventTime(ago(3 * 3_600_000 + 20 * 60_000), now)).toBe("3 hours ago");
+    expect(formatEventTime(ago(23 * 3_600_000 + 59 * 60_000), now)).toBe("23 hours ago");
+  });
+
+  it("reads anything older as the date", () => {
+    expect(formatEventTime(ago(24 * 3_600_000), now)).toBe(formatDateInline(ago(24 * 3_600_000)));
+    expect(formatEventTime("2026-10-29T08:00:00Z", now)).toBe("29\u00a0Oct\u00a02026");
+  });
+
+  it("never shows a time ahead of now as the future", () => {
+    expect(formatEventTime(new Date(now.getTime() + 60_000), now)).toBe("just now");
+  });
+
+  it("is a dash with no date", () => {
+    expect(formatEventTime(null, now)).toBe("—");
   });
 });

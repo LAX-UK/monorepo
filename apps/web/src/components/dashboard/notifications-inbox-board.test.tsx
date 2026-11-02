@@ -172,11 +172,13 @@ describe("NotificationsInboxBoard", () => {
                       endsAt: new Date("2026-11-04T12:00:00Z"),
                     },
                   ],
+                  raisedAt: null,
                   link: { page: "lot", id: "l1" },
                 },
                 {
                   kind: "pay",
                   purchases: [{ id: "p1", title: "Estuary at Dusk" }],
+                  raisedAt: null,
                   link: { page: "purchase", id: "p1" },
                 },
               ],

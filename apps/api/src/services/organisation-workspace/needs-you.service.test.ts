@@ -7,17 +7,52 @@ import { NeedsYouService } from "./needs-you.service.js";
 const ENTITY = "00000000-0000-4000-8000-000000000001";
 const NOW = new Date("2026-11-10T12:00:00Z");
 
-type Standing = { kind: LegalEntityKind; status: LegalEntityStatus; payoutsReady: boolean };
+type Standing = {
+  kind: LegalEntityKind;
+  status: LegalEntityStatus;
+  payoutsReady: boolean;
+  statusChangedAt: Date | null;
+};
 
-function setup(options: { standing?: Standing | null } = {}) {
+function setup(
+  options: {
+    standing?: Standing | null;
+    agreementProposedAt?: Date | null;
+    sourceOfFunds?: { requested: boolean; at: Date | null };
+  } = {},
+) {
   const facts = {
     outbidLots: vi.fn(async () => [
-      { id: "l1", title: "Closing lot", endsAt: new Date("2026-11-10T14:00:00Z") },
+      {
+        id: "l1",
+        title: "Closing lot",
+        endsAt: new Date("2026-11-10T14:00:00Z"),
+        outbidAt: new Date("2026-11-10T11:00:00Z"),
+      },
     ]),
     openPurchases: vi.fn(async () => [
-      { id: "p1", title: "Lot 14", paymentStatus: null, fulfilment: null, shippingQuote: null },
+      {
+        id: "p1",
+        title: "Lot 14",
+        paymentStatus: null,
+        fulfilment: null,
+        shippingQuote: null,
+        wonAt: new Date("2026-11-09T10:00:00Z"),
+        paymentAt: null,
+        quotedAt: null,
+        readyAt: null,
+      },
     ]),
-    agreementsToAccept: vi.fn(async () => [{ id: "c1", title: "Untitled" }]),
+    agreementsToAccept: vi.fn(async () => [
+      {
+        id: "c1",
+        title: "Untitled",
+        proposedAt:
+          options.agreementProposedAt === undefined
+            ? new Date("2026-11-08T09:00:00Z")
+            : options.agreementProposedAt,
+      },
+    ]),
     changesRequested: vi.fn(async () => []),
     expiredInvitations: vi.fn(async () => [
       { id: "i1", email: "sam@example.com", expiredAt: new Date("2026-11-08T00:00:00Z") },
@@ -27,11 +62,17 @@ function setup(options: { standing?: Standing | null } = {}) {
       { id: "r1", requesterName: "Tom", askedAt: new Date("2026-11-09T00:00:00Z") },
     ]),
     unreadReplies: vi.fn(async () => [
-      { id: "s2", title: "Thames at low tide", from: "Clara Mendes" },
+      {
+        id: "s2",
+        title: "Thames at low tide",
+        from: "Clara Mendes",
+        at: new Date("2026-11-10T09:00:00Z"),
+      },
     ]),
     viewerChecks: vi.fn(async () => ({
       identity: "required" as const,
-      sourceOfFundsRequested: false,
+      sourceOfFundsRequested: options.sourceOfFunds?.requested ?? false,
+      sourceOfFundsRequestedAt: options.sourceOfFunds?.at ?? null,
     })),
   } satisfies INeedsYouFactsReader;
   const unsold = {
@@ -65,7 +106,7 @@ function setup(options: { standing?: Standing | null } = {}) {
   };
   const standing: Standing | null =
     options.standing === undefined
-      ? { kind: "organisation", status: "approved", payoutsReady: true }
+      ? { kind: "organisation", status: "approved", payoutsReady: true, statusChangedAt: null }
       : options.standing;
   const service = new NeedsYouService({
     facts,
@@ -108,6 +149,19 @@ describe("NeedsYouService", () => {
       organisation: 0,
     });
     expect(view.truncated).toBe(false);
+    expect(view.tasks.map((task) => [task.kind, task.raisedAt?.toISOString() ?? null])).toEqual([
+      // The bid now leading put the account behind.
+      ["outbid", "2026-11-10T11:00:00.000Z"],
+      // The sale of the lot ended: it was won.
+      ["pay", "2026-11-09T10:00:00.000Z"],
+      // The lot's sale ended.
+      ["unsold_due", "2026-10-29T12:00:00.000Z"],
+      ["agreement", "2026-11-08T09:00:00.000Z"],
+      // The newest unread message.
+      ["reply", "2026-11-10T09:00:00.000Z"],
+      ["invitations_expired", "2026-11-08T00:00:00.000Z"],
+      ["access_requests", "2026-11-09T00:00:00.000Z"],
+    ]);
     expect(facts.outbidLots).toHaveBeenCalledWith(
       expect.objectContaining({ legalEntityId: ENTITY, bidderId: null, now: NOW }),
     );
@@ -171,7 +225,7 @@ describe("NeedsYouService", () => {
 
   it("a person's own account: the same table, its consignments asked for while it is a lead", async () => {
     const { service } = setup({
-      standing: { kind: "individual", status: "lead", payoutsReady: false },
+      standing: { kind: "individual", status: "lead", payoutsReady: false, statusChangedAt: null },
     });
     const view = await service.read(member("owner"));
     expect(view.tasks.map((task) => task.kind)).toEqual(
@@ -179,6 +233,44 @@ describe("NeedsYouService", () => {
     );
     expect(view.tasks.map((task) => task.kind)).not.toContain("invitations_expired");
     expect(view.counts.consignments).toBe(3);
+  });
+
+  it("a record without a date leaves raisedAt null, never the time of the read", async () => {
+    const { service } = setup({ agreementProposedAt: null });
+    const view = await service.read(member("owner"));
+    expect(view.tasks.find((task) => task.kind === "agreement")?.raisedAt).toBeNull();
+  });
+
+  it("buyer agent: a registration and an identity check have no record of when they arose", async () => {
+    const { service } = setup();
+    const view = await service.read(member("buyer_agent"));
+    const raised = Object.fromEntries(view.tasks.map((task) => [task.kind, task.raisedAt]));
+    expect(raised.register).toBeNull();
+    expect(raised.identity).toBeNull();
+    expect(raised.won_awaiting_payment).toEqual(new Date("2026-11-09T10:00:00Z"));
+  });
+
+  it("source of funds is raised when LAX asked for the documents", async () => {
+    const at = new Date("2026-11-05T08:00:00Z");
+    const { service } = setup({ sourceOfFunds: { requested: true, at } });
+    const view = await service.read(member("viewer"));
+    expect(view.tasks).toEqual([
+      expect.objectContaining({ kind: "source_of_funds", raisedAt: at }),
+    ]);
+  });
+
+  it("documents are raised when the account's status last changed", async () => {
+    const at = new Date("2026-11-03T08:00:00Z");
+    const { service } = setup({
+      standing: {
+        kind: "organisation",
+        status: "docs_requested",
+        payoutsReady: false,
+        statusChangedAt: at,
+      },
+    });
+    const view = await service.read(member("owner"));
+    expect(view.tasks.find((task) => task.kind === "documents")?.raisedAt).toEqual(at);
   });
 
   it("an organisation that cannot be found asks nothing", async () => {
