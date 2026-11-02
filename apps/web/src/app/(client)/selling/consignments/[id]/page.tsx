@@ -26,7 +26,7 @@ import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { formatLotMoment } from "@/lib/bid/lot-moment";
-import { ACCOUNT_LOAD_ERROR, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
+import { ACCOUNT_LOAD_ERROR } from "@/lib/dashboard/dashboard-copy";
 import {
   describeDashboardSliceFailure,
   describeSettingsActionError,
@@ -82,7 +82,6 @@ import { unsoldChoiceViewModel } from "@/lib/seller/unsold-choice-view";
 import { lotPath } from "@/lib/seo/url";
 import { agreementAcceptanceHold, computeConsignmentChecklist } from "@auction/domain";
 import { ButtonLink, Notice, StatusBadge } from "@auction/ui/lax";
-import { ChevronLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -105,7 +104,7 @@ export default async function SubmissionDetailPage({
     loginNext: `/selling/consignments/${id}`,
   });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
-  const { sellerEntityId, sellingAsOrganisation } = sellerCtx;
+  const { sellerEntityId } = sellerCtx;
   // A role that does not follow consignments gets the access page, not a page that claims the
   // consignment does not exist.
   const refusal = workspacePageRefusal(CLIENT_ROUTES.consignments, sellerCtx.actor);
@@ -121,8 +120,6 @@ export default async function SubmissionDetailPage({
       </>
     );
   }
-  // A person's consignments sit under Selling; an organisation's under Consignments.
-  const backLabel = sellingAsOrganisation ? "Consignments" : "Selling";
   const c = await getServerDataContainer();
 
   let s: Awaited<ReturnType<typeof c.submissions.getMineById>> = null;
@@ -165,13 +162,6 @@ export default async function SubmissionDetailPage({
     return (
       <DashboardPage className="space-y-8">
         <SetMobileShellTitle title="Consignment" />
-        <Link
-          href={DASHBOARD_ROUTES.consignments}
-          className="inline-flex w-fit items-center gap-1 font-body text-sm text-on-surface-variant underline-offset-4 hover:text-on-surface hover:underline"
-        >
-          <ChevronLeft aria-hidden className="size-4" />
-          {backLabel}
-        </Link>
         <AccountLoadError {...ACCOUNT_LOAD_ERROR.consignment} />
       </DashboardPage>
     );

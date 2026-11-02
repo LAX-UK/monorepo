@@ -44,8 +44,6 @@ export default async function InvitationReviewPage({
     <DashboardPage className="mx-auto max-w-lg space-y-6">
       <DashboardDetailHeader
         compactOnMobile
-        backHref="/organisations/invitations"
-        backLabel="Invitations"
         eyebrow="Invitation"
         title={invitation.orgDisplayName}
         badges={

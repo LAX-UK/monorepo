@@ -161,7 +161,7 @@ export const ACCOUNT_LOAD_ERROR = {
     description: "This is on our side. Payouts still go to your bank account as scheduled.",
   },
   works: {
-    title: "We couldn't load your organisation's works",
+    title: "We couldn't load your organisation's collection",
     description: "This is on our side. Your works, invoices and payments are safe.",
   },
   consignment: {

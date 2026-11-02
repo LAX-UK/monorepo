@@ -31,7 +31,7 @@ describe("workspaceAccessReason", () => {
       "Members is for owners and admins.",
     );
     expect(line("Purchases", "Owners, admins, finance and buyer agents", "viewer")).toBe(
-      "Purchases is for owners, admins, finance and buyer agents. As a viewer, you can see what the organisation owns in Works.",
+      "Purchases is for owners, admins, finance and buyer agents. As a viewer, you can see what the organisation owns in Collection.",
     );
   });
 
