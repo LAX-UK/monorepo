@@ -50,6 +50,7 @@ import { createLegalEntityBuyerAgentRoutes } from "./routes/legal-entity-buyer-a
 import { createLegalEntityMemberRoutes } from "./routes/legal-entity-members.js";
 import { createLotDocumentRoutes } from "./routes/lot-documents.js";
 import { createLotRoutes } from "./routes/lots.js";
+import { createMarketingEnquiryRoutes } from "./routes/marketing-enquiries.js";
 import { createMarketingRoutes } from "./routes/marketing.js";
 import { createNewsletterRoutes } from "./routes/newsletter.js";
 import { createOnsiteEventRoutes } from "./routes/onsite-events.js";
@@ -270,6 +271,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/webhooks/veriff", createVeriffWebhookRoutes(container))
     .route("/email", createEmailRoutes(container))
     .route("/newsletter", createNewsletterRoutes(container))
+    .route("/contact-enquiries", createMarketingEnquiryRoutes(container))
     .route("/auth", createProductAuthRoutes(container))
     .route("/categories", createCategoryRoutes(container))
     .route("/venues", createVenueRoutes(container, authenticator))

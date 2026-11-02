@@ -13,6 +13,7 @@ export const adminWorkItemKindSchema = z.enum([
   "lot_withdrawal",
   "lot_draft_past_start",
   "unsold_lot_choice",
+  "marketing_enquiry",
   "purchase_problem",
 ]);
 

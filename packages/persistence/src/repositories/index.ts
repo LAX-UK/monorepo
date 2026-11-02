@@ -244,6 +244,7 @@ export {
   DrizzleAccountRegistrationsReader,
   DrizzleRecordPeopleReader,
 } from "./drizzle-workspace-buying.readers.js";
+export { DrizzleMarketingEnquiryRepository } from "./drizzle-marketing-enquiry.repository.js";
 export { DrizzleDeliveryQuoteRepository } from "./drizzle-delivery-quote.repository.js";
 export { DrizzlePurchaseProblemRepository } from "./drizzle-purchase-problem.repository.js";
 export { DrizzleAccountRecordSearchReader } from "./drizzle-account-record-search.reader.js";
