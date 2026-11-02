@@ -7,9 +7,14 @@ on:
         required: true
         options: [test, prod]
       git_sha:
-        description: Release identifier (defaults to workflow SHA)
+        description: Release identifier, the commit SHA the release was deployed from (defaults to workflow SHA)
         type: string
         required: false
+      component:
+        description: Re-run the source map upload for one component only (finalize and deploy record are skipped)
+        type: choice
+        options: [all, api, auth, ws, worker]
+        default: all
   workflow_call:
     inputs:
       environment:
@@ -18,6 +23,14 @@ on:
       git_sha:
         type: string
         required: true
+      component:
+        type: string
+        required: false
+        default: all
+    outputs:
+      sourcemaps_uploaded:
+        description: "'true' when every Node source map upload succeeded, otherwise 'false'"
+        value: ${{ jobs.finalize-release.outputs.sourcemaps_uploaded }}
 
 permissions:
   contents: read
@@ -28,71 +41,72 @@ env:
   SENTRY_URL: https://sentry.io
 
 jobs:
+  # Sentry is best effort: every network call retries with back-off, and when all
+  # attempts fail the job emits a warning and a "false" output instead of failing,
+  # so callers never have to gate a deploy on it.
   ensure-release:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    outputs:
+      release_ready: ${{ steps.ensure.outputs.release_ready }}
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       RELEASE: ${{ inputs.git_sha || github.sha }}
       ENV_SUFFIX: ${{ inputs.environment }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/sentry-auth-preflight
+      - id: preflight
+        continue-on-error: true
+        uses: ./.github/actions/sentry-auth-preflight
         with:
           organization-slug: lax-bid
           team-slug: lax-engineering
       - name: Install Sentry CLI
-        run: npm i -g @sentry/cli@2.58.4
+        id: cli
+        continue-on-error: true
+        run: scripts/ci/sentry-install-cli.sh
       - name: Ensure org release exists
+        id: ensure
         env:
           SENTRY_LOG_LEVEL: info
+          PREFLIGHT: ${{ steps.preflight.outcome }}
+          CLI: ${{ steps.cli.outcome }}
         run: |
-          set -euo pipefail
+          if [ "${PREFLIGHT}" = "success" ] && [ "${CLI}" = "success" ] \
+            && scripts/ci/sentry-ensure-release.sh; then
+            echo "release_ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Sentry release ${RELEASE} (${ENV_SUFFIX}) was not created; the deploy is not affected. See docs/runbooks/deploy-checklist.md, Sentry release warnings."
+          fi
 
-          existing_projects="$(sentry-cli projects list -o "${SENTRY_ORG}" | grep -Eo 'lax-[a-z0-9-]+' | sort -u || true)"
-          IFS=',' read -ra apps <<< "${SENTRY_APPS}"
-          project_args=()
-          anchor_project=""
-          for app in "${apps[@]}"; do
-            project="lax-${ENV_SUFFIX}-${app}"
-            if echo "${existing_projects}" | grep -Fxq "${project}"; then
-              project_args+=(-p "$project")
-              if [ -z "${anchor_project}" ] && [ "${app}" = "api" ]; then
-                anchor_project="${project}"
-              fi
-            else
-              echo "::warning::Sentry project ${project} not found; skipping (apply terraform sentry layer to create it)"
-            fi
-          done
-          if [ "${#project_args[@]}" -eq 0 ]; then
-            echo "::error::No Sentry projects found for environment ${ENV_SUFFIX}"
+  select-components:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - id: select
+        env:
+          COMPONENT: ${{ inputs.component }}
+        run: |
+          all='[{"sentry_app":"api","package":"api","app_dir":"api"},{"sentry_app":"auth","package":"auth-app","app_dir":"auth"},{"sentry_app":"ws","package":"ws","app_dir":"ws"},{"sentry_app":"worker","package":"worker","app_dir":"worker"}]'
+          matrix="$(jq -c --arg c "${COMPONENT:-all}" 'map(select($c == "all" or .sentry_app == $c))' <<< "$all")"
+          if [ "$matrix" = "[]" ]; then
+            echo "::error::Unknown component '${COMPONENT}'. Use all, api, auth, ws or worker."
             exit 1
           fi
-          if [ -z "${anchor_project}" ]; then
-            anchor_project="$(echo "${existing_projects}" | grep "^lax-${ENV_SUFFIX}-" | head -1)"
-          fi
-
-          if sentry-cli releases info "$RELEASE" -p "$anchor_project" >/dev/null 2>&1; then
-            echo "Release ${RELEASE} already exists"
-          else
-            echo "Creating release ${RELEASE} for all projects"
-            sentry-cli releases new "$RELEASE" "${project_args[@]}"
-          fi
-
-          # --auto requires GitHub repo integration and often 500s without it; explicit commit is safer.
-          if ! sentry-cli releases set-commits "$RELEASE" \
-            --commit "${GITHUB_REPOSITORY}@${RELEASE}" \
-            --ignore-missing; then
-            echo "::warning::set-commits failed; continuing without commit association"
-          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   upload-node-sourcemaps:
-    needs: ensure-release
+    needs: [ensure-release, select-components]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: ${{ inputs.environment }}
+    outputs:
+      uploaded_api: ${{ steps.upload.outputs.uploaded_api }}
+      uploaded_auth: ${{ steps.upload.outputs.uploaded_auth }}
+      uploaded_ws: ${{ steps.upload.outputs.uploaded_ws }}
+      uploaded_worker: ${{ steps.upload.outputs.uploaded_worker }}
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       RELEASE: ${{ inputs.git_sha || github.sha }}
@@ -100,21 +114,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - sentry_app: api
-            package: api
-            app_dir: api
-          - sentry_app: auth
-            package: auth-app
-            app_dir: auth
-          - sentry_app: ws
-            package: ws
-            app_dir: ws
-          - sentry_app: worker
-            package: worker
-            app_dir: worker
+        include: ${{ fromJSON(needs.select-components.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_sha || github.sha }}
       - uses: pnpm/action-setup@v4
         with:
           version: 9.15.4
@@ -125,39 +129,72 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --filter="@auction/${{ matrix.package }}..."
       - name: Install Sentry CLI
-        run: npm i -g @sentry/cli@2.58.4
-      - name: Build and upload Node source maps
+        id: cli
+        continue-on-error: true
+        run: scripts/ci/sentry-install-cli.sh
+      - name: Build Node app
+        run: pnpm turbo run build --filter="@auction/${{ matrix.package }}..."
+      - name: Upload Node source maps
+        id: upload
         env:
           SENTRY_LOG_LEVEL: info
+          CLI: ${{ steps.cli.outcome }}
         run: |
-          set -euo pipefail
           project="lax-${ENV_SUFFIX}-${{ matrix.sentry_app }}"
-          pnpm turbo run build --filter="@auction/${{ matrix.package }}..."
-          sentry-cli sourcemaps inject "apps/${{ matrix.app_dir }}/dist"
-          sentry-cli sourcemaps upload --release="$RELEASE" -p "$project" "apps/${{ matrix.app_dir }}/dist"
+          if [ "${CLI}" = "success" ] \
+            && scripts/ci/sentry-upload-sourcemaps.sh "apps/${{ matrix.app_dir }}/dist" "$project"; then
+            echo "uploaded_${{ matrix.sentry_app }}=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "uploaded_${{ matrix.sentry_app }}=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Source maps for ${{ matrix.sentry_app }} were not uploaded to Sentry release ${RELEASE} (${ENV_SUFFIX}); the deploy is not affected. Re-run the upload from the Sentry release workflow (component ${{ matrix.sentry_app }}); see docs/runbooks/deploy-checklist.md."
+          fi
 
   finalize-release:
-    needs: upload-node-sourcemaps
+    needs: [ensure-release, upload-node-sourcemaps]
+    if: ${{ inputs.component == 'all' }}
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
+    outputs:
+      sourcemaps_uploaded: ${{ steps.summary.outputs.sourcemaps_uploaded }}
     env:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       RELEASE: ${{ inputs.git_sha || github.sha }}
       ENV_SUFFIX: ${{ inputs.environment }}
       SENTRY_DEPLOY_ENV: ${{ inputs.environment == 'prod' && 'production' || 'test' }}
     steps:
+      - uses: actions/checkout@v4
       - name: Install Sentry CLI
-        run: npm i -g @sentry/cli@2.58.4
+        id: cli
+        continue-on-error: true
+        run: scripts/ci/sentry-install-cli.sh
       - name: Finalize release and record deploy
         env:
           SENTRY_LOG_LEVEL: info
+          CLI: ${{ steps.cli.outcome }}
         run: |
-          set -euo pipefail
           anchor_project="lax-${ENV_SUFFIX}-api"
-          if ! sentry-cli releases finalize "$RELEASE" -p "$anchor_project"; then
-            echo "::warning::finalize failed (release may already be finalized)"
+          if [ "${CLI}" != "success" ]; then
+            echo "::warning::Sentry CLI unavailable; release ${RELEASE} (${ENV_SUFFIX}) was not finalized and no deploy was recorded."
+            exit 0
           fi
-          if ! sentry-cli releases deploys "$RELEASE" new -e "$SENTRY_DEPLOY_ENV" -p "$anchor_project"; then
-            echo "::error::deploy record failed for release ${RELEASE}"
-            exit 1
+          if ! scripts/ci/sentry-retry.sh sentry-cli releases finalize "$RELEASE" -p "$anchor_project"; then
+            echo "::warning::Sentry release ${RELEASE} (${ENV_SUFFIX}) was not finalized (it may already be finalized)"
+          fi
+          if ! scripts/ci/sentry-retry.sh sentry-cli releases deploys "$RELEASE" new -e "$SENTRY_DEPLOY_ENV" -p "$anchor_project"; then
+            echo "::warning::Sentry deploy record failed for release ${RELEASE} (${ENV_SUFFIX}); the deploy is not affected."
+          fi
+      - name: Summarise source map uploads
+        id: summary
+        env:
+          RELEASE_READY: ${{ needs.ensure-release.outputs.release_ready }}
+          API: ${{ needs.upload-node-sourcemaps.outputs.uploaded_api }}
+          AUTH: ${{ needs.upload-node-sourcemaps.outputs.uploaded_auth }}
+          WS: ${{ needs.upload-node-sourcemaps.outputs.uploaded_ws }}
+          WORKER: ${{ needs.upload-node-sourcemaps.outputs.uploaded_worker }}
+        run: |
+          if [ "${RELEASE_READY}" = "true" ] && [ "${API}${AUTH}${WS}${WORKER}" = "truetruetruetrue" ]; then
+            echo "sourcemaps_uploaded=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "sourcemaps_uploaded=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Sentry release ${RELEASE} (${ENV_SUFFIX}) is incomplete (release ready: ${RELEASE_READY:-unknown}; api: ${API:-n/a}, auth: ${AUTH:-n/a}, ws: ${WS:-n/a}, worker: ${WORKER:-n/a}). Re-run the upload per docs/runbooks/deploy-checklist.md."
           fi

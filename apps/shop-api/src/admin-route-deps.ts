@@ -21,6 +21,7 @@ import type {
   CreateOriginalSaleCommand,
   OriginalSaleWriter,
 } from "./application/ports/original-sale.writer.js";
+import type { ReleaseAlertSummaryReader } from "./application/ports/release-alert.store.js";
 import type {
   GrantSaleAuthorityCommand,
   SaleAuthorityWriter,
@@ -75,6 +76,8 @@ export type AdminRoutesDeps = {
   guestErasure: GuestErasureService;
   /** Guest leads: the list and one lead's record. */
   leads: LeadsService;
+  /** Release alert subscriber counts. */
+  releaseAlertSummary: ReleaseAlertSummaryReader;
   artistApplicationReview: ArtistApplicationReviewService;
   productionTasks: ProductionTaskService;
   savedViews: SavedViewService;

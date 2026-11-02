@@ -6,6 +6,7 @@ import {
   shopEdition,
   shopEditionFacts,
   shopMediaAsset,
+  shopParty,
 } from "@auction/db/schema";
 import {
   type AdminArtworkState,
@@ -20,6 +21,7 @@ import {
   assertEditionPrice,
   assertLivePriceKept,
   assertSourceOriginal,
+  isShopEditionRelease,
 } from "@auction/shop-domain";
 import { and, asc, count, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { withAdminIdempotency } from "../application/admin/with-admin-idempotency.js";
@@ -28,6 +30,7 @@ import type {
   ArtworkCatalogueWriter,
   ArtworkEditableFields,
 } from "../application/ports/artwork-catalogue-admin.js";
+import type { ReleaseAlertAnnouncer } from "../application/ports/release-alert.store.js";
 import type { ShopTransactionEffects } from "../application/ports/shop-unit-of-work.js";
 import type { ShopUnitOfWorkFactory } from "../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
@@ -241,7 +244,7 @@ function changesArtStorefront(before: ArtworkRow, after: ArtworkRow): boolean {
 }
 
 type VisibilityOutcome =
-  | { outcome: "changed" | "unchanged"; artwork: ArtworkRow }
+  | { outcome: "changed" | "unchanged"; artwork: ArtworkRow; releaseAlertsQueued?: number }
   | { outcome: "refused"; message: string };
 
 /**
@@ -253,6 +256,7 @@ async function applyVisibility(
   artwork: ArtworkRow,
   action: AdminArtworkVisibilityAction,
   actorSubjectId: string,
+  releaseAlerts?: { announcer: ReleaseAlertAnnouncer; send: boolean },
 ): Promise<VisibilityOutcome> {
   const now = new Date();
   let patch: Partial<Pick<ArtworkRow, "publishedAt" | "archivedAt">> | null = null;
@@ -311,14 +315,37 @@ async function applyVisibility(
     },
     afterJson: { published: after.publishedAt !== null, archived: after.archivedAt !== null },
   });
-  return { outcome: "changed", artwork: after };
+  if (action !== "publish" || !releaseAlerts?.send || !isShopEditionRelease(after)) {
+    return { outcome: "changed", artwork: after };
+  }
+  const { queued } = await releaseAlerts.announcer.announce(tx.session, {
+    artworkId: after.id,
+    slug: after.slug,
+    title: after.title,
+    artistName: await artistDisplayName(tx, after.artistId),
+  });
+  return { outcome: "changed", artwork: after, releaseAlertsQueued: queued };
+}
+
+async function artistDisplayName(tx: ShopTransactionEffects, artistId: string): Promise<string> {
+  const [row] = await shopPhaseDbSession(tx)
+    .select({ displayName: shopParty.displayName })
+    .from(shopArtist)
+    .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+    .where(eq(shopArtist.id, artistId))
+    .limit(1);
+  return row?.displayName ?? "";
 }
 
 export function createDrizzleArtworkCatalogueWriter(
   uow: ShopUnitOfWorkFactory,
-  options: { resolveMediaUrl: ResolveMediaUrl; editionRuns: EditionRunRecorder },
+  options: {
+    resolveMediaUrl: ResolveMediaUrl;
+    editionRuns: EditionRunRecorder;
+    releaseAlerts: ReleaseAlertAnnouncer;
+  },
 ): ArtworkCatalogueWriter {
-  const { resolveMediaUrl, editionRuns } = options;
+  const { resolveMediaUrl, editionRuns, releaseAlerts } = options;
   return {
     createArtwork: (input) =>
       uow.run((tx) =>
@@ -600,11 +627,17 @@ export function createDrizzleArtworkCatalogueWriter(
           requestPayload: input,
           run: async () => {
             const artwork = await lockArtwork(tx, input.artworkId);
-            const result = await applyVisibility(tx, artwork, input.action, input.actorSubjectId);
+            const result = await applyVisibility(tx, artwork, input.action, input.actorSubjectId, {
+              announcer: releaseAlerts,
+              send: input.sendReleaseAlert === true,
+            });
             if (result.outcome === "refused") throw new ShopDomainError(result.message);
             return {
               version: result.artwork.updatedAt.toISOString(),
               state: await stateOf(tx, result.artwork),
+              ...(result.releaseAlertsQueued === undefined
+                ? {}
+                : { releaseAlertsQueued: result.releaseAlertsQueued }),
               refreshesArt:
                 result.outcome === "changed" && changesArtStorefront(artwork, result.artwork),
             };

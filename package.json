@@ -102,6 +102,7 @@
     "@aws-sdk/client-s3": "^3.1041.0",
     "@biomejs/biome": "^1.9.4",
     "@lhci/cli": "^0.14.0",
+    "@sentry/cli": "2.58.6",
     "@types/pg": "^8.11.10",
     "jose": "^6.2.3",
     "madge": "^8.0.0",

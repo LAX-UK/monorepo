@@ -200,6 +200,12 @@ import ShopProductionStartedEmail, {
 import ShopRefundIssuedEmail, {
   subject as shopRefundIssuedSubject,
 } from "./templates/shop-refund-issued.js";
+import ShopReleaseAlertConfirmEmail, {
+  subject as shopReleaseAlertConfirmSubject,
+} from "./templates/shop-release-alert-confirm.js";
+import ShopReleaseAlertEmail, {
+  subject as shopReleaseAlertSubject,
+} from "./templates/shop-release-alert.js";
 import ShopZohoDeadLetterNoticeEmail, {
   subject as shopZohoDeadLetterNoticeSubject,
 } from "./templates/shop-zoho-dead-letter-notice.js";
@@ -244,6 +250,9 @@ import SubmissionRejectedEmail, {
   subject as submissionRejectedSubject,
 } from "./templates/submission-rejected.js";
 import VerifyEmail, { subject as verifyEmailSubject } from "./templates/verify-email.js";
+import VisitorAlertConfirmEmail, {
+  subject as visitorAlertConfirmSubject,
+} from "./templates/visitor-alert-confirm.js";
 import WatchedLotReminderEmail, {
   subject as watchedLotReminderSubject,
 } from "./templates/watched-lot-reminder.js";
@@ -545,6 +554,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: shopOrderReceiptSubject,
     component: (vars) => <ShopOrderReceiptEmail {...vars} />,
   },
+  "visitor-alert-confirm": {
+    subject: visitorAlertConfirmSubject,
+    component: (vars) => <VisitorAlertConfirmEmail {...vars} />,
+  },
   "shop-guest-order-link": {
     subject: shopGuestOrderLinkSubject,
     component: (vars) => <ShopGuestOrderLinkEmail {...vars} />,
@@ -584,6 +597,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-edition-available-notify": {
     subject: shopEditionAvailableNotifySubject,
     component: (vars) => <ShopEditionAvailableNotifyEmail {...vars} />,
+  },
+  "shop-release-alert-confirm": {
+    subject: shopReleaseAlertConfirmSubject,
+    component: (vars) => <ShopReleaseAlertConfirmEmail {...vars} />,
+  },
+  "shop-release-alert": {
+    subject: shopReleaseAlertSubject,
+    component: (vars) => <ShopReleaseAlertEmail {...vars} />,
   },
   "shop-zoho-dead-letter-notice": {
     subject: shopZohoDeadLetterNoticeSubject,

@@ -101,6 +101,7 @@ export {
 } from "./legal-entity-lifecycle.js";
 export {
   INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES,
+  ORGANISATION_PAYOUTS_PENDING_SUBMIT_REASON,
   ORGANISATION_UNDER_REVIEW_SUBMIT_REASON,
   SELLER_ENTITY_WRITE_STATUSES,
   sellerSubmissionAccess,
@@ -927,3 +928,15 @@ export * from "./marketing-enquiry-status.js";
 export * from "./marketing-enquiry-routing.js";
 export * from "./marketing-enquiry-visibility.js";
 export * from "./marketing-enquiry-views.js";
+export {
+  VISITOR_ALERT_CONFIRM_TTL_MS,
+  VISITOR_ALERT_CONSENT_TEXT,
+  VISITOR_ALERT_RESEND_INTERVAL_MS,
+  evaluateConfirmation,
+  normaliseAlertEmail,
+  receivesSaleAlerts,
+  shouldSendConfirmation,
+  type VisitorAlertConfirmation,
+  type VisitorAlertSignupState,
+  type VisitorAlertStatus,
+} from "./visitor-sale-alerts.js";

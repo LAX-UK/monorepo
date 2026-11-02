@@ -10,3 +10,5 @@ a458b28276851535706b3f8bfd5c2f5c180b0d1d:infra/terraform/ephemeral/prod/main.tf:
 31c68cde86789fcddc109a33364e2a658b80d8b1:.github/workflows/e2e-pr.yml:generic-api-key:61
 621d600652cbd4ca0209508728ef57cd96acc5a9:apps/web/src/lib/bff/public-origin-url.server.test.ts:generic-api-key:23
 621d600652cbd4ca0209508728ef57cd96acc5a9:apps/web/src/lib/bff/public-origin-url.server.test.ts:generic-api-key:36
+bed42353f0dd79931718678c393c414761ff90b0:apps/api/src/lib/visitor-alert-token.test.ts:generic-api-key:4
+bed42353f0dd79931718678c393c414761ff90b0:apps/api/src/services/visitor-sale-alert.service.test.ts:generic-api-key:10

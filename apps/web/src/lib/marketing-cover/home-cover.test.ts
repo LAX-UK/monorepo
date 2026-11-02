@@ -65,7 +65,7 @@ function build(sales: Sale[], lots: Record<string, Lot[]> = {}) {
     ...input,
     fieldFor: () => "#1a1f26",
     links: HOME_COVER_LINKS,
-    notifyAction: "/api/newsletter/notify",
+    notifyAction: "/api/sale-alerts/notify",
     betweenSeasons: { title: "Between", fact: "Join the list." },
   });
   return { state, cover, input };
@@ -147,7 +147,7 @@ describe("home cover by state", () => {
     expect(state.state).toBe("betweenSeasons");
     expect(cover.slides).toHaveLength(1);
     const [slide] = cover.slides;
-    expect(slide?.alert?.action).toBe("/api/newsletter/notify");
+    expect(slide?.alert?.action).toBe("/api/sale-alerts/notify");
     expect(slide?.seasons?.map((r) => r.label)).toEqual(["Consign by", "February"]);
     expect(slide?.credit?.text).toContain("Recently sold");
     expect(cover.lots.map((l) => l.id)).toEqual(["sold"]);
