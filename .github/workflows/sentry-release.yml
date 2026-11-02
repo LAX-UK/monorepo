@@ -64,7 +64,7 @@ jobs:
       - name: Install Sentry CLI
         id: cli
         continue-on-error: true
-        run: scripts/ci/sentry-retry.sh npm i -g @sentry/cli@2.58.4
+        run: scripts/ci/sentry-install-cli.sh
       - name: Ensure org release exists
         id: ensure
         env:
@@ -131,7 +131,7 @@ jobs:
       - name: Install Sentry CLI
         id: cli
         continue-on-error: true
-        run: scripts/ci/sentry-retry.sh npm i -g @sentry/cli@2.58.4
+        run: scripts/ci/sentry-install-cli.sh
       - name: Build Node app
         run: pnpm turbo run build --filter="@auction/${{ matrix.package }}..."
       - name: Upload Node source maps
@@ -166,7 +166,7 @@ jobs:
       - name: Install Sentry CLI
         id: cli
         continue-on-error: true
-        run: scripts/ci/sentry-retry.sh npm i -g @sentry/cli@2.58.4
+        run: scripts/ci/sentry-install-cli.sh
       - name: Finalize release and record deploy
         env:
           SENTRY_LOG_LEVEL: info
