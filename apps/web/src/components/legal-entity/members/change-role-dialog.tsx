@@ -65,7 +65,7 @@ export function ChangeRoleDialog({
   // On a phone the summary sits below the fold; bring it into view when the choice changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the chosen role changes.
   useEffect(() => {
-    if (!unchanged) summaryRef.current?.scrollIntoView({ block: "nearest" });
+    if (!unchanged) summaryRef.current?.scrollIntoView?.({ block: "nearest" });
   }, [role]);
 
   async function submit() {
