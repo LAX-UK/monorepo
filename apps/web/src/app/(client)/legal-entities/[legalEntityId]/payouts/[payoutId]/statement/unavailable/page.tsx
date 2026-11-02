@@ -24,6 +24,7 @@ export default async function StatementUnavailablePage({ params }: PageProps) {
         title="We couldn't prepare this statement"
         description="This is on our side. Your payout is not affected, and the statement will be here when it is ready."
         retryHref={retryHref}
+        headingLevel="h1"
       />
     </DashboardPage>
   );

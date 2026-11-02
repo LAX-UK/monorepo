@@ -50,7 +50,7 @@ export default async function PurchaseDetailPage({ params }: PageProps) {
     return (
       <DashboardPage>
         <SetMobileShellTitle title="Purchase" />
-        <AccountLoadError {...ACCOUNT_LOAD_ERROR.purchase} />
+        <AccountLoadError {...ACCOUNT_LOAD_ERROR.purchase} headingLevel="h1" />
       </DashboardPage>
     );
   }

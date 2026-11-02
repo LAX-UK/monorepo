@@ -18,6 +18,8 @@ export type AccountLoadErrorProps = {
   onRetry?: () => void;
   /** Tries again by opening this address (a download or a route) instead of reloading the page. */
   retryHref?: string;
+  /** `h1` when the failure is the whole page, so the page still has its one main heading. */
+  headingLevel?: "h1" | "h2";
 };
 
 /**
@@ -30,6 +32,7 @@ export function AccountLoadError({
   description,
   onRetry,
   retryHref,
+  headingLevel = "h2",
 }: AccountLoadErrorProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -38,6 +41,7 @@ export function AccountLoadError({
     <div role="alert">
       <DashboardEmptyState
         variant="hero"
+        headingLevel={headingLevel}
         illustration="error"
         title={title}
         description={description}
