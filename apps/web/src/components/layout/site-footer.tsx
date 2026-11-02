@@ -25,7 +25,7 @@ const LINK_CLASS = cn(
 
 function renderLink(link: MarketingFooterLink) {
   if (link.href === BID_COOKIE_PREFERENCES_HREF) {
-    return <CookiePreferencesLink className="min-h-0 leading-6" />;
+    return <CookiePreferencesLink className="min-h-0 text-base font-medium leading-6" />;
   }
   if (link.href.startsWith("http://") || link.href.startsWith("https://")) {
     return (

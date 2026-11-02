@@ -33,7 +33,11 @@ const COPY: Record<HomeState, Copy> = {
 export function HomeAlertsBand({ state }: { state: HomeState }) {
   const copy = COPY[state];
   return (
-    <section aria-labelledby="home-alerts-heading" className="pt-16 md:pt-24">
+    <section
+      id="alerts"
+      aria-labelledby="home-alerts-heading"
+      className="scroll-mt-[var(--header-height,4rem)] pt-16 md:pt-24"
+    >
       <div className={MARKETING_PAGE_SHELL}>
         <div className="grid gap-5 border-y border-border-hairline py-7 md:grid-cols-2 md:items-center md:gap-12 md:py-10">
           <div className="min-w-0">
