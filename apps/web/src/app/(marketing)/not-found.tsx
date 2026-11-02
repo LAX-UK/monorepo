@@ -1,29 +1,9 @@
-import { AppNotFound } from "@/components/app/app-not-found";
+import { NOT_FOUND_COPY } from "@/components/not-found/not-found-copy";
+import { PageNotFound } from "@/components/not-found/page-not-found";
 import { metadataForNotFound } from "@/lib/seo/metadata-factory";
-import { NOT_FOUND_PRESETS } from "@/lib/ui/empty-state-copy";
 
-export const metadata = metadataForNotFound(
-  "Page not found",
-  "The page you requested may have moved or never existed.",
-);
+export const metadata = metadataForNotFound(NOT_FOUND_COPY.page.documentTitle);
 
 export default function MarketingNotFound() {
-  const preset = NOT_FOUND_PRESETS.marketing;
-  return (
-    <main id="main-content">
-      <AppNotFound
-        kicker={preset.kicker}
-        title={preset.title}
-        description={preset.description}
-        primaryHref={preset.primaryHref}
-        primaryLabel={preset.primaryLabel}
-        secondaryHref={preset.secondaryHref}
-        secondaryLabel={preset.secondaryLabel}
-        searchHref={preset.searchHref}
-        searchLabel={preset.searchLabel}
-        illustration={preset.illustration}
-        siteHeaderOffset
-      />
-    </main>
-  );
+  return <PageNotFound kind="page" />;
 }

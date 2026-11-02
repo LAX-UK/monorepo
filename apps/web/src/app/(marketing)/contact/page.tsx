@@ -128,7 +128,7 @@ export default async function ContactPage({
         </p>
         <ContactForm intent={intent} sellType={type} />
 
-        <aside className="mt-10 border-t border-divider-soft pt-6 font-body text-sm text-on-surface-variant">
+        <div className="mt-10 border-t border-divider-soft pt-6 font-body text-sm text-on-surface-variant">
           For bidding support during a live sale, signed-in collectors can reach us through{" "}
           <Link href="/notifications" className={MARKETING_PROSE_LINK}>
             Notifications
@@ -144,7 +144,7 @@ export default async function ContactPage({
           .
           <br />
           Registered office: {BID_OPERATOR.name}, {BID_OPERATOR.registeredAddress.inline}.
-        </aside>
+        </div>
       </LegalPage>
     </PolicyHubLayout>
   );

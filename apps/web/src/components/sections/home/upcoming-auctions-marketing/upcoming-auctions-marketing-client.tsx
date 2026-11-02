@@ -121,6 +121,8 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
           <MarketingEmptyState
             variant="marketing"
             illustration="gavel"
+            size="compact"
+            headingLevel="h3"
             title="No auctions match this filter"
             description="Try another filter or browse the full catalogue."
             action={

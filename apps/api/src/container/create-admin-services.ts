@@ -243,6 +243,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     disputeDesk: createAdminDisputeDesk({ db, allocator: payments.disputeAllocationService }),
     bidRepo: repoFactory.root.bid,
     payoutService: platform.payoutService,
+    payoutRepository,
     payoutSettlementService: platform.payoutSettlementService,
     payoutStatementApplication: input.payoutStatementApplication,
     env,

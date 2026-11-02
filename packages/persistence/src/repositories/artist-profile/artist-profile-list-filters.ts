@@ -2,6 +2,7 @@ import { artistCategories, artistProfile, category } from "@auction/db/schema";
 import type { ArtistKind } from "@auction/types";
 import { and, asc, desc, eq, ilike, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { AdminArtistListOptions } from "../../interfaces/artist-profile-admin.reader.js";
+import { escapeLikePattern } from "../../lib/like-pattern.js";
 import {
   artistHasPublicBrowseLotsExists,
   artistPublicCatalogLotCountSubquery,
@@ -66,7 +67,7 @@ export function buildAdminListFilters(options: AdminArtistListOptions) {
   }
 
   if (options.q?.trim()) {
-    const q = `%${options.q.trim().replace(/[%_\\]/g, "")}%`;
+    const q = `%${escapeLikePattern(options.q.trim())}%`;
     filters.push(
       sql`(${artistProfile.displayName} ilike ${q} or ${artistProfile.slug} ilike ${q})`,
     );
@@ -141,7 +142,7 @@ export type PublicDirectoryListOptions = {
 export function buildPublicDirectoryWhere(options: PublicDirectoryListOptions) {
   const baseFilters = [eq(artistProfile.archived, false), eq(artistProfile.status, "approved")];
   if (options.q?.trim()) {
-    const q = `%${options.q.trim().replace(/[%_\\]/g, "")}%`;
+    const q = `%${escapeLikePattern(options.q.trim())}%`;
     baseFilters.push(
       sql`(${artistProfile.displayName} ilike ${q} or ${artistProfile.slug} ilike ${q})`,
     );
@@ -157,7 +158,9 @@ export function buildPublicDirectoryWhere(options: PublicDirectoryListOptions) {
   if (options.living === true) refinedFilters.push(hasNoDeathYear);
   if (options.historical === true) refinedFilters.push(hasDeathYear);
   if (options.nationality?.trim()) {
-    refinedFilters.push(ilike(artistProfile.nationality, `%${options.nationality.trim()}%`));
+    refinedFilters.push(
+      ilike(artistProfile.nationality, `%${escapeLikePattern(options.nationality.trim())}%`),
+    );
   }
   if (options.country?.trim()) {
     refinedFilters.push(eq(artistProfile.countryCode, options.country.trim().toUpperCase()));

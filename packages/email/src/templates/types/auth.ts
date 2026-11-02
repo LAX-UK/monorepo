@@ -21,6 +21,8 @@ const names = [
   "password-changed-elsewhere",
   "password-changed-sessions-not-revoked",
   "change-email",
+  "account-deletion-requested",
+  "account-deletion-cancelled",
 ] as const;
 
 type AuthTemplateName = (typeof names)[number];
@@ -106,6 +108,16 @@ type AuthTemplateVarsBase = {
     userName?: string | null;
     sessionsSettingsUrl: string;
   };
+  /** The grace period has started: says when the data is erased and how to stop it. */
+  "account-deletion-requested": SecurityNoticeVars & {
+    /** Day the grace period ends, formatted by the sender (Europe/London). */
+    effectiveDateDisplay: string;
+    /** Days between the request and erasure. */
+    graceDays: number;
+    /** LAX Account's "Delete your account" page, where the request can be cancelled. */
+    cancelDeletionUrl: string;
+  };
+  "account-deletion-cancelled": SecurityNoticeVars;
   "change-email": {
     confirmationUrl: string;
     oldEmail: string;
@@ -143,6 +155,8 @@ export const authTemplates = {
     "password-changed-elsewhere": "live",
     "password-changed-sessions-not-revoked": "live",
     "change-email": "snapshot",
+    "account-deletion-requested": "live",
+    "account-deletion-cancelled": "live",
   },
 } satisfies TemplateDomainSlice<AuthTemplateName, AuthTemplateVars>;
 

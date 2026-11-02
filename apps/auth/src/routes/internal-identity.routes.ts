@@ -116,7 +116,7 @@ export function createInternalIdentityRoutes(options: {
   lifecycle: IIdentityLifecycleService;
   operations: IdentityOperationsService;
   emailChange: Pick<EmailChangeService, "start" | "confirm">;
-  accountDeletion: Pick<AccountDeletionService, "requestDeletion">;
+  accountDeletion: Pick<AccountDeletionService, "requestDeletion" | "cancelForSubject">;
   redis: MachineTokenRedis;
   machineClientId: string;
   machineClientSecret: string;
@@ -473,7 +473,7 @@ export function createInternalIdentityRoutes(options: {
 
   app.delete("/identity/subjects/:subjectId/deletion-request", (c) =>
     runIdentityOperation(c, async () => {
-      await options.operations.cancelDeletionRequested(c.req.param("subjectId"));
+      await options.accountDeletion.cancelForSubject(c.req.param("subjectId"));
       return { ok: true };
     }),
   );

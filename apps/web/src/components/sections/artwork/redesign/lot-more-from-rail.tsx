@@ -187,7 +187,7 @@ export function LotMoreFromRail({
                       </div>
                     ) : null}
                     <div>
-                      <p className="text-xs text-on-surface-variant">Current bid</p>
+                      <p className="text-xs text-on-surface-variant">{c.priceLabel}</p>
                       <p className="text-sm font-semibold text-on-surface">
                         {formatMoney(c.currentPrice)}
                       </p>

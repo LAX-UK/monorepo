@@ -30,6 +30,13 @@ describe("admin-user-list-sql", () => {
     expect(query.params).toEqual(["client", "ok", "unverified"]);
   });
 
+  it("treats wildcards typed into search as plain characters", () => {
+    const where = buildAdminUserListWhere({ q: "50%_a\\", limit: 25, offset: 0 });
+    if (!where) throw new Error("Expected search predicate");
+    const query = dialect.sqlToQuery(where);
+    expect(query.params).toContain("%50\\%\\_a\\\\%");
+  });
+
   it("builds all material list filters from the canonical tables", () => {
     const where = buildAdminUserListWhere({
       q: "person",

@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { PayoutStatusTransitionError } from "../services/interfaces/payout.js";
 import { InMemoryIdempotencyStore, stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { createAdminPayoutRoutes } from "./payouts.js";
 
@@ -20,6 +21,9 @@ function mount(
   const store = options.store ?? new InMemoryIdempotencyStore();
   const payouts = {
     markPaid: vi.fn().mockResolvedValue({ id: PAYOUT_ID, status: "paid" }),
+    retryFailedTransfer: vi
+      .fn()
+      .mockResolvedValue({ ok: true, payout: { id: PAYOUT_ID, status: "in_transit" } }),
     adminManualReverse: vi.fn().mockResolvedValue({ id: PAYOUT_ID, status: "reversed" }),
     createSettlement: vi.fn().mockResolvedValue({ ok: true, payout: { id: PAYOUT_ID, lines: [] } }),
   };
@@ -367,5 +371,87 @@ describe("POST /admin/payouts/run-settlement", () => {
     expect([...store.entries.keys()].some((k) => k.startsWith("admin-settlement-lock:"))).toBe(
       false,
     );
+  });
+});
+
+describe("POST /admin/payouts/:payoutId/retry-transfer", () => {
+  const retry = (app: Hono, idem: string, body: unknown = { confirmed: true }) =>
+    post(app, `/${PAYOUT_ID}/retry-transfer`, body, key(idem));
+
+  it.each(["administrator", "finance"])("lets %s retry with the actor recorded", async (role) => {
+    const { app, payouts } = mount(role);
+
+    const res = await retry(app, "retry-key-0001");
+
+    expect(res.status).toBe(200);
+    expect(payouts.retryFailedTransfer).toHaveBeenCalledWith(ACTOR_ID, PAYOUT_ID);
+  });
+
+  it.each(["sales_manager", "client_services", "read_only"])("refuses %s", async (role) => {
+    const { app, payouts } = mount(role);
+
+    const res = await retry(app, "retry-key-0002");
+
+    expect(res.status).toBe(403);
+    expect(payouts.retryFailedTransfer).not.toHaveBeenCalled();
+  });
+
+  it("asks for a fresh sign-in, and retries nothing", async () => {
+    const { app, payouts } = mount("finance", { recent: false });
+
+    const res = await retry(app, "retry-key-0003");
+
+    expect(await res.json()).toEqual(STEP_UP);
+    expect(payouts.retryFailedTransfer).not.toHaveBeenCalled();
+  });
+
+  it("refuses a request that was not confirmed", async () => {
+    const { app, payouts } = mount("finance");
+
+    const res = await retry(app, "retry-key-0004", {});
+
+    expect(res.status).toBe(400);
+    expect(payouts.retryFailedTransfer).not.toHaveBeenCalled();
+  });
+
+  it("refuses a request without an Idempotency-Key", async () => {
+    const { app, payouts } = mount("finance");
+
+    const res = await post(app, `/${PAYOUT_ID}/retry-transfer`, { confirmed: true });
+
+    expect(res.status).toBe(400);
+    expect(payouts.retryFailedTransfer).not.toHaveBeenCalled();
+  });
+
+  it("retries once when the same request is replayed", async () => {
+    const { app, payouts } = mount("finance");
+
+    await retry(app, "retry-key-0005");
+    const second = await retry(app, "retry-key-0005");
+
+    expect(second.headers.get("Idempotent-Replayed")).toBe("true");
+    expect(payouts.retryFailedTransfer).toHaveBeenCalledOnce();
+  });
+
+  it("reports a transfer that could not start as a conflict", async () => {
+    const { app, payouts } = mount("finance");
+    payouts.retryFailedTransfer.mockResolvedValue({ ok: false, reason: "connect_not_ready" });
+
+    const res = await retry(app, "retry-key-0006");
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "connect_not_ready" });
+  });
+
+  it("reports a payout that is not failed as a conflict", async () => {
+    const { app, payouts } = mount("finance");
+    payouts.retryFailedTransfer.mockRejectedValue(
+      new PayoutStatusTransitionError("payout_not_failed"),
+    );
+
+    const res = await retry(app, "retry-key-0007");
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "payout_not_failed" });
   });
 });

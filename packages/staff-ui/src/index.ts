@@ -1,18 +1,14 @@
 // Tokens
 export * from "./tokens.js";
-export { cn, STAFF_LAYER } from "./lib/cn.js";
+export { cn } from "./lib/cn.js";
 export { formatGbp, formatPenceAsPounds, parsePoundsToPence } from "./lib/money.js";
 export type { ParsedPence } from "./lib/money.js";
-export { formatRateAsPercent, formatStaffPercent, parsePercentToRate } from "./lib/percent.js";
-export type { ParsedRate } from "./lib/percent.js";
+export { formatStaffPercent } from "./lib/percent.js";
 export {
-  STAFF_TIME_ZONE,
   formatStaffDate,
   formatStaffDateTime,
   formatStaffMoney,
   formatStaffRelative,
-  formatStaffTime,
-  londonZoneLabel,
 } from "./lib/format.js";
 
 // Primitives
@@ -20,15 +16,9 @@ export { StaffButton, staffButtonVariants } from "./primitives/button.js";
 export type { StaffButtonProps } from "./primitives/button.js";
 export { StaffButtonLink } from "./primitives/button-link.js";
 export type { StaffButtonLinkProps } from "./primitives/button-link.js";
-export { HoldButton, STAFF_HOLD_MS } from "./primitives/hold-button.js";
+export { HoldButton } from "./primitives/hold-button.js";
 export type { HoldButtonProps } from "./primitives/hold-button.js";
-export {
-  Kbd,
-  ShortcutKeys,
-  TextArea,
-  TextInput,
-  fieldBox as staffFieldBox,
-} from "@auction/ui/lax";
+export { Kbd, ShortcutKeys, TextArea, TextInput } from "@auction/ui/lax";
 export type { TextAreaProps, TextInputProps } from "@auction/ui/lax";
 export {
   ChoiceRow,
@@ -39,7 +29,6 @@ export {
 } from "./primitives/choice.js";
 export {
   StaffMenu,
-  StaffMenuCheckboxItem,
   StaffMenuContent,
   StaffMenuItem,
   StaffMenuLabel,
@@ -88,11 +77,7 @@ export type {
   ThreadTime,
 } from "./display/message-thread.js";
 export { RelativeTime } from "./display/relative-time.js";
-export {
-  STAFF_TRUNCATION_TOOLTIP_DELAY_MS,
-  TruncatedText,
-} from "./display/truncated-text.js";
-export { TextLink, staffTextLinkClass } from "./display/text-link.js";
+export { TextLink } from "./display/text-link.js";
 export { AttentionList } from "./display/attention-list.js";
 export { LinkList } from "./display/link-list.js";
 export type { LinkListItem } from "./display/link-list.js";
@@ -122,7 +107,6 @@ export {
 } from "@auction/ui/lax";
 export type { Metric, MetricCellItem, MetricComparison, MetricTone } from "@auction/ui/lax";
 export { ProgressBar } from "./display/progress-bar.js";
-export { AttentionStrip } from "./display/attention-strip.js";
 export type { AttentionStripItem } from "./display/attention-strip.js";
 
 // Forms
@@ -131,29 +115,15 @@ export type { FieldProps } from "@auction/ui/lax";
 export { MoneyInput } from "./forms/money-input.js";
 export { DateInput, DateTimeInput } from "./forms/date-input.js";
 export type { DateInputProps, DateTimeInputProps } from "./forms/date-input.js";
-export {
-  formatStaffDay,
-  isoToLondonWallTime,
-  londonClockChange,
-  londonWallTimeToIso,
-  parseStaffDay,
-  parseStaffTime,
-} from "./forms/staff-dates.js";
-export type { ParsedDay } from "./forms/staff-dates.js";
+export { formatStaffDay, isoToLondonWallTime, londonWallTimeToIso } from "./forms/staff-dates.js";
 export {
   UnsavedChangesDialog,
   UnsavedChangesGuard,
   confirmDiscardChanges,
-  discardPrompt,
-  hasUnsavedChanges,
   useBeforeUnloadGuard,
   useUnsavedChanges,
 } from "./forms/unsaved-changes.js";
-export type {
-  DiscardPrompt,
-  UnsavedChangesOptions,
-  UnsavedChangesState,
-} from "./forms/unsaved-changes.js";
+export type { UnsavedChangesOptions, UnsavedChangesState } from "./forms/unsaved-changes.js";
 export { FileDropzone } from "./forms/file-dropzone.js";
 export { MessageComposer } from "./forms/message-composer.js";
 export type {
@@ -194,30 +164,22 @@ export { SortableList } from "./forms/sortable-list.js";
 export type { SortableListProps } from "./forms/sortable-list.js";
 export { RichTextField } from "./forms/rich-text-field.js";
 export type { RichTextFieldProps } from "./forms/rich-text-field.js";
-export {
-  htmlToSpans,
-  normalizeSpans,
-  spansToHtml,
-  spansToPlainText,
-} from "./forms/rich-text-model.js";
-export type { RichTextMark, RichTextSpan } from "./forms/rich-text-model.js";
+export type { RichTextSpan } from "./forms/rich-text-model.js";
 export type { WizardStep } from "./forms/wizard.js";
 
 // Data
 export { DataTable } from "./data/data-table.js";
 export type { DataTableProps } from "./data/data-table.js";
-export { BulkActionBar, useTableSelectionActive } from "./data/bulk-action-bar.js";
+export { BulkActionBar } from "./data/bulk-action-bar.js";
 export { DateRangeFilter } from "./data/date-range-filter.js";
-export { DEFAULT_DATE_PRESETS, daysBefore, londonToday } from "./data/date-ranges.js";
+export { daysBefore, londonToday } from "./data/date-ranges.js";
 export type { DateRangePreset, DayRange } from "./data/date-ranges.js";
 export { ListPageSkeleton } from "./data/list-page-skeleton.js";
 export {
   ActiveFilterChips,
   DataTableToolbar,
   DataViews,
-  DensityToggle,
   FilterMenu,
-  TablePagination,
   TableSearch,
   useTableDensity,
 } from "./data/toolbar.js";
@@ -232,18 +194,10 @@ export type {
   FilterSheetSection,
   FilterSheetValues,
 } from "./data/filter-sheet.js";
-export { ColumnsMenu, useColumnVisibility, visibleColumns } from "./data/columns-menu.js";
-export type { ColumnVisibility } from "./data/columns-menu.js";
-export { RowActions, rowActionsColumn } from "./data/row-actions.js";
-export { DisplayMenu } from "./data/display-menu.js";
+export { rowActionsColumn } from "./data/row-actions.js";
 export { SortMenu } from "./data/sort-menu.js";
 export type { SortOption } from "./data/sort-menu.js";
-export {
-  STAFF_DEFAULT_PAGE_SIZE,
-  STAFF_PAGE_SIZES,
-  parseStaffPageSize,
-} from "./lib/page-size.js";
-export type { DisplayPageSize } from "./data/display-menu.js";
+export { STAFF_DEFAULT_PAGE_SIZE, parseStaffPageSize } from "./lib/page-size.js";
 export {
   CellLink,
   CellThumbnail,
@@ -253,7 +207,6 @@ export {
   StackedCell,
   StaffDate,
   StaffMoney,
-  isEmptyCellValue,
   staffCellLinkClass,
 } from "./data/cells.js";
 
@@ -261,18 +214,12 @@ export { RelatedRecordsSection } from "./data/related-records-section.js";
 export type { RelatedRecordsSectionProps } from "./data/related-records-section.js";
 
 // Access
-export {
-  ReadOnlyView as StaffReadOnly,
-  readOnlyBox as staffReadOnlyBox,
-  useReadOnlyView as useStaffReadOnly,
-} from "@auction/ui/lax";
+export { ReadOnlyView as StaffReadOnly } from "@auction/ui/lax";
 export {
   Permitted,
   StaffAccessProvider,
-  usePermittedItems,
   useStaffAccess,
   useStaffCan,
-  useStaffPageAccess,
 } from "./access/staff-access.js";
 export type { StaffAccess, StaffPermission } from "./access/staff-access.js";
 export { CsvExportMenu } from "./data/csv-export-menu.js";
@@ -304,7 +251,6 @@ export type {
   SavedViewsPort,
   SavedViewsResult,
 } from "./data/saved-views.js";
-export { VIEW_LABEL_MAX_LENGTH, ViewsMenu } from "./data/views-menu.js";
 export type { TeamView } from "./data/views-menu.js";
 export type {
   BulkSelectionScope,
@@ -326,20 +272,8 @@ export type {
   StaffDialogProps,
 } from "./panels/staff-dialog.js";
 export { StaffToaster } from "./panels/toaster.js";
-export {
-  STAFF_TOAST_DURATION_MS,
-  STAFF_UNDO_TOAST_DURATION_MS,
-  toastUndo,
-  useOptimisticState,
-} from "./panels/feedback.js";
-export type { OptimisticOptions, OptimisticResult } from "./panels/feedback.js";
-export {
-  STAFF_STEP_UP_REASON,
-  StepUpDialog,
-  StepUpNotice,
-  isStaffStepUpRequired,
-  useStaffStepUp,
-} from "./panels/step-up.js";
+export { toastUndo } from "./panels/feedback.js";
+export { StepUpDialog, isStaffStepUpRequired, useStaffStepUp } from "./panels/step-up.js";
 /** Toasts for the StaffToaster: `toast.success("Refund requested")`. */
 export { toast } from "sonner";
 
@@ -349,22 +283,11 @@ export { STAFF_NAV_COOKIE } from "./shell/nav-cookie.js";
 export type { StaffShellProps } from "./shell/staff-shell.js";
 export { AccountMenu } from "./shell/account-menu.js";
 export { initialsOf } from "./lib/initials.js";
-export { ProductMark, ProductSwitcher } from "./shell/product-switcher.js";
-export { STAFF_PRODUCT_IDS, buildStaffProducts } from "./shell/staff-products.js";
-export type { StaffProductId } from "./shell/staff-products.js";
-export { CommandPalette, useCommandPaletteShortcut } from "./shell/command-palette.js";
+export { buildStaffProducts } from "./shell/staff-products.js";
+export { CommandPalette } from "./shell/command-palette.js";
 export { StaffBreadcrumbs } from "./shell/breadcrumbs.js";
-export { RecordPager, recordPosition } from "./shell/record-pager.js";
-export type { RecordPosition } from "./shell/record-pager.js";
-export {
-  STAFF_SHORTCUTS_STORAGE_KEY,
-  ShortcutsDialog,
-  StaffShortcutsProvider,
-  isTypingTarget,
-  useStaffShortcut,
-  useStaffShortcuts,
-} from "./shell/shortcuts.js";
-export type { StaffShortcut } from "./shell/shortcuts.js";
+export { RecordPager } from "./shell/record-pager.js";
+export { useStaffShortcuts } from "./shell/shortcuts.js";
 export { MetaItem, PageHeader, STAFF_PAGE_TITLE_CLASS } from "./shell/page-header.js";
 export type { PageHeaderProps } from "./shell/page-header.js";
 export { OverflowMenu } from "./shell/overflow-menu.js";
@@ -375,7 +298,7 @@ export {
   staffThemeHtmlAttributes,
 } from "./shell/theme.js";
 export type { OverflowAction } from "./shell/overflow-menu.js";
-export { SidebarNav, resolveActiveItem } from "./shell/sidebar-nav.js";
+export { resolveActiveItem } from "./shell/sidebar-nav.js";
 export { PlainLink } from "@auction/ui/lax";
 export type {
   LinkComponent as StaffLinkComponent,

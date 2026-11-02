@@ -11,6 +11,7 @@ import type { IPayoutService } from "../../interfaces/payout.js";
 import type {
   IConnectAccountReadinessSync,
   IConnectTransferInitiationService,
+  InitiateTransferOptions,
   InitiateTransferResult,
 } from "../../interfaces/stripe-connect.js";
 import { ConnectTransferInitiationService } from "./connect-transfer-initiation.service.js";
@@ -48,7 +49,7 @@ export class ConnectTransferService {
 
   initiateTransfer(
     payoutId: string,
-    opts?: { keepScheduledOnTransferFailure?: boolean },
+    opts?: InitiateTransferOptions,
   ): Promise<InitiateTransferResult> {
     return this.initiationService.initiateTransfer(payoutId, opts);
   }

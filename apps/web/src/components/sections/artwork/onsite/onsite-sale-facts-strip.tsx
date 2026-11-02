@@ -1,3 +1,4 @@
+import { FactList } from "@/components/marketing/fact-list";
 import type { SaleOverviewVM } from "@/components/sections/saleroom/view-models";
 import Link from "next/link";
 
@@ -13,18 +14,15 @@ export function OnsiteSaleFactsStrip({ overview, saleTermsHref, className }: Pro
     <div
       className={`rounded-xl border border-outline-variant/20 bg-surface-container-low/50 p-4 dark:bg-surface-container-low/40 ${className ?? ""}`}
     >
-      <dl className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <dt className="font-label text-xs font-medium text-on-surface-variant">
-            Buyer&apos;s premium
-          </dt>
-          <dd className="mt-1 text-sm font-medium text-on-surface">{overview.buyerPremiumLabel}</dd>
-        </div>
-        <div>
-          <dt className="font-label text-xs font-medium text-on-surface-variant">Format</dt>
-          <dd className="mt-1 text-sm font-medium text-on-surface">{overview.formatLabel}</dd>
-        </div>
-      </dl>
+      <FactList
+        className="grid gap-3 sm:grid-cols-2"
+        termClassName="font-label text-xs font-medium text-on-surface-variant"
+        valueClassName="mt-1 text-sm font-medium text-on-surface"
+        facts={[
+          { label: "Buyer's premium", value: overview.buyerPremiumLabel },
+          { label: "Format", value: overview.formatLabel },
+        ]}
+      />
       <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-label text-xs font-medium text-on-surface-variant">
         <Link href="/faq" className="text-on-surface underline-offset-4 hover:underline">
           How to bid

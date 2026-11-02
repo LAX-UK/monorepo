@@ -156,10 +156,10 @@ export default async function HomePage({
   const alerts = firstString(sp[COVER_ALERTS_PARAM]);
 
   return (
-    <main id="main-content" className="bg-page-bg pt-[var(--header-height)]">
+    <div className="bg-page-bg pt-[var(--header-height)]">
       <Suspense fallback={<HomeSkeleton />}>
         <MarketingHomeContent urlView={urlView} alerts={alerts} />
       </Suspense>
-    </main>
+    </div>
   );
 }

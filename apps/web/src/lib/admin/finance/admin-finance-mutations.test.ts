@@ -116,4 +116,36 @@ describe("finance mutations", () => {
       `/api/auth/login?next=${encodeURIComponent("/admin/payouts/settlement?legalEntityId=one")}&intent=reauth`,
     );
   });
+
+  it("reports success with a code, never text", async () => {
+    fetchMock.mockResolvedValue(ok());
+    const target = await redirectTarget(() =>
+      runPayoutSettlementAction(form({ legalEntityId: ENTITY_ID })),
+    );
+    expect(target).toBe("/admin/payouts/settlement?result=started");
+  });
+
+  it("maps a refused run to a fixed code and drops the API's wording", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ error: "<b>internal detail</b>" }), { status: 409 }),
+    );
+    const target = await redirectTarget(() =>
+      runPayoutSettlementAction(form({ legalEntityId: ENTITY_ID })),
+    );
+    expect(target).toBe("/admin/payouts/settlement?result=blocked");
+  });
+
+  it("maps a server failure to the retry code", async () => {
+    fetchMock.mockResolvedValue(new Response("{}", { status: 502 }));
+    const target = await redirectTarget(() =>
+      runPayoutSettlementAction(form({ legalEntityId: ENTITY_ID })),
+    );
+    expect(target).toBe("/admin/payouts/settlement?result=failed");
+  });
+
+  it("asks for a seller when none was chosen", async () => {
+    const target = await redirectTarget(() => runPayoutSettlementAction(form({})));
+    expect(target).toBe("/admin/payouts/settlement?result=missing_seller");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

@@ -1,5 +1,10 @@
 import { moneyGt, moneyGte, parseMoneyToMinorUnits } from "../money-compare.js";
-import { type LotLifecycleKind, type LotStatusTone, lotLifecycleCopy } from "./lifecycle-copy.js";
+import {
+  type LotLifecycleKind,
+  type LotStatusTone,
+  lotHeadlineLabel,
+  lotLifecycleCopy,
+} from "./lifecycle-copy.js";
 import type { LotViewerState } from "./viewer-state.js";
 
 /** The icon that accompanies a tone, so colour is never the only signal. */
@@ -189,35 +194,24 @@ function upcomingHeadline(input: PriceBlockInput): Headline {
 function headlineOf(input: PriceBlockInput): Headline {
   const copy = lotLifecycleCopy(input.lifecycle);
   const { format } = input;
+  const hasBids = input.bidCount > 0;
+  const openLabel = lotHeadlineLabel(input.lifecycle, hasBids);
+  const openAmount =
+    hasBids || !isPositive(input.amounts.starting) ? input.amounts.current : input.amounts.starting;
   switch (input.lifecycle) {
     case "preLaunch":
     case "scheduled":
       return upcomingHeadline(input);
     case "live":
-      return headlineWithAmount(
-        copy.headlineLabel,
-        input.amounts.current,
-        openSubLine(input),
-        format,
-      );
+      return headlineWithAmount(openLabel, openAmount, openSubLine(input), format);
     case "extended":
-      return headlineWithAmount(
-        copy.headlineLabel,
-        input.amounts.current,
-        extendedSubLine(input),
-        format,
-      );
+      return headlineWithAmount(openLabel, openAmount, extendedSubLine(input), format);
     case "liveSaleroom":
-      return headlineWithAmount(
-        copy.headlineLabel,
-        input.amounts.current,
-        saleroomSubLine(input),
-        format,
-      );
+      return headlineWithAmount(openLabel, openAmount, saleroomSubLine(input), format);
     case "saleroomPaused":
       return headlineWithAmount(
-        copy.headlineLabel,
-        input.amounts.current,
+        openLabel,
+        openAmount,
         "The auctioneer has paused the sale",
         format,
       );
