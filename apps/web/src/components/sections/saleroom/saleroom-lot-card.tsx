@@ -1,5 +1,7 @@
 "use client";
 
+import { LotCardBidderState } from "@/components/lot-card/lot-card-bidder-state";
+import { LotCardLine } from "@/components/lot-card/lot-card-line";
 import { LotLifecycleStatusBadge } from "@/components/marketing/lot-lifecycle-status-badge";
 import { SaleroomLotCatalogOverlay } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
 import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
@@ -58,9 +60,8 @@ export function SaleroomLotCard({
   priceEmphasis,
   layout = "tile",
 }: Props) {
-  const emphasis = priceEmphasis ?? (lot.isLive ? "currentBid" : "estimate");
-  const estimateStrong = emphasis === "estimate" || emphasis === "both";
-  const currentStrong = emphasis === "currentBid" || emphasis === "both";
+  const estimateStrong =
+    (priceEmphasis ?? (lot.isLive ? "currentBid" : "estimate")) !== "currentBid";
   const isRow = layout === "row";
 
   if (isRow) {
@@ -98,6 +99,7 @@ export function SaleroomLotCard({
               lot={lot}
               saleForLifecycle={saleForLifecycle}
               layout="inline"
+              showTimer={false}
             />
           </div>
           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -126,16 +128,9 @@ export function SaleroomLotCard({
               value={lot.estimateValue ?? "—"}
               strongValue={estimateStrong}
             />
-            <MetaStack
-              label={
-                lot.bidsCountLabel
-                  ? `${lot.currentBidLabel} · ${lot.bidsCountLabel}`
-                  : lot.currentBidLabel
-              }
-              value={lot.currentBidValue}
-              strongValue={currentStrong}
-            />
           </div>
+          <LotCardLine model={lot.cardLine} />
+          <LotCardBidderState lotId={lot.id} />
 
           {actions ? <div className="mt-1 w-full min-w-0">{actions}</div> : null}
         </div>
@@ -176,6 +171,7 @@ export function SaleroomLotCard({
             saleForLifecycle={saleForLifecycle}
             layout="overlay"
             useOverlayChrome
+            showTimer={false}
           />
         </Link>
         {cornerAction ? <Fragment key={`${lot.id}-corner-action`}>{cornerAction}</Fragment> : null}
@@ -211,16 +207,9 @@ export function SaleroomLotCard({
             value={lot.estimateValue ?? "—"}
             strongValue={estimateStrong}
           />
-          <MetaStack
-            label={
-              lot.bidsCountLabel
-                ? `${lot.currentBidLabel} · ${lot.bidsCountLabel}`
-                : lot.currentBidLabel
-            }
-            value={lot.currentBidValue}
-            strongValue={currentStrong}
-          />
         </div>
+        <LotCardLine model={lot.cardLine} />
+        <LotCardBidderState lotId={lot.id} />
 
         {actions ? <div className="mt-auto w-full min-w-0">{actions}</div> : null}
       </div>

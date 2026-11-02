@@ -4,6 +4,10 @@ import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/components/lot-card/lot-card-bidder-state", () => ({
+  LotCardBidderState: () => null,
+}));
+
 vi.mock("next/image", () => ({
   default: (props: { alt: string }) => <img alt={props.alt} />,
 }));
@@ -46,6 +50,13 @@ const lot: SaleLotCardVM = {
   estimateValue: "£1,000",
   currentBidLabel: "Current bid",
   currentBidValue: "£500",
+  cardLine: {
+    label: "Current bid",
+    value: "£500",
+    time: "none",
+    startsAt: null,
+    endsAt: null,
+  },
   bidsCountLabel: null,
   closingLabel: null,
   isLive: true,

@@ -69,11 +69,11 @@ export function attentionCountFor(
 /** The header chip: one short, urgent prompt with a link to where it is resolved. */
 export type AttentionChip = {
   kind: "outbid" | "payment-due";
-  /** Wide screens: "Outbid on lot 14". */
+  /** "Outbid on Harbour at Dawn", or "Outbid on 2 lots" when several are waiting. */
   label: string;
-  /** Phones: "Outbid". */
-  shortLabel: string;
   href: string;
+  /** What assistive technology hears: the full text, even when the chip truncates it. */
+  accessibleName: string;
 };
 
 type ChipRule = {
@@ -82,10 +82,23 @@ type ChipRule = {
   chip: (attention: ClientAttention) => Omit<AttentionChip, "kind">;
 };
 
-function outbidLabel(lots: ClientAttention["outbidLots"]): string {
-  if (lots.length > 1) return `Outbid on ${lots.length} lots`;
-  const [only] = lots;
-  return only ? `Outbid on lot ${only}` : "Outbid on 1 lot";
+/** Where the several outbid lots are resolved together. */
+const OUTBID_LIST_HREF = `${CLIENT_ROUTES.bids}?tab=active`;
+
+/**
+ * The chip names the work, not the lot number, which repeats across sales. One lot links straight
+ * to its price block; several collapse to a count and link to My bids.
+ */
+function outbidChip(attention: ClientAttention): Omit<AttentionChip, "kind"> {
+  const group = attention.groups.find((candidate) => candidate.kind === "outbid");
+  const only = group?.items.length === 1 ? group.items[0] : undefined;
+  const count = group?.count ?? attention.outbidLots.length;
+  if (only) {
+    const label = `Outbid on ${only.title}`;
+    return { label, href: only.url, accessibleName: `${label}. Go to the lot` };
+  }
+  const label = count === 1 ? "Outbid on 1 lot" : `Outbid on ${count} lots`;
+  return { label, href: OUTBID_LIST_HREF, accessibleName: `${label}. Go to My bids` };
 }
 
 /** In priority order: being outbid wins while a sale is live; payment waits a little longer. */
@@ -93,16 +106,16 @@ const CHIP_RULES: readonly ChipRule[] = [
   {
     kind: "outbid",
     applies: (a) => a.outbidLots.length > 0,
-    chip: (a) => ({
-      label: outbidLabel(a.outbidLots),
-      shortLabel: "Outbid",
-      href: `${CLIENT_ROUTES.bids}?tab=active`,
-    }),
+    chip: outbidChip,
   },
   {
     kind: "payment-due",
     applies: (a) => a.paymentsDue > 0,
-    chip: () => ({ label: "Payment due", shortLabel: "Pay now", href: CLIENT_ROUTES.purchases }),
+    chip: () => ({
+      label: "Payment due",
+      href: CLIENT_ROUTES.purchases,
+      accessibleName: "Payment due. Go to Purchases",
+    }),
   },
 ];
 

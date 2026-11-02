@@ -318,6 +318,7 @@ describe("mapLotToCardVM", () => {
     );
     expect(vm.currentBidLabel).toBe("Result");
     expect(vm.currentBidValue).toBe("Not sold");
+    expect(vm.cardLine).toMatchObject({ label: "Not sold", value: null });
     expect(vm.closingLabel).toBeNull();
     expect(vm.isLive).toBe(false);
   });

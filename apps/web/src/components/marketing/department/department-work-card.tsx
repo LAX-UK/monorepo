@@ -1,3 +1,4 @@
+import { LotCardBidderState } from "@/components/lot-card/lot-card-bidder-state";
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { MediaImage } from "@/components/ui/media-image";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
@@ -41,9 +42,12 @@ export function DepartmentWorkCard({ lot, price }: Props) {
         </>
       }
       footer={
-        <p className="line-clamp-1">
-          {line.label} {line.value}
-        </p>
+        <>
+          <p className="line-clamp-1">
+            {line.label} {line.value}
+          </p>
+          <LotCardBidderState lotId={lot.id} />
+        </>
       }
     />
   );

@@ -44,9 +44,9 @@ const CARD_RULES: Partial<Record<LotPosition, CardRule>> = {
             amount: input.nextBid,
           }
         : null;
-    return line("You've been outbid", "warning", "alert", action);
+    return line("Outbid", "warning", "alert", action);
   },
-  maximum_set: () => line("Maximum bid set", "neutral", "tick"),
+  maximum_set: () => line("Maximum set", "neutral", "tick"),
   won: () => line("You won this lot", "success", "tick"),
   lost: () => line("You didn't win", "neutral", "dot"),
 };

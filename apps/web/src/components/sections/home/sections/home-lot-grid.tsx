@@ -1,3 +1,4 @@
+import { LotCardBidderState } from "@/components/lot-card/lot-card-bidder-state";
 import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-button";
 import { MediaImage } from "@/components/ui/media-image";
 import type { HomeLotCard } from "@/lib/home-sections/types";
@@ -42,16 +43,17 @@ function LotCard({ lot, watch }: { lot: HomeLotCard; watch: HomeLotWatch }) {
           {line}
         </p>
       ))}
-      {...(lot.price
-        ? {
-            footer: (
-              <p className="line-clamp-1">
-                {lot.price.qualifier ? `${lot.price.qualifier} ` : ""}
-                {lot.price.value}
-              </p>
-            ),
-          }
-        : {})}
+      footer={
+        <>
+          {lot.price ? (
+            <p className="line-clamp-1">
+              {lot.price.qualifier ? `${lot.price.qualifier} ` : ""}
+              {lot.price.value}
+            </p>
+          ) : null}
+          <LotCardBidderState lotId={lot.id} />
+        </>
+      }
     />
   );
 }

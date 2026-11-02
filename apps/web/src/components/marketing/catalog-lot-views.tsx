@@ -1,3 +1,5 @@
+import { LotCardBidderState } from "@/components/lot-card/lot-card-bidder-state";
+import { LotCardLine } from "@/components/lot-card/lot-card-line";
 import { CatalogLotEditorialCalmCaption } from "@/components/marketing/catalog-lot-editorial-calm-caption";
 import { LotCardEditorialCalm, LotCardGrid, LotCardList } from "@/components/marketing/lot-card";
 import { CatalogLotQuickLookCorner } from "@/components/marketing/lot-quick-look/catalog-lot-quick-look-corner";
@@ -8,6 +10,7 @@ import { MarketingWatchlistHeart } from "@/components/marketing/watchlist-heart-
 import { MediaImage } from "@/components/ui/media-image";
 import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
 import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
+import { lotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
@@ -124,12 +127,11 @@ export function CatalogLotGridView({
             }
             meta={
               <>
-                <p className="mt-1 font-label text-xs text-on-surface-variant md:mt-2">
-                  {formatMoney(a.currentPrice, lotChargeCurrency(a))}
-                </p>
                 <p className="mt-0.5 hidden min-h-4 font-label text-xs text-on-surface-variant md:mt-1 md:block">
                   {est ? `Est. ${est}` : "\u00a0"}
                 </p>
+                <LotCardLine model={lotCardLineModel(a, new Date())} className="mt-2" />
+                <LotCardBidderState lotId={a.id} className="mt-1.5" />
               </>
             }
           />
@@ -268,6 +270,7 @@ export function CatalogLotListView({
                           Est. {est}
                         </p>
                       ) : null}
+                      <LotCardBidderState lotId={a.id} className="mt-1.5" />
                     </div>
                     {isPublicLotStatus(a.status) ? (
                       <div className="tabular-nums">

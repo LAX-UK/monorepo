@@ -1,3 +1,4 @@
+import { LotCardBidderState } from "@/components/lot-card/lot-card-bidder-state";
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MediaImage } from "@/components/ui/media-image";
@@ -59,9 +60,12 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
         </>
       }
       footer={
-        <p className="line-clamp-1">
-          {price.label} {price.value}
-        </p>
+        <>
+          <p className="line-clamp-1">
+            {price.label} {price.value}
+          </p>
+          <LotCardBidderState lotId={lot.id} />
+        </>
       }
     />
   );
