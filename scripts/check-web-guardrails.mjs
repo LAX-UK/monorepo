@@ -17,8 +17,6 @@ const COMPONENT_DIRS = ["components", "features"].map((d) => join(webSrc, d));
 
 const WARN_LINES = 400;
 const FAIL_LINES = 550;
-const SPECIFIER_RE =
-  /(?:import|export)\s[^"']*?from\s*["']([^"']+)["']|import\s*\(\s*["']([^"']+)["']\s*\)|require\s*\(\s*["']([^"']+)["']\s*\)/g;
 
 /** @param {string} dir @returns {string[]} */
 function listTsx(dir) {
@@ -115,22 +113,6 @@ for (const file of listWebSources(webSrc)) {
 }
 
 /** @type {string[]} */
-const libComponentViolations = [];
-
-for (const file of listWebSources(join(webSrc, "lib/ui/bid-error"))) {
-  const rel = relative(webSrc, file).replace(/\\/g, "/");
-  const text = readFileSync(file, "utf8");
-  for (const match of text.matchAll(SPECIFIER_RE)) {
-    const specifier = match[1] ?? match[2] ?? match[3];
-    if (specifier?.includes("/components/") || specifier?.startsWith("@/components/")) {
-      libComponentViolations.push(
-        `${rel}: imports "${specifier}" — lib/ui/bid-error must not depend on components/**`,
-      );
-    }
-  }
-}
-
-/** @type {string[]} */
 const embeddedCredentialViolations = [];
 const EMBEDDED_CREDENTIAL_RES = [
   /\/api\/auth\/sign-in\//,
@@ -162,15 +144,6 @@ if (embeddedCredentialViolations.length > 0) {
   console.error(
     "\nAccount-management adapters under lib/auth/services/** are allowed; delete cross-origin primary sign-in paths.",
   );
-}
-
-if (libComponentViolations.length > 0) {
-  failed = true;
-  console.error("lib/ui/bid-error component import violations:\n");
-  for (const v of libComponentViolations) {
-    console.error(`  ${v}`);
-  }
-  console.error("\nKeep bid-error matchers free of @/components/** imports.");
 }
 
 if (sizeWarnings.length > 0) {

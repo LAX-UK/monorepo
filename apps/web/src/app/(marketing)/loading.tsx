@@ -4,15 +4,13 @@ import { cn } from "@auction/ui";
 
 export default function MarketingLoading() {
   return (
-    <main
-      id="main-content"
+    <div
       className={cn(
         "bg-page-bg pb-[var(--page-bottom-padding)] dark:bg-background",
         MARKETING_CATALOG_PT,
         MARKETING_PAGE_SHELL,
       )}
       aria-busy="true"
-      aria-label="Loading"
     >
       <div className="space-y-10">
         <div className="aspect-[16/9] w-full rounded-lg bg-surface-container-high shimmer-sweep" />
@@ -22,6 +20,6 @@ export default function MarketingLoading() {
         </div>
         <MarketingListSkeleton view="grid" />
       </div>
-    </main>
+    </div>
   );
 }

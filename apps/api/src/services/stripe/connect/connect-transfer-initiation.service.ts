@@ -12,9 +12,23 @@ import type { IDomainEventSink } from "../../domain-event-sink.js";
 import type {
   IConnectAccountReadinessSync,
   IConnectTransferInitiationService,
+  InitiateTransferOptions,
   InitiateTransferResult,
 } from "../../interfaces/stripe-connect.js";
 import { connectReadyFromCachedEntity } from "./connect-shared.js";
+
+/**
+ * Stripe replays the first answer for a key, including a failure, so a retry needs a key of its
+ * own. It is tied to the failure being retried: staff who retry the same failure share one key
+ * and cannot send the money twice, and a later failure gets a fresh one.
+ */
+function transferIdempotencyKey(
+  payout: { id: string; processedAt: Date | null },
+  opts: InitiateTransferOptions | undefined,
+): string {
+  const base = `payout:transfer:${payout.id}`;
+  return opts?.retryFailed ? `${base}:retry:${payout.processedAt?.getTime() ?? 0}` : base;
+}
 
 /** Initiates platform → seller Stripe Connect transfers for scheduled payouts. */
 export class ConnectTransferInitiationService implements IConnectTransferInitiationService {
@@ -37,7 +51,7 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
 
   async initiateTransfer(
     payoutId: string,
-    opts?: { keepScheduledOnTransferFailure?: boolean },
+    opts?: InitiateTransferOptions,
   ): Promise<InitiateTransferResult> {
     const stripe = this.stripe;
     if (!stripe) {
@@ -52,13 +66,14 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
       return { ok: false, reason: "payout_not_found" };
     }
 
-    if (payout.status !== "scheduled") {
+    const startStatus = opts?.retryFailed ? "failed" : "scheduled";
+    if (payout.status !== startStatus) {
       return { ok: false, reason: "payout_already_processed" };
     }
 
     const amountCents = Math.round(Number.parseFloat(payout.netAmount) * 100);
     if (amountCents < 0) {
-      const moved1 = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
+      const moved1 = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
         status: "clawback_pending",
         stripeTransferId: null,
         processedAt: new Date(),
@@ -133,7 +148,7 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
     }
 
     if (amountCents <= 0) {
-      const moved2 = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
+      const moved2 = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
         status: "paid",
         stripeTransferId: null,
         processedAt: new Date(),
@@ -161,11 +176,11 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
             payoutId: payout.id,
             legalEntityId: payout.legalEntityId,
           },
-          idempotencyKey: `payout:transfer:${payoutId}`,
+          idempotencyKey: transferIdempotencyKey(payout, opts),
         }),
       );
 
-      const updated = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
+      const updated = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
         status: "in_transit",
         stripeTransferId: transfer.id,
         processedAt: null,
@@ -220,7 +235,7 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
       const errorMessage = err.message ?? "Transfer failed after retries";
       const failureReason = `stripe_transfer_failed: ${errorCode} - ${errorMessage}`;
 
-      const moved3 = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
+      const moved3 = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
         status: opts?.keepScheduledOnTransferFailure ? "scheduled" : "failed",
         stripeTransferId: null,
         processedAt: opts?.keepScheduledOnTransferFailure ? null : new Date(),

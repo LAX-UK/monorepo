@@ -97,6 +97,8 @@ export function LaxUrgencySection({
           <UrgencySectionHeader variant={variant} />
           <MarketingEmptyState
             variant="marketing"
+            size="compact"
+            headingLevel="h3"
             title={`No ${COPY[variant].heading.toLowerCase()} right now`}
             description="Check back soon or browse the full catalogue."
             action={

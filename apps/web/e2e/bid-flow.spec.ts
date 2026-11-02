@@ -20,58 +20,49 @@ async function loginAsBuyer(page: Page) {
   });
 }
 
-/** Default lot entry mode is auto-bid; manual form is behind this chooser. */
-async function selectManualBidMode(page: Page) {
-  const manual = page.getByRole("button", { name: /place one bid now/i }).first();
-  if (await manual.isVisible().catch(() => false)) {
-    await manual.click();
-  }
-}
-
 async function gotoLiveLot(page: Page) {
   await page.goto(liveLotPath);
   await page.waitForLoadState("networkidle");
 }
 
 test.describe("buyer bid flow @journey", () => {
-  test("authenticated buyer can review and confirm a manual bid on a live lot", async ({
-    page,
-  }) => {
+  test("authenticated buyer can confirm a bid on a live lot", async ({ page }) => {
     test.skip(!enabled, skipReason);
 
     await loginAsBuyer(page);
     await gotoLiveLot(page);
 
-    const reviewButton = page.getByRole("button", { name: /review bid/i }).first();
-    if (!(await reviewButton.isVisible().catch(() => false))) {
-      await selectManualBidMode(page);
-    }
-    if (!(await reviewButton.isVisible().catch(() => false))) {
-      test.skip(true, "No review bid control — set PLAYWRIGHT_LIVE_LOT_PATH to an active lot.");
+    const bidButton = page.getByRole("button", { name: /^bid £/i }).first();
+    if (!(await bidButton.isVisible().catch(() => false))) {
+      test.skip(true, "No bid button — set PLAYWRIGHT_LIVE_LOT_PATH to an active lot.");
     }
 
-    await reviewButton.click();
-    await expect(page.getByRole("button", { name: /place bid/i })).toBeVisible();
-    await page.getByRole("button", { name: /place bid/i }).click();
+    await bidButton.click();
+    const dialog = page.getByRole("dialog", { name: /place a bid/i });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: /confirm bid of/i }).click();
 
-    await expect(page.getByText(/bid placed successfully/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/bid placed at/i).first()).toBeVisible({ timeout: 15_000 });
   });
 
-  test("buyer can open auto-bid panel on a live lot", async ({ page }) => {
+  test("buyer can choose a maximum in the bid dialog on a live lot", async ({ page }) => {
     test.skip(!enabled, skipReason);
 
     await loginAsBuyer(page);
     await gotoLiveLot(page);
 
-    const saveAutoBid = page.getByRole("button", { name: /save auto-bid/i }).first();
-    if (!(await saveAutoBid.isVisible().catch(() => false))) {
-      test.skip(true, "No auto-bid panel — set PLAYWRIGHT_LIVE_LOT_PATH to an active English lot.");
+    const bidButton = page.getByRole("button", { name: /^bid £/i }).first();
+    if (!(await bidButton.isVisible().catch(() => false))) {
+      test.skip(true, "No bid button — set PLAYWRIGHT_LIVE_LOT_PATH to an active English lot.");
     }
 
-    await expect(page.getByLabel(/max amount/i).first()).toBeVisible();
+    await bidButton.click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("radio", { name: /set a maximum bid/i }).click();
+    await expect(dialog.getByLabel(/your maximum/i)).toBeVisible();
   });
 
-  test("outbid sticky CTA is reachable when already outbid on SSR", async ({ page }) => {
+  test("outbid bidder can bid again from the lot page", async ({ page }) => {
     test.skip(!enabled, skipReason);
     test.skip(
       process.env.PLAYWRIGHT_OUTBID_LOT_PATH == null,
@@ -82,18 +73,16 @@ test.describe("buyer bid flow @journey", () => {
     await page.goto(process.env.PLAYWRIGHT_OUTBID_LOT_PATH ?? liveLotPath);
     await page.waitForLoadState("networkidle");
 
-    const increaseBid = page.getByRole("button", { name: /increase bid/i }).first();
-    const raiseMax = page.getByRole("button", { name: /raise (auto-bid max|max)/i }).first();
-    const cta = (await increaseBid.isVisible().catch(() => false)) ? increaseBid : raiseMax;
+    const cta = page.getByRole("button", { name: /^bid £/i }).first();
 
     if (!(await cta.isVisible().catch(() => false))) {
       test.skip(true, "No outbid CTA visible on this lot.");
     }
 
     await cta.click();
-    await expect(
-      page.getByRole("button", { name: /review bid|save auto-bid/i }).first(),
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("button", { name: /confirm bid of/i })).toBeVisible({
+      timeout: 10_000,
+    });
   });
 });
 
@@ -175,11 +164,8 @@ test.describe("strict bid eligibility @journey", () => {
       await expect(
         page.getByText("Your identity must be approved before you can place bids.").first(),
       ).toBeVisible();
-      await expect(page.locator("button:enabled").filter({ hasText: /review bid/i })).toHaveCount(
-        0,
-      );
       await expect(
-        page.locator("button:enabled").filter({ hasText: /save auto-bid/i }),
+        page.locator("button:enabled").filter({ hasText: /^(bid £|set a maximum)/i }),
       ).toHaveCount(0);
     });
 
@@ -196,13 +182,9 @@ test.describe("strict bid eligibility @journey", () => {
       });
       await gotoStrictBidLot(page, lotCase.path ?? "/search");
 
-      const saveAutoBid = page.getByRole("button", { name: /save auto-bid/i }).first();
-      await expect(saveAutoBid).toBeVisible();
-      await expect(saveAutoBid).toBeEnabled();
-      await selectManualBidMode(page);
-      const reviewBid = page.getByRole("button", { name: /review bid/i }).first();
-      await expect(reviewBid).toBeVisible();
-      await expect(reviewBid).toBeEnabled();
+      const bidButton = page.getByRole("button", { name: /^bid £/i }).first();
+      await expect(bidButton).toBeVisible();
+      await expect(bidButton).toBeEnabled();
       await expect(
         page.getByText("Your identity must be approved before you can place bids."),
       ).toHaveCount(0);

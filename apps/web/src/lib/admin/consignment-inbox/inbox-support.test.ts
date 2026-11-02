@@ -175,7 +175,7 @@ describe("thread facts", () => {
       "reference",
     ]);
     expect(facts.find((f) => f.id === "stage")?.stage).toEqual({
-      label: "Agreement to accept",
+      label: "Accepted",
       tone: "warning",
       shape: "alert",
     });

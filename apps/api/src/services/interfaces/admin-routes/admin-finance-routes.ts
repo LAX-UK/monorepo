@@ -140,6 +140,10 @@ export interface IAdminPayoutApplicationService {
     payoutId: string,
     body: { stripeTransferId: string },
   ): Promise<unknown>;
+  retryFailedTransfer(
+    actorUserId: string,
+    payoutId: string,
+  ): Promise<import("../../admin/admin-failed-payout-retry.service.js").FailedPayoutRetryOutcome>;
   adminManualReverse(
     actor: import("../payout.js").PayoutReversalActor,
     payoutId: string,

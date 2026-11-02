@@ -51,7 +51,7 @@ describe("EditorsPicksMarketingClient", () => {
     );
   });
 
-  it("uses the shared labelled horizontal rail and keeps lot links navigable", () => {
+  it("uses a labelled, focusable scroll region and keeps lot links navigable", () => {
     render(
       <EditorsPicksMarketingClient
         lots={[lot("a", "First pick"), lot("b", "Second pick")]}
@@ -60,10 +60,9 @@ describe("EditorsPicksMarketingClient", () => {
       />,
     );
 
-    expect(screen.getByRole("list", { name: "More lots" })).toHaveAttribute(
-      "id",
-      "home-editors-picks-rail",
-    );
+    const region = screen.getByRole("region", { name: "More lots, scrolling list" });
+    expect(region).toHaveAttribute("id", "home-editors-picks-rail");
+    expect(region).toHaveAttribute("tabindex", "0");
     expect(screen.getByRole("link", { name: "First pick" })).toHaveAttribute("href", "/lots/a");
     expect(screen.getByRole("link", { name: "Second pick" })).toHaveAttribute("href", "/lots/b");
   });

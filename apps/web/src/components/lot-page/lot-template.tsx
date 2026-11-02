@@ -1,4 +1,5 @@
 import type { LotActionContext } from "@/components/lot-page/lot-action-area";
+import { LotAnnouncerProvider } from "@/components/lot-page/lot-announcer";
 import { LotBidHistory } from "@/components/lot-page/lot-bid-history";
 import { LotDetails } from "@/components/lot-page/lot-details";
 import { LotIdentity } from "@/components/lot-page/lot-identity";
@@ -11,7 +12,7 @@ import { LaxDensityProvider, TooltipProvider, laxDensityAttributes } from "@auct
 import type { ReactNode } from "react";
 
 export type LotTemplateProps = LotTemplateData & {
-  /** The bid entry, until the bid dialog replaces it. */
+  /** The bid area of the price block: the bid button and the dialog it opens. */
   bidEntry: LotActionContext["bidEntry"];
   /** A notice above the work: a catalogue preview, or a sale on the floor now. */
   banner?: ReactNode;
@@ -54,31 +55,33 @@ export function LotTemplate({
       <TooltipProvider>
         <div {...laxDensityAttributes("client")} className="font-lax text-lax-fg">
           <LotPageViewProvider source={source}>
-            {banner ? <div className="mb-4">{banner}</div> : null}
-            <div className="grid gap-6 pb-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start lg:gap-14">
-              <LotImageStage title={lot.title} images={lot.images} />
-              <div className="min-w-0 lg:sticky lg:top-[calc(var(--header-height)+1.5rem)]">
-                <LotIdentity
-                  lotNumber={lot.lotNumber}
-                  title={lot.title}
-                  artist={artist}
-                  factsLine={factsLine}
-                />
-                <LotPriceBlock actions={actions} />
-                <LotSecondaryActions
-                  lotId={lot.id}
-                  title={lot.title}
-                  shareUrl={lot.shareUrl}
-                  initialWatching={initialWatching}
-                  signedIn={source.signedIn}
-                  lotPath={lot.path}
-                />
-                <LotBidHistory />
-                {supplementary ? <div className="mt-6 grid gap-4">{supplementary}</div> : null}
+            <LotAnnouncerProvider>
+              {banner ? <div className="mb-4">{banner}</div> : null}
+              <div className="grid gap-6 pb-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start lg:gap-14">
+                <LotImageStage title={lot.title} images={lot.images} />
+                <div className="min-w-0 lg:sticky lg:top-[calc(var(--header-height)+1.5rem)]">
+                  <LotIdentity
+                    lotNumber={lot.lotNumber}
+                    title={lot.title}
+                    artist={artist}
+                    factsLine={factsLine}
+                  />
+                  <LotPriceBlock actions={actions} />
+                  <LotSecondaryActions
+                    lotId={lot.id}
+                    title={lot.title}
+                    shareUrl={lot.shareUrl}
+                    initialWatching={initialWatching}
+                    signedIn={source.signedIn}
+                    lotPath={lot.path}
+                  />
+                  <LotBidHistory />
+                  {supplementary ? <div className="mt-6 grid gap-4">{supplementary}</div> : null}
+                </div>
               </div>
-            </div>
-            <LotDetails details={details} premiumPercent={premiumPercent} />
-            {footer}
+              <LotDetails details={details} premiumPercent={premiumPercent} />
+              {footer}
+            </LotAnnouncerProvider>
           </LotPageViewProvider>
         </div>
       </TooltipProvider>

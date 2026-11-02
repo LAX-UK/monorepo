@@ -11,7 +11,7 @@ import type { ReactNode } from "react";
 
 /** What the action area may need; each surface takes only its own part. */
 export type LotActionContext = {
-  /** The bid entry, until the bid dialog replaces it. */
+  /** The bid area: the bid button and the dialog it opens. */
   bidEntry: ReactNode;
   lotId: string;
   artist: { id: string; name: string } | null;

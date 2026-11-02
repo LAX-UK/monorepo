@@ -26,6 +26,7 @@ import { saleVenueLabel } from "@/lib/sale-location-label";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
+import { lotPriceHasBids } from "@auction/domain";
 import type { BuyerPremiumTier, Lot, Sale, SaleDayMedia } from "@auction/types";
 import { toLotCardTimingVM, toSaleCardTimingVM, toSaleCountdownEndIso } from "@auction/validators";
 import {
@@ -227,7 +228,7 @@ function catalogPrice(lot: Lot): { label: string; value: string } {
           : lot.status === "active"
             ? "live"
             : "scheduled";
-  const price = lotPriceLabel(kind);
+  const price = lotPriceLabel(kind, lotPriceHasBids(lot));
   return {
     label: price.label,
     value:

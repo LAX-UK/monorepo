@@ -66,6 +66,8 @@ export type PlaceBidInput = {
   autoBidStepAmount?: number;
   /** Dedupe concurrent / retried submissions (24h server cache). */
   idempotencyKey?: string;
+  /** The next bid the bidder was shown, so the server can tell them they were outbid while confirming. */
+  seenNextBid?: string;
 };
 
 export type PlaceBidResult =
@@ -75,6 +77,8 @@ export type PlaceBidResult =
       error: string;
       status: number;
       code?: string | null;
+      /** Facts a typed refusal carries: the new next bid, the nearest valid amount, the room left. */
+      details?: Readonly<Record<string, string>>;
       kycFeedback?: {
         headline: string;
         detail: string | null;
@@ -82,6 +86,27 @@ export type PlaceBidResult =
         action: "start" | "continue" | "retry" | "wait" | "none";
       } | null;
     };
+
+/** A maximum left before a lot opens, to be bid for the bidder from the opening. */
+export type AbsenteeBidInput = {
+  lotId: string;
+  maxAmount: number;
+  buyerLegalEntityId: string;
+};
+
+export type AbsenteeBidResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      status: number;
+      code?: string | null;
+      details?: Readonly<Record<string, string>>;
+    };
+
+export interface AbsenteeBidWriter {
+  schedule(input: AbsenteeBidInput): Promise<AbsenteeBidResult>;
+}
 
 /** Mutations for bids only — segregated from reads (ISP). */
 export interface BidWriter {
@@ -93,46 +118,6 @@ export type AutoBidSettings = {
   autoBidStepAmount: string | null;
   isActive: boolean;
 };
-
-/** Opening min bid returned when setAutoBid places the first bid on a lot. */
-export type AutoBidPlacedBid = {
-  id: string;
-  amount: string;
-  bidderId?: string | null;
-  placedByUserId?: string | null;
-  maxAutoBidAmount?: string | null;
-  autoBidStepAmount?: string | null;
-};
-
-export type AutoBidMutationResult =
-  | { ok: true; settings: AutoBidSettings; placedBid?: AutoBidPlacedBid }
-  | {
-      ok: false;
-      error: string;
-      status: number;
-      code?: string | null;
-      kycFeedback?: PlaceBidResult extends { ok: false } ? PlaceBidResult["kycFeedback"] : never;
-    };
-
-export interface AutoBidWriter {
-  getAutoBid(lotId: string): Promise<AutoBidSettings | null>;
-  setAutoBid(input: {
-    lotId: string;
-    maxAutoBidAmount: number;
-    autoBidStepAmount: number;
-    idempotencyKey?: string;
-  }): Promise<AutoBidMutationResult>;
-  clearAutoBid(lotId: string): Promise<
-    | { ok: true }
-    | {
-        ok: false;
-        error: string;
-        status: number;
-        code?: string | null;
-        kycFeedback?: PlaceBidResult extends { ok: false } ? PlaceBidResult["kycFeedback"] : never;
-      }
-  >;
-}
 
 export type SessionUser = {
   id: string;

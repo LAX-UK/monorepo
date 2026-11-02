@@ -251,12 +251,3 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-
-@keyframes hero-progress {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}

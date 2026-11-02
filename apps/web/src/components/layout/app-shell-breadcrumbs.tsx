@@ -9,6 +9,7 @@ import {
   buildClientBreadcrumbTrail,
   withRecordTitle,
 } from "@/lib/navigation/client-breadcrumb-trail";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { resolveMobileShellTitle } from "@/lib/navigation/mobile-shell-title";
 import { useShellChrome } from "@/lib/shell/shell-chrome-context";
 import { usePathname } from "next/navigation";
@@ -43,7 +44,12 @@ export function AppShellBreadcrumbs({
         {/* A trail of one only repeats the page title, so it is left out. */}
         {variant !== "mobile" && items.length > 1 ? (
           <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 lg:block lg:flex-none">
-            <Breadcrumbs items={items} className="text-xs" inline />
+            <Breadcrumbs
+              items={items}
+              className="text-xs"
+              inline
+              linkTone={pathname.startsWith(CLIENT_ROUTES.consignments) ? "ink" : "link"}
+            />
           </nav>
         ) : null}
       </>

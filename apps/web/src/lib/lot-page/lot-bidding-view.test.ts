@@ -16,7 +16,33 @@ describe("parseLotBiddingView", () => {
       nextBidAmount: "7250.00",
       hammerPrice: "7000.00",
       soldForWithPremium: "8750.00",
+      buyersPremium: null,
     });
+  });
+
+  it("reads a flat premium rate", () => {
+    expect(
+      parseLotBiddingView({ buyersPremium: { kind: "flat", rate: "0.25" } }).buyersPremium,
+    ).toEqual({ kind: "flat", rate: "0.25" });
+  });
+
+  it("reads premium bands and drops malformed ones", () => {
+    expect(
+      parseLotBiddingView({
+        buyersPremium: {
+          kind: "banded",
+          bands: [{ fromHammer: "0.00", rate: "0.25" }, { fromHammer: 5 }, "x"],
+        },
+      }).buyersPremium,
+    ).toEqual({ kind: "banded", bands: [{ fromHammer: "0.00", rate: "0.25" }] });
+  });
+
+  it("has no premium terms when they are missing or malformed", () => {
+    expect(parseLotBiddingView({ buyersPremium: { kind: "flat" } }).buyersPremium).toBeNull();
+    expect(
+      parseLotBiddingView({ buyersPremium: { kind: "banded", bands: [] } }).buyersPremium,
+    ).toBeNull();
+    expect(parseLotBiddingView({ buyersPremium: "25%" }).buyersPremium).toBeNull();
   });
 
   it("keeps missing or malformed fields as null", () => {

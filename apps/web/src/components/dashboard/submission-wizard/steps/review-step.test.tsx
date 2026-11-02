@@ -1,8 +1,8 @@
 import { ReviewStep } from "@/components/dashboard/submission-wizard/steps/review-step";
 import { EMPTY_SUBMISSION_FORM_VALUES } from "@/lib/forms/submission/item-submission-form-defaults";
 import {
+  SPECIALIST_RESPONSE_PROMISE,
   SUBMISSION_FINISH_LATER_LABEL,
-  SUBMISSION_READY_TO_SUBMIT_BANNER,
   SUBMISSION_SUBMIT_LABEL,
 } from "@/lib/marketing/sell-flow-copy";
 import type { ItemSubmissionFormValues } from "@auction/validators";
@@ -45,14 +45,29 @@ describe("ReviewStep", () => {
       />,
     );
 
-    expect(screen.getByText(SUBMISSION_READY_TO_SUBMIT_BANNER)).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(SPECIALIST_RESPONSE_PROMISE))).toBeInTheDocument();
     expect(screen.getByTestId("wizard-submit-for-review")).toHaveTextContent(
       SUBMISSION_SUBMIT_LABEL,
     );
     const finishLater = screen.getByTestId("wizard-finish-later-review");
     expect(finishLater).toHaveTextContent(SUBMISSION_FINISH_LATER_LABEL);
-    expect(finishLater.className).toContain("text-sm");
     expect(screen.getAllByRole("button", { name: SUBMISSION_SUBMIT_LABEL })).toHaveLength(1);
+  });
+
+  it("has no quality score and one Change per section", () => {
+    render(
+      <ReviewStepHarness
+        values={{
+          ...EMPTY_SUBMISSION_FORM_VALUES,
+          title: "Study in Blue",
+          categoryIds: ["cat-1"],
+          images: ["https://example.com/a.jpg"],
+        }}
+      />,
+    );
+    expect(screen.queryByText(/quality/i)).toBeNull();
+    expect(screen.queryByText(/%/)).toBeNull();
+    expect(screen.getAllByRole("button", { name: /^Change / })).toHaveLength(5);
   });
 
   it("invokes submit handler from the primary button", () => {

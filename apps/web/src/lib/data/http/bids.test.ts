@@ -55,6 +55,30 @@ describe("createHttpBidWriter", () => {
     expect(post.mock.calls[0]?.[0].header).toBeUndefined();
   });
 
+  it("sends the next bid the bidder was shown", async () => {
+    post.mockResolvedValue(okResponse);
+    await createHttpBidWriter().placeBid({ lotId: "l1", amount: 10, seenNextBid: "10.00" });
+    expect(post.mock.calls[0]?.[0].json).toMatchObject({ seenNextBid: "10.00" });
+  });
+
+  it("returns the facts of a typed refusal", async () => {
+    post.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: "Bid too low",
+        code: "outbid_during_confirm",
+        details: { nextBidAmount: "7500.00" },
+      }),
+    });
+    const result = await createHttpBidWriter().placeBid({ lotId: "l1", amount: 10 });
+    expect(result).toMatchObject({
+      ok: false,
+      code: "outbid_during_confirm",
+      details: { nextBidAmount: "7500.00" },
+    });
+  });
+
   it("clears the stale acting cookie on a 403 not_a_member_of_legal_entity", async () => {
     post.mockResolvedValue({
       ok: false,

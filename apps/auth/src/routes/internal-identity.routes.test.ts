@@ -35,6 +35,7 @@ function setup() {
       outcome: "requested",
       requestedAt: "2026-10-23T12:00:00.000Z",
     })),
+    cancelForSubject: vi.fn(async () => "cancelled" as const),
   };
   const emailChange = {
     start: vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
@@ -301,7 +302,7 @@ describe("internal Identity machine routes", () => {
     // has asked every product.
     expect(operations.markDeletionRequested).not.toHaveBeenCalled();
     expect(cancelled.status).toBe(200);
-    expect(operations.cancelDeletionRequested).toHaveBeenCalledWith("u1");
+    expect(accountDeletion.cancelForSubject).toHaveBeenCalledWith("u1");
   });
 
   it("passes a refusal to the caller as an outcome, with the blockers", async () => {

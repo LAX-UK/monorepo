@@ -17,10 +17,13 @@ export type BreadcrumbsProps = {
   compact?: boolean;
   /** When true, render only the list markup (parent supplies the nav landmark). */
   inline?: boolean;
+  /** Link colour: the product link colour, or ink like the page text (the workspace pattern). */
+  linkTone?: "link" | "ink";
 };
 
-const linkClassName =
-  "inline-flex min-h-11 -mx-2 items-center rounded-md px-2 text-link hover:underline md:min-h-0 md:py-1";
+const LINK_BASE =
+  "inline-flex min-h-11 -mx-2 items-center rounded-md px-2 hover:underline md:min-h-0 md:py-1";
+const LINK_TONE = { link: "text-link", ink: "text-on-surface" } as const;
 
 export function Breadcrumbs({
   items,
@@ -28,7 +31,9 @@ export function Breadcrumbs({
   current,
   compact = false,
   inline = false,
+  linkTone = "link",
 }: BreadcrumbsProps) {
+  const linkClassName = `${LINK_BASE} ${LINK_TONE[linkTone]}`;
   if (items.length === 0 && !current) return null;
 
   if (compact) {

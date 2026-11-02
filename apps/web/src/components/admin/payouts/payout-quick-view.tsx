@@ -26,6 +26,7 @@ export function PayoutQuickView({
   onClose,
   onMarkPaid,
   onAdjust,
+  onRetryTransfer,
   onReverse,
   moneyActions = [],
 }: {
@@ -35,6 +36,7 @@ export function PayoutQuickView({
   onClose: () => void;
   onMarkPaid: (row: PayoutsStaffRow) => void;
   onAdjust: (row: PayoutsStaffRow) => void;
+  onRetryTransfer: (row: PayoutsStaffRow) => void;
   onReverse: (row: PayoutsStaffRow) => void;
   /** The row menu's money actions, for the panel's `…`. */
   moneyActions?: readonly OverflowAction[];
@@ -42,7 +44,8 @@ export function PayoutQuickView({
   const sellerHref = row ? `/admin/legal-entities/${encodeURIComponent(row.legalEntityId)}` : "";
   const showFooter =
     row !== null &&
-    ((canProcess && (row.canMarkPaid || row.canAdjust)) || (canReverse && row.canReverse));
+    ((canProcess && (row.canMarkPaid || row.canAdjust || row.canRetryTransfer)) ||
+      (canReverse && row.canReverse));
   return (
     <DetailPanel
       open={row !== null}
@@ -125,6 +128,11 @@ export function PayoutQuickView({
             {canProcess && row.canAdjust ? (
               <StaffButton variant="secondary" onClick={() => onAdjust(row)}>
                 Add adjustment
+              </StaffButton>
+            ) : null}
+            {canProcess && row.canRetryTransfer ? (
+              <StaffButton variant="primary" onClick={() => onRetryTransfer(row)}>
+                Retry transfer
               </StaffButton>
             ) : null}
             {canProcess && row.canMarkPaid ? (

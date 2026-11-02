@@ -35,6 +35,7 @@ export function PresetCards<T extends string>({
   label,
   columns = 3,
   compact = false,
+  checkedRef,
   className,
 }: {
   value: T;
@@ -45,6 +46,8 @@ export function PresetCards<T extends string>({
   columns?: keyof typeof COLUMNS;
   /** Rows only as tall as their words: a list of choices in a dialog, not a settings page. */
   compact?: boolean;
+  /** Reaches the chosen card, so a dialog can put focus on it when it opens. */
+  checkedRef?: React.Ref<HTMLButtonElement>;
   className?: string;
 }) {
   const id = React.useId();
@@ -66,6 +69,7 @@ export function PresetCards<T extends string>({
           return (
             <RadioGroupPrimitive.Item
               key={option.value}
+              {...(option.value === value && checkedRef ? { ref: checkedRef } : {})}
               value={option.value}
               disabled={Boolean(option.disabledReason)}
               aria-labelledby={titleId}

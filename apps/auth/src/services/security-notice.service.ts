@@ -4,8 +4,8 @@ import {
   type SecurityNoticePublisher,
   maskPhoneE164,
 } from "@auction/auth";
-import { formatDeviceLabel } from "@auction/identity-contracts";
-import { formatLondonTime } from "./format-london-time.js";
+import { ACCOUNT_DELETION_GRACE_DAYS, formatDeviceLabel } from "@auction/identity-contracts";
+import { formatLondonDate, formatLondonTime } from "./format-london-time.js";
 import type { IIdentitySubjectRepository } from "./identity-operations.ports.js";
 import {
   type KnownDeviceStore,
@@ -23,6 +23,8 @@ export type SecurityNoticeDeps = {
   devices: KnownDeviceStore;
   /** LAX Account's security page: where "this wasn't me" sends the reader. */
   secureAccountUrl: string;
+  /** LAX Account's "Delete your account" page, where a deletion request is cancelled. */
+  cancelDeletionUrl: string;
   log: SecurityEffectLogger;
 };
 
@@ -89,6 +91,16 @@ export class SecurityNoticeService implements SecurityNoticePublisher {
         return;
       case "backup_codes_regenerated":
         await enqueue("backup-codes-regenerated", subject.email, {});
+        return;
+      case "account_deletion_requested":
+        await enqueue("account-deletion-requested", subject.email, {
+          effectiveDateDisplay: formatLondonDate(event.effectiveAt),
+          graceDays: ACCOUNT_DELETION_GRACE_DAYS,
+          cancelDeletionUrl: this.deps.cancelDeletionUrl,
+        });
+        return;
+      case "account_deletion_cancelled":
+        await enqueue("account-deletion-cancelled", subject.email, {});
         return;
       case "phone_verified":
         await enqueue("phone-verified", subject.email, { maskedPhone: maskPhoneE164(event.phone) });

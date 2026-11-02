@@ -65,11 +65,19 @@ function isoOf(ms: number | null): string | null {
  * server's clock and the viewer's standing, composed by the domain into one `LotPageView`. The
  * components draw it and decide nothing.
  */
-export function useLotPageView(source: LotPageViewSource): {
+export type LotPageLive = {
   view: LotPageView;
   history: PublicBidHistory | null;
   nowMs: number;
-} {
+  /** The lot's price now, kept live: the figure the next bid and the valid amounts follow. */
+  currentPrice: string;
+  /** The next valid bid while bidding is open. */
+  nextBid: string | null;
+  /** Where the acting account stands on the lot. */
+  viewer: LotViewerView;
+};
+
+export function useLotPageView(source: LotPageViewSource): LotPageLive {
   const { lot, bidding, sale, signedIn } = source;
   const online = useOnlineLotLifecycle();
   const saleroom = useSaleroomLive();
@@ -188,5 +196,5 @@ export function useLotPageView(source: LotPageViewSource): {
       viewer,
     ],
   );
-  return { view, history, nowMs };
+  return { view, history, nowMs, currentPrice, nextBid, viewer };
 }

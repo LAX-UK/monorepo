@@ -1,4 +1,5 @@
 import type { SoldLot } from "@/lib/data/http/workspace-selling.schema";
+import { SPECIALIST_RESPONSE_PROMISE } from "@/lib/marketing/sell-flow-copy";
 import { formatDate } from "@/lib/ui/format";
 import type { AgreementAcceptanceHold } from "@auction/domain";
 import { consignmentMessagesHref } from "./consignment-records";
@@ -117,8 +118,9 @@ export function agreementHoldLine(hold: AgreementAcceptanceHold, organisation: s
  */
 const NEXT: Record<ConsignmentStatus, (context: Context) => string | null> = {
   draft: () => "Finish the details and send them to our specialists. Nothing is sent until you do.",
-  in_review: () => "Our specialists are reviewing the work. We reply within 5 working days.",
-  needs_changes: () => "Your specialist asked for changes. Make them below and send the work back.",
+  in_review: () => `Our specialists are reviewing the work. ${SPECIALIST_RESPONSE_PROMISE}`,
+  // The request and its one action are on the page itself.
+  needs_changes: () => null,
   agreement: ({ canAccept, organisation, acceptHold }) =>
     acceptHold
       ? agreementHoldCopy(acceptHold, organisation)

@@ -205,14 +205,14 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
         {phase === "before" || phase === "during" ? (
           <time
             dateTime={targetIso ?? undefined}
-            aria-label={ariaLabel}
             className={cn(
               "mt-0.5 block font-body text-sm font-semibold tabular-nums",
               phase === "during" || tone !== "calm" ? countdownToneClass(tone) : "text-on-surface",
             )}
             suppressHydrationWarning
           >
-            {clock ?? "\u00A0"}
+            <span className="sr-only">{ariaLabel}</span>
+            <span aria-hidden>{clock ?? "\u00A0"}</span>
           </time>
         ) : phase === "livePastEnd" ? null : (
           <p className="mt-0.5 font-body text-sm text-on-surface-variant">This event has ended</p>
@@ -252,12 +252,8 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
           <span className="sr-only" aria-live="polite" aria-atomic="true">
             {liveMessage}
           </span>
-          <time
-            dateTime={targetIso ?? undefined}
-            aria-label={ariaLabel}
-            className="mt-3 block"
-            suppressHydrationWarning
-          >
+          <time dateTime={targetIso ?? undefined} className="mt-3 block" suppressHydrationWarning>
+            <span className="sr-only">{ariaLabel}</span>
             <div className={cn("grid gap-2", showDays ? "grid-cols-4" : "grid-cols-3")} aria-hidden>
               {showDays ? (
                 <SegmentChip

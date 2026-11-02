@@ -1,10 +1,16 @@
 import {
-  CONSIGNMENT_STAGE_LABEL,
   type ReviewStage,
   parseReviewStage,
 } from "@/lib/organisation-home/consignment-stage-links";
 import { matchesEveryWord, searchParam } from "@/lib/workspace/list-search";
 import type { ConsignmentRecord } from "./consignment-records";
+import {
+  CONSIGNMENT_STAGES,
+  CONSIGNMENT_STAGE_LABEL,
+  CONSIGNMENT_STATUS,
+  type ConsignmentOpenStage,
+  NEEDS_CHANGES_LABEL,
+} from "./consignment-status";
 
 /**
  * The list's views: everything, what waits on the member, then the stages in order. Closed work
@@ -13,22 +19,14 @@ import type { ConsignmentRecord } from "./consignment-records";
 export const CONSIGNMENT_VIEWS = [
   "all",
   "needs-you",
-  "drafts",
-  "in-review",
-  "in-sale",
-  "sold",
-  "unsold",
-] as const;
-export type ConsignmentView = (typeof CONSIGNMENT_VIEWS)[number];
+  ...CONSIGNMENT_STAGES.map((stage) => stage.id),
+] as const satisfies readonly ("all" | "needs-you" | ConsignmentOpenStage)[];
+export type ConsignmentView = "all" | "needs-you" | ConsignmentOpenStage;
 
 export const CONSIGNMENT_VIEW_LABEL: Record<ConsignmentView, string> = {
   all: "All",
   "needs-you": "Needs you",
-  drafts: "Drafts",
-  "in-review": "In review",
-  "in-sale": "In a sale",
-  sold: "Sold",
-  unsold: "Did not sell",
+  ...CONSIGNMENT_STAGE_LABEL,
 };
 
 export const CONSIGNMENT_SORTS = ["updated", "sent"] as const;
@@ -44,7 +42,7 @@ export type ConsignmentsListQuery = {
   view: ConsignmentView;
   q: string;
   sentBy: string | null;
-  /** A review stage, from Home's stage links; it narrows In review. */
+  /** From Home's "Needs changes" link; it narrows In review to the works sent back. */
   stage: ReviewStage | null;
   sort: ConsignmentSort;
 };
@@ -55,8 +53,8 @@ const LEGACY_VIEWS: Partial<Record<string, ConsignmentView>> = {
   draft: "drafts",
   submitted: "in-review",
   under_review: "in-review",
-  approved: "in-review",
-  converted: "in-review",
+  approved: "accepted",
+  converted: "accepted",
   rejected: "all",
   withdrawn: "all",
 };
@@ -103,7 +101,14 @@ function matches(record: ConsignmentRecord, query: ConsignmentsListQuery): boole
   if (query.sentBy && record.sentBy !== query.sentBy) return false;
   if (query.stage && record.progress !== query.stage) return false;
   return matchesEveryWord(
-    [record.title, record.reference, record.sentBy, record.saleTitle],
+    [
+      record.title,
+      record.reference,
+      record.sentBy,
+      record.saleTitle,
+      CONSIGNMENT_STATUS[record.status].label,
+      record.stage === "closed" ? "" : CONSIGNMENT_STAGE_LABEL[record.stage],
+    ],
     query.q,
   );
 }
@@ -145,8 +150,7 @@ export function appliedConsignmentFilters(
 ): { id: ConsignmentFilterKey; label: string }[] {
   const chips: { id: ConsignmentFilterKey; label: string }[] = [];
   if (query.sentBy) chips.push({ id: "sentBy", label: `Sent by: ${query.sentBy}` });
-  if (query.stage)
-    chips.push({ id: "stage", label: `Stage: ${CONSIGNMENT_STAGE_LABEL[query.stage]}` });
+  if (query.stage) chips.push({ id: "stage", label: NEEDS_CHANGES_LABEL });
   return chips;
 }
 

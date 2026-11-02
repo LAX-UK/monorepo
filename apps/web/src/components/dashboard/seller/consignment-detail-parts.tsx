@@ -1,4 +1,5 @@
 import { MediaImage } from "@/components/ui/media-image";
+import { SPECIALIST_RESPONSE_PROMISE } from "@/lib/marketing/sell-flow-copy";
 import type { ConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
 import { AccountProgress } from "@auction/marketing-ui";
 import { Button } from "@auction/ui/components/button";
@@ -56,7 +57,8 @@ export function ConsignmentDetailHead({
   );
 }
 
-const ASIDE_CARD = "rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-5";
+export const ASIDE_CARD =
+  "rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-5";
 
 /** "About the work" beside the consignment: the known facts and the way to the full record. */
 export function AboutTheWork({ vm }: { vm: ConsignmentDetailVm }) {
@@ -82,22 +84,33 @@ export function AboutTheWork({ vm }: { vm: ConsignmentDetailVm }) {
   );
 }
 
-/** Who to ask: the specialists reply within a working day. */
-/** Questions go to the consignment's own messages, where the specialist answers. */
-export function AskYourSpecialist({ messagesHref }: { messagesHref: string }) {
+/**
+ * Who to ask. Questions go to the consignment's own messages, where the specialist answers.
+ * `canWrite` is whether this member may post there (`null` when the thread could not be read);
+ * a member who may only read is offered the conversation, not a message to send.
+ */
+export function AskYourSpecialist({
+  messagesHref,
+  canWrite,
+}: {
+  messagesHref: string;
+  canWrite: boolean | null;
+}) {
+  const readOnly = canWrite === false;
   return (
     <section aria-labelledby="specialist-heading" className={ASIDE_CARD}>
       <h2 id="specialist-heading" className="font-headline text-base font-semibold text-on-surface">
         Your specialist
       </h2>
       <p className="mt-2 font-body text-sm text-on-surface-variant">
-        Questions about the estimate, the terms or the sale? Our specialists reply within one
-        working day.
+        {readOnly
+          ? "You can read the conversation with your specialist. Owners, admins and the person who sent this work can write."
+          : `Questions about the estimate, the terms or the sale? ${SPECIALIST_RESPONSE_PROMISE}`}
       </p>
       <Button variant="secondaryOutline" size="default" asChild className="mt-4 w-full">
         <Link href={messagesHref}>
           <MessageSquare aria-hidden />
-          Send a message
+          {readOnly ? "Read messages" : "Send a message"}
         </Link>
       </Button>
     </section>

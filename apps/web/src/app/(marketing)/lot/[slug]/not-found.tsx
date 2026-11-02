@@ -1,28 +1,9 @@
-import { LotPageMessage } from "@/components/lot-page/lot-page-message";
-import { ButtonLink, EmptyState } from "@auction/ui/lax";
-import { Search } from "lucide-react";
-import Link from "next/link";
+import { NOT_FOUND_COPY } from "@/components/not-found/not-found-copy";
+import { PageNotFound } from "@/components/not-found/page-not-found";
+import { metadataForNotFound } from "@/lib/seo/metadata-factory";
 
-/** The lot's address doesn't match a lot: say so, and offer search and the current auctions. */
+export const metadata = metadataForNotFound(NOT_FOUND_COPY.lot.documentTitle);
+
 export default function LotNotFound() {
-  return (
-    <LotPageMessage>
-      <EmptyState
-        headingLevel="h1"
-        illustration="search"
-        title="We can't find that lot"
-        description="The link may be mistyped, or the lot may have moved to another sale. Search by artist or title, or browse the current auctions."
-        actions={
-          <>
-            <ButtonLink href="/search" Link={Link} variant="primary" icon={<Search aria-hidden />}>
-              Search lots
-            </ButtonLink>
-            <ButtonLink href="/sales" Link={Link} variant="secondary">
-              Current auctions
-            </ButtonLink>
-          </>
-        }
-      />
-    </LotPageMessage>
-  );
+  return <PageNotFound kind="lot" />;
 }

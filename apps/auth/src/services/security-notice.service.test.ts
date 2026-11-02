@@ -15,6 +15,7 @@ const AT = new Date("2026-10-23T13:05:00.000Z");
 const CHROME_MAC =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36";
 const SECURE_URL = "https://account.lax.bid/account/security";
+const CANCEL_URL = "https://account.lax.bid/account/security/delete";
 
 function setup(
   options: { seen?: Awaited<ReturnType<KnownDeviceStore["touch"]>>; sentToday?: number } = {},
@@ -34,7 +35,14 @@ function setup(
   };
   const log = { warn: vi.fn(), error: vi.fn() };
   const service = new SecurityNoticeService(
-    { subjects: subjects as never, email, devices, secureAccountUrl: SECURE_URL, log },
+    {
+      subjects: subjects as never,
+      email,
+      devices,
+      secureAccountUrl: SECURE_URL,
+      cancelDeletionUrl: CANCEL_URL,
+      log,
+    },
     () => AT,
   );
   return { service, email, devices, subjects, log };
@@ -51,6 +59,41 @@ describe("formatLondonTime", () => {
     expect(formatLondonTime(new Date("2026-12-01T13:05:00.000Z"))).toBe(
       "1 December 2026 at 13:05 GMT",
     );
+  });
+});
+
+describe("SecurityNoticeService account deletion", () => {
+  it("tells the person the date the data is erased and where to cancel", async () => {
+    const { service, email } = setup();
+    await service.notify({
+      kind: "account_deletion_requested",
+      userId: USER,
+      at: AT,
+      effectiveAt: new Date("2026-11-22T13:05:00.000Z"),
+      userAgent: CHROME_MAC,
+    });
+    expect(email.enqueue).toHaveBeenCalledTimes(1);
+    const call = email.enqueue.mock.calls[0]?.[0];
+    expect(call).toMatchObject({
+      template: "account-deletion-requested",
+      to: "ada@example.com",
+      category: "auth",
+      vars: {
+        effectiveDateDisplay: "22 November 2026",
+        graceDays: 30,
+        cancelDeletionUrl: CANCEL_URL,
+        secureAccountUrl: SECURE_URL,
+      },
+    });
+  });
+
+  it("confirms the cancellation", async () => {
+    const { service, email } = setup();
+    await service.notify({ kind: "account_deletion_cancelled", userId: USER, at: AT });
+    expect(email.enqueue.mock.calls[0]?.[0]).toMatchObject({
+      template: "account-deletion-cancelled",
+      to: "ada@example.com",
+    });
   });
 });
 

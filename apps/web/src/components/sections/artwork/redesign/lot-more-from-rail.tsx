@@ -187,7 +187,7 @@ export function LotMoreFromRail({
                       </div>
                     ) : null}
                     <div>
-                      <p className="text-xs text-on-surface-variant">Current bid</p>
+                      <p className="text-xs text-on-surface-variant">{c.priceLabel}</p>
                       <p className="text-sm font-semibold text-on-surface">
                         {formatMoney(c.currentPrice)}
                       </p>
@@ -205,7 +205,7 @@ export function LotMoreFromRail({
                           asChild
                           className="w-full border-outline-variant text-on-surface"
                         >
-                          <Link href={`${c.href}#bid-interactive-anchor`}>Bid</Link>
+                          <Link href={`${c.href}#lot-bid-entry`}>Bid</Link>
                         </Button>
                       ) : null}
                       <div className="min-w-0 w-full">

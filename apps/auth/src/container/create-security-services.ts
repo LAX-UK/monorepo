@@ -14,6 +14,7 @@ export function createSecurityNoticeService(options: {
   db: IdentityDatabase;
   email: EmailSender;
   secureAccountUrl: string;
+  cancelDeletionUrl: string;
   log: SecurityEffectLogger;
 }): SecurityNoticeService {
   return new SecurityNoticeService({
@@ -21,6 +22,7 @@ export function createSecurityNoticeService(options: {
     email: options.email,
     devices: new DrizzleKnownDeviceStore(options.db),
     secureAccountUrl: options.secureAccountUrl,
+    cancelDeletionUrl: options.cancelDeletionUrl,
     log: options.log,
   });
 }

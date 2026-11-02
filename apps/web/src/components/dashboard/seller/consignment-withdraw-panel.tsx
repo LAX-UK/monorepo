@@ -1,12 +1,12 @@
 "use client";
 
+import { ASIDE_CARD } from "@/components/dashboard/seller/consignment-detail-parts";
 import { withdrawConsignmentAction } from "@/lib/actions/consignment-after-sale";
 import type { ConditionsSection } from "@/lib/legal/conditions-of-business-part-c";
 import type { ConsignmentWithdrawalViewModel } from "@/lib/seller/consignment-withdrawal-view";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
-import { Surface } from "@auction/ui/components/surface";
+import { Button } from "@auction/ui/lax";
 import { Clock } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -53,7 +53,7 @@ export function ConsignmentWithdrawPanel({ submissionId, view, terms }: Props) {
 
   if (view.mode === "requested") {
     return (
-      <Surface variant="section" className="space-y-2" data-testid="withdrawal-requested">
+      <div className={`${ASIDE_CARD} space-y-2`} data-testid="withdrawal-requested">
         <h2 className="font-headline text-base font-semibold tracking-tight text-on-surface">
           Withdrawal requested
         </h2>
@@ -61,7 +61,7 @@ export function ConsignmentWithdrawPanel({ submissionId, view, terms }: Props) {
           <Clock className="mt-0.5 size-4 shrink-0 text-on-surface-variant" aria-hidden />
           <span>{view.message}</span>
         </p>
-      </Surface>
+      </div>
     );
   }
 
@@ -80,7 +80,7 @@ export function ConsignmentWithdrawPanel({ submissionId, view, terms }: Props) {
 
   return (
     <section aria-labelledby="withdraw-heading">
-      <Surface variant="section" className="space-y-4" data-testid="withdrawal">
+      <div className={`${ASIDE_CARD} space-y-4`} data-testid="withdrawal">
         <div className="space-y-1">
           <h2
             id="withdraw-heading"
@@ -96,11 +96,11 @@ export function ConsignmentWithdrawPanel({ submissionId, view, terms }: Props) {
         {view.blockedReason ? (
           <p className="font-body text-sm text-on-surface-variant">{view.blockedReason}</p>
         ) : (
-          <Button type="button" variant="outline" onClick={() => setOpen(true)}>
+          <Button variant="secondary" className="w-full" onClick={() => setOpen(true)}>
             {view.copy.action}
           </Button>
         )}
-      </Surface>
+      </div>
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}

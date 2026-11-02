@@ -1,10 +1,14 @@
 "use client";
 
+import { RailArrows } from "@/components/marketing/rail/rail-arrows";
+import { ScrollRegion } from "@/components/marketing/rail/scroll-region";
 import { FOCUS_RING, MARKETING_CATALOG_GUTTER } from "@/lib/marketing/chrome";
 import { getRecentlyViewedLots } from "@/lib/marketing/recently-viewed-lots";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+
+const RAIL_ID = "recently-viewed-rail";
 
 /** Client-only rail of recently viewed lot links. */
 export function RecentlyViewedRail({ className }: { className?: string }) {
@@ -18,7 +22,7 @@ export function RecentlyViewedRail({ className }: { className?: string }) {
 
   return (
     <section
-      aria-label="Recently viewed lots"
+      aria-label="Recently viewed"
       className={cn(
         "border-b border-border-hairline bg-surface-container-low/40 py-3",
         MARKETING_CATALOG_GUTTER,
@@ -26,22 +30,29 @@ export function RecentlyViewedRail({ className }: { className?: string }) {
       )}
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-2">
-        <h2 className="font-label text-xs font-medium text-on-surface-variant">Recently viewed</h2>
-        <ul className="flex gap-2 overflow-x-auto pb-1">
-          {items.slice(0, 6).map((item) => (
-            <li key={item.id} className="shrink-0">
-              <Link
-                href={item.href}
-                className={cn(
-                  "inline-flex max-w-[14rem] truncate rounded-full border border-outline-variant/40 bg-surface-container-lowest px-3 py-1.5 font-body text-xs text-on-surface transition-colors hover:border-link hover:text-link",
-                  FOCUS_RING,
-                )}
-              >
-                {item.title}
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-label text-xs font-medium text-on-surface-variant">
+            Recently viewed
+          </h2>
+          <RailArrows targetId={RAIL_ID} noun="lots" />
+        </div>
+        <ScrollRegion id={RAIL_ID} label="Recently viewed lots">
+          <ul className="m-0 flex list-none gap-2 p-0 pb-1">
+            {items.slice(0, 6).map((item) => (
+              <li key={item.id} className="shrink-0">
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "inline-flex max-w-[14rem] truncate rounded-full border border-outline-variant/40 bg-surface-container-lowest px-3 py-1.5 font-body text-xs text-on-surface transition-colors hover:border-link hover:text-link",
+                    FOCUS_RING,
+                  )}
+                >
+                  {item.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </ScrollRegion>
       </div>
     </section>
   );

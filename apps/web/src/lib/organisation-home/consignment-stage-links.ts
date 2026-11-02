@@ -1,21 +1,28 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import {
+  NEEDS_CHANGES_LABEL,
+  CONSIGNMENT_STAGE_LABEL as STAGE_LABEL,
+} from "@/lib/seller/consignment-status";
 import type { ConsignmentProgressStage } from "@auction/domain";
 
-/** How each consignment stage reads, wherever it is named. */
+/**
+ * How each of Home's progress stages reads: the names of the one stage list, with Needs changes
+ * as the badge on In review.
+ */
 export const CONSIGNMENT_STAGE_LABEL: Record<ConsignmentProgressStage, string> = {
-  under_review: "Under review",
-  needs_changes: "Needs changes",
-  accepted: "Accepted",
-  in_sale: "In sale",
-  sold: "Sold",
-  unsold: "Unsold",
+  under_review: STAGE_LABEL["in-review"],
+  needs_changes: NEEDS_CHANGES_LABEL,
+  accepted: STAGE_LABEL.accepted,
+  in_sale: STAGE_LABEL["in-sale"],
+  sold: STAGE_LABEL.sold,
+  unsold: STAGE_LABEL.unsold,
 };
 
-/** The Consignments filter that shows one stage: its tab, narrowed further while in review. */
+/** The Consignments filter that shows one stage: its tab, narrowed to the works sent back for Needs changes. */
 const STAGE_QUERY: Record<ConsignmentProgressStage, string> = {
-  under_review: "tab=in-review&stage=under_review",
+  under_review: "tab=in-review",
   needs_changes: "tab=in-review&stage=needs_changes",
-  accepted: "tab=in-review&stage=accepted",
+  accepted: "tab=accepted",
   in_sale: "tab=in-sale",
   sold: "tab=sold",
   unsold: "tab=unsold",
@@ -26,11 +33,9 @@ export function consignmentStageHref(stage: ConsignmentProgressStage): string {
   return `${CLIENT_ROUTES.consignments}?${STAGE_QUERY[stage]}`;
 }
 
-/** Stages inside the "In review" tab, which the list can narrow to. */
+/** Filters inside the In review tab: the works the specialist sent back. */
 export const REVIEW_STAGES = [
-  "under_review",
   "needs_changes",
-  "accepted",
 ] as const satisfies readonly ConsignmentProgressStage[];
 
 export type ReviewStage = (typeof REVIEW_STAGES)[number];
