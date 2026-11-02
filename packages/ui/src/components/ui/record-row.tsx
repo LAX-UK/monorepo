@@ -67,6 +67,13 @@ export type RecordRowProps = {
   aligned?: boolean;
   /** At most one inline action. Anything else goes in `menu`. */
   action?: React.ReactNode;
+  /**
+   * The record waits on the reader and `action` is the step that clears it (outbid, to pay,
+   * needs changes, choose what happens next). A narrow list shows that one action full width
+   * under the row's facts instead of leaving it in the "…" menu; a wide list keeps it in its
+   * column as for any aligned row.
+   */
+  needsYou?: boolean;
   /** The persistent "…" menu. */
   menu?: React.ReactNode;
   /** Content under the row that belongs to it, such as a progress line. */
@@ -189,11 +196,13 @@ export function RecordRow({
   figures = [],
   aligned = false,
   action,
+  needsYou = false,
   menu,
   detail,
   className,
   ...aria
 }: RecordRowProps) {
+  const stacksAction = needsYou && isShown(action);
   const hasFoot =
     aligned || isShown(status) || isShown(value) || isShown(action) || figures.length > 0;
   return (
@@ -252,7 +261,7 @@ export function RecordRow({
                       "shrink-0",
                       // Narrow, the status leads the line and the figure follows it.
                       figures.length > 0 && "-order-1 @2xl:order-none",
-                      aligned && "@2xl:flex @2xl:w-40 @2xl:justify-end",
+                      aligned && "@2xl:flex @2xl:w-40 @2xl:justify-start",
                       !isShown(status) && "hidden",
                     )}
                   >
@@ -267,9 +276,17 @@ export function RecordRow({
                 {isShown(action) || (aligned && action !== undefined) ? (
                   <span
                     data-record-action
+                    {...(stacksAction ? { "data-needs-you": "" } : {})}
                     className={cn(
-                      "relative z-10 ml-auto shrink-0 @2xl:ml-0",
-                      aligned && "hidden @2xl:flex @2xl:w-36 @2xl:justify-end",
+                      "relative z-10",
+                      stacksAction
+                        ? // Narrow: its own full-width line under the facts. Wide: the aligned column.
+                          "order-last basis-full [&>*]:w-full @2xl:order-none @2xl:flex @2xl:w-40 @2xl:basis-auto"
+                        : cn(
+                            "ml-auto shrink-0 @2xl:ml-0",
+                            // The button fills the column, so every row's action has one width.
+                            aligned && "hidden @2xl:flex @2xl:w-40 @2xl:[&>*]:w-full",
+                          ),
                       !isShown(action) && "hidden",
                     )}
                   >

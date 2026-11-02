@@ -41,6 +41,17 @@ function toAmount(amount: string | number): number {
 }
 
 /**
+ * A deduction as a true minus sign (U+2212) before the amount, always to the penny: "−£960.00".
+ * Zero carries no sign.
+ */
+export function formatDeduction(amount: string | number, currency: string): string {
+  const n = Math.abs(toAmount(amount));
+  if (!Number.isFinite(n)) return "—";
+  const money = formatMoney(n, normalizeCurrencyCode(currency));
+  return n === 0 ? money : `\u2212${money}`;
+}
+
+/**
  * Money in whole units for a list's figure cell, where pennies add nothing ("£9,200"). Amounts
  * the seller receives keep their pennies (`formatMoney`).
  */

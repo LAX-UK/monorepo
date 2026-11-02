@@ -1,6 +1,8 @@
 "use client";
 
 import { MediaImage } from "@/components/ui/media-image";
+import { RowStep } from "@/components/workspace/row-step";
+import { purchaseRowStep } from "@/lib/purchases/purchase-row-step";
 import type { PurchaseCardVm } from "@/lib/purchases/purchases.vm";
 import { notify } from "@/lib/ui/notify";
 import {
@@ -31,13 +33,17 @@ export function PurchaseRow({
   card,
   selection,
   selectColumn,
+  onPay,
 }: {
   card: PurchaseCardVm;
   /** Some row of the list can be picked, so every row keeps the box's column. */
   selectColumn: boolean;
   /** Set while the member can pick this invoice to pay together with others. */
   selection: { selected: boolean; onSelectedChange: (selected: boolean) => void } | null;
+  /** Pays this invoice on its own. */
+  onPay: (card: PurchaseCardVm) => void;
 }) {
+  const step = purchaseRowStep(card);
   const router = useRouter();
   const menu: InlineActionMenuItem[] = [
     { type: "item", label: "View purchase", onSelect: () => router.push(card.detailHref) },
@@ -96,6 +102,20 @@ export function PurchaseRow({
           {card.badge.label}
         </StatusBadge>
       }
+      action={
+        step ? (
+          step.kind === "pay" ? (
+            <RowStep
+              label={step.label}
+              accessibleName={step.accessibleName}
+              onSelect={() => onPay(card)}
+            />
+          ) : (
+            <RowStep label={step.label} accessibleName={step.accessibleName} href={step.href} />
+          )
+        ) : null
+      }
+      needsYou={step !== null}
       menu={<InlineActionMenu label={`More for ${card.title}`} items={menu} />}
     />
   );
