@@ -7,7 +7,7 @@ import { getConnectGapState } from "@auction/connect";
 import type { LegalEntity, LegalEntitySubkind } from "@auction/types";
 import { Card, CardContent, CardFooter, CardHeader } from "@auction/ui/components/card";
 import { StatusBadge } from "@auction/ui/components/status-badge";
-import { Button } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import { initials } from "./initials";
 import { subkindLabel } from "./labels";
@@ -76,20 +76,22 @@ export function OrganisationCard({
       ) : null}
       <CardFooter className="flex flex-wrap gap-2 border-t border-border-hairline pt-4">
         {!isActing ? (
-          <Button asChild size="md" variant="secondary">
-            <Link href={organisationHref("profile", summary.id)} prefetch>
-              Manage
-            </Link>
-          </Button>
+          <ButtonLink
+            size="md"
+            variant="secondary"
+            Link={Link}
+            href={organisationHref("profile", summary.id)}
+            prefetch
+          >
+            Manage
+          </ButtonLink>
         ) : (
           <StatusBadge tone="info">Active</StatusBadge>
         )}
         {showResume && resumeHref ? (
-          <Button asChild size="md" variant="secondary">
-            <Link href={resumeHref} prefetch>
-              {summary.status === "connect_pending" ? "Finish payout setup" : "Continue setup"}
-            </Link>
-          </Button>
+          <ButtonLink size="md" variant="secondary" Link={Link} href={resumeHref} prefetch>
+            {summary.status === "connect_pending" ? "Finish payout setup" : "Continue setup"}
+          </ButtonLink>
         ) : null}
       </CardFooter>
     </Card>

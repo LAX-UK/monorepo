@@ -1,6 +1,6 @@
 import type { OrganisationBannerView } from "@/lib/presenters/organisation-state/organisation-state-copy";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax";
 import { CircleSlash, Clock, type LucideIcon, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 
@@ -52,18 +52,15 @@ export function OrganisationStateBanner({ banner }: { banner: OrganisationBanner
         </p>
       </div>
       {banner.action ? (
-        <Button
-          asChild
+        <ButtonLink
           size="sm"
           variant="secondary"
           className="ml-7 shrink-0 self-start sm:ml-0 sm:self-center"
+          href={banner.action.href}
+          {...(banner.action.kind === "contact" ? {} : { Link })}
         >
-          {banner.action.kind === "contact" ? (
-            <a href={banner.action.href}>{banner.action.label}</a>
-          ) : (
-            <Link href={banner.action.href}>{banner.action.label}</Link>
-          )}
-        </Button>
+          {banner.action.label}
+        </ButtonLink>
       ) : null}
     </div>
   );

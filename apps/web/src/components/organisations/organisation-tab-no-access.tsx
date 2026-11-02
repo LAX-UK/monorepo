@@ -1,7 +1,7 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { SectionTabAccess } from "@/lib/navigation/section-tabs";
 import { AccessDeniedState } from "@auction/ui/components/access-denied-state";
-import { Button } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 type Props = { access: Extract<SectionTabAccess<string>, { kind: "forbidden" }> };
@@ -17,9 +17,9 @@ export function OrganisationTabNoAccess({ access }: Props) {
       page={access.label}
       openedBy={access.openedBy}
       actions={
-        <Button asChild variant="secondary">
-          <Link href={CLIENT_ROUTES.home}>Back to Home</Link>
-        </Button>
+        <ButtonLink variant="secondary" Link={Link} href={CLIENT_ROUTES.home}>
+          Back to Home
+        </ButtonLink>
       }
     />
   );

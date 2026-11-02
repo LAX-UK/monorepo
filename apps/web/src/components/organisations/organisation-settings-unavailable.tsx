@@ -1,6 +1,6 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { Button } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import { OrganisationPageNoAccess } from "./organisation-page-no-access";
 
@@ -26,9 +26,9 @@ export function OrganisationSettingsUnavailable(props: Props) {
         title="Organisation"
         description="These settings belong to an organisation. Switch to one from the account menu to manage it, or register your own."
         action={
-          <Button asChild variant="secondary">
-            <Link href={CLIENT_ROUTES.organisations}>Your organisations</Link>
-          </Button>
+          <ButtonLink variant="secondary" Link={Link} href={CLIENT_ROUTES.organisations}>
+            Your organisations
+          </ButtonLink>
         }
       />
     );

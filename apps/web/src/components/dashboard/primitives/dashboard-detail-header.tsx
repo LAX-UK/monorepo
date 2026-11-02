@@ -1,6 +1,6 @@
 import { BACK_LINK_CLASS, EYEBROW_CLASS } from "@/lib/dashboard/accent-track";
 import { cn } from "@auction/ui";
-import { Button, pageTitleClass } from "@auction/ui/lax";
+import { ButtonLink, pageTitleClass } from "@auction/ui/lax";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -51,17 +51,16 @@ export function DashboardDetailHeader({
       <div className="mx-auto flex max-w-6xl flex-col gap-3">
         {crumbs ? <div className="text-on-surface-variant">{crumbs}</div> : null}
         {backHref && !crumbs ? (
-          <Button
+          <ButtonLink
             variant="ghost"
             size="md"
-            asChild
             className={cn("w-fit", BACK_LINK_CLASS, compact && "hidden lg:inline-flex")}
+            Link={Link}
+            href={backHref}
           >
-            <Link href={backHref}>
-              <ChevronLeft className="size-4" aria-hidden />
-              {backLabel}
-            </Link>
-          </Button>
+            <ChevronLeft className="size-4" aria-hidden />
+            {backLabel}
+          </ButtonLink>
         ) : null}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1">

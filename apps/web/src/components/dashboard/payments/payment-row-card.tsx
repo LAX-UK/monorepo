@@ -8,7 +8,7 @@ import { paymentDisplayDotStatus } from "@/lib/presenters/payment-status";
 import { lotPath } from "@/lib/seo/url";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
-import { Button } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 function PrimaryActionCell({ row }: { row: PaymentDisplayRow }) {
@@ -30,9 +30,9 @@ function PrimaryActionCell({ row }: { row: PaymentDisplayRow }) {
   }
   if (action.kind === "pay") {
     return (
-      <Button variant="primary" asChild>
-        <Link href={action.href}>{action.label}</Link>
-      </Button>
+      <ButtonLink variant="primary" Link={Link} href={action.href}>
+        {action.label}
+      </ButtonLink>
     );
   }
   return (

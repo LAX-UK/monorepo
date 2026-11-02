@@ -14,7 +14,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import type { Lot, PublicLotView } from "@auction/types";
-import { Button } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax";
 import { ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -122,9 +122,9 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           title="Your basket is empty"
           description="Open your purchases and start checkout on any won lot — each lot is settled through its own invoice."
           action={
-            <Button variant="primary" asChild>
-              <Link href="/purchases">Open purchases</Link>
-            </Button>
+            <ButtonLink variant="primary" Link={Link} href="/purchases">
+              Open purchases
+            </ButtonLink>
           }
         />
       ) : null}
@@ -147,9 +147,9 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           title="Some lots were not in your basket"
           message="Lots in the URL are not assigned to you as the winning bidder. Open your purchases to start checkout from a won lot."
         >
-          <Button variant="secondary" asChild>
-            <Link href="/purchases">Open purchases</Link>
-          </Button>
+          <ButtonLink variant="secondary" Link={Link} href="/purchases">
+            Open purchases
+          </ButtonLink>
         </DashboardErrorAlert>
       ) : null}
 
@@ -158,9 +158,9 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
           title="Some lots could not load"
           message={`${fetchFailureCount} lot${fetchFailureCount === 1 ? "" : "s"} could not be loaded. Try again or open your purchases.`}
         >
-          <Button variant="secondary" asChild>
-            <Link href="/purchases">Open purchases</Link>
-          </Button>
+          <ButtonLink variant="secondary" Link={Link} href="/purchases">
+            Open purchases
+          </ButtonLink>
         </DashboardErrorAlert>
       ) : null}
 

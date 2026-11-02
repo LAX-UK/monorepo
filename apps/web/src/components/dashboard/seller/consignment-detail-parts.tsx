@@ -3,7 +3,7 @@ import { SPECIALIST_RESPONSE_PROMISE } from "@/lib/marketing/sell-flow-copy";
 import type { ConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
 import { AccountProgress } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
-import { Button, pageTitleClass } from "@auction/ui/lax";
+import { ButtonLink, pageTitleClass } from "@auction/ui/lax";
 import { MessageSquare } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -75,9 +75,15 @@ export function AboutTheWork({ vm }: { vm: ConsignmentDetailVm }) {
         ))}
       </dl>
       {vm.listingHref ? (
-        <Button variant="secondary" size="md" asChild className="mt-4 w-full">
-          <Link href={vm.listingHref}>View the lot</Link>
-        </Button>
+        <ButtonLink
+          variant="secondary"
+          size="md"
+          className="mt-4 w-full"
+          Link={Link}
+          href={vm.listingHref}
+        >
+          View the lot
+        </ButtonLink>
       ) : null}
     </section>
   );
@@ -106,12 +112,16 @@ export function AskYourSpecialist({
           ? "You can read the conversation with your specialist. Owners, admins and the person who sent this work can write."
           : `Questions about the estimate, the terms or the sale? ${SPECIALIST_RESPONSE_PROMISE}`}
       </p>
-      <Button variant="secondary" size="md" asChild className="mt-4 w-full">
-        <Link href={messagesHref}>
-          <MessageSquare aria-hidden />
-          {readOnly ? "Read messages" : "Send a message"}
-        </Link>
-      </Button>
+      <ButtonLink
+        variant="secondary"
+        size="md"
+        className="mt-4 w-full"
+        Link={Link}
+        href={messagesHref}
+      >
+        <MessageSquare aria-hidden />
+        {readOnly ? "Read messages" : "Send a message"}
+      </ButtonLink>
     </section>
   );
 }

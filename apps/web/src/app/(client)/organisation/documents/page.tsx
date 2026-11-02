@@ -19,7 +19,7 @@ import { loadOrganisationDocuments } from "@/lib/organisations/organisation-docu
 import { buildOrganisationDocumentsView } from "@/lib/organisations/organisation-documents.vm";
 import { entityActorCan } from "@auction/domain";
 import type { ConsignmentAgreement } from "@auction/types";
-import { Button } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -67,9 +67,14 @@ export default async function OrganisationDocumentsPage() {
           message="Something went wrong on our side. Try again in a moment."
         >
           <div>
-            <Button asChild variant="secondary" size="md">
-              <Link href={organisationHref("documents")}>Try again</Link>
-            </Button>
+            <ButtonLink
+              variant="secondary"
+              size="md"
+              Link={Link}
+              href={organisationHref("documents")}
+            >
+              Try again
+            </ButtonLink>
           </div>
         </DashboardErrorAlert>
       </div>
