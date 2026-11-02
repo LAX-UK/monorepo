@@ -61,7 +61,7 @@
   --color-live-red: #e83030;
   /* Saved heart (Figma 866:14253). Aliases live red, so html.dark picks up its dark value. */
   --color-favorite: var(--color-live-red);
-  --color-success: #2ea043;
+  --color-success: #1f7a35;
   --color-success-container: oklch(0.94 0.06 145);
   --color-on-success-container: #0b3d1a;
   --color-info: #3a70e2;
