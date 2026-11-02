@@ -5,6 +5,8 @@ vi.mock("@/lib/data/http/hc-server", () => ({ getServerApiBase: () => "http://12
 vi.mock("@/lib/data/http/server-request-headers", () => ({
   deriveSsrOrigin: async () => "https://lax.bid",
 }));
+const incomingHeaders = vi.hoisted(() => new Headers());
+vi.mock("next/headers", () => ({ headers: async () => incomingHeaders }));
 vi.mock("@/lib/data/http/authed-fetch.server", () => ({ authedServerFetch: vi.fn() }));
 
 const { confirmVisitorAlert, forwardVisitorAlertSignup, getVisitorAlertUnsubscribePreview } =
@@ -23,6 +25,20 @@ describe("sale alerts server calls", () => {
         headers: { "content-type": "application/json", origin: "https://lax.bid" },
       }),
     );
+  });
+
+  it("passes the visitor's address on so the limit is per visitor", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null));
+    incomingHeaders.set("x-forwarded-for", "203.0.113.7, 10.0.0.1");
+    await forwardVisitorAlertSignup({ email: "a@b.co", source: "web_home_alerts" });
+    incomingHeaders.set("cf-connecting-ip", "198.51.100.4");
+    await forwardVisitorAlertSignup({ email: "a@b.co", source: "web_home_alerts" });
+    incomingHeaders.delete("cf-connecting-ip");
+    incomingHeaders.delete("x-forwarded-for");
+    const sent = fetchMock.mock.calls.map(
+      ([, init]) => (init?.headers as Record<string, string>)["x-forwarded-for"],
+    );
+    expect(sent).toEqual(["203.0.113.7", "198.51.100.4"]);
   });
 
   it("reads the confirmation outcome, and separates a bad link from an outage", async () => {

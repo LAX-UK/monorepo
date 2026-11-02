@@ -1,11 +1,10 @@
-import { AuthLayout } from "@/components/auth/auth-layout";
 import {
   type VisitorAlertConfirmResult,
   confirmVisitorAlert,
 } from "@/lib/data/http/sale-alerts.server";
 import { HOME_ALERTS_HREF } from "@/lib/marketing-cover/cover-alerts-outcome";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { ButtonLink, Notice } from "@auction/ui/lax";
+import { ButtonLink, EmptyState, type EmptyStateProps } from "@auction/ui/lax";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -15,35 +14,43 @@ export const metadata: Metadata = metadataForPrivate(
 );
 
 type View = {
-  tone: "success" | "danger";
+  illustration: EmptyStateProps["illustration"];
+  variant: "empty" | "error";
   title: string;
-  body: string;
+  description: string;
   action: { href: string; label: string };
 };
 
+/** What the visitor sees for each result of following the confirmation link. */
 const VIEWS: Record<VisitorAlertConfirmResult, View> = {
   confirmed: {
-    tone: "success",
+    illustration: "ticket",
+    variant: "empty",
     title: "Sale alerts are on",
-    body: "We'll email you when LAX Bid announces new sales. Every email has a link to unsubscribe.",
+    description:
+      "We'll email you when LAX Bid announces new sales. Every email has a link to unsubscribe.",
     action: { href: "/sales", label: "See upcoming sales" },
   },
   expired: {
-    tone: "danger",
+    illustration: "askew",
+    variant: "error",
     title: "This link has expired",
-    body: "Confirmation links work for 48 hours. Sign up again and we'll send a new one.",
+    description: "Confirmation links work for 48 hours. Sign up again and we'll send a new one.",
     action: { href: HOME_ALERTS_HREF, label: "Sign up again" },
   },
   invalid: {
-    tone: "danger",
+    illustration: "askew",
+    variant: "error",
     title: "This link doesn't work",
-    body: "It may have been replaced by a newer email. Sign up again and we'll send a new one.",
+    description:
+      "It may have been replaced by a newer email. Sign up again and we'll send a new one.",
     action: { href: HOME_ALERTS_HREF, label: "Sign up again" },
   },
   failed: {
-    tone: "danger",
+    illustration: "askew",
+    variant: "error",
     title: "We couldn't confirm just now",
-    body: "Nothing has changed. Open the link in your email again in a moment.",
+    description: "Nothing has changed. Open the link in your email again in a moment.",
     action: { href: HOME_ALERTS_HREF, label: "Back to sale alerts" },
   },
 };
@@ -55,24 +62,21 @@ export default async function ConfirmSaleAlertsPage({
 }) {
   const sp = await searchParams;
   const token = typeof sp.t === "string" ? sp.t : "";
-  const result = token ? await confirmVisitorAlert(token) : "invalid";
-  const view = VIEWS[result];
+  const view = VIEWS[token ? await confirmVisitorAlert(token) : "invalid"];
 
   return (
-    <AuthLayout title="Sale alerts" description="Email alerts for new LAX Bid sales.">
-      <div className="flex flex-col gap-6">
-        <Notice
-          tone={view.tone}
-          title={view.title}
-          alert={view.tone === "danger"}
-          data-testid="alerts-confirm-result"
-        >
-          {view.body}
-        </Notice>
+    <EmptyState
+      layout="page"
+      className="pt-[var(--header-height)]"
+      illustration={view.illustration}
+      variant={view.variant}
+      title={view.title}
+      description={view.description}
+      actions={
         <ButtonLink Link={Link} variant="primary" href={view.action.href}>
           {view.action.label}
         </ButtonLink>
-      </div>
-    </AuthLayout>
+      }
+    />
   );
 }

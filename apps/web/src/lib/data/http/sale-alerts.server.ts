@@ -3,6 +3,7 @@ import "server-only";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { deriveSsrOrigin } from "@/lib/data/http/server-request-headers";
+import { headers as nextHeaders } from "next/headers";
 
 /** Where the visitor sale-alerts API lives. */
 const base = () => `${getServerApiBase()}/sale-alerts`;
@@ -12,13 +13,30 @@ export type VisitorAlertConfirmResult = "confirmed" | "expired" | "invalid" | "f
 
 export type VisitorAlertSettingsState = "none" | "pending" | "on" | "linked";
 
+/**
+ * The visitor's address, passed on so the API limits sign-ups per visitor and not per web server
+ * (every visitor reaches the API from the same place).
+ */
+async function clientIpHeaders(): Promise<Record<string, string>> {
+  const incoming = await nextHeaders();
+  const ip =
+    incoming.get("cf-connecting-ip")?.trim() ||
+    incoming.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    incoming.get("x-real-ip")?.trim();
+  return ip ? { "x-forwarded-for": ip } : {};
+}
+
 export async function forwardVisitorAlertSignup(input: {
   email: string;
   source: string;
 }): Promise<Response> {
   return fetch(`${base()}/subscribe`, {
     method: "POST",
-    headers: { "content-type": "application/json", origin: await deriveSsrOrigin() },
+    headers: {
+      "content-type": "application/json",
+      origin: await deriveSsrOrigin(),
+      ...(await clientIpHeaders()),
+    },
     body: JSON.stringify(input),
     cache: "no-store",
   });
