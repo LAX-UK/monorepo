@@ -121,6 +121,19 @@ export const SUBJECT_EXPORT_ORIGINS = ["provided", "observed", "made_by_us"] as 
 export const subjectExportOriginSchema = z.enum(SUBJECT_EXPORT_ORIGINS);
 export type SubjectExportOrigin = z.infer<typeof subjectExportOriginSchema>;
 
+/**
+ * A file a product holds for the person, given as a short-lived signed link from the product's
+ * own storage. The worker fetches it into the download and replaces it with a path inside the ZIP.
+ */
+export const subjectExportFileRefSchema = z.object({
+  url: z.string().url(),
+  fileName: z.string().min(1),
+  contentType: z.string().min(1).nullable(),
+  byteSize: z.number().int().nonnegative().nullable(),
+  expiresAt: z.string().datetime(),
+});
+export type SubjectExportFileRef = z.infer<typeof subjectExportFileRefSchema>;
+
 /** A record is free-form per category, but always has an id and an origin. */
 export const subjectExportRecordSchema = z
   .object({ id: z.string().min(1), origin: subjectExportOriginSchema })
@@ -312,7 +325,7 @@ const BID_CATEGORIES = [
       f("amount", "The bid amount as minor units and currency."),
       f("kind", "Whether it was a live bid or a maximum bid."),
       f("channel", "How it was placed: online, telephone, room or agent."),
-      f("outcome", "How it ended: leading, outbid, won, withdrawn or void."),
+      f("outcome", "How it ended: leading, outbid, won, withdrawn, void or pending."),
     ],
   ),
   category(
@@ -370,6 +383,7 @@ const BID_CATEGORIES = [
     ["provided", "observed"],
     "Works you submitted, agreements you signed, estimates and reserves agreed with you, sale results, unsold choices, payouts and statements.",
     [
+      f("kind", "A submitted work, or a payout and statement issued to you."),
       f("title", "The title of the work you submitted."),
       f("description", "Your description of the work."),
       f("photos", "The photos you uploaded, as paths within the download."),
@@ -405,6 +419,9 @@ const BID_CATEGORIES = [
       f("kind", "Watched lot, followed sale, followed artist, saved search or reminder."),
       f("target", "What it points at, with its title and public link."),
       f("query", "The search terms, for a saved search."),
+      f("notifyByEmail", "Whether a saved search emails you."),
+      f("reminder", "When a reminder fires relative to the sale or close, such as the day before."),
+      f("note", "The note you added to a reminder."),
       f("remindAt", "When the reminder fires, where set."),
       f("createdAt", "When you added it."),
     ],
@@ -418,7 +435,7 @@ const BID_CATEGORIES = [
       f("kind", "Notification, preference, push subscription or mute."),
       f("title", "The notification title."),
       f("sentAt", "When it was sent."),
-      f("readAt", "When you read it, or null."),
+      f("read", "Whether you have read it."),
       f("channel", "The channel it applies to: email, push or in-app."),
       f("enabled", "Whether the preference is on."),
       f("deviceLabel", "The device label of a push subscription."),
@@ -436,6 +453,8 @@ const BID_CATEGORIES = [
       f("source", "Where the consent was given."),
       f("interest", "The category you are interested in."),
       f("campaign", "The campaign or source recorded for a visit."),
+      f("medium", "The marketing medium recorded for a visit, such as email."),
+      f("landingPath", "The page you first arrived on, for a recorded visit."),
     ],
   ),
   category(
@@ -458,13 +477,20 @@ const BID_CATEGORIES = [
     ["provided", "observed"],
     "Organisations you belong or belonged to, your role and dates, invitations, and what you did personally on their behalf. The organisation's own records are not included.",
     [
+      f("kind", "Membership, invitation or action."),
       f("organisation", "The organisation's name."),
       f("role", "Your role in it."),
       f("joinedAt", "When you joined."),
       f("leftAt", "When you left, or null."),
       f("invitedBy", "Who invited you, described by role such as an owner."),
-      f("invitations", "Invitations you sent or received, with their dates and outcomes."),
-      f("actions", "Your own actions on behalf of the organisation, marked as such."),
+      f(
+        "invitation",
+        "An invitation you sent or received, with its direction, role, dates and outcome.",
+      ),
+      f(
+        "action",
+        "Something you did personally on behalf of the organisation, marked with its name.",
+      ),
     ],
   ),
 ] as const;

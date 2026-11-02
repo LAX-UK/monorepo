@@ -97,6 +97,7 @@ const EXPLICIT_ALLOWLIST = new Set([
   "src/routes/internal-identity-deletion-eligibility.routes.ts",
   "src/routes/internal-identity-email.routes.ts",
   "src/routes/internal-identity-subject-usage.routes.ts",
+  "src/routes/internal-identity-subject-export.routes.ts",
   "src/routes/payments.ts",
   "src/routes/payouts.ts",
   "src/routes/payout-statements.ts",
