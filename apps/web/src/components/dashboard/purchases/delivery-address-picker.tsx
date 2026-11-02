@@ -13,6 +13,7 @@ import {
   Button,
   Dialog,
   DialogClose,
+  EmptyState,
   Field,
   Notice,
   PresetCards,
@@ -120,17 +121,18 @@ export function DeliveryAddressPicker({
   return (
     <div className="flex flex-col gap-3">
       {all.length === 0 ? (
-        <div className="flex flex-col items-start gap-3 rounded-lax-card border border-dashed border-lax-line-strong bg-lax-sunken p-4">
-          <div>
-            <p className="text-lax-14 font-medium text-lax-fg">No saved addresses yet</p>
-            <p className="mt-1 text-lax-13 text-lax-muted">
-              Add the address the work should be delivered to. We quote insured delivery to it.
-            </p>
-          </div>
-          <Button icon={<Plus aria-hidden />} onClick={() => setAdding(true)} disabled={disabled}>
-            Add an address
-          </Button>
-        </div>
+        <EmptyState
+          size="compact"
+          headingLevel="h3"
+          illustration="parcel"
+          title="No saved addresses yet"
+          description="Add the address the work should be delivered to. We quote insured delivery to it."
+          actions={
+            <Button icon={<Plus aria-hidden />} onClick={() => setAdding(true)} disabled={disabled}>
+              Add an address
+            </Button>
+          }
+        />
       ) : (
         <>
           <PresetCards<string>
@@ -142,6 +144,7 @@ export function DeliveryAddressPicker({
             }}
             options={all.map((a) => ({ value: a.id, label: a.label, description: a.detail }))}
             columns={all.length === 1 ? 1 : 2}
+            compact
           />
           <div>
             <Button
