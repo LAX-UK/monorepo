@@ -33,6 +33,8 @@ export type LotSummary = {
   marketingDetails: LotMarketingDetails;
   /** Present on ended list rows when the hammer sold (buyer id stays on detail only). */
   hasWinner?: boolean;
+  /** Present on sold list rows: hammer, buyer's premium and total, computed on the server. */
+  checkoutPricing?: Lot["checkoutPricing"];
 };
 
 /** Optional marketing / catalog enrichment (stored as JSON on `lot`). */

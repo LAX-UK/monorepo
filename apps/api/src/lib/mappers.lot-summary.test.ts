@@ -84,3 +84,30 @@ describe("mapLotToStaffListRow", () => {
     expect(mapLotToStaffListRow(baseLot({ status: "active" }))).not.toHaveProperty("hasWinner");
   });
 });
+
+describe("mapLotToSummary checkout pricing", () => {
+  const pricing = {
+    hammerMajor: "1000.00",
+    premiumMajor: "250.00",
+    totalMajor: "1250.00",
+    policyId: "flat:0.25",
+    kind: "flat" as const,
+  };
+
+  it("carries the premium-inclusive price of a sold lot", () => {
+    const summary = mapLotToSummary(
+      baseLot({ status: "ended", winnerId: "buyer-1", checkoutPricing: pricing }),
+    );
+    expect(summary.checkoutPricing).toEqual(pricing);
+  });
+
+  it("leaves it off an unsold lot and a lot still on sale", () => {
+    expect(
+      mapLotToSummary(baseLot({ status: "ended", winnerId: null, checkoutPricing: pricing }))
+        .checkoutPricing,
+    ).toBeUndefined();
+    expect(
+      mapLotToSummary(baseLot({ status: "active", checkoutPricing: pricing })).checkoutPricing,
+    ).toBeUndefined();
+  });
+});
