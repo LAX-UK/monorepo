@@ -927,3 +927,5 @@ export * from "./marketing-enquiry-status.js";
 export * from "./marketing-enquiry-routing.js";
 export * from "./marketing-enquiry-visibility.js";
 export * from "./marketing-enquiry-views.js";
+export * from "./marketing-enquiry-attachments.js";
+export * from "./marketing-enquiry-entity.js";

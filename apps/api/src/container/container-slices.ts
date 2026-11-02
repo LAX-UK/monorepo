@@ -76,6 +76,9 @@ import type {
   IUserSuspensionCacheInvalidator,
   IUserSuspensionChecker,
 } from "../services/interfaces/user-suspension.js";
+import type { EnquirerOrganisationsService } from "../services/marketing-enquiry/enquirer-organisations.service.js";
+import type { IEnquiryDraftTokens } from "../services/marketing-enquiry/enquiry-draft-token.js";
+import type { IEnquirySubmission } from "../services/marketing-enquiry/enquiry-submission.service.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
 import type { SubjectExportService } from "../subject-export/subject-export.service.js";
 import type { ContainerAdminServices } from "./create-admin-services.js";
@@ -529,12 +532,20 @@ export type ContainerOnsiteEventRoutesSlice = Pick<
 /** Public contact form enquiries. */
 export type ContainerMarketingEnquirySlice = {
   marketingEnquiryService: IMarketingEnquiryIntake;
+  /** Draft tokens for uploading files before an enquiry is sent. */
+  enquiryDraftTokens: IEnquiryDraftTokens;
+  enquirySubmission: IEnquirySubmission;
+  enquirerOrganisations: EnquirerOrganisationsService;
 };
 
 /** Public contact enquiry HTTP handler. */
 export type ContainerMarketingEnquiryRoutesSlice = Pick<
   Container,
-  "rateLimitStore" | "marketingEnquiryService"
+  | "rateLimitStore"
+  | "enquiryDraftTokens"
+  | "enquirySubmission"
+  | "enquirerOrganisations"
+  | "userSuspensionChecker"
 >;
 
 /** Newsletter signup. */
@@ -734,7 +745,7 @@ export type ContainerSaleDocumentRoutesSlice = ContainerComplianceSlice &
 
 /** Presigned upload + local dev upload. */
 export type ContainerUploadRoutesSlice = ContainerComplianceSlice &
-  Pick<Container, "userSuspensionChecker">;
+  Pick<Container, "userSuspensionChecker" | "enquiryDraftTokens">;
 
 /** GDPR data export jobs. */
 export type ContainerExportRoutesSlice = ContainerComplianceSlice &

@@ -62,6 +62,46 @@ export class UploadHttpApplicationService implements IUploadHttpApplicationServi
     return { status: 200, body: { data: result.value } };
   }
 
+  async createDraftPresignedUpload(input: {
+    draftId: string;
+    kind: string;
+    contentType: string;
+    byteSize: number;
+  }): Promise<ComplianceHttpJson> {
+    const result = await this.uploadService.createDraftPresignedUpload(input);
+    if (!result.ok) {
+      return {
+        status: result.status,
+        body: {
+          error: result.error,
+          ...(result.code ? { code: result.code } : {}),
+          ...(result.limit ? { limit: result.limit } : {}),
+          ...(result.resetAt ? { resetAt: result.resetAt } : {}),
+        },
+      };
+    }
+    return { status: 200, body: { data: result.value } };
+  }
+
+  async confirmDraftUpload(input: {
+    draftId: string;
+    uploadId: string;
+  }): Promise<ComplianceHttpJson> {
+    if (!input.uploadId) return { status: 400, body: { error: "uploadId is required" } };
+    const result = await this.uploadService.confirmDraftUpload(input);
+    if (!result.ok) return { status: result.status, body: { error: result.error } };
+    return { status: 200, body: { data: result.value } };
+  }
+
+  async getDraftUploadStatus(input: {
+    draftId: string;
+    uploadId: string;
+  }): Promise<ComplianceHttpJson> {
+    const result = await this.uploadService.getDraftUploadStatus(input);
+    if (!result.ok) return { status: result.status, body: { error: result.error } };
+    return { status: 200, body: { data: result.value } };
+  }
+
   async confirmUpload(input: {
     viewer: ComplianceViewerContext;
     uploadId: string;

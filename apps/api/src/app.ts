@@ -271,7 +271,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/webhooks/veriff", createVeriffWebhookRoutes(container))
     .route("/email", createEmailRoutes(container))
     .route("/newsletter", createNewsletterRoutes(container))
-    .route("/contact-enquiries", createMarketingEnquiryRoutes(container))
+    .route("/contact-enquiries", createMarketingEnquiryRoutes(container, authenticator))
     .route("/auth", createProductAuthRoutes(container))
     .route("/categories", createCategoryRoutes(container))
     .route("/venues", createVenueRoutes(container, authenticator))

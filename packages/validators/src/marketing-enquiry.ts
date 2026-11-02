@@ -3,6 +3,7 @@ import {
   ENQUIRY_CLOSE_REASONS,
   ENQUIRY_CONTACT_PREFERENCES,
   ENQUIRY_INTENTS,
+  ENQUIRY_MAX_FILES_PER_DRAFT,
   ENQUIRY_STATUSES,
   ENQUIRY_TIMINGS,
   ENQUIRY_VIEWS,
@@ -57,10 +58,19 @@ export const generalEnquirySchema = z.object({
   message: z.string().trim().min(10).max(5000),
 });
 
+/**
+ * The organisation a private sale enquiry is sent for. The server checks the sender is a member
+ * who may act for it before the enquiry is linked, so the id alone grants nothing.
+ */
+const organisationFields = {
+  legalEntityId: z.string().uuid().optional(),
+};
+
 /** A seller offering a work privately: the work, where it is and what they have in mind. */
 export const privateSaleSellEnquirySchema = z.object({
   intent: z.literal("private_sale_sell"),
   ...enquirerFields,
+  ...organisationFields,
   /** A public Sell department slug; routes the enquiry to that department's specialist. */
   departmentSlug: departmentSlugSchema,
   artist: z.string().trim().min(1).max(200),
@@ -72,12 +82,20 @@ export const privateSaleSellEnquirySchema = z.object({
   /** In pence; absent when the seller is not sure yet. */
   priceInMindMinor: z.number().int().positive().max(1_000_000_000_000).optional(),
   message: z.string().trim().max(5000).optional(),
+  /**
+   * The photos and documents uploaded for this enquiry, in the order to show them. Files that did
+   * not pass their checks are left out when the enquiry is stored; they never stop it being sent.
+   */
+  uploadIds: z.array(z.string().uuid()).max(ENQUIRY_MAX_FILES_PER_DRAFT).default([]),
+  /** The draft the visitor uploaded under, when they were not signed in. */
+  draftToken: z.string().trim().min(1).max(500).optional(),
 });
 
 /** A buyer asking to be shown works privately. */
 export const privateSaleBuyEnquirySchema = z.object({
   intent: z.literal("private_sale_buy"),
   ...enquirerFields,
+  ...organisationFields,
   lookingFor: z.string().trim().min(3).max(2000),
   budgetBand: z.enum(ENQUIRY_BUDGET_BANDS),
   timing: z.enum(ENQUIRY_TIMINGS),
@@ -108,6 +126,13 @@ export type EnquiryIntakeInput =
   | GeneralEnquiryInput
   | PrivateSaleSellEnquiryInput
   | PrivateSaleBuyEnquiryInput;
+
+/** `POST /contact-enquiries/drafts`: a short-lived token that lets a visitor upload files for one enquiry. */
+export const enquiryDraftResponseSchema = z.object({
+  draftToken: z.string().min(1),
+  expiresAt: z.string().datetime(),
+});
+export type EnquiryDraftResponse = z.infer<typeof enquiryDraftResponseSchema>;
 
 /** An enquiry as staff address it: the reference staff and senders quote, or its id. */
 export const enquiryRefParamSchema = z.object({

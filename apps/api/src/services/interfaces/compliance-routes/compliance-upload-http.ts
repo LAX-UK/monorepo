@@ -15,6 +15,18 @@ export interface IUploadHttpApplicationService {
     byteSize: number;
   }): Promise<ComplianceHttpJson>;
 
+  /** The same three steps for a visitor who holds an enquiry draft token instead of a session. */
+  createDraftPresignedUpload(input: {
+    draftId: string;
+    kind: string;
+    contentType: string;
+    byteSize: number;
+  }): Promise<ComplianceHttpJson>;
+
+  confirmDraftUpload(input: { draftId: string; uploadId: string }): Promise<ComplianceHttpJson>;
+
+  getDraftUploadStatus(input: { draftId: string; uploadId: string }): Promise<ComplianceHttpJson>;
+
   confirmUpload(input: {
     viewer: ComplianceViewerContext;
     uploadId: string;

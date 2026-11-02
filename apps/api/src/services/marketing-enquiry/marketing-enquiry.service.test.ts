@@ -44,6 +44,7 @@ const buyer = parse({
 function setup(
   options: {
     alertFails?: boolean;
+    acknowledgementFails?: boolean;
     rules?: { departmentSlug: string | null; assignedToUserId: string }[];
   } = {},
 ) {
@@ -61,15 +62,35 @@ function setup(
     }),
   };
   const onAlertFailed = vi.fn();
+  const claim = vi.fn().mockResolvedValue({ images: 2, documents: 1 });
+  const attachments = { claimInTransaction: claim };
+  const acknowledgement = {
+    send: vi.fn().mockImplementation(async () => {
+      if (options.acknowledgementFails) throw new Error("outbox down");
+    }),
+  };
+  const onAcknowledgementFailed = vi.fn();
   const service = new MarketingEnquiryService({
     enquiries,
     routing,
+    attachments,
     transactionRunner,
     events,
     alert,
+    acknowledgement,
     onAlertFailed,
+    onAcknowledgementFailed,
   });
-  return { service, enquiries, publish, alert, onAlertFailed };
+  return {
+    service,
+    enquiries,
+    publish,
+    alert,
+    onAlertFailed,
+    claim,
+    acknowledgement,
+    onAcknowledgementFailed,
+  };
 }
 
 describe("MarketingEnquiryService.submit", () => {
@@ -144,7 +165,7 @@ describe("MarketingEnquiryService.submit", () => {
 
   it("links the enquiry to the signed-in account and organisation it was sent as", async () => {
     const { service, enquiries } = setup();
-    await service.submit(buyer, { userId: "user-1", legalEntityId: "entity-1" });
+    await service.submit(buyer, { account: { userId: "user-1", legalEntityId: "entity-1" } });
     expect(enquiries.rows[0]).toMatchObject({ userId: "user-1", legalEntityId: "entity-1" });
   });
 
@@ -203,5 +224,82 @@ describe("MarketingEnquiryService.submit", () => {
 
     expect(enquiries.rows).toHaveLength(1);
     expect(onAlertFailed).toHaveBeenCalledWith(id, expect.any(Error));
+  });
+
+  describe("files", () => {
+    const UPLOAD_IDS = [
+      "6f1c2f60-6a0a-4a53-9a2a-1c9f8f0e9a11",
+      "6f1c2f60-6a0a-4a53-9a2a-1c9f8f0e9a12",
+    ];
+    const withFiles = parse({ ...seller, uploadIds: UPLOAD_IDS });
+
+    it("attaches the files a visitor uploaded under their draft, in the same transaction", async () => {
+      const { service, claim, enquiries } = setup();
+      await service.submit(withFiles, { uploadOwner: { enquiryDraftId: "draft-1" } });
+      expect(claim).toHaveBeenCalledWith(expect.anything(), {
+        enquiryId: enquiries.rows[0]?.id,
+        owner: { enquiryDraftId: "draft-1" },
+        uploadIds: UPLOAD_IDS,
+      });
+    });
+
+    it("attaches the files a signed-in sender uploaded", async () => {
+      const { service, claim } = setup();
+      await service.submit(withFiles, {
+        account: { userId: "user-1" },
+        uploadOwner: { ownerUserId: "user-1" },
+      });
+      expect(claim).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ owner: { ownerUserId: "user-1" } }),
+      );
+    });
+
+    it("attaches nothing when no files were listed, or when the sender owns no uploads", async () => {
+      const { service, claim } = setup();
+      await service.submit(seller, { uploadOwner: { enquiryDraftId: "draft-1" } });
+      await service.submit(withFiles);
+      await service.submit(buyer, { uploadOwner: { enquiryDraftId: "draft-1" } });
+      expect(claim).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("acknowledgement", () => {
+    it("is sent for every enquiry, general ones included", async () => {
+      const { service, acknowledgement, enquiries } = setup();
+      await service.submit(contact);
+      await service.submit(buyer);
+      expect(acknowledgement.send).toHaveBeenCalledTimes(2);
+      expect(acknowledgement.send.mock.calls[0]?.[0]).toBe(enquiries.rows[0]);
+      expect(acknowledgement.send.mock.calls[0]?.[1]).toMatchObject({
+        kind: "general",
+        topicLabel: "Press",
+      });
+    });
+
+    it("repeats the work and the photos that arrived, never the price", async () => {
+      const { service, acknowledgement } = setup();
+      await service.submit(
+        parse({ ...seller, uploadIds: ["6f1c2f60-6a0a-4a53-9a2a-1c9f8f0e9a11"] }),
+        {
+          uploadOwner: { enquiryDraftId: "draft-1" },
+        },
+      );
+      const summary = acknowledgement.send.mock.calls[0]?.[1];
+      expect(summary).toEqual({
+        kind: "sell",
+        departmentLabel: "Paintings",
+        work: "David Hockney, Pool study",
+        photoCount: 2,
+      });
+      expect(JSON.stringify(summary)).not.toContain("4800000");
+    });
+
+    it("keeps the enquiry and reports success when the sender's copy cannot be queued", async () => {
+      const { service, enquiries, onAcknowledgementFailed } = setup({ acknowledgementFails: true });
+      const { id } = await service.submit(contact);
+      expect(enquiries.rows).toHaveLength(1);
+      expect(onAcknowledgementFailed).toHaveBeenCalledWith(id, expect.any(Error));
+    });
   });
 });

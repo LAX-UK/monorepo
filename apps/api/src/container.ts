@@ -394,6 +394,7 @@ export function createContainer(env: Env): Container {
     db,
     env,
     email: infra.emailService,
+    memberships: repos.legalEntityRepository,
     transactionRunner: platform.transactionRunner,
     events: platform.domainEventSink,
   });
@@ -534,6 +535,9 @@ export function createContainer(env: Env): Container {
     savedSearchService: userMisc.savedSearchService,
     newsletterSignupService: userMisc.newsletterSignupService,
     marketingEnquiryService: marketingEnquiries.intake,
+    enquiryDraftTokens: marketingEnquiries.drafts,
+    enquirySubmission: marketingEnquiries.submission,
+    enquirerOrganisations: marketingEnquiries.organisations,
     webhookEventRepository: repos.webhookEventRepository,
     artistWatchlistService: userMisc.artistWatchlistService,
     notificationService: platform.notificationService,
