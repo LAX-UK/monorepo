@@ -1,6 +1,7 @@
 "use client";
 
 import { useConsent } from "@/lib/analytics/consent/context";
+import { MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useSignInNoticeActive } from "@/lib/ui/first-visit-overlays";
 import { cn } from "@auction/ui";
 import { Button, TextLink, laxDensityAttributes } from "@auction/ui/lax";
@@ -53,11 +54,18 @@ function CookieBanner() {
       onFocus={rememberOrigin}
       {...laxDensityAttributes("client")}
       className={cn(
-        "pointer-events-auto mx-2 mb-2 rounded-lax-card border border-lax-line bg-lax-raised p-4 font-lax text-lax-fg shadow-lax-md",
-        "md:mx-0 md:mb-0 md:rounded-none md:border-x-0 md:border-b-0 md:p-0 md:shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.18)]",
+        "pointer-events-auto mx-2 mb-2 rounded-lax-card border border-lax-line bg-lax-raised max-md:p-4 font-lax text-lax-fg shadow-lax-md",
+        "md:mx-0 md:mb-0 md:rounded-none md:border-x-0 md:border-b-0 md:shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.18)]",
       )}
     >
-      <div className="md:mx-auto md:flex md:max-w-[1440px] md:items-center md:gap-8 md:px-10 md:py-3.5">
+      <div
+        className={cn(
+          "md:mx-auto md:flex md:max-w-[var(--container-max,1440px)] md:items-center md:gap-8 md:py-3.5",
+          // The same container and gutters as the header and footer; the phone card pads itself.
+          MARKETING_PAGE_GUTTER_X,
+          "max-md:px-0",
+        )}
+      >
         <p className="mb-3 text-lax-13 leading-5 text-lax-muted md:mb-0 md:max-w-[760px] md:flex-1">
           <b className="font-semibold text-lax-fg">Cookies on LAX Bid.</b> We use essential cookies
           to run the site and keep you signed in. With your permission we'd also use analytics
@@ -66,7 +74,7 @@ function CookieBanner() {
             Cookie policy
           </TextLink>
         </p>
-        <div className="grid grid-cols-3 gap-2 md:flex-none">
+        <div className="grid grid-cols-3 gap-2 md:ml-auto md:flex-none">
           <Button
             type="button"
             variant="secondary"
