@@ -3,6 +3,7 @@
 import {
   adminAddPayoutAdjustmentResultAction,
   adminMarkPayoutPaidResultAction,
+  adminRetryPayoutTransferResultAction,
   adminReversePayoutResultAction,
 } from "@/lib/actions/admin/admin-payouts";
 import { payoutReversalConfirmationPhrase } from "@/lib/admin/finance/payout-settlement.vm";
@@ -23,7 +24,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
 type Pending = {
-  kind: "mark-paid" | "adjust" | "reverse";
+  kind: "mark-paid" | "adjust" | "reverse" | "retry";
   payout: PayoutsStaffRow;
   /** One key per dialog, so a double click repeats one request. */
   idempotencyKey: string;
@@ -47,7 +48,7 @@ function PayoutFacts({ payout }: { payout: PayoutsStaffRow }) {
 }
 
 /**
- * Mark paid, add adjustment and reverse for a payout, from a row's `…` menu or the record panel.
+ * Mark paid, add adjustment, retry a failed transfer and reverse for a payout, from a row's `…` menu or the record panel.
  * Each opens a confirm dialog that names the amount and the seller. An adjustment and a reversal
  * ask for a reason that is kept with the payout; a reversal also asks for the payout's reference
  * to be typed. When the API asks for a fresh sign-in, the step-up dialog takes over.
@@ -100,6 +101,13 @@ export function usePayoutMoneyActions({
               : { disabledReason: "Adjustments close once a payout is paid or has failed" }),
           },
         );
+      }
+      if (canProcess && payout.canRetryTransfer) {
+        actions.push({
+          id: "retry",
+          label: "Retry transfer",
+          onSelect: () => open("retry", payout),
+        });
       }
       if (canReverse) {
         actions.push({
@@ -255,6 +263,41 @@ export function usePayoutMoneyActions({
         ) : null}
       </ConfirmActionDialog>
       <ConfirmActionDialog
+        open={pending?.kind === "retry"}
+        onOpenChange={(next) => {
+          if (!next && !busy) close();
+        }}
+        title={
+          pending
+            ? `Retry the ${pending.payout.net} transfer to ${pending.payout.seller}?`
+            : "Retry transfer"
+        }
+        description="Sends the Stripe transfer again. If Stripe accepts it the payout moves to in transit; if not, it stays failed with the new reason. Retrying the same failure twice cannot send the money twice."
+        confirmLabel={pending ? `Retry ${pending.payout.net} transfer` : "Retry transfer"}
+        loading={busy}
+        onConfirm={() => {
+          if (pending?.kind !== "retry") return;
+          const { payout, idempotencyKey } = pending;
+          run(
+            () => adminRetryPayoutTransferResultAction(payout.id, { idempotencyKey }),
+            `retry the ${payout.net} transfer to ${payout.seller}`,
+            `Sent the ${payout.net} transfer to ${payout.seller} again`,
+          );
+        }}
+      >
+        {pending?.kind === "retry" ? (
+          <>
+            {failureNotice("retry")}
+            <PayoutFacts payout={pending.payout} />
+            {pending.payout.failureReason ? (
+              <Notice tone="danger" title="Why it failed">
+                {pending.payout.failureReason}
+              </Notice>
+            ) : null}
+          </>
+        ) : null}
+      </ConfirmActionDialog>
+      <ConfirmActionDialog
         open={pending?.kind === "reverse"}
         onOpenChange={(next) => {
           if (!next && !busy) close();
@@ -301,6 +344,7 @@ export function usePayoutMoneyActions({
     actionsFor,
     markPaid: (payout: PayoutsStaffRow) => open("mark-paid", payout),
     adjust: (payout: PayoutsStaffRow) => open("adjust", payout),
+    retryTransfer: (payout: PayoutsStaffRow) => open("retry", payout),
     reverse: (payout: PayoutsStaffRow) => open("reverse", payout),
     dialogs,
   };

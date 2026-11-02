@@ -267,6 +267,7 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
         onClose={() => showPanel(null)}
         onMarkPaid={money.markPaid}
         onAdjust={money.adjust}
+        onRetryTransfer={money.retryTransfer}
         onReverse={money.reverse}
         moneyActions={openRow ? money.actionsFor(openRow) : []}
       />
