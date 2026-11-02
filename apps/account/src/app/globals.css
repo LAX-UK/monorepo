@@ -87,7 +87,7 @@ html.dark {
   --color-surface: #1a1c1c;
   --color-on-surface: var(--brand-light-cream);
   --color-on-surface-variant: #c9c5bc;
-  --color-primary: var(--brand-light-cream);
+  --color-primary: var(--brand-paper);
   --color-on-primary: var(--brand-obsidian);
   --color-primary-container: #383a39;
   --color-secondary-container: #333534;
