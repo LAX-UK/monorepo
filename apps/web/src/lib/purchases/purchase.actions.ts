@@ -228,7 +228,7 @@ const PROBLEM_FAILURES: Record<string, string> = {
   insufficient_entity_role: "Your role in this account can't report a problem on its purchases.",
 };
 
-const PROBLEM_FAILED = "We couldn't send your report just now. Try again in a moment.";
+const PROBLEM_FAILED = "Something went wrong on our side. Try again in a moment.";
 
 /**
  * Reports a problem with a paid purchase to the client services team. Sending again while a
