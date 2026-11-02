@@ -16,6 +16,7 @@ import type {
   ConnectAccountStatus,
   CreateAccountResult,
   IStripeConnectService,
+  InitiateTransferOptions,
   InitiateTransferResult,
 } from "../interfaces/stripe-connect.js";
 import { ConnectAccountService } from "./connect/connect-account.service.js";
@@ -148,7 +149,7 @@ export class StripeConnectFacade implements IStripeConnectService {
 
   initiateTransfer(
     payoutId: string,
-    opts?: { keepScheduledOnTransferFailure?: boolean },
+    opts?: InitiateTransferOptions,
   ): Promise<InitiateTransferResult> {
     return this.transferService.initiateTransfer(payoutId, opts);
   }

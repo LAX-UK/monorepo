@@ -58,6 +58,8 @@ export type PayoutsStaffRow = {
   canAdjust: boolean;
   /** Reversal is a bookkeeping step for payouts that are paid or on their way. */
   canReverse: boolean;
+  /** A failed transfer can be sent again. */
+  canRetryTransfer: boolean;
 };
 
 export function presentPayoutStatus(status: PayoutStatus): StatusPresentation {
@@ -119,6 +121,7 @@ export function toPayoutsStaffRows(
       canMarkPaid: open,
       canAdjust: open,
       canReverse: row.status === "paid" || row.status === "in_transit",
+      canRetryTransfer: row.status === "failed",
     };
   });
 }

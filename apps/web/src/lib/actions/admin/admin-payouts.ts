@@ -124,3 +124,45 @@ export async function adminReversePayoutResultAction(
     return actionSuccess();
   });
 }
+
+/** What staff are told when the API refuses a retry, by the reason it gives. */
+const RETRY_REFUSALS: Record<string, string> = {
+  payout_not_failed: "This payout is no longer failed, so there is nothing to retry.",
+  payout_state_changed: "This payout changed while you were retrying it. Refresh and check it.",
+  connect_not_ready:
+    "The seller's Stripe account cannot receive transfers yet. Ask them to finish their Stripe setup.",
+  no_connect_account: "The seller has no Stripe account connected.",
+  stripe_error: "Stripe declined the transfer again. The reason is shown on the payout.",
+  negative_net_amount: "This payout has a negative net amount, so no transfer can be sent.",
+};
+
+/** Sends the Stripe transfer again for a payout whose earlier transfer failed. */
+export async function adminRetryPayoutTransferResultAction(
+  payoutId: string,
+  input: { idempotencyKey?: string } = {},
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminRetryPayoutTransferResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(FINANCE_ACCESS);
+    if (denied) return denied;
+    const id = payoutId.trim();
+    if (!id) return actionFailure("Missing payout");
+    const res = await authedServerFetch(`/admin/payouts/${encodeURIComponent(id)}/retry-transfer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...idempotencyHeader(input.idempotencyKey) },
+      body: JSON.stringify({ confirmed: true }),
+    });
+    if (res.status === 409) {
+      const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+      const reason = typeof body.error === "string" ? body.error : "";
+      return actionFailure(
+        RETRY_REFUSALS[reason] ?? "The transfer could not be retried.",
+        undefined,
+        409,
+      );
+    }
+    const result = await payoutCallResult(res, "The transfer could not be retried.");
+    if (!result.ok) return result;
+    revalidatePath("/admin/payouts");
+    return actionSuccess();
+  });
+}
