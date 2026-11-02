@@ -98,6 +98,9 @@ import LotWithdrawalDeclinedNoticeEmail, {
   subject as lotWithdrawalDeclinedNoticeSubject,
 } from "./templates/lot-withdrawal-declined-notice.js";
 import LotWonEmail, { subject as lotWonSubject } from "./templates/lot-won.js";
+import MarketingEnquiryAlertEmail, {
+  subject as marketingEnquiryAlertSubject,
+} from "./templates/marketing-enquiry-alert.js";
 import NewDeviceLoginEmail, {
   subject as newDeviceLoginSubject,
 } from "./templates/new-device-login.js";
@@ -451,6 +454,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "kyc-resubmission-required": {
     subject: kycResubmissionRequiredSubject,
     component: (vars) => <KycResubmissionRequiredEmail {...vars} />,
+  },
+  "marketing-enquiry-alert": {
+    subject: marketingEnquiryAlertSubject,
+    component: (vars) => <MarketingEnquiryAlertEmail {...vars} />,
   },
   "staff-role-expired": {
     subject: staffRoleExpiredSubject,

@@ -7,6 +7,7 @@ import {
   itemSubmission,
   lot,
   lotFulfilment,
+  marketingEnquiry,
   payment,
   sale,
   saleRegistration,
@@ -426,6 +427,33 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       saleId: null,
       createdAt: row.requestedAt ?? row.createdAt,
       sourceUpdatedAt: row.updatedAt,
+      assignedToUserId: null,
+    }));
+  }
+
+  async listMarketingEnquiries(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const rows = await this.db
+      .select({
+        id: marketingEnquiry.id,
+        topic: marketingEnquiry.topic,
+        name: marketingEnquiry.name,
+        createdAt: marketingEnquiry.createdAt,
+      })
+      .from(marketingEnquiry)
+      .where(eq(marketingEnquiry.status, "new"))
+      .orderBy(desc(marketingEnquiry.createdAt))
+      .limit(limit);
+
+    return rows.map((row) => ({
+      sourceId: row.id,
+      kind: "marketing_enquiry" as const,
+      domain: "clients" as const,
+      title: `Contact enquiry — ${sentenceCase(row.topic)}`,
+      subtitle: row.name,
+      href: `/admin/enquiries/${row.id}`,
+      saleId: null,
+      createdAt: row.createdAt,
+      sourceUpdatedAt: row.createdAt,
       assignedToUserId: null,
     }));
   }

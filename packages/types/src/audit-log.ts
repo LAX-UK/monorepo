@@ -40,7 +40,7 @@ export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly str
     "admin.impersonation_",
     "bid.user_suspended",
   ],
-  operations: ["failed_job."],
+  operations: ["failed_job.", "marketing_enquiry."],
 };
 
 export function isAuditLogView(value: string): value is AuditLogView {

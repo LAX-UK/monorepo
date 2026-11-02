@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  addBusinessDays,
   applyWorkItemSla,
   compareWorkItems,
   isUrgentWorkItem,
@@ -25,6 +26,33 @@ describe("admin-work-item-sla.policy", () => {
     );
     expect(sla.isOverdue).toBe(true);
     expect(sla.urgencyLabel).toBe("Over 48h");
+  });
+
+  it("counts two business days for contact enquiries, skipping weekends", () => {
+    const enquiry = (sentAt: string) => ({
+      sourceId: "e1",
+      kind: "marketing_enquiry" as const,
+      domain: "clients" as const,
+      title: "Contact enquiry",
+      subtitle: null,
+      href: "/admin/enquiries/e1",
+      saleId: null,
+      createdAt: new Date(sentAt),
+      sourceUpdatedAt: new Date(sentAt),
+      assignedToUserId: null,
+    });
+    // Friday 10:00 is due Tuesday 10:00.
+    const friday = enquiry("2026-07-24T10:00:00.000Z");
+    expect(addBusinessDays(friday.sourceUpdatedAt, 2).toISOString()).toBe(
+      "2026-07-28T10:00:00.000Z",
+    );
+    const monday = Date.parse("2026-07-27T12:00:00.000Z");
+    expect(applyWorkItemSla(friday, monday).isOverdue).toBe(false);
+    const tuesdayNoon = Date.parse("2026-07-28T12:00:00.000Z");
+    const late = applyWorkItemSla(friday, tuesdayNoon);
+    expect(late.isOverdue).toBe(true);
+    expect(late.dueAt).toBe("2026-07-28T10:00:00.000Z");
+    expect(late.urgencyLabel).toBe("Over SLA");
   });
 
   it("sorts deterministically by severity then id", () => {

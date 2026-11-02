@@ -167,6 +167,8 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "lot.voided",
   "lot.withdrawal_declined",
   "lot.withdrawal_requested",
+  "marketing_enquiry.handled",
+  "marketing_enquiry.received",
   "payment.bank_transfer_partially_funded",
   "payment.cancelled",
   "payment.capture_blocked_terminal_status",
@@ -547,6 +549,18 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     consumers: [],
     idempotencyPolicy: "none",
     piiClassification: "operational",
+  },
+  "marketing_enquiry.received": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "marketing_enquiry.handled": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
   },
   "failed_job.restored": {
     producers: ["apps/api"],

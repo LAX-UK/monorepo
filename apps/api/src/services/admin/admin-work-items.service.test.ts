@@ -32,6 +32,7 @@ function createReader(overrides: Partial<IAdminWorkItemsReader> = {}): IAdminWor
     listPendingTelephoneBookings: vi.fn().mockResolvedValue([]),
     listDraftLotsPastStart: vi.fn().mockResolvedValue([]),
     listUnsoldLotChoices: vi.fn().mockResolvedValue([]),
+    listMarketingEnquiries: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
 }
@@ -71,6 +72,42 @@ describe("AdminWorkItemsService", () => {
     expect(listPendingReviewTasks).not.toHaveBeenCalled();
     expect(result.items.some((item) => item.kind === "payment_manual_review")).toBe(true);
     expect(result.items.some((item) => item.kind === "aml_screening")).toBe(false);
+  });
+
+  it("shows contact enquiries to client services and administrators only", async () => {
+    const listMarketingEnquiries = vi.fn().mockResolvedValue([
+      row({
+        sourceId: "enq-1",
+        kind: "marketing_enquiry",
+        domain: "clients",
+        title: "Contact enquiry — Press",
+      }),
+    ]);
+    const service = new AdminWorkItemsService(createReader({ listMarketingEnquiries }));
+    const query = { limit: 25, assignment: "all" as const, urgentOnly: false };
+
+    for (const staffRoles of [["client_services"], ["administrator"]] as const) {
+      const result = await service.listWorkItems({
+        actorUserId: "u1",
+        actorRole: "staff",
+        actorStaffRoles: [...staffRoles],
+        query,
+      });
+      expect(result.items.map((item) => item.id)).toEqual(["marketing_enquiry:enq-1"]);
+      expect(result.items[0]?.dueAt).not.toBeNull();
+    }
+
+    listMarketingEnquiries.mockClear();
+    for (const staffRoles of [["finance"], ["read_only"], ["cataloguer"]] as const) {
+      const result = await service.listWorkItems({
+        actorUserId: "u1",
+        actorRole: "staff",
+        actorStaffRoles: [...staffRoles],
+        query,
+      });
+      expect(result.items.some((item) => item.kind === "marketing_enquiry")).toBe(false);
+    }
+    expect(listMarketingEnquiries).not.toHaveBeenCalled();
   });
 
   it("ranks critical finance items before medium catalogue items", async () => {
