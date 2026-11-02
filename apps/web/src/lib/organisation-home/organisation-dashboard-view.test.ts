@@ -7,7 +7,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { organisationDashboardView } from "./organisation-dashboard-view";
 
-const ctx = { organisationName: "Northbank Gallery" };
+const ctx = { organisationName: "Northbank Gallery", now: new Date("2026-11-02T12:00:00Z") };
 
 const FIGURES: DashboardFigures = {
   consignmentProgress: { ...emptyConsignmentProgress(), under_review: 2, in_sale: 3, sold: 1 },
@@ -155,7 +155,7 @@ describe("sections", () => {
       {
         id: "s1",
         title: "Modern British",
-        timing: "Opens 20 Nov 2026, 10:00",
+        timing: "Opens Fri 20 Nov, 10:00 GMT",
         dateTime: "2026-11-20T10:00:00.000Z",
         live: false,
         works: "2 works",
@@ -178,7 +178,7 @@ describe("sections", () => {
     }).upcomingSales;
     expect(sale).toMatchObject({
       live: true,
-      timing: "Closes 3 Nov, 21:14",
+      timing: "Closes in 1 day 9 hours",
       dateTime: "2026-11-03T21:14:00.000Z",
     });
   });

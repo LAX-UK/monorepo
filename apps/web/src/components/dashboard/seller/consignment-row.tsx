@@ -101,7 +101,7 @@ export function ConsignmentRow({
       ]}
       aligned
       status={
-        <StatusBadge tone={status.tone} shape={status.shape}>
+        <StatusBadge tone={status.tone} shape={status.shape} live={status.live ?? false}>
           {status.label}
         </StatusBadge>
       }

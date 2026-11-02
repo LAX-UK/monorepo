@@ -1,5 +1,6 @@
 import { MediaImage } from "@/components/ui/media-image";
 import type { UpcomingSaleView } from "@/lib/organisation-home/organisation-dashboard-view";
+import { LiveBadge } from "@auction/ui";
 import { StatusBadge } from "@auction/ui/lax";
 import Link from "next/link";
 import { HomeSection } from "./home-section";
@@ -26,9 +27,7 @@ function SaleMat({ sale }: { sale: UpcomingSaleView }) {
         </div>
       ))}
       {sale.live ? (
-        <StatusBadge tone="live" className="absolute top-3 left-3">
-          Live
-        </StatusBadge>
+        <LiveBadge className="absolute top-3 left-3 bg-lax-surface! ring-1 ring-lax-line" />
       ) : null}
     </div>
   );

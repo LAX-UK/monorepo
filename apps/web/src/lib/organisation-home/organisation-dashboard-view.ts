@@ -1,5 +1,6 @@
 import { CLIENT_ROUTES, teamHref } from "@/lib/navigation/client-routes";
 import { organisationFirstRunCopy } from "@/lib/presenters/organisation-state/organisation-state-copy";
+import { opensLine } from "@/lib/time/opens-line";
 import { formatDateInline, formatKpiMoney, formatMoney } from "@/lib/ui/format";
 import {
   CONSIGNMENT_PROGRESS_STAGES,
@@ -71,7 +72,7 @@ export type OrganisationDashboardView = {
   stages: ConsignmentStageView[] | null;
 };
 
-type Ctx = { organisationName: string };
+type Ctx = { organisationName: string; now?: Date };
 
 const plural = (count: number, one: string, many = `${one}s`) =>
   `${count.toLocaleString("en-GB")} ${count === 1 ? one : many}`;
@@ -219,33 +220,22 @@ export function dashboardTileView(tile: DashboardTile, ctx: Ctx): DashboardTileV
   };
 }
 
-/** Sale times are UK time, the same on the server and in every browser. */
-const SALE_TIME = { timeZone: "Europe/London", hour: "2-digit", minute: "2-digit" } as const;
-const OPENS_AT = new Intl.DateTimeFormat("en-GB", {
-  ...SALE_TIME,
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-const CLOSES_AT = new Intl.DateTimeFormat("en-GB", {
-  ...SALE_TIME,
-  day: "numeric",
-  month: "short",
-});
-
-/** A live sale says when it closes; one still to open says when it opens. */
-function saleTiming(sale: UpcomingSaleFigure): Pick<UpcomingSaleView, "timing" | "dateTime"> {
-  return sale.live
-    ? { timing: `Closes ${CLOSES_AT.format(sale.endsAt)}`, dateTime: sale.endsAt.toISOString() }
-    : { timing: `Opens ${OPENS_AT.format(sale.startsAt)}`, dateTime: sale.startsAt.toISOString() };
+/** A live sale says when it closes; one still to open says when it opens, by the one time rule. */
+function saleTiming(
+  sale: UpcomingSaleFigure,
+  now: Date,
+): Pick<UpcomingSaleView, "timing" | "dateTime"> {
+  const target = sale.live ? sale.endsAt : sale.startsAt;
+  const { label, value } = opensLine(target, now, sale.live ? "Closes" : "Opens");
+  return { timing: `${label} ${value}`, dateTime: target.toISOString() };
 }
 
-function upcomingSaleView(sale: UpcomingSaleFigure, own: boolean): UpcomingSaleView {
+function upcomingSaleView(sale: UpcomingSaleFigure, own: boolean, now: Date): UpcomingSaleView {
   const works = sale.works.toLocaleString("en-GB");
   return {
     id: sale.id,
     title: sale.title,
-    ...saleTiming(sale),
+    ...saleTiming(sale, now),
     live: sale.live,
     // "Your works" for a member who sees only what they sent; the organisation's otherwise.
     works: own ? `${works} of your works` : `${works} ${sale.works === 1 ? "work" : "works"}`,
@@ -284,7 +274,9 @@ export function organisationDashboardView(
     firstRun: model.firstRun ? firstRunView(model.firstRun, firstRunKey, ctx) : null,
     // Thin data: a row of "No …" cells says nothing, so the figures show from the first one.
     tiles: tiles.some((tile) => tile.figures.length > 0) ? tiles : [],
-    upcomingSales: model.upcomingSales.map((sale) => upcomingSaleView(sale, model.ownWorks)),
+    upcomingSales: model.upcomingSales.map((sale) =>
+      upcomingSaleView(sale, model.ownWorks, ctx.now ?? new Date()),
+    ),
     upcomingSalesHref: consignmentStageHref("in_sale"),
     stages: progress ? stageViews(progress) : null,
   };
