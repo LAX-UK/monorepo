@@ -1,6 +1,7 @@
 import type { PayoutAccountView } from "@/lib/data/http/organisation-profile.types";
 import type { SoldLot } from "@/lib/data/http/workspace-selling.schema";
 import { formatMoney } from "@/lib/format-currency";
+import { formatDeduction } from "@/lib/money/currency";
 import { payoutBankLineWithCurrency } from "@/lib/organisation-team/payout-bank-account.vm";
 import { formatPeriod } from "@/lib/ui/format";
 import { csvDocument } from "@/lib/workspace/csv";
@@ -50,7 +51,7 @@ export function buildPayoutRows(payouts: readonly Payout[], sellerEntityId: stri
         id: payout.id,
         period: formatPeriod(payout.periodStart, payout.periodEnd),
         gross: formatMoney(payout.grossAmount, payout.currency),
-        fees: formatMoney(Number.isFinite(fees) ? -fees : 0, payout.currency),
+        fees: formatDeduction(Number.isFinite(fees) ? fees : 0, payout.currency),
         net: formatMoney(payout.netAmount, payout.currency),
         status: payout.status,
         statementHref: payoutStatementHref(sellerEntityId, payout.id),

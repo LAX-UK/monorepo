@@ -17,7 +17,13 @@ export function consignmentStepLabel(task: ConsignmentTask): string {
   return TASK_STEP[task].label;
 }
 
-export type ConsignmentStep = { label: string; href: string; blockedReason: string | null };
+export type ConsignmentStep = {
+  label: string;
+  href: string;
+  blockedReason: string | null;
+  /** The consignment waits on the member for this step (a draft to finish does not). */
+  needsYou: boolean;
+};
 
 /**
  * The one step a row offers: what waits on the member, else finishing a draft they can send.
@@ -34,11 +40,11 @@ export function consignmentStep(
       record.task === "changes" && record.submissionId
         ? consignmentEditHref(record.submissionId)
         : `${record.href}${step.anchor}`;
-    return { label: step.label, href, blockedReason };
+    return { label: step.label, href, blockedReason, needsYou: true };
   }
   if (record.status === "draft" && (access.canSell || blockedReason)) {
     const href = record.submissionId ? consignmentEditHref(record.submissionId) : record.href;
-    return { label: "Continue", href, blockedReason };
+    return { label: "Continue", href, blockedReason, needsYou: false };
   }
   return null;
 }
