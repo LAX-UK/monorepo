@@ -26,6 +26,7 @@ import { createDrizzleShopMediaAssetRepository } from "../infrastructure/drizzle
 import { createDrizzleLegacyThelaxContentStore } from "../infrastructure/legacy-thelax/drizzle-legacy-thelax-content.store.js";
 import { createHttpLegacyMediaFetcher } from "../infrastructure/legacy-thelax/http-legacy-media.fetcher.js";
 import { createJsonFileLegacyExportSource } from "../infrastructure/legacy-thelax/json-file-legacy-export.source.js";
+import { createSharpImageNormalizer } from "../infrastructure/sharp-image-normalizer.js";
 import { createSharpImageProbe } from "../infrastructure/sharp-image-probe.js";
 import { resolveShopMediaStorage } from "../infrastructure/shop-media-storage.js";
 
@@ -79,6 +80,7 @@ try {
     storage: mediaStorage.storage,
     assets: createDrizzleShopMediaAssetRepository(container.db),
     imageProbe: createSharpImageProbe(),
+    imageNormalizer: createSharpImageNormalizer(),
     actor: LEGACY_THELAX_IMPORT_ACTOR,
   });
   const { redirects, report } = await importLegacyThelax(
@@ -97,7 +99,14 @@ try {
   if (values["report-out"]) await writeJson(fromRoot(values["report-out"]), report);
   console.log(
     JSON.stringify(
-      { ...report, media: { ...report.media, failed: report.media.failed.length } },
+      {
+        ...report,
+        media: {
+          ...report.media,
+          failed: report.media.failed.length,
+          images: report.media.images.length,
+        },
+      },
       null,
       2,
     ),

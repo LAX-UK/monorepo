@@ -11,7 +11,6 @@ import { Queue, Worker } from "bullmq";
 import { analyseSaleCoversJob } from "../jobs/analyse-sale-covers.js";
 import { cleanupImageJob } from "../jobs/image-cleanup.js";
 import { processImageJob } from "../jobs/process-image.js";
-import { purgeSourceOfFundsDocumentsJob } from "../jobs/purge-source-of-funds-documents.js";
 import { recordQrCodeScanJob } from "../jobs/qr-code-scan.js";
 import { gcPendingUploads, validateUploadJob } from "../jobs/validate-upload.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
@@ -175,11 +174,6 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
     async () => {
       await withSentryCronMonitor("gc-pending-uploads", sentryMonitorSlugs, async () => {
         await gcPendingUploads({ uploadValidationRepo, storage: uploadStorage, log });
-        await purgeSourceOfFundsDocumentsJob({
-          sourceOfFundsDocumentPurgeRepo: deps.sourceOfFundsDocumentPurgeRepo,
-          storage: uploadStorage,
-          log,
-        });
         await heartbeat("gc-pending-uploads");
       });
     },

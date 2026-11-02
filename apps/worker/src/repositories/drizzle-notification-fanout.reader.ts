@@ -6,6 +6,7 @@ import {
   legalEntityMember,
   lot,
   payout,
+  sale,
 } from "@auction/db/schema";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type { INotificationFanoutReader } from "../interfaces/notification-fanout.reader.js";
@@ -79,6 +80,15 @@ export class DrizzleNotificationFanoutReader implements INotificationFanoutReade
       .select({ title: lot.title })
       .from(lot)
       .where(eq(lot.id, lotId))
+      .limit(1);
+    return row?.title ?? null;
+  }
+
+  async getSaleTitle(saleId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ title: sale.title })
+      .from(sale)
+      .where(eq(sale.id, saleId))
       .limit(1);
     return row?.title ?? null;
   }

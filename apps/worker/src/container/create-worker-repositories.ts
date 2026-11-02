@@ -31,6 +31,7 @@ import type { IDomainEventProjectorReader } from "../interfaces/domain-event-pro
 import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
 import type { IIdentityOutboxRelayRepository } from "../interfaces/identity-outbox-relay.repository.js";
 import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
+import type { IKycRetentionSubjectStore } from "../interfaces/kyc-retention-subject.store.js";
 import type { ILegalEntityArchiveCascadeReader } from "../interfaces/legal-entity-archive-cascade.reader.js";
 import type { ILotNotifyReader } from "../interfaces/lot-notify.reader.js";
 import type { IMarketingAttributionPurgeRepository } from "../interfaces/marketing-attribution-purge.repository.js";
@@ -47,7 +48,6 @@ import type { IPayoutTransferFailedNotifyReader } from "../interfaces/payout-tra
 import type { IProjectorFailureRecorder } from "../interfaces/projector-failure-recorder.js";
 import type { IProjectorStateRepository } from "../interfaces/projector-state.repository.js";
 import type { IQrCodeScanPurgeRepository } from "../interfaces/qr-code-scan-purge.repository.js";
-import type { ISourceOfFundsDocumentPurgeRepository } from "../interfaces/source-of-funds-document-purge.repository.js";
 import type {
   ISourceOfFundsBuyerReader,
   ISourceOfFundsDocumentsTaskRepository,
@@ -73,6 +73,8 @@ import { DrizzleDomainEventProjectorReader } from "../repositories/drizzle-domai
 import { DrizzleEmailOutboxRepository } from "../repositories/drizzle-email-outbox.repository.js";
 import { DrizzleIdentityOutboxRelayRepository } from "../repositories/drizzle-identity-outbox-relay.repository.js";
 import { DrizzleImpersonationSweepRepository } from "../repositories/drizzle-impersonation-sweep.repository.js";
+import { DrizzleKycRetentionLegalEntityStore } from "../repositories/drizzle-kyc-retention-legal-entity.store.js";
+import { DrizzleKycRetentionPersonStore } from "../repositories/drizzle-kyc-retention-person.store.js";
 import { DrizzleLegalEntityArchiveCascadeReader } from "../repositories/drizzle-legal-entity-archive-cascade.reader.js";
 import { DrizzleLotNotifyReader } from "../repositories/drizzle-lot-notify.reader.js";
 import { DrizzleMarketingAttributionPurgeRepository } from "../repositories/drizzle-marketing-attribution-purge.repository.js";
@@ -89,7 +91,6 @@ import { DrizzlePayoutTransferFailedNotifyReader } from "../repositories/drizzle
 import { DrizzleProjectorFailureRecorder } from "../repositories/drizzle-projector-failure-recorder.js";
 import { DrizzleProjectorStateRepository } from "../repositories/drizzle-projector-state.repository.js";
 import { DrizzleQrCodeScanPurgeRepository } from "../repositories/drizzle-qr-code-scan-purge.repository.js";
-import { DrizzleSourceOfFundsDocumentPurgeRepository } from "../repositories/drizzle-source-of-funds-document-purge.repository.js";
 import {
   DrizzleSourceOfFundsBuyerReader,
   DrizzleSourceOfFundsDocumentsTaskRepository,
@@ -112,7 +113,7 @@ export type WorkerRepositories = {
   dataExportRepo: IDataExportJobRepository;
   staffRoleReader: IStaffRoleAssignmentReader;
   newsletterSignupSyncRepo: INewsletterSignupSyncRepository;
-  sourceOfFundsDocumentPurgeRepo: ISourceOfFundsDocumentPurgeRepository;
+  kycRetentionStores: readonly IKycRetentionSubjectStore[];
   marketingContactSyncRepo: IMarketingContactSyncRepository;
   staffOpsRecipientReader: IStaffOpsRecipientReader;
   complianceRecipientReader: IComplianceRecipientReader;
@@ -168,7 +169,10 @@ export function createWorkerRepositories(
     dataExportRepo: new DrizzleDataExportJobRepository(db),
     staffRoleReader: new DrizzleStaffRoleAssignmentReader(db),
     newsletterSignupSyncRepo: new DrizzleNewsletterSignupSyncRepository(db),
-    sourceOfFundsDocumentPurgeRepo: new DrizzleSourceOfFundsDocumentPurgeRepository(db),
+    kycRetentionStores: [
+      new DrizzleKycRetentionPersonStore(db),
+      new DrizzleKycRetentionLegalEntityStore(db),
+    ],
     marketingContactSyncRepo: new DrizzleMarketingContactSyncRepository(db),
     staffOpsRecipientReader: new DrizzleStaffOpsRecipientReader(db),
     complianceRecipientReader: new DrizzleComplianceRecipientReader(db),

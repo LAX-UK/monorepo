@@ -1,4 +1,5 @@
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
+import { PRIVATE_SALES_PATH } from "@/lib/marketing/private-sales";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { sellDepartmentsAnchorHref } from "@/lib/marketing/sell-departments";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
@@ -10,9 +11,6 @@ const timedAuctionsHref = calendarSalesHref({
 });
 
 const investmentGradeMinGbp = 50_000;
-
-/** Private sales are arranged with a specialist, not browsed on the calendar. */
-const PRIVATE_SALE_ENQUIRY_HREF = "/contact?intent=private-sale";
 
 function searchHref(sort?: "endingAsc" | "createdDesc", ending?: "24h"): string {
   const params = new URLSearchParams();
@@ -66,7 +64,6 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
           href: calendarSalesHref({ minPrice: investmentGradeMinGbp }),
           label: "Investment-grade works",
         },
-        { href: PRIVATE_SALE_ENQUIRY_HREF, label: "Private sales" },
         { href: "/buy", label: "Buying guide" },
       ],
     },
@@ -83,19 +80,8 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
         { href: "/sell/prints", label: "Prints & editions" },
         { href: "/sell/estate", label: "Estate collections" },
         { href: "/sell/corporate", label: "Corporate collections" },
+        { href: PRIVATE_SALES_PATH, label: "Private sales" },
         { href: "/selling", label: "Seller dashboard" },
-      ],
-    },
-    {
-      id: "privateSales",
-      href: PRIVATE_SALE_ENQUIRY_HREF,
-      label: "Private sales",
-      items: [
-        { href: PRIVATE_SALE_ENQUIRY_HREF, label: "Available now" },
-        { href: "/contact", label: "Make an offer" },
-        { href: "/contact", label: "Private rooms" },
-        { href: "/contact", label: "Corporate acquisitions" },
-        { href: "/contact", label: "Speak to an advisor" },
       ],
     },
     {

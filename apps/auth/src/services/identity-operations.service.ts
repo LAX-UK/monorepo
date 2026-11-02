@@ -485,6 +485,30 @@ export class IdentityOperationsService {
     });
   }
 
+  /**
+   * Removes the phone number and its verified flag, and publishes the change with the profile.
+   * Resolves to the number that was removed, or null when the person had none.
+   */
+  async clearPhone(subjectId: string): Promise<string | null> {
+    let removed: string | null = null;
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const outcome = await this.repositories.subjects.clearPhone(
+        transaction,
+        subjectId,
+        this.now(),
+      );
+      if (outcome.status === "not_found") throw new IdentityOperationError("subject_not_found");
+      if (outcome.status === "no_phone") return;
+      removed = outcome.previous;
+      await publishIdentityProfileUpdated(
+        this.identityEventPublisher,
+        { subjectId, phone: null, phoneVerified: false },
+        { transaction },
+      );
+    });
+    return removed;
+  }
+
   /** Starts the deletion grace period and returns when it started. */
   async markDeletionRequested(subjectId: string): Promise<Date> {
     const requestedAt = this.now();

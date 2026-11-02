@@ -90,6 +90,8 @@ export function MarketingGalleryDetailList({
   );
 }
 
+export type MarketingGalleryTeamStep = { title: string; body: string };
+
 export type MarketingGalleryTeamBandProps = {
   /** Short sentence-case label above the title, e.g. "The gallery team". */
   eyebrow: string;
@@ -105,6 +107,13 @@ export type MarketingGalleryTeamBandProps = {
   /** A short promise under the actions, e.g. who replies and how soon. */
   note?: string;
   details?: readonly MarketingGalleryTeamDetail[];
+  /**
+   * `accent` (default) tints the eyebrow with the product accent; `neutral` keeps it in the
+   * text colour, for a product whose eyebrows carry no accent.
+   */
+  eyebrowTone?: "accent" | "neutral";
+  /** How it works, as a short numbered list under the actions. */
+  steps?: readonly MarketingGalleryTeamStep[];
   className?: string;
   "data-testid"?: string;
 };
@@ -124,6 +133,8 @@ export function MarketingGalleryTeamBand({
   actions,
   note,
   details = [],
+  eyebrowTone = "accent",
+  steps = [],
   className,
   "data-testid": testId = "marketing-gallery-team-band",
 }: MarketingGalleryTeamBandProps) {
@@ -141,7 +152,14 @@ export function MarketingGalleryTeamBand({
         {media}
       </div>
       <div className="flex flex-col justify-center gap-4 p-6 sm:p-10 lg:p-14">
-        <p className="m-0 font-label text-sm font-semibold leading-5 text-[color:var(--color-product-accent,currentColor)]">
+        <p
+          className={cn(
+            "m-0 font-label text-sm font-semibold leading-5",
+            eyebrowTone === "accent"
+              ? "text-[color:var(--color-product-accent,currentColor)]"
+              : "text-on-surface",
+          )}
+        >
           {eyebrow}
         </p>
         <h2
@@ -159,6 +177,19 @@ export function MarketingGalleryTeamBand({
             <p className="m-0 font-body text-sm leading-5 text-on-surface-variant">{note}</p>
           ) : null}
         </div>
+        {steps.length > 0 ? (
+          <ol className="m-0 mt-2 grid list-none gap-3 border-t border-outline-variant p-0 pt-4 font-body text-sm leading-5 text-on-surface-variant sm:grid-cols-3 sm:gap-6">
+            {steps.map((step, index) => (
+              <li key={step.title} className="min-w-0">
+                <span className="block text-xs font-medium tabular-nums">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <b className="mt-1 block font-semibold text-on-surface">{step.title}</b>
+                {step.body}
+              </li>
+            ))}
+          </ol>
+        ) : null}
         <MarketingGalleryDetailList details={details} className="mt-1" />
       </div>
     </section>

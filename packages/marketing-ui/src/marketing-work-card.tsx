@@ -21,6 +21,11 @@ export type MarketingWorkCardProps = {
   mediaBadge?: ReactNode;
   /** Status over the bottom-left of the mat, e.g. a lot status. */
   mediaStatus?: ReactNode;
+  /**
+   * Control over the top-right of the mat, e.g. a save heart. Interactive, unlike the badge and
+   * status. None by default, so cards that do not pass it are unchanged.
+   */
+  overlayAction?: ReactNode;
   /** Control beside the title, e.g. a save heart. */
   action?: ReactNode;
   /** Line under the title, e.g. the artist link. */
@@ -46,6 +51,7 @@ export function MarketingWorkCard({
   media,
   mediaBadge,
   mediaStatus,
+  overlayAction,
   action,
   subtitle,
   details,
@@ -66,6 +72,7 @@ export function MarketingWorkCard({
         {mediaBadge ? (
           <div className="pointer-events-none absolute left-2 top-2 z-[1]">{mediaBadge}</div>
         ) : null}
+        {overlayAction ? <div className="absolute right-2 top-2 z-[2]">{overlayAction}</div> : null}
         {mediaStatus ? (
           <div className="pointer-events-none absolute bottom-2 left-2 z-[1] max-w-[calc(100%-1rem)]">
             {mediaStatus}

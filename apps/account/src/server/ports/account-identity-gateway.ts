@@ -52,6 +52,8 @@ export type AccountIdentityGateway = {
     phone: string,
     code: string,
   ): Promise<IdentityCallResult<string>>;
+  /** Clears the phone number and its verified flag. Needs a recent sign-in. */
+  removePhone(actor: IdentityActor): Promise<IdentityCallResult<true>>;
   /** What is in the way of deleting the account, per product; null when Identity could not answer. */
   readDeletionStatus(actor: IdentityActor): Promise<AccountDeletionStatus | null>;
   /**

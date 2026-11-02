@@ -82,6 +82,11 @@ const envSchema = z
     GA4_MEASUREMENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
     META_GRAPH_API_VERSION: z.preprocess(emptyToUndefined, z.string().optional()),
     MARKETING_EVENT_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(5),
+    /**
+     * Turns on the KYC, AML and source-of-funds retention purge. Off (the default) it runs as a
+     * dry run: it logs what it would purge and deletes nothing.
+     */
+    KYC_RETENTION_PURGE_ENABLED: z.preprocess(parseOptionalBooleanFlag, z.boolean().default(false)),
     QR_SCAN_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
     /** Optional ClamAV daemon for SoF document malware scanning. */
     CLAMAV_HOST: z.preprocess(emptyToUndefined, z.string().optional()),

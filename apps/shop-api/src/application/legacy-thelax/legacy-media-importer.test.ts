@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createFakeObjectStorage } from "../../test-support/fake-object-storage.js";
 import { createMemoryShopMediaAssetRepository } from "../../test-support/memory-shop-media-asset.repository.js";
+import type { ImageNormalizerPort } from "../ports/image-normalizer.port.js";
 import type { ImageProbePort } from "../ports/image-probe.port.js";
 import { createLegacyMediaImporter, legacyMediaKey } from "./legacy-media-importer.js";
 
@@ -12,6 +13,18 @@ const probe: ImageProbePort = {
   makeLqip: async () => "data:image/webp;base64,abc",
 };
 
+const normalizer: ImageNormalizerPort = {
+  normalize: async (bytes, contentType) => {
+    if (bytes.toString().startsWith("<html")) throw new Error("not_an_image");
+    return {
+      bytes,
+      contentType,
+      original: { width: 800, height: 600, bytes: bytes.byteLength },
+      stored: { width: 800, height: 600, bytes: bytes.byteLength },
+    };
+  },
+};
+
 function setup(responses: Record<string, Buffer | null>) {
   const storage = createFakeObjectStorage();
   const assets = createMemoryShopMediaAssetRepository();
@@ -21,6 +34,7 @@ function setup(responses: Record<string, Buffer | null>) {
     storage,
     assets,
     imageProbe: probe,
+    imageNormalizer: normalizer,
     actor: "legacy-thelax-import",
   });
   return { storage, assets, fetcher, media };
@@ -52,6 +66,7 @@ describe("createLegacyMediaImporter", () => {
       storage: first.storage,
       assets: first.assets,
       imageProbe: probe,
+      imageNormalizer: normalizer,
       actor: "legacy-thelax-import",
     });
     await rerun.importImage(url, "artwork_image", null);
@@ -71,5 +86,35 @@ describe("createLegacyMediaImporter", () => {
     ).toBeNull();
     expect(storage.objects.size).toBe(0);
     expect(media.stats().failed).toHaveLength(3);
+  });
+
+  it("stores the normalised bytes and reports original and stored size per image", async () => {
+    const small = Buffer.concat([JPEG, Buffer.from("small")]);
+    const { storage } = setup({ [url]: JPEG });
+    const scaled = vi.fn(async (_bytes: Buffer, contentType: "image/jpeg") => ({
+      bytes: small,
+      contentType,
+      original: { width: 6000, height: 9000, bytes: 12_000_000 },
+      stored: { width: 2667, height: 4000, bytes: small.byteLength },
+    }));
+    const importer = createLegacyMediaImporter({
+      fetcher: { fetch: async () => JPEG },
+      storage,
+      assets: createMemoryShopMediaAssetRepository(),
+      imageProbe: probe,
+      imageNormalizer: { normalize: scaled },
+      actor: "legacy-thelax-import",
+    });
+    const key = await importer.importImage(url, "artwork_image", null);
+    expect(storage.objects.get(key as string)?.body).toEqual(small);
+    expect(importer.stats().images).toEqual([
+      {
+        url,
+        key,
+        original: { width: 6000, height: 9000, bytes: 12_000_000 },
+        stored: { width: 2667, height: 4000, bytes: small.byteLength },
+        resized: true,
+      },
+    ]);
   });
 });

@@ -1,6 +1,7 @@
 import { Button } from "@/components/account-button";
 import type { SupportLinksVm } from "@/server/domain/account-links";
 import type { AccountNavItemVm } from "@/server/domain/account-nav.vm";
+import type { BackToProductVm } from "@/server/domain/origin-product";
 import { legalOperatorSentence, siteCopyrightYear } from "@auction/branding";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { LaxFamilyBar, LaxLockup } from "@auction/marketing-ui";
@@ -10,6 +11,7 @@ import { AccountMenuSheet } from "./account-menu-sheet.client";
 import { AccountNav } from "./account-nav.client";
 import { AccountThemeToggle } from "./account-theme-toggle.client";
 import type { AccountViewer } from "./account-viewer";
+import { BackToProductLink } from "./back-to-product-link";
 
 /**
  * The page widths, defined once. `narrow` is the column for forms and settings (Personal details,
@@ -36,6 +38,8 @@ export type AccountFrameProps = {
   /** The LAX top bar: the products, then LAX Account (current). */
   products: LaxFamilyLinkVm[];
   support: SupportLinksVm | null;
+  /** The way back to the product the visitor came from; null when none is known. */
+  backToProduct?: BackToProductVm | null;
   width?: PageWidth;
   children: ReactNode;
 };
@@ -50,6 +54,7 @@ export function AccountFrame({
   nav,
   products,
   support,
+  backToProduct = null,
   width = "narrow",
   children,
 }: AccountFrameProps) {
@@ -81,6 +86,11 @@ export function AccountFrame({
           </div>
         </div>
       </header>
+      {backToProduct ? (
+        <nav aria-label="Back to product" className={`${CONTAINER} pt-4`}>
+          <BackToProductLink product={backToProduct} />
+        </nav>
+      ) : null}
       <div className={`${CONTAINER} flex flex-1 gap-10 lg:gap-14`}>
         {showMenu ? (
           <aside className="hidden w-60 shrink-0 py-8 lg:block">

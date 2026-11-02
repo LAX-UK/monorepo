@@ -342,6 +342,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
         phoneRules.phoneVerifySubjectWindowSec,
         phoneRules.phoneVerifySubjectMax,
       ),
+      phoneRemoveRateLimit: strictRateLimit("account-phone-remove", 60 * 60, 10),
       onFailure: (error) => options.log.error({ err: error }, "account_contact_request_failed"),
     }),
   );

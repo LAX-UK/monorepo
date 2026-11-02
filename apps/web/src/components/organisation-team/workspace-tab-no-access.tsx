@@ -8,7 +8,6 @@ import { NoAccessActions } from "./ask-for-access-button";
 type Props = {
   access: Extract<SectionTabAccess<string>, { kind: "forbidden" }>;
   legalEntityId: string;
-  organisationName: string;
   actor: EntityActor;
   userId: string;
 };
@@ -19,13 +18,7 @@ type Props = {
  * the tabs they can use stay in reach, and offers "Ask for access" (or the request already
  * waiting) and the owner to ask.
  */
-export async function WorkspaceTabNoAccess({
-  access,
-  legalEntityId,
-  organisationName,
-  actor,
-  userId,
-}: Props) {
+export async function WorkspaceTabNoAccess({ access, legalEntityId, actor, userId }: Props) {
   const ask = await loadAccessAsk({
     legalEntityId,
     actor,
@@ -34,7 +27,6 @@ export async function WorkspaceTabNoAccess({
   });
   const reason = workspaceAccessReason({
     page: access.label,
-    organisationName,
     openedBy: access.openedBy,
     role: actor.role,
   });

@@ -59,6 +59,12 @@ export function phoneEntryLabel(phone: string | null, phoneVerified: boolean): s
   return phoneVerified ? "Change phone number" : "Verify phone number";
 }
 
+export const REMOVE_PHONE_CONFIRM = {
+  title: "Remove your phone number?",
+  body: "We'll delete the number from your LAX Account and email you to let you know. You can add a number again at any time.",
+  confirmLabel: "Remove number",
+} as const;
+
 const REJECTION_MESSAGES: Record<AccountContactError, string> = {
   email_taken: "That email address is already used by another LAX account.",
   same_email: "That is already your email address.",
@@ -67,6 +73,7 @@ const REJECTION_MESSAGES: Record<AccountContactError, string> = {
   stale_flow:
     "This link is out of date because the change was cancelled or replaced. Start again from Personal details.",
   expired: "This link has expired. Start the change again from Personal details.",
+  no_phone: "There is no phone number on your account to remove.",
   phone_taken: "That phone number is already used by another LAX account.",
   invalid_phone:
     "That doesn't look like a valid phone number. Include your country code, for example +44 7700 900123.",

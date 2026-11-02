@@ -14,6 +14,7 @@ import {
   ACCOUNT_EMAIL_CHANGE_CANCEL_PATH,
   ACCOUNT_EMAIL_CHANGE_CONFIRM_PATH,
   ACCOUNT_EMAIL_CHANGE_PATH,
+  ACCOUNT_PHONE_REMOVE_PATH,
   ACCOUNT_PHONE_SEND_CODE_PATH,
   ACCOUNT_PHONE_VERIFY_PATH,
   ACCOUNT_PROFILE_PATH,
@@ -36,6 +37,7 @@ import {
   accountEmailChangeConfirmedSchema,
   accountEmailChangeStartedSchema,
   accountPhoneCodeSentSchema,
+  accountPhoneRemovedSchema,
   accountPhoneVerifiedSchema,
   accountProfileSchema,
   accountSessionsRevokedSchema,
@@ -189,6 +191,14 @@ export function createIssuerAccountIdentityGateway(
         accountPhoneVerifiedSchema,
       );
       return result.status === "ok" ? { status: "ok", value: result.value.phone } : result;
+    },
+    async removePhone(actor) {
+      const result = await post(
+        ACCOUNT_PHONE_REMOVE_PATH,
+        fields(actor),
+        accountPhoneRemovedSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: true } : result;
     },
     async readDeletionStatus(actor) {
       const result = await post(
