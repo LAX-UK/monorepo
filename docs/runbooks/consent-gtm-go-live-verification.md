@@ -17,7 +17,7 @@ curl -sS -o /dev/null -w "gtm.lax.bid/healthy -> HTTP %{http_code}\n" https://gt
 
 1. Open a **private/incognito** window to `https://lax.bid`.
 2. Confirm the **Cookies on LAX.BID** banner shows **Customise** (outline) and **Accept all** (primary) on the first layer — **Reject all** is not on the banner.
-3. Confirm **Accept all** is the filled primary button and **Customise** opens the cookie preferences dialog.
+3. Confirm **Accept all** is the filled primary button and **Customise** opens the cookie settings dialog.
 
 ## B. Before any choice (expect silence)
 

@@ -9,7 +9,7 @@ type Props = {
   className?: string;
 };
 
-/** Footer / legal area trigger to reopen the cookie preferences dialog. */
+/** Footer / legal area trigger to reopen the cookie settings dialog. */
 export function CookiePreferencesLink({ className }: Props) {
   const { openPreferences } = useConsent();
   return (
@@ -23,7 +23,7 @@ export function CookiePreferencesLink({ className }: Props) {
       )}
       onClick={openPreferences}
     >
-      Cookie preferences
+      Cookie settings
     </Button>
   );
 }

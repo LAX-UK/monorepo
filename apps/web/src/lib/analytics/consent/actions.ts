@@ -35,7 +35,7 @@ export async function setConsentAction(prefs: {
       revalidatePath("/", "layout");
       return { ok: true, snapshot };
     } catch {
-      return { ok: false, error: "Could not save cookie preferences." };
+      return { ok: false, error: "Could not save cookie settings." };
     }
   });
 }

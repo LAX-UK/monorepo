@@ -4,7 +4,7 @@ import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { type MarketingFooterColumn, buildFooterLegalColumn } from "@auction/marketing-ui";
 
-/** Footer entry rendered as the button that reopens the cookie preferences dialog. */
+/** Footer entry rendered as the button that reopens the cookie settings dialog. */
 export const BID_COOKIE_PREFERENCES_HREF = "#cookie-preferences";
 
 /** Shared LAX footer order: site navigation, LAX products, legal (Connect is appended by the shell). */

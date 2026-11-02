@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildFooterLegalColumn } from "./footer-legal-column.js";
 
 describe("buildFooterLegalColumn", () => {
-  it("lists the index, terms, privacy, cookies and cookie preferences in that order", () => {
+  it("lists the index, terms, privacy, cookies and cookie settings in that order", () => {
     const column = buildFooterLegalColumn({
       cookiePreferences: "#cookie-preferences",
       cookies: "/cookies",
@@ -16,7 +16,7 @@ describe("buildFooterLegalColumn", () => {
       "Terms",
       "Privacy",
       "Cookies",
-      "Cookie preferences",
+      "Cookie settings",
     ]);
   });
 
