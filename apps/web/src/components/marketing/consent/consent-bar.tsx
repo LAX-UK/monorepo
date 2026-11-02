@@ -1,68 +1,106 @@
 "use client";
 
 import { useConsent } from "@/lib/analytics/consent/context";
+import { MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useSignInNoticeActive } from "@/lib/ui/first-visit-overlays";
-import { Card, CardContent } from "@auction/ui";
-import { Button, laxDensityAttributes } from "@auction/ui/lax";
+import { cn } from "@auction/ui";
+import { Button, TextLink, laxDensityAttributes } from "@auction/ui/lax";
 import Link from "next/link";
+import { type FocusEvent, useCallback, useEffect, useRef } from "react";
 
-/** Underlined at rest: colour alone does not set a link apart from the paragraph around it. */
-const POLICY_LINK = "text-link underline underline-offset-4 hover:decoration-2";
+/**
+ * Not modal, so focus is never trapped. When a choice removes the banner, focus goes back to where
+ * the person was before they reached it, instead of falling to the top of the page.
+ */
+function useRestoreFocusOnDismiss() {
+  const origin = useRef<HTMLElement | null>(null);
+  useEffect(
+    () => () => {
+      const target = origin.current;
+      queueMicrotask(() => {
+        const active = document.activeElement;
+        if (target?.isConnected && (!active || active === document.body)) {
+          target.focus({ preventScroll: true });
+        }
+      });
+    },
+    [],
+  );
+  return useCallback((event: FocusEvent<HTMLElement>) => {
+    const from = event.relatedTarget;
+    if (from instanceof HTMLElement && !event.currentTarget.contains(from)) origin.current = from;
+  }, []);
+}
 
-/** First-visit cookie banner: Accept all + Customise (reject via preferences dialog). */
+/**
+ * The first-visit cookie banner: three equal choices, a plain sentence and the policy link. A slim
+ * bar along the bottom edge from 768px, and a card above the bottom edge on a phone. It renders
+ * inside the dock, which owns the position and the reserved space.
+ */
 export function ConsentBar() {
-  const { showBanner, acceptAll, openPreferences } = useConsent();
-
+  const { showBanner } = useConsent();
   const signInNoticeActive = useSignInNoticeActive();
-
   if (!showBanner || signInNoticeActive) return null;
+  return <CookieBanner />;
+}
 
+function CookieBanner() {
+  const { acceptAll, rejectAll, openPreferences } = useConsent();
+  const rememberOrigin = useRestoreFocusOnDismiss();
   return (
     <section
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-site-chrome,50)] flex justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
-      aria-label="Cookie consent"
+      aria-label="Cookies"
+      data-cookie-banner=""
+      onFocus={rememberOrigin}
       {...laxDensityAttributes("client")}
+      className={cn(
+        "pointer-events-auto mx-2 mb-2 rounded-lax-card border border-lax-line bg-lax-raised max-md:p-4 font-lax text-lax-fg shadow-lax-md",
+        "md:mx-0 md:mb-0 md:rounded-none md:border-x-0 md:border-b-0 md:shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.18)]",
+      )}
     >
-      <Card className="pointer-events-auto w-full max-w-3xl border border-outline-variant/60 shadow-lg">
-        <CardContent className="flex flex-col gap-4 p-5 sm:p-6">
-          <div className="space-y-2">
-            <p className="font-headline text-base font-semibold text-on-surface">
-              Cookies on LAX.BID
-            </p>
-            <p className="font-body text-sm leading-relaxed text-on-surface-variant">
-              We use strictly necessary cookies to run the site. With your permission we use
-              analytics (Google Tag Manager / Google Analytics) to understand how the platform is
-              used. Read our{" "}
-              <Link href="/cookies" className={POLICY_LINK}>
-                Cookie policy
-              </Link>{" "}
-              and{" "}
-              <Link href="/privacy" className={POLICY_LINK}>
-                Privacy notice
-              </Link>
-              .
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full sm:w-auto sm:min-w-[8.5rem]"
-              onClick={openPreferences}
-            >
-              Customise
-            </Button>
-            <Button
-              variant="primary"
-              type="button"
-              className="w-full sm:w-auto sm:min-w-[8.5rem]"
-              onClick={() => void acceptAll()}
-            >
-              Accept all
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div
+        className={cn(
+          "md:mx-auto md:flex md:max-w-[var(--container-max,1440px)] md:items-center md:gap-8 md:py-3.5",
+          // The same container and gutters as the header and footer; the phone card pads itself.
+          MARKETING_PAGE_GUTTER_X,
+          "max-md:px-0",
+        )}
+      >
+        <p className="mb-3 text-lax-13 leading-5 text-lax-muted md:mb-0 md:max-w-[760px] md:flex-1">
+          <b className="font-semibold text-lax-fg">Cookies on LAX Bid.</b> We use essential cookies
+          to run the site and keep you signed in. With your permission we'd also use analytics
+          cookies to learn how the site is used.{" "}
+          <TextLink href="/cookies" Link={Link}>
+            Cookie policy
+          </TextLink>
+        </p>
+        <div className="grid grid-cols-3 gap-2 md:ml-auto md:flex-none">
+          <Button
+            type="button"
+            variant="secondary"
+            className="md:min-w-32 max-md:px-2"
+            onClick={() => void acceptAll()}
+          >
+            Accept all
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="md:min-w-32 max-md:px-2"
+            onClick={() => void rejectAll()}
+          >
+            Reject all
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            className="md:min-w-32 max-md:px-2"
+            onClick={openPreferences}
+          >
+            Settings
+          </Button>
+        </div>
+      </div>
     </section>
   );
 }

@@ -102,9 +102,12 @@ test.describe("public site accessibility @a11y @public-a11y", () => {
 
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, { name: "home", path: "/" });
-    const customise = page.getByRole("button", { name: /customise|settings/i }).first();
-    if (await customise.isVisible()) {
-      await customise.click();
+    await expect(page.getByRole("region", { name: "Cookies" })).toBeVisible();
+    await scan(page, "cookie-banner", "1440 light");
+    routesChecked.add("cookie-banner");
+    const settings = page.getByRole("button", { name: "Settings", exact: true });
+    if (await settings.isVisible()) {
+      await settings.click();
       await expect(page.getByRole("dialog")).toBeVisible();
       await scan(page, "cookie-settings", "1440 light");
       routesChecked.add("cookie-settings");
