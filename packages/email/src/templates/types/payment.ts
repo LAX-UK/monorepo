@@ -6,6 +6,7 @@ const names = [
   "payment-invoice",
   "payment-refund-notice",
   "payment-manual-review-buyer-notice",
+  "payment-failed-notice",
   "payment-manual-review-admin-notice",
   "dispute-opened-notice",
   "dispute-closed-notice",
@@ -50,6 +51,14 @@ type PaymentTemplateVars = {
     reason?: string | null;
     supportContactEmail: string;
   };
+  /** The buyer's bank did not complete a delayed payment; says how to pay again. */
+  "payment-failed-notice": {
+    userName?: string | null;
+    lotTitle: string;
+    /** Checkout for this lot. */
+    payUrl: string;
+    supportContactEmail: string;
+  };
   "payment-manual-review-buyer-notice": {
     userName?: string | null;
     lotTitle: string;
@@ -91,6 +100,7 @@ export const paymentTemplates = {
     "payment-invoice": "live",
     "payment-refund-notice": "live",
     "payment-manual-review-buyer-notice": "live",
+    "payment-failed-notice": "live",
     "payment-manual-review-admin-notice": "live",
     "dispute-opened-notice": "live",
     "dispute-closed-notice": "live",
