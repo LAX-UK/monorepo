@@ -63,3 +63,21 @@ describe("artwork catalogue draft", () => {
     expect(state.objectTypes).toEqual(["painting"]);
   });
 });
+
+describe("artworkDraftToPatch price filters", () => {
+  const patchFor = (minPrice: string) =>
+    artworkDraftToPatch({ ...EMPTY_ARTWORK_CATALOGUE_DRAFT, minPrice }).minPrice;
+
+  it.each([
+    ["", null],
+    ["   ", null],
+    ["250", 250],
+    [" 250 ", 250],
+    ["250.75", 250],
+    ["abc", null],
+    ["£250", null],
+    ["-5", -5],
+  ])("reads %j as %s", (text, expected) => {
+    expect(patchFor(text)).toBe(expected);
+  });
+});
