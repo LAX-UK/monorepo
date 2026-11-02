@@ -319,6 +319,36 @@ export const WORKER_ABSENTEE_BID_TABLES = ["absentee_bid"] as const;
 /** Worker absentee replay inserts bids during activation replay. */
 export const WORKER_BID_PLACEMENT_TABLES = ["bid"] as const;
 
+/**
+ * Purged-person anonymisation (apps/worker/src/anonymisation). Tables that only describe the
+ * person are deleted from; the worker reads them to filter and to count what it removed.
+ * marketing_click_ids is already covered by WORKER_FULL_TABLES.
+ */
+export const WORKER_ANONYMISATION_DELETE_TABLES = [
+  "legal_entity_address",
+  "legal_entity_invoice_details",
+  "user_address",
+  "push_subscription",
+  "saved_search",
+  "watchlist",
+  "sale_follow",
+  "artist_watchlist",
+  "user_category_interest",
+  "notification_preference",
+  "notification_account_mute",
+  "user_ui_preference",
+] as const;
+
+/**
+ * Tables the same job keeps but scrubs. UPDATE is granted on the scrubbed columns only, plus
+ * SELECT for the filter. bid_user_profile and legal_entity are granted elsewhere.
+ */
+export const WORKER_ANONYMISATION_SCRUB_COLUMNS = [
+  ["legal_entity", ["display_name", "legal_name", "slug", "vat_number"]],
+  ["legal_entity_contact_details", ["email", "phone", "website"]],
+  ["telephone_bid_booking", ["phone_e164", "buyer_notes"]],
+] as const;
+
 type RoleName = "auth_app" | "api_app" | "shop_app" | "worker_app";
 
 export const APPLICATION_ROLE_GRANT_LOCK_KEY = "lax:application_role_grants";
@@ -461,6 +491,7 @@ async function grantIfExists(
     | "INSERT"
     | "INSERT, SELECT"
     | "INSERT, SELECT, DELETE"
+    | "SELECT, DELETE"
     | "INSERT, SELECT, UPDATE"
     | "INSERT, SELECT, UPDATE, DELETE"
     | "ALL PRIVILEGES",
@@ -709,6 +740,13 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           "legal_entity",
           WORKER_LEGAL_ENTITY_CONNECT_SETTLEMENT_COLUMNS,
         );
+        for (const tableName of WORKER_ANONYMISATION_DELETE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
+        }
+        for (const [tableName, columns] of WORKER_ANONYMISATION_SCRUB_COLUMNS) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+          await grantColumnUpdateIfExists(client, "worker_app", tableName, columns);
+        }
 
         for (const tableName of API_READ_TABLES) {
           await grantIfExists(client, "api_app", tableName, "SELECT");

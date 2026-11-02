@@ -48,6 +48,7 @@ import {
   shopGuestLeadRecordedPayloadSchemaV1,
   shopOrderPaidPayloadSchemaV1,
   shopSaleAuthorityChangedPayloadSchemaV1,
+  userPersonalDataAnonymisedPayloadSchemaV1,
 } from "./shop-payload-schemas.js";
 import {
   shopCancellationRequestedPayloadSchemaV1,
@@ -98,6 +99,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "auth.two_factor_reset_by_staff",
   "auth.two_factor_security_email",
   "bid.first_for_user",
+  "bid.user_anonymised",
   "bid.user_suspended",
   "bid.user_unsuspended",
   "bid.lot_won",
@@ -210,6 +212,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "shop.guest_lead.recorded",
   "shop.guest_lead.claimed",
   "shop.guest_lead.erased",
+  "shop.user_anonymised",
   "shop.sale_authority.changed",
   "shop.production.started",
   "shop.fulfilment.dispatched",
@@ -293,6 +296,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     schema: bidFirstForUserPayloadSchemaV1,
     idempotencyPolicy: "aggregate_event_unique",
     consumers: ["zoho"],
+    piiClassification: "none",
+  },
+  "bid.user_anonymised": {
+    schema: userPersonalDataAnonymisedPayloadSchemaV1,
+    producers: ["apps/worker"],
+    consumers: ["audit"],
+    idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
   },
   "bid.user_suspended": {
@@ -478,7 +488,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "user.identity_deleted": {
     schema: userIdentityDeletedPayloadSchemaV1,
     producers: ["apps/auth"],
-    consumers: ["ssf_transmitter", "bid_identity_directory", "zoho"],
+    consumers: [
+      "ssf_transmitter",
+      "bid_identity_directory",
+      "bid_personal_data_anonymisation",
+      "shop_personal_data_anonymisation",
+      "zoho",
+    ],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
   },
@@ -595,6 +611,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     consumers: ["zoho"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "operational",
+  },
+  "shop.user_anonymised": {
+    schema: userPersonalDataAnonymisedPayloadSchemaV1,
+    producers: ["shop-api"],
+    consumers: ["audit"],
+    idempotencyPolicy: "aggregate_event_unique",
+    piiClassification: "none",
   },
   "shop.guest_lead.erased": {
     schema: shopGuestLeadErasedPayloadSchemaV1,
