@@ -4,7 +4,6 @@ import { isSessionLookupTransientError } from "@/lib/auth/session-lookup-error";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { PublicUser, SessionUser } from "@/lib/data/contracts";
 import { fetchRegistryArtistById } from "@/lib/data/http/artist.server";
-import { getServerAutoBid } from "@/lib/data/http/auto-bid.server";
 import { getServerBidAuthority } from "@/lib/data/http/buyer-agent-authorisations.server";
 import { getServerConditionReportForLot } from "@/lib/data/http/condition-report.server";
 import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
@@ -47,7 +46,6 @@ export type LotPageShellData = {
   kycSummary: Awaited<ReturnType<typeof getServerKycStatusSummary>> | null;
   kycUnavailable: boolean;
   lotDocuments: Awaited<ReturnType<typeof getServerLotDocuments>>;
-  initialAutoBidSettings: Awaited<ReturnType<typeof getServerAutoBid>> | null;
   watcherCount: number;
 };
 
@@ -87,10 +85,6 @@ export class LotPageDataService {
       ? loadKycSummary()
       : Promise.resolve({ summary: null, unavailable: false });
 
-    const initialAutoBidPromise = session
-      ? getServerAutoBid(lotId).catch(() => null)
-      : Promise.resolve(null);
-
     const sellerLookupId = auction.sellerId ?? auction.sellerLegalEntityId ?? "";
     const [
       initialBids,
@@ -101,7 +95,6 @@ export class LotPageDataService {
       saleBundle,
       kycLookup,
       lotDocuments,
-      initialAutoBidSettings,
       watcherCount,
     ] = await Promise.all([
       getServerLotBids(lotId, 30).catch(() => []),
@@ -125,7 +118,6 @@ export class LotPageDataService {
         : Promise.resolve(null),
       kycLookupPromise,
       getServerLotDocuments(lotId).catch(() => []),
-      initialAutoBidPromise,
       getServerLotWatchCount(lotId).catch(() => 0),
     ]);
 
@@ -141,7 +133,6 @@ export class LotPageDataService {
       kycSummary: kycLookup.summary,
       kycUnavailable: kycLookup.unavailable,
       lotDocuments,
-      initialAutoBidSettings,
       watcherCount,
     };
   }
