@@ -6,24 +6,25 @@ describe("workspaceAccessReason", () => {
     expect(
       workspaceAccessReason({
         page: "Sold & payouts",
-        organisationName: "Northbank Gallery",
         openedBy: "Owners, admins and finance",
         role: "consignor",
       }),
     ).toBe(
-      "Sold & payouts for Northbank Gallery is open to owners, admins and finance. As a consignor, you can follow your own works in Consignments.",
+      "Sold & payouts is for owners, admins and finance. As a consignor, you can follow your own works in Consignments.",
     );
   });
 
-  it("covers the drawn cases: finance on Bids, a buyer agent on Team, a viewer on Purchases", () => {
+  it("covers the drawn cases: finance on Bids, a buyer agent on Members, a viewer on Purchases", () => {
     const line = (page: string, openedBy: string, role: "finance" | "buyer_agent" | "viewer") =>
-      workspaceAccessReason({ page, organisationName: "Northbank Gallery", openedBy, role });
+      workspaceAccessReason({ page, openedBy, role });
     expect(line("Bids", "Owners, admins and buyer agents", "finance")).toMatch(
-      /^Bids for Northbank Gallery is open to owners, admins and buyer agents\./,
+      /^Bids is for owners, admins and buyer agents\./,
     );
-    expect(line("Team", "Owners and admins", "buyer_agent")).toMatch(/change to your limits\.$/);
-    expect(line("Purchases", "Owners, admins, finance and buyer agents", "viewer")).toMatch(
-      /^Purchases for Northbank Gallery is open to owners, admins, finance and buyer agents\./,
+    expect(line("Members", "Owners and admins", "buyer_agent")).toBe(
+      "Members is for owners and admins.",
+    );
+    expect(line("Purchases", "Owners, admins, finance and buyer agents", "viewer")).toBe(
+      "Purchases is for owners, admins, finance and buyer agents. As a viewer, you can see what the organisation owns in Collection.",
     );
   });
 
@@ -31,7 +32,6 @@ describe("workspaceAccessReason", () => {
     expect(
       workspaceAccessReason({
         page: "this consignment",
-        organisationName: "Northbank Gallery",
         openedBy: null,
         role: "viewer",
       }),

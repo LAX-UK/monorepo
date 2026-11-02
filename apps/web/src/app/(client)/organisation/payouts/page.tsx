@@ -54,6 +54,10 @@ export default async function OrganisationPayoutsPage() {
 
   const connectFailure =
     connectRes.ok || connectRes.error === "not_connected" ? null : connectRes.error;
+  // One notice per failure: when payout setup could not be read, its notice already says so, so
+  // the bank card does not report the same trouble a second time.
+  const showPayoutAccount =
+    payoutAccount?.state === "ready" || (payoutAccount?.state === "unavailable" && !connectFailure);
 
   return (
     <div className="space-y-6">
@@ -70,7 +74,7 @@ export default async function OrganisationPayoutsPage() {
           {bankChange.body}
         </Notice>
       ) : null}
-      {payoutAccount?.state === "ready" || payoutAccount?.state === "unavailable" ? (
+      {showPayoutAccount ? (
         <SettingsSection
           id="payout-account-heading"
           title="Payout account"

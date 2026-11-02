@@ -39,7 +39,6 @@ export async function WorkspacePageNoAccess({ label, openedBy, next, inPage = fa
   const reason = active
     ? workspaceAccessReason({
         page: label,
-        organisationName: active.organisation.displayName,
         openedBy,
         role: active.actor.role,
       })
