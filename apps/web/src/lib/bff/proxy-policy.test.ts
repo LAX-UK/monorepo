@@ -40,6 +40,13 @@ describe("Bid BFF proxy policy", () => {
     expect(headers.get("content-type")).toBe("application/json");
   });
 
+  it("passes the enquiry draft token on, so a visitor's photos can be uploaded", () => {
+    const headers = sanitizedProxyRequestHeaders(
+      new Headers({ "x-enquiry-draft": "body.signature" }),
+    );
+    expect(headers.get("x-enquiry-draft")).toBe("body.signature");
+  });
+
   it("preserves safe response metadata but strips cookies and hop-by-hop headers", () => {
     const headers = sanitizedProxyResponseHeaders(
       new Headers({

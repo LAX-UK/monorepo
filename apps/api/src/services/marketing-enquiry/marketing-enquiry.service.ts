@@ -21,6 +21,8 @@ import {
 import { toNewEnquiry } from "./enquiry-intake.mapper.js";
 import type { IMarketingEnquiryAlert } from "./marketing-enquiry-alert.js";
 
+import { replyDueAt } from "./enquiry-view.js";
+
 export { ENQUIRY_REPLY_BUSINESS_DAYS, enquiryTopicLabel } from "./enquiry-view.js";
 
 export type MarketingEnquiryServiceDeps = {
@@ -102,7 +104,7 @@ export class MarketingEnquiryService implements IMarketingEnquiryIntake {
     } catch (error) {
       this.deps.onAcknowledgementFailed?.(record.id, error);
     }
-    return { id: record.id, reference: record.reference };
+    return { id: record.id, reference: record.reference, replyBy: replyDueAt(record) };
   }
 
   /** Moves the files the sender uploaded onto the enquiry; only the seller's path takes files. */

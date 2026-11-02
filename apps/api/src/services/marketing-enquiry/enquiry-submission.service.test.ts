@@ -31,7 +31,9 @@ const buyer = parse({
 });
 
 function setup(memberRole: "owner" | "viewer" | null = "owner") {
-  const submit = vi.fn().mockResolvedValue({ id: "enq-1", reference: "E-1042" });
+  const submit = vi
+    .fn()
+    .mockResolvedValue({ id: "enq-1", reference: "E-1042", replyBy: "2026-11-04T10:30:00.000Z" });
   const service = new EnquirySubmissionService({
     intake: { submit },
     drafts,
@@ -58,7 +60,12 @@ describe("EnquirySubmissionService", () => {
     const { service, submit } = setup();
     const { token, draftId } = drafts.issue();
     const result = await service.submit(parse({ ...sellerBody, draftToken: token }), null);
-    expect(result).toEqual({ ok: true, id: "enq-1", reference: "E-1042" });
+    expect(result).toEqual({
+      ok: true,
+      id: "enq-1",
+      reference: "E-1042",
+      replyBy: "2026-11-04T10:30:00.000Z",
+    });
     expect(submit).toHaveBeenCalledWith(expect.anything(), {
       account: undefined,
       uploadOwner: { enquiryDraftId: draftId },

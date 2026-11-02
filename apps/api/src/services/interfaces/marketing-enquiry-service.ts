@@ -99,7 +99,12 @@ export type MarketingEnquiryHandledResult =
   | { ok: true; enquiry: MarketingEnquiryView }
   | { ok: false; error: "enquiry_not_found" | "already_handled" };
 
-export type MarketingEnquirySubmitted = { id: string; reference: string };
+export type MarketingEnquirySubmitted = {
+  id: string;
+  reference: string;
+  /** When the promised reply is due: two business days after the enquiry arrived (ISO time). */
+  replyBy: string;
+};
 
 /** The public side: the contact form and the enquiry page hand a message to the platform. */
 export interface IMarketingEnquiryIntake {

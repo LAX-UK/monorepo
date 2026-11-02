@@ -97,7 +97,9 @@ describe("MarketingEnquiryService.submit", () => {
   it("stores the enquiry with a reference and announces it with the intent and id only", async () => {
     const { service, enquiries, publish } = setup();
 
-    const { id, reference } = await service.submit(contact);
+    const { id, reference, replyBy } = await service.submit(contact);
+    // Created Monday 27 July; two business days on is Wednesday 29 July.
+    expect(replyBy).toBe("2026-07-29T10:00:00.000Z");
 
     expect(reference).toBe("E-1001");
     expect(enquiries.rows).toHaveLength(1);

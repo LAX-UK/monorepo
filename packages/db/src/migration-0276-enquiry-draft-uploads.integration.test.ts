@@ -51,7 +51,9 @@ describe.skipIf(!migrationUrl)("migration 0276 enquiry draft uploads", { timeout
 
   it("accepts a file owned by a draft", async () => {
     await insert(null, "6f1c2f60-6a0a-4a53-9a2a-1c9f8f0e9a11", "k-draft");
-    const rows = await client.query("select enquiry_draft_id from upload_object where key = 'k-draft'");
+    const rows = await client.query(
+      "select enquiry_draft_id from upload_object where key = 'k-draft'",
+    );
     expect(rows.rows).toHaveLength(1);
   });
 
@@ -68,9 +70,9 @@ describe.skipIf(!migrationUrl)("migration 0276 enquiry draft uploads", { timeout
     await client.query(read("0276_rollback.sql"));
     await client.query(read("0276_enquiry_draft_uploads.sql"));
     const owner = await seedUser();
-    await expect(
-      insert(owner, "6f1c2f60-6a0a-4a53-9a2a-1c9f8f0e9a11", "k-both"),
-    ).rejects.toThrow(/upload_object_single_owner_check/);
+    await expect(insert(owner, "6f1c2f60-6a0a-4a53-9a2a-1c9f8f0e9a11", "k-both")).rejects.toThrow(
+      /upload_object_single_owner_check/,
+    );
   });
 
   it("rolls back to user-owned files only", async () => {

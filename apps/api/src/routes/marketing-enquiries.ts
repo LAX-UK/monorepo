@@ -35,7 +35,10 @@ export function createMarketingEnquiryRoutes(
       if (!result.ok) {
         return c.json({ error: result.error, code: result.code }, result.status as 403);
       }
-      return c.json({ data: { id: result.id, reference: result.reference } }, 201);
+      return c.json(
+        { data: { id: result.id, reference: result.reference, replyBy: result.replyBy } },
+        201,
+      );
     },
   );
 

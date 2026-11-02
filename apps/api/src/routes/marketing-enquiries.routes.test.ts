@@ -16,7 +16,12 @@ function setup(
   store?: IRateLimitStore,
   session: { id: string; role: string; scopes?: string[] } | null = null,
 ) {
-  const submit = vi.fn().mockResolvedValue({ ok: true, id: "enq-1", reference: "E-1042" });
+  const submit = vi.fn().mockResolvedValue({
+    ok: true,
+    id: "enq-1",
+    reference: "E-1042",
+    replyBy: "2026-11-04T10:30:00.000Z",
+  });
   const rateLimitStore: IRateLimitStore = store ?? {
     increment: vi.fn().mockResolvedValue({ allowed: true, remaining: 4 }),
   };
@@ -59,7 +64,9 @@ describe("POST /contact-enquiries", () => {
     const res = await post(valid);
 
     expect(res.status).toBe(201);
-    expect(await res.json()).toEqual({ data: { id: "enq-1", reference: "E-1042" } });
+    expect(await res.json()).toEqual({
+      data: { id: "enq-1", reference: "E-1042", replyBy: "2026-11-04T10:30:00.000Z" },
+    });
     expect(submit).toHaveBeenCalledWith(
       expect.objectContaining({ intent: "general", email: "ada@example.com", topic: "selling" }),
       null,

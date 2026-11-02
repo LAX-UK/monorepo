@@ -122,6 +122,11 @@ export const enquiryIntakeSchema = z.preprocess(
 export type GeneralEnquiryInput = z.infer<typeof generalEnquirySchema>;
 export type PrivateSaleSellEnquiryInput = z.infer<typeof privateSaleSellEnquirySchema>;
 export type PrivateSaleBuyEnquiryInput = z.infer<typeof privateSaleBuyEnquirySchema>;
+/** The payload a client sends: defaults (contact preference, marketing choice, files) may be left out. */
+export type EnquiryIntakeWire =
+  | z.input<typeof generalEnquirySchema>
+  | z.input<typeof privateSaleSellEnquirySchema>
+  | z.input<typeof privateSaleBuyEnquirySchema>;
 export type EnquiryIntakeInput =
   | GeneralEnquiryInput
   | PrivateSaleSellEnquiryInput
