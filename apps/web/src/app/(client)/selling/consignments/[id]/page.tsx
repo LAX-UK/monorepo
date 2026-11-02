@@ -360,7 +360,11 @@ export default async function SubmissionDetailPage({
         facts={headFacts}
         title={submission.title}
         status={
-          <StatusBadge tone={statusView.tone} shape={statusView.shape}>
+          <StatusBadge
+            tone={statusView.tone}
+            shape={statusView.shape}
+            live={statusView.live ?? false}
+          >
             {statusView.label}
           </StatusBadge>
         }

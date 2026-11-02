@@ -214,6 +214,8 @@ export type HomeActivityEvent = {
   subject: HomeSubject;
   /** How many things the line covers (the lots whose automatic bids stopped). */
   count?: number;
+  /** The member who did it, when a member did and the record says who. */
+  actor?: string | undefined;
 };
 
 /** Who sees each kind of activity: members holding any of these capabilities. */
