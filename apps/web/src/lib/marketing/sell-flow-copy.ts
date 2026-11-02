@@ -50,45 +50,47 @@ export const SUBMISSION_AUTOSAVE_EXPLAINER = "Saved automatically";
 
 export const SUBMISSION_FINISH_LATER_LABEL = "Save and finish later";
 
-export const SUBMISSION_SUBMIT_LABEL = "Submit for specialist review";
+export const SUBMISSION_SUBMIT_LABEL = "Send to our specialists";
 
-export const SUBMISSION_READY_TO_SUBMIT_BANNER =
-  "Ready to submit — specialists usually respond within 24 hours.";
+/** The last button when a specialist asked for changes: the same work, going back. */
+export const SUBMISSION_CHANGES_SUBMIT_LABEL = "Send back to your specialist";
+
+/** The one response-time promise made to a seller, wherever a screen makes it. */
+export const SPECIALIST_RESPONSE_PROMISE = "Our specialists usually reply within one working day.";
 
 export const SUBMISSION_LEAVE_WITHOUT_SAVING_LABEL = "Leave without saving";
 
 export const SUBMISSION_LEAVE_WITHOUT_SAVING_HINT =
   "Recent edits may already be saved automatically.";
 
-/** Collapsible hints on the Review step — not a second progress timeline. */
+/** Collapsible hints on the last step: what follows a send, not a second progress timeline. */
 export const SUBMISSION_AFTER_SUBMIT_HINTS = [
-  "Submitted — our specialists begin review, usually within 24 hours.",
-  "Under review — we may contact you if we need more detail or photos.",
-  "Accepted — we prepare catalogue materials; complete Stripe Connect when prompted.",
-  "Listed — your work is scheduled for an upcoming sale.",
+  "In review: a specialist reads your submission and may ask for more detail or photos.",
+  "Accepted: we prepare the catalogue entry and ask you to set up your payout details.",
+  "In a sale: your work is scheduled for an upcoming sale.",
 ] as const;
 
 /** One-line status copy on read-only submission detail pages. */
 export const SUBMISSION_STATUS_HINTS: Partial<Record<ItemSubmissionStatus, string>> = {
   draft: "Complete your submission and submit for specialist review.",
-  submitted: "Our specialists will start review within 24 hours.",
+  submitted: "Our specialists will start the review soon.",
   under_review: "Our specialists are reviewing your submission.",
   changes_requested:
     "A specialist asked for a few changes. Edit this submission and send it back for review.",
   approved: "Accepted. Read and accept the consignment agreement so we can catalogue your work.",
-  converted: "Catalogue entry in progress — finish checklist items below.",
+  converted: "We are preparing the catalogue entry. Finish the checklist items below.",
   rejected:
-    "Not accepted — read the reason below and start a new submission if you wish to resubmit.",
-  withdrawn: "Withdrawn — you can start a new submission when ready.",
+    "Not accepted. Read the reason below and start a new submission if you wish to resubmit.",
+  withdrawn: "Withdrawn. You can start a new submission when you are ready.",
 };
 
 export const WIZARD_STEP_SUMMARIES: Record<string, string> = {
   basics: "Title, category, year, and edition details.",
   details: "Medium, dimensions, signature, and catalogue description.",
-  photos: "Upload images — first image becomes the primary catalogue image.",
+  photos: "Upload images. The first image becomes the main catalogue image.",
   provenance: "Ownership history and exhibition records.",
   pricing: "Estimate, reserve preference, condition notes, and notes for specialists.",
-  review: "Check your details and submit for specialist review.",
+  review: "Check your answers and send them to our specialists.",
 };
 
 /** @deprecated Use SUBMISSION_AUTOSAVE_EXPLAINER — kept for test migration only. */

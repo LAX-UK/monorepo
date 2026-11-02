@@ -79,7 +79,6 @@ const shell: LotPageShellData = {
   kycSummary: null,
   kycUnavailable: false,
   lotDocuments: [],
-  initialAutoBidSettings: null,
   watcherCount: 0,
 };
 
