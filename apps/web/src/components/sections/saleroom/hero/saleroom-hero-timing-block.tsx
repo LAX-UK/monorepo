@@ -22,7 +22,9 @@ function PreviewLine({ iso }: { iso: string }) {
   return (
     <p className="font-body text-base text-on-surface">
       <span className="text-on-surface-variant">{line.label} </span>
-      <span suppressHydrationWarning>{line.value}</span>
+      <span className="tabular-nums" suppressHydrationWarning>
+        {line.value}
+      </span>
     </p>
   );
 }

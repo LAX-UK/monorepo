@@ -14,9 +14,11 @@ export {
 } from "./lifecycle-copy.js";
 export {
   TIME_LEFT_BANDS,
+  TIME_LEFT_DATE_BEYOND_MS,
   TIME_LEFT_MARKS,
   formatTimeLeft,
   timeLeftBand,
+  timeLeftShowsSeconds,
   timeLeftView,
   timeMarkCrossed,
   type TimeLeftBand,

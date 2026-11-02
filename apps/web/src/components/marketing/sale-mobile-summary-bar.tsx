@@ -30,7 +30,7 @@ function OpensText({ start }: { start: Date }) {
   return (
     <p className="font-body text-sm text-on-surface">
       <span className="text-on-surface-variant">{line.label} </span>
-      <span className="font-semibold" suppressHydrationWarning>
+      <span className="font-semibold tabular-nums" suppressHydrationWarning>
         {line.value}
       </span>
     </p>

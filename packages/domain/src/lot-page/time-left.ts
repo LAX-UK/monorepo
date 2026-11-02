@@ -27,7 +27,7 @@ const SOON_BAND: TimeLeftBand = {
   belowMs: HOUR_MS,
   label: "Closing soon",
   statusTone: "warning",
-  showSeconds: false,
+  showSeconds: true,
 };
 const CALM_BAND: TimeLeftBand = {
   tone: "calm",
@@ -39,9 +39,17 @@ const CALM_BAND: TimeLeftBand = {
 
 /**
  * Calm over an hour, soon under an hour, final under two minutes and during any extension.
- * Kept as a table in one place so operations can tune the thresholds. Ordered tightest first.
+ * Seconds run through the whole final hour (soon and final). Kept as a table in one place so operations can tune the thresholds. Ordered tightest first.
  */
 export const TIME_LEFT_BANDS: readonly TimeLeftBand[] = [FINAL_BAND, SOON_BAND, CALM_BAND];
+
+/** Beyond this a moment is told as a date, not counted down. */
+export const TIME_LEFT_DATE_BEYOND_MS = 7 * 24 * HOUR_MS;
+
+/** Whether the clock shows seconds at `msLeft`, from the bands. */
+export function timeLeftShowsSeconds(msLeft: number): boolean {
+  return timeLeftBand(msLeft).showSeconds;
+}
 
 /** The band for `msLeft`. An extended lot is always in the final band. */
 export function timeLeftBand(msLeft: number, opts: { extended?: boolean } = {}): TimeLeftBand {
