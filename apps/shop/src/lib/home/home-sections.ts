@@ -13,6 +13,7 @@ export type HomeSectionId =
   | "new-editions"
   | "artists"
   | "collections"
+  | "release-alerts"
   | "product-doors"
   | "gallery-team";
 
@@ -20,8 +21,8 @@ export type HomeSectionId =
  * The surface each section asks for, in page order: the first screen, the trust strip, the new
  * editions, the artists and the ways in stand on the plain page (the paper is only the mat around
  * each work); the gallery team panel is always tinted. The product doors come before the gallery
- * team band, as on lax.art. The release alerts band joins between the ways in and the doors when
- * alerts are built.
+ * team band, as on lax.art. The release alerts band comes between the ways in and the doors, on the
+ * paper tone unless the band sequence gives it to a neighbour.
  */
 const HOME_SECTION_SURFACE: Record<HomeSectionId, ShopSectionSurfaceRule<HomeSectionId>> = {
   hero: { surface: "plain", flexible: false },
@@ -31,13 +32,17 @@ const HOME_SECTION_SURFACE: Record<HomeSectionId, ShopSectionSurfaceRule<HomeSec
   "new-editions": { surface: "plain", flexible: false },
   artists: { surface: "plain", flexible: false },
   collections: { surface: "plain", flexible: false },
+  "release-alerts": { surface: "band", flexible: true },
   "product-doors": { surface: "plain", flexible: false },
   "gallery-team": { surface: "band", flexible: false },
 };
 
-/** Which sections have something to show; the hero and the gallery team always do. */
+/**
+ * Which sections have something to show; the hero, the release alerts and the gallery team always
+ * do (alerts matter most when there is little else on the page).
+ */
 export type HomeSectionContent = Readonly<
-  Record<Exclude<HomeSectionId, "hero" | "gallery-team">, boolean>
+  Record<Exclude<HomeSectionId, "hero" | "release-alerts" | "gallery-team">, boolean>
 >;
 
 /** The sections the home page shows, in order, and the surface each renders on. */
@@ -45,6 +50,7 @@ export function resolveHomeSections(content: HomeSectionContent): ShopPageSectio
   return resolveShopPageSections(HOME_SECTION_SURFACE, {
     ...content,
     hero: true,
+    "release-alerts": true,
     "gallery-team": true,
   });
 }

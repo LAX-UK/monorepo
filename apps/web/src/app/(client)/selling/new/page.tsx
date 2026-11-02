@@ -7,7 +7,6 @@ import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title"
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import { describeSettingsActionError } from "@/lib/dashboard/dashboard-fetch-errors";
-import { SETTINGS_CONTENT_MAX_WIDTH } from "@/lib/dashboard/settings-layout-classes";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import {
   EMPTY_SUBMISSION_FORM_VALUES,
@@ -17,7 +16,7 @@ import { findCategoryIdBySlug } from "@/lib/forms/submission/resolve-category-sl
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { REGISTER_ORGANISATION_HREF } from "@/lib/navigation/account-switcher-model";
-import { sellerAccountChoice } from "@/lib/seller/seller-account-options";
+import { actingForOrganisation, sellerAccountChoice } from "@/lib/seller/seller-account-options";
 import { redirect } from "next/navigation";
 
 /**
@@ -110,7 +109,7 @@ export default async function NewSubmissionPage({
       : undefined);
 
   return (
-    <DashboardPage className={`mx-auto w-full space-y-6 ${SETTINGS_CONTENT_MAX_WIDTH}`}>
+    <DashboardPage className="max-w-[960px] space-y-6">
       <DashboardPageHeader
         title={SELL_A_WORK_LABEL}
         description="Tell us about the work. A specialist reviews every work, and there's no obligation to sell."
@@ -126,7 +125,7 @@ export default async function NewSubmissionPage({
       <SellWithLaxFlow
         categories={categories}
         choice={choice}
-        registerHref={REGISTER_ORGANISATION_HREF}
+        registerHref={actingForOrganisation(choice) ? null : REGISTER_ORGANISATION_HREF}
         {...(initialValues ? { initialValues } : {})}
       />
     </DashboardPage>

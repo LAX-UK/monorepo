@@ -1,6 +1,5 @@
 "use client";
 
-import { AppShellBreadcrumbs } from "@/components/layout/app-shell-breadcrumbs";
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -8,9 +7,11 @@ import { ClientGlobalHotkeys } from "@/lib/hotkeys/client-global-hotkeys";
 import { ClientHotkeyHelpDialog } from "@/lib/hotkeys/client-hotkey-help-dialog";
 import { type HotkeyHelpRenderer, HotkeyProvider } from "@/lib/hotkeys/hotkey-provider";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
-import { buildClientBreadcrumbTrail } from "@/lib/navigation/client-breadcrumb-trail";
+import {
+  buildClientBreadcrumbTrail,
+  clientPhoneTitle,
+} from "@/lib/navigation/client-breadcrumb-trail";
 import type { ClientNavSection } from "@/lib/navigation/client-nav-model";
-import { resolveMobileShellTitle } from "@/lib/navigation/mobile-shell-title";
 import { ShellChromeProvider, useShellChrome } from "@/lib/shell/shell-chrome-context";
 import type { SearchPage } from "@/lib/workspace/workspace-search-model";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
@@ -20,6 +21,7 @@ import type { LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useMemo, useRef } from "react";
 import { usePageTitleInBar } from "./use-page-title-in-bar";
+import { WorkspaceBackLink } from "./workspace-back-link";
 import type { WorkspaceNavCounts } from "./workspace-nav-list";
 import { WorkspaceSearch } from "./workspace-search";
 import { WorkspaceSidebar } from "./workspace-sidebar";
@@ -27,9 +29,6 @@ import { WorkspaceTabBar } from "./workspace-tab-bar";
 import { WorkspaceTopBar } from "./workspace-top-bar";
 
 const renderHelp: HotkeyHelpRenderer = (props) => <ClientHotkeyHelpDialog {...props} />;
-
-/** The shell the shared header parts draw for. */
-const CLIENT_SHELL_ROLE = "client" as const;
 
 export type WorkspaceShellProps = {
   user: SessionUser;
@@ -70,10 +69,10 @@ function WorkspaceFrame({
   const { mobileTitleOverride, hideBottomTabBar } = useShellChrome();
   const { unread } = useUnreadNotifications();
   const counts: WorkspaceNavCounts = useMemo(() => ({ needsYou, unread }), [needsYou, unread]);
-  const phoneTitle = useMemo(() => {
-    const model = resolveMobileShellTitle(buildClientBreadcrumbTrail(pathname));
-    return mobileTitleOverride ? { ...model, title: mobileTitleOverride } : model;
-  }, [pathname, mobileTitleOverride]);
+  const phoneTitle = useMemo(
+    () => clientPhoneTitle(buildClientBreadcrumbTrail(pathname), mobileTitleOverride),
+    [pathname, mobileTitleOverride],
+  );
   const pages: (SearchPage & { icon: LucideIcon })[] = useMemo(
     () =>
       sections.flatMap((section) =>
@@ -125,9 +124,7 @@ function WorkspaceFrame({
         >
           {/* A left-aligned column up to 1120px; forms keep their own 960px. */}
           <div className="w-full max-w-[calc(70rem+5rem)] px-4 pt-6 pb-10 lg:px-10 lg:pt-8">
-            <div className="hidden lg:mb-4 lg:block lg:empty:hidden">
-              <AppShellBreadcrumbs role={CLIENT_SHELL_ROLE} sessionUser={user} variant="desktop" />
-            </div>
+            <WorkspaceBackLink />
             {topSlot ? <div className="mb-6 empty:hidden">{topSlot}</div> : null}
             {banner ? <div className="mb-6 space-y-4 empty:hidden">{banner}</div> : null}
             {children}

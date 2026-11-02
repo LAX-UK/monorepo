@@ -23,6 +23,10 @@ COPY apps/api ./apps/api
 COPY apps/api/tsconfig.json apps/api/tsconfig.build.json ./apps/api/
 RUN pnpm install --frozen-lockfile
 RUN pnpm turbo run build --filter=@auction/api
+# Stamp debug IDs into the shipped JS and maps so source maps uploaded after the deploy
+# still match this build. Uses the lockfile-pinned CLI from the install above (no download here);
+# a failure only costs Sentry matching, so the image still builds.
+RUN pnpm exec sentry-cli sourcemaps inject apps/api/dist || echo "WARNING: debug ID injection failed; building without debug IDs"
 
 FROM node:22-alpine AS runner
 WORKDIR /app

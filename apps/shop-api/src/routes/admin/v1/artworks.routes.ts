@@ -12,21 +12,24 @@ import {
   AdminArtworkListSchema,
   type AdminArtworkPriceBody,
   AdminArtworkPriceBodySchema,
+  AdminArtworkPublishBodySchema,
   type AdminArtworkUpdateBody,
   AdminArtworkUpdateBodySchema,
   AdminArtworkVersionResponseSchema,
   CatalogueConflictBodySchema,
   EDITION_RUN_MAX_SIZE,
   SALE_AUTHORITY_NOTE_MAX_LENGTH,
+  SHOP_API_ERROR_CODES,
   SeoFieldsWriteProperties,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
 import { type Static, Type } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
 import { cleanArtworkFields } from "../../../application/admin/artwork-input.js";
 import type { ImportArtworkCommand } from "../../../application/ports/artwork-import.writer.js";
-import { notFound } from "../../../errors/shop-api-error.js";
+import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.js";
 import {
   requireAnyShopStaffCapability,
@@ -57,6 +60,15 @@ const WRITE_ERRORS = {
  * write needs `catalogue.write`; a price change also needs `artwork_price.write`, which the
  * writer checks against the stored price so an unchanged price never needs it.
  */
+/** Publishing takes an optional body: whether to email the release alert list. */
+function wantsReleaseAlert(body: unknown): boolean {
+  const candidate = body ?? {};
+  if (!Value.Check(AdminArtworkPublishBodySchema, candidate)) {
+    throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Invalid publish request", 400);
+  }
+  return candidate.sendReleaseAlert === true;
+}
+
 function catalogueWriter(request: FastifyRequest) {
   const auth = requireShopStaffCapability(request, "catalogue.write");
   return {
@@ -247,6 +259,7 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
           ...actor,
           artworkId: id,
           action,
+          ...(action === "publish" ? { sendReleaseAlert: wantsReleaseAlert(request.body) } : {}),
         });
         return afterArtCatalogueWrite(request, deps.artCache, "artworks", result);
       },

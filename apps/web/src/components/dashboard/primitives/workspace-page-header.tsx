@@ -41,7 +41,7 @@ export function WorkspacePageHeader({
           {title}
         </h1>
         {description ? (
-          <p className="mt-2 max-w-xl font-body text-sm leading-relaxed text-on-surface-variant">
+          <p className="mt-2 max-w-[640px] text-pretty font-body text-sm leading-relaxed text-on-surface-variant">
             {description}
           </p>
         ) : null}

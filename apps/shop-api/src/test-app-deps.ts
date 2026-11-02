@@ -6,6 +6,7 @@ import { createEnquiryInboxService } from "./application/enquiry-inbox.service.j
 import {
   createEditionAlertRateLimiter,
   createEnquiryRateLimiter,
+  createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
@@ -146,6 +147,16 @@ export function createMinimalShopApiTestDeps(
         unsubscribe: async () => null,
       },
       editionAlertRateLimiter: createEditionAlertRateLimiter(createInMemoryFixedWindowCounter()),
+      releaseAlerts: {
+        subscribeGuest: async () => "check_email" as const,
+        subscribeAccount: async () => "subscribed" as const,
+        isSubscribed: async () => false,
+        stopAccount: async () => undefined,
+        confirm: async () => "invalid" as const,
+        previewUnsubscribe: async () => null,
+        unsubscribe: async () => false,
+      },
+      releaseAlertRateLimiter: createReleaseAlertRateLimiter(createInMemoryFixedWindowCounter()),
     },
     staffReader: {
       findActiveByIdentitySubject: async () => null,
@@ -211,6 +222,7 @@ export function createMinimalShopApiTestDeps(
         },
       }),
       savedViews: createSavedViewService({ repository: createInMemorySavedViewRepository() }),
+      releaseAlertSummary: { counts: async () => ({ confirmed: 0, awaitingConfirmation: 0 }) },
       leads: new LeadsService({
         list: async () => ({
           rows: [],

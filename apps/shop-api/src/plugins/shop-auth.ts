@@ -31,6 +31,8 @@ export function registerShopAuthPlugin(
       path.startsWith("/v1/guest-checkout/") ||
       path.startsWith("/v1/guest-orders/") ||
       path.startsWith("/v1/me/") ||
+      // Asking for release alerts: a signed-in shopper or, through the BFF, a visitor.
+      path === "/v1/release-alerts" ||
       /\/v1\/artworks\/[^/]+\/interest$/.test(path);
     if (!protectedCommerce) {
       return;

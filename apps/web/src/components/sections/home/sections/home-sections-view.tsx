@@ -1,6 +1,7 @@
 import { MarketingSection } from "@/components/marketing/marketing-section";
 import { visibleHomeSections } from "@/lib/home-sections/build-home-sections";
 import type { HomeLotRail, HomeSections } from "@/lib/home-sections/types";
+import type { CoverAlertsOutcome } from "@/lib/marketing-cover/cover-alerts-outcome";
 import type { HomeSectionId, HomeState, HomeStateResult } from "@auction/domain";
 import type { ReactNode } from "react";
 import { HomeAlertsBand } from "./home-alerts-band";
@@ -16,6 +17,7 @@ type Render<K extends HomeSectionId> = (
   value: NonNullable<HomeSections[K]>,
   state: HomeState,
   watch: HomeLotWatch,
+  alertsOutcome: CoverAlertsOutcome | null,
 ) => ReactNode;
 
 function lotRail(id: string) {
@@ -41,7 +43,9 @@ const RENDERERS: { [K in HomeSectionId]: Render<K> } = {
   departments: (departments) => <HomeDepartmentsSection departments={departments} />,
   artists: (artists) => <HomeArtistsSection artists={artists} />,
   selling: (selling) => <HomeSellingBand selling={selling} />,
-  alerts: (_, state) => <HomeAlertsBand state={state} />,
+  alerts: (_, state, watch, alertsOutcome) => (
+    <HomeAlertsBand state={state} signedIn={watch.isAuthenticated} outcome={alertsOutcome} />
+  ),
   fromLaxAndPress: (items) => <HomePressSection items={items} />,
 };
 
@@ -53,10 +57,13 @@ export function HomeSectionsView({
   homeState,
   sections,
   watch,
+  alertsOutcome = null,
 }: {
   homeState: HomeStateResult;
   sections: HomeSections;
   watch: HomeLotWatch;
+  /** The outcome of a sale-alerts sign-up posted from this page, shown in the alerts band. */
+  alertsOutcome?: CoverAlertsOutcome | null;
 }) {
   const visible = visibleHomeSections(homeState, sections);
   if (visible.length === 0) return null;
@@ -70,6 +77,7 @@ export function HomeSectionsView({
               sections[id] as NonNullable<HomeSections[HomeSectionId]>,
               homeState.state,
               watch,
+              alertsOutcome,
             )}
           </div>
         );

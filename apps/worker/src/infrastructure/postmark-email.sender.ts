@@ -51,9 +51,11 @@ export class PostmarkEmailSender implements IEmailSender {
       },
     };
     if (this.opts.replyTo) message.ReplyTo = this.opts.replyTo;
-    if (unsubscribeUrl) {
+    // The address a mail client POSTs to for one-click unsubscribe; by default the link in the body.
+    const oneClickUrl = stringVar(payload.vars, "listUnsubscribeUrl") ?? unsubscribeUrl;
+    if (oneClickUrl) {
       message.Headers = [
-        { Name: "List-Unsubscribe", Value: `<${unsubscribeUrl}>` },
+        { Name: "List-Unsubscribe", Value: `<${oneClickUrl}>` },
         { Name: "List-Unsubscribe-Post", Value: "List-Unsubscribe=One-Click" },
       ];
     }
@@ -62,10 +64,14 @@ export class PostmarkEmailSender implements IEmailSender {
   }
 }
 
-function unsubscribeUrlFromVars(vars: unknown): string | null {
+function stringVar(vars: unknown, key: string): string | null {
   if (!vars || typeof vars !== "object") return null;
-  const value = (vars as Record<string, unknown>).unsubscribeUrl;
+  const value = (vars as Record<string, unknown>)[key];
   return typeof value === "string" ? value : null;
+}
+
+function unsubscribeUrlFromVars(vars: unknown): string | null {
+  return stringVar(vars, "unsubscribeUrl");
 }
 
 const POSTMARK_METADATA_VALUE_MAX_LEN = 80;
