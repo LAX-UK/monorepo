@@ -16,6 +16,10 @@ export type AccountLoadErrorProps = {
   description: string;
   /** Tries again; reloads the page's data when not given. */
   onRetry?: () => void;
+  /** Tries again by opening this address (a download or a route) instead of reloading the page. */
+  retryHref?: string;
+  /** `h1` when the failure is the whole page, so the page still has its one main heading. */
+  headingLevel?: "h1" | "h2";
 };
 
 /**
@@ -23,7 +27,13 @@ export type AccountLoadErrorProps = {
  * side, "Try again" and a way to reach client services. The same drawing and layout as the
  * empty states, so failure never looks like a broken page.
  */
-export function AccountLoadError({ title, description, onRetry }: AccountLoadErrorProps) {
+export function AccountLoadError({
+  title,
+  description,
+  onRetry,
+  retryHref,
+  headingLevel = "h2",
+}: AccountLoadErrorProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const retry = onRetry ?? (() => startTransition(() => router.refresh()));
@@ -31,15 +41,29 @@ export function AccountLoadError({ title, description, onRetry }: AccountLoadErr
     <div role="alert">
       <DashboardEmptyState
         variant="hero"
+        headingLevel={headingLevel}
         illustration="error"
         title={title}
         description={description}
         action={
           <>
-            <Button type="button" variant="primary" onClick={retry} disabled={pending}>
-              <RotateCw aria-hidden className={pending ? "motion-safe:animate-spin" : undefined} />
-              {pending ? "Trying again…" : "Try again"}
-            </Button>
+            {retryHref ? (
+              <Button variant="primary" asChild>
+                {/* A plain link: the address answers with a file or a redirect, not a page. */}
+                <a href={retryHref}>
+                  <RotateCw aria-hidden />
+                  Try again
+                </a>
+              </Button>
+            ) : (
+              <Button type="button" variant="primary" onClick={retry} disabled={pending}>
+                <RotateCw
+                  aria-hidden
+                  className={pending ? "motion-safe:animate-spin" : undefined}
+                />
+                {pending ? "Trying again…" : "Try again"}
+              </Button>
+            )}
             <Button variant="ghost" asChild>
               <Link href={CLIENT_SERVICES_HREF}>Contact client services</Link>
             </Button>

@@ -86,7 +86,7 @@ export default async function OrganisationLayout({ children }: { children: React
       <div className="space-y-6">
         <DashboardPageHeader
           title={member.displayName}
-          description="Your organisation's details, team and settings."
+          description={`${member.displayName}'s details, documents, payouts and security.`}
           actions={
             // The state is a status; the organisation's type is a plain fact beside it.
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">

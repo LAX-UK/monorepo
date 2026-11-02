@@ -2,6 +2,7 @@ import type { IEmailService } from "@auction/email";
 import { describe, expect, it, vi } from "vitest";
 import { AML_MATCH_REVIEW_PROJECTOR } from "./aml-match-review.js";
 import { BID_IDENTITY_DIRECTORY_PROJECTOR } from "./bid-identity-directory.js";
+import { BID_PERSONAL_DATA_ANONYMISATION_PROJECTOR } from "./bid-personal-data-anonymisation.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { LOT_INVOICE_INITIATION_PROJECTOR } from "./lot-invoice-initiation.js";
 import { MARKETING_CONTACTS_PROJECTOR } from "./marketing-contacts-projector.js";
@@ -29,6 +30,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   "clear_artist_blocks",
   "legal_entity_provisioning",
   BID_IDENTITY_DIRECTORY_PROJECTOR,
+  BID_PERSONAL_DATA_ANONYMISATION_PROJECTOR,
   "bid_profile_provisioning",
   AML_MATCH_REVIEW_PROJECTOR,
   SOURCE_OF_FUNDS_REVIEW_PROJECTOR,
