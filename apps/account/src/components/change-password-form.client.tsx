@@ -192,8 +192,9 @@ export function ChangePasswordForm({
       <Button
         type="button"
         variant="link"
+        size="inline"
         aria-pressed={visible}
-        className="min-h-11 self-start px-0"
+        className="min-h-11 self-start text-on-surface underline underline-offset-4"
         onClick={() => setVisible((shown) => !shown)}
       >
         {visible ? "Hide passwords" : "Show passwords"}
