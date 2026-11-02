@@ -245,6 +245,124 @@ describe("IdentityOperationsService", () => {
     expect(identityEventPublisher.publish).not.toHaveBeenCalled();
   });
 
+  describe("changeAccountPassword", () => {
+    const keep = { keepSessionId: "current" };
+
+    it("changes the hash, ends the other sessions and records both in one transaction", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.credentials.findCredential).mockResolvedValue({
+        id: "credential",
+        passwordHash: await hashPassword("CurrentPass123!"),
+      });
+      const { service, identityEventPublisher } = createService(repositories);
+
+      const outcome = await service.changeAccountPassword("subject", {
+        currentPassword: "CurrentPass123!",
+        newPassword: "ReplacementPass123!",
+        ...keep,
+      });
+
+      expect(outcome).toEqual({ created: false, revokedSessionIds: ["other-1", "other-2"] });
+      expect(repositories.credentials.updatePassword).toHaveBeenCalledWith(
+        transaction,
+        expect.objectContaining({ credentialId: "credential", subjectId: "subject" }),
+      );
+      expect(repositories.sessions.deleteOtherSessions).toHaveBeenCalledWith(
+        transaction,
+        "subject",
+        "current",
+      );
+      expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+        { type: "user.credential_changed", userId: "subject", changeType: "update" },
+        { transaction },
+      );
+      for (const sessionId of ["other-1", "other-2"]) {
+        expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+          { type: "user.session_revoked", userId: "subject", sessionId },
+          { transaction },
+        );
+      }
+    });
+
+    it("refuses a wrong current password without writing anything", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.credentials.findCredential).mockResolvedValue({
+        id: "credential",
+        passwordHash: await hashPassword("CurrentPass123!"),
+      });
+      const { service, identityEventPublisher } = createService(repositories);
+
+      await expect(
+        service.changeAccountPassword("subject", {
+          currentPassword: "WrongPass123!!",
+          newPassword: "ReplacementPass123!",
+          ...keep,
+        }),
+      ).rejects.toMatchObject({ code: "invalid_password" });
+      await expect(
+        service.changeAccountPassword("subject", {
+          currentPassword: null,
+          newPassword: "ReplacementPass123!",
+          ...keep,
+        }),
+      ).rejects.toMatchObject({ code: "invalid_password" });
+      expect(repositories.credentials.updatePassword).not.toHaveBeenCalled();
+      expect(repositories.sessions.deleteOtherSessions).not.toHaveBeenCalled();
+      expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+    });
+
+    it("refuses a new password that equals the current one", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.credentials.findCredential).mockResolvedValue({
+        id: "credential",
+        passwordHash: await hashPassword("CurrentPass123!"),
+      });
+      const { service } = createService(repositories);
+
+      await expect(
+        service.changeAccountPassword("subject", {
+          currentPassword: "CurrentPass123!",
+          newPassword: "CurrentPass123!",
+          ...keep,
+        }),
+      ).rejects.toMatchObject({ code: "same_password" });
+      expect(repositories.credentials.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it("applies the strength rules before reading the credential", async () => {
+      const repositories = createRepositories();
+      const { service } = createService(repositories);
+
+      await expect(
+        service.changeAccountPassword("subject", {
+          currentPassword: "CurrentPass123!",
+          newPassword: "short",
+          ...keep,
+        }),
+      ).rejects.toMatchObject({ code: "invalid_password_policy" });
+      expect(repositories.credentials.findCredential).not.toHaveBeenCalled();
+    });
+
+    it("sets a first password for an account with only a social or passkey login", async () => {
+      const repositories = createRepositories();
+      const { service, identityEventPublisher } = createService(repositories);
+
+      const outcome = await service.changeAccountPassword("subject", {
+        currentPassword: null,
+        newPassword: "ReplacementPass123!",
+        ...keep,
+      });
+
+      expect(outcome.created).toBe(true);
+      expect(repositories.credentials.insertCredential).toHaveBeenCalledTimes(1);
+      expect(repositories.credentials.updatePassword).not.toHaveBeenCalled();
+      expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+        { type: "user.credential_changed", userId: "subject", changeType: "create" },
+        { transaction },
+      );
+    });
+  });
+
   it("commits session revocation before dispatching logout", async () => {
     const { service, repositories, identityEventPublisher, logout } = createService();
 

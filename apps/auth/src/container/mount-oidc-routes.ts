@@ -46,6 +46,7 @@ import { createAccountBackupCodesRoutes } from "../routes/account-backup-codes.r
 import { createAccountContactRoutes } from "../routes/account-contact.routes.js";
 import { createAccountDeletionRoutes } from "../routes/account-deletion.routes.js";
 import { createAccountIdentityRoutes } from "../routes/account-identity.routes.js";
+import { createAccountPasswordRoutes } from "../routes/account-password.routes.js";
 import { createAccountSecurityFactsRoutes } from "../routes/account-security-facts.routes.js";
 import { createOauthTokenManagementRoutes } from "../routes/oauth-token-management.routes.js";
 import { createRpInitiatedLogoutRoutes } from "../routes/rp-initiated-logout.routes.js";
@@ -55,6 +56,7 @@ import { AccountBackupCodesService } from "../services/account-backup-codes.serv
 import { AccountContactService } from "../services/account-contact.service.js";
 import type { AccountDeletionService } from "../services/account-deletion.service.js";
 import { AccountIdentityService } from "../services/account-identity.service.js";
+import { AccountPasswordService } from "../services/account-password.service.js";
 import { AccountPhoneService } from "../services/account-phone.service.js";
 import { AccountSecurityFactsService } from "../services/account-security-facts.service.js";
 import type { DurableSecurityEffects } from "../services/durable-security-effects.js";
@@ -294,6 +296,30 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
           options.log.warn({ err: error }, "account_backup_codes_rate_limit_unavailable"),
       }),
       onFailure: (error) => options.log.error({ err: error }, "account_backup_codes_failed"),
+    }),
+  );
+  app.route(
+    "/api/auth",
+    createAccountPasswordRoutes({
+      clients: services.oidc.confidentialClients,
+      tokens: services.oidc.tokenManagement,
+      password: new AccountPasswordService({
+        operations: options.identityOperations,
+        durable: options.durableSecurityEffects,
+        notices: options.securityNotices,
+      }),
+      // The current password is checked on every call, so guesses are capped hard, and a limiter
+      // outage refuses rather than allowing unlimited tries.
+      rateLimit: createSubjectReadRateLimiter({
+        redis: options.redis,
+        keyPrefix: "rl:auth-issuer:account-password-change",
+        windowSec: 15 * 60,
+        max: 8,
+        failClosed: true,
+        onError: (error) =>
+          options.log.warn({ err: error }, "account_password_rate_limit_unavailable"),
+      }),
+      onFailure: (error) => options.log.error({ err: error }, "account_password_change_failed"),
     }),
   );
   const phoneRules = AUTH_RATE_LIMIT_POLICY;

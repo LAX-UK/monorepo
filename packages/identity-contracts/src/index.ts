@@ -3,6 +3,15 @@ export {
   accountBackupCodesSchema,
   type AccountBackupCodesResponse,
 } from "./account-backup-codes.js";
+export {
+  ACCOUNT_PASSWORD_CHANGE_PATH,
+  ACCOUNT_PASSWORD_ERRORS,
+  ACCOUNT_PASSWORD_MAX_LENGTH,
+  ACCOUNT_PASSWORD_MIN_LENGTH,
+  accountPasswordChangedSchema,
+  type AccountPasswordChangedResponse,
+  type AccountPasswordError,
+} from "./account-password.js";
 export { formatDeviceLabel } from "./device-label.js";
 export {
   ACCOUNT_SECURITY_FACTS_PATH,
