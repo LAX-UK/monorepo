@@ -9,7 +9,13 @@ import { buttonVariants } from "@auction/ui/lax";
 import Link from "next/link";
 
 const BODY =
-  "Our specialists value paintings, prints, design and collections for free, and tell you which sale suits the work. A specialist’s estimate comes within two working days.";
+  "Our specialists value paintings, prints, design and collections for free, and tell you which sale suits the work.";
+
+const STEPS = [
+  { title: "Tell us about it", body: "Photos and a few details, in about three minutes." },
+  { title: "Free valuation", body: "A specialist’s estimate within two working days." },
+  { title: "Consign", body: "We catalogue, photograph and sell it, and pay you after the sale." },
+] as const;
 
 function Works({ imageUrls }: { imageUrls: readonly string[] }) {
   if (imageUrls.length === 0) {
@@ -47,6 +53,8 @@ export function HomeSellingBand({ selling }: { selling: HomeSelling }) {
       <div className={MARKETING_PAGE_SHELL}>
         <MarketingGalleryTeamBand
           eyebrow="Selling with LAX Bid"
+          eyebrowTone="neutral"
+          steps={STEPS}
           title="Thinking of selling?"
           body={BODY}
           {...(selling.deadlineNote ? { note: selling.deadlineNote } : {})}

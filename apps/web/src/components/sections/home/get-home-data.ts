@@ -14,6 +14,7 @@ import { getHomeHangSales } from "@/components/sections/home/get-home-hang";
 import { fetchHomeSales } from "@/components/sections/home/home-fetchers";
 import { cachedResolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { buildHomeHang, hangSaleIds, planHomeHang } from "@/lib/hang/home-hang";
 import { buildHomeSections } from "@/lib/home-sections/build-home-sections";
 import { HOME_SECTION_LIMITS } from "@/lib/home-sections/limits";
@@ -54,7 +55,12 @@ function railCandidates(
 }
 
 export const getHomeData = cache(async (): Promise<HomePageData> => {
-  const isAuthenticated = Boolean(await getServerSessionUser());
+  const [session, watchedSet] = await Promise.all([
+    getServerSessionUser(),
+    getServerWatchedLotIdSet(),
+  ]);
+  const isAuthenticated = Boolean(session);
+  const watchedLotIds = Array.from(watchedSet);
 
   let salesRows: SaleListRow[] = [];
   let endedRows: SaleListRow[] = [];
@@ -158,5 +164,6 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
     jsonLdListFallback,
     upcomingSales,
     isAuthenticated,
+    watchedLotIds,
   };
 });

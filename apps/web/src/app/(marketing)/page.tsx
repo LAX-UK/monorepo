@@ -36,8 +36,16 @@ function firstString(v: string | string[] | undefined): string | undefined {
 
 async function MarketingHomeContent({ alerts }: { alerts: string | undefined }) {
   const data = await getHomeData();
-  const { homeState, cover, jsonLdListFallback, sections, upcomingSales, hang, isAuthenticated } =
-    data;
+  const {
+    homeState,
+    cover,
+    jsonLdListFallback,
+    sections,
+    upcomingSales,
+    hang,
+    isAuthenticated,
+    watchedLotIds,
+  } = data;
   const alertsOutcome = parseCoverAlertsOutcome(alerts);
   const base = getSiteUrl().replace(/\/$/, "");
   const homeUrl = `${base}/`;
@@ -76,7 +84,11 @@ async function MarketingHomeContent({ alerts }: { alerts: string | undefined }) 
       {alertsOutcome ? <HomeAlertsNotice outcome={alertsOutcome} /> : null}
       <HomeCover slides={cover.slides} leadSale={cover.leadSale} signedIn={isAuthenticated} />
       <HomeHangSection hang={hang} />
-      <HomeSectionsView homeState={homeState} sections={sections} />
+      <HomeSectionsView
+        homeState={homeState}
+        sections={sections}
+        watch={{ isAuthenticated, watchedLotIds }}
+      />
     </>
   );
 }

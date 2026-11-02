@@ -53,8 +53,18 @@ export type MarketingHangProps = {
   footerNote?: ReactNode;
   /** Accessible name of the row of works. */
   rowLabel?: string;
+  /**
+   * `compact` (default) is the sale page's heading; `section` is a home-page section heading
+   * (24/30 on a phone, 40/48 on a desktop), the same as the sections around it.
+   */
+  headingSize?: "compact" | "section";
   className?: string;
 };
+
+const HEADING_SIZE = {
+  compact: "text-[22px] leading-7 sm:text-[28px] sm:leading-9",
+  section: "text-2xl leading-[30px] md:text-[40px] md:leading-[48px]",
+} as const;
 
 /** The gutter used by the page shell, so the wall lines up with the sections around it. */
 const GUTTER_VARS =
@@ -101,6 +111,7 @@ export function MarketingHang({
   figure = false,
   footerNote,
   rowLabel = "Works on the wall, scrolls sideways",
+  headingSize = "compact",
   className,
 }: MarketingHangProps) {
   const headingId = useId();
@@ -151,7 +162,10 @@ export function MarketingHang({
         <div className="min-w-0">
           <Heading
             id={headingId}
-            className="font-headline text-[22px] font-medium leading-7 tracking-[-0.01em] text-on-surface sm:text-[28px] sm:leading-9"
+            className={cn(
+              "font-headline font-medium tracking-[-0.01em] text-on-surface",
+              HEADING_SIZE[headingSize],
+            )}
           >
             {title}
           </Heading>

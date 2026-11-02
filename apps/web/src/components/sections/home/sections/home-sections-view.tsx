@@ -6,7 +6,7 @@ import { HomeAlertsBand } from "./home-alerts-band";
 import { HomeArtistsSection } from "./home-artists";
 import { HomeComingUpSection } from "./home-coming-up";
 import { HomeDepartmentsSection } from "./home-departments";
-import { HomeLotGrid } from "./home-lot-grid";
+import { HomeLotGrid, type HomeLotWatch } from "./home-lot-grid";
 import { HomePressSection } from "./home-press";
 import { HomeResultsBandSection } from "./home-results-band";
 import { HomeSection } from "./home-section";
@@ -15,12 +15,13 @@ import { HomeSellingBand } from "./home-selling-band";
 type Render<K extends HomeSectionId> = (
   value: NonNullable<HomeSections[K]>,
   state: HomeState,
+  watch: HomeLotWatch,
 ) => ReactNode;
 
 function lotRail(id: string) {
-  return (rail: HomeLotRail): ReactNode => (
+  return (rail: HomeLotRail, _state: HomeState, watch: HomeLotWatch): ReactNode => (
     <HomeSection id={id} heading={rail.heading} subtitle={rail.subtitle} action={rail.seeAll}>
-      <HomeLotGrid lots={rail.lots} label={rail.heading} />
+      <HomeLotGrid lots={rail.lots} label={rail.heading} watch={watch} />
     </HomeSection>
   );
 }
@@ -31,7 +32,7 @@ const RENDERERS: { [K in HomeSectionId]: Render<K> } = {
   highlightsFromNextSale: lotRail("next-sale"),
   topLotsOfSale: lotRail("top-lots"),
   comingUp: (comingUp) => <HomeComingUpSection comingUp={comingUp} />,
-  recentResults: (band) => <HomeResultsBandSection band={band} />,
+  recentResults: (band, _state, watch) => <HomeResultsBandSection band={band} watch={watch} />,
   departments: (departments) => <HomeDepartmentsSection departments={departments} />,
   artists: (artists) => <HomeArtistsSection artists={artists} />,
   selling: (selling) => <HomeSellingBand selling={selling} />,
@@ -46,9 +47,11 @@ const RENDERERS: { [K in HomeSectionId]: Render<K> } = {
 export function HomeSectionsView({
   homeState,
   sections,
+  watch,
 }: {
   homeState: HomeStateResult;
   sections: HomeSections;
+  watch: HomeLotWatch;
 }) {
   const visible = visibleHomeSections(homeState, sections);
   if (visible.length === 0) return null;
@@ -58,7 +61,11 @@ export function HomeSectionsView({
         const render = RENDERERS[id] as Render<HomeSectionId>;
         return (
           <div key={id} data-home-section={id}>
-            {render(sections[id] as NonNullable<HomeSections[HomeSectionId]>, homeState.state)}
+            {render(
+              sections[id] as NonNullable<HomeSections[HomeSectionId]>,
+              homeState.state,
+              watch,
+            )}
           </div>
         );
       })}

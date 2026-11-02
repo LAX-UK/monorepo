@@ -1,6 +1,6 @@
 import type { HomeResultsBand } from "@/lib/home-sections/types";
 import { cn } from "@auction/ui";
-import { HomeLotGrid } from "./home-lot-grid";
+import { HomeLotGrid, type HomeLotWatch } from "./home-lot-grid";
 import { HomeSection } from "./home-section";
 
 function Fact({
@@ -43,7 +43,13 @@ function Fact({
 }
 
 /** The last sale's figures as a hairline strip, then its top sold lots. */
-export function HomeResultsBandSection({ band }: { band: HomeResultsBand }) {
+export function HomeResultsBandSection({
+  band,
+  watch,
+}: {
+  band: HomeResultsBand;
+  watch: HomeLotWatch;
+}) {
   const { facts } = band;
   return (
     <HomeSection
@@ -65,7 +71,7 @@ export function HomeResultsBandSection({ band }: { band: HomeResultsBand }) {
       </dl>
       {band.lots.length > 0 ? (
         <div className="mt-7 md:mt-10">
-          <HomeLotGrid lots={band.lots} label="Top lots of the last sale" />
+          <HomeLotGrid lots={band.lots} label="Top lots of the last sale" watch={watch} />
         </div>
       ) : null}
     </HomeSection>

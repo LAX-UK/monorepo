@@ -21,4 +21,6 @@ export type HomePageData = {
   /** First N sales (for Event-rich JSON-LD). */
   upcomingSales: Sale[];
   isAuthenticated: boolean;
+  /** Lot IDs on the signed-in user’s watchlist (empty when logged out). */
+  watchedLotIds: string[];
 };
