@@ -95,7 +95,15 @@ export type AdminIntegrationRouteServices = {
   /** Requests for a copy of a person's data, answered through Identity's internal routes. */
   dataRequests: Pick<
     AdminDataRequestsService,
-    "list" | "summary" | "record" | "create" | "patch" | "extend" | "close" | "continueDownload"
+    | "list"
+    | "summary"
+    | "findAccount"
+    | "record"
+    | "create"
+    | "patch"
+    | "extend"
+    | "close"
+    | "continueDownload"
   >;
 };
 
