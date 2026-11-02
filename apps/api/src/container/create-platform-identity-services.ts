@@ -4,6 +4,7 @@ import {
   DrizzleMemberBuyerAgentAuthorisationRevoker,
 } from "@auction/persistence/repositories";
 import { LEGAL_ENTITY_ARCHIVE_JOB_NAME } from "@auction/queues";
+import { LEGAL_ENTITY_BROWSE_ACCESS, adminRoutes } from "@auction/types";
 import type { Env } from "../env.js";
 import { CachedUserSuspensionChecker } from "../infrastructure/cached-user-suspension.checker.js";
 import { createTransactionalMailer } from "../infrastructure/transactional-mailer.js";
@@ -167,7 +168,9 @@ export function createPlatformIdentityServices(
     stripeConnectService,
     {
       onSubmittedForReview: async ({ legalEntityId, displayName }) => {
-        const adminRecipients = await repos.userRepo.listStaffEmails();
+        const adminRecipients = await repos.userRepo.listStaffEmailsWithAccess(
+          LEGAL_ENTITY_BROWSE_ACCESS,
+        );
         if (adminRecipients.length === 0) return;
         const webOrigin = env.WEB_ORIGIN.replace(/\/$/, "");
         await enqueueOrgSubmittedAdminNotice({
@@ -175,7 +178,7 @@ export function createPlatformIdentityServices(
           legalEntityId,
           entityDisplayName: displayName,
           adminRecipients,
-          adminOnboardingUrl: `${webOrigin}/admin/onboarding-issues`,
+          adminOnboardingUrl: `${webOrigin}${adminRoutes.onboardingIssues()}`,
           supportContactEmail: env.OPS_SUPPORT_EMAIL ?? "events@lax.bid",
           eventId: Date.now(),
         });

@@ -6,6 +6,7 @@ import {
   FINANCE_ACCESS,
   type StaffRoles,
   type UserRole,
+  adminRoutes,
   userHasAccessTo,
 } from "@auction/types";
 
@@ -27,7 +28,7 @@ export const STAFF_HEADER_ATTENTION_SPECS: readonly StaffHeaderAttentionSpec[] =
     requirement: FINANCE_ACCESS,
     buildItem: () => ({
       label: "Payments — manual review",
-      href: "/admin/payments?manualReview=1",
+      href: adminRoutes.payments.manualReview(),
       hint: "AML, Source of Funds, or policy holds blocking settlement",
     }),
   },
@@ -57,7 +58,7 @@ export const STAFF_HEADER_ATTENTION_SPECS: readonly StaffHeaderAttentionSpec[] =
     requirement: AML_REVIEW_ACCESS,
     buildItem: (count) => ({
       label: `${count} AML screening${count === 1 ? "" : "s"} pending`,
-      href: "/admin/compliance/aml",
+      href: adminRoutes.aml.list(),
       hint: "Watchlist match — triage and MLRO decide",
     }),
   },
@@ -67,7 +68,7 @@ export const STAFF_HEADER_ATTENTION_SPECS: readonly StaffHeaderAttentionSpec[] =
     requirement: AML_REVIEW_ACCESS,
     buildItem: (count) => ({
       label: `${count} Source of Funds case${count === 1 ? "" : "s"}`,
-      href: "/admin/compliance/source-of-funds",
+      href: adminRoutes.sourceOfFunds.list(),
       hint: "Settlement gated until MLRO approval",
     }),
   },

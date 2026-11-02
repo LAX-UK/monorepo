@@ -14,6 +14,7 @@ export * from "./user.js";
 export * from "./role-policy.js";
 export * from "./auth-permissions.js";
 export * from "./admin-access.js";
+export * from "./admin-routes.js";
 export * from "./item-submission.js";
 export * from "./consignment-agreement.js";
 export * from "./consignment-after-sale.js";
