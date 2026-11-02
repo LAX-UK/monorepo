@@ -10,6 +10,7 @@ const toasts = vi.hoisted(() => ({ success: vi.fn() }));
 vi.mock("@/lib/legal-entity/member-management.actions", () => actions);
 vi.mock("@/lib/ui/notify", () => ({ notify: toasts }));
 
+import { ChangeRoleDialog } from "./change-role-dialog";
 import { RemoveMemberDialog } from "./remove-member-dialog";
 import { TransferOwnershipDialog } from "./transfer-ownership-dialog";
 
@@ -186,5 +187,55 @@ describe("TransferOwnershipDialog", () => {
     expect(confirm).toBeDisabled();
     expect(confirm).toHaveAccessibleDescription('Type "Transfer to Lena Fischer" to confirm.');
     expect(actions.transferOwnershipAction).not.toHaveBeenCalled();
+  });
+});
+
+describe("ChangeRoleDialog", () => {
+  const renderDialog = (onConfirm = vi.fn().mockResolvedValue({ ok: true }), onClose = vi.fn()) => {
+    render(
+      <ChangeRoleDialog
+        organisationName={ORG}
+        member={LENA}
+        currentRole="buyer_agent"
+        roleOptions={["buyer_agent", "admin", "viewer"]}
+        onConfirm={onConfirm}
+        onClose={onClose}
+      />,
+    );
+    return { onConfirm, onClose };
+  };
+
+  it("holds the confirm until a different role is chosen, and says what the role can do", () => {
+    renderDialog();
+    expect(confirmButton("Change role")).toBeDisabled();
+    expect(screen.getByRole("dialog")).toHaveTextContent("Once authorised");
+    fireEvent.click(screen.getByRole("radio", { name: /Admin/ }));
+    expect(confirmButton("Change role")).toBeEnabled();
+  });
+
+  it("warns that authorisations end when a buyer agent changes role", () => {
+    renderDialog();
+    fireEvent.click(screen.getByRole("radio", { name: /Viewer/ }));
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "authorisations to bid for Northbank Gallery will end",
+    );
+  });
+
+  it("sends the chosen role and closes once the server agrees", async () => {
+    const { onConfirm, onClose } = renderDialog();
+    fireEvent.click(screen.getByRole("radio", { name: /Admin/ }));
+    fireEvent.click(confirmButton("Change role"));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(onConfirm).toHaveBeenCalledWith("admin");
+  });
+
+  it("stays open with the reason when the server refuses", async () => {
+    const { onClose } = renderDialog(
+      vi.fn().mockResolvedValue({ ok: false, code: "owner_only", error: "Only an owner can." }),
+    );
+    fireEvent.click(screen.getByRole("radio", { name: /Admin/ }));
+    fireEvent.click(confirmButton("Change role"));
+    expect(await screen.findByText("Only an owner can.")).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
