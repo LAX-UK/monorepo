@@ -33,6 +33,18 @@ export function jobAttemptsExhausted(
   return job.attemptsMade >= maxAttempts;
 }
 
+/**
+ * A failure is final when the attempts ran out, or when the job said retrying cannot help by
+ * throwing BullMQ's `UnrecoverableError`, which ends it with attempts to spare.
+ */
+export function failureIsFinal(
+  job: { attemptsMade: number; opts: { attempts?: number } },
+  err: Error,
+  def: QueueDefinition,
+): boolean {
+  return err.name === "UnrecoverableError" || jobAttemptsExhausted(job, def);
+}
+
 function serializePayload(data: unknown): string | null {
   return safeSerializePayload(data);
 }
@@ -48,7 +60,7 @@ export function attachDlq(
   worker.on("failed", (job, err) => {
     void (async () => {
       if (!job) return;
-      if (!jobAttemptsExhausted(job, def)) return;
+      if (!failureIsFinal(job, err, def)) return;
 
       const originalJobId = job.id != null ? String(job.id) : "unknown";
       const auditId = dlqJobId(queueName, originalJobId);

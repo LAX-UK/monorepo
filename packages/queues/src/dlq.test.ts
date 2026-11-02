@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { bullMqSafeJobId, dlqJobId, dlqRedisJobId, jobAttemptsExhausted } from "./dlq.js";
+import {
+  bullMqSafeJobId,
+  dlqJobId,
+  dlqRedisJobId,
+  failureIsFinal,
+  jobAttemptsExhausted,
+} from "./dlq.js";
 import { QUEUE_REGISTRY } from "./registry.js";
 
 describe("dlqJobId", () => {
@@ -34,5 +40,20 @@ describe("jobAttemptsExhausted", () => {
   it("respects explicit job opts attempts", () => {
     expect(jobAttemptsExhausted({ attemptsMade: 2, opts: { attempts: 3 } }, emailDef)).toBe(false);
     expect(jobAttemptsExhausted({ attemptsMade: 3, opts: { attempts: 3 } }, emailDef)).toBe(true);
+  });
+});
+
+describe("failureIsFinal", () => {
+  const emailDef = QUEUE_REGISTRY.email;
+
+  it("is final once attempts run out", () => {
+    expect(failureIsFinal({ attemptsMade: 5, opts: {} }, new Error("x"), emailDef)).toBe(true);
+    expect(failureIsFinal({ attemptsMade: 1, opts: {} }, new Error("x"), emailDef)).toBe(false);
+  });
+
+  it("is final for an unrecoverable error even with attempts to spare", () => {
+    const unrecoverable = new Error("stop");
+    unrecoverable.name = "UnrecoverableError";
+    expect(failureIsFinal({ attemptsMade: 1, opts: {} }, unrecoverable, emailDef)).toBe(true);
   });
 });
