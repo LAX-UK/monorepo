@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createVisitorAlertToken } from "../lib/visitor-alert-token.js";
 import { VisitorSaleAlertService } from "./visitor-sale-alert.service.js";
 
-const SECRET = "test-secret-0123456789";
+const SECRET = "test-secret-0123456789"; // gitleaks:allow
 
 class MemoryRepo implements IVisitorSaleAlertRepository {
   rows = new Map<string, VisitorSaleAlertRecord>();

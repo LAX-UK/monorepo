@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createVisitorAlertToken, verifyVisitorAlertToken } from "./visitor-alert-token.js";
 
-const secret = "test-secret-0123456789";
+const secret = "test-secret-0123456789"; // gitleaks:allow
 
 describe("visitor alert tokens", () => {
   it("round-trips a confirm and an unsubscribe token", () => {
