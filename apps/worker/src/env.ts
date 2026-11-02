@@ -63,6 +63,37 @@ const envSchema = z
     S3_ACCESS_KEY_ID: z.string().optional(),
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     S3_PUBLIC_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /**
+     * "Download my data". The worker asks Identity, Bid and Shop for a person's data and builds
+     * the ZIP, so it needs where each lives and one credential for each party; all of it is set
+     * together or not at all (see subjectExportConfigFromEnv).
+     */
+    IDENTITY_INTERNAL_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    SHOP_API_INTERNAL_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /** Identity: OAuth client for the `subject_export` scope. Not the lifecycle client. */
+    SUBJECT_EXPORT_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    SUBJECT_EXPORT_MACHINE_CLIENT_SECRET: z.preprocess(
+      emptyToUndefined,
+      z.string().min(32).optional(),
+    ),
+    /** Bid and Shop: the export client pair they check with the `subject_export` scope header. */
+    IDENTITY_SUBJECT_EXPORT_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    IDENTITY_SUBJECT_EXPORT_CLIENT_SECRET: z.preprocess(
+      emptyToUndefined,
+      z.string().min(32).optional(),
+    ),
+    /** The private export bucket. The worker writes and deletes; Identity only signs reads. */
+    SUBJECT_EXPORT_BUCKET: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    SUBJECT_EXPORT_REGION: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    SUBJECT_EXPORT_ENDPOINT: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    SUBJECT_EXPORT_WRITE_ACCESS_KEY_ID: z.preprocess(
+      emptyToUndefined,
+      z.string().min(1).optional(),
+    ),
+    SUBJECT_EXPORT_WRITE_SECRET_ACCESS_KEY: z.preprocess(
+      emptyToUndefined,
+      z.string().min(1).optional(),
+    ),
     /** Footer contact on payout statement PDFs (defaults to EMAIL_REPLY_TO then EMAIL_FROM). */
     PAYOUT_STATEMENT_CONTACT_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
     /** Base URL for server-side calls into the API (cron jobs). */
@@ -192,6 +223,26 @@ const envSchema = z
           path: ["ATG_SYNC_ENABLED"],
         });
       }
+    }
+    const exportSettings = [
+      "IDENTITY_INTERNAL_BASE_URL",
+      "SHOP_API_INTERNAL_BASE_URL",
+      "SUBJECT_EXPORT_MACHINE_CLIENT_ID",
+      "SUBJECT_EXPORT_MACHINE_CLIENT_SECRET",
+      "IDENTITY_SUBJECT_EXPORT_CLIENT_ID",
+      "IDENTITY_SUBJECT_EXPORT_CLIENT_SECRET",
+      "SUBJECT_EXPORT_BUCKET",
+      "SUBJECT_EXPORT_REGION",
+      "SUBJECT_EXPORT_WRITE_ACCESS_KEY_ID",
+      "SUBJECT_EXPORT_WRITE_SECRET_ACCESS_KEY",
+    ] as const;
+    const exportSet = exportSettings.filter((key) => Boolean(e[key]));
+    if (exportSet.length > 0 && exportSet.length < exportSettings.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Download my data needs all of ${exportSettings.join(", ")} (SUBJECT_EXPORT_ENDPOINT is optional); set them together or not at all`,
+        path: ["SUBJECT_EXPORT_BUCKET"],
+      });
     }
     if (e.STORAGE_DRIVER === "s3") {
       if (!e.S3_BUCKET || !e.S3_REGION || !e.S3_ACCESS_KEY_ID || !e.S3_SECRET_ACCESS_KEY) {

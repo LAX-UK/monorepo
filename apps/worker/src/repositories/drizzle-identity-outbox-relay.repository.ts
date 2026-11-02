@@ -4,6 +4,7 @@ import { identityLifecycleOutbox } from "@auction/identity-db/schema";
 import { asc, eq, gt, sql } from "drizzle-orm";
 import type {
   IIdentityOutboxRelayRepository,
+  IdentityOutboxRelayObserver,
   IdentityOutboxRelayResult,
 } from "../interfaces/identity-outbox-relay.repository.js";
 
@@ -16,7 +17,7 @@ const IDEMPOTENT_DOMAIN_EVENT_TYPES = new Set(["user.registered", "user.email_ve
 export class DrizzleIdentityOutboxRelayRepository implements IIdentityOutboxRelayRepository {
   constructor(private readonly db: Database) {}
 
-  async relayBatch(): Promise<IdentityOutboxRelayResult> {
+  async relayBatch(observer?: IdentityOutboxRelayObserver): Promise<IdentityOutboxRelayResult> {
     return this.db.transaction(async (tx) => {
       await tx
         .insert(projectorState)
@@ -62,6 +63,14 @@ export class DrizzleIdentityOutboxRelayRepository implements IIdentityOutboxRela
           await insert;
         }
       }
+
+      await observer?.(
+        rows.map((row) => ({
+          eventType: row.eventType,
+          aggregateId: row.aggregateId,
+          payload: row.payload,
+        })),
+      );
 
       const maxId = rows[rows.length - 1]?.id ?? cursor;
       await tx
