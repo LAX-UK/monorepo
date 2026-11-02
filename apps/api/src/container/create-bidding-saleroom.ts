@@ -131,6 +131,7 @@ function composeRegistrationAndBidding(
     legalEntityRepository,
     saleRepo,
     repos.saleRegistrationRepository,
+    domainEventSink,
     identityEligibilityGate,
   );
   if (strictBidEligibilityEnabled && !kycService.isConfigured()) {
