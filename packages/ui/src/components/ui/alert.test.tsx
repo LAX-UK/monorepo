@@ -22,3 +22,15 @@ describe("Alert inverse variant", () => {
     expect(screen.getByRole("alert").className).toContain("bg-surface-container-low");
   });
 });
+
+describe("AlertTitle heading level", () => {
+  it("is an h2 by default, so it follows the page title without skipping a level", () => {
+    render(<AlertTitle>Could not load bids</AlertTitle>);
+    expect(screen.getByRole("heading", { level: 2, name: "Could not load bids" })).toBeTruthy();
+  });
+
+  it("takes the level that fits where the alert sits", () => {
+    render(<AlertTitle as="h3">Could not load bids</AlertTitle>);
+    expect(screen.getByRole("heading", { level: 3 })).toBeTruthy();
+  });
+});

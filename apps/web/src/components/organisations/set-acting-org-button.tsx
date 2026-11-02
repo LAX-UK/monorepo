@@ -2,7 +2,7 @@
 
 import { switchActingLegalEntity } from "@/lib/legal-entity/acting-context.actions";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
@@ -27,9 +27,8 @@ export function SetActingOrgButton({ legalEntityId }: Props) {
   return (
     <Button
       type="button"
-      variant="cta"
-      size="default"
-      className="min-h-11 sm:min-h-9"
+      variant="primary"
+      size="md"
       disabled={pending}
       onClick={() => {
         start(async () => {

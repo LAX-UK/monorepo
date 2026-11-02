@@ -5,9 +5,9 @@ import { fetchLotBidHistoryRows } from "@/lib/bid/fetch-lot-bid-history.client";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { formatDateTimeShort } from "@/lib/ui/format";
 import { Skeleton } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { Button } from "@auction/ui/lax";
 import { RotateCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -107,11 +107,7 @@ export function BidHistoryDrawer({ open, lotId, lotTitle, onOpenChange }: BidHis
             title="We couldn't load the bid history"
             description="This is on our side. Your bids are safe and still active in the sale."
             action={
-              <Button
-                type="button"
-                variant="secondaryOutline"
-                onClick={() => void load(() => false)}
-              >
+              <Button type="button" variant="secondary" onClick={() => void load(() => false)}>
                 <RotateCw aria-hidden />
                 Try again
               </Button>

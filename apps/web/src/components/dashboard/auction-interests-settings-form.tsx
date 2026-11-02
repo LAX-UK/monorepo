@@ -7,8 +7,8 @@ import { BUYER_INTERESTS } from "@/lib/onboarding/buyer-interest-manifest";
 import { notify } from "@/lib/ui/notify";
 import { reconcileBuyerInterestSelection } from "@auction/domain";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
+import { Button } from "@auction/ui/lax";
 import { Check, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useState } from "react";
@@ -56,7 +56,7 @@ function SaveInterestsButton({
     <>
       <Button
         type="submit"
-        className="min-h-11 w-full sm:w-auto"
+        className="w-full sm:w-auto"
         disabled={disabled}
         aria-disabled={disabled}
       >

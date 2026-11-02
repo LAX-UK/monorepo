@@ -8,8 +8,8 @@ import { createInvitationLinkGateway } from "@/lib/legal-entity/invitation-link.
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { invitationAcceptAction, invitationLinkPath } from "@/lib/navigation/invitation-link";
 import { buildInvitationLinkView } from "@/lib/organisations/invitation-link.vm";
-import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
+import { Button } from "@auction/ui/lax";
 import { LogIn, UserPlus } from "lucide-react";
 import type { Metadata } from "next";
 
@@ -78,13 +78,13 @@ export default async function AcceptInvitationTokenPage({
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Button asChild variant="cta" className="h-auto min-h-24 flex-col gap-2 py-4">
+          <Button asChild variant="primary" className="h-auto min-h-24 flex-col gap-2 py-4">
             <a href={registerHref}>
               <UserPlus className="size-6" aria-hidden />
               <span>Create account</span>
             </a>
           </Button>
-          <Button asChild variant="outline" className="h-auto min-h-24 flex-col gap-2 py-4">
+          <Button asChild variant="secondary" className="h-auto min-h-24 flex-col gap-2 py-4">
             <a href={signInHref}>
               <LogIn className="size-6" aria-hidden />
               <span>Sign in</span>

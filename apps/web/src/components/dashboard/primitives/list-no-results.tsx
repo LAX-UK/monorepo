@@ -1,5 +1,5 @@
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 
 type Clear =
@@ -33,13 +33,13 @@ export function ListNoResults({
       description={description}
       action={
         clear.clearHref ? (
-          <Button variant="secondaryOutline" asChild>
+          <Button variant="secondary" asChild>
             <Link href={clear.clearHref} scroll={false}>
               {clearLabel}
             </Link>
           </Button>
         ) : (
-          <Button type="button" variant="secondaryOutline" onClick={clear.onClear}>
+          <Button type="button" variant="secondary" onClick={clear.onClear}>
             {clearLabel}
           </Button>
         )

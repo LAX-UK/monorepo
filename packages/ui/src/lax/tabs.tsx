@@ -27,7 +27,7 @@ export function Count({
   return (
     <span
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-lax-2xs font-medium tabular-nums",
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-lax-12 font-medium tabular-nums",
         tone === "attention"
           ? "bg-lax-ink text-lax-on-ink"
           : "bg-lax-neutral-bg text-lax-neutral-fg",

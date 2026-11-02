@@ -1,8 +1,8 @@
 "use client";
 
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
-import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { Button } from "@auction/ui/lax";
 import { Loader2, RotateCw } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -82,7 +82,7 @@ export function AccountsUnavailable({ retry }: Props) {
               </Link>
             </Button>
           )}
-          <Button asChild variant="secondaryOutline">
+          <Button asChild variant="secondary">
             <a href={SUPPORT_HREF}>Contact us</a>
           </Button>
         </>

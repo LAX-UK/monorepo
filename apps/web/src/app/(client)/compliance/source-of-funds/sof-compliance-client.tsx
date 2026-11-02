@@ -20,10 +20,10 @@ import {
   isImageFileName,
 } from "@/lib/upload-limits";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
+import { Button } from "@auction/ui/lax";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";

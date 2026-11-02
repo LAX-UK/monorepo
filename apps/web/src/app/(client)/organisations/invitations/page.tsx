@@ -13,7 +13,7 @@ import {
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 
 export default async function InvitationsInboxPage() {
@@ -52,7 +52,7 @@ export default async function InvitationsInboxPage() {
       title="Invitations"
       description="Pending organisation invitations for your account email."
       actions={
-        <Button asChild variant="outline" size="default">
+        <Button asChild variant="secondary" size="md">
           <Link href={DASHBOARD_ROUTES.organisations} prefetch>
             Back to organisations
           </Link>
@@ -67,7 +67,7 @@ export default async function InvitationsInboxPage() {
           title={DASHBOARD_EMPTY.invitations.title}
           description={DASHBOARD_EMPTY.invitations.description}
           action={
-            <Button asChild variant="outline" size="default">
+            <Button asChild variant="secondary" size="md">
               <Link href={DASHBOARD_ROUTES.organisations} prefetch>
                 Go to Organisations
               </Link>

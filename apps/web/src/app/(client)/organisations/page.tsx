@@ -23,10 +23,10 @@ import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hu
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import type { LegalEntity, LegalEntitySummary } from "@auction/types";
 import { DisplayHeading } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 
 type HubMembership = LegalEntitySummary;
@@ -98,7 +98,7 @@ export default async function OrganisationsHubPage() {
       banner={orgModuleEnabled ? <OrgSubmittedAlert /> : null}
       description="Manage organisations you belong to, respond to invitations, and continue setup."
       actions={
-        <Button asChild variant="cta" size="default">
+        <Button asChild variant="primary" size="md">
           <Link href="/onboarding/organisation?fresh=1" prefetch>
             Register organisation
           </Link>
@@ -139,7 +139,7 @@ export default async function OrganisationsHubPage() {
           title={DASHBOARD_EMPTY.organisations.title}
           description={DASHBOARD_EMPTY.organisations.description}
           action={
-            <Button asChild variant="cta" size="default">
+            <Button asChild variant="primary" size="md">
               <Link href="/onboarding/organisation?fresh=1" prefetch>
                 Register organisation
               </Link>
@@ -151,7 +151,7 @@ export default async function OrganisationsHubPage() {
           <SectionHeader
             heading={<DisplayHeading as="h2">Your organisations</DisplayHeading>}
             action={
-              <Button asChild variant="outline" size="default">
+              <Button asChild variant="secondary" size="md">
                 <Link href="/onboarding/organisation?fresh=1" prefetch>
                   Register organisation
                 </Link>

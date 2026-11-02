@@ -6,9 +6,9 @@ import {
 import type { PaymentDisplayRow } from "@/lib/data/view-models/dashboard-payments.vm";
 import { paymentDisplayDotStatus } from "@/lib/presenters/payment-status";
 import { lotPath } from "@/lib/seo/url";
-import { Button } from "@auction/ui/components/button";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { Surface } from "@auction/ui/components/surface";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 
 function PrimaryActionCell({ row }: { row: PaymentDisplayRow }) {
@@ -30,7 +30,7 @@ function PrimaryActionCell({ row }: { row: PaymentDisplayRow }) {
   }
   if (action.kind === "pay") {
     return (
-      <Button variant="primary" asChild className="min-h-11 px-4 py-2 text-[10px]">
+      <Button variant="primary" asChild>
         <Link href={action.href}>{action.label}</Link>
       </Button>
     );

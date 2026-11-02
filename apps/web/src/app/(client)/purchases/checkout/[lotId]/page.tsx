@@ -27,7 +27,7 @@ import { openRecordInItsAccount } from "@/lib/legal-entity/open-record-in-accoun
 import { checkoutIntro } from "@/lib/purchases/checkout-intro";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { type ReactNode, Suspense } from "react";
@@ -180,7 +180,7 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
                   <Button variant="secondary" asChild>
                     <Link href={dashboardCheckoutLotUrl(lotId)}>Retry</Link>
                   </Button>
-                  <Button variant="outline" asChild>
+                  <Button variant="secondary" asChild>
                     <Link href={settlementsEmail() ? `mailto:${settlementsEmail()}` : "/purchases"}>
                       Contact support
                     </Link>

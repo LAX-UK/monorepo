@@ -5,9 +5,9 @@ import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organi
 import { organisationStatusView } from "@/lib/presenters/organisation-status/organisation-status-presentation";
 import { getConnectGapState } from "@auction/connect";
 import type { LegalEntity, LegalEntitySubkind } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@auction/ui/components/card";
 import { StatusBadge } from "@auction/ui/components/status-badge";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import { initials } from "./initials";
 import { subkindLabel } from "./labels";
@@ -76,7 +76,7 @@ export function OrganisationCard({
       ) : null}
       <CardFooter className="flex flex-wrap gap-2 border-t border-border-hairline pt-4">
         {!isActing ? (
-          <Button asChild size="default" variant="secondary">
+          <Button asChild size="md" variant="secondary">
             <Link href={organisationHref("profile", summary.id)} prefetch>
               Manage
             </Link>
@@ -85,7 +85,7 @@ export function OrganisationCard({
           <StatusBadge tone="info">Active</StatusBadge>
         )}
         {showResume && resumeHref ? (
-          <Button asChild size="default" variant="outline">
+          <Button asChild size="md" variant="secondary">
             <Link href={resumeHref} prefetch>
               {summary.status === "connect_pending" ? "Finish payout setup" : "Continue setup"}
             </Link>

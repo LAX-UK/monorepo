@@ -1,7 +1,6 @@
 "use client";
 
 import type { StepProps } from "@/components/dashboard/submission-wizard/step-props";
-import { Button } from "@auction/ui/components/button";
 import {
   FormControl,
   FormField,
@@ -11,6 +10,7 @@ import {
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
+import { Button } from "@auction/ui/lax";
 import { Plus, Trash2 } from "lucide-react";
 import { useFieldArray } from "react-hook-form";
 
@@ -45,8 +45,7 @@ export function ProvenanceStep({ form }: StepProps) {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="default"
-                    className="h-8 px-2 text-on-surface-variant"
+                    size="sm"
                     onClick={() => provenanceFields.remove(index)}
                     aria-label={`Remove provenance entry ${index + 1}`}
                   >
@@ -85,8 +84,8 @@ export function ProvenanceStep({ form }: StepProps) {
         )}
         <Button
           type="button"
-          variant="outline"
-          size="default"
+          variant="secondary"
+          size="md"
           onClick={() => provenanceFields.append({ period: "", note: "" })}
         >
           <Plus className="mr-1 size-4" aria-hidden />
@@ -117,8 +116,7 @@ export function ProvenanceStep({ form }: StepProps) {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="default"
-                    className="h-8 px-2 text-on-surface-variant"
+                    size="sm"
                     onClick={() => exhibitionFields.remove(index)}
                     aria-label={`Remove exhibition ${index + 1}`}
                   >
@@ -172,8 +170,8 @@ export function ProvenanceStep({ form }: StepProps) {
         )}
         <Button
           type="button"
-          variant="outline"
-          size="default"
+          variant="secondary"
+          size="md"
           onClick={() => exhibitionFields.append({ year: "", venue: "", note: "" })}
         >
           <Plus className="mr-1 size-4" aria-hidden />

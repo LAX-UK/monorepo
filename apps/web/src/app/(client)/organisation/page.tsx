@@ -25,9 +25,9 @@ import {
 } from "@/lib/organisation-team/team-data.server";
 import { entityActorCan } from "@auction/domain";
 import type { LegalEntityStatus } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { TimelineStages } from "@auction/ui/components/timeline-stages";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -122,7 +122,7 @@ export default async function OrganisationProfilePage() {
             </p>
           </div>
           <TimelineStages stages={ORG_ONBOARDING_TIMELINE_STAGES} activeIndex={timelineIndex} />
-          <Button asChild variant="primary" size="default">
+          <Button asChild variant="primary" size="md">
             <Link href={continueSetupHref} prefetch>
               Continue setup
             </Link>

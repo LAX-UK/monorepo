@@ -30,7 +30,7 @@ const emptyStateVariants = cva("flex flex-col items-center justify-center text-c
 });
 
 const TITLE_CLASS = {
-  page: "text-2xl md:text-3xl",
+  page: "text-2xl md:text-[1.75rem] md:leading-9",
   panel: "text-lg md:text-xl",
   compact: "text-base",
 } as const;
