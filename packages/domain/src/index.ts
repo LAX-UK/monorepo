@@ -604,6 +604,14 @@ export {
   type NeedsYouTask,
 } from "./needs-you.js";
 export {
+  OWED_PAYMENT_STATUSES,
+  purchaseEnding,
+  purchaseIsOwned,
+  purchaseIsToPay,
+  type PurchaseEnding,
+  type PurchaseStateFacts,
+} from "./purchase-state.js";
+export {
   purchaseNextStep,
   type PurchaseFulfilmentStatus,
   type PurchaseNextStep,
@@ -786,8 +794,13 @@ export {
 } from "./organisation-activity.js";
 export {
   consignmentReference,
+  payoutLineBreakdown,
+  payoutTotals,
+  payoutTotalsDiffer,
   saleLineBreakdown,
   soldLotPayoutStage,
+  type PayoutLineFacts,
+  type PayoutTotals,
   type SaleLineBreakdown,
   type SaleLineFacts,
   type SoldLotFacts,

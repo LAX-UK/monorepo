@@ -68,6 +68,8 @@ export type PayoutLine = {
   createdByUserId: string | null;
   note: string | null;
   createdAt: Date;
+  /** The buyer payment a sale line settles and LAX's fee on it; read with the line. */
+  payment?: { amount: string; platformFee: string } | null;
 };
 
 /** Admin Create Adjustment Input */

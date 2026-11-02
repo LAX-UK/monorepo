@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   canReportProblem,
   defaultPurchaseTab,
+  isToPay,
   parsePurchaseTab,
   purchaseState,
   purchaseStep,
@@ -47,6 +48,21 @@ describe("purchaseState", () => {
     expect(
       purchaseState({ paymentStatus: "authorized", reviewReason: null, fulfilment: null }),
     ).toBe("payment-processing");
+  });
+
+  it("ends a refunded or cancelled purchase, however it is read", () => {
+    const state = (
+      paymentStatus: Parameters<typeof purchaseState>[0]["paymentStatus"],
+      f: LotFulfilmentSnapshot | null = null,
+    ) => purchaseState({ paymentStatus, reviewReason: "aml_hold", fulfilment: f });
+    expect(state("cancelled")).toBe("cancelled");
+    expect(state("refunded")).toBe("refunded");
+    expect(state("pending", fulfilment({ status: "cancelled" }))).toBe("cancelled");
+    expect(state("captured", fulfilment({ status: "cancelled" }))).toBe("cancelled");
+    expect(purchaseTab("cancelled")).toBe("completed");
+    expect(isToPay("cancelled")).toBe(false);
+    expect(isToPay("refunded")).toBe(false);
+    expect(isToPay("pending")).toBe(true);
   });
 
   it("follows delivery once paid", () => {
@@ -171,6 +187,61 @@ describe("buildPurchasesVm", () => {
     expect(vm.cardsByTab.completed.map((card) => card.lotId)).toEqual(["lot-7"]);
     expect(vm.total).toBe(3);
     expect(vm.sales).toEqual([{ id: "sale-2", title: "Jewels and objects of vertu" }]);
+  });
+
+  it("keeps a cancelled purchase out of To pay, the banner and the badge, whatever its invoice says", () => {
+    const vm = buildPurchasesVm(
+      sources({
+        rows: [
+          row("lot-5", 5, { id: "p5", status: "pending", manualReviewReason: null }),
+          row("lot-6", 6, { id: "p6", status: "cancelled", manualReviewReason: null }),
+          row("lot-8", 8, null),
+        ],
+        factsByLot: {
+          "lot-5": facts("lot-5", {
+            status: "due",
+            dueAt: new Date("2026-11-06T12:00:00Z"),
+            paymentId: "p5",
+            totalDue: "8000.00",
+          }),
+          "lot-6": facts("lot-6", {
+            status: "cancelled",
+            dueAt: new Date("2026-10-22T12:00:00Z"),
+            paymentId: "p6",
+            totalDue: "2875.00",
+          }),
+          // Unpaid, and cancelled on delivery.
+          "lot-8": facts(
+            "lot-8",
+            {
+              status: "due",
+              dueAt: new Date("2026-11-06T12:00:00Z"),
+              paymentId: "p8",
+              totalDue: "1.00",
+            },
+            {
+              delivery: {
+                stage: "cancelled",
+                method: null,
+                carrier: null,
+                trackingNumber: null,
+                collectedBy: null,
+                collectedAt: null,
+                quote: null,
+              },
+            },
+          ),
+        },
+      }),
+    );
+    expect(vm.cardsByTab["to-pay"].map((card) => card.lotId)).toEqual(["lot-5"]);
+    expect(
+      vm.cardsByTab.completed.map((card) => [card.lotId, card.badge.label, card.amountLabel]),
+    ).toEqual([
+      ["lot-6", "Cancelled", "was due"],
+      ["lot-8", "Cancelled", "was due"],
+    ]);
+    expect(vm.payNow).toMatchObject({ kind: "pay", lotIds: ["lot-5"] });
   });
 
   it("sums what is due into one payment, and says which are overdue", () => {

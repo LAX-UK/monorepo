@@ -44,6 +44,7 @@ function makeRepo(initial: Payout) {
       createdByUserId: null,
       note: null,
       createdAt: new Date("2026-01-15"),
+      payment: { amount: "1000.00", platformFee: "50.00" },
     },
   ];
   const repo = {

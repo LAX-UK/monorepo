@@ -292,6 +292,18 @@ describe("PayoutService.getById", () => {
   });
 });
 
+const SALE_LINE: PayoutLine = {
+  id: "sale1",
+  payoutId: "po1",
+  paymentId: "pay1",
+  amount: "1000.00",
+  kind: "sale",
+  createdByUserId: null,
+  note: null,
+  createdAt: new Date(),
+  payment: { amount: "1000.00", platformFee: "50.00" },
+};
+
 describe("PayoutService.addAdjustment", () => {
   it("rejects adjustments on terminal-state payouts", async () => {
     const repo = makeRepo({
@@ -324,7 +336,7 @@ describe("PayoutService.addAdjustment", () => {
       findById: vi.fn().mockResolvedValueOnce(before).mockResolvedValueOnce(after),
       insertLine: vi.fn().mockResolvedValue(newLine),
       updateTotals: vi.fn().mockResolvedValue(after),
-      listLines: vi.fn().mockResolvedValue([newLine]),
+      listLines: vi.fn().mockResolvedValue([SALE_LINE, newLine]),
     });
     const svc = serviceFor(repo);
     const result = await svc.addAdjustment(ACTOR_ID, "po1", {
@@ -333,7 +345,7 @@ describe("PayoutService.addAdjustment", () => {
     });
     expect(result.grossAmount).toBe("1100.00");
     expect(result.netAmount).toBe("1050.00");
-    expect(result.lines).toHaveLength(1);
+    expect(result.lines).toHaveLength(2);
     expect(repo.updateTotals).toHaveBeenCalledWith("po1", {
       grossAmount: "1100.00",
       platformFee: "50.00",
@@ -352,7 +364,17 @@ describe("PayoutService.addAdjustment", () => {
       findById: vi.fn().mockResolvedValue(before),
       insertLine: vi.fn().mockResolvedValue({} as PayoutLine),
       updateTotals: vi.fn().mockResolvedValue(after),
-      listLines: vi.fn().mockResolvedValue([]),
+      listLines: vi.fn().mockResolvedValue([
+        SALE_LINE,
+        {
+          ...SALE_LINE,
+          id: "adj",
+          paymentId: null,
+          amount: "-50.00",
+          kind: "adjustment",
+          payment: null,
+        },
+      ]),
     });
     const svc = serviceFor(repo);
     await svc.addAdjustment(ACTOR_ID, "po1", {
