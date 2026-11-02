@@ -3,6 +3,7 @@ import {
   accountLinkRedirect,
   accountsUnavailableHref,
   confirmSwitchHref,
+  refusedPageTarget,
   restoreAccountHref,
   safeHopNext,
   safeRetryTarget,
@@ -92,6 +93,24 @@ describe("safeRetryTarget", () => {
       "/switch-account/unavailable",
     ]) {
       expect(safeRetryTarget(retry)).toBe("/home");
+    }
+  });
+});
+
+describe("refusedPageTarget", () => {
+  it("keeps a page of the app", () => {
+    expect(refusedPageTarget("/team/activity")).toBe("/team/activity");
+  });
+
+  it("has no target for a missing, unsafe or hop address", () => {
+    for (const next of [
+      undefined,
+      "",
+      "https://evil.example",
+      "//evil.example",
+      "/switch-account",
+    ]) {
+      expect(refusedPageTarget(next)).toBeNull();
     }
   });
 });

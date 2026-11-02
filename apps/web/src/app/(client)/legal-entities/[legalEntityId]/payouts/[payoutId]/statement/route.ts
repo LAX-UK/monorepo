@@ -1,8 +1,13 @@
+import { resolvePublicOriginUrl } from "@/lib/bff/public-origin-url.server";
 import { fetchLegalEntityPayoutStatementPdf } from "@/lib/data/http/payout-statement-proxy.server";
+import { payoutStatementUnavailableHref } from "@/lib/seller/payout-statement-links";
 import { NextResponse } from "next/server";
 
-/** Proxies to the API PDF route so dashboard URLs match
- * `/legal-entities/:id/payouts/:payoutId/statement` while auth stays cookie-based.
+/**
+ * Proxies to the API PDF route so dashboard URLs match
+ * `/legal-entities/:id/payouts/:payoutId/statement` while auth stays cookie-based. The PDF is
+ * served by the redirect the API answers with; anything else sends the person to the designed
+ * error page (Try again, contact client services) rather than showing raw JSON.
  */
 export async function GET(
   _request: Request,
@@ -18,27 +23,8 @@ export async function GET(
     }
   }
 
-  if (res.status === 503) {
-    return NextResponse.json(
-      { error: "statement_pending" },
-      { status: 503, headers: { "Retry-After": res.headers.get("retry-after") ?? "5" } },
-    );
-  }
-
-  if (res.status === 422) {
-    const body = (await res.json().catch(() => ({}))) as { detail?: string };
-    return NextResponse.json(
-      { error: "statement_generation_failed", detail: body.detail },
-      { status: 422 },
-    );
-  }
-
-  if (!res.ok) {
-    return NextResponse.json(
-      { error: "statement_fetch_failed", status: res.status },
-      { status: res.status },
-    );
-  }
-
-  return NextResponse.json({ error: "unexpected_statement_response" }, { status: 502 });
+  return NextResponse.redirect(
+    resolvePublicOriginUrl(payoutStatementUnavailableHref(legalEntityId, payoutId)),
+    303,
+  );
 }

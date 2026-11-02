@@ -83,6 +83,7 @@ export default async function OrganisationDocumentsPage() {
         organisationName: member.displayName,
         slots: loaded.slots,
         received: loaded.received,
+        checkedOn: entity?.statusChangedAt ?? null,
       })
     : null;
 

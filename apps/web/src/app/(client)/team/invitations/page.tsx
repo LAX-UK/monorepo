@@ -31,7 +31,6 @@ export default async function TeamInvitationsPage() {
       <WorkspaceTabNoAccess
         access={access}
         legalEntityId={acting.id}
-        organisationName={acting.displayName}
         actor={actor}
         userId={user.id}
       />
