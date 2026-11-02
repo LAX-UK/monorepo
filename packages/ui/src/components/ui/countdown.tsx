@@ -23,7 +23,7 @@ export type CountdownUrgency = "normal" | "soon" | "imminent";
 export type CountdownProps = {
   end: Date;
   /** The one time wording, from milliseconds left: the app passes its countdown formatter. */
-  format: (msRemaining: number) => string;
+  format: (msRemaining: number, end: Date) => string;
   className?: string;
   /** When false, no live region (visual only). */
   announce?: boolean;
@@ -70,7 +70,7 @@ export function Countdown({
       ? "…"
       : secondsRemaining <= 0
         ? "Ended"
-        : format(secondsRemaining * 1000);
+        : format(secondsRemaining * 1000, end);
   const bucket = secondsRemaining == null ? "" : formatAnnounceBucket(secondsRemaining);
 
   const urgency: CountdownUrgency =

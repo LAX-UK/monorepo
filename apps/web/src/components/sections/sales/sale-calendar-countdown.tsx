@@ -2,7 +2,7 @@
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { formatLondonDateTime } from "@/lib/datetime/london-time";
-import { formatCountdownShort } from "@/lib/format-countdown";
+import { closingChipText } from "@/lib/time/opens-line";
 import { Countdown, cn } from "@auction/ui";
 
 type Props = {
@@ -32,7 +32,7 @@ export function SaleCalendarCountdown({ endIso, className }: Props) {
   return (
     <Countdown
       end={end}
-      format={formatCountdownShort}
+      format={closingChipText}
       variant="default"
       className={cn(
         "text-center font-body text-sm font-semibold leading-4 tabular-nums text-cta-on",

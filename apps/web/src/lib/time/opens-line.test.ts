@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { opensBadgeLabel, opensLine } from "./opens-line";
+import { closingChipText, opensBadgeLabel, opensLine } from "./opens-line";
 
 const now = new Date("2026-11-01T12:00:00Z");
 const at = (ms: number) => new Date(now.getTime() + ms);
@@ -58,5 +58,27 @@ describe("opensBadgeLabel", () => {
   });
   it("adds the year when it is not this year", () => {
     expect(opensBadgeLabel(new Date("2027-02-22T10:00:00Z"), now)).toBe("Opens Mon 22 Feb 2027");
+  });
+});
+
+describe("closingChipText", () => {
+  const end = new Date("2026-11-16T12:00:00Z");
+  const text = (ms: number) => closingChipText(ms, end);
+
+  it("counts down at 6 days 23 hours", () => {
+    expect(text(6 * 24 * H + 23 * H)).toBe("6d 23h");
+  });
+
+  it("still counts down at exactly 7 days", () => {
+    expect(text(7 * 24 * H)).toBe("7d 0h");
+  });
+
+  it("tells the date past 7 days", () => {
+    expect(text(7 * 24 * H + H)).toBe("Closes Mon 16 Nov");
+    expect(text(9 * 24 * H)).toBe("Closes Mon 16 Nov");
+  });
+
+  it("shows seconds only in the final hour", () => {
+    expect(text(42 * 60_000 + 9_000)).toBe("42m 9s");
   });
 });
