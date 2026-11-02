@@ -38,6 +38,38 @@ export type MemberRemovedPayload = {
   stopped_bids?: unknown[];
 };
 
+export type SaleRegistrationDecidedPayload = {
+  saleId: string;
+  userId: string;
+  decision: "approved" | "declined";
+  bidLimit?: string | null;
+  reason?: string | null;
+};
+
+export type SaleRegistrationLimitChangedPayload = {
+  saleId: string;
+  userId: string;
+  previousLimit: string | null;
+  limit: string | null;
+};
+
+export type OrganisationLimitChangedPayload = {
+  previous_limit: string | null;
+  limit: string | null;
+  /** Who made the change: a member of the organisation, or LAX staff. */
+  changed_by: "member" | "staff";
+};
+
+/** Payment cancelled; `reason` says whether the buyer, the clock or the bank ended it. */
+export type PaymentCancelledPayload = {
+  lotId?: string | null;
+  buyerUserId?: string | null;
+  reason?: string;
+};
+
+/** Reason recorded when the buyer's bank did not complete a delayed payment. */
+export const ASYNC_PAYMENT_FAILED_REASON = "stripe_checkout_async_payment_failed";
+
 export type LotVoidedPayload = {
   lotId?: string;
   reason: string;
@@ -59,6 +91,10 @@ export const SUPPORTED_EVENT_TYPES = [
   "lot.withdrawal_declined",
   "payout.clawback_required",
   "legal_entity.member_removed",
+  "sale_registration.decided",
+  "sale_registration.bid_limit_changed",
+  "legal_entity.bidding_limit_changed",
+  "payment.cancelled",
 ] as const;
 
 export function formatReason(reason: string): string {

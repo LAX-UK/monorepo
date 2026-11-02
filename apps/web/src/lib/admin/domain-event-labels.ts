@@ -163,6 +163,8 @@ const LABELS: Record<string, string> = {
   "sale.unpublished": "Sale reverted to draft",
   "sale.cancelled": "Sale cancelled",
   "sale.ended": "Sale marked ended",
+  "sale_registration.decided": "Sale registration decided",
+  "sale_registration.bid_limit_changed": "Sale registration bidding limit changed",
   "sale.soft_deleted": "Sale deleted",
 
   "saleroom.display.paired": "Saleroom display paired",

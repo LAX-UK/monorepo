@@ -69,6 +69,7 @@ function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunCont
       getPayoutAmounts: vi.fn(),
       getLotForVoided: vi.fn(),
       getLotTitle: vi.fn(),
+      getSaleTitle: vi.fn(),
       getUserForProxyNotice: vi.fn(),
       getWinnerContact: vi.fn(),
       getManualReviewContext: vi.fn(),

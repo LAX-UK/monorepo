@@ -14,6 +14,7 @@ export interface INotificationFanoutReader {
     sellerLegalEntityId: string | null;
   } | null>;
   getLotTitle(lotId: string): Promise<string | null>;
+  getSaleTitle(saleId: string): Promise<string | null>;
   getUserForProxyNotice(
     userId: string,
   ): Promise<{ email: string; name: string | null; firstName: string | null } | null>;
