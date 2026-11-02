@@ -249,7 +249,12 @@ describe("organisation buying routes", () => {
     const first = await post(app, `/purchases/${LOTS.paid}/problem`, body);
     const again = await post(app, `/purchases/${LOTS.paid}/problem`, body);
     const read = await app.request(`/legal-entities/purchases/${LOTS.paid}/problem`);
-    const [one, two, current] = await Promise.all([first.json(), again.json(), read.json()]);
+    type Body = { data: unknown };
+    const [one, two, current] = (await Promise.all([first.json(), again.json(), read.json()])) as [
+      Body,
+      Body,
+      Body,
+    ];
     expect(one.data).toMatchObject({ created: true, problem: { reference: "PR-3F2A9C1E" } });
     expect(two.data).toMatchObject({ created: false, problem: { reference: "PR-3F2A9C1E" } });
     expect(current.data).toMatchObject({ reference: "PR-3F2A9C1E", status: "open" });
