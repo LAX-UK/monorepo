@@ -49,6 +49,19 @@ table with `PUT /admin/enquiry-routing`; each changed row is audited as `enquiry
 The alert is queued after the enquiry is stored. If it cannot be queued the enquiry is kept and an
 error is logged with the enquiry id.
 
+## Photos, documents and the acknowledgement
+
+- A visitor's first file starts a draft (`POST /contact-enquiries/drafts`, limited like the form).
+  The token is HMAC-signed with a key derived from `CHECK_IN_TOKEN_SECRET`, so no new secret is
+  needed; rotating that secret ends open drafts. It is sent as `x-enquiry-draft` on `/uploads/*`.
+- Files are held 24 hours (`upload_object.enquiry_draft_id`, or the signed-in owner), at most 8 per
+  draft. The worker's hourly `gc-pending-uploads` job removes enquiry files that no enquiry holds.
+- Sending claims the checked files into `marketing_enquiry_attachment`; rejected or unfinished files
+  are left out and never stop the enquiry.
+- Every enquiry queues `bid-enquiry-received` through the outbox, keyed `bid-enquiry-received:<id>`.
+  It never carries the price in mind or the photos. The From address is the platform's no-reply, so
+  the email tells the sender to write to the contact address and quote the reference.
+
 ## Rollback
 
 `packages/db/drizzle/0275_rollback.sql` removes the reference, intent, owner and workflow columns,
@@ -56,3 +69,6 @@ the private sale detail, attachment, note, message and routing tables, and retur
 enquiry to `handled` and every other one to `new`. `packages/db/drizzle/0274_rollback.sql` drops
 `marketing_enquiry`; stored enquiries are lost. Roll back the application release first, and roll
 back `0275` before `0274`.
+
+`packages/db/drizzle/0276_rollback.sql` deletes files uploaded for a draft (they have no user) and
+restores `owner_user_id NOT NULL`; roll it back before `0275`.
