@@ -2,9 +2,11 @@ import { PayoutSettlementWorkspace } from "@/components/admin/payout-settlement-
 import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { UrlSuccessToast } from "@/components/admin/staff/url-success-toast";
 import {
+  type SettlementSearchParams,
   loadAdminSettlementPage,
   loadSettlementPreview,
 } from "@/lib/admin/finance/load-settlement-page";
+import { SETTLEMENT_RESULT_PARAM } from "@/lib/admin/finance/settlement-result";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { FormPage, Notice } from "@auction/staff-ui";
 import type { Metadata } from "next";
@@ -17,7 +19,7 @@ export const metadata: Metadata = metadataForPrivate(
 export default async function PayoutSettlementPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; success?: string }>;
+  searchParams: Promise<SettlementSearchParams>;
 }) {
   const { success, error } = await loadAdminSettlementPage(await searchParams);
 
@@ -44,7 +46,7 @@ export default async function PayoutSettlementPage({
           }
         : {})}
     >
-      <UrlSuccessToast message={success} />
+      <UrlSuccessToast message={success} param={SETTLEMENT_RESULT_PARAM} />
       <PayoutSettlementWorkspace loadPreview={loadSettlementPreview} />
     </FormPage>
   );

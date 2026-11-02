@@ -7,6 +7,7 @@ import {
 } from "../infrastructure/bid-context-enriched-authenticator.js";
 import { DrizzleBidUserContextLoader } from "../infrastructure/drizzle-bid-user-context.loader.js";
 import { JwtAuthenticator } from "../infrastructure/jwt-authenticator.js";
+import { ShortLivedStaffContextLoader } from "../infrastructure/short-lived-staff-context.loader.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export type CreateAuthenticatorInput = {
@@ -33,9 +34,8 @@ export function createContainerAuthenticator(input: CreateAuthenticatorInput): I
       );
     },
   });
-  const bidContextLoader = new DrizzleBidUserContextLoader(
-    db,
-    new DrizzleStaffRoleAssignmentReader(db),
+  const bidContextLoader = new ShortLivedStaffContextLoader(
+    new DrizzleBidUserContextLoader(db, new DrizzleStaffRoleAssignmentReader(db)),
   );
   return new BidContextEnrichedAuthenticator(
     new IdentityPrincipalAuthenticator(identityResolver),
