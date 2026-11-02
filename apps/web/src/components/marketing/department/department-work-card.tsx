@@ -1,7 +1,10 @@
+import { LotCardBidderState } from "@/components/lot-card/lot-card-bidder-state";
+import { LotCardLine } from "@/components/lot-card/lot-card-line";
+import { LotEstimateLine } from "@/components/lot-card/lot-estimate-line";
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { MediaImage } from "@/components/ui/media-image";
+import { lotCardLineModel, lotCardShowsStatusBadge } from "@/lib/lot-card/lot-card-line";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
-import { lotPriceDisplay } from "@/lib/lot-price-display";
 import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { lotPath } from "@/lib/seo/url";
 import { MarketingWorkCard } from "@auction/marketing-ui";
@@ -10,15 +13,13 @@ import { isPublicLotStatus } from "@auction/validators";
 
 type Props = {
   lot: Lot;
-  /** Replaces the lot's own price line: a sold work's price with the buyer's premium. */
-  price?: { label: string; value: string };
 };
 
 /** One work in a department row: the shared work card with the lot's status, medium and price. */
-export function DepartmentWorkCard({ lot, price }: Props) {
+export function DepartmentWorkCard({ lot }: Props) {
   const estimate = lotEstimateLine(lot);
   const medium = lot.medium?.trim() || null;
-  const line = price ?? lotPriceDisplay(lot);
+  const line = lotCardLineModel(lot, new Date());
   return (
     <MarketingWorkCard
       href={lotPath(lot)}
@@ -31,19 +32,20 @@ export function DepartmentWorkCard({ lot, price }: Props) {
           sizes="(max-width: 768px) 50vw, 25vw"
         />
       }
-      {...(isPublicLotStatus(lot.status)
+      {...(isPublicLotStatus(lot.status) && lotCardShowsStatusBadge(line)
         ? { mediaStatus: <LotStatusBadge {...lotStatusBadgeProps(lot)} /> }
         : {})}
       details={
         <>
           {medium ? <p className="line-clamp-1">{medium}</p> : null}
-          {estimate ? <p className="line-clamp-1">Estimate {estimate}</p> : null}
+          <LotEstimateLine value={estimate} />
         </>
       }
       footer={
-        <p className="line-clamp-1">
-          {line.label} {line.value}
-        </p>
+        <div className="flex w-full min-w-0 flex-col gap-1.5">
+          <LotCardLine model={line} />
+          <LotCardBidderState lotId={lot.id} />
+        </div>
       }
     />
   );

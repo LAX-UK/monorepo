@@ -1,6 +1,7 @@
 "use client";
 
 import { TOPIC_ICON } from "@/components/organisation-home/home-needs-you";
+import { NeedsYouRaisedTime } from "@/components/organisation-home/needs-you-raised-time";
 import type { InboxAccountTag } from "@/lib/notifications/inbox-row.vm";
 import type { NeedsYouRowView } from "@/lib/organisation-home/needs-you-view";
 import { cn } from "@auction/ui";
@@ -52,6 +53,7 @@ export function NeedsActionRow({
           <p className="line-clamp-2 text-lax-13 text-lax-muted md:line-clamp-1">{row.detail}</p>
           <p className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5">
             <AccountTag account={account} />
+            <NeedsYouRaisedTime raised={row.raised} />
             {row.due ? (
               <span className="md:hidden">
                 <Due due={row.due} />

@@ -40,6 +40,8 @@ export type NeedsYouServiceDeps = {
   now?: () => Date;
 };
 
+type NeedsYouStanding = NonNullable<Awaited<ReturnType<INeedsYouOrganisationReader["standing"]>>>;
+
 const NOTHING: NeedsYouView = {
   kinds: [],
   tasks: [],
@@ -85,7 +87,7 @@ export class NeedsYouService implements INeedsYouService {
     member: OrganisationMemberActor,
     actor: EntityActor,
     kinds: ReadonlySet<NeedsYouKind>,
-    organisation: NeedsYouFacts["organisation"],
+    standing: NeedsYouStanding,
   ): Promise<{ facts: NeedsYouFacts; truncated: boolean }> {
     const now = this.now();
     const windows = needsYouWindows(now);
@@ -206,16 +208,19 @@ export class NeedsYouService implements INeedsYouService {
       when(any("identity", "source_of_funds"), () => this.deps.facts.viewerChecks(member.userId), {
         identity: "verified" as const,
         sourceOfFundsRequested: false,
+        sourceOfFundsRequestedAt: null,
       }),
     ]);
 
     const dueBy = this.deps.deadlines.chooseByFor(unsold.rows);
     const facts: NeedsYouFacts = {
       actor,
-      organisation,
+      organisation: standing,
       now,
       viewerIdentity: checks.identity,
       sourceOfFundsRequested: checks.sourceOfFundsRequested,
+      sourceOfFundsRequestedAt: checks.sourceOfFundsRequestedAt,
+      organisationStatusChangedAt: standing.statusChangedAt,
       agreementsToAccept,
       changesRequested,
       unreadReplies,
@@ -223,6 +228,7 @@ export class NeedsYouService implements INeedsYouService {
         id: row.lotId,
         title: row.title,
         dueBy: dueBy.get(row.lotId) ?? null,
+        endedAt: row.endedAt,
       })),
       purchases,
       salesToRegister: registrations.flatMap((authorisation) =>

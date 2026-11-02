@@ -4,6 +4,7 @@ import {
   DISPUTE_ALLOCATION_WRITE_ACCESS,
   FAILED_JOBS_READ_ACCESS,
   FAILED_JOBS_WRITE_ACCESS,
+  MARKETING_ENQUIRIES_ACCESS,
   PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
   PAYMENT_WRITE_ACCESS,
   SALES_ACCESS,
@@ -33,6 +34,7 @@ import { createAdminRoutes } from "./admin.js";
 const SALE_ID = "00000000-0000-4000-8000-000000000001";
 const LOT_ID = "00000000-0000-4000-8000-000000000002";
 const PAYMENT_ID = "00000000-0000-4000-8000-000000000003";
+const ENQUIRY_ID = "00000000-0000-4000-8000-000000000004";
 
 function buildApp(staffRoles: StaffRoles | undefined) {
   const container = {
@@ -159,6 +161,20 @@ const ACTIONS: AdminAction[] = [
     path: "/admin/system/failed-jobs/restore",
     body: { ids: ["dlq:email:1"] },
     expectedRoles: ["administrator"],
+  },
+  {
+    name: "open a contact enquiry",
+    rule: MARKETING_ENQUIRIES_ACCESS,
+    method: "GET",
+    path: `/admin/enquiries/${ENQUIRY_ID}`,
+    expectedRoles: ["administrator", "client_services"],
+  },
+  {
+    name: "mark a contact enquiry handled",
+    rule: MARKETING_ENQUIRIES_ACCESS,
+    method: "POST",
+    path: `/admin/enquiries/${ENQUIRY_ID}/handled`,
+    expectedRoles: ["administrator", "client_services"],
   },
   {
     name: "list sale registrations",

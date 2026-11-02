@@ -243,7 +243,7 @@ describe("card state line", () => {
       tone: "success",
       icon: "tick",
     });
-    expect(line("maximum_set")).toMatchObject({ text: "Maximum bid set", tone: "neutral" });
+    expect(line("maximum_set")).toMatchObject({ text: "Maximum set", tone: "neutral" });
     expect(line("won", "endedSold")).toMatchObject({ text: "You won this lot", tone: "success" });
     expect(line("lost", "endedSold")).toMatchObject({ text: "You didn't win", tone: "neutral" });
   });

@@ -7,7 +7,7 @@ import {
 } from "@/lib/actions/submissions";
 import { SUBMISSION_SUBMIT_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 

@@ -5,10 +5,12 @@ import { boughtWork, returnedWork, worksInView } from "./collection-works";
 import { payoutDetailVm } from "./payout-detail.vm";
 import { sendToSpecialistsLabel } from "./sell-flow";
 import {
+  appliedSoldFilters,
   parseSoldListQuery,
   soldInView,
   soldListSearch,
   soldRecord,
+  soldStages,
   soldYears,
 } from "./sold-and-payouts-list";
 
@@ -34,7 +36,7 @@ describe("soldRecord", () => {
     const paying = soldRecord(sold("a"), NOW);
     expect(paying.badge.label).toBe("Buyer paying");
     expect(paying.net).toBeNull();
-    expect(paying.hammer).toBe("£9,200");
+    expect(paying.hammer).toBe("£9,200.00");
     expect(paying.meta).toEqual(["Autumn Modern British", "lot 31", "sold 22 Oct"]);
     const paid = soldRecord(
       sold("b", {
@@ -58,8 +60,33 @@ describe("soldRecord", () => {
     const query = parseSoldListQuery({ year: "2025" });
     expect(soldInView(records, query).map((r) => r.lotId)).toEqual(["b"]);
     expect(soldInView(records, { ...query, year: null, sort: "highest" })[0]?.lotId).toBe("b");
-    expect(soldListSearch({ view: "sold", q: "", year: null, sort: "newest" })).toBe("?tab=sold");
+    expect(soldListSearch({ view: "sold", q: "", year: null, stage: null, sort: "newest" })).toBe(
+      "?tab=sold",
+    );
     expect(parseSoldListQuery({ year: "1999" }).year).toBeNull();
+  });
+});
+
+describe("the money filter", () => {
+  const records = [
+    soldRecord(sold("a", { stage: "paid_out" }), NOW),
+    soldRecord(sold("b", { stage: "in_payout" }), NOW),
+    soldRecord(sold("c", { stage: "paid_out" }), NOW),
+  ];
+
+  it("lists only the stages present, in the order money moves", () => {
+    expect(soldStages(records)).toEqual(["in_payout", "paid_out"]);
+  });
+
+  it("narrows the list, names a chip and round-trips through the address", () => {
+    const query = parseSoldListQuery({ stage: "in_payout" });
+    expect(soldInView(records, query).map((r) => r.lotId)).toEqual(["b"]);
+    expect(appliedSoldFilters({ ...query, year: 2026 })).toEqual([
+      { id: "year", label: "Year: 2026" },
+      { id: "stage", label: "Money: In payout" },
+    ]);
+    expect(soldListSearch(query)).toBe("?tab=sold&stage=in_payout");
+    expect(parseSoldListQuery({ stage: "lost" }).stage).toBeNull();
   });
 });
 
@@ -100,7 +127,11 @@ describe("payoutDetailVm", () => {
     expect(vm.title).toBe("Payout of £12,860.00");
     expect(vm.status.label).toBe("On its way");
     expect(vm.statusNote).toBe("Sent yesterday, usually 2 working days");
-    expect(vm.lines[0]).toMatchObject({ lot: "Lot 7", fees: "-£2,363.40", receive: "£12,236.60" });
+    expect(vm.lines[0]).toMatchObject({
+      lot: "Lot 7",
+      fees: "\u2212£2,363.40",
+      receive: "£12,236.60",
+    });
     expect(vm.lines[1]).toMatchObject({
       work: "Refund to a buyer",
       hammer: null,
@@ -153,7 +184,7 @@ describe("collection works", () => {
     expect(work.meta).toEqual(["returned unsold 22 Oct", "C-1987"]);
     expect(work.canConsign).toBe(false);
     expect(work.consignLabel).toBe("Consign again");
-    expect(worksInView([work], { q: "harbour", sort: "newest" })).toHaveLength(1);
+    expect(worksInView([work], { q: "harbour", where: null, sort: "newest" })).toHaveLength(1);
   });
 });
 

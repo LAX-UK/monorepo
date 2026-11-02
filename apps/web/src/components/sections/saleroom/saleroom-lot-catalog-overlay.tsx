@@ -21,6 +21,8 @@ type Props = {
   layout?: "overlay" | "inline";
   /** When true, use adaptive overlay chrome from AdaptiveMediaFrame. */
   useOverlayChrome?: boolean;
+  /** False when the card prints the clock in its own price line, so the image carries no timer. */
+  showTimer?: boolean;
 };
 
 const SALEROOM_PILL_OVERLAY =
@@ -69,6 +71,7 @@ export function SaleroomLotCatalogOverlay({
   saleForLifecycle,
   layout = "overlay",
   useOverlayChrome = false,
+  showTimer = true,
 }: Props) {
   const now = useNow(1000);
   const saleroomLive = useSaleroomLive();
@@ -115,6 +118,7 @@ export function SaleroomLotCatalogOverlay({
   }
 
   if (overlay.kind === "timer") {
+    if (!showTimer) return null;
     const timer =
       now != null && (overlay.timerState.kind === "live" || overlay.timerState.kind === "opensSoon")
         ? timerText(overlay.timerState.msLeft, now)

@@ -596,6 +596,7 @@ export {
   type EndingAuthorisation,
   type ExpiredInvitation,
   type PendingAccessRequest,
+  type PurchaseNextStepTimes,
   type UnreadReply,
   type NeedsYouCounts,
   type NeedsYouFacts,

@@ -14,7 +14,8 @@ describe("buildBidFooterColumns", () => {
   it("orders navigation, LAX products, then legal", () => {
     expect(buildBidFooterColumns([shop]).map((column) => column.id)).toEqual([
       "auctions",
-      "services",
+      "selling",
+      "account",
       "company",
       "lax-products",
       "legal",
@@ -35,7 +36,7 @@ describe("buildBidFooterColumns", () => {
   });
 
   it("lists private sales with the selling links", () => {
-    const services = buildBidFooterColumns([]).find((column) => column.id === "services");
-    expect(services?.links).toContainEqual({ href: "/sell/private-sales", label: "Private sales" });
+    const selling = buildBidFooterColumns([]).find((column) => column.id === "selling");
+    expect(selling?.links).toContainEqual({ href: "/sell/private-sales", label: "Private sales" });
   });
 });

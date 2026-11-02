@@ -43,6 +43,23 @@ describe("renderEmail", () => {
     expect(rendered.text).toContain("Saturday morning?");
   });
 
+  it("renders contact form alerts for the staff enquiry inbox", async () => {
+    const rendered = await renderEmail("marketing-enquiry-alert", {
+      topicLabel: "Press",
+      name: "Ada Lovelace",
+      senderEmail: "ada@example.com",
+      phone: "+44 20 7946 0000",
+      message: "A question about the next sale.",
+      sourcePage: "/contact?intent=press",
+      adminEnquiryUrl: "https://lax.bid/admin/enquiries/3f2a9c1e",
+    });
+    expect(rendered.subject).toBe("New contact enquiry: Press");
+    expect(rendered.text).toContain("Email: ada@example.com");
+    expect(rendered.text).toContain("Sent from: /contact?intent=press");
+    expect(rendered.text).toContain("A question about the next sale.");
+    expect(rendered.html).toContain("https://lax.bid/admin/enquiries/3f2a9c1e");
+  });
+
   it("names guest enquiry senders so staff know there is no account to look up", async () => {
     const rendered = await renderEmail("art-general-enquiry-alert", {
       topicLabel: "General enquiry",

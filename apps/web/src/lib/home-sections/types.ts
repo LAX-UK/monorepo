@@ -1,3 +1,4 @@
+import type { LotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import type { HomeSectionId } from "@auction/domain";
 
 export type HomeLink = { href: string; label: string };
@@ -11,10 +12,12 @@ export type HomeLotCard = {
   imageUrl: string | null;
   /** Whether a person can still follow the lot: it is live or coming up, not sold or ended. */
   watchable: boolean;
-  /** "Lot 4", then the estimate while the lot is not yet sold. */
+  /** "Lot 4". */
   details: string[];
-  /** "Sold for £7,750", "Current bid £6,250"; null when the lot has no price to show. */
-  price: { qualifier: string | null; value: string } | null;
+  /** "Estimate £4,000 – £6,000"; null when staff set none. */
+  estimate: string | null;
+  /** The price and clock the card prints: the same line as every other lot card. */
+  line: LotCardLineModel;
 };
 
 export type HomeLotRail = {

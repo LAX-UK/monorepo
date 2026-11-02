@@ -216,6 +216,57 @@ describe("createIssuerAccountIdentityGateway", () => {
       });
     });
 
+    it("posts the password change with both passwords in the body only", async () => {
+      const change = gateway(async () => Response.json({ changed: true, created: false }));
+      expect(
+        await change.gateway.changePassword(actor, {
+          currentPassword: "Current-password-1",
+          newPassword: "A-better-passphrase-2",
+        }),
+      ).toEqual({ status: "ok", value: { changed: true, created: false } });
+      const request = lastRequest(change.fetchImpl);
+      expect(request.url).toBe("https://auth.internal/api/auth/lax/account-password/change");
+      expect(request.url).not.toContain("passphrase");
+      expect(Object.fromEntries(request.body)).toEqual({
+        token: "access-token",
+        sid: "current-sid",
+        current_password: "Current-password-1",
+        new_password: "A-better-passphrase-2",
+      });
+    });
+
+    it("omits the current password when setting a first one", async () => {
+      const first = gateway(async () => Response.json({ changed: true, created: true }));
+      await first.gateway.changePassword(actor, {
+        currentPassword: null,
+        newPassword: "A-better-passphrase-2",
+      });
+      expect(lastRequest(first.fetchImpl).body.has("current_password")).toBe(false);
+    });
+
+    it.each([
+      [403, "invalid_password"],
+      [422, "invalid_password_policy"],
+      [422, "password_breached"],
+      [422, "same_password"],
+      [429, "rate_limited"],
+    ] as const)("passes the password refusal %i %s through as rejected", async (status, error) => {
+      const { gateway: g } = gateway(async () => Response.json({ error }, { status }));
+      expect(await g.changePassword(actor, { currentPassword: "x", newPassword: "y" })).toEqual({
+        status: "rejected",
+        reason: error,
+      });
+    });
+
+    it("asks for a fresh sign-in on reauth_required", async () => {
+      const { gateway: g } = gateway(async () =>
+        Response.json({ error: "reauth_required" }, { status: 403 }),
+      );
+      expect(await g.changePassword(actor, { currentPassword: "x", newPassword: "y" })).toEqual({
+        status: "reauth_required",
+      });
+    });
+
     it.each([
       [409, "email_taken"],
       [409, "phone_taken"],

@@ -7,6 +7,7 @@ import {
   type AccountAddressInput,
   type AccountContactError,
   type AccountEmailChangeConfirmedResponse,
+  type AccountPasswordError,
   accountAddressDefaultKindSchema,
   accountAddressInputSchema,
   accountEmailSchema,
@@ -15,9 +16,19 @@ import {
   accountPhoneSchema,
 } from "@auction/identity-contracts";
 import { getLaxAccountContainer } from "../container";
-import type { AccountActionResult, BackupCodesActionResult } from "../domain/account-action-result";
+import type {
+  AccountActionResult,
+  BackupCodesActionResult,
+  PasswordActionResult,
+} from "../domain/account-action-result";
 import { addressRejectionMessage, isAddressRejection } from "../domain/account-addresses.vm";
 import { contactRejectionMessage } from "../domain/account-contact.vm";
+import {
+  PASSWORD_FIELDS,
+  isPasswordRejection,
+  passwordRejection,
+  validatePasswordForm,
+} from "../domain/account-password.vm";
 import type { IdentityActor, IdentityCallResult } from "../ports/account-identity-gateway";
 import { loadAccountRecord } from "./load-account-record";
 
@@ -25,10 +36,12 @@ const UNAVAILABLE_MESSAGE =
   "We couldn't do that just now. Nothing was changed. Please try again in a moment.";
 const UNAVAILABLE = { status: "error", message: UNAVAILABLE_MESSAGE } as const;
 
-function rejectionMessage(reason: AccountContactError | AccountAddressError): string {
-  return isAddressRejection(reason)
-    ? addressRejectionMessage(reason)
-    : contactRejectionMessage(reason);
+function rejectionMessage(
+  reason: AccountContactError | AccountAddressError | AccountPasswordError,
+): string {
+  if (isAddressRejection(reason)) return addressRejectionMessage(reason);
+  if (isPasswordRejection(reason)) return passwordRejection(reason).message;
+  return contactRejectionMessage(reason);
 }
 
 type NotOk = Exclude<AccountActionResult, { status: "ok" }>;
@@ -115,6 +128,35 @@ export async function regenerateBackupCodesAction(): Promise<BackupCodesActionRe
     return { status: "error", message: rejectionMessage(result.reason) };
   }
   return result.status === "reauth_required" ? result : UNAVAILABLE;
+}
+
+/**
+ * Changes the password, or sets the first one when no current password is sent. The form checks
+ * the same limits, and this repeats them because actions are public endpoints. The passwords are
+ * passed straight to the issuer: they are never stored, logged or returned.
+ */
+export async function changePasswordAction(input: {
+  currentPassword: string | null;
+  newPassword: string;
+}): Promise<PasswordActionResult> {
+  const { newPassword, currentPassword } = input;
+  const errors = validatePasswordForm(
+    { current: currentPassword ?? "", next: newPassword, confirm: newPassword },
+    currentPassword === null ? "create" : "change",
+  );
+  const invalid = PASSWORD_FIELDS.find((field) => errors[field]);
+  if (invalid) return { status: "error", message: errors[invalid] ?? "", field: invalid };
+  const actor = await loadActor();
+  if (actor === "no_session") return { status: "reauth_required" };
+  if (actor === "unavailable") return { ...UNAVAILABLE, field: null };
+  const { identity } = getLaxAccountContainer();
+  const result = await identity.changePassword(actor, { currentPassword, newPassword });
+  if (result.status === "ok") return { status: "ok", created: result.value.created };
+  if (result.status === "reauth_required") return result;
+  if (result.status === "rejected" && isPasswordRejection(result.reason)) {
+    return { status: "error", ...passwordRejection(result.reason) };
+  }
+  return { ...UNAVAILABLE, field: null };
 }
 
 export async function startEmailChangeAction(email: string): Promise<AccountActionResult> {

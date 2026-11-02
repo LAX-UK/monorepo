@@ -47,6 +47,12 @@ const envSchema = z
     ADDRESS_BOOK_SOURCE: z.enum(["identity", "legacy"]).default("identity"),
     IDENTITY_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     IDENTITY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
+    /** Separate credentials for the subject-export routes, so the eligibility credential cannot read personal data. */
+    IDENTITY_SUBJECT_EXPORT_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    IDENTITY_SUBJECT_EXPORT_CLIENT_SECRET: z.preprocess(
+      emptyToUndefined,
+      z.string().min(32).optional(),
+    ),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     /**
      * Legal entity that owns Bid records in the cross-product portfolio. Defaults to Bid's
@@ -310,6 +316,8 @@ const envSchema = z
     PLATFORM_CATALOG_LEGAL_ENTITY_ID: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
     /** Support inbox for money-path alerts and ops (required in production). */
     OPS_SUPPORT_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
+    /** Staff inbox for contact form enquiries; unset means no alert email (the work inbox still lists them). */
+    BID_ENQUIRY_NOTIFICATION_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
     /** On-call / escalation inbox (required in production). */
     OPS_ONCALL_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
     /** Server-side GTM tagging endpoint (e.g. https://gtm.lax.bid). Prod-only marketing events. */

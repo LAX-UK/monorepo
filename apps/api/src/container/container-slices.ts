@@ -17,6 +17,7 @@ import type {
 import type { Env } from "../env.js";
 import type { IMyBuyerAgentAuthorisationsService } from "../services/buyer-agents/my-buyer-agent-authorisations.service.js";
 import type {
+  AdminEnquiryRouteServices,
   AdminIntegrationRouteServices,
   AdminRouteServices,
   AdminStaffSecurityRouteServices,
@@ -47,6 +48,7 @@ import type {
 } from "../services/interfaces/identity-issuer-client.js";
 import type { IdentityRouteServices } from "../services/interfaces/identity-routes.js";
 import type { ILotLifecycleService, ILotReadService } from "../services/interfaces/lot-service.js";
+import type { IMarketingEnquiryIntake } from "../services/interfaces/marketing-enquiry-service.js";
 import type { IOAuthAttributionStore } from "../services/interfaces/oauth-attribution-store.js";
 import type { IOrganisationBiddingLimitsService } from "../services/interfaces/organisation-bidding-limits-service.js";
 import type { PlatformCronRouteServices } from "../services/interfaces/platform-cron-routes/index.js";
@@ -75,6 +77,7 @@ import type {
   IUserSuspensionChecker,
 } from "../services/interfaces/user-suspension.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
+import type { SubjectExportService } from "../subject-export/subject-export.service.js";
 import type { ContainerAdminServices } from "./create-admin-services.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
 import type { ContainerCatalogAdminReaders } from "./create-catalog-admin-readers.js";
@@ -311,9 +314,15 @@ export type ContainerCronSlice = Pick<
   "accountDeletionEligibilityService" | "brevoWebhookIngestService"
 >;
 
+/** "Download my data" readers for LAX Bid. */
+export type ContainerSubjectExportSlice = { subjectExportService: SubjectExportService };
+
 /** Route-facing admin bag (mirrors `container.admin`). */
 export type ContainerAdminRoutesSlice = {
-  admin: AdminRouteServices & AdminStaffSecurityRouteServices & AdminIntegrationRouteServices;
+  admin: AdminRouteServices &
+    AdminStaffSecurityRouteServices &
+    AdminIntegrationRouteServices &
+    AdminEnquiryRouteServices;
 };
 
 /** Route-facing bidding bag (mirrors `container.bidding`). */
@@ -399,6 +408,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerUserNotificationSlice &
   ContainerAdminSlice &
   ContainerCronSlice &
+  ContainerSubjectExportSlice &
   ContainerFinanceSlice &
   ContainerPlatformCronSlice &
   ContainerComplianceSlice &
@@ -416,6 +426,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerOrganisationWorkspaceSlice &
   ContainerOrganisationTeamSlice &
   ContainerOrganisationSecuritySlice &
+  ContainerMarketingEnquirySlice &
   ContainerUserRouteServicesSlice;
 
 export type Container = ContainerComposedSlices;
@@ -515,6 +526,17 @@ export type ContainerOnsiteEventRoutesSlice = Pick<
   | "onsiteEventStaffCheckInService"
 >;
 
+/** Public contact form enquiries. */
+export type ContainerMarketingEnquirySlice = {
+  marketingEnquiryService: IMarketingEnquiryIntake;
+};
+
+/** Public contact enquiry HTTP handler. */
+export type ContainerMarketingEnquiryRoutesSlice = Pick<
+  Container,
+  "rateLimitStore" | "marketingEnquiryService"
+>;
+
 /** Newsletter signup. */
 export type ContainerNewsletterRoutesSlice = Pick<Container, "newsletterSignupService">;
 
@@ -551,6 +573,12 @@ export type ContainerAdminMyStaffToolsRoutesSlice = {
 export type ContainerInternalIdentityDeletionEligibilityRoutesSlice = Pick<
   Container,
   "accountDeletionEligibilityService"
+>;
+
+/** Machine-authenticated Identity "download my data" boundary. */
+export type ContainerInternalIdentitySubjectExportRoutesSlice = Pick<
+  Container,
+  "subjectExportService"
 >;
 
 /** Brevo marketing webhook ingest. */

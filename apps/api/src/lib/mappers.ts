@@ -35,6 +35,7 @@ export function mapLotToSummary(lot: Lot | PublicLotView): LotSummary {
     startTime: lot.startTime,
     endTime: lot.endTime,
     images: lot.images,
+    ...(lot.imageAssets?.length ? { imageAssets: lot.imageAssets } : {}),
     categoryIds: lot.categoryIds ?? (lot.categoryId ? [lot.categoryId] : []),
     marketingDetails: summaryMarketingDetails(lot),
     ...(lot.status === "ended" ? { hasWinner: lot.winnerId != null } : {}),

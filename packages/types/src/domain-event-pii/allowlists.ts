@@ -374,6 +374,9 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "failed_job.retried": new Set(["queue", "jobName", "confirmRepeat"]),
   "failed_job.discarded": new Set(["queue", "jobName", "reason", "note"]),
   "failed_job.restored": new Set(["queue", "jobName"]),
+  /** A contact form message arrived or was handled: the topic only; what the sender wrote stays on the enquiry. */
+  "marketing_enquiry.received": new Set(["enquiryId", "intent"]),
+  "marketing_enquiry.handled": new Set(["enquiryId", "intent"]),
   "staff.role_assigned": new Set(["assignmentId", "role", "startsAt", "endsAt", "reason"]),
   "staff.role_removed": new Set(["assignmentId", "role", "reason"]),
   "staff.role_expired": new Set(["assignmentId", "role", "endedAt"]),

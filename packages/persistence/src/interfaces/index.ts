@@ -1002,6 +1002,12 @@ export type {
   RecordPerson,
 } from "./workspace-buying.readers.js";
 export type {
+  IMarketingEnquiryRepository,
+  MarketingEnquiryRecord,
+  MarketingEnquiryStatus,
+  NewMarketingEnquiry,
+} from "./marketing-enquiry.repository.js";
+export type {
   IPurchaseProblemRepository,
   NewPurchaseProblem,
   PurchaseProblemRecord,

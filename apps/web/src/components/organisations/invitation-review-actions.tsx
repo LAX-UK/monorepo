@@ -7,7 +7,7 @@ import {
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import { CLIENT_ROUTES, withAccount } from "@/lib/navigation/client-routes";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
@@ -21,7 +21,7 @@ export function InvitationReviewActions({ invitation }: Props) {
     <div className="flex flex-wrap gap-3">
       <Button
         type="button"
-        variant="cta"
+        variant="primary"
         disabled={pending}
         onClick={() => {
           start(async () => {
@@ -42,7 +42,7 @@ export function InvitationReviewActions({ invitation }: Props) {
       </Button>
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         disabled={pending}
         onClick={() => {
           start(async () => {

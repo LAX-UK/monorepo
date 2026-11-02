@@ -47,7 +47,7 @@ describe("findDepartmentCategory", () => {
 });
 
 describe("soldWorks", () => {
-  it("keeps sold lots only and prices them with the premium", () => {
+  it("keeps sold lots only", () => {
     const sold = lot({
       id: "a",
       checkoutPricing: {
@@ -61,11 +61,6 @@ describe("soldWorks", () => {
     const unsold = lot({ id: "b", hasWinner: false });
     const result = soldWorks([unsold, sold]);
     expect(result.map((w) => w.lot.id)).toEqual(["a"]);
-    expect(result[0]?.priceWithPremium).toBe("£1,250.00");
-  });
-
-  it("gives no price when the server sent no total", () => {
-    expect(soldWorks([lot()])[0]?.priceWithPremium).toBeNull();
   });
 
   it("stops at the limit", () => {

@@ -109,7 +109,7 @@ export function MarketingWorkCard({
               </div>
             ) : null}
             {footer ? (
-              <div className="min-w-0 font-medium text-on-surface" data-slot="footer">
+              <div className="w-full min-w-0 font-medium text-on-surface" data-slot="footer">
                 {footer}
               </div>
             ) : null}

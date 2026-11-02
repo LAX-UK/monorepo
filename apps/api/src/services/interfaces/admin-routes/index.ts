@@ -136,6 +136,7 @@ export type AdminRouteServicesWithoutSatellites = AdminCatalogRouteServices &
 export type AdminRouteServices = AdminRouteServicesWithoutSatellites & AdminSatelliteRouteServices;
 
 export type {
+  AdminEnquiryRouteServices,
   AdminIntegrationRouteServices,
   AdminStaffSecurityRouteServices,
 } from "./admin-satellite-routes.js";
@@ -155,6 +156,7 @@ export type {
   AdminPaymentsRoutesContainer,
   AdminPeopleImpersonationRoutesContainer,
   AdminPeopleUsersRoutesContainer,
+  AdminEnquiryRoutesContainer,
   AdminSatelliteFailedJobsRoutesContainer,
   AdminSatelliteJobQueuesRoutesContainer,
   AdminSatelliteMarketingEventsRoutesContainer,

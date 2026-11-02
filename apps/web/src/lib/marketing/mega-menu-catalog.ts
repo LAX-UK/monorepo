@@ -4,20 +4,11 @@ import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { sellDepartmentsAnchorHref } from "@/lib/marketing/sell-departments";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 
-/** Timed auctions: online-only scheduled sales on the calendar (best-effort deep link). */
-const timedAuctionsHref = calendarSalesHref({
-  tab: "upcoming",
-  deliveryMode: "online",
-});
+/** Where a visitor without an account signs up for new-sale emails: the alerts band on home. */
+export const VISITOR_ALERTS_HREF = "/#alerts";
 
-const investmentGradeMinGbp = 50_000;
-
-function searchHref(sort?: "endingAsc" | "createdDesc", ending?: "24h"): string {
-  const params = new URLSearchParams();
-  if (sort && sort !== "endingAsc") params.set("sort", sort);
-  if (ending) params.set("ending", ending);
-  const qs = params.toString();
-  return qs ? `/search?${qs}` : "/search";
+function endingSoonHref(): string {
+  return "/search?ending=24h";
 }
 
 /**
@@ -31,12 +22,11 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
       href: "/sales",
       label: "Auctions",
       items: [
-        { href: calendarSalesHref({ tab: "live" }), label: "Live now" },
+        { href: calendarSalesHref({ tab: "live" }), label: "Live now", requires: "liveSales" },
+        { href: endingSoonHref(), label: "Ending soon", requires: "endingSoon" },
         { href: calendarSalesHref({ tab: "upcoming" }), label: "Upcoming auctions" },
-        { href: timedAuctionsHref, label: "Timed auctions" },
-        { href: "/results", label: "Past results" },
         { href: "/sales", label: "Auction calendar" },
-        { href: "/settings#alerts", label: "Auction alerts" },
+        { href: VISITOR_ALERTS_HREF, label: "Auction alerts" },
       ],
     },
     {
@@ -51,20 +41,17 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
       ],
     },
     {
-      id: "buy",
-      href: "/search",
-      label: "Buy",
+      id: "artists",
+      href: "/artists",
+      label: "Artists",
       items: [
-        { href: "/search", label: "Browse lots" },
-        { href: searchHref("endingAsc", "24h"), label: "Ending soon" },
-        { href: searchHref("createdDesc"), label: "New this week" },
-        { href: calendarSalesHref({ maxPrice: 5_000 }), label: "Under £5,000" },
-        { href: calendarSalesHref({ maxPrice: 25_000 }), label: "Under £25,000" },
-        {
-          href: calendarSalesHref({ minPrice: investmentGradeMinGbp }),
-          label: "Investment-grade works",
-        },
-        { href: "/buy", label: "Buying guide" },
+        { href: "/artists", label: "Browse all artists" },
+        { href: "/artists/featured", label: "Featured artists" },
+        { href: "/artists/living", label: "Living artists" },
+        { href: "/artists/historical", label: "Historical & deceased" },
+        { href: "/artists/kind/brands", label: "Brands" },
+        { href: "/artists/kind/marques", label: "Marques" },
+        { href: sellIntakeHref(), label: "Start a submission" },
       ],
     },
     {
@@ -81,21 +68,7 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
         { href: "/sell/estate", label: "Estate collections" },
         { href: "/sell/corporate", label: "Corporate collections" },
         { href: PRIVATE_SALES_PATH, label: "Private sales" },
-        { href: "/selling", label: "Seller dashboard" },
-      ],
-    },
-    {
-      id: "artists",
-      href: "/artists",
-      label: "Artists",
-      items: [
-        { href: "/artists", label: "Browse all artists" },
-        { href: "/artists/featured", label: "Featured artists" },
-        { href: "/artists/living", label: "Living artists" },
-        { href: "/artists/historical", label: "Historical & deceased" },
-        { href: "/artists/kind/brands", label: "Brands" },
-        { href: "/artists/kind/marques", label: "Marques" },
-        { href: sellIntakeHref(), label: "Start a submission" },
+        { href: "/selling", label: "Selling" },
       ],
     },
   ];

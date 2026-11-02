@@ -7,6 +7,7 @@ import type {
 import { describe, expect, it } from "vitest";
 import { consignmentNextStep } from "./consignment-next";
 import {
+  type ConsignmentRecord,
   NO_CONSIGNMENT_TASKS,
   buildConsignmentRecords,
   consignmentTasksFromNeedsYou,
@@ -15,10 +16,13 @@ import {
 import { consignmentStatus } from "./consignment-status";
 import { consignmentStep } from "./consignment-step";
 import {
+  appliedConsignmentFilters,
+  consignmentSales,
   consignmentViewCounts,
   consignmentsInView,
   consignmentsListSearch,
   defaultConsignmentView,
+  isConsignmentListNarrowed,
   parseConsignmentsListQuery,
 } from "./consignments-list";
 
@@ -196,6 +200,7 @@ describe("buildConsignmentRecords", () => {
       label: "Review",
       href: "/selling/consignments/s-agree#agreement",
       blockedReason: null,
+      needsYou: true,
     });
     // Held by the account's state: the step stays, with the reason.
     expect(
@@ -221,18 +226,47 @@ describe("consignments list query", () => {
     );
     expect(parseConsignmentsListQuery({ tab: "sold", stage: "needs_changes" }).stage).toBeNull();
     expect(
-      consignmentsListSearch({ view: "sold", q: "", sentBy: null, stage: null, sort: "updated" }),
+      consignmentsListSearch({
+        view: "sold",
+        q: "",
+        sentBy: null,
+        sale: null,
+        stage: null,
+        sort: "updated",
+      }),
     ).toBe("?tab=sold");
+  });
+
+  it("filters by sale, names it as a chip and lists the sales to choose from", () => {
+    const query = parseConsignmentsListQuery({ tab: "all", sale: "Autumn Works on Paper" });
+    expect(query.sale).toBe("Autumn Works on Paper");
+    expect(consignmentsListSearch(query)).toBe("?tab=all&sale=Autumn+Works+on+Paper");
+    expect(appliedConsignmentFilters(query)).toEqual([
+      { id: "sale", label: "Sale: Autumn Works on Paper" },
+    ]);
+    expect(isConsignmentListNarrowed(query)).toBe(true);
+    const records = [
+      { saleTitle: "Spring sale" },
+      { saleTitle: null },
+      { saleTitle: "Autumn Works on Paper" },
+      { saleTitle: "Spring sale" },
+    ] as ConsignmentRecord[];
+    expect(consignmentSales(records)).toEqual(["Autumn Works on Paper", "Spring sale"]);
   });
 });
 
 describe("what waits on the member", () => {
   it("reads an organisation's from the one Needs-you reader", () => {
     const tasks = consignmentTasksFromNeedsYou([
-      { kind: "agreement", consignment: { id: "s1", title: "A" } },
-      { kind: "changes", submission: { id: "s2", title: "B" }, note: null },
-      { kind: "unsold_due", lots: [{ id: "l1", title: "C" }], dueBy: NOW },
-      { kind: "reply", consignment: { id: "s3", title: "D" }, from: "Clara Mendes" },
+      { kind: "agreement", consignment: { id: "s1", title: "A" }, raisedAt: null },
+      { kind: "changes", submission: { id: "s2", title: "B" }, note: null, raisedAt: null },
+      { kind: "unsold_due", lots: [{ id: "l1", title: "C" }], dueBy: NOW, raisedAt: null },
+      {
+        kind: "reply",
+        consignment: { id: "s3", title: "D" },
+        from: "Clara Mendes",
+        raisedAt: null,
+      },
     ]);
     expect([...tasks.agreements]).toEqual(["s1"]);
     expect([...tasks.changes]).toEqual(["s2"]);
@@ -242,7 +276,12 @@ describe("what waits on the member", () => {
 
   it("lists a person's reply from their specialist under Needs you, as the tab counts it", () => {
     const tasks = consignmentTasksFromNeedsYou([
-      { kind: "reply", consignment: { id: "s1", title: "Thames" }, from: "Clara Mendes" },
+      {
+        kind: "reply",
+        consignment: { id: "s1", title: "Thames" },
+        from: "Clara Mendes",
+        raisedAt: null,
+      },
     ]);
     const records = buildConsignmentRecords({
       submissions: [submission("s1", { status: "under_review" }), submission("s2")],
