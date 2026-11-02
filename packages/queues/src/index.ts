@@ -7,6 +7,7 @@ export * from "./admin-validators.js";
 export * from "./types.js";
 export * from "./registry.js";
 export * from "./redaction.js";
+export * from "./failed-jobs/index.js";
 export * from "./dlq.js";
 export * from "./mutation-policy.js";
 export * from "./queue-options.js";

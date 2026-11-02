@@ -44,6 +44,7 @@ import {
   DrizzleAdminWorkItemsReader,
   DrizzleDisputeCaseRepository,
   DrizzleFailedJobRepository,
+  DrizzleFailedJobReviewRepository,
   DrizzleLegalEntityDocumentAdminRepository,
   DrizzleLegalEntityLifecycleAdminRepository,
   DrizzleStaffRoster,
@@ -73,6 +74,7 @@ export type AdminRepositories = {
   legalEntityDocumentAdminRepository: ILegalEntityDocumentAdminRepository;
   adminMarketingEventOutboxRepository: IAdminMarketingEventOutboxRepository;
   failedJobRepository: IFailedJobRepository;
+  failedJobReviewRepository: DrizzleFailedJobReviewRepository;
 };
 
 export function createAdminRepositories(
@@ -102,6 +104,7 @@ export function createAdminRepositories(
   const legalEntityDocumentAdminRepository = new DrizzleLegalEntityDocumentAdminRepository(db);
   const adminMarketingEventOutboxRepository = new DrizzleAdminMarketingEventOutboxRepository(db);
   const failedJobRepository = new DrizzleFailedJobRepository(db);
+  const failedJobReviewRepository = new DrizzleFailedJobReviewRepository(db);
 
   return {
     adminUserReader,
@@ -127,5 +130,6 @@ export function createAdminRepositories(
     legalEntityDocumentAdminRepository,
     adminMarketingEventOutboxRepository,
     failedJobRepository,
+    failedJobReviewRepository,
   };
 }

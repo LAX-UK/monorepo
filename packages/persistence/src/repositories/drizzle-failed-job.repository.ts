@@ -25,7 +25,9 @@ export class DrizzleFailedJobRepository implements IFailedJobRepository {
     const [claimed] = await this.db
       .update(failedJobs)
       .set({ replayedAt: new Date(), replayedBy })
-      .where(and(eq(failedJobs.id, id), isNull(failedJobs.replayedAt)))
+      .where(
+        and(eq(failedJobs.id, id), isNull(failedJobs.replayedAt), isNull(failedJobs.discardedAt)),
+      )
       .returning();
     if (!claimed) return null;
     return {

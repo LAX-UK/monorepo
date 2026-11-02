@@ -105,5 +105,10 @@ export function parsePublicArtistDirectoryRow(raw: unknown): PublicArtistDirecto
   return {
     ...parseArtistProfile(row),
     lotCount: Number(row.lotCount ?? 0),
+    resultCount: Number(row.resultCount ?? 0),
+    workImageUrl:
+      typeof row.workImageUrl === "string" && row.workImageUrl.trim()
+        ? row.workImageUrl.trim()
+        : null,
   };
 }

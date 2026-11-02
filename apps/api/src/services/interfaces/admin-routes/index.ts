@@ -98,6 +98,7 @@ export type {
 export type {
   AdminMarketingEventsReplayBody,
   AdminSatelliteRouteServices,
+  IAdminFailedJobsService,
   IAdminJobQueuesApplicationService,
   IAdminMarketingEventsApplicationService,
   IAdminOnsiteEventsApplicationService,
@@ -154,6 +155,7 @@ export type {
   AdminPaymentsRoutesContainer,
   AdminPeopleImpersonationRoutesContainer,
   AdminPeopleUsersRoutesContainer,
+  AdminSatelliteFailedJobsRoutesContainer,
   AdminSatelliteJobQueuesRoutesContainer,
   AdminSatelliteMarketingEventsRoutesContainer,
   AdminSatelliteOnsiteEventsRoutesContainer,

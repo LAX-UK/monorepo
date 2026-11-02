@@ -1,4 +1,3 @@
-import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
 import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-frame";
 import { ArtistWatchToggle } from "@/components/marketing/artist-watch-toggle";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
@@ -7,8 +6,7 @@ import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { ShareButton } from "@/components/marketing/share-button";
 import { ArtistRelatedDirectorySection } from "@/components/sections/artists/artist-related-directory-section";
 import { ArtistStickyFollow } from "@/components/sections/artists/artist-sticky-follow";
-import { ArtistWorksEmptyState } from "@/components/sections/artists/artist-works-empty-state";
-import { ArtistWorksGrid } from "@/components/sections/artists/artist-works-grid";
+import { ArtistWorksSection } from "@/components/sections/artists/artist-works-section";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { ArtistDetailPageData } from "@/lib/marketing/load-artist-detail-page";
@@ -47,7 +45,6 @@ export function ArtistDetailView({ vm, jsonLdText }: ArtistDetailViewProps) {
     })),
     ...vm.pivotChips.map((c) => ({ key: c.href, href: c.href, label: c.label })),
   ];
-  const lotCount = vm.artistLots.length;
   /** Same image order as the directory card, so the profile matches the card it came from. */
   const portraitSrc = vm.artistPortraitUrl ?? (vm.registry.heroImageUrl?.trim() || null);
 
@@ -162,26 +159,16 @@ export function ArtistDetailView({ vm, jsonLdText }: ArtistDetailViewProps) {
         </section>
       ) : null}
 
-      <section id="works" aria-labelledby="artist-works-heading" className="scroll-mt-24">
-        <h2
-          id="artist-works-heading"
-          className="mb-4 font-headline text-[length:clamp(1.5rem,2.8vw,2rem)] font-medium leading-tight text-on-surface"
-        >
-          At auction
-        </h2>
-        {lotCount === 0 ? (
-          <ArtistWorksEmptyState />
-        ) : (
-          <>
-            <ViewItemListTracker
-              listId={`artist:${vm.id}`}
-              listName="Artist works"
-              itemIds={vm.artistLots.map((l) => l.id)}
-            />
-            <ArtistWorksGrid lots={vm.artistLots} currentUserId={vm.currentUserId} />
-          </>
-        )}
-      </section>
+      <ArtistWorksSection
+        artistId={vm.id}
+        artistName={vm.artistName}
+        profilePath={vm.profilePath}
+        works={vm.works}
+        activeTab={vm.activeWorksTab}
+        currentUserId={vm.currentUserId}
+        watching={vm.watching}
+        isAuthenticated={vm.isAuthed}
+      />
 
       {relatedLinks.length > 0 ? (
         <nav aria-label="Browse similar artists" className="mt-12 flex flex-col gap-3">

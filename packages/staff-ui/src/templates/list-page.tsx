@@ -90,6 +90,8 @@ export type ListPageProps<T> = {
   /** The role that can open the page, named when access is denied. */
   requiredRole?: string;
 
+  /** A Notice about the whole list, under the header: a setting that blocks its actions. */
+  notice?: React.ReactNode;
   /** Work waiting on this list, one line each, linking to the filtered view. */
   attention?: readonly AttentionStripItem[];
   /** At most four headline numbers and the period they cover. */
@@ -179,6 +181,7 @@ export function ListPage<T>({
   editRequires,
   roleLabel: roleLabelProp,
   requiredRole,
+  notice,
   attention,
   metrics,
   views,
@@ -353,6 +356,7 @@ export function ListPage<T>({
   return (
     <div className="flex flex-col gap-6">
       {header}
+      {notice}
       {attention ? <AttentionStrip items={attention} Link={Link} /> : null}
       {metrics && !error ? (
         <MetricStrip

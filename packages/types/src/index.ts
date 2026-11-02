@@ -26,6 +26,7 @@ export * from "./payout.js";
 export * from "./bill-to.js";
 export * from "./domain-event-pii.js";
 export * from "./audit-log.js";
+export * from "./failed-jobs.js";
 export * from "./domain-event-catalog/index.js";
 export * from "./lax-staff-platforms.js";
 export * from "./staff-role-refusal.js";

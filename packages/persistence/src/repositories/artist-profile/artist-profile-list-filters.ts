@@ -5,6 +5,8 @@ import type { AdminArtistListOptions } from "../../interfaces/artist-profile-adm
 import {
   artistHasPublicBrowseLotsExists,
   artistPublicCatalogLotCountSubquery,
+  artistPublicResultCountSubquery,
+  artistRepresentativeWorkImageSubquery,
 } from "../artist-public-lot-count.sql.js";
 
 /** Correlated lot counts for SELECT lists. Drizzle strips table qualifiers inside
@@ -20,11 +22,17 @@ export const lotCountExpr = sql<number>`(
     and lot.deleted_at is null
 )`;
 export const publicLotCountExpr = artistPublicCatalogLotCountSubquery();
+export const publicResultCountExpr = artistPublicResultCountSubquery();
+export const representativeWorkImageExpr = artistRepresentativeWorkImageSubquery();
 export const aliasCountExpr = sql<number>`(
   select count(*)::int
   from artist_alias
   where artist_alias.artist_profile_id = artist_profile.id
 )`;
+
+/** An empty or blank death year is "not recorded", the same as null. */
+export const hasNoDeathYear = sql`nullif(btrim(${artistProfile.deathYear}), '') is null`;
+export const hasDeathYear = sql`nullif(btrim(${artistProfile.deathYear}), '') is not null`;
 
 /** Extract the leading 4-digit year from `birth_year` text using a Postgres regex.
  * Returns `NULL` when no year prefix is present. Reused by decade filter + facets. */
@@ -146,8 +154,8 @@ export function buildPublicDirectoryWhere(options: PublicDirectoryListOptions) {
   } else if (options.kind) {
     refinedFilters.push(eq(artistProfile.kind, options.kind));
   }
-  if (options.living === true) refinedFilters.push(isNull(artistProfile.deathYear));
-  if (options.historical === true) refinedFilters.push(isNotNull(artistProfile.deathYear));
+  if (options.living === true) refinedFilters.push(hasNoDeathYear);
+  if (options.historical === true) refinedFilters.push(hasDeathYear);
   if (options.nationality?.trim()) {
     refinedFilters.push(ilike(artistProfile.nationality, `%${options.nationality.trim()}%`));
   }

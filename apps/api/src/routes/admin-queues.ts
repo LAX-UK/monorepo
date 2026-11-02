@@ -8,6 +8,7 @@ import {
 import type { StaffRoles } from "@auction/types";
 import type { Hono } from "hono";
 import type { ContainerAdminQueuesRoutesSlice } from "../container.js";
+import { actorFromContext } from "../lib/admin-actor-context.js";
 import {
   mapPauseError,
   mapReplayError,
@@ -18,20 +19,6 @@ import { createBaseLogger } from "../lib/logger.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createAuditAccessMiddleware } from "../middleware/audit-access.js";
 import { requireSuperAdminStaffRole } from "../middleware/require-staff-role.js";
-import type { ActorContext } from "../services/interfaces/queue-inspector.js";
-
-function actorFromContext(c: {
-  get(key: "userId"): string | null | undefined;
-  get(key: "userStaffRoles"): StaffRoles | undefined;
-  req: { header: (name: string) => string | undefined };
-}): ActorContext {
-  const requestId = c.req.header("x-request-id");
-  return {
-    userId: c.get("userId") as string,
-    staffRoles: c.get("userStaffRoles"),
-    ...(requestId !== undefined ? { requestId } : {}),
-  };
-}
 
 export function attachAdminQueuesRoutes(
   platform: Hono<{
