@@ -68,6 +68,8 @@ export type MarketingHangProps = {
    */
   headingSize?: "compact" | "section";
   className?: string;
+  /** An id and data attributes for the section, so a page or a test can find it. */
+  sectionProps?: { id?: string; [attribute: `data-${string}`]: string | undefined };
 };
 
 const HEADING_SIZE = {
@@ -128,6 +130,7 @@ export function MarketingHang({
   rowLabel = "Works on the wall, scrolls sideways",
   headingSize = "compact",
   className,
+  sectionProps,
 }: MarketingHangProps) {
   const headingId = useId();
   const rowId = useId();
@@ -167,7 +170,11 @@ export function MarketingHang({
   const scrollable = scroll.canScrollStart || scroll.canScrollEnd;
 
   return (
-    <section aria-labelledby={headingId} className={cn("pt-10 sm:pt-14", className)}>
+    <section
+      aria-labelledby={headingId}
+      className={cn("pt-10 sm:pt-14", className)}
+      {...sectionProps}
+    >
       <div
         className={cn(
           MARKETING_PAGE_SHELL,

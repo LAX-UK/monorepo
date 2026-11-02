@@ -48,3 +48,6 @@ export function resolveHomeSections(content: HomeSectionContent): ShopPageSectio
     "gallery-team": true,
   });
 }
+
+/** The id of the "New editions" section, whether it is the hang or the card row. */
+export const NEW_EDITIONS_SECTION_ID = "home-new-editions";

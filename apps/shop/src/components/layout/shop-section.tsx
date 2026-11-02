@@ -19,6 +19,8 @@ export type ShopSectionProps = {
     srLabel?: string;
   };
   className?: string;
+  /** An id and data attributes for the section element, so a test can find it. */
+  sectionProps?: { id?: string; [attribute: `data-${string}`]: string | undefined };
   children: ReactNode;
 };
 
@@ -33,11 +35,16 @@ export function ShopSection({
   subtitle,
   viewAll,
   className,
+  sectionProps,
   children,
 }: ShopSectionProps) {
   const headingId = `${id}-title`;
   return (
-    <section aria-labelledby={headingId} className={cn("flex flex-col gap-6", className)}>
+    <section
+      aria-labelledby={headingId}
+      className={cn("flex flex-col gap-6", className)}
+      {...sectionProps}
+    >
       <MarketingSectionHeader
         heading={
           <h2

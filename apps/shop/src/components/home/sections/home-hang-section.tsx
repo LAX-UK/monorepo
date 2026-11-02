@@ -1,6 +1,7 @@
 "use client";
 
 import type { HomeHangVm } from "@/lib/home/home-hang";
+import { NEW_EDITIONS_SECTION_ID } from "@/lib/home/home-sections";
 import { nextImageSrcSet } from "@/lib/media/next-image-src-set";
 import { MarketingHang, MarketingHangLabel } from "@auction/marketing-ui";
 
@@ -44,6 +45,7 @@ export function HomeHangSection({ hang }: { hang: HomeHangVm }) {
         tile: { title: hang.seeAll.label, note: hang.seeAll.tileNote },
       }}
       headingSize="section"
+      sectionProps={{ id: NEW_EDITIONS_SECTION_ID, "data-home-new-editions": "hang" }}
       rowLabel="New editions: prints on the wall, scrolls sideways"
     />
   );
