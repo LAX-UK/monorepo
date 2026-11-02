@@ -6,12 +6,13 @@ import {
   shopReturn,
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { type RefundLineInput, remainingRefundablePence } from "@auction/shop-domain";
+import { remainingRefundablePence } from "@auction/shop-domain";
 import { and, eq, inArray } from "drizzle-orm";
 import { withAdminIdempotency } from "../../../application/admin/with-admin-idempotency.js";
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
+import { loadOrderRefunds } from "./load-order-refunds.js";
 
 export type CancelAfterPossessionCommand = {
   orderLineId: string;
@@ -78,19 +79,7 @@ export function createCancelAfterPossessionHandler(deps: { uow: ShopUnitOfWorkFa
             throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, "Order is not cancellable", 409);
           }
 
-          const refundRows = await db
-            .select({
-              amountPence: shopRefund.amountPence,
-              status: shopRefund.status,
-              orderLineId: shopRefund.orderLineId,
-            })
-            .from(shopRefund)
-            .where(eq(shopRefund.orderId, order.id));
-          const refunds: RefundLineInput[] = refundRows.map((row) => ({
-            amountPence: row.amountPence,
-            status: row.status,
-            orderLineId: row.orderLineId,
-          }));
+          const refunds = await loadOrderRefunds(db, order.id);
           const remaining = remainingRefundablePence({
             orderTotalPence: order.totalPence,
             lineTotalPence: line.unitPricePence,

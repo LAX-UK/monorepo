@@ -4,8 +4,10 @@ import {
   type AdminRefundReason,
 } from "@auction/shop-contracts";
 import {
+  type RefundLineInput,
   SHOP_FULFILMENT_STATUSES,
   type ShopFulfilmentStatus,
+  cancelledLineIds,
   isShopFulfilmentStatus,
   nextFulfilmentStatuses,
   remainingRefundablePence,
@@ -13,8 +15,10 @@ import {
 import {
   type EntityOption,
   type EnumOption,
+  type StatusPresentation,
   type TimelineEvent,
   formatGbp,
+  formatStaffDateTime,
   humanizeStatus,
 } from "@auction/staff-ui";
 import { orderNumber } from "./order-list.vm";
@@ -71,11 +75,14 @@ export function orderLineLabel(line: OrderLine): string {
 
 /** The lines as picker options: the whole order first, then each line with its price. */
 export function refundTargetOptions(detail: AdminOrderDetail): EntityOption[] {
+  const hasCancelledItems = cancelledLineIds(orderRefundInputs(detail)).size > 0;
   return [
     {
       id: "",
       label: "Whole order",
-      description: `${orderNumber(detail.orderId, detail.reference)} · ${formatGbp(detail.totalPence)}`,
+      description: `${orderNumber(detail.orderId, detail.reference)} · ${formatGbp(detail.totalPence)}${
+        hasCancelledItems ? " · cancelled items excluded" : ""
+      }`,
     },
     ...detail.lines.map((line) => ({
       id: line.orderLineId,
@@ -91,6 +98,28 @@ function isRefundStatus(status: string): status is (typeof REFUND_STATUSES)[numb
   return (REFUND_STATUSES as readonly string[]).includes(status);
 }
 
+/** The order's refunds in the shape the refundable-balance rules read; unknown statuses drop out. */
+function orderRefundInputs(detail: AdminOrderDetail): RefundLineInput[] {
+  return detail.refunds.flatMap((refund) =>
+    isRefundStatus(refund.status)
+      ? [
+          {
+            amountPence: refund.amountPence,
+            status: refund.status,
+            orderLineId: refund.orderLineId,
+            ...(isRefundSource(refund.source) ? { source: refund.source } : {}),
+          },
+        ]
+      : [],
+  );
+}
+
+const REFUND_SOURCES = ["admin", "cancellation", "stripe_dashboard"] as const;
+
+function isRefundSource(source: string): source is (typeof REFUND_SOURCES)[number] {
+  return (REFUND_SOURCES as readonly string[]).includes(source);
+}
+
 /** What may still be refunded, for the whole order or one line, after earlier refunds. */
 export function refundableRemainingPence(detail: AdminOrderDetail, orderLineId: string | null) {
   const line = orderLineId
@@ -99,18 +128,76 @@ export function refundableRemainingPence(detail: AdminOrderDetail, orderLineId: 
   return remainingRefundablePence({
     orderTotalPence: detail.totalPence,
     ...(line ? { lineTotalPence: line.unitPricePence, orderLineId: line.orderLineId } : {}),
-    refunds: detail.refunds.flatMap((refund) =>
-      isRefundStatus(refund.status)
-        ? [
-            {
-              amountPence: refund.amountPence,
-              status: refund.status,
-              orderLineId: refund.orderLineId,
-            },
-          ]
-        : [],
-    ),
+    refunds: orderRefundInputs(detail),
+    orderLines: detail.lines.map((candidate) => ({
+      orderLineId: candidate.orderLineId,
+      totalPence: candidate.unitPricePence,
+    })),
   });
+}
+
+/**
+ * What cancelling this item after possession would do: the customer is refunded what is left on
+ * the line, to their card. Null once the item is cancelled or has nothing left to refund.
+ */
+export function lineCancellation(
+  detail: AdminOrderDetail,
+  line: OrderLine,
+): { refundPence: number } | null {
+  if (detail.status !== "paid" && detail.status !== "partially_refunded") return null;
+  const refundPence = refundableRemainingPence(detail, line.orderLineId);
+  return refundPence > 0 ? { refundPence } : null;
+}
+
+/** The dialog text for cancelling an item: what the system does, so staff never repeat it. */
+export function cancelAfterPossessionDescription(refundPence: number): string {
+  return `Use this when the customer returns an item they already have. This refunds ${formatGbp(
+    refundPence,
+  )} for this item to the customer's card, and holds the artist's payout for it. Do not refund the item again.`;
+}
+
+type Refund = AdminOrderDetail["refunds"][number];
+
+/** The refund issued when this line was cancelled after possession, if there is one still in force. */
+export function lineCancellationRefund(
+  detail: AdminOrderDetail,
+  orderLineId: string,
+): Refund | null {
+  return (
+    detail.refunds.find(
+      (refund) =>
+        refund.orderLineId === orderLineId &&
+        refund.source === "cancellation" &&
+        refund.status !== "cancelled",
+    ) ?? null
+  );
+}
+
+const CANCELLED_LINE_BADGES: Record<string, StatusPresentation> = {
+  pending: { label: "Cancelled, refund pending", tone: "warning" },
+  succeeded: { label: "Cancelled, refunded", tone: "success" },
+  failed: { label: "Cancelled, refund failed", tone: "danger" },
+};
+
+/** How a cancelled line reads in the items list, with its refund's state. */
+export function cancelledLineBadge(refund: Refund): StatusPresentation {
+  return (
+    CANCELLED_LINE_BADGES[refund.status] ?? { label: "Cancelled after possession", tone: "neutral" }
+  );
+}
+
+/** Refunds that could not be sent to the customer's card and wait for staff. */
+export function failedRefunds(detail: AdminOrderDetail): Refund[] {
+  return detail.refunds.filter((refund) => refund.status === "failed");
+}
+
+/** The Refunds list's second line: what was refunded, why it exists and when. */
+export function refundRowContext(refund: Refund, line: OrderLine | undefined): string {
+  const origin =
+    refund.source === "cancellation" ? "Cancelled after possession" : humanizeStatus(refund.source);
+  return `${line ? orderLineLabel(line) : "Whole order"} · ${origin} · ${formatStaffDateTime(
+    refund.createdAt,
+  )}`;
 }
 
 /** Only orders the customer paid for can be refunded. */
@@ -165,6 +252,11 @@ function describeActivity(entry: AdminOrderDetail["activity"][number]): {
         tone: "info",
       };
     }
+    case "retry_refund":
+      return {
+        title: `Refund of ${money(detail.amountPence) ?? "an amount"} sent again`,
+        tone: "info",
+      };
     case "update_fulfilment": {
       const status = text(detail.status);
       const tracking = text(detail.trackingNumber);

@@ -453,6 +453,10 @@ export function createMinimalShopApiTestDeps(
         refundId: "00000000-0000-4000-8000-000000000012",
         status: "pending" as const,
       }),
+      retryRefund: async () => ({
+        refundId: "00000000-0000-4000-8000-000000000012",
+        status: "pending" as const,
+      }),
       markPayoutPaid: async () => ({
         payoutId: "00000000-0000-4000-8000-000000000016",
         status: "paid" as const,

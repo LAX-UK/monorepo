@@ -458,6 +458,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           status: row.status,
           source: row.source,
           createdAt: row.createdAt.toISOString(),
+          ...(row.status === "failed" ? { failureReason: row.lastError } : {}),
         })),
         activity: activity.map(({ audit, actorName }) => ({
           auditId: audit.id,

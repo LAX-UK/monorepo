@@ -117,6 +117,7 @@ import { createMarkPayoutPaidHandler } from "./infrastructure/handlers/admin/mar
 import { createRecordPossessionHandler } from "./infrastructure/handlers/admin/record-possession.handler.js";
 import { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
+import { createRetryRefundHandler } from "./infrastructure/handlers/admin/retry-refund.handler.js";
 import { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
 import { createSyncConnectAccountHandler } from "./infrastructure/handlers/webhooks/sync-connect-account.handler.js";
 import { createDrizzleHomeFeatureListReader } from "./infrastructure/home-features/drizzle-home-feature.reader.js";
@@ -292,6 +293,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const cancellationPolicy = loadShopCancellationPolicy(env);
   const createProductionTask = createCreateProductionTaskHandler({ uow: shopUow });
   const requestRefund = createRequestRefundHandler({ uow: shopUow });
+  const retryRefund = createRetryRefundHandler({ uow: shopUow });
   const markPayoutPaid = createMarkPayoutPaidHandler({ uow: shopUow });
   const updateFulfilment = createUpdateFulfilmentHandler({
     uow: shopUow,
@@ -539,6 +541,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         recordPossession,
         cancelAfterPossession,
         requestRefund,
+        retryRefund,
         markPayoutPaid,
         saleFees,
         stockHolds,

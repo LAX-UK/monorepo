@@ -52,6 +52,7 @@ import type { createMarkPayoutPaidHandler } from "./infrastructure/handlers/admi
 import type { createRecordPossessionHandler } from "./infrastructure/handlers/admin/record-possession.handler.js";
 import type { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import type { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
+import type { createRetryRefundHandler } from "./infrastructure/handlers/admin/retry-refund.handler.js";
 import type { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
 import type { AdminIdempotency } from "./infrastructure/idempotent-admin-command.js";
 import type { HealthDeps } from "./routes/health.routes.js";
@@ -87,6 +88,7 @@ export type AdminRoutesDeps = {
   recordPossession: ReturnType<typeof createRecordPossessionHandler>;
   cancelAfterPossession: ReturnType<typeof createCancelAfterPossessionHandler>;
   requestRefund: ReturnType<typeof createRequestRefundHandler>;
+  retryRefund: ReturnType<typeof createRetryRefundHandler>;
   markPayoutPaid: ReturnType<typeof createMarkPayoutPaidHandler>;
   saleFees: {
     approveFee(
