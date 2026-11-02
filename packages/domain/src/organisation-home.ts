@@ -78,6 +78,22 @@ export const FIRST_STEP_TASK_KINDS = [
 ] as const satisfies readonly NeedsYouKind[];
 
 /**
+ * The tasks a list shows for a member: everything the reader asks, except the setup tasks the
+ * first steps stand for. Those are asked of the people who run the organisation, and Home shows
+ * them as steps, so no list repeats them. Home, the menu's counts and Notifications all read the
+ * reader through this, so they cannot disagree while setup is open.
+ */
+export function visibleNeedsYouTasks<T extends NeedsYouTask>(
+  tasks: readonly T[],
+  actor: EntityActor,
+): T[] {
+  const stepKinds = new Set<NeedsYouKind>(FIRST_STEP_TASK_KINDS);
+  const stepsShown =
+    canRead(actor, SHORTCUTS_AUDIENCE) && tasks.some((task) => stepKinds.has(task.kind));
+  return stepsShown ? tasks.filter((task) => !stepKinds.has(task.kind)) : [...tasks];
+}
+
+/**
  * A new organisation's first steps, for the people who run it: documents, payouts, then the team.
  * Setup is a first step, never a banner. A setup step is `next` only when the reader asks for it,
  * so the step and the sidebar count agree; the team step is `next` once nothing before it is.
@@ -306,10 +322,9 @@ function homeTasksAndSteps<T extends NeedsYouTask>(
     steps && (setupOpen || nothingYet) && steps.some((step) => step.state !== "done")
       ? steps
       : null;
-  const stepKinds = new Set<NeedsYouKind>(firstSteps ? FIRST_STEP_TASK_KINDS : []);
   const askable = needsYou !== null && needsYou.kinds.length > 0;
   return {
-    tasks: askable ? needsYou.tasks.filter((task) => !stepKinds.has(task.kind)) : null,
+    tasks: askable ? visibleNeedsYouTasks(needsYou.tasks, facts.actor) : null,
     needsYouFailed: needsYou === null,
     firstSteps,
   };

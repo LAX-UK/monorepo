@@ -391,6 +391,7 @@ export {
   homeShortcuts,
   organisationFirstSteps,
   FIRST_STEP_TASK_KINDS,
+  visibleNeedsYouTasks,
   type FirstStep,
   type FirstStepId,
   type FirstStepState,

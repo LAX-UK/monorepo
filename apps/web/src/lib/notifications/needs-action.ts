@@ -1,5 +1,6 @@
 import { type NeedsYouRowView, needsYouRowView } from "@/lib/organisation-home/needs-you-view";
 import type { NeedsYouResponse } from "@/lib/workspace/needs-you-read";
+import { type EntityActor, visibleNeedsYouTasks } from "@auction/domain";
 
 /**
  * Notifications › Needs action, from the one Needs-you reader Home and the sidebar counts read:
@@ -15,10 +16,13 @@ export type NeedsActionView = {
 
 export function needsActionRows(
   response: NeedsYouResponse | null,
-  ctx: { organisationName: string; now: Date },
+  ctx: { organisationName: string; now: Date; actor: EntityActor },
 ): Pick<NeedsActionView, "rows" | "failed"> {
   if (!response) return { rows: [], failed: true };
-  return { rows: response.tasks.map((task) => needsYouRowView(task, ctx)), failed: false };
+  return {
+    rows: visibleNeedsYouTasks(response.tasks, ctx.actor).map((task) => needsYouRowView(task, ctx)),
+    failed: false,
+  };
 }
 
 /** The rows a search keeps: its words found in the title or the detail. */

@@ -1,3 +1,6 @@
+import { type EntityActor, needsYouCounts, visibleNeedsYouTasks } from "@auction/domain";
+import type { NeedsYouResponse } from "./needs-you-read";
+
 /**
  * The sidebar's counts come from the one Needs-you reader (`GET /legal-entities/needs-you`), the
  * same table Home's "Needs you" reads, so a count always matches the tasks behind it.
@@ -35,4 +38,17 @@ export function navCountsFrom(counts: NeedsYouCounts | null): Readonly<Record<st
     }
   }
   return out;
+}
+
+/**
+ * The menu's counts for what the lists show: the reader's tasks without the setup tasks Home
+ * shows as first steps, so a count always matches the tasks behind it. A list the reader cut
+ * short keeps the reader's own counts, which cover what it did not send.
+ */
+export function visibleNeedsYouCounts(
+  response: NeedsYouResponse,
+  actor: EntityActor,
+): NeedsYouCounts {
+  if (response.truncated) return response.counts;
+  return needsYouCounts(visibleNeedsYouTasks(response.tasks, actor));
 }

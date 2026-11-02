@@ -2,8 +2,9 @@ import "server-only";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
-import type { NeedsYouCounts } from "@/lib/workspace/needs-you-counts";
+import { type NeedsYouCounts, visibleNeedsYouCounts } from "@/lib/workspace/needs-you-counts";
 import { type NeedsYouResponse, parseNeedsYouResponse } from "@/lib/workspace/needs-you-read";
+import type { EntityActor } from "@auction/domain";
 import { cache } from "react";
 
 /**
@@ -30,6 +31,8 @@ export const getServerNeedsYou = cache(
 /** The sidebar's counts, from the same read as Home. */
 export async function getServerNeedsYouCounts(
   legalEntityId: string,
+  actor: EntityActor,
 ): Promise<NeedsYouCounts | null> {
-  return (await getServerNeedsYou(legalEntityId))?.counts ?? null;
+  const response = await getServerNeedsYou(legalEntityId);
+  return response ? visibleNeedsYouCounts(response, actor) : null;
 }

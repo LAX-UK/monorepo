@@ -43,6 +43,7 @@ export async function NotificationsInboxContent({
           ...needsActionRows(await getServerNeedsYou(acting.id), {
             organisationName: acting.displayName,
             now: new Date(),
+            actor: { role: acting.role, isImpersonation: acting.isImpersonation },
           }),
         }
       : null;

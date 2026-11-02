@@ -183,7 +183,11 @@ describe("NotificationsInboxBoard", () => {
               counts: {},
               truncated: false,
             },
-        { organisationName: "Northbank Gallery", now: new Date("2026-11-02T10:00:00Z") },
+        {
+          organisationName: "Northbank Gallery",
+          now: new Date("2026-11-02T10:00:00Z"),
+          actor: { role: "owner" },
+        },
       ),
     });
 
