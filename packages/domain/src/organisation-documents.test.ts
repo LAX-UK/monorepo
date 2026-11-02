@@ -19,6 +19,10 @@ describe("organisationDocumentState", () => {
     expect(organisationDocumentState(null, "docs_requested")).toBe("requested");
   });
 
+  it("is accepted for an approved organisation, whose check has passed", () => {
+    expect(organisationDocumentState(null, "approved")).toBe("accepted");
+  });
+
   it.each([
     ["pending", "docs_requested", "received"],
     ["pending", "lead", "received"],

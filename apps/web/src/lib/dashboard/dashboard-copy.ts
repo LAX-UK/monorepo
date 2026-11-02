@@ -144,6 +144,10 @@ export const ACCOUNT_LOAD_ERROR = {
     title: "We couldn't load your purchases",
     description: "This is on our side. Your purchases, payments and invoices are safe.",
   },
+  purchase: {
+    title: "We couldn't load this purchase",
+    description: "This is on our side. Your purchase, payment and invoice are safe.",
+  },
   watching: {
     title: "We couldn't load the lots you follow",
     description: "This is on our side. The lots you follow are saved and reminders still go out.",

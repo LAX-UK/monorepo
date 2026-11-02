@@ -7,7 +7,10 @@ import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invi
 import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+
+export const metadata: Metadata = { title: "Invitation" };
 
 function formatExpiry(iso: string): string {
   const d = new Date(iso);
