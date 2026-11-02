@@ -823,9 +823,12 @@ export {
 } from "./access-request.js";
 export * from "./lot-page/index.js";
 export {
+  HOME_LIVE_TABS_MAX,
   HOME_SECTION_ORDER,
   HOME_STATE_WINDOWS,
+  defaultLiveTab,
   homeStates,
+  liveTabSaleIds,
   pruneEmptyHomeSections,
   resolveHomeState,
   resolveHomeViewerSwaps,
@@ -881,6 +884,7 @@ export {
 export { assembleCoverAnalysis, type CoverImageMeasurements } from "./cover-analysis.js";
 export {
   COVER_ANALYSIS_VERSION,
+  COVER_PLATE_MIN_LONG_SIDE,
   COVER_SLOT_FLOORS,
   COVER_ZOOM_MAX,
   COVER_ZOOM_MIN,

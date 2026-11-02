@@ -271,9 +271,9 @@ html.dark {
   --color-on-surface: var(--color-brand-light-cream);
   --color-on-surface-variant: #c9c5bc;
   --color-on-background: var(--color-brand-light-cream);
-  --color-primary: var(--color-brand-light-cream);
+  --color-primary: var(--brand-paper);
   --color-on-primary: var(--color-brand-obsidian);
-  --color-cta-bg: var(--color-brand-light-cream);
+  --color-cta-bg: var(--brand-paper);
   --color-cta-on: var(--color-brand-obsidian);
   --color-product-accent: var(--color-primary);
   --color-secondary: var(--color-brand-light-cream);

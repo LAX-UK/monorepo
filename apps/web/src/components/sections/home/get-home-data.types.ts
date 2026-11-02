@@ -1,4 +1,5 @@
 import type { HomeHangVM } from "@/lib/hang/home-hang";
+import type { LiveNowVM } from "@/lib/hang/live-now";
 import type { HomeSections } from "@/lib/home-sections/types";
 import type { HomeCover } from "@/lib/marketing-cover/home-cover";
 import type { HomeStateResult } from "@auction/domain";
@@ -12,6 +13,8 @@ export type HomePageData = {
   homeState: HomeStateResult;
   /** The works hung under the hero; `null` when fewer than two have photographs. */
   hang: HomeHangVM | null;
+  /** Two or more live sales: a tab per sale, each with its hang. Replaces `hang` when set. */
+  liveNow: LiveNowVM | null;
   /** The cover slides, built for a visitor who is not signed in. */
   cover: HomeCover;
   /** Every section below the hang that has something to show, keyed by section. */

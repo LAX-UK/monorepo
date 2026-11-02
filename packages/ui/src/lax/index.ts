@@ -57,6 +57,8 @@ export {
   SegmentedControl,
   TabNav,
 } from "./tabs.js";
+export { Tabs } from "./tab-panels.js";
+export type { TabPanelItem } from "./tab-panels.js";
 export { formatCount } from "./count.js";
 export { fitViewTabs } from "./tabs-fit.js";
 export type { CountTone, SegmentOption, TabNavItem } from "./tabs.js";

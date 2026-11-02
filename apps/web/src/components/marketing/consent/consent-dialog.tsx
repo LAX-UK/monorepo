@@ -35,7 +35,7 @@ export function ConsentPreferencesDialog() {
         if (!open) closePreferences();
       }}
       title="Cookie settings"
-      description="Choose which optional cookies we may use. You can change this at any time from Cookie preferences in the footer."
+      description="Choose which optional cookies we may use. You can change this at any time from Cookie settings in the footer."
       footer={
         <>
           <Button
