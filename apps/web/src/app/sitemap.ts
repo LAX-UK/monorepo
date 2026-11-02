@@ -31,6 +31,7 @@ const STATIC_PATHS = [
   "/sell/prints",
   "/sell/watches",
   "/sell/motor-cars",
+  "/sell/private-sales",
   "/contact",
   "/legal",
   "/privacy",
