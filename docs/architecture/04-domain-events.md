@@ -130,6 +130,7 @@ This catalog is the contract between event producers and projectors. When you ad
 | `user.profile_updated` | apps/auth | bid identity directory, product lifecycle projectors | Identity contact/display field changed | `{schemaVersion, subjectId, email?, name?, phone?, image?, updatedAt}` |
 | `user.deletion_requested` | apps/auth | bid identity directory, marketing contacts | Self-serve account deletion requested | `{schemaVersion, subjectId, requestedAt}` |
 | `user.deletion_cancelled` | apps/auth | bid identity directory, marketing contacts, zoho | Pending account deletion cancelled | `{schemaVersion, subjectId, cancelledAt}` |
+| `subject.data_export_requested` | apps/auth | worker `subject-data-export` job (not yet built) | A person asked LAX Account for a copy of their data | `{schemaVersion, subjectId, exportId}` (aggregate type `subject_data_export`, id = exportId; ids only) |
 | `user.identity_deleted` | apps/auth | bid identity directory, product lifecycle projectors | Identity PII purge completed | `{schemaVersion, subjectId, deletedAt}` |
 | `kyc.verified` | apps/api | marketing_contacts | Individual KYC approved; sole-trader `lead` → `connect_pending` | `{legalEntityIdsAdvancedToConnectPending[]}` (aggregate type `user`, id = userId) |
 | `bid.first_for_user` | apps/api | zoho | First bid by this user on this lot | `{bidId, lotId, userId, amountCents, placedAt}` |

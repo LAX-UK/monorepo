@@ -23,6 +23,7 @@ import {
   looseDomainEventPayloadV1,
   sourceOfFundsRequiredPayloadSchemaV1,
   sourceOfFundsReviewedPayloadSchemaV1,
+  subjectDataExportRequestedPayloadSchemaV1,
   userCredentialChangedPayloadSchemaV1,
   userDeletionCancelledPayloadSchemaV1,
   userDeletionRequestedPayloadSchemaV1,
@@ -237,6 +238,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "source_of_funds.documents_submitted",
   "source_of_funds.required",
   "source_of_funds.reviewed",
+  "subject.data_export_requested",
   "user.deletion_cancelled",
   "user.deletion_requested",
   "user.email_verified",
@@ -425,6 +427,14 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "source_of_funds.reviewed": {
     schema: sourceOfFundsReviewedPayloadSchemaV1,
     consumers: ["source_of_funds_documents"],
+    piiClassification: "none",
+  },
+  /** Ids only: the worker reads nothing personal from the event, it pulls each product's data itself. */
+  "subject.data_export_requested": {
+    schema: subjectDataExportRequestedPayloadSchemaV1,
+    producers: ["apps/auth"],
+    consumers: ["subject_data_export"],
+    idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
   },
   "user.deletion_cancelled": {

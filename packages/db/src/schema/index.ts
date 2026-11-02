@@ -115,3 +115,4 @@ export {
 } from "../relations.js";
 export * from "./access-request.js";
 export * from "./consignment-messages.js";
+export * from "./subject-data-export.js";

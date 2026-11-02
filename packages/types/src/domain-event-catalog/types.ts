@@ -27,6 +27,7 @@ export type DomainEventConsumer =
   | "shop_identity_projection"
   | "shop_staff_access"
   | "ssf_transmitter"
+  | "subject_data_export"
   | "lot_invoice_initiation"
   | "unsold_choice_deadline"
   | "payment_refund_notify"

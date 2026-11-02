@@ -315,6 +315,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "kind",
     "stripeAccountId",
   ]),
+  /** Subject and export ids only; the request carries nothing personal. */
+  "subject.data_export_requested": new Set(),
   "auth.forgot_password_requested": new Set(),
   "auth.password_credential_enabled": new Set(),
   "auth.email_change_started": new Set(),

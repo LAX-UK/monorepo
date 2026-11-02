@@ -92,6 +92,31 @@ describe("LAX Account security emails", () => {
   });
 });
 
+describe("LAX Account data download emails", () => {
+  it("renders the request notice with when and where it came from", async () => {
+    const rendered = await renderEmail("data-export-requested", BASE);
+    expect(rendered.subject).toBe("A copy of your data was requested");
+    expect(rendered.text).toContain("A copy of the data LAX holds about you was requested");
+    expectSharedParts(rendered);
+  });
+
+  it("renders the ready notice with a link to LAX Account and no file link", async () => {
+    const rendered = await renderEmail("data-export-ready", {
+      userName: "Ada",
+      dataExportUrl: "https://account.lax.bid/account/privacy/download",
+      expiresDisplay: "30 October 2026",
+      retentionDays: 7,
+    });
+    expect(rendered.subject).toBe("Your data is ready");
+    expect(rendered.text).toContain("7 days");
+    for (const body of [rendered.html, rendered.text]) {
+      expect(body).toContain("https://account.lax.bid/account/privacy/download");
+      expect(body).toContain("30 October 2026");
+      expect(body).not.toMatch(/\.zip/);
+    }
+  });
+});
+
 describe("LAX Account deletion emails", () => {
   it("renders the request with the deletion date and how to cancel", async () => {
     const rendered = await renderEmail("account-deletion-requested", {

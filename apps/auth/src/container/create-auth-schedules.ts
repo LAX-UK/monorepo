@@ -4,11 +4,13 @@ import type pino from "pino";
 import { startIdentityDeletionPurgeSchedule } from "../infrastructure/identity-deletion-purge.schedule.js";
 import { startIdentityLifecycleReconciliationSchedule } from "../infrastructure/identity-lifecycle-reconciliation.schedule.js";
 import { startIdentityRetentionSchedule } from "../infrastructure/identity-retention.schedule.js";
+import { startSubjectExportMaintenanceSchedule } from "../infrastructure/subject-export-maintenance.schedule.js";
 import type { BackchannelLogoutDeliveryWorker } from "../services/backchannel-logout-delivery.worker.js";
 import { startBackchannelLogoutSchedule } from "../services/backchannel-logout.schedule.js";
 import type { DurableSecurityEffects } from "../services/durable-security-effects.js";
 import type { SsfDeliveryWorker } from "../services/ssf-delivery.worker.js";
 import type { SsfStreamService } from "../services/ssf-stream.service.js";
+import type { SubjectExportService } from "../services/subject-export.service.js";
 
 export async function createAuthSchedules(options: {
   db: IdentityDatabase;
@@ -18,6 +20,9 @@ export async function createAuthSchedules(options: {
   securityEffects: Pick<DurableSecurityEffects, "drain" | "settle">;
   ssfStreams: Pick<SsfStreamService, "provisionRegisteredStreams">;
   ssfDelivery: Pick<SsfDeliveryWorker, "enqueueFromDomainEvents" | "deliverDue">;
+  subjectExports: Pick<SubjectExportService, "expireDue" | "claimDeadlineAlerts">;
+  /** The logger the overdue alerts go through, wrapped so they also reach Sentry. */
+  alertLog: Pick<pino.Logger, "warn" | "error">;
   ssfEnabled: boolean;
   ssfTimeoutMs: number;
   ssfMaxAttempts: number;
@@ -94,6 +99,14 @@ export async function createAuthSchedules(options: {
     },
     onReconciled: (counts) => options.log.warn(counts, "identity_lifecycle_outbox_reconciled"),
   });
+  const subjectExportMaintenance = startSubjectExportMaintenanceSchedule({
+    service: options.subjectExports,
+    log: options.alertLog,
+    onError: (err) => {
+      options.log.error({ err }, "subject_export_maintenance_failed");
+      Sentry.captureException(err);
+    },
+  });
   let ssfDrain: Promise<void> | null = null;
   const ssf = options.ssfEnabled
     ? setInterval(() => {
@@ -146,6 +159,7 @@ export async function createAuthSchedules(options: {
         retention.stop(),
         deletionPurge.stop(),
         lifecycleReconciliation.stop(),
+        subjectExportMaintenance.stop(),
         ssfDrain ?? Promise.resolve(),
       ]);
     },
