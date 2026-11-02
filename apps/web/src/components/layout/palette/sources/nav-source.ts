@@ -3,6 +3,7 @@ import type { PaletteItem, PaletteSection } from "@/components/layout/palette/ty
 import { getStaffNavGroups } from "@/components/layout/staff-nav";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
+import { PRIVATE_SALES_PATH } from "@/lib/marketing/private-sales";
 import { canOpenAdminRoute } from "@/lib/navigation/admin-route-access";
 import {
   AML_REVIEW_ACCESS,
@@ -42,6 +43,13 @@ const marketingSections: PaletteSection[] = [
       { id: "m-search", href: "/search", label: "Search lots", kind: "page" },
       { id: "m-results", href: "/results", label: "Results", kind: "page" },
       { id: "m-artists", href: "/artists", label: "Browse artists", kind: "page" },
+      {
+        id: "m-private-sales",
+        href: PRIVATE_SALES_PATH,
+        label: "Private sales",
+        hint: "Sell",
+        kind: "page",
+      },
     ],
   },
 ];
