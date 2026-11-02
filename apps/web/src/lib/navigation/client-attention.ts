@@ -111,36 +111,3 @@ export function attentionChip(attention: ClientAttention): AttentionChip | null 
   const rule = CHIP_RULES.find((candidate) => candidate.applies(attention));
   return rule ? { kind: rule.kind, ...rule.chip(attention) } : null;
 }
-
-/** One thing waiting for the person, as a page lists it ("Needs action"). */
-export type AttentionTask = {
-  kind: AttentionChip["kind"];
-  title: string;
-  actionLabel: string;
-  href: string;
-};
-
-const TASK_ACTION_LABEL: Record<AttentionChip["kind"], string> = {
-  outbid: "Review your bids",
-  "payment-due": "Go to purchases",
-};
-
-function paymentsDueTitle(count: number): string {
-  return count === 1 ? "1 purchase to pay" : `${count} purchases to pay`;
-}
-
-/**
- * Everything the header chip could prompt for, in the same order and from the same rules, so a
- * page that lists what needs the person never says "nothing" while the chip asks for something.
- */
-export function attentionTasks(attention: ClientAttention): AttentionTask[] {
-  return CHIP_RULES.filter((rule) => rule.applies(attention)).map((rule) => {
-    const chip = rule.chip(attention);
-    return {
-      kind: rule.kind,
-      title: rule.kind === "payment-due" ? paymentsDueTitle(attention.paymentsDue) : chip.label,
-      actionLabel: TASK_ACTION_LABEL[rule.kind],
-      href: chip.href,
-    };
-  });
-}

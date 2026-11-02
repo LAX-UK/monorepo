@@ -100,7 +100,7 @@ export function NotificationRow({
           checked={selection.selected}
           onCheckedChange={(checked) => selection.onSelectedChange(checked === true)}
           aria-label={`Select: ${row.title}`}
-          className="size-[18px] rounded-[4px] border-lax-control-edge bg-lax-surface shadow-none data-[state=checked]:border-lax-ink data-[state=checked]:bg-lax-ink data-[state=checked]:text-lax-on-ink focus-visible:ring-lax-focus"
+          className="size-5 rounded-[5px] border-lax-control-edge bg-lax-surface shadow-none data-[state=checked]:border-lax-ink data-[state=checked]:bg-lax-ink data-[state=checked]:text-lax-on-ink focus-visible:ring-lax-focus"
         />
       </span>
       <span

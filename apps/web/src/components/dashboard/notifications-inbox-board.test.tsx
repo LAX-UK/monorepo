@@ -39,7 +39,7 @@ vi.mock("@/components/dashboard/notifications/use-notifications-inbox", () => ({
   useNotificationsInbox: () => inbox,
 }));
 
-import type { AttentionTask } from "@/lib/navigation/client-attention";
+import { type NeedsActionView, needsActionRows } from "@/lib/notifications/needs-action";
 import { NotificationsInboxBoard } from "./notifications-inbox-board";
 
 const option = (id: string, kind: "personal" | "organisation", name: string, current = false) => ({
@@ -95,7 +95,7 @@ function notice(
 
 function renderBoard(
   query = parseInboxQuery({}),
-  attentionTasks: AttentionTask[] = [],
+  needsAction: NeedsActionView | null = null,
   counts = { needsAction: 2, unread: 3 },
 ) {
   return render(
@@ -106,7 +106,7 @@ function renderBoard(
         counts={counts}
         mutedIds={[]}
         paused={null}
-        attentionTasks={attentionTasks}
+        needsAction={needsAction}
       />
     </AccountChromeProvider>,
   );
@@ -153,35 +153,85 @@ describe("NotificationsInboxBoard", () => {
     expect(screen.getByText("Nothing needs you")).toBeInTheDocument();
   });
 
-  it("lists what the header chip prompts for instead of saying nothing needs you", () => {
-    renderBoard(
-      parseInboxQuery({}),
-      [
-        {
-          kind: "outbid",
-          title: "Outbid on lot 2",
-          actionLabel: "Review your bids",
-          href: "/bids?tab=active",
-        },
-        {
-          kind: "payment-due",
-          title: "2 purchases to pay",
-          actionLabel: "Go to purchases",
-          href: "/purchases",
-        },
-      ],
-      { needsAction: 0, unread: 3 },
-    );
-    expect(screen.queryByText("Nothing needs you")).toBeNull();
-    expect(screen.getByText("Outbid on lot 2")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Go to purchases" })).toHaveAttribute(
-      "href",
-      "/purchases",
-    );
-    const needsAction = screen
-      .getAllByRole("link")
-      .find((a) => a.getAttribute("href")?.startsWith("/notifications"));
-    expect(needsAction?.textContent).toBe("Needs action2");
+  describe("with an organisation's Needs-you reader", () => {
+    const account = { kind: "organisation" as const, name: "Northbank Gallery", initials: "NG" };
+    const reader = (failed = false): NeedsActionView => ({
+      account,
+      ...needsActionRows(
+        failed
+          ? null
+          : {
+              kinds: ["outbid", "pay"],
+              tasks: [
+                {
+                  kind: "outbid",
+                  lots: [
+                    {
+                      id: "l1",
+                      title: "Abstract in Cobalt",
+                      endsAt: new Date("2026-11-04T12:00:00Z"),
+                    },
+                  ],
+                  link: { page: "lot", id: "l1" },
+                },
+                {
+                  kind: "pay",
+                  purchases: [{ id: "p1", title: "Estuary at Dusk" }],
+                  link: { page: "purchase", id: "p1" },
+                },
+              ],
+              counts: {},
+              truncated: false,
+            },
+        { organisationName: "Northbank Gallery", now: new Date("2026-11-02T10:00:00Z") },
+      ),
+    });
+
+    it("lists the reader's tasks as rows with the account, the work's title and one action", () => {
+      renderBoard(parseInboxQuery({}), reader(), { needsAction: 0, unread: 3 });
+      const rows = screen.getAllByRole("listitem").filter((li) => li.dataset.testid);
+      expect(rows).toHaveLength(2);
+      const first = within(rows[0] as HTMLElement);
+      expect(first.getByText("Outbid on “Abstract in Cobalt”")).toBeInTheDocument();
+      expect(first.getByText("Northbank Gallery")).toBeInTheDocument();
+      expect(first.getByRole("link", { name: "Bid again" })).toBeInTheDocument();
+      expect(within(rows[1] as HTMLElement).getByRole("link", { name: "Pay" })).toHaveAttribute(
+        "href",
+        "/purchases/checkout/p1",
+      );
+    });
+
+    it("counts the tab by the reader's tasks, not by notifications", () => {
+      renderBoard(parseInboxQuery({}), reader(), { needsAction: 0, unread: 3 });
+      const first = screen
+        .getAllByRole("link")
+        .find((a) => a.getAttribute("href")?.startsWith("/notifications"));
+      expect(first?.textContent).toBe("Needs action2");
+    });
+
+    it("narrows the tasks by search", () => {
+      renderBoard(parseInboxQuery({ q: "estuary" }), reader());
+      expect(screen.getAllByRole("listitem").filter((li) => li.dataset.testid)).toHaveLength(1);
+      expect(screen.queryByText("Outbid on “Abstract in Cobalt”")).toBeNull();
+    });
+
+    it("says nothing needs you when the reader answers with no tasks", () => {
+      renderBoard(parseInboxQuery({}), { account, rows: [], failed: false });
+      expect(screen.getByText("Nothing needs you")).toBeInTheDocument();
+    });
+
+    it("says the list could not load when the reader did not answer", () => {
+      renderBoard(parseInboxQuery({}), reader(true));
+      expect(screen.getByText("We couldn't load this list.")).toBeInTheDocument();
+      expect(screen.queryByText("Nothing needs you")).toBeNull();
+    });
+
+    it("leaves the other views to the notifications", () => {
+      inbox.items = [notice("a", { id: NORTH, name: "Northbank Gallery" })];
+      renderBoard(parseInboxQuery({ tab: "all" }), reader());
+      expect(screen.getByRole("link", { name: /Notice a/ })).toBeInTheDocument();
+      expect(screen.queryByText("Outbid on “Abstract in Cobalt”")).toBeNull();
+    });
   });
 
   it("offers to clear a search that matched nothing", () => {

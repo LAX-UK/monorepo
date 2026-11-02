@@ -7,7 +7,6 @@ import {
   ListNoResults,
   ListSkeleton,
 } from "@/components/workspace/list-states";
-import type { AttentionTask } from "@/lib/navigation/client-attention";
 import {
   INBOX_TABS,
   INBOX_TAB_LABEL,
@@ -20,9 +19,9 @@ import {
   inboxNarrowed,
   inboxTypeLabel,
 } from "@/lib/notifications/inbox-query";
+import { type NeedsActionView, searchNeedsAction } from "@/lib/notifications/needs-action";
 import {
   Button,
-  ButtonLink,
   Field,
   FilterSheet,
   ListToolbar,
@@ -33,6 +32,7 @@ import {
 } from "@auction/ui/lax";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { NeedsActionRow } from "./notifications/needs-action-row";
 import { NotificationRow } from "./notifications/notification-row";
 import {
   type InboxBoardInput,
@@ -61,10 +61,12 @@ const ANY = "any";
 function tabCount(
   tab: InboxTab,
   counts: InboxCounts | null,
-  tasks: readonly AttentionTask[],
+  needsAction: NeedsActionView | null,
 ): number | null {
-  // The header chip's prompts count here too, so the tab never reads 0 beside them.
-  if (tab === "needs_action") return (counts?.needsAction ?? 0) || tasks.length || null;
+  // The tab counts the tasks Home lists, from the same reader, so the two always agree.
+  if (tab === "needs_action") {
+    return needsAction ? needsAction.rows.length : (counts?.needsAction ?? 0);
+  }
   if (!counts) return null;
   if (tab === "unread") return counts.unread;
   return null;
@@ -78,13 +80,16 @@ function tabCount(
  */
 export function NotificationsInboxBoard({
   paused,
-  attentionTasks,
+  needsAction,
   ...input
 }: InboxBoardInput & {
   /** The account in use is paused: notifications still arrive, and the page says so. */
   paused: string | null;
-  /** What the header chip prompts for (outbid, payment due), from the same attention reader. */
-  attentionTasks: readonly AttentionTask[];
+  /**
+   * What the account in use needs, from the one Needs-you reader. `null` for an account the
+   * reader does not cover; Needs action then lists the notifications that ask for something.
+   */
+  needsAction: NeedsActionView | null;
 }) {
   const board = useNotificationsInboxBoard(input);
   const { query, setQuery, counts } = board;
@@ -103,7 +108,7 @@ export function NotificationsInboxBoard({
     })),
   ];
   const tabs: TabNavItem[] = INBOX_TABS.map((id) => {
-    const count = tabCount(id, counts, attentionTasks);
+    const count = tabCount(id, counts, needsAction);
     return {
       id,
       label: INBOX_TAB_LABEL[id],
@@ -112,11 +117,18 @@ export function NotificationsInboxBoard({
       ...(count ? { count } : {}),
     };
   });
+  // The reader's tasks are for the account in use, so the account picker and the type filter
+  // (which narrow notifications) do not apply to them; search does.
+  const readerTab = needsAction !== null && query.tab === "needs_action";
   const accountLabel = accountOptions.find((o) => o.value === query.account)?.label;
-  const chips = [
-    ...(query.type ? [{ id: "type", label: inboxTypeLabel(query.type) ?? query.type }] : []),
-    ...(query.account !== "all" && accountLabel ? [{ id: "account", label: accountLabel }] : []),
-  ];
+  const chips = readerTab
+    ? []
+    : [
+        ...(query.type ? [{ id: "type", label: inboxTypeLabel(query.type) ?? query.type }] : []),
+        ...(query.account !== "all" && accountLabel
+          ? [{ id: "account", label: accountLabel }]
+          : []),
+      ];
   const narrowed = inboxNarrowed(query);
   const clearAll = () => setQuery(inboxCleared(query));
   const unread = counts?.unread ?? board.rows.filter((row) => row.unread).length;
@@ -153,8 +165,10 @@ export function NotificationsInboxBoard({
             onValueChange: board.setSearch,
             placeholder: "Search notifications",
           }}
-          filter={{ count: chips.length, open: filterOpen, onOpenChange: setFilterOpen }}
-          {...(multiAccount
+          {...(readerTab
+            ? {}
+            : { filter: { count: chips.length, open: filterOpen, onOpenChange: setFilterOpen } })}
+          {...(multiAccount && !readerTab
             ? {
                 sort: (
                   <NativeSelect<InboxAccount>
@@ -191,7 +205,7 @@ export function NotificationsInboxBoard({
           query={query}
           narrowed={narrowed}
           onClear={clearAll}
-          attentionTasks={attentionTasks}
+          needsAction={needsAction}
         />
       </div>
       <FilterSheet
@@ -224,22 +238,35 @@ export function NotificationsInboxBoard({
   );
 }
 
-/** What needs the person when no notification asks for it yet: the chip's prompts, as tasks. */
-function AttentionTaskList({ tasks }: { tasks: readonly AttentionTask[] }) {
+/**
+ * Needs action from the one Needs-you reader: the account's tasks as notification rows. A
+ * reader that did not answer says so, and an empty one says nothing needs the person.
+ */
+function NeedsActionList({
+  view,
+  q,
+  onClear,
+}: {
+  view: NeedsActionView;
+  q: string;
+  onClear: () => void;
+}) {
+  if (view.failed) return <ListLoadError />;
+  const rows = searchNeedsAction(view.rows, q);
+  if (rows.length === 0) {
+    return q ? (
+      <ListNoResults query={q} onClear={onClear} />
+    ) : (
+      <ListEmpty illustration="plinth" {...EMPTY.needs_action} />
+    );
+  }
   return (
-    <ul className="flex flex-col gap-2" aria-label="Needs action">
-      {tasks.map((task) => (
-        <li key={task.kind}>
-          <Notice
-            tone={task.kind === "outbid" ? "danger" : "info"}
-            title={task.title}
-            actions={
-              <ButtonLink href={task.href} Link={Link}>
-                {task.actionLabel}
-              </ButtonLink>
-            }
-          />
-        </li>
+    <ul
+      aria-label="Needs action"
+      className="divide-y divide-lax-line-subtle overflow-hidden rounded-lax-card border border-lax-line bg-lax-surface"
+    >
+      {rows.map((row) => (
+        <NeedsActionRow key={row.key} row={row} account={view.account} />
       ))}
     </ul>
   );
@@ -250,20 +277,20 @@ function InboxList({
   query,
   narrowed,
   onClear,
-  attentionTasks,
+  needsAction,
 }: {
   board: ReturnType<typeof useNotificationsInboxBoard>;
   query: InboxQuery;
   narrowed: boolean;
   onClear: () => void;
-  attentionTasks: readonly AttentionTask[];
+  needsAction: NeedsActionView | null;
 }) {
+  if (needsAction && query.tab === "needs_action") {
+    return <NeedsActionList view={needsAction} q={query.q} onClear={onClear} />;
+  }
   if (board.error) return <ListLoadError onRetry={() => void board.retry()} />;
   if (board.loading) return <ListSkeleton label="Loading your notifications" rows={4} />;
   if (board.rows.length === 0) {
-    if (!narrowed && query.tab === "needs_action" && attentionTasks.length > 0) {
-      return <AttentionTaskList tasks={attentionTasks} />;
-    }
     return narrowed ? (
       <ListNoResults query={query.q} onClear={onClear} />
     ) : (
