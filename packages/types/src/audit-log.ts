@@ -40,6 +40,7 @@ export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly str
     "staff.role_",
     "admin.impersonation_",
     "bid.user_suspended",
+    "data_request.",
   ],
   operations: ["failed_job."],
 };

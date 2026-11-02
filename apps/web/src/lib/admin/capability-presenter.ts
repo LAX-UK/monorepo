@@ -165,6 +165,11 @@ const CAPABILITY_PRESENTATION: Record<RoleCapability, CapabilityPresentation> = 
     description: "Binding clear/block on AML holds and Source of Funds.",
     group: "compliance",
   },
+  "data_requests.manage": {
+    label: "Data requests",
+    description: "Answer requests for a copy of a person's data, including their details.",
+    group: "compliance",
+  },
   "admin.read": {
     label: "Read admin pages",
     description: "Open list and record pages without personal data, money or actions.",

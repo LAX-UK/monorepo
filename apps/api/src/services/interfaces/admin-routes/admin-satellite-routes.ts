@@ -12,6 +12,7 @@ import type { z } from "zod";
 import type { AdminMarketingEventsService } from "../../admin/admin-marketing-events.service.js";
 import type { AdminSavedViewService } from "../../admin/admin-saved-view.service.js";
 import type { AdminTwoFactorResetService } from "../../admin/admin-two-factor-reset.service.js";
+import type { AdminDataRequestsService } from "../../admin/data-requests/admin-data-requests.service.js";
 import type { StaffAccessAdminService } from "../../admin/staff-access-admin.service.js";
 import type { DeliveryOpsApplicationService } from "../../delivery-ops.application.service.js";
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
@@ -91,6 +92,11 @@ export type AdminIntegrationRouteServices = {
   buyerAgentAuthorisations: IBuyerAgentAuthorisationService;
   /** The saleroom team prices the courier quotes buyers ask for on won lots. */
   deliveryQuotes: IStaffDeliveryQuoteService;
+  /** Requests for a copy of a person's data, answered through Identity's internal routes. */
+  dataRequests: Pick<
+    AdminDataRequestsService,
+    "list" | "summary" | "record" | "create" | "patch" | "extend" | "close" | "continueDownload"
+  >;
 };
 
 /** Wired in the container root because the policy client lives outside the admin graph. */

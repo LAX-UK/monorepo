@@ -37,6 +37,11 @@ export type RoleCapability =
   /** MLRO authority: lift/confirm AML holds and approve Source-of-Funds. */
   | "compliance.mlro"
   /**
+   * Answer requests for a copy of someone's data: see every request, log one, extend, close or
+   * continue it, and open a person's details. Compliance and Administrator only.
+   */
+  | "data_requests.manage"
+  /**
    * Open admin list and record pages without acting on them. Personal data (`audit.read_pii`),
    * client directories, money and every action stay with their own permissions.
    */

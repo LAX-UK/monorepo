@@ -54,6 +54,7 @@ const ROLE_TABLE: Record<
       "bids.read",
       "aml.review",
       "compliance.mlro",
+      "data_requests.manage",
       "admin.read",
     ],
     platformRoutes: true,
@@ -121,7 +122,13 @@ const ROLE_TABLE: Record<
     destination: "/admin/lot-fulfilment",
   },
   compliance: {
-    capabilities: ["aml.review", "compliance.mlro", "legal_entity.read", "audit.read_pii"],
+    capabilities: [
+      "aml.review",
+      "compliance.mlro",
+      "data_requests.manage",
+      "legal_entity.read",
+      "audit.read_pii",
+    ],
     platformRoutes: true,
     shell: "platform",
     destination: "/admin/compliance/aml",
@@ -173,6 +180,10 @@ describe("Bid staff role table", () => {
     ] as const) {
       expect(staffRolesGranting([capability])).toEqual(["administrator"]);
     }
+  });
+
+  it("grants data requests to Compliance and Administrator only", () => {
+    expect(staffRolesGranting(["data_requests.manage"])).toEqual(["administrator", "compliance"]);
   });
 
   it("lists the roles that grant a permission in canonical order", () => {

@@ -17,6 +17,7 @@ import {
   CONSIGNMENT_INBOX_REPLY_ACCESS,
   CONSIGNMENT_SAVED_REPLIES_MANAGE_ACCESS,
   type CapabilityRequirement,
+  DATA_REQUESTS_MANAGE_ACCESS,
   DELIVERY_REPLAY_ACCESS,
   DISPUTE_ALLOCATION_WRITE_ACCESS,
   EMAIL_ADMIN_ACCESS,
@@ -128,6 +129,7 @@ export const requireSalesAccess = createRequireAccess(SALES_ACCESS);
 export const requireSalesRead = createRequireAccess(SALES_READ_ACCESS);
 export const requireWithdrawalDecision = createRequireAccess(WITHDRAWAL_DECISION_ACCESS);
 export const requireDeliveryReplay = createRequireAccess(DELIVERY_REPLAY_ACCESS);
+export const requireDataRequestsManage = createRequireAccess(DATA_REQUESTS_MANAGE_ACCESS);
 export const requireFailedJobsRead = createRequireAccess(FAILED_JOBS_READ_ACCESS);
 export const requireFailedJobsWrite = createRequireAccess(FAILED_JOBS_WRITE_ACCESS);
 export const requirePaymentManualReviewWrite = createRequireAccess(
