@@ -1,4 +1,10 @@
-import { type LotLifecycleKind, formatTimeLeft, timeLeftView } from "@auction/domain";
+import {
+  type LotLifecycleKind,
+  TIME_LEFT_DATE_BEYOND_MS,
+  formatTimeLeft,
+  timeLeftShowsSeconds,
+  timeLeftView,
+} from "@auction/domain";
 import { formatLotClock, formatLotDay, formatLotMoment } from "./lot-page-dates";
 
 /** How a fact row reads: the clock tightens from calm to soon to final; an ended lot is quiet. */
@@ -26,6 +32,16 @@ type TimeRowBuilder = (ctx: TimeRowContext) => LotInfoRow | null;
 
 const closingRow: TimeRowBuilder = ({ msLeft, endsAt, now }) => {
   if (msLeft === null) return null;
+  // Beyond a week the day is the answer, not a count of days and hours.
+  if (msLeft > TIME_LEFT_DATE_BEYOND_MS && endsAt) {
+    return {
+      label: "Closes",
+      value: formatLotDay(endsAt, now),
+      sub: formatLotClock(endsAt),
+      tone: "calm",
+      clock: true,
+    };
+  }
   const view = timeLeftView(msLeft);
   return {
     label: view.label,
@@ -50,9 +66,19 @@ const extendedRow: TimeRowBuilder = ({ msLeft, endsAt, now }) => {
 
 const opensRow: TimeRowBuilder = ({ msLeft, startsAt, now }) => {
   if (msLeft === null || !startsAt) return null;
+  if (msLeft > TIME_LEFT_DATE_BEYOND_MS) {
+    return {
+      label: "Opens",
+      value: formatLotDay(startsAt, now),
+      sub: formatLotClock(startsAt),
+      tone: "calm",
+      clock: true,
+    };
+  }
   return {
     label: msLeft > 0 ? "Opens in" : "Opens",
-    value: msLeft > 0 ? formatTimeLeft(msLeft) : "Now",
+    value:
+      msLeft > 0 ? formatTimeLeft(msLeft, { showSeconds: timeLeftShowsSeconds(msLeft) }) : "Now",
     sub: formatLotMoment(startsAt, now),
     tone: "calm",
     clock: true,
