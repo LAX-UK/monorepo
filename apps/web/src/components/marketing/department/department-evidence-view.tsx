@@ -1,0 +1,91 @@
+import { ViewItemListTracker } from "@/components/analytics/view-item-list-tracker";
+import { DepartmentSection } from "@/components/marketing/department/department-section";
+import { DepartmentWorkCard } from "@/components/marketing/department/department-work-card";
+import type { DepartmentEvidence } from "@/lib/departments/department-evidence";
+import { MarketingWorkGrid } from "@auction/marketing-ui";
+import { ButtonLink, EmptyState } from "@auction/ui/lax";
+import Link from "next/link";
+
+type Props = {
+  evidence: DepartmentEvidence;
+  /** The department as the page names it: "Watches & clocks". */
+  department: string;
+  /** Lower case, for running text: "watches and clocks". */
+  noun: string;
+};
+
+/**
+ * What the house has done in this department: works it sold and works on sale now. A row with
+ * nothing to show is left out; "On sale" says so honestly when sold works are shown beside it.
+ */
+export function DepartmentEvidenceView({ evidence, department, noun }: Props) {
+  const { sold, onSale } = evidence;
+  const showOnSaleEmpty = onSale.length === 0 && sold.length > 0;
+
+  return (
+    <>
+      {sold.length > 0 ? (
+        <DepartmentSection
+          id="department-sold"
+          heading={`Recently sold in ${noun}`}
+          subtitle="Prices include the buyer’s premium."
+          action={{ href: evidence.soldHref, label: "View all", srSuffix: `sold in ${noun}` }}
+        >
+          <ViewItemListTracker
+            listId={`department:${evidence.categoryId}:sold`}
+            listName={`${department}: recently sold`}
+            itemIds={sold.map((work) => work.lot.id)}
+          />
+          <MarketingWorkGrid aria-label={`Recently sold in ${noun}`}>
+            {sold.map(({ lot, priceWithPremium }) => (
+              <DepartmentWorkCard
+                key={lot.id}
+                lot={lot}
+                {...(priceWithPremium
+                  ? { price: { label: "Sold for", value: priceWithPremium } }
+                  : {})}
+              />
+            ))}
+          </MarketingWorkGrid>
+        </DepartmentSection>
+      ) : null}
+
+      {onSale.length > 0 ? (
+        <DepartmentSection
+          id="department-on-sale"
+          heading="On sale now"
+          action={{ href: evidence.onSaleHref, label: "View all", srSuffix: `on sale in ${noun}` }}
+        >
+          <ViewItemListTracker
+            listId={`department:${evidence.categoryId}:on-sale`}
+            listName={`${department}: on sale`}
+            itemIds={onSale.map((lot) => lot.id)}
+          />
+          <MarketingWorkGrid aria-label={`On sale in ${noun}`}>
+            {onSale.map((lot) => (
+              <DepartmentWorkCard key={lot.id} lot={lot} />
+            ))}
+          </MarketingWorkGrid>
+        </DepartmentSection>
+      ) : null}
+
+      {showOnSaleEmpty ? (
+        <DepartmentSection id="department-on-sale" heading="On sale now">
+          <div className="rounded-xl border border-border-hairline bg-surface">
+            <EmptyState
+              illustration="frame"
+              headingLevel="h3"
+              title={`Nothing is on sale in ${noun} right now`}
+              description="Works appear here as soon as a sale opens. The calendar shows what is coming up."
+              actions={
+                <ButtonLink Link={Link} variant="secondary" href="/sales">
+                  See the calendar
+                </ButtonLink>
+              }
+            />
+          </div>
+        </DepartmentSection>
+      ) : null}
+    </>
+  );
+}
