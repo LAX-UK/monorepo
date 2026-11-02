@@ -1,23 +1,25 @@
+import { formatTimeLeft } from "@auction/domain";
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-/** HH:MM:SS for the clock face; only the remainder within 24h when used inside {@link formatCountdownForDisplay}. */
-export function formatCountdownClock(msRemaining: number): string {
-  if (msRemaining <= 0) return "00:00:00";
-  const s = Math.floor(msRemaining / 1000);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  return [h, m, sec].map((n) => String(n).padStart(2, "0")).join(":");
-}
+/** Beyond this a moment is told as a date, not counted down (S14). */
+export const COUNTDOWN_DATE_BEYOND_MS = 7 * MS_PER_DAY;
+/** Seconds appear only inside the final hour (S14). */
+export const COUNTDOWN_SECONDS_WITHIN_MS = 60 * 60 * 1000;
 
-/** Human-friendly countdown: under 24h → `HH:MM:SS`; otherwise `ND` + same-day `HH:MM:SS` (avoids `454:09:15`).
+/**
+ * The one countdown wording for cards, pills and heroes, by the time rule: days and hours, hours and
+ * minutes, then minutes and seconds in the final hour ("2 days 14 hours", "5 hours 12 minutes",
+ * "42 minutes 10 seconds"). Beyond {@link COUNTDOWN_DATE_BEYOND_MS} callers that know the target
+ * tell a date instead (see `opensLine`).
  */
 export function formatCountdownForDisplay(ms: number): string {
-  if (ms <= 0) return formatCountdownClock(0);
-  if (ms < MS_PER_DAY) return formatCountdownClock(ms);
-  const days = Math.floor(ms / MS_PER_DAY);
-  const remainder = ms % MS_PER_DAY;
-  return `${days}D ${formatCountdownClock(remainder)}`;
+  return formatTimeLeft(ms, { showSeconds: ms < COUNTDOWN_SECONDS_WITHIN_MS });
+}
+
+/** The same wording to the minute, for polite live-region announcements that must not chatter. */
+export function formatCountdownAnnounce(ms: number): string {
+  return formatTimeLeft(ms);
 }
 
 /**

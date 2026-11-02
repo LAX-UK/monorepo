@@ -2,7 +2,12 @@
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { formatLondonDateTime } from "@/lib/datetime/london-time";
-import { formatCountdownAriaLabel, parseCountdownSegments } from "@/lib/format-countdown";
+import {
+  formatCountdownAnnounce,
+  formatCountdownAriaLabel,
+  formatCountdownSpoken,
+  parseCountdownSegments,
+} from "@/lib/format-countdown";
 import {
   type CountdownTone,
   countdownTone,
@@ -30,26 +35,9 @@ type Props = {
   endTime?: Date | string;
 };
 
-function formatAnnounceBucket(secondsRemaining: number): string {
-  if (secondsRemaining <= 0) return "Ended";
-  const d = Math.floor(secondsRemaining / 86_400);
-  const h = Math.floor((secondsRemaining % 86_400) / 3600);
-  const m = Math.floor((secondsRemaining % 3600) / 60);
-  if (d > 0) return `${d} day${d === 1 ? "" : "s"} ${h} hour${h === 1 ? "" : "s"}`;
-  if (h > 0) return `${h} hour${h === 1 ? "" : "s"} ${m} minute${m === 1 ? "" : "s"}`;
-  return `${m} minute${m === 1 ? "" : "s"}`;
-}
-
 function formatOpensAriaLabel(ms: number): string {
   if (ms <= 0) return "Sale has opened";
-  const { days, hours, minutes } = parseCountdownSegments(ms);
-  const parts: string[] = [];
-  if (days > 0) parts.push(`${days} day${days === 1 ? "" : "s"}`);
-  if (hours > 0) parts.push(`${hours} hour${hours === 1 ? "" : "s"}`);
-  if (minutes > 0 || parts.length === 0) {
-    parts.push(`${minutes} minute${minutes === 1 ? "" : "s"}`);
-  }
-  return `Opens in ${parts.join(", ")}`;
+  return `Opens in ${formatCountdownSpoken(ms)}`;
 }
 
 function pad2(n: number): string {
@@ -135,7 +123,7 @@ export function MarketingCountdownPanel({
         : formatOpensAriaLabel(msLeft);
 
   const secondsRemaining = msLeft != null ? Math.floor(msLeft / 1000) : null;
-  const bucket = secondsRemaining != null ? formatAnnounceBucket(secondsRemaining) : "";
+  const bucket = secondsRemaining != null ? formatCountdownAnnounce(secondsRemaining * 1000) : "";
   const [liveMessage, setLiveMessage] = useState("");
   useEffect(() => {
     if (secondsRemaining == null || ended) return;
