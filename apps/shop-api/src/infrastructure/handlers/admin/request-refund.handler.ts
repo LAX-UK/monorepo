@@ -1,12 +1,13 @@
 import { shopOrder, shopOrderLine, shopRefund } from "@auction/db/schema";
 import { type AdminRefundReason, SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { type RefundLineInput, remainingRefundablePence } from "@auction/shop-domain";
+import { remainingRefundablePence } from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
 import { operatorContextAuditFields } from "../../../application/admin/operator-context.js";
 import { withAdminIdempotency } from "../../../application/admin/with-admin-idempotency.js";
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
+import { loadOrderRefunds } from "./load-order-refunds.js";
 
 export type RequestRefundCommand = {
   orderId: string;
@@ -69,32 +70,19 @@ export function createRequestRefundHandler(deps: {
               );
             }
           }
-          const refundRows = await shopPhaseDbSession(tx)
-            .select({
-              amountPence: shopRefund.amountPence,
-              status: shopRefund.status,
-              orderLineId: shopRefund.orderLineId,
-            })
-            .from(shopRefund)
-            .where(eq(shopRefund.orderId, command.orderId));
-          const refunds: RefundLineInput[] = refundRows.map((row) => ({
-            amountPence: row.amountPence,
-            status: row.status,
-            orderLineId: row.orderLineId,
-          }));
-          let lineTotal: number | undefined;
-          if (command.orderLineId) {
-            const [line] = await shopPhaseDbSession(tx)
-              .select({ unitPricePence: shopOrderLine.unitPricePence })
-              .from(shopOrderLine)
-              .where(eq(shopOrderLine.id, command.orderLineId))
-              .limit(1);
-            lineTotal = line?.unitPricePence;
-          }
+          const orderLines = await shopPhaseDbSession(tx)
+            .select({ orderLineId: shopOrderLine.id, totalPence: shopOrderLine.unitPricePence })
+            .from(shopOrderLine)
+            .where(eq(shopOrderLine.orderId, command.orderId));
+          const refunds = await loadOrderRefunds(shopPhaseDbSession(tx), command.orderId);
+          const lineTotal = command.orderLineId
+            ? orderLines.find((line) => line.orderLineId === command.orderLineId)?.totalPence
+            : undefined;
           const remaining = remainingRefundablePence({
             orderTotalPence: order.totalPence,
             ...(lineTotal !== undefined ? { lineTotalPence: lineTotal } : {}),
             refunds,
+            orderLines,
             ...(command.orderLineId ? { orderLineId: command.orderLineId } : {}),
           });
           if (command.amountPence > remaining) {

@@ -126,6 +126,21 @@ describe("parseOrderListQuery", () => {
   });
 });
 
+describe("the failed refunds filter", () => {
+  it("is read from the URL, counts as a filter and is sent to the API", () => {
+    const query = parseOrderListQuery({ refund: "failed" });
+    expect(query).toEqual({ refund: "failed" });
+    expect(hasActiveOrderFilters(query)).toBe(true);
+    expect(orderListApiQuery(query)).toEqual({ refund: "failed" });
+    expect(orderListHref({}, { refund: "failed" })).toBe("/orders?refund=failed");
+    expect(orderListHref(query, { refund: null })).toBe("/orders");
+  });
+
+  it("ignores any other value", () => {
+    expect(parseOrderListQuery({ refund: "pending" })).toEqual({});
+  });
+});
+
 describe("hasActiveOrderFilters", () => {
   it("counts filters but not paging", () => {
     expect(hasActiveOrderFilters({})).toBe(false);
