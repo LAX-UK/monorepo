@@ -41,7 +41,7 @@ describe("buildHomeSections", () => {
       status: "scheduled",
       startTime: new Date("2026-11-10T18:00:00.000Z"),
     });
-    const lots = [1, 2, 3].map((n) => hangLot({ id: `l${n}`, lotNumber: n }));
+    const lots = [1, 2, 3, 4].map((n) => hangLot({ id: `l${n}`, lotNumber: n }));
     const input = source({
       sales: [live, next],
       lotsBySale: new Map([["live", lots]]),
@@ -55,7 +55,7 @@ describe("buildHomeSections", () => {
       "selling",
       "alerts",
     ]);
-    expect(sections.inThisSale?.lots).toHaveLength(3);
+    expect(sections.inThisSale?.lots).toHaveLength(4);
     expect(sections.topLotsOfSale).toBeUndefined();
   });
 

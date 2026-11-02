@@ -34,9 +34,15 @@ const final: SaleResultsSummary = {
 
 const input = (over: Partial<Parameters<typeof buildResultsBand>[0]> = {}) => ({
   row: row(final),
-  lots: [sold("a", "1000.00"), sold("b", "2000.00")],
+  lots: [sold("a", "1000.00"), sold("b", "2000.00"), sold("c", "900.00"), sold("d", "800.00")],
   saleLots: [sold("top", "26000.00")],
-  artistNames: { "a-top": "Elise Marlowe", "a-a": "Henry Lisle", "a-b": "Jonah Feld" },
+  artistNames: {
+    "a-top": "Elise Marlowe",
+    "a-a": "Henry Lisle",
+    "a-b": "Jonah Feld",
+    "a-c": "x",
+    "a-d": "y",
+  },
   subtitle: "Prices include buyer’s premium",
   now,
   ...over,
@@ -52,7 +58,7 @@ describe("buildResultsBand", () => {
       total: { value: "£186,400", note: "with buyer’s premium" },
       topLot: { value: "£32,500", note: "Elise Marlowe" },
     });
-    expect(band?.lots).toHaveLength(2);
+    expect(band?.lots).toHaveLength(4);
   });
 
   it("is hidden while the figures are not final", () => {
@@ -67,8 +73,8 @@ describe("buildResultsBand", () => {
     expect(buildResultsBand(input({ row: row({ ...final, soldCount: 0 }) }))).toBeNull();
   });
 
-  it("shows the figures alone when fewer than two lots remain to show", () => {
-    const band = buildResultsBand(input({ lots: [sold("a", "1000.00")] }));
+  it("shows the figures alone when fewer than four lots remain to show", () => {
+    const band = buildResultsBand(input({ lots: [sold("a", "1000.00"), sold("b", "900.00")] }));
     expect(band?.lots).toEqual([]);
     expect(band?.facts.total.value).toBe("£186,400");
   });

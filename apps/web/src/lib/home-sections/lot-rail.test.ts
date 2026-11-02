@@ -8,14 +8,14 @@ const lots = (n: number) =>
 const base = { sale: hangSale(), lotCount: 12, artistNames: {}, now };
 
 describe("buildLotRail", () => {
-  it("is hidden below three lots, so a row is never mostly empty", () => {
-    expect(buildLotRail({ ...base, kind: "inThisSale", lots: lots(2) })).toBeNull();
-    expect(buildLotRail({ ...base, kind: "inThisSale", lots: lots(3) })).not.toBeNull();
+  it("is hidden below four lots, so a row is never mostly empty", () => {
+    expect(buildLotRail({ ...base, kind: "inThisSale", lots: lots(3) })).toBeNull();
+    expect(buildLotRail({ ...base, kind: "inThisSale", lots: lots(4) })).not.toBeNull();
   });
 
   it("says when bidding closes for a live sale and links to all its lots", () => {
     const rail = buildLotRail({ ...base, kind: "inThisSale", lots: lots(4) });
-    expect(rail?.heading).toBe("In this sale");
+    expect(rail?.heading).toBe("More from this sale");
     expect(rail?.subtitle).toBe("Bidding closes from 3 Nov 2026, 21:00 GMT");
     expect(rail?.seeAll.label).toBe("View all 12 lots");
   });

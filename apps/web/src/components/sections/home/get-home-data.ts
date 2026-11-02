@@ -116,6 +116,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
     ),
     railLimit: HOME_SECTION_LIMITS.lotRail.max,
     railMin: HOME_SECTION_LIMITS.lotRail.min,
+    railRow: HOME_SECTION_LIMITS.lotRail.row,
     resultsLots: soldOrder(resultsSaleId ? (lotsBySale.get(resultsSaleId) ?? []) : []),
     resultsLimit: HOME_SECTION_LIMITS.resultsLots.max,
     resultsMin: HOME_SECTION_LIMITS.resultsLots.min,

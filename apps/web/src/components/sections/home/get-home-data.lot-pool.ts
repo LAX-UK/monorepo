@@ -14,6 +14,8 @@ export type HomePageLotsInput = {
   railLimit: number;
   /** Fewest lots that make a rail; fewer and it stays empty and claims nothing. */
   railMin: number;
+  /** The rail shows whole rows: its count is rounded down to a multiple of this. */
+  railRow: number;
   /** The last sale's sold lots, best first, for the results band. */
   resultsLots?: readonly Lot[];
   resultsLimit: number;
@@ -39,7 +41,18 @@ export function homePinnedSaleIds(
  * Every lot appears once on the page, by priority: the hero, the hang under it, the sale rail,
  * then the results band.
  */
-export function allocateHomePageLots({
+export function allocateHomePageLots(input: HomePageLotsInput): {
+  hang: Lot[];
+  rail: Lot[];
+  results: Lot[];
+} {
+  const placed = place(input);
+  const whole = Math.floor(placed.rail.length / input.railRow) * input.railRow;
+  // Lots left over from an unfinished last row go back to the pool for the sections after it.
+  return whole === placed.rail.length ? placed : place({ ...input, railLimit: whole });
+}
+
+function place({
   hangLots = [],
   hangLimit = 0,
   railLots = [],
@@ -49,11 +62,7 @@ export function allocateHomePageLots({
   resultsLimit,
   resultsMin,
   heroLots = [],
-}: HomePageLotsInput): {
-  hang: Lot[];
-  rail: Lot[];
-  results: Lot[];
-} {
+}: HomePageLotsInput): { hang: Lot[]; rail: Lot[]; results: Lot[] } {
   const slots = allocateHomeLots<Lot>([
     { key: "hero", candidates: heroLots, limit: heroLots.length },
     { key: "hang", candidates: hangLots, limit: hangLimit, min: HOME_HANG_MIN_WORKS },

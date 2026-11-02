@@ -38,7 +38,7 @@ const baseLot = (overrides: Partial<Lot> = {}): Lot => ({
 const lots = (n: number, prefix = "lot") =>
   Array.from({ length: n }, (_, i) => baseLot({ id: `${prefix}-${i}` }));
 const ids = (xs: Lot[]) => xs.map((l) => l.id);
-const sizes = { railLimit: 8, railMin: 3, resultsLimit: 4, resultsMin: 2 };
+const sizes = { railLimit: 8, railMin: 4, railRow: 4, resultsLimit: 4, resultsMin: 2 };
 
 describe("allocateHomePageLots", () => {
   it("reserves the hero's lots first, so nothing below repeats them", () => {
@@ -73,7 +73,7 @@ describe("allocateHomePageLots", () => {
     });
     expect(ids(hang)).toEqual(["lot-5", "lot-1", "lot-2"]);
     expect(ids(rail)).not.toContain("lot-5");
-    expect(ids(rail)).toHaveLength(7);
+    expect(ids(rail)).toHaveLength(4);
   });
 
   it("leaves the hang empty, claiming nothing, with fewer than two lots to hang", () => {
@@ -110,6 +110,13 @@ describe("allocateHomePageLots", () => {
       resultsLots: [...rail, ...sold],
     });
     expect(ids(placed.results)).toEqual(["sold-0", "sold-1", "sold-2", "sold-3"]);
+  });
+
+  it("rounds the rail down to whole rows and gives the rest to the results band", () => {
+    const pool = lots(6);
+    const { rail, results } = allocateHomePageLots({ ...sizes, railLots: pool, resultsLots: pool });
+    expect(ids(rail)).toEqual(["lot-0", "lot-1", "lot-2", "lot-3"]);
+    expect(ids(results)).toEqual(["lot-4", "lot-5"]);
   });
 
   it("respects the hang limit", () => {

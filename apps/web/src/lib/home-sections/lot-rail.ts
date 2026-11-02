@@ -17,7 +17,7 @@ type RailCopy = {
 /** What each rail says. One table, so the three states cannot drift apart. */
 const RAIL_COPY: Record<LotRailKind, RailCopy> = {
   inThisSale: {
-    heading: "In this sale",
+    heading: "More from this sale",
     subtitle: (sale) => `Bidding closes from ${formatLondonDateTime(sale.endTime)}`,
     seeAll: (total) => `View all ${formatSaleLotsLabel(total)}`,
   },
