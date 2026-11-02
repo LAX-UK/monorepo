@@ -3,6 +3,8 @@ export type HostedAuthConfig = {
   loginPath: string;
   twoFactorPath: string;
   restartUrl: string;
+  /** The family contact page, for people who cannot be helped on this screen. */
+  contactUrl: string;
   allowedRedirectOrigins: string[];
   turnstileSiteKey: string | null;
   requireEmailVerification: boolean;

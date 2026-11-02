@@ -29,13 +29,16 @@ export class DrizzleIdentityEmailChangeRepository implements IIdentityEmailChang
       .where(eq(user.id, input.subjectId));
   }
 
-  async readPending(subjectId: string): Promise<string | null> {
+  async readPending(subjectId: string) {
     const [row] = await this.db
-      .select({ pendingNewEmail: user.pendingNewEmail })
+      .select({
+        pendingNewEmail: user.pendingNewEmail,
+        emailChangeExpiresAt: user.emailChangeExpiresAt,
+      })
       .from(user)
       .where(eq(user.id, subjectId))
       .limit(1);
-    return row?.pendingNewEmail ?? null;
+    return row ?? null;
   }
 
   async clearPending(subjectId: string, now: Date): Promise<void> {

@@ -11,8 +11,12 @@ export type ProfileContactVm = {
   emailVerified: boolean;
   /** The address a change is waiting on, or null when none is in progress. */
   pendingEmail: string | null;
+  /** A change was started and its links have since expired; the person has to start again. */
+  pendingEmailExpired: boolean;
   phone: string | null;
   phoneVerified: boolean;
+  /** False when the issuer cannot send codes, so the phone cannot be added or changed. */
+  phoneAvailable: boolean;
 };
 
 /**
@@ -29,15 +33,19 @@ export function resolveProfileContact(
         email: live.email,
         emailVerified: live.emailVerified,
         pendingEmail: live.pendingEmail,
+        pendingEmailExpired: live.pendingEmailExpired,
         phone: live.phone,
         phoneVerified: live.phone !== null && live.phoneVerified,
+        phoneAvailable: live.phoneAvailable,
       }
     : {
         email: overview.email,
         emailVerified: overview.emailVerified,
         pendingEmail: null,
+        pendingEmailExpired: false,
         phone: overview.phone,
         phoneVerified: overview.phoneVerified,
+        phoneAvailable: true,
       };
 }
 

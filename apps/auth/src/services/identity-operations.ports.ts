@@ -155,7 +155,9 @@ export interface IIdentityEmailChangeRepository {
     expiresAt: Date;
     now: Date;
   }): Promise<void>;
-  readPending(subjectId: string): Promise<string | null>;
+  readPending(
+    subjectId: string,
+  ): Promise<{ pendingNewEmail: string | null; emailChangeExpiresAt: Date | null } | null>;
   clearPending(subjectId: string, now: Date): Promise<void>;
   loadForConfirmation(
     transaction: IdentityOperationTransaction,

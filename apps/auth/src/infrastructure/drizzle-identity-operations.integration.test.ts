@@ -147,7 +147,9 @@ describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
       await emailChanges.applyPendingEmail(transaction, subjectId, nextEmail, NOW);
     });
 
-    await expect(emailChanges.readPending(subjectId)).resolves.toBeNull();
+    await expect(emailChanges.readPending(subjectId)).resolves.toMatchObject({
+      pendingNewEmail: null,
+    });
     await expect(subjects?.findByEmail(nextEmail)).resolves.toMatchObject({
       id: subjectId,
       email: nextEmail,

@@ -5,6 +5,7 @@ import type {
   ProductSubjectUsageProbe,
 } from "@auction/auth";
 import { hashPassword, verifyPassword } from "@better-auth/utils/password";
+import { pendingEmailChangeState } from "../lib/pending-email-change.js";
 import { findNewPasswordPolicyViolation } from "../schemas/validate-new-password.js";
 import type { BackchannelLogoutService } from "./backchannel-logout.service.js";
 import type { IIdentityNotifier } from "./identity-notification.ports.js";
@@ -392,13 +393,18 @@ export class IdentityOperationsService {
     });
   }
 
-  pendingEmailChange(subjectId: string): Promise<string | null> {
-    return this.repositories.emailChanges.readPending(subjectId);
+  /** The address a change is still waiting on; an expired change counts as none. */
+  async pendingEmailChange(subjectId: string): Promise<string | null> {
+    const row = await this.repositories.emailChanges.readPending(subjectId);
+    if (!row) return null;
+    const state = pendingEmailChangeState(row, this.now());
+    return state.kind === "waiting" ? state.email : null;
   }
 
+  /** Cancelling also clears an expired change, so a stale row never lingers. */
   async cancelEmailChange(subjectId: string): Promise<void> {
-    const pending = await this.pendingEmailChange(subjectId);
-    if (!pending) throw new IdentityOperationError("none_in_progress");
+    const row = await this.repositories.emailChanges.readPending(subjectId);
+    if (!row?.pendingNewEmail) throw new IdentityOperationError("none_in_progress");
     await this.repositories.emailChanges.clearPending(subjectId, this.now());
   }
 

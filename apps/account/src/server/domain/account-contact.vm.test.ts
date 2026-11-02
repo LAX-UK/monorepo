@@ -22,15 +22,19 @@ describe("resolveProfileContact", () => {
         email: "live@example.com",
         emailVerified: true,
         pendingEmail: "next@example.com",
+        pendingEmailExpired: false,
         phone: "+442222222222",
         phoneVerified: true,
+        phoneAvailable: true,
       }),
     ).toEqual({
       email: "live@example.com",
       emailVerified: true,
       pendingEmail: "next@example.com",
+      pendingEmailExpired: false,
       phone: "+442222222222",
       phoneVerified: true,
+      phoneAvailable: true,
     });
   });
 
@@ -40,14 +44,34 @@ describe("resolveProfileContact", () => {
         email: "live@example.com",
         emailVerified: true,
         pendingEmail: null,
+        pendingEmailExpired: false,
         phone: null,
         phoneVerified: true,
+        phoneAvailable: true,
       }).phoneVerified,
     ).toBe(false);
   });
 
+  it("carries an expired change and an unavailable phone through from the issuer", () => {
+    const contact = resolveProfileContact(OVERVIEW, {
+      email: "live@example.com",
+      emailVerified: true,
+      pendingEmail: null,
+      pendingEmailExpired: true,
+      phone: null,
+      phoneVerified: false,
+      phoneAvailable: false,
+    });
+    expect(contact).toMatchObject({ pendingEmailExpired: true, phoneAvailable: false });
+  });
+
   it("falls back to the sign-in values, with no pending change, when the issuer is silent", () => {
-    expect(resolveProfileContact(OVERVIEW, null)).toEqual({ ...OVERVIEW, pendingEmail: null });
+    expect(resolveProfileContact(OVERVIEW, null)).toEqual({
+      ...OVERVIEW,
+      pendingEmail: null,
+      pendingEmailExpired: false,
+      phoneAvailable: true,
+    });
   });
 });
 

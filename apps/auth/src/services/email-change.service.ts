@@ -87,27 +87,45 @@ export class EmailChangeService {
       throw error;
     }
 
-    for (const confirmFor of ["old", "new"] as const) {
+    try {
+      await this.sendConfirmationLinks({ subjectId, subject, target, page });
+    } catch (error) {
+      // Neither inbox should hold a link to a change that is not recorded as pending, and a
+      // half-sent change must not linger: clear the pending row and let the caller retry.
+      await this.deps.operations.cancelEmailChange(subjectId).catch(() => undefined);
+      throw error;
+    }
+    return { ok: true, pendingEmail: target };
+  }
+
+  private async sendConfirmationLinks(input: {
+    subjectId: string;
+    subject: { email: string; name: string };
+    target: string;
+    page: string;
+  }): Promise<void> {
+    const { subjectId, subject, target, page } = input;
+    const messages = (["old", "new"] as const).map((confirmFor) => {
       const token = createEmailChangeToken(
         { subjectId, oldEmail: subject.email, newEmail: target, confirmFor },
         this.deps.authSecret,
         this.now(),
       );
-      await this.deps.email.enqueue({
-        template: "change-email",
+      return {
+        template: "change-email" as const,
         to: confirmFor === "old" ? subject.email : target,
         userId: subjectId,
-        category: "auth",
+        category: "auth" as const,
         vars: {
           confirmationUrl: `${page}?t=${encodeURIComponent(token)}`,
           oldEmail: subject.email,
           newEmail: target,
           userName: subject.name,
-          recipient: confirmFor === "old" ? "current" : "new",
+          recipient: confirmFor === "old" ? ("current" as const) : ("new" as const),
         },
-      });
-    }
-    return { ok: true, pendingEmail: target };
+      };
+    });
+    for (const message of messages) await this.deps.email.enqueue(message);
   }
 
   async cancel(subjectId: string): Promise<EmailChangeResult<object>> {

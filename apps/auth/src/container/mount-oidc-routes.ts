@@ -343,6 +343,7 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
       contact: new AccountContactService({
         operations: options.identityOperations,
         emailChange: options.emailChange,
+        phoneAvailable: () => options.phoneVerification.isConfigured(),
       }),
       phone: new AccountPhoneService({
         operations: options.identityOperations,
