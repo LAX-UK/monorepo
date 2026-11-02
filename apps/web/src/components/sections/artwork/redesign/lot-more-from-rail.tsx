@@ -1,5 +1,6 @@
 "use client";
 
+import { timerText } from "@/components/lot-timer/format";
 import { LotQuickLookTrigger } from "@/components/marketing/lot-quick-look/lot-quick-look-trigger";
 import {
   lotQuickLookFromRailCard,
@@ -14,7 +15,6 @@ import {
   AdaptiveMediaFrame,
   AdaptiveMediaFrameContainer,
 } from "@/components/ui/adaptive-media-frame";
-import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
@@ -35,6 +35,12 @@ type Props = {
    */
   density?: "rich" | "compact";
 };
+
+/** The time to a lot's close: a date beyond a week ("Thu 12 Nov"), else the time left. */
+function closingText(msLeft: number, now: number): string {
+  const { words, date } = timerText(msLeft, now);
+  return date ?? words;
+}
 
 /** Figma: “More from …” with up to four 320px cards and Bid / Follow CTAs.
  */
@@ -76,7 +82,7 @@ export function LotMoreFromRail({
           const closing =
             nowMs == null || c.endTime == null
               ? null
-              : formatCountdownForDisplay(new Date(c.endTime).getTime() - nowMs);
+              : closingText(new Date(c.endTime).getTime() - nowMs, nowMs);
           return (
             <li key={c.id} className="w-[200px] shrink-0 min-w-0">
               <div className="flex flex-col gap-4">
@@ -192,7 +198,7 @@ export function LotMoreFromRail({
                         {formatMoney(c.currentPrice)}
                       </p>
                     </div>
-                    <p className="text-sm text-on-surface-variant">
+                    <p className="whitespace-nowrap text-sm text-on-surface-variant">
                       <span className="text-xs">Closing: </span>
                       <span className="font-semibold text-on-surface" suppressHydrationWarning>
                         {closing ?? "\u00A0"}

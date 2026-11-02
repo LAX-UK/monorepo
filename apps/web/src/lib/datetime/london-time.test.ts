@@ -9,6 +9,7 @@ import {
   formatLondonTime,
   formatLondonTimeWithZone,
   formatLondonWeekday,
+  formatLondonWhen,
   londonDayKey,
   londonZoneName,
   toDate,
@@ -40,6 +41,15 @@ describe("London time", () => {
     expect(formatLondonDate(winter)).toBe("3 Nov 2026");
     expect(formatLondonDate(winter, { month: "long" })).toBe("3 November 2026");
     expect(formatLondonDateTime(winter)).toBe("3 Nov 2026, 21:00 GMT");
+  });
+
+  it("tells a moment with its weekday, and the year only when it is not this year's", () => {
+    const now = new Date("2026-11-01T12:00:00Z");
+    expect(formatLondonWhen(new Date("2026-11-12T04:31:00Z"), now)).toBe("Thu 12 Nov, 04:31 GMT");
+    expect(formatLondonWhen(new Date("2026-07-14T17:00:00Z"), now)).toBe("Tue 14 Jul, 18:00 BST");
+    expect(formatLondonWhen(new Date("2027-01-12T10:00:00Z"), now)).toBe(
+      "Tue 12 Jan 2027, 10:00 GMT",
+    );
   });
 
   it("abbreviates September to three letters like every other month", () => {

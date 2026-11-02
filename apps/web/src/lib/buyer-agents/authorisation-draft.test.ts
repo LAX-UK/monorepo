@@ -19,14 +19,21 @@ const TODAY = "2026-10-27";
 describe("parsePounds", () => {
   it.each([
     ["", null],
+    ["£", null],
+    ["   ", null],
     ["10,000", 10000],
     ["£2,500.50", 2500.5],
     [" 75 ", 75],
+    ["£ 75", 75],
+    ["0.05", 0.05],
+    ["12.5", 12.5],
+    ["12.", 12],
+    ["0", 0],
   ])("reads %j as %s", (text, expected) => {
     expect(parsePounds(text)).toBe(expected);
   });
 
-  it.each(["ten", "1.234", "-5"])("cannot read %j", (text) => {
+  it.each(["ten", "1.234", "-5", "1,00", "12,34.5", "1e3"])("cannot read %j", (text) => {
     expect(parsePounds(text)).toBeNaN();
   });
 });

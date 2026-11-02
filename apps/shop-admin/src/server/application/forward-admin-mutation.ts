@@ -3,7 +3,11 @@ import { SHOP_ADMIN_CSRF_COOKIE, shopAdminSessionCookie } from "@/lib/session-co
 import { isIdentityRejected } from "@auction/identity-rp";
 import { cookies, headers } from "next/headers";
 import { getShopAdminContainer } from "../container";
-import { type AdminMutationResult, mapAdminMutationErrorBody } from "./admin-mutation-result";
+import {
+  type AdminMutationResult,
+  mapAdminMutationErrorBody,
+  readErrorCode,
+} from "./admin-mutation-result";
 
 async function resolveMutationOrigin(): Promise<string | null> {
   const headerStore = await headers();
@@ -100,12 +104,6 @@ export async function forwardAdminMutation<T = unknown>(
     }
     return { ok: false, kind: "failed", message };
   }
-}
-
-function readErrorCode(body: unknown): string | undefined {
-  if (!body || typeof body !== "object") return undefined;
-  const record = body as { code?: string };
-  return typeof record.code === "string" ? record.code : undefined;
 }
 
 export async function forwardAdminJsonMutation<T = unknown>(input: {
