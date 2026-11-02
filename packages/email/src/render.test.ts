@@ -230,6 +230,32 @@ describe("renderEmail", () => {
     expect(rendered.html).not.toContain("Stop all edition alerts");
   });
 
+  it("renders the release alert confirmation with its link and a stop link", async () => {
+    const rendered = await renderEmail("shop-release-alert-confirm", {
+      confirmUrl: "https://shop.lax.art/release-alerts/confirm?token=abc",
+      expirationHours: 48,
+      unsubscribeUrl: "https://shop.lax.art/release-alerts/unsubscribe?token=def",
+    });
+    expect(rendered.subject).toBe("Confirm your LAX Shop release alerts");
+    expect(rendered.text).toContain("The link works for 48 hours.");
+    expect(rendered.html).toContain("https://shop.lax.art/release-alerts/confirm?token=abc");
+    expect(rendered.html).toContain("Never email this address about release alerts");
+    expect(rendered.text).toContain("London Art Exchange");
+  });
+
+  it("renders a release alert for the edition with a link that stops alerts", async () => {
+    const rendered = await renderEmail("shop-release-alert", {
+      artworkTitle: "Reed Study",
+      artistName: "Elias Moore",
+      artworkUrl: "https://shop.lax.art/artworks/reed-study",
+      unsubscribeUrl: "https://shop.lax.art/release-alerts/unsubscribe?token=def",
+    });
+    expect(rendered.subject).toBe("New edition: Reed Study");
+    expect(rendered.text).toContain("Reed Study by Elias Moore has been released in LAX Shop");
+    expect(rendered.html).toContain("https://shop.lax.art/artworks/reed-study");
+    expect(rendered.html).toContain("Stop release alerts to this address");
+  });
+
   it("renders opt-outable notification templates with unsubscribe copy", async () => {
     const rendered = await renderEmail("bid-outbid", {
       userName: "Ada",

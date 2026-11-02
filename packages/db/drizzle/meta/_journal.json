@@ -1919,6 +1919,13 @@
       "when": 1799049600000,
       "tag": "0273_purchase_problem",
       "breakpoints": true
+    },
+    {
+      "idx": 278,
+      "version": "7",
+      "when": 1799481600000,
+      "tag": "0278_shop_release_alerts",
+      "breakpoints": true
     }
   ]
 }

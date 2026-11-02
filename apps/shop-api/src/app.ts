@@ -23,6 +23,7 @@ import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/admin-merchand
 import { registerAdminPeopleRoutes } from "./routes/admin/v1/admin-people.routes.js";
 import { registerAdminProductionRoutes } from "./routes/admin/v1/admin-production.routes.js";
 import { registerAdminReadRoutes } from "./routes/admin/v1/admin-read.routes.js";
+import { registerAdminReleaseAlertRoutes } from "./routes/admin/v1/admin-release-alerts.routes.js";
 import { registerAdminSavedViewRoutes } from "./routes/admin/v1/admin-saved-views.routes.js";
 import { registerArtCacheInvalidation } from "./routes/admin/v1/art-cache-invalidation.js";
 import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js";
@@ -53,6 +54,7 @@ import { registerPortalFavoritesRoutes } from "./routes/v1/portal-favorites.rout
 import { registerPortalLaxPortfolioRoutes } from "./routes/v1/portal-lax-portfolio.routes.js";
 import { registerPortalMeDisabledRoutes } from "./routes/v1/portal-me-disabled.routes.js";
 import { registerPortalMeRoutes } from "./routes/v1/portal-me.routes.js";
+import { registerReleaseAlertRoutes } from "./routes/v1/release-alerts.routes.js";
 import { registerStripeConnectWebhookRoutes } from "./routes/webhooks/stripe-connect.routes.js";
 import { registerStripeWebhookRoutes } from "./routes/webhooks/stripe.routes.js";
 
@@ -140,6 +142,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerArtworkRoutes(app, options.deps.catalogue);
   void registerArtworkInterestRoutes(app, options.deps.interest);
   void registerEditionAlertRoutes(app, options.deps.interest);
+  void registerReleaseAlertRoutes(app, options.deps.interest);
   void registerBasketRoutes(app, options.deps.commerce);
   void registerOrderRoutes(app, options.deps.commerce);
   void registerGuestCheckoutRoutes(app, options.deps.commerce.guestCheckout);
@@ -181,6 +184,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminSavedViewRoutes(adminScope, options.deps.admin.savedViews);
         void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
         void registerAdminGuestRoutes(adminScope, options.deps.admin);
+        void registerAdminReleaseAlertRoutes(adminScope, options.deps.admin.releaseAlertSummary);
         void registerAdminArtistApplicationRoutes(
           adminScope,
           options.deps.admin.artistApplicationReview,
