@@ -86,3 +86,19 @@ describe("general API rate limit", () => {
     expect(response.status).toBe(200);
   });
 });
+
+describe("a route group with its own budget", () => {
+  it("counts per address and path against the lower limit", async () => {
+    const increment = vi.fn(async () => ({ allowed: true, remaining: 9 }));
+    const app = new Hono();
+    app.use("*", createRateLimitMiddleware({ increment }, { maxRequests: 10 }));
+    app.post("/sale-alerts/subscribe", (c) => c.json({ ok: true }));
+
+    await app.request("/sale-alerts/subscribe", {
+      method: "POST",
+      headers: { "cf-connecting-ip": "203.0.113.10" },
+    });
+
+    expect(increment).toHaveBeenCalledWith("rl:203.0.113.10:/sale-alerts/subscribe", 10, 60);
+  });
+});

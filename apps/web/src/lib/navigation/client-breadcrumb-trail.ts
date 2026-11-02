@@ -1,4 +1,5 @@
 import type { BreadcrumbItem } from "@/components/dashboard/primitives/breadcrumbs";
+import type { MobileShellTitleModel } from "@/lib/navigation/mobile-shell-title";
 import { settingsSectionLabel } from "@/lib/navigation/settings-section-labels";
 import { CLIENT_ROUTES } from "./client-routes";
 
@@ -13,8 +14,9 @@ const PURCHASES: Crumb = { label: "Purchases", href: CLIENT_ROUTES.purchases };
 const CONSIGNMENTS: Crumb = { label: "Consignments", href: CLIENT_ROUTES.consignments };
 const SOLD_AND_PAYOUTS: Crumb = { label: "Sold & payouts", href: CLIENT_ROUTES.payouts };
 const BID_SETTINGS: Crumb = { label: "Bid settings", href: CLIENT_ROUTES.settings };
-const ORGANISATION: Crumb = { label: "Organisation", href: CLIENT_ROUTES.organisation };
 const ORGANISATIONS: Crumb = { label: "Organisations", href: CLIENT_ROUTES.organisations };
+/** Payout pages go back to the payouts tab of Sold & payouts, where payouts are listed. */
+const PAYOUTS: Crumb = { label: "Sold & payouts", href: `${CLIENT_ROUTES.payouts}?tab=payouts` };
 const INVITATIONS: Crumb = { label: "Invitations", href: CLIENT_ROUTES.invitations };
 
 const ORGANISATION_TAB_LABELS: Record<string, string> = {
@@ -49,6 +51,15 @@ const TRAILS: readonly [RegExp, (match: RegExpMatchArray) => Crumb[]][] = [
   [/^\/bids\/telephone\/[^/]+$/, () => [MY_BIDS, here("Telephone bid")]],
   [/^\/purchases$/, () => [here("Purchases")]],
   [/^\/purchases\/checkout(\/[^/]+)?$/, () => [PURCHASES, here("Checkout")]],
+  [/^\/purchases\/([^/]+)$/, () => [PURCHASES, record("Purchase")]],
+  [
+    /^\/purchases\/([^/]+)\/report-problem$/,
+    (m) => [
+      PURCHASES,
+      { label: "Purchase", href: `${CLIENT_ROUTES.purchases}/${m[1] ?? ""}` },
+      here("Report a problem"),
+    ],
+  ],
   [/^\/watching$/, () => [here("Watching")]],
   [/^\/notifications$/, () => [here("Notifications")]],
   [/^\/settings$/, () => [here("Bid settings")]],
@@ -64,15 +75,21 @@ const TRAILS: readonly [RegExp, (match: RegExpMatchArray) => Crumb[]][] = [
       here("Make changes"),
     ],
   ],
-  [/^\/selling\/works$/, () => [here("Works")]],
+  [/^\/collection$/, () => [here("Collection")]],
   [/^\/selling\/payouts$/, () => [here("Sold & payouts")]],
+  [/^\/selling\/payouts\/[^/]+$/, () => [PAYOUTS, record("Payout")]],
   [/^\/selling\/payout-setup$/, () => [SOLD_AND_PAYOUTS, here("Payout setup")]],
   [/^\/selling\/artist$/, () => [here("Artist profile")]],
-  [/^\/legal-entities\/.+\/statement$/, () => [SOLD_AND_PAYOUTS, here("Statement")]],
+  [
+    /^\/legal-entities\/.+\/statement(\/unavailable)?$/,
+    () => [SOLD_AND_PAYOUTS, here("Statement")],
+  ],
+  // Tabs are siblings, so none has a trail: the page's own tabs are the way between them.
+  [/^\/team(\/[^/]+)?$/, () => [here("Team")]],
   [/^\/organisation$/, () => [here("Organisation")]],
   [
     /^\/organisation\/([^/]+)$/,
-    (m) => [ORGANISATION, here(ORGANISATION_TAB_LABELS[m[1] ?? ""] ?? "Organisation")],
+    (m) => [here(ORGANISATION_TAB_LABELS[m[1] ?? ""] ?? "Organisation")],
   ],
   [/^\/organisations$/, () => [here("Organisations")]],
   [/^\/organisations\/invitations$/, () => [ORGANISATIONS, here("Invitations")]],
@@ -93,4 +110,29 @@ export function buildClientBreadcrumbTrail(pathname: string): Crumb[] {
     if (match) return trail(match);
   }
   return [here("Detail")];
+}
+
+/** Where a detail page goes back to: its parent in the trail, named as the menu names it. */
+export type BackTarget = { label: string; href: string };
+
+/**
+ * The one way back on a detail page, the nearest crumb above it that is a link. A page with no
+ * parent (a menu page or a tab) has none.
+ */
+export function backTargetOf(items: readonly Crumb[]): BackTarget | null {
+  const parent = items.length > 1 ? items[items.length - 2] : undefined;
+  return parent?.href ? { label: parent.label, href: parent.href } : null;
+}
+
+/**
+ * The phone bar for a client page: the page's title (the record's own once the page names it),
+ * with a back arrow to the parent on every detail page.
+ */
+export function clientPhoneTitle(
+  items: readonly Crumb[],
+  titleOverride: string | null,
+): MobileShellTitleModel {
+  const title = titleOverride ?? items[items.length - 1]?.label ?? "";
+  const back = backTargetOf(items);
+  return back ? { title, backHref: back.href, backLabel: back.label } : { title };
 }

@@ -35,6 +35,7 @@ import { createFinanceRouteServices } from "./container/create-finance-route-ser
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
 import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
+import { createMarketingEnquiryServices } from "./container/create-marketing-enquiry-services.js";
 import { createOrganisationAccessServices } from "./container/create-organisation-access-services.js";
 import { createOrganisationBuyingServices } from "./container/create-organisation-buying-services.js";
 import { createOrganisationHomeServices } from "./container/create-organisation-home-services.js";
@@ -389,6 +390,13 @@ export function createContainer(env: Env): Container {
       groupCheckout: payments.paymentGroupCheckout,
     },
   });
+  const marketingEnquiries = createMarketingEnquiryServices({
+    db,
+    env,
+    email: infra.emailService,
+    transactionRunner: platform.transactionRunner,
+    events: platform.domainEventSink,
+  });
   const organisationNames = {
     nameOf: async (id: string) =>
       (await repos.legalEntityRepository.findById(id))?.displayName ?? null,
@@ -525,6 +533,8 @@ export function createContainer(env: Env): Container {
     watchlistService: userMisc.watchlistService,
     savedSearchService: userMisc.savedSearchService,
     newsletterSignupService: userMisc.newsletterSignupService,
+    visitorSaleAlertService: userMisc.visitorSaleAlertService,
+    marketingEnquiryService: marketingEnquiries,
     webhookEventRepository: repos.webhookEventRepository,
     artistWatchlistService: userMisc.artistWatchlistService,
     notificationService: platform.notificationService,
@@ -711,6 +721,7 @@ export function createContainer(env: Env): Container {
       atg,
       buyerAgentAuthorisations,
       deliveryQuotes: organisationBuying.staffDeliveryQuotes,
+      marketingEnquiries,
       stepUp: new StaffStepUpService(identityIssuer),
       idempotencyStore: new RedisIdempotencyStore(infra.redis),
     },
@@ -786,7 +797,9 @@ export type {
   ContainerLotRoutesSlice,
   ContainerLotSaleSlice,
   ContainerMarketingRoutesSlice,
+  ContainerMarketingEnquiryRoutesSlice,
   ContainerNewsletterRoutesSlice,
+  ContainerSaleAlertRoutesSlice,
   ContainerOnsiteEventRoutesSlice,
   ContainerOnsiteEventSlice,
   ContainerOrganizationOnboardingRoutesSlice,

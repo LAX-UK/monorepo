@@ -33,6 +33,24 @@ const SLA_MS: Partial<Record<AdminWorkItemSourceKind, number>> = {
   purchase_problem: 48 * 60 * 60 * 1000,
 };
 
+/** Kinds due in business days (Monday to Friday) rather than hours. */
+const SLA_BUSINESS_DAYS: Partial<Record<AdminWorkItemSourceKind, number>> = {
+  // The contact page promises a reply within two business days.
+  marketing_enquiry: 2,
+};
+
+/** The moment `days` business days after `from`, keeping the time of day. Weekends do not count. */
+export function addBusinessDays(from: Date, days: number): Date {
+  const due = new Date(from);
+  let remaining = days;
+  while (remaining > 0) {
+    due.setUTCDate(due.getUTCDate() + 1);
+    const weekday = due.getUTCDay();
+    if (weekday !== 0 && weekday !== 6) remaining -= 1;
+  }
+  return due;
+}
+
 const BASE_SEVERITY: Record<AdminWorkItemSourceKind, WorkItemSeverity> = {
   payment_manual_review: "critical",
   aml_screening: "high",
@@ -46,6 +64,7 @@ const BASE_SEVERITY: Record<AdminWorkItemSourceKind, WorkItemSeverity> = {
   lot_withdrawal: "medium",
   lot_draft_past_start: "critical",
   unsold_lot_choice: "medium",
+  marketing_enquiry: "medium",
   purchase_problem: "high",
 };
 
@@ -55,6 +74,7 @@ export function applyWorkItemSla(
 ): WorkItemSlaPresentation {
   const baseSeverity = BASE_SEVERITY[row.kind];
   const slaMs = SLA_MS[row.kind];
+  const businessDays = SLA_BUSINESS_DAYS[row.kind];
 
   if (row.kind === "lot_draft_past_start") {
     const startMs = row.sourceUpdatedAt.getTime();
@@ -64,6 +84,17 @@ export function applyWorkItemSla(
       dueAt: null,
       isOverdue,
       urgencyLabel: isOverdue ? "Overdue start" : "Draft awaiting publish",
+    };
+  }
+
+  if (businessDays != null) {
+    const dueAt = addBusinessDays(row.sourceUpdatedAt, businessDays);
+    const isOverdue = now >= dueAt.getTime();
+    return {
+      severity: isOverdue ? "high" : baseSeverity,
+      dueAt: dueAt.toISOString(),
+      isOverdue,
+      urgencyLabel: isOverdue ? "Over SLA" : null,
     };
   }
 

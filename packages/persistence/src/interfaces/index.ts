@@ -49,6 +49,10 @@ export type { IEmailSuppressionRepository } from "./email-suppression.repository
 export type { IEmailWebhookIngestRepository } from "./email-webhook-ingest.repository.js";
 
 export type { INewsletterSignupRepository } from "./newsletter-signup.repository.js";
+export type {
+  IVisitorSaleAlertRepository,
+  VisitorSaleAlertRecord,
+} from "./visitor-sale-alert.repository.js";
 
 export type { IWebhookEventRepository, WebhookEventDrainRow } from "./webhook-event.repository.js";
 export type {
@@ -997,6 +1001,12 @@ export type {
   IRecordPeopleReader,
   RecordPerson,
 } from "./workspace-buying.readers.js";
+export type {
+  IMarketingEnquiryRepository,
+  MarketingEnquiryRecord,
+  MarketingEnquiryStatus,
+  NewMarketingEnquiry,
+} from "./marketing-enquiry.repository.js";
 export type {
   IPurchaseProblemRepository,
   NewPurchaseProblem,

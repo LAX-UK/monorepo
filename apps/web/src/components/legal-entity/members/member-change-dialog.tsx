@@ -21,6 +21,8 @@ type Props = {
    */
   confirmBlockedReason?: string | null;
   onConfirm: () => void;
+  /** A wider dialog, for content that needs two columns. */
+  wide?: boolean;
   children?: ReactNode;
 };
 
@@ -40,6 +42,7 @@ export function MemberChangeDialog({
   error,
   confirmBlockedReason,
   onConfirm,
+  wide = false,
   children,
 }: Props) {
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -49,6 +52,7 @@ export function MemberChangeDialog({
       open={open}
       onOpenChange={(next) => (pending ? undefined : onOpenChange(next))}
       title={title}
+      wide={wide}
       {...(tone === "danger" && !children ? { initialFocusRef: cancelRef } : {})}
       footer={
         <>

@@ -299,6 +299,14 @@ export const USER_PICKER_ACCESS: CapabilityRequirement = {
   anyOf: ["catalogue.write", "artist.review", "platform.admin.full"],
 };
 
+/**
+ * Contact form enquiries in the staff work inbox: reading what the sender wrote (personal data)
+ * and marking an enquiry handled. Client services and administrators.
+ */
+export const MARKETING_ENQUIRIES_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond"],
+};
+
 /** Suspend, unsuspend, and bulk user moderation. */
 export const USER_MODERATION_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "support.respond"],

@@ -151,7 +151,7 @@ function whoCanBidRow(org: BiddingOrganisation): BiddingRow | null {
       text: org.biddersCount === 1 ? "1 member" : `${org.biddersCount} members`,
     },
     detail: "Owners, admins and buyer agents you authorise.",
-    action: { label: "Manage in Members", href: teamHref("members"), style: "link" },
+    action: { label: "Manage in Team", href: teamHref("bidding"), style: "link" },
   };
 }
 

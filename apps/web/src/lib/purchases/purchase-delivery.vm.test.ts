@@ -32,11 +32,16 @@ const EMAIL_OFFER = {
   place: "22 Marylebone High Street, London W1U 4PF",
 };
 
+const ADDRESSES = [
+  { id: "a1", label: "Gallery store", detail: "14 Riverside Walk, London SE1 9PP" },
+];
+
 const panel = (f: AccountPurchaseFacts) =>
   deliveryPanel({
     facts: f,
     collection: EMAIL_OFFER,
     payerTeam: "Northbank Gallery's finance team",
+    addresses: ADDRESSES,
   });
 
 describe("deliveryPanel", () => {
@@ -47,6 +52,10 @@ describe("deliveryPanel", () => {
       kind: "told",
       line: "Northbank Gallery's finance team chooses how the work is delivered.",
     });
+  });
+
+  it("hands the choosing payer the addresses to deliver to", () => {
+    expect(panel(facts("choose"))).toMatchObject({ kind: "choose", addresses: ADDRESSES });
   });
 
   it("offers only the quote steps the server allows", () => {

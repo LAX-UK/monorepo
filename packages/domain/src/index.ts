@@ -101,6 +101,7 @@ export {
 } from "./legal-entity-lifecycle.js";
 export {
   INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES,
+  ORGANISATION_PAYOUTS_PENDING_SUBMIT_REASON,
   ORGANISATION_UNDER_REVIEW_SUBMIT_REASON,
   SELLER_ENTITY_WRITE_STATUSES,
   sellerSubmissionAccess,
@@ -922,3 +923,15 @@ export {
   type SaleResultsSummary,
 } from "./sale-results-summary.js";
 export { toWithdrawnLotView } from "./withdrawn-lot-view.js";
+export {
+  VISITOR_ALERT_CONFIRM_TTL_MS,
+  VISITOR_ALERT_CONSENT_TEXT,
+  VISITOR_ALERT_RESEND_INTERVAL_MS,
+  evaluateConfirmation,
+  normaliseAlertEmail,
+  receivesSaleAlerts,
+  shouldSendConfirmation,
+  type VisitorAlertConfirmation,
+  type VisitorAlertSignupState,
+  type VisitorAlertStatus,
+} from "./visitor-sale-alerts.js";

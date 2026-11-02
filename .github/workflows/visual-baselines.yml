@@ -47,11 +47,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @auction/web exec playwright install chromium --with-deps
       - run: |
-          pnpm --filter @auction/db... build
+          pnpm turbo run build --filter=@auction/api... --filter=@auction/web...
           pnpm --filter @auction/db db:migrate
           pnpm --filter @auction/db db:seed:dev
-          pnpm --filter @auction/api build
-          pnpm --filter @auction/web build
       - name: Start stack
         run: |
           pnpm --filter @auction/api start &
@@ -82,7 +80,7 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @auction/web exec playwright install chromium --with-deps
-      - run: pnpm --filter @auction/web build
+      - run: pnpm turbo run build --filter=@auction/web...
       - name: Start web
         run: |
           pnpm --filter @auction/web start &

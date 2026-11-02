@@ -41,6 +41,7 @@ import { listCatalogueImageKeys, normalizeCatalogueKey } from "../lib/catalogue-
 import { type PictureReport, summarisePictures } from "../lib/cover-backfill-report.js";
 import { coverSlotVerdict, lotPlateVerdict } from "../lib/cover-picture-verdict.js";
 import { fetchExternalPicture, meanLuminance } from "../lib/external-picture.js";
+import { loadMediaAssetSizes } from "../lib/media-asset-sizes.js";
 import { SharpCoverImageAnalyser } from "../lib/sharp-cover-image-analyser.js";
 import { SharpImageProcessor } from "../lib/sharp-image-processor.js";
 import { createUploadStorage } from "../lib/upload-storage.js";
@@ -167,13 +168,10 @@ async function main() {
   const jobRepo = new DrizzleCoverAnalysisJobRepository(db);
   const pending = await jobRepo.listPending(limit ?? 1000);
 
-  const legacySizes = new Map<string, { width: number; height: number }>();
-  if (legacy.length > 0) {
-    const found = await db.execute<{ key: string; width: number; height: number }>(
-      sql`select key, width, height from media_asset where key = any(${legacy.map((item) => item.key)}::text[])`,
-    );
-    for (const row of found.rows) legacySizes.set(row.key, row);
-  }
+  const legacySizes = await loadMediaAssetSizes(
+    db,
+    legacy.map((item) => item.key),
+  );
   const legacyPlan = legacy.map((item) => {
     const size = legacySizes.get(item.key);
     return {

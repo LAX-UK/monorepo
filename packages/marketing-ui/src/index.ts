@@ -346,6 +346,18 @@ export {
   marketingArtistInitials,
 } from "./marketing-artist-card.js";
 export {
+  MarketingArtistFeature,
+  type MarketingArtistFeatureProps,
+  MarketingArtistPair,
+  type MarketingArtistPairProps,
+  MarketingArtistPairRow,
+  type MarketingArtistPairRowProps,
+} from "./marketing-artist-feature.js";
+export {
+  MarketingArtistPortraitFill,
+  type MarketingArtistPortraitFillProps,
+} from "./marketing-artist-portrait-fill.js";
+export {
   MarketingArtistCrossLinks,
   type MarketingArtistCrossLink,
   type MarketingArtistCrossLinksProps,

@@ -106,6 +106,20 @@ describe("lots public contract", () => {
     );
   });
 
+  it("returns each listed lot's measured pictures so the home cover can size its plate", async () => {
+    const imageAssets = [
+      { src: "https://cdn.example/a.jpg", width: 1200, height: 800, blurDataURL: "data:x" },
+    ];
+    const { app, listLotsForPublicApi } = mount(null);
+    listLotsForPublicApi.mockResolvedValueOnce({
+      data: [{ ...activeLot(), images: ["https://cdn.example/a.jpg"], imageAssets }],
+    });
+    const res = await app.request("http://t/lots?saleId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: Array<{ imageAssets?: unknown }> };
+    expect(body.data[0]?.imageAssets).toEqual(imageAssets);
+  });
+
   it("returns 403 for needsPhotos when caller cannot manage catalogue", async () => {
     const { app } = mount(null);
     const res = await app.request("http://t/lots?needsPhotos=1");

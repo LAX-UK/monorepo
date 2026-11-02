@@ -16,6 +16,18 @@ import type { LegalEntityMemberRole } from "@auction/types";
 
 export type ToastCopy = { title: string; description?: string };
 
+/** Whether moving someone between these roles ends the authorisations they bid under. */
+function endsAuthorisations(from: LegalEntityMemberRole, to: LegalEntityMemberRole): boolean {
+  return (
+    roleBidsThroughAuthorisation(from) &&
+    authorisationRevocationFor({
+      action: "change_role",
+      target: { memberId: "", role: from, isLastOwner: false },
+      newRole: to,
+    }) !== null
+  );
+}
+
 /** After a role change, with the one consequence Undo cannot reverse. */
 export function roleChangedCopy(
   name: string,
@@ -24,19 +36,29 @@ export function roleChangedCopy(
   organisationName: string,
 ): ToastCopy {
   const title = `${name} is now ${organisationRoleInSentence(to)}.`;
-  const endsAuthorisations =
-    roleBidsThroughAuthorisation(from) &&
-    authorisationRevocationFor({
-      action: "change_role",
-      target: { memberId: "", role: from, isLastOwner: false },
-      newRole: to,
-    }) !== null;
-  return endsAuthorisations
+  return endsAuthorisations(from, to)
     ? {
         title,
         description: `Their authorisations to bid for ${organisationName} have ended, and Undo won't bring them back.`,
       }
     : { title };
+}
+
+/** The "Change role" dialog: who, which role they hold, and the one consequence of leaving it. */
+export function changeRoleCopy(name: string, organisationName: string) {
+  return {
+    title: `Change ${name}'s role`,
+    lines: [
+      `Choose what ${name} can do for ${organisationName}. The change applies straight away.`,
+    ],
+    confirmLabel: "Change role",
+    sameRoleReason: "Choose a different role to continue.",
+    /** Shown once a role other than the current one is chosen; `null` when nothing is lost. */
+    consequence: (from: LegalEntityMemberRole, to: LegalEntityMemberRole): string | null =>
+      endsAuthorisations(from, to)
+        ? `${name}'s authorisations to bid for ${organisationName} will end, and changing the role back won't restore them.`
+        : null,
+  };
 }
 
 export function roleRestoredCopy(name: string, role: LegalEntityMemberRole): ToastCopy {
