@@ -17,6 +17,7 @@ import {
   CATEGORIES_READ_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
   CONSIGNMENT_INBOX_READ_ACCESS,
+  ENQUIRIES_ACCESS,
   FAILED_JOBS_READ_ACCESS,
   FINANCE_ACCESS,
   INVITATIONS_ACCESS,
@@ -361,6 +362,20 @@ function buildStaffNavGroupSpecs(
           match: exactOrNested(STAFF_ACCESS_REVIEW_PATH),
           icon: ClipboardCheck,
           requirement: STAFF_ACCESS_REVIEW_ACCESS,
+        },
+        {
+          // Enquiries from the contact form and the private sales page; the count is the new
+          // ones waiting for this person, and warns once one is past its reply time.
+          id: "enquiries",
+          href: "/admin/enquiries",
+          label: "Enquiries",
+          icon: Mail,
+          match: exactOrNested("/admin/enquiries"),
+          requirement: ENQUIRIES_ACCESS,
+          ...navBadge(
+            navCounts.enquiriesWaiting,
+            navCounts.enquiriesLate > 0 ? "warning" : "default",
+          ),
         },
         {
           id: "legal-entities",
