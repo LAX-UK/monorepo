@@ -61,6 +61,7 @@ const REQUEST_HEADERS = new Set([
   "x-lax-ga4-browser-ids",
   "x-lax-marketing-page-url",
   "x-turnstile-token",
+  "x-enquiry-draft",
 ]);
 
 export function sanitizedProxyRequestHeaders(source: Headers, bearer?: string): Headers {

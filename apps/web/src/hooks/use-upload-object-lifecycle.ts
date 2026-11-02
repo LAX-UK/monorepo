@@ -1,5 +1,6 @@
 "use client";
 
+import { putFileWithProgress } from "@/lib/data/http/put-file-with-progress";
 import {
   type PresignResponse,
   type UploadStatusResponse,
@@ -33,44 +34,6 @@ function uploadValidationTimeoutMs(): number {
   if (!raw) return DEFAULT_VALIDATION_TIMEOUT_MS;
   const n = Number.parseInt(raw, 10);
   return Number.isFinite(n) && n > 5_000 ? n : DEFAULT_VALIDATION_TIMEOUT_MS;
-}
-
-function putFileWithProgress(
-  url: string,
-  file: File,
-  headers: Headers,
-  onProgress?: (loaded: number, total: number) => void,
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", url);
-    headers.forEach((value, key) => xhr.setRequestHeader(key, value));
-    if (onProgress) {
-      xhr.upload.addEventListener("progress", (event) => {
-        if (event.lengthComputable) onProgress(event.loaded, event.total);
-      });
-    }
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else {
-        const detail = xhr.responseText?.trim().slice(0, 200);
-        reject(
-          new Error(
-            detail
-              ? `Object storage rejected the upload (${xhr.status}: ${detail})`
-              : `Object storage rejected the upload (${xhr.status})`,
-          ),
-        );
-      }
-    };
-    xhr.onerror = () =>
-      reject(
-        new Error(
-          "Object storage rejected the upload (network or CORS error — check browser devtools)",
-        ),
-      );
-    xhr.send(file);
-  });
 }
 
 async function waitForActiveUpload(uploadId: string): Promise<UploadValidationOutcome> {

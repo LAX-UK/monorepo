@@ -50,6 +50,9 @@ import ArtGeneralEnquiryAlertEmail, {
 import BackupCodesRegeneratedEmail, {
   subject as backupCodesRegeneratedSubject,
 } from "./templates/backup-codes-regenerated.js";
+import BidEnquiryReceivedEmail, {
+  subject as bidEnquiryReceivedSubject,
+} from "./templates/bid-enquiry-received.js";
 import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-outbid.js";
 import BiddingLimitChangedNoticeEmail, {
   subject as biddingLimitChangedNoticeSubject,
@@ -489,6 +492,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "kyc-resubmission-required": {
     subject: kycResubmissionRequiredSubject,
     component: (vars) => <KycResubmissionRequiredEmail {...vars} />,
+  },
+  "bid-enquiry-received": {
+    subject: bidEnquiryReceivedSubject,
+    component: (vars) => <BidEnquiryReceivedEmail {...vars} />,
   },
   "marketing-enquiry-alert": {
     subject: marketingEnquiryAlertSubject,

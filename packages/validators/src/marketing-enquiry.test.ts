@@ -41,6 +41,56 @@ describe("enquiryIntakeSchema", () => {
     expect(parsed).not.toHaveProperty("priceInMindMinor");
   });
 
+  it("takes the uploaded files and the draft token on a seller's enquiry", () => {
+    const uploadIds = [
+      "6f1c2f60-6a0a-4a53-9a2a-1c9f8f0e9a11",
+      "6f1c2f60-6a0a-4a53-9a2a-1c9f8f0e9a12",
+    ];
+    const sell = {
+      ...person,
+      intent: "private_sale_sell",
+      departmentSlug: "paintings",
+      artist: "Iris Calder",
+      title: "Low tide at Maldon",
+      locationTown: "London",
+      locationCountry: "UK",
+    };
+    expect(enquiryIntakeSchema.parse({ ...sell, uploadIds, draftToken: "abc.def" })).toMatchObject({
+      uploadIds,
+      draftToken: "abc.def",
+    });
+    expect(enquiryIntakeSchema.parse(sell)).toMatchObject({ uploadIds: [] });
+    const nine = Array.from(
+      { length: 9 },
+      (_, i) => `6f1c2f60-6a0a-4a53-9a2a-1c9f8f0e9a${String(i).padStart(2, "0")}`,
+    );
+    expect(enquiryIntakeSchema.safeParse({ ...sell, uploadIds: nine }).success).toBe(false);
+    expect(enquiryIntakeSchema.safeParse({ ...sell, uploadIds: ["not-an-id"] }).success).toBe(
+      false,
+    );
+  });
+
+  it("takes the organisation a private sale enquiry is sent for", () => {
+    const buy = {
+      ...person,
+      intent: "private_sale_buy",
+      lookingFor: "Post-war British painting",
+      budgetBand: "50000_to_250000",
+      timing: "no_rush",
+    };
+    const legalEntityId = "6f1c2f60-6a0a-4a53-9a2a-1c9f8f0e9a11";
+    expect(enquiryIntakeSchema.parse({ ...buy, legalEntityId })).toMatchObject({ legalEntityId });
+    expect(enquiryIntakeSchema.safeParse({ ...buy, legalEntityId: "marlow" }).success).toBe(false);
+    // A general enquiry has no organisation to name.
+    const general = enquiryIntakeSchema.parse({
+      ...person,
+      topic: "press",
+      message: "A question about the next sale.",
+      legalEntityId,
+    });
+    expect(general).not.toHaveProperty("legalEntityId");
+  });
+
   it("accepts a buyer's enquiry with a budget band and timing", () => {
     expect(
       enquiryIntakeSchema.safeParse({
