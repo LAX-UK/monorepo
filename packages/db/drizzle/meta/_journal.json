@@ -1910,7 +1910,14 @@
       "idx": 272,
       "version": "7",
       "when": 1798963200000,
-      "tag": "0272_purchase_problem",
+      "tag": "0272_kyc_retention_tombstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 273,
+      "version": "7",
+      "when": 1799049600000,
+      "tag": "0273_purchase_problem",
       "breakpoints": true
     }
   ]

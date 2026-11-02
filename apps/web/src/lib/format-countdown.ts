@@ -1,23 +1,32 @@
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
+import { TIME_LEFT_DATE_BEYOND_MS, formatTimeLeft, timeLeftShowsSeconds } from "@auction/domain";
 
-/** HH:MM:SS for the clock face; only the remainder within 24h when used inside {@link formatCountdownForDisplay}. */
-export function formatCountdownClock(msRemaining: number): string {
-  if (msRemaining <= 0) return "00:00:00";
-  const s = Math.floor(msRemaining / 1000);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  return [h, m, sec].map((n) => String(n).padStart(2, "0")).join(":");
-}
+/** Beyond this a moment is told as a date, not counted down (S14); one table in the domain. */
+export const COUNTDOWN_DATE_BEYOND_MS = TIME_LEFT_DATE_BEYOND_MS;
 
-/** Human-friendly countdown: under 24h → `HH:MM:SS`; otherwise `ND` + same-day `HH:MM:SS` (avoids `454:09:15`).
+/**
+ * The one countdown wording for cards, pills and heroes, by the time rule: days and hours, hours and
+ * minutes, then minutes and seconds in the final hour ("2 days 14 hours", "5 hours 12 minutes",
+ * "42 minutes 10 seconds"). Beyond {@link COUNTDOWN_DATE_BEYOND_MS} callers that know the target
+ * tell a date instead (see `opensLine`).
  */
 export function formatCountdownForDisplay(ms: number): string {
-  if (ms <= 0) return formatCountdownClock(0);
-  if (ms < MS_PER_DAY) return formatCountdownClock(ms);
-  const days = Math.floor(ms / MS_PER_DAY);
-  const remainder = ms % MS_PER_DAY;
-  return `${days}D ${formatCountdownClock(remainder)}`;
+  return formatTimeLeft(ms, { showSeconds: timeLeftShowsSeconds(ms) });
+}
+
+/**
+ * The same value in the least width, for a chip too narrow for words: a clock in the final hour
+ * ("42:09", tabular so it holds its width while it ticks), then the short form ("5h 12m", "2d 14h").
+ */
+export function formatCountdownCompact(ms: number): string {
+  if (ms >= 60 * 60 * 1000) return formatCountdownShort(ms);
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+}
+
+/** The same wording to the minute, for polite live-region announcements that must not chatter. */
+export function formatCountdownAnnounce(ms: number): string {
+  return formatTimeLeft(ms);
 }
 
 /**

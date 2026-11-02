@@ -40,7 +40,7 @@ export function MobileNavDrawer({
       onOpenChange={onOpenChange}
       resetKey={resetKey}
       sections={sections}
-      isSectionActive={(section) => megaMenuSectionActive(pathname, section, searchParams)}
+      isSectionActive={(section) => megaMenuSectionActive(pathname, section)}
       isLinkCurrent={(href) => linkIsCurrent(pathname, href)}
       utilityLinks={utilityNav}
       familyLinks={familyLinks}

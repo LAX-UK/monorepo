@@ -59,6 +59,28 @@ describe("buildLotPageView lifecycles", () => {
     });
   });
 
+  it("counts seconds through the whole final hour", () => {
+    const view = buildLotPageView(
+      input({ msLeft: 42 * 60_000 + 10_000, endsAt: "2026-11-01T12:42:10Z" }),
+    );
+    expect(view.rows[1]).toMatchObject({
+      label: "Closing soon",
+      value: "42 minutes 10 seconds",
+      tone: "soon",
+    });
+    const hour = buildLotPageView(input({ msLeft: HOUR, endsAt: "2026-11-01T13:00:00Z" }));
+    expect(hour.rows[1]?.value).toBe("1 hour");
+  });
+
+  it("tells the day, not a count, beyond seven days; a week exactly still counts", () => {
+    const far = buildLotPageView(
+      input({ msLeft: 7 * 24 * HOUR + 1, endsAt: "2026-11-08T12:00:01Z" }),
+    );
+    expect(far.rows[1]).toMatchObject({ label: "Closes", value: "Sun 8 Nov", tone: "calm" });
+    const week = buildLotPageView(input({ msLeft: 7 * 24 * HOUR, endsAt: "2026-11-08T12:00:00Z" }));
+    expect(week.rows[1]).toMatchObject({ label: "Time left", value: "7 days" });
+  });
+
   it("extended: final tone with seconds, and the extension said once", () => {
     const view = buildLotPageView(
       input({ lifecycle: "extended", msLeft: 108_000, extendedByMs: 120_000, bidCount: 7 }),
@@ -88,9 +110,9 @@ describe("buildLotPageView lifecycles", () => {
     expect(view.price).toMatchObject({ label: "Starting bid", amountText: "£4,200" });
     expect(view.rows).toHaveLength(1);
     expect(view.rows[0]).toMatchObject({
-      label: "Opens in",
-      value: "9 days",
-      sub: "Tue 10 Nov, 18:00 GMT",
+      label: "Opens",
+      value: "Tue 10 Nov",
+      sub: "18:00 GMT",
     });
     expect(view.sections.history).toBe(false);
     expect(view.action).toBe("set_maximum");

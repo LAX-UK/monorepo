@@ -26,16 +26,10 @@ export const utilityNav = [
   { href: "/faq", label: "FAQ" },
 ] as const;
 
-function salesTab(sp: Pick<URLSearchParams, "get"> | null): string | undefined {
-  const v = sp?.get("tab");
-  return v ? v.toLowerCase() : undefined;
-}
-
-/** Primary mega-menu trigger active state (uses query on `/sales` when provided). */
+/** Primary mega-menu trigger active state. */
 export function megaMenuSectionActive(
   pathname: string,
   section: Pick<MegaMenuSection, "id" | "href">,
-  searchParams: Pick<URLSearchParams, "get"> | null,
 ): boolean {
   if (section.id === "artists") {
     return pathname.startsWith("/artists") || pathname.startsWith("/artist/");
@@ -51,13 +45,8 @@ export function megaMenuSectionActive(
       pathname.startsWith("/selling")
     );
   }
-  if (section.id === "privateSales") {
-    if (!pathname.startsWith("/sales")) return false;
-    return salesTab(searchParams) === "privatesales";
-  }
   if (section.id === "auctions") {
-    if (!pathname.startsWith("/sales")) return false;
-    return salesTab(searchParams) !== "privatesales";
+    return pathname.startsWith("/sales");
   }
   return navItemActive(pathname, section.href);
 }

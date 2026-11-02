@@ -50,7 +50,7 @@ export function HeaderMegaNav({
   return (
     <MarketingHeaderMegaNav
       sections={sections}
-      isSectionActive={(section) => megaMenuSectionActive(pathname, section, searchParams)}
+      isSectionActive={(section) => megaMenuSectionActive(pathname, section)}
       resetKey={resetKey}
       logo={logo}
       trailing={trailing}

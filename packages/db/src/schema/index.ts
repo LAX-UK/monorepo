@@ -96,6 +96,7 @@ export * from "./legal-entity-onboarding-progress.js";
 export * from "./payouts.js";
 export * from "./payment-refund-reconcile.js";
 export * from "./kyc.js";
+export * from "./kyc-retention-tombstone.js";
 export * from "./aml.js";
 export * from "./source-of-funds.js";
 export * from "./source-of-funds-documents.js";
