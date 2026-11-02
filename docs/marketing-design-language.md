@@ -212,7 +212,7 @@ Ended sale pages also emit a [`VideoObject`](https://schema.org/VideoObject) JSO
 
 **Anchor-tab IA:** [`SaleAnchorTabs`](apps/web/src/components/marketing/sale-anchor-tabs.tsx) (via [`MarketingUnderlineTabs`](apps/web/src/components/marketing/marketing-underline-tabs.tsx) `variant="anchor"`) — order **Catalogue → (Telephone) → Overview**; DOM order matches tabs; scroll-spy highlights the active section.
 
-Bottom reserve: `--bottom-chrome-bid` (5rem) via [`bottom-chrome.ts`](apps/web/src/lib/layout/bottom-chrome.ts) for the taller on-block summary bar. On **terminal/closed lots**, the mobile bid bar is hidden and bottom padding collapses to the standard page inset (via [`MarketingBidBarChromeProvider`](apps/web/src/lib/context/marketing-bid-bar-chrome.tsx) + [`shouldShowBidStickyMobileBar`](apps/web/src/components/bid/bid-sticky-mobile-bar.logic.ts)).
+Bottom reserve: the phone bars (the lot page's bid bar, the sale page's summary bar) render through `CookieDockSlot`, stacked under the cookie banner. The dock publishes its height as `--cookie-dock-height` and the body pads by that much, so the last control on a page is never covered. The lot bar appears only after the in-page action has scrolled out of view; ended, not sold and withdrawn lots have none.
 
 ### Participation warnings (bid flow)
 
@@ -253,7 +253,7 @@ Anti-snipe extensions and onsite no-web-bidding callouts are **bid-participation
 - **Detail pages:** use `MarketingDetailShell` for artist profile, sale detail, and lot detail — wayfinding/hero slots plus optional `wrapChildren={false}` for multi-band saleroom layouts.
 - **Toolbar rows:** shared count/filter/sort layout lives in `MarketingToolbarRow`; sticky chrome in `MarketingListToolbar`, inset home chrome in `HomeSectionToolbar`. Removable active-filter chips (`CatalogActiveFilterChips`) render **below** the sticky toolbar band — not inside it — so they scroll away with results.
 - **Catalogue grids:** use `MarketingCatalogGrid` for equal-height tile rows; cards inside must be `h-full` with caption `mt-auto` (see `LotCardGrid`).
-- **Bottom chrome:** fixed mobile bars use `bottom-[var(--sticky-bid-bar-bottom,0px)]` and safe-area padding — not bare `bottom-0`.
+- **Bottom chrome:** a fixed phone bar renders through `CookieDockSlot` (stacked under the cookie banner) with safe-area padding, never its own `fixed bottom-0`. A bar that must stay outside the dock sits at `bottom-[var(--cookie-dock-height,0px)]`.
 
 ### PR checklist (marketing UI)
 
