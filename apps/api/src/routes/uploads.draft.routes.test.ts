@@ -5,6 +5,7 @@ import { createUploadRoutes } from "./uploads.js";
 
 function setup(session: unknown = null) {
   const uploadHttp = {
+    draftFromToken: vi.fn((token: string) => (token === "good" ? { draftId: "draft-1" } : null)),
     createDraftPresignedUpload: vi
       .fn()
       .mockResolvedValue({ status: 200, body: { data: { uploadId: "u1" } } }),
@@ -18,11 +19,9 @@ function setup(session: unknown = null) {
       .fn()
       .mockResolvedValue({ status: 200, body: { data: { uploadId: "u2" } } }),
   };
-  const verify = vi.fn((token: string) => (token === "good" ? { draftId: "draft-1" } : null));
   const routes = createUploadRoutes(
     {
       compliance: { uploadHttp },
-      enquiryDraftTokens: { verify },
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     } as unknown as ContainerUploadRoutesSlice,
     { getSessionUser: vi.fn().mockResolvedValue(session) } as unknown as IAuthenticator,

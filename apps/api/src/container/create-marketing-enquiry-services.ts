@@ -56,7 +56,24 @@ export type CreateMarketingEnquiryServicesInput = {
   >;
   transactionRunner: ITransactionRunner;
   events: IDomainEventSink;
+  drafts: IEnquiryDraftTokens;
 };
+
+/**
+ * Draft tokens for visitors who upload files before they send an enquiry. The key is derived
+ * from the check-in secret, so the two kinds of token can never stand in for each other.
+ */
+export function createEnquiryDraftTokens(
+  env: Pick<Env, "CHECK_IN_TOKEN_SECRET">,
+): IEnquiryDraftTokens {
+  return new HmacEnquiryDraftTokens({
+    secret: crypto
+      .createHmac("sha256", env.CHECK_IN_TOKEN_SECRET)
+      .update("enquiry-draft-token:v1")
+      .digest("hex"),
+    now: () => new Date(),
+  });
+}
 
 export type MarketingEnquiryServices = {
   intake: IMarketingEnquiryIntake;
@@ -105,14 +122,7 @@ export function createMarketingEnquiryServices(
     onAlertFailed: (enquiryId, error) =>
       log.error({ enquiryId, err: error }, "marketing enquiry alert could not be queued"),
   });
-  const drafts = new HmacEnquiryDraftTokens({
-    // Derived, so draft tokens and check-in tokens can never stand in for each other.
-    secret: crypto
-      .createHmac("sha256", input.env.CHECK_IN_TOKEN_SECRET)
-      .update("enquiry-draft-token:v1")
-      .digest("hex"),
-    now: () => new Date(),
-  });
+  const { drafts } = input;
   return {
     intake,
     submission: new EnquirySubmissionService({

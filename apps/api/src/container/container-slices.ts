@@ -745,7 +745,7 @@ export type ContainerSaleDocumentRoutesSlice = ContainerComplianceSlice &
 
 /** Presigned upload + local dev upload. */
 export type ContainerUploadRoutesSlice = ContainerComplianceSlice &
-  Pick<Container, "userSuspensionChecker" | "enquiryDraftTokens">;
+  Pick<Container, "userSuspensionChecker">;
 
 /** GDPR data export jobs. */
 export type ContainerExportRoutesSlice = ContainerComplianceSlice &

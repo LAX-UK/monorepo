@@ -17,6 +17,7 @@ import type { IMarketingEventService } from "../services/interfaces/marketing-ev
 import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
 import type { IUploadService } from "../services/interfaces/upload-service.js";
 import type { KycResubmissionNotifier } from "../services/kyc/kyc-resubmission-notifier.js";
+import type { IEnquiryDraftTokens } from "../services/marketing-enquiry/enquiry-draft-token.js";
 import type { SourceOfFundsDocumentCollectionService } from "../services/source-of-funds/source-of-funds-document-collection.service.js";
 
 export type CreateComplianceRouteServicesInput = {
@@ -35,6 +36,8 @@ export type CreateComplianceRouteServicesInput = {
   lotDocumentService: EntityDocumentService<string>;
   saleDocumentService: EntityDocumentService<string>;
   storageDriver: string;
+  /** Checks the token a visitor uploads enquiry files under. */
+  enquiryDrafts: IEnquiryDraftTokens;
 };
 
 export function createComplianceRouteServices(
@@ -56,7 +59,11 @@ export function createComplianceRouteServices(
       input.sourceOfFundsDocumentCollectionService,
     ),
     kycHttp: new KycHttpApplicationService(input.kycService),
-    uploadHttp: new UploadHttpApplicationService(input.uploadService, input.storageDriver),
+    uploadHttp: new UploadHttpApplicationService(
+      input.uploadService,
+      input.storageDriver,
+      input.enquiryDrafts,
+    ),
     exportHttp: new ExportHttpApplicationService(input.exportService),
     lotDocumentHttp: new LotDocumentHttpApplicationService(input.lotDocumentService),
     saleDocumentHttp: new SaleDocumentHttpApplicationService(input.saleDocumentService),

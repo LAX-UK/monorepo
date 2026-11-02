@@ -42,7 +42,7 @@ export function createUploadRoutes(
   }>(async (c, next) => {
     const token = c.req.header(X_ENQUIRY_DRAFT_HEADER);
     if (token === undefined) return requireAuth(c, next);
-    const draft = container.enquiryDraftTokens.verify(token);
+    const draft = uploadHttp.draftFromToken(token);
     if (!draft) {
       return c.json(
         {

@@ -140,6 +140,7 @@ function makeVeriffWebhookContainer(
       lotDocumentService: {} as never,
       saleDocumentService: {} as never,
       storageDriver: "s3",
+      enquiryDrafts: { issue: vi.fn(), verify: vi.fn() },
     });
 
   return {

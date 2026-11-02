@@ -2,6 +2,9 @@ import type { ComplianceHttpJson } from "./compliance-route-http.js";
 import type { ComplianceViewerContext } from "./compliance-route-http.js";
 
 export interface IUploadHttpApplicationService {
+  /** The enquiry draft a token was issued for, or null when it is forged or has expired. */
+  draftFromToken(token: string): { draftId: string } | null;
+
   putLocalPresignedUpload(input: {
     token: string;
     body: Buffer;

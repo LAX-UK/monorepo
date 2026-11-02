@@ -5,12 +5,18 @@ import type {
 } from "../interfaces/compliance-routes/compliance-route-http.js";
 import type { IUploadHttpApplicationService } from "../interfaces/compliance-routes/compliance-upload-http.js";
 import type { IUploadService } from "../interfaces/upload-service.js";
+import type { IEnquiryDraftTokens } from "../marketing-enquiry/enquiry-draft-token.js";
 
 export class UploadHttpApplicationService implements IUploadHttpApplicationService {
   constructor(
     private readonly uploadService: IUploadService,
     private readonly storageDriver: string,
+    private readonly enquiryDrafts: Pick<IEnquiryDraftTokens, "verify">,
   ) {}
+
+  draftFromToken(token: string): { draftId: string } | null {
+    return this.enquiryDrafts.verify(token);
+  }
 
   async putLocalPresignedUpload(input: {
     token: string;
