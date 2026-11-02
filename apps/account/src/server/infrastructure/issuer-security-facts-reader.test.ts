@@ -17,10 +17,11 @@ afterEach(() => vi.restoreAllMocks());
 describe("createIssuerSecurityFactsReader", () => {
   it("posts the access token in the body with the client's Basic credentials", async () => {
     const { fetchImpl, reader: r } = reader(async () =>
-      Response.json({ twoFactorEnabled: true, backupCodesRemaining: 2 }),
+      Response.json({ twoFactorEnabled: true, hasPassword: false, backupCodesRemaining: 2 }),
     );
     expect(await r.read("access-token")).toEqual({
       twoFactorEnabled: true,
+      hasPassword: false,
       backupCodesRemaining: 2,
     });
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
