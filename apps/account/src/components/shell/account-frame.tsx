@@ -87,9 +87,9 @@ export function AccountFrame({
         </div>
       </header>
       {backToProduct ? (
-        <div className={`${CONTAINER} pt-4`}>
+        <nav aria-label="Back to product" className={`${CONTAINER} pt-4`}>
           <BackToProductLink product={backToProduct} />
-        </div>
+        </nav>
       ) : null}
       <div className={`${CONTAINER} flex flex-1 gap-10 lg:gap-14`}>
         {showMenu ? (
