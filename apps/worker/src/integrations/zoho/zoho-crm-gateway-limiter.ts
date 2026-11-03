@@ -3,6 +3,8 @@ import type {
   CrmBatchUpsertInput,
   CrmConvertLeadInput,
   CrmConvertLeadResult,
+  CrmCoqlPage,
+  CrmCoqlQuery,
   CrmDeleteRecordInput,
   CrmDeleteRecordResult,
   CrmGateway,
@@ -24,11 +26,11 @@ const MAX_CONSECUTIVE_TRANSIENT_FAILURES = 5;
 const CIRCUIT_OPEN_MS = 60_000;
 const MIN_INTERVAL_MS = 100;
 
-export class ZohoCrmGatewayLimiter implements CrmGateway {
+export class ZohoCrmGatewayLimiter implements CrmGateway, CrmCoqlQuery {
   private state: LimiterState = { consecutiveTransientFailures: 0, circuitOpenUntilMs: 0 };
   private lastCallMs = 0;
 
-  constructor(private readonly inner: CrmGateway) {}
+  constructor(private readonly inner: CrmGateway & CrmCoqlQuery) {}
 
   getMetrics(): CrmGatewayMetrics {
     return this.inner.getMetrics();
@@ -56,6 +58,10 @@ export class ZohoCrmGatewayLimiter implements CrmGateway {
 
   async executeCoql(selectQuery: string): Promise<string[]> {
     return this.guard(() => this.inner.executeCoql(selectQuery));
+  }
+
+  async queryCoql(selectQuery: string): Promise<CrmCoqlPage> {
+    return this.guard(() => this.inner.queryCoql(selectQuery));
   }
 
   async convertLead(input: CrmConvertLeadInput): Promise<CrmConvertLeadResult> {

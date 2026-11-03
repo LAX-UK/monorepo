@@ -142,6 +142,12 @@ const envSchema = z
     CLAMAV_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     ZOHO_CRM_SYNC_MODE: z.enum(["off", "dry_run", "canary", "live"]).default("off"),
     /**
+     * Artworks coming in from Zoho Products. `off` does nothing; `dry_run` reads Zoho and records
+     * what would be created, updated or left as a conflict without touching the register; `live`
+     * applies it. Never `live` unless set on purpose.
+     */
+    ZOHO_ARTWORK_SYNC_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
+    /**
      * LAX Bid email alerts. `off` does nothing; `dry_run` records matches and logs each digest
      * without sending; `on` sends. Run the seed command before leaving `off`.
      */
@@ -336,6 +342,25 @@ const envSchema = z
           path: ["CLAMAV_URL"],
         });
       }
+    }
+    if (
+      e.ZOHO_ARTWORK_SYNC_MODE !== "off" &&
+      (!e.ZOHO_CLIENT_ID || !e.ZOHO_CLIENT_SECRET || !e.ZOHO_REFRESH_TOKEN)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN are required when ZOHO_ARTWORK_SYNC_MODE is not off",
+        path: ["ZOHO_ARTWORK_SYNC_MODE"],
+      });
+    }
+    if (e.ZOHO_ARTWORK_SYNC_MODE !== "off" && !e.WEBHOOK_EVENTS_PROCESS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "WEBHOOK_EVENTS_PROCESS must be true when ZOHO_ARTWORK_SYNC_MODE is not off, so signed notices are processed",
+        path: ["WEBHOOK_EVENTS_PROCESS"],
+      });
     }
     if (e.ZOHO_CRM_SYNC_MODE !== "off") {
       const enabled = e.ZOHO_CRM_ENABLED_EVENT_TYPES.split(",")
