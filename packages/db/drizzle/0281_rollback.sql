@@ -1,4 +1,4 @@
--- Rollback for 0280_kyc_outcome_sale_cancelled_notices. Roll back the application release first:
+-- Rollback for 0281_kyc_outcome_sale_cancelled_notices. Roll back the application release first:
 -- the previous release neither sends nor reads these notices. Existing ones are deleted, since
 -- the previous constraint does not allow their types.
 SET LOCAL lock_timeout = '30s';

@@ -6,8 +6,8 @@ import { NOTIFICATION_TYPES } from "./schema/notifications.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0280_kyc_outcome_sale_cancelled_notices.sql");
-const rollback = read("0280_rollback.sql");
+const migration = read("0281_kyc_outcome_sale_cancelled_notices.sql");
+const rollback = read("0281_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
@@ -19,11 +19,11 @@ const typesIn = (text: string) => {
   return [...text.slice(at).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
 };
 
-describe("migration 0280 kyc outcome and sale cancelled notices", () => {
-  it("is journal entry 280, after 0279", () => {
-    const entry = journal.entries.find((e) => e.tag === "0280_kyc_outcome_sale_cancelled_notices");
+describe("migration 0281 kyc outcome and sale cancelled notices", () => {
+  it("is journal entry 281, after 0279", () => {
+    const entry = journal.entries.find((e) => e.tag === "0281_kyc_outcome_sale_cancelled_notices");
     const previous = journal.entries.find((e) => e.tag === "0279_subject_data_export");
-    expect(entry?.idx).toBe(280);
+    expect(entry?.idx).toBe(281);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
   });
 
