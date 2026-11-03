@@ -74,6 +74,7 @@ describe("buildArtFooterVm", () => {
       { label: "Terms", href: "/legal/terms" },
       { label: "Privacy", href: "/legal/privacy" },
       { label: "Cookies", href: "/legal/cookies" },
+      { label: "Cookie settings", href: "#cookie-settings" },
     ]);
   });
 
