@@ -1996,6 +1996,13 @@
       "when": 1800086400000,
       "tag": "0284_alert_engine",
       "breakpoints": true
+    },
+    {
+      "idx": 287,
+      "version": "7",
+      "when": 1800345600000,
+      "tag": "0287_artwork_register",
+      "breakpoints": true
     }
   ]
 }
