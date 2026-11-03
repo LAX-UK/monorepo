@@ -226,6 +226,8 @@ export const WORKER_READ_TABLES = [
   "legal_entity_invoice_details",
   /** The clean-up of unsent enquiry files keeps the ones an enquiry holds. */
   "marketing_enquiry_attachment",
+  /** The CRM projector reads an enquiry by id to build its Zoho lead (the event carries no personal data). */
+  "marketing_enquiry",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
