@@ -37,6 +37,7 @@ describe("buildArtistDirectoryFilterGroups", () => {
   it("titles the rail groups in plain words", () => {
     const titles = buildArtistDirectoryFilterGroups(input).map((g) => g.title);
     expect(titles).toEqual([
+      "Show",
       "Living or historical",
       "Type",
       "Has works on sale",
@@ -45,9 +46,14 @@ describe("buildArtistDirectoryFilterGroups", () => {
     ]);
   });
 
-  it("keeps only All, Living and Historical under Living or historical", () => {
+  it("keeps All and Featured reachable under Show", () => {
     const [group] = buildArtistDirectoryFilterGroups(input);
-    expect(group?.links.map((l) => l.label)).toEqual(["All", "Living", "Historical"]);
+    expect(group?.links.map((l) => l.label)).toEqual(["All", "Featured"]);
+  });
+
+  it("offers Living and Historical under Living or historical", () => {
+    const group = buildArtistDirectoryFilterGroups(input).find((g) => g.id === "scenario");
+    expect(group?.links.map((l) => l.label)).toEqual(["Living", "Historical"]);
   });
 
   it("words the works-on-sale toggle so it does not repeat its group title", () => {

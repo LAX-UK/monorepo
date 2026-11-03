@@ -88,8 +88,8 @@ export function buildArtistDirectoryFilterGroups(
 
   return [
     {
-      id: "scenario",
-      title: "Living or historical",
+      id: "show",
+      title: "Show",
       links: [
         {
           label: "All",
@@ -97,6 +97,18 @@ export function buildArtistDirectoryFilterGroups(
           count: facets.total,
           active: preset.id === "all",
         },
+        {
+          label: "Featured",
+          href: artistDirectoryWithQuery("/artists/featured", {}, carry),
+          count: facets.featured,
+          active: preset.id === "featured",
+        },
+      ],
+    },
+    {
+      id: "scenario",
+      title: "Living or historical",
+      links: [
         {
           label: "Living",
           href: artistDirectoryWithQuery("/artists/living", {}, carry),
