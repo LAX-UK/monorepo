@@ -22,7 +22,7 @@ import { Copy, Lock, RotateCcw, Trash2, Undo2 } from "@auction/staff-ui/icons";
 import { type FailedJobDetail, failedJobSourceFamily } from "@auction/types";
 import Link from "next/link";
 import { useState } from "react";
-import { FAILED_JOB_DETAIL_COPY } from "./failed-job-copy";
+import { FAILED_JOB_DETAIL_COPY, integrationReferenceLabel } from "./failed-job-copy";
 import { useFailedJobActions } from "./use-failed-job-actions";
 
 const NextLink: StaffLinkComponent = Link;
@@ -87,7 +87,8 @@ export function FailedJobView({ job, canAct }: { job: FailedJobDetail; canAct: b
   const badge = FAILED_JOB_STATE_BADGE[job.state];
   const needsReview = job.state === "needs_review";
   const retryBlocked = needsReview && !job.retry.allowed;
-  const copy = FAILED_JOB_DETAIL_COPY[failedJobSourceFamily(job.source)];
+  const family = failedJobSourceFamily(job.source);
+  const copy = FAILED_JOB_DETAIL_COPY[family];
 
   const notice = job.discard ? (
     <Notice tone="info" title={copy.discardedTitle}>
@@ -188,7 +189,10 @@ export function FailedJobView({ job, canAct }: { job: FailedJobDetail; canAct: b
                 ...(job.originalJobId
                   ? [
                       {
-                        label: copy.originalLabel,
+                        label:
+                          family === "integrations"
+                            ? integrationReferenceLabel(job.id)
+                            : copy.originalLabel,
                         value: job.originalJobId,
                         copyValue: job.originalJobId,
                       },

@@ -65,6 +65,10 @@ export function FailedJobsList(props: FailedJobsListProps) {
   const tabs = list ? failedJobsViewTabs(list.counts) : [];
   // A person who can only see one kind of failure (Finance) gets that kind's wording.
   const onlySource = list?.sources.length === 1 ? (list.sources[0]?.id ?? "") : "";
+  const description =
+    onlySource === "integrations" || filters.source === "integrations"
+      ? FAILED_JOBS_DESCRIPTION.integrations
+      : FAILED_JOBS_DESCRIPTION.all;
 
   const actionsFor = useCallback(
     (row: FailedJobGroup): OverflowAction[] => {
@@ -123,8 +127,14 @@ export function FailedJobsList(props: FailedJobsListProps) {
             Link={Link}
             secondary={[row.sourceLabel, row.jobLabel].filter(Boolean).join(" · ")}
           >
-            {row.typeLabel}
-            {row.members.length > 1 ? <GroupCount count={row.members.length} /> : null}
+            {row.members.length > 1 ? (
+              <span className="flex min-w-0 items-center">
+                <span className="truncate">{row.typeLabel}</span>
+                <GroupCount count={row.members.length} />
+              </span>
+            ) : (
+              row.typeLabel
+            )}
           </PrimaryCell>
         ),
       },
@@ -222,7 +232,7 @@ export function FailedJobsList(props: FailedJobsListProps) {
     <>
       <ListPage<FailedJobGroup>
         title="Failed jobs"
-        description={FAILED_JOBS_DESCRIPTION}
+        description={description}
         Link={ListLink}
         listKey="bid-admin.failed-jobs"
         access={canAct ? "full" : "read-only"}

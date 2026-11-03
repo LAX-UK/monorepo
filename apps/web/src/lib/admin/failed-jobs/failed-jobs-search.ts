@@ -79,6 +79,15 @@ export function failedJobsHref(
   return buildListHref(FAILED_JOBS_PATH, current, { offset: null, ...next });
 }
 
+/** A job id from a path segment: undone once if the router left it encoded; ids hold no `%`. */
+export function decodeFailedJobId(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
 export function failedJobHref(id: string): string {
   return `${FAILED_JOBS_PATH}/${encodeURIComponent(id)}`;
 }

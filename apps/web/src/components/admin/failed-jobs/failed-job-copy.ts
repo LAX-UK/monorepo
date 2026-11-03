@@ -4,9 +4,13 @@ export const ACTIONS_OFF_COPY = {
   body: "A setting blocks them while an incident is handled. Jobs can still be read. Ask engineering to switch it back on.",
 } as const;
 
-/** The page's one-line purpose, under its title. */
-export const FAILED_JOBS_DESCRIPTION =
-  "Background jobs and integration deliveries that ran out of attempts. Retry them once the cause is fixed, or discard them with a reason.";
+const WHAT_TO_DO = "Retry them once the cause is fixed, or discard them with a reason.";
+
+/** The page's one-line purpose, under its title, in the words of what the person can see. */
+export const FAILED_JOBS_DESCRIPTION = {
+  all: `Background jobs and integration deliveries that ran out of attempts. ${WHAT_TO_DO}`,
+  integrations: `Deliveries to Xero and Zoho, and inbound webhooks, that ran out of attempts. ${WHAT_TO_DO}`,
+} as const;
 
 /** Wording on the one-job page that depends on where the failure came from. */
 export type FailedJobDetailCopy = {
@@ -40,7 +44,7 @@ export const FAILED_JOB_DETAIL_COPY: Readonly<
   },
   integrations: {
     taskLabel: "Event",
-    originalLabel: "Delivery reference",
+    originalLabel: "Delivery number",
     idLabel: "Delivery ID",
     sectionTitle: "Delivery",
     railLabel: "Delivery details",
@@ -51,3 +55,8 @@ export const FAILED_JOB_DETAIL_COPY: Readonly<
     emptyPayload: "None of this delivery's data is on the approved list, or it carried none.",
   },
 };
+
+/** What the delivery's own reference is called: a delivery has a number, a webhook an event key. */
+export function integrationReferenceLabel(id: string): string {
+  return id.startsWith("webhook:") ? "Event key" : "Delivery number";
+}

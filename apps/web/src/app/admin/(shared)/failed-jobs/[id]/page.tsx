@@ -1,4 +1,5 @@
 import { FailedJobView } from "@/components/admin/failed-jobs/failed-job-view";
+import { decodeFailedJobId } from "@/lib/admin/failed-jobs/failed-jobs-search";
 import { loadAdminFailedJobPage } from "@/lib/admin/failed-jobs/load-failed-job-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { FAILED_JOBS_ANY_SOURCE_READ_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -14,7 +15,9 @@ export const metadata: Metadata = metadataForPrivate(
 );
 
 export default async function AdminFailedJobPage({ params }: Props) {
-  const { id } = await params;
+  const { id: raw } = await params;
+  // The id carries colons (`delivery:41`), which the router can hand over still encoded.
+  const id = decodeFailedJobId(raw);
   await requireAdminCapability(FAILED_JOBS_ANY_SOURCE_READ_ACCESS, `/admin/failed-jobs/${id}`);
   const page = await loadAdminFailedJobPage(id);
   if (!page) notFound();

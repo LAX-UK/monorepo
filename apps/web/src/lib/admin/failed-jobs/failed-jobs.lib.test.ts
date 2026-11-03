@@ -5,6 +5,7 @@ import { failedJobTimeline } from "./failed-job-timeline";
 import { emailJobDetail } from "./failed-job.fixture";
 import {
   buildFailedJobsChips,
+  decodeFailedJobId,
   failedJobHref,
   failedJobsHref,
   hasFailedJobsFilters,
@@ -194,5 +195,17 @@ describe("failedJobsEmpty", () => {
       "No integration failures need review",
     );
     expect(failedJobsEmpty("needs_review", "").title).toBe("No failed jobs need review");
+  });
+});
+
+describe("decodeFailedJobId", () => {
+  it("undoes the encoding the router may leave on a colon", () => {
+    expect(decodeFailedJobId("delivery%3A41")).toBe("delivery:41");
+    expect(decodeFailedJobId("job%3Adlq%3Aemail%3A55120")).toBe("job:dlq:email:55120");
+  });
+
+  it("leaves a decoded id, and one that cannot be decoded, as it is", () => {
+    expect(decodeFailedJobId("delivery:41")).toBe("delivery:41");
+    expect(decodeFailedJobId("100%")).toBe("100%");
   });
 });

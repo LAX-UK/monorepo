@@ -8,7 +8,7 @@ const captured = {
   amountCents: 900_000,
   capturedAt: "2026-11-01T07:44:00.000Z",
   via: "stripe_checkout_webhook",
-  stripeChargeId: "ch_3Q0abcDEF",
+  stripeCustomerId: "cus_9ZzTop",
   buyerName: "Lena Fischer",
   buyerEmail: "lena@north.com",
   billingAddress: { line1: "1 Mill Lane", postcode: "N1 9AA" },
@@ -39,11 +39,11 @@ describe("maskIntegrationPayload", () => {
       "N1 9AA",
       "7700 900123",
       "card declined",
-      "ch_3Q0abcDEF",
+      "cus_9ZzTop",
     ]) {
       expect(shown).not.toContain(secret);
     }
-    // billingAddress.line1, billingAddress.postcode, phone, internalNote, stripeChargeId, userId
+    // billingAddress.line1, billingAddress.postcode, phone, internalNote, stripeCustomerId, userId
     expect(omitted).toBe(6);
   });
 

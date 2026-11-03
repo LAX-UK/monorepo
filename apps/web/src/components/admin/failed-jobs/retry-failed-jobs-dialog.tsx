@@ -137,7 +137,7 @@ export function RetryFailedJobsDialog({
         ) : null}
         {sharedError ? (
           <Notice tone="warning" title="The same error may come back">
-            All {count} failed with “{sharedError}”. Retry once the cause is fixed.
+            All {count} failed the same way. Fix the cause first, or they will fail again.
           </Notice>
         ) : null}
         {skipped.length > 0 ? (
