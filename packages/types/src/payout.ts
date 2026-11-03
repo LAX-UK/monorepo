@@ -63,6 +63,8 @@ export type PayoutLine = {
   id: string;
   payoutId: string;
   paymentId: string | null;
+  /** The private sale deal a sale line settles, in place of a lot payment. */
+  privateSaleDealId?: string | null;
   amount: string;
   kind: PayoutLineKind;
   createdByUserId: string | null;

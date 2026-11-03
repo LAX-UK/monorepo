@@ -176,6 +176,11 @@ const LABELS: Record<string, string> = {
   "enquiry_routing.changed": "Enquiry routing changed",
   "private_sale_deal.created": "Private sale started",
   "private_sale_deal.stage_changed": "Private sale stage changed",
+  "private_sale_deal.payment_started": "Private sale payment started",
+  "private_sale_deal.payment_paid": "Private sale payment received",
+  "private_sale_deal.payment_cancelled": "Private sale payment cancelled",
+  "private_sale_deal.payment_refunded": "Private sale payment refunded",
+  "private_sale_deal.payout_queued": "Private sale payout queued",
   "payout.transfer_reversed": "Payout transfer reversed",
   "purchase_problem.reported": "Purchase problem reported",
 
