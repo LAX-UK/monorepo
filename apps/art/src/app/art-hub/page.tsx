@@ -160,7 +160,7 @@ export default async function ArtHubPage() {
         <ArtEditorialStatus
           result={result}
           disabledTitle="Art Hub coming soon"
-          disabledDescription="Editorial programming is not enabled in this environment yet."
+          disabledDescription="Stories, films and episodes will be published here soon."
           emptyTitle="Art Hub is empty"
           emptyDescription="Stories, films and episodes will appear here when published."
         />
