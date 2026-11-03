@@ -59,6 +59,13 @@ export class AdminConsignmentAfterSaleService implements IAdminConsignmentAfterS
     });
   }
 
+  completeUnsoldFollowUp(submissionId: string) {
+    return this.api.json<unknown>(path(submissionId, "unsold-choice/follow-up/complete"), {
+      ...postJson({}),
+      skipActingLegalEntityHeader: true,
+    });
+  }
+
   move(submissionId: string, body: ConsignmentMoveBody) {
     return this.api.json<unknown>(path(submissionId, "move"), {
       ...postJson(body),

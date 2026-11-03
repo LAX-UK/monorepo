@@ -32,6 +32,11 @@ export interface IConsignmentAfterSaleStaffHttp {
     floor: string | null,
     viewer: SubmissionViewerContext,
   ): Promise<SubmissionHttpJson>;
+  /** Marks the return, or the hand-over to the private sales team, as done. */
+  completeUnsoldFollowUp(
+    submissionId: string,
+    viewer: SubmissionViewerContext,
+  ): Promise<SubmissionHttpJson>;
   moveOptions(submissionId: string, viewer: SubmissionViewerContext): Promise<SubmissionHttpJson>;
   move(
     submissionId: string,

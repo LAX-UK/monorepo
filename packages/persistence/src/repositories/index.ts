@@ -263,6 +263,7 @@ export {
 } from "./drizzle-organisation-team.readers.js";
 export { DrizzleContactDetailsRepository } from "./drizzle-contact-details.repository.js";
 export { DrizzleUnsoldChoiceDeadlineStore } from "./drizzle-unsold-choice-deadline.store.js";
+export { DrizzleUnsoldLotFollowUpRepository } from "./drizzle-unsold-lot-follow-up.repository.js";
 export {
   DrizzleAgreementDocumentFactsReader,
   DrizzlePayoutLinesReader,
