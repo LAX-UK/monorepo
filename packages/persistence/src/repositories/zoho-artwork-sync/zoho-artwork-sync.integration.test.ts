@@ -82,4 +82,53 @@ describe.skipIf(!url)("Zoho artwork sync store (Postgres)", { timeout: 30_000 },
     expect(await store.listForRun("notice:a", 10)).toHaveLength(1);
     expect((await store.summarise("notice:b")).stale).toBe(1);
   });
+
+  it("summarises the latest nightly pass: outcomes, skip reasons and what new Products lack", async () => {
+    await store.record("notice:x", "live", [outcome()], T1);
+    await store.record(
+      "nightly:dry_run:2026-11-02",
+      "dry_run",
+      [outcome({ zohoProductId: "9" })],
+      T0,
+    );
+    await store.record(
+      "nightly:dry_run:2026-11-03",
+      "dry_run",
+      [
+        outcome({ detail: { gaps: ["missing_price", "missing_medium"] } }),
+        outcome({ zohoProductId: "5002", detail: { gaps: ["missing_price"] } }),
+        outcome({
+          zohoProductId: "5003",
+          outcome: "skipped",
+          reason: "missing_artist",
+          detail: {},
+        }),
+        outcome({
+          zohoProductId: "5004",
+          outcome: "skipped",
+          reason: "missing_artist",
+          detail: {},
+        }),
+        outcome({ zohoProductId: "5005", outcome: "conflict", detail: {} }),
+      ],
+      T1,
+    );
+    expect(await store.latestNightlyRun()).toEqual({
+      runId: "nightly:dry_run:2026-11-03",
+      mode: "dry_run",
+      finishedAt: T1,
+      total: 5,
+      byOutcome: { create: 2, update: 0, conflict: 1, unchanged: 0, stale: 0, skipped: 2 },
+      skippedReasons: [{ reason: "missing_artist", count: 2 }],
+      gaps: [
+        { gap: "missing_price", count: 2 },
+        { gap: "missing_medium", count: 1 },
+      ],
+    });
+  });
+
+  it("has no latest nightly pass before one has run", async () => {
+    await store.record("notice:x", "live", [outcome()], T1);
+    expect(await store.latestNightlyRun()).toBeNull();
+  });
 });
