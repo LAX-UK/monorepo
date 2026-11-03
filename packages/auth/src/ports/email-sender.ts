@@ -29,6 +29,8 @@ export const IDENTITY_EMAIL_TEMPLATE_NAMES = [
   "account-deletion-reminder",
   "account-deletion-held",
   "account-deletion-completed",
+  "staff-email-change-confirm",
+  "staff-email-change-notice",
 ] as const;
 
 export type IdentityEmailTemplate = (typeof IDENTITY_EMAIL_TEMPLATE_NAMES)[number];
