@@ -40,7 +40,7 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "register-to-bid",
         title: "How do I register to bid?",
-        body: "Create a LAX.BID account and complete your buyer profile. Buyer agents must register and be approved for each sale before placing bids on that sale. Identity verification may also be required depending on your activity and the lots you bid on.",
+        body: "Create a LAX Bid account and complete your buyer profile. Buyer agents must register and be approved for each sale before placing bids on that sale. Identity verification may also be required depending on your activity and the lots you bid on.",
       },
       {
         id: "verification-before-bidding",
@@ -70,12 +70,12 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "binding-bids",
         title: "Are bids legally binding?",
-        body: "All bids submitted through LAX.BID are binding. By placing a bid, you are entering into a contractual obligation to complete the purchase if successful.",
+        body: "All bids submitted through LAX Bid are binding. By placing a bid, you are entering into a contractual obligation to complete the purchase if successful.",
       },
       {
         id: "withdraw-bid",
         title: "Can a bid be withdrawn or changed?",
-        body: "Bids cannot be withdrawn once placed, except at the discretion of LAX.BID.",
+        body: "Bids cannot be withdrawn once placed, except at the discretion of LAX Bid.",
       },
       {
         id: "highest-bidder",
@@ -125,12 +125,12 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "technical-issue",
         title: "What happens if there is a technical issue during an auction?",
-        body: "In the event of technical disruption, LAX.BID reserves the right to take appropriate action, including pausing or restarting a sale where necessary.",
+        body: "In the event of technical disruption, LAX Bid reserves the right to take appropriate action, including pausing or restarting a sale where necessary.",
       },
       {
         id: "auction-changes",
         title: "Can auctions be changed or cancelled?",
-        body: "LAX.BID reserves the right to amend, postpone, or withdraw any lot or sale at its discretion.",
+        body: "LAX Bid reserves the right to amend, postpone, or withdraw any lot or sale at its discretion.",
       },
     ],
   },

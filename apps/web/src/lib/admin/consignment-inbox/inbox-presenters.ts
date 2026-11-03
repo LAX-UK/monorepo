@@ -1,5 +1,6 @@
 import { staffRoleLastDay } from "@/lib/admin/people/staff-roles.vm";
 import { FIRST_REPLY_TARGET_WORKING_MINUTES } from "@auction/domain";
+import { staffShortDateFormat } from "@auction/staff-ui";
 import type { ConsignmentReplyClockView, ConsignmentThreadAssigneeView } from "@auction/validators";
 
 /**
@@ -14,7 +15,7 @@ const TIME = new Intl.DateTimeFormat("en-GB", {
   timeZone: ZONE,
 });
 const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: ZONE });
-const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
+const DAY_MONTH = staffShortDateFormat({
   day: "numeric",
   month: "short",
   timeZone: ZONE,

@@ -10,12 +10,12 @@ import type {
   FeaturedArtistSoloVm,
   FeaturedArtistsVm,
 } from "@/lib/home/art-featured-artists.vm";
-import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
 import {
   MarketingArtistFeature,
   MarketingArtistPair,
   MarketingArtistPairRow,
   MarketingArtistPortraitFill,
+  marketingArtistInitials,
 } from "@auction/marketing-ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -35,7 +35,7 @@ function Portrait({ card, sizes }: { card: CatalogueArtistCardVm; sizes: string 
           <ArtMediaImage
             src={card.image}
             alt=""
-            label={ART_MEDIA_LABELS.artistPortrait}
+            monogram={marketingArtistInitials(card.name)}
             aspect={[4, 5]}
             sizes={sizes}
             className="absolute inset-0 size-full"

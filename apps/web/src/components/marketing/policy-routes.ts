@@ -15,8 +15,8 @@ export type PolicyRoute = {
 export const policyRoutes: readonly PolicyRoute[] = [
   { href: "/about", label: "About", sidebarLabel: "About" },
   { href: "/legal", label: "Legal", sidebarLabel: "Legal hub", footerLabel: "Legal" },
-  { href: "/buy", label: "Buy", sidebarLabel: "Buying at LAX.BID" },
-  { href: "/sell", label: "Sell", sidebarLabel: "Selling with LAX.BID" },
+  { href: "/buy", label: "Buy", sidebarLabel: "Buying at LAX Bid" },
+  { href: "/sell", label: "Sell", sidebarLabel: "Selling with LAX Bid" },
   { href: "/contact", label: "Contact", sidebarLabel: "Contact" },
   { href: "/press", label: "Press", sidebarLabel: "Press & media" },
   { href: "/faq", label: "FAQ", sidebarLabel: "FAQ" },

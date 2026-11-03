@@ -77,6 +77,7 @@ export default async function ExhibitionsPage({ searchParams }: ExhibitionsPageP
             <ArtEditorialCardGrid
               cards={result.data.cards}
               ariaLabel="Exhibitions"
+              titleAs="h2"
               priorityCount={3}
             />
           </MarketingReveal>

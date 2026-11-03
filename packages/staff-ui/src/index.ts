@@ -1,14 +1,15 @@
 // Tokens
 export * from "./tokens.js";
 export { cn } from "./lib/cn.js";
-export { formatGbp, formatPenceAsPounds, parsePoundsToPence } from "./lib/money.js";
-export type { ParsedPence } from "./lib/money.js";
+export { formatGbp, formatPenceAsPounds, parsePoundsToPence, readCookie } from "@auction/ui";
+export type { ParsedPence } from "@auction/ui";
 export { formatStaffPercent } from "./lib/percent.js";
 export {
   formatStaffDate,
   formatStaffDateTime,
   formatStaffMoney,
   formatStaffRelative,
+  staffShortDateFormat,
 } from "./lib/format.js";
 
 // Primitives
@@ -110,7 +111,7 @@ export { ProgressBar } from "./display/progress-bar.js";
 export type { AttentionStripItem } from "./display/attention-strip.js";
 
 // Forms
-export { Field, useField as useStaffField } from "@auction/ui/lax";
+export { Field, FieldError, useField as useStaffField } from "@auction/ui/lax";
 export type { FieldProps } from "@auction/ui/lax";
 export { MoneyInput } from "./forms/money-input.js";
 export { DateInput, DateTimeInput } from "./forms/date-input.js";
@@ -242,6 +243,7 @@ export { FormPage, FormPageSkeleton } from "./templates/form-page.js";
 export type { FormPageProps } from "./templates/form-page.js";
 export type { ActiveFilter, DataView, FilterOption } from "./data/toolbar.js";
 export { SavedViewsError, useSavedViews } from "./data/saved-views.js";
+export { savedViewsFailure } from "./data/saved-views-failures.js";
 export { sameViewQuery, viewQuery } from "./data/view-query.js";
 export type {
   SavedView,

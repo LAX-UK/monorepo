@@ -29,6 +29,35 @@ describe("integrationEndpoint", () => {
   });
 });
 
+describe("Zoho artwork endpoints", () => {
+  it("sit under the Zoho scope, delivery and webhook", () => {
+    expect(integrationEndpoint("delivery", "zoho_artwork_writeback")).toMatchObject({
+      scope: "integrations.zoho",
+      label: "Zoho artworks (write-back)",
+      mayRepeat: false,
+    });
+    expect(integrationEndpoint("webhook", "zoho_artwork")).toMatchObject({
+      scope: "integrations.zoho",
+      label: "Zoho artworks",
+    });
+  });
+
+  it("are hidden from finance and shown to those who read Zoho", () => {
+    expect(nameFilterFor("delivery", set("integrations.xero"))).toEqual({
+      mode: "in",
+      names: ["xero"],
+    });
+    expect(nameFilterFor("delivery", set("integrations.zoho"))).toEqual({
+      mode: "in",
+      names: ["zoho", "zoho_artwork_writeback"],
+    });
+    expect(nameFilterFor("webhook", set("integrations.zoho"))).toEqual({
+      mode: "in",
+      names: ["zoho_artwork"],
+    });
+  });
+});
+
 describe("nameFilterFor", () => {
   it("is open for someone who reads every integration", () => {
     const all = set("integrations.xero", "integrations.zoho", "integrations.other");

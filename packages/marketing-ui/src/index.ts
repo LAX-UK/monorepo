@@ -354,6 +354,12 @@ export {
 } from "./marketing-artist-facts.js";
 export { MarketingArtistHero, type MarketingArtistHeroProps } from "./marketing-artist-hero.js";
 export {
+  EmailAddressText,
+  EmailLink,
+  type EmailLinkProps,
+  TextWithEmails,
+} from "./email-text.js";
+export {
   MarketingArtistCard,
   type MarketingArtistCardProps,
   MarketingArtistGrid,

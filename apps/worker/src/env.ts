@@ -149,6 +149,12 @@ const envSchema = z
      */
     ZOHO_ARTWORK_SYNC_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
     /**
+     * LAX-owned artwork state going out to Zoho Products (Status and stock code). `off` does
+     * nothing; `dry_run` logs the update that would be sent without calling Zoho; `live` writes.
+     * Needs the ZohoCRM.modules.products.UPDATE scope. Never `live` unless set on purpose.
+     */
+    ZOHO_ARTWORK_WRITEBACK_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
+    /**
      * LAX Bid email alerts. `off` does nothing; `dry_run` records matches and logs each digest
      * without sending; `on` sends. Run the seed command before leaving `off`.
      */
@@ -355,6 +361,17 @@ const envSchema = z
         message:
           "ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN are required when ZOHO_ARTWORK_SYNC_MODE is not off",
         path: ["ZOHO_ARTWORK_SYNC_MODE"],
+      });
+    }
+    if (
+      e.ZOHO_ARTWORK_WRITEBACK_MODE === "live" &&
+      (!e.ZOHO_CLIENT_ID || !e.ZOHO_CLIENT_SECRET || !e.ZOHO_REFRESH_TOKEN)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN are required when ZOHO_ARTWORK_WRITEBACK_MODE is live",
+        path: ["ZOHO_ARTWORK_WRITEBACK_MODE"],
       });
     }
     if (e.ZOHO_ARTWORK_SYNC_MODE !== "off" && !e.WEBHOOK_EVENTS_PROCESS) {

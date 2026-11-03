@@ -75,8 +75,10 @@ describe("artworkDraftToPatch price filters", () => {
     [" 250 ", 250],
     ["250.75", 250],
     ["abc", null],
-    ["£250", null],
-    ["-5", -5],
+    ["£250", 250],
+    ["1,250", 1250],
+    ["-5", null],
+    ["12abc", null],
   ])("reads %j as %s", (text, expected) => {
     expect(patchFor(text)).toBe(expected);
   });
