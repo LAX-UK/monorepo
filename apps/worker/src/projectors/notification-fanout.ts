@@ -20,6 +20,7 @@ import {
   type PaymentCancelledPayload,
   type ProxyCancelledPayload,
   SUPPORTED_EVENT_TYPES,
+  type SaleCancelledPayload,
   type SaleRegistrationDecidedPayload,
   type SaleRegistrationLimitChangedPayload,
   type SellerMoneyPayload,
@@ -28,6 +29,7 @@ import {
 import { fanoutPaymentFailed } from "./notification-fanout/payment-failed-fanout.js";
 import { fanoutPayoutInitiated } from "./notification-fanout/payout-fanout.js";
 import { fanoutProxyCancelled } from "./notification-fanout/proxy-fanout.js";
+import { fanoutSaleCancelled } from "./notification-fanout/sale-cancelled-fanout.js";
 import { fanoutPayoutTransferBlocked } from "./notification-fanout/transfer-blocked-fanout.js";
 import { fanoutLotWithdrawalDeclined } from "./notification-fanout/withdrawal-declined-fanout.js";
 
@@ -200,6 +202,17 @@ export async function processNotificationFanout(options: {
           eventId: row.id,
           payload: row.payload as PaymentCancelledPayload,
           webOrigin: ctx.webOrigin,
+        });
+      }
+      if (row.eventType === "sale.cancelled") {
+        await fanoutSaleCancelled({
+          notificationFanoutReader,
+          notificationWriteRepo: ctx.notificationWriteRepo,
+          emailService,
+          supportContactEmail,
+          eventId: row.id,
+          saleId: row.aggregateId,
+          payload: row.payload as SaleCancelledPayload,
         });
       }
       if (row.eventType === "payout.clawback_required") {

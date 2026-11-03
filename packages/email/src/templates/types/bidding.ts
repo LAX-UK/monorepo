@@ -1,3 +1,4 @@
+import type { SaleCancelledAudience } from "@auction/branding";
 import type { OptOutableLotVars, TemplateDomainSlice } from "./shared.js";
 
 const names = [
@@ -11,6 +12,7 @@ const names = [
   "watched-lot-reminder",
   "sale-registration-decision-notice",
   "bidding-limit-changed-notice",
+  "sale-cancelled-notice",
 ] as const;
 
 type BiddingTemplateName = (typeof names)[number];
@@ -63,6 +65,13 @@ type BiddingTemplateVars = {
     saleUrl: string;
     supportContactEmail: string;
   };
+  /** A sale was cancelled; what it means depends on how the person was involved. */
+  "sale-cancelled-notice": {
+    userName?: string | null;
+    saleTitle: string;
+    audience: SaleCancelledAudience;
+    supportContactEmail: string;
+  };
   /** A bidding limit changed for a sale registration or for an organisation. */
   "bidding-limit-changed-notice": {
     recipientFirstName?: string | null;
@@ -109,6 +118,7 @@ export const biddingTemplates = {
     "proxy-cancelled-notice": "live",
     "sale-registration-decision-notice": "live",
     "bidding-limit-changed-notice": "live",
+    "sale-cancelled-notice": "live",
     "lot-voided-notice": "live",
     "lot-withdrawal-declined-notice": "live",
     "watched-lot-reminder": "live",
