@@ -54,7 +54,6 @@ const baseProps = {
   saleId: "sale-1",
   liveish: true,
   fetchError: null,
-  actionError: null,
 };
 
 function Menu({
@@ -89,19 +88,6 @@ describe("SaleRegistrationsTab", () => {
     render(<SaleRegistrationsTab {...baseProps} sale={sale()} rows={[]} />);
 
     expect(screen.getByText("No registrations yet")).toBeInTheDocument();
-  });
-
-  it("shows a refused action as a notice at the top", () => {
-    render(
-      <SaleRegistrationsTab
-        {...baseProps}
-        sale={sale()}
-        rows={[registration()]}
-        actionError="Registration already decided"
-      />,
-    );
-
-    expect(screen.getByRole("alert")).toHaveTextContent("Registration already decided");
   });
 
   it("shows a failed load as an error instead of an empty table", () => {

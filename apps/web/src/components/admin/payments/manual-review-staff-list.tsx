@@ -33,7 +33,7 @@ import {
 } from "@auction/staff-ui";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 
 export type ManualReviewStaffListProps = {
   search: PaymentsListSearch;
@@ -48,6 +48,8 @@ export type ManualReviewStaffListProps = {
   canOpenLot: boolean;
   canOpenClient: boolean;
   loadError: string | null;
+  /** What the action that sent staff here has to say, shown under the header. */
+  notice?: ReactNode;
 };
 
 function complianceHref(row: ManualReviewStaffRow): string {
@@ -225,6 +227,7 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
         }
         onClearFilters={() => navigate(paymentsListHref(search, { manualReviewReason: null }))}
         loading={pending}
+        notice={props.notice}
         filtered={Boolean(props.reasonFilter)}
         error={
           props.loadError

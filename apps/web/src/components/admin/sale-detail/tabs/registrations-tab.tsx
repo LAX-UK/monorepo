@@ -23,7 +23,6 @@ import {
   DataTableToolbar,
   EmptyState,
   ErrorState,
-  Notice,
   PersonCell,
   Section,
   SegmentedControl,
@@ -47,7 +46,6 @@ type Props = {
   liveish: boolean;
   rows: AdminSaleRegistrationRow[];
   fetchError: string | null;
-  actionError: string | null;
   saleCurrency?: string;
   expectedGuests?: AdminExpectedGuestsSummary | null;
 };
@@ -59,7 +57,6 @@ export function SaleRegistrationsTab({
   liveish,
   rows,
   fetchError,
-  actionError,
   saleCurrency = "GBP",
   expectedGuests = null,
 }: Props) {
@@ -195,12 +192,6 @@ export function SaleRegistrationsTab({
 
   return (
     <div className="flex flex-col gap-6">
-      {actionError ? (
-        <Notice tone="danger" alert title="That did not go through">
-          {actionError}
-        </Notice>
-      ) : null}
-
       {fetchError ? (
         <Section title="Registrations">
           <ErrorState
