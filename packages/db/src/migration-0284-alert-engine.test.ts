@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { TOPICS_BY_PRODUCT } from "@auction/alerts";
 import { describe, expect, it } from "vitest";
+import { NOTIFICATION_TYPES } from "./schema/notifications.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
@@ -56,6 +57,26 @@ describe("migration 0284 alert engine", () => {
     expect(rollback).not.toContain("'sale_announced',");
     expect(rollback).toContain("DELETE FROM notification WHERE type = 'sale_announced'");
     expect(rollback).toContain("DROP COLUMN IF EXISTS new_sales_in_app");
+  });
+
+  it("lists every notification type on main plus sale_announced, and rolls back to main's list", () => {
+    const typesIn = (sql: string) => {
+      const at = sql.lastIndexOf("ADD CONSTRAINT notification_type_check");
+      const list = sql.slice(at, sql.indexOf(")", sql.indexOf("IN (", at)));
+      return [...list.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    };
+    expect(typesIn(migration)).toEqual([...NOTIFICATION_TYPES]);
+    expect(typesIn(rollback)).toEqual(NOTIFICATION_TYPES.filter((t) => t !== "sale_announced"));
+    for (const type of [
+      "kyc_approved",
+      "kyc_declined",
+      "sale_cancelled",
+      "payment_reminder",
+      "buyer_default_notice",
+    ]) {
+      expect(typesIn(migration)).toContain(type);
+      expect(typesIn(rollback)).toContain(type);
+    }
   });
 
   it("is rerunnable", () => {
