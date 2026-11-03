@@ -93,6 +93,11 @@ jobs:
           SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           SPACES_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
         run: pnpm jwks:snapshot "$TARGET_ENV"
+      - name: Real rotations are paused
+        if: ${{ !inputs.dry_run }}
+        run: |
+          echo "::error::Real rotations are paused: the script seals keys the auth service cannot decrypt (see docs/runbooks/jwks-rotation.md). Dry runs still work."
+          exit 1
       - name: Rotate signing key
         env:
           AUTH_DEK_KEY: ${{ secrets.AUTH_DEK_KEY }}
