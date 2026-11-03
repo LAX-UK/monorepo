@@ -1,9 +1,10 @@
 "use client";
 
 import { publicFormResolver } from "@/lib/forms/public-form-resolver";
+import { useFormErrorSummary } from "@/lib/forms/use-form-error-summary";
 import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter.client";
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
-import { Button, Field, Notice, TextInput } from "@auction/ui/lax";
+import { Button, ErrorSummary, Field, Notice, TextInput } from "@auction/ui/lax";
 import { type NewsletterSubscribeInput, newsletterSubscribeSchema } from "@auction/validators";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -19,7 +20,10 @@ export function NewsletterSignupForm() {
     resolver: publicFormResolver(newsletterSubscribeSchema),
     defaultValues: { email: "" },
     reValidateMode: "onBlur",
+    // The summary takes focus after a failed submit.
+    shouldFocusError: false,
   });
+  const summary = useFormErrorSummary(form, { email: "newsletter-email" });
 
   const onSubmit = form.handleSubmit(async (values) => {
     const result = await run({ email: values.email });
@@ -49,6 +53,7 @@ export function NewsletterSignupForm() {
       className="mx-auto flex w-full max-w-[420px] flex-col gap-3 text-left"
       noValidate
     >
+      <ErrorSummary errors={summary.errors} focusKey={summary.focusKey} />
       {bannerError ? <Notice tone="danger" alert title={bannerError} /> : null}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
         <Field
