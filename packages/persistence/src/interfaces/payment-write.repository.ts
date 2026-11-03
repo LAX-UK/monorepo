@@ -90,6 +90,8 @@ export interface IPaymentReadRepository {
   findById(id: string): Promise<PaymentRecord | null>;
   /** The latest capture Stripe took on this payment after it was closed, if any. */
   findBlockedCapture(paymentId: string): Promise<BlockedCapture | null>;
+  /** Whether a buyer default voided this payment: the sale was cancelled, so it is never reinstated. */
+  isVoidedByBuyerDefault(paymentId: string): Promise<boolean>;
   findOpenByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
   findRefundedByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
   /**

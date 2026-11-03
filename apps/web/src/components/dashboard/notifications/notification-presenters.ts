@@ -48,6 +48,12 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   if (type === "lot_lost") {
     return { label: "Lost", Icon: XCircle, tone: "neutral" };
   }
+  if (type === "buyer_default_notice") {
+    return { label: "Sale update", Icon: CreditCard, tone: "warn" };
+  }
+  if (type === "payment_reminder") {
+    return { label: "Payment reminder", Icon: CreditCard, tone: "warn" };
+  }
   if (type === "payment_due" || type.startsWith("payment")) {
     return { label: "Payment", Icon: CreditCard, tone: "info" };
   }

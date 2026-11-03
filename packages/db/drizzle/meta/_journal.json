@@ -1979,6 +1979,13 @@
     {
       "idx": 282,
       "version": "7",
+      "when": 1799913600000,
+      "tag": "0282_buyer_default",
+      "breakpoints": true
+    },
+    {
+      "idx": 283,
+      "version": "7",
       "when": 1800172800000,
       "tag": "0285_shop_returns_stock",
       "breakpoints": true

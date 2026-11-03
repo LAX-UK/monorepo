@@ -1,10 +1,6 @@
-import { DASHBOARD_ROUTES, dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
-import type { ComplianceGateStatus } from "@/lib/data/http/payments.server";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
-import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
-import { isToPay } from "@/lib/purchases/purchase-progress";
 import { purchaseEnding, sumMoneyByCurrency } from "@auction/domain";
-import type { ManualReviewReason, PortfolioRow } from "@auction/types";
+import type { PortfolioRow } from "@auction/types";
 import { lotTotalMajorUnits } from "./lot-pricing-helpers";
 
 export function filterPortfolioRowsByTitle(rows: PortfolioRow[], qLower: string): PortfolioRow[] {
@@ -88,52 +84,5 @@ export function buildPortfolioAnalytics(rows: readonly PortfolioRow[]): Portfoli
     categoryCounts: Array.from(categoryCount.entries())
       .map(([id, count]) => ({ id, count }))
       .sort((a, b) => b.count - a.count),
-  };
-}
-
-/** A won lot that still has to be paid for: one in the To pay view of Purchases. */
-export function isAwaitingCheckout(row: Pick<PortfolioRow, "payment">): boolean {
-  return isToPay(row.payment?.status ?? null);
-}
-
-/** Reason a not-yet-paid lot is held for review; the user-level gate covers lots with no payment row yet. */
-function awaitingComplianceReason(
-  row: PortfolioRow,
-  complianceGate: ComplianceGateStatus,
-): ManualReviewReason | null {
-  const gateReason: ManualReviewReason | null =
-    complianceGate === "aml_hold" || complianceGate === "source_of_funds_required"
-      ? complianceGate
-      : null;
-  return portfolioComplianceReason(row) ?? (isAwaitingCheckout(row) ? gateReason : null);
-}
-
-export type PayNowVm = {
-  /** Won lots that still need paying, whether or not they can be paid yet. */
-  dueCount: number;
-  outstandingLabel: string;
-  /** Checkout for every lot that can be paid now; null while all of them are in review. */
-  href: string | null;
-};
-
-/** What to pin at the top of Purchases when something is due; null when nothing is. */
-export function buildPayNow(
-  rows: readonly PortfolioRow[],
-  complianceGate: ComplianceGateStatus = "clear",
-): PayNowVm | null {
-  const due = rows.filter(isAwaitingCheckout);
-  if (due.length === 0) return null;
-  const payableIds = due
-    .filter((row) => awaitingComplianceReason(row, complianceGate) === null)
-    .map((row) => row.lot.id);
-  const [onlyId] = payableIds;
-  let href: string | null = null;
-  if (onlyId && payableIds.length === 1) href = dashboardCheckoutLotUrl(onlyId);
-  else if (payableIds.length > 1)
-    href = `${DASHBOARD_ROUTES.checkout}?lots=${payableIds.join(",")}`;
-  return {
-    dueCount: due.length,
-    outstandingLabel: buildPortfolioAnalytics(due).outstandingFormatted,
-    href,
   };
 }

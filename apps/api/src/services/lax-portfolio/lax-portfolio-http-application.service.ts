@@ -1,4 +1,5 @@
 import type { IBidPortfolioReader } from "@auction/persistence/interfaces";
+import type { IAmountsOwedService } from "../interfaces/amounts-owed.js";
 import type { IMediaUrlResolver } from "../interfaces/media-url-resolver.js";
 import type { IUserLaxPortfolioHttpApplicationService } from "../interfaces/user-routes/user-lax-portfolio-http.js";
 import type { UserHttpJson } from "../interfaces/user-routes/user-route-http.js";
@@ -10,6 +11,7 @@ import {
 
 export type LaxPortfolioHttpDeps = {
   reader: IBidPortfolioReader;
+  amountsOwed: Pick<IAmountsOwedService, "forPerson">;
   mediaUrlResolver: IMediaUrlResolver;
   webOrigin: string;
   legalName: string;
@@ -19,17 +21,24 @@ export class LaxPortfolioHttpApplicationService implements IUserLaxPortfolioHttp
   constructor(private readonly deps: LaxPortfolioHttpDeps) {}
 
   async getPortfolio(input: { userId: string }): Promise<UserHttpJson> {
-    const facts = await this.deps.reader.loadForPerson(input.userId);
+    const [facts, owed] = await Promise.all([
+      this.deps.reader.loadForPerson(input.userId),
+      this.deps.amountsOwed.forPerson(input.userId),
+    ]);
     const keys = [
       ...facts.wonLots.map((lot) => lot.firstImageKey),
       ...facts.submissions.map((submission) => submission.firstImageKey),
       ...facts.sellerLots.map((lot) => lot.firstImageKey),
     ].filter((key): key is string => key !== null);
     const urls = await this.deps.mediaUrlResolver.resolveManyUnique([...new Set(keys)]);
-    const items = buildBidPortfolioItems(facts, {
-      ...this.context(),
-      imageUrl: (key) => (key === null ? null : (urls.get(key) ?? null)),
-    });
+    const items = buildBidPortfolioItems(
+      facts,
+      {
+        ...this.context(),
+        imageUrl: (key) => (key === null ? null : (urls.get(key) ?? null)),
+      },
+      new Map(owed.entries.map((entry) => [entry.lotId, entry])),
+    );
     return { status: 200, body: { items } };
   }
 

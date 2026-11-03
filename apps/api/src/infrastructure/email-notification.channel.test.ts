@@ -354,3 +354,53 @@ describe("EmailNotificationChannel access requests", () => {
     });
   });
 });
+
+describe("EmailNotificationChannel payment reminders and buyer default notices", () => {
+  it("sends the reminder with its step, the amount and a link to pay for the lot", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(
+      USER_ID,
+      payload({
+        type: "payment_reminder",
+        meta: {
+          lotTitle: "Blue Vase",
+          amount: "1200.00",
+          dueDate: "10 November 2026",
+          reminderStep: "due_day",
+          emailIdempotencyKey: "payment-reminder:pay-1:due_day",
+        },
+      }),
+    );
+    expect(enqueued[0]?.template).toBe("payment-reminder");
+    expect(enqueued[0]?.idempotencyKey).toBe("payment-reminder:pay-1:due_day");
+    expect(enqueued[0]?.vars).toMatchObject({
+      step: "due_day",
+      lotTitle: "Blue Vase",
+      amount: "£1,200.00",
+      dueDate: "10 November 2026",
+      payUrl: `https://test.lax.bid/purchases/checkout/${LOT_ID}`,
+    });
+  });
+
+  it.each([
+    ["buyer", "https://test.lax.bid/purchases"],
+    ["seller", "https://test.lax.bid/selling/consignments"],
+  ] as const)("points the %s's notice at the right page", async (audience, url) => {
+    const { channel, enqueued } = setup();
+    await channel.send(
+      USER_ID,
+      payload({
+        type: "buyer_default_notice",
+        meta: {
+          lotTitle: "Blue Vase",
+          amount: "1200.00",
+          audience,
+          defaultOutcome: "returned_to_inventory",
+          buyerRestricted: true,
+        },
+      }),
+    );
+    expect(enqueued[0]?.template).toBe("buyer-default-notice");
+    expect(enqueued[0]?.vars).toMatchObject({ audience, actionUrl: url, buyerRestricted: true });
+  });
+});

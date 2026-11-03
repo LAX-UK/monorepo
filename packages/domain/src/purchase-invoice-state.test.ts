@@ -63,3 +63,24 @@ describe("invoiceIsOwed", () => {
     }
   });
 });
+
+describe("a cancelled sale", () => {
+  const raisedAt = new Date("2026-11-01T10:00:00Z");
+  const now = new Date("2026-11-20T10:00:00Z");
+
+  it("reads as a cancelled invoice, not an overdue one", () => {
+    const state = purchaseInvoiceState(
+      { saleCancelled: true, payment: { status: "cancelled", raisedAt } },
+      now,
+    );
+    expect(state.status).toBe("cancelled");
+    expect(state.dueAt).toEqual(new Date("2026-11-08T10:00:00Z"));
+    expect(invoiceIsOwed(state.status)).toBe(false);
+  });
+
+  it("covers a lot that was never invoiced", () => {
+    expect(purchaseInvoiceState({ saleCancelled: true, payment: null }, now).status).toBe(
+      "cancelled",
+    );
+  });
+});

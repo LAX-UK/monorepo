@@ -26,6 +26,7 @@ import {
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
 import {
+  BUYER_DEFAULT_ACCESS,
   LOTS_ACCESS,
   SALES_ACCESS,
   WITHDRAWAL_DECISION_ACCESS,
@@ -37,6 +38,7 @@ import {
   cancelLotBodySchema,
   createLotSchema,
   declineWithdrawalRequestBodySchema,
+  recordBuyerDefaultBodySchema,
   returnLotToInventoryBodySchema,
   updateLotMarketingDetailsSchema,
   updateLotSchema,
@@ -266,6 +268,39 @@ export async function adminReturnLotToInventoryResultAction(
     if (lotBefore?.saleId) {
       revalidateAdminSaleDetail(lotBefore.saleId);
     }
+    return actionSuccess();
+  });
+}
+
+export async function adminRecordBuyerDefaultResultAction(
+  lotId: string,
+  body: z.input<typeof recordBuyerDefaultBodySchema>,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminRecordBuyerDefaultResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(BUYER_DEFAULT_ACCESS);
+    if (denied) return denied;
+    const id = lotId.trim();
+    if (!id) return actionFailure("Missing lot");
+    const parsed = recordBuyerDefaultBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+    const lotBefore = await getAdminLotById(id);
+    const { adminLots } = getWriteContainer();
+    const r = await adminLots.recordBuyerDefault(id, parsed.data);
+    if (!r.ok) {
+      const meta = readApiActionErrorMeta(r.body);
+      return actionFailure(
+        r.message,
+        undefined,
+        r.status,
+        stepUpErrorCode(r) ?? (meta?.code as string | undefined),
+      );
+    }
+    revalidatePath("/admin/lots");
+    revalidatePath(`/admin/lots/${id}`);
+    revalidatePath("/admin/payments");
+    if (lotBefore?.saleId) revalidateAdminSaleDetail(lotBefore.saleId);
     return actionSuccess();
   });
 }

@@ -14,6 +14,9 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 
 const NEW_TYPES = ["kyc_approved", "kyc_declined", "sale_cancelled"];
 
+// Types added by later migrations; 0281's list ends at the last of its own.
+const TYPES_AT_0281 = NOTIFICATION_TYPES.slice(0, NOTIFICATION_TYPES.indexOf("sale_cancelled") + 1);
+
 const typesIn = (text: string) => {
   const at = text.lastIndexOf("ADD CONSTRAINT notification_type_check");
   return [...text.slice(at).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
@@ -27,12 +30,12 @@ describe("migration 0281 kyc outcome and sale cancelled notices", () => {
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
   });
 
-  it("allows exactly the types the schema lists", () => {
-    expect(typesIn(migration)).toEqual([...NOTIFICATION_TYPES]);
+  it("allows exactly the types that existed at 0281", () => {
+    expect(typesIn(migration)).toEqual(TYPES_AT_0281);
   });
 
   it("removes only the three new types on rollback, and restores the previous list", () => {
-    expect(typesIn(rollback)).toEqual(NOTIFICATION_TYPES.filter((t) => !NEW_TYPES.includes(t)));
+    expect(typesIn(rollback)).toEqual(TYPES_AT_0281.filter((t) => !NEW_TYPES.includes(t)));
     expect(rollback).toContain(
       "DELETE FROM notification WHERE type IN ('kyc_approved', 'kyc_declined', 'sale_cancelled')",
     );

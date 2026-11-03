@@ -1,6 +1,7 @@
 import {
   CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
   CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME,
+  PAYMENT_REMINDERS_QUEUE_NAME,
   SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
   STAFF_ROLE_EXPIRY_QUEUE_NAME,
   STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
@@ -9,6 +10,7 @@ import {
 import { Queue, Worker } from "bullmq";
 import { runConsignmentAgreementRemindersJob } from "../jobs/consignment-agreement-reminders.js";
 import { runConsignmentThreadSweepJob } from "../jobs/consignment-thread-sweep.js";
+import { runPaymentRemindersJob } from "../jobs/payment-reminders.js";
 import { runShopStockReconciliationJob } from "../jobs/shop-stock-reconciliation.job.js";
 import { runStaffRoleExpiryJob } from "../jobs/staff-role-expiry.js";
 import { runStaleSubmissionDraftRemindersJob } from "../jobs/stale-submission-draft-reminders.js";
@@ -134,6 +136,38 @@ export function registerCronWorkers(deps: WorkerBootstrapDeps): CronWorkersHandl
     queue: CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
   });
   closables.push(agreementRemindersWorker, agreementRemindersQueue);
+
+  const paymentRemindersQueue = new Queue(PAYMENT_REMINDERS_QUEUE_NAME, bullConnection);
+  const paymentRemindersWorker = new Worker(
+    PAYMENT_REMINDERS_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor(PAYMENT_REMINDERS_QUEUE_NAME, sentryMonitorSlugs, async () => {
+        await runPaymentRemindersJob({
+          apiBaseUrl: env.API_INTERNAL_BASE_URL,
+          cronSecret,
+          log,
+        });
+        await heartbeat(PAYMENT_REMINDERS_QUEUE_NAME);
+      });
+    },
+    bullConnection,
+  );
+  paymentRemindersWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(PAYMENT_REMINDERS_QUEUE_NAME, job, err);
+  });
+  // Hourly: a reminder goes out within an hour of its step; the API sends each one once.
+  void paymentRemindersQueue.add(
+    PAYMENT_REMINDERS_QUEUE_NAME,
+    {},
+    {
+      jobId: "hourly-payment-reminders",
+      repeat: { every: 60 * 60 * 1000 },
+      removeOnComplete: 50,
+    },
+  );
+  log.info("payment-reminders repeat registered (hourly)");
+  errorHandlers.push({ worker: paymentRemindersWorker, queue: PAYMENT_REMINDERS_QUEUE_NAME });
+  closables.push(paymentRemindersWorker, paymentRemindersQueue);
 
   const watchedLotRemindersQueue = new Queue(WATCHED_LOT_REMINDERS_QUEUE_NAME, bullConnection);
   const watchedLotRemindersWorker = new Worker(

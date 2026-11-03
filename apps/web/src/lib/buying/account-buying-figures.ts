@@ -1,21 +1,23 @@
 import type { AccountScope } from "@/lib/account-scope/account-scope";
 import { groupMyBids } from "@/lib/bid/my-bid-status";
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
-import { isAwaitingCheckout } from "@/lib/data/view-models/dashboard-portfolio.vm";
 import { lotChargeCurrency } from "@/lib/money/currency";
 import {
+  type AmountOwedEntry,
   type DashboardFigures,
   type MoneyTotal,
   type PurchasePaymentRole,
   purchasePaymentRole,
   sumMoneyByCurrency,
+  summariseAmountsOwed,
 } from "@auction/domain";
 import type { PortfolioRow } from "@auction/types";
 
 /**
- * The buying figures, worked out from the same rows the Bids and Purchases pages list, with the
- * same rules (`groupMyBids`, the To pay view). Home's "Open bids" and "Purchases to pay" and the
- * menu counts come from here, so a figure always equals the page it links to.
+ * The buying figures. Open bids come from the same rows the Bids page lists, with the same rules
+ * (`groupMyBids`); what is to pay comes from the amounts-owed reading that Purchases and the menu
+ * also use. Home's figures and the menu counts come from here, so a figure always equals the page
+ * it links to.
  */
 
 /** The most the account has committed on a lot: its highest bid or automatic-bid ceiling. */
@@ -42,20 +44,12 @@ export function openBidsFigure(
   return { lots: active.length, totalMax: sumMoneyByCurrency(totals) };
 }
 
-/** Won lots in the To pay view of Purchases, with what is owed per currency. */
+/** What the person pays themselves and has yet to pay, per currency; the amounts-owed reading. */
 export function purchasesToPayFigure(
-  purchases: readonly PortfolioRow[],
+  entries: readonly AmountOwedEntry[],
 ): NonNullable<DashboardFigures["purchasesToPay"]> {
-  const due = purchases.filter(isAwaitingCheckout);
-  return {
-    purchases: due.length,
-    totals: sumMoneyByCurrency(
-      due.map(({ lot }) => ({
-        currency: lotChargeCurrency(lot),
-        amount: lot.checkoutPricing?.totalMajor ?? lot.currentPrice,
-      })),
-    ),
-  };
+  const { count, totals } = summariseAmountsOwed(entries);
+  return { purchases: count, totals };
 }
 
 /**
@@ -85,14 +79,4 @@ export function paymentRoleFor(
     lot: { winnerId, buyerAccountKind: "individual" },
     membership: null,
   });
-}
-
-/** Won lots still to pay that the signed-in person pays themselves (none for a buyer agent). */
-export function purchasesToPayBy(
-  scope: AccountScope,
-  purchases: readonly PortfolioRow[],
-): PortfolioRow[] {
-  return purchases.filter(
-    (row) => isAwaitingCheckout(row) && paymentRoleFor(scope, row) === "payer",
-  );
 }

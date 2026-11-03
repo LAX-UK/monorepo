@@ -5,6 +5,36 @@ import { CARD, CARD_PADDING } from "./account-ui";
 export const PAID_SO_FAR_NOTE =
   "What you've paid across LAX, in the currency you paid. Not a valuation.";
 
+export const TOTAL_DUE_NOTE = "What you owe for works awaiting payment. It matches Purchases.";
+
+/** What is owed across the works awaiting payment, one figure per currency. */
+function TotalDue({ header }: { header: PortfolioHeaderVm }) {
+  return (
+    <div className={`${CARD} ${CARD_PADDING}`}>
+      <h3 className="text-sm font-medium text-on-surface-variant">Total due</h3>
+      {header.totalDue.length === 0 ? (
+        <p className="mt-1 font-headline text-lg text-on-surface">Amount to be confirmed</p>
+      ) : (
+        <ul className="mt-1 flex flex-wrap gap-x-6 gap-y-1">
+          {header.totalDue.map((total) => (
+            <li
+              key={total.currency}
+              className="font-headline text-2xl font-semibold tabular-nums text-on-surface"
+            >
+              {formatMinorUnits(total.amount, total.currency)}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="mt-2 text-xs text-on-surface-variant">
+        {header.inReview > 0
+          ? `${TOTAL_DUE_NOTE} ${header.inReview === 1 ? "One is" : `${header.inReview} are`} waiting on account checks.`
+          : TOTAL_DUE_NOTE}
+      </p>
+    </div>
+  );
+}
+
 /**
  * Counts of works by state, then what has been paid, one figure per currency. There is no
  * single total on purpose: the businesses and currencies differ, and no valuation exists.
@@ -32,6 +62,7 @@ export function PortfolioHeader({ header }: { header: PortfolioHeaderVm }) {
           </li>
         ))}
       </ul>
+      {header.awaitingPayment > 0 ? <TotalDue header={header} /> : null}
       <div className={`${CARD} ${CARD_PADDING}`}>
         <h3 className="text-sm font-medium text-on-surface-variant">Paid so far</h3>
         {header.paidSoFar.length === 0 ? (

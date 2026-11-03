@@ -4,12 +4,14 @@ import {
   declineWithdrawalRequestBodySchema,
   lotIdOnlyParamSchema,
   lotIdParamSchema,
+  recordBuyerDefaultBodySchema,
   returnLotToInventoryBodySchema,
 } from "@auction/validators";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
   requireAuctionManage,
+  requireBuyerDefault,
   requireLotWorkRead,
   requireLotsRead,
   requireWithdrawalDecision,
@@ -97,6 +99,32 @@ export function attachAdminLotsRoutes(
       );
       return result.match(
         (lot) => c.json({ data: lot }),
+        (e) =>
+          c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  /** POST /admin/lots/:lotId/buyer-default: void an unpaid sale, then release or offer the lot. */
+  platform.post(
+    "/lots/:lotId/buyer-default",
+    requireBuyerDefault,
+    guards.requireStepUp,
+    zValidator("param", lotIdOnlyParamSchema),
+    zValidator("json", recordBuyerDefaultBodySchema),
+    async (c) => {
+      const { lotId } = c.req.valid("param");
+      const result = await container.admin.lots.recordBuyerDefault(
+        {
+          userId: c.get("userId") as string,
+          role: normalizeUserRoleOrClient(c.get("userRole")) as UserRole,
+          staffRoles: c.get("userStaffRoles"),
+        },
+        lotId,
+        c.req.valid("json"),
+      );
+      return result.match(
+        (data) => c.json({ data }),
         (e) =>
           c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
       );

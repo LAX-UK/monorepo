@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import { jwksKey } from "../schema/jwks-key.js";
 import type { IdentityDatabase } from "./drizzle-consent-store.js";
 import { JWKS_ADVISORY_LOCK_KEY } from "./drizzle-jwks-retirement.js";
@@ -48,5 +48,43 @@ export async function rotateJwksSigningKey(
       createdAt: now,
     });
     return { newKid: created.id, rotatedKids: demoted.map((row) => row.kid) };
+  });
+}
+
+export type JwksRestoreResult = {
+  restoredKid: string;
+  /** Keys that were active and are now retired. */
+  retiredKids: string[];
+};
+
+/**
+ * Makes an existing key the active signing key again and retires every other active key,
+ * under the same advisory lock as rotation. Used to back out a rotation whose new key the
+ * auth service cannot use. The restored key is published again, with no rotation time.
+ */
+export async function restoreJwksActiveKey(
+  db: IdentityDatabase,
+  input: { kid: string },
+): Promise<JwksRestoreResult> {
+  return db.transaction(async (tx) => {
+    await tx.execute(
+      sql`select pg_advisory_xact_lock(${JWKS_ADVISORY_LOCK_KEY.toString()}::bigint)`,
+    );
+    const [target] = await tx
+      .select({ kid: jwksKey.kid })
+      .from(jwksKey)
+      .where(eq(jwksKey.kid, input.kid))
+      .limit(1);
+    if (!target) throw new Error(`No signing key with kid ${input.kid}`);
+    const retired = await tx
+      .update(jwksKey)
+      .set({ status: "retired" })
+      .where(and(eq(jwksKey.status, "active"), ne(jwksKey.kid, input.kid)))
+      .returning({ kid: jwksKey.kid });
+    await tx
+      .update(jwksKey)
+      .set({ status: "active", rotatedAt: null })
+      .where(eq(jwksKey.kid, input.kid));
+    return { restoredKid: input.kid, retiredKids: retired.map((row) => row.kid) };
   });
 }

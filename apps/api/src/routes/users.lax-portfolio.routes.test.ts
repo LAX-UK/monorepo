@@ -24,9 +24,28 @@ function portfolioApp(opts: {
   suspended?: boolean;
 }) {
   const loadForPerson = vi.fn().mockResolvedValue(opts.facts ?? NO_FACTS);
+  const portfolio = opts.facts ?? NO_FACTS;
+  // The lots the amounts-owed reading follows are the ones the portfolio facts list as won.
+  const wonLots = portfolio.wonLots.map((won) => ({
+    id: won.lotId,
+    status: "ended",
+    saleId: null,
+    winnerId: "user-1",
+    buyerLegalEntityId: "personal-1",
+    currentPrice: won.hammerPrice,
+    buyerPremiumRate: "0.15",
+  }));
   const userRoutes = createUserRouteServices(
     createTestUserRouteServicesInput({
       bidPortfolioReader: { loadForPerson },
+      lotService: { list: vi.fn(async () => wonLots), getById: vi.fn() } as never,
+      paymentBuyerService: {
+        listMyPaymentsForBuyerApi: vi.fn(async () => ({
+          data: portfolio.payments.map((p) => ({ ...p, createdAt: p.createdAt.toISOString() })),
+        })),
+        listEntityPaymentsForBuyerApi: vi.fn(),
+        getBuyerComplianceGateStatus: vi.fn(async () => ({ status: "clear" })),
+      } as never,
       mediaUrlResolver: {
         resolveManyUnique: vi.fn(
           async (keys: string[]) => new Map(keys.map((key) => [key, `https://cdn.lax.bid/${key}`])),

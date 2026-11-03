@@ -58,6 +58,14 @@ export async function reinstateBlockedCapture(
   if (payment.status !== "cancelled") {
     return err(new AuthzError("This payment is no longer closed", 409));
   }
+  if (await deps.payments.isVoidedByBuyerDefault(paymentId)) {
+    return err(
+      new AuthzError(
+        "This sale was cancelled after the buyer did not pay. Refund the payment instead.",
+        409,
+      ),
+    );
+  }
   const blocked = await deps.payments.findBlockedCapture(paymentId);
   if (!blocked) return err(new AuthzError("No payment was taken on this one", 409));
   if (!deps.paymentCapture || !deps.transactionRunner) {
