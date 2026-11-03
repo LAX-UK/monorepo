@@ -5,22 +5,22 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * instead of the URL. The value names the page it is for and when it stops being valid, so it
  * cannot be forged, replayed on another page or kept for later.
  */
-export type AdminFlashKind = "error" | "success";
+export type FlashKind = "error" | "success";
 
-export type AdminFlash = {
-  kind: AdminFlashKind;
+export type Flash = {
+  kind: FlashKind;
   message: string;
 };
 
-type AdminFlashPayload = {
-  k: AdminFlashKind;
+type FlashPayload = {
+  k: FlashKind;
   m: string;
   p: string;
   e: number;
 };
 
-export const ADMIN_FLASH_TTL_SECONDS = 60;
-export const ADMIN_FLASH_MAX_MESSAGE_LENGTH = 500;
+export const FLASH_TTL_SECONDS = 60;
+export const FLASH_MAX_MESSAGE_LENGTH = 500;
 
 const VERSION = "v1";
 
@@ -43,9 +43,9 @@ function stripControlChars(value: string): string {
 export function normaliseFlashMessage(value: string): string | null {
   const cleaned = stripControlChars(value).trim();
   if (!cleaned) return null;
-  return cleaned.length <= ADMIN_FLASH_MAX_MESSAGE_LENGTH
+  return cleaned.length <= FLASH_MAX_MESSAGE_LENGTH
     ? cleaned
-    : `${cleaned.slice(0, ADMIN_FLASH_MAX_MESSAGE_LENGTH)}…`;
+    : `${cleaned.slice(0, FLASH_MAX_MESSAGE_LENGTH)}…`;
 }
 
 function sign(key: Buffer, body: string): Buffer {
@@ -53,15 +53,15 @@ function sign(key: Buffer, body: string): Buffer {
 }
 
 /** Signs a message for one path. An empty message yields no token. */
-export function signAdminFlash(
-  input: AdminFlash & { path: string },
+export function signFlash(
+  input: Flash & { path: string },
   key: Buffer,
   nowMs: number,
-  ttlSeconds: number = ADMIN_FLASH_TTL_SECONDS,
+  ttlSeconds: number = FLASH_TTL_SECONDS,
 ): string | null {
   const message = normaliseFlashMessage(input.message);
   if (!message) return null;
-  const payload: AdminFlashPayload = {
+  const payload: FlashPayload = {
     k: input.kind,
     m: message,
     p: input.path,
@@ -71,7 +71,7 @@ export function signAdminFlash(
   return `${VERSION}.${body}.${sign(key, body).toString("base64url")}`;
 }
 
-function isPayload(value: unknown): value is AdminFlashPayload {
+function isPayload(value: unknown): value is FlashPayload {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
@@ -86,12 +86,12 @@ function isPayload(value: unknown): value is AdminFlashPayload {
  * The message when the token is ours, unexpired and meant for `path`; otherwise null. Every
  * failure looks the same to the caller: the page just shows nothing.
  */
-export function verifyAdminFlash(
+export function verifyFlash(
   token: string | null | undefined,
   key: Buffer,
   nowMs: number,
   path: string,
-): AdminFlash | null {
+): Flash | null {
   if (!token) return null;
   const parts = token.split(".");
   if (parts.length !== 3 || parts[0] !== VERSION) return null;
