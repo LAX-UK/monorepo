@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   assertCorrectionReason,
+  assertPrintsCanBeMadeFrom,
   assertProofListingApproved,
   defaultProofOwner,
+  printsListingSlug,
   proofListingSlug,
   proofListingTitle,
 } from "./linked-listing.js";
@@ -40,6 +42,30 @@ describe("assertCorrectionReason", () => {
     expect(() => assertCorrectionReason("x".repeat(501))).toThrow("500 characters");
     expect(assertCorrectionReason(" Signed on the back, not the front ")).toBe(
       "Signed on the back, not the front",
+    );
+  });
+});
+
+describe("prints made from an original", () => {
+  const original = { artworkId: "a1", sellsPrints: false, archived: false };
+
+  it("derives the prints' web address from the original's", () => {
+    expect(printsListingSlug("harbour-at-dusk")).toBe("harbour-at-dusk-prints");
+  });
+
+  it("accepts a live original", () => {
+    expect(() => assertPrintsCanBeMadeFrom(original)).not.toThrow();
+  });
+
+  it("refuses an archived original, which is restored first", () => {
+    expect(() => assertPrintsCanBeMadeFrom({ ...original, archived: true })).toThrow(
+      "restore it before creating prints",
+    );
+  });
+
+  it("refuses an edition, which is not an original", () => {
+    expect(() => assertPrintsCanBeMadeFrom({ ...original, sellsPrints: true })).toThrow(
+      "not another edition",
     );
   });
 });

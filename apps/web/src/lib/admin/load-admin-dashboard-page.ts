@@ -24,6 +24,7 @@ import type { buildRecentActivitySlice } from "@/lib/admin/dashboard/recent-acti
 import type { buildRoleKpisSlice } from "@/lib/admin/dashboard/role-kpis.slice";
 import type { buildSaleReadinessSlice } from "@/lib/admin/dashboard/sale-readiness.slice";
 import type { buildWorkInboxSlice } from "@/lib/admin/dashboard/work-inbox.slice";
+import { dataRequestsDashboardQueues } from "@/lib/admin/data-requests/data-requests-queue";
 import type { OnsiteSalesRadarRow } from "@/lib/admin/saleroom/map-operations-snapshot-to-radar-row";
 import type { AdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
@@ -31,6 +32,7 @@ import type { AttentionItem } from "@auction/staff-ui";
 import {
   CONSIGNMENT_INBOX_READ_ACCESS,
   CONSIGNMENT_INBOX_REPLY_ACCESS,
+  DATA_REQUESTS_MANAGE_ACCESS,
   FINANCE_ACCESS,
   type StaffRoles,
   type UserRole,
@@ -56,6 +58,8 @@ export type AdminDashboardPageModel = {
   workInbox: ReturnType<typeof buildWorkInboxSlice>;
   /** Client messages waiting on the viewer, and (for people who assign) the unassigned ones. */
   inboxQueues: AttentionItem[];
+  /** Data requests past, or close to, their legal due date; for people who answer them. */
+  dataRequestQueues: AttentionItem[];
   saleReadiness: ReturnType<typeof buildSaleReadinessSlice>;
   liveOperations: ReturnType<typeof buildLiveOperationsSlice>;
   roleKpis: ReturnType<typeof buildRoleKpisSlice>;
@@ -81,13 +85,19 @@ export async function loadAdminDashboardPage(
     assignment: input.workAssignment ?? "all",
   });
 
-  const [live, recent, inboxSummary] = await Promise.all([
+  const [live, recent, inboxSummary, dataRequestSummary] = await Promise.all([
     loadLiveOperationsSlice(ctx),
     loadRecentActivitySlice(ctx),
     ctx.can(CONSIGNMENT_INBOX_READ_ACCESS) && sources.getConsignmentInboxSummary
       ? sources.getConsignmentInboxSummary().catch(() => null)
       : Promise.resolve(null),
+    ctx.can(DATA_REQUESTS_MANAGE_ACCESS) && sources.getDataRequestSummary
+      ? sources.getDataRequestSummary().catch(() => null)
+      : Promise.resolve(null),
   ]);
+  const dataRequestQueues = dataRequestSummary
+    ? dataRequestsDashboardQueues(dataRequestSummary)
+    : [];
   const inboxQueues = inboxSummary
     ? inboxDashboardQueues(inboxSummary, {
         canAssign: ctx.can(CONSIGNMENT_INBOX_REPLY_ACCESS),
@@ -145,6 +155,7 @@ export async function loadAdminDashboardPage(
     activeLotIds: live.activeLotIds,
     workInbox: workInbox.slice,
     inboxQueues,
+    dataRequestQueues,
     saleReadiness: saleReadiness.slice,
     liveOperations: live.slice,
     roleKpis: roleKpis.slice,

@@ -125,10 +125,9 @@ describe("staff tokens", () => {
 
   describe("status badge text keeps 4.5:1 on its fill", () => {
     const pairs = [
-      ...STAFF_STATUS_TONES.filter((tone) => tone !== "live").map(
+      ...STAFF_STATUS_TONES.map(
         (tone) => [tone, `color-staff-${tone}-fg`, `color-staff-${tone}-bg`] as const,
       ),
-      ["live", "color-staff-on-live", "color-staff-live-bg"] as const,
     ];
     it.each(
       pairs.flatMap(([tone, fg, bg]) =>

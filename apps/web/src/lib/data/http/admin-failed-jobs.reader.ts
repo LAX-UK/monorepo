@@ -6,13 +6,20 @@ import {
 } from "@/lib/data/http/admin-failed-jobs.schema";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readData, safeReadData } from "@/lib/data/http/envelope";
-import type { FailedJobDetail, FailedJobList, FailedJobView } from "@auction/types";
+import type {
+  FailedJobDetail,
+  FailedJobList,
+  FailedJobSourceFamily,
+  FailedJobView,
+} from "@auction/types";
 
 /** Filters of the failed jobs list, as the API's `/admin/system/failed-jobs` takes them. */
 export type AdminFailedJobsParams = {
   view: FailedJobView;
   sort?: "failed_desc" | "failed_asc";
   q?: string;
+  /** Background jobs or integrations; omitted for both. */
+  source?: FailedJobSourceFamily;
   queue?: string;
   /** Inclusive London days, `YYYY-MM-DD`. */
   from?: string;
@@ -28,6 +35,7 @@ export function failedJobsQueryString(params: AdminFailedJobsParams): string {
   qs.set("offset", String(params.offset ?? 0));
   if (params.sort && params.sort !== "failed_desc") qs.set("sort", params.sort);
   if (params.q) qs.set("q", params.q);
+  if (params.source) qs.set("source", params.source);
   if (params.queue) qs.set("queue", params.queue);
   if (params.from) qs.set("from", params.from);
   if (params.to) qs.set("to", params.to);

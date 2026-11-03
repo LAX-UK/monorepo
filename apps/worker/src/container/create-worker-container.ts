@@ -1,7 +1,10 @@
 import { assertRuntimeOwnership } from "@auction/background-runtime";
 import { closeDb, createDb } from "@auction/db";
 import { captureBackgroundError, initNodeSentry } from "@auction/observability";
-import { DrizzleUnsoldChoiceDeadlineStore } from "@auction/persistence/repositories";
+import {
+  DrizzleUnsoldChoiceDeadlineStore,
+  DrizzleUnsoldLotFollowUpRepository,
+} from "@auction/persistence/repositories";
 import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import { DrizzleWebhookEventRepository } from "@auction/persistence/repositories";
 import {
@@ -61,6 +64,7 @@ import {
 import { marketingEventsCapiBatchSize } from "../marketing/meta-capi-batch-collector.js";
 import { createProjectorRunner } from "../projectors/runner.js";
 import { UnsoldChoiceDeadlineRecorder } from "../projectors/unsold-choice-deadline.js";
+import { UnsoldFollowUpOpener } from "../projectors/unsold-follow-up.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import { registerAlertWorkers } from "../workers/register-alert-workers.js";
 import { registerAtgSyncWorker } from "../workers/register-atg-sync-worker.js";
@@ -515,6 +519,7 @@ export function createWorkerContainer(): WorkerContainer {
       unsoldChoiceDeadlines: new UnsoldChoiceDeadlineRecorder(
         new DrizzleUnsoldChoiceDeadlineStore(db),
       ),
+      unsoldFollowUps: new UnsoldFollowUpOpener(new DrizzleUnsoldLotFollowUpRepository(db)),
       env,
       db,
       deliveryRepo: repositories.domainEventDeliveryRepo,

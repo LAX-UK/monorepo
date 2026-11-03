@@ -40,13 +40,16 @@ const PRIMARY_BUTTON = cn(
  * - `default` 36px, 14px label: secondary and row actions;
  * - `lg` 44px, 14px label: primary and form actions, and the comfortable tap target. A button
  *   with no size is `lg`, so pages keep the height they were designed at.
+ * The three steps set no vertical padding: the label is centred in the minimum height, so the 1px
+ *   edge of an outlined button sits inside the box and a primary and an outline button side by
+ *   side are the same height.
  * The other sizes are shapes rather than steps: `icon` and `touch` are square or padded 44px tap
  * targets, `link` and `inline` are text-shaped, and `xl` is the full-width sign-in button.
  */
 export const BUTTON_SIZES = {
-  sm: "min-h-8 gap-1.5 px-3 py-1.5 text-[0.8125rem] leading-5",
-  default: "min-h-9 px-4 py-2 text-sm leading-5",
-  lg: "min-h-11 px-6 py-3 text-sm leading-5",
+  sm: "min-h-8 gap-1.5 px-3 py-0 text-[0.8125rem] leading-5",
+  default: "min-h-9 px-4 py-0 text-sm leading-5",
+  lg: "min-h-11 px-6 py-0 text-sm leading-5",
   icon: "min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] h-[var(--tap-target-min,44px)] w-[var(--tap-target-min,44px)]",
   /** Touch-friendly icon button */
   touch: "min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] px-3",

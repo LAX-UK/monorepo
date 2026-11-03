@@ -158,6 +158,7 @@ export { DrizzleSaleroomOnBlockReader } from "./drizzle-saleroom-on-block.reader
 export { DrizzleSaleroomLiveSessionCounter } from "./drizzle-saleroom-live-session-counter.js";
 export { DrizzleFailedJobRepository } from "./drizzle-failed-job.repository.js";
 export { DrizzleFailedJobReviewRepository } from "./drizzle-failed-job-review.repository.js";
+export { DrizzleIntegrationDeadLetterRepository } from "./drizzle-integration-dead-letter.repository.js";
 export { DrizzleUserEmailVerifiedPublisher } from "./drizzle-user-email-verified.publisher.js";
 export {
   DrizzlePlatformCatalogLegalEntityReader,
@@ -265,6 +266,7 @@ export {
 } from "./drizzle-organisation-team.readers.js";
 export { DrizzleContactDetailsRepository } from "./drizzle-contact-details.repository.js";
 export { DrizzleUnsoldChoiceDeadlineStore } from "./drizzle-unsold-choice-deadline.store.js";
+export { DrizzleUnsoldLotFollowUpRepository } from "./drizzle-unsold-lot-follow-up.repository.js";
 export {
   DrizzleAgreementDocumentFactsReader,
   DrizzlePayoutLinesReader,

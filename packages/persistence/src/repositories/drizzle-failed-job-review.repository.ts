@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { failedJobs } from "@auction/db/schema";
-import { type SQL, and, asc, desc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { type SQL, and, asc, desc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type {
   FailedJobFilter,
   FailedJobRecord,
@@ -11,14 +11,26 @@ import type {
   IFailedJobDisposition,
   IFailedJobReviewReader,
 } from "../interfaces/failed-job-review.js";
+import { INTEGRATION_DISPOSITION_QUEUE } from "./drizzle-integration-dead-letter.repository.js";
 
 const LONDON_DAY = sql`((${failedJobs.failedAt} AT TIME ZONE 'Europe/London')::date)`;
 
+/** Decisions on integration deliveries live in the same table; they have their own reader. */
+const BACKGROUND_JOBS_ONLY = ne(failedJobs.originalQueue, INTEGRATION_DISPOSITION_QUEUE);
+
 /** Each view as a predicate; one table, so a new view is one more row. */
 const VIEW_PREDICATES: Readonly<Record<FailedJobReviewView, SQL>> = {
-  needs_review: and(isNull(failedJobs.discardedAt), isNull(failedJobs.replayedAt)) as SQL,
-  retried: and(isNull(failedJobs.discardedAt), isNotNull(failedJobs.replayedAt)) as SQL,
-  discarded: isNotNull(failedJobs.discardedAt),
+  needs_review: and(
+    BACKGROUND_JOBS_ONLY,
+    isNull(failedJobs.discardedAt),
+    isNull(failedJobs.replayedAt),
+  ) as SQL,
+  retried: and(
+    BACKGROUND_JOBS_ONLY,
+    isNull(failedJobs.discardedAt),
+    isNotNull(failedJobs.replayedAt),
+  ) as SQL,
+  discarded: and(BACKGROUND_JOBS_ONLY, isNotNull(failedJobs.discardedAt)) as SQL,
 };
 
 const VIEWS = Object.keys(VIEW_PREDICATES) as FailedJobReviewView[];

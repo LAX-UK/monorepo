@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import {
   DrizzleAdminSubmissionsSummaryReader,
+  DrizzleDomainEventDeliveryRepository,
   DrizzleEmailBlockRepository,
   DrizzleExportJobRepository,
   DrizzlePersonEmailDeliveryReader,
@@ -37,6 +38,8 @@ import {
 import { attachAdminSatelliteServices } from "../services/admin/create-admin-satellite-services.js";
 import { AdminFailedJobsService } from "../services/admin/failed-jobs/admin-failed-jobs.service.js";
 import { DomainEventFailedJobAuditTrail } from "../services/admin/failed-jobs/failed-job-audit-trail.js";
+import { BackgroundJobsSource } from "../services/admin/failed-jobs/sources/background-jobs.source.js";
+import { IntegrationDeliveriesSource } from "../services/admin/failed-jobs/sources/integration-deliveries.source.js";
 import type { BuyerDefaultService } from "../services/buyer-default/buyer-default.service.js";
 import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
 import type { IPayoutStatementApplicationService } from "../services/interfaces/finance-routes/finance-payout-statement.js";
@@ -104,6 +107,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     impersonationSessionRepository,
     impersonationDomainEventReader,
     failedJobReviewRepository,
+    integrationDeadLetterRepository,
   } = repos;
   const {
     domainEventSink,
@@ -353,9 +357,19 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
       queueInspector: userMisc.queueAdmin.inspector,
       queueMutator: userMisc.queueAdmin.mutator,
       failedJobs: new AdminFailedJobsService({
-        reader: failedJobReviewRepository,
-        disposition: failedJobReviewRepository,
-        retrier: userMisc.queueAdmin.mutator,
+        sources: [
+          new BackgroundJobsSource({
+            reader: failedJobReviewRepository,
+            disposition: failedJobReviewRepository,
+            retrier: userMisc.queueAdmin.mutator,
+          }),
+          new IntegrationDeliveriesSource({
+            reader: integrationDeadLetterRepository,
+            disposition: integrationDeadLetterRepository,
+            deliveries: new DrizzleDomainEventDeliveryRepository(db),
+            webhooks: integrationDeadLetterRepository,
+          }),
+        ],
         audit: new DomainEventFailedJobAuditTrail(domainEventSink, adminDomainEventReader),
         actionsEnabled: env.FAILED_JOB_ACTIONS_ENABLED,
       }),

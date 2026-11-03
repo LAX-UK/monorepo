@@ -37,6 +37,7 @@ import {
   artworkStateSql,
 } from "./artwork-visibility-sql.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
+import { readLinkedPrints } from "./drizzle-linked-prints.reader.js";
 import { proofsKeptFromColumns, runFromColumns } from "./edition-run-columns.js";
 import { readEditionRunDetail } from "./edition-runs/drizzle-edition-run-detail.reader.js";
 
@@ -274,7 +275,7 @@ export function createDrizzleAdminArtworkReader(
         .limit(1);
       if (!row) return null;
       const sourceOriginalId = row.artwork.sourceOriginalArtworkId;
-      const [images, editions, sourceOriginal, run] = await Promise.all([
+      const [images, editions, sourceOriginal, run, linkedPrints] = await Promise.all([
         db
           .select({ mediaKey: shopArtworkImage.mediaKey, alt: shopArtworkImage.alt })
           .from(shopArtworkImage)
@@ -297,6 +298,8 @@ export function createDrizzleAdminArtworkReader(
               .then((rows) => rows[0] ?? null)
           : null,
         readEditionRunDetail(db, row.artwork),
+        // Only an original has prints made from it.
+        row.artwork.eligibleForEditionAllocation ? null : readLinkedPrints(db, artworkId),
       ]);
       return toAdminArtworkDetail({
         artwork: row.artwork,
@@ -309,6 +312,7 @@ export function createDrizzleAdminArtworkReader(
         images: images.map((image) => ({ ...image, url: resolveMediaUrl(image.mediaKey) })),
         editions,
         sourceOriginal,
+        linkedPrints,
         run,
         resolveMediaUrl,
       });
@@ -324,6 +328,7 @@ export function toAdminArtworkDetail(input: {
   images: AdminArtworkDetail["images"];
   editions: Parameters<typeof summariseEditionRun>[0];
   sourceOriginal?: AdminArtworkDetail["sourceOriginal"];
+  linkedPrints?: AdminArtworkDetail["linkedPrints"] | null;
   run: AdminArtworkDetail["run"];
   resolveMediaUrl: ResolveMediaUrl;
 }): AdminArtworkDetail {
@@ -349,6 +354,7 @@ export function toAdminArtworkDetail(input: {
     images,
     importedImageUrl,
     sourceOriginal: input.sourceOriginal ?? null,
+    ...(input.linkedPrints ? { linkedPrints: input.linkedPrints } : {}),
     editions: {
       size: run.size,
       committed: run.committed,

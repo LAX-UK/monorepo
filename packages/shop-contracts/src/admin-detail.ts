@@ -173,6 +173,31 @@ export const AdminOrderRefundDetailSchema = Type.Object({
    * refund failed, and from an older shop-api.
    */
   failureReason: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  /** Set when finance confirmed the customer was refunded outside LAX after this one failed. */
+  settledOutside: Type.Optional(
+    Type.Union([
+      Type.Object({
+        reference: Type.String(),
+        reason: Type.String(),
+        at: Type.String(),
+        byName: Type.Union([Type.String(), Type.Null()]),
+      }),
+      Type.Null(),
+    ]),
+  ),
+});
+
+/** An item coming back to the gallery after a cancellation. */
+export const AdminOrderReturnDetailSchema = Type.Object({
+  returnId: Type.String({ format: "uuid" }),
+  orderLineId: Type.String({ format: "uuid" }),
+  editionId: Type.String({ format: "uuid" }),
+  status: Type.String(),
+  /** What staff decided on receipt; null until received. */
+  disposition: Type.Union([Type.String(), Type.Null()]),
+  receivedAt: Type.Union([Type.String(), Type.Null()]),
+  createdAt: Type.String(),
+  updatedAt: Type.String(),
 });
 
 /**
@@ -226,6 +251,8 @@ export const AdminOrderDetailSchema = Type.Object({
   lines: Type.Array(AdminOrderLineDetailSchema),
   fulfilmentRecord: Type.Union([AdminOrderFulfilmentDetailSchema, Type.Null()]),
   refunds: Type.Array(AdminOrderRefundDetailSchema),
+  /** Items coming back after a cancellation. Absent from an older shop-api. */
+  returns: Type.Optional(Type.Array(AdminOrderReturnDetailSchema)),
   /** Newest first. */
   activity: Type.Array(AdminOrderActivitySchema),
 });
@@ -254,8 +281,12 @@ export const FULFILMENT_TRACKING_NUMBER_MAX_LENGTH = 64;
  */
 export const FULFILMENT_TRACKING_NUMBER_PATTERN = "^[A-Za-z0-9][A-Za-z0-9 -]*$";
 export const PAYOUT_PAID_REFERENCE_MAX_LENGTH = 120;
+/** Why a failed refund is marked as refunded outside LAX, and where that refund can be found. */
+export const SETTLED_OUTSIDE_REASON_MAX_LENGTH = 500;
+export const SETTLED_OUTSIDE_REFERENCE_MAX_LENGTH = 120;
 
 export type AdminClientDetail = Static<typeof AdminClientDetailSchema>;
 export type AdminArtistDetail = Static<typeof AdminArtistDetailSchema>;
 export type AdminOrderDetail = Static<typeof AdminOrderDetailSchema>;
+export type AdminOrderReturn = Static<typeof AdminOrderReturnDetailSchema>;
 export type AdminOrderActivity = Static<typeof AdminOrderActivitySchema>;

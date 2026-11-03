@@ -1,14 +1,16 @@
 import {
+  adminCompleteUnsoldFollowUpAction,
   adminDecideUnsoldChoiceAction,
   adminRemindSellerIdentityAction,
 } from "@/lib/actions/admin-consignment-after-sale";
-import type { StaffAfterSaleView, UnsoldLotChoice } from "@auction/types";
+import type { StaffAfterSaleView, UnsoldLotChoice, UnsoldLotFollowUp } from "@auction/types";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { RemindSellerButton } from "./remind-seller-button";
 import { UnsoldChoiceStaffPanel } from "./unsold-choice-staff-panel";
 
 vi.mock("@/lib/actions/admin-consignment-after-sale", () => ({
+  adminCompleteUnsoldFollowUpAction: vi.fn(),
   adminDecideUnsoldChoiceAction: vi.fn(),
   adminRemindSellerIdentityAction: vi.fn(),
   adminSetRelistReserveFloorAction: vi.fn(),
@@ -44,7 +46,36 @@ const unsold: NonNullable<StaffAfterSaleView["unsold"]> = {
     createdAt: new Date("2026-10-21T10:00:00Z"),
     updatedAt: new Date("2026-10-21T10:00:00Z"),
   },
+  followUp: null,
 };
+
+const confirmedUnsold = (followUp: UnsoldLotFollowUp): typeof unsold => ({
+  ...unsold,
+  choice: {
+    ...(unsold.choice as UnsoldLotChoice),
+    status: "confirmed",
+    decidedChoice: followUp.kind,
+    decidedAt: new Date("2026-10-22T10:00:00Z"),
+    decidedByName: "Sam Specialist",
+  },
+  followUp,
+});
+
+const followUp = (over: Partial<UnsoldLotFollowUp>): UnsoldLotFollowUp => ({
+  id: "f1",
+  choiceId: "c1",
+  lotId: "lot-1",
+  lotEndTime: new Date("2026-10-20T18:00:00Z"),
+  submissionId: "s1",
+  kind: "collect",
+  reserve: null,
+  status: "open",
+  reserveAppliedAt: null,
+  completedAt: null,
+  completedByUserId: null,
+  createdAt: new Date("2026-10-22T10:00:00Z"),
+  ...over,
+});
 
 describe("UnsoldChoiceStaffPanel", () => {
   beforeEach(() => vi.mocked(adminDecideUnsoldChoiceAction).mockReset());
@@ -82,6 +113,59 @@ describe("UnsoldChoiceStaffPanel", () => {
     );
     expect(screen.getByText("Confirmed: Have it returned")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Confirm and tell the seller" })).toBeNull();
+  });
+});
+
+describe("the work a confirmed choice leaves", () => {
+  beforeEach(() => vi.mocked(adminCompleteUnsoldFollowUpAction).mockReset());
+
+  it("lets staff mark a return as done", async () => {
+    vi.mocked(adminCompleteUnsoldFollowUpAction).mockResolvedValue({ ok: true });
+    render(<UnsoldChoiceStaffPanel submissionId="s1" unsold={confirmedUnsold(followUp({}))} />);
+    expect(screen.getByText("Next: arrange the return")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Mark as returned" }));
+    await waitFor(() => expect(adminCompleteUnsoldFollowUpAction).toHaveBeenCalledWith("s1"));
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+  });
+
+  it("shows the refusal when it cannot be marked done", async () => {
+    vi.mocked(adminCompleteUnsoldFollowUpAction).mockResolvedValue({
+      ok: false,
+      error: "This has already been marked done.",
+    });
+    render(<UnsoldChoiceStaffPanel submissionId="s1" unsold={confirmedUnsold(followUp({}))} />);
+    fireEvent.click(screen.getByRole("button", { name: "Mark as returned" }));
+    expect(await screen.findByText("This has already been marked done.")).toBeTruthy();
+  });
+
+  it("says a relist finishes on the lot page, with the agreed reserve, and offers no button", () => {
+    render(
+      <UnsoldChoiceStaffPanel
+        submissionId="s1"
+        unsold={confirmedUnsold(followUp({ kind: "relist", reserve: "4200.00" }))}
+      />,
+    );
+    expect(screen.getByText("Next: return the lot to inventory")).toBeTruthy();
+    expect(screen.getByText(/agreed reserve of £4,200/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Mark as/ })).toBeNull();
+  });
+
+  it("shows finished work as done, with who and when", () => {
+    render(
+      <UnsoldChoiceStaffPanel
+        submissionId="s1"
+        unsold={confirmedUnsold(
+          followUp({
+            status: "done",
+            completedAt: new Date("2026-10-25T10:00:00Z"),
+            completedByName: "Sam Specialist",
+          }),
+        )}
+      />,
+    );
+    expect(screen.getByText("Returned to the seller")).toBeTruthy();
+    expect(screen.getByText(/Marked done by Sam Specialist/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Mark as/ })).toBeNull();
   });
 });
 

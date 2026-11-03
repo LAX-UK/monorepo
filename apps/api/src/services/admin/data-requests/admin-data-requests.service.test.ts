@@ -40,10 +40,31 @@ function setup() {
       calls.push("audit");
     }),
   };
-  return { service: new AdminDataRequestsService({ identity, audit }), identity, audit, calls };
+  const accounts = {
+    findByEmail: vi.fn(async (_email: string) => ({
+      subjectId: "user-9",
+      name: "Lena Fischer",
+      status: "active",
+    })),
+  };
+  return {
+    service: new AdminDataRequestsService({ identity, audit, accounts }),
+    identity,
+    audit,
+    accounts,
+    calls,
+  };
 }
 
 describe("AdminDataRequestsService", () => {
+  it("finds an account by one exact, lower-cased email address and writes no audit row", async () => {
+    const { service, accounts, audit } = setup();
+    const found = await service.findAccount("  Lena@North.com ");
+    expect(accounts.findByEmail).toHaveBeenCalledWith("lena@north.com");
+    expect(found?.subjectId).toBe("user-9");
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
   it("audits opening a record before showing it", async () => {
     const { service, audit, calls } = setup();
     await service.record("DR-0007", "staff-1");

@@ -203,6 +203,105 @@ describe("admin auth and authz", () => {
     await app.close();
   });
 
+  const REFUND_ID = "00000000-0000-4000-8000-000000000004";
+  const RETURN_ID = "00000000-0000-4000-8000-000000000013";
+
+  async function postAs(
+    subject: string,
+    url: string,
+    payload: Record<string, unknown>,
+    authTime = Math.floor(Date.now() / 1000),
+  ) {
+    vi.mocked(verifyBearerToken).mockResolvedValueOnce({
+      subject,
+      payload: { scope: "shop.admin", acr: OIDC_ACR_SILVER, auth_time: authTime },
+    } as never);
+    const app = createShopApiApp({ deps: adminDeps(), logger: false });
+    await app.ready();
+    const response = await app.inject({
+      method: "POST",
+      url,
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}`, "idempotency-key": "test-key-returns-1" },
+      payload,
+    });
+    await app.close();
+    return response;
+  }
+
+  const settleBody = {
+    refundId: REFUND_ID,
+    reason: "Refunded in the Stripe dashboard",
+    externalReference: "re_3Qdashboard",
+  };
+
+  it("asks for a recent sign-in before a refund is marked as refunded outside LAX", async () => {
+    const response = await postAs(
+      "finance-subject",
+      "/admin/v1/refunds/settled-outside",
+      settleBody,
+      Math.floor(Date.now() / 1000) - 10_000,
+    );
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: SHOP_API_ERROR_CODES.STEP_UP_REQUIRED });
+  });
+
+  it("lets finance mark a refund as refunded outside LAX, and not operations", async () => {
+    const finance = await postAs(
+      "finance-subject",
+      "/admin/v1/refunds/settled-outside",
+      settleBody,
+    );
+    expect(finance.statusCode).toBe(200);
+    expect(finance.json()).toMatchObject({ status: "succeeded" });
+    const operations = await postAs("ops-subject", "/admin/v1/refunds/settled-outside", settleBody);
+    expect(operations.statusCode).toBe(403);
+    expect(operations.json()).toMatchObject({ code: SHOP_API_ERROR_CODES.FORBIDDEN });
+  });
+
+  it("needs both a reason and a reference to mark a refund as refunded outside LAX", async () => {
+    const noReason = await postAs("finance-subject", "/admin/v1/refunds/settled-outside", {
+      ...settleBody,
+      reason: "",
+    });
+    expect(noReason.statusCode).toBe(400);
+    const noReference = await postAs("finance-subject", "/admin/v1/refunds/settled-outside", {
+      ...settleBody,
+      externalReference: "",
+    });
+    expect(noReference.statusCode).toBe(400);
+  });
+
+  it("lets operations move a return and receive it, and not finance", async () => {
+    const transit = await postAs("ops-subject", `/admin/v1/returns/${RETURN_ID}/in-transit`, {});
+    expect(transit.statusCode).toBe(200);
+    expect(transit.json()).toMatchObject({ status: "in_transit" });
+    const received = await postAs("ops-subject", `/admin/v1/returns/${RETURN_ID}/receive`, {
+      disposition: "back_on_sale",
+    });
+    expect(received.statusCode).toBe(200);
+    const financeTransit = await postAs(
+      "finance-subject",
+      `/admin/v1/returns/${RETURN_ID}/in-transit`,
+      {},
+    );
+    expect(financeTransit.statusCode).toBe(403);
+    const financeReceive = await postAs(
+      "finance-subject",
+      `/admin/v1/returns/${RETURN_ID}/receive`,
+      { disposition: "back_on_sale" },
+    );
+    expect(financeReceive.statusCode).toBe(403);
+  });
+
+  it("refuses a receipt without a decision or with an unknown one", async () => {
+    const none = await postAs("ops-subject", `/admin/v1/returns/${RETURN_ID}/receive`, {});
+    expect(none.statusCode).toBe(400);
+    const unknown = await postAs("ops-subject", `/admin/v1/returns/${RETURN_ID}/receive`, {
+      disposition: "scrapped",
+    });
+    expect(unknown.statusCode).toBe(400);
+  });
+
   it("returns staff session with role, capabilities, and feature flags", async () => {
     vi.mocked(verifyBearerToken).mockResolvedValueOnce({
       subject: "admin-subject",

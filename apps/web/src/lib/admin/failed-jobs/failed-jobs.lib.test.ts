@@ -5,24 +5,31 @@ import { failedJobTimeline } from "./failed-job-timeline";
 import { emailJobDetail } from "./failed-job.fixture";
 import {
   buildFailedJobsChips,
+  decodeFailedJobId,
   failedJobHref,
   failedJobsHref,
   hasFailedJobsFilters,
   parseFailedJobsSearch,
 } from "./failed-jobs-search";
-import { failedJobsViewTabs, pageSummary } from "./failed-jobs.vm";
+import { failedJobsEmpty, failedJobsViewTabs, pageSummary } from "./failed-jobs.vm";
 
 describe("parseFailedJobsSearch", () => {
   it("defaults to the jobs that need review, newest failure first", () => {
     expect(parseFailedJobsSearch({})).toEqual({
       view: "needs_review",
       q: "",
+      source: "",
       queue: "",
       from: "",
       to: "",
       sort: "failed_desc",
       offset: 0,
     });
+  });
+
+  it("keeps a known source and drops an unknown one", () => {
+    expect(parseFailedJobsSearch({ source: "integrations" }).source).toBe("integrations");
+    expect(parseFailedJobsSearch({ source: "xero" }).source).toBe("");
   });
 
   it("ignores an unknown view, a bad day and a bad offset", () => {
@@ -41,6 +48,7 @@ describe("parseFailedJobsSearch", () => {
     expect(hasFailedJobsFilters(parseFailedJobsSearch({ view: "discarded" }))).toBe(false);
     expect(hasFailedJobsFilters(parseFailedJobsSearch({ q: "invoice" }))).toBe(true);
     expect(hasFailedJobsFilters(parseFailedJobsSearch({ queue: "email" }))).toBe(true);
+    expect(hasFailedJobsFilters(parseFailedJobsSearch({ source: "integrations" }))).toBe(false);
   });
 });
 
@@ -65,14 +73,23 @@ describe("failedJobsHref", () => {
 
 describe("buildFailedJobsChips", () => {
   it("makes a removable chip for each filter, worded like the toolbar", () => {
-    const search = { q: "invoice", queue: "email", from: "2026-10-30", to: "2026-11-01" };
+    const search = {
+      q: "invoice",
+      source: "integrations",
+      queue: "email",
+      from: "2026-10-30",
+      to: "2026-11-01",
+    };
     const chips = buildFailedJobsChips(parseFailedJobsSearch(search), search, () => "Email");
     expect(chips.map((chip) => chip.label)).toEqual([
       "Search: invoice",
+      "Source: Integrations",
       "Type: Email",
       "Last failed: 30 Oct 2026 – 1 Nov 2026",
     ]);
-    expect(chips[1]?.clearHref).toBe("/admin/failed-jobs?q=invoice&from=2026-10-30&to=2026-11-01");
+    expect(chips[2]?.clearHref).toBe(
+      "/admin/failed-jobs?q=invoice&source=integrations&from=2026-10-30&to=2026-11-01",
+    );
   });
 });
 
@@ -153,5 +170,42 @@ describe("failedJobTimeline", () => {
       lastFailedAt: emailJobDetail.firstFailedAt,
     });
     expect(events.map((event) => event.title)).toEqual(["Failed on its only attempt"]);
+  });
+});
+
+describe("pageSummary with groups", () => {
+  it("says how many rows identical failures make when the whole list fits", () => {
+    expect(
+      pageSummary(0, 16, 16, { groups: 4, noun: { one: "delivery", other: "deliveries" } }),
+    ).toBe("4 groups · 16 deliveries");
+  });
+
+  it("adds the group count to a page of a longer list", () => {
+    expect(pageSummary(0, 50, 312, { groups: 41 })).toBe("1–50 of 312 jobs · 41 groups");
+  });
+
+  it("stays as it was when nothing is grouped", () => {
+    expect(pageSummary(0, 3, 3, { groups: 3 })).toBe("3 jobs");
+  });
+});
+
+describe("failedJobsEmpty", () => {
+  it("speaks of integrations when that is what is being shown", () => {
+    expect(failedJobsEmpty("needs_review", "integrations").title).toBe(
+      "No integration failures need review",
+    );
+    expect(failedJobsEmpty("needs_review", "").title).toBe("No failed jobs need review");
+  });
+});
+
+describe("decodeFailedJobId", () => {
+  it("undoes the encoding the router may leave on a colon", () => {
+    expect(decodeFailedJobId("delivery%3A41")).toBe("delivery:41");
+    expect(decodeFailedJobId("job%3Adlq%3Aemail%3A55120")).toBe("job:dlq:email:55120");
+  });
+
+  it("leaves a decoded id, and one that cannot be decoded, as it is", () => {
+    expect(decodeFailedJobId("delivery:41")).toBe("delivery:41");
+    expect(decodeFailedJobId("100%")).toBe("100%");
   });
 });

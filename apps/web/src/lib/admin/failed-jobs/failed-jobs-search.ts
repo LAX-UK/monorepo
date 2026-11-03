@@ -1,7 +1,13 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { dayRangeLabel } from "@/lib/admin/day-range-label";
 import { searchChipLabel } from "@auction/staff-ui";
-import { type FailedJobView, isFailedJobView } from "@auction/types";
+import {
+  FAILED_JOB_SOURCE_FAMILY_LABELS,
+  type FailedJobSourceFamily,
+  type FailedJobView,
+  isFailedJobSourceFamily,
+  isFailedJobView,
+} from "@auction/types";
 
 export const FAILED_JOBS_PATH = "/admin/failed-jobs";
 export const FAILED_JOBS_PAGE_SIZE = 50;
@@ -15,6 +21,8 @@ export const FAILED_JOBS_DEFAULT_SORT: FailedJobsSort = "failed_desc";
 export type FailedJobsFilters = {
   view: FailedJobView;
   q: string;
+  /** A kind of failure, or empty for all of them. */
+  source: FailedJobSourceFamily | "";
   queue: string;
   from: string;
   to: string;
@@ -30,6 +38,7 @@ function first(value: string | string[] | undefined): string {
 
 export function parseFailedJobsSearch(sp: FailedJobsSearch): FailedJobsFilters {
   const view = first(sp.view);
+  const source = first(sp.source);
   const from = first(sp.from);
   const to = first(sp.to);
   const validFrom = DAY.test(from) ? from : "";
@@ -41,6 +50,7 @@ export function parseFailedJobsSearch(sp: FailedJobsSearch): FailedJobsFilters {
   return {
     view: isFailedJobView(view) ? view : "needs_review",
     q: first(sp.q).slice(0, 100),
+    source: isFailedJobSourceFamily(source) ? source : "",
     queue: first(sp.queue).slice(0, 80),
     from: lo,
     to: hi,
@@ -49,7 +59,10 @@ export function parseFailedJobsSearch(sp: FailedJobsSearch): FailedJobsFilters {
   };
 }
 
-/** Whether a search or filter narrows the list (the view tab alone does not). */
+/**
+ * Whether a search or filter narrows the list (the view tab and the Source do not: an empty
+ * source says so itself, and offers to clear it).
+ */
 export function hasFailedJobsFilters(filters: FailedJobsFilters): boolean {
   return Boolean(filters.q || filters.queue || filters.from || filters.to);
 }
@@ -64,6 +77,15 @@ export function failedJobsHref(
   if (next.view === "needs_review") next.view = null;
   if (next.sort === FAILED_JOBS_DEFAULT_SORT) next.sort = null;
   return buildListHref(FAILED_JOBS_PATH, current, { offset: null, ...next });
+}
+
+/** A job id from a path segment: undone once if the router left it encoded; ids hold no `%`. */
+export function decodeFailedJobId(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
 }
 
 export function failedJobHref(id: string): string {
@@ -84,6 +106,13 @@ export function buildFailedJobsChips(
       id: "q",
       label: searchChipLabel(filters.q),
       clearHref: failedJobsHref(current, { q: null }),
+    });
+  }
+  if (filters.source) {
+    chips.push({
+      id: "source",
+      label: `Source: ${FAILED_JOB_SOURCE_FAMILY_LABELS[filters.source]}`,
+      clearHref: failedJobsHref(current, { source: null }),
     });
   }
   if (filters.queue) {

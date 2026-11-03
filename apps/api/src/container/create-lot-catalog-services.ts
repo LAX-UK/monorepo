@@ -10,6 +10,7 @@ import {
   DrizzleLotTransitionGuardReader,
   DrizzleSaleSoftDeleteGuardReader,
   DrizzleSaleSoftDeleteSideEffects,
+  DrizzleUnsoldLotFollowUpRepository,
   SalePressArchiveRepository,
   createDrizzleLotTransitionRepository,
 } from "@auction/persistence/repositories";
@@ -185,6 +186,7 @@ export function createLotCatalogServices(
     lotLifecycleRecording,
     lotRepo,
     lotJobScheduler,
+    new DrizzleUnsoldLotFollowUpRepository(db),
   );
 
   const lotNotificationCoordinator = new LotNotificationCoordinator(

@@ -13,9 +13,11 @@ import {
   presentFulfilmentStatus,
   presentOrderStatus,
   productionCandidateLines,
+  refundFailureMessage,
   refundRowContext,
   refundTargetOptions,
   refundableRemainingPence,
+  settledOutsideNote,
 } from "./order-detail.vm";
 
 const LINE_A = "11111111-0000-4000-8000-000000000001";
@@ -192,6 +194,54 @@ describe("buildOrderTimeline", () => {
   });
 });
 
+describe("timeline entries for returns and outside refunds", () => {
+  const entry = (action: string, detail: Record<string, unknown> | null) =>
+    buildOrderTimeline(
+      order({
+        activity: [
+          {
+            auditId: `a-${action}`,
+            action,
+            targetType: "shop_refund",
+            actorSubjectId: "s1",
+            actorName: "Maya Okafor",
+            createdAt: "2026-10-30T09:45:00.000Z",
+            detail,
+          },
+        ],
+      }),
+    )[0];
+
+  it("reads a refund marked as refunded outside LAX with its reference and reason", () => {
+    const event = entry("refund_settled_outside", {
+      amountPence: 6000,
+      reference: "re_3Qdashboard",
+      reason: "Refunded in the dashboard",
+    });
+    expect(event?.title).toBe("Refund of £60.00 marked as refunded outside LAX");
+    expect(event?.detail).toBe("Reference re_3Qdashboard — Refunded in the dashboard");
+  });
+
+  it("reads the stages of a return in words", () => {
+    expect(entry("return_in_transit", null)?.title).toBe("Return marked in transit");
+    expect(entry("return_received", { disposition: "back_on_sale" })?.title).toBe(
+      "Return received and put back on sale",
+    );
+    expect(entry("return_received", { disposition: "withdrawn_damaged" })?.title).toBe(
+      "Return received and withdrawn",
+    );
+  });
+
+  it("says whether a cancelled print is back on sale or has to come back first", () => {
+    expect(entry("cancel_after_possession", { stock: "restocked" })?.detail).toContain(
+      "back on sale",
+    );
+    expect(entry("cancel_after_possession", { stock: "awaiting_return" })?.detail).toContain(
+      "comes back to the gallery",
+    );
+  });
+});
+
 describe("cancelling an item after possession", () => {
   const cancellation = (
     status: string,
@@ -211,8 +261,8 @@ describe("cancelling an item after possession", () => {
   ];
 
   it("states the refund the system makes, so staff never repeat it", () => {
-    expect(lineCancellation(order(), lineA)).toEqual({ refundPence: 60_000 });
-    const copy = cancelAfterPossessionDescription(60_000);
+    expect(lineCancellation(order(), lineA)).toMatchObject({ refundPence: 60_000 });
+    const copy = cancelAfterPossessionDescription(60_000, "await_return");
     expect(copy).toContain("refunds £600.00 for this item to the customer's card");
     expect(copy).not.toMatch(/separately/i);
   });
@@ -221,9 +271,37 @@ describe("cancelling an item after possession", () => {
     for (const status of ["pending", "succeeded", "failed"]) {
       expect(lineCancellation(order({ refunds: [cancellation(status)] }), lineA)).toBeNull();
     }
-    expect(lineCancellation(order({ refunds: [cancellation("pending")] }), lineB)).toEqual({
+    expect(lineCancellation(order({ refunds: [cancellation("pending")] }), lineB)).toMatchObject({
       refundPence: 40_000,
     });
+  });
+
+  it("says what happens to the print: back on sale at once, or tracked as a return", () => {
+    expect(cancelAfterPossessionDescription(60_000, "restock_now")).toContain(
+      "never left the gallery, so it goes back on sale straight away",
+    );
+    expect(cancelAfterPossessionDescription(60_000, "await_return")).toContain(
+      "goes back on sale when you receive it",
+    );
+  });
+
+  it("reads the stock outcome from where the item is, and assumes it left when unknown", () => {
+    const at = (status: string | null) =>
+      order({
+        fulfilmentRecord: status
+          ? {
+              fulfilmentId: "00000000-0000-4000-8000-0000000000f1",
+              status,
+              option: "uk_insured_delivery",
+              carrier: null,
+              trackingNumber: null,
+              updatedAt: "2026-10-15T00:00:00Z",
+            }
+          : null,
+      });
+    expect(lineCancellation(at("in_storage"), lineA)?.stock).toBe("restock_now");
+    expect(lineCancellation(at("delivered"), lineA)?.stock).toBe("await_return");
+    expect(lineCancellation(at(null), lineA)?.stock).toBe("await_return");
   });
 
   it("offers no cancellation on an order that is not paid", () => {
@@ -314,5 +392,54 @@ describe("failed refunds", () => {
       }),
     );
     expect(events.find((event) => event.id === "a1")?.title).toBe("Refund of £600.00 sent again");
+  });
+});
+
+describe("a refund settled outside LAX", () => {
+  const settled: AdminOrderDetail["refunds"][number] = {
+    refundId: "c9",
+    orderLineId: LINE_A,
+    amountPence: 60_000,
+    status: "succeeded",
+    source: "cancellation",
+    createdAt: "2026-10-15T00:00:00Z",
+    settledOutside: {
+      reference: "re_3Qdashboard",
+      reason: "Refunded in the dashboard",
+      at: "2026-10-30T09:45:00.000Z",
+      byName: "Maya Okafor",
+    },
+  };
+
+  it("names it as refunded outside LAX instead of how it was first requested", () => {
+    expect(refundRowContext(settled, undefined)).toContain("Refunded outside LAX");
+  });
+
+  it("notes the reference, who recorded it and why", () => {
+    const note = settledOutsideNote(settled);
+    expect(note).toContain("Reference re_3Qdashboard");
+    expect(note).toContain("Recorded by Maya Okafor");
+    expect(note).toContain("Refunded in the dashboard");
+    expect(settledOutsideNote({ ...settled, settledOutside: null })).toBeNull();
+  });
+});
+
+describe("refundFailureMessage", () => {
+  it("puts the common Stripe codes in plain words", () => {
+    expect(refundFailureMessage("charge_already_refunded")).toBe(
+      "The charge was already refunded in Stripe",
+    );
+    expect(refundFailureMessage("expired_or_canceled_card")).toBe(
+      "The card has expired or was closed",
+    );
+  });
+
+  it("keeps an unknown code visible in a fallback sentence", () => {
+    expect(refundFailureMessage("odd_new_code")).toBe("Stripe refused the refund (odd_new_code)");
+  });
+
+  it("has a sentence when there is no reason at all", () => {
+    expect(refundFailureMessage(null)).toBe("Stripe could not process the refund");
+    expect(refundFailureMessage("  ")).toBe("Stripe could not process the refund");
   });
 });

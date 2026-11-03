@@ -26,6 +26,9 @@ describe("admin phase feature flags", () => {
       { method: "POST", url: "/admin/v1/cancellations" },
       { method: "POST", url: "/admin/v1/refunds" },
       { method: "POST", url: "/admin/v1/refunds/retry" },
+      { method: "POST", url: "/admin/v1/refunds/settled-outside" },
+      { method: "POST", url: "/admin/v1/returns/00000000-0000-4000-8000-000000000013/in-transit" },
+      { method: "POST", url: "/admin/v1/returns/00000000-0000-4000-8000-000000000013/receive" },
       { method: "POST", url: "/admin/v1/payouts/mark-paid" },
     ];
     for (const { method, url } of routes) {

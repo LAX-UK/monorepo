@@ -228,6 +228,7 @@ export function toBidCoverSlide(
   return {
     id: sale.id,
     badge: BADGE[sale.status],
+    ...(sale.status === "active" ? { badgeLive: true } : {}),
     ...(time ? { time: time.time } : {}),
     ...(time?.timeTick ? { timeTick: time.timeTick } : {}),
     title: sale.title,

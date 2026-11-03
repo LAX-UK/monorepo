@@ -25,6 +25,7 @@ import {
 } from "@auction/shop-domain";
 import { and, asc, count, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { withAdminIdempotency } from "../application/admin/with-admin-idempotency.js";
+import type { OriginalPrintsRecorder } from "../application/edition-runs/create-prints-from-original.service.js";
 import type { EditionRunRecorder } from "../application/edition-runs/edition-run-services.js";
 import type {
   ArtworkCatalogueWriter,
@@ -342,10 +343,11 @@ export function createDrizzleArtworkCatalogueWriter(
   options: {
     resolveMediaUrl: ResolveMediaUrl;
     editionRuns: EditionRunRecorder;
+    originalPrints: OriginalPrintsRecorder;
     releaseAlerts: ReleaseAlertAnnouncer;
   },
 ): ArtworkCatalogueWriter {
-  const { resolveMediaUrl, editionRuns, releaseAlerts } = options;
+  const { resolveMediaUrl, editionRuns, originalPrints, releaseAlerts } = options;
   return {
     createArtwork: (input) =>
       uow.run((tx) =>
@@ -358,6 +360,13 @@ export function createDrizzleArtworkCatalogueWriter(
           run: async () => {
             if (input.printPricePence !== null && !input.canSetPrice) throw priceForbidden();
             const eligibleForEditionAllocation = input.run !== null;
+            if (input.prints && eligibleForEditionAllocation) {
+              throw new ShopApiError(
+                SHOP_API_ERROR_CODES.VALIDATION,
+                "Prints can be created together with an original only",
+                400,
+              );
+            }
             assertEditionPrice({ pricePence: input.printPricePence, eligibleForEditionAllocation });
             const artist = await readArtist(tx, input.artistId);
             if (artist.archivedAt) {
@@ -436,6 +445,14 @@ export function createDrizzleArtworkCatalogueWriter(
                 payload: { schemaVersion: 1, importKey, editionCount },
               });
             }
+            // The original's prints join this transaction: any failure here saves nothing.
+            const prints = input.prints
+              ? await originalPrints.recordPrints(tx, {
+                  ...input.prints,
+                  originalArtworkId: artwork.id,
+                  actorSubjectId: input.actorSubjectId,
+                })
+              : null;
             await tx.audit.append({
               actorSubjectId: input.actorSubjectId,
               capability: CAPABILITY,
@@ -456,6 +473,7 @@ export function createDrizzleArtworkCatalogueWriter(
               artworkId: artwork.id,
               slug: artwork.slug,
               version: artwork.updatedAt.toISOString(),
+              ...(prints ? { prints } : {}),
               // A new artwork is a draft: nothing on lax.art changes until it is published.
               refreshesArt: false,
             };

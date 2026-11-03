@@ -10,6 +10,9 @@ import {
   AdminEditionFactsSaveBodySchema,
   AdminEditionFactsSaveResponseSchema,
   AdminLinkedListingResponseSchema,
+  type AdminOriginalPrints,
+  AdminOriginalPrintsSchema,
+  AdminPrintsFromOriginalResponseSchema,
   type AdminProofListingBody,
   AdminProofListingBodySchema,
   type AdminRunUpdateBody,
@@ -70,7 +73,7 @@ export async function registerAdminEditionRunRoutes(
   app: FastifyInstance,
   deps: Pick<AdminRoutesDeps, "editionRuns">,
 ) {
-  const { runs, facts, stock, listings } = deps.editionRuns;
+  const { runs, facts, stock, listings, printsFromOriginal } = deps.editionRuns;
 
   app.put(
     "/artworks/:id/run",
@@ -242,6 +245,29 @@ export async function registerAdminEditionRunRoutes(
         run: body.run,
         printPricePence: body.printPricePence ?? null,
         canSetPrice: staffCan(auth, "artwork_price.write"),
+      });
+    },
+  );
+
+  app.post(
+    "/artworks/:id/prints",
+    {
+      bodyLimit: RUN_BODY_LIMIT,
+      schema: {
+        tags: ["shop-admin"],
+        params: ArtworkParams,
+        body: AdminOriginalPrintsSchema,
+        response: { 200: AdminPrintsFromOriginalResponseSchema, ...WRITE_ERRORS },
+      },
+    },
+    async (request) => {
+      const { auth: _auth, ...actor } = catalogueWriter(request);
+      const body = request.body as AdminOriginalPrints;
+      return printsFromOriginal.create({
+        ...actor,
+        originalArtworkId: artworkId(request),
+        title: body.title,
+        run: body.run,
       });
     },
   );
