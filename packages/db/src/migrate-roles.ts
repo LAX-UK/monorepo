@@ -125,6 +125,12 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_guest_order_link",
   /** People who asked to hear about new editions: confirmed by email, stopped with one click. */
   "shop_release_alert_subscription",
+  /** The alert engine for LAX Shop and lax.art: subscribers, topic switches, matches, digests. */
+  "shop_alert_subscriber",
+  "shop_alert_topic",
+  "shop_alert_match",
+  "shop_alert_digest",
+  "shop_alert_announcement",
   /** How far shop-api has read the shared event log for each of its own projections. */
   "shop_projection_cursor",
 ] as const;

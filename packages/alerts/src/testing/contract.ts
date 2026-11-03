@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MatchSnapshot } from "../domain/match.js";
-import type { AlertProduct } from "../domain/products.js";
+import type { AlertProduct, AlertTopic } from "../domain/products.js";
 import type {
   AnnouncementStore,
   DigestLedger,
@@ -32,7 +32,10 @@ export function describeAlertStoreContract(
   name: string,
   product: AlertProduct,
   create: () => Promise<AlertStoreBundle>,
+  /** The topic the tests switch on and match: one the product's tables allow. */
+  options: { topic?: AlertTopic } = {},
 ): void {
+  const topic: AlertTopic = options.topic ?? "bid.new_sales";
   describe(`alert stores: ${name}`, () => {
     const withStores = async (fn: (s: AlertStoreBundle) => Promise<void>) => {
       const stores = await create();
@@ -141,7 +144,7 @@ export function describeAlertStoreContract(
         for (const email of ["e1@example.com", "e2@example.com", "e3@example.com"]) {
           const row = await subscribers.savePending({ product, email, ...consent, now: NOW });
           await subscribers.confirm(row.id, NOW);
-          await topics.setEmail(row.id, "bid.new_sales", true, "person", NOW);
+          await topics.setEmail(row.id, topic, true, "person", NOW);
           ids.push(row.id);
         }
         const off = await subscribers.savePending({
@@ -151,19 +154,19 @@ export function describeAlertStoreContract(
           now: NOW,
         });
         await subscribers.confirm(off.id, NOW);
-        await topics.setEmail(off.id, "bid.new_sales", false, "person", NOW);
+        await topics.setEmail(off.id, topic, false, "person", NOW);
         const pending = await subscribers.savePending({
           product,
           email: "pending@example.com",
           ...consent,
           now: NOW,
         });
-        await topics.setEmail(pending.id, "bid.new_sales", true, "person", NOW);
+        await topics.setEmail(pending.id, topic, true, "person", NOW);
 
         const sorted = [...ids].sort();
-        const first = await topics.listEmailRecipients("bid.new_sales", null, 2);
+        const first = await topics.listEmailRecipients(topic, null, 2);
         expect(first.map((r) => r.subscriberId)).toEqual(sorted.slice(0, 2));
-        const rest = await topics.listEmailRecipients("bid.new_sales", sorted[1] ?? null, 2);
+        const rest = await topics.listEmailRecipients(topic, sorted[1] ?? null, 2);
         expect(rest.map((r) => r.subscriberId)).toEqual(sorted.slice(2));
       }));
 
@@ -177,7 +180,7 @@ export function describeAlertStoreContract(
         });
         const match = {
           subscriberId: row.id,
-          topic: "bid.new_sales" as const,
+          topic,
           itemKey: "sale:1",
           groupKey: null,
           snapshot,
@@ -200,7 +203,7 @@ export function describeAlertStoreContract(
         await matches.record([
           {
             subscriberId: row.id,
-            topic: "bid.new_sales",
+            topic,
             itemKey: "sale:1",
             groupKey: null,
             snapshot,
@@ -208,7 +211,7 @@ export function describeAlertStoreContract(
           },
           {
             subscriberId: row.id,
-            topic: "bid.new_sales",
+            topic,
             itemKey: "sale:2",
             groupKey: null,
             snapshot,
@@ -252,7 +255,7 @@ export function describeAlertStoreContract(
         await matches.record([
           {
             subscriberId: row.id,
-            topic: "bid.new_sales",
+            topic,
             itemKey: "sale:9",
             groupKey: null,
             snapshot,
