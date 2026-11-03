@@ -1,5 +1,6 @@
 import {
   shopArtwork,
+  shopEdition,
   shopOrder,
   shopOrderLine,
   shopPayoutLedger,
@@ -40,7 +41,6 @@ export function createCancelAfterPossessionHandler(deps: { uow: ShopUnitOfWorkFa
               orderId: shopOrderLine.orderId,
               editionId: shopOrderLine.editionId,
               unitPricePence: shopOrderLine.unitPricePence,
-              artworkId: shopOrderLine.artworkId,
             })
             .from(shopOrderLine)
             .where(eq(shopOrderLine.id, command.orderLineId))
@@ -164,8 +164,9 @@ export function createCancelAfterPossessionHandler(deps: { uow: ShopUnitOfWorkFa
 
           const [artwork] = await db
             .select({ title: shopArtwork.title })
-            .from(shopArtwork)
-            .where(eq(shopArtwork.id, line.artworkId))
+            .from(shopEdition)
+            .innerJoin(shopArtwork, eq(shopArtwork.id, shopEdition.artworkId))
+            .where(eq(shopEdition.id, command.editionId))
             .limit(1);
           // One email per cancellation: the refund row is created with it, and a replay of the
           // same command returns the stored result before reaching this point.
