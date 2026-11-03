@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { lot, lotFulfilment, sale } from "@auction/db/schema";
-import { and, asc, count, desc, eq, getTableColumns, ilike, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, getTableColumns, ilike, inArray, or } from "drizzle-orm";
 import type {
   AdminLotFulfilmentBaseFilter,
   AdminLotFulfilmentListFilter,
@@ -8,6 +8,7 @@ import type {
   AdminLotFulfilmentListSummary,
   ILotFulfilmentRepository,
   InsertLotFulfilmentInput,
+  LotFulfilmentRow,
   UpdateLotFulfilmentInput,
 } from "../interfaces/lot-fulfilment.repository.js";
 
@@ -65,6 +66,15 @@ export class DrizzleLotFulfilmentRepository implements ILotFulfilmentRepository 
       .where(eq(lotFulfilment.lotId, lotId))
       .limit(1);
     return row ?? null;
+  }
+
+  async statusesForLots(lotIds: readonly string[]) {
+    if (lotIds.length === 0) return new Map<string, LotFulfilmentRow["status"]>();
+    const rows = await this.db
+      .select({ lotId: lotFulfilment.lotId, status: lotFulfilment.status })
+      .from(lotFulfilment)
+      .where(inArray(lotFulfilment.lotId, [...lotIds]));
+    return new Map(rows.map((row) => [row.lotId, row.status]));
   }
 
   async insert(input: InsertLotFulfilmentInput) {

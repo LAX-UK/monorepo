@@ -4,6 +4,8 @@ import type { Lot } from "@auction/types";
 import type { LotReadPort, SaleLookupPort } from "../../container/container-slices.js";
 import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js";
 import { presentLotsImages } from "../../lib/media-presenters.js";
+import { accountPurchaseLots, personalPurchaseLots } from "../amounts-owed/purchase-lot-queries.js";
+import type { IAmountsOwedService } from "../interfaces/amounts-owed.js";
 import type { IConditionReportService } from "../interfaces/condition-report.js";
 import type { IMediaAssetEnricher } from "../interfaces/media-asset-enricher.js";
 import type { IMediaUrlResolver } from "../interfaces/media-url-resolver.js";
@@ -17,12 +19,6 @@ import type { UserDashboardReadService } from "../user-dashboard-read.service.js
 
 /** Won lots a purchases list reads; the same for a person and for an account. */
 const PURCHASES_LIMIT = 50;
-/**
- * A won lot becomes a purchase only once it has ended. A leader on a lot that is still open
- * (whatever `winnerId` holds at that moment) owes nothing yet, so open lots never reach
- * Purchases, the amounts due, or the menu counts that read them.
- */
-const PURCHASE_LOT_STATUSES: Lot["status"][] = ["ended"];
 
 /** A role that does not follow the account's buying records. */
 const NOT_YOURS: UserHttpJson = {
@@ -40,6 +36,7 @@ export type UserDashboardHttpDeps = {
   saleService: SaleLookupPort;
   /** Names the member who placed each of an account's bids. */
   recordPeople: IRecordPeopleReader;
+  amountsOwed: IAmountsOwedService;
 };
 
 export class UserDashboardHttpApplicationService implements IUserDashboardHttpApplicationService {
@@ -68,12 +65,7 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
   async listPortfolio(input: { userId: string }): Promise<UserHttpJson> {
     const userId = input.userId;
     const [lots, { data: payments }] = await Promise.all([
-      this.deps.lotService.list({
-        winnerId: userId,
-        statuses: PURCHASE_LOT_STATUSES,
-        limit: PURCHASES_LIMIT,
-        offset: 0,
-      }),
+      this.deps.lotService.list(personalPurchaseLots(userId, PURCHASES_LIMIT)),
       this.deps.paymentBuyerService.listMyPaymentsForBuyerApi(userId, {}),
     ]);
     return { status: 200, body: { data: await this.toPurchaseRows(lots, payments) } };
@@ -111,16 +103,20 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
     if (!scope) return NOT_YOURS;
     const accountId = input.account.legalEntityId;
     const [lots, { data: payments }] = await Promise.all([
-      this.deps.lotService.list({
-        buyerLegalEntityId: accountId,
-        ...(scope === "own" ? { winnerId: input.userId } : {}),
-        statuses: PURCHASE_LOT_STATUSES,
-        limit: PURCHASES_LIMIT,
-        offset: 0,
-      }),
+      this.deps.lotService.list(
+        accountPurchaseLots(accountId, scope, input.userId, PURCHASES_LIMIT),
+      ),
       this.deps.paymentBuyerService.listEntityPaymentsForBuyerApi(accountId, {}),
     ]);
     return { status: 200, body: { data: await this.toPurchaseRows(lots, payments) } };
+  }
+
+  async listAmountsOwed(input: {
+    userId: string;
+    account: BuyingAccountActor;
+  }): Promise<UserHttpJson> {
+    const data = await this.deps.amountsOwed.forAccount(input);
+    return data ? { status: 200, body: { data } } : NOT_YOURS;
   }
 
   /** Won lots with images, checkout pricing and the latest payment for each. */
