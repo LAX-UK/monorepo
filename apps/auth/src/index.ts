@@ -30,6 +30,7 @@ import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.
 import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
 import { AccountDeletionService } from "./services/account-deletion.service.js";
 import { EmailChangeService } from "./services/email-change.service.js";
+import { StaffEmailChangeService } from "./services/staff-email-change.service.js";
 import { createSubjectReadRateLimiter } from "./services/subject-read-rate-limiter.js";
 import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
 import { SubjectExportReader } from "./subject-export/subject-export-reader.service.js";
@@ -147,6 +148,16 @@ const emailChange = new EmailChangeService({
       : {}),
   },
 });
+const staffEmailChange = new StaffEmailChangeService({
+  operations: identityOperations,
+  email: emailSender,
+  authSecret: env.BETTER_AUTH_SECRET,
+  confirmationPage: env.LAX_ACCOUNT_ORIGIN
+    ? `${env.LAX_ACCOUNT_ORIGIN.replace(/\/+$/, "")}/account/email-change`
+    : undefined,
+  secureAccountUrl: `${accountOrigin}/account/security`,
+  audit: (entry, message) => log.info(entry, message),
+});
 const accountDeletion = new AccountDeletionService({
   operations: identityOperations,
   notices: securityNotices,
@@ -263,6 +274,19 @@ const internal =
                       log.warn({ err: error }, "subject_export_read_rate_limit_unavailable"),
                   }),
                   onFailure: (error) => log.error({ err: error }, "subject_export_failed"),
+                },
+              }
+            : {}),
+          ...(env.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID &&
+          env.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_SECRET
+            ? {
+                staffEmailChange: {
+                  changes: staffEmailChange,
+                  redis,
+                  clientId: env.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID,
+                  clientSecret: env.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_SECRET,
+                  onFailure: (error: unknown) =>
+                    log.error({ err: error }, "staff_email_change_failed"),
                 },
               }
             : {}),

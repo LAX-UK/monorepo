@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import {
   IDENTITY_EMAIL_REGISTRATION_PATH,
+  STAFF_EMAIL_CHANGE_MACHINE_SCOPE,
   SUBJECT_EXPORT_MACHINE_SCOPE,
   emailRegistrationRequestSchema,
 } from "@auction/identity-contracts";
@@ -22,6 +23,11 @@ import {
   mountInternalAddressRoutes,
 } from "./internal-addresses.routes.js";
 import {
+  type StaffEmailChangeMachineDeps,
+  mountStaffEmailChangeMachineRoutes,
+  staffEmailChangeTokenKey,
+} from "./internal-staff-email-change.routes.js";
+import {
   type SubjectExportMachineDeps,
   mountSubjectExportMachineRoutes,
   subjectExportTokenKey,
@@ -33,6 +39,14 @@ import {
 
 const MACHINE_TOKEN_TTL_SEC = 5 * 60;
 const MACHINE_SCOPE = "identity.lifecycle";
+
+/** One machine credential: the client that may ask for tokens of a scope, and where those tokens are kept. */
+type MachineScope = {
+  clientId: string;
+  clientSecret: string;
+  scope: string;
+  key: (token: string) => string;
+};
 
 type MachineTokenRedis = MachineCredentialRateLimitRedis & {
   set(key: string, value: string, ex: "EX", ttl: number): Promise<unknown>;
@@ -139,30 +153,48 @@ export function createInternalIdentityRoutes(options: {
    * leak of one cannot reach what the other guards. Left out, the scope is not offered.
    */
   subjectExport?: SubjectExportMachineDeps;
+  /** Bid admin's credential for the staff-assisted email change, separate from the other two. */
+  staffEmailChange?: StaffEmailChangeMachineDeps;
 }) {
   const app = new Hono();
   const credentialRateLimiter = new MachineCredentialRateLimiter(options.redis);
 
-  app.post("/oauth/token", async (c) => {
-    const credentials = parseBasicCredentials(c.req.header("authorization"));
-    const body = await c.req.parseBody();
-    // The export scope has its own client, so its credential is checked and rate-limited apart.
-    const exportScope =
-      body.scope === SUBJECT_EXPORT_MACHINE_SCOPE && options.subjectExport !== undefined;
-    const target =
-      exportScope && options.subjectExport
-        ? {
+  const lifecycleScope: MachineScope = {
+    clientId: options.machineClientId,
+    clientSecret: options.machineClientSecret,
+    scope: MACHINE_SCOPE,
+    key: tokenKey,
+  };
+  const machineScopes: MachineScope[] = [
+    lifecycleScope,
+    ...(options.subjectExport
+      ? [
+          {
             clientId: options.subjectExport.clientId,
             clientSecret: options.subjectExport.clientSecret,
             scope: SUBJECT_EXPORT_MACHINE_SCOPE,
             key: subjectExportTokenKey,
-          }
-        : {
-            clientId: options.machineClientId,
-            clientSecret: options.machineClientSecret,
-            scope: MACHINE_SCOPE,
-            key: tokenKey,
-          };
+          },
+        ]
+      : []),
+    ...(options.staffEmailChange
+      ? [
+          {
+            clientId: options.staffEmailChange.clientId,
+            clientSecret: options.staffEmailChange.clientSecret,
+            scope: STAFF_EMAIL_CHANGE_MACHINE_SCOPE,
+            key: staffEmailChangeTokenKey,
+          },
+        ]
+      : []),
+  ];
+
+  app.post("/oauth/token", async (c) => {
+    const credentials = parseBasicCredentials(c.req.header("authorization"));
+    const body = await c.req.parseBody();
+    // Each scope has its own client, so its credential is checked and rate-limited apart. An
+    // unknown or unconfigured scope is tried against the lifecycle client and refused there.
+    const target = machineScopes.find((entry) => entry.scope === body.scope) ?? lifecycleScope;
     const authentication = await authenticateMachineClient({
       credentials,
       expectedClientId: target.clientId,
@@ -253,6 +285,9 @@ export function createInternalIdentityRoutes(options: {
 
   // Before the lifecycle authentication below, which would refuse an export-scope token.
   if (options.subjectExport) mountSubjectExportMachineRoutes(app, options.subjectExport);
+  if (options.staffEmailChange) {
+    mountStaffEmailChangeMachineRoutes(app, options.staffEmailChange);
+  }
 
   app.use("/identity/*", async (c, next) => {
     const authorization = c.req.header("authorization");

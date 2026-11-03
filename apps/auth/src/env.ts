@@ -120,6 +120,19 @@ const envSchema = z
       z.string().min(32).optional(),
     ),
     /**
+     * Bid admin's credential for the staff-assisted email change (scope `staff_email_change`).
+     * Distinct from the other machine credentials, so a leak of one cannot move an account to a
+     * new address. Both or neither; with neither, the route is not mounted.
+     */
+    STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID: z.preprocess(
+      emptyToUndefined,
+      z.string().min(1).optional(),
+    ),
+    STAFF_EMAIL_CHANGE_MACHINE_CLIENT_SECRET: z.preprocess(
+      emptyToUndefined,
+      z.string().min(32).optional(),
+    ),
+    /**
      * The private bucket holding personal data copies. Identity only signs reads, so these
      * credentials must be read-only; the worker writes and deletes with its own. All of bucket,
      * region and the key pair, or none; with none, requests still work and downloads answer 503.
@@ -286,6 +299,29 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         message: "SUBJECT_EXPORT_MACHINE_CLIENT_ID must differ from IDENTITY_MACHINE_CLIENT_ID",
         path: ["SUBJECT_EXPORT_MACHINE_CLIENT_ID"],
+      });
+    }
+    if (
+      Boolean(e.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID) !==
+      Boolean(e.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_SECRET)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID and STAFF_EMAIL_CHANGE_MACHINE_CLIENT_SECRET must be set together",
+        path: ["STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID"],
+      });
+    }
+    if (
+      e.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID &&
+      (e.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID === e.IDENTITY_MACHINE_CLIENT_ID ||
+        e.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID === e.SUBJECT_EXPORT_MACHINE_CLIENT_ID)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID must differ from the other machine client ids",
+        path: ["STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID"],
       });
     }
     const bucketFields = [

@@ -221,6 +221,7 @@ export type { ConsentRecord, ConsentStore } from "./consent-store.js";
 export * from "./account-addresses.js";
 export { countryToIso } from "./address-country.js";
 export * from "./email-registration.js";
+export * from "./staff-email-change.js";
 export {
   ACCOUNT_DATA_EXPORTS_CURRENT_PATH,
   ACCOUNT_DATA_EXPORTS_DELETE_PATH,
