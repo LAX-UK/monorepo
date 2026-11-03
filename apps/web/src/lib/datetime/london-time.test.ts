@@ -4,6 +4,7 @@ import {
   formatLondonDateRange,
   formatLondonDateTime,
   formatLondonDayMonth,
+  formatLondonFullMoment,
   formatLondonMoment,
   formatLondonMonthYear,
   formatLondonTime,
@@ -11,6 +12,7 @@ import {
   formatLondonWeekday,
   formatLondonWhen,
   londonDayKey,
+  londonDayOffset,
   londonZoneName,
   toDate,
 } from "./london-time";
@@ -120,5 +122,19 @@ describe("London time", () => {
     expect(toDate("not a date")).toBeNull();
     expect(toDate(null)).toBeNull();
     expect(toDate("")).toBeNull();
+  });
+});
+
+describe("London full moment and day offset", () => {
+  it("spells the full moment in London time", () => {
+    expect(formatLondonFullMoment(summer)).toBe("Tuesday 14 July 2026, 21:00");
+    expect(formatLondonFullMoment(winter)).toBe("Tuesday 3 November 2026, 21:00");
+  });
+
+  it("counts London calendar days, not 24-hour spans", () => {
+    const now = new Date("2026-07-15T09:00:00Z");
+    expect(londonDayOffset(new Date("2026-07-14T23:30:00Z"), now)).toBe(0);
+    expect(londonDayOffset(new Date("2026-07-14T22:30:00Z"), now)).toBe(-1);
+    expect(londonDayOffset(new Date("2026-07-16T10:00:00Z"), now)).toBe(1);
   });
 });
