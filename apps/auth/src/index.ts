@@ -20,6 +20,7 @@ import { createOidcRouteServices } from "./container/create-oidc-route-services.
 import { createRefreshTokenFamilyRepository } from "./container/create-refresh-token-family-repository.js";
 import { createRefreshedIdTokenService } from "./container/create-refreshed-id-token-service.js";
 import {
+  createDurableCredentialEmail,
   createDurableSecurityEffects,
   createSecurityNoticeService,
 } from "./container/create-security-services.js";
@@ -111,6 +112,11 @@ const auth = createAuthIssuer({
   redis,
   log,
   email: emailSender,
+  credentialEmail: createDurableCredentialEmail({
+    db,
+    email: emailSender,
+    log: withAlertingLog(log),
+  }),
   phoneVerification,
   trustedOrigins: webOrigins,
   logout: services.oidc.logout,
@@ -133,6 +139,7 @@ const durableSecurityEffects = createDurableSecurityEffects({
     logout: services.oidc.logout,
     events: repositories.identityEventPublisher,
     notices: securityNotices,
+    email: emailSender,
   },
   log: withAlertingLog(log),
 });
