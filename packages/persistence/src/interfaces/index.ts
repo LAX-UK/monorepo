@@ -44,6 +44,19 @@ export type {
   ImpersonationSessionRow,
 } from "./impersonation-session.repository.js";
 
+export type {
+  EmailBlockLiftRecord,
+  EmailBlockRecord,
+  IEmailBlockRepository,
+} from "./email-block.repository.js";
+export type {
+  IPersonEmailDeliveryReader,
+  PersonEmailAddressStatus,
+  PersonEmailBlockRecord,
+  PersonEmailDeliveryRecord,
+  PersonEmailSendRecord,
+} from "./person-email-delivery.reader.js";
+
 export type { IEmailSuppressionRepository } from "./email-suppression.repository.js";
 
 export type { IEmailWebhookIngestRepository } from "./email-webhook-ingest.repository.js";

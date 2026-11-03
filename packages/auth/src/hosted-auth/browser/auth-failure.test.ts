@@ -18,6 +18,22 @@ function describe_(
   return describeAuthFailure({ data: null, ...response }, context, fallback, NOW);
 }
 
+describe("describeAuthFailure when the email could not be sent", () => {
+  it("says so on every screen that sends an email", () => {
+    for (const context of ["sign-in", "other"] as const) {
+      expect(describe_({ status: 503, data: { code: "EMAIL_SEND_FAILED" } }, context).message).toBe(
+        "We couldn't send the email. Try again.",
+      );
+    }
+  });
+
+  it("keeps the generic server message for other server faults", () => {
+    expect(describe_({ status: 503, data: { code: "OTHER" } }).message).toBe(
+      "Something went wrong on our side. Try again.",
+    );
+  });
+});
+
 describe("retryAfterSeconds", () => {
   it("reads whole seconds from Retry-After", () => {
     expect(retryAfterSeconds({ status: 429, data: null, retryAfter: "120" }, NOW)).toBe(120);

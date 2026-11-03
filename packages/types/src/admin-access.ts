@@ -253,6 +253,18 @@ export const EMAIL_ADMIN_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
 /** Read-only email outbox, events, and suppression list (no mutations). */
 export const EMAIL_OBSERVABILITY_ACCESS: CapabilityRequirement = readOrWrite(EMAIL_ADMIN_ACCESS);
 
+/**
+ * Lift a bounce, repeated soft bounces or a manual block on a person's email. A complaint is
+ * lifted under EMAIL_ADMIN_ACCESS; nobody lifts an unsubscribe.
+ */
+export const EMAIL_BLOCK_LIFT_ACCESS: CapabilityRequirement = {
+  anyOf: ["support.respond", "platform.admin.full"],
+};
+
+/** Read a person's email delivery: their sends and any block on their address. */
+export const EMAIL_DELIVERY_READ_ACCESS: CapabilityRequirement =
+  readOrWrite(EMAIL_BLOCK_LIFT_ACCESS);
+
 /** Client/staff directory list and detail reads. */
 export const USERS_DIRECTORY_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "client.read"],
