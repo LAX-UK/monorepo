@@ -36,6 +36,8 @@ const WORK_ITEM_SAMPLES: Record<AdminWorkItemSourceKind, AdminWorkItemLinkIds> =
   lot_withdrawal: { subjectId: "lot-1" },
   lot_draft_past_start: { subjectId: "lot-1" },
   unsold_lot_choice: { subjectId: "sub-1" },
+  unsold_choice_follow_up: { subjectId: "sub-1" },
+  unsold_choice_lapsed: { subjectId: "sub-1" },
   marketing_enquiry: { subjectId: "enq-1" },
   purchase_problem: { paymentId: "pay-1" },
   payment_capture_blocked: { paymentId: "pay-1" },

@@ -13,9 +13,18 @@ import type { DataRequestAuditAction, IDataRequestAuditTrail } from "./data-requ
 
 type Body<T> = Omit<T, "actorSubjectId">;
 
+/** A LAX account found by its full email address, for the Log dialog. */
+export type DataRequestAccount = { subjectId: string; name: string; status: string };
+
+/** Finds the person a staff-logged request is about. Narrow on purpose: one exact email, one account. */
+export interface IDataRequestAccountFinder {
+  findByEmail(email: string): Promise<DataRequestAccount | null>;
+}
+
 export type AdminDataRequestsDeps = {
   identity: IIdentityDataRequestsClient;
   audit: IDataRequestAuditTrail;
+  accounts: IDataRequestAccountFinder;
 };
 
 /**
@@ -34,6 +43,11 @@ export class AdminDataRequestsService {
 
   summary() {
     return this.deps.identity.summary();
+  }
+
+  /** Exact email only: never a partial match, so the dialog cannot be used to browse accounts. */
+  findAccount(email: string) {
+    return this.deps.accounts.findByEmail(email.trim().toLowerCase());
   }
 
   async record(reference: string, actorUserId: string) {

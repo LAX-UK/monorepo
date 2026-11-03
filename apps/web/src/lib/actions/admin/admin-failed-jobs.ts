@@ -6,7 +6,7 @@ import { failedJobBatchResultSchema } from "@/lib/data/http/admin-failed-jobs.sc
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
-import { FAILED_JOBS_WRITE_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { FAILED_JOBS_ANY_SOURCE_ACT_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import {
   adminFailedJobsDiscardBodySchema,
@@ -31,7 +31,7 @@ async function decide(
   fallback: string,
 ): Promise<ActionResult<FailedJobOutcome>> {
   return instrumentServerAction(name, async () => {
-    const denied = await denyUnlessAdminCapability(FAILED_JOBS_WRITE_ACCESS);
+    const denied = await denyUnlessAdminCapability(FAILED_JOBS_ANY_SOURCE_ACT_ACCESS);
     if (denied) return denied;
     const parsed = schema.safeParse(body);
     if (!parsed.success) {

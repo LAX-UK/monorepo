@@ -82,6 +82,22 @@ export type {
   IFailedJobReviewReader,
 } from "./failed-job-review.js";
 
+export type {
+  FailedWebhookRow,
+  IIntegrationDeadLetterDisposition,
+  IIntegrationDeadLetterReader,
+  IWebhookRetryQueue,
+  IntegrationDeadLetterRecord,
+  IntegrationDeadLetterWithPayload,
+  IntegrationDispositionSeed,
+  IntegrationKind,
+  IntegrationNameFilter,
+  IntegrationScope,
+  IntegrationSearch,
+  IntegrationSearchResult,
+  IntegrationView,
+} from "./integration-dead-letter.reader.js";
+
 export type { ISaleroomLiveSessionCounter } from "./saleroom-live-session-counter.js";
 
 export type {
@@ -130,6 +146,13 @@ export type {
   UnsoldOutcomeListFilter,
   UnsoldOutcomeRow,
 } from "./unsold-lot-choice.repository.js";
+export type {
+  IRelistReserveSettlement,
+  IUnsoldFollowUpReader,
+  IUnsoldFollowUpStore,
+  IUnsoldFollowUpWriter,
+  RelistReserveSettlement,
+} from "./unsold-lot-follow-up.repository.js";
 export type { ConsignmentMoveRow, IConsignmentMoveWriter } from "./consignment-move.writer.js";
 export type { ISellerIdentityReminderStore } from "./seller-identity-reminder.store.js";
 export type {

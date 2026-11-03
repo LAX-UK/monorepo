@@ -255,6 +255,8 @@ export const WORKER_READ_TABLES = [
   "marketing_enquiry_attachment",
   /** The CRM projector reads an enquiry by id to build its Zoho lead (the event carries no personal data). */
   "marketing_enquiry",
+  /** The follow-up projector reads the confirmed choice it opens work for. */
+  "unsold_lot_choice",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
@@ -324,6 +326,9 @@ export const WORKER_KYC_RETENTION_TOMBSTONE_TABLES = ["kyc_retention_tombstone"]
 export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;
 /** The unsold-choice projector stores each unsold outcome's choose-by date, once. */
 export const WORKER_UNSOLD_CHOICE_DEADLINE_TABLES = ["unsold_choice_deadline"] as const;
+/** The follow-up projector opens the staff work a confirmed unsold-lot choice leaves behind. */
+export const WORKER_UNSOLD_FOLLOW_UP_TABLES = ["unsold_lot_follow_up"] as const;
+
 /**
  * The artwork register: the Zoho inbound sync creates and updates records and records conflicts.
  * History is append-only, so the worker may add to it and read it, never change it.
@@ -801,6 +806,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_UNSOLD_CHOICE_DEADLINE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_UNSOLD_FOLLOW_UP_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of WORKER_DOMAIN_EVENT_DELIVERY_TABLES) {

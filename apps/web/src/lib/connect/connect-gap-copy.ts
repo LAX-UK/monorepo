@@ -1,15 +1,13 @@
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
+import type { StatusBadgeVariant } from "@/lib/presenters/status/core";
 import { type ConnectGapStage, type ConnectGapState, isPastDueConnectGap } from "@auction/connect";
-import type { StatusBadgeProps } from "@auction/ui/components/status-badge";
 import { connectGapStageCopy } from "./connect-gap-stage-registry";
 
 export function connectGapStageLabel(stage: ConnectGapStage): string {
   return connectGapStageCopy(stage).label;
 }
 
-export function connectGapStageBadgeVariant(
-  stage: ConnectGapStage,
-): NonNullable<StatusBadgeProps["tone"]> {
+export function connectGapStageBadgeVariant(stage: ConnectGapStage): StatusBadgeVariant {
   return connectGapStageCopy(stage).badgeVariant;
 }
 

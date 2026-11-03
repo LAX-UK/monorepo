@@ -648,6 +648,11 @@ html.lenis {
   color: var(--color-on-surface, inherit);
 }
 
+/* Clears a sticky header when the summary takes focus, so it is never hidden behind it. */
+.marketing-form-error-summary {
+  scroll-margin-top: 10rem;
+}
+
 .marketing-form-error-summary:focus-visible {
   outline: 2px solid var(--color-ring, currentColor);
   outline-offset: 2px;

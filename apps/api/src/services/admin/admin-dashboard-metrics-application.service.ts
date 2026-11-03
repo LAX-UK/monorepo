@@ -1,3 +1,4 @@
+import type { IAdminSubmissionsSummaryReader } from "@auction/persistence/interfaces";
 import type {
   AdminKpiPeriodDays,
   IAdminCatalogListSummariesQueryService,
@@ -16,7 +17,6 @@ import type { AdminPayoutsKpiTrendService } from "./admin-payouts-kpi-trend.serv
 import type { AdminSalesKpiTrendService } from "./admin-sales-kpi-trend.service.js";
 import type { AdminSalesListSummaryService } from "./admin-sales-list-summary.service.js";
 import type { AdminSubmissionsKpiTrendService } from "./admin-submissions-kpi-trend.service.js";
-import type { AdminSubmissionsListSummaryService } from "./admin-submissions-list-summary.service.js";
 
 export class AdminDashboardMetricsApplicationService
   implements
@@ -36,7 +36,7 @@ export class AdminDashboardMetricsApplicationService
     private readonly submissionsKpiTrend: AdminSubmissionsKpiTrendService,
     private readonly salesListSummary: AdminSalesListSummaryService,
     private readonly lotsListSummary: AdminLotsListSummaryService,
-    private readonly submissionsListSummary: AdminSubmissionsListSummaryService,
+    private readonly submissionsSummaryReader: IAdminSubmissionsSummaryReader,
     private readonly lotsLiveKpiTrend: AdminLotsLiveKpiTrendService,
   ) {}
 
@@ -85,6 +85,6 @@ export class AdminDashboardMetricsApplicationService
   }
 
   getSubmissionsListSummary(userId: string) {
-    return this.submissionsListSummary.getSummary(userId);
+    return this.submissionsSummaryReader.getSummaryForStaff(userId);
   }
 }

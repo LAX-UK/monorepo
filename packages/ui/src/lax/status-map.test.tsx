@@ -24,19 +24,36 @@ describe("humanizeStatus", () => {
 });
 
 describe("StatusBadge", () => {
-  it("draws live as its own solid tone with a pulsing dot in its label colour, never the danger tint", () => {
+  it("draws live as the neutral badge with the pulsing live dot, never a red block or the danger tint", () => {
     const { container } = render(
       <StatusBadge tone="live" live>
         Live
       </StatusBadge>,
     );
     const badge = container.firstElementChild as HTMLElement;
-    expect(badge.className).toContain("--lax-live-bg");
+    expect(badge.className).toContain("--lax-neutral-bg");
     expect(badge.className).not.toContain("--lax-danger-bg");
+    expect(badge.className).not.toContain("--lax-live-bg");
     const dot = badge.querySelector("[data-shape=dot] > span") as HTMLElement;
     expect(dot.className).toContain("animate-pulse");
-    expect(dot.className).toContain("bg-current");
-    expect(dot.className).not.toContain("--lax-live-dot");
+    expect(dot.className).toContain("--lax-live-dot");
+  });
+
+  it("looks the same whether live comes from the tone or the flag", () => {
+    const tone = render(<StatusBadge tone="live">Live</StatusBadge>).container.innerHTML;
+    const flag = render(
+      <StatusBadge tone="neutral" live>
+        Live
+      </StatusBadge>,
+    ).container.innerHTML;
+    expect(tone.replace('data-tone="live"', "")).toBe(flag.replace('data-tone="neutral"', ""));
+  });
+
+  it("gives accepted work its own violet apart from the blue of work in review", () => {
+    const { container } = render(<StatusBadge tone="accepted">Accepted</StatusBadge>);
+    const badge = container.firstElementChild as HTMLElement;
+    expect(badge.className).toContain("--lax-accepted-bg");
+    expect(badge.className).not.toContain("--lax-info-bg");
   });
 
   it("pulses the live red dot on a tinted tone", () => {

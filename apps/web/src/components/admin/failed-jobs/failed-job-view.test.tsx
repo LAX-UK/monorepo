@@ -1,4 +1,4 @@
-import { emailJobDetail } from "@/lib/admin/failed-jobs/failed-job.fixture";
+import { emailJobDetail, xeroDeliveryDetail } from "@/lib/admin/failed-jobs/failed-job.fixture";
 import { StaffTooltipProvider } from "@auction/staff-ui";
 import type { FailedJobDetail } from "@auction/types";
 import { fireEvent, render, screen, within } from "@testing-library/react";
@@ -31,6 +31,42 @@ function renderJob(job: FailedJobDetail = emailJobDetail, canAct = true) {
 beforeEach(() => {
   vi.clearAllMocks();
   restore.mockResolvedValue({ ok: true, data: { succeeded: 1, failures: [] } });
+});
+
+describe("FailedJobView: an integration delivery", () => {
+  it("words the page for a delivery and says what a retry does", () => {
+    renderJob(xeroDeliveryDetail);
+    expect(screen.getByRole("heading", { level: 1, name: "Payment to Xero" })).toBeInTheDocument();
+    expect(screen.getByText("Integrations · Xero")).toBeInTheDocument();
+    expect(screen.getByText(/can't create a second invoice or payment/)).toBeInTheDocument();
+    expect(screen.queryByText("May repeat an action")).not.toBeInTheDocument();
+    expect(screen.getByText("Delivery ID")).toBeInTheDocument();
+    expect(screen.getByText("Event")).toBeInTheDocument();
+    const payload = screen.getByRole("region", { name: "Payload" });
+    expect(within(payload).getByText("£9,000.00")).toBeInTheDocument();
+    expect(within(payload).getByText(/3 fields are left out/)).toBeInTheDocument();
+  });
+
+  it("is view only without Retry or Discard for read-only staff", () => {
+    renderJob(xeroDeliveryDetail, false);
+    expect(screen.getByText("View only")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+  });
+
+  it("says a discarded delivery is a delivery", () => {
+    renderJob({
+      ...xeroDeliveryDetail,
+      state: "discarded",
+      retry: { allowed: false, reason: "This was discarded. Restore it to retry it." },
+      discard: {
+        reasonLabel: "Duplicate",
+        note: null,
+        at: "2026-11-01T09:00:00.000Z",
+        byName: null,
+      },
+    });
+    expect(screen.getByText("This delivery was discarded")).toBeInTheDocument();
+  });
 });
 
 describe("FailedJobView", () => {

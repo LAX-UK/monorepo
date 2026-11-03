@@ -113,7 +113,9 @@ test.describe("lax.art discovery", () => {
     }
     for (const path of paths) {
       await page.goto(path);
-      await expect(page.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { level: 1, name: "We can’t find that page" }),
+      ).toBeVisible();
     }
   });
 
