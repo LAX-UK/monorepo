@@ -4,20 +4,28 @@ import type pino from "pino";
 import { startIdentityDeletionPurgeSchedule } from "../infrastructure/identity-deletion-purge.schedule.js";
 import { startIdentityLifecycleReconciliationSchedule } from "../infrastructure/identity-lifecycle-reconciliation.schedule.js";
 import { startIdentityRetentionSchedule } from "../infrastructure/identity-retention.schedule.js";
+import { startSubjectExportMaintenanceSchedule } from "../infrastructure/subject-export-maintenance.schedule.js";
 import type { BackchannelLogoutDeliveryWorker } from "../services/backchannel-logout-delivery.worker.js";
 import { startBackchannelLogoutSchedule } from "../services/backchannel-logout.schedule.js";
 import type { DurableSecurityEffects } from "../services/durable-security-effects.js";
 import type { SsfDeliveryWorker } from "../services/ssf-delivery.worker.js";
 import type { SsfStreamService } from "../services/ssf-stream.service.js";
+import type { SubjectExportService } from "../services/subject-export.service.js";
 
 export async function createAuthSchedules(options: {
   db: IdentityDatabase;
   log: pino.Logger;
-  identityOperations: { purgeExpiredVerifications(): Promise<number> };
+  identityOperations: {
+    purgeExpiredVerifications(): Promise<number>;
+    purgeExpiredEmailChanges(): Promise<number>;
+  };
   logoutDelivery: Pick<BackchannelLogoutDeliveryWorker, "drain">;
   securityEffects: Pick<DurableSecurityEffects, "drain" | "settle">;
   ssfStreams: Pick<SsfStreamService, "provisionRegisteredStreams">;
   ssfDelivery: Pick<SsfDeliveryWorker, "enqueueFromDomainEvents" | "deliverDue">;
+  subjectExports: Pick<SubjectExportService, "expireDue" | "claimDeadlineAlerts">;
+  /** The logger the overdue alerts go through, wrapped so they also reach Sentry. */
+  alertLog: Pick<pino.Logger, "warn" | "error">;
   ssfEnabled: boolean;
   ssfTimeoutMs: number;
   ssfMaxAttempts: number;
@@ -43,6 +51,17 @@ export async function createAuthSchedules(options: {
     60 * 60 * 1_000,
   );
   verification.unref();
+  // Expired email changes are already ignored when read or claimed; this only stops rows lingering.
+  const emailChanges = setInterval(
+    () => {
+      void options.identityOperations.purgeExpiredEmailChanges().catch((err) => {
+        options.log.error({ err }, "expired email change cleanup failed");
+        Sentry.captureException(err);
+      });
+    },
+    24 * 60 * 60 * 1_000,
+  );
+  emailChanges.unref();
   const logout = startBackchannelLogoutSchedule({
     service: options.logoutDelivery,
     onError: (err) => {
@@ -94,6 +113,14 @@ export async function createAuthSchedules(options: {
     },
     onReconciled: (counts) => options.log.warn(counts, "identity_lifecycle_outbox_reconciled"),
   });
+  const subjectExportMaintenance = startSubjectExportMaintenanceSchedule({
+    service: options.subjectExports,
+    log: options.alertLog,
+    onError: (err) => {
+      options.log.error({ err }, "subject_export_maintenance_failed");
+      Sentry.captureException(err);
+    },
+  });
   let ssfDrain: Promise<void> | null = null;
   const ssf = options.ssfEnabled
     ? setInterval(() => {
@@ -138,6 +165,7 @@ export async function createAuthSchedules(options: {
     stop: async () => {
       retirement.stop();
       clearInterval(verification);
+      clearInterval(emailChanges);
       if (atRestReconciliation) clearInterval(atRestReconciliation);
       if (ssf) clearInterval(ssf);
       await Promise.allSettled([
@@ -146,6 +174,7 @@ export async function createAuthSchedules(options: {
         retention.stop(),
         deletionPurge.stop(),
         lifecycleReconciliation.stop(),
+        subjectExportMaintenance.stop(),
         ssfDrain ?? Promise.resolve(),
       ]);
     },

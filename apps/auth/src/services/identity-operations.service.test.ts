@@ -50,6 +50,7 @@ function createRepositories(): IdentityOperationsRepositories {
       resetTwoFactorEnrollment: vi.fn().mockResolvedValue(true),
       deleteSubject: vi.fn().mockResolvedValue(true),
       setVerifiedPhone: vi.fn().mockResolvedValue("updated"),
+      clearPhone: vi.fn().mockResolvedValue({ status: "cleared", previous: "+447700900123" }),
     },
     credentials: {
       listProviders: vi.fn().mockResolvedValue([]),
@@ -68,8 +69,12 @@ function createRepositories(): IdentityOperationsRepositories {
       purgeSubjectSessionsAndTokens: vi.fn().mockResolvedValue(undefined),
     },
     emailChanges: {
-      startChange: vi.fn().mockResolvedValue(undefined),
-      readPending: vi.fn().mockResolvedValue("next@example.com"),
+      startChange: vi.fn().mockResolvedValue("started"),
+      clearExpired: vi.fn().mockResolvedValue(0),
+      readPending: vi.fn().mockResolvedValue({
+        pendingNewEmail: "next@example.com",
+        emailChangeExpiresAt: null,
+      }),
       clearPending: vi.fn().mockResolvedValue(undefined),
       loadForConfirmation: vi.fn().mockResolvedValue(null),
       markConfirmed: vi.fn().mockResolvedValue(undefined),
@@ -131,6 +136,65 @@ describe("IdentityOperationsService", () => {
     ).rejects.toMatchObject({ code: "invalid_expiry" });
 
     expect(repositories.subjects.findById).not.toHaveBeenCalled();
+  });
+
+  describe("pending email change", () => {
+    it("refuses an address another person's live change is waiting on", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.startChange).mockResolvedValue("address_pending");
+      await expect(
+        service.startEmailChange("subject", "next@example.com", new Date(now.getTime() + 1_000)),
+      ).rejects.toMatchObject({ code: "email_taken" });
+    });
+
+    it("sweeps expired changes through the repository", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.clearExpired).mockResolvedValue(3);
+      await expect(service.purgeExpiredEmailChanges()).resolves.toBe(3);
+      expect(repositories.emailChanges.clearExpired).toHaveBeenCalledWith(now);
+    });
+
+    const expired = new Date(now.getTime() - 1_000);
+    const live = new Date(now.getTime() + 60_000);
+
+    it("reports the address while the links are valid", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.readPending).mockResolvedValue({
+        pendingNewEmail: "next@example.com",
+        emailChangeExpiresAt: live,
+      });
+      await expect(service.pendingEmailChange("subject")).resolves.toBe("next@example.com");
+    });
+
+    it("treats an expired change as none", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.readPending).mockResolvedValue({
+        pendingNewEmail: "next@example.com",
+        emailChangeExpiresAt: expired,
+      });
+      await expect(service.pendingEmailChange("subject")).resolves.toBeNull();
+    });
+
+    it("lets a person clear an expired change", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.readPending).mockResolvedValue({
+        pendingNewEmail: "next@example.com",
+        emailChangeExpiresAt: expired,
+      });
+      await service.cancelEmailChange("subject");
+      expect(repositories.emailChanges.clearPending).toHaveBeenCalledWith("subject", now);
+    });
+
+    it("refuses to cancel when nothing was ever started", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.readPending).mockResolvedValue({
+        pendingNewEmail: null,
+        emailChangeExpiresAt: null,
+      });
+      await expect(service.cancelEmailChange("subject")).rejects.toMatchObject({
+        code: "none_in_progress",
+      });
+    });
   });
 
   it("reports breached passwords distinctly and fails open when the breach check is unknown", async () => {
@@ -242,6 +306,124 @@ describe("IdentityOperationsService", () => {
       ),
     ).rejects.toMatchObject({ code: "no_session" });
     expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+  });
+
+  describe("changeAccountPassword", () => {
+    const keep = { keepSessionId: "current" };
+
+    it("changes the hash, ends the other sessions and records both in one transaction", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.credentials.findCredential).mockResolvedValue({
+        id: "credential",
+        passwordHash: await hashPassword("CurrentPass123!"),
+      });
+      const { service, identityEventPublisher } = createService(repositories);
+
+      const outcome = await service.changeAccountPassword("subject", {
+        currentPassword: "CurrentPass123!",
+        newPassword: "ReplacementPass123!",
+        ...keep,
+      });
+
+      expect(outcome).toEqual({ created: false, revokedSessionIds: ["other-1", "other-2"] });
+      expect(repositories.credentials.updatePassword).toHaveBeenCalledWith(
+        transaction,
+        expect.objectContaining({ credentialId: "credential", subjectId: "subject" }),
+      );
+      expect(repositories.sessions.deleteOtherSessions).toHaveBeenCalledWith(
+        transaction,
+        "subject",
+        "current",
+      );
+      expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+        { type: "user.credential_changed", userId: "subject", changeType: "update" },
+        { transaction },
+      );
+      for (const sessionId of ["other-1", "other-2"]) {
+        expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+          { type: "user.session_revoked", userId: "subject", sessionId },
+          { transaction },
+        );
+      }
+    });
+
+    it("refuses a wrong current password without writing anything", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.credentials.findCredential).mockResolvedValue({
+        id: "credential",
+        passwordHash: await hashPassword("CurrentPass123!"),
+      });
+      const { service, identityEventPublisher } = createService(repositories);
+
+      await expect(
+        service.changeAccountPassword("subject", {
+          currentPassword: "WrongPass123!!",
+          newPassword: "ReplacementPass123!",
+          ...keep,
+        }),
+      ).rejects.toMatchObject({ code: "invalid_password" });
+      await expect(
+        service.changeAccountPassword("subject", {
+          currentPassword: null,
+          newPassword: "ReplacementPass123!",
+          ...keep,
+        }),
+      ).rejects.toMatchObject({ code: "invalid_password" });
+      expect(repositories.credentials.updatePassword).not.toHaveBeenCalled();
+      expect(repositories.sessions.deleteOtherSessions).not.toHaveBeenCalled();
+      expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+    });
+
+    it("refuses a new password that equals the current one", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.credentials.findCredential).mockResolvedValue({
+        id: "credential",
+        passwordHash: await hashPassword("CurrentPass123!"),
+      });
+      const { service } = createService(repositories);
+
+      await expect(
+        service.changeAccountPassword("subject", {
+          currentPassword: "CurrentPass123!",
+          newPassword: "CurrentPass123!",
+          ...keep,
+        }),
+      ).rejects.toMatchObject({ code: "same_password" });
+      expect(repositories.credentials.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it("applies the strength rules before reading the credential", async () => {
+      const repositories = createRepositories();
+      const { service } = createService(repositories);
+
+      await expect(
+        service.changeAccountPassword("subject", {
+          currentPassword: "CurrentPass123!",
+          newPassword: "short",
+          ...keep,
+        }),
+      ).rejects.toMatchObject({ code: "invalid_password_policy" });
+      expect(repositories.credentials.findCredential).not.toHaveBeenCalled();
+    });
+
+    it("sets a first password for an account with only a social or passkey login", async () => {
+      const repositories = createRepositories();
+      const { service, identityEventPublisher } = createService(repositories);
+
+      const outcome = await service.changeAccountPassword("subject", {
+        currentPassword: null,
+        newPassword: "ReplacementPass123!",
+        ...keep,
+      });
+
+      expect(outcome.created).toBe(true);
+      expect(repositories.credentials.insertCredential).toHaveBeenCalledTimes(1);
+      expect(repositories.credentials.updatePassword).not.toHaveBeenCalled();
+      expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+        { type: "user.credential_changed", userId: "subject", changeType: "create" },
+        { transaction },
+      );
+    });
   });
 
   it("commits session revocation before dispatching logout", async () => {
@@ -520,6 +702,39 @@ describe("IdentityOperationsService", () => {
       expect(identityEventPublisher.publish).not.toHaveBeenCalled();
     },
   );
+
+  it("clears the phone and publishes the cleared profile in one transaction", async () => {
+    const repositories = createRepositories();
+    const { service, identityEventPublisher } = createService(repositories);
+
+    expect(await service.clearPhone("subject")).toBe("+447700900123");
+
+    expect(repositories.subjects.clearPhone).toHaveBeenCalledWith(transaction, "subject", now);
+    expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+      { type: "user.profile_updated", userId: "subject", phone: null, phoneVerified: false },
+      { producer: "apps/auth", transaction },
+    );
+  });
+
+  it("reports no phone and publishes nothing when there was none", async () => {
+    const repositories = createRepositories();
+    vi.mocked(repositories.subjects.clearPhone).mockResolvedValue({ status: "no_phone" });
+    const { service, identityEventPublisher } = createService(repositories);
+
+    expect(await service.clearPhone("subject")).toBeNull();
+    expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+  });
+
+  it("fails when the subject does not exist", async () => {
+    const repositories = createRepositories();
+    vi.mocked(repositories.subjects.clearPhone).mockResolvedValue({ status: "not_found" });
+    const { service, identityEventPublisher } = createService(repositories);
+
+    await expect(service.clearPhone("subject")).rejects.toMatchObject({
+      code: "subject_not_found",
+    });
+    expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+  });
 
   it("publishes deletion request and cancellation in their state transactions", async () => {
     const repositories = createRepositories();

@@ -1,14 +1,12 @@
 "use client";
 
 import { useConsent } from "@/lib/analytics/consent/context";
-import { useMarketingBidBarChromeActive } from "@/lib/context/marketing-bid-bar-chrome";
 import {
   type BottomChromeState,
   consentOffset,
   isDashboardTabBarRoute,
   isFixedPayBarRoute,
   isHideDashboardTabBarRoute,
-  isMarketingBidBarRoute,
   pageBottomPadding,
 } from "@/lib/layout/bottom-chrome";
 import { usePathname } from "next/navigation";
@@ -17,18 +15,15 @@ import { useMemo } from "react";
 export function useBottomChromeState(): BottomChromeState {
   const pathname = usePathname();
   const { showBanner } = useConsent();
-  const marketingBidBarActive = useMarketingBidBarChromeActive();
 
   return useMemo(
     () => ({
       consentBannerVisible: showBanner,
       dashboardTabBarActive: isDashboardTabBarRoute(pathname),
-      marketingBidBarRoute: isMarketingBidBarRoute(pathname),
-      marketingBidBarActive,
       fixedPayBarRoute: isFixedPayBarRoute(pathname),
       hideDashboardTabBar: isHideDashboardTabBarRoute(pathname),
     }),
-    [pathname, showBanner, marketingBidBarActive],
+    [pathname, showBanner],
   );
 }
 
@@ -40,7 +35,6 @@ export function useBottomChromeVars(): Record<string, string> {
     const consent = consentOffset(state.consentBannerVisible);
     return {
       "--bottom-chrome-consent-offset": consent,
-      "--sticky-bid-bar-bottom": consent,
       "--bottom-tab-bar-bottom": consent,
       "--page-bottom-padding": pageBottomPadding(state),
     };

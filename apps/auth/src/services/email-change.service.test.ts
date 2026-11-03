@@ -137,6 +137,34 @@ describe("EmailChangeService.start", () => {
   });
 });
 
+describe("EmailChangeService.start rollback", () => {
+  it("clears the pending change when the second email cannot be queued", async () => {
+    const { service, operations, email } = setup();
+    email.enqueue
+      .mockResolvedValueOnce({ outboxId: "o1" })
+      .mockRejectedValueOnce(new Error("outbox down"));
+    await expect(service.start(SUBJECT, "new@example.com", "account")).rejects.toThrow(
+      "outbox down",
+    );
+    expect(operations.cancelEmailChange).toHaveBeenCalledWith(SUBJECT);
+  });
+
+  it("still reports the queueing failure when the rollback itself fails", async () => {
+    const { service, operations, email } = setup();
+    email.enqueue.mockRejectedValueOnce(new Error("outbox down"));
+    operations.cancelEmailChange.mockRejectedValueOnce(new Error("database down"));
+    await expect(service.start(SUBJECT, "new@example.com", "account")).rejects.toThrow(
+      "outbox down",
+    );
+  });
+
+  it("keeps the pending change when both emails are queued", async () => {
+    const { service, operations } = setup();
+    await service.start(SUBJECT, "new@example.com", "account");
+    expect(operations.cancelEmailChange).not.toHaveBeenCalled();
+  });
+});
+
 describe("EmailChangeService.confirm", () => {
   async function issuedToken(side: 0 | 1): Promise<string> {
     const { service, email } = setup();

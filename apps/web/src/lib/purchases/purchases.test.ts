@@ -100,6 +100,9 @@ describe("purchaseState", () => {
     expect(canReportProblem("in-review")).toBe(false);
     expect(canReportProblem("choose-delivery")).toBe(true);
     expect(canReportProblem("delivered")).toBe(true);
+    expect(canReportProblem("payment-processing")).toBe(false);
+    expect(canReportProblem("refunded")).toBe(false);
+    expect(canReportProblem("cancelled")).toBe(false);
   });
 
   it("opens the first view with something in it", () => {

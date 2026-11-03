@@ -5,6 +5,7 @@ import type { SessionUser } from "@/lib/data/contracts";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerCategoryInterests } from "@/lib/data/http/category-interests.server";
 import { getServerNotificationMutes } from "@/lib/data/http/notifications-inbox.server";
+import { getServerVisitorAlertState } from "@/lib/data/http/sale-alerts.server";
 import { loadBiddingOrganisation } from "@/lib/settings/bidding-card.server";
 import { biddingRows } from "@/lib/settings/bidding-standing";
 import type { ThemePreference } from "@auction/validators";
@@ -13,6 +14,7 @@ import { AppearanceSettings } from "./appearance-settings";
 import { BidSettingsSection, BidSettingsSectionError } from "./bid-settings-section";
 import { BiddingCard } from "./bidding-card";
 import { MutedOrganisations } from "./muted-organisations";
+import { VisitorAlertsLink } from "./visitor-alerts-link";
 
 /**
  * Bidding: for yourself, your identity check and limit; inside an organisation, its check, its
@@ -55,9 +57,10 @@ export async function AlertsSection({
   belongsToOrganisations: boolean;
 }) {
   const c = await getServerDataContainer();
-  const [prefs, mutes] = await Promise.all([
+  const [prefs, mutes, visitorAlerts] = await Promise.all([
     c.notificationPreferences.getMine().catch(() => null),
     belongsToOrganisations ? getServerNotificationMutes() : Promise.resolve(null),
+    getServerVisitorAlertState(),
   ]);
   return (
     <BidSettingsSection
@@ -68,6 +71,9 @@ export async function AlertsSection({
       {/* Alerts only reach an address that can receive them, so a problem shows here. */}
       <EmailStatusBanner user={user} />
       {prefs ? <AlertsSettings initial={prefs} /> : <BidSettingsSectionError what="alerts" />}
+      {visitorAlerts === "on" || visitorAlerts === "linked" ? (
+        <VisitorAlertsLink initial={visitorAlerts} />
+      ) : null}
       {belongsToOrganisations ? (
         mutes ? (
           <MutedOrganisations initial={mutes} />

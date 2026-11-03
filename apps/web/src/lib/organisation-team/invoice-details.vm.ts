@@ -1,20 +1,13 @@
+import { type AddressValues, addressLine, validateAddress } from "@/lib/address/address-fields";
 import type {
   InvoiceAddressView,
   InvoiceDetailsView,
 } from "@/lib/data/http/organisation-team.types";
-import { countryName } from "@/lib/ui/countries";
 import type { InvoiceDetailsInput } from "./organisation-team.actions";
 
 /** The invoice details as the Profile reads them, and the form they are edited in. */
 
-export type InvoiceAddressForm = {
-  line1: string;
-  line2: string;
-  city: string;
-  region: string;
-  postalCode: string;
-  country: string;
-};
+export type InvoiceAddressForm = AddressValues;
 
 export type InvoiceDetailsForm = {
   billingEmail: string;
@@ -60,11 +53,7 @@ export function validateInvoiceDetails(
   if (email && !EMAIL.test(email))
     errors.billingEmail = "Enter an email address, like accounts@gallery.com.";
   if (form.ownAddress) {
-    const a = form.address;
-    if (!a.line1.trim()) errors.line1 = "Enter the first line of the address.";
-    if (!a.city.trim()) errors.city = "Enter the town or city.";
-    if (!a.postalCode.trim()) errors.postalCode = "Enter the postcode.";
-    if (!/^[A-Za-z]{2}$/.test(a.country.trim())) errors.country = "Choose a country.";
+    Object.assign(errors, validateAddress(form.address));
   }
   if (form.poReference.trim().length > 60) errors.poReference = "Use 60 characters or fewer.";
   return errors;
@@ -90,13 +79,5 @@ export function invoiceDetailsInput(form: InvoiceDetailsForm): InvoiceDetailsInp
 
 /** "14 Riverside Walk, London SE1 9PP, United Kingdom". */
 export function invoiceAddressLine(address: InvoiceAddressView): string {
-  return [
-    address.line1,
-    address.line2,
-    [address.city, address.region].filter(Boolean).join(", "),
-    address.postalCode,
-    countryName(address.country),
-  ]
-    .filter((part) => part?.trim())
-    .join(", ");
+  return addressLine(address);
 }

@@ -32,6 +32,7 @@ export type IdentityOutboxLifecycleEvent =
   | { type: "user.identity_enabled"; userId: string }
   | { type: "user.identity_merged"; retiredSubjectId: string; canonicalSubjectId: string }
   | { type: "user.identity_deleted"; userId: string }
+  | { type: "subject.data_export_requested"; userId: string; exportId: string }
   | { type: "user.session_revoked"; userId: string; sessionId?: string }
   | {
       type: "user.credential_changed";
@@ -215,6 +216,20 @@ function buildOutboxRow(
           schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
           subjectId: event.userId,
           deletedAt: new Date().toISOString(),
+        },
+      };
+    case "subject.data_export_requested":
+      return {
+        aggregateType: "subject_data_export",
+        aggregateId: event.exportId,
+        eventType: IDENTITY_EVENT_TYPES.DATA_EXPORT_REQUESTED,
+        producer,
+        actorUserId: event.userId,
+        schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+        payload: {
+          schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+          subjectId: event.userId,
+          exportId: event.exportId,
         },
       };
     case "user.session_revoked":

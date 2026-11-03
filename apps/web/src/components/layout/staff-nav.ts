@@ -17,6 +17,7 @@ import {
   CATEGORIES_READ_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
   CONSIGNMENT_INBOX_READ_ACCESS,
+  ENQUIRIES_ACCESS,
   FAILED_JOBS_READ_ACCESS,
   FINANCE_ACCESS,
   INVITATIONS_ACCESS,
@@ -363,6 +364,20 @@ function buildStaffNavGroupSpecs(
           requirement: STAFF_ACCESS_REVIEW_ACCESS,
         },
         {
+          // Enquiries from the contact form and the private sales page; the count is the new
+          // ones waiting for this person, and warns once one is past its reply time.
+          id: "enquiries",
+          href: "/admin/enquiries",
+          label: "Enquiries",
+          icon: Mail,
+          match: exactOrNested("/admin/enquiries"),
+          requirement: ENQUIRIES_ACCESS,
+          ...navBadge(
+            navCounts.enquiriesWaiting,
+            navCounts.enquiriesLate > 0 ? "warning" : "default",
+          ),
+        },
+        {
           id: "legal-entities",
           href: "/admin/legal-entities",
           label: "Legal entities",
@@ -531,15 +546,21 @@ export function staffNavItemToAppShellItem(spec: StaffNavItemSpec): AppShellNavI
   };
 }
 
+/** The admin root: every staff page sits under it, so it names only itself, never a descendant. */
+const ADMIN_ROOT = "/admin";
+
 /**
  * The navigation item a path belongs to (longest matching link), whatever the person's role:
- * the page's name and the capability it needs, e.g. to explain an access refusal.
+ * the page's name and the capability it needs, e.g. to explain an access refusal. A detail
+ * route resolves to its parent section; a route with no section of its own resolves to null
+ * (the Dashboard is matched only by `/admin` itself).
  */
 export function findStaffNavItemForPath(pathname: string): StaffNavItemSpec | null {
   const path = pathname.split(/[?#]/)[0] ?? pathname;
   let best: StaffNavItemSpec | null = null;
   for (const item of buildStaffNavGroupSpecs(0).flatMap((group) => group.items)) {
-    const matches = path === item.href || path.startsWith(`${item.href}/`);
+    const matches =
+      path === item.href || (item.href !== ADMIN_ROOT && path.startsWith(`${item.href}/`));
     if (matches && (!best || item.href.length > best.href.length)) best = item;
   }
   return best;

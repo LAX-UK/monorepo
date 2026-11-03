@@ -76,7 +76,7 @@ export type ConsignmentMessageAudience = { kind: "client"; now: Date } | { kind:
 /** What decides whether an upload may be attached: who uploaded it, for what, and its check. */
 export type AttachableUpload = {
   id: string;
-  ownerUserId: string;
+  ownerUserId: string | null;
   kind: string;
   status: string;
 };

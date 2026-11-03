@@ -80,6 +80,7 @@ Production worker keeps `ZOHO_CRM_SYNC_MODE=off` until [Phase 0 runbook](../runb
 
 - Identity: `user.registered`, `user.email_verified`, `user.profile_updated`, `user.deletion_requested`, `user.deletion_cancelled`, `user.identity_merged`, `user.identity_deleted`  
   **Lifecycle** (`deletion_*`, `identity_merged`, `identity_deleted`) is always delivered when any person event type is allowlisted, even if omitted from `ZOHO_CRM_ENABLED_EVENT_TYPES`.
+- Enquiries: `marketing_enquiry.received` (private sale and contact enquiries). Off unless the event is in `ZOHO_CRM_ENABLED_EVENT_TYPES`; see the runbook section "Enquiry leads".
 - Bid: `bid.first_for_user`, `bid.lot_won`, `payment.captured`, `payment.refunded`
 - Shop: `shop.order.paid`, optional `shop.artwork.created` (catalogue sync flag), `shop.artwork.interest_registered` (enquiry). Deal patches require an existing person link — run `backfill:crm-users` for shop-only buyers before enabling shop CRM events.
 

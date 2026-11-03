@@ -77,7 +77,7 @@ describe("menu sections, organisation roles", () => {
         home: ["home"],
         buying: ["bids", "purchases", "watchlist"],
         selling: ["consignments", "payouts"],
-        collection: ["works"],
+        collection: ["collection"],
         organisation: ["team", "organisation"],
         account: ACCOUNT,
       },
@@ -88,7 +88,7 @@ describe("menu sections, organisation roles", () => {
         home: ["home"],
         buying: ["bids", "purchases", "watchlist"],
         selling: ["consignments", "payouts"],
-        collection: ["works"],
+        collection: ["collection"],
         organisation: ["team", "organisation"],
         account: ACCOUNT,
       },
@@ -98,7 +98,7 @@ describe("menu sections, organisation roles", () => {
       {
         home: ["home"],
         buying: ["bids", "purchases", "watchlist"],
-        collection: ["works"],
+        collection: ["collection"],
         account: ACCOUNT,
       },
     ],
@@ -117,7 +117,7 @@ describe("menu sections, organisation roles", () => {
         home: ["home"],
         buying: ["purchases"],
         selling: ["consignments", "payouts"],
-        collection: ["works"],
+        collection: ["collection"],
         organisation: ["organisation"],
         account: ACCOUNT,
       },
@@ -127,7 +127,7 @@ describe("menu sections, organisation roles", () => {
       {
         home: ["home"],
         selling: ["consignments"],
-        collection: ["works"],
+        collection: ["collection"],
         account: ACCOUNT,
       },
     ],
@@ -174,7 +174,7 @@ describe("menu links", () => {
       purchases: "/purchases",
       watchlist: "/watching",
       consignments: "/selling/consignments",
-      works: "/collection",
+      collection: "/collection",
       team: "/team",
       payouts: "/selling/payouts",
       organisation: "/organisation",
@@ -227,7 +227,7 @@ describe("mobile tabs", () => {
     ["finance", ["home", "purchases", "payouts", "more"]],
     ["buyer_agent", ["home", "bids", "purchases", "watchlist", "more"]],
     ["consignor", ["home", "consignments", "watchlist", "more"]],
-    ["viewer", ["home", "consignments", "works", "more"]],
+    ["viewer", ["home", "consignments", "collection", "more"]],
   ] as const)("%s: the role's own tabs, then More", (role, expected) => {
     expect(tabIds(scope(org(role)))).toEqual(expected);
   });

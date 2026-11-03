@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "@auction/branding/brand-primitives.css" layer(base);
+@import "@auction/branding/lax-system.css" layer(base);
+@import "@auction/ui/lax-theme.css";
 @import "@auction/marketing-ui/marketing-ui.css";
 @import "@auction/marketing-ui/marketing-header.css" layer(base);
 
@@ -54,7 +56,7 @@
   --color-on-error-container: #410002;
   --color-lot-orange: #e17100;
   --color-live-red: #e83030;
-  --color-success: #2ea043;
+  --color-success: #1f7a35;
   --color-success-container: oklch(0.94 0.06 145);
   --color-on-success-container: #0b3d1a;
   --color-info: #2f62cf;
@@ -273,9 +275,9 @@ html.dark {
   --color-on-surface: var(--color-brand-light-cream);
   --color-on-surface-variant: #c9c5bc;
   --color-on-background: var(--color-brand-light-cream);
-  --color-primary: var(--color-brand-light-cream);
+  --color-primary: var(--brand-paper);
   --color-on-primary: var(--color-brand-obsidian);
-  --color-cta-bg: var(--color-brand-light-cream);
+  --color-cta-bg: var(--brand-paper);
   --color-cta-on: var(--color-brand-obsidian);
   /* Light aubergine on dark surfaces: 9.2:1 on #121414, 6.7:1 on #2d2f2e. */
   --color-product-accent: #d6a8d4;

@@ -15,6 +15,7 @@ const names = [
   "backup-codes-regenerated",
   "email-changed",
   "phone-verified",
+  "phone-removed",
   "social-account-linked",
   "social-account-unlinked",
   "new-device-login",
@@ -23,6 +24,8 @@ const names = [
   "change-email",
   "account-deletion-requested",
   "account-deletion-cancelled",
+  "data-export-requested",
+  "data-export-ready",
 ] as const;
 
 type AuthTemplateName = (typeof names)[number];
@@ -92,6 +95,10 @@ type AuthTemplateVarsBase = {
     /** Already masked, for example "+44 •••• 1234". */
     maskedPhone: string;
   };
+  "phone-removed": SecurityNoticeVars & {
+    /** Already masked, for example "+44 •••• 1234". */
+    maskedPhone: string;
+  };
   "social-account-linked": {
     provider: "google" | "apple";
     userName?: string | null;
@@ -118,6 +125,18 @@ type AuthTemplateVarsBase = {
     cancelDeletionUrl: string;
   };
   "account-deletion-cancelled": SecurityNoticeVars;
+  /** A copy of the person's data was requested: says when and on which device, like any security notice. */
+  "data-export-requested": SecurityNoticeVars;
+  /** The copy is ready. Links to LAX Account, never to the file. */
+  "data-export-ready": {
+    userName?: string | null;
+    /** LAX Account's download page, where a recent sign-in releases the file. */
+    dataExportUrl: string;
+    /** When the copy is deleted, formatted by the sender (Europe/London). */
+    expiresDisplay: string;
+    /** Days the copy stays available. */
+    retentionDays: number;
+  };
   "change-email": {
     confirmationUrl: string;
     oldEmail: string;
@@ -149,6 +168,7 @@ export const authTemplates = {
     "backup-codes-regenerated": "live",
     "email-changed": "snapshot",
     "phone-verified": "live",
+    "phone-removed": "live",
     "social-account-linked": "live",
     "social-account-unlinked": "live",
     "new-device-login": "live",
@@ -157,6 +177,8 @@ export const authTemplates = {
     "change-email": "snapshot",
     "account-deletion-requested": "live",
     "account-deletion-cancelled": "live",
+    "data-export-requested": "live",
+    "data-export-ready": "live",
   },
 } satisfies TemplateDomainSlice<AuthTemplateName, AuthTemplateVars>;
 

@@ -1,7 +1,7 @@
 import type { IUserRepository } from "@auction/persistence/interfaces";
 import type { INotificationWriteRepository } from "@auction/persistence/interfaces";
 import type { ISaleRepository } from "@auction/persistence/interfaces";
-import type { TelephoneBidBooking } from "@auction/types";
+import { SALES_ACCESS, type TelephoneBidBooking, adminRoutes } from "@auction/types";
 import type { ITransactionalMailer } from "./interfaces/transactional-mail.js";
 
 export class TelephoneBookingNotifier {
@@ -16,7 +16,7 @@ export class TelephoneBookingNotifier {
 
   private adminSaleUrl(saleId: string): string {
     const base = this.webOrigin.replace(/\/$/, "");
-    return `${base}/admin/sales/${saleId}/telephone-bookings`;
+    return `${base}${adminRoutes.sale.telephoneBookings(saleId)}`;
   }
 
   private buyerDetailUrl(bookingId: string): string {
@@ -35,7 +35,7 @@ export class TelephoneBookingNotifier {
   }
 
   private async staffOpsEmails(): Promise<string[]> {
-    const emails = await this.userRepo.listStaffEmails();
+    const emails = await this.userRepo.listStaffEmailsWithAccess(SALES_ACCESS);
     if (emails.length > 0) return emails;
     return this.opsSupportEmail ? [this.opsSupportEmail] : [];
   }

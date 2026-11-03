@@ -50,7 +50,9 @@ describe("WorkspaceNavList", () => {
         counts={{ needsYou: {}, unread: 3 }}
       />,
     );
-    expect(screen.getByRole("list", { name: "Collection" })).toBeInTheDocument();
+    // Collection is a menu entry of its own, not a heading over one item.
+    expect(screen.getByRole("link", { name: "Collection" })).toHaveAttribute("href", "/collection");
+    expect(screen.queryByRole("list", { name: "Collection" })).toBeNull();
     expect(
       within(screen.getByRole("list", { name: "Organisation" })).getAllByRole("link"),
     ).toHaveLength(2);
@@ -76,7 +78,7 @@ describe("phone tabs and More", () => {
     expect(ids).toEqual([
       "watchlist",
       "payouts",
-      "works",
+      "collection",
       "team",
       "organisation",
       "notifications",
@@ -149,7 +151,7 @@ describe("WorkspaceSearch", () => {
     expect(search).toHaveBeenCalledWith("harb", expect.any(AbortSignal));
     expect(
       screen.getByText(
-        /Showing what a consignor can open\. Purchases, works, invoices and people aren't searched\./,
+        /Showing what a consignor can open\. Purchases, collection, invoices and people aren't searched\./,
       ),
     ).toBeInTheDocument();
     fireEvent.click(option);

@@ -1,13 +1,17 @@
 import type { SendOtpOptions, SmsSender } from "@auction/auth";
 
-/** In-memory OTP store for local/dev — mirrors Twilio Verify lifecycle. */
-const pendingByPhone = new Map<string, { code: string; expiresAt: number }>();
+/**
+ * Local stand-in for SMS delivery, selected only in development and test (see
+ * `select-phone-verification.ts`). Nothing is sent and nothing is logged: a one-time code in a
+ * log file is a code anyone with log access can use. Every number is verified with the fixed
+ * code below, which is not a secret because this provider never runs anywhere else.
+ */
+export const DEVELOPMENT_PHONE_CODE = "123456";
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 
-function randomSixDigitCode(): string {
-  return String(Math.floor(100_000 + Math.random() * 900_000));
-}
+/** In-memory pending verifications, mirroring the Twilio Verify lifecycle. */
+const pendingByPhone = new Map<string, { expiresAt: number }>();
 
 export class ConsolePhoneVerificationService implements SmsSender {
   isConfigured(): boolean {
@@ -15,9 +19,7 @@ export class ConsolePhoneVerificationService implements SmsSender {
   }
 
   async sendOtp(phoneE164: string, _opts?: SendOtpOptions): Promise<{ sid: string }> {
-    const code = randomSixDigitCode();
-    pendingByPhone.set(phoneE164, { code, expiresAt: Date.now() + OTP_TTL_MS });
-    console.info(`[ConsolePhoneVerification] OTP for ${phoneE164}: ${code}`);
+    pendingByPhone.set(phoneE164, { expiresAt: Date.now() + OTP_TTL_MS });
     return { sid: `console-${Date.now()}` };
   }
 
@@ -28,14 +30,12 @@ export class ConsolePhoneVerificationService implements SmsSender {
       pendingByPhone.delete(phoneE164);
       return { valid: false };
     }
-    const valid = pending.code === code.trim();
-    if (valid) {
-      pendingByPhone.delete(phoneE164);
-    }
+    const valid = code.trim() === DEVELOPMENT_PHONE_CODE;
+    if (valid) pendingByPhone.delete(phoneE164);
     return { valid };
   }
 
-  /** Test helper — clear pending OTPs. */
+  /** Test helper: clear pending verifications. */
   static resetForTests(): void {
     pendingByPhone.clear();
   }

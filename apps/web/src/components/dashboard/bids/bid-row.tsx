@@ -1,7 +1,9 @@
 "use client";
 
 import { MediaImage } from "@/components/ui/media-image";
+import { RowStep } from "@/components/workspace/row-step";
 import { BID_STATUS_BADGE } from "@/lib/bid/bid-status-badge";
+import { bidNeedsYou } from "@/lib/bid/my-bid-status";
 import type { MyBidCardVm } from "@/lib/bid/my-bids.vm";
 import { notify } from "@/lib/ui/notify";
 import {
@@ -10,7 +12,7 @@ import {
   RecordRow,
   RecordRowMedia,
 } from "@auction/ui";
-import { Button, ButtonLink, StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/lax";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -82,24 +84,15 @@ export function BidRow({
       }
       action={
         next ? (
-          blocked ? (
-            <Button size="sm" {...(bidBlockedReason ? { disabledReason: bidBlockedReason } : {})}>
-              {next.label}
-            </Button>
-          ) : (
-            <ButtonLink
-              href={next.href}
-              Link={Link}
-              size="sm"
-              // Row steps are secondary: a list never holds the page's one primary action.
-              variant="secondary"
-              aria-label={`${next.label}, ${card.title}`}
-            >
-              {next.label}
-            </ButtonLink>
-          )
+          <RowStep
+            label={next.label}
+            accessibleName={`${next.label}, ${card.title}`}
+            href={next.href}
+            blockedReason={blocked ? bidBlockedReason : null}
+          />
         ) : null
       }
+      needsYou={bidNeedsYou(card.status)}
       menu={
         menu.length > 0 ? <InlineActionMenu label={`More for ${card.title}`} items={menu} /> : null
       }

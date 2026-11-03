@@ -22,6 +22,7 @@ function view(tasks: number): NeedsYouView {
     tasks: Array.from({ length: tasks }, (_, i) => ({
       kind: "agreement" as const,
       consignment: { id: `c${i}`, title: "Untitled" },
+      raisedAt: null,
       link: { page: "consignment" as const, id: `c${i}` },
     })),
     counts: { bids: 0, purchases: 0, consignments: tasks, team: 0, organisation: 0 },
@@ -65,8 +66,16 @@ describe("AccountNeedsYouService", () => {
   });
 
   it("puts the person's own tasks on their personal account, not on each organisation", async () => {
-    const identity = { kind: "identity" as const, link: { page: "verify_identity" as const } };
-    const funds = { kind: "source_of_funds" as const, link: { page: "source_of_funds" as const } };
+    const identity = {
+      kind: "identity" as const,
+      raisedAt: null,
+      link: { page: "verify_identity" as const },
+    };
+    const funds = {
+      kind: "source_of_funds" as const,
+      raisedAt: null,
+      link: { page: "source_of_funds" as const },
+    };
     const service = new AccountNeedsYouService({
       memberships: {
         listActiveMembershipsForUser: vi.fn(async () => [

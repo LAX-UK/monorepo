@@ -19,7 +19,6 @@ import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hu
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
 import { payoutSetupSteps } from "@/lib/presenters/payout-setup-steps";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export default async function SellerPayoutSetupPage() {
@@ -113,10 +112,6 @@ export default async function SellerPayoutSetupPage() {
         <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className="text-link underline">
           {SITE_SUPPORT_EMAIL}
         </a>
-        {" · "}
-        <Link href={DASHBOARD_ROUTES.seller} className="text-link underline">
-          Back to Selling
-        </Link>
       </p>
     </DashboardPage>
   );

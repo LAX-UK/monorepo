@@ -12,7 +12,7 @@ import {
   BottomSheetTitle,
   BottomSheetTrigger,
 } from "@auction/ui/components/bottom-sheet";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { MoreVertical } from "lucide-react";
 import { useState } from "react";
 
@@ -43,9 +43,8 @@ export function WizardHeaderActions({
         {showFinishLater ? (
           <Button
             type="button"
-            variant="outline"
-            size="default"
-            className="font-label text-xs"
+            variant="secondary"
+            size="md"
             disabled={isSubmitting}
             onClick={onFinishLater}
             data-testid="wizard-finish-later"
@@ -60,8 +59,8 @@ export function WizardHeaderActions({
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="min-h-11 min-w-11 sm:hidden"
+            size="icon-md"
+            className="sm:hidden"
             aria-label="More actions"
             data-testid="wizard-actions-menu"
           >

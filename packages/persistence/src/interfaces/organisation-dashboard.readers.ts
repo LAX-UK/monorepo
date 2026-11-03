@@ -30,8 +30,13 @@ export type UpcomingSaleWorksRow = {
   saleId: string;
   title: string;
   startsAt: Date;
+  endsAt: Date;
+  /** The sale is open for bidding now, not only scheduled. */
+  live: boolean;
   currency: string;
   works: number;
+  /** Images of the organisation's works in this sale, in lot order, a few at most. */
+  images: string[];
   estimatedWorks: number;
   estimateLow: string;
   estimateHigh: string;

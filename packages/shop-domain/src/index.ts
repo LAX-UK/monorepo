@@ -232,6 +232,8 @@ export {
 export {
   remainingRefundablePence,
   sumRefundedOrPendingPence,
+  cancelledLineIds,
+  type OrderLineAmount,
   type RefundLineInput,
 } from "./refundable-balance.js";
 export { validatePossessionTimestamp, type PossessionBoundsResult } from "./possession-bounds.js";
@@ -410,3 +412,14 @@ export {
   type GuestErasureDecision,
   type GuestErasureOrder,
 } from "./guest-erasure.js";
+export {
+  RELEASE_ALERT_CONFIRM_TTL_MS,
+  RELEASE_ALERT_CONSENT_TEXT,
+  RELEASE_ALERT_RESEND_AFTER_MS,
+  evaluateReleaseAlertConfirmation,
+  isShopEditionRelease,
+  shouldSendReleaseAlertConfirmation,
+  type ReleaseAlertConfirmation,
+  type ReleaseAlertSnapshot,
+  type ReleaseAlertStatus,
+} from "./release-alert.js";

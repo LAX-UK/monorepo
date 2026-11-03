@@ -3,7 +3,7 @@
 import { MarketingCountdownPanel } from "@/components/marketing/marketing-countdown-panel";
 import { resolveHeroCountdownEnd } from "@/components/sections/saleroom/hero/saleroom-hero-copy";
 import type { SaleHeroVM } from "@/components/sections/saleroom/view-models";
-import { formatLondonDateTime } from "@/lib/datetime/london-time";
+import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { opensLine } from "@/lib/time/opens-line";
 import { useClientClock } from "@/lib/time/use-client-clock";
 
@@ -18,11 +18,13 @@ function PreviewLine({ iso }: { iso: string }) {
   const line =
     nowMs != null
       ? opensLine(target, new Date(nowMs), "Preview opens")
-      : { label: "Preview opens", value: formatLondonDateTime(target) };
+      : { label: "Preview opens", value: formatLondonWhen(target) };
   return (
     <p className="font-body text-base text-on-surface">
       <span className="text-on-surface-variant">{line.label} </span>
-      <span suppressHydrationWarning>{line.value}</span>
+      <span className="tabular-nums" suppressHydrationWarning>
+        {line.value}
+      </span>
     </p>
   );
 }

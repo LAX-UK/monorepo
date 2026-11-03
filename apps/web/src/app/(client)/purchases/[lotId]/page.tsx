@@ -1,13 +1,21 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
 import { PurchaseDetail } from "@/components/dashboard/purchases/purchase-detail";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
 import { SITE_CONTACT_EMAIL } from "@/lib/brand";
 import { buyingPageView } from "@/lib/buying/buying-pages";
+import { ACCOUNT_LOAD_ERROR } from "@/lib/dashboard/dashboard-copy";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { getServerCollectionOffer } from "@/lib/data/http/account-buying.server";
+import {
+  getServerCollectionOffer,
+  getServerPurchaseProblem,
+} from "@/lib/data/http/account-buying.server";
+import { openRecordInItsAccount } from "@/lib/legal-entity/open-record-in-account.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { loadDeliveryAddresses } from "@/lib/purchases/delivery-addresses.server";
 import { deliveryPanel } from "@/lib/purchases/purchase-delivery.vm";
+import { purchaseProblemPanel } from "@/lib/purchases/purchase-problem";
 import { loadPurchaseSources } from "@/lib/purchases/purchase-sources.server";
 import { purchaseCard } from "@/lib/purchases/purchases.vm";
 import type { Metadata } from "next";
@@ -42,8 +50,26 @@ export default async function PurchaseDetailPage({ params }: PageProps) {
     );
   }
   const sources = await loadPurchaseSources();
-  const row = sources?.rows.find((candidate) => candidate.lot.id === lotId);
-  if (!sources || !row) notFound();
+  // A read that failed says so and offers Try again; it never claims the purchase doesn't exist.
+  if (!sources) {
+    return (
+      <DashboardPage>
+        <SetMobileShellTitle title="Purchase" />
+        <AccountLoadError {...ACCOUNT_LOAD_ERROR.purchase} headingLevel="h1" />
+      </DashboardPage>
+    );
+  }
+  const row = sources.rows.find((candidate) => candidate.lot.id === lotId);
+  if (!row) {
+    // Won in another account of this person: open it there. Otherwise it is not theirs to see.
+    await openRecordInItsAccount({
+      kind: "purchase",
+      id: lotId,
+      actingId: scope.account.id,
+      next: `${CLIENT_ROUTES.purchases}/${lotId}`,
+    });
+    notFound();
+  }
   const card = purchaseCard(row, sources);
   const facts = sources.factsByLot?.[lotId] ?? null;
   const organisation = scope.account.kind === "organisation" ? scope.account : null;
@@ -51,13 +77,25 @@ export default async function PurchaseDetailPage({ params }: PageProps) {
     organisation && facts && COLLECTION_STAGES.has(facts.delivery.stage)
       ? await getServerCollectionOffer(organisation.id, lotId).catch(() => null)
       : null;
+  // Only a payer choosing delivery picks an address, so only they need the list.
+  const addresses =
+    facts?.paymentRole === "payer" &&
+    (facts.delivery.stage === "awaiting_payment" || facts.delivery.stage === "choose")
+      ? await loadDeliveryAddresses(organisation?.id ?? null)
+      : [];
   const panel = facts
     ? deliveryPanel({
         facts,
         collection,
+        addresses,
         payerTeam: organisation ? `${organisation.name}'s finance team` : "The account's payer",
       })
     : null;
+  const accountId = scope.account.id;
+  const reported =
+    accountId && card.problemHref
+      ? await getServerPurchaseProblem(accountId, lotId).catch(() => null)
+      : null;
   const wonOn = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
     day: "numeric",
@@ -73,6 +111,7 @@ export default async function PurchaseDetailPage({ params }: PageProps) {
           .filter(Boolean)
           .join(" · ")}
         panel={panel}
+        problem={reported ? purchaseProblemPanel(reported) : null}
         shipperEmail={collection?.kind === "email" ? collection.email : SITE_CONTACT_EMAIL}
       />
     </DashboardPage>

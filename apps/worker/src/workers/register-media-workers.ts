@@ -10,10 +10,14 @@ import type { QrCodeScanJobPayload } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
 import { analyseSaleCoversJob } from "../jobs/analyse-sale-covers.js";
 import { cleanupImageJob } from "../jobs/image-cleanup.js";
+import { measureExternalPicturesJob } from "../jobs/measure-external-pictures.js";
 import { processImageJob } from "../jobs/process-image.js";
-import { purgeSourceOfFundsDocumentsJob } from "../jobs/purge-source-of-funds-documents.js";
 import { recordQrCodeScanJob } from "../jobs/qr-code-scan.js";
-import { gcPendingUploads, validateUploadJob } from "../jobs/validate-upload.js";
+import {
+  gcPendingUploads,
+  gcUnsentEnquiryUploads,
+  validateUploadJob,
+} from "../jobs/validate-upload.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
 import type { WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
 import { closeAll } from "./worker-utils.js";
@@ -103,9 +107,18 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
     COVER_ANALYSIS_QUEUE_NAME,
     queueOpts(COVER_ANALYSIS_QUEUE_NAME),
   );
+  // Lot photographs held as full https addresses (seeded or imported) never pass through an
+  // upload, so their size is read here, on the same tick, and kept under the address.
+  const unreadablePictures = new Set<string>();
   const coverAnalysisWorker = new Worker(
     COVER_ANALYSIS_QUEUE_NAME,
     async () => {
+      await measureExternalPicturesJob({
+        repo: mediaAssetProcessorRepo,
+        processor: imageProcessor,
+        log,
+        failed: unreadablePictures,
+      });
       await analyseSaleCoversJob({
         repo: coverAnalysisJobRepo,
         storage: uploadStorage,
@@ -175,11 +188,7 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
     async () => {
       await withSentryCronMonitor("gc-pending-uploads", sentryMonitorSlugs, async () => {
         await gcPendingUploads({ uploadValidationRepo, storage: uploadStorage, log });
-        await purgeSourceOfFundsDocumentsJob({
-          sourceOfFundsDocumentPurgeRepo: deps.sourceOfFundsDocumentPurgeRepo,
-          storage: uploadStorage,
-          log,
-        });
+        await gcUnsentEnquiryUploads({ uploadValidationRepo, storage: uploadStorage, log });
         await heartbeat("gc-pending-uploads");
       });
     },

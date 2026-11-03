@@ -60,7 +60,7 @@ function endedLabel(lot: Lot, ctx: HangLabelContext, currency: string): PriceAnd
 
 function biddingLabel(lot: Lot, ctx: HangLabelContext, currency: string): PriceAndNotes {
   const live = { lotId: lot.id, currency };
-  const closes = `Closes ${formatLondonMoment(lot.endTime, ctx.now)}`;
+  const closes = `Closes ${formatLondonMoment(lot.endTime, ctx.now, { inSentence: true })}`;
   if (lot.status === "active") {
     return {
       price: {
@@ -83,7 +83,7 @@ function biddingLabel(lot: Lot, ctx: HangLabelContext, currency: string): PriceA
           qualifier: lotHeadlineLabel("scheduled", false),
           value: formatHangMoney(lot.startingPrice, currency),
         },
-    notes: [`Opens ${formatLondonMoment(lot.startTime, ctx.now)}`],
+    notes: [`Opens ${formatLondonMoment(lot.startTime, ctx.now, { inSentence: true })}`],
     live: undefined,
   };
 }

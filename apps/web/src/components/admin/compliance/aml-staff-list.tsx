@@ -26,7 +26,11 @@ export type AmlStaffListProps = {
   selectedId: string | null;
   summary: AdminAmlListSummary;
   capabilities: AmlCapabilities;
-  attentionCounts: { manualReviewCount: number; sourceOfFundsPending: number };
+  attentionCounts: {
+    manualReviewCount: number;
+    sourceOfFundsPending: number;
+    canOpenPayments: boolean;
+  };
   pageSize: number;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
   loadError: string | null;

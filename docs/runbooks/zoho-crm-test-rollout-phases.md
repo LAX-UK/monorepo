@@ -65,3 +65,20 @@ Verify: lot win → Contact + Deal at Lot Won; Stripe test payment → Paid; ref
 ## Phase 4 — GDPR and live
 
 Run deletion drill and reconciliation per [async-delivery-phase-two.md](./async-delivery-phase-two.md). Then `ZOHO_CRM_SYNC_MODE=live` with full allowlist; 24h soak on delivery metrics.
+
+## Enquiry leads (off by default)
+
+Enquiries sent through the contact form or the private sale page can create a Lead in Zoho. Nothing is sent until the switch below is on.
+
+| Setting | Value |
+|---------|--------|
+| `ZOHO_CRM_ENABLED_EVENT_TYPES` | add `marketing_enquiry.received` |
+| `ZOHO_CRM_SYNC_MODE` | not `off` (use `dry_run` first to see the event in logs without sending) |
+
+Before enabling, create these custom Lead fields in Zoho (single line text): `LAX_Enquiry_Intent`, `LAX_Department`, `LAX_Enquiry_Reference`.
+
+What is sent: name, email, phone, `Lead_Source_Detailed = LAX Bid enquiry`, intent (Sell privately, Buy privately or General), department, enquiry reference, and `Email_Opt_Out` (true unless the sender agreed to marketing). Never sent: the message, the price in mind, attachments.
+
+Matching: a signed-in sender reuses their account's Lead; a guest gets a Lead keyed by the enquiry and matched to an existing Lead by email. Repeating an event updates the same Lead and `crm_record_link` row.
+
+To turn it off, remove `marketing_enquiry.received` from the allowlist and redeploy the worker. Skipped deliveries can be replayed with `replay:crm-skipped` once it is on again.

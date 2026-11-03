@@ -1,27 +1,15 @@
 /** @vitest-environment jsdom */
 import { HomeArtistsSection } from "@/components/home/sections/home-artists";
+import { HomeBrowseSection } from "@/components/home/sections/home-browse";
 import { HomeCollectionsSection } from "@/components/home/sections/home-collections";
-import { HomeHero } from "@/components/home/sections/home-hero";
 import { NewEditionsSection } from "@/components/home/sections/home-new-editions";
 import { buildHomeArtists } from "@/lib/home/home-artists";
-import type { HomeHeroVm } from "@/lib/home/home-page.vm";
 import { artworkSummary } from "@/test/artwork-summary.fixture";
 import type { PublicArtistSummary } from "@auction/shop-contracts";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 const NOW = new Date("2026-10-28T12:00:00.000Z");
-
-const hero: HomeHeroVm = {
-  eyebrow: null,
-  title: "Limited-edition prints from our Marylebone gallery",
-  lead: "Editions by Flora Powers. Prices include VAT.",
-  primary: { label: "Browse editions", href: "/artworks" },
-  workLink: null,
-  release: null,
-  browseRows: [],
-  emptyAction: null,
-};
 
 const artist = (slug: string, name = slug): PublicArtistSummary => ({
   slug,
@@ -47,47 +35,22 @@ describe("home sections", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("keeps the first screen whole without a release or browse rows", () => {
-    render(<HomeHero hero={hero} />);
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(hero.title);
-    expect(screen.getByRole("link", { name: "Browse editions" })).toBeTruthy();
-    expect(screen.queryByRole("navigation", { name: "Browse by" })).toBeNull();
+  it("renders no browse-by rows when there are none", () => {
+    const { container } = render(<HomeBrowseSection rows={[]} />);
+    expect(container.innerHTML).toBe("");
   });
 
   it("names each browse-by row with its count", () => {
     render(
-      <HomeHero
-        hero={{
-          ...hero,
-          browseRows: [
-            {
-              key: "a",
-              label: "Available now",
-              count: 3,
-              href: "/artworks?availability=available",
-            },
-            { key: "b", label: "Flora Powers", count: 1, href: "/artists/flora-powers" },
-          ],
-        }}
+      <HomeBrowseSection
+        rows={[
+          { key: "a", label: "Available now", count: 3, href: "/artworks?availability=available" },
+          { key: "b", label: "Flora Powers", count: 1, href: "/artists/flora-powers" },
+        ]}
       />,
     );
     expect(screen.getByRole("link", { name: "Available now, 3 editions" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Flora Powers, 1 edition" })).toBeTruthy();
-  });
-
-  it("offers one way on when nothing is on sale", () => {
-    render(
-      <HomeHero
-        hero={{
-          ...hero,
-          title: "New editions are on their way",
-          primary: null,
-          emptyAction: { label: "See original works on lax.art", href: "https://art.test" },
-        }}
-      />,
-    );
-    expect(screen.queryByRole("link", { name: "Browse editions" })).toBeNull();
-    expect(screen.getByRole("link", { name: "See original works on lax.art" })).toBeTruthy();
   });
 
   it("sets two new editions side by side, each saying where it leads", () => {

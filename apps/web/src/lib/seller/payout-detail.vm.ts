@@ -1,6 +1,7 @@
 import { formatLotMoment } from "@/lib/bid/lot-moment";
 import type { PayoutDetail, PayoutLine } from "@/lib/data/http/workspace-selling.schema";
 import { formatMoney } from "@/lib/format-currency";
+import { formatDeduction } from "@/lib/money/currency";
 import { addMoneyStrings } from "@auction/domain";
 import type { PayoutStatus } from "@auction/types";
 import { payoutStatuses } from "@auction/types";
@@ -47,7 +48,7 @@ function line(row: PayoutLine, currency: string): PayoutLineVm {
       work: row.lot?.title ?? "Sale",
       lot: row.lot?.lotNumber == null ? null : `Lot ${row.lot.lotNumber}`,
       hammer: money(row.breakdown.gross),
-      fees: money(`-${row.breakdown.commissionAndFees}`),
+      fees: formatDeduction(row.breakdown.commissionAndFees, currency),
       receive: money(row.breakdown.net),
       note: row.note,
     };
@@ -74,12 +75,8 @@ export function payoutDetailVm(
 ): PayoutDetailVm {
   const status = PAYOUT_STATUS_BADGE[isPayoutStatus(detail.status) ? detail.status : "scheduled"];
   const money = (amount: string) => formatMoney(amount, detail.currency);
-  // Mid-sentence, "Yesterday" reads "sent yesterday".
   const sent = detail.processedAt
-    ? formatLotMoment(detail.processedAt, input.now, { time: false }).replace(
-        /^(Today|Yesterday|Tomorrow)/,
-        (word) => word.toLowerCase(),
-      )
+    ? formatLotMoment(detail.processedAt, input.now, { time: false, inSentence: true })
     : null;
   const period = `${formatLotMoment(detail.periodStart, input.now, { time: false })} to ${formatLotMoment(detail.periodEnd, input.now, { time: false })}`;
   const statusNote =

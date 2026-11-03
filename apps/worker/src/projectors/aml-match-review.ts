@@ -1,3 +1,4 @@
+import { adminRoutes } from "@auction/types";
 import type pino from "pino";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 
@@ -29,7 +30,7 @@ export async function processAmlMatchReview(options: {
     complianceRecipientReader,
   } = ctx;
   const base = webOrigin?.replace(/\/$/, "") ?? "";
-  const adminReviewUrl = `${base}/admin/compliance/aml`;
+  const adminReviewUrl = `${base}${adminRoutes.aml.list()}`;
 
   const cursor = await projectorStateRepo.getCursor(AML_MATCH_REVIEW_PROJECTOR);
 

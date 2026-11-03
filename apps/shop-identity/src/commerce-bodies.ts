@@ -215,6 +215,22 @@ export const artworkInterestBodySchema = z
   })
   .strict();
 
+/** Asking for release alerts: an address (visitors), where the form was, and the honeypot. */
+export const releaseAlertBodySchema = z
+  .object({
+    email: optionalText(z.string().trim().max(ENQUIRY_EMAIL_MAX_LENGTH).email()),
+    source: optionalText(
+      z
+        .string()
+        .trim()
+        .min(1)
+        .max(40)
+        .regex(/^[a-z0-9_]+$/),
+    ),
+    website: optionalText(z.string().max(500)),
+  })
+  .strict();
+
 /** "Report a problem" on an order: a reason and what happened. */
 export const orderProblemReportBodySchema = z
   .object({

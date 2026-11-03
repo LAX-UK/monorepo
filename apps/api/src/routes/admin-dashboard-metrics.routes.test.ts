@@ -578,6 +578,8 @@ describe("admin dashboard metrics routes", () => {
       listPendingTelephoneBookings: empty,
       listDraftLotsPastStart: empty,
       listUnsoldLotChoices: empty,
+      listMarketingEnquiries: empty,
+      listPurchaseProblems: empty,
     };
     const workItems = new AdminWorkItemsService(reader);
     const container = createDashboardMetricsContainer({}, {}, {}, {}, workItems);
@@ -598,7 +600,6 @@ describe("admin dashboard metrics routes", () => {
 
     expect(res.status).toBe(200);
     expect(body.data.items).toEqual([]);
-    expect(reader.listPendingReviewTasks).not.toHaveBeenCalled();
   });
 
   it("GET /nav-counts returns 401 when unauthenticated", async () => {

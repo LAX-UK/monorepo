@@ -5,6 +5,8 @@ const names = [
   "shop-guest-order-link",
   "shop-artwork-enquiry-alert",
   "shop-edition-available-notify",
+  "shop-release-alert-confirm",
+  "shop-release-alert",
   "shop-zoho-dead-letter-notice",
   "shop-production-started",
   "shop-dispatch-notice",
@@ -65,6 +67,21 @@ type ShopTemplateVars = {
      */
     unsubscribeUrl?: string;
   };
+  /** Double opt-in: the link that turns a release alert request into a subscription. */
+  "shop-release-alert-confirm": {
+    confirmUrl: string;
+    expirationHours: number;
+    /** Stops alerts for the address; also sent as the mail app's one-click List-Unsubscribe. */
+    unsubscribeUrl: string;
+  };
+  /** A new edition has been published. */
+  "shop-release-alert": {
+    artworkTitle: string;
+    artistName?: string;
+    artworkUrl: string;
+    /** Stops alerts for the address; also sent as the mail app's one-click List-Unsubscribe. */
+    unsubscribeUrl: string;
+  };
   "shop-zoho-dead-letter-notice": {
     eventId: string;
     deliveryId: string;
@@ -72,7 +89,10 @@ type ShopTemplateVars = {
     lastError: string;
   };
   "shop-production-started": {
+    /** "LAX-S-10482"; absent on emails queued before orders had references. */
+    orderReference?: string;
     artworkTitle: string;
+    /** "Edition 3", "Proof 1" or "Open edition". */
     editionLabel: string;
   };
   "shop-dispatch-notice": {
@@ -96,7 +116,11 @@ type ShopTemplateVars = {
   };
   "shop-cancellation-confirmed": {
     orderId: string;
-    refundPeriodEndsAt: string;
+    /** "LAX-S-10482"; absent on emails queued before orders had references. */
+    orderReference?: string;
+    artworkTitle: string;
+    /** What goes back to the card: the item's price less anything already refunded. */
+    amountPence: number;
   };
   "art-general-enquiry-alert": {
     topicLabel: string;
@@ -161,6 +185,8 @@ export const shopTemplates = {
     "shop-guest-order-link": "snapshot",
     "shop-artwork-enquiry-alert": "snapshot",
     "shop-edition-available-notify": "snapshot",
+    "shop-release-alert-confirm": "snapshot",
+    "shop-release-alert": "snapshot",
     "shop-zoho-dead-letter-notice": "snapshot",
     "shop-production-started": "snapshot",
     "shop-dispatch-notice": "snapshot",

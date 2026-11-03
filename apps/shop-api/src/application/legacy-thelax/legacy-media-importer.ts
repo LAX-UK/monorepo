@@ -6,6 +6,11 @@ import {
   matchesDeclaredImageType,
   shopMediaPolicy,
 } from "../../domain/shop-media-upload-policy.js";
+import type {
+  ImageFormat,
+  ImageNormalizerPort,
+  NormalizedImage,
+} from "../ports/image-normalizer.port.js";
 import type { ImageProbePort } from "../ports/image-probe.port.js";
 import type { LegacyMediaFetcher } from "../ports/legacy-thelax-import.ports.js";
 import type { ShopMediaAssetRepository } from "../ports/shop-media-asset.repository.js";
@@ -15,10 +20,25 @@ export type LegacyMediaImporterDeps = {
   storage: ObjectStoragePort;
   assets: ShopMediaAssetRepository;
   imageProbe: ImageProbePort;
+  imageNormalizer: ImageNormalizerPort;
   actor: string;
 };
 
-export type LegacyMediaStats = { imported: number; reused: number; failed: string[] };
+/** Per-image result: what the source file was and what was stored. */
+export type LegacyMediaImageResult = {
+  url: string;
+  key: string;
+  original: { width: number; height: number; bytes: number };
+  stored: { width: number; height: number; bytes: number };
+  resized: boolean;
+};
+
+export type LegacyMediaStats = {
+  imported: number;
+  reused: number;
+  failed: string[];
+  images: LegacyMediaImageResult[];
+};
 
 export type LegacyMediaImporter = {
   importImage(url: string, kind: ShopMediaKind, alt: string | null): Promise<string | null>;
@@ -51,7 +71,7 @@ function contentTypeFromUrl(url: URL): string | null {
 export function createLegacyMediaImporter(deps: LegacyMediaImporterDeps): LegacyMediaImporter {
   const inFlight = new Map<string, Promise<string | null>>();
   const publicUrls = new Map<string, string>();
-  const stats: LegacyMediaStats = { imported: 0, reused: 0, failed: [] };
+  const stats: LegacyMediaStats = { imported: 0, reused: 0, failed: [], images: [] };
 
   async function importOnce(
     url: URL,
@@ -64,33 +84,31 @@ export function createLegacyMediaImporter(deps: LegacyMediaImporterDeps): Legacy
       stats.reused += 1;
       return key;
     }
-    const bytes = await deps.fetcher.fetch(url.href).catch(() => null);
-    const contentType = bytes ? sniffContentType(bytes) : null;
+    const fetched = await deps.fetcher.fetch(url.href).catch(() => null);
+    const sniffed = fetched ? sniffContentType(fetched) : null;
     const policy = shopMediaPolicy(kind);
-    if (
-      !bytes ||
-      !contentType ||
-      !policy.allowedContentTypes.includes(contentType) ||
-      bytes.byteLength > policy.maxBytes
-    ) {
+    if (!fetched || !sniffed || !policy.allowedContentTypes.includes(sniffed)) {
       stats.failed.push(url.href);
       return null;
     }
+    // Oversized files are scaled down rather than rejected; only undecodable bytes fail.
+    let image: NormalizedImage;
     let probed: { width: number; height: number; blurDataUrl: string };
     try {
-      const dimensions = await deps.imageProbe.analyze(bytes);
-      probed = { ...dimensions, blurDataUrl: await deps.imageProbe.makeLqip(bytes) };
+      image = await deps.imageNormalizer.normalize(fetched, sniffed as ImageFormat);
+      const dimensions = await deps.imageProbe.analyze(image.bytes);
+      probed = { ...dimensions, blurDataUrl: await deps.imageProbe.makeLqip(image.bytes) };
     } catch {
       stats.failed.push(url.href);
       return null;
     }
-    await deps.storage.putObject(key, bytes, contentType);
+    await deps.storage.putObject(key, image.bytes, image.contentType);
     if (!existing) {
       await deps.assets.insertPending({
         key,
         kind,
-        contentType,
-        byteSize: bytes.byteLength,
+        contentType: image.contentType,
+        byteSize: image.bytes.byteLength,
         createdBySubjectId: deps.actor,
       });
     }
@@ -100,6 +118,13 @@ export function createLegacyMediaImporter(deps: LegacyMediaImporterDeps): Legacy
       alt: alt?.trim() ? alt.trim().slice(0, ALT_MAX_LENGTH) : null,
     });
     stats.imported += 1;
+    stats.images.push({
+      url: url.href,
+      key,
+      original: image.original,
+      stored: image.stored,
+      resized: image.stored.bytes !== image.original.bytes,
+    });
     return key;
   }
 

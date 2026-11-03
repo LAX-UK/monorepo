@@ -30,23 +30,19 @@ function twoStepSubtitle(
 }
 
 /**
- * Password and security page. The sign-in rows open the issuer's hosted pages, which own the
- * change; deleting the account is an Account page that asks every product first.
+ * Password and security page. The password is changed in the page itself (see the password
+ * section); two-step verification opens the issuer's hosted page, which owns that change; deleting
+ * the account is an Account page that asks every product first.
  */
 export function buildSecurityGroups(
   facts: Pick<AccountSecurityFacts, "twoStep" | "backupCodesRemaining">,
-  links: Pick<AccountLinksVm, "changePassword" | "manageTwoStep">,
+  links: Pick<AccountLinksVm, "manageTwoStep">,
 ): SettingsGroupVm[] {
   return [
     {
       id: "sign-in",
       label: "Signing in",
       rows: [
-        {
-          title: "Password",
-          subtitle: "We'll email you a secure link to change it",
-          href: links.changePassword,
-        },
         {
           title: "Two-step verification",
           subtitle: twoStepSubtitle(facts),

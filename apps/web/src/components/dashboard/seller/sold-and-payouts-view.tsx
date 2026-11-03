@@ -8,16 +8,20 @@ import {
   PAYOUT_STATUS_BADGE,
   SOLD_SORTS,
   SOLD_SORT_LABEL,
+  SOLD_STAGE_BADGE,
   SOLD_VIEWS,
   SOLD_VIEW_LABEL,
   type SoldListQuery,
   type SoldRecord,
   type SoldSort,
+  type SoldStage,
+  appliedSoldFilters,
   isSoldListNarrowed,
   payoutHref,
   soldInView,
   soldListSearch,
   soldRecord,
+  soldStages,
   soldYears,
 } from "@/lib/seller/sold-and-payouts-list";
 import type { PayoutRow, SoldAndPayoutsVm } from "@/lib/seller/sold-and-payouts.vm";
@@ -176,14 +180,16 @@ export function SoldAndPayoutsView({
 
   const shown = records ? soldInView(records, query) : [];
   const years = records ? soldYears(records) : [];
+  const stages = records ? soldStages(records) : [];
+  const filterable = years.length > 1 || stages.length > 1;
   const tabs: TabNavItem[] = SOLD_VIEWS.map((id) => ({
     id,
     label: SOLD_VIEW_LABEL[id],
     href: `${CLIENT_ROUTES.payouts}${soldListSearch({ ...query, view: id })}`,
     count: id === "sold" ? (records ? soldInView(records, query).length : 0) : payouts.length,
   }));
-  const chips = query.year ? [{ id: "year" as const, label: `Year: ${query.year}` }] : [];
-  const clearAll = () => setQuery({ ...query, q: "", year: null });
+  const chips = appliedSoldFilters(query);
+  const clearAll = () => setQuery({ ...query, q: "", year: null, stage: null });
   const problem = records?.some((record) => record.badge.tone === "warning");
 
   return (
@@ -241,7 +247,7 @@ export function SoldAndPayoutsView({
                   onValueChange: setSearch,
                   placeholder: "Search by title or sale",
                 },
-                ...(years.length > 1
+                ...(filterable
                   ? {
                       filter: {
                         count: chips.length,
@@ -259,7 +265,7 @@ export function SoldAndPayoutsView({
                 ),
                 chips: {
                   filters: chips,
-                  onRemove: () => setQuery({ ...query, year: null }),
+                  onRemove: (id) => setQuery({ ...query, [id]: null }),
                   onClearAll: clearAll,
                 },
               }
@@ -308,26 +314,45 @@ export function SoldAndPayoutsView({
           </>
         )}
       </div>
-      {years.length > 1 ? (
+      {filterable ? (
         <FilterSheet
           open={filterOpen}
           onOpenChange={setFilterOpen}
           resultCount={records ? soldInView(records, draft).length : 0}
           onApply={() => setQuery(draft)}
-          onClear={() => setDraft({ ...draft, year: null })}
+          onClear={() => setDraft({ ...draft, year: null, stage: null })}
         >
-          <Field label="Year sold">
-            <NativeSelect
-              value={draft.year ? String(draft.year) : ANY}
-              onValueChange={(value) =>
-                setDraft({ ...draft, year: value === ANY ? null : Number(value) })
-              }
-              options={[
-                { value: ANY, label: "Any year" },
-                ...years.map((year) => ({ value: String(year), label: String(year) })),
-              ]}
-            />
-          </Field>
+          {stages.length > 1 ? (
+            <Field label="Money">
+              <NativeSelect
+                value={draft.stage ?? ANY}
+                onValueChange={(value) =>
+                  setDraft({ ...draft, stage: value === ANY ? null : (value as SoldStage) })
+                }
+                options={[
+                  { value: ANY, label: "Any" },
+                  ...stages.map((stage) => ({
+                    value: stage,
+                    label: SOLD_STAGE_BADGE[stage].label,
+                  })),
+                ]}
+              />
+            </Field>
+          ) : null}
+          {years.length > 1 ? (
+            <Field label="Year sold">
+              <NativeSelect
+                value={draft.year ? String(draft.year) : ANY}
+                onValueChange={(value) =>
+                  setDraft({ ...draft, year: value === ANY ? null : Number(value) })
+                }
+                options={[
+                  { value: ANY, label: "Any year" },
+                  ...years.map((year) => ({ value: String(year), label: String(year) })),
+                ]}
+              />
+            </Field>
+          ) : null}
         </FilterSheet>
       ) : null}
     </div>

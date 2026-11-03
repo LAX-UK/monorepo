@@ -27,6 +27,7 @@ export type IdentityLifecycleEvent =
   | { type: "user.identity_enabled"; userId: string }
   | { type: "user.identity_merged"; retiredSubjectId: string; canonicalSubjectId: string }
   | { type: "user.identity_deleted"; userId: string }
+  | { type: "subject.data_export_requested"; userId: string; exportId: string }
   | { type: "user.session_revoked"; userId: string; sessionId?: string }
   | {
       type: "user.credential_changed";

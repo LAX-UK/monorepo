@@ -6,6 +6,7 @@ import {
 import { CONTEXT_DEFAULT_ILLUSTRATION, type EmptyStateContext } from "@/lib/ui/empty-state-copy";
 import { cn } from "@auction/ui";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { pageTitleClass } from "@auction/ui/lax";
 import { type ComponentProps, type ReactNode, useId } from "react";
 
 type EmptyProps = Omit<ComponentProps<typeof EmptyState>, "variant">;
@@ -15,7 +16,8 @@ export type DashboardEmptyStateVariant = "quiet" | "hero";
 export type DashboardEmptyStateProps = Omit<EmptyProps, "title" | "illustration"> & {
   variant?: DashboardEmptyStateVariant;
   title: ReactNode;
-  headingLevel?: "h2" | "h3";
+  /** `h1` is for a whole-page state that is the only heading on the page. */
+  headingLevel?: "h1" | "h2" | "h3";
   context?: EmptyStateContext;
   illustration?: EmptyStateIllustrationKey;
 };
@@ -51,7 +53,7 @@ export function DashboardEmptyState({
     return (
       <section
         className={cn(
-          "flex flex-col items-center justify-center rounded-2xl bg-surface-container-low/20 px-6 py-12 text-center sm:px-10 sm:py-16",
+          "flex flex-col items-center justify-center px-6 py-12 text-center sm:px-10 sm:py-16",
           className,
         )}
         aria-labelledby={headingId}
@@ -64,10 +66,7 @@ export function DashboardEmptyState({
             {icon}
           </div>
         ) : null}
-        <Heading
-          id={headingId}
-          className="font-headline text-2xl font-semibold tracking-tight text-on-surface md:text-3xl"
-        >
+        <Heading id={headingId} className={pageTitleClass}>
           {title}
         </Heading>
         {description ? (
@@ -86,7 +85,7 @@ export function DashboardEmptyState({
 
   const quietProps: EmptyProps = {
     title,
-    headingLevel,
+    headingLevel: headingLevel === "h1" ? "h2" : headingLevel,
     headingId,
     className: cn(
       "rounded-xl border border-dashed border-border-hairline bg-surface-container-low/30 p-6 sm:p-8",

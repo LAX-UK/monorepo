@@ -1,3 +1,4 @@
+import type { LotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import type { StreamPresentation } from "@/lib/sale-stream-policy";
 import type { LotCardTimingVM, Sale, SaleDayMedia } from "@auction/types";
 
@@ -68,6 +69,8 @@ export type SaleLotCardVM = {
   estimateValue: string | null;
   currentBidLabel: string;
   currentBidValue: string;
+  /** The price and clock line a card prints: the lot page's own words for the lot's lifecycle. */
+  cardLine: LotCardLineModel;
   /** Public lot payloads omit bid count; keep null until the API adds it. */
   bidsCountLabel: string | null;
   closingLabel: string | null;

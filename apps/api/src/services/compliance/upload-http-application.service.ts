@@ -5,12 +5,18 @@ import type {
 } from "../interfaces/compliance-routes/compliance-route-http.js";
 import type { IUploadHttpApplicationService } from "../interfaces/compliance-routes/compliance-upload-http.js";
 import type { IUploadService } from "../interfaces/upload-service.js";
+import type { IEnquiryDraftTokens } from "../marketing-enquiry/enquiry-draft-token.js";
 
 export class UploadHttpApplicationService implements IUploadHttpApplicationService {
   constructor(
     private readonly uploadService: IUploadService,
     private readonly storageDriver: string,
+    private readonly enquiryDrafts: Pick<IEnquiryDraftTokens, "verify">,
   ) {}
+
+  draftFromToken(token: string): { draftId: string } | null {
+    return this.enquiryDrafts.verify(token);
+  }
 
   async putLocalPresignedUpload(input: {
     token: string;
@@ -59,6 +65,46 @@ export class UploadHttpApplicationService implements IUploadHttpApplicationServi
         },
       };
     }
+    return { status: 200, body: { data: result.value } };
+  }
+
+  async createDraftPresignedUpload(input: {
+    draftId: string;
+    kind: string;
+    contentType: string;
+    byteSize: number;
+  }): Promise<ComplianceHttpJson> {
+    const result = await this.uploadService.createDraftPresignedUpload(input);
+    if (!result.ok) {
+      return {
+        status: result.status,
+        body: {
+          error: result.error,
+          ...(result.code ? { code: result.code } : {}),
+          ...(result.limit ? { limit: result.limit } : {}),
+          ...(result.resetAt ? { resetAt: result.resetAt } : {}),
+        },
+      };
+    }
+    return { status: 200, body: { data: result.value } };
+  }
+
+  async confirmDraftUpload(input: {
+    draftId: string;
+    uploadId: string;
+  }): Promise<ComplianceHttpJson> {
+    if (!input.uploadId) return { status: 400, body: { error: "uploadId is required" } };
+    const result = await this.uploadService.confirmDraftUpload(input);
+    if (!result.ok) return { status: result.status, body: { error: result.error } };
+    return { status: 200, body: { data: result.value } };
+  }
+
+  async getDraftUploadStatus(input: {
+    draftId: string;
+    uploadId: string;
+  }): Promise<ComplianceHttpJson> {
+    const result = await this.uploadService.getDraftUploadStatus(input);
+    if (!result.ok) return { status: result.status, body: { error: result.error } };
     return { status: 200, body: { data: result.value } };
   }
 

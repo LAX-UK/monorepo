@@ -26,7 +26,23 @@ export type SecurityNoticeEvent =
       userAgent?: string | null;
     }
   | { kind: "account_deletion_cancelled"; userId: string; at: Date; userAgent?: string | null }
+  | {
+      kind: "data_export_requested";
+      userId: string;
+      at: Date;
+      /** The browser the request came from, as LAX Account forwarded it. */
+      userAgent?: string | null;
+    }
+  | {
+      kind: "data_export_ready";
+      userId: string;
+      at: Date;
+      /** When the copy is deleted. */
+      expiresAt: Date;
+      userAgent?: string | null;
+    }
   | { kind: "phone_verified"; userId: string; at: Date; phone: string; userAgent?: string | null }
+  | { kind: "phone_removed"; userId: string; at: Date; phone: string; userAgent?: string | null }
   | {
       kind: "email_changed";
       userId: string;

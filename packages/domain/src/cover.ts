@@ -29,6 +29,7 @@ export {
   type TextStyle,
 } from "./cover-scrim.js";
 export {
+  COVER_PLATE_MIN_LONG_SIDE,
   COVER_SLOT_FLOORS,
   COVER_ZOOM_MAX,
   COVER_ZOOM_MIN,

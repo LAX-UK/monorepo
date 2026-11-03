@@ -76,6 +76,12 @@ export const userIdentityDeletedPayloadSchemaV1 = z.object({
   deletedAt: rfc3339Timestamp,
 });
 
+export const subjectDataExportRequestedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  subjectId: z.string(),
+  exportId: z.string().min(1),
+});
+
 export const userSessionRevokedPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   subjectId: z.string(),

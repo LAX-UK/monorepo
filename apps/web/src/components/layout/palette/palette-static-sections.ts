@@ -12,6 +12,7 @@ import type { PaletteSection } from "@/components/layout/palette/types";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
+import type { NavActivity } from "@/lib/marketing/nav-activity";
 import type { ShellRole } from "@/lib/shell/contracts";
 
 type BuildStaticSectionsInput = {
@@ -22,6 +23,8 @@ type BuildStaticSectionsInput = {
   pendingSubmissionCount: number;
   pendingArtistCount: number;
   navCounts: AdminNavCounts;
+  /** What the public lists hold; the marketing palette lists only the live ones that do. */
+  navActivity?: NavActivity;
 };
 
 export function buildStaticPaletteSections(input: BuildStaticSectionsInput): PaletteSection[] {
@@ -34,6 +37,7 @@ export function buildStaticPaletteSections(input: BuildStaticSectionsInput): Pal
     input.pendingArtistCount,
     true,
     input.navCounts,
+    input.navActivity,
   );
 
   const sections: PaletteSection[] = [];

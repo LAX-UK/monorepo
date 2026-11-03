@@ -152,6 +152,24 @@ export function undoOf(page: Page, message: string) {
     .getByRole("button", { name: "Undo" });
 }
 
+/** Changes a member's role the way a person does: row menu, "Change role…", a role card, confirm. */
+export async function changeRoleViaDialog(page: Page, memberName: string, role: string) {
+  await page.getByRole("button", { name: `More for ${memberName}` }).click();
+  await page.getByRole("menuitem", { name: /^Change role/ }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("radio", { name: new RegExp(`^${role}`) }).click();
+  await dialog.getByRole("button", { name: "Change role" }).click();
+  await expect(dialog).toHaveCount(0);
+}
+
+/** The role shown as text in a member's row. */
+export function roleOfRow(page: Page, memberName: string) {
+  return page
+    .getByRole("list", { name: /^Members of / })
+    .getByRole("listitem")
+    .filter({ hasText: memberName });
+}
+
 /** The access page a role sees when it opens an address it may not use. */
 export async function expectNoAccess(page: Page, path: string): Promise<void> {
   await page.goto(path);

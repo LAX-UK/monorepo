@@ -1,3 +1,4 @@
+import { NO_STAFF_ROLES, type UserRole } from "@auction/types";
 import {
   adminPaddleAssignBodySchema,
   adminPaddlePlaceBidBodySchema,
@@ -14,6 +15,7 @@ import { z } from "zod";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { requireSaleroomOperate } from "../../middleware/require-capability.js";
+import { saleReadinessForViewer } from "../../services/admin/admin-sale-readiness.service.js";
 import type { AdminOperationsSaleroomRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
@@ -27,7 +29,9 @@ export function attachAdminSaleroomRoutes(
     zValidator("query", adminSaleReadinessQuerySchema),
     async (c) => {
       const { limit } = c.req.valid("query");
-      const items = await container.admin.saleReadiness.listReadiness(limit);
+      const rows = await container.admin.saleReadiness.listReadiness(limit);
+      const role = (c.get("userRole") ?? "client") as UserRole;
+      const items = saleReadinessForViewer(rows, role, c.get("userStaffRoles") ?? NO_STAFF_ROLES);
       return c.json({ data: { items } });
     },
   );

@@ -24,6 +24,7 @@ import {
   OWED_PAYMENT_STATUSES,
   type PendingAccessRequest,
   type PurchaseNextStepFacts,
+  type PurchaseNextStepTimes,
   type UnreadReply,
 } from "@auction/domain";
 import type { PaymentStatus } from "@auction/types";
@@ -75,14 +76,25 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
     bidderId: string | null;
     now: Date;
     limit: number;
-  }): Promise<Array<HomeSubject & { endsAt: Date }>> {
+  }): Promise<Array<HomeSubject & { endsAt: Date; outbidAt: Date | null }>> {
     const leading = alias(bid, "leading");
     const placed = and(
       eq(bid.buyerLegalEntityId, input.legalEntityId),
       input.bidderId ? eq(bid.bidderId, input.bidderId) : undefined,
     );
     return this.db
-      .select({ id: lot.id, title: lot.title, endsAt: lot.endTime })
+      .select({
+        id: lot.id,
+        title: lot.title,
+        endsAt: lot.endTime,
+        // The bid now leading is the one that put the account behind.
+        // Written with explicit aliases: Drizzle leaves columns unqualified in a select list,
+        // so a correlated subquery there must name its own tables.
+        outbidAt: sql<Date | null>`(
+          select max(winning_bid.created_at) from bid as winning_bid
+          where winning_bid.lot_id = "lot"."id" and winning_bid.is_winning = true
+        )`.mapWith((value) => (value ? new Date(value) : null)),
+      })
       .from(lot)
       .where(
         and(
@@ -113,7 +125,7 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
     legalEntityId: string;
     winnerId: string | null;
     limit: number;
-  }): Promise<Array<HomeSubject & PurchaseNextStepFacts>> {
+  }): Promise<Array<HomeSubject & PurchaseNextStepFacts & PurchaseNextStepTimes>> {
     // The lot's latest payment billed to the account.
     const latestStatus = sql<PaymentStatus | null>`(
       select ${payment.status} from ${payment}
@@ -146,10 +158,27 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
         and ${deliveryQuote.buyerLegalEntityId} = ${input.legalEntityId}
         and ${deliveryQuote.status} = 'quoted'
     )`;
+    // Explicit aliases: these run in the select list, where Drizzle leaves columns unqualified.
+    const paymentAt = sql<Date | null>`(
+      select latest_payment.created_at from payment as latest_payment
+      where latest_payment.lot_id = "lot"."id"
+        and latest_payment.buyer_legal_entity_id = ${input.legalEntityId}
+      order by latest_payment.created_at desc limit 1
+    )`.mapWith((value) => (value ? new Date(value) : null));
+    const quotedAt = sql<Date | null>`(
+      select max(open_quote.quoted_at) from delivery_quote as open_quote
+      where open_quote.lot_id = "lot"."id"
+        and open_quote.buyer_legal_entity_id = ${input.legalEntityId}
+        and open_quote.status = 'quoted'
+    )`.mapWith((value) => (value ? new Date(value) : null));
     const rows = await this.db
       .select({
         id: lot.id,
         title: lot.title,
+        wonAt: lot.endTime,
+        paymentAt,
+        quotedAt,
+        readyAt: lotFulfilment.updatedAt,
         paymentStatus: latestStatus,
         quoteReady,
         fulfilmentStatus: lotFulfilment.status,
@@ -177,6 +206,10 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
         ? { status: row.fulfilmentStatus, method: row.method, collectedAt: row.collectedAt }
         : null,
       shippingQuote: row.quoteReady ? ("ready" as const) : null,
+      wonAt: row.wonAt,
+      paymentAt: row.paymentAt,
+      quotedAt: row.quotedAt,
+      readyAt: row.fulfilmentStatus === "ready_for_collection" ? row.readyAt : null,
     }));
   }
 
@@ -184,9 +217,13 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
     legalEntityId: string;
     visibleTo: SubmissionSenderFilter | undefined;
     limit: number;
-  }): Promise<HomeSubject[]> {
+  }): Promise<Array<HomeSubject & { proposedAt: Date | null }>> {
     return this.db
-      .select({ id: itemSubmission.id, title: itemSubmission.title })
+      .select({
+        id: itemSubmission.id,
+        title: itemSubmission.title,
+        proposedAt: consignmentAgreement.proposedAt,
+      })
       .from(itemSubmission)
       .innerJoin(consignmentAgreement, eq(consignmentAgreement.submissionId, itemSubmission.id))
       .where(
@@ -208,12 +245,13 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
     legalEntityId: string;
     visibleTo: SubmissionSenderFilter | undefined;
     limit: number;
-  }): Promise<Array<HomeSubject & { note: string | null }>> {
+  }): Promise<Array<HomeSubject & { note: string | null; requestedAt: Date | null }>> {
     return this.db
       .select({
         id: itemSubmission.id,
         title: itemSubmission.title,
         note: itemSubmission.changesRequestedNote,
+        requestedAt: itemSubmission.changesRequestedAt,
       })
       .from(itemSubmission)
       .where(
@@ -366,12 +404,13 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
     return rows
       .sort((a, b) => b.at.getTime() - a.at.getTime())
       .slice(0, input.limit)
-      .map(({ id, title, from }) => ({ id, title, from }));
+      .map(({ id, title, from, at }) => ({ id, title, from, at }));
   }
 
   async viewerChecks(userId: string): Promise<{
     identity: "verified" | "checking" | "required";
     sourceOfFundsRequested: boolean;
+    sourceOfFundsRequestedAt: Date | null;
   }> {
     const [profile] = await this.db
       .select({ kycStatus: bidUserProfile.kycStatus })
@@ -384,14 +423,16 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
       isNotNull(sourceOfFunds.documentsRequestedAt),
     );
     const [sof] = await this.db
-      .select({ id: sourceOfFunds.id })
+      .select({ id: sourceOfFunds.id, requestedAt: sourceOfFunds.documentsRequestedAt })
       .from(sourceOfFunds)
       .where(requested)
+      .orderBy(desc(sourceOfFunds.documentsRequestedAt))
       .limit(1);
     const status = profile?.kycStatus;
     return {
       identity: status === "approved" || status === "pending" ? KYC_IDENTITY[status] : "required",
       sourceOfFundsRequested: sof !== undefined,
+      sourceOfFundsRequestedAt: sof?.requestedAt ?? null,
     };
   }
 }

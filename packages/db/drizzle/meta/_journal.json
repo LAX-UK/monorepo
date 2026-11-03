@@ -1905,6 +1905,62 @@
       "when": 1798876800000,
       "tag": "0271_failed_job_review",
       "breakpoints": true
+    },
+    {
+      "idx": 272,
+      "version": "7",
+      "when": 1798963200000,
+      "tag": "0272_kyc_retention_tombstone",
+      "breakpoints": true
+    },
+    {
+      "idx": 273,
+      "version": "7",
+      "when": 1799049600000,
+      "tag": "0273_purchase_problem",
+      "breakpoints": true
+    },
+    {
+      "idx": 274,
+      "version": "7",
+      "when": 1799136000000,
+      "tag": "0274_marketing_enquiry",
+      "breakpoints": true
+    },
+    {
+      "idx": 275,
+      "version": "7",
+      "when": 1799222400000,
+      "tag": "0275_visitor_sale_alerts",
+      "breakpoints": true
+    },
+    {
+      "idx": 276,
+      "version": "7",
+      "when": 1799308800000,
+      "tag": "0276_shop_release_alerts",
+      "breakpoints": true
+    },
+    {
+      "idx": 277,
+      "version": "7",
+      "when": 1799395200000,
+      "tag": "0277_enquiry_workflow",
+      "breakpoints": true
+    },
+    {
+      "idx": 278,
+      "version": "7",
+      "when": 1799481600000,
+      "tag": "0278_enquiry_draft_uploads",
+      "breakpoints": true
+    },
+    {
+      "idx": 279,
+      "version": "7",
+      "when": 1799568000000,
+      "tag": "0279_subject_data_export",
+      "breakpoints": true
     }
   ]
 }

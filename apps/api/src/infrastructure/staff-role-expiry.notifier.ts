@@ -4,7 +4,7 @@ import type {
   IStaffNoticeRecipientReader,
   StaffNoticeRecipient,
 } from "@auction/persistence/interfaces";
-import { laxStaffPlatform, staffRoleLabelOn } from "@auction/types";
+import { adminRoutes, laxStaffPlatform, staffRoleLabelOn } from "@auction/types";
 import type { NotificationPayload } from "../services/interfaces/notification-channel.js";
 import type { NotificationDispatcher } from "../services/notification.dispatcher.js";
 import type {
@@ -99,7 +99,7 @@ export class StaffRoleExpiryNotifier implements IStaffRoleExpiryNotifier {
         productLabel,
         endedOnDisplay,
         adminStaffAccessUrl:
-          audience === "administrator" ? `${this.webOrigin}/admin/staff/access` : null,
+          audience === "administrator" ? `${this.webOrigin}${adminRoutes.staffAccess()}` : null,
       },
     });
   }

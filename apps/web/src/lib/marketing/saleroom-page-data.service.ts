@@ -89,7 +89,33 @@ function emptyLotsPage(sort: SaleroomCatalogSort): SaleLotsPage {
   return { items: [], withdrawn: [], total: 0, limit: 0, offset: 0, sort };
 }
 
+/** Lots the hang may draw from when the sale has no featured lots: the best by price. */
+const HANG_TOP_LOTS_PAGE_SIZE = 48;
+
 export class SaleroomPageDataService {
+  /**
+   * The lots the hang chooses from. The catalogue page may hold only part of the sale, so the rest
+   * is read here: every lot when staff featured some (they can be anywhere), else the top lots by
+   * price. The hang is a highlight, so a failed read leaves it out and never fails the page.
+   */
+  async loadHangLots(saleId: string, sale: Sale, lotsPage: SaleLotsPage): Promise<Lot[]> {
+    if (lotsPage.items.length >= lotsPage.total) return lotsPage.items;
+    try {
+      if ((sale.featuredLotIds?.length ?? 0) >= 2) {
+        return (await loadAllCatalogPages(saleId, "lot")).items;
+      }
+      const top = await getServerSaleLotsPage({
+        id: saleId,
+        page: 1,
+        pageSize: HANG_TOP_LOTS_PAGE_SIZE,
+        sort: "priceDesc",
+      });
+      return top?.items ?? [];
+    } catch {
+      return [];
+    }
+  }
+
   async loadShell(input: {
     saleId: string;
     page: number;

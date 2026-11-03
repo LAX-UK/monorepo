@@ -72,6 +72,13 @@ describe("LAX Account security emails", () => {
     expectSharedParts(rendered);
   });
 
+  it("renders phone removed with the masked number", async () => {
+    const rendered = await renderEmail("phone-removed", { ...BASE, maskedPhone: "+44 •••• 1234" });
+    expect(rendered.subject).toBe("The phone number on your LAX Account was removed");
+    expect(rendered.text).toContain("+44 •••• 1234");
+    expectSharedParts(rendered);
+  });
+
   it("renders email changed with both addresses, and different copy for each inbox", async () => {
     const vars = { ...BASE, previousEmail: "old@example.com", newEmail: "new@example.com" };
     const previous = await renderEmail("email-changed", { ...vars, recipient: "previous" });
@@ -89,6 +96,31 @@ describe("LAX Account security emails", () => {
   it("leaves the device row out when the request had no user agent", async () => {
     const rendered = await renderEmail("2fa-enabled", { ...BASE, deviceLabel: null });
     expect(rendered.html).not.toContain("Device");
+  });
+});
+
+describe("LAX Account data download emails", () => {
+  it("renders the request notice with when and where it came from", async () => {
+    const rendered = await renderEmail("data-export-requested", BASE);
+    expect(rendered.subject).toBe("A copy of your data was requested");
+    expect(rendered.text).toContain("A copy of the data LAX holds about you was requested");
+    expectSharedParts(rendered);
+  });
+
+  it("renders the ready notice with a link to LAX Account and no file link", async () => {
+    const rendered = await renderEmail("data-export-ready", {
+      userName: "Ada",
+      dataExportUrl: "https://account.lax.bid/account/privacy/download",
+      expiresDisplay: "30 October 2026",
+      retentionDays: 7,
+    });
+    expect(rendered.subject).toBe("Your data is ready");
+    expect(rendered.text).toContain("7 days");
+    for (const body of [rendered.html, rendered.text]) {
+      expect(body).toContain("https://account.lax.bid/account/privacy/download");
+      expect(body).toContain("30 October 2026");
+      expect(body).not.toMatch(/\.zip/);
+    }
   });
 });
 
