@@ -112,4 +112,10 @@ export interface INotificationFactory {
     buyerId: string,
     input: { method: "delivery" | "collection" },
   ): CreateNotificationRow;
+
+  /** The person's identity check passed; they can register for a sale. */
+  createKycApproved(userId: string): CreateNotificationRow;
+
+  /** The person's identity check did not pass. Carries no reason from the provider. */
+  createKycDeclined(userId: string): CreateNotificationRow;
 }

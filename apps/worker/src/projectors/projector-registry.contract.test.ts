@@ -75,6 +75,7 @@ function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunCont
       getUserForProxyNotice: vi.fn(),
       getWinnerContact: vi.fn(),
       getManualReviewContext: vi.fn(),
+      listSaleCancelledPeople: vi.fn(),
     },
     adminImpersonationNotifyReader: {
       getAdminDisplayName: vi.fn(),

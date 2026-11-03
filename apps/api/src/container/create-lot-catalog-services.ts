@@ -257,6 +257,7 @@ export function createLotCatalogServices(
     qrCodeService,
     repoFactory,
     saleChannelReader,
+    telephoneBookings: telephoneBidBookingService,
   });
   const saleService = new SaleService({
     saleRepo,

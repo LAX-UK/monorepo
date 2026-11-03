@@ -342,6 +342,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "bid.proxy_cancelled": { consumers: ["notification_fanout"], piiClassification: "none" },
+  "sale.cancelled": { consumers: ["notification_fanout"], piiClassification: "none" },
   "sale_registration.decided": { consumers: ["notification_fanout"], piiClassification: "none" },
   "sale_registration.bid_limit_changed": {
     consumers: ["notification_fanout"],
