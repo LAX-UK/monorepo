@@ -1,3 +1,4 @@
+import type { ISaleExpectedGuestsReader } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import { type Result, err } from "neverthrow";
 import { checkPaddleAssignRateLimit } from "../../lib/paddle-assign-rate-limit.js";
@@ -7,7 +8,6 @@ import type {
   SaleroomCheckInServiceError,
   SaleroomCheckInSuccess,
 } from "../interfaces/saleroom-check-in-service.js";
-import type { SaleExpectedGuestsService } from "../sale-expected-guests.service.js";
 
 type CheckInRateLimitError = {
   message: string;
@@ -20,7 +20,7 @@ export class AdminSaleroomCheckInApplicationService
 {
   constructor(
     private readonly checkIn: ISaleroomCheckInService,
-    private readonly expectedGuests: SaleExpectedGuestsService,
+    private readonly expectedGuests: ISaleExpectedGuestsReader,
     private readonly redis: Redis,
   ) {}
 
