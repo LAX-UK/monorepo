@@ -76,6 +76,18 @@ describe("MarketingEditorialCard", () => {
     expect(screen.getByRole("heading", { name: "Untitled" })).toBeInTheDocument();
   });
 
+  it("is text-led without a media slot, at any layout", () => {
+    const { container } = render(
+      <MarketingEditorialCard title="New Originals" layout="split" href="/x" />,
+    );
+    const article = container.querySelector("article");
+    expect(article).toHaveAttribute("data-text-led");
+    expect(article?.className).toContain("border-t");
+    expect(article?.className).not.toContain("md:grid-cols-[7fr_5fr]");
+    expect(container.querySelector(".aspect-\\[4\\/3\\]")).toBeNull();
+    expect(screen.getByRole("link", { name: "New Originals" })).toBeInTheDocument();
+  });
+
   it("puts media and text side by side for a card alone in its row", () => {
     const { container } = render(
       <MarketingEditorialCard media={null} title="New Originals" layout="split" href="/x" />,
