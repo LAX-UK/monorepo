@@ -2,6 +2,7 @@ import {
   shopAdminAudit,
   shopAlertAnnouncement,
   shopAlertMatch,
+  shopFollowedArtist,
   shopMediaAsset,
 } from "@auction/db/schema";
 import { ShopDomainError } from "@auction/shop-domain";
@@ -72,7 +73,7 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
       db,
       env: {
         ALERTS_SEND_MODE: "off",
-        ALERT_LINK_SECRET: "integration-alert-link-secret-0123456789",
+        ALERT_LINK_SECRET: "integration-alert-link-secret-0123456789", // gitleaks:allow
         ALERT_LINK_KEY_ID: "k1",
       },
       origins: ORIGINS,
@@ -380,6 +381,55 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
     expect((await publish(loud.artworkId, true)).releaseAlertsQueued).toBe(0);
     await alerts.matching.run();
     expect(await matchesOf(confirmed.id)).toHaveLength(1);
+  });
+
+  it("tells the followers of an artist about a published original, and nobody else", async () => {
+    const { writer, alerts, subscribers, topics, db } = setup();
+    const suffix = integrationSuffix("follow");
+    const now = new Date();
+    const consent = { consentText: "consent", consentSource: "art_follow" };
+    const original = await newArtwork("follow-original", { editions: false });
+    const follower = await subscribers.saveConfirmedForAccount({
+      ...consent,
+      product: "art",
+      email: `follower-${suffix}@example.com`,
+      subjectId: `follower-${suffix}`,
+      now,
+    });
+    await topics.setEmail(follower.id, "art.followed_artists", true, "person", now);
+    const other = await subscribers.saveConfirmedForAccount({
+      ...consent,
+      product: "art",
+      email: `other-${suffix}@example.com`,
+      subjectId: `other-${suffix}`,
+      now,
+    });
+    await topics.setEmail(other.id, "art.followed_artists", true, "person", now);
+    await db
+      .insert(shopFollowedArtist)
+      .values({ identitySubjectId: `follower-${suffix}`, artistId: original.artistId });
+
+    await writer.updateArtwork({
+      ...editable(await detailOf(original.artworkId)),
+      salesChannel: "art",
+      images: [{ mediaKey: await uploadedImage(), alt: "The work" }],
+    });
+    // The staff choice for editions does not apply: an original always tells its followers.
+    await writer.setVisibility({
+      artworkId: original.artworkId,
+      action: "publish",
+      sendReleaseAlert: false,
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+    await alerts.matching.run();
+
+    const matches = (id: string) =>
+      db.select().from(shopAlertMatch).where(eq(shopAlertMatch.subscriberId, id));
+    expect((await matches(follower.id)).map((m) => [m.topic, m.itemKey, m.groupKey])).toEqual([
+      ["art.followed_artists", `artwork:${original.artworkId}`, original.artistId],
+    ]);
+    expect(await matches(other.id)).toHaveLength(0);
   });
 
   it("reports each artwork's outcome in a bulk publish", async () => {
