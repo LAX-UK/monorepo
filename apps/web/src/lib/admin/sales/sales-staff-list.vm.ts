@@ -42,6 +42,8 @@ export type SalesStaffRow = {
   canDelete: boolean;
   /** Linked to or selling on ATG: the row carries the compact ATG marker. */
   onAtg?: boolean;
+  /** Test sale: the row carries a "Test" badge. */
+  isTest?: boolean;
   /** ATG owns the sale, so publish, cancel and delete are disabled here as on the server. */
   sellingOnAtg?: boolean;
 };
@@ -63,6 +65,7 @@ export function toSalesStaffRows(
     const delivery = deliveryModeShortLabel(row.deliveryMode);
     const selling = atgSelling.get(row.saleId);
     return {
+      ...(row.isTest ? { isTest: true } : {}),
       ...(isSaleOnAtg(selling) ? { onAtg: true } : {}),
       ...(selling?.sellingPlatform === "atg" ? { sellingOnAtg: true } : {}),
       id: row.saleId,
