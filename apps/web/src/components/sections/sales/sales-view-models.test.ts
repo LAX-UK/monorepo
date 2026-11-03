@@ -50,7 +50,7 @@ describe("mapSaleToCalendarGridCardVM", () => {
     const sale = makeSale();
     const lots: Lot[] = [{ id: "l1" } as Lot, { id: "l2" } as Lot];
     const vm = mapSaleToCalendarGridCardVM(saleListRow(sale, lots), { showRegisterButton: true });
-    expect(vm.itemsLabel).toBe("2 items");
+    expect(vm.itemsLabel).toBe("2 lots");
     expect(vm.lotsHref).toMatch(/spring-sale/i);
     expect(vm.showRegisterButton).toBe(true);
     expect(vm.auctionTypeLabel).toBe("Online auction");
@@ -74,7 +74,7 @@ describe("mapSaleToCalendarGridCardVM", () => {
     const vm = mapSaleToCalendarGridCardVM(saleListRow(sale, previewLots, 15), {
       showRegisterButton: false,
     });
-    expect(vm.itemsLabel).toBe("15 items");
+    expect(vm.itemsLabel).toBe("15 lots");
   });
 });
 
@@ -85,7 +85,7 @@ describe("mapSaleToAuctionRowVM", () => {
     const vm = mapSaleToAuctionRowVM(saleListRow(sale, previewLots, 20), {
       showRegisterButton: false,
     });
-    expect(vm.itemsLabel).toBe("20 items");
+    expect(vm.itemsLabel).toBe("20 lots");
   });
 
   it("falls back to lots.length when lotCount matches preview length", () => {
@@ -110,14 +110,14 @@ describe("mapSaleToFeaturedAuctionCardVM", () => {
     const sale = makeSale();
     const previewLots: Lot[] = Array.from({ length: 4 }, (_, i) => ({ id: `l${i}` }) as Lot);
     const vm = mapSaleToFeaturedAuctionCardVM(saleListRow(sale, previewLots, 8));
-    expect(vm.itemsLabel).toBe("8 items");
+    expect(vm.itemsLabel).toBe("8 lots");
   });
 
   it("falls back to lots.length when lotCount omitted", () => {
     const sale = makeSale();
     const lots: Lot[] = [{ id: "l1" } as Lot, { id: "l2" } as Lot];
     const vm = mapSaleToFeaturedAuctionCardVM(saleListRow(sale, lots));
-    expect(vm.itemsLabel).toBe("2 items");
+    expect(vm.itemsLabel).toBe("2 lots");
   });
 });
 

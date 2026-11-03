@@ -1,6 +1,5 @@
 import { saleListRowSchema } from "@/lib/data/http/sales.schema";
 import {
-  formatSaleItemsLabel,
   formatSaleLotsLabel,
   parseResultsSummary,
   parseSaleListRowApiPayload,
@@ -20,13 +19,6 @@ describe("resolveSaleLotCount", () => {
     expect(resolveSaleLotCount(null, 3)).toBe(3);
     expect(resolveSaleLotCount("bad", 2)).toBe(2);
     expect(resolveSaleLotCount(-1, 5)).toBe(5);
-  });
-});
-
-describe("formatSaleItemsLabel", () => {
-  it("singular and plural", () => {
-    expect(formatSaleItemsLabel(1)).toBe("1 item");
-    expect(formatSaleItemsLabel(15)).toBe("15 items");
   });
 });
 
