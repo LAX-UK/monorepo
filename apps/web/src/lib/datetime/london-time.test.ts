@@ -102,6 +102,12 @@ describe("London time", () => {
     expect(formatLondonMoment(winter, now)).toBe("Today 21:00");
     expect(formatLondonMoment(new Date("2026-11-04T14:00:00Z"), now)).toBe("Tomorrow 14:00");
     expect(formatLondonMoment(new Date("2026-11-02T09:30:00Z"), now)).toBe("Yesterday 09:30");
+    expect(formatLondonMoment(new Date("2026-11-04T14:00:00Z"), now, { inSentence: true })).toBe(
+      "tomorrow 14:00",
+    );
+    expect(formatLondonMoment(new Date("2026-11-19T14:00:00Z"), now, { inSentence: true })).toBe(
+      "19 Nov 14:00",
+    );
     expect(formatLondonMoment(new Date("2026-11-19T14:00:00Z"), now)).toBe("19 Nov 14:00");
     expect(formatLondonMoment(new Date("2026-11-19T14:00:00Z"), now, { time: false })).toBe(
       "19 Nov",

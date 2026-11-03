@@ -15,7 +15,7 @@ import {
   AdaptiveMediaFrame,
   AdaptiveMediaFrameContainer,
 } from "@/components/ui/adaptive-media-frame";
-import { formatMoney } from "@/lib/format-currency";
+import { PLATFORM_DEFAULT_CURRENCY, formatWholeMoney } from "@/lib/format-currency";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-slot-presets";
 import { useClientClock } from "@/lib/time/use-client-clock";
@@ -168,7 +168,9 @@ export function LotMoreFromRail({
                     </Link>
                     <p className="text-xs text-on-surface-variant">
                       {c.artistOrSellerName} {"\u00B7"}{" "}
-                      <span className="text-on-surface">{formatMoney(c.currentPrice)}</span>
+                      <span className="text-on-surface">
+                        {formatWholeMoney(c.currentPrice, PLATFORM_DEFAULT_CURRENCY)}
+                      </span>
                     </p>
                   </div>
                 ) : (
@@ -195,7 +197,7 @@ export function LotMoreFromRail({
                     <div>
                       <p className="text-xs text-on-surface-variant">{c.priceLabel}</p>
                       <p className="text-sm font-semibold text-on-surface">
-                        {formatMoney(c.currentPrice)}
+                        {formatWholeMoney(c.currentPrice, PLATFORM_DEFAULT_CURRENCY)}
                       </p>
                     </div>
                     <p className="whitespace-nowrap text-sm text-on-surface-variant">

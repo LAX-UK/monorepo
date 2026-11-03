@@ -5,11 +5,11 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { formatLondonWhen } from "@/lib/datetime/london-time";
 import {
   COUNTDOWN_DATE_BEYOND_MS,
+  countdownTiles,
   formatCountdownAnnounce,
   formatCountdownAriaLabel,
   formatCountdownForDisplay,
   formatCountdownSpoken,
-  parseCountdownSegments,
 } from "@/lib/format-countdown";
 import {
   type CountdownTone,
@@ -116,7 +116,6 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
     return 0;
   }, [phase, startMs, endMs, now]);
 
-  const segments = msLeft != null ? parseCountdownSegments(msLeft) : null;
   const tone: CountdownTone = msLeft != null ? countdownTone(msLeft) : "calm";
 
   const label =
@@ -240,8 +239,8 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
     );
   }
 
-  const showDays = segments != null && segments.days > 0;
-  const placeholder = segments == null && (phase === "before" || phase === "during");
+  const tiles = countdownTiles(msLeft ?? 0);
+  const placeholder = msLeft == null && (phase === "before" || phase === "during");
 
   return (
     <div className={cn("text-center", className)}>
@@ -256,37 +255,17 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
           </span>
           <time dateTime={targetIso ?? undefined} className="mt-3 block" suppressHydrationWarning>
             <span className="sr-only">{ariaLabel}</span>
-            <div className={cn("grid gap-2", showDays ? "grid-cols-4" : "grid-cols-3")} aria-hidden>
-              {showDays ? (
+            <div className="grid grid-cols-2 gap-2" aria-hidden>
+              {tiles.map((tile) => (
                 <SegmentChip
-                  value={segments?.days}
-                  unit="Days"
+                  key={tile.unit}
+                  value={tile.value}
+                  unit={tile.unit}
                   phase={phase}
                   tone={tone}
                   placeholder={placeholder}
                 />
-              ) : null}
-              <SegmentChip
-                value={segments?.hours ?? 0}
-                unit="Hours"
-                phase={phase}
-                tone={tone}
-                placeholder={placeholder}
-              />
-              <SegmentChip
-                value={segments?.minutes ?? 0}
-                unit="Min"
-                phase={phase}
-                tone={tone}
-                placeholder={placeholder}
-              />
-              <SegmentChip
-                value={segments?.seconds ?? 0}
-                unit="Sec"
-                phase={phase}
-                tone={tone}
-                placeholder={placeholder}
-              />
+              ))}
             </div>
           </time>
           {secondaryLine ? (

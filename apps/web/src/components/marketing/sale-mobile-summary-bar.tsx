@@ -14,7 +14,7 @@ import {
   resolveSaleroomMobileSummaryBarMode,
   saleroomBidNowCtaClassName,
 } from "@/lib/saleroom/saleroom-mobile-chrome";
-import { opensLine } from "@/lib/time/opens-line";
+import { closingChipText, opensLine } from "@/lib/time/opens-line";
 import { useClientClock } from "@/lib/time/use-client-clock";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot } from "@auction/ui";
@@ -192,6 +192,7 @@ export function SaleMobileSummaryBar({
           {showCountdown && !isUpcoming ? (
             <Countdown
               end={target}
+              format={closingChipText}
               announce={isUpcoming || deliveryMode === "online"}
               className="font-headline text-sm text-on-surface tabular-nums md:text-base"
             />

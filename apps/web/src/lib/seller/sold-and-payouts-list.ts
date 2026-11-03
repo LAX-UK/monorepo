@@ -61,7 +61,10 @@ export function soldRecord(lot: SoldLot, now: Date): SoldRecord {
   const settled = lot.payout?.settledAt;
   const badge =
     settled && lot.stage === "paid_out"
-      ? { ...base, label: `${base.label} ${formatLotMoment(settled, now, { time: false })}` }
+      ? {
+          ...base,
+          label: `${base.label} ${formatLotMoment(settled, now, { time: false, inSentence: true })}`,
+        }
       : base;
   return {
     lotId: lot.lotId,
@@ -69,7 +72,7 @@ export function soldRecord(lot: SoldLot, now: Date): SoldRecord {
     meta: [
       lot.saleTitle,
       lot.lotNumber == null ? null : `lot ${lot.lotNumber}`,
-      `sold ${formatLotMoment(lot.soldAt, now, { time: false })}`,
+      `sold ${formatLotMoment(lot.soldAt, now, { time: false, inSentence: true })}`,
     ].filter((fact): fact is string => Boolean(fact)),
     hammer: formatMoney(lot.hammerPrice, "GBP"),
     net: lot.net == null ? null : formatMoney(lot.net, "GBP"),
