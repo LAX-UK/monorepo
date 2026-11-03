@@ -31,6 +31,7 @@ export function publicParentSaleExists() {
       SELECT 1 FROM ${sale} AS parent_sale
       WHERE parent_sale.id = ${lot.saleId}
         AND parent_sale.deleted_at IS NULL
+        AND parent_sale.is_test = false
         AND (
           parent_sale.status IN (${sql.join(
             PUBLIC_SALE_STATUSES.map((status) => sql`${status}`),

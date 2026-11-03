@@ -2031,6 +2031,13 @@
       "when": 1800518400000,
       "tag": "0289_artwork_register_writeback_event",
       "breakpoints": true
+    },
+    {
+      "idx": 290,
+      "version": "7",
+      "when": 1801468800000,
+      "tag": "0300_sale_test_flag",
+      "breakpoints": true
     }
   ]
 }

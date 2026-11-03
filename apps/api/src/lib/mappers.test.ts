@@ -138,6 +138,7 @@ function saleRow(
     consignmentDeadline: null,
     deliveryMode: "online",
     allowOnlineBidsBeforeGoLive: false,
+    isTest: false,
     streamUrl: null,
     heroPresentation: "cover",
     heroVideoUrl: null,

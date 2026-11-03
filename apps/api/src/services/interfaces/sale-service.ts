@@ -71,6 +71,8 @@ export interface ISaleWriteService {
     saleId: string,
     patch: UpdateSaleBody,
     userStaffRoles?: StaffRoles | undefined,
+    /** The staff member changing the sale; recorded when the test setting changes. */
+    actorUserId?: string | undefined,
   ): Promise<Result<Sale, LotError | AuthzError>>;
 }
 

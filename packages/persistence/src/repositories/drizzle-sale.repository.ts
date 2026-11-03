@@ -27,6 +27,7 @@ function soldLotMissingSettledPayment() {
 
 function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
   const conditions = [saleNotDeleted()];
+  if (input.excludeTestSales) conditions.push(eq(sale.isTest, false));
   const statuses = input.statuses?.length
     ? input.statuses
     : input.status
@@ -154,6 +155,7 @@ export class DrizzleSaleRepository implements ISaleRepository {
         coverImages,
         deliveryMode: input.deliveryMode ?? "onsite",
         allowOnlineBidsBeforeGoLive: input.allowOnlineBidsBeforeGoLive ?? false,
+        isTest: input.isTest ?? false,
         streamUrl: input.streamUrl ?? null,
         heroPresentation: input.heroPresentation ?? "cover",
         heroVideoUrl: input.heroVideoUrl ?? null,
@@ -253,6 +255,7 @@ export class DrizzleSaleRepository implements ISaleRepository {
     if (patch.allowOnlineBidsBeforeGoLive !== undefined) {
       rowPatch.allowOnlineBidsBeforeGoLive = patch.allowOnlineBidsBeforeGoLive;
     }
+    if (patch.isTest !== undefined) rowPatch.isTest = patch.isTest;
     if (patch.streamUrl !== undefined) rowPatch.streamUrl = patch.streamUrl;
     if (patch.heroPresentation !== undefined) rowPatch.heroPresentation = patch.heroPresentation;
     if (patch.heroVideoUrl !== undefined) rowPatch.heroVideoUrl = patch.heroVideoUrl;
