@@ -25,6 +25,7 @@
     "check:e2e-tags": "node --import tsx scripts/check-e2e-tags.ts && node --import tsx scripts/check-e2e-project-routing.ts"
   },
   "dependencies": {
+    "@auction/alerts": "workspace:*",
     "@auction/api": "workspace:*",
     "@auction/auth": "workspace:*",
     "@auction/branding": "workspace:*",
@@ -37,8 +38,8 @@
     "@auction/lax-ecosystem": "workspace:*",
     "@auction/marketing-ui": "workspace:*",
     "@auction/observability": "workspace:*",
-    "@auction/types": "workspace:*",
     "@auction/staff-ui": "workspace:*",
+    "@auction/types": "workspace:*",
     "@auction/ui": "workspace:*",
     "@auction/validators": "workspace:*",
     "@date-fns/tz": "^1.5.0",

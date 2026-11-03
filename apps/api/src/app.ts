@@ -34,8 +34,10 @@ import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createAdminConsignmentSavedReplyRoutes } from "./routes/admin-consignment-saved-replies.js";
 import { createAdminConsignmentThreadRoutes } from "./routes/admin-consignment-threads.js";
 import { createPublicInvitationRoutes } from "./routes/admin-invitations.js";
+import { createAdminSaleAnnounceRoutes } from "./routes/admin-sale-announce.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { createAdminMyStaffToolsRoutes } from "./routes/admin/staff-access.routes.js";
+import { createAlertRoutes } from "./routes/alerts.js";
 import { createArtistRoutes } from "./routes/artists.js";
 import { createProductAuthRoutes } from "./routes/auth.js";
 import { createBidRoutes } from "./routes/bids.js";
@@ -72,7 +74,7 @@ import { createLegalEntityPayoutStatementRoutes } from "./routes/payout-statemen
 import { createAdminPayoutRoutes, createPayoutRoutes } from "./routes/payouts.js";
 import { createPressRoutes } from "./routes/press.js";
 import { createQrRoutes } from "./routes/qr.js";
-import { createSaleAlertRoutes } from "./routes/sale-alerts.js";
+import { createLegacySaleAlertRoutes } from "./routes/sale-alerts-legacy.js";
 import { createSaleDocumentRoutes } from "./routes/sale-documents.js";
 import { createSaleroomDisplayRoutes } from "./routes/saleroom-display.js";
 import { createSaleRoutes } from "./routes/sales.js";
@@ -170,6 +172,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     "/sale-alerts/*",
     createRateLimitMiddleware(container.rateLimitStore, { maxRequests: 20 }),
   );
+  app.use("/alerts/*", createRateLimitMiddleware(container.rateLimitStore, { maxRequests: 20 }));
   app.use("/payments/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/q/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/categories/*", createRateLimitMiddleware(container.rateLimitStore));
@@ -284,7 +287,9 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/webhooks/veriff", createVeriffWebhookRoutes(container))
     .route("/email", createEmailRoutes(container))
     .route("/newsletter", createNewsletterRoutes(container))
-    .route("/sale-alerts", createSaleAlertRoutes(container, authenticator))
+    .route("/alerts", createAlertRoutes(container, authenticator))
+    .route("/sale-alerts", createLegacySaleAlertRoutes(container))
+    .route("/admin/sales", createAdminSaleAnnounceRoutes(container, authenticator))
     .route("/contact-enquiries", createMarketingEnquiryRoutes(container, authenticator))
     .route("/auth", createProductAuthRoutes(container))
     .route("/categories", createCategoryRoutes(container))

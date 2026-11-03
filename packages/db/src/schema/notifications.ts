@@ -4,6 +4,7 @@ import { user } from "./auth.js";
 import { itemSubmission } from "./item-submissions.js";
 import { legalEntity } from "./legal-entities.js";
 import { lot } from "./lots.js";
+import { sale } from "./sales.js";
 
 /**
  * Every notification type the product sends. The `notification_type_check` constraint must allow
@@ -51,6 +52,7 @@ export const NOTIFICATION_TYPES = [
   "access_request_decided",
   "consignment_message",
   "watchlist_reminder",
+  "sale_announced",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -66,6 +68,8 @@ export const notification = pgTable(
     title: text("title").notNull(),
     message: text("message").notNull(),
     lotId: uuid("lot_id").references(() => lot.id, { onDelete: "set null" }),
+    /** The sale a sale notice is about; `null` once the sale is deleted. */
+    saleId: uuid("sale_id").references(() => sale.id, { onDelete: "set null" }),
     submissionId: uuid("submission_id").references(() => itemSubmission.id, {
       onDelete: "set null",
     }),

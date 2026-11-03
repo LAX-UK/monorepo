@@ -8,6 +8,7 @@ const DEFAULTS: NotificationPreference = {
   endingSoonInApp: true,
   watchlistInApp: true,
   paymentInApp: true,
+  newSalesInApp: true,
   outbidPush: true,
   wonPush: true,
   endingSoonPush: false,
@@ -98,6 +99,17 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     email: "watchlistEmail",
     whatsapp: null,
     template: "watched-lot-reminder",
+  },
+  /**
+   * A new sale was announced. It follows the New sales app switch; the email goes through the
+   * alert engine's own digest, not through this dispatcher.
+   */
+  sale_announced: {
+    inApp: "newSalesInApp",
+    push: null,
+    email: null,
+    whatsapp: null,
+    template: null,
   },
   watchlist_ending_soon: {
     inApp: "endingSoonInApp",

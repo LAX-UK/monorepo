@@ -1,4 +1,6 @@
+export { OutboxAlertMailer, type AlertMailerOptions } from "./alert-mailer.js";
 export { EMAIL_DEFAULT_CURRENCY, formatMoneyMajor } from "./format-money.js";
+export { emailProductFor } from "./email-product.js";
 export { renderEmail } from "./render.js";
 export {
   OPTIONAL_EMAIL_TEMPLATES,

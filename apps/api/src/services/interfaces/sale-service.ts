@@ -9,6 +9,7 @@ import type { LotAttachedToSalePayload } from "../../domain/lot-events.js";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 import type { presentSaleAdminImages } from "../../lib/media-presenters.js";
 import type { UpdateSaleBody } from "../sale/sale-update-draft.js";
+import type { SalePublishOptions } from "./sale-publish.js";
 
 /** A catalogue row for the public: a lot, or a withdrawn lot reduced to its identity. */
 export type PublicCatalogueLot = Lot | WithdrawnLotView;
@@ -79,6 +80,7 @@ export interface ISaleLifecycleService {
     userRole: string,
     saleId: string,
     userStaffRoles?: StaffRoles | undefined,
+    options?: SalePublishOptions,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>>;
 
   unpublish(

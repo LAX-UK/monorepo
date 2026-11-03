@@ -10,7 +10,7 @@ export const HOME_COVER_LINKS: BidCoverLinks = {
 };
 
 /** Where the between-seasons email field posts. It works without script and redirects back home. */
-export const HOME_COVER_NOTIFY_ACTION = "/api/sale-alerts/notify";
+export const HOME_COVER_NOTIFY_ACTION = "/api/alerts/notify";
 
 /** Names the cover's region for screen readers. */
 export const HOME_COVER_LABEL = "Featured sales";

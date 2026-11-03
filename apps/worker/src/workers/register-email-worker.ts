@@ -46,6 +46,7 @@ export function registerEmailWorker(deps: WorkerBootstrapDeps): EmailWorkersHand
       ? new PostmarkEmailSender({
           serverToken: env.POSTMARK_SERVER_TOKEN ?? "",
           from: env.EMAIL_FROM,
+          fromByProduct: env.EMAIL_FROM_BY_PRODUCT,
           replyTo: env.EMAIL_REPLY_TO,
           transactionalStream: env.POSTMARK_TRANSACTIONAL_STREAM,
           broadcastStream: env.POSTMARK_BROADCAST_STREAM,

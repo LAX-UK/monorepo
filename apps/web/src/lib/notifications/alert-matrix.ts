@@ -19,6 +19,19 @@ export type AlertRow = {
   description: string;
   email: BooleanNotificationFieldName | null;
   app: readonly BooleanNotificationFieldName[];
+  /**
+   * An alert the alert engine sends (the daily digest): its Email switch is the engine's topic
+   * switch, not a notification preference, and its App switch only counts once subscribed.
+   */
+  engineTopic?: string;
+};
+
+/** What the alert engine holds for the signed-in client, per topic. */
+export type EngineAlertState = {
+  /** The topic has a subscription (email on or off), so its app notice reaches the person. */
+  subscribed: Readonly<Record<string, boolean>>;
+  /** The topic's email is on. */
+  email: Readonly<Record<string, boolean>>;
 };
 
 export const ALERT_ROWS: readonly AlertRow[] = [
@@ -78,6 +91,14 @@ export const ALERT_ROWS: readonly AlertRow[] = [
     email: "watchlistEmail",
     app: ["watchlistInApp"],
   },
+  {
+    id: "new-sales",
+    label: "New sales",
+    description: "When LAX Bid announces a sale",
+    email: null,
+    app: ["newSalesInApp"],
+    engineTopic: "bid.new_sales",
+  },
 ];
 
 export type AlertChannel = "email" | "app";
@@ -91,7 +112,25 @@ export function alertCell(
   row: AlertRow,
   channel: AlertChannel,
   values: NotificationPreferencesFormValues,
+  engine: EngineAlertState | null = null,
 ): AlertCell {
+  if (row.engineTopic) {
+    if (!engine) return { kind: "none" };
+    if (channel === "email") {
+      return {
+        kind: "switch",
+        checked: engine.email[row.engineTopic] === true,
+        lockedReason: null,
+      };
+    }
+    const [field] = row.app;
+    return {
+      kind: "switch",
+      checked:
+        engine.subscribed[row.engineTopic] === true && (field ? values[field] === true : true),
+      lockedReason: null,
+    };
+  }
   const fields = channel === "email" ? (row.email ? [row.email] : []) : row.app;
   const [first] = fields;
   if (!first) return { kind: "none" };

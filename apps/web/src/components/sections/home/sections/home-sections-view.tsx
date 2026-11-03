@@ -43,8 +43,8 @@ const RENDERERS: { [K in HomeSectionId]: Render<K> } = {
   departments: (departments) => <HomeDepartmentsSection departments={departments} />,
   artists: (artists) => <HomeArtistsSection artists={artists} />,
   selling: (selling) => <HomeSellingBand selling={selling} />,
-  alerts: (_, state, watch, alertsOutcome) => (
-    <HomeAlertsBand state={state} signedIn={watch.isAuthenticated} outcome={alertsOutcome} />
+  alerts: (_, _state, watch, alertsOutcome) => (
+    <HomeAlertsBand signedIn={watch.isAuthenticated} outcome={alertsOutcome} />
   ),
   fromLaxAndPress: (items) => <HomePressSection items={items} />,
 };

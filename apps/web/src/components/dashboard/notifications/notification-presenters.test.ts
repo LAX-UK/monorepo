@@ -6,6 +6,12 @@ import type { UserNotification } from "@auction/types";
 import { describe, expect, it } from "vitest";
 
 describe("notificationTypePresenter", () => {
+  it("labels a sale announcement as a new sale", () => {
+    const p = notificationTypePresenter("sale_announced");
+    expect(p.label).toBe("New sale");
+    expect(p.tone).toBe("info");
+  });
+
   it("maps condition_report_ready", () => {
     const p = notificationTypePresenter("condition_report_ready");
     expect(p.label).toBe("Condition report");

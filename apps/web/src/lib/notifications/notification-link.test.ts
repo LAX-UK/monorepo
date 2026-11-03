@@ -109,4 +109,21 @@ describe("notificationHref for delivery notices", () => {
       ).toBe("/purchases");
     },
   );
+
+  it("opens a sale announcement on the sale", () => {
+    expect(
+      notificationHref({
+        id: "n10",
+        userId: "u1",
+        type: "sale_announced",
+        title: "New sale: Modern British and Irish Art",
+        message: "Opens Wed 18 Nov · 214 lots",
+        lotId: null,
+        submissionId: null,
+        saleId: "sale-1",
+        read: false,
+        createdAt: new Date(),
+      }),
+    ).toBe("/sales/sale-1");
+  });
 });

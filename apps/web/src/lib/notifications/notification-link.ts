@@ -42,6 +42,7 @@ export function notificationHref(item: UserNotification): string | null {
     return `/admin/submissions/${item.submissionId}`;
   }
   if (item.submissionId) return `/selling/consignments/${item.submissionId}`;
+  if (item.type === "sale_announced" && item.saleId) return `/sales/${item.saleId}`;
   if (item.lotId) return lotPath({ id: item.lotId, title: item.title });
   return null;
 }

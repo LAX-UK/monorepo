@@ -558,11 +558,8 @@ export type ContainerMarketingEnquiryRoutesSlice = Pick<
 /** Newsletter signup. */
 export type ContainerNewsletterRoutesSlice = Pick<Container, "newsletterSignupService">;
 
-/** Visitor sale alerts: sign-up, confirm, unsubscribe and the client's settings view. */
-export type ContainerSaleAlertRoutesSlice = Pick<
-  Container,
-  "visitorSaleAlertService" | "userSuspensionChecker"
->;
+/** Email alerts: sign-up, confirm, stop, a client's switches and the publish box's count. */
+export type ContainerAlertRoutesSlice = Pick<Container, "alertEngine" | "userSuspensionChecker">;
 
 /** Email unsubscribe + preview. */
 export type ContainerEmailRoutesSlice = Pick<

@@ -18,6 +18,7 @@ describe("Bid BFF proxy policy", () => {
     expect(isApprovedProxyPath(["users", "me"])).toBe(true);
     expect(isApprovedProxyPath(["telephone-bookings", "booking-1"])).toBe(true);
     expect(isApprovedProxyPath(["sale-alerts", "unsubscribe"])).toBe(true);
+    expect(isApprovedProxyPath(["alerts", "me", "topics", "bid.new_sales"])).toBe(true);
     expect(isApprovedProxyPath(["https:", "attacker.example"])).toBe(false);
     expect(isApprovedProxyPath(["internal", "jobs"])).toBe(false);
     expect(isApprovedProxyPath(["users", "..", "admin"])).toBe(false);

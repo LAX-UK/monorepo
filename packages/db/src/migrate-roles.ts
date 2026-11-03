@@ -308,6 +308,17 @@ export const WORKER_KYC_RETENTION_TOMBSTONE_TABLES = ["kyc_retention_tombstone"]
 export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;
 /** The unsold-choice projector stores each unsold outcome's choose-by date, once. */
 export const WORKER_UNSOLD_CHOICE_DEADLINE_TABLES = ["unsold_choice_deadline"] as const;
+/**
+ * The alert engine's Bid tables: the matching projector records matches and announcements, and the
+ * 08:00 digest claims digests, attaches matches and drops stale ones. Nothing is deleted here.
+ */
+export const WORKER_BID_ALERT_TABLES = [
+  "bid_alert_subscriber",
+  "bid_alert_topic",
+  "bid_alert_match",
+  "bid_alert_digest",
+  "bid_alert_announcement",
+] as const;
 /** Worker provisions personal legal entities from `user.registered` domain events. */
 export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
 /** Worker processes async CSV exports and purges expired rows (data-export + purge-expired jobs). */
@@ -736,6 +747,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         /** FK target when inserting scan rows. */
         await grantIfExists(client, "worker_app", "qr_code", "SELECT");
         for (const tableName of WORKER_QR_CODE_SCAN_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_BID_ALERT_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_UNSOLD_CHOICE_DEADLINE_TABLES) {

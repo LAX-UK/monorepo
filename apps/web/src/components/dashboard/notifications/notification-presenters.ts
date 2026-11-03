@@ -2,6 +2,7 @@ import { coerceToDate } from "@/lib/data/http/parse";
 import type { UserNotification } from "@auction/types";
 import {
   BellRing,
+  CalendarDays,
   Clock,
   CreditCard,
   Eye,
@@ -125,6 +126,9 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   }
   if (type === "source_of_funds_rejected") {
     return { label: "SoF review", Icon: ShieldAlert, tone: "danger" };
+  }
+  if (type === "sale_announced") {
+    return { label: "New sale", Icon: CalendarDays, tone: "info" };
   }
   if (type.startsWith("watchlist")) {
     return { label: "Watchlist", Icon: Eye, tone: "info" };
