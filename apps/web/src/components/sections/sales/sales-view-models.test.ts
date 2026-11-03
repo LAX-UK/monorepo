@@ -92,7 +92,7 @@ describe("mapSaleToAuctionRowVM", () => {
     const sale = makeSale();
     const lots: Lot[] = [{ id: "l1" } as Lot];
     const vm = mapSaleToAuctionRowVM(saleListRow(sale, lots), { showRegisterButton: false });
-    expect(vm.itemsLabel).toBe("1 item");
+    expect(vm.itemsLabel).toBe("1 lot");
   });
 });
 
