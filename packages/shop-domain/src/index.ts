@@ -130,8 +130,10 @@ export {
 export {
   CORRECTION_REASON_MAX_LENGTH,
   assertCorrectionReason,
+  assertPrintsCanBeMadeFrom,
   assertProofListingApproved,
   defaultProofOwner,
+  printsListingSlug,
   proofListingSlug,
   proofListingTitle,
   type ProofOwner,

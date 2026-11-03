@@ -4,6 +4,8 @@ import {
   AdminArtworkRunSummarySchema,
   AdminEditionRunDetailSchema,
   AdminNewRunInputSchema,
+  AdminOriginalPrintsSchema,
+  AdminPrintsFromOriginalResponseSchema,
 } from "./edition-run-admin.js";
 import { SEO_DESCRIPTION_MAX_LENGTH, SEO_TITLE_MAX_LENGTH } from "./seo-fields.js";
 
@@ -120,6 +122,11 @@ export const AdminArtworkCreateBodySchema = Type.Object(
      * 10 for buyers of the original, 10 for the artist and 4 for LAX.
      */
     run: Type.Union([AdminNewRunInputSchema, Type.Null()]),
+    /**
+     * For an original only: prints of it, created in the same save as Shop drafts linked to it.
+     * Everything is saved or nothing is.
+     */
+    prints: Type.Optional(Type.Union([AdminOriginalPrintsSchema, Type.Null()])),
     ...EditableArtworkFields,
   },
   { additionalProperties: false },
@@ -130,6 +137,8 @@ export const AdminArtworkCreateResponseSchema = Type.Object({
   artworkId: Type.String({ format: "uuid" }),
   slug: Type.String(),
   version: CatalogueVersionSchema,
+  /** The prints created with an original, when it was saved with them. */
+  prints: Type.Optional(AdminPrintsFromOriginalResponseSchema),
 });
 
 export const AdminArtworkUpdateBodySchema = Type.Object(
@@ -320,6 +329,19 @@ export const AdminArtworkDetailSchema = Type.Object({
       }),
       Type.Null(),
     ]),
+  ),
+  /** For an original: the Shop listings made from it, oldest first; absent from an older shop-api. */
+  linkedPrints: Type.Optional(
+    Type.Array(
+      Type.Object({
+        artworkId: Type.String({ format: "uuid" }),
+        slug: Type.String(),
+        title: Type.String(),
+        state: AdminArtworkStateSchema,
+        /** Prints in its run. */
+        size: Type.Integer({ minimum: 0 }),
+      }),
+    ),
   ),
   editions: Type.Object({
     size: Type.Integer({ minimum: 0 }),

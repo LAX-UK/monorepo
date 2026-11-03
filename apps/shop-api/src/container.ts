@@ -383,6 +383,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const artworkCatalogue = createDrizzleArtworkCatalogueWriter(shopUow, {
     resolveMediaUrl,
     editionRuns: editionRuns.recorder,
+    originalPrints: editionRuns.originalPrintsRecorder,
     releaseAlerts: createDrizzleReleaseAlertAnnouncer({ notifications, storefrontOrigins }),
   });
   const artistCatalogue = createDrizzleArtistCatalogueWriter(shopUow);
