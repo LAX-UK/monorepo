@@ -102,9 +102,17 @@ test.describe("lax.art journeys", () => {
     const email = sheet.getByLabel("Email");
 
     await sheet.getByRole("button", { name: "Send enquiry" }).click();
+    const summary = sheet.getByRole("alert").filter({ hasText: "There is a problem" });
+    await expect(summary).toBeFocused();
+    await expect(summary.getByRole("link", { name: "Enter your name." })).toBeVisible();
+    await expect(summary.getByRole("link", { name: "Enter your email address." })).toBeVisible();
     await expect(name).toHaveAttribute("aria-invalid", "true");
-    await expect(name).toBeFocused();
     await expect(email).toHaveAttribute("aria-invalid", "true");
+
+    await summary.getByRole("link", { name: "Enter your name." }).click();
+    await expect(name).toBeFocused();
+    await summary.getByRole("link", { name: "Enter your email address." }).click();
+    await expect(email).toBeFocused();
 
     await name.fill("Grace Hopper");
     await email.fill("not-an-email");
