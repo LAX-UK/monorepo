@@ -59,6 +59,7 @@ import { createUserRouteServices } from "./container/create-user-route-services.
 import type { Env } from "./env.js";
 import { DrizzlePendingDeletionReader } from "./infrastructure/drizzle-pending-deletion.reader.js";
 import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usage.reader.js";
+import { HttpIdentityDataRequestsClient } from "./infrastructure/http-identity-data-requests.client.js";
 import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.client.js";
 import { IdentityAddressBookRepository } from "./infrastructure/identity-address-book.repository.js";
 import { RedisIdempotencyStore } from "./infrastructure/redis-idempotency.store.js";
@@ -70,6 +71,8 @@ import { createAppLogger } from "./lib/logger.js";
 import { AdminSavedViewService } from "./services/admin/admin-saved-view.service.js";
 import { AdminTwoFactorResetService } from "./services/admin/admin-two-factor-reset.service.js";
 import { AtgAdminService } from "./services/admin/atg-admin.service.js";
+import { AdminDataRequestsService } from "./services/admin/data-requests/admin-data-requests.service.js";
+import { DomainEventDataRequestAuditTrail } from "./services/admin/data-requests/data-request-audit-trail.js";
 import { StaffAccessAdminService } from "./services/admin/staff-access-admin.service.js";
 import { OrganisationBiddingLimitsService } from "./services/bidding-limits/organisation-bidding-limits.service.js";
 import { BidLimitRefusalNotifier } from "./services/bidding/bid-limit-refusal.notifier.js";
@@ -751,6 +754,14 @@ export function createContainer(env: Env): Container {
       deliveryQuotes: organisationBuying.staffDeliveryQuotes,
       marketingEnquiries: marketingEnquiries.desk,
       enquiryRouting: marketingEnquiries.routing,
+      dataRequests: new AdminDataRequestsService({
+        identity: new HttpIdentityDataRequestsClient({
+          issuerBaseUrl: env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL,
+          clientId: env.IDENTITY_DATA_REQUESTS_CLIENT_ID,
+          clientSecret: env.IDENTITY_DATA_REQUESTS_CLIENT_SECRET,
+        }),
+        audit: new DomainEventDataRequestAuditTrail(platform.domainEventSink),
+      }),
       stepUp: new StaffStepUpService(identityIssuer),
       idempotencyStore: new RedisIdempotencyStore(infra.redis),
     },

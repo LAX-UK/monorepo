@@ -9,6 +9,7 @@ import {
   CLIENT_ACTIVITY_ACCESS,
   CLIENT_BIDS_ACCESS,
   CLIENT_KYC_ACCESS,
+  DATA_REQUESTS_MANAGE_ACCESS,
   EMAIL_ADMIN_ACCESS,
   EMAIL_OBSERVABILITY_ACCESS,
   FINANCE_ACCESS,
@@ -24,7 +25,7 @@ import {
   USER_ROLE_MANAGEMENT_ACCESS,
 } from "./admin-access.js";
 import { userHasAccessTo } from "./role-policy.js";
-import type { UserStaffRole } from "./user.js";
+import { type UserStaffRole, userStaffRoles } from "./user.js";
 
 function has(
   staffRole: UserStaffRole,
@@ -32,6 +33,19 @@ function has(
 ): boolean {
   return userHasAccessTo("staff", [staffRole], requirement);
 }
+
+describe("data requests access", () => {
+  it("is Compliance and Administrator only; no other role, Read-only included", () => {
+    const allowed = userStaffRoles.filter((role) => has(role, DATA_REQUESTS_MANAGE_ACCESS));
+    expect(allowed).toEqual(["administrator", "compliance"]);
+    expect(has("read_only", DATA_REQUESTS_MANAGE_ACCESS)).toBe(false);
+    expect(has("client_services", DATA_REQUESTS_MANAGE_ACCESS)).toBe(false);
+  });
+
+  it("is not reached through admin.read or the screening permissions alone", () => {
+    expect(userHasAccessTo("staff", [], DATA_REQUESTS_MANAGE_ACCESS)).toBe(false);
+  });
+});
 
 describe("admin-access requirements", () => {
   it("USERS_DIRECTORY_ACCESS allows administrator and client_services", () => {
