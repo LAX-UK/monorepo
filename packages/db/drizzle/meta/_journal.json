@@ -2003,6 +2003,13 @@
       "when": 1800172800000,
       "tag": "0285_shop_returns_stock",
       "breakpoints": true
+    },
+    {
+      "idx": 286,
+      "version": "7",
+      "when": 1800259200000,
+      "tag": "0286_unsold_lot_follow_up",
+      "breakpoints": true
     }
   ]
 }

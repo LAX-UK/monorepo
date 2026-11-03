@@ -116,6 +116,20 @@ export function attachSubmissionAfterSaleRoutes(
   );
 
   r.post(
+    "/:id/unsold-choice/follow-up/complete",
+    requireAuth,
+    requireSubmissionsAccess,
+    zValidator("param", submissionIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      return respondSubmissionHttpJson(
+        c,
+        await http.completeUnsoldFollowUp(id, viewerFromContext(c)),
+      );
+    },
+  );
+
+  r.post(
     "/:id/relist-floor",
     requireAuth,
     requireSubmissionsAccess,

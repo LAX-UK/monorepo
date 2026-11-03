@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { canAdminOverrideLotStatus, canLotTransition } from "@auction/domain";
-import type { ITransactionRunner } from "@auction/persistence/interfaces";
+import type { IRelistReserveSettlement, ITransactionRunner } from "@auction/persistence/interfaces";
 import type {
   ILotTransitionGuardReader,
   ILotTransitionRepository,
@@ -27,6 +27,8 @@ export class LotTransitionOrchestrator {
     private readonly recording: ILotLifecycleRecorder,
     private readonly lotRepo: ILotRepository,
     private readonly jobScheduler: ILotJobScheduler | null,
+    private readonly relistReserve: IRelistReserveSettlement,
+    private readonly now: () => Date = () => new Date(),
   ) {}
 
   get recordingService(): ILotLifecycleRecorder {
@@ -85,6 +87,14 @@ export class LotTransitionOrchestrator {
 
     await this.transactionRunner.runInTransaction(async (tx) => {
       await this.transitions.resetLotForInventoryReturn(tx, lotId, fromStatus);
+      // The reserve agreed with the seller goes on the lot as it returns, once, and the lot's
+      // history records it.
+      const settled = await this.relistReserve.settleOnReturn(
+        tx,
+        { lotId, lotEndTime: row.endTime },
+        actorUserId,
+        this.now(),
+      );
       await this.recording.recordReturnedToInventory(
         tx,
         row,
@@ -92,6 +102,15 @@ export class LotTransitionOrchestrator {
           fromStatus,
           lastSaleId,
           reason: input.reason,
+          ...(settled?.appliedReserve
+            ? {
+                reserveApplied: {
+                  followUpId: settled.followUpId,
+                  from: settled.previousReserve,
+                  to: settled.appliedReserve,
+                },
+              }
+            : {}),
         },
         actorUserId,
       );
