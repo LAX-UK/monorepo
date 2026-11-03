@@ -555,7 +555,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         subtitle: first
           ? `${first}${reasons.length > 1 ? ` (+${reasons.length - 1} more)` : ""}`
           : null,
-        href: `/admin/clients/${row.subjectId}`,
+        href: adminWorkItemHref("deletion_hold", { subjectId: row.subjectId }),
         saleId: null,
         createdAt: heldAt,
         sourceUpdatedAt: heldAt,

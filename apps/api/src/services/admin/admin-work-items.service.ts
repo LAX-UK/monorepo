@@ -62,6 +62,7 @@ export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRe
   unsold_lot_choice: SUBMISSIONS_ACCESS,
   marketing_enquiry: MARKETING_ENQUIRIES_ACCESS,
   purchase_problem: FINANCE_ACCESS,
+  deletion_hold: DELETION_HOLD_ACCESS,
 };
 
 const REVIEW_TASK_SOURCE_ACCESS: CapabilityRequirement = {
@@ -243,7 +244,7 @@ export class AdminWorkItemsService {
         fetch: () => this.reader.listPurchaseProblems(perSourceLimit),
       },
       {
-        access: DELETION_HOLD_ACCESS,
+        access: WORK_ITEM_KIND_ACCESS.deletion_hold,
         fetch: () => this.reader.listDeletionHolds(perSourceLimit),
       },
     ];
