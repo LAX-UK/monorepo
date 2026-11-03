@@ -1,4 +1,4 @@
-import { bigint, boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { bigint, boolean, index, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 /**
  * Bid-local projection of the Identity fields needed by API and worker paths.
@@ -17,6 +17,9 @@ export const bidIdentityDirectory = pgTable(
       mode: "date",
       withTimezone: true,
     }),
+    /** Set while the daily purge is holding this person's deletion; staff see it as work. */
+    deletionHeldAt: timestamp("deletion_held_at", { mode: "date", withTimezone: true }),
+    deletionHoldReasons: jsonb("deletion_hold_reasons"),
     /** Canonical subject for a retired alias retained for product-record joins. */
     mergedIntoSubjectId: text("merged_into_subject_id"),
     identityCreatedAt: timestamp("identity_created_at", {

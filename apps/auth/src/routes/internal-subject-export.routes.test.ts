@@ -21,6 +21,12 @@ function setup(
   const applyProgress = vi.fn<(...args: unknown[]) => Promise<SubjectExportProgressResult>>(
     async () => "applied",
   );
+  const pendingObjectPurges = vi.fn(async (_limit: number) => [
+    { exportId: EXPORT_ID, objectKey: `subject-exports/${EXPORT_ID}/lax-data-2026-11-02.zip` },
+  ]);
+  const confirmObjectPurged = vi.fn<(id: string) => Promise<"applied" | "ignored">>(
+    async () => "applied",
+  );
   const rateLimit = vi.fn(async () => options.exportLimit ?? null);
   const readRateLimit = vi.fn(async () => options.readLimit ?? null);
   const manifest = vi.fn(async () => ({ product: "account", categories: [] }));
@@ -56,7 +62,7 @@ function setup(
       ? {}
       : {
           subjectExport: {
-            exports: { applyProgress },
+            exports: { applyProgress, pendingObjectPurges, confirmObjectPurged },
             reader: { manifest, page } as never,
             redis: { get: async (key: string) => store.get(key) ?? null },
             clientId: "subject-export-worker",
@@ -88,10 +94,23 @@ function setup(
     app.request(`/identity/subjects/person-1/export${path}`, {
       headers: bearer ? { authorization: `Bearer ${bearer}` } : {},
     });
+  const purgePending = (bearer: string | null, query = "") =>
+    app.request(`/identity/subject-exports/purge-pending${query}`, {
+      headers: bearer ? { authorization: `Bearer ${bearer}` } : {},
+    });
+  const purged = (bearer: string | null, id = EXPORT_ID) =>
+    app.request(`/identity/subject-exports/${id}/purged`, {
+      method: "POST",
+      headers: bearer ? { authorization: `Bearer ${bearer}` } : {},
+    });
   return {
     app,
     token,
     progress,
+    purgePending,
+    purged,
+    pendingObjectPurges,
+    confirmObjectPurged,
     read,
     manifest,
     page,
@@ -305,5 +324,48 @@ describe("GET /identity/subjects/:subjectId/export", () => {
     const response = await ctx.read(await exportToken(ctx), "");
     expect(response.status).toBe(503);
     expect(JSON.stringify(await response.json())).not.toContain("secret detail");
+  });
+});
+
+describe("object purge routes", () => {
+  it("lists the stored copies to delete, uncached, and clamps the batch size", async () => {
+    const ctx = setup();
+    const response = await ctx.purgePending(await exportToken(ctx), "?limit=5000");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({
+      items: [
+        { exportId: EXPORT_ID, objectKey: `subject-exports/${EXPORT_ID}/lax-data-2026-11-02.zip` },
+      ],
+    });
+    expect(ctx.pendingObjectPurges).toHaveBeenCalledWith(100);
+    await ctx.purgePending(await exportToken(ctx), "?limit=0");
+    expect(ctx.pendingObjectPurges).toHaveBeenLastCalledWith(1);
+  });
+
+  it("confirms a deletion once and answers ignored for a repeat", async () => {
+    const ctx = setup();
+    const accessToken = await exportToken(ctx);
+    expect(await (await ctx.purged(accessToken)).json()).toEqual({ result: "applied" });
+    ctx.confirmObjectPurged.mockResolvedValueOnce("ignored");
+    expect(await (await ctx.purged(accessToken)).json()).toEqual({ result: "ignored" });
+  });
+
+  it("needs an export token and a UUID", async () => {
+    const ctx = setup();
+    expect((await ctx.purgePending(null)).status).toBe(401);
+    expect((await ctx.purged(null)).status).toBe(401);
+    expect((await ctx.purged(await exportToken(ctx), "not-a-uuid")).status).toBe(400);
+  });
+
+  it("answers 503 without detail when Identity cannot read or write", async () => {
+    const ctx = setup();
+    const accessToken = await exportToken(ctx);
+    ctx.pendingObjectPurges.mockRejectedValueOnce(new Error("db down: secret detail"));
+    const listed = await ctx.purgePending(accessToken);
+    expect(listed.status).toBe(503);
+    expect(JSON.stringify(await listed.json())).not.toContain("secret detail");
+    ctx.confirmObjectPurged.mockRejectedValueOnce(new Error("db down"));
+    expect((await ctx.purged(accessToken)).status).toBe(503);
   });
 });

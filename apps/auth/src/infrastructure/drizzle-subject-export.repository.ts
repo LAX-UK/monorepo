@@ -2,12 +2,13 @@ import type { IdentityEventPublisher } from "@auction/auth";
 import { SUBJECT_EXPORT_OPEN_STATUSES, SUBJECT_EXPORT_PRODUCTS } from "@auction/identity-contracts";
 import type { IdentityDatabase } from "@auction/identity-db";
 import { subjectDataExport, subjectDataExportAudit } from "@auction/identity-db/schema";
-import { and, desc, eq, gt, inArray, isNull, lt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, sql } from "drizzle-orm";
 import type {
   CreateSubjectExportInput,
   CreateSubjectExportOutcome,
   SubjectExportAuditEntry,
   SubjectExportMutation,
+  SubjectExportPendingPurge,
   SubjectExportProgressMap,
   SubjectExportRepository,
   SubjectExportRow,
@@ -203,6 +204,39 @@ export class DrizzleSubjectExportRepository implements SubjectExportRepository {
       await writeAudit(tx, before, mutation.audit, at);
       return { before, after: toRow(updated) };
     });
+  }
+
+  async listPendingObjectPurges(limit: number): Promise<SubjectExportPendingPurge[]> {
+    const rows = await this.db
+      .select({ exportId: subjectDataExport.id, objectKey: subjectDataExport.objectKey })
+      .from(subjectDataExport)
+      .where(
+        and(
+          isNotNull(subjectDataExport.objectPurgeRequestedAt),
+          isNull(subjectDataExport.objectPurgedAt),
+          isNotNull(subjectDataExport.objectKey),
+        ),
+      )
+      .orderBy(subjectDataExport.objectPurgeRequestedAt)
+      .limit(limit);
+    return rows.flatMap((row) =>
+      row.objectKey ? [{ exportId: row.exportId, objectKey: row.objectKey }] : [],
+    );
+  }
+
+  async markObjectPurged(exportId: string, at: Date): Promise<boolean> {
+    const updated = await this.db
+      .update(subjectDataExport)
+      .set({ objectPurgedAt: at, updatedAt: at })
+      .where(
+        and(
+          eq(subjectDataExport.id, exportId),
+          isNotNull(subjectDataExport.objectPurgeRequestedAt),
+          isNull(subjectDataExport.objectPurgedAt),
+        ),
+      )
+      .returning({ id: subjectDataExport.id });
+    return updated.length > 0;
   }
 
   async expireDue(now: Date, limit: number): Promise<SubjectExportRow[]> {

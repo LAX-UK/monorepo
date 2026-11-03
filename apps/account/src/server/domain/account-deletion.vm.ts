@@ -2,6 +2,7 @@ import {
   ACCOUNT_DELETION_CONFIRMATION_PHRASE,
   ACCOUNT_DELETION_GRACE_DAYS,
   type AccountDeletionStatus,
+  DELETION_HOLD_COPY,
   type DeletionBlocker,
   type DeletionEligibilityProduct,
   accountDeletionVerdict,
@@ -30,6 +31,16 @@ export type DeletionBlockerGroupVm = {
 export type DeletionPageVm =
   | { kind: "unavailable" }
   | { kind: "requested"; requestedOn: string; deleteOn: string }
+  | {
+      kind: "held";
+      requestedOn: string;
+      title: string;
+      basis: string;
+      reasonsIntro: string;
+      reasons: DeletionBlocker[];
+      recheck: string;
+      resolution: string;
+    }
   | { kind: "blocked"; groups: DeletionBlockerGroupVm[]; unreachable: string[] }
   | { kind: "check_failed"; unreachable: string[] }
   | { kind: "eligible"; phrase: string; consequences: string[] };
@@ -52,6 +63,18 @@ export function buildDeletionPageVm(status: AccountDeletionStatus | null): Delet
     .filter((product) => product.state === "unavailable")
     .map((product) => PRODUCT_LABELS[product.product]);
 
+  if (verdict === "requested" && status.requestedAt && status.hold) {
+    return {
+      kind: "held",
+      requestedOn: longDate(new Date(status.requestedAt)),
+      title: DELETION_HOLD_COPY.title,
+      basis: DELETION_HOLD_COPY.basis,
+      reasonsIntro: DELETION_HOLD_COPY.reasonsIntro,
+      reasons: status.hold.reasons,
+      recheck: DELETION_HOLD_COPY.recheckDaily,
+      resolution: DELETION_HOLD_COPY.resolution,
+    };
+  }
   if (verdict === "requested" && status.requestedAt) {
     const requested = new Date(status.requestedAt);
     return {

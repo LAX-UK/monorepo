@@ -109,6 +109,7 @@ export type {
   ProductSubjectUsageProbe,
   AuthPorts,
   PhoneNumberStore,
+  SecurityNoticeDelivery,
   SecurityNoticeEvent,
   SecurityNoticePublisher,
   SendOtpOptions,

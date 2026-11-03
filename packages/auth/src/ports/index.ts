@@ -13,7 +13,11 @@ export type {
   TwoFactorPolicyStore,
 } from "./two-factor-policy-store.js";
 export type { AccountLinkReader } from "./account-link-reader.js";
-export type { SecurityNoticeEvent, SecurityNoticePublisher } from "./security-notice.js";
+export type {
+  SecurityNoticeDelivery,
+  SecurityNoticeEvent,
+  SecurityNoticePublisher,
+} from "./security-notice.js";
 export type { JwksStore } from "./jwks-store.js";
 export type {
   IdentityEventPublisher,

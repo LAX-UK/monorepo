@@ -4,7 +4,11 @@ import { AccountSecurityFactsService } from "./account-security-facts.service.js
 const SUBJECT = "11111111-1111-4111-8111-111111111111";
 
 function build(input: {
-  base: { twoFactorEnabled: boolean; hasPassword: boolean } | null;
+  base: {
+    twoFactorEnabled: boolean;
+    hasPassword: boolean;
+    deletionRequestedAt?: string | null;
+  } | null;
   count?: () => Promise<number>;
   onCountFailure?: (error: unknown) => void;
 }) {
@@ -59,5 +63,18 @@ describe("AccountSecurityFactsService", () => {
       backupCodesRemaining: null,
     });
     expect(onCountFailure).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("AccountSecurityFactsService deletion request", () => {
+  it("passes the request date through so the shell can show the banner", async () => {
+    const { service } = build({
+      base: {
+        twoFactorEnabled: false,
+        hasPassword: true,
+        deletionRequestedAt: "2026-11-02T10:00:00.000Z",
+      },
+    });
+    expect((await service.read(SUBJECT))?.deletionRequestedAt).toBe("2026-11-02T10:00:00.000Z");
   });
 });

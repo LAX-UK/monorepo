@@ -41,6 +41,8 @@ export type AccountFrameProps = {
   /** The way back to the product the visitor came from; null when none is known. */
   backToProduct?: BackToProductVm | null;
   width?: PageWidth;
+  /** A notice that applies to the whole account, shown above the page, such as a scheduled deletion. */
+  notice?: ReactNode;
   children: ReactNode;
 };
 
@@ -56,6 +58,7 @@ export function AccountFrame({
   support,
   backToProduct = null,
   width = "narrow",
+  notice = null,
   children,
 }: AccountFrameProps) {
   const showMenu = viewer !== null && nav.length > 0;
@@ -103,6 +106,7 @@ export function AccountFrame({
             showMenu ? PAGE_WIDTH[width] : PAGE_WIDTH.centred
           }`}
         >
+          {notice}
           {children}
         </main>
       </div>

@@ -5,6 +5,7 @@ import {
   MARKETING_EVENTS_QUEUE_NAME,
   PAYOUT_SETTLEMENT_QUEUE_NAME,
   PAYOUT_STATEMENTS_QUEUE_NAME,
+  SUBJECT_DATA_EXPORT_QUEUE_NAME,
 } from "../queue-names.js";
 
 /** What staff need to know about one kind of job before they retry it. */
@@ -68,6 +69,13 @@ const JOB_TYPES: Readonly<Record<string, FailedJobTypeInfo>> = {
     sourceLabel: `${BACKGROUND_JOB} · Legal entities`,
     retryEffect: "Runs the archive again from the start.",
     mayRepeat: true,
+  },
+  [SUBJECT_DATA_EXPORT_QUEUE_NAME]: {
+    label: "Personal data copy",
+    sourceLabel: `${BACKGROUND_JOB} · Download my data`,
+    retryEffect:
+      "Builds the copy again from the start. The person is emailed when it is ready; nothing is sent before then.",
+    mayRepeat: false,
   },
 };
 

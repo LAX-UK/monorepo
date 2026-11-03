@@ -78,6 +78,23 @@ describe("createBidSubmitter", () => {
     });
   });
 
+  it("types the refusal for a bidder whose account is due to be deleted", async () => {
+    const { submitter } = ports(async () => ({
+      ok: false,
+      error: "Your account is due to be deleted on 2 December. Cancel deletion to continue.",
+      status: 403,
+      code: "account_deletion_pending",
+      details: { dueOn: "2 December" },
+    }));
+    expect(await submitter.submit(submission)).toEqual({
+      ok: false,
+      failure: {
+        kind: "refused",
+        refusal: { code: "account_deletion_pending", details: { dueOn: "2 December" } },
+      },
+    });
+  });
+
   it("passes the server's words through for a refusal it has no row for", async () => {
     const { submitter } = ports(async () => ({
       ok: false,

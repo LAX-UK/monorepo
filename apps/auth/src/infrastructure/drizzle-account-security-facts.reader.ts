@@ -8,7 +8,10 @@ export async function readAccountSecurityBaseFacts(
   subjectId: string,
 ): Promise<AccountSecurityBaseFacts | null> {
   const [row] = await db
-    .select({ twoFactorEnabled: user.twoFactorEnabled })
+    .select({
+      twoFactorEnabled: user.twoFactorEnabled,
+      deletionRequestedAt: user.deletionRequestedAt,
+    })
     .from(user)
     .where(eq(user.id, subjectId))
     .limit(1);
@@ -24,5 +27,9 @@ export async function readAccountSecurityBaseFacts(
       ),
     )
     .limit(1);
-  return { twoFactorEnabled: row.twoFactorEnabled, hasPassword: credential !== undefined };
+  return {
+    twoFactorEnabled: row.twoFactorEnabled,
+    hasPassword: credential !== undefined,
+    deletionRequestedAt: row.deletionRequestedAt?.toISOString() ?? null,
+  };
 }

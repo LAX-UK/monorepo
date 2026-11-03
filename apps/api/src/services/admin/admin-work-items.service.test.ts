@@ -40,6 +40,7 @@ function createReader(overrides: Partial<IAdminWorkItemsReader> = {}): IAdminWor
     listUnsoldLotChoices: vi.fn().mockResolvedValue([]),
     listMarketingEnquiries: vi.fn().mockResolvedValue([]),
     listPurchaseProblems: vi.fn().mockResolvedValue([]),
+    listDeletionHolds: vi.fn().mockResolvedValue([]),
     ...overrides,
   };
 }
@@ -176,6 +177,39 @@ describe("AdminWorkItemsService", () => {
       expect(result.items.some((item) => item.kind === "marketing_enquiry")).toBe(false);
     }
     expect(listMarketingEnquiries).not.toHaveBeenCalled();
+  });
+
+  it("shows held account deletions to client services and administrators only", async () => {
+    const listDeletionHolds = vi.fn().mockResolvedValue([
+      row({
+        sourceId: "subject-1",
+        kind: "deletion_hold",
+        domain: "clients",
+        title: "Account deletion on hold",
+      }),
+    ]);
+    const service = new AdminWorkItemsService(createReader({ listDeletionHolds }));
+    const query = { limit: 25, assignment: "all" as const, urgentOnly: false };
+
+    for (const staffRoles of [["client_services"], ["administrator"]] as const) {
+      const result = await service.listWorkItems({
+        actorUserId: "u1",
+        actorRole: "staff",
+        actorStaffRoles: [...staffRoles],
+        query,
+      });
+      expect(result.items.map((item) => item.id)).toEqual(["deletion_hold:subject-1"]);
+    }
+
+    listDeletionHolds.mockClear();
+    const finance = await service.listWorkItems({
+      actorUserId: "u1",
+      actorRole: "staff",
+      actorStaffRoles: ["finance"],
+      query,
+    });
+    expect(finance.items.some((item) => item.kind === "deletion_hold")).toBe(false);
+    expect(listDeletionHolds).not.toHaveBeenCalled();
   });
 
   it("ranks critical finance items before medium catalogue items", async () => {

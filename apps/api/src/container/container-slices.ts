@@ -51,6 +51,7 @@ import type { ILotLifecycleService, ILotReadService } from "../services/interfac
 import type { IMarketingEnquiryIntake } from "../services/interfaces/marketing-enquiry-service.js";
 import type { IOAuthAttributionStore } from "../services/interfaces/oauth-attribution-store.js";
 import type { IOrganisationBiddingLimitsService } from "../services/interfaces/organisation-bidding-limits-service.js";
+import type { IPendingDeletionReader } from "../services/interfaces/pending-deletion-reader.js";
 import type { PlatformCronRouteServices } from "../services/interfaces/platform-cron-routes/index.js";
 import type { IPushSubscriptionRepository } from "../services/interfaces/push.js";
 import type {
@@ -183,6 +184,11 @@ export type ContainerCatalogRoutesSlice = {
 /** Item submission HTTP route application ports (seller/admin/documents). */
 export type ContainerSubmissionRoutesServicesSlice = {
   submissionRoutes: SubmissionRouteServices;
+};
+
+/** Whether a person has asked to delete their account; read by the commitment guard. */
+export type ContainerPendingDeletionSlice = {
+  pendingDeletionReader: IPendingDeletionReader;
 };
 
 /** Platform suspension ports exposed under route-facing names. */
@@ -402,6 +408,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerExposedRepositoriesSlice &
   ContainerPlatformSlice &
   ContainerUserSuspensionExposureSlice &
+  ContainerPendingDeletionSlice &
   ContainerLotLifecycleSlice &
   ContainerComplianceMediaSlice &
   ContainerCatalogSlice &

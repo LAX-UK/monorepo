@@ -20,9 +20,9 @@ const typesIn = (text: string) => {
 };
 
 describe("migration 0281 kyc outcome and sale cancelled notices", () => {
-  it("is journal entry 281, after 0279", () => {
+  it("is journal entry 281, after 0280", () => {
     const entry = journal.entries.find((e) => e.tag === "0281_kyc_outcome_sale_cancelled_notices");
-    const previous = journal.entries.find((e) => e.tag === "0279_subject_data_export");
+    const previous = journal.entries.find((e) => e.tag === "0280_deletion_safety");
     expect(entry?.idx).toBe(281);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
   });

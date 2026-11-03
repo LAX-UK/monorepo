@@ -1,5 +1,6 @@
 "use client";
 
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import type { BidNotice, BidRemedy } from "@auction/domain";
 import { Button, ButtonLink, Notice } from "@auction/ui/lax";
 import Link from "next/link";
@@ -39,6 +40,16 @@ const REMEDY_ACTIONS: Readonly<{
         Register
       </ButtonLink>
     ) : null,
+  cancel_deletion: () => (
+    <ButtonLink
+      href={laxAccountUrl("/account/security/delete")}
+      Link={Link}
+      size="sm"
+      variant="secondary"
+    >
+      Cancel deletion
+    </ButtonLink>
+  ),
   limit_help: () => (
     <ButtonLink href={ORGANISATIONS_HREF} Link={Link} size="sm" variant="secondary">
       Ask an admin

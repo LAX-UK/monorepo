@@ -39,6 +39,7 @@ export type AdminRouteEntry = {
 
 export const ADMIN_ROUTE_TABLE = [
   { pattern: "/admin/clients", area: "platform", requirement: USERS_DIRECTORY_ACCESS },
+  { pattern: "/admin/clients/[id]", area: "platform", requirement: USERS_DIRECTORY_ACCESS },
   { pattern: "/admin/sales", area: "platform", requirement: SALE_CATALOG_READ_ACCESS },
   { pattern: "/admin/finance", area: "finance", requirement: FINANCE_ACCESS },
   { pattern: "/admin/saleroom", area: "platform", requirement: SALEROOM_ACCESS },
@@ -115,6 +116,8 @@ export const adminRoutes = {
   },
   /** An enquiry record; the page accepts its reference or its id. */
   enquiry: (referenceOrId: string) => `/admin/enquiries/${seg(referenceOrId)}`,
+  /** One client's record. */
+  client: (id: string) => `/admin/clients/${seg(id)}`,
   conditionReports: { list: () => "/admin/condition-reports" },
   lotFulfilment: { list: () => "/admin/lot-fulfilment" },
   legalEntity: (id: string) => `/admin/legal-entities/${seg(id)}`,

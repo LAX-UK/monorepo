@@ -5,6 +5,8 @@ export const SHOP_IDENTITY_PROJECTION_PROJECTOR = "shop_identity_projection";
 const SHOP_IDENTITY_EVENT_TYPES = [
   "user.registered",
   "user.profile_updated",
+  "user.deletion_requested",
+  "user.deletion_cancelled",
   "user.identity_disabled",
   "user.identity_enabled",
   "user.identity_merged",

@@ -18,6 +18,10 @@ import { createMarketingClientContextMiddleware } from "./middleware/marketing-c
 import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
 import { createOrganizationCreateRateLimitMiddleware } from "./middleware/organization-rate-limit.js";
+import {
+  createPendingDeletionGuard,
+  mountPendingDeletionGuard,
+} from "./middleware/pending-deletion-guard.js";
 import { createPublicCacheControlMiddleware } from "./middleware/public-cache-control.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createRequestIdMiddleware } from "./middleware/request-id.js";
@@ -184,6 +188,10 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/webhooks/postmark/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/webhooks/xero", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/webhooks/xero/*", createRateLimitMiddleware(container.rateLimitStore));
+  mountPendingDeletionGuard(
+    app,
+    createPendingDeletionGuard({ authenticator, reader: container.pendingDeletionReader }),
+  );
 
   app.get("/health/ready", async (c) => {
     try {
