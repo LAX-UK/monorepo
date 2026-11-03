@@ -39,6 +39,7 @@ import type { AdminUserService } from "../admin-user.service.js";
 import type { AmlService } from "../aml/aml.service.js";
 import type { ArtistProfileService } from "../artist-profile.service.js";
 import type { BidService } from "../bid.service.js";
+import type { BuyerDefaultService } from "../buyer-default/buyer-default.service.js";
 import type { CategoryService } from "../category.service.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImpersonationAuditService } from "../impersonation-audit.service.js";
@@ -138,6 +139,7 @@ export type CreateAdminRouteServicesInput = {
   lotService: ILotService;
   adminLotBrowseService: AdminLotBrowseService;
   lotTransitionOrchestrator: LotTransitionOrchestrator;
+  buyerDefaultService: BuyerDefaultService;
   lotLifecycleQueryService: LotLifecycleQueryService;
   saleRegistrationService: ISaleRegistrationService;
   artistRegistryService: IArtistRegistryService;
@@ -249,6 +251,7 @@ export function createAdminRouteServices(
     lotService: input.lotService,
     adminLotBrowseService: input.adminLotBrowseService,
     lotTransitionOrchestrator: input.lotTransitionOrchestrator,
+    buyerDefaultService: input.buyerDefaultService,
     lotLifecycleQueryService: input.lotLifecycleQueryService,
     saleRegistrationService: input.saleRegistrationService,
     lotFulfilmentService: input.lotFulfilmentService,
