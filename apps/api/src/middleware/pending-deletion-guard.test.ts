@@ -38,7 +38,6 @@ describe("pending deletion guard", () => {
   it.each([
     ["POST", "/sales/s1/telephone-bookings"],
     ["POST", "/telephone-bookings/b1/limit-increase"],
-    ["POST", "/submissions"],
     ["POST", "/submissions/x1/submit"],
     ["POST", "/submissions/x1/agreement/accept"],
   ])("stops %s %s", async (method, path) => {
@@ -47,6 +46,7 @@ describe("pending deletion guard", () => {
   });
 
   it.each([
+    ["POST", "/submissions"],
     ["PATCH", "/submissions/x1"],
     ["POST", "/telephone-bookings/b1/cancel"],
     ["POST", "/legal-entities"],

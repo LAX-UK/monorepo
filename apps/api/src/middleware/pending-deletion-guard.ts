@@ -23,7 +23,6 @@ export const PENDING_DELETION_GUARDED_ROUTES: readonly GuardedRoute[] = [
   { method: "POST", path: "/sales/:id/register" },
   { method: "POST", path: "/sales/:id/telephone-bookings" },
   { method: "POST", path: "/telephone-bookings/:id/limit-increase" },
-  { method: "POST", path: "/submissions" },
   { method: "POST", path: "/submissions/:id/submit" },
   { method: "POST", path: "/submissions/:id/agreement/accept" },
   { method: "POST", path: "/payments" },
