@@ -71,6 +71,12 @@ console.
       those revokes. After a grant rollback, lower or clear the variable before
       the next Job. `head` is only for the main-to-release cutover window (see
       `docs/engineering/release-main-parity.md`).
+- [ ] Decide the editorial flags for this release. `SHOP_EDITORIAL_ENABLED` and
+      `ART_EDITORIAL_ENABLED` are GitHub `prod` environment variables that
+      default to `false`; with them off, lax.art shows its "coming soon" empty
+      states instead of editorial content. Turn both on together, only after
+      seeded content has been reviewed and `SHOP_EDITORIAL_PREVIEW_SECRET` is
+      set (see [lax-art-editorial.md](./lax-art-editorial.md)).
 - [ ] Watch `/health/ready` for every component during the rolling restart.
 - [ ] Smoke test the changed path against `lax.bid`.
 - [ ] Confirm required production Identity/BFF/client secrets are bound under
@@ -82,6 +88,20 @@ console.
 - [ ] Post in the on-call channel: "Deployed `<short-sha>` to production. Changed: `<one-line summary>`."
 - [ ] Watch Sentry for the next 30 minutes.
 - [ ] Watch Cloudflare WAF and rate-limit dashboards for unusual patterns.
+
+## Sentry release warnings
+
+Sentry is best effort and never blocks a deploy. The **Sentry release** workflow retries each Sentry call (releases, commits, source map upload) with back-off of 10s, 30s and 60s. If every attempt fails it adds a `::warning::` annotation naming the component and the release, sets its `sourcemaps_uploaded` output to `false`, and still finishes green. The test and prod deploy jobs do not depend on its result; CI, plan, image build, migrations and smoke checks remain hard gates.
+
+What the warning means: the deploy is fine, but errors for that release may show minified or unmapped stack traces in Sentry (or the release/deploy marker is missing) until the upload is repeated.
+
+To re-run only the upload:
+
+1. Actions, **Sentry release**, **Run workflow**.
+2. `environment`: `test` or `prod`. `git_sha`: the release, which is the commit SHA that was deployed. `component`: `api`, `auth`, `ws` or `worker` (or `all`).
+3. The run checks out that SHA, rebuilds, injects debug IDs and uploads. Single-component runs skip the finalize and deploy-record steps, so a repeat never records a second deploy.
+
+Debug IDs are derived from file content and are also stamped into the shipped `api`, `auth`, `ws` and `worker` images at build time, so a late upload matches the running code. The Next apps (`web`, `art`, `shop`) upload their maps during the image build with the Sentry bundler plugin and are not covered by this workflow.
 
 ## If something goes wrong
 

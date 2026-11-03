@@ -59,6 +59,20 @@ const rules = [
     ],
   },
   {
+    dir: "packages/alerts",
+    label: "packages/alerts must not import from apps/**",
+    forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)(\/|$)/, /(^|\/)apps\//],
+  },
+  {
+    dir: "packages/alerts",
+    label: "packages/alerts must stay pure: no database, framework or product packages",
+    forbiddenSpecifiers: [
+      /^@auction\/(db|persistence|domain|shop-domain|bidding-runtime|auth|email|queues)(\/|$)/,
+      /^drizzle-orm(\/|$)/,
+      /^(hono|fastify|next|react)(\/|$)/,
+    ],
+  },
+  {
     dir: "packages/shop-contracts",
     label: "packages/shop-contracts must not import from apps/**",
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)$/, /(^|\/)apps\//],

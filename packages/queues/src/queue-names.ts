@@ -15,9 +15,12 @@ export const MARKETING_OUTBOX_POLLER_QUEUE_NAME = "marketing-outbox-poller" as c
 export const PURGE_MARKETING_CLICK_IDS_QUEUE_NAME = "purge-marketing-click-ids" as const;
 export const QR_CODE_SCAN_QUEUE_NAME = "qr-code-scan" as const;
 export const PURGE_QR_CODE_SCANS_QUEUE_NAME = "purge-qr-code-scans" as const;
+export const PURGE_KYC_RETENTION_QUEUE_NAME = "purge-kyc-retention" as const;
 export const WEBHOOK_EVENTS_QUEUE_NAME = "webhook-events" as const;
 export const GC_PENDING_UPLOADS_QUEUE_NAME = "gc-pending-uploads" as const;
 export const IMPERSONATION_SWEEPER_QUEUE_NAME = "impersonation-sweeper" as const;
+/** The daily alert digest: one repeat job at 08:00 London time. */
+export const ALERT_DIGEST_QUEUE_NAME = "alert-digest" as const;
 export const PAYOUT_SETTLEMENT_QUEUE_NAME = "payout-settlement" as const;
 export const PAYOUT_STATEMENTS_QUEUE_NAME = "payout-statements" as const;
 export const LEGAL_ENTITY_ARCHIVE_QUEUE_NAME = "legal-entity-archive" as const;

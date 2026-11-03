@@ -2,6 +2,7 @@ import {
   userDeletionCancelledPayloadSchemaV1,
   userDeletionRequestedPayloadSchemaV1,
   userProfileUpdatedPayloadSchemaV1,
+  userSignInMethodUnlinkedPayloadSchemaV1,
 } from "@auction/identity-contracts";
 import { createIdentityDb } from "@auction/identity-db";
 import { identityLifecycleOutbox, user } from "@auction/identity-db/schema";
@@ -72,6 +73,35 @@ describeWithDatabase("createDrizzleIdentityEventPublisher transaction", () => {
         ),
       );
     expect(rows).toEqual([]);
+  });
+
+  it("records a removed sign-in method with the provider and no account detail", async () => {
+    if (!db) return;
+    const subjectId = `unlink-${crypto.randomUUID()}`;
+    const publisher = createDrizzleIdentityEventPublisher(db);
+
+    await publisher.publish({
+      type: "user.sign_in_method_unlinked",
+      userId: subjectId,
+      provider: "apple",
+    });
+
+    const [row] = await db
+      .select({ payload: identityLifecycleOutbox.payload })
+      .from(identityLifecycleOutbox)
+      .where(
+        and(
+          eq(identityLifecycleOutbox.aggregateId, subjectId),
+          eq(identityLifecycleOutbox.eventType, "user.sign_in_method_unlinked"),
+        ),
+      );
+    expect(userSignInMethodUnlinkedPayloadSchemaV1.parse(row?.payload)).toMatchObject({
+      subjectId,
+      provider: "apple",
+    });
+    await db
+      .delete(identityLifecycleOutbox)
+      .where(eq(identityLifecycleOutbox.aggregateId, subjectId));
   });
 
   it("persists profile image and deletion lifecycle contract payloads", async () => {

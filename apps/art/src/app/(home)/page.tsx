@@ -1,10 +1,9 @@
 import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-state";
-import { ArtArtistCard } from "@/components/catalogue/art-artist-grid";
 import { ArtArtworkRail } from "@/components/catalogue/art-artwork-rail";
 import { ArtEditorialCard } from "@/components/editorial/art-editorial-card";
 import { ArtGalleryTeamBand } from "@/components/gallery-team/art-gallery-team-band";
+import { ArtFeaturedArtists } from "@/components/home/art-featured-artists";
 import { ArtHomeHero } from "@/components/home/art-home-hero";
-import { ArtRail, ArtRailItem } from "@/components/layout/art-rail";
 import { ArtSection } from "@/components/layout/art-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { ArtProductDoors } from "@/components/product-doors/art-product-doors";
@@ -89,19 +88,11 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
         </Shell>
       );
     case "featured-artists":
-      return (
+      return vm.featuredArtists ? (
         <Shell>
-          <ArtSection id="featured-artists" title="Featured artists" viewAllHref="/artists">
-            <ArtRail id="featured-artists-rail" label="Featured artists">
-              {vm.featuredArtists.map((card) => (
-                <ArtRailItem key={card.slug} size="tile">
-                  <ArtArtistCard card={card} favoriteAuth={vm.favoriteAuth} />
-                </ArtRailItem>
-              ))}
-            </ArtRail>
-          </ArtSection>
+          <ArtFeaturedArtists artists={vm.featuredArtists} favoriteAuth={vm.favoriteAuth} />
         </Shell>
-      );
+      ) : null;
     case "product-doors":
       return <ArtProductDoors doors={vm.productDoors} />;
     case "stories":

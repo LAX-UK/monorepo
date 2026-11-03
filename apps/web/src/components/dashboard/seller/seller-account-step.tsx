@@ -1,17 +1,15 @@
 "use client";
 
 import type { SellerAccountOption } from "@/lib/seller/seller-account-options";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { RadioCardGroup } from "@auction/ui/components/radio-card-group";
-import { Surface } from "@auction/ui/components/surface";
+import { Button, ButtonLink, Notice, PresetCards, TextLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 type Props = {
   options: readonly SellerAccountOption[];
   selectedId: string | null;
   onSelect: (id: string) => void;
-  registerHref: string;
+  /** "Register an organisation", or `null` for someone already acting for one. */
+  registerHref: string | null;
   busy: boolean;
   /**
    * The step comes first ("Selling as"): one way on, to the work. Without it the step comes
@@ -23,16 +21,16 @@ type Props = {
   onSaveDraft?: () => void;
 };
 
-function OptionLabel({ option }: { option: SellerAccountOption }) {
-  return (
-    <>
-      <span className="font-semibold">{option.kind === "personal" ? "Personal" : option.name}</span>
-      <span className="font-normal text-on-surface-variant">
-        {" · "}
-        {option.kind === "personal" ? option.name : option.roleLabel}
-      </span>
-    </>
-  );
+const HEADING = "font-lax-display text-lax-18 font-semibold text-lax-fg";
+
+function optionTitle(option: SellerAccountOption): string {
+  return option.kind === "personal" ? "Personal" : option.name;
+}
+
+function optionDescription(option: SellerAccountOption): string {
+  if (option.kind === "personal") return `${option.name} · Sold under your own name, paid to you.`;
+  if (option.canSubmit) return `Sold by ${option.name}, paid to the organisation.`;
+  return option.sellingNote?.summary ?? "You can save a draft now.";
 }
 
 /**
@@ -56,60 +54,70 @@ export function SellerAccountStep({
   const blocked = selected !== null && !selected.canSubmit;
 
   return (
-    <div className="space-y-6">
-      {onlyPersonal && selected ? (
-        <section aria-labelledby="who-is-selling" className="space-y-3">
-          <h2
-            id="who-is-selling"
-            className="font-headline text-xl font-semibold tracking-tight text-on-surface"
-          >
-            Who is selling?
-          </h2>
-          <Surface variant="section" padding="none" className="p-4 sm:p-4">
-            <p className="font-body text-sm text-on-surface">
-              <OptionLabel option={selected} />
+    <div className="flex flex-col gap-6">
+      <section aria-labelledby="who-is-selling" className="flex flex-col gap-3">
+        <h2 id="who-is-selling" className={HEADING}>
+          Who is selling?
+        </h2>
+        {onlyPersonal && selected ? (
+          <div className="rounded-lax-card border border-lax-line bg-lax-surface p-4">
+            <p className="text-lax-14 font-semibold text-lax-fg">{optionTitle(selected)}</p>
+            <p className="mt-1 text-lax-13 text-lax-muted">
+              {selected.name} · The work is sold under your own name, and you are paid personally.
             </p>
-            <p className="mt-1 font-body text-xs text-on-surface-variant">
-              The work is sold under your own name, and you are paid personally.
-            </p>
-          </Surface>
-        </section>
-      ) : (
-        <section className="space-y-3">
-          <RadioCardGroup
-            legend="Who is selling?"
+          </div>
+        ) : (
+          <PresetCards
+            label="Who is selling?"
+            columns={1}
+            compact
             value={selected?.id ?? ""}
             onValueChange={onSelect}
-            className="[&>legend]:font-headline [&>legend]:text-xl [&>legend]:font-semibold [&>legend]:tracking-tight"
             options={options.map((option) => ({
               value: option.id,
-              label: <OptionLabel option={option} />,
-              description:
-                option.kind === "personal"
-                  ? "Sold under your own name, paid to you."
-                  : option.canSubmit
-                    ? `Sold by ${option.name}, paid to the organisation.`
-                    : "Under review. You can save a draft now.",
+              label: optionTitle(option),
+              description: optionDescription(option),
+              ...(option.kind === "organisation"
+                ? {
+                    tag: (
+                      <span className="text-lax-13 font-normal text-lax-muted">
+                        {option.roleLabel}
+                      </span>
+                    ),
+                  }
+                : {}),
             }))}
           />
-        </section>
-      )}
+        )}
+      </section>
 
       {blocked && selected?.submitBlockedReason ? (
-        <Alert>
-          <AlertDescription>{selected.submitBlockedReason}</AlertDescription>
-        </Alert>
+        <Notice
+          tone="info"
+          title={selected.sellingNote?.notice ?? selected.submitBlockedReason}
+          {...(selected.sellingNote?.step
+            ? {
+                actions: (
+                  <ButtonLink href={selected.sellingNote.step.href} Link={Link} variant="secondary">
+                    {selected.sellingNote.step.label}
+                  </ButtonLink>
+                ),
+              }
+            : {})}
+        />
       ) : null}
 
-      <p className="font-body text-sm text-on-surface-variant">
-        Selling for a business?{" "}
-        <Link href={registerHref} className="text-link underline underline-offset-4">
-          Register an organisation
-        </Link>
-      </p>
+      {registerHref ? (
+        <p className="text-lax-14 text-lax-muted">
+          Selling for a business?{" "}
+          <TextLink href={registerHref} Link={Link}>
+            Register an organisation
+          </TextLink>
+        </p>
+      ) : null}
 
       {onContinue ? (
-        <div className="flex flex-col gap-3 border-t border-border-hairline pt-6 sm:flex-row sm:justify-end">
+        <div className="flex flex-col gap-3 border-t border-lax-line pt-6 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant="primary"
@@ -121,8 +129,8 @@ export function SellerAccountStep({
           </Button>
         </div>
       ) : (
-        <div className="flex flex-col-reverse gap-3 border-t border-border-hairline pt-6 sm:flex-row sm:items-center sm:justify-between">
-          <Button type="button" variant="outline" onClick={() => onBack?.()} disabled={busy}>
+        <div className="flex flex-col-reverse gap-3 border-t border-lax-line pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <Button type="button" variant="secondary" onClick={() => onBack?.()} disabled={busy}>
             Back to the work
           </Button>
           {blocked ? (

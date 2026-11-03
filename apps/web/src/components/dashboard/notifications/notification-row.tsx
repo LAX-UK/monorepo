@@ -3,7 +3,7 @@
 import { AccountTile } from "@/components/layout/account-switcher/account-tile";
 import type { InboxAccountTag, InboxRowView } from "@/lib/notifications/inbox-row.vm";
 import { InlineActionMenu, type InlineActionMenuItem, cn } from "@auction/ui";
-import { Checkbox } from "@auction/ui/components/checkbox";
+import { Checkbox } from "@auction/ui/lax";
 import Link from "next/link";
 import { inboxFullTime, inboxTime } from "./inbox-time";
 import { notificationTypePresenter } from "./notification-presenters";
@@ -100,7 +100,6 @@ export function NotificationRow({
           checked={selection.selected}
           onCheckedChange={(checked) => selection.onSelectedChange(checked === true)}
           aria-label={`Select: ${row.title}`}
-          className="size-[18px] rounded-[4px] border-lax-control-edge bg-lax-surface shadow-none data-[state=checked]:border-lax-ink data-[state=checked]:bg-lax-ink data-[state=checked]:text-lax-on-ink focus-visible:ring-lax-focus"
         />
       </span>
       <span

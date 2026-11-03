@@ -1,3 +1,4 @@
+import type { SaleCancelledAudience } from "@auction/branding";
 import type { OptOutableLotVars, TemplateDomainSlice } from "./shared.js";
 
 const names = [
@@ -9,6 +10,9 @@ const names = [
   "lot-voided-notice",
   "lot-withdrawal-declined-notice",
   "watched-lot-reminder",
+  "sale-registration-decision-notice",
+  "bidding-limit-changed-notice",
+  "sale-cancelled-notice",
 ] as const;
 
 type BiddingTemplateName = (typeof names)[number];
@@ -48,6 +52,39 @@ type BiddingTemplateVars = {
     reason: string;
     supportContactEmail: string;
   };
+  /** Staff approved or declined a request to bid in a sale. */
+  "sale-registration-decision-notice": {
+    userName?: string | null;
+    saleTitle: string;
+    decision: "approved" | "declined";
+    /** Staff-written explanation of a decline, shown as written. */
+    reason?: string | null;
+    /** Formatted for display ("£5,000.00"); present when an approval carries a limit. */
+    bidLimit?: string | null;
+    /** The sale in Bid. */
+    saleUrl: string;
+    supportContactEmail: string;
+  };
+  /** A sale was cancelled; what it means depends on how the person was involved. */
+  "sale-cancelled-notice": {
+    userName?: string | null;
+    saleTitle: string;
+    audience: SaleCancelledAudience;
+    supportContactEmail: string;
+  };
+  /** A bidding limit changed for a sale registration or for an organisation. */
+  "bidding-limit-changed-notice": {
+    recipientFirstName?: string | null;
+    /** What the limit applies to: "sale" for one registration, "organisation" for all bidding. */
+    scope: "sale" | "organisation";
+    /** Sale title or organisation name. */
+    scopeName: string;
+    /** Formatted for display; null when there was no limit. */
+    previousLimit?: string | null;
+    /** Formatted for display; null when the limit was removed. */
+    newLimit?: string | null;
+    supportContactEmail: string;
+  };
   "lot-voided-notice": {
     recipientFirstName?: string | null;
     lotTitle: string;
@@ -79,6 +116,9 @@ export const biddingTemplates = {
     "lot-ended-seller": "live",
     "lot-fulfilment-update": "live",
     "proxy-cancelled-notice": "live",
+    "sale-registration-decision-notice": "live",
+    "bidding-limit-changed-notice": "live",
+    "sale-cancelled-notice": "live",
     "lot-voided-notice": "live",
     "lot-withdrawal-declined-notice": "live",
     "watched-lot-reminder": "live",

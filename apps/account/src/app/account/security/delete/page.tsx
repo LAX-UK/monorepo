@@ -2,6 +2,7 @@ import { AccountShell } from "@/components/account-shell";
 import { AccountPageHeader } from "@/components/account-ui";
 import { AccountUnavailable } from "@/components/account-unavailable";
 import { DeleteAccountSection } from "@/components/delete-account-section";
+import { DownloadBeforeDeletePrompt } from "@/components/download-before-delete-prompt";
 import { loadAccountSession } from "@/server/application/load-account-session";
 import { buildDeletionPageVm } from "@/server/domain/account-deletion.vm";
 import { ACCOUNT_ROUTES } from "@/server/domain/account-settings.vm";
@@ -22,18 +23,18 @@ export default async function DeleteAccountPage() {
     return <AccountUnavailable retryHref={ACCOUNT_ROUTES.deleteAccount} />;
   if (session.status !== "ok") redirect(`/api/auth/login?returnTo=${ACCOUNT_ROUTES.deleteAccount}`);
 
+  const vm = buildDeletionPageVm(session.liveDeletion);
+
   return (
-    <AccountShell>
+    <AccountShell showDeletionBanner={false}>
       <AccountPageHeader
         title="Delete your account"
         description="This permanently removes your LAX account and everything in it."
         backHref={ACCOUNT_ROUTES.security}
         backLabel="Security"
       />
-      <DeleteAccountSection
-        vm={buildDeletionPageVm(session.liveDeletion)}
-        pagePath={ACCOUNT_ROUTES.deleteAccount}
-      />
+      {vm.kind === "unavailable" ? null : <DownloadBeforeDeletePrompt />}
+      <DeleteAccountSection vm={vm} pagePath={ACCOUNT_ROUTES.deleteAccount} />
     </AccountShell>
   );
 }

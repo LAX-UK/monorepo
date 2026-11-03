@@ -1,14 +1,21 @@
 import type { Database } from "@auction/db";
 import {
+  bid,
   bidIdentityDirectory,
   bidUserProfile,
   legalEntity,
   legalEntityMember,
   lot,
   payout,
+  sale,
+  telephoneBidBooking,
+  watchlist,
 } from "@auction/db/schema";
-import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
-import type { INotificationFanoutReader } from "../interfaces/notification-fanout.reader.js";
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import type {
+  INotificationFanoutReader,
+  SaleCancelledPeople,
+} from "../interfaces/notification-fanout.reader.js";
 
 export class DrizzleNotificationFanoutReader implements INotificationFanoutReader {
   constructor(private readonly db: Database) {}
@@ -36,6 +43,50 @@ export class DrizzleNotificationFanoutReader implements INotificationFanoutReade
           ),
         ),
       );
+  }
+
+  async listSaleCancelledPeople(
+    lotIds: readonly string[],
+    saleId: string,
+  ): Promise<SaleCancelledPeople> {
+    const ids = [...lotIds];
+    const [bidders, telephoneClients, consignors, watchers] = await Promise.all([
+      this.db
+        .selectDistinctOn([bid.bidderId], {
+          userId: bid.bidderId,
+          legalEntityId: bid.buyerLegalEntityId,
+        })
+        .from(bid)
+        .where(inArray(bid.lotId, ids))
+        .orderBy(bid.bidderId, desc(bid.createdAt)),
+      this.db
+        .selectDistinctOn([telephoneBidBooking.userId], {
+          userId: telephoneBidBooking.userId,
+          legalEntityId: telephoneBidBooking.buyerLegalEntityId,
+        })
+        .from(telephoneBidBooking)
+        .where(
+          and(
+            eq(telephoneBidBooking.saleId, saleId),
+            inArray(telephoneBidBooking.status, ["requested", "confirmed", "in_progress"]),
+          ),
+        )
+        .orderBy(telephoneBidBooking.userId, desc(telephoneBidBooking.createdAt)),
+      this.db
+        .selectDistinct({ legalEntityId: lot.sellerLegalEntityId })
+        .from(lot)
+        .where(and(inArray(lot.id, ids), isNotNull(lot.sellerLegalEntityId))),
+      this.db
+        .selectDistinct({ userId: watchlist.userId })
+        .from(watchlist)
+        .where(inArray(watchlist.lotId, ids)),
+    ]);
+    return {
+      bidders,
+      telephoneClients,
+      consignorEntityIds: consignors.flatMap((c) => (c.legalEntityId ? [c.legalEntityId] : [])),
+      watcherUserIds: watchers.map((w) => w.userId),
+    };
   }
 
   async getEntityDisplayName(legalEntityId: string): Promise<string> {
@@ -79,6 +130,15 @@ export class DrizzleNotificationFanoutReader implements INotificationFanoutReade
       .select({ title: lot.title })
       .from(lot)
       .where(eq(lot.id, lotId))
+      .limit(1);
+    return row?.title ?? null;
+  }
+
+  async getSaleTitle(saleId: string): Promise<string | null> {
+    const [row] = await this.db
+      .select({ title: sale.title })
+      .from(sale)
+      .where(eq(sale.id, saleId))
       .limit(1);
     return row?.title ?? null;
   }

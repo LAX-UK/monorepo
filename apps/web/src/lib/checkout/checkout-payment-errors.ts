@@ -17,6 +17,8 @@ export function checkoutPaymentErrorMessage(message: string, code?: string | nul
       return "Your session expired. Sign in again to complete checkout.";
     case "onboarding_required":
       return "Finish setting up your account before completing checkout.";
+    case "account_deletion_pending":
+      return message;
     case "payment_intent_amount_mismatch":
       return "Payment could not be verified against your invoice total. Contact settlements.";
     case "address_not_found":

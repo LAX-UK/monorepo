@@ -20,6 +20,23 @@ describe("notificationHref", () => {
     expect(notificationHref({ ...base, legalEntityId: null })).toBe("/admin/submissions/sub-9");
   });
 
+  it("opens the next step for an identity outcome: register for a sale, or try again", () => {
+    const base = {
+      id: "n10",
+      userId: "u1",
+      title: "Identity",
+      message: "Body",
+      lotId: null,
+      submissionId: null,
+      legalEntityId: null,
+      read: false,
+      createdAt: new Date(),
+    };
+    expect(notificationHref({ ...base, type: "kyc_approved" })).toBe("/sales");
+    expect(notificationHref({ ...base, type: "kyc_declined" })).toBe("/verify-identity");
+    expect(notificationHref({ ...base, type: "sale_cancelled" })).toBeNull();
+  });
+
   it("prefers submission detail over lot page", () => {
     expect(
       notificationHref({
@@ -109,4 +126,21 @@ describe("notificationHref for delivery notices", () => {
       ).toBe("/purchases");
     },
   );
+
+  it("opens a sale announcement on the sale", () => {
+    expect(
+      notificationHref({
+        id: "n10",
+        userId: "u1",
+        type: "sale_announced",
+        title: "New sale: Modern British and Irish Art",
+        message: "Opens Wed 18 Nov · 214 lots",
+        lotId: null,
+        submissionId: null,
+        saleId: "sale-1",
+        read: false,
+        createdAt: new Date(),
+      }),
+    ).toBe("/sales/sale-1");
+  });
 });

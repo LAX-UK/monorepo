@@ -14,6 +14,7 @@ import { EmailUnsubscribeService } from "../services/email-unsubscribe.service.j
 import { ErrorHandlerService } from "../services/error-handler.service.js";
 import { NewsletterSignupService } from "../services/newsletter-signup.service.js";
 import { PostmarkWebhookService } from "../services/postmark-webhook.service.js";
+import { type BidAlertEngine, createBidAlertEngine } from "./create-alert-engine.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerPaymentsServices } from "./create-payments-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
@@ -31,6 +32,7 @@ export type ContainerUserUtilityServices = {
   postmarkWebhookService: PostmarkWebhookService;
   adminPaymentListQueryService: AdminPaymentListQueryService;
   newsletterSignupService: NewsletterSignupService;
+  alertEngine: BidAlertEngine;
 };
 
 export type CreateUserUtilityServicesInput = {
@@ -136,6 +138,13 @@ export function createUserUtilityServices(
     marketingSyncQueue,
   );
 
+  const alertEngine = createBidAlertEngine({
+    env,
+    db: input.db,
+    email: infra.emailService,
+    userRepo,
+  });
+
   const adminPaymentListQueryService = new AdminPaymentListQueryService(paymentRepo);
 
   return {
@@ -147,5 +156,6 @@ export function createUserUtilityServices(
     postmarkWebhookService,
     adminPaymentListQueryService,
     newsletterSignupService,
+    alertEngine,
   };
 }

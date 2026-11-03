@@ -1,5 +1,10 @@
 export type { ConsentRecord, ConsentStore } from "./consent-store.js";
-export type { EmailEnqueueInput, EmailSender } from "./email-sender.js";
+export type {
+  CredentialEmailInput,
+  CredentialEmailSender,
+  EmailEnqueueInput,
+  EmailSender,
+} from "./email-sender.js";
 export { IDENTITY_EMAIL_TEMPLATE_NAMES } from "./email-sender.js";
 export type { IdentityEmailTemplate } from "./email-sender.js";
 export type { SendOtpOptions, SmsSender } from "./sms-sender.js";
@@ -13,7 +18,11 @@ export type {
   TwoFactorPolicyStore,
 } from "./two-factor-policy-store.js";
 export type { AccountLinkReader } from "./account-link-reader.js";
-export type { SecurityNoticeEvent, SecurityNoticePublisher } from "./security-notice.js";
+export type {
+  SecurityNoticeDelivery,
+  SecurityNoticeEvent,
+  SecurityNoticePublisher,
+} from "./security-notice.js";
 export type { JwksStore } from "./jwks-store.js";
 export type {
   IdentityEventPublisher,
@@ -34,6 +43,8 @@ export type AuthPorts = {
   accountLinkReader: import("./account-link-reader.js").AccountLinkReader;
   phoneNumberStore: import("./phone-number-store.js").PhoneNumberStore;
   email: import("./email-sender.js").EmailSender | undefined;
+  /** Sends the emails that carry a one-time link, with a durable retry behind them. */
+  credentialEmail: import("./email-sender.js").CredentialEmailSender | undefined;
   sms: import("./sms-sender.js").SmsSender | undefined;
   events: import("./identity-event-publisher.js").IdentityEventPublisher | undefined;
   securityNotices: import("./security-notice.js").SecurityNoticePublisher | undefined;

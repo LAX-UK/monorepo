@@ -6,6 +6,8 @@ import type { BiddingTemplateVars } from "./templates/types/bidding.js";
 import { biddingTemplates } from "./templates/types/bidding.js";
 import type { ComplianceTemplateVars } from "./templates/types/compliance.js";
 import { complianceTemplates } from "./templates/types/compliance.js";
+import type { EnquiryTemplateVars } from "./templates/types/enquiry.js";
+import { enquiryTemplates } from "./templates/types/enquiry.js";
 import type { InviteTemplateVars } from "./templates/types/invite.js";
 import { inviteTemplates } from "./templates/types/invite.js";
 import type { LegalEntityTemplateVars } from "./templates/types/legal-entity.js";
@@ -14,6 +16,8 @@ import type { PaymentTemplateVars } from "./templates/types/payment.js";
 import { paymentTemplates } from "./templates/types/payment.js";
 import type { PayoutTemplateVars } from "./templates/types/payout.js";
 import { payoutTemplates } from "./templates/types/payout.js";
+import type { AlertTemplateVars } from "./templates/types/sale-alerts.js";
+import { saleAlertTemplates } from "./templates/types/sale-alerts.js";
 import type { RecipientResolution, RenderedEmail } from "./templates/types/shared.js";
 import type { ShopTemplateVars } from "./templates/types/shop.js";
 import { shopTemplates } from "./templates/types/shop.js";
@@ -32,7 +36,9 @@ export const templateNames = [
   ...submissionTemplates.names,
   ...complianceTemplates.names,
   ...adminTemplates.names,
+  ...enquiryTemplates.names,
   ...shopTemplates.names,
+  ...saleAlertTemplates.names,
 ] as const;
 
 export type TemplateName = (typeof templateNames)[number];
@@ -46,7 +52,9 @@ export type TemplateVarsByName = AuthTemplateVars &
   SubmissionTemplateVars &
   ComplianceTemplateVars &
   AdminTemplateVars &
-  ShopTemplateVars;
+  EnquiryTemplateVars &
+  ShopTemplateVars &
+  AlertTemplateVars;
 
 export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   ...authTemplates.recipientResolution,
@@ -58,5 +66,7 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   ...submissionTemplates.recipientResolution,
   ...complianceTemplates.recipientResolution,
   ...adminTemplates.recipientResolution,
+  ...enquiryTemplates.recipientResolution,
   ...shopTemplates.recipientResolution,
+  ...saleAlertTemplates.recipientResolution,
 };

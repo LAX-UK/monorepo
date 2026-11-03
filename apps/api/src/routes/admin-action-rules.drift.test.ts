@@ -3,11 +3,17 @@ import {
   DATA_REQUESTS_MANAGE_ACCESS,
   DELIVERY_REPLAY_ACCESS,
   DISPUTE_ALLOCATION_WRITE_ACCESS,
+  EMAIL_ADMIN_ACCESS,
+  EMAIL_BLOCK_LIFT_ACCESS,
+  EMAIL_DELIVERY_READ_ACCESS,
+  ENQUIRIES_ACCESS,
+  ENQUIRY_ROUTING_MANAGE_ACCESS,
   FAILED_JOBS_READ_ACCESS,
   FAILED_JOBS_WRITE_ACCESS,
   PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
   PAYMENT_WRITE_ACCESS,
   SALES_ACCESS,
+  STAFF_EMAIL_CHANGE_ACCESS,
   type StaffRoles,
   type UserRole,
   type UserStaffRole,
@@ -34,6 +40,8 @@ import { createAdminRoutes } from "./admin.js";
 const SALE_ID = "00000000-0000-4000-8000-000000000001";
 const LOT_ID = "00000000-0000-4000-8000-000000000002";
 const PAYMENT_ID = "00000000-0000-4000-8000-000000000003";
+const ENQUIRY_ID = "00000000-0000-4000-8000-000000000004";
+const PERSON_ID = "00000000-0000-4000-8000-000000000005";
 
 function buildApp(staffRoles: StaffRoles | undefined) {
   const container = {
@@ -66,7 +74,7 @@ type AdminAction = {
   /** What the UI hides or shows. */
   name: string;
   rule: CapabilityRequirement;
-  method: "GET" | "POST";
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   path: string;
   body?: unknown;
   /** Roles the rule is documented to allow; pins the matrix so a change is a visible diff. */
@@ -116,6 +124,20 @@ const ACTIONS: AdminAction[] = [
     expectedRoles: ["administrator", "sales_manager"],
   },
   {
+    name: "list dead-lettered deliveries",
+    rule: FAILED_JOBS_READ_ACCESS,
+    method: "GET",
+    path: "/admin/system/delivery/dead-letter",
+    expectedRoles: ["administrator", "read_only"],
+  },
+  {
+    name: "open a domain delivery",
+    rule: FAILED_JOBS_READ_ACCESS,
+    method: "GET",
+    path: "/admin/system/delivery/42",
+    expectedRoles: ["administrator", "read_only"],
+  },
+  {
     name: "replay a dead-lettered delivery",
     rule: DELIVERY_REPLAY_ACCESS,
     method: "POST",
@@ -159,6 +181,99 @@ const ACTIONS: AdminAction[] = [
     method: "POST",
     path: "/admin/system/failed-jobs/restore",
     body: { ids: ["dlq:email:1"] },
+    expectedRoles: ["administrator"],
+  },
+  {
+    name: "list enquiries",
+    rule: ENQUIRIES_ACCESS,
+    method: "GET",
+    path: "/admin/enquiries",
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
+    name: "open an enquiry",
+    rule: ENQUIRIES_ACCESS,
+    method: "GET",
+    path: `/admin/enquiries/${ENQUIRY_ID}`,
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
+    name: "change an enquiry",
+    rule: ENQUIRIES_ACCESS,
+    method: "PATCH",
+    path: "/admin/enquiries/E-1042",
+    body: { version: 1, note: "Called the seller." },
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
+    name: "mark an enquiry handled",
+    rule: ENQUIRIES_ACCESS,
+    method: "POST",
+    path: `/admin/enquiries/${ENQUIRY_ID}/handled`,
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
+    name: "read the enquiry routing",
+    rule: ENQUIRIES_ACCESS,
+    method: "GET",
+    path: "/admin/enquiry-routing",
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
+    name: "list who an enquiry may be given to",
+    rule: ENQUIRIES_ACCESS,
+    method: "GET",
+    path: "/admin/enquiry-assignees",
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
+    name: "change the enquiry routing",
+    rule: ENQUIRY_ROUTING_MANAGE_ACCESS,
+    method: "PUT",
+    path: "/admin/enquiry-routing",
+    body: { rules: [] },
+    expectedRoles: ["administrator", "sales_manager"],
+  },
+  {
+    name: "move a person's account to a new email address",
+    rule: STAFF_EMAIL_CHANGE_ACCESS,
+    method: "POST",
+    path: `/admin/users/${PERSON_ID}/email-change`,
+    body: {
+      newEmail: "new@example.com",
+      reason: "Lost the old mailbox; caller matched the KYC record.",
+      proof: { kind: "id_check", reference: "IDV-2291" },
+    },
+    expectedRoles: ["administrator", "client_services"],
+  },
+  {
+    name: "see the KYC record to match for an email change",
+    rule: STAFF_EMAIL_CHANGE_ACCESS,
+    method: "GET",
+    path: `/admin/users/${PERSON_ID}/email-change/kyc-record`,
+    expectedRoles: ["administrator", "client_services"],
+  },
+  {
+    name: "open a person's email delivery",
+    rule: EMAIL_DELIVERY_READ_ACCESS,
+    method: "GET",
+    path: "/admin/users/person-1/email-delivery",
+    expectedRoles: ["administrator", "client_services", "read_only"],
+  },
+  {
+    name: "lift a block on a person's email",
+    rule: EMAIL_BLOCK_LIFT_ACCESS,
+    method: "POST",
+    path: "/admin/users/person-1/email-delivery/lift",
+    body: { reason: "mailbox_fixed", expectedSince: "2026-11-01T10:00:00.000Z" },
+    expectedRoles: ["administrator", "client_services"],
+  },
+  {
+    name: "lift an email block by its address hash",
+    rule: EMAIL_ADMIN_ACCESS,
+    method: "DELETE",
+    path: `/admin/email/suppressions/${"a".repeat(64)}`,
+    body: { reason: "mailbox_fixed", expectedSince: "2026-11-01T10:00:00.000Z" },
     expectedRoles: ["administrator"],
   },
   {

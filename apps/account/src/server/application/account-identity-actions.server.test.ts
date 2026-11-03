@@ -9,7 +9,10 @@ const identity = {
   confirmEmailChange: vi.fn(),
   sendPhoneCode: vi.fn(),
   verifyPhone: vi.fn(),
+  removePhone: vi.fn(),
+  changePassword: vi.fn(),
   regenerateBackupCodes: vi.fn(),
+  unlinkSignInMethod: vi.fn(),
   requestDeletion: vi.fn(),
   cancelDeletion: vi.fn(),
 };
@@ -21,14 +24,17 @@ vi.mock("./load-account-record", () => ({ loadAccountRecord: () => loadAccountRe
 const {
   cancelAccountDeletionAction,
   cancelEmailChangeAction,
+  changePasswordAction,
   confirmEmailChangeAction,
   regenerateBackupCodesAction,
+  removeSignInMethodAction,
   renameAccountAction,
   requestAccountDeletionAction,
   sendPhoneCodeAction,
   signOutDeviceAction,
   signOutOtherDevicesAction,
   startEmailChangeAction,
+  removePhoneAction,
   verifyPhoneAction,
 } = await import("./account-identity-actions.server");
 
@@ -39,6 +45,52 @@ describe("account identity actions", () => {
     vi.resetAllMocks();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     loadAccountRecord.mockResolvedValue({ ...ACTOR, subject: "subject" });
+  });
+
+  describe("removeSignInMethodAction", () => {
+    it("removes the provider as the signed-in person and says every other device was signed out", async () => {
+      identity.unlinkSignInMethod.mockResolvedValue({
+        status: "ok",
+        value: { unlinked: "google", revokedSessions: 2 },
+      });
+      expect(await removeSignInMethodAction("google")).toEqual({
+        status: "ok",
+        message: "Google sign-in has been removed. Every other device has been signed out.",
+      });
+      expect(identity.unlinkSignInMethod).toHaveBeenCalledWith(ACTOR, "google");
+    });
+
+    it("refuses an unknown provider before calling the issuer", async () => {
+      expect(await removeSignInMethodAction("credential")).toMatchObject({ status: "error" });
+      expect(identity.unlinkSignInMethod).not.toHaveBeenCalled();
+    });
+
+    it("explains the last-method refusal", async () => {
+      identity.unlinkSignInMethod.mockResolvedValue({
+        status: "rejected",
+        reason: "last_sign_in_method",
+      });
+      expect(await removeSignInMethodAction("google")).toEqual({
+        status: "error",
+        message: expect.stringContaining("only way you can sign in"),
+      });
+    });
+
+    it("sends the person through a fresh sign-in when theirs is too old", async () => {
+      identity.unlinkSignInMethod.mockResolvedValue({ status: "reauth_required" });
+      expect(await removeSignInMethodAction("apple")).toEqual({ status: "reauth_required" });
+    });
+
+    it("sends the person to sign in when they have no session", async () => {
+      loadAccountRecord.mockResolvedValue(null);
+      expect(await removeSignInMethodAction("apple")).toEqual({ status: "reauth_required" });
+      expect(identity.unlinkSignInMethod).not.toHaveBeenCalled();
+    });
+
+    it("reports an unreachable issuer as a retryable failure", async () => {
+      identity.unlinkSignInMethod.mockResolvedValue({ status: "unavailable" });
+      expect(await removeSignInMethodAction("google")).toMatchObject({ status: "error" });
+    });
   });
 
   it("renames as the signed-in person", async () => {
@@ -237,6 +289,28 @@ describe("account identity actions", () => {
       });
     });
 
+    it("removes the number as the signed-in person", async () => {
+      identity.removePhone.mockResolvedValue({ status: "ok", value: true });
+      expect(await removePhoneAction()).toEqual({
+        status: "ok",
+        message: "Your phone number has been removed.",
+      });
+      expect(identity.removePhone).toHaveBeenCalledWith(ACTOR);
+    });
+
+    it("explains a removal refused because there is no number", async () => {
+      identity.removePhone.mockResolvedValue({ status: "rejected", reason: "no_phone" });
+      expect(await removePhoneAction()).toMatchObject({
+        status: "error",
+        message: expect.stringContaining("no phone number"),
+      });
+    });
+
+    it("sends the person through a fresh sign-in when removal needs one", async () => {
+      identity.removePhone.mockResolvedValue({ status: "reauth_required" });
+      expect(await removePhoneAction()).toEqual({ status: "reauth_required" });
+    });
+
     it("sends the person through a fresh sign-in when the issuer asks for one", async () => {
       identity.sendPhoneCode.mockResolvedValue({ status: "reauth_required" });
       expect(await sendPhoneCodeAction("+447700900123")).toEqual({ status: "reauth_required" });
@@ -319,6 +393,73 @@ describe("account identity actions", () => {
       expect(await cancelAccountDeletionAction()).toMatchObject({
         status: "ok",
         message: "There was no deletion to cancel.",
+      });
+    });
+  });
+
+  describe("changePasswordAction", () => {
+    const input = { currentPassword: "Current-password-1", newPassword: "A-better-passphrase-2" };
+
+    it("changes the password as the signed-in person and reports a plain change", async () => {
+      identity.changePassword.mockResolvedValue({
+        status: "ok",
+        value: { changed: true, created: false },
+      });
+      expect(await changePasswordAction(input)).toEqual({ status: "ok", created: false });
+      expect(identity.changePassword).toHaveBeenCalledWith(ACTOR, input);
+    });
+
+    it("sets a first password when no current password is sent", async () => {
+      identity.changePassword.mockResolvedValue({
+        status: "ok",
+        value: { changed: true, created: true },
+      });
+      expect(
+        await changePasswordAction({ currentPassword: null, newPassword: input.newPassword }),
+      ).toEqual({ status: "ok", created: true });
+    });
+
+    it("repeats the form's checks without calling the issuer", async () => {
+      expect(await changePasswordAction({ ...input, newPassword: "short" })).toMatchObject({
+        status: "error",
+        field: "next",
+      });
+      expect(await changePasswordAction({ ...input, currentPassword: "" })).toMatchObject({
+        status: "error",
+        field: "current",
+      });
+      expect(
+        await changePasswordAction({ ...input, newPassword: input.currentPassword }),
+      ).toMatchObject({ status: "error", field: "next" });
+      expect(identity.changePassword).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["invalid_password", "current"],
+      ["invalid_password_policy", "next"],
+      ["password_breached", "next"],
+      ["same_password", "next"],
+      ["rate_limited", "current"],
+    ] as const)("maps the issuer's %s to the %s field", async (reason, field) => {
+      identity.changePassword.mockResolvedValue({ status: "rejected", reason });
+      expect(await changePasswordAction(input)).toMatchObject({ status: "error", field });
+    });
+
+    it("sends a stale sign-in, or no sign-in, through a fresh one", async () => {
+      identity.changePassword.mockResolvedValue({ status: "reauth_required" });
+      expect(await changePasswordAction(input)).toEqual({ status: "reauth_required" });
+      loadAccountRecord.mockResolvedValue(null);
+      identity.changePassword.mockClear();
+      expect(await changePasswordAction(input)).toEqual({ status: "reauth_required" });
+      expect(identity.changePassword).not.toHaveBeenCalled();
+    });
+
+    it("says nothing was changed when the issuer cannot be reached, and names no field", async () => {
+      identity.changePassword.mockResolvedValue({ status: "unavailable" });
+      expect(await changePasswordAction(input)).toMatchObject({
+        status: "error",
+        field: null,
+        message: expect.stringContaining("Nothing was changed"),
       });
     });
   });

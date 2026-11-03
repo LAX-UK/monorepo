@@ -2,7 +2,7 @@
 
 import { useNow } from "@/hooks/use-now";
 import { type LotTimerInputs, classifyLotTimerState } from "./classify";
-import { formatRemaining } from "./format";
+import { timerText } from "./format";
 import { LotTimerPill, type LotTimerPillVariant } from "./lot-timer-pill";
 
 export type LotCardTimerProps = LotTimerInputs & {
@@ -30,12 +30,11 @@ export function LotCardTimer({
   const overlayProp = overlay ? { useOverlayChrome: true as const } : {};
   const layoutProp = layout !== "overlay" ? { layout } : {};
 
-  if (state.kind === "live" || state.kind === "opensSoon") {
-    const clockText = formatRemaining(state.msLeft);
+  if ((state.kind === "live" || state.kind === "opensSoon") && now != null) {
     return (
       <LotTimerPill
         state={state}
-        clockText={clockText}
+        timer={timerText(state.msLeft, now)}
         {...surface}
         {...variantProp}
         {...overlayProp}

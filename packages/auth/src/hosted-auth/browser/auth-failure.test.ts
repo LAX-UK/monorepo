@@ -18,6 +18,22 @@ function describe_(
   return describeAuthFailure({ data: null, ...response }, context, fallback, NOW);
 }
 
+describe("describeAuthFailure when the email could not be sent", () => {
+  it("says so on every screen that sends an email", () => {
+    for (const context of ["sign-in", "other"] as const) {
+      expect(describe_({ status: 503, data: { code: "EMAIL_SEND_FAILED" } }, context).message).toBe(
+        "We couldn't send the email. Try again.",
+      );
+    }
+  });
+
+  it("keeps the generic server message for other server faults", () => {
+    expect(describe_({ status: 503, data: { code: "OTHER" } }).message).toBe(
+      "Something went wrong on our side. Try again.",
+    );
+  });
+});
+
 describe("retryAfterSeconds", () => {
   it("reads whole seconds from Retry-After", () => {
     expect(retryAfterSeconds({ status: 429, data: null, retryAfter: "120" }, NOW)).toBe(120);
@@ -87,6 +103,22 @@ describe("describeAuthFailure", () => {
         message: "Verify your email to continue.",
         action: "resend-verification",
       });
+    });
+
+    it("tells a suspended person the account is suspended and points to contact", () => {
+      expect(describe_({ status: 403, data: { code: "IDENTITY_DISABLED" } }, "sign-in")).toEqual({
+        message: "This account is suspended.",
+        action: "contact-support",
+      });
+    });
+
+    it("does not call a suspension a wrong password, whatever the screen's fallback says", () => {
+      const failure = describe_(
+        { status: 403, data: { code: "IDENTITY_DISABLED" } },
+        "sign-in",
+        "Invalid email or password.",
+      );
+      expect(failure.message).not.toMatch(/password/i);
     });
 
     it("does not offer a resend for other forbidden responses", () => {

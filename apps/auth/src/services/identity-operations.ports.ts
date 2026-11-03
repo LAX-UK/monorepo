@@ -1,3 +1,6 @@
+import type { SocialSignInProvider } from "@auction/identity-contracts";
+import type { SignInAccountRow } from "./sign-in-method-rules.js";
+
 export type IdentityOperationTransaction = unknown;
 
 export type IdentitySubjectRecord = {
@@ -17,6 +20,9 @@ export type IdentitySecurityStatusRecord = {
   emailChangeExpiresAt: Date | null;
   /** When the person asked for deletion; null when they have not, or cancelled. */
   deletionRequestedAt: Date | null;
+  /** Set while the daily purge is keeping a due deletion back. */
+  deletionHeldAt: Date | null;
+  deletionHoldReasons: unknown;
 };
 
 export type IdentitySessionRecord = {
@@ -63,6 +69,14 @@ export interface IIdentitySubjectRepository {
     phone: string,
     now: Date,
   ): Promise<"updated" | "phone_taken" | "not_found">;
+  /** Clears the number and its verified flag, reporting the number that was removed. */
+  clearPhone(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    now: Date,
+  ): Promise<
+    { status: "cleared"; previous: string } | { status: "no_phone" } | { status: "not_found" }
+  >;
   markDeletionRequested(
     transaction: IdentityOperationTransaction,
     subjectId: string,
@@ -91,6 +105,19 @@ export interface IIdentitySubjectRepository {
 
 export interface IIdentityCredentialRepository {
   listProviders(subjectId: string): Promise<Array<{ providerId: string; hasPassword: boolean }>>;
+  /** Every account row that can sign the person in, with when it was added. */
+  listSignInAccounts(subjectId: string): Promise<SignInAccountRow[]>;
+  /** The same rows, locked until the transaction ends, so two removals cannot both pass the last-method check. */
+  lockSignInAccounts(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+  ): Promise<SignInAccountRow[]>;
+  /** Removes one linked social account; false when there was none. */
+  deleteSocialAccount(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    provider: SocialSignInProvider,
+  ): Promise<boolean>;
   findCredential(subjectId: string): Promise<{ id: string; passwordHash: string | null } | null>;
   insertCredential(
     transaction: IdentityOperationTransaction,
@@ -146,8 +173,12 @@ export interface IIdentityEmailChangeRepository {
     newEmail: string;
     expiresAt: Date;
     now: Date;
-  }): Promise<void>;
-  readPending(subjectId: string): Promise<string | null>;
+  }): Promise<"started" | "address_pending">;
+  /** Clears every change whose links have expired; returns how many rows were cleared. */
+  clearExpired(now: Date): Promise<number>;
+  readPending(
+    subjectId: string,
+  ): Promise<{ pendingNewEmail: string | null; emailChangeExpiresAt: Date | null } | null>;
   clearPending(subjectId: string, now: Date): Promise<void>;
   loadForConfirmation(
     transaction: IdentityOperationTransaction,

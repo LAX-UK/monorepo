@@ -1,9 +1,14 @@
 import { processAdminImpersonationNotify } from "./admin-impersonation-notify.js";
 import { AML_MATCH_REVIEW_PROJECTOR, processAmlMatchReview } from "./aml-match-review.js";
+import { BID_ALERT_MATCHING_PROJECTOR, processBidAlertMatching } from "./bid-alert-matching.js";
 import {
   BID_IDENTITY_DIRECTORY_PROJECTOR,
   processBidIdentityDirectory,
 } from "./bid-identity-directory.js";
+import {
+  BID_PERSONAL_DATA_ANONYMISATION_PROJECTOR,
+  processBidPersonalDataAnonymisation,
+} from "./bid-personal-data-anonymisation.js";
 import {
   BID_PROFILE_PROVISIONING_PROJECTOR,
   processBidProfileProvisioning,
@@ -176,6 +181,12 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
       },
     },
     {
+      name: BID_PERSONAL_DATA_ANONYMISATION_PROJECTOR,
+      async run(ctx) {
+        await processBidPersonalDataAnonymisation(ctx);
+      },
+    },
+    {
       name: BID_PROFILE_PROVISIONING_PROJECTOR,
       async run(ctx) {
         await processBidProfileProvisioning({ ctx, log: ctx.log });
@@ -245,6 +256,20 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
           recorder: ctx.unsoldChoiceDeadlines as NonNullable<
             ProjectorRunContext["unsoldChoiceDeadlines"]
           >,
+        });
+      },
+    },
+    {
+      name: BID_ALERT_MATCHING_PROJECTOR,
+      isEnabled(ctx) {
+        return ctx.bidAlerts != null;
+      },
+      async run(ctx) {
+        await ctx.projectorStateRepo.ensureCursor(BID_ALERT_MATCHING_PROJECTOR);
+        await processBidAlertMatching({
+          ctx,
+          log: ctx.log,
+          matching: ctx.bidAlerts as NonNullable<ProjectorRunContext["bidAlerts"]>,
         });
       },
     },

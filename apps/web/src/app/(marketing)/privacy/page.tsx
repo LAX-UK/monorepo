@@ -437,11 +437,11 @@ export default function PrivacyPage() {
           subprocessors list.
         </p>
         <p>
-          You can manage cookie preferences through the in-site banner and{" "}
+          You can manage cookie settings through the in-site banner and{" "}
           <Link href="/cookies" className={MARKETING_PROSE_LINK}>
             Cookie policy
           </Link>
-          , through the <strong>Cookie preferences</strong> link in the site footer, through your
+          , through the <strong>Cookie settings</strong> link in the site footer, through your
           browser settings, and through dashboard preferences where applicable.
         </p>
 

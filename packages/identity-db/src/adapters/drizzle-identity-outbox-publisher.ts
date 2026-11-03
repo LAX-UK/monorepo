@@ -28,6 +28,12 @@ export type IdentityOutboxLifecycleEvent =
     }
   | { type: "user.deletion_requested"; userId: string; requestedAt?: Date }
   | { type: "user.deletion_cancelled"; userId: string; cancelledAt?: Date }
+  | {
+      type: "user.deletion_held";
+      userId: string;
+      heldAt: Date;
+      reasons: readonly { code: string; message: string; href: string | null }[];
+    }
   | { type: "user.identity_disabled"; userId: string; reason?: string }
   | { type: "user.identity_enabled"; userId: string }
   | { type: "user.identity_merged"; retiredSubjectId: string; canonicalSubjectId: string }
@@ -38,7 +44,8 @@ export type IdentityOutboxLifecycleEvent =
       type: "user.credential_changed";
       userId: string;
       changeType?: "create" | "update";
-    };
+    }
+  | { type: "user.sign_in_method_unlinked"; userId: string; provider: "google" | "apple" };
 
 export type IdentityOutboxPublisher = {
   publish(
@@ -160,6 +167,21 @@ function buildOutboxRow(
           cancelledAt: (event.cancelledAt ?? new Date()).toISOString(),
         },
       };
+    case "user.deletion_held":
+      return {
+        aggregateType: "user",
+        aggregateId: event.userId,
+        eventType: IDENTITY_EVENT_TYPES.DELETION_HELD,
+        producer,
+        actorUserId: null,
+        schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+        payload: {
+          schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+          subjectId: event.userId,
+          heldAt: event.heldAt.toISOString(),
+          reasons: event.reasons.map((r) => ({ code: r.code, message: r.message, href: r.href })),
+        },
+      };
     case "user.identity_disabled":
       return {
         aggregateType: "user",
@@ -245,6 +267,21 @@ function buildOutboxRow(
           subjectId: event.userId,
           ...(event.sessionId ? { sessionId: event.sessionId } : {}),
           revokedAt: new Date().toISOString(),
+        },
+      };
+    case "user.sign_in_method_unlinked":
+      return {
+        aggregateType: "user",
+        aggregateId: event.userId,
+        eventType: IDENTITY_EVENT_TYPES.SIGN_IN_METHOD_UNLINKED,
+        producer,
+        actorUserId: null,
+        schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+        payload: {
+          schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+          subjectId: event.userId,
+          provider: event.provider,
+          unlinkedAt: new Date().toISOString(),
         },
       };
     case "user.credential_changed":

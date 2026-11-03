@@ -1,4 +1,5 @@
 import type {
+  AdminEnquiryRouteServices,
   AdminIntegrationRouteServices,
   AdminStaffSecurityRouteServices,
 } from "./admin-satellite-routes.js";
@@ -52,8 +53,12 @@ export type AdminOperationsSaleroomRoutesContainer = AdminRoutePick<
 export type AdminTelephoneBookingRoutesContainer = AdminRoutePick<"telephoneBookings">;
 
 export type AdminCatalogSupportRoutesContainer = AdminRoutePick<
-  "conditionReports" | "lotFulfilment" | "saleRegistrations" | "qrCodes" | "email"
+  "conditionReports" | "lotFulfilment" | "saleRegistrations" | "qrCodes"
 > & { admin: Pick<AdminIntegrationRouteServices, "deliveryQuotes"> };
+
+export type AdminEmailRoutesContainer = AdminRoutePick<
+  "email" | "emailDelivery" | "emailBlockLift"
+>;
 
 export type AdminAuditRoutesContainer = AdminRoutePick<"domainEvents" | "auditLog">;
 
@@ -68,6 +73,8 @@ export type AdminFinancePayoutRoutesContainer = Pick<
   admin: Pick<AdminRouteServices, "payouts"> &
     Pick<AdminStaffSecurityRouteServices, "stepUp" | "idempotencyStore">;
 };
+
+export type AdminEnquiryRoutesContainer = { admin: AdminEnquiryRouteServices };
 
 export type AdminSatelliteJobQueuesRoutesContainer = AdminRoutePick<"jobQueues">;
 

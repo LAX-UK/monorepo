@@ -1,7 +1,7 @@
 import { classifyLotTimerState } from "@/lib/lot/classify-lot-timer-state";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
 import type { LotLifecycleKind as DomainLotLifecycleKind } from "@auction/domain";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, LotTimingSource, Sale } from "@auction/types";
 import {
   isSaleroomDeliveryMode,
   isSaleroomGatedForOnlineBids,
@@ -28,13 +28,11 @@ export type LifecycleBadgeVM = {
   href?: string;
 };
 
-type LotLifecycleLot = Pick<
-  Lot,
-  "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id"
-> & {
-  /** Public lot payloads hide the buyer and say only whether the lot sold. */
-  hasWinner?: boolean | undefined;
-};
+type LotLifecycleLot = Pick<Lot, "status" | "winnerId" | "currentPrice" | "id"> &
+  LotTimingSource & {
+    /** Public lot payloads hide the buyer and say only whether the lot sold. */
+    hasWinner?: boolean | undefined;
+  };
 
 type LotLifecycleSale =
   | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
@@ -130,7 +128,7 @@ export function classifyLotLifecycle(
   }
 
   if (lot.status === "scheduled") {
-    const startMs = new Date(lot.startTime).getTime();
+    const startMs = new Date(lot.startTime ?? Number.NaN).getTime();
     if (Number.isFinite(startMs) && startMs > nowMs) {
       return { kind: "scheduled", msLeft: startMs - nowMs };
     }

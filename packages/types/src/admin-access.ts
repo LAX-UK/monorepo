@@ -172,6 +172,15 @@ export const LOT_FULFILMENT_ACCESS: CapabilityRequirement = {
   anyOf: ["operations.fulfilment", "platform.admin.full"],
 };
 
+/**
+ * Record a buyer default: void an unpaid sale and decide where the lot goes. It cancels a sale
+ * and releases the lot, so it belongs to the sales managers who run the lot and to finance, who
+ * own the invoice. The administrator holds both.
+ */
+export const BUYER_DEFAULT_ACCESS: CapabilityRequirement = {
+  anyOf: ["auction.manage", "finance.platform.write"],
+};
+
 /** Finance shell: payments, disputes, payouts, integrations. */
 export const FINANCE_ACCESS: CapabilityRequirement = "finance.read";
 
@@ -244,6 +253,18 @@ export const EMAIL_ADMIN_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
 /** Read-only email outbox, events, and suppression list (no mutations). */
 export const EMAIL_OBSERVABILITY_ACCESS: CapabilityRequirement = readOrWrite(EMAIL_ADMIN_ACCESS);
 
+/**
+ * Lift a bounce, repeated soft bounces or a manual block on a person's email. A complaint is
+ * lifted under EMAIL_ADMIN_ACCESS; nobody lifts an unsubscribe.
+ */
+export const EMAIL_BLOCK_LIFT_ACCESS: CapabilityRequirement = {
+  anyOf: ["support.respond", "platform.admin.full"],
+};
+
+/** Read a person's email delivery: their sends and any block on their address. */
+export const EMAIL_DELIVERY_READ_ACCESS: CapabilityRequirement =
+  readOrWrite(EMAIL_BLOCK_LIFT_ACCESS);
+
 /** Client/staff directory list and detail reads. */
 export const USERS_DIRECTORY_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "client.read"],
@@ -307,8 +328,53 @@ export const USER_PICKER_ACCESS: CapabilityRequirement = {
   anyOf: ["catalogue.write", "artist.review", "platform.admin.full"],
 };
 
+/**
+ * Contact form enquiries in the staff work inbox: reading what the sender wrote (personal data)
+ * and marking an enquiry handled. Client services and administrators.
+ */
+export const MARKETING_ENQUIRIES_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond"],
+};
+
+/**
+ * Account deletions the daily purge is holding because the person still has something open.
+ * Client services and administrators see the work and contact the person.
+ */
+export const DELETION_HOLD_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond"],
+};
+
+/** Private sale enquiries: the work offered, the budget and how to reach the sender. */
+export const PRIVATE_SALE_ENQUIRIES_READ_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "enquiries.private_sale.read"],
+};
+
+/** The Enquiries list and record: general enquiries, private sale enquiries, or both. */
+export const ENQUIRIES_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond", "enquiries.private_sale.read"],
+};
+
+/** Hand an enquiry to a colleague, or take it back. */
+export const ENQUIRY_ASSIGN_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond", "private_sale.manage"],
+};
+
+/** Choose which specialist receives each department's enquiries. */
+export const ENQUIRY_ROUTING_MANAGE_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "auction.manage"],
+};
+
 /** Suspend, unsuspend, and bulk user moderation. */
 export const USER_MODERATION_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond"],
+};
+
+/**
+ * Moving an account to a new email address for someone who has lost the old inbox. Today the same
+ * people as {@link USER_MODERATION_ACCESS}, but it is its own rule: it changes where an account's
+ * sign-in and security mail go, so it can be narrowed without touching suspend or unsuspend.
+ */
+export const STAFF_EMAIL_CHANGE_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "support.respond"],
 };
 

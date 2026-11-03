@@ -4,7 +4,11 @@ import { AccountSecurityFactsService } from "./account-security-facts.service.js
 const SUBJECT = "11111111-1111-4111-8111-111111111111";
 
 function build(input: {
-  base: { twoFactorEnabled: boolean } | null;
+  base: {
+    twoFactorEnabled: boolean;
+    hasPassword: boolean;
+    deletionRequestedAt?: string | null;
+  } | null;
   count?: () => Promise<number>;
   onCountFailure?: (error: unknown) => void;
 }) {
@@ -25,19 +29,21 @@ describe("AccountSecurityFactsService", () => {
 
   it("does not look at backup codes when two-step verification is off", async () => {
     const { service, countBackupCodes } = build({
-      base: { twoFactorEnabled: false },
+      base: { twoFactorEnabled: false, hasPassword: true },
     });
     expect(await service.read(SUBJECT)).toEqual({
       twoFactorEnabled: false,
+      hasPassword: true,
       backupCodesRemaining: null,
     });
     expect(countBackupCodes).not.toHaveBeenCalled();
   });
 
   it("counts backup codes when enrolled", async () => {
-    const { service } = build({ base: { twoFactorEnabled: true } });
+    const { service } = build({ base: { twoFactorEnabled: true, hasPassword: false } });
     expect(await service.read(SUBJECT)).toEqual({
       twoFactorEnabled: true,
+      hasPassword: false,
       backupCodesRemaining: 7,
     });
   });
@@ -45,7 +51,7 @@ describe("AccountSecurityFactsService", () => {
   it("reports an unknown count, not zero, when the codes cannot be read", async () => {
     const onCountFailure = vi.fn();
     const { service } = build({
-      base: { twoFactorEnabled: true },
+      base: { twoFactorEnabled: true, hasPassword: false },
       count: async () => {
         throw new Error("decrypt failed");
       },
@@ -53,8 +59,22 @@ describe("AccountSecurityFactsService", () => {
     });
     expect(await service.read(SUBJECT)).toEqual({
       twoFactorEnabled: true,
+      hasPassword: false,
       backupCodesRemaining: null,
     });
     expect(onCountFailure).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("AccountSecurityFactsService deletion request", () => {
+  it("passes the request date through so the shell can show the banner", async () => {
+    const { service } = build({
+      base: {
+        twoFactorEnabled: false,
+        hasPassword: true,
+        deletionRequestedAt: "2026-11-02T10:00:00.000Z",
+      },
+    });
+    expect((await service.read(SUBJECT))?.deletionRequestedAt).toBe("2026-11-02T10:00:00.000Z");
   });
 });

@@ -24,7 +24,8 @@ export type SupportLinksVm = {
 
 export type AccountLinksVm = {
   manageTwoStep: string;
-  changePassword: string;
+  /** The hosted page that emails a reset link, for people who do not know their password. */
+  forgotPassword: string;
   verifyEmail: string;
   bidSettings: BidSettingsLinksVm | null;
   support: SupportLinksVm | null;
@@ -44,7 +45,7 @@ export function buildAccountLinks(
   const bid = (path: string) => new URL(path, bidUrl).toString();
   return {
     manageTwoStep: hosted("/two-factor/manage"),
-    changePassword: hosted("/forgot-password"),
+    forgotPassword: hosted("/forgot-password"),
     verifyEmail: hosted("/resend-verification", account.email ? { email: account.email } : {}),
     bidSettings: bidUrl
       ? {
@@ -60,6 +61,17 @@ export function buildAccountLinks(
         }
       : null,
   };
+}
+
+/** The contact form, and the same form with the data-copy topic chosen (Request a full copy). */
+export function buildDataExportContactLinks(links: Pick<AccountLinksVm, "support">): {
+  contact: string | null;
+  fullCopy: string | null;
+} {
+  if (!links.support) return { contact: null, fullCopy: null };
+  const fullCopy = new URL(links.support.contact);
+  fullCopy.searchParams.set("intent", "data-copy");
+  return { contact: links.support.contact, fullCopy: fullCopy.toString() };
 }
 
 /** Bid lists the organisations a person belongs to and their role in each; null without Bid. */

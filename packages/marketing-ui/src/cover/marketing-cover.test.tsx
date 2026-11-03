@@ -315,3 +315,39 @@ describe("MarketingCover film", () => {
     expect(screen.queryByRole("button", { name: "Play film" })).toBeNull();
   });
 });
+
+describe("a pale plate in the dark theme", () => {
+  const paleSlide = (fieldDark?: string) => {
+    const base = fixture(BID_COVER_FIXTURES, "no-cover").slides[0];
+    const plate = base?.media.find((item) => item.kind === "plate");
+    if (!base || !plate) throw new Error("fixture");
+    return {
+      ...base,
+      media: [
+        { ...plate, field: "#eee3df", tone: "dark" as const, ...(fieldDark ? { fieldDark } : {}) },
+      ],
+    };
+  };
+
+  it("carries a deep field and switches the type to light", () => {
+    const { container } = render(
+      <MarketingCover slides={[paleSlide("#2a2523")]} label="Featured" />,
+    );
+    const cover = container.querySelector("[data-cover-mode='plate']");
+    expect(cover).toHaveAttribute("data-cover-swap");
+    const field = container.querySelector<HTMLElement>("[data-cover-media] > div > div");
+    expect(field?.style.backgroundColor).toBe("rgb(238, 227, 223)");
+    expect(field?.style.getPropertyValue("--plate-field-dark")).toBe("#2a2523");
+    expect(field?.className).toContain("dark:bg-[var(--plate-field-dark)]!");
+    // The light tone's type colours are carried for the dark theme to pick up.
+    expect(cover?.getAttribute("style")).toContain("--cover-title-dark");
+  });
+
+  it("is unchanged without a deep field, and for a deep plate", () => {
+    const pale = render(<MarketingCover slides={[paleSlide()]} label="Featured" />);
+    expect(pale.container.querySelector("[data-cover-swap]")).toBeNull();
+    pale.unmount();
+    const deep = renderFixture(fixture(BID_COVER_FIXTURES, "no-cover"));
+    expect(deep.container.querySelector("[data-cover-swap]")).toBeNull();
+  });
+});

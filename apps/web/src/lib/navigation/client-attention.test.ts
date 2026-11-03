@@ -1,10 +1,10 @@
+import { groupBidderAttention } from "@auction/domain";
 import { describe, expect, it } from "vitest";
 import {
   type ClientAttention,
   NO_ATTENTION,
   attentionChip,
   attentionCountFor,
-  attentionTasks,
 } from "./client-attention";
 
 function attention(overrides: Partial<ClientAttention> = {}): ClientAttention {
@@ -16,17 +16,31 @@ describe("attentionChip", () => {
     expect(attentionChip(NO_ATTENTION)).toBeNull();
   });
 
-  it("names the lot when one bid is outbid", () => {
-    expect(attentionChip(attention({ outbidLots: ["14"] }))).toEqual({
+  it("names the work when one lot is outbid, and links to its price block", () => {
+    const groups = groupBidderAttention([
+      { kind: "outbid", lotId: "l1", title: "Harbour at Dawn" },
+    ]);
+    expect(attentionChip(attention({ outbidLots: ["14"], groups }))).toEqual({
       kind: "outbid",
-      label: "Outbid on lot 14",
-      shortLabel: "Outbid",
-      href: "/bids?tab=active",
+      label: "Outbid on Harbour at Dawn",
+      href: "/lot/harbour-at-dawn/l1#price",
+      accessibleName: "Outbid on Harbour at Dawn. Go to the lot",
     });
   });
 
-  it("counts lots when several are outbid, or one has no number yet", () => {
-    expect(attentionChip(attention({ outbidLots: ["14", "22"] }))?.label).toBe("Outbid on 2 lots");
+  it("counts lots and links to My bids when several are outbid", () => {
+    const groups = groupBidderAttention([
+      { kind: "outbid", lotId: "l1", title: "Harbour at Dawn" },
+      { kind: "outbid", lotId: "l2", title: "Estuary, evening" },
+    ]);
+    expect(attentionChip(attention({ outbidLots: ["14", "22"], groups }))).toMatchObject({
+      label: "Outbid on 2 lots",
+      href: "/bids?tab=active",
+      accessibleName: "Outbid on 2 lots. Go to My bids",
+    });
+  });
+
+  it("falls back to a count when the lots could not be named", () => {
     expect(attentionChip(attention({ outbidLots: [null] }))?.label).toBe("Outbid on 1 lot");
   });
 
@@ -36,6 +50,21 @@ describe("attentionChip", () => {
       label: "Payment due",
       href: "/purchases",
     });
+  });
+
+  it("says the account is in review, not that payment is due, while checks are open", () => {
+    expect(attentionChip(attention({ paymentsDue: 3, paymentsInReview: true }))).toMatchObject({
+      kind: "account-in-review",
+      label: "Account in review",
+      href: "/purchases",
+      accessibleName: "Account in review. Go to Purchases",
+    });
+  });
+
+  it("still counts what is owed in the menu while the account is in review", () => {
+    expect(
+      attentionCountFor("purchases", attention({ paymentsDue: 3, paymentsInReview: true })),
+    ).toMatchObject({ value: 3, label: "3 to pay" });
   });
 
   it("lets outbid win while a sale is live", () => {
@@ -75,28 +104,5 @@ describe("attentionCountFor", () => {
   it("has no count for pages where nothing can be due, or when nothing is", () => {
     expect(attentionCountFor("watchlist", due)).toBeNull();
     expect(attentionCountFor("bids", NO_ATTENTION)).toBeNull();
-  });
-});
-
-describe("attentionTasks", () => {
-  it("lists nothing when nothing is due", () => {
-    expect(attentionTasks(NO_ATTENTION)).toEqual([]);
-  });
-
-  it("lists every prompt the chip could show, outbid first, so Needs action is never empty beside it", () => {
-    expect(attentionTasks(attention({ outbidLots: ["2"], paymentsDue: 2 }))).toEqual([
-      {
-        kind: "outbid",
-        title: "Outbid on lot 2",
-        actionLabel: "Review your bids",
-        href: "/bids?tab=active",
-      },
-      {
-        kind: "payment-due",
-        title: "2 purchases to pay",
-        actionLabel: "Go to purchases",
-        href: "/purchases",
-      },
-    ]);
   });
 });

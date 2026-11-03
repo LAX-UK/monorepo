@@ -109,6 +109,23 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** Seller requested to withdraw an active lot (admin queue). */
   "lot.withdrawal_requested": new Set(["sellerLegalEntityId"]),
+  /** A staff decision on a request to bid in a sale. `reason` is the staff-written explanation of a decline. */
+  "sale_registration.decided": new Set([
+    "saleId",
+    "userId",
+    "buyerLegalEntityId",
+    "decision",
+    "bidLimit",
+    "reason",
+  ]),
+  /** A staff change to the bidding limit on one sale registration; null means no limit. */
+  "sale_registration.bid_limit_changed": new Set([
+    "saleId",
+    "userId",
+    "buyerLegalEntityId",
+    "previousLimit",
+    "limit",
+  ]),
   /** Staff declined a seller's withdrawal request; the reason is shown to the seller. */
   "lot.withdrawal_declined": new Set(["sellerLegalEntityId", "reason"]),
   /** Pending payment cancelled by buyer or expired by cron. */
@@ -226,7 +243,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "sale.created": new Set(["from_status", "to_status", "deliveryMode", "lotCount"]),
   "sale.published": new Set(["from_status", "to_status", "lotCount", "deliveryMode"]),
   "sale.unpublished": new Set(["from_status", "to_status"]),
-  "sale.cancelled": new Set(["from_status", "to_status", "lotCount"]),
+  "sale.cancelled": new Set(["from_status", "to_status", "lotCount", "cancelledLotIds"]),
   "sale.soft_deleted": new Set(["title", "from_status", "lotCount", "deleted_at"]),
   "lot.soft_deleted": new Set(["title", "from_status", "saleId", "deleted_at"]),
   "sale.ended": new Set(["from_status", "to_status", "reason"]),
@@ -244,6 +261,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   /** an unanswered organisation invitation withdrawn, or reopened by its Undo. */
   "legal_entity.invitation_withdrawn": new Set(["invitation_id", "role"]),
   "legal_entity.invitation_restored": new Set(["invitation_id", "role"]),
+  /** A buyer reported a problem with a paid purchase; what they wrote stays on the report. */
+  "purchase_problem.reported": new Set(["lotId", "paymentId", "category"]),
   /** A member asked for a role or capability; the reason stays on the request, not the event. */
   "legal_entity.access_requested": new Set([
     "request_id",
@@ -317,6 +336,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** Subject and export ids only; the request carries nothing personal. */
   "subject.data_export_requested": new Set(),
+  /** Which provider was removed; nothing personal. */
+  "user.sign_in_method_unlinked": new Set(["provider"]),
   "auth.forgot_password_requested": new Set(),
   "auth.password_credential_enabled": new Set(),
   "auth.email_change_started": new Set(),
@@ -328,6 +349,18 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "auth.two_factor_policy_changed": new Set(["scope", "required", "legalEntityId"]),
   /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */
   "auth.two_factor_reset_by_staff": new Set(["reason"]),
+  /**
+   * Why staff moved an account to a new address and what they relied on: a staff-typed note, the
+   * kind of proof, and the KYC session or ID-check reference. The addresses are not recorded.
+   */
+  "auth.email_change_requested_by_staff": new Set([
+    "reason",
+    "proofKind",
+    "kycSessionId",
+    "proofReference",
+  ]),
+  /** Staff were shown the verified name and date of birth; only the record's id is kept. */
+  "auth.email_change_kyc_record_viewed": new Set(["kycSessionId"]),
   "auth.two_factor_security_email": new Set(["kind"]),
   "auth.account_suspended": new Set(),
   /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */
@@ -364,6 +397,34 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "failed_job.retried": new Set(["queue", "jobName", "confirmRepeat"]),
   "failed_job.discarded": new Set(["queue", "jobName", "reason", "note"]),
   "failed_job.restored": new Set(["queue", "jobName"]),
+  /** A contact form message arrived or was handled: the topic only; what the sender wrote stays on the enquiry. */
+  "marketing_enquiry.received": new Set(["enquiryId", "intent", "department"]),
+  "marketing_enquiry.handled": new Set(["enquiryId", "intent"]),
+  /** Staff and status are identifiers and codes; the sender's details and staff notes never leave the enquiry. */
+  "marketing_enquiry.assigned": new Set([
+    "enquiryId",
+    "intent",
+    "assignedToUserId",
+    "previousAssignedToUserId",
+    "source",
+  ]),
+  "marketing_enquiry.status_changed": new Set(["enquiryId", "intent", "from", "to", "closeReason"]),
+  "marketing_enquiry.converted": new Set(["enquiryId", "intent", "from"]),
+  /** Codes and dates; the note is typed by staff, and the address itself is never recorded. */
+  "email.block_lifted": new Set([
+    "userId",
+    "reason",
+    "note",
+    "previousReason",
+    "previousSince",
+    "provider",
+  ]),
+  /** One event per changed routing row: a department slug (or none for the fallback) and staff user ids. */
+  "enquiry_routing.changed": new Set([
+    "departmentSlug",
+    "assignedToUserId",
+    "previousAssignedToUserId",
+  ]),
   "staff.role_assigned": new Set(["assignmentId", "role", "startsAt", "endsAt", "reason"]),
   "staff.role_removed": new Set(["assignmentId", "role", "reason"]),
   "staff.role_expired": new Set(["assignmentId", "role", "endedAt"]),

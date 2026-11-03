@@ -12,11 +12,13 @@ function toOutboxEvent(event: IdentityLifecycleEvent): IdentityOutboxLifecycleEv
     case "user.profile_updated":
     case "user.deletion_requested":
     case "user.deletion_cancelled":
+    case "user.deletion_held":
     case "user.identity_disabled":
     case "user.identity_enabled":
     case "user.identity_deleted":
     case "user.session_revoked":
     case "user.credential_changed":
+    case "user.sign_in_method_unlinked":
     case "subject.data_export_requested":
       return event;
     case "user.identity_merged":

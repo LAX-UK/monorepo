@@ -50,6 +50,7 @@ const PREFERENCE_COLUMNS = [
   ["endingSoonInApp", "ending soon", "in-app"],
   ["watchlistInApp", "watchlist", "in-app"],
   ["paymentInApp", "payment", "in-app"],
+  ["newSalesInApp", "new sales", "in-app"],
   ["outbidPush", "outbid", "push"],
   ["wonPush", "won", "push"],
   ["endingSoonPush", "ending soon", "push"],

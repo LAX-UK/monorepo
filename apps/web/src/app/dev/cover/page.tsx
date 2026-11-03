@@ -25,10 +25,12 @@ type Props = { searchParams: Promise<{ only?: string }> };
 
 /**
  * The cover on fixture data, one block per design scenario. `?only=<id>` shows a single one.
- * Development and test runs only: a production build answers 404.
+ * Development and test runs only: a production build answers 404 unless started with
+ * `COVER_FIXTURE_REVIEW=1` for the visual tests.
  */
 export default async function CoverFixturePage({ searchParams }: Props) {
-  if (!isCoverFixtureReviewAvailable(process.env.NODE_ENV)) notFound();
+  if (!isCoverFixtureReviewAvailable(process.env.NODE_ENV, process.env.COVER_FIXTURE_REVIEW))
+    notFound();
   const { only } = await searchParams;
   return (
     <main className="min-h-dvh bg-surface text-on-surface">

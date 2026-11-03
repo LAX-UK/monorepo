@@ -91,6 +91,8 @@ export type SetArtworkPriceInput = StaffWrite & {
 export type SetArtworkVisibilityInput = StaffWrite & {
   artworkId: string;
   action: AdminArtworkVisibilityAction;
+  /** Publishing an edition: also email the release alert list. Ignored for other actions. */
+  sendReleaseAlert?: boolean;
 };
 
 export type BulkArtworkVisibilityInput = StaffWrite & {

@@ -31,7 +31,6 @@ export default async function TeamInvitationsPage() {
       <WorkspaceTabNoAccess
         access={access}
         legalEntityId={acting.id}
-        organisationName={acting.displayName}
         actor={actor}
         userId={user.id}
       />
@@ -46,9 +45,7 @@ export default async function TeamInvitationsPage() {
     return <ListLoadError />;
   }
   const changeActor = memberChangeActorFor(scope, user.id, members.ok ? members.data : []);
-  const rows = invitationRowViews(changeActor, invitations.data, new Date()).sort(
-    (a, b) => Number(a.expired) - Number(b.expired),
-  );
+  const rows = invitationRowViews(changeActor, invitations.data, new Date());
 
   if (rows.length === 0) {
     return (

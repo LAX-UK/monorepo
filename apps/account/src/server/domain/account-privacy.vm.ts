@@ -1,6 +1,8 @@
 import { legalOperatorSentence } from "@auction/branding";
 import type { AccountLinksVm } from "./account-links";
 import { ACCOUNT_ROUTES, type SettingsGroupVm } from "./account-settings.vm";
+import { DATA_EXPORT_ROUTE } from "./data-export-routes";
+import { DEFAULT_DATA_EXPORT_SUBTITLE } from "./data-export.vm";
 
 /**
  * Notifications and privacy (Figma 956:14309). The data-sharing switch is left out: no LAX
@@ -9,6 +11,8 @@ import { ACCOUNT_ROUTES, type SettingsGroupVm } from "./account-settings.vm";
  */
 export function buildPrivacyGroups(
   links: Pick<AccountLinksVm, "bidSettings" | "support">,
+  /** Where the person's data download stands, as a line (see buildDataExportRowSubtitle). */
+  dataExportSubtitle: string = DEFAULT_DATA_EXPORT_SUBTITLE,
 ): SettingsGroupVm[] {
   const groups: SettingsGroupVm[] = [];
   if (links.bidSettings) {
@@ -29,7 +33,10 @@ export function buildPrivacyGroups(
     label: "Your data",
     footer:
       "Deleting your account permanently removes it and your personal data, in line with applicable law. We check LAX Bid, LAX Shop and lax.art first, and you can cancel for 30 days.",
-    rows: [{ title: "Delete your account", href: ACCOUNT_ROUTES.deleteAccount }],
+    rows: [
+      { title: "Download your data", subtitle: dataExportSubtitle, href: DATA_EXPORT_ROUTE },
+      { title: "Delete your account", href: ACCOUNT_ROUTES.deleteAccount },
+    ],
   });
   if (links.support) {
     groups.push({

@@ -2,8 +2,8 @@
 
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { SwitchConfirmation as SwitchConfirmationVm } from "@/lib/navigation/switch-confirmation.vm";
-import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
+import { Button } from "@auction/ui/lax";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -53,7 +53,7 @@ export function SwitchConfirmation({ confirmation, accountId, next }: Props) {
             {submitting ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
             {confirmation.continueLabel}
           </Button>
-          <Button asChild variant="secondaryOutline">
+          <Button asChild variant="secondary">
             <Link href={CLIENT_ROUTES.home}>{confirmation.stayLabel}</Link>
           </Button>
         </form>

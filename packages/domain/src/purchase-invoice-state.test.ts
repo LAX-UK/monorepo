@@ -31,13 +31,25 @@ describe("purchaseInvoiceState", () => {
     ["requires_manual_review", "processing"],
     ["captured", "paid"],
     ["refunded", "refunded"],
-    ["cancelled", "cancelled"],
   ] as const)("a %s payment reads as %s, even past the due date", (status, expected) => {
     const late = new Date("2027-01-01T00:00:00Z");
     expect(purchaseInvoiceState({ payment: { status, raisedAt } }, late)).toEqual({
       status: expected,
       dueAt,
     });
+  });
+});
+
+describe("a cancelled payment row", () => {
+  it("leaves the invoice owed, due and then overdue, like a pending one", () => {
+    const cancelled = { payment: { status: "cancelled", raisedAt } } as const;
+    expect(purchaseInvoiceState(cancelled, new Date("2026-11-05T00:00:00Z"))).toEqual({
+      status: "due",
+      dueAt,
+    });
+    expect(purchaseInvoiceState(cancelled, new Date("2027-01-01T00:00:00Z")).status).toBe(
+      "overdue",
+    );
   });
 });
 
@@ -49,5 +61,26 @@ describe("invoiceIsOwed", () => {
     for (const s of ["processing", "paid", "refunded", "cancelled"] as const) {
       expect(invoiceIsOwed(s)).toBe(false);
     }
+  });
+});
+
+describe("a cancelled sale", () => {
+  const raisedAt = new Date("2026-11-01T10:00:00Z");
+  const now = new Date("2026-11-20T10:00:00Z");
+
+  it("reads as a cancelled invoice, not an overdue one", () => {
+    const state = purchaseInvoiceState(
+      { saleCancelled: true, payment: { status: "cancelled", raisedAt } },
+      now,
+    );
+    expect(state.status).toBe("cancelled");
+    expect(state.dueAt).toEqual(new Date("2026-11-08T10:00:00Z"));
+    expect(invoiceIsOwed(state.status)).toBe(false);
+  });
+
+  it("covers a lot that was never invoiced", () => {
+    expect(purchaseInvoiceState({ saleCancelled: true, payment: null }, now).status).toBe(
+      "cancelled",
+    );
   });
 });

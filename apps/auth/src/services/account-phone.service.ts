@@ -11,6 +11,8 @@ import {
 } from "./identity-operations.service.js";
 import { RecentSessionGuard } from "./recent-session-guard.js";
 
+export type AccountPhoneRemoveFailure = "no_phone";
+
 export type AccountPhoneFailure =
   | "invalid_phone"
   | "invalid_code"
@@ -19,7 +21,7 @@ export type AccountPhoneFailure =
   | "unavailable";
 
 export type AccountPhonePorts = {
-  operations: Pick<IdentityOperationsService, "listSessions" | "setVerifiedPhone">;
+  operations: Pick<IdentityOperationsService, "listSessions" | "setVerifiedPhone" | "clearPhone">;
   /** The SMS provider the Better Auth phone plugin sends through (Twilio Verify, or the console in development). */
   sms: SmsSender;
   /** Tells the account's email about the change; it never throws and never undoes the change. */
@@ -29,13 +31,15 @@ export type AccountPhonePorts = {
 type PhoneResult<T> = ({ ok: true } & T) | { ok: false; kind: AccountPhoneFailure };
 
 /**
- * Adding or changing the phone number on a LAX identity, from LAX Account.
+ * Adding, changing or removing the phone number on a LAX identity, from LAX Account.
  *
  * It sends and checks the code through the same SMS provider the Better Auth phone plugin
  * uses, but not through the plugin's HTTP endpoints: those authenticate with the issuer's
  * browser cookie, which LAX Account (a confidential client acting on a person's behalf) does
- * not hold. The number is contact information only (a person cannot sign in with it), and both
- * sending a code and saving the number need a recent sign-in.
+ * not hold. The number is contact information only: a person cannot sign in with it and it is not
+ * a second factor (two-step verification is an authenticator app plus backup codes), so removing
+ * it can never lock anyone out. Sending a code, saving the number and removing it all need a
+ * recent sign-in.
  */
 export class AccountPhoneService {
   private readonly sessions: RecentSessionGuard;
@@ -104,5 +108,25 @@ export class AccountPhoneService {
       userAgent: current.userAgent,
     });
     return { ok: true, phone };
+  }
+
+  async remove(
+    subjectId: string,
+    currentSessionId: string,
+  ): Promise<
+    ReauthRequired | PhoneResult<object> | { ok: false; kind: AccountPhoneRemoveFailure }
+  > {
+    const current = await this.sessions.findRecent(subjectId, currentSessionId);
+    if (!current) return { ok: false, reason: "reauth_required" };
+    const removed = await this.ports.operations.clearPhone(subjectId);
+    if (removed === null) return { ok: false, kind: "no_phone" };
+    void this.ports.notices.notify({
+      kind: "phone_removed",
+      userId: subjectId,
+      at: this.now(),
+      phone: removed,
+      userAgent: current.userAgent,
+    });
+    return { ok: true };
   }
 }

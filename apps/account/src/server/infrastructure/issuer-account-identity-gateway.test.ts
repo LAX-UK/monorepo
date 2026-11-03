@@ -94,6 +94,54 @@ describe("createIssuerAccountIdentityGateway", () => {
     }
   });
 
+  describe("sign-in methods", () => {
+    it("reads the methods with only the access token in the body", async () => {
+      const methods = {
+        hasPassword: false,
+        social: [{ provider: "google", linkedAt: "2026-10-01T09:00:00.000Z" }],
+      };
+      const { fetchImpl, gateway: g } = gateway(async () => Response.json(methods));
+      expect(await g.readSignInMethods(actor)).toEqual({ status: "ok", value: methods });
+      const { url, body } = lastRequest(fetchImpl);
+      expect(url).toBe("https://auth.internal/api/auth/lax/account-sign-in-methods");
+      expect(Object.fromEntries(body)).toEqual({ token: "access-token" });
+    });
+
+    it("removes a provider with the access token, sign-in and provider in the body", async () => {
+      const { fetchImpl, gateway: g } = gateway(async () =>
+        Response.json({ unlinked: "apple", revokedSessions: 1 }),
+      );
+      expect(await g.unlinkSignInMethod(actor, "apple")).toEqual({
+        status: "ok",
+        value: { unlinked: "apple", revokedSessions: 1 },
+      });
+      const { url, body } = lastRequest(fetchImpl);
+      expect(url).toBe("https://auth.internal/api/auth/lax/account-sign-in-methods/unlink");
+      expect(url).not.toContain("access-token");
+      expect(Object.fromEntries(body)).toEqual({
+        token: "access-token",
+        sid: "current-sid",
+        provider: "apple",
+      });
+    });
+
+    it("passes the request to sign in again through, and names the last-method refusal", async () => {
+      const stale = gateway(async () =>
+        Response.json({ error: "reauth_required" }, { status: 403 }),
+      );
+      expect(await stale.gateway.unlinkSignInMethod(actor, "google")).toEqual({
+        status: "reauth_required",
+      });
+      const last = gateway(async () =>
+        Response.json({ error: "last_sign_in_method" }, { status: 422 }),
+      );
+      expect(await last.gateway.unlinkSignInMethod(actor, "google")).toEqual({
+        status: "rejected",
+        reason: "last_sign_in_method",
+      });
+    });
+  });
+
   describe("backup codes", () => {
     it("asks the issuer for a new set with the access token and sign-in in the body", async () => {
       const { fetchImpl, gateway: g } = gateway(async () =>
@@ -145,7 +193,13 @@ describe("createIssuerAccountIdentityGateway", () => {
         phoneVerified: true,
       };
       const { fetchImpl, gateway: g } = gateway(async () => Response.json(contact));
-      expect(await g.readContact(actor)).toEqual(contact);
+      // An issuer that predates the expiry and phone-availability flags reads as "not expired,
+      // phone available".
+      expect(await g.readContact(actor)).toEqual({
+        ...contact,
+        pendingEmailExpired: false,
+        phoneAvailable: true,
+      });
       expect(lastRequest(fetchImpl).url).toBe("https://auth.internal/api/auth/lax/account-contact");
       expect(Object.fromEntries(lastRequest(fetchImpl).body)).toEqual({ token: "access-token" });
     });
@@ -198,6 +252,73 @@ describe("createIssuerAccountIdentityGateway", () => {
         value: "+447700900123",
       });
       expect(lastRequest(verify.fetchImpl).body.get("code")).toBe("123456");
+    });
+
+    it("posts the phone removal for the signed-in sign-in and maps the answer", async () => {
+      const remove = gateway(async () => Response.json({ removed: true }));
+      expect(await remove.gateway.removePhone(actor)).toEqual({ status: "ok", value: true });
+      const request = lastRequest(remove.fetchImpl);
+      expect(request.url).toContain("/lax/account-phone/remove");
+      expect(Object.fromEntries(request.body)).toEqual({
+        token: "access-token",
+        sid: "current-sid",
+      });
+      const none = gateway(async () => Response.json({ error: "no_phone" }, { status: 409 }));
+      expect(await none.gateway.removePhone(actor)).toEqual({
+        status: "rejected",
+        reason: "no_phone",
+      });
+    });
+
+    it("posts the password change with both passwords in the body only", async () => {
+      const change = gateway(async () => Response.json({ changed: true, created: false }));
+      expect(
+        await change.gateway.changePassword(actor, {
+          currentPassword: "Current-password-1",
+          newPassword: "A-better-passphrase-2",
+        }),
+      ).toEqual({ status: "ok", value: { changed: true, created: false } });
+      const request = lastRequest(change.fetchImpl);
+      expect(request.url).toBe("https://auth.internal/api/auth/lax/account-password/change");
+      expect(request.url).not.toContain("passphrase");
+      expect(Object.fromEntries(request.body)).toEqual({
+        token: "access-token",
+        sid: "current-sid",
+        current_password: "Current-password-1",
+        new_password: "A-better-passphrase-2",
+      });
+    });
+
+    it("omits the current password when setting a first one", async () => {
+      const first = gateway(async () => Response.json({ changed: true, created: true }));
+      await first.gateway.changePassword(actor, {
+        currentPassword: null,
+        newPassword: "A-better-passphrase-2",
+      });
+      expect(lastRequest(first.fetchImpl).body.has("current_password")).toBe(false);
+    });
+
+    it.each([
+      [403, "invalid_password"],
+      [422, "invalid_password_policy"],
+      [422, "password_breached"],
+      [422, "same_password"],
+      [429, "rate_limited"],
+    ] as const)("passes the password refusal %i %s through as rejected", async (status, error) => {
+      const { gateway: g } = gateway(async () => Response.json({ error }, { status }));
+      expect(await g.changePassword(actor, { currentPassword: "x", newPassword: "y" })).toEqual({
+        status: "rejected",
+        reason: error,
+      });
+    });
+
+    it("asks for a fresh sign-in on reauth_required", async () => {
+      const { gateway: g } = gateway(async () =>
+        Response.json({ error: "reauth_required" }, { status: 403 }),
+      );
+      expect(await g.changePassword(actor, { currentPassword: "x", newPassword: "y" })).toEqual({
+        status: "reauth_required",
+      });
     });
 
     it.each([

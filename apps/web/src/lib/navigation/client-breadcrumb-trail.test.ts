@@ -1,8 +1,9 @@
 import {
+  backTargetOf,
   buildClientBreadcrumbTrail,
+  clientPhoneTitle,
   withRecordTitle,
 } from "@/lib/navigation/client-breadcrumb-trail";
-import { resolveMobileShellTitle } from "@/lib/navigation/mobile-shell-title";
 import { describe, expect, it } from "vitest";
 
 function labels(pathname: string): string[] {
@@ -15,14 +16,30 @@ describe("buildClientBreadcrumbTrail", () => {
     expect(buildClientBreadcrumbTrail("/settings")).toEqual([{ label: "Bid settings" }]);
   });
 
-  it("labels the Organisation page and its tabs, with no id in the address", () => {
+  it("gives the Organisation and Team tabs no trail, since tabs are siblings", () => {
     expect(labels("/organisation")).toEqual(["Organisation"]);
-    expect(buildClientBreadcrumbTrail("/organisation/members")).toEqual([
-      { label: "Organisation", href: "/organisation" },
-      { label: "Members" },
+    expect(labels("/organisation/members")).toEqual(["Members"]);
+    expect(labels("/organisation/payouts")).toEqual(["Payouts"]);
+    expect(labels("/organisation/security")).toEqual(["Security"]);
+    expect(labels("/team")).toEqual(["Team"]);
+    expect(labels("/team/activity")).toEqual(["Team"]);
+  });
+
+  it("names the Collection page as the menu does", () => {
+    expect(labels("/collection")).toEqual(["Collection"]);
+  });
+
+  it("trails a purchase, its problem report and a payout to their lists", () => {
+    expect(labels("/purchases/lot-1")).toEqual(["Purchases", "Purchase"]);
+    expect(buildClientBreadcrumbTrail("/purchases/lot-1/report-problem")).toEqual([
+      { label: "Purchases", href: "/purchases" },
+      { label: "Purchase", href: "/purchases/lot-1" },
+      { label: "Report a problem" },
     ]);
-    expect(labels("/organisation/payouts")).toEqual(["Organisation", "Payouts"]);
-    expect(labels("/organisation/security")).toEqual(["Organisation", "Security"]);
+    expect(buildClientBreadcrumbTrail("/selling/payouts/po-1")[0]).toEqual({
+      label: "Sold & payouts",
+      href: "/selling/payouts?tab=payouts",
+    });
   });
 
   it("labels invitation review and accept", () => {
@@ -72,7 +89,10 @@ describe("buildClientBreadcrumbTrail", () => {
     for (const path of [
       "/home",
       "/bids/telephone/t1",
-      "/selling/works",
+      "/collection",
+      "/team/bidding",
+      "/purchases/lot-1",
+      "/selling/payouts/po-1",
       "/selling/artist",
       "/organisation/documents",
       "/settings/appearance",
@@ -96,10 +116,58 @@ describe("record pages", () => {
       "Consignments",
       "Consignment",
     ]);
-    expect(resolveMobileShellTitle(withRecordTitle(trail, "Thames at Battersea"))).toEqual({
+    expect(clientPhoneTitle(trail, "Thames at Battersea")).toEqual({
       title: "Thames at Battersea",
       backHref: "/selling/consignments",
       backLabel: "Consignments",
     });
+  });
+});
+
+describe("the way back", () => {
+  const back = (pathname: string) => backTargetOf(buildClientBreadcrumbTrail(pathname));
+
+  it("is the parent list on a detail page, named as the menu names it", () => {
+    expect(back("/purchases/lot-1")).toEqual({ label: "Purchases", href: "/purchases" });
+    expect(back("/selling/consignments/s1")).toEqual({
+      label: "Consignments",
+      href: "/selling/consignments",
+    });
+    expect(back("/selling/payout-setup")?.label).toBe("Sold & payouts");
+    expect(back("/settings/bidding")).toEqual({ label: "Bid settings", href: "/settings" });
+  });
+
+  it("goes up one level from a page two deep", () => {
+    expect(back("/selling/consignments/s1/edit")).toEqual({
+      label: "Consignment",
+      href: "/selling/consignments/s1",
+    });
+  });
+
+  it("is absent on menu pages and tabs", () => {
+    for (const path of [
+      "/home",
+      "/collection",
+      "/purchases",
+      "/team/activity",
+      "/organisation/members",
+    ]) {
+      expect(back(path)).toBeNull();
+    }
+  });
+
+  it("puts the arrow and the title in the phone bar on every detail page, and neither on a menu page", () => {
+    const phone = (pathname: string) =>
+      clientPhoneTitle(buildClientBreadcrumbTrail(pathname), null);
+    expect(phone("/selling/new")).toEqual({
+      title: "New submission",
+      backHref: "/selling/consignments",
+      backLabel: "Consignments",
+    });
+    expect(phone("/purchases/lot-1/report-problem")).toMatchObject({
+      title: "Report a problem",
+      backHref: "/purchases/lot-1",
+    });
+    expect(phone("/collection")).toEqual({ title: "Collection" });
   });
 });

@@ -24,7 +24,7 @@ export function ArtHelpIndex({ result, query }: ArtHelpIndexProps) {
         <ArtEditorialStatus
           result={result}
           disabledTitle="Help centre unavailable"
-          disabledDescription="The Help centre is not enabled in this environment yet."
+          disabledDescription="Help articles will be published here soon."
           emptyTitle="Help centre not found"
           emptyDescription="This page is not available."
           errorTitle="Help centre unavailable"

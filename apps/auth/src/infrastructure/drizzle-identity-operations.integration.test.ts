@@ -14,7 +14,11 @@ const NOW = new Date("2026-08-19T00:00:00.000Z");
 const subjectId = "90000000-0000-4000-8000-000000000110";
 const otherSubjectId = "90000000-0000-4000-8000-000000000111";
 const subjectIds = [subjectId, otherSubjectId] as const;
-const accountIds = ["identity-operations-credential"] as const;
+const accountIds = [
+  "identity-operations-credential",
+  "identity-operations-google",
+  "identity-operations-apple",
+] as const;
 const sessionIds = [
   "identity-operations-session-1",
   "identity-operations-session-2",
@@ -94,6 +98,62 @@ describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
     ]);
   });
 
+  it("lists, locks and removes only the person's own linked social account", async () => {
+    if (!db || !unitOfWork || !credentials) return;
+    await db.insert(account).values([
+      {
+        id: accountIds[0],
+        accountId: subjectId,
+        providerId: "credential",
+        userId: subjectId,
+        password: "hash",
+        createdAt: NOW,
+        updatedAt: NOW,
+      },
+      {
+        id: accountIds[1],
+        accountId: "google-1",
+        providerId: "google",
+        userId: subjectId,
+        createdAt: new Date(NOW.getTime() + 1_000),
+        updatedAt: NOW,
+      },
+      {
+        id: accountIds[2],
+        accountId: "apple-1",
+        providerId: "apple",
+        userId: otherSubjectId,
+        createdAt: NOW,
+        updatedAt: NOW,
+      },
+    ]);
+
+    const rows = await credentials.listSignInAccounts(subjectId);
+    expect(rows.map((row) => [row.providerId, row.hasPassword])).toEqual(
+      expect.arrayContaining([
+        ["credential", true],
+        ["google", false],
+      ]),
+    );
+    expect(rows).toHaveLength(2);
+
+    let removedOther = true;
+    let removed = false;
+    await unitOfWork.transaction(async (transaction) => {
+      expect(await credentials.lockSignInAccounts(transaction, subjectId)).toHaveLength(2);
+      removedOther = await credentials.deleteSocialAccount(transaction, subjectId, "apple");
+      removed = await credentials.deleteSocialAccount(transaction, subjectId, "google");
+    });
+
+    expect(removedOther).toBe(false);
+    expect(removed).toBe(true);
+    const left = await db
+      .select({ id: account.id })
+      .from(account)
+      .where(inArray(account.id, [...accountIds]));
+    expect(left.map((row) => row.id).sort()).toEqual([accountIds[0], accountIds[2]].sort());
+  });
+
   it("deletes all sessions except the explicitly retained token", async () => {
     if (!db || !unitOfWork || !sessions) return;
     await db.insert(session).values(
@@ -122,6 +182,75 @@ describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
     ).resolves.toEqual([{ id: sessionIds[1] }]);
   });
 
+  describe("claiming an address that another change holds", () => {
+    const target = "identity-operations-contested@lax.bid";
+    const live = new Date(NOW.getTime() + 60_000);
+    const expired = new Date(NOW.getTime() - 60_000);
+
+    async function holdAs(id: string, expiresAt: Date): Promise<void> {
+      await db
+        ?.update(user)
+        .set({ pendingNewEmail: target, emailChangeExpiresAt: expiresAt })
+        .where(eq(user.id, id));
+    }
+
+    async function readPendingRow(id: string) {
+      const [row] = (await db
+        ?.select({ pending: user.pendingNewEmail, expires: user.emailChangeExpiresAt })
+        .from(user)
+        .where(eq(user.id, id))) ?? [undefined];
+      return row;
+    }
+
+    it("is not blocked by another person's expired change", async () => {
+      if (!emailChanges) return;
+      await holdAs(otherSubjectId, expired);
+      await expect(
+        emailChanges.startChange({ subjectId, newEmail: target, expiresAt: live, now: NOW }),
+      ).resolves.toBe("started");
+      expect((await readPendingRow(subjectId))?.pending).toBe(target);
+      expect((await readPendingRow(otherSubjectId))?.pending).toBeNull();
+    });
+
+    it("is still blocked by another person's live change", async () => {
+      if (!emailChanges) return;
+      await holdAs(otherSubjectId, live);
+      await expect(
+        emailChanges.startChange({ subjectId, newEmail: target, expiresAt: live, now: NOW }),
+      ).resolves.toBe("address_pending");
+      expect((await readPendingRow(subjectId))?.pending).toBeNull();
+      expect((await readPendingRow(otherSubjectId))?.pending).toBe(target);
+    });
+
+    it("never blocks a sign-up, which claims the email column and not the pending one", async () => {
+      if (!db) return;
+      await holdAs(otherSubjectId, expired);
+      await expect(
+        db.insert(user).values({
+          id: "90000000-0000-4000-8000-000000000112",
+          name: "Sign-up",
+          email: target,
+          createdAt: NOW,
+          updatedAt: NOW,
+        }),
+      ).resolves.toBeDefined();
+      await db.delete(user).where(eq(user.id, "90000000-0000-4000-8000-000000000112"));
+    });
+
+    it("sweeps only expired changes", async () => {
+      if (!emailChanges) return;
+      await holdAs(otherSubjectId, expired);
+      await db
+        ?.update(user)
+        .set({ pendingNewEmail: "identity-operations-live@lax.bid", emailChangeExpiresAt: live })
+        .where(eq(user.id, subjectId));
+      const cleared = await emailChanges.clearExpired(NOW);
+      expect(cleared).toBeGreaterThanOrEqual(1);
+      expect((await readPendingRow(otherSubjectId))?.pending).toBeNull();
+      expect((await readPendingRow(subjectId))?.pending).toBe("identity-operations-live@lax.bid");
+    });
+  });
+
   it("persists both email confirmations, detects clashes, and applies the target email", async () => {
     if (!unitOfWork || !emailChanges) return;
     const nextEmail = "identity-operations-next@lax.bid";
@@ -147,11 +276,37 @@ describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
       await emailChanges.applyPendingEmail(transaction, subjectId, nextEmail, NOW);
     });
 
-    await expect(emailChanges.readPending(subjectId)).resolves.toBeNull();
+    await expect(emailChanges.readPending(subjectId)).resolves.toMatchObject({
+      pendingNewEmail: null,
+    });
     await expect(subjects?.findByEmail(nextEmail)).resolves.toMatchObject({
       id: subjectId,
       email: nextEmail,
       emailVerified: true,
+    });
+  });
+
+  it("completes a staff-vouched change on the new inbox's confirmation alone", async () => {
+    if (!unitOfWork || !emailChanges) return;
+    const nextEmail = "identity-operations-vouched@lax.bid";
+    await emailChanges.startChange({
+      subjectId,
+      newEmail: nextEmail,
+      expiresAt: new Date(NOW.getTime() + 60_000),
+      now: NOW,
+    });
+
+    await unitOfWork.transaction(async (transaction) => {
+      await emailChanges.markConfirmed(transaction, subjectId, "old", NOW);
+    });
+    await unitOfWork.transaction(async (transaction) => {
+      await expect(emailChanges.loadForConfirmation(transaction, subjectId)).resolves.toMatchObject(
+        { emailChangeOldOk: true, emailChangeNewOk: false },
+      );
+      await emailChanges.markConfirmed(transaction, subjectId, "new", NOW);
+      await expect(emailChanges.loadForConfirmation(transaction, subjectId)).resolves.toMatchObject(
+        { emailChangeOldOk: true, emailChangeNewOk: true },
+      );
     });
   });
 

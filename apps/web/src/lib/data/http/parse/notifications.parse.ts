@@ -17,6 +17,7 @@ export function parseNotificationPreference(raw: unknown): NotificationPreferenc
     endingSoonInApp: Boolean(o.endingSoonInApp),
     watchlistInApp: Boolean(o.watchlistInApp),
     paymentInApp: Boolean(o.paymentInApp),
+    newSalesInApp: o.newSalesInApp !== false,
     outbidPush: Boolean(o.outbidPush),
     wonPush: Boolean(o.wonPush),
     endingSoonPush: Boolean(o.endingSoonPush),

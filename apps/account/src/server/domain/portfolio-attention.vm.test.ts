@@ -21,6 +21,21 @@ describe("buildAttentionRows", () => {
     ]);
   });
 
+  it("does not ask for payment while the account's checks are open", () => {
+    const [row] = buildAttentionRows([
+      item({
+        status: "awaiting_payment",
+        owed: { amount: 115_000, currency: "GBP", state: "in_review", blocker: "documents" },
+        actions: [{ kind: "pay", href: "https://lax.bid/purchases/checkout/1" }],
+      }),
+    ]);
+    expect(row).toMatchObject({
+      text: "Green Line is waiting on account checks",
+      href: "/account/portfolio/bid/lot-1",
+      external: false,
+    });
+  });
+
   it("falls back to the work's page when the product link is unusable", () => {
     const [row] = buildAttentionRows([
       item({

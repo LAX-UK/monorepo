@@ -1,13 +1,16 @@
 import { AUTH_TIMINGS } from "../auth-timings.js";
-import type { EmailSender } from "../ports/email-sender.js";
+import type { CredentialEmailSender, EmailSender } from "../ports/email-sender.js";
+import { sendCredentialEmail } from "./credential-email.js";
 
 export function buildEmailVerificationBlock(options?: {
   email?: EmailSender | undefined;
+  credentialEmail?: CredentialEmailSender | undefined;
   onEmailVerified?:
     | ((authUser: { id: string; email: string; name: string }) => Promise<void>)
     | undefined;
 }) {
   const email = options?.email;
+  const credentialEmail = options?.credentialEmail;
   const onEmailVerified = options?.onEmailVerified;
   return {
     sendOnSignUp: true,
@@ -17,24 +20,19 @@ export function buildEmailVerificationBlock(options?: {
     sendVerificationEmail: async ({
       user: authUser,
       url,
+      token,
     }: {
       user: { id: string; email: string; name: string };
       url: string;
+      token: string;
     }) => {
-      email
-        ?.enqueue({
-          template: "verify-email",
-          to: authUser.email,
-          userId: authUser.id,
-          category: "auth",
-          vars: { verificationUrl: url, userName: authUser.name },
-        })
-        .catch((err: unknown) => {
-          console.error("[auth] enqueue verify-email failed", {
-            userId: authUser.id,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        });
+      await sendCredentialEmail(credentialEmail, {
+        template: "verify-email",
+        to: authUser.email,
+        userId: authUser.id,
+        token,
+        vars: { verificationUrl: url, userName: authUser.name },
+      });
     },
     afterEmailVerification: async (authUser: { id: string; email: string; name: string }) => {
       if (onEmailVerified) {

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   countdownTier,
+  countdownTiles,
+  formatCountdownAnnounce,
   formatCountdownAriaLabel,
+  formatCountdownCompact,
   formatCountdownForDisplay,
   formatCountdownShort,
   parseCountdownSegments,
@@ -37,9 +40,55 @@ describe("formatCountdownAriaLabel", () => {
   });
 });
 
-describe("formatCountdownForDisplay", () => {
-  it("still formats under 24h as clock", () => {
-    expect(formatCountdownForDisplay(90 * 60 * 1000 + 30_000)).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+const S = 1000;
+const M = 60 * S;
+const H = 60 * M;
+const D = 24 * H;
+
+describe("formatCountdownForDisplay: the time rule", () => {
+  it.each([
+    ["a week and a bit", 7 * D + H, "7 days 1 hour"],
+    ["exactly seven days", 7 * D, "7 days"],
+    ["inside a week", 2 * D + 14 * H + 5 * M, "2 days 14 hours"],
+    ["one day exactly", D, "1 day"],
+    ["a second under a day", D - S, "23 hours 59 minutes"],
+    ["hours and minutes", 5 * H + 12 * M + 40 * S, "5 hours 12 minutes"],
+    ["one hour exactly, no seconds", H, "1 hour"],
+    ["a second over the final hour", H + S, "1 hour"],
+    ["a second under the final hour", H - S, "59 minutes 59 seconds"],
+    ["minutes and seconds in the final hour", 42 * M + 10 * S, "42 minutes 10 seconds"],
+    ["one minute exactly", M, "1 minute"],
+    ["under a minute", 45 * S, "45 seconds"],
+    ["the last second", S, "1 second"],
+    ["zero", 0, "0 seconds"],
+    ["negative", -5 * S, "0 seconds"],
+  ])("%s", (_name, ms, expected) => {
+    expect(formatCountdownForDisplay(ms)).toBe(expected);
+  });
+});
+
+describe("formatCountdownCompact", () => {
+  it.each([
+    ["final hour is a clock", 42 * M + 9 * S, "42:09"],
+    ["a second under the hour", H - S, "59:59"],
+    ["under a minute pads", 45 * S, "00:45"],
+    ["zero", 0, "00:00"],
+    ["an hour is the short form", H, "1h 0m"],
+    ["hours and minutes", 5 * H + 12 * M, "5h 12m"],
+    ["days and hours", 2 * D + 14 * H, "2d 14h"],
+  ])("%s", (_name, ms, expected) => {
+    expect(formatCountdownCompact(ms)).toBe(expected);
+  });
+});
+
+describe("formatCountdownAnnounce", () => {
+  it.each([
+    [2 * D + 3 * H, "2 days 3 hours"],
+    [5 * H + 12 * M, "5 hours 12 minutes"],
+    [H - S, "59 minutes"],
+    [45 * S, "1 minute"],
+  ])("%d ms reads %s, never seconds", (ms, expected) => {
+    expect(formatCountdownAnnounce(ms)).toBe(expected);
   });
 });
 
@@ -60,5 +109,23 @@ describe("parseCountdownSegments", () => {
 
   it("clamps negative input to zero segments", () => {
     expect(parseCountdownSegments(-1000)).toEqual({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  });
+});
+
+describe("countdownTiles", () => {
+  const H = 3_600_000;
+  const units = (ms: number) => countdownTiles(ms).map((t) => `${t.value} ${t.unit}`);
+
+  it("shows days and hours two days out, with no seconds", () => {
+    expect(units(2 * 24 * H + 5 * H + 20 * 60_000 + 24_000)).toEqual(["2 Days", "5 Hours"]);
+  });
+
+  it("shows hours and minutes inside a day", () => {
+    expect(units(5 * H + 20 * 60_000 + 24_000)).toEqual(["5 Hours", "20 Min"]);
+  });
+
+  it("shows minutes and seconds only in the final hour", () => {
+    expect(units(H - 1000)).toEqual(["59 Min", "59 Sec"]);
+    expect(units(H)).toEqual(["1 Hours", "0 Min"]);
   });
 });

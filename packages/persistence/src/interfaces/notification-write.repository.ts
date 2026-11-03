@@ -8,6 +8,7 @@ export type CreateNotificationRow = {
   message: string;
   lotId?: string | undefined;
   submissionId?: string | undefined;
+  saleId?: string | undefined;
   /**
    * The account the notification is about (a personal or organisation legal entity); `null`
    * means the person's own personal account. Required so every producer decides it.

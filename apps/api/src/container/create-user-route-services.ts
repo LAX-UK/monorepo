@@ -1,5 +1,6 @@
 import type { IAttributionStore } from "@auction/marketing-events";
 import type {
+  ILotFulfilmentRepository,
   IRecordPeopleReader,
   IWatchlistReminderRepository,
 } from "@auction/persistence/interfaces";
@@ -14,6 +15,7 @@ import type { Env } from "../env.js";
 import type { CachedAccountOnboardingChecker } from "../infrastructure/cached-account-onboarding.checker.js";
 import type { AccountOnboardingService } from "../services/account-onboarding.service.js";
 import type { AddressService } from "../services/address.service.js";
+import { AmountsOwedService } from "../services/amounts-owed/amounts-owed.service.js";
 import type { ArtistWatchlistService } from "../services/artist-watchlist.service.js";
 import type { IAuthAuditPublisher } from "../services/interfaces/auth-audit-publisher.js";
 import type { IConditionReportService } from "../services/interfaces/condition-report.js";
@@ -25,6 +27,7 @@ import type { IPaymentBuyerService } from "../services/interfaces/payment-servic
 import type { IPushSubscriptionRepository } from "../services/interfaces/push.js";
 import type { UserRouteServices } from "../services/interfaces/user-routes/index.js";
 import { LaxPortfolioHttpApplicationService } from "../services/lax-portfolio/lax-portfolio-http-application.service.js";
+import type { IPersonalLegalEntityResolver } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
 import type { NotificationQueryService } from "../services/notification-query.service.js";
 import type { INotificationAccountMuteService } from "../services/notifications/notification-account-mute.service.js";
 import type { ProfileService } from "../services/profile.service.js";
@@ -82,10 +85,21 @@ export type CreateUserRouteServicesInput = {
   watchlistReminders: IWatchlistReminderRepository;
   requireBuyingAccount: UserRouteServices["requireBuyingAccount"];
   recordPeople: IRecordPeopleReader;
+  lotFulfilmentRepository: Pick<ILotFulfilmentRepository, "statusesForLots">;
+  personalLegalEntityResolver: IPersonalLegalEntityResolver;
   lotViewerState: ILotViewerStateService;
 };
 
 export function createUserRouteServices(input: CreateUserRouteServicesInput): UserRouteServices {
+  const amountsOwed = new AmountsOwedService({
+    lotService: input.lotService,
+    saleService: input.saleService,
+    paymentBuyerService: input.paymentBuyerService,
+    fulfilments: input.lotFulfilmentRepository,
+    personalAccount: {
+      idFor: async (userId) => (await input.personalLegalEntityResolver.resolveForUser(userId)).id,
+    },
+  });
   return {
     categoryInterestsHttp: new UserCategoryInterestsHttpApplicationService(
       input.categoryInterestsRepository,
@@ -104,10 +118,12 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       mediaAssetEnricher: input.mediaAssetEnricher,
       saleService: input.saleService,
       recordPeople: input.recordPeople,
+      amountsOwed,
     }),
     lotStatesHttp: new UserLotStatesHttpApplicationService(input.lotViewerState),
     laxPortfolioHttp: new LaxPortfolioHttpApplicationService({
       reader: input.bidPortfolioReader,
+      amountsOwed,
       mediaUrlResolver: input.mediaUrlResolver,
       webOrigin: input.env.WEB_ORIGIN,
       legalName: input.env.LAX_BID_LEGAL_NAME,

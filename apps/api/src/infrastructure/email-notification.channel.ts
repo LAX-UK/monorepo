@@ -19,6 +19,9 @@ import {
   notificationWebPath,
 } from "../services/notification-payload.js";
 
+/** Where a person goes with a question about an unpaid purchase. */
+const SUPPORT_EMAIL = "support@lax.bid";
+
 const OPT_OUTABLE: ReadonlySet<string> = new Set(OPT_OUT_TYPES);
 
 const CLOSES_AT = new Intl.DateTimeFormat("en-GB", {
@@ -281,6 +284,44 @@ export class EmailNotificationChannel implements INotificationChannel {
           kind: reminder?.kind ?? "hour_before_close",
           note: reminder?.note ?? null,
           closesAt: closes && !Number.isNaN(closes.getTime()) ? CLOSES_AT.format(closes) : null,
+        };
+      }
+      case "payment-reminder": {
+        const m = payload.meta;
+        return {
+          userName,
+          step: m?.reminderStep ?? "overdue",
+          lotTitle,
+          amount: formatMoneyMajor(m?.amount, m?.currency) ?? payload.message,
+          dueDate: m?.dueDate ?? "",
+          payUrl: payload.lotId
+            ? `${this.baseUrl()}/purchases/checkout/${encodeURIComponent(payload.lotId)}`
+            : `${this.baseUrl()}/purchases`,
+          supportContactEmail: SUPPORT_EMAIL,
+        };
+      }
+      case "buyer-default-notice": {
+        const m = payload.meta;
+        const audience =
+          m?.audience === "seller" || m?.audience === "underbidder" ? m.audience : "buyer";
+        const target = {
+          buyer: { url: `${this.baseUrl()}/purchases`, label: "View your purchases" },
+          seller: {
+            url: `${this.baseUrl()}/selling/consignments`,
+            label: "View your consignments",
+          },
+          underbidder: { url: lotUrl, label: "View the lot" },
+        }[audience];
+        return {
+          userName,
+          audience,
+          lotTitle,
+          amount: formatMoneyMajor(m?.amount, m?.currency) ?? "",
+          outcome: m?.defaultOutcome ?? "returned_to_inventory",
+          buyerRestricted: m?.buyerRestricted === true,
+          actionUrl: target.url,
+          actionLabel: target.label,
+          supportContactEmail: SUPPORT_EMAIL,
         };
       }
       case "payout-bank-changed-notice":

@@ -2,13 +2,17 @@ import {
   type IEmailSender,
   type TemplateName,
   type TemplateVarsByName,
+  emailProductFor,
   renderEmail,
 } from "@auction/email";
 import postmark from "postmark";
+import { fromForProduct } from "../alerts/sender-from.js";
 
 type PostmarkEmailSenderOptions = {
   serverToken: string;
   from: string;
+  /** Each product's From address; a product without an entry uses `from`. */
+  fromByProduct?: Readonly<Record<string, string>> | undefined;
   replyTo?: string | undefined;
   transactionalStream: string;
   broadcastStream: string;
@@ -34,7 +38,11 @@ export class PostmarkEmailSender implements IEmailSender {
     const unsubscribeUrl = unsubscribeUrlFromVars(payload.vars);
     const unsubscribeToken = postmarkMetadataUnsubscribeToken(unsubscribeUrl);
     const message: postmark.Message = {
-      From: this.opts.from,
+      From: fromForProduct(
+        emailProductFor(payload.template, payload.vars),
+        this.opts.fromByProduct,
+        this.opts.from,
+      ),
       To: payload.to,
       Subject: rendered.subject,
       HtmlBody: rendered.html,
@@ -51,9 +59,11 @@ export class PostmarkEmailSender implements IEmailSender {
       },
     };
     if (this.opts.replyTo) message.ReplyTo = this.opts.replyTo;
-    if (unsubscribeUrl) {
+    // The address a mail client POSTs to for one-click unsubscribe; by default the link in the body.
+    const oneClickUrl = stringVar(payload.vars, "listUnsubscribeUrl") ?? unsubscribeUrl;
+    if (oneClickUrl) {
       message.Headers = [
-        { Name: "List-Unsubscribe", Value: `<${unsubscribeUrl}>` },
+        { Name: "List-Unsubscribe", Value: `<${oneClickUrl}>` },
         { Name: "List-Unsubscribe-Post", Value: "List-Unsubscribe=One-Click" },
       ];
     }
@@ -62,10 +72,14 @@ export class PostmarkEmailSender implements IEmailSender {
   }
 }
 
-function unsubscribeUrlFromVars(vars: unknown): string | null {
+function stringVar(vars: unknown, key: string): string | null {
   if (!vars || typeof vars !== "object") return null;
-  const value = (vars as Record<string, unknown>).unsubscribeUrl;
+  const value = (vars as Record<string, unknown>)[key];
   return typeof value === "string" ? value : null;
+}
+
+function unsubscribeUrlFromVars(vars: unknown): string | null {
+  return stringVar(vars, "unsubscribeUrl");
 }
 
 const POSTMARK_METADATA_VALUE_MAX_LEN = 80;

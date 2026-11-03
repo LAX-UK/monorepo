@@ -25,6 +25,7 @@ import { createContainerAuthenticator } from "./container/create-auth.js";
 import { createBidAuthority, createBiddingLimitGate } from "./container/create-bid-eligibility.js";
 import { createBiddingRouteServices } from "./container/create-bidding-route-services.js";
 import { createBiddingSaleroom } from "./container/create-bidding-saleroom.js";
+import { createBuyerDefaultServices } from "./container/create-buyer-default-services.js";
 import { createCatalogRouteServices } from "./container/create-catalog-route-services.js";
 import { createCatalogServices } from "./container/create-catalog-services.js";
 import { createComplianceMedia } from "./container/create-compliance-media.js";
@@ -35,6 +36,10 @@ import { createFinanceRouteServices } from "./container/create-finance-route-ser
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
 import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
+import {
+  createEnquiryDraftTokens,
+  createMarketingEnquiryServices,
+} from "./container/create-marketing-enquiry-services.js";
 import { createOrganisationAccessServices } from "./container/create-organisation-access-services.js";
 import { createOrganisationBuyingServices } from "./container/create-organisation-buying-services.js";
 import { createOrganisationHomeServices } from "./container/create-organisation-home-services.js";
@@ -52,6 +57,7 @@ import { createUserMiscServices } from "./container/create-user-misc-services.js
 import { createUserNotificationComposition } from "./container/create-user-notification-composition.js";
 import { createUserRouteServices } from "./container/create-user-route-services.js";
 import type { Env } from "./env.js";
+import { DrizzlePendingDeletionReader } from "./infrastructure/drizzle-pending-deletion.reader.js";
 import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usage.reader.js";
 import { HttpIdentityDataRequestsClient } from "./infrastructure/http-identity-data-requests.client.js";
 import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.client.js";
@@ -63,6 +69,7 @@ import { StaffRoleChangeNotifier } from "./infrastructure/staff-role-change.noti
 import { createBaseLogger } from "./lib/logger.js";
 import { createAppLogger } from "./lib/logger.js";
 import { AdminSavedViewService } from "./services/admin/admin-saved-view.service.js";
+import { AdminStaffEmailChangeService } from "./services/admin/admin-staff-email-change.service.js";
 import { AdminTwoFactorResetService } from "./services/admin/admin-two-factor-reset.service.js";
 import { AtgAdminService } from "./services/admin/atg-admin.service.js";
 import { AdminDataRequestsService } from "./services/admin/data-requests/admin-data-requests.service.js";
@@ -100,6 +107,12 @@ export function createContainer(env: Env): Container {
     ...(env.IDENTITY_MACHINE_CLIENT_ID ? { machineClientId: env.IDENTITY_MACHINE_CLIENT_ID } : {}),
     ...(env.IDENTITY_MACHINE_CLIENT_SECRET
       ? { machineClientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET }
+      : {}),
+    ...(env.IDENTITY_STAFF_EMAIL_CHANGE_CLIENT_ID
+      ? { staffEmailChangeClientId: env.IDENTITY_STAFF_EMAIL_CHANGE_CLIENT_ID }
+      : {}),
+    ...(env.IDENTITY_STAFF_EMAIL_CHANGE_CLIENT_SECRET
+      ? { staffEmailChangeClientSecret: env.IDENTITY_STAFF_EMAIL_CHANGE_CLIENT_SECRET }
       : {}),
   });
   const sessionRevocation = new SessionRevocationService(identityIssuer);
@@ -182,6 +195,16 @@ export function createContainer(env: Env): Container {
     biddingSaleroom,
     complianceMedia,
   });
+  const buyerDefault = createBuyerDefaultServices({
+    env,
+    db,
+    infra,
+    repos,
+    platform,
+    catalog,
+    payments,
+  });
+  const enquiryDrafts = createEnquiryDraftTokens(env);
   const compliance = createComplianceRouteServices({
     db,
     transactionRunner: platform.transactionRunner,
@@ -192,12 +215,14 @@ export function createContainer(env: Env): Container {
     stripeConnectService: platform.stripeConnectService,
     marketingEventService: complianceMedia.marketingEventService,
     kycResubmissionNotifier: complianceMedia.kycResubmissionNotifier,
+    kycOutcomeNotifier: complianceMedia.kycOutcomeNotifier,
     sourceOfFundsDocumentCollectionService: complianceMedia.sourceOfFundsDocumentCollectionService,
     uploadService: complianceMedia.uploadService,
     exportService: complianceMedia.exportService,
     lotDocumentService: complianceMedia.lotDocumentService,
     saleDocumentService: complianceMedia.saleDocumentService,
     storageDriver: env.STORAGE_DRIVER,
+    enquiryDrafts,
   });
   const finance = createFinanceRouteServices({
     redis: infra.redis,
@@ -255,6 +280,7 @@ export function createContainer(env: Env): Container {
     webOrigin: env.WEB_ORIGIN,
     watchlistReminders,
     consignmentThreadSweep: consignmentMessages.sweep,
+    paymentReminders: buyerDefault.paymentReminderService,
   });
   const catalogRoutes = createCatalogRouteServices({
     saleService: catalog.saleService,
@@ -304,6 +330,7 @@ export function createContainer(env: Env): Container {
     payments,
     bidding: biddingSaleroom,
     userMisc,
+    buyerDefaultService: buyerDefault.buyerDefaultService,
     payoutStatementApplication: finance.payoutStatement,
   });
 
@@ -315,6 +342,12 @@ export function createContainer(env: Env): Container {
   const twoFactorReset = new AdminTwoFactorResetService({
     identity: identityIssuer,
     users: repos.adminUserReader,
+    audit: platform.authAuditPublisher,
+  });
+  const staffEmailChange = new AdminStaffEmailChangeService({
+    identity: identityIssuer,
+    users: repos.adminUserReader,
+    kyc: repos.adminUserKycReader,
     audit: platform.authAuditPublisher,
   });
   const staffAccess = new StaffAccessAdminService({
@@ -382,6 +415,8 @@ export function createContainer(env: Env): Container {
     env,
     lots: repos.lotRepo,
     sales: repos.saleRepo,
+    transactionRunner: platform.transactionRunner,
+    events: platform.domainEventSink,
     notificationDispatcher: platform.notificationDispatcher,
     notificationFactory: platform.notificationFactory,
     payments: {
@@ -389,6 +424,15 @@ export function createContainer(env: Env): Container {
       compliance: payments.settlementCompliancePolicy,
       groupCheckout: payments.paymentGroupCheckout,
     },
+  });
+  const marketingEnquiries = createMarketingEnquiryServices({
+    db,
+    env,
+    email: infra.emailService,
+    memberships: repos.legalEntityRepository,
+    transactionRunner: platform.transactionRunner,
+    events: platform.domainEventSink,
+    drafts: enquiryDrafts,
   });
   const organisationNames = {
     nameOf: async (id: string) =>
@@ -526,6 +570,11 @@ export function createContainer(env: Env): Container {
     watchlistService: userMisc.watchlistService,
     savedSearchService: userMisc.savedSearchService,
     newsletterSignupService: userMisc.newsletterSignupService,
+    alertEngine: userMisc.alertEngine,
+    marketingEnquiryService: marketingEnquiries.intake,
+    enquiryDraftTokens: marketingEnquiries.drafts,
+    enquirySubmission: marketingEnquiries.submission,
+    enquirerOrganisations: marketingEnquiries.organisations,
     webhookEventRepository: repos.webhookEventRepository,
     artistWatchlistService: userMisc.artistWatchlistService,
     notificationService: platform.notificationService,
@@ -539,6 +588,7 @@ export function createContainer(env: Env): Container {
     emailService: infra.emailService,
     emailObservabilityRepository: repos.emailObservabilityRepository,
     userSuspensionChecker: platform.cachedUserSuspensionChecker,
+    pendingDeletionReader: new DrizzlePendingDeletionReader(db),
     userSuspensionCacheInvalidator: platform.cachedUserSuspensionChecker,
     accountOnboardingService: userMisc.accountOnboardingService,
     accountOnboardingGate: userMisc.accountOnboardingGate,
@@ -574,6 +624,7 @@ export function createContainer(env: Env): Container {
     kycRepository: repos.kycRepository,
     kycService: complianceMedia.kycService,
     kycResubmissionNotifier: complianceMedia.kycResubmissionNotifier,
+    kycOutcomeNotifier: complianceMedia.kycOutcomeNotifier,
     amlService: complianceMedia.amlService,
     sourceOfFundsService: complianceMedia.sourceOfFundsService,
     adminSourceOfFundsQueryService: complianceMedia.adminSourceOfFundsQueryService,
@@ -665,6 +716,8 @@ export function createContainer(env: Env): Container {
       env,
       bidPortfolioReader: repos.bidPortfolioReader,
       recordPeople: new DrizzleRecordPeopleReader(db),
+      lotFulfilmentRepository: payments.lotFulfilmentRepository,
+      personalLegalEntityResolver: userMisc.personalLegalEntityResolver,
       lotViewerState,
       categoryInterestsEligibilityReader: repos.categoryInterestsEligibilityReader,
       categoryInterestsRepository: repos.categoryInterestsRepository,
@@ -705,6 +758,7 @@ export function createContainer(env: Env): Container {
       ...admin.admin,
       staffTwoFactorPolicy: twoFactorPolicy,
       twoFactorReset,
+      staffEmailChange,
       staffAccess,
       staffRoles,
       laxAdminRoles: laxAdminRoleChanges,
@@ -712,6 +766,8 @@ export function createContainer(env: Env): Container {
       atg,
       buyerAgentAuthorisations,
       deliveryQuotes: organisationBuying.staffDeliveryQuotes,
+      marketingEnquiries: marketingEnquiries.desk,
+      enquiryRouting: marketingEnquiries.routing,
       dataRequests: new AdminDataRequestsService({
         identity: new HttpIdentityDataRequestsClient({
           issuerBaseUrl: env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL,
@@ -806,7 +862,9 @@ export type {
   ContainerLotRoutesSlice,
   ContainerLotSaleSlice,
   ContainerMarketingRoutesSlice,
+  ContainerMarketingEnquiryRoutesSlice,
   ContainerNewsletterRoutesSlice,
+  ContainerAlertRoutesSlice,
   ContainerOnsiteEventRoutesSlice,
   ContainerOnsiteEventSlice,
   ContainerOrganizationOnboardingRoutesSlice,

@@ -76,7 +76,7 @@ authorization.
 
 The `bid_identity_directory` projector consumes `user.registered`,
 `user.profile_updated`, `user.email_verified`, `user.deletion_requested`,
-`user.deletion_cancelled`, `user.identity_merged`, and
+`user.deletion_cancelled`, `user.deletion_held`, `user.identity_merged`, and
 `user.identity_deleted`. It copies only contact/display and deletion lifecycle
 facts needed by worker jobs. It has an independent cursor and reconciliation
 gate; `user.identity_deleted` hard-deletes the local PII row.
@@ -128,9 +128,11 @@ This catalog is the contract between event producers and projectors. When you ad
 | `user.registered` | apps/auth or DB backfill | bid/shop provisioning, identity directory, zoho, marketing contacts | New Identity subject created | `{userId, email, name, source, image?, phone?, emailVerified?, createdAt?}` |
 | `user.email_verified` | apps/auth | zoho, marketing_contacts | Email verification token redeemed | `{userId, email, verifiedAt}` |
 | `user.profile_updated` | apps/auth | bid identity directory, product lifecycle projectors | Identity contact/display field changed | `{schemaVersion, subjectId, email?, name?, phone?, image?, updatedAt}` |
-| `user.deletion_requested` | apps/auth | bid identity directory, marketing contacts | Self-serve account deletion requested | `{schemaVersion, subjectId, requestedAt}` |
-| `user.deletion_cancelled` | apps/auth | bid identity directory, marketing contacts, zoho | Pending account deletion cancelled | `{schemaVersion, subjectId, cancelledAt}` |
 | `subject.data_export_requested` | apps/auth | worker `subject-data-export` job (not yet built) | A person asked LAX Account for a copy of their data | `{schemaVersion, subjectId, exportId}` (aggregate type `subject_data_export`, id = exportId; ids only) |
+| `user.sign_in_method_unlinked` | apps/auth | none yet (audit record) | A person removed a Google or Apple sign-in in LAX Account | `{schemaVersion, subjectId, provider, unlinkedAt}` |
+| `user.deletion_requested` | apps/auth | bid identity directory, shop identity projection, marketing contacts | Self-serve account deletion requested | `{schemaVersion, subjectId, requestedAt}` |
+| `user.deletion_cancelled` | apps/auth | bid identity directory, shop identity projection, marketing contacts, zoho | Pending account deletion cancelled | `{schemaVersion, subjectId, cancelledAt}` |
+| `user.deletion_held` | apps/auth | bid identity directory (staff work inbox) | The daily purge found something open and kept the details | `{schemaVersion, subjectId, heldAt, reasons[{code, message, href}]}` |
 | `user.identity_deleted` | apps/auth | bid identity directory, product lifecycle projectors | Identity PII purge completed | `{schemaVersion, subjectId, deletedAt}` |
 | `kyc.verified` | apps/api | marketing_contacts | Individual KYC approved; sole-trader `lead` → `connect_pending` | `{legalEntityIdsAdvancedToConnectPending[]}` (aggregate type `user`, id = userId) |
 | `bid.first_for_user` | apps/api | zoho | First bid by this user on this lot | `{bidId, lotId, userId, amountCents, placedAt}` |

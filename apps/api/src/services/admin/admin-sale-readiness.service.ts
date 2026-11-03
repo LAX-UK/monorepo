@@ -1,5 +1,24 @@
 import type { IAdminSaleReadinessReader } from "@auction/persistence/interfaces";
+import { type StaffRoles, type UserRole, adminRoutes, canOpenAdminLink } from "@auction/types";
 import type { AdminSaleReadinessRowDto } from "@auction/validators";
+
+/**
+ * The readiness rows with only the links this person can open: blockers they cannot act on are
+ * left out, and a sale they cannot open in the sale pages opens in the saleroom console instead.
+ */
+export function saleReadinessForViewer(
+  rows: readonly AdminSaleReadinessRowDto[],
+  role: UserRole,
+  staffRoles: StaffRoles | undefined,
+): AdminSaleReadinessRowDto[] {
+  return rows.map((row) => ({
+    ...row,
+    blockers: row.blockers.filter((blocker) => canOpenAdminLink(role, staffRoles, blocker.href)),
+    href: canOpenAdminLink(role, staffRoles, row.href)
+      ? row.href
+      : adminRoutes.saleroom.console(row.saleId),
+  }));
+}
 
 export class AdminSaleReadinessService {
   constructor(private readonly reader: IAdminSaleReadinessReader) {}
@@ -21,7 +40,7 @@ export class AdminSaleReadinessService {
           id: "draft-lots",
           label: `${row.lotsDraft} draft lot${row.lotsDraft === 1 ? "" : "s"}`,
           count: row.lotsDraft,
-          href: `/admin/sales/${row.saleId}?tab=catalog`,
+          href: adminRoutes.sale.lots(row.saleId),
         });
       }
       if (row.lotsMissingPhotos > 0) {
@@ -29,7 +48,7 @@ export class AdminSaleReadinessService {
           id: "missing-photos",
           label: `${row.lotsMissingPhotos} missing photos`,
           count: row.lotsMissingPhotos,
-          href: `/admin/sales/${row.saleId}?tab=catalog`,
+          href: adminRoutes.sale.lots(row.saleId),
         });
       }
       if (row.lotsMissingEstimates > 0) {
@@ -37,7 +56,7 @@ export class AdminSaleReadinessService {
           id: "missing-estimates",
           label: `${row.lotsMissingEstimates} missing estimates`,
           count: row.lotsMissingEstimates,
-          href: `/admin/sales/${row.saleId}?tab=catalog`,
+          href: adminRoutes.sale.lots(row.saleId),
         });
       }
       if (row.pendingRegistrations > 0) {
@@ -45,7 +64,7 @@ export class AdminSaleReadinessService {
           id: "pending-registrations",
           label: `${row.pendingRegistrations} pending registration${row.pendingRegistrations === 1 ? "" : "s"}`,
           count: row.pendingRegistrations,
-          href: `/admin/sales/${row.saleId}/registrations?status=pending`,
+          href: adminRoutes.sale.registrations(row.saleId, "pending"),
         });
       }
       if (row.pendingTelephoneBookings > 0) {
@@ -53,7 +72,7 @@ export class AdminSaleReadinessService {
           id: "pending-telephone",
           label: `${row.pendingTelephoneBookings} telephone booking${row.pendingTelephoneBookings === 1 ? "" : "s"}`,
           count: row.pendingTelephoneBookings,
-          href: `/admin/sales/${row.saleId}/telephone-bookings?status=requested`,
+          href: adminRoutes.sale.telephoneBookings(row.saleId, "requested"),
         });
       }
 
@@ -76,8 +95,8 @@ export class AdminSaleReadinessService {
         pendingTelephoneBookings: row.pendingTelephoneBookings,
         sessionStatus: row.sessionStatus,
         blockers,
-        href: `/admin/sales/${row.saleId}`,
-        consoleHref: isLive && isOnsite ? `/admin/saleroom/${row.saleId}` : null,
+        href: adminRoutes.sale.detail(row.saleId),
+        consoleHref: isLive && isOnsite ? adminRoutes.saleroom.console(row.saleId) : null,
       };
     });
   }

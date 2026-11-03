@@ -145,6 +145,17 @@ const CAPABILITY_PRESENTATION: Record<RoleCapability, CapabilityPresentation> = 
     description: "Respond to clients and moderate user accounts.",
     group: "people",
   },
+  "enquiries.private_sale.read": {
+    label: "Private sale enquiries",
+    description:
+      "Read private sale enquiries, including the work offered and the sender's details.",
+    group: "people",
+  },
+  "private_sale.manage": {
+    label: "Manage private sales",
+    description: "Take private sales from enquiry to agreement.",
+    group: "people",
+  },
   "client.read": {
     label: "View clients",
     description: "Browse the client directory and read-only client detail.",

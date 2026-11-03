@@ -20,7 +20,7 @@ import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.
 import type { IMediaAssetEnricher } from "./interfaces/media-asset-enricher.js";
 import type { IMediaUrlResolver } from "./interfaces/media-url-resolver.js";
 import type { IQrCodeService } from "./interfaces/qr-code-service.js";
-import type { ISalePublishService } from "./interfaces/sale-publish.js";
+import type { ISalePublishService, SalePublishOptions } from "./interfaces/sale-publish.js";
 import type { ISaleService, PublicCatalogueLot } from "./interfaces/sale-service.js";
 import { createSale } from "./sale/sale-create.js";
 import {
@@ -40,7 +40,7 @@ import {
   listSaleLotsPageForPublicApi,
   listSalesForPublicApi,
 } from "./sale/sale-read.js";
-import type { SaleFollowReader, SaleServiceDeps } from "./sale/sale-types.js";
+import type { LotBookingRemoval, SaleFollowReader, SaleServiceDeps } from "./sale/sale-types.js";
 import { type UpdateSaleBody, updateDraftSale } from "./sale/sale-update-draft.js";
 
 export type { SaleFollowReader } from "./sale/sale-types.js";
@@ -65,6 +65,7 @@ export type SaleServiceOptions = {
   qrCodeService?: IQrCodeService | null;
   repoFactory?: IRepositoryFactory | null;
   saleChannelReader?: ISaleChannelReader | null;
+  telephoneBookings?: LotBookingRemoval | null;
   salePublishService: ISalePublishService;
 };
 
@@ -93,6 +94,7 @@ export class SaleService implements ISaleService {
       qrCodeService: opts.qrCodeService ?? null,
       repoFactory: opts.repoFactory ?? null,
       saleChannelReader: opts.saleChannelReader ?? null,
+      telephoneBookings: opts.telephoneBookings ?? null,
     };
     this.publishService = opts.salePublishService;
   }
@@ -162,8 +164,9 @@ export class SaleService implements ISaleService {
     userRole: string,
     saleId: string,
     userStaffRoles?: StaffRoles | undefined,
+    options?: SalePublishOptions,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-    return this.publishService.publish(userId, userRole, saleId, userStaffRoles);
+    return this.publishService.publish(userId, userRole, saleId, userStaffRoles, options);
   }
 
   async unpublish(

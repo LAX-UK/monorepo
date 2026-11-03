@@ -2,6 +2,7 @@ import {
   SUBJECT_EXPORT_PRODUCT_INFO,
   type SubjectExportProduct,
 } from "@auction/identity-contracts";
+import { controllerNamesFor } from "./controller-names.js";
 import type { CollectedProduct } from "./product-collector.js";
 import { MANIFEST_FILE_NAME, README_FILE_NAME } from "./readme.renderer.js";
 import {
@@ -120,7 +121,7 @@ function productSection(collected: CollectedProduct): string {
   const info = SUBJECT_EXPORT_PRODUCT_INFO[product];
   return `<section aria-labelledby="sec-${product}">
 <h2 id="sec-${product}">${escapeHtml(info.name)}</h2>
-<p class="muted">Kept by ${escapeHtml(info.controller)}.</p>
+<p class="muted">Kept by ${escapeHtml(controllerNamesFor(product))}.</p>
 ${productTable(collected)}
 </section>`;
 }

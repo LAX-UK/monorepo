@@ -1,5 +1,6 @@
 import {
   type AuthPorts,
+  type CredentialEmailSender,
   DEFAULT_JWT_AUDIENCE,
   type EmailSender,
   type SmsSender,
@@ -54,6 +55,7 @@ export function createAuthIssuer(options: {
   redis: Redis;
   log: pino.Logger;
   email: EmailSender;
+  credentialEmail: CredentialEmailSender;
   phoneVerification: SmsSender;
   trustedOrigins: string[];
   logout: BackchannelLogoutRevoker;
@@ -132,6 +134,7 @@ export function createAuthIssuer(options: {
   const ports: AuthPorts = {
     ...identityPorts,
     email: options.email,
+    credentialEmail: options.credentialEmail,
     sms: options.phoneVerification,
     events: options.identityEventPublisher,
     securityNotices: options.securityNotices,

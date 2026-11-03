@@ -1,11 +1,12 @@
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
+import type { AccountHold } from "@auction/domain";
 import type { Lot, PortfolioRow } from "@auction/types";
 import { describe, expect, it } from "vitest";
+import { owedFor } from "./owed-fixtures.test-util";
 import {
   canReportProblem,
   defaultPurchaseTab,
-  isToPay,
   parsePurchaseTab,
   purchaseState,
   purchaseStep,
@@ -36,38 +37,41 @@ function fulfilment(overrides: Partial<LotFulfilmentSnapshot> = {}): LotFulfilme
 
 describe("purchaseState", () => {
   it("asks for payment until it is taken, and for documents when held", () => {
-    expect(purchaseState({ paymentStatus: null, reviewReason: null, fulfilment: null })).toBe(
+    expect(purchaseState({ paymentStatus: null, inReview: false, fulfilment: null })).toBe(
       "payment-due",
     );
-    expect(purchaseState({ paymentStatus: "pending", reviewReason: null, fulfilment: null })).toBe(
+    expect(purchaseState({ paymentStatus: "pending", inReview: false, fulfilment: null })).toBe(
       "payment-due",
     );
-    expect(purchaseState({ paymentStatus: null, reviewReason: "aml_hold", fulfilment: null })).toBe(
+    expect(purchaseState({ paymentStatus: null, inReview: true, fulfilment: null })).toBe(
       "in-review",
     );
-    expect(
-      purchaseState({ paymentStatus: "authorized", reviewReason: null, fulfilment: null }),
-    ).toBe("payment-processing");
+    expect(purchaseState({ paymentStatus: "authorized", inReview: false, fulfilment: null })).toBe(
+      "payment-processing",
+    );
   });
 
   it("ends a refunded or cancelled purchase, however it is read", () => {
     const state = (
       paymentStatus: Parameters<typeof purchaseState>[0]["paymentStatus"],
       f: LotFulfilmentSnapshot | null = null,
-    ) => purchaseState({ paymentStatus, reviewReason: "aml_hold", fulfilment: f });
-    expect(state("cancelled")).toBe("cancelled");
+    ) => purchaseState({ paymentStatus, inReview: true, fulfilment: f });
     expect(state("refunded")).toBe("refunded");
     expect(state("pending", fulfilment({ status: "cancelled" }))).toBe("cancelled");
     expect(state("captured", fulfilment({ status: "cancelled" }))).toBe("cancelled");
     expect(purchaseTab("cancelled")).toBe("completed");
-    expect(isToPay("cancelled")).toBe(false);
-    expect(isToPay("refunded")).toBe(false);
-    expect(isToPay("pending")).toBe(true);
+  });
+
+  it("keeps a cancelled payment row owed: the buyer can pay again", () => {
+    expect(purchaseState({ paymentStatus: "cancelled", inReview: false, fulfilment: null })).toBe(
+      "payment-due",
+    );
+    expect(purchaseTab("payment-due")).toBe("to-pay");
   });
 
   it("follows delivery once paid", () => {
     const paid = (f: LotFulfilmentSnapshot | null) =>
-      purchaseState({ paymentStatus: "captured", reviewReason: null, fulfilment: f });
+      purchaseState({ paymentStatus: "captured", inReview: false, fulfilment: f });
     expect(paid(null)).toBe("choose-delivery");
     expect(paid(fulfilment())).toBe("choose-delivery");
     expect(paid(fulfilment({ fulfilmentMethod: "shipping" }))).toBe("preparing");
@@ -100,6 +104,9 @@ describe("purchaseState", () => {
     expect(canReportProblem("in-review")).toBe(false);
     expect(canReportProblem("choose-delivery")).toBe(true);
     expect(canReportProblem("delivered")).toBe(true);
+    expect(canReportProblem("payment-processing")).toBe(false);
+    expect(canReportProblem("refunded")).toBe(false);
+    expect(canReportProblem("cancelled")).toBe(false);
   });
 
   it("opens the first view with something in it", () => {
@@ -133,8 +140,11 @@ function row(id: string, lotNumber: number, payment: PortfolioRow["payment"]): P
   };
 }
 
-function sources(overrides: Partial<PurchaseSources> = {}): PurchaseSources {
-  return {
+function sources(
+  overrides: Partial<PurchaseSources> = {},
+  gate: AccountHold = "clear",
+): PurchaseSources {
+  const base: Omit<PurchaseSources, "owedByLot"> = {
     rows: [
       row("lot-5", 5, null),
       row("lot-11", 11, { id: "p11", status: "captured", manualReviewReason: null }),
@@ -148,12 +158,12 @@ function sources(overrides: Partial<PurchaseSources> = {}): PurchaseSources {
         fulfilmentMethod: "shipping",
       }),
     },
-    complianceGate: "clear",
     saleTitleById: { "sale-2": "Jewels and objects of vertu" },
     paymentRoleByLot: {},
     payerName: null,
     ...overrides,
   };
+  return { ...base, owedByLot: owedFor(base, gate), ...overrides };
 }
 
 function facts(
@@ -189,12 +199,30 @@ describe("buildPurchasesVm", () => {
     expect(vm.sales).toEqual([{ id: "sale-2", title: "Jewels and objects of vertu" }]);
   });
 
+  it("keeps a purchase with a cancelled payment row in To pay, with Pay available", () => {
+    const vm = buildPurchasesVm(
+      sources({
+        rows: [row("lot-6", 6, { id: "p6", status: "cancelled", manualReviewReason: null })],
+        factsByLot: {
+          "lot-6": facts("lot-6", {
+            status: "due",
+            dueAt: new Date("2026-11-06T12:00:00Z"),
+            paymentId: "p6",
+            totalDue: "2875.00",
+          }),
+        },
+      }),
+    );
+    expect(vm.cardsByTab["to-pay"].map((card) => card.lotId)).toEqual(["lot-6"]);
+    expect(vm.cardsByTab.completed).toEqual([]);
+    expect(vm.payNow).toMatchObject({ kind: "pay", lotIds: ["lot-6"] });
+  });
+
   it("keeps a cancelled purchase out of To pay, the banner and the badge, whatever its invoice says", () => {
     const vm = buildPurchasesVm(
       sources({
         rows: [
           row("lot-5", 5, { id: "p5", status: "pending", manualReviewReason: null }),
-          row("lot-6", 6, { id: "p6", status: "cancelled", manualReviewReason: null }),
           row("lot-8", 8, null),
         ],
         factsByLot: {
@@ -203,12 +231,6 @@ describe("buildPurchasesVm", () => {
             dueAt: new Date("2026-11-06T12:00:00Z"),
             paymentId: "p5",
             totalDue: "8000.00",
-          }),
-          "lot-6": facts("lot-6", {
-            status: "cancelled",
-            dueAt: new Date("2026-10-22T12:00:00Z"),
-            paymentId: "p6",
-            totalDue: "2875.00",
           }),
           // Unpaid, and cancelled on delivery.
           "lot-8": facts(
@@ -237,10 +259,7 @@ describe("buildPurchasesVm", () => {
     expect(vm.cardsByTab["to-pay"].map((card) => card.lotId)).toEqual(["lot-5"]);
     expect(
       vm.cardsByTab.completed.map((card) => [card.lotId, card.badge.label, card.amountLabel]),
-    ).toEqual([
-      ["lot-6", "Cancelled", "was due"],
-      ["lot-8", "Cancelled", "was due"],
-    ]);
+    ).toEqual([["lot-8", "Cancelled", "was due"]]);
     expect(vm.payNow).toMatchObject({ kind: "pay", lotIds: ["lot-5"] });
   });
 
@@ -270,6 +289,7 @@ describe("buildPurchasesVm", () => {
       description: "One is overdue. Pay them together by card or bank transfer.",
       lotIds: ["lot-5", "lot-6"],
       total: "16000.00",
+      documentsAction: null,
     });
     expect(vm.cardsByTab["to-pay"].map((card) => card.badge.label)).toEqual([
       "Overdue since 29 Oct",
@@ -358,13 +378,34 @@ describe("buildPurchasesVm", () => {
   });
 
   it("explains a review instead of offering to pay", () => {
-    const vm = buildPurchasesVm(sources({ complianceGate: "source_of_funds_required" }));
-    expect(vm.payNow?.kind).toBe("review");
+    const vm = buildPurchasesVm(sources({}, "source_of_funds_required"));
+    expect(vm.payNow).toMatchObject({
+      kind: "review",
+      title: "Your account is in review",
+      documentsAction: { label: "Provide documents" },
+    });
+    // Rows only say where the purchase stands: the one action is in the banner.
     expect(vm.cardsByTab["to-pay"][0]).toMatchObject({
       statusLabel: "In review",
+      statusNote: "We need to confirm the source of funds before you pay",
       payable: null,
-      primaryAction: { label: "Provide documents" },
+      primaryAction: null,
     });
+  });
+
+  it("asks for nothing when checks are open for another reason", () => {
+    const vm = buildPurchasesVm(sources({}, "aml_hold"));
+    expect(vm.payNow).toMatchObject({ kind: "review", documentsAction: null });
+    expect(vm.cardsByTab["to-pay"][0]).toMatchObject({
+      statusLabel: "In review",
+      primaryAction: null,
+    });
+  });
+
+  it("shows the owed total, with premium, on the row and in the banner", () => {
+    const vm = buildPurchasesVm(sources());
+    expect(vm.cardsByTab["to-pay"][0]).toMatchObject({ amount: "£8,000.00" });
+    expect(vm.payNow).toMatchObject({ kind: "pay", total: "8000.00" });
   });
 });
 

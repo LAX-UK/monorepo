@@ -1,5 +1,6 @@
 import type { AccountScope, IAccountScope } from "@/lib/account-scope/account-scope";
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
+import type { AmountsOwedView } from "@/lib/data/http/amounts-owed.server";
 import type { PortfolioRow } from "@auction/types";
 
 /**
@@ -12,14 +13,24 @@ export interface IAccountBuyingReader {
   scope(): Promise<AccountScope>;
   bids(): Promise<BidWithLot[]>;
   purchases(): Promise<PortfolioRow[]>;
+  /**
+   * What the account owes, lot by lot. The header chip, Purchases, the menu and Home all read
+   * this one answer, so a figure is the same wherever it is shown.
+   */
+  amountsOwed(): Promise<AmountsOwedView>;
 }
 
 /** Where each kind of account's records come from. */
 export type AccountBuyingSources = {
-  personal: { bids(): Promise<BidWithLot[]>; purchases(): Promise<PortfolioRow[]> };
+  personal: {
+    bids(): Promise<BidWithLot[]>;
+    purchases(): Promise<PortfolioRow[]>;
+    amountsOwed(): Promise<AmountsOwedView>;
+  };
   organisation: {
     bids(accountId: string): Promise<BidWithLot[]>;
     purchases(accountId: string): Promise<PortfolioRow[]>;
+    amountsOwed(accountId: string): Promise<AmountsOwedView>;
   };
 };
 
@@ -33,6 +44,7 @@ export function createAccountBuyingReader(
 ): IAccountBuyingReader {
   let bids: Promise<BidWithLot[]> | null = null;
   let purchases: Promise<PortfolioRow[]> | null = null;
+  let amountsOwed: Promise<AmountsOwedView> | null = null;
   const read = async <T>(
     personal: () => Promise<T>,
     organisation: (accountId: string) => Promise<T>,
@@ -49,6 +61,10 @@ export function createAccountBuyingReader(
     purchases: () => {
       purchases ??= read(sources.personal.purchases, sources.organisation.purchases);
       return purchases;
+    },
+    amountsOwed: () => {
+      amountsOwed ??= read(sources.personal.amountsOwed, sources.organisation.amountsOwed);
+      return amountsOwed;
     },
   };
 }

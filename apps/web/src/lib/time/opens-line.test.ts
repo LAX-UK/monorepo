@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { opensBadgeLabel, opensLine } from "./opens-line";
+import { closingChipText, opensBadgeLabel, opensLine } from "./opens-line";
 
 const now = new Date("2026-11-01T12:00:00Z");
 const at = (ms: number) => new Date(now.getTime() + ms);
@@ -10,8 +10,14 @@ describe("opensLine", () => {
   it("tells a date beyond a week", () => {
     expect(opensLine(new Date("2026-11-27T20:19:00Z"), now)).toEqual({
       label: "Opens",
-      value: "27 Nov 2026, 20:19 GMT",
+      value: "Fri 27 Nov, 20:19 GMT",
     });
+  });
+
+  it("adds the year only when the date is not this year's", () => {
+    expect(opensLine(new Date("2027-01-12T10:00:00Z"), now).value).toBe(
+      "Tue 12 Jan 2027, 10:00 GMT",
+    );
   });
 
   it("counts days and hours within a week", () => {
@@ -27,9 +33,14 @@ describe("opensLine", () => {
     expect(opensLine(at(H + 60_000), now).value).toBe("1 hour 1 minute");
   });
 
-  it("counts minutes within an hour, never seconds", () => {
-    expect(opensLine(at(42 * 60_000), now).value).toBe("42 minutes");
-    expect(opensLine(at(20_000), now).value).toBe("less than a minute");
+  it("counts minutes and seconds in the final hour", () => {
+    expect(opensLine(at(42 * 60_000 + 10_000), now).value).toBe("42 minutes 10 seconds");
+    expect(opensLine(at(20_000), now).value).toBe("20 seconds");
+  });
+
+  it("switches from date to countdown at exactly seven days", () => {
+    expect(opensLine(at(7 * D + 1), now).label).toBe("Opens");
+    expect(opensLine(at(7 * D), now)).toEqual({ label: "Opens in", value: "7 days" });
   });
 
   it("takes another prefix", () => {
@@ -47,5 +58,27 @@ describe("opensBadgeLabel", () => {
   });
   it("adds the year when it is not this year", () => {
     expect(opensBadgeLabel(new Date("2027-02-22T10:00:00Z"), now)).toBe("Opens Mon 22 Feb 2027");
+  });
+});
+
+describe("closingChipText", () => {
+  const end = new Date("2026-11-16T12:00:00Z");
+  const text = (ms: number) => closingChipText(ms, end);
+
+  it("counts down at 6 days 23 hours", () => {
+    expect(text(6 * 24 * H + 23 * H)).toBe("6d 23h");
+  });
+
+  it("still counts down at exactly 7 days", () => {
+    expect(text(7 * 24 * H)).toBe("7d 0h");
+  });
+
+  it("tells the date past 7 days", () => {
+    expect(text(7 * 24 * H + H)).toBe("Closes Mon 16 Nov");
+    expect(text(9 * 24 * H)).toBe("Closes Mon 16 Nov");
+  });
+
+  it("shows seconds only in the final hour", () => {
+    expect(text(42 * 60_000 + 9_000)).toBe("42m 9s");
   });
 });

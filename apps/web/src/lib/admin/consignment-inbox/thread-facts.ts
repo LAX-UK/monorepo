@@ -19,7 +19,7 @@ export type ThreadFact = {
   /** A muted second line: "19 Nov 2026, 18:00", "Waiting for an owner or admin". */
   detail?: string;
   /** The consignment's step, shown as its badge instead of text. */
-  stage?: { label: string; tone: StatusBadgeTone; shape: StatusBadgeShape };
+  stage?: { label: string; tone: StatusBadgeTone; shape: StatusBadgeShape; live?: boolean };
   /** Adds a copy control. */
   copy?: string;
   href?: string;

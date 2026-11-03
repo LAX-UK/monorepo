@@ -6,6 +6,7 @@ import {
   ARTIST_REVIEW_ACCESS,
   ARTIST_WRITE_ACCESS,
   AUDIT_DOMAIN_EVENTS_ACCESS,
+  BUYER_DEFAULT_ACCESS,
   CATEGORIES_ACCESS,
   CATEGORIES_READ_ACCESS,
   CLIENT_ACTIVITY_ACCESS,
@@ -21,7 +22,11 @@ import {
   DELIVERY_REPLAY_ACCESS,
   DISPUTE_ALLOCATION_WRITE_ACCESS,
   EMAIL_ADMIN_ACCESS,
+  EMAIL_BLOCK_LIFT_ACCESS,
+  EMAIL_DELIVERY_READ_ACCESS,
   EMAIL_OBSERVABILITY_ACCESS,
+  ENQUIRIES_ACCESS,
+  ENQUIRY_ROUTING_MANAGE_ACCESS,
   FAILED_JOBS_READ_ACCESS,
   FAILED_JOBS_WRITE_ACCESS,
   INVITATIONS_ACCESS,
@@ -42,6 +47,7 @@ import {
   SALES_ACCESS,
   SALES_READ_ACCESS,
   STAFF_ACCESS_REVIEW_ACCESS,
+  STAFF_EMAIL_CHANGE_ACCESS,
   STAFF_ROLES_READ_ACCESS,
   SUBMISSIONS_ACCESS,
   SUBMISSIONS_READ_ACCESS,
@@ -129,6 +135,9 @@ export const requireSalesAccess = createRequireAccess(SALES_ACCESS);
 export const requireSalesRead = createRequireAccess(SALES_READ_ACCESS);
 export const requireWithdrawalDecision = createRequireAccess(WITHDRAWAL_DECISION_ACCESS);
 export const requireDeliveryReplay = createRequireAccess(DELIVERY_REPLAY_ACCESS);
+/** The Enquiries list and records: general enquiries, private sale enquiries, or both. */
+export const requireEnquiries = createRequireAccess(ENQUIRIES_ACCESS);
+export const requireEnquiryRoutingManage = createRequireAccess(ENQUIRY_ROUTING_MANAGE_ACCESS);
 export const requireDataRequestsManage = createRequireAccess(DATA_REQUESTS_MANAGE_ACCESS);
 export const requireFailedJobsRead = createRequireAccess(FAILED_JOBS_READ_ACCESS);
 export const requireFailedJobsWrite = createRequireAccess(FAILED_JOBS_WRITE_ACCESS);
@@ -141,6 +150,7 @@ export const requireDisputeAllocationWrite = createRequireAccess(DISPUTE_ALLOCAT
 export const requirePlatformAdminFull = createRequireAccess(PLATFORM_ADMIN_ACCESS);
 export const requireUsersDirectory = createRequireAccess(USERS_DIRECTORY_ACCESS);
 export const requireUserModeration = createRequireAccess(USER_MODERATION_ACCESS);
+export const requireStaffEmailChange = createRequireAccess(STAFF_EMAIL_CHANGE_ACCESS);
 export const requireStaffRolesRead = createRequireAccess(STAFF_ROLES_READ_ACCESS);
 export const requireStaffAccessReview = createRequireAccess(STAFF_ACCESS_REVIEW_ACCESS);
 export const requireOnboardingQueues = createRequireAccess(ONBOARDING_QUEUES_ACCESS);
@@ -157,6 +167,8 @@ export const requireArtistReviewAccess = createRequireAccess(ARTIST_REVIEW_ACCES
 export const requireLotsAccess = createRequireAccess(LOTS_ACCESS);
 export const requireAuditDomainEvents = createRequireAccess(AUDIT_DOMAIN_EVENTS_ACCESS);
 export const requireEmailAdmin = createRequireAccess(EMAIL_ADMIN_ACCESS);
+export const requireEmailBlockLift = createRequireAccess(EMAIL_BLOCK_LIFT_ACCESS);
+export const requireEmailDeliveryRead = createRequireAccess(EMAIL_DELIVERY_READ_ACCESS);
 export const requireEmailObservability = createRequireAccess(EMAIL_OBSERVABILITY_ACCESS);
 export const requireClientBids = createRequireAccess(CLIENT_BIDS_ACCESS);
 export const requireClientKyc = createRequireAccess(CLIENT_KYC_ACCESS);
@@ -180,6 +192,7 @@ export const requireSaleroomOperate = createRequireAccess(SALEROOM_ACCESS);
  * `admin.read`. Mount them on GET routes only; every action keeps its write rule.
  */
 export const requireLotsRead = createRequireAccess(LOTS_READ_ACCESS);
+export const requireBuyerDefault = createRequireAccess(BUYER_DEFAULT_ACCESS);
 export const requireLotWorkRead = createRequireAccess(LOT_WORK_READ_ACCESS);
 export const requireSubmissionsRead = createRequireAccess(SUBMISSIONS_READ_ACCESS);
 export const requireConsignmentInboxRead = createRequireAccess(CONSIGNMENT_INBOX_READ_ACCESS);

@@ -64,6 +64,25 @@ describe("revokeOpenStripeCheckoutForPayment", () => {
     expect(revoke).toHaveBeenCalledWith("pay-1", "pi_1");
   });
 
+  it("logs and reports a failed revoke instead of hiding it", async () => {
+    const report = vi.fn();
+    const failure = new Error("intent is processing");
+    const deps = baseDeps({
+      stripePayments: {
+        isConfigured: () => true,
+        revokeOpenCheckoutForPayment: vi.fn().mockRejectedValue(failure),
+      } as unknown as IStripePaymentGateway,
+      errorReporter: { report },
+    });
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await revokeOpenStripeCheckoutForPayment(deps, "pay-1");
+    expect(report).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "stripe_checkout_revoke_failed", cause: failure }),
+    );
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("stripe_checkout_revoke_failed"));
+    log.mockRestore();
+  });
+
   it("no-ops when Stripe is not configured", async () => {
     const deps = baseDeps({
       stripePayments: { isConfigured: () => false } as unknown as IStripePaymentGateway,

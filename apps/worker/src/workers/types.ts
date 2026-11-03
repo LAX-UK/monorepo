@@ -18,7 +18,9 @@ import type { IComplianceRecipientReader } from "../interfaces/compliance-recipi
 import type { ICoverAnalysisJobRepository } from "../interfaces/cover-analysis-job.repository.js";
 import type { IDataExportJobRepository } from "../interfaces/data-export.repository.js";
 import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
+import type { IEmailAddressLookup } from "../interfaces/email-provider-suppression.js";
 import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
+import type { IKycRetentionSubjectStore } from "../interfaces/kyc-retention-subject.store.js";
 import type { ILegalEntityArchiveCascadeReader } from "../interfaces/legal-entity-archive-cascade.reader.js";
 import type { IMarketingAttributionPurgeRepository } from "../interfaces/marketing-attribution-purge.repository.js";
 import type { IMarketingClickIdPurgeRepository } from "../interfaces/marketing-click-id-purge.repository.js";
@@ -29,7 +31,6 @@ import type { IMediaAssetProcessorRepository } from "../interfaces/media-asset-p
 import type { INewsletterSignupSyncRepository } from "../interfaces/newsletter-signup-sync.repository.js";
 import type { IPayoutStatementRepository } from "../interfaces/payout-statement.repository.js";
 import type { IQrCodeScanPurgeRepository } from "../interfaces/qr-code-scan-purge.repository.js";
-import type { ISourceOfFundsDocumentPurgeRepository } from "../interfaces/source-of-funds-document-purge.repository.js";
 import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 import type { IUploadValidationRepository } from "../interfaces/upload-validation.repository.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
@@ -60,13 +61,14 @@ export type WorkerBootstrapDeps = {
   repoFactory: IRepositoryFactory;
   uploadValidationRepo: IUploadValidationRepository;
   emailOutboxRepo: IEmailOutboxRepository;
+  emailAddressLookup: IEmailAddressLookup;
   payoutStatementRepo: IPayoutStatementRepository;
   profileMarketingReader: IMarketingProfileReader;
   marketingEventOutboxWorker: IMarketingEventOutboxWorker;
   dataExportRepo: IDataExportJobRepository;
   staffRoleReader: IStaffRoleAssignmentReader;
   newsletterSignupSyncRepo: INewsletterSignupSyncRepository;
-  sourceOfFundsDocumentPurgeRepo: ISourceOfFundsDocumentPurgeRepository;
+  kycRetentionStores: readonly IKycRetentionSubjectStore[];
   marketingContactSyncRepo: IMarketingContactSyncRepository;
   staffOpsRecipientReader: IStaffOpsRecipientReader;
   complianceRecipientReader: IComplianceRecipientReader;

@@ -56,4 +56,11 @@ describe("commerceErrorMessage", () => {
   it("falls back for unknown payloads", () => {
     expect(commerceErrorMessage(null, "fallback")).toBe("fallback");
   });
+
+  it("shows the account deletion message the server wrote", () => {
+    const message = "Your account is due to be deleted on 2 December. Cancel deletion to continue.";
+    expect(
+      commerceErrorMessage({ code: SHOP_API_ERROR_CODES.ACCOUNT_DELETION_PENDING, message }, "x"),
+    ).toBe(message);
+  });
 });

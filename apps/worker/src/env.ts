@@ -2,6 +2,16 @@ import { resolveStrictBidEligibilityRollout } from "@auction/domain";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
+function parseFromByProduct(val: unknown): unknown {
+  if (val === "" || val === null || val === undefined) return undefined;
+  if (typeof val !== "string") return val;
+  try {
+    return JSON.parse(val);
+  } catch {
+    return val;
+  }
+}
+
 function emptyToUndefined(val: unknown): unknown {
   return val === "" || val === null ? undefined : val;
 }
@@ -19,6 +29,12 @@ const envSchema = z
     SENTRY_DSN_WORKER: z.preprocess(emptyToUndefined, z.string().url().optional()),
     EMAIL_PROVIDER: z.enum(["console", "postmark"]).default("console"),
     EMAIL_FROM: z.string().default("LAX <no-reply@mail.lax.bid>"),
+    /**
+     * Each product's From address as JSON, e.g. `{"bid":"alerts@mail.lax.bid"}`. A bare address
+     * is sent under the product's name ("LAX Bid <alerts@mail.lax.bid>"); a product without an
+     * entry uses EMAIL_FROM.
+     */
+    EMAIL_FROM_BY_PRODUCT: z.preprocess(parseFromByProduct, z.record(z.string().min(3)).optional()),
     EMAIL_REPLY_TO: z.preprocess(emptyToUndefined, z.string().optional()),
     POSTMARK_SERVER_TOKEN: z.preprocess(emptyToUndefined, z.string().optional()),
     POSTMARK_TRANSACTIONAL_STREAM: z.string().default("outbound"),
@@ -113,6 +129,11 @@ const envSchema = z
     GA4_MEASUREMENT_ID: z.preprocess(emptyToUndefined, z.string().optional()),
     META_GRAPH_API_VERSION: z.preprocess(emptyToUndefined, z.string().optional()),
     MARKETING_EVENT_WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(5),
+    /**
+     * Turns on the KYC, AML and source-of-funds retention purge. Off (the default) it runs as a
+     * dry run: it logs what it would purge and deletes nothing.
+     */
+    KYC_RETENTION_PURGE_ENABLED: z.preprocess(parseOptionalBooleanFlag, z.boolean().default(false)),
     QR_SCAN_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
     /** Optional ClamAV daemon for SoF document malware scanning. */
     CLAMAV_HOST: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -120,6 +141,19 @@ const envSchema = z
     /** Optional ClamAV REST endpoint for SoF document malware scanning. */
     CLAMAV_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     ZOHO_CRM_SYNC_MODE: z.enum(["off", "dry_run", "canary", "live"]).default("off"),
+    /**
+     * LAX Bid email alerts. `off` does nothing; `dry_run` records matches and logs each digest
+     * without sending; `on` sends. Run the seed command before leaving `off`.
+     */
+    ALERTS_SEND_MODE: z.enum(["off", "dry_run", "on"]).default("off"),
+    /** Signs the confirm and stop links in alert emails; the API verifies them. */
+    ALERT_LINK_SECRET: z.string().min(16).default("dev-alert-link-secret-not-for-production"),
+    ALERT_LINK_KEY_ID: z.string().min(1).max(32).default("k1"),
+    ALERT_LINK_PREVIOUS_SECRET: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
+    ALERT_LINK_PREVIOUS_KEY_ID: z.preprocess(
+      emptyToUndefined,
+      z.string().min(1).max(32).optional(),
+    ),
     ZOHO_CRM_ENABLED_EVENT_TYPES: z.string().default(""),
     /** JSON array passed as Zoho upsert/update `trigger` (default `[]` suppresses workflows). */
     ZOHO_CRM_UPSERT_TRIGGER: z.string().default("[]"),
@@ -273,6 +307,13 @@ const envSchema = z
     }
     // Admin email required only in production (test stack uses debug channels).
     if (e.APP_ENV === "production") {
+      if (e.ALERTS_SEND_MODE !== "off" && e.ALERT_LINK_SECRET.length < 32) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "ALERT_LINK_SECRET is required in production when alerts are on (min 32)",
+          path: ["ALERT_LINK_SECRET"],
+        });
+      }
       if (!e.ADMIN_EMAIL_ADDRESS) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,

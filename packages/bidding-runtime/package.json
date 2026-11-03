@@ -18,6 +18,7 @@
   "dependencies": {
     "@auction/db": "workspace:*",
     "@auction/domain": "workspace:*",
+    "@auction/email": "workspace:^",
     "@auction/persistence": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",

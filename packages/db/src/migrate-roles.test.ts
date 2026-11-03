@@ -15,10 +15,13 @@ import {
   AUTH_READ_TABLES,
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
+  WORKER_BID_ALERT_TABLES,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
   WORKER_FULL_TABLES,
+  WORKER_KYC_RETENTION_PURGE_TABLES,
+  WORKER_KYC_RETENTION_TOMBSTONE_TABLES,
   WORKER_LIFECYCLE_READ_TABLES,
   WORKER_NOTIFICATION_OUTBOX_TABLES,
   WORKER_PAYMENT_MAINTENANCE_TABLES,
@@ -414,6 +417,29 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_PROVISIONING_TABLES]).toContain("legal_entity_member");
   });
 
+  it("lets the KYC retention purge read and delete only the records it purges", () => {
+    expect([...WORKER_KYC_RETENTION_PURGE_TABLES].sort()).toEqual([
+      "admin_review_task",
+      "kyc_verification",
+      "kyc_watchlist_screening",
+      "legal_entity_document",
+      "source_of_funds",
+      "source_of_funds_document",
+    ]);
+    for (const table of WORKER_KYC_RETENTION_PURGE_TABLES) {
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+    }
+  });
+
+  it("keeps the retention tombstone append-only for the worker", async () => {
+    expect([...WORKER_KYC_RETENTION_TOMBSTONE_TABLES]).toEqual(["kyc_retention_tombstone"]);
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    const grant = source.match(
+      /for \(const tableName of WORKER_KYC_RETENTION_TOMBSTONE_TABLES\) \{\s*await grantIfExists\(client, "worker_app", tableName, "([^"]+)"\)/,
+    );
+    expect(grant?.[1]).toBe("INSERT, SELECT");
+  });
+
   it("WORKER_FULL_TABLES includes marketing_click_ids (purge job + click-id store)", () => {
     expect([...WORKER_FULL_TABLES]).toContain("marketing_click_ids");
   });
@@ -424,6 +450,19 @@ describe("migrate-roles invariants", () => {
 
   it("WORKER_FULL_TABLES includes media_asset (process-image + image-cleanup)", () => {
     expect([...WORKER_FULL_TABLES]).toContain("media_asset");
+  });
+
+  it("lets the worker read and write the Bid alert tables, and never delete from them", () => {
+    expect([...WORKER_BID_ALERT_TABLES].sort()).toEqual([
+      "bid_alert_announcement",
+      "bid_alert_digest",
+      "bid_alert_match",
+      "bid_alert_subscriber",
+      "bid_alert_topic",
+    ]);
+    for (const table of WORKER_BID_ALERT_TABLES) {
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+    }
   });
 
   it("WORKER_QR_CODE_SCAN_TABLES includes scan tables (qr-code-scan worker job)", () => {

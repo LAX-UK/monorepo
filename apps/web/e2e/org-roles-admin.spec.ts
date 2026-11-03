@@ -3,8 +3,10 @@ import { e2eEnabled, e2eSkipReason } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
 import {
   ORGANISATION_JOURNEY_NAMES,
+  changeRoleViaDialog,
   expectActingAs,
   openAs,
+  roleOfRow,
   undoOf,
 } from "./helpers/organisation-journeys";
 import { expectWorkspaceBaselines } from "./helpers/workspace-baselines";
@@ -68,18 +70,24 @@ test.describe("organisation admin journey @roles", () => {
 
     await test.step("changes a role and takes it back", async () => {
       await page.goto("/team");
-      const picker = page.getByRole("button", { name: new RegExp(`^Role for ${MEMBER_NAME}`) });
-      await expect(picker).toContainText("Viewer");
-      await picker.click();
-      await page.getByRole("menuitemradio", { name: "Consignor" }).click();
+      const row = roleOfRow(page, MEMBER_NAME);
+      await expect(row).toContainText("Viewer");
+      await changeRoleViaDialog(page, MEMBER_NAME, "Consignor");
       await expect(page.getByText(`${MEMBER_NAME} is now`)).toBeVisible();
       await undoOf(page, `${MEMBER_NAME} is now`).click();
-      await expect(picker).toContainText("Viewer");
+      await expect(page.getByText(`${MEMBER_NAME} is a viewer again.`)).toBeVisible();
+      await expect(row).toContainText("Viewer");
     });
 
     await test.step("cannot hand over ownership", async () => {
-      await page.getByRole("button", { name: `More for ${MEMBER_NAME}` }).click();
-      await expect(page.getByRole("menuitem", { name: /^Remove from/ })).toBeVisible();
+      // The list refreshes once after the role is restored; reopen the menu if it lands on it.
+      await expect(async () => {
+        await page.keyboard.press("Escape");
+        await page.getByRole("button", { name: `More for ${MEMBER_NAME}` }).click();
+        await expect(page.getByRole("menuitem", { name: /^Remove from/ })).toBeVisible({
+          timeout: 2000,
+        });
+      }).toPass();
       await expect(page.getByRole("menuitem", { name: /^Transfer ownership/ })).toHaveCount(0);
       await page.keyboard.press("Escape");
     });

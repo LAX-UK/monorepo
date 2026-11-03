@@ -34,9 +34,16 @@ export default async function LandingPage({
         </h1>
         <p className="text-base leading-7 text-on-surface-variant">{notice.message}</p>
       </div>
-      <Button asChild variant="cta" className="w-full">
-        <a href={ACCOUNT_SIGN_IN_HREF}>Try signing in again</a>
-      </Button>
+      {notice.canRetry ? (
+        <Button asChild variant="cta" className="w-full">
+          <a href={ACCOUNT_SIGN_IN_HREF}>Try signing in again</a>
+        </Button>
+      ) : null}
+      {notice.offerContact && support ? (
+        <Button asChild variant="cta" className="w-full">
+          <a href={support.contact}>Contact us</a>
+        </Button>
+      ) : null}
     </SignInSplit>
   );
 }

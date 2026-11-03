@@ -1,3 +1,4 @@
+import type { AmountOwedEntry } from "@auction/domain";
 import { LaxMoneyEntryV1, LaxPortfolioItemV1 } from "@auction/lax-ecosystem";
 import { Value } from "@sinclair/typebox/value";
 import { describe, expect, it } from "vitest";
@@ -23,8 +24,22 @@ const ctx: BidPortfolioContext = {
 
 const WON_LOT_ID = "11111111-1111-4111-8111-111111111111";
 
-function itemsFor(overrides: Parameters<typeof facts>[0]) {
-  const items = buildBidPortfolioItems(facts(overrides), ctx);
+const owedEntry = (patch: Partial<AmountOwedEntry> = {}): AmountOwedEntry => ({
+  lotId: WON_LOT_ID,
+  state: "payment-due",
+  role: "payer",
+  amountDue: "1150.00",
+  currency: "GBP",
+  blocker: null,
+  ...patch,
+});
+
+function itemsFor(overrides: Parameters<typeof facts>[0], owed: AmountOwedEntry[] = []) {
+  const items = buildBidPortfolioItems(
+    facts(overrides),
+    ctx,
+    new Map(owed.map((entry) => [entry.lotId, entry])),
+  );
   for (const item of items) expect(Value.Check(LaxPortfolioItemV1, item)).toBe(true);
   return items;
 }
@@ -70,10 +85,14 @@ describe("buildBidPortfolioItems: wins", () => {
     expect(item?.paid.lines).toEqual([{ kind: "hammer", amount: 100_000, currency: "GBP" }]);
   });
 
-  it("offers payment for a win that has no payment yet, still showing the hammer from the lot", () => {
-    const [item] = itemsFor({ wonLots: [wonLot()] });
+  it("shows what is owed as the total with premium, not the hammer, when no payment exists yet", () => {
+    const [item] = itemsFor({ wonLots: [wonLot()] }, [owedEntry()]);
     expect(item?.status).toBe("awaiting_payment");
-    expect(item?.paid.lines).toEqual([{ kind: "hammer", amount: 100_000, currency: "GBP" }]);
+    expect(item?.paid.lines).toEqual([
+      { kind: "hammer", amount: 100_000, currency: "GBP" },
+      { kind: "premium", amount: 15_000, currency: "GBP" },
+    ]);
+    expect(item?.owed).toEqual({ amount: 115_000, currency: "GBP", state: "due" });
     expect(item?.actions[0]).toEqual({
       kind: "pay",
       href: `https://lax.bid/purchases/checkout/${WON_LOT_ID}`,
@@ -83,14 +102,46 @@ describe("buildBidPortfolioItems: wins", () => {
     ]);
   });
 
-  it.each(["pending", "authorized", "requires_manual_review"] as const)(
-    "treats a %s payment as awaiting payment",
-    (status) => {
-      const [item] = itemsFor({ wonLots: [wonLot()], payments: [payment({ status })] });
-      expect(item?.status).toBe("awaiting_payment");
-      expect(item?.actions.map((a) => a.kind)).toContain("pay");
-    },
-  );
+  it("uses the owed total over the stored settlement amount", () => {
+    const [item] = itemsFor({ wonLots: [wonLot()], payments: [payment({ status: "pending" })] }, [
+      owedEntry(),
+    ]);
+    expect(item?.owed?.amount).toBe(115_000);
+    expect(item?.paid.lines.at(-1)).toEqual({ kind: "premium", amount: 15_000, currency: "GBP" });
+  });
+
+  it("holds an in-review win: owed and named, with no pay link", () => {
+    const [item] = itemsFor({ wonLots: [wonLot()] }, [
+      owedEntry({ state: "in-review", blocker: "documents" }),
+    ]);
+    expect(item?.status).toBe("awaiting_payment");
+    expect(item?.owed).toEqual({
+      amount: 115_000,
+      currency: "GBP",
+      state: "in_review",
+      blocker: "documents",
+    });
+    expect(item?.actions.map((a) => a.kind)).toEqual(["view"]);
+  });
+
+  it("keeps an abandoned checkout in the holdings as owed", () => {
+    const [item] = itemsFor({ wonLots: [wonLot()], payments: [payment({ status: "cancelled" })] }, [
+      owedEntry(),
+    ]);
+    expect(item?.status).toBe("awaiting_payment");
+  });
+
+  it("leaves a sale cancelled at fulfilment out of the holdings, paid or not", () => {
+    const cancelled = owedEntry({ state: "cancelled" });
+    expect(itemsFor({ wonLots: [wonLot()] }, [cancelled])).toEqual([]);
+    expect(itemsFor({ wonLots: [wonLot()], payments: [payment()] }, [cancelled])).toEqual([]);
+  });
+
+  it("still lists a payment being confirmed as awaiting payment, with nothing owed", () => {
+    const [item] = itemsFor({ wonLots: [wonLot()], payments: [payment({ status: "authorized" })] });
+    expect(item?.status).toBe("awaiting_payment");
+    expect(item?.owed).toBeUndefined();
+  });
 
   it.each([
     ["awaiting_release", "awaiting_shipment"],
@@ -117,19 +168,18 @@ describe("buildBidPortfolioItems: wins", () => {
     const [item] = itemsFor({
       wonLots: [wonLot()],
       payments: [
-        payment({ id: "b", status: "pending", createdAt: new Date("2026-03-05T00:00:00.000Z") }),
+        payment({ id: "b", status: "captured", createdAt: new Date("2026-03-05T00:00:00.000Z") }),
         payment({ id: "a", status: "cancelled", createdAt: new Date("2026-03-02T00:00:00.000Z") }),
       ],
     });
-    expect(item?.status).toBe("awaiting_payment");
+    expect(item?.status).toBe("owned");
   });
 
-  it.each(["refunded", "cancelled"] as const)(
-    "leaves a %s purchase out of the holdings",
-    (status) => {
-      expect(itemsFor({ wonLots: [wonLot()], payments: [payment({ status })] })).toEqual([]);
-    },
-  );
+  it("leaves a refunded purchase out of the holdings", () => {
+    expect(itemsFor({ wonLots: [wonLot()], payments: [payment({ status: "refunded" })] })).toEqual(
+      [],
+    );
+  });
 
   it("gives a work with no artist an empty artist rather than a placeholder", () => {
     const [item] = itemsFor({ wonLots: [wonLot({ artistName: null })], payments: [payment()] });

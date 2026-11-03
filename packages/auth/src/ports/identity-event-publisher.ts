@@ -23,6 +23,12 @@ export type IdentityLifecycleEvent =
     }
   | { type: "user.deletion_requested"; userId: string; requestedAt?: Date }
   | { type: "user.deletion_cancelled"; userId: string; cancelledAt?: Date }
+  | {
+      type: "user.deletion_held";
+      userId: string;
+      heldAt: Date;
+      reasons: readonly { code: string; message: string; href: string | null }[];
+    }
   | { type: "user.identity_disabled"; userId: string; reason?: string }
   | { type: "user.identity_enabled"; userId: string }
   | { type: "user.identity_merged"; retiredSubjectId: string; canonicalSubjectId: string }
@@ -33,7 +39,8 @@ export type IdentityLifecycleEvent =
       type: "user.credential_changed";
       userId: string;
       changeType?: "create" | "update";
-    };
+    }
+  | { type: "user.sign_in_method_unlinked"; userId: string; provider: "google" | "apple" };
 
 export type IdentityEventPublisher = {
   publish(

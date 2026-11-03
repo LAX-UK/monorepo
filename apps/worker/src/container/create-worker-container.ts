@@ -62,6 +62,7 @@ import { marketingEventsCapiBatchSize } from "../marketing/meta-capi-batch-colle
 import { createProjectorRunner } from "../projectors/runner.js";
 import { UnsoldChoiceDeadlineRecorder } from "../projectors/unsold-choice-deadline.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
+import { registerAlertWorkers } from "../workers/register-alert-workers.js";
 import { registerAtgSyncWorker } from "../workers/register-atg-sync-worker.js";
 import { registerComplianceWorkers } from "../workers/register-compliance-workers.js";
 import { registerCronWorkers } from "../workers/register-cron-workers.js";
@@ -78,6 +79,7 @@ import {
   registerWorkerErrorHandlers,
 } from "../workers/worker-utils.js";
 import { createAtgSyncRuntime } from "./create-atg-sync-runtime.js";
+import { createBidAlertRuntime } from "./create-bid-alert-runtime.js";
 import { createExportProviderDeps } from "./create-export-provider-deps.js";
 import { createWorkerRepositories } from "./create-worker-repositories.js";
 
@@ -98,6 +100,7 @@ export type WorkerContainer = {
   payoutWorkers: ReturnType<typeof registerPayoutWorkers>;
   complianceWorkers: ReturnType<typeof registerComplianceWorkers>;
   purgeWorkers: ReturnType<typeof registerPurgeWorkers>;
+  alertWorkers: ReturnType<typeof registerAlertWorkers>;
   atgSyncWorkers: ReturnType<typeof registerAtgSyncWorker>;
   subjectExportWorkers: ReturnType<typeof registerSubjectExportWorker>;
   cronWorkers: ReturnType<typeof registerCronWorkers>;
@@ -309,13 +312,14 @@ export function createWorkerContainer(): WorkerContainer {
     repoFactory,
     uploadValidationRepo: repositories.uploadValidationRepo,
     emailOutboxRepo: repositories.emailOutboxRepo,
+    emailAddressLookup: repositories.emailAddressLookup,
     payoutStatementRepo: repositories.payoutStatementRepo,
     profileMarketingReader: repositories.profileMarketingReader,
     marketingEventOutboxWorker: repositories.marketingEventOutboxWorker,
     dataExportRepo: repositories.dataExportRepo,
     staffRoleReader: repositories.staffRoleReader,
     newsletterSignupSyncRepo: repositories.newsletterSignupSyncRepo,
-    sourceOfFundsDocumentPurgeRepo: repositories.sourceOfFundsDocumentPurgeRepo,
+    kycRetentionStores: repositories.kycRetentionStores,
     marketingContactSyncRepo: repositories.marketingContactSyncRepo,
     staffOpsRecipientReader: repositories.staffOpsRecipientReader,
     complianceRecipientReader: repositories.complianceRecipientReader,
@@ -364,6 +368,13 @@ export function createWorkerContainer(): WorkerContainer {
     emailOutboxService: emailWorkers.emailOutboxService,
   });
   const purgeWorkers = registerPurgeWorkers(deps);
+  const bidAlerts = createBidAlertRuntime({
+    env,
+    db,
+    email: emailWorkers.emailOutboxService,
+    log,
+  });
+  const alertWorkers = registerAlertWorkers(deps, bidAlerts);
   const cronWorkers = registerCronWorkers(deps);
   const subjectExportWorkers = registerSubjectExportWorker(deps);
   const atgSyncWorkers = registerAtgSyncWorker(
@@ -394,6 +405,7 @@ export function createWorkerContainer(): WorkerContainer {
       ...payoutWorkers.errorHandlers,
       ...complianceWorkers.errorHandlers,
       ...purgeWorkers.errorHandlers,
+      ...alertWorkers.errorHandlers,
       ...cronWorkers.errorHandlers,
       ...atgSyncWorkers.errorHandlers,
       ...subjectExportWorkers.errorHandlers,
@@ -439,6 +451,7 @@ export function createWorkerContainer(): WorkerContainer {
           heartbeat("payout-settlement"),
           heartbeat("stale-submission-draft-reminders"),
           heartbeat("consignment-agreement-reminders"),
+          heartbeat("payment-reminders"),
           heartbeat("watched-lot-reminders"),
           heartbeat("staff-role-expiry"),
           heartbeat("consignment-thread-sweep"),
@@ -489,6 +502,7 @@ export function createWorkerContainer(): WorkerContainer {
       sourceOfFundsDocumentReviewRepo: repositories.sourceOfFundsDocumentReviewRepo,
       sourceOfFundsReviewResolutionRepo: repositories.sourceOfFundsReviewResolutionRepo,
       lotNotifyReader: repositories.lotNotifyReader,
+      ...(bidAlerts.mode !== "off" ? { bidAlerts: bidAlerts.matching } : {}),
       unsoldChoiceDeadlines: new UnsoldChoiceDeadlineRecorder(
         new DrizzleUnsoldChoiceDeadlineStore(db),
       ),
@@ -574,6 +588,7 @@ export function createWorkerContainer(): WorkerContainer {
     payoutWorkers,
     complianceWorkers,
     purgeWorkers,
+    alertWorkers,
     cronWorkers,
     atgSyncWorkers,
     subjectExportWorkers,
@@ -607,6 +622,7 @@ export async function shutdownWorkerContainer(
         container.payoutWorkers.close(),
         container.complianceWorkers.close(),
         container.purgeWorkers.close(),
+        container.alertWorkers.close(),
         container.cronWorkers.close(),
         container.atgSyncWorkers.close(),
         container.subjectExportWorkers.close(),

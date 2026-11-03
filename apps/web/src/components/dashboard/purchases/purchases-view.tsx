@@ -153,16 +153,33 @@ export function PurchasesView({
             <p className="text-lax-16 font-semibold tabular-nums text-lax-fg">{vm.payNow.title}</p>
             <p className="mt-1 text-lax-14 text-lax-muted">{vm.payNow.description}</p>
           </div>
-          <Button
-            // While invoices are picked, the selection bar holds the one primary action.
-            variant={picks.length > 0 ? "secondary" : "primary"}
-            onClick={() => setPaying(vm.payNow?.kind === "pay" ? vm.payNow.lotIds : [])}
-          >
-            Pay {formatMoney(vm.payNow.total)}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {vm.payNow.documentsAction ? (
+              <ButtonLink variant="secondary" href={vm.payNow.documentsAction.href}>
+                {vm.payNow.documentsAction.label}
+              </ButtonLink>
+            ) : null}
+            <Button
+              // While invoices are picked, the selection bar holds the one primary action.
+              variant={picks.length > 0 ? "secondary" : "primary"}
+              onClick={() => setPaying(vm.payNow?.kind === "pay" ? vm.payNow.lotIds : [])}
+            >
+              Pay {formatMoney(vm.payNow.total)}
+            </Button>
+          </div>
         </section>
       ) : vm.payNow?.kind === "review" ? (
-        <Notice tone="warning" title={vm.payNow.title}>
+        <Notice
+          tone="info"
+          title={vm.payNow.title}
+          actions={
+            vm.payNow.documentsAction ? (
+              <ButtonLink href={vm.payNow.documentsAction.href}>
+                {vm.payNow.documentsAction.label}
+              </ButtonLink>
+            ) : undefined
+          }
+        >
           {vm.payNow.description}
         </Notice>
       ) : null}
@@ -207,6 +224,7 @@ export function PurchasesView({
                   key={card.lotId}
                   card={card}
                   selectColumn={cards.some((each) => each.payable)}
+                  onPay={(each) => setPaying([each.lotId])}
                   selection={
                     card.payable
                       ? {

@@ -20,6 +20,8 @@ const DAY = 86_400_000;
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * DAY);
 const inHours = (n: number) => new Date(NOW.getTime() + n * 3_600_000);
 
+const NO_TIMES = { wonAt: null, paymentAt: null, quotedAt: null, readyAt: null };
+
 /** An organisation with something of every kind waiting. */
 function busy(role: LegalEntityMemberRole, overrides: Partial<NeedsYouFacts> = {}): NeedsYouFacts {
   return {
@@ -28,23 +30,44 @@ function busy(role: LegalEntityMemberRole, overrides: Partial<NeedsYouFacts> = {
     now: NOW,
     viewerIdentity: "required",
     sourceOfFundsRequested: false,
-    agreementsToAccept: [{ id: "c1", title: "Untitled (Blue)" }],
-    changesRequested: [{ id: "s1", title: "Study in Ochre", note: "Add a photo" }],
-    unreadReplies: [{ id: "c2", title: "Thames at low tide", from: "Clara Mendes" }],
+    sourceOfFundsRequestedAt: null,
+    organisationStatusChangedAt: null,
+    agreementsToAccept: [{ id: "c1", title: "Untitled (Blue)", proposedAt: daysAgo(3) }],
+    changesRequested: [
+      { id: "s1", title: "Study in Ochre", note: "Add a photo", requestedAt: daysAgo(2) },
+    ],
+    unreadReplies: [
+      { id: "c2", title: "Thames at low tide", from: "Clara Mendes", at: daysAgo(1) },
+    ],
     unsoldLots: [
       // Ended 12 days ago: due in 2 days.
-      { id: "u1", title: "Harbour at Dusk", dueBy: unsoldChoiceDueBy(daysAgo(12)) },
+      {
+        id: "u1",
+        title: "Harbour at Dusk",
+        dueBy: unsoldChoiceDueBy(daysAgo(12)),
+        endedAt: daysAgo(12),
+      },
       // Ended yesterday: due in 13 days.
-      { id: "u2", title: "Field", dueBy: unsoldChoiceDueBy(daysAgo(1)) },
+      { id: "u2", title: "Field", dueBy: unsoldChoiceDueBy(daysAgo(1)), endedAt: daysAgo(1) },
     ],
     purchases: [
-      { id: "p1", title: "Lot 14", paymentStatus: null, fulfilment: null, shippingQuote: null },
+      {
+        id: "p1",
+        title: "Lot 14",
+        paymentStatus: null,
+        fulfilment: null,
+        shippingQuote: null,
+        ...NO_TIMES,
+        wonAt: daysAgo(4),
+      },
       {
         id: "p2",
         title: "Lot 15",
         paymentStatus: "captured",
         fulfilment: null,
         shippingQuote: null,
+        ...NO_TIMES,
+        paymentAt: daysAgo(3),
       },
       {
         id: "p3",
@@ -52,6 +75,8 @@ function busy(role: LegalEntityMemberRole, overrides: Partial<NeedsYouFacts> = {
         paymentStatus: "captured",
         fulfilment: { status: "released", method: null, collectedAt: null },
         shippingQuote: "ready",
+        ...NO_TIMES,
+        quotedAt: daysAgo(2),
       },
       {
         id: "p4",
@@ -59,14 +84,16 @@ function busy(role: LegalEntityMemberRole, overrides: Partial<NeedsYouFacts> = {
         paymentStatus: "captured",
         fulfilment: { status: "ready_for_collection", method: "collection", collectedAt: null },
         shippingQuote: null,
+        ...NO_TIMES,
+        readyAt: daysAgo(1),
       },
     ],
     salesToRegister: [
       { id: "sale1", title: "Contemporary", startsAt: new Date("2026-11-14"), bidLimit: null },
     ],
     outbidLots: [
-      { id: "l2", title: "Later lot", endsAt: inHours(30) },
-      { id: "l1", title: "Closing lot", endsAt: inHours(2) },
+      { id: "l2", title: "Later lot", endsAt: inHours(30), outbidAt: daysAgo(2) },
+      { id: "l1", title: "Closing lot", endsAt: inHours(2), outbidAt: inHours(-1) },
     ],
     expiredInvitations: [{ id: "i1", email: "sam@example.com", expiredAt: daysAgo(2) }],
     endingAuthorisations: [{ id: "a1", memberName: "Agnes", endsAt: inHours(48) }],
@@ -276,6 +303,8 @@ describe("tasks", () => {
         { id: "l1", title: "Closing lot", endsAt: inHours(2) },
         { id: "l2", title: "Later lot", endsAt: inHours(30) },
       ],
+      // The most recent time the account was put behind.
+      raisedAt: inHours(-1),
     });
   });
 
@@ -284,24 +313,93 @@ describe("tasks", () => {
       kind: "unsold_due",
       lots: [{ id: "u1", title: "Harbour at Dusk" }],
       dueBy: new Date(daysAgo(12).getTime() + 14 * DAY),
+      raisedAt: daysAgo(12),
     });
-    expect(task("unsold")).toEqual({ kind: "unsold", lots: [{ id: "u2", title: "Field" }] });
+    expect(task("unsold")).toEqual({
+      kind: "unsold",
+      lots: [{ id: "u2", title: "Field" }],
+      raisedAt: daysAgo(1),
+    });
   });
 
   it("puts each purchase under its one next step", () => {
-    expect(task("pay")).toEqual({ kind: "pay", purchases: [{ id: "p1", title: "Lot 14" }] });
+    expect(task("pay")).toEqual({
+      kind: "pay",
+      purchases: [{ id: "p1", title: "Lot 14" }],
+      raisedAt: daysAgo(4),
+    });
     expect(task("choose_delivery")).toEqual({
       kind: "choose_delivery",
       purchases: [{ id: "p2", title: "Lot 15" }],
+      raisedAt: daysAgo(3),
     });
     expect(task("quote_ready")).toEqual({
       kind: "quote_ready",
       purchases: [{ id: "p3", title: "Lot 16" }],
+      raisedAt: daysAgo(2),
     });
     expect(task("book_collection")).toEqual({
       kind: "book_collection",
       purchases: [{ id: "p4", title: "Lot 17" }],
+      raisedAt: daysAgo(1),
     });
+  });
+
+  it("raisedAt comes from the record behind each task", () => {
+    const raised = (kind: NeedsYouKind) => task(kind)?.raisedAt;
+    expect(raised("agreement")).toEqual(daysAgo(3));
+    expect(raised("changes")).toEqual(daysAgo(2));
+    expect(raised("reply")).toEqual(daysAgo(1));
+    expect(raised("invitations_expired")).toEqual(daysAgo(2));
+    expect(raised("access_requests")).toEqual(daysAgo(1));
+  });
+
+  it("raisedAt is null when no record says, never the time of the read", () => {
+    const undated = needsYouTasks(
+      busy("owner", {
+        sourceOfFundsRequested: true,
+        agreementsToAccept: [{ id: "c1", title: "Untitled", proposedAt: null }],
+        purchases: [
+          {
+            id: "p1",
+            title: "Lot 14",
+            paymentStatus: null,
+            fulfilment: null,
+            shippingQuote: null,
+            ...NO_TIMES,
+          },
+        ],
+      }),
+    );
+    const raised = Object.fromEntries(undated.map((t) => [t.kind, t.raisedAt]));
+    expect(raised.agreement).toBeNull();
+    expect(raised.pay).toBeNull();
+    expect(raised.source_of_funds).toBeNull();
+    const awaitingDocuments = needsYouTasks(
+      busy("owner", { organisation: { status: "docs_requested", payoutsReady: false } }),
+    );
+    expect(awaitingDocuments.find((t) => t.kind === "documents")?.raisedAt).toBeNull();
+    // A registration, an authorisation ending and the identity check have no event to date.
+    const agent = Object.fromEntries(
+      needsYouTasks(busy("buyer_agent")).map((t) => [t.kind, t.raisedAt]),
+    );
+    expect(agent.register).toBeNull();
+    expect(agent.authorisation_ending).toBeNull();
+    expect(agent.identity).toBeNull();
+  });
+
+  it("documents and source of funds are raised when LAX asked", () => {
+    const asked = daysAgo(6);
+    const raised = needsYouTasks(
+      busy("owner", {
+        sourceOfFundsRequested: true,
+        sourceOfFundsRequestedAt: asked,
+        organisationStatusChangedAt: daysAgo(5),
+        organisation: { status: "docs_requested", payoutsReady: false },
+      }),
+    );
+    expect(raised.find((t) => t.kind === "documents")?.raisedAt).toEqual(daysAgo(5));
+    expect(raised.find((t) => t.kind === "source_of_funds")?.raisedAt).toEqual(asked);
   });
 
   it("counts the things on each sidebar item", () => {
@@ -351,6 +449,7 @@ describe("notifications that announce a task", () => {
   it("maps every needs-action notification to its task", () => {
     expect(NEEDS_ACTION.map(needsYouKindAnnouncedBy)).toEqual([
       "outbid",
+      "pay",
       "pay",
       "agreement",
       "changes",

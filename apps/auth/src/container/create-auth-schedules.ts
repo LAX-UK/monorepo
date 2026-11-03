@@ -10,6 +10,7 @@ import type { BackchannelLogoutDeliveryWorker } from "../services/backchannel-lo
 import { startBackchannelLogoutSchedule } from "../services/backchannel-logout.schedule.js";
 import type { DataRequestWriter } from "../services/data-request.ports.js";
 import type { DurableSecurityEffects } from "../services/durable-security-effects.js";
+import type { IdentityDeletionPurgeService } from "../services/identity-deletion-purge.service.js";
 import type { SsfDeliveryWorker } from "../services/ssf-delivery.worker.js";
 import type { SsfStreamService } from "../services/ssf-stream.service.js";
 import type { SubjectExportService } from "../services/subject-export.service.js";
@@ -17,9 +18,13 @@ import type { SubjectExportService } from "../services/subject-export.service.js
 export async function createAuthSchedules(options: {
   db: IdentityDatabase;
   log: pino.Logger;
-  identityOperations: { purgeExpiredVerifications(): Promise<number> };
+  identityOperations: {
+    purgeExpiredVerifications(): Promise<number>;
+    purgeExpiredEmailChanges(): Promise<number>;
+  };
   logoutDelivery: Pick<BackchannelLogoutDeliveryWorker, "drain">;
   securityEffects: Pick<DurableSecurityEffects, "drain" | "settle">;
+  deletionPurge: Pick<IdentityDeletionPurgeService, "run">;
   ssfStreams: Pick<SsfStreamService, "provisionRegisteredStreams">;
   ssfDelivery: Pick<SsfDeliveryWorker, "enqueueFromDomainEvents" | "deliverDue">;
   subjectExports: Pick<SubjectExportService, "expireDue" | "claimDeadlineAlerts">;
@@ -52,6 +57,17 @@ export async function createAuthSchedules(options: {
     60 * 60 * 1_000,
   );
   verification.unref();
+  // Expired email changes are already ignored when read or claimed; this only stops rows lingering.
+  const emailChanges = setInterval(
+    () => {
+      void options.identityOperations.purgeExpiredEmailChanges().catch((err) => {
+        options.log.error({ err }, "expired email change cleanup failed");
+        Sentry.captureException(err);
+      });
+    },
+    24 * 60 * 60 * 1_000,
+  );
+  emailChanges.unref();
   const logout = startBackchannelLogoutSchedule({
     service: options.logoutDelivery,
     onError: (err) => {
@@ -76,24 +92,21 @@ export async function createAuthSchedules(options: {
     },
   });
   const deletionPurge = startIdentityDeletionPurgeSchedule({
-    db: options.db,
+    service: options.deletionPurge,
     onError: (err) => {
       options.log.error({ err }, "identity_deletion_purge_failed");
       Sentry.captureException(err);
     },
-    onPurged: (count) => options.log.info({ count }, "identity_deletion_purge_batch"),
-    // The scrub removes the issuer's own sessions and tokens; this ends the products' sessions
-    // and sends back-channel logout, retried durably if it fails.
-    endSessions: async (userId) => {
-      await options.securityEffects.settle("identity-deletion-purge", {
-        kind: "revoke_subject_tokens",
-        userId,
-      });
-      await options.securityEffects.settle("identity-deletion-purge", {
-        kind: "publish_session_revoked",
-        userId,
-      });
-    },
+    onRun: (summary) =>
+      options.log.info(
+        {
+          purged: summary.purged.length,
+          held: summary.held,
+          deferred: summary.deferred,
+          reminded: summary.reminded,
+        },
+        "identity_deletion_purge_run",
+      ),
   });
   const lifecycleReconciliation = startIdentityLifecycleReconciliationSchedule({
     db: options.db,
@@ -164,6 +177,7 @@ export async function createAuthSchedules(options: {
     stop: async () => {
       retirement.stop();
       clearInterval(verification);
+      clearInterval(emailChanges);
       if (atRestReconciliation) clearInterval(atRestReconciliation);
       if (ssf) clearInterval(ssf);
       await Promise.allSettled([

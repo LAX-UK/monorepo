@@ -89,6 +89,15 @@ export async function requestOrderRefund(input: {
   });
 }
 
+export async function retryOrderRefund(input: { refundId: string; idempotencyKey?: string }) {
+  return forwardAdminJsonMutation<{ id: string; status: string }>({
+    bffPath: "refunds/retry",
+    method: "POST",
+    jsonBody: { refundId: input.refundId },
+    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+  });
+}
+
 export async function markPayoutPaid(input: {
   payoutId: string;
   paidReference: string;

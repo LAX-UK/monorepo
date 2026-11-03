@@ -2,10 +2,12 @@ import { AuctionInterestsSettingsForm } from "@/components/dashboard/auction-int
 import { EmailStatusBanner } from "@/components/layout/email-status-banner";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
+import { getServerAccountAlerts } from "@/lib/data/http/alerts.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerCategoryInterests } from "@/lib/data/http/category-interests.server";
 import { getServerNotificationMutes } from "@/lib/data/http/notifications-inbox.server";
-import { loadBiddingOrganisation } from "@/lib/settings/bidding-card.server";
+import type { EngineAlertState } from "@/lib/notifications/alert-matrix";
+import { loadBiddingOrganisation, loadPersonalLimit } from "@/lib/settings/bidding-card.server";
 import { biddingRows } from "@/lib/settings/bidding-standing";
 import type { ThemePreference } from "@auction/validators";
 import { AlertsSettings } from "./alerts-settings";
@@ -20,6 +22,8 @@ import { MutedOrganisations } from "./muted-organisations";
  */
 export async function BiddingSettings({ user }: { user: SessionUser }) {
   const organisation = await loadBiddingOrganisation(user).catch(() => undefined);
+  const personalLimit =
+    organisation === null && user.kycStatus === "approved" ? await loadPersonalLimit() : undefined;
   if (organisation === undefined) {
     return (
       <BidSettingsSection id="bidding" title="Bidding" description="Where you stand to bid.">
@@ -37,9 +41,21 @@ export async function BiddingSettings({ user }: { user: SessionUser }) {
           : "Where you stand to bid on LAX Bid."
       }
     >
-      <BiddingCard rows={biddingRows(user.kycStatus, organisation)} />
+      <BiddingCard rows={biddingRows(user.kycStatus, organisation, personalLimit)} />
     </BidSettingsSection>
   );
+}
+
+/** The engine's rows as the matrix reads them; a stopped or unknown client has no subscription. */
+function engineStateOf(
+  mine: Awaited<ReturnType<typeof getServerAccountAlerts>>,
+): EngineAlertState | null {
+  if (!mine) return null;
+  const active = mine.state === "confirmed";
+  return {
+    subscribed: Object.fromEntries(mine.topics.map((t) => [t.topic, active])),
+    email: Object.fromEntries(mine.topics.map((t) => [t.topic, active && t.emailOn])),
+  };
 }
 
 /**
@@ -55,9 +71,10 @@ export async function AlertsSection({
   belongsToOrganisations: boolean;
 }) {
   const c = await getServerDataContainer();
-  const [prefs, mutes] = await Promise.all([
+  const [prefs, mutes, accountAlerts] = await Promise.all([
     c.notificationPreferences.getMine().catch(() => null),
     belongsToOrganisations ? getServerNotificationMutes() : Promise.resolve(null),
+    getServerAccountAlerts(),
   ]);
   return (
     <BidSettingsSection
@@ -67,7 +84,11 @@ export async function AlertsSection({
     >
       {/* Alerts only reach an address that can receive them, so a problem shows here. */}
       <EmailStatusBanner user={user} />
-      {prefs ? <AlertsSettings initial={prefs} /> : <BidSettingsSectionError what="alerts" />}
+      {prefs ? (
+        <AlertsSettings initial={prefs} initialEngine={engineStateOf(accountAlerts)} />
+      ) : (
+        <BidSettingsSectionError what="alerts" />
+      )}
       {belongsToOrganisations ? (
         mutes ? (
           <MutedOrganisations initial={mutes} />

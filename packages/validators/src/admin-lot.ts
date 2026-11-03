@@ -32,6 +32,14 @@ export const returnLotToInventoryBodySchema = z.object({
   notifyBidders: z.boolean().optional(),
 });
 
+/** Staff mark a won lot as a buyer default, and say where the lot goes. */
+export const recordBuyerDefaultBodySchema = z.object({
+  outcome: z.enum(["returned_to_inventory", "offered_to_underbidder"]),
+  reason: z.string().trim().min(1).max(1000),
+  restrictBidding: z.boolean().default(false),
+});
+export type RecordBuyerDefaultBody = z.infer<typeof recordBuyerDefaultBodySchema>;
+
 /** Seller-facing explanation sent with a declined withdrawal request. */
 export const declineWithdrawalRequestBodySchema = z.object({
   reason: z.string().trim().min(1).max(1000),

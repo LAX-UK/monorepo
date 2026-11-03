@@ -276,17 +276,21 @@ export class StripePaymentGateway implements IStripePaymentGateway {
       }
     };
 
+    // An intent that is already cancelled, or gone, needs nothing. One in any other state (for
+    // example processing or succeeded) may still take money, so that failure is raised, not hidden.
     const cancelIntentIfOpen = async (piId: string) => {
       try {
         await executeWithStripeRetries(() =>
           stripe.paymentIntents.cancel(piId, {}, { idempotencyKey: `cancel:${piId}` }),
         );
       } catch (err) {
-        if (
-          err instanceof Stripe.errors.StripeError &&
-          (err.code === "payment_intent_unexpected_state" || err.code === "resource_missing")
-        ) {
-          return;
+        if (!(err instanceof Stripe.errors.StripeError)) throw err;
+        if (err.code === "resource_missing") return;
+        if (err.code === "payment_intent_unexpected_state") {
+          const current = await executeWithStripeRetries(() =>
+            stripe.paymentIntents.retrieve(piId),
+          );
+          if (current.status === "canceled") return;
         }
         throw err;
       }
@@ -298,26 +302,22 @@ export class StripePaymentGateway implements IStripePaymentGateway {
       return;
     }
 
-    try {
-      const intents = await executeWithStripeRetries(() =>
-        stripe.paymentIntents.search({
-          query: `metadata['paymentId']:'${paymentId}'`,
-          limit: 5,
-        }),
-      );
-      for (const pi of intents.data) {
-        if (
-          pi.status !== "requires_payment_method" &&
-          pi.status !== "requires_confirmation" &&
-          pi.status !== "requires_action"
-        ) {
-          continue;
-        }
-        await expireOpenSessionsForIntent(pi.id);
-        await cancelIntentIfOpen(pi.id);
+    const intents = await executeWithStripeRetries(() =>
+      stripe.paymentIntents.search({
+        query: `metadata['paymentId']:'${paymentId}'`,
+        limit: 5,
+      }),
+    );
+    for (const pi of intents.data) {
+      if (
+        pi.status !== "requires_payment_method" &&
+        pi.status !== "requires_confirmation" &&
+        pi.status !== "requires_action"
+      ) {
+        continue;
       }
-    } catch {
-      // Search API may be unavailable; best-effort only.
+      await expireOpenSessionsForIntent(pi.id);
+      await cancelIntentIfOpen(pi.id);
     }
   }
 

@@ -2,6 +2,7 @@ import {
   accountPurchasesQuerySchema,
   paySeveralBodySchema,
   purchaseLotIdParamSchema,
+  reportPurchaseProblemSchema,
   requestDeliveryQuoteSchema,
 } from "@auction/validators";
 import { type Context, Hono } from "hono";
@@ -36,8 +37,8 @@ function respond<T>(c: BuyingContext, result: Result<T, OrganisationBuyingError>
 
 /**
  * The acting account's buying modules: the sales it is registered for, its purchases (with the
- * invoice and delivery stage of each, paying several at once and an export), courier quotes and collection
- * booking. Every read and step is narrowed by the member's role in the services. Mounted under
+ * invoice and delivery stage of each, paying several at once and an export), courier quotes, collection
+ * booking and reporting a problem with a paid purchase. Every read and step is narrowed by the member's role in the services. Mounted under
  * `/legal-entities`; the account comes from the context header.
  */
 export function createOrganisationBuyingRoutes(
@@ -48,7 +49,7 @@ export function createOrganisationBuyingRoutes(
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const requireContext = container.requireLegalEntityContext;
-  const { registrations, purchases, paySeveral, deliveryQuotes, collection } =
+  const { registrations, purchases, paySeveral, deliveryQuotes, collection, problems } =
     container.organisationBuying;
   const r = new Hono<{ Variables: Variables }>();
 
@@ -128,6 +129,28 @@ export function createOrganisationBuyingRoutes(
     zValidator("param", purchaseLotIdParamSchema),
     async (c) =>
       respond(c, await deliveryQuotes.withdraw(memberActor(c), c.req.valid("param").lotId)),
+  );
+
+  // The buyer's report of a problem with a paid purchase; repeating it returns the open one.
+  r.get(
+    "/purchases/:lotId/problem",
+    requireAuth,
+    requireContext,
+    zValidator("param", purchaseLotIdParamSchema),
+    async (c) => respond(c, await problems.current(memberActor(c), c.req.valid("param").lotId)),
+  );
+
+  r.post(
+    "/purchases/:lotId/problem",
+    requireAuth,
+    requireContext,
+    zValidator("param", purchaseLotIdParamSchema),
+    zValidator("json", reportPurchaseProblemSchema),
+    async (c) =>
+      respond(
+        c,
+        await problems.report(memberActor(c), c.req.valid("param").lotId, c.req.valid("json")),
+      ),
   );
 
   r.get(

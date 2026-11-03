@@ -17,6 +17,19 @@ export interface IAdminPaymentsApplicationService {
     paymentId: string,
     userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, AuthzError>>;
+  reinstateBlockedCapture(
+    adminUserId: string,
+    userRole: string,
+    paymentId: string,
+    userStaffRoles?: StaffRoles | undefined,
+  ): Promise<Result<void, AuthzError>>;
+  refundBlockedCapture(
+    adminUserId: string,
+    userRole: string,
+    paymentId: string,
+    userStaffRoles: StaffRoles | undefined,
+    reason?: string,
+  ): Promise<Result<void, AuthzError>>;
   refundManualReviewPayment(
     adminUserId: string,
     userRole: string,

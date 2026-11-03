@@ -6,24 +6,27 @@ import {
   MarketingBreadcrumb,
 } from "@/components/marketing/marketing-breadcrumb";
 import { MarketingCatalogHubShell } from "@/components/marketing/marketing-catalog-hub-shell";
-import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
 import { RecentlyViewedRail } from "@/components/marketing/recently-viewed-rail";
 import {
   SearchCatalogPendingProvider,
   SearchResultsShell,
 } from "@/components/marketing/search-catalog-client";
+import { SearchNoMatches } from "@/components/marketing/search-fallback";
 import { SearchFilterFormDesktop } from "@/components/marketing/search-filter-form";
 import { SearchPageToolbar } from "@/components/marketing/search-page-toolbar";
 import { SearchPaginationBar } from "@/components/marketing/search-pagination-bar";
 import type { SearchSortValue } from "@/components/marketing/search-sort-select";
 import { SITE_SEO_NAME } from "@/lib/brand";
 import { getServerLotCount, getServerLotReader } from "@/lib/catalog/catalog.server";
+import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getServerMySavedSearches } from "@/lib/data/http/saved-searches.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { toCatalogLotVMs } from "@/lib/lot/to-catalog-lot-vm";
 import { catalogViewCarryParams } from "@/lib/marketing/catalog-links";
+import { loadSearchFallback } from "@/lib/marketing/load-search-fallback";
 import {
   parseSearchEnding,
   parseSearchStatus,
@@ -31,6 +34,8 @@ import {
   searchStatusLabel,
 } from "@/lib/marketing/parse-search-params";
 import { countSearchActiveFilters } from "@/lib/marketing/search-active-filter-count";
+import { hasSearchAlert } from "@/lib/marketing/search-fallback";
+import { shouldOfferPastResults } from "@/lib/marketing/search-fallback";
 import { buildSearchQs } from "@/lib/marketing/search-qs";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { metadataForListing } from "@/lib/seo/metadata-factory";
@@ -38,7 +43,7 @@ import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/struct
 import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot } from "@auction/types";
-import { ButtonLink } from "@auction/ui/lax";
+import { ButtonLink, EmptyState } from "@auction/ui/lax";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -53,6 +58,7 @@ type PageProps = {
     view?: string;
     status?: string;
     ending?: string;
+    alert?: string;
   }>;
 };
 
@@ -101,6 +107,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     view: viewRaw,
     status: statusRaw,
     ending: endingRaw,
+    alert: alertRaw,
   } = sp;
   const offset = Math.max(0, Number.parseInt(String(offsetRaw), 10) || 0);
   const trimmed = String(q).trim();
@@ -186,6 +193,22 @@ export default async function SearchPage({ searchParams }: PageProps) {
     loadError = "We couldn’t load inventory right now. Please try again shortly.";
   }
   const filtered = auctions;
+  const offerPastResults = shouldOfferPastResults({
+    q: trimmed,
+    status: statusFilter,
+    ending: endingWindow,
+    offset,
+    onSaleCount: filtered.length,
+    loadFailed: loadError !== null,
+  });
+  const [fallback, watchedArtistIds, savedSearches] = offerPastResults
+    ? await Promise.all([
+        loadSearchFallback(trimmed, categoryId),
+        isAuthenticated ? getServerMyArtistWatchIds() : Promise.resolve([] as string[]),
+        isAuthenticated ? getServerMySavedSearches() : Promise.resolve(null),
+      ])
+    : [null, [] as string[], null];
+  const alertSet = savedSearches ? hasSearchAlert(savedSearches, trimmed, categoryId) : false;
   const catalogLots = toCatalogLotVMs(filtered);
   const hasPrev = offset > 0;
   const nextOffset = offset + PAGE_SIZE;
@@ -258,6 +281,16 @@ export default async function SearchPage({ searchParams }: PageProps) {
     view: layoutView,
   })}`;
 
+  const pastResultsHref = `/search?${buildSearchQs({
+    offset: 0,
+    q: trimmed,
+    sort: "hammerDesc",
+    ...(categoryId ? { categoryId } : {}),
+    view: layoutView,
+    status: "ended",
+  })}`;
+  const alertReturnHref = `${loginNextPath}&alert=1`;
+
   return (
     <SearchCatalogPendingProvider>
       <MarketingCatalogHubShell
@@ -324,53 +357,77 @@ export default async function SearchPage({ searchParams }: PageProps) {
           </>
         }
       >
-        <RecentlyViewedRail className="px-0" />
+        {filtered.length > 0 ? <RecentlyViewedRail className="px-0" /> : null}
 
         <SearchResultsShell>
           {loadError ? (
-            <MarketingEmptyState
-              variant="marketing"
-              context="error"
-              className="mt-8"
-              title="Could not load inventory"
-              description={loadError}
-              action={
-                <>
-                  <ButtonLink Link={Link} variant="primary" href="/search">
-                    Try again
-                  </ButtonLink>
-                  <ButtonLink Link={Link} variant="secondary" href="/sales">
-                    Browse sales
-                  </ButtonLink>
-                </>
-              }
-            />
-          ) : filtered.length === 0 ? (
-            <MarketingEmptyState
-              variant="marketing"
-              context={hasActiveFilters ? "filtered" : "noResults"}
-              className="mt-8"
-              title={
-                hasActiveFilters || trimmed ? "No lots match these filters" : "Nothing to show yet"
-              }
-              description={
-                hasActiveFilters || trimmed
-                  ? "Try fewer filters or a different spelling."
-                  : "Search by artist, title or sale."
-              }
-              action={
-                hasActiveFilters ? (
+            <div className="mt-8 rounded-lax-card border border-lax-line bg-lax-surface">
+              <EmptyState
+                illustration="askew"
+                variant="error"
+                headingLevel="h2"
+                title="Could not load inventory"
+                description={loadError}
+                actions={
                   <>
-                    <ButtonLink Link={Link} variant="primary" href={clearFiltersHref}>
-                      Clear filters
+                    <ButtonLink Link={Link} variant="primary" href="/search">
+                      Try again
                     </ButtonLink>
-                    <ButtonLink Link={Link} variant="secondary" href="/search">
-                      Search all lots
+                    <ButtonLink Link={Link} variant="secondary" href="/sales">
+                      Browse sales
                     </ButtonLink>
                   </>
-                ) : undefined
-              }
+                }
+              />
+            </div>
+          ) : fallback ? (
+            <SearchNoMatches
+              q={trimmed}
+              {...(categoryId ? { categoryId } : {})}
+              fallback={fallback}
+              layoutView={layoutView}
+              isAuthenticated={isAuthenticated}
+              currentUserId={currentUserId}
+              watchedLotIds={watchedLotIds}
+              watchedArtistIds={new Set(watchedArtistIds)}
+              clearHref={clearFiltersHref}
+              pastResultsHref={pastResultsHref}
+              alertReturnHref={alertReturnHref}
+              saveAlertOnArrival={firstString(alertRaw) === "1"}
+              alertSet={alertSet}
+              {...(lotCatalogLinkParams ? { catalogLinkParams: lotCatalogLinkParams } : {})}
             />
+          ) : filtered.length === 0 ? (
+            <div className="mt-8 rounded-lax-card border border-lax-line bg-lax-surface">
+              <EmptyState
+                illustration="search"
+                headingLevel="h2"
+                title={
+                  hasActiveFilters || trimmed
+                    ? "No lots match these filters"
+                    : "Nothing to show yet"
+                }
+                description={
+                  hasActiveFilters || trimmed
+                    ? "Try fewer filters or a different spelling."
+                    : "Search by artist, title or sale."
+                }
+                {...(hasActiveFilters
+                  ? {
+                      actions: (
+                        <>
+                          <ButtonLink Link={Link} variant="primary" href={clearFiltersHref}>
+                            Clear filters
+                          </ButtonLink>
+                          <ButtonLink Link={Link} variant="secondary" href="/search">
+                            Search all lots
+                          </ButtonLink>
+                        </>
+                      ),
+                    }
+                  : {})}
+              />
+            </div>
           ) : (
             <>
               <ViewItemListTracker

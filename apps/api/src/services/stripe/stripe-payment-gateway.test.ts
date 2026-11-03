@@ -250,4 +250,65 @@ describe("StripePaymentGateway", () => {
       { idempotencyKey: "cancel:pi_1" },
     );
   });
+
+  describe("revoke when the intent cannot be cancelled", () => {
+    const unexpectedState = () =>
+      new Stripe.errors.StripeInvalidRequestError({
+        message: "cannot cancel",
+        type: "invalid_request_error",
+        code: "payment_intent_unexpected_state",
+      } as never);
+
+    const gatewayWith = (cancel: ReturnType<typeof vi.fn>, retrieve: ReturnType<typeof vi.fn>) => {
+      const gateway = new StripePaymentGateway(
+        { STRIPE_SECRET_KEY: "sk_test" },
+        noopStripeFactory(),
+      );
+      injectStripeClient(gateway, {
+        paymentIntents: { cancel, retrieve, search: vi.fn() },
+        checkout: {
+          sessions: { list: vi.fn().mockResolvedValue({ data: [] }), expire: vi.fn() },
+        },
+      } as unknown as Stripe);
+      return gateway;
+    };
+
+    it("accepts an intent that is already cancelled", async () => {
+      const gateway = gatewayWith(
+        vi.fn().mockRejectedValue(unexpectedState()),
+        vi.fn().mockResolvedValue({ id: "pi_1", status: "canceled" }),
+      );
+      await expect(gateway.revokeOpenCheckoutForPayment("pay_1", "pi_1")).resolves.toBeUndefined();
+    });
+
+    it.each(["processing", "succeeded"])("raises when the intent is %s", async (status) => {
+      const gateway = gatewayWith(
+        vi.fn().mockRejectedValue(unexpectedState()),
+        vi.fn().mockResolvedValue({ id: "pi_1", status }),
+      );
+      await expect(gateway.revokeOpenCheckoutForPayment("pay_1", "pi_1")).rejects.toThrow(
+        "cannot cancel",
+      );
+    });
+
+    it("accepts an intent Stripe no longer has, and raises any other failure", async () => {
+      const missing = new Stripe.errors.StripeInvalidRequestError({
+        message: "gone",
+        type: "invalid_request_error",
+        code: "resource_missing",
+      } as never);
+      await expect(
+        gatewayWith(vi.fn().mockRejectedValue(missing), vi.fn()).revokeOpenCheckoutForPayment(
+          "pay_1",
+          "pi_1",
+        ),
+      ).resolves.toBeUndefined();
+      await expect(
+        gatewayWith(
+          vi.fn().mockRejectedValue(new Error("network")),
+          vi.fn(),
+        ).revokeOpenCheckoutForPayment("pay_1", "pi_1"),
+      ).rejects.toThrow("network");
+    });
+  });
 });

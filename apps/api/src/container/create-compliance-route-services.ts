@@ -16,7 +16,9 @@ import type { IKycService } from "../services/interfaces/kyc-service.js";
 import type { IMarketingEventService } from "../services/interfaces/marketing-event-service.js";
 import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
 import type { IUploadService } from "../services/interfaces/upload-service.js";
+import type { KycOutcomeNotifier } from "../services/kyc/kyc-outcome-notifier.js";
 import type { KycResubmissionNotifier } from "../services/kyc/kyc-resubmission-notifier.js";
+import type { IEnquiryDraftTokens } from "../services/marketing-enquiry/enquiry-draft-token.js";
 import type { SourceOfFundsDocumentCollectionService } from "../services/source-of-funds/source-of-funds-document-collection.service.js";
 
 export type CreateComplianceRouteServicesInput = {
@@ -29,12 +31,15 @@ export type CreateComplianceRouteServicesInput = {
   stripeConnectService: IStripeConnectService;
   marketingEventService: IMarketingEventService;
   kycResubmissionNotifier: KycResubmissionNotifier;
+  kycOutcomeNotifier: KycOutcomeNotifier;
   sourceOfFundsDocumentCollectionService: SourceOfFundsDocumentCollectionService;
   uploadService: IUploadService;
   exportService: ExportService;
   lotDocumentService: EntityDocumentService<string>;
   saleDocumentService: EntityDocumentService<string>;
   storageDriver: string;
+  /** Checks the token a visitor uploads enquiry files under. */
+  enquiryDrafts: IEnquiryDraftTokens;
 };
 
 export function createComplianceRouteServices(
@@ -51,12 +56,17 @@ export function createComplianceRouteServices(
       stripeConnectService: input.stripeConnectService,
       marketingEventService: input.marketingEventService,
       kycResubmissionNotifier: input.kycResubmissionNotifier,
+      kycOutcomeNotifier: input.kycOutcomeNotifier,
     }),
     buyerComplianceHttp: new BuyerComplianceHttpApplicationService(
       input.sourceOfFundsDocumentCollectionService,
     ),
     kycHttp: new KycHttpApplicationService(input.kycService),
-    uploadHttp: new UploadHttpApplicationService(input.uploadService, input.storageDriver),
+    uploadHttp: new UploadHttpApplicationService(
+      input.uploadService,
+      input.storageDriver,
+      input.enquiryDrafts,
+    ),
     exportHttp: new ExportHttpApplicationService(input.exportService),
     lotDocumentHttp: new LotDocumentHttpApplicationService(input.lotDocumentService),
     saleDocumentHttp: new SaleDocumentHttpApplicationService(input.saleDocumentService),

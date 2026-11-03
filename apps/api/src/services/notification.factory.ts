@@ -1,3 +1,10 @@
+import { KYC_APPROVED_COPY, KYC_DECLINED_COPY } from "@auction/branding";
+import { buyerDefaultCopy, formatMoneyMajor, paymentReminderCopy } from "@auction/email";
+import type {
+  BuyerDefaultAudience,
+  BuyerDefaultOutcomeKey,
+  PaymentReminderStepKey,
+} from "@auction/email";
 import type { AccessRequestRow, CreateNotificationRow } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import type { Lot } from "@auction/types";
@@ -54,7 +61,7 @@ export class NotificationFactory implements INotificationFactory {
       type: "lot_ended_seller",
       title: sold ? "Your lot has sold" : "Your lot closed unsold",
       message: sold
-        ? `"${lot.title}" sold with a hammer price of ${opts?.hammerPrice} GBP.`
+        ? `"${lot.title}" sold with a hammer price of ${formatMoneyMajor(opts?.hammerPrice) ?? opts?.hammerPrice}.`
         : `"${lot.title}" closed without a sale. Choose what happens next: relist it, offer it by private sale, or have it returned.`,
       lotId: lot.id,
       legalEntityId: lot.sellerLegalEntityId ?? null,
@@ -135,7 +142,7 @@ export class NotificationFactory implements INotificationFactory {
       userId: recipientId,
       type: "payment_received",
       title: "Payment received",
-      message: `Payment of ${amount} was recorded for "${lot.title}".`,
+      message: `Payment of ${formatMoneyMajor(amount) ?? amount} was recorded for "${lot.title}".`,
       lotId: lot.id,
       legalEntityId: lot.sellerLegalEntityId ?? null,
       meta: { lotTitle: lot.title, audience: "seller", amount },
@@ -189,7 +196,7 @@ export class NotificationFactory implements INotificationFactory {
       userId: buyerId,
       type: "payment_due",
       title: `Payment due — ${lot.title}`,
-      message: `Complete payment of ${input.amount} GBP for this lot.${dueSuffix}`,
+      message: `Complete payment of ${formatMoneyMajor(input.amount) ?? input.amount} for this lot.${dueSuffix}`,
       lotId: lot.id,
       legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: {
@@ -199,6 +206,75 @@ export class NotificationFactory implements INotificationFactory {
         invoiceNumber: `PAY-${input.paymentId.slice(0, 8).toUpperCase()}`,
         lotTitle: lot.title,
         ...(input.dueDate ? { dueDate: input.dueDate } : {}),
+      },
+    };
+  }
+
+  createPaymentReminder(input: {
+    userId: string;
+    legalEntityId: string | null;
+    lotId: string;
+    lotTitle: string;
+    paymentId: string;
+    amount: string;
+    /** The due date in words ("10 November 2026"). */
+    dueDate: string;
+    step: PaymentReminderStepKey;
+  }): CreateNotificationRow {
+    const amount = formatMoneyMajor(input.amount) ?? input.amount;
+    const copy = paymentReminderCopy(input.step, {
+      lotTitle: input.lotTitle,
+      amount,
+      dueDate: input.dueDate,
+    });
+    return {
+      userId: input.userId,
+      type: "payment_reminder",
+      title: copy.title,
+      message: copy.paragraphs[0] ?? copy.heading,
+      lotId: input.lotId,
+      legalEntityId: input.legalEntityId,
+      meta: {
+        paymentId: input.paymentId,
+        amount: input.amount,
+        dueDate: input.dueDate,
+        lotTitle: input.lotTitle,
+        reminderStep: input.step,
+        audience: "buyer",
+        emailIdempotencyKey: `payment-reminder:${input.paymentId}:${input.step}`,
+      },
+    };
+  }
+
+  createBuyerDefaultNotice(input: {
+    userId: string;
+    legalEntityId: string | null;
+    lotId: string;
+    lotTitle: string;
+    amount: string;
+    audience: BuyerDefaultAudience;
+    outcome: BuyerDefaultOutcomeKey;
+    buyerRestricted: boolean;
+  }): CreateNotificationRow {
+    const copy = buyerDefaultCopy(input.audience, {
+      lotTitle: input.lotTitle,
+      amount: formatMoneyMajor(input.amount) ?? input.amount,
+      outcome: input.outcome,
+      buyerRestricted: input.buyerRestricted,
+    });
+    return {
+      userId: input.userId,
+      type: "buyer_default_notice",
+      title: copy.title,
+      message: copy.paragraphs.join(" "),
+      lotId: input.lotId,
+      legalEntityId: input.legalEntityId,
+      meta: {
+        amount: input.amount,
+        lotTitle: input.lotTitle,
+        audience: input.audience,
+        defaultOutcome: input.outcome,
+        buyerRestricted: input.buyerRestricted,
       },
     };
   }
@@ -279,7 +355,7 @@ export class NotificationFactory implements INotificationFactory {
       type: "payout_problem",
       legalEntityId: input.legalEntityId,
       title: "A payout didn't reach your bank",
-      message: `Your payout of ${input.amount} ${input.currency} didn't go through. Our finance team is looking into it and will contact you. Check that your bank details are up to date.`,
+      message: `Your payout of ${formatMoneyMajor(input.amount, input.currency) ?? `${input.amount} ${input.currency}`} didn't go through. Our finance team is looking into it and will contact you. Check that your bank details are up to date.`,
       meta: { amount: input.amount },
     };
   }
@@ -294,7 +370,7 @@ export class NotificationFactory implements INotificationFactory {
       type: "delivery_quote_ready",
       legalEntityId: input.legalEntityId,
       title: "Your delivery quote is ready",
-      message: `Delivery for "${lot.title}" is quoted at ${input.amount} ${input.currency}. Open the purchase to accept it.`,
+      message: `Delivery for "${lot.title}" is quoted at ${formatMoneyMajor(input.amount, input.currency) ?? `${input.amount} ${input.currency}`}. Open the purchase to accept it.`,
       lotId: lot.id,
       meta: { lotTitle: lot.title, amount: input.amount },
     };
@@ -351,6 +427,27 @@ export class NotificationFactory implements INotificationFactory {
       lotId: lot.id,
       legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: { lotTitle: lot.title, fulfilmentMethod: input.method },
+    };
+  }
+
+  createKycApproved(userId: string): CreateNotificationRow {
+    return {
+      userId,
+      type: "kyc_approved",
+      // Identity checks are for the person, so the notice is personal.
+      legalEntityId: null,
+      title: KYC_APPROVED_COPY.headline,
+      message: KYC_APPROVED_COPY.detail,
+    };
+  }
+
+  createKycDeclined(userId: string): CreateNotificationRow {
+    return {
+      userId,
+      type: "kyc_declined",
+      legalEntityId: null,
+      title: KYC_DECLINED_COPY.headline,
+      message: KYC_DECLINED_COPY.detail,
     };
   }
 }

@@ -22,18 +22,19 @@ function setup(outbox = new InMemorySecurityEffectOutbox()) {
   };
   const operations = { removeOtherSessions: vi.fn(async () => ["other"]) };
   const events = { publish: vi.fn(async () => undefined) };
+  const notices = { deliver: vi.fn(async () => undefined) };
   const log = { warn: vi.fn(), error: vi.fn() };
   const build = () =>
     new DurableSecurityEffects(
       outbox,
-      { operations, logout, events } as never,
+      { operations, logout, events, notices } as never,
       log,
       () => clock.now,
     );
   const advance = (ms: number) => {
     clock.now = new Date(clock.now.getTime() + ms);
   };
-  return { effects: build(), build, outbox, logout, operations, events, log, advance };
+  return { effects: build(), build, outbox, logout, operations, events, notices, log, advance };
 }
 
 describe("DurableSecurityEffects", () => {
@@ -228,5 +229,45 @@ describe("DurableSecurityEffects", () => {
       userId: "u",
       sessionId: "s",
     });
+  });
+
+  it("sends the reminder through the notice delivery", async () => {
+    const { effects, notices } = setup();
+    await effects.settle("/x", {
+      kind: "send_account_deletion_reminder",
+      userId: "u",
+      effectiveAt: "2026-12-02T10:00:00.000Z",
+    });
+    expect(notices.deliver).toHaveBeenCalledWith({
+      kind: "account_deletion_reminder",
+      userId: "u",
+      at: expect.any(Date),
+      effectiveAt: new Date("2026-12-02T10:00:00.000Z"),
+    });
+  });
+
+  it("retries the confirmation after a failed send, from the copied address alone", async () => {
+    const s = setup();
+    s.notices.deliver.mockRejectedValueOnce(new Error("mail unavailable"));
+    const job: SecurityEffectJob = {
+      kind: "send_account_deleted_notice",
+      userId: "u",
+      email: "gone@example.com",
+      erasedAt: "2026-12-02T03:00:00.000Z",
+    };
+
+    await s.effects.settle("/x", job);
+    expect(s.outbox.rows).toHaveLength(1);
+
+    s.advance(DURABLE_RETRY_DELAYS_MS[0] + 1);
+    await s.effects.drain();
+
+    expect(s.notices.deliver).toHaveBeenLastCalledWith({
+      kind: "account_deletion_completed",
+      userId: "u",
+      at: new Date("2026-12-02T03:00:00.000Z"),
+      email: "gone@example.com",
+    });
+    expect(s.outbox.rows).toHaveLength(0);
   });
 });

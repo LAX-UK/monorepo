@@ -2,6 +2,7 @@ import type {
   bulkLotsBodySchema,
   cancelLotBodySchema,
   createLotSchema,
+  recordBuyerDefaultBodySchema,
   returnLotToInventoryBodySchema,
   updateLotMarketingDetailsSchema,
   updateLotSchema,
@@ -14,6 +15,7 @@ export type UpdateLotInput = z.infer<typeof updateLotSchema>;
 export type UpdateLotMarketingDetailsInput = z.infer<typeof updateLotMarketingDetailsSchema>;
 export type CancelLotBody = z.infer<typeof cancelLotBodySchema>;
 export type BulkLotsBody = z.infer<typeof bulkLotsBodySchema>;
+export type RecordBuyerDefaultInput = z.infer<typeof recordBuyerDefaultBodySchema>;
 export type ReturnLotToInventoryBody = z.infer<typeof returnLotToInventoryBodySchema>;
 
 export interface IAdminLotService {
@@ -31,6 +33,10 @@ export interface IAdminLotService {
     id: string,
     body: ReturnLotToInventoryBody,
   ): Promise<ServiceResult<Record<string, unknown>>>;
+  recordBuyerDefault(
+    id: string,
+    body: RecordBuyerDefaultInput,
+  ): Promise<ServiceResult<{ id: string; outcome: string }>>;
   approveWithdrawalRequest(id: string): Promise<ServiceResult<void>>;
   declineWithdrawalRequest(id: string, reason: string): Promise<ServiceResult<void>>;
 }

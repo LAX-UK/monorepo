@@ -50,6 +50,21 @@ export const userDeletionCancelledPayloadSchemaV1 = z.object({
   cancelledAt: rfc3339Timestamp,
 });
 
+export const userDeletionHeldPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  subjectId: z.string(),
+  heldAt: rfc3339Timestamp,
+  reasons: z
+    .array(
+      z.object({
+        code: z.string().min(1).max(100),
+        message: z.string().min(1).max(300),
+        href: z.string().url().nullable(),
+      }),
+    )
+    .max(50),
+});
+
 export const userIdentityDisabledPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   subjectId: z.string(),
@@ -95,6 +110,13 @@ export const userCredentialChangedPayloadSchemaV1 = z.object({
   credentialType: z.literal("password"),
   changeType: z.enum(["create", "update", "revoke", "delete"]),
   changedAt: rfc3339Timestamp,
+});
+
+export const userSignInMethodUnlinkedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  subjectId: z.string(),
+  provider: z.enum(["google", "apple"]),
+  unlinkedAt: rfc3339Timestamp,
 });
 
 export const userEmailVerifiedPayloadSchemaV1 = z.object({

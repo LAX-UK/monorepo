@@ -104,6 +104,33 @@ export type ShopNotificationPublisher = {
     },
   ): Promise<void>;
 
+  /** Release alert double opt-in: the link that confirms an address. */
+  queueReleaseAlertConfirmation(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      to: string;
+      confirmUrl: string;
+      expirationHours: number;
+      /** Stops alerts for the address; also sent as List-Unsubscribe. */
+      unsubscribeUrl: string;
+    },
+  ): Promise<void>;
+
+  /** Release alert: a new edition has been published. */
+  queueReleaseAlert(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      to: string;
+      artworkTitle: string;
+      artistName: string;
+      artworkUrl: string;
+      /** Stops alerts for the address; also sent as List-Unsubscribe. */
+      unsubscribeUrl: string;
+    },
+  ): Promise<void>;
+
   queueCheckoutOpsAlert(
     tx: ShopNotificationTx,
     input: {
@@ -137,6 +164,35 @@ export type ShopNotificationPublisher = {
       orderId: string;
       orderReference: string;
       amountPence: number;
+    },
+  ): Promise<void>;
+
+  /** The buyer's confirmation that an item was cancelled after possession and is being refunded. */
+  queueCancellationConfirmed(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      identitySubjectId: string;
+      fallbackEmail: string | null;
+      orderId: string;
+      orderReference: string;
+      artworkTitle: string;
+      /** The refund the cancellation makes. */
+      amountPence: number;
+    },
+  ): Promise<void>;
+
+  /** The buyer's notice that their print has gone into production. */
+  queueProductionStarted(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      identitySubjectId: string;
+      fallbackEmail: string | null;
+      orderReference: string;
+      artworkTitle: string;
+      /** "Edition 3", "Proof 1" or "Open edition". */
+      editionLabel: string;
     },
   ): Promise<void>;
 };

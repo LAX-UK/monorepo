@@ -18,6 +18,10 @@ import { createMarketingClientContextMiddleware } from "./middleware/marketing-c
 import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
 import { createOrganizationCreateRateLimitMiddleware } from "./middleware/organization-rate-limit.js";
+import {
+  createPendingDeletionGuard,
+  mountPendingDeletionGuard,
+} from "./middleware/pending-deletion-guard.js";
 import { createPublicCacheControlMiddleware } from "./middleware/public-cache-control.js";
 import { createRateLimitMiddleware } from "./middleware/rate-limit.js";
 import { createRequestIdMiddleware } from "./middleware/request-id.js";
@@ -30,8 +34,10 @@ import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
 import { createAdminConsignmentSavedReplyRoutes } from "./routes/admin-consignment-saved-replies.js";
 import { createAdminConsignmentThreadRoutes } from "./routes/admin-consignment-threads.js";
 import { createPublicInvitationRoutes } from "./routes/admin-invitations.js";
+import { createAdminSaleAnnounceRoutes } from "./routes/admin-sale-announce.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { createAdminMyStaffToolsRoutes } from "./routes/admin/staff-access.routes.js";
+import { createAlertRoutes } from "./routes/alerts.js";
 import { createArtistRoutes } from "./routes/artists.js";
 import { createProductAuthRoutes } from "./routes/auth.js";
 import { createBidRoutes } from "./routes/bids.js";
@@ -50,6 +56,7 @@ import { createLegalEntityBuyerAgentRoutes } from "./routes/legal-entity-buyer-a
 import { createLegalEntityMemberRoutes } from "./routes/legal-entity-members.js";
 import { createLotDocumentRoutes } from "./routes/lot-documents.js";
 import { createLotRoutes } from "./routes/lots.js";
+import { createMarketingEnquiryRoutes } from "./routes/marketing-enquiries.js";
 import { createMarketingRoutes } from "./routes/marketing.js";
 import { createNewsletterRoutes } from "./routes/newsletter.js";
 import { createOnsiteEventRoutes } from "./routes/onsite-events.js";
@@ -67,6 +74,7 @@ import { createLegalEntityPayoutStatementRoutes } from "./routes/payout-statemen
 import { createAdminPayoutRoutes, createPayoutRoutes } from "./routes/payouts.js";
 import { createPressRoutes } from "./routes/press.js";
 import { createQrRoutes } from "./routes/qr.js";
+import { createLegacySaleAlertRoutes } from "./routes/sale-alerts-legacy.js";
 import { createSaleDocumentRoutes } from "./routes/sale-documents.js";
 import { createSaleroomDisplayRoutes } from "./routes/saleroom-display.js";
 import { createSaleRoutes } from "./routes/sales.js";
@@ -160,6 +168,11 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/bids/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/users/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/auth/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use(
+    "/sale-alerts/*",
+    createRateLimitMiddleware(container.rateLimitStore, { maxRequests: 20 }),
+  );
+  app.use("/alerts/*", createRateLimitMiddleware(container.rateLimitStore, { maxRequests: 20 }));
   app.use("/payments/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/q/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/categories/*", createRateLimitMiddleware(container.rateLimitStore));
@@ -178,6 +191,10 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/webhooks/postmark/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/webhooks/xero", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/webhooks/xero/*", createRateLimitMiddleware(container.rateLimitStore));
+  mountPendingDeletionGuard(
+    app,
+    createPendingDeletionGuard({ authenticator, reader: container.pendingDeletionReader }),
+  );
 
   app.get("/health/ready", async (c) => {
     try {
@@ -270,6 +287,10 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/webhooks/veriff", createVeriffWebhookRoutes(container))
     .route("/email", createEmailRoutes(container))
     .route("/newsletter", createNewsletterRoutes(container))
+    .route("/alerts", createAlertRoutes(container, authenticator))
+    .route("/sale-alerts", createLegacySaleAlertRoutes(container))
+    .route("/admin/sales", createAdminSaleAnnounceRoutes(container, authenticator))
+    .route("/contact-enquiries", createMarketingEnquiryRoutes(container, authenticator))
     .route("/auth", createProductAuthRoutes(container))
     .route("/categories", createCategoryRoutes(container))
     .route("/venues", createVenueRoutes(container, authenticator))

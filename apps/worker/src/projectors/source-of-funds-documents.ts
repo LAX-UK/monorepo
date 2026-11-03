@@ -1,3 +1,4 @@
+import { adminRoutes } from "@auction/types";
 import type pino from "pino";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { handleDocumentsRequested } from "./source-of-funds-documents/documents-requested.js";
@@ -38,7 +39,7 @@ export async function processSourceOfFundsDocuments(options: {
   } = ctx;
   const base = webOrigin?.replace(/\/$/, "") ?? "";
   const buyerSofUrl = `${base}/compliance/source-of-funds`;
-  const adminReviewUrl = `${base}/admin/compliance/source-of-funds`;
+  const adminReviewUrl = `${base}${adminRoutes.sourceOfFunds.list()}`;
 
   const cursor = await projectorStateRepo.getCursor(SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR);
 

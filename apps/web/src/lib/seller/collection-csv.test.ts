@@ -12,9 +12,11 @@ const work: CollectionWork = {
   boughtFor: "£4,960.00",
   reference: "Lot 44",
   where: { label: "Delivered", tone: "success", shape: "check" },
+  whereId: "delivered",
   consignHref: "/selling/new?fromLot=l1",
   consignLabel: "Consign this work",
   canConsign: true,
+  consignNote: null,
   href: "/purchases/l1",
   at: Date.parse("2026-10-22T18:00:00Z"),
 };

@@ -1,6 +1,12 @@
-import type { IdentityEventPublisher } from "@auction/auth";
+import type {
+  EmailEnqueueInput,
+  EmailSender,
+  IdentityEventPublisher,
+  SecurityNoticeDelivery,
+} from "@auction/auth";
 import type { BackchannelLogoutRevoker } from "./backchannel-logout-revocation.service.js";
 import type { IdentityOperationsService } from "./identity-operations.service.js";
+import { redactedEmailFailure } from "./redacted-email-failure.js";
 import {
   type SecurityEffectLogger,
   describeError,
@@ -20,7 +26,20 @@ export type SecurityEffectJob =
   | { kind: "revoke_identity_sessions"; userId: string; sessionIds: readonly string[] }
   | { kind: "revoke_subject_tokens"; userId: string }
   | { kind: "publish_session_revoked"; userId: string; sessionId?: string }
-  | { kind: "publish_credential_changed"; userId: string };
+  | { kind: "publish_credential_changed"; userId: string }
+  /** The reminder a week before the erasure; the address is read when it is sent. */
+  | { kind: "send_account_deletion_reminder"; userId: string; effectiveAt: string }
+  /**
+   * The confirmation after the erasure. The address was copied just before the scrub and lives
+   * only in this row: it is removed when the message is sent, or when the job is abandoned.
+   */
+  | { kind: "send_account_deleted_notice"; userId: string; email: string; erasedAt: string }
+  /**
+   * A verification, reset or sign-in email whose first hand-off failed. `input` carries the
+   * one-time link and the address, so it is removed if the job is abandoned and it is never logged.
+   * The idempotency key in it makes a repeated run reach the same queued message.
+   */
+  | { kind: "send_identity_email"; userId: string; input: EmailEnqueueInput };
 
 export type SecurityEffectKind = SecurityEffectJob["kind"];
 
@@ -55,6 +74,8 @@ export type SecurityEffectPorts = {
     "revokeIdentitySessions" | "revokeSubject" | "revokeSubjectExceptIdentitySession"
   >;
   events: IdentityEventPublisher;
+  notices: SecurityNoticeDelivery;
+  email: Pick<EmailSender, "enqueue">;
 };
 
 /**
@@ -66,6 +87,13 @@ export const DURABLE_RETRY_DELAYS_MS = [2_000, 10_000, 60_000, 5 * 60_000, 30 * 
 /** A job claimed longer ago than this belongs to a worker that stopped, so it is taken again. */
 const CLAIM_TIMEOUT_MS = 2 * 60_000;
 const DRAIN_BATCH_SIZE = 50;
+
+/** What a retry logs. An email job names its template, never the person, so alerts carry no personal data. */
+function retryLogContext(job: SecurityEffectJob): Record<string, string> {
+  return job.kind === "send_identity_email"
+    ? { effect: job.kind, template: job.input.template }
+    : { effect: job.kind, userId: job.userId };
+}
 
 export function runSecurityEffect(
   ports: SecurityEffectPorts,
@@ -96,6 +124,27 @@ export function runSecurityEffect(
         userId: job.userId,
         changeType: "update",
       });
+    case "send_account_deletion_reminder":
+      return ports.notices.deliver({
+        kind: "account_deletion_reminder",
+        userId: job.userId,
+        at: new Date(),
+        effectiveAt: new Date(job.effectiveAt),
+      });
+    case "send_account_deleted_notice":
+      return ports.notices.deliver({
+        kind: "account_deletion_completed",
+        userId: job.userId,
+        at: new Date(job.erasedAt),
+        email: job.email,
+      });
+    case "send_identity_email":
+      return ports.email.enqueue(job.input).then(
+        () => undefined,
+        (error: unknown) => {
+          throw new Error(redactedEmailFailure(error));
+        },
+      );
   }
 }
 
@@ -164,7 +213,7 @@ export class DurableSecurityEffects {
   }
 
   private async retry({ id, job, attemptCount }: StoredSecurityEffect): Promise<void> {
-    const context = { effect: job.kind, userId: job.userId };
+    const context = retryLogContext(job);
     const attempt = attemptCount + 1;
     try {
       await runSecurityEffect(this.ports, job);

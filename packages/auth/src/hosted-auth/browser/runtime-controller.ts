@@ -191,6 +191,13 @@ export function installHostedAuthRuntime(): HostedAuthApi {
       link.textContent = msg.START_AGAIN;
       return link;
     }
+    if (failure.action === "contact-support") {
+      const link = document.createElement("a");
+      link.className = "text-link";
+      link.href = config.contactUrl;
+      link.textContent = msg.CONTACT_US;
+      return link;
+    }
     if (failure.action === "resend-verification") {
       const email = (document.getElementById("email") as HTMLInputElement | null)?.value.trim();
       if (!email) return null;

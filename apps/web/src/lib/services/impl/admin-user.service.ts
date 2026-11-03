@@ -1,3 +1,4 @@
+import type { AdminEmailChangeKycRecord, AdminStaffEmailChangeBody } from "@auction/validators";
 import type { IAuthedApiClient } from "../http/authed-api-client";
 import type { ServiceResult } from "../http/service-result";
 import type {
@@ -65,6 +66,29 @@ export class AdminUserService implements IAdminUserService {
         body: JSON.stringify(body),
       },
     );
+  }
+
+  async startEmailChange(
+    userId: string,
+    body: AdminStaffEmailChangeBody,
+  ): Promise<ServiceResult<{ pendingEmail: string }>> {
+    return this.api.json<{ pendingEmail: string }>(
+      `/admin/users/${encodeURIComponent(userId)}/email-change`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
+  async emailChangeKycRecord(
+    userId: string,
+  ): Promise<ServiceResult<AdminEmailChangeKycRecord | null>> {
+    const result = await this.api.json<{ data: AdminEmailChangeKycRecord | null }>(
+      `/admin/users/${encodeURIComponent(userId)}/email-change/kyc-record`,
+    );
+    return result.ok ? { ...result, data: result.data.data } : result;
   }
 
   async unsuspend(userId: string): Promise<ServiceResult<Record<string, unknown>>> {

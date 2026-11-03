@@ -44,6 +44,19 @@ export type {
   ImpersonationSessionRow,
 } from "./impersonation-session.repository.js";
 
+export type {
+  EmailBlockLiftRecord,
+  EmailBlockRecord,
+  IEmailBlockRepository,
+} from "./email-block.repository.js";
+export type {
+  IPersonEmailDeliveryReader,
+  PersonEmailAddressStatus,
+  PersonEmailBlockRecord,
+  PersonEmailDeliveryRecord,
+  PersonEmailSendRecord,
+} from "./person-email-delivery.reader.js";
+
 export type { IEmailSuppressionRepository } from "./email-suppression.repository.js";
 
 export type { IEmailWebhookIngestRepository } from "./email-webhook-ingest.repository.js";
@@ -82,6 +95,7 @@ export type {
   IUploadPersistenceRepository,
   InsertPendingUploadInput,
   UploadObjectRow,
+  UploadOwner,
 } from "./upload-persistence.repository.js";
 
 export type { ISavedSearchRepository, SavedSearchRow } from "./saved-search.repository.js";
@@ -568,6 +582,7 @@ export type {
   AdminPaymentTableRowDto,
   AdminPaymentsDailyAmounts,
   AdminPaymentsSummaryStats,
+  BlockedCapture,
   CreatePaymentRow,
   IPaymentAnalyticsRepository,
   IPaymentLifecycleRepository,
@@ -998,6 +1013,28 @@ export type {
   RecordPerson,
 } from "./workspace-buying.readers.js";
 export type {
+  ClaimedEnquiryFiles,
+  EnquiryAttachmentRecord,
+  EnquiryListFilter,
+  IEnquiryAttachmentRepository,
+  EnquiryListScope,
+  EnquiryNoteRecord,
+  IEnquiryNoteRepository,
+  IEnquiryRoutingRepository,
+  IMarketingEnquiryRepository,
+  MarketingEnquiryChange,
+  MarketingEnquiryDetailRecord,
+  MarketingEnquiryRecord,
+  MarketingEnquiryStatus,
+  NewMarketingEnquiry,
+  PrivateSaleEnquiryDetail,
+} from "./marketing-enquiry.repository.js";
+export type {
+  IPurchaseProblemRepository,
+  NewPurchaseProblem,
+  PurchaseProblemRecord,
+} from "./purchase-problem.repository.js";
+export type {
   AccountSearchCriteria,
   AccountSearchHits,
   BidSearchHit,
@@ -1100,3 +1137,18 @@ export type {
   NewDisputeAllocation,
   NewDisputeCase,
 } from "./dispute-case.repository.js";
+
+export type {
+  AnnouncedSale,
+  IBidAlertSaleNoticeWriter,
+  IBidAlertSaleReader,
+} from "./bid-alert-sale.js";
+export {
+  BuyerDefaultConflictError,
+  type BuyerDefaultLotFacts,
+  type IBuyerDefaultReader,
+  type IBuyerDefaultRepository,
+  type IPaymentReminderStore,
+  type PaymentReminderCandidate,
+  type RecordBuyerDefaultInput,
+} from "./buyer-default.js";

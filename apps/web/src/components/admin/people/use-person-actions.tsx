@@ -1,5 +1,6 @@
 "use client";
 
+import { StaffEmailChangeDialog } from "@/components/admin/people/staff-email-change-dialog";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import {
   adminResetTwoFactorResultAction,
@@ -7,6 +8,7 @@ import {
   adminSuspendUserResultAction,
   adminUnsuspendUserResultAction,
 } from "@/lib/actions/admin";
+import { type EmailChangeAccess, emailChangeBlockedReason } from "@/lib/admin/staff-email-change";
 import { staffRoleFilterOptions } from "@/lib/admin/staff-role-presenter";
 import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { notify } from "@/lib/ui/notify";
@@ -31,6 +33,9 @@ export type PersonActionTarget = {
   staffRole: UserStaffRole | null;
   suspended: boolean;
   twoFactorEnabled: boolean;
+  /** Their address and identity check, for the actions that need them (an email change). */
+  email?: string;
+  kycStatus?: string;
 };
 
 export type PersonActionAccess = {
@@ -38,6 +43,8 @@ export type PersonActionAccess = {
   canModerate: boolean;
   /** May change someone's role and staff role. */
   canManageRoles: boolean;
+  /** Left out where the email change is not offered, such as a list row. */
+  emailChange?: EmailChangeAccess;
 };
 
 const ROLE_OPTIONS = [
@@ -156,6 +163,7 @@ export function usePersonActions(access: PersonActionAccess) {
   const confirm = useStaffConfirm();
   const { ask } = confirm;
   const [roleTarget, setRoleTarget] = useState<PersonActionTarget | null>(null);
+  const [emailTarget, setEmailTarget] = useState<PersonActionTarget | null>(null);
 
   const suspend = useCallback(
     (person: PersonActionTarget) =>
@@ -228,6 +236,16 @@ export function usePersonActions(access: PersonActionAccess) {
             : { id: "role", label: "Change role", onSelect: () => setRoleTarget(person) },
         );
       }
+      const emailChange = access.emailChange;
+      if (emailChange?.canChange && person.email !== undefined) {
+        const blocked = emailChangeBlockedReason(emailChange, person);
+        actions.push({
+          id: "change-email",
+          label: "Change email address",
+          onSelect: () => setEmailTarget(person),
+          ...(blocked ? { disabledReason: blocked } : {}),
+        });
+      }
       if (access.canModerate) {
         actions.push({
           id: "reset-two-factor",
@@ -251,7 +269,14 @@ export function usePersonActions(access: PersonActionAccess) {
       }
       return actions;
     },
-    [access.canManageRoles, access.canModerate, resetTwoFactor, suspend, unsuspend],
+    [
+      access.canManageRoles,
+      access.canModerate,
+      access.emailChange,
+      resetTwoFactor,
+      suspend,
+      unsuspend,
+    ],
   );
 
   const dialogs = (
@@ -261,6 +286,19 @@ export function usePersonActions(access: PersonActionAccess) {
         key={roleTarget?.id ?? "closed"}
         target={roleTarget}
         onClose={() => setRoleTarget(null)}
+      />
+      <StaffEmailChangeDialog
+        target={
+          emailTarget?.email !== undefined
+            ? {
+                id: emailTarget.id,
+                name: emailTarget.name,
+                email: emailTarget.email,
+                kycStatus: emailTarget.kycStatus ?? "unverified",
+              }
+            : null
+        }
+        onClose={() => setEmailTarget(null)}
       />
     </>
   );
@@ -272,5 +310,6 @@ export function usePersonActions(access: PersonActionAccess) {
     unsuspend,
     resetTwoFactor,
     changeRole: setRoleTarget,
+    changeEmail: setEmailTarget,
   };
 }

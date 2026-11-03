@@ -22,6 +22,9 @@ const PAGE_BY_TYPE: Readonly<Record<string, string>> = {
   access_requested: "/team",
   organisation_member_left: "/team",
   payout_problem: "/organisation/payouts",
+  // Identity outcomes open the next step: register for a sale, or check again.
+  kyc_approved: "/sales",
+  kyc_declined: "/verify-identity",
   payout_bank_changed: "/organisation/payouts",
 };
 
@@ -42,6 +45,7 @@ export function notificationHref(item: UserNotification): string | null {
     return `/admin/submissions/${item.submissionId}`;
   }
   if (item.submissionId) return `/selling/consignments/${item.submissionId}`;
+  if (item.type === "sale_announced" && item.saleId) return `/sales/${item.saleId}`;
   if (item.lotId) return lotPath({ id: item.lotId, title: item.title });
   return null;
 }

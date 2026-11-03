@@ -15,6 +15,8 @@ const names = [
   "backup-codes-regenerated",
   "email-changed",
   "phone-verified",
+  "phone-removed",
+  "sign-in-method-removed",
   "social-account-linked",
   "social-account-unlinked",
   "new-device-login",
@@ -25,6 +27,11 @@ const names = [
   "account-deletion-cancelled",
   "data-export-requested",
   "data-export-ready",
+  "account-deletion-reminder",
+  "account-deletion-held",
+  "account-deletion-completed",
+  "staff-email-change-confirm",
+  "staff-email-change-notice",
 ] as const;
 
 type AuthTemplateName = (typeof names)[number];
@@ -94,6 +101,14 @@ type AuthTemplateVarsBase = {
     /** Already masked, for example "+44 •••• 1234". */
     maskedPhone: string;
   };
+  "phone-removed": SecurityNoticeVars & {
+    /** Already masked, for example "+44 •••• 1234". */
+    maskedPhone: string;
+  };
+  "sign-in-method-removed": SecurityNoticeVars & {
+    /** The provider that was removed, already in display form: "Google" or "Apple". */
+    providerName: string;
+  };
   "social-account-linked": {
     provider: "google" | "apple";
     userName?: string | null;
@@ -132,6 +147,36 @@ type AuthTemplateVarsBase = {
     /** Days the copy stays available. */
     retentionDays: number;
   };
+  /** Sent a week before the personal data is erased. */
+  "account-deletion-reminder": {
+    userName?: string | null;
+    /** Day the data is erased, formatted by the sender (Europe/London). */
+    effectiveDateDisplay: string;
+    /** Whole days left, as the sender counted them. */
+    daysLeft: number;
+    cancelDeletionUrl: string;
+  };
+  /** The purge found something open and kept the details; says what, and when it looks again. */
+  "account-deletion-held": {
+    userName?: string | null;
+    /** The wording below comes from one copy file so it can be reviewed as a whole. */
+    title: string;
+    basis: string;
+    reasonsIntro: string;
+    reasons: string[];
+    /** "We'll check again on 4 December." */
+    recheck: string;
+    resolution: string;
+    cancelDeletionUrl: string;
+  };
+  /**
+   * Sent to an address copied just before the account was erased. It carries no name or other
+   * personal detail, because the row that holds it outlives the account.
+   */
+  "account-deletion-completed": {
+    /** Day the data was erased, formatted by the sender (Europe/London). */
+    erasedOnDisplay: string;
+  };
   "change-email": {
     confirmationUrl: string;
     oldEmail: string;
@@ -139,6 +184,19 @@ type AuthTemplateVarsBase = {
     userName?: string | null;
     /** Which inbox received this message — copy differs for current vs new address. */
     recipient: "current" | "new";
+  };
+  /** To the new address once LAX client services have started the change; the person opens the link. */
+  "staff-email-change-confirm": {
+    confirmationUrl: string;
+    oldEmail: string;
+    newEmail: string;
+    userName?: string | null;
+    /** How long the link works. */
+    validForDays: number;
+  };
+  /** To the address on file when LAX client services start moving the account to a new one. */
+  "staff-email-change-notice": SecurityNoticeVars & {
+    newEmail: string;
   };
 };
 
@@ -163,6 +221,8 @@ export const authTemplates = {
     "backup-codes-regenerated": "live",
     "email-changed": "snapshot",
     "phone-verified": "live",
+    "phone-removed": "live",
+    "sign-in-method-removed": "live",
     "social-account-linked": "live",
     "social-account-unlinked": "live",
     "new-device-login": "live",
@@ -173,6 +233,12 @@ export const authTemplates = {
     "account-deletion-cancelled": "live",
     "data-export-requested": "live",
     "data-export-ready": "live",
+    "account-deletion-reminder": "live",
+    "account-deletion-held": "live",
+    "account-deletion-completed": "snapshot",
+    // Each goes to an address the account does not (or no longer) holds, so it is fixed at send.
+    "staff-email-change-confirm": "snapshot",
+    "staff-email-change-notice": "snapshot",
   },
 } satisfies TemplateDomainSlice<AuthTemplateName, AuthTemplateVars>;
 

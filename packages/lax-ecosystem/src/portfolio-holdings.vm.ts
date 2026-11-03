@@ -22,6 +22,8 @@ export type HoldingRowVm = {
   item: LaxPortfolioItemV1;
   /** Cost basis per currency; empty when the product recorded no cost lines. */
   paid: CurrencyTotal[];
+  /** What a work awaiting payment still costs in total (the product's amount due); else empty. */
+  due: CurrencyTotal[];
   documentsAvailable: number;
   documentsExpected: number;
 };
@@ -83,6 +85,7 @@ export function buildHoldings(
       key: `${item.product}:${item.id}`,
       item,
       paid: sumByCurrency(costBasisLines(item)),
+      due: item.status === "awaiting_payment" && item.owed ? [item.owed] : [],
       documentsAvailable: item.documents.filter((doc) => doc.available).length,
       documentsExpected: item.documents.filter((doc) => !doc.available).length,
     })),

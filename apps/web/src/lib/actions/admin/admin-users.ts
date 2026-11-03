@@ -20,17 +20,20 @@ import {
   zodErrorToFieldErrors,
 } from "@/lib/forms/form-result";
 import {
+  STAFF_EMAIL_CHANGE_ACCESS,
   SUBMISSIONS_ACCESS,
   USER_MODERATION_ACCESS,
   USER_ROLE_MANAGEMENT_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import {
+  type AdminEmailChangeKycRecord,
   adminBulkSubmissionsBodySchema,
   adminBulkUsersBodySchema,
   adminPatchStaffRoleBodySchema,
   adminResetTwoFactorBodySchema,
   adminSetRoleBodySchema,
+  adminStaffEmailChangeBodySchema,
   adminSuspendBodySchema,
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
@@ -254,6 +257,55 @@ export async function adminResetTwoFactorResultAction(
     }
     revalidateAdminUserDetailPaths(id);
     return actionSuccess();
+  });
+}
+
+/**
+ * Moves a person's account to a new address when they can no longer open the old inbox. Identity
+ * emails the new address a link, tells the old one and signs the account out everywhere.
+ */
+export async function adminStartEmailChangeResultAction(
+  userId: string,
+  body: z.infer<typeof adminStaffEmailChangeBodySchema>,
+): Promise<ActionResult<{ pendingEmail: string }>> {
+  return instrumentServerAction("adminStartEmailChangeResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(STAFF_EMAIL_CHANGE_ACCESS);
+    if (denied) return denied;
+    const id = userId.trim();
+    if (!id) {
+      return actionFailure("Missing user");
+    }
+    const p = adminStaffEmailChangeBodySchema.safeParse(body);
+    if (!p.success) {
+      return actionFailure(firstZodErrorMessage(p.error), zodErrorToFieldErrors(p.error));
+    }
+    const { adminUsers } = getWriteContainer();
+    const r = await adminUsers.startEmailChange(id, p.data);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
+    }
+    revalidateAdminUserDetailPaths(id);
+    return actionSuccess({ pendingEmail: r.data.pendingEmail });
+  });
+}
+
+/** The verified name and date of birth staff compare with the caller. Shown once, never cached. */
+export async function adminEmailChangeKycRecordResultAction(
+  userId: string,
+): Promise<ActionResult<AdminEmailChangeKycRecord | null>> {
+  return instrumentServerAction("adminEmailChangeKycRecordResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(STAFF_EMAIL_CHANGE_ACCESS);
+    if (denied) return denied;
+    const id = userId.trim();
+    if (!id) {
+      return actionFailure("Missing user");
+    }
+    const { adminUsers } = getWriteContainer();
+    const r = await adminUsers.emailChangeKycRecord(id);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
+    return actionSuccess(r.data);
   });
 }
 

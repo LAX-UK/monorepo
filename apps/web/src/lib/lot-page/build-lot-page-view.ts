@@ -45,6 +45,8 @@ export type LotPageView = {
   action: ResolvedLotAction;
   actionSurface: LotActionSurface;
   sections: LotSections;
+  /** Until the lot opens or closes; `null` when no clock applies. */
+  msLeft: number | null;
 };
 
 type BadgeLabel = (input: LotPageViewInput) => string | null;
@@ -127,5 +129,6 @@ export function buildLotPageView(input: LotPageViewInput): LotPageView {
     action,
     actionSurface: LOT_ACTION_SURFACE[action],
     sections: LOT_SECTIONS[input.lifecycle],
+    msLeft: input.msLeft,
   };
 }

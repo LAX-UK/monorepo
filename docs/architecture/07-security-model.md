@@ -273,9 +273,9 @@ The dedupe key (`event_key`) on `webhook_event` ensures persisted provider event
 
 **Impact:** A bad actor pretending to be a user could trigger deletion of someone else's data.
 
-**Mitigations.** Deletion requests are processed manually per [the runbook](../runbooks/deletion-request.md). The operator verifies the requester's identity through email confirmation plus an out-of-band check (e.g., recent payment record matches). Auto-self-serve deletion is deferred to v2 specifically because the verification problem is non-trivial.
+**Mitigations.** Deletion is self-service and needs a recent sign-in plus a typed confirmation. Identity checks both products first, starts a 30-day grace period during which the request can be cancelled and new commitments are refused, emails the account's address at the request and a week before the end, and re-checks eligibility on the day. See [Data deletion](../security/data-deletion.md) and [the runbook](../runbooks/deletion-request.md).
 
-**Acceptance.** Manual processing is slow (typically 2-3 business days). For our user base size (low thousands), this is operationally feasible. We'd revisit at 100k+ users.
+**Acceptance.** A takeover that requests deletion is visible to the real owner by email, by the banner in LAX Account and by the reminder, and can be cancelled until the grace period ends. Deletion that must be held (an open obligation) is held and staff are alerted.
 
 ### User-uploaded content abuse
 

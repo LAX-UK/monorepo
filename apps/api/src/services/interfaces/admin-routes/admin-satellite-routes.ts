@@ -11,6 +11,7 @@ import type {
 import type { z } from "zod";
 import type { AdminMarketingEventsService } from "../../admin/admin-marketing-events.service.js";
 import type { AdminSavedViewService } from "../../admin/admin-saved-view.service.js";
+import type { AdminStaffEmailChangeService } from "../../admin/admin-staff-email-change.service.js";
 import type { AdminTwoFactorResetService } from "../../admin/admin-two-factor-reset.service.js";
 import type { AdminDataRequestsService } from "../../admin/data-requests/admin-data-requests.service.js";
 import type { StaffAccessAdminService } from "../../admin/staff-access-admin.service.js";
@@ -22,6 +23,7 @@ import type { StaffRolesAdminService } from "../../staff/staff-roles-admin.servi
 import type { IAtgAdminService } from "../atg-admin-service.js";
 import type { IBuyerAgentAuthorisationService } from "../buyer-agent-authorisation-service.js";
 import type { IIdempotencyStore } from "../idempotency-store.js";
+import type { IEnquiryRouting, IMarketingEnquiryDesk } from "../marketing-enquiry-service.js";
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
 import type { IOnsiteEventStaffCheckInService } from "../onsite-event-staff-check-in-service.js";
 import type { IStaffDeliveryQuoteService } from "../organisation-buying-service.js";
@@ -85,6 +87,12 @@ export type AdminSatelliteRouteServices = {
   deliveryOps: DeliveryOpsApplicationService;
 };
 
+/** Contact form enquiries in the staff work inbox. */
+export type AdminEnquiryRouteServices = {
+  marketingEnquiries: IMarketingEnquiryDesk;
+  enquiryRouting: IEnquiryRouting;
+};
+
 /** Third-party integrations staff operate from the admin (composed in the container root). */
 export type AdminIntegrationRouteServices = {
   atg: IAtgAdminService;
@@ -111,6 +119,7 @@ export type AdminIntegrationRouteServices = {
 export type AdminStaffSecurityRouteServices = {
   staffTwoFactorPolicy: Pick<TwoFactorPolicyService, "readStaffPolicy" | "setStaffPolicy">;
   twoFactorReset: Pick<AdminTwoFactorResetService, "reset">;
+  staffEmailChange: Pick<AdminStaffEmailChangeService, "change" | "kycRecord">;
   staffAccess: Pick<StaffAccessAdminService, "summaries" | "detail" | "myTools">;
   /** A staff member's Bid roles, role changes and the access review. */
   staffRoles: Pick<StaffRolesAdminService, "overview" | "assign" | "remove" | "accessReview">;

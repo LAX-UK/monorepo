@@ -4,7 +4,14 @@
  */
 const TYPE_FILTER_GROUPS: Readonly<Record<string, readonly string[]>> = {
   outbid: ["outbid", "bid_refused_limit"],
-  payments: ["payment_due", "payment_received", "payout_problem", "payout_bank_changed"],
+  payments: [
+    "payment_due",
+    "payment_reminder",
+    "buyer_default_notice",
+    "payment_received",
+    "payout_problem",
+    "payout_bank_changed",
+  ],
   fulfilment: ["lot_ready_for_collection", "lot_shipped", "lot_delivered", "delivery_quote_ready"],
   closing_soon: ["lot_ending_soon", "watchlist_ending_soon"],
   watching: ["watchlist_starting", "watchlist_ending_soon", "watchlist_reminder"],
@@ -22,6 +29,7 @@ const TYPE_FILTER_GROUPS: Readonly<Record<string, readonly string[]>> = {
     "condition_report_ready",
     "condition_report_declined",
   ],
+  sales: ["sale_announced"],
   team: ["access_requested", "access_request_decided", "organisation_member_left"],
 };
 

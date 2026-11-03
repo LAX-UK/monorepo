@@ -12,10 +12,10 @@ import { telephoneBookingStatusLabel } from "@/lib/telephone/telephone-booking-t
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
 import { notify } from "@/lib/ui/notify";
 import { Badge } from "@auction/ui/components/badge";
-import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, useTransition } from "react";
@@ -241,7 +241,7 @@ export function TelephoneBidDetailContent({ bookingId }: Props) {
       ) : null}
 
       <div className="flex flex-wrap gap-3">
-        <Button variant="outline" size="sm" asChild>
+        <Button variant="secondary" size="sm" asChild>
           <Link href="/bids#telephone-bids">Back to list</Link>
         </Button>
         {canCancel ? (

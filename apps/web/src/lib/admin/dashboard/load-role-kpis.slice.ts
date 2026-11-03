@@ -8,6 +8,7 @@ import {
   FINANCE_ACCESS,
   SUBMISSIONS_ACCESS,
   canAccessPlatformAdminRoutes,
+  canOpenAdminLink,
 } from "@auction/types";
 
 export type RoleKpisLoadResult = {
@@ -83,6 +84,7 @@ export async function loadRoleKpisSlice(
     kpiIds: ctx.profile.kpiIds,
     submissionsAvailable: includeSubmissions,
     paymentsAvailable: includePayments,
+    canOpenHref: (href) => canOpenAdminLink(ctx.role, ctx.staffRoles, href),
   });
 
   return {

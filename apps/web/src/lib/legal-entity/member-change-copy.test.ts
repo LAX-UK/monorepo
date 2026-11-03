@@ -2,6 +2,7 @@ import { organisationInviteRefusal } from "@auction/domain";
 import { legalEntityStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
+  changeRoleCopy,
   invitesClosedCopy,
   removeMemberCopy,
   roleChangedCopy,
@@ -46,5 +47,20 @@ describe("member change copy", () => {
     expect(roleChangedCopy("Lena Fischer", "buyer_agent", "admin", ORG).description).toContain(
       "authorisations",
     );
+  });
+});
+
+describe("changeRoleCopy", () => {
+  const copy = changeRoleCopy("Lena Fischer", ORG);
+
+  it("names the person and the organisation", () => {
+    expect(copy.title).toBe("Change Lena Fischer's role");
+    expect(copy.lines.join(" ")).toContain(ORG);
+    expect(copy.lines.join(" ")).not.toMatch(SYSTEM_TERMS);
+  });
+
+  it("warns only when the person's authorisations would end", () => {
+    expect(copy.consequence("buyer_agent", "admin")).toContain("authorisations");
+    expect(copy.consequence("admin", "viewer")).toBeNull();
   });
 });

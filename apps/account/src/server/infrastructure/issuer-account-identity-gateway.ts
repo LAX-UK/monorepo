@@ -14,6 +14,9 @@ import {
   ACCOUNT_EMAIL_CHANGE_CANCEL_PATH,
   ACCOUNT_EMAIL_CHANGE_CONFIRM_PATH,
   ACCOUNT_EMAIL_CHANGE_PATH,
+  ACCOUNT_PASSWORD_CHANGE_PATH,
+  ACCOUNT_PASSWORD_ERRORS,
+  ACCOUNT_PHONE_REMOVE_PATH,
   ACCOUNT_PHONE_SEND_CODE_PATH,
   ACCOUNT_PHONE_VERIFY_PATH,
   ACCOUNT_PROFILE_PATH,
@@ -22,8 +25,13 @@ import {
   ACCOUNT_SESSIONS_PATH,
   ACCOUNT_SESSIONS_REVOKE_OTHERS_PATH,
   ACCOUNT_SESSIONS_REVOKE_PATH,
+  ACCOUNT_SIGN_IN_METHODS_PATH,
+  ACCOUNT_SIGN_IN_METHODS_UNLINK_PATH,
+  ACCOUNT_SIGN_IN_METHOD_ERRORS,
   type AccountAddressError,
   type AccountContactError,
+  type AccountPasswordError,
+  type AccountSignInMethodError,
   accountAddressDeletedSchema,
   accountAddressResultSchema,
   accountAddressesSchema,
@@ -35,11 +43,15 @@ import {
   accountEmailChangeCancelledSchema,
   accountEmailChangeConfirmedSchema,
   accountEmailChangeStartedSchema,
+  accountPasswordChangedSchema,
   accountPhoneCodeSentSchema,
+  accountPhoneRemovedSchema,
   accountPhoneVerifiedSchema,
   accountProfileSchema,
   accountSessionsRevokedSchema,
   accountSessionsSchema,
+  accountSignInMethodUnlinkedSchema,
+  accountSignInMethodsSchema,
 } from "@auction/identity-contracts";
 import type { z } from "zod";
 import type { LaxAccountConfig } from "../config";
@@ -54,12 +66,20 @@ const REQUEST_TIMEOUT_MS = 5_000;
 const REJECTION_REASONS: ReadonlySet<string> = new Set([
   ...ACCOUNT_CONTACT_ERRORS,
   ...ACCOUNT_ADDRESS_ERRORS,
+  ...ACCOUNT_PASSWORD_ERRORS,
+  ...ACCOUNT_SIGN_IN_METHOD_ERRORS,
 ]);
 
-function rejectionReason(body: unknown): AccountContactError | AccountAddressError | null {
+type RejectionReason =
+  | AccountContactError
+  | AccountAddressError
+  | AccountPasswordError
+  | AccountSignInMethodError;
+
+function rejectionReason(body: unknown): RejectionReason | null {
   const error = (body as { error?: unknown } | null)?.error;
   return typeof error === "string" && REJECTION_REASONS.has(error)
-    ? (error as AccountContactError | AccountAddressError)
+    ? (error as RejectionReason)
     : null;
 }
 
@@ -190,6 +210,24 @@ export function createIssuerAccountIdentityGateway(
       );
       return result.status === "ok" ? { status: "ok", value: result.value.phone } : result;
     },
+    async removePhone(actor) {
+      const result = await post(
+        ACCOUNT_PHONE_REMOVE_PATH,
+        fields(actor),
+        accountPhoneRemovedSchema,
+      );
+      return result.status === "ok" ? { status: "ok", value: true } : result;
+    },
+    changePassword(actor, { currentPassword, newPassword }) {
+      return post(
+        ACCOUNT_PASSWORD_CHANGE_PATH,
+        fields(actor, {
+          new_password: newPassword,
+          ...(currentPassword === null ? {} : { current_password: currentPassword }),
+        }),
+        accountPasswordChangedSchema,
+      );
+    },
     async readDeletionStatus(actor) {
       const result = await post(
         ACCOUNT_DELETION_PATH,
@@ -284,6 +322,20 @@ export function createIssuerAccountIdentityGateway(
         accountBackupCodesSchema,
       );
       return result.status === "ok" ? { status: "ok", value: result.value.backupCodes } : result;
+    },
+    readSignInMethods(actor) {
+      return post(
+        ACCOUNT_SIGN_IN_METHODS_PATH,
+        { token: actor.accessToken },
+        accountSignInMethodsSchema,
+      );
+    },
+    unlinkSignInMethod(actor, provider) {
+      return post(
+        ACCOUNT_SIGN_IN_METHODS_UNLINK_PATH,
+        fields(actor, { provider }),
+        accountSignInMethodUnlinkedSchema,
+      );
     },
   };
 }

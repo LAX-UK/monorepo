@@ -1,7 +1,9 @@
 import {
+  ALERT_DIGEST_QUEUE_NAME,
   GC_PENDING_UPLOADS_QUEUE_NAME,
   IMAGE_CLEANUP_QUEUE_NAME,
   IMPERSONATION_SWEEPER_QUEUE_NAME,
+  PURGE_KYC_RETENTION_QUEUE_NAME,
   PURGE_QR_CODE_SCANS_QUEUE_NAME,
 } from "../queue-names.js";
 import type { QueueDefinition } from "../types.js";
@@ -43,6 +45,24 @@ export const MAINTENANCE_QUEUE_REGISTRY = {
     },
     description: "Daily purge for raw QR scan analytics",
   },
+  [PURGE_KYC_RETENTION_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    heartbeatKey: null,
+    dlq: false,
+    showInUi: true,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60_000 },
+      removeOnComplete: 10,
+      removeOnFail: 50,
+    },
+    description: "Daily purge of KYC, AML and source-of-funds records after five years",
+  },
   [GC_PENDING_UPLOADS_QUEUE_NAME]: {
     producers: ["worker"],
     consumer: "worker",
@@ -78,5 +98,24 @@ export const MAINTENANCE_QUEUE_REGISTRY = {
       removeOnFail: 50,
     },
     description: "Sweep stale impersonation sessions",
+  },
+  [ALERT_DIGEST_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: 5,
+    // A daily job: a freshness check on its heartbeat would fail readiness for 23 hours a day.
+    heartbeatKey: null,
+    dlq: false,
+    showInUi: true,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60_000 },
+      removeOnComplete: 10,
+      removeOnFail: 50,
+    },
+    description: "Daily alert digest at 08:00 London time",
   },
 } as const satisfies Record<string, QueueDefinition>;

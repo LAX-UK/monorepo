@@ -15,12 +15,12 @@ function legalLinks(cookieSettings: boolean) {
 }
 
 describe("buildArtFooterVm", () => {
-  it("offers cookie preferences under Legal only when analytics consent is collected", () => {
+  it("offers cookie settings under Legal only when analytics consent is collected", () => {
     expect(legalLinks(true)).toContainEqual({
-      label: "Cookie preferences",
+      label: "Cookie settings",
       href: "#cookie-settings",
     });
-    expect(legalLinks(false).some((link) => link.label === "Cookie preferences")).toBe(false);
+    expect(legalLinks(false).some((link) => link.label === "Cookie settings")).toBe(false);
   });
 
   it("orders navigation, account, products, then legal", () => {

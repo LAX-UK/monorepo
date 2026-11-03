@@ -1,5 +1,7 @@
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
+import { VISITOR_ALERTS_HREF } from "@/lib/marketing/mega-menu-catalog";
 import { isClientAreaPath } from "@/lib/navigation/client-routes";
+import { bidSettingsHref } from "@/lib/navigation/settings-links";
 
 /** Rewrites dashboard routes to login-with-next for logged-out mega menu users. */
 export function rewriteDashboardHrefForGuest(href: string): string {
@@ -9,6 +11,8 @@ export function rewriteDashboardHrefForGuest(href: string): string {
 
 /** Restores dashboard hrefs from guest login redirects when the viewer is authenticated. */
 export function restoreDashboardHrefForAuthed(href: string): string {
+  // A signed-in client manages alerts in settings; a visitor signs up from the home page.
+  if (href === VISITOR_ALERTS_HREF) return bidSettingsHref("alerts");
   if (!href.startsWith("/login?")) return href;
   try {
     const next = new URL(href, "http://local").searchParams.get("next");

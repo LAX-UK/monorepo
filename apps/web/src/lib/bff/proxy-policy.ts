@@ -1,5 +1,6 @@
 const APPROVED_ROOTS = new Set([
   "admin",
+  "alerts",
   "artists",
   "auth",
   "bids",
@@ -18,6 +19,7 @@ const APPROVED_ROOTS = new Set([
   "payouts",
   "press",
   "q",
+  "sale-alerts",
   "sales",
   "stripe-connect",
   "submissions",
@@ -60,6 +62,7 @@ const REQUEST_HEADERS = new Set([
   "x-lax-ga4-browser-ids",
   "x-lax-marketing-page-url",
   "x-turnstile-token",
+  "x-enquiry-draft",
 ]);
 
 export function sanitizedProxyRequestHeaders(source: Headers, bearer?: string): Headers {

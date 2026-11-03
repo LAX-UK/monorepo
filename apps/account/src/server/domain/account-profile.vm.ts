@@ -64,7 +64,11 @@ export function buildProfileSections(
       note: "We use it to contact you about your activity. You can't sign in with it.",
     },
   ];
-  return sections;
+  // With no way to send codes, a person with no number has nothing to add; show the section only
+  // when there is a number to display.
+  return sections.filter(
+    (section) => section.id !== "phone" || contact.phone !== null || contact.phoneAvailable,
+  );
 }
 
 /** The address a pending change is waiting on, masked like the current one. */

@@ -78,6 +78,52 @@ describe("usePersonActions", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
+  describe("change email address", () => {
+    const withEmail: PersonActionTarget = {
+      ...ada,
+      email: "ada@example.com",
+      kycStatus: "approved",
+    };
+    const support = { canChange: true, canChangeStaff: false, viewerId: "viewer_1" };
+
+    it("is left out where the email change is not offered", () => {
+      render(<Harness target={withEmail} />);
+      expect(screen.queryByRole("button", { name: "Change email address" })).toBeNull();
+    });
+
+    it("is left out for a role that cannot change emails", () => {
+      const none = { canChange: false, canChangeStaff: false, viewerId: "viewer_1" };
+      render(<Harness target={withEmail} access={{ ...FULL, emailChange: none }} />);
+      expect(screen.queryByRole("button", { name: "Change email address" })).toBeNull();
+    });
+
+    it("is offered to a role that can", () => {
+      render(<Harness target={withEmail} access={{ ...FULL, emailChange: support }} />);
+      expect(screen.getByRole("button", { name: "Change email address" })).toBeEnabled();
+    });
+
+    it("says why a staff account cannot be moved by this role", () => {
+      render(
+        <Harness
+          target={{ ...withEmail, role: "staff" }}
+          access={{ ...FULL, emailChange: support }}
+        />,
+      );
+      expect(screen.getByRole("button", { name: "Change email address" })).toHaveAttribute(
+        "title",
+        "Only an Administrator can change a staff member's email",
+      );
+    });
+
+    it("opens the dialog for the person", () => {
+      render(<Harness target={withEmail} access={{ ...FULL, emailChange: support }} />);
+      fireEvent.click(screen.getByRole("button", { name: "Change email address" }));
+      expect(
+        screen.getByRole("dialog", { name: "Change Ada Lovelace's email address" }),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("explains why the two-step reset is unavailable", () => {
     render(<Harness target={ada} />);
     expect(screen.getByRole("button", { name: "Reset two-step verification" })).toHaveAttribute(

@@ -50,6 +50,8 @@ const ROLE_TABLE: Record<
       "specialist.appraise",
       "operations.fulfilment",
       "support.respond",
+      "enquiries.private_sale.read",
+      "private_sale.manage",
       "client.read",
       "bids.read",
       "aml.review",
@@ -62,7 +64,14 @@ const ROLE_TABLE: Record<
     destination: "/admin",
   },
   sales_manager: {
-    capabilities: ["auction.manage", "legal_entity.read", "legal_entity.write", "artist.read"],
+    capabilities: [
+      "auction.manage",
+      "enquiries.private_sale.read",
+      "private_sale.manage",
+      "legal_entity.read",
+      "legal_entity.write",
+      "artist.read",
+    ],
     platformRoutes: true,
     shell: "platform",
     destination: "/admin/sales",
@@ -86,7 +95,14 @@ const ROLE_TABLE: Record<
     destination: "/admin/lots",
   },
   specialist: {
-    capabilities: ["specialist.appraise", "artist.read", "artist.review", "legal_entity.read"],
+    capabilities: [
+      "specialist.appraise",
+      "enquiries.private_sale.read",
+      "private_sale.manage",
+      "artist.read",
+      "artist.review",
+      "legal_entity.read",
+    ],
     platformRoutes: true,
     shell: "platform",
     destination: "/admin/submissions",
@@ -96,6 +112,7 @@ const ROLE_TABLE: Record<
       "client.read",
       "bids.read",
       "support.respond",
+      "enquiries.private_sale.read",
       "legal_entity.read",
       "artist.read",
     ],
@@ -191,5 +208,19 @@ describe("Bid staff role table", () => {
     expect(
       staffRolesGranting(["specialist.appraise", "catalogue.write", "auction.manage"]),
     ).toEqual(["administrator", "sales_manager", "cataloguer", "specialist"]);
+  });
+
+  it("gives private sale enquiries to the roles that work them and hides them from the rest", () => {
+    expect(staffRolesGranting(["enquiries.private_sale.read"])).toEqual([
+      "administrator",
+      "sales_manager",
+      "specialist",
+      "client_services",
+    ]);
+    expect(staffRolesGranting(["private_sale.manage"])).toEqual([
+      "administrator",
+      "sales_manager",
+      "specialist",
+    ]);
   });
 });

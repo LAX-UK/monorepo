@@ -17,6 +17,15 @@ import AccountActivation, {
 import AccountDeletionCancelledEmail, {
   subject as accountDeletionCancelledSubject,
 } from "./templates/account-deletion-cancelled.js";
+import AccountDeletionCompletedEmail, {
+  subject as accountDeletionCompletedSubject,
+} from "./templates/account-deletion-completed.js";
+import AccountDeletionHeldEmail, {
+  subject as accountDeletionHeldSubject,
+} from "./templates/account-deletion-held.js";
+import AccountDeletionReminderEmail, {
+  subject as accountDeletionReminderSubject,
+} from "./templates/account-deletion-reminder.js";
 import AccountDeletionRequestedEmail, {
   subject as accountDeletionRequestedSubject,
 } from "./templates/account-deletion-requested.js";
@@ -26,6 +35,8 @@ import AccountSuspendedEmail, {
 import AdminImpersonationNoticeEmail, {
   subject as adminImpersonationNoticeSubject,
 } from "./templates/admin-impersonation-notice.js";
+import AlertConfirmEmail, { subject as alertConfirmSubject } from "./templates/alert-confirm.js";
+import AlertDigestEmail, { subject as alertDigestSubject } from "./templates/alert-digest.js";
 import AmlComplianceReviewNoticeEmail, {
   subject as amlComplianceReviewNoticeSubject,
 } from "./templates/aml-compliance-review-notice.js";
@@ -50,7 +61,16 @@ import ArtGeneralEnquiryAlertEmail, {
 import BackupCodesRegeneratedEmail, {
   subject as backupCodesRegeneratedSubject,
 } from "./templates/backup-codes-regenerated.js";
+import BidEnquiryReceivedEmail, {
+  subject as bidEnquiryReceivedSubject,
+} from "./templates/bid-enquiry-received.js";
 import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-outbid.js";
+import BiddingLimitChangedNoticeEmail, {
+  subject as biddingLimitChangedNoticeSubject,
+} from "./templates/bidding-limit-changed-notice.js";
+import BuyerDefaultNoticeEmail, {
+  subject as buyerDefaultNoticeSubject,
+} from "./templates/buyer-default-notice.js";
 import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
 import ConsignmentAgreementReminderEmail, {
   subject as consignmentAgreementReminderSubject,
@@ -72,6 +92,8 @@ import DisputeOpenedNoticeEmail, {
 } from "./templates/dispute-opened-notice.js";
 import EmailChangedEmail, { subject as emailChangedSubject } from "./templates/email-changed.js";
 import InviteEmail, { subject as inviteSubject } from "./templates/invite.js";
+import KycApprovedEmail, { subject as kycApprovedSubject } from "./templates/kyc-approved.js";
+import KycDeclinedEmail, { subject as kycDeclinedSubject } from "./templates/kyc-declined.js";
 import KycResubmissionRequiredEmail, {
   subject as kycResubmissionRequiredSubject,
 } from "./templates/kyc-resubmission-required.js";
@@ -104,6 +126,9 @@ import LotWithdrawalDeclinedNoticeEmail, {
   subject as lotWithdrawalDeclinedNoticeSubject,
 } from "./templates/lot-withdrawal-declined-notice.js";
 import LotWonEmail, { subject as lotWonSubject } from "./templates/lot-won.js";
+import MarketingEnquiryAlertEmail, {
+  subject as marketingEnquiryAlertSubject,
+} from "./templates/marketing-enquiry-alert.js";
 import NewDeviceLoginEmail, {
   subject as newDeviceLoginSubject,
 } from "./templates/new-device-login.js";
@@ -131,6 +156,9 @@ import PasswordChangedSessionsNotRevokedEmail, {
 import PasswordChanged, {
   subject as passwordChangedSubject,
 } from "./templates/password-changed.js";
+import PaymentFailedNoticeEmail, {
+  subject as paymentFailedNoticeSubject,
+} from "./templates/payment-failed-notice.js";
 import PaymentInvoiceEmail, {
   subject as paymentInvoiceSubject,
 } from "./templates/payment-invoice.js";
@@ -146,6 +174,9 @@ import PaymentReceiptEmail, {
 import PaymentRefundNoticeEmail, {
   subject as paymentRefundNoticeSubject,
 } from "./templates/payment-refund-notice.js";
+import PaymentReminderEmail, {
+  subject as paymentReminderSubject,
+} from "./templates/payment-reminder.js";
 import PayoutBankChangedNoticeEmail, {
   subject as payoutBankChangedNoticeSubject,
 } from "./templates/payout-bank-changed-notice.js";
@@ -161,11 +192,18 @@ import PayoutTransferBlockedNoticeEmail, {
 import PayoutTransferFailedNoticeEmail, {
   subject as payoutTransferFailedNoticeSubject,
 } from "./templates/payout-transfer-failed-notice.js";
+import PhoneRemovedEmail, { subject as phoneRemovedSubject } from "./templates/phone-removed.js";
 import PhoneVerifiedEmail, { subject as phoneVerifiedSubject } from "./templates/phone-verified.js";
 import ProxyCancelledNoticeEmail, {
   subject as proxyCancelledNoticeSubject,
 } from "./templates/proxy-cancelled-notice.js";
 import ResetPassword, { subject as resetPasswordSubject } from "./templates/reset-password.js";
+import SaleCancelledNoticeEmail, {
+  subject as saleCancelledNoticeSubject,
+} from "./templates/sale-cancelled-notice.js";
+import SaleRegistrationDecisionNoticeEmail, {
+  subject as saleRegistrationDecisionNoticeSubject,
+} from "./templates/sale-registration-decision-notice.js";
 import ShopArtworkEnquiryAlertEmail, {
   subject as shopArtworkEnquiryAlertSubject,
 } from "./templates/shop-artwork-enquiry-alert.js";
@@ -193,10 +231,19 @@ import ShopProductionStartedEmail, {
 import ShopRefundIssuedEmail, {
   subject as shopRefundIssuedSubject,
 } from "./templates/shop-refund-issued.js";
+import ShopReleaseAlertConfirmEmail, {
+  subject as shopReleaseAlertConfirmSubject,
+} from "./templates/shop-release-alert-confirm.js";
+import ShopReleaseAlertEmail, {
+  subject as shopReleaseAlertSubject,
+} from "./templates/shop-release-alert.js";
 import ShopZohoDeadLetterNoticeEmail, {
   subject as shopZohoDeadLetterNoticeSubject,
 } from "./templates/shop-zoho-dead-letter-notice.js";
 import SignInLink, { subject as signInLinkSubject } from "./templates/sign-in-link.js";
+import SignInMethodRemovedEmail, {
+  subject as signInMethodRemovedSubject,
+} from "./templates/sign-in-method-removed.js";
 import SocialAccountLinkedEmail, {
   subject as socialAccountLinkedSubject,
 } from "./templates/social-account-linked.js";
@@ -215,6 +262,12 @@ import SourceOfFundsDocumentsRequestedEmail, {
 import SourceOfFundsRejectedEmail, {
   subject as sourceOfFundsRejectedSubject,
 } from "./templates/source-of-funds-rejected.js";
+import StaffEmailChangeConfirmEmail, {
+  subject as staffEmailChangeConfirmSubject,
+} from "./templates/staff-email-change-confirm.js";
+import StaffEmailChangeNoticeEmail, {
+  subject as staffEmailChangeNoticeSubject,
+} from "./templates/staff-email-change-notice.js";
 import StaffRoleChangedEmail, {
   subject as staffRoleChangedSubject,
 } from "./templates/staff-role-changed.js";
@@ -303,6 +356,18 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: dataExportReadySubject,
     component: (vars) => <DataExportReadyEmail {...vars} />,
   },
+  "account-deletion-reminder": {
+    subject: accountDeletionReminderSubject,
+    component: (vars) => <AccountDeletionReminderEmail {...vars} />,
+  },
+  "account-deletion-held": {
+    subject: accountDeletionHeldSubject,
+    component: (vars) => <AccountDeletionHeldEmail {...vars} />,
+  },
+  "account-deletion-completed": {
+    subject: accountDeletionCompletedSubject,
+    component: (vars) => <AccountDeletionCompletedEmail {...vars} />,
+  },
   "backup-codes-regenerated": {
     subject: backupCodesRegeneratedSubject,
     component: (vars) => <BackupCodesRegeneratedEmail {...vars} />,
@@ -310,6 +375,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "email-changed": {
     subject: emailChangedSubject,
     component: (vars) => <EmailChangedEmail {...vars} />,
+  },
+  "sign-in-method-removed": {
+    subject: signInMethodRemovedSubject,
+    component: (vars) => <SignInMethodRemovedEmail {...vars} />,
+  },
+  "phone-removed": {
+    subject: phoneRemovedSubject,
+    component: (vars) => <PhoneRemovedEmail {...vars} />,
   },
   "phone-verified": {
     subject: phoneVerifiedSubject,
@@ -339,6 +412,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: changeEmailSubject,
     component: (vars) => <ChangeEmail {...vars} />,
   },
+  "staff-email-change-confirm": {
+    subject: staffEmailChangeConfirmSubject,
+    component: (vars) => <StaffEmailChangeConfirmEmail {...vars} />,
+  },
+  "staff-email-change-notice": {
+    subject: staffEmailChangeNoticeSubject,
+    component: (vars) => <StaffEmailChangeNoticeEmail {...vars} />,
+  },
   invite: { subject: inviteSubject, component: (vars) => <InviteEmail {...vars} /> },
   "access-invite": {
     subject: accessInviteSubject,
@@ -361,6 +442,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "payment-receipt": {
     subject: paymentReceiptSubject,
     component: (vars) => <PaymentReceiptEmail {...vars} />,
+  },
+  "payment-reminder": {
+    subject: paymentReminderSubject,
+    component: (vars) => <PaymentReminderEmail {...vars} />,
+  },
+  "buyer-default-notice": {
+    subject: buyerDefaultNoticeSubject,
+    component: (vars) => <BuyerDefaultNoticeEmail {...vars} />,
   },
   "payment-invoice": {
     subject: paymentInvoiceSubject,
@@ -409,6 +498,18 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "proxy-cancelled-notice": {
     subject: proxyCancelledNoticeSubject,
     component: (vars) => <ProxyCancelledNoticeEmail {...vars} />,
+  },
+  "sale-registration-decision-notice": {
+    subject: saleRegistrationDecisionNoticeSubject,
+    component: (vars) => <SaleRegistrationDecisionNoticeEmail {...vars} />,
+  },
+  "bidding-limit-changed-notice": {
+    subject: biddingLimitChangedNoticeSubject,
+    component: (vars) => <BiddingLimitChangedNoticeEmail {...vars} />,
+  },
+  "payment-failed-notice": {
+    subject: paymentFailedNoticeSubject,
+    component: (vars) => <PaymentFailedNoticeEmail {...vars} />,
   },
   "lot-voided-notice": {
     subject: lotVoidedNoticeSubject,
@@ -465,6 +566,26 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "kyc-resubmission-required": {
     subject: kycResubmissionRequiredSubject,
     component: (vars) => <KycResubmissionRequiredEmail {...vars} />,
+  },
+  "kyc-approved": {
+    subject: kycApprovedSubject,
+    component: (vars) => <KycApprovedEmail {...vars} />,
+  },
+  "kyc-declined": {
+    subject: kycDeclinedSubject,
+    component: (vars) => <KycDeclinedEmail {...vars} />,
+  },
+  "sale-cancelled-notice": {
+    subject: saleCancelledNoticeSubject,
+    component: (vars) => <SaleCancelledNoticeEmail {...vars} />,
+  },
+  "bid-enquiry-received": {
+    subject: bidEnquiryReceivedSubject,
+    component: (vars) => <BidEnquiryReceivedEmail {...vars} />,
+  },
+  "marketing-enquiry-alert": {
+    subject: marketingEnquiryAlertSubject,
+    component: (vars) => <MarketingEnquiryAlertEmail {...vars} />,
   },
   "staff-role-expired": {
     subject: staffRoleExpiredSubject,
@@ -526,6 +647,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: shopOrderReceiptSubject,
     component: (vars) => <ShopOrderReceiptEmail {...vars} />,
   },
+  "alert-confirm": {
+    subject: alertConfirmSubject,
+    component: (vars) => <AlertConfirmEmail {...vars} />,
+  },
+  "alert-digest": {
+    subject: alertDigestSubject,
+    component: (vars) => <AlertDigestEmail {...vars} />,
+  },
   "shop-guest-order-link": {
     subject: shopGuestOrderLinkSubject,
     component: (vars) => <ShopGuestOrderLinkEmail {...vars} />,
@@ -565,6 +694,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-edition-available-notify": {
     subject: shopEditionAvailableNotifySubject,
     component: (vars) => <ShopEditionAvailableNotifyEmail {...vars} />,
+  },
+  "shop-release-alert-confirm": {
+    subject: shopReleaseAlertConfirmSubject,
+    component: (vars) => <ShopReleaseAlertConfirmEmail {...vars} />,
+  },
+  "shop-release-alert": {
+    subject: shopReleaseAlertSubject,
+    component: (vars) => <ShopReleaseAlertEmail {...vars} />,
   },
   "shop-zoho-dead-letter-notice": {
     subject: shopZohoDeadLetterNoticeSubject,
