@@ -16,9 +16,4 @@ describe("migration 0285 journal entry", () => {
     expect(entry?.idx).toBe(285);
     expect(entry?.when).toBeGreaterThan(WHEN_OF_0284);
   });
-
-  it("is the newest entry in the journal", () => {
-    const newest = Math.max(...journal.entries.map((row) => row.when));
-    expect(entry?.when).toBe(newest);
-  });
 });
