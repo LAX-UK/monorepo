@@ -347,6 +347,18 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "auth.two_factor_policy_changed": new Set(["scope", "required", "legalEntityId"]),
   /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */
   "auth.two_factor_reset_by_staff": new Set(["reason"]),
+  /**
+   * Why staff moved an account to a new address and what they relied on: a staff-typed note, the
+   * kind of proof, and the KYC session or ID-check reference. The addresses are not recorded.
+   */
+  "auth.email_change_requested_by_staff": new Set([
+    "reason",
+    "proofKind",
+    "kycSessionId",
+    "proofReference",
+  ]),
+  /** Staff were shown the verified name and date of birth; only the record's id is kept. */
+  "auth.email_change_kyc_record_viewed": new Set(["kycSessionId"]),
   "auth.two_factor_security_email": new Set(["kind"]),
   "auth.account_suspended": new Set(),
   /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */

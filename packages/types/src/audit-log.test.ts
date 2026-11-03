@@ -20,6 +20,7 @@ describe("audit log views", () => {
     expect(viewsOf("payment.refunded")).toEqual(["finance"]);
     expect(viewsOf("lot.withdrawal_declined")).toEqual(["catalogue"]);
     expect(viewsOf("auth.two_factor_reset_by_staff")).toEqual(["people"]);
+    expect(viewsOf("auth.email_change_requested_by_staff")).toEqual(["people"]);
     expect(viewsOf("admin.impersonation_started")).toEqual(["people"]);
     for (const type of ALL_LIVE_DOMAIN_EVENT_TYPES) {
       expect(viewsOf(type).length).toBeLessThanOrEqual(1);

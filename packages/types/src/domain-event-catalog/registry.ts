@@ -99,6 +99,8 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "auth.sessions_revoked_all_except_current",
   "auth.two_factor_policy_changed",
   "auth.two_factor_reset_by_staff",
+  "auth.email_change_requested_by_staff",
+  "auth.email_change_kyc_record_viewed",
   "auth.two_factor_security_email",
   "bid.first_for_user",
   "bid.user_anonymised",
