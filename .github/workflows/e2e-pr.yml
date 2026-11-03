@@ -35,6 +35,9 @@ jobs:
               - "apps/web/**"
               - "apps/shop/**"
               - "apps/shop-api/**"
+              - "apps/shop-admin/**"
+              - "packages/staff-ui/**"
+              - "scripts/ci/start-lax-admin-stack.sh"
               - "apps/api/src/**"
               - "apps/auth/**"
               - "apps/ws/**"
@@ -222,6 +225,7 @@ jobs:
           --filter=@auction/web
           --filter=@auction/shop-api
           --filter=@auction/shop
+          --filter=@auction/shop-admin
       - name: Start stack
         run: |
           mkdir -p /tmp/e2e-logs
@@ -286,6 +290,15 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3020
           PLAYWRIGHT_E2E: "1"
         run: pnpm --filter @auction/shop exec playwright test e2e/home.spec.ts --grep "visible without JavaScript"
+      - name: Start LAX Admin
+        run: scripts/ci/start-lax-admin-stack.sh
+      - name: Run LAX Admin accessibility and role checks
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:3030
+          AUTH_BASE_URL: http://localhost:3003
+          PLAYWRIGHT_E2E: "1"
+          LAX_ADMIN_ROLES_E2E: "1"
+        run: pnpm --filter @auction/shop-admin test:e2e:a11y
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
@@ -295,6 +308,7 @@ jobs:
             apps/web/blob-report
             apps/web/test-results
             apps/shop/test-results
+            apps/shop-admin/test-results
           if-no-files-found: warn
           retention-days: 7
       - name: Upload session probe and process logs
