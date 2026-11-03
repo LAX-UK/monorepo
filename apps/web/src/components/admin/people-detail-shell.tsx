@@ -89,7 +89,8 @@ export function PeopleDetailShell({
   const searchParams = useSearchParams();
   const actions = usePersonActions(access);
   const isStaff = user.role === "staff";
-  const canAct = access.canModerate || access.canManageRoles;
+  const canAct =
+    access.canModerate || access.canManageRoles || Boolean(access.emailChange?.canChange);
 
   const defaultTab = tabs[0]?.id ?? "overview";
   const activeTab = tabs.find((tab) => tab.id === searchParams.get("tab"))?.id ?? defaultTab;
@@ -111,6 +112,8 @@ export function PeopleDetailShell({
     staffRole,
     suspended: Boolean(user.suspendedAt),
     twoFactorEnabled: user.twoFactorEnabled,
+    email: user.email,
+    kycStatus: user.kycStatus,
   };
 
   const overflow: OverflowAction[] = [
