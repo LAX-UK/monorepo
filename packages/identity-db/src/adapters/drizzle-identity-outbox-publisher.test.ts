@@ -22,4 +22,23 @@ describe("identity outbox publisher: data export requested", () => {
       payload: { schemaVersion: 1, subjectId: "u1", exportId: "e1" },
     });
   });
+
+  it("records a removed sign-in method in the caller's transaction, naming only the provider", async () => {
+    const values = vi.fn(() => ({ onConflictDoNothing: vi.fn() }));
+    const transaction = { insert: vi.fn(() => ({ values })) } as unknown as IdentityDatabase;
+    await createDrizzleIdentityOutboxPublisher({
+      insert: vi.fn(),
+    } as unknown as IdentityDatabase).publish(
+      { type: "user.sign_in_method_unlinked", userId: "u1", provider: "google" },
+      { transaction },
+    );
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aggregateType: "user",
+        aggregateId: "u1",
+        eventType: "user.sign_in_method_unlinked",
+        payload: expect.objectContaining({ subjectId: "u1", provider: "google" }),
+      }),
+    );
+  });
 });

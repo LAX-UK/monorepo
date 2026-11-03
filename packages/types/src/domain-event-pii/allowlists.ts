@@ -336,6 +336,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** Subject and export ids only; the request carries nothing personal. */
   "subject.data_export_requested": new Set(),
+  /** Which provider was removed; nothing personal. */
+  "user.sign_in_method_unlinked": new Set(["provider"]),
   "auth.forgot_password_requested": new Set(),
   "auth.password_credential_enabled": new Set(),
   "auth.email_change_started": new Set(),

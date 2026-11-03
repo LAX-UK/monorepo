@@ -54,6 +54,9 @@ function createRepositories(): IdentityOperationsRepositories {
     },
     credentials: {
       listProviders: vi.fn().mockResolvedValue([]),
+      listSignInAccounts: vi.fn().mockResolvedValue([]),
+      lockSignInAccounts: vi.fn().mockResolvedValue([]),
+      deleteSocialAccount: vi.fn().mockResolvedValue(true),
       findCredential: vi.fn().mockResolvedValue(null),
       insertCredential: vi.fn().mockResolvedValue("inserted"),
       updatePassword: vi.fn().mockResolvedValue(undefined),
@@ -339,6 +342,75 @@ describe("IdentityOperationsService", () => {
       ),
     ).rejects.toMatchObject({ code: "no_session" });
     expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+  });
+
+  describe("unlinkSocialSignIn", () => {
+    const row = (providerId: string, hasPassword = false) => ({
+      providerId,
+      hasPassword,
+      createdAt: new Date("2026-10-01T09:00:00Z"),
+    });
+
+    it("removes the provider, records it, and ends the other sessions in one transaction", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.credentials.lockSignInAccounts).mockResolvedValue([
+        row("credential", true),
+        row("google"),
+      ]);
+      const { service, identityEventPublisher } = createService(repositories);
+
+      const outcome = await service.unlinkSocialSignIn("subject", "google", "current");
+
+      expect(outcome).toEqual({ revokedSessionIds: ["other-1", "other-2"] });
+      expect(repositories.credentials.deleteSocialAccount).toHaveBeenCalledWith(
+        transaction,
+        "subject",
+        "google",
+      );
+      expect(repositories.sessions.deleteOtherSessions).toHaveBeenCalledWith(
+        transaction,
+        "subject",
+        "current",
+      );
+      expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+        { type: "user.sign_in_method_unlinked", userId: "subject", provider: "google" },
+        { transaction },
+      );
+      for (const sessionId of ["other-1", "other-2"]) {
+        expect(identityEventPublisher.publish).toHaveBeenCalledWith(
+          { type: "user.session_revoked", userId: "subject", sessionId },
+          { transaction },
+        );
+      }
+    });
+
+    it("refuses the last method and changes nothing", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.credentials.lockSignInAccounts).mockResolvedValue([row("google")]);
+      const { service, identityEventPublisher } = createService(repositories);
+
+      await expect(
+        service.unlinkSocialSignIn("subject", "google", "current"),
+      ).rejects.toMatchObject({ code: "last_sign_in_method" });
+      expect(repositories.credentials.deleteSocialAccount).not.toHaveBeenCalled();
+      expect(repositories.sessions.deleteOtherSessions).not.toHaveBeenCalled();
+      expect(identityEventPublisher.publish).not.toHaveBeenCalled();
+    });
+
+    it("refuses a provider that is not linked", async () => {
+      const repositories = createRepositories();
+      vi.mocked(repositories.credentials.lockSignInAccounts).mockResolvedValue([
+        row("credential", true),
+      ]);
+      const { service } = createService(repositories);
+
+      await expect(service.unlinkSocialSignIn("subject", "apple", "current")).rejects.toMatchObject(
+        {
+          code: "not_linked",
+        },
+      );
+      expect(repositories.credentials.deleteSocialAccount).not.toHaveBeenCalled();
+    });
   });
 
   describe("changeAccountPassword", () => {

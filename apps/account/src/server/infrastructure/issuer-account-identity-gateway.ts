@@ -25,9 +25,13 @@ import {
   ACCOUNT_SESSIONS_PATH,
   ACCOUNT_SESSIONS_REVOKE_OTHERS_PATH,
   ACCOUNT_SESSIONS_REVOKE_PATH,
+  ACCOUNT_SIGN_IN_METHODS_PATH,
+  ACCOUNT_SIGN_IN_METHODS_UNLINK_PATH,
+  ACCOUNT_SIGN_IN_METHOD_ERRORS,
   type AccountAddressError,
   type AccountContactError,
   type AccountPasswordError,
+  type AccountSignInMethodError,
   accountAddressDeletedSchema,
   accountAddressResultSchema,
   accountAddressesSchema,
@@ -46,6 +50,8 @@ import {
   accountProfileSchema,
   accountSessionsRevokedSchema,
   accountSessionsSchema,
+  accountSignInMethodUnlinkedSchema,
+  accountSignInMethodsSchema,
 } from "@auction/identity-contracts";
 import type { z } from "zod";
 import type { LaxAccountConfig } from "../config";
@@ -61,14 +67,19 @@ const REJECTION_REASONS: ReadonlySet<string> = new Set([
   ...ACCOUNT_CONTACT_ERRORS,
   ...ACCOUNT_ADDRESS_ERRORS,
   ...ACCOUNT_PASSWORD_ERRORS,
+  ...ACCOUNT_SIGN_IN_METHOD_ERRORS,
 ]);
 
-function rejectionReason(
-  body: unknown,
-): AccountContactError | AccountAddressError | AccountPasswordError | null {
+type RejectionReason =
+  | AccountContactError
+  | AccountAddressError
+  | AccountPasswordError
+  | AccountSignInMethodError;
+
+function rejectionReason(body: unknown): RejectionReason | null {
   const error = (body as { error?: unknown } | null)?.error;
   return typeof error === "string" && REJECTION_REASONS.has(error)
-    ? (error as AccountContactError | AccountAddressError | AccountPasswordError)
+    ? (error as RejectionReason)
     : null;
 }
 
@@ -311,6 +322,20 @@ export function createIssuerAccountIdentityGateway(
         accountBackupCodesSchema,
       );
       return result.status === "ok" ? { status: "ok", value: result.value.backupCodes } : result;
+    },
+    readSignInMethods(actor) {
+      return post(
+        ACCOUNT_SIGN_IN_METHODS_PATH,
+        { token: actor.accessToken },
+        accountSignInMethodsSchema,
+      );
+    },
+    unlinkSignInMethod(actor, provider) {
+      return post(
+        ACCOUNT_SIGN_IN_METHODS_UNLINK_PATH,
+        fields(actor, { provider }),
+        accountSignInMethodUnlinkedSchema,
+      );
     },
   };
 }

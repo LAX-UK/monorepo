@@ -112,6 +112,13 @@ export const userCredentialChangedPayloadSchemaV1 = z.object({
   changedAt: rfc3339Timestamp,
 });
 
+export const userSignInMethodUnlinkedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  subjectId: z.string(),
+  provider: z.enum(["google", "apple"]),
+  unlinkedAt: rfc3339Timestamp,
+});
+
 export const userEmailVerifiedPayloadSchemaV1 = z.object({
   userId: z.string(),
   email: z.string(),

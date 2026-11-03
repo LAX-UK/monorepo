@@ -4,6 +4,7 @@ import type {
   IdentityEventPublisher,
   ProductSubjectUsageProbe,
 } from "@auction/auth";
+import type { SocialSignInProvider } from "@auction/identity-contracts";
 import { hashPassword, verifyPassword } from "@better-auth/utils/password";
 import { pendingEmailChangeState } from "../lib/pending-email-change.js";
 import { findNewPasswordPolicyViolation } from "../schemas/validate-new-password.js";
@@ -15,6 +16,7 @@ import type {
   IdentitySubjectRecord,
 } from "./identity-operations.ports.js";
 import { publishIdentityProfileUpdated } from "./publish-identity-profile-updated.js";
+import { type SignInMethods, decideUnlink, describeSignInMethods } from "./sign-in-method-rules.js";
 
 export type IdentityOperationErrorCode =
   | "already_set"
@@ -26,6 +28,8 @@ export type IdentityOperationErrorCode =
   | "same_password"
   | "phone_taken"
   | "invalid_expiry"
+  | "last_sign_in_method"
+  | "not_linked"
   | "no_credential"
   | "no_session"
   | "none_in_progress"
@@ -279,6 +283,48 @@ export class IdentityOperationsService {
       }
     });
     return { created: !existingHash, revokedSessionIds };
+  }
+
+  /** The password and linked Google or Apple accounts the person can sign in with. */
+  async readSignInMethods(subjectId: string): Promise<SignInMethods> {
+    return describeSignInMethods(await this.repositories.credentials.listSignInAccounts(subjectId));
+  }
+
+  /**
+   * Removes a linked Google or Apple account from LAX Account. The last-method check runs on the
+   * locked rows inside the same transaction as the removal, so two removals racing cannot leave
+   * the account without a way in. It also ends every other sign-in (`keepSessionId` survives) and
+   * records the removal and each ended session. Relying-party tokens are ended by the caller once
+   * this has committed.
+   */
+  async unlinkSocialSignIn(
+    subjectId: string,
+    provider: SocialSignInProvider,
+    keepSessionId: string,
+  ): Promise<{ revokedSessionIds: string[] }> {
+    let revokedSessionIds: string[] = [];
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const rows = await this.repositories.credentials.lockSignInAccounts(transaction, subjectId);
+      const decision = decideUnlink(rows, provider);
+      if (decision !== "allowed") throw new IdentityOperationError(decision);
+      await this.repositories.credentials.deleteSocialAccount(transaction, subjectId, provider);
+      await this.identityEventPublisher.publish(
+        { type: "user.sign_in_method_unlinked", userId: subjectId, provider },
+        { transaction },
+      );
+      revokedSessionIds = await this.repositories.sessions.deleteOtherSessions(
+        transaction,
+        subjectId,
+        keepSessionId,
+      );
+      for (const sessionId of revokedSessionIds) {
+        await this.identityEventPublisher.publish(
+          { type: "user.session_revoked", userId: subjectId, sessionId },
+          { transaction },
+        );
+      }
+    });
+    return { revokedSessionIds };
   }
 
   listSessions(subjectId: string, currentSessionToken?: string): Promise<IdentitySession[]> {

@@ -49,6 +49,7 @@ import { createAccountDeletionRoutes } from "../routes/account-deletion.routes.j
 import { createAccountIdentityRoutes } from "../routes/account-identity.routes.js";
 import { createAccountPasswordRoutes } from "../routes/account-password.routes.js";
 import { createAccountSecurityFactsRoutes } from "../routes/account-security-facts.routes.js";
+import { createAccountSignInMethodsRoutes } from "../routes/account-sign-in-methods.routes.js";
 import { createOauthTokenManagementRoutes } from "../routes/oauth-token-management.routes.js";
 import { createRpInitiatedLogoutRoutes } from "../routes/rp-initiated-logout.routes.js";
 import { createSsfRoutes } from "../routes/ssf.routes.js";
@@ -60,6 +61,7 @@ import { AccountIdentityService } from "../services/account-identity.service.js"
 import { AccountPasswordService } from "../services/account-password.service.js";
 import { AccountPhoneService } from "../services/account-phone.service.js";
 import { AccountSecurityFactsService } from "../services/account-security-facts.service.js";
+import { AccountSignInMethodsService } from "../services/account-sign-in-methods.service.js";
 import type { DurableSecurityEffects } from "../services/durable-security-effects.js";
 import type { EmailChangeService } from "../services/email-change.service.js";
 import type { IdentityOperationsService } from "../services/identity-operations.service.js";
@@ -323,6 +325,22 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
           options.log.warn({ err: error }, "account_password_rate_limit_unavailable"),
       }),
       onFailure: (error) => options.log.error({ err: error }, "account_password_change_failed"),
+    }),
+  );
+  app.route(
+    "/api/auth",
+    createAccountSignInMethodsRoutes({
+      clients: services.oidc.confidentialClients,
+      tokens: services.oidc.tokenManagement,
+      methods: new AccountSignInMethodsService({
+        operations: options.identityOperations,
+        durable: options.durableSecurityEffects,
+        notices: options.securityNotices,
+      }),
+      readRateLimit: accountRateLimit("account-sign-in-methods-read", 120),
+      writeRateLimit: accountRateLimit("account-sign-in-methods-write", 10),
+      onFailure: (error) =>
+        options.log.error({ err: error }, "account_sign_in_methods_request_failed"),
     }),
   );
   const phoneRules = AUTH_RATE_LIMIT_POLICY;

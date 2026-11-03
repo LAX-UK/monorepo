@@ -79,6 +79,17 @@ describe("LAX Account security emails", () => {
     expectSharedParts(rendered);
   });
 
+  it("renders a removed sign-in method with the provider and says other devices were signed out", async () => {
+    const rendered = await renderEmail("sign-in-method-removed", {
+      ...BASE,
+      providerName: "Google",
+    });
+    expect(rendered.subject).toBe("A sign-in method was removed from your LAX Account");
+    expect(rendered.text).toContain("Google");
+    expect(rendered.text).toContain("signed out");
+    expectSharedParts(rendered);
+  });
+
   it("renders email changed with both addresses, and different copy for each inbox", async () => {
     const vars = { ...BASE, previousEmail: "old@example.com", newEmail: "new@example.com" };
     const previous = await renderEmail("email-changed", { ...vars, recipient: "previous" });

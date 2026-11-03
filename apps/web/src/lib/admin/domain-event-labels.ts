@@ -236,6 +236,7 @@ const LABELS: Record<string, string> = {
   "user.email_verified": "Email verified",
   "user.profile_updated": "Profile updated",
   "user.credential_changed": "Sign-in method changed",
+  "user.sign_in_method_unlinked": "Social sign-in removed",
   "user.session_revoked": "Session signed out",
   "user.suspended": "Account suspended",
   "user.deletion_requested": "Account deletion requested",

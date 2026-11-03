@@ -271,6 +271,22 @@ describe("SecurityNoticeService", () => {
     expect(input?.vars.maskedPhone).toBe("+44******23");
   });
 
+  it("names the removed provider in the sign-in method notice", async () => {
+    const { service, email } = setup();
+
+    await service.notify({
+      kind: "sign_in_method_removed",
+      userId: USER,
+      at: AT,
+      provider: "apple",
+    });
+
+    const input = email.enqueue.mock.calls[0]?.[0];
+    expect(input?.template).toBe("sign-in-method-removed");
+    expect(input?.vars.providerName).toBe("Apple");
+    expect(input?.vars.secureAccountUrl).toBeTruthy();
+  });
+
   it("tells both the old and the new address about an email change", async () => {
     const { service, email } = setup();
 
