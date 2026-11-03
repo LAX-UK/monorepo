@@ -398,7 +398,8 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
       expect(after?.version).toBe(entry.version + 1);
       expect(await repo.listOpenConflicts(10)).toHaveLength(0);
       const events = await repo.listEvents(entry.id, 10);
-      expect(events.at(-1)?.payload).toMatchObject({
+      // The conflict and its decision share a timestamp here, so pick the event by type.
+      expect(events.find((e) => e.type === "conflict_resolved")?.payload).toMatchObject({
         resolution: "accepted_zoho",
         applied: { from: "LAX-ORI-PH-GAC-26-0001", to: "LAX-ORI-PH-GAC-26-0099" },
       });
