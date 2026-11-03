@@ -1,29 +1,33 @@
-import type {
-  FailedJobRecord,
-  IFailedJobDisposition,
-  IFailedJobReviewReader,
-} from "@auction/persistence/interfaces";
-import { failedJobTypeInfo, knownFailedJobQueues } from "@auction/queues";
-import type {
-  FailedJobBatchOutcome,
-  FailedJobBatchResult,
-  FailedJobDetail,
-  FailedJobDiscardReason,
-  FailedJobList,
+import {
+  FAILED_JOB_SOURCES,
+  FAILED_JOB_SOURCE_FAMILIES,
+  FAILED_JOB_SOURCE_FAMILY_LABELS,
+  FAILED_JOB_SOURCE_LABELS,
+  type FailedJobBatchOutcome,
+  type FailedJobBatchResult,
+  type FailedJobDetail,
+  type FailedJobDiscardReason,
+  type FailedJobList,
+  type FailedJobSourceFamily,
+  type FailedJobSummary,
+  type FailedJobView,
+  failedJobSourcesFor,
 } from "@auction/types";
 import type { AdminFailedJobsQuery } from "@auction/validators";
-import type { ActorContext, IQueueMutator } from "../../interfaces/queue-inspector.js";
+import type { ActorContext } from "../../interfaces/queue-inspector.js";
 import type { IFailedJobAuditTrail } from "./failed-job-audit-trail.js";
-import {
-  failedJobRetry,
-  failedJobState,
-  toFailedJobDetail,
-  toFailedJobSummary,
-} from "./failed-job-presenter.js";
+import type {
+  FailedJobSourceAdapter,
+  FailedJobViewer,
+  ReviewTarget,
+  SourceListQuery,
+  SourceListResult,
+} from "./sources/failed-job-source.js";
 
 /** Errors a batch outcome can carry. The route shows these exactly, so keep them plain codes. */
 export type FailedJobActionError =
   | "job_not_found"
+  | "not_permitted"
   | "actions_disabled"
   | "retry_not_allowed"
   | "already_retried"
@@ -40,61 +44,102 @@ const PASS_THROUGH_ERRORS: ReadonlySet<string> = new Set([
   "payload_not_available",
 ]);
 
+/** Merging sources reads this many rows from each at most, so a deep page can't scan everything. */
+const MERGE_WINDOW_MAX = 2000;
+
+const EMPTY_COUNTS: Record<FailedJobView, number> = { needs_review: 0, retried: 0, discarded: 0 };
+
 export type AdminFailedJobsDeps = {
-  reader: IFailedJobReviewReader;
-  disposition: IFailedJobDisposition;
-  /** Retrying a failed job is a replay from the dead-letter record. */
-  retrier: Pick<IQueueMutator, "replayFromDlq">;
+  /** Where failures are read from, in the order they are offered. */
+  sources: readonly FailedJobSourceAdapter[];
   audit: IFailedJobAuditTrail;
   /** The operator's kill switch for retries and discards. */
   actionsEnabled: boolean;
 };
 
 /**
- * Staff review of background jobs that ran out of attempts: the list with its views and filters,
- * one job with a masked payload and its history, and the decisions to retry, discard or restore.
- * Each decision is checked against the job's state and type, applied job by job so one refusal
- * never blocks the rest, and written to the audit trail with the person who made it.
+ * Staff review of failures from every source: background jobs that ran out of attempts and
+ * integration deliveries that never went through. It decides what each person may see and change
+ * from the per-source access table, merges the sources into one list with shared views and
+ * filters, and applies each decision (retry, discard, restore) job by job so one refusal never
+ * blocks the rest. Every decision is checked against the job's state, then written to the audit
+ * trail with the person who made it.
  */
 export class AdminFailedJobsService {
   constructor(private readonly deps: AdminFailedJobsDeps) {}
 
-  async list(query: AdminFailedJobsQuery): Promise<FailedJobList> {
+  async list(query: AdminFailedJobsQuery, actor: ActorContext): Promise<FailedJobList> {
     const { actionsEnabled } = this.deps;
-    const result = await this.deps.reader.search({
+    const viewer = this.viewerFor(actor);
+    const wanted = (adapter: FailedJobSourceAdapter) =>
+      (!query.source || query.source === adapter.family) &&
+      (!query.queue || adapter.ownsQueue(query.queue));
+    const matching = this.deps.sources.filter(wanted);
+    const window = Math.min(query.offset + query.limit, MERGE_WINDOW_MAX);
+
+    const base: Omit<SourceListQuery, "limit" | "offset" | "queue"> = {
       view: query.view,
       sort: query.sort,
-      limit: query.limit,
-      offset: query.offset,
+      viewer,
+      actionsEnabled,
       ...(query.q ? { q: query.q } : {}),
-      ...(query.queue ? { queue: query.queue } : {}),
       ...(query.from ? { fromDay: query.from } : {}),
       ...(query.to ? { toDay: query.to } : {}),
+    };
+    // A single source pages itself; several are merged from the top of each.
+    const single = matching.length === 1;
+    const results = await Promise.all(
+      this.deps.sources.map((adapter) => {
+        const filters = {
+          ...base,
+          ...(query.queue && adapter.ownsQueue(query.queue) ? { queue: query.queue } : {}),
+        };
+        // A source not asked for is still counted, so the Source filter shows its size.
+        return wanted(adapter)
+          ? adapter.list({
+              ...filters,
+              limit: single ? query.limit : window,
+              offset: single ? query.offset : 0,
+            })
+          : adapter.list({ ...filters, limit: 0, offset: 0 });
+      }),
+    );
+
+    const included = results.filter((_, index) => {
+      const adapter = this.deps.sources[index];
+      return adapter ? wanted(adapter) : false;
     });
-    const counted = new Map(result.queues.map((entry) => [entry.queue, entry.count]));
-    // Queues with failures first-class in the filter, then the ones that merely exist.
-    const known = knownFailedJobQueues();
-    const queueIds = new Set([...counted.keys(), ...known.map((queue) => queue.id)]);
+    const rows = single
+      ? (included[0]?.rows ?? [])
+      : this.merge(included, query.sort).slice(query.offset, query.offset + query.limit);
+
     return {
-      rows: result.rows.map((record) => toFailedJobSummary(record, actionsEnabled)),
-      total: result.total,
-      counts: result.counts,
-      queues: [...queueIds]
-        .map((id) => ({
-          id,
-          label: failedJobTypeInfo(id).label,
-          count: counted.get(id) ?? 0,
-        }))
+      rows,
+      total: sum(included.map((result) => result.total)),
+      counts: included.reduce(
+        (all, result) => ({
+          needs_review: all.needs_review + result.counts.needs_review,
+          retried: all.retried + result.counts.retried,
+          discarded: all.discarded + result.counts.discarded,
+        }),
+        { ...EMPTY_COUNTS },
+      ),
+      queues: results
+        .flatMap((result) => result.queues)
         .sort((a, b) => a.label.localeCompare(b.label)),
+      sources: this.sourceFacets(results),
+      canAct: viewer.act.size > 0,
+      limitedTo: this.limitOf(viewer),
       actionsEnabled,
     };
   }
 
-  async detail(id: string): Promise<FailedJobDetail | null> {
-    const record = await this.deps.reader.findForReview(id);
-    if (!record) return null;
-    const history = await this.deps.audit.history(id);
-    return toFailedJobDetail(record, history, this.deps.actionsEnabled);
+  async detail(id: string, actor: ActorContext): Promise<FailedJobDetail | null> {
+    const adapter = this.deps.sources.find((source) => source.owns(id));
+    if (!adapter) return null;
+    return adapter.detail(id, this.viewerFor(actor), this.deps.actionsEnabled, (auditId) =>
+      this.deps.audit.history(auditId),
+    );
   }
 
   async retry(
@@ -102,28 +147,23 @@ export class AdminFailedJobsService {
     confirmRepeat: boolean,
     actor: ActorContext,
   ): Promise<FailedJobBatchResult> {
-    return this.eachJob(ids, async (record) => {
-      const availability = failedJobRetry(record, this.deps.actionsEnabled);
-      if (!availability.allowed) return this.refuseRetry(record);
-      if (failedJobTypeInfo(record.originalQueue).mayRepeat && !confirmRepeat) {
-        return { id: record.id, ok: false, error: "repeat_not_confirmed" };
+    return this.eachTarget(ids, actor, async (target) => {
+      if (!target.retry.allowed) return this.refuseRetry(target);
+      if (target.mayRepeat && !confirmRepeat) {
+        return { id: target.id, ok: false, error: "repeat_not_confirmed" };
       }
       try {
-        await this.deps.retrier.replayFromDlq(record.id, actor, true);
+        await target.retryNow(actor);
       } catch (error) {
-        return { id: record.id, ok: false, error: this.retryError(error) };
+        return { id: target.id, ok: false, error: this.retryError(error) };
       }
       await this.deps.audit.record({
         kind: "retried",
-        jobId: record.id,
+        jobId: target.auditId,
         actorUserId: actor.userId,
-        payload: {
-          queue: record.originalQueue,
-          jobName: record.originalJobName,
-          confirmRepeat,
-        },
+        payload: { ...target.auditFacts, confirmRepeat },
       });
-      return { id: record.id, ok: true };
+      return { id: target.id, ok: true };
     });
   }
 
@@ -134,63 +174,113 @@ export class AdminFailedJobsService {
     actor: ActorContext,
   ): Promise<FailedJobBatchResult> {
     if (!this.deps.actionsEnabled) return this.allRefused(ids, "actions_disabled");
-    return this.eachJob(ids, async (record) => {
-      if (failedJobState(record) !== "needs_review") {
-        return { id: record.id, ok: false, error: this.stateError(record) };
+    return this.eachTarget(ids, actor, async (target) => {
+      if (target.state !== "needs_review") {
+        return { id: target.id, ok: false, error: this.stateError(target) };
       }
-      const changed = await this.deps.disposition.discard({
-        ids: [record.id],
+      const changed = await target.discard({
         byUserId: actor.userId,
         reason,
         note: note ?? null,
       });
-      if (changed.length === 0) return { id: record.id, ok: false, error: "job_discarded" };
+      if (!changed) return { id: target.id, ok: false, error: "job_discarded" };
       await this.deps.audit.record({
         kind: "discarded",
-        jobId: record.id,
+        jobId: target.auditId,
         actorUserId: actor.userId,
-        payload: {
-          queue: record.originalQueue,
-          jobName: record.originalJobName,
-          reason,
-          ...(note ? { note } : {}),
-        },
+        payload: { ...target.auditFacts, reason, ...(note ? { note } : {}) },
       });
-      return { id: record.id, ok: true };
+      return { id: target.id, ok: true };
     });
   }
 
   async restore(ids: readonly string[], actor: ActorContext): Promise<FailedJobBatchResult> {
     if (!this.deps.actionsEnabled) return this.allRefused(ids, "actions_disabled");
-    return this.eachJob(ids, async (record) => {
-      if (failedJobState(record) !== "discarded") {
-        return { id: record.id, ok: false, error: "not_discarded" };
+    return this.eachTarget(ids, actor, async (target) => {
+      if (target.state !== "discarded") {
+        return { id: target.id, ok: false, error: "not_discarded" };
       }
-      const changed = await this.deps.disposition.restore([record.id]);
-      if (changed.length === 0) return { id: record.id, ok: false, error: "not_discarded" };
+      if (!(await target.restore())) return { id: target.id, ok: false, error: "not_discarded" };
       await this.deps.audit.record({
         kind: "restored",
-        jobId: record.id,
+        jobId: target.auditId,
         actorUserId: actor.userId,
-        payload: { queue: record.originalQueue, jobName: record.originalJobName },
+        payload: target.auditFacts,
       });
-      return { id: record.id, ok: true };
+      return { id: target.id, ok: true };
     });
   }
 
-  /** Looks the jobs up once, then runs `act` on each in the order asked, reporting every outcome. */
-  private async eachJob(
+  /** What this person may see and change, from the per-source access table. */
+  private viewerFor(actor: ActorContext): FailedJobViewer {
+    return {
+      read: new Set(failedJobSourcesFor(actor.staffRoles, "read")),
+      act: new Set(failedJobSourcesFor(actor.staffRoles, "act")),
+    };
+  }
+
+  /** Rows from several sources in the order asked: the sources are each sorted already. */
+  private merge(results: readonly SourceListResult[], sort: "failed_desc" | "failed_asc") {
+    const direction = sort === "failed_asc" ? 1 : -1;
+    return results
+      .flatMap((result) => result.rows)
+      .sort(
+        (a: FailedJobSummary, b: FailedJobSummary) =>
+          direction * a.lastFailedAt.localeCompare(b.lastFailedAt) || a.id.localeCompare(b.id),
+      );
+  }
+
+  /** Names the sources a person is limited to, or null when they may see every source. */
+  private limitOf(viewer: FailedJobViewer): string | null {
+    if (viewer.read.size === 0 || viewer.read.size === FAILED_JOB_SOURCES.length) return null;
+    return FAILED_JOB_SOURCES.filter((source) => viewer.read.has(source))
+      .map((source) => FAILED_JOB_SOURCE_LABELS[source])
+      .join(", ");
+  }
+
+  /** The kinds of failure this person may see, each with the size of its current view. */
+  private sourceFacets(results: readonly SourceListResult[]): FailedJobList["sources"] {
+    return this.deps.sources
+      .map((adapter, index) => ({ adapter, result: results[index] }))
+      .filter(({ result }) => result?.readable)
+      .map(({ adapter, result }) => ({
+        id: adapter.family as FailedJobSourceFamily,
+        label: FAILED_JOB_SOURCE_FAMILY_LABELS[adapter.family],
+        count: result?.total ?? 0,
+      }))
+      .sort(
+        (a, b) =>
+          FAILED_JOB_SOURCE_FAMILIES.indexOf(a.id) - FAILED_JOB_SOURCE_FAMILIES.indexOf(b.id),
+      );
+  }
+
+  /** Looks the targets up once per source, then runs `act` on each in the order asked. */
+  private async eachTarget(
     ids: readonly string[],
-    act: (record: FailedJobRecord) => Promise<FailedJobBatchOutcome>,
+    actor: ActorContext,
+    act: (target: ReviewTarget) => Promise<FailedJobBatchOutcome>,
   ): Promise<FailedJobBatchResult> {
+    const viewer = this.viewerFor(actor);
     const unique = [...new Set(ids)];
-    const found = new Map(
-      (await this.deps.reader.findManyForReview(unique)).map((record) => [record.id, record]),
-    );
+    const found = new Map<string, ReviewTarget>();
+    for (const adapter of this.deps.sources) {
+      const mine = unique.filter((id) => adapter.owns(id));
+      if (mine.length === 0) continue;
+      for (const target of await adapter.find(mine, this.deps.actionsEnabled)) {
+        found.set(target.id, target);
+      }
+    }
     const results: FailedJobBatchOutcome[] = [];
     for (const id of unique) {
-      const record = found.get(id);
-      results.push(record ? await act(record) : { id, ok: false, error: "job_not_found" });
+      const target = found.get(id);
+      // A job in a source the person may not see is reported as missing, like any other.
+      if (!target || !viewer.read.has(target.source)) {
+        results.push({ id, ok: false, error: "job_not_found" });
+      } else if (!viewer.act.has(target.source)) {
+        results.push({ id, ok: false, error: "not_permitted" });
+      } else {
+        results.push(await act(target));
+      }
     }
     return { results };
   }
@@ -199,19 +289,19 @@ export class AdminFailedJobsService {
     return { results: [...new Set(ids)].map((id) => ({ id, ok: false, error })) };
   }
 
-  private refuseRetry(record: FailedJobRecord): FailedJobBatchOutcome {
-    const state = failedJobState(record);
-    if (state !== "needs_review")
-      return { id: record.id, ok: false, error: this.stateError(record) };
+  private refuseRetry(target: ReviewTarget): FailedJobBatchOutcome {
+    if (target.state !== "needs_review") {
+      return { id: target.id, ok: false, error: this.stateError(target) };
+    }
     return {
-      id: record.id,
+      id: target.id,
       ok: false,
       error: this.deps.actionsEnabled ? "retry_not_allowed" : "actions_disabled",
     };
   }
 
-  private stateError(record: FailedJobRecord): FailedJobActionError {
-    return failedJobState(record) === "discarded" ? "job_discarded" : "already_retried";
+  private stateError(target: ReviewTarget): FailedJobActionError {
+    return target.state === "discarded" ? "job_discarded" : "already_retried";
   }
 
   private retryError(error: unknown): FailedJobActionError {
@@ -221,3 +311,5 @@ export class AdminFailedJobsService {
     return "retry_failed";
   }
 }
+
+const sum = (values: readonly number[]) => values.reduce((total, value) => total + value, 0);
