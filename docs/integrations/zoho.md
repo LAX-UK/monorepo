@@ -88,6 +88,44 @@ Production worker keeps `ZOHO_CRM_SYNC_MODE=off` until [Phase 0 runbook](../runb
 
 Registrants upsert **Leads** with `Lead_Source = LAX Platform`. Lot win may convert Lead → Contact when `ZOHO_CRM_LEAD_CONVERSION_ENABLED=true`, then creates a Deal keyed by `LAX_Deal_Key`.
 
+## Artworks from Zoho Products (inbound)
+
+Zoho CRM **Products** is the catalogue; the artwork register in LAX mirrors it. Zoho owns the catalogue fields (title, artist, medium, dimensions, year, status) and LAX owns the stock code, kind and where a piece is offered. A change to a LAX-owned field in Zoho is never applied: it becomes an open conflict for staff.
+
+Changes arrive two ways and are processed identically:
+
+1. **Signed notice.** A Zoho workflow rule posts to `POST /webhooks/zoho/artworks` when a Product is created or edited. The API checks the shared secret (`X-LAX-Webhook-Secret`, compared in constant time), stores the notice in `webhook_event` (source `zoho_artwork`, idempotent on Product id and modified time), queues it on the `webhook-events` queue and answers `202`. The worker then reads that Product from Zoho (COQL) and processes it.
+2. **Nightly check** (02:30 Europe/London, same queue). Reads every Product with `Modified_Time` after the stored watermark. With no watermark it reads all Products: that first pass is the import report. The watermark only moves after a whole pass finishes, and is kept per mode, so switching `dry_run` to `live` starts a fresh full pass.
+
+| Variable | App | Purpose |
+|----------|-----|---------|
+| `ZOHO_ARTWORK_SYNC_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `off` consumes notices and does nothing; `dry_run` records what would happen and changes nothing in the register; `live` creates and updates register records. Not `off` requires the three OAuth values and `WEBHOOK_EVENTS_PROCESS=true`. |
+| `ZOHO_ARTWORK_WEBHOOK_SECRET` | api | Shared secret, 32+ characters. Unset, the route answers `503` and stores nothing. |
+
+**OAuth scopes** the refresh token needs on top of the list above: `ZohoCRM.modules.products.READ`, `ZohoCRM.modules.custom.READ` (Artists) and `ZohoCRM.coql.READ`. Generate a new refresh token after adding scopes.
+
+**Outcomes.** Each Product in a pass gets one row in `zoho_artwork_sync_outcome` (`run_id`, e.g. `nightly:dry_run:2026-11-03` or `notice:<event key>`): `create`, `update`, `conflict`, `unchanged`, `stale` or `skipped` with a reason (`demo_artist`, `missing_title`, `missing_stock_code`, `invalid_stock_code`, `missing_artist`, `missing_artist_code`, `duplicate_stock_code`, `not_found_in_zoho`, `invalid_modified_time`), plus gaps worth attention (`missing_price`, `missing_medium`, `missing_dimensions`, `artist_code_differs_from_stock_code`) and, for updates, each field's old and new value. Artists whose name starts `DEMO - ` are skipped. New records are created `held`; nothing is listed anywhere automatically.
+
+```sql
+-- the import report for a pass
+select outcome, reason, count(*) from zoho_artwork_sync_outcome
+where run_id = 'nightly:dry_run:2026-11-03' group by 1, 2 order by 3 desc;
+```
+
+**Failures.** A failed notice is marked failed on its `webhook_event` row and retried by the queue and the 60 second drain (up to 10 attempts); it then shows on Failed jobs under Integrations as a webhook. A failed nightly check is a failed job on the `webhook-events` queue and shows under background jobs. Data problems on a single Product (no stock code, unknown artist) are `skipped` outcomes, not failures.
+
+**Zoho workflow rule** (Setup, Automation, Workflow Rules, Products):
+
+1. Rule name `LAX artwork notice`; module Products; when a record is `Created or Edited`; condition `All Products`; execute `Every time`.
+2. Instant action, Webhook. Name `LAX artwork notice`. URL `https://<api host>/webhooks/zoho/artworks`, method `POST`.
+3. Headers: `X-LAX-Webhook-Secret` = the value of `ZOHO_ARTWORK_WEBHOOK_SECRET`.
+4. Body type `Raw`, content type `application/json`:
+   `{"productId":"${Products.Product Id}","modifiedTime":"${Products.Modified Time}"}`
+   (insert both with the merge-field picker so the exact tokens are used; `modifiedTime` is optional, `productId` is required).
+5. Save and activate. Test by editing a Product and checking `webhook_event` for a `zoho_artwork` row.
+
+Roll out in this order: sandbox org with `dry_run`; review the first nightly report; then production with `dry_run`; switch to `live` only after the report is approved.
+
 ## Ops scripts
 
 ```bash

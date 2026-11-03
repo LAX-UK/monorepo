@@ -1,21 +1,58 @@
+import { usesBidAsClient } from "@/lib/auth/client-audience";
+import type { SessionUser } from "@/lib/data/contracts";
+import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import { VISITOR_ALERTS_HREF } from "@/lib/marketing/mega-menu-catalog";
 import { PRIVATE_SALES_PATH } from "@/lib/marketing/private-sales";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { sellDepartmentsAnchorHref } from "@/lib/marketing/sell-departments";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
+import { ACCOUNT_PRIMARY_ENTRIES } from "@/lib/navigation/account-menu-model";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { type MarketingFooterColumn, buildFooterLegalColumn } from "@auction/marketing-ui";
+import {
+  type MarketingFooterColumn,
+  type MarketingFooterLink,
+  buildFooterLegalColumn,
+} from "@auction/marketing-ui";
 
 /** Footer entry rendered as the button that reopens the cookie settings dialog. */
 export const BID_COOKIE_PREFERENCES_HREF = "#cookie-preferences";
 
+/** The person the Account column is built for; `null` is a visitor. */
+export type FooterAccountPerson = Pick<SessionUser, "role" | "staffRoles"> | null;
+
+/** Help every visitor can reach, signed in or not. */
+const HELP_LINKS: readonly MarketingFooterLink[] = [
+  { href: "/contact", label: "Client services" },
+  { href: "/faq", label: "FAQ" },
+];
+
+/**
+ * The Account column follows the session: the ways in for a visitor, a client's everyday pages
+ * once signed in, and LAX Account for staff, who have no client pages. Help stays in every state.
+ */
+export function bidFooterAccountLinks(person: FooterAccountPerson): MarketingFooterLink[] {
+  if (!person) {
+    return [
+      { href: "/login", label: "Sign in" },
+      { href: "/register", label: "Create account" },
+      { href: VISITOR_ALERTS_HREF, label: "Auction alerts" },
+      ...HELP_LINKS,
+    ];
+  }
+  const own: MarketingFooterLink[] = usesBidAsClient(person)
+    ? ACCOUNT_PRIMARY_ENTRIES.map(({ href, label }) => ({ href, label }))
+    : [{ href: laxAccountHomeUrl(), label: "LAX Account" }];
+  return [...own, ...HELP_LINKS];
+}
+
 /**
  * Shared LAX footer order: site navigation, account, LAX products, legal (Connect is appended by
- * the shell). The footer is the same for every visitor, so the Account column offers the ways in
- * and out of an account rather than reading the session.
+ * the shell). Pass the signed-in person to show their pages in the Account column; without one it
+ * offers the ways in.
  */
 export function buildBidFooterColumns(
   crossProductLinks: readonly LaxProductLinkVm[],
+  person: FooterAccountPerson = null,
 ): MarketingFooterColumn[] {
   const columns: MarketingFooterColumn[] = [
     {
@@ -35,21 +72,11 @@ export function buildBidFooterColumns(
       links: [
         { href: "/sell", label: "How to sell" },
         { href: sellIntakeHref(), label: "Submit a consignment" },
-        { href: sellDepartmentsAnchorHref(), label: "Departments we review" },
+        { href: sellDepartmentsAnchorHref(), label: "Departments" },
         { href: PRIVATE_SALES_PATH, label: "Private sales" },
       ],
     },
-    {
-      id: "account",
-      title: "Account",
-      links: [
-        { href: "/login", label: "Sign in" },
-        { href: "/register", label: "Create account" },
-        { href: VISITOR_ALERTS_HREF, label: "Auction alerts" },
-        { href: "/contact", label: "Client services" },
-        { href: "/faq", label: "FAQ" },
-      ],
-    },
+    { id: "account", title: "Account", links: bidFooterAccountLinks(person) },
     {
       id: "company",
       title: "Company",

@@ -1089,6 +1089,9 @@ importers:
       '@auction/alerts':
         specifier: workspace:*
         version: link:../../packages/alerts
+      '@auction/artwork-register-contracts':
+        specifier: workspace:*
+        version: link:../../packages/artwork-register-contracts
       '@auction/background-runtime':
         specifier: workspace:*
         version: link:../../packages/background-runtime

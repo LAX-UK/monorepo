@@ -47,8 +47,8 @@ const PRIMARY_BUTTON = cn(
  * targets, `link` and `inline` are text-shaped, and `xl` is the full-width sign-in button.
  */
 export const BUTTON_SIZES = {
-  sm: "min-h-8 gap-1.5 px-3 py-0 text-[0.8125rem] leading-5",
-  default: "min-h-9 px-4 py-0 text-sm leading-5",
+  sm: "min-h-8 pointer-coarse:min-h-11 gap-1.5 px-3 py-0 text-[0.8125rem] leading-5",
+  default: "min-h-9 pointer-coarse:min-h-11 px-4 py-0 text-sm leading-5",
   lg: "min-h-11 px-6 py-0 text-sm leading-5",
   icon: "min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] h-[var(--tap-target-min,44px)] w-[var(--tap-target-min,44px)]",
   /** Touch-friendly icon button */

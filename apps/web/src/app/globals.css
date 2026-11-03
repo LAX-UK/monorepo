@@ -368,6 +368,15 @@
     padding-bottom: var(--cookie-dock-height, 0px);
   }
 
+  /* On a page that ends in the Bid footer the room sits inside the footer, so the page ends on
+     the footer's grey rather than on a white strip under it. */
+  body:has([data-bid-site] > footer) {
+    padding-bottom: 0;
+  }
+  [data-bid-site] > footer {
+    padding-bottom: var(--cookie-dock-height, 0px);
+  }
+
   /* A focused element is never hidden under the sticky header or the cookie dock (WCAG 2.4.11). */
   html {
     scroll-padding-top: calc(var(--header-height) + 1rem);
