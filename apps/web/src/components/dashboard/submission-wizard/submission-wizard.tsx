@@ -13,6 +13,8 @@ import { WizardHeaderActions } from "@/components/dashboard/submission-wizard/wi
 import { WizardStepper } from "@/components/dashboard/submission-wizard/wizard-stepper";
 import { trackWizardStepComplete } from "@/lib/analytics/sell-funnel";
 import type { SubmissionCategoryOption } from "@/lib/forms/submission/item-submission-form-defaults";
+import { SELL_FORM_SUMMARY_TITLE } from "@/lib/forms/submission/sell-form-copy";
+import { stepUsesSummary } from "@/lib/forms/submission/step-errors";
 import {
   WIZARD_STEPS,
   WIZARD_STEP_COUNT,
@@ -20,11 +22,13 @@ import {
 } from "@/lib/forms/submission/step-validation";
 import { submissionExitGuardActive } from "@/lib/forms/submission/submission-exit-guard";
 import { sanitizeSubmissionFormValues } from "@/lib/forms/submission/submission-form-data";
+import { useStepErrorSummary } from "@/lib/forms/submission/use-step-error-summary";
 import {
   type SubmissionWizardController,
   type WizardMode,
   useSubmissionWizardController,
 } from "@/lib/forms/submission/use-submission-wizard-controller";
+import { validateStep } from "@/lib/forms/submission/validate-step";
 import {
   SPECIALIST_RESPONSE_PROMISE,
   SUBMISSION_FINISH_LATER_LABEL,
@@ -43,7 +47,7 @@ import {
 import { Form } from "@auction/ui/components/form";
 import { Surface } from "@auction/ui/components/surface";
 import type { WizardProgressStep } from "@auction/ui/components/wizard-progress";
-import { Button } from "@auction/ui/lax";
+import { Button, ErrorSummary } from "@auction/ui/lax";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
@@ -151,6 +155,7 @@ export function SubmissionWizardView({
   const [pendingExitAction, setPendingExitAction] = useState<"leave" | "navigate" | null>(null);
   const pendingNavigateHref = useRef<string | null>(null);
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const stepRef = useRef<HTMLDivElement>(null);
   const firstStepShown = useRef(true);
   const submittedThisSession = useRef(false);
 
@@ -178,6 +183,8 @@ export function SubmissionWizardView({
     setStepIndex(Math.max(0, Math.min(index, WIZARD_STEP_COUNT - 1)));
   }, []);
 
+  const summary = useStepErrorSummary(form, currentStep);
+
   const validateCurrentStep = useCallback(async () => {
     if (!currentStep || currentStep.fields.length === 0) return true;
     if (currentStep.id === "provenance") {
@@ -185,15 +192,23 @@ export function SubmissionWizardView({
       form.setValue("provenance", sanitized.provenance, { shouldDirty: true });
       form.setValue("exhibitions", sanitized.exhibitions, { shouldDirty: true });
     }
-    const ok = await form.trigger([...currentStep.fields], { shouldFocus: true });
+    const ok = await validateStep(form, currentStep);
     if (!ok) {
-      window.requestAnimationFrame(() => {
-        const firstInvalid = document.querySelector("[aria-invalid='true']");
-        firstInvalid?.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
+      summary.markFailedTry();
+      // The list takes focus on a step with several fields. A step that is one control (the
+      // photos) has no list, so focus goes to the control, with its message under it.
+      if (!stepUsesSummary(currentStep)) {
+        window.requestAnimationFrame(() => {
+          const control = stepRef.current?.querySelector<HTMLElement>(
+            '[aria-invalid="true"], [role="button"]',
+          );
+          control?.focus({ preventScroll: true });
+          control?.scrollIntoView({ block: "center", behavior: "smooth" });
+        });
+      }
     }
     return ok;
-  }, [currentStep, form]);
+  }, [currentStep, form, summary.markFailedTry]);
 
   const handleNext = useCallback(async () => {
     const ok = await validateCurrentStep();
@@ -356,7 +371,9 @@ export function SubmissionWizardView({
       </Dialog>
       <Form {...form}>
         <form
-          className="space-y-6 pb-[var(--page-bottom-padding)] sm:pb-24"
+          // The page scrolls as a whole and the bar sticks to the bottom of the screen. A field
+          // brought into view (by focus or a link) stops above the bar, never behind it.
+          className="space-y-6 [&_:is(input,textarea,button,select,[role=button])]:scroll-mb-[calc(var(--wizard-bar-height,6rem)+1.5rem)]"
           onSubmit={(e) => {
             e.preventDefault();
           }}
@@ -404,22 +421,37 @@ export function SubmissionWizardView({
             variant="section"
             padding="md"
             // Check answers is already a list of cards; a frame around them would double the edge.
-            className={isLastStep ? "border-0 bg-transparent p-0 sm:p-0" : "border-border-hairline"}
+            className={
+              isLastStep
+                ? "border-0 bg-transparent p-0 sm:p-0"
+                : // Full-width fields on a phone: the frame is for larger screens.
+                  "border-border-hairline max-sm:border-0 max-sm:bg-transparent max-sm:p-0"
+            }
             data-testid={currentStep ? `submission-wizard-step-${currentStep.id}` : undefined}
             aria-labelledby={currentStep ? "submission-wizard-step-heading" : undefined}
           >
-            {currentStep
-              ? renderStep(currentStep.id, {
-                  form,
-                  isSubmitting,
-                  categories,
-                  onJumpTo: goToStep,
-                  finishLater: handleFinishLater,
-                  submitForReview: handlePrimary,
-                  submitLabel: primaryLabel,
-                  reviewLead,
-                })
-              : null}
+            <div ref={stepRef}>
+              {summary.items.length > 0 ? (
+                <ErrorSummary
+                  errors={summary.items}
+                  focusKey={summary.focusKey}
+                  title={SELL_FORM_SUMMARY_TITLE}
+                  className="mb-6"
+                />
+              ) : null}
+              {currentStep
+                ? renderStep(currentStep.id, {
+                    form,
+                    isSubmitting,
+                    categories,
+                    onJumpTo: goToStep,
+                    finishLater: handleFinishLater,
+                    submitForReview: handlePrimary,
+                    submitLabel: primaryLabel,
+                    reviewLead,
+                  })
+                : null}
+            </div>
           </Surface>
 
           {!isLastStep ? (
@@ -433,6 +465,7 @@ export function SubmissionWizardView({
               onBack={handleBack}
               onNext={() => void handleNext()}
               canGoBack={stepIndex > 0}
+              onFinishLater={handleFinishLater}
             />
           ) : null}
         </form>
