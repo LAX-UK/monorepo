@@ -22,6 +22,7 @@ jobs:
       pull-requests: read
     outputs:
       browser: ${{ steps.filter.outputs.browser }}
+      lax_admin: ${{ steps.filter.outputs.lax_admin }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,13 +32,14 @@ jobs:
         id: filter
         with:
           filters: |
+            lax_admin:
+              - "apps/shop-admin/**"
+              - "packages/staff-ui/**"
+              - "scripts/ci/start-lax-admin-stack.sh"
             browser:
               - "apps/web/**"
               - "apps/shop/**"
               - "apps/shop-api/**"
-              - "apps/shop-admin/**"
-              - "packages/staff-ui/**"
-              - "scripts/ci/start-lax-admin-stack.sh"
               - "apps/api/src/**"
               - "apps/auth/**"
               - "apps/ws/**"
@@ -91,9 +93,9 @@ jobs:
 
   browser-gates:
     needs: changes
-    if: github.event_name == 'merge_group' || needs.changes.outputs.browser == 'true'
+    if: github.event_name == 'merge_group' || needs.changes.outputs.browser == 'true' || needs.changes.outputs.lax_admin == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 50
     services:
       postgres:
         image: postgres:16
@@ -225,7 +227,6 @@ jobs:
           --filter=@auction/web
           --filter=@auction/shop-api
           --filter=@auction/shop
-          --filter=@auction/shop-admin
       - name: Start stack
         run: |
           mkdir -p /tmp/e2e-logs
@@ -290,9 +291,14 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3020
           PLAYWRIGHT_E2E: "1"
         run: pnpm --filter @auction/shop exec playwright test e2e/home.spec.ts --grep "visible without JavaScript"
+      - name: Build LAX Admin
+        if: needs.changes.outputs.lax_admin == 'true'
+        run: pnpm turbo run build --filter=@auction/shop-admin
       - name: Start LAX Admin
+        if: needs.changes.outputs.lax_admin == 'true'
         run: scripts/ci/start-lax-admin-stack.sh
       - name: Run LAX Admin accessibility and role checks
+        if: needs.changes.outputs.lax_admin == 'true'
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3030
           AUTH_BASE_URL: http://localhost:3003

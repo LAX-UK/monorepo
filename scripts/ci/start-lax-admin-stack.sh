@@ -39,6 +39,7 @@ SHOP_PAYOUTS_ENABLED=true \
 SHOP_THIRD_PARTY_ENABLED=true \
 SHOP_ORIGINALS_ENABLED=true \
 SHOP_MERCHANDISE_ENABLED=true \
+SHOP_VAT_STANDARD_RATE_BP=2000 \
 SHOP_EDITORIAL_ENABLED=true \
 SHOP_EDITORIAL_PREVIEW_SECRET=ci-editorial-preview-secret-minimum-32-chars \
 PORT="$SHOP_API_ADMIN_PORT" \
@@ -52,8 +53,15 @@ OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN="${OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN:-ci-shop-
 SHOP_ADMIN_SESSION_ENCRYPTION_KEY=ci-shop-admin-session-key-0123456789abcdef \
   pnpm --filter @auction/shop-admin start >"$LOG_DIR/shop-admin.log" 2>&1 &
 
-npx --yes wait-on \
+if ! npx --yes wait-on \
   "http://localhost:$SHOP_API_ADMIN_PORT/health/ready" \
   "http://127.0.0.1:$SHOP_ADMIN_PORT/health/live" \
-  --timeout 120000
+  --timeout 120000; then
+  for log in shop-api-admin shop-admin; do
+    echo "::group::$log log"
+    tail -n 60 "$LOG_DIR/$log.log" || true
+    echo "::endgroup::"
+  done
+  exit 1
+fi
 echo "LAX Admin is up on http://localhost:$SHOP_ADMIN_PORT"
