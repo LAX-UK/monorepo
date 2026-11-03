@@ -100,7 +100,9 @@ export function LegalToc({ items, className }: LegalTocProps) {
       <div className={cn("lax-legal-toc lax-legal-toc--collapsible", className)}>
         <Accordion type="single" collapsible value={open} onValueChange={setOpen}>
           <AccordionItem value="toc" className="lax-legal-toc__panel">
-            <AccordionTrigger className="lax-legal-toc__trigger">On this page</AccordionTrigger>
+            <AccordionTrigger headingAs="div" className="lax-legal-toc__trigger">
+              On this page
+            </AccordionTrigger>
             <AccordionContent>
               <nav aria-label="On this page" className="lax-legal-toc__collapsible-nav">
                 <TocList items={items} current={current} onNavigate={() => setOpen("")} />

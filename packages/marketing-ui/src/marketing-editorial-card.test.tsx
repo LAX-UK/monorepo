@@ -28,6 +28,13 @@ describe("MarketingEditorialCard", () => {
     expect(card.className).not.toContain("rounded");
   });
 
+  it("takes its heading level from the page", () => {
+    render(<MarketingEditorialCard media={<span />} title="Forms in Suspension" titleAs="h2" />);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Forms in Suspension" }),
+    ).toBeInTheDocument();
+  });
+
   it("supports portrait media, a custom link component and a trailing control", () => {
     function SafeLink({
       href,
