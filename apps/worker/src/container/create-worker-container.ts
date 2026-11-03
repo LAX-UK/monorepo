@@ -1,7 +1,12 @@
+import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import { assertRuntimeOwnership } from "@auction/background-runtime";
 import { closeDb, createDb } from "@auction/db";
 import { captureBackgroundError, initNodeSentry } from "@auction/observability";
-import { DrizzleUnsoldChoiceDeadlineStore } from "@auction/persistence/repositories";
+import {
+  DrizzleArtworkRegisterRepository,
+  DrizzleLotRegisterLinkReader,
+  DrizzleUnsoldChoiceDeadlineStore,
+} from "@auction/persistence/repositories";
 import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import { DrizzleWebhookEventRepository } from "@auction/persistence/repositories";
 import {
@@ -56,6 +61,7 @@ import {
   createWorkerLifecycleExecutor,
 } from "../lifecycle/worker-lifecycle-executor.js";
 import { marketingEventsCapiBatchSize } from "../marketing/meta-capi-batch-collector.js";
+import { BidOfferLockRecorder } from "../projectors/artwork-offer-lock.js";
 import { createProjectorRunner } from "../projectors/runner.js";
 import { UnsoldChoiceDeadlineRecorder } from "../projectors/unsold-choice-deadline.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
@@ -520,6 +526,10 @@ export function createWorkerContainer(): WorkerContainer {
       crmRecordLinkRepo: repositories.crmRecordLinkRepo,
       crmSyncService,
       ...(zohoArtworkWriteback ? { zohoArtworkWriteback } : {}),
+      artworkOfferLock: new BidOfferLockRecorder(
+        new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(db)),
+        new DrizzleLotRegisterLinkReader(db),
+      ),
       log,
       emailService: emailWorkers.emailOutboxService,
       supportContactEmail: env.EMAIL_REPLY_TO ?? "support@lax.bid",

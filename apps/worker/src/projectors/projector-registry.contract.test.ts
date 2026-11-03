@@ -1,6 +1,7 @@
 import type { IEmailService } from "@auction/email";
 import { describe, expect, it, vi } from "vitest";
 import { AML_MATCH_REVIEW_PROJECTOR } from "./aml-match-review.js";
+import { ARTWORK_OFFER_LOCK_PROJECTOR } from "./artwork-offer-lock.js";
 import { BID_ALERT_MATCHING_PROJECTOR } from "./bid-alert-matching.js";
 import { BID_IDENTITY_DIRECTORY_PROJECTOR } from "./bid-identity-directory.js";
 import { BID_PERSONAL_DATA_ANONYMISATION_PROJECTOR } from "./bid-personal-data-anonymisation.js";
@@ -42,6 +43,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   LOT_INVOICE_INITIATION_PROJECTOR,
   UNSOLD_CHOICE_DEADLINE_PROJECTOR,
   BID_ALERT_MATCHING_PROJECTOR,
+  ARTWORK_OFFER_LOCK_PROJECTOR,
   ZOHO_ARTWORK_WRITEBACK_PROJECTOR,
 ] as const;
 
