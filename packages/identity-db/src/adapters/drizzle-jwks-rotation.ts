@@ -4,11 +4,15 @@ import type { IdentityDatabase } from "./drizzle-consent-store.js";
 import { JWKS_ADVISORY_LOCK_KEY } from "./drizzle-jwks-retirement.js";
 import { createDrizzleJwksStore } from "./drizzle-jwks-store.js";
 import type { EnvelopeCrypto } from "./envelope.js";
+import { encryptPrivateKeyForBetterAuth } from "./signing-key-encryption.js";
 
 export type NewSigningKey = {
   /** Public JWK as JSON. */
   publicKey: string;
-  /** Private JWK as JSON; sealed with the envelope before it is stored. */
+  /**
+   * Private JWK as JSON. It is encrypted with the auth secret, as Better Auth
+   * does, and then sealed with the envelope before it is stored.
+   */
   privateKey: string;
   alg: "RS256";
 };
@@ -26,9 +30,13 @@ export type JwksRotationResult = {
  */
 export async function rotateJwksSigningKey(
   db: IdentityDatabase,
-  input: { key: NewSigningKey; envelope?: EnvelopeCrypto; now?: Date },
+  input: { key: NewSigningKey; authSecret: string; envelope?: EnvelopeCrypto; now?: Date },
 ): Promise<JwksRotationResult> {
   const now = input.now ?? new Date();
+  const privateKey = await encryptPrivateKeyForBetterAuth({
+    privateJwkJson: input.key.privateKey,
+    authSecret: input.authSecret,
+  });
   return db.transaction(async (tx) => {
     await tx.execute(
       sql`select pg_advisory_xact_lock(${JWKS_ADVISORY_LOCK_KEY.toString()}::bigint)`,
@@ -43,7 +51,7 @@ export async function rotateJwksSigningKey(
       input.envelope,
     ).createJwk({
       publicKey: input.key.publicKey,
-      privateKey: input.key.privateKey,
+      privateKey,
       alg: input.key.alg,
       createdAt: now,
     });
