@@ -13,6 +13,7 @@ import {
   MarketingCheckIcon,
   MarketingFormErrorSummary,
   MarketingFormField,
+  marketingEmailError,
 } from "@auction/marketing-ui";
 import { RELEASE_ALERT_CONSENT_TEXT } from "@auction/shop-domain";
 import { cn } from "@auction/ui";
@@ -32,16 +33,6 @@ type Phase =
   | { kind: "check-email"; email: string }
   | { kind: "on"; email: string; justNow: boolean }
   | { kind: "stopped" };
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function emailError(value: string): string | null {
-  if (!value.trim()) return "Enter your email address";
-  if (!EMAIL_PATTERN.test(value.trim())) {
-    return "Enter an email address in the correct format, like name@example.com";
-  }
-  return null;
-}
 
 type Problem = { tone: "warning" | "error"; title: string; message: string };
 
@@ -100,7 +91,7 @@ export function ShopReleaseAlertsForm({ viewer, source, layout = "inline" }: Pro
 
   function onGuestSubmit(event: FormEvent) {
     event.preventDefault();
-    const error = emailError(email);
+    const error = marketingEmailError(email);
     setFieldError(error);
     if (error) {
       setFailedSubmits((count) => count + 1);

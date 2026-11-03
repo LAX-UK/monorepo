@@ -8,10 +8,15 @@ import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import { SHOP_EDITION_ALERTS_HREF } from "@/lib/account/shop-account-routes";
 import { FOCUS_RING } from "@auction/branding";
-import { MarketingCheckIcon } from "@auction/marketing-ui";
+import {
+  MarketingCheckIcon,
+  MarketingFormErrorSummary,
+  MarketingFormField,
+  marketingEmailError,
+} from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import Link from "next/link";
-import { type FormEvent, useId, useRef, useState, useTransition } from "react";
+import { type FormEvent, useId, useState, useTransition } from "react";
 
 export type ArtworkEditionAlertViewer = { kind: "guest" } | { kind: "account"; email: string };
 
@@ -24,16 +29,6 @@ type Props = {
 
 type Phase = { kind: "idle" } | { kind: "waiting"; email: string } | { kind: "stopped" };
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function emailError(value: string): string | null {
-  if (!value.trim()) return "Enter your email address";
-  if (!EMAIL_PATTERN.test(value.trim())) {
-    return "Enter an email address in the correct format, like name@example.com";
-  }
-  return null;
-}
-
 /**
  * "Email me if this edition is back" on a sold-out edition. Guests type an address; a signed-in
  * shopper uses the account's. Results are announced through a polite status region and focus
@@ -42,9 +37,7 @@ function emailError(value: string): string | null {
 export function ArtworkEditionAlert({ slug, viewer, initialWaiting = false }: Props) {
   const ids = useId();
   const emailId = `${ids}-email`;
-  const errorId = `${ids}-error`;
   const consentId = `${ids}-consent`;
-  const inputRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<Phase>(() =>
     initialWaiting && viewer.kind === "account"
       ? { kind: "waiting", email: viewer.email }
@@ -53,6 +46,7 @@ export function ArtworkEditionAlert({ slug, viewer, initialWaiting = false }: Pr
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
+  const [failedSubmits, setFailedSubmits] = useState(0);
   const [failure, setFailure] = useState<{ title: string; message: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -66,7 +60,7 @@ export function ArtworkEditionAlert({ slug, viewer, initialWaiting = false }: Pr
       if (!result.ok) {
         if (result.field === "email") {
           setFieldError(result.message);
-          inputRef.current?.focus();
+          setFailedSubmits((count) => count + 1);
         } else {
           setFailure({ title: "Alert not saved", message: result.message });
         }
@@ -81,10 +75,10 @@ export function ArtworkEditionAlert({ slug, viewer, initialWaiting = false }: Pr
 
   function onGuestSubmit(event: FormEvent) {
     event.preventDefault();
-    const error = emailError(email);
+    const error = marketingEmailError(email);
     setFieldError(error);
     if (error) {
-      inputRef.current?.focus();
+      setFailedSubmits((count) => count + 1);
       return;
     }
     register(email.trim());
@@ -165,31 +159,35 @@ export function ArtworkEditionAlert({ slug, viewer, initialWaiting = false }: Pr
         </div>
       ) : (
         <form className="shop-alert__form" noValidate onSubmit={onGuestSubmit}>
-          <label htmlFor={emailId} className="shop-alert__label">
-            Email address
-          </label>
-          {fieldError ? (
-            <p id={errorId} className="shop-alert__error">
-              <span className="sr-only">Error: </span>
-              {fieldError}
-            </p>
-          ) : null}
+          <MarketingFormErrorSummary
+            errors={fieldError ? [{ fieldId: emailId, message: fieldError }] : []}
+            focusKey={failedSubmits}
+          />
           <div className="shop-alert__row">
-            <input
-              ref={inputRef}
+            <MarketingFormField
               id={emailId}
-              name="email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              spellCheck={false}
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              aria-invalid={fieldError ? true : undefined}
-              aria-describedby={fieldError ? `${errorId} ${consentId}` : consentId}
-              className="shop-field shop-alert__input"
-            />
+              label="Email address"
+              error={fieldError}
+              className="shop-alert__field"
+            >
+              {(control) => (
+                <input
+                  {...control}
+                  aria-describedby={
+                    [control["aria-describedby"], consentId].filter(Boolean).join(" ") || undefined
+                  }
+                  name="email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  spellCheck={false}
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="shop-field shop-alert__input"
+                />
+              )}
+            </MarketingFormField>
             <ShopCommerceButton
               type="submit"
               variant="cta"
