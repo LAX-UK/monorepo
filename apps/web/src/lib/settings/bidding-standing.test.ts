@@ -1,6 +1,11 @@
 import type { LegalEntityMemberRole, OrganisationBiddingLimitsView } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { type BiddingOrganisation, biddingRows } from "./bidding-standing";
+import {
+  type BiddingOrganisation,
+  type PersonalLimit,
+  biddingRows,
+  personalLimitFrom,
+} from "./bidding-standing";
 
 const LIMITS: OrganisationBiddingLimitsView = {
   canManage: true,
@@ -40,9 +45,45 @@ const ids = (rows: ReturnType<typeof biddingRows>) => rows.map((row) => row.id);
 
 describe("Bid settings' Bidding card", () => {
   it("personal: your identity check and your limit, with a way to ask for more", () => {
-    const rows = biddingRows("approved", null);
+    const rows = biddingRows("approved", null, { kind: "set", amount: "5000.00" });
     expect(ids(rows)).toEqual(["identity", "limit"]);
     expect(rows[1]?.action).toMatchObject({ label: "Request a higher limit" });
+  });
+
+  describe("personal limit", () => {
+    const limitRow = (kyc: Parameters<typeof biddingRows>[0], limit?: PersonalLimit) =>
+      biddingRows(kyc, null, limit).find((row) => row.id === "limit");
+
+    it.each(["unverified", "pending", "rejected", undefined] as const)(
+      "waits on the check while the person is %s",
+      (kyc) => {
+        expect(limitRow(kyc, { kind: "set", amount: "5000.00" })?.value).toEqual({
+          kind: "text",
+          text: "Set when we verify you",
+        });
+      },
+    );
+
+    it("shows the limit once verified", () => {
+      const row = limitRow("approved", { kind: "set", amount: "5000.00" });
+      expect(row?.value).toEqual({ kind: "figure", text: "£5,000", unit: "a lot" });
+      expect(row?.action).toMatchObject({ label: "Request a higher limit" });
+    });
+
+    it("says no limit is set, and offers to request one, once verified", () => {
+      const row = limitRow("approved", { kind: "none" });
+      expect(row?.value).toEqual({ kind: "text", text: "No limit set" });
+      expect(row?.action).toMatchObject({
+        label: "Request one",
+        href: "/contact?intent=bidding-limit",
+      });
+    });
+
+    it("never claims 'Set when we verify you' for a verified person, even unread", () => {
+      const row = limitRow("approved");
+      expect(row?.value).toEqual({ kind: "text", text: "Not available right now" });
+      expect(row?.action).toBeNull();
+    });
   });
 
   it("owner: the organisation's check and date, its limit, who can bid; never their own identity", () => {
@@ -91,6 +132,27 @@ describe("Bid settings' Bidding card", () => {
     expect(rows[1]).toMatchObject({
       value: { text: "No organisation limit" },
       action: { label: "Set a limit" },
+    });
+  });
+});
+
+describe("personalLimitFrom", () => {
+  it("takes the highest per-lot limit among approved sales", () => {
+    expect(
+      personalLimitFrom([
+        { status: "approved", bidLimit: "5000.00" },
+        { status: "approved", bidLimit: "20000.00" },
+        { status: "pending", bidLimit: "90000.00" },
+        { status: "rejected", bidLimit: "90000.00" },
+      ]),
+    ).toEqual({ kind: "set", amount: "20000.00" });
+  });
+
+  it("reports no limit when no approved sale carries one", () => {
+    expect(personalLimitFrom([])).toEqual({ kind: "none" });
+    expect(personalLimitFrom([{ status: "approved", bidLimit: null }])).toEqual({ kind: "none" });
+    expect(personalLimitFrom([{ status: "pending", bidLimit: "5000.00" }])).toEqual({
+      kind: "none",
     });
   });
 });

@@ -27,9 +27,19 @@ export type ContactIntentConfig = ContactIntentFormCopy & {
   successCtaLabel: string | null;
 };
 
+/** The longest sale name carried in a link; longer text is cut so a link cannot fill the form. */
+const SALE_NAME_MAX = 120;
+
+function saleNameFrom(raw: string | null | undefined): string | null {
+  const name = raw?.replace(/\s+/g, " ").trim().slice(0, SALE_NAME_MAX).trim();
+  return name || null;
+}
+
 export function contactIntentFromSearchParams(input: {
   intent?: string | null;
   type?: string | null;
+  /** The sale an enquiry is about, as its title. */
+  sale?: string | null;
 }): ContactIntentConfig {
   const intent = input.intent?.trim();
   const type = input.type?.trim() as ContactSellType | undefined;
@@ -47,6 +57,19 @@ export function contactIntentFromSearchParams(input: {
     successCtaHref: null,
     successCtaLabel: null,
   };
+
+  if (intent === "registration") {
+    const sale = saleNameFrom(input.sale);
+    return {
+      topic: "buying",
+      headline: sale
+        ? `Ask about your registration for ${sale}. Tell us what you need to know; client services reply within two business days.`
+        : "Ask about your registration. Tell us which sale and what you need to know; client services reply within two business days.",
+      ...defaultForm,
+      messageTag: sale ? `Registration enquiry: ${sale}` : "Registration enquiry",
+      ...defaultSuccess,
+    };
+  }
 
   if (intent === "private-sale") {
     return {

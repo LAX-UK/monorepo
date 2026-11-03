@@ -1,6 +1,8 @@
 import "server-only";
 
+import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
+import { getServerAccountRegistrations } from "@/lib/data/http/account-buying.server";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import {
   loadBiddingLimits,
@@ -10,7 +12,11 @@ import {
 } from "@/lib/organisation-team/team-data.server";
 import { whoCanBidView } from "@/lib/organisation-team/who-can-bid.vm";
 import { entityActorCan } from "@auction/domain";
-import type { BiddingOrganisation } from "./bidding-standing";
+import {
+  type BiddingOrganisation,
+  type PersonalLimit,
+  personalLimitFrom,
+} from "./bidding-standing";
 
 /** When LAX last changed the organisation's state; `null` when it can't be read. */
 async function checkedAt(legalEntityId: string): Promise<Date | null> {
@@ -68,4 +74,16 @@ export async function loadBiddingOrganisation(
     biddersCount,
     userId: user.id,
   };
+}
+
+/** A verified person's own limit, from the sales they are approved for; `unknown` when unreadable. */
+export async function loadPersonalLimit(): Promise<PersonalLimit> {
+  try {
+    const container = await getServerDataContainer();
+    const { account } = await container.buying.scope();
+    const registrations = account.id ? await getServerAccountRegistrations(account.id) : null;
+    return registrations ? personalLimitFrom(registrations) : { kind: "unknown" };
+  } catch {
+    return { kind: "unknown" };
+  }
 }

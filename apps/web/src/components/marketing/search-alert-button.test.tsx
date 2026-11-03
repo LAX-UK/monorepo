@@ -35,6 +35,17 @@ describe("SearchAlertButton", () => {
     expect(ensure).not.toHaveBeenCalled();
   });
 
+  it("signed in, alert already saved: reads Alert set after a reload, with a way to manage alerts", () => {
+    render(<SearchAlertButton {...base} isAuthenticated saveOnArrival={false} alertSet />);
+    expect(screen.getByRole("status")).toHaveTextContent("Alert set");
+    expect(screen.queryByRole("button", { name: NAME })).toBeNull();
+    expect(screen.getByRole("link", { name: "Manage alerts" })).toHaveAttribute(
+      "href",
+      "/watching?tab=searches",
+    );
+    expect(ensure).not.toHaveBeenCalled();
+  });
+
   it("signed in: saves on click and shows Alert set", async () => {
     ensure.mockResolvedValue("created");
     render(<SearchAlertButton {...base} isAuthenticated saveOnArrival={false} />);

@@ -59,17 +59,67 @@ function identityRow(kycStatus: SessionUser["kycStatus"], label: string): Biddin
   return { id: "identity", label, ...IDENTITY[kycStatus ?? "unverified"] };
 }
 
-const PERSONAL_LIMIT: BiddingRow = {
-  id: "limit",
-  label: "Bidding limit",
-  value: { kind: "text", text: "Set when we verify you" },
-  detail: "Ask us before a big sale and we'll look at raising it.",
-  action: {
-    label: "Request a higher limit",
-    href: "/contact?intent=bidding-limit",
-    style: "button",
-  },
-};
+/** The per-lot limit on a personal account, as far as Bid settings could read it. */
+export type PersonalLimit =
+  | { kind: "set"; amount: string }
+  | { kind: "none" }
+  | { kind: "unknown" };
+
+/**
+ * A personal account's limit is set per sale when LAX approves a registration. Bid settings shows
+ * the highest per-lot limit among the sales the person is approved for; `none` when none carries one.
+ */
+export function personalLimitFrom(
+  registrations: readonly { status: string; bidLimit: string | null }[],
+): PersonalLimit {
+  let highest: { amount: string; value: number } | null = null;
+  for (const { status, bidLimit } of registrations) {
+    if (status !== "approved" || !bidLimit) continue;
+    const value = Number.parseFloat(bidLimit);
+    if (Number.isFinite(value) && value > 0 && (!highest || value > highest.value)) {
+      highest = { amount: bidLimit, value };
+    }
+  }
+  return highest ? { kind: "set", amount: highest.amount } : { kind: "none" };
+}
+
+const REQUEST_LIMIT_HREF = "/contact?intent=bidding-limit";
+
+/** The limit row for yourself: before verification it waits on the check, after it shows the limit. */
+function personalLimitRow(kycStatus: SessionUser["kycStatus"], limit: PersonalLimit): BiddingRow {
+  const base = { id: "limit", label: "Bidding limit" } as const;
+  if (kycStatus !== "approved") {
+    return {
+      ...base,
+      value: { kind: "text", text: "Set when we verify you" },
+      detail: "Ask us before a big sale and we'll look at raising it.",
+      action: { label: "Request a higher limit", href: REQUEST_LIMIT_HREF, style: "button" },
+    };
+  }
+  if (limit.kind === "set") {
+    return {
+      ...base,
+      value: { kind: "figure", text: formatPounds(limit.amount), unit: "a lot" },
+      detail:
+        "The most you can bid on one lot. Ask us before a big sale and we'll look at raising it.",
+      action: { label: "Request a higher limit", href: REQUEST_LIMIT_HREF, style: "button" },
+    };
+  }
+  if (limit.kind === "none") {
+    return {
+      ...base,
+      value: { kind: "text", text: "No limit set" },
+      detail: "Request one if you'd like a limit before a big sale.",
+      action: { label: "Request one", href: REQUEST_LIMIT_HREF, style: "button" },
+    };
+  }
+  return {
+    ...base,
+    value: { kind: "text", text: "Not available right now" },
+    detail: "We couldn't read your limit. The rest of this page still works; try again soon.",
+    action: null,
+  };
+}
 
 /** The organisation the person is acting for, with what Bid settings reads about it. */
 export type BiddingOrganisation = {
@@ -204,8 +254,11 @@ function roleRow(org: BiddingOrganisation): BiddingRow {
 export function biddingRows(
   kycStatus: SessionUser["kycStatus"],
   org: BiddingOrganisation | null,
+  personalLimit: PersonalLimit = { kind: "unknown" },
 ): BiddingRow[] {
-  if (!org) return [identityRow(kycStatus, "Identity check"), PERSONAL_LIMIT];
+  if (!org) {
+    return [identityRow(kycStatus, "Identity check"), personalLimitRow(kycStatus, personalLimit)];
+  }
   const bids = entityActorCan(org.actor, "entity.bid.place");
   const agent = roleBidsThroughAuthorisation(org.actor.role);
   return [

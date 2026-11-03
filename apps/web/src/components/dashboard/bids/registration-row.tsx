@@ -6,7 +6,10 @@ import { ButtonLink, StatusBadge } from "@auction/ui/lax";
 import { Gavel } from "lucide-react";
 import Link from "next/link";
 
-export const REGISTRATION_CONTACT_HREF = "/contact?intent=registration";
+/** The contact form for a registration question, opened already naming the sale. */
+export function registrationContactHref(saleTitle: string): string {
+  return `/contact?${new URLSearchParams({ intent: "registration", sale: saleTitle })}`;
+}
 
 /**
  * One sale the account asked to bid in: when it is, the paddle, where the request stands and
@@ -34,7 +37,7 @@ export function RegistrationRow({ row }: { row: RegistrationRowVm }) {
       action={
         row.contact ? (
           <ButtonLink
-            href={REGISTRATION_CONTACT_HREF}
+            href={registrationContactHref(row.title)}
             Link={Link}
             size="sm"
             aria-label={`Contact us about ${row.title}`}

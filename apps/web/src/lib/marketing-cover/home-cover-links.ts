@@ -1,9 +1,10 @@
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { BidCoverLinks } from "./bid-cover.adapter";
 
 /** Where the Bid home cover's actions lead. */
 export const HOME_COVER_LINKS: BidCoverLinks = {
   register: "/register",
-  bids: "/account/bids",
+  bids: CLIENT_ROUTES.bids,
   sell: "/sell",
   contact: "/contact",
 };

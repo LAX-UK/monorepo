@@ -21,6 +21,7 @@ import { SITE_SEO_NAME } from "@/lib/brand";
 import { getServerLotCount, getServerLotReader } from "@/lib/catalog/catalog.server";
 import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getServerMySavedSearches } from "@/lib/data/http/saved-searches.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { toCatalogLotVMs } from "@/lib/lot/to-catalog-lot-vm";
@@ -33,6 +34,7 @@ import {
   searchStatusLabel,
 } from "@/lib/marketing/parse-search-params";
 import { countSearchActiveFilters } from "@/lib/marketing/search-active-filter-count";
+import { hasSearchAlert } from "@/lib/marketing/search-fallback";
 import { shouldOfferPastResults } from "@/lib/marketing/search-fallback";
 import { buildSearchQs } from "@/lib/marketing/search-qs";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
@@ -199,12 +201,14 @@ export default async function SearchPage({ searchParams }: PageProps) {
     onSaleCount: filtered.length,
     loadFailed: loadError !== null,
   });
-  const [fallback, watchedArtistIds] = offerPastResults
+  const [fallback, watchedArtistIds, savedSearches] = offerPastResults
     ? await Promise.all([
         loadSearchFallback(trimmed, categoryId),
         isAuthenticated ? getServerMyArtistWatchIds() : Promise.resolve([] as string[]),
+        isAuthenticated ? getServerMySavedSearches() : Promise.resolve(null),
       ])
-    : [null, [] as string[]];
+    : [null, [] as string[], null];
+  const alertSet = savedSearches ? hasSearchAlert(savedSearches, trimmed, categoryId) : false;
   const catalogLots = toCatalogLotVMs(filtered);
   const hasPrev = offset > 0;
   const nextOffset = offset + PAGE_SIZE;
@@ -390,6 +394,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               pastResultsHref={pastResultsHref}
               alertReturnHref={alertReturnHref}
               saveAlertOnArrival={firstString(alertRaw) === "1"}
+              alertSet={alertSet}
               {...(lotCatalogLinkParams ? { catalogLinkParams: lotCatalogLinkParams } : {})}
             />
           ) : filtered.length === 0 ? (
