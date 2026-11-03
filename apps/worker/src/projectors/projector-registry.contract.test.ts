@@ -15,6 +15,7 @@ import { SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR } from "./source-of-funds-r
 import { SOURCE_OF_FUNDS_REVIEW_PROJECTOR } from "./source-of-funds-review.js";
 import { UNSOLD_CHOICE_DEADLINE_PROJECTOR } from "./unsold-choice-deadline.js";
 import { XERO_PROJECTOR } from "./xero-projector.js";
+import { ZOHO_ARTWORK_WRITEBACK_PROJECTOR } from "./zoho-artwork-writeback-projector.js";
 import { ZOHO_PROJECTOR } from "./zoho-projector.js";
 
 /** Pin tick order and projector names from the pre-registry runner. */
@@ -41,6 +42,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   LOT_INVOICE_INITIATION_PROJECTOR,
   UNSOLD_CHOICE_DEADLINE_PROJECTOR,
   BID_ALERT_MATCHING_PROJECTOR,
+  ZOHO_ARTWORK_WRITEBACK_PROJECTOR,
 ] as const;
 
 function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunContext {
@@ -121,6 +123,20 @@ describe("createDefaultProjectorRegistry", () => {
       baseCtx({ bidAlerts: { isSeeded: async () => true, handle: async () => undefined } }),
     );
     expect(on).toContain(BID_ALERT_MATCHING_PROJECTOR);
+  });
+
+  it("runs the Zoho artwork writeback only while its mode is not off", () => {
+    expect(registry.listEnabledProjectorNames(baseCtx())).not.toContain(
+      ZOHO_ARTWORK_WRITEBACK_PROJECTOR,
+    );
+    const on = registry.listEnabledProjectorNames(
+      baseCtx({
+        zohoArtworkWriteback: {
+          deliver: async () => ({ outcome: "skipped", reason: "x" }),
+        } as never,
+      }),
+    );
+    expect(on).toContain(ZOHO_ARTWORK_WRITEBACK_PROJECTOR);
   });
 
   it("skips email projectors when emailService or supportContactEmail is missing", () => {

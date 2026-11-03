@@ -41,6 +41,11 @@ export function productByIdQuery(id: string): string {
   return `select ${PRODUCT_FIELDS} from Products where id = '${escapeCoqlString(id)}' limit 1`;
 }
 
+/** The two fields LAX writes, read before a write so a value Zoho already holds is not sent again. */
+export function productWriteStateQuery(id: string): string {
+  return `select id, Status, Reference_Stock_Code from Products where id = '${escapeCoqlString(id)}' limit 1`;
+}
+
 export function artistsQuery(offset: number, pageSize: number = COQL_PAGE_SIZE): string {
   return `select ${ARTIST_FIELDS} from Artists where id is not null order by id limit ${offset}, ${pageSize}`;
 }

@@ -83,6 +83,7 @@ import { createBidAlertRuntime } from "./create-bid-alert-runtime.js";
 import { createExportProviderDeps } from "./create-export-provider-deps.js";
 import { createWorkerRepositories } from "./create-worker-repositories.js";
 import { createZohoArtworkSyncRuntime } from "./create-zoho-artwork-sync.js";
+import { createZohoArtworkWriteback } from "./create-zoho-artwork-writeback.js";
 
 export type WorkerContainer = {
   env: WorkerEnv;
@@ -347,6 +348,7 @@ export function createWorkerContainer(): WorkerContainer {
   };
 
   const zohoArtworkSync = createZohoArtworkSyncRuntime({ env, db, log });
+  const zohoArtworkWriteback = createZohoArtworkWriteback({ env, db, log });
   const webhookProcessorDeps: ProcessInboundWebhookDeps = {
     env,
     log,
@@ -520,6 +522,7 @@ export function createWorkerContainer(): WorkerContainer {
       deliveryRepo: repositories.domainEventDeliveryRepo,
       crmRecordLinkRepo: repositories.crmRecordLinkRepo,
       crmSyncService,
+      ...(zohoArtworkWriteback ? { zohoArtworkWriteback } : {}),
       log,
       emailService: emailWorkers.emailOutboxService,
       supportContactEmail: env.EMAIL_REPLY_TO ?? "support@lax.bid",

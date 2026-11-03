@@ -50,6 +50,7 @@ import {
   processUnsoldChoiceDeadline,
 } from "./unsold-choice-deadline.js";
 import { createXeroProjector } from "./xero-projector.js";
+import { createZohoArtworkWritebackProjector } from "./zoho-artwork-writeback-projector.js";
 import { createZohoProjector } from "./zoho-projector.js";
 
 export class ProjectorRegistry {
@@ -273,6 +274,7 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
         });
       },
     },
+    createZohoArtworkWritebackProjector(),
   ];
 
   return new ProjectorRegistry(projectors);
