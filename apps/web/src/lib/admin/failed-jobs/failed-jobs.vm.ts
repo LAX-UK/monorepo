@@ -52,7 +52,7 @@ const INTEGRATIONS_EMPTY: Readonly<Record<FailedJobView, { title: string; descri
     needs_review: {
       title: "No integration failures need review",
       description:
-        "Every delivery to Xero, Zoho and every inbound webhook has gone through or been set aside. New failures appear here.",
+        "Every delivery and inbound webhook you can see has gone through or been set aside. New failures appear here.",
     },
     retried: {
       title: "No retried deliveries",

@@ -9,7 +9,7 @@ const WHAT_TO_DO = "Retry them once the cause is fixed, or discard them with a r
 /** The page's one-line purpose, under its title, in the words of what the person can see. */
 export const FAILED_JOBS_DESCRIPTION = {
   all: `Background jobs and integration deliveries that ran out of attempts. ${WHAT_TO_DO}`,
-  integrations: `Deliveries to Xero and Zoho, and inbound webhooks, that ran out of attempts. ${WHAT_TO_DO}`,
+  integrations: `Integration deliveries and inbound webhooks that ran out of attempts. ${WHAT_TO_DO}`,
 } as const;
 
 /** Wording on the one-job page that depends on where the failure came from. */
