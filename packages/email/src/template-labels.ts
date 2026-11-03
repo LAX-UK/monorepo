@@ -106,6 +106,9 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "art-artist-application-declined": "Artist application declined",
   "art-artist-application-welcome": "Artist application accepted",
   "visitor-alert-confirm": "Confirm sale alerts",
+  "kyc-approved": "Identity check approved",
+  "kyc-declined": "Identity check declined",
+  "sale-cancelled-notice": "Sale cancelled",
 };
 
 export type EmailTemplateDescription = { label: string; essential: boolean };
