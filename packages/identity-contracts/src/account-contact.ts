@@ -7,6 +7,7 @@ export const ACCOUNT_EMAIL_CHANGE_CANCEL_PATH = "/lax/account-email-change/cance
 export const ACCOUNT_EMAIL_CHANGE_CONFIRM_PATH = "/lax/account-email-change/confirm";
 export const ACCOUNT_PHONE_SEND_CODE_PATH = "/lax/account-phone/send-code";
 export const ACCOUNT_PHONE_VERIFY_PATH = "/lax/account-phone/verify";
+export const ACCOUNT_PHONE_REMOVE_PATH = "/lax/account-phone/remove";
 
 /** Length of the SMS code the verification provider sends. */
 export const ACCOUNT_PHONE_CODE_LENGTH = 6;
@@ -26,8 +27,12 @@ export const accountContactSchema = z.object({
   emailVerified: z.boolean(),
   /** The address a change is waiting on, or null when no change is in progress. */
   pendingEmail: z.string().nullable(),
+  /** True when a change was started and its links have since expired; the person must start again. */
+  pendingEmailExpired: z.boolean().default(false),
   phone: z.string().nullable(),
   phoneVerified: z.boolean(),
+  /** False when the issuer has no way to send codes, so Account must not offer to add or change a number. */
+  phoneAvailable: z.boolean().default(true),
 });
 
 export const accountEmailChangeStartedSchema = z.object({ pendingEmail: z.string() });
@@ -50,6 +55,8 @@ export const accountPhoneVerifiedSchema = z.object({
   verified: z.literal(true),
 });
 
+export const accountPhoneRemovedSchema = z.object({ removed: z.literal(true) });
+
 /** Reasons the issuer refuses an email, phone or backup-code change, returned as `{ error }` (HTTP 400, 409, 422 or 429). */
 export const ACCOUNT_CONTACT_ERRORS = [
   "email_taken",
@@ -59,6 +66,7 @@ export const ACCOUNT_CONTACT_ERRORS = [
   "stale_flow",
   "expired",
   "phone_taken",
+  "no_phone",
   "invalid_phone",
   "invalid_code",
   "rate_limited",

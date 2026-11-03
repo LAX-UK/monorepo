@@ -54,7 +54,7 @@ describe("buildAccountLinks", () => {
     });
     expect(links).toEqual({
       manageTwoStep: "https://test-auth.lax.bid/two-factor/manage?client_id=lax-account-web",
-      changePassword: "https://test-auth.lax.bid/forgot-password?client_id=lax-account-web",
+      forgotPassword: "https://test-auth.lax.bid/forgot-password?client_id=lax-account-web",
       verifyEmail: "https://test-auth.lax.bid/resend-verification?client_id=lax-account-web",
       bidSettings: {
         notifications: "https://test.lax.bid/settings/notifications",
@@ -99,6 +99,22 @@ describe("signInNotice", () => {
     expect(signInNotice("access_denied")?.title).toBe("Sign-in cancelled");
     expect(signInNotice("mfa_required")?.tone).toBe("error");
     expect(signInNotice("invalid_state")?.title).toBe("We couldn't sign you in");
+  });
+
+  it("tells a suspended person the account is suspended and offers contact, not a retry", () => {
+    expect(signInNotice("account_suspended")).toEqual({
+      tone: "error",
+      title: "This account is suspended",
+      message: "You can't sign in to LAX Account while it is suspended.",
+      canRetry: false,
+      offerContact: true,
+    });
+  });
+
+  it("offers a retry and no contact link for every other reason", () => {
+    for (const reason of ["access_denied", "login_required", "mfa_required", "invalid_state"]) {
+      expect(signInNotice(reason)).toMatchObject({ canRetry: true, offerContact: false });
+    }
   });
 });
 

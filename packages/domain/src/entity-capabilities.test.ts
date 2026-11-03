@@ -28,6 +28,7 @@ const EXPECTED: Record<EntityCapability, LegalEntityMemberRole[]> = {
   "entity.buyer_agents.read": ["owner", "admin"],
   "entity.buyer_agents.manage": ["owner", "admin"],
   "entity.bidding_limits.manage": ["owner", "admin"],
+  "entity.private_sale.buy": ["owner", "admin", "finance", "buyer_agent"],
   "entity.holdings.read": ["owner", "admin", "finance", "viewer", "buyer_agent"],
   "entity.invoice_details.manage": ["owner", "admin", "finance"],
   "entity.activity.read": ["owner", "admin"],

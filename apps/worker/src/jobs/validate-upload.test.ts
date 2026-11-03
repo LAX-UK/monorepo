@@ -4,7 +4,7 @@ import {
   PdfContentTypeValidator,
   pickValidator,
 } from "./content-type-validators.js";
-import { validateUploadJob } from "./validate-upload.js";
+import { gcUnsentEnquiryUploads, validateUploadJob } from "./validate-upload.js";
 
 describe("pickValidator", () => {
   it("returns pdf validator for application/pdf", () => {
@@ -156,5 +156,96 @@ describe("validateUploadJob malware scan", () => {
     });
 
     expect(scanner.scan).not.toHaveBeenCalled();
+  });
+});
+
+describe("validateUploadJob for enquiry files", () => {
+  it.each([
+    ["enquiry_image", "image/jpeg", Buffer.from([0xff, 0xd8, 0xff, 0xe0])],
+    ["enquiry_document", "application/pdf", Buffer.from("%PDF-1.4\n")],
+  ])("scans %s, which anyone can send", async (kind, contentType, bytes) => {
+    const rejectUpload = vi.fn().mockResolvedValue(undefined);
+    const scanner = { scan: vi.fn().mockResolvedValue({ clean: false, reason: "malware" }) };
+    const result = await validateUploadJob({
+      uploadValidationRepo: {
+        findUploadedById: vi.fn().mockResolvedValue({
+          id: "u1",
+          key: "uploads/pending/enquiry/x",
+          status: "uploaded",
+          kind,
+          declaredContentType: contentType,
+          declaredByteSize: 100,
+        }),
+        rejectUpload,
+        activateUpload: vi.fn(),
+      } as never,
+      storage: {
+        headObject: vi.fn().mockResolvedValue({ byteSize: 100, contentType }),
+        getObjectBytes: vi.fn().mockResolvedValue(bytes),
+      } as never,
+      uploadId: "u1",
+      log: { info: vi.fn(), warn: vi.fn() } as never,
+      malwareScanner: scanner,
+    });
+    expect(result.validated).toBe(false);
+    expect(scanner.scan).toHaveBeenCalled();
+    expect(rejectUpload).toHaveBeenCalledWith("u1", "malware", expect.anything());
+  });
+});
+
+describe("gcUnsentEnquiryUploads", () => {
+  const NOW = new Date("2026-11-03T12:00:00Z");
+
+  it("removes the stored file and its record for every enquiry file never sent", async () => {
+    const deleteObject = vi.fn().mockResolvedValue(undefined);
+    const deleteById = vi.fn().mockResolvedValue(undefined);
+    const findExpiredUnsentEnquiryUploads = vi.fn().mockResolvedValue([
+      { id: "a", key: "uploads/pending/enquiry-images/draft-1/a.jpg" },
+      { id: "b", key: "uploads/pending/enquiry-documents/draft-1/b.pdf" },
+    ]);
+    const removed = await gcUnsentEnquiryUploads({
+      uploadValidationRepo: { findExpiredUnsentEnquiryUploads, deleteById } as never,
+      storage: { deleteObject } as never,
+      log: { info: vi.fn() } as never,
+      now: NOW,
+    });
+    expect(removed).toBe(2);
+    expect(findExpiredUnsentEnquiryUploads).toHaveBeenCalledWith(NOW);
+    expect(deleteObject.mock.calls.map((c) => c[0])).toEqual([
+      "uploads/pending/enquiry-images/draft-1/a.jpg",
+      "uploads/pending/enquiry-documents/draft-1/b.pdf",
+    ]);
+    expect(deleteById.mock.calls.map((c) => c[0])).toEqual(["a", "b"]);
+  });
+
+  it("keeps a record when its file could not be removed, to try again next hour", async () => {
+    const deleteById = vi.fn();
+    const log = { info: vi.fn(), warn: vi.fn() };
+    const removed = await gcUnsentEnquiryUploads({
+      uploadValidationRepo: {
+        findExpiredUnsentEnquiryUploads: vi.fn().mockResolvedValue([{ id: "a", key: "k" }]),
+        deleteById,
+      } as never,
+      storage: { deleteObject: vi.fn().mockRejectedValue(new Error("s3 down")) } as never,
+      log: log as never,
+      now: NOW,
+    });
+    expect(removed).toBe(0);
+    expect(deleteById).not.toHaveBeenCalled();
+    expect(log.warn).toHaveBeenCalled();
+  });
+
+  it("does nothing when there is nothing to remove", async () => {
+    const log = { info: vi.fn() };
+    const removed = await gcUnsentEnquiryUploads({
+      uploadValidationRepo: {
+        findExpiredUnsentEnquiryUploads: vi.fn().mockResolvedValue([]),
+      } as never,
+      storage: {} as never,
+      log: log as never,
+      now: NOW,
+    });
+    expect(removed).toBe(0);
+    expect(log.info).not.toHaveBeenCalled();
   });
 });

@@ -15,11 +15,7 @@ import { HttpEmailSender } from "../infrastructure/http-email-sender.js";
 import { HttpProductDeletionEligibilityProbe } from "../infrastructure/http-product-deletion-eligibility-probe.js";
 import { HttpProductSubjectUsageProbe } from "../infrastructure/http-product-subject-usage-probe.js";
 import type { JwksProvider } from "../infrastructure/jwks-provider.js";
-import { ConsolePhoneVerificationService } from "../infrastructure/phone-verification/console.service.js";
-import {
-  TwilioVerifyService,
-  isTwilioVerifyConfigured,
-} from "../infrastructure/phone-verification/twilio-verify.service.js";
+import { selectPhoneVerification } from "../infrastructure/phone-verification/select-phone-verification.js";
 import type { ProductDeletionEligibilityProbe } from "../services/account-deletion.ports.js";
 
 export type AuthInfra = {
@@ -79,9 +75,6 @@ export function createAuthInfra(env: AuthAppEnv, log: pino.Logger): AuthInfra {
     webOrigins,
     envelope,
     jwks: createDrizzleJwksStore(db, envelope),
-    phoneVerification:
-      env.ENABLE_PHONE_VERIFICATION && isTwilioVerifyConfigured(env)
-        ? TwilioVerifyService.fromEnv(env)
-        : new ConsolePhoneVerificationService(),
+    phoneVerification: selectPhoneVerification(env),
   };
 }

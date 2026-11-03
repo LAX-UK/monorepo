@@ -2,7 +2,7 @@
 
 import type { WorkspaceAccessDenied } from "@/lib/presenters/workspace-access/workspace-access";
 import { AccessDeniedState } from "@auction/ui/components/access-denied-state";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import { SwitchAccountAction, useHasOtherAccounts } from "./switch-account-action";
 import { useAccountHomeLink } from "./use-account-home-link";
@@ -39,7 +39,7 @@ export function NoAccess({ next, denied }: Props) {
       actions={
         <>
           {switchFirst ? <SwitchAccountAction destination={next} emphasis="primary" /> : null}
-          <Button asChild variant={switchFirst ? "secondaryOutline" : "primary"}>
+          <Button asChild variant={switchFirst ? "secondary" : "primary"}>
             <Link href={back.href}>{back.label}</Link>
           </Button>
           {switchFirst ? null : <SwitchAccountAction destination={next} emphasis="secondary" />}

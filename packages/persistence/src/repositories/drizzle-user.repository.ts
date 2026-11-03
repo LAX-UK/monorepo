@@ -1,6 +1,11 @@
 import type { Database } from "@auction/db";
 import { bidIdentityDirectory, bidUserProfile, staffRoleAssignment } from "@auction/db/schema";
-import { SUBMISSIONS_ACCESS, requirementCapabilities, staffRolesGranting } from "@auction/types";
+import {
+  type CapabilityRequirement,
+  SUBMISSIONS_ACCESS,
+  requirementCapabilities,
+  staffRolesGranting,
+} from "@auction/types";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type { IUserRepository } from "../interfaces/user.repository.js";
@@ -122,6 +127,28 @@ export class DrizzleUserRepository implements IUserRepository {
       .innerJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
       .where(and(eq(bidUserProfile.role, "staff"), activeIdentitySubject()));
     return [...new Set(rows.map((r) => r.email).filter((e): e is string => Boolean(e?.trim())))];
+  }
+
+  async listStaffEmailsWithAccess(requirement: CapabilityRequirement): Promise<string[]> {
+    // The links in these notices open platform admin pages, which a finance-only person cannot
+    // enter, so the finance role does not count here even where it holds the capability.
+    const roles = staffRolesGranting(requirementCapabilities(requirement)).filter(
+      (role) => role !== "finance",
+    );
+    const rows = await this.db
+      .selectDistinct({ email: bidIdentityDirectory.email })
+      .from(bidIdentityDirectory)
+      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .innerJoin(staffRoleAssignment, eq(staffRoleAssignment.userId, bidUserProfile.userId))
+      .where(
+        and(
+          eq(bidUserProfile.role, "staff"),
+          activeIdentitySubject(),
+          inArray(staffRoleAssignment.role, [...roles]),
+          staffRoleAssignmentInForceAt(new Date()),
+        ),
+      );
+    return rows.map((r) => r.email).filter((e): e is string => Boolean(e?.trim()));
   }
 
   async listPublicProfiles(params: { limit: number; offset: number }) {

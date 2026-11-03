@@ -13,6 +13,7 @@ import type {
   StatusPresentation,
   TimelineEvent,
 } from "@auction/staff-ui";
+import { adminRoutes } from "@auction/types";
 
 export const AML_STAFF_LIST_PATH = "/admin/compliance/aml";
 
@@ -252,18 +253,21 @@ export function amlTimeline(row: AmlStaffRow): TimelineEvent[] {
 export function amlAttention(counts: {
   manualReviewCount: number;
   sourceOfFundsPending: number;
+  /** Payments are a finance page: compliance staff without finance are not offered the link. */
+  canOpenPayments: boolean;
 }): AttentionStripItem[] {
+  const manualReview: AttentionStripItem = {
+    id: "manual-review",
+    count: counts.manualReviewCount,
+    label:
+      counts.manualReviewCount === 1
+        ? "payment is held for manual review"
+        : "payments are held for manual review",
+    href: adminRoutes.payments.manualReview(),
+    tone: "warning",
+  };
   return [
-    {
-      id: "manual-review",
-      count: counts.manualReviewCount,
-      label:
-        counts.manualReviewCount === 1
-          ? "payment is held for manual review"
-          : "payments are held for manual review",
-      href: "/admin/payments?manualReview=1",
-      tone: "warning",
-    },
+    ...(counts.canOpenPayments ? [manualReview] : []),
     {
       id: "source-of-funds",
       count: counts.sourceOfFundsPending,
@@ -271,7 +275,7 @@ export function amlAttention(counts: {
         counts.sourceOfFundsPending === 1
           ? "source of funds case is pending"
           : "source of funds cases are pending",
-      href: "/admin/compliance/source-of-funds",
+      href: adminRoutes.sourceOfFunds.list(),
     },
   ];
 }

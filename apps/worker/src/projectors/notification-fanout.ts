@@ -1,6 +1,11 @@
 import type { IEmailService } from "@auction/email";
 import type pino from "pino";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
+import {
+  fanoutOrganisationLimitChanged,
+  fanoutSaleRegistrationDecided,
+  fanoutSaleRegistrationLimitChanged,
+} from "./notification-fanout/bidding-registration-fanout.js";
 import { fanoutPayoutClawbackRequired } from "./notification-fanout/clawback-fanout.js";
 import { fanoutDisputeClosed, fanoutDisputeOpened } from "./notification-fanout/dispute-fanout.js";
 import { fanoutLotVoided } from "./notification-fanout/lot-voided-fanout.js";
@@ -11,11 +16,16 @@ import {
   type LotWithdrawalDeclinedPayload,
   type ManualReviewPayload,
   type MemberRemovedPayload,
+  type OrganisationLimitChangedPayload,
+  type PaymentCancelledPayload,
   type ProxyCancelledPayload,
   SUPPORTED_EVENT_TYPES,
+  type SaleRegistrationDecidedPayload,
+  type SaleRegistrationLimitChangedPayload,
   type SellerMoneyPayload,
   type TransferBlockedPayload,
 } from "./notification-fanout/notification-fanout-helpers.js";
+import { fanoutPaymentFailed } from "./notification-fanout/payment-failed-fanout.js";
 import { fanoutPayoutInitiated } from "./notification-fanout/payout-fanout.js";
 import { fanoutProxyCancelled } from "./notification-fanout/proxy-fanout.js";
 import { fanoutPayoutTransferBlocked } from "./notification-fanout/transfer-blocked-fanout.js";
@@ -150,6 +160,45 @@ export async function processNotificationFanout(options: {
           eventId: row.id,
           legalEntityId: row.aggregateId,
           payload: row.payload as MemberRemovedPayload,
+          webOrigin: ctx.webOrigin,
+        });
+      }
+      if (row.eventType === "sale_registration.decided") {
+        await fanoutSaleRegistrationDecided({
+          notificationFanoutReader,
+          emailService,
+          supportContactEmail,
+          eventId: row.id,
+          payload: row.payload as SaleRegistrationDecidedPayload,
+          webOrigin: ctx.webOrigin,
+        });
+      }
+      if (row.eventType === "sale_registration.bid_limit_changed") {
+        await fanoutSaleRegistrationLimitChanged({
+          notificationFanoutReader,
+          emailService,
+          supportContactEmail,
+          eventId: row.id,
+          payload: row.payload as SaleRegistrationLimitChangedPayload,
+        });
+      }
+      if (row.eventType === "legal_entity.bidding_limit_changed") {
+        await fanoutOrganisationLimitChanged({
+          notificationFanoutReader,
+          emailService,
+          supportContactEmail,
+          eventId: row.id,
+          legalEntityId: row.aggregateId,
+          payload: row.payload as OrganisationLimitChangedPayload,
+        });
+      }
+      if (row.eventType === "payment.cancelled") {
+        await fanoutPaymentFailed({
+          notificationFanoutReader,
+          emailService,
+          supportContactEmail,
+          eventId: row.id,
+          payload: row.payload as PaymentCancelledPayload,
           webOrigin: ctx.webOrigin,
         });
       }

@@ -92,3 +92,26 @@ export function coverTextVars(tone: CoverTone): CoverTextVars {
     "--cover-credit": colour("credit"),
   };
 }
+
+const SWAPPED_NAMES = {
+  eyebrow: "--cover-eyebrow-dark",
+  title: "--cover-title-dark",
+  sub: "--cover-sub-dark",
+  link: "--cover-link-dark",
+  credit: "--cover-credit-dark",
+} as const;
+
+/**
+ * The light tone's type colours under other names, for a pale plate that turns deep in the dark
+ * theme: the stylesheet points the cover's own variables at these when the theme is dark.
+ */
+export function darkThemeTextVars(): Record<string, string> {
+  const light = coverTextVars("light");
+  return {
+    [SWAPPED_NAMES.eyebrow]: light["--cover-eyebrow"],
+    [SWAPPED_NAMES.title]: light["--cover-title"],
+    [SWAPPED_NAMES.sub]: light["--cover-sub"],
+    [SWAPPED_NAMES.link]: light["--cover-link"],
+    [SWAPPED_NAMES.credit]: light["--cover-credit"],
+  };
+}

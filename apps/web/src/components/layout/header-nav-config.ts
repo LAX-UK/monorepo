@@ -1,8 +1,18 @@
 import { NAV_LABEL_CLASSES } from "@/components/marketing/nav-label";
 import { getMarketingMegaMenuSections } from "@/lib/marketing/mega-menu-catalog";
+import {
+  NO_NAV_ACTIVITY,
+  type NavActivityKey,
+  applyNavActivity,
+} from "@/lib/marketing/nav-activity";
 import { linkIsCurrent } from "@/lib/nav/is-current";
 
-export type MegaMenuItem = { href: string; label: string };
+export type MegaMenuItem = {
+  href: string;
+  label: string;
+  /** The item shows only while this list has something in it. */
+  requires?: NavActivityKey;
+};
 
 export type MegaMenuSection = {
   id: string;
@@ -16,8 +26,9 @@ export type MegaMenuSection = {
   viewAllLabel?: string;
 };
 
+/** The menu before the page has said what is live: only the items that never go empty. */
 export function emptyMegaMenuSections(): MegaMenuSection[] {
-  return getMarketingMegaMenuSections();
+  return applyNavActivity(getMarketingMegaMenuSections(), NO_NAV_ACTIVITY);
 }
 
 export const utilityNav = [
@@ -26,22 +37,13 @@ export const utilityNav = [
   { href: "/faq", label: "FAQ" },
 ] as const;
 
-function salesTab(sp: Pick<URLSearchParams, "get"> | null): string | undefined {
-  const v = sp?.get("tab");
-  return v ? v.toLowerCase() : undefined;
-}
-
-/** Primary mega-menu trigger active state (uses query on `/sales` when provided). */
+/** Primary mega-menu trigger active state. */
 export function megaMenuSectionActive(
   pathname: string,
   section: Pick<MegaMenuSection, "id" | "href">,
-  searchParams: Pick<URLSearchParams, "get"> | null,
 ): boolean {
   if (section.id === "artists") {
     return pathname.startsWith("/artists") || pathname.startsWith("/artist/");
-  }
-  if (section.id === "buy") {
-    return pathname.startsWith("/search");
   }
   if (section.id === "sell") {
     return (
@@ -51,13 +53,11 @@ export function megaMenuSectionActive(
       pathname.startsWith("/selling")
     );
   }
-  if (section.id === "privateSales") {
-    if (!pathname.startsWith("/sales")) return false;
-    return salesTab(searchParams) === "privatesales";
-  }
   if (section.id === "auctions") {
-    if (!pathname.startsWith("/sales")) return false;
-    return salesTab(searchParams) !== "privatesales";
+    return pathname.startsWith("/sales");
+  }
+  if (section.id === "results") {
+    return pathname.startsWith("/results");
   }
   return navItemActive(pathname, section.href);
 }

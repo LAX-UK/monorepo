@@ -27,6 +27,7 @@ import {
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
 import { createDrizzleShopMediaAssetRepository } from "../drizzle-shop-media-asset.repository.js";
+import { createSharpImageNormalizer } from "../sharp-image-normalizer.js";
 import { createSharpImageProbe } from "../sharp-image-probe.js";
 import { upsertShopArtist } from "../upsert-shop-artist.js";
 import { createDrizzleLegacyThelaxContentStore } from "./drizzle-legacy-thelax-content.store.js";
@@ -72,6 +73,7 @@ describe.skipIf(!hasShopIntegrationDb)("legacy thelax import", () => {
             storage,
             assets: createDrizzleShopMediaAssetRepository(db),
             imageProbe: createSharpImageProbe(),
+            imageNormalizer: createSharpImageNormalizer(),
             actor: LEGACY_THELAX_IMPORT_ACTOR,
           }),
         },

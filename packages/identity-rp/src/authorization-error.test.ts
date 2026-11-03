@@ -6,6 +6,19 @@ describe("classifyAuthorizationError", () => {
     expect(classifyAuthorizationError({ error: null, errorDescription: null })).toBeNull();
   });
 
+  it.each(["account_suspended", "identity_disabled"])("maps %s to account_suspended", (error) => {
+    expect(classifyAuthorizationError({ error, errorDescription: null })).toBe("account_suspended");
+  });
+
+  it("maps access_denied that says the account is suspended", () => {
+    expect(
+      classifyAuthorizationError({
+        error: "access_denied",
+        errorDescription: "This account is suspended",
+      }),
+    ).toBe("account_suspended");
+  });
+
   it("maps access_denied", () => {
     expect(
       classifyAuthorizationError({ error: "access_denied", errorDescription: "User denied" }),

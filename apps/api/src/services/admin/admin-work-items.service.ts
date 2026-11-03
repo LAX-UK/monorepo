@@ -1,4 +1,5 @@
 import type {
+  AdminWorkItemSourceKind,
   AdminWorkItemSourceRow,
   IAdminWorkItemsReader,
 } from "@auction/persistence/interfaces";
@@ -9,9 +10,12 @@ import {
   LEGAL_ENTITY_BROWSE_ACCESS,
   LOTS_ACCESS,
   LOT_FULFILMENT_ACCESS,
+  MARKETING_ENQUIRIES_ACCESS,
   PAYMENT_WRITE_ACCESS,
   SALES_ACCESS,
   SUBMISSIONS_ACCESS,
+  canOpenAdminLink,
+  requirementCapabilities,
   userHasAccessTo,
 } from "@auction/types";
 import type { CapabilityRequirement, StaffRoles, UserRole } from "@auction/types";
@@ -35,6 +39,40 @@ export type AdminWorkItemsListResult = {
     urgent: number;
     byDomain: Record<AdminWorkItemDto["domain"], number>;
   };
+};
+
+/**
+ * What a person needs to see each kind of work item. The item's link opens a page whose own
+ * guard is no stricter than this, which the staff alert links contract test checks.
+ */
+export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRequirement> = {
+  payment_manual_review: FINANCE_ACCESS,
+  aml_screening: AML_REVIEW_ACCESS,
+  sof_case: AML_REVIEW_ACCESS,
+  submission_review: SUBMISSIONS_ACCESS,
+  condition_report: CONDITION_REPORTS_ACCESS,
+  lot_fulfilment: LOT_FULFILMENT_ACCESS,
+  sale_registration: SALES_ACCESS,
+  telephone_booking: SALES_ACCESS,
+  legal_entity_kyb: LEGAL_ENTITY_BROWSE_ACCESS,
+  lot_withdrawal: LOTS_ACCESS,
+  lot_draft_past_start: LOTS_ACCESS,
+  unsold_lot_choice: SUBMISSIONS_ACCESS,
+  marketing_enquiry: MARKETING_ENQUIRIES_ACCESS,
+  purchase_problem: FINANCE_ACCESS,
+};
+
+const REVIEW_TASK_SOURCE_ACCESS: CapabilityRequirement = {
+  anyOf: [
+    ...new Set(
+      [
+        WORK_ITEM_KIND_ACCESS.aml_screening,
+        WORK_ITEM_KIND_ACCESS.sof_case,
+        WORK_ITEM_KIND_ACCESS.legal_entity_kyb,
+        WORK_ITEM_KIND_ACCESS.lot_withdrawal,
+      ].flatMap(requirementCapabilities),
+    ),
+  ],
 };
 
 type SourceFetcher = {
@@ -101,6 +139,9 @@ function stampActions(
       break;
     case "unsold_lot_choice":
       break;
+    case "marketing_enquiry":
+    case "purchase_problem":
+      break;
   }
 
   return actions;
@@ -146,11 +187,11 @@ export class AdminWorkItemsService {
 
     const sources: SourceFetcher[] = [
       {
-        access: FINANCE_ACCESS,
+        access: WORK_ITEM_KIND_ACCESS.payment_manual_review,
         fetch: () => this.reader.listManualReviewPayments(perSourceLimit),
       },
       {
-        access: SUBMISSIONS_ACCESS,
+        access: WORK_ITEM_KIND_ACCESS.submission_review,
         fetch: () =>
           this.reader.listSubmissionReviews({
             limit: perSourceLimit,
@@ -160,60 +201,53 @@ export class AdminWorkItemsService {
         supportsAssignment: true,
       },
       {
-        access: CONDITION_REPORTS_ACCESS,
+        access: WORK_ITEM_KIND_ACCESS.condition_report,
         fetch: () => this.reader.listConditionReports(perSourceLimit),
       },
       {
-        access: LOT_FULFILMENT_ACCESS,
+        access: WORK_ITEM_KIND_ACCESS.lot_fulfilment,
         fetch: () => this.reader.listLotFulfilment(perSourceLimit),
       },
       {
-        access: SALES_ACCESS,
+        access: WORK_ITEM_KIND_ACCESS.sale_registration,
         fetch: () => this.reader.listPendingRegistrations(perSourceLimit),
       },
       {
-        access: SALES_ACCESS,
+        access: WORK_ITEM_KIND_ACCESS.telephone_booking,
         fetch: () => this.reader.listPendingTelephoneBookings(perSourceLimit),
       },
       {
-        access: LOTS_ACCESS,
+        access: WORK_ITEM_KIND_ACCESS.lot_draft_past_start,
         fetch: () => this.reader.listDraftLotsPastStart(perSourceLimit),
       },
       {
-        access: SUBMISSIONS_ACCESS,
+        access: WORK_ITEM_KIND_ACCESS.unsold_lot_choice,
         fetch: () => this.reader.listUnsoldLotChoices(perSourceLimit),
+      },
+      {
+        access: WORK_ITEM_KIND_ACCESS.marketing_enquiry,
+        fetch: () => this.reader.listMarketingEnquiries(perSourceLimit),
+      },
+      {
+        access: WORK_ITEM_KIND_ACCESS.purchase_problem,
+        fetch: () => this.reader.listPurchaseProblems(perSourceLimit),
       },
     ];
 
-    const canReviewTasks =
-      userHasAccessTo(actorRole, actorStaffRoles, AML_REVIEW_ACCESS) ||
-      userHasAccessTo(actorRole, actorStaffRoles, LOTS_ACCESS) ||
-      userHasAccessTo(actorRole, actorStaffRoles, LEGAL_ENTITY_BROWSE_ACCESS);
-
-    if (canReviewTasks) {
-      sources.push({
-        access: AML_REVIEW_ACCESS,
-        fetch: () =>
-          this.reader.listPendingReviewTasks({
-            limit: perSourceLimit,
-            assignment: query.assignment,
-            actorUserId,
-          }),
-        supportsAssignment: true,
-        filterRow: (row) => {
-          if (row.kind === "aml_screening" || row.kind === "sof_case") {
-            return userHasAccessTo(actorRole, actorStaffRoles, AML_REVIEW_ACCESS);
-          }
-          if (row.kind === "legal_entity_kyb") {
-            return userHasAccessTo(actorRole, actorStaffRoles, LEGAL_ENTITY_BROWSE_ACCESS);
-          }
-          if (row.kind === "lot_withdrawal") {
-            return userHasAccessTo(actorRole, actorStaffRoles, LOTS_ACCESS);
-          }
-          return false;
-        },
-      });
-    }
+    // Review tasks of several kinds share one source; each row is kept only if the person can
+    // see its own kind, so the source opens for anyone who can see at least one of them.
+    sources.push({
+      access: REVIEW_TASK_SOURCE_ACCESS,
+      fetch: () =>
+        this.reader.listPendingReviewTasks({
+          limit: perSourceLimit,
+          assignment: query.assignment,
+          actorUserId,
+        }),
+      supportsAssignment: true,
+      filterRow: (row) =>
+        userHasAccessTo(actorRole, actorStaffRoles, WORK_ITEM_KIND_ACCESS[row.kind]),
+    });
 
     const enabledSources = sources.filter(
       (s) =>
@@ -221,10 +255,14 @@ export class AdminWorkItemsService {
         (query.assignment !== "mine" || s.supportsAssignment === true),
     );
 
+    // An item is shown only if its link opens for this person, so an alert never leads to a
+    // page that turns them away (a finance-only member holds `legal_entity.read` but cannot
+    // enter the platform pages that show an entity).
     const rawRows = (await Promise.all(enabledSources.map((s) => s.fetch()))).flatMap(
       (rows, index) => {
         const filterRow = enabledSources[index]?.filterRow;
-        return filterRow ? rows.filter(filterRow) : rows;
+        const visible = filterRow ? rows.filter(filterRow) : rows;
+        return visible.filter((row) => canOpenAdminLink(actorRole, actorStaffRoles, row.href));
       },
     );
 

@@ -1,3 +1,4 @@
+import { ENQUIRY_UPLOAD_KINDS } from "@auction/domain";
 import type pino from "pino";
 import type { IUploadValidationRepository } from "../interfaces/upload-validation.repository.js";
 import type { IMalwareScanner } from "../lib/malware-scanner.js";
@@ -5,7 +6,11 @@ import type { UploadStorage } from "../lib/upload-storage.js";
 import { pickValidator } from "./content-type-validators.js";
 
 /** Files people send in for staff to open are scanned before they become usable. */
-const MALWARE_SCAN_KINDS = new Set(["source_of_funds_document", "consignment_message_attachment"]);
+const MALWARE_SCAN_KINDS: ReadonlySet<string> = new Set([
+  "source_of_funds_document",
+  "consignment_message_attachment",
+  ...ENQUIRY_UPLOAD_KINDS,
+]);
 
 export async function validateUploadJob(args: {
   uploadValidationRepo: IUploadValidationRepository;
@@ -73,4 +78,34 @@ export async function gcPendingUploads(args: {
     args.log.info({ count: rows.length }, "garbage collected stale pending uploads");
   }
   return rows.length;
+}
+
+/**
+ * Removes photos and documents that were uploaded for an enquiry but never sent with one. Files
+ * belong to a draft for 24 hours; once that passes nothing can claim them. A file that cannot be
+ * deleted keeps its record, so the next run tries it again.
+ */
+export async function gcUnsentEnquiryUploads(args: {
+  uploadValidationRepo: IUploadValidationRepository;
+  storage: UploadStorage;
+  log: pino.Logger;
+  now?: Date;
+}): Promise<number> {
+  const now = args.now ?? new Date();
+  const rows = await args.uploadValidationRepo.findExpiredUnsentEnquiryUploads(now);
+  let removed = 0;
+  for (const row of rows) {
+    try {
+      await args.storage.deleteObject(row.key);
+    } catch (err) {
+      args.log.warn({ uploadId: row.id, err }, "unsent enquiry file could not be removed");
+      continue;
+    }
+    await args.uploadValidationRepo.deleteById(row.id);
+    removed += 1;
+  }
+  if (removed > 0) {
+    args.log.info({ count: removed }, "removed enquiry files that were never sent");
+  }
+  return removed;
 }

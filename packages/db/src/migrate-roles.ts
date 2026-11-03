@@ -118,6 +118,8 @@ export const SHOP_COMMERCE_TABLES = [
   /** Guest checkout: the guest and lead behind guest orders, and their emailed order links. */
   "shop_guest_customer",
   "shop_guest_order_link",
+  /** People who asked to hear about new editions: confirmed by email, stopped with one click. */
+  "shop_release_alert_subscription",
   /** How far shop-api has read the shared event log for each of its own projections. */
   "shop_projection_cursor",
 ] as const;
@@ -233,6 +235,8 @@ export const WORKER_READ_TABLES = [
   "notification_account_mute",
   /** Xero invoices print the organisation's invoice address and PO reference. */
   "legal_entity_invoice_details",
+  /** The clean-up of unsent enquiry files keeps the ones an enquiry holds. */
+  "marketing_enquiry_attachment",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
@@ -283,6 +287,21 @@ export const WORKER_FULL_TABLES = [
   "atg_auction_link",
   "atg_lot_link",
 ] as const;
+/**
+ * The KYC, AML and source-of-funds retention purge reads and deletes these once five years have passed since
+ * the relationship ended, and writes a tombstone. Reading what decides "ended" (domain_events, bid,
+ * payment, payout, legal_entity) and the file rows (upload_object) is granted elsewhere.
+ */
+export const WORKER_KYC_RETENTION_PURGE_TABLES = [
+  "kyc_verification",
+  "kyc_watchlist_screening",
+  "source_of_funds",
+  "source_of_funds_document",
+  "legal_entity_document",
+  "admin_review_task",
+] as const;
+/** Append-only proof of each purge: no personal data. */
+export const WORKER_KYC_RETENTION_TOMBSTONE_TABLES = ["kyc_retention_tombstone"] as const;
 /** Worker persists async QR scan events (qr-code-scan job via persistQrCodeScan). */
 export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;
 /** The unsold-choice projector stores each unsold outcome's choose-by date, once. */
@@ -329,6 +348,36 @@ export const WORKER_ABSENTEE_BID_TABLES = ["absentee_bid"] as const;
 
 /** Worker absentee replay inserts bids during activation replay. */
 export const WORKER_BID_PLACEMENT_TABLES = ["bid"] as const;
+
+/**
+ * Purged-person anonymisation (apps/worker/src/anonymisation). Tables that only describe the
+ * person are deleted from; the worker reads them to filter and to count what it removed.
+ * marketing_click_ids is already covered by WORKER_FULL_TABLES.
+ */
+export const WORKER_ANONYMISATION_DELETE_TABLES = [
+  "legal_entity_address",
+  "legal_entity_invoice_details",
+  "user_address",
+  "push_subscription",
+  "saved_search",
+  "watchlist",
+  "sale_follow",
+  "artist_watchlist",
+  "user_category_interest",
+  "notification_preference",
+  "notification_account_mute",
+  "user_ui_preference",
+] as const;
+
+/**
+ * Tables the same job keeps but scrubs. UPDATE is granted on the scrubbed columns only, plus
+ * SELECT for the filter. bid_user_profile and legal_entity are granted elsewhere.
+ */
+export const WORKER_ANONYMISATION_SCRUB_COLUMNS = [
+  ["legal_entity", ["display_name", "legal_name", "slug", "vat_number"]],
+  ["legal_entity_contact_details", ["email", "phone", "website"]],
+  ["telephone_bid_booking", ["phone_e164", "buyer_notes"]],
+] as const;
 
 type RoleName = "auth_app" | "api_app" | "shop_app" | "worker_app";
 
@@ -468,10 +517,12 @@ async function grantIfExists(
   privileges:
     | "SELECT"
     | "SELECT, UPDATE"
+    | "SELECT, DELETE"
     | "SELECT, UPDATE, DELETE"
     | "INSERT"
     | "INSERT, SELECT"
     | "INSERT, SELECT, DELETE"
+    | "SELECT, DELETE"
     | "INSERT, SELECT, UPDATE"
     | "INSERT, SELECT, UPDATE, DELETE"
     | "ALL PRIVILEGES",
@@ -629,15 +680,19 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         await grantIfExists(client, "worker_app", "admin_review_task", "INSERT, SELECT, UPDATE");
         /** SoF documents projector inserts buyer in-app notifications (documents requested / closure). */
         await grantIfExists(client, "worker_app", "notification", "INSERT, SELECT");
-        /** Retention job anonymizes buyer-supplied SoF evidence after AML window. */
-        await grantIfExists(client, "worker_app", "source_of_funds_document", "SELECT, UPDATE");
-        /** The SoF review projector upserts reviews; the document purge job deletes them. */
+        /** The SoF review projector upserts reviews; the retention purge deletes them. */
         await grantIfExists(
           client,
           "worker_app",
           "source_of_funds_document_review",
           "INSERT, SELECT, UPDATE, DELETE",
         );
+        for (const tableName of WORKER_KYC_RETENTION_PURGE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
+        }
+        for (const tableName of WORKER_KYC_RETENTION_TOMBSTONE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
         /** The impersonation sweeper ends sessions that have expired. */
         await grantIfExists(client, "worker_app", "impersonation_session", "SELECT, UPDATE");
         /** worker send-email reads suppression list and inserts manual suppressions for missing users. */
@@ -726,6 +781,13 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           "legal_entity",
           WORKER_LEGAL_ENTITY_CONNECT_SETTLEMENT_COLUMNS,
         );
+        for (const tableName of WORKER_ANONYMISATION_DELETE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
+        }
+        for (const [tableName, columns] of WORKER_ANONYMISATION_SCRUB_COLUMNS) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+          await grantColumnUpdateIfExists(client, "worker_app", tableName, columns);
+        }
 
         for (const tableName of API_READ_TABLES) {
           await grantIfExists(client, "api_app", tableName, "SELECT");

@@ -14,14 +14,15 @@ export type AccessAsk = {
   legalEntityId: string;
   roles: readonly LegalEntityMemberRole[];
   waiting: { id: string; role: LegalEntityMemberRole | null } | null;
-  /** "Need access? Ask an owner: Maya Okafor". */
+  /** "Need access? Ask an owner: Maya Okafor", only when the page has no way to ask. */
   footnote: string | null;
 };
 
 /**
  * Reads what "Ask for access" needs on a page the member can't open: the roles above theirs that
  * would open it, their own request if one is waiting, and an owner's name. A support session
- * viewing as the client asks for nothing. Each read fails quietly: the page still explains.
+ * viewing as the client asks for nothing. Each read fails quietly: the page still explains. There
+ * is one way to ask: the owner is named only when "Ask for access" is not on offer.
  */
 export async function loadAccessAsk(input: {
   legalEntityId: string;
@@ -36,13 +37,15 @@ export async function loadAccessAsk(input: {
     roles.length > 0
       ? getServerAccessRequests(input.legalEntityId, "pending").catch(() => null)
       : Promise.resolve(null),
-    getServerOwnerNames(input.legalEntityId).catch(() => null),
+    roles.length === 0 && input.actor.role !== "owner"
+      ? getServerOwnerNames(input.legalEntityId).catch(() => null)
+      : Promise.resolve(null),
   ]);
   const mine = requests?.find((request) => request.requesterUserId === input.userId) ?? null;
   return {
     legalEntityId: input.legalEntityId,
     roles,
     waiting: mine ? { id: mine.id, role: mine.requestedRole } : null,
-    footnote: input.actor.role === "owner" ? null : askAnOwnerLine(owners ?? []),
+    footnote: askAnOwnerLine(owners ?? []),
   };
 }

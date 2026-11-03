@@ -92,7 +92,12 @@ export type {
 } from "../interfaces/domain-event-delivery.repository.js";
 export { DrizzleDomainEventDeliveryRepository } from "../repositories/drizzle-domain-event-delivery.repository.js";
 
-export { composeAttentionItems } from "./attention-feed.helpers.js";
+export { adminWorkItemHref, type AdminWorkItemLinkIds } from "./admin-work-item-href.js";
+export {
+  ATTENTION_KIND_ACCESS,
+  attentionItemsForViewer,
+  composeAttentionItems,
+} from "./attention-feed.helpers.js";
 
 export {
   addMoneyStrings,

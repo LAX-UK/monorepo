@@ -1,1 +1,1 @@
-export { composeAttentionItems } from "@auction/persistence/lib";
+export { attentionItemsForViewer, composeAttentionItems } from "@auction/persistence/lib";

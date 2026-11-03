@@ -14,11 +14,13 @@ import {
   filterMemberRows,
   memberRoleFilterOptions,
 } from "@/lib/organisation-team/member-filter";
+import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { notify } from "@/lib/ui/notify";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { RecordList } from "@auction/ui";
 import { ListSearch, SelectMenu } from "@auction/ui/lax";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ChangeRoleDialog } from "./members/change-role-dialog";
 import { MemberRow } from "./members/member-row";
 import { RemoveMemberDialog } from "./members/remove-member-dialog";
 import { TransferOwnershipDialog } from "./members/transfer-ownership-dialog";
@@ -30,6 +32,7 @@ type Props = {
 };
 
 type OpenDialog =
+  | { kind: "role"; row: MemberRowView }
   | { kind: "remove"; row: MemberRowView }
   | { kind: "transfer"; row: MemberRowView; confirmPhrase: string }
   | { kind: "leave" };
@@ -42,16 +45,15 @@ function withEntry<T>(map: Readonly<Record<string, T>>, key: string, value: T | 
 }
 
 /**
- * The team: search by name or email and a role filter, then one row per person. A role change
- * applies from the picker, with a success toast and Undo once the server agrees; removing
- * someone, handing over ownership and leaving open a dialog. A dialog opens after the row's menu
+ * The team: search by name or email and a role filter, then one row per person. Changing a role,
+ * removing someone, handing over ownership and leaving each open a dialog; a role change gets a
+ * success toast and Undo once the server agrees. A dialog opens after the row's menu
  * has closed, so the menu handing focus back never closes it.
  */
 export function MemberList({ legalEntityId, organisationName, rows }: Props) {
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<MemberRoleFilter>("all");
   const [shown, setShown] = useState<Record<string, LegalEntityMemberRole>>({});
-  const [busy, setBusy] = useState<Record<string, boolean>>({});
   const busyRef = useRef<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<OpenDialog | null>(null);
@@ -74,7 +76,6 @@ export function MemberList({ legalEntityId, organisationName, rows }: Props) {
       show: (memberId, role) => setShown((map) => withEntry(map, memberId, role)),
       busy: (memberId, value) => {
         busyRef.current = withEntry<boolean>(busyRef.current, memberId, value ? true : null);
-        setBusy(busyRef.current);
       },
       rowError: (memberId, message) => setErrors((map) => withEntry(map, memberId, message)),
       toast: (copy, onUndo) => {
@@ -135,18 +136,9 @@ export function MemberList({ legalEntityId, organisationName, rows }: Props) {
               key={row.id}
               row={row}
               organisationName={organisationName}
-              shownRole={shown[row.id] ?? row.role}
-              busy={busy[row.id] ?? false}
+              shownRole={organisationRoleLabel(shown[row.id] ?? row.role)}
               error={errors[row.id] ?? null}
-              onRoleChange={(role) =>
-                void changeMemberRole(
-                  ports,
-                  { id: row.id, name: row.name },
-                  shown[row.id] ?? row.role,
-                  role,
-                  organisationName,
-                )
-              }
+              onChangeRole={() => open({ kind: "role", row })}
               onTransfer={() => {
                 if (row.transfer) {
                   open({ kind: "transfer", row, confirmPhrase: row.transfer.confirmPhrase });
@@ -159,6 +151,28 @@ export function MemberList({ legalEntityId, organisationName, rows }: Props) {
         </RecordList>
       )}
 
+      {dialog?.kind === "role" && dialog.row.roleOptions ? (
+        <ChangeRoleDialog
+          organisationName={organisationName}
+          member={{ id: dialog.row.id, name: dialog.row.name }}
+          currentRole={shown[dialog.row.id] ?? dialog.row.role}
+          roleOptions={dialog.row.roleOptions.map((option) => option.value)}
+          onConfirm={async (role) => {
+            const { id, name } = dialog.row;
+            const result = await changeMemberRole(
+              ports,
+              { id, name },
+              shown[id] ?? dialog.row.role,
+              role,
+              organisationName,
+            );
+            // A refusal is shown in the dialog, which stays open; the row has no need to repeat it.
+            if (!result.ok) ports.rowError(id, null);
+            return result;
+          }}
+          onClose={() => setDialog(null)}
+        />
+      ) : null}
       {dialog?.kind === "remove" ? (
         <RemoveMemberDialog
           legalEntityId={legalEntityId}

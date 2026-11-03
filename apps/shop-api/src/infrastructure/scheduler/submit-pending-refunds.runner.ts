@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { shopOrder, shopPayoutLedger, shopRefund } from "@auction/db/schema";
+import { shopOrder, shopRefund } from "@auction/db/schema";
 import { Sentry } from "@auction/observability";
 import { and, eq, isNull } from "drizzle-orm";
 import type { PaymentRefundGateway } from "../../application/ports/payment-refund.gateway.js";
@@ -191,17 +191,8 @@ export function createSubmitPendingRefundsRunner(
         if (terminal) {
           alertRefundSubmitTerminalFailure(claim.id, stripeOutcome.message);
           await recomputeOrderStatusAfterRefundChange(tx as Database, row.orderId);
-          if (row.orderLineId) {
-            await tx
-              .update(shopPayoutLedger)
-              .set({ blockedReason: null })
-              .where(
-                and(
-                  eq(shopPayoutLedger.orderLineId, row.orderLineId),
-                  eq(shopPayoutLedger.blockedReason, "cancellation"),
-                ),
-              );
-          }
+          // The artist's payout stays blocked: the customer is still owed this money. It is
+          // released only when the refund succeeds (a retry completes) and the payout rules run.
           if (opsAlertEmail?.includes("@")) {
             await notifications.queueCheckoutOpsAlert(tx as Database, {
               idempotencyKey: `refund-submit-failed:${claim.id}`,

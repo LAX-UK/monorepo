@@ -1,4 +1,5 @@
 import type { IEmailService } from "@auction/email";
+import { FINANCE_ACCESS, adminRoutes } from "@auction/types";
 import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
 import type { IStaffOpsRecipientReader } from "../../interfaces/staff-ops-recipient.reader.js";
 import type { ManualReviewPayload } from "./notification-fanout-helpers.js";
@@ -49,7 +50,7 @@ export async function fanoutPaymentManualReview(options: {
     });
   }
 
-  const staffOps = await staffOpsRecipientReader.listRecipients();
+  const staffOps = await staffOpsRecipientReader.listRecipients(FINANCE_ACCESS);
   const base = webOrigin?.replace(/\/$/, "") ?? "";
   if (staffOps.length > 0) {
     for (const s of staffOps) {
@@ -64,7 +65,7 @@ export async function fanoutPaymentManualReview(options: {
           sellerEntityName: context.sellerEntityName,
           amount: payload.amount,
           currency: payload.currency,
-          adminReviewUrl: `${base}/admin/payments?manualReview=1`,
+          adminReviewUrl: `${base}${adminRoutes.payments.manualReview()}`,
         },
         category: "transactional",
         idempotencyKey: `payment-manual-review-admin-notice:${eventId}:ops:${s.id}`,
@@ -82,7 +83,7 @@ export async function fanoutPaymentManualReview(options: {
         sellerEntityName: context.sellerEntityName,
         amount: payload.amount,
         currency: payload.currency,
-        adminReviewUrl: `${base}/admin/payments?manualReview=1`,
+        adminReviewUrl: `${base}${adminRoutes.payments.manualReview()}`,
       },
       category: "transactional",
       idempotencyKey: `payment-manual-review-admin-notice:${eventId}:admin`,

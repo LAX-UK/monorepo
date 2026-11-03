@@ -29,6 +29,8 @@ type LegalFooterProps = {
   unsubscribeLabel?: string;
   /** Defaults to the product the email is rendered for (see `emailProductFor`). */
   product?: LaxBrandProduct;
+  /** Adds a privacy notice link to the reason, for mail sent because of a form the person sent. */
+  privacyUrl?: string;
 };
 
 /** Names the company behind the product, its registered office and the copyright holder. */
@@ -37,6 +39,7 @@ export function LegalFooter({
   reason,
   unsubscribeLabel,
   product,
+  privacyUrl,
 }: LegalFooterProps) {
   const renderedFor = useContext(EmailProductContext);
   const resolved = product ?? renderedFor;
@@ -51,7 +54,17 @@ export function LegalFooter({
 
   return (
     <Section style={wrap}>
-      <Text style={muted}>{reason ?? WHY[resolved]}</Text>
+      <Text style={muted}>
+        {reason ?? WHY[resolved]}
+        {privacyUrl ? (
+          <>
+            {" "}
+            <Link href={privacyUrl} style={link}>
+              Privacy notice
+            </Link>
+          </>
+        ) : null}
+      </Text>
       {unsubscribeUrl && unsubscribeLabel ? (
         <Text style={muted}>
           <Link href={unsubscribeUrl} style={link}>

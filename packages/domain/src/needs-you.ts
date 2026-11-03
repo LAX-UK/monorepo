@@ -27,8 +27,14 @@ import {
 /** A thing a task is about. */
 export type HomeSubject = { id: string; title: string };
 
-/** One thing on "Needs you". Each has one next step; it disappears when done. */
-export type NeedsYouTask =
+/**
+ * One thing on "Needs you". Each has one next step; it disappears when done. `raisedAt` is when
+ * it arose, from the record behind it (never the time of the read): `null` when no record says,
+ * and for a task that stands for several things, the newest of them.
+ */
+export type NeedsYouTask = NeedsYouTaskBody & { raisedAt: Date | null };
+
+type NeedsYouTaskBody =
   /** Lots the account is no longer leading while they are still open. */
   | { kind: "outbid"; lots: Array<HomeSubject & { endsAt: Date }> }
   | { kind: "pay"; purchases: HomeSubject[] }
@@ -54,13 +60,28 @@ export type NeedsYouTask =
   | { kind: "source_of_funds" }
   | { kind: "payouts" };
 
-export type NeedsYouKind = NeedsYouTask["kind"];
+export type NeedsYouKind = NeedsYouTaskBody["kind"];
 
 export type EndingAuthorisation = { id: string; memberName: string; endsAt: Date };
 export type ExpiredInvitation = { id: string; email: string; expiredAt: Date };
 export type PendingAccessRequest = { id: string; requesterName: string; askedAt: Date };
-/** A consignment with a specialist's message nobody who answers has read; `from` names them. */
-export type UnreadReply = HomeSubject & { from: string };
+/**
+ * A consignment with a specialist's message nobody who answers has read; `from` names the author
+ * of the newest unread one and `at` is when it was sent.
+ */
+export type UnreadReply = HomeSubject & { from: string; at: Date | null };
+
+/** The dates behind a won lot's next step; each is `null` when its record does not say. */
+export type PurchaseNextStepTimes = {
+  /** When the sale of the lot ended: the lot was won. */
+  wonAt: Date | null;
+  /** When the lot's latest payment was made. */
+  paymentAt: Date | null;
+  /** When LAX priced the courier quote. */
+  quotedAt: Date | null;
+  /** When the delivery record was last updated, which is when it became ready to collect. */
+  readyAt: Date | null;
+};
 
 /**
  * Everything the table reads, already loaded and already narrowed to what the member may see
@@ -75,23 +96,27 @@ export type NeedsYouFacts = {
   viewerIdentity: "verified" | "checking" | "required";
   /** Whether LAX asked the member for source of funds documents. */
   sourceOfFundsRequested: boolean;
+  /** When LAX asked for them. */
+  sourceOfFundsRequestedAt: Date | null;
+  /** When the account's status last changed, which is when its documents were asked for. */
+  organisationStatusChangedAt: Date | null;
   /** Open consignments whose specialist's terms wait to be accepted. */
-  agreementsToAccept: readonly HomeSubject[];
-  /** Submissions a specialist sent back, with the note. */
-  changesRequested: ReadonlyArray<HomeSubject & { note: string | null }>;
+  agreementsToAccept: ReadonlyArray<HomeSubject & { proposedAt: Date | null }>;
+  /** Submissions a specialist sent back, with the note and when they did. */
+  changesRequested: ReadonlyArray<HomeSubject & { note: string | null; requestedAt: Date | null }>;
   /** Consignments where the specialist's newest messages are unread, newest first. */
   unreadReplies: readonly UnreadReply[];
   /**
    * Consigned lots that ended unsold with nothing chosen yet, each with the date its choice is
    * due: the stored date, set from {@link unsoldChoiceDueBy} when the outcome was first shown.
    */
-  unsoldLots: ReadonlyArray<HomeSubject & { dueBy: Date | null }>;
+  unsoldLots: ReadonlyArray<HomeSubject & { dueBy: Date | null; endedAt: Date | null }>;
   /** Won lots that are not finished, with what their payment and delivery records say. */
-  purchases: ReadonlyArray<HomeSubject & PurchaseNextStepFacts>;
+  purchases: ReadonlyArray<HomeSubject & PurchaseNextStepFacts & PurchaseNextStepTimes>;
   /** Sales a buyer agent is authorised for and has not registered in. */
   salesToRegister: ReadonlyArray<HomeSubject & { startsAt: Date; bidLimit: string | null }>;
   /** Open lots where the account has bid and is not leading. */
-  outbidLots: ReadonlyArray<HomeSubject & { endsAt: Date }>;
+  outbidLots: ReadonlyArray<HomeSubject & { endsAt: Date; outbidAt: Date | null }>;
   /** Invitations that lapsed recently and were not sent again. */
   expiredInvitations: readonly ExpiredInvitation[];
   /** Buyer-agent authorisations that end soon. */
@@ -146,6 +171,15 @@ export type NeedsYouLink =
 
 type TaskOf<K extends NeedsYouKind> = Extract<NeedsYouTask, { kind: K }>;
 
+/** The newest of some dates, ignoring the ones a record does not have; `null` when none is known. */
+function newest(dates: ReadonlyArray<Date | null | undefined>): Date | null {
+  let latest: Date | null = null;
+  for (const date of dates) {
+    if (date && (!latest || date.getTime() > latest.getTime())) latest = date;
+  }
+  return latest;
+}
+
 type Spec<K extends NeedsYouKind> = {
   kind: K;
   section: NeedsYouSection | null;
@@ -171,10 +205,23 @@ function purchaseLink(purchases: readonly HomeSubject[]): NeedsYouLink {
   return purchases.length === 1 && only ? { page: "purchase", id: only.id } : { page: "purchases" };
 }
 
-function purchasesAt(facts: NeedsYouFacts, step: PurchaseNextStep): HomeSubject[] {
-  return facts.purchases
-    .filter((purchase) => purchaseNextStep(purchase) === step)
-    .map(({ id, title }) => ({ id, title }));
+/** The date each next step began, from the record that moved the purchase to it. */
+const STEP_STARTED: Record<PurchaseNextStep, (purchase: PurchaseNextStepTimes) => Date | null> = {
+  pay: (purchase) => purchase.wonAt,
+  choose_delivery: (purchase) => purchase.paymentAt,
+  quote_ready: (purchase) => purchase.quotedAt,
+  book_collection: (purchase) => purchase.readyAt,
+};
+
+function purchasesAt(
+  facts: NeedsYouFacts,
+  step: PurchaseNextStep,
+): { subjects: HomeSubject[]; raisedAt: Date | null } {
+  const at = facts.purchases.filter((purchase) => purchaseNextStep(purchase) === step);
+  return {
+    subjects: at.map(({ id, title }) => ({ id, title })),
+    raisedAt: newest(at.map(STEP_STARTED[step])),
+  };
 }
 
 /** A purchases task for each step, when there is anything at that step. */
@@ -182,8 +229,8 @@ function purchaseTask<K extends "pay" | "choose_delivery" | "quote_ready" | "boo
   kind: K,
 ): Spec<K>["collect"] {
   return (facts) => {
-    const purchases = purchasesAt(facts, kind);
-    return purchases.length > 0 ? [{ kind, purchases } as TaskOf<K>] : [];
+    const { subjects: purchases, raisedAt } = purchasesAt(facts, kind);
+    return purchases.length > 0 ? [{ kind, purchases, raisedAt } as TaskOf<K>] : [];
   };
 }
 
@@ -191,11 +238,18 @@ function unsoldSplit(facts: NeedsYouFacts) {
   const soon = facts.now.getTime() + UNSOLD_DUE_SOON_DAYS * DAY_MS;
   const due: Array<HomeSubject & { dueBy: Date }> = [];
   const later: HomeSubject[] = [];
-  for (const { id, title, dueBy } of facts.unsoldLots) {
-    if (dueBy && dueBy.getTime() <= soon) due.push({ id, title, dueBy });
-    else later.push({ id, title });
+  const endedDue: Array<Date | null> = [];
+  const endedLater: Array<Date | null> = [];
+  for (const { id, title, dueBy, endedAt } of facts.unsoldLots) {
+    if (dueBy && dueBy.getTime() <= soon) {
+      due.push({ id, title, dueBy });
+      endedDue.push(endedAt);
+    } else {
+      later.push({ id, title });
+      endedLater.push(endedAt);
+    }
   }
-  return { due, later };
+  return { due, later, dueRaisedAt: newest(endedDue), laterRaisedAt: newest(endedLater) };
 }
 
 const DOCUMENT_STATES: ReadonlySet<OrganisationSetupState> = new Set(["documents_requested"]);
@@ -217,7 +271,10 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
         ? [
             {
               kind: "outbid",
-              lots: [...facts.outbidLots].sort((a, b) => a.endsAt.getTime() - b.endsAt.getTime()),
+              lots: [...facts.outbidLots]
+                .sort((a, b) => a.endsAt.getTime() - b.endsAt.getTime())
+                .map(({ id, title, endsAt }) => ({ id, title, endsAt })),
+              raisedAt: newest(facts.outbidLots.map((lot) => lot.outbidAt)),
             },
           ]
         : [],
@@ -243,8 +300,8 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     allowed: (actor) =>
       roleBidsThroughAuthorisation(actor.role) && !entityActorCan(actor, "entity.finance.write"),
     collect: (facts) => {
-      const purchases = purchasesAt(facts, "pay");
-      return purchases.length > 0 ? [{ kind: "won_awaiting_payment", purchases }] : [];
+      const { subjects: purchases, raisedAt } = purchasesAt(facts, "pay");
+      return purchases.length > 0 ? [{ kind: "won_awaiting_payment", purchases, raisedAt }] : [];
     },
     items: (task) => task.purchases.length,
     link: (task) => purchaseLink(task.purchases),
@@ -255,10 +312,17 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     allowed: capability("entity.consignments.after_sale"),
     requires: "choose_unsold",
     collect: (facts) => {
-      const { due } = unsoldSplit(facts);
+      const { due, dueRaisedAt } = unsoldSplit(facts);
       if (due.length === 0) return [];
       const dueBy = new Date(Math.min(...due.map((lot) => lot.dueBy.getTime())));
-      return [{ kind: "unsold_due", lots: due.map(({ id, title }) => ({ id, title })), dueBy }];
+      return [
+        {
+          kind: "unsold_due",
+          lots: due.map(({ id, title }) => ({ id, title })),
+          dueBy,
+          raisedAt: dueRaisedAt,
+        },
+      ];
     },
     items: (task) => task.lots.length,
     link: () => ({ page: "consignments", view: "unsold" }),
@@ -270,9 +334,10 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     requires: "accept_agreement",
     announcedBy: ["consignment_agreement_reminder"],
     collect: (facts) =>
-      facts.agreementsToAccept.map(({ id, title }) => ({
+      facts.agreementsToAccept.map(({ id, title, proposedAt }) => ({
         kind: "agreement",
         consignment: { id, title },
+        raisedAt: proposedAt,
       })),
     items: one,
     link: (task) => ({ page: "consignment", id: task.consignment.id }),
@@ -284,10 +349,11 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     requires: "submit",
     announcedBy: ["submission_changes_requested"],
     collect: (facts) =>
-      facts.changesRequested.map(({ id, title, note }) => ({
+      facts.changesRequested.map(({ id, title, note, requestedAt }) => ({
         kind: "changes",
         submission: { id, title },
         note,
+        raisedAt: requestedAt,
       })),
     items: one,
     link: (task) => ({ page: "consignment", id: task.submission.id }),
@@ -300,10 +366,11 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     requires: "message_specialist",
     announcedBy: ["consignment_message"],
     collect: (facts) =>
-      facts.unreadReplies.map(({ id, title, from }) => ({
+      facts.unreadReplies.map(({ id, title, from, at }) => ({
         kind: "reply",
         consignment: { id, title },
         from,
+        raisedAt: at,
       })),
     items: one,
     link: (task) => ({ page: "consignment_messages", id: task.consignment.id }),
@@ -314,8 +381,8 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     allowed: capability("entity.consignments.after_sale"),
     requires: "choose_unsold",
     collect: (facts) => {
-      const { later } = unsoldSplit(facts);
-      return later.length > 0 ? [{ kind: "unsold", lots: later }] : [];
+      const { later, laterRaisedAt } = unsoldSplit(facts);
+      return later.length > 0 ? [{ kind: "unsold", lots: later, raisedAt: laterRaisedAt }] : [];
     },
     items: (task) => task.lots.length,
     link: () => ({ page: "consignments", view: "unsold" }),
@@ -355,6 +422,8 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
         sale: { id, title },
         startsAt,
         bidLimit,
+        // An authorisation carries no record of when it was granted.
+        raisedAt: null,
       })),
     items: one,
     link: (task) => ({ page: "sale", id: task.sale.id }),
@@ -374,6 +443,8 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
               authorisations: [...facts.endingAuthorisations].sort(
                 (a, b) => a.endsAt.getTime() - b.endsAt.getTime(),
               ),
+              // It ends by a date; nothing happened to raise it.
+              raisedAt: null,
             },
           ]
         : [],
@@ -390,7 +461,13 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     requires: "invite",
     collect: (facts) =>
       facts.expiredInvitations.length > 0
-        ? [{ kind: "invitations_expired", invitations: [...facts.expiredInvitations] }]
+        ? [
+            {
+              kind: "invitations_expired",
+              invitations: [...facts.expiredInvitations],
+              raisedAt: newest(facts.expiredInvitations.map((invitation) => invitation.expiredAt)),
+            },
+          ]
         : [],
     items: (task) => task.invitations.length,
     link: () => ({ page: "team", view: "invitations" }),
@@ -402,7 +479,13 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     announcedBy: ["access_requested"],
     collect: (facts) =>
       facts.pendingAccessRequests.length > 0
-        ? [{ kind: "access_requests", requests: [...facts.pendingAccessRequests] }]
+        ? [
+            {
+              kind: "access_requests",
+              requests: [...facts.pendingAccessRequests],
+              raisedAt: newest(facts.pendingAccessRequests.map((request) => request.askedAt)),
+            },
+          ]
         : [],
     items: (task) => task.requests.length,
     // The requests wait at the top of Team's Members tab.
@@ -416,7 +499,9 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     requires: "send_documents",
     collect: (facts) => {
       const state = organisationSetupState(facts.organisation);
-      return state && DOCUMENT_STATES.has(state) ? [{ kind: "documents" }] : [];
+      return state && DOCUMENT_STATES.has(state)
+        ? [{ kind: "documents", raisedAt: facts.organisationStatusChangedAt }]
+        : [];
     },
     items: one,
     link: () => ({ page: "organisation", view: "documents" }),
@@ -426,7 +511,8 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     section: null,
     allowed: (actor) => roleNeedsPersonalIdentity(actor.role) && acting(actor),
     announcedBy: ["kyc_resubmission_required"],
-    collect: (facts) => (facts.viewerIdentity === "required" ? [{ kind: "identity" }] : []),
+    collect: (facts) =>
+      facts.viewerIdentity === "required" ? [{ kind: "identity", raisedAt: null }] : [],
     items: one,
     link: () => ({ page: "verify_identity" }),
   },
@@ -435,7 +521,10 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     section: null,
     allowed: acting,
     announcedBy: ["source_of_funds_documents_requested"],
-    collect: (facts) => (facts.sourceOfFundsRequested ? [{ kind: "source_of_funds" }] : []),
+    collect: (facts) =>
+      facts.sourceOfFundsRequested
+        ? [{ kind: "source_of_funds", raisedAt: facts.sourceOfFundsRequestedAt }]
+        : [],
     items: one,
     link: () => ({ page: "source_of_funds" }),
   },
@@ -447,7 +536,7 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     // The organisation's state decides, so the task, the banner and the sidebar badge agree.
     collect: (_facts, state) =>
       state.banner?.key === "payouts_not_set_up" && state.banner.audience === "act"
-        ? [{ kind: "payouts" }]
+        ? [{ kind: "payouts", raisedAt: null }]
         : [],
     items: one,
     link: () => ({ page: "organisation", view: "payouts" }),

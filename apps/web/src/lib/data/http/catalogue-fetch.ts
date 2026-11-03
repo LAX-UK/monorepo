@@ -21,6 +21,12 @@ export const CATALOGUE_FETCH_POLICIES = {
   home: revalidateFetchPolicy(60, [CATALOGUE_HOME_TAG]),
   artists: revalidateFetchPolicy(120, [CATALOGUE_ARTISTS_TAG]),
   megaMenu: revalidateFetchPolicy(300, [CATALOGUE_MEGA_MENU_TAG]),
+  /** Whether the live and ending-soon lists hold anything: reused for a minute. */
+  navActivity: revalidateFetchPolicy(60, [
+    CATALOGUE_MEGA_MENU_TAG,
+    CATALOGUE_SALES_TAG,
+    CATALOGUE_LOTS_TAG,
+  ]),
   /** Dev: always fresh so local press seed / admin edits show immediately. */
   press:
     process.env.NODE_ENV === "development"

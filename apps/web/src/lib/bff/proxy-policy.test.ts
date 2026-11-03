@@ -17,6 +17,7 @@ describe("Bid BFF proxy policy", () => {
   it("allows only named API roots and rejects traversal/open-proxy shapes", () => {
     expect(isApprovedProxyPath(["users", "me"])).toBe(true);
     expect(isApprovedProxyPath(["telephone-bookings", "booking-1"])).toBe(true);
+    expect(isApprovedProxyPath(["sale-alerts", "unsubscribe"])).toBe(true);
     expect(isApprovedProxyPath(["https:", "attacker.example"])).toBe(false);
     expect(isApprovedProxyPath(["internal", "jobs"])).toBe(false);
     expect(isApprovedProxyPath(["users", "..", "admin"])).toBe(false);
@@ -38,6 +39,13 @@ describe("Bid BFF proxy policy", () => {
     expect(headers.has("cookie")).toBe(false);
     expect(headers.has("connection")).toBe(false);
     expect(headers.get("content-type")).toBe("application/json");
+  });
+
+  it("passes the enquiry draft token on, so a visitor's photos can be uploaded", () => {
+    const headers = sanitizedProxyRequestHeaders(
+      new Headers({ "x-enquiry-draft": "body.signature" }),
+    );
+    expect(headers.get("x-enquiry-draft")).toBe("body.signature");
   });
 
   it("preserves safe response metadata but strips cookies and hop-by-hop headers", () => {

@@ -1,4 +1,5 @@
 import { errorCopy } from "@/lib/forms/error-copy";
+import { CONTACT_TOPICS } from "@auction/validators";
 import { z } from "zod";
 
 export const contactSchema = z.object({
@@ -7,7 +8,7 @@ export const contactSchema = z.object({
     .min(1, errorCopy.required("your name"))
     .max(120, errorCopy.maxLength(120, "your name")),
   email: z.string().min(1, errorCopy.required("your email address")).email(errorCopy.email),
-  topic: z.enum(["buying", "selling", "shipping", "press", "other"], {
+  topic: z.enum(CONTACT_TOPICS, {
     errorMap: () => ({ message: errorCopy.requiredChoice("a topic") }),
   }),
   message: z

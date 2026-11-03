@@ -39,6 +39,8 @@ const CalendarDateSchema = Type.String({ pattern: "^\\d{4}-\\d{2}-\\d{2}$" });
  */
 export const AdminOrderListQuerySchema = Type.Object({
   status: Type.Optional(OrderStatusSchema),
+  /** `failed` keeps only orders with a refund that could not be sent and needs a retry. */
+  refund: Type.Optional(Type.Literal("failed")),
   createdFrom: Type.Optional(CalendarDateSchema),
   createdTo: Type.Optional(CalendarDateSchema),
   q: Type.Optional(Type.String({ maxLength: ADMIN_ORDER_SEARCH_MAX_LENGTH })),
@@ -286,6 +288,8 @@ export type AdminStaffMemberList = Static<typeof AdminStaffMemberListSchema>;
 export const AdminOverviewKpisSchema = Type.Object({
   fulfilmentOpenCount: Type.Optional(Type.Integer()),
   payoutsDueCount: Type.Optional(Type.Integer()),
+  /** Refunds that could not be sent to the payment provider and wait for staff to retry. */
+  failedRefundsCount: Type.Optional(Type.Integer()),
   activeHoldsCount: Type.Optional(Type.Integer()),
   pendingAuthorityRequestsCount: Type.Optional(Type.Integer()),
   /**

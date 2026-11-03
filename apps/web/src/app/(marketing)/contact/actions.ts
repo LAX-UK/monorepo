@@ -2,7 +2,12 @@
 
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 
-import { consoleContactDispatcher } from "@/lib/contact/contact-dispatcher";
+import {
+  ContactDispatchError,
+  type ContactDispatcher,
+  type ContactPayload,
+  type EnquiryPayload,
+} from "@/lib/contact/contact-dispatcher";
 import {
   contactFormValuesSchema,
   contactSchema,
@@ -10,9 +15,10 @@ import {
   parseContactFormData,
   resolveContactName,
 } from "@/lib/contact/contact-input";
+import { sourcePage, visitorAddress } from "@/lib/contact/contact-request.server";
+import { httpContactDispatcher } from "@/lib/contact/http-contact-dispatcher.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { createInMemorySlidingWindowRateLimiter } from "@/lib/rate-limit/in-memory-rate-limiter";
-import { headers } from "next/headers";
 import type { z } from "zod";
 
 const rateLimiter = createInMemorySlidingWindowRateLimiter({
@@ -20,11 +26,31 @@ const rateLimiter = createInMemorySlidingWindowRateLimiter({
   maxPerWindow: 4,
 });
 
-async function rateLimitKey(): Promise<string> {
-  const h = await headers();
-  const fwd = h.get("x-forwarded-for");
-  const ip = fwd?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? "unknown";
-  return ip;
+const dispatcher: ContactDispatcher = httpContactDispatcher;
+
+const TOO_MANY = "Too many submissions. Please wait a minute and try again.";
+const SEND_FAILED = "We couldn't send your message. Please try again.";
+
+/** The contact form's message as a general enquiry, the first of the structured payloads. */
+function generalEnquiry(payload: ContactPayload): EnquiryPayload {
+  return { intent: "general", ...payload };
+}
+
+/** Sends the enquiry on; the failure message is the form's send-failed state, never a success. */
+async function send(
+  payload: ContactPayload,
+): Promise<{ ok: true } | { ok: false; error: string; status?: number }> {
+  try {
+    await dispatcher.dispatch(generalEnquiry({ ...payload, sourcePage: await sourcePage() }));
+    return { ok: true };
+  } catch (error) {
+    if (!(error instanceof ContactDispatchError)) throw error;
+    return {
+      ok: false,
+      error: error.status === 429 ? TOO_MANY : SEND_FAILED,
+      ...(error.status !== undefined ? { status: error.status } : {}),
+    };
+  }
 }
 
 export type ContactActionState = { ok: boolean; error?: string };
@@ -45,14 +71,13 @@ export async function submitContactForm(
         return { ok: false, error: "Please check the form and try again." };
       }
 
-      const key = await rateLimitKey();
+      const key = await visitorAddress();
       if (!rateLimiter.consume(key)) {
-        return { ok: false, error: "Too many submissions. Please wait a minute and try again." };
+        return { ok: false, error: TOO_MANY };
       }
 
-      await consoleContactDispatcher.dispatch(parsed.data);
-
-      return { ok: true };
+      const sent = await send(parsed.data);
+      return sent.ok ? { ok: true } : { ok: false, error: sent.error };
     },
     { formData },
   );
@@ -78,11 +103,11 @@ export async function submitContactFormResult(
     if (!parsed.success) {
       return actionFailure("Please check the form and try again.");
     }
-    const key = await rateLimitKey();
+    const key = await visitorAddress();
     if (!rateLimiter.consume(key)) {
-      return actionFailure("Too many submissions. Please wait a minute and try again.");
+      return actionFailure(TOO_MANY);
     }
-    await consoleContactDispatcher.dispatch(parsed.data);
-    return actionSuccess();
+    const sent = await send(parsed.data);
+    return sent.ok ? actionSuccess() : actionFailure(sent.error, undefined, sent.status);
   });
 }

@@ -9,6 +9,7 @@ import {
   shopPayoutLedger,
   shopProduct,
   shopProductVariant,
+  shopRefund,
   shopSaleAuthorityRequest,
   shopStockHold,
   shopUserProfile,
@@ -68,6 +69,11 @@ type OrderStatus = typeof shopOrder.$inferSelect.status;
  */
 function orderFilterConditions(input: AdminOrderListFilters): SQL[] {
   const conditions: SQL[] = [];
+  if (input.refund === "failed") {
+    conditions.push(
+      sql`exists (select 1 from ${shopRefund} where ${shopRefund.orderId} = ${shopOrder.id} and ${shopRefund.status} = 'failed')`,
+    );
+  }
   if (input.createdFrom) {
     conditions.push(
       sql`${shopOrder.createdAt} >= (${input.createdFrom}::date)::timestamp AT TIME ZONE 'Europe/London'`,
@@ -510,6 +516,13 @@ export function createDrizzleAdminReadRepository(
                     "awaiting_dispatch",
                   ]),
                 ),
+            ),
+          failedRefundsCount: () =>
+            count(
+              db
+                .select({ count: sql<number>`count(*)::int` })
+                .from(shopRefund)
+                .where(eq(shopRefund.status, "failed")),
             ),
           payoutsDueCount: () =>
             count(

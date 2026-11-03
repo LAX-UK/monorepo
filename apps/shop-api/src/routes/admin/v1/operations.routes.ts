@@ -54,6 +54,10 @@ const RequestRefundBodySchema = Type.Object({
   note: Type.Optional(Type.String({ maxLength: ADMIN_REFUND_NOTE_MAX_LENGTH })),
 });
 
+const RetryRefundBodySchema = Type.Object({
+  refundId: Type.String({ format: "uuid" }),
+});
+
 const MarkPayoutPaidBodySchema = Type.Object({
   payoutId: Type.String({ format: "uuid" }),
   paidReference: Type.String({ minLength: 1, maxLength: PAYOUT_PAID_REFERENCE_MAX_LENGTH }),
@@ -225,6 +229,35 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
         ...(body.orderLineId !== undefined ? { orderLineId: body.orderLineId } : {}),
         ...(body.reason !== undefined ? { reason: body.reason } : {}),
         ...(body.note?.trim() ? { note: body.note.trim() } : {}),
+      });
+      return { id: result.refundId, status: result.status };
+    },
+  );
+
+  app.post(
+    "/refunds/retry",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        body: RetryRefundBodySchema,
+        response: {
+          200: IdResponseSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "refund.write");
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
+      const subject = requireShopAdminSubject(request);
+      const body = request.body as { refundId: string };
+      const idempotencyKey = requireIdempotencyKey(request);
+      const result = await deps.retryRefund({
+        refundId: body.refundId,
+        actorSubjectId: subject,
+        idempotencyKey,
       });
       return { id: result.refundId, status: result.status };
     },

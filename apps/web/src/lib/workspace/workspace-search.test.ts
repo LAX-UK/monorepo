@@ -138,13 +138,13 @@ describe("account search results", () => {
 
   it("says what a narrower role does not search, and nothing for a full one", () => {
     expect(narrowerScopeNote(["consignments", "bids"], "Consignor")).toBe(
-      "Showing what a consignor can open. Purchases, works, invoices and people aren't searched.",
+      "Showing what a consignor can open. Purchases, collection, invoices and people aren't searched.",
     );
     expect(narrowerScopeNote(["purchases", "invoices", "works"], "Admin")).toMatch(
       /^Showing what an admin/,
     );
     expect(narrowerScopeNote(RESULT.searchable, "Owner")).toBeNull();
-    // Owners find won works under Purchases, so Works is not a gap for them.
+    // Owners find won works under Purchases, so Collection is not a gap for them.
     expect(
       narrowerScopeNote(["consignments", "purchases", "bids", "invoices", "members"], "Owner"),
     ).toBeNull();
@@ -274,6 +274,7 @@ describe("Needs-you counts in the menu", () => {
         kind: "outbid",
         lots: [{ id: "l1", title: "Sun over Arles", endsAt: new Date("2026-10-30T18:12:00.000Z") }],
         link: { page: "lot", id: "l1" },
+        raisedAt: null,
       },
     ]);
     expect(read?.truncated).toBe(true);

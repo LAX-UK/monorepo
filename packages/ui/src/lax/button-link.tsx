@@ -16,6 +16,8 @@ export type ButtonLinkProps = Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>
     /** Leading icon element, e.g. `<Plus />`. */
     icon?: React.ReactNode;
     prefetch?: boolean;
+    /** Forwarded to the app's link component; only meaningful with `Link`. */
+    scroll?: boolean;
   };
 
 /**

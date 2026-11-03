@@ -21,15 +21,13 @@ import {
   createDurableSecurityEffects,
   createSecurityNoticeService,
 } from "./container/create-security-services.js";
+import { createSubjectExportService } from "./container/create-subject-export.js";
 import { loadAuthEnv } from "./env.js";
 import { withAlertingLog } from "./infrastructure/alerting-log.js";
-import { DrizzleSubjectExportRepository } from "./infrastructure/drizzle-subject-export.repository.js";
-import { createSubjectExportReadSigner } from "./infrastructure/s3-subject-export-read-signer.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
 import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
 import { AccountDeletionService } from "./services/account-deletion.service.js";
 import { EmailChangeService } from "./services/email-change.service.js";
-import { SubjectExportService } from "./services/subject-export.service.js";
 import { createSubjectReadRateLimiter } from "./services/subject-read-rate-limiter.js";
 import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
 import { createAccountSubjectExportRegistry } from "./subject-export/create-account-subject-export-categories.js";
@@ -154,23 +152,11 @@ const accountDeletion = new AccountDeletionService({
   onProductUnavailable: (product, error) =>
     log.warn({ err: error, product }, "account_deletion_product_unavailable"),
 });
-const subjectExports = new SubjectExportService({
+const subjectExports = createSubjectExportService({
+  db,
+  env,
   operations: identityOperations,
-  repository: new DrizzleSubjectExportRepository(db, repositories.identityEventPublisher),
-  signer: createSubjectExportReadSigner(
-    env.SUBJECT_EXPORT_BUCKET &&
-      env.SUBJECT_EXPORT_REGION &&
-      env.SUBJECT_EXPORT_READ_ACCESS_KEY_ID &&
-      env.SUBJECT_EXPORT_READ_SECRET_ACCESS_KEY
-      ? {
-          bucket: env.SUBJECT_EXPORT_BUCKET,
-          region: env.SUBJECT_EXPORT_REGION,
-          endpoint: env.SUBJECT_EXPORT_ENDPOINT,
-          accessKeyId: env.SUBJECT_EXPORT_READ_ACCESS_KEY_ID,
-          secretAccessKey: env.SUBJECT_EXPORT_READ_SECRET_ACCESS_KEY,
-        }
-      : null,
-  ),
+  events: repositories.identityEventPublisher,
   notices: securityNotices,
 });
 const identityLifecycle = createIdentityLifecycleService({

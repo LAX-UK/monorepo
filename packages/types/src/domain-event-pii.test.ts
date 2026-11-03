@@ -155,3 +155,31 @@ describe("redactDomainEventPayload", () => {
     expect(out.note).toBe("[REDACTED]");
   });
 });
+
+describe("enquiry events", () => {
+  it("keeps the intent, department and status codes and redacts anything the sender wrote", () => {
+    const out = redactDomainEventPayload("marketing_enquiry.received", {
+      enquiryId: "e1",
+      intent: "private_sale_sell",
+      department: "paintings",
+      email: "ada@example.com",
+      message: "I have a Hockney",
+    }) as Record<string, unknown>;
+    expect(out).toMatchObject({
+      enquiryId: "e1",
+      intent: "private_sale_sell",
+      department: "paintings",
+      email: "[REDACTED]",
+      message: "[REDACTED]",
+    });
+    const changed = redactDomainEventPayload("marketing_enquiry.status_changed", {
+      enquiryId: "e1",
+      from: "in_progress",
+      to: "closed",
+      closeReason: "spam",
+      note: "internal",
+    }) as Record<string, unknown>;
+    expect(changed).toMatchObject({ from: "in_progress", to: "closed", closeReason: "spam" });
+    expect(changed.note).toBe("[REDACTED]");
+  });
+});

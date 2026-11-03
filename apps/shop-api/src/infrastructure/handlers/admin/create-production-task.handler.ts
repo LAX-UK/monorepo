@@ -1,11 +1,16 @@
-import { shopEdition, shopOrder, shopOrderLine, shopProductionTask } from "@auction/db/schema";
+import {
+  shopArtwork,
+  shopEdition,
+  shopOrder,
+  shopOrderLine,
+  shopProductionTask,
+} from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { and, eq } from "drizzle-orm";
 import { operatorContextAuditFields } from "../../../application/admin/operator-context.js";
 import { withAdminIdempotency } from "../../../application/admin/with-admin-idempotency.js";
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
-import { isPgUniqueViolation } from "../../../lib/pg-errors.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
 
 export type CreateProductionTaskCommand = {
@@ -15,6 +20,16 @@ export type CreateProductionTaskCommand = {
   idempotencyKey: string;
   operatorContext?: import("../../../application/admin/operator-context.js").ShopOperatorContext;
 };
+
+/** How the edition reads in the buyer's email. */
+function productionEditionLabel(edition: {
+  editionNumber: number | null;
+  proofNumber: number | null;
+}): string {
+  if (edition.editionNumber !== null) return `Edition ${edition.editionNumber}`;
+  if (edition.proofNumber !== null) return `Proof ${edition.proofNumber}`;
+  return "Open edition";
+}
 
 export type CreateProductionTaskResult = { taskId: string; status: "queued" };
 
@@ -51,7 +66,12 @@ export function createCreateProductionTaskHandler(deps: {
             );
           }
           const [order] = await shopPhaseDbSession(tx)
-            .select({ status: shopOrder.status, paidAt: shopOrder.paidAt })
+            .select({
+              status: shopOrder.status,
+              paidAt: shopOrder.paidAt,
+              reference: shopOrder.reference,
+              identitySubjectId: shopOrder.identitySubjectId,
+            })
             .from(shopOrder)
             .where(eq(shopOrder.id, line.orderId))
             .limit(1);
@@ -63,49 +83,41 @@ export function createCreateProductionTaskHandler(deps: {
             );
           }
           const [edition] = await shopPhaseDbSession(tx)
-            .select({ id: shopEdition.id })
+            .select({
+              id: shopEdition.id,
+              artworkId: shopEdition.artworkId,
+              editionNumber: shopEdition.editionNumber,
+              proofNumber: shopEdition.proofNumber,
+            })
             .from(shopEdition)
             .where(and(eq(shopEdition.id, command.editionId), eq(shopEdition.id, line.editionId)))
             .limit(1);
           if (!edition) {
             throw notFound("Edition");
           }
-          let result: CreateProductionTaskResult;
-          let createdNew = true;
-          try {
-            const [task] = await shopPhaseDbSession(tx)
-              .insert(shopProductionTask)
-              .values({
-                orderLineId: command.orderLineId,
-                editionId: command.editionId,
-                status: "queued",
-                assignedToSubjectId: command.actorSubjectId,
-              })
-              .returning({ id: shopProductionTask.id });
-            if (!task) {
-              throw new Error("Failed to create production task");
-            }
-            result = { taskId: task.id, status: "queued" };
-          } catch (err) {
-            if (isPgUniqueViolation(err)) {
-              const [existing] = await shopPhaseDbSession(tx)
-                .select({ id: shopProductionTask.id })
-                .from(shopProductionTask)
-                .where(eq(shopProductionTask.orderLineId, command.orderLineId))
-                .limit(1);
-              if (!existing) {
-                throw err;
-              }
-              result = { taskId: existing.id, status: "queued" };
-              createdNew = false;
-            } else {
-              throw err;
-            }
+          // The order line is locked above, so no second task can appear between this read and the
+          // insert. A unique violation here would abort the transaction, so it is checked first.
+          const [existing] = await shopPhaseDbSession(tx)
+            .select({ id: shopProductionTask.id })
+            .from(shopProductionTask)
+            .where(eq(shopProductionTask.orderLineId, command.orderLineId))
+            .limit(1);
+          if (existing) {
+            return { taskId: existing.id, status: "queued" };
           }
-
-          if (!createdNew) {
-            return result;
+          const [task] = await shopPhaseDbSession(tx)
+            .insert(shopProductionTask)
+            .values({
+              orderLineId: command.orderLineId,
+              editionId: command.editionId,
+              status: "queued",
+              assignedToSubjectId: command.actorSubjectId,
+            })
+            .returning({ id: shopProductionTask.id });
+          if (!task) {
+            throw new Error("Failed to create production task");
           }
+          const result: CreateProductionTaskResult = { taskId: task.id, status: "queued" };
 
           await tx.audit.append({
             actorSubjectId: command.actorSubjectId,
@@ -129,6 +141,20 @@ export function createCreateProductionTaskHandler(deps: {
               orderLineId: command.orderLineId,
               editionId: command.editionId,
             },
+          });
+          const [artwork] = await shopPhaseDbSession(tx)
+            .select({ title: shopArtwork.title })
+            .from(shopArtwork)
+            .where(eq(shopArtwork.id, edition.artworkId))
+            .limit(1);
+          // Sent only for a task created by this command; a repeat finds the task and returns early.
+          await tx.notifications.queueProductionStarted(tx.session, {
+            idempotencyKey: `production-started:${result.taskId}`,
+            identitySubjectId: order.identitySubjectId,
+            fallbackEmail: null,
+            orderReference: order.reference,
+            artworkTitle: artwork?.title ?? "Your print",
+            editionLabel: productionEditionLabel(edition),
           });
           return result;
         },

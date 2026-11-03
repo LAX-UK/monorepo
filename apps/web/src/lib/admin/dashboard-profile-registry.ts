@@ -5,7 +5,7 @@ import {
   AML_REVIEW_ACCESS,
   type CapabilityRequirement,
   FINANCE_ACCESS,
-  LOTS_ACCESS,
+  LOT_FULFILMENT_ACCESS,
   NO_STAFF_ROLES,
   SALEROOM_ACCESS,
   SUBMISSIONS_ACCESS,
@@ -163,7 +163,7 @@ const PROFILES: Record<DashboardProfileId, DashboardProfile> = {
     primaryAction: {
       href: "/admin/lot-fulfilment",
       label: "Open fulfilment",
-      requirement: LOTS_ACCESS,
+      requirement: LOT_FULFILMENT_ACCESS,
       fallbackHref: "/admin/clients",
       fallbackLabel: "Open clients",
     },

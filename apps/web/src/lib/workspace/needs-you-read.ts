@@ -19,6 +19,8 @@ export type NeedsYouResponse = {
 
 const subject = z.object({ id: z.string(), title: z.string() });
 const date = z.coerce.date();
+/** When the task arose; `null` when no record says. An older API sends none, which reads as `null`. */
+const raisedAt = date.nullable().catch(null);
 
 const link = z.discriminatedUnion("page", [
   z.object({ page: z.literal("lot"), id: z.string() }),
@@ -37,7 +39,7 @@ const link = z.discriminatedUnion("page", [
 ]) satisfies z.ZodType<NeedsYouLink>;
 
 const purchases = z.array(subject);
-const withLink = <T extends z.ZodRawShape>(shape: T) => z.object({ ...shape, link });
+const withLink = <T extends z.ZodRawShape>(shape: T) => z.object({ ...shape, link, raisedAt });
 
 const task = z.discriminatedUnion("kind", [
   withLink({

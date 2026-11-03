@@ -1,8 +1,14 @@
 "use client";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
-import { formatLondonDateTime } from "@/lib/datetime/london-time";
-import { formatCountdownAriaLabel, parseCountdownSegments } from "@/lib/format-countdown";
+import { formatLondonWhen } from "@/lib/datetime/london-time";
+import {
+  COUNTDOWN_DATE_BEYOND_MS,
+  countdownTiles,
+  formatCountdownAnnounce,
+  formatCountdownAriaLabel,
+  formatCountdownSpoken,
+} from "@/lib/format-countdown";
 import {
   type CountdownTone,
   countdownTone,
@@ -30,26 +36,9 @@ type Props = {
   endTime?: Date | string;
 };
 
-function formatAnnounceBucket(secondsRemaining: number): string {
-  if (secondsRemaining <= 0) return "Ended";
-  const d = Math.floor(secondsRemaining / 86_400);
-  const h = Math.floor((secondsRemaining % 86_400) / 3600);
-  const m = Math.floor((secondsRemaining % 3600) / 60);
-  if (d > 0) return `${d} day${d === 1 ? "" : "s"} ${h} hour${h === 1 ? "" : "s"}`;
-  if (h > 0) return `${h} hour${h === 1 ? "" : "s"} ${m} minute${m === 1 ? "" : "s"}`;
-  return `${m} minute${m === 1 ? "" : "s"}`;
-}
-
 function formatOpensAriaLabel(ms: number): string {
   if (ms <= 0) return "Sale has opened";
-  const { days, hours, minutes } = parseCountdownSegments(ms);
-  const parts: string[] = [];
-  if (days > 0) parts.push(`${days} day${days === 1 ? "" : "s"}`);
-  if (hours > 0) parts.push(`${hours} hour${hours === 1 ? "" : "s"}`);
-  if (minutes > 0 || parts.length === 0) {
-    parts.push(`${minutes} minute${minutes === 1 ? "" : "s"}`);
-  }
-  return `Opens in ${parts.join(", ")}`;
+  return `Opens in ${formatCountdownSpoken(ms)}`;
 }
 
 function pad2(n: number): string {
@@ -86,7 +75,7 @@ function SegmentChip({ value, unit, tone, ended, placeholder }: SegmentChipProps
   );
 }
 
-/** Segmented marketing countdown (Days / Hours / Min / Sec) with urgency styling. */
+/** Segmented marketing countdown (the two largest units; seconds only in the final hour) with urgency styling. */
 export function MarketingCountdownPanel({
   label,
   endIso,
@@ -124,7 +113,7 @@ export function MarketingCountdownPanel({
   }, [nowMs, endMs]);
 
   const ended = msLeft === 0 && nowMs != null;
-  const segments = msLeft != null ? parseCountdownSegments(msLeft) : null;
+  const tiles = countdownTiles(msLeft ?? 0);
   const tone: CountdownTone = msLeft != null ? countdownTone(msLeft) : "calm";
 
   const ariaLabel =
@@ -135,7 +124,7 @@ export function MarketingCountdownPanel({
         : formatOpensAriaLabel(msLeft);
 
   const secondsRemaining = msLeft != null ? Math.floor(msLeft / 1000) : null;
-  const bucket = secondsRemaining != null ? formatAnnounceBucket(secondsRemaining) : "";
+  const bucket = secondsRemaining != null ? formatCountdownAnnounce(secondsRemaining * 1000) : "";
   const [liveMessage, setLiveMessage] = useState("");
   useEffect(() => {
     if (secondsRemaining == null || ended) return;
@@ -143,22 +132,27 @@ export function MarketingCountdownPanel({
     setLiveMessage((prev) => (prev === msg ? prev : msg));
   }, [bucket, ended, label, secondsRemaining]);
 
-  const showDays = segments != null && segments.days > 0;
-  const placeholder = segments == null && !ended;
+  const placeholder = msLeft == null && !ended;
 
   if (isActiveSaleroomCountdown && effectiveEndIso == null) {
     return null;
   }
 
-  // Something that has not opened is told by the time rule, not by ticking segments: a date
-  // beyond a week, then days and hours, hours and minutes, minutes. Before the clock is known the
+  // Something that has not opened, or that closes beyond a week, is told by the time rule, not by
+  // ticking segments: a date beyond a week, then days and hours, hours and minutes, minutes. Before the clock is known the
   // date is always true.
-  if (!showLiveDot && !ended && Number.isFinite(endMs) && effectiveEndIso != null) {
+  const beyondAWeek = msLeft != null && msLeft > COUNTDOWN_DATE_BEYOND_MS;
+  if (
+    (!showLiveDot || beyondAWeek) &&
+    !ended &&
+    Number.isFinite(endMs) &&
+    effectiveEndIso != null
+  ) {
     const target = new Date(endMs);
     const line =
       nowMs != null
         ? opensLine(target, new Date(nowMs), label.replace(/ in$/, ""))
-        : { label: label.replace(/ in$/, ""), value: formatLondonDateTime(target) };
+        : { label: label.replace(/ in$/, ""), value: formatLondonWhen(target) };
     return (
       <div className={cn("text-left", className)}>
         <p className="font-body text-base text-on-surface">
@@ -180,7 +174,7 @@ export function MarketingCountdownPanel({
   }
 
   if (reduced && Number.isFinite(endMs) && effectiveEndIso != null) {
-    const formatted = formatLondonDateTime(toDisplayDate(effectiveEndIso));
+    const formatted = formatLondonWhen(toDisplayDate(effectiveEndIso));
     return (
       <div className={cn("text-left", className)}>
         <LabelCaps className="inline-flex items-center gap-2 text-on-surface-variant">
@@ -217,40 +211,17 @@ export function MarketingCountdownPanel({
           </span>
           <time dateTime={effectiveEndIso} className="mt-3 block" suppressHydrationWarning>
             <span className="sr-only">{ariaLabel}</span>
-            <div
-              className={cn("grid max-w-xs gap-2", showDays ? "grid-cols-4" : "grid-cols-3")}
-              aria-hidden
-            >
-              {showDays ? (
+            <div className="grid max-w-[11rem] grid-cols-2 gap-2" aria-hidden>
+              {tiles.map((tile) => (
                 <SegmentChip
-                  value={segments?.days ?? 0}
-                  unit="Days"
+                  key={tile.unit}
+                  value={tile.value}
+                  unit={tile.unit}
                   tone={tone}
                   ended={ended}
                   placeholder={placeholder}
                 />
-              ) : null}
-              <SegmentChip
-                value={segments?.hours ?? 0}
-                unit="Hours"
-                tone={tone}
-                ended={ended}
-                placeholder={placeholder}
-              />
-              <SegmentChip
-                value={segments?.minutes ?? 0}
-                unit="Min"
-                tone={tone}
-                ended={ended}
-                placeholder={placeholder}
-              />
-              <SegmentChip
-                value={segments?.seconds ?? 0}
-                unit="Sec"
-                tone={tone}
-                ended={ended}
-                placeholder={placeholder}
-              />
+              ))}
             </div>
           </time>
         </>
@@ -271,5 +242,5 @@ export function formatCountdownSecondaryLine(
   if (!iso) return null;
   const d = toDisplayDate(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return `${prefix} ${formatLondonDateTime(d)}`;
+  return `${prefix} ${formatLondonWhen(d)}`;
 }

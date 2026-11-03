@@ -173,6 +173,27 @@ export function formatRelativeTime(
   return formatDate(d, locale);
 }
 
+/**
+ * When something happened, measured from `now`: relative within the last day ("3 hours ago",
+ * "just now"), otherwise the date in the house style ("29 Oct 2026"). A time ahead of `now`
+ * (clock skew) reads as "just now" rather than a date in the future.
+ */
+export function formatEventTime(
+  value: Date | string | number | null | undefined,
+  now: Date,
+  locale = DEFAULT_DATE_LOCALE,
+): string {
+  const d = toDate(value);
+  if (!d) return "—";
+  const elapsedMs = now.getTime() - d.getTime();
+  if (elapsedMs >= 24 * 3_600_000) return formatDateInline(d, locale);
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  const minutes = Math.floor(Math.max(elapsedMs, 0) / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return rtf.format(-minutes, "minute");
+  return rtf.format(-Math.floor(minutes / 60), "hour");
+}
+
 /** Percent, e.g. 12.5% */
 export function formatPercent(value: number, locale = DEFAULT_DATE_LOCALE): string {
   return new Intl.NumberFormat(locale, {

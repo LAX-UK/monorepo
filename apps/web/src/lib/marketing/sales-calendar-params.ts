@@ -1,4 +1,5 @@
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
+import { PRIVATE_SALES_PATH } from "@/lib/marketing/private-sales";
 import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
 import type { SaleDeliveryMode } from "@auction/types";
 
@@ -54,7 +55,7 @@ export function resolveDefaultCalendarPrimaryTab(hasLiveSales: boolean): Calenda
 
 /**
  * Where a retired calendar section now lives, or null when the URL does not ask for one.
- * New lots is a sort on search; private sales are enquiries handled by the specialists.
+ * New lots is a sort on search; private sales are an enquiry page under Sell.
  */
 export function resolveRetiredCalendarTabHref(
   sp: Record<string, string | string[] | undefined>,
@@ -63,7 +64,7 @@ export function resolveRetiredCalendarTabHref(
     case "newlots":
       return "/search?sort=createdDesc";
     case "privatesales":
-      return "/contact?intent=private-sale";
+      return PRIVATE_SALES_PATH;
     default:
       return null;
   }

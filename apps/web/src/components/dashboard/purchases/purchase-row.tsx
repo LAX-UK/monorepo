@@ -1,6 +1,8 @@
 "use client";
 
 import { MediaImage } from "@/components/ui/media-image";
+import { RowStep } from "@/components/workspace/row-step";
+import { purchaseRowStep } from "@/lib/purchases/purchase-row-step";
 import type { PurchaseCardVm } from "@/lib/purchases/purchases.vm";
 import { notify } from "@/lib/ui/notify";
 import {
@@ -9,8 +11,7 @@ import {
   RecordRow,
   RecordRowMedia,
 } from "@auction/ui";
-import { Checkbox } from "@auction/ui/components/checkbox";
-import { StatusBadge } from "@auction/ui/lax";
+import { Checkbox, StatusBadge } from "@auction/ui/lax";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -32,13 +33,17 @@ export function PurchaseRow({
   card,
   selection,
   selectColumn,
+  onPay,
 }: {
   card: PurchaseCardVm;
   /** Some row of the list can be picked, so every row keeps the box's column. */
   selectColumn: boolean;
   /** Set while the member can pick this invoice to pay together with others. */
   selection: { selected: boolean; onSelectedChange: (selected: boolean) => void } | null;
+  /** Pays this invoice on its own. */
+  onPay: (card: PurchaseCardVm) => void;
 }) {
+  const step = purchaseRowStep(card);
   const router = useRouter();
   const menu: InlineActionMenuItem[] = [
     { type: "item", label: "View purchase", onSelect: () => router.push(card.detailHref) },
@@ -77,7 +82,6 @@ export function PurchaseRow({
                 checked={selection.selected}
                 onCheckedChange={(checked) => selection.onSelectedChange(checked === true)}
                 aria-label={`Pay ${card.title}`}
-                className="size-5 rounded-[5px] border-lax-control-edge bg-lax-surface shadow-none data-[state=checked]:border-lax-ink data-[state=checked]:bg-lax-ink data-[state=checked]:text-lax-on-ink focus-visible:ring-lax-focus"
               />
             </span>
           ) : selectColumn ? (
@@ -98,6 +102,20 @@ export function PurchaseRow({
           {card.badge.label}
         </StatusBadge>
       }
+      action={
+        step ? (
+          step.kind === "pay" ? (
+            <RowStep
+              label={step.label}
+              accessibleName={step.accessibleName}
+              onSelect={() => onPay(card)}
+            />
+          ) : (
+            <RowStep label={step.label} accessibleName={step.accessibleName} href={step.href} />
+          )
+        ) : null
+      }
+      needsYou={step !== null}
       menu={<InlineActionMenu label={`More for ${card.title}`} items={menu} />}
     />
   );

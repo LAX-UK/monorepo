@@ -27,9 +27,8 @@ export const subjectDataExport = pgTable(
   "subject_data_export",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    subjectId: text("subject_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+    /** Set to null if the user row is ever hard-deleted: the record that a request was answered is kept. */
+    subjectId: text("subject_id").references(() => user.id, { onDelete: "set null" }),
     status: text("status").notNull().default("requested"),
     /** `{ account|bid|shop: waiting|collecting|done|retrying }`. */
     productProgress: jsonb("product_progress").notNull(),
@@ -93,7 +92,7 @@ export const subjectDataExportAudit = pgTable(
     exportId: uuid("export_id")
       .notNull()
       .references(() => subjectDataExport.id, { onDelete: "cascade" }),
-    subjectId: text("subject_id").notNull(),
+    subjectId: text("subject_id"),
     event: text("event").notNull(),
     sessionId: text("session_id"),
     ipAddress: text("ip_address"),

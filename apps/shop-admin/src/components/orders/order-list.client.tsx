@@ -224,6 +224,15 @@ export function OrderList({
           },
         ]
       : []),
+    ...(query.refund
+      ? [
+          {
+            id: "refund",
+            label: "Failed refunds",
+            onRemove: () => navigate(orderListHref(query, { refund: null })),
+          },
+        ]
+      : []),
     ...(createdLabel
       ? [
           {

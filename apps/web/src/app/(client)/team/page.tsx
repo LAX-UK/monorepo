@@ -43,7 +43,6 @@ export default async function TeamMembersPage() {
       <WorkspaceTabNoAccess
         access={access}
         legalEntityId={acting.id}
-        organisationName={acting.displayName}
         actor={actor}
         userId={user.id}
       />
@@ -71,6 +70,7 @@ export default async function TeamMembersPage() {
   const rows = memberRowViews({
     actor: changeActor,
     members,
+    twoStepRequired: twoStep?.policy.required ?? false,
     twoFactorByUserId: twoStep
       ? Object.fromEntries(twoStep.members.map((m) => [m.userId, m.twoFactorEnabled]))
       : undefined,

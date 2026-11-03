@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
-import { uploadObject } from "@auction/db/schema";
-import { and, eq, lt } from "drizzle-orm";
+import { marketingEnquiryAttachment, uploadObject } from "@auction/db/schema";
+import { ENQUIRY_UPLOAD_KINDS } from "@auction/domain";
+import { and, eq, inArray, lt, notExists } from "drizzle-orm";
 import type {
   IUploadValidationRepository,
   ObjectHead,
@@ -62,6 +63,25 @@ export class DrizzleUploadValidationRepository implements IUploadValidationRepos
       .select({ id: uploadObject.id, key: uploadObject.key })
       .from(uploadObject)
       .where(and(eq(uploadObject.status, "pending"), lt(uploadObject.expiresAt, now)))
+      .limit(100);
+  }
+
+  async findExpiredUnsentEnquiryUploads(now: Date): Promise<Array<{ id: string; key: string }>> {
+    return this.db
+      .select({ id: uploadObject.id, key: uploadObject.key })
+      .from(uploadObject)
+      .where(
+        and(
+          inArray(uploadObject.kind, [...ENQUIRY_UPLOAD_KINDS]),
+          lt(uploadObject.expiresAt, now),
+          notExists(
+            this.db
+              .select({ one: marketingEnquiryAttachment.id })
+              .from(marketingEnquiryAttachment)
+              .where(eq(marketingEnquiryAttachment.uploadObjectId, uploadObject.id)),
+          ),
+        ),
+      )
       .limit(100);
   }
 

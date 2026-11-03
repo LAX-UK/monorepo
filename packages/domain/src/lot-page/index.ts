@@ -16,9 +16,11 @@ export {
 } from "./lifecycle-copy.js";
 export {
   TIME_LEFT_BANDS,
+  TIME_LEFT_DATE_BEYOND_MS,
   TIME_LEFT_MARKS,
   formatTimeLeft,
   timeLeftBand,
+  timeLeftShowsSeconds,
   timeLeftView,
   timeMarkCrossed,
   type TimeLeftBand,
@@ -67,6 +69,22 @@ export {
   type PublicBidHistory,
   type PublicBidHistoryEntry,
 } from "./public-bid-history.js";
+export {
+  cardPriceLine,
+  type CardPriceLine,
+  type CardPriceLineInput,
+} from "./card-price-line.js";
+export {
+  CONNECTION_NOTICES,
+  CONNECTION_NOTICE_AFTER_MS,
+  CONNECTION_PAUSED_AFTER_MS,
+  CONNECTION_RESTORED_FOR_MS,
+  connectionNoticeFor,
+  type ConnectionNoticeCopy,
+  type ConnectionNoticeInput,
+  type ConnectionNoticeKind,
+  type LiveConnectionKind,
+} from "./connection-notice.js";
 export {
   cardStateLine,
   type CardStateAction,

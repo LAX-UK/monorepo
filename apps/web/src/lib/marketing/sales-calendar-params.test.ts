@@ -150,10 +150,8 @@ describe("resolveRetiredCalendarTabHref", () => {
     expect(resolveRetiredCalendarTabHref({ tab: "newlots" })).toBe("/search?sort=createdDesc");
   });
 
-  it("sends private sales to the enquiry form", () => {
-    expect(resolveRetiredCalendarTabHref({ tab: "privateSales" })).toBe(
-      "/contact?intent=private-sale",
-    );
+  it("sends private sales to the enquiry page", () => {
+    expect(resolveRetiredCalendarTabHref({ tab: "privateSales" })).toBe("/sell/private-sales");
   });
 
   it("leaves current tabs and a missing tab alone", () => {

@@ -218,7 +218,7 @@ export class SubjectExportService {
       decideProgress(row, report, now),
     );
     if (!changed) return "ignored";
-    if (report.event === "ready" && changed.after.expiresAt) {
+    if (report.event === "ready" && changed.after.expiresAt && changed.after.subjectId) {
       await this.ports.notices.notify({
         kind: "data_export_ready",
         userId: changed.after.subjectId,

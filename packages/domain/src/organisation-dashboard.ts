@@ -16,7 +16,12 @@ export type UpcomingSaleFigure = {
   id: string;
   title: string;
   startsAt: Date;
+  endsAt: Date;
+  /** Open for bidding now. */
+  live: boolean;
   works: number;
+  /** Images of the organisation's works in the sale, in lot order, at most `SALE_CARD_IMAGES`. */
+  images: string[];
   /** Estimate totals per currency, over the works that have an estimate. */
   estimates: EstimateTotal[];
 };
@@ -417,6 +422,8 @@ export type OrganisationDashboardModel = {
   upcomingSales: UpcomingSaleFigure[];
   /** Works by stage, or `null` when the section is hidden. */
   progress: ConsignmentProgressCounts | null;
+  /** The sections count only the works this member sent, not the organisation's. */
+  ownWorks: boolean;
 };
 
 function isFirstRun(actor: EntityActor, figures: DashboardFigures): boolean {
@@ -453,6 +460,7 @@ export function buildOrganisationDashboard(
       tiles: [],
       upcomingSales: [],
       progress: null,
+      ownWorks: false,
     };
   }
   const tiles = tileSpecsFor(actor).flatMap((spec) => {
@@ -472,6 +480,7 @@ export function buildOrganisationDashboard(
       sections.has("consignment_progress") && progress && consignmentsInProgress(progress) > 0
         ? progress
         : null,
+    ownWorks: dashboardFigureScope(actor, "upcomingSales") === "own",
   };
 }
 
@@ -509,6 +518,9 @@ export type UpcomingSaleRow = {
   saleId: string;
   title: string;
   startsAt: Date;
+  endsAt: Date;
+  live: boolean;
+  images: readonly string[];
   currency: string;
   works: number;
   /** Works in this row with an estimate, and their estimate totals. */
@@ -516,6 +528,9 @@ export type UpcomingSaleRow = {
   estimateLow: string;
   estimateHigh: string;
 };
+
+/** Works shown on a sale's card. */
+export const SALE_CARD_IMAGES = 3;
 
 /** Folds per-currency rows into one figure per sale, soonest first. */
 export function upcomingSaleFigures(rows: readonly UpcomingSaleRow[]): UpcomingSaleFigure[] {
@@ -525,11 +540,15 @@ export function upcomingSaleFigures(rows: readonly UpcomingSaleRow[]): UpcomingS
       id: row.saleId,
       title: row.title,
       startsAt: row.startsAt,
+      endsAt: row.endsAt,
+      live: row.live,
       works: 0,
+      images: [],
       estimates: [],
       rows: [],
     };
     sale.works += row.works;
+    sale.images = [...new Set([...sale.images, ...row.images])].slice(0, SALE_CARD_IMAGES);
     sale.rows.push(row);
     bySale.set(row.saleId, sale);
   }

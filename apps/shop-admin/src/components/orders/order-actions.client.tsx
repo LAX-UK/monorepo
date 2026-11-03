@@ -6,12 +6,27 @@ import { useAdminMutation } from "@/components/use-admin-mutation";
 import {
   cancelOrderAfterPossession,
   createProductionTask,
+  retryOrderRefund,
 } from "@/server/application/admin-operations-actions.server";
 import { GUEST_ERASURE_COPY, guestErasureMenuReason } from "@/server/domain/guest-erasure.vm";
-import { orderLineLabel } from "@/server/domain/order-detail.vm";
+import { cancelAfterPossessionDescription, orderLineLabel } from "@/server/domain/order-detail.vm";
 import type { AdminGuestErasureState, AdminOrderDetail } from "@auction/shop-contracts";
-import { ConfirmActionDialog, OverflowMenu, StaffButton, toast } from "@auction/staff-ui";
-import { Copy, CreditCard, Eraser, Factory, Undo2, XCircle } from "@auction/staff-ui/icons";
+import {
+  ConfirmActionDialog,
+  OverflowMenu,
+  StaffButton,
+  formatGbp,
+  toast,
+} from "@auction/staff-ui";
+import {
+  Copy,
+  CreditCard,
+  Eraser,
+  Factory,
+  RotateCw,
+  Undo2,
+  XCircle,
+} from "@auction/staff-ui/icons";
 import { useState } from "react";
 
 /**
@@ -149,11 +164,54 @@ export function SendToProductionButton({ line }: { line: Line }) {
   );
 }
 
-/** A line's own actions: cancelling after possession needs the line's edition, taken from it. */
-export function OrderLineMenu({ line, canCancel }: { line: Line; canCancel: boolean }) {
+/**
+ * Puts a failed refund back in the queue to be sent to the customer's card. The same refund is
+ * reused, so retrying twice never refunds twice.
+ */
+export function RetryRefundButton({ refundId, label }: { refundId: string; label: string }) {
+  const mutation = useAdminMutation();
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <StaffButton
+        size="sm"
+        variant="secondary"
+        requires="refund.write"
+        icon={<RotateCw aria-hidden />}
+        loading={mutation.pending}
+        aria-label={`Retry refund of ${label}`}
+        onClick={() =>
+          mutation.run(
+            () => retryOrderRefund({ refundId, idempotencyKey: mutation.idempotencyKey }),
+            "Refund sent again",
+          )
+        }
+      >
+        Retry refund
+      </StaffButton>
+      {mutation.message ? (
+        <p role="alert" className="text-staff-xs text-staff-danger">
+          {mutation.message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * A line's own actions: cancelling after possession needs the line's edition, taken from it, and
+ * says exactly what it refunds.
+ */
+export function OrderLineMenu({
+  line,
+  refundPence,
+}: {
+  line: Line;
+  /** What cancelling refunds to the customer; null when the line cannot be cancelled. */
+  refundPence: number | null;
+}) {
   const mutation = useAdminMutation();
   const [confirming, setConfirming] = useState(false);
-  if (!canCancel || !line.editionId) return null;
+  if (refundPence === null || !line.editionId) return null;
   const editionId = line.editionId;
   return (
     <>
@@ -175,8 +233,8 @@ export function OrderLineMenu({ line, canCancel }: { line: Line; canCancel: bool
         open={confirming}
         onOpenChange={setConfirming}
         title={`Cancel ${orderLineLabel(line)}?`}
-        description="Use this when the customer returns an item they already have. The edition goes back into stock; refund the customer separately."
-        confirmLabel="Cancel item"
+        description={cancelAfterPossessionDescription(refundPence)}
+        confirmLabel={`Cancel and refund ${formatGbp(refundPence)}`}
         tone="danger"
         loading={mutation.pending}
         onConfirm={async () => {

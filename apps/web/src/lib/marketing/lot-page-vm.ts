@@ -1,6 +1,5 @@
 import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
 import type { BidHistoryEntry } from "@/lib/bid/bid-history-entry";
-import { shouldShowBidStickyMobileBar } from "@/lib/bid/bid-sticky-mobile-bar.logic";
 import { type BiddingAccount, resolveBiddingAccount } from "@/lib/bid/bidding-account";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
 import { splitBuyerMembershipsByState } from "@/lib/bid/buyer-entity-state";
@@ -98,7 +97,6 @@ export type LotPageViewModel = {
   showPreviewRibbon: boolean;
   isSaleQueueLoading: boolean;
   lotTimerState: ReturnType<typeof classifyLotTimerState>;
-  initialMarketingBidBarActive: boolean;
   onsiteOverviewVM: ReturnType<typeof mapSaleToOverviewVM> | null;
   saleRegistrationBidGate: ReturnType<typeof buildSaleRegistrationBidGate>;
   isOwnLot: boolean;
@@ -310,16 +308,6 @@ export function buildLotPageViewModel(input: {
   const showPreviewRibbon = previewLife.kind === "preLaunch";
   const isSaleQueueLoading = Boolean(auction.saleId && saleBundle === null);
   const lotTimerState = classifyLotTimerState(toLotCardTimingVM(lifecycleLotPick), serverNow);
-  const biddingLiveAtSsr =
-    previewLife.kind === "live" ||
-    previewLife.kind === "extended" ||
-    previewLife.kind === "liveSaleroom" ||
-    previewLife.kind === "saleroomPaused";
-  const initialMarketingBidBarActive = shouldShowBidStickyMobileBar({
-    live: biddingLiveAtSsr,
-    lifecycleKind: previewLife.kind,
-    timerState: lotTimerState,
-  });
 
   const onsiteOverviewVM = saleBundle
     ? mapSaleToOverviewVM(saleBundle.sale, {
@@ -450,7 +438,6 @@ export function buildLotPageViewModel(input: {
     showPreviewRibbon,
     isSaleQueueLoading,
     lotTimerState,
-    initialMarketingBidBarActive,
     onsiteOverviewVM,
     saleRegistrationBidGate,
     isOwnLot,

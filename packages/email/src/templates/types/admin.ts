@@ -5,11 +5,25 @@ const names = [
   "lot-voided-anti-shilling-admin",
   "staff-role-expired",
   "staff-role-changed",
+  "marketing-enquiry-alert",
 ] as const;
 
 type AdminTemplateName = (typeof names)[number];
 
 type AdminTemplateVars = {
+  /** A contact form message, sent to the staff enquiry inbox. */
+  "marketing-enquiry-alert": {
+    topicLabel: string;
+    name: string;
+    /** The sender's address; staff reply to it. */
+    senderEmail: string;
+    phone?: string;
+    message: string;
+    /** The page the form was sent from. */
+    sourcePage?: string;
+    /** Where client services open the enquiry. */
+    adminEnquiryUrl: string;
+  };
   "admin-impersonation-notice": {
     recipientFirstName?: string | null;
     entityName: string;
@@ -66,6 +80,7 @@ export const adminTemplates = {
     "lot-voided-anti-shilling-admin": "live",
     "staff-role-expired": "live",
     "staff-role-changed": "live",
+    "marketing-enquiry-alert": "snapshot",
   },
 } satisfies TemplateDomainSlice<AdminTemplateName, AdminTemplateVars>;
 

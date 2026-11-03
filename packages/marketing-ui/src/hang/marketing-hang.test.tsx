@@ -265,6 +265,19 @@ describe("MarketingHang", () => {
     });
   });
 
+  it("draws a work on its sheet when given an inset, and bare otherwise", () => {
+    const [plain, sheet] = makeWorks(2);
+    if (!plain || !sheet) throw new Error("fixture");
+    const { container } = render(
+      <MarketingHang title="New editions" works={[plain, { ...sheet, sheetInset: 0.07 }]} />,
+    );
+    const items = container.querySelectorAll("li");
+    expect(items[0]?.style.getPropertyValue("--sheet-inset")).toBe("");
+    expect(items[1]?.style.getPropertyValue("--sheet-inset")).toBe("0.07");
+    expect(items[1]?.querySelector("img")?.className).toContain("size-full");
+    expect(items[0]?.querySelector("img")?.className).not.toContain("size-full");
+  });
+
   it("caps the wall at twelve works", () => {
     render(<MarketingHang title="In this sale" works={makeWorks(15)} />);
     expect(screen.getByText("Work 12")).toBeInTheDocument();
