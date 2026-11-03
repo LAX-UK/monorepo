@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { ContainerPostmarkWebhookRoutesSlice } from "../../container.js";
+import { sharedSecretMatches } from "../../lib/shared-secret.js";
 import type { PostmarkWebhookPayload } from "../../services/postmark-webhook.service.js";
 
 let warnedMissingAuth = false;
@@ -37,5 +38,5 @@ function isAuthorized(header: string | undefined, expected: string | undefined):
   }
   if (!header?.startsWith("Basic ")) return false;
   const value = Buffer.from(header.slice("Basic ".length), "base64").toString("utf8");
-  return value === expected;
+  return sharedSecretMatches(value, expected);
 }
