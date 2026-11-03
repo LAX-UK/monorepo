@@ -94,6 +94,7 @@ describe("buildAccountChrome", () => {
     expect(switcher).toMatchObject({
       pendingInvitations: 2,
       invitationsHref: "/organisations/invitations",
+      accountsHref: "/organisations",
       registerHref: REGISTER_ORGANISATION_HREF,
     });
   });

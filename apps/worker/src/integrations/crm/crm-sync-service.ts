@@ -8,7 +8,12 @@ import {
   mapDomainEventToCrmIntent,
 } from "./crm-event-mappers.js";
 import type { CrmGateway } from "./crm-gateway.js";
-import type { CrmAttributionReader, CrmPaymentLotReader } from "./crm-readers.js";
+import type {
+  CrmAttributionReader,
+  CrmEnquiryReader,
+  CrmEnquiryRecord,
+  CrmPaymentLotReader,
+} from "./crm-readers.js";
 import type { CrmSyncResult } from "./crm-sync-result.js";
 import { CrmDealSyncHandler } from "./handlers/crm-deal-sync-handler.js";
 import { CrmPersonSyncHandler } from "./handlers/crm-person-sync-handler.js";
@@ -24,6 +29,7 @@ export type CrmSyncServiceDeps = {
   mapperContext: Omit<CrmMapperContext, "attribution">;
   paymentLotReader: CrmPaymentLotReader;
   attributionReader: CrmAttributionReader;
+  enquiryReader: CrmEnquiryReader;
 };
 
 export class CrmSyncService {
@@ -79,13 +85,22 @@ export class CrmSyncService {
       paymentRefundLotId = lotId;
     }
 
+    // The event carries no personal data: the enquiry is read by id.
+    let enquiry: CrmEnquiryRecord | null | undefined;
+    if (event.eventType === "marketing_enquiry.received") {
+      enquiry = await this.deps.enquiryReader.findById(event.aggregateId);
+    }
+
     const intent = mapDomainEventToCrmIntent(
       event,
       {
         ...this.deps.mapperContext,
         attribution,
       },
-      paymentRefundLotId !== undefined ? { paymentRefundLotId } : {},
+      {
+        ...(paymentRefundLotId !== undefined ? { paymentRefundLotId } : {}),
+        ...(enquiry !== undefined ? { enquiry } : {}),
+      },
     );
 
     if (intent.kind === "skip") {

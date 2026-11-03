@@ -94,9 +94,11 @@ function figureFor(lot: Lot, standing: WatchedLotStanding): { value: string; lab
 }
 
 function momentFor(lot: Lot, now: Date): string {
-  if (ENDED.has(lot.status)) return `closed ${formatLotMoment(lot.endTime, now, { time: false })}`;
-  if (lot.status === "active") return `closes ${formatLotMoment(lot.endTime, now)}`;
-  return `opens ${formatLotMoment(lot.startTime, now, { time: false })}`;
+  if (ENDED.has(lot.status))
+    return `closed ${formatLotMoment(lot.endTime, now, { time: false, inSentence: true })}`;
+  if (lot.status === "active")
+    return `closes ${formatLotMoment(lot.endTime, now, { inSentence: true })}`;
+  return `opens ${formatLotMoment(lot.startTime, now, { time: false, inSentence: true })}`;
 }
 
 /** The watched lots, with where the person stands on each. */

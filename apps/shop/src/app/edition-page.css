@@ -276,3 +276,40 @@
     top: calc(7rem + var(--shop-space-4));
   }
 }
+
+/* ── More about this edition: a phone disclosure, always open from tablet width ──────────── */
+.shop-more-about {
+  border-top: 1px solid var(--color-border-hairline);
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+
+.shop-more-about[open] .shop-disclosure__icon {
+  transform: rotate(180deg);
+}
+
+.shop-more-about__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-8);
+  padding-bottom: var(--shop-space-6);
+}
+
+@media (max-width: 47.99rem) {
+  .shop-more-about__body > .shop-product__section:first-child {
+    border-top: 0;
+  }
+}
+
+@media (min-width: 48rem) {
+  .shop-more-about {
+    border: 0;
+  }
+
+  .shop-more-about__summary {
+    display: none;
+  }
+
+  .shop-more-about__body {
+    padding-bottom: 0;
+  }
+}

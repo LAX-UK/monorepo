@@ -1,15 +1,21 @@
 import { SITE_CONTACT_EMAIL } from "@auction/branding";
 import type { Database } from "@auction/db";
 import type { PaymentTierLimits } from "@auction/domain";
-import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
+import type {
+  ILotRepository,
+  ISaleRepository,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
 import {
   DrizzleAccountPurchaseFactsReader,
   DrizzleAccountRegistrationsReader,
   DrizzleDeliveryQuoteRepository,
   DrizzlePaySeveralInvoiceFlagsReader,
+  DrizzlePurchaseProblemRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import type { ISettlementCompliancePolicy } from "../services/aml/settlement-compliance.policy.js";
+import type { IDomainEventSink } from "../services/domain-event-sink.js";
 import type { INotificationFactory } from "../services/interfaces/notification-factory.js";
 import type {
   IAccountPurchasesService,
@@ -17,6 +23,7 @@ import type {
   ICollectionBookingService,
   IDeliveryQuoteService,
   IPaySeveralService,
+  IPurchaseProblemService,
   IStaffDeliveryQuoteService,
 } from "../services/interfaces/organisation-buying-service.js";
 import type { NotificationDispatcher } from "../services/notification.dispatcher.js";
@@ -29,6 +36,7 @@ import {
   StaffDeliveryQuoteService,
 } from "../services/organisation-buying/delivery-quote.service.js";
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
+import { PurchaseProblemService } from "../services/organisation-buying/purchase-problem.service.js";
 import { WonLotLookups } from "../services/organisation-buying/won-lot-lookups.js";
 import type { PaymentGroupCheckoutService } from "../services/payment-group/payment-group-checkout.service.js";
 
@@ -39,6 +47,7 @@ export type OrganisationBuyingServices = {
   paySeveral: IPaySeveralService;
   deliveryQuotes: IDeliveryQuoteService;
   collection: ICollectionBookingService;
+  problems: IPurchaseProblemService;
 };
 
 export type CreateOrganisationBuyingInput = {
@@ -52,6 +61,8 @@ export type CreateOrganisationBuyingInput = {
   >;
   lots: Pick<ILotRepository, "findById">;
   sales: Pick<ISaleRepository, "findById">;
+  transactionRunner: ITransactionRunner;
+  events: IDomainEventSink;
   notificationDispatcher: Pick<NotificationDispatcher, "dispatch">;
   notificationFactory: Pick<INotificationFactory, "createDeliveryQuoteReady">;
   /** What paying several invoices at once needs from the payments side. */
@@ -84,6 +95,13 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
         now: () => new Date(),
       }),
       deliveryQuotes: new DeliveryQuoteService({ quotes, purchases }),
+      problems: new PurchaseProblemService({
+        purchases,
+        problems: new DrizzlePurchaseProblemRepository(input.db),
+        transactionRunner: input.transactionRunner,
+        events: input.events,
+        now: () => new Date(),
+      }),
       collection: new CollectionBookingService({
         settings: {
           selfServeEnabled: input.env.COLLECTION_SELF_SERVE_ENABLED,

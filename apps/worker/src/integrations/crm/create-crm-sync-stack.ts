@@ -4,6 +4,7 @@ import type { WorkerEnv } from "../../env.js";
 import type { CrmGateway } from "./crm-gateway.js";
 import {
   createDrizzleCrmAttributionReader,
+  createDrizzleCrmEnquiryReader,
   createDrizzleCrmPaymentLotReader,
 } from "./crm-readers.js";
 import { CrmSyncService, type CrmSyncServiceDeps } from "./crm-sync-service.js";
@@ -20,6 +21,7 @@ export function createCrmSyncService(input: {
     env: input.env,
     paymentLotReader: createDrizzleCrmPaymentLotReader(input.db),
     attributionReader: createDrizzleCrmAttributionReader(input.db),
+    enquiryReader: createDrizzleCrmEnquiryReader(input.db),
     mapperContext: {
       auctionPipeline: input.env.ZOHO_CRM_AUCTION_PIPELINE,
       dealStageLotWon: input.env.ZOHO_CRM_DEAL_STAGE_LOT_WON,

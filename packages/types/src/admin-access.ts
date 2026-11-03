@@ -307,6 +307,42 @@ export const USER_PICKER_ACCESS: CapabilityRequirement = {
   anyOf: ["catalogue.write", "artist.review", "platform.admin.full"],
 };
 
+/**
+ * Contact form enquiries in the staff work inbox: reading what the sender wrote (personal data)
+ * and marking an enquiry handled. Client services and administrators.
+ */
+export const MARKETING_ENQUIRIES_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond"],
+};
+
+/**
+ * Account deletions the daily purge is holding because the person still has something open.
+ * Client services and administrators see the work and contact the person.
+ */
+export const DELETION_HOLD_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond"],
+};
+
+/** Private sale enquiries: the work offered, the budget and how to reach the sender. */
+export const PRIVATE_SALE_ENQUIRIES_READ_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "enquiries.private_sale.read"],
+};
+
+/** The Enquiries list and record: general enquiries, private sale enquiries, or both. */
+export const ENQUIRIES_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond", "enquiries.private_sale.read"],
+};
+
+/** Hand an enquiry to a colleague, or take it back. */
+export const ENQUIRY_ASSIGN_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond", "private_sale.manage"],
+};
+
+/** Choose which specialist receives each department's enquiries. */
+export const ENQUIRY_ROUTING_MANAGE_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "auction.manage"],
+};
+
 /** Suspend, unsuspend, and bulk user moderation. */
 export const USER_MODERATION_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "support.respond"],

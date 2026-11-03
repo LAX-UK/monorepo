@@ -4,10 +4,12 @@ import { roleAuthState } from "./helpers/auth-state";
 import {
   ORGANISATION_JOURNEY_IDS,
   ORGANISATION_JOURNEY_NAMES,
+  changeRoleViaDialog,
   expectActingAs,
   invitationLinkFor,
   openAs,
   placeBid,
+  roleOfRow,
   switchOrganisation,
   undoOf,
 } from "./helpers/organisation-journeys";
@@ -92,18 +94,24 @@ test.describe("organisation owner journey @roles", () => {
 
     await test.step("change a role and take it back", async () => {
       await page.goto("/team");
-      const picker = page.getByRole("button", { name: new RegExp(`^Role for ${INVITEE_NAME}`) });
-      await expect(picker).toContainText("Viewer");
-      await picker.click();
-      await page.getByRole("menuitemradio", { name: "Finance" }).click();
+      const row = roleOfRow(page, INVITEE_NAME);
+      await expect(row).toContainText("Viewer");
+      await changeRoleViaDialog(page, INVITEE_NAME, "Finance");
       await expect(page.getByText(`${INVITEE_NAME} is now`)).toBeVisible();
       await undoOf(page, `${INVITEE_NAME} is now`).click();
-      await expect(picker).toContainText("Viewer");
+      await expect(page.getByText(`${INVITEE_NAME} is a viewer again.`)).toBeVisible();
+      await expect(row).toContainText("Viewer");
     });
 
     await test.step("owners can hand over ownership", async () => {
-      await page.getByRole("button", { name: "More for Maya Okafor" }).click();
-      await expect(page.getByRole("menuitem", { name: /^Transfer ownership/ })).toBeVisible();
+      // The list refreshes once after the role is restored; reopen the menu if it lands on it.
+      await expect(async () => {
+        await page.keyboard.press("Escape");
+        await page.getByRole("button", { name: "More for Maya Okafor" }).click();
+        await expect(page.getByRole("menuitem", { name: /^Transfer ownership/ })).toBeVisible({
+          timeout: 2000,
+        });
+      }).toPass();
       await page.keyboard.press("Escape");
     });
 

@@ -42,6 +42,7 @@ export function buildRoleKpisSlice(input: {
   kpiIds: readonly RoleKpiDefinitionId[];
   submissionsAvailable: boolean;
   paymentsAvailable: boolean;
+  canOpenHref?: (href: string) => boolean;
 }): RoleKpisSlice {
   const tiles = buildRoleKpiTiles(input);
   const data: RoleKpisData = {
@@ -81,6 +82,8 @@ export function buildRoleKpiTiles(input: {
   kpiIds: readonly RoleKpiDefinitionId[];
   submissionsAvailable: boolean;
   paymentsAvailable: boolean;
+  /** Drops a tile's drill-down when this person could not open it; every link is kept if omitted. */
+  canOpenHref?: (href: string) => boolean;
 }): RoleKpiTile[] {
   const catalog: Record<RoleKpiDefinitionId, RoleKpiTile> = {
     "live-lots": {
@@ -173,5 +176,13 @@ export function buildRoleKpiTiles(input: {
     },
   };
 
-  return input.kpiIds.map((id) => catalog[id]).filter(Boolean);
+  const { canOpenHref } = input;
+  return input.kpiIds
+    .map((id) => catalog[id])
+    .filter(Boolean)
+    .map((tile) =>
+      canOpenHref && tile.drillDownHref && !canOpenHref(tile.drillDownHref)
+        ? { ...tile, drillDownHref: null }
+        : tile,
+    );
 }

@@ -5,6 +5,7 @@ import {
   type SubjectExportOrigin,
   subjectExportSchemaName,
 } from "@auction/identity-contracts";
+import { controllerNamesFor } from "./controller-names.js";
 
 export const SUMMARY_FILE_NAME = "Your LAX data.html";
 export const README_FILE_NAME = "README.txt";
@@ -42,7 +43,7 @@ export function renderReadme(input: { preparedAt: Date; exportId: string }): str
     "                       check nothing was changed or damaged.",
     ...SUBJECT_EXPORT_PRODUCTS.map((product) => {
       const info = SUBJECT_EXPORT_PRODUCT_INFO[product];
-      return `${`${product}/`.padEnd(21)}${info.name}. Kept by ${info.controller}.`;
+      return `${`${product}/`.padEnd(21)}${info.name}. Kept by ${controllerNamesFor(product)}.`;
     }),
     "<product>/files/      Files you uploaded to that product, such as invoices as PDF and photos.",
     "",
@@ -81,7 +82,7 @@ export function renderReadme(input: { preparedAt: Date; exportId: string }): str
     lines.push(
       `${info.name.toUpperCase()}  (folder ${product}/)`,
       RULE,
-      `Kept by ${info.controller}.`,
+      `Kept by ${controllerNamesFor(product)}.`,
       "",
     );
     for (const category of SUBJECT_EXPORT_CATEGORIES[product]) {

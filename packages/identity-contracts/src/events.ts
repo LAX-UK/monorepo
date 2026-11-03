@@ -6,6 +6,8 @@ export const IDENTITY_EVENT_TYPES = {
   PROFILE_UPDATED: "user.profile_updated",
   DELETION_REQUESTED: "user.deletion_requested",
   DELETION_CANCELLED: "user.deletion_cancelled",
+  /** The daily purge found an open obligation and kept the details; the work stays with staff. */
+  DELETION_HELD: "user.deletion_held",
   IDENTITY_DISABLED: "user.identity_disabled",
   IDENTITY_ENABLED: "user.identity_enabled",
   IDENTITY_MERGED: "user.identity_merged",
@@ -39,6 +41,20 @@ export const userDeletionRequestedPayloadSchemaV1 = identityEventBaseSchemaV1.ex
 
 export const userDeletionCancelledPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
   cancelledAt: rfc3339Timestamp,
+});
+
+export const userDeletionHeldPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
+  heldAt: rfc3339Timestamp,
+  /** What is still open, in the product's own words. No personal data. */
+  reasons: z
+    .array(
+      z.object({
+        code: z.string().min(1).max(100),
+        message: z.string().min(1).max(300),
+        href: z.string().url().nullable(),
+      }),
+    )
+    .max(50),
 });
 
 export const userIdentityDisabledPayloadSchemaV1 = identityEventBaseSchemaV1.extend({
@@ -80,6 +96,7 @@ export type SubjectDataExportRequestedPayloadV1 = z.infer<
 export type UserProfileUpdatedPayloadV1 = z.infer<typeof userProfileUpdatedPayloadSchemaV1>;
 export type UserDeletionRequestedPayloadV1 = z.infer<typeof userDeletionRequestedPayloadSchemaV1>;
 export type UserDeletionCancelledPayloadV1 = z.infer<typeof userDeletionCancelledPayloadSchemaV1>;
+export type UserDeletionHeldPayloadV1 = z.infer<typeof userDeletionHeldPayloadSchemaV1>;
 export type UserIdentityDisabledPayloadV1 = z.infer<typeof userIdentityDisabledPayloadSchemaV1>;
 export type UserIdentityEnabledPayloadV1 = z.infer<typeof userIdentityEnabledPayloadSchemaV1>;
 export type UserIdentityMergedPayloadV1 = z.infer<typeof userIdentityMergedPayloadSchemaV1>;
@@ -91,6 +108,7 @@ export type IdentityEventPayloadV1 =
   | UserProfileUpdatedPayloadV1
   | UserDeletionRequestedPayloadV1
   | UserDeletionCancelledPayloadV1
+  | UserDeletionHeldPayloadV1
   | UserIdentityDisabledPayloadV1
   | UserIdentityEnabledPayloadV1
   | UserIdentityMergedPayloadV1
@@ -103,6 +121,7 @@ export const identityEventPayloadSchemasV1 = {
   [IDENTITY_EVENT_TYPES.PROFILE_UPDATED]: userProfileUpdatedPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.DELETION_REQUESTED]: userDeletionRequestedPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.DELETION_CANCELLED]: userDeletionCancelledPayloadSchemaV1,
+  [IDENTITY_EVENT_TYPES.DELETION_HELD]: userDeletionHeldPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.IDENTITY_DISABLED]: userIdentityDisabledPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.IDENTITY_ENABLED]: userIdentityEnabledPayloadSchemaV1,
   [IDENTITY_EVENT_TYPES.IDENTITY_MERGED]: userIdentityMergedPayloadSchemaV1,

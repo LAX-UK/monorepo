@@ -32,7 +32,7 @@ Operational procedures for things that go wrong or need to happen on a schedule.
 - [JWT key leak](./runbooks/jwt-key-leak.md) — incident response when the signing key is compromised
 - [Zoho outage](./runbooks/incident-zoho-outage.md) — what to do when the Zoho EU API is down or rate-limiting us
 - [Email provider incident](./runbooks/email-provider-incident.md) — Postmark outage / sender-reputation incident, including the `REQUIRE_EMAIL_VERIFICATION` kill-switch
-- [Deletion request](./runbooks/deletion-request.md) — GDPR Article 17 manual procedure
+- [Deletion request](./runbooks/deletion-request.md) — GDPR Article 17: the automated path, held deletions and requests from outside the product
 - [Deploy checklist](./runbooks/deploy-checklist.md) — what to verify before, during, and after every production deploy
 - [Saleroom clerk](./runbooks/saleroom-clerk.md) — paddle bidding and clerk console operations
 - [Production rollback](./runbooks/prod-rollback.md) — Terraform-driven rollback for infrastructure regressions
@@ -60,7 +60,7 @@ For new engineers. Read in order, do the exercises, do not skip the first PR wal
 - [Threat model](./security/threat-model.md) — pointer to the canonical security model in `architecture/07-security-model.md` plus a place for component-specific STRIDE walkthroughs
 - [Secrets management](./security/secrets-management.md) — every secret in the system, where it lives, who can read it
 - [Key rotation](./security/key-rotation.md) — JWKS rotation math (30-minute retirement window) referenced from D2 and the rotation runbook
-- [Data deletion](./security/data-deletion.md) — GDPR Article 17 procedure referenced from the deletion-request runbook
+- [Data deletion](./security/data-deletion.md) — how self-service deletion, the daily purge and the product fan-out work
 - [Social login setup](./security/social-login-setup.md) — Google + Apple Sign-In configuration including Apple client-secret JWT generation
 - [Data Processing Agreements](./security/dpas.md) — tracking sheet for processor agreements (Zoho, Xero, DigitalOcean, Cloudflare, Postmark)
 

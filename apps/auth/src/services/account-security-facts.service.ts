@@ -1,6 +1,11 @@
 import type { AccountSecurityFactsResponse } from "@auction/identity-contracts";
 
-export type AccountSecurityBaseFacts = { twoFactorEnabled: boolean };
+export type AccountSecurityBaseFacts = {
+  twoFactorEnabled: boolean;
+  hasPassword: boolean;
+  /** When the person asked to delete the account; null when they have not. */
+  deletionRequestedAt?: string | null;
+};
 
 export type AccountSecurityFactsPorts = {
   /** Null when the subject no longer exists. */

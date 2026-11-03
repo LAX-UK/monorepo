@@ -1,8 +1,11 @@
+import { LotCardBidderState } from "@/components/lot-card/lot-card-bidder-state";
+import { LotCardLine } from "@/components/lot-card/lot-card-line";
+import { LotEstimateLine } from "@/components/lot-card/lot-estimate-line";
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { OwnerBadge } from "@/components/marketing/owner-badge";
 import { MediaImage } from "@/components/ui/media-image";
+import { lotCardLineModel, lotCardShowsStatusBadge } from "@/lib/lot-card/lot-card-line";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
-import { lotPriceDisplay } from "@/lib/lot-price-display";
 import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { lotPath } from "@/lib/seo/url";
 import { MarketingWorkCard, MarketingWorkGrid } from "@auction/marketing-ui";
@@ -32,7 +35,7 @@ function lotYearMedium(lot: Lot): string | null {
 
 function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
   const est = lotEstimateLine(lot);
-  const price = lotPriceDisplay(lot);
+  const line = lotCardLineModel(lot, new Date());
   const yearMedium = lotYearMedium(lot);
   const owned = Boolean(currentUserId && lot.sellerId === currentUserId);
 
@@ -49,19 +52,20 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
         />
       }
       {...(owned ? { mediaBadge: <OwnerBadge owned /> } : {})}
-      {...(isPublicLotStatus(lot.status)
+      {...(isPublicLotStatus(lot.status) && lotCardShowsStatusBadge(line)
         ? { mediaStatus: <LotStatusBadge {...lotStatusBadgeProps(lot)} /> }
         : {})}
       details={
         <>
           {yearMedium ? <p className="line-clamp-1">{yearMedium}</p> : null}
-          {est ? <p className="line-clamp-1">Estimate {est}</p> : null}
+          <LotEstimateLine value={est} />
         </>
       }
       footer={
-        <p className="line-clamp-1">
-          {price.label} {price.value}
-        </p>
+        <div className="flex w-full min-w-0 flex-col gap-1.5">
+          <LotCardLine model={line} />
+          <LotCardBidderState lotId={lot.id} />
+        </div>
       }
     />
   );

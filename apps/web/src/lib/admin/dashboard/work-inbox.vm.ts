@@ -40,6 +40,7 @@ export const WORK_ACTION_LABELS: Record<AdminWorkItemAction, string> = {
   decline: "Decline",
   capture: "Capture payment",
   refund: "Refund payment",
+  reinstate_payment: "Reinstate payment",
   approve_registration: "Approve registration",
   reject_registration: "Reject registration",
   confirm_telephone: "Confirm booking",
@@ -59,6 +60,7 @@ const WORK_ACTION_DONE: Record<AdminWorkItemAction, string> = {
   decline: "Declined",
   capture: "Payment captured",
   refund: "Refund started",
+  reinstate_payment: "Payment reinstated",
   approve_registration: "Registration approved",
   reject_registration: "Registration rejected",
   confirm_telephone: "Booking confirmed",
@@ -73,6 +75,7 @@ const CONFIRMED_ACTIONS = new Set<AdminWorkItemAction>([
   "reject",
   "capture",
   "refund",
+  "reinstate_payment",
   "reject_registration",
   "release_fulfilment",
   "delivered",
@@ -116,6 +119,11 @@ export function workActionConfirm(
     capture: {
       title: `Capture the payment for ${item.title}?`,
       description: "The buyer's card is charged the authorised amount.",
+    },
+    reinstate_payment: {
+      title: `Reinstate the payment for ${item.title}?`,
+      description:
+        "The buyer's payment is recorded as paid and the lot moves on, as if the checkout had finished.",
     },
     reject_registration: {
       title: `Reject the registration for ${item.title}?`,

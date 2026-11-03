@@ -28,6 +28,12 @@ export type IdentityOutboxLifecycleEvent =
     }
   | { type: "user.deletion_requested"; userId: string; requestedAt?: Date }
   | { type: "user.deletion_cancelled"; userId: string; cancelledAt?: Date }
+  | {
+      type: "user.deletion_held";
+      userId: string;
+      heldAt: Date;
+      reasons: readonly { code: string; message: string; href: string | null }[];
+    }
   | { type: "user.identity_disabled"; userId: string; reason?: string }
   | { type: "user.identity_enabled"; userId: string }
   | { type: "user.identity_merged"; retiredSubjectId: string; canonicalSubjectId: string }
@@ -158,6 +164,21 @@ function buildOutboxRow(
           schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
           subjectId: event.userId,
           cancelledAt: (event.cancelledAt ?? new Date()).toISOString(),
+        },
+      };
+    case "user.deletion_held":
+      return {
+        aggregateType: "user",
+        aggregateId: event.userId,
+        eventType: IDENTITY_EVENT_TYPES.DELETION_HELD,
+        producer,
+        actorUserId: null,
+        schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+        payload: {
+          schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+          subjectId: event.userId,
+          heldAt: event.heldAt.toISOString(),
+          reasons: event.reasons.map((r) => ({ code: r.code, message: r.message, href: r.href })),
         },
       };
     case "user.identity_disabled":

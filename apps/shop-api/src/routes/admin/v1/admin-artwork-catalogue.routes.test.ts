@@ -475,10 +475,50 @@ describe("admin artwork catalogue routes", () => {
           action,
           actorSubjectId: "catalogue_editor-subject",
           idempotencyKey: IDEMPOTENCY_KEY,
+          ...(action === "publish" ? { sendReleaseAlert: false } : {}),
         });
         await app.close();
       },
     );
+
+    it("emails the release alert list only when the publish asks for it", async () => {
+      const setVisibility = vi.fn(async () => ({
+        version: VERSION,
+        state: "live" as const,
+        releaseAlertsQueued: 12,
+        refreshesArt: false,
+      }));
+      const app = await buildApp("catalogue_editor", { writer: { setVisibility } });
+      const response = await app.inject({
+        method: "POST",
+        url: `/admin/v1/artworks/${ARTWORK}/publish`,
+        headers,
+        payload: { sendReleaseAlert: true },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().releaseAlertsQueued).toBe(12);
+      expect(setVisibility).toHaveBeenCalledWith(
+        expect.objectContaining({ action: "publish", sendReleaseAlert: true }),
+      );
+      await app.close();
+    });
+
+    it("does not email the list on a plain publish and rejects an unknown publish field", async () => {
+      const setVisibility = vi.fn(async () => ({
+        version: VERSION,
+        state: "live" as const,
+        refreshesArt: false,
+      }));
+      const app = await buildApp("catalogue_editor", { writer: { setVisibility } });
+      const url = `/admin/v1/artworks/${ARTWORK}/publish`;
+      await app.inject({ method: "POST", url, headers });
+      expect(setVisibility).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sendReleaseAlert: false }),
+      );
+      const bad = await app.inject({ method: "POST", url, headers, payload: { notify: 1 } });
+      expect(bad.statusCode).toBe(400);
+      await app.close();
+    });
 
     it("explains a refused publish with 409", async () => {
       const setVisibility = vi.fn(async () => {

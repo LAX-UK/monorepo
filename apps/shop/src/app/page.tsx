@@ -12,7 +12,11 @@ export const metadata: Metadata = {
 
 export default async function ShopHomePageRoute() {
   return (
-    <main id="main-content" className={cn("shop-home shop-home--marketing", MARKETING_CATALOG_PT)}>
+    <main
+      id="main-content"
+      data-lax-density="client"
+      className={cn("shop-home shop-home--marketing", MARKETING_CATALOG_PT)}
+    >
       <ShopHomePage />
     </main>
   );

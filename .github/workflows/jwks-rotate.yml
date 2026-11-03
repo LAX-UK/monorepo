@@ -1,0 +1,137 @@
+name: JWKS signing key rotation
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to rotate. Run test first, then prod.
+        required: true
+        type: choice
+        options: [test, prod]
+      dry_run:
+        description: Generate and seal a key without touching the database
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jwks-rotate-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  rotate:
+    runs-on: ubuntu-latest
+    # The GitHub environment supplies the secrets and, for prod, its approval rules.
+    environment: ${{ inputs.environment }}
+    env:
+      TARGET_ENV: ${{ inputs.environment }}
+      DRY_RUN: ${{ inputs.dry_run }}
+      JWKS_URL: ${{ inputs.environment == 'prod' && 'https://auth.lax.bid/.well-known/jwks.json' || 'https://test-auth.lax.bid/.well-known/jwks.json' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Record published key ids before rotation
+        run: |
+          set -euo pipefail
+          kids="$(curl --fail --silent --show-error --max-time 15 "$JWKS_URL?cache-bypass=1" | jq -r '[.keys[].kid] | sort | join(", ")')"
+          test -n "$kids"
+          echo "KIDS_BEFORE=$kids" >> "$GITHUB_ENV"
+      - uses: ./.github/actions/checkout-infra
+        if: ${{ !inputs.dry_run }}
+        with:
+          ref: main
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - uses: ./.github/actions/terraform-setup
+        if: ${{ !inputs.dry_run }}
+        with:
+          working-directory: .infra-config/terraform/ephemeral/${{ inputs.environment }}
+          spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - name: Load Identity owner database URL
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          owner_url="$(terraform -chdir=".infra-config/terraform/ephemeral/${TARGET_ENV}" output -raw postgres_owner_uri)"
+          test -n "$owner_url"
+          echo "::add-mask::$owner_url"
+          echo "DATABASE_URL_OWNER=$owner_url" >> "$GITHUB_ENV"
+      - name: Load managed Postgres CA certificate
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          cluster="lax-${TARGET_ENV}-postgres"
+          db_cluster_id="$(
+            doctl databases list --format ID,Name --no-header \
+              | awk -v name="$cluster" '$2 == name { print $1; exit }'
+          )"
+          test -n "$db_cluster_id"
+          database_ca_cert="$(doctl databases get-ca "$db_cluster_id" --no-header)"
+          test -n "$database_ca_cert"
+          {
+            echo "DATABASE_CA_CERT<<EOF"
+            echo "$database_ca_cert"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+      - name: Snapshot JWKS
+        if: ${{ !inputs.dry_run }}
+        env:
+          JWKS_SNAPSHOT_KEY_TEST: ${{ secrets.JWKS_SNAPSHOT_KEY_TEST }}
+          JWKS_SNAPSHOT_KEY_PROD: ${{ secrets.JWKS_SNAPSHOT_KEY_PROD }}
+          SPACES_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          SPACES_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+        run: pnpm jwks:snapshot "$TARGET_ENV"
+      - name: Rotate signing key
+        env:
+          AUTH_DEK_KEY: ${{ secrets.AUTH_DEK_KEY }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          pnpm jwks:rotate "${args[@]}" | tee "$RUNNER_TEMP/rotate.log"
+      - name: Assert JWKS publishes the new and the previous key
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          new_kid="$(sed -n 's/^New active kid: //p' "$RUNNER_TEMP/rotate.log")"
+          old_kids="$(sed -n 's/^Now rotating: \(.*\)\. Retired automatically.*/\1/p' "$RUNNER_TEMP/rotate.log")"
+          test -n "$new_kid"
+          echo "NEW_KID=$new_kid" >> "$GITHUB_ENV"
+          # Cloudflare caches the document; poll with cache-bypass until the new key appears.
+          for attempt in 1 2 3 4 5 6; do
+            published="$(curl --fail --silent --show-error --max-time 15 "$JWKS_URL?cache-bypass=1" | jq -r '.keys[].kid')"
+            if grep -Fxq "$new_kid" <<<"$published"; then break; fi
+            echo "New key not published yet (attempt $attempt)"; sleep 10
+          done
+          echo "KIDS_AFTER=$(sort <<<"$published" | paste -sd ',' - | sed 's/,/, /g')" >> "$GITHUB_ENV"
+          grep -Fxq "$new_kid" <<<"$published" || { echo "::error::New key $new_kid is not published"; exit 1; }
+          if [ "$old_kids" != "none" ]; then
+            for kid in ${old_kids//,/ }; do
+              grep -Fxq "$kid" <<<"$published" || { echo "::error::Previous key $kid is not published"; exit 1; }
+            done
+          fi
+      - name: Summarise key ids
+        if: always()
+        run: |
+          {
+            echo "### JWKS rotation: ${TARGET_ENV} (dry run: ${DRY_RUN})"
+            echo
+            echo "| | Published key ids |"
+            echo "|---|---|"
+            echo "| Before | ${KIDS_BEFORE:-unknown} |"
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "| After | unchanged (dry run) |"
+            else
+              echo "| After | ${KIDS_AFTER:-not read} |"
+              echo
+              echo "New active key: \`${NEW_KID:-not created}\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

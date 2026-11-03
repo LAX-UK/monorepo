@@ -31,13 +31,25 @@ describe("purchaseInvoiceState", () => {
     ["requires_manual_review", "processing"],
     ["captured", "paid"],
     ["refunded", "refunded"],
-    ["cancelled", "cancelled"],
   ] as const)("a %s payment reads as %s, even past the due date", (status, expected) => {
     const late = new Date("2027-01-01T00:00:00Z");
     expect(purchaseInvoiceState({ payment: { status, raisedAt } }, late)).toEqual({
       status: expected,
       dueAt,
     });
+  });
+});
+
+describe("a cancelled payment row", () => {
+  it("leaves the invoice owed, due and then overdue, like a pending one", () => {
+    const cancelled = { payment: { status: "cancelled", raisedAt } } as const;
+    expect(purchaseInvoiceState(cancelled, new Date("2026-11-05T00:00:00Z"))).toEqual({
+      status: "due",
+      dueAt,
+    });
+    expect(purchaseInvoiceState(cancelled, new Date("2027-01-01T00:00:00Z")).status).toBe(
+      "overdue",
+    );
   });
 });
 

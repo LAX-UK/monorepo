@@ -72,6 +72,11 @@ describe("Count", () => {
     expect(label).toHaveClass("sr-only");
     expect(label.parentElement).toHaveTextContent("3 waiting");
   });
+
+  it("is drawn at 12px, the smallest text the workspace uses", () => {
+    render(<Count value={3} label="waiting" />);
+    expect(screen.getByText("waiting").parentElement).toHaveClass("text-lax-12");
+  });
 });
 
 describe("TabNav for in-page links", () => {

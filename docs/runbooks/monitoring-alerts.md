@@ -25,6 +25,9 @@ Emitted from `apps/api/src/middleware/metrics.ts` via `recordMoneyPathEvent`. La
 | `payout_reconciled_failed` | Payout moved to `failed` during Stripe reconciliation |
 | `payout_clawback_required` | Negative-net payout path emitted `payout.clawback_required` |
 | `payment_intent_amount_mismatch` | Stripe PI amount ≠ local payment row; webhook not claimed (Stripe retries) |
+| `stripe_succeeded_for_terminal_payment` | Stripe took money for a payment already `cancelled` or `refunded`; finance gets a work-inbox item |
+| `stripe_checkout_revoke_failed` | Closing an open Stripe checkout failed (also reported to Sentry as `stripe_checkout_revoke_failed`) |
+| `blocked_capture_reinstate_failed` | Finance reinstated a blocked capture and recording the payment failed; it was put back as cancelled |
 | `refund_db_persist_failed` | Stripe refund succeeded but local DB txn failed; row enqueued in `payment_refund_reconcile` |
 | `xero_payment_record_failed` | Stripe capture OK but Xero bank payment sync failed |
 | `xero_refund_credit_note_failed` | Admin refund OK locally but Xero credit note failed |
@@ -51,6 +54,14 @@ sum(increase(auction_api_money_path_events_total{event="refund_db_persist_failed
 sum(increase(auction_api_money_path_events_total{event="xero_payment_record_failed"}[1h])) > 0
 ```
 
+```promql
+sum(increase(auction_api_money_path_events_total{event="stripe_succeeded_for_terminal_payment"}[15m])) > 0
+```
+
+```promql
+sum(increase(auction_api_money_path_events_total{event="stripe_checkout_revoke_failed"}[1h])) > 0
+```
+
 Wire each to PagerDuty / email per your observability stack.
 
 ---
@@ -66,7 +77,28 @@ Wire each to PagerDuty / email per your observability stack.
 | **Dispute clawback** | `payout_clawback_required` | Manual money movement needed | Finance war room; [dispute-clawback](./dispute-clawback.md). |
 | **Refund DB persist failed** | `refund_db_persist_failed` | Stripe refunded but ledger not updated | Check `payment_refund_reconcile` table; run `POST /internal/jobs/retry-refund-reconciles`. |
 | **Xero capture sync failed** | `xero_payment_record_failed` | Invoice exists but Xero payment not recorded | Run `POST /internal/jobs/retry-xero-stripe-capture-sync`; check `payment_external_ref.last_error`. |
+| **Money taken on a closed payment** | `stripe_succeeded_for_terminal_payment` (any, 15m) | The buyer was charged for a payment we had cancelled or refunded; the capture was blocked and nothing reached the purchase | Open the item in the admin work inbox (Finance, "Payment taken on a closed payment"). Choose **Reinstate payment** so the purchase goes ahead, or **Refund** to return the money. If the payment was already `refunded`, check the charge in Stripe by hand. |
+| **Checkout revoke failed** | `stripe_checkout_revoke_failed` | A cancelled payment's Stripe intent could not be closed, so the buyer may still be able to pay it | Check the intent in Stripe; cancel it, or let finance handle a later blocked capture as above. |
 | **PI amount mismatch** | `payment_intent_amount_mismatch` | Metadata/amount drift on capture | Compare Stripe PI vs `payment.amount`; fix data; Stripe will retry unclaimed events. |
+
+---
+
+## JWKS signing key age
+
+The JWT signing key is rotated quarterly ([jwks-rotation.md](./jwks-rotation.md)). Auth exposes no metric for key age yet, so this rule runs as a scheduled read-only query against the auth database (daily, as a role that can read `jwks_key`) and notifies the on-call inbox.
+
+```sql
+SELECT kid, status, now() - created_at AS age, now() - rotated_at AS since_rotation
+FROM jwks_key
+WHERE status IN ('active', 'rotating');
+```
+
+| Alert | Trigger | Meaning | Immediate action |
+|-------|---------|---------|------------------|
+| **Signing key due** | `active` key older than 100 days | Quarterly rotation is due within about 10 days | Schedule the rotation; follow [jwks-rotation.md](./jwks-rotation.md) on test first. |
+| **Signing key overdue** | `active` key older than 120 days | Rotation was missed | Rotate now, outside the quarterly slot. |
+| **Rotation not finished** | `rotating` key with `rotated_at` older than 45 minutes (30-minute window plus one 15-minute tick) | The retirement schedule is not running | Check `jwks_retirement_tick` and `jwks_retirement_tick_failed` in `apps/auth` logs and the advisory lock; see the runbook's step 6. |
+| **No active key** | No `active` row, or more than one | Rotation was interrupted | Treat as an incident: restore from the latest snapshot (`pnpm jwks:restore <env>`) or rerun the rotation. |
 
 ---
 

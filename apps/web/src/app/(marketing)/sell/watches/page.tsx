@@ -20,6 +20,7 @@ export default function SellWatchesPage() {
       eyebrow="Watches & clocks"
       lead="Selling a wristwatch, pocket watch, or clock? Share reference details, box and papers where available, and clear photographs of the dial, caseback, and movement."
       categorySlug="watches-clocks"
+      departmentNoun="watches and clocks"
       bullets={[
         "Reference number, case material, and bracelet or strap",
         "Dial, caseback, movement, and serial markings",

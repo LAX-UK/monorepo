@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { IUploadPersistenceRepository } from "@auction/persistence/interfaces";
+import type { IUploadPersistenceRepository, UploadOwner } from "@auction/persistence/interfaces";
 import type { StaffRoles, UserRole } from "@auction/types";
 import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";
@@ -10,7 +10,8 @@ import type {
   UploadRefusalDetail,
 } from "./interfaces/upload-service.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
-import { createUploadKey } from "./upload.policy.js";
+import { type UploadKind, createUploadKey } from "./upload.policy.js";
+import { type IUploadAdmission, admitAllUploads } from "./upload/enquiry-upload-admission.js";
 import type { UploadRateLimitPolicy } from "./upload/upload-rate-limit.policy.js";
 import type { UploadValidationDispatcher } from "./upload/upload-validation.dispatcher.js";
 
@@ -36,11 +37,25 @@ function extForContentType(ct: string): string {
 
 export type { IUploadAuthorizationService, IUploadService };
 
+type PresignedUploadResult =
+  | {
+      ok: true;
+      value: {
+        uploadId: string;
+        uploadUrl: string;
+        key: string;
+        publicUrl: string;
+        requiredHeaders: Record<string, string>;
+      };
+    }
+  | ({ ok: false; status: number; error: string; resetAt?: string } & UploadRefusalDetail);
+
 export class UploadService implements IUploadService {
   private readonly auth: IUploadAuthorizationService;
   private readonly repo: IUploadPersistenceRepository;
   private readonly rateLimit: UploadRateLimitPolicy;
   private readonly validation: UploadValidationDispatcher;
+  private readonly admission: IUploadAdmission;
   private readonly redis: Redis | undefined;
 
   constructor(
@@ -50,6 +65,8 @@ export class UploadService implements IUploadService {
       auth: IUploadAuthorizationService;
       rateLimit: UploadRateLimitPolicy;
       validation: UploadValidationDispatcher;
+      /** Limits on how many files may wait to be used; defaults to none. */
+      admission?: IUploadAdmission;
     },
     redis?: Redis,
     _validationQueue?: Queue,
@@ -60,6 +77,7 @@ export class UploadService implements IUploadService {
     this.auth = deps.auth;
     this.rateLimit = deps.rateLimit;
     this.validation = deps.validation;
+    this.admission = deps.admission ?? admitAllUploads;
   }
 
   async uploadImage(body: Buffer, contentType: string): Promise<{ url: string }> {
@@ -106,22 +124,71 @@ export class UploadService implements IUploadService {
       }
     }
 
-    const key = createUploadKey(authResult.kind, input.userId, input.contentType);
+    return this.issueUpload(
+      { ownerUserId: input.userId },
+      authResult.kind,
+      input.userId,
+      input.contentType,
+      input.byteSize,
+    );
+  }
+
+  /**
+   * A visitor without an account uploading a file for an enquiry draft. The draft token has
+   * already been checked; the file is held for the draft until the enquiry is sent or 24 hours
+   * pass.
+   */
+  async createDraftPresignedUpload(input: {
+    draftId: string;
+    kind: string;
+    contentType: string;
+    byteSize: number;
+  }): Promise<PresignedUploadResult> {
+    if (!this.repo || !this.redis) {
+      return { ok: false, status: 503, error: "upload_tracking_not_configured" };
+    }
+    const authResult = this.auth.validateDraftUploadRequest(input);
+    if (!authResult.ok) return authResult;
+    const quota = await this.rateLimit.checkQuota(`draft:${input.draftId}`, input.byteSize);
+    if (!quota.ok) {
+      return { ok: false, status: 429, error: "quota_exceeded", resetAt: quota.resetAt };
+    }
+    return this.issueUpload(
+      { enquiryDraftId: input.draftId },
+      authResult.kind,
+      `draft-${input.draftId}`,
+      input.contentType,
+      input.byteSize,
+    );
+  }
+
+  private async issueUpload(
+    owner: UploadOwner,
+    kind: UploadKind,
+    keySegment: string,
+    contentType: string,
+    byteSize: number,
+  ): Promise<PresignedUploadResult> {
+    if (!this.repo) return { ok: false, status: 503, error: "upload_tracking_not_configured" };
+    const admitted = await this.admission.check(kind, owner);
+    if (!admitted.ok) return admitted;
+
+    const key = createUploadKey(kind, keySegment, contentType);
     const expiresAt = new Date(Date.now() + PENDING_UPLOAD_TTL_MS);
     const row = await this.repo.insertPending({
-      ownerUserId: input.userId,
-      kind: authResult.kind,
+      ...owner,
+      kind,
       key,
-      declaredContentType: input.contentType,
-      declaredByteSize: input.byteSize,
+      declaredContentType: contentType,
+      declaredByteSize: byteSize,
       expiresAt,
     });
     if (!row) return { ok: false, status: 500, error: "upload_create_failed" };
 
     const signed = await this.storage.createPresignedPut({
       key,
-      contentType: input.contentType,
-      byteSize: input.byteSize,
+      contentType,
+      byteSize,
       expiresInSec: PRESIGN_EXPIRES_IN_SEC,
     });
 
@@ -133,6 +200,47 @@ export class UploadService implements IUploadService {
         key,
         publicUrl: this.storage.getPublicUrl(key),
         requiredHeaders: signed.requiredHeaders,
+      },
+    };
+  }
+
+  async confirmDraftUpload(input: {
+    uploadId: string;
+    draftId: string;
+  }): Promise<
+    { ok: true; value: { status: "queued" } } | { ok: false; status: number; error: string }
+  > {
+    if (!this.repo || !this.validation.isConfigured) {
+      return { ok: false, status: 503, error: "upload_validation_not_configured" };
+    }
+    const row = await this.auth.findUploadForDraft(input);
+    if (!row) return { ok: false, status: 404, error: "upload_not_found" };
+    if (row.status !== "pending") {
+      return { ok: false, status: 409, error: `upload_status_${row.status}` };
+    }
+    await this.repo.markUploaded(input.uploadId, new Date());
+    await this.validation.enqueue(input.uploadId);
+    return { ok: true, value: { status: "queued" } };
+  }
+
+  /** The state of a draft's file. Its address is never given: a visitor's file stays private. */
+  async getDraftUploadStatus(input: { uploadId: string; draftId: string }): Promise<
+    | {
+        ok: true;
+        value: { id: string; kind: string; status: string; rejectionReason: string | null };
+      }
+    | { ok: false; status: number; error: string }
+  > {
+    if (!this.repo) return { ok: false, status: 503, error: "upload_tracking_not_configured" };
+    const row = await this.auth.findUploadForDraft(input);
+    if (!row) return { ok: false, status: 404, error: "upload_not_found" };
+    return {
+      ok: true,
+      value: {
+        id: row.id,
+        kind: row.kind,
+        status: row.status,
+        rejectionReason: row.rejectionReason ?? null,
       },
     };
   }

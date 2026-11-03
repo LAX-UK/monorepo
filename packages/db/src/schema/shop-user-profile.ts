@@ -6,6 +6,8 @@ export const shopUserProfile = pgTable("shop_user_profile", {
   email: text("email"),
   name: text("name"),
   disabledAt: timestamp("disabled_at", { mode: "date", withTimezone: true }),
+  /** When the person asked to delete their account; Shop refuses checkout while it is set. */
+  deletionRequestedAt: timestamp("deletion_requested_at", { mode: "date", withTimezone: true }),
   mergedIntoSubjectId: text("merged_into_subject_id"),
   createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),

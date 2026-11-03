@@ -3,7 +3,28 @@ export {
   accountBackupCodesSchema,
   type AccountBackupCodesResponse,
 } from "./account-backup-codes.js";
+export {
+  ACCOUNT_PASSWORD_CHANGE_PATH,
+  ACCOUNT_PASSWORD_ERRORS,
+  ACCOUNT_PASSWORD_MAX_LENGTH,
+  ACCOUNT_PASSWORD_MIN_LENGTH,
+  accountPasswordChangedSchema,
+  type AccountPasswordChangedResponse,
+  type AccountPasswordError,
+} from "./account-password.js";
 export { formatDeviceLabel } from "./device-label.js";
+export {
+  ACCOUNT_DELETION_PENDING_CODE,
+  accountDeletionDueAt,
+  accountDeletionPendingBody,
+  accountDeletionPendingMessage,
+  formatDeletionDay,
+} from "./deletion-pending.js";
+export {
+  DELETION_HOLD_COPY,
+  deletionHoldNextCheck,
+  nextDeletionCheckAfter,
+} from "./deletion-hold-copy.js";
 export {
   ACCOUNT_SECURITY_FACTS_PATH,
   accountSecurityFactsSchema,
@@ -16,6 +37,7 @@ export {
   ACCOUNT_EMAIL_CHANGE_CONFIRM_PATH,
   ACCOUNT_EMAIL_CHANGE_PATH,
   ACCOUNT_PHONE_CODE_LENGTH,
+  ACCOUNT_PHONE_REMOVE_PATH,
   ACCOUNT_PHONE_SEND_CODE_PATH,
   ACCOUNT_PHONE_VERIFY_PATH,
   accountContactSchema,
@@ -25,6 +47,7 @@ export {
   accountEmailSchema,
   accountPhoneCodeSchema,
   accountPhoneCodeSentSchema,
+  accountPhoneRemovedSchema,
   accountPhoneSchema,
   accountPhoneVerifiedSchema,
   type AccountContactError,
@@ -67,6 +90,7 @@ export {
   DELETION_ELIGIBILITY_SUBROUTE,
   INTERNAL_IDENTITY_ROUTE_PREFIX,
   accountDeletionCancelOutcomeSchema,
+  accountDeletionHoldSchema,
   accountDeletionProductSchema,
   accountDeletionOutcomeSchema,
   accountDeletionStatusSchema,
@@ -74,6 +98,7 @@ export {
   deletionBlockerSchema,
   deletionEligibilityPath,
   productDeletionEligibilitySchema,
+  type AccountDeletionHold,
   type AccountDeletionOutcome,
   type AccountDeletionProduct,
   type AccountDeletionStatus,
@@ -147,6 +172,7 @@ export {
   identityEventPayloadSchemasV1,
   subjectDataExportRequestedPayloadSchemaV1,
   userDeletionCancelledPayloadSchemaV1,
+  userDeletionHeldPayloadSchemaV1,
   userDeletionRequestedPayloadSchemaV1,
   userIdentityDisabledPayloadSchemaV1,
   userIdentityEnabledPayloadSchemaV1,
@@ -159,6 +185,7 @@ export {
   type IdentityEventType,
   type SubjectDataExportRequestedPayloadV1,
   type UserDeletionCancelledPayloadV1,
+  type UserDeletionHeldPayloadV1,
   type UserDeletionRequestedPayloadV1,
   type UserIdentityDisabledPayloadV1,
   type UserIdentityEnabledPayloadV1,
@@ -250,6 +277,7 @@ export {
   subjectExportViewSchema,
   type SubjectExportCategoryDefinition,
   type SubjectExportCategoryManifest,
+  type SubjectExportControllerId,
   type SubjectExportCreateOutcome,
   type SubjectExportFieldDescription,
   type SubjectExportFile,

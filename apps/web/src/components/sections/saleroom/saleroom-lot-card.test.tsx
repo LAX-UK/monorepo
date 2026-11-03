@@ -4,6 +4,10 @@ import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/components/lot-card/lot-card-bidder-state", () => ({
+  LotCardBidderState: () => null,
+}));
+
 vi.mock("next/image", () => ({
   default: (props: { alt: string }) => <img alt={props.alt} />,
 }));
@@ -46,6 +50,13 @@ const lot: SaleLotCardVM = {
   estimateValue: "£1,000",
   currentBidLabel: "Current bid",
   currentBidValue: "£500",
+  cardLine: {
+    label: "Current bid",
+    value: "£500",
+    time: "none",
+    startsAt: null,
+    endsAt: null,
+  },
   bidsCountLabel: null,
   closingLabel: null,
   isLive: true,
@@ -93,7 +104,7 @@ describe("SaleroomLotCard", () => {
     expect(container.querySelector(".pointer-events-none.absolute.inset-0")).toBeNull();
   });
 
-  it("reserves equal text block heights on tile cards", () => {
+  it("clamps a long title to two lines and pins the price block to the bottom of the tile", () => {
     const { container } = render(
       <SaleroomLotCard
         lot={{ ...lot, lotLabel: null, artistOrMedium: null }}
@@ -101,14 +112,11 @@ describe("SaleroomLotCard", () => {
       />,
     );
 
-    const titleLink = container.querySelector("a.min-h-12");
-    expect(titleLink).toBeInTheDocument();
-    expect(titleLink?.textContent).toBe("Test lot");
-
-    const labels = screen.getAllByText("Lot");
-    expect(labels.some((el) => el.className.includes("invisible"))).toBe(true);
-
-    const artistLine = titleLink?.parentElement?.querySelector("p.min-h-4");
-    expect(artistLine).toBeInTheDocument();
+    const titleLink = screen
+      .getAllByRole("link", { name: "Test lot" })
+      .find((link) => link.className.includes("line-clamp-2"));
+    expect(titleLink).toBeDefined();
+    expect(titleLink?.className).not.toContain("min-h");
+    expect(container.querySelector(".mt-auto [data-testid='lot-card-line']")).toBeInTheDocument();
   });
 });

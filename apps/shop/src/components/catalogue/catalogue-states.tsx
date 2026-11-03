@@ -2,6 +2,7 @@ import { ShopArtistCard } from "@/components/artists/shop-artist-card";
 import { CatalogueResultsRow } from "@/components/catalogue/catalogue-results";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { ShopSection } from "@/components/layout/shop-section";
+import { ShopReleaseAlertsInline } from "@/components/release-alerts/shop-release-alerts-inline";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
 import { buildCatalogueArtistCards } from "@/lib/catalogue/catalogue-artist-card.vm";
 import type {
@@ -83,7 +84,8 @@ export function CatalogueEmpty({ artHref }: { artHref: string | null }) {
       titleAs="h2"
       motifSlot={<PlaceholderMotif label="New editions" />}
       title="New editions are on their way"
-      description="The gallery’s artists are preparing the next releases. Original works are on lax.art in the meantime."
+      description="The gallery’s artists are preparing the next releases. Get one email when the next edition is published. Original works are on lax.art in the meantime."
+      control={<ShopReleaseAlertsInline source="shop_catalogue" />}
       actions={
         artHref ? (
           <ShopStatusStateLink href={artHref} priority="primary">

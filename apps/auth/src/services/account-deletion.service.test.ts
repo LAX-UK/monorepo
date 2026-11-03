@@ -9,7 +9,13 @@ const BLOCKER = { code: "pay", message: "Pay the invoice.", href: "https://bid.e
 type Answers = Partial<Record<"bid" | "shop", ProductDeletionEligibility | Error>>;
 
 function setup(
-  options: { answers?: Answers; deletionRequestedAt?: Date | null; sessionAgeMs?: number } = {},
+  options: {
+    answers?: Answers;
+    deletionRequestedAt?: Date | null;
+    heldAt?: Date | null;
+    heldReasons?: unknown;
+    sessionAgeMs?: number;
+  } = {},
 ) {
   const createdAt = new Date(NOW.getTime() - (options.sessionAgeMs ?? 60_000));
   const operations = {
@@ -20,6 +26,8 @@ function setup(
       pendingNewEmail: null,
       emailChangeExpiresAt: null,
       deletionRequestedAt: options.deletionRequestedAt ?? null,
+      deletionHeldAt: options.heldAt ?? null,
+      deletionHoldReasons: options.heldReasons ?? null,
     })),
     markDeletionRequested: vi.fn(async () => NOW),
     cancelDeletionRequested: vi.fn(async () => undefined),
@@ -242,5 +250,63 @@ describe("AccountDeletionService.cancelDeletion", () => {
       reason: "reauth_required",
     });
     expect(operations.cancelDeletionRequested).not.toHaveBeenCalled();
+  });
+});
+
+describe("AccountDeletionService.checkPurgeEligibility", () => {
+  it("asks every product, as the request did", async () => {
+    const { service, products } = setup();
+    expect(await service.checkPurgeEligibility(SUBJECT)).toEqual({ state: "clear" });
+    expect(products.check.mock.calls).toEqual([
+      ["bid", SUBJECT],
+      ["shop", SUBJECT],
+    ]);
+  });
+
+  it("is blocked, with every blocker, when a product has something open", async () => {
+    const shopBlocker = { code: "shop_open_orders", message: "An order is open.", href: null };
+    const { service } = setup({
+      answers: {
+        bid: { product: "bid", blockers: [BLOCKER] },
+        shop: { product: "shop", blockers: [shopBlocker] },
+      },
+    });
+    expect(await service.checkPurgeEligibility(SUBJECT)).toEqual({
+      state: "blocked",
+      blockers: [BLOCKER, shopBlocker],
+    });
+  });
+
+  it("is unavailable, never clear, when a product cannot be asked", async () => {
+    const { service, onProductUnavailable } = setup({
+      answers: { shop: new Error("timeout") },
+    });
+    expect(await service.checkPurgeEligibility(SUBJECT)).toEqual({ state: "unavailable" });
+    expect(onProductUnavailable).toHaveBeenCalledWith("shop", expect.any(Error));
+  });
+
+  it("prefers the open items over an unreachable product, so the person is told what to do", async () => {
+    const { service } = setup({
+      answers: { bid: { product: "bid", blockers: [BLOCKER] }, shop: new Error("timeout") },
+    });
+    expect(await service.checkPurgeEligibility(SUBJECT)).toMatchObject({ state: "blocked" });
+  });
+});
+
+describe("AccountDeletionService.status hold", () => {
+  it("reports a held deletion with the reasons the purge recorded", async () => {
+    const heldAt = new Date("2026-12-03T03:00:00.000Z");
+    const { service } = setup({
+      deletionRequestedAt: new Date("2026-11-02T10:00:00.000Z"),
+      heldAt,
+      heldReasons: [BLOCKER],
+    });
+    const status = await service.status(SUBJECT);
+    expect(status?.hold).toEqual({ heldAt: heldAt.toISOString(), reasons: [BLOCKER] });
+  });
+
+  it("reports no hold when none is recorded", async () => {
+    const { service } = setup();
+    expect((await service.status(SUBJECT))?.hold).toBeUndefined();
   });
 });

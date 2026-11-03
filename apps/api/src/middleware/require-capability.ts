@@ -22,6 +22,8 @@ import {
   DISPUTE_ALLOCATION_WRITE_ACCESS,
   EMAIL_ADMIN_ACCESS,
   EMAIL_OBSERVABILITY_ACCESS,
+  ENQUIRIES_ACCESS,
+  ENQUIRY_ROUTING_MANAGE_ACCESS,
   FAILED_JOBS_READ_ACCESS,
   FAILED_JOBS_WRITE_ACCESS,
   INVITATIONS_ACCESS,
@@ -129,6 +131,9 @@ export const requireSalesAccess = createRequireAccess(SALES_ACCESS);
 export const requireSalesRead = createRequireAccess(SALES_READ_ACCESS);
 export const requireWithdrawalDecision = createRequireAccess(WITHDRAWAL_DECISION_ACCESS);
 export const requireDeliveryReplay = createRequireAccess(DELIVERY_REPLAY_ACCESS);
+/** The Enquiries list and records: general enquiries, private sale enquiries, or both. */
+export const requireEnquiries = createRequireAccess(ENQUIRIES_ACCESS);
+export const requireEnquiryRoutingManage = createRequireAccess(ENQUIRY_ROUTING_MANAGE_ACCESS);
 export const requireDataRequestsManage = createRequireAccess(DATA_REQUESTS_MANAGE_ACCESS);
 export const requireFailedJobsRead = createRequireAccess(FAILED_JOBS_READ_ACCESS);
 export const requireFailedJobsWrite = createRequireAccess(FAILED_JOBS_WRITE_ACCESS);

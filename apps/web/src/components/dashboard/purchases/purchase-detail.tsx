@@ -1,10 +1,10 @@
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
-import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { DeliveryPanelVm } from "@/lib/purchases/purchase-delivery.vm";
+import type { PurchaseProblemPanelVm } from "@/lib/purchases/purchase-problem";
 import type { PurchaseCardVm } from "@/lib/purchases/purchases.vm";
 import { cn } from "@auction/ui";
-import { ButtonLink, StatusBadge } from "@auction/ui/lax";
-import { ChevronLeft, Download, FileText } from "lucide-react";
+import { ButtonLink, StatusBadge, pageTitleClass } from "@auction/ui/lax";
+import { Download, FileText } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { DeliveryPanel } from "./delivery-panel";
@@ -81,12 +81,15 @@ export function PurchaseDetail({
   card,
   subtitle,
   panel,
+  problem,
   shipperEmail,
 }: {
   card: PurchaseCardVm;
   subtitle: string;
   /** `null` when the account's delivery state could not be read. */
   panel: DeliveryPanelVm | null;
+  /** The open report on this purchase, or `null` when none is open. */
+  problem: PurchaseProblemPanelVm | null;
   shipperEmail: string;
 }) {
   const action = card.payable
@@ -97,19 +100,9 @@ export function PurchaseDetail({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <Link
-          href={CLIENT_ROUTES.purchases}
-          className="inline-flex w-fit items-center gap-1 text-lax-13 text-lax-muted hover:text-lax-fg"
-        >
-          <ChevronLeft aria-hidden className="size-3.5" />
-          Purchases
-        </Link>
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
-            <h1
-              className="font-lax-display text-lax-28 font-semibold text-lax-fg"
-              data-page-title=""
-            >
+            <h1 className={pageTitleClass} data-page-title="">
               {card.title}
             </h1>
             <p className="mt-1 text-lax-14 text-lax-muted">{subtitle}</p>
@@ -179,7 +172,20 @@ export function PurchaseDetail({
               </p>
             )}
           </Panel>
-          {card.problemHref ? (
+          {problem ? (
+            <Panel title={problem.title}>
+              <p className="text-lax-14 font-medium text-lax-fg">Reference {problem.reference}</p>
+              <dl className="mt-3 flex flex-col gap-2 text-lax-14">
+                {problem.facts.map((fact) => (
+                  <div key={fact.label} className="flex justify-between gap-4">
+                    <dt className="text-lax-muted">{fact.label}</dt>
+                    <dd className="text-lax-fg">{fact.value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="mt-3 text-lax-13 text-lax-muted">{problem.nextStep}</p>
+            </Panel>
+          ) : card.problemHref ? (
             <Link
               href={card.problemHref}
               className="w-fit text-lax-14 text-lax-fg underline underline-offset-4"

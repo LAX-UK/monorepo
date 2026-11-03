@@ -207,6 +207,7 @@ export function PurchasesView({
                   key={card.lotId}
                   card={card}
                   selectColumn={cards.some((each) => each.payable)}
+                  onPay={(each) => setPaying([each.lotId])}
                   selection={
                     card.payable
                       ? {

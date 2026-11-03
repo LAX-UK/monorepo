@@ -41,7 +41,38 @@ export type SecurityNoticeEvent =
       expiresAt: Date;
       userAgent?: string | null;
     }
+  | {
+      /** A week before the erasure: a last chance to cancel. */
+      kind: "account_deletion_reminder";
+      userId: string;
+      at: Date;
+      effectiveAt: Date;
+      userAgent?: string | null;
+    }
+  | {
+      /** The erasure was due but something is still open, so the details were kept. */
+      kind: "account_deletion_held";
+      userId: string;
+      at: Date;
+      /** One plain sentence per open item, as each product described it. */
+      reasons: readonly string[];
+      /** When the purge looks again. */
+      nextCheckAt: Date;
+      userAgent?: string | null;
+    }
+  | {
+      /**
+       * The erasure is done. The address is the one copied just before the scrub: the account
+       * no longer holds it, and nothing keeps it once the message has been sent.
+       */
+      kind: "account_deletion_completed";
+      userId: string;
+      at: Date;
+      email: string;
+      userAgent?: string | null;
+    }
   | { kind: "phone_verified"; userId: string; at: Date; phone: string; userAgent?: string | null }
+  | { kind: "phone_removed"; userId: string; at: Date; phone: string; userAgent?: string | null }
   | {
       kind: "email_changed";
       userId: string;
@@ -50,6 +81,14 @@ export type SecurityNoticeEvent =
       newEmail: string;
       userAgent?: string | null;
     };
+
+/**
+ * The same notices, delivered so that a failure reaches the caller. The durable outbox uses this
+ * to retry; everything else uses {@link SecurityNoticePublisher}, which never throws.
+ */
+export type SecurityNoticeDelivery = {
+  deliver(event: SecurityNoticeEvent): Promise<void>;
+};
 
 export type SecurityNoticePublisher = {
   /** Never throws: a notice that cannot be sent must not undo or block the change it reports. */

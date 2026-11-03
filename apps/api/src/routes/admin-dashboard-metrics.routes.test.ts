@@ -557,6 +557,7 @@ describe("admin dashboard metrics routes", () => {
     const empty = vi.fn().mockResolvedValue([]);
     const reader: IAdminWorkItemsReader = {
       listManualReviewPayments: vi.fn().mockResolvedValue([]),
+      listBlockedCaptures: vi.fn().mockResolvedValue([]),
       listPendingReviewTasks: vi.fn().mockResolvedValue([
         {
           sourceId: "aml-1",
@@ -578,6 +579,9 @@ describe("admin dashboard metrics routes", () => {
       listPendingTelephoneBookings: empty,
       listDraftLotsPastStart: empty,
       listUnsoldLotChoices: empty,
+      listMarketingEnquiries: empty,
+      listPurchaseProblems: empty,
+      listDeletionHolds: empty,
     };
     const workItems = new AdminWorkItemsService(reader);
     const container = createDashboardMetricsContainer({}, {}, {}, {}, workItems);
@@ -598,7 +602,6 @@ describe("admin dashboard metrics routes", () => {
 
     expect(res.status).toBe(200);
     expect(body.data.items).toEqual([]);
-    expect(reader.listPendingReviewTasks).not.toHaveBeenCalled();
   });
 
   it("GET /nav-counts returns 401 when unauthenticated", async () => {

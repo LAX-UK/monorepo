@@ -59,7 +59,7 @@ export type HangPlan = {
   candidates: Lot[];
 };
 
-function soldLots(entry: HangSale): Lot[] {
+export function soldLots(entry: HangSale): Lot[] {
   return entry.lots.filter((lot) => lot.status === "ended" && lotWasSold(lot));
 }
 
@@ -90,14 +90,19 @@ export function planHomeHang(state: HomeHangState, loaded: readonly HangSale[]):
   return { kind, sales: withResults, mixed, candidates };
 }
 
-function lotsLabel(count: number): string {
+export function lotsLabel(count: number): string {
   return `${count} lot${count === 1 ? "" : "s"}`;
 }
 
 /** How a work's label reads when it hangs among works from other sales. */
 type LabelOverride = { eyebrow: string; notes: string[] };
 
-function toWork(lot: Lot, sale: Sale, now: Date, override?: LabelOverride): HomeHangWork | null {
+export function toWork(
+  lot: Lot,
+  sale: Sale,
+  now: Date,
+  override?: LabelOverride,
+): HomeHangWork | null {
   const photo = hangLotPhoto(lot);
   if (!photo) return null;
   const label = hangLabelModel(lot, { sale, now, shownFramed: photo.shownFramed });

@@ -9,6 +9,8 @@ export const PLACE_BID_ERROR_CODES = {
   registration_pending: "registration_pending",
   lot_closed: "lot_closed",
   amount_invalid: "amount_invalid",
+  /** The bidder asked to delete their account; new bids wait until they cancel. */
+  account_deletion_pending: "account_deletion_pending",
 } as const;
 
 export type PlaceBidErrorCode = (typeof PLACE_BID_ERROR_CODES)[keyof typeof PLACE_BID_ERROR_CODES];

@@ -1,6 +1,7 @@
 import type { IdentityDatabase } from "@auction/identity-db";
 import { user } from "@auction/identity-db/schema";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNotNull, lte, ne, sql } from "drizzle-orm";
+import { isPendingEmailExpired } from "../lib/pending-email-change.js";
 import type {
   IIdentityEmailChangeRepository,
   IdentityEmailChangeRecord,
@@ -11,35 +12,71 @@ import { identityOperationDb } from "./drizzle-identity-unit-of-work.js";
 export class DrizzleIdentityEmailChangeRepository implements IIdentityEmailChangeRepository {
   constructor(private readonly db: IdentityDatabase) {}
 
+  /**
+   * The unique index on the pending address cannot know about expiry, so claiming an address first
+   * frees it from any expired change, in the same transaction. A live change by someone else still
+   * holds it.
+   */
   async startChange(input: {
     subjectId: string;
     newEmail: string;
     expiresAt: Date;
     now: Date;
-  }): Promise<void> {
-    await this.db
+  }): Promise<"started" | "address_pending"> {
+    return this.db.transaction(async (tx) => {
+      const holders = await tx
+        .select({
+          id: user.id,
+          emailChangeExpiresAt: user.emailChangeExpiresAt,
+        })
+        .from(user)
+        .where(
+          and(
+            sql`lower(trim(${user.pendingNewEmail})) = ${input.newEmail.trim().toLowerCase()}`,
+            ne(user.id, input.subjectId),
+          ),
+        )
+        .for("update");
+      const live = holders.some(
+        (holder) => !isPendingEmailExpired(holder.emailChangeExpiresAt, input.now),
+      );
+      if (live) return "address_pending";
+      for (const holder of holders) await this.clearPendingWith(tx, holder.id, input.now);
+      await tx
+        .update(user)
+        .set({
+          pendingNewEmail: input.newEmail,
+          emailChangeOldOk: false,
+          emailChangeNewOk: false,
+          emailChangeExpiresAt: input.expiresAt,
+          updatedAt: input.now,
+        })
+        .where(eq(user.id, input.subjectId));
+      return "started";
+    });
+  }
+
+  async clearExpired(now: Date): Promise<number> {
+    const cleared = await this.db
       .update(user)
       .set({
-        pendingNewEmail: input.newEmail,
+        pendingNewEmail: null,
         emailChangeOldOk: false,
         emailChangeNewOk: false,
-        emailChangeExpiresAt: input.expiresAt,
-        updatedAt: input.now,
+        emailChangeExpiresAt: null,
+        updatedAt: now,
       })
-      .where(eq(user.id, input.subjectId));
+      .where(and(isNotNull(user.pendingNewEmail), lte(user.emailChangeExpiresAt, now)))
+      .returning({ id: user.id });
+    return cleared.length;
   }
 
-  async readPending(subjectId: string): Promise<string | null> {
-    const [row] = await this.db
-      .select({ pendingNewEmail: user.pendingNewEmail })
-      .from(user)
-      .where(eq(user.id, subjectId))
-      .limit(1);
-    return row?.pendingNewEmail ?? null;
-  }
-
-  async clearPending(subjectId: string, now: Date): Promise<void> {
-    await this.db
+  private async clearPendingWith(
+    db: Pick<IdentityDatabase, "update">,
+    subjectId: string,
+    now: Date,
+  ): Promise<void> {
+    await db
       .update(user)
       .set({
         pendingNewEmail: null,
@@ -49,6 +86,22 @@ export class DrizzleIdentityEmailChangeRepository implements IIdentityEmailChang
         updatedAt: now,
       })
       .where(eq(user.id, subjectId));
+  }
+
+  async readPending(subjectId: string) {
+    const [row] = await this.db
+      .select({
+        pendingNewEmail: user.pendingNewEmail,
+        emailChangeExpiresAt: user.emailChangeExpiresAt,
+      })
+      .from(user)
+      .where(eq(user.id, subjectId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async clearPending(subjectId: string, now: Date): Promise<void> {
+    await this.clearPendingWith(this.db, subjectId, now);
   }
 
   async loadForConfirmation(

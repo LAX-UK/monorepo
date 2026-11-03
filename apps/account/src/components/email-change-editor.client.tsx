@@ -16,6 +16,8 @@ import { useId, useState, useTransition } from "react";
 type EmailChangeEditorProps = {
   /** The address a change is waiting on, already masked; null when none is in progress. */
   pendingEmailMasked: string | null;
+  /** A change was started and its links have expired; shown until the person starts again. */
+  pendingExpired?: boolean;
   /** Where to come back to after a fresh sign-in, which starting a change may require. */
   returnTo: string;
 };
@@ -27,7 +29,11 @@ type Notice = { kind: "error" | "success"; message: string };
  * nothing changes until both are followed, so this form only asks for the new address. While a
  * change is waiting the person sees which address it is for, and can cancel or start again.
  */
-export function EmailChangeEditor({ pendingEmailMasked, returnTo }: EmailChangeEditorProps) {
+export function EmailChangeEditor({
+  pendingEmailMasked,
+  pendingExpired = false,
+  returnTo,
+}: EmailChangeEditorProps) {
   const inputId = useId();
   const messageId = `${inputId}-message`;
   const router = useRouter();
@@ -76,6 +82,9 @@ export function EmailChangeEditor({ pendingEmailMasked, returnTo }: EmailChangeE
           <span className="font-medium break-all">{pendingEmailMasked}</span>. Open the links we
           emailed to both addresses.
         </p>
+      ) : null}
+      {pendingExpired && !pendingEmailMasked ? (
+        <p className="text-sm text-on-surface">Your request expired. Start again.</p>
       ) : null}
       {editing ? (
         <form

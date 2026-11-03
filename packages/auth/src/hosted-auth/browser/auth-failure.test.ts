@@ -89,6 +89,22 @@ describe("describeAuthFailure", () => {
       });
     });
 
+    it("tells a suspended person the account is suspended and points to contact", () => {
+      expect(describe_({ status: 403, data: { code: "IDENTITY_DISABLED" } }, "sign-in")).toEqual({
+        message: "This account is suspended.",
+        action: "contact-support",
+      });
+    });
+
+    it("does not call a suspension a wrong password, whatever the screen's fallback says", () => {
+      const failure = describe_(
+        { status: 403, data: { code: "IDENTITY_DISABLED" } },
+        "sign-in",
+        "Invalid email or password.",
+      );
+      expect(failure.message).not.toMatch(/password/i);
+    });
+
     it("does not offer a resend for other forbidden responses", () => {
       expect(describe_({ status: 403, data: { code: "BANNED_USER" } }, "sign-in")).toEqual({
         message: "fallback",

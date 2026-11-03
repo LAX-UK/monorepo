@@ -11,8 +11,12 @@ export type ProfileContactVm = {
   emailVerified: boolean;
   /** The address a change is waiting on, or null when none is in progress. */
   pendingEmail: string | null;
+  /** A change was started and its links have since expired; the person has to start again. */
+  pendingEmailExpired: boolean;
   phone: string | null;
   phoneVerified: boolean;
+  /** False when the issuer cannot send codes, so the phone cannot be added or changed. */
+  phoneAvailable: boolean;
 };
 
 /**
@@ -29,15 +33,19 @@ export function resolveProfileContact(
         email: live.email,
         emailVerified: live.emailVerified,
         pendingEmail: live.pendingEmail,
+        pendingEmailExpired: live.pendingEmailExpired,
         phone: live.phone,
         phoneVerified: live.phone !== null && live.phoneVerified,
+        phoneAvailable: live.phoneAvailable,
       }
     : {
         email: overview.email,
         emailVerified: overview.emailVerified,
         pendingEmail: null,
+        pendingEmailExpired: false,
         phone: overview.phone,
         phoneVerified: overview.phoneVerified,
+        phoneAvailable: true,
       };
 }
 
@@ -59,6 +67,12 @@ export function phoneEntryLabel(phone: string | null, phoneVerified: boolean): s
   return phoneVerified ? "Change phone number" : "Verify phone number";
 }
 
+export const REMOVE_PHONE_CONFIRM = {
+  title: "Remove your phone number?",
+  body: "We'll delete the number from your LAX Account and email you to let you know. You can add a number again at any time.",
+  confirmLabel: "Remove number",
+} as const;
+
 const REJECTION_MESSAGES: Record<AccountContactError, string> = {
   email_taken: "That email address is already used by another LAX account.",
   same_email: "That is already your email address.",
@@ -67,6 +81,7 @@ const REJECTION_MESSAGES: Record<AccountContactError, string> = {
   stale_flow:
     "This link is out of date because the change was cancelled or replaced. Start again from Personal details.",
   expired: "This link has expired. Start the change again from Personal details.",
+  no_phone: "There is no phone number on your account to remove.",
   phone_taken: "That phone number is already used by another LAX account.",
   invalid_phone:
     "That doesn't look like a valid phone number. Include your country code, for example +44 7700 900123.",

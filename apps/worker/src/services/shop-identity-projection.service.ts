@@ -1,6 +1,8 @@
 import type { Database } from "@auction/db";
 import { shopUserProfile } from "@auction/db/schema";
 import {
+  userDeletionCancelledPayloadSchemaV1,
+  userDeletionRequestedPayloadSchemaV1,
   userIdentityDisabledPayloadSchemaV1,
   userIdentityEnabledPayloadSchemaV1,
   userIdentityMergedPayloadSchemaV1,
@@ -46,6 +48,7 @@ export class ShopIdentityProjectionService {
             email: retired.email,
             name: retired.name,
             disabledAt: null,
+            deletionRequestedAt: retired.deletionRequestedAt,
             mergedIntoSubjectId: null,
             createdAt: now,
             updatedAt: now,
@@ -60,6 +63,16 @@ export class ShopIdentityProjectionService {
           })
           .where(eq(shopUserProfile.identitySubjectId, parsed.retiredSubjectId));
       });
+      return;
+    }
+    if (eventType === "user.deletion_requested") {
+      const parsed = userDeletionRequestedPayloadSchemaV1.parse(payload);
+      await this.setDeletionRequestedAt(parsed.subjectId, new Date(parsed.requestedAt));
+      return;
+    }
+    if (eventType === "user.deletion_cancelled") {
+      const parsed = userDeletionCancelledPayloadSchemaV1.parse(payload);
+      await this.setDeletionRequestedAt(parsed.subjectId, null);
       return;
     }
     if (eventType === "user.identity_disabled") {
@@ -78,6 +91,25 @@ export class ShopIdentityProjectionService {
         .where(eq(shopUserProfile.identitySubjectId, parsed.subjectId));
       return;
     }
+  }
+
+  /**
+   * Creates the profile if the request is the first thing Shop hears about the person, so the
+   * checkout guard never misses a pending deletion because the registration event came later.
+   */
+  private async setDeletionRequestedAt(subjectId: string, requestedAt: Date | null): Promise<void> {
+    await this.db
+      .insert(shopUserProfile)
+      .values({
+        identitySubjectId: subjectId,
+        deletionRequestedAt: requestedAt,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: shopUserProfile.identitySubjectId,
+        set: { deletionRequestedAt: requestedAt, updatedAt: sql`now()` },
+      });
   }
 
   private async upsert(input: {

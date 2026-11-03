@@ -127,6 +127,34 @@ describe("RecordRow", () => {
     });
   });
 
+  describe("needsYou", () => {
+    const action = <button type="button">Bid £3,200.00</button>;
+
+    it("shows an aligned row's action full width under its facts when narrow", () => {
+      const li = row(<RecordRow title="Work" aligned needsYou action={action} />);
+      const slot = li.querySelector("[data-record-action]") as HTMLElement;
+      expect(slot).toHaveAttribute("data-needs-you");
+      // Not hidden on a narrow list, a line of its own, and the button fills it.
+      expect(slot.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+      expect(slot.className).toContain("basis-full");
+      expect(slot.className).toContain("[&>*]:w-full");
+      // Wide, it returns to the aligned column.
+      expect(slot.className).toContain("@2xl:w-40");
+    });
+
+    it("leaves the action out of a narrow row otherwise", () => {
+      const li = row(<RecordRow title="Work" aligned action={action} />);
+      const slot = li.querySelector("[data-record-action]") as HTMLElement;
+      expect(slot).not.toHaveAttribute("data-needs-you");
+      expect(slot.className).toMatch(/(^|\s)hidden(\s|$)/);
+    });
+
+    it("does nothing without an action", () => {
+      const li = row(<RecordRow title="Work" aligned needsYou action={null} />);
+      expect(li.querySelector("[data-needs-you]")).toBeNull();
+    });
+  });
+
   it("puts detail under the row: full width when narrow, under the title when wide", () => {
     const li = row(
       <RecordRow
@@ -219,7 +247,7 @@ describe("RecordRow", () => {
     // Hidden in a narrow list, a fixed column in a wide one.
     expect(status.className).toContain("hidden");
     expect(status.className).toContain("@2xl:w-40");
-    expect(action.className).toContain("@2xl:w-36");
+    expect(action.className).toContain("@2xl:w-40");
   });
 });
 

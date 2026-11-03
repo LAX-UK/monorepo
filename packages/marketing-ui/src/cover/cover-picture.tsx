@@ -124,7 +124,18 @@ export function CoverPlate({
 }) {
   const { hidden, ref, onLoad } = useImageLoad(onFail);
   return (
-    <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: media.field }}>
+    <div
+      className={cn(
+        "absolute inset-0 overflow-hidden",
+        media.fieldDark && "dark:bg-[var(--plate-field-dark)]!",
+      )}
+      style={
+        {
+          backgroundColor: media.field,
+          ...(media.fieldDark ? { "--plate-field-dark": media.fieldDark } : {}),
+        } as CSSProperties
+      }
+    >
       <div
         className={cn(
           "absolute inset-x-8 inset-y-8 flex items-center justify-center",
@@ -136,6 +147,7 @@ export function CoverPlate({
           <img
             ref={ref}
             src={media.src}
+            {...(media.srcSet ? { srcSet: media.srcSet, sizes: media.sizes } : {})}
             alt={media.alt}
             width={media.width}
             height={media.height}

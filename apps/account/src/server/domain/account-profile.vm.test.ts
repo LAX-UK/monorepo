@@ -17,11 +17,26 @@ const contact: ProfileContactVm = {
   email: "shima@example.com",
   emailVerified: true,
   pendingEmail: null,
+  pendingEmailExpired: false,
   phone: "+201234567890",
   phoneVerified: false,
+  phoneAvailable: true,
 };
 
 describe("buildProfileSections", () => {
+  it("drops the phone section when codes cannot be sent and no number is on file", () => {
+    const sections = buildProfileSections(
+      { ...contact, phone: null, phoneVerified: false, phoneAvailable: false },
+      withBid,
+    );
+    expect(sections.map((s) => s.id)).toEqual(["email"]);
+  });
+
+  it("keeps showing a number already on file when codes cannot be sent", () => {
+    const sections = buildProfileSections({ ...contact, phoneAvailable: false }, withBid);
+    expect(sections.map((s) => s.id)).toEqual(["email", "phone"]);
+  });
+
   it("masks the email, shows the phone in full and explains how each changes", () => {
     const sections = buildProfileSections(contact, withBid);
     expect(sections.map((s) => s.id)).toEqual(["email", "phone"]);
@@ -53,7 +68,15 @@ describe("buildProfileSections", () => {
 
   it("shows missing values without a status and hides Bid-only parts without Bid", () => {
     const sections = buildProfileSections(
-      { email: null, emailVerified: false, pendingEmail: null, phone: null, phoneVerified: false },
+      {
+        email: null,
+        emailVerified: false,
+        pendingEmail: null,
+        pendingEmailExpired: false,
+        phone: null,
+        phoneVerified: false,
+        phoneAvailable: true,
+      },
       withoutBid,
     );
     expect(sections.map((s) => s.id)).toEqual(["email", "phone"]);

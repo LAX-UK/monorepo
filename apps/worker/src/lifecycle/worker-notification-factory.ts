@@ -1,3 +1,4 @@
+import { formatMoneyMajor } from "@auction/email";
 import type { CreateNotificationRow } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 
@@ -35,7 +36,7 @@ export class WorkerNotificationFactory {
       type: "lot_ended_seller",
       title: sold ? "Your lot has sold" : "Your lot closed unsold",
       message: sold
-        ? `"${lot.title}" sold with a hammer price of ${opts?.hammerPrice} GBP.`
+        ? `"${lot.title}" sold with a hammer price of ${formatMoneyMajor(opts?.hammerPrice) ?? opts?.hammerPrice}.`
         : `"${lot.title}" closed without a sale. Choose what happens next: relist it, offer it by private sale, or have it returned.`,
       lotId: lot.id,
       legalEntityId: lot.sellerLegalEntityId ?? null,
@@ -105,7 +106,7 @@ export class WorkerNotificationFactory {
       userId: buyerId,
       type: "payment_due",
       title: `Payment due — ${lot.title}`,
-      message: `Complete payment of ${input.amount} GBP for this lot.${dueSuffix}`,
+      message: `Complete payment of ${formatMoneyMajor(input.amount) ?? input.amount} for this lot.${dueSuffix}`,
       lotId: lot.id,
       legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: {

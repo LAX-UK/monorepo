@@ -13,6 +13,15 @@ deliberate opt-in coverage; generate snapshots only when adopting that tier:
 UPDATE_MARKETING_VISUALS=1 pnpm ci:visual-baseline
 ```
 
+Home cover baselines are generated the same way:
+[`cover-visual.spec.ts`](../cover-visual.spec.ts) shows the cover on fixture data (inline
+artwork, never live photographs) for photo, plate, between seasons and text only, at 1440 and
+375, light and dark. The spec is opt-in (`@optin`) until its Linux baselines are committed. Run
+the **cover-baselines** job of the visual-baselines workflow, review the PNGs, and commit them
+under `__snapshots__/cover-visual.spec.ts/`. Locally, serve the app with
+`COVER_FIXTURE_REVIEW=1` (a production build answers 404 on `/dev/cover` without it) and run
+`pnpm --filter @auction/web test:e2e:cover-visual-update`.
+
 Admin baseline updates (review every PNG diff before commit):
 
 ```bash

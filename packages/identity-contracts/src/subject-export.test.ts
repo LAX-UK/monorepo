@@ -127,7 +127,7 @@ describe("export categories", () => {
 
   it("names a company for every product", () => {
     for (const product of SUBJECT_EXPORT_PRODUCTS) {
-      expect(SUBJECT_EXPORT_PRODUCT_INFO[product].controller.length).toBeGreaterThan(0);
+      expect(SUBJECT_EXPORT_PRODUCT_INFO[product].controllers.length).toBeGreaterThan(0);
     }
   });
 });

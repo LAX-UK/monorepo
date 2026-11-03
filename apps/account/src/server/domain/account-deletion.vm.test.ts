@@ -142,4 +142,24 @@ describe("buildDeletionPageVm", () => {
       expect(vm.kind).toBe("requested");
     });
   });
+
+  describe("when the purge is holding the deletion", () => {
+    const held = status({
+      requestedAt: "2026-10-23T12:00:00.000Z",
+      hold: { heldAt: "2026-11-23T03:00:00.000Z", reasons: [BID_BLOCKER, SHOP_BLOCKER] },
+    });
+
+    it("explains why, lists what is open, and says it is checked daily", () => {
+      expect(buildDeletionPageVm(held)).toEqual({
+        kind: "held",
+        requestedOn: "23 October 2026",
+        title: "Your account deletion is on hold",
+        basis: expect.stringContaining("contract"),
+        reasonsIntro: "What is still open:",
+        reasons: [BID_BLOCKER, SHOP_BLOCKER],
+        recheck: expect.stringContaining("every day"),
+        resolution: expect.stringContaining("cancel the deletion"),
+      });
+    });
+  });
 });

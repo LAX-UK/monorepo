@@ -13,6 +13,7 @@ import { createAuthRequestHandler } from "./container/create-auth-request-handle
 import { createAuthSchedules } from "./container/create-auth-schedules.js";
 import { createDataRequests } from "./container/create-data-requests.js";
 import { createIdentityAddressService } from "./container/create-identity-address-service.js";
+import { createIdentityDeletionPurgeService } from "./container/create-identity-deletion-purge-service.js";
 import { createIdentityLifecycleService } from "./container/create-identity-lifecycle-service.js";
 import { createIdentityOperationsService } from "./container/create-identity-operations-service.js";
 import { createOidcRouteServices } from "./container/create-oidc-route-services.js";
@@ -22,18 +23,16 @@ import {
   createDurableSecurityEffects,
   createSecurityNoticeService,
 } from "./container/create-security-services.js";
+import { createSubjectExportService } from "./container/create-subject-export.js";
 import { loadAuthEnv } from "./env.js";
 import { withAlertingLog } from "./infrastructure/alerting-log.js";
-import { DrizzleSubjectExportRepository } from "./infrastructure/drizzle-subject-export.repository.js";
-import { createSubjectExportReadSigner } from "./infrastructure/s3-subject-export-read-signer.js";
+import { createAccountSubjectExportRegistry } from "./infrastructure/subject-export/create-account-subject-export-categories.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
 import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
 import { AccountDeletionService } from "./services/account-deletion.service.js";
 import { EmailChangeService } from "./services/email-change.service.js";
-import { SubjectExportService } from "./services/subject-export.service.js";
 import { createSubjectReadRateLimiter } from "./services/subject-read-rate-limiter.js";
 import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
-import { createAccountSubjectExportRegistry } from "./subject-export/create-account-subject-export-categories.js";
 import { SubjectExportReader } from "./subject-export/subject-export-reader.service.js";
 
 /** LAX Account's production origin, used for the security-notice link when `LAX_ACCOUNT_ORIGIN` is unset. */
@@ -133,6 +132,7 @@ const durableSecurityEffects = createDurableSecurityEffects({
     operations: identityOperations,
     logout: services.oidc.logout,
     events: repositories.identityEventPublisher,
+    notices: securityNotices,
   },
   log: withAlertingLog(log),
 });
@@ -155,23 +155,11 @@ const accountDeletion = new AccountDeletionService({
   onProductUnavailable: (product, error) =>
     log.warn({ err: error, product }, "account_deletion_product_unavailable"),
 });
-const subjectExports = new SubjectExportService({
+const subjectExports = createSubjectExportService({
+  db,
+  env,
   operations: identityOperations,
-  repository: new DrizzleSubjectExportRepository(db, repositories.identityEventPublisher),
-  signer: createSubjectExportReadSigner(
-    env.SUBJECT_EXPORT_BUCKET &&
-      env.SUBJECT_EXPORT_REGION &&
-      env.SUBJECT_EXPORT_READ_ACCESS_KEY_ID &&
-      env.SUBJECT_EXPORT_READ_SECRET_ACCESS_KEY
-      ? {
-          bucket: env.SUBJECT_EXPORT_BUCKET,
-          region: env.SUBJECT_EXPORT_REGION,
-          endpoint: env.SUBJECT_EXPORT_ENDPOINT,
-          accessKeyId: env.SUBJECT_EXPORT_READ_ACCESS_KEY_ID,
-          secretAccessKey: env.SUBJECT_EXPORT_READ_SECRET_ACCESS_KEY,
-        }
-      : null,
-  ),
+  events: repositories.identityEventPublisher,
   notices: securityNotices,
 });
 const dataRequests = createDataRequests(db);
@@ -197,9 +185,32 @@ const authHandler = createAuthRequestHandler({
   auth,
   oidcSessions: services.oidc.sessions,
 });
+const deletionPurge = createIdentityDeletionPurgeService({
+  db,
+  events: repositories.identityEventPublisher,
+  ports: {
+    eligibility: accountDeletion,
+    notices: securityNotices,
+    effects: durableSecurityEffects,
+    // The scrub removes the issuer's own sessions and tokens; this ends the products' sessions
+    // and sends back-channel logout, retried durably if it fails.
+    endSessions: async (userId) => {
+      await durableSecurityEffects.settle("identity-deletion-purge", {
+        kind: "revoke_subject_tokens",
+        userId,
+      });
+      await durableSecurityEffects.settle("identity-deletion-purge", {
+        kind: "publish_session_revoked",
+        userId,
+      });
+    },
+    log: withAlertingLog(log),
+  },
+});
 const schedules = await createAuthSchedules({
   db,
   log,
+  deletionPurge,
   identityOperations,
   logoutDelivery: services.oidc.logoutDelivery,
   securityEffects: durableSecurityEffects,

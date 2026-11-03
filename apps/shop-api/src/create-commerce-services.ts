@@ -1,5 +1,6 @@
 import { legalEntityFor } from "@auction/branding";
 import type { Database } from "@auction/db";
+import { guardAgainstPendingDeletion } from "./application/guard-against-pending-deletion.js";
 import {
   createCancelCheckoutOrderHandler,
   createCheckoutOrderHandler,
@@ -22,6 +23,7 @@ import { createGuestCheckoutDeps } from "./create-guest-checkout-deps.js";
 import type { ShopApiEnv } from "./env.js";
 import { createDrizzleCommerceRepository } from "./infrastructure/drizzle-commerce.repository.js";
 import { createDrizzlePaymentEventProcessor } from "./infrastructure/drizzle-payment-event.processor.js";
+import { createDrizzlePendingDeletionReader } from "./infrastructure/drizzle-pending-deletion.reader.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
 import { createDrizzleStripeMoneyWebhookProcessor } from "./infrastructure/drizzle-stripe-money-webhook.processor.js";
 import { createHttpIdentityAddressBook } from "./infrastructure/http-identity-address-book.js";
@@ -69,6 +71,7 @@ export function createCommerceServices(
       : null;
   const addressBook = identityConfig ? createHttpIdentityAddressBook(identityConfig) : null;
 
+  const pendingDeletion = createDrizzlePendingDeletionReader(db);
   const notifications = createDrizzleShopNotificationPublisher();
   const invoiceIssuer = {
     supplier: legalEntityFor("shop"),
@@ -114,8 +117,14 @@ export function createCommerceServices(
       upsertBasketLine: createUpsertBasketLineHandler(repository),
       removeBasketLine: createRemoveBasketLineHandler(repository),
       mergeBaskets: createMergeBasketsHandler(repository),
-      checkoutOrder: createCheckoutOrderHandler(repository),
-      resumeCheckoutOrder: createResumeCheckoutOrderHandler(repository),
+      checkoutOrder: guardAgainstPendingDeletion(
+        pendingDeletion,
+        createCheckoutOrderHandler(repository),
+      ),
+      resumeCheckoutOrder: guardAgainstPendingDeletion(
+        pendingDeletion,
+        createResumeCheckoutOrderHandler(repository),
+      ),
       cancelCheckoutOrder: createCancelCheckoutOrderHandler(repository),
       listOrders: createListOrdersHandler(repository),
       getOrder: createGetOrderHandler(repository),

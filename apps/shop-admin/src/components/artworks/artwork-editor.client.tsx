@@ -106,6 +106,7 @@ import {
   PageHeader,
   SegmentedControl,
   StaffButton,
+  StaffCheckbox,
   StaffRadio,
   StaffRadioGroup,
   StaffReadOnly,
@@ -121,7 +122,7 @@ import {
 import { Archive, ArchiveRestore, Eye, EyeOff, Layers, Save, Stamp } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 export type ArtworkEditorPermissions = {
   /** `catalogue.write`: edit, publish, unpublish, archive. */
@@ -206,6 +207,9 @@ export function ArtworkEditor({
   const [saving, setSaving] = useState(false);
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [confirming, setConfirming] = useState<AdminArtworkVisibilityAction | null>(null);
+  // On by default: people who asked to hear about new editions are emailed once, on publish.
+  const [sendReleaseAlert, setSendReleaseAlert] = useState(true);
+  const releaseAlertId = useId();
   const [changingVisibility, setChangingVisibility] = useState(false);
   // New prints: the run, its edition facts and the confirmation, checked with the rest on submit.
   const [runValues, setRunValues] = useState(emptyRunForm);
@@ -394,6 +398,7 @@ export function ArtworkEditor({
       artworkId: record.artworkId,
       action,
       idempotencyKey: crypto.randomUUID(),
+      sendReleaseAlert: action === "publish" && offersReleaseAlert && sendReleaseAlert,
     }).catch(() => ({ ok: false, kind: "failed", message: "Action failed. Try again." }) as const);
     setChangingVisibility(false);
     setConfirming(null);
@@ -403,11 +408,22 @@ export function ArtworkEditor({
     }
     setRecord({ ...record, state: result.data.state });
     setVersion(result.data.version);
-    toast.success(`${VISIBILITY_ACTION_LABELS[action].past} “${record.title}”`);
+    const queued = result.data.releaseAlertsQueued;
+    const done = `${VISIBILITY_ACTION_LABELS[action].past} “${record.title}”`;
+    if (queued) {
+      toast.success(done, {
+        description: `Release alert queued for ${queued} ${queued === 1 ? "subscriber" : "subscribers"}.`,
+      });
+    } else {
+      toast.success(done);
+    }
     router.refresh();
   }
 
   const visibility = record ? artworkVisibilityActions(record) : null;
+  // Only an edition sold in the Shop is a release; originals and lax.art works are not.
+  const offersReleaseAlert =
+    record !== null && record.salesChannel === "shop" && record.run !== null && permissions.write;
   // The money field resets its text whenever `value` differs from what it last parsed, so it is
   // fed its own reading of the text; the form's stricter rules apply on validation.
   const typedPence = parsePoundsToPence(values.priceText);
@@ -1102,7 +1118,24 @@ export function ArtworkEditor({
         tone={confirming === "archive" ? "danger" : "default"}
         loading={changingVisibility}
         onConfirm={() => confirming && void changeVisibility(confirming)}
-      />
+      >
+        {confirming === "publish" && offersReleaseAlert ? (
+          <ChoiceRow
+            htmlFor={releaseAlertId}
+            disabled={changingVisibility}
+            control={
+              <StaffCheckbox
+                id={releaseAlertId}
+                checked={sendReleaseAlert}
+                disabled={changingVisibility}
+                onCheckedChange={(checked) => setSendReleaseAlert(checked === true)}
+              />
+            }
+            label="Send release alert"
+            description="Emails everyone who asked to hear about new editions. Each person is emailed once for this edition."
+          />
+        ) : null}
+      </ConfirmActionDialog>
       <UnsavedChangesDialog guard={guard} />
     </div>
   );

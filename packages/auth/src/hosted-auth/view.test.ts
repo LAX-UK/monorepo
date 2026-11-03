@@ -18,6 +18,15 @@ describe("buildHostedAuthPageConfig", () => {
     );
     expect(config.restartUrl).toBe("http://localhost:3050/login");
   });
+
+  it("points the contact link at the family contact page on Bid", () => {
+    const flow = parseHostedAuthFlow(new URLSearchParams("client_id=lax-account-web"));
+    const config = buildHostedAuthPageConfig(flow, {
+      ...EMPTY_HOSTED_AUTH_CAPABILITIES,
+      bidOrigin: "https://lax.bid/",
+    });
+    expect(config.contactUrl).toBe("https://lax.bid/contact");
+  });
 });
 
 describe("two-factor path", () => {

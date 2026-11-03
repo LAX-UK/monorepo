@@ -3,6 +3,8 @@ import {
   DATA_REQUESTS_MANAGE_ACCESS,
   DELIVERY_REPLAY_ACCESS,
   DISPUTE_ALLOCATION_WRITE_ACCESS,
+  ENQUIRIES_ACCESS,
+  ENQUIRY_ROUTING_MANAGE_ACCESS,
   FAILED_JOBS_READ_ACCESS,
   FAILED_JOBS_WRITE_ACCESS,
   PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
@@ -34,6 +36,7 @@ import { createAdminRoutes } from "./admin.js";
 const SALE_ID = "00000000-0000-4000-8000-000000000001";
 const LOT_ID = "00000000-0000-4000-8000-000000000002";
 const PAYMENT_ID = "00000000-0000-4000-8000-000000000003";
+const ENQUIRY_ID = "00000000-0000-4000-8000-000000000004";
 
 function buildApp(staffRoles: StaffRoles | undefined) {
   const container = {
@@ -66,7 +69,7 @@ type AdminAction = {
   /** What the UI hides or shows. */
   name: string;
   rule: CapabilityRequirement;
-  method: "GET" | "POST";
+  method: "GET" | "POST" | "PATCH" | "PUT";
   path: string;
   body?: unknown;
   /** Roles the rule is documented to allow; pins the matrix so a change is a visible diff. */
@@ -160,6 +163,57 @@ const ACTIONS: AdminAction[] = [
     path: "/admin/system/failed-jobs/restore",
     body: { ids: ["dlq:email:1"] },
     expectedRoles: ["administrator"],
+  },
+  {
+    name: "list enquiries",
+    rule: ENQUIRIES_ACCESS,
+    method: "GET",
+    path: "/admin/enquiries",
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
+    name: "open an enquiry",
+    rule: ENQUIRIES_ACCESS,
+    method: "GET",
+    path: `/admin/enquiries/${ENQUIRY_ID}`,
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
+    name: "change an enquiry",
+    rule: ENQUIRIES_ACCESS,
+    method: "PATCH",
+    path: "/admin/enquiries/E-1042",
+    body: { version: 1, note: "Called the seller." },
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
+    name: "mark an enquiry handled",
+    rule: ENQUIRIES_ACCESS,
+    method: "POST",
+    path: `/admin/enquiries/${ENQUIRY_ID}/handled`,
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
+    name: "read the enquiry routing",
+    rule: ENQUIRIES_ACCESS,
+    method: "GET",
+    path: "/admin/enquiry-routing",
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
+    name: "list who an enquiry may be given to",
+    rule: ENQUIRIES_ACCESS,
+    method: "GET",
+    path: "/admin/enquiry-assignees",
+    expectedRoles: ["administrator", "sales_manager", "specialist", "client_services"],
+  },
+  {
+    name: "change the enquiry routing",
+    rule: ENQUIRY_ROUTING_MANAGE_ACCESS,
+    method: "PUT",
+    path: "/admin/enquiry-routing",
+    body: { rules: [] },
+    expectedRoles: ["administrator", "sales_manager"],
   },
   {
     name: "open the data requests list",

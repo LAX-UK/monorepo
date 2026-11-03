@@ -3,6 +3,7 @@ import type { LegalEntityKind, LegalEntityStatus } from "@auction/types";
 import type { OrganisationMemberActor } from "./organisation-membership-service.js";
 
 /** A task with where its one button leads. */
+/** A task with where its one button leads; `raisedAt` is when it arose, `null` when unknown. */
 export type NeedsYouTaskView = NeedsYouTask & { link: NeedsYouLink };
 
 export type NeedsYouView = {
@@ -21,9 +22,13 @@ export type NeedsYouView = {
  * account, whose state the domain reads by its kind.
  */
 export interface INeedsYouOrganisationReader {
-  standing(
-    legalEntityId: string,
-  ): Promise<{ kind: LegalEntityKind; status: LegalEntityStatus; payoutsReady: boolean } | null>;
+  standing(legalEntityId: string): Promise<{
+    kind: LegalEntityKind;
+    status: LegalEntityStatus;
+    payoutsReady: boolean;
+    /** When the status last changed; `null` when it never has. */
+    statusChangedAt: Date | null;
+  } | null>;
 }
 
 /**

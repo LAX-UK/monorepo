@@ -17,6 +17,9 @@ export type IdentitySecurityStatusRecord = {
   emailChangeExpiresAt: Date | null;
   /** When the person asked for deletion; null when they have not, or cancelled. */
   deletionRequestedAt: Date | null;
+  /** Set while the daily purge is keeping a due deletion back. */
+  deletionHeldAt: Date | null;
+  deletionHoldReasons: unknown;
 };
 
 export type IdentitySessionRecord = {
@@ -63,6 +66,14 @@ export interface IIdentitySubjectRepository {
     phone: string,
     now: Date,
   ): Promise<"updated" | "phone_taken" | "not_found">;
+  /** Clears the number and its verified flag, reporting the number that was removed. */
+  clearPhone(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    now: Date,
+  ): Promise<
+    { status: "cleared"; previous: string } | { status: "no_phone" } | { status: "not_found" }
+  >;
   markDeletionRequested(
     transaction: IdentityOperationTransaction,
     subjectId: string,
@@ -146,8 +157,12 @@ export interface IIdentityEmailChangeRepository {
     newEmail: string;
     expiresAt: Date;
     now: Date;
-  }): Promise<void>;
-  readPending(subjectId: string): Promise<string | null>;
+  }): Promise<"started" | "address_pending">;
+  /** Clears every change whose links have expired; returns how many rows were cleared. */
+  clearExpired(now: Date): Promise<number>;
+  readPending(
+    subjectId: string,
+  ): Promise<{ pendingNewEmail: string | null; emailChangeExpiresAt: Date | null } | null>;
   clearPending(subjectId: string, now: Date): Promise<void>;
   loadForConfirmation(
     transaction: IdentityOperationTransaction,

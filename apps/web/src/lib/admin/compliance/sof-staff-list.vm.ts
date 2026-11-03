@@ -16,6 +16,7 @@ import {
   formatStaffMoney,
   parsePoundsToPence,
 } from "@auction/staff-ui";
+import { adminRoutes } from "@auction/types";
 
 export const SOF_STAFF_LIST_PATH = "/admin/compliance/source-of-funds";
 
@@ -154,18 +155,21 @@ export function sofViews(search: SofListSearch, pendingCount: number): StaffData
 export function sofAttention(counts: {
   manualReviewCount: number;
   amlScreeningsPending: number;
+  /** Payments are a finance page: compliance staff without finance are not offered the link. */
+  canOpenPayments: boolean;
 }): AttentionStripItem[] {
+  const manualReview: AttentionStripItem = {
+    id: "manual-review",
+    count: counts.manualReviewCount,
+    label:
+      counts.manualReviewCount === 1
+        ? "payment is held for manual review"
+        : "payments are held for manual review",
+    href: adminRoutes.payments.manualReview(),
+    tone: "warning",
+  };
   return [
-    {
-      id: "manual-review",
-      count: counts.manualReviewCount,
-      label:
-        counts.manualReviewCount === 1
-          ? "payment is held for manual review"
-          : "payments are held for manual review",
-      href: "/admin/payments?manualReview=1",
-      tone: "warning",
-    },
+    ...(counts.canOpenPayments ? [manualReview] : []),
     {
       id: "aml",
       count: counts.amlScreeningsPending,
@@ -173,7 +177,7 @@ export function sofAttention(counts: {
         counts.amlScreeningsPending === 1
           ? "AML screening is pending"
           : "AML screenings are pending",
-      href: "/admin/compliance/aml",
+      href: adminRoutes.aml.list(),
     },
   ];
 }

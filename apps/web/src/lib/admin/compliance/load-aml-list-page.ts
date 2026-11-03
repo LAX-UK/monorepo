@@ -20,7 +20,7 @@ import {
 } from "@/lib/data/http/compliance-aml.reader";
 import { EMPTY_ADMIN_AML_LIST_SUMMARY } from "@/lib/data/http/compliance-aml.shared";
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
-import { type UserRole, userHasAccessTo } from "@auction/types";
+import { type UserRole, adminRoutes, canOpenAdminLink, userHasAccessTo } from "@auction/types";
 
 /** Shown in place of the rows; the raw failure stays in the server logs. */
 const AML_LOAD_ERROR = "We could not load the AML screenings. Try again in a moment.";
@@ -46,6 +46,7 @@ export async function loadAdminAmlListPage(sp: AmlListSearchParams, user: Sessio
   const attentionCounts = {
     manualReviewCount: navCounts.manualReviewCount,
     sourceOfFundsPending: navCounts.sourceOfFundsPending,
+    canOpenPayments: canOpenAdminLink(role, staffRoles, adminRoutes.payments.manualReview()),
   };
 
   try {

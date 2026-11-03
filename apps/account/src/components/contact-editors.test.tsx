@@ -8,6 +8,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/server/application/account-identity-actions.server", () => ({
   cancelEmailChangeAction: vi.fn(),
   confirmEmailChangeAction: vi.fn(),
+  removePhoneAction: vi.fn(),
   sendPhoneCodeAction: vi.fn(),
   startEmailChangeAction: vi.fn(),
   verifyPhoneAction: vi.fn(),
@@ -18,6 +19,16 @@ describe("EmailChangeEditor", () => {
     const html = renderToStaticMarkup(
       <EmailChangeEditor pendingEmailMasked={null} returnTo="/account/profile" />,
     );
+    expect(html).toContain("Change email");
+    expect(html).not.toContain("Waiting for you to confirm");
+    expect(html).not.toContain("Cancel the change");
+  });
+
+  it("says the request expired and offers to start again, with no pending address", () => {
+    const html = renderToStaticMarkup(
+      <EmailChangeEditor pendingEmailMasked={null} pendingExpired returnTo="/account/profile" />,
+    );
+    expect(html).toContain("Your request expired. Start again.");
     expect(html).toContain("Change email");
     expect(html).not.toContain("Waiting for you to confirm");
     expect(html).not.toContain("Cancel the change");
@@ -46,6 +57,16 @@ describe("PhoneEditor", () => {
     ["+447700900123", true, "Change phone number"],
   ] as const)("offers the right action for %s verified=%s", (phone, verified, label) => {
     expect(render(phone, verified)).toContain(label);
+  });
+
+  it("offers Remove only when a number is on file", () => {
+    expect(render("+447700900123", true)).toContain("Remove");
+    expect(render("+447700900123", false)).toContain("Remove");
+    expect(render(null, false)).not.toContain("Remove");
+  });
+
+  it("does not show the confirm dialog until Remove is pressed", () => {
+    expect(render("+447700900123", true)).not.toContain("Remove your phone number?");
   });
 
   it("does not show the number or code fields until the person starts", () => {

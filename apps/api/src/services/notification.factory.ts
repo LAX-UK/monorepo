@@ -1,3 +1,4 @@
+import { formatMoneyMajor } from "@auction/email";
 import type { AccessRequestRow, CreateNotificationRow } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import type { Lot } from "@auction/types";
@@ -54,7 +55,7 @@ export class NotificationFactory implements INotificationFactory {
       type: "lot_ended_seller",
       title: sold ? "Your lot has sold" : "Your lot closed unsold",
       message: sold
-        ? `"${lot.title}" sold with a hammer price of ${opts?.hammerPrice} GBP.`
+        ? `"${lot.title}" sold with a hammer price of ${formatMoneyMajor(opts?.hammerPrice) ?? opts?.hammerPrice}.`
         : `"${lot.title}" closed without a sale. Choose what happens next: relist it, offer it by private sale, or have it returned.`,
       lotId: lot.id,
       legalEntityId: lot.sellerLegalEntityId ?? null,
@@ -135,7 +136,7 @@ export class NotificationFactory implements INotificationFactory {
       userId: recipientId,
       type: "payment_received",
       title: "Payment received",
-      message: `Payment of ${amount} was recorded for "${lot.title}".`,
+      message: `Payment of ${formatMoneyMajor(amount) ?? amount} was recorded for "${lot.title}".`,
       lotId: lot.id,
       legalEntityId: lot.sellerLegalEntityId ?? null,
       meta: { lotTitle: lot.title, audience: "seller", amount },
@@ -189,7 +190,7 @@ export class NotificationFactory implements INotificationFactory {
       userId: buyerId,
       type: "payment_due",
       title: `Payment due — ${lot.title}`,
-      message: `Complete payment of ${input.amount} GBP for this lot.${dueSuffix}`,
+      message: `Complete payment of ${formatMoneyMajor(input.amount) ?? input.amount} for this lot.${dueSuffix}`,
       lotId: lot.id,
       legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: {
@@ -279,7 +280,7 @@ export class NotificationFactory implements INotificationFactory {
       type: "payout_problem",
       legalEntityId: input.legalEntityId,
       title: "A payout didn't reach your bank",
-      message: `Your payout of ${input.amount} ${input.currency} didn't go through. Our finance team is looking into it and will contact you. Check that your bank details are up to date.`,
+      message: `Your payout of ${formatMoneyMajor(input.amount, input.currency) ?? `${input.amount} ${input.currency}`} didn't go through. Our finance team is looking into it and will contact you. Check that your bank details are up to date.`,
       meta: { amount: input.amount },
     };
   }
@@ -294,7 +295,7 @@ export class NotificationFactory implements INotificationFactory {
       type: "delivery_quote_ready",
       legalEntityId: input.legalEntityId,
       title: "Your delivery quote is ready",
-      message: `Delivery for "${lot.title}" is quoted at ${input.amount} ${input.currency}. Open the purchase to accept it.`,
+      message: `Delivery for "${lot.title}" is quoted at ${formatMoneyMajor(input.amount, input.currency) ?? `${input.amount} ${input.currency}`}. Open the purchase to accept it.`,
       lotId: lot.id,
       meta: { lotTitle: lot.title, amount: input.amount },
     };
