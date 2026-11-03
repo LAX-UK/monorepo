@@ -1,3 +1,5 @@
+import { readCookie } from "@auction/ui";
+
 export const SHOP_THEME_COOKIE = "lax_theme";
 export const SHOP_THEME_STORAGE_KEY = "theme";
 export const SHOP_THEME_COOKIE_MAX_AGE_SEC = 60 * 60 * 24 * 365;
@@ -21,18 +23,6 @@ export function shopThemeIsDark(
 
 export function toggleShopTheme(isDark: boolean): ShopThemePreference {
   return isDark ? "light" : "dark";
-}
-
-function readCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const prefix = `${name}=`;
-  for (const part of document.cookie.split(";")) {
-    const trimmed = part.trim();
-    if (trimmed.startsWith(prefix)) {
-      return decodeURIComponent(trimmed.slice(prefix.length));
-    }
-  }
-  return null;
 }
 
 /** Toggle `<html class="dark">` without I/O. */
@@ -59,7 +49,9 @@ export function applyShopTheme(mode: ShopThemePreference): void {
 }
 
 export function readShopThemeFromDocument(): ShopThemePreference | null {
-  return parseShopTheme(readCookie(SHOP_THEME_COOKIE));
+  return parseShopTheme(
+    typeof document === "undefined" ? null : readCookie(document.cookie, SHOP_THEME_COOKIE),
+  );
 }
 
 /** Inline bootstrap: cookie → localStorage → prefers-color-scheme. */

@@ -60,7 +60,7 @@ export async function SellTailoredLandingPage({
   const jsonLdText = jsonLdScript(
     breadcrumbJsonLd([
       { name: "Home", path: "/" },
-      { name: "Selling with LAX.BID", path: "/sell" },
+      { name: "Selling with LAX Bid", path: "/sell" },
       { name: breadcrumbLabel, path },
     ]),
   );

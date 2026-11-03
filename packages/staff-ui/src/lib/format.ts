@@ -7,12 +7,19 @@
 
 export const STAFF_TIME_ZONE = "Europe/London";
 
-const DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: STAFF_TIME_ZONE,
-});
+/**
+ * A date formatter whose short months are always three letters. en-GB spells September "Sept"
+ * in current runtimes, which would be the one four-letter month in a column of dates. Use this
+ * for any short-month date a staff screen shows, so no page spells it differently.
+ */
+export function staffShortDateFormat(
+  options: Intl.DateTimeFormatOptions,
+): Pick<Intl.DateTimeFormat, "format"> {
+  const inner = new Intl.DateTimeFormat("en-GB", { timeZone: STAFF_TIME_ZONE, ...options });
+  return { format: (date) => inner.format(date).replace(/\bSept\b/, "Sep") };
+}
+
+const DATE = staffShortDateFormat({ day: "numeric", month: "short", year: "numeric" });
 
 const TIME = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",

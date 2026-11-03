@@ -21,7 +21,7 @@ export type LegalEntity = {
   readonly id: LegalEntityId;
   /** Registered company name, exactly as filed. */
   readonly name: string;
-  /** Name used in marketing copy and descriptions: "LAX.BID by London Auction Xchange". */
+  /** Name used in marketing copy and descriptions: "LAX Bid by London Auction Xchange". */
   readonly tradingName: string;
   /** Jurisdiction of registration, when confirmed. */
   readonly registeredIn?: string;

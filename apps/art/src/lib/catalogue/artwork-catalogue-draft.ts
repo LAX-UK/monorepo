@@ -1,3 +1,4 @@
+import { parsePoundsToPence } from "@auction/ui";
 import type {
   ArtworkCatalogueFilterPatch,
   ArtworkCatalogueSort,
@@ -42,10 +43,10 @@ export function artworkDraftFromState(state: ArtworkCatalogueUrlState): ArtworkC
   };
 }
 
+/** Whole pounds from a price filter box; pence typed after the point are dropped. */
 function parsePounds(value: string): number | null {
-  if (!value.trim()) return null;
-  const parsed = Number.parseInt(value, 10);
-  return Number.isNaN(parsed) ? null : parsed;
+  const parsed = parsePoundsToPence(value);
+  return parsed.ok ? Math.floor(parsed.pence / 100) : null;
 }
 
 export function artworkDraftToPatch(draft: ArtworkCatalogueDraft): ArtworkCatalogueFilterPatch {

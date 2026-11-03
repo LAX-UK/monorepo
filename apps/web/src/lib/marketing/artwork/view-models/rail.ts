@@ -12,7 +12,8 @@ export type LotRailCardVM = {
   imageUrl: string | null;
   lotNumber: number | null;
   title: string;
-  artistOrSellerName: string;
+  /** The lot's artist, or `null` when it is not known. The consignor is never shown here. */
+  artistName: string | null;
   estimateLine: string | null;
   currentPrice: string;
   /** "Starting bid" until the first bid, then "Current bid". */
@@ -32,7 +33,7 @@ export type LotRelatedRailVM = {
 
 function lotToRailCard(
   lot: Lot,
-  artistName: string,
+  artistName: string | null,
   catalogLinkParams?: CatalogLinkParams,
   deliveryMode?: Sale["deliveryMode"] | null,
 ): LotRailCardVM {
@@ -43,7 +44,7 @@ function lotToRailCard(
     imageUrl: lot.images[0] ?? null,
     lotNumber: lot.lotNumber,
     title: lot.title,
-    artistOrSellerName: artistName,
+    artistName,
     estimateLine: est ? formatEstimateRange(est) : null,
     currentPrice: lot.currentPrice,
     priceLabel: lotHeadlineLabel("live", lotPriceHasBids(lot)),
@@ -64,7 +65,7 @@ export function mapSiblingsToRailVM(
   parentSale: { id: string; title: string; deliveryMode?: Sale["deliveryMode"] | null } | null,
   saleLots: Lot[] | null,
   sellerRelated: Lot[],
-  resolveSellerName: (l: Lot) => string,
+  resolveArtistName: (l: Lot) => string | null,
   catalogLinkParams?: CatalogLinkParams,
 ): LotRelatedRailVM {
   const saleSiblings = (saleLots ?? []).filter((l) => l.id !== lot.id);
@@ -86,7 +87,7 @@ export function mapSiblingsToRailVM(
     cards: source.map((l) =>
       lotToRailCard(
         l,
-        resolveSellerName(l),
+        resolveArtistName(l),
         catalogLinkParams,
         useSale && parentSale ? parentSale.deliveryMode : null,
       ),

@@ -1,6 +1,7 @@
 import { AdminUserCapabilitiesPanel } from "@/components/admin/admin-user-capabilities-panel";
 import { AdminUserProfilePanel } from "@/components/admin/admin-user-profile-panel";
 import { PeopleDetailShell } from "@/components/admin/people-detail-shell";
+import { EmailDeliveryPanel } from "@/components/admin/people/email-delivery/email-delivery-panel";
 import { StaffLaxAccessPanel } from "@/components/admin/people/staff-lax-access-panel";
 import {
   LaxAdminRolesSection,
@@ -60,6 +61,7 @@ export default async function AdminStaffDetailPage({ params, searchParams }: Pro
           content: (
             <>
               <AdminUserProfilePanel user={user} />
+              <EmailDeliveryPanel userId={user.id} personName={person.name} email={user.email} />
               <StaffRolesSection person={person} overview={roles} nowIso={nowIso} />
               <LaxAdminRolesSection person={person} overview={laxAdminRoles} nowIso={nowIso} />
               <StaffLaxAccessPanel detail={accessDetail} />

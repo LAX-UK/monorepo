@@ -25,7 +25,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
-  title: "Selling with LAX.BID",
+  title: "Selling with LAX Bid",
   description: `How to sell with ${SITE_SEO_NAME}: submit a consignment, work with specialists, prepare catalogue materials, and settle after auction.`,
   path: "/sell",
 });
@@ -34,7 +34,7 @@ export default function SellPage() {
   const jsonLdText = jsonLdScript(
     breadcrumbJsonLd([
       { name: "Home", path: "/" },
-      { name: "Selling with LAX.BID", path: "/sell" },
+      { name: "Selling with LAX Bid", path: "/sell" },
     ]),
   );
 
@@ -44,7 +44,7 @@ export default function SellPage() {
         {jsonLdText}
       </script>
       <LegalPage
-        title="Selling with LAX.BID"
+        title="Selling with LAX Bid"
         breadcrumb={
           <MarketingBreadcrumb
             items={[

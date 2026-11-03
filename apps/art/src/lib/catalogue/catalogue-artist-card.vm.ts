@@ -10,7 +10,7 @@ export type CatalogueArtistCardVm = {
   image: string | null;
   imageAlt: string;
   name: string;
-  /** Nationality and years, else discipline or works count; null hides the line. */
+  /** Nationality and years, else discipline; null hides the line. The works count has its own line. */
   caption: string | null;
   href: string;
   /** "3 works" on lax.art; null when unknown or none. */
@@ -53,7 +53,7 @@ export function buildCatalogueArtistCards(
     image: item.portraitUrl,
     imageAlt: `Portrait of ${item.name}`,
     name: item.name,
-    caption: formatArtistLifeLine(item) ?? item.discipline ?? worksCaption(item.artworkCount),
+    caption: formatArtistLifeLine(item) ?? item.discipline ?? null,
     worksLabel: item.artworkCount > 0 ? worksCaption(item.artworkCount) : null,
     href: artistHref(item.slug),
     following: followedSlugs.has(item.slug),

@@ -2,8 +2,8 @@
 
 import { LEGAL_ENTITIES } from "./legal-entity.js";
 
-export const SITE_NAME = "LAX.BID";
-export const SITE_SHORT_NAME = "LAX.BID";
+export const SITE_NAME = "LAX Bid";
+export const SITE_SHORT_NAME = "LAX Bid";
 /** The company behind LAX Bid, as named in Bid's copy and descriptions. */
 export const SITE_COMPANY_NAME = LEGAL_ENTITIES["london-auction-xchange"].tradingName;
 /**
