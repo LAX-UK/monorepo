@@ -13,4 +13,3 @@ export {
   truncateIp,
   type QrCodeScanInput,
 } from "./services/qr-code-scan.js";
-export { qualifiedColumn } from "./lib/qualified-column.js";

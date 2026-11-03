@@ -1,4 +1,4 @@
-import { qualifiedColumn } from "@auction/db";
+import { qualifiedColumn } from "@auction/db/qualified-column";
 import { staffRoleAssignment } from "@auction/db/schema";
 import { type AnyColumn, type SQL, and, gt, isNull, lte, or, sql } from "drizzle-orm";
 

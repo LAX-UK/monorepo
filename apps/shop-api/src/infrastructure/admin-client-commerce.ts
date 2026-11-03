@@ -1,4 +1,5 @@
-import { type Database, qualifiedColumn } from "@auction/db";
+import type { Database } from "@auction/db";
+import { qualifiedColumn } from "@auction/db/qualified-column";
 import {
   shopArtwork,
   shopArtworkInterest,

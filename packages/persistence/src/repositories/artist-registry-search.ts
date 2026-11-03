@@ -1,4 +1,5 @@
-import { type Database, qualifiedColumn } from "@auction/db";
+import type { Database } from "@auction/db";
+import { qualifiedColumn } from "@auction/db/qualified-column";
 import { artistAlias, artistProfile } from "@auction/db/schema";
 import type { ArtistKind, ArtistStatus } from "@auction/types";
 import { and, asc, desc, eq, ilike, ne, or, sql } from "drizzle-orm";

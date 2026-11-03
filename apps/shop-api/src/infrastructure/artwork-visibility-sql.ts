@@ -1,4 +1,4 @@
-import { qualifiedColumn } from "@auction/db";
+import { qualifiedColumn } from "@auction/db/qualified-column";
 import { shopArtist, shopArtwork, shopEdition } from "@auction/db/schema";
 import type { AdminArtworkState } from "@auction/shop-contracts";
 import { type SQL, and, isNotNull, isNull, sql } from "drizzle-orm";
