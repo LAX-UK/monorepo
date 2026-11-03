@@ -6,18 +6,19 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0281_alert_engine.sql");
-const rollback = read("0281_rollback.sql");
+const migration = read("0284_alert_engine.sql");
+const rollback = read("0284_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0281 alert engine", () => {
-  it("is journal entry 281, after 0280", () => {
-    const entry = journal.entries.find((e) => e.tag === "0281_alert_engine");
-    const previous = journal.entries.find((e) => e.tag === "0280_deletion_safety");
-    expect(entry?.idx).toBe(281);
-    expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
+describe("migration 0284 alert engine", () => {
+  it("is journal entry 284, after the entry before it", () => {
+    const at = journal.entries.findIndex((e) => e.tag === "0284_alert_engine");
+    expect(journal.entries[at]?.idx).toBe(284);
+    expect(journal.entries[at]?.when).toBeGreaterThan(
+      journal.entries[at - 1]?.when ?? Number.POSITIVE_INFINITY,
+    );
   });
 
   it("creates the five bid_alert tables", () => {

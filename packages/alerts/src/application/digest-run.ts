@@ -1,7 +1,7 @@
 import { assembleDigest } from "../domain/digest.js";
 import { digestDateFor, isDigestDue } from "../domain/london-date.js";
 import type { PendingMatch } from "../domain/match.js";
-import type { AlertProduct } from "../domain/products.js";
+import type { AlertProduct, AlertTopic } from "../domain/products.js";
 import type { SubscriberRecord } from "../domain/subscriber.js";
 import type { AlertLinkCodec } from "../links/codec.js";
 import type {
@@ -109,7 +109,13 @@ export class DigestRun {
         const record = await subscribers.findById(digest.subscriberId);
         const vm = assembleDigest(await digests.matchesOf(digest.digestId));
         if (record && vm) {
-          await this.send(record, vm, localDate, digest.idempotencyKey);
+          await this.send(
+            record,
+            vm,
+            await this.activeTopics(record.id),
+            localDate,
+            digest.idempotencyKey,
+          );
           stats.resumed += 1;
         }
         await digests.markSent(digest.digestId, clock.now());
@@ -134,7 +140,8 @@ export class DigestRun {
       stats.empty += 1;
       return;
     }
-    const live = await this.removeUnwanted(subscriberId, pending, now);
+    const active = await this.activeTopics(subscriberId);
+    const live = await this.removeUnwanted(pending, new Set(active), now);
     const vm = assembleDigest(live);
     if (!vm) {
       stats.empty += 1;
@@ -162,7 +169,7 @@ export class DigestRun {
       stats.capped += 1;
       return;
     }
-    await this.send(record, vm, localDate, idempotencyKey);
+    await this.send(record, vm, active, localDate, idempotencyKey);
     await digests.markSent(claim.digestId, clock.now());
     stats.sent += 1;
   }
@@ -170,6 +177,7 @@ export class DigestRun {
   private async send(
     record: SubscriberRecord,
     vm: NonNullable<ReturnType<typeof assembleDigest>>,
+    activeTopics: readonly AlertTopic[],
     localDate: string,
     idempotencyKey: string,
   ) {
@@ -181,6 +189,7 @@ export class DigestRun {
       localDate,
       idempotencyKey,
       vm,
+      activeTopics,
       siteUrl: (path) => urls.site(path),
       ...stopLinks(record, codec, urls),
       manageUrl: record.subjectId ? urls.manage() : null,
@@ -188,11 +197,12 @@ export class DigestRun {
     });
   }
 
+  private async activeTopics(subscriberId: string): Promise<AlertTopic[]> {
+    return (await this.deps.topics.list(subscriberId)).filter((s) => s.emailOn).map((s) => s.topic);
+  }
+
   /** Drops matches whose topic the person switched off, and those whose item went stale. */
-  private async removeUnwanted(subscriberId: string, pending: PendingMatch[], now: Date) {
-    const on = new Set(
-      (await this.deps.topics.list(subscriberId)).filter((s) => s.emailOn).map((s) => s.topic),
-    );
+  private async removeUnwanted(pending: PendingMatch[], on: ReadonlySet<AlertTopic>, now: Date) {
     const off = pending.filter((m) => !on.has(m.topic));
     if (off.length > 0) {
       await this.deps.matches.drop(

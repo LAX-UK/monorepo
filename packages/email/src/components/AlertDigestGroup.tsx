@@ -3,12 +3,21 @@ import { Heading, Img, Link, Section, Text } from "@react-email/components";
 import type { AlertDigestGroup as Group } from "../templates/types/sale-alerts.js";
 
 /** One topic of a digest: its heading, the items under it, and a link to all when some are left out. */
-export function AlertDigestGroup({ group }: { group: Group }) {
+export function AlertDigestGroup({
+  group,
+  showHeading = true,
+}: {
+  group: Group;
+  /** False when the group is the whole email: its heading would only repeat the title. */
+  showHeading?: boolean;
+}) {
   return (
     <Section style={wrap}>
-      <Heading as="h2" style={heading}>
-        {group.heading}
-      </Heading>
+      {showHeading ? (
+        <Heading as="h2" style={heading}>
+          {group.heading}
+        </Heading>
+      ) : null}
       {group.subgroups.map((sub, i) => (
         <Section key={sub.label ?? `items-${i}`} style={subgroup}>
           {sub.label ? <Text style={label}>{sub.label}</Text> : null}

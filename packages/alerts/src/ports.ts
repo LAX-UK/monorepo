@@ -123,6 +123,8 @@ export type DigestMessage = {
   localDate: string;
   idempotencyKey: string;
   vm: DigestVm;
+  /** The topics the person has switched on, which the email names as why they get it. */
+  activeTopics: readonly AlertTopic[];
   /** Absolute links, built from the product's origin. */
   siteUrl: (path: string) => string;
   stopUrl: string;

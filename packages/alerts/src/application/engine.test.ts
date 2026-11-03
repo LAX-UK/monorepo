@@ -410,6 +410,25 @@ describe("announcing and the daily digest", () => {
     expect(h.mailer.digests[0]?.vm.subject).toBe("New sale: Modern British and Irish Art");
   });
 
+  it("tells the digest which topics are on, so it names only those", async () => {
+    const h = createEngineHarness();
+    await confirmedVisitor(h);
+    const [row] = [...h.stores.subscribersById.values()];
+    await h.stores.setEmail(row?.id ?? "", "bid.searches", true, "person", h.now);
+    await h.stores.setEmail(row?.id ?? "", "bid.artists", false, "person", h.now);
+    await h.record.announce({
+      topic: "bid.new_sales",
+      itemKey: "sale:1",
+      snapshot,
+      announce: true,
+    });
+    await h.digestRun().run("on");
+    expect([...(h.mailer.digests[0]?.activeTopics ?? [])].sort()).toEqual([
+      "bid.new_sales",
+      "bid.searches",
+    ]);
+  });
+
   it("sends one digest a day: a second run, and matches arriving later, wait for tomorrow", async () => {
     const h = createEngineHarness(new Date("2026-11-03T08:05:00Z"));
     await confirmedVisitor(h);

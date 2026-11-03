@@ -1,4 +1,4 @@
--- Rollback for 0281_alert_engine. Roll back the application release first: the previous release
+-- Rollback for 0284_alert_engine. Roll back the application release first: the previous release
 -- neither reads nor writes these tables, and sends no alert emails. Subscribers, their topic
 -- switches, matches, digests and announcements are lost. Addresses that signed up before the
 -- engine are still in visitor_sale_alert_subscriber as they were at the move; changes made

@@ -45,6 +45,7 @@ function message(over: Partial<DigestMessage> = {}): DigestMessage {
     localDate: "2026-11-04",
     idempotencyKey: "alert-digest:bid:s1:2026-11-04",
     vm,
+    activeTopics: ["bid.new_sales"],
     siteUrl: (p) => `https://lax.bid${p}`,
     stopUrl: "https://lax.bid/alerts/unsubscribe?t=STOP",
     oneClickUrl: "https://lax.bid/alerts/unsubscribe?t=STOP",
@@ -119,13 +120,18 @@ describe("alert emails", () => {
     const rendered = await renderEmail("alert-digest", vars);
     expect(rendered.subject).toBe("New sale: Modern British and Irish Art");
     expect(rendered.text).toContain("Wednesday 4 November");
-    expect(rendered.html).toContain("A new sale");
+    expect(rendered.html).toContain("New sale: Modern British and Irish Art");
     expect(rendered.text).toContain("https://lax.bid/sales/1");
     expect(rendered.text).toContain("214 lots");
     expect(rendered.text).toContain("Manage your alerts");
     expect(rendered.text).toContain("https://lax.bid/settings#alerts");
     expect(rendered.text).toContain("Stop these emails");
-    expect(rendered.text).toContain("At most one email a day");
+    expect(rendered.text).toContain(
+      "You get this because you asked LAX Bid for alerts about new sales. At most one email a day.",
+    );
+    expect(rendered.text).not.toContain("artists you follow");
+    // The only group is the whole email, so its heading would repeat the title.
+    expect(rendered.html).not.toContain(">New sales<");
     expect(rendered.text).toContain("London Auction Xchange LTD");
   });
 
@@ -181,5 +187,52 @@ describe("alert emails", () => {
     expect(isOptionalEmailTemplate("alert-confirm")).toBe(true);
     expect(RECIPIENT_RESOLUTION["alert-digest"]).toBe("snapshot");
     expect(RECIPIENT_RESOLUTION["alert-confirm"]).toBe("snapshot");
+  });
+
+  it("names every active topic, leads with the sale and keeps group headings when there are several", async () => {
+    const lot = (title: string, n: number, topic: "bid.artists" | "bid.searches") => ({
+      id: `l${n}`,
+      subscriberId: "s1",
+      topic,
+      itemKey: `lot:${n}`,
+      groupKey: null,
+      snapshot: { title, path: `/lots/${n}` },
+      matchedAt: when,
+    });
+    const vm = assembleDigest([
+      sale("Modern British and Irish Art", 1),
+      lot("Low tide at Maldon", 2, "bid.artists"),
+      lot("Cafe interior", 3, "bid.searches"),
+    ]);
+    if (!vm) throw new Error("no digest");
+    const { sent, email } = recordingEmail();
+    await new OutboxAlertMailer({ email }).sendDigest(
+      message({ vm, activeTopics: ["bid.new_sales", "bid.artists", "bid.searches"] }),
+    );
+    const rendered = await renderEmail(
+      "alert-digest",
+      (sent[0] as EmailEnqueueInput<"alert-digest">).vars,
+    );
+    expect(rendered.subject).toBe("New sale: Modern British and Irish Art, and 2 lots for you");
+    expect(rendered.html).toContain("New sale: Modern British and Irish Art");
+    expect(rendered.text).toContain(
+      "You get this because you asked LAX Bid for alerts about new sales, artists you follow and saved searches. At most one email a day.",
+    );
+    for (const heading of ["New sales", "Artists you follow", "Your saved searches"]) {
+      expect(rendered.html).toContain(`>${heading}<`);
+    }
+  });
+
+  it("does not claim topics the person has switched off", async () => {
+    const { sent, email } = recordingEmail();
+    await new OutboxAlertMailer({ email }).sendDigest(
+      message({ activeTopics: ["bid.new_sales", "bid.searches"] }),
+    );
+    const rendered = await renderEmail(
+      "alert-digest",
+      (sent[0] as EmailEnqueueInput<"alert-digest">).vars,
+    );
+    expect(rendered.text).toContain("alerts about new sales and saved searches.");
+    expect(rendered.text).not.toContain("artists you follow");
   });
 });

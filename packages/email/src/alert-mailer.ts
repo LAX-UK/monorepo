@@ -41,16 +41,17 @@ const CONFIRM_COPY = {
   },
 } as const;
 
+/** "new sales", "new sales and saved searches", "new sales, artists you follow and saved searches". */
+function listOf(names: readonly string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+/** Why the person gets the email: it names only the topics they have switched on. */
 function reasonFor(message: DigestMessage): string {
   const name = LAX_PRODUCT_NAMES[message.product];
-  const cap = "At most one email a day.";
-  if (message.product === "shop") {
-    return `You asked ${name} to email you when new editions are released. ${cap}`;
-  }
-  if (message.product === "art") return `You follow artists on ${name}. ${cap}`;
-  return message.audience === "visitor"
-    ? `You get this because you asked ${name} to email you when a sale is announced. ${cap}`
-    : `You get this because you asked ${name} for alerts about new sales, artists you follow and saved searches. ${cap}`;
+  const topics = listOf(message.activeTopics.map((t) => TOPIC_CATALOGUE[t].listName));
+  return `You get this because you asked ${name} for alerts about ${topics}. At most one email a day.`;
 }
 
 /** "Wednesday 4 November": the London day a digest is for, from its `YYYY-MM-DD` date. */
@@ -65,11 +66,15 @@ export function digestDateLabel(localDate: string): string {
   return `${get("weekday")} ${get("day")} ${get("month")}`;
 }
 
+/** The title leads with the strongest item, as the subject does: "New sale: Modern British and Irish Art". */
 function titleFor(vm: DigestVm): string {
-  const [lead, ...rest] = vm.groups;
+  const lead = vm.groups[0];
   if (!lead) return "Your alerts";
-  const title = TOPIC_CATALOGUE[lead.topic].digestTitle(lead.total);
-  return rest.length > 0 ? `${title}, and more that matches your alerts` : title;
+  const def = TOPIC_CATALOGUE[lead.topic];
+  const first = lead.subgroups[0]?.items[0];
+  return lead.total === 1 && first
+    ? def.subjectForOne(first.title)
+    : def.subjectForMany(lead.total);
 }
 
 function groupsFor(message: DigestMessage): AlertDigestGroup[] {

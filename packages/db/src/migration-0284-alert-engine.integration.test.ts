@@ -13,7 +13,7 @@ const read = (name: string) =>
 const consent = "We'll email you when LAX Bid announces new sales.";
 
 /** Runs in one transaction that is always rolled back, on a database already migrated. */
-describe.skipIf(!migrationUrl)("migration 0281 alert engine", { timeout: 30_000 }, () => {
+describe.skipIf(!migrationUrl)("migration 0284 alert engine", { timeout: 30_000 }, () => {
   let client: pg.Client;
   let userId: string;
 
@@ -58,7 +58,7 @@ describe.skipIf(!migrationUrl)("migration 0281 alert engine", { timeout: 30_000 
     const confirmed = await visitor("Confirmed@Example.com", "confirmed", userId);
     const pending = await visitor("pending@example.com", "pending");
     const stopped = await visitor("stopped@example.com", "unsubscribed");
-    await client.query(read("0281_alert_engine.sql"));
+    await client.query(read("0284_alert_engine.sql"));
 
     const rows = await client.query(
       `select id, email, user_id, status, consent_text, consent_source, requested_at, confirmed_at,
@@ -88,7 +88,7 @@ describe.skipIf(!migrationUrl)("migration 0281 alert engine", { timeout: 30_000 
     const confirmed = await visitor("a@example.com", "confirmed");
     const pending = await visitor("b@example.com", "pending");
     const stopped = await visitor("c@example.com", "unsubscribed");
-    await client.query(read("0281_alert_engine.sql"));
+    await client.query(read("0284_alert_engine.sql"));
     const topics = await client.query(
       `select subscriber_id, topic, email_on, changed_by from bid_alert_topic
        where subscriber_id = any($1)`,
@@ -106,18 +106,18 @@ describe.skipIf(!migrationUrl)("migration 0281 alert engine", { timeout: 30_000 
 
   it("can run twice without changing anything, and keeps changes made after the first run", async () => {
     const id = await visitor("again@example.com", "confirmed");
-    await client.query(read("0281_alert_engine.sql"));
+    await client.query(read("0284_alert_engine.sql"));
     await client.query(
       `update bid_alert_subscriber set status = 'stopped', stop_reason = 'link' where id = $1`,
       [id],
     );
-    await client.query(read("0281_alert_engine.sql"));
+    await client.query(read("0284_alert_engine.sql"));
     const row = await client.query("select status from bid_alert_subscriber where id = $1", [id]);
     expect(row.rows[0].status).toBe("stopped");
   });
 
   it("holds the rules the engine relies on", async () => {
-    await client.query(read("0281_alert_engine.sql"));
+    await client.query(read("0284_alert_engine.sql"));
     const sub = await client.query(
       `insert into bid_alert_subscriber (product, email, consent_text, consent_source, requested_at)
        values ('bid', 'rules@example.com', 'x', 'y', now()) returning id`,
@@ -173,7 +173,7 @@ describe.skipIf(!migrationUrl)("migration 0281 alert engine", { timeout: 30_000 
   });
 
   it("accepts the sale notice type and the old ones, and refuses others", async () => {
-    await client.query(read("0281_alert_engine.sql"));
+    await client.query(read("0284_alert_engine.sql"));
     const accepts = async (type: string) => {
       await client.query("savepoint probe");
       try {
@@ -194,13 +194,13 @@ describe.skipIf(!migrationUrl)("migration 0281 alert engine", { timeout: 30_000 
   });
 
   it("rolls back to the previous shape and removes the notices it could not keep", async () => {
-    await client.query(read("0281_alert_engine.sql"));
+    await client.query(read("0284_alert_engine.sql"));
     await client.query(
       `insert into notification (user_id, type, title, message)
        values ($1, 'sale_announced', 't', 'm'), ($1, 'outbid', 't', 'm')`,
       [userId],
     );
-    await client.query(read("0281_rollback.sql"));
+    await client.query(read("0284_rollback.sql"));
     const tables = await client.query(`select to_regclass('bid_alert_subscriber') as t`);
     expect(tables.rows[0].t).toBeNull();
     const left = await client.query("select type from notification where user_id = $1", [userId]);

@@ -31,7 +31,7 @@ export default function AlertDigestEmail({
     >
       {groups.length === 0 ? <TextBlock>Nothing new today.</TextBlock> : null}
       {groups.map((group) => (
-        <AlertDigestGroup key={group.heading} group={group} />
+        <AlertDigestGroup key={group.heading} group={group} showHeading={groups.length > 1} />
       ))}
     </Layout>
   );

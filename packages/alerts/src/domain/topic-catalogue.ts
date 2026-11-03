@@ -20,8 +20,6 @@ export type TopicDefinition = {
   consentText: string;
   /** What "Stop ..." says in the footer of an email that holds only this topic. */
   stopLabel: string;
-  /** The title of a digest led by this topic. */
-  digestTitle: (count: number) => string;
   /** Where "See all" goes when a digest lists fewer matches than there are. */
   seeAllPath: string;
 };
@@ -42,7 +40,6 @@ export const TOPIC_CATALOGUE: Readonly<Record<AlertTopic, TopicDefinition>> = {
     consentText:
       "We'll email you when LAX Bid announces a new sale. At most one email a day. You can stop at any time.",
     stopLabel: "Stop sale alerts to this address",
-    digestTitle: (count) => (count === 1 ? "A new sale" : `${count} new sales`),
     seeAllPath: "/sales",
   },
   "bid.artists": {
@@ -56,7 +53,6 @@ export const TOPIC_CATALOGUE: Readonly<Record<AlertTopic, TopicDefinition>> = {
     consentText:
       "We'll email you when a lot comes up for sale by an artist you follow. At most one email a day.",
     stopLabel: "Stop these emails",
-    digestTitle: () => "New lots by artists you follow",
     seeAllPath: "/watching",
   },
   "bid.searches": {
@@ -70,7 +66,6 @@ export const TOPIC_CATALOGUE: Readonly<Record<AlertTopic, TopicDefinition>> = {
     consentText:
       "We'll email you when a new lot matches a search you saved. At most one email a day.",
     stopLabel: "Stop these emails",
-    digestTitle: () => "Lots that match your saved searches",
     seeAllPath: "/watching",
   },
   "shop.releases": {
@@ -84,7 +79,6 @@ export const TOPIC_CATALOGUE: Readonly<Record<AlertTopic, TopicDefinition>> = {
     consentText:
       "We'll email you when LAX Shop releases new editions. At most one email a day. You can stop at any time.",
     stopLabel: "Stop release alerts",
-    digestTitle: (count) => (count === 1 ? "A new edition" : `${count} new editions`),
     seeAllPath: "/",
   },
   "shop.back_in_stock": {
@@ -97,8 +91,6 @@ export const TOPIC_CATALOGUE: Readonly<Record<AlertTopic, TopicDefinition>> = {
     subjectForMany: (count) => `${count} editions are back in stock`,
     consentText: "You pressed Notify me on an edition. We'll email you once when it is available.",
     stopLabel: "Stop LAX Shop alerts to this address",
-    digestTitle: (count) =>
-      count === 1 ? "An edition is back in stock" : "Editions are back in stock",
     seeAllPath: "/",
   },
   "art.followed_artists": {
@@ -112,7 +104,6 @@ export const TOPIC_CATALOGUE: Readonly<Record<AlertTopic, TopicDefinition>> = {
     consentText:
       "You follow an artist on lax.art. We'll email you when new works arrive. At most one email a day.",
     stopLabel: "Stop these emails",
-    digestTitle: () => "New work by artists you follow",
     seeAllPath: "/artists",
   },
 };
