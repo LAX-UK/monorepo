@@ -8,7 +8,12 @@ import type {
   SearchWatcher,
 } from "@auction/persistence/interfaces";
 import type { LotPublishedEvent } from "../projectors/lib/bid-alert-matching.types.js";
-import { artistCriteriaLine, lotSnapshot } from "./lot-snapshot.js";
+import {
+  artistCriteriaLine,
+  artistPagePath,
+  lotSnapshot,
+  searchResultsPath,
+} from "./lot-snapshot.js";
 
 export type LotMatchOutcome = { lots: number; artistMatches: number; searchMatches: number };
 
@@ -69,6 +74,7 @@ export class BidLotMatcher {
           groupKey: watcher.artistId,
           snapshot: lotSnapshot(lot, {
             label: lot.artistName ?? "An artist you follow",
+            path: artistPagePath(watcher.artistId, lot.artistName),
             criteria: artistCriteriaLine(watcher.criteria),
           }),
           matchedAt: now,
@@ -111,7 +117,10 @@ export class BidLotMatcher {
           topic: "bid.searches",
           itemKey: `lot:${lotId}`,
           groupKey: search.searchId,
-          snapshot: lotSnapshot(lot, { label: search.label }),
+          snapshot: lotSnapshot(lot, {
+            label: search.label,
+            path: searchResultsPath(search.query),
+          }),
           matchedAt: now,
         });
       }

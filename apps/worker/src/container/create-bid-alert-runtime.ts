@@ -13,6 +13,7 @@ import {
   BidAlertAnnouncementStore,
   BidAlertDigestLedger,
   BidAlertFollowerProvisioner,
+  BidAlertLotNoticeWriter,
   BidAlertLotReader,
   BidAlertLotStart,
   BidAlertMatchLedger,
@@ -25,6 +26,7 @@ import {
   BidAlertWatcherReader,
 } from "@auction/persistence/repositories";
 import type pino from "pino";
+import { BidDigestNotices } from "../alerts/bid-digest-notices.js";
 import { BidLotMatcher } from "../alerts/bid-lot-matcher.js";
 import { BidSaleAnnouncer } from "../alerts/bid-sale-announcer.js";
 import type { WorkerEnv } from "../env.js";
@@ -107,6 +109,7 @@ export function createBidAlertRuntime(input: {
       digests,
       validator: new BidAlertMatchValidator(db),
       mailer: new OutboxAlertMailer({ email }),
+      notices: new BidDigestNotices({ notices: new BidAlertLotNoticeWriter(db) }),
       codec,
       urls: webAlertUrls(env.WEB_ORIGIN, "/settings#alerts"),
       clock,
