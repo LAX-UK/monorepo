@@ -165,6 +165,7 @@ describe.skipIf(!DATABASE_URL)("deletion purge against the database", () => {
         logout: {} as never,
         events: {} as never,
         notices: { deliver },
+        email: {} as never,
       },
       { warn: vi.fn(), error: vi.fn() },
       () => now,

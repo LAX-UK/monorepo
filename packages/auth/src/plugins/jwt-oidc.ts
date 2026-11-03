@@ -18,13 +18,14 @@ import { buildPhoneNumberGuardPlugin, buildPhoneNumberPlugin } from "../phone-nu
 import type { BreachedPasswordChecker } from "../ports/breached-password-checker.js";
 import type {
   AccountLinkReader,
-  EmailSender,
+  CredentialEmailSender,
   JwksStore,
   PhoneNumberStore,
   SecurityNoticePublisher,
   SmsSender,
 } from "../ports/index.js";
 import { buildTwoFactorEnforcementPlugin } from "../two-factor-enforcement.js";
+import { sendCredentialEmail } from "./credential-email.js";
 import { buildRegenerateBackupCodesPlugin } from "./regenerate-backup-codes.js";
 
 function normalizeOidcScopes(scopes: unknown): string[] {
@@ -42,7 +43,7 @@ export function buildJwtAndOidcPlugins(options: {
   jwtAudience: string;
   totpIssuer?: string | undefined;
   envelope?: EnvelopeCrypto | undefined;
-  email?: EmailSender | undefined;
+  credentialEmail?: CredentialEmailSender | undefined;
   securityNotices?: SecurityNoticePublisher | undefined;
   phoneVerification?: SmsSender | undefined;
   onEmailVerified?:
@@ -63,7 +64,8 @@ export function buildJwtAndOidcPlugins(options: {
   breachedPasswordChecker?: BreachedPasswordChecker | undefined;
 }): BetterAuthPlugin[] {
   const jwksAdapter = options.jwksStore;
-  const { issuer, webOrigin, jwtAudience, email, phoneVerification, onEmailVerified } = options;
+  const { issuer, webOrigin, jwtAudience, credentialEmail, phoneVerification, onEmailVerified } =
+    options;
   const issuerBase = issuer.replace(/\/$/, "");
   const webBase = (webOrigin ?? "https://lax.bid").replace(/\/$/, "");
   return [
@@ -158,39 +160,21 @@ export function buildJwtAndOidcPlugins(options: {
           token,
         });
         const expirationMinutes = Math.round(AUTH_TIMINGS.magicLinkExpiresSec / 60);
-        const baseEnqueue = {
-          to: recipientEmail,
-          userId: authUser.id,
-          category: "auth" as const,
-        };
-        email
-          ?.enqueue(
-            template === "sign-in-link"
-              ? {
-                  ...baseEnqueue,
-                  template: "sign-in-link",
-                  vars: {
-                    signInUrl: linkUrl,
-                    userName: authUser.name,
-                    expirationMinutes,
-                  },
-                }
-              : {
-                  ...baseEnqueue,
-                  template: "account-activation",
-                  vars: {
-                    activationUrl: linkUrl,
-                    userName: authUser.name,
-                    expirationMinutes,
-                  },
-                },
-          )
-          .catch((err: unknown) => {
-            console.error(`[auth] enqueue ${template} failed`, {
-              userId: authUser.id,
-              error: err instanceof Error ? err.message : String(err),
-            });
-          });
+        const base = { to: recipientEmail, userId: authUser.id, token };
+        await sendCredentialEmail(
+          credentialEmail,
+          template === "sign-in-link"
+            ? {
+                ...base,
+                template: "sign-in-link",
+                vars: { signInUrl: linkUrl, userName: authUser.name, expirationMinutes },
+              }
+            : {
+                ...base,
+                template: "account-activation",
+                vars: { activationUrl: linkUrl, userName: authUser.name, expirationMinutes },
+              },
+        );
       },
     }),
     buildMagicLinkVerifyPlugin({ onEmailVerified }),
