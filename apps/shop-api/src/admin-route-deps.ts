@@ -1,4 +1,5 @@
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
+import type { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import type { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
@@ -77,6 +78,8 @@ export type AdminRoutesDeps = {
   guestErasure: GuestErasureService;
   /** Guest leads: the list and one lead's record. */
   leads: LeadsService;
+  /** The From Zoho queue: new artworks, conflicts, the latest check and each record. */
+  artworkRegister: ArtworkRegisterReviewService;
   /** Release alert subscriber counts. */
   releaseAlertSummary: ReleaseAlertSummaryReader;
   artistApplicationReview: ArtistApplicationReviewService;

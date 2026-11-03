@@ -1,8 +1,14 @@
 import { type Database, closeDb, createDb } from "@auction/db";
+import {
+  DrizzleArtworkRegisterQueueReader,
+  DrizzleArtworkRegisterRepository,
+  DrizzleZohoArtworkSyncStore,
+} from "@auction/persistence/repositories";
 import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import type { AdminRoutesDeps } from "./admin-route-deps.js";
 import type { ArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
+import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
 import { createEditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
@@ -299,6 +305,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const portalArtist = createDrizzlePortalArtistRepository(db);
   const portalFavorites = createPortalFavoritesHandlers(createDrizzlePortalFavoritesRepository(db));
   const adminRead = createDrizzleAdminReadRepository(db, env, { resolveMediaUrl });
+  const artworkRegisterRepository = new DrizzleArtworkRegisterRepository(db);
   const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const cancellationPolicy = loadShopCancellationPolicy(env);
   const createProductionTask = createCreateProductionTaskHandler({ uow: shopUow });
@@ -534,6 +541,12 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           staffReader,
         }),
         leads: new LeadsService(createDrizzleLeadReader(db)),
+        artworkRegister: new ArtworkRegisterReviewService({
+          queue: new DrizzleArtworkRegisterQueueReader(db),
+          register: artworkRegisterRepository,
+          resolver: artworkRegisterRepository,
+          runs: new DrizzleZohoArtworkSyncStore(db),
+        }),
         releaseAlertSummary: releaseAlertStore,
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {
