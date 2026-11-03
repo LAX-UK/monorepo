@@ -150,6 +150,8 @@ Each delivery reads the register's current state (never the event's), then reads
 
 **Extra OAuth scope** for the refresh token: `ZohoCRM.modules.products.UPDATE`. Generate a new refresh token after adding it. A missing scope shows as failed deliveries.
 
+**Wrong-org guard.** With `ZOHO_ARTWORK_WRITEBACK_MODE=live` the worker refuses to start unless `ZOHO_CRM_EXPECTED_ORG_TYPE` (`sandbox` or `production`) is set, and at startup it reads the connected Zoho org and refuses to start if it does not match. This is the same check the CRM sync uses in canary and live; `dry_run` and `off` skip it.
+
 Roll out: sandbox org with `dry_run`; then `live` in the sandbox and check one Product; then production.
 
 ## Ops scripts

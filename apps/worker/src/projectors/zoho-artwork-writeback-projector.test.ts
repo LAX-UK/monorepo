@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { CrmGatewayError } from "../integrations/crm/crm-gateway-error.js";
 import type { CrmSyncResult } from "../integrations/crm/crm-sync-result.js";
 import type { ZohoArtworkWritebackService } from "../integrations/zoho/artwork/zoho-artwork-writeback-service.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
@@ -6,6 +7,9 @@ import {
   ZOHO_ARTWORK_WRITEBACK_PROJECTOR,
   processZohoArtworkWriteback,
 } from "./zoho-artwork-writeback-projector.js";
+
+const retryableError = () =>
+  new CrmGatewayError({ code: "TOO_MANY_REQUESTS", message: "slow", status: 429, retryable: true });
 
 const EVENT = {
   id: 7,
@@ -115,7 +119,7 @@ describe("processZohoArtworkWriteback", () => {
   });
 
   it("schedules a retry for a retryable result", async () => {
-    const { ctx } = ctxWith({ outcome: "retry", error: new Error("503") });
+    const { ctx } = ctxWith({ outcome: "retry", error: retryableError() });
     await processZohoArtworkWriteback(ctx);
     expect(ctx.deliveryRepo?.scheduleRetry).toHaveBeenCalled();
     expect(ctx.deliveryRepo?.deadLetter).not.toHaveBeenCalled();

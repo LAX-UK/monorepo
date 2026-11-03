@@ -230,7 +230,9 @@ describe("ZohoArtworkWritebackService failures", () => {
   });
 
   it("retries when Zoho fails in a way that may pass", async () => {
-    const { service, products } = setup("live");
+    const { service, products } = setup("live", {
+      entry: entry({ offer: { state: "bid_sale", ref: null } }),
+    });
     products.update.mockRejectedValue(
       new CrmGatewayError({
         code: "TOO_MANY_REQUESTS",
@@ -243,7 +245,9 @@ describe("ZohoArtworkWritebackService failures", () => {
   });
 
   it("is fatal when Zoho refuses the data", async () => {
-    const { service, products } = setup("live");
+    const { service, products } = setup("live", {
+      entry: entry({ offer: { state: "bid_sale", ref: null } }),
+    });
     products.update.mockRejectedValue(
       new CrmGatewayError({
         code: "INVALID_DATA",
@@ -256,7 +260,9 @@ describe("ZohoArtworkWritebackService failures", () => {
   });
 
   it("does not note a Status in the register when the write failed", async () => {
-    const { service, products, register } = setup("live");
+    const { service, products, register } = setup("live", {
+      entry: entry({ offer: { state: "bid_sale", ref: null } }),
+    });
     products.update.mockRejectedValue(new Error("boom"));
     await service.deliver(offerEvent());
     expect(register.recordCatalogueStatusWritten).not.toHaveBeenCalled();
