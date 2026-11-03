@@ -294,6 +294,34 @@ const envSchema = z
      * event-driven re-validation (material exposure increase always re-triggers).
      */
     SOF_APPROVAL_VALIDITY_DAYS: z.coerce.number().int().positive().default(365),
+    /**
+     * Private sales. Every value is optional: while one is missing, the step that needs it stays
+     * blocked on the deal rather than guessing. See `private-sale-policy.config.ts`.
+     * Seller's commission for new deals, in basis points (1500 is 15%).
+     */
+    PRIVATE_SALE_COMMISSION_BPS: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(0).max(10_000).optional(),
+    ),
+    /** Buyer's fee on new deals, in basis points. None unless set. */
+    PRIVATE_SALE_BUYER_FEE_BPS: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(0).max(10_000).optional(),
+    ),
+    /** The accountant's VAT treatments, as `code:Label` pairs separated by semicolons. */
+    PRIVATE_SALE_VAT_TREATMENTS: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Days from the invoice to payment due. */
+    PRIVATE_SALE_PAYMENT_DUE_DAYS: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(1).max(365).optional(),
+    ),
+    /** Days from payment to collection due. */
+    PRIVATE_SALE_COLLECTION_DUE_DAYS: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(1).max(365).optional(),
+    ),
+    /** The private sale terms version both sides accept. */
+    PRIVATE_SALE_TERMS_VERSION: z.preprocess(emptyToUndefined, z.string().max(40).optional()),
     /** Shared secret for worker → API internal cron routes (`X-Cron-Secret` header).
      * Optional until bulk jobs are enabled in deploy.
      */
