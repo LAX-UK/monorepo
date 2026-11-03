@@ -13,6 +13,7 @@ import {
   presentFulfilmentStatus,
   presentOrderStatus,
   productionCandidateLines,
+  refundFailureMessage,
   refundRowContext,
   refundTargetOptions,
   refundableRemainingPence,
@@ -420,5 +421,25 @@ describe("a refund settled outside LAX", () => {
     expect(note).toContain("Recorded by Maya Okafor");
     expect(note).toContain("Refunded in the dashboard");
     expect(settledOutsideNote({ ...settled, settledOutside: null })).toBeNull();
+  });
+});
+
+describe("refundFailureMessage", () => {
+  it("puts the common Stripe codes in plain words", () => {
+    expect(refundFailureMessage("charge_already_refunded")).toBe(
+      "The charge was already refunded in Stripe",
+    );
+    expect(refundFailureMessage("expired_or_canceled_card")).toBe(
+      "The card has expired or was closed",
+    );
+  });
+
+  it("keeps an unknown code visible in a fallback sentence", () => {
+    expect(refundFailureMessage("odd_new_code")).toBe("Stripe refused the refund (odd_new_code)");
+  });
+
+  it("has a sentence when there is no reason at all", () => {
+    expect(refundFailureMessage(null)).toBe("Stripe could not process the refund");
+    expect(refundFailureMessage("  ")).toBe("Stripe could not process the refund");
   });
 });

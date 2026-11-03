@@ -19,6 +19,7 @@ import {
   presentOrderStatus,
   presentProductionStatus,
   presentRefundStatus,
+  refundFailureMessage,
   refundRowContext,
   settledOutsideNote,
 } from "@/server/domain/order-detail.vm";
@@ -247,7 +248,7 @@ export function OrderDetailView({
                         </p>
                         {refund.status === "failed" && refund.failureReason ? (
                           <p className="text-staff-xs text-staff-danger">
-                            Not sent: {refund.failureReason}
+                            Not sent: {refundFailureMessage(refund.failureReason)}
                           </p>
                         ) : null}
                         {settledOutsideNote(refund) ? (
@@ -267,7 +268,7 @@ export function OrderDetailView({
                             refundId={refund.refundId}
                             amountPence={refund.amountPence}
                             itemLabel={line ? orderLineLabel(line) : "Whole order"}
-                            failureReason={refund.failureReason ?? null}
+                            failureReason={refundFailureMessage(refund.failureReason)}
                           />
                         ) : null}
                       </div>

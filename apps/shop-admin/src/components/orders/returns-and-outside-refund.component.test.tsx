@@ -161,7 +161,7 @@ describe("RefundedOutsideDialog", () => {
         refundId="22222222-2222-4222-8222-222222222222"
         amountPence={6000}
         itemLabel="Marylebone at dusk, edition 12"
-        failureReason="charge_already_refunded"
+        failureReason="The charge was already refunded in Stripe"
         open
         onOpenChange={() => {}}
       />,
@@ -173,7 +173,7 @@ describe("RefundedOutsideDialog", () => {
       await screen.findByRole("button", { name: "Mark £60.00 as refunded" }),
     ).toBeInTheDocument();
     expect(screen.getByText(/cannot be undone/i)).toBeInTheDocument();
-    expect(screen.getByText("charge_already_refunded")).toBeInTheDocument();
+    expect(screen.getByText("The charge was already refunded in Stripe")).toBeInTheDocument();
   });
 
   it("sends nothing and shows both errors when the fields are empty", async () => {

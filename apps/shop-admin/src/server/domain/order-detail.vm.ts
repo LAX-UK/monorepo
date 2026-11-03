@@ -212,6 +212,26 @@ export function settledOutsideNote(refund: Refund): string | null {
   return `Reference ${settled.reference}. ${settled.reason}.${who}`.replace(/\.\./g, ".");
 }
 
+/** Stripe's refund failure codes, in the words staff read. One table, used wherever one shows. */
+const REFUND_FAILURE_MESSAGES: Record<string, string> = {
+  charge_already_refunded: "The charge was already refunded in Stripe",
+  charge_disputed: "The charge is being disputed, so Stripe cannot refund it",
+  insufficient_funds: "There was not enough balance in Stripe to refund it",
+  expired_or_canceled_card: "The card has expired or was closed",
+  lost_or_stolen_card: "The card was reported lost or stolen",
+  declined: "The card issuer declined the refund",
+  refund_window_expired: "The refund window has passed",
+  charge_for_pending_refund_disputed: "The charge has a dispute open, so the refund was refused",
+  unknown: "Stripe could not process the refund",
+};
+
+/** A refund's failure as a sentence; an unknown code is kept in brackets so it can be looked up. */
+export function refundFailureMessage(reason: string | null | undefined): string {
+  const code = reason?.trim();
+  if (!code) return REFUND_FAILURE_MESSAGES.unknown ?? "Stripe could not process the refund";
+  return REFUND_FAILURE_MESSAGES[code] ?? `Stripe refused the refund (${code})`;
+}
+
 /** Refunds that could not be sent to the customer's card and wait for staff. */
 export function failedRefunds(detail: AdminOrderDetail): Refund[] {
   return detail.refunds.filter((refund) => refund.status === "failed");
