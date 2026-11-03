@@ -6,6 +6,7 @@ import {
   subjectExportSchemaName,
 } from "@auction/identity-contracts";
 import type { ArchiveBudget } from "./archive-budget.js";
+import { controllerNamesFor } from "./controller-names.js";
 import type { ExportFileMaterialiser } from "./export-file-materialiser.js";
 import type { ExportStaging } from "./export-staging.js";
 import { mapFileRefs } from "./file-refs.js";
@@ -63,7 +64,7 @@ export async function collectProduct(input: ProductCollectionInput): Promise<Col
     const writer = await staging.openJson(`${product}/${definition.id}.json`, {
       schema: subjectExportSchemaName(product, definition.id, schemaVersion),
       product: info.name,
-      controller: info.controller,
+      controller: controllerNamesFor(product),
       generatedAt: input.generatedAt.toISOString(),
     });
     try {

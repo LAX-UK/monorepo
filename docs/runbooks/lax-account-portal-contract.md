@@ -1,25 +1,14 @@
-# LAX Account portal — contract v1
+# LAX Account portal contract v1 (legacy)
 
-Neutral cross-product account surface (not an extension of Bid settings). Implementation
-is product-owned at the portal BFF; **types** live in `@auction/lax-ecosystem` as
-`LaxAccountPortalSummaryV1`.
+> **Legacy.** This page describes a single "portal summary" that no service produces or reads today. The type `LaxAccountPortalSummaryV1` still exists in [`packages/lax-ecosystem`](../../packages/lax-ecosystem/src/lax-account-contract.v1.ts) but nothing builds or consumes it, and nothing here should be used to plan new work.
 
-## Scope
+## What LAX Account does instead
 
-| In portal v1 | Out of scope (product APIs) |
-|--------------|----------------------------|
-| Profile display name, email, locale | Paddle/KYC, org staff roles |
-| Security summary (MFA on/off, last sign-in) | Auction alert preferences |
-| Global marketing / product-update consent | Bag, checkout, edition holds |
-| Connected products list with deep links | Identity credential storage |
+`apps/account` shows each person's data by reading it from the products, not from one summary:
 
-## Versioning
+- **Portfolio and money.** Each product implements the versioned `LaxPortfolioItemV1` and `LaxMoneyEntryV1` read contract. Account exchanges one token per product (`lax.portfolio.read`), reads them in parallel and validates each answer. See [Portfolio contracts and Account routes](../architecture/11-lax-ecosystem-boundary.md#portfolio-contracts-and-account-routes).
+- **Profile, security and sign-in.** Identity owns credentials, sessions and two-step verification; Account calls Identity for them. See [05-identity-flow.md](../architecture/05-identity-flow.md) and [09-lax-identity-boundary.md](../architecture/09-lax-identity-boundary.md).
+- **Product links and settings.** Products keep their own detailed settings; Account links to them through the product directory. See [11-lax-ecosystem-boundary.md](../architecture/11-lax-ecosystem-boundary.md).
+- **Gateway.** How the apps are exposed and routed is in [06-deployment.md](../architecture/06-deployment.md).
 
-- `version: 1` on `LaxAccountPortalSummaryV1` — bump only with a migration note and
-  parallel reader period.
-- Canonical subject is Identity `sub`; portal never mints identifiers.
-
-## Product onboarding
-
-Register new products in `@auction/identity-contracts` clients/resources first, then add
-`LaxProductId` and directory env URLs per [11-lax-ecosystem-boundary](../architecture/11-lax-ecosystem-boundary.md).
+To onboard a new product, register it in `@auction/identity-contracts` (clients and resources), add its `LaxProductId` and directory URL, and implement the portfolio contract.

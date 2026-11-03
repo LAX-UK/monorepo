@@ -1,6 +1,9 @@
 /** Acting legal entity for multi-entity buyers (browser + server). */
 export const X_LEGAL_ENTITY_ID_HEADER = "x-legal-entity-id";
 
+/** The draft token a visitor without an account uploads enquiry files under (browser only). */
+export const X_ENQUIRY_DRAFT_HEADER = "x-enquiry-draft";
+
 /** Marketing consent forwarded from the browser cookie banner. */
 export const MARKETING_CONSENT_MARKETING_HEADER = "x-lax-consent-marketing";
 export const MARKETING_CONSENT_ANALYTICS_HEADER = "x-lax-consent-analytics";
@@ -28,4 +31,5 @@ export const BROWSER_API_CUSTOM_HEADERS = [
   MARKETING_ATTRIBUTION_HEADER,
   MARKETING_GA4_IDS_HEADER,
   X_LEGAL_ENTITY_ID_HEADER,
+  X_ENQUIRY_DRAFT_HEADER,
 ] as const;

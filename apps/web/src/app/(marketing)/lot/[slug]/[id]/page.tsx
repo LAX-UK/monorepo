@@ -28,7 +28,6 @@ import { RealtimeHealthProvider } from "@/lib/connection/realtime-health-provide
 import { LotBidHistoryProvider } from "@/lib/context/lot-bid-history-provider";
 import { LotPortsProvider } from "@/lib/context/lot-ports";
 import { LotRealtimeProvider } from "@/lib/context/lot-realtime-provider";
-import { MarketingBidBarChromeProvider } from "@/lib/context/marketing-bid-bar-chrome";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { MaybeSaleroomLiveProvider } from "@/lib/context/saleroom-live-provider";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
@@ -120,7 +119,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     lifecycleLotPick,
     showPreviewRibbon,
     isSaleQueueLoading,
-    initialMarketingBidBarActive,
     onsiteOverviewVM,
     saleRegistrationBidGate,
     isOwnLot,
@@ -282,73 +280,71 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                     saleId={isHybridSale ? auction.saleId : null}
                     initial={initialSaleroomStatus}
                   >
-                    <MarketingBidBarChromeProvider initialActive={initialMarketingBidBarActive}>
-                      <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
-                        <LotBidHistoryProvider
-                          lotId={auction.id}
-                          initialHistory={initialHistory}
-                          initialSnapshot={lifecycleLotPick}
-                          initialLeadingBidderId={initialLeadingBidderId}
-                          currentUserId={session?.id ?? null}
-                        >
-                          <LotTemplate
-                            {...toLotTemplateData({
-                              auction,
-                              lotPath: lotPath(auction),
-                              shareUrl,
-                              saleLifecycle: saleLifecyclePick,
-                              parentSale,
-                              signedIn: Boolean(session),
-                              watching,
-                              artist,
-                              documents: lotDocuments,
-                              bidding: templateReads.bidding,
-                              viewer: templateReads.viewer,
-                              history: templateReads.history,
-                            })}
-                            bidEntry={bidEntry}
-                            banner={
-                              <>
-                                {showPreviewRibbon ? (
-                                  <p className="m-0 rounded-lg bg-lax-neutral-bg px-4 py-2 text-lax-13 leading-5 text-lax-neutral-fg">
-                                    Catalogue preview. Bidding opens when the sale is published.
-                                  </p>
-                                ) : null}
-                                {isHybridSale && saleroomLotRefs.length > 0 ? (
-                                  <SaleroomLiveLotBanner
-                                    lots={saleroomLotRefs}
-                                    viewedLotId={auction.id}
-                                  />
-                                ) : null}
-                              </>
-                            }
-                            supplementary={
-                              <>
-                                <ArtworkConditionReportCta model={conditionReport.session} />
-                                {lotStreamCtx?.showOnLotPage && saleBundle?.sale?.streamUrl ? (
-                                  <OnlineVideoStreamPanel
-                                    streamUrl={saleBundle.sale.streamUrl}
-                                    saleTitle={saleBundle.sale.title ?? auction.title}
-                                    posterUrl={
-                                      auction.images[0] ?? saleBundle.sale.coverImages?.[0] ?? null
-                                    }
-                                  />
-                                ) : null}
-                              </>
-                            }
-                            footer={
-                              <LotMoreFromRail
-                                rail={rail}
-                                currentUserId={session?.id ?? null}
-                                isAuthenticated={Boolean(session)}
-                                watchedLotIds={watchedLotIds}
-                                density="compact"
-                              />
-                            }
-                          />
-                        </LotBidHistoryProvider>
-                      </OnlineLotLifecycleProvider>
-                    </MarketingBidBarChromeProvider>
+                    <OnlineLotLifecycleProvider lot={lifecycleLotPick} sale={saleLifecyclePick}>
+                      <LotBidHistoryProvider
+                        lotId={auction.id}
+                        initialHistory={initialHistory}
+                        initialSnapshot={lifecycleLotPick}
+                        initialLeadingBidderId={initialLeadingBidderId}
+                        currentUserId={session?.id ?? null}
+                      >
+                        <LotTemplate
+                          {...toLotTemplateData({
+                            auction,
+                            lotPath: lotPath(auction),
+                            shareUrl,
+                            saleLifecycle: saleLifecyclePick,
+                            parentSale,
+                            signedIn: Boolean(session),
+                            watching,
+                            artist,
+                            documents: lotDocuments,
+                            bidding: templateReads.bidding,
+                            viewer: templateReads.viewer,
+                            history: templateReads.history,
+                          })}
+                          bidEntry={bidEntry}
+                          banner={
+                            <>
+                              {showPreviewRibbon ? (
+                                <p className="m-0 rounded-lg bg-lax-neutral-bg px-4 py-2 text-lax-13 leading-5 text-lax-neutral-fg">
+                                  Catalogue preview. Bidding opens when the sale is published.
+                                </p>
+                              ) : null}
+                              {isHybridSale && saleroomLotRefs.length > 0 ? (
+                                <SaleroomLiveLotBanner
+                                  lots={saleroomLotRefs}
+                                  viewedLotId={auction.id}
+                                />
+                              ) : null}
+                            </>
+                          }
+                          supplementary={
+                            <>
+                              <ArtworkConditionReportCta model={conditionReport.session} />
+                              {lotStreamCtx?.showOnLotPage && saleBundle?.sale?.streamUrl ? (
+                                <OnlineVideoStreamPanel
+                                  streamUrl={saleBundle.sale.streamUrl}
+                                  saleTitle={saleBundle.sale.title ?? auction.title}
+                                  posterUrl={
+                                    auction.images[0] ?? saleBundle.sale.coverImages?.[0] ?? null
+                                  }
+                                />
+                              ) : null}
+                            </>
+                          }
+                          footer={
+                            <LotMoreFromRail
+                              rail={rail}
+                              currentUserId={session?.id ?? null}
+                              isAuthenticated={Boolean(session)}
+                              watchedLotIds={watchedLotIds}
+                              density="compact"
+                            />
+                          }
+                        />
+                      </LotBidHistoryProvider>
+                    </OnlineLotLifecycleProvider>
                   </MaybeSaleroomLiveProvider>
                 </LotRealtimeProvider>
               </LotPortsProvider>

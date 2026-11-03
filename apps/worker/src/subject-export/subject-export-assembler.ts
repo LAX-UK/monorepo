@@ -9,6 +9,7 @@ import {
 } from "@auction/identity-contracts";
 import { ArchiveBudget } from "./archive-budget.js";
 import type { SubjectExportArchiveStore } from "./archive-store.js";
+import { controllerNamesFor } from "./controller-names.js";
 import { HttpExportFileMaterialiser } from "./export-file-materialiser.js";
 import { ExportStaging } from "./export-staging.js";
 import { decideFailure } from "./failure-policy.js";
@@ -258,7 +259,7 @@ export class SubjectExportAssembler {
         products: collected.map((entry) => ({
           product: entry.product,
           name: SUBJECT_EXPORT_PRODUCT_INFO[entry.product].name,
-          controller: SUBJECT_EXPORT_PRODUCT_INFO[entry.product].controller,
+          controller: controllerNamesFor(entry.product),
           categories: entry.categories.map((category) => ({
             id: category.definition.id,
             schemaVersion: category.schemaVersion,

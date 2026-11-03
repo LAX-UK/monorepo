@@ -11,20 +11,50 @@ import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
 
 type Badge = { label: string; tone: StatusBadgeTone; shape: StatusBadgeShape };
 
+export const WHERE_IDS = ["with-us", "on-its-way", "delivered", "collected"] as const;
+export type WhereId = (typeof WHERE_IDS)[number];
+
 /** Where an owned work is: still with LAX, on its way, or with the organisation. */
-const WHERE: Record<"with-us" | "on-its-way" | "delivered" | "collected", Badge> = {
+const WHERE: Record<WhereId, Badge> = {
   "with-us": { label: "With us", tone: "info", shape: "dot" },
   "on-its-way": { label: "On its way", tone: "info", shape: "dot" },
   delivered: { label: "Delivered", tone: "success", shape: "check" },
   collected: { label: "Collected", tone: "success", shape: "check" },
 };
 
-function whereFrom(stage: AccountPurchaseFacts["delivery"]["stage"] | undefined): Badge | null {
+export const WHERE_LABEL: Record<WhereId, string> = {
+  "with-us": WHERE["with-us"].label,
+  "on-its-way": WHERE["on-its-way"].label,
+  delivered: WHERE.delivered.label,
+  collected: WHERE.collected.label,
+};
+
+function whereIdFrom(stage: AccountPurchaseFacts["delivery"]["stage"] | undefined): WhereId | null {
   if (!stage || stage === "cancelled") return null;
-  if (stage === "delivered") return WHERE.delivered;
-  if (stage === "collected") return WHERE.collected;
-  if (stage === "in_transit") return WHERE["on-its-way"];
-  return WHERE["with-us"];
+  if (stage === "delivered") return "delivered";
+  if (stage === "collected") return "collected";
+  if (stage === "in_transit") return "on-its-way";
+  return "with-us";
+}
+
+/**
+ * Whether a work can be consigned, and what the row says when it cannot yet. A work bought
+ * through Bid is consigned once it is paid for; before that the row says so instead of offering
+ * the step. A member who may not sell is offered nothing.
+ */
+export function consignAvailability(input: {
+  canSell: boolean;
+  /** The purchase's invoice and delivery, when it is known. */
+  purchase: {
+    invoice: AccountPurchaseFacts["invoice"]["status"];
+    deliveryStage: AccountPurchaseFacts["delivery"]["stage"];
+  } | null;
+}): { canConsign: boolean; note: string | null } {
+  if (!input.canSell) return { canConsign: false, note: null };
+  if (input.purchase && !purchaseIsOwned(input.purchase)) {
+    return { canConsign: false, note: "You can consign it once it's paid." };
+  }
+  return { canConsign: true, note: null };
 }
 
 /** A work the organisation owns through Bid: bought, or consigned and returned unsold. */
@@ -44,11 +74,14 @@ export type CollectionWork = {
   /** "Lot 44" for a work bought, "C-1987" for one returned. */
   reference: string | null;
   where: Badge | null;
+  whereId: WhereId | null;
   /** Starts Sell a work with the work's details filled in. */
   consignHref: string;
   consignLabel: string;
   /** The member may consign it. */
   canConsign: boolean;
+  /** Said in the row in place of the step while it cannot be taken yet. */
+  consignNote: string | null;
   href: string;
   at: number;
 };
@@ -73,6 +106,11 @@ export function boughtWork(
   input: { now: Date; canSell: boolean },
 ): CollectionWork {
   const at = Date.parse(win.endedAt);
+  const whereId = whereIdFrom(facts?.delivery.stage);
+  const consign = consignAvailability({
+    canSell: input.canSell,
+    purchase: facts ? { invoice: facts.invoice.status, deliveryStage: facts.delivery.stage } : null,
+  });
   return {
     key: `lot:${win.lotId}`,
     kind: "bought",
@@ -81,7 +119,7 @@ export function boughtWork(
     meta: [
       Number.isNaN(at)
         ? null
-        : `bought ${formatLotMoment(new Date(at), input.now, { time: false })}`,
+        : `bought ${formatLotMoment(new Date(at), input.now, { time: false, inSentence: true })}`,
       win.lotNumber == null ? null : `lot ${win.lotNumber}`,
     ].filter((fact): fact is string => Boolean(fact)),
     price: win.hammerPrice == null ? null : formatMoney(win.hammerPrice, "GBP"),
@@ -90,10 +128,12 @@ export function boughtWork(
         ? formatMoney(facts.invoice.totalDue, "GBP")
         : null,
     reference: win.lotNumber == null ? null : `Lot ${win.lotNumber}`,
-    where: whereFrom(facts?.delivery.stage),
+    where: whereId ? WHERE[whereId] : null,
+    whereId,
     consignHref: `${CLIENT_ROUTES.sellingNew}?fromLot=${encodeURIComponent(win.lotId)}`,
     consignLabel: "Consign this work",
-    canConsign: input.canSell,
+    canConsign: consign.canConsign,
+    consignNote: consign.note,
     // The purchase page is for members who follow purchases; the rest open the lot.
     href: facts
       ? `${CLIENT_ROUTES.purchases}/${encodeURIComponent(win.lotId)}`
@@ -110,7 +150,7 @@ export function returnedWork(work: ReturnedWork, input: { now: Date }): Collecti
     image: null,
     meta: [
       work.returnedAt
-        ? `returned unsold ${formatLotMoment(work.returnedAt, input.now, { time: false })}`
+        ? `returned unsold ${formatLotMoment(work.returnedAt, input.now, { time: false, inSentence: true })}`
         : "returned unsold",
       work.reference,
     ],
@@ -118,9 +158,11 @@ export function returnedWork(work: ReturnedWork, input: { now: Date }): Collecti
     boughtFor: null,
     reference: work.reference,
     where: WHERE["with-us"],
+    whereId: "with-us",
     consignHref: `${CLIENT_ROUTES.sellingNew}?fromSubmission=${encodeURIComponent(work.submissionId)}`,
     consignLabel: "Consign again",
     canConsign: work.canConsignAgain,
+    consignNote: null,
     href: lotPath({ id: work.lotId, title: work.title }),
     at: work.returnedAt?.getTime() ?? 0,
   };
@@ -134,7 +176,7 @@ export const WORKS_SORT_LABEL: Record<WorksSort, string> = {
   title: "Title A to Z",
 };
 
-export type WorksListQuery = { q: string; sort: WorksSort };
+export type WorksListQuery = { q: string; where: WhereId | null; sort: WorksSort };
 
 export function parseWorksListQuery(
   params: Readonly<Record<string, string | string[] | undefined>>,
@@ -142,6 +184,9 @@ export function parseWorksListQuery(
   const sort = searchParam(params.sort);
   return {
     q: searchParam(params.q) ?? "",
+    where: (WHERE_IDS as readonly string[]).includes(searchParam(params.where) ?? "")
+      ? (searchParam(params.where) as WhereId)
+      : null,
     sort: (WORKS_SORTS as readonly string[]).includes(sort ?? "") ? (sort as WorksSort) : "newest",
   };
 }
@@ -149,6 +194,7 @@ export function parseWorksListQuery(
 export function worksListSearch(query: WorksListQuery): string {
   const params = new URLSearchParams();
   if (query.q) params.set("q", query.q);
+  if (query.where) params.set("where", query.where);
   if (query.sort !== "newest") params.set("sort", query.sort);
   const text = params.toString();
   return text ? `?${text}` : "";
@@ -165,6 +211,17 @@ export function worksInView(
   query: WorksListQuery,
 ): CollectionWork[] {
   return works
+    .filter((work) => !query.where || work.whereId === query.where)
     .filter((work) => matchesEveryWord([work.title, ...work.meta], query.q))
     .sort(SORTERS[query.sort]);
+}
+
+export function appliedWorksFilters(query: WorksListQuery): { id: "where"; label: string }[] {
+  return query.where ? [{ id: "where", label: `Where: ${WHERE_LABEL[query.where]}` }] : [];
+}
+
+/** The places the listed works are, in the order a work travels, for the "Where it is" filter. */
+export function worksPlaces(works: readonly CollectionWork[]): WhereId[] {
+  const present = new Set(works.flatMap((work) => (work.whereId ? [work.whereId] : [])));
+  return WHERE_IDS.filter((id) => present.has(id));
 }

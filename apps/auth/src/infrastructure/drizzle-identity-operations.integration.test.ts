@@ -122,6 +122,75 @@ describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
     ).resolves.toEqual([{ id: sessionIds[1] }]);
   });
 
+  describe("claiming an address that another change holds", () => {
+    const target = "identity-operations-contested@lax.bid";
+    const live = new Date(NOW.getTime() + 60_000);
+    const expired = new Date(NOW.getTime() - 60_000);
+
+    async function holdAs(id: string, expiresAt: Date): Promise<void> {
+      await db
+        ?.update(user)
+        .set({ pendingNewEmail: target, emailChangeExpiresAt: expiresAt })
+        .where(eq(user.id, id));
+    }
+
+    async function readPendingRow(id: string) {
+      const [row] = (await db
+        ?.select({ pending: user.pendingNewEmail, expires: user.emailChangeExpiresAt })
+        .from(user)
+        .where(eq(user.id, id))) ?? [undefined];
+      return row;
+    }
+
+    it("is not blocked by another person's expired change", async () => {
+      if (!emailChanges) return;
+      await holdAs(otherSubjectId, expired);
+      await expect(
+        emailChanges.startChange({ subjectId, newEmail: target, expiresAt: live, now: NOW }),
+      ).resolves.toBe("started");
+      expect((await readPendingRow(subjectId))?.pending).toBe(target);
+      expect((await readPendingRow(otherSubjectId))?.pending).toBeNull();
+    });
+
+    it("is still blocked by another person's live change", async () => {
+      if (!emailChanges) return;
+      await holdAs(otherSubjectId, live);
+      await expect(
+        emailChanges.startChange({ subjectId, newEmail: target, expiresAt: live, now: NOW }),
+      ).resolves.toBe("address_pending");
+      expect((await readPendingRow(subjectId))?.pending).toBeNull();
+      expect((await readPendingRow(otherSubjectId))?.pending).toBe(target);
+    });
+
+    it("never blocks a sign-up, which claims the email column and not the pending one", async () => {
+      if (!db) return;
+      await holdAs(otherSubjectId, expired);
+      await expect(
+        db.insert(user).values({
+          id: "90000000-0000-4000-8000-000000000112",
+          name: "Sign-up",
+          email: target,
+          createdAt: NOW,
+          updatedAt: NOW,
+        }),
+      ).resolves.toBeDefined();
+      await db.delete(user).where(eq(user.id, "90000000-0000-4000-8000-000000000112"));
+    });
+
+    it("sweeps only expired changes", async () => {
+      if (!emailChanges) return;
+      await holdAs(otherSubjectId, expired);
+      await db
+        ?.update(user)
+        .set({ pendingNewEmail: "identity-operations-live@lax.bid", emailChangeExpiresAt: live })
+        .where(eq(user.id, subjectId));
+      const cleared = await emailChanges.clearExpired(NOW);
+      expect(cleared).toBeGreaterThanOrEqual(1);
+      expect((await readPendingRow(otherSubjectId))?.pending).toBeNull();
+      expect((await readPendingRow(subjectId))?.pending).toBe("identity-operations-live@lax.bid");
+    });
+  });
+
   it("persists both email confirmations, detects clashes, and applies the target email", async () => {
     if (!unitOfWork || !emailChanges) return;
     const nextEmail = "identity-operations-next@lax.bid";
@@ -147,7 +216,9 @@ describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
       await emailChanges.applyPendingEmail(transaction, subjectId, nextEmail, NOW);
     });
 
-    await expect(emailChanges.readPending(subjectId)).resolves.toBeNull();
+    await expect(emailChanges.readPending(subjectId)).resolves.toMatchObject({
+      pendingNewEmail: null,
+    });
     await expect(subjects?.findByEmail(nextEmail)).resolves.toMatchObject({
       id: subjectId,
       email: nextEmail,

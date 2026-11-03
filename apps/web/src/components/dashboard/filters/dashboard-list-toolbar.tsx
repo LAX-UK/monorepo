@@ -1,7 +1,6 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
+import { Button } from "@auction/ui/lax";
 import { MoreHorizontal, SlidersHorizontal } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -89,11 +89,8 @@ export function DashboardFilterTrigger({
   return (
     <Button
       type="button"
-      variant="ghost"
-      className={cn(
-        "inline-flex min-h-[var(--tap-target-min,44px)] shrink-0 items-center gap-1.5 rounded-full border border-outline-variant/50 bg-surface-container-lowest px-3 font-label text-xs font-semibold text-on-surface transition-colors hover:border-link/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
-        className,
-      )}
+      variant="secondary"
+      className={className}
       onClick={onClick}
       aria-label={activeCount > 0 ? `Filters, ${activeCount} applied` : "Filters"}
     >
@@ -207,9 +204,8 @@ export function DashboardListToolbar({
                   <DropdownMenuTrigger asChild>
                     <Button
                       type="button"
-                      variant="secondaryOutline"
-                      size="icon"
-                      className="min-h-11 min-w-11"
+                      variant="secondary"
+                      size="icon-md"
                       aria-label={actionsOverflowLabel}
                     >
                       <MoreHorizontal className="size-4" aria-hidden />

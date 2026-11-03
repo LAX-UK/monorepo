@@ -23,7 +23,7 @@ describe("buildPayoutRows", () => {
     );
     expect(row).toMatchObject({
       gross: "£3,800.00",
-      fees: "-£464.80",
+      fees: "\u2212£464.80",
       net: "£3,335.20",
       statementHref: "/legal-entities/le/payouts/p1/statement",
     });

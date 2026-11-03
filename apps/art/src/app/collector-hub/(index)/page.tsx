@@ -27,7 +27,7 @@ export default async function CollectorHubPage() {
         <ArtEditorialStatus
           result={result}
           disabledTitle="Collecting coming soon"
-          disabledDescription="Editorial collector content is not enabled in this environment yet."
+          disabledDescription="Collecting guides will be published here soon."
           emptyTitle="Nothing in Collecting yet"
           emptyDescription="Collector resources will appear here when published."
         />

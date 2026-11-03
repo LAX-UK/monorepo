@@ -24,6 +24,8 @@ export type DomainEventConsumer =
   | "legal_entity_provisioning"
   | "bid_profile_provisioning"
   | "bid_identity_directory"
+  | "bid_personal_data_anonymisation"
+  | "shop_personal_data_anonymisation"
   | "shop_identity_projection"
   | "shop_staff_access"
   | "ssf_transmitter"

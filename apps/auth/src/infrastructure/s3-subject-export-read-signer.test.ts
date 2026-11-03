@@ -1,4 +1,3 @@
-import { S3ObjectStorage } from "@auction/object-storage";
 import { describe, expect, it } from "vitest";
 import {
   S3SubjectExportReadSigner,
@@ -8,16 +7,13 @@ import {
 const NOW = new Date("2026-10-23T12:00:00.000Z");
 
 describe("S3SubjectExportReadSigner", () => {
-  const signer = new S3SubjectExportReadSigner(
-    new S3ObjectStorage({
-      bucket: "lax-personal-exports",
-      region: "lon1",
-      endpoint: "https://lon1.digitaloceanspaces.com",
-      accessKeyId: "read-key",
-      secretAccessKey: "read-secret",
-      publicBaseUrl: "https://invalid.invalid",
-    }),
-  );
+  const signer = new S3SubjectExportReadSigner({
+    bucket: "lax-personal-exports",
+    region: "lon1",
+    endpoint: "https://lon1.digitaloceanspaces.com",
+    accessKeyId: "read-key",
+    secretAccessKey: "read-secret",
+  });
 
   it("signs a GET for the one object that downloads as an attachment, for five minutes", async () => {
     const { url, expiresAt } = await signer.signDownload({

@@ -76,6 +76,7 @@ export function useWorkItemActions({ onDone }: { onDone?: () => void } = {}) {
       if (ask) {
         confirm.ask({
           ...ask,
+          ...(action === "reinstate_payment" ? { stepUpAction: "reinstate the payment" } : {}),
           tone: workActionIsDestructive(action) ? "danger" : "default",
           run: () => runWorkItemAction(item, action),
           success: workActionDone(item, action),

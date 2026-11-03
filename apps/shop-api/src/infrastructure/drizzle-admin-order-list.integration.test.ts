@@ -108,6 +108,34 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle admin order list", () => {
     expect(flat[5]).toBe(ids[5]);
   });
 
+  it("lists only orders with a failed refund, and counts failed refunds for the overview", async () => {
+    const { repo, marker } = setup();
+    const createdAt = "2026-03-04T12:00:00.000Z";
+    const [withFailed, withPending, withNone] = await seedOrders(marker, [
+      { createdAt },
+      { createdAt },
+      { createdAt },
+    ]);
+    for (const [orderId, status] of [
+      [withFailed, "failed"],
+      [withPending, "pending"],
+    ] as const) {
+      await ownerPool.query(
+        `insert into shop_refund (order_id, amount_pence, status, idempotency_key, requested_by_subject_id)
+         values ($1, 500, $2::shop_refund_status, $3, 'staff')`,
+        [orderId, status, `${marker}-${status}`],
+      );
+    }
+
+    const page = await repo.orders.listOrders({ q: marker, refund: "failed" });
+    expect(page.items.map((item) => item.orderId)).toEqual([withFailed]);
+    expect(page.items.map((item) => item.orderId)).not.toContain(withNone);
+    expect(page.counts).toEqual({ paid: 1 });
+
+    const { failedRefundsCount } = await repo.overview.readOverviewKpis(["failedRefundsCount"]);
+    expect(failedRefundsCount).toBeGreaterThanOrEqual(1);
+  });
+
   it("keeps paging correctly under a status and date filter", async () => {
     const { repo, marker } = setup();
     const same = "2026-03-02T12:00:00.000Z";

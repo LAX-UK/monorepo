@@ -3,6 +3,15 @@ export {
   accountBackupCodesSchema,
   type AccountBackupCodesResponse,
 } from "./account-backup-codes.js";
+export {
+  ACCOUNT_PASSWORD_CHANGE_PATH,
+  ACCOUNT_PASSWORD_ERRORS,
+  ACCOUNT_PASSWORD_MAX_LENGTH,
+  ACCOUNT_PASSWORD_MIN_LENGTH,
+  accountPasswordChangedSchema,
+  type AccountPasswordChangedResponse,
+  type AccountPasswordError,
+} from "./account-password.js";
 export { formatDeviceLabel } from "./device-label.js";
 export {
   ACCOUNT_SECURITY_FACTS_PATH,
@@ -16,6 +25,7 @@ export {
   ACCOUNT_EMAIL_CHANGE_CONFIRM_PATH,
   ACCOUNT_EMAIL_CHANGE_PATH,
   ACCOUNT_PHONE_CODE_LENGTH,
+  ACCOUNT_PHONE_REMOVE_PATH,
   ACCOUNT_PHONE_SEND_CODE_PATH,
   ACCOUNT_PHONE_VERIFY_PATH,
   accountContactSchema,
@@ -25,6 +35,7 @@ export {
   accountEmailSchema,
   accountPhoneCodeSchema,
   accountPhoneCodeSentSchema,
+  accountPhoneRemovedSchema,
   accountPhoneSchema,
   accountPhoneVerifiedSchema,
   type AccountContactError,
@@ -250,6 +261,7 @@ export {
   subjectExportViewSchema,
   type SubjectExportCategoryDefinition,
   type SubjectExportCategoryManifest,
+  type SubjectExportControllerId,
   type SubjectExportCreateOutcome,
   type SubjectExportFieldDescription,
   type SubjectExportFile,

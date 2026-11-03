@@ -6,7 +6,13 @@ import {
 } from "@/lib/navigation/client-routes";
 import { bidSettingsHref } from "@/lib/navigation/settings-links";
 import { consignmentMessagesHref } from "@/lib/seller/consignment-records";
-import { formatDateInline, formatDateTimeShort, formatMoney } from "@/lib/ui/format";
+import { consignmentStepLabel } from "@/lib/seller/consignment-step";
+import {
+  formatDateInline,
+  formatDateTimeShort,
+  formatEventTime,
+  formatMoney,
+} from "@/lib/ui/format";
 import type { NeedsYouTaskWithLink } from "@/lib/workspace/needs-you-read";
 import {
   type HomeSubject,
@@ -28,6 +34,9 @@ export type NeedsYouDue = {
   dateTime: string;
 };
 
+/** When a task arose, as its row shows it. */
+export type NeedsYouRaised = { text: string; dateTime: string };
+
 /** One "Needs you" row as it reads: what to do, about what and for whom, when, and one button. */
 export type NeedsYouRowView = {
   key: string;
@@ -35,6 +44,8 @@ export type NeedsYouRowView = {
   title: string;
   detail: string;
   due: NeedsYouDue | null;
+  /** When it arose; `null` when no record says. */
+  raised: NeedsYouRaised | null;
   action: { label: string; href: string };
   /** The sidebar item the row is counted on and how many things it stands for. */
   section: NeedsYouSection | null;
@@ -113,7 +124,9 @@ export function needsYouHref(task: NeedsYouTaskWithLink): string {
   }
 }
 
-type Row = Omit<NeedsYouRowView, "key" | "action" | "section" | "items"> & { label: string };
+type Row = Omit<NeedsYouRowView, "key" | "action" | "section" | "items" | "raised"> & {
+  label: string;
+};
 type RowBuilder<K extends NeedsYouTask["kind"]> = (
   task: Extract<NeedsYouTaskWithLink, { kind: K }>,
   ctx: Ctx,
@@ -162,14 +175,14 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
     ),
     detail: `Did not sell · choose by ${formatDateInline(task.dueBy)}`,
     due: due(task.dueBy, `Choose by ${formatDateInline(task.dueBy)}`, now),
-    label: "Choose",
+    label: consignmentStepLabel("unsold"),
   }),
   agreement: (task, ctx) => ({
     topic: "consignment",
     title: "Accept the consignment agreement",
     detail: `${quoted(task.consignment)} · the specialist's estimate and terms, for ${ctx.organisationName}`,
     due: null,
-    label: "Review",
+    label: consignmentStepLabel("agreement"),
   }),
   changes: (task) => ({
     topic: "consignment",
@@ -178,14 +191,14 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
       ? `${quoted(task.submission)} · “${task.note}”`
       : `${quoted(task.submission)} · see the specialist's note`,
     due: null,
-    label: "Edit and resubmit",
+    label: consignmentStepLabel("changes"),
   }),
   reply: (task) => ({
     topic: "consignment",
     title: `Reply from ${task.from}`,
     detail: `${quoted(task.consignment)} · a new message about this work`,
     due: null,
-    label: "Read",
+    label: consignmentStepLabel("reply"),
   }),
   unsold: (task) => ({
     topic: "consignment",
@@ -199,7 +212,7 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
         ? "Did not sell · offer it again, lower the reserve or have it returned"
         : `${listOf(task.lots)} did not sell`,
     due: null,
-    label: "Choose",
+    label: consignmentStepLabel("unsold"),
   }),
   choose_delivery: (task) => ({
     topic: "delivery",
@@ -210,7 +223,7 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
     ),
     detail: "Paid · choose a courier quote or collection from the saleroom",
     due: null,
-    label: "Choose",
+    label: "Choose delivery",
   }),
   quote_ready: (task) => ({
     topic: "delivery",
@@ -345,12 +358,19 @@ export function needsYouTally(task: NeedsYouTask): {
   return entry ? { section: entry[0], items: entry[1] } : { section: null, items: 1 };
 }
 
+function raisedView(raisedAt: Date | null, now: Date): NeedsYouRaised | null {
+  return raisedAt
+    ? { text: formatEventTime(raisedAt, now), dateTime: raisedAt.toISOString() }
+    : null;
+}
+
 export function needsYouRowView(task: NeedsYouTaskWithLink, ctx: Ctx): NeedsYouRowView {
   const build = ROWS[task.kind] as RowBuilder<typeof task.kind>;
   const { label, ...row } = build(task as never, ctx);
   return {
     key: rowKey(task),
     ...row,
+    raised: raisedView(task.raisedAt, ctx.now),
     action: { label, href: needsYouHref(task) },
     ...needsYouTally(task),
   };

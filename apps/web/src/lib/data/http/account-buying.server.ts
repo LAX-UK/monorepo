@@ -3,7 +3,12 @@ import "server-only";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { zCoerceDate } from "@/lib/data/http/schema-coerce";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
-import { type CollectionBookingOffer, DELIVERY_QUOTE_STATUSES } from "@auction/domain";
+import type { PurchaseProblemView } from "@/lib/purchases/purchase-problem";
+import {
+  type CollectionBookingOffer,
+  DELIVERY_QUOTE_STATUSES,
+  PURCHASE_PROBLEM_CATEGORIES,
+} from "@auction/domain";
 import type { OrganisationBiddingLimitsView } from "@auction/types";
 import { z } from "zod";
 import type {
@@ -178,6 +183,24 @@ export async function getServerCollectionOffer(
     forAccount(accountId),
   );
   return readData(res, collectionOfferSchema);
+}
+
+const purchaseProblemSchema = z.object({
+  reference: z.string(),
+  category: z.enum(PURCHASE_PROBLEM_CATEGORIES),
+  reportedAt: zCoerceDate,
+}) satisfies z.ZodType<PurchaseProblemView, z.ZodTypeDef, unknown>;
+
+/** The open report on a purchase, or `null` when there is none or it cannot be read. */
+export async function getServerPurchaseProblem(
+  accountId: string,
+  lotId: string,
+): Promise<PurchaseProblemView | null> {
+  const res = await authedServerFetch(
+    `/legal-entities/purchases/${encodeURIComponent(lotId)}/problem`,
+    forAccount(accountId),
+  );
+  return readData(res, purchaseProblemSchema.nullable());
 }
 
 /** The organisation's bidding limits and what is used under them; `null` on failure. */

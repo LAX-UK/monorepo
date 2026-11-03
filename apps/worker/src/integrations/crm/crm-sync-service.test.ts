@@ -88,6 +88,7 @@ describe("CrmSyncService payment.refunded", () => {
       },
       paymentLotReader,
       attributionReader: { loadFirstTouchFields: vi.fn() } satisfies CrmAttributionReader,
+      enquiryReader: { findById: vi.fn() },
     });
 
     const result = await service.syncEvent({
@@ -126,6 +127,7 @@ describe("CrmSyncService payment.refunded", () => {
       },
       paymentLotReader,
       attributionReader: { loadFirstTouchFields: vi.fn() } satisfies CrmAttributionReader,
+      enquiryReader: { findById: vi.fn() },
     });
 
     const result = await service.syncEvent({

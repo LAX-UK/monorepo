@@ -7,4 +7,10 @@ describe("isCoverFixtureReviewAvailable", () => {
     expect(isCoverFixtureReviewAvailable("test")).toBe(true);
     expect(isCoverFixtureReviewAvailable("production")).toBe(false);
   });
+
+  it("serves a production build only when started for the visual tests", () => {
+    expect(isCoverFixtureReviewAvailable("production", "1")).toBe(true);
+    expect(isCoverFixtureReviewAvailable("production", "0")).toBe(false);
+    expect(isCoverFixtureReviewAvailable("production", undefined)).toBe(false);
+  });
 });

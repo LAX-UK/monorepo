@@ -5,6 +5,7 @@ import { ShopSection } from "@/components/layout/shop-section";
 import { SHOP_HOME_CONTENT } from "@/content/home/shop-home-content";
 import { toEditionCardVm } from "@/lib/catalogue/edition-card.vm";
 import type { HomeNewEditionsVm } from "@/lib/home/home-new-editions";
+import { NEW_EDITIONS_SECTION_ID } from "@/lib/home/home-sections";
 import { MARKETING_ROW_MAX_COLUMNS, MarketingCardRow } from "@auction/marketing-ui";
 
 const copy = SHOP_HOME_CONTENT.newEditions;
@@ -27,6 +28,7 @@ export function NewEditionsSection({
   return (
     <ShopSection
       id="home-editions"
+      sectionProps={{ id: NEW_EDITIONS_SECTION_ID, "data-home-new-editions": "cards" }}
       title={copy.title}
       subtitle={copy.subtitle}
       {...(editions ? { viewAll: { ...editions.viewAll, srLabel: "on sale" } } : {})}

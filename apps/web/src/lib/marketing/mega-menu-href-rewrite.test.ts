@@ -33,3 +33,10 @@ describe("mega-menu-href-rewrite", () => {
     expect(authed[0]?.items[0]?.href).toBe("/selling");
   });
 });
+
+describe("auction alerts link", () => {
+  it("sends a signed-in client to alert settings and leaves a visitor on the home sign-up", () => {
+    expect(restoreDashboardHrefForAuthed("/#alerts")).toBe("/settings#alerts");
+    expect(rewriteDashboardHrefForGuest("/#alerts")).toBe("/#alerts");
+  });
+});

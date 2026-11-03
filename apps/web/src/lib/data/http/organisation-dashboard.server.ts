@@ -26,7 +26,10 @@ const figuresSchema = z.object({
         id: z.string(),
         title: z.string(),
         startsAt: date,
+        endsAt: date,
+        live: z.boolean(),
         works: z.number(),
+        images: z.array(z.string()),
         estimates: z.array(z.object({ currency: z.string(), low: z.string(), high: z.string() })),
       }),
     )

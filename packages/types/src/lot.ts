@@ -28,11 +28,15 @@ export type LotSummary = {
   startTime: Date;
   endTime: Date;
   images: string[];
+  /** Measured size and blur preview per picture, aligned with `images`; absent when none is measured. */
+  imageAssets?: import("./gallery.js").GalleryImage[];
   categoryIds?: string[];
   /** Estimate only on list rows; full marketing JSON lives on lot detail. */
   marketingDetails: LotMarketingDetails;
   /** Present on ended list rows when the hammer sold (buyer id stays on detail only). */
   hasWinner?: boolean;
+  /** Present on sold list rows: hammer, buyer's premium and total, computed on the server. */
+  checkoutPricing?: Lot["checkoutPricing"];
 };
 
 /** Optional marketing / catalog enrichment (stored as JSON on `lot`). */

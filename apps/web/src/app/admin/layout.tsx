@@ -11,6 +11,7 @@ import { StaffShell } from "@/components/shell/staff-shell";
 import { resolveAdminReturnPath } from "@/lib/admin/admin-return-path.server";
 import { buildStaffHeaderAttentionItems } from "@/lib/admin/build-staff-header-attention-items";
 import { withInboxNavCount } from "@/lib/admin/consignment-inbox/inbox-nav-count.server";
+import { withEnquiriesNavCount } from "@/lib/admin/enquiries/enquiries-nav-count.server";
 import { loadStaffProducts } from "@/lib/admin/load-staff-products";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -105,6 +106,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   navCounts = await withInboxNavCount(navCounts, userRole, staffRoles);
+  navCounts = await withEnquiriesNavCount(navCounts, userRole, staffRoles);
 
   const role = sessionUserToShellRole(user);
 

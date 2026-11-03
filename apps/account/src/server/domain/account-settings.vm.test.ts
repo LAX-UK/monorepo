@@ -31,17 +31,12 @@ describe("buildSecurityGroups", () => {
     ]);
   });
 
-  it("opens the hosted password and two-step pages", () => {
+  it("leaves the password to its own in-page section and opens the hosted two-step page", () => {
     const [group] = buildSecurityGroups(
       { twoStep: "unknown", backupCodesRemaining: null },
       withBid,
     );
     expect(group?.rows.map((r) => [r.title, r.subtitle, r.href])).toEqual([
-      [
-        "Password",
-        "We'll email you a secure link to change it",
-        "https://test-auth.lax.bid/forgot-password?client_id=lax-account-web",
-      ],
       [
         "Two-step verification",
         "Set up or manage",
@@ -51,7 +46,7 @@ describe("buildSecurityGroups", () => {
   });
 
   const subtitle = (twoStep: "on" | "off" | "unknown", backupCodesRemaining: number | null) =>
-    buildSecurityGroups({ twoStep, backupCodesRemaining }, withBid)[0]?.rows[1]?.subtitle;
+    buildSecurityGroups({ twoStep, backupCodesRemaining }, withBid)[0]?.rows[0]?.subtitle;
 
   it("states On, Off or the neutral wording for each two-step state", () => {
     expect(subtitle("on", 8)).toBe("On");

@@ -1,8 +1,6 @@
--- Rollback for 0272_subject_data_export. Roll back the application release first: the previous
--- release neither reads nor writes these tables. Every data export request, its audit trail and
--- the record of which stored files still need deleting are lost, so delete any stored copies
--- first or they stay in the export bucket until its lifecycle rule removes them.
+-- Rollback for 0272_kyc_retention_tombstone. Disable KYC_RETENTION_PURGE_ENABLED and roll back the
+-- worker first: the previous release does not write this table. The tombstones are lost; the
+-- purged records themselves are not restored.
 SET LOCAL lock_timeout = '30s';
 
-DROP TABLE IF EXISTS "subject_data_export_audit";
-DROP TABLE IF EXISTS "subject_data_export";
+DROP TABLE IF EXISTS "kyc_retention_tombstone";

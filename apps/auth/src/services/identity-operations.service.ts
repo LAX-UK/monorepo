@@ -5,6 +5,7 @@ import type {
   ProductSubjectUsageProbe,
 } from "@auction/auth";
 import { hashPassword, verifyPassword } from "@better-auth/utils/password";
+import { pendingEmailChangeState } from "../lib/pending-email-change.js";
 import { findNewPasswordPolicyViolation } from "../schemas/validate-new-password.js";
 import type { BackchannelLogoutService } from "./backchannel-logout.service.js";
 import type { IIdentityNotifier } from "./identity-notification.ports.js";
@@ -22,6 +23,7 @@ export type IdentityOperationErrorCode =
   | "invalid_password"
   | "invalid_password_policy"
   | "password_breached"
+  | "same_password"
   | "phone_taken"
   | "invalid_expiry"
   | "no_credential"
@@ -213,6 +215,72 @@ export class IdentityOperationsService {
     });
   }
 
+  /**
+   * Changes the password from LAX Account, or sets the first one for an account that only signs
+   * in with a social or passkey login. The current password is required whenever there is one;
+   * it is ignored when there is none. In one transaction it writes the hash, ends every other
+   * sign-in (the one named by `keepSessionId` survives) and records the credential change and
+   * each revoked session. Relying-party tokens are ended by the caller once this has committed.
+   */
+  async changeAccountPassword(
+    subjectId: string,
+    input: { currentPassword: string | null; newPassword: string; keepSessionId: string },
+  ): Promise<{ created: boolean; revokedSessionIds: string[] }> {
+    await this.assertPasswordPolicy(input.newPassword);
+    const credential = await this.repositories.credentials.findCredential(subjectId);
+    const existingHash = credential?.passwordHash ?? null;
+    if (existingHash) {
+      if (!input.currentPassword || !(await verifyPassword(existingHash, input.currentPassword))) {
+        throw new IdentityOperationError("invalid_password");
+      }
+      if (await verifyPassword(existingHash, input.newPassword)) {
+        throw new IdentityOperationError("same_password");
+      }
+    }
+    const passwordHash = await hashPassword(input.newPassword);
+    let revokedSessionIds: string[] = [];
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const changedAt = this.now();
+      if (credential) {
+        await this.repositories.credentials.updatePassword(transaction, {
+          credentialId: credential.id,
+          subjectId,
+          passwordHash,
+          now: changedAt,
+        });
+      } else {
+        const outcome = await this.repositories.credentials.insertCredential(transaction, {
+          id: randomUUID(),
+          subjectId,
+          passwordHash,
+          now: changedAt,
+        });
+        // A first password set in parallel won the race; the person can retry as a change.
+        if (outcome === "already_set") throw new IdentityOperationError("already_set");
+      }
+      await this.identityEventPublisher.publish(
+        {
+          type: "user.credential_changed",
+          userId: subjectId,
+          changeType: existingHash ? "update" : "create",
+        },
+        { transaction },
+      );
+      revokedSessionIds = await this.repositories.sessions.deleteOtherSessions(
+        transaction,
+        subjectId,
+        input.keepSessionId,
+      );
+      for (const sessionId of revokedSessionIds) {
+        await this.identityEventPublisher.publish(
+          { type: "user.session_revoked", userId: subjectId, sessionId },
+          { transaction },
+        );
+      }
+    });
+    return { created: !existingHash, revokedSessionIds };
+  }
+
   listSessions(subjectId: string, currentSessionToken?: string): Promise<IdentitySession[]> {
     return this.repositories.sessions.listForSubject(subjectId, currentSessionToken);
   }
@@ -317,21 +385,33 @@ export class IdentityOperationsService {
     ]);
     if (!subject) throw new IdentityOperationError("subject_not_found");
     if (clash && clash.id !== subjectId) throw new IdentityOperationError("email_taken");
-    await this.repositories.emailChanges.startChange({
+    const started = await this.repositories.emailChanges.startChange({
       subjectId,
       newEmail: normalized,
       expiresAt,
       now: this.now(),
     });
+    // Another person's change to this address is still waiting on its links.
+    if (started === "address_pending") throw new IdentityOperationError("email_taken");
   }
 
-  pendingEmailChange(subjectId: string): Promise<string | null> {
-    return this.repositories.emailChanges.readPending(subjectId);
+  /** Frees addresses held by changes whose links have expired. */
+  purgeExpiredEmailChanges(now = this.now()): Promise<number> {
+    return this.repositories.emailChanges.clearExpired(now);
   }
 
+  /** The address a change is still waiting on; an expired change counts as none. */
+  async pendingEmailChange(subjectId: string): Promise<string | null> {
+    const row = await this.repositories.emailChanges.readPending(subjectId);
+    if (!row) return null;
+    const state = pendingEmailChangeState(row, this.now());
+    return state.kind === "waiting" ? state.email : null;
+  }
+
+  /** Cancelling also clears an expired change, so a stale row never lingers. */
   async cancelEmailChange(subjectId: string): Promise<void> {
-    const pending = await this.pendingEmailChange(subjectId);
-    if (!pending) throw new IdentityOperationError("none_in_progress");
+    const row = await this.repositories.emailChanges.readPending(subjectId);
+    if (!row?.pendingNewEmail) throw new IdentityOperationError("none_in_progress");
     await this.repositories.emailChanges.clearPending(subjectId, this.now());
   }
 
@@ -483,6 +563,30 @@ export class IdentityOperationsService {
         { transaction },
       );
     });
+  }
+
+  /**
+   * Removes the phone number and its verified flag, and publishes the change with the profile.
+   * Resolves to the number that was removed, or null when the person had none.
+   */
+  async clearPhone(subjectId: string): Promise<string | null> {
+    let removed: string | null = null;
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      const outcome = await this.repositories.subjects.clearPhone(
+        transaction,
+        subjectId,
+        this.now(),
+      );
+      if (outcome.status === "not_found") throw new IdentityOperationError("subject_not_found");
+      if (outcome.status === "no_phone") return;
+      removed = outcome.previous;
+      await publishIdentityProfileUpdated(
+        this.identityEventPublisher,
+        { subjectId, phone: null, phoneVerified: false },
+        { transaction },
+      );
+    });
+    return removed;
   }
 
   /** Starts the deletion grace period and returns when it started. */

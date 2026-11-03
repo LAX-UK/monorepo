@@ -4,21 +4,26 @@ import {
   adminReviewTask,
   bidIdentityDirectory,
   conditionReportRequest,
+  domainEvent,
   itemSubmission,
   lot,
   lotFulfilment,
+  marketingEnquiry,
   payment,
+  purchaseProblem,
   sale,
   saleRegistration,
   telephoneBidBooking,
   unsoldLotChoice,
 } from "@auction/db/schema";
-import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type {
   AdminAssignableWorkItemsQuery,
   AdminWorkItemSourceRow,
   IAdminWorkItemsReader,
 } from "../interfaces/admin-work-items.reader.js";
+import { adminWorkItemHref } from "../lib/admin-work-item-href.js";
+import { BLOCKED_CAPTURE_EVENT, toBlockedCapture } from "./blocked-capture.query.js";
 import { lotWorkItemTitle, sentenceCase } from "./work-item-labels.js";
 
 const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
@@ -35,8 +40,6 @@ const REVIEW_TASK_KINDS = [
   "legal_entity_kyb_review",
   "lot_withdrawal_request",
   "lot_artist_backfill",
-  "artist_merge_review",
-  "payout_adjustment_review",
 ] as const;
 
 function reviewTaskKindToWorkKind(
@@ -70,23 +73,20 @@ function reviewTaskDomain(
   }
 }
 
-function reviewTaskHref(
+/** The record a review task is about, from the id its projector stored in the payload. */
+function reviewTaskSubjectId(
   kind: (typeof REVIEW_TASK_KINDS)[number],
   payload: Record<string, unknown>,
-  taskId: string,
-): string {
-  switch (kind) {
-    case "aml_screening_review":
-      return `/admin/compliance/aml/${String(payload.screeningId ?? taskId)}`;
-    case "source_of_funds_review":
-      return `/admin/compliance/source-of-funds/${String(payload.sourceOfFundsId ?? taskId)}`;
-    case "legal_entity_kyb_review":
-      return `/admin/legal-entities/${String(payload.legalEntityId ?? taskId)}`;
-    case "lot_withdrawal_request":
-      return `/admin/lots/${String(payload.lotId ?? taskId)}`;
-    default:
-      return `/admin/lots/${String(payload.lotId ?? taskId)}`;
-  }
+): string | null {
+  const key = {
+    aml_screening_review: "screeningId",
+    source_of_funds_review: "sourceOfFundsId",
+    legal_entity_kyb_review: "legalEntityId",
+    lot_withdrawal_request: "lotId",
+    lot_artist_backfill: "lotId",
+  }[kind];
+  const value = payload[key];
+  return typeof value === "string" && value.length > 0 ? value : null;
 }
 
 function reviewTaskTitle(kind: (typeof REVIEW_TASK_KINDS)[number]): string {
@@ -101,10 +101,6 @@ function reviewTaskTitle(kind: (typeof REVIEW_TASK_KINDS)[number]): string {
       return "Lot withdrawal request pending";
     case "lot_artist_backfill":
       return "Artist backfill review needed";
-    case "artist_merge_review":
-      return "Artist merge review needed";
-    case "payout_adjustment_review":
-      return "Payout adjustment review needed";
     default:
       return "Review task pending";
   }
@@ -136,12 +132,56 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       domain: "finance" as const,
       title: lotWorkItemTitle("Payment manual review", row.lotNumber, row.lotTitle),
       subtitle: `${row.winnerEmail ?? "Buyer"} · ${formatWorkItemAmount(row.amount)}`,
-      href: `/admin/payments/${row.paymentId}`,
+      href: adminWorkItemHref("payment_manual_review", { subjectId: row.paymentId }),
       saleId: null,
       createdAt: row.createdAt,
       sourceUpdatedAt: row.createdAt,
       assignedToUserId: null,
     }));
+  }
+
+  async listBlockedCaptures(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    // One row per payment (its latest event), kept only while the payment is still closed:
+    // reinstating it or refunding the buyer moves it on and the item leaves the inbox.
+    const rows = await this.db
+      .selectDistinctOn([domainEvent.aggregateId], {
+        aggregateId: domainEvent.aggregateId,
+        payload: domainEvent.payload,
+        occurredAt: domainEvent.occurredAt,
+        lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+        winnerEmail: bidIdentityDirectory.email,
+        amount: payment.amount,
+      })
+      .from(domainEvent)
+      .innerJoin(payment, eq(sql`${payment.id}::text`, domainEvent.aggregateId))
+      .innerJoin(lot, eq(payment.lotId, lot.id))
+      .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
+      .where(
+        and(
+          eq(domainEvent.aggregateType, "payment"),
+          eq(domainEvent.eventType, BLOCKED_CAPTURE_EVENT),
+          eq(payment.status, "cancelled"),
+        ),
+      )
+      .orderBy(domainEvent.aggregateId, desc(domainEvent.occurredAt))
+      .limit(limit);
+
+    return rows.map((row) => {
+      const blocked = toBlockedCapture(row);
+      return {
+        sourceId: row.aggregateId,
+        kind: "payment_capture_blocked" as const,
+        domain: "finance" as const,
+        title: lotWorkItemTitle("Payment taken on a closed payment", row.lotNumber, row.lotTitle),
+        subtitle: `${row.winnerEmail ?? "Buyer"} · ${formatWorkItemAmount(row.amount)}`,
+        href: adminWorkItemHref("payment_capture_blocked", { paymentId: row.aggregateId }),
+        saleId: null,
+        createdAt: blocked.blockedAt,
+        sourceUpdatedAt: blocked.blockedAt,
+        assignedToUserId: null,
+      };
+    });
   }
 
   async listPendingReviewTasks(
@@ -175,7 +215,9 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         domain: reviewTaskDomain(kind),
         title: reviewTaskTitle(kind),
         subtitle: kind === "lot_withdrawal_request" ? "Seller withdrawal" : null,
-        href: reviewTaskHref(kind, payload, row.id),
+        href: adminWorkItemHref(reviewTaskKindToWorkKind(kind), {
+          subjectId: reviewTaskSubjectId(kind, payload),
+        }),
         saleId: null,
         createdAt: row.createdAt,
         sourceUpdatedAt: row.createdAt,
@@ -216,7 +258,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       domain: "catalogue" as const,
       title: row.title,
       subtitle: row.status === "under_review" ? "Under review" : "Awaiting review",
-      href: `/admin/submissions/${row.id}`,
+      href: adminWorkItemHref("submission_review", { subjectId: row.id }),
       saleId: null,
       createdAt: row.createdAt,
       sourceUpdatedAt: row.updatedAt,
@@ -246,7 +288,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       domain: "catalogue" as const,
       title: lotWorkItemTitle("Condition report", row.lotNumber, row.lotTitle),
       subtitle: row.status === "in_progress" ? "In progress" : "Pending",
-      href: `/admin/condition-reports?preview=${row.id}`,
+      href: adminWorkItemHref("condition_report", { subjectId: row.id }),
       saleId: null,
       createdAt: row.createdAt,
       sourceUpdatedAt: row.createdAt,
@@ -284,7 +326,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       domain: "fulfilment" as const,
       title: lotWorkItemTitle("Fulfilment", row.lotNumber, row.lotTitle),
       subtitle: sentenceCase(row.status),
-      href: `/admin/lot-fulfilment?preview=${row.lotId}`,
+      href: adminWorkItemHref("lot_fulfilment", { subjectId: row.lotId }),
       saleId: null,
       createdAt: row.createdAt,
       sourceUpdatedAt: row.updatedAt,
@@ -316,7 +358,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       domain: "saleroom" as const,
       title: `Registration pending — ${row.saleTitle}`,
       subtitle: row.userName ?? row.userEmail ?? "Bidder",
-      href: `/admin/sales/${row.saleId}/registrations?status=pending`,
+      href: adminWorkItemHref("sale_registration", { saleId: row.saleId }),
       saleId: row.saleId,
       createdAt: row.requestedAt,
       sourceUpdatedAt: row.requestedAt,
@@ -359,7 +401,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       domain: "saleroom" as const,
       title: `Telephone booking — ${row.saleTitle}`,
       subtitle: row.userName ?? row.userEmail ?? "Bidder",
-      href: `/admin/sales/${row.saleId}/telephone-bookings?status=${row.status}`,
+      href: adminWorkItemHref("telephone_booking", { saleId: row.saleId, status: row.status }),
       saleId: row.saleId,
       createdAt: row.createdAt,
       sourceUpdatedAt: row.updatedAt,
@@ -390,7 +432,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       domain: "catalogue" as const,
       title: `Draft lot past start — ${row.title}`,
       subtitle: row.lotNumber != null ? `Lot ${row.lotNumber}` : "Unnumbered",
-      href: `/admin/lots/${row.id}`,
+      href: adminWorkItemHref("lot_draft_past_start", { subjectId: row.id }),
       saleId: null,
       createdAt: row.createdAt,
       sourceUpdatedAt: row.updatedAt,
@@ -422,14 +464,80 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       domain: "catalogue" as const,
       title: lotWorkItemTitle("Unsold lot choice", row.lotNumber, row.lotTitle),
       subtitle: UNSOLD_CHOICE_SUBTITLES[row.requestedChoice ?? ""] ?? null,
-      href: `/admin/submissions/${row.submissionId}/decision`,
+      href: adminWorkItemHref("unsold_lot_choice", { subjectId: row.submissionId }),
       saleId: null,
       createdAt: row.requestedAt ?? row.createdAt,
       sourceUpdatedAt: row.updatedAt,
       assignedToUserId: null,
     }));
   }
+
+  async listMarketingEnquiries(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const rows = await this.db
+      .select({
+        id: marketingEnquiry.id,
+        topic: marketingEnquiry.topic,
+        name: marketingEnquiry.name,
+        createdAt: marketingEnquiry.createdAt,
+      })
+      .from(marketingEnquiry)
+      .where(eq(marketingEnquiry.status, "new"))
+      .orderBy(desc(marketingEnquiry.createdAt))
+      .limit(limit);
+
+    return rows.map((row) => ({
+      sourceId: row.id,
+      kind: "marketing_enquiry" as const,
+      domain: "clients" as const,
+      title: `Contact enquiry — ${sentenceCase(row.topic)}`,
+      subtitle: row.name,
+      href: adminWorkItemHref("marketing_enquiry", { subjectId: row.id }),
+      saleId: null,
+      createdAt: row.createdAt,
+      sourceUpdatedAt: row.createdAt,
+      assignedToUserId: null,
+    }));
+  }
+
+  async listPurchaseProblems(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const rows = await this.db
+      .select({
+        id: purchaseProblem.id,
+        paymentId: purchaseProblem.paymentId,
+        category: purchaseProblem.category,
+        createdAt: purchaseProblem.createdAt,
+        updatedAt: purchaseProblem.updatedAt,
+        lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+      })
+      .from(purchaseProblem)
+      .innerJoin(lot, eq(purchaseProblem.lotId, lot.id))
+      .where(eq(purchaseProblem.status, "open"))
+      .orderBy(desc(purchaseProblem.createdAt))
+      .limit(limit);
+
+    return rows.map((row) => ({
+      sourceId: row.id,
+      kind: "purchase_problem" as const,
+      domain: "clients" as const,
+      title: lotWorkItemTitle("Purchase problem", row.lotNumber, row.lotTitle),
+      subtitle: PURCHASE_PROBLEM_SUBTITLES[row.category] ?? null,
+      href: adminWorkItemHref("purchase_problem", { paymentId: row.paymentId }),
+      saleId: null,
+      createdAt: row.createdAt,
+      sourceUpdatedAt: row.createdAt,
+      assignedToUserId: null,
+    }));
+  }
 }
+
+const PURCHASE_PROBLEM_SUBTITLES: Record<string, string> = {
+  not_as_described: "Not as described",
+  damaged: "Damaged",
+  not_received: "Not received",
+  invoice_or_payment: "Invoice or payment",
+  other: "Other",
+};
 
 const UNSOLD_CHOICE_SUBTITLES: Record<string, string> = {
   relist: "Seller asks to relist",

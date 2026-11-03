@@ -36,13 +36,13 @@ describe("ConsentShell", () => {
 
   it("shows the cookie banner on consumer pages", () => {
     renderShell();
-    expect(screen.getByRole("region", { name: "Cookie consent" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Cookies" })).toBeInTheDocument();
   });
 
   it("never renders the banner inside Bid admin", () => {
     pathname.current = "/admin/sales";
     renderShell();
-    expect(screen.queryByRole("region", { name: "Cookie consent" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Cookies" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /accept all/i })).not.toBeInTheDocument();
   });
 });

@@ -15,7 +15,10 @@ import type { SubjectExportService } from "../services/subject-export.service.js
 export async function createAuthSchedules(options: {
   db: IdentityDatabase;
   log: pino.Logger;
-  identityOperations: { purgeExpiredVerifications(): Promise<number> };
+  identityOperations: {
+    purgeExpiredVerifications(): Promise<number>;
+    purgeExpiredEmailChanges(): Promise<number>;
+  };
   logoutDelivery: Pick<BackchannelLogoutDeliveryWorker, "drain">;
   securityEffects: Pick<DurableSecurityEffects, "drain" | "settle">;
   ssfStreams: Pick<SsfStreamService, "provisionRegisteredStreams">;
@@ -48,6 +51,17 @@ export async function createAuthSchedules(options: {
     60 * 60 * 1_000,
   );
   verification.unref();
+  // Expired email changes are already ignored when read or claimed; this only stops rows lingering.
+  const emailChanges = setInterval(
+    () => {
+      void options.identityOperations.purgeExpiredEmailChanges().catch((err) => {
+        options.log.error({ err }, "expired email change cleanup failed");
+        Sentry.captureException(err);
+      });
+    },
+    24 * 60 * 60 * 1_000,
+  );
+  emailChanges.unref();
   const logout = startBackchannelLogoutSchedule({
     service: options.logoutDelivery,
     onError: (err) => {
@@ -151,6 +165,7 @@ export async function createAuthSchedules(options: {
     stop: async () => {
       retirement.stop();
       clearInterval(verification);
+      clearInterval(emailChanges);
       if (atRestReconciliation) clearInterval(atRestReconciliation);
       if (ssf) clearInterval(ssf);
       await Promise.allSettled([

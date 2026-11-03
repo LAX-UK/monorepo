@@ -6,7 +6,7 @@ import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge"
 import { SaleroomMobileSummaryBar } from "@/components/marketing/saleroom-mobile-summary-bar";
 import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
-import { formatLondonDateTime } from "@/lib/datetime/london-time";
+import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import {
@@ -14,7 +14,7 @@ import {
   resolveSaleroomMobileSummaryBarMode,
   saleroomBidNowCtaClassName,
 } from "@/lib/saleroom/saleroom-mobile-chrome";
-import { opensLine } from "@/lib/time/opens-line";
+import { closingChipText, opensLine } from "@/lib/time/opens-line";
 import { useClientClock } from "@/lib/time/use-client-clock";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Countdown, LiveDot } from "@auction/ui";
@@ -26,11 +26,11 @@ function OpensText({ start }: { start: Date }) {
   const line =
     nowMs != null
       ? opensLine(start, new Date(nowMs))
-      : { label: "Opens", value: formatLondonDateTime(start) };
+      : { label: "Opens", value: formatLondonWhen(start) };
   return (
     <p className="font-body text-sm text-on-surface">
       <span className="text-on-surface-variant">{line.label} </span>
-      <span className="font-semibold" suppressHydrationWarning>
+      <span className="font-semibold tabular-nums" suppressHydrationWarning>
         {line.value}
       </span>
     </p>
@@ -192,6 +192,7 @@ export function SaleMobileSummaryBar({
           {showCountdown && !isUpcoming ? (
             <Countdown
               end={target}
+              format={closingChipText}
               announce={isUpcoming || deliveryMode === "online"}
               className="font-headline text-sm text-on-surface tabular-nums md:text-base"
             />

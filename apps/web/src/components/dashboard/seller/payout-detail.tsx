@@ -1,8 +1,6 @@
-import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { PayoutDetailVm } from "@/lib/seller/payout-detail.vm";
-import { ButtonLink, StatusBadge } from "@auction/ui/lax";
-import { ChevronLeft, Download } from "lucide-react";
-import Link from "next/link";
+import { ButtonLink, StatusBadge, pageTitleClass } from "@auction/ui/lax";
+import { Download } from "lucide-react";
 
 const CELL = "px-4 py-3 text-lax-14 md:px-5";
 
@@ -15,19 +13,9 @@ export function PayoutDetail({ vm }: { vm: PayoutDetailVm }) {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3">
-        <Link
-          href={`${CLIENT_ROUTES.payouts}?tab=payouts`}
-          className="inline-flex w-fit items-center gap-1 text-lax-13 text-lax-muted hover:text-lax-fg lax-focus"
-        >
-          <ChevronLeft aria-hidden className="size-3.5" />
-          Payouts
-        </Link>
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
-            <h1
-              className="font-lax-display text-lax-28 font-semibold text-lax-fg"
-              data-page-title=""
-            >
+            <h1 className={pageTitleClass} data-page-title="">
               {vm.title}
             </h1>
             <p className="mt-1 text-lax-14 text-lax-muted">{vm.subtitle}</p>

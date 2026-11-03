@@ -47,7 +47,7 @@ async function enquirySenderVars(db: Database, sender: EnquirySender) {
 }
 
 function formatPence(pence: number): string {
-  return `£${(pence / 100).toFixed(2)}`;
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
 }
 
 /** Queues one transactional email in the same transaction as the change it reports. */
@@ -240,6 +240,68 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
       });
     },
 
+    async queueCancellationConfirmed(tx, input) {
+      const db = asDb(tx);
+      const to =
+        (await resolveShopUserEmail(db, input.identitySubjectId)) ?? input.fallbackEmail?.trim();
+      if (!to || !to.includes("@")) return;
+
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to,
+        template: "shop-cancellation-confirmed",
+        vars: {
+          orderId: input.orderId,
+          orderReference: input.orderReference,
+          artworkTitle: input.artworkTitle,
+          amountPence: input.amountPence,
+        },
+      });
+    },
+
+    async queueProductionStarted(tx, input) {
+      const db = asDb(tx);
+      const to =
+        (await resolveShopUserEmail(db, input.identitySubjectId)) ?? input.fallbackEmail?.trim();
+      if (!to || !to.includes("@")) return;
+
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to,
+        template: "shop-production-started",
+        vars: {
+          orderReference: input.orderReference,
+          artworkTitle: input.artworkTitle,
+          editionLabel: input.editionLabel,
+        },
+      });
+    },
+
+    async queueReleaseAlertConfirmation(tx, input) {
+      await insertShopEmailOutbox(asDb(tx), {
+        idempotencyKey: input.idempotencyKey,
+        to: input.to,
+        template: "shop-release-alert-confirm",
+        vars: {
+          confirmUrl: input.confirmUrl,
+          expirationHours: input.expirationHours,
+          unsubscribeUrl: input.unsubscribeUrl,
+        },
+      });
+    },
+    async queueReleaseAlert(tx, input) {
+      await insertShopEmailOutbox(asDb(tx), {
+        idempotencyKey: input.idempotencyKey,
+        to: input.to,
+        template: "shop-release-alert",
+        vars: {
+          artworkTitle: input.artworkTitle,
+          artistName: input.artistName,
+          artworkUrl: input.artworkUrl,
+          unsubscribeUrl: input.unsubscribeUrl,
+        },
+      });
+    },
     async queueEditionAvailable(tx, input) {
       await insertShopEmailOutbox(asDb(tx), {
         idempotencyKey: input.idempotencyKey,

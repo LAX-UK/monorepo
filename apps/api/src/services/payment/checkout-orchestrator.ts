@@ -9,6 +9,7 @@ import { PaymentProviderError } from "../../lib/errors.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
 import type { IStripeCheckoutService } from "../interfaces/checkout-rail.js";
+import type { IErrorReporter } from "../interfaces/error-handling.js";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import { ensureXeroInvoiceForPayment } from "./ensure-xero-invoice.js";
@@ -30,10 +31,12 @@ export type CheckoutOrchestratorDeps = {
   legalEntityRepository?: ILegalEntityRepository | undefined;
   paymentEvents: IPaymentDomainEventsRepository | null;
   xeroInvoiceBlocking: boolean;
+  /** Where a failed revoke is reported, so someone can check the payment was not charged. */
+  errorReporter?: IErrorReporter | undefined;
 };
 
 export async function revokeOpenStripeCheckoutForPayment(
-  deps: Pick<CheckoutOrchestratorDeps, "payments" | "stripePayments">,
+  deps: Pick<CheckoutOrchestratorDeps, "payments" | "stripePayments" | "errorReporter">,
   paymentId: string,
 ): Promise<void> {
   if (!deps.stripePayments?.isConfigured()) return;
@@ -51,6 +54,13 @@ export async function revokeOpenStripeCheckoutForPayment(
         error: err instanceof Error ? err.message : String(err),
       }),
     );
+    deps.errorReporter?.report({
+      severity: "error",
+      code: "stripe_checkout_revoke_failed",
+      message: `Could not close the open checkout for payment ${paymentId}`,
+      status: 502,
+      cause: err,
+    });
   }
 }
 

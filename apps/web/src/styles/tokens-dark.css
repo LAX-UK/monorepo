@@ -15,7 +15,7 @@ html.dark {
   --color-nav-border: #333534;
   --color-hero-cream: #1e2020;
   --color-nav-text: var(--color-brand-light-cream);
-  --color-cta-bg: var(--color-brand-light-cream);
+  --color-cta-bg: var(--brand-paper);
   --color-cta-on: var(--color-brand-obsidian);
   --color-scrim-hero: rgba(0, 0, 0, 0.62);
   --color-scrim-hero-mid: rgba(0, 0, 0, 0.5);
@@ -31,7 +31,7 @@ html.dark {
   --color-surface-container-low: #2d2f2e;
   --color-on-surface-variant: #c9c5bc;
   --color-on-primary-fixed-variant: var(--color-accent-gold);
-  --color-primary: var(--color-brand-light-cream);
+  --color-primary: var(--brand-paper);
   --color-outline: var(--color-brand-light-gray);
   --color-on-secondary-fixed-variant: #e0e0e0;
   --color-surface-dim: #141616;

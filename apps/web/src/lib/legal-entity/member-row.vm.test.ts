@@ -1,7 +1,7 @@
 import type { LegalEntityMemberRole } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import type { MemberRow, PendingInvitationRow } from "./member-management.actions";
-import { invitationRowViews, memberRowViews } from "./member-row.vm";
+import { groupInvitations, invitationRowViews, memberRowViews } from "./member-row.vm";
 
 function member(id: string, role: LegalEntityMemberRole, name: string): MemberRow {
   return {
@@ -93,15 +93,34 @@ describe.each(["finance", "consignor", "viewer", "buyer_agent"] as const)(
 );
 
 describe("memberRowViews two-step sign-in", () => {
-  it("shows it as words only to people given it", () => {
-    const actor = { role: "owner" as const, memberId: owner.id };
+  const actor = { role: "owner" as const, memberId: owner.id };
+  const byUser = { "user-owner": true, "user-lena": false };
+
+  it("is hidden from people not given it", () => {
+    expect(memberRowViews({ actor, members: team }).every((r) => r.twoStep === null)).toBe(true);
+  });
+
+  it("says who has it on, and stays quiet about who doesn't while it isn't required", () => {
+    const rows = memberRowViews({ actor, members: team, twoFactorByUserId: byUser });
+    expect(rows.map((r) => r.twoStep)).toEqual([
+      { text: "Two-step on", warning: false },
+      null,
+      null,
+      null,
+    ]);
+  });
+
+  it("warns about each person without it once the organisation requires it", () => {
     const rows = memberRowViews({
       actor,
       members: team,
-      twoFactorByUserId: { "user-owner": true, "user-lena": false },
+      twoFactorByUserId: byUser,
+      twoStepRequired: true,
     });
-    expect(rows.map((r) => r.twoStep)).toEqual(["Two-step on", null, "Two-step off", null]);
-    expect(memberRowViews({ actor, members: team }).every((r) => r.twoStep === null)).toBe(true);
+    expect(rows.find((r) => r.name === "Lena Fischer")?.twoStep).toEqual({
+      text: "Two-step off",
+      warning: true,
+    });
   });
 });
 
@@ -188,5 +207,19 @@ describe("invitationRowViews", () => {
     expect(invitationRowViews({ role: "owner", memberId: "o" }, rows, now)[0]?.canManage).toBe(
       true,
     );
+  });
+});
+
+describe("groupInvitations", () => {
+  it("keeps waiting and expired invitations apart, in their given order", () => {
+    const row = (id: string, expired: boolean) =>
+      ({ id, expired }) as Parameters<typeof groupInvitations>[0][number];
+    const { waiting, expired } = groupInvitations([
+      row("a", true),
+      row("b", false),
+      row("c", false),
+    ]);
+    expect(waiting.map((r) => r.id)).toEqual(["b", "c"]);
+    expect(expired.map((r) => r.id)).toEqual(["a"]);
   });
 });

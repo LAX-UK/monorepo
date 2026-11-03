@@ -3,16 +3,22 @@ import { FulfilmentSection } from "@/components/orders/fulfilment-section.client
 import {
   OrderHeaderActions,
   OrderLineMenu,
+  RetryRefundButton,
   SendToProductionButton,
 } from "@/components/orders/order-actions.client";
 import { guestErasedLine } from "@/server/domain/guest-erasure.vm";
 import {
   buildOrderTimeline,
   canRefundOrder,
+  cancelledLineBadge,
+  failedRefunds,
+  lineCancellation,
+  lineCancellationRefund,
   orderLineLabel,
   presentOrderStatus,
   presentProductionStatus,
   presentRefundStatus,
+  refundRowContext,
 } from "@/server/domain/order-detail.vm";
 import { orderBuyerAccountLabel, orderNumber } from "@/server/domain/order-list.vm";
 import type { AdminGuestErasureState, AdminOrderDetail } from "@auction/shop-contracts";
@@ -20,13 +26,13 @@ import {
   KeyValueList,
   MappedStatusBadge,
   MetaItem,
+  Notice,
   PageHeader,
   Section,
   StatusBadge,
   Timeline,
   formatGbp,
   formatStaffDateTime,
-  humanizeStatus,
 } from "@auction/staff-ui";
 import Link from "next/link";
 
@@ -66,6 +72,8 @@ export function OrderDetailView({
   const erased = detail.personalDataErasedAt ? guestErasedLine(detail.personalDataErasedAt) : null;
   const buyer =
     detail.buyerName ?? detail.buyerEmail ?? (erased ? "Erased guest" : "Unknown buyer");
+  const failed = failedRefunds(detail);
+  const failedPence = failed.reduce((sum, refund) => sum + refund.amountPence, 0);
   const refundedPence = detail.refunds
     .filter((refund) => refund.status !== "failed" && refund.status !== "cancelled")
     .reduce((sum, refund) => sum + refund.amountPence, 0);
@@ -101,6 +109,22 @@ export function OrderDetailView({
         }
       />
 
+      {failed.length > 0 ? (
+        <Notice
+          tone="danger"
+          alert
+          title={
+            failed.length === 1
+              ? `A refund of ${formatGbp(failedPence)} could not be sent`
+              : `${failed.length} refunds, ${formatGbp(failedPence)} in total, could not be sent`
+          }
+        >
+          The customer has not been refunded. The artist's payout for a cancelled item stays held
+          until its refund goes through.
+          {permissions.refund ? " Retry it from the Refunds list below." : ""}
+        </Notice>
+      ) : null}
+
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="flex min-w-0 flex-col gap-6">
           <Section
@@ -109,49 +133,67 @@ export function OrderDetailView({
             bodyClassName="p-0"
           >
             <ul className="divide-y divide-staff-line-subtle">
-              {detail.lines.map((line) => (
-                <li
-                  key={line.orderLineId}
-                  className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-staff-sm font-medium text-staff-fg">
-                      {orderLineLabel(line)}
-                    </p>
-                    <p className="text-staff-xs text-staff-muted tabular-nums">
-                      {formatGbp(line.unitPricePence)}
-                      {line.sku ? ` · ${line.sku}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {line.production ? (
-                      <span className="flex items-center gap-2 text-staff-xs text-staff-muted">
-                        Production
-                        {permissions.production ? (
-                          <Link
-                            href={`/production/${line.production.taskId}`}
-                            className="staff-focus rounded-staff-xs"
-                            aria-label={`Open the production task for ${orderLineLabel(line)}`}
-                          >
+              {detail.lines.map((line) => {
+                const cancellationRefund = lineCancellationRefund(detail, line.orderLineId);
+                const cancelledBadge = cancellationRefund
+                  ? cancelledLineBadge(cancellationRefund)
+                  : null;
+                return (
+                  <li
+                    key={line.orderLineId}
+                    className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-staff-sm font-medium text-staff-fg">
+                        {orderLineLabel(line)}
+                      </p>
+                      <p className="text-staff-xs text-staff-muted tabular-nums">
+                        {formatGbp(line.unitPricePence)}
+                        {line.sku ? ` · ${line.sku}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {line.production ? (
+                        <span className="flex items-center gap-2 text-staff-xs text-staff-muted">
+                          Production
+                          {permissions.production ? (
+                            <Link
+                              href={`/production/${line.production.taskId}`}
+                              className="staff-focus rounded-staff-xs"
+                              aria-label={`Open the production task for ${orderLineLabel(line)}`}
+                            >
+                              <StatusBadge
+                                tone={presentProductionStatus(line.production.status).tone}
+                              >
+                                {presentProductionStatus(line.production.status).label}
+                              </StatusBadge>
+                            </Link>
+                          ) : (
                             <StatusBadge
                               tone={presentProductionStatus(line.production.status).tone}
                             >
                               {presentProductionStatus(line.production.status).label}
                             </StatusBadge>
-                          </Link>
-                        ) : (
-                          <StatusBadge tone={presentProductionStatus(line.production.status).tone}>
-                            {presentProductionStatus(line.production.status).label}
-                          </StatusBadge>
-                        )}
-                      </span>
-                    ) : permissions.production && line.editionId ? (
-                      <SendToProductionButton line={line} />
-                    ) : null}
-                    <OrderLineMenu line={line} canCancel={permissions.refund} />
-                  </div>
-                </li>
-              ))}
+                          )}
+                        </span>
+                      ) : permissions.production && line.editionId && !cancelledBadge ? (
+                        <SendToProductionButton line={line} />
+                      ) : null}
+                      {cancelledBadge ? (
+                        <StatusBadge tone={cancelledBadge.tone}>{cancelledBadge.label}</StatusBadge>
+                      ) : null}
+                      <OrderLineMenu
+                        line={line}
+                        refundPence={
+                          permissions.refund
+                            ? (lineCancellation(detail, line)?.refundPence ?? null)
+                            : null
+                        }
+                      />
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </Section>
 
@@ -180,18 +222,30 @@ export function OrderDetailView({
                   return (
                     <li
                       key={refund.refundId}
-                      className="flex items-center justify-between gap-3 px-4 py-3"
+                      className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="min-w-0">
                         <p className="text-staff-sm font-medium text-staff-fg tabular-nums">
                           {formatGbp(refund.amountPence)}
                         </p>
-                        <p className="truncate text-staff-xs text-staff-muted">
-                          {line ? orderLineLabel(line) : "Whole order"} ·{" "}
-                          {humanizeStatus(refund.source)} · {formatStaffDateTime(refund.createdAt)}
+                        <p className="text-staff-xs text-staff-muted">
+                          {refundRowContext(refund, line)}
                         </p>
+                        {refund.status === "failed" && refund.failureReason ? (
+                          <p className="text-staff-xs text-staff-danger">
+                            Not sent: {refund.failureReason}
+                          </p>
+                        ) : null}
                       </div>
-                      <MappedStatusBadge status={refund.status} present={presentRefundStatus} />
+                      <div className="flex shrink-0 flex-wrap items-center gap-3">
+                        <MappedStatusBadge status={refund.status} present={presentRefundStatus} />
+                        {refund.status === "failed" && permissions.refund ? (
+                          <RetryRefundButton
+                            refundId={refund.refundId}
+                            label={formatGbp(refund.amountPence)}
+                          />
+                        ) : null}
+                      </div>
                     </li>
                   );
                 })}

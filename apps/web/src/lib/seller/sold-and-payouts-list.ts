@@ -1,6 +1,6 @@
 import { formatLotMoment } from "@/lib/bid/lot-moment";
 import type { SoldLot } from "@/lib/data/http/workspace-selling.schema";
-import { formatMoney, formatWholeMoney } from "@/lib/format-currency";
+import { formatMoney } from "@/lib/format-currency";
 import { matchesEveryWord, searchParam } from "@/lib/workspace/list-search";
 import type { PayoutStatus } from "@auction/types";
 import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
@@ -31,6 +31,8 @@ export const PAYOUT_STATUS_BADGE: Record<PayoutStatus, Badge> = {
   clawback_pending: { label: "Under review", tone: "warning", shape: "alert" },
 };
 
+export type SoldStage = SoldLot["stage"];
+
 export type SoldRecord = {
   lotId: string;
   title: string;
@@ -40,6 +42,8 @@ export type SoldRecord = {
   /** What the seller receives, once the buyer has paid; `null` before. */
   net: string | null;
   badge: Badge;
+  /** Where its money stands, for the "Money" filter. */
+  stage: SoldStage;
   /** The payout it is on, when it is on one. */
   payoutHref: string | null;
   soldAt: number;
@@ -57,7 +61,10 @@ export function soldRecord(lot: SoldLot, now: Date): SoldRecord {
   const settled = lot.payout?.settledAt;
   const badge =
     settled && lot.stage === "paid_out"
-      ? { ...base, label: `${base.label} ${formatLotMoment(settled, now, { time: false })}` }
+      ? {
+          ...base,
+          label: `${base.label} ${formatLotMoment(settled, now, { time: false, inSentence: true })}`,
+        }
       : base;
   return {
     lotId: lot.lotId,
@@ -65,17 +72,20 @@ export function soldRecord(lot: SoldLot, now: Date): SoldRecord {
     meta: [
       lot.saleTitle,
       lot.lotNumber == null ? null : `lot ${lot.lotNumber}`,
-      `sold ${formatLotMoment(lot.soldAt, now, { time: false })}`,
+      `sold ${formatLotMoment(lot.soldAt, now, { time: false, inSentence: true })}`,
     ].filter((fact): fact is string => Boolean(fact)),
-    hammer: formatWholeMoney(lot.hammerPrice, "GBP"),
+    hammer: formatMoney(lot.hammerPrice, "GBP"),
     net: lot.net == null ? null : formatMoney(lot.net, "GBP"),
     badge,
+    stage: lot.stage,
     payoutHref: lot.payout ? payoutHref(lot.payout.id) : null,
     soldAt: lot.soldAt.getTime(),
     year: lot.soldAt.getUTCFullYear(),
     hammerAmount: Number.parseFloat(lot.hammerPrice) || 0,
   };
 }
+
+export const SOLD_STAGES = Object.keys(SOLD_STAGE_BADGE) as SoldStage[];
 
 export const SOLD_VIEWS = ["sold", "payouts"] as const;
 export type SoldView = (typeof SOLD_VIEWS)[number];
@@ -89,7 +99,14 @@ export const SOLD_SORT_LABEL: Record<SoldSort, string> = {
   highest: "Highest hammer",
 };
 
-export type SoldListQuery = { view: SoldView; q: string; year: number | null; sort: SoldSort };
+export type SoldListQuery = {
+  view: SoldView;
+  q: string;
+  year: number | null;
+  /** Where the money stands. */
+  stage: SoldStage | null;
+  sort: SoldSort;
+};
 
 function oneOf<T extends string>(values: readonly T[], raw: string | null): T | null {
   return raw && (values as readonly string[]).includes(raw) ? (raw as T) : null;
@@ -103,6 +120,7 @@ export function parseSoldListQuery(
     view: oneOf(SOLD_VIEWS, searchParam(params.tab)) ?? "sold",
     q: searchParam(params.q) ?? "",
     year: Number.isInteger(year) && year >= 2000 && year <= 2100 ? year : null,
+    stage: oneOf(SOLD_STAGES, searchParam(params.stage)),
     sort: oneOf(SOLD_SORTS, searchParam(params.sort)) ?? "newest",
   };
 }
@@ -111,6 +129,7 @@ export function soldListSearch(query: SoldListQuery): string {
   const params = new URLSearchParams({ tab: query.view });
   if (query.q) params.set("q", query.q);
   if (query.year) params.set("year", String(query.year));
+  if (query.stage) params.set("stage", query.stage);
   if (query.sort !== "newest") params.set("sort", query.sort);
   return `?${params.toString()}`;
 }
@@ -126,6 +145,7 @@ export function soldInView(records: readonly SoldRecord[], query: SoldListQuery)
     .filter(
       (record) =>
         (!query.year || record.year === query.year) &&
+        (!query.stage || record.stage === query.stage) &&
         matchesEveryWord([record.title, ...record.meta], query.q),
     )
     .sort(SORTERS[query.sort]);
@@ -137,5 +157,21 @@ export function soldYears(records: readonly SoldRecord[]): number[] {
 }
 
 export function isSoldListNarrowed(query: SoldListQuery): boolean {
-  return Boolean(query.q || query.year);
+  return Boolean(query.q || query.year || query.stage);
+}
+
+/** The money stages the listed works are in, in the order money moves, for the "Money" filter. */
+export function soldStages(records: readonly SoldRecord[]): SoldStage[] {
+  const present = new Set(records.map((record) => record.stage));
+  return SOLD_STAGES.filter((stage) => present.has(stage));
+}
+
+export type SoldFilterKey = "year" | "stage";
+
+export function appliedSoldFilters(query: SoldListQuery): { id: SoldFilterKey; label: string }[] {
+  const chips: { id: SoldFilterKey; label: string }[] = [];
+  if (query.year) chips.push({ id: "year", label: `Year: ${query.year}` });
+  if (query.stage)
+    chips.push({ id: "stage", label: `Money: ${SOLD_STAGE_BADGE[query.stage].label}` });
+  return chips;
 }

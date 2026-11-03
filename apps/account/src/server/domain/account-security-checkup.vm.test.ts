@@ -16,6 +16,7 @@ const none: AccountSecurityFacts = {
   hasEmail: true,
   emailVerified: false,
   twoStep: "unknown",
+  hasPassword: true,
   backupCodesRemaining: null,
   otherSessionCount: null,
 };
@@ -29,11 +30,16 @@ const overview = {
 describe("readAccountSecurityFacts", () => {
   it("uses the issuer's answer: enrolled with a count", () => {
     expect(
-      readAccountSecurityFacts(overview, { twoFactorEnabled: true, backupCodesRemaining: 2 }),
+      readAccountSecurityFacts(overview, {
+        twoFactorEnabled: true,
+        hasPassword: true,
+        backupCodesRemaining: 2,
+      }),
     ).toEqual({
       hasEmail: true,
       emailVerified: true,
       twoStep: "on",
+      hasPassword: true,
       backupCodesRemaining: 2,
       otherSessionCount: null,
     });
@@ -60,7 +66,7 @@ describe("readAccountSecurityFacts", () => {
   it("says off only when the issuer says so, and ignores a stale authenticator sign-in", () => {
     const facts = readAccountSecurityFacts(
       { ...overview, signedInWithAuthenticator: true },
-      { twoFactorEnabled: false, backupCodesRemaining: null },
+      { twoFactorEnabled: false, hasPassword: true, backupCodesRemaining: null },
     );
     expect(facts.twoStep).toBe("off");
     expect(facts.backupCodesRemaining).toBeNull();
@@ -69,6 +75,7 @@ describe("readAccountSecurityFacts", () => {
   it("is on with an unknown count when the issuer could not count the codes", () => {
     const facts = readAccountSecurityFacts(overview, {
       twoFactorEnabled: true,
+      hasPassword: true,
       backupCodesRemaining: null,
     });
     expect(facts).toMatchObject({ twoStep: "on", backupCodesRemaining: null });
@@ -192,6 +199,7 @@ describe("buildSecurityCheckup", () => {
         hasEmail: true,
         emailVerified: true,
         twoStep: "on",
+        hasPassword: true,
         backupCodesRemaining: 8,
         otherSessionCount: 0,
       },

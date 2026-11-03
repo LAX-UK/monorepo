@@ -11,11 +11,11 @@ import {
 import { notify } from "@/lib/ui/notify";
 import type { UnsoldLotChoiceKind } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { RadioCardGroup } from "@auction/ui/components/radio-card-group";
 import { Surface } from "@auction/ui/components/surface";
+import { Button } from "@auction/ui/lax";
 import { CheckCircle2, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
@@ -132,7 +132,7 @@ function ChoiceForm({
           {pending ? "Sending…" : "Send to your specialist"}
         </Button>
         {onCancel ? (
-          <Button type="button" variant="outline" onClick={onCancel} disabled={pending}>
+          <Button type="button" variant="secondary" onClick={onCancel} disabled={pending}>
             Keep my choice
           </Button>
         ) : null}
@@ -187,7 +187,7 @@ export function UnsoldLotChoicePanel({
         {view.mode === "paused" ? (
           <div className="space-y-4">
             <p className="font-body text-sm text-on-surface">{view.message}</p>
-            <Button asChild variant="outline">
+            <Button asChild variant="secondary">
               <a href={view.contact.href}>{view.contact.label}</a>
             </Button>
           </div>
@@ -211,7 +211,7 @@ export function UnsoldLotChoicePanel({
                 </span>
               </p>
               {view.canChange ? (
-                <Button type="button" variant="outline" onClick={() => setChanging(true)}>
+                <Button type="button" variant="secondary" onClick={() => setChanging(true)}>
                   Change my choice
                 </Button>
               ) : null}

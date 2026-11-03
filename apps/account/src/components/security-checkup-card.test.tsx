@@ -15,6 +15,7 @@ const base: AccountSecurityFacts = {
   hasEmail: true,
   emailVerified: false,
   twoStep: "unknown",
+  hasPassword: true,
   backupCodesRemaining: null,
   otherSessionCount: null,
 };
@@ -48,6 +49,7 @@ describe("SecurityCheckupCard", () => {
       hasEmail: true,
       emailVerified: true,
       twoStep: "on",
+      hasPassword: true,
       backupCodesRemaining: null,
       otherSessionCount: 0,
     });

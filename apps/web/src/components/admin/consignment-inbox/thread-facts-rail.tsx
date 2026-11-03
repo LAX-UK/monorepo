@@ -20,7 +20,7 @@ const NextLink: StaffLinkComponent = Link;
 
 function value(fact: ThreadFact) {
   const main = fact.stage ? (
-    <StatusBadge tone={fact.stage.tone} shape={fact.stage.shape}>
+    <StatusBadge tone={fact.stage.tone} shape={fact.stage.shape} live={fact.stage.live ?? false}>
       {fact.stage.label}
     </StatusBadge>
   ) : fact.href ? (

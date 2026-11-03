@@ -109,9 +109,11 @@ export function purchaseEndedEarly(state: PurchaseState): boolean {
   return state === "refunded" || state === "cancelled";
 }
 
-/** "Report a problem" opens once the buyer has paid. */
+/** "Report a problem" opens once the buyer has paid, and closes when the purchase is refunded or cancelled. */
 export function canReportProblem(state: PurchaseState): boolean {
-  return !["payment-due", "in-review"].includes(state);
+  return !["payment-due", "in-review", "payment-processing", "refunded", "cancelled"].includes(
+    state,
+  );
 }
 
 export function parsePurchaseTab(raw: string | null | undefined): PurchaseTab | null {

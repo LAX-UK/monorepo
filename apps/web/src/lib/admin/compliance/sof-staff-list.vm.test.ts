@@ -132,13 +132,19 @@ describe("source of funds staff list view model", () => {
     ]);
   });
 
+  it("leaves out the payments link for staff who cannot open payments", () => {
+    expect(
+      sofAttention({ manualReviewCount: 2, amlScreeningsPending: 1, canOpenPayments: false }).map(
+        (item) => item.id,
+      ),
+    ).toEqual(["aml"]);
+  });
+
   it("links the cross-queues, each with its count", () => {
     expect(
-      sofAttention({ manualReviewCount: 2, amlScreeningsPending: 1 }).map((item) => [
-        item.count,
-        item.label,
-        item.href,
-      ]),
+      sofAttention({ manualReviewCount: 2, amlScreeningsPending: 1, canOpenPayments: true }).map(
+        (item) => [item.count, item.label, item.href],
+      ),
     ).toEqual([
       [2, "payments are held for manual review", "/admin/payments?manualReview=1"],
       [1, "AML screening is pending", "/admin/compliance/aml"],

@@ -1,11 +1,40 @@
+import {
+  type CapabilityRequirement,
+  FINANCE_ACCESS,
+  LOTS_READ_ACCESS,
+  SUBMISSIONS_READ_ACCESS,
+  type StaffRoles,
+  type UserRole,
+  adminRoutes,
+  userHasAccessTo,
+} from "@auction/types";
 import type {
   AttentionItem,
+  AttentionItemKind,
   DraftLotAttentionRow,
   PaymentAttentionRow,
   SubmissionAttentionRow,
 } from "../interfaces/attention-feed.reader.js";
 
 const STALE_PAYMENT_HOURS = 48;
+
+/** What a person needs to open the page each kind of attention item links to. */
+export const ATTENTION_KIND_ACCESS: Record<AttentionItemKind, CapabilityRequirement> = {
+  submission_under_review: SUBMISSIONS_READ_ACCESS,
+  payment_stale: FINANCE_ACCESS,
+  lot_draft_past_start: LOTS_READ_ACCESS,
+};
+
+/** The items this person can open; the feed is built once for everyone and cut down here. */
+export function attentionItemsForViewer(
+  items: readonly AttentionItem[],
+  role: UserRole,
+  staffRoles: StaffRoles | undefined,
+): AttentionItem[] {
+  return items.filter((item) =>
+    userHasAccessTo(role, staffRoles, ATTENTION_KIND_ACCESS[item.kind]),
+  );
+}
 
 export function composeAttentionItems(input: {
   submissions: SubmissionAttentionRow[];
@@ -22,7 +51,7 @@ export function composeAttentionItems(input: {
         kind: "submission_under_review",
         title: row.title,
         hint: row.status === "submitted" ? "Submitted" : "Under review",
-        href: `/admin/submissions/${row.id}`,
+        href: adminRoutes.submission(row.id),
         ctaLabel: "Review",
         createdAt: row.createdAt,
       }),
@@ -35,7 +64,7 @@ export function composeAttentionItems(input: {
           kind: "payment_stale",
           title: `Payment ${row.id.slice(0, 8)}…`,
           hint: `${row.status} > ${STALE_PAYMENT_HOURS}h`,
-          href: "/admin/payments",
+          href: adminRoutes.payments.list(),
           ctaLabel: "Open",
           createdAt: row.createdAt,
         }),
@@ -48,7 +77,7 @@ export function composeAttentionItems(input: {
           kind: "lot_draft_past_start",
           title: row.title,
           hint: "Draft · start in the past",
-          href: `/admin/lots/${row.id}`,
+          href: adminRoutes.lot(row.id),
           ctaLabel: "Publish",
           createdAt: row.createdAt,
         }),

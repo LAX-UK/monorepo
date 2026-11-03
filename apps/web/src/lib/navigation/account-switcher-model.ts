@@ -32,6 +32,8 @@ export type AccountChrome = {
     /** Organisation invitations waiting for an answer. */
     pendingInvitations: number;
     invitationsHref: string;
+    /** Every account and invitation on one page. */
+    accountsHref: string;
     registerHref: string;
   } | null;
 };
@@ -100,6 +102,7 @@ export function buildAccountChrome(input: Input): AccountChrome {
             options,
             pendingInvitations: input.pendingInvitations,
             invitationsHref: CLIENT_ROUTES.invitations,
+            accountsHref: CLIENT_ROUTES.organisations,
             registerHref: REGISTER_ORGANISATION_HREF,
           }
         : null,

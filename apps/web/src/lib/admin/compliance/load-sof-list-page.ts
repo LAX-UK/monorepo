@@ -17,7 +17,7 @@ import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminSourceOfFundsPage } from "@/lib/data/http/compliance-sof.reader";
 import { EMPTY_ADMIN_SOF_LIST_SUMMARY } from "@/lib/data/http/compliance-sof.shared";
 import { MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
-import { type UserRole, userHasAccessTo } from "@auction/types";
+import { type UserRole, adminRoutes, canOpenAdminLink, userHasAccessTo } from "@auction/types";
 
 /** Shown in place of the rows; the raw failure stays in the server logs. */
 const SOF_LOAD_ERROR = "We could not load the source of funds cases. Try again in a moment.";
@@ -40,6 +40,11 @@ export async function loadAdminSofListPage(sp: SofListSearchParams, user: Sessio
   const attentionCounts = {
     manualReviewCount: navCounts.manualReviewCount,
     amlScreeningsPending: navCounts.amlScreeningsPending,
+    canOpenPayments: canOpenAdminLink(
+      user.role as UserRole,
+      user.staffRoles,
+      adminRoutes.payments.manualReview(),
+    ),
   };
   const pendingCount = navCounts.sourceOfFundsPending;
 

@@ -7,7 +7,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { organisationDashboardView } from "./organisation-dashboard-view";
 
-const ctx = { organisationName: "Northbank Gallery" };
+const ctx = { organisationName: "Northbank Gallery", now: new Date("2026-11-02T12:00:00Z") };
 
 const FIGURES: DashboardFigures = {
   consignmentProgress: { ...emptyConsignmentProgress(), under_review: 2, in_sale: 3, sold: 1 },
@@ -16,7 +16,10 @@ const FIGURES: DashboardFigures = {
       id: "s1",
       title: "Modern British",
       startsAt: new Date("2026-11-20T10:00:00Z"),
+      endsAt: new Date("2026-11-27T10:00:00Z"),
+      live: false,
       works: 2,
+      images: ["https://img.test/a.jpg"],
       estimates: [{ currency: "GBP", low: "8000.00", high: "12000.00" }],
     },
   ],
@@ -147,26 +150,55 @@ describe("At a glance words and links", () => {
 });
 
 describe("sections", () => {
-  it("lists the next sales with date, title and number of works", () => {
+  it("lists the next sales with when they open, their works and their title", () => {
     expect(view("owner").upcomingSales).toEqual([
       {
         id: "s1",
         title: "Modern British",
-        date: "20\u00a0Nov\u00a02026",
+        timing: "Opens Fri 20 Nov, 10:00 GMT",
         dateTime: "2026-11-20T10:00:00.000Z",
-        works: "2 of your works",
+        live: false,
+        works: "2 works",
+        images: ["https://img.test/a.jpg"],
         href: "/sales/modern-british/s1",
       },
     ]);
   });
 
-  it("shows only stages with works, each linking to the filtered list", () => {
+  it("says when a live sale closes", () => {
+    const [sale] = view("owner", {
+      ...FIGURES,
+      upcomingSales: [
+        {
+          ...(FIGURES.upcomingSales?.[0] as NonNullable<DashboardFigures["upcomingSales"]>[number]),
+          live: true,
+          endsAt: new Date("2026-11-03T21:14:00Z"),
+        },
+      ],
+    }).upcomingSales;
+    expect(sale).toMatchObject({
+      live: true,
+      timing: "Closes in 1 day 9 hours",
+      dateTime: "2026-11-03T21:14:00.000Z",
+    });
+  });
+
+  it("counts a consignor's works as theirs, and the organisation's as works", () => {
+    expect(view("consignor").upcomingSales[0]?.works).toBe("2 of your works");
+    expect(view("owner").upcomingSales[0]?.works).toBe("2 works");
+  });
+
+  it("always lists the six stages in order, marking those with no works", () => {
     const stages = view("owner").stages;
-    expect(stages?.map(({ label, count, href }) => [label, count, href])).toEqual([
-      ["In review", 2, "/selling/consignments?tab=in-review"],
-      ["In a sale", 3, "/selling/consignments?tab=in-sale"],
-      ["Sold", 1, "/selling/consignments?tab=sold"],
+    expect(stages?.map(({ label, count, empty }) => [label, count, empty])).toEqual([
+      ["In review", 2, false],
+      ["Needs changes", 0, true],
+      ["Accepted", 0, true],
+      ["In a sale", 3, false],
+      ["Sold", 1, false],
+      ["Did not sell", 0, true],
     ]);
+    expect(stages?.[3]?.href).toBe("/selling/consignments?tab=in-sale");
   });
 
   it("leaves the section out when every stage is empty", () => {
@@ -177,12 +209,15 @@ describe("sections", () => {
     expect(organisationDashboardView(model, ctx, "ready").stages).toBeNull();
   });
 
-  it("leaves out a lone stage: one number is not a breakdown", () => {
+  it("keeps the row for a single stage: the other five stay in place", () => {
     const lone = view("owner", {
       ...FIGURES,
       consignmentProgress: { ...emptyConsignmentProgress(), accepted: 1 },
     });
-    expect(lone.stages).toBeNull();
+    expect(lone.stages?.filter((stage) => !stage.empty).map((stage) => stage.label)).toEqual([
+      "Accepted",
+    ]);
+    expect(lone.stages).toHaveLength(6);
   });
 });
 
@@ -297,18 +332,18 @@ describe("payouts due", () => {
       payoutsDue: { payouts: 2, totals: [{ currency: "GBP", amount: "1140.00" }], ...due },
     }).tiles.find((tile) => tile.id === "payouts_due")?.supporting;
 
-  it("says a past date is overdue, never that it is next", () => {
+  it("calls a past date delayed, never overdue and never next", () => {
     expect(payouts({ nextDate: null, overdueSince: new Date("2026-10-12T00:00:00Z") })).toEqual([
-      "Overdue since 12\u00a0Oct\u00a02026",
+      "Delayed · we're on it",
     ]);
   });
 
-  it("shows both dates on one line when one payout is overdue and another is ahead", () => {
+  it("gives the next expected date beside the delay when another payout is ahead", () => {
     expect(
       payouts({
         nextDate: new Date("2026-11-03T00:00:00Z"),
         overdueSince: new Date("2026-10-12T00:00:00Z"),
       }),
-    ).toEqual(["Overdue since 12\u00a0Oct\u00a02026 · next 3\u00a0Nov\u00a02026"]);
+    ).toEqual(["Delayed · we're on it · next 3\u00a0Nov\u00a02026"]);
   });
 });

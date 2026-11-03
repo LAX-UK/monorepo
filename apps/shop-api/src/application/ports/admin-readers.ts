@@ -33,6 +33,8 @@ export type { CursorListInput, CursorListResult };
 
 export type AdminOrderListFilters = {
   status?: string;
+  /** `failed`: only orders with a refund waiting for staff to retry. */
+  refund?: "failed";
   /** Inclusive first calendar day (UK time) an order may have been created on. */
   createdFrom?: string;
   /** Inclusive last calendar day (UK time) an order may have been created on. */

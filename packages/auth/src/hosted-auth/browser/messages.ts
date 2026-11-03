@@ -12,6 +12,8 @@ export const HOSTED_AUTH_MESSAGES = {
   RATE_LIMITED: "Too many attempts. Try again in a few minutes.",
   SERVER_ERROR: "Something went wrong on our side. Try again.",
   EMAIL_NOT_VERIFIED: "Verify your email to continue.",
+  ACCOUNT_SUSPENDED: "This account is suspended.",
+  CONTACT_US: "Contact us",
   RESEND_VERIFICATION: "Resend verification email",
   SIGN_OUT_FAILED: "Couldn't sign you out. Try again.",
   START_AGAIN: "Start again",

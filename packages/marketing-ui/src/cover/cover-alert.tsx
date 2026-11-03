@@ -2,7 +2,12 @@
 
 import { cn } from "@auction/ui";
 import { Button, TextInput } from "@auction/ui/lax";
-import { ON_IMAGE_BUTTON, ON_IMAGE_FIELD, ON_IMAGE_FOCUS } from "./cover-on-image.js";
+import {
+  ON_IMAGE_DARK_THEME,
+  ON_IMAGE_FIELD,
+  onImageButton,
+  onImageFocus,
+} from "./cover-on-image.js";
 import type { CoverAlert, CoverTone } from "./cover-types.js";
 
 /**
@@ -15,11 +20,14 @@ export function CoverAlertField({
   alert,
   submitLabel,
   tone,
+  swap = false,
 }: {
   alert: CoverAlert;
   submitLabel: string;
   /** The tone of the picture the field sits on; null on the page's own surface. */
   tone: CoverTone | null;
+  /** The plate switches to light type in the dark theme. */
+  swap?: boolean;
 }) {
   const field = tone ? ON_IMAGE_FIELD[tone] : null;
   return (
@@ -40,9 +48,14 @@ export function CoverAlertField({
         boxClassName={cn(
           "max-md:h-lax-control-lg md:w-[280px]",
           field?.box,
-          tone && ON_IMAGE_FOCUS[tone],
+          tone && swap && ON_IMAGE_DARK_THEME.field.box,
+          tone && onImageFocus(tone, swap),
         )}
-        className={cn("max-md:text-base", field?.input)}
+        className={cn(
+          "max-md:text-base",
+          field?.input,
+          tone && swap && ON_IMAGE_DARK_THEME.field.input,
+        )}
       />
       <Button
         type="submit"
@@ -50,8 +63,8 @@ export function CoverAlertField({
         size="md"
         className={cn(
           "max-md:h-lax-control-lg max-md:w-full",
-          tone && ON_IMAGE_BUTTON[tone],
-          tone && ON_IMAGE_FOCUS[tone],
+          tone && onImageButton(tone, swap),
+          tone && onImageFocus(tone, swap),
         )}
       >
         {submitLabel}

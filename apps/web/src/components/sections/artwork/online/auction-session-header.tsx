@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 type Props = {
   vm: AuctionSessionHeaderVM;
-  /** e.g. live latency badge — aligned end, above paddle when both exist. */
+  /** Extra control aligned to the end, above the paddle when both exist. */
   rightSlot?: ReactNode;
   /** Live lifecycle pill + countdown (client). */
   stateSlot?: ReactNode;

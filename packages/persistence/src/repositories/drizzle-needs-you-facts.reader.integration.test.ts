@@ -353,7 +353,9 @@ describe.skipIf(!HAS_DB)("needs-you facts reader (integration)", () => {
             visibleTo: undefined,
             limit: 10,
           }),
-        ).toEqual([{ id: submissions.proposed, title: submissions.proposed }]);
+        ).toEqual([
+          { id: submissions.proposed, title: submissions.proposed, proposedAt: expect.any(Date) },
+        ]);
         expect(
           await reader.changesRequested({
             legalEntityId: orgId,
@@ -363,7 +365,9 @@ describe.skipIf(!HAS_DB)("needs-you facts reader (integration)", () => {
         ).toEqual([]);
         expect(
           await reader.changesRequested({ legalEntityId: orgId, visibleTo: undefined, limit: 10 }),
-        ).toEqual([{ id: submissions.changes, title: submissions.changes, note: "Add a photo" }]);
+        ).toMatchObject([
+          { id: submissions.changes, title: submissions.changes, note: "Add a photo" },
+        ]);
 
         const expired = await reader.expiredInvitations({
           legalEntityId: orgId,
@@ -391,10 +395,12 @@ describe.skipIf(!HAS_DB)("needs-you facts reader (integration)", () => {
         expect(await reader.viewerChecks(ownerId)).toEqual({
           identity: "required",
           sourceOfFundsRequested: true,
+          sourceOfFundsRequestedAt: expect.any(Date),
         });
         expect(await reader.viewerChecks(agentId)).toEqual({
           identity: "checking",
           sourceOfFundsRequested: false,
+          sourceOfFundsRequestedAt: null,
         });
 
         throw rollback;

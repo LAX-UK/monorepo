@@ -15,7 +15,7 @@ describe("workspacePageAt", () => {
     expect(workspacePageAt("/team?account=o1")?.label).toBe("Team");
     expect(workspacePageAt("/selling/payouts")?.label).toBe("Sold & payouts");
     expect(workspacePageAt("/selling/consignments")?.label).toBe("Consignments");
-    expect(workspacePageAt("/collection")?.label).toBe("Works");
+    expect(workspacePageAt("/collection")?.label).toBe("Collection");
     expect(workspacePageAt("/bids")?.label).toBe("Bids");
   });
 

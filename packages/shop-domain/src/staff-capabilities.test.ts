@@ -129,6 +129,7 @@ describe("overviewKpiKeysFor", () => {
     expect(overviewKpiKeysFor(capabilitiesForRoles(["operations", "finance"]))).toEqual([
       "fulfilmentOpenCount",
       "payoutsDueCount",
+      "failedRefundsCount",
     ]);
   });
 
