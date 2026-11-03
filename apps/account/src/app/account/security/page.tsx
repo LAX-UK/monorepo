@@ -43,7 +43,7 @@ export default async function SecurityPage() {
     <AccountShell>
       <AccountPageHeader
         title="Security"
-        description="How you sign in, your password, two-step verification and the devices you're signed in on."
+        description="Your sign-in methods, password, two-step verification and devices."
       />
       <SignInMethodsSection
         section={buildSignInMethodsSection(liveSignInMethods, overview.email)}
