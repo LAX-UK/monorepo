@@ -1,6 +1,16 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, check, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  check,
+  index,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
+import { bidAlertDigest } from "./bid-alerts.js";
 import { itemSubmission } from "./item-submissions.js";
 import { legalEntity } from "./legal-entities.js";
 import { lot } from "./lots.js";
@@ -58,6 +68,8 @@ export const NOTIFICATION_TYPES = [
   "payment_reminder",
   "buyer_default_notice",
   "sale_announced",
+  "artist_lots_listed",
+  "search_lots_listed",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
@@ -75,6 +87,15 @@ export const notification = pgTable(
     lotId: uuid("lot_id").references(() => lot.id, { onDelete: "set null" }),
     /** The sale a sale notice is about; `null` once the sale is deleted. */
     saleId: uuid("sale_id").references(() => sale.id, { onDelete: "set null" }),
+    /**
+     * The site page a notice opens when no id on the row says where to go: an artist's page, or a
+     * saved search's results. A path on this site, never a full address.
+     */
+    linkPath: text("link_path"),
+    /** The daily alert digest a notice was written for; a digest has one notice per type. */
+    alertDigestId: uuid("alert_digest_id").references(() => bidAlertDigest.id, {
+      onDelete: "set null",
+    }),
     submissionId: uuid("submission_id").references(() => itemSubmission.id, {
       onDelete: "set null",
     }),
@@ -99,6 +120,13 @@ export const notification = pgTable(
       table.userId,
       table.legalEntityId,
       table.createdAt,
+    ),
+    uniqueIndex("notification_alert_digest_type_uid")
+      .on(table.alertDigestId, table.type)
+      .where(sql`${table.alertDigestId} IS NOT NULL`),
+    check(
+      "notification_link_path_check",
+      sql`${table.linkPath} IS NULL OR (${table.linkPath} LIKE '/%' AND ${table.linkPath} NOT LIKE '//%' AND char_length(${table.linkPath}) <= 500)`,
     ),
     check(
       "notification_type_check",

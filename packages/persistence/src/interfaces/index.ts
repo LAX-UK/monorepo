@@ -1147,6 +1147,10 @@ export type {
   SearchWatcher,
 } from "./bid-alert-lot.js";
 export type {
+  BidAlertLotNotice,
+  IBidAlertLotNoticeWriter,
+} from "./bid-alert-lot-notice.js";
+export type {
   AnnouncedSale,
   IBidAlertSaleNoticeWriter,
   IBidAlertSaleReader,

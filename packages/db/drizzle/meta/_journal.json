@@ -2010,6 +2010,13 @@
       "when": 1800604800000,
       "tag": "0290_alert_followers",
       "breakpoints": true
+    },
+    {
+      "idx": 299,
+      "version": "7",
+      "when": 1801382400000,
+      "tag": "0299_alert_in_app_notices",
+      "breakpoints": true
     }
   ]
 }
