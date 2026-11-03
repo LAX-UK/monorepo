@@ -16,6 +16,7 @@ import type { AdminTwoFactorResetService } from "../../admin/admin-two-factor-re
 import type { AdminDataRequestsService } from "../../admin/data-requests/admin-data-requests.service.js";
 import type { StaffAccessAdminService } from "../../admin/staff-access-admin.service.js";
 import type { DeliveryOpsApplicationService } from "../../delivery-ops.application.service.js";
+import type { InventoryMoveServices } from "../../inventory/inventory-move-services.js";
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
 import type { IStaffStepUpGuard } from "../../staff-step-up.service.js";
 import type { LaxAdminRolesService } from "../../staff/lax-admin-roles.service.js";
@@ -105,6 +106,8 @@ export type AdminIntegrationRouteServices = {
     AdminDataRequestsService,
     "list" | "summary" | "record" | "create" | "patch" | "extend" | "close" | "continueDownload"
   >;
+  /** Originals moving between LAX Bid and lax.art. */
+  inventoryMoves: InventoryMoveServices;
 };
 
 /** Wired in the container root because the policy client lives outside the admin graph. */

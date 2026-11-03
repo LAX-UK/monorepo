@@ -77,6 +77,7 @@ import type {
   IUserSuspensionCacheInvalidator,
   IUserSuspensionChecker,
 } from "../services/interfaces/user-suspension.js";
+import type { InventoryMoveServices } from "../services/inventory/inventory-move-services.js";
 import type { EnquirerOrganisationsService } from "../services/marketing-enquiry/enquirer-organisations.service.js";
 import type { IEnquiryDraftTokens } from "../services/marketing-enquiry/enquiry-draft-token.js";
 import type { IEnquirySubmission } from "../services/marketing-enquiry/enquiry-submission.service.js";
@@ -419,6 +420,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerUserNotificationSlice &
   ContainerAdminSlice &
   ContainerCronSlice &
+  ContainerInventoryMovesSlice &
   ContainerSubjectExportSlice &
   ContainerFinanceSlice &
   ContainerPlatformCronSlice &
@@ -567,6 +569,12 @@ export type ContainerEmailRoutesSlice = Pick<
   Container,
   "env" | "userService" | "emailUnsubscribeService"
 >;
+
+/** LAX Bid's half of moving originals between lax.art and auction. */
+export type ContainerInventoryMovesSlice = { inventoryMoves: InventoryMoveServices };
+
+/** Machine-authenticated boundary LAX Shop calls to offer an original at auction. */
+export type ContainerInternalInventoryRoutesSlice = Pick<Container, "inventoryMoves">;
 
 /** Machine-authenticated Identity email enqueue boundary. */
 export type ContainerInternalIdentityEmailRoutesSlice = Pick<Container, "emailService">;

@@ -35,6 +35,7 @@ import { createCronServices } from "./container/create-cron-services.js";
 import { createFinanceRouteServices } from "./container/create-finance-route-services.js";
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
+import { createInventoryMoveServices } from "./container/create-inventory-move-services.js";
 import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
 import {
   createEnquiryDraftTokens,
@@ -498,9 +499,18 @@ export function createContainer(env: Env): Container {
     createAppLogger(env),
   );
 
+  const inventoryMoves = createInventoryMoveServices({
+    db,
+    env,
+    lots: catalog.lotService,
+    artists: platform.artistRegistryService,
+    resolveHouseSellerLegalEntityId: catalog.resolvePlatformCatalogLegalEntityId,
+  });
+
   return {
     env,
     db,
+    inventoryMoves,
     sessionRevocation,
     redis: infra.redis,
     rateLimitStore: infra.rateLimitStore,
@@ -757,6 +767,7 @@ export function createContainer(env: Env): Container {
     }),
     admin: {
       ...admin.admin,
+      inventoryMoves,
       staffTwoFactorPolicy: twoFactorPolicy,
       twoFactorReset,
       staffEmailChange,
@@ -830,6 +841,7 @@ export type {
   ContainerInternalCronRoutesSlice,
   ContainerInternalIdentityEmailRoutesSlice,
   ContainerInternalIdentityDeletionEligibilityRoutesSlice,
+  ContainerInternalInventoryRoutesSlice,
   ContainerInternalIdentitySubjectExportRoutesSlice,
   ContainerInternalIdentitySubjectUsageRoutesSlice,
   ContainerKycRoutesSlice,
