@@ -15,6 +15,12 @@ export {
   isOptionalEmailTemplate,
   suppressionBlocksTemplate,
 } from "./suppression-policy.js";
+export {
+  EMAIL_TEMPLATE_LABELS,
+  describeEmailTemplate,
+  type EmailTemplateDescription,
+} from "./template-labels.js";
+export { emailProductFor } from "./email-product.js";
 export { SNAPSHOT_DISCARDED_AFTER_SEND } from "./snapshot-retention.js";
 export {
   ConsoleEmailService,

@@ -6,6 +6,7 @@ const adminUsers = vi.hoisted(() => ({
   suspend: vi.fn(),
   unsuspend: vi.fn(),
   resetTwoFactor: vi.fn(),
+  startEmailChange: vi.fn(),
 }));
 const fetchMock = vi.hoisted(() => vi.fn());
 
@@ -28,6 +29,7 @@ const {
   adminResetTwoFactorResultAction,
   adminSetUserRoleResultAction,
   adminSetUserStaffRoleResultAction,
+  adminStartEmailChangeResultAction,
   adminSuspendUserResultAction,
   adminUnsuspendUserResultAction,
 } = await import("./admin-users");
@@ -60,6 +62,16 @@ describe("admin user actions pass the step-up code to the page", () => {
       "two-factor reset",
       () => adminResetTwoFactorResultAction(USER_ID, { reason: REASON }),
       "resetTwoFactor",
+    ],
+    [
+      "email change",
+      () =>
+        adminStartEmailChangeResultAction(USER_ID, {
+          newEmail: "new@example.com",
+          reason: REASON,
+          proof: { kind: "id_check", reference: "IDV-2291" },
+        }),
+      "startEmailChange",
     ],
   ] as const)("%s", async (_name, run, method) => {
     adminUsers[method].mockResolvedValue(STEP_UP);
@@ -105,5 +117,15 @@ describe("admin user actions pass the step-up code to the page", () => {
 
     expect(result.ok).toBe(false);
     expect(adminUsers.suspend).not.toHaveBeenCalled();
+  });
+
+  it("refuses an email change without a proof before calling the API", async () => {
+    const result = await adminStartEmailChangeResultAction(USER_ID, {
+      newEmail: "new@example.com",
+      reason: REASON,
+    } as never);
+
+    expect(result.ok).toBe(false);
+    expect(adminUsers.startEmailChange).not.toHaveBeenCalled();
   });
 });

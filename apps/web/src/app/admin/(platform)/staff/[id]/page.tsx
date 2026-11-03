@@ -36,7 +36,7 @@ export default async function AdminStaffDetailPage({ params, searchParams }: Pro
   const { id } = await params;
   const sp = await searchParams;
   const listHref = parseAdminListReturnTarget(sp.returnTo, "/admin/staff");
-  const [{ user, canManageRoles, canModerate }, accessDetail, roles, laxAdminRoles] =
+  const [{ user, canManageRoles, canModerate, emailChange }, accessDetail, roles, laxAdminRoles] =
     await Promise.all([
       loadAdminStaffDetail(id),
       getServerStaffAccessDetail(id).catch(() => null),
@@ -51,7 +51,7 @@ export default async function AdminStaffDetailPage({ params, searchParams }: Pro
       user={user}
       listHref={listHref}
       listLabel="Staff"
-      access={{ canModerate, canManageRoles }}
+      access={{ canModerate, canManageRoles, emailChange }}
       showContextRail={false}
       tabs={[
         {

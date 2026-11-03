@@ -54,6 +54,19 @@ const envSchema = z
       z.string().min(32).optional(),
     ),
     /**
+     * The staff-assisted email change's credential for Identity (scope `staff_email_change`),
+     * separate from the lifecycle credential so neither can do the other's work. Without it the
+     * change answers 502.
+     */
+    IDENTITY_STAFF_EMAIL_CHANGE_CLIENT_ID: z.preprocess(
+      emptyToUndefined,
+      z.string().min(1).optional(),
+    ),
+    IDENTITY_STAFF_EMAIL_CHANGE_CLIENT_SECRET: z.preprocess(
+      emptyToUndefined,
+      z.string().min(32).optional(),
+    ),
+    /**
      * The Data requests screen's credential for Identity (scope `data_requests.staff`), separate
      * from the lifecycle credential so neither can do the other's work. Without it the screen's
      * routes answer 503.

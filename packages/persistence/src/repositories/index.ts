@@ -3,6 +3,8 @@ export { DrizzleBidRepository } from "./drizzle-bid.repository.js";
 export { DrizzleSaleRepository } from "./drizzle-sale.repository.js";
 export { DrizzleItemSubmissionRepository } from "./drizzle-item-submission.repository.js";
 export { DrizzleImpersonationSessionRepository } from "./drizzle-impersonation-session.repository.js";
+export { DrizzleEmailBlockRepository } from "./drizzle-email-block.repository.js";
+export { DrizzlePersonEmailDeliveryReader } from "./drizzle-person-email-delivery.reader.js";
 export { DrizzleEmailSuppressionRepository } from "./drizzle-email-suppression.repository.js";
 export { DrizzleEmailWebhookIngestRepository } from "./drizzle-email-webhook-ingest.repository.js";
 export { DrizzleNewsletterSignupRepository } from "./drizzle-newsletter-signup.repository.js";

@@ -32,6 +32,8 @@ const LABELS: Record<string, string> = {
   "auth.sessions_revoked_all_except_current": "Other sessions signed out",
   "auth.two_factor_policy_changed": "Two-step verification policy changed",
   "auth.two_factor_reset_by_staff": "Two-step verification reset by staff",
+  "auth.email_change_requested_by_staff": "Email change started by staff",
+  "auth.email_change_kyc_record_viewed": "KYC record shown for an email change",
   "auth.two_factor_security_email": "Two-step security email sent",
 
   "bid.first_for_user": "First bid placed",
@@ -170,6 +172,7 @@ const LABELS: Record<string, string> = {
   "marketing_enquiry.assigned": "Enquiry assigned",
   "marketing_enquiry.status_changed": "Enquiry status changed",
   "marketing_enquiry.converted": "Enquiry converted",
+  "email.block_lifted": "Email block lifted",
   "enquiry_routing.changed": "Enquiry routing changed",
   "payout.transfer_reversed": "Payout transfer reversed",
   "purchase_problem.reported": "Purchase problem reported",

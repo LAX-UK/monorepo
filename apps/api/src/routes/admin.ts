@@ -44,6 +44,7 @@ import {
   attachAdminPaymentsListRoutes,
   attachAdminPaymentsManualReviewRoutes,
 } from "./admin/payments.routes.js";
+import { attachAdminPersonEmailDeliveryRoutes } from "./admin/person-email-delivery.routes.js";
 import { attachAdminQrCodesRoutes } from "./admin/qr-codes.routes.js";
 import { attachAdminSaleCoverRoutes } from "./admin/sale-cover.routes.js";
 import { attachAdminSaleRegistrationsRoutes } from "./admin/sale-registrations.routes.js";
@@ -52,6 +53,7 @@ import { attachAdminSaleroomRoutes } from "./admin/saleroom.routes.js";
 import { attachAdminSavedViewRoutes } from "./admin/saved-views.routes.js";
 import { attachAdminSecurityRoutes } from "./admin/security.routes.js";
 import { attachAdminStaffAccessRoutes } from "./admin/staff-access.routes.js";
+import { attachAdminStaffEmailChangeRoutes } from "./admin/staff-email-change.routes.js";
 import {
   attachAdminLaxAdminRolesRoutes,
   attachAdminStaffRolesRoutes,
@@ -126,6 +128,7 @@ export function createAdminRoutes(
   attachAdminAuditRoutes(platform, container);
   attachAdminCatalogRoutes(platform, container);
   attachAdminEmailRoutes(platform, container);
+  attachAdminPersonEmailDeliveryRoutes(platform, container);
   attachAdminUsersDirectoryRoutes(platform, container, guards);
   attachAdminComplianceRoutes(platform, container);
   attachAdminUsersManagementRoutes(platform, container, guards);
@@ -135,6 +138,7 @@ export function createAdminRoutes(
   attachAdminStaffRolesRoutes(platform, container.admin.staffRoles, guards);
   attachAdminLaxAdminRolesRoutes(platform, container.admin.laxAdminRoles, guards);
   attachAdminTwoFactorResetRoutes(platform, container.admin.twoFactorReset, guards);
+  attachAdminStaffEmailChangeRoutes(platform, container.admin.staffEmailChange, guards);
   attachAdminSavedViewRoutes(platform, container.admin.savedViews);
 
   attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle, guards);

@@ -12,11 +12,18 @@ import type { IAdminReviewTaskReader } from "@auction/persistence/interfaces";
 import type { IAdminSaleReadinessReader } from "@auction/persistence/interfaces";
 import type { IAdminWorkItemsReader } from "@auction/persistence/interfaces";
 import type { IAttentionFeedReader } from "@auction/persistence/interfaces";
-import type { IEmailObservabilityRepository } from "@auction/persistence/interfaces";
+import type {
+  IEmailBlockRepository,
+  IEmailObservabilityRepository,
+  IPersonEmailDeliveryReader,
+  ITransactionRunner,
+} from "@auction/persistence/interfaces";
+import type { EmailAddressReactivationProducer } from "@auction/queues";
 import type { Redis } from "ioredis";
 import type { AdminMetricsService } from "../admin-metrics.service.js";
 import type { AdminSaleOperationsSnapshotService } from "../admin-sale-operations-snapshot.service.js";
 import type { BidService } from "../bid.service.js";
+import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImpersonationAuditService } from "../impersonation-audit.service.js";
 import type { AdminOperationsRouteServices } from "../interfaces/admin-routes/admin-operations-routes.js";
 import type { IDisplayOverlayService } from "../interfaces/display-overlay-service.js";
@@ -46,6 +53,9 @@ import {
   createAdminSaleroomRouteServices,
   paddleServiceAsClerkOperations,
 } from "./create-admin-saleroom-route-services.js";
+import { NoAlertSubscriptionReader } from "./email-delivery/alert-subscription-reader.js";
+import { LiftEmailBlockService } from "./email-delivery/lift-email-block.service.js";
+import { PersonEmailDeliveryService } from "./email-delivery/person-email-delivery.service.js";
 import { SaleroomAccessClerkEligibility } from "./telephone-clerk-eligibility.js";
 
 export type CreateAdminOperationsServicesInput = {
@@ -55,6 +65,11 @@ export type CreateAdminOperationsServicesInput = {
   attentionFeedReader: IAttentionFeedReader;
   itemSubmissionAdminApi: IItemSubmissionAdminApi;
   emailObservabilityRepository: IEmailObservabilityRepository;
+  personEmailDeliveryReader: IPersonEmailDeliveryReader;
+  emailBlockRepository: IEmailBlockRepository;
+  emailReactivation: EmailAddressReactivationProducer;
+  transactionRunner: ITransactionRunner;
+  domainEventSink: IDomainEventSink;
   displayPairingService: IDisplayPairingService;
   displayOverlayService: IDisplayOverlayService;
   saleroomService: SaleroomServicePort;
@@ -128,6 +143,16 @@ export function createAdminOperationsServices(
     workItems: new AdminWorkItemsService(input.adminWorkItemsReader),
     saleReadiness: new AdminSaleReadinessService(input.adminSaleReadinessReader),
     email: new AdminEmailApplicationService(input.emailObservabilityRepository),
+    emailDelivery: new PersonEmailDeliveryService(
+      input.personEmailDeliveryReader,
+      new NoAlertSubscriptionReader(),
+    ),
+    emailBlockLift: new LiftEmailBlockService({
+      blocks: input.emailBlockRepository,
+      transactionRunner: input.transactionRunner,
+      events: input.domainEventSink,
+      reactivation: input.emailReactivation,
+    }),
     telephoneBookings: new AdminTelephoneBookingApplicationService(
       input.telephoneBidBookingService,
       input.telephoneBidBookingService,

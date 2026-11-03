@@ -309,6 +309,7 @@ export function createWorkerContainer(): WorkerContainer {
     repoFactory,
     uploadValidationRepo: repositories.uploadValidationRepo,
     emailOutboxRepo: repositories.emailOutboxRepo,
+    emailAddressLookup: repositories.emailAddressLookup,
     payoutStatementRepo: repositories.payoutStatementRepo,
     profileMarketingReader: repositories.profileMarketingReader,
     marketingEventOutboxWorker: repositories.marketingEventOutboxWorker,

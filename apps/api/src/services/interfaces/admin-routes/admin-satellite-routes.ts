@@ -11,6 +11,7 @@ import type {
 import type { z } from "zod";
 import type { AdminMarketingEventsService } from "../../admin/admin-marketing-events.service.js";
 import type { AdminSavedViewService } from "../../admin/admin-saved-view.service.js";
+import type { AdminStaffEmailChangeService } from "../../admin/admin-staff-email-change.service.js";
 import type { AdminTwoFactorResetService } from "../../admin/admin-two-factor-reset.service.js";
 import type { AdminDataRequestsService } from "../../admin/data-requests/admin-data-requests.service.js";
 import type { StaffAccessAdminService } from "../../admin/staff-access-admin.service.js";
@@ -110,6 +111,7 @@ export type AdminIntegrationRouteServices = {
 export type AdminStaffSecurityRouteServices = {
   staffTwoFactorPolicy: Pick<TwoFactorPolicyService, "readStaffPolicy" | "setStaffPolicy">;
   twoFactorReset: Pick<AdminTwoFactorResetService, "reset">;
+  staffEmailChange: Pick<AdminStaffEmailChangeService, "change" | "kycRecord">;
   staffAccess: Pick<StaffAccessAdminService, "summaries" | "detail" | "myTools">;
   /** A staff member's Bid roles, role changes and the access review. */
   staffRoles: Pick<StaffRolesAdminService, "overview" | "assign" | "remove" | "accessReview">;

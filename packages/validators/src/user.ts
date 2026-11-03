@@ -205,6 +205,42 @@ export const adminResetTwoFactorBodySchema = z.object({
   reason: z.string().trim().min(ADMIN_TWO_FACTOR_RESET_REASON_MIN).max(500),
 });
 
+/** Why an account was moved to a new address, and what staff relied on to know who was asking. */
+export const ADMIN_EMAIL_CHANGE_REASON_MIN = 10;
+export const ADMIN_EMAIL_CHANGE_REFERENCE_MIN = 3;
+export const ADMIN_EMAIL_CHANGE_REFERENCE_MAX = 100;
+export const adminStaffEmailChangeBodySchema = z.object({
+  newEmail: z.string().trim().toLowerCase().email("Enter a valid email address").max(254),
+  reason: z.string().trim().min(ADMIN_EMAIL_CHANGE_REASON_MIN).max(500),
+  proof: z.discriminatedUnion("kind", [
+    /** The caller's name and date of birth matched the verified KYC record. */
+    z.object({ kind: z.literal("kyc_match"), kycSessionId: z.string().trim().min(1).max(191) }),
+    /** A fresh ID check was done; the reference says where it can be found. */
+    z.object({
+      kind: z.literal("id_check"),
+      reference: z
+        .string()
+        .trim()
+        .min(ADMIN_EMAIL_CHANGE_REFERENCE_MIN, "Enter the reference of the ID check")
+        .max(ADMIN_EMAIL_CHANGE_REFERENCE_MAX),
+    }),
+  ]),
+});
+export type AdminStaffEmailChangeBody = z.infer<typeof adminStaffEmailChangeBodySchema>;
+
+/**
+ * The verified details staff compare with what the caller says. Only the name and date of birth
+ * leave the KYC record; ID numbers and documents stay where they are.
+ */
+export type AdminEmailChangeKycRecord = {
+  sessionId: string;
+  firstName: string;
+  lastName: string;
+  /** ISO date (YYYY-MM-DD). */
+  dateOfBirth: string;
+  verifiedAt: string | null;
+};
+
 export const adminBulkUsersBodySchema = z
   .object({
     ids: z.array(z.string().min(1).max(191)).min(1).max(50),

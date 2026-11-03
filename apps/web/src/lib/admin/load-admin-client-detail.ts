@@ -10,6 +10,7 @@ import {
   buildUserAttentionItems,
 } from "@/lib/admin/admin-user-readiness.vm";
 import { loadAdminUserDetail } from "@/lib/admin/load-admin-user-detail";
+import { type EmailChangeAccess, emailChangeAccessFor } from "@/lib/admin/staff-email-change";
 import {
   type AdminKycSessionRow,
   type AdminPaymentRow,
@@ -63,6 +64,7 @@ export type AdminClientDetailBundle = {
   canViewKyc: boolean;
   canManageRoles: boolean;
   canModerate: boolean;
+  emailChange: EmailChangeAccess;
   canWriteArtists: boolean;
   bids: AdminUserBidRow[];
   bidsTotal: number;
@@ -157,6 +159,7 @@ export const loadAdminClientDetail = cache(
       canViewKyc,
       canManageRoles,
       canModerate,
+      emailChange: emailChangeAccessFor(sessionUser),
       canWriteArtists,
       bids: bidsResult.rows,
       bidsTotal: bidsResult.total,

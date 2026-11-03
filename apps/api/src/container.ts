@@ -69,6 +69,7 @@ import { StaffRoleChangeNotifier } from "./infrastructure/staff-role-change.noti
 import { createBaseLogger } from "./lib/logger.js";
 import { createAppLogger } from "./lib/logger.js";
 import { AdminSavedViewService } from "./services/admin/admin-saved-view.service.js";
+import { AdminStaffEmailChangeService } from "./services/admin/admin-staff-email-change.service.js";
 import { AdminTwoFactorResetService } from "./services/admin/admin-two-factor-reset.service.js";
 import { AtgAdminService } from "./services/admin/atg-admin.service.js";
 import { AdminDataRequestsService } from "./services/admin/data-requests/admin-data-requests.service.js";
@@ -106,6 +107,12 @@ export function createContainer(env: Env): Container {
     ...(env.IDENTITY_MACHINE_CLIENT_ID ? { machineClientId: env.IDENTITY_MACHINE_CLIENT_ID } : {}),
     ...(env.IDENTITY_MACHINE_CLIENT_SECRET
       ? { machineClientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET }
+      : {}),
+    ...(env.IDENTITY_STAFF_EMAIL_CHANGE_CLIENT_ID
+      ? { staffEmailChangeClientId: env.IDENTITY_STAFF_EMAIL_CHANGE_CLIENT_ID }
+      : {}),
+    ...(env.IDENTITY_STAFF_EMAIL_CHANGE_CLIENT_SECRET
+      ? { staffEmailChangeClientSecret: env.IDENTITY_STAFF_EMAIL_CHANGE_CLIENT_SECRET }
       : {}),
   });
   const sessionRevocation = new SessionRevocationService(identityIssuer);
@@ -335,6 +342,12 @@ export function createContainer(env: Env): Container {
   const twoFactorReset = new AdminTwoFactorResetService({
     identity: identityIssuer,
     users: repos.adminUserReader,
+    audit: platform.authAuditPublisher,
+  });
+  const staffEmailChange = new AdminStaffEmailChangeService({
+    identity: identityIssuer,
+    users: repos.adminUserReader,
+    kyc: repos.adminUserKycReader,
     audit: platform.authAuditPublisher,
   });
   const staffAccess = new StaffAccessAdminService({
@@ -745,6 +758,7 @@ export function createContainer(env: Env): Container {
       ...admin.admin,
       staffTwoFactorPolicy: twoFactorPolicy,
       twoFactorReset,
+      staffEmailChange,
       staffAccess,
       staffRoles,
       laxAdminRoles: laxAdminRoleChanges,

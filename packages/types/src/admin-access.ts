@@ -253,6 +253,18 @@ export const EMAIL_ADMIN_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
 /** Read-only email outbox, events, and suppression list (no mutations). */
 export const EMAIL_OBSERVABILITY_ACCESS: CapabilityRequirement = readOrWrite(EMAIL_ADMIN_ACCESS);
 
+/**
+ * Lift a bounce, repeated soft bounces or a manual block on a person's email. A complaint is
+ * lifted under EMAIL_ADMIN_ACCESS; nobody lifts an unsubscribe.
+ */
+export const EMAIL_BLOCK_LIFT_ACCESS: CapabilityRequirement = {
+  anyOf: ["support.respond", "platform.admin.full"],
+};
+
+/** Read a person's email delivery: their sends and any block on their address. */
+export const EMAIL_DELIVERY_READ_ACCESS: CapabilityRequirement =
+  readOrWrite(EMAIL_BLOCK_LIFT_ACCESS);
+
 /** Client/staff directory list and detail reads. */
 export const USERS_DIRECTORY_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "client.read"],
@@ -354,6 +366,15 @@ export const ENQUIRY_ROUTING_MANAGE_ACCESS: CapabilityRequirement = {
 
 /** Suspend, unsuspend, and bulk user moderation. */
 export const USER_MODERATION_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond"],
+};
+
+/**
+ * Moving an account to a new email address for someone who has lost the old inbox. Today the same
+ * people as {@link USER_MODERATION_ACCESS}, but it is its own rule: it changes where an account's
+ * sign-in and security mail go, so it can be narrowed without touching suspend or unsuspend.
+ */
+export const STAFF_EMAIL_CHANGE_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "support.respond"],
 };
 
