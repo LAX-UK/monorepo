@@ -83,7 +83,7 @@ describe("catalogue artwork card view model", () => {
 });
 
 describe("catalogue artist card view model", () => {
-  it("prefers discipline and falls back to works count", () => {
+  it("prefers discipline and shows the works count once, on its own line", () => {
     const [withDiscipline, withoutDiscipline] = buildCatalogueArtistCards([
       { slug: "a", name: "A", discipline: "Painter", portraitUrl: null, artworkCount: 2 },
       { slug: "b", name: "B", discipline: null, portraitUrl: null, artworkCount: 1 },
@@ -93,7 +93,8 @@ describe("catalogue artist card view model", () => {
       caption: "Painter",
       following: false,
     });
-    expect(withoutDiscipline?.caption).toBe("1 work");
+    expect(withDiscipline?.worksLabel).toBe("2 works");
+    expect(withoutDiscipline).toMatchObject({ caption: null, worksLabel: "1 work" });
   });
 
   it("prefers nationality and years when the record carries them", () => {
