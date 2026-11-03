@@ -125,7 +125,7 @@ describe("auth HTTP app composition", () => {
     const html = await response.text();
     expect(html).toContain("/hosted-auth/lockups/lax-account.svg");
     expect(html).toContain(
-      'to continue to <span class="product-name product-name--shop">LAX Shop</span>',
+      'to buy at <span class="product-name product-name--shop">LAX Shop</span>',
     );
     expect(html).toContain("/hosted-auth/favicons/favicon.ico");
     expect(html).toContain("Sign in");
@@ -144,9 +144,7 @@ describe("auth HTTP app composition", () => {
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain("/hosted-auth/lockups/lax-account.svg");
-    expect(html).toContain(
-      'to continue to <span class="product-name product-name--bid">LAX Bid</span>',
-    );
+    expect(html).toContain('to bid at <span class="product-name product-name--bid">LAX Bid</span>');
     expect(html).toContain('class="brand-logo only-dark"');
     expect(html).toContain("/hosted-auth/lockups/lax-account-dark.svg");
     expect(html).toContain("product-back-link");

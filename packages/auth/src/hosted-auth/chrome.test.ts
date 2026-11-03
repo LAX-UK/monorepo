@@ -1,26 +1,48 @@
 import { describe, expect, it } from "vitest";
 import { selectHostedBrand } from "./brand.js";
-import { leadWithDestination } from "./chrome.js";
+import { contextLine } from "./chrome.js";
+import { HOSTED_COPY } from "./copy.js";
+import { parseHostedAuthFlow } from "./flow-context.js";
 
 const textOf = (html: string) => html.replace(/<[^>]+>/g, "");
 
-describe("leadWithDestination", () => {
+describe("contextLine", () => {
   it.each([
-    ["signIn", null, "Sign in with your LAX Account."],
-    ["signIn", "lax-bid-web", "Sign in with your LAX Account to continue to LAX Bid."],
-    ["signIn", "lax-shop-web", "Sign in with your LAX Account to continue to LAX Shop."],
-    ["signIn", "lax-art-web", "Sign in with your LAX Account to continue to lax.art."],
-    ["signIn", "lax-account-web", "Sign in with your LAX Account."],
-    ["signUp", null, "Create an account once and use it across LAX."],
-    ["signUp", "lax-bid-web", "Create your account to continue to LAX Bid."],
-    ["signUp", "lax-art-web", "Create your account to continue to lax.art."],
-  ] as const)("%s from %s reads %s", (key, clientId, text) => {
-    expect(textOf(leadWithDestination(key, selectHostedBrand(clientId).chip))).toBe(text);
+    [null, null, ""],
+    ["lax-bid-web", null, "to bid at LAX Bid"],
+    ["lax-bid-web", "sell", "to send your work to LAX Bid specialists"],
+    ["lax-shop-web", null, "to buy at LAX Shop"],
+    ["lax-shop-web", "sell", "to buy at LAX Shop"],
+    ["lax-art-web", null, "to enquire and follow artists on lax.art"],
+    ["lax-account-web", null, ""],
+    ["lax-shop-admin", null, ""],
+  ] as const)("from %s with context %s reads %j", (clientId, context, text) => {
+    expect(textOf(contextLine(selectHostedBrand(clientId).chip, context))).toBe(text);
   });
 
-  it("sets the destination in its product's colour", () => {
-    expect(leadWithDestination("signIn", selectHostedBrand("lax-bid-web").chip)).toContain(
-      '<span class="product-name product-name--bid">LAX Bid</span>.',
+  it("sets the product in its own colour", () => {
+    expect(contextLine(selectHostedBrand("lax-bid-web").chip, null)).toContain(
+      '<span class="product-name product-name--bid">LAX Bid</span>',
     );
+  });
+});
+
+describe("hosted titles", () => {
+  it("name the account in words", () => {
+    expect(HOSTED_COPY.titles).toEqual({
+      signIn: "Sign in to LAX Account",
+      signUp: "Create your LAX Account",
+    });
+  });
+});
+
+describe("hosted_context", () => {
+  it("is read only when it says sell", () => {
+    expect(
+      parseHostedAuthFlow(new URLSearchParams("client_id=lax-bid-web&hosted_context=sell")).context,
+    ).toBe("sell");
+    expect(
+      parseHostedAuthFlow(new URLSearchParams("client_id=lax-bid-web&hosted_context=x")).context,
+    ).toBeNull();
   });
 });

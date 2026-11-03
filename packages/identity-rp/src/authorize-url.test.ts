@@ -74,3 +74,21 @@ describe("buildEndSessionUrl", () => {
     expect(url.searchParams.get("state")).toBe("logout-state");
   });
 });
+
+describe("buildAuthorizeUrl hosted context", () => {
+  const base = {
+    authorizationEndpoint: "https://auth.example/authorize",
+    clientId: "lax-bid-web",
+    redirectUri: "https://test.lax.bid/cb",
+    scopes: ["openid"],
+    state: "s",
+    nonce: "n",
+    codeChallenge: "c",
+  };
+
+  it("carries the sell context only when given", () => {
+    expect(new URL(buildAuthorizeUrl(base)).searchParams.has("hosted_context")).toBe(false);
+    const url = new URL(buildAuthorizeUrl({ ...base, hostedContext: "sell" }));
+    expect(url.searchParams.get("hosted_context")).toBe("sell");
+  });
+});
