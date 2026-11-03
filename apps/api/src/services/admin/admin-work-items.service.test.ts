@@ -13,7 +13,11 @@ function row(
   const now = new Date("2026-07-27T10:00:00.000Z");
   return {
     subtitle: null,
-    href: adminWorkItemHref(partial.kind, { subjectId: partial.sourceId, saleId: "sale-1" }),
+    href: adminWorkItemHref(partial.kind, {
+      subjectId: partial.sourceId,
+      paymentId: partial.sourceId,
+      saleId: "sale-1",
+    }),
     saleId: null,
     createdAt: now,
     sourceUpdatedAt: now,
