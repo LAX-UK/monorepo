@@ -57,6 +57,8 @@ const LABELS: Record<string, string> = {
 
   "export.requested": "Export requested",
 
+  "artwork_register.offer_changed": "Artwork moved to a new place",
+  "artwork_register.stock_code_assigned": "Artwork stock code assigned",
   "data_request.viewed": "Data request opened",
   "data_request.logged": "Data request logged",
   "data_request.updated": "Data request updated",
