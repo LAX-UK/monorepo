@@ -1175,3 +1175,12 @@ export {
   type PaymentReminderCandidate,
   type RecordBuyerDefaultInput,
 } from "./buyer-default.js";
+export type {
+  IPrivateSaleDealReader,
+  IPrivateSaleDealWriter,
+  IPrivateSaleDocumentWriter,
+  NewPrivateSaleDeal,
+  NewPrivateSaleDocument,
+  PrivateSaleDealTermsPatch,
+  PrivateSaleDealWriteResult,
+} from "./private-sale-deal.repository.js";

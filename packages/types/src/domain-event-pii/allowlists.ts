@@ -420,6 +420,9 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "provider",
   ]),
   /** One event per changed routing row: a department slug (or none for the fallback) and staff user ids. */
+  /** Identifiers and stage codes only: the parties, the price and the cancel reason stay on the deal. */
+  "private_sale_deal.created": new Set(["dealId", "reference", "stage"]),
+  "private_sale_deal.stage_changed": new Set(["dealId", "reference", "from", "to"]),
   "enquiry_routing.changed": new Set([
     "departmentSlug",
     "assignedToUserId",

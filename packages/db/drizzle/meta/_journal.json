@@ -2010,6 +2010,13 @@
       "when": 1800259200000,
       "tag": "0286_unsold_lot_follow_up",
       "breakpoints": true
+    },
+    {
+      "idx": 295,
+      "version": "7",
+      "when": 1801036800000,
+      "tag": "0295_private_sale_deal",
+      "breakpoints": true
     }
   ]
 }
