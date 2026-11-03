@@ -118,7 +118,13 @@ describe("createDefaultProjectorRegistry", () => {
       BID_ALERT_MATCHING_PROJECTOR,
     );
     const on = registry.listEnabledProjectorNames(
-      baseCtx({ bidAlerts: { isSeeded: async () => true, handle: async () => undefined } }),
+      baseCtx({
+        bidAlerts: {
+          isSeeded: async () => true,
+          handle: async () => undefined,
+          handleLots: async () => undefined,
+        },
+      }),
     );
     expect(on).toContain(BID_ALERT_MATCHING_PROJECTOR);
   });
