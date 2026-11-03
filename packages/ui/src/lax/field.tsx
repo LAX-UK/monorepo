@@ -131,18 +131,39 @@ export function Field({
       </div>
       <FieldContext.Provider value={value}>{children}</FieldContext.Provider>
       {error ? (
-        <p
-          id={errorId}
-          {...(announce ? { role: "alert" } : {})}
-          className="flex items-start gap-1.5 text-lax-12 font-medium text-lax-danger in-data-[lax-density=client]:text-lax-13 in-data-[lax-density=client]:leading-5"
-        >
-          <CircleAlert
-            aria-hidden
-            className="mt-px size-3.5 shrink-0 in-data-[lax-density=client]:mt-[3px]"
-          />
+        <FieldError id={errorId} announce={announce}>
           {error}
-        </p>
+        </FieldError>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The inline error under a control: an icon, the message in the danger colour. `Field` uses it
+ * for its own control; a checkbox or radio row that stands outside a `Field` uses it directly,
+ * with the id its control names in `aria-describedby`.
+ */
+export function FieldError({
+  id,
+  announce = false,
+  children,
+}: {
+  id?: string | undefined;
+  announce?: boolean | undefined;
+  children: React.ReactNode;
+}) {
+  return (
+    <p
+      {...(id ? { id } : {})}
+      {...(announce ? { role: "alert" } : {})}
+      className="flex items-start gap-1.5 text-lax-12 font-medium text-lax-danger in-data-[lax-density=client]:text-lax-13 in-data-[lax-density=client]:leading-5"
+    >
+      <CircleAlert
+        aria-hidden
+        className="mt-px size-3.5 shrink-0 in-data-[lax-density=client]:mt-[3px]"
+      />
+      {children}
+    </p>
   );
 }
