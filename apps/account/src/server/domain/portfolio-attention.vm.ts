@@ -36,6 +36,8 @@ function rowFor(item: LaxPortfolioItemV1): AttentionRowVm | null {
         ...(pay ? { href: pay, external: true } : detail),
       };
     }
+    case "payment_confirming":
+      return { key, text: `Payment for ${title} is being confirmed`, productLabel, ...detail };
     case "awaiting_shipment": {
       const track = actionHref(item, "track_shipping");
       return {
