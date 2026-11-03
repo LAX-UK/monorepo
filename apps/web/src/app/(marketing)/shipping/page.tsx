@@ -53,7 +53,7 @@ export default function ShippingPage() {
           Overview
         </LegalH2>
         <p>
-          LAX.BID coordinates domestic and international shipping for purchased lots through
+          LAX Bid coordinates domestic and international shipping for purchased lots through
           specialist logistics providers experienced in the handling of fine art, editions,
           collectibles, and high-value objects.
         </p>
@@ -77,7 +77,7 @@ export default function ShippingPage() {
         </p>
         <p>
           Following a successful purchase, the buyer may request a shipping quotation through the
-          LAX.BID team. Final quotes may include packing, handling, insurance, carrier charges,
+          LAX Bid team. Final quotes may include packing, handling, insurance, carrier charges,
           customs documentation, and any applicable administrative or third-party costs.
         </p>
         <p>
@@ -137,7 +137,7 @@ export default function ShippingPage() {
           Lots are packed according to their category, medium, size, fragility, and destination.
         </p>
         <p>
-          Where required, LAX.BID may coordinate specialist packing, soft wrapping, framed-work
+          Where required, LAX Bid may coordinate specialist packing, soft wrapping, framed-work
           protection, crate preparation, or white-glove handling. Packing methods are determined on
           a case-by-case basis and may be reflected in the final shipping quotation.
         </p>
@@ -168,11 +168,11 @@ export default function ShippingPage() {
           requirements are the responsibility of the buyer unless expressly stated otherwise.
         </p>
         <p>
-          LAX.BID may assist by providing relevant commercial invoices and available supporting
+          LAX Bid may assist by providing relevant commercial invoices and available supporting
           documentation. However, buyers are responsible for ensuring that the lot may be lawfully
           imported into the destination country.
         </p>
-        <p>Customs delays are outside the control of LAX.BID and may affect delivery timelines.</p>
+        <p>Customs delays are outside the control of LAX Bid and may affect delivery timelines.</p>
 
         <LegalH2 id="collection" className="scroll-mt-28">
           Collection in Person
@@ -201,7 +201,7 @@ export default function ShippingPage() {
           verification, documentation, or collection arrangements have been completed.
         </p>
         <p>
-          LAX.BID reserves the right to withhold release where payment, identity, ownership,
+          LAX Bid reserves the right to withhold release where payment, identity, ownership,
           compliance, or shipping details remain incomplete.
         </p>
 
@@ -209,7 +209,7 @@ export default function ShippingPage() {
           Storage
         </LegalH2>
         <p>
-          Purchased lots should be collected or shipped within the timeframe stated by LAX.BID
+          Purchased lots should be collected or shipped within the timeframe stated by LAX Bid
           following payment.
         </p>
         <p>

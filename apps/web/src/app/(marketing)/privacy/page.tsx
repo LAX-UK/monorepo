@@ -174,14 +174,14 @@ const marketingUses = [
   "event invitations",
   "editorial updates",
   "platform announcements",
-  "selected marketing communications relating to LAX.BID and its associated services",
+  "selected marketing communications relating to LAX Bid and its associated services",
 ] as const;
 
 const legitimateInterests = [
   "operating a secure auction platform",
   "preventing fraud and misuse",
   "verifying bidders and sellers",
-  "protecting buyers, sellers, and LAX.BID",
+  "protecting buyers, sellers, and LAX Bid",
   "managing disputes and legal claims",
   "improving the platform",
   "maintaining business records",

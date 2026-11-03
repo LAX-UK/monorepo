@@ -54,7 +54,7 @@ export const ARTIST_DIRECTORY_PRESETS: ReadonlyArray<ArtistDirectoryPreset> = [
     label: "All",
     heroTitle: "Artists & Makers",
     heroDescription:
-      "Explore the artists, makers, brands, marques, authors, mints, and producers behind LAX.BID auction lots.",
+      "Explore the artists, makers, brands, marques, authors, mints, and producers behind LAX Bid auction lots.",
     filter: {},
   },
   {
@@ -63,7 +63,7 @@ export const ARTIST_DIRECTORY_PRESETS: ReadonlyArray<ArtistDirectoryPreset> = [
     label: "Featured",
     heroTitle: "Featured artists",
     heroDescription:
-      "A curated spotlight on artists, makers, and brands the LAX.BID specialist team is following right now.",
+      "A curated spotlight on artists, makers, and brands the LAX Bid specialist team is following right now.",
     filter: { featuredOnly: true, featuredFirst: true },
   },
   {
@@ -81,7 +81,7 @@ export const ARTIST_DIRECTORY_PRESETS: ReadonlyArray<ArtistDirectoryPreset> = [
     label: "Historical & deceased",
     heroTitle: "Historical & deceased artists",
     heroDescription:
-      "Catalogue of historical and deceased artists with works appearing in LAX.BID auctions.",
+      "Catalogue of historical and deceased artists with works appearing in LAX Bid auctions.",
     filter: { historical: true },
   },
   {
@@ -90,7 +90,7 @@ export const ARTIST_DIRECTORY_PRESETS: ReadonlyArray<ArtistDirectoryPreset> = [
     label: "Artists",
     heroTitle: "Artists",
     heroDescription:
-      "Named human creators — painters, sculptors, photographers — with works in the LAX.BID catalogue.",
+      "Named human creators — painters, sculptors, photographers — with works in the LAX Bid catalogue.",
     filter: { kinds: ["artist"] },
   },
   {
@@ -99,7 +99,7 @@ export const ARTIST_DIRECTORY_PRESETS: ReadonlyArray<ArtistDirectoryPreset> = [
     label: "Makers & studios",
     heroTitle: "Makers & studios",
     heroDescription:
-      "Craftspeople, ateliers, and studios — furniture, ceramics, watchmaking and more — in the LAX.BID catalogue.",
+      "Craftspeople, ateliers, and studios — furniture, ceramics, watchmaking and more — in the LAX Bid catalogue.",
     filter: { kinds: ["maker"] },
   },
   {
@@ -108,7 +108,7 @@ export const ARTIST_DIRECTORY_PRESETS: ReadonlyArray<ArtistDirectoryPreset> = [
     label: "Brands",
     heroTitle: "Brands",
     heroDescription:
-      "Commercial brands and houses (Hermès, Cartier, etc.) represented across LAX.BID auctions.",
+      "Commercial brands and houses (Hermès, Cartier, etc.) represented across LAX Bid auctions.",
     filter: { kinds: ["brand"] },
   },
   {
@@ -117,7 +117,7 @@ export const ARTIST_DIRECTORY_PRESETS: ReadonlyArray<ArtistDirectoryPreset> = [
     label: "Marques",
     heroTitle: "Marques",
     heroDescription:
-      "Vehicle and luxury-goods marques — Ferrari, Patek Philippe, and others — represented in LAX.BID auctions.",
+      "Vehicle and luxury-goods marques — Ferrari, Patek Philippe, and others — represented in LAX Bid auctions.",
     filter: { kinds: ["marque"] },
   },
 ];
@@ -179,7 +179,7 @@ export function kindPreset(kind: ArtistKind): ArtistDirectoryPreset {
     heroTitle: config.pluralLabel,
     heroDescription: `Browse ${config.pluralLabel.toLowerCase()}${
       departments ? ` across ${departments}` : ""
-    } with works appearing in LAX.BID auctions.`,
+    } with works appearing in LAX Bid auctions.`,
     filter: { kinds: [kind] },
   };
 }
@@ -217,7 +217,7 @@ export function letterPreset(letter: string): ArtistDirectoryPreset {
     label: lower === "other" ? "•" : lower.toUpperCase(),
     heroTitle:
       lower === "other" ? "Names beginning with a symbol" : `Artists starting with ${display}`,
-    heroDescription: `Browse approved artists, makers, and brands whose name starts with ${display} on LAX.BID.`,
+    heroDescription: `Browse approved artists, makers, and brands whose name starts with ${display} on LAX Bid.`,
     filter: { letter: lower },
   };
 }
@@ -276,8 +276,8 @@ export function decadePreset(slug: string): ArtistDirectoryPreset | null {
     heroTitle: decade === "pre-1800" ? "Artists born before 1800" : `Artists born in the ${decade}`,
     heroDescription:
       decade === "pre-1800"
-        ? "Browse historical artists, makers, and brands born before 1800 with works appearing in LAX.BID auctions."
-        : `Browse artists, makers, and brands born in the ${decade} with works in the LAX.BID catalogue.`,
+        ? "Browse historical artists, makers, and brands born before 1800 with works appearing in LAX Bid auctions."
+        : `Browse artists, makers, and brands born in the ${decade} with works in the LAX Bid catalogue.`,
     filter: { decade },
   };
 }
@@ -347,7 +347,7 @@ export function nationalityPreset(slug: string): ArtistDirectoryPreset | null {
     canonicalPath: `/artists/nationality/${slug}`,
     label,
     heroTitle: `${label} artists`,
-    heroDescription: `Browse ${label} artists, makers, and brands with works appearing in LAX.BID auctions.`,
+    heroDescription: `Browse ${label} artists, makers, and brands with works appearing in LAX Bid auctions.`,
     filter: { nationality: label },
   };
 }
