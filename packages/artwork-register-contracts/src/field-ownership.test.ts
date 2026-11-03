@@ -5,6 +5,7 @@ import {
   LAX_OWNED_FIELDS,
   REGISTER_FIELDS,
   ZOHO_OWNED_FIELDS,
+  canAcceptZohoValue,
   ownerOf,
   reconcileZohoChange,
 } from "./field-ownership.js";
@@ -34,6 +35,15 @@ function entry(overrides: Partial<ArtworkRegisterEntry> = {}): ArtworkRegisterEn
     ...overrides,
   };
 }
+
+describe("canAcceptZohoValue", () => {
+  it("lets Zoho's stock code be taken over, and nothing about where a piece is offered", () => {
+    expect(canAcceptZohoValue("stockCode")).toBe(true);
+    for (const field of ["offerState", "kind", "sourceOriginalId"] as const) {
+      expect(canAcceptZohoValue(field)).toBe(false);
+    }
+  });
+});
 
 describe("field ownership table", () => {
   it("gives every field exactly one owner", () => {

@@ -104,6 +104,7 @@ export async function registerAdminArtworkRegisterRoutes(
         response: {
           200: AdminRegisterResolveResultSchema,
           ...READ_ERRORS,
+          400: ShopApiErrorBodySchema,
           409: ShopApiErrorBodySchema,
         },
       },
@@ -126,6 +127,24 @@ export async function registerAdminArtworkRegisterRoutes(
             SHOP_API_ERROR_CODES.CONFLICT,
             "Someone has already decided this one",
             409,
+          );
+        case "invalid_stock_code":
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.CONFLICT,
+            "Zoho's stock code is not valid for this artwork, so it cannot be accepted. The conflict stays open.",
+            409,
+          );
+        case "stock_code_taken":
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.CONFLICT,
+            "Another artwork already uses Zoho's stock code, so it cannot be accepted. The conflict stays open.",
+            409,
+          );
+        case "cannot_accept_field":
+          throw new ShopApiError(
+            SHOP_API_ERROR_CODES.VALIDATION,
+            "This is set in LAX. Keep the LAX value.",
+            400,
           );
       }
     },

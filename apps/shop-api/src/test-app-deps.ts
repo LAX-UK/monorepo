@@ -250,6 +250,7 @@ export function createMinimalShopApiTestDeps(
         register: { findById: async () => null, listEvents: async () => [] },
         resolver: { resolveConflict: async () => ({ ok: false, reason: "not_found" }) },
         runs: { latestNightlyRun: async () => null },
+        staffNames: { namesFor: async () => new Map() },
       }),
       guestErasure: new GuestErasureService({
         read: async () => null,

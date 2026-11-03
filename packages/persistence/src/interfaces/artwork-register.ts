@@ -97,7 +97,18 @@ export type ResolveConflictInput = {
 
 export type ResolveConflictResult =
   | { ok: true; conflict: RegisterConflict }
-  | { ok: false; reason: "not_found" | "already_resolved" };
+  | {
+      ok: false;
+      reason:
+        | "not_found"
+        | "already_resolved"
+        /** Accepting Zoho's value is not offered for this field. */
+        | "cannot_accept_field"
+        /** Zoho's stock code is not a LAX stock code, or would turn an original into a print. */
+        | "invalid_stock_code"
+        /** Another artwork already holds Zoho's stock code. */
+        | "stock_code_taken";
+    };
 
 /**
  * Writes to the register. Every write that changes a record is optimistic (the version moves
@@ -117,6 +128,10 @@ export interface IArtworkRegisterRepository extends IArtworkRegisterReader {
   applyZohoChange(change: ZohoChange, now: Date): Promise<ApplyZohoChangeResult>;
   /** Moves the artwork to a new place under the one-place-at-a-time rules. */
   moveOffer(input: MoveOfferInput): Promise<MoveOfferResult>;
-  /** Records the decision on a conflict. Acting on it (for example a move) is a separate call. */
+  /**
+   * Decides a conflict. Keeping LAX's value changes nothing in the register. Accepting Zoho's value
+   * for a stock code applies it in the same transaction, after checking it is a valid code for
+   * this artwork and that no other artwork holds it; otherwise the conflict stays open.
+   */
   resolveConflict(input: ResolveConflictInput): Promise<ResolveConflictResult>;
 }

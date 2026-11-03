@@ -109,6 +109,7 @@ import {
 import { createDrizzleShopReadinessAdapter } from "./infrastructure/drizzle-shop-readiness.adapter.js";
 import { createDrizzleShopStaffMemberReader } from "./infrastructure/drizzle-shop-staff-member.reader.js";
 import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-transaction-effects.js";
+import { createDrizzleStaffNameReader } from "./infrastructure/drizzle-staff-name.reader.js";
 import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-storefront-curation.repository.js";
 import { createDrizzleEditionRunUnitOfWork } from "./infrastructure/edition-runs/drizzle-edition-run.unit-of-work.js";
 import { createEnquiryFollowUp } from "./infrastructure/enquiry-follow-up.js";
@@ -546,6 +547,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           register: artworkRegisterRepository,
           resolver: artworkRegisterRepository,
           runs: new DrizzleZohoArtworkSyncStore(db),
+          staffNames: createDrizzleStaffNameReader(db),
         }),
         releaseAlertSummary: releaseAlertStore,
         guestErasure: new GuestErasureService(

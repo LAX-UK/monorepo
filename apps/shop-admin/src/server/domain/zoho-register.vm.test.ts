@@ -13,6 +13,7 @@ import {
   parseZohoQueueQuery,
   presentConflictValue,
   presentOfferState,
+  setInLaxLine,
   skippedReasonLabel,
   zohoProductUrl,
   zohoQueueApiQuery,
@@ -156,17 +157,31 @@ describe("conflictDecisionCopy", () => {
       confirmLabel: "Keep LAX value",
     });
     expect(conflictDecisionCopy(conflict, "kept_lax").description).toContain(
-      "LAX keeps On lax.art. Zoho still has Withdrawn",
+      "LAX will set Zoho back to On lax.art",
     );
   });
 
-  it("says that accepting Zoho's value records the decision and changes nothing else", () => {
+  it("says that accepting Zoho's value applies it, and what happens if it is taken", () => {
     const copy = conflictDecisionCopy(
       { field: "stockCode", zohoValue: "LAX-ORI-PH-GAC-26-0099", laxValue: null },
       "accepted_zoho",
     );
     expect(copy.title).toBe("Accept the Zoho value for the stock code?");
-    expect(copy.description).toContain("does not change what LAX holds for the stock code");
+    expect(copy.description).toContain(
+      "LAX changes the stock code to LAX-ORI-PH-GAC-26-0099 straight away",
+    );
+    expect(copy.description).not.toContain("does not");
+  });
+});
+
+describe("setInLaxLine", () => {
+  it("says where it is set and what LAX will send back to Zoho", () => {
+    expect(setInLaxLine({ field: "offerState", laxValue: "lax_art" })).toBe(
+      "Where it is offered is set in LAX. LAX will set Zoho back to On lax.art.",
+    );
+    expect(setInLaxLine({ field: "sourceOriginalId", laxValue: null })).toBe(
+      "Made from is set in LAX. LAX will clear it in Zoho.",
+    );
   });
 });
 
@@ -176,6 +191,7 @@ describe("buildRegisterTimeline", () => {
   ): AdminRegisterEvent => ({
     id: over.type,
     actor: "zoho",
+    actorName: null,
     payload: {},
     createdAt: "2026-11-03T09:00:00.000Z",
     ...over,

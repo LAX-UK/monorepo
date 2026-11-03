@@ -286,6 +286,16 @@ function conflictField(payload: Record<string, unknown>): AdminRegisterConflict[
     : null;
 }
 
+/** "Changed from A to B" when a decision rewrote a value. */
+function appliedDetail(payload: Record<string, unknown>): { detail?: string } {
+  const applied = payload.applied;
+  if (!applied || typeof applied !== "object") return {};
+  const { from, to } = applied as { from?: unknown; to?: unknown };
+  return typeof from === "string" && typeof to === "string" && from !== to
+    ? { detail: `Changed from ${from} to ${to}` }
+    : {};
+}
+
 function describeEvent(
   event: AdminRegisterEvent,
 ): Pick<TimelineEvent, "title" | "detail" | "tone"> {
@@ -325,6 +335,7 @@ function describeEvent(
           payload.resolution === "accepted_zoho"
             ? `Accepted the Zoho value for ${what}`
             : `Kept the LAX value for ${what}`,
+        ...appliedDetail(payload),
         tone: "success",
       };
     }
@@ -340,7 +351,7 @@ export function buildRegisterTimeline(events: readonly AdminRegisterEvent[]): Ti
   return events.map((event) => ({
     id: event.id,
     at: event.createdAt,
-    actor: ACTOR_LABEL[event.actor],
+    actor: event.actorName ?? ACTOR_LABEL[event.actor],
     ...describeEvent(event),
   }));
 }
@@ -354,8 +365,8 @@ export const KEEP_LAX_LABEL = "Keep LAX value";
 export const ACCEPT_ZOHO_LABEL = "Accept Zoho value";
 
 /**
- * The words of the confirmation for one decision. A decision is recorded in the artwork's
- * history; it does not rewrite the field, so the copy says exactly that.
+ * The words of the confirmation for one decision. Keeping LAX's value sends it back to Zoho (the
+ * write-back does that); accepting Zoho's value applies it in LAX straight away.
  */
 export function conflictDecisionCopy(
   conflict: Pick<AdminRegisterConflict, "field" | "zohoValue" | "laxValue">,
@@ -363,19 +374,30 @@ export function conflictDecisionCopy(
 ): { title: string; description: string; confirmLabel: string; success: string } {
   const what = CONFLICT_FIELD_PHRASE[conflict.field];
   const zoho = presentConflictValue(conflict.field, conflict.zohoValue) ?? "nothing";
-  const lax = presentConflictValue(conflict.field, conflict.laxValue) ?? "nothing";
+  const lax = presentConflictValue(conflict.field, conflict.laxValue);
   if (decision === "kept_lax") {
     return {
       title: `Keep the LAX value for ${what}?`,
-      description: `LAX keeps ${lax}. Zoho still has ${zoho}, so change it there as well if LAX is right. The decision is added to the artwork's history.`,
+      description: lax
+        ? `LAX keeps ${lax}. LAX will set Zoho back to ${lax}. The decision is added to the artwork's history.`
+        : "LAX keeps it empty. LAX will clear it in Zoho. The decision is added to the artwork's history.",
       confirmLabel: KEEP_LAX_LABEL,
       success: RESOLUTION_LABEL.kept_lax,
     };
   }
   return {
     title: `Accept the Zoho value for ${what}?`,
-    description: `This records that Zoho is right, with ${zoho}. The decision is added to the artwork's history. It does not change what LAX holds for ${what}.`,
+    description: `LAX changes ${what} to ${zoho} straight away, and the decision is added to the artwork's history. If another artwork already uses ${zoho}, nothing changes and you will be told.`,
     confirmLabel: ACCEPT_ZOHO_LABEL,
     success: RESOLUTION_LABEL.accepted_zoho,
   };
+}
+
+/** The one line under a comparison where Zoho's value cannot be taken over. */
+export function setInLaxLine(conflict: Pick<AdminRegisterConflict, "field" | "laxValue">): string {
+  const label = CONFLICT_FIELD_LABEL[conflict.field];
+  const lax = presentConflictValue(conflict.field, conflict.laxValue);
+  return lax
+    ? `${label} is set in LAX. LAX will set Zoho back to ${lax}.`
+    : `${label} is set in LAX. LAX will clear it in Zoho.`;
 }

@@ -9,6 +9,7 @@ import {
   KEEP_LAX_LABEL,
   conflictDecisionCopy,
   presentConflictValue,
+  setInLaxLine,
 } from "@/server/domain/zoho-register.vm";
 import type { AdminRegisterConflict } from "@auction/shop-contracts";
 import { ConfirmActionDialog, Permitted, Section, StaffButton, StaffDate } from "@auction/staff-ui";
@@ -64,6 +65,9 @@ export function ConflictCard({ conflict }: { conflict: AdminRegisterConflict }) 
           <Side label="In Zoho" value={conflict.zohoValue} field={conflict.field} />
           <Side label="In LAX" value={conflict.laxValue} field={conflict.field} />
         </div>
+        {conflict.canAcceptZoho ? null : (
+          <p className="text-staff-sm text-staff-muted">{setInLaxLine(conflict)}</p>
+        )}
         <Permitted
           requires={REVIEW}
           fallback={
@@ -76,9 +80,11 @@ export function ConflictCard({ conflict }: { conflict: AdminRegisterConflict }) 
             <StaffButton variant="secondary" onClick={() => setDeciding("kept_lax")}>
               {KEEP_LAX_LABEL}
             </StaffButton>
-            <StaffButton variant="secondary" onClick={() => setDeciding("accepted_zoho")}>
-              {ACCEPT_ZOHO_LABEL}
-            </StaffButton>
+            {conflict.canAcceptZoho ? (
+              <StaffButton variant="secondary" onClick={() => setDeciding("accepted_zoho")}>
+                {ACCEPT_ZOHO_LABEL}
+              </StaffButton>
+            ) : null}
           </div>
         </Permitted>
       </div>

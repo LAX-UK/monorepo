@@ -72,11 +72,17 @@ export type ResolveConflictCommand = {
 };
 
 export interface ConflictResolver {
-  resolveConflict(
-    input: ResolveConflictCommand,
-  ): Promise<
+  resolveConflict(input: ResolveConflictCommand): Promise<
     | { ok: true; conflict: RegisterConflictRecord }
-    | { ok: false; reason: "not_found" | "already_resolved" }
+    | {
+        ok: false;
+        reason:
+          | "not_found"
+          | "already_resolved"
+          | "cannot_accept_field"
+          | "invalid_stock_code"
+          | "stock_code_taken";
+      }
   >;
 }
 

@@ -1,4 +1,8 @@
-import { type ArtworkRegisterEntry, catalogueGapsOf } from "@auction/artwork-register-contracts";
+import {
+  type ArtworkRegisterEntry,
+  canAcceptZohoValue,
+  catalogueGapsOf,
+} from "@auction/artwork-register-contracts";
 import {
   ADMIN_REGISTER_PAGE_SIZE,
   type AdminRegisterArtworkSummary,
@@ -21,6 +25,7 @@ import type {
   RegisterQueueFilter,
   SyncRunReader,
 } from "../ports/artwork-register-review.ports.js";
+import type { StaffNameReader } from "../ports/staff-name.reader.js";
 
 /** How much history one artwork's page shows. */
 const HISTORY_LIMIT = 100;
@@ -30,13 +35,20 @@ export type ArtworkRegisterReviewDeps = {
   register: ArtworkRegisterRecords;
   resolver: ConflictResolver;
   runs: SyncRunReader;
+  staffNames: StaffNameReader;
   now?: () => Date;
 };
 
 export type ResolveConflictOutcome =
   | { kind: "resolved"; result: AdminRegisterResolveResult }
-  | { kind: "not_found" }
-  | { kind: "already_resolved" };
+  | {
+      kind:
+        | "not_found"
+        | "already_resolved"
+        | "cannot_accept_field"
+        | "invalid_stock_code"
+        | "stock_code_taken";
+    };
 
 const iso = (date: Date | null) => date?.toISOString() ?? null;
 
@@ -77,6 +89,7 @@ export function presentConflict(conflict: RegisterConflictRecord): AdminRegister
     field: conflict.field,
     zohoValue: scalarOf(conflict.zohoValue),
     laxValue: scalarOf(conflict.laxValue),
+    canAcceptZoho: canAcceptZohoValue(conflict.field),
     status: conflict.status,
     resolution: conflict.resolution,
     resolvedAt: iso(conflict.resolvedAt),
@@ -86,7 +99,10 @@ export function presentConflict(conflict: RegisterConflictRecord): AdminRegister
 }
 
 /** A staff member is not named on the page; the actor says only which kind of party acted. */
-function presentEvent(event: RegisterEventRecord): AdminRegisterEvent {
+function presentEvent(
+  event: RegisterEventRecord,
+  names: ReadonlyMap<string, string>,
+): AdminRegisterEvent {
   const actor = event.actor.startsWith("staff:")
     ? "staff"
     : event.actor === "zoho"
@@ -96,6 +112,7 @@ function presentEvent(event: RegisterEventRecord): AdminRegisterEvent {
     id: event.id,
     type: event.type,
     actor,
+    actorName: actor === "staff" ? (names.get(event.actor.slice("staff:".length)) ?? null) : null,
     payload: event.payload,
     createdAt: event.createdAt.toISOString(),
   };
@@ -167,6 +184,9 @@ export class ArtworkRegisterReviewService {
       this.deps.queue.listConflictsFor(registerId),
       this.deps.register.listEvents(registerId, HISTORY_LIMIT),
     ]);
+    const names = await this.deps.staffNames.namesFor(
+      events.filter((e) => e.actor.startsWith("staff:")).map((e) => e.actor.slice("staff:".length)),
+    );
     return {
       registerId: entry.id,
       zohoProductId: entry.zohoProductId,
@@ -186,7 +206,7 @@ export class ArtworkRegisterReviewService {
       createdAt: entry.createdAt.toISOString(),
       conflicts: conflicts.map(presentConflict),
       // Newest first, as the page reads it.
-      events: events.map(presentEvent).reverse(),
+      events: events.map((event) => presentEvent(event, names)).reverse(),
     };
   }
 

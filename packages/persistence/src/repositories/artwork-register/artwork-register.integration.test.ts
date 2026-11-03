@@ -377,6 +377,71 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
       expect(await repo.listOpenConflicts(10)).toHaveLength(1);
     });
 
+    async function stockConflict(zohoCode: string) {
+      const entry = await created();
+      await repo.applyZohoChange(
+        { zohoProductId: "5001", modifiedAt: T2, fields: { stockCode: zohoCode } },
+        T2,
+      );
+      const [open] = await repo.listOpenConflicts(10);
+      if (!open) throw new Error("no conflict");
+      return { entry, open };
+    }
+    const accept = (conflictId: string) =>
+      repo.resolveConflict({ conflictId, resolution: "accepted_zoho", resolvedBy: staff, now: T2 });
+
+    it("applies Zoho's stock code when it is accepted, in the same step", async () => {
+      const { entry, open } = await stockConflict("LAX-ORI-PH-GAC-26-0099");
+      expect(await accept(open.id)).toMatchObject({ ok: true });
+      const after = await repo.findById(entry.id);
+      expect(after?.stockCode).toBe("LAX-ORI-PH-GAC-26-0099");
+      expect(after?.version).toBe(entry.version + 1);
+      expect(await repo.listOpenConflicts(10)).toHaveLength(0);
+      const events = await repo.listEvents(entry.id, 10);
+      expect(events.at(-1)?.payload).toMatchObject({
+        resolution: "accepted_zoho",
+        applied: { from: "LAX-ORI-PH-GAC-26-0001", to: "LAX-ORI-PH-GAC-26-0099" },
+      });
+    });
+
+    it("refuses a stock code another artwork holds, and keeps the conflict open", async () => {
+      const { entry, open } = await stockConflict("LAX-ORI-PH-GAC-26-0099");
+      await repo.create(
+        newEntry({ zohoProductId: "5002", stockCode: "LAX-ORI-PH-GAC-26-0099" }),
+        "system",
+        T0,
+      );
+      expect(await accept(open.id)).toEqual({ ok: false, reason: "stock_code_taken" });
+      expect((await repo.findById(entry.id))?.stockCode).toBe("LAX-ORI-PH-GAC-26-0001");
+      expect(await repo.listOpenConflicts(10)).toHaveLength(1);
+    });
+
+    it("refuses a stock code that is not a LAX code or would make a print of an original", async () => {
+      const bad = await stockConflict("not-a-code");
+      expect(await accept(bad.open.id)).toEqual({ ok: false, reason: "invalid_stock_code" });
+      await repo.applyZohoChange(
+        {
+          zohoProductId: "5001",
+          modifiedAt: new Date(T2.getTime() + 1000),
+          fields: { stockCode: "LAX-PRI-PH-GAC-26-0001" },
+        },
+        T2,
+      );
+      const [open] = await repo.listOpenConflicts(10);
+      expect(await accept(open?.id ?? "")).toEqual({ ok: false, reason: "invalid_stock_code" });
+      expect(await repo.listOpenConflicts(10)).toHaveLength(1);
+    });
+
+    it("never accepts Zoho's value for where an artwork is offered", async () => {
+      await created();
+      await repo.applyZohoChange(
+        { zohoProductId: "5001", modifiedAt: T2, fields: { offerState: "withdrawn" } },
+        T2,
+      );
+      const [open] = await repo.listOpenConflicts(10);
+      expect(await accept(open?.id ?? "")).toEqual({ ok: false, reason: "cannot_accept_field" });
+    });
+
     it("reports an unknown conflict", async () => {
       expect(
         await repo.resolveConflict({

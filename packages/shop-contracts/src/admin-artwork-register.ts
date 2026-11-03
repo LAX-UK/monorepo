@@ -64,6 +64,8 @@ export const AdminRegisterConflictSchema = Type.Object({
   field: ConflictFieldSchema,
   zohoValue: ScalarSchema,
   laxValue: ScalarSchema,
+  /** Whether Zoho's value can be taken over. Where an artwork is offered is set in LAX only. */
+  canAcceptZoho: Type.Boolean(),
   status: Type.Union([Type.Literal("open"), Type.Literal("resolved")]),
   resolution: Type.Union([ConflictResolutionSchema, Type.Null()]),
   resolvedAt: Type.Union([Type.String({ format: "date-time" }), Type.Null()]),
@@ -108,8 +110,10 @@ export const AdminRegisterLastCheckSchema = Type.Object({
 export const AdminRegisterEventSchema = Type.Object({
   id: Type.String({ format: "uuid" }),
   type: Type.String(),
-  /** `zoho`, `system` or `staff`; a staff member is not named here. */
+  /** `zoho`, `system` or `staff`. */
   actor: Type.Union([Type.Literal("zoho"), Type.Literal("system"), Type.Literal("staff")]),
+  /** The staff member's name, when the actor is staff and a name is known. */
+  actorName: Type.Union([Type.String(), Type.Null()]),
   payload: Type.Record(Type.String(), Type.Unknown()),
   createdAt: Type.String({ format: "date-time" }),
 });

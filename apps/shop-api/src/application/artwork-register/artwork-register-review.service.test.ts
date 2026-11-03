@@ -81,6 +81,7 @@ function service(overrides: Partial<ArtworkRegisterReviewDeps> = {}) {
       })),
     },
     runs: { latestNightlyRun: vi.fn(async () => null) },
+    staffNames: { namesFor: async () => new Map([["u1", "Cat Alogue"]]) },
     now: () => T0,
     ...overrides,
   };
@@ -162,7 +163,7 @@ describe("ArtworkRegisterReviewService", () => {
     });
   });
 
-  it("opens one artwork with its conflicts and history, newest first, without naming staff", async () => {
+  it("opens one artwork with its conflicts and history, newest first, naming staff", async () => {
     const events: RegisterEventRecord[] = [
       { id: "e1", registerId: ID, type: "created", actor: "zoho", payload: {}, createdAt: T0 },
       {
@@ -182,7 +183,7 @@ describe("ArtworkRegisterReviewService", () => {
       ["e2", "staff"],
       ["e1", "zoho"],
     ]);
-    expect(JSON.stringify(detail)).not.toContain("u1");
+    expect(detail?.events.map((e) => e.actorName)).toEqual(["Cat Alogue", null]);
     expect(detail).toMatchObject({ imageCount: 0, missing: ["image", "size"], offerState: "held" });
     expect(detail?.conflicts).toHaveLength(1);
   });
@@ -213,7 +214,30 @@ describe("ArtworkRegisterReviewService", () => {
     });
   });
 
-  it.each(["not_found", "already_resolved"] as const)("passes on %s", async (reason) => {
+  it("says which conflicts can take Zoho's value", async () => {
+    const { service: s } = service({
+      queue: {
+        ...service().queue,
+        listOpenConflicts: async () => ({
+          items: [
+            { conflict: conflict(), entry: entry() },
+            { conflict: conflict({ field: "offerState" }), entry: entry() },
+          ],
+          total: 2,
+        }),
+      },
+    });
+    const list = await s.listConflicts({});
+    expect(list.items.map((i) => i.conflict.canAcceptZoho)).toEqual([true, false]);
+  });
+
+  it.each([
+    "not_found",
+    "already_resolved",
+    "cannot_accept_field",
+    "invalid_stock_code",
+    "stock_code_taken",
+  ] as const)("passes on %s", async (reason) => {
     const { service: s } = service({
       resolver: { resolveConflict: async () => ({ ok: false, reason }) },
     });

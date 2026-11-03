@@ -82,6 +82,7 @@ async function buildApp(
     },
     resolver: { resolveConflict },
     runs: { latestNightlyRun: async () => null },
+    staffNames: { namesFor: async () => new Map() },
   });
   const app = createShopApiApp({ deps, logger: false });
   await app.ready();
@@ -212,6 +213,23 @@ describe("From Zoho queue routes", () => {
       payload: { resolution: "accepted_zoho" },
     });
     expect(response.statusCode).toBe(409);
+    await app.close();
+  });
+
+  it.each([
+    ["invalid_stock_code", 409],
+    ["stock_code_taken", 409],
+    ["cannot_accept_field", 400],
+  ] as const)("answers %s with a plain refusal", async (reason, status) => {
+    const app = await buildApp("shop_admin", async () => ({ ok: false, reason }));
+    const response = await app.inject({
+      method: "POST",
+      url: `/admin/v1/artwork-register/conflicts/${CONFLICT_ID}/resolve`,
+      headers: auth,
+      payload: { resolution: "accepted_zoho" },
+    });
+    expect(response.statusCode).toBe(status);
+    expect(response.json().message).toMatch(/stock code|LAX/);
     await app.close();
   });
 
