@@ -16,6 +16,7 @@ vi.mock("@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations", () =>
   adminCancelSaleResultAction: vi.fn(),
   adminMarkSaleEndedResultAction: vi.fn(),
   adminPublishSaleResultAction: vi.fn(),
+  adminSaleAnnouncePreviewAction: vi.fn().mockResolvedValue({ ok: true, data: { subscribers: 3 } }),
   adminUnpublishSaleResultAction: vi.fn(),
 }));
 vi.mock("@/lib/actions/admin-sales", () => ({ adminSoftDeleteSaleResultAction: vi.fn() }));
@@ -130,11 +131,11 @@ describe("SaleDetailShell selling badge", () => {
     );
   });
 
-  it("leaves Publish enabled for a linked draft ATG does not own", () => {
+  it("leaves Publish enabled for a linked draft ATG does not own", async () => {
     renderShell("draft", selling("draft", { remoteStatus: "closed" }));
     const publish = screen.getByRole("button", { name: /publish sale/i });
     expect(publish).not.toHaveAttribute("aria-disabled");
     fireEvent.click(publish);
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 });

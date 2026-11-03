@@ -3,6 +3,8 @@ import { Sentry } from "@auction/observability";
 /** Log lines an operator must hear about. Their wording is the contract the alert rules match on. */
 export const ALERTING_LOG_MESSAGES = [
   "auth_security_effect_abandoned",
+  /** A verification, reset or sign-in email could be neither queued nor recorded for retry. */
+  "auth_credential_email_lost",
   "rate_limit_redis_unavailable_using_in_process_fallback",
   /** A personal data copy is still being prepared 24 hours, 7 days and 21 days after the request (due at one month). */
   "subject_export_overdue_24h",

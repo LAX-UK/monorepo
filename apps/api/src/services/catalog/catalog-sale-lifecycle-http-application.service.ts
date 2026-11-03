@@ -94,12 +94,14 @@ export class CatalogSaleLifecycleHttpApplicationService
     role: UserRole;
     saleId: string;
     staffRoles: StaffRoles | undefined;
+    announce?: boolean | undefined;
   }): Promise<CatalogRouteOutcome<PresentedSaleWithLots>> {
     const result = await this.saleService.publish(
       input.userId,
       input.role,
       input.saleId,
       input.staffRoles,
+      { announce: input.announce },
     );
     if (result.isErr()) return catalogRouteFromResult(result);
     const [data] = await presentSalesWithLotsImages(this.mediaUrlResolver, [result.value]);

@@ -36,6 +36,7 @@ export const NOTIFICATION_TYPES: readonly { id: string; label: string }[] = [
   { id: "fulfilment", label: "Delivery" },
   { id: "closing_soon", label: "Closing soon" },
   { id: "watching", label: "Watching" },
+  { id: "sales", label: "New sales" },
   { id: "consignments", label: "Consignments" },
   { id: "team", label: "Team and access" },
 ];

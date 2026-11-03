@@ -100,6 +100,14 @@ export function attachUserDashboardRoutes(r: UserHono, deps: UserRouteDeps): voi
     });
     return respondUserHttpJson(c, response);
   });
+
+  r.get("/me/account/amounts-owed", requireAuth, requireBuyingAccount, async (c) => {
+    const account = buyingAccountOf(c.get("legalEntityContext"));
+    if (!account) return c.json({ error: "insufficient_entity_role" }, 403);
+    const userId = c.get("userId") as string;
+    const response = await container.userRoutes.dashboardHttp.listAmountsOwed({ userId, account });
+    return respondUserHttpJson(c, response);
+  });
 }
 
 function buyingAccountOf(ctx: LegalEntityContext | undefined): BuyingAccountActor | null {

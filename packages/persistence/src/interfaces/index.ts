@@ -44,15 +44,24 @@ export type {
   ImpersonationSessionRow,
 } from "./impersonation-session.repository.js";
 
+export type {
+  EmailBlockLiftRecord,
+  EmailBlockRecord,
+  IEmailBlockRepository,
+} from "./email-block.repository.js";
+export type {
+  IPersonEmailDeliveryReader,
+  PersonEmailAddressStatus,
+  PersonEmailBlockRecord,
+  PersonEmailDeliveryRecord,
+  PersonEmailSendRecord,
+} from "./person-email-delivery.reader.js";
+
 export type { IEmailSuppressionRepository } from "./email-suppression.repository.js";
 
 export type { IEmailWebhookIngestRepository } from "./email-webhook-ingest.repository.js";
 
 export type { INewsletterSignupRepository } from "./newsletter-signup.repository.js";
-export type {
-  IVisitorSaleAlertRepository,
-  VisitorSaleAlertRecord,
-} from "./visitor-sale-alert.repository.js";
 
 export type { IWebhookEventRepository, WebhookEventDrainRow } from "./webhook-event.repository.js";
 export type {
@@ -1135,3 +1144,18 @@ export type {
   NewDisputeAllocation,
   NewDisputeCase,
 } from "./dispute-case.repository.js";
+
+export type {
+  AnnouncedSale,
+  IBidAlertSaleNoticeWriter,
+  IBidAlertSaleReader,
+} from "./bid-alert-sale.js";
+export {
+  BuyerDefaultConflictError,
+  type BuyerDefaultLotFacts,
+  type IBuyerDefaultReader,
+  type IBuyerDefaultRepository,
+  type IPaymentReminderStore,
+  type PaymentReminderCandidate,
+  type RecordBuyerDefaultInput,
+} from "./buyer-default.js";

@@ -1,6 +1,7 @@
 "use server";
 
 import type { AdminRefundReason } from "@auction/shop-contracts";
+import type { ShopReturnDisposition } from "@auction/shop-domain";
 import { forwardAdminJsonMutation } from "./forward-admin-mutation";
 
 export async function createProductionTask(input: {
@@ -94,6 +95,46 @@ export async function retryOrderRefund(input: { refundId: string; idempotencyKey
     bffPath: "refunds/retry",
     method: "POST",
     jsonBody: { refundId: input.refundId },
+    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+  });
+}
+
+export async function settleRefundOutsideLax(input: {
+  refundId: string;
+  reason: string;
+  externalReference: string;
+  idempotencyKey?: string;
+}) {
+  return forwardAdminJsonMutation<{ id: string; status: string }>({
+    bffPath: "refunds/settled-outside",
+    method: "POST",
+    jsonBody: {
+      refundId: input.refundId,
+      reason: input.reason,
+      externalReference: input.externalReference,
+    },
+    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+  });
+}
+
+export async function markReturnInTransit(input: { returnId: string; idempotencyKey?: string }) {
+  return forwardAdminJsonMutation<{ id: string; status: string }>({
+    bffPath: `returns/${encodeURIComponent(input.returnId)}/in-transit`,
+    method: "POST",
+    jsonBody: {},
+    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
+  });
+}
+
+export async function receiveReturn(input: {
+  returnId: string;
+  disposition: ShopReturnDisposition;
+  idempotencyKey?: string;
+}) {
+  return forwardAdminJsonMutation<{ id: string; status: string }>({
+    bffPath: `returns/${encodeURIComponent(input.returnId)}/receive`,
+    method: "POST",
+    jsonBody: { disposition: input.disposition },
     ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
   });
 }

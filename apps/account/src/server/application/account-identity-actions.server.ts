@@ -8,12 +8,14 @@ import {
   type AccountContactError,
   type AccountEmailChangeConfirmedResponse,
   type AccountPasswordError,
+  type AccountSignInMethodError,
   accountAddressDefaultKindSchema,
   accountAddressInputSchema,
   accountEmailSchema,
   accountNameSchema,
   accountPhoneCodeSchema,
   accountPhoneSchema,
+  socialSignInProviderSchema,
 } from "@auction/identity-contracts";
 import { getLaxAccountContainer } from "../container";
 import type {
@@ -29,6 +31,11 @@ import {
   passwordRejection,
   validatePasswordForm,
 } from "../domain/account-password.vm";
+import {
+  PROVIDER_LABEL,
+  isSignInMethodRejection,
+  signInMethodRejectionMessage,
+} from "../domain/account-sign-in-methods.vm";
 import type { IdentityActor, IdentityCallResult } from "../ports/account-identity-gateway";
 import { loadActor } from "./load-account-actor";
 
@@ -37,8 +44,13 @@ const UNAVAILABLE_MESSAGE =
 const UNAVAILABLE = { status: "error", message: UNAVAILABLE_MESSAGE } as const;
 
 function rejectionMessage(
-  reason: AccountContactError | AccountAddressError | AccountPasswordError,
+  reason:
+    | AccountContactError
+    | AccountAddressError
+    | AccountPasswordError
+    | AccountSignInMethodError,
 ): string {
+  if (isSignInMethodRejection(reason)) return signInMethodRejectionMessage(reason);
   if (isAddressRejection(reason)) return addressRejectionMessage(reason);
   if (isPasswordRejection(reason)) return passwordRejection(reason).message;
   return contactRejectionMessage(reason);
@@ -113,6 +125,23 @@ export async function regenerateBackupCodesAction(): Promise<BackupCodesActionRe
     return { status: "error", message: rejectionMessage(result.reason) };
   }
   return result.status === "reauth_required" ? result : UNAVAILABLE;
+}
+
+/**
+ * Removes a linked Google or Apple sign-in. The issuer needs a recent sign-in, refuses to remove
+ * the last method, signs out every other device and emails the person.
+ */
+export async function removeSignInMethodAction(provider: string): Promise<AccountActionResult> {
+  const parsed = socialSignInProviderSchema.safeParse(provider);
+  if (!parsed.success) {
+    return { status: "error", message: "That sign-in method can't be removed here." };
+  }
+  const { identity } = getLaxAccountContainer();
+  return actAsSignedInPerson(
+    (actor) => identity.unlinkSignInMethod(actor, parsed.data),
+    () =>
+      `${PROVIDER_LABEL[parsed.data]} sign-in has been removed. Every other device has been signed out.`,
+  );
 }
 
 /**

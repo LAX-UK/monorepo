@@ -16,6 +16,7 @@ export const IDENTITY_EMAIL_TEMPLATE_NAMES = [
   "email-changed",
   "phone-verified",
   "phone-removed",
+  "sign-in-method-removed",
   "social-account-linked",
   "social-account-unlinked",
   "new-device-login",
@@ -29,6 +30,8 @@ export const IDENTITY_EMAIL_TEMPLATE_NAMES = [
   "account-deletion-reminder",
   "account-deletion-held",
   "account-deletion-completed",
+  "staff-email-change-confirm",
+  "staff-email-change-notice",
 ] as const;
 
 export type IdentityEmailTemplate = (typeof IDENTITY_EMAIL_TEMPLATE_NAMES)[number];
@@ -48,4 +51,19 @@ export type EmailEnqueueInput = {
 
 export type EmailSender = {
   enqueue(input: EmailEnqueueInput): Promise<{ outboxId: string }>;
+};
+
+/**
+ * An email that carries a one-time link (verification, password reset, sign-in link).
+ * `idempotencyKey` is required: it is what lets a retry reach the same queued message
+ * instead of sending a second link.
+ */
+export type CredentialEmailInput = EmailEnqueueInput & { idempotencyKey: string };
+
+/**
+ * Hands over a credential email. Resolves once the message is queued or durably recorded for
+ * retry, and rejects only when neither happened, so the caller can tell the person it was not sent.
+ */
+export type CredentialEmailSender = {
+  send(input: CredentialEmailInput): Promise<void>;
 };

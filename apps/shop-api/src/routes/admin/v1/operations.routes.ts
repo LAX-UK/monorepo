@@ -6,8 +6,11 @@ import {
   FULFILMENT_TRACKING_NUMBER_MAX_LENGTH,
   FULFILMENT_TRACKING_NUMBER_PATTERN,
   PAYOUT_PAID_REFERENCE_MAX_LENGTH,
+  SETTLED_OUTSIDE_REASON_MAX_LENGTH,
+  SETTLED_OUTSIDE_REFERENCE_MAX_LENGTH,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
+import { SHOP_RETURN_DISPOSITIONS, type ShopReturnDisposition } from "@auction/shop-domain";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
@@ -56,6 +59,21 @@ const RequestRefundBodySchema = Type.Object({
 
 const RetryRefundBodySchema = Type.Object({
   refundId: Type.String({ format: "uuid" }),
+});
+
+const SettleRefundOutsideBodySchema = Type.Object({
+  refundId: Type.String({ format: "uuid" }),
+  reason: Type.String({ minLength: 1, maxLength: SETTLED_OUTSIDE_REASON_MAX_LENGTH }),
+  externalReference: Type.String({
+    minLength: 1,
+    maxLength: SETTLED_OUTSIDE_REFERENCE_MAX_LENGTH,
+  }),
+});
+
+const ReturnParamsSchema = Type.Object({ returnId: Type.String({ format: "uuid" }) });
+
+const ReceiveReturnBodySchema = Type.Object({
+  disposition: Type.Union(SHOP_RETURN_DISPOSITIONS.map((value) => Type.Literal(value))),
 });
 
 const MarkPayoutPaidBodySchema = Type.Object({
@@ -192,7 +210,7 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
         actorSubjectId: subject,
         idempotencyKey,
       });
-      return { id: result.returnId, status: result.status };
+      return { id: result.returnId ?? result.refundId, status: result.status };
     },
   );
 
@@ -260,6 +278,100 @@ export async function registerAdminOperationsRoutes(app: FastifyInstance, deps: 
         idempotencyKey,
       });
       return { id: result.refundId, status: result.status };
+    },
+  );
+
+  app.post(
+    "/refunds/settled-outside",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        body: SettleRefundOutsideBodySchema,
+        response: {
+          200: IdResponseSchema,
+          400: ShopApiErrorBodySchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "refund.write");
+      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
+      const subject = requireShopAdminSubject(request);
+      const body = request.body as { refundId: string; reason: string; externalReference: string };
+      const idempotencyKey = requireIdempotencyKey(request);
+      const result = await deps.markRefundSettledOutside({
+        refundId: body.refundId,
+        reason: body.reason,
+        externalReference: body.externalReference,
+        actorSubjectId: subject,
+        idempotencyKey,
+      });
+      return { id: result.refundId, status: result.status };
+    },
+  );
+
+  app.post(
+    "/returns/:returnId/in-transit",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: ReturnParamsSchema,
+        response: {
+          200: IdResponseSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "fulfilment.write");
+      const subject = requireShopAdminSubject(request);
+      const { returnId } = request.params as { returnId: string };
+      const idempotencyKey = requireIdempotencyKey(request);
+      const result = await deps.advanceReturn({
+        returnId,
+        to: "in_transit",
+        actorSubjectId: subject,
+        idempotencyKey,
+      });
+      return { id: result.returnId, status: result.status };
+    },
+  );
+
+  app.post(
+    "/returns/:returnId/receive",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: ReturnParamsSchema,
+        body: ReceiveReturnBodySchema,
+        response: {
+          200: IdResponseSchema,
+          400: ShopApiErrorBodySchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "fulfilment.write");
+      const subject = requireShopAdminSubject(request);
+      const { returnId } = request.params as { returnId: string };
+      const body = request.body as { disposition: ShopReturnDisposition };
+      const idempotencyKey = requireIdempotencyKey(request);
+      const result = await deps.advanceReturn({
+        returnId,
+        to: "received",
+        disposition: body.disposition,
+        actorSubjectId: subject,
+        idempotencyKey,
+      });
+      return { id: result.returnId, status: result.status };
     },
   );
 

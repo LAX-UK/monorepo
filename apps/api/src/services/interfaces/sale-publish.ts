@@ -2,6 +2,9 @@ import type { Lot, Sale, StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 
+/** What staff chose when publishing: whether subscribers to sale alerts hear about the sale. */
+export type SalePublishOptions = { announce?: boolean | undefined };
+
 /** Admin publish / unpublish / cancel transitions for a sale and its lots. */
 export interface ISalePublishService {
   publish(
@@ -9,6 +12,7 @@ export interface ISalePublishService {
     userRole: string,
     saleId: string,
     userStaffRoles?: StaffRoles | undefined,
+    options?: SalePublishOptions,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>>;
 
   unpublish(

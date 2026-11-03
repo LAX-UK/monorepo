@@ -35,6 +35,8 @@ import AccountSuspendedEmail, {
 import AdminImpersonationNoticeEmail, {
   subject as adminImpersonationNoticeSubject,
 } from "./templates/admin-impersonation-notice.js";
+import AlertConfirmEmail, { subject as alertConfirmSubject } from "./templates/alert-confirm.js";
+import AlertDigestEmail, { subject as alertDigestSubject } from "./templates/alert-digest.js";
 import AmlComplianceReviewNoticeEmail, {
   subject as amlComplianceReviewNoticeSubject,
 } from "./templates/aml-compliance-review-notice.js";
@@ -66,6 +68,9 @@ import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-out
 import BiddingLimitChangedNoticeEmail, {
   subject as biddingLimitChangedNoticeSubject,
 } from "./templates/bidding-limit-changed-notice.js";
+import BuyerDefaultNoticeEmail, {
+  subject as buyerDefaultNoticeSubject,
+} from "./templates/buyer-default-notice.js";
 import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
 import ConsignmentAgreementReminderEmail, {
   subject as consignmentAgreementReminderSubject,
@@ -169,6 +174,9 @@ import PaymentReceiptEmail, {
 import PaymentRefundNoticeEmail, {
   subject as paymentRefundNoticeSubject,
 } from "./templates/payment-refund-notice.js";
+import PaymentReminderEmail, {
+  subject as paymentReminderSubject,
+} from "./templates/payment-reminder.js";
 import PayoutBankChangedNoticeEmail, {
   subject as payoutBankChangedNoticeSubject,
 } from "./templates/payout-bank-changed-notice.js";
@@ -233,6 +241,9 @@ import ShopZohoDeadLetterNoticeEmail, {
   subject as shopZohoDeadLetterNoticeSubject,
 } from "./templates/shop-zoho-dead-letter-notice.js";
 import SignInLink, { subject as signInLinkSubject } from "./templates/sign-in-link.js";
+import SignInMethodRemovedEmail, {
+  subject as signInMethodRemovedSubject,
+} from "./templates/sign-in-method-removed.js";
 import SocialAccountLinkedEmail, {
   subject as socialAccountLinkedSubject,
 } from "./templates/social-account-linked.js";
@@ -251,6 +262,12 @@ import SourceOfFundsDocumentsRequestedEmail, {
 import SourceOfFundsRejectedEmail, {
   subject as sourceOfFundsRejectedSubject,
 } from "./templates/source-of-funds-rejected.js";
+import StaffEmailChangeConfirmEmail, {
+  subject as staffEmailChangeConfirmSubject,
+} from "./templates/staff-email-change-confirm.js";
+import StaffEmailChangeNoticeEmail, {
+  subject as staffEmailChangeNoticeSubject,
+} from "./templates/staff-email-change-notice.js";
 import StaffRoleChangedEmail, {
   subject as staffRoleChangedSubject,
 } from "./templates/staff-role-changed.js";
@@ -273,9 +290,6 @@ import SubmissionRejectedEmail, {
   subject as submissionRejectedSubject,
 } from "./templates/submission-rejected.js";
 import VerifyEmail, { subject as verifyEmailSubject } from "./templates/verify-email.js";
-import VisitorAlertConfirmEmail, {
-  subject as visitorAlertConfirmSubject,
-} from "./templates/visitor-alert-confirm.js";
 import WatchedLotReminderEmail, {
   subject as watchedLotReminderSubject,
 } from "./templates/watched-lot-reminder.js";
@@ -362,6 +376,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: emailChangedSubject,
     component: (vars) => <EmailChangedEmail {...vars} />,
   },
+  "sign-in-method-removed": {
+    subject: signInMethodRemovedSubject,
+    component: (vars) => <SignInMethodRemovedEmail {...vars} />,
+  },
   "phone-removed": {
     subject: phoneRemovedSubject,
     component: (vars) => <PhoneRemovedEmail {...vars} />,
@@ -394,6 +412,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: changeEmailSubject,
     component: (vars) => <ChangeEmail {...vars} />,
   },
+  "staff-email-change-confirm": {
+    subject: staffEmailChangeConfirmSubject,
+    component: (vars) => <StaffEmailChangeConfirmEmail {...vars} />,
+  },
+  "staff-email-change-notice": {
+    subject: staffEmailChangeNoticeSubject,
+    component: (vars) => <StaffEmailChangeNoticeEmail {...vars} />,
+  },
   invite: { subject: inviteSubject, component: (vars) => <InviteEmail {...vars} /> },
   "access-invite": {
     subject: accessInviteSubject,
@@ -416,6 +442,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "payment-receipt": {
     subject: paymentReceiptSubject,
     component: (vars) => <PaymentReceiptEmail {...vars} />,
+  },
+  "payment-reminder": {
+    subject: paymentReminderSubject,
+    component: (vars) => <PaymentReminderEmail {...vars} />,
+  },
+  "buyer-default-notice": {
+    subject: buyerDefaultNoticeSubject,
+    component: (vars) => <BuyerDefaultNoticeEmail {...vars} />,
   },
   "payment-invoice": {
     subject: paymentInvoiceSubject,
@@ -613,9 +647,13 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: shopOrderReceiptSubject,
     component: (vars) => <ShopOrderReceiptEmail {...vars} />,
   },
-  "visitor-alert-confirm": {
-    subject: visitorAlertConfirmSubject,
-    component: (vars) => <VisitorAlertConfirmEmail {...vars} />,
+  "alert-confirm": {
+    subject: alertConfirmSubject,
+    component: (vars) => <AlertConfirmEmail {...vars} />,
+  },
+  "alert-digest": {
+    subject: alertDigestSubject,
+    component: (vars) => <AlertDigestEmail {...vars} />,
   },
   "shop-guest-order-link": {
     subject: shopGuestOrderLinkSubject,

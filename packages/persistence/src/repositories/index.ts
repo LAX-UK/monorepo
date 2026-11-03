@@ -3,10 +3,12 @@ export { DrizzleBidRepository } from "./drizzle-bid.repository.js";
 export { DrizzleSaleRepository } from "./drizzle-sale.repository.js";
 export { DrizzleItemSubmissionRepository } from "./drizzle-item-submission.repository.js";
 export { DrizzleImpersonationSessionRepository } from "./drizzle-impersonation-session.repository.js";
+export { DrizzleEmailBlockRepository } from "./drizzle-email-block.repository.js";
+export { DrizzlePersonEmailDeliveryReader } from "./drizzle-person-email-delivery.reader.js";
 export { DrizzleEmailSuppressionRepository } from "./drizzle-email-suppression.repository.js";
 export { DrizzleEmailWebhookIngestRepository } from "./drizzle-email-webhook-ingest.repository.js";
 export { DrizzleNewsletterSignupRepository } from "./drizzle-newsletter-signup.repository.js";
-export { DrizzleVisitorSaleAlertRepository } from "./drizzle-visitor-sale-alert.repository.js";
+export * from "./bid-alerts/index.js";
 export { DrizzleWebhookEventRepository } from "./drizzle-webhook-event.repository.js";
 export { DrizzleExternalAccountRepository } from "./drizzle-external-account.repository.js";
 export { DrizzleUploadObjectReader } from "./drizzle-upload-object.reader.js";
@@ -282,3 +284,8 @@ export { DrizzleConsignmentInboxReader } from "./drizzle-consignment-inbox.reade
 export { DrizzleConsignmentThreadFactsReader } from "./drizzle-consignment-thread-facts.reader.js";
 export { DrizzleConsignmentSavedReplyRepository } from "./drizzle-consignment-saved-reply.repository.js";
 export { DrizzleConsignmentStaffDirectory } from "./drizzle-consignment-staff-directory.reader.js";
+export {
+  DrizzleBuyerDefaultReader,
+  DrizzleBuyerDefaultRepository,
+} from "./drizzle-buyer-default.repository.js";
+export { DrizzlePaymentReminderStore } from "./drizzle-payment-reminder.store.js";

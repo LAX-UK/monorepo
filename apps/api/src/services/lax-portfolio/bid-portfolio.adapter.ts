@@ -1,3 +1,4 @@
+import type { AmountOwedEntry } from "@auction/domain";
 import type {
   LaxBusinessV1,
   LaxCostLineV1,
@@ -5,6 +6,7 @@ import type {
   LaxPortfolioActionV1,
   LaxPortfolioDocumentV1,
   LaxPortfolioItemV1,
+  LaxPortfolioOwedV1,
 } from "@auction/lax-ecosystem";
 import type {
   BidPaymentFact,
@@ -31,7 +33,10 @@ export type BidPortfolioContext = {
 
 const PAYMENT_CURRENCY = "GBP";
 
-/** Payments that still need the buyer to act. */
+/** What the account owes, by lot: the one reading Purchases, the header chip and the menu share. */
+export type BidOwedByLot = ReadonlyMap<string, AmountOwedEntry>;
+
+/** Payments that are open, whether or not anything is still owed on them. */
 const UNPAID_PAYMENT_STATUSES: ReadonlySet<BidPaymentFact["status"]> = new Set([
   "pending",
   "authorized",
@@ -94,30 +99,54 @@ function costLines(hammerPrice: string, settlementAmount: string | undefined): L
   return lines;
 }
 
+/**
+ * Where a won lot stands. What is owed, held or cancelled comes from the amounts-owed reading;
+ * the payment only says whether a paid lot is still with the saleroom or is the buyer's. A
+ * payment being confirmed is not owed, but the work is not theirs yet either.
+ */
 function wonLotStatus(
+  owed: AmountOwedEntry | undefined,
   payment: BidPaymentFact | undefined,
   fulfilmentStatus: string | null,
 ): LaxPortfolioItemV1["status"] | null {
-  if (!payment) return "awaiting_payment";
-  if (UNPAID_PAYMENT_STATUSES.has(payment.status)) return "awaiting_payment";
-  if (payment.status !== "captured") return null;
+  if (owed) return owed.state === "cancelled" ? null : "awaiting_payment";
+  if (payment?.status === "authorized") return "awaiting_payment";
+  if (payment?.status !== "captured") return null;
   return fulfilmentStatus !== null && IN_FULFILMENT_STATUSES.has(fulfilmentStatus)
     ? "awaiting_shipment"
     : "owned";
 }
 
+/** The amount due as the contract carries it, or null when no readable amount is known. */
+function owedOf(owed: AmountOwedEntry | undefined): LaxPortfolioOwedV1 | null {
+  if (!owed || owed.state === "cancelled") return null;
+  const amount = toPence(owed.amountDue);
+  if (amount === null) return null;
+  return {
+    amount,
+    currency: owed.currency,
+    state: owed.state === "in-review" ? "in_review" : "due",
+    ...(owed.blocker ? { blocker: owed.blocker } : {}),
+  };
+}
+
 function wonLotItem(
   lot: BidWonLotFact,
   payment: BidPaymentFact | undefined,
+  owedEntry: AmountOwedEntry | undefined,
   ctx: BidPortfolioContext,
 ): LaxPortfolioItemV1 | null {
-  const status = wonLotStatus(payment, lot.fulfilmentStatus);
-  // A refunded or abandoned purchase is not a holding; it still appears in the money ledger.
+  const status = wonLotStatus(owedEntry, payment, lot.fulfilmentStatus);
+  // A refunded, cancelled or ended purchase is not a holding; it still appears in the money ledger.
   if (!status) return null;
 
+  const owed = owedOf(owedEntry);
   const actions: LaxPortfolioActionV1[] = [];
   if (status === "awaiting_payment") {
-    actions.push({ kind: "pay", href: `${ctx.webOrigin}/purchases/checkout/${lot.lotId}` });
+    // Payment cannot start while checks are open, so no pay link is offered until they clear.
+    if (owedEntry?.state !== "in-review") {
+      actions.push({ kind: "pay", href: `${ctx.webOrigin}/purchases/checkout/${lot.lotId}` });
+    }
   } else {
     actions.push({ kind: "consign", href: `${ctx.webOrigin}/selling/new` });
   }
@@ -134,6 +163,9 @@ function wonLotItem(
         expectedNote: "Your invoice appears here once it has been issued.",
       };
 
+  // The total one payment covers is the same figure Purchases shows, so the cost lines for a
+  // lot still owed come from it rather than from a payment that may not exist yet.
+  const total = status === "awaiting_payment" && owedEntry ? owedEntry.amountDue : payment?.amount;
   return {
     product: "bid",
     id: lot.lotId,
@@ -142,10 +174,11 @@ function wonLotItem(
     image: ctx.imageUrl(lot.firstImageKey),
     acquiredAt: lot.endedAt.toISOString(),
     status,
-    paid: { lines: costLines(lot.hammerPrice, payment?.amount) },
+    paid: { lines: costLines(lot.hammerPrice, total ?? undefined) },
     documents: [invoice],
     actions,
     business: businessOf(ctx),
+    ...(owed ? { owed } : {}),
   };
 }
 
@@ -183,10 +216,11 @@ function sellerLotItem(lot: BidSellerLotFact, ctx: BidPortfolioContext): LaxPort
 export function buildBidPortfolioItems(
   facts: BidPortfolioFacts,
   ctx: BidPortfolioContext,
+  owed: BidOwedByLot,
 ): LaxPortfolioItemV1[] {
   const paymentByLot = latestPaymentByLot(facts.payments);
   const won = facts.wonLots.flatMap((lot) => {
-    const item = wonLotItem(lot, paymentByLot.get(lot.lotId), ctx);
+    const item = wonLotItem(lot, paymentByLot.get(lot.lotId), owed.get(lot.lotId), ctx);
     return item ? [item] : [];
   });
   const consigned = facts.submissions.map(

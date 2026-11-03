@@ -1,5 +1,6 @@
 import { processAdminImpersonationNotify } from "./admin-impersonation-notify.js";
 import { AML_MATCH_REVIEW_PROJECTOR, processAmlMatchReview } from "./aml-match-review.js";
+import { BID_ALERT_MATCHING_PROJECTOR, processBidAlertMatching } from "./bid-alert-matching.js";
 import {
   BID_IDENTITY_DIRECTORY_PROJECTOR,
   processBidIdentityDirectory,
@@ -270,6 +271,20 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
           ctx,
           log: ctx.log,
           opener: ctx.unsoldFollowUps as NonNullable<ProjectorRunContext["unsoldFollowUps"]>,
+        });
+      },
+    },
+    {
+      name: BID_ALERT_MATCHING_PROJECTOR,
+      isEnabled(ctx) {
+        return ctx.bidAlerts != null;
+      },
+      async run(ctx) {
+        await ctx.projectorStateRepo.ensureCursor(BID_ALERT_MATCHING_PROJECTOR);
+        await processBidAlertMatching({
+          ctx,
+          log: ctx.log,
+          matching: ctx.bidAlerts as NonNullable<ProjectorRunContext["bidAlerts"]>,
         });
       },
     },

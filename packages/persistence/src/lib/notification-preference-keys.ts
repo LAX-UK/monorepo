@@ -8,6 +8,7 @@ const DEFAULTS: NotificationPreference = {
   endingSoonInApp: true,
   watchlistInApp: true,
   paymentInApp: true,
+  newSalesInApp: true,
   outbidPush: true,
   wonPush: true,
   endingSoonPush: false,
@@ -99,6 +100,17 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     whatsapp: null,
     template: "watched-lot-reminder",
   },
+  /**
+   * A new sale was announced. It follows the New sales app switch; the email goes through the
+   * alert engine's own digest, not through this dispatcher.
+   */
+  sale_announced: {
+    inApp: "newSalesInApp",
+    push: null,
+    email: null,
+    whatsapp: null,
+    template: null,
+  },
   watchlist_ending_soon: {
     inApp: "endingSoonInApp",
     push: "endingSoonPush",
@@ -119,6 +131,21 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     email: "paymentEmail",
     whatsapp: "paymentWhatsapp",
     template: "payment-invoice",
+  },
+  /** Reminders and the notices after a buyer default are part of paying, so they follow the payment switches. */
+  payment_reminder: {
+    inApp: "paymentInApp",
+    push: null,
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    template: "payment-reminder",
+  },
+  buyer_default_notice: {
+    inApp: "paymentInApp",
+    push: null,
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    template: "buyer-default-notice",
   },
   /** Order updates on a purchased lot share the payment switches: they are transactional. */
   lot_ready_for_collection: {

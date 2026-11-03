@@ -39,6 +39,7 @@ import type { AdminUserService } from "../admin-user.service.js";
 import type { AmlService } from "../aml/aml.service.js";
 import type { ArtistProfileService } from "../artist-profile.service.js";
 import type { BidService } from "../bid.service.js";
+import type { BuyerDefaultService } from "../buyer-default/buyer-default.service.js";
 import type { CategoryService } from "../category.service.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImpersonationAuditService } from "../impersonation-audit.service.js";
@@ -127,6 +128,9 @@ export type CreateAdminRouteServicesInput = {
   categoryService: CategoryService;
   artistProfileService: ArtistProfileService;
   emailObservabilityRepository: IEmailObservabilityRepository;
+  personEmailDeliveryReader: import("@auction/persistence/interfaces").IPersonEmailDeliveryReader;
+  emailBlockRepository: import("@auction/persistence/interfaces").IEmailBlockRepository;
+  emailReactivation: import("@auction/queues").EmailAddressReactivationProducer;
   adminUserService: AdminUserService;
   adminUserReader: import("@auction/persistence/interfaces").IAdminUserReader;
   profileService: ProfileService;
@@ -138,6 +142,7 @@ export type CreateAdminRouteServicesInput = {
   lotService: ILotService;
   adminLotBrowseService: AdminLotBrowseService;
   lotTransitionOrchestrator: LotTransitionOrchestrator;
+  buyerDefaultService: BuyerDefaultService;
   lotLifecycleQueryService: LotLifecycleQueryService;
   saleRegistrationService: ISaleRegistrationService;
   artistRegistryService: IArtistRegistryService;
@@ -217,6 +222,11 @@ export function createAdminRouteServices(
     attentionFeedReader: input.attentionFeedReader,
     itemSubmissionAdminApi: input.itemSubmissionAdminApi,
     emailObservabilityRepository: input.emailObservabilityRepository,
+    personEmailDeliveryReader: input.personEmailDeliveryReader,
+    emailBlockRepository: input.emailBlockRepository,
+    emailReactivation: input.emailReactivation,
+    transactionRunner: input.transactionRunner,
+    domainEventSink: input.domainEventSink,
     displayPairingService: input.displayPairingService,
     displayOverlayService: input.displayOverlayService,
     saleroomService: input.saleroomService,
@@ -249,6 +259,7 @@ export function createAdminRouteServices(
     lotService: input.lotService,
     adminLotBrowseService: input.adminLotBrowseService,
     lotTransitionOrchestrator: input.lotTransitionOrchestrator,
+    buyerDefaultService: input.buyerDefaultService,
     lotLifecycleQueryService: input.lotLifecycleQueryService,
     saleRegistrationService: input.saleRegistrationService,
     lotFulfilmentService: input.lotFulfilmentService,

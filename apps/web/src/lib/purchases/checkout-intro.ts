@@ -38,7 +38,7 @@ export function checkoutIntro(input: CheckoutIntroInput): string {
   });
   const state = purchaseState({
     paymentStatus: input.paymentComplete ? "captured" : input.openPaymentStatus,
-    reviewReason,
+    inReview: reviewReason !== null,
     fulfilment: null,
   });
   const forWhom = input.organisationName ? ` for ${input.organisationName}` : "";

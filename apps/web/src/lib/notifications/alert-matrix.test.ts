@@ -46,4 +46,34 @@ describe("alert matrix", () => {
     expect(alertPresetOf(withAlertPreset(DEFAULTS, "quiet"))).toBe("quiet");
     expect(alertPresetOf(withAlertCell(essential, row("watching"), "email", true))).toBeNull();
   });
+
+  it("has a New sales row whose email is the engine's switch and whose app needs a subscription", () => {
+    const sales = row("new-sales");
+    expect(sales.engineTopic).toBe("bid.new_sales");
+    const off = { subscribed: {}, email: {} };
+    const on = { subscribed: { "bid.new_sales": true }, email: { "bid.new_sales": true } };
+    const appOnly = { subscribed: { "bid.new_sales": true }, email: { "bid.new_sales": false } };
+    expect(alertCell(sales, "email", DEFAULTS, on)).toEqual({
+      kind: "switch",
+      checked: true,
+      lockedReason: null,
+    });
+    expect(alertCell(sales, "email", DEFAULTS, off)).toMatchObject({ checked: false });
+    // The app preference defaults on, but nothing arrives until the client is subscribed.
+    expect(alertCell(sales, "app", DEFAULTS, off)).toMatchObject({ checked: false });
+    expect(alertCell(sales, "app", DEFAULTS, appOnly)).toMatchObject({ checked: true });
+    expect(alertCell(sales, "app", { ...DEFAULTS, newSalesInApp: false }, on)).toMatchObject({
+      checked: false,
+    });
+  });
+
+  it("shows nothing for New sales when the engine's state could not be read", () => {
+    expect(alertCell(row("new-sales"), "email", DEFAULTS, null)).toEqual({ kind: "none" });
+  });
+
+  it("is not changed by a style preset", () => {
+    expect(withAlertPreset({ ...DEFAULTS, newSalesInApp: false }, "essential").newSalesInApp).toBe(
+      false,
+    );
+  });
 });

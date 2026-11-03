@@ -66,6 +66,8 @@ export type ProjectorRunContext = {
   complianceRecipientReader: IComplianceRecipientReader;
   syncXeroPayoutBill?: ((payoutId: string) => Promise<boolean>) | undefined;
   ensureLotInvoice?: ((lotId: string) => Promise<void>) | undefined;
+  /** Records who hears about a newly published sale; present only while alerts are on. */
+  bidAlerts?: import("./bid-alert-matching.types.js").BidAlertMatching | undefined;
   /** Stores the choose-by date when a consigned lot ends unsold. */
   unsoldChoiceDeadlines?: { record(lotId: string): Promise<void> } | undefined;
   /** Opens the staff work for a confirmed unsold-lot choice. */

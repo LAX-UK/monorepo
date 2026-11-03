@@ -41,6 +41,10 @@ export const SUBJECT_EXPORT_AUDIT_EVENTS = [
   "data_export.expired",
   "data_export.deleted_by_subject",
   "data_export.failed",
+  /** The deadline schedule raised an overdue alert; `detail.tier` is 1, 2 or 3. */
+  "data_export.deadline_alert",
+  /** Staff took the request over as a manual one; `detail` names who and which. */
+  "data_export.continued_manually",
 ] as const;
 export type SubjectExportAuditEvent = (typeof SUBJECT_EXPORT_AUDIT_EVENTS)[number];
 

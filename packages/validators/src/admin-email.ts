@@ -1,3 +1,4 @@
+import { EMAIL_LIFT_REASONS } from "@auction/types";
 import { z } from "zod";
 
 export const adminListOutboxQuerySchema = z.object({
@@ -19,7 +20,10 @@ export const emailHashParamSchema = z.object({
   emailHash: z.string().min(16),
 });
 
-export const adminBulkEmailSuppressionsBodySchema = z.object({
-  emailHashes: z.array(z.string().min(16)).min(1).max(50),
-  op: z.enum(["delete"]),
+/** Lifting a block: why, a note where the rule asks for one, and the block as the screen saw it. */
+export const adminLiftEmailBlockBodySchema = z.object({
+  reason: z.enum(EMAIL_LIFT_REASONS),
+  note: z.string().trim().max(1000).optional(),
+  writtenRequest: z.boolean().optional(),
+  expectedSince: z.string().datetime({ offset: true }),
 });

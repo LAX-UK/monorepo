@@ -41,6 +41,14 @@ export const MLRO_DECISION_ACCESS: CapabilityRequirement = {
   anyOf: ["compliance.mlro", "platform.admin.full"],
 };
 
+/**
+ * Requests for a copy of someone's data: the list, a person's details and every action. The page
+ * is personal data throughout, so read-only staff do not get it through `admin.read`.
+ */
+export const DATA_REQUESTS_MANAGE_ACCESS: CapabilityRequirement = {
+  anyOf: ["data_requests.manage", "platform.admin.full"],
+};
+
 /** Admin dashboard widgets (attention feed, live metrics). */
 export const ADMIN_DASHBOARD_ACCESS: CapabilityRequirement = STAFF_OVERVIEW_ACCESS;
 
@@ -164,6 +172,15 @@ export const LOT_FULFILMENT_ACCESS: CapabilityRequirement = {
   anyOf: ["operations.fulfilment", "platform.admin.full"],
 };
 
+/**
+ * Record a buyer default: void an unpaid sale and decide where the lot goes. It cancels a sale
+ * and releases the lot, so it belongs to the sales managers who run the lot and to finance, who
+ * own the invoice. The administrator holds both.
+ */
+export const BUYER_DEFAULT_ACCESS: CapabilityRequirement = {
+  anyOf: ["auction.manage", "finance.platform.write"],
+};
+
 /** Finance shell: payments, disputes, payouts, integrations. */
 export const FINANCE_ACCESS: CapabilityRequirement = "finance.read";
 
@@ -235,6 +252,18 @@ export const EMAIL_ADMIN_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
 
 /** Read-only email outbox, events, and suppression list (no mutations). */
 export const EMAIL_OBSERVABILITY_ACCESS: CapabilityRequirement = readOrWrite(EMAIL_ADMIN_ACCESS);
+
+/**
+ * Lift a bounce, repeated soft bounces or a manual block on a person's email. A complaint is
+ * lifted under EMAIL_ADMIN_ACCESS; nobody lifts an unsubscribe.
+ */
+export const EMAIL_BLOCK_LIFT_ACCESS: CapabilityRequirement = {
+  anyOf: ["support.respond", "platform.admin.full"],
+};
+
+/** Read a person's email delivery: their sends and any block on their address. */
+export const EMAIL_DELIVERY_READ_ACCESS: CapabilityRequirement =
+  readOrWrite(EMAIL_BLOCK_LIFT_ACCESS);
 
 /** Client/staff directory list and detail reads. */
 export const USERS_DIRECTORY_ACCESS: CapabilityRequirement = {
@@ -337,6 +366,15 @@ export const ENQUIRY_ROUTING_MANAGE_ACCESS: CapabilityRequirement = {
 
 /** Suspend, unsuspend, and bulk user moderation. */
 export const USER_MODERATION_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond"],
+};
+
+/**
+ * Moving an account to a new email address for someone who has lost the old inbox. Today the same
+ * people as {@link USER_MODERATION_ACCESS}, but it is its own rule: it changes where an account's
+ * sign-in and security mail go, so it can be narrowed without touching suspend or unsuspend.
+ */
+export const STAFF_EMAIL_CHANGE_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "support.respond"],
 };
 

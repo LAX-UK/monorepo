@@ -96,6 +96,8 @@ jobs:
       - name: Rotate signing key
         env:
           AUTH_DEK_KEY: ${{ secrets.AUTH_DEK_KEY }}
+          # The auth service's own secret: Better Auth encrypts each private key with it.
+          BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
         run: |
           set -euo pipefail
           args=()

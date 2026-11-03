@@ -111,8 +111,8 @@ export class DrizzleSecurityEffectOutboxRepository implements SecurityEffectOutb
       .update(authSecurityEffectOutbox)
       .set({
         status: "abandoned",
-        // An abandoned job is kept for operators; the copied address it may hold is not.
-        payload: sql`${authSecurityEffectOutbox.payload} - 'email'`,
+        // An abandoned job is kept for operators; the copied address or one-time link it may hold is not.
+        payload: sql`${authSecurityEffectOutbox.payload} - 'email' - 'input'`,
         claimedAt: null,
         attemptCount: input.attemptCount,
         lastError: input.error.slice(0, MAX_ERROR_LENGTH),

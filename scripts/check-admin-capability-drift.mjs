@@ -24,7 +24,7 @@ const WEB_SCAN_ROOTS = [
 ];
 
 const INLINE_CAPABILITY =
-  /"(?:platform\.admin\.full|finance\.read|finance\.(?:platform\.write|entity\.write|write)|payout\.(?:read|process|reverse)|user\.invite|artist\.(?:read|review|merge|delete)|catalogue\.write|auction\.manage|specialist\.appraise|operations\.fulfilment|content\.write|support\.respond|legal_entity\.read|client\.read|bids\.read|audit\.read_pii|aml\.review|compliance\.mlro)"/g;
+  /"(?:platform\.admin\.full|finance\.read|finance\.(?:platform\.write|entity\.write|write)|payout\.(?:read|process|reverse)|user\.invite|artist\.(?:read|review|merge|delete)|catalogue\.write|auction\.manage|specialist\.appraise|operations\.fulfilment|content\.write|support\.respond|legal_entity\.read|client\.read|bids\.read|audit\.read_pii|aml\.review|compliance\.mlro|data_requests\.manage)"/g;
 
 const INLINE_SHOP_CLIENT_CAPABILITY = /"client\.read_(?:all|assigned)"/g;
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { updateNotificationPreferencesFromValuesAction } from "@/lib/actions/user-notification-preferences";
+import { setAlertTopic } from "@/lib/data/http/alerts.client";
 import {
   ALERT_PRESETS,
   ALERT_PRESET_COPY,
@@ -8,6 +9,7 @@ import {
   type AlertChannel,
   type AlertPreset,
   type AlertRow,
+  type EngineAlertState,
   alertCell,
   alertPresetOf,
   withAlertCell,
@@ -38,7 +40,15 @@ const CHANNELS: readonly { id: AlertChannel; label: string }[] = [
  * protect a bid or a payment held on and saying why, and quiet hours. Each switch saves at once
  * and goes back if the save fails.
  */
-export function AlertsSettings({ initial }: { initial: NotificationPreference }) {
+export function AlertsSettings({
+  initial,
+  initialEngine,
+}: {
+  initial: NotificationPreference;
+  /** The alert engine's switches for this client; null when they could not be read. */
+  initialEngine: EngineAlertState | null;
+}) {
+  const [engine, setEngine] = useState<EngineAlertState | null>(initialEngine);
   const [values, setValues] = useState<NotificationPreferencesFormValues>(() =>
     prefsToFormValues(initial),
   );
@@ -65,6 +75,37 @@ export function AlertsSettings({ initial }: { initial: NotificationPreference })
         notify.error("We couldn't save that change", { description: result.error });
       }
     });
+  };
+
+  /** The engine row's Email or App switch: email goes to the engine, app to the preference. */
+  const changeEngineCell = async (row: AlertRow, channel: AlertChannel, on: boolean) => {
+    const topic = row.engineTopic;
+    if (!topic || !engine) return;
+    if (channel === "app" && !on) {
+      save(withAlertCell(values, row, "app", false), values);
+      return;
+    }
+    const previous = engine;
+    const emailNow = engine.email[topic] === true;
+    const email = channel === "email" ? on : emailNow;
+    // Turning the app on while not subscribed subscribes for the app alone; email stays as it is.
+    const subscribe = channel === "email" ? on || engine.subscribed[topic] === true : true;
+    setEngine({
+      subscribed: { ...engine.subscribed, [topic]: subscribe },
+      email: { ...engine.email, [topic]: email },
+    });
+    setSaved("Saving…");
+    const result = subscribe
+      ? await setAlertTopic(topic, true, { email })
+      : await setAlertTopic(topic, false);
+    if (!result.ok) {
+      setEngine(previous);
+      setSaved("");
+      notify.error("We couldn't save that change", { description: result.error });
+      return;
+    }
+    if (channel === "app") save(withAlertCell(values, row, "app", true), values);
+    else setSaved("All changes saved");
   };
 
   const preset = alertPresetOf(values);
@@ -117,7 +158,7 @@ export function AlertsSettings({ initial }: { initial: NotificationPreference })
               </tr>
             </thead>
             <tbody className="divide-y divide-lax-line-subtle">
-              {ALERT_ROWS.map((row) => (
+              {ALERT_ROWS.filter((row) => !row.engineTopic || engine).map((row) => (
                 <tr key={row.id}>
                   <th scope="row" className="px-4 py-3 text-left font-normal md:px-5">
                     <span className="block text-lax-14 font-medium text-lax-fg">{row.label}</span>
@@ -131,7 +172,12 @@ export function AlertsSettings({ initial }: { initial: NotificationPreference })
                         row={row}
                         channel={channel}
                         values={values}
-                        onChange={(on) => save(withAlertCell(values, row, channel.id, on), values)}
+                        engine={engine}
+                        onChange={(on) =>
+                          row.engineTopic
+                            ? void changeEngineCell(row, channel.id, on)
+                            : save(withAlertCell(values, row, channel.id, on), values)
+                        }
                       />
                     </td>
                   ))}
@@ -155,14 +201,16 @@ function AlertSwitch({
   row,
   channel,
   values,
+  engine,
   onChange,
 }: {
   row: AlertRow;
   channel: { id: AlertChannel; label: string };
   values: NotificationPreferencesFormValues;
+  engine: EngineAlertState | null;
   onChange: (on: boolean) => void;
 }) {
-  const cell = alertCell(row, channel.id, values);
+  const cell = alertCell(row, channel.id, values, engine);
   if (cell.kind === "none") {
     const notSent = channel.id === "app" ? "Not sent in the app" : "Not sent by email";
     return (

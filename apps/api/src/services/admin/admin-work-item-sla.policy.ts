@@ -36,6 +36,8 @@ const SLA_MS: Partial<Record<AdminWorkItemSourceKind, number>> = {
   // The seller was told a specialist would contact them.
   unsold_choice_lapsed: 48 * 60 * 60 * 1000,
   purchase_problem: 48 * 60 * 60 * 1000,
+  // The item appears the day after the due date; staff are expected to decide within two days.
+  payment_overdue: 48 * 60 * 60 * 1000,
   deletion_hold: 72 * 60 * 60 * 1000,
 };
 
@@ -75,6 +77,7 @@ const BASE_SEVERITY: Record<AdminWorkItemSourceKind, WorkItemSeverity> = {
   unsold_choice_lapsed: "medium",
   marketing_enquiry: "medium",
   purchase_problem: "high",
+  payment_overdue: "medium",
   deletion_hold: "medium",
 };
 

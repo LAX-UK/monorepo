@@ -3,6 +3,7 @@ import { generateKeyPairSync, randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { createEnvelopeCrypto } from "@auction/identity-contracts";
 import { ACCESS_TOKEN_TTL_SECONDS } from "@auction/identity-contracts";
+import { symmetricDecrypt } from "better-auth/crypto";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -18,6 +19,7 @@ import { createDrizzleJwksStore } from "./drizzle-jwks-store.js";
 //   DATABASE_URL=postgres://postgres:postgres@localhost:55432/postgres pnpm --filter @auction/identity-db test
 // Every run works inside its own schema and drops it afterwards.
 const DATABASE_URL = process.env.DATABASE_URL;
+const AUTH_SECRET = "rotation-test-auth-secret-0123456789"; // gitleaks:allow
 const SCHEMA = `jwks_rotation_${randomBytes(4).toString("hex")}`;
 
 function newKey() {
@@ -83,7 +85,12 @@ describe.skipIf(!DATABASE_URL)("JWKS rotation against Postgres", () => {
     const now = new Date("2026-11-03T10:00:00.000Z");
     await seedActive(db, "old", new Date("2026-08-01T00:00:00.000Z"));
 
-    const result = await rotateJwksSigningKey(db, { key: newKey(), envelope, now });
+    const result = await rotateJwksSigningKey(db, {
+      key: newKey(),
+      authSecret: AUTH_SECRET,
+      envelope,
+      now,
+    });
 
     expect(result.rotatedKids).toEqual(["old"]);
     const rows = await db.select().from(jwksKey);
@@ -97,18 +104,31 @@ describe.skipIf(!DATABASE_URL)("JWKS rotation against Postgres", () => {
     expect((await store.getActiveSigningJwk())?.id).toBe(result.newKid);
   });
 
-  it("seals the new private key with the envelope", async () => {
-    const result = await rotateJwksSigningKey(db, { key: newKey(), envelope });
+  it("seals the new private key with the envelope after encrypting it with the auth secret", async () => {
+    const result = await rotateJwksSigningKey(db, {
+      key: newKey(),
+      authSecret: AUTH_SECRET,
+      envelope,
+    });
     const { rows } = await pool.query("select private_jwk from jwks_key where kid = $1", [
       result.newKid,
     ]);
     expect(String(rows[0].private_jwk)).toMatch(/^v1:/);
     const signing = await createDrizzleJwksStore(db, envelope).getActiveSigningJwk();
-    expect(JSON.parse(signing?.privateKey ?? "{}")).toMatchObject({ kty: "RSA" });
+    // Opening the envelope yields Better Auth's encrypted value, not a bare JWK.
+    const decrypted = await symmetricDecrypt({
+      key: AUTH_SECRET,
+      data: JSON.parse(signing?.privateKey ?? '""'),
+    });
+    expect(JSON.parse(decrypted)).toMatchObject({ kty: "RSA" });
   });
 
   it("works on an empty table", async () => {
-    const result = await rotateJwksSigningKey(db, { key: newKey(), envelope });
+    const result = await rotateJwksSigningKey(db, {
+      key: newKey(),
+      authSecret: AUTH_SECRET,
+      envelope,
+    });
     expect(result.rotatedKids).toEqual([]);
     expect(await db.select().from(jwksKey)).toHaveLength(1);
   });
@@ -118,6 +138,7 @@ describe.skipIf(!DATABASE_URL)("JWKS rotation against Postgres", () => {
     await expect(
       rotateJwksSigningKey(db, {
         key: { ...newKey(), publicKey: "not json", alg: "RS256" },
+        authSecret: AUTH_SECRET,
         envelope: {
           seal: () => {
             throw new Error("seal failed");
@@ -133,7 +154,7 @@ describe.skipIf(!DATABASE_URL)("JWKS rotation against Postgres", () => {
   it("retires the rotating key only after the token lifetime has passed", async () => {
     const now = new Date("2026-11-03T10:00:00.000Z");
     await seedActive(db, "old", new Date("2026-08-01T00:00:00.000Z"));
-    await rotateJwksSigningKey(db, { key: newKey(), envelope, now });
+    await rotateJwksSigningKey(db, { key: newKey(), authSecret: AUTH_SECRET, envelope, now });
 
     expect(JWKS_RETIREMENT_WINDOW_MS).toBeGreaterThan(ACCESS_TOKEN_TTL_SECONDS * 1000);
 
@@ -163,6 +184,7 @@ describe.skipIf(!DATABASE_URL)("JWKS rotation against Postgres", () => {
           ...process.env,
           DATABASE_URL_OWNER: url.toString(),
           AUTH_DEK_KEY: randomBytes(32).toString("hex"),
+          BETTER_AUTH_SECRET: AUTH_SECRET,
         },
       });
     };

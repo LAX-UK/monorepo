@@ -11,8 +11,10 @@ export type ClientAttention = {
    * number ("14"); `null` for a lot not numbered yet.
    */
   outbidLots: readonly (string | null)[];
-  /** Won lots still to pay for. */
+  /** Won lots still to pay for, whether or not they can be paid yet. */
   paymentsDue: number;
+  /** Something is owed and all of it waits on account checks, so nothing can be paid yet. */
+  paymentsInReview: boolean;
   unreadNotifications: number;
   /**
    * The same prompts named by the work, with a link and a count per kind. The chip, the menu and
@@ -25,6 +27,7 @@ export type ClientAttention = {
 export const NO_ATTENTION: ClientAttention = {
   outbidLots: [],
   paymentsDue: 0,
+  paymentsInReview: false,
   unreadNotifications: 0,
   groups: [],
 };
@@ -68,7 +71,7 @@ export function attentionCountFor(
 
 /** The header chip: one short, urgent prompt with a link to where it is resolved. */
 export type AttentionChip = {
-  kind: "outbid" | "payment-due";
+  kind: "outbid" | "payment-due" | "account-in-review";
   /** "Outbid on Harbour at Dawn", or "Outbid on 2 lots" when several are waiting. */
   label: string;
   href: string;
@@ -101,12 +104,23 @@ function outbidChip(attention: ClientAttention): Omit<AttentionChip, "kind"> {
   return { label, href: OUTBID_LIST_HREF, accessibleName: `${label}. Go to My bids` };
 }
 
-/** In priority order: being outbid wins while a sale is live; payment waits a little longer. */
+/** In priority order: being outbid wins while a sale is live; the account's checks, then payment, wait a little longer. */
 const CHIP_RULES: readonly ChipRule[] = [
   {
     kind: "outbid",
     applies: (a) => a.outbidLots.length > 0,
     chip: outbidChip,
+  },
+  {
+    // While checks are open nothing can be paid, so the chip says where the account stands
+    // rather than asking for a payment that cannot be made.
+    kind: "account-in-review",
+    applies: (a) => a.paymentsDue > 0 && a.paymentsInReview,
+    chip: () => ({
+      label: "Account in review",
+      href: CLIENT_ROUTES.purchases,
+      accessibleName: "Account in review. Go to Purchases",
+    }),
   },
   {
     kind: "payment-due",

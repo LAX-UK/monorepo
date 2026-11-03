@@ -336,6 +336,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** Subject and export ids only; the request carries nothing personal. */
   "subject.data_export_requested": new Set(),
+  /** Which provider was removed; nothing personal. */
+  "user.sign_in_method_unlinked": new Set(["provider"]),
   "auth.forgot_password_requested": new Set(),
   "auth.password_credential_enabled": new Set(),
   "auth.email_change_started": new Set(),
@@ -347,6 +349,18 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "auth.two_factor_policy_changed": new Set(["scope", "required", "legalEntityId"]),
   /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */
   "auth.two_factor_reset_by_staff": new Set(["reason"]),
+  /**
+   * Why staff moved an account to a new address and what they relied on: a staff-typed note, the
+   * kind of proof, and the KYC session or ID-check reference. The addresses are not recorded.
+   */
+  "auth.email_change_requested_by_staff": new Set([
+    "reason",
+    "proofKind",
+    "kycSessionId",
+    "proofReference",
+  ]),
+  /** Staff were shown the verified name and date of birth; only the record's id is kept. */
+  "auth.email_change_kyc_record_viewed": new Set(["kycSessionId"]),
   "auth.two_factor_security_email": new Set(["kind"]),
   "auth.account_suspended": new Set(),
   /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */
@@ -373,6 +387,13 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */
   /** Queue and job names are code identifiers; the discard note is a staff-typed operational note. */
+  /** The reference of the request (DR-0001 or DL-7F3C1A) and nothing about the person or the notes. */
+  "data_request.viewed": new Set(["reference"]),
+  "data_request.logged": new Set(["reference"]),
+  "data_request.updated": new Set(["reference"]),
+  "data_request.extended": new Set(["reference"]),
+  "data_request.closed": new Set(["reference"]),
+  "data_request.continued": new Set(["reference"]),
   "failed_job.retried": new Set(["queue", "jobName", "confirmRepeat"]),
   "failed_job.discarded": new Set(["queue", "jobName", "reason", "note"]),
   "failed_job.restored": new Set(["queue", "jobName"]),
@@ -389,6 +410,15 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   "marketing_enquiry.status_changed": new Set(["enquiryId", "intent", "from", "to", "closeReason"]),
   "marketing_enquiry.converted": new Set(["enquiryId", "intent", "from"]),
+  /** Codes and dates; the note is typed by staff, and the address itself is never recorded. */
+  "email.block_lifted": new Set([
+    "userId",
+    "reason",
+    "note",
+    "previousReason",
+    "previousSince",
+    "provider",
+  ]),
   /** One event per changed routing row: a department slug (or none for the fallback) and staff user ids. */
   "enquiry_routing.changed": new Set([
     "departmentSlug",

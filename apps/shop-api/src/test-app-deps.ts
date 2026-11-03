@@ -464,6 +464,14 @@ export function createMinimalShopApiTestDeps(
         refundId: "00000000-0000-4000-8000-000000000012",
         status: "pending" as const,
       }),
+      markRefundSettledOutside: async () => ({
+        refundId: "00000000-0000-4000-8000-000000000012",
+        status: "succeeded" as const,
+      }),
+      advanceReturn: async () => ({
+        returnId: "00000000-0000-4000-8000-000000000013",
+        status: "in_transit" as const,
+      }),
       markPayoutPaid: async () => ({
         payoutId: "00000000-0000-4000-8000-000000000016",
         status: "paid" as const,

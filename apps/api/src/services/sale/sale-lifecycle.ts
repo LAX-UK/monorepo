@@ -1,6 +1,7 @@
 import type { Lot, Sale, StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../lib/errors.js";
+import type { SalePublishOptions } from "../interfaces/sale-publish.js";
 import { SalePublishService } from "./sale-publish.service.js";
 import type { SaleServiceDeps } from "./sale-types.js";
 
@@ -10,8 +11,9 @@ export async function publishSale(
   userRole: string,
   saleId: string,
   userStaffRoles?: StaffRoles | undefined,
+  options?: SalePublishOptions,
 ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-  return new SalePublishService(deps).publish(userId, userRole, saleId, userStaffRoles);
+  return new SalePublishService(deps).publish(userId, userRole, saleId, userStaffRoles, options);
 }
 
 /** Revert a scheduled sale (and its scheduled lots) back to draft. */

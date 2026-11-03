@@ -156,3 +156,72 @@ describe("data download environment", () => {
     ).toThrow(/must differ from IDENTITY_MACHINE_CLIENT_ID/);
   });
 });
+
+describe("staff email change credential", () => {
+  it("is optional: without it the route is not mounted", () => {
+    expect(parseAuthEnv(base).STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID).toBeUndefined();
+  });
+
+  it("accepts a complete credential", () => {
+    const env = parseAuthEnv({
+      ...base,
+      STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID: "staff-email-change",
+      STAFF_EMAIL_CHANGE_MACHINE_CLIENT_SECRET: "s".repeat(32),
+    });
+    expect(env.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID).toBe("staff-email-change");
+  });
+
+  it("rejects half a credential, and one that reuses another machine client", () => {
+    expect(() =>
+      parseAuthEnv({ ...base, STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID: "staff-email-change" }),
+    ).toThrow(/must be set together/);
+    expect(() =>
+      parseAuthEnv({
+        ...production,
+        STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID: "identity-machine",
+        STAFF_EMAIL_CHANGE_MACHINE_CLIENT_SECRET: "s".repeat(32),
+      }),
+    ).toThrow(/must differ from the other machine client ids/);
+  });
+});
+
+describe("data requests environment", () => {
+  it("is optional and retains contact details for two years by default", () => {
+    const env = parseAuthEnv(base);
+    expect(env.DATA_REQUESTS_MACHINE_CLIENT_ID).toBeUndefined();
+    expect(env.DATA_REQUEST_CONTACT_RETENTION_DAYS).toBe(730);
+  });
+
+  it("accepts a complete credential and a configured retention period", () => {
+    const env = parseAuthEnv({
+      ...base,
+      DATA_REQUESTS_MACHINE_CLIENT_ID: "bid-data-requests",
+      DATA_REQUESTS_MACHINE_CLIENT_SECRET: "d".repeat(32),
+      DATA_REQUEST_CONTACT_RETENTION_DAYS: "365",
+    });
+    expect(env.DATA_REQUESTS_MACHINE_CLIENT_ID).toBe("bid-data-requests");
+    expect(env.DATA_REQUEST_CONTACT_RETENTION_DAYS).toBe(365);
+  });
+
+  it("rejects half a credential and one that reuses another client", () => {
+    expect(() =>
+      parseAuthEnv({ ...base, DATA_REQUESTS_MACHINE_CLIENT_ID: "bid-data-requests" }),
+    ).toThrow(/must be set together/);
+    for (const [variable, id] of [
+      ["IDENTITY_MACHINE_CLIENT_ID", "identity-machine"],
+      ["SUBJECT_EXPORT_MACHINE_CLIENT_ID", "subject-export-worker"],
+    ] as const) {
+      expect(() =>
+        parseAuthEnv({
+          ...base,
+          [variable]: id,
+          ...(variable === "SUBJECT_EXPORT_MACHINE_CLIENT_ID"
+            ? { SUBJECT_EXPORT_MACHINE_CLIENT_SECRET: "s".repeat(32) }
+            : { IDENTITY_MACHINE_CLIENT_SECRET: "m".repeat(32) }),
+          DATA_REQUESTS_MACHINE_CLIENT_ID: id,
+          DATA_REQUESTS_MACHINE_CLIENT_SECRET: "d".repeat(32),
+        }),
+      ).toThrow(/must differ/);
+    }
+  });
+});

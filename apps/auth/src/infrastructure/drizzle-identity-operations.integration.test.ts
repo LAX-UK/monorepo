@@ -14,7 +14,11 @@ const NOW = new Date("2026-08-19T00:00:00.000Z");
 const subjectId = "90000000-0000-4000-8000-000000000110";
 const otherSubjectId = "90000000-0000-4000-8000-000000000111";
 const subjectIds = [subjectId, otherSubjectId] as const;
-const accountIds = ["identity-operations-credential"] as const;
+const accountIds = [
+  "identity-operations-credential",
+  "identity-operations-google",
+  "identity-operations-apple",
+] as const;
 const sessionIds = [
   "identity-operations-session-1",
   "identity-operations-session-2",
@@ -92,6 +96,62 @@ describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
     await expect(credentials.listProviders(subjectId)).resolves.toEqual([
       { providerId: "credential", hasPassword: true },
     ]);
+  });
+
+  it("lists, locks and removes only the person's own linked social account", async () => {
+    if (!db || !unitOfWork || !credentials) return;
+    await db.insert(account).values([
+      {
+        id: accountIds[0],
+        accountId: subjectId,
+        providerId: "credential",
+        userId: subjectId,
+        password: "hash",
+        createdAt: NOW,
+        updatedAt: NOW,
+      },
+      {
+        id: accountIds[1],
+        accountId: "google-1",
+        providerId: "google",
+        userId: subjectId,
+        createdAt: new Date(NOW.getTime() + 1_000),
+        updatedAt: NOW,
+      },
+      {
+        id: accountIds[2],
+        accountId: "apple-1",
+        providerId: "apple",
+        userId: otherSubjectId,
+        createdAt: NOW,
+        updatedAt: NOW,
+      },
+    ]);
+
+    const rows = await credentials.listSignInAccounts(subjectId);
+    expect(rows.map((row) => [row.providerId, row.hasPassword])).toEqual(
+      expect.arrayContaining([
+        ["credential", true],
+        ["google", false],
+      ]),
+    );
+    expect(rows).toHaveLength(2);
+
+    let removedOther = true;
+    let removed = false;
+    await unitOfWork.transaction(async (transaction) => {
+      expect(await credentials.lockSignInAccounts(transaction, subjectId)).toHaveLength(2);
+      removedOther = await credentials.deleteSocialAccount(transaction, subjectId, "apple");
+      removed = await credentials.deleteSocialAccount(transaction, subjectId, "google");
+    });
+
+    expect(removedOther).toBe(false);
+    expect(removed).toBe(true);
+    const left = await db
+      .select({ id: account.id })
+      .from(account)
+      .where(inArray(account.id, [...accountIds]));
+    expect(left.map((row) => row.id).sort()).toEqual([accountIds[0], accountIds[2]].sort());
   });
 
   it("deletes all sessions except the explicitly retained token", async () => {
@@ -223,6 +283,30 @@ describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
       id: subjectId,
       email: nextEmail,
       emailVerified: true,
+    });
+  });
+
+  it("completes a staff-vouched change on the new inbox's confirmation alone", async () => {
+    if (!unitOfWork || !emailChanges) return;
+    const nextEmail = "identity-operations-vouched@lax.bid";
+    await emailChanges.startChange({
+      subjectId,
+      newEmail: nextEmail,
+      expiresAt: new Date(NOW.getTime() + 60_000),
+      now: NOW,
+    });
+
+    await unitOfWork.transaction(async (transaction) => {
+      await emailChanges.markConfirmed(transaction, subjectId, "old", NOW);
+    });
+    await unitOfWork.transaction(async (transaction) => {
+      await expect(emailChanges.loadForConfirmation(transaction, subjectId)).resolves.toMatchObject(
+        { emailChangeOldOk: true, emailChangeNewOk: false },
+      );
+      await emailChanges.markConfirmed(transaction, subjectId, "new", NOW);
+      await expect(emailChanges.loadForConfirmation(transaction, subjectId)).resolves.toMatchObject(
+        { emailChangeOldOk: true, emailChangeNewOk: true },
+      );
     });
   });
 

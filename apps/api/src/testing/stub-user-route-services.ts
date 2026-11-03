@@ -25,6 +25,7 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
       listPortfolio: vi.fn(),
       listAccountBids: vi.fn(),
       listAccountPurchases: vi.fn(),
+      listAmountsOwed: vi.fn(),
     },
     lotStatesHttp: { list: vi.fn() },
     laxPortfolioHttp: {

@@ -5,6 +5,7 @@ import type {
   LotCancelledPayload,
   LotCreatedPayload,
   LotDetachedFromSalePayload,
+  LotEventPayload,
   LotEventType,
   LotReturnedToInventoryPayload,
 } from "../domain/lot-events.js";
@@ -226,6 +227,21 @@ export class LotLifecycleRecording implements ILotLifecycleRecorder {
       lot: lotRow,
       eventType: "lot.withdrawal_declined",
       payload: { sellerLegalEntityId, reason },
+      actorUserId,
+    });
+  }
+
+  async recordBuyerDefaulted(
+    tx: Database,
+    lotRow: Pick<Lot, "id" | "saleId" | "sellerLegalEntityId">,
+    payload: LotEventPayload<"lot.buyer_defaulted">,
+    actorUserId: string,
+  ): Promise<void> {
+    // The lot stays ended while the invoice is voided; where it goes next is recorded separately.
+    await this.recordStatusEvent(tx, {
+      lot: { ...lotRow, status: "ended" },
+      eventType: "lot.buyer_defaulted",
+      payload,
       actorUserId,
     });
   }

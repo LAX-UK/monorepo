@@ -2,6 +2,7 @@ import { coerceToDate } from "@/lib/data/http/parse";
 import type { UserNotification } from "@auction/types";
 import {
   BellRing,
+  CalendarDays,
   Clock,
   CreditCard,
   Eye,
@@ -47,6 +48,12 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   }
   if (type === "lot_lost") {
     return { label: "Lost", Icon: XCircle, tone: "neutral" };
+  }
+  if (type === "buyer_default_notice") {
+    return { label: "Sale update", Icon: CreditCard, tone: "warn" };
+  }
+  if (type === "payment_reminder") {
+    return { label: "Payment reminder", Icon: CreditCard, tone: "warn" };
   }
   if (type === "payment_due" || type.startsWith("payment")) {
     return { label: "Payment", Icon: CreditCard, tone: "info" };
@@ -135,6 +142,9 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   }
   if (type === "source_of_funds_rejected") {
     return { label: "SoF review", Icon: ShieldAlert, tone: "danger" };
+  }
+  if (type === "sale_announced") {
+    return { label: "New sale", Icon: CalendarDays, tone: "info" };
   }
   if (type.startsWith("watchlist")) {
     return { label: "Watchlist", Icon: Eye, tone: "info" };

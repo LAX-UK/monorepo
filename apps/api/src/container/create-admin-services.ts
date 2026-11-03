@@ -1,8 +1,11 @@
 import type { Database } from "@auction/db";
 import {
   DrizzleAdminSubmissionsSummaryReader,
+  DrizzleEmailBlockRepository,
   DrizzleExportJobRepository,
+  DrizzlePersonEmailDeliveryReader,
 } from "@auction/persistence/repositories";
+import { bindEmailAddressReactivationQueue } from "@auction/queues";
 import type { Env } from "../env.js";
 import { AdminLotAttentionService } from "../services/admin/admin-lot-attention.service.js";
 import { AdminLotDetailMetricsService } from "../services/admin/admin-lot-detail-metrics.service.js";
@@ -34,6 +37,7 @@ import {
 import { attachAdminSatelliteServices } from "../services/admin/create-admin-satellite-services.js";
 import { AdminFailedJobsService } from "../services/admin/failed-jobs/admin-failed-jobs.service.js";
 import { DomainEventFailedJobAuditTrail } from "../services/admin/failed-jobs/failed-job-audit-trail.js";
+import type { BuyerDefaultService } from "../services/buyer-default/buyer-default.service.js";
 import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
 import type { IPayoutStatementApplicationService } from "../services/interfaces/finance-routes/finance-payout-statement.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
@@ -62,6 +66,7 @@ export type CreateAdminServicesInput = {
   bidding: ContainerBiddingSaleroom;
   userMisc: ContainerUserMiscServices;
   payoutStatementApplication: IPayoutStatementApplicationService;
+  buyerDefaultService: BuyerDefaultService;
 };
 
 export function createAdminServices(input: CreateAdminServicesInput): ContainerAdminServices {
@@ -173,6 +178,9 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     categoryService,
     artistProfileService,
     emailObservabilityRepository,
+    personEmailDeliveryReader: new DrizzlePersonEmailDeliveryReader(db),
+    emailBlockRepository: new DrizzleEmailBlockRepository(db),
+    emailReactivation: bindEmailAddressReactivationQueue(infra.emailQueue),
     adminUserService,
     adminUserReader,
     profileService,
@@ -184,6 +192,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     lotService,
     adminLotBrowseService,
     lotTransitionOrchestrator,
+    buyerDefaultService: input.buyerDefaultService,
     lotLifecycleQueryService,
     saleRegistrationService,
     artistRegistryService,

@@ -174,6 +174,11 @@ export class SecurityNoticeService implements SecurityNoticePublisher, SecurityN
           },
         });
         return;
+      case "sign_in_method_removed":
+        await enqueue("sign-in-method-removed", subject.email, {
+          providerName: event.provider === "google" ? "Google" : "Apple",
+        });
+        return;
       case "phone_verified":
         await enqueue("phone-verified", subject.email, { maskedPhone: maskPhoneE164(event.phone) });
         return;

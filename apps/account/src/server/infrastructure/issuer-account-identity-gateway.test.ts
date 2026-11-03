@@ -94,6 +94,54 @@ describe("createIssuerAccountIdentityGateway", () => {
     }
   });
 
+  describe("sign-in methods", () => {
+    it("reads the methods with only the access token in the body", async () => {
+      const methods = {
+        hasPassword: false,
+        social: [{ provider: "google", linkedAt: "2026-10-01T09:00:00.000Z" }],
+      };
+      const { fetchImpl, gateway: g } = gateway(async () => Response.json(methods));
+      expect(await g.readSignInMethods(actor)).toEqual({ status: "ok", value: methods });
+      const { url, body } = lastRequest(fetchImpl);
+      expect(url).toBe("https://auth.internal/api/auth/lax/account-sign-in-methods");
+      expect(Object.fromEntries(body)).toEqual({ token: "access-token" });
+    });
+
+    it("removes a provider with the access token, sign-in and provider in the body", async () => {
+      const { fetchImpl, gateway: g } = gateway(async () =>
+        Response.json({ unlinked: "apple", revokedSessions: 1 }),
+      );
+      expect(await g.unlinkSignInMethod(actor, "apple")).toEqual({
+        status: "ok",
+        value: { unlinked: "apple", revokedSessions: 1 },
+      });
+      const { url, body } = lastRequest(fetchImpl);
+      expect(url).toBe("https://auth.internal/api/auth/lax/account-sign-in-methods/unlink");
+      expect(url).not.toContain("access-token");
+      expect(Object.fromEntries(body)).toEqual({
+        token: "access-token",
+        sid: "current-sid",
+        provider: "apple",
+      });
+    });
+
+    it("passes the request to sign in again through, and names the last-method refusal", async () => {
+      const stale = gateway(async () =>
+        Response.json({ error: "reauth_required" }, { status: 403 }),
+      );
+      expect(await stale.gateway.unlinkSignInMethod(actor, "google")).toEqual({
+        status: "reauth_required",
+      });
+      const last = gateway(async () =>
+        Response.json({ error: "last_sign_in_method" }, { status: 422 }),
+      );
+      expect(await last.gateway.unlinkSignInMethod(actor, "google")).toEqual({
+        status: "rejected",
+        reason: "last_sign_in_method",
+      });
+    });
+  });
+
   describe("backup codes", () => {
     it("asks the issuer for a new set with the access token and sign-in in the body", async () => {
       const { fetchImpl, gateway: g } = gateway(async () =>

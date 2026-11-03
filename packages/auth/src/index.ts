@@ -101,6 +101,8 @@ export { IDENTITY_EMAIL_TEMPLATE_NAMES } from "./ports/index.js";
 export { maskPhoneE164 } from "./mask-phone-e164.js";
 export { verifyBearerToken, type VerifiedToken } from "./middleware.js";
 export type {
+  CredentialEmailInput,
+  CredentialEmailSender,
   EmailEnqueueInput,
   EmailSender,
   IdentityEmailTemplate,

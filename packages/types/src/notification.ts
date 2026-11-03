@@ -6,6 +6,8 @@ export type UserNotification = {
   message: string;
   lotId: string | null;
   submissionId: string | null;
+  /** The sale a sale notice is about. */
+  saleId?: string | null;
   /** The account the notification is about; `null` for the person's own personal account. */
   legalEntityId?: string | null;
   read: boolean;
@@ -48,6 +50,8 @@ export type NotificationPreference = {
   endingSoonInApp: boolean;
   watchlistInApp: boolean;
   paymentInApp: boolean;
+  /** A notice in the app when LAX Bid announces a new sale. */
+  newSalesInApp: boolean;
   outbidPush: boolean;
   wonPush: boolean;
   endingSoonPush: boolean;

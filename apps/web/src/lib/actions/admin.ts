@@ -25,6 +25,9 @@ export const adminSoftDeleteLotResultAction = _adminSoftDeleteLotResultAction;
 import { adminReturnLotToInventoryResultAction as _adminReturnLotToInventoryResultAction } from "./admin/admin-lots";
 export const adminReturnLotToInventoryResultAction = _adminReturnLotToInventoryResultAction;
 
+import { adminRecordBuyerDefaultResultAction as _adminRecordBuyerDefaultResultAction } from "./admin/admin-lots";
+export const adminRecordBuyerDefaultResultAction = _adminRecordBuyerDefaultResultAction;
+
 import { adminApproveWithdrawalRequestResultAction as _adminApproveWithdrawalRequestResultAction } from "./admin/admin-lots";
 export const adminApproveWithdrawalRequestResultAction = _adminApproveWithdrawalRequestResultAction;
 import { adminDeclineWithdrawalRequestResultAction as _adminDeclineWithdrawalRequestResultAction } from "./admin/admin-lots";
@@ -107,6 +110,12 @@ export const adminSuspendUserResultAction = _adminSuspendUserResultAction;
 
 import { adminResetTwoFactorResultAction as _adminResetTwoFactorResultAction } from "./admin/admin-users";
 export const adminResetTwoFactorResultAction = _adminResetTwoFactorResultAction;
+import {
+  adminEmailChangeKycRecordResultAction as _adminEmailChangeKycRecordResultAction,
+  adminStartEmailChangeResultAction as _adminStartEmailChangeResultAction,
+} from "./admin/admin-users";
+export const adminStartEmailChangeResultAction = _adminStartEmailChangeResultAction;
+export const adminEmailChangeKycRecordResultAction = _adminEmailChangeKycRecordResultAction;
 
 import { adminUnsuspendUserResultAction as _adminUnsuspendUserResultAction } from "./admin/admin-users";
 export const adminUnsuspendUserResultAction = _adminUnsuspendUserResultAction;

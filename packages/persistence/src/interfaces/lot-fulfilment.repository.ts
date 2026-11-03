@@ -62,6 +62,8 @@ export type UpdateLotFulfilmentInput = Partial<{
 
 export interface ILotFulfilmentRepository {
   findByLotId(lotId: string): Promise<LotFulfilmentRow | null>;
+  /** The saleroom status of each lot that has a fulfilment record; lots without one are absent. */
+  statusesForLots(lotIds: readonly string[]): Promise<Map<string, LotFulfilmentRow["status"]>>;
   insert(input: InsertLotFulfilmentInput): Promise<void>;
   updateByLotId(lotId: string, patch: UpdateLotFulfilmentInput): Promise<void>;
   listForAdmin(

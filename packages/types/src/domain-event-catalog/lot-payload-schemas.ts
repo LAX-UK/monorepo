@@ -88,6 +88,16 @@ export const lotReturnedToInventoryPayloadSchema = z.object({
     .optional(),
 });
 
+export const lotBuyerDefaultedPayloadSchema = z.object({
+  /** The voided invoice; null when none had been raised. */
+  paymentId: z.string().uuid().nullable(),
+  buyerId: z.string(),
+  outcome: z.enum(["returned_to_inventory", "offered_to_underbidder"]),
+  reason: z.string(),
+  buyerRestricted: z.boolean(),
+  offeredUserId: z.string().nullable(),
+});
+
 export const lotSoftDeletedPayloadSchema = z.object({
   title: z.string(),
   from_status: z.string(),
@@ -108,6 +118,7 @@ export const LotEventSchemas = {
   "lot.withdrawal_requested": lotWithdrawalRequestedPayloadSchema,
   "lot.withdrawal_declined": lotWithdrawalDeclinedPayloadSchema,
   "lot.returned_to_inventory": lotReturnedToInventoryPayloadSchema,
+  "lot.buyer_defaulted": lotBuyerDefaultedPayloadSchema,
   "lot.soft_deleted": lotSoftDeletedPayloadSchema,
 } as const;
 

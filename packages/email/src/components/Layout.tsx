@@ -26,6 +26,8 @@ export type LayoutProps = {
   unsubscribeLabel?: string;
   /** Adds a privacy notice link to the footer. */
   privacyUrl?: string;
+  /** Where to manage what is sent, shown beside the unsubscribe link. */
+  manage?: { href: string; label: string };
   /** `account` uses the left-aligned LAX Account lockup for security notices. */
   header?: "wordmark" | "account";
   /** Product the email belongs to; defaults to the one `renderEmail` resolves for the template. */
@@ -42,6 +44,7 @@ export function Layout({
   footerReason,
   unsubscribeLabel,
   privacyUrl,
+  manage,
   header = "wordmark",
   product,
   children,
@@ -70,6 +73,7 @@ export function Layout({
               {...(footerReason ? { reason: footerReason } : {})}
               {...(unsubscribeLabel ? { unsubscribeLabel } : {})}
               {...(privacyUrl ? { privacyUrl } : {})}
+              {...(manage ? { manage } : {})}
               product={resolvedProduct}
             />
           </Section>

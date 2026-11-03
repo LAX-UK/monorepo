@@ -646,3 +646,17 @@ export {
 } from "./account/index.js";
 
 export * from "./cover/index.js";
+export {
+  AlertLinkPage,
+  type AlertLinkPageProps,
+  type ConfirmLinkState,
+  type ConfirmResult,
+  type StopChoice,
+  type StopLinkState,
+  type StopResult,
+} from "./alerts/alert-link-page.js";
+export {
+  ALERT_LINK_COPY,
+  type AlertLinkCopy,
+  type AlertLinkProduct,
+} from "./alerts/alert-link-copy.js";

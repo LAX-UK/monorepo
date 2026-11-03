@@ -18,6 +18,7 @@ import type { IComplianceRecipientReader } from "../interfaces/compliance-recipi
 import type { ICoverAnalysisJobRepository } from "../interfaces/cover-analysis-job.repository.js";
 import type { IDataExportJobRepository } from "../interfaces/data-export.repository.js";
 import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
+import type { IEmailAddressLookup } from "../interfaces/email-provider-suppression.js";
 import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
 import type { IKycRetentionSubjectStore } from "../interfaces/kyc-retention-subject.store.js";
 import type { ILegalEntityArchiveCascadeReader } from "../interfaces/legal-entity-archive-cascade.reader.js";
@@ -60,6 +61,7 @@ export type WorkerBootstrapDeps = {
   repoFactory: IRepositoryFactory;
   uploadValidationRepo: IUploadValidationRepository;
   emailOutboxRepo: IEmailOutboxRepository;
+  emailAddressLookup: IEmailAddressLookup;
   payoutStatementRepo: IPayoutStatementRepository;
   profileMarketingReader: IMarketingProfileReader;
   marketingEventOutboxWorker: IMarketingEventOutboxWorker;

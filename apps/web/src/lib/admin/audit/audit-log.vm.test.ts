@@ -85,6 +85,7 @@ describe("auditActionTone", () => {
     ["payout.transfer_failed", "danger"],
     ["payment.captured", "success"],
     ["auth.two_factor_reset_by_staff", "warning"],
+    ["auth.email_change_requested_by_staff", "warning"],
     ["bid.outbid", "neutral"],
   ])("%s is %s", (type, tone) => {
     expect(auditActionTone(type)).toBe(tone);

@@ -1,10 +1,27 @@
+export { OutboxAlertMailer, type AlertMailerOptions } from "./alert-mailer.js";
 export { EMAIL_DEFAULT_CURRENCY, formatMoneyMajor } from "./format-money.js";
+export { emailProductFor } from "./email-product.js";
+export {
+  BUYER_DEFAULT_NO_CHARGES,
+  buyerDefaultCopy,
+  paymentReminderCopy,
+  type BuyerDefaultAudience,
+  type BuyerDefaultCopy,
+  type BuyerDefaultOutcomeKey,
+  type PaymentReminderCopy,
+  type PaymentReminderStepKey,
+} from "./buyer-default-copy.js";
 export { renderEmail } from "./render.js";
 export {
   OPTIONAL_EMAIL_TEMPLATES,
   isOptionalEmailTemplate,
   suppressionBlocksTemplate,
 } from "./suppression-policy.js";
+export {
+  EMAIL_TEMPLATE_LABELS,
+  describeEmailTemplate,
+  type EmailTemplateDescription,
+} from "./template-labels.js";
 export { SNAPSHOT_DISCARDED_AFTER_SEND } from "./snapshot-retention.js";
 export {
   ConsoleEmailService,
