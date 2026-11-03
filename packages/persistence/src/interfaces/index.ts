@@ -1128,3 +1128,13 @@ export type {
   NewDisputeAllocation,
   NewDisputeCase,
 } from "./dispute-case.repository.js";
+
+export {
+  BuyerDefaultConflictError,
+  type BuyerDefaultLotFacts,
+  type IBuyerDefaultReader,
+  type IBuyerDefaultRepository,
+  type IPaymentReminderStore,
+  type PaymentReminderCandidate,
+  type RecordBuyerDefaultInput,
+} from "./buyer-default.js";

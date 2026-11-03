@@ -4,6 +4,7 @@ export type AdminWorkItemSourceRow = {
   kind:
     | "payment_manual_review"
     | "payment_capture_blocked"
+    | "payment_overdue"
     | "aml_screening"
     | "sof_case"
     | "submission_review"
@@ -41,6 +42,11 @@ export interface IAdminWorkItemsReader {
   listManualReviewPayments(limit: number): Promise<AdminWorkItemSourceRow[]>;
   /** Money captured on a payment that was already closed, until finance reinstates or refunds it. */
   listBlockedCaptures(limit: number): Promise<AdminWorkItemSourceRow[]>;
+  /**
+   * Won lots still unpaid from the day after their due date, until staff record a buyer default,
+   * the buyer pays, or the payment is held for our own checks.
+   */
+  listOverduePayments(limit: number, now: Date): Promise<AdminWorkItemSourceRow[]>;
   listPendingReviewTasks(query: AdminAssignableWorkItemsQuery): Promise<AdminWorkItemSourceRow[]>;
   listSubmissionReviews(query: AdminAssignableWorkItemsQuery): Promise<AdminWorkItemSourceRow[]>;
   listConditionReports(limit: number): Promise<AdminWorkItemSourceRow[]>;

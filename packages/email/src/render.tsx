@@ -57,6 +57,9 @@ import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-out
 import BiddingLimitChangedNoticeEmail, {
   subject as biddingLimitChangedNoticeSubject,
 } from "./templates/bidding-limit-changed-notice.js";
+import BuyerDefaultNoticeEmail, {
+  subject as buyerDefaultNoticeSubject,
+} from "./templates/buyer-default-notice.js";
 import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
 import ConsignmentAgreementReminderEmail, {
   subject as consignmentAgreementReminderSubject,
@@ -158,6 +161,9 @@ import PaymentReceiptEmail, {
 import PaymentRefundNoticeEmail, {
   subject as paymentRefundNoticeSubject,
 } from "./templates/payment-refund-notice.js";
+import PaymentReminderEmail, {
+  subject as paymentReminderSubject,
+} from "./templates/payment-reminder.js";
 import PayoutBankChangedNoticeEmail, {
   subject as payoutBankChangedNoticeSubject,
 } from "./templates/payout-bank-changed-notice.js";
@@ -390,6 +396,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "payment-receipt": {
     subject: paymentReceiptSubject,
     component: (vars) => <PaymentReceiptEmail {...vars} />,
+  },
+  "payment-reminder": {
+    subject: paymentReminderSubject,
+    component: (vars) => <PaymentReminderEmail {...vars} />,
+  },
+  "buyer-default-notice": {
+    subject: buyerDefaultNoticeSubject,
+    component: (vars) => <BuyerDefaultNoticeEmail {...vars} />,
   },
   "payment-invoice": {
     subject: paymentInvoiceSubject,

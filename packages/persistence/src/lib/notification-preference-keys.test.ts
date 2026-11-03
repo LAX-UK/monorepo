@@ -39,6 +39,8 @@ const NOTIFICATION_TYPES = [
   "access_requested",
   "access_request_decided",
   "watchlist_reminder",
+  "payment_reminder",
+  "buyer_default_notice",
 ] as const;
 
 type ExpectedRow = {
@@ -112,6 +114,20 @@ const EXPECTED: Record<(typeof NOTIFICATION_TYPES)[number], ExpectedRow> = {
     inApp: "paymentInApp",
     push: null,
     template: "payment-invoice",
+  },
+  payment_reminder: {
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    inApp: "paymentInApp",
+    push: null,
+    template: "payment-reminder",
+  },
+  buyer_default_notice: {
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    inApp: "paymentInApp",
+    push: null,
+    template: "buyer-default-notice",
   },
   lot_ready_for_collection: {
     email: "paymentEmail",

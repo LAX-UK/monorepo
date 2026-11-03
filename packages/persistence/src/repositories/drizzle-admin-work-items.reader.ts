@@ -16,7 +16,9 @@ import {
   telephoneBidBooking,
   unsoldLotChoice,
 } from "@auction/db/schema";
-import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { invoiceDueAt } from "@auction/domain";
+import { INVOICE_PAYMENT_DUE_DAYS } from "@auction/types";
+import { and, desc, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type {
   AdminAssignableWorkItemsQuery,
   AdminWorkItemSourceRow,
@@ -26,6 +28,11 @@ import { adminWorkItemHref } from "../lib/admin-work-item-href.js";
 import { BLOCKED_CAPTURE_EVENT, toBlockedCapture } from "./blocked-capture.query.js";
 import { lotWorkItemTitle, sentenceCase } from "./work-item-labels.js";
 
+const DUE_DATE = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  timeZone: "Europe/London",
+});
 const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 
 /** A payment amount stored as a decimal string, shown as pounds ("83750.00" -> "£83,750.00"). */
@@ -179,6 +186,54 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         saleId: null,
         createdAt: blocked.blockedAt,
         sourceUpdatedAt: blocked.blockedAt,
+        assignedToUserId: null,
+      };
+    });
+  }
+
+  async listOverduePayments(limit: number, now: Date): Promise<AdminWorkItemSourceRow[]> {
+    // Unpaid won lots from the day after their due date (London calendar days). A payment held
+    // for our own checks is already in finance's manual-review list and is not the buyer's
+    // fault, so it is left out; so is a sale that has been cancelled.
+    const rows = await this.db
+      .select({
+        lotId: lot.id,
+        lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+        saleId: lot.saleId,
+        amount: payment.amount,
+        raisedAt: payment.createdAt,
+        winnerEmail: bidIdentityDirectory.email,
+      })
+      .from(payment)
+      .innerJoin(lot, eq(payment.lotId, lot.id))
+      .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, lot.id))
+      .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
+      .where(
+        and(
+          inArray(payment.status, ["pending", "cancelled"]),
+          eq(lot.status, "ended"),
+          eq(lot.winnerId, payment.buyerId),
+          isNull(lot.deletedAt),
+          or(isNull(lotFulfilment.status), ne(lotFulfilment.status, "cancelled")),
+          sql`((${payment.createdAt} at time zone 'Europe/London') + make_interval(days => ${INVOICE_PAYMENT_DUE_DAYS}))::date < (${now.toISOString()}::timestamptz at time zone 'Europe/London')::date`,
+        ),
+      )
+      .orderBy(payment.createdAt)
+      .limit(limit);
+
+    return rows.map((row) => {
+      const dueAt = invoiceDueAt(row.raisedAt);
+      return {
+        sourceId: row.lotId,
+        kind: "payment_overdue" as const,
+        domain: "finance" as const,
+        title: lotWorkItemTitle("Payment overdue", row.lotNumber, row.lotTitle),
+        subtitle: `${row.winnerEmail ?? "Buyer"} · ${formatWorkItemAmount(row.amount)} · due ${DUE_DATE.format(dueAt)}`,
+        href: adminWorkItemHref("payment_overdue", { subjectId: row.lotId }),
+        saleId: row.saleId,
+        createdAt: dueAt,
+        sourceUpdatedAt: new Date(dueAt.getTime() + 86_400_000),
         assignedToUserId: null,
       };
     });
