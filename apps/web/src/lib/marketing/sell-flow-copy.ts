@@ -19,7 +19,7 @@ export const SELL_PREREQUISITES = [
   "1+ photos of the item (3+ recommended: overall, detail, signature or markings)",
   "Title, description, dimensions, and medium — include artist or maker in the title or description",
   "Provenance or acquisition history, if available",
-  "A verified email on your LAX account (required to submit)",
+  "A verified email on your LAX Account (required to submit)",
   "Stripe Connect for payouts (complete after acceptance — not required to start)",
 ] as const;
 

@@ -13,7 +13,6 @@ import { WizardHeaderActions } from "@/components/dashboard/submission-wizard/wi
 import { WizardStepper } from "@/components/dashboard/submission-wizard/wizard-stepper";
 import { trackWizardStepComplete } from "@/lib/analytics/sell-funnel";
 import type { SubmissionCategoryOption } from "@/lib/forms/submission/item-submission-form-defaults";
-import { SELL_FORM_SUMMARY_TITLE } from "@/lib/forms/submission/sell-form-copy";
 import { stepUsesSummary } from "@/lib/forms/submission/step-errors";
 import {
   WIZARD_STEPS,
@@ -432,12 +431,7 @@ export function SubmissionWizardView({
           >
             <div ref={stepRef}>
               {summary.items.length > 0 ? (
-                <ErrorSummary
-                  errors={summary.items}
-                  focusKey={summary.focusKey}
-                  title={SELL_FORM_SUMMARY_TITLE}
-                  className="mb-6"
-                />
+                <ErrorSummary errors={summary.items} focusKey={summary.focusKey} className="mb-6" />
               ) : null}
               {currentStep
                 ? renderStep(currentStep.id, {

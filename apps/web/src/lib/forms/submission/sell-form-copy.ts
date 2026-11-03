@@ -17,6 +17,3 @@ export const SELL_FORM_ERRORS = {
 export function photoTooLargeMessage(maxBytes: number): string {
   return `This photo is over ${Math.round(maxBytes / 1024 / 1024)} MB. Choose a smaller file`;
 }
-
-/** The title of the summary shown at the top of a step with problems. */
-export const SELL_FORM_SUMMARY_TITLE = "Check these before you continue";
