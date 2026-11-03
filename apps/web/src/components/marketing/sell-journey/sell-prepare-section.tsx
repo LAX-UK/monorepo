@@ -29,8 +29,8 @@ export function SellPrepareSection() {
 
       <div className="rounded-lg border border-border-hairline bg-surface-container-lowest p-4">
         <p className="font-body text-sm text-on-surface-variant">
-          Preview the six steps in our submission wizard. Sign in when you are ready — your progress
-          saves automatically.
+          See the six steps of the form. Sign in when you are ready; your progress saves
+          automatically.
         </p>
         <Accordion type="single" collapsible className="mt-4">
           {WIZARD_STEPS.map((step, index) => (

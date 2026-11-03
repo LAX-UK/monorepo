@@ -19,14 +19,11 @@ export const SELL_PREREQUISITES = [
   "1+ photos of the item (3+ recommended: overall, detail, signature or markings)",
   "Title, description, dimensions, and medium — include artist or maker in the title or description",
   "Provenance or acquisition history, if available",
-  "A verified email on your LAX account (required to submit)",
-  "Stripe Connect for payouts (complete after acceptance — not required to start)",
+  "A verified email on your LAX Account (required to send)",
+  "Payout details, set up after we accept the work (not needed to start)",
 ] as const;
 
-export const SELL_TIME_EXPECTATIONS =
-  "~3 minutes to submit · Progress saves after your first save · Response within 24 hours";
-
-/** Opening paragraph for `/sell` LegalPage intro. */
+/** Opening paragraph of the step by step guide. */
 export const SELL_PAGE_INTRO =
   "LAX Bid works with consignors to place fine art, watches, motor cars, design, and exceptional objects into carefully edited online timed sales and in-person saleroom events. Our specialists guide each consignment from first review through catalogue, sale, payment, and settlement.";
 
