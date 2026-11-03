@@ -97,7 +97,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   registerShopAuthPlugin(app, options.deps.auth);
   void app.register(etag);
   void app.register(rateLimit, {
-    max: 120,
+    max: options.deps.env.SHOP_API_RATE_LIMIT_PER_MINUTE ?? 120,
     timeWindow: "1 minute",
     allowList: (request) =>
       request.url.startsWith("/health") ||
