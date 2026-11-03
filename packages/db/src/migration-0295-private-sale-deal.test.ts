@@ -46,6 +46,8 @@ describe("migration 0295 private sale deal", () => {
       privateSaleDealDocument,
     ]) {
       for (const column of Object.values(getTableColumns(table))) {
+        // Added later, by 0298.
+        if (column.name === "invoice_reference") continue;
         expect(migration, column.name).toContain(`"${column.name}"`);
       }
     }

@@ -64,6 +64,8 @@ export const privateSaleDeal = pgTable(
     invoicedByUserId: text("invoiced_by_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    /** The invoice's reference in the finance system that issued it; null until one exists. */
+    invoiceReference: text("invoice_reference"),
     cancelReason: text("cancel_reason"),
     cancelledAt: timestamp("cancelled_at", { mode: "date", withTimezone: true }),
     version: integer("version").notNull().default(1),
@@ -209,6 +211,75 @@ export const privateSaleDealDocument = pgTable(
     check(
       "private_sale_deal_document_acceptance_check",
       sql`${table.acceptedAt} IS NULL OR (${table.legalEntityId} IS NOT NULL AND ${table.version} IS NOT NULL)`,
+    ),
+  ],
+);
+
+const PAYMENT_STATUSES = "'open', 'processing', 'paid', 'cancelled', 'refunded'";
+
+/**
+ * The buyer's payment for a deal: one hosted checkout for the price plus any buyer's fee, paid by
+ * card or bank transfer. Money is in pence, GBP only. A deal has at most one live payment (open,
+ * processing or paid); a cancelled one hands the deal back to being due.
+ *
+ * Status: `open` -> `processing` (bank transfer on its way) -> `paid` -> `refunded`; `open` or
+ * `processing` -> `cancelled` when the checkout is cancelled, expires or fails.
+ */
+export const privateSaleDealPayment = pgTable(
+  "private_sale_deal_payment",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    dealId: uuid("deal_id")
+      .notNull()
+      .references(() => privateSaleDeal.id, { onDelete: "restrict" }),
+    buyerLegalEntityId: uuid("buyer_legal_entity_id")
+      .notNull()
+      .references(() => legalEntity.id, { onDelete: "restrict" }),
+    createdByUserId: text("created_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("open"),
+    /** `card` or `gb_bank_transfer`, chosen on the amount. */
+    rail: text("rail").notNull(),
+    currency: text("currency").notNull().default("GBP"),
+    amountMinor: bigint("amount_minor", { mode: "number" }).notNull(),
+    stripeCheckoutSessionId: text("stripe_checkout_session_id"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    stripeChargeId: text("stripe_charge_id"),
+    refundedMinor: bigint("refunded_minor", { mode: "number" }).notNull().default(0),
+    stripeRefundId: text("stripe_refund_id"),
+    paidAt: timestamp("paid_at", { mode: "date", withTimezone: true }),
+    refundedAt: timestamp("refunded_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("private_sale_deal_payment_deal_idx").on(table.dealId),
+    index("private_sale_deal_payment_buyer_idx").on(table.buyerLegalEntityId),
+    // One live payment per deal, so a buyer cannot pay twice.
+    uniqueIndex("private_sale_deal_payment_live_uidx")
+      .on(table.dealId)
+      .where(sql`${table.status} IN ('open', 'processing', 'paid')`),
+    uniqueIndex("private_sale_deal_payment_intent_uidx")
+      .on(table.stripePaymentIntentId)
+      .where(sql`${table.stripePaymentIntentId} IS NOT NULL`),
+    uniqueIndex("private_sale_deal_payment_charge_uidx")
+      .on(table.stripeChargeId)
+      .where(sql`${table.stripeChargeId} IS NOT NULL`),
+    check("private_sale_deal_payment_status_check", sql.raw(`"status" IN (${PAYMENT_STATUSES})`)),
+    check(
+      "private_sale_deal_payment_rail_check",
+      sql`${table.rail} IN ('card', 'gb_bank_transfer')`,
+    ),
+    check("private_sale_deal_payment_currency_check", sql`${table.currency} = 'GBP'`),
+    check("private_sale_deal_payment_amount_check", sql`${table.amountMinor} > 0`),
+    check(
+      "private_sale_deal_payment_refund_check",
+      sql`${table.refundedMinor} >= 0 AND ${table.refundedMinor} <= ${table.amountMinor}`,
+    ),
+    check(
+      "private_sale_deal_payment_paid_check",
+      sql`${table.status} NOT IN ('paid', 'refunded') OR ${table.paidAt} IS NOT NULL`,
     ),
   ],
 );

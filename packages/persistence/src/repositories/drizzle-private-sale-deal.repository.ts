@@ -69,6 +69,7 @@ function mapDeal(row: DealRow): Omit<PrivateSaleDealDetail, "seller" | "buyer" |
     agreedAt: row.agreedAt,
     agreedByUserId: row.agreedByUserId,
     invoicedByUserId: row.invoicedByUserId,
+    invoiceReference: row.invoiceReference,
     cancelReason: row.cancelReason,
     cancelledAt: row.cancelledAt,
     version: row.version,

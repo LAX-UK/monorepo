@@ -2017,6 +2017,13 @@
       "when": 1801036800000,
       "tag": "0295_private_sale_deal",
       "breakpoints": true
+    },
+    {
+      "idx": 298,
+      "version": "7",
+      "when": 1801296000000,
+      "tag": "0298_private_sale_deal_payment",
+      "breakpoints": true
     }
   ]
 }
