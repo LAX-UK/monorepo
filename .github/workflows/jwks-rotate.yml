@@ -38,6 +38,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Build the identity packages the scripts import
+        run: pnpm turbo run build --filter=@auction/identity-db...
       - name: Record published key ids before rotation
         run: |
           set -euo pipefail
