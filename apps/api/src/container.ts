@@ -25,6 +25,7 @@ import { createContainerAuthenticator } from "./container/create-auth.js";
 import { createBidAuthority, createBiddingLimitGate } from "./container/create-bid-eligibility.js";
 import { createBiddingRouteServices } from "./container/create-bidding-route-services.js";
 import { createBiddingSaleroom } from "./container/create-bidding-saleroom.js";
+import { createBuyerDefaultServices } from "./container/create-buyer-default-services.js";
 import { createCatalogRouteServices } from "./container/create-catalog-route-services.js";
 import { createCatalogServices } from "./container/create-catalog-services.js";
 import { createComplianceMedia } from "./container/create-compliance-media.js";
@@ -183,6 +184,15 @@ export function createContainer(env: Env): Container {
     biddingSaleroom,
     complianceMedia,
   });
+  const buyerDefault = createBuyerDefaultServices({
+    env,
+    db,
+    infra,
+    repos,
+    platform,
+    catalog,
+    payments,
+  });
   const enquiryDrafts = createEnquiryDraftTokens(env);
   const compliance = createComplianceRouteServices({
     db,
@@ -258,6 +268,7 @@ export function createContainer(env: Env): Container {
     webOrigin: env.WEB_ORIGIN,
     watchlistReminders,
     consignmentThreadSweep: consignmentMessages.sweep,
+    paymentReminders: buyerDefault.paymentReminderService,
   });
   const catalogRoutes = createCatalogRouteServices({
     saleService: catalog.saleService,
@@ -307,6 +318,7 @@ export function createContainer(env: Env): Container {
     payments,
     bidding: biddingSaleroom,
     userMisc,
+    buyerDefaultService: buyerDefault.buyerDefaultService,
     payoutStatementApplication: finance.payoutStatement,
   });
 

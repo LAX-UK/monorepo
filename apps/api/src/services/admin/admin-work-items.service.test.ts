@@ -30,6 +30,7 @@ function createReader(overrides: Partial<IAdminWorkItemsReader> = {}): IAdminWor
   return {
     listManualReviewPayments: vi.fn().mockResolvedValue([]),
     listBlockedCaptures: vi.fn().mockResolvedValue([]),
+    listOverduePayments: vi.fn().mockResolvedValue([]),
     listPendingReviewTasks: vi.fn().mockResolvedValue([]),
     listSubmissionReviews: vi.fn().mockResolvedValue([]),
     listConditionReports: vi.fn().mockResolvedValue([]),
@@ -109,6 +110,39 @@ describe("AdminWorkItemsService", () => {
       query: { limit: 25, assignment: "all", urgentOnly: false },
     });
     expect(asClientServices.items.some((i) => i.kind === "payment_capture_blocked")).toBe(false);
+  });
+
+  it("shows an overdue payment to the sales roles that own the lot, not to finance-only staff", async () => {
+    const listOverduePayments = vi.fn().mockResolvedValue([
+      row({
+        sourceId: "lot-7",
+        kind: "payment_overdue",
+        domain: "finance",
+        title: "Payment overdue: Lot 7",
+        sourceUpdatedAt: new Date("2026-07-20T00:00:00.000Z"),
+      }),
+    ]);
+    const service = new AdminWorkItemsService(createReader({ listOverduePayments }));
+    const query = { limit: 25, assignment: "all", urgentOnly: false } as const;
+
+    const asSales = await service.listWorkItems({
+      actorUserId: "u1",
+      actorRole: "staff",
+      actorStaffRoles: ["sales_manager"],
+      query,
+    });
+    const item = asSales.items.find((i) => i.kind === "payment_overdue");
+    expect(item?.id).toBe("payment_overdue:lot-7");
+    expect(item?.href).toBe("/admin/lots/lot-7");
+    expect(item?.actions).toEqual([]);
+
+    const asFinance = await service.listWorkItems({
+      actorUserId: "u2",
+      actorRole: "staff",
+      actorStaffRoles: ["finance"],
+      query,
+    });
+    expect(asFinance.items.some((i) => i.kind === "payment_overdue")).toBe(false);
   });
 
   it("does not show an entity review to finance-only staff, who cannot open the entity page", async () => {

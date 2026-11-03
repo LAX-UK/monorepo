@@ -1,3 +1,8 @@
+import type {
+  BuyerDefaultAudience,
+  BuyerDefaultOutcomeKey,
+  PaymentReminderStepKey,
+} from "@auction/email";
 import type { AccessRequestRow, CreateNotificationRow } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 
@@ -22,6 +27,28 @@ export interface INotificationFactory {
     sellerId: string,
     opts?: { hammerPrice?: string },
   ): CreateNotificationRow;
+
+  createPaymentReminder(input: {
+    userId: string;
+    legalEntityId: string | null;
+    lotId: string;
+    lotTitle: string;
+    paymentId: string;
+    amount: string;
+    dueDate: string;
+    step: PaymentReminderStepKey;
+  }): CreateNotificationRow;
+
+  createBuyerDefaultNotice(input: {
+    userId: string;
+    legalEntityId: string | null;
+    lotId: string;
+    lotTitle: string;
+    amount: string;
+    audience: BuyerDefaultAudience;
+    outcome: BuyerDefaultOutcomeKey;
+    buyerRestricted: boolean;
+  }): CreateNotificationRow;
 
   /** `legalEntityId` is the account the bidder bid for. */
   createLost(lot: Lot, bidderId: string, legalEntityId: string | null): CreateNotificationRow;

@@ -1,4 +1,9 @@
-import { formatMoneyMajor } from "@auction/email";
+import { buyerDefaultCopy, formatMoneyMajor, paymentReminderCopy } from "@auction/email";
+import type {
+  BuyerDefaultAudience,
+  BuyerDefaultOutcomeKey,
+  PaymentReminderStepKey,
+} from "@auction/email";
 import type { AccessRequestRow, CreateNotificationRow } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import type { Lot } from "@auction/types";
@@ -200,6 +205,75 @@ export class NotificationFactory implements INotificationFactory {
         invoiceNumber: `PAY-${input.paymentId.slice(0, 8).toUpperCase()}`,
         lotTitle: lot.title,
         ...(input.dueDate ? { dueDate: input.dueDate } : {}),
+      },
+    };
+  }
+
+  createPaymentReminder(input: {
+    userId: string;
+    legalEntityId: string | null;
+    lotId: string;
+    lotTitle: string;
+    paymentId: string;
+    amount: string;
+    /** The due date in words ("10 November 2026"). */
+    dueDate: string;
+    step: PaymentReminderStepKey;
+  }): CreateNotificationRow {
+    const amount = formatMoneyMajor(input.amount) ?? input.amount;
+    const copy = paymentReminderCopy(input.step, {
+      lotTitle: input.lotTitle,
+      amount,
+      dueDate: input.dueDate,
+    });
+    return {
+      userId: input.userId,
+      type: "payment_reminder",
+      title: copy.title,
+      message: copy.paragraphs[0] ?? copy.heading,
+      lotId: input.lotId,
+      legalEntityId: input.legalEntityId,
+      meta: {
+        paymentId: input.paymentId,
+        amount: input.amount,
+        dueDate: input.dueDate,
+        lotTitle: input.lotTitle,
+        reminderStep: input.step,
+        audience: "buyer",
+        emailIdempotencyKey: `payment-reminder:${input.paymentId}:${input.step}`,
+      },
+    };
+  }
+
+  createBuyerDefaultNotice(input: {
+    userId: string;
+    legalEntityId: string | null;
+    lotId: string;
+    lotTitle: string;
+    amount: string;
+    audience: BuyerDefaultAudience;
+    outcome: BuyerDefaultOutcomeKey;
+    buyerRestricted: boolean;
+  }): CreateNotificationRow {
+    const copy = buyerDefaultCopy(input.audience, {
+      lotTitle: input.lotTitle,
+      amount: formatMoneyMajor(input.amount) ?? input.amount,
+      outcome: input.outcome,
+      buyerRestricted: input.buyerRestricted,
+    });
+    return {
+      userId: input.userId,
+      type: "buyer_default_notice",
+      title: copy.title,
+      message: copy.paragraphs.join(" "),
+      lotId: input.lotId,
+      legalEntityId: input.legalEntityId,
+      meta: {
+        amount: input.amount,
+        lotTitle: input.lotTitle,
+        audience: input.audience,
+        defaultOutcome: input.outcome,
+        buyerRestricted: input.buyerRestricted,
       },
     };
   }

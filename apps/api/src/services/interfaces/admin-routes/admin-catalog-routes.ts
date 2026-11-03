@@ -20,6 +20,7 @@ import type {
 } from "../../../admin/admin-route-dtos.js";
 import type { AdminConditionReportListPage } from "../../admin/admin-condition-report-list-query.service.js";
 import type { AdminLotFulfilmentListPage } from "../../admin/admin-lot-fulfilment-list-query.service.js";
+import type { BuyerDefaultService } from "../../buyer-default/buyer-default.service.js";
 import type {
   LotLifecycleSnapshotRow,
   LotLifecycleTimelineEvent,
@@ -94,6 +95,8 @@ export interface IAdminLotsApplicationService {
     total: number;
   }>;
   returnToInventory: LotTransitionOrchestrator["returnToInventory"];
+  /** Staff mark a won lot as a buyer default: void the invoice, then release or offer the lot. */
+  recordBuyerDefault: BuyerDefaultService["record"];
   getLifecycle(
     lotId: string,
     opts?: { limit?: number; includeSaleContext?: boolean },

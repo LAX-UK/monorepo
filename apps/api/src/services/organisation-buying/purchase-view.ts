@@ -91,6 +91,7 @@ export function quoteView(
 function invoiceOf(row: AccountPurchaseFactsRow, now: Date) {
   const state = purchaseInvoiceState(
     {
+      saleCancelled: row.fulfilment?.status === "cancelled",
       payment: row.payment ? { status: row.payment.status, raisedAt: row.payment.raisedAt } : null,
     },
     now,

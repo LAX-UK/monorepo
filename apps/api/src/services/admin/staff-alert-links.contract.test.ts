@@ -39,6 +39,7 @@ const WORK_ITEM_SAMPLES: Record<AdminWorkItemSourceKind, AdminWorkItemLinkIds> =
   marketing_enquiry: { subjectId: "enq-1" },
   purchase_problem: { paymentId: "pay-1" },
   payment_capture_blocked: { paymentId: "pay-1" },
+  payment_overdue: { subjectId: "lot-1" },
 };
 
 const KINDS = Object.keys(WORK_ITEM_SAMPLES) as AdminWorkItemSourceKind[];
