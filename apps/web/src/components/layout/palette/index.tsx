@@ -26,6 +26,7 @@ import type { PaletteItem } from "@/components/layout/palette/types";
 import { useDebouncedPaletteSearch } from "@/components/layout/palette/use-debounced-palette-search";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
+import { useNavActivity } from "@/lib/marketing/nav-activity-context";
 import type { ShellRole } from "@/lib/shell/contracts";
 import { Command, CommandDialog } from "@auction/ui";
 import { cn } from "@auction/ui";
@@ -74,6 +75,8 @@ export function CommandPalette({
   const asyncSources = variant === "admin" ? ADMIN_ASYNC_SOURCES : EMPTY_ASYNC_SOURCES;
   const { sections: asyncSections, loading } = useDebouncedPaletteSearch(asyncSources, query);
 
+  const navActivity = useNavActivity();
+
   const staticSections = useMemo(
     () =>
       buildStaticPaletteSections({
@@ -84,8 +87,18 @@ export function CommandPalette({
         pendingSubmissionCount,
         pendingArtistCount,
         navCounts,
+        navActivity,
       }),
-    [variant, query, sessionUser, shellRole, pendingSubmissionCount, pendingArtistCount, navCounts],
+    [
+      variant,
+      query,
+      sessionUser,
+      shellRole,
+      pendingSubmissionCount,
+      pendingArtistCount,
+      navCounts,
+      navActivity,
+    ],
   );
 
   const visibleSections = useMemo(

@@ -42,6 +42,8 @@ export type ConsignmentsListQuery = {
   view: ConsignmentView;
   q: string;
   sentBy: string | null;
+  /** The sale the work is catalogued for. */
+  sale: string | null;
   /** From Home's "Needs changes" link; it narrows In review to the works sent back. */
   stage: ReviewStage | null;
   sort: ConsignmentSort;
@@ -75,6 +77,7 @@ export function parseConsignmentsListQuery(
     view,
     q: searchParam(params.q) ?? "",
     sentBy: searchParam(params.sentBy),
+    sale: searchParam(params.sale),
     stage: view === "in-review" ? parseReviewStage(searchParam(params.stage) ?? undefined) : null,
     sort: oneOf(CONSIGNMENT_SORTS, searchParam(params.sort)) ?? "updated",
   };
@@ -85,6 +88,7 @@ export function consignmentsListSearch(query: ConsignmentsListQuery): string {
   const params = new URLSearchParams({ tab: query.view });
   if (query.q) params.set("q", query.q);
   if (query.sentBy) params.set("sentBy", query.sentBy);
+  if (query.sale) params.set("sale", query.sale);
   if (query.stage && query.view === "in-review") params.set("stage", query.stage);
   if (query.sort !== "updated") params.set("sort", query.sort);
   return `?${params.toString()}`;
@@ -99,6 +103,7 @@ function inView(record: ConsignmentRecord, view: ConsignmentView): boolean {
 /** Narrowed by search, sender and stage, whatever the view. */
 function matches(record: ConsignmentRecord, query: ConsignmentsListQuery): boolean {
   if (query.sentBy && record.sentBy !== query.sentBy) return false;
+  if (query.sale && record.saleTitle !== query.sale) return false;
   if (query.stage && record.progress !== query.stage) return false;
   return matchesEveryWord(
     [
@@ -143,24 +148,32 @@ export function defaultConsignmentView(records: readonly ConsignmentRecord[]): C
   return records.some((record) => record.task !== null) ? "needs-you" : "all";
 }
 
-export type ConsignmentFilterKey = "sentBy" | "stage";
+export type ConsignmentFilterKey = "sentBy" | "sale" | "stage";
 
 export function appliedConsignmentFilters(
   query: ConsignmentsListQuery,
 ): { id: ConsignmentFilterKey; label: string }[] {
   const chips: { id: ConsignmentFilterKey; label: string }[] = [];
   if (query.sentBy) chips.push({ id: "sentBy", label: `Sent by: ${query.sentBy}` });
+  if (query.sale) chips.push({ id: "sale", label: `Sale: ${query.sale}` });
   if (query.stage) chips.push({ id: "stage", label: NEEDS_CHANGES_LABEL });
   return chips;
 }
 
 export function isConsignmentListNarrowed(query: ConsignmentsListQuery): boolean {
-  return Boolean(query.q || query.sentBy || query.stage);
+  return Boolean(query.q || query.sentBy || query.sale || query.stage);
 }
 
 /** The members who sent anything, for the "Sent by" filter. */
 export function consignmentSenders(records: readonly ConsignmentRecord[]): string[] {
   return [...new Set(records.flatMap((r) => (r.sentBy ? [r.sentBy] : [])))].sort((a, b) =>
+    a.localeCompare(b),
+  );
+}
+
+/** The sales the listed works are catalogued for, for the "Sale" filter. */
+export function consignmentSales(records: readonly ConsignmentRecord[]): string[] {
+  return [...new Set(records.flatMap((r) => (r.saleTitle ? [r.saleTitle] : [])))].sort((a, b) =>
     a.localeCompare(b),
   );
 }

@@ -13,6 +13,7 @@ import { MediaAssetEnricher } from "../services/media-asset-enricher.js";
 import { MediaUrlResolver } from "../services/media-url-resolver.js";
 import { PerRequestSigningPolicy, StableSigningPolicy } from "../services/signed-url-policy.js";
 import { UploadService } from "../services/upload.service.js";
+import { EnquiryUploadAdmission } from "../services/upload/enquiry-upload-admission.js";
 import { UploadAuthorizationService } from "../services/upload/upload-authorization.service.js";
 import { UploadRateLimitPolicy } from "../services/upload/upload-rate-limit.policy.js";
 import { UploadValidationDispatcher } from "../services/upload/upload-validation.dispatcher.js";
@@ -104,6 +105,7 @@ export function createComplianceUploadExportMedia(
       auth: uploadAuth,
       rateLimit: uploadRateLimit,
       validation: uploadValidation,
+      admission: new EnquiryUploadAdmission(uploadPersistenceRepository),
     },
     redis,
     uploadValidationQueue,

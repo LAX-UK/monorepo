@@ -1,5 +1,5 @@
 import type { ItemSubmission } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 type Props = {
@@ -24,11 +24,13 @@ export function SubmissionRejectionPanel({ submission }: Props) {
       <p className="font-body text-sm text-on-surface-variant">
         You can submit a new item with updated information. Our team will review it again.
       </p>
-      <Button asChild variant="cta">
-        <Link href={`/selling/new?fromRejected=${encodeURIComponent(submission.id)}`}>
-          Resubmit with updates
-        </Link>
-      </Button>
+      <ButtonLink
+        variant="primary"
+        Link={Link}
+        href={`/selling/new?fromRejected=${encodeURIComponent(submission.id)}`}
+      >
+        Resubmit with updates
+      </ButtonLink>
     </div>
   );
 }

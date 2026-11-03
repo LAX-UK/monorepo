@@ -10,6 +10,8 @@ import { AccountRegistrationsService } from "../services/organisation-buying/acc
 import { CollectionBookingService } from "../services/organisation-buying/collection-booking.service.js";
 import { DeliveryQuoteService } from "../services/organisation-buying/delivery-quote.service.js";
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
+import { PurchaseProblemService } from "../services/organisation-buying/purchase-problem.service.js";
+import { InMemoryPurchaseProblems } from "../testing/in-memory-purchase-problems.js";
 import {
   BUYING_ACCOUNT,
   InMemoryDeliveryQuotes,
@@ -62,6 +64,18 @@ function mount(role: LegalEntityMemberRole) {
         now: () => NOW,
       }),
       deliveryQuotes: new DeliveryQuoteService({ quotes, purchases }),
+      problems: new PurchaseProblemService({
+        purchases,
+        problems: new InMemoryPurchaseProblems(),
+        transactionRunner: { runInTransaction: (fn) => fn({} as never) },
+        events: {
+          publish: async () => undefined,
+          withTx() {
+            return this;
+          },
+        },
+        now: () => NOW,
+      }),
       collection: new CollectionBookingService({
         settings: {
           selfServeEnabled: false,
@@ -128,6 +142,22 @@ const MATRIX: Record<
       admin: 200,
       finance: 200,
       buyer_agent: 200,
+      consignor: 403,
+      viewer: 403,
+    },
+  },
+  "POST /purchases/:lotId/problem": {
+    call: (app) =>
+      post(app, `/purchases/${LOTS.paid}/problem`, {
+        category: "damaged",
+        message: "The frame arrived cracked.",
+      }),
+    // A buyer agent follows only the lots they won, and this one was won by the owner.
+    expected: {
+      owner: 200,
+      admin: 200,
+      finance: 200,
+      buyer_agent: 404,
       consignor: 403,
       viewer: 403,
     },
@@ -211,6 +241,37 @@ describe("organisation buying routes", () => {
     });
     const malformed = await post(mount("finance"), "/purchases/pay-several", { lotIds: [] });
     expect(malformed.status).toBe(400);
+  });
+
+  it("reports a problem once, and reading it back shows the same reference", async () => {
+    const app = mount("owner");
+    const body = { category: "not_received", message: "It has not arrived." };
+    const first = await post(app, `/purchases/${LOTS.paid}/problem`, body);
+    const again = await post(app, `/purchases/${LOTS.paid}/problem`, body);
+    const read = await app.request(`/legal-entities/purchases/${LOTS.paid}/problem`);
+    type Body = { data: unknown };
+    const [one, two, current] = (await Promise.all([first.json(), again.json(), read.json()])) as [
+      Body,
+      Body,
+      Body,
+    ];
+    expect(one.data).toMatchObject({ created: true, problem: { reference: "PR-3F2A9C1E" } });
+    expect(two.data).toMatchObject({ created: false, problem: { reference: "PR-3F2A9C1E" } });
+    expect(current.data).toMatchObject({ reference: "PR-3F2A9C1E", status: "open" });
+  });
+
+  it("rejects a report with no category or a too-short message, and an unpaid purchase", async () => {
+    const app = mount("owner");
+    expect(
+      (await post(app, `/purchases/${LOTS.paid}/problem`, { category: "nope", message: "x" }))
+        .status,
+    ).toBe(400);
+    const unpaid = await post(app, `/purchases/${LOTS.due}/problem`, {
+      category: "other",
+      message: "Something is wrong.",
+    });
+    expect(unpaid.status).toBe(409);
+    expect(await unpaid.json()).toMatchObject({ error: "problem_purchase_not_paid" });
   });
 
   it("answers a stale quote step with a conflict", async () => {

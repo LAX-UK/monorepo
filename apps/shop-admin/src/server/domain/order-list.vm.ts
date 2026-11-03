@@ -27,6 +27,8 @@ export { ADMIN_ORDER_STATUSES };
 export type OrderListQuery = {
   q?: string;
   status?: AdminOrderStatus;
+  /** `failed`: only orders with a refund waiting for a retry. */
+  refund?: "failed";
   /** Inclusive first and last day (UK time) an order was created on. */
   from?: string;
   to?: string;
@@ -67,6 +69,7 @@ export function orderStatusTone(status: string): OrderBadgeTone {
 export function parseOrderListQuery(params: RawSearchParams): OrderListQuery {
   const q = singleParam(params.q);
   const status = oneOf(singleParam(params.status), ADMIN_ORDER_STATUSES);
+  const refund = singleParam(params.refund) === "failed" ? ("failed" as const) : undefined;
   const from = calendarDayParam(singleParam(params.from));
   const to = calendarDayParam(singleParam(params.to));
   const cursor = singleParam(params.cursor);
@@ -74,6 +77,7 @@ export function parseOrderListQuery(params: RawSearchParams): OrderListQuery {
   return {
     ...(q ? { q } : {}),
     ...(status ? { status } : {}),
+    ...(refund ? { refund } : {}),
     ...(from ? { from } : {}),
     ...(to ? { to } : {}),
     ...(cursor ? { cursor } : {}),
@@ -83,7 +87,7 @@ export function parseOrderListQuery(params: RawSearchParams): OrderListQuery {
 
 /** True when any filter narrows the list; paging does not count. */
 export function hasActiveOrderFilters(query: OrderListQuery): boolean {
-  return Boolean(query.q || query.status || query.from || query.to);
+  return Boolean(query.q || query.status || query.refund || query.from || query.to);
 }
 
 /**
@@ -116,6 +120,7 @@ export function orderListApiQuery(query: OrderListQuery): Record<string, string>
   const api: Record<string, string | undefined> = {
     q: query.q,
     status: query.status,
+    refund: query.refund,
     createdFrom,
     createdTo,
     limit: query.limit,

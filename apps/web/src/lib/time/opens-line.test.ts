@@ -10,8 +10,14 @@ describe("opensLine", () => {
   it("tells a date beyond a week", () => {
     expect(opensLine(new Date("2026-11-27T20:19:00Z"), now)).toEqual({
       label: "Opens",
-      value: "27 Nov 2026, 20:19 GMT",
+      value: "Fri 27 Nov, 20:19 GMT",
     });
+  });
+
+  it("adds the year only when the date is not this year's", () => {
+    expect(opensLine(new Date("2027-01-12T10:00:00Z"), now).value).toBe(
+      "Tue 12 Jan 2027, 10:00 GMT",
+    );
   });
 
   it("counts days and hours within a week", () => {
@@ -27,9 +33,14 @@ describe("opensLine", () => {
     expect(opensLine(at(H + 60_000), now).value).toBe("1 hour 1 minute");
   });
 
-  it("counts minutes within an hour, never seconds", () => {
-    expect(opensLine(at(42 * 60_000), now).value).toBe("42 minutes");
-    expect(opensLine(at(20_000), now).value).toBe("less than a minute");
+  it("counts minutes and seconds in the final hour", () => {
+    expect(opensLine(at(42 * 60_000 + 10_000), now).value).toBe("42 minutes 10 seconds");
+    expect(opensLine(at(20_000), now).value).toBe("20 seconds");
+  });
+
+  it("switches from date to countdown at exactly seven days", () => {
+    expect(opensLine(at(7 * D + 1), now).label).toBe("Opens");
+    expect(opensLine(at(7 * D), now)).toEqual({ label: "Opens in", value: "7 days" });
   });
 
   it("takes another prefix", () => {

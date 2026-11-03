@@ -89,4 +89,41 @@ describe("MarketingGalleryTeamBand", () => {
     renderBand();
     expect(screen.queryByText(/replies within/)).not.toBeInTheDocument();
   });
+
+  it("tints the eyebrow with the product accent unless told to stay neutral", () => {
+    const { rerender } = renderBand();
+    expect(screen.getByText("The gallery team").className).toContain("product-accent");
+    rerender(
+      <MarketingGalleryTeamBand
+        eyebrow="The gallery team"
+        title="Title"
+        body="Body"
+        media={<img src="/gallery.webp" alt="" />}
+        actions={<a href="/x">Go</a>}
+        eyebrowTone="neutral"
+      />,
+    );
+    expect(screen.getByText("The gallery team").className).not.toContain("product-accent");
+  });
+
+  it("lists numbered steps when given, and none otherwise", () => {
+    const { rerender } = renderBand();
+    expect(screen.queryByRole("list")).toBeNull();
+    rerender(
+      <MarketingGalleryTeamBand
+        eyebrow="Selling"
+        title="Title"
+        body="Body"
+        media={<img src="/gallery.webp" alt="" />}
+        actions={<a href="/x">Go</a>}
+        steps={[
+          { title: "Tell us about it", body: "Photos and a few details." },
+          { title: "Free valuation", body: "An estimate in two days." },
+        ]}
+      />,
+    );
+    const items = within(screen.getByRole("list")).getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent("01Tell us about it");
+  });
 });

@@ -1,9 +1,9 @@
 "use client";
 
+import { timerText } from "@/components/lot-timer/format";
 import { LotLifecycleStatusBadge } from "@/components/marketing/lot-lifecycle-status-badge";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
-import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import {
   type LotLifecycle,
   classifyLotLifecycle,
@@ -69,6 +69,13 @@ function lifecycleDetail(
   }
 }
 
+/** "9 days 23 hours" or, beyond a week, "Ends Thu 12 Nov" / "Opens Thu 12 Nov". */
+function timerLabel(kind: LotLifecycle["kind"], msLeft: number, now: number): string {
+  const { words, date } = timerText(msLeft, now);
+  if (!date) return words;
+  return `${kind === "scheduled" ? "Opens" : "Ends"} ${date}`;
+}
+
 /** Live-updating pill + short countdown for scheduled / live / extended. */
 export function LotStatePill({
   lot,
@@ -130,7 +137,7 @@ export function LotStatePill({
     lifecycle.kind !== "liveSaleroom" &&
     lifecycle.kind !== "saleroomPaused" &&
     (lifecycle.kind === "scheduled" || lifecycle.kind === "live" || lifecycle.kind === "extended")
-      ? formatCountdownForDisplay(lifecycle.msLeft)
+      ? timerLabel(lifecycle.kind, lifecycle.msLeft, now)
       : null;
 
   return (
@@ -140,7 +147,7 @@ export function LotStatePill({
         {countdown && !suppressCountdown ? (
           <span
             className={cn(
-              "font-body tabular-nums text-on-surface-variant",
+              "whitespace-nowrap font-body tabular-nums text-on-surface-variant",
               compact ? "text-xs" : "text-sm",
               hideCountdownOnMobile && "hidden lg:inline",
             )}

@@ -72,6 +72,13 @@ describe("LAX Account security emails", () => {
     expectSharedParts(rendered);
   });
 
+  it("renders phone removed with the masked number", async () => {
+    const rendered = await renderEmail("phone-removed", { ...BASE, maskedPhone: "+44 •••• 1234" });
+    expect(rendered.subject).toBe("The phone number on your LAX Account was removed");
+    expect(rendered.text).toContain("+44 •••• 1234");
+    expectSharedParts(rendered);
+  });
+
   it("renders email changed with both addresses, and different copy for each inbox", async () => {
     const vars = { ...BASE, previousEmail: "old@example.com", newEmail: "new@example.com" };
     const previous = await renderEmail("email-changed", { ...vars, recipient: "previous" });

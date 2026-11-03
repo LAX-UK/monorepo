@@ -253,13 +253,20 @@ const SHORTCUTS: Record<HomeShortcut, Omit<HomeLinkView, "id">> = {
   statements: { label: "Statements", href: CLIENT_ROUTES.payouts },
 };
 
-const ACTIVITY_TEXT: Record<HomeActivityKind, (event: HomeActivityEvent) => string> = {
-  submission_sent: ({ subject: s }) => `${quoted(s)} was sent to our specialists`,
+/**
+ * Each line names who acted: the member when the record says who sent it, a specialist or the
+ * organisation otherwise. Lines about a sale's outcome have no actor.
+ */
+const ACTIVITY_TEXT: Record<HomeActivityKind, (event: HomeActivityEvent, ctx: Ctx) => string> = {
+  submission_sent: ({ subject: s, actor }) =>
+    actor
+      ? `${actor} sent ${quoted(s)} to our specialists`
+      : `${quoted(s)} was sent to our specialists`,
   changes_requested: ({ subject: s }) => `A specialist asked for changes to ${quoted(s)}`,
-  submission_accepted: ({ subject: s }) => `${quoted(s)} was accepted for sale`,
+  submission_accepted: ({ subject: s }) => `A specialist accepted ${quoted(s)} for sale`,
   lot_sold: ({ subject: s }) => `${quoted(s)} sold`,
   lot_unsold: ({ subject: s }) => `${quoted(s)} did not sell`,
-  purchase_won: ({ subject: s }) => `${quoted(s)} was won`,
+  purchase_won: ({ subject: s }, ctx) => `${ctx.organisationName} won ${quoted(s)}`,
   payout_sent: ({ subject: s }) => `Payout ${s.title} was sent`,
   member_joined: ({ subject: s }) => `${s.title} joined`,
   member_bids_stopped: ({ subject, count = 1 }) =>
@@ -277,10 +284,10 @@ const ARCHIVE_HREF: Record<HomeActivityArchive, string> = {
   bids: CLIENT_ROUTES.bids,
 };
 
-function activityView(event: HomeActivityEvent, index: number): HomeActivityView {
+function activityView(event: HomeActivityEvent, index: number, ctx: Ctx): HomeActivityView {
   return {
     key: `${event.kind}:${event.subject.id}:${index}`,
-    text: ACTIVITY_TEXT[event.kind](event),
+    text: ACTIVITY_TEXT[event.kind](event, ctx),
     href: ACTIVITY_HREF[event.kind] ?? null,
     when: formatRelativeTime(event.at),
     fullDate: formatDateTime(event.at),
@@ -315,7 +322,7 @@ export function organisationHomeView(
     shortcuts: model.shortcuts
       .filter((id) => id !== "sell")
       .map((id) => ({ id, ...SHORTCUTS[id] })),
-    activity: model.activity.map(activityView),
+    activity: model.activity.map((event, index) => activityView(event, index, ctx)),
     seeAllHref: model.activityArchive ? ARCHIVE_HREF[model.activityArchive] : null,
     dashboard: model.dashboard
       ? organisationDashboardView(model.dashboard, ctx, model.state.homeFirstRunKey)

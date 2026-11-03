@@ -41,6 +41,7 @@ import { createExportRoutes } from "./routes/exports.js";
 import { createInternalCronRoutes } from "./routes/internal-cron.js";
 import { createInternalIdentityDeletionEligibilityRoutes } from "./routes/internal-identity-deletion-eligibility.routes.js";
 import { createInternalIdentityEmailRoutes } from "./routes/internal-identity-email.routes.js";
+import { createInternalIdentitySubjectExportRoutes } from "./routes/internal-identity-subject-export.routes.js";
 import { createInternalIdentitySubjectUsageRoutes } from "./routes/internal-identity-subject-usage.routes.js";
 import { createKycRoutes } from "./routes/kyc.js";
 import { createActingContextUserRoutes, createLegalEntityRoutes } from "./routes/legal-entities.js";
@@ -49,6 +50,7 @@ import { createLegalEntityBuyerAgentRoutes } from "./routes/legal-entity-buyer-a
 import { createLegalEntityMemberRoutes } from "./routes/legal-entity-members.js";
 import { createLotDocumentRoutes } from "./routes/lot-documents.js";
 import { createLotRoutes } from "./routes/lots.js";
+import { createMarketingEnquiryRoutes } from "./routes/marketing-enquiries.js";
 import { createMarketingRoutes } from "./routes/marketing.js";
 import { createNewsletterRoutes } from "./routes/newsletter.js";
 import { createOnsiteEventRoutes } from "./routes/onsite-events.js";
@@ -66,6 +68,7 @@ import { createLegalEntityPayoutStatementRoutes } from "./routes/payout-statemen
 import { createAdminPayoutRoutes, createPayoutRoutes } from "./routes/payouts.js";
 import { createPressRoutes } from "./routes/press.js";
 import { createQrRoutes } from "./routes/qr.js";
+import { createSaleAlertRoutes } from "./routes/sale-alerts.js";
 import { createSaleDocumentRoutes } from "./routes/sale-documents.js";
 import { createSaleroomDisplayRoutes } from "./routes/saleroom-display.js";
 import { createSaleRoutes } from "./routes/sales.js";
@@ -159,6 +162,10 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
   app.use("/bids/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/users/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/auth/*", createRateLimitMiddleware(container.rateLimitStore));
+  app.use(
+    "/sale-alerts/*",
+    createRateLimitMiddleware(container.rateLimitStore, { maxRequests: 20 }),
+  );
   app.use("/payments/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/q/*", createRateLimitMiddleware(container.rateLimitStore));
   app.use("/categories/*", createRateLimitMiddleware(container.rateLimitStore));
@@ -225,6 +232,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/internal/identity", createInternalIdentityEmailRoutes(container, env))
     .route("/internal/identity", createInternalIdentitySubjectUsageRoutes(container, env))
     .route("/internal/identity", createInternalIdentityDeletionEligibilityRoutes(container, env))
+    .route("/internal/identity", createInternalIdentitySubjectExportRoutes(container, env))
     .route("/invitations", createPublicInvitationRoutes(container.admin.invitations))
     .route("/lots", createLotRoutes(container, authenticator, requireAccountOnboarding))
     .route("/lots", createLotDocumentRoutes(container, authenticator))
@@ -268,6 +276,8 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/webhooks/veriff", createVeriffWebhookRoutes(container))
     .route("/email", createEmailRoutes(container))
     .route("/newsletter", createNewsletterRoutes(container))
+    .route("/sale-alerts", createSaleAlertRoutes(container, authenticator))
+    .route("/contact-enquiries", createMarketingEnquiryRoutes(container, authenticator))
     .route("/auth", createProductAuthRoutes(container))
     .route("/categories", createCategoryRoutes(container))
     .route("/venues", createVenueRoutes(container, authenticator))

@@ -1,7 +1,7 @@
 import type { ChecklistItemView } from "@/lib/seller/consignment-checklist-copy";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
+import { ButtonLink } from "@auction/ui/lax";
 import { CheckCircle2, Circle, Clock } from "lucide-react";
 import Link from "next/link";
 
@@ -78,14 +78,15 @@ export function ConsignmentChecklist({ items, doneCount, totalCount }: Props) {
                 </div>
               </div>
               {item.action ? (
-                <Button
-                  asChild
-                  size="default"
-                  variant={item.id === firstAction ? "primary" : "outline"}
+                <ButtonLink
+                  size="md"
+                  variant={item.id === firstAction ? "primary" : "secondary"}
                   className="ml-8 self-start sm:ml-0 sm:self-center"
+                  Link={Link}
+                  href={item.action.href}
                 >
-                  <Link href={item.action.href}>{item.action.label}</Link>
-                </Button>
+                  {item.action.label}
+                </ButtonLink>
               ) : null}
             </li>
           ))}

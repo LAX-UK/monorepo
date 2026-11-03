@@ -12,9 +12,17 @@ import {
   chooseCollectionCategories,
   choosePriceBand,
 } from "@/lib/home/home-browse-paths";
+import type { ShopCoverPlate } from "@/lib/home/home-cover.adapter";
+import { editionSizeCm, editionSizeLabel } from "@/lib/home/home-edition-size";
+import { type HomeHangVm, buildHomeHang } from "@/lib/home/home-hang";
+import {
+  type ShopImageFacts,
+  deepFieldFromMean,
+  paleFieldFromMean,
+} from "@/lib/home/home-image-facts";
 import { type HomeNewEditionsVm, buildHomeNewEditions } from "@/lib/home/home-new-editions";
 import type { HomePageComposerResult, HomeSectionKey } from "@/lib/home/home-page.composer";
-import { homeReleaseEyebrow, selectHomeRelease } from "@/lib/home/home-release";
+import { homeReleaseEyebrow, isNewReleaseChoice, selectHomeRelease } from "@/lib/home/home-release";
 import { type HomeSectionId, resolveHomeSections } from "@/lib/home/home-sections";
 import { type HomeTrustVm, buildHomeTrust } from "@/lib/home/home-trust";
 import type { ShopPageSections } from "@/lib/layout/shop-page-sections";
@@ -30,7 +38,7 @@ export type HomeReleaseVm = {
   href: string;
   imageUrl: string;
   imageAlt: string;
-  /** "Now released: Vessel Study, 2014 · £120". */
+  /** "Flora Powers · Vessel Study · edition of 24 · £120". */
   line: string;
 };
 
@@ -41,8 +49,8 @@ export type HomeHeroVm = {
   lead: string;
   /** "Browse editions"; null when nothing is on sale. */
   primary: { label: string; href: string } | null;
-  /** "See Vessel Study", beside the primary action; null without a release. */
-  workLink: { label: string; href: string } | null;
+  /** The quieter way on beside the primary action: all editions, or the artists. */
+  link: { label: string; href: string } | null;
   release: HomeReleaseVm | null;
   browseRows: HomeBrowseRowVm[];
   /** With nothing on sale, the one way on from the first screen. */
@@ -53,6 +61,10 @@ export type HomePageViewModel = {
   /** The sections shown, in order, and the surface each renders on. */
   layout: ShopPageSections<HomeSectionId>;
   hero: HomeHeroVm;
+  /** The release's print on its pale field; null when it could not be read, so the cover is type. */
+  coverPlate: ShopCoverPlate | null;
+  /** "New editions" hung on their sheets; null with fewer than two photographed editions. */
+  hang: HomeHangVm | null;
   trust: HomeTrustVm;
   /** Null when no edition is left after the release; the error state shows if the read failed. */
   newEditions: HomeNewEditionsVm | null;
@@ -70,6 +82,10 @@ export type HomePageContext = {
   /** Policy pages that can be linked; drafts hidden on production are left out. */
   linkablePolicies: readonly ShopPolicySlug[];
   deliveryTimes: CheckoutDeliveryTimes;
+  /** The address a work's photograph is shown from, or null without one. */
+  imageSrc: (item: PublicArtworkSummary) => string | null;
+  /** What was read from each photograph, by the address it is shown from. */
+  imageFacts: ReadonlyMap<string, ShopImageFacts>;
 };
 
 function editionHref(slug: string): string {
@@ -106,10 +122,21 @@ export function heroLead(input: {
 }
 
 function releaseLine(item: PublicArtworkSummary): string {
-  const title = item.yearCreated ? `${item.title}, ${item.yearCreated}` : item.title;
-  const parts = [title];
-  if (item.printPricePence !== null) parts.push(formatGbpPenceForDisplay(item.printPricePence));
-  return `Now released: ${parts.join(" · ")}`;
+  const total = item.availability.totalEditions;
+  return [
+    item.artistName,
+    item.title,
+    total > 0 ? `edition of ${total}` : null,
+    item.printPricePence !== null ? formatGbpPenceForDisplay(item.printPricePence) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** "A new limited edition by Flora Powers · Giclée print · 120 × 90 cm": one line of fact. */
+function releaseFact(item: PublicArtworkSummary, isNew: boolean): string {
+  const lead = `${isNew ? "A new limited edition" : "A limited edition"} by ${item.artistName}`;
+  return [lead, item.medium, editionSizeLabel(editionSizeCm(item))].filter(Boolean).join(" · ");
 }
 
 /** True only when the catalogue answered and holds nothing that can be bought now. */
@@ -127,7 +154,7 @@ function buildHero(input: HomePageComposerResult, context: HomePageContext): Hom
       lead:
         (input.facets?.availability.soldOut ?? 0) > 0 ? copy.emptyLeadSoldOut : copy.emptyLeadFirst,
       primary: null,
-      workLink: null,
+      link: null,
       release: null,
       browseRows: [],
       emptyAction: art
@@ -136,8 +163,27 @@ function buildHero(input: HomePageComposerResult, context: HomePageContext): Hom
     };
   }
   const choice = selectHomeRelease(input.featured, input.editions);
+  const browseRows = buildHomeBrowseRows({ facets: input.facets, priceRanges: input.priceRanges });
+  if (choice) {
+    const { item } = choice;
+    return {
+      eyebrow: homeReleaseEyebrow(choice, context.now),
+      title: item.title,
+      lead: releaseFact(item, isNewReleaseChoice(choice, context.now)),
+      primary: { label: copy.releaseLabel, href: editionHref(item.slug) },
+      link: { label: copy.allEditionsLabel, href: "/artworks" },
+      release: {
+        href: editionHref(item.slug),
+        imageUrl: context.imageSrc(item) ?? "",
+        imageAlt: `${item.title} by ${item.artistName}`,
+        line: releaseLine(item),
+      },
+      browseRows,
+      emptyAction: null,
+    };
+  }
   return {
-    eyebrow: choice ? homeReleaseEyebrow(choice, context.now) : null,
+    eyebrow: null,
     title: copy.title,
     lead: heroLead({
       artistNames: input.artists.map((artist) => artist.name),
@@ -145,18 +191,9 @@ function buildHero(input: HomePageComposerResult, context: HomePageContext): Hom
       lowestPricePence: input.lowestPricePence,
     }),
     primary: { label: copy.primaryLabel, href: "/artworks" },
-    workLink: choice
-      ? { label: `See ${choice.item.title}`, href: editionHref(choice.item.slug) }
-      : null,
-    release: choice
-      ? {
-          href: editionHref(choice.item.slug),
-          imageUrl: choice.item.imageUrl ?? "",
-          imageAlt: `${choice.item.title} by ${choice.item.artistName}`,
-          line: releaseLine(choice.item),
-        }
-      : null,
-    browseRows: buildHomeBrowseRows({ facets: input.facets, priceRanges: input.priceRanges }),
+    link: { label: copy.artistsLabel, href: "/artists" },
+    release: null,
+    browseRows,
     emptyAction: null,
   };
 }
@@ -195,14 +232,35 @@ export function buildHomePageViewModel(
     MAX_COLLECTIONS - (priceBand ? 1 : 0),
   );
 
-  const trust = buildHomeTrust(context);
-  const newEditions = empty
+  const choice = empty ? null : selectHomeRelease(input.featured, input.editions);
+  const releaseFacts = hero.release ? context.imageFacts.get(hero.release.imageUrl) : undefined;
+  const coverPlate: ShopCoverPlate | null = releaseFacts
+    ? {
+        width: releaseFacts.width,
+        height: releaseFacts.height,
+        field: paleFieldFromMean(releaseFacts.mean),
+        fieldDark: deepFieldFromMean(releaseFacts.mean),
+      }
+    : null;
+  const hang = empty
     ? null
-    : buildHomeNewEditions({
-        editions: input.editions,
-        releaseSlug,
+    : buildHomeHang({
+        editions: choice ? [choice.item, ...input.editions] : input.editions,
         availableCount: input.availableCount,
+        imageSrc: context.imageSrc,
+        facts: context.imageFacts,
       });
+
+  const trust = buildHomeTrust(context);
+  // The wall takes the "New editions" place when it can be hung; the card row is its fallback.
+  const newEditions =
+    empty || hang
+      ? null
+      : buildHomeNewEditions({
+          editions: input.editions,
+          releaseSlug,
+          availableCount: input.availableCount,
+        });
   const artists = empty
     ? null
     : buildHomeArtists({
@@ -218,6 +276,8 @@ export function buildHomePageViewModel(
 
   return {
     layout: resolveHomeSections({
+      hang: hang !== null,
+      browse: hero.browseRows.length > 0,
       trust: !empty,
       // A failed read keeps the section, with its error state in place of the row.
       "new-editions": newEditions !== null || Boolean(input.sectionErrors.editions),
@@ -226,6 +286,8 @@ export function buildHomePageViewModel(
       "product-doors": doors.length > 0,
     }),
     hero,
+    coverPlate,
+    hang,
     trust,
     newEditions,
     artists,

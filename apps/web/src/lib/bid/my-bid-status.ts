@@ -44,6 +44,13 @@ const ACTIVE_ORDER: Record<MyBidStatus, number> = {
   withdrawn: 3,
 };
 
+/** The statuses that wait on the bidder: their row leads with the one step that clears them. */
+const NEEDS_BIDDER: ReadonlySet<MyBidStatus> = new Set<MyBidStatus>(["outbid"]);
+
+export function bidNeedsYou(status: MyBidStatus): boolean {
+  return NEEDS_BIDDER.has(status);
+}
+
 export function parseMyBidTab(raw: string | null | undefined): MyBidTab {
   return (MY_BID_TABS as readonly string[]).includes(raw ?? "") ? (raw as MyBidTab) : "active";
 }

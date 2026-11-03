@@ -15,7 +15,8 @@ type Props = {
   categories: SubmissionCategoryOption[];
   initialValues?: ItemSubmissionFormValues;
   choice: SellerAccountChoice;
-  registerHref: string;
+  /** "Register an organisation", or `null` once the person is acting for one. */
+  registerHref: string | null;
 };
 
 /** "Selling as" at the top of Check and send, with the way back to change it. */
@@ -38,8 +39,10 @@ function SellingAsSummary({
         <p className="mt-1 text-lax-14 text-lax-fg">
           {option.kind === "personal" ? `${option.name}, your personal account` : option.name}
         </p>
-        {option.submitBlockedReason ? (
-          <p className="mt-1 text-lax-13 text-lax-muted">{option.submitBlockedReason}</p>
+        {(option.sellingNote?.notice ?? option.submitBlockedReason) ? (
+          <p className="mt-1 text-lax-13 text-lax-muted">
+            {option.sellingNote?.notice ?? option.submitBlockedReason}
+          </p>
         ) : null}
       </div>
       {onChange ? (
@@ -80,7 +83,7 @@ export function SellWithLaxFlow({ categories, initialValues, choice, registerHre
 
   if (phase === "seller") {
     return (
-      <div ref={sellerRef} tabIndex={-1} className="space-y-6 pt-4 outline-none">
+      <div ref={sellerRef} tabIndex={-1} className="pt-4 outline-none">
         <SellerAccountStep
           options={choice.options}
           selectedId={accountId}

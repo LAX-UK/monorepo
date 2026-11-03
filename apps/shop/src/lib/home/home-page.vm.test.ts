@@ -26,7 +26,12 @@ const context: HomePageContext = {
   productLinks: [],
   linkablePolicies: ["help", "delivery", "returns"],
   deliveryTimes: { ukDelivery: { min: 3, max: 5 }, collection: { min: 2, max: 2 } },
+  imageSrc: (item) => item.imageUrl,
+  imageFacts: new Map(),
 };
+
+/** A print photograph read from the server: its size and colour. */
+const facts = (width = 800, height = 1000) => ({ width, height, mean: [120, 90, 80] as const });
 
 const empty: HomePageComposerResult = {
   featured: [],
@@ -61,32 +66,36 @@ function build(overrides: Partial<HomePageComposerResult> = {}, ctx = context) {
 }
 
 describe("home hero", () => {
-  it("leads with the featured release on sale, and names it beside the primary action", () => {
+  it("leads with the release itself: its title, one line of fact and the way to it", () => {
     const soldOut = artworkSummary({
       slug: "sold",
       availability: { totalEditions: 10, state: "sold_out" },
     });
     const live = artworkSummary({ slug: "live", title: "Harbour light", yearCreated: 2026 });
     const hero = build({ featured: [soldOut, live], availableCount: 1 }).hero;
-    expect(hero.title).toBe("Limited-edition prints from our Marylebone gallery");
+    expect(hero.title).toBe("Harbour light");
     expect(hero.eyebrow).toBe("New release · 1 Oct 2026");
-    expect(hero.workLink).toEqual({ label: "See Harbour light", href: "/artworks/live" });
+    expect(hero.lead).toBe("A new limited edition by Mara Ellison · Giclée print");
+    expect(hero.primary).toEqual({ label: "See the edition", href: "/artworks/live" });
+    expect(hero.link).toEqual({ label: "Browse all editions", href: "/artworks" });
     expect(hero.release).toMatchObject({
       href: "/artworks/live",
-      line: "Now released: Harbour light, 2026 · £340",
+      line: "Mara Ellison · Harbour light · edition of 50 · £340",
     });
   });
 
   it("gives no eyebrow to an older edition chosen by the rule", () => {
     const hero = build({ editions: [artworkSummary({ listedAt: OLD })], availableCount: 1 }).hero;
     expect(hero.eyebrow).toBeNull();
+    expect(hero.lead).toMatch(/^A limited edition by/);
     expect(hero.release?.href).toBe("/artworks/harbour-light");
   });
 
   it("still names what Shop sells when no release has an image", () => {
     const hero = build({ editions: [artworkSummary({ imageUrl: null })], availableCount: 1 }).hero;
     expect(hero.release).toBeNull();
-    expect(hero.workLink).toBeNull();
+    expect(hero.title).toBe("Limited-edition prints from our Marylebone gallery");
+    expect(hero.link).toEqual({ label: "See the artists", href: "/artists" });
     expect(hero.primary).toEqual({ label: "Browse editions", href: "/artworks" });
   });
 
@@ -132,12 +141,62 @@ describe("with nothing on sale", () => {
       emptyAction: { label: "See original works on lax.art", href: "https://art.test" },
     });
     expect(vm.hero.lead).toMatch(/^Every edition has found a home/);
-    expect(vm.layout.sections).toEqual(["hero", "product-doors", "gallery-team"]);
+    expect(vm.layout.sections).toEqual(["hero", "release-alerts", "product-doors", "gallery-team"]);
   });
 
   it("does not claim the Shop is empty when the editions read failed", () => {
     const vm = build({ sectionErrors: { editions: "down" } });
     expect(vm.hero.title).toBe("Limited-edition prints from our Marylebone gallery");
+    expect(vm.layout.sections).toContain("new-editions");
+  });
+});
+
+describe("the cover's print", () => {
+  const release = artworkSummary({ slug: "live", imageUrl: "/live.webp" });
+
+  it("is read from the release photograph and set on a pale field taken from it", () => {
+    const vm = build(
+      { featured: [release], availableCount: 1 },
+      { ...context, imageFacts: new Map([["/live.webp", facts()]]) },
+    );
+    expect(vm.coverPlate).toMatchObject({ width: 800, height: 1000 });
+    expect(vm.coverPlate?.field).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it("is left out when the photograph could not be read, so the cover is type", () => {
+    expect(build({ featured: [release], availableCount: 1 }).coverPlate).toBeNull();
+  });
+});
+
+describe("the hang", () => {
+  const photographed = (count: number) =>
+    editions(count).map((item) => ({ ...item, imageUrl: `/${item.slug}.webp` }));
+  const read = (items: PublicArtworkSummary[]) =>
+    new Map(items.map((item) => [item.imageUrl ?? "", facts()] as const));
+
+  it("takes the New editions place, with the release first, and the card row steps aside", () => {
+    const items = photographed(4);
+    const vm = build(
+      { editions: items, availableCount: 4 },
+      { ...context, imageFacts: read(items) },
+    );
+    expect(vm.hang?.works.map((work) => work.slug)).toEqual([
+      "edition-1",
+      "edition-2",
+      "edition-3",
+      "edition-4",
+    ]);
+    expect(vm.layout.sections.slice(0, 2)).toEqual(["hero", "hang"]);
+    expect(vm.layout.sections).not.toContain("new-editions");
+  });
+
+  it("needs two readable photographs; with fewer the card row stays", () => {
+    const items = photographed(3);
+    const vm = build(
+      { editions: items, availableCount: 3 },
+      { ...context, imageFacts: read(items.slice(0, 1)) },
+    );
+    expect(vm.hang).toBeNull();
     expect(vm.layout.sections).toContain("new-editions");
   });
 });
@@ -180,11 +239,15 @@ describe("the home page's band sequence", () => {
       "trust",
       "new-editions",
       "artists",
+      "release-alerts",
       "product-doors",
       "gallery-team",
     ]);
     expect(vm.layout.surfaces.hero).toBe("plain");
     expect(vm.layout.surfaces["gallery-team"]).toBe("band");
+    // The doors between them keep the two tinted bands apart.
+    expect(vm.layout.surfaces["release-alerts"]).toBe("band");
+    expect(vm.layout.surfaces["product-doors"]).toBe("plain");
     expect(vm.galleryTeam.title).toBe("Help choosing a size, a frame or a gift");
   });
 });

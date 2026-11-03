@@ -695,3 +695,12 @@ html.lenis {
   outline: 2px solid var(--color-ring, currentColor);
   outline-offset: 2px;
 }
+
+/* A pale cover plate turns deep in the dark theme: its type takes the light tone's colours. */
+.dark [data-cover-swap] {
+  --cover-eyebrow: var(--cover-eyebrow-dark) !important;
+  --cover-title: var(--cover-title-dark) !important;
+  --cover-sub: var(--cover-sub-dark) !important;
+  --cover-link: var(--cover-link-dark) !important;
+  --cover-credit: var(--cover-credit-dark) !important;
+}

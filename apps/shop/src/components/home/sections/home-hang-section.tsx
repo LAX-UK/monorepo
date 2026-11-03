@@ -1,0 +1,52 @@
+"use client";
+
+import type { HomeHangVm } from "@/lib/home/home-hang";
+import { NEW_EDITIONS_SECTION_ID } from "@/lib/home/home-sections";
+import { nextImageSrcSet } from "@/lib/media/next-image-src-set";
+import { MarketingHang, MarketingHangLabel } from "@auction/marketing-ui";
+
+/** The widest a work is drawn: a tall landscape print on desktop, a phone-width slot otherwise. */
+const HANG_IMAGE_SIZES = "(min-width: 640px) 480px, 240px";
+
+/**
+ * "New editions" hung on their sheets under the cover. The meta line says whether the wall is to
+ * scale, so a wall with a missing size is honest about it.
+ */
+export function HomeHangSection({ hang }: { hang: HomeHangVm }) {
+  return (
+    <MarketingHang
+      title={hang.title}
+      meta={(mode) =>
+        `${hang.countLabel} · ${mode === "scale" ? "prints on their sheets at true relative scale" : "Not to scale"}`
+      }
+      works={hang.works.map((work) => ({
+        id: work.slug,
+        href: work.href,
+        imageSrc: work.imageSrc,
+        imageSrcSet: nextImageSrcSet(work.imageSrc),
+        imageSizes: HANG_IMAGE_SIZES,
+        aspect: work.aspect,
+        longSideCm: work.longSideCm,
+        sourceWidthPx: work.sourceWidthPx,
+        sourceHeightPx: work.sourceHeightPx,
+        sheetInset: work.sheetInset,
+        label: (
+          <MarketingHangLabel
+            eyebrow={work.label.artist}
+            title={work.label.title}
+            price={work.label.price ? { value: work.label.price } : undefined}
+            notes={work.label.note ? [work.label.note] : undefined}
+          />
+        ),
+      }))}
+      seeAll={{
+        href: hang.seeAll.href,
+        label: hang.seeAll.label,
+        tile: { title: hang.seeAll.label, note: hang.seeAll.tileNote },
+      }}
+      headingSize="section"
+      sectionProps={{ id: NEW_EDITIONS_SECTION_ID, "data-home-new-editions": "hang" }}
+      rowLabel="New editions: prints on the wall, scrolls sideways"
+    />
+  );
+}

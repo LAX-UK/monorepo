@@ -1,5 +1,6 @@
-import { PURGE_QR_CODE_SCANS_QUEUE_NAME } from "@auction/queues";
+import { PURGE_KYC_RETENTION_QUEUE_NAME, PURGE_QR_CODE_SCANS_QUEUE_NAME } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
+import { purgeKycRetentionJob } from "../jobs/purge-kyc-retention.js";
 import { purgeQrCodeScans } from "../jobs/purge-qr-code-scans.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
 import type { WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
@@ -17,6 +18,8 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
     bullConnection,
     queueOpts,
     qrCodeScanPurgeRepo,
+    kycRetentionStores,
+    uploadStorage,
     sentryMonitorSlugs,
     reportWorkerJobFailure,
   } = deps;
@@ -55,8 +58,48 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
     },
   );
 
+  const purgeKycRetentionQueue = new Queue(
+    PURGE_KYC_RETENTION_QUEUE_NAME,
+    queueOpts(PURGE_KYC_RETENTION_QUEUE_NAME),
+  );
+  const purgeKycRetentionWorker = new Worker(
+    PURGE_KYC_RETENTION_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor("purge-kyc-retention", sentryMonitorSlugs, async () => {
+        await purgeKycRetentionJob({
+          stores: kycRetentionStores,
+          storage: uploadStorage,
+          log,
+          dryRun: !env.KYC_RETENTION_PURGE_ENABLED,
+        });
+      });
+    },
+    bullConnection,
+  );
+  purgeKycRetentionWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(PURGE_KYC_RETENTION_QUEUE_NAME, job, err);
+  });
+  void purgeKycRetentionQueue.add(
+    "purge",
+    {},
+    {
+      jobId: "purge-kyc-retention-daily",
+      repeat: { every: 24 * 60 * 60 * 1000 },
+      removeOnComplete: 5,
+    },
+  );
+
   return {
-    errorHandlers: [{ worker: purgeQrCodeScansWorker, queue: PURGE_QR_CODE_SCANS_QUEUE_NAME }],
-    close: () => closeAll([purgeQrCodeScansWorker, purgeQrCodeScansQueue]),
+    errorHandlers: [
+      { worker: purgeQrCodeScansWorker, queue: PURGE_QR_CODE_SCANS_QUEUE_NAME },
+      { worker: purgeKycRetentionWorker, queue: PURGE_KYC_RETENTION_QUEUE_NAME },
+    ],
+    close: () =>
+      closeAll([
+        purgeQrCodeScansWorker,
+        purgeQrCodeScansQueue,
+        purgeKycRetentionWorker,
+        purgeKycRetentionQueue,
+      ]),
   };
 }

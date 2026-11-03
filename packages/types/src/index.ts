@@ -25,6 +25,7 @@ export * from "./acting-context-cookie.js";
 export * from "./payout.js";
 export * from "./bill-to.js";
 export * from "./domain-event-pii.js";
+export * from "./deleted-user-pseudonym.js";
 export * from "./audit-log.js";
 export * from "./failed-jobs.js";
 export * from "./domain-event-catalog/index.js";

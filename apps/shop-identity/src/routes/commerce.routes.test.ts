@@ -762,6 +762,55 @@ describe("commerce enquiry routes", () => {
     expect(shopApiFetch).not.toHaveBeenCalled();
   });
 
+  it("sends a visitor's release alert request on the BFF token with the browser address", async () => {
+    const shopApiFetch = vi.fn(async () => Response.json({ status: "check_email" }));
+    const app = createGuestCommerceApp(shopApiFetch);
+    const response = await app.request(
+      "/commerce/release-alerts",
+      {
+        method: "POST",
+        headers: await csrfHeaders(app, { "x-forwarded-for": "203.0.113.9" }),
+        body: JSON.stringify({ email: "grace@example.com", source: "shop_home" }),
+      },
+      loopbackPeer,
+    );
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: "/v1/release-alerts",
+        method: "POST",
+        idToken: null,
+        clientIp: "203.0.113.9",
+        body: { email: "grace@example.com", source: "shop_home" },
+      }),
+    );
+  });
+
+  it("needs an email address from a visitor asking for release alerts", async () => {
+    const shopApiFetch = vi.fn();
+    const app = createGuestCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/release-alerts", {
+      method: "POST",
+      headers: await csrfHeaders(app),
+      body: JSON.stringify({}),
+    });
+    expect(response.status).toBe(400);
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps the signed-in release alert subscription behind sign-in", async () => {
+    const shopApiFetch = vi.fn();
+    const app = createGuestCommerceApp(shopApiFetch);
+    expect((await app.request("/commerce/me/release-alerts")).status).toBe(401);
+    const stop = await app.request("/commerce/me/release-alerts", {
+      method: "DELETE",
+      headers: await csrfHeaders(app),
+    });
+    expect(stop.status).toBe(401);
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
   it("keeps a signed-in shopper's alerts behind sign-in", async () => {
     const shopApiFetch = vi.fn();
     const app = createGuestCommerceApp(shopApiFetch);

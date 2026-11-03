@@ -98,13 +98,6 @@
   }
 }
 
-/* A single artist on phones: the portrait stays a portrait, not the whole first screen. */
-@media (max-width: 47.99rem) {
-  .shop-home-feature--portrait[data-media-side] > :first-child {
-    width: min(60%, 16rem);
-  }
-}
-
 .shop-home-feature__media {
   position: absolute;
   inset: 0;
@@ -164,47 +157,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--shop-space-3) var(--shop-space-6);
-}
-
-/* ── First screen ──────────────────────────────────────────────────────────────────────────── */
-.shop-home-hero {
-  padding-top: var(--shop-space-6);
-}
-
-@media (min-width: 48rem) {
-  .shop-home-hero {
-    padding-top: var(--shop-space-8);
-  }
-
-  .shop-home-hero[data-media-side] > :first-child {
-    min-height: min(40rem, calc(100svh - var(--header-height, 7rem)));
-  }
-}
-
-.shop-home-hero__lead {
-  margin: 0;
-  font-size: var(--shop-text-lg);
-  line-height: 1.75rem;
-}
-
-.shop-home-hero__now {
-  margin: var(--shop-space-3) 0 0;
-  font-size: var(--shop-text-md);
-  color: var(--color-on-surface);
-}
-
-.shop-home-hero__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--shop-space-3) var(--shop-space-6);
-  width: 100%;
-}
-
-@media (max-width: 39.99rem) {
-  .shop-home-hero__actions > .shop-button {
-    width: 100%;
-  }
 }
 
 /* "Browse by": one hairline row per way in, its count and an arrow on the right. */
@@ -367,101 +319,6 @@ a.shop-home-trust__line {
 }
 
 /* ── Artists ───────────────────────────────────────────────────────────────────────────────── */
-.shop-artist-portrait {
-  position: relative;
-  display: block;
-  overflow: hidden;
-  aspect-ratio: 4 / 5;
-  background: var(--color-surface-container-low);
-}
-
-.shop-artist-portrait__initials {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-headline);
-  font-size: 2.25rem;
-  font-weight: 500;
-  letter-spacing: -0.025em;
-  color: var(--color-on-surface-variant);
-}
-
-/* Two artists: each a portrait beside its caption, so the row has no empty half. */
-.shop-home-artist-pairs {
-  display: grid;
-  gap: var(--shop-space-8) var(--shop-space-12);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-@media (min-width: 48rem) {
-  .shop-home-artist-pairs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.shop-home-artist-pair {
-  display: grid;
-  grid-template-columns: 7rem minmax(0, 1fr);
-  gap: var(--shop-space-4);
-  align-items: center;
-}
-
-@media (min-width: 64rem) {
-  .shop-home-artist-pair {
-    grid-template-columns: 10rem minmax(0, 1fr);
-    gap: var(--shop-space-6);
-  }
-}
-
-.shop-home-artist-pair__portrait {
-  display: block;
-}
-
-.shop-home-artist-pair__body {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--shop-space-1);
-  min-width: 0;
-}
-
-.shop-home-artist-pair__name {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  font-family: var(--font-headline);
-  font-size: 1.25rem;
-  font-weight: 500;
-  line-height: 1.75rem;
-  color: var(--color-on-surface);
-}
-
-.shop-home-artist-pair__facts {
-  margin: 0;
-  font-size: var(--shop-text-sm);
-  line-height: 1.25rem;
-  color: var(--color-on-surface-variant);
-}
-
-.shop-home-artist-pair__count {
-  margin: var(--shop-space-1) 0 0;
-  font-size: var(--shop-text-sm);
-  font-weight: 500;
-  line-height: 1.25rem;
-  color: var(--color-on-surface);
-}
-
-.shop-home-artist-pair__link {
-  margin-top: var(--shop-space-2);
-  font-size: var(--shop-text-sm);
-}
-
 /* Five to eight artists: a rail with 2.2 cards in view on phones and 4.5 on large screens, so
    the next card always shows there is more. */
 .shop-home-artist-rail {

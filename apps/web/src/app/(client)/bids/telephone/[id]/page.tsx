@@ -1,6 +1,9 @@
 import { TelephoneBidDetailContent } from "@/app/(client)/bids/telephone/telephone-bid-detail-content";
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+
+export const metadata: Metadata = { title: "Telephone booking" };
 
 type Props = {
   params: Promise<{ id: string }>;

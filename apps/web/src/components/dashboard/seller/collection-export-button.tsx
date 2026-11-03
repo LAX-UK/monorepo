@@ -6,7 +6,7 @@ import { Download } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-/** Export on Works: the shared sheet, following the search on screen. */
+/** Export on Collection: the shared sheet, following the search on screen. */
 export function CollectionExportButton({
   counts,
   showPrice,

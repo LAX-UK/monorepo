@@ -7,7 +7,9 @@ import {
   itemSubmission,
   lot,
   lotFulfilment,
+  marketingEnquiry,
   payment,
+  purchaseProblem,
   sale,
   saleRegistration,
   telephoneBidBooking,
@@ -429,7 +431,73 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       assignedToUserId: null,
     }));
   }
+
+  async listMarketingEnquiries(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const rows = await this.db
+      .select({
+        id: marketingEnquiry.id,
+        topic: marketingEnquiry.topic,
+        name: marketingEnquiry.name,
+        createdAt: marketingEnquiry.createdAt,
+      })
+      .from(marketingEnquiry)
+      .where(eq(marketingEnquiry.status, "new"))
+      .orderBy(desc(marketingEnquiry.createdAt))
+      .limit(limit);
+
+    return rows.map((row) => ({
+      sourceId: row.id,
+      kind: "marketing_enquiry" as const,
+      domain: "clients" as const,
+      title: `Contact enquiry — ${sentenceCase(row.topic)}`,
+      subtitle: row.name,
+      href: `/admin/enquiries/${row.id}`,
+      saleId: null,
+      createdAt: row.createdAt,
+      sourceUpdatedAt: row.createdAt,
+      assignedToUserId: null,
+    }));
+  }
+
+  async listPurchaseProblems(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const rows = await this.db
+      .select({
+        id: purchaseProblem.id,
+        paymentId: purchaseProblem.paymentId,
+        category: purchaseProblem.category,
+        createdAt: purchaseProblem.createdAt,
+        updatedAt: purchaseProblem.updatedAt,
+        lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+      })
+      .from(purchaseProblem)
+      .innerJoin(lot, eq(purchaseProblem.lotId, lot.id))
+      .where(eq(purchaseProblem.status, "open"))
+      .orderBy(desc(purchaseProblem.createdAt))
+      .limit(limit);
+
+    return rows.map((row) => ({
+      sourceId: row.id,
+      kind: "purchase_problem" as const,
+      domain: "clients" as const,
+      title: lotWorkItemTitle("Purchase problem", row.lotNumber, row.lotTitle),
+      subtitle: PURCHASE_PROBLEM_SUBTITLES[row.category] ?? null,
+      href: `/admin/payments/${row.paymentId}`,
+      saleId: null,
+      createdAt: row.createdAt,
+      sourceUpdatedAt: row.createdAt,
+      assignedToUserId: null,
+    }));
+  }
 }
+
+const PURCHASE_PROBLEM_SUBTITLES: Record<string, string> = {
+  not_as_described: "Not as described",
+  damaged: "Damaged",
+  not_received: "Not received",
+  invoice_or_payment: "Invoice or payment",
+  other: "Other",
+};
 
 const UNSOLD_CHOICE_SUBTITLES: Record<string, string> = {
   relist: "Seller asks to relist",
