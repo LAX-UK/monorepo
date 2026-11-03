@@ -38,6 +38,10 @@ function mount(role: LegalEntityMemberRole | null) {
       paymentBuyerService: {
         listMyPaymentsForBuyerApi: vi.fn(),
         listEntityPaymentsForBuyerApi,
+        getBuyerComplianceGateStatus: vi.fn(async () => ({ status: "clear" })),
+      } as never,
+      personalLegalEntityResolver: {
+        resolveForUser: vi.fn(async () => ({ id: "personal-1" })),
       } as never,
       mediaUrlResolver: { resolveManyUnique: vi.fn(async () => new Map()) } as never,
       requireBuyingAccount,
@@ -123,6 +127,38 @@ describe("GET /users/me/account/purchases", () => {
   it("refuses a removed member", async () => {
     const { get, lotList } = mount(null);
     expect((await get("purchases")).status).toBe(403);
+    expect(lotList).not.toHaveBeenCalled();
+  });
+});
+
+describe("GET /users/me/account/amounts-owed", () => {
+  it.each(["owner", "admin", "finance"] as const)("reads every lot for %s", async (role) => {
+    const { get, lotList } = mount(role);
+    const res = await get("amounts-owed");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ data: { entries: [] } });
+    expect(lotList).toHaveBeenCalledWith(
+      expect.objectContaining({ buyerLegalEntityId: ORG, statuses: ["ended"] }),
+    );
+  });
+
+  it("reads only a buyer agent's own wins", async () => {
+    const { get, lotList } = mount("buyer_agent");
+    expect((await get("amounts-owed")).status).toBe(200);
+    expect(lotList).toHaveBeenCalledWith(
+      expect.objectContaining({ buyerLegalEntityId: ORG, winnerId: ME }),
+    );
+  });
+
+  it.each(["consignor", "viewer"] as const)("refuses %s", async (role) => {
+    const { get, lotList } = mount(role);
+    expect((await get("amounts-owed")).status).toBe(403);
+    expect(lotList).not.toHaveBeenCalled();
+  });
+
+  it("refuses a removed member", async () => {
+    const { get, lotList } = mount(null);
+    expect((await get("amounts-owed")).status).toBe(403);
     expect(lotList).not.toHaveBeenCalled();
   });
 });

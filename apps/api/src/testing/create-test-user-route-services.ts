@@ -12,6 +12,10 @@ export function createTestUserRouteServicesInput(
     env: { WEB_ORIGIN: "https://test.lax.bid", LAX_BID_LEGAL_NAME: "London Auction Xchange LTD" },
     bidPortfolioReader: { loadForPerson: vi.fn() },
     recordPeople: { namesFor: vi.fn(async () => new Map<string, string>()) },
+    lotFulfilmentRepository: { statusesForLots: vi.fn(async () => new Map()) },
+    personalLegalEntityResolver: {
+      resolveForUser: vi.fn(async () => ({ id: "personal-1" })),
+    } as never,
     lotViewerState: { forLot: vi.fn(), forLots: vi.fn() },
     categoryInterestsEligibilityReader: {
       getProfile: vi.fn(),
@@ -40,8 +44,12 @@ export function createTestUserRouteServicesInput(
       listBidsForUser: vi.fn(),
       listWatchlistForUser: vi.fn(),
     } as never,
-    lotService: { list: vi.fn(), getById: vi.fn() } as never,
-    paymentBuyerService: { listMyPaymentsForBuyerApi: vi.fn() } as never,
+    lotService: { list: vi.fn(async () => []), getById: vi.fn() } as never,
+    paymentBuyerService: {
+      listMyPaymentsForBuyerApi: vi.fn(async () => ({ data: [] })),
+      listEntityPaymentsForBuyerApi: vi.fn(async () => ({ data: [] })),
+      getBuyerComplianceGateStatus: vi.fn(async () => ({ status: "clear" })),
+    } as never,
     mediaAssetEnricher: {} as never,
     saleService: { findByIds: vi.fn(async () => []) } as never,
     watchlistService: {

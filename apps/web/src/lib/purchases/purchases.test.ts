@@ -1,11 +1,12 @@
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
+import type { AccountHold } from "@auction/domain";
 import type { Lot, PortfolioRow } from "@auction/types";
 import { describe, expect, it } from "vitest";
+import { owedFor } from "./owed-fixtures.test-util";
 import {
   canReportProblem,
   defaultPurchaseTab,
-  isToPay,
   parsePurchaseTab,
   purchaseState,
   purchaseStep,
@@ -36,44 +37,41 @@ function fulfilment(overrides: Partial<LotFulfilmentSnapshot> = {}): LotFulfilme
 
 describe("purchaseState", () => {
   it("asks for payment until it is taken, and for documents when held", () => {
-    expect(purchaseState({ paymentStatus: null, reviewReason: null, fulfilment: null })).toBe(
+    expect(purchaseState({ paymentStatus: null, inReview: false, fulfilment: null })).toBe(
       "payment-due",
     );
-    expect(purchaseState({ paymentStatus: "pending", reviewReason: null, fulfilment: null })).toBe(
+    expect(purchaseState({ paymentStatus: "pending", inReview: false, fulfilment: null })).toBe(
       "payment-due",
     );
-    expect(purchaseState({ paymentStatus: null, reviewReason: "aml_hold", fulfilment: null })).toBe(
+    expect(purchaseState({ paymentStatus: null, inReview: true, fulfilment: null })).toBe(
       "in-review",
     );
-    expect(
-      purchaseState({ paymentStatus: "authorized", reviewReason: null, fulfilment: null }),
-    ).toBe("payment-processing");
+    expect(purchaseState({ paymentStatus: "authorized", inReview: false, fulfilment: null })).toBe(
+      "payment-processing",
+    );
   });
 
   it("ends a refunded or cancelled purchase, however it is read", () => {
     const state = (
       paymentStatus: Parameters<typeof purchaseState>[0]["paymentStatus"],
       f: LotFulfilmentSnapshot | null = null,
-    ) => purchaseState({ paymentStatus, reviewReason: "aml_hold", fulfilment: f });
+    ) => purchaseState({ paymentStatus, inReview: true, fulfilment: f });
     expect(state("refunded")).toBe("refunded");
     expect(state("pending", fulfilment({ status: "cancelled" }))).toBe("cancelled");
     expect(state("captured", fulfilment({ status: "cancelled" }))).toBe("cancelled");
     expect(purchaseTab("cancelled")).toBe("completed");
-    expect(isToPay("cancelled")).toBe(true);
-    expect(isToPay("refunded")).toBe(false);
-    expect(isToPay("pending")).toBe(true);
   });
 
   it("keeps a cancelled payment row owed: the buyer can pay again", () => {
-    expect(
-      purchaseState({ paymentStatus: "cancelled", reviewReason: null, fulfilment: null }),
-    ).toBe("payment-due");
+    expect(purchaseState({ paymentStatus: "cancelled", inReview: false, fulfilment: null })).toBe(
+      "payment-due",
+    );
     expect(purchaseTab("payment-due")).toBe("to-pay");
   });
 
   it("follows delivery once paid", () => {
     const paid = (f: LotFulfilmentSnapshot | null) =>
-      purchaseState({ paymentStatus: "captured", reviewReason: null, fulfilment: f });
+      purchaseState({ paymentStatus: "captured", inReview: false, fulfilment: f });
     expect(paid(null)).toBe("choose-delivery");
     expect(paid(fulfilment())).toBe("choose-delivery");
     expect(paid(fulfilment({ fulfilmentMethod: "shipping" }))).toBe("preparing");
@@ -142,8 +140,11 @@ function row(id: string, lotNumber: number, payment: PortfolioRow["payment"]): P
   };
 }
 
-function sources(overrides: Partial<PurchaseSources> = {}): PurchaseSources {
-  return {
+function sources(
+  overrides: Partial<PurchaseSources> = {},
+  gate: AccountHold = "clear",
+): PurchaseSources {
+  const base: Omit<PurchaseSources, "owedByLot"> = {
     rows: [
       row("lot-5", 5, null),
       row("lot-11", 11, { id: "p11", status: "captured", manualReviewReason: null }),
@@ -157,12 +158,12 @@ function sources(overrides: Partial<PurchaseSources> = {}): PurchaseSources {
         fulfilmentMethod: "shipping",
       }),
     },
-    complianceGate: "clear",
     saleTitleById: { "sale-2": "Jewels and objects of vertu" },
     paymentRoleByLot: {},
     payerName: null,
     ...overrides,
   };
+  return { ...base, owedByLot: owedFor(base, gate), ...overrides };
 }
 
 function facts(
@@ -288,6 +289,7 @@ describe("buildPurchasesVm", () => {
       description: "One is overdue. Pay them together by card or bank transfer.",
       lotIds: ["lot-5", "lot-6"],
       total: "16000.00",
+      documentsAction: null,
     });
     expect(vm.cardsByTab["to-pay"].map((card) => card.badge.label)).toEqual([
       "Overdue since 29 Oct",
@@ -376,13 +378,34 @@ describe("buildPurchasesVm", () => {
   });
 
   it("explains a review instead of offering to pay", () => {
-    const vm = buildPurchasesVm(sources({ complianceGate: "source_of_funds_required" }));
-    expect(vm.payNow?.kind).toBe("review");
+    const vm = buildPurchasesVm(sources({}, "source_of_funds_required"));
+    expect(vm.payNow).toMatchObject({
+      kind: "review",
+      title: "Your account is in review",
+      documentsAction: { label: "Provide documents" },
+    });
+    // Rows only say where the purchase stands: the one action is in the banner.
     expect(vm.cardsByTab["to-pay"][0]).toMatchObject({
       statusLabel: "In review",
+      statusNote: "We need to confirm the source of funds before you pay",
       payable: null,
-      primaryAction: { label: "Provide documents" },
+      primaryAction: null,
     });
+  });
+
+  it("asks for nothing when checks are open for another reason", () => {
+    const vm = buildPurchasesVm(sources({}, "aml_hold"));
+    expect(vm.payNow).toMatchObject({ kind: "review", documentsAction: null });
+    expect(vm.cardsByTab["to-pay"][0]).toMatchObject({
+      statusLabel: "In review",
+      primaryAction: null,
+    });
+  });
+
+  it("shows the owed total, with premium, on the row and in the banner", () => {
+    const vm = buildPurchasesVm(sources());
+    expect(vm.cardsByTab["to-pay"][0]).toMatchObject({ amount: "£8,000.00" });
+    expect(vm.payNow).toMatchObject({ kind: "pay", total: "8000.00" });
   });
 });
 

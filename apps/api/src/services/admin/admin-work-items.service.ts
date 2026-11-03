@@ -62,6 +62,8 @@ export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRe
   unsold_lot_choice: SUBMISSIONS_ACCESS,
   marketing_enquiry: MARKETING_ENQUIRIES_ACCESS,
   purchase_problem: FINANCE_ACCESS,
+  // The default action lives on the lot page, which finance-only staff cannot open.
+  payment_overdue: SALES_ACCESS,
   deletion_hold: DELETION_HOLD_ACCESS,
 };
 
@@ -147,6 +149,7 @@ function stampActions(
       break;
     case "marketing_enquiry":
     case "purchase_problem":
+    case "payment_overdue":
     case "deletion_hold":
       break;
   }
@@ -242,6 +245,10 @@ export class AdminWorkItemsService {
       {
         access: WORK_ITEM_KIND_ACCESS.purchase_problem,
         fetch: () => this.reader.listPurchaseProblems(perSourceLimit),
+      },
+      {
+        access: WORK_ITEM_KIND_ACCESS.payment_overdue,
+        fetch: () => this.reader.listOverduePayments(perSourceLimit, new Date()),
       },
       {
         access: WORK_ITEM_KIND_ACCESS.deletion_hold,

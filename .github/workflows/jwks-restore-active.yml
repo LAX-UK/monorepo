@@ -1,0 +1,122 @@
+name: JWKS restore active key
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to rotate. Run test first, then prod.
+        required: true
+        type: choice
+        options: [test, prod]
+      kid:
+        description: Key id to make active again (it must already exist in jwks_key)
+        required: true
+        type: string
+      dry_run:
+        description: Show what would change without touching the database
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jwks-rotate-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    # The GitHub environment supplies the secrets and, for prod, its approval rules.
+    environment: ${{ inputs.environment }}
+    env:
+      TARGET_ENV: ${{ inputs.environment }}
+      RESTORE_KID: ${{ inputs.kid }}
+      DRY_RUN: ${{ inputs.dry_run }}
+      # terraform-setup reads the DigitalOcean token from the job environment.
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      JWKS_URL: ${{ inputs.environment == 'prod' && 'https://auth.lax.bid/.well-known/jwks.json' || 'https://test-auth.lax.bid/.well-known/jwks.json' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build the identity packages the scripts import
+        run: pnpm turbo run build --filter=@auction/identity-db...
+      - name: Record published key ids before the restore
+        run: |
+          set -euo pipefail
+          kids="$(curl --fail --silent --show-error --max-time 15 "$JWKS_URL?cache-bypass=1" | jq -r '[.keys[].kid] | sort | join(", ")')"
+          test -n "$kids"
+          echo "KIDS_BEFORE=$kids" >> "$GITHUB_ENV"
+      - uses: ./.github/actions/checkout-infra
+        if: ${{ !inputs.dry_run }}
+        with:
+          ref: main
+          app-id: ${{ vars.INFRA_REPO_APP_ID }}
+          private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - uses: ./.github/actions/terraform-setup
+        if: ${{ !inputs.dry_run }}
+        with:
+          working-directory: .infra-config/terraform/ephemeral/${{ inputs.environment }}
+          spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
+          spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
+      - name: Load Identity owner database URL
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          owner_url="$(terraform -chdir=".infra-config/terraform/ephemeral/${TARGET_ENV}" output -raw postgres_owner_uri)"
+          test -n "$owner_url"
+          echo "::add-mask::$owner_url"
+          echo "DATABASE_URL_OWNER=$owner_url" >> "$GITHUB_ENV"
+      - name: Load managed Postgres CA certificate
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          cluster="lax-${TARGET_ENV}-postgres"
+          db_cluster_id="$(
+            doctl databases list --format ID,Name --no-header \
+              | awk -v name="$cluster" '$2 == name { print $1; exit }'
+          )"
+          test -n "$db_cluster_id"
+          database_ca_cert="$(doctl databases get-ca "$db_cluster_id" --no-header)"
+          test -n "$database_ca_cert"
+          {
+            echo "DATABASE_CA_CERT<<EOF"
+            echo "$database_ca_cert"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+      - name: Restore the active key
+        run: |
+          set -euo pipefail
+          args=(--kid "$RESTORE_KID")
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          pnpm jwks:restore-active "${args[@]}"
+      - name: Assert JWKS publishes the restored key
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5 6; do
+            published="$(curl --fail --silent --show-error --max-time 15 "$JWKS_URL?cache-bypass=1" | jq -r '.keys[].kid')"
+            if grep -Fxq "$RESTORE_KID" <<<"$published"; then break; fi
+            echo "Restored key not published yet (attempt $attempt)"; sleep 10
+          done
+          echo "KIDS_AFTER=$(sort <<<"$published" | paste -sd ',' - | sed 's/,/, /g')" >> "$GITHUB_ENV"
+          grep -Fxq "$RESTORE_KID" <<<"$published" || { echo "::error::Key $RESTORE_KID is not published"; exit 1; }
+      - name: Summarise key ids
+        if: always()
+        run: |
+          {
+            echo "### JWKS restore: ${TARGET_ENV} (dry run: ${DRY_RUN})"
+            echo
+            echo "| | Published key ids |"
+            echo "|---|---|"
+            echo "| Before | ${KIDS_BEFORE:-unknown} |"
+            echo "| After | ${KIDS_AFTER:-unchanged} |"
+            echo
+            echo "Requested active key: \`${RESTORE_KID}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

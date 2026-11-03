@@ -2,7 +2,7 @@ import { buildPortfolioHeader } from "@auction/lax-ecosystem";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { item } from "../server/domain/portfolio-fixtures.test-util";
-import { PAID_SO_FAR_NOTE, PortfolioHeader } from "./portfolio-header";
+import { PAID_SO_FAR_NOTE, PortfolioHeader, TOTAL_DUE_NOTE } from "./portfolio-header";
 
 const render = (items: ReturnType<typeof item>[]) =>
   renderToStaticMarkup(<PortfolioHeader header={buildPortfolioHeader(items)} />);
@@ -52,5 +52,37 @@ describe("PortfolioHeader", () => {
     for (const word of ["gain", "loss", "return", "total value", "invest"]) {
       expect(html).not.toContain(word);
     }
+  });
+
+  describe("total due", () => {
+    const owedItem = (id: string, owed: NonNullable<ReturnType<typeof item>["owed"]>) =>
+      item({
+        id,
+        status: "awaiting_payment",
+        paid: { lines: [{ kind: "hammer", amount: 100_000, currency: "GBP" }] },
+        owed,
+      });
+
+    it("shows the total owed, which is the amount due and not the hammer price", () => {
+      const html = render([
+        owedItem("a", { amount: 115_000, currency: "GBP", state: "due" }),
+        owedItem("b", { amount: 23_000, currency: "GBP", state: "due" }),
+      ]);
+      expect(html).toContain("Total due");
+      expect(html).toContain("£1,380.00");
+      expect(html).toContain(TOTAL_DUE_NOTE);
+    });
+
+    it("says how many are waiting on account checks", () => {
+      const html = render([
+        owedItem("a", { amount: 115_000, currency: "GBP", state: "in_review", blocker: "review" }),
+        owedItem("b", { amount: 23_000, currency: "GBP", state: "due" }),
+      ]);
+      expect(html).toContain("One is waiting on account checks.");
+    });
+
+    it("is left out when nothing is awaiting payment", () => {
+      expect(render([item({ status: "owned" })])).not.toContain("Total due");
+    });
   });
 });

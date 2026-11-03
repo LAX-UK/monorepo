@@ -52,6 +52,21 @@ describe("attentionChip", () => {
     });
   });
 
+  it("says the account is in review, not that payment is due, while checks are open", () => {
+    expect(attentionChip(attention({ paymentsDue: 3, paymentsInReview: true }))).toMatchObject({
+      kind: "account-in-review",
+      label: "Account in review",
+      href: "/purchases",
+      accessibleName: "Account in review. Go to Purchases",
+    });
+  });
+
+  it("still counts what is owed in the menu while the account is in review", () => {
+    expect(
+      attentionCountFor("purchases", attention({ paymentsDue: 3, paymentsInReview: true })),
+    ).toMatchObject({ value: 3, label: "3 to pay" });
+  });
+
   it("lets outbid win while a sale is live", () => {
     expect(attentionChip(attention({ outbidLots: ["8"], paymentsDue: 1 }))?.kind).toBe("outbid");
   });

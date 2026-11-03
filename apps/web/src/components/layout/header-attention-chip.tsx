@@ -11,6 +11,7 @@ const TONE: Record<AttentionChip["kind"], string> = {
   outbid: "border-danger/25 bg-danger-container text-danger-on-surface hover:border-danger/45",
   "payment-due":
     "border-warning/30 bg-warning-container text-warning-on-surface hover:border-warning/50",
+  "account-in-review": "border-info/30 bg-info-container text-info-on-surface hover:border-info/50",
 };
 
 /** The chip itself: a link that names the work, truncated to fit, with the full text read aloud. */

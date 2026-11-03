@@ -450,6 +450,7 @@ describe("notifications that announce a task", () => {
     expect(NEEDS_ACTION.map(needsYouKindAnnouncedBy)).toEqual([
       "outbid",
       "pay",
+      "pay",
       "agreement",
       "changes",
       "reply",

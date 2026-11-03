@@ -1,16 +1,14 @@
 import type { AccountScope } from "@/lib/account-scope/account-scope";
 import { buildMyBidsVm } from "@/lib/bid/my-bids.vm";
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
+import { attentionChip } from "@/lib/navigation/client-attention";
 import { deriveClientAttention } from "@/lib/navigation/derive-client-attention";
+import { owedFor } from "@/lib/purchases/owed-fixtures.test-util";
 import { type PurchaseSources, buildPurchasesVm } from "@/lib/purchases/purchases.vm";
+import { type AccountHold, type AmountOwedEntry, summariseAmountsOwed } from "@auction/domain";
 import type { LegalEntityMemberRole, Lot, PaymentStatus, PortfolioRow } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import {
-  openBidsFigure,
-  paymentRoleFor,
-  purchasesToPayBy,
-  purchasesToPayFigure,
-} from "./account-buying-figures";
+import { openBidsFigure, paymentRoleFor, purchasesToPayFigure } from "./account-buying-figures";
 import { createAccountBuyingReader } from "./account-buying-reader";
 import { buyingPageView } from "./buying-pages";
 
@@ -117,18 +115,29 @@ const PURCHASES: PortfolioRow[] = [
   purchase("lot-17", "cancelled"),
 ];
 
-function purchaseSources(scope: AccountScope, rows: readonly PortfolioRow[]): PurchaseSources {
+function purchaseSources(
+  scope: AccountScope,
+  rows: readonly PortfolioRow[],
+  fulfilmentByLot: PurchaseSources["fulfilmentByLot"] = {},
+  gate: AccountHold = "clear",
+): PurchaseSources {
+  const paymentRoleByLot = Object.fromEntries(
+    rows.map((row) => [row.lot.id, paymentRoleFor(scope, row)]),
+  );
   return {
     rows,
     invoiceByLot: {},
-    fulfilmentByLot: {},
-    complianceGate: "clear",
+    fulfilmentByLot,
+    owedByLot: owedFor({ rows, fulfilmentByLot, paymentRoleByLot }, gate),
     saleTitleById: {},
-    paymentRoleByLot: Object.fromEntries(
-      rows.map((row) => [row.lot.id, paymentRoleFor(scope, row)]),
-    ),
+    paymentRoleByLot,
     payerName: scope.account.kind === "organisation" ? scope.account.name : null,
   };
+}
+
+/** What the account owes for the rows: the one reading every figure below is drawn from. */
+function owedEntries(sources: PurchaseSources): AmountOwedEntry[] {
+  return Object.values(sources.owedByLot);
 }
 
 describe("Home, the lists and the menu agree", () => {
@@ -145,13 +154,14 @@ describe("Home, the lists and the menu agree", () => {
     "counts the same purchases to pay on Home, in Purchases and in the %s's menu",
     (role) => {
       const scope = organisation(role);
-      const vm = buildPurchasesVm(purchaseSources(scope, PURCHASES));
+      const sources = purchaseSources(scope, PURCHASES);
+      const vm = buildPurchasesVm(sources);
       const toPayTab = vm.cardsByTab["to-pay"].length;
-      const figure = purchasesToPayFigure(PURCHASES);
+      const figure = purchasesToPayFigure(owedEntries(sources));
       const attention = deriveClientAttention({
         userId: ME,
         bids: [],
-        purchasesToPay: purchasesToPayBy(scope, PURCHASES),
+        amountsOwed: owedEntries(sources),
         unreadNotifications: [],
       });
       expect(figure.purchases).toBe(4);
@@ -167,20 +177,77 @@ describe("Home, the lists and the menu agree", () => {
 
   it("ends a purchase only when the sale is cancelled, whatever its payment row says", () => {
     const scope = organisation("owner");
-    const sources = {
-      ...purchaseSources(scope, PURCHASES),
-      fulfilmentByLot: { "lot-17": { status: "cancelled" } as never },
-    };
+    const sources = purchaseSources(scope, PURCHASES, {
+      "lot-17": { status: "cancelled" } as never,
+    });
     const vm = buildPurchasesVm(sources);
     expect(vm.cardsByTab["to-pay"].map((card) => card.lotId)).not.toContain("lot-17");
     expect(vm.cardsByTab.completed.map((card) => card.lotId)).toContain("lot-17");
+    // Home, the chip and the menu count it out too: Purchases and the chip cannot disagree.
+    expect(purchasesToPayFigure(owedEntries(sources)).purchases).toBe(3);
+    expect(
+      deriveClientAttention({
+        userId: ME,
+        bids: [],
+        amountsOwed: owedEntries(sources),
+        unreadNotifications: [],
+      }).paymentsDue,
+    ).toBe(3);
+  });
+
+  it("ends an unpaid purchase cancelled at fulfilment for a personal account too", () => {
+    const rows = [
+      {
+        ...purchase("lot-41", null, ME),
+        lot: { ...purchase("lot-41", null, ME).lot, buyerLegalEntityId: "me-personal" },
+      },
+      {
+        ...purchase("lot-42", "pending", ME),
+        lot: { ...purchase("lot-42", "pending", ME).lot, buyerLegalEntityId: "me-personal" },
+      },
+    ];
+    const sources = purchaseSources(personal, rows, { "lot-42": { status: "cancelled" } as never });
+    const attention = deriveClientAttention({
+      userId: ME,
+      bids: [],
+      amountsOwed: owedEntries(sources),
+      unreadNotifications: [],
+    });
+    expect(attention.paymentsDue).toBe(1);
+    expect(buildPurchasesVm(sources).cardsByTab.completed.map((card) => card.lotId)).toEqual([
+      "lot-42",
+    ]);
+  });
+
+  it("says the account is in review, not that payment is due, while checks are open", () => {
+    const sources = purchaseSources(
+      organisation("finance"),
+      PURCHASES,
+      {},
+      "source_of_funds_required",
+    );
+    const attention = deriveClientAttention({
+      userId: ME,
+      bids: [],
+      amountsOwed: owedEntries(sources),
+      unreadNotifications: [],
+    });
+    expect(attention).toMatchObject({ paymentsDue: 4, paymentsInReview: true });
+    expect(attentionChip(attention)).toMatchObject({ label: "Account in review" });
+    // Purchases agrees: one banner, one action, and no row repeats it.
+    const vm = buildPurchasesVm(sources);
+    expect(vm.payNow).toMatchObject({
+      kind: "review",
+      documentsAction: { label: "Provide documents" },
+    });
+    expect(vm.cardsByTab["to-pay"].every((card) => card.primaryAction === null)).toBe(true);
   });
 
   it("never asks a buyer agent to pay, while Purchases still lists what they won", () => {
     const scope = organisation("buyer_agent");
     const won = PURCHASES.map((row) => ({ ...row, lot: { ...row.lot, winnerId: ME } }));
     const vm = buildPurchasesVm(purchaseSources(scope, won));
-    expect(purchasesToPayBy(scope, won)).toEqual([]);
+    expect(summariseAmountsOwed(owedEntries(purchaseSources(scope, won))).count).toBe(0);
     expect(vm.payNow).toBeNull();
     expect(vm.cardsByTab["to-pay"].every((card) => card.payable === null)).toBe(true);
     expect(
@@ -233,7 +300,9 @@ describe("a lot whose estimate is in dollars", () => {
     expect(vm.cardsByTab["to-pay"].find((card) => card.lotId === "lot-21")?.amount).toBe(
       "£1,250.00",
     );
-    expect(purchasesToPayFigure(rows).totals).toEqual([{ currency: "GBP", amount: "2500.00" }]);
+    expect(
+      purchasesToPayFigure(owedEntries(purchaseSources(organisation("finance"), rows))).totals,
+    ).toEqual([{ currency: "GBP", amount: "2500.00" }]);
   });
 });
 
@@ -264,8 +333,16 @@ describe("paymentRoleFor", () => {
 describe("createAccountBuyingReader", () => {
   function sources() {
     return {
-      personal: { bids: vi.fn(async () => []), purchases: vi.fn(async () => []) },
-      organisation: { bids: vi.fn(async () => BIDS), purchases: vi.fn(async () => PURCHASES) },
+      personal: {
+        bids: vi.fn(async () => []),
+        purchases: vi.fn(async () => []),
+        amountsOwed: vi.fn(async () => ({ entries: [] })),
+      },
+      organisation: {
+        bids: vi.fn(async () => BIDS),
+        purchases: vi.fn(async () => PURCHASES),
+        amountsOwed: vi.fn(async () => ({ entries: [] })),
+      },
     };
   }
 
@@ -277,14 +354,25 @@ describe("createAccountBuyingReader", () => {
     expect(s.organisation.bids).toHaveBeenCalledWith(ORG);
     expect(s.personal.bids).not.toHaveBeenCalled();
     expect(s.personal.purchases).not.toHaveBeenCalled();
+    await reader.amountsOwed();
+    expect(s.organisation.amountsOwed).toHaveBeenCalledWith(ORG);
+    expect(s.personal.amountsOwed).not.toHaveBeenCalled();
   });
 
   it("reads the person's own records in their own account, once per reader", async () => {
     const s = sources();
     const reader = createAccountBuyingReader({ current: async () => personal }, s);
-    await Promise.all([reader.bids(), reader.bids(), reader.purchases()]);
+    await Promise.all([
+      reader.bids(),
+      reader.bids(),
+      reader.purchases(),
+      reader.amountsOwed(),
+      reader.amountsOwed(),
+    ]);
     expect(s.personal.bids).toHaveBeenCalledTimes(1);
     expect(s.personal.purchases).toHaveBeenCalledTimes(1);
+    expect(s.personal.amountsOwed).toHaveBeenCalledTimes(1);
+    expect(s.organisation.amountsOwed).not.toHaveBeenCalled();
     expect(s.organisation.bids).not.toHaveBeenCalled();
   });
 });

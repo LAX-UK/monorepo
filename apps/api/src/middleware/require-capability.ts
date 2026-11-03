@@ -6,6 +6,7 @@ import {
   ARTIST_REVIEW_ACCESS,
   ARTIST_WRITE_ACCESS,
   AUDIT_DOMAIN_EVENTS_ACCESS,
+  BUYER_DEFAULT_ACCESS,
   CATEGORIES_ACCESS,
   CATEGORIES_READ_ACCESS,
   CLIENT_ACTIVITY_ACCESS,
@@ -183,6 +184,7 @@ export const requireSaleroomOperate = createRequireAccess(SALEROOM_ACCESS);
  * `admin.read`. Mount them on GET routes only; every action keeps its write rule.
  */
 export const requireLotsRead = createRequireAccess(LOTS_READ_ACCESS);
+export const requireBuyerDefault = createRequireAccess(BUYER_DEFAULT_ACCESS);
 export const requireLotWorkRead = createRequireAccess(LOT_WORK_READ_ACCESS);
 export const requireSubmissionsRead = createRequireAccess(SUBMISSIONS_READ_ACCESS);
 export const requireConsignmentInboxRead = createRequireAccess(CONSIGNMENT_INBOX_READ_ACCESS);

@@ -24,6 +24,10 @@ function rowFor(item: LaxPortfolioItemV1): AttentionRowVm | null {
   const productLabel = PRODUCT_LABELS[item.product];
   switch (item.status) {
     case "awaiting_payment": {
+      // Payment cannot start while the account's checks are open, so there is nothing to pay yet.
+      if (item.owed?.state === "in_review") {
+        return { key, text: `${title} is waiting on account checks`, productLabel, ...detail };
+      }
       const pay = actionHref(item, "pay");
       return {
         key,
