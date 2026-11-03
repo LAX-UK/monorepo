@@ -1,3 +1,4 @@
+import type { OriginalMoveService } from "./application/admin/original-move.service.js";
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
@@ -107,6 +108,8 @@ export type AdminRoutesDeps = {
   createMerchandiseProduct: ReturnType<typeof createCreateMerchandiseProductHandler>;
   merchandiseCatalogue: MerchandiseCatalogueWriter;
   artworkCatalogue: ArtworkCatalogueWriter;
+  /** Offering an original at auction in LAX Bid. */
+  inventoryMoves: Pick<OriginalMoveService, "assess" | "listSales" | "offerAtAuction">;
   /** Runs of prints: change a draft's run, edition facts, open edition stock, linked listings. */
   editionRuns: Omit<EditionRunServices, "recorder">;
   artistCatalogue: ArtistCatalogueWriter;

@@ -65,6 +65,15 @@ export function createMinimalShopApiTestDeps(
       eligibility: { listBlockers: async () => [] },
       machine: { clientId: undefined, clientSecret: undefined },
     },
+    inventory: {
+      reopen: {
+        reopen: async () => ({
+          ok: true as const,
+          data: { artworkId: "00000000-0000-4000-8000-000000000001", reopened: false },
+        }),
+      },
+      machine: { clientId: undefined, clientSecret: undefined },
+    },
     identitySubjectExport: {
       exports: {
         manifest: async () => ({ product: "shop" as const, categories: [] }),
@@ -358,6 +367,20 @@ export function createMinimalShopApiTestDeps(
         variantId: "00000000-0000-4000-8000-000000000018",
         slug: "test-product",
       }),
+      inventoryMoves: {
+        assess: async (artworkId: string) => ({
+          artworkId,
+          title: "Test artwork",
+          stockCode: null,
+          onLaxArt: false,
+          eligible: false,
+          reasons: ["Not set up in tests."],
+        }),
+        listSales: async () => [],
+        offerAtAuction: async () => {
+          throw new Error("not implemented");
+        },
+      },
       merchandiseCatalogue: {
         updateProduct: async () => ({ version: "2026-01-01T00:00:00.000Z" }),
         setProductArchived: async () => ({ version: "2026-01-01T00:00:00.000Z" }),
