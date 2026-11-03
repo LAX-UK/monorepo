@@ -1,10 +1,4 @@
-import { firstString } from "@/lib/admin/admin-list-params";
-import {
-  ARTIST_DIRECTORY_PRESETS,
-  type ArtistDirectoryPreset,
-  type ArtistDirectoryPresetId,
-  slugifyNationality,
-} from "@/lib/artists/directory-presets";
+import { type ArtistDirectoryPreset, slugifyNationality } from "@/lib/artists/directory-presets";
 import { artistDirectoryWithQuery } from "@/lib/artists/directory-url";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import type { PublicArtistDirectoryFacets } from "@auction/types";
@@ -37,34 +31,6 @@ export type ArtistDirectoryFilterRailInput = {
   hasUpcoming: boolean;
   categorySlug?: string;
 };
-
-/** Path-aware preset chip — preserves `q`, `sort` across slices. Nationality is
- * handled by canonical path-segment URLs so we don't carry it as a query param. */
-export function artistDirectoryPresetChips(
-  currentId: ArtistDirectoryPresetId,
-  sp: Record<string, string | string[] | undefined>,
-  layoutView: CatalogLayoutView,
-) {
-  const carry: ArtistDirectoryCarryParams = {
-    q: firstString(sp.q) ?? null,
-    sort: firstString(sp.sort) ?? null,
-    view: layoutView,
-  };
-  return ARTIST_DIRECTORY_PRESETS.filter(
-    (p) =>
-      p.id === "all" ||
-      p.id === "featured" ||
-      p.id === "living" ||
-      p.id === "historical" ||
-      p.id === "kind-brands" ||
-      p.id === "kind-makers",
-  ).map((p) => ({
-    id: p.id,
-    label: p.label,
-    href: artistDirectoryWithQuery(p.canonicalPath, {}, carry),
-    active: p.id === currentId,
-  }));
-}
 
 export function buildArtistDirectoryNationalityHref(
   input: ArtistDirectoryFilterRailInput,
@@ -123,19 +89,13 @@ export function buildArtistDirectoryFilterGroups(
   return [
     {
       id: "scenario",
-      title: "Scenario",
+      title: "Living or historical",
       links: [
         {
           label: "All",
           href: artistDirectoryWithQuery("/artists", {}, carry),
           count: facets.total,
           active: preset.id === "all",
-        },
-        {
-          label: "Featured",
-          href: artistDirectoryWithQuery("/artists/featured", {}, carry),
-          count: facets.featured,
-          active: preset.id === "featured",
         },
         {
           label: "Living",
@@ -153,7 +113,7 @@ export function buildArtistDirectoryFilterGroups(
     },
     {
       id: "kind",
-      title: "Kind",
+      title: "Type",
       links: [
         {
           label: "Artists",
@@ -183,10 +143,10 @@ export function buildArtistDirectoryFilterGroups(
     },
     {
       id: "lots",
-      title: "Lots",
+      title: "Has works on sale",
       links: [
         {
-          label: "Has upcoming lots",
+          label: "Only these artists",
           href: artistDirectoryWithQuery(preset.canonicalPath, sp, {
             hasUpcoming: hasUpcoming ? null : "true",
             offset: null,

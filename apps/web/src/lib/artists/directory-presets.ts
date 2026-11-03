@@ -52,7 +52,7 @@ export const ARTIST_DIRECTORY_PRESETS: ReadonlyArray<ArtistDirectoryPreset> = [
     id: "all",
     canonicalPath: "/artists",
     label: "All",
-    heroTitle: "Artists & Makers",
+    heroTitle: "Artists and makers",
     heroDescription:
       "Explore the artists, makers, brands, marques, authors, mints, and producers behind LAX.BID auction lots.",
     filter: {},
