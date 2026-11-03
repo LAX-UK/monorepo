@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import { type Database, qualifiedColumn } from "@auction/db";
 import {
   shopArtwork,
   shopArtworkInterest,
@@ -15,6 +15,12 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 /** The newest orders and enquiries a client page lists; "View all" opens the rest. */
 export const CLIENT_RECENT_LIMIT = 10;
+
+/** Lines on the order in the same row: the select list of a one-table query prints no table name. */
+export const orderLineCountSql = sql<number>`(
+  select count(*)::int from ${shopOrderLine}
+  where ${shopOrderLine.orderId} = ${qualifiedColumn(shopOrder.id)}
+)`;
 
 type Party = Pick<typeof shopParty.$inferSelect, "id" | "identitySubjectId">;
 
@@ -52,9 +58,7 @@ export async function readClientCommerce(db: Database, party: Party): Promise<Cl
     db
       .select({
         order: shopOrder,
-        lineCount: sql<number>`(
-          select count(*)::int from ${shopOrderLine} where ${shopOrderLine.orderId} = ${shopOrder.id}
-        )`,
+        lineCount: orderLineCountSql,
       })
       .from(shopOrder)
       .where(theirOrders)

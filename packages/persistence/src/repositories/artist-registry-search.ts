@@ -1,9 +1,32 @@
-import type { Database } from "@auction/db";
+import { type Database, qualifiedColumn } from "@auction/db";
 import { artistAlias, artistProfile } from "@auction/db/schema";
 import type { ArtistKind, ArtistStatus } from "@auction/types";
-import { and, asc, eq, ilike, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
 import type { ArtistSearchHit } from "../interfaces/artist-registry.types.js";
 import { FUZZY_THRESHOLD, partialSearchPattern, slugify } from "./artist-registry.helpers.js";
+
+/** The alias of the artist in the same row that matches `pattern`, if any. */
+export function matchedAliasSql(pattern: string) {
+  return sql<string | null>`(
+    select ${artistAlias.alias}
+    from ${artistAlias}
+    where ${artistAlias.artistProfileId} = ${qualifiedColumn(artistProfile.id)}
+      and ${artistAlias.alias} ilike ${pattern}
+    limit 1
+  )`;
+}
+
+/** How close the artist in the same row is to `text`: the better of the name and any alias. */
+export function fuzzyScoreSql(text: string) {
+  return sql<number>`greatest(
+    similarity(${artistProfile.displayName}, ${text}),
+    coalesce((
+      select max(similarity(${artistAlias.alias}, ${text}))
+      from ${artistAlias}
+      where ${artistAlias.artistProfileId} = ${qualifiedColumn(artistProfile.id)}
+    ), 0)
+  )`;
+}
 
 export async function searchArtists(
   db: Database,
@@ -87,13 +110,7 @@ export async function searchArtists(
       slug: artistProfile.slug,
       kind: artistProfile.kind,
       status: artistProfile.status,
-      alias: sql<string | null>`(
-          select ${artistAlias.alias}
-          from ${artistAlias}
-          where ${artistAlias.artistProfileId} = ${artistProfile.id}
-            and ${artistAlias.alias} ilike ${pattern}
-          limit 1
-        )`,
+      alias: matchedAliasSql(pattern),
     })
     .from(artistProfile)
     .where(
@@ -141,10 +158,7 @@ export async function searchArtists(
       slug: artistProfile.slug,
       kind: artistProfile.kind,
       status: artistProfile.status,
-      score: sql<number>`greatest(
-          similarity(${artistProfile.displayName}, ${trimmed}),
-          coalesce((select max(similarity(${artistAlias.alias}, ${trimmed})) from ${artistAlias} where ${artistAlias.artistProfileId} = ${artistProfile.id}), 0)
-        )`,
+      score: fuzzyScoreSql(trimmed),
     })
     .from(artistProfile)
     .where(
@@ -161,12 +175,7 @@ export async function searchArtists(
           )`,
       ),
     )
-    .orderBy(
-      sql`greatest(
-          similarity(${artistProfile.displayName}, ${trimmed}),
-          coalesce((select max(similarity(${artistAlias.alias}, ${trimmed})) from ${artistAlias} where ${artistAlias.artistProfileId} = ${artistProfile.id}), 0)
-        ) desc`,
-    )
+    .orderBy(desc(fuzzyScoreSql(trimmed)))
     .limit(remaining + skipIds.size);
 
   const fuzzy: ArtistSearchHit[] = fuzzyRows

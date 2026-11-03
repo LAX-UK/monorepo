@@ -1,3 +1,4 @@
+import { qualifiedColumn } from "@auction/db";
 import { staffRoleAssignment } from "@auction/db/schema";
 import { type AnyColumn, type SQL, and, gt, isNull, lte, or, sql } from "drizzle-orm";
 
@@ -20,7 +21,7 @@ export function staffRolesInForceFor(userId: AnyColumn): SQL<string[]> {
   return sql<string[]>`coalesce((
     select array_agg(${staffRoleAssignment.role}::text order by ${staffRoleAssignment.role})
     from ${staffRoleAssignment}
-    where ${staffRoleAssignment.userId} = ${userId}
+    where ${staffRoleAssignment.userId} = ${qualifiedColumn(userId)}
       and ${staffRoleAssignmentInForceAt(sql`now()`)}
   ), '{}'::text[])`;
 }
@@ -29,7 +30,7 @@ export function staffRolesInForceFor(userId: AnyColumn): SQL<string[]> {
 export function holdsStaffRoleNow(userId: AnyColumn, role: string): SQL<boolean> {
   return sql<boolean>`exists (
     select 1 from ${staffRoleAssignment}
-    where ${staffRoleAssignment.userId} = ${userId}
+    where ${staffRoleAssignment.userId} = ${qualifiedColumn(userId)}
       and ${staffRoleAssignment.role}::text = ${role}
       and ${staffRoleAssignmentInForceAt(sql`now()`)}
   )`;

@@ -1,3 +1,4 @@
+import { qualifiedColumn } from "@auction/db";
 import { shopArtist, shopArtwork, shopEdition } from "@auction/db/schema";
 import type { AdminArtworkState } from "@auction/shop-contracts";
 import { type SQL, and, isNotNull, isNull, sql } from "drizzle-orm";
@@ -26,11 +27,13 @@ export const editionArtworkOnStorefrontSql = sql`exists (
 
 /** Editions in the artwork's run, and how many are sold (staff reads only). */
 export const artworkEditionCountSql = sql<number>`(
-  select count(*)::int from ${shopEdition} where ${shopEdition.artworkId} = ${shopArtwork.id}
+  select count(*)::int from ${shopEdition}
+  where ${shopEdition.artworkId} = ${qualifiedColumn(shopArtwork.id)}
 )`;
 export const artworkSoldEditionCountSql = sql<number>`(
   select count(*)::int from ${shopEdition}
-  where ${shopEdition.artworkId} = ${shopArtwork.id} and ${shopEdition.listingStatus} = 'sold'
+  where ${shopEdition.artworkId} = ${qualifiedColumn(shopArtwork.id)}
+    and ${shopEdition.listingStatus} = 'sold'
 )`;
 
 /**
