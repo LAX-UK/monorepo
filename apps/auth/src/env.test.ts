@@ -110,3 +110,49 @@ describe("auth app environment contract", () => {
     expect(deriveLaxArtOriginFromShopOrigin("https://shop.lax.art")).toBe("https://www.thelax.art");
   });
 });
+
+describe("data download environment", () => {
+  const exportBucket = {
+    SUBJECT_EXPORT_BUCKET: "lax-personal-exports",
+    SUBJECT_EXPORT_REGION: "lon1",
+    SUBJECT_EXPORT_READ_ACCESS_KEY_ID: "read-key",
+    SUBJECT_EXPORT_READ_SECRET_ACCESS_KEY: "read-secret",
+  };
+
+  it("needs none of it: requests work and the progress route is simply not mounted", () => {
+    const env = parseAuthEnv(base);
+    expect(env.SUBJECT_EXPORT_BUCKET).toBeUndefined();
+    expect(env.SUBJECT_EXPORT_MACHINE_CLIENT_ID).toBeUndefined();
+  });
+
+  it("accepts a complete bucket and a complete machine credential", () => {
+    const env = parseAuthEnv({
+      ...base,
+      ...exportBucket,
+      SUBJECT_EXPORT_ENDPOINT: "https://lon1.digitaloceanspaces.com",
+      SUBJECT_EXPORT_MACHINE_CLIENT_ID: "subject-export-worker",
+      SUBJECT_EXPORT_MACHINE_CLIENT_SECRET: "s".repeat(32),
+    });
+    expect(env.SUBJECT_EXPORT_BUCKET).toBe("lax-personal-exports");
+    expect(env.SUBJECT_EXPORT_MACHINE_CLIENT_ID).toBe("subject-export-worker");
+  });
+
+  it("rejects half a bucket configuration", () => {
+    expect(() => parseAuthEnv({ ...base, SUBJECT_EXPORT_BUCKET: "lax-personal-exports" })).toThrow(
+      /must be set together/,
+    );
+  });
+
+  it("rejects half a machine credential, and one that reuses the lifecycle client", () => {
+    expect(() =>
+      parseAuthEnv({ ...base, SUBJECT_EXPORT_MACHINE_CLIENT_ID: "subject-export-worker" }),
+    ).toThrow(/must be set together/);
+    expect(() =>
+      parseAuthEnv({
+        ...production,
+        SUBJECT_EXPORT_MACHINE_CLIENT_ID: "identity-machine",
+        SUBJECT_EXPORT_MACHINE_CLIENT_SECRET: "s".repeat(32),
+      }),
+    ).toThrow(/must differ from IDENTITY_MACHINE_CLIENT_ID/);
+  });
+});

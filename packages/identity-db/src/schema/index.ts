@@ -6,3 +6,4 @@ export * from "./outbox.js";
 export * from "./security.js";
 export * from "./access-policy.js";
 export * from "./address.js";
+export * from "./subject-export.js";

@@ -64,6 +64,12 @@ import ConsignmentAgreementReminderEmail, {
 import ConsignmentUpdateEmail, {
   subject as consignmentUpdateSubject,
 } from "./templates/consignment-update.js";
+import DataExportReadyEmail, {
+  subject as dataExportReadySubject,
+} from "./templates/data-export-ready.js";
+import DataExportRequestedEmail, {
+  subject as dataExportRequestedSubject,
+} from "./templates/data-export-requested.js";
 import DisputeClosedNoticeEmail, {
   subject as disputeClosedNoticeSubject,
 } from "./templates/dispute-closed-notice.js";
@@ -313,6 +319,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "account-deletion-cancelled": {
     subject: accountDeletionCancelledSubject,
     component: (vars) => <AccountDeletionCancelledEmail {...vars} />,
+  },
+  "data-export-requested": {
+    subject: dataExportRequestedSubject,
+    component: (vars) => <DataExportRequestedEmail {...vars} />,
+  },
+  "data-export-ready": {
+    subject: dataExportReadySubject,
+    component: (vars) => <DataExportReadyEmail {...vars} />,
   },
   "backup-codes-regenerated": {
     subject: backupCodesRegeneratedSubject,
