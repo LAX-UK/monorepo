@@ -1,5 +1,10 @@
-import { type SavedView, SavedViewsError, type SavedViewsPort } from "@auction/staff-ui";
-import { readCookie } from "./read-cookie";
+import {
+  type SavedView,
+  SavedViewsError,
+  type SavedViewsPort,
+  readCookie,
+  savedViewsFailure,
+} from "@auction/staff-ui";
 import { SHOP_ADMIN_CSRF_COOKIE } from "./session-cookie";
 
 const SAVED_VIEWS_BASE_PATH = "/api/admin/saved-views";
@@ -30,7 +35,7 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
       },
     });
   } catch {
-    throw new SavedViewsError("failed", "Could not reach the server. Try again.");
+    throw savedViewsFailure.unreachable();
   }
   if (response.ok) return response;
   let body: { code?: string; message?: string } = {};
@@ -41,10 +46,8 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
   }
   const code = body.code ? ERROR_CODES[body.code] : undefined;
   if (code) throw new SavedViewsError(code, body.message ?? "Something went wrong. Try again.");
-  if (response.status === 404) {
-    throw new SavedViewsError("stale", "That view no longer exists.");
-  }
-  throw new SavedViewsError("failed", "Something went wrong. Try again.");
+  if (response.status === 404) throw savedViewsFailure.missing();
+  throw savedViewsFailure.unknown();
 }
 
 const json = (value: unknown) => JSON.stringify(value);
