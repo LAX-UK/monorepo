@@ -19,6 +19,7 @@ import {
   ChoiceFieldset,
   ChoiceRow,
   Field,
+  FieldError,
   FormErrorSummary,
   KeyValueList,
   Notice,
@@ -311,6 +312,9 @@ export function LiftEmailBlockDialog({
                     checked={draft.writtenRequest}
                     disabled={busy}
                     aria-invalid={errors.writtenRequest ? true : undefined}
+                    aria-describedby={
+                      errors.writtenRequest ? `${fieldIds.writtenRequest}-error` : undefined
+                    }
                     onCheckedChange={(checked) =>
                       setDraft((current) => ({ ...current, writtenRequest: checked === true }))
                     }
@@ -318,9 +322,9 @@ export function LiftEmailBlockDialog({
                 }
               />
               {errors.writtenRequest ? (
-                <p className="text-staff-xs font-medium text-staff-danger">
+                <FieldError id={`${fieldIds.writtenRequest}-error`}>
                   {errors.writtenRequest}
-                </p>
+                </FieldError>
               ) : null}
             </div>
           ) : null}

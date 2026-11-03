@@ -110,7 +110,7 @@ export { ProgressBar } from "./display/progress-bar.js";
 export type { AttentionStripItem } from "./display/attention-strip.js";
 
 // Forms
-export { Field, useField as useStaffField } from "@auction/ui/lax";
+export { Field, FieldError, useField as useStaffField } from "@auction/ui/lax";
 export type { FieldProps } from "@auction/ui/lax";
 export { MoneyInput } from "./forms/money-input.js";
 export { DateInput, DateTimeInput } from "./forms/date-input.js";
