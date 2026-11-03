@@ -4,7 +4,6 @@ import { LifecycleCronService, PaymentMaintenanceCronService } from "@auction/fi
 import type { Env } from "../env.js";
 import { AccountDeletionEligibilityService } from "../services/account-deletion-eligibility.service.js";
 import { proactiveRefreshXeroTokens } from "../services/accounting/xero-auth-runtime.js";
-import { BrevoWebhookIngestService } from "../services/brevo-webhook-ingest.service.js";
 import { HygieneCronService } from "../services/cron/hygiene-cron.service.js";
 import { SettlementCronService } from "../services/cron/settlement-cron.service.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
@@ -23,7 +22,6 @@ export type ContainerCronServices = {
   lifecycleCronService: LifecycleCronService;
   hygieneCronService: HygieneCronService;
   accountDeletionEligibilityService: AccountDeletionEligibilityService;
-  brevoWebhookIngestService: BrevoWebhookIngestService;
 };
 
 export type CreateCronServicesInput = {
@@ -113,10 +111,6 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
     repos.accountDeletionEligibilityReader,
     env.WEB_ORIGIN,
   );
-  const brevoWebhookIngestService = new BrevoWebhookIngestService(
-    repos.emailSuppressionRepository,
-    repos.emailWebhookIngestRepository,
-  );
 
   return {
     settlementCronService,
@@ -125,6 +119,5 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
     lifecycleCronService,
     hygieneCronService,
     accountDeletionEligibilityService,
-    brevoWebhookIngestService,
   };
 }

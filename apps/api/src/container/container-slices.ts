@@ -319,10 +319,7 @@ export type ContainerUserNotificationSlice = ContainerUserNotificationCompositio
 
 export type ContainerAdminSlice = Pick<ContainerAdminServices, "admin">;
 
-export type ContainerCronSlice = Pick<
-  ContainerCronServices,
-  "accountDeletionEligibilityService" | "brevoWebhookIngestService"
->;
+export type ContainerCronSlice = Pick<ContainerCronServices, "accountDeletionEligibilityService">;
 
 /** "Download my data" readers for LAX Bid. */
 export type ContainerSubjectExportSlice = { subjectExportService: SubjectExportService };
@@ -597,15 +594,11 @@ export type ContainerInternalIdentitySubjectExportRoutesSlice = Pick<
   "subjectExportService"
 >;
 
-/** Brevo marketing webhook ingest. */
-export type ContainerBrevoWebhookRoutesSlice = Pick<Container, "env" | "brevoWebhookIngestService">;
-
 /** Postmark delivery webhook. */
 export type ContainerPostmarkWebhookRoutesSlice = Pick<Container, "env" | "postmarkWebhookService">;
 
 /** Aggregated third-party webhook routes (`routes/webhooks/index.ts`). */
-export type ContainerInboundWebhookRoutesSlice = ContainerBrevoWebhookRoutesSlice &
-  ContainerPostmarkWebhookRoutesSlice;
+export type ContainerInboundWebhookRoutesSlice = ContainerPostmarkWebhookRoutesSlice;
 
 /** Venue CRUD (staff). */
 export type ContainerVenueRoutesSlice = Pick<Container, "catalogRoutes" | "userSuspensionChecker">;

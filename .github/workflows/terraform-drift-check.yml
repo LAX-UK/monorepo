@@ -43,9 +43,6 @@ jobs:
       TF_VAR_zoho_crm_deal_stage_payment_refunded: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED || '' }}
       TF_VAR_zoho_crm_deal_stage_shop_paid: ${{ vars.ZOHO_CRM_DEAL_STAGE_SHOP_PAID || '' }}
       TF_VAR_zoho_crm_lead_conversion_enabled: ${{ vars.ZOHO_CRM_LEAD_CONVERSION_ENABLED || 'false' }}
-      TF_VAR_brevo_api_key: ${{ secrets.BREVO_API_KEY }}
-      TF_VAR_brevo_webhook_secret: ${{ secrets.BREVO_WEBHOOK_SECRET }}
-      TF_VAR_brevo_list_id: ${{ vars.BREVO_LIST_ID }}
       TF_VAR_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
       TF_VAR_auth_dek_key: ${{ secrets.AUTH_DEK_KEY }}
       TF_VAR_turnstile_secret_key: ${{ secrets.TURNSTILE_SECRET_KEY }}

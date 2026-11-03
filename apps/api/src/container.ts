@@ -667,7 +667,6 @@ export function createContainer(env: Env): Container {
     attributionStore: complianceMedia.attributionStore,
     marketingAttributionEnabled: complianceMedia.marketingAttributionEnabled,
     postmarkWebhookService: userMisc.postmarkWebhookService,
-    brevoWebhookIngestService: cron.brevoWebhookIngestService,
     accountDeletionEligibilityService: cron.accountDeletionEligibilityService,
     subjectExportService: createBidSubjectExportService({
       db,
@@ -824,7 +823,6 @@ export type {
   ContainerBiddingRoutesSlice,
   ContainerIdentityRoutesSlice,
   ContainerBiddingSaleroomSlice,
-  ContainerBrevoWebhookRoutesSlice,
   ContainerCatalogAdminReadersSlice,
   ContainerCatalogSlice,
   ContainerCategoryRoutesSlice,

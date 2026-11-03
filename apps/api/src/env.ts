@@ -151,8 +151,6 @@ const envSchema = z
     POSTMARK_TRANSACTIONAL_STREAM: z.string().default("outbound"),
     POSTMARK_BROADCAST_STREAM: z.string().default("broadcast"),
     POSTMARK_WEBHOOK_BASIC_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),
-    /** Shared secret for the Brevo marketing-contacts webhook (opt-out / bounce ingest). */
-    BREVO_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     EMAIL_UNSUBSCRIBE_SECRET: z.string().min(16).default("dev-email-unsubscribe-secret"),
     /** Signs the confirm and stop links in alert emails. Separate from the account unsubscribe secret. */
     ALERT_LINK_SECRET: z.string().min(16).default("dev-alert-link-secret-not-for-production"),
@@ -380,13 +378,6 @@ const envSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "POSTMARK_WEBHOOK_BASIC_AUTH is required when NODE_ENV=production",
-      });
-    }
-    if (e.NODE_ENV === "production" && !e.BREVO_WEBHOOK_SECRET) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "BREVO_WEBHOOK_SECRET is required when NODE_ENV=production",
-        path: ["BREVO_WEBHOOK_SECRET"],
       });
     }
     if (e.STORAGE_DRIVER === "s3") {
