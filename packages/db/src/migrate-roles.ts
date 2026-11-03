@@ -327,6 +327,11 @@ export const WORKER_ARTWORK_REGISTER_TABLES = [
   "artwork_register_conflict",
 ] as const;
 export const WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES = ["artwork_register_event"] as const;
+/** The Zoho artwork sync keeps its watermark and the result for each Product it reads. */
+export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
+  "zoho_artwork_sync_state",
+  "zoho_artwork_sync_outcome",
+] as const;
 /**
  * The alert engine's Bid tables: the matching projector records matches and announcements, and the
  * 08:00 digest claims digests, attaches matches and drops stale ones. Nothing is deleted here.
@@ -776,6 +781,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_UNSOLD_CHOICE_DEADLINE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
