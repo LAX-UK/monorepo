@@ -157,6 +157,34 @@ describe("data download environment", () => {
   });
 });
 
+describe("staff email change credential", () => {
+  it("is optional: without it the route is not mounted", () => {
+    expect(parseAuthEnv(base).STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID).toBeUndefined();
+  });
+
+  it("accepts a complete credential", () => {
+    const env = parseAuthEnv({
+      ...base,
+      STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID: "staff-email-change",
+      STAFF_EMAIL_CHANGE_MACHINE_CLIENT_SECRET: "s".repeat(32),
+    });
+    expect(env.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID).toBe("staff-email-change");
+  });
+
+  it("rejects half a credential, and one that reuses another machine client", () => {
+    expect(() =>
+      parseAuthEnv({ ...base, STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID: "staff-email-change" }),
+    ).toThrow(/must be set together/);
+    expect(() =>
+      parseAuthEnv({
+        ...production,
+        STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID: "identity-machine",
+        STAFF_EMAIL_CHANGE_MACHINE_CLIENT_SECRET: "s".repeat(32),
+      }),
+    ).toThrow(/must differ from the other machine client ids/);
+  });
+});
+
 describe("data requests environment", () => {
   it("is optional and retains contact details for two years by default", () => {
     const env = parseAuthEnv(base);

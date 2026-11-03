@@ -160,6 +160,26 @@ export interface IIdentityEmailChangeClient {
   }>;
 }
 
+/** Proof staff relied on to know who is asking for an account's email to be moved. */
+export type StaffEmailChangeProof =
+  | { kind: "kyc_match"; kycSessionId: string }
+  | { kind: "id_check"; reference: string };
+
+export interface IIdentityStaffEmailChangeClient {
+  /**
+   * Starts the change for someone who has lost the old inbox: the new address gets a link to
+   * follow, the old one is told, and every session ends. Rejects with an
+   * IdentityIssuerClientError coded `subject_not_found`, `same_email` or `email_taken`.
+   */
+  startStaffAssistedEmailChange(input: {
+    subjectId: string;
+    newEmail: string;
+    actorUserId: string;
+    reason: string;
+    proof: StaffEmailChangeProof;
+  }): Promise<{ pendingEmail: string }>;
+}
+
 export interface IIdentityProfileClient {
   updateSubjectProfile(
     subjectId: string,

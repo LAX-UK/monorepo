@@ -257,6 +257,12 @@ import SourceOfFundsDocumentsRequestedEmail, {
 import SourceOfFundsRejectedEmail, {
   subject as sourceOfFundsRejectedSubject,
 } from "./templates/source-of-funds-rejected.js";
+import StaffEmailChangeConfirmEmail, {
+  subject as staffEmailChangeConfirmSubject,
+} from "./templates/staff-email-change-confirm.js";
+import StaffEmailChangeNoticeEmail, {
+  subject as staffEmailChangeNoticeSubject,
+} from "./templates/staff-email-change-notice.js";
 import StaffRoleChangedEmail, {
   subject as staffRoleChangedSubject,
 } from "./templates/staff-role-changed.js";
@@ -399,6 +405,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "change-email": {
     subject: changeEmailSubject,
     component: (vars) => <ChangeEmail {...vars} />,
+  },
+  "staff-email-change-confirm": {
+    subject: staffEmailChangeConfirmSubject,
+    component: (vars) => <StaffEmailChangeConfirmEmail {...vars} />,
+  },
+  "staff-email-change-notice": {
+    subject: staffEmailChangeNoticeSubject,
+    component: (vars) => <StaffEmailChangeNoticeEmail {...vars} />,
   },
   invite: { subject: inviteSubject, component: (vars) => <InviteEmail {...vars} /> },
   "access-invite": {

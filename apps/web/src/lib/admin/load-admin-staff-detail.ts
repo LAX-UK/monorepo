@@ -1,4 +1,5 @@
 import { loadAdminUserDetail } from "@/lib/admin/load-admin-user-detail";
+import { type EmailChangeAccess, emailChangeAccessFor } from "@/lib/admin/staff-email-change";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -16,6 +17,7 @@ export type AdminStaffDetailBundle = {
   user: AdminUserDetailPayload;
   canManageRoles: boolean;
   canModerate: boolean;
+  emailChange: EmailChangeAccess;
 };
 
 async function holdsLaxAdminRoles(userId: string): Promise<boolean> {
@@ -38,6 +40,6 @@ export const loadAdminStaffDetail = cache(
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, USER_ROLE_MANAGEMENT_ACCESS);
     const canModerate =
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, USER_MODERATION_ACCESS);
-    return { user, canManageRoles, canModerate };
+    return { user, canManageRoles, canModerate, emailChange: emailChangeAccessFor(sessionUser) };
   },
 );

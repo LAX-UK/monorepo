@@ -19,6 +19,7 @@ import {
   ONBOARDING_QUEUES_ACCESS,
   PAYOUT_REVERSE_ACCESS,
   QR_CODES_ACCESS,
+  STAFF_EMAIL_CHANGE_ACCESS,
   USERS_DIRECTORY_ACCESS,
   USER_MODERATION_ACCESS,
   USER_PICKER_ACCESS,
@@ -106,6 +107,15 @@ describe("admin-access requirements", () => {
   it("USER_MODERATION_ACCESS allows client_services", () => {
     expect(has("client_services", USER_MODERATION_ACCESS)).toBe(true);
     expect(has("read_only", USER_MODERATION_ACCESS)).toBe(false);
+  });
+
+  it("STAFF_EMAIL_CHANGE_ACCESS allows client_services and administrator only", () => {
+    expect(has("client_services", STAFF_EMAIL_CHANGE_ACCESS)).toBe(true);
+    expect(has("administrator", STAFF_EMAIL_CHANGE_ACCESS)).toBe(true);
+    for (const role of userStaffRoles) {
+      if (role === "client_services" || role === "administrator") continue;
+      expect(has(role, STAFF_EMAIL_CHANGE_ACCESS)).toBe(false);
+    }
   });
 
   it("INVITATIONS_ACCESS allows administrator", () => {
