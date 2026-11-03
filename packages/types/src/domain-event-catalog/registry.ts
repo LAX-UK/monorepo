@@ -191,6 +191,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "enquiry_routing.changed",
   "marketing_enquiry.assigned",
   "marketing_enquiry.converted",
+  "marketing_enquiry.erased",
   "marketing_enquiry.handled",
   "marketing_enquiry.received",
   "marketing_enquiry.status_changed",
@@ -695,6 +696,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "marketing_enquiry.converted": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "marketing_enquiry.erased": {
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",

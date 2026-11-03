@@ -1053,6 +1053,11 @@ export type {
   PrivateSaleEnquiryDetail,
 } from "./marketing-enquiry.repository.js";
 export type {
+  EnquiryErasureCounts,
+  EnquiryErasureTarget,
+  IEnquiryErasureRepository,
+} from "./enquiry-erasure.repository.js";
+export type {
   IPurchaseProblemRepository,
   NewPurchaseProblem,
   PurchaseProblemRecord,
