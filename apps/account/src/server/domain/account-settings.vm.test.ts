@@ -102,21 +102,39 @@ describe("accountInitials", () => {
 });
 
 describe("buildPrivacyGroups", () => {
-  it("links notifications and policies to Bid, and deletion to Account", () => {
+  it("links notifications and policies to Bid, and downloading and deleting to Account", () => {
     const groups = buildPrivacyGroups(withBid);
     expect(groups.map((g) => g.rows.map((r) => r.title))).toEqual([
       ["Notification preferences"],
-      ["Delete your account"],
+      ["Download your data", "Delete your account"],
       ["Privacy policy", "Terms of use"],
     ]);
     expect(groups[0]?.rows[0]?.href).toBe("https://test.lax.bid/settings/notifications");
-    expect(groups[1]?.rows[0]?.href).toBe("/account/security/delete");
+    expect(groups[1]?.rows.map((r) => r.href)).toEqual([
+      "/account/privacy/download",
+      "/account/security/delete",
+    ]);
   });
 
-  it("still offers deletion without Bid, since Account owns it", () => {
+  it("puts the download row first and gives it the state's line", () => {
+    const [row] = buildPrivacyGroups(withBid, "Ready until 9 Nov")[1]?.rows ?? [];
+    expect(row).toEqual({
+      title: "Download your data",
+      subtitle: "Ready until 9 Nov",
+      href: "/account/privacy/download",
+    });
+    expect(buildPrivacyGroups(withBid)[1]?.rows[0]?.subtitle).toBe(
+      "A copy of the information LAX holds about you",
+    );
+  });
+
+  it("still offers downloading and deleting without Bid, since Account owns them", () => {
     const groups = buildPrivacyGroups(withoutBid);
     expect(groups.map((g) => g.id)).toEqual(["your-data"]);
-    expect(groups[0]?.rows[0]?.href).toBe("/account/security/delete");
+    expect(groups[0]?.rows.map((r) => r.href)).toEqual([
+      "/account/privacy/download",
+      "/account/security/delete",
+    ]);
   });
 
   it("tells people what deletion checks and that they can cancel", () => {

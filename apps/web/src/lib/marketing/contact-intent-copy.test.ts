@@ -56,4 +56,10 @@ describe("contactIntentFromSearchParams", () => {
     expect(config.messageTag).toBeNull();
     expect(config.submitLabel).toBe("Send message");
   });
+
+  it("frames a full-copy request under the other topic", () => {
+    const config = contactIntentFromSearchParams({ intent: "data-copy" });
+    expect(config.topic).toBe("other");
+    expect(config.headline).toMatch(/^Request a full copy of your data/);
+  });
 });
