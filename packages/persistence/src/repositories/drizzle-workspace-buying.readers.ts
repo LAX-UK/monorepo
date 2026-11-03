@@ -79,6 +79,9 @@ const OPEN_OR_SETTLED = ["pending", "authorized", "captured", "requires_manual_r
 /**
  * Lots won for the account with their invoice, fulfilment and courier quote. The invoice is the
  * open or settled payment for the lot and account (0251 keeps one); without one, the latest row.
+ * That row can be a cancelled attempt (an abandoned checkout, the buyer's own cancel, a failed
+ * transfer). It is returned as it is: the domain reads it as a purchase still owed, and only a
+ * cancelled fulfilment ends the purchase.
  */
 export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsReader {
   constructor(private readonly db: Database) {}
