@@ -30,10 +30,11 @@ export const ON_IMAGE_FIELD: Record<CoverTone, { box: string; input: string }> =
 };
 
 /**
- * The error summary on a picture: the danger notice's light-theme colours in both themes, because
- * a picture does not change with the theme and the notice must stay readable on any of them.
+ * The message under the alert field: a solid light chip in fixed colours, so it reads on any
+ * picture in both themes (a picture does not change with the theme).
  */
-export const ON_IMAGE_ERROR_SUMMARY = "md:border-[#a8261b]/30 md:bg-[#fcecea] md:text-[#a8261b]";
+export const ON_IMAGE_ERROR_MESSAGE =
+  "w-fit max-w-full rounded-lax-badge bg-[#fcecea] px-2 py-1 text-lax-13 font-medium leading-5 text-[#a8261b]";
 
 /** The status badge: opaque, so it reads on any picture. */
 export const ON_IMAGE_BADGE: Record<CoverTone, string> = {

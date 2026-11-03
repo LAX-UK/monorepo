@@ -9,12 +9,13 @@ describe("NewsletterSignupForm focus", () => {
     expect(form?.className).not.toContain("--lax-focus");
   });
 
-  it("explains an empty submit at the field and in a summary that takes focus", async () => {
+  it("explains an empty submit under the field only, and focuses the field", async () => {
     render(<NewsletterSignupForm />);
     fireEvent.click(screen.getByRole("button", { name: "Subscribe" }));
-    const summary = await screen.findByRole("alert");
-    expect(summary.textContent).toContain("Enter an email address");
-    expect(screen.getByLabelText("Email address").getAttribute("aria-invalid")).toBe("true");
-    await waitFor(() => expect(document.activeElement).toBe(summary));
+    const input = screen.getByLabelText("Email address");
+    await waitFor(() => expect(input.getAttribute("aria-invalid")).toBe("true"));
+    expect(screen.queryByText("There is a problem")).toBeNull();
+    expect(screen.getAllByText(/Enter an email address/)).toHaveLength(1);
+    expect(document.activeElement).toBe(input);
   });
 });

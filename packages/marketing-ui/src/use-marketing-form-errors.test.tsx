@@ -31,4 +31,40 @@ describe("useMarketingFormErrors", () => {
     expect(result.current.messages).toEqual({ email: "Enter your email address" });
     expect(result.current.failedSubmits).toBe(1);
   });
+
+  describe("a form with one field", () => {
+    const SINGLE = { email: "only-email" } as const;
+
+    it("has no summary: the message belongs under the field", () => {
+      const { result } = renderHook(() => useMarketingFormErrors(SINGLE));
+      act(() => result.current.fail({ email: "Enter your email address" }));
+      expect(result.current.summary).toEqual([]);
+      expect(result.current.messages.email).toBe("Enter your email address");
+    });
+
+    it("moves focus to the field and leaves the announcing to its description", () => {
+      const input = document.createElement("input");
+      input.id = "only-email";
+      const button = document.createElement("button");
+      document.body.append(input, button);
+      button.focus();
+      const { result } = renderHook(() => useMarketingFormErrors(SINGLE));
+      act(() => result.current.fail({ email: "Enter your email address" }));
+      expect(document.activeElement).toBe(input);
+      expect(result.current.announce).toBe(false);
+      input.remove();
+      button.remove();
+    });
+
+    it("announces the message itself when the field already had focus", () => {
+      const input = document.createElement("input");
+      input.id = "only-email";
+      document.body.append(input);
+      input.focus();
+      const { result } = renderHook(() => useMarketingFormErrors(SINGLE));
+      act(() => result.current.fail({ email: "Enter your email address" }));
+      expect(result.current.announce).toBe(true);
+      input.remove();
+    });
+  });
 });

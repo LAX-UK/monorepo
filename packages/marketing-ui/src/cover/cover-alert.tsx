@@ -1,12 +1,13 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import { Button, ErrorSummary, TextInput } from "@auction/ui/lax";
-import { type FormEvent, useId, useState } from "react";
+import { Button, TextInput } from "@auction/ui/lax";
+import { type FormEvent, useId } from "react";
 import { marketingEmailError } from "../marketing-email-error.js";
+import { useMarketingFormErrors } from "../use-marketing-form-errors.js";
 import {
   ON_IMAGE_DARK_THEME,
-  ON_IMAGE_ERROR_SUMMARY,
+  ON_IMAGE_ERROR_MESSAGE,
   ON_IMAGE_FIELD,
   onImageButton,
   onImageFocus,
@@ -34,16 +35,15 @@ export function CoverAlertField({
 }) {
   const field = tone ? ON_IMAGE_FIELD[tone] : null;
   const fieldId = useId();
-  const [error, setError] = useState<string | null>(null);
-  const [failedSubmits, setFailedSubmits] = useState(0);
+  const errorId = `${fieldId}-error`;
+  const errors = useMarketingFormErrors({ email: fieldId });
+  const error = errors.messages.email ?? null;
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     const email = new FormData(event.currentTarget).get("email");
     const problem = marketingEmailError(typeof email === "string" ? email : "");
-    setError(problem);
-    if (!problem) return;
-    event.preventDefault();
-    setFailedSubmits((count) => count + 1);
+    errors.fail(problem ? { email: problem } : {});
+    if (problem) event.preventDefault();
   }
 
   return (
@@ -54,15 +54,12 @@ export function CoverAlertField({
       onSubmit={onSubmit}
       className="flex w-full flex-col gap-2 md:w-auto"
     >
-      <ErrorSummary
-        errors={error ? [{ fieldId, message: error }] : []}
-        focusKey={failedSubmits}
-        className={cn("md:max-w-[360px]", tone && ON_IMAGE_ERROR_SUMMARY)}
-      />
       <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
         <TextInput
           id={fieldId}
           invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+          onChange={() => errors.clear("email")}
           type="email"
           name="email"
           required
@@ -96,6 +93,15 @@ export function CoverAlertField({
           {submitLabel}
         </Button>
       </div>
+      {error ? (
+        <p
+          id={errorId}
+          {...(errors.announce ? { role: "alert" } : {})}
+          className={ON_IMAGE_ERROR_MESSAGE}
+        >
+          {error}
+        </p>
+      ) : null}
     </form>
   );
 }

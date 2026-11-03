@@ -10,9 +10,9 @@ import { SHOP_EDITION_ALERTS_HREF } from "@/lib/account/shop-account-routes";
 import { FOCUS_RING } from "@auction/branding";
 import {
   MarketingCheckIcon,
-  MarketingFormErrorSummary,
   MarketingFormField,
   marketingEmailError,
+  useMarketingFormErrors,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import Link from "next/link";
@@ -45,8 +45,7 @@ export function ArtworkEditionAlert({ slug, viewer, initialWaiting = false }: Pr
   );
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
-  const [fieldError, setFieldError] = useState<string | null>(null);
-  const [failedSubmits, setFailedSubmits] = useState(0);
+  const errors = useMarketingFormErrors({ email: emailId });
   const [failure, setFailure] = useState<{ title: string; message: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -59,8 +58,7 @@ export function ArtworkEditionAlert({ slug, viewer, initialWaiting = false }: Pr
       });
       if (!result.ok) {
         if (result.field === "email") {
-          setFieldError(result.message);
-          setFailedSubmits((count) => count + 1);
+          errors.fail({ email: result.message });
         } else {
           setFailure({ title: "Alert not saved", message: result.message });
         }
@@ -76,11 +74,8 @@ export function ArtworkEditionAlert({ slug, viewer, initialWaiting = false }: Pr
   function onGuestSubmit(event: FormEvent) {
     event.preventDefault();
     const error = marketingEmailError(email);
-    setFieldError(error);
-    if (error) {
-      setFailedSubmits((count) => count + 1);
-      return;
-    }
+    errors.fail(error ? { email: error } : {});
+    if (error) return;
     register(email.trim());
   }
 
@@ -159,15 +154,12 @@ export function ArtworkEditionAlert({ slug, viewer, initialWaiting = false }: Pr
         </div>
       ) : (
         <form className="shop-alert__form" noValidate onSubmit={onGuestSubmit}>
-          <MarketingFormErrorSummary
-            errors={fieldError ? [{ fieldId: emailId, message: fieldError }] : []}
-            focusKey={failedSubmits}
-          />
           <div className="shop-alert__row">
             <MarketingFormField
               id={emailId}
               label="Email address"
-              error={fieldError}
+              error={errors.messages.email ?? null}
+              announce={errors.announce}
               className="shop-alert__field"
             >
               {(control) => (

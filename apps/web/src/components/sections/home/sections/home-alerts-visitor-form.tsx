@@ -1,9 +1,9 @@
 "use client";
 
 import type { CoverAlertsOutcome } from "@/lib/marketing-cover/cover-alerts-outcome";
-import { marketingEmailError } from "@auction/marketing-ui";
-import { Button, ErrorSummary, Field, Notice, TextInput } from "@auction/ui/lax";
-import { type FormEvent, useState } from "react";
+import { marketingEmailError, useMarketingFormErrors } from "@auction/marketing-ui";
+import { Button, Field, Notice, TextInput } from "@auction/ui/lax";
+import type { FormEvent } from "react";
 
 type Props = {
   action: string;
@@ -18,20 +18,18 @@ const PROBLEM_ID = "home-alerts-problem";
 
 /**
  * The visitor's sale-alerts form. It posts as a plain form, so it works without script; with
- * script, a missing or malformed address is caught first and explained beside the field and in the
- * error summary, instead of after a round trip.
+ * script, a missing or malformed address is caught first and explained under the field, instead of
+ * after a round trip.
  */
 export function HomeAlertsVisitorForm({ action, outcome, message, consent }: Props) {
-  const [error, setError] = useState<string | null>(null);
-  const [failedSubmits, setFailedSubmits] = useState(0);
+  const errors = useMarketingFormErrors({ email: FIELD_ID });
+  const error = errors.messages.email ?? null;
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     const email = new FormData(event.currentTarget).get("email");
     const problem = marketingEmailError(typeof email === "string" ? email : "");
-    setError(problem);
-    if (!problem) return;
-    event.preventDefault();
-    setFailedSubmits((count) => count + 1);
+    errors.fail(problem ? { email: problem } : {});
+    if (problem) event.preventDefault();
   }
 
   const serverInvalid = outcome === "invalid" && !error;
@@ -44,11 +42,6 @@ export function HomeAlertsVisitorForm({ action, outcome, message, consent }: Pro
       className="w-full md:max-w-[480px] md:justify-self-end"
     >
       <input type="hidden" name="source" value="web_home_alerts" />
-      <ErrorSummary
-        errors={error ? [{ fieldId: FIELD_ID, message: error }] : []}
-        focusKey={failedSubmits}
-        className="mb-3"
-      />
       {message && !error ? (
         <Notice tone={message.tone} title={message.title} alert id={PROBLEM_ID} className="mb-3">
           {message.body}
@@ -60,6 +53,7 @@ export function HomeAlertsVisitorForm({ action, outcome, message, consent }: Pro
           labelHidden
           id={FIELD_ID}
           error={error}
+          announce={errors.announce}
           className="md:flex-1"
         >
           <TextInput
@@ -72,6 +66,7 @@ export function HomeAlertsVisitorForm({ action, outcome, message, consent }: Pro
             size="md"
             invalid={Boolean(error) || serverInvalid}
             {...(serverInvalid ? { "aria-describedby": PROBLEM_ID } : {})}
+            onChange={() => errors.clear("email")}
             boxClassName="max-md:h-lax-control-lg"
             className="max-md:text-base"
           />

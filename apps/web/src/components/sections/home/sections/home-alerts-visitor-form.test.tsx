@@ -7,15 +7,16 @@ afterEach(cleanup);
 const props = { action: "/api/alerts/notify", outcome: null, message: null, consent: "Consent." };
 
 describe("HomeAlertsVisitorForm", () => {
-  it("shows the problem beside the field and in a summary that takes focus", () => {
+  it("shows one message under the field, with no summary, and focuses the field", () => {
     render(<HomeAlertsVisitorForm {...props} />);
     fireEvent.click(screen.getByRole("button", { name: "Get sale alerts" }));
-    const summary = screen.getByRole("alert");
-    expect(summary.textContent).toContain("Enter your email address");
+    expect(screen.queryByText("There is a problem")).toBeNull();
     const input = screen.getByLabelText("Your email address");
     expect(input.getAttribute("aria-invalid")).toBe("true");
     expect(input.getAttribute("aria-describedby")).toBe("home-alerts-email-error");
-    expect(document.activeElement).toBe(summary);
+    expect(screen.getByText("Enter your email address")).toBeTruthy();
+    expect(document.activeElement).toBe(input);
+    expect(screen.queryAllByRole("alert")).toHaveLength(0);
   });
 
   it("does not use the browser's own validation bubble", () => {
