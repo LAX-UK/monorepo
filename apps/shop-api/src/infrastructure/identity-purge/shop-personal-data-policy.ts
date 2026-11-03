@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import {
+  shopAlertSubscriber,
   shopArtworkInterest,
   shopFollowedArtist,
   shopGeneralEnquiry,
@@ -7,6 +8,7 @@ import {
   shopGuestOrderLink,
   shopOrder,
   shopParty,
+  shopReleaseAlertSubscription,
   shopSavedArtwork,
   shopUserProfile,
 } from "@auction/db/schema";
@@ -199,4 +201,12 @@ export const SHOP_ANONYMISATION_RULES: readonly ShopAnonymisationRule[] = [
   },
   deleteBySubject("shop_saved_artwork", shopSavedArtwork, shopSavedArtwork.identitySubjectId),
   deleteBySubject("shop_followed_artist", shopFollowedArtist, shopFollowedArtist.identitySubjectId),
+  // Alert sign-ups hold the person's address and consent record; topics, matches and digests go
+  // with the row. The release list the engine replaced is kept until its table is dropped.
+  deleteBySubject("shop_alert_subscriber", shopAlertSubscriber, shopAlertSubscriber.subjectId),
+  deleteBySubject(
+    "shop_release_alert_subscription",
+    shopReleaseAlertSubscription,
+    shopReleaseAlertSubscription.identitySubjectId,
+  ),
 ];

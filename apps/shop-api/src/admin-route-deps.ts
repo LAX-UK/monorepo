@@ -1,3 +1,4 @@
+import type { ReleaseAlertSummaryReader } from "./application/alerts/alert-ports.js";
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
@@ -21,7 +22,6 @@ import type {
   CreateOriginalSaleCommand,
   OriginalSaleWriter,
 } from "./application/ports/original-sale.writer.js";
-import type { ReleaseAlertSummaryReader } from "./application/ports/release-alert.store.js";
 import type {
   GrantSaleAuthorityCommand,
   SaleAuthorityWriter,

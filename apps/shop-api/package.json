@@ -26,10 +26,12 @@
     "print:test-policy-env": "tsx src/scripts/print-test-policy-env.ts"
   },
   "dependencies": {
+    "@auction/alerts": "workspace:*",
     "@auction/auth": "workspace:*",
     "@auction/branding": "workspace:*",
     "@auction/connect": "workspace:*",
     "@auction/db": "workspace:*",
+    "@auction/email": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
     "@auction/lax-ecosystem": "workspace:*",
     "@auction/object-storage": "workspace:*",

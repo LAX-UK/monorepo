@@ -10,8 +10,12 @@ import { ShopContractParseError } from "./parse-public.js";
  * Every email carries a link that stops the alerts without signing in.
  */
 
-/** Confirmation and unsubscribe tokens are 32 random bytes in base64url. */
-export const RELEASE_ALERT_TOKEN_PATTERN = "^[A-Za-z0-9_-]{43}$";
+/**
+ * Links in alert emails carry either a signed token (`<payload>.<signature>`, base64url) or, in
+ * emails sent before the alert engine, a stop token of 32 random bytes in base64url.
+ */
+export const RELEASE_ALERT_TOKEN_PATTERN =
+  "^(?:[A-Za-z0-9_-]{43}|[A-Za-z0-9_-]{16,600}\\.[A-Za-z0-9_-]{43})$";
 
 export const ReleaseAlertTokenSchema = Type.String({ pattern: RELEASE_ALERT_TOKEN_PATTERN });
 

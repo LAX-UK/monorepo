@@ -6,7 +6,6 @@ import {
   shopEdition,
   shopEditionFacts,
   shopMediaAsset,
-  shopParty,
 } from "@auction/db/schema";
 import {
   type AdminArtworkState,
@@ -21,17 +20,18 @@ import {
   assertEditionPrice,
   assertLivePriceKept,
   assertSourceOriginal,
+  isArtOriginalRelease,
   isShopEditionRelease,
 } from "@auction/shop-domain";
 import { and, asc, count, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { withAdminIdempotency } from "../application/admin/with-admin-idempotency.js";
+import type { ShopAlertAnnouncer } from "../application/alerts/alert-ports.js";
 import type { OriginalPrintsRecorder } from "../application/edition-runs/create-prints-from-original.service.js";
 import type { EditionRunRecorder } from "../application/edition-runs/edition-run-services.js";
 import type {
   ArtworkCatalogueWriter,
   ArtworkEditableFields,
 } from "../application/ports/artwork-catalogue-admin.js";
-import type { ReleaseAlertAnnouncer } from "../application/ports/release-alert.store.js";
 import type { ShopTransactionEffects } from "../application/ports/shop-unit-of-work.js";
 import type { ShopUnitOfWorkFactory } from "../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
@@ -257,7 +257,7 @@ async function applyVisibility(
   artwork: ArtworkRow,
   action: AdminArtworkVisibilityAction,
   actorSubjectId: string,
-  releaseAlerts?: { announcer: ReleaseAlertAnnouncer; send: boolean },
+  releaseAlerts?: { announcer: ShopAlertAnnouncer; send: boolean },
 ): Promise<VisibilityOutcome> {
   const now = new Date();
   let patch: Partial<Pick<ArtworkRow, "publishedAt" | "archivedAt">> | null = null;
@@ -316,26 +316,25 @@ async function applyVisibility(
     },
     afterJson: { published: after.publishedAt !== null, archived: after.archivedAt !== null },
   });
-  if (action !== "publish" || !releaseAlerts?.send || !isShopEditionRelease(after)) {
-    return { outcome: "changed", artwork: after };
-  }
-  const { queued } = await releaseAlerts.announcer.announce(tx.session, {
+  if (action !== "publish" || !releaseAlerts) return { outcome: "changed", artwork: after };
+  // The work is recorded as announced here, in the publishing transaction, and turned into matches
+  // later. Staff choose whether an edition tells subscribers; an original always tells followers.
+  const kind = isShopEditionRelease(after)
+    ? ("shop_release" as const)
+    : isArtOriginalRelease(after)
+      ? ("art_original" as const)
+      : null;
+  if (!kind) return { outcome: "changed", artwork: after };
+  const { queued } = await releaseAlerts.announcer.recordPublished(tx.session, {
     artworkId: after.id,
-    slug: after.slug,
-    title: after.title,
-    artistName: await artistDisplayName(tx, after.artistId),
+    kind,
+    announce: kind === "art_original" || releaseAlerts.send,
   });
-  return { outcome: "changed", artwork: after, releaseAlertsQueued: queued };
-}
-
-async function artistDisplayName(tx: ShopTransactionEffects, artistId: string): Promise<string> {
-  const [row] = await shopPhaseDbSession(tx)
-    .select({ displayName: shopParty.displayName })
-    .from(shopArtist)
-    .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-    .where(eq(shopArtist.id, artistId))
-    .limit(1);
-  return row?.displayName ?? "";
+  return {
+    outcome: "changed",
+    artwork: after,
+    ...(kind === "shop_release" && releaseAlerts.send ? { releaseAlertsQueued: queued } : {}),
+  };
 }
 
 export function createDrizzleArtworkCatalogueWriter(
@@ -344,7 +343,7 @@ export function createDrizzleArtworkCatalogueWriter(
     resolveMediaUrl: ResolveMediaUrl;
     editionRuns: EditionRunRecorder;
     originalPrints: OriginalPrintsRecorder;
-    releaseAlerts: ReleaseAlertAnnouncer;
+    releaseAlerts: ShopAlertAnnouncer;
   },
 ): ArtworkCatalogueWriter {
   const { resolveMediaUrl, editionRuns, originalPrints, releaseAlerts } = options;
@@ -689,7 +688,16 @@ export function createDrizzleArtworkCatalogueWriter(
                 results.push({ artworkId, outcome: "not_found" as const });
                 continue;
               }
-              const result = await applyVisibility(tx, artwork, input.action, input.actorSubjectId);
+              const result = await applyVisibility(
+                tx,
+                artwork,
+                input.action,
+                input.actorSubjectId,
+                {
+                  announcer: releaseAlerts,
+                  send: input.sendReleaseAlert === true,
+                },
+              );
               if (result.outcome === "changed" && changesArtStorefront(artwork, result.artwork)) {
                 refreshesArt = true;
               }

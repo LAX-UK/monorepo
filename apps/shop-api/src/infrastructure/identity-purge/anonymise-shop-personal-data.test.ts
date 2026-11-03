@@ -62,7 +62,7 @@ describe("Shop anonymisation policy", () => {
     }
   });
 
-  it("covers profile, party, orders, enquiries, saved works and followed artists", () => {
+  it("covers profile, party, orders, enquiries, saved works, followed artists and alert sign-ups", () => {
     expect(tables).toEqual(
       expect.arrayContaining([
         "shop_user_profile",
@@ -72,6 +72,8 @@ describe("Shop anonymisation policy", () => {
         "shop_general_enquiry",
         "shop_saved_artwork",
         "shop_followed_artist",
+        "shop_alert_subscriber",
+        "shop_release_alert_subscription",
       ]),
     );
   });
