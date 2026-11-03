@@ -63,6 +63,17 @@ export function buildAccountLinks(
   };
 }
 
+/** The contact form, and the same form with the data-copy topic chosen (Request a full copy). */
+export function buildDataExportContactLinks(links: Pick<AccountLinksVm, "support">): {
+  contact: string | null;
+  fullCopy: string | null;
+} {
+  if (!links.support) return { contact: null, fullCopy: null };
+  const fullCopy = new URL(links.support.contact);
+  fullCopy.searchParams.set("intent", "data-copy");
+  return { contact: links.support.contact, fullCopy: fullCopy.toString() };
+}
+
 /** Bid lists the organisations a person belongs to and their role in each; null without Bid. */
 export function buildOrganisationsLink(
   config: Pick<LaxAccountConfig, "bidPublicUrl">,
