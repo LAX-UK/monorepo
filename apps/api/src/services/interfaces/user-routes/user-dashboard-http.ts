@@ -31,6 +31,13 @@ export interface IUserDashboardHttpApplicationService {
     userId: string;
     account: BuyingAccountActor;
   }): Promise<UserHttpJson>;
+
+  /**
+   * What the acting account owes, for the lots its purchases list follows: each lot's amount due,
+   * its state and what blocks it. The one reading behind the header chip, Purchases, the Needs
+   * action counts and the portfolio.
+   */
+  listAmountsOwed(input: { userId: string; account: BuyingAccountActor }): Promise<UserHttpJson>;
 }
 
 /** The acting account and the member's role in it (from the legal-entity context). */

@@ -1130,3 +1130,12 @@ export type {
   IBidAlertSaleNoticeWriter,
   IBidAlertSaleReader,
 } from "./bid-alert-sale.js";
+export {
+  BuyerDefaultConflictError,
+  type BuyerDefaultLotFacts,
+  type IBuyerDefaultReader,
+  type IBuyerDefaultRepository,
+  type IPaymentReminderStore,
+  type PaymentReminderCandidate,
+  type RecordBuyerDefaultInput,
+} from "./buyer-default.js";

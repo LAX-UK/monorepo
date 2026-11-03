@@ -7,6 +7,8 @@ const names = [
   "payment-refund-notice",
   "payment-manual-review-buyer-notice",
   "payment-failed-notice",
+  "payment-reminder",
+  "buyer-default-notice",
   "payment-manual-review-admin-notice",
   "dispute-opened-notice",
   "dispute-closed-notice",
@@ -59,6 +61,32 @@ type PaymentTemplateVars = {
     payUrl: string;
     supportContactEmail: string;
   };
+  /** One of the three reminders for an unpaid invoice. */
+  "payment-reminder": {
+    userName?: string | null;
+    step: "before_due" | "due_day" | "overdue";
+    lotTitle: string;
+    /** Formatted for display ("£1,250.00"). */
+    amount: string;
+    /** The due date in words ("10 November 2026"). */
+    dueDate: string;
+    /** Checkout for this lot. */
+    payUrl: string;
+    supportContactEmail: string;
+  };
+  /** After a buyer default: told to the buyer, the seller or the next bidder. */
+  "buyer-default-notice": {
+    userName?: string | null;
+    audience: "buyer" | "seller" | "underbidder";
+    lotTitle: string;
+    amount: string;
+    outcome: "returned_to_inventory" | "offered_to_underbidder";
+    buyerRestricted: boolean;
+    /** Where the person goes next: their purchases, the lot or the consignment list. */
+    actionUrl: string;
+    actionLabel: string;
+    supportContactEmail: string;
+  };
   "payment-manual-review-buyer-notice": {
     userName?: string | null;
     lotTitle: string;
@@ -101,6 +129,8 @@ export const paymentTemplates = {
     "payment-refund-notice": "live",
     "payment-manual-review-buyer-notice": "live",
     "payment-failed-notice": "live",
+    "payment-reminder": "live",
+    "buyer-default-notice": "live",
     "payment-manual-review-admin-notice": "live",
     "dispute-opened-notice": "live",
     "dispute-closed-notice": "live",

@@ -132,6 +132,21 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     whatsapp: "paymentWhatsapp",
     template: "payment-invoice",
   },
+  /** Reminders and the notices after a buyer default are part of paying, so they follow the payment switches. */
+  payment_reminder: {
+    inApp: "paymentInApp",
+    push: null,
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    template: "payment-reminder",
+  },
+  buyer_default_notice: {
+    inApp: "paymentInApp",
+    push: null,
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    template: "buyer-default-notice",
+  },
   /** Order updates on a purchased lot share the payment switches: they are transactional. */
   lot_ready_for_collection: {
     inApp: "paymentInApp",

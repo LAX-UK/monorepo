@@ -1,5 +1,6 @@
 import {
   type CapabilityRequirement,
+  DATA_REQUESTS_MANAGE_ACCESS,
   DELIVERY_REPLAY_ACCESS,
   DISPUTE_ALLOCATION_WRITE_ACCESS,
   ENQUIRIES_ACCESS,
@@ -118,6 +119,20 @@ const ACTIONS: AdminAction[] = [
     expectedRoles: ["administrator", "sales_manager"],
   },
   {
+    name: "list dead-lettered deliveries",
+    rule: FAILED_JOBS_READ_ACCESS,
+    method: "GET",
+    path: "/admin/system/delivery/dead-letter",
+    expectedRoles: ["administrator", "read_only"],
+  },
+  {
+    name: "open a domain delivery",
+    rule: FAILED_JOBS_READ_ACCESS,
+    method: "GET",
+    path: "/admin/system/delivery/42",
+    expectedRoles: ["administrator", "read_only"],
+  },
+  {
     name: "replay a dead-lettered delivery",
     rule: DELIVERY_REPLAY_ACCESS,
     method: "POST",
@@ -213,6 +228,28 @@ const ACTIONS: AdminAction[] = [
     path: "/admin/enquiry-routing",
     body: { rules: [] },
     expectedRoles: ["administrator", "sales_manager"],
+  },
+  {
+    name: "open the data requests list",
+    rule: DATA_REQUESTS_MANAGE_ACCESS,
+    method: "GET",
+    path: "/admin/data-requests",
+    expectedRoles: ["administrator", "compliance"],
+  },
+  {
+    name: "open a data request's record",
+    rule: DATA_REQUESTS_MANAGE_ACCESS,
+    method: "GET",
+    path: "/admin/data-requests/DR-0001",
+    expectedRoles: ["administrator", "compliance"],
+  },
+  {
+    name: "close a data request",
+    rule: DATA_REQUESTS_MANAGE_ACCESS,
+    method: "POST",
+    path: "/admin/data-requests/DR-0001/close",
+    body: { version: 1, outcome: "sent" },
+    expectedRoles: ["administrator", "compliance"],
   },
   {
     name: "list sale registrations",

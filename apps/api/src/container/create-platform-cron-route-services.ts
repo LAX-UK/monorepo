@@ -8,6 +8,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import { StaffRoleExpiryNotifier } from "../infrastructure/staff-role-expiry.notifier.js";
+import type { PaymentReminderService } from "../services/buyer-default/payment-reminder.service.js";
 import type { ConsignmentThreadSweepService } from "../services/consignment-messages/consignment-thread-sweep.service.js";
 import type { HygieneCronService } from "../services/cron/hygiene-cron.service.js";
 import { PlatformHygieneCronApplicationService } from "../services/finance/platform-hygiene-cron-application.service.js";
@@ -35,6 +36,7 @@ export type CreatePlatformCronRouteServicesInput = {
   webOrigin: string;
   watchlistReminders: Pick<IWatchlistReminderRepository, "listPending" | "markSent">;
   consignmentThreadSweep: ConsignmentThreadSweepService;
+  paymentReminders: Pick<PaymentReminderService, "sendDueReminders">;
 };
 
 export function createPlatformCronRouteServices(
@@ -58,6 +60,7 @@ export function createPlatformCronRouteServices(
       new StaffRoleExpiryService(input.staffRoster, expiryNotifier),
       new LaxAdminRoleExpiryService(input.laxAdminRoleExpiry, expiryNotifier),
     ]),
+    paymentReminders: input.paymentReminders,
     watchedLotReminders: new WatchedLotReminderJob({
       reminders: input.watchlistReminders,
       dispatcher: input.notificationDispatcher,

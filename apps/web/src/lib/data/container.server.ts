@@ -22,6 +22,7 @@ import {
   createAccountBuyingReader,
 } from "@/lib/buying/account-buying-reader";
 import { getServerMyAddresses } from "@/lib/data/http/addresses.server";
+import { getServerAmountsOwed } from "@/lib/data/http/amounts-owed.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerAccountBids, getServerAccountPurchases } from "@/lib/data/http/dashboard.reader";
 import { getServerKycStatusSummary, postServerKycSession } from "@/lib/data/http/kyc.server";
@@ -131,8 +132,16 @@ export async function getServerDataContainer(): Promise<ServerDataContainer> {
       list: (params) => lotReader.list(params),
     },
     buying: createAccountBuyingReader(serverAccountScope, {
-      personal: { bids: getServerMyBids, purchases: getServerMyPortfolio },
-      organisation: { bids: getServerAccountBids, purchases: getServerAccountPurchases },
+      personal: {
+        bids: getServerMyBids,
+        purchases: getServerMyPortfolio,
+        amountsOwed: () => getServerAmountsOwed(),
+      },
+      organisation: {
+        bids: getServerAccountBids,
+        purchases: getServerAccountPurchases,
+        amountsOwed: getServerAmountsOwed,
+      },
     }),
     watchlist: { listMine: getServerMyWatchlist },
     artistFollow: { listMine: getServerMyArtistFollows },

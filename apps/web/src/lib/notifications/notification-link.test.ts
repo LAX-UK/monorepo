@@ -20,6 +20,23 @@ describe("notificationHref", () => {
     expect(notificationHref({ ...base, legalEntityId: null })).toBe("/admin/submissions/sub-9");
   });
 
+  it("opens the next step for an identity outcome: register for a sale, or try again", () => {
+    const base = {
+      id: "n10",
+      userId: "u1",
+      title: "Identity",
+      message: "Body",
+      lotId: null,
+      submissionId: null,
+      legalEntityId: null,
+      read: false,
+      createdAt: new Date(),
+    };
+    expect(notificationHref({ ...base, type: "kyc_approved" })).toBe("/sales");
+    expect(notificationHref({ ...base, type: "kyc_declined" })).toBe("/verify-identity");
+    expect(notificationHref({ ...base, type: "sale_cancelled" })).toBeNull();
+  });
+
   it("prefers submission detail over lot page", () => {
     expect(
       notificationHref({

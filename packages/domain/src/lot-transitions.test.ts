@@ -4,6 +4,7 @@ import {
   LOT_TRANSITIONS,
   canAdminOverrideLotStatus,
   canTransition,
+  targetStatusForKind,
 } from "./lot-transitions.js";
 
 describe("lot-transitions", () => {
@@ -35,5 +36,18 @@ describe("lot-transitions", () => {
     expect(canAdminOverrideLotStatus("ended", "draft")).toBe(true);
     expect(canAdminOverrideLotStatus("cancelled", "draft")).toBe(true);
     expect(canAdminOverrideLotStatus("voided", "draft")).toBe(true);
+  });
+});
+
+describe("buyer_default transition", () => {
+  it("applies to an ended lot and leaves it ended", () => {
+    expect(canTransition("ended", "buyer_default")).toBe(true);
+    expect(targetStatusForKind("buyer_default")).toBe("ended");
+  });
+
+  it("is refused from every other status", () => {
+    for (const status of ["draft", "scheduled", "active", "cancelled", "voided"] as const) {
+      expect(canTransition(status, "buyer_default")).toBe(false);
+    }
   });
 });

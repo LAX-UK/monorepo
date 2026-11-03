@@ -1,6 +1,5 @@
 import "server-only";
 
-import { purchasesToPayBy } from "@/lib/buying/account-buying-figures";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { ClientAttention } from "./client-attention";
 import { deriveClientAttention } from "./derive-client-attention";
@@ -18,18 +17,16 @@ function settled<T>(result: PromiseSettledResult<T>, fallback: T): T {
  */
 export async function loadClientAttention(userId: string): Promise<ClientAttention> {
   const c = await getServerDataContainer();
-  const [scope, bids, purchases, unread] = await Promise.allSettled([
-    c.buying.scope(),
+  const [bids, owed, unread] = await Promise.allSettled([
     c.buying.bids(),
-    c.buying.purchases(),
+    c.buying.amountsOwed(),
     c.notifications.listMine({ tab: "unread", limit: UNREAD_LIMIT }),
   ]);
   return deriveClientAttention({
     userId,
     bids: settled(bids, []),
-    // Only what this person pays: a buyer agent is told about a win, not asked to pay for it.
-    purchasesToPay:
-      scope.status === "fulfilled" ? purchasesToPayBy(scope.value, settled(purchases, [])) : [],
+    // Only what this person pays is counted: a buyer agent is told about a win, not asked to pay.
+    amountsOwed: owed.status === "fulfilled" ? owed.value.entries : [],
     unreadNotifications: settled(unread, []),
   });
 }

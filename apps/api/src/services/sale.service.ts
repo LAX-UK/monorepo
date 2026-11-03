@@ -40,7 +40,7 @@ import {
   listSaleLotsPageForPublicApi,
   listSalesForPublicApi,
 } from "./sale/sale-read.js";
-import type { SaleFollowReader, SaleServiceDeps } from "./sale/sale-types.js";
+import type { LotBookingRemoval, SaleFollowReader, SaleServiceDeps } from "./sale/sale-types.js";
 import { type UpdateSaleBody, updateDraftSale } from "./sale/sale-update-draft.js";
 
 export type { SaleFollowReader } from "./sale/sale-types.js";
@@ -65,6 +65,7 @@ export type SaleServiceOptions = {
   qrCodeService?: IQrCodeService | null;
   repoFactory?: IRepositoryFactory | null;
   saleChannelReader?: ISaleChannelReader | null;
+  telephoneBookings?: LotBookingRemoval | null;
   salePublishService: ISalePublishService;
 };
 
@@ -93,6 +94,7 @@ export class SaleService implements ISaleService {
       qrCodeService: opts.qrCodeService ?? null,
       repoFactory: opts.repoFactory ?? null,
       saleChannelReader: opts.saleChannelReader ?? null,
+      telephoneBookings: opts.telephoneBookings ?? null,
     };
     this.publishService = opts.salePublishService;
   }

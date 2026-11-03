@@ -12,6 +12,8 @@ describe("notifications a mute never silences", () => {
   it("lists the required notices", () => {
     expect([...NOTIFICATION_ALWAYS_DELIVERED_TYPES]).toEqual([
       "payment_due",
+      "payment_reminder",
+      "buyer_default_notice",
       "lot_won",
       "payout_problem",
       "delivery_quote_ready",

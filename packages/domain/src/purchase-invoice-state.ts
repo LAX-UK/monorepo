@@ -4,6 +4,8 @@ const DAY_MS = 86_400_000;
 
 /** The invoice behind a won lot, as far as its payment state needs to know it. */
 export type PurchaseInvoiceFacts = {
+  /** The sale was cancelled (a buyer default): the invoice was voided and nothing is owed. */
+  saleCancelled?: boolean;
   /** The latest payment row for the lot and account, or `null` while no invoice is raised yet. */
   payment: {
     status:
@@ -25,7 +27,7 @@ export type PurchaseInvoiceFacts = {
  * - `overdue`: raised and unpaid past the due date;
  * - `processing`: paid by the buyer and being confirmed (card authorised or held for review);
  * - `paid`, `refunded`: settled;
- * - `cancelled`: reserved for a withdrawn invoice. A cancelled payment row (an abandoned checkout,
+ * - `cancelled`: a voided invoice (the sale was cancelled after a buyer default). A cancelled payment row (an abandoned checkout,
  *   the buyer's own cancel, a failed transfer) is not one: the lot is still owed, see below.
  */
 export type PurchaseInvoiceStatus =
@@ -64,8 +66,11 @@ export function invoiceDueAt(raisedAt: Date): Date {
  */
 export function purchaseInvoiceState(facts: PurchaseInvoiceFacts, now: Date): PurchaseInvoiceState {
   const { payment } = facts;
-  if (!payment) return { status: "not_invoiced", dueAt: null };
+  if (!payment) {
+    return { status: facts.saleCancelled ? "cancelled" : "not_invoiced", dueAt: null };
+  }
   const dueAt = invoiceDueAt(payment.raisedAt);
+  if (facts.saleCancelled) return { status: "cancelled", dueAt };
   // A cancelled row ended an attempt, not the purchase: it stays owed from the original date.
   if (payment.status === "pending" || payment.status === "cancelled") {
     return { status: now.getTime() > dueAt.getTime() ? "overdue" : "due", dueAt };

@@ -59,7 +59,12 @@ ALTER TABLE notification
       'access_requested',
       'access_request_decided',
       'consignment_message',
-      'watchlist_reminder'
+      'watchlist_reminder',
+      'kyc_approved',
+      'kyc_declined',
+      'sale_cancelled',
+      'payment_reminder',
+      'buyer_default_notice'
     )
   );
 

@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import {
   bidIdentityDirectory,
+  buyerDefault,
   deliveryQuote,
   legalEntity,
   lot,
@@ -90,6 +91,96 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
     scope: AccountRecordsScope & { lotIds?: readonly string[]; limit: number; offset: number },
   ): Promise<AccountPurchaseFactsRow[]> {
     if (scope.lotIds && scope.lotIds.length === 0) return [];
+    // Defaulted purchases are merged in by date, so each source is read to the end of the page.
+    const window = scope.limit + scope.offset;
+    const [won, defaulted] = await Promise.all([
+      this.listWon({ ...scope, limit: window, offset: 0 }),
+      this.listDefaulted(scope, window),
+    ]);
+    const wonLots = new Set(won.map((r) => r.lotId));
+    return [...won, ...defaulted.filter((r) => !wonLots.has(r.lotId))]
+      .sort((a, b) => b.wonAt.getTime() - a.wonAt.getTime())
+      .slice(scope.offset, window);
+  }
+
+  /**
+   * Purchases the account lost to a buyer default: the lot may be back in inventory by now, so
+   * they are read from the default's own record. The sale is cancelled and the invoice was
+   * voided, so the purchase reads as ended and never as owed.
+   */
+  private async listDefaulted(
+    scope: AccountRecordsScope & { lotIds?: readonly string[] },
+    limit: number,
+  ): Promise<AccountPurchaseFactsRow[]> {
+    const rows = await this.db
+      .select({
+        lotId: lot.id,
+        lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+        saleId: lot.saleId,
+        saleTitle: sale.title,
+        hammerPrice: buyerDefault.hammerPrice,
+        wonAt: buyerDefault.wonAt,
+        buyerId: buyerDefault.buyerId,
+        buyerName: bidIdentityDirectory.name,
+        accountKind: legalEntity.kind,
+        paymentId: payment.id,
+        amount: payment.amount,
+        raisedAt: payment.createdAt,
+      })
+      .from(buyerDefault)
+      .innerJoin(lot, eq(lot.id, buyerDefault.lotId))
+      .innerJoin(legalEntity, eq(legalEntity.id, buyerDefault.buyerLegalEntityId))
+      .leftJoin(sale, eq(sale.id, lot.saleId))
+      .leftJoin(payment, eq(payment.id, buyerDefault.paymentId))
+      .leftJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, buyerDefault.buyerId))
+      .where(
+        and(
+          eq(buyerDefault.buyerLegalEntityId, scope.legalEntityId),
+          scope.memberUserId ? eq(buyerDefault.buyerId, scope.memberUserId) : undefined,
+          scope.lotIds ? inArray(buyerDefault.lotId, [...scope.lotIds]) : undefined,
+        ),
+      )
+      .orderBy(desc(buyerDefault.wonAt))
+      .limit(limit);
+
+    // A lot defaulted twice by the same account is one purchase: keep the latest.
+    const latest = new Map([...rows].reverse().map((r) => [r.lotId, r] as const));
+    return [...latest.values()]
+      .sort((a, b) => b.wonAt.getTime() - a.wonAt.getTime())
+      .map((r) => ({
+        lotId: r.lotId,
+        buyerAccountKind: r.accountKind,
+        lotTitle: r.lotTitle,
+        lotNumber: r.lotNumber,
+        saleId: r.saleId,
+        saleTitle: r.saleTitle,
+        hammerPrice: String(r.hammerPrice),
+        wonBy: { userId: r.buyerId, name: r.buyerName ?? null },
+        wonAt: r.wonAt,
+        payment: r.paymentId
+          ? {
+              id: r.paymentId,
+              status: "cancelled" as const,
+              amount: String(r.amount),
+              raisedAt: r.raisedAt as Date,
+            }
+          : null,
+        fulfilment: {
+          status: "cancelled" as const,
+          method: null,
+          carrier: null,
+          trackingNumber: null,
+          collectedBy: null,
+          collectedAt: null,
+        },
+        quote: null,
+      }));
+  }
+
+  private async listWon(
+    scope: AccountRecordsScope & { lotIds?: readonly string[]; limit: number; offset: number },
+  ): Promise<AccountPurchaseFactsRow[]> {
     const lots = await this.db
       .select({
         lotId: lot.id,

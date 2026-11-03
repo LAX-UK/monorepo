@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import {
   bidIdentityDirectory,
+  buyerDefault,
   lot,
   lotFulfilment,
   payment,
@@ -124,6 +125,15 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     const rows = await this.db.select().from(payment).where(eq(payment.id, id)).limit(1);
     const row = rows[0];
     return row ? mapRow(row, null) : null;
+  }
+
+  async isVoidedByBuyerDefault(paymentId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: buyerDefault.id })
+      .from(buyerDefault)
+      .where(eq(buyerDefault.paymentId, paymentId))
+      .limit(1);
+    return row !== undefined;
   }
 
   findBlockedCapture(paymentId: string): Promise<BlockedCapture | null> {

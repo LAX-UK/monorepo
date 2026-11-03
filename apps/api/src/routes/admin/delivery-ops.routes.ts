@@ -4,8 +4,8 @@ import { createBaseLogger } from "../../lib/logger.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { createAuditAccessMiddleware } from "../../middleware/audit-access.js";
 import {
-  requireAuditDomainEvents,
   requireDeliveryReplay,
+  requireFailedJobsRead,
 } from "../../middleware/require-capability.js";
 import type { AdminHono } from "./_shared.js";
 
@@ -28,12 +28,12 @@ export function attachAdminDeliveryOpsRoutes(
   container: ContainerAdminPlatformRoutesSlice,
 ): void {
   const auditAccess = createAuditAccessMiddleware(createBaseLogger(container.env));
-  platform.use("/system/delivery/*", requireAuditDomainEvents);
+  platform.use("/system/delivery/*", requireFailedJobsRead);
   platform.use("/system/delivery/*", auditAccess);
 
   platform.get(
     "/system/delivery/dead-letter",
-    requireAuditDomainEvents,
+    requireFailedJobsRead,
     zValidator("query", deliveryListQuerySchema),
     async (c) => {
       const query = c.req.valid("query");
@@ -48,7 +48,7 @@ export function attachAdminDeliveryOpsRoutes(
 
   platform.get(
     "/system/delivery/:deliveryId",
-    requireAuditDomainEvents,
+    requireFailedJobsRead,
     zValidator("param", deliveryIdParamSchema),
     async (c) => {
       const { deliveryId } = c.req.valid("param");

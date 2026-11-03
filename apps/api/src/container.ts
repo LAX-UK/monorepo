@@ -25,6 +25,7 @@ import { createContainerAuthenticator } from "./container/create-auth.js";
 import { createBidAuthority, createBiddingLimitGate } from "./container/create-bid-eligibility.js";
 import { createBiddingRouteServices } from "./container/create-bidding-route-services.js";
 import { createBiddingSaleroom } from "./container/create-bidding-saleroom.js";
+import { createBuyerDefaultServices } from "./container/create-buyer-default-services.js";
 import { createCatalogRouteServices } from "./container/create-catalog-route-services.js";
 import { createCatalogServices } from "./container/create-catalog-services.js";
 import { createComplianceMedia } from "./container/create-compliance-media.js";
@@ -58,6 +59,7 @@ import { createUserRouteServices } from "./container/create-user-route-services.
 import type { Env } from "./env.js";
 import { DrizzlePendingDeletionReader } from "./infrastructure/drizzle-pending-deletion.reader.js";
 import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usage.reader.js";
+import { HttpIdentityDataRequestsClient } from "./infrastructure/http-identity-data-requests.client.js";
 import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.client.js";
 import { IdentityAddressBookRepository } from "./infrastructure/identity-address-book.repository.js";
 import { RedisIdempotencyStore } from "./infrastructure/redis-idempotency.store.js";
@@ -69,6 +71,8 @@ import { createAppLogger } from "./lib/logger.js";
 import { AdminSavedViewService } from "./services/admin/admin-saved-view.service.js";
 import { AdminTwoFactorResetService } from "./services/admin/admin-two-factor-reset.service.js";
 import { AtgAdminService } from "./services/admin/atg-admin.service.js";
+import { AdminDataRequestsService } from "./services/admin/data-requests/admin-data-requests.service.js";
+import { DomainEventDataRequestAuditTrail } from "./services/admin/data-requests/data-request-audit-trail.js";
 import { StaffAccessAdminService } from "./services/admin/staff-access-admin.service.js";
 import { OrganisationBiddingLimitsService } from "./services/bidding-limits/organisation-bidding-limits.service.js";
 import { BidLimitRefusalNotifier } from "./services/bidding/bid-limit-refusal.notifier.js";
@@ -184,6 +188,15 @@ export function createContainer(env: Env): Container {
     biddingSaleroom,
     complianceMedia,
   });
+  const buyerDefault = createBuyerDefaultServices({
+    env,
+    db,
+    infra,
+    repos,
+    platform,
+    catalog,
+    payments,
+  });
   const enquiryDrafts = createEnquiryDraftTokens(env);
   const compliance = createComplianceRouteServices({
     db,
@@ -195,6 +208,7 @@ export function createContainer(env: Env): Container {
     stripeConnectService: platform.stripeConnectService,
     marketingEventService: complianceMedia.marketingEventService,
     kycResubmissionNotifier: complianceMedia.kycResubmissionNotifier,
+    kycOutcomeNotifier: complianceMedia.kycOutcomeNotifier,
     sourceOfFundsDocumentCollectionService: complianceMedia.sourceOfFundsDocumentCollectionService,
     uploadService: complianceMedia.uploadService,
     exportService: complianceMedia.exportService,
@@ -259,6 +273,7 @@ export function createContainer(env: Env): Container {
     webOrigin: env.WEB_ORIGIN,
     watchlistReminders,
     consignmentThreadSweep: consignmentMessages.sweep,
+    paymentReminders: buyerDefault.paymentReminderService,
   });
   const catalogRoutes = createCatalogRouteServices({
     saleService: catalog.saleService,
@@ -308,6 +323,7 @@ export function createContainer(env: Env): Container {
     payments,
     bidding: biddingSaleroom,
     userMisc,
+    buyerDefaultService: buyerDefault.buyerDefaultService,
     payoutStatementApplication: finance.payoutStatement,
   });
 
@@ -595,6 +611,7 @@ export function createContainer(env: Env): Container {
     kycRepository: repos.kycRepository,
     kycService: complianceMedia.kycService,
     kycResubmissionNotifier: complianceMedia.kycResubmissionNotifier,
+    kycOutcomeNotifier: complianceMedia.kycOutcomeNotifier,
     amlService: complianceMedia.amlService,
     sourceOfFundsService: complianceMedia.sourceOfFundsService,
     adminSourceOfFundsQueryService: complianceMedia.adminSourceOfFundsQueryService,
@@ -686,6 +703,8 @@ export function createContainer(env: Env): Container {
       env,
       bidPortfolioReader: repos.bidPortfolioReader,
       recordPeople: new DrizzleRecordPeopleReader(db),
+      lotFulfilmentRepository: payments.lotFulfilmentRepository,
+      personalLegalEntityResolver: userMisc.personalLegalEntityResolver,
       lotViewerState,
       categoryInterestsEligibilityReader: repos.categoryInterestsEligibilityReader,
       categoryInterestsRepository: repos.categoryInterestsRepository,
@@ -735,6 +754,14 @@ export function createContainer(env: Env): Container {
       deliveryQuotes: organisationBuying.staffDeliveryQuotes,
       marketingEnquiries: marketingEnquiries.desk,
       enquiryRouting: marketingEnquiries.routing,
+      dataRequests: new AdminDataRequestsService({
+        identity: new HttpIdentityDataRequestsClient({
+          issuerBaseUrl: env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL,
+          clientId: env.IDENTITY_DATA_REQUESTS_CLIENT_ID,
+          clientSecret: env.IDENTITY_DATA_REQUESTS_CLIENT_SECRET,
+        }),
+        audit: new DomainEventDataRequestAuditTrail(platform.domainEventSink),
+      }),
       stepUp: new StaffStepUpService(identityIssuer),
       idempotencyStore: new RedisIdempotencyStore(infra.redis),
     },

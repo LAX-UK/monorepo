@@ -1,6 +1,6 @@
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
-import { purchaseEnding, purchaseIsToPay } from "@auction/domain";
-import type { ManualReviewReason, PaymentStatus } from "@auction/types";
+import { purchaseEnding } from "@auction/domain";
+import type { PaymentStatus } from "@auction/types";
 
 /** The four steps every purchase goes through, in order. */
 export const PURCHASE_STEPS = ["won", "payment", "delivery", "delivered"] as const;
@@ -32,8 +32,8 @@ export type PurchaseState =
 
 export type PurchaseFacts = {
   paymentStatus: PaymentStatus | null;
-  /** A payment held for checks; the buyer may have something to provide. */
-  reviewReason: ManualReviewReason | null;
+  /** The purchase is owed but held until checks are done (see the amounts-owed reading). */
+  inReview: boolean;
   fulfilment: Pick<LotFulfilmentSnapshot, "status" | "fulfilmentMethod" | "collectedAt"> | null;
 };
 
@@ -83,17 +83,8 @@ export function purchaseState(facts: PurchaseFacts): PurchaseState {
     case "requires_manual_review":
       return "in-review";
     default:
-      return facts.reviewReason ? "in-review" : "payment-due";
+      return facts.inReview ? "in-review" : "payment-due";
   }
-}
-
-/**
- * Whether a won lot is still to pay: it sits in the To pay view (due, or held for checks before
- * it can be paid). A bank transfer on its way is not; nor is a paid, refunded or cancelled lot.
- * Home, the menu counts and the Pay now banner use this, so they always match the To pay view.
- */
-export function isToPay(paymentStatus: PaymentStatus | null): boolean {
-  return purchaseIsToPay({ paymentStatus });
 }
 
 export function purchaseStep(state: PurchaseState): PurchaseStep {

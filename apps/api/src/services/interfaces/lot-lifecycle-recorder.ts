@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { Lot } from "@auction/types";
+import type { Lot, LotEventPayload } from "@auction/types";
 import type {
   LotAttachedToSalePayload,
   LotCancelledPayload,
@@ -71,6 +71,14 @@ export interface ILotLifecycleRecorder {
     lotRow: Pick<Lot, "id" | "status" | "saleId" | "sellerLegalEntityId">,
     sellerLegalEntityId: string,
     reason: string,
+    actorUserId: string,
+  ): Promise<void>;
+
+  /** A won lot's buyer did not pay; the sale is cancelled and the invoice voided. */
+  recordBuyerDefaulted(
+    tx: Database,
+    lotRow: Pick<Lot, "id" | "saleId" | "sellerLegalEntityId">,
+    payload: LotEventPayload<"lot.buyer_defaulted">,
     actorUserId: string,
   ): Promise<void>;
 

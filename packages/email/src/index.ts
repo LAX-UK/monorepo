@@ -1,6 +1,16 @@
 export { OutboxAlertMailer, type AlertMailerOptions } from "./alert-mailer.js";
 export { EMAIL_DEFAULT_CURRENCY, formatMoneyMajor } from "./format-money.js";
 export { emailProductFor } from "./email-product.js";
+export {
+  BUYER_DEFAULT_NO_CHARGES,
+  buyerDefaultCopy,
+  paymentReminderCopy,
+  type BuyerDefaultAudience,
+  type BuyerDefaultCopy,
+  type BuyerDefaultOutcomeKey,
+  type PaymentReminderCopy,
+  type PaymentReminderStepKey,
+} from "./buyer-default-copy.js";
 export { renderEmail } from "./render.js";
 export {
   OPTIONAL_EMAIL_TEMPLATES,

@@ -356,8 +356,11 @@ describe("migrate-roles invariants", () => {
   });
 
   it("gives auth_app the data export requests, with an append-only audit trail, and denies api_app", () => {
-    expect([...AUTH_EXPORT_TABLES]).toEqual(["subject_data_export"]);
-    expect([...AUTH_EXPORT_AUDIT_TABLES]).toEqual(["subject_data_export_audit"]);
+    expect([...AUTH_EXPORT_TABLES]).toEqual(["subject_data_export", "subject_data_request"]);
+    expect([...AUTH_EXPORT_AUDIT_TABLES]).toEqual([
+      "subject_data_export_audit",
+      "subject_data_request_audit",
+    ]);
     for (const table of [...AUTH_EXPORT_TABLES, ...AUTH_EXPORT_AUDIT_TABLES]) {
       expect([...API_DENY_TABLES]).toContain(table);
       expect([...WORKER_DENY_TABLES]).toContain(table);

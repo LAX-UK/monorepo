@@ -243,7 +243,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "sale.created": new Set(["from_status", "to_status", "deliveryMode", "lotCount"]),
   "sale.published": new Set(["from_status", "to_status", "lotCount", "deliveryMode"]),
   "sale.unpublished": new Set(["from_status", "to_status"]),
-  "sale.cancelled": new Set(["from_status", "to_status", "lotCount"]),
+  "sale.cancelled": new Set(["from_status", "to_status", "lotCount", "cancelledLotIds"]),
   "sale.soft_deleted": new Set(["title", "from_status", "lotCount", "deleted_at"]),
   "lot.soft_deleted": new Set(["title", "from_status", "saleId", "deleted_at"]),
   "sale.ended": new Set(["from_status", "to_status", "reason"]),
@@ -373,6 +373,13 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */
   /** Queue and job names are code identifiers; the discard note is a staff-typed operational note. */
+  /** The reference of the request (DR-0001 or DL-7F3C1A) and nothing about the person or the notes. */
+  "data_request.viewed": new Set(["reference"]),
+  "data_request.logged": new Set(["reference"]),
+  "data_request.updated": new Set(["reference"]),
+  "data_request.extended": new Set(["reference"]),
+  "data_request.closed": new Set(["reference"]),
+  "data_request.continued": new Set(["reference"]),
   "failed_job.retried": new Set(["queue", "jobName", "confirmRepeat"]),
   "failed_job.discarded": new Set(["queue", "jobName", "reason", "note"]),
   "failed_job.restored": new Set(["queue", "jobName"]),

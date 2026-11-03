@@ -1,5 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import {
+  DATA_REQUESTS_MACHINE_SCOPE,
   IDENTITY_EMAIL_REGISTRATION_PATH,
   SUBJECT_EXPORT_MACHINE_SCOPE,
   emailRegistrationRequestSchema,
@@ -22,6 +23,11 @@ import {
   mountInternalAddressRoutes,
 } from "./internal-addresses.routes.js";
 import {
+  type DataRequestsMachineDeps,
+  dataRequestsTokenKey,
+  mountDataRequestsMachineRoutes,
+} from "./internal-data-requests.routes.js";
+import {
   type SubjectExportMachineDeps,
   mountSubjectExportMachineRoutes,
   subjectExportTokenKey,
@@ -33,6 +39,14 @@ import {
 
 const MACHINE_TOKEN_TTL_SEC = 5 * 60;
 const MACHINE_SCOPE = "identity.lifecycle";
+
+/** One machine credential: the client that may ask for tokens of a scope, and where those tokens are kept. */
+type MachineScope = {
+  clientId: string;
+  clientSecret: string;
+  scope: string;
+  key: (token: string) => string;
+};
 
 type MachineTokenRedis = MachineCredentialRateLimitRedis & {
   set(key: string, value: string, ex: "EX", ttl: number): Promise<unknown>;
@@ -139,30 +153,47 @@ export function createInternalIdentityRoutes(options: {
    * leak of one cannot reach what the other guards. Left out, the scope is not offered.
    */
   subjectExport?: SubjectExportMachineDeps;
+  /** Bid admin's credential for the Data requests screen, separate from the other two. */
+  dataRequests?: DataRequestsMachineDeps;
 }) {
   const app = new Hono();
   const credentialRateLimiter = new MachineCredentialRateLimiter(options.redis);
-
-  app.post("/oauth/token", async (c) => {
-    const credentials = parseBasicCredentials(c.req.header("authorization"));
-    const body = await c.req.parseBody();
-    // The export scope has its own client, so its credential is checked and rate-limited apart.
-    const exportScope =
-      body.scope === SUBJECT_EXPORT_MACHINE_SCOPE && options.subjectExport !== undefined;
-    const target =
-      exportScope && options.subjectExport
-        ? {
+  const lifecycleScope: MachineScope = {
+    clientId: options.machineClientId,
+    clientSecret: options.machineClientSecret,
+    scope: MACHINE_SCOPE,
+    key: tokenKey,
+  };
+  const machineScopes: MachineScope[] = [
+    lifecycleScope,
+    ...(options.subjectExport
+      ? [
+          {
             clientId: options.subjectExport.clientId,
             clientSecret: options.subjectExport.clientSecret,
             scope: SUBJECT_EXPORT_MACHINE_SCOPE,
             key: subjectExportTokenKey,
-          }
-        : {
-            clientId: options.machineClientId,
-            clientSecret: options.machineClientSecret,
-            scope: MACHINE_SCOPE,
-            key: tokenKey,
-          };
+          },
+        ]
+      : []),
+    ...(options.dataRequests
+      ? [
+          {
+            clientId: options.dataRequests.clientId,
+            clientSecret: options.dataRequests.clientSecret,
+            scope: DATA_REQUESTS_MACHINE_SCOPE,
+            key: dataRequestsTokenKey,
+          },
+        ]
+      : []),
+  ];
+
+  app.post("/oauth/token", async (c) => {
+    const credentials = parseBasicCredentials(c.req.header("authorization"));
+    const body = await c.req.parseBody();
+    // Each scope has its own client, so its credential is checked and rate-limited apart. An
+    // unknown or unconfigured scope is tried against the lifecycle client and refused there.
+    const target = machineScopes.find((entry) => entry.scope === body.scope) ?? lifecycleScope;
     const authentication = await authenticateMachineClient({
       credentials,
       expectedClientId: target.clientId,
@@ -253,6 +284,7 @@ export function createInternalIdentityRoutes(options: {
 
   // Before the lifecycle authentication below, which would refuse an export-scope token.
   if (options.subjectExport) mountSubjectExportMachineRoutes(app, options.subjectExport);
+  if (options.dataRequests) mountDataRequestsMachineRoutes(app, options.dataRequests);
 
   app.use("/identity/*", async (c, next) => {
     const authorization = c.req.header("authorization");

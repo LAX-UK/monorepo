@@ -159,10 +159,11 @@ export class SalePublishService implements ISalePublishService {
     const atgConflict = await assertCanCancelSaleOnAtg(this.deps.saleChannelReader, saleId);
     if (atgConflict) return err(atgConflict);
     const lots = await this.deps.lotRepo.findBySaleId(saleId);
-    for (const l of lots) {
-      if (l.status === "draft" || l.status === "scheduled" || l.status === "active") {
-        await this.deps.jobScheduler?.cancelLotJobs(l.id);
-      }
+    const cancelledLots = lots.filter(
+      (l) => l.status === "draft" || l.status === "scheduled" || l.status === "active",
+    );
+    for (const l of cancelledLots) {
+      await this.deps.jobScheduler?.cancelLotJobs(l.id);
     }
     if (this.deps.transactionRunner && this.deps.lotLifecycleRecording) {
       await this.deps.transactionRunner.runInTransaction(async (tx) => {
@@ -194,12 +195,17 @@ export class SalePublishService implements ISalePublishService {
       }
       await this.deps.saleRepo.updateStatus(saleId, "cancelled");
     }
+    // A cancelled lot leaves telephone bookings, as it does when it is cancelled on its own.
+    for (const l of cancelledLots) {
+      await this.deps.telephoneBookings?.removeLotFromActiveBookings(saleId, l.id);
+    }
     const updated = await this.deps.saleRepo.findById(saleId);
     if (!updated) return err(new LotError("Sale not found", 404));
     await publishSaleEvent(this.deps, userId, saleId, "sale.cancelled", {
       from_status: sale.status,
       to_status: "cancelled",
       lotCount: lots.length,
+      cancelledLotIds: cancelledLots.map((l) => l.id),
     });
     return ok(updated);
   }

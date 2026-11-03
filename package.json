@@ -75,6 +75,7 @@
     "jwks:snapshot": "tsx scripts/jwks-snapshot.ts",
     "jwks:restore": "tsx scripts/jwks-restore.ts",
     "jwks:rotate": "tsx scripts/rotate-jwks.ts",
+    "jwks:restore-active": "tsx scripts/restore-jwks-active.ts",
     "gen:apple-secret": "tsx scripts/generate-apple-client-secret.ts",
     "cost:check": "tsx scripts/check-do-bill.ts",
     "audit:dark-mode": "tsx apps/web/src/lib/theme/audit-dark-mode.ts"

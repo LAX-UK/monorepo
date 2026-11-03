@@ -6,6 +6,7 @@ import {
   ARTIST_REVIEW_ACCESS,
   ARTIST_WRITE_ACCESS,
   AUDIT_DOMAIN_EVENTS_ACCESS,
+  BUYER_DEFAULT_ACCESS,
   CATEGORIES_ACCESS,
   CATEGORIES_READ_ACCESS,
   CLIENT_ACTIVITY_ACCESS,
@@ -17,6 +18,7 @@ import {
   CONSIGNMENT_INBOX_REPLY_ACCESS,
   CONSIGNMENT_SAVED_REPLIES_MANAGE_ACCESS,
   type CapabilityRequirement,
+  DATA_REQUESTS_MANAGE_ACCESS,
   DELIVERY_REPLAY_ACCESS,
   DISPUTE_ALLOCATION_WRITE_ACCESS,
   EMAIL_ADMIN_ACCESS,
@@ -133,6 +135,7 @@ export const requireDeliveryReplay = createRequireAccess(DELIVERY_REPLAY_ACCESS)
 /** The Enquiries list and records: general enquiries, private sale enquiries, or both. */
 export const requireEnquiries = createRequireAccess(ENQUIRIES_ACCESS);
 export const requireEnquiryRoutingManage = createRequireAccess(ENQUIRY_ROUTING_MANAGE_ACCESS);
+export const requireDataRequestsManage = createRequireAccess(DATA_REQUESTS_MANAGE_ACCESS);
 export const requireFailedJobsRead = createRequireAccess(FAILED_JOBS_READ_ACCESS);
 export const requireFailedJobsWrite = createRequireAccess(FAILED_JOBS_WRITE_ACCESS);
 export const requirePaymentManualReviewWrite = createRequireAccess(
@@ -183,6 +186,7 @@ export const requireSaleroomOperate = createRequireAccess(SALEROOM_ACCESS);
  * `admin.read`. Mount them on GET routes only; every action keeps its write rule.
  */
 export const requireLotsRead = createRequireAccess(LOTS_READ_ACCESS);
+export const requireBuyerDefault = createRequireAccess(BUYER_DEFAULT_ACCESS);
 export const requireLotWorkRead = createRequireAccess(LOT_WORK_READ_ACCESS);
 export const requireSubmissionsRead = createRequireAccess(SUBMISSIONS_READ_ACCESS);
 export const requireConsignmentInboxRead = createRequireAccess(CONSIGNMENT_INBOX_READ_ACCESS);

@@ -69,9 +69,58 @@ describe("cancelSale event payload", () => {
           from_status: "scheduled",
           to_status: "cancelled",
           lotCount: 0,
+          cancelledLotIds: [],
         },
       }),
     );
+  });
+});
+
+describe("cancelSale side effects", () => {
+  function cancellingDeps(removeLotFromActiveBookings: ReturnType<typeof vi.fn>) {
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const sale = { id: "sale-1", status: "active" as const };
+    const lots = [
+      { id: "lot-a", status: "active" },
+      { id: "lot-b", status: "scheduled" },
+      { id: "lot-sold", status: "sold" },
+      { id: "lot-earlier", status: "cancelled" },
+    ];
+    const deps = baseDeps({
+      saleRepo: {
+        findById: vi
+          .fn()
+          .mockResolvedValueOnce(sale)
+          .mockResolvedValueOnce({ ...sale, status: "cancelled" }),
+        updateStatus: vi.fn(),
+      } as unknown as ISaleRepository,
+      lotRepo: {
+        findBySaleId: vi.fn().mockResolvedValue(lots),
+        updateStatus: vi.fn(),
+      } as unknown as ILotRepository,
+      domainEventSink: mockDomainEventSink(publish) as unknown as IDomainEventSink,
+      telephoneBookings: { removeLotFromActiveBookings },
+    });
+    return { deps, publish };
+  }
+
+  it("takes each cancelled lot off telephone bookings, like cancelling the lot itself", async () => {
+    const remove = vi.fn().mockResolvedValue(1);
+    const { deps } = cancellingDeps(remove);
+    const result = await cancelSale(deps, "admin-1", "staff", "sale-1", ["administrator"]);
+    expect(result.isOk()).toBe(true);
+    expect(remove.mock.calls).toEqual([
+      ["sale-1", "lot-a"],
+      ["sale-1", "lot-b"],
+    ]);
+  });
+
+  it("names the cancelled lots in the event so the notice reaches only their people", async () => {
+    const { deps, publish } = cancellingDeps(vi.fn().mockResolvedValue(0));
+    await cancelSale(deps, "admin-1", "staff", "sale-1", ["administrator"]);
+    expect(publish.mock.calls[0]?.[0]?.payload).toMatchObject({
+      cancelledLotIds: ["lot-a", "lot-b"],
+    });
   });
 });
 
