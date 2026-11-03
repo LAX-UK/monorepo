@@ -86,6 +86,18 @@ export function mainRunLine(main: { title: string; spec: AdminEditionRunSpec }):
   return `${main.title}, ${kind}`;
 }
 
+/** "Created 24 prints as a draft", for the toast after prints are made from an original. */
+export function printsCreatedLine(count: number): string {
+  if (count === 0) return "Created the listing as a draft";
+  return `Created ${count === 1 ? "1 print" : `${count} prints`} as a draft`;
+}
+
+/** "Created “Harbour” and 24 prints as drafts", after an original is saved with its prints. */
+export function originalAndPrintsCreatedLine(title: string, count: number): string {
+  const prints = count === 0 ? "its listing" : count === 1 ? "1 print" : `${count} prints`;
+  return `Created “${title}” and ${prints} as drafts`;
+}
+
 /** How a linked listing differs from its main run, for the main run's list of listings. */
 export function linkedListingLabel(spec: AdminEditionRunSpec): string {
   if (spec.type === "proof") {

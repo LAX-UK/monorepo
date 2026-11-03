@@ -12,6 +12,7 @@ const getArtworkDetail = vi.fn();
 const push = vi.fn();
 const replace = vi.fn();
 const refresh = vi.fn();
+const createPrintsFromOriginal = vi.fn();
 const toastSuccess = vi.fn();
 const toastError = vi.fn();
 
@@ -140,6 +141,7 @@ vi.mock("@/server/application/edition-run-actions.server", () => ({
   addOpenEditionStock: vi.fn(),
   createProofListing: vi.fn(),
   createCompanionListing: vi.fn(),
+  createPrintsFromOriginal,
 }));
 vi.mock("@auction/ui/components/select", () => ({
   Select: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -240,6 +242,7 @@ describe("artwork editor", () => {
       push,
       replace,
       refresh,
+      createPrintsFromOriginal,
       toastSuccess,
       toastError,
     ]) {
@@ -372,6 +375,239 @@ describe("artwork editor", () => {
         expect(screen.getByLabelText(/Web address/)).toHaveAttribute("aria-invalid", "true"),
       );
       expect(replace).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("creating an original with its prints", () => {
+    const PRINTS = "33333333-3333-4333-8333-333333333333";
+
+    function startOriginal() {
+      renderEditor({ detail: null, initialArtist: { id: ARTIST, name: "Ada Artist" } });
+      fireEvent.click(document.getElementById("artwork-kind-original") as HTMLElement);
+      typeInto("Title", "Harbour at Dusk");
+    }
+
+    it("offers prints for an original only, off by default", () => {
+      renderEditor({ detail: null, initialArtist: { id: ARTIST, name: "Ada Artist" } });
+      expect(screen.queryByLabelText(/^Also create prints of this original/)).toBeNull();
+      fireEvent.click(document.getElementById("artwork-kind-original") as HTMLElement);
+      expect(screen.getByLabelText(/^Also create prints of this original/)).not.toBeChecked();
+      expect(screen.queryByLabelText("Shop title")).toBeNull();
+      expect(screen.getAllByRole("button", { name: "Create draft" }).length).toBeGreaterThan(0);
+    });
+
+    it("opens the LAX standard run with the original's title and names the button by the count", () => {
+      startOriginal();
+      fireEvent.click(screen.getByLabelText(/^Also create prints of this original/));
+      expect(screen.getByLabelText("Shop title")).toHaveValue("Harbour at Dusk");
+      expect(screen.getByLabelText(/^LAX standard/)).toBeChecked();
+      expect(
+        screen.getAllByRole("button", { name: "Create original and 24 prints" }).length,
+      ).toBeGreaterThan(0);
+      typeInto("Title", "Harbour at Dusk II");
+      expect(screen.getByLabelText("Shop title")).toHaveValue("Harbour at Dusk II");
+      typeInto("Shop title", "Harbour, signed prints");
+      typeInto("Title", "Harbour at Dusk III");
+      expect(screen.getByLabelText("Shop title")).toHaveValue("Harbour, signed prints");
+    });
+
+    it("saves the original and its prints in one request, then opens the original", async () => {
+      createArtwork.mockResolvedValue({
+        ok: true,
+        data: {
+          artworkId: detail.artworkId,
+          slug: "harbour-at-dusk",
+          version: OPENED,
+          prints: {
+            artworkId: PRINTS,
+            slug: "harbour-at-dusk-prints",
+            version: OPENED,
+            editionCount: 24,
+          },
+        },
+      });
+      startOriginal();
+      fireEvent.click(screen.getByLabelText(/^Also create prints of this original/));
+      fireEvent.click(
+        screen.getAllByRole("button", { name: "Create original and 24 prints" })[0] as HTMLElement,
+      );
+      await waitFor(() => expect(replace).toHaveBeenCalledWith(`/artworks/${detail.artworkId}`));
+      expect(createArtwork).toHaveBeenCalledTimes(1);
+      expect(createArtwork.mock.calls[0]?.[0].body).toMatchObject({
+        run: null,
+        salesChannel: "art",
+        prints: {
+          title: "Harbour at Dusk",
+          run: { spec: { type: "lax_standard" } },
+        },
+      });
+      expect(toastSuccess).toHaveBeenCalledWith(
+        "Created “Harbour at Dusk” and 24 prints as drafts",
+      );
+    });
+
+    it("sends no prints when the section stays off", async () => {
+      createArtwork.mockResolvedValue({
+        ok: true,
+        data: { artworkId: detail.artworkId, slug: "harbour-at-dusk", version: OPENED },
+      });
+      startOriginal();
+      fireEvent.click(screen.getAllByRole("button", { name: "Create draft" })[0] as HTMLElement);
+      await waitFor(() => expect(replace).toHaveBeenCalled());
+      expect(createArtwork.mock.calls[0]?.[0].body).not.toHaveProperty("prints");
+    });
+
+    it("checks the prints with the rest and creates nothing while they are wrong", () => {
+      startOriginal();
+      fireEvent.click(screen.getByLabelText(/^Also create prints of this original/));
+      fireEvent.click(screen.getByLabelText(/^Custom limited edition/));
+      typeInto("Size", "24");
+      typeIntoId("run-allocation-buyer", "6");
+      typeIntoId("run-allocation-artist", "12");
+      typeIntoId("run-allocation-lax", "4");
+      typeInto("Shop title", "   ");
+      fireEvent.click(
+        screen.getAllByRole("button", { name: /^Create original and/ })[0] as HTMLElement,
+      );
+      const summary = screen.getByRole("alert");
+      expect(
+        within(summary).getByRole("link", { name: "Enter a title for the prints" }),
+      ).toHaveAttribute("href", "#original-prints-title");
+      expect(
+        within(summary).getByRole("link", { name: "Allocate every print: 2 are not allocated" }),
+      ).toBeInTheDocument();
+      expect(createArtwork).not.toHaveBeenCalled();
+    });
+
+    it("keeps everything on screen when the save is refused, and says nothing was created", async () => {
+      createArtwork.mockResolvedValue({ ok: false, kind: "failed", message: "Save failed." });
+      startOriginal();
+      fireEvent.click(screen.getByLabelText(/^Also create prints of this original/));
+      fireEvent.click(
+        screen.getAllByRole("button", { name: "Create original and 24 prints" })[0] as HTMLElement,
+      );
+      await waitFor(() => expect(toastError).toHaveBeenCalledWith("Nothing was created"));
+      expect(replace).not.toHaveBeenCalled();
+      expect(screen.getByLabelText("Shop title")).toHaveValue("Harbour at Dusk");
+    });
+  });
+
+  describe("creating prints from a saved original", () => {
+    const original: AdminArtworkDetail = {
+      ...detail,
+      run: null,
+      printPricePence: null,
+      saleState: "price_on_application",
+      salesChannel: "art",
+      editions: {
+        size: 0,
+        committed: 0,
+        byStatus: { not_authorised: 0, authorised: 0, reserved: 0, held: 0, sold: 0, withdrawn: 0 },
+        byAllocation: { original_buyer_entitlement: 0, artist: 0, lax: 0 },
+      },
+      linkedPrints: [],
+    };
+    const existing = {
+      artworkId: "44444444-4444-4444-8444-444444444444",
+      slug: "harbour-at-dusk-prints",
+      title: "Harbour at Dusk, prints",
+      state: "draft" as const,
+      size: 24,
+    };
+
+    it("explains the empty list and opens the dialog with the standard run", () => {
+      renderEditor({ detail: original });
+      expect(screen.getByText("No prints yet")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Create prints" }));
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByLabelText("Shop title")).toHaveValue("Harbour at Dusk");
+      expect(within(dialog).getByLabelText(/^LAX standard/)).toBeChecked();
+      expect(within(dialog).getByRole("button", { name: "Create 24 prints" })).toBeInTheDocument();
+      expect(within(dialog).queryByText(/already has/)).toBeNull();
+    });
+
+    it("creates the prints, then reads the original again so they are listed", async () => {
+      createPrintsFromOriginal.mockResolvedValue({
+        ok: true,
+        data: {
+          artworkId: existing.artworkId,
+          slug: existing.slug,
+          version: OPENED,
+          editionCount: 24,
+        },
+      });
+      getArtworkDetail.mockResolvedValue({
+        ok: true,
+        data: { ...original, linkedPrints: [existing] },
+      });
+      renderEditor({ detail: original });
+      fireEvent.click(screen.getByRole("button", { name: "Create prints" }));
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", { name: "Create 24 prints" }),
+      );
+      await waitFor(() => expect(createPrintsFromOriginal).toHaveBeenCalledTimes(1));
+      expect(createPrintsFromOriginal.mock.calls[0]?.[0]).toMatchObject({
+        artworkId: original.artworkId,
+        body: { title: "Harbour at Dusk", run: { spec: { type: "lax_standard" } } },
+      });
+      await waitFor(() =>
+        expect(
+          screen.getAllByRole("link", { name: "Harbour at Dusk, prints" }).length,
+        ).toBeGreaterThan(0),
+      );
+      expect(toastSuccess).toHaveBeenCalledWith("Created 24 prints as a draft", expect.anything());
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("lists the prints already linked before a second set is made", () => {
+      renderEditor({ detail: { ...original, linkedPrints: [existing] } });
+      fireEvent.click(screen.getAllByRole("button", { name: "Create prints" })[0] as HTMLElement);
+      const dialog = screen.getByRole("dialog");
+      expect(within(dialog).getByText("This original already has prints")).toBeInTheDocument();
+      expect(within(dialog).getByRole("link", { name: "Harbour at Dusk, prints" })).toHaveAttribute(
+        "href",
+        `/artworks/${existing.artworkId}`,
+      );
+      expect(within(dialog).getByText(/adds another listing/)).toBeInTheDocument();
+    });
+
+    it("shows a refusal inside the dialog and keeps it open", async () => {
+      createPrintsFromOriginal.mockResolvedValue({
+        ok: false,
+        kind: "conflict",
+        message: "The original is archived; restore it before creating prints",
+      });
+      renderEditor({ detail: original });
+      fireEvent.click(screen.getByRole("button", { name: "Create prints" }));
+      fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", { name: "Create 24 prints" }),
+      );
+      await waitFor(() =>
+        expect(
+          within(screen.getByRole("dialog")).getByText(/restore it before creating prints/),
+        ).toBeInTheDocument(),
+      );
+    });
+
+    it("checks the run before sending anything", () => {
+      renderEditor({ detail: original });
+      fireEvent.click(screen.getByRole("button", { name: "Create prints" }));
+      const dialog = screen.getByRole("dialog");
+      typeInto("Shop title", "");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Create 24 prints" }));
+      expect(within(dialog).getByText("Enter a title for the prints")).toBeInTheDocument();
+      expect(createPrintsFromOriginal).not.toHaveBeenCalled();
+    });
+
+    it("offers no way to create prints from an archived original or without catalogue access", () => {
+      const { unmount } = renderEditor({
+        detail: { ...original, state: "archived", archivedAt: OPENED },
+      });
+      expect(screen.queryByRole("button", { name: "Create prints" })).toBeNull();
+      expect(screen.getByText(/Restore it to create prints/)).toBeInTheDocument();
+      unmount();
+      renderEditor({ detail: original, permissions: { ...admin, write: false } });
+      expect(screen.queryByRole("button", { name: "Create prints" })).toBeNull();
     });
   });
 

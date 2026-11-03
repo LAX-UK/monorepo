@@ -6,6 +6,8 @@ import {
   factsStatusLabel,
   lowStockTitle,
   mainRunLine,
+  originalAndPrintsCreatedLine,
+  printsCreatedLine,
   proofsAvailable,
   runListLabel,
   runSummaryText,
@@ -96,5 +98,27 @@ describe("edition run states", () => {
       message: "Edition facts set for 1 run; 1 run left as they were",
       details: ["Blue study II: Sold prints were described this way."],
     });
+  });
+});
+
+describe("printsCreatedLine", () => {
+  it("says how many prints were created as a draft", () => {
+    expect(printsCreatedLine(24)).toBe("Created 24 prints as a draft");
+    expect(printsCreatedLine(1)).toBe("Created 1 print as a draft");
+    expect(printsCreatedLine(0)).toBe("Created the listing as a draft");
+  });
+});
+
+describe("originalAndPrintsCreatedLine", () => {
+  it("names the original and the prints created with it", () => {
+    expect(originalAndPrintsCreatedLine("Harbour", 24)).toBe(
+      "Created “Harbour” and 24 prints as drafts",
+    );
+    expect(originalAndPrintsCreatedLine("Harbour", 1)).toBe(
+      "Created “Harbour” and 1 print as drafts",
+    );
+    expect(originalAndPrintsCreatedLine("Harbour", 0)).toBe(
+      "Created “Harbour” and its listing as drafts",
+    );
   });
 });
