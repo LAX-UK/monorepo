@@ -1,6 +1,8 @@
 import {
+  FAILED_JOB_SOURCES,
   FAILED_JOB_SOURCE_FAMILIES,
   FAILED_JOB_SOURCE_FAMILY_LABELS,
+  FAILED_JOB_SOURCE_LABELS,
   type FailedJobBatchOutcome,
   type FailedJobBatchResult,
   type FailedJobDetail,
@@ -127,6 +129,7 @@ export class AdminFailedJobsService {
         .sort((a, b) => a.label.localeCompare(b.label)),
       sources: this.sourceFacets(results),
       canAct: viewer.act.size > 0,
+      limitedTo: this.limitOf(viewer),
       actionsEnabled,
     };
   }
@@ -225,6 +228,14 @@ export class AdminFailedJobsService {
         (a: FailedJobSummary, b: FailedJobSummary) =>
           direction * a.lastFailedAt.localeCompare(b.lastFailedAt) || a.id.localeCompare(b.id),
       );
+  }
+
+  /** Names the sources a person is limited to, or null when they may see every source. */
+  private limitOf(viewer: FailedJobViewer): string | null {
+    if (viewer.read.size === 0 || viewer.read.size === FAILED_JOB_SOURCES.length) return null;
+    return FAILED_JOB_SOURCES.filter((source) => viewer.read.has(source))
+      .map((source) => FAILED_JOB_SOURCE_LABELS[source])
+      .join(", ");
   }
 
   /** The kinds of failure this person may see, each with the size of its current view. */

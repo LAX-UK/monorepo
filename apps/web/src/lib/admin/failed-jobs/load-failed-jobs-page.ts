@@ -2,6 +2,8 @@ import "server-only";
 
 import { getAdminFailedJobs } from "@/lib/data/http/admin-failed-jobs.reader";
 import type { FailedJobList } from "@auction/types";
+import { groupFailedJobs } from "./failed-job-groups";
+import { nounForIds } from "./failed-job-outcome";
 import {
   FAILED_JOBS_PAGE_SIZE,
   type FailedJobsSearch,
@@ -39,7 +41,10 @@ export async function loadAdminFailedJobsPage(sp: FailedJobsSearch) {
       list.rows.length === 0
         ? null
         : {
-            summary: pageSummary(filters.offset, list.rows.length, list.total),
+            summary: pageSummary(filters.offset, list.rows.length, list.total, {
+              groups: groupFailedJobs(list.rows).length,
+              noun: nounForIds(list.rows.map((row) => row.id)),
+            }),
             prevHref:
               filters.offset > 0
                 ? failedJobsHref(sp, {

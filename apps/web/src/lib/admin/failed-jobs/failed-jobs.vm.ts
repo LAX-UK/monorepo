@@ -72,12 +72,28 @@ export function failedJobsEmpty(
   return source === "integrations" ? INTEGRATIONS_EMPTY[view] : FAILED_JOBS_EMPTY[view];
 }
 
-/** "1–50 of 312 jobs" under the table; "3 jobs" when the whole list fits. */
-export function pageSummary(offset: number, shown: number, total: number): string {
+/**
+ * "1–50 of 312 jobs" under the table; "3 jobs" when the whole list fits. Identical failures on
+ * the page are folded into rows, so it also says how many rows that makes: "4 groups · 16 jobs".
+ */
+export function pageSummary(
+  offset: number,
+  shown: number,
+  total: number,
+  options: { groups?: number; noun?: { one: string; other: string } } = {},
+): string {
   if (shown === 0) return "";
+  const noun = options.noun ?? { one: "job", other: "jobs" };
   const first = offset + 1;
   const last = offset + shown;
-  return first === 1 && last === total
-    ? `${total} ${total === 1 ? "job" : "jobs"}`
-    : `${first}–${last} of ${total} jobs`;
+  const fits = first === 1 && last === total;
+  const grouped = options.groups !== undefined && options.groups < shown;
+  const jobs = `${total} ${total === 1 ? noun.one : noun.other}`;
+  if (fits) {
+    return grouped
+      ? `${options.groups} ${options.groups === 1 ? "group" : "groups"} · ${jobs}`
+      : jobs;
+  }
+  const range = `${first}–${last} of ${jobs}`;
+  return grouped ? `${range} · ${options.groups} groups` : range;
 }

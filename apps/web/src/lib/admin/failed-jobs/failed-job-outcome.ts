@@ -36,15 +36,25 @@ export function summariseBatch(result: FailedJobBatchResult): FailedJobOutcome {
   return { succeeded, failures };
 }
 
-/** "3 jobs", "1 job". */
-export function jobCount(count: number): string {
-  return `${count} ${count === 1 ? "job" : "jobs"}`;
+type Noun = { one: string; other: string };
+const JOBS: Noun = { one: "job", other: "jobs" };
+
+/** The noun for a set of ids, read from their prefixes: integrations are deliveries. */
+export function nounForIds(ids: readonly string[]): Noun {
+  const deliveries =
+    ids.length > 0 && ids.every((id) => id.startsWith("delivery:") || id.startsWith("webhook:"));
+  return deliveries ? { one: "delivery", other: "deliveries" } : JOBS;
+}
+
+/** "3 jobs", "1 job"; "3 deliveries" when that is what is being listed. */
+export function jobCount(count: number, noun: Noun = JOBS): string {
+  return `${count} ${count === 1 ? noun.one : noun.other}`;
 }
 
 /** The toast after a decision: "Retried 3 jobs" or "Retried 2 of 3 jobs". */
-export function outcomeToast(verb: string, outcome: FailedJobOutcome): string {
+export function outcomeToast(verb: string, outcome: FailedJobOutcome, noun: Noun = JOBS): string {
   const total = outcome.succeeded + outcome.failures.length;
   return outcome.failures.length === 0
-    ? `${verb} ${jobCount(outcome.succeeded)}`
-    : `${verb} ${outcome.succeeded} of ${jobCount(total)}`;
+    ? `${verb} ${jobCount(outcome.succeeded, noun)}`
+    : `${verb} ${outcome.succeeded} of ${jobCount(total, noun)}`;
 }

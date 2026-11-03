@@ -36,6 +36,7 @@ export const failedJobListSchema: z.ZodType<FailedJobList> = z.object({
   rows: z.array(failedJobSummarySchema),
   total: z.number(),
   canAct: z.boolean(),
+  limitedTo: z.string().nullable(),
   sources: z.array(
     z.object({
       id: z.enum(["background_jobs", "integrations"]),

@@ -117,6 +117,7 @@ export const failedJobList: FailedJobList = {
   rows: [emailJob, lotScheduleJob, adEventJob, statementJob],
   total: 4,
   canAct: true,
+  limitedTo: null,
   sources: [
     { id: "background_jobs", label: "Background jobs", count: 4 },
     { id: "integrations", label: "Integrations", count: 3 },

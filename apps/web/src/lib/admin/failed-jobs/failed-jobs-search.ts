@@ -59,9 +59,12 @@ export function parseFailedJobsSearch(sp: FailedJobsSearch): FailedJobsFilters {
   };
 }
 
-/** Whether a search or filter narrows the list (the view tab alone does not). */
+/**
+ * Whether a search or filter narrows the list (the view tab and the Source do not: an empty
+ * source says so itself, and offers to clear it).
+ */
 export function hasFailedJobsFilters(filters: FailedJobsFilters): boolean {
-  return Boolean(filters.q || filters.source || filters.queue || filters.from || filters.to);
+  return Boolean(filters.q || filters.queue || filters.from || filters.to);
 }
 
 /** The list URL with `patch` applied; any filter change returns to the first page. */

@@ -76,7 +76,9 @@ function setup(records: IntegrationDeadLetterRecord[], options: { claim?: boolea
       return first;
     }),
     releaseRetry: vi.fn().mockResolvedValue(undefined),
-    discard: vi.fn(async (input) => input.seeds.map((seed) => seed.id)),
+    discard: vi.fn(async (input: { seeds: readonly { id: string }[] }) =>
+      input.seeds.map((seed) => seed.id),
+    ),
     restore: vi.fn(async (ids) => [...ids]),
   };
   const replay = vi.fn().mockResolvedValue(undefined);
@@ -151,12 +153,14 @@ describe("integration rows on the list", () => {
     const forFinance = await service.list(query, finance);
     expect(forFinance.sources.map((source) => source.id)).toEqual(["integrations"]);
     expect(forFinance.canAct).toBe(true);
+    expect(forFinance.limitedTo).toBe("Integrations · Xero");
     const forReadOnly = await service.list(query, readOnly);
     expect(forReadOnly.sources.map((source) => source.id)).toEqual([
       "background_jobs",
       "integrations",
     ]);
     expect(forReadOnly.canAct).toBe(false);
+    expect(forReadOnly.limitedTo).toBeNull();
     expect(forReadOnly.rows.every((row) => !row.canAct)).toBe(true);
   });
 

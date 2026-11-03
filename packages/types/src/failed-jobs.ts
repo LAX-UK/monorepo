@@ -30,6 +30,14 @@ export const FAILED_JOB_SOURCES = [
 ] as const;
 export type FailedJobSource = (typeof FAILED_JOB_SOURCES)[number];
 
+/** What each source is called where the person's limit is shown: "Integrations · Xero". */
+export const FAILED_JOB_SOURCE_LABELS: Readonly<Record<FailedJobSource, string>> = {
+  background_jobs: "Background jobs",
+  "integrations.xero": "Integrations · Xero",
+  "integrations.zoho": "Integrations · Zoho CRM",
+  "integrations.other": "Integrations · Other",
+};
+
 /** What the Source filter offers: the two kinds of failure, whatever the integration. */
 export const FAILED_JOB_SOURCE_FAMILIES = ["background_jobs", "integrations"] as const;
 export type FailedJobSourceFamily = (typeof FAILED_JOB_SOURCE_FAMILIES)[number];
@@ -220,6 +228,8 @@ export type FailedJobList = {
   sources: { id: FailedJobSourceFamily; label: string; count: number }[];
   /** The person may act on at least one source; otherwise the list is view only. */
   canAct: boolean;
+  /** Set when the person's access covers only some sources: what they are limited to. */
+  limitedTo: string | null;
   /** Rows matching the filters in the chosen view, for paging. */
   total: number;
   /** Rows in each view under the other filters, for the view tabs. */

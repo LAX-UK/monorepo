@@ -155,10 +155,10 @@ describe("FailedJobsList: integrations", () => {
   it("retries a Xero delivery without the repeat tick: the same key means no second invoice", async () => {
     renderList({ list: integrationsList });
     fireEvent.click(openRowMenu("Payment to Xero").getByRole("menuitem", { name: "Retry" }));
-    const dialog = screen.getByRole("dialog", { name: "Retry 1 job?" });
+    const dialog = screen.getByRole("dialog", { name: "Retry 1 delivery?" });
     expect(within(dialog).getByText("1 × Payment to Xero")).toBeInTheDocument();
     expect(within(dialog).queryByRole("checkbox")).not.toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Retry 1 job" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Retry 1 delivery" }));
     await waitFor(() =>
       expect(retry).toHaveBeenCalledWith({ ids: [xeroDelivery.id], confirmRepeat: false }),
     );
@@ -167,12 +167,12 @@ describe("FailedJobsList: integrations", () => {
   it("needs the may-repeat tick before a Stripe webhook runs again", async () => {
     renderList({ list: integrationsList });
     fireEvent.click(openRowMenu("Stripe webhook").getByRole("menuitem", { name: "Retry" }));
-    const dialog = screen.getByRole("dialog", { name: "Retry 1 job?" });
+    const dialog = screen.getByRole("dialog", { name: "Retry 1 delivery?" });
     expect(within(dialog).getByText("May repeat")).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Retry 1 job" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Retry 1 delivery" }));
     expect(retry).not.toHaveBeenCalled();
     fireEvent.click(within(dialog).getByRole("checkbox"));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Retry 1 job" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Retry 1 delivery" }));
     await waitFor(() =>
       expect(retry).toHaveBeenCalledWith({ ids: [stripeWebhook.id], confirmRepeat: true }),
     );
@@ -184,10 +184,53 @@ describe("FailedJobsList: integrations", () => {
     fireEvent.click(bulk[1] as HTMLElement);
     fireEvent.click(bulk[3] as HTMLElement);
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    const dialog = screen.getByRole("dialog", { name: "Retry 2 jobs?" });
+    const dialog = screen.getByRole("dialog", { name: "Retry 2 deliveries?" });
     expect(within(dialog).getByText("1 × Payment to Xero")).toBeInTheDocument();
     expect(within(dialog).getByText("1 × Stripe webhook")).toBeInTheDocument();
     expect(within(dialog).getByText("Safe to repeat")).toBeInTheDocument();
+  });
+
+  it("folds identical failures into one row with a count, and retries every one of them", async () => {
+    const twin = { ...xeroDelivery, id: "delivery:43" };
+    renderList({
+      list: { ...integrationsList, rows: [xeroDelivery, twin, stripeWebhook], total: 3 },
+    });
+    const links = screen.getAllByRole("link", { name: /Payment to Xero/ });
+    expect(new Set(links.map((link) => link.getAttribute("href")))).toEqual(
+      new Set(["/admin/failed-jobs/delivery%3A41"]),
+    );
+    expect(screen.getAllByText("2 identical failures").length).toBeGreaterThan(0);
+    fireEvent.click(openRowMenu("Payment to Xero").getByRole("menuitem", { name: "Retry" }));
+    const dialog = screen.getByRole("dialog", { name: "Retry 2 deliveries?" });
+    expect(within(dialog).getByText("2 × Payment to Xero")).toBeInTheDocument();
+    expect(within(dialog).getByText("The same error may come back")).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Retry 2 deliveries" }));
+    await waitFor(() =>
+      expect(retry).toHaveBeenCalledWith({ ids: [xeroDelivery.id, twin.id], confirmRepeat: false }),
+    );
+  });
+
+  it("shows what the person's access fixes as a locked Source chip", () => {
+    renderList({ list: { ...integrationsList, limitedTo: "Integrations · Xero" } });
+    const chips = screen.getByRole("list", { name: "Applied filters" });
+    expect(within(chips).getByText("Source: Integrations · Xero")).toBeInTheDocument();
+    expect(within(chips).queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("offers to clear the Source filter when it leaves nothing to show", () => {
+    renderList({
+      list: {
+        ...integrationsOnly,
+        rows: [],
+        total: 0,
+        counts: { needs_review: 0, retried: 0, discarded: 0 },
+      },
+      filters: parseFailedJobsSearch({ source: "integrations" }),
+      pagination: null,
+    });
+    expect(screen.getByText("No integration failures need review")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear Source filter" }));
+    expect(push).toHaveBeenCalledWith("/admin/failed-jobs", { scroll: false });
   });
 
   it("speaks of integrations when that is all the person can see", () => {

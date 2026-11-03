@@ -10,7 +10,7 @@ import {
   hasFailedJobsFilters,
   parseFailedJobsSearch,
 } from "./failed-jobs-search";
-import { failedJobsViewTabs, pageSummary } from "./failed-jobs.vm";
+import { failedJobsEmpty, failedJobsViewTabs, pageSummary } from "./failed-jobs.vm";
 
 describe("parseFailedJobsSearch", () => {
   it("defaults to the jobs that need review, newest failure first", () => {
@@ -47,6 +47,7 @@ describe("parseFailedJobsSearch", () => {
     expect(hasFailedJobsFilters(parseFailedJobsSearch({ view: "discarded" }))).toBe(false);
     expect(hasFailedJobsFilters(parseFailedJobsSearch({ q: "invoice" }))).toBe(true);
     expect(hasFailedJobsFilters(parseFailedJobsSearch({ queue: "email" }))).toBe(true);
+    expect(hasFailedJobsFilters(parseFailedJobsSearch({ source: "integrations" }))).toBe(false);
   });
 });
 
@@ -168,5 +169,30 @@ describe("failedJobTimeline", () => {
       lastFailedAt: emailJobDetail.firstFailedAt,
     });
     expect(events.map((event) => event.title)).toEqual(["Failed on its only attempt"]);
+  });
+});
+
+describe("pageSummary with groups", () => {
+  it("says how many rows identical failures make when the whole list fits", () => {
+    expect(
+      pageSummary(0, 16, 16, { groups: 4, noun: { one: "delivery", other: "deliveries" } }),
+    ).toBe("4 groups · 16 deliveries");
+  });
+
+  it("adds the group count to a page of a longer list", () => {
+    expect(pageSummary(0, 50, 312, { groups: 41 })).toBe("1–50 of 312 jobs · 41 groups");
+  });
+
+  it("stays as it was when nothing is grouped", () => {
+    expect(pageSummary(0, 3, 3, { groups: 3 })).toBe("3 jobs");
+  });
+});
+
+describe("failedJobsEmpty", () => {
+  it("speaks of integrations when that is what is being shown", () => {
+    expect(failedJobsEmpty("needs_review", "integrations").title).toBe(
+      "No integration failures need review",
+    );
+    expect(failedJobsEmpty("needs_review", "").title).toBe("No failed jobs need review");
   });
 });
