@@ -152,6 +152,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@auction/alerts':
+        specifier: workspace:*
+        version: link:../../packages/alerts
       '@auction/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -853,6 +856,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@auction/alerts':
+        specifier: workspace:*
+        version: link:../../packages/alerts
       '@auction/api':
         specifier: workspace:*
         version: link:../api
@@ -1080,6 +1086,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@auction/alerts':
+        specifier: workspace:*
+        version: link:../../packages/alerts
       '@auction/background-runtime':
         specifier: workspace:*
         version: link:../../packages/background-runtime
@@ -1254,6 +1263,25 @@ importers:
         specifier: ^3.0.5
         version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.21.0)(yaml@2.9.1)
 
+  packages/alerts:
+    dependencies:
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
+
   packages/auth:
     dependencies:
       '@auction/identity-contracts':
@@ -1383,6 +1411,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@auction/alerts':
+        specifier: workspace:*
+        version: link:../alerts
       '@auction/identity-contracts':
         specifier: workspace:*
         version: link:../identity-contracts
@@ -1442,6 +1473,9 @@ importers:
 
   packages/email:
     dependencies:
+      '@auction/alerts':
+        specifier: workspace:^
+        version: link:../alerts
       '@auction/branding':
         specifier: workspace:^
         version: link:../branding
@@ -1832,6 +1866,9 @@ importers:
 
   packages/persistence:
     dependencies:
+      '@auction/alerts':
+        specifier: workspace:*
+        version: link:../alerts
       '@auction/db':
         specifier: workspace:*
         version: link:../db

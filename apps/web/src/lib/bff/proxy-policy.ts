@@ -1,5 +1,6 @@
 const APPROVED_ROOTS = new Set([
   "admin",
+  "alerts",
   "artists",
   "auth",
   "bids",

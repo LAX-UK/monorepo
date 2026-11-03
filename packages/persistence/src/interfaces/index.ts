@@ -62,10 +62,6 @@ export type { IEmailSuppressionRepository } from "./email-suppression.repository
 export type { IEmailWebhookIngestRepository } from "./email-webhook-ingest.repository.js";
 
 export type { INewsletterSignupRepository } from "./newsletter-signup.repository.js";
-export type {
-  IVisitorSaleAlertRepository,
-  VisitorSaleAlertRecord,
-} from "./visitor-sale-alert.repository.js";
 
 export type { IWebhookEventRepository, WebhookEventDrainRow } from "./webhook-event.repository.js";
 export type {
@@ -1158,6 +1154,11 @@ export type {
   NewDisputeCase,
 } from "./dispute-case.repository.js";
 
+export type {
+  AnnouncedSale,
+  IBidAlertSaleNoticeWriter,
+  IBidAlertSaleReader,
+} from "./bid-alert-sale.js";
 export {
   BuyerDefaultConflictError,
   type BuyerDefaultLotFacts,

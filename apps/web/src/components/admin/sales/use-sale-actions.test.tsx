@@ -5,13 +5,16 @@ import { type SaleActionTarget, useSaleActions } from "./use-sale-actions";
 const refresh = vi.fn();
 const cancelAction = vi.fn();
 const deleteAction = vi.fn();
+const publishAction = vi.fn();
+const previewAction = vi.fn();
 const notifySuccess = vi.fn();
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations", () => ({
   adminCancelSaleResultAction: (...args: unknown[]) => cancelAction(...args),
   adminMarkSaleEndedResultAction: vi.fn(),
-  adminPublishSaleResultAction: vi.fn(),
+  adminPublishSaleResultAction: (...args: unknown[]) => publishAction(...args),
+  adminSaleAnnouncePreviewAction: (...args: unknown[]) => previewAction(...args),
   adminUnpublishSaleResultAction: vi.fn(),
 }));
 vi.mock("@/lib/actions/admin-sales", () => ({
@@ -57,7 +60,15 @@ function Harness({
 
 describe("useSaleActions", () => {
   beforeEach(() => {
-    for (const fn of [refresh, cancelAction, deleteAction, notifySuccess]) fn.mockReset();
+    for (const fn of [
+      refresh,
+      cancelAction,
+      deleteAction,
+      notifySuccess,
+      publishAction,
+      previewAction,
+    ])
+      fn.mockReset();
   });
 
   it("offers nothing to a role that cannot manage sales", () => {
@@ -92,5 +103,48 @@ describe("useSaleActions", () => {
     expect(screen.queryByRole("button", { name: "End onsite sale…" })).not.toBeInTheDocument();
     rerender(<Harness target={{ ...sale, saleroom: true }} />);
     expect(screen.getByRole("button", { name: "End onsite sale…" })).toBeInTheDocument();
+  });
+
+  describe("publishing", () => {
+    const draft: SaleActionTarget = { ...sale, status: "draft" };
+
+    it("shows the Announce box ticked, with how many people it reaches", async () => {
+      previewAction.mockResolvedValue({ ok: true, data: { subscribers: 1284 } });
+      publishAction.mockResolvedValue({ ok: true });
+      render(<Harness target={draft} />);
+      fireEvent.click(screen.getByRole("button", { name: "Publish sale" }));
+      const box = await screen.findByRole("checkbox", {
+        name: /Announce to sale alert subscribers/,
+      });
+      expect(box).toBeChecked();
+      expect(screen.getByText(/1,284 people, in the next 08:00 email/)).toBeInTheDocument();
+      fireEvent.click(
+        screen.getAllByRole("button", { name: "Publish sale" }).at(-1) as HTMLElement,
+      );
+      await waitFor(() => expect(publishAction).toHaveBeenCalledWith("sale_1", { announce: true }));
+    });
+
+    it("publishes without announcing when the box is unticked", async () => {
+      previewAction.mockResolvedValue({ ok: true, data: { subscribers: 1 } });
+      publishAction.mockResolvedValue({ ok: true });
+      render(<Harness target={draft} />);
+      fireEvent.click(screen.getByRole("button", { name: "Publish sale" }));
+      fireEvent.click(await screen.findByRole("checkbox", { name: /Announce/ }));
+      expect(screen.getByText(/1 person, in the next 08:00 email/)).toBeInTheDocument();
+      fireEvent.click(
+        screen.getAllByRole("button", { name: "Publish sale" }).at(-1) as HTMLElement,
+      );
+      await waitFor(() =>
+        expect(publishAction).toHaveBeenCalledWith("sale_1", { announce: false }),
+      );
+    });
+
+    it("still offers the box when the count cannot be read", async () => {
+      previewAction.mockResolvedValue({ ok: false, error: "down" });
+      render(<Harness target={draft} />);
+      fireEvent.click(screen.getByRole("button", { name: "Publish sale" }));
+      expect(await screen.findByRole("checkbox", { name: /Announce/ })).toBeChecked();
+      expect(screen.getByText(/They get it in the next 08:00 email/)).toBeInTheDocument();
+    });
   });
 });

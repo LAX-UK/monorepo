@@ -8,7 +8,7 @@ export { DrizzlePersonEmailDeliveryReader } from "./drizzle-person-email-deliver
 export { DrizzleEmailSuppressionRepository } from "./drizzle-email-suppression.repository.js";
 export { DrizzleEmailWebhookIngestRepository } from "./drizzle-email-webhook-ingest.repository.js";
 export { DrizzleNewsletterSignupRepository } from "./drizzle-newsletter-signup.repository.js";
-export { DrizzleVisitorSaleAlertRepository } from "./drizzle-visitor-sale-alert.repository.js";
+export * from "./bid-alerts/index.js";
 export { DrizzleWebhookEventRepository } from "./drizzle-webhook-event.repository.js";
 export { DrizzleExternalAccountRepository } from "./drizzle-external-account.repository.js";
 export { DrizzleUploadObjectReader } from "./drizzle-upload-object.reader.js";

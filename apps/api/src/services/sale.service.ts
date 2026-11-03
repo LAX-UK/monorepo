@@ -20,7 +20,7 @@ import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.
 import type { IMediaAssetEnricher } from "./interfaces/media-asset-enricher.js";
 import type { IMediaUrlResolver } from "./interfaces/media-url-resolver.js";
 import type { IQrCodeService } from "./interfaces/qr-code-service.js";
-import type { ISalePublishService } from "./interfaces/sale-publish.js";
+import type { ISalePublishService, SalePublishOptions } from "./interfaces/sale-publish.js";
 import type { ISaleService, PublicCatalogueLot } from "./interfaces/sale-service.js";
 import { createSale } from "./sale/sale-create.js";
 import {
@@ -164,8 +164,9 @@ export class SaleService implements ISaleService {
     userRole: string,
     saleId: string,
     userStaffRoles?: StaffRoles | undefined,
+    options?: SalePublishOptions,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-    return this.publishService.publish(userId, userRole, saleId, userStaffRoles);
+    return this.publishService.publish(userId, userRole, saleId, userStaffRoles, options);
   }
 
   async unpublish(

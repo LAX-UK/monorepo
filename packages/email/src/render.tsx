@@ -35,6 +35,8 @@ import AccountSuspendedEmail, {
 import AdminImpersonationNoticeEmail, {
   subject as adminImpersonationNoticeSubject,
 } from "./templates/admin-impersonation-notice.js";
+import AlertConfirmEmail, { subject as alertConfirmSubject } from "./templates/alert-confirm.js";
+import AlertDigestEmail, { subject as alertDigestSubject } from "./templates/alert-digest.js";
 import AmlComplianceReviewNoticeEmail, {
   subject as amlComplianceReviewNoticeSubject,
 } from "./templates/aml-compliance-review-notice.js";
@@ -239,6 +241,9 @@ import ShopZohoDeadLetterNoticeEmail, {
   subject as shopZohoDeadLetterNoticeSubject,
 } from "./templates/shop-zoho-dead-letter-notice.js";
 import SignInLink, { subject as signInLinkSubject } from "./templates/sign-in-link.js";
+import SignInMethodRemovedEmail, {
+  subject as signInMethodRemovedSubject,
+} from "./templates/sign-in-method-removed.js";
 import SocialAccountLinkedEmail, {
   subject as socialAccountLinkedSubject,
 } from "./templates/social-account-linked.js";
@@ -285,9 +290,6 @@ import SubmissionRejectedEmail, {
   subject as submissionRejectedSubject,
 } from "./templates/submission-rejected.js";
 import VerifyEmail, { subject as verifyEmailSubject } from "./templates/verify-email.js";
-import VisitorAlertConfirmEmail, {
-  subject as visitorAlertConfirmSubject,
-} from "./templates/visitor-alert-confirm.js";
 import WatchedLotReminderEmail, {
   subject as watchedLotReminderSubject,
 } from "./templates/watched-lot-reminder.js";
@@ -373,6 +375,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "email-changed": {
     subject: emailChangedSubject,
     component: (vars) => <EmailChangedEmail {...vars} />,
+  },
+  "sign-in-method-removed": {
+    subject: signInMethodRemovedSubject,
+    component: (vars) => <SignInMethodRemovedEmail {...vars} />,
   },
   "phone-removed": {
     subject: phoneRemovedSubject,
@@ -641,9 +647,13 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: shopOrderReceiptSubject,
     component: (vars) => <ShopOrderReceiptEmail {...vars} />,
   },
-  "visitor-alert-confirm": {
-    subject: visitorAlertConfirmSubject,
-    component: (vars) => <VisitorAlertConfirmEmail {...vars} />,
+  "alert-confirm": {
+    subject: alertConfirmSubject,
+    component: (vars) => <AlertConfirmEmail {...vars} />,
+  },
+  "alert-digest": {
+    subject: alertDigestSubject,
+    component: (vars) => <AlertDigestEmail {...vars} />,
   },
   "shop-guest-order-link": {
     subject: shopGuestOrderLinkSubject,

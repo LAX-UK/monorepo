@@ -129,6 +129,7 @@ This catalog is the contract between event producers and projectors. When you ad
 | `user.email_verified` | apps/auth | zoho, marketing_contacts | Email verification token redeemed | `{userId, email, verifiedAt}` |
 | `user.profile_updated` | apps/auth | bid identity directory, product lifecycle projectors | Identity contact/display field changed | `{schemaVersion, subjectId, email?, name?, phone?, image?, updatedAt}` |
 | `subject.data_export_requested` | apps/auth | worker `subject-data-export` job (not yet built) | A person asked LAX Account for a copy of their data | `{schemaVersion, subjectId, exportId}` (aggregate type `subject_data_export`, id = exportId; ids only) |
+| `user.sign_in_method_unlinked` | apps/auth | none yet (audit record) | A person removed a Google or Apple sign-in in LAX Account | `{schemaVersion, subjectId, provider, unlinkedAt}` |
 | `user.deletion_requested` | apps/auth | bid identity directory, shop identity projection, marketing contacts | Self-serve account deletion requested | `{schemaVersion, subjectId, requestedAt}` |
 | `user.deletion_cancelled` | apps/auth | bid identity directory, shop identity projection, marketing contacts, zoho | Pending account deletion cancelled | `{schemaVersion, subjectId, cancelledAt}` |
 | `user.deletion_held` | apps/auth | bid identity directory (staff work inbox) | The daily purge found something open and kept the details | `{schemaVersion, subjectId, heldAt, reasons[{code, message, href}]}` |

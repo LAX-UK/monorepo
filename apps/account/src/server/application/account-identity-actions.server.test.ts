@@ -12,6 +12,7 @@ const identity = {
   removePhone: vi.fn(),
   changePassword: vi.fn(),
   regenerateBackupCodes: vi.fn(),
+  unlinkSignInMethod: vi.fn(),
   requestDeletion: vi.fn(),
   cancelDeletion: vi.fn(),
 };
@@ -26,6 +27,7 @@ const {
   changePasswordAction,
   confirmEmailChangeAction,
   regenerateBackupCodesAction,
+  removeSignInMethodAction,
   renameAccountAction,
   requestAccountDeletionAction,
   sendPhoneCodeAction,
@@ -43,6 +45,52 @@ describe("account identity actions", () => {
     vi.resetAllMocks();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     loadAccountRecord.mockResolvedValue({ ...ACTOR, subject: "subject" });
+  });
+
+  describe("removeSignInMethodAction", () => {
+    it("removes the provider as the signed-in person and says every other device was signed out", async () => {
+      identity.unlinkSignInMethod.mockResolvedValue({
+        status: "ok",
+        value: { unlinked: "google", revokedSessions: 2 },
+      });
+      expect(await removeSignInMethodAction("google")).toEqual({
+        status: "ok",
+        message: "Google sign-in has been removed. Every other device has been signed out.",
+      });
+      expect(identity.unlinkSignInMethod).toHaveBeenCalledWith(ACTOR, "google");
+    });
+
+    it("refuses an unknown provider before calling the issuer", async () => {
+      expect(await removeSignInMethodAction("credential")).toMatchObject({ status: "error" });
+      expect(identity.unlinkSignInMethod).not.toHaveBeenCalled();
+    });
+
+    it("explains the last-method refusal", async () => {
+      identity.unlinkSignInMethod.mockResolvedValue({
+        status: "rejected",
+        reason: "last_sign_in_method",
+      });
+      expect(await removeSignInMethodAction("google")).toEqual({
+        status: "error",
+        message: expect.stringContaining("only way you can sign in"),
+      });
+    });
+
+    it("sends the person through a fresh sign-in when theirs is too old", async () => {
+      identity.unlinkSignInMethod.mockResolvedValue({ status: "reauth_required" });
+      expect(await removeSignInMethodAction("apple")).toEqual({ status: "reauth_required" });
+    });
+
+    it("sends the person to sign in when they have no session", async () => {
+      loadAccountRecord.mockResolvedValue(null);
+      expect(await removeSignInMethodAction("apple")).toEqual({ status: "reauth_required" });
+      expect(identity.unlinkSignInMethod).not.toHaveBeenCalled();
+    });
+
+    it("reports an unreachable issuer as a retryable failure", async () => {
+      identity.unlinkSignInMethod.mockResolvedValue({ status: "unavailable" });
+      expect(await removeSignInMethodAction("google")).toMatchObject({ status: "error" });
+    });
   });
 
   it("renames as the signed-in person", async () => {

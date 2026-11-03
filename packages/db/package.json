@@ -51,6 +51,7 @@
     "db:seed:press-demo": "tsx scripts/seed-press-hub-demo.ts"
   },
   "dependencies": {
+    "@auction/alerts": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
     "@auction/identity-db": "workspace:*",
     "@auction/types": "workspace:*",

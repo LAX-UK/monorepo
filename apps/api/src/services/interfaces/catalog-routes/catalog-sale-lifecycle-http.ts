@@ -44,6 +44,8 @@ export interface ICatalogSaleLifecycleHttpApplicationService {
     role: UserRole;
     saleId: string;
     staffRoles: StaffRoles | undefined;
+    /** False when staff unticked "Announce": the sale is marked announced and tells nobody. */
+    announce?: boolean | undefined;
   }): Promise<CatalogRouteOutcome<PresentedSaleWithLots>>;
 
   unpublish(input: {

@@ -6,6 +6,7 @@ import {
   adminCancelSaleResultAction,
   adminMarkSaleEndedResultAction,
   adminPublishSaleResultAction,
+  adminSaleAnnouncePreviewAction,
   adminUnpublishSaleResultAction,
 } from "@/lib/admin/catalog-lifecycle/admin-catalog-lifecycle-mutations";
 import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
@@ -46,14 +47,25 @@ export function useSaleActions(
   const { afterDelete, onConnectRequired } = options;
 
   const publish = useCallback(
-    (sale: SaleActionTarget) =>
+    async (sale: SaleActionTarget) => {
+      // The count is a courtesy: if it cannot be read the box still works, without a number.
+      const preview = await adminSaleAnnouncePreviewAction(sale.id).catch(() => null);
+      const subscribers = preview?.ok ? (preview.data?.subscribers ?? null) : null;
       ask({
         title: `Publish ${sale.title}?`,
         description:
           "The sale and its lots are scheduled and appear to bidders on the site. Registrations open as set in the sale.",
         confirmLabel: "Publish sale",
-        run: async () => {
-          const result = await adminPublishSaleResultAction(sale.id);
+        option: {
+          label: "Announce to sale alert subscribers",
+          description:
+            subscribers === null
+              ? "They get it in the next 08:00 email. Clients also see it in the app now."
+              : `${subscribers.toLocaleString("en-GB")} ${subscribers === 1 ? "person" : "people"}, in the next 08:00 email. Clients also see it in the app now.`,
+          defaultChecked: true,
+        },
+        run: async ({ option }) => {
+          const result = await adminPublishSaleResultAction(sale.id, { announce: option });
           return result.ok
             ? result
             : {
@@ -67,7 +79,8 @@ export function useSaleActions(
           onConnectRequired(failure.error);
           return true;
         },
-      }),
+      });
+    },
     [ask, onConnectRequired],
   );
 

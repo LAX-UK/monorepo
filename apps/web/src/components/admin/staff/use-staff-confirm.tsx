@@ -2,9 +2,16 @@
 
 import { redirectToHostedReauth } from "@/lib/auth/step-up/use-step-up-coordinator";
 import { notify } from "@/lib/ui/notify";
-import { ConfirmActionDialog, type ConfirmReason, Notice, useStaffStepUp } from "@auction/staff-ui";
+import {
+  ChoiceRow,
+  ConfirmActionDialog,
+  type ConfirmReason,
+  Notice,
+  StaffCheckbox,
+  useStaffStepUp,
+} from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useCallback, useState, useTransition } from "react";
+import { type ReactNode, useCallback, useId, useState, useTransition } from "react";
 
 /** What a staff server action answers: success, or a failure with the API's message and code. */
 export type StaffActionResult =
@@ -30,7 +37,9 @@ export type StaffConfirmRequest = {
   body?: ReactNode;
   /** "withdraw this lot", for "To withdraw this lot, sign in again". */
   stepUpAction?: string;
-  run: (details: { reason: string }) => Promise<StaffActionResult>;
+  /** A choice the person makes in the dialog, sent to `run` as `option`. */
+  option?: { label: string; description?: ReactNode; defaultChecked: boolean };
+  run: (details: { reason: string; option: boolean }) => Promise<StaffActionResult>;
   /** The toast once it is done: "Blue Interior withdrawn". */
   success: string;
   /** A line under the toast, read once the action has run: "Sending the change to ATG now." */
@@ -51,11 +60,14 @@ export function useStaffConfirm() {
   const router = useRouter();
   const [request, setRequest] = useState<StaffConfirmRequest | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [optionOn, setOptionOn] = useState(false);
+  const optionId = useId();
   const [busy, startTransition] = useTransition();
   const stepUp = useStaffStepUp({ onReauthenticate: redirectToHostedReauth });
 
   const ask = useCallback((next: StaffConfirmRequest) => {
     setFailure(null);
+    setOptionOn(next.option?.defaultChecked ?? false);
     setRequest(next);
   }, []);
 
@@ -69,7 +81,7 @@ export function useStaffConfirm() {
     if (!current) return;
     setFailure(null);
     startTransition(async () => {
-      const result = await current.run(details);
+      const result = await current.run({ ...details, option: optionOn });
       if (result.ok) {
         close();
         const description = current.successDescription?.();
@@ -110,7 +122,7 @@ export function useStaffConfirm() {
           ? { typedConfirmation: request.typedConfirmation }
           : {})}
       >
-        {failure || request?.body ? (
+        {failure || request?.body || request?.option ? (
           <>
             {failure ? (
               <Notice tone="danger" alert title="That did not go through">
@@ -118,6 +130,21 @@ export function useStaffConfirm() {
               </Notice>
             ) : null}
             {request?.body}
+            {request?.option ? (
+              <ChoiceRow
+                htmlFor={optionId}
+                label={request.option.label}
+                description={request.option.description}
+                control={
+                  <StaffCheckbox
+                    id={optionId}
+                    checked={optionOn}
+                    disabled={busy}
+                    onCheckedChange={(on) => setOptionOn(on === true)}
+                  />
+                }
+              />
+            ) : null}
           </>
         ) : null}
       </ConfirmActionDialog>

@@ -20,6 +20,8 @@ export const OPTIONAL_EMAIL_TEMPLATES = [
   "consignment-update",
   "shop-edition-available-notify",
   "shop-release-alert",
+  "alert-confirm",
+  "alert-digest",
 ] as const satisfies readonly TemplateName[];
 
 const OPTIONAL_SET: ReadonlySet<string> = new Set(OPTIONAL_EMAIL_TEMPLATES);

@@ -46,10 +46,25 @@ export class AdminSaleService implements IAdminSaleService {
     });
   }
 
-  async publish(id: string): Promise<ServiceResult<Record<string, unknown>>> {
+  async publish(
+    id: string,
+    options?: { announce?: boolean },
+  ): Promise<ServiceResult<Record<string, unknown>>> {
     return this.api.json<Record<string, unknown>>(`/sales/${encodeURIComponent(id)}/publish`, {
       method: "POST",
+      ...(options?.announce === undefined
+        ? {}
+        : {
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ announce: options.announce }),
+          }),
     });
+  }
+
+  async announcePreview(id: string): Promise<ServiceResult<{ data: { subscribers: number } }>> {
+    return this.api.json<{ data: { subscribers: number } }>(
+      `/admin/sales/${encodeURIComponent(id)}/announce-preview`,
+    );
   }
 
   async unpublish(id: string): Promise<ServiceResult<Record<string, unknown>>> {

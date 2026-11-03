@@ -4,6 +4,7 @@ import type {
   AccountDeletionStatus,
   AccountSecurityFactsResponse,
   AccountSession,
+  AccountSignInMethodsResponse,
 } from "@auction/identity-contracts";
 import { decodeJwt } from "jose";
 import { getLaxAccountContainer } from "../container";
@@ -26,6 +27,8 @@ export type AccountSessionState =
       liveAddresses: IdentityCallResult<AccountAddress[]> | null;
       /** Present only when requested, and null when the issuer could not answer. */
       liveDeletion: AccountDeletionStatus | null;
+      /** Present only when requested. */
+      liveSignInMethods: IdentityCallResult<AccountSignInMethodsResponse> | null;
     }
   | { status: "unsigned" }
   /** The session store could not be reached, so the person's state is unknown. */
@@ -55,6 +58,8 @@ export type LoadAccountSessionOptions = {
   withLiveAddresses?: boolean;
   /** Ask the issuer whether the account can be deleted, which asks every product. */
   withLiveDeletion?: boolean;
+  /** Ask the issuer for the password and linked social sign-ins. */
+  withLiveSignInMethods?: boolean;
 };
 
 /** Only the pages that show a live fact pay for its extra issuer request. */
@@ -66,15 +71,23 @@ export async function loadAccountSession(
     const record = await loadAccountRecord();
     if (!record) return { status: "unsigned" };
     const actor = { accessToken: record.accessToken, sid: record.sid };
-    const [liveSecurity, liveName, liveSessions, liveContact, liveAddresses, liveDeletion] =
-      await Promise.all([
-        options.withLiveSecurity ? securityFacts.read(record.accessToken) : null,
-        options.withLiveName ? identity.readName(actor) : null,
-        options.withLiveSessions ? identity.listSessions(actor) : null,
-        options.withLiveContact ? identity.readContact(actor) : null,
-        options.withLiveAddresses ? identity.listAddresses(actor) : null,
-        options.withLiveDeletion ? identity.readDeletionStatus(actor) : null,
-      ]);
+    const [
+      liveSecurity,
+      liveName,
+      liveSessions,
+      liveContact,
+      liveAddresses,
+      liveDeletion,
+      liveSignInMethods,
+    ] = await Promise.all([
+      options.withLiveSecurity ? securityFacts.read(record.accessToken) : null,
+      options.withLiveName ? identity.readName(actor) : null,
+      options.withLiveSessions ? identity.listSessions(actor) : null,
+      options.withLiveContact ? identity.readContact(actor) : null,
+      options.withLiveAddresses ? identity.listAddresses(actor) : null,
+      options.withLiveDeletion ? identity.readDeletionStatus(actor) : null,
+      options.withLiveSignInMethods ? identity.readSignInMethods(actor) : null,
+    ]);
     const claims = idTokenClaims(record.idToken);
     return {
       status: "ok",
@@ -85,6 +98,7 @@ export async function loadAccountSession(
       liveContact,
       liveAddresses,
       liveDeletion,
+      liveSignInMethods,
     };
   } catch (error) {
     // A Redis outage must not look like a sign-out: the person is still signed in, and sending
