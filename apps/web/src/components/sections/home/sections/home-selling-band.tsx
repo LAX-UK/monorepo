@@ -2,6 +2,7 @@ import { SellCtaLink } from "@/components/marketing/sell-cta-link";
 import { MediaImage } from "@/components/ui/media-image";
 import type { HomeSelling } from "@/lib/home-sections/types";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
+import { SELL_HOW_IT_WORKS_STEPS } from "@/lib/marketing/sell-how-it-works";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { MarketingGalleryTeamBand } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
@@ -10,12 +11,6 @@ import Link from "next/link";
 
 const BODY =
   "Our specialists value paintings, prints, design and collections for free, and tell you which sale suits the work.";
-
-const STEPS = [
-  { title: "Tell us about it", body: "Photos and a few details, in about three minutes." },
-  { title: "Free valuation", body: "A specialist’s estimate within two working days." },
-  { title: "Consign", body: "We catalogue, photograph and sell it, and pay you after the sale." },
-] as const;
 
 function Works({ imageUrls }: { imageUrls: readonly string[] }) {
   if (imageUrls.length === 0) {
@@ -54,7 +49,7 @@ export function HomeSellingBand({ selling }: { selling: HomeSelling }) {
         <MarketingGalleryTeamBand
           eyebrow="Selling with LAX Bid"
           eyebrowTone="neutral"
-          steps={STEPS}
+          steps={SELL_HOW_IT_WORKS_STEPS}
           title="Thinking of selling?"
           body={BODY}
           {...(selling.deadlineNote ? { note: selling.deadlineNote } : {})}
