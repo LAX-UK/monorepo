@@ -14,6 +14,7 @@ import { saleLifecycleActions } from "@/lib/sale/sale-lifecycle-actions";
 import type { LegalEntityMemberRole, SaleDeliveryMode } from "@auction/types";
 import { Button } from "@auction/ui/lax";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import type { SaleHeroVM } from "./view-models";
 
 type BuyerEntity = { id: string; displayName: string; memberRole: LegalEntityMemberRole };
@@ -41,6 +42,8 @@ type Props = {
     registrationPaused?: readonly { id: string; title: string; line: string }[];
   };
   hasApprovedRegistration?: boolean;
+  /** Quiet utility (Share) that sits with the actions, after them. */
+  utility?: ReactNode;
 };
 
 function SaleroomHeroPrimaryCta({
@@ -84,6 +87,7 @@ export function SaleroomHeroActionRow({
   initialFollowing,
   registerToBid,
   hasApprovedRegistration = false,
+  utility,
 }: Props) {
   const actions = saleLifecycleActions(hero.status);
   const registerBase =
@@ -142,6 +146,7 @@ export function SaleroomHeroActionRow({
             label="Notify me"
           />
         ) : null}
+        {utility}
       </div>
       {caption ? (
         <RegisterHelperText className="max-w-xl text-on-surface-variant">
