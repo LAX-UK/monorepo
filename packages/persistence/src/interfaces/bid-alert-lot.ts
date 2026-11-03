@@ -13,6 +13,11 @@ export type AlertableLot = {
   /** Present when the lot carries an estimate; the email shows it instead of the start price. */
   estimate: { low: string; high: string; currency: string } | null;
   startingPrice: string;
+  /**
+   * Whether staff chose to announce the lot's sale, read from the sale's current announcement so a
+   * sale published without "Announce" never produces lot alerts. A lot outside any sale is true.
+   */
+  saleAnnounced: boolean;
 };
 
 export type ArtistWatcher = {
@@ -28,7 +33,7 @@ export type SearchWatcher = {
   query: { q: string; categoryId: string | null };
 };
 
-/** Lots that may be announced: on sale now or scheduled, in a sale the public can see. */
+/** Lots that are on sale now or scheduled, in a sale the public can see. */
 export interface IBidAlertLotReader {
   findAlertable(lotIds: readonly string[]): Promise<AlertableLot[]>;
   /** Of these lots, the ones the public search page would show for this query. */
