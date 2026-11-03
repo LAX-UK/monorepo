@@ -82,7 +82,7 @@ export function MarketingPagination({
             {prev.label ?? "Previous"}
           </button>
         )}
-        <div className="flex items-center gap-6 md:gap-8">
+        <div className="flex items-center gap-6 pointer-coarse:gap-7 md:gap-8">
           {pages.map((p) => (
             <React.Fragment key={p.page}>
               {Link(

@@ -37,7 +37,7 @@ export function MarketingFooterSocials({
   const profiles = socialProfilesFor(product);
   if (profiles.length === 0) return null;
   return (
-    <div className={cn("flex flex-row items-center gap-4", className)}>
+    <div className={cn("flex flex-row items-center gap-4 pointer-coarse:gap-5", className)}>
       {profiles.map(({ network, href, label }) => {
         const Icon = SOCIAL_ICON[network];
         return (
