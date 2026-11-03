@@ -153,6 +153,11 @@ const envSchema = z
     POSTMARK_WEBHOOK_BASIC_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),
     /** Shared secret for the Brevo marketing-contacts webhook (opt-out / bounce ingest). */
     BREVO_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
+    /**
+     * Shared secret the Zoho workflow sends in `X-LAX-Webhook-Secret` with each artwork notice.
+     * Unset, the notice route answers 503 and nothing is stored.
+     */
+    ZOHO_ARTWORK_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
     EMAIL_UNSUBSCRIBE_SECRET: z.string().min(16).default("dev-email-unsubscribe-secret"),
     /** Signs the confirm and stop links in alert emails. Separate from the account unsubscribe secret. */
     ALERT_LINK_SECRET: z.string().min(16).default("dev-alert-link-secret-not-for-production"),
