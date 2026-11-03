@@ -16,6 +16,7 @@ const names = [
   "email-changed",
   "phone-verified",
   "phone-removed",
+  "sign-in-method-removed",
   "social-account-linked",
   "social-account-unlinked",
   "new-device-login",
@@ -29,6 +30,8 @@ const names = [
   "account-deletion-reminder",
   "account-deletion-held",
   "account-deletion-completed",
+  "staff-email-change-confirm",
+  "staff-email-change-notice",
 ] as const;
 
 type AuthTemplateName = (typeof names)[number];
@@ -101,6 +104,10 @@ type AuthTemplateVarsBase = {
   "phone-removed": SecurityNoticeVars & {
     /** Already masked, for example "+44 •••• 1234". */
     maskedPhone: string;
+  };
+  "sign-in-method-removed": SecurityNoticeVars & {
+    /** The provider that was removed, already in display form: "Google" or "Apple". */
+    providerName: string;
   };
   "social-account-linked": {
     provider: "google" | "apple";
@@ -178,6 +185,19 @@ type AuthTemplateVarsBase = {
     /** Which inbox received this message — copy differs for current vs new address. */
     recipient: "current" | "new";
   };
+  /** To the new address once LAX client services have started the change; the person opens the link. */
+  "staff-email-change-confirm": {
+    confirmationUrl: string;
+    oldEmail: string;
+    newEmail: string;
+    userName?: string | null;
+    /** How long the link works. */
+    validForDays: number;
+  };
+  /** To the address on file when LAX client services start moving the account to a new one. */
+  "staff-email-change-notice": SecurityNoticeVars & {
+    newEmail: string;
+  };
 };
 
 /** Shared account mail may say which product the person is acting in; the footer then names its company. */
@@ -202,6 +222,7 @@ export const authTemplates = {
     "email-changed": "snapshot",
     "phone-verified": "live",
     "phone-removed": "live",
+    "sign-in-method-removed": "live",
     "social-account-linked": "live",
     "social-account-unlinked": "live",
     "new-device-login": "live",
@@ -215,6 +236,9 @@ export const authTemplates = {
     "account-deletion-reminder": "live",
     "account-deletion-held": "live",
     "account-deletion-completed": "snapshot",
+    // Each goes to an address the account does not (or no longer) holds, so it is fixed at send.
+    "staff-email-change-confirm": "snapshot",
+    "staff-email-change-notice": "snapshot",
   },
 } satisfies TemplateDomainSlice<AuthTemplateName, AuthTemplateVars>;
 

@@ -33,6 +33,7 @@
     "check:compliance-dip": "node scripts/check-compliance-routes-dip.mjs"
   },
   "dependencies": {
+    "@auction/alerts": "workspace:*",
     "@auction/auth": "workspace:*",
     "@auction/background-runtime": "workspace:*",
     "@auction/bidding-runtime": "workspace:*",

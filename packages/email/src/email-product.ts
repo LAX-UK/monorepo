@@ -42,6 +42,10 @@ export function emailProductFor<T extends TemplateName>(
       ? "shop"
       : "art";
   }
+  // Alert mail names the product whose alerts it carries.
+  if (template === "alert-confirm" || template === "alert-digest") {
+    return (vars as TemplateVarsByName["alert-confirm"]).product;
+  }
   if (SHOP_TEMPLATES.has(template)) return "shop";
   return "bid";
 }

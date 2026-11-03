@@ -5,6 +5,7 @@ import {
   createSaleSchema,
   deleteSaleBodySchema,
   markSaleEndedBodySchema,
+  publishSaleBodySchema,
   saleIdParamSchema,
   updateSaleSchema,
 } from "@auction/validators";
@@ -67,9 +68,17 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
     const role = (c.get("userRole") ?? "client") as UserRole;
     const staffRoles = c.get("userStaffRoles");
     const { id } = c.req.valid("param");
+    // The body is optional: older callers publish with none and the sale is announced.
+    const body = publishSaleBodySchema.safeParse(await c.req.json().catch(() => ({})));
     return respondCatalogRouteOutcome(
       c,
-      await http().publish({ userId, role, saleId: id, staffRoles }),
+      await http().publish({
+        userId,
+        role,
+        saleId: id,
+        staffRoles,
+        announce: body.success ? body.data.announce : undefined,
+      }),
     );
   });
 

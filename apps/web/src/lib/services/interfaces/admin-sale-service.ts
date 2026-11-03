@@ -22,7 +22,13 @@ export type BulkSalesBody = z.infer<typeof bulkSalesBodySchema>;
 export interface IAdminSaleService {
   create(input: CreateSaleInput): Promise<ServiceResult<{ id: string }>>;
   update(id: string, input: UpdateSaleInput): Promise<ServiceResult<Record<string, unknown>>>;
-  publish(id: string): Promise<ServiceResult<Record<string, unknown>>>;
+  /** `announce: false` publishes without telling sale alert subscribers. */
+  publish(
+    id: string,
+    options?: { announce?: boolean },
+  ): Promise<ServiceResult<Record<string, unknown>>>;
+  /** How many people the sale alert would reach, for the box beside the publish button. */
+  announcePreview(id: string): Promise<ServiceResult<{ data: { subscribers: number } }>>;
   unpublish(id: string): Promise<ServiceResult<Record<string, unknown>>>;
   cancel(id: string, body: CancelSaleBody): Promise<ServiceResult<Record<string, unknown>>>;
   softDelete(id: string, confirmationPhrase: string): Promise<ServiceResult<void>>;

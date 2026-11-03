@@ -11,6 +11,7 @@ import { createAuthMetrics } from "./container/create-auth-metrics.js";
 import { createAuthRepositories } from "./container/create-auth-repositories.js";
 import { createAuthRequestHandler } from "./container/create-auth-request-handler.js";
 import { createAuthSchedules } from "./container/create-auth-schedules.js";
+import { createDataRequests } from "./container/create-data-requests.js";
 import { createIdentityAddressService } from "./container/create-identity-address-service.js";
 import { createIdentityDeletionPurgeService } from "./container/create-identity-deletion-purge-service.js";
 import { createIdentityLifecycleService } from "./container/create-identity-lifecycle-service.js";
@@ -19,6 +20,7 @@ import { createOidcRouteServices } from "./container/create-oidc-route-services.
 import { createRefreshTokenFamilyRepository } from "./container/create-refresh-token-family-repository.js";
 import { createRefreshedIdTokenService } from "./container/create-refreshed-id-token-service.js";
 import {
+  createDurableCredentialEmail,
   createDurableSecurityEffects,
   createSecurityNoticeService,
 } from "./container/create-security-services.js";
@@ -30,6 +32,7 @@ import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.
 import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
 import { AccountDeletionService } from "./services/account-deletion.service.js";
 import { EmailChangeService } from "./services/email-change.service.js";
+import { StaffEmailChangeService } from "./services/staff-email-change.service.js";
 import { createSubjectReadRateLimiter } from "./services/subject-read-rate-limiter.js";
 import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
 import { SubjectExportReader } from "./subject-export/subject-export-reader.service.js";
@@ -110,6 +113,11 @@ const auth = createAuthIssuer({
   redis,
   log,
   email: emailSender,
+  credentialEmail: createDurableCredentialEmail({
+    db,
+    email: emailSender,
+    log: withAlertingLog(log),
+  }),
   phoneVerification,
   trustedOrigins: webOrigins,
   logout: services.oidc.logout,
@@ -132,6 +140,7 @@ const durableSecurityEffects = createDurableSecurityEffects({
     logout: services.oidc.logout,
     events: repositories.identityEventPublisher,
     notices: securityNotices,
+    email: emailSender,
   },
   log: withAlertingLog(log),
 });
@@ -147,6 +156,16 @@ const emailChange = new EmailChangeService({
       : {}),
   },
 });
+const staffEmailChange = new StaffEmailChangeService({
+  operations: identityOperations,
+  email: emailSender,
+  authSecret: env.BETTER_AUTH_SECRET,
+  confirmationPage: env.LAX_ACCOUNT_ORIGIN
+    ? `${env.LAX_ACCOUNT_ORIGIN.replace(/\/+$/, "")}/account/email-change`
+    : undefined,
+  secureAccountUrl: `${accountOrigin}/account/security`,
+  audit: (entry, message) => log.info(entry, message),
+});
 const accountDeletion = new AccountDeletionService({
   operations: identityOperations,
   notices: securityNotices,
@@ -160,6 +179,15 @@ const subjectExports = createSubjectExportService({
   operations: identityOperations,
   events: repositories.identityEventPublisher,
   notices: securityNotices,
+});
+const dataRequests = createDataRequests(db);
+const dataRequestsRateLimit = createSubjectReadRateLimiter({
+  redis,
+  keyPrefix: "rl:auth-issuer:data-requests",
+  windowSec: 60,
+  max: 600,
+  failClosed: true,
+  onError: (error) => log.warn({ err: error }, "data_requests_rate_limit_unavailable"),
 });
 const identityLifecycle = createIdentityLifecycleService({
   db,
@@ -207,6 +235,10 @@ const schedules = await createAuthSchedules({
   ssfStreams: services.ssf.streams,
   ssfDelivery: services.ssf.delivery,
   subjectExports,
+  dataRequestRetention: {
+    writer: dataRequests.writer,
+    retentionDays: env.DATA_REQUEST_CONTACT_RETENTION_DAYS,
+  },
   alertLog: withAlertingLog(log),
   ssfEnabled: env.SSF_DELIVERY_ENABLED,
   ssfTimeoutMs: env.SSF_DELIVERY_TIMEOUT_MS,
@@ -263,6 +295,32 @@ const internal =
                       log.warn({ err: error }, "subject_export_read_rate_limit_unavailable"),
                   }),
                   onFailure: (error) => log.error({ err: error }, "subject_export_failed"),
+                },
+              }
+            : {}),
+          ...(env.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID &&
+          env.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_SECRET
+            ? {
+                staffEmailChange: {
+                  changes: staffEmailChange,
+                  redis,
+                  clientId: env.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID,
+                  clientSecret: env.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_SECRET,
+                  onFailure: (error: unknown) =>
+                    log.error({ err: error }, "staff_email_change_failed"),
+                },
+              }
+            : {}),
+          ...(env.DATA_REQUESTS_MACHINE_CLIENT_ID && env.DATA_REQUESTS_MACHINE_CLIENT_SECRET
+            ? {
+                dataRequests: {
+                  requests: dataRequests.service,
+                  redis,
+                  clientId: env.DATA_REQUESTS_MACHINE_CLIENT_ID,
+                  clientSecret: env.DATA_REQUESTS_MACHINE_CLIENT_SECRET,
+                  // Staff use of the screen is slow; this caps a runaway loop, not a working session.
+                  rateLimit: () => dataRequestsRateLimit("staff"),
+                  onFailure: (error: unknown) => log.error({ err: error }, "data_requests_failed"),
                 },
               }
             : {}),

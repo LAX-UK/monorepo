@@ -21,6 +21,8 @@ import type {
   AdminOnboardingIssuesPage,
   AdminOnboardingIssuesPageRow,
 } from "../../admin/admin-onboarding-issues-query.service.js";
+import type { ILiftEmailBlockService } from "../../admin/email-delivery/lift-email-block.service.js";
+import type { IPersonEmailDeliveryService } from "../../admin/email-delivery/person-email-delivery.service.js";
 import type { PaddleServiceError } from "../../paddle.service.js";
 import type { SaleroomCheckInService } from "../../saleroom-check-in.service.js";
 import type { AdminPaddleAssignInput, AdminPaddleClearInput } from "../admin-live-bidding-ports.js";
@@ -139,8 +141,6 @@ export interface IAdminEmailApplicationService {
   }): Promise<EmailOutboxRow[]>;
   listEvents(input: { messageId: string }): Promise<EmailEventRow[]>;
   listSuppressions(input: { limit: number; offset: number }): Promise<EmailSuppressionRow[]>;
-  deleteSuppression(input: { emailHash: string }): Promise<void>;
-  deleteSuppressionsBulk(emailHashes: string[]): Promise<number>;
 }
 
 export interface IAdminOpsReadService {
@@ -268,6 +268,8 @@ export type AdminOperationsRouteServices = {
   manualReviewPayments: IAdminManualReviewPaymentQueryService;
   reviewTasks: IAdminReviewTaskQueryService;
   email: IAdminEmailApplicationService;
+  emailDelivery: IPersonEmailDeliveryService;
+  emailBlockLift: ILiftEmailBlockService;
   display: IAdminSaleroomDisplayService;
   saleroom: IAdminSaleroomApplicationService;
   saleroomCheckIn: IAdminSaleroomCheckInApplicationService;

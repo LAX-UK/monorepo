@@ -3,6 +3,7 @@ export {
   accountBackupCodesSchema,
   type AccountBackupCodesResponse,
 } from "./account-backup-codes.js";
+export * from "./account-sign-in-methods.js";
 export {
   ACCOUNT_PASSWORD_CHANGE_PATH,
   ACCOUNT_PASSWORD_ERRORS,
@@ -171,6 +172,7 @@ export {
   IDENTITY_EVENT_TYPES,
   identityEventPayloadSchemasV1,
   subjectDataExportRequestedPayloadSchemaV1,
+  userSignInMethodUnlinkedPayloadSchemaV1,
   userDeletionCancelledPayloadSchemaV1,
   userDeletionHeldPayloadSchemaV1,
   userDeletionRequestedPayloadSchemaV1,
@@ -184,6 +186,7 @@ export {
   type IdentityEventPayloadV1,
   type IdentityEventType,
   type SubjectDataExportRequestedPayloadV1,
+  type UserSignInMethodUnlinkedPayloadV1,
   type UserDeletionCancelledPayloadV1,
   type UserDeletionHeldPayloadV1,
   type UserDeletionRequestedPayloadV1,
@@ -221,6 +224,7 @@ export type { ConsentRecord, ConsentStore } from "./consent-store.js";
 export * from "./account-addresses.js";
 export { countryToIso } from "./address-country.js";
 export * from "./email-registration.js";
+export * from "./staff-email-change.js";
 export {
   ACCOUNT_DATA_EXPORTS_CURRENT_PATH,
   ACCOUNT_DATA_EXPORTS_DELETE_PATH,
@@ -293,3 +297,5 @@ export {
   type SubjectExportStatus,
   type SubjectExportView,
 } from "./subject-export.js";
+export * from "./data-request-dates.js";
+export * from "./data-requests.js";

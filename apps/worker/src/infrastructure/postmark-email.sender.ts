@@ -2,13 +2,17 @@ import {
   type IEmailSender,
   type TemplateName,
   type TemplateVarsByName,
+  emailProductFor,
   renderEmail,
 } from "@auction/email";
 import postmark from "postmark";
+import { fromForProduct } from "../alerts/sender-from.js";
 
 type PostmarkEmailSenderOptions = {
   serverToken: string;
   from: string;
+  /** Each product's From address; a product without an entry uses `from`. */
+  fromByProduct?: Readonly<Record<string, string>> | undefined;
   replyTo?: string | undefined;
   transactionalStream: string;
   broadcastStream: string;
@@ -34,7 +38,11 @@ export class PostmarkEmailSender implements IEmailSender {
     const unsubscribeUrl = unsubscribeUrlFromVars(payload.vars);
     const unsubscribeToken = postmarkMetadataUnsubscribeToken(unsubscribeUrl);
     const message: postmark.Message = {
-      From: this.opts.from,
+      From: fromForProduct(
+        emailProductFor(payload.template, payload.vars),
+        this.opts.fromByProduct,
+        this.opts.from,
+      ),
       To: payload.to,
       Subject: rendered.subject,
       HtmlBody: rendered.html,

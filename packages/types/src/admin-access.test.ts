@@ -9,6 +9,7 @@ import {
   CLIENT_ACTIVITY_ACCESS,
   CLIENT_BIDS_ACCESS,
   CLIENT_KYC_ACCESS,
+  DATA_REQUESTS_MANAGE_ACCESS,
   EMAIL_ADMIN_ACCESS,
   EMAIL_OBSERVABILITY_ACCESS,
   FINANCE_ACCESS,
@@ -18,13 +19,14 @@ import {
   ONBOARDING_QUEUES_ACCESS,
   PAYOUT_REVERSE_ACCESS,
   QR_CODES_ACCESS,
+  STAFF_EMAIL_CHANGE_ACCESS,
   USERS_DIRECTORY_ACCESS,
   USER_MODERATION_ACCESS,
   USER_PICKER_ACCESS,
   USER_ROLE_MANAGEMENT_ACCESS,
 } from "./admin-access.js";
 import { userHasAccessTo } from "./role-policy.js";
-import type { UserStaffRole } from "./user.js";
+import { type UserStaffRole, userStaffRoles } from "./user.js";
 
 function has(
   staffRole: UserStaffRole,
@@ -32,6 +34,19 @@ function has(
 ): boolean {
   return userHasAccessTo("staff", [staffRole], requirement);
 }
+
+describe("data requests access", () => {
+  it("is Compliance and Administrator only; no other role, Read-only included", () => {
+    const allowed = userStaffRoles.filter((role) => has(role, DATA_REQUESTS_MANAGE_ACCESS));
+    expect(allowed).toEqual(["administrator", "compliance"]);
+    expect(has("read_only", DATA_REQUESTS_MANAGE_ACCESS)).toBe(false);
+    expect(has("client_services", DATA_REQUESTS_MANAGE_ACCESS)).toBe(false);
+  });
+
+  it("is not reached through admin.read or the screening permissions alone", () => {
+    expect(userHasAccessTo("staff", [], DATA_REQUESTS_MANAGE_ACCESS)).toBe(false);
+  });
+});
 
 describe("admin-access requirements", () => {
   it("USERS_DIRECTORY_ACCESS allows administrator and client_services", () => {
@@ -92,6 +107,15 @@ describe("admin-access requirements", () => {
   it("USER_MODERATION_ACCESS allows client_services", () => {
     expect(has("client_services", USER_MODERATION_ACCESS)).toBe(true);
     expect(has("read_only", USER_MODERATION_ACCESS)).toBe(false);
+  });
+
+  it("STAFF_EMAIL_CHANGE_ACCESS allows client_services and administrator only", () => {
+    expect(has("client_services", STAFF_EMAIL_CHANGE_ACCESS)).toBe(true);
+    expect(has("administrator", STAFF_EMAIL_CHANGE_ACCESS)).toBe(true);
+    for (const role of userStaffRoles) {
+      if (role === "client_services" || role === "administrator") continue;
+      expect(has(role, STAFF_EMAIL_CHANGE_ACCESS)).toBe(false);
+    }
   });
 
   it("INVITATIONS_ACCESS allows administrator", () => {

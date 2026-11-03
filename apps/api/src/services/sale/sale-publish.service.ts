@@ -6,7 +6,7 @@ import {
   rollbackSalePublishOnScheduleFailure,
   scheduleJobsFailedError,
 } from "../../lib/lot-schedule-jobs.js";
-import type { ISalePublishService } from "../interfaces/sale-publish.js";
+import type { ISalePublishService, SalePublishOptions } from "../interfaces/sale-publish.js";
 import { assertCanCancelSaleOnAtg } from "../sale-channel-guards.js";
 import {
   publishSaleEvent,
@@ -32,6 +32,7 @@ export class SalePublishService implements ISalePublishService {
     userRole: string,
     saleId: string,
     userStaffRoles?: StaffRoles | undefined,
+    options: SalePublishOptions = {},
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
     const authz = await assertCanPublishSale(userRole, userStaffRoles);
     if (authz.isErr()) return err(authz.error);
@@ -71,6 +72,8 @@ export class SalePublishService implements ISalePublishService {
       to_status: "scheduled",
       lotCount: updatedLots.length,
       deliveryMode: updatedSale.deliveryMode,
+      // Read by the sale alert matcher: unticked marks the sale announced without telling anyone.
+      announce: options.announce !== false,
     });
     return ok({ sale: updatedSale, lots: updatedLots });
   }

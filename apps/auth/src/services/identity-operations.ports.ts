@@ -1,3 +1,6 @@
+import type { SocialSignInProvider } from "@auction/identity-contracts";
+import type { SignInAccountRow } from "./sign-in-method-rules.js";
+
 export type IdentityOperationTransaction = unknown;
 
 export type IdentitySubjectRecord = {
@@ -102,6 +105,19 @@ export interface IIdentitySubjectRepository {
 
 export interface IIdentityCredentialRepository {
   listProviders(subjectId: string): Promise<Array<{ providerId: string; hasPassword: boolean }>>;
+  /** Every account row that can sign the person in, with when it was added. */
+  listSignInAccounts(subjectId: string): Promise<SignInAccountRow[]>;
+  /** The same rows, locked until the transaction ends, so two removals cannot both pass the last-method check. */
+  lockSignInAccounts(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+  ): Promise<SignInAccountRow[]>;
+  /** Removes one linked social account; false when there was none. */
+  deleteSocialAccount(
+    transaction: IdentityOperationTransaction,
+    subjectId: string,
+    provider: SocialSignInProvider,
+  ): Promise<boolean>;
   findCredential(subjectId: string): Promise<{ id: string; passwordHash: string | null } | null>;
   insertCredential(
     transaction: IdentityOperationTransaction,

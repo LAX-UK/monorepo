@@ -53,6 +53,29 @@ const envSchema = z
       emptyToUndefined,
       z.string().min(32).optional(),
     ),
+    /**
+     * The staff-assisted email change's credential for Identity (scope `staff_email_change`),
+     * separate from the lifecycle credential so neither can do the other's work. Without it the
+     * change answers 502.
+     */
+    IDENTITY_STAFF_EMAIL_CHANGE_CLIENT_ID: z.preprocess(
+      emptyToUndefined,
+      z.string().min(1).optional(),
+    ),
+    IDENTITY_STAFF_EMAIL_CHANGE_CLIENT_SECRET: z.preprocess(
+      emptyToUndefined,
+      z.string().min(32).optional(),
+    ),
+    /**
+     * The Data requests screen's credential for Identity (scope `data_requests.staff`), separate
+     * from the lifecycle credential so neither can do the other's work. Without it the screen's
+     * routes answer 503.
+     */
+    IDENTITY_DATA_REQUESTS_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    IDENTITY_DATA_REQUESTS_CLIENT_SECRET: z.preprocess(
+      emptyToUndefined,
+      z.string().min(32).optional(),
+    ),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     /**
      * Legal entity that owns Bid records in the cross-product portfolio. Defaults to Bid's
@@ -131,6 +154,17 @@ const envSchema = z
     /** Shared secret for the Brevo marketing-contacts webhook (opt-out / bounce ingest). */
     BREVO_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     EMAIL_UNSUBSCRIBE_SECRET: z.string().min(16).default("dev-email-unsubscribe-secret"),
+    /** Signs the confirm and stop links in alert emails. Separate from the account unsubscribe secret. */
+    ALERT_LINK_SECRET: z.string().min(16).default("dev-alert-link-secret-not-for-production"),
+    ALERT_LINK_KEY_ID: z.string().min(1).max(32).default("k1"),
+    /** The key being retired during a rotation: still accepted for links already sent. */
+    ALERT_LINK_PREVIOUS_SECRET: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
+    ALERT_LINK_PREVIOUS_KEY_ID: z.preprocess(
+      emptyToUndefined,
+      z.string().min(1).max(32).optional(),
+    ),
+    /** Until when links and routes of the first sale-alerts list still work (about 90 days). */
+    ALERT_LEGACY_LINKS_UNTIL: z.coerce.date().default(new Date("2027-02-15T00:00:00Z")),
     WEBHOOK_EVENTS_ENQUEUE: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),
@@ -487,6 +521,21 @@ const envSchema = z
           path: ["STRIPE_PUBLISHABLE_KEY"],
         });
       }
+    }
+
+    if (appEnv === "production" && e.ALERT_LINK_SECRET.length < 32) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "ALERT_LINK_SECRET is required in production (min 32 characters)",
+        path: ["ALERT_LINK_SECRET"],
+      });
+    }
+    if (Boolean(e.ALERT_LINK_PREVIOUS_SECRET) !== Boolean(e.ALERT_LINK_PREVIOUS_KEY_ID)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "ALERT_LINK_PREVIOUS_SECRET and ALERT_LINK_PREVIOUS_KEY_ID are set together",
+        path: ["ALERT_LINK_PREVIOUS_KEY_ID"],
+      });
     }
 
     // CRON secret required for all deployed environments (prevents misconfigured cron jobs).

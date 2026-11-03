@@ -15,6 +15,7 @@ import {
   AUTH_READ_TABLES,
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
+  WORKER_BID_ALERT_TABLES,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
@@ -355,8 +356,11 @@ describe("migrate-roles invariants", () => {
   });
 
   it("gives auth_app the data export requests, with an append-only audit trail, and denies api_app", () => {
-    expect([...AUTH_EXPORT_TABLES]).toEqual(["subject_data_export"]);
-    expect([...AUTH_EXPORT_AUDIT_TABLES]).toEqual(["subject_data_export_audit"]);
+    expect([...AUTH_EXPORT_TABLES]).toEqual(["subject_data_export", "subject_data_request"]);
+    expect([...AUTH_EXPORT_AUDIT_TABLES]).toEqual([
+      "subject_data_export_audit",
+      "subject_data_request_audit",
+    ]);
     for (const table of [...AUTH_EXPORT_TABLES, ...AUTH_EXPORT_AUDIT_TABLES]) {
       expect([...API_DENY_TABLES]).toContain(table);
       expect([...WORKER_DENY_TABLES]).toContain(table);
@@ -446,6 +450,19 @@ describe("migrate-roles invariants", () => {
 
   it("WORKER_FULL_TABLES includes media_asset (process-image + image-cleanup)", () => {
     expect([...WORKER_FULL_TABLES]).toContain("media_asset");
+  });
+
+  it("lets the worker read and write the Bid alert tables, and never delete from them", () => {
+    expect([...WORKER_BID_ALERT_TABLES].sort()).toEqual([
+      "bid_alert_announcement",
+      "bid_alert_digest",
+      "bid_alert_match",
+      "bid_alert_subscriber",
+      "bid_alert_topic",
+    ]);
+    for (const table of WORKER_BID_ALERT_TABLES) {
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+    }
   });
 
   it("WORKER_QR_CODE_SCAN_TABLES includes scan tables (qr-code-scan worker job)", () => {

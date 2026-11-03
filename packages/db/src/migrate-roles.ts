@@ -34,11 +34,16 @@ export const AUTH_POLICY_TABLES = ["identity_mfa_policy"] as const;
 /** The LAX-wide address book. Products reach it through the issuer, never directly. */
 export const AUTH_ADDRESS_TABLES = ["identity_address"] as const;
 /**
- * "Download my data" requests, owned by Identity. Requests change state, so auth_app updates
- * them; the audit trail is append-only. Neither is ever deleted from, and api_app is denied.
+ * "Download my data" requests and the manual requests staff log, owned by Identity. Requests
+ * change state, so auth_app updates them; the audit trails are append-only. None is ever deleted
+ * from, and api_app and worker_app are denied: the Bid API reaches them through Identity's
+ * internal routes.
  */
-export const AUTH_EXPORT_TABLES = ["subject_data_export"] as const;
-export const AUTH_EXPORT_AUDIT_TABLES = ["subject_data_export_audit"] as const;
+export const AUTH_EXPORT_TABLES = ["subject_data_export", "subject_data_request"] as const;
+export const AUTH_EXPORT_AUDIT_TABLES = [
+  "subject_data_export_audit",
+  "subject_data_request_audit",
+] as const;
 export const AUTH_DENY_TABLES = [
   "email_outbox",
   "email_suppression",
@@ -308,6 +313,17 @@ export const WORKER_KYC_RETENTION_TOMBSTONE_TABLES = ["kyc_retention_tombstone"]
 export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;
 /** The unsold-choice projector stores each unsold outcome's choose-by date, once. */
 export const WORKER_UNSOLD_CHOICE_DEADLINE_TABLES = ["unsold_choice_deadline"] as const;
+/**
+ * The alert engine's Bid tables: the matching projector records matches and announcements, and the
+ * 08:00 digest claims digests, attaches matches and drops stale ones. Nothing is deleted here.
+ */
+export const WORKER_BID_ALERT_TABLES = [
+  "bid_alert_subscriber",
+  "bid_alert_topic",
+  "bid_alert_match",
+  "bid_alert_digest",
+  "bid_alert_announcement",
+] as const;
 /** Worker provisions personal legal entities from `user.registered` domain events. */
 export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
 /** Worker processes async CSV exports and purges expired rows (data-export + purge-expired jobs). */
@@ -736,6 +752,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         /** FK target when inserting scan rows. */
         await grantIfExists(client, "worker_app", "qr_code", "SELECT");
         for (const tableName of WORKER_QR_CODE_SCAN_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_BID_ALERT_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_UNSOLD_CHOICE_DEADLINE_TABLES) {

@@ -1,8 +1,9 @@
-import type { EmailSender } from "@auction/auth";
+import type { CredentialEmailSender, EmailSender } from "@auction/auth";
 import type { IdentityDatabase } from "@auction/identity-db";
 import { DrizzleIdentitySubjectRepository } from "../infrastructure/drizzle-identity-subject-repository.js";
 import { DrizzleKnownDeviceStore } from "../infrastructure/drizzle-known-device.store.js";
 import { DrizzleSecurityEffectOutboxRepository } from "../infrastructure/drizzle-security-effect-outbox.repository.js";
+import { DurableCredentialEmail } from "../services/durable-credential-email.js";
 import {
   DurableSecurityEffects,
   type SecurityEffectPorts,
@@ -37,6 +38,18 @@ export function createDurableSecurityEffects(options: {
   return new DurableSecurityEffects(
     new DrizzleSecurityEffectOutboxRepository(options.db),
     options.ports,
+    options.log,
+  );
+}
+
+export function createDurableCredentialEmail(options: {
+  db: IdentityDatabase;
+  email: EmailSender;
+  log: SecurityEffectLogger;
+}): CredentialEmailSender {
+  return new DurableCredentialEmail(
+    options.email,
+    new DrizzleSecurityEffectOutboxRepository(options.db),
     options.log,
   );
 }

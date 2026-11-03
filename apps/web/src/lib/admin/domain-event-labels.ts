@@ -32,6 +32,8 @@ const LABELS: Record<string, string> = {
   "auth.sessions_revoked_all_except_current": "Other sessions signed out",
   "auth.two_factor_policy_changed": "Two-step verification policy changed",
   "auth.two_factor_reset_by_staff": "Two-step verification reset by staff",
+  "auth.email_change_requested_by_staff": "Email change started by staff",
+  "auth.email_change_kyc_record_viewed": "KYC record shown for an email change",
   "auth.two_factor_security_email": "Two-step security email sent",
 
   "bid.first_for_user": "First bid placed",
@@ -54,6 +56,13 @@ const LABELS: Record<string, string> = {
   "condition_report.declined": "Condition report declined",
 
   "export.requested": "Export requested",
+
+  "data_request.viewed": "Data request opened",
+  "data_request.logged": "Data request logged",
+  "data_request.updated": "Data request updated",
+  "data_request.extended": "Data request extended",
+  "data_request.closed": "Data request closed",
+  "data_request.continued": "Data request continued manually",
 
   "failed_job.retried": "Failed job retried",
   "failed_job.discarded": "Failed job discarded",
@@ -163,6 +172,7 @@ const LABELS: Record<string, string> = {
   "marketing_enquiry.assigned": "Enquiry assigned",
   "marketing_enquiry.status_changed": "Enquiry status changed",
   "marketing_enquiry.converted": "Enquiry converted",
+  "email.block_lifted": "Email block lifted",
   "enquiry_routing.changed": "Enquiry routing changed",
   "payout.transfer_reversed": "Payout transfer reversed",
   "purchase_problem.reported": "Purchase problem reported",
@@ -226,6 +236,7 @@ const LABELS: Record<string, string> = {
   "user.email_verified": "Email verified",
   "user.profile_updated": "Profile updated",
   "user.credential_changed": "Sign-in method changed",
+  "user.sign_in_method_unlinked": "Social sign-in removed",
   "user.session_revoked": "Session signed out",
   "user.suspended": "Account suspended",
   "user.deletion_requested": "Account deletion requested",

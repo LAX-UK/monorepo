@@ -10,6 +10,7 @@ export const HOSTED_AUTH_MESSAGES = {
   GENERIC_VERIFICATION: "If an account exists for that email, a verification link was sent.",
   CAPTCHA_REQUIRED: "For your security, complete the check below and try again.",
   RATE_LIMITED: "Too many attempts. Try again in a few minutes.",
+  EMAIL_SEND_FAILED: "We couldn't send the email. Try again.",
   SERVER_ERROR: "Something went wrong on our side. Try again.",
   EMAIL_NOT_VERIFIED: "Verify your email to continue.",
   ACCOUNT_SUSPENDED: "This account is suspended.",

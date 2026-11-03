@@ -1,11 +1,13 @@
 import { AUTH_TIMINGS } from "../auth-timings.js";
-import type { EmailSender } from "../ports/email-sender.js";
+import type { CredentialEmailSender, EmailSender } from "../ports/email-sender.js";
 import type { SecurityNoticePublisher } from "../ports/security-notice.js";
+import { sendCredentialEmail } from "./credential-email.js";
 
 type RevokeSessions = (userId: string) => Promise<number>;
 
 export function buildEmailAndPasswordBlock(options: {
   email?: EmailSender | undefined;
+  credentialEmail?: CredentialEmailSender | undefined;
   securityNotices?: SecurityNoticePublisher | undefined;
   requireEmailVerification?: boolean | undefined;
   revokeAllSessions?: RevokeSessions | undefined;
@@ -13,6 +15,7 @@ export function buildEmailAndPasswordBlock(options: {
 }) {
   const {
     email,
+    credentialEmail,
     securityNotices,
     requireEmailVerification,
     revokeAllSessions,
@@ -25,26 +28,20 @@ export function buildEmailAndPasswordBlock(options: {
     sendResetPassword: async ({
       user: authUser,
       url,
-    }: { user: { id: string; email: string; name: string }; url: string }) => {
-      email
-        ?.enqueue({
-          template: "reset-password",
-          to: authUser.email,
-          userId: authUser.id,
-          category: "auth",
-          vars: {
-            resetLink: url,
-            userEmail: authUser.email,
-            userName: authUser.name,
-            expirationMinutes: Math.round(AUTH_TIMINGS.resetPasswordExpiresSec / 60),
-          },
-        })
-        .catch((err: unknown) => {
-          console.error("[auth] enqueue reset-password failed", {
-            userId: authUser.id,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        });
+      token,
+    }: { user: { id: string; email: string; name: string }; url: string; token: string }) => {
+      await sendCredentialEmail(credentialEmail, {
+        template: "reset-password",
+        to: authUser.email,
+        userId: authUser.id,
+        token,
+        vars: {
+          resetLink: url,
+          userEmail: authUser.email,
+          userName: authUser.name,
+          expirationMinutes: Math.round(AUTH_TIMINGS.resetPasswordExpiresSec / 60),
+        },
+      });
     },
     onPasswordReset: async ({
       user: authUser,

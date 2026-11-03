@@ -2,10 +2,11 @@ import { AuctionInterestsSettingsForm } from "@/components/dashboard/auction-int
 import { EmailStatusBanner } from "@/components/layout/email-status-banner";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
+import { getServerAccountAlerts } from "@/lib/data/http/alerts.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerCategoryInterests } from "@/lib/data/http/category-interests.server";
 import { getServerNotificationMutes } from "@/lib/data/http/notifications-inbox.server";
-import { getServerVisitorAlertState } from "@/lib/data/http/sale-alerts.server";
+import type { EngineAlertState } from "@/lib/notifications/alert-matrix";
 import { loadBiddingOrganisation, loadPersonalLimit } from "@/lib/settings/bidding-card.server";
 import { biddingRows } from "@/lib/settings/bidding-standing";
 import type { ThemePreference } from "@auction/validators";
@@ -14,7 +15,6 @@ import { AppearanceSettings } from "./appearance-settings";
 import { BidSettingsSection, BidSettingsSectionError } from "./bid-settings-section";
 import { BiddingCard } from "./bidding-card";
 import { MutedOrganisations } from "./muted-organisations";
-import { VisitorAlertsLink } from "./visitor-alerts-link";
 
 /**
  * Bidding: for yourself, your identity check and limit; inside an organisation, its check, its
@@ -46,6 +46,18 @@ export async function BiddingSettings({ user }: { user: SessionUser }) {
   );
 }
 
+/** The engine's rows as the matrix reads them; a stopped or unknown client has no subscription. */
+function engineStateOf(
+  mine: Awaited<ReturnType<typeof getServerAccountAlerts>>,
+): EngineAlertState | null {
+  if (!mine) return null;
+  const active = mine.state === "confirmed";
+  return {
+    subscribed: Object.fromEntries(mine.topics.map((t) => [t.topic, active])),
+    email: Object.fromEntries(mine.topics.map((t) => [t.topic, active && t.emailOn])),
+  };
+}
+
 /**
  * Alerts: the style, where each alert reaches you, quiet hours, and the organisations you muted.
  * Saved searches and artist alerts live in Watching.
@@ -59,10 +71,10 @@ export async function AlertsSection({
   belongsToOrganisations: boolean;
 }) {
   const c = await getServerDataContainer();
-  const [prefs, mutes, visitorAlerts] = await Promise.all([
+  const [prefs, mutes, accountAlerts] = await Promise.all([
     c.notificationPreferences.getMine().catch(() => null),
     belongsToOrganisations ? getServerNotificationMutes() : Promise.resolve(null),
-    getServerVisitorAlertState(),
+    getServerAccountAlerts(),
   ]);
   return (
     <BidSettingsSection
@@ -72,10 +84,11 @@ export async function AlertsSection({
     >
       {/* Alerts only reach an address that can receive them, so a problem shows here. */}
       <EmailStatusBanner user={user} />
-      {prefs ? <AlertsSettings initial={prefs} /> : <BidSettingsSectionError what="alerts" />}
-      {visitorAlerts === "on" || visitorAlerts === "linked" ? (
-        <VisitorAlertsLink initial={visitorAlerts} />
-      ) : null}
+      {prefs ? (
+        <AlertsSettings initial={prefs} initialEngine={engineStateOf(accountAlerts)} />
+      ) : (
+        <BidSettingsSectionError what="alerts" />
+      )}
       {belongsToOrganisations ? (
         mutes ? (
           <MutedOrganisations initial={mutes} />

@@ -3,9 +3,11 @@ import {
   type AccountAddressDefaultKind,
   type AccountAddressInput,
   type AccountDeletionOutcome,
+  STAFF_EMAIL_CHANGE_MACHINE_SCOPE,
   accountAddressResultSchema,
   accountAddressesSchema,
   accountDeletionOutcomeSchema,
+  staffEmailChangeResultSchema,
 } from "@auction/identity-contracts";
 import type {
   IIdentityAddressClient,
@@ -15,6 +17,7 @@ import type {
   IIdentityProfileClient,
   IIdentitySecurityClient,
   IIdentitySessionClient,
+  IIdentityStaffEmailChangeClient,
   IIdentitySubjectClient,
   IIdentityTwoFactorPolicyClient,
   IdentityIssuerRequestContext,
@@ -25,6 +28,7 @@ import type {
   IdentityTwoFactorPolicyScope,
   IdentityTwoFactorPolicyView,
   IdentityTwoFactorRequirement,
+  StaffEmailChangeProof,
 } from "../services/interfaces/identity-issuer-client.js";
 
 const DEFAULT_TIMEOUT_MS = 5_000;
@@ -54,6 +58,14 @@ export class IdentityIssuerClientError extends Error {
   }
 }
 
+/** A machine credential of one scope and the short-lived token last issued for it. */
+type MachineCredential = {
+  scope: string;
+  clientId: string | undefined;
+  clientSecret: string | undefined;
+  token: { value: string; expiresAt: number } | null;
+};
+
 export class HttpIdentityIssuerClient
   implements
     IIdentityIssuerClient,
@@ -62,6 +74,7 @@ export class HttpIdentityIssuerClient
     IIdentityCredentialClient,
     IIdentitySessionClient,
     IIdentityEmailChangeClient,
+    IIdentityStaffEmailChangeClient,
     IIdentityProfileClient,
     IIdentitySecurityClient,
     IIdentityTwoFactorPolicyClient
@@ -70,9 +83,8 @@ export class HttpIdentityIssuerClient
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
   private readonly defaultOrigin: string | undefined;
-  private readonly machineClientId: string | undefined;
-  private readonly machineClientSecret: string | undefined;
-  private machineToken: { value: string; expiresAt: number } | null = null;
+  private readonly lifecycleCredential: MachineCredential;
+  private readonly staffEmailChangeCredential: MachineCredential;
 
   constructor(input: {
     issuerBaseUrl: string;
@@ -81,13 +93,26 @@ export class HttpIdentityIssuerClient
     defaultOrigin?: string;
     machineClientId?: string;
     machineClientSecret?: string;
+    /** The separate credential for the staff-assisted email change; without it that call fails. */
+    staffEmailChangeClientId?: string;
+    staffEmailChangeClientSecret?: string;
   }) {
     this.baseUrl = input.issuerBaseUrl.replace(/\/+$/, "");
     this.fetchImpl = input.fetchImpl ?? fetch;
     this.timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.defaultOrigin = input.defaultOrigin;
-    this.machineClientId = input.machineClientId;
-    this.machineClientSecret = input.machineClientSecret;
+    this.lifecycleCredential = {
+      scope: "identity.lifecycle",
+      clientId: input.machineClientId,
+      clientSecret: input.machineClientSecret,
+      token: null,
+    };
+    this.staffEmailChangeCredential = {
+      scope: STAFF_EMAIL_CHANGE_MACHINE_SCOPE,
+      clientId: input.staffEmailChangeClientId,
+      clientSecret: input.staffEmailChangeClientSecret,
+      token: null,
+    };
   }
 
   async signUpEmail(input: IdentityIssuerSignUpInput): Promise<{ userId: string }> {
@@ -521,6 +546,34 @@ export class HttpIdentityIssuerClient
     };
   }
 
+  /**
+   * Moves the account to a new address on staff's word that the old inbox is lost. Identity
+   * sends the person a link at the new address, tells the old one, and ends every session. It
+   * answers only the staff-email-change credential, so a lifecycle token cannot reach it.
+   */
+  async startStaffAssistedEmailChange(input: {
+    subjectId: string;
+    newEmail: string;
+    actorUserId: string;
+    reason: string;
+    proof: StaffEmailChangeProof;
+  }): Promise<{ pendingEmail: string }> {
+    const body = await this.credentialRequest(
+      this.staffEmailChangeCredential,
+      "POST",
+      `/identity/subjects/${encodeURIComponent(input.subjectId)}/staff-email-change`,
+      {
+        newEmail: input.newEmail,
+        actorSubjectId: input.actorUserId,
+        reason: input.reason,
+        proof: input.proof,
+      },
+    );
+    const parsed = staffEmailChangeResultSchema.safeParse(body);
+    if (!parsed.success) throw invalidResponse("staff email change");
+    return parsed.data;
+  }
+
   async deleteOrphanSubject(subjectId: string): Promise<boolean> {
     const body = await this.machineRequest(
       "DELETE",
@@ -593,13 +646,22 @@ export class HttpIdentityIssuerClient
     }
   }
 
-  private async machineRequest(
+  private machineRequest(
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
+    path: string,
+    body?: Record<string, unknown>,
+  ): Promise<unknown> {
+    return this.credentialRequest(this.lifecycleCredential, method, path, body);
+  }
+
+  private async credentialRequest(
+    credential: MachineCredential,
     method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
     path: string,
     body?: Record<string, unknown>,
     retry = true,
   ): Promise<unknown> {
-    const token = await this.getMachineToken();
+    const token = await this.getMachineToken(credential);
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -615,8 +677,8 @@ export class HttpIdentityIssuerClient
       });
       const responseBody = await readResponseBody(response);
       if (response.status === 401 && retry) {
-        this.machineToken = null;
-        return this.machineRequest(method, path, body, false);
+        credential.token = null;
+        return this.credentialRequest(credential, method, path, body, false);
       }
       if (!response.ok) {
         const details = readErrorDetails(responseBody);
@@ -642,11 +704,11 @@ export class HttpIdentityIssuerClient
     }
   }
 
-  private async getMachineToken(): Promise<string> {
-    if (this.machineToken && this.machineToken.expiresAt > Date.now() + 10_000) {
-      return this.machineToken.value;
+  private async getMachineToken(credential: MachineCredential): Promise<string> {
+    if (credential.token && credential.token.expiresAt > Date.now() + 10_000) {
+      return credential.token.value;
     }
-    if (!this.machineClientId || !this.machineClientSecret) {
+    if (!credential.clientId || !credential.clientSecret) {
       throw new IdentityIssuerClientError(
         "network",
         "Identity machine client credentials are not configured",
@@ -659,12 +721,12 @@ export class HttpIdentityIssuerClient
         method: "POST",
         headers: {
           accept: "application/json",
-          authorization: `Basic ${Buffer.from(`${this.machineClientId}:${this.machineClientSecret}`).toString("base64")}`,
+          authorization: `Basic ${Buffer.from(`${credential.clientId}:${credential.clientSecret}`).toString("base64")}`,
           "content-type": "application/x-www-form-urlencoded",
         },
         body: new URLSearchParams({
           grant_type: "client_credentials",
-          scope: "identity.lifecycle",
+          scope: credential.scope,
         }),
         signal: controller.signal,
       });
@@ -681,7 +743,7 @@ export class HttpIdentityIssuerClient
           response.status,
         );
       }
-      this.machineToken = {
+      credential.token = {
         value: body.access_token,
         expiresAt: Date.now() + body.expires_in * 1000,
       };

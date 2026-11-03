@@ -4,18 +4,24 @@ import {
   PostmarkEmailService,
   bindEmailQueue,
 } from "@auction/email";
-import { EMAIL_QUEUE_NAME } from "@auction/queues";
+import {
+  EMAIL_QUEUE_NAME,
+  REACTIVATE_EMAIL_ADDRESS_JOB_NAME,
+  type ReactivateEmailAddressJobData,
+} from "@auction/queues";
 import { Queue, Worker } from "bullmq";
 import {
   ConsoleEmailSender,
   PostmarkEmailSender,
 } from "../infrastructure/postmark-email.sender.js";
+import { PostmarkSuppressionAdapter } from "../infrastructure/postmark-suppression.adapter.js";
 import {
   type SendEmailJobData,
   enqueueStaleEmailOutboxRows,
   sendEmailJob,
 } from "../jobs/send-email.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
+import { reactivateEmailAddressUseCase } from "../services/reactivate-email-address.use-case.js";
 import type { DlqHandlerEntry, WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
 import { closeAll } from "./worker-utils.js";
 
@@ -33,6 +39,7 @@ export function registerEmailWorker(deps: WorkerBootstrapDeps): EmailWorkersHand
     env,
     db,
     emailOutboxRepo,
+    emailAddressLookup,
     bullConnection,
     queueOpts,
     log,
@@ -46,11 +53,23 @@ export function registerEmailWorker(deps: WorkerBootstrapDeps): EmailWorkersHand
       ? new PostmarkEmailSender({
           serverToken: env.POSTMARK_SERVER_TOKEN ?? "",
           from: env.EMAIL_FROM,
+          fromByProduct: env.EMAIL_FROM_BY_PRODUCT,
           replyTo: env.EMAIL_REPLY_TO,
           transactionalStream: env.POSTMARK_TRANSACTIONAL_STREAM,
           broadcastStream: env.POSTMARK_BROADCAST_STREAM,
         })
       : new ConsoleEmailSender();
+
+  // Only Postmark keeps a block list of its own; the console provider has nothing to reactivate.
+  const reactivation =
+    env.EMAIL_PROVIDER === "postmark"
+      ? {
+          addresses: emailAddressLookup,
+          provider: new PostmarkSuppressionAdapter(env.POSTMARK_SERVER_TOKEN ?? ""),
+          streams: [env.POSTMARK_TRANSACTIONAL_STREAM, env.POSTMARK_BROADCAST_STREAM],
+          log,
+        }
+      : null;
 
   const emailQueue = new Queue<EmailQueueJobData>(EMAIL_QUEUE_NAME, queueOpts(EMAIL_QUEUE_NAME));
 
@@ -71,6 +90,15 @@ export function registerEmailWorker(deps: WorkerBootstrapDeps): EmailWorkersHand
           log.info({ count }, "email outbox drain completed");
           await heartbeat("email");
         });
+        return;
+      }
+      if (job.name === REACTIVATE_EMAIL_ADDRESS_JOB_NAME) {
+        if (reactivation) {
+          await reactivateEmailAddressUseCase(
+            reactivation,
+            job.data as unknown as ReactivateEmailAddressJobData,
+          );
+        }
         return;
       }
       await sendEmailJob(

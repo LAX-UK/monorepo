@@ -71,6 +71,14 @@ export type SecurityNoticeEvent =
       email: string;
       userAgent?: string | null;
     }
+  | {
+      /** A Google or Apple sign-in was removed from the account. */
+      kind: "sign_in_method_removed";
+      userId: string;
+      at: Date;
+      provider: "google" | "apple";
+      userAgent?: string | null;
+    }
   | { kind: "phone_verified"; userId: string; at: Date; phone: string; userAgent?: string | null }
   | { kind: "phone_removed"; userId: string; at: Date; phone: string; userAgent?: string | null }
   | {

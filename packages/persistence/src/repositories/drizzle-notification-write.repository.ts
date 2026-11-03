@@ -18,6 +18,7 @@ function mapRow(row: Row): UserNotification {
     message: row.message,
     lotId: row.lotId,
     submissionId: row.submissionId,
+    saleId: row.saleId,
     legalEntityId: row.legalEntityId,
     read: row.read,
     archivedAt: row.archivedAt ?? null,
@@ -40,6 +41,7 @@ export class DrizzleNotificationWriteRepository implements INotificationWriteRep
           message: r.message,
           lotId: r.lotId ?? null,
           submissionId: r.submissionId ?? null,
+          saleId: r.saleId ?? null,
           legalEntityId: r.legalEntityId,
         })),
       )
