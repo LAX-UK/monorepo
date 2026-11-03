@@ -19,6 +19,11 @@ export function createZohoCrmGateway(env: WorkerEnv): CrmGateway {
   return createZohoCrmStack(env);
 }
 
+/** One stack for the writeback's read (COQL) and write (update), so both share one rate limiter. */
+export function createZohoCrmGatewayWithCoql(env: WorkerEnv): CrmGateway & CrmCoqlQuery {
+  return createZohoCrmStack(env);
+}
+
 /** Read-only COQL access through the same limiter and token handling as the write gateway. */
 export function createZohoCoqlQuery(env: WorkerEnv): CrmCoqlQuery {
   return createZohoCrmStack(env);

@@ -36,10 +36,7 @@ import {
   syncXeroInvoiceWebhookLocal,
 } from "../integrations/xero/create-xero-live-executor-ports-local.js";
 import { createZohoCrmGateway } from "../integrations/zoho/create-zoho-crm-gateway.js";
-import {
-  assertZohoCrmOrgEnvironment,
-  shouldRunZohoCrmOrgCheck,
-} from "../integrations/zoho/zoho-crm-org-check.js";
+import { assertZohoCrmOrgEnvironment } from "../integrations/zoho/zoho-crm-org-check.js";
 import { runIdentityOutboxRelayJob } from "../jobs/identity-outbox-relay.job.js";
 import type { MarketingContactSyncJobData } from "../jobs/marketing-contact-sync.js";
 import { marketingEventsOutcomeTotal } from "../jobs/marketing-event-processor.js";
@@ -87,6 +84,7 @@ import { createBidAlertRuntime } from "./create-bid-alert-runtime.js";
 import { createExportProviderDeps } from "./create-export-provider-deps.js";
 import { createWorkerRepositories } from "./create-worker-repositories.js";
 import { createZohoArtworkSyncRuntime } from "./create-zoho-artwork-sync.js";
+import { createZohoArtworkWriteback } from "./create-zoho-artwork-writeback.js";
 
 export type WorkerContainer = {
   env: WorkerEnv;
@@ -351,6 +349,7 @@ export function createWorkerContainer(): WorkerContainer {
   };
 
   const zohoArtworkSync = createZohoArtworkSyncRuntime({ env, db, log });
+  const zohoArtworkWriteback = createZohoArtworkWriteback({ env, db, log });
   const webhookProcessorDeps: ProcessInboundWebhookDeps = {
     env,
     log,
@@ -525,6 +524,7 @@ export function createWorkerContainer(): WorkerContainer {
       deliveryRepo: repositories.domainEventDeliveryRepo,
       crmRecordLinkRepo: repositories.crmRecordLinkRepo,
       crmSyncService,
+      ...(zohoArtworkWriteback ? { zohoArtworkWriteback } : {}),
       log,
       emailService: emailWorkers.emailOutboxService,
       supportContactEmail: env.EMAIL_REPLY_TO ?? "support@lax.bid",
@@ -610,7 +610,7 @@ export function createWorkerContainer(): WorkerContainer {
     projectorRunner,
     lotLifecycleConsumer,
     ensureReady: async () => {
-      if (!shouldRunZohoCrmOrgCheck(env)) return;
+      // Refuses live writes without an expected org, then checks the connected org matches it.
       await assertZohoCrmOrgEnvironment(env);
     },
   };
