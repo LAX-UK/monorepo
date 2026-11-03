@@ -1,8 +1,6 @@
-import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { Lot, PortfolioRow } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
-  buildPayNow,
   buildPortfolioAnalytics,
   filterPortfolioRows,
   filterPortfolioRowsByTitle,
@@ -102,43 +100,5 @@ describe("buildPortfolioAnalytics", () => {
     expect(a.totalRows).toBe(2);
     expect(a.totalSpentFormatted).toContain("350");
     expect(a.outstandingFormatted).toContain("100");
-  });
-});
-
-describe("buildPayNow", () => {
-  const paid = { id: "p", status: "captured" as const, manualReviewReason: null };
-
-  it("is null when everything is paid", () => {
-    expect(buildPayNow([makeRow({ id: "a", payment: paid })])).toBeNull();
-  });
-
-  it("is null when there is nothing won", () => {
-    expect(buildPayNow([])).toBeNull();
-  });
-
-  it("links one due lot straight to its checkout", () => {
-    const pay = buildPayNow([makeRow({ id: "a" }), makeRow({ id: "b", payment: paid })]);
-    expect(pay).toMatchObject({ dueCount: 1, href: dashboardCheckoutLotUrl("a") });
-    expect(pay?.outstandingLabel).toMatch(/125/);
-  });
-
-  it("links several due lots to one basket", () => {
-    const pay = buildPayNow([makeRow({ id: "a" }), makeRow({ id: "b" })]);
-    expect(pay?.dueCount).toBe(2);
-    expect(pay?.href).toBe("/purchases/checkout?lots=a,b");
-  });
-
-  it("has no link while every due lot is in compliance review", () => {
-    const pay = buildPayNow([makeRow({ id: "a" })], "aml_hold");
-    expect(pay).toMatchObject({ dueCount: 1, href: null });
-  });
-
-  it("leaves lots in review out of the basket", () => {
-    const held = makeRow({
-      id: "held",
-      payment: { id: "p2", status: "pending", manualReviewReason: "aml_hold" },
-    });
-    const pay = buildPayNow([makeRow({ id: "ok" }), held]);
-    expect(pay?.href).toBe(dashboardCheckoutLotUrl("ok"));
   });
 });

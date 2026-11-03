@@ -4,6 +4,7 @@ import { openBidsFigure, purchasesToPayFigure } from "@/lib/buying/account-buyin
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
+import type { AmountsOwedView } from "@/lib/data/http/amounts-owed.server";
 import { listServerUnsoldOutcomes } from "@/lib/data/http/consignment-after-sale.server";
 import { getServerNeedsYou } from "@/lib/data/http/needs-you.server";
 import { getServerOrganisationDashboard } from "@/lib/data/http/organisation-dashboard.server";
@@ -98,6 +99,8 @@ function settle<T>(enabled: boolean, load: () => Promise<T>, fallback: T): Promi
   return load().catch(() => fallback);
 }
 
+const NOTHING_OWED: AmountsOwedView = { entries: [] };
+
 /**
  * Loads only what the member's role may see, builds the Home model in the domain and turns it
  * into words and links. "Needs you" is the one reader's answer, the same read the sidebar counts
@@ -123,6 +126,7 @@ export async function loadOrganisationHome(
     unsoldRead,
     account,
     purchases,
+    amountsOwed,
     bids,
     members,
     stoppedBids,
@@ -156,6 +160,11 @@ export async function loadOrganisationHome(
     settle(true, () => loadSellerAccountFacts(sellerCtx), null),
     // The same reader as Purchases and Bids, so the figures and tasks match those pages.
     settle<PortfolioRow[]>(accountPurchaseScope(actor) !== null, () => c.buying.purchases(), []),
+    settle<AmountsOwedView>(
+      accountPurchaseScope(actor) !== null,
+      () => c.buying.amountsOwed(),
+      NOTHING_OWED,
+    ),
     settle<BidWithLot[]>(accountBidScope(actor) !== null, () => c.buying.bids(), []),
     settle(
       reads("entity.members.manage"),
@@ -226,7 +235,7 @@ export async function loadOrganisationHome(
         ...(groups.has("bidAuthority") ? { bidAuthority: bidAuthorityFigure(mine) } : {}),
         ...(groups.has("openBids") ? { openBids: openBidsFigure(bids, scope.actor.userId) } : {}),
         ...(groups.has("purchasesToPay")
-          ? { purchasesToPay: purchasesToPayFigure(purchases) }
+          ? { purchasesToPay: purchasesToPayFigure(amountsOwed.entries) }
           : {}),
       }
     : null;

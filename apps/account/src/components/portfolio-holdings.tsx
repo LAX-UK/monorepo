@@ -59,13 +59,26 @@ function WorkTitle({ row }: { row: HoldingRowVm }) {
   );
 }
 
+/** The amount to show: the total due while awaiting payment, else what was paid. */
+function amountsOf(row: HoldingRowVm) {
+  return row.due.length > 0 ? row.due : row.paid;
+}
+
+/** A work whose payment waits on account checks says so beside its amount. */
+function InReviewNote({ row }: { row: HoldingRowVm }) {
+  if (row.item.owed?.state !== "in_review") return null;
+  return <span className="block text-xs text-on-surface-variant">Waiting on account checks</span>;
+}
+
 function PaidCell({ row }: { row: HoldingRowVm }) {
+  const amounts = amountsOf(row);
   return (
     <>
-      {row.item.status === "awaiting_payment" && row.paid.length > 0 ? (
+      {row.item.status === "awaiting_payment" && amounts.length > 0 ? (
         <span className="mr-1 text-xs text-on-surface-variant">Due</span>
       ) : null}
-      <CurrencyAmounts totals={row.paid} />
+      <CurrencyAmounts totals={amounts} />
+      <InReviewNote row={row} />
     </>
   );
 }
@@ -78,7 +91,7 @@ function HoldingsTable({
     <div className="hidden md:block">
       <Table>
         <TableCaption className="sr-only">
-          Your works, newest first. Each row links to the work's page.
+          Your works and purchases, newest first. Each row links to the work's page.
         </TableCaption>
         <TableHeader>
           <TableRow>
@@ -130,7 +143,7 @@ function HoldingsCards({
   imageOrigins,
 }: { rows: HoldingRowVm[]; imageOrigins: readonly string[] }) {
   return (
-    <ul className="flex flex-col gap-3 md:hidden" aria-label="Your works">
+    <ul className="flex flex-col gap-3 md:hidden" aria-label="Works and purchases">
       {rows.map((row) => (
         <li
           key={row.key}
@@ -155,7 +168,8 @@ function HoldingsCards({
                 {row.item.status === "awaiting_payment" ? "Due" : "Paid"}
               </dt>
               <dd>
-                <CurrencyAmounts totals={row.paid} />
+                <CurrencyAmounts totals={amountsOf(row)} />
+                <InReviewNote row={row} />
               </dd>
               <dt className="text-on-surface-variant">Documents</dt>
               <dd>{documentsSummary(row)}</dd>
@@ -236,11 +250,11 @@ export function PortfolioHoldings({
   return (
     <section aria-labelledby="portfolio-holdings-heading" className="flex flex-col gap-4">
       <h2 id="portfolio-holdings-heading" className={SECTION_TITLE}>
-        Your works
+        Works and purchases
       </h2>
       <FilterToolbar
         action={action}
-        noun="works"
+        noun="items"
         search={{
           name: "q",
           value: filter.search ?? "",

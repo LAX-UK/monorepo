@@ -105,6 +105,26 @@ export const LaxPortfolioActionV1 = Type.Object({
 });
 export type LaxPortfolioActionV1 = Static<typeof LaxPortfolioActionV1>;
 
+export const LAX_OWED_STATES = ["due", "in_review"] as const;
+export type LaxOwedState = (typeof LAX_OWED_STATES)[number];
+
+export const LAX_OWED_BLOCKERS = ["documents", "review"] as const;
+export type LaxOwedBlocker = (typeof LAX_OWED_BLOCKERS)[number];
+
+/**
+ * What the buyer still owes on a work that is awaiting payment: the total one payment covers
+ * (hammer and premium), so the same figure appears here, in the product and in its invoice.
+ * `in_review` means the buyer's account is held for checks and cannot pay yet; `blocker` says
+ * whether the buyer can act (`documents`) or is waiting on LAX (`review`).
+ */
+export const LaxPortfolioOwedV1 = Type.Object({
+  amount: minorUnitsSchema,
+  currency: currencySchema,
+  state: stringEnum(LAX_OWED_STATES),
+  blocker: Type.Optional(stringEnum(LAX_OWED_BLOCKERS)),
+});
+export type LaxPortfolioOwedV1 = Static<typeof LaxPortfolioOwedV1>;
+
 export const LaxPortfolioItemV1 = Type.Object({
   product: stringEnum(LAX_PRODUCT_IDS),
   id: Type.String({ minLength: 1 }),
@@ -117,6 +137,8 @@ export const LaxPortfolioItemV1 = Type.Object({
   documents: Type.Array(LaxPortfolioDocumentV1),
   actions: Type.Array(LaxPortfolioActionV1),
   business: LaxBusinessV1,
+  /** Present on a work awaiting payment when the product knows the amount due. */
+  owed: Type.Optional(LaxPortfolioOwedV1),
 });
 export type LaxPortfolioItemV1 = Static<typeof LaxPortfolioItemV1>;
 

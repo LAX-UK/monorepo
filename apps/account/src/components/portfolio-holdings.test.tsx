@@ -52,7 +52,7 @@ describe("PortfolioHoldings", () => {
     for (const heading of ["Work", "Product", "Acquired", "Paid", "Status", "Documents"]) {
       expect(html).toContain(heading);
     }
-    expect(html).toContain('aria-label="Your works"');
+    expect(html).toContain('aria-label="Works and purchases"');
   });
 
   it("links each work to its page with the id escaped", () => {
@@ -78,13 +78,33 @@ describe("PortfolioHoldings", () => {
     expect(render(works)).toContain("Due");
   });
 
+  it("shows the total due for an unpaid work, not its hammer price, and notes a hold", () => {
+    const unpaid = item({
+      id: "lot 9",
+      title: "Blue Study",
+      status: "awaiting_payment",
+      paid: { lines: [{ kind: "hammer", amount: 100_000, currency: "GBP" }] },
+      owed: { amount: 115_000, currency: "GBP", state: "in_review", blocker: "documents" },
+    });
+    const html = render([unpaid]);
+    expect(html).toContain("£1,150.00");
+    expect(html).not.toContain("£1,000.00");
+    expect(html).toContain("Waiting on account checks");
+  });
+
+  it("names the list so it cannot contradict the owned count", () => {
+    const html = render(works);
+    expect(html).toContain("Works and purchases");
+    expect(html).not.toContain(">Your works<");
+  });
+
   it("offers search and a Filter button instead of rows of chips", () => {
     const html = render(works);
     expect(html).toContain('role="search"');
     expect(html).toContain("Search your works by title or artist");
     expect(html).toContain("Filter</button>");
     expect(html).toContain('aria-haspopup="dialog"');
-    expect(html).toContain("Showing 2 of 2 works");
+    expect(html).toContain("Showing 2 of 2 items");
     expect(html).not.toContain("Filter by ");
   });
 

@@ -1,4 +1,5 @@
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
+import type { AmountOwedEntry } from "@auction/domain";
 import { describe, expect, it } from "vitest";
 import { deriveClientAttention } from "./derive-client-attention";
 
@@ -54,6 +55,16 @@ function bidOn(opts: {
   };
 }
 
+const owed = (lotId: string, patch: Partial<AmountOwedEntry> = {}): AmountOwedEntry => ({
+  lotId,
+  state: "payment-due",
+  role: "payer",
+  amountDue: "1250.00",
+  currency: "GBP",
+  blocker: null,
+  ...patch,
+});
+
 describe("deriveClientAttention", () => {
   it("lists outbid lots soonest to close first, by catalogue number", () => {
     const attention = deriveClientAttention({
@@ -64,7 +75,7 @@ describe("deriveClientAttention", () => {
         bidOn({ lotId: "c", lotNumber: 8, winning: true, endsInHours: 2 }),
         bidOn({ lotId: "d", lotNumber: null, winning: false, endsInHours: 9 }),
       ],
-      purchasesToPay: [],
+      amountsOwed: [],
       unreadNotifications: [],
     });
     expect(attention.outbidLots).toEqual(["14", "22", null]);
@@ -75,7 +86,7 @@ describe("deriveClientAttention", () => {
     const attention = deriveClientAttention({
       userId: "user-1",
       bids: [bidOn({ lotId: "z", lotNumber: 3, winning: false, endsInHours: 2 })],
-      purchasesToPay: [],
+      amountsOwed: [],
       unreadNotifications: [],
     });
     expect(attention.groups).toMatchObject([
@@ -83,16 +94,37 @@ describe("deriveClientAttention", () => {
     ]);
   });
 
+  it("is in review only when everything owed waits on checks", () => {
+    const inReview = (lotId: string) => owed(lotId, { state: "in-review", blocker: "review" });
+    const derive = (amountsOwed: AmountOwedEntry[]) =>
+      deriveClientAttention({ userId: "user-1", bids: [], amountsOwed, unreadNotifications: [] });
+    expect(derive([inReview("a"), inReview("b")])).toMatchObject({
+      paymentsDue: 2,
+      paymentsInReview: true,
+    });
+    expect(derive([inReview("a"), owed("b")])).toMatchObject({
+      paymentsDue: 2,
+      paymentsInReview: false,
+    });
+    expect(derive([])).toMatchObject({ paymentsDue: 0, paymentsInReview: false });
+  });
+
   it("counts the purchases this person pays and unread notifications", () => {
     const attention = deriveClientAttention({
       userId: "user-1",
       bids: [],
-      purchasesToPay: [{ lot: "a" }, { lot: "b" }],
+      amountsOwed: [
+        owed("a"),
+        owed("b"),
+        owed("c", { role: "informed" }),
+        owed("d", { state: "cancelled" }),
+      ],
       unreadNotifications: [{ read: false }, { read: true }, { read: false }],
     });
     expect(attention).toEqual({
       outbidLots: [],
       paymentsDue: 2,
+      paymentsInReview: false,
       unreadNotifications: 2,
       groups: [],
     });

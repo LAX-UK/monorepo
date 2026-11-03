@@ -700,6 +700,8 @@ export function createContainer(env: Env): Container {
       env,
       bidPortfolioReader: repos.bidPortfolioReader,
       recordPeople: new DrizzleRecordPeopleReader(db),
+      lotFulfilmentRepository: payments.lotFulfilmentRepository,
+      personalLegalEntityResolver: userMisc.personalLegalEntityResolver,
       lotViewerState,
       categoryInterestsEligibilityReader: repos.categoryInterestsEligibilityReader,
       categoryInterestsRepository: repos.categoryInterestsRepository,
