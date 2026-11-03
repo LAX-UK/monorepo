@@ -5,6 +5,7 @@ import { CheckoutLotMobileChrome } from "@/components/sections/checkout/checkout
 import { formatCheckoutAddressLines } from "@/components/sections/checkout/use-checkout-purchase-state";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { ProfileAddressRow } from "@/lib/data/dto/profile-dtos";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
@@ -189,9 +190,17 @@ export function CheckoutPurchaseForm({
             )}
           />
           {form.formState.errors.root ? (
-            <p className="break-words text-sm text-error" role="alert">
-              {form.formState.errors.root.message}
-            </p>
+            <div className="space-y-2" role="alert">
+              <p className="break-words text-sm text-error">{form.formState.errors.root.message}</p>
+              {form.formState.errors.root.type === "account_deletion_pending" ? (
+                <a
+                  href={laxAccountUrl("/account/security/delete")}
+                  className="inline-flex min-h-11 items-center text-sm font-semibold text-on-surface underline underline-offset-4"
+                >
+                  Cancel deletion
+                </a>
+              ) : null}
+            </div>
           ) : null}
           <Button
             type="submit"

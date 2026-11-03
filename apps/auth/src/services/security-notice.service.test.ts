@@ -89,6 +89,79 @@ describe("SecurityNoticeService account deletion", () => {
     });
   });
 
+  it("reminds the person a week ahead, with the date and a cancel link", async () => {
+    const { service, email } = setup();
+    await service.notify({
+      kind: "account_deletion_reminder",
+      userId: USER,
+      at: new Date("2026-11-25T03:00:00.000Z"),
+      effectiveAt: new Date("2026-12-02T10:00:00.000Z"),
+    });
+    expect(email.enqueue.mock.calls[0]?.[0]).toMatchObject({
+      template: "account-deletion-reminder",
+      to: "ada@example.com",
+      userId: USER,
+      vars: {
+        userName: "Ada",
+        effectiveDateDisplay: "2 December 2026",
+        daysLeft: 7,
+        cancelDeletionUrl: CANCEL_URL,
+      },
+    });
+  });
+
+  it("tells the person why the deletion is on hold and when it is checked again", async () => {
+    const { service, email } = setup();
+    await service.notify({
+      kind: "account_deletion_held",
+      userId: USER,
+      at: new Date("2026-12-03T03:00:00.000Z"),
+      reasons: ["You have an unpaid invoice."],
+      nextCheckAt: new Date("2026-12-04T03:00:00.000Z"),
+    });
+    expect(email.enqueue.mock.calls[0]?.[0]).toMatchObject({
+      template: "account-deletion-held",
+      vars: {
+        title: "Your account deletion is on hold",
+        reasons: ["You have an unpaid invoice."],
+        recheck: "We'll check again on 4 December.",
+        cancelDeletionUrl: CANCEL_URL,
+      },
+    });
+  });
+
+  it("sends the confirmation to the copied address without looking the person up", async () => {
+    const { service, email, subjects } = setup();
+    await service.notify({
+      kind: "account_deletion_completed",
+      userId: USER,
+      at: new Date("2026-12-02T10:00:00.000Z"),
+      email: "ada@example.com",
+    });
+    expect(subjects.findById).not.toHaveBeenCalled();
+    const call = email.enqueue.mock.calls[0]?.[0];
+    expect(call).toMatchObject({
+      template: "account-deletion-completed",
+      to: "ada@example.com",
+      idempotencyKey: `account-deletion-completed:${USER}`,
+      vars: { erasedOnDisplay: "2 December 2026" },
+    });
+    expect(JSON.stringify(call?.vars)).not.toContain("Ada");
+  });
+
+  it("lets a failure reach the caller when delivering, so the outbox can retry", async () => {
+    const { service, email } = setup();
+    email.enqueue.mockRejectedValueOnce(new Error("mail unavailable"));
+    await expect(
+      service.deliver({
+        kind: "account_deletion_completed",
+        userId: USER,
+        at: AT,
+        email: "ada@example.com",
+      }),
+    ).rejects.toThrow("mail unavailable");
+  });
+
   it("confirms the cancellation", async () => {
     const { service, email } = setup();
     await service.notify({ kind: "account_deletion_cancelled", userId: USER, at: AT });

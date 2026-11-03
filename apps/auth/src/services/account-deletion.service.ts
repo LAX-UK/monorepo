@@ -1,11 +1,14 @@
 import type { SecurityNoticePublisher } from "@auction/auth";
 import {
   ACCOUNT_DELETION_GRACE_DAYS,
+  type AccountDeletionHold,
   type AccountDeletionOutcome,
   type AccountDeletionProduct,
   type AccountDeletionStatus,
   DELETION_ELIGIBILITY_PRODUCTS,
+  type DeletionBlocker,
   accountDeletionVerdict,
+  deletionBlockerSchema,
 } from "@auction/identity-contracts";
 import type { ReauthRequired } from "./account-contact.service.js";
 import type { ProductDeletionEligibilityProbe } from "./account-deletion.ports.js";
@@ -13,6 +16,18 @@ import type { IdentityOperationsService } from "./identity-operations.service.js
 import { RecentSessionGuard } from "./recent-session-guard.js";
 
 const DAY_MS = 86_400_000;
+
+/** What the daily purge may do with one person whose grace period has ended. */
+export type PurgeEligibility =
+  | { state: "clear" }
+  | { state: "blocked"; blockers: DeletionBlocker[] }
+  | { state: "unavailable" };
+
+function readHold(heldAt: Date | null, reasons: unknown): AccountDeletionHold | null {
+  if (!heldAt) return null;
+  const parsed = deletionBlockerSchema.array().safeParse(reasons);
+  return { heldAt: heldAt.toISOString(), reasons: parsed.success ? parsed.data : [] };
+}
 
 export type AccountDeletionPorts = {
   operations: Pick<
@@ -55,7 +70,27 @@ export class AccountDeletionService {
       this.askProducts(subjectId),
     ]);
     if (!security) return null;
-    return { requestedAt: security.deletionRequestedAt?.toISOString() ?? null, products };
+    const hold = readHold(security.deletionHeldAt, security.deletionHoldReasons);
+    return {
+      requestedAt: security.deletionRequestedAt?.toISOString() ?? null,
+      products,
+      ...(hold ? { hold } : {}),
+    };
+  }
+
+  /**
+   * Asks every product the same question that was asked when the person made the request, at
+   * the moment of the purge. A product that cannot be reached is reported as unavailable, not
+   * as clear: the purge then waits a day instead of erasing someone it could not check.
+   */
+  async checkPurgeEligibility(subjectId: string): Promise<PurgeEligibility> {
+    const products = await this.askProducts(subjectId);
+    const blockers = products.flatMap((product) => product.blockers);
+    if (blockers.length > 0) return { state: "blocked", blockers };
+    if (products.some((product) => product.state === "unavailable")) {
+      return { state: "unavailable" };
+    }
+    return { state: "clear" };
   }
 
   /** Starts the grace period if nothing is in the way. No step-up: callers apply their own. */

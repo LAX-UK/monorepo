@@ -52,6 +52,8 @@ export class DrizzleIdentitySubjectRepository implements IIdentitySubjectReposit
         pendingNewEmail: user.pendingNewEmail,
         emailChangeExpiresAt: user.emailChangeExpiresAt,
         deletionRequestedAt: user.deletionRequestedAt,
+        deletionHeldAt: user.deletionHeldAt,
+        deletionHoldReasons: user.deletionHoldReasons,
       })
       .from(user)
       .where(eq(user.id, subjectId))
@@ -145,7 +147,14 @@ export class DrizzleIdentitySubjectRepository implements IIdentitySubjectReposit
     const tx = identityOperationDb(this.db, transaction);
     const rows = await tx
       .update(user)
-      .set({ deletionRequestedAt: null, updatedAt: now })
+      .set({
+        deletionRequestedAt: null,
+        // A later request starts clean: no old hold, and a reminder is due again.
+        deletionHeldAt: null,
+        deletionHoldReasons: null,
+        deletionReminderSentAt: null,
+        updatedAt: now,
+      })
       .where(eq(user.id, subjectId))
       .returning({ id: user.id });
     return Boolean(rows[0]);

@@ -25,6 +25,8 @@ export const SHOP_API_ERROR_CODES = {
   RATE_LIMITED: "shop.rate_limited",
   /** The email at guest checkout belongs to a LAX account; the person signs in instead. */
   ACCOUNT_EXISTS: "shop.account_exists",
+  /** The person has asked to delete their account, so they cannot take on a new order. */
+  ACCOUNT_DELETION_PENDING: "shop.account_deletion_pending",
   SAVED_VIEW_DUPLICATE: "shop.saved_view_duplicate",
   SAVED_VIEW_LIMIT: "shop.saved_view_limit",
   SAVED_VIEW_ORDER_CHANGED: "shop.saved_view_order_changed",

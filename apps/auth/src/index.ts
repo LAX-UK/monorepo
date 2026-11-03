@@ -12,6 +12,7 @@ import { createAuthRepositories } from "./container/create-auth-repositories.js"
 import { createAuthRequestHandler } from "./container/create-auth-request-handler.js";
 import { createAuthSchedules } from "./container/create-auth-schedules.js";
 import { createIdentityAddressService } from "./container/create-identity-address-service.js";
+import { createIdentityDeletionPurgeService } from "./container/create-identity-deletion-purge-service.js";
 import { createIdentityLifecycleService } from "./container/create-identity-lifecycle-service.js";
 import { createIdentityOperationsService } from "./container/create-identity-operations-service.js";
 import { createOidcRouteServices } from "./container/create-oidc-route-services.js";
@@ -130,6 +131,7 @@ const durableSecurityEffects = createDurableSecurityEffects({
     operations: identityOperations,
     logout: services.oidc.logout,
     events: repositories.identityEventPublisher,
+    notices: securityNotices,
   },
   log: withAlertingLog(log),
 });
@@ -173,9 +175,32 @@ const authHandler = createAuthRequestHandler({
   auth,
   oidcSessions: services.oidc.sessions,
 });
+const deletionPurge = createIdentityDeletionPurgeService({
+  db,
+  events: repositories.identityEventPublisher,
+  ports: {
+    eligibility: accountDeletion,
+    notices: securityNotices,
+    effects: durableSecurityEffects,
+    // The scrub removes the issuer's own sessions and tokens; this ends the products' sessions
+    // and sends back-channel logout, retried durably if it fails.
+    endSessions: async (userId) => {
+      await durableSecurityEffects.settle("identity-deletion-purge", {
+        kind: "revoke_subject_tokens",
+        userId,
+      });
+      await durableSecurityEffects.settle("identity-deletion-purge", {
+        kind: "publish_session_revoked",
+        userId,
+      });
+    },
+    log: withAlertingLog(log),
+  },
+});
 const schedules = await createAuthSchedules({
   db,
   log,
+  deletionPurge,
   identityOperations,
   logoutDelivery: services.oidc.logoutDelivery,
   securityEffects: durableSecurityEffects,

@@ -6,6 +6,7 @@ import type {
 import {
   AML_REVIEW_ACCESS,
   CONDITION_REPORTS_ACCESS,
+  DELETION_HOLD_ACCESS,
   FINANCE_ACCESS,
   LEGAL_ENTITY_BROWSE_ACCESS,
   LOTS_ACCESS,
@@ -145,6 +146,7 @@ function stampActions(
       break;
     case "marketing_enquiry":
     case "purchase_problem":
+    case "deletion_hold":
       break;
   }
 
@@ -239,6 +241,10 @@ export class AdminWorkItemsService {
       {
         access: WORK_ITEM_KIND_ACCESS.purchase_problem,
         fetch: () => this.reader.listPurchaseProblems(perSourceLimit),
+      },
+      {
+        access: DELETION_HOLD_ACCESS,
+        fetch: () => this.reader.listDeletionHolds(perSourceLimit),
       },
     ];
 

@@ -30,7 +30,12 @@ export interface IEmailOutboxRepository {
   /** Why this address is suppressed, or null when it is not. */
   findSuppression(emailHash: string): Promise<EmailSuppressionReason | null>;
   markSuppressed(outboxId: string, reason: string): Promise<void>;
-  markSent(outboxId: string, messageId: string): Promise<void>;
+  /** `discardSnapshot` also erases the stored recipient address, which is no longer needed. */
+  markSent(
+    outboxId: string,
+    messageId: string,
+    options?: { discardSnapshot: boolean },
+  ): Promise<void>;
   markFailedOrPending(outboxId: string, message: string, terminal: boolean): Promise<void>;
   markSentPersistenceFailed(outboxId: string, messageId: string, message: string): Promise<void>;
   resolveUserEmail(userId: string): Promise<string | null>;

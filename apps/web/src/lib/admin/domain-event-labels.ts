@@ -229,6 +229,7 @@ const LABELS: Record<string, string> = {
   "user.suspended": "Account suspended",
   "user.deletion_requested": "Account deletion requested",
   "user.deletion_cancelled": "Account deletion cancelled",
+  "user.deletion_held": "Account deletion on hold",
   "user.identity_enabled": "Identity enabled",
   "user.identity_disabled": "Identity disabled",
   "user.identity_deleted": "Identity deleted",

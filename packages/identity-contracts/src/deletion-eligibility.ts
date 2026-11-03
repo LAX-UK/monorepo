@@ -61,10 +61,19 @@ export const ACCOUNT_DELETION_CONFIRMATION_PHRASE = "DELETE MY ACCOUNT";
 /** Days between asking for deletion and the personal data being erased; cancelling is possible until then. */
 export const ACCOUNT_DELETION_GRACE_DAYS = 30;
 
+/** Set when the daily purge found something open and kept the person's details. */
+export const accountDeletionHoldSchema = z.object({
+  heldAt: z.string().datetime({ offset: true }),
+  /** What is still open, as each product described it. */
+  reasons: z.array(deletionBlockerSchema).max(50),
+});
+
 export const accountDeletionStatusSchema = z.object({
   /** When deletion was asked for; null when it has not been. */
   requestedAt: z.string().datetime({ offset: true }).nullable(),
   products: z.array(accountDeletionProductSchema),
+  /** Present while a due deletion is held. */
+  hold: accountDeletionHoldSchema.nullish(),
 });
 
 /**
@@ -89,6 +98,7 @@ export const accountDeletionCancelOutcomeSchema = z.object({
 export type DeletionBlocker = z.infer<typeof deletionBlockerSchema>;
 export type ProductDeletionEligibility = z.infer<typeof productDeletionEligibilitySchema>;
 export type AccountDeletionProduct = z.infer<typeof accountDeletionProductSchema>;
+export type AccountDeletionHold = z.infer<typeof accountDeletionHoldSchema>;
 export type AccountDeletionStatus = z.infer<typeof accountDeletionStatusSchema>;
 export type AccountDeletionOutcome = z.infer<typeof accountDeletionOutcomeSchema>;
 

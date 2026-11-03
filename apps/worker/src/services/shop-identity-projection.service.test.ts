@@ -72,4 +72,45 @@ describe("ShopIdentityProjectionService", () => {
       }),
     );
   });
+  it("records a deletion request, creating the profile when it arrives first", async () => {
+    const onConflictDoUpdate = vi.fn(async () => undefined);
+    const values = vi.fn(() => ({ onConflictDoUpdate }));
+    const db = { insert: vi.fn(() => ({ values })) };
+    const service = new ShopIdentityProjectionService(db as never);
+
+    await service.apply("user.deletion_requested", {
+      schemaVersion: 1,
+      subjectId: "subject-1",
+      requestedAt: "2026-11-02T10:00:00.000Z",
+    });
+
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identitySubjectId: "subject-1",
+        deletionRequestedAt: new Date("2026-11-02T10:00:00.000Z"),
+      }),
+    );
+    expect(onConflictDoUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        set: expect.objectContaining({ deletionRequestedAt: new Date("2026-11-02T10:00:00.000Z") }),
+      }),
+    );
+  });
+
+  it("clears the request when the person cancels", async () => {
+    const onConflictDoUpdate = vi.fn(async () => undefined);
+    const values = vi.fn(() => ({ onConflictDoUpdate }));
+    const db = { insert: vi.fn(() => ({ values })) };
+    const service = new ShopIdentityProjectionService(db as never);
+
+    await service.apply("user.deletion_cancelled", {
+      schemaVersion: 1,
+      subjectId: "subject-1",
+      cancelledAt: "2026-11-03T10:00:00.000Z",
+    });
+
+    expect(onConflictDoUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ set: expect.objectContaining({ deletionRequestedAt: null }) }),
+    );
+  });
 });

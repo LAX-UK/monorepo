@@ -14,6 +14,18 @@ export {
 } from "./account-password.js";
 export { formatDeviceLabel } from "./device-label.js";
 export {
+  ACCOUNT_DELETION_PENDING_CODE,
+  accountDeletionDueAt,
+  accountDeletionPendingBody,
+  accountDeletionPendingMessage,
+  formatDeletionDay,
+} from "./deletion-pending.js";
+export {
+  DELETION_HOLD_COPY,
+  deletionHoldNextCheck,
+  nextDeletionCheckAfter,
+} from "./deletion-hold-copy.js";
+export {
   ACCOUNT_SECURITY_FACTS_PATH,
   accountSecurityFactsSchema,
   type AccountSecurityFactsResponse,
@@ -78,6 +90,7 @@ export {
   DELETION_ELIGIBILITY_SUBROUTE,
   INTERNAL_IDENTITY_ROUTE_PREFIX,
   accountDeletionCancelOutcomeSchema,
+  accountDeletionHoldSchema,
   accountDeletionProductSchema,
   accountDeletionOutcomeSchema,
   accountDeletionStatusSchema,
@@ -85,6 +98,7 @@ export {
   deletionBlockerSchema,
   deletionEligibilityPath,
   productDeletionEligibilitySchema,
+  type AccountDeletionHold,
   type AccountDeletionOutcome,
   type AccountDeletionProduct,
   type AccountDeletionStatus,
@@ -157,6 +171,7 @@ export {
   IDENTITY_EVENT_TYPES,
   identityEventPayloadSchemasV1,
   userDeletionCancelledPayloadSchemaV1,
+  userDeletionHeldPayloadSchemaV1,
   userDeletionRequestedPayloadSchemaV1,
   userIdentityDisabledPayloadSchemaV1,
   userIdentityEnabledPayloadSchemaV1,
@@ -168,6 +183,7 @@ export {
   type IdentityEventPayloadV1,
   type IdentityEventType,
   type UserDeletionCancelledPayloadV1,
+  type UserDeletionHeldPayloadV1,
   type UserDeletionRequestedPayloadV1,
   type UserIdentityDisabledPayloadV1,
   type UserIdentityEnabledPayloadV1,

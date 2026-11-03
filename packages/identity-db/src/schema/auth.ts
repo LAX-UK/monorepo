@@ -3,6 +3,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   text,
@@ -62,6 +63,15 @@ export const user = pgTable(
     }),
     twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
     deletionRequestedAt: timestamp("deletion_requested_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    /** Set while the daily purge is keeping a due deletion back because something is still open. */
+    deletionHeldAt: timestamp("deletion_held_at", { mode: "date", withTimezone: true }),
+    /** What was open when it was held: `{ code, message, href }[]`, no personal data. */
+    deletionHoldReasons: jsonb("deletion_hold_reasons"),
+    /** When the reminder before the purge was queued, so it is sent once. */
+    deletionReminderSentAt: timestamp("deletion_reminder_sent_at", {
       mode: "date",
       withTimezone: true,
     }),

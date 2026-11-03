@@ -1,12 +1,15 @@
 import {
   type EmailSender,
+  type SecurityNoticeDelivery,
   type SecurityNoticeEvent,
   type SecurityNoticePublisher,
   maskPhoneE164,
 } from "@auction/auth";
 import {
   ACCOUNT_DELETION_GRACE_DAYS,
+  DELETION_HOLD_COPY,
   SUBJECT_EXPORT_RETENTION_DAYS,
+  deletionHoldNextCheck,
   formatDeviceLabel,
 } from "@auction/identity-contracts";
 import { formatLondonDate, formatLondonTime } from "./format-london-time.js";
@@ -19,6 +22,8 @@ import {
   isNewDevice,
 } from "./known-device.js";
 import { type SecurityEffectLogger, describeError } from "./settle-security-effect.js";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type SecurityNoticeDeps = {
   /** Read straight from the repository, not the operations service, which itself sends notices. */
@@ -43,7 +48,7 @@ export type SecurityNoticeDeps = {
  * the change it reports. The change has already committed when this runs, and `notify` never
  * throws: a notice that cannot be queued is logged and must not undo or block what it reports.
  */
-export class SecurityNoticeService implements SecurityNoticePublisher {
+export class SecurityNoticeService implements SecurityNoticePublisher, SecurityNoticeDelivery {
   constructor(
     private readonly deps: SecurityNoticeDeps,
     private readonly now: () => Date = () => new Date(),
@@ -51,7 +56,7 @@ export class SecurityNoticeService implements SecurityNoticePublisher {
 
   async notify(event: SecurityNoticeEvent): Promise<void> {
     try {
-      await this.send(event);
+      await this.deliver(event);
     } catch (error) {
       this.deps.log.error(
         { ...describeError(error), kind: event.kind, userId: event.userId },
@@ -60,7 +65,20 @@ export class SecurityNoticeService implements SecurityNoticePublisher {
     }
   }
 
-  private async send(event: SecurityNoticeEvent): Promise<void> {
+  /** Like `notify`, but a failure reaches the caller, so a durable retry can try again. */
+  async deliver(event: SecurityNoticeEvent): Promise<void> {
+    if (event.kind === "account_deletion_completed") {
+      // The account is already erased, so the address comes from the copy taken before the scrub.
+      await this.deps.email.enqueue({
+        template: "account-deletion-completed",
+        to: event.email,
+        category: "auth",
+        // Keyed by the person, not the address, so a retry can never send it twice.
+        idempotencyKey: `account-deletion-completed:${event.userId}`,
+        vars: { erasedOnDisplay: formatLondonDate(event.at) },
+      });
+      return;
+    }
     const subject = await this.deps.subjects.findById(event.userId);
     if (!subject) return;
     const base = {
@@ -116,6 +134,44 @@ export class SecurityNoticeService implements SecurityNoticePublisher {
           dataExportUrl: this.deps.dataExportUrl,
           expiresDisplay: formatLondonDate(event.expiresAt),
           retentionDays: SUBJECT_EXPORT_RETENTION_DAYS,
+        });
+        return;
+      case "account_deletion_reminder":
+        await this.deps.email.enqueue({
+          template: "account-deletion-reminder",
+          to: subject.email,
+          userId: event.userId,
+          category: "auth",
+          idempotencyKey: `account-deletion-reminder:${event.userId}:${event.effectiveAt.toISOString()}`,
+          vars: {
+            userName: subject.name,
+            effectiveDateDisplay: formatLondonDate(event.effectiveAt),
+            daysLeft: Math.max(
+              1,
+              Math.round((event.effectiveAt.getTime() - event.at.getTime()) / DAY_MS),
+            ),
+            cancelDeletionUrl: this.deps.cancelDeletionUrl,
+          },
+        });
+        return;
+      case "account_deletion_held":
+        await this.deps.email.enqueue({
+          template: "account-deletion-held",
+          to: subject.email,
+          userId: event.userId,
+          category: "auth",
+          // One email per hold: a later check that finds the same reasons stays quiet.
+          idempotencyKey: `account-deletion-held:${event.userId}:${event.at.toISOString()}`,
+          vars: {
+            userName: subject.name,
+            title: DELETION_HOLD_COPY.title,
+            basis: DELETION_HOLD_COPY.basis,
+            reasonsIntro: DELETION_HOLD_COPY.reasonsIntro,
+            reasons: [...event.reasons],
+            recheck: deletionHoldNextCheck(event.nextCheckAt),
+            resolution: DELETION_HOLD_COPY.resolution,
+            cancelDeletionUrl: this.deps.cancelDeletionUrl,
+          },
         });
         return;
       case "phone_verified":
