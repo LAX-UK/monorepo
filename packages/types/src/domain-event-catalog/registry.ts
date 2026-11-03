@@ -596,7 +596,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "marketing_enquiry.received": {
     producers: ["apps/api"],
-    consumers: [],
+    consumers: ["zoho"],
     idempotencyPolicy: "none",
     piiClassification: "none",
   },

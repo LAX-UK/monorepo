@@ -198,4 +198,52 @@ describe("processZohoProjector", () => {
     expect(syncEvent).toHaveBeenCalled();
     expect(ctx.deliveryRepo?.markSucceeded).toHaveBeenCalled();
   });
+
+  it("sends nothing for an enquiry when the event is not allowlisted", async () => {
+    const syncEvent = vi.fn();
+    const ctx = baseCtx({
+      env: {
+        ZOHO_CRM_SYNC_MODE: "live",
+        ZOHO_CRM_ENABLED_EVENT_TYPES: "user.registered",
+        ZOHO_CRM_CURSOR_BATCH_SIZE: 100,
+        ZOHO_CRM_TICK_TIME_BUDGET_MS: 2_000,
+      } as never,
+      crmSyncService: {
+        syncEvent,
+        getGatewayMetrics: vi.fn().mockReturnValue({ apiCreditsRemaining: null }),
+      } as unknown as CrmSyncService,
+    });
+    ctx.domainEventReader.getById = vi.fn().mockResolvedValue({
+      id: 7,
+      eventType: "marketing_enquiry.received",
+      aggregateId: "e1",
+      payload: { enquiryId: "e1", intent: "private_sale_sell" },
+      schemaVersion: 1,
+    });
+    const deliveryRepo = ctx.deliveryRepo;
+    if (!deliveryRepo) throw new Error("missing deliveryRepo");
+    deliveryRepo.claim = vi.fn().mockResolvedValue([
+      {
+        id: 101,
+        consumer: "zoho",
+        eventId: 7,
+        status: "processing",
+        attempts: 1,
+        leaseExpiresAt: new Date(Date.now() + 60_000),
+        nextRetryAt: null,
+        idempotencyKey: "zoho:7",
+        providerReference: null,
+        lastError: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+
+    await processZohoProjector(ctx);
+
+    expect(syncEvent).not.toHaveBeenCalled();
+    expect(ctx.deliveryRepo?.markSkipped).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: "event_type_disabled" }),
+    );
+  });
 });
