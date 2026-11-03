@@ -8,7 +8,17 @@ import {
   SegmentedControl,
   TextInput,
 } from "@auction/ui/lax";
-import { ChevronLeft, ChevronRight, ListFilter, Plus, Rows3, Rows4, Search, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ListFilter,
+  Lock,
+  Plus,
+  Rows3,
+  Rows4,
+  Search,
+  X,
+} from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "../lib/cn.js";
@@ -210,9 +220,15 @@ export function FilterMenu({
   );
 }
 
-export type ActiveFilter = { id: string; label: string; onRemove: () => void };
+/**
+ * A filter in force. A removable one has `onRemove`; a `locked` one is fixed by the person's
+ * access (for example, the one source they may see), so it shows a lock and cannot be removed.
+ */
+export type ActiveFilter =
+  | { id: string; label: string; onRemove: () => void }
+  | { id: string; label: string; locked: true };
 
-/** Applied filters as removable chips, plus "Clear all". */
+/** Applied filters as removable chips, plus "Clear all" when more than one can be removed. */
 export function ActiveFilterChips({
   filters,
   onClearAll,
@@ -221,26 +237,35 @@ export function ActiveFilterChips({
   onClearAll?: () => void;
 }) {
   if (filters.length === 0) return null;
+  const removable = filters.filter((filter) => !("locked" in filter));
   return (
     <ul aria-label="Applied filters" className="flex flex-wrap items-center gap-1.5">
       {filters.map((filter) => (
         <li key={filter.id}>
-          <span className="inline-flex h-control-xs items-center gap-1 rounded-staff-xs border border-staff-line bg-staff-sunken pr-0.5 pl-2 text-staff-xs font-medium text-staff-fg">
-            {filter.label}
-            <StaffButton
-              variant="ghost"
-              size="icon-xs"
-              aria-label={`Remove filter: ${filter.label}`}
-              onClick={filter.onRemove}
-              // 20px to look at, 24px to hit: the pseudo-element widens the target.
-              className="relative size-5 after:absolute after:-inset-0.5 [&_svg]:size-3"
-            >
-              <X aria-hidden />
-            </StaffButton>
-          </span>
+          {"locked" in filter ? (
+            <span className="inline-flex h-control-xs items-center gap-1.5 rounded-staff-xs border border-staff-line bg-staff-sunken px-2 text-staff-xs font-medium text-staff-fg">
+              <Lock aria-hidden className="size-3 text-staff-muted" />
+              {filter.label}
+              <span className="sr-only">, set by your access</span>
+            </span>
+          ) : (
+            <span className="inline-flex h-control-xs items-center gap-1 rounded-staff-xs border border-staff-line bg-staff-sunken pr-0.5 pl-2 text-staff-xs font-medium text-staff-fg">
+              {filter.label}
+              <StaffButton
+                variant="ghost"
+                size="icon-xs"
+                aria-label={`Remove filter: ${filter.label}`}
+                onClick={filter.onRemove}
+                // 20px to look at, 24px to hit: the pseudo-element widens the target.
+                className="relative size-5 after:absolute after:-inset-0.5 [&_svg]:size-3"
+              >
+                <X aria-hidden />
+              </StaffButton>
+            </span>
+          )}
         </li>
       ))}
-      {onClearAll && filters.length > 1 ? (
+      {onClearAll && removable.length > 1 ? (
         <li>
           <StaffButton
             variant="ghost"

@@ -1,27 +1,21 @@
-import type { Database } from "@auction/db";
-import { webhookEvent } from "@auction/db/schema";
 import type {
   DomainEventDeliveryRow,
+  FailedWebhookRow,
   IDomainEventDeliveryRepository,
+  IIntegrationDeadLetterReader,
+  IWebhookRetryQueue,
 } from "@auction/persistence/interfaces";
-import { eq, isNull } from "drizzle-orm";
 
 export type DeliveryOpsListItem =
   | { kind: "domain_event"; row: DomainEventDeliveryRow }
-  | {
-      kind: "webhook";
-      id: string;
-      source: string;
-      eventKey: string;
-      attempts: number;
-      lastError: string | null;
-      receivedAt: Date;
-    };
+  | ({ kind: "webhook" } & FailedWebhookRow);
 
+/** Engineers' view of deliveries that gave up: events Xero and Zoho refused, and failed webhooks. */
 export class DeliveryOpsApplicationService {
   constructor(
     private readonly deliveryRepo: IDomainEventDeliveryRepository,
-    private readonly db: Database,
+    private readonly deadLetters: Pick<IIntegrationDeadLetterReader, "listFailedWebhooks">,
+    private readonly webhooks: IWebhookRetryQueue,
   ) {}
 
   async listDeadLetters(input: {
@@ -29,27 +23,13 @@ export class DeliveryOpsApplicationService {
     limit: number;
     offset: number;
   }): Promise<DeliveryOpsListItem[]> {
-    const domainRows = await this.deliveryRepo.listDeadLettered(input);
-    const webhookRows = await this.db
-      .select({
-        id: webhookEvent.id,
-        source: webhookEvent.source,
-        eventKey: webhookEvent.eventKey,
-        attempts: webhookEvent.attempts,
-        lastError: webhookEvent.lastError,
-        receivedAt: webhookEvent.receivedAt,
-      })
-      .from(webhookEvent)
-      .where(isNull(webhookEvent.processedAt))
-      .orderBy(webhookEvent.receivedAt)
-      .limit(input.limit)
-      .offset(input.offset);
-
-    const webhookDlq = webhookRows.filter((row) => row.lastError != null && row.lastError !== "");
-
+    const [domainRows, webhookRows] = await Promise.all([
+      this.deliveryRepo.listDeadLettered(input),
+      this.deadLetters.listFailedWebhooks(input),
+    ]);
     return [
       ...domainRows.map((row) => ({ kind: "domain_event" as const, row })),
-      ...webhookDlq.map((row) => ({ kind: "webhook" as const, ...row })),
+      ...webhookRows.map((row) => ({ kind: "webhook" as const, ...row })),
     ];
   }
 
@@ -62,9 +42,6 @@ export class DeliveryOpsApplicationService {
   }
 
   async markWebhookRetry(eventKey: string): Promise<void> {
-    await this.db
-      .update(webhookEvent)
-      .set({ lastError: null, processedAt: null })
-      .where(eq(webhookEvent.eventKey, eventKey));
+    await this.webhooks.requeue(eventKey);
   }
 }
