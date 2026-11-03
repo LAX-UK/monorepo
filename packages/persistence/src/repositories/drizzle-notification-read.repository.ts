@@ -83,6 +83,7 @@ function mapRow(row: Row): UserNotification {
     message: row.message,
     lotId: row.lotId,
     submissionId: row.submissionId,
+    saleId: row.saleId,
     legalEntityId: row.legalEntityId,
     read: row.read,
     archivedAt: row.archivedAt ?? null,

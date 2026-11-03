@@ -14,7 +14,7 @@ import { EmailUnsubscribeService } from "../services/email-unsubscribe.service.j
 import { ErrorHandlerService } from "../services/error-handler.service.js";
 import { NewsletterSignupService } from "../services/newsletter-signup.service.js";
 import { PostmarkWebhookService } from "../services/postmark-webhook.service.js";
-import { VisitorSaleAlertService } from "../services/visitor-sale-alert.service.js";
+import { type BidAlertEngine, createBidAlertEngine } from "./create-alert-engine.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerPaymentsServices } from "./create-payments-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
@@ -32,7 +32,7 @@ export type ContainerUserUtilityServices = {
   postmarkWebhookService: PostmarkWebhookService;
   adminPaymentListQueryService: AdminPaymentListQueryService;
   newsletterSignupService: NewsletterSignupService;
-  visitorSaleAlertService: VisitorSaleAlertService;
+  alertEngine: BidAlertEngine;
 };
 
 export type CreateUserUtilityServicesInput = {
@@ -67,7 +67,6 @@ export function createUserUtilityServices(
     emailSuppressionRepository,
     emailWebhookIngestRepository,
     newsletterSignupRepository,
-    visitorSaleAlertRepository,
     notificationPreferenceRepository,
     userRepo,
     failedJobRepository,
@@ -139,22 +138,11 @@ export function createUserUtilityServices(
     marketingSyncQueue,
   );
 
-  const visitorSaleAlertService = new VisitorSaleAlertService({
-    subscribers: visitorSaleAlertRepository,
+  const alertEngine = createBidAlertEngine({
+    env,
+    db: input.db,
     email: infra.emailService,
-    owners: {
-      async findEmail(userId) {
-        const profile = await userRepo.findById(userId);
-        if (!profile) return null;
-        return {
-          email: profile.email,
-          verified: (await userRepo.findVerifiedIdByEmail(profile.email)) === userId,
-        };
-      },
-    },
-    secret: env.EMAIL_UNSUBSCRIBE_SECRET,
-    webOrigin: env.WEB_ORIGIN,
-    apiPublicUrl: env.API_PUBLIC_URL,
+    userRepo,
   });
 
   const adminPaymentListQueryService = new AdminPaymentListQueryService(paymentRepo);
@@ -168,6 +156,6 @@ export function createUserUtilityServices(
     postmarkWebhookService,
     adminPaymentListQueryService,
     newsletterSignupService,
-    visitorSaleAlertService,
+    alertEngine,
   };
 }

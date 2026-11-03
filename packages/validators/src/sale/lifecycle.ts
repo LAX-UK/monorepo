@@ -35,6 +35,11 @@ export const bulkSalesBodySchema = z
     }
   });
 
+/** What staff choose when publishing a sale: whether sale alert subscribers hear about it. */
+export const publishSaleBodySchema = z.object({
+  announce: z.boolean().optional(),
+});
+
 export const markSaleEndedBodySchema = z.object({
   reason: z.string().max(500).optional(),
 });

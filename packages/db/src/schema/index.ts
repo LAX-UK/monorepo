@@ -101,6 +101,8 @@ export * from "./payment-refund-reconcile.js";
 export * from "./kyc.js";
 export * from "./kyc-retention-tombstone.js";
 export * from "./visitor-sale-alerts.js";
+export * from "./alert-tables.js";
+export * from "./bid-alerts.js";
 export * from "./aml.js";
 export * from "./source-of-funds.js";
 export * from "./source-of-funds-documents.js";

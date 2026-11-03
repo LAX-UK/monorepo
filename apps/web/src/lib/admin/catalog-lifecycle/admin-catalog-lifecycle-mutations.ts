@@ -10,14 +10,33 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 import type { LotStatus } from "@auction/types";
 import { revalidatePath } from "next/cache";
 
-export async function adminPublishSaleResultAction(saleId: string): Promise<ActionResult<void>> {
+/** How many people a sale alert would reach; null when it cannot be read (the box then has no count). */
+export async function adminSaleAnnouncePreviewAction(
+  saleId: string,
+): Promise<ActionResult<{ subscribers: number }>> {
+  return instrumentServerAction("adminSaleAnnouncePreviewAction", async () => {
+    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+    if (denied && !denied.ok) return denied;
+    const id = saleId.trim();
+    if (!id) return actionFailure("Missing sale");
+    const { adminSales } = getWriteContainer();
+    const r = await adminSales.announcePreview(id);
+    if (!r.ok) return actionFailure(r.message, undefined, r.status);
+    return actionSuccess({ subscribers: r.data.data.subscribers });
+  });
+}
+
+export async function adminPublishSaleResultAction(
+  saleId: string,
+  options?: { announce?: boolean },
+): Promise<ActionResult<void>> {
   return instrumentServerAction("adminPublishSaleResultAction", async () => {
     const denied = await denyUnlessAdminCapability(SALES_ACCESS);
     if (denied && !denied.ok) return denied;
     const id = saleId.trim();
     if (!id) return actionFailure("Missing sale");
     const { adminSales } = getWriteContainer();
-    const r = await adminSales.publish(id);
+    const r = await adminSales.publish(id, options);
     if (!r.ok) {
       const meta = readApiActionErrorMeta(r.body);
       return actionFailure(r.message, undefined, r.status, r.code, meta);

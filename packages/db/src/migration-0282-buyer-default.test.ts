@@ -29,12 +29,15 @@ describe("migration 0282 buyer default and payment reminders", () => {
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
   });
 
-  it("allows exactly the types the schema lists, including those from 0281", () => {
-    expect(typesIn(migration)).toEqual([...NOTIFICATION_TYPES]);
+  // Types added by later migrations are not part of what 0282 allowed.
+  const asOf0282 = NOTIFICATION_TYPES.filter((t) => !["sale_announced"].includes(t));
+
+  it("allows exactly the types the schema listed then, including those from 0281", () => {
+    expect(typesIn(migration)).toEqual(asOf0282);
   });
 
   it("removes only the two new types on rollback and restores the 0281 list", () => {
-    expect(typesIn(rollback)).toEqual(NOTIFICATION_TYPES.filter((t) => !NEW_TYPES.includes(t)));
+    expect(typesIn(rollback)).toEqual(asOf0282.filter((t) => !NEW_TYPES.includes(t)));
     expect(rollback).toContain("'sale_cancelled'");
     expect(rollback).toContain(
       "DELETE FROM notification WHERE type IN ('payment_reminder', 'buyer_default_notice')",

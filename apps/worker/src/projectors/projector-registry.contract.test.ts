@@ -1,6 +1,7 @@
 import type { IEmailService } from "@auction/email";
 import { describe, expect, it, vi } from "vitest";
 import { AML_MATCH_REVIEW_PROJECTOR } from "./aml-match-review.js";
+import { BID_ALERT_MATCHING_PROJECTOR } from "./bid-alert-matching.js";
 import { BID_IDENTITY_DIRECTORY_PROJECTOR } from "./bid-identity-directory.js";
 import { BID_PERSONAL_DATA_ANONYMISATION_PROJECTOR } from "./bid-personal-data-anonymisation.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
@@ -39,6 +40,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR,
   LOT_INVOICE_INITIATION_PROJECTOR,
   UNSOLD_CHOICE_DEADLINE_PROJECTOR,
+  BID_ALERT_MATCHING_PROJECTOR,
 ] as const;
 
 function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunContext {
@@ -109,6 +111,16 @@ describe("createDefaultProjectorRegistry", () => {
 
   it("registers projectors in the legacy tick order", () => {
     expect(registry.listProjectorNames()).toEqual([...EXPECTED_PROJECTOR_ORDER]);
+  });
+
+  it("runs the alert matcher only while alerts are on", () => {
+    expect(registry.listEnabledProjectorNames(baseCtx())).not.toContain(
+      BID_ALERT_MATCHING_PROJECTOR,
+    );
+    const on = registry.listEnabledProjectorNames(
+      baseCtx({ bidAlerts: { isSeeded: async () => true, handle: async () => undefined } }),
+    );
+    expect(on).toContain(BID_ALERT_MATCHING_PROJECTOR);
   });
 
   it("skips email projectors when emailService or supportContactEmail is missing", () => {

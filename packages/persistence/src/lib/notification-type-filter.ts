@@ -29,6 +29,7 @@ const TYPE_FILTER_GROUPS: Readonly<Record<string, readonly string[]>> = {
     "condition_report_ready",
     "condition_report_declined",
   ],
+  sales: ["sale_announced"],
   team: ["access_requested", "access_request_decided", "organisation_member_left"],
 };
 
