@@ -5,7 +5,12 @@ import type {
   AdminEditionRunSpec,
   AdminProofType,
 } from "@auction/shop-contracts";
-import { OPEN_EDITION_LOW_STOCK_AT, isOpenStockLow, runAllocation } from "@auction/shop-domain";
+import {
+  OPEN_EDITION_LOW_STOCK_AT,
+  allocationNumbering,
+  isOpenStockLow,
+  runAllocation,
+} from "@auction/shop-domain";
 import type { StatItem } from "@auction/staff-ui";
 
 /*
@@ -217,4 +222,30 @@ export function bulkFactsSummary(
 export function factsListLabel(run: AdminArtworkRunSummary | null): string | null {
   if (!run) return null;
   return run.factsStatus === "confirmed" ? "Confirmed" : "Needs review";
+}
+
+const HOLDER_NAMES = {
+  original_buyer_entitlement: "the buyer of the original",
+  artist: "the artist",
+  lax: "LAX",
+} as const;
+
+/**
+ * Who holds which numbers in a limited run, as one sentence: "Prints 1–10 go to the buyer of the
+ * original, 11–20 to the artist and 21–24 to LAX." Groups with no prints are left out; null while
+ * there are none.
+ */
+export function allocationSentence(allocation: {
+  buyer: number;
+  artist: number;
+  lax: number;
+}): string | null {
+  const ranges = allocationNumbering(allocation);
+  if (ranges.length === 0) return null;
+  const span = (range: { from: number; to: number }) =>
+    range.from === range.to ? `${range.from}` : `${range.from}–${range.to}`;
+  const parts = ranges.map((range) => `${span(range)} to ${HOLDER_NAMES[range.allocation]}`);
+  const last = parts.pop();
+  const joined = parts.length > 0 ? `${parts.join(", ")} and ${last}` : last;
+  return `Prints ${joined}.`.replace(" to ", " go to ");
 }

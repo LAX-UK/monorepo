@@ -358,7 +358,9 @@ describe("artwork editor", () => {
       typeIntoId("run-allocation-buyer", "0");
       typeIntoId("run-allocation-artist", "20");
       expect(screen.getByText("24 of 24 allocated")).toBeInTheDocument();
-      expect(screen.getByText("Numbering: 1–20 artist · 21–24 LAX")).toBeInTheDocument();
+      expect(
+        screen.getByText("Prints 1–20 go to the artist and 21–24 to LAX."),
+      ).toBeInTheDocument();
     });
 
     it("shows a taken slug on the slug field", async () => {

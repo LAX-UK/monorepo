@@ -13,7 +13,7 @@ import { ChoiceFieldset, Field, ProgressBar, TextInput, cn } from "@auction/staf
 import { CircleAlert } from "@auction/staff-ui/icons";
 
 const ROWS: ReadonlyArray<{ key: keyof AllocationText; label: string }> = [
-  { key: "buyer", label: "Buyers of the original" },
+  { key: "buyer", label: "Buyer of the original" },
   { key: "artist", label: "Artist" },
   { key: "lax", label: "LAX" },
 ];

@@ -964,6 +964,16 @@ export function ArtworkEditor({
           )}
         </FormSection>
 
+        {mode === "create" && !companion && values.editionRun === "original" && canSave ? (
+          <OriginalPrintsSection
+            values={printsValues}
+            errors={printsErrors}
+            originalTitle={values.title}
+            disabled={saving}
+            onChange={(patch) => setPrintsValues((current) => ({ ...current, ...patch }))}
+          />
+        ) : null}
+
         {companion ? null : readOnly && record ? (
           <ReadOnlyMedia images={values.images} importedImageUrl={record.importedImageUrl} />
         ) : (
@@ -1088,16 +1098,6 @@ export function ArtworkEditor({
             </Field>
           </FormSection>
         )}
-
-        {mode === "create" && !companion && values.editionRun === "original" && canSave ? (
-          <OriginalPrintsSection
-            values={printsValues}
-            errors={printsErrors}
-            originalTitle={values.title}
-            disabled={saving}
-            onChange={(patch) => setPrintsValues((current) => ({ ...current, ...patch }))}
-          />
-        ) : null}
 
         {prints ? (
           <PrintsConfirmSection
