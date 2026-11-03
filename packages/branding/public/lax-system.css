@@ -71,6 +71,11 @@
   --lax-info-bg: light-dark(#edf2fd, rgb(91 141 239 / 0.16));
   --lax-info-fg: light-dark(#2550b4, #9dbcf7);
   --lax-info-dot: light-dark(#2f62cf, #6f9bf2);
+  /* Accepted: work the house has taken on (a consignment past review). Violet keeps it apart
+     from the blue of work still being reviewed. */
+  --lax-accepted-bg: light-dark(#f1eefb, rgb(150 120 240 / 0.16));
+  --lax-accepted-fg: light-dark(#5b3fa6, #c9bbf6);
+  --lax-accepted-dot: light-dark(#7253cc, #a28af0);
   --lax-success-bg: light-dark(#eaf5ec, rgb(64 178 98 / 0.16));
   --lax-success-fg: light-dark(#1b6b2f, #86d59a);
   --lax-success-dot: light-dark(#2a9148, #4fbf6c);
@@ -87,10 +92,8 @@
   --lax-danger-solid-hover: light-dark(#931c13, #a93125);
   --lax-danger-solid-pressed: light-dark(#7a170f, #8f271e);
   --lax-on-danger: light-dark(#ffffff, #ffffff);
-  /* Live now (Bid): a solid fill, so it never reads as the tinted danger of a failed record. */
+  /* Live now: the neutral badge with this dot. Live is a state, not an alarm. */
   --lax-live-dot: light-dark(#e83030, #ff5a4f);
-  --lax-live-bg: light-dark(#c81e1e, #c13a2e);
-  --lax-on-live: var(--lax-on-danger);
 
   /* Radius: one role per step. */
   --lax-radius-badge: 4px;

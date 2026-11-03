@@ -14,6 +14,7 @@ import { SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR } from "./source-of-funds-documents
 import { SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR } from "./source-of-funds-review-resolution.js";
 import { SOURCE_OF_FUNDS_REVIEW_PROJECTOR } from "./source-of-funds-review.js";
 import { UNSOLD_CHOICE_DEADLINE_PROJECTOR } from "./unsold-choice-deadline.js";
+import { UNSOLD_FOLLOW_UP_PROJECTOR } from "./unsold-follow-up.js";
 import { XERO_PROJECTOR } from "./xero-projector.js";
 import { ZOHO_ARTWORK_WRITEBACK_PROJECTOR } from "./zoho-artwork-writeback-projector.js";
 import { ZOHO_PROJECTOR } from "./zoho-projector.js";
@@ -41,6 +42,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR,
   LOT_INVOICE_INITIATION_PROJECTOR,
   UNSOLD_CHOICE_DEADLINE_PROJECTOR,
+  UNSOLD_FOLLOW_UP_PROJECTOR,
   BID_ALERT_MATCHING_PROJECTOR,
   ZOHO_ARTWORK_WRITEBACK_PROJECTOR,
 ] as const;

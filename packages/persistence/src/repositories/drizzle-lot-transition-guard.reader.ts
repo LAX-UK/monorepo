@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
-import { bid, domainEvent, lotFulfilment, payment } from "@auction/db/schema";
+import { bid, domainEvent, lot, lotFulfilment, payment, unsoldLotChoice } from "@auction/db/schema";
+import { LOT_CONFIRMED_FOR_RETURN_MESSAGE } from "@auction/domain";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type {
   ILotTransitionGuardReader,
@@ -87,7 +88,28 @@ export class DrizzleLotTransitionGuardReader implements ILotTransitionGuardReade
     return openedIds.filter((id) => !closedSet.has(id)).length;
   }
 
+  /** The seller asked for the lot back and a specialist confirmed it, for the outcome it is in. */
+  async confirmedForReturn(lotId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: unsoldLotChoice.id })
+      .from(unsoldLotChoice)
+      .innerJoin(
+        lot,
+        and(eq(lot.id, unsoldLotChoice.lotId), eq(lot.endTime, unsoldLotChoice.lotEndTime)),
+      )
+      .where(
+        and(
+          eq(unsoldLotChoice.lotId, lotId),
+          eq(unsoldLotChoice.status, "confirmed"),
+          eq(unsoldLotChoice.decidedChoice, "collect"),
+        ),
+      )
+      .limit(1);
+    return Boolean(row);
+  }
+
   async assertReturnToInventoryAllowed(lotId: string): Promise<string | null> {
+    if (await this.confirmedForReturn(lotId)) return LOT_CONFIRMED_FOR_RETURN_MESSAGE;
     const counts = await this.countForLot(lotId);
     if (counts.paymentCount > 0) {
       return "This lot has payment records and cannot be returned to inventory";

@@ -1397,10 +1397,30 @@ export const shopRefund = pgTable(
     submittedAt: timestamp("submitted_at", { mode: "date", withTimezone: true }),
     idempotencyKey: text("idempotency_key").notNull(),
     requestedBySubjectId: text("requested_by_subject_id").notNull(),
+    /**
+     * Set when finance confirmed the customer was refunded outside LAX (for example in the Stripe
+     * dashboard) after this refund failed. The reference points at that refund; the four fields
+     * are set together.
+     */
+    settledOutsideAt: timestamp("settled_outside_at", { mode: "date", withTimezone: true }),
+    settledOutsideReference: text("settled_outside_reference"),
+    settledOutsideReason: text("settled_outside_reason"),
+    settledOutsideBySubjectId: text("settled_outside_by_subject_id"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    check(
+      "shop_refund_settled_outside_ck",
+      sql`(${table.settledOutsideAt} IS NULL
+        AND ${table.settledOutsideReference} IS NULL
+        AND ${table.settledOutsideReason} IS NULL
+        AND ${table.settledOutsideBySubjectId} IS NULL)
+        OR (${table.settledOutsideAt} IS NOT NULL
+        AND ${table.settledOutsideReference} IS NOT NULL
+        AND ${table.settledOutsideReason} IS NOT NULL
+        AND ${table.settledOutsideBySubjectId} IS NOT NULL)`,
+    ),
     uniqueIndex("shop_refund_idempotency_uid").on(table.idempotencyKey),
     uniqueIndex("shop_refund_stripe_refund_uid")
       .on(table.stripeRefundId)
@@ -1442,10 +1462,19 @@ export const shopReturn = pgTable(
       .references(() => shopEdition.id, { onDelete: "restrict" }),
     status: shopReturnStatusEnum("status").default("requested").notNull(),
     receivedAt: timestamp("received_at", { mode: "date", withTimezone: true }),
+    /** What staff decided when the item arrived; null until it is received. */
+    disposition: text("disposition").$type<"back_on_sale" | "withdrawn_damaged">(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [uniqueIndex("shop_return_order_line_uid").on(table.orderLineId)],
+  (table) => [
+    uniqueIndex("shop_return_order_line_uid").on(table.orderLineId),
+    check(
+      "shop_return_disposition_ck",
+      sql`(${table.disposition} IS NULL OR ${table.disposition} IN ('back_on_sale', 'withdrawn_damaged'))
+        AND ((${table.status} = 'received') = (${table.disposition} IS NOT NULL))`,
+    ),
+  ],
 );
 
 export const shopPayeeCompliance = pgTable(

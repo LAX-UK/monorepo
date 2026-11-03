@@ -10,6 +10,7 @@ import type {
   AdminArtworkUpdateBody,
   AdminArtworkVersionResponse,
   AdminArtworkVisibilityAction,
+  AdminPrintsFromOriginalResponse,
 } from "@auction/shop-contracts";
 import type { AdminMutationResult } from "./admin-mutation-result";
 import { forwardAdminJsonMutation } from "./forward-admin-mutation";
@@ -61,7 +62,15 @@ export async function getArtworkDetail(
 export async function createArtwork(input: {
   body: AdminArtworkCreateBody;
   idempotencyKey: string;
-}): Promise<AdminMutationResult<{ artworkId: string; slug: string; version: string }>> {
+}): Promise<
+  AdminMutationResult<{
+    artworkId: string;
+    slug: string;
+    version: string;
+    /** The prints saved with an original, when it was created with them. */
+    prints?: AdminPrintsFromOriginalResponse;
+  }>
+> {
   return forwardAdminJsonMutation({
     bffPath: "artworks",
     method: "POST",

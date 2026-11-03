@@ -1,3 +1,4 @@
+import { assertSourceOriginal } from "./artwork-catalogue.js";
 import type { ProofType } from "./edition-run.js";
 import { ShopDomainError } from "./shop-domain-error.js";
 
@@ -69,4 +70,28 @@ export function assertCorrectionReason(reason: string | null | undefined): strin
     );
   }
   return trimmed;
+}
+
+/** "harbour-at-dusk-prints": the web address of prints made from the original "harbour-at-dusk". */
+export function printsListingSlug(originalSlug: string): string {
+  return `${originalSlug}-prints`;
+}
+
+/**
+ * Prints can be made from an original that is still in the catalogue. An edition is not an
+ * original, so prints are never made from one, and an archived original is restored first.
+ */
+export function assertPrintsCanBeMadeFrom(original: {
+  artworkId: string;
+  sellsPrints: boolean;
+  archived: boolean;
+}): void {
+  assertSourceOriginal({
+    artworkId: null,
+    eligibleForEditionAllocation: true,
+    source: { artworkId: original.artworkId, eligibleForEditionAllocation: original.sellsPrints },
+  });
+  if (original.archived) {
+    throw new ShopDomainError("The original is archived; restore it before creating prints");
+  }
 }

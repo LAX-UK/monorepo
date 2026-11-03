@@ -388,6 +388,20 @@ export function createMinimalShopApiTestDeps(
         }),
       },
       editionRuns: {
+        printsFromOriginal: {
+          recordIn: async () => ({
+            artworkId: "00000000-0000-4000-8000-000000000001",
+            slug: "prints",
+            version: "2026-01-01T00:00:00.000Z",
+            editionCount: 0,
+          }),
+          create: async () => ({
+            artworkId: "00000000-0000-4000-8000-000000000001",
+            slug: "prints",
+            version: "2026-01-01T00:00:00.000Z",
+            editionCount: 0,
+          }),
+        },
         runs: {
           record: async () => 0,
           replace: async () => ({ version: "2026-01-01T00:00:00.000Z" }),
@@ -463,6 +477,14 @@ export function createMinimalShopApiTestDeps(
       retryRefund: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",
         status: "pending" as const,
+      }),
+      markRefundSettledOutside: async () => ({
+        refundId: "00000000-0000-4000-8000-000000000012",
+        status: "succeeded" as const,
+      }),
+      advanceReturn: async () => ({
+        returnId: "00000000-0000-4000-8000-000000000013",
+        status: "in_transit" as const,
       }),
       markPayoutPaid: async () => ({
         payoutId: "00000000-0000-4000-8000-000000000016",

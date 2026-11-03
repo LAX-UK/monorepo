@@ -104,6 +104,9 @@
   --color-staff-info-bg: var(--lax-info-bg);
   --color-staff-info-fg: var(--lax-info-fg);
   --color-staff-info-dot: var(--lax-info-dot);
+  --color-staff-accepted-bg: var(--lax-accepted-bg);
+  --color-staff-accepted-fg: var(--lax-accepted-fg);
+  --color-staff-accepted-dot: var(--lax-accepted-dot);
   --color-staff-success-bg: var(--lax-success-bg);
   --color-staff-success-fg: var(--lax-success-fg);
   --color-staff-success-dot: var(--lax-success-dot);
@@ -120,10 +123,6 @@
   --color-staff-danger-solid-hover: var(--lax-danger-solid-hover);
   --color-staff-on-danger: var(--lax-on-danger);
   --color-staff-live-dot: var(--lax-live-dot);
-  /* Live now (Bid): a solid fill, so it never reads as the tinted danger of a failed or
-     withdrawn record. White text meets 4.5:1 on it in both schemes. */
-  --color-staff-live-bg: var(--lax-live-bg);
-  --color-staff-on-live: var(--lax-on-live);
 }
 
 :root:not(.dark) {

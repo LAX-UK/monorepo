@@ -1,17 +1,13 @@
 import type { Database } from "@auction/db";
-import {
-  shopEdition,
-  shopOrder,
-  shopOrderLine,
-  shopPayoutLedger,
-  shopProcessedPaymentEvent,
-  shopRefund,
-} from "@auction/db/schema";
-import { and, eq, inArray, or } from "drizzle-orm";
+import { shopOrder, shopProcessedPaymentEvent, shopRefund } from "@auction/db/schema";
+import { and, eq, or } from "drizzle-orm";
 import type { ShopNotificationPublisher } from "../../../application/ports/shop-notification.publisher.js";
 import type { StripeMoneyWebhookOutcome } from "../../../application/ports/stripe-money-webhook.types.js";
 import { ShopPaymentWebhookError } from "../../../errors/shop-payment-webhook.error.js";
-import { insertShopAdminAudit } from "../../shop-admin-audit.js";
+import {
+  applyPayoutEffectsForRefund,
+  recomputeOrderRefundStatus,
+} from "../../refund-settlement.js";
 import type { ShopDomainEventPublisherMode } from "../../shop-domain-event-publisher.js";
 import { createShopDomainEventPublisher } from "../../shop-domain-event-publisher.js";
 
@@ -36,54 +32,6 @@ const REFUND_STATUS_RANK: Record<RefundStatus, number> = {
 
 function mergeRefundStatus(current: RefundStatus, incoming: RefundStatus): RefundStatus {
   return REFUND_STATUS_RANK[incoming] >= REFUND_STATUS_RANK[current] ? incoming : current;
-}
-
-/** Splits order-level succeeded refunds across lines by unit price (last line gets rounding remainder). */
-export function allocateOrderLevelRefundsToLines(
-  orderLevelSucceededPence: number,
-  lines: Array<{ id: string; unitPricePence: number }>,
-): Map<string, number> {
-  const allocated = new Map<string, number>();
-  if (orderLevelSucceededPence <= 0 || lines.length === 0) {
-    return allocated;
-  }
-  const orderTotal = lines.reduce((sum, line) => sum + line.unitPricePence, 0);
-  if (orderTotal <= 0) {
-    return allocated;
-  }
-  let assigned = 0;
-  for (let index = 0; index < lines.length; index++) {
-    const line = lines[index];
-    if (!line) continue;
-    const share =
-      index === lines.length - 1
-        ? orderLevelSucceededPence - assigned
-        : Math.floor((orderLevelSucceededPence * line.unitPricePence) / orderTotal);
-    allocated.set(line.id, share);
-    assigned += share;
-  }
-  return allocated;
-}
-
-export function computeEffectiveLineRefundedPence(
-  lines: Array<{ id: string; unitPricePence: number }>,
-  succeededRefunds: Array<{ amountPence: number; orderLineId: string | null }>,
-): Map<string, number> {
-  const directByLine = new Map<string, number>();
-  let orderLevelSucceeded = 0;
-  for (const row of succeededRefunds) {
-    if (row.orderLineId) {
-      directByLine.set(row.orderLineId, (directByLine.get(row.orderLineId) ?? 0) + row.amountPence);
-    } else {
-      orderLevelSucceeded += row.amountPence;
-    }
-  }
-  const orderLevelShare = allocateOrderLevelRefundsToLines(orderLevelSucceeded, lines);
-  const effective = new Map<string, number>();
-  for (const line of lines) {
-    effective.set(line.id, (directByLine.get(line.id) ?? 0) + (orderLevelShare.get(line.id) ?? 0));
-  }
-  return effective;
 }
 
 async function resolveShopOrderForPaymentIntent(
@@ -112,140 +60,6 @@ async function resolveShopOrderForPaymentIntent(
     totalPence: order.totalPence,
     identitySubjectId: order.identitySubjectId,
   };
-}
-
-function deriveOrderRefundStatus(
-  orderTotalPence: number,
-  succeededRefundTotal: number,
-): "paid" | "partially_refunded" | "refunded" {
-  if (succeededRefundTotal <= 0) return "paid";
-  if (succeededRefundTotal >= orderTotalPence) return "refunded";
-  return "partially_refunded";
-}
-
-async function recomputeOrderRefundStatus(tx: Database, orderId: string, orderTotalPence: number) {
-  const refundRows = await tx
-    .select({ amountPence: shopRefund.amountPence, status: shopRefund.status })
-    .from(shopRefund)
-    .where(eq(shopRefund.orderId, orderId));
-  const succeededTotal = refundRows
-    .filter((row) => row.status === "succeeded")
-    .reduce((sum, row) => sum + row.amountPence, 0);
-  const nextStatus = deriveOrderRefundStatus(orderTotalPence, succeededTotal);
-  await tx.update(shopOrder).set({ status: nextStatus }).where(eq(shopOrder.id, orderId));
-  return { nextStatus, succeededTotal };
-}
-
-async function applyPayoutEffectsForRefund(
-  tx: Database,
-  orderId: string,
-  orderTotalPence: number,
-  succeededTotal: number,
-  events: ReturnType<typeof createShopDomainEventPublisher>,
-): Promise<void> {
-  const lines = await tx
-    .select({
-      id: shopOrderLine.id,
-      unitPricePence: shopOrderLine.unitPricePence,
-      editionId: shopOrderLine.editionId,
-      sellerPartyId: shopOrderLine.sellerPartyId,
-    })
-    .from(shopOrderLine)
-    .where(eq(shopOrderLine.orderId, orderId));
-  if (lines.length === 0) return;
-
-  const refundRows = await tx
-    .select({
-      amountPence: shopRefund.amountPence,
-      orderLineId: shopRefund.orderLineId,
-    })
-    .from(shopRefund)
-    .where(and(eq(shopRefund.orderId, orderId), eq(shopRefund.status, "succeeded")));
-
-  const effectiveByLine = computeEffectiveLineRefundedPence(lines, refundRows);
-  const orderFullyRefunded = succeededTotal >= orderTotalPence;
-
-  for (const line of lines) {
-    const lineRefunded = effectiveByLine.get(line.id) ?? 0;
-    const lineFullyRefunded = orderFullyRefunded || lineRefunded >= line.unitPricePence;
-
-    const payouts = await tx
-      .select({ id: shopPayoutLedger.id, status: shopPayoutLedger.status })
-      .from(shopPayoutLedger)
-      .where(eq(shopPayoutLedger.orderLineId, line.id));
-
-    for (const payout of payouts) {
-      if (payout.status === "paid") {
-        if (lineFullyRefunded || orderFullyRefunded) {
-          await tx
-            .update(shopPayoutLedger)
-            .set({ blockedReason: "clawback" })
-            .where(eq(shopPayoutLedger.id, payout.id));
-        }
-        continue;
-      }
-      if (lineFullyRefunded || orderFullyRefunded) {
-        await tx
-          .update(shopPayoutLedger)
-          .set({ status: "cancelled", blockedReason: "refund" })
-          .where(
-            and(
-              eq(shopPayoutLedger.id, payout.id),
-              inArray(shopPayoutLedger.status, ["pending_refund_period", "due"]),
-            ),
-          );
-      } else if (lineRefunded > 0) {
-        await tx
-          .update(shopPayoutLedger)
-          .set({ blockedReason: "refund_review" })
-          .where(
-            and(
-              eq(shopPayoutLedger.id, payout.id),
-              inArray(shopPayoutLedger.status, ["pending_refund_period", "due"]),
-            ),
-          );
-      }
-    }
-  }
-
-  if (orderFullyRefunded) {
-    for (const line of lines) {
-      if (!line.editionId || !line.sellerPartyId) continue;
-      await tx
-        .update(shopEdition)
-        .set({
-          listingStatus: "withdrawn",
-          ownerPartyId: line.sellerPartyId,
-          custodyStatus: "with_owner",
-        })
-        .where(eq(shopEdition.id, line.editionId));
-
-      await insertShopAdminAudit(tx, {
-        actorSubjectId: "system:stripe-webhook",
-        capability: "refund.write",
-        action: "full_refund_edition_reversal",
-        targetType: "shop_edition",
-        targetId: line.editionId,
-        afterJson: {
-          orderId,
-          listingStatus: "withdrawn",
-          ownerPartyId: line.sellerPartyId,
-        },
-      });
-
-      await events.insertInTransaction(tx, {
-        aggregateType: "shop_edition",
-        aggregateId: line.editionId,
-        eventType: "shop.edition.released",
-        producer: "shop-api",
-        payload: {
-          schemaVersion: 1,
-          orderId,
-          editionId: line.editionId,
-        },
-      });
-    }
-  }
 }
 
 /** Applies Stripe refund webhook side effects for a shop-owned payment intent. */
@@ -359,7 +173,6 @@ export async function completeRefundFromWebhook(
         order.orderId,
         order.totalPence,
         succeededTotal,
-        events,
       );
 
       await events.insertInTransaction(tx as Database, {

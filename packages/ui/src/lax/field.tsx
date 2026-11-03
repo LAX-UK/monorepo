@@ -54,6 +54,8 @@ export type FieldProps = {
   description?: React.ReactNode;
   /** Shown under the control and announced; marks the control invalid. */
   error?: string | null | undefined;
+  /** Announces the error as it appears: for a field that already has focus when it fails. */
+  announce?: boolean;
   /** Marks the label "Optional" instead; required is the default. */
   optional?: boolean;
   /** With `optional`, drops the visible "Optional" mark: for filters, where every field is optional. */
@@ -76,6 +78,7 @@ export function Field({
   label,
   description,
   error,
+  announce = false,
   optional = false,
   quiet = false,
   labelHidden = false,
@@ -130,6 +133,7 @@ export function Field({
       {error ? (
         <p
           id={errorId}
+          {...(announce ? { role: "alert" } : {})}
           className="flex items-start gap-1.5 text-lax-12 font-medium text-lax-danger in-data-[lax-density=client]:text-lax-13 in-data-[lax-density=client]:leading-5"
         >
           <CircleAlert

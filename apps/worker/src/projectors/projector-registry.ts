@@ -49,6 +49,7 @@ import {
   UNSOLD_CHOICE_DEADLINE_PROJECTOR,
   processUnsoldChoiceDeadline,
 } from "./unsold-choice-deadline.js";
+import { UNSOLD_FOLLOW_UP_PROJECTOR, processUnsoldFollowUp } from "./unsold-follow-up.js";
 import { createXeroProjector } from "./xero-projector.js";
 import { createZohoArtworkWritebackProjector } from "./zoho-artwork-writeback-projector.js";
 import { createZohoProjector } from "./zoho-projector.js";
@@ -257,6 +258,20 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
           recorder: ctx.unsoldChoiceDeadlines as NonNullable<
             ProjectorRunContext["unsoldChoiceDeadlines"]
           >,
+        });
+      },
+    },
+    {
+      name: UNSOLD_FOLLOW_UP_PROJECTOR,
+      isEnabled(ctx) {
+        return ctx.unsoldFollowUps != null;
+      },
+      async run(ctx) {
+        await ctx.projectorStateRepo.ensureCursor(UNSOLD_FOLLOW_UP_PROJECTOR);
+        await processUnsoldFollowUp({
+          ctx,
+          log: ctx.log,
+          opener: ctx.unsoldFollowUps as NonNullable<ProjectorRunContext["unsoldFollowUps"]>,
         });
       },
     },
