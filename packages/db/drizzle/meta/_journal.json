@@ -2024,6 +2024,13 @@
       "when": 1800950400000,
       "tag": "0294_lot_artwork_register_link",
       "breakpoints": true
+    },
+    {
+      "idx": 296,
+      "version": "7",
+      "when": 1801123200000,
+      "tag": "0296_artwork_register_move_event",
+      "breakpoints": true
     }
   ]
 }

@@ -125,6 +125,11 @@ export const lot = pgTable(
     index("lot_artwork_register_id_idx")
       .on(table.artworkRegisterId)
       .where(sql`${table.artworkRegisterId} IS NOT NULL`),
+    uniqueIndex("lot_artwork_register_open_uid")
+      .on(table.artworkRegisterId)
+      .where(
+        sql`${table.artworkRegisterId} IS NOT NULL AND ${table.deletedAt} IS NULL AND ${table.status} IN ('draft', 'scheduled', 'active')`,
+      ),
     index("lot_status_end_time_idx").on(table.status, table.endTime),
     index("lot_sale_id_idx").on(table.saleId),
     index("lot_sale_id_status_idx").on(table.saleId, table.status),

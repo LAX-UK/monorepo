@@ -107,6 +107,7 @@ export class DrizzleLotRepository implements ILotRepository {
         .values({
           sellerLegalEntityId,
           ...(artistId !== null ? { artistId, artistReviewRequired } : {}),
+          ...(input.artworkRegisterId ? { artworkRegisterId: input.artworkRegisterId } : {}),
           title: input.title,
           description: input.description ?? null,
           medium: input.medium ?? null,

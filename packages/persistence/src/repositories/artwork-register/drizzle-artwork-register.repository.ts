@@ -19,11 +19,13 @@ import type {
   ApplyZohoChangeResult,
   ConflictCursor,
   CreateRegisterEntryResult,
+  IArtworkMoveHistory,
   IArtworkRegisterRepository,
   MoveOfferInput,
   MoveOfferResult,
   RecordCatalogueStatusWrittenInput,
   RecordCatalogueStatusWrittenResult,
+  RecordMoveConfirmedInput,
   RegisterActor,
   RegisterConflict,
   RegisterEvent,
@@ -41,7 +43,9 @@ type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
  * it, so the move commits or rolls back with the caller's change; the row lock, version check and
  * history/event writes are unchanged.
  */
-export class DrizzleArtworkRegisterRepository implements IArtworkRegisterRepository {
+export class DrizzleArtworkRegisterRepository
+  implements IArtworkRegisterRepository, IArtworkMoveHistory
+{
   constructor(private readonly db: Database) {}
 
   /** The same repository over the caller's open transaction. */
@@ -301,6 +305,23 @@ export class DrizzleArtworkRegisterRepository implements IArtworkRegisterReposit
         field: "catalogueStatus",
         from: locked.catalogueStatus,
         to: input.status,
+      });
+      return { status: "recorded" };
+    });
+  }
+
+  async recordMoveConfirmed(
+    input: RecordMoveConfirmedInput,
+  ): Promise<{ status: "not_found" | "recorded" }> {
+    return this.db.transaction(async (tx) => {
+      const [found] = await tx
+        .select({ id: register.id })
+        .from(register)
+        .where(eq(register.id, input.registerId))
+        .limit(1);
+      if (!found) return { status: "not_found" };
+      await this.record(tx, found.id, "move_confirmed", input.actor, input.now, {
+        ...input.record,
       });
       return { status: "recorded" };
     });
