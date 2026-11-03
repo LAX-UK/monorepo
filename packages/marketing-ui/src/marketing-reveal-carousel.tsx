@@ -134,7 +134,7 @@ export function MarketingRevealCarousel({
         </CarouselContent>
         <CarouselDots
           className="justify-center pb-8"
-          dotClassName="relative h-2.5! min-h-0! after:absolute after:-inset-x-1 after:-inset-y-4"
+          dotClassName="relative h-2.5! min-h-0! after:absolute after:-inset-x-1 after:-inset-y-[17px]"
           activeClassName="w-10! bg-on-surface"
           inactiveClassName="w-2.5! bg-on-surface/30 hover:bg-on-surface/50"
         />

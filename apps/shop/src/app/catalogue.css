@@ -417,6 +417,12 @@
   padding-inline: var(--shop-space-4) var(--shop-space-3);
 }
 
+@media (pointer: coarse) {
+  .shop-catalogue-sort.shop-catalogue-sort {
+    min-height: 2.75rem;
+  }
+}
+
 .shop-catalogue-sort.shop-catalogue-sort:hover {
   border-color: var(--color-control-border-hover);
   background-color: transparent;

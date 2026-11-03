@@ -3,7 +3,7 @@ import {
   type LaxSocialNetwork,
   socialProfilesFor,
 } from "@auction/branding";
-import { cn } from "@auction/ui";
+import { TAP_AREA, cn } from "@auction/ui";
 import type { ReactNode, SVGProps } from "react";
 import {
   MarketingInstagramIcon,
@@ -44,7 +44,7 @@ export function MarketingFooterSocials({
           <a
             key={network}
             href={href}
-            className={linkClassName}
+            className={cn(TAP_AREA, linkClassName)}
             aria-label={label}
             rel="noreferrer noopener"
             target="_blank"

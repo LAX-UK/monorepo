@@ -24,7 +24,7 @@ export const FilterChip = React.forwardRef<HTMLButtonElement, FilterChipProps>(f
       aria-busy={pending || undefined}
       disabled={isDisabled}
       className={cn(
-        "inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-full border px-4 py-2 font-label text-xs font-semibold uppercase tracking-widest transition-colors",
+        "inline-flex min-h-10 pointer-coarse:min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border px-4 py-2 font-label text-xs font-semibold uppercase tracking-widest transition-colors",
         "border-outline-variant/60 text-on-surface-variant",
         "hover:border-primary/50 hover:text-on-surface",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
