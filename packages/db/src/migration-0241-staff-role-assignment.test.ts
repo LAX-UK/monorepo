@@ -10,9 +10,6 @@ const url = process.env.MIGRATION_TEST_DATABASE_URL;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const sql = (file: string) => readFileSync(join(__dirname, "../drizzle", file), "utf8");
 
-/** Migrations after 0241 that change staff_role_assignment; each can be applied again safely. */
-const LATER_STAFF_ROLE_ASSIGNMENT_MIGRATIONS = ["0244_staff_role_screens.sql"];
-
 describe.skipIf(!url)("migration 0241 staff role assignments", () => {
   it("gives each staff member their current role once, and rolls back cleanly", async () => {
     const client = new pg.Client({ connectionString: url });
@@ -25,6 +22,10 @@ describe.skipIf(!url)("migration 0241 staff role assignments", () => {
       { id: `m0241_client_${run}`, role: "client", staffRole: null },
     ];
     const ids = people.map((p) => p.id);
+    // The rollback drops shared tables and the forward re-applies this migration's older
+    // schema, so everything runs in one transaction that is always rolled back: the shared
+    // test database stays at head for the packages tested after this one.
+    await client.query("begin");
     try {
       const forward = sql("0241_staff_role_assignment.sql");
       const rollback = sql("0241_rollback.sql");
@@ -78,28 +79,26 @@ describe.skipIf(!url)("migration 0241 staff role assignments", () => {
         },
       ]);
 
+      await client.query("savepoint duplicate_open_grant");
       await expect(
         client.query(
           `insert into staff_role_assignment (user_id, role) values ($1, 'administrator')`,
           [`m0241_admin_${run}`],
         ),
       ).rejects.toThrow(/staff_role_assignment_open_uidx/);
+      await client.query("rollback to savepoint duplicate_open_grant");
 
       await client.query(rollback);
       const gone = await client.query(`select to_regclass('public.staff_role_assignment') as t`);
       expect(gone.rows[0]?.t).toBeNull();
       await client.query(forward);
-      // The rollback dropped the table, so later migrations that change it run again and the
-      // shared test database stays at the latest schema for the packages tested after this one.
-      for (const later of LATER_STAFF_ROLE_ASSIGNMENT_MIGRATIONS) await client.query(sql(later));
       const again = await client.query(
         "select count(*)::int as n from staff_role_assignment where user_id = any($1)",
         [ids],
       );
       expect(again.rows[0]?.n).toBe(2);
     } finally {
-      await client.query("delete from bid_user_profile where user_id = any($1)", [ids]);
-      await client.query(`delete from "user" where id = any($1)`, [ids]);
+      await client.query("rollback");
       await client.end();
     }
   });
