@@ -193,6 +193,36 @@ describe("renderEmail", () => {
     expect(rendered.text).not.toContain("refund period");
   });
 
+  it.each([
+    ["back_on_sale", "is back in your stock. It is on sale again."],
+    ["in_stock_not_on_sale", "It is not on sale at the moment"],
+    ["written_off", "so we have written it off"],
+  ] as const)("tells a seller their returned print is %s", async (stockOutcome, phrase) => {
+    const rendered = await renderEmail("shop-return-closed-seller", {
+      artworkTitle: "Warm Basket",
+      editionLabel: "Edition 3",
+      stockOutcome,
+      payout: "none",
+    });
+    expect(rendered.subject).toBe("Warm Basket has been returned to you");
+    expect(rendered.text).toContain("Warm Basket (Edition 3)");
+    expect(rendered.text).toContain(phrase);
+  });
+
+  it.each([
+    ["none", "No payout was due for this sale"],
+    ["withheld", "no payout will be made for it"],
+    ["recovered", "taken from a later payout"],
+  ] as const)("explains the %s payout effect to a seller", async (payout, phrase) => {
+    const rendered = await renderEmail("shop-return-closed-seller", {
+      artworkTitle: "Warm Basket",
+      editionLabel: "Proof 1",
+      stockOutcome: "back_on_sale",
+      payout,
+    });
+    expect(rendered.text).toContain(phrase);
+  });
+
   it("tells a buyer which print has gone into production", async () => {
     const rendered = await renderEmail("shop-production-started", {
       orderReference: "LAX-S-10482",
