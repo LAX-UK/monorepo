@@ -28,7 +28,7 @@ describe("migration 0290 alert followers", () => {
   });
 
   it("never overrides a row that exists", () => {
-    expect(migration.match(/ON CONFLICT/g)?.length).toBe(3);
+    expect(migration.match(/ON CONFLICT/g)?.length).toBe(4);
     expect(migration).toContain('ON CONFLICT ("subscriber_id", "topic") DO NOTHING');
     expect(migration).toContain("x.\"status\" = 'confirmed'");
   });
@@ -36,5 +36,21 @@ describe("migration 0290 alert followers", () => {
   it("only removes what it created when rolled back", () => {
     expect(rollback).toContain(`"changed_by" = 'migration'`);
     expect(rollback).not.toMatch(/DROP TABLE/);
+  });
+
+  it("starts lot matching at the newest event, once", () => {
+    expect(migration).toContain(
+      '\'bid_alert_lot_matching_start\', COALESCE(max("id"), 0) FROM "domain_event"',
+    );
+    expect(migration).toContain('ON CONFLICT ("projector_name") DO NOTHING');
+    expect(rollback).toContain(
+      'DELETE FROM "projector_state" WHERE "projector_name" = \'bid_alert_lot_matching_start\'',
+    );
+  });
+
+  it("lets a lot reach a person once across topics, and drops the index on rollback", () => {
+    expect(migration).toContain('CREATE UNIQUE INDEX IF NOT EXISTS "bid_alert_match_lot_once_uid"');
+    expect(migration).toContain('("subscriber_id", "item_key") WHERE "item_key" LIKE \'lot:%\'');
+    expect(rollback).toContain('DROP INDEX IF EXISTS "bid_alert_match_lot_once_uid"');
   });
 });

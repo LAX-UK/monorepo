@@ -22,9 +22,6 @@ export function salePublishedEvent(row: {
   };
 }
 
-/** Lot events older than this are skipped, so switching the matchers on never replays a backlog. */
-export const LOT_EVENT_MAX_AGE_MS = 36 * 60 * 60 * 1000;
-
 export function lotPublishedEvent(row: { aggregateId: string }): LotPublishedEvent {
   return { lotId: row.aggregateId };
 }
@@ -74,6 +71,11 @@ export async function processBidAlertMatching(options: {
     }
   };
 
+  // Lots published before matching was switched on are not news; every one after it is.
+  const lotStart = rows.some((row) => row.eventType === "lot.published")
+    ? await matching.lotStart()
+    : 0;
+
   let maxId = cursor;
   // Lots published together are matched together, so a large sale costs one query per search.
   let lotRun: { id: number; event: LotPublishedEvent; fresh: boolean }[] = [];
@@ -108,13 +110,7 @@ export async function processBidAlertMatching(options: {
 
   for (const row of rows) {
     if (row.eventType === "lot.published") {
-      // A backlog older than this is not news; the cursor still moves past it.
-      const age = row.occurredAt ? Date.now() - row.occurredAt.getTime() : 0;
-      lotRun.push({
-        id: row.id,
-        event: lotPublishedEvent(row),
-        fresh: age <= LOT_EVENT_MAX_AGE_MS,
-      });
+      lotRun.push({ id: row.id, event: lotPublishedEvent(row), fresh: row.id > lotStart });
       continue;
     }
     if (!(await flushLots())) break;

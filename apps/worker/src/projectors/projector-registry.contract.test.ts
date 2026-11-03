@@ -122,6 +122,7 @@ describe("createDefaultProjectorRegistry", () => {
         bidAlerts: {
           isSeeded: async () => true,
           handle: async () => undefined,
+          lotStart: async () => 0,
           handleLots: async () => undefined,
         },
       }),

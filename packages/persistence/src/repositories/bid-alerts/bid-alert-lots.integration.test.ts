@@ -6,6 +6,8 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   BidAlertFollowerProvisioner,
   BidAlertLotReader,
+  BidAlertLotStart,
+  BidAlertMatchLedger,
   BidAlertSubscriberStore,
   BidAlertTopicStore,
   BidAlertWatcherReader,
@@ -264,6 +266,48 @@ describe.skipIf(!HAS_DB)("Bid lot alert adapters (integration)", () => {
         ...(await lots.matchingSearch({ q: "ti", categoryId: null }, [tide, other])),
       ]).toEqual([]);
       expect((await lots.matchingSearch({ q: " ", categoryId: null }, [tide, other])).size).toBe(0);
+    });
+  });
+
+  describe("ledger and start point", () => {
+    it("records a lot once per person across topics, batches and runs", async () => {
+      const person = await insertUser();
+      const row = await subscribers.saveConfirmedForAccount({
+        product: "bid",
+        email: person.email,
+        subjectId: person.id,
+        consentText: "x",
+        consentSource: "y",
+        now: NOW,
+      });
+      const ledger = new BidAlertMatchLedger(db);
+      const match = (topic: "bid.artists" | "bid.searches", lotId: string) => ({
+        subscriberId: row.id,
+        topic,
+        itemKey: `lot:${lotId}`,
+        groupKey: null,
+        snapshot: { title: "Low tide", path: "/lot/low-tide/x" },
+        matchedAt: NOW,
+      });
+      expect(await ledger.record([match("bid.artists", "l1")])).toBe(1);
+      expect(await ledger.record([match("bid.searches", "l1")])).toBe(0);
+      expect(await ledger.record([match("bid.searches", "l1"), match("bid.searches", "l2")])).toBe(
+        1,
+      );
+      expect((await ledger.pendingFor(row.id)).map((m) => [m.topic, m.itemKey]).sort()).toEqual([
+        ["bid.artists", "lot:l1"],
+        ["bid.searches", "lot:l2"],
+      ]);
+    });
+
+    it("sets the lot start once at the newest event and never moves it", async () => {
+      await db.execute(
+        sql`delete from projector_state where projector_name = 'bid_alert_lot_matching_start'`,
+      );
+      const start = new BidAlertLotStart(db);
+      const first = await start.position();
+      await insertLot({});
+      expect(await start.position()).toBe(first);
     });
   });
 });

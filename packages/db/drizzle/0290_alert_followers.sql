@@ -54,3 +54,13 @@ WHERE x."status" = 'confirmed'
   AND x."user_id" IS NOT NULL
   AND EXISTS (SELECT 1 FROM "saved_search" ss WHERE ss."user_id" = x."user_id" AND ss."notify_email")
 ON CONFLICT ("subscriber_id", "topic") DO NOTHING;
+--> statement-breakpoint
+-- Lot matching starts here: lots published before this migration are never announced, and every
+-- lot published after it is, however long the worker takes to get to it.
+INSERT INTO "projector_state" ("projector_name", "last_processed_event_id")
+SELECT 'bid_alert_lot_matching_start', COALESCE(max("id"), 0) FROM "domain_event"
+ON CONFLICT ("projector_name") DO NOTHING;
+--> statement-breakpoint
+-- A lot reaches a person once, whichever topic matched it, even across batches and runs.
+CREATE UNIQUE INDEX IF NOT EXISTS "bid_alert_match_lot_once_uid"
+  ON "bid_alert_match" ("subscriber_id", "item_key") WHERE "item_key" LIKE 'lot:%';

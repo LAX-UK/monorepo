@@ -14,6 +14,7 @@ import {
   BidAlertDigestLedger,
   BidAlertFollowerProvisioner,
   BidAlertLotReader,
+  BidAlertLotStart,
   BidAlertMatchLedger,
   BidAlertMatchValidator,
   BidAlertSaleNoticeWriter,
@@ -72,6 +73,7 @@ export function createBidAlertRuntime(input: {
     notices: new BidAlertSaleNoticeWriter(db),
     sendNotices: mode === "on",
   });
+  const lotStart = new BidAlertLotStart(db);
   const lotMatcher = new BidLotMatcher({
     lots: new BidAlertLotReader(db),
     watchers: new BidAlertWatcherReader(db),
@@ -94,6 +96,7 @@ export function createBidAlertRuntime(input: {
     matching: {
       isSeeded: () => seed.isSeeded(),
       handle: (event) => announcer.handle(event),
+      lotStart: () => lotStart.position(),
       handleLots: (events) => lotMatcher.handle(events),
     },
     digest: new DigestRun({

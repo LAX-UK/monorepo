@@ -52,7 +52,12 @@ describe("processBidAlertMatching", () => {
     await processBidAlertMatching({
       ctx,
       log,
-      matching: { isSeeded: async () => false, handle, handleLots: vi.fn() },
+      matching: {
+        isSeeded: async () => false,
+        lotStart: async () => 0,
+        handle,
+        handleLots: vi.fn(),
+      },
     });
     expect(handle).not.toHaveBeenCalled();
     expect(advanceCursor).not.toHaveBeenCalled();
@@ -67,7 +72,12 @@ describe("processBidAlertMatching", () => {
     await processBidAlertMatching({
       ctx,
       log,
-      matching: { isSeeded: async () => true, handle, handleLots: vi.fn() },
+      matching: {
+        isSeeded: async () => true,
+        lotStart: async () => 0,
+        handle,
+        handleLots: vi.fn(),
+      },
     });
     expect(handle.mock.calls.map((c) => c[0].saleId)).toEqual(["s1", "s2"]);
     expect(advanceCursor).toHaveBeenCalledWith(BID_ALERT_MATCHING_PROJECTOR, 12);
@@ -86,7 +96,12 @@ describe("processBidAlertMatching", () => {
     await processBidAlertMatching({
       ctx,
       log,
-      matching: { isSeeded: async () => true, handle, handleLots: vi.fn() },
+      matching: {
+        isSeeded: async () => true,
+        lotStart: async () => 0,
+        handle,
+        handleLots: vi.fn(),
+      },
     });
     expect(handle).toHaveBeenCalledTimes(2);
     expect(advanceCursor).toHaveBeenCalledWith(BID_ALERT_MATCHING_PROJECTOR, 11);
@@ -99,7 +114,12 @@ describe("processBidAlertMatching", () => {
     await processBidAlertMatching({
       ctx,
       log,
-      matching: { isSeeded: async () => true, handle, handleLots: vi.fn() },
+      matching: {
+        isSeeded: async () => true,
+        lotStart: async () => 0,
+        handle,
+        handleLots: vi.fn(),
+      },
     });
     expect(advanceCursor).toHaveBeenCalledWith(BID_ALERT_MATCHING_PROJECTOR, 11);
   });
@@ -117,7 +137,7 @@ describe("processBidAlertMatching", () => {
       return processBidAlertMatching({
         ctx: s.ctx,
         log,
-        matching: { isSeeded: async () => true, handle, handleLots },
+        matching: { isSeeded: async () => true, lotStart: async () => 0, handle, handleLots },
       }).then(() => s);
     };
 
@@ -152,12 +172,56 @@ describe("processBidAlertMatching", () => {
       expect(calls).toEqual(["lots:a", "sale", "lots:b"]);
     });
 
-    it("moves past lot events older than a day and a half without matching them", async () => {
-      const old = new Date(Date.now() - 48 * 3_600_000);
+    it("matches every lot after the start point, however old the event is", async () => {
+      const weekAgo = new Date(Date.now() - 7 * 24 * 3_600_000);
+      const handleLots = vi.fn().mockResolvedValue({});
+      const s = setup([lotRow(11, "a", weekAgo), lotRow(12, "b", weekAgo)]);
+      await processBidAlertMatching({
+        ctx: s.ctx,
+        log,
+        matching: {
+          isSeeded: async () => true,
+          lotStart: async () => 10,
+          handle: vi.fn(),
+          handleLots,
+        },
+      });
+      expect(handleLots.mock.calls[0]?.[0]).toEqual([{ lotId: "a" }, { lotId: "b" }]);
+      expect(s.advanceCursor).toHaveBeenCalledWith(BID_ALERT_MATCHING_PROJECTOR, 12);
+    });
+
+    it("moves past lot events from before the start point without matching them", async () => {
+      const handleLots = vi.fn().mockResolvedValue({});
+      const s = setup([lotRow(11, "old"), lotRow(12, "old2"), lotRow(13, "new")]);
+      await processBidAlertMatching({
+        ctx: s.ctx,
+        log,
+        matching: {
+          isSeeded: async () => true,
+          lotStart: async () => 12,
+          handle: vi.fn(),
+          handleLots,
+        },
+      });
+      expect(handleLots.mock.calls.map((c) => c[0])).toEqual([[{ lotId: "new" }]]);
+      expect(s.advanceCursor).toHaveBeenCalledWith(BID_ALERT_MATCHING_PROJECTOR, 13);
+    });
+
+    it("moves the cursor past a run that is all before the start point", async () => {
       const handleLots = vi.fn();
-      const { advanceCursor } = await run([lotRow(11, "a", old), lotRow(12, "b", old)], handleLots);
+      const s = setup([lotRow(11, "old"), lotRow(12, "old2")]);
+      await processBidAlertMatching({
+        ctx: s.ctx,
+        log,
+        matching: {
+          isSeeded: async () => true,
+          lotStart: async () => 50,
+          handle: vi.fn(),
+          handleLots,
+        },
+      });
       expect(handleLots).not.toHaveBeenCalled();
-      expect(advanceCursor).toHaveBeenCalledWith(BID_ALERT_MATCHING_PROJECTOR, 12);
+      expect(s.advanceCursor).toHaveBeenCalledWith(BID_ALERT_MATCHING_PROJECTOR, 12);
     });
 
     it("falls back to one lot at a time when the batch fails, so one bad lot holds nothing", async () => {
@@ -169,7 +233,12 @@ describe("processBidAlertMatching", () => {
       await processBidAlertMatching({
         ctx: s.ctx,
         log,
-        matching: { isSeeded: async () => true, handle: vi.fn(), handleLots },
+        matching: {
+          isSeeded: async () => true,
+          lotStart: async () => 0,
+          handle: vi.fn(),
+          handleLots,
+        },
       });
       expect(handleLots.mock.calls.map((c) => c[0].map((x: { lotId: string }) => x.lotId))).toEqual(
         [["a", "bad", "c"], ["a"], ["bad"], ["c"]],
