@@ -1,4 +1,7 @@
 export { cn } from "./lib/utils.js";
+export { formatGbp, formatPenceAsPounds, parsePoundsToPence } from "./lib/money.js";
+export type { ParsedPence } from "./lib/money.js";
+export { readCookie } from "./lib/read-cookie.js";
 export { TAP_AREA } from "./lib/tap-area.js";
 export { Alert, AlertDescription, AlertTitle, alertVariants } from "./components/ui/alert.js";
 export {

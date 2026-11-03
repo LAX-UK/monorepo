@@ -1,4 +1,4 @@
-import { readCookie } from "./read-cookie";
+import { readCookie } from "@auction/staff-ui";
 import { SHOP_ADMIN_CSRF_COOKIE } from "./session-cookie";
 
 export const SHOP_MEDIA_KINDS = [

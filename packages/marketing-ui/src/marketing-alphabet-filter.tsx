@@ -73,7 +73,7 @@ export function MarketingAlphabetFilter({
                 <span
                   aria-disabled="true"
                   aria-label={`${spoken}, no names`}
-                  className={cn(ITEM, "cursor-default text-on-surface-variant/40")}
+                  className={cn(ITEM, "cursor-default text-lax-disabled-fg")}
                 >
                   {item.label}
                 </span>
