@@ -167,7 +167,7 @@ export function LotMoreFromRail({
                       {c.title}
                     </Link>
                     <p className="text-xs text-on-surface-variant">
-                      {c.artistOrSellerName} {"\u00B7"}{" "}
+                      {c.artistName ? `${c.artistName} \u00B7 ` : null}
                       <span className="text-on-surface">
                         {formatWholeMoney(c.currentPrice, PLATFORM_DEFAULT_CURRENCY)}
                       </span>
@@ -182,9 +182,11 @@ export function LotMoreFromRail({
                       <p className="text-sm font-semibold leading-5 text-on-surface underline-offset-2 group-hover:underline">
                         {c.title}
                       </p>
-                      <p className="mt-1 text-sm font-normal text-on-surface-variant">
-                        {c.artistOrSellerName}
-                      </p>
+                      {c.artistName ? (
+                        <p className="mt-1 text-sm font-normal text-on-surface-variant">
+                          {c.artistName}
+                        </p>
+                      ) : null}
                     </div>
                     {c.estimateLine ? (
                       <div>
