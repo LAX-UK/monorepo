@@ -26,6 +26,8 @@ const referenceParamSchema = z.object({
     .pipe(dataRequestReferenceSchema),
 });
 
+const accountQuerySchema = z.object({ email: z.string().trim().email().max(320) });
+
 type RefusalStatus = 400 | 403 | 404 | 409 | 422 | 429;
 
 /**
@@ -72,6 +74,11 @@ export function attachAdminDataRequestsRoutes(
   /** GET /admin/data-requests/summary — counts for the nav badge and the strips. */
   platform.get("/data-requests/summary", (c) =>
     respond(c, async () => c.json({ data: await service.summary() })),
+  );
+
+  /** GET /admin/data-requests/account?email= — the LAX account behind one full email address. */
+  platform.get("/data-requests/account", zValidator("query", accountQuerySchema), (c) =>
+    respond(c, async () => c.json({ data: await service.findAccount(c.req.valid("query").email) })),
   );
 
   /** GET /admin/data-requests/:reference — the record, with the person's details; audited. */

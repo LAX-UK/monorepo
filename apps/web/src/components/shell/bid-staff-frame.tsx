@@ -3,6 +3,7 @@
 import { DensityProvider } from "@/components/layout/density-provider";
 import { artistsPaletteSource } from "@/components/layout/palette/sources/artists-source";
 import { clientsPaletteSource } from "@/components/layout/palette/sources/clients-source";
+import { dataRequestsPaletteSource } from "@/components/layout/palette/sources/data-requests-source";
 import { lotsPaletteSource } from "@/components/layout/palette/sources/lots-source";
 import { paymentsPaletteSource } from "@/components/layout/palette/sources/payments-source";
 import { salesPaletteSource } from "@/components/layout/palette/sources/sales-source";
@@ -49,6 +50,7 @@ const SEARCH_SOURCES: readonly PaletteSource[] = [
   clientsPaletteSource,
   artistsPaletteSource,
   paymentsPaletteSource,
+  dataRequestsPaletteSource,
 ];
 
 async function searchRecords(query: string): Promise<StaffCommand[]> {
