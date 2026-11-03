@@ -5,6 +5,7 @@ import {
   buildRegisterTimeline,
   checkFigures,
   checkFootnote,
+  conflictDecisionCopy,
   hasActiveZohoFilters,
   missingSummary,
   pageLinks,
@@ -139,6 +140,33 @@ describe("the last check", () => {
       "LAX could not add it",
     );
     expect(skippedReasonLabel("something_new")).toBe("Left out for another reason");
+  });
+});
+
+describe("conflictDecisionCopy", () => {
+  const conflict = {
+    field: "offerState" as const,
+    zohoValue: "withdrawn",
+    laxValue: "lax_art",
+  };
+
+  it("says what keeping LAX's value does", () => {
+    expect(conflictDecisionCopy(conflict, "kept_lax")).toMatchObject({
+      title: "Keep the LAX value for where it is offered?",
+      confirmLabel: "Keep LAX value",
+    });
+    expect(conflictDecisionCopy(conflict, "kept_lax").description).toContain(
+      "LAX keeps On lax.art. Zoho still has Withdrawn",
+    );
+  });
+
+  it("says that accepting Zoho's value records the decision and changes nothing else", () => {
+    const copy = conflictDecisionCopy(
+      { field: "stockCode", zohoValue: "LAX-ORI-PH-GAC-26-0099", laxValue: null },
+      "accepted_zoho",
+    );
+    expect(copy.title).toBe("Accept the Zoho value for the stock code?");
+    expect(copy.description).toContain("does not change what LAX holds for the stock code");
   });
 });
 

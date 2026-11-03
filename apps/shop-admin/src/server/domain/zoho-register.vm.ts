@@ -141,6 +141,14 @@ export const CONFLICT_FIELD_LABEL: Record<AdminRegisterConflict["field"], string
   offerState: "Where it is offered",
 };
 
+/** A conflicted field as it reads in a sentence: "Zoho changed the stock code". */
+const CONFLICT_FIELD_PHRASE: Record<AdminRegisterConflict["field"], string> = {
+  stockCode: "the stock code",
+  kind: "whether it is an original or a print",
+  sourceOriginalId: "the original it was made from",
+  offerState: "where it is offered",
+};
+
 const FIELD_LABEL: Record<string, string> = {
   ...CONFLICT_FIELD_LABEL,
   title: "title",
@@ -296,7 +304,7 @@ function describeEvent(
     }
     case "conflict_recorded": {
       const field = conflictField(payload);
-      const what = field ? `the ${fieldInSentence(field)}` : "a field";
+      const what = field ? CONFLICT_FIELD_PHRASE[field] : "a field";
       const zoho = field
         ? presentConflictValue(
             field,
@@ -311,7 +319,7 @@ function describeEvent(
     }
     case "conflict_resolved": {
       const field = conflictField(payload);
-      const what = field ? `the ${fieldInSentence(field)}` : "a field";
+      const what = field ? CONFLICT_FIELD_PHRASE[field] : "a field";
       return {
         title:
           payload.resolution === "accepted_zoho"
@@ -353,20 +361,20 @@ export function conflictDecisionCopy(
   conflict: Pick<AdminRegisterConflict, "field" | "zohoValue" | "laxValue">,
   decision: ConflictDecision,
 ): { title: string; description: string; confirmLabel: string; success: string } {
-  const what = fieldInSentence(conflict.field);
+  const what = CONFLICT_FIELD_PHRASE[conflict.field];
   const zoho = presentConflictValue(conflict.field, conflict.zohoValue) ?? "nothing";
   const lax = presentConflictValue(conflict.field, conflict.laxValue) ?? "nothing";
   if (decision === "kept_lax") {
     return {
-      title: `Keep the LAX value for the ${what}?`,
+      title: `Keep the LAX value for ${what}?`,
       description: `LAX keeps ${lax}. Zoho still has ${zoho}, so change it there as well if LAX is right. The decision is added to the artwork's history.`,
       confirmLabel: KEEP_LAX_LABEL,
       success: RESOLUTION_LABEL.kept_lax,
     };
   }
   return {
-    title: `Accept the Zoho value for the ${what}?`,
-    description: `This records that Zoho is right, with ${zoho}. The decision is added to the artwork's history. It does not change what LAX holds for the ${what}.`,
+    title: `Accept the Zoho value for ${what}?`,
+    description: `This records that Zoho is right, with ${zoho}. The decision is added to the artwork's history. It does not change what LAX holds for ${what}.`,
     confirmLabel: ACCEPT_ZOHO_LABEL,
     success: RESOLUTION_LABEL.accepted_zoho,
   };

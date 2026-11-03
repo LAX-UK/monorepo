@@ -16,7 +16,6 @@ import {
 import type { AdminRegisterLastCheck } from "@auction/shop-contracts";
 import {
   EmptyState,
-  Notice,
   PageHeader,
   StatGrid,
   StatusBadge,
@@ -81,14 +80,14 @@ export function LastCheckView({
                 {SYNC_MODE_LABEL[run.mode]}
               </StatusBadge>
             </div>
-            {run.mode === "dry_run" ? (
-              <Notice tone="info" title="Nothing has been added or changed in LAX">
-                A dry run only reports what the check would do, so you can review it first.
-              </Notice>
-            ) : null}
             <div className="flex flex-col gap-2">
               <StatGrid label="Last check" items={checkFigures(run)} />
-              {footnote ? <p className="text-staff-sm text-staff-muted">{footnote}</p> : null}
+              {footnote || run.mode === "dry_run" ? (
+                <p className="text-staff-sm text-staff-muted">
+                  {run.mode === "dry_run" ? "A dry run only reports what the check would do. " : ""}
+                  {footnote}
+                </p>
+              ) : null}
             </div>
             <div className="grid gap-6 lg:grid-cols-2">
               <CountList

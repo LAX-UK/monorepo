@@ -131,8 +131,8 @@ export function FromZohoRecord({
                   {conflict.resolution ? RESOLUTION_LABEL[conflict.resolution] : "Decided"}
                 </p>
                 <p className="text-staff-xs text-staff-muted">
-                  Zoho had {presentConflictValue(conflict.field, conflict.zohoValue) ?? "nothing"},
-                  LAX had {presentConflictValue(conflict.field, conflict.laxValue) ?? "nothing"}
+                  In Zoho: {presentConflictValue(conflict.field, conflict.zohoValue) ?? "Empty"} ·
+                  In LAX: {presentConflictValue(conflict.field, conflict.laxValue) ?? "Empty"}
                   {conflict.resolvedAt ? (
                     <>
                       {" · "}

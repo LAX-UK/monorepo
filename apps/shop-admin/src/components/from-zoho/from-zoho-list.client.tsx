@@ -50,8 +50,8 @@ function artworkCell(row: AdminRegisterArtworkSummary) {
 const MISSING_COLUMN: DataColumn<AdminRegisterArtworkSummary> = {
   id: "missing",
   header: "What is missing",
-  width: "220px",
-  mobile: "badge",
+  width: "280px",
+  mobile: "meta",
   truncate: false,
   cell: (row) =>
     row.missing.length === 0 ? (
