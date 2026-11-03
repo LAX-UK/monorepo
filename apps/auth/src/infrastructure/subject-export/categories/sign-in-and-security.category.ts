@@ -12,8 +12,8 @@ import {
   type ExportSource,
   SourcedExportCategory,
   inMemorySource,
-} from "../sourced-export-category.js";
-import { iso, isoRequired } from "../values.js";
+} from "../../../subject-export/sourced-export-category.js";
+import { iso, isoRequired } from "../../../subject-export/values.js";
 import { afterKey, afterNumericKey, countWhere, numericKey } from "./keyset.js";
 
 const CREDENTIAL_PROVIDER = "credential";

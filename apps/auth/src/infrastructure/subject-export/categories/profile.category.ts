@@ -5,8 +5,8 @@ import {
   type ExportSource,
   SourcedExportCategory,
   inMemorySource,
-} from "../sourced-export-category.js";
-import { iso, isoRequired } from "../values.js";
+} from "../../../subject-export/sourced-export-category.js";
+import { iso, isoRequired } from "../../../subject-export/values.js";
 
 type ProfileRow = {
   id: string;

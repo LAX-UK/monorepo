@@ -5,8 +5,8 @@ import {
   type ExportSource,
   SourcedExportCategory,
   inMemorySource,
-} from "../sourced-export-category.js";
-import { iso } from "../values.js";
+} from "../../../subject-export/sourced-export-category.js";
+import { iso } from "../../../subject-export/values.js";
 
 type ContactRow = {
   id: string;

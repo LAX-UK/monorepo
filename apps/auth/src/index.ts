@@ -24,13 +24,13 @@ import {
 import { createSubjectExportService } from "./container/create-subject-export.js";
 import { loadAuthEnv } from "./env.js";
 import { withAlertingLog } from "./infrastructure/alerting-log.js";
+import { createAccountSubjectExportRegistry } from "./infrastructure/subject-export/create-account-subject-export-categories.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
 import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
 import { AccountDeletionService } from "./services/account-deletion.service.js";
 import { EmailChangeService } from "./services/email-change.service.js";
 import { createSubjectReadRateLimiter } from "./services/subject-read-rate-limiter.js";
 import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
-import { createAccountSubjectExportRegistry } from "./subject-export/create-account-subject-export-categories.js";
 import { SubjectExportReader } from "./subject-export/subject-export-reader.service.js";
 
 /** LAX Account's production origin, used for the security-notice link when `LAX_ACCOUNT_ORIGIN` is unset. */
