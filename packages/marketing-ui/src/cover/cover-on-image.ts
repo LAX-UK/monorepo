@@ -29,6 +29,12 @@ export const ON_IMAGE_FIELD: Record<CoverTone, { box: string; input: string }> =
   },
 };
 
+/**
+ * The error summary on a picture: the danger notice's light-theme colours in both themes, because
+ * a picture does not change with the theme and the notice must stay readable on any of them.
+ */
+export const ON_IMAGE_ERROR_SUMMARY = "md:border-[#a8261b]/30 md:bg-[#fcecea] md:text-[#a8261b]";
+
 /** The status badge: opaque, so it reads on any picture. */
 export const ON_IMAGE_BADGE: Record<CoverTone, string> = {
   light: "md:bg-white md:text-[#181a1a]",

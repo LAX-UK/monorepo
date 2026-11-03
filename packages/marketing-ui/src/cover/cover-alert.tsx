@@ -6,6 +6,7 @@ import { type FormEvent, useId, useState } from "react";
 import { marketingEmailError } from "../marketing-email-error.js";
 import {
   ON_IMAGE_DARK_THEME,
+  ON_IMAGE_ERROR_SUMMARY,
   ON_IMAGE_FIELD,
   onImageButton,
   onImageFocus,
@@ -56,7 +57,7 @@ export function CoverAlertField({
       <ErrorSummary
         errors={error ? [{ fieldId, message: error }] : []}
         focusKey={failedSubmits}
-        className="md:max-w-[360px]"
+        className={cn("md:max-w-[360px]", tone && ON_IMAGE_ERROR_SUMMARY)}
       />
       <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
         <TextInput
