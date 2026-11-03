@@ -1,6 +1,7 @@
 import type { StaffRoles, UserRole } from "@auction/types";
 import type { Lot } from "@auction/types";
 import { AuthzError, LotError } from "../../lib/errors.js";
+import type { BuyerDefaultService } from "../buyer-default/buyer-default.service.js";
 import type { IAdminLotsApplicationService } from "../interfaces/admin-routes.js";
 import type { ILotService } from "../interfaces/lot-service.js";
 import type { LotLifecycleQueryService } from "../lot-lifecycle-query.service.js";
@@ -13,7 +14,16 @@ export class AdminLotsApplicationService implements IAdminLotsApplicationService
     private readonly lotBrowse: AdminLotBrowseService,
     private readonly lotTransitions: LotTransitionOrchestrator,
     private readonly lotLifecycleQuery: LotLifecycleQueryService,
+    private readonly buyerDefaults: BuyerDefaultService,
   ) {}
+
+  recordBuyerDefault(
+    actor: Parameters<BuyerDefaultService["record"]>[0],
+    lotId: string,
+    input: Parameters<BuyerDefaultService["record"]>[2],
+  ) {
+    return this.buyerDefaults.record(actor, lotId, input);
+  }
 
   async approveWithdrawalRequest(
     adminUserId: string,

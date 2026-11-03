@@ -164,6 +164,15 @@ export const LOT_FULFILMENT_ACCESS: CapabilityRequirement = {
   anyOf: ["operations.fulfilment", "platform.admin.full"],
 };
 
+/**
+ * Record a buyer default: void an unpaid sale and decide where the lot goes. It cancels a sale
+ * and releases the lot, so it belongs to the sales managers who run the lot and to finance, who
+ * own the invoice. The administrator holds both.
+ */
+export const BUYER_DEFAULT_ACCESS: CapabilityRequirement = {
+  anyOf: ["auction.manage", "finance.platform.write"],
+};
+
 /** Finance shell: payments, disputes, payouts, integrations. */
 export const FINANCE_ACCESS: CapabilityRequirement = "finance.read";
 

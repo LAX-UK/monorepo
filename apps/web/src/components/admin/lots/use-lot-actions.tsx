@@ -1,5 +1,6 @@
 "use client";
 
+import { useBuyerDefaultDialog } from "@/components/admin/lots/use-buyer-default-dialog";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import {
   adminApproveWithdrawalRequestResultAction,
@@ -55,6 +56,7 @@ export function useLotActions(
 ) {
   const router = useRouter();
   const confirm = useStaffConfirm();
+  const buyerDefault = useBuyerDefaultDialog();
   const { ask } = confirm;
   const { afterDelete, onConnectRequired } = options;
 
@@ -220,7 +222,20 @@ export function useLotActions(
           label: "Return to inventory…",
           tone: "danger",
           onSelect: () => returnToInventory(lot),
-          ...(lot.hasWinner ? { disabledReason: "A sold lot stays with its buyer" } : {}),
+          ...(lot.hasWinner
+            ? {
+                disabledReason:
+                  "A sold lot stays with its buyer. If they have not paid, use Buyer default.",
+              }
+            : {}),
+        });
+      }
+      if (access.canManageAuction && lot.status === "ended" && lot.hasWinner) {
+        actions.push({
+          id: "buyer-default",
+          label: "Buyer default…",
+          tone: "danger",
+          onSelect: () => buyerDefault.open({ id: lot.id, title: lot.title }),
         });
       }
       if (access.canManageAuction && lot.canDelete) {
@@ -233,7 +248,16 @@ export function useLotActions(
       }
       return actions;
     },
-    [access, publish, approveWithdrawal, declineWithdrawal, withdraw, returnToInventory, remove],
+    [
+      access,
+      publish,
+      approveWithdrawal,
+      declineWithdrawal,
+      withdraw,
+      returnToInventory,
+      buyerDefault,
+      remove,
+    ],
   );
 
   return {
@@ -241,7 +265,12 @@ export function useLotActions(
     publish,
     withdraw,
     remove,
-    dialogs: confirm.dialog,
+    dialogs: (
+      <>
+        {confirm.dialog}
+        {buyerDefault.dialog}
+      </>
+    ),
     refresh: () => router.refresh(),
   };
 }

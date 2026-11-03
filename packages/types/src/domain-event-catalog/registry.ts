@@ -159,6 +159,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "legal_entity.restriction_lifted",
   "legal_entity.review_started",
   "lot.activated",
+  "lot.buyer_defaulted",
   "lot.attached_to_sale",
   "lot.cancelled",
   "lot.created",
@@ -397,6 +398,11 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "lot.published": {
     schema: LotEventSchemas["lot.published"],
+    consumers: ["lot_lifecycle_snapshot"],
+    piiClassification: "none",
+  },
+  "lot.buyer_defaulted": {
+    schema: LotEventSchemas["lot.buyer_defaulted"],
     consumers: ["lot_lifecycle_snapshot"],
     piiClassification: "none",
   },

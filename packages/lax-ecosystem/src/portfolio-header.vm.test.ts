@@ -8,6 +8,8 @@ describe("buildPortfolioHeader", () => {
       worksOwned: 0,
       inSaleOrConsigned: 0,
       awaitingPayment: 0,
+      totalDue: [],
+      inReview: 0,
       paidSoFar: [],
     });
   });
@@ -70,5 +72,33 @@ describe("buildPortfolioHeader", () => {
 
   it("tolerates works with no recorded cost lines", () => {
     expect(buildPortfolioHeader([item()]).paidSoFar).toEqual([]);
+  });
+
+  it("totals what is due per currency from the owed amount, not from the cost lines", () => {
+    const header = buildPortfolioHeader([
+      item({
+        id: "a",
+        status: "awaiting_payment",
+        paid: { lines: [{ kind: "hammer", amount: 100_000, currency: "GBP" }] },
+        owed: { amount: 115_000, currency: "GBP", state: "due" },
+      }),
+      item({
+        id: "b",
+        status: "awaiting_payment",
+        owed: { amount: 23_000, currency: "GBP", state: "in_review", blocker: "documents" },
+      }),
+      item({
+        id: "c",
+        status: "awaiting_payment",
+        owed: { amount: 5_000, currency: "EUR", state: "due" },
+      }),
+      item({ id: "d", status: "owned", owed: { amount: 9_999, currency: "GBP", state: "due" } }),
+    ]);
+    expect(header.totalDue).toEqual([
+      { currency: "EUR", amount: 5_000 },
+      { currency: "GBP", amount: 138_000 },
+    ]);
+    expect(header.inReview).toBe(1);
+    expect(header.awaitingPayment).toBe(3);
   });
 });

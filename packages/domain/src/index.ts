@@ -607,6 +607,16 @@ export {
   type NeedsYouTask,
 } from "./needs-you.js";
 export {
+  amountOwedEntry,
+  summariseAmountsOwed,
+  type AccountHold,
+  type AmountOwedBlocker,
+  type AmountOwedEntry,
+  type AmountOwedFacts,
+  type AmountOwedState,
+  type AmountsOwedSummary,
+} from "./amounts-owed.js";
+export {
   OWED_PAYMENT_STATUSES,
   purchaseEnding,
   purchaseIsOwned,
@@ -943,3 +953,20 @@ export {
   type VisitorAlertStatus,
 } from "./visitor-sale-alerts.js";
 export * from "./email/email-block-rules.js";
+export {
+  BUYER_DEFAULT_OUTCOMES,
+  buyerDefaultBlock,
+  pickUnderbidder,
+  type BuyerDefaultBlock,
+  type BuyerDefaultBlockCode,
+  type BuyerDefaultFacts,
+  type BuyerDefaultOutcome,
+  type Underbidder,
+} from "./buyer-default.js";
+export {
+  PAYMENT_REMINDER_STEPS,
+  paymentReminderToSend,
+  reminderDueAt,
+  type PaymentReminderFacts,
+  type PaymentReminderStep,
+} from "./payment-reminder.js";

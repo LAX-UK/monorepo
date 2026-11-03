@@ -4,10 +4,7 @@ import { paymentRoleFor } from "@/lib/buying/account-buying-figures";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerAccountPurchaseFacts } from "@/lib/data/http/account-buying.server";
 import type { LotFulfilmentSnapshot, MyPaymentRow } from "@/lib/data/http/payments.schema";
-import {
-  getServerBuyerComplianceGate,
-  getServerEntityPayments,
-} from "@/lib/data/http/payments.server";
+import { getServerEntityPayments } from "@/lib/data/http/payments.server";
 import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
 import { accountPurchaseScope } from "@auction/domain";
 import type { PurchasePaymentRole } from "@auction/domain";
@@ -26,7 +23,7 @@ async function invoicesFor(scope: AccountScope): Promise<MyPaymentRow[]> {
 }
 
 /**
- * Everything Purchases shows, for the account in use: the won lots, their invoices, and delivery
+ * Everything Purchases shows, for the account in use: the won lots, what is owed on them, their invoices, and delivery
  * for the lots already paid for (only those have any). Delivery and invoices degrade to "not
  * shown" when their reads fail; the won lots are the page itself, so their failure returns `null`.
  */
@@ -34,14 +31,19 @@ export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
   const container = await getServerDataContainer();
   const scope = await container.buying.scope();
   const organisation = scope.account.kind === "organisation" ? scope.account : null;
-  const [rowsResult, gateResult, paymentsResult, factsResult] = await Promise.allSettled([
+  const [rowsResult, owedResult, paymentsResult, factsResult] = await Promise.allSettled([
     container.buying.purchases(),
-    getServerBuyerComplianceGate(),
+    container.buying.amountsOwed(),
     invoicesFor(scope),
     organisation ? getServerAccountPurchaseFacts(organisation.id) : Promise.resolve(null),
   ]);
-  if (rowsResult.status === "rejected") return null;
+  // The won lots and what is owed on them are the page itself: without either, it says so
+  // rather than showing a figure that could disagree with the rest of the site.
+  if (rowsResult.status === "rejected" || owedResult.status === "rejected") return null;
   const rows = rowsResult.value;
+  const owedByLot = Object.fromEntries(
+    owedResult.value.entries.map((entry) => [entry.lotId, entry]),
+  );
 
   const invoiceByLot: Record<string, string> = {};
   if (paymentsResult.status === "fulfilled") {
@@ -71,8 +73,7 @@ export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
     rows,
     invoiceByLot,
     fulfilmentByLot,
-    // The person's own checks hold only what they pay themselves.
-    complianceGate: gateResult.status === "fulfilled" ? gateResult.value : "clear",
+    owedByLot,
     saleTitleById,
     paymentRoleByLot,
     payerName: organisation?.name ?? null,

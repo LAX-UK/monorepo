@@ -35,7 +35,13 @@ export type NotificationPayload = {
     /** Currency (ISO 4217) of every amount in this payload; the platform default when absent. */
     currency?: string;
     /** Who the notification is for, where one event notifies both sides of a sale. */
-    audience?: "buyer" | "seller" | "staff";
+    audience?: "buyer" | "seller" | "staff" | "underbidder";
+    /** Which payment reminder this is, for the reminder email. */
+    reminderStep?: "before_due" | "due_day" | "overdue";
+    /** How a buyer default ended for the lot, for the notice's email. */
+    defaultOutcome?: "returned_to_inventory" | "offered_to_underbidder";
+    /** The buyer's bidding was paused with the default. */
+    buyerRestricted?: boolean;
     /** Canonical lot title for deep links (push/email). */
     lotTitle?: string;
     /** Carrier and tracking number of a shipped lot. */

@@ -12,6 +12,8 @@
 export const NOTIFICATION_ALWAYS_DELIVERED_TYPES = [
   // Money owed or received: payment due (the invoice) and won lots.
   "payment_due",
+  "payment_reminder",
+  "buyer_default_notice",
   "lot_won",
   // A payout that did not reach the bank, and a delivery quote waiting to be accepted.
   "payout_problem",

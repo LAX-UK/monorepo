@@ -109,6 +109,8 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "kyc-approved": "Identity check approved",
   "kyc-declined": "Identity check declined",
   "sale-cancelled-notice": "Sale cancelled",
+  "payment-reminder": "Payment reminder",
+  "buyer-default-notice": "Buyer default notice",
 };
 
 export type EmailTemplateDescription = { label: string; essential: boolean };

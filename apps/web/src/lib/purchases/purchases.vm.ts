@@ -3,18 +3,18 @@ import {
   dashboardSofRequirementsUrl,
 } from "@/lib/dashboard/dashboard-copy";
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
-import type { ComplianceGateStatus, LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
-import { buildPayNow } from "@/lib/data/view-models/dashboard-portfolio.vm";
+import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
 import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
-import { type PurchasePaymentRole, addMoneyStrings } from "@auction/domain";
 import {
-  INVOICE_PAYMENT_DUE_DAYS,
-  type ManualReviewReason,
-  type PortfolioRow,
-} from "@auction/types";
+  type AmountOwedBlocker,
+  type AmountOwedEntry,
+  type PurchasePaymentRole,
+  addMoneyStrings,
+  summariseAmountsOwed,
+} from "@auction/domain";
+import { INVOICE_PAYMENT_DUE_DAYS, type PortfolioRow } from "@auction/types";
 import { PURCHASE_STATE_LABEL } from "./purchase-labels";
 import { purchaseProblemHref } from "./purchase-problem";
 import {
@@ -82,7 +82,11 @@ export type PurchaseCardVm = {
   problemHref: string | null;
 };
 
-/** The summary above the list while something is due, with what one payment would cover. */
+/**
+ * The summary above the list while something is owed, with what one payment would cover. When
+ * documents are what holds the account, the one place that asks for them is here: rows only say
+ * where each purchase stands.
+ */
 export type PayNowVm =
   | {
       kind: "pay";
@@ -91,8 +95,16 @@ export type PayNowVm =
       /** The invoices one payment would pick, and their total. */
       lotIds: string[];
       total: string;
+      documentsAction: PayNowDocumentsAction | null;
     }
-  | { kind: "review"; title: string; description: string };
+  | {
+      kind: "review";
+      title: string;
+      description: string;
+      documentsAction: PayNowDocumentsAction | null;
+    };
+
+export type PayNowDocumentsAction = { label: string; href: string };
 
 export type PurchasesVm = {
   cardsByTab: Record<PurchaseTab, PurchaseCardVm[]>;
@@ -109,7 +121,11 @@ export type PurchaseSources = {
   /** Invoice links, by lot. */
   invoiceByLot: Readonly<Record<string, string>>;
   fulfilmentByLot: Readonly<Record<string, LotFulfilmentSnapshot>>;
-  complianceGate: ComplianceGateStatus;
+  /**
+   * What the account owes, by lot: the amounts-owed reading the header chip and the menu share.
+   * A lot missing here owes nothing (it is being paid, paid or refunded).
+   */
+  owedByLot: Readonly<Record<string, AmountOwedEntry>>;
   saleTitleById: Readonly<Record<string, string>>;
   /**
    * How the person stands to each purchase, by lot. Missing means they pay it. A buyer agent is
@@ -135,25 +151,17 @@ function dueDate(row: PortfolioRow, facts: AccountPurchaseFacts | null = null): 
   return due;
 }
 
-/** The review reason for a lot still to pay: its own, else the account-wide hold. */
-function reviewReason(row: PortfolioRow, gate: ComplianceGateStatus): ManualReviewReason | null {
-  const own = portfolioComplianceReason(row);
-  if (own) return own;
-  const unpaid = row.payment?.status !== "captured" && row.payment?.status !== "refunded";
-  return unpaid && gate !== "clear" ? gate : null;
-}
-
 function noteFor(
   state: PurchaseState,
   row: PortfolioRow,
-  reason: ManualReviewReason | null,
+  blocker: AmountOwedBlocker | null,
   fulfilment: LotFulfilmentSnapshot | undefined,
 ): string | null {
   switch (state) {
     case "payment-due":
       return `Pay by ${DAY_MONTH_LONG.format(dueDate(row))}`;
     case "in-review":
-      return reason === "source_of_funds_required"
+      return blocker === "documents"
         ? "We need to confirm the source of funds before you pay"
         : "We're checking a few details before you can pay";
     case "payment-processing":
@@ -214,16 +222,13 @@ function capitalise(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/** A row shows status only; the one action for an account's checks lives in the banner. */
 function primaryActionFor(
   state: PurchaseState,
   row: PortfolioRow,
-  reason: ManualReviewReason | null,
 ): PurchaseCardVm["primaryAction"] {
   if (state === "choose-delivery") {
     return { label: "Arrange delivery", href: dashboardCheckoutLotUrl(row.lot.id) };
-  }
-  if (state === "in-review" && reason === "source_of_funds_required") {
-    return { label: "Provide documents", href: dashboardSofRequirementsUrl() };
   }
   return null;
 }
@@ -295,11 +300,11 @@ function amountLabel(state: PurchaseState): string {
 }
 
 /**
- * Delivery records are only read for paid lots; for the rest the account's facts say whether the
- * purchase was cancelled, so an unpaid purchase that was cancelled ends like any other.
+ * Delivery records are only read for paid lots; the amounts-owed reading also knows when the
+ * sale was cancelled at fulfilment, so an unpaid purchase that was cancelled ends like any other.
  */
-function cancelledDelivery(facts: AccountPurchaseFacts | null): PurchaseFacts["fulfilment"] {
-  return facts?.delivery.stage === "cancelled"
+function cancelledDelivery(owed: AmountOwedEntry | null): PurchaseFacts["fulfilment"] {
+  return owed?.state === "cancelled"
     ? { status: "cancelled", fulfilmentMethod: null, collectedAt: null }
     : null;
 }
@@ -307,13 +312,14 @@ function cancelledDelivery(facts: AccountPurchaseFacts | null): PurchaseFacts["f
 /** One purchase as its row and its page read it. */
 export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): PurchaseCardVm {
   const { lot } = row;
-  const reason = reviewReason(row, sources.complianceGate);
+  const owed = sources.owedByLot[lot.id] ?? null;
+  const blocker = owed?.blocker ?? null;
   const fulfilment = sources.fulfilmentByLot[lot.id];
   const facts = sources.factsByLot?.[lot.id] ?? null;
   const state = purchaseState({
     paymentStatus: row.payment?.status ?? null,
-    reviewReason: reason,
-    fulfilment: fulfilment ?? cancelledDelivery(facts),
+    inReview: owed?.state === "in-review",
+    fulfilment: fulfilment ?? cancelledDelivery(owed),
   });
   const currency = lotChargeCurrency(lot);
   const informed = (sources.paymentRoleByLot[lot.id] ?? "payer") !== "payer";
@@ -321,7 +327,11 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
     informed && PAID_STATES.has(state)
       ? `${capitalise(possessive(payer(sources.payerName)))} finance team`
       : null;
-  const totalMajor = lot.checkoutPricing?.totalMajor ?? null;
+  // What is owed is the reading's total; otherwise the lot's priced total (paid, refunded).
+  const totalMajor =
+    owed && owed.state !== "cancelled" && owed.amountDue
+      ? owed.amountDue
+      : (lot.checkoutPricing?.totalMajor ?? null);
   // Only a raised invoice can be paid; the account's facts say so when they are to hand.
   const invoiced = facts
     ? facts.invoice.status === "due" || facts.invoice.status === "overdue"
@@ -348,8 +358,8 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
         ? "Awaiting payment"
         : PURCHASE_STATE_LABEL[state],
     statusNote: informed
-      ? (informedNoteFor(state, sources.payerName) ?? noteFor(state, row, reason, fulfilment))
-      : noteFor(state, row, reason, fulfilment),
+      ? (informedNoteFor(state, sources.payerName) ?? noteFor(state, row, blocker, fulfilment))
+      : noteFor(state, row, blocker, fulfilment),
     amountLabel: amountLabel(state),
     amount: totalMajor ? formatMoney(totalMajor, currency) : "—",
     payable,
@@ -358,7 +368,7 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
     steps: stepsFor(state, row, fulfilment, facts),
     breakdown: breakdownFor(row, paidBy),
     // Paying and arranging delivery belong to whoever pays; the member who won is only told.
-    primaryAction: informed ? null : primaryActionFor(state, row, reason),
+    primaryAction: informed ? null : primaryActionFor(state, row),
     invoiceHref: sources.invoiceByLot[lot.id] ?? null,
     problemHref: canReportProblem(state) ? purchaseProblemHref(lot.id) : null,
   };
@@ -368,25 +378,29 @@ function plural(count: number, one: string, many: string): string {
   return `${count === 1 ? "One" : count} ${count === 1 ? one : many}`;
 }
 
+/** The one place a purchase asks for documents. */
+function documentsActionFor(blocker: AmountOwedBlocker | null): PayNowDocumentsAction | null {
+  return blocker === "documents"
+    ? { label: "Provide documents", href: dashboardSofRequirementsUrl() }
+    : null;
+}
+
 /** What is due, in one line, and the payment that settles it. */
-function payNowFor(
-  cards: readonly PurchaseCardVm[],
-  rows: readonly PortfolioRow[],
-  sources: PurchaseSources,
-): PayNowVm | null {
-  const mine = rows.filter((row) => (sources.paymentRoleByLot[row.lot.id] ?? "payer") === "payer");
-  const due = buildPayNow(mine, sources.complianceGate);
-  if (!due) return null;
+function payNowFor(cards: readonly PurchaseCardVm[], sources: PurchaseSources): PayNowVm | null {
+  const owed = summariseAmountsOwed(Object.values(sources.owedByLot));
+  if (owed.count === 0) return null;
+  const documentsAction = documentsActionFor(owed.blocker);
   const payable = cards.filter((card) => card.payable);
   if (payable.length === 0) {
     // Nothing can be paid yet: say so only when our checks are what holds it.
-    if (!cards.some((card) => card.state === "in-review" && card.statusLabel === "In review")) {
-      return null;
-    }
+    if (!owed.inReview) return null;
     return {
       kind: "review",
-      title: "We're reviewing your account",
-      description: "You can pay once our checks are done. Each purchase says what is needed.",
+      title: "Your account is in review",
+      description: documentsAction
+        ? "We need some documents before you can pay."
+        : "You can pay once our checks are done.",
+      documentsAction,
     };
   }
   const [first] = payable;
@@ -407,6 +421,7 @@ function payNowFor(
         : `${lead}Pay them together by card or bank transfer.`,
     lotIds: payable.map((card) => card.lotId),
     total,
+    documentsAction,
   };
 }
 
@@ -418,18 +433,12 @@ export function buildPurchasesVm(sources: PurchaseSources): PurchasesVm {
   const cardsByTab = Object.fromEntries(
     PURCHASE_TABS.map((tab) => [tab, cards.filter((card) => card.tab === tab)]),
   ) as Record<PurchaseTab, PurchaseCardVm[]>;
-  // The Pay now banner follows the To pay view, so a cancelled purchase can never be in it.
-  const toPayLots = new Set((cardsByTab["to-pay"] ?? []).map((card) => card.lotId));
   const sales = new Map<string, string>();
   for (const card of cards)
     if (card.saleId && card.saleTitle) sales.set(card.saleId, card.saleTitle);
   return {
     cardsByTab,
-    payNow: payNowFor(
-      cards,
-      sources.rows.filter((row) => toPayLots.has(row.lot.id)),
-      sources,
-    ),
+    payNow: payNowFor(cards, sources),
     total: cards.length,
     sales: [...sales]
       .map(([id, title]) => ({ id, title }))
