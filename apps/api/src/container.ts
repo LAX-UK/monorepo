@@ -668,6 +668,7 @@ export function createContainer(env: Env): Container {
     marketingAttributionEnabled: complianceMedia.marketingAttributionEnabled,
     postmarkWebhookService: userMisc.postmarkWebhookService,
     brevoWebhookIngestService: cron.brevoWebhookIngestService,
+    zohoArtworkNoticeService: cron.zohoArtworkNoticeService,
     accountDeletionEligibilityService: cron.accountDeletionEligibilityService,
     subjectExportService: createBidSubjectExportService({
       db,
@@ -900,6 +901,7 @@ export type {
   ContainerVenueRoutesSlice,
   ContainerVeriffWebhookRoutesSlice,
   ContainerXeroWebhookRoutesSlice,
+  ContainerZohoWebhookRoutesSlice,
   ContainerSaleAuxRoutesSlice,
   ContainerSaleFollowRoutesSlice,
   ContainerSaleLifecycleWriteRoutesSlice,

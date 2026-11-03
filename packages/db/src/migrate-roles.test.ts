@@ -31,6 +31,7 @@ import {
   WORKER_PROVISIONING_TABLES,
   WORKER_QR_CODE_SCAN_TABLES,
   WORKER_READ_TABLES,
+  WORKER_ZOHO_ARTWORK_SYNC_TABLES,
 } from "./migrate-roles.js";
 
 /** AST-based audit of every `db.update(user|userTable).set({ ... })` call in `apps/api`.
@@ -477,6 +478,16 @@ describe("migrate-roles invariants", () => {
       ...WORKER_ARTWORK_REGISTER_TABLES,
       ...WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
     ]) {
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+    }
+  });
+
+  it("lets the worker keep the Zoho artwork sync watermark and per-Product results", () => {
+    expect([...WORKER_ZOHO_ARTWORK_SYNC_TABLES].sort()).toEqual([
+      "zoho_artwork_sync_outcome",
+      "zoho_artwork_sync_state",
+    ]);
+    for (const table of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);
     }
   });

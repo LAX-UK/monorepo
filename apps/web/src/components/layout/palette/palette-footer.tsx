@@ -11,7 +11,7 @@ export function PaletteFooter() {
   }, []);
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border-hairline px-3 py-2 font-body text-xs text-on-surface-variant">
+    <div className="flex flex-wrap items-center gap-x-3 pointer-coarse:hidden gap-y-1 border-t border-border-hairline px-3 py-2 font-body text-xs text-on-surface-variant">
       <span>
         <KbdHintMuted>↑↓</KbdHintMuted> Navigate
       </span>

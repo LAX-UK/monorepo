@@ -4,6 +4,7 @@ import { ShopFooter } from "@/components/shop-footer";
 import { ShopHeader } from "@/components/shop-header";
 import { ShopTransientNotices } from "@/components/shop-transient-notices.client";
 import { SilentSignInNotice } from "@/components/silent-sign-in-notice.client";
+import { SHOP_POLICY_PATHS } from "@/content/policies/shop-policy-status";
 import {
   isShopIndexingAllowed,
   loadShopCrossProductFooterLinks,
@@ -19,9 +20,11 @@ import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { SHOP_THEME_COOKIE, parseShopTheme } from "@/lib/theme/shop-theme";
 import { laxFaviconMetadataIcons } from "@auction/branding";
+import { EssentialCookiesDialog } from "@auction/marketing-ui";
 import { CatalogueImageProvider } from "@auction/shop-portal/react";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { Suspense } from "react";
 import "./account.css";
 import "./orders.css";
@@ -69,6 +72,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     cookieStore.getAll(),
     viewer.kind === "authenticated",
   );
+  const linkablePolicies = loadLinkableShopPolicies();
   const themePreference = parseShopTheme(cookieStore.get(SHOP_THEME_COOKIE)?.value);
   return (
     <html
@@ -101,7 +105,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <ShopFooter
               crossProductLinks={crossProductFooterLinks}
               accountState={toShopFooterAccountState(viewer)}
-              linkablePolicies={loadLinkableShopPolicies()}
+              linkablePolicies={linkablePolicies}
+            />
+            <EssentialCookiesDialog
+              productName="LAX Shop"
+              cookiePolicyHref={
+                linkablePolicies.includes("cookies") ? SHOP_POLICY_PATHS.cookies : undefined
+              }
+              Link={Link}
             />
           </ShopSmoothScroll>
         </CatalogueImageProvider>
