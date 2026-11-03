@@ -159,6 +159,15 @@ export class ConsignmentAfterSaleHttpApplicationService
     return respond(await this.deps.unsold.setReserveFloor(submissionId, floor));
   }
 
+  async completeUnsoldFollowUp(
+    submissionId: string,
+    viewer: SubmissionViewerContext,
+  ): Promise<SubmissionHttpJson> {
+    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRoles);
+    if (denied) return denied;
+    return respond(await this.deps.unsold.completeFollowUp(submissionId, viewer.userId));
+  }
+
   async moveOptions(
     submissionId: string,
     viewer: SubmissionViewerContext,

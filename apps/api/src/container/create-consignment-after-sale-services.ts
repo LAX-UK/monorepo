@@ -12,6 +12,7 @@ import {
   DrizzleSellerIdentityReminderStore,
   DrizzleUnsoldChoiceDeadlineStore,
   DrizzleUnsoldLotChoiceRepository,
+  DrizzleUnsoldLotFollowUpRepository,
 } from "@auction/persistence/repositories";
 import { ConsignmentAfterSaleHttpApplicationService } from "../services/consignment-after-sale/consignment-after-sale-http-application.service.js";
 import { ConsignmentMoveService } from "../services/consignment-after-sale/consignment-move.service.js";
@@ -51,10 +52,12 @@ export function createConsignmentAfterSaleServices(
   input: CreateConsignmentAfterSaleServicesInput,
 ): IConsignmentAfterSaleHttpApplicationService {
   const notifier = new ConsignmentUpdateNotifier(input.dispatcher, input.recipients);
+  const followUps = new DrizzleUnsoldLotFollowUpRepository(input.db);
   const unsold = new UnsoldLotChoiceService({
     choices: new DrizzleUnsoldLotChoiceRepository(input.db),
     deadlines: new UnsoldChoiceDeadlines(),
     storedDeadlines: new DrizzleUnsoldChoiceDeadlineStore(input.db),
+    followUps,
     submissions: input.submissions,
     lots: input.lots,
     agreements: input.agreements,

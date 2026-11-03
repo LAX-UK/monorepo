@@ -78,6 +78,14 @@ export const lotReturnedToInventoryPayloadSchema = z.object({
   fromStatus: z.enum(["ended", "cancelled", "voided"]),
   lastSaleId: z.string().uuid().nullable(),
   reason: z.string(),
+  /** The reserve agreed with the seller for a relist, put on the lot as it returned. */
+  reserveApplied: z
+    .object({
+      followUpId: z.string().uuid(),
+      from: z.string().nullable(),
+      to: z.string(),
+    })
+    .optional(),
 });
 
 export const lotBuyerDefaultedPayloadSchema = z.object({

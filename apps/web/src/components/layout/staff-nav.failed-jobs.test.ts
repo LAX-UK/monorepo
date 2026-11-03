@@ -7,16 +7,29 @@ function groupsFor(role: "staff" | "client", staffRole: UserStaffRole | null) {
 }
 
 describe("staff nav: Failed jobs", () => {
-  it.each<UserStaffRole>(["administrator", "read_only"])("is offered to %s", (staffRole) => {
-    const operations = groupsFor("staff", staffRole).find((group) => group.id === "operations");
-    expect(operations?.items.map((item) => item.label)).toContain("Failed jobs");
-  });
+  it.each<UserStaffRole>(["administrator", "read_only", "finance"])(
+    "is offered to %s",
+    (staffRole) => {
+      const operations = groupsFor("staff", staffRole).find((group) => group.id === "operations");
+      expect(operations?.items.map((item) => item.label)).toContain("Failed jobs");
+    },
+  );
 
-  it.each<UserStaffRole>(["finance", "sales_manager"])("is hidden from %s", (staffRole) => {
-    const labels = groupsFor("staff", staffRole).flatMap((group) =>
-      group.items.map((item) => item.label),
-    );
-    expect(labels).not.toContain("Failed jobs");
+  it.each<UserStaffRole>(["sales_manager", "client_services", "compliance"])(
+    "is hidden from %s",
+    (staffRole) => {
+      const labels = groupsFor("staff", staffRole).flatMap((group) =>
+        group.items.map((item) => item.label),
+      );
+      expect(labels).not.toContain("Failed jobs");
+    },
+  );
+
+  it("points finance at the same page, which their roles narrow to Xero", () => {
+    const item = groupsFor("staff", "finance")
+      .flatMap((group) => group.items)
+      .find((entry) => entry.label === "Failed jobs");
+    expect(item?.href).toBe("/admin/failed-jobs");
   });
 
   it("is not offered to a customer", () => {
