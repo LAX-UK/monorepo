@@ -74,10 +74,20 @@ export class DrizzleEmailOutboxRepository implements IEmailOutboxRepository {
       .where(eq(emailOutbox.id, outboxId));
   }
 
-  async markSent(outboxId: string, messageId: string): Promise<void> {
+  async markSent(
+    outboxId: string,
+    messageId: string,
+    options?: { discardSnapshot: boolean },
+  ): Promise<void> {
     await this.db
       .update(emailOutbox)
-      .set({ status: "sent", messageId, sentAt: new Date(), lastError: null })
+      .set({
+        status: "sent",
+        messageId,
+        sentAt: new Date(),
+        lastError: null,
+        ...(options?.discardSnapshot ? { toSnapshot: null, toSnapshotPurgeAt: null } : {}),
+      })
       .where(eq(emailOutbox.id, outboxId));
   }
 

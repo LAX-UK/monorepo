@@ -16,6 +16,8 @@ export type BidRemedy =
   | { kind: "limit_help" }
   /** The bidder has to register for the sale first. */
   | { kind: "register" }
+  /** The bidder has asked to delete their account; cancelling the request is the way forward. */
+  | { kind: "cancel_deletion" }
   /** The connection dropped: the same bid can be sent again, and cannot be placed twice. */
   | { kind: "retry" }
   /** Nothing more can be done here; the dialog offers to close. */
@@ -88,6 +90,17 @@ const REFUSAL_NOTICES: Readonly<Record<string, NoticeBuilder>> = {
     detail: "Your bid wasn't placed. The result will show on the lot page in a moment.",
     remedy: { kind: "close" },
   }),
+  [PLACE_BID_ERROR_CODES.account_deletion_pending]: (refusal) => {
+    const dueOn = detailOf(refusal, "dueOn");
+    return {
+      tone: "warning",
+      title: "Bidding is on hold",
+      detail: dueOn
+        ? `Your account is due to be deleted on ${dueOn}. Cancel deletion to continue.`
+        : "Your account is due to be deleted. Cancel deletion to continue.",
+      remedy: { kind: "cancel_deletion" },
+    };
+  },
   [PLACE_BID_ERROR_CODES.amount_invalid]: (refusal, ctx) => {
     const nearest = detailOf(refusal, "nearestValidAmount");
     return nearest
@@ -173,6 +186,7 @@ export function noticeBlocksConfirm(notice: BidNotice): boolean {
   switch (notice.remedy.kind) {
     case "limit_help":
     case "register":
+    case "cancel_deletion":
     case "close":
       return true;
     default:

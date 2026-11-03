@@ -131,3 +131,43 @@ describe("sendEmailUseCase suppression", () => {
     },
   );
 });
+
+describe("sendEmailUseCase recipient snapshot", () => {
+  function runSent(template: string) {
+    const markSent = vi.fn();
+    const outboxRepo: IEmailOutboxRepository = {
+      claimForSend: vi.fn(async () => ({
+        row: { ...baseRow, template, toSnapshot: "gone@example.com", status: "sending" as const },
+        claimed: true,
+      })),
+      findSuppression: vi.fn(async () => null),
+      markSuppressed: vi.fn(),
+      markSent,
+      markFailedOrPending: vi.fn(),
+      markSentPersistenceFailed: vi.fn(),
+      resolveUserEmail: vi.fn(),
+      insertSuppression: vi.fn(),
+      recoverStaleForDispatch: vi.fn(async () => []),
+    };
+    const send = vi.fn(async () => ({ messageId: "msg-1" }));
+    return {
+      markSent,
+      done: sendEmailUseCase(
+        { outboxRepo, sender: { send } as IEmailSender, log: pino({ level: "silent" }) },
+        { outboxId: "outbox-1" },
+      ),
+    };
+  }
+
+  it("discards the stored address once the account-deleted message is sent", async () => {
+    const { markSent, done } = runSent("account-deletion-completed");
+    await done;
+    expect(markSent).toHaveBeenCalledWith("outbox-1", "msg-1", { discardSnapshot: true });
+  });
+
+  it("keeps the usual behaviour for other messages", async () => {
+    const { markSent, done } = runSent("payment-invoice");
+    await done;
+    expect(markSent).toHaveBeenCalledWith("outbox-1", "msg-1");
+  });
+});

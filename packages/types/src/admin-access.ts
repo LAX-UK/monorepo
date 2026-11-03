@@ -307,6 +307,14 @@ export const MARKETING_ENQUIRIES_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "support.respond"],
 };
 
+/**
+ * Account deletions the daily purge is holding because the person still has something open.
+ * Client services and administrators see the work and contact the person.
+ */
+export const DELETION_HOLD_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond"],
+};
+
 /** Private sale enquiries: the work offered, the budget and how to reach the sender. */
 export const PRIVATE_SALE_ENQUIRIES_READ_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "enquiries.private_sale.read"],

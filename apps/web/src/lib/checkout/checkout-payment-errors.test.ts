@@ -9,6 +9,11 @@ describe("checkoutPaymentErrorMessage", () => {
     );
   });
 
+  it("shows the account deletion message as the server wrote it", () => {
+    const message = "Your account is due to be deleted on 2 December. Cancel deletion to continue.";
+    expect(checkoutPaymentErrorMessage(message, "account_deletion_pending")).toBe(message);
+  });
+
   it("falls back to server message", () => {
     expect(checkoutPaymentErrorMessage("Custom")).toBe("Custom");
   });

@@ -5,6 +5,7 @@ export {
   isOptionalEmailTemplate,
   suppressionBlocksTemplate,
 } from "./suppression-policy.js";
+export { SNAPSHOT_DISCARDED_AFTER_SEND } from "./snapshot-retention.js";
 export {
   ConsoleEmailService,
   PostmarkEmailService,

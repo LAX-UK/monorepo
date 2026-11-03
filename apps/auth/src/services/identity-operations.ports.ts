@@ -17,6 +17,9 @@ export type IdentitySecurityStatusRecord = {
   emailChangeExpiresAt: Date | null;
   /** When the person asked for deletion; null when they have not, or cancelled. */
   deletionRequestedAt: Date | null;
+  /** Set while the daily purge is keeping a due deletion back. */
+  deletionHeldAt: Date | null;
+  deletionHoldReasons: unknown;
 };
 
 export type IdentitySessionRecord = {

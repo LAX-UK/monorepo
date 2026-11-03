@@ -53,6 +53,36 @@ export function DeleteAccountSection({ vm, pagePath }: DeleteAccountSectionProps
         </section>
       );
 
+    case "held":
+      return (
+        <section aria-labelledby="deletion-heading" className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <h2 id="deletion-heading" className={SECTION_TITLE}>
+              {vm.title}
+            </h2>
+            <p className="text-sm text-on-surface-variant">
+              You asked for this on {vm.requestedOn}. {vm.basis}
+            </p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <h3 className="text-sm font-medium text-on-surface-variant">{vm.reasonsIntro}</h3>
+            <ListCard>
+              {vm.reasons.map((reason) => (
+                <ListCardRow
+                  key={reason.code}
+                  title={reason.message}
+                  {...(reason.href ? { href: reason.href } : {})}
+                />
+              ))}
+            </ListCard>
+          </div>
+          <p className="text-sm text-on-surface-variant">
+            {vm.recheck} {vm.resolution}
+          </p>
+          <CancelDeletionButton />
+        </section>
+      );
+
     case "blocked":
       return (
         <section aria-labelledby="deletion-heading" className="flex flex-col gap-4">

@@ -6,6 +6,7 @@ import type {
 import {
   AML_REVIEW_ACCESS,
   CONDITION_REPORTS_ACCESS,
+  DELETION_HOLD_ACCESS,
   FINANCE_ACCESS,
   LEGAL_ENTITY_BROWSE_ACCESS,
   LOTS_ACCESS,
@@ -61,6 +62,7 @@ export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRe
   unsold_lot_choice: SUBMISSIONS_ACCESS,
   marketing_enquiry: MARKETING_ENQUIRIES_ACCESS,
   purchase_problem: FINANCE_ACCESS,
+  deletion_hold: DELETION_HOLD_ACCESS,
 };
 
 const REVIEW_TASK_SOURCE_ACCESS: CapabilityRequirement = {
@@ -145,6 +147,7 @@ function stampActions(
       break;
     case "marketing_enquiry":
     case "purchase_problem":
+    case "deletion_hold":
       break;
   }
 
@@ -239,6 +242,10 @@ export class AdminWorkItemsService {
       {
         access: WORK_ITEM_KIND_ACCESS.purchase_problem,
         fetch: () => this.reader.listPurchaseProblems(perSourceLimit),
+      },
+      {
+        access: WORK_ITEM_KIND_ACCESS.deletion_hold,
+        fetch: () => this.reader.listDeletionHolds(perSourceLimit),
       },
     ];
 

@@ -17,6 +17,15 @@ import AccountActivation, {
 import AccountDeletionCancelledEmail, {
   subject as accountDeletionCancelledSubject,
 } from "./templates/account-deletion-cancelled.js";
+import AccountDeletionCompletedEmail, {
+  subject as accountDeletionCompletedSubject,
+} from "./templates/account-deletion-completed.js";
+import AccountDeletionHeldEmail, {
+  subject as accountDeletionHeldSubject,
+} from "./templates/account-deletion-held.js";
+import AccountDeletionReminderEmail, {
+  subject as accountDeletionReminderSubject,
+} from "./templates/account-deletion-reminder.js";
 import AccountDeletionRequestedEmail, {
   subject as accountDeletionRequestedSubject,
 } from "./templates/account-deletion-requested.js";
@@ -327,6 +336,18 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "data-export-ready": {
     subject: dataExportReadySubject,
     component: (vars) => <DataExportReadyEmail {...vars} />,
+  },
+  "account-deletion-reminder": {
+    subject: accountDeletionReminderSubject,
+    component: (vars) => <AccountDeletionReminderEmail {...vars} />,
+  },
+  "account-deletion-held": {
+    subject: accountDeletionHeldSubject,
+    component: (vars) => <AccountDeletionHeldEmail {...vars} />,
+  },
+  "account-deletion-completed": {
+    subject: accountDeletionCompletedSubject,
+    component: (vars) => <AccountDeletionCompletedEmail {...vars} />,
   },
   "backup-codes-regenerated": {
     subject: backupCodesRegeneratedSubject,

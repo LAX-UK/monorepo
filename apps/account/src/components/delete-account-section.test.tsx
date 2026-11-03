@@ -32,6 +32,31 @@ describe("DeleteAccountSection", () => {
     expect(html).not.toContain("Delete my account");
   });
 
+  describe("held", () => {
+    const vm = {
+      kind: "held" as const,
+      requestedOn: "23 October 2026",
+      title: "Your account deletion is on hold",
+      basis: "We can't delete your account yet because we still need some of your details.",
+      reasonsIntro: "What is still open:",
+      reasons: [BID, SHOP],
+      recheck: "We check again every day.",
+      resolution: "You can also cancel the deletion at any time.",
+    };
+
+    it("says why, lists every open item with its link, and offers to cancel", () => {
+      const html = render(vm);
+      expect(html).toContain("Your account deletion is on hold");
+      expect(textOf(html)).toContain("You asked for this on 23 October 2026.");
+      expect(html).toContain(BID.message);
+      expect(html).toContain(`href="${BID.href}"`);
+      expect(html).toContain(`href="${SHOP.href}"`);
+      expect(textOf(html)).toContain("We check again every day.");
+      expect(html).toContain("Cancel deletion");
+      expect(html).not.toContain("Delete my account");
+    });
+  });
+
   describe("blocked", () => {
     const vm = {
       kind: "blocked" as const,
