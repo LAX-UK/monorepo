@@ -3,6 +3,7 @@ export type AdminWorkItemSourceRow = {
   sourceId: string;
   kind:
     | "payment_manual_review"
+    | "payment_capture_blocked"
     | "aml_screening"
     | "sof_case"
     | "submission_review"
@@ -38,6 +39,8 @@ export type AdminAssignableWorkItemsQuery = {
 
 export interface IAdminWorkItemsReader {
   listManualReviewPayments(limit: number): Promise<AdminWorkItemSourceRow[]>;
+  /** Money captured on a payment that was already closed, until finance reinstates or refunds it. */
+  listBlockedCaptures(limit: number): Promise<AdminWorkItemSourceRow[]>;
   listPendingReviewTasks(query: AdminAssignableWorkItemsQuery): Promise<AdminWorkItemSourceRow[]>;
   listSubmissionReviews(query: AdminAssignableWorkItemsQuery): Promise<AdminWorkItemSourceRow[]>;
   listConditionReports(limit: number): Promise<AdminWorkItemSourceRow[]>;

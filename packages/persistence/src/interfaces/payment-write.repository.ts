@@ -88,6 +88,8 @@ export type AdminPaymentsSummaryStats = {
 
 export interface IPaymentReadRepository {
   findById(id: string): Promise<PaymentRecord | null>;
+  /** The latest capture Stripe took on this payment after it was closed, if any. */
+  findBlockedCapture(paymentId: string): Promise<BlockedCapture | null>;
   findOpenByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
   findRefundedByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
   /**
@@ -122,6 +124,15 @@ export interface IPaymentReadRepository {
   ): Promise<number>;
 }
 
+/** Money Stripe captured on a payment that had already been closed, as the webhook recorded it. */
+export type BlockedCapture = {
+  paymentId: string;
+  stripePaymentIntentId: string | null;
+  stripeChargeId: string | null;
+  amountCents: number;
+  blockedAt: Date;
+};
+
 export interface IPaymentMutationRepository {
   create(row: CreatePaymentRow): Promise<PaymentRecord>;
   updateStatus(id: string, status: PaymentRecord["status"]): Promise<void>;
@@ -154,6 +165,14 @@ export interface IPaymentLifecycleRepository {
   ): Promise<boolean>;
   /** Atomically move a payment from manual review to pending (finance release). */
   applyReleasedFromManualReviewInTransaction(tx: Database, id: string): Promise<boolean>;
+  /** Atomically reopen a cancelled payment as pending (finance reinstates a blocked capture). */
+  applyReopenedFromCancelledInTransaction(tx: Database, id: string): Promise<boolean>;
+  /** Atomically mark a cancelled payment refunded (the buyer's blocked capture was returned). */
+  applyRefundedFromCancelledInTransaction(
+    tx: Database,
+    id: string,
+    stripeRefundId: string | null,
+  ): Promise<boolean>;
 }
 
 export interface IPaymentAnalyticsRepository {

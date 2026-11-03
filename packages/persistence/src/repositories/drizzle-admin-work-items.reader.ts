@@ -4,6 +4,7 @@ import {
   adminReviewTask,
   bidIdentityDirectory,
   conditionReportRequest,
+  domainEvent,
   itemSubmission,
   lot,
   lotFulfilment,
@@ -15,12 +16,13 @@ import {
   telephoneBidBooking,
   unsoldLotChoice,
 } from "@auction/db/schema";
-import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type {
   AdminAssignableWorkItemsQuery,
   AdminWorkItemSourceRow,
   IAdminWorkItemsReader,
 } from "../interfaces/admin-work-items.reader.js";
+import { BLOCKED_CAPTURE_EVENT, toBlockedCapture } from "./blocked-capture.query.js";
 import { lotWorkItemTitle, sentenceCase } from "./work-item-labels.js";
 
 const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
@@ -144,6 +146,50 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       sourceUpdatedAt: row.createdAt,
       assignedToUserId: null,
     }));
+  }
+
+  async listBlockedCaptures(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    // One row per payment (its latest event), kept only while the payment is still closed:
+    // reinstating it or refunding the buyer moves it on and the item leaves the inbox.
+    const rows = await this.db
+      .selectDistinctOn([domainEvent.aggregateId], {
+        aggregateId: domainEvent.aggregateId,
+        payload: domainEvent.payload,
+        occurredAt: domainEvent.occurredAt,
+        lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+        winnerEmail: bidIdentityDirectory.email,
+        amount: payment.amount,
+      })
+      .from(domainEvent)
+      .innerJoin(payment, eq(sql`${payment.id}::text`, domainEvent.aggregateId))
+      .innerJoin(lot, eq(payment.lotId, lot.id))
+      .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
+      .where(
+        and(
+          eq(domainEvent.aggregateType, "payment"),
+          eq(domainEvent.eventType, BLOCKED_CAPTURE_EVENT),
+          eq(payment.status, "cancelled"),
+        ),
+      )
+      .orderBy(domainEvent.aggregateId, desc(domainEvent.occurredAt))
+      .limit(limit);
+
+    return rows.map((row) => {
+      const blocked = toBlockedCapture(row);
+      return {
+        sourceId: row.aggregateId,
+        kind: "payment_capture_blocked" as const,
+        domain: "finance" as const,
+        title: lotWorkItemTitle("Payment taken on a closed payment", row.lotNumber, row.lotTitle),
+        subtitle: `${row.winnerEmail ?? "Buyer"} · ${formatWorkItemAmount(row.amount)}`,
+        href: `/admin/payments/${row.aggregateId}`,
+        saleId: null,
+        createdAt: blocked.blockedAt,
+        sourceUpdatedAt: blocked.blockedAt,
+        assignedToUserId: null,
+      };
+    });
   }
 
   async listPendingReviewTasks(

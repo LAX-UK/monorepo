@@ -572,6 +572,7 @@ export type {
   AdminPaymentTableRowDto,
   AdminPaymentsDailyAmounts,
   AdminPaymentsSummaryStats,
+  BlockedCapture,
   CreatePaymentRow,
   IPaymentAnalyticsRepository,
   IPaymentLifecycleRepository,

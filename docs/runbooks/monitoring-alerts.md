@@ -25,6 +25,9 @@ Emitted from `apps/api/src/middleware/metrics.ts` via `recordMoneyPathEvent`. La
 | `payout_reconciled_failed` | Payout moved to `failed` during Stripe reconciliation |
 | `payout_clawback_required` | Negative-net payout path emitted `payout.clawback_required` |
 | `payment_intent_amount_mismatch` | Stripe PI amount ≠ local payment row; webhook not claimed (Stripe retries) |
+| `stripe_succeeded_for_terminal_payment` | Stripe took money for a payment already `cancelled` or `refunded`; finance gets a work-inbox item |
+| `stripe_checkout_revoke_failed` | Closing an open Stripe checkout failed (also reported to Sentry as `stripe_checkout_revoke_failed`) |
+| `blocked_capture_reinstate_failed` | Finance reinstated a blocked capture and recording the payment failed; it was put back as cancelled |
 | `refund_db_persist_failed` | Stripe refund succeeded but local DB txn failed; row enqueued in `payment_refund_reconcile` |
 | `xero_payment_record_failed` | Stripe capture OK but Xero bank payment sync failed |
 | `xero_refund_credit_note_failed` | Admin refund OK locally but Xero credit note failed |
@@ -51,6 +54,14 @@ sum(increase(auction_api_money_path_events_total{event="refund_db_persist_failed
 sum(increase(auction_api_money_path_events_total{event="xero_payment_record_failed"}[1h])) > 0
 ```
 
+```promql
+sum(increase(auction_api_money_path_events_total{event="stripe_succeeded_for_terminal_payment"}[15m])) > 0
+```
+
+```promql
+sum(increase(auction_api_money_path_events_total{event="stripe_checkout_revoke_failed"}[1h])) > 0
+```
+
 Wire each to PagerDuty / email per your observability stack.
 
 ---
@@ -66,6 +77,8 @@ Wire each to PagerDuty / email per your observability stack.
 | **Dispute clawback** | `payout_clawback_required` | Manual money movement needed | Finance war room; [dispute-clawback](./dispute-clawback.md). |
 | **Refund DB persist failed** | `refund_db_persist_failed` | Stripe refunded but ledger not updated | Check `payment_refund_reconcile` table; run `POST /internal/jobs/retry-refund-reconciles`. |
 | **Xero capture sync failed** | `xero_payment_record_failed` | Invoice exists but Xero payment not recorded | Run `POST /internal/jobs/retry-xero-stripe-capture-sync`; check `payment_external_ref.last_error`. |
+| **Money taken on a closed payment** | `stripe_succeeded_for_terminal_payment` (any, 15m) | The buyer was charged for a payment we had cancelled or refunded; the capture was blocked and nothing reached the purchase | Open the item in the admin work inbox (Finance, "Payment taken on a closed payment"). Choose **Reinstate payment** so the purchase goes ahead, or **Refund** to return the money. If the payment was already `refunded`, check the charge in Stripe by hand. |
+| **Checkout revoke failed** | `stripe_checkout_revoke_failed` | A cancelled payment's Stripe intent could not be closed, so the buyer may still be able to pay it | Check the intent in Stripe; cancel it, or let finance handle a later blocked capture as above. |
 | **PI amount mismatch** | `payment_intent_amount_mismatch` | Metadata/amount drift on capture | Compare Stripe PI vs `payment.amount`; fix data; Stripe will retry unclaimed events. |
 
 ---

@@ -67,6 +67,9 @@ function stampActions(
     case "payment_manual_review":
       if (can(PAYMENT_WRITE_ACCESS)) actions.push("capture", "refund");
       break;
+    case "payment_capture_blocked":
+      if (can(PAYMENT_WRITE_ACCESS)) actions.push("reinstate_payment", "refund");
+      break;
     case "aml_screening":
       break;
     case "sof_case":
@@ -152,6 +155,10 @@ export class AdminWorkItemsService {
       {
         access: FINANCE_ACCESS,
         fetch: () => this.reader.listManualReviewPayments(perSourceLimit),
+      },
+      {
+        access: FINANCE_ACCESS,
+        fetch: () => this.reader.listBlockedCaptures(perSourceLimit),
       },
       {
         access: SUBMISSIONS_ACCESS,

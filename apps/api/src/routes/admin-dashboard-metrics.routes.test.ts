@@ -557,6 +557,7 @@ describe("admin dashboard metrics routes", () => {
     const empty = vi.fn().mockResolvedValue([]);
     const reader: IAdminWorkItemsReader = {
       listManualReviewPayments: vi.fn().mockResolvedValue([]),
+      listBlockedCaptures: vi.fn().mockResolvedValue([]),
       listPendingReviewTasks: vi.fn().mockResolvedValue([
         {
           sourceId: "aml-1",
