@@ -86,7 +86,7 @@ export function buildArtistDirectoryActiveFilterChips(
   if (hasUpcoming) {
     chips.push({
       key: "hasUpcoming",
-      label: "Has upcoming lots",
+      label: "Has works on sale",
       removeHref: artistDirectoryWithQuery(canonicalPath, searchParams, {
         ...basePatch,
         hasUpcoming: null,
