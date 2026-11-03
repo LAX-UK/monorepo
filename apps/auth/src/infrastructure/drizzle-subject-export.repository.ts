@@ -13,9 +13,14 @@ import type {
   SubjectExportRepository,
   SubjectExportRow,
 } from "../services/subject-export.ports.js";
-import { decideCreate, initialProgress, isPreparing } from "../services/subject-export.state.js";
+import {
+  deadlineAlertAudience,
+  decideCreate,
+  initialProgress,
+  isPreparing,
+} from "../services/subject-export.state.js";
 
-type Tx = Parameters<Parameters<IdentityDatabase["transaction"]>[0]>[0];
+export type Tx = Parameters<Parameters<IdentityDatabase["transaction"]>[0]>[0];
 type Record_ = typeof subjectDataExport.$inferSelect;
 
 const OPEN = [...SUBJECT_EXPORT_OPEN_STATUSES];
@@ -27,7 +32,7 @@ function progressOf(value: unknown): SubjectExportProgressMap {
   return progress;
 }
 
-function toRow(row: Record_): SubjectExportRow {
+export function toSubjectExportRow(row: Record_): SubjectExportRow {
   return {
     id: row.id,
     subjectId: row.subjectId,
@@ -48,7 +53,7 @@ function toRow(row: Record_): SubjectExportRow {
   };
 }
 
-async function writeAudit(
+export async function writeSubjectExportAudit(
   tx: Tx,
   row: Pick<SubjectExportRow, "id" | "subjectId">,
   entries: SubjectExportAuditEntry[],
@@ -98,7 +103,7 @@ export class DrizzleSubjectExportRepository implements SubjectExportRepository {
               inArray(subjectDataExport.status, OPEN),
             ),
           )
-      ).map(toRow);
+      ).map(toSubjectExportRow);
       const windowRequests = (
         await tx
           .select()
@@ -110,7 +115,7 @@ export class DrizzleSubjectExportRepository implements SubjectExportRepository {
             ),
           )
           .orderBy(desc(subjectDataExport.requestedAt))
-      ).map(toRow);
+      ).map(toSubjectExportRow);
       const decision = decideCreate({
         open,
         windowRequests,
@@ -139,7 +144,7 @@ export class DrizzleSubjectExportRepository implements SubjectExportRepository {
         { type: "subject.data_export_requested", userId: input.subjectId, exportId: created.id },
         { transaction: tx },
       );
-      await writeAudit(
+      await writeSubjectExportAudit(
         tx,
         created,
         [
@@ -153,7 +158,7 @@ export class DrizzleSubjectExportRepository implements SubjectExportRepository {
         ],
         input.requestedAt,
       );
-      return { outcome: "requested", row: toRow(created) } as const;
+      return { outcome: "requested", row: toSubjectExportRow(created) } as const;
     });
   }
 
@@ -164,7 +169,7 @@ export class DrizzleSubjectExportRepository implements SubjectExportRepository {
       .where(eq(subjectDataExport.subjectId, subjectId))
       .orderBy(desc(subjectDataExport.requestedAt))
       .limit(1);
-    return row ? toRow(row) : null;
+    return row ? toSubjectExportRow(row) : null;
   }
 
   async findById(exportId: string): Promise<SubjectExportRow | null> {
@@ -173,7 +178,7 @@ export class DrizzleSubjectExportRepository implements SubjectExportRepository {
       .from(subjectDataExport)
       .where(eq(subjectDataExport.id, exportId))
       .limit(1);
-    return row ? toRow(row) : null;
+    return row ? toSubjectExportRow(row) : null;
   }
 
   async mutate(
@@ -187,7 +192,7 @@ export class DrizzleSubjectExportRepository implements SubjectExportRepository {
         .where(eq(subjectDataExport.id, exportId))
         .for("update");
       if (!locked) return null;
-      const before = toRow(locked);
+      const before = toSubjectExportRow(locked);
       const mutation = decide(before);
       if (!mutation) return null;
       const at = new Date();
@@ -201,8 +206,8 @@ export class DrizzleSubjectExportRepository implements SubjectExportRepository {
         .where(eq(subjectDataExport.id, exportId))
         .returning();
       if (!updated) return null;
-      await writeAudit(tx, before, mutation.audit, at);
-      return { before, after: toRow(updated) };
+      await writeSubjectExportAudit(tx, before, mutation.audit, at);
+      return { before, after: toSubjectExportRow(updated) };
     });
   }
 
@@ -263,14 +268,14 @@ export class DrizzleSubjectExportRepository implements SubjectExportRepository {
         )
         .returning();
       for (const row of expired) {
-        await writeAudit(
+        await writeSubjectExportAudit(
           tx,
           row,
           [{ event: "data_export.expired", detail: { objectPurgeQueued: true } }],
           now,
         );
       }
-      return expired.map(toRow);
+      return expired.map(toSubjectExportRow);
     });
   }
 
@@ -292,24 +297,40 @@ export class DrizzleSubjectExportRepository implements SubjectExportRepository {
         )
         .orderBy(subjectDataExport.requestedAt)
         .limit(limit)
-    ).map(toRow);
+    ).map(toSubjectExportRow);
     const claimed: { row: SubjectExportRow; tier: number }[] = [];
     for (const row of candidates) {
       const tier = tierFor(row, now);
       if (tier <= row.deadlineAlertTier || !isPreparing(row.status)) continue;
       // The tier guard makes the claim race-free: only one process moves a request past a tier.
-      const [updated] = await this.db
-        .update(subjectDataExport)
-        .set({ deadlineAlertTier: tier })
-        .where(
-          and(
-            eq(subjectDataExport.id, row.id),
-            lt(subjectDataExport.deadlineAlertTier, tier),
-            isNull(subjectDataExport.deletedAt),
-          ),
-        )
-        .returning();
-      if (updated) claimed.push({ row: toRow(updated), tier });
+      // The audit row is written with the claim, so the timeline shows every alert that was raised.
+      const updated = await this.db.transaction(async (tx) => {
+        const [moved] = await tx
+          .update(subjectDataExport)
+          .set({ deadlineAlertTier: tier })
+          .where(
+            and(
+              eq(subjectDataExport.id, row.id),
+              lt(subjectDataExport.deadlineAlertTier, tier),
+              isNull(subjectDataExport.deletedAt),
+            ),
+          )
+          .returning();
+        if (!moved) return null;
+        await writeSubjectExportAudit(
+          tx,
+          moved,
+          [
+            {
+              event: "data_export.deadline_alert",
+              detail: { tier, audience: deadlineAlertAudience(tier) },
+            },
+          ],
+          now,
+        );
+        return moved;
+      });
+      if (updated) claimed.push({ row: toSubjectExportRow(updated), tier });
     }
     return claimed;
   }

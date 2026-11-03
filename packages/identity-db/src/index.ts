@@ -42,3 +42,4 @@ export {
   type NewSigningKey,
   rotateJwksSigningKey,
 } from "./adapters/drizzle-jwks-rotation.js";
+export { encryptPrivateKeyForBetterAuth } from "./adapters/signing-key-encryption.js";

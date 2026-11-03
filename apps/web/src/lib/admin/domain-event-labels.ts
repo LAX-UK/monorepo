@@ -55,6 +55,13 @@ const LABELS: Record<string, string> = {
 
   "export.requested": "Export requested",
 
+  "data_request.viewed": "Data request opened",
+  "data_request.logged": "Data request logged",
+  "data_request.updated": "Data request updated",
+  "data_request.extended": "Data request extended",
+  "data_request.closed": "Data request closed",
+  "data_request.continued": "Data request continued manually",
+
   "failed_job.retried": "Failed job retried",
   "failed_job.discarded": "Failed job discarded",
   "failed_job.restored": "Failed job restored",

@@ -53,6 +53,16 @@ const envSchema = z
       emptyToUndefined,
       z.string().min(32).optional(),
     ),
+    /**
+     * The Data requests screen's credential for Identity (scope `data_requests.staff`), separate
+     * from the lifecycle credential so neither can do the other's work. Without it the screen's
+     * routes answer 503.
+     */
+    IDENTITY_DATA_REQUESTS_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    IDENTITY_DATA_REQUESTS_CLIENT_SECRET: z.preprocess(
+      emptyToUndefined,
+      z.string().min(32).optional(),
+    ),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
     /**
      * Legal entity that owns Bid records in the cross-product portfolio. Defaults to Bid's

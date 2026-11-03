@@ -20,6 +20,7 @@ export type FailedResponse = {
   rateLimitReset?: string | null;
 };
 
+const EMAIL_SEND_FAILED = "EMAIL_SEND_FAILED";
 const EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
 const IDENTITY_DISABLED = "IDENTITY_DISABLED";
 const INVALID_TWO_FACTOR_COOKIE = "INVALID_TWO_FACTOR_COOKIE";
@@ -102,6 +103,9 @@ export function describeAuthFailure(
       return { message: msg.MFA_LOCKED };
     }
     return { message: rateLimitedMessage(retryAfterSeconds(response, nowMs)) };
+  }
+  if (response.status >= 500 && errorCode(response.data) === EMAIL_SEND_FAILED) {
+    return { message: msg.EMAIL_SEND_FAILED };
   }
   if (isTransientFailure(response.status)) return { message: msg.SERVER_ERROR };
   if (context === "sign-in") {

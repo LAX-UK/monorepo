@@ -2,7 +2,11 @@ import { createIdentityDb } from "@auction/identity-db";
 import { authKnownDevice, authSecurityEffectOutbox, user } from "@auction/identity-db/schema";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DurableSecurityEffects } from "../services/durable-security-effects.js";
+import { DurableCredentialEmail } from "../services/durable-credential-email.js";
+import {
+  DURABLE_RETRY_DELAYS_MS,
+  DurableSecurityEffects,
+} from "../services/durable-security-effects.js";
 import { DrizzleKnownDeviceStore } from "./drizzle-known-device.store.js";
 import { DrizzleSecurityEffectOutboxRepository } from "./drizzle-security-effect-outbox.repository.js";
 
@@ -133,6 +137,80 @@ describe.skipIf(!DATABASE_URL)("security notices against Postgres", () => {
       const ids = [...a, ...b].map((row) => row.id);
       expect(new Set(ids).size).toBe(ids.length);
       expect(ids).toHaveLength(4);
+    });
+    describe("credential emails in the outbox", () => {
+      const LINK = "https://auth.lax.bid/verify?token=SECRET-LINK-TOKEN";
+      const input = {
+        template: "verify-email",
+        to: "security-notices-test@lax.bid",
+        userId: USER,
+        category: "auth",
+        idempotencyKey: "verify-email:integration",
+        vars: { verificationUrl: LINK },
+      } as const;
+
+      it("records a failed hand-off, then delivers the same message after the first retry delay", async () => {
+        if (!db) return;
+        await db.delete(authSecurityEffectOutbox).where(eq(authSecurityEffectOutbox.userId, USER));
+        const repository = new DrizzleSecurityEffectOutboxRepository(db);
+        const log = { warn: () => undefined, error: () => undefined };
+        const sender = new DurableCredentialEmail(
+          { enqueue: async () => Promise.reject(new Error("identity_email_enqueue_network")) },
+          repository,
+          log,
+          () => now,
+        );
+        await sender.send(input);
+
+        const delivered: unknown[] = [];
+        const effects = new DurableSecurityEffects(
+          repository,
+          {
+            email: {
+              enqueue: async (message: unknown) => {
+                delivered.push(message);
+                return { outboxId: "queued" };
+              },
+            },
+          } as never,
+          log,
+          () => new Date(now.getTime() + DURABLE_RETRY_DELAYS_MS[0]),
+        );
+        await expect(effects.drain()).resolves.toBe(1);
+
+        expect(delivered).toEqual([input]);
+        expect(
+          await db
+            .select()
+            .from(authSecurityEffectOutbox)
+            .where(eq(authSecurityEffectOutbox.userId, USER)),
+        ).toEqual([]);
+      });
+
+      it("removes the link and the address from a row that is abandoned", async () => {
+        if (!db) return;
+        const repository = new DrizzleSecurityEffectOutboxRepository(db);
+        await repository.enqueue({
+          job: { kind: "send_identity_email", userId: USER, input },
+          error: "seed",
+          nextAttemptAt: now,
+        });
+        const [row] = await db
+          .select()
+          .from(authSecurityEffectOutbox)
+          .where(eq(authSecurityEffectOutbox.userId, USER));
+        if (!row) throw new Error("row missing");
+
+        await repository.abandon({ id: row.id, attemptCount: 6, error: "gave up", now });
+
+        const [abandoned] = await db
+          .select()
+          .from(authSecurityEffectOutbox)
+          .where(eq(authSecurityEffectOutbox.id, row.id));
+        expect(abandoned?.status).toBe("abandoned");
+        expect(JSON.stringify(abandoned)).not.toContain("SECRET-LINK-TOKEN");
+        expect(JSON.stringify(abandoned)).not.toContain('security-notices-test@lax.bid"');
+      });
     });
   });
 });
