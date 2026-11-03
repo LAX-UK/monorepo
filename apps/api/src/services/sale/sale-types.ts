@@ -39,4 +39,11 @@ export type SaleServiceDeps = {
   repoFactory: IRepositoryFactory | null;
   /** Unset when the ATG integration is not wired; ownership guards then never fire. */
   saleChannelReader?: ISaleChannelReader | null | undefined;
+  /** Takes a cancelled lot off active telephone bookings. Unset when bookings are not wired. */
+  telephoneBookings?: LotBookingRemoval | null | undefined;
+};
+
+/** The one telephone-booking operation a lot cancellation needs. */
+export type LotBookingRemoval = {
+  removeLotFromActiveBookings(saleId: string, lotId: string): Promise<number>;
 };

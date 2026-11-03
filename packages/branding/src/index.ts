@@ -13,3 +13,5 @@ export * from "./tokens.js";
 export * from "./lax-system.js";
 export * from "./lax-logo-path.js";
 export * from "./lockup/lockup.js";
+export * from "./kyc-notice-copy.js";
+export * from "./sale-cancelled-copy.js";

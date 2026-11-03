@@ -13,6 +13,8 @@ const TRANSACTIONAL = [
   "shop-order-receipt",
   "shop-refund-issued",
   "kyc-resubmission-required",
+  "kyc-approved",
+  "kyc-declined",
   "source-of-funds-documents-requested",
   "payout-initiated-notice",
   "payout-transfer-failed-notice",

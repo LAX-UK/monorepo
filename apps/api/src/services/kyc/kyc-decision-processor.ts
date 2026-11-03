@@ -110,6 +110,7 @@ export class KycDecisionProcessor {
     let shouldProgressIndividuals = false;
     let marketingEventToEnqueue: MarketingEvent | undefined;
     let resubmissionNotify: KycWebhookHandleResult["resubmissionNotify"];
+    let outcomeNotify: KycWebhookHandleResult["outcomeNotify"];
 
     if (isCurrentSession) {
       if (setStatus !== null && !skipUserDowngrade) {
@@ -140,6 +141,15 @@ export class KycDecisionProcessor {
         appliedUserKycUpdate = true;
       }
       shouldProgressIndividuals = input.isApproved && !userAlreadyApproved;
+      const outcome = decisionOutcome(input, appliedUserKycUpdate, userAlreadyApproved);
+      if (outcome) {
+        outcomeNotify = {
+          userId: existing.userId,
+          outcome,
+          providerSessionId: input.providerSessionId,
+          providerAttemptId: input.providerAttemptId,
+        };
+      }
       if (
         input.verificationStatus === "requires_input" &&
         appliedUserKycUpdate &&
@@ -191,6 +201,22 @@ export class KycDecisionProcessor {
       shouldProgressIndividuals,
       ...(marketingEventToEnqueue ? { marketingEventToEnqueue } : {}),
       ...(resubmissionNotify ? { resubmissionNotify } : {}),
+      ...(outcomeNotify ? { outcomeNotify } : {}),
     };
   }
+}
+
+/**
+ * The outcome worth telling the person about: their current check was approved, or declined.
+ * Anything else (more information needed, expired, still being checked) is not an outcome yet,
+ * and a decision for someone already verified changes nothing.
+ */
+function decisionOutcome(
+  input: KycDecisionApplyInput,
+  appliedUserKycUpdate: boolean,
+  userAlreadyApproved: boolean,
+): "approved" | "declined" | null {
+  if (!appliedUserKycUpdate || userAlreadyApproved) return null;
+  if (input.isApproved) return "approved";
+  return input.userKycUpdate.setStatus === "rejected" ? "declined" : null;
 }

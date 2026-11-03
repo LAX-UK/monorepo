@@ -6,6 +6,7 @@ import { VeriffWebhookVerifier } from "../lib/veriff/veriff-webhook-verifier.js"
 import { DefaultAmlDecisionPolicy } from "../services/aml/aml-decision.policy.js";
 import { AmlService } from "../services/aml/aml.service.js";
 import type { IKycService } from "../services/interfaces/kyc-service.js";
+import { KycOutcomeNotifier } from "../services/kyc/kyc-outcome-notifier.js";
 import { KycResubmissionNotifier } from "../services/kyc/kyc-resubmission-notifier.js";
 import { VeriffKycService } from "../services/kyc/veriff-kyc.service.js";
 import type { ComplianceMarketingSlice } from "./create-compliance-marketing.js";
@@ -16,6 +17,7 @@ import type { ContainerRepositories } from "./create-repositories.js";
 export type ContainerComplianceKycAml = {
   kycService: IKycService;
   kycResubmissionNotifier: KycResubmissionNotifier;
+  kycOutcomeNotifier: KycOutcomeNotifier;
   amlService: AmlService;
   amlScreeningReader: IWatchlistScreeningReader;
 };
@@ -49,6 +51,13 @@ export function createComplianceKycAml(
     notificationWriteRepo,
     env.WEB_ORIGIN,
   );
+  const kycOutcomeNotifier = new KycOutcomeNotifier(
+    userRepo,
+    emailService,
+    notificationWriteRepo,
+    platform.notificationFactory,
+    env.WEB_ORIGIN,
+  );
   const amlService = new AmlService(
     platform.transactionRunner,
     new VeriffWebhookVerifier(env.VERIFF_API_KEY, env.VERIFF_SHARED_SECRET),
@@ -64,6 +73,7 @@ export function createComplianceKycAml(
   return {
     kycService,
     kycResubmissionNotifier,
+    kycOutcomeNotifier,
     amlService,
     amlScreeningReader: amlScreeningRepository,
   };

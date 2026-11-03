@@ -4,7 +4,20 @@ export type EntityRecipient = {
   firstName: string | null;
 };
 
+/** The people a cancelled sale touched, before they are reduced to one notice each. */
+export type SaleCancelledPeople = {
+  /** Who bid on the cancelled lots, with the account each bid was for. */
+  bidders: { userId: string; legalEntityId: string | null }[];
+  /** Clients with an active telephone booking for the sale. */
+  telephoneClients: { userId: string; legalEntityId: string }[];
+  /** Organisations that consigned the cancelled lots. */
+  consignorEntityIds: string[];
+  /** People who watched the cancelled lots. */
+  watcherUserIds: string[];
+};
+
 export interface INotificationFanoutReader {
+  listSaleCancelledPeople(lotIds: readonly string[], saleId: string): Promise<SaleCancelledPeople>;
   listEntityRecipients(legalEntityId: string): Promise<EntityRecipient[]>;
   getEntityDisplayName(legalEntityId: string): Promise<string>;
   getPayoutAmounts(payoutId: string): Promise<{ netAmount: string; currency: string } | null>;
