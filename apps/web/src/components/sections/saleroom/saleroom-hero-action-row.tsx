@@ -11,6 +11,7 @@ import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { saleLifecycleActions } from "@/lib/sale/sale-lifecycle-actions";
+import { SALE_HERO_ACTIONS_ID } from "@/lib/sale/sale-phone-bar-visibility";
 import type { LegalEntityMemberRole, SaleDeliveryMode } from "@auction/types";
 import { Button } from "@auction/ui/lax";
 import Link from "next/link";
@@ -128,7 +129,7 @@ export function SaleroomHeroActionRow({
     ) : null;
 
   return (
-    <div className="flex flex-col gap-4">
+    <div id={SALE_HERO_ACTIONS_ID} className="flex flex-col gap-4">
       {hasApprovedRegistration ? (
         <span className="inline-flex w-fit items-center rounded border border-primary/30 bg-primary/5 px-3 py-1 font-label text-xs font-medium text-primary">
           You&apos;re registered
