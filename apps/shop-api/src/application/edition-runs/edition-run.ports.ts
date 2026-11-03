@@ -2,6 +2,7 @@ import type { EditionFacts, PlannedEdition, ProofType, RunUsage } from "@auction
 import type { EditionRunRepository } from "../ports/edition-run.repository.js";
 import type { ShopAdminAuditWriter } from "../ports/shop-admin-audit.writer.js";
 import type { ShopAdminCommandWriter } from "../ports/shop-admin-command.writer.js";
+import type { ShopDomainEventWriter } from "../ports/shop-domain-event.writer.js";
 import type { ShopTransactionEffects } from "../ports/shop-unit-of-work.js";
 
 /** The artwork a run belongs to, locked for the length of the transaction. */
@@ -14,6 +15,8 @@ export type RunArtwork = {
   sourceOriginalArtworkId: string | null;
   /** Whether the artwork sells prints (it has a run) or is an original. */
   sellsPrints: boolean;
+  /** Archived artworks are out of the catalogue until restored. */
+  archived: boolean;
   /** The artwork's version, as the editor holds it. */
   updatedAt: Date;
 };
@@ -79,11 +82,23 @@ export interface LinkedListingWriter {
   }): Promise<{ artworkId: string; slug: string; version: string }>;
 }
 
+/** Creates the draft listing of prints made from an original. */
+export interface OriginalPrintsWriter {
+  copyFromOriginal(input: {
+    originalArtworkId: string;
+    /** The first of "-2", "-3"… that is free when the slug is taken. */
+    slug: string;
+    title: string;
+  }): Promise<{ artworkId: string; slug: string; importKey: string }>;
+}
+
 export type EditionRunTx = {
   runs: EditionRunRepository;
   prints: EditionPrintStore;
   facts: EditionFactsStore;
   listings: LinkedListingWriter;
+  originalPrints: OriginalPrintsWriter;
+  events: ShopDomainEventWriter;
   audit: ShopAdminAuditWriter;
   commands: ShopAdminCommandWriter;
 };

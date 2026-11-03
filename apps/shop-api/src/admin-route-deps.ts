@@ -112,7 +112,7 @@ export type AdminRoutesDeps = {
   merchandiseCatalogue: MerchandiseCatalogueWriter;
   artworkCatalogue: ArtworkCatalogueWriter;
   /** Runs of prints: change a draft's run, edition facts, open edition stock, linked listings. */
-  editionRuns: Omit<EditionRunServices, "recorder">;
+  editionRuns: Omit<EditionRunServices, "recorder" | "originalPrintsRecorder">;
   artistCatalogue: ArtistCatalogueWriter;
   /** Refreshes lax.art after catalogue writes that change what it serves. */
   artCache: ArtCacheInvalidator;

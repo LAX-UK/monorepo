@@ -3,18 +3,24 @@ import type { ShopTransactionEffects } from "../ports/shop-unit-of-work.js";
 import { createAddOpenEditionStockService } from "./add-open-edition-stock.service.js";
 import { createEditionRunService } from "./create-edition-run.service.js";
 import { createLinkedListingService } from "./create-linked-listing.service.js";
+import {
+  type OriginalPrintsRecorder,
+  createPrintsFromOriginalService,
+} from "./create-prints-from-original.service.js";
 import { mainRunSpec, newRunCommand } from "./edition-run-input.js";
 import type { Clock, EditionRunUnitOfWork } from "./edition-run.ports.js";
 import { createSaveEditionFactsService } from "./save-edition-facts.service.js";
 
-/** The four edition run use cases, wired to one unit of work. */
+/** The edition run use cases, wired to one unit of work. */
 export function createEditionRunServices(deps: { uow: EditionRunUnitOfWork; clock: Clock }) {
   const facts = createSaveEditionFactsService(deps);
   const stock = createAddOpenEditionStockService(deps);
   const runs = createEditionRunService({ uow: deps.uow, facts, stock });
   const listings = createLinkedListingService({ uow: deps.uow, runs, facts });
+  const printsFromOriginal = createPrintsFromOriginalService({ uow: deps.uow, runs });
   return {
     runs,
+    printsFromOriginal,
     facts,
     stock,
     listings,
@@ -28,6 +34,10 @@ export function createEditionRunServices(deps: { uow: EditionRunUnitOfWork; cloc
           actorSubjectId: input.actorSubjectId,
         }),
     } satisfies EditionRunRecorder,
+    /** The prints of a new original, inside the transaction that creates the original. */
+    originalPrintsRecorder: {
+      recordPrints: (effects, input) => printsFromOriginal.recordIn(deps.uow.bind(effects), input),
+    } satisfies OriginalPrintsRecorder,
   };
 }
 
