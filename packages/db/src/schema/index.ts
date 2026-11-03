@@ -28,6 +28,7 @@ export * from "./condition-report-request.js";
 export * from "./absentee-bid.js";
 export * from "./saleroom-session.js";
 export * from "./lot-fulfilment.js";
+export * from "./buyer-default.js";
 export * from "./marketing-enquiry.js";
 export * from "./marketing-enquiry-workflow.js";
 export * from "./delivery-quote.js";

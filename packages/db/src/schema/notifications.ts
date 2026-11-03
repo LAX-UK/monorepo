@@ -51,6 +51,8 @@ export const NOTIFICATION_TYPES = [
   "access_request_decided",
   "consignment_message",
   "watchlist_reminder",
+  "payment_reminder",
+  "buyer_default_notice",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

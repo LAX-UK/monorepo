@@ -1961,6 +1961,13 @@
       "when": 1799568000000,
       "tag": "0279_subject_data_export",
       "breakpoints": true
+    },
+    {
+      "idx": 282,
+      "version": "7",
+      "when": 1799827200000,
+      "tag": "0282_buyer_default",
+      "breakpoints": true
     }
   ]
 }

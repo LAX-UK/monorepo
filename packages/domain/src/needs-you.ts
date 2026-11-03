@@ -289,7 +289,7 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     section: "purchases",
     allowed: capability("entity.finance.write"),
     requires: "pay",
-    announcedBy: ["payment_due"],
+    announcedBy: ["payment_due", "payment_reminder"],
     collect: purchaseTask("pay"),
     items: (task) => task.purchases.length,
     link: (task) => purchaseLink(task.purchases),
