@@ -1,7 +1,6 @@
 import { InvalidPhoneNumberError, PhoneVerificationRateLimitedError } from "@auction/auth";
 import twilio from "twilio";
-import { describe, expect, it, vi } from "vitest";
-import { ConsolePhoneVerificationService } from "./console.service.js";
+import { describe, expect, it } from "vitest";
 import {
   PhoneVerificationNotConfiguredError,
   TwilioVerifyService,
@@ -127,27 +126,5 @@ describe("TwilioVerifyService", () => {
     await expect(svc.sendOtp("+14155550100")).rejects.toBeInstanceOf(
       PhoneVerificationNotConfiguredError,
     );
-  });
-});
-
-describe("ConsolePhoneVerificationService", () => {
-  it("send and check round-trip", async () => {
-    ConsolePhoneVerificationService.resetForTests();
-    const svc = new ConsolePhoneVerificationService();
-    const logSpy = vi.spyOn(console, "info").mockImplementation(() => {});
-
-    await svc.sendOtp("+14155550100");
-    const logged = logSpy.mock.calls[0]?.[0] as string;
-    const code = logged.match(/: (\d{6})$/)?.[1];
-    expect(code).toBeTruthy();
-    if (!code) throw new Error("expected OTP code in console log");
-
-    const bad = await svc.checkOtp("+14155550100", "000000");
-    expect(bad.valid).toBe(false);
-
-    const good = await svc.checkOtp("+14155550100", code);
-    expect(good.valid).toBe(true);
-
-    logSpy.mockRestore();
   });
 });

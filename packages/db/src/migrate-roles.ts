@@ -33,6 +33,12 @@ export const AUTH_READ_TABLES = ["identity_access_marker"] as const;
 export const AUTH_POLICY_TABLES = ["identity_mfa_policy"] as const;
 /** The LAX-wide address book. Products reach it through the issuer, never directly. */
 export const AUTH_ADDRESS_TABLES = ["identity_address"] as const;
+/**
+ * "Download my data" requests, owned by Identity. Requests change state, so auth_app updates
+ * them; the audit trail is append-only. Neither is ever deleted from, and api_app is denied.
+ */
+export const AUTH_EXPORT_TABLES = ["subject_data_export"] as const;
+export const AUTH_EXPORT_AUDIT_TABLES = ["subject_data_export_audit"] as const;
 export const AUTH_DENY_TABLES = [
   "email_outbox",
   "email_suppression",
@@ -152,6 +158,8 @@ export const API_DENY_TABLES = [
   ...AUTH_READ_TABLES,
   ...AUTH_POLICY_TABLES,
   ...AUTH_ADDRESS_TABLES,
+  ...AUTH_EXPORT_TABLES,
+  ...AUTH_EXPORT_AUDIT_TABLES,
   ...SHOP_COMMERCE_TABLES,
   ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
 ] as const;
@@ -191,6 +199,9 @@ export const WORKER_PRODUCT_PROFILE_TABLES = [
 /** Tables whose DML must remain unavailable to worker_app. */
 export const WORKER_DENY_TABLES = [
   ...AUTH_FULL_TABLES,
+  /** The worker reports export progress through Identity's internal route, never to its tables. */
+  ...AUTH_EXPORT_TABLES,
+  ...AUTH_EXPORT_AUDIT_TABLES,
   ...API_SSF_RECEIVER_TABLES,
   "shop_identity_session",
   "shop_logout_token_replay",
@@ -224,6 +235,8 @@ export const WORKER_READ_TABLES = [
   "notification_account_mute",
   /** Xero invoices print the organisation's invoice address and PO reference. */
   "legal_entity_invoice_details",
+  /** The clean-up of unsent enquiry files keeps the ones an enquiry holds. */
+  "marketing_enquiry_attachment",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
@@ -604,6 +617,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of AUTH_ADDRESS_TABLES) {
           await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT, UPDATE, DELETE");
+        }
+        for (const tableName of AUTH_EXPORT_TABLES) {
+          await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of AUTH_EXPORT_AUDIT_TABLES) {
+          await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of tables) {
           if ((API_DENY_TABLES as readonly string[]).includes(tableName)) {

@@ -86,6 +86,7 @@ export type {
   IUploadPersistenceRepository,
   InsertPendingUploadInput,
   UploadObjectRow,
+  UploadOwner,
 } from "./upload-persistence.repository.js";
 
 export type { ISavedSearchRepository, SavedSearchRow } from "./saved-search.repository.js";
@@ -1003,8 +1004,10 @@ export type {
   RecordPerson,
 } from "./workspace-buying.readers.js";
 export type {
+  ClaimedEnquiryFiles,
   EnquiryAttachmentRecord,
   EnquiryListFilter,
+  IEnquiryAttachmentRepository,
   EnquiryListScope,
   EnquiryNoteRecord,
   IEnquiryNoteRepository,

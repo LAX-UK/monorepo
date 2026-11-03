@@ -8,7 +8,7 @@ Monitor these signals after Phase 2–4 flags are enabled on test or production.
 
 | Signal | Meaning | Action |
 | --- | --- | --- |
-| Sentry `shop_refund_submit_terminal_failure` | Refund outbox row exceeded `MAX_SUBMIT_ATTEMPTS` (8) or Stripe returned a non-retryable error | Inspect `shop_refund` row (`submit_attempts`, `last_submit_error`); reconcile with Stripe Dashboard; finance may complete manually |
+| Sentry `shop_refund_submit_terminal_failure` | Refund outbox row exceeded `MAX_SUBMIT_ATTEMPTS` (8) or Stripe returned a non-retryable error | Open the order in LAX Admin (Overview > Failed refunds): the Refunds list shows the reason. Fix the cause (for example the payment is already refunded in the Stripe Dashboard), then choose Retry refund. The artist's payout for a cancelled item stays held until the refund succeeds |
 | Elevated `submit_attempts` without terminal event | Backoff in progress (`refundSubmitBackoffMs`) | Usually self-heals; investigate if sustained >24h |
 
 **Suggested alert:** count of `shop_refund_submit_terminal_failure` ≥ 1 in 15 minutes (page finance + on-call).

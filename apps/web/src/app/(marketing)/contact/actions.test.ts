@@ -41,6 +41,7 @@ describe("submitContactFormResult", () => {
     expect(result).toEqual({ ok: true });
     expect(dispatch).toHaveBeenCalledWith(
       expect.objectContaining({
+        intent: "general",
         name: "Ada Lovelace",
         topic: "press",
         sourcePage: "/contact?intent=press",

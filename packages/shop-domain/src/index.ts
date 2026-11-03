@@ -232,6 +232,8 @@ export {
 export {
   remainingRefundablePence,
   sumRefundedOrPendingPence,
+  cancelledLineIds,
+  type OrderLineAmount,
   type RefundLineInput,
 } from "./refundable-balance.js";
 export { validatePossessionTimestamp, type PossessionBoundsResult } from "./possession-bounds.js";

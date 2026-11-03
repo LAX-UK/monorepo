@@ -12,7 +12,14 @@ export type OverviewTile = {
   keepWhenZero?: boolean;
 };
 
-type TileSource = { key: string; label: string; href: string; value: number | undefined };
+type TileSource = {
+  key: string;
+  label: string;
+  href: string;
+  value: number | undefined;
+  /** Shown while the count is above zero: the queue is a problem, not routine work. */
+  alertWhenAbove?: "warning";
+};
 
 /**
  * One tile per figure the caller was sent AND can open. The API already omits figures a role may
@@ -39,6 +46,13 @@ export function buildOverviewTiles(input: {
       value: input.kpis.payoutsDueCount,
     },
     {
+      key: "failed-refunds",
+      label: "Failed refunds",
+      href: "/orders?refund=failed",
+      value: input.kpis.failedRefundsCount,
+      alertWhenAbove: "warning",
+    },
+    {
       key: "holds",
       label: "Active holds",
       href: "/holds?view=active",
@@ -57,9 +71,12 @@ export function buildOverviewTiles(input: {
       value: input.newEnquiryCount ?? undefined,
     },
   ];
-  const queues = sources.flatMap(({ href, value, ...rest }) => {
+  const queues = sources.flatMap(({ href, value, alertWhenAbove, ...rest }) => {
     const path = href.split("?")[0] ?? href;
-    return value !== undefined && reachable.has(path) ? [{ ...rest, href, value }] : [];
+    if (value === undefined || !reachable.has(path)) return [];
+    return [
+      { ...rest, href, value, ...(alertWhenAbove && value > 0 ? { tone: alertWhenAbove } : {}) },
+    ];
   });
   return [...queues, ...lowStockTiles(input.kpis, reachable)];
 }

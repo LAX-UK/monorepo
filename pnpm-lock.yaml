@@ -415,6 +415,12 @@ importers:
       '@auction/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@aws-sdk/client-s3':
+        specifier: ^3.1041.0
+        version: 3.1041.0
+      '@aws-sdk/s3-request-presigner':
+        specifier: ^3.1041.0
+        version: 3.1041.0
       '@better-auth/utils':
         specifier: 0.4.2
         version: 0.4.2
@@ -1311,6 +1317,9 @@ importers:
       '@auction/domain':
         specifier: workspace:*
         version: link:../domain
+      '@auction/email':
+        specifier: workspace:^
+        version: link:../email
       '@auction/persistence':
         specifier: workspace:*
         version: link:../persistence

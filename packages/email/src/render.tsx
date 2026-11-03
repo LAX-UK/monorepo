@@ -50,6 +50,9 @@ import ArtGeneralEnquiryAlertEmail, {
 import BackupCodesRegeneratedEmail, {
   subject as backupCodesRegeneratedSubject,
 } from "./templates/backup-codes-regenerated.js";
+import BidEnquiryReceivedEmail, {
+  subject as bidEnquiryReceivedSubject,
+} from "./templates/bid-enquiry-received.js";
 import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-outbid.js";
 import BiddingLimitChangedNoticeEmail, {
   subject as biddingLimitChangedNoticeSubject,
@@ -61,6 +64,12 @@ import ConsignmentAgreementReminderEmail, {
 import ConsignmentUpdateEmail, {
   subject as consignmentUpdateSubject,
 } from "./templates/consignment-update.js";
+import DataExportReadyEmail, {
+  subject as dataExportReadySubject,
+} from "./templates/data-export-ready.js";
+import DataExportRequestedEmail, {
+  subject as dataExportRequestedSubject,
+} from "./templates/data-export-requested.js";
 import DisputeClosedNoticeEmail, {
   subject as disputeClosedNoticeSubject,
 } from "./templates/dispute-closed-notice.js";
@@ -311,6 +320,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: accountDeletionCancelledSubject,
     component: (vars) => <AccountDeletionCancelledEmail {...vars} />,
   },
+  "data-export-requested": {
+    subject: dataExportRequestedSubject,
+    component: (vars) => <DataExportRequestedEmail {...vars} />,
+  },
+  "data-export-ready": {
+    subject: dataExportReadySubject,
+    component: (vars) => <DataExportReadyEmail {...vars} />,
+  },
   "backup-codes-regenerated": {
     subject: backupCodesRegeneratedSubject,
     component: (vars) => <BackupCodesRegeneratedEmail {...vars} />,
@@ -489,6 +506,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "kyc-resubmission-required": {
     subject: kycResubmissionRequiredSubject,
     component: (vars) => <KycResubmissionRequiredEmail {...vars} />,
+  },
+  "bid-enquiry-received": {
+    subject: bidEnquiryReceivedSubject,
+    component: (vars) => <BidEnquiryReceivedEmail {...vars} />,
   },
   "marketing-enquiry-alert": {
     subject: marketingEnquiryAlertSubject,

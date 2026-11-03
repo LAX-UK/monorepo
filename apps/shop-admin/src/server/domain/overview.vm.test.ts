@@ -31,12 +31,19 @@ describe("buildOverviewTiles", () => {
   it.each([
     [
       "shop_admin",
-      ["To fulfil", "Payouts due", "Active holds", "Pending limit requests", "New enquiries"],
+      [
+        "To fulfil",
+        "Payouts due",
+        "Failed refunds",
+        "Active holds",
+        "Pending limit requests",
+        "New enquiries",
+      ],
     ],
     ["account_manager", ["Active holds", "Pending limit requests", "New enquiries"]],
     ["broker", ["Active holds", "New enquiries"]],
     ["operations", ["To fulfil", "New enquiries"]],
-    ["finance", ["Payouts due"]],
+    ["finance", ["Payouts due", "Failed refunds"]],
     ["catalogue_editor", []],
   ] as const)("shows %s staff only the tiles for what they can open", (role, expected) => {
     expect(tilesFor(role)).toEqual(expected);
@@ -52,6 +59,7 @@ describe("buildOverviewTiles", () => {
     expect(tiles.map((tile) => tile.href)).toEqual([
       "/fulfilment",
       "/payouts?view=due",
+      "/orders?refund=failed",
       "/holds?view=active",
       "/requests",
       "/enquiries?view=new",
@@ -68,7 +76,7 @@ describe("buildOverviewTiles", () => {
       kpis: kpisFor("shop_admin"),
       newEnquiryCount: null,
     });
-    expect(tiles.map((tile) => tile.label)).toEqual(["Pending limit requests"]);
+    expect(tiles.map((tile) => tile.label)).toEqual(["Failed refunds", "Pending limit requests"]);
   });
 
   it("never shows a figure the API withheld, even where the page is reachable", () => {
@@ -89,6 +97,26 @@ describe("buildOverviewTiles", () => {
       newEnquiryCount: null,
     });
     expect(tile).toMatchObject({ label: "Payouts due", value: 0 });
+  });
+});
+
+describe("failed refunds", () => {
+  const tileFor = (count: number) =>
+    buildOverviewTiles({
+      navGroups: buildAdminNavGroups({
+        capabilities: capabilitiesForRole("finance"),
+        features: FEATURES,
+      }),
+      kpis: { failedRefundsCount: count },
+      newEnquiryCount: null,
+    })[0];
+
+  it("is flagged as a warning while any refund waits for a retry", () => {
+    expect(tileFor(2)).toMatchObject({ label: "Failed refunds", value: 2, tone: "warning" });
+  });
+
+  it("is calm at zero", () => {
+    expect(tileFor(0)?.tone).toBeUndefined();
   });
 });
 

@@ -9,6 +9,8 @@ export const emailSubjects = {
   backupCodesRegenerated: "New backup codes were created for your LAX Account",
   accountDeletionRequested: "Your LAX Account is scheduled for deletion",
   accountDeletionCancelled: "Deletion of your LAX Account was cancelled",
+  dataExportRequested: "A copy of your data was requested",
+  dataExportReady: "Your data is ready",
   emailChanged: "The email address on your LAX Account was changed",
   phoneVerified: "A phone number was verified on your LAX Account",
   phoneRemoved: "The phone number on your LAX Account was removed",

@@ -247,6 +247,7 @@ export {
 } from "./drizzle-workspace-buying.readers.js";
 export { DrizzleMarketingEnquiryRepository } from "./drizzle-marketing-enquiry.repository.js";
 export {
+  DrizzleEnquiryAttachmentRepository,
   DrizzleEnquiryNoteRepository,
   DrizzleEnquiryRoutingRepository,
 } from "./drizzle-enquiry-workflow.repositories.js";

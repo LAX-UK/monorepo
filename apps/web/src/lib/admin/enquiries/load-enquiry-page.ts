@@ -1,18 +1,22 @@
 import "server-only";
 
-import { getAdminEnquiry } from "@/lib/data/http/admin-enquiry.reader";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { MARKETING_ENQUIRIES_ACCESS } from "@/lib/navigation/staff-nav-access";
-import { type UserRole, userHasAccessTo } from "@auction/types";
+import { getAdminEnquiry, getEnquiryAssignees } from "@/lib/data/http/admin-enquiries.reader";
+import type { EnquiryAssignee, EnquiryView } from "@/lib/data/http/admin-enquiries.schema";
 
-/** One enquiry with what the signed-in person may do on it; null when there is no such enquiry. */
-export async function loadAdminEnquiryPage(id: string) {
-  const [enquiry, user] = await Promise.all([getAdminEnquiry(id), getServerSessionUser()]);
-  if (!enquiry) return null;
-  return {
-    enquiry,
-    canAct: user
-      ? userHasAccessTo(user.role as UserRole, user.staffRoles, MARKETING_ENQUIRIES_ACCESS)
-      : false,
-  };
+export type EnquiryPageModel =
+  | { kind: "ready"; enquiry: EnquiryView; assignees: EnquiryAssignee[] }
+  | { kind: "not_found" }
+  | { kind: "forbidden" }
+  | { kind: "unavailable" };
+
+/** One enquiry with the staff it can be handed to; the kind says why there is no record to show. */
+export async function loadAdminEnquiryPage(ref: string): Promise<EnquiryPageModel> {
+  try {
+    const [enquiry, assignees] = await Promise.all([getAdminEnquiry(ref), getEnquiryAssignees()]);
+    return enquiry ? { kind: "ready", enquiry, assignees } : { kind: "not_found" };
+  } catch (error) {
+    return {
+      kind: error instanceof Error && error.message === "forbidden" ? "forbidden" : "unavailable",
+    };
+  }
 }

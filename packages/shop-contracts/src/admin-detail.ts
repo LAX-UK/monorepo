@@ -168,6 +168,11 @@ export const AdminOrderRefundDetailSchema = Type.Object({
   status: Type.String(),
   source: Type.String(),
   createdAt: Type.String(),
+  /**
+   * Why a failed refund could not be sent to the payment provider, for staff. Absent unless the
+   * refund failed, and from an older shop-api.
+   */
+  failureReason: Type.Optional(Type.Union([Type.String(), Type.Null()])),
 });
 
 /**

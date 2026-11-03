@@ -136,3 +136,20 @@ describe("NotificationFactory lot fulfilment", () => {
     for (const r of rows) expect(`${r.title} ${r.message}`).not.toContain("\u2014");
   });
 });
+
+describe("NotificationFactory money wording", () => {
+  it("writes payment due with grouping and the pound sign, not an ISO suffix", () => {
+    const row = factory.createPaymentDue(lot, "user-1", {
+      paymentId: "pay-1",
+      amount: "6500.00",
+      checkoutUrl: null,
+    });
+    expect(row.message).toContain("Complete payment of £6,500.00 for this lot.");
+    expect(row.message).not.toContain("GBP");
+  });
+
+  it("writes the hammer price to the seller as money", () => {
+    const row = factory.createEndedSeller(lot, "seller-1", { hammerPrice: "110000.00" });
+    expect(row.message).toContain("hammer price of £110,000.00.");
+  });
+});

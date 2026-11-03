@@ -1,6 +1,6 @@
 import { atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
 import { formatLondonDayMonth, formatLondonWeekday, toDate } from "@/lib/datetime/london-time";
-import { formatHangMoney } from "@/lib/hang/hang-money";
+import { formatWholeMoney } from "@/lib/format-currency";
 import { HOME_SECTION_LIMITS } from "@/lib/home-sections/limits";
 import { type ArtistNames, homeLotCard } from "@/lib/home-sections/lot-card";
 import type { HomeResultsBand } from "@/lib/home-sections/types";
@@ -58,12 +58,12 @@ export function buildResultsBand(input: {
         note: `${share}% of lots`,
       },
       total: {
-        value: formatHangMoney(summary.totalWithPremium, summary.currency),
+        value: formatWholeMoney(summary.totalWithPremium, summary.currency),
         note: "with buyer’s premium",
       },
       topLot: topLot
         ? {
-            value: formatHangMoney(topLot.priceWithPremium, summary.currency),
+            value: formatWholeMoney(topLot.priceWithPremium, summary.currency),
             note: (topLotArtist ? input.artistNames[topLotArtist] : undefined) ?? null,
           }
         : null,

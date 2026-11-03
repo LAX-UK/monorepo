@@ -305,7 +305,7 @@ describe.skipIf(!HAS_DB)("workspace buying readers (integration)", () => {
     expect(mine[0]).toMatchObject({
       kind: "payment_capture_blocked",
       domain: "finance",
-      href: `/admin/payments/${abandoned?.id}`,
+      href: `/admin/payments?payment=${abandoned?.id}`,
     });
 
     const found = await new DrizzlePaymentRepository(db).findBlockedCapture(abandoned?.id ?? "");

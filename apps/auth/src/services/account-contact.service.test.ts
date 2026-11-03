@@ -17,7 +17,7 @@ function session(id: string, createdAt: Date) {
   };
 }
 
-function setup(sessionCreatedAt = new Date(NOW.getTime() - 60_000)) {
+function setup(sessionCreatedAt = new Date(NOW.getTime() - 60_000), phoneAvailable = true) {
   const operations = {
     readSubject: vi.fn(async () => ({
       id: SUBJECT,
@@ -41,7 +41,7 @@ function setup(sessionCreatedAt = new Date(NOW.getTime() - 60_000)) {
     cancel: vi.fn(async () => ({ ok: true as const })),
   };
   const service = new AccountContactService(
-    { operations: operations as never, emailChange },
+    { operations: operations as never, emailChange, phoneAvailable: () => phoneAvailable },
     () => NOW,
   );
   return { service, operations, emailChange };
@@ -54,9 +54,32 @@ describe("AccountContactService", () => {
       email: "ada@example.com",
       emailVerified: true,
       pendingEmail: "next@example.com",
+      pendingEmailExpired: false,
       phone: "+447700900123",
       phoneVerified: true,
+      phoneAvailable: true,
     });
+  });
+
+  it("reports a change past its expiry as expired, not waiting", async () => {
+    const { service, operations } = setup();
+    operations.readSecurityStatus.mockResolvedValueOnce({
+      twoFactorEnabled: false,
+      phoneNumber: null,
+      phoneNumberVerified: false,
+      pendingNewEmail: "next@example.com",
+      emailChangeExpiresAt: new Date(NOW.getTime() - 1_000),
+      deletionRequestedAt: null,
+    } as never);
+    expect(await service.read(SUBJECT)).toMatchObject({
+      pendingEmail: null,
+      pendingEmailExpired: true,
+    });
+  });
+
+  it("says the phone is unavailable when the issuer cannot send codes", async () => {
+    const { service } = setup(undefined, false);
+    expect(await service.read(SUBJECT)).toMatchObject({ phoneAvailable: false });
   });
 
   it("reads nothing for an unknown person", async () => {

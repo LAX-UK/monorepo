@@ -2,6 +2,7 @@
 export type AuthorizationCallbackReason =
   | "mfa_required"
   | "access_denied"
+  | "account_suspended"
   | "login_required"
   | "auth_failed";
 
@@ -17,7 +18,11 @@ export function classifyAuthorizationError(input: {
   if (!raw) return null;
 
   const err = raw.toLowerCase();
-  if (err === "access_denied") return "access_denied";
+  if (err === "account_suspended" || err === "identity_disabled") return "account_suspended";
+  if (err === "access_denied") {
+    const desc = (input.errorDescription ?? "").toLowerCase();
+    return desc.includes("suspended") ? "account_suspended" : "access_denied";
+  }
   if (err === "unmet_authentication_requirements") return "mfa_required";
   if (err === "login_required") {
     const desc = (input.errorDescription ?? "").toLowerCase();

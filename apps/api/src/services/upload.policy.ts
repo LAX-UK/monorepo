@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import {
   CONSIGNMENT_MESSAGE_ATTACHMENT_MAX_BYTES,
   CONSIGNMENT_MESSAGE_ATTACHMENT_TYPES,
+  ENQUIRY_DOCUMENT_MAX_BYTES,
+  ENQUIRY_DOCUMENT_TYPES,
+  ENQUIRY_IMAGE_MAX_BYTES,
+  ENQUIRY_IMAGE_TYPES,
 } from "@auction/domain";
 import type { StaffRoles, UserRole } from "@auction/types";
 import { CONSIGNMENT_INBOX_REPLY_ACCESS, roleHasCapability, userHasAccessTo } from "@auction/types";
@@ -20,6 +24,8 @@ export const uploadKinds = [
   "artist_image",
   "category_image",
   "consignment_message_attachment",
+  "enquiry_image",
+  "enquiry_document",
 ] as const;
 export type UploadKind = (typeof uploadKinds)[number];
 
@@ -96,6 +102,16 @@ export const uploadPolicies: Record<UploadKind, UploadPolicy> = {
     allowedContentTypes: CONSIGNMENT_MESSAGE_ATTACHMENT_TYPES,
     keyPrefix: "uploads/pending/consignment-messages",
   },
+  enquiry_image: {
+    maxBytes: ENQUIRY_IMAGE_MAX_BYTES,
+    allowedContentTypes: ENQUIRY_IMAGE_TYPES,
+    keyPrefix: "uploads/pending/enquiry-images",
+  },
+  enquiry_document: {
+    maxBytes: ENQUIRY_DOCUMENT_MAX_BYTES,
+    allowedContentTypes: ENQUIRY_DOCUMENT_TYPES,
+    keyPrefix: "uploads/pending/enquiry-documents",
+  },
 };
 
 /** A refusal an upload kind answers in its own words, with the limit it broke. */
@@ -129,6 +145,26 @@ const uploadRejections: Partial<
     size: (limit) => ({
       code: "attachment_too_large",
       error: `That file is larger than ${megabytes(limit.maxBytes)}. Use a smaller one.`,
+      limit,
+    }),
+  },
+  enquiry_image: {
+    type: (limit) => ({
+      code: "attachment_type",
+      error: "Use a JPEG, PNG or WebP photo.",
+      limit,
+    }),
+    size: (limit) => ({
+      code: "attachment_too_large",
+      error: `That photo is larger than ${megabytes(limit.maxBytes)}.`,
+      limit,
+    }),
+  },
+  enquiry_document: {
+    type: (limit) => ({ code: "attachment_type", error: "Use a PDF.", limit }),
+    size: (limit) => ({
+      code: "attachment_too_large",
+      error: `That document is larger than ${megabytes(limit.maxBytes)}.`,
       limit,
     }),
   },
@@ -197,6 +233,10 @@ export function canUploadKind(
         roleHasCapability(role, "client.submit", staffRoles) ||
         userHasAccessTo(role, staffRoles, CONSIGNMENT_INBOX_REPLY_ACCESS)
       );
+    case "enquiry_image":
+    case "enquiry_document":
+      // Anyone may send an enquiry; visitors without an account upload under a draft instead.
+      return true;
     case "artist_image":
     case "category_image":
       return (

@@ -51,6 +51,7 @@ describe("resolveAdminProxyTarget", () => {
 
   it.each([
     ["POST", "/api/admin/refunds"],
+    ["POST", "/api/admin/refunds/retry"],
     ["POST", "/api/admin/cancellations"],
   ])("requires recent auth for money change %s %s", (method, bffPath) => {
     const resolved = resolveAdminProxyTarget({

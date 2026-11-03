@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   countdownTier,
+  countdownTiles,
   formatCountdownAnnounce,
   formatCountdownAriaLabel,
   formatCountdownCompact,
@@ -108,5 +109,23 @@ describe("parseCountdownSegments", () => {
 
   it("clamps negative input to zero segments", () => {
     expect(parseCountdownSegments(-1000)).toEqual({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  });
+});
+
+describe("countdownTiles", () => {
+  const H = 3_600_000;
+  const units = (ms: number) => countdownTiles(ms).map((t) => `${t.value} ${t.unit}`);
+
+  it("shows days and hours two days out, with no seconds", () => {
+    expect(units(2 * 24 * H + 5 * H + 20 * 60_000 + 24_000)).toEqual(["2 Days", "5 Hours"]);
+  });
+
+  it("shows hours and minutes inside a day", () => {
+    expect(units(5 * H + 20 * 60_000 + 24_000)).toEqual(["5 Hours", "20 Min"]);
+  });
+
+  it("shows minutes and seconds only in the final hour", () => {
+    expect(units(H - 1000)).toEqual(["59 Min", "59 Sec"]);
+    expect(units(H)).toEqual(["1 Hours", "0 Min"]);
   });
 });

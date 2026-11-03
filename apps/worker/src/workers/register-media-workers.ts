@@ -13,7 +13,11 @@ import { cleanupImageJob } from "../jobs/image-cleanup.js";
 import { measureExternalPicturesJob } from "../jobs/measure-external-pictures.js";
 import { processImageJob } from "../jobs/process-image.js";
 import { recordQrCodeScanJob } from "../jobs/qr-code-scan.js";
-import { gcPendingUploads, validateUploadJob } from "../jobs/validate-upload.js";
+import {
+  gcPendingUploads,
+  gcUnsentEnquiryUploads,
+  validateUploadJob,
+} from "../jobs/validate-upload.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
 import type { WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
 import { closeAll } from "./worker-utils.js";
@@ -184,6 +188,7 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
     async () => {
       await withSentryCronMonitor("gc-pending-uploads", sentryMonitorSlugs, async () => {
         await gcPendingUploads({ uploadValidationRepo, storage: uploadStorage, log });
+        await gcUnsentEnquiryUploads({ uploadValidationRepo, storage: uploadStorage, log });
         await heartbeat("gc-pending-uploads");
       });
     },

@@ -14,12 +14,16 @@ const LIMITS = [
  * limiter it lets requests through when the store is unavailable: a lost enquiry costs more
  * than a burst of them.
  */
-export function createContactEnquiryRateLimitMiddleware(store: IRateLimitStore) {
+export function createContactEnquiryRateLimitMiddleware(
+  store: IRateLimitStore,
+  /** Separate buckets keep one endpoint's traffic from using up another's allowance. */
+  bucket = "contact-enquiry",
+) {
   return createMiddleware(async (c, next) => {
     const ip = readForwardedClientIp((name) => c.req.header(name)) ?? "unknown";
     try {
       for (const { window, windowSec, max } of LIMITS) {
-        const result = await store.increment(`rl:contact-enquiry:${window}:${ip}`, max, windowSec);
+        const result = await store.increment(`rl:${bucket}:${window}:${ip}`, max, windowSec);
         if (!result.allowed) {
           if (result.retryAfterSec !== undefined)
             c.header("Retry-After", String(result.retryAfterSec));

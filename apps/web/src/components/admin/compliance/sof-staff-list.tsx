@@ -31,7 +31,11 @@ export type SofStaffListProps = {
   rows: SofStaffRow[];
   summary: AdminSourceOfFundsListSummary;
   canReopen: boolean;
-  attentionCounts: { manualReviewCount: number; amlScreeningsPending: number };
+  attentionCounts: {
+    manualReviewCount: number;
+    amlScreeningsPending: number;
+    canOpenPayments: boolean;
+  };
   pendingCount: number;
   pageSize: number;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;

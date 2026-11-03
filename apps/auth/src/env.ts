@@ -109,6 +109,29 @@ const envSchema = z
     METRICS_TOKEN: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
     IDENTITY_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
     IDENTITY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
+    /**
+     * The worker's credential for the "Download my data" progress route (scope `subject_export`).
+     * Distinct from the lifecycle credential above, so neither can do the other's work. Both or
+     * neither; with neither, the progress route is not mounted.
+     */
+    SUBJECT_EXPORT_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    SUBJECT_EXPORT_MACHINE_CLIENT_SECRET: z.preprocess(
+      emptyToUndefined,
+      z.string().min(32).optional(),
+    ),
+    /**
+     * The private bucket holding personal data copies. Identity only signs reads, so these
+     * credentials must be read-only; the worker writes and deletes with its own. All of bucket,
+     * region and the key pair, or none; with none, requests still work and downloads answer 503.
+     */
+    SUBJECT_EXPORT_BUCKET: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    SUBJECT_EXPORT_REGION: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    SUBJECT_EXPORT_ENDPOINT: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    SUBJECT_EXPORT_READ_ACCESS_KEY_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    SUBJECT_EXPORT_READ_SECRET_ACCESS_KEY: z.preprocess(
+      emptyToUndefined,
+      z.string().min(1).optional(),
+    ),
     IDENTITY_MERGE_ENABLED: z
       .preprocess((value) => value === "true" || value === true, z.boolean())
       .default(false),
@@ -243,6 +266,41 @@ const envSchema = z
           path: ["IDENTITY_MACHINE_CLIENT_ID"],
         });
       }
+    }
+    if (
+      Boolean(e.SUBJECT_EXPORT_MACHINE_CLIENT_ID) !==
+      Boolean(e.SUBJECT_EXPORT_MACHINE_CLIENT_SECRET)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "SUBJECT_EXPORT_MACHINE_CLIENT_ID and SUBJECT_EXPORT_MACHINE_CLIENT_SECRET must be set together",
+        path: ["SUBJECT_EXPORT_MACHINE_CLIENT_ID"],
+      });
+    }
+    if (
+      e.SUBJECT_EXPORT_MACHINE_CLIENT_ID &&
+      e.SUBJECT_EXPORT_MACHINE_CLIENT_ID === e.IDENTITY_MACHINE_CLIENT_ID
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "SUBJECT_EXPORT_MACHINE_CLIENT_ID must differ from IDENTITY_MACHINE_CLIENT_ID",
+        path: ["SUBJECT_EXPORT_MACHINE_CLIENT_ID"],
+      });
+    }
+    const bucketFields = [
+      e.SUBJECT_EXPORT_BUCKET,
+      e.SUBJECT_EXPORT_REGION,
+      e.SUBJECT_EXPORT_READ_ACCESS_KEY_ID,
+      e.SUBJECT_EXPORT_READ_SECRET_ACCESS_KEY,
+    ];
+    if (bucketFields.some(Boolean) && !bucketFields.every(Boolean)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "SUBJECT_EXPORT_BUCKET, SUBJECT_EXPORT_REGION, SUBJECT_EXPORT_READ_ACCESS_KEY_ID and SUBJECT_EXPORT_READ_SECRET_ACCESS_KEY must be set together",
+        path: ["SUBJECT_EXPORT_BUCKET"],
+      });
     }
     if (e.NODE_ENV === "production" && e.ENABLE_PHONE_VERIFICATION) {
       if (!e.TWILIO_ACCOUNT_SID?.trim()) {

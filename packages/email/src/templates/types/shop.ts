@@ -89,7 +89,10 @@ type ShopTemplateVars = {
     lastError: string;
   };
   "shop-production-started": {
+    /** "LAX-S-10482"; absent on emails queued before orders had references. */
+    orderReference?: string;
     artworkTitle: string;
+    /** "Edition 3", "Proof 1" or "Open edition". */
     editionLabel: string;
   };
   "shop-dispatch-notice": {
@@ -113,7 +116,11 @@ type ShopTemplateVars = {
   };
   "shop-cancellation-confirmed": {
     orderId: string;
-    refundPeriodEndsAt: string;
+    /** "LAX-S-10482"; absent on emails queued before orders had references. */
+    orderReference?: string;
+    artworkTitle: string;
+    /** What goes back to the card: the item's price less anything already refunded. */
+    amountPence: number;
   };
   "art-general-enquiry-alert": {
     topicLabel: string;

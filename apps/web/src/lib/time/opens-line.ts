@@ -3,7 +3,11 @@ import {
   formatLondonWeekday,
   formatLondonWhen,
 } from "@/lib/datetime/london-time";
-import { COUNTDOWN_DATE_BEYOND_MS, formatCountdownForDisplay } from "@/lib/format-countdown";
+import {
+  COUNTDOWN_DATE_BEYOND_MS,
+  formatCountdownForDisplay,
+  formatCountdownShort,
+} from "@/lib/format-countdown";
 
 /** Beyond this, a moment is told as a date, not as a countdown. */
 export const OPENS_COUNTDOWN_WITHIN_MS = COUNTDOWN_DATE_BEYOND_MS;
@@ -26,6 +30,17 @@ export function opensLine(target: Date, now: Date, prefix = "Opens"): OpensLine 
     return { label: prefix, value: formatLondonWhen(target, now) };
   }
   return { label: `${prefix} in`, value: formatCountdownForDisplay(ms) };
+}
+
+/**
+ * A live countdown chip for a close: "2d 5h" within a week (seconds in the final hour), the date
+ * beyond it ("Closes Mon 16 Nov"). Takes the target so the chip tells the day it names.
+ */
+export function closingChipText(msLeft: number, end: Date): string {
+  if (msLeft > OPENS_COUNTDOWN_WITHIN_MS) {
+    return `Closes ${shortMoment(end, new Date(end.getTime() - msLeft))}`;
+  }
+  return formatCountdownShort(msLeft);
 }
 
 /** "Tue 10 Nov": the weekday and day, the short date for a chip or badge. */

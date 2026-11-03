@@ -143,19 +143,20 @@ function dayOffset(date: Date, now: Date): number {
 
 /**
  * A moment in a list, as short as it can be read: "Today 18:12", "Tomorrow 14:00",
- * "Yesterday 09:30", "19 Nov 14:00", or "19 Nov" without the time; the year only when it is not
+ * "Yesterday 09:30", "19 Nov 14:00", or "19 Nov" without the time; `inSentence` lower-cases the day word after a verb ("Closes tomorrow 14:00"); the year only when it is not
  * this year's.
  */
 export function formatLondonMoment(
   date: Date,
   now: Date,
-  options: { time?: boolean } = {},
+  options: { time?: boolean; inSentence?: boolean } = {},
 ): string {
   const withTime = options.time ?? true;
   const time = withTime ? ` ${formatLondonTime(date)}` : "";
   const offset = dayOffset(date, now);
-  if (offset === 0) return `Today${time}`;
-  if (offset === 1) return `Tomorrow${time}`;
-  if (offset === -1) return `Yesterday${time}`;
+  const word = (w: string) => (options.inSentence ? w.toLowerCase() : w);
+  if (offset === 0) return `${word("Today")}${time}`;
+  if (offset === 1) return `${word("Tomorrow")}${time}`;
+  if (offset === -1) return `${word("Yesterday")}${time}`;
   return `${formatLondonDayMonth(date, now)}${time}`;
 }

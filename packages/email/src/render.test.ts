@@ -179,6 +179,31 @@ describe("renderEmail", () => {
     expect(refund.text).toContain("for your order LAX-S-10482");
   });
 
+  it("confirms a cancellation with the item, the order and the refund amount", async () => {
+    const rendered = await renderEmail("shop-cancellation-confirmed", {
+      orderId: "ord-1",
+      orderReference: "LAX-S-10482",
+      artworkTitle: "Warm Basket",
+      amountPence: 3000,
+    });
+    expect(rendered.subject).toBe("Your LAX Shop cancellation is confirmed");
+    expect(rendered.text).toContain("cancelled Warm Basket from your order LAX-S-10482");
+    expect(rendered.text).toContain("refunding £30.00 to your original payment method");
+    expect(rendered.text).toContain("We will email you again when the refund has been issued");
+    expect(rendered.text).not.toContain("refund period");
+  });
+
+  it("tells a buyer which print has gone into production", async () => {
+    const rendered = await renderEmail("shop-production-started", {
+      orderReference: "LAX-S-10482",
+      artworkTitle: "Warm Basket",
+      editionLabel: "Edition 3",
+    });
+    expect(rendered.text).toContain(
+      "producing Warm Basket (Edition 3) from your order LAX-S-10482",
+    );
+  });
+
   it("tells a guest the receipt link opens the order and how to keep it in an account", async () => {
     const rendered = await renderEmail("shop-order-receipt", {
       orderId: "ord-1",

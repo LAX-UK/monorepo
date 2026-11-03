@@ -47,7 +47,7 @@ async function setup(seeds: Seed[] = []) {
   const desk = new EnquiryDeskService({
     enquiries,
     notes,
-    assignees: { isStaff: async (id) => staff.has(id) },
+    assignees: { isStaff: async (id) => staff.has(id), list: async () => [] },
     transactionRunner,
     events,
     now: () => NOW,

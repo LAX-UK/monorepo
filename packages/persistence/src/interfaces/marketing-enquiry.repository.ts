@@ -9,6 +9,7 @@ import type {
   EnquiryTiming,
   EnquiryView,
 } from "@auction/domain";
+import type { UploadOwner } from "./upload-persistence.repository.js";
 
 export type MarketingEnquiryStatus = EnquiryStatus;
 
@@ -109,6 +110,22 @@ export type EnquiryListFilter = {
   afterId?: string | null | undefined;
   limit: number;
 };
+
+/** The files an enquiry arrived with, as the sender left them. */
+export type ClaimedEnquiryFiles = { images: number; documents: number };
+
+/** Moves a sender's uploaded files onto the enquiry they were sent with. */
+export interface IEnquiryAttachmentRepository {
+  /**
+   * Attaches the listed uploads to the enquiry inside the caller's transaction. Only files the
+   * owner uploaded for an enquiry and that passed their checks are attached, in the order given,
+   * up to the limit for each kind; any other id is left out without an error.
+   */
+  claimInTransaction(
+    tx: Database,
+    input: { enquiryId: string; owner: UploadOwner; uploadIds: readonly string[] },
+  ): Promise<ClaimedEnquiryFiles>;
+}
 
 /** Enquiries from the contact form and the private sale enquiry page. */
 export interface IMarketingEnquiryRepository {

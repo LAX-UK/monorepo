@@ -32,6 +32,7 @@ export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly str
   people: [
     "auth.",
     "user.",
+    "subject.",
     "kyc.",
     "aml.",
     "source_of_funds.",

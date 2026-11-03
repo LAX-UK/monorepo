@@ -16,6 +16,7 @@ const CHROME_MAC =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36";
 const SECURE_URL = "https://account.lax.bid/account/security";
 const CANCEL_URL = "https://account.lax.bid/account/security/delete";
+const DATA_URL = "https://account.lax.bid/account/privacy/download";
 
 function setup(
   options: { seen?: Awaited<ReturnType<KnownDeviceStore["touch"]>>; sentToday?: number } = {},
@@ -41,6 +42,7 @@ function setup(
       devices,
       secureAccountUrl: SECURE_URL,
       cancelDeletionUrl: CANCEL_URL,
+      dataExportUrl: DATA_URL,
       log,
     },
     () => AT,
@@ -94,6 +96,46 @@ describe("SecurityNoticeService account deletion", () => {
       template: "account-deletion-cancelled",
       to: "ada@example.com",
     });
+  });
+});
+
+describe("SecurityNoticeService data download", () => {
+  it("tells the person a copy was requested, with the device and time", async () => {
+    const { service, email } = setup();
+    await service.notify({
+      kind: "data_export_requested",
+      userId: USER,
+      at: AT,
+      userAgent: CHROME_MAC,
+    });
+    expect(email.enqueue).toHaveBeenCalledTimes(1);
+    expect(email.enqueue.mock.calls[0]?.[0]).toMatchObject({
+      template: "data-export-requested",
+      to: "ada@example.com",
+      category: "auth",
+      vars: {
+        whenDisplay: "23 October 2026 at 14:05 BST",
+        deviceLabel: "Chrome on macOS",
+        secureAccountUrl: SECURE_URL,
+      },
+    });
+  });
+
+  it("tells the person the copy is ready and links to LAX Account, not to the file", async () => {
+    const { service, email } = setup();
+    await service.notify({
+      kind: "data_export_ready",
+      userId: USER,
+      at: AT,
+      expiresAt: new Date("2026-10-30T13:05:00.000Z"),
+    });
+    const call = email.enqueue.mock.calls[0]?.[0];
+    expect(call).toMatchObject({
+      template: "data-export-ready",
+      to: "ada@example.com",
+      vars: { dataExportUrl: DATA_URL, expiresDisplay: "30 October 2026", retentionDays: 7 },
+    });
+    expect(JSON.stringify(call)).not.toMatch(/subject-exports|\.zip/);
   });
 });
 

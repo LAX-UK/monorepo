@@ -9,12 +9,14 @@ import type {
 import type {
   EnquiryAttachmentRecord,
   PrivateSaleEnquiryDetail,
+  UploadOwner,
 } from "@auction/persistence/interfaces";
 import type {
   AdminEnquiryListQuery,
   AdminEnquiryPatch,
   EnquiryIntakeInput,
 } from "@auction/validators";
+import type { EnquiryAssignee } from "../marketing-enquiry/enquiry-assignee-directory.js";
 import type { EnquirerAccount } from "../marketing-enquiry/enquiry-intake.mapper.js";
 
 export type EnquiryNoteView = {
@@ -98,12 +100,23 @@ export type MarketingEnquiryHandledResult =
   | { ok: true; enquiry: MarketingEnquiryView }
   | { ok: false; error: "enquiry_not_found" | "already_handled" };
 
-export type MarketingEnquirySubmitted = { id: string; reference: string };
+export type MarketingEnquirySubmitted = {
+  id: string;
+  reference: string;
+  /** When the promised reply is due: two business days after the enquiry arrived (ISO time). */
+  replyBy: string;
+};
 
 /** The public side: the contact form and the enquiry page hand a message to the platform. */
 export interface IMarketingEnquiryIntake {
-  submit(input: EnquiryIntakeInput, account?: EnquirerAccount): Promise<MarketingEnquirySubmitted>;
+  submit(input: EnquiryIntakeInput, sender?: EnquirySender): Promise<MarketingEnquirySubmitted>;
 }
+
+/** Who sent the enquiry: their account when signed in, and whose uploaded files may be attached. */
+export type EnquirySender = {
+  account?: EnquirerAccount | undefined;
+  uploadOwner?: UploadOwner | undefined;
+};
 
 /** The staff side: list, open and work an enquiry. */
 export interface IMarketingEnquiryDesk {
@@ -133,6 +146,8 @@ export type EnquiryRoutingUpdateResult =
 /** Who receives each department's enquiries. */
 export interface IEnquiryRouting {
   rules(): Promise<EnquiryRoutingRule[]>;
+  /** The staff an enquiry may be given to, for the assignee and routing pickers. */
+  assignees(): Promise<EnquiryAssignee[]>;
   replace(
     actorUserId: string,
     rules: readonly EnquiryRoutingRule[],
