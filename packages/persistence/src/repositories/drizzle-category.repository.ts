@@ -23,6 +23,7 @@ import type {
   ICategoryRepository,
   UpdateCategoryInput,
 } from "../interfaces/category.repository.js";
+import { containsPattern } from "../lib/like-pattern.js";
 
 /** Lot states a visitor can see in a catalogue, results or search. */
 const PUBLISHED_LOT_STATUSES = ["scheduled", "active", "ended"] as const;
@@ -80,9 +81,9 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
       options.includeArchived ? undefined : eq(category.archived, false),
       needle
         ? or(
-            ilike(category.name, `%${needle}%`),
-            ilike(category.slug, `%${needle}%`),
-            ilike(category.description, `%${needle}%`),
+            ilike(category.name, containsPattern(needle)),
+            ilike(category.slug, containsPattern(needle)),
+            ilike(category.description, containsPattern(needle)),
           )
         : undefined,
     );

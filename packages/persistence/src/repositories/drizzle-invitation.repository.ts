@@ -18,6 +18,7 @@ import type {
   InvitationRow,
   InvitationSummary,
 } from "../interfaces/invitation.repository.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import { insertLaxStaffAccessEvents } from "./drizzle-lax-staff-access.repository.js";
 
 const inviter = bidIdentityDirectory;
@@ -29,7 +30,7 @@ function buildAdminListWhere(filters: InvitationAdminListFilters): SQL | undefin
   }
   const q = filters.q?.trim();
   if (q) {
-    clauses.push(ilike(userInvitation.email, `%${q}%`));
+    clauses.push(ilike(userInvitation.email, containsPattern(q)));
   }
   if (clauses.length === 0) return undefined;
   return and(...clauses);

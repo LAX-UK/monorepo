@@ -10,7 +10,8 @@ import type {
   AuditLogSearchResult,
   RedactedDomainEventRow,
 } from "../interfaces/admin-read-models.js";
-import { buildAuditLogWhere, escapeLikePattern } from "./audit-log-sql.js";
+import { containsPattern, startsWithPattern } from "../lib/like-pattern.js";
+import { buildAuditLogWhere } from "./audit-log-sql.js";
 
 const DOMAIN_EVENT_LIST_COLUMNS = {
   id: domainEvent.id,
@@ -69,7 +70,7 @@ export class DrizzleAdminDomainEventReader implements IAdminDomainEventReader {
     }
     let q = this.db.select(DOMAIN_EVENT_LIST_COLUMNS).from(domainEvent);
     if (prefix) {
-      q = q.where(like(domainEvent.eventType, `${prefix}%`)) as typeof q;
+      q = q.where(like(domainEvent.eventType, startsWithPattern(prefix))) as typeof q;
     }
     const rows = await q.orderBy(desc(domainEvent.id)).offset(offset).limit(input.limit);
     return redactRows(rows, input.includePii);
@@ -140,7 +141,7 @@ export class DrizzleAdminDomainEventReader implements IAdminDomainEventReader {
     staffOnly: boolean;
   }): Promise<AuditActorRecord[]> {
     const text = input.q?.trim();
-    const contains = text ? `%${escapeLikePattern(text)}%` : null;
+    const contains = text ? containsPattern(text) : null;
     const clauses = [
       sql`exists (select 1 from ${domainEvent} where ${domainEvent.actorUserId} = ${bidIdentityDirectory.subjectId})`,
       input.staffOnly ? eq(bidUserProfile.role, "staff") : undefined,
