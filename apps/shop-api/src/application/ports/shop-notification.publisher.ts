@@ -166,4 +166,33 @@ export type ShopNotificationPublisher = {
       amountPence: number;
     },
   ): Promise<void>;
+
+  /** The buyer's confirmation that an item was cancelled after possession and is being refunded. */
+  queueCancellationConfirmed(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      identitySubjectId: string;
+      fallbackEmail: string | null;
+      orderId: string;
+      orderReference: string;
+      artworkTitle: string;
+      /** The refund the cancellation makes. */
+      amountPence: number;
+    },
+  ): Promise<void>;
+
+  /** The buyer's notice that their print has gone into production. */
+  queueProductionStarted(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      identitySubjectId: string;
+      fallbackEmail: string | null;
+      orderReference: string;
+      artworkTitle: string;
+      /** "Edition 3", "Proof 1" or "Open edition". */
+      editionLabel: string;
+    },
+  ): Promise<void>;
 };

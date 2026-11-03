@@ -1,4 +1,5 @@
 import {
+  shopArtwork,
   shopOrder,
   shopOrderLine,
   shopPayoutLedger,
@@ -39,6 +40,7 @@ export function createCancelAfterPossessionHandler(deps: { uow: ShopUnitOfWorkFa
               orderId: shopOrderLine.orderId,
               editionId: shopOrderLine.editionId,
               unitPricePence: shopOrderLine.unitPricePence,
+              artworkId: shopOrderLine.artworkId,
             })
             .from(shopOrderLine)
             .where(eq(shopOrderLine.id, command.orderLineId))
@@ -57,6 +59,8 @@ export function createCancelAfterPossessionHandler(deps: { uow: ShopUnitOfWorkFa
           const [order] = await db
             .select({
               id: shopOrder.id,
+              reference: shopOrder.reference,
+              identitySubjectId: shopOrder.identitySubjectId,
               refundPeriodEndsAt: shopOrder.refundPeriodEndsAt,
               totalPence: shopOrder.totalPence,
               status: shopOrder.status,
@@ -156,6 +160,23 @@ export function createCancelAfterPossessionHandler(deps: { uow: ShopUnitOfWorkFa
               editionId: command.editionId,
               refundId: refund.id,
             },
+          });
+
+          const [artwork] = await db
+            .select({ title: shopArtwork.title })
+            .from(shopArtwork)
+            .where(eq(shopArtwork.id, line.artworkId))
+            .limit(1);
+          // One email per cancellation: the refund row is created with it, and a replay of the
+          // same command returns the stored result before reaching this point.
+          await tx.notifications.queueCancellationConfirmed(tx.session, {
+            idempotencyKey: `cancellation-confirmed:${refund.id}`,
+            identitySubjectId: order.identitySubjectId,
+            fallbackEmail: null,
+            orderId: order.id,
+            orderReference: order.reference,
+            artworkTitle: artwork?.title ?? "Your item",
+            amountPence: remaining,
           });
 
           return { returnId: returnRow.id, refundId: refund.id, status: "requested" as const };

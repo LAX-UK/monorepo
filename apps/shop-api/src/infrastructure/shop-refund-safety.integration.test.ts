@@ -1,10 +1,12 @@
 import type { Database } from "@auction/db";
 import {
+  emailOutbox,
   shopAdminAudit,
   shopOrder,
   shopOrderLine,
   shopPayoutLedger,
   shopRefund,
+  shopUserProfile,
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { and, eq } from "drizzle-orm";
@@ -69,6 +71,10 @@ describe.skipIf(!hasShopIntegrationDb)("shop refund safety integration", () => {
       totalPence: ITEM_PENCE,
     });
     await completeFixtureOrderPayment(db, pending, `evt-${suffix}`);
+    await db
+      .insert(shopUserProfile)
+      .values({ identitySubjectId: `subject-${suffix}`, email: `buyer-${suffix}@example.com` })
+      .onConflictDoNothing();
     const merchandise = await insertTestMerchandise(db, label);
     await db.insert(shopOrderLine).values({
       orderId: pending.orderId,
@@ -162,6 +168,36 @@ describe.skipIf(!hasShopIntegrationDb)("shop refund safety integration", () => {
       orderLineId: order.orderLineId,
     });
     expect(await payoutBlock(order.orderLineId)).toBe("cancellation");
+  });
+
+  async function cancellationEmails(refundId: string) {
+    return db
+      .select({
+        template: emailOutbox.template,
+        vars: emailOutbox.vars,
+        to: emailOutbox.toSnapshot,
+      })
+      .from(emailOutbox)
+      .where(eq(emailOutbox.idempotencyKey, `cancellation-confirmed:${refundId}`));
+  }
+
+  it("cancelling an item emails the buyer once, with the refund amount", async () => {
+    const order = await paidTwoItemOrder("cancel-email");
+    const refundId = await cancelItem(order);
+    const sent = await cancellationEmails(refundId);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.template).toBe("shop-cancellation-confirmed");
+    expect(sent[0]?.to).toBe(`buyer-${order.suffix}@example.com`);
+    expect(sent[0]?.vars).toMatchObject({
+      orderId: order.orderId,
+      amountPence: ITEM_PENCE,
+      artworkTitle: "Integration cancel-email",
+    });
+
+    // The same command sent again returns the stored result and queues nothing more.
+    const again = await cancelItem(order);
+    expect(again).toBe(refundId);
+    expect(await cancellationEmails(refundId)).toHaveLength(1);
   });
 
   it("a whole-order refund cannot take the money of a cancelled item whose refund failed", async () => {

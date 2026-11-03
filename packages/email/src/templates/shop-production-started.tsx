@@ -5,6 +5,7 @@ import type { TemplateVarsByName } from "../types.js";
 export const subject = "Your LAX Shop print is in production";
 
 export default function ShopProductionStartedEmail({
+  orderReference,
   artworkTitle,
   editionLabel,
 }: TemplateVarsByName["shop-production-started"]) {
@@ -16,8 +17,10 @@ export default function ShopProductionStartedEmail({
       title="Your print is in production"
     >
       <TextBlock>
-        We started production for {artworkTitle} ({editionLabel}).
+        We have started producing {artworkTitle} ({editionLabel})
+        {orderReference ? ` from your order ${orderReference}` : ""}.
       </TextBlock>
+      <TextBlock>We will email you again when it is on its way.</TextBlock>
     </Layout>
   );
 }
