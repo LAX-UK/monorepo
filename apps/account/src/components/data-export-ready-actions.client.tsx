@@ -4,6 +4,7 @@ import { Button, LoadingButton } from "@/components/account-button";
 import { deleteDataExportCopyAction } from "@/server/application/data-export-actions.server";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import { DATA_EXPORT_FILE_ROUTE, DATA_EXPORT_ROUTE } from "@/server/domain/data-export-routes";
+import { Input } from "@auction/ui/components/input";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
@@ -52,8 +53,8 @@ export function DataExportReadyActions({
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-3 sm:flex-row">
         <form ref={formRef} method="post" action={DATA_EXPORT_FILE_ROUTE} className="contents">
-          <input type="hidden" name="id" value={exportId} />
-          {resume ? <input type="hidden" name="resumed" value="1" /> : null}
+          <Input type="hidden" name="id" value={exportId} />
+          {resume ? <Input type="hidden" name="resumed" value="1" /> : null}
           <Button type="submit" variant="cta" className="w-full sm:w-fit">
             Download
           </Button>

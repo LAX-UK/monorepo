@@ -117,6 +117,7 @@ export function contactIntentFromSearchParams(input: {
       topic: "other",
       headline:
         "Request a full copy of your data. Tell us which account and what you need; we reply within one month at the latest.",
+      ...defaultForm,
       ...defaultSuccess,
     };
   }
