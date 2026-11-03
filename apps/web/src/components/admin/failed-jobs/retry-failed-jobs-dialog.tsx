@@ -1,6 +1,6 @@
 "use client";
 
-import { jobCount } from "@/lib/admin/failed-jobs/failed-job-outcome";
+import { jobCount, nounForIds } from "@/lib/admin/failed-jobs/failed-job-outcome";
 import {
   ChoiceFieldset,
   ChoiceRow,
@@ -65,6 +65,11 @@ export function RetryFailedJobsDialog({
   const groups = groupByType(runnable);
   const needsTick = runnable.some((job) => job.mayRepeat);
   const count = runnable.length;
+  const noun = nounForIds(runnable.map((job) => job.id));
+  // Several that failed the same way will fail again unless the cause is fixed first.
+  const firstError = runnable[0]?.errorSummary;
+  const sharedError =
+    count > 1 && runnable.every((job) => job.errorSummary === firstError) ? firstError : null;
 
   const confirm = () => {
     if (needsTick && !ticked) {
@@ -88,11 +93,11 @@ export function RetryFailedJobsDialog({
       open={open}
       onOpenChange={reset}
       initialFocusRef={cancelRef}
-      title={count === 0 ? "Nothing to retry" : `Retry ${jobCount(count)}?`}
+      title={count === 0 ? "Nothing to retry" : `Retry ${jobCount(count, noun)}?`}
       description={
         count === 0
           ? "None of the selected jobs can be retried from here."
-          : "Each job runs once more from the start. Retries run in order, a few at a time."
+          : `Each ${noun.one} runs once more from the start. Retries run in order, a few at a time.`
       }
       footer={
         <>
@@ -106,7 +111,7 @@ export function RetryFailedJobsDialog({
           </StaffButton>
           {count === 0 ? null : (
             <StaffButton variant="primary" loading={busy} onClick={confirm}>
-              {`Retry ${jobCount(count)}`}
+              {`Retry ${jobCount(count, noun)}`}
             </StaffButton>
           )}
         </>
@@ -130,8 +135,13 @@ export function RetryFailedJobsDialog({
             ))}
           </ul>
         ) : null}
+        {sharedError ? (
+          <Notice tone="warning" title="The same error may come back">
+            All {count} failed the same way. Fix the cause first, or they will fail again.
+          </Notice>
+        ) : null}
         {skipped.length > 0 ? (
-          <Notice tone="warning" title={`${jobCount(skipped.length)} can't be retried`}>
+          <Notice tone="warning" title={`${jobCount(skipped.length, noun)} can't be retried`}>
             {skipped[0]?.retry.allowed === false ? skipped[0].retry.reason : null}
           </Notice>
         ) : null}
@@ -143,7 +153,7 @@ export function RetryFailedJobsDialog({
             <ChoiceRow
               htmlFor={tickId}
               label="I've checked these won't send anything twice."
-              description="An email that reached the provider before failing could arrive again."
+              description="An email, or something a webhook did before it failed, could happen a second time."
               control={
                 <StaffCheckbox
                   id={tickId}

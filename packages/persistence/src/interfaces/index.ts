@@ -82,6 +82,22 @@ export type {
   IFailedJobReviewReader,
 } from "./failed-job-review.js";
 
+export type {
+  FailedWebhookRow,
+  IIntegrationDeadLetterDisposition,
+  IIntegrationDeadLetterReader,
+  IWebhookRetryQueue,
+  IntegrationDeadLetterRecord,
+  IntegrationDeadLetterWithPayload,
+  IntegrationDispositionSeed,
+  IntegrationKind,
+  IntegrationNameFilter,
+  IntegrationScope,
+  IntegrationSearch,
+  IntegrationSearchResult,
+  IntegrationView,
+} from "./integration-dead-letter.reader.js";
+
 export type { ISaleroomLiveSessionCounter } from "./saleroom-live-session-counter.js";
 
 export type {
