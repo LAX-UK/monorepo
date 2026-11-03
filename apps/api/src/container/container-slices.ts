@@ -262,6 +262,7 @@ export type ContainerComplianceMediaSlice = Pick<
   | "marketingAttributionEnabled"
   | "kycService"
   | "kycResubmissionNotifier"
+  | "kycOutcomeNotifier"
   | "amlService"
   | "sourceOfFundsService"
   | "adminSourceOfFundsQueryService"

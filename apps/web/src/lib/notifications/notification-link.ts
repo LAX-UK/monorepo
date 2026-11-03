@@ -22,6 +22,9 @@ const PAGE_BY_TYPE: Readonly<Record<string, string>> = {
   access_requested: "/team",
   organisation_member_left: "/team",
   payout_problem: "/organisation/payouts",
+  // Identity outcomes open the next step: register for a sale, or check again.
+  kyc_approved: "/sales",
+  kyc_declined: "/verify-identity",
   payout_bank_changed: "/organisation/payouts",
 };
 
