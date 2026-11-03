@@ -74,9 +74,18 @@ type FormItemContextValue = {
 
 const FormItemContext = React.createContext<FormItemContextValue | null>(null);
 
-const FormItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => {
-    const id = React.useId();
+type FormItemProps = React.HTMLAttributes<HTMLDivElement> & {
+  /**
+   * A stable name for the item's ids, so something outside it (an error summary) can link to its
+   * control as `${fieldId}-form-item`. Defaults to a generated id.
+   */
+  fieldId?: string;
+};
+
+const FormItem = React.forwardRef<HTMLDivElement, FormItemProps>(
+  ({ className, fieldId, ...props }, ref) => {
+    const generatedId = React.useId();
+    const id = fieldId ?? generatedId;
 
     return (
       <FormItemContext.Provider value={{ id }}>
