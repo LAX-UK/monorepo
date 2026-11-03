@@ -24,6 +24,8 @@ import {
   EMAIL_OBSERVABILITY_ACCESS,
   ENQUIRIES_ACCESS,
   ENQUIRY_ROUTING_MANAGE_ACCESS,
+  FAILED_JOBS_ANY_SOURCE_ACT_ACCESS,
+  FAILED_JOBS_ANY_SOURCE_READ_ACCESS,
   FAILED_JOBS_READ_ACCESS,
   FAILED_JOBS_WRITE_ACCESS,
   INVITATIONS_ACCESS,
@@ -136,6 +138,12 @@ export const requireEnquiries = createRequireAccess(ENQUIRIES_ACCESS);
 export const requireEnquiryRoutingManage = createRequireAccess(ENQUIRY_ROUTING_MANAGE_ACCESS);
 export const requireFailedJobsRead = createRequireAccess(FAILED_JOBS_READ_ACCESS);
 export const requireFailedJobsWrite = createRequireAccess(FAILED_JOBS_WRITE_ACCESS);
+/** Opens the Failed jobs screen: reading at least one source. The service narrows it per source. */
+export const requireFailedJobsAnySourceRead = createRequireAccess(
+  FAILED_JOBS_ANY_SOURCE_READ_ACCESS,
+);
+/** Retrying or discarding on at least one source. The service checks each job's own source. */
+export const requireFailedJobsAnySourceAct = createRequireAccess(FAILED_JOBS_ANY_SOURCE_ACT_ACCESS);
 export const requirePaymentManualReviewWrite = createRequireAccess(
   PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
 );

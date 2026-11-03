@@ -16,6 +16,7 @@ import {
   type FailedJobSummary,
   isFailedJobDiscardReason,
 } from "@auction/types";
+import { backgroundJobScreenId } from "./failed-job-id.js";
 
 export function failedJobState(record: FailedJobRecord): FailedJobState {
   if (record.discardedAt) return "discarded";
@@ -36,13 +37,18 @@ export function failedJobRetry(
   return retryAvailability(record.originalQueue, { actionsEnabled });
 }
 
+/** What the viewer's rights and the operator's switch add to a row. */
+export type SummaryContext = { actionsEnabled: boolean; canAct: boolean };
+
 export function toFailedJobSummary(
   record: FailedJobRecord,
-  actionsEnabled: boolean,
+  context: SummaryContext,
 ): FailedJobSummary {
   const info = failedJobTypeInfo(record.originalQueue);
   return {
-    id: record.id,
+    id: backgroundJobScreenId(record.id),
+    source: "background_jobs",
+    canAct: context.canAct,
     queue: record.originalQueue,
     typeLabel: info.label,
     jobLabel: failedJobNameLabel(record.originalQueue, record.originalJobName),
@@ -53,7 +59,7 @@ export function toFailedJobSummary(
     lastFailedAt: record.failedAt.toISOString(),
     state: failedJobState(record),
     mayRepeat: info.mayRepeat,
-    retry: failedJobRetry(record, actionsEnabled),
+    retry: failedJobRetry(record, context.actionsEnabled),
   };
 }
 
@@ -75,12 +81,12 @@ export function discardReasonLabel(reason: string): string {
 export function toFailedJobDetail(
   record: FailedJobRecordWithPayload,
   history: FailedJobHistoryEvent[],
-  actionsEnabled: boolean,
+  context: SummaryContext,
 ): FailedJobDetail {
   const masked = maskJobPayload(parsePayload(record.payloadJson));
   const discardedBy = history.find((event) => event.kind === "discarded")?.actorName ?? null;
   return {
-    ...toFailedJobSummary(record, actionsEnabled),
+    ...toFailedJobSummary(record, context),
     retryEffect: failedJobTypeInfo(record.originalQueue).retryEffect,
     errorMessage: scrubErrorMessage(record.errorMessage),
     originalJobId: record.originalJobId,

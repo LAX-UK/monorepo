@@ -153,8 +153,6 @@ export function createAdminRoutes(
 
   attachAdminDeliveryOpsRoutes(platform, container);
 
-  attachAdminFailedJobsRoutes(platform, container);
-
   attachAdminMarketingEnquiryRoutes(platform, container);
 
   // Finance-shell routes must stay reachable for finance, who fails
@@ -173,6 +171,10 @@ export function createAdminRoutes(
   attachAdminFinanceIssueRoutes(finance, container);
   attachAdminFinanceRoutes(finance, container);
   attachAdminDisputeDeskRoutes(finance, container, guards);
+
+  // Failed jobs is shared with finance, who handles the Xero deliveries; each route and the
+  // service narrow it to the sources the person's roles cover.
+  attachAdminFailedJobsRoutes(finance, container);
 
   // Mount finance first: its routes terminate the chain before platform's
   // `use("*", requirePlatformShell)` wildcard can 403 finance.

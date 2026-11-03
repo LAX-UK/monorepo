@@ -51,10 +51,10 @@ export interface IAdminJobQueuesApplicationService {
   replayFromDlq(dlqJobId: string, actor: ActorContext, confirmIdempotency: boolean): Promise<void>;
 }
 
-/** Staff review of failed background jobs (see AdminFailedJobsService). */
+/** Staff review of failed jobs and integration deliveries (see AdminFailedJobsService). */
 export interface IAdminFailedJobsService {
-  list(query: AdminFailedJobsQuery): Promise<FailedJobList>;
-  detail(id: string): Promise<FailedJobDetail | null>;
+  list(query: AdminFailedJobsQuery, actor: ActorContext): Promise<FailedJobList>;
+  detail(id: string, actor: ActorContext): Promise<FailedJobDetail | null>;
   retry(
     ids: readonly string[],
     confirmRepeat: boolean,
