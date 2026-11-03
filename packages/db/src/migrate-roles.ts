@@ -195,6 +195,12 @@ export const SHOP_EMAIL_OUTBOX_TABLES = ["email_outbox"] as const;
  * reached the CRM. shop_app reads them and never writes: the worker owns both.
  */
 export const SHOP_CRM_READ_TABLES = ["crm_record_link", "domain_event_delivery"] as const;
+/**
+ * Shop moves an original's offer state through the register (one place at a time across lax.art
+ * and LAX Bid): it reads records and updates the offer, and may only append to the history.
+ */
+export const SHOP_ARTWORK_REGISTER_TABLES = ["artwork_register"] as const;
+export const SHOP_ARTWORK_REGISTER_APPEND_ONLY_TABLES = ["artwork_register_event"] as const;
 /** Worker projectors upsert Shop/Bid local projections from Identity domain events. */
 export const WORKER_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -702,6 +708,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of SHOP_CRM_READ_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT");
+        }
+        for (const tableName of SHOP_ARTWORK_REGISTER_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");
+        }
+        for (const tableName of SHOP_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of WORKER_LOCK_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");

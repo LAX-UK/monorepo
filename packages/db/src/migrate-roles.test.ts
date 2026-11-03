@@ -13,6 +13,8 @@ import {
   AUTH_INSERT_SELECT_TABLES,
   AUTH_POLICY_TABLES,
   AUTH_READ_TABLES,
+  SHOP_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
+  SHOP_ARTWORK_REGISTER_TABLES,
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
   WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
@@ -480,6 +482,11 @@ describe("migrate-roles invariants", () => {
     ]) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);
     }
+  });
+
+  it("lets Shop move an original's offer through the register but only append to its history", () => {
+    expect([...SHOP_ARTWORK_REGISTER_TABLES]).toEqual(["artwork_register"]);
+    expect([...SHOP_ARTWORK_REGISTER_APPEND_ONLY_TABLES]).toEqual(["artwork_register_event"]);
   });
 
   it("lets the worker keep the Zoho artwork sync watermark and per-Product results", () => {
