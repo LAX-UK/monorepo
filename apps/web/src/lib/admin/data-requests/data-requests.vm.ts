@@ -1,3 +1,4 @@
+import { LAX_PRODUCT_NAMES, legalEntityNamesFor } from "@auction/branding";
 import {
   DATA_REQUEST_CHANNELS,
   type DATA_REQUEST_EXTENSION_REASONS,
@@ -34,12 +35,12 @@ export const PRODUCT_LABELS: Readonly<Record<DataRequestProduct, string>> = {
 export const PRODUCT_DETAILS: Readonly<
   Record<DataRequestProduct, { name: string; company: string }>
 > = {
-  account: {
-    name: "LAX Account",
-    company: "London Auction Xchange LTD and London Art Exchange Ltd",
+  account: { name: LAX_PRODUCT_NAMES.account, company: legalEntityNamesFor("account") },
+  bid: { name: LAX_PRODUCT_NAMES.bid, company: legalEntityNamesFor("bid") },
+  shop: {
+    name: `${LAX_PRODUCT_NAMES.shop} and ${LAX_PRODUCT_NAMES.art}`,
+    company: legalEntityNamesFor("shop"),
   },
-  bid: { name: "LAX Bid", company: "London Auction Xchange LTD" },
-  shop: { name: "LAX Shop and lax.art", company: "London Art Exchange Ltd" },
 };
 
 export const REASON_LABELS: Readonly<Record<DataRequestReason, string>> = {
