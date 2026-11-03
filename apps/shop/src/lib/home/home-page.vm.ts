@@ -162,7 +162,7 @@ function buildHero(input: HomePageComposerResult, context: HomePageContext): Hom
         : { label: copy.emptyHelpLabel, href: "/help" },
     };
   }
-  const choice = selectHomeRelease(input.featured, input.editions);
+  const choice = selectHomeRelease(input.featured, input.editions, context);
   const browseRows = buildHomeBrowseRows({ facets: input.facets, priceRanges: input.priceRanges });
   if (choice) {
     const { item } = choice;
@@ -223,16 +223,14 @@ export function buildHomePageViewModel(
 ): HomePageViewModel {
   const empty = nothingOnSale(input);
   const hero = buildHero(input, context);
-  const releaseSlug = empty
-    ? null
-    : (selectHomeRelease(input.featured, input.editions)?.item.slug ?? null);
+  const choice = empty ? null : selectHomeRelease(input.featured, input.editions, context);
+  const releaseSlug = choice?.item.slug ?? null;
   const priceBand = choosePriceBand(input.priceBands, input.availableCount);
   const categories = chooseCollectionCategories(
     input.facets,
     MAX_COLLECTIONS - (priceBand ? 1 : 0),
   );
 
-  const choice = empty ? null : selectHomeRelease(input.featured, input.editions);
   const releaseFacts = hero.release ? context.imageFacts.get(hero.release.imageUrl) : undefined;
   const coverPlate: ShopCoverPlate | null = releaseFacts
     ? {

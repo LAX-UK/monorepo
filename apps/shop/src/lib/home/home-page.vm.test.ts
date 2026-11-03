@@ -1,6 +1,7 @@
 import { artworkSummary } from "@/test/artwork-summary.fixture";
 import type { PublicArtistSummary, PublicArtworkSummary } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
+import type { ShopImageFacts } from "./home-image-facts";
 import type { HomePageComposerResult } from "./home-page.composer";
 import {
   type HomePageContext,
@@ -20,6 +21,12 @@ const art = {
   external: true,
 };
 
+/** Every photograph can be read, unless a test says otherwise. */
+const allPhotographsRead: ReadonlyMap<string, ShopImageFacts> = Object.assign(
+  new Map<string, ShopImageFacts>(),
+  { has: () => true, get: () => ({ width: 800, height: 1000, mean: [120, 90, 80] as const }) },
+);
+
 const context: HomePageContext = {
   now: NOW,
   artBaseUrl: new URL("https://art.test"),
@@ -27,7 +34,7 @@ const context: HomePageContext = {
   linkablePolicies: ["help", "delivery", "returns"],
   deliveryTimes: { ukDelivery: { min: 3, max: 5 }, collection: { min: 2, max: 2 } },
   imageSrc: (item) => item.imageUrl,
-  imageFacts: new Map(),
+  imageFacts: allPhotographsRead,
 };
 
 /** A print photograph read from the server: its size and colour. */
@@ -50,7 +57,12 @@ const empty: HomePageComposerResult = {
 
 const editions = (count: number): PublicArtworkSummary[] =>
   Array.from({ length: count }, (_, index) =>
-    artworkSummary({ slug: `edition-${index + 1}`, title: `Edition ${index + 1}`, listedAt: OLD }),
+    artworkSummary({
+      slug: `edition-${index + 1}`,
+      title: `Edition ${index + 1}`,
+      imageUrl: `/edition-${index + 1}.webp`,
+      listedAt: OLD,
+    }),
   );
 
 const artist = (slug: string): PublicArtistSummary => ({
@@ -60,6 +72,12 @@ const artist = (slug: string): PublicArtistSummary => ({
   portraitUrl: null,
   artworkCount: 2,
 });
+
+/** Only the first of `editions(n)` has a photograph that reads, so no wall can be hung. */
+const firstPhotographRead: HomePageContext = {
+  ...context,
+  imageFacts: new Map([["/edition-1.webp", facts()]]),
+};
 
 function build(overrides: Partial<HomePageComposerResult> = {}, ctx = context) {
   return buildHomePageViewModel({ ...empty, ...overrides }, ctx);
@@ -151,6 +169,55 @@ describe("with nothing on sale", () => {
   });
 });
 
+describe("the cover without a photograph that can be shown", () => {
+  const unreadable = artworkSummary({
+    slug: "vessel-study",
+    title: "Vessel Study",
+    imageUrl: "/vessel.webp",
+  });
+  const readable = artworkSummary({ slug: "harbour-light", imageUrl: "/harbour.webp" });
+  const onlyHarbour = (): HomePageContext => ({
+    ...context,
+    imageFacts: new Map([["/harbour.webp", facts()]]),
+  });
+
+  it("passes over a featured edition whose photograph cannot be read, to the next lead", () => {
+    const vm = build({ featured: [unreadable, readable], availableCount: 2 }, onlyHarbour());
+    expect(vm.hero.title).toBe("Harbour light");
+    expect(vm.hero.release?.imageUrl).toBe("/harbour.webp");
+    expect(vm.coverPlate).not.toBeNull();
+  });
+
+  it("falls to the newest edition that has a photograph when no featured one can lead", () => {
+    const vm = build(
+      { featured: [unreadable], editions: [unreadable, readable], availableCount: 2 },
+      onlyHarbour(),
+    );
+    expect(vm.hero.title).toBe("Harbour light");
+    expect(vm.hero.eyebrow).not.toBe("Featured edition");
+  });
+
+  it("passes over an edition whose address cannot be resolved", () => {
+    const vm = build(
+      { featured: [readable], availableCount: 1 },
+      { ...onlyHarbour(), imageSrc: () => null },
+    );
+    expect(vm.hero.release).toBeNull();
+    expect(vm.coverPlate).toBeNull();
+  });
+
+  it("is the text cover, never an empty panel, when no edition has a photograph that reads", () => {
+    const vm = build(
+      { featured: [unreadable], editions: [unreadable], availableCount: 1 },
+      { ...context, imageFacts: new Map() },
+    );
+    expect(vm.hero.release).toBeNull();
+    expect(vm.coverPlate).toBeNull();
+    expect(vm.hero.title).toBe("Limited-edition prints from our Marylebone gallery");
+    expect(vm.hero.primary).toEqual({ label: "Browse editions", href: "/artworks" });
+  });
+});
+
 describe("the cover's print", () => {
   const release = artworkSummary({ slug: "live", imageUrl: "/live.webp" });
 
@@ -164,7 +231,16 @@ describe("the cover's print", () => {
   });
 
   it("is left out when the photograph could not be read, so the cover is type", () => {
-    expect(build({ featured: [release], availableCount: 1 }).coverPlate).toBeNull();
+    expect(
+      build({ featured: [release], availableCount: 1 }, { ...context, imageFacts: new Map() })
+        .coverPlate,
+    ).toBeNull();
+  });
+
+  it("is never missing for a release: the release is chosen among editions whose photograph reads", () => {
+    const vm = build({ featured: [release], availableCount: 1 });
+    expect(vm.hero.release).not.toBeNull();
+    expect(vm.coverPlate).not.toBeNull();
   });
 });
 
@@ -203,7 +279,7 @@ describe("the hang", () => {
 
 describe("new editions", () => {
   it("leaves out the release already in the first screen", () => {
-    const vm = build({ editions: editions(6), availableCount: 12 });
+    const vm = build({ editions: editions(6), availableCount: 12 }, firstPhotographRead);
     expect(vm.newEditions?.items.map((item) => item.slug)).toEqual([
       "edition-2",
       "edition-3",
@@ -232,7 +308,7 @@ describe("the home page's band sequence", () => {
   it("lists every section with content in page order, the product doors before the gallery team", () => {
     const vm = build(
       { editions: editions(5), availableCount: 5, artists: [artist("a"), artist("b")] },
-      { ...context, productLinks: [art] },
+      { ...firstPhotographRead, productLinks: [art] },
     );
     expect(vm.layout.sections).toEqual([
       "hero",

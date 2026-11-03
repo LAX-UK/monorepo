@@ -240,6 +240,43 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
       });
     },
 
+    async queueCancellationConfirmed(tx, input) {
+      const db = asDb(tx);
+      const to =
+        (await resolveShopUserEmail(db, input.identitySubjectId)) ?? input.fallbackEmail?.trim();
+      if (!to || !to.includes("@")) return;
+
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to,
+        template: "shop-cancellation-confirmed",
+        vars: {
+          orderId: input.orderId,
+          orderReference: input.orderReference,
+          artworkTitle: input.artworkTitle,
+          amountPence: input.amountPence,
+        },
+      });
+    },
+
+    async queueProductionStarted(tx, input) {
+      const db = asDb(tx);
+      const to =
+        (await resolveShopUserEmail(db, input.identitySubjectId)) ?? input.fallbackEmail?.trim();
+      if (!to || !to.includes("@")) return;
+
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to,
+        template: "shop-production-started",
+        vars: {
+          orderReference: input.orderReference,
+          artworkTitle: input.artworkTitle,
+          editionLabel: input.editionLabel,
+        },
+      });
+    },
+
     async queueReleaseAlertConfirmation(tx, input) {
       await insertShopEmailOutbox(asDb(tx), {
         idempotencyKey: input.idempotencyKey,
