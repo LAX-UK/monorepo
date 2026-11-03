@@ -3,11 +3,13 @@ import {
   ArtworkOfferedElsewhereError,
   type ArtworkRegisterEntry,
 } from "@auction/artwork-register-contracts";
+import type { Database } from "@auction/db";
 import { ShopDomainError } from "@auction/shop-domain";
 import { describe, expect, it, vi } from "vitest";
 import type { OfferedArtwork } from "../application/ports/original-offer-register.js";
 import { createRegisterOriginalOffers } from "./register-original-offers.js";
 
+const session = {} as Database;
 const original: OfferedArtwork = {
   id: "art-1",
   zohoProductId: "5001",
@@ -30,13 +32,13 @@ function lockOver(entry: Partial<ArtworkRegisterEntry> | null) {
     findByZohoProductId: vi.fn().mockResolvedValue(full),
     moveOffer: vi.fn().mockResolvedValue({ ok: true, entry: full }),
   };
-  return { register, lock: new ArtworkOfferLock(register) };
+  return { register, lock: () => new ArtworkOfferLock(register) };
 }
 
 describe("createRegisterOriginalOffers", () => {
   it("looks up the entry by the artwork's Zoho Product id and records the offer on lax.art", async () => {
     const { register, lock } = lockOver({});
-    await createRegisterOriginalOffers(lock).recordPublished(original, "staff:u1");
+    await createRegisterOriginalOffers(lock).recordPublished(session, original, "staff:u1");
     expect(register.findByZohoProductId).toHaveBeenCalledWith("5001");
     expect(register.moveOffer).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -50,8 +52,8 @@ describe("createRegisterOriginalOffers", () => {
   it("does nothing for an artwork with no Zoho Product id", async () => {
     const { register, lock } = lockOver({});
     const offers = createRegisterOriginalOffers(lock);
-    await offers.assertCanPublish({ ...original, zohoProductId: null });
-    await offers.recordPublished({ ...original, zohoProductId: null }, "staff:u1");
+    await offers.assertCanPublish(session, { ...original, zohoProductId: null });
+    await offers.recordPublished(session, { ...original, zohoProductId: null }, "staff:u1");
     expect(register.findByZohoProductId).not.toHaveBeenCalled();
     expect(register.moveOffer).not.toHaveBeenCalled();
   });
@@ -59,22 +61,22 @@ describe("createRegisterOriginalOffers", () => {
   it("does nothing for an edition or an artwork not sold on lax.art", async () => {
     const { register, lock } = lockOver({});
     const offers = createRegisterOriginalOffers(lock);
-    await offers.recordPublished({ ...original, runKind: "limited" }, "staff:u1");
-    await offers.recordPublished({ ...original, salesChannel: "shop" }, "staff:u1");
+    await offers.recordPublished(session, { ...original, runKind: "limited" }, "staff:u1");
+    await offers.recordPublished(session, { ...original, salesChannel: "shop" }, "staff:u1");
     expect(register.moveOffer).not.toHaveBeenCalled();
   });
 
   it("does nothing when the Zoho Product is not in the register yet", async () => {
     const { register, lock } = lockOver(null);
     const offers = createRegisterOriginalOffers(lock);
-    await offers.assertCanPublish(original);
-    await offers.recordSold(original, "system");
+    await offers.assertCanPublish(session, original);
+    await offers.recordSold(session, original, "system");
     expect(register.moveOffer).not.toHaveBeenCalled();
   });
 
   it("refuses to publish an original offered elsewhere, in the register's words, as a domain error", async () => {
     const { lock } = lockOver({ offer: { state: "bid_sale", ref: { kind: "bid_lot", id: "l1" } } });
-    const refusal = createRegisterOriginalOffers(lock).assertCanPublish(original);
+    const refusal = createRegisterOriginalOffers(lock).assertCanPublish(session, original);
     await expect(refusal).rejects.toBeInstanceOf(ShopDomainError);
     await expect(refusal).rejects.toThrow(
       "This artwork is already offered in a LAX Bid sale. Withdraw it there first.",
@@ -90,8 +92,8 @@ describe("createRegisterOriginalOffers", () => {
     } as const;
     const { register, lock } = lockOver(offered);
     const offers = createRegisterOriginalOffers(lock);
-    await offers.recordWithdrawn(original, "staff:u1");
-    await offers.recordSold(original, "system");
+    await offers.recordWithdrawn(session, original, "staff:u1");
+    await offers.recordSold(session, original, "system");
     expect(register.moveOffer.mock.calls.map(([input]) => input.to)).toEqual(["withdrawn", "sold"]);
   });
 });

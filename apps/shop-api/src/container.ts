@@ -243,7 +243,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     ? createRedisFixedWindowCounter(rateLimitRedis)
     : createInMemoryFixedWindowCounter();
   const originalOffers = createRegisterOriginalOffers(
-    new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(db)),
+    (session) => new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(session)),
   );
   const { commerce, stripeWebhook } = createCommerceServices(db, env, {
     rateLimitCounter,

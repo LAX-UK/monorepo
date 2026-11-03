@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Database } from "@auction/db";
 import {
   shopArtist,
   shopArtwork,
@@ -285,7 +286,7 @@ async function applyVisibility(
       if (blocker)
         return { outcome: "refused", message: ARTWORK_PUBLISH_BLOCKER_MESSAGES[blocker] };
       try {
-        await offers.assertCanPublish(artwork);
+        await offers.assertCanPublish(shopPhaseDbSession(tx), artwork);
       } catch (error) {
         if (error instanceof ShopDomainError) return { outcome: "refused", message: error.message };
         throw error;
@@ -326,7 +327,7 @@ async function applyVisibility(
     },
     afterJson: { published: after.publishedAt !== null, archived: after.archivedAt !== null },
   });
-  await recordOffer(offers, action, after, `staff:${actorSubjectId}`);
+  await recordOffer(shopPhaseDbSession(tx), offers, action, after, `staff:${actorSubjectId}`);
   if (action !== "publish" || !releaseAlerts?.send || !isShopEditionRelease(after)) {
     return { outcome: "changed", artwork: after };
   }
@@ -341,14 +342,15 @@ async function applyVisibility(
 
 /** Tells the register where the original now is. Restoring a draft changes nothing there. */
 async function recordOffer(
+  session: Database,
   offers: OriginalOfferRegister,
   action: AdminArtworkVisibilityAction,
   artwork: ArtworkRow,
   actor: string,
 ): Promise<void> {
-  if (action === "publish") await offers.recordPublished(artwork, actor);
+  if (action === "publish") await offers.recordPublished(session, artwork, actor);
   else if (action === "unpublish" || action === "archive") {
-    await offers.recordWithdrawn(artwork, actor);
+    await offers.recordWithdrawn(session, artwork, actor);
   }
 }
 

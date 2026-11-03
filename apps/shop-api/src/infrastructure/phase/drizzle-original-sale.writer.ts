@@ -119,7 +119,7 @@ async function assignOriginalSaleInTransaction(
     .update(shopArtwork)
     .set({ saleState: "sold", updatedAt: new Date() })
     .where(eq(shopArtwork.id, sale.artworkId));
-  await input.offers.recordSold(artwork, "system");
+  await input.offers.recordSold(tx, artwork, "system");
 
   const payoutDueAt = computePayoutDueAt(new Date());
   await tx.insert(shopPayoutLedger).values({

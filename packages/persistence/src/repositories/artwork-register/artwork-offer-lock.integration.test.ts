@@ -111,6 +111,25 @@ describe.skipIf(!url)("one place at a time (Postgres)", { timeout: 30_000 }, () 
     );
   });
 
+  it("commits or rolls back with the caller's transaction when built over it", async () => {
+    const entry = await created();
+    await expect(
+      db.transaction(async (tx) => {
+        const inTx = new ArtworkOfferLock(repo.withExecutor(tx as never), () => NOW);
+        expect((await inTx.offer({ registerId: entry.id }, shop, "staff:u1")).status).toBe("moved");
+        throw new Error("the product change failed");
+      }),
+    ).rejects.toThrow("the product change failed");
+    expect((await repo.findById(entry.id))?.offer).toEqual({ state: "held", ref: null });
+    expect(await repo.listEvents(entry.id, 10)).toHaveLength(1);
+
+    await db.transaction(async (tx) => {
+      const inTx = new ArtworkOfferLock(repo.withExecutor(tx as never), () => NOW);
+      await inTx.offer({ registerId: entry.id }, shop, "staff:u1");
+    });
+    expect((await repo.findById(entry.id))?.offer.state).toBe("lax_art");
+  });
+
   it("does nothing for an artwork with no register entry", async () => {
     expect(await lock.offer({ zohoProductId: "missing" }, shop, "staff:u1")).toEqual({
       status: "not_governed",

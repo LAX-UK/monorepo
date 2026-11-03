@@ -392,7 +392,7 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
   it("asks the register before publishing an original and tells it when the original leaves", async () => {
     const calls: string[] = [];
     const offers: OriginalOfferRegister = {
-      assertCanPublish: async (artwork) => {
+      assertCanPublish: async (_session, artwork) => {
         calls.push(`check:${artwork.id}`);
         if (artwork.id === blocked.artworkId) {
           throw new ShopDomainError(
@@ -400,8 +400,8 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
           );
         }
       },
-      recordPublished: async (artwork) => void calls.push(`published:${artwork.id}`),
-      recordWithdrawn: async (artwork) => void calls.push(`withdrawn:${artwork.id}`),
+      recordPublished: async (_session, artwork) => void calls.push(`published:${artwork.id}`),
+      recordWithdrawn: async (_session, artwork) => void calls.push(`withdrawn:${artwork.id}`),
       recordSold: async () => {},
     };
     const { writer } = setup(offers);

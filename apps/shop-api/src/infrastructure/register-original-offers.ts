@@ -5,6 +5,7 @@ import {
   type OfferRef,
   type RegisterLink,
 } from "@auction/artwork-register-contracts";
+import type { Database } from "@auction/db";
 import { ShopDomainError } from "@auction/shop-domain";
 import type {
   OfferedArtwork,
@@ -33,15 +34,24 @@ async function translated<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
-export function createRegisterOriginalOffers(lock: ArtworkOfferLock): OriginalOfferRegister {
+/** `lockFor` binds the lock to the transaction the Shop change runs in. */
+export function createRegisterOriginalOffers(
+  lockFor: (session: Database) => ArtworkOfferLock,
+): OriginalOfferRegister {
   return {
-    assertCanPublish: (artwork) =>
-      translated(() => lock.assertCanOffer(linkOf(artwork), refOf(artwork))),
-    recordPublished: (artwork, actor) =>
-      translated(() => lock.offer(linkOf(artwork), refOf(artwork), actor)).then(() => undefined),
-    recordWithdrawn: (artwork, actor) =>
-      translated(() => lock.withdraw(linkOf(artwork), refOf(artwork), actor)).then(() => undefined),
-    recordSold: (artwork, actor) =>
-      translated(() => lock.markSold(linkOf(artwork), refOf(artwork), actor)).then(() => undefined),
+    assertCanPublish: (session, artwork) =>
+      translated(() => lockFor(session).assertCanOffer(linkOf(artwork), refOf(artwork))),
+    recordPublished: (session, artwork, actor) =>
+      translated(() => lockFor(session).offer(linkOf(artwork), refOf(artwork), actor)).then(
+        () => undefined,
+      ),
+    recordWithdrawn: (session, artwork, actor) =>
+      translated(() => lockFor(session).withdraw(linkOf(artwork), refOf(artwork), actor)).then(
+        () => undefined,
+      ),
+    recordSold: (session, artwork, actor) =>
+      translated(() => lockFor(session).markSold(linkOf(artwork), refOf(artwork), actor)).then(
+        () => undefined,
+      ),
   };
 }
