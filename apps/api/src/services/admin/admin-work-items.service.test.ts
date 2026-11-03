@@ -2,6 +2,7 @@ import type {
   AdminWorkItemSourceRow,
   IAdminWorkItemsReader,
 } from "@auction/persistence/interfaces";
+import { adminWorkItemHref } from "@auction/persistence/lib";
 import { describe, expect, it, vi } from "vitest";
 import { AdminWorkItemsService } from "./admin-work-items.service.js";
 
@@ -12,7 +13,7 @@ function row(
   const now = new Date("2026-07-27T10:00:00.000Z");
   return {
     subtitle: null,
-    href: "/admin/test",
+    href: adminWorkItemHref(partial.kind, { subjectId: partial.sourceId, saleId: "sale-1" }),
     saleId: null,
     createdAt: now,
     sourceUpdatedAt: now,
@@ -39,7 +40,7 @@ function createReader(overrides: Partial<IAdminWorkItemsReader> = {}): IAdminWor
 }
 
 describe("AdminWorkItemsService", () => {
-  it("does not fetch compliance review tasks for finance-only staff", async () => {
+  it("does not show compliance review tasks to finance-only staff", async () => {
     const listPendingReviewTasks = vi.fn().mockResolvedValue([
       row({
         sourceId: "task-1",
@@ -70,9 +71,39 @@ describe("AdminWorkItemsService", () => {
     });
 
     expect(listManualReviewPayments).toHaveBeenCalled();
-    expect(listPendingReviewTasks).not.toHaveBeenCalled();
     expect(result.items.some((item) => item.kind === "payment_manual_review")).toBe(true);
     expect(result.items.some((item) => item.kind === "aml_screening")).toBe(false);
+  });
+
+  it("does not show an entity review to finance-only staff, who cannot open the entity page", async () => {
+    const reader = createReader({
+      listPendingReviewTasks: vi.fn().mockResolvedValue([
+        row({
+          sourceId: "le-1",
+          kind: "legal_entity_kyb",
+          domain: "compliance",
+          title: "Legal entity KYB needs review",
+        }),
+      ]),
+    });
+    const service = new AdminWorkItemsService(reader);
+    const query = { limit: 25, assignment: "all", urgentOnly: false } as const;
+
+    const financeOnly = await service.listWorkItems({
+      actorUserId: "u1",
+      actorRole: "staff",
+      actorStaffRoles: ["finance"],
+      query,
+    });
+    const compliance = await service.listWorkItems({
+      actorUserId: "u2",
+      actorRole: "staff",
+      actorStaffRoles: ["compliance"],
+      query,
+    });
+
+    expect(financeOnly.items).toHaveLength(0);
+    expect(compliance.items.map((item) => item.kind)).toEqual(["legal_entity_kyb"]);
   });
 
   it("shows contact enquiries to client services and administrators only", async () => {

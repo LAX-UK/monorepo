@@ -150,12 +150,19 @@ describe("AML staff list view model", () => {
     );
   });
 
+  it("leaves out the payments link for staff who cannot open payments", () => {
+    expect(
+      amlAttention({ manualReviewCount: 1, sourceOfFundsPending: 4, canOpenPayments: false }).map(
+        (item) => item.id,
+      ),
+    ).toEqual(["source-of-funds"]);
+  });
+
   it("links the cross-queues and the metrics read in full", () => {
     expect(
-      amlAttention({ manualReviewCount: 1, sourceOfFundsPending: 4 }).map((item) => [
-        item.count,
-        item.label,
-      ]),
+      amlAttention({ manualReviewCount: 1, sourceOfFundsPending: 4, canOpenPayments: true }).map(
+        (item) => [item.count, item.label],
+      ),
     ).toEqual([
       [1, "payment is held for manual review"],
       [4, "source of funds cases are pending"],

@@ -1,3 +1,5 @@
+import type { CapabilityRequirement } from "@auction/types";
+
 export type UserProfileRow = {
   id: string;
   email: string;
@@ -20,6 +22,8 @@ export interface IUserRepository {
   listStaffIdsForSubmissionNotifications(): Promise<string[]>;
   /** Active staff email addresses for ops notifications. */
   listStaffEmails(): Promise<string[]>;
+  /** Emails of active staff whose roles grant `requirement` and who can enter platform admin. */
+  listStaffEmailsWithAccess(requirement: CapabilityRequirement): Promise<string[]>;
   /** Public directory rows (no email) for marketing / mega-menu. */
   listPublicProfiles(params: {
     limit: number;

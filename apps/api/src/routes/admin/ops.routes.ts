@@ -1,4 +1,5 @@
-import { NO_STAFF_ROLES } from "@auction/types";
+import { attentionItemsForViewer } from "@auction/persistence/lib";
+import { NO_STAFF_ROLES, type UserRole } from "@auction/types";
 import {
   adminKpiTrendQuerySchema,
   adminSubmissionCountBySellersQuerySchema,
@@ -274,7 +275,13 @@ export function attachAdminAttentionRoutes(
   container: AdminOpsMetricsRoutesContainer,
 ): void {
   platform.get("/attention", requireAdminDashboard, async (c) => {
-    const data = await container.admin.ops.listAttentionFeed();
+    const role = (c.get("userRole") ?? "client") as UserRole;
+    const staffRoles = c.get("userStaffRoles") ?? NO_STAFF_ROLES;
+    const data = attentionItemsForViewer(
+      await container.admin.ops.listAttentionFeed(),
+      role,
+      staffRoles,
+    );
     return c.json({ data });
   });
 }

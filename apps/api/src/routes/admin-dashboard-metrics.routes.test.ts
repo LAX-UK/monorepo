@@ -600,7 +600,6 @@ describe("admin dashboard metrics routes", () => {
 
     expect(res.status).toBe(200);
     expect(body.data.items).toEqual([]);
-    expect(reader.listPendingReviewTasks).not.toHaveBeenCalled();
   });
 
   it("GET /nav-counts returns 401 when unauthenticated", async () => {

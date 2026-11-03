@@ -1,7 +1,7 @@
 import { BUSINESS_TIME_ZONE } from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import type { IStaffNoticeRecipientReader } from "@auction/persistence/interfaces";
-import { laxStaffPlatform, staffRoleLabelOn } from "@auction/types";
+import { adminRoutes, laxStaffPlatform, staffRoleLabelOn } from "@auction/types";
 import type { NotificationPayload } from "../services/interfaces/notification-channel.js";
 import type { NotificationDispatcher } from "../services/notification.dispatcher.js";
 import {
@@ -71,7 +71,7 @@ export class StaffRoleChangeNotifier implements IStaffRoleChangeNotifier {
             endsOnDisplay: change.endsAt ? lastDay(change.endsAt) : null,
             reason: change.reason,
             adminStaffAccessUrl:
-              audience === "administrator" ? `${this.webOrigin}/admin/staff/access` : null,
+              audience === "administrator" ? `${this.webOrigin}${adminRoutes.staffAccess()}` : null,
           },
         });
       } catch (err) {

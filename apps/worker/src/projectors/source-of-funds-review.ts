@@ -1,3 +1,4 @@
+import { adminRoutes } from "@auction/types";
 import type pino from "pino";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { escalateSourceOfFundsRequiredCase } from "./source-of-funds-review/escalate-required-case.js";
@@ -24,7 +25,7 @@ export async function processSourceOfFundsReview(options: {
     sourceOfFundsBuyerReader,
   } = ctx;
   const base = webOrigin?.replace(/\/$/, "") ?? "";
-  const adminReviewUrl = `${base}/admin/compliance/source-of-funds`;
+  const adminReviewUrl = `${base}${adminRoutes.sourceOfFunds.list()}`;
 
   const cursor = await projectorStateRepo.getCursor(SOURCE_OF_FUNDS_REVIEW_PROJECTOR);
 
