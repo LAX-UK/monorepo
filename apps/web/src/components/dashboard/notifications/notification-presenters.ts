@@ -13,6 +13,7 @@ import {
   MessageSquare,
   PackageCheck,
   ShieldAlert,
+  ShieldCheck,
   Trophy,
   Truck,
   UserRoundCog,
@@ -47,6 +48,12 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   if (type === "lot_lost") {
     return { label: "Lost", Icon: XCircle, tone: "neutral" };
   }
+  if (type === "buyer_default_notice") {
+    return { label: "Sale update", Icon: CreditCard, tone: "warn" };
+  }
+  if (type === "payment_reminder") {
+    return { label: "Payment reminder", Icon: CreditCard, tone: "warn" };
+  }
   if (type === "payment_due" || type.startsWith("payment")) {
     return { label: "Payment", Icon: CreditCard, tone: "info" };
   }
@@ -64,6 +71,15 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   }
   if (type === "kyc_resubmission_required") {
     return { label: "Identity", Icon: ShieldAlert, tone: "warn" };
+  }
+  if (type === "kyc_approved") {
+    return { label: "Identity", Icon: ShieldCheck, tone: "success" };
+  }
+  if (type === "kyc_declined") {
+    return { label: "Identity", Icon: ShieldAlert, tone: "warn" };
+  }
+  if (type === "sale_cancelled") {
+    return { label: "Sale cancelled", Icon: XCircle, tone: "neutral" };
   }
   if (type === "staff_role_expired" || type === "staff_role_expired_admin") {
     return { label: "Staff role", Icon: UserRoundX, tone: "neutral" };

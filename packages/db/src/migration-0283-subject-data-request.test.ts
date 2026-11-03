@@ -31,9 +31,9 @@ const requestTable = migration.slice(
 const auditTable = migration.slice(migration.indexOf('"subject_data_request_audit" ('));
 
 describe("migration 0283 subject data request", () => {
-  it("follows 0280 in the journal", () => {
+  it("follows 0282 in the journal", () => {
     const entry = journal.entries.find((e) => e.tag === "0283_subject_data_request");
-    const previous = journal.entries.find((e) => e.tag === "0280_deletion_safety");
+    const previous = journal.entries.find((e) => e.tag === "0282_buyer_default");
     expect(entry?.idx).toBe(283);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
   });

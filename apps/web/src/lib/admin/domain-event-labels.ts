@@ -129,6 +129,7 @@ const LABELS: Record<string, string> = {
   "lot.withdrawal_requested": "Withdrawal requested",
   "lot.withdrawal_declined": "Withdrawal declined",
   "lot.returned_to_inventory": "Returned to inventory",
+  "lot.buyer_defaulted": "Buyer default recorded",
 
   "payment.created": "Payment created",
   "payment.authorized": "Payment authorised",

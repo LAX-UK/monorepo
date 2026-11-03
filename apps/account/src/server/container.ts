@@ -7,12 +7,14 @@ import { loadLaxAccountConfig } from "./config";
 import { createAccountTokenEndpoint } from "./infrastructure/account-token-endpoint";
 import { createExchangeResourceTokenProvider } from "./infrastructure/exchange-resource-token-provider";
 import { createIssuerAccountIdentityGateway } from "./infrastructure/issuer-account-identity-gateway";
+import { createIssuerDataExportGateway } from "./infrastructure/issuer-data-export-gateway";
 import { createIssuerSecurityFactsReader } from "./infrastructure/issuer-security-facts-reader";
 import { createMemorySessionStore } from "./infrastructure/memory-session-store";
 import { createProductPortfolioGateway } from "./infrastructure/product-portfolio-gateway";
 import { createRedisSessionStore } from "./infrastructure/redis-session-store";
 import { createShopSellingGateway } from "./infrastructure/shop-selling-gateway";
 import type { AccountIdentityGateway } from "./ports/account-identity-gateway";
+import type { DataExportGateway } from "./ports/data-export-gateway";
 import type { PortfolioGateway } from "./ports/portfolio-gateway";
 import type { SecurityFactsReader } from "./ports/security-facts-reader";
 import type { SellingGateway } from "./ports/selling-gateway";
@@ -25,6 +27,7 @@ export type LaxAccountContainer = {
   tokenEndpoint: TokenEndpoint;
   securityFacts: SecurityFactsReader;
   identity: AccountIdentityGateway;
+  dataExports: DataExportGateway;
   portfolio: PortfolioGateway;
   selling: SellingGateway;
   startAccountLogin: typeof startAccountLogin;
@@ -58,6 +61,7 @@ export function createLaxAccountContainer(config: LaxAccountConfig): LaxAccountC
     tokenEndpoint: createAccountTokenEndpoint(config),
     securityFacts: createIssuerSecurityFactsReader(config),
     identity: createIssuerAccountIdentityGateway(config),
+    dataExports: createIssuerDataExportGateway(config),
     portfolio: createProductPortfolioGateway({
       apiUrls: {
         ...(config.bidApiUrl ? { bid: config.bidApiUrl } : {}),

@@ -6,6 +6,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { PlatformCatalogLegalEntityIdProvider } from "../../lib/platform-catalog-legal-entity.js";
 import type { ArtistProfileService } from "../artist-profile.service.js";
+import type { BuyerDefaultService } from "../buyer-default/buyer-default.service.js";
 import type { CategoryService } from "../category.service.js";
 import type { AdminCatalogRouteServices } from "../interfaces/admin-routes/admin-catalog-routes.js";
 import type { IArtistRegistryService } from "../interfaces/artist-registry.js";
@@ -36,6 +37,7 @@ export type CreateAdminCatalogServicesInput = {
   lotService: ILotService;
   adminLotBrowseService: AdminLotBrowseService;
   lotTransitionOrchestrator: LotTransitionOrchestrator;
+  buyerDefaultService: BuyerDefaultService;
   lotLifecycleQueryService: LotLifecycleQueryService;
   saleRegistrationService: ISaleRegistrationService;
   lotFulfilmentService: ILotFulfilmentService;
@@ -65,6 +67,7 @@ export function createAdminCatalogServices(
       input.adminLotBrowseService,
       input.lotTransitionOrchestrator,
       input.lotLifecycleQueryService,
+      input.buyerDefaultService,
     ),
     saleCover: new SaleCoverService({
       covers: input.saleCoverRepository,

@@ -28,11 +28,14 @@ function payment(over: Partial<PaymentRecord> = {}): PaymentRecord {
   };
 }
 
-function setup(over: { payment?: PaymentRecord | null; blocked?: BlockedCapture | null } = {}) {
+function setup(
+  over: { payment?: PaymentRecord | null; blocked?: BlockedCapture | null; voided?: boolean } = {},
+) {
   const publish = vi.fn().mockResolvedValue(undefined);
   const payments = {
     findById: vi.fn().mockResolvedValue("payment" in over ? over.payment : payment()),
     findBlockedCapture: vi.fn().mockResolvedValue("blocked" in over ? over.blocked : blocked),
+    isVoidedByBuyerDefault: vi.fn().mockResolvedValue(over.voided === true),
     applyReopenedFromCancelledInTransaction: vi.fn().mockResolvedValue(true),
     applyRefundedFromCancelledInTransaction: vi.fn().mockResolvedValue(true),
     updateStatus: vi.fn().mockResolvedValue(undefined),
@@ -75,6 +78,14 @@ describe("reinstateBlockedCapture", () => {
       actorUserId: "admin-1",
       requireApply: true,
     });
+  });
+
+  it("never reinstates a payment whose sale a buyer default cancelled", async () => {
+    const { deps, payments, paymentCapture } = setup({ voided: true });
+    const result = await reinstateBlockedCapture(deps, "admin-1", "staff", "pay-1", FINANCE);
+    expect(result._unsafeUnwrapErr().message).toContain("Refund the payment instead");
+    expect(payments.applyReopenedFromCancelledInTransaction).not.toHaveBeenCalled();
+    expect(paymentCapture.capture).not.toHaveBeenCalled();
   });
 
   it("does nothing when the payment is already captured", async () => {

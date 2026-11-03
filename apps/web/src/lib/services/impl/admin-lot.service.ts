@@ -5,6 +5,7 @@ import type {
   CancelLotBody,
   CreateLotInput,
   IAdminLotService,
+  RecordBuyerDefaultInput,
   ReturnLotToInventoryBody,
   UpdateLotInput,
   UpdateLotMarketingDetailsInput,
@@ -91,6 +92,20 @@ export class AdminLotService implements IAdminLotService {
   ): Promise<ServiceResult<Record<string, unknown>>> {
     return this.api.json<Record<string, unknown>>(
       `/admin/lots/${encodeURIComponent(id)}/return-to-inventory`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+  }
+
+  async recordBuyerDefault(
+    id: string,
+    body: RecordBuyerDefaultInput,
+  ): Promise<ServiceResult<{ id: string; outcome: string }>> {
+    return this.api.json<{ id: string; outcome: string }>(
+      `/admin/lots/${encodeURIComponent(id)}/buyer-default`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

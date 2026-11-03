@@ -2,6 +2,8 @@ import type { TemplateDomainSlice } from "./shared.js";
 
 const names = [
   "kyc-resubmission-required",
+  "kyc-approved",
+  "kyc-declined",
   "aml-compliance-review-notice",
   "source-of-funds-buyer-notice",
   "source-of-funds-documents-requested",
@@ -16,6 +18,20 @@ type ComplianceTemplateVars = {
     userName?: string | null;
     issueDetail?: string | null;
     verifyUrl: string;
+  };
+  /** Identity check passed; the next step is to register for a sale. */
+  "kyc-approved": {
+    userName?: string | null;
+    /** Sales in Bid, where the person registers to bid. */
+    registerUrl: string;
+  };
+  /** Identity check did not pass. Never carries a provider reason. */
+  "kyc-declined": {
+    userName?: string | null;
+    /** Starts a new identity check. */
+    retryUrl: string;
+    /** Bid's contact page. */
+    contactUrl: string;
   };
   /**
    * MLRO / compliance escalation for a sanctions/PEP/adverse-media match or a
@@ -64,6 +80,8 @@ export const complianceTemplates = {
   vars: {} as ComplianceTemplateVars,
   recipientResolution: {
     "kyc-resubmission-required": "live",
+    "kyc-approved": "live",
+    "kyc-declined": "live",
     "aml-compliance-review-notice": "live",
     "source-of-funds-buyer-notice": "live",
     "source-of-funds-documents-requested": "live",

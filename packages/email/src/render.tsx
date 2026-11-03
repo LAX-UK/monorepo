@@ -66,6 +66,9 @@ import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-out
 import BiddingLimitChangedNoticeEmail, {
   subject as biddingLimitChangedNoticeSubject,
 } from "./templates/bidding-limit-changed-notice.js";
+import BuyerDefaultNoticeEmail, {
+  subject as buyerDefaultNoticeSubject,
+} from "./templates/buyer-default-notice.js";
 import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
 import ConsignmentAgreementReminderEmail, {
   subject as consignmentAgreementReminderSubject,
@@ -87,6 +90,8 @@ import DisputeOpenedNoticeEmail, {
 } from "./templates/dispute-opened-notice.js";
 import EmailChangedEmail, { subject as emailChangedSubject } from "./templates/email-changed.js";
 import InviteEmail, { subject as inviteSubject } from "./templates/invite.js";
+import KycApprovedEmail, { subject as kycApprovedSubject } from "./templates/kyc-approved.js";
+import KycDeclinedEmail, { subject as kycDeclinedSubject } from "./templates/kyc-declined.js";
 import KycResubmissionRequiredEmail, {
   subject as kycResubmissionRequiredSubject,
 } from "./templates/kyc-resubmission-required.js";
@@ -167,6 +172,9 @@ import PaymentReceiptEmail, {
 import PaymentRefundNoticeEmail, {
   subject as paymentRefundNoticeSubject,
 } from "./templates/payment-refund-notice.js";
+import PaymentReminderEmail, {
+  subject as paymentReminderSubject,
+} from "./templates/payment-reminder.js";
 import PayoutBankChangedNoticeEmail, {
   subject as payoutBankChangedNoticeSubject,
 } from "./templates/payout-bank-changed-notice.js";
@@ -188,6 +196,9 @@ import ProxyCancelledNoticeEmail, {
   subject as proxyCancelledNoticeSubject,
 } from "./templates/proxy-cancelled-notice.js";
 import ResetPassword, { subject as resetPasswordSubject } from "./templates/reset-password.js";
+import SaleCancelledNoticeEmail, {
+  subject as saleCancelledNoticeSubject,
+} from "./templates/sale-cancelled-notice.js";
 import SaleRegistrationDecisionNoticeEmail, {
   subject as saleRegistrationDecisionNoticeSubject,
 } from "./templates/sale-registration-decision-notice.js";
@@ -412,6 +423,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: paymentReceiptSubject,
     component: (vars) => <PaymentReceiptEmail {...vars} />,
   },
+  "payment-reminder": {
+    subject: paymentReminderSubject,
+    component: (vars) => <PaymentReminderEmail {...vars} />,
+  },
+  "buyer-default-notice": {
+    subject: buyerDefaultNoticeSubject,
+    component: (vars) => <BuyerDefaultNoticeEmail {...vars} />,
+  },
   "payment-invoice": {
     subject: paymentInvoiceSubject,
     component: (vars) => <PaymentInvoiceEmail {...vars} />,
@@ -527,6 +546,18 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "kyc-resubmission-required": {
     subject: kycResubmissionRequiredSubject,
     component: (vars) => <KycResubmissionRequiredEmail {...vars} />,
+  },
+  "kyc-approved": {
+    subject: kycApprovedSubject,
+    component: (vars) => <KycApprovedEmail {...vars} />,
+  },
+  "kyc-declined": {
+    subject: kycDeclinedSubject,
+    component: (vars) => <KycDeclinedEmail {...vars} />,
+  },
+  "sale-cancelled-notice": {
+    subject: saleCancelledNoticeSubject,
+    component: (vars) => <SaleCancelledNoticeEmail {...vars} />,
   },
   "bid-enquiry-received": {
     subject: bidEnquiryReceivedSubject,
