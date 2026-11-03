@@ -36,6 +36,36 @@ describe("LaxPortfolioItemV1", () => {
   });
 });
 
+describe("owed", () => {
+  const owedItem = (owed: unknown) => ({ ...item({ status: "awaiting_payment" }), owed });
+
+  it("accepts an amount due, with or without a blocker", () => {
+    expect(
+      Value.Check(LaxPortfolioItemV1, owedItem({ amount: 115_000, currency: "GBP", state: "due" })),
+    ).toBe(true);
+    expect(
+      Value.Check(
+        LaxPortfolioItemV1,
+        owedItem({ amount: 115_000, currency: "GBP", state: "in_review", blocker: "documents" }),
+      ),
+    ).toBe(true);
+  });
+
+  it("stays optional, so an older product still validates", () => {
+    expect(Value.Check(LaxPortfolioItemV1, item({ status: "awaiting_payment" }))).toBe(true);
+  });
+
+  it.each([
+    ["a float amount", { amount: 1.5, currency: "GBP", state: "due" }],
+    ["a negative amount", { amount: -1, currency: "GBP", state: "due" }],
+    ["an unknown state", { amount: 1, currency: "GBP", state: "overdue" }],
+    ["an unknown blocker", { amount: 1, currency: "GBP", state: "in_review", blocker: "kyc" }],
+    ["a lower-case currency", { amount: 1, currency: "gbp", state: "due" }],
+  ])("rejects %s", (_name, owed) => {
+    expect(Value.Check(LaxPortfolioItemV1, owedItem(owed))).toBe(false);
+  });
+});
+
 describe("LaxMoneyEntryV1", () => {
   it("accepts a valid entry and rejects an unknown direction", () => {
     expect(Value.Check(LaxMoneyEntryV1, moneyEntry())).toBe(true);
