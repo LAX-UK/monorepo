@@ -1,7 +1,11 @@
 import {
   type CapabilityRequirement,
+  DATA_REQUESTS_MANAGE_ACCESS,
   DELIVERY_REPLAY_ACCESS,
   DISPUTE_ALLOCATION_WRITE_ACCESS,
+  EMAIL_ADMIN_ACCESS,
+  EMAIL_BLOCK_LIFT_ACCESS,
+  EMAIL_DELIVERY_READ_ACCESS,
   ENQUIRIES_ACCESS,
   ENQUIRY_ROUTING_MANAGE_ACCESS,
   FAILED_JOBS_READ_ACCESS,
@@ -70,7 +74,7 @@ type AdminAction = {
   /** What the UI hides or shows. */
   name: string;
   rule: CapabilityRequirement;
-  method: "GET" | "POST" | "PATCH" | "PUT";
+  method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   path: string;
   body?: unknown;
   /** Roles the rule is documented to allow; pins the matrix so a change is a visible diff. */
@@ -248,6 +252,51 @@ const ACTIONS: AdminAction[] = [
     method: "GET",
     path: `/admin/users/${PERSON_ID}/email-change/kyc-record`,
     expectedRoles: ["administrator", "client_services"],
+  },
+  {
+    name: "open a person's email delivery",
+    rule: EMAIL_DELIVERY_READ_ACCESS,
+    method: "GET",
+    path: "/admin/users/person-1/email-delivery",
+    expectedRoles: ["administrator", "client_services", "read_only"],
+  },
+  {
+    name: "lift a block on a person's email",
+    rule: EMAIL_BLOCK_LIFT_ACCESS,
+    method: "POST",
+    path: "/admin/users/person-1/email-delivery/lift",
+    body: { reason: "mailbox_fixed", expectedSince: "2026-11-01T10:00:00.000Z" },
+    expectedRoles: ["administrator", "client_services"],
+  },
+  {
+    name: "lift an email block by its address hash",
+    rule: EMAIL_ADMIN_ACCESS,
+    method: "DELETE",
+    path: `/admin/email/suppressions/${"a".repeat(64)}`,
+    body: { reason: "mailbox_fixed", expectedSince: "2026-11-01T10:00:00.000Z" },
+    expectedRoles: ["administrator"],
+  },
+  {
+    name: "open the data requests list",
+    rule: DATA_REQUESTS_MANAGE_ACCESS,
+    method: "GET",
+    path: "/admin/data-requests",
+    expectedRoles: ["administrator", "compliance"],
+  },
+  {
+    name: "open a data request's record",
+    rule: DATA_REQUESTS_MANAGE_ACCESS,
+    method: "GET",
+    path: "/admin/data-requests/DR-0001",
+    expectedRoles: ["administrator", "compliance"],
+  },
+  {
+    name: "close a data request",
+    rule: DATA_REQUESTS_MANAGE_ACCESS,
+    method: "POST",
+    path: "/admin/data-requests/DR-0001/close",
+    body: { version: 1, outcome: "sent" },
+    expectedRoles: ["administrator", "compliance"],
   },
   {
     name: "list sale registrations",

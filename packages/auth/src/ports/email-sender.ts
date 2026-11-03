@@ -51,3 +51,18 @@ export type EmailEnqueueInput = {
 export type EmailSender = {
   enqueue(input: EmailEnqueueInput): Promise<{ outboxId: string }>;
 };
+
+/**
+ * An email that carries a one-time link (verification, password reset, sign-in link).
+ * `idempotencyKey` is required: it is what lets a retry reach the same queued message
+ * instead of sending a second link.
+ */
+export type CredentialEmailInput = EmailEnqueueInput & { idempotencyKey: string };
+
+/**
+ * Hands over a credential email. Resolves once the message is queued or durably recorded for
+ * retry, and rejects only when neither happened, so the caller can tell the person it was not sent.
+ */
+export type CredentialEmailSender = {
+  send(input: CredentialEmailInput): Promise<void>;
+};

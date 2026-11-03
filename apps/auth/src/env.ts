@@ -133,6 +133,21 @@ const envSchema = z
       z.string().min(32).optional(),
     ),
     /**
+     * Bid admin's credential for the Data requests routes (scope `data_requests.staff`). Distinct
+     * from the lifecycle and export credentials, so a leak of either cannot list requests. Both
+     * or neither; with neither, the routes are not mounted.
+     */
+    DATA_REQUESTS_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    DATA_REQUESTS_MACHINE_CLIENT_SECRET: z.preprocess(
+      emptyToUndefined,
+      z.string().min(32).optional(),
+    ),
+    /**
+     * Days after a manual data request closes before its contact name and details are cleared.
+     * The dates, scope, outcome and audit stay. 730 days (two years) is a working figure: lawyer to confirm.
+     */
+    DATA_REQUEST_CONTACT_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(730),
+    /**
      * The private bucket holding personal data copies. Identity only signs reads, so these
      * credentials must be read-only; the worker writes and deletes with its own. All of bucket,
      * region and the key pair, or none; with none, requests still work and downloads answer 503.
@@ -302,6 +317,26 @@ const envSchema = z
       });
     }
     if (
+      Boolean(e.DATA_REQUESTS_MACHINE_CLIENT_ID) !== Boolean(e.DATA_REQUESTS_MACHINE_CLIENT_SECRET)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "DATA_REQUESTS_MACHINE_CLIENT_ID and DATA_REQUESTS_MACHINE_CLIENT_SECRET must be set together",
+        path: ["DATA_REQUESTS_MACHINE_CLIENT_ID"],
+      });
+    }
+    for (const other of [e.IDENTITY_MACHINE_CLIENT_ID, e.SUBJECT_EXPORT_MACHINE_CLIENT_ID]) {
+      if (e.DATA_REQUESTS_MACHINE_CLIENT_ID && e.DATA_REQUESTS_MACHINE_CLIENT_ID === other) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "DATA_REQUESTS_MACHINE_CLIENT_ID must differ from IDENTITY_MACHINE_CLIENT_ID and SUBJECT_EXPORT_MACHINE_CLIENT_ID",
+          path: ["DATA_REQUESTS_MACHINE_CLIENT_ID"],
+        });
+      }
+    }
+    if (
       Boolean(e.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID) !==
       Boolean(e.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_SECRET)
     ) {
@@ -315,7 +350,8 @@ const envSchema = z
     if (
       e.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID &&
       (e.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID === e.IDENTITY_MACHINE_CLIENT_ID ||
-        e.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID === e.SUBJECT_EXPORT_MACHINE_CLIENT_ID)
+        e.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID === e.SUBJECT_EXPORT_MACHINE_CLIENT_ID ||
+        e.STAFF_EMAIL_CHANGE_MACHINE_CLIENT_ID === e.DATA_REQUESTS_MACHINE_CLIENT_ID)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

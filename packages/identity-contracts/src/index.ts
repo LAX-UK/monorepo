@@ -294,3 +294,5 @@ export {
   type SubjectExportStatus,
   type SubjectExportView,
 } from "./subject-export.js";
+export * from "./data-request-dates.js";
+export * from "./data-requests.js";

@@ -18,9 +18,12 @@ import {
   CONSIGNMENT_INBOX_REPLY_ACCESS,
   CONSIGNMENT_SAVED_REPLIES_MANAGE_ACCESS,
   type CapabilityRequirement,
+  DATA_REQUESTS_MANAGE_ACCESS,
   DELIVERY_REPLAY_ACCESS,
   DISPUTE_ALLOCATION_WRITE_ACCESS,
   EMAIL_ADMIN_ACCESS,
+  EMAIL_BLOCK_LIFT_ACCESS,
+  EMAIL_DELIVERY_READ_ACCESS,
   EMAIL_OBSERVABILITY_ACCESS,
   ENQUIRIES_ACCESS,
   ENQUIRY_ROUTING_MANAGE_ACCESS,
@@ -135,6 +138,7 @@ export const requireDeliveryReplay = createRequireAccess(DELIVERY_REPLAY_ACCESS)
 /** The Enquiries list and records: general enquiries, private sale enquiries, or both. */
 export const requireEnquiries = createRequireAccess(ENQUIRIES_ACCESS);
 export const requireEnquiryRoutingManage = createRequireAccess(ENQUIRY_ROUTING_MANAGE_ACCESS);
+export const requireDataRequestsManage = createRequireAccess(DATA_REQUESTS_MANAGE_ACCESS);
 export const requireFailedJobsRead = createRequireAccess(FAILED_JOBS_READ_ACCESS);
 export const requireFailedJobsWrite = createRequireAccess(FAILED_JOBS_WRITE_ACCESS);
 export const requirePaymentManualReviewWrite = createRequireAccess(
@@ -163,6 +167,8 @@ export const requireArtistReviewAccess = createRequireAccess(ARTIST_REVIEW_ACCES
 export const requireLotsAccess = createRequireAccess(LOTS_ACCESS);
 export const requireAuditDomainEvents = createRequireAccess(AUDIT_DOMAIN_EVENTS_ACCESS);
 export const requireEmailAdmin = createRequireAccess(EMAIL_ADMIN_ACCESS);
+export const requireEmailBlockLift = createRequireAccess(EMAIL_BLOCK_LIFT_ACCESS);
+export const requireEmailDeliveryRead = createRequireAccess(EMAIL_DELIVERY_READ_ACCESS);
 export const requireEmailObservability = createRequireAccess(EMAIL_OBSERVABILITY_ACCESS);
 export const requireClientBids = createRequireAccess(CLIENT_BIDS_ACCESS);
 export const requireClientKyc = createRequireAccess(CLIENT_KYC_ACCESS);

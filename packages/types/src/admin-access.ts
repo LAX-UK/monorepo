@@ -41,6 +41,14 @@ export const MLRO_DECISION_ACCESS: CapabilityRequirement = {
   anyOf: ["compliance.mlro", "platform.admin.full"],
 };
 
+/**
+ * Requests for a copy of someone's data: the list, a person's details and every action. The page
+ * is personal data throughout, so read-only staff do not get it through `admin.read`.
+ */
+export const DATA_REQUESTS_MANAGE_ACCESS: CapabilityRequirement = {
+  anyOf: ["data_requests.manage", "platform.admin.full"],
+};
+
 /** Admin dashboard widgets (attention feed, live metrics). */
 export const ADMIN_DASHBOARD_ACCESS: CapabilityRequirement = STAFF_OVERVIEW_ACCESS;
 
@@ -244,6 +252,18 @@ export const EMAIL_ADMIN_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
 
 /** Read-only email outbox, events, and suppression list (no mutations). */
 export const EMAIL_OBSERVABILITY_ACCESS: CapabilityRequirement = readOrWrite(EMAIL_ADMIN_ACCESS);
+
+/**
+ * Lift a bounce, repeated soft bounces or a manual block on a person's email. A complaint is
+ * lifted under EMAIL_ADMIN_ACCESS; nobody lifts an unsubscribe.
+ */
+export const EMAIL_BLOCK_LIFT_ACCESS: CapabilityRequirement = {
+  anyOf: ["support.respond", "platform.admin.full"],
+};
+
+/** Read a person's email delivery: their sends and any block on their address. */
+export const EMAIL_DELIVERY_READ_ACCESS: CapabilityRequirement =
+  readOrWrite(EMAIL_BLOCK_LIFT_ACCESS);
 
 /** Client/staff directory list and detail reads. */
 export const USERS_DIRECTORY_ACCESS: CapabilityRequirement = {

@@ -57,6 +57,13 @@ const LABELS: Record<string, string> = {
 
   "export.requested": "Export requested",
 
+  "data_request.viewed": "Data request opened",
+  "data_request.logged": "Data request logged",
+  "data_request.updated": "Data request updated",
+  "data_request.extended": "Data request extended",
+  "data_request.closed": "Data request closed",
+  "data_request.continued": "Data request continued manually",
+
   "failed_job.retried": "Failed job retried",
   "failed_job.discarded": "Failed job discarded",
   "failed_job.restored": "Failed job restored",
@@ -165,6 +172,7 @@ const LABELS: Record<string, string> = {
   "marketing_enquiry.assigned": "Enquiry assigned",
   "marketing_enquiry.status_changed": "Enquiry status changed",
   "marketing_enquiry.converted": "Enquiry converted",
+  "email.block_lifted": "Email block lifted",
   "enquiry_routing.changed": "Enquiry routing changed",
   "payout.transfer_reversed": "Payout transfer reversed",
   "purchase_problem.reported": "Purchase problem reported",
