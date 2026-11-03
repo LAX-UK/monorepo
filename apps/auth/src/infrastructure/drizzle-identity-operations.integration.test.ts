@@ -226,6 +226,30 @@ describe.skipIf(!DATABASE_URL)("drizzle identity operations adapters", () => {
     });
   });
 
+  it("completes a staff-vouched change on the new inbox's confirmation alone", async () => {
+    if (!unitOfWork || !emailChanges) return;
+    const nextEmail = "identity-operations-vouched@lax.bid";
+    await emailChanges.startChange({
+      subjectId,
+      newEmail: nextEmail,
+      expiresAt: new Date(NOW.getTime() + 60_000),
+      now: NOW,
+    });
+
+    await unitOfWork.transaction(async (transaction) => {
+      await emailChanges.markConfirmed(transaction, subjectId, "old", NOW);
+    });
+    await unitOfWork.transaction(async (transaction) => {
+      await expect(emailChanges.loadForConfirmation(transaction, subjectId)).resolves.toMatchObject(
+        { emailChangeOldOk: true, emailChangeNewOk: false },
+      );
+      await emailChanges.markConfirmed(transaction, subjectId, "new", NOW);
+      await expect(emailChanges.loadForConfirmation(transaction, subjectId)).resolves.toMatchObject(
+        { emailChangeOldOk: true, emailChangeNewOk: true },
+      );
+    });
+  });
+
   it("rolls subject deletion back when the unit of work fails", async () => {
     if (!unitOfWork || !subjects) return;
 

@@ -32,6 +32,8 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "password-changed-elsewhere": "Password changed on another LAX site",
   "password-changed-sessions-not-revoked": "Password changed, other sessions kept",
   "change-email": "Confirm your new email address",
+  "staff-email-change-confirm": "Confirm your new email address (client services)",
+  "staff-email-change-notice": "Email address being changed by client services",
   "account-deletion-requested": "Account deletion requested",
   "account-deletion-cancelled": "Account deletion cancelled",
   "data-export-requested": "Data download requested",

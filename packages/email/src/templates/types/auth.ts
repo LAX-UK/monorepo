@@ -29,6 +29,8 @@ const names = [
   "account-deletion-reminder",
   "account-deletion-held",
   "account-deletion-completed",
+  "staff-email-change-confirm",
+  "staff-email-change-notice",
 ] as const;
 
 type AuthTemplateName = (typeof names)[number];
@@ -178,6 +180,19 @@ type AuthTemplateVarsBase = {
     /** Which inbox received this message — copy differs for current vs new address. */
     recipient: "current" | "new";
   };
+  /** To the new address once LAX client services have started the change; the person opens the link. */
+  "staff-email-change-confirm": {
+    confirmationUrl: string;
+    oldEmail: string;
+    newEmail: string;
+    userName?: string | null;
+    /** How long the link works. */
+    validForDays: number;
+  };
+  /** To the address on file when LAX client services start moving the account to a new one. */
+  "staff-email-change-notice": SecurityNoticeVars & {
+    newEmail: string;
+  };
 };
 
 /** Shared account mail may say which product the person is acting in; the footer then names its company. */
@@ -215,6 +230,9 @@ export const authTemplates = {
     "account-deletion-reminder": "live",
     "account-deletion-held": "live",
     "account-deletion-completed": "snapshot",
+    // Each goes to an address the account does not (or no longer) holds, so it is fixed at send.
+    "staff-email-change-confirm": "snapshot",
+    "staff-email-change-notice": "snapshot",
   },
 } satisfies TemplateDomainSlice<AuthTemplateName, AuthTemplateVars>;
 

@@ -31,7 +31,11 @@ export default async function AdminClientDetailPage({ params, searchParams }: Pr
       user={bundle.user}
       listHref={listHref}
       listLabel="Clients"
-      access={{ canModerate: bundle.canModerate, canManageRoles: bundle.canManageRoles }}
+      access={{
+        canModerate: bundle.canModerate,
+        canManageRoles: bundle.canManageRoles,
+        emailChange: bundle.emailChange,
+      }}
       attentionItems={bundle.attentionItems}
       legalEntitiesForActions={bundle.legalEntitiesForActions}
       tabs={buildAdminClientDetailTabs(bundle)}

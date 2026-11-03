@@ -375,6 +375,91 @@ describe("HttpIdentityIssuerClient", () => {
       expect(JSON.parse(String(init?.body))).toEqual({ token: "signed.token" });
     });
 
+    describe("staff-assisted change", () => {
+      const input = {
+        subjectId: "user-1",
+        newEmail: "new@example.com",
+        actorUserId: "staff-1",
+        reason: "Lost the old mailbox; caller matched the KYC record.",
+        proof: { kind: "kyc_match", kycSessionId: "kyc-1" },
+      } as const;
+
+      function staffClient(respond: () => Response) {
+        const fetchImpl = vi.fn(
+          async (inputUrl: Parameters<typeof fetch>[0], _init?: RequestInit) => {
+            if (String(inputUrl).endsWith("/internal/oauth/token")) {
+              return Response.json({ access_token: "scoped-token", expires_in: 300 });
+            }
+            return respond();
+          },
+        );
+        const client = new HttpIdentityIssuerClient({
+          issuerBaseUrl: "https://identity.example.com",
+          fetchImpl,
+          machineClientId: "api-service",
+          machineClientSecret: "machine-secret-at-least-32-characters",
+          staffEmailChangeClientId: "staff-email-change",
+          staffEmailChangeClientSecret: "staff-email-secret-at-least-32-chars",
+        });
+        return { client, fetchImpl };
+      }
+
+      it("asks for a token of its own scope with its own credential", async () => {
+        const { client, fetchImpl } = staffClient(() =>
+          Response.json({ pendingEmail: "new@example.com" }),
+        );
+        await client.startStaffAssistedEmailChange(input);
+        const [, tokenInit] = fetchImpl.mock.calls[0] ?? [];
+        expect(String(tokenInit?.body)).toContain("scope=staff_email_change");
+        const basic = String((tokenInit?.headers as Record<string, string>).authorization);
+        expect(Buffer.from(basic.replace("Basic ", ""), "base64").toString()).toBe(
+          "staff-email-change:staff-email-secret-at-least-32-chars",
+        );
+      });
+
+      it("sends the actor, reason and proof with the new address", async () => {
+        const { client, fetchImpl } = staffClient(() =>
+          Response.json({ pendingEmail: "new@example.com" }),
+        );
+        await expect(client.startStaffAssistedEmailChange(input)).resolves.toEqual({
+          pendingEmail: "new@example.com",
+        });
+        const [url, init] = fetchImpl.mock.calls[1] ?? [];
+        expect(String(url)).toBe(
+          "https://identity.example.com/internal/identity/subjects/user-1/staff-email-change",
+        );
+        expect((init?.headers as Record<string, string>).authorization).toBe("Bearer scoped-token");
+        expect(JSON.parse(String(init?.body))).toEqual({
+          newEmail: "new@example.com",
+          actorSubjectId: "staff-1",
+          reason: input.reason,
+          proof: input.proof,
+        });
+      });
+
+      it("surfaces the refusal code", async () => {
+        const { client } = staffClient(() =>
+          Response.json({ error: "email_taken" }, { status: 409 }),
+        );
+        await expect(client.startStaffAssistedEmailChange(input)).rejects.toMatchObject({
+          status: 409,
+          code: "email_taken",
+        });
+      });
+
+      it("fails clearly when the credential is not configured", async () => {
+        const client = new HttpIdentityIssuerClient({
+          issuerBaseUrl: "https://identity.example.com",
+          fetchImpl: vi.fn(),
+          machineClientId: "api-service",
+          machineClientSecret: "machine-secret-at-least-32-characters",
+        });
+        await expect(client.startStaffAssistedEmailChange(input)).rejects.toBeInstanceOf(
+          IdentityIssuerClientError,
+        );
+      });
+    });
+
     it("rejects a confirmation answer that does not name the subject", async () => {
       const { client } = clientFor(() => Response.json({ completed: true }));
       await expect(client.confirmEmailChange({ token: "t" })).rejects.toBeInstanceOf(

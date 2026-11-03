@@ -147,6 +147,39 @@ describe("IdentityOperationsService", () => {
       ).rejects.toMatchObject({ code: "email_taken" });
     });
 
+    describe("staff-assisted start", () => {
+      const expiresAt = new Date(now.getTime() + 60_000);
+
+      it("records the change and counts the old inbox as confirmed", async () => {
+        const { repositories, service } = createService();
+        await service.startStaffAssistedEmailChange("subject", " Next@Example.com ", expiresAt);
+        expect(repositories.emailChanges.startChange).toHaveBeenCalledWith(
+          expect.objectContaining({ subjectId: "subject", newEmail: "next@example.com" }),
+        );
+        expect(repositories.emailChanges.markConfirmed).toHaveBeenCalledWith(
+          transaction,
+          "subject",
+          "old",
+          now,
+        );
+        expect(repositories.emailChanges.markConfirmed).not.toHaveBeenCalledWith(
+          expect.anything(),
+          "subject",
+          "new",
+          expect.anything(),
+        );
+      });
+
+      it("vouches for nothing when the address is refused", async () => {
+        const { repositories, service } = createService();
+        vi.mocked(repositories.emailChanges.startChange).mockResolvedValue("address_pending");
+        await expect(
+          service.startStaffAssistedEmailChange("subject", "next@example.com", expiresAt),
+        ).rejects.toMatchObject({ code: "email_taken" });
+        expect(repositories.emailChanges.markConfirmed).not.toHaveBeenCalled();
+      });
+    });
+
     it("sweeps expired changes through the repository", async () => {
       const { repositories, service } = createService();
       vi.mocked(repositories.emailChanges.clearExpired).mockResolvedValue(3);

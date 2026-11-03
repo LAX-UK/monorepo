@@ -395,6 +395,22 @@ export class IdentityOperationsService {
     if (started === "address_pending") throw new IdentityOperationError("email_taken");
   }
 
+  /**
+   * Starts a change in which staff have checked who is asking, so only the new inbox has a link
+   * to follow. The old inbox counts as confirmed from the start, and the address still switches
+   * only once the new one is confirmed.
+   */
+  async startStaffAssistedEmailChange(
+    subjectId: string,
+    newEmail: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.startEmailChange(subjectId, newEmail, expiresAt);
+    await this.repositories.unitOfWork.transaction(async (transaction) => {
+      await this.repositories.emailChanges.markConfirmed(transaction, subjectId, "old", this.now());
+    });
+  }
+
   /** Frees addresses held by changes whose links have expired. */
   purgeExpiredEmailChanges(now = this.now()): Promise<number> {
     return this.repositories.emailChanges.clearExpired(now);

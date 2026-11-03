@@ -1,4 +1,6 @@
 import type {
+  AdminEmailChangeKycRecord,
+  AdminStaffEmailChangeBody,
   adminPatchStaffRoleBodySchema,
   adminResetTwoFactorBodySchema,
   adminSetRoleBodySchema,
@@ -24,4 +26,11 @@ export interface IAdminUserService {
     userId: string,
     body: AdminResetTwoFactorBody,
   ): Promise<ServiceResult<Record<string, unknown>>>;
+  /** Moves the account to a new address for someone who has lost the old inbox. */
+  startEmailChange(
+    userId: string,
+    body: AdminStaffEmailChangeBody,
+  ): Promise<ServiceResult<{ pendingEmail: string }>>;
+  /** The verified name and date of birth to compare with the caller; null when there is none. */
+  emailChangeKycRecord(userId: string): Promise<ServiceResult<AdminEmailChangeKycRecord | null>>;
 }

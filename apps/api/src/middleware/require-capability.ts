@@ -47,6 +47,7 @@ import {
   SALES_ACCESS,
   SALES_READ_ACCESS,
   STAFF_ACCESS_REVIEW_ACCESS,
+  STAFF_EMAIL_CHANGE_ACCESS,
   STAFF_ROLES_READ_ACCESS,
   SUBMISSIONS_ACCESS,
   SUBMISSIONS_READ_ACCESS,
@@ -149,6 +150,7 @@ export const requireDisputeAllocationWrite = createRequireAccess(DISPUTE_ALLOCAT
 export const requirePlatformAdminFull = createRequireAccess(PLATFORM_ADMIN_ACCESS);
 export const requireUsersDirectory = createRequireAccess(USERS_DIRECTORY_ACCESS);
 export const requireUserModeration = createRequireAccess(USER_MODERATION_ACCESS);
+export const requireStaffEmailChange = createRequireAccess(STAFF_EMAIL_CHANGE_ACCESS);
 export const requireStaffRolesRead = createRequireAccess(STAFF_ROLES_READ_ACCESS);
 export const requireStaffAccessReview = createRequireAccess(STAFF_ACCESS_REVIEW_ACCESS);
 export const requireOnboardingQueues = createRequireAccess(ONBOARDING_QUEUES_ACCESS);

@@ -369,6 +369,15 @@ export const USER_MODERATION_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "support.respond"],
 };
 
+/**
+ * Moving an account to a new email address for someone who has lost the old inbox. Today the same
+ * people as {@link USER_MODERATION_ACCESS}, but it is its own rule: it changes where an account's
+ * sign-in and security mail go, so it can be narrowed without touching suspend or unsuspend.
+ */
+export const STAFF_EMAIL_CHANGE_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond"],
+};
+
 /** Legal entity picker in admin forms. */
 export const LEGAL_ENTITY_PICKER_ACCESS: CapabilityRequirement = {
   anyOf: ["legal_entity.read", "catalogue.write", "auction.manage", "platform.admin.full"],

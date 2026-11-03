@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import {
   DATA_REQUESTS_MACHINE_SCOPE,
   IDENTITY_EMAIL_REGISTRATION_PATH,
+  STAFF_EMAIL_CHANGE_MACHINE_SCOPE,
   SUBJECT_EXPORT_MACHINE_SCOPE,
   emailRegistrationRequestSchema,
 } from "@auction/identity-contracts";
@@ -27,6 +28,11 @@ import {
   dataRequestsTokenKey,
   mountDataRequestsMachineRoutes,
 } from "./internal-data-requests.routes.js";
+import {
+  type StaffEmailChangeMachineDeps,
+  mountStaffEmailChangeMachineRoutes,
+  staffEmailChangeTokenKey,
+} from "./internal-staff-email-change.routes.js";
 import {
   type SubjectExportMachineDeps,
   mountSubjectExportMachineRoutes,
@@ -155,9 +161,12 @@ export function createInternalIdentityRoutes(options: {
   subjectExport?: SubjectExportMachineDeps;
   /** Bid admin's credential for the Data requests screen, separate from the other two. */
   dataRequests?: DataRequestsMachineDeps;
+  /** Bid admin's credential for the staff-assisted email change, separate from the others. */
+  staffEmailChange?: StaffEmailChangeMachineDeps;
 }) {
   const app = new Hono();
   const credentialRateLimiter = new MachineCredentialRateLimiter(options.redis);
+
   const lifecycleScope: MachineScope = {
     clientId: options.machineClientId,
     clientSecret: options.machineClientSecret,
@@ -183,6 +192,16 @@ export function createInternalIdentityRoutes(options: {
             clientSecret: options.dataRequests.clientSecret,
             scope: DATA_REQUESTS_MACHINE_SCOPE,
             key: dataRequestsTokenKey,
+          },
+        ]
+      : []),
+    ...(options.staffEmailChange
+      ? [
+          {
+            clientId: options.staffEmailChange.clientId,
+            clientSecret: options.staffEmailChange.clientSecret,
+            scope: STAFF_EMAIL_CHANGE_MACHINE_SCOPE,
+            key: staffEmailChangeTokenKey,
           },
         ]
       : []),
@@ -285,6 +304,9 @@ export function createInternalIdentityRoutes(options: {
   // Before the lifecycle authentication below, which would refuse an export-scope token.
   if (options.subjectExport) mountSubjectExportMachineRoutes(app, options.subjectExport);
   if (options.dataRequests) mountDataRequestsMachineRoutes(app, options.dataRequests);
+  if (options.staffEmailChange) {
+    mountStaffEmailChangeMachineRoutes(app, options.staffEmailChange);
+  }
 
   app.use("/identity/*", async (c, next) => {
     const authorization = c.req.header("authorization");
