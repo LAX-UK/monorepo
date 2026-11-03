@@ -50,6 +50,7 @@ export {
   userDeletionRequestedPayloadSchemaV1,
   userEmailVerifiedPayloadSchemaV1,
   userCredentialChangedPayloadSchemaV1,
+  userSignInMethodUnlinkedPayloadSchemaV1,
   userIdentityDeletedPayloadSchemaV1,
   userIdentityDisabledPayloadSchemaV1,
   userIdentityEnabledPayloadSchemaV1,

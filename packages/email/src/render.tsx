@@ -239,6 +239,9 @@ import ShopZohoDeadLetterNoticeEmail, {
   subject as shopZohoDeadLetterNoticeSubject,
 } from "./templates/shop-zoho-dead-letter-notice.js";
 import SignInLink, { subject as signInLinkSubject } from "./templates/sign-in-link.js";
+import SignInMethodRemovedEmail, {
+  subject as signInMethodRemovedSubject,
+} from "./templates/sign-in-method-removed.js";
 import SocialAccountLinkedEmail, {
   subject as socialAccountLinkedSubject,
 } from "./templates/social-account-linked.js";
@@ -367,6 +370,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "email-changed": {
     subject: emailChangedSubject,
     component: (vars) => <EmailChangedEmail {...vars} />,
+  },
+  "sign-in-method-removed": {
+    subject: signInMethodRemovedSubject,
+    component: (vars) => <SignInMethodRemovedEmail {...vars} />,
   },
   "phone-removed": {
     subject: phoneRemovedSubject,

@@ -11,6 +11,10 @@ import type {
   AccountPasswordChangedResponse,
   AccountPasswordError,
   AccountSession,
+  AccountSignInMethodError,
+  AccountSignInMethodUnlinkedResponse,
+  AccountSignInMethodsResponse,
+  SocialSignInProvider,
 } from "@auction/identity-contracts";
 
 /**
@@ -24,7 +28,14 @@ import type {
 export type IdentityCallResult<T> =
   | { status: "ok"; value: T }
   | { status: "reauth_required" }
-  | { status: "rejected"; reason: AccountContactError | AccountAddressError | AccountPasswordError }
+  | {
+      status: "rejected";
+      reason:
+        | AccountContactError
+        | AccountAddressError
+        | AccountPasswordError
+        | AccountSignInMethodError;
+    }
   | { status: "unavailable" };
 
 /** The signed-in person's tokens: the access token names the person, `sid` names the sign-in. */
@@ -109,4 +120,16 @@ export type AccountIdentityGateway = {
    * available: the issuer does not reveal them again.
    */
   regenerateBackupCodes(actor: IdentityActor): Promise<IdentityCallResult<string[]>>;
+  /** The password and linked Google or Apple accounts. */
+  readSignInMethods(
+    actor: IdentityActor,
+  ): Promise<IdentityCallResult<AccountSignInMethodsResponse>>;
+  /**
+   * Removes a linked Google or Apple sign-in. Needs a recent sign-in, and is refused when it is the
+   * person's last method. Every other device is signed out; this one stays.
+   */
+  unlinkSignInMethod(
+    actor: IdentityActor,
+    provider: SocialSignInProvider,
+  ): Promise<IdentityCallResult<AccountSignInMethodUnlinkedResponse>>;
 };

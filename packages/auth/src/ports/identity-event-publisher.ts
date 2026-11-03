@@ -39,7 +39,8 @@ export type IdentityLifecycleEvent =
       type: "user.credential_changed";
       userId: string;
       changeType?: "create" | "update";
-    };
+    }
+  | { type: "user.sign_in_method_unlinked"; userId: string; provider: "google" | "apple" };
 
 export type IdentityEventPublisher = {
   publish(

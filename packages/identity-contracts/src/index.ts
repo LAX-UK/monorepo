@@ -3,6 +3,7 @@ export {
   accountBackupCodesSchema,
   type AccountBackupCodesResponse,
 } from "./account-backup-codes.js";
+export * from "./account-sign-in-methods.js";
 export {
   ACCOUNT_PASSWORD_CHANGE_PATH,
   ACCOUNT_PASSWORD_ERRORS,
@@ -171,6 +172,7 @@ export {
   IDENTITY_EVENT_TYPES,
   identityEventPayloadSchemasV1,
   subjectDataExportRequestedPayloadSchemaV1,
+  userSignInMethodUnlinkedPayloadSchemaV1,
   userDeletionCancelledPayloadSchemaV1,
   userDeletionHeldPayloadSchemaV1,
   userDeletionRequestedPayloadSchemaV1,
@@ -184,6 +186,7 @@ export {
   type IdentityEventPayloadV1,
   type IdentityEventType,
   type SubjectDataExportRequestedPayloadV1,
+  type UserSignInMethodUnlinkedPayloadV1,
   type UserDeletionCancelledPayloadV1,
   type UserDeletionHeldPayloadV1,
   type UserDeletionRequestedPayloadV1,

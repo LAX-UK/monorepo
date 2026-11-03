@@ -16,6 +16,7 @@ export const emailSubjects = {
   dataExportReady: "Your data is ready",
   emailChanged: "The email address on your LAX Account was changed",
   phoneVerified: "A phone number was verified on your LAX Account",
+  signInMethodRemoved: "A sign-in method was removed from your LAX Account",
   phoneRemoved: "The phone number on your LAX Account was removed",
   socialAccountLinked: `A sign-in method was linked to your ${SITE_NAME} account`,
   socialAccountUnlinked: `A sign-in method was disconnected from your ${SITE_NAME} account`,

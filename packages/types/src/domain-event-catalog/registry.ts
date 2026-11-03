@@ -36,6 +36,7 @@ import {
   userProfileUpdatedPayloadSchemaV1,
   userRegisteredPayloadSchemaV1,
   userSessionRevokedPayloadSchemaV1,
+  userSignInMethodUnlinkedPayloadSchemaV1,
 } from "./payload-schemas.js";
 import {
   shopArtworkCreatedPayloadSchemaV1,
@@ -265,6 +266,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "user.deletion_requested",
   "user.email_verified",
   "user.credential_changed",
+  "user.sign_in_method_unlinked",
   "user.identity_deleted",
   "user.identity_disabled",
   "user.identity_enabled",
@@ -562,6 +564,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     schema: userCredentialChangedPayloadSchemaV1,
     producers: ["apps/auth"],
     consumers: ["ssf_transmitter"],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "user.sign_in_method_unlinked": {
+    schema: userSignInMethodUnlinkedPayloadSchemaV1,
+    producers: ["apps/auth"],
+    consumers: [],
     idempotencyPolicy: "none",
     piiClassification: "none",
   },

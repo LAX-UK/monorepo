@@ -44,7 +44,8 @@ export type IdentityOutboxLifecycleEvent =
       type: "user.credential_changed";
       userId: string;
       changeType?: "create" | "update";
-    };
+    }
+  | { type: "user.sign_in_method_unlinked"; userId: string; provider: "google" | "apple" };
 
 export type IdentityOutboxPublisher = {
   publish(
@@ -266,6 +267,21 @@ function buildOutboxRow(
           subjectId: event.userId,
           ...(event.sessionId ? { sessionId: event.sessionId } : {}),
           revokedAt: new Date().toISOString(),
+        },
+      };
+    case "user.sign_in_method_unlinked":
+      return {
+        aggregateType: "user",
+        aggregateId: event.userId,
+        eventType: IDENTITY_EVENT_TYPES.SIGN_IN_METHOD_UNLINKED,
+        producer,
+        actorUserId: null,
+        schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+        payload: {
+          schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
+          subjectId: event.userId,
+          provider: event.provider,
+          unlinkedAt: new Date().toISOString(),
         },
       };
     case "user.credential_changed":

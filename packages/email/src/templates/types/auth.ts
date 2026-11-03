@@ -16,6 +16,7 @@ const names = [
   "email-changed",
   "phone-verified",
   "phone-removed",
+  "sign-in-method-removed",
   "social-account-linked",
   "social-account-unlinked",
   "new-device-login",
@@ -101,6 +102,10 @@ type AuthTemplateVarsBase = {
   "phone-removed": SecurityNoticeVars & {
     /** Already masked, for example "+44 •••• 1234". */
     maskedPhone: string;
+  };
+  "sign-in-method-removed": SecurityNoticeVars & {
+    /** The provider that was removed, already in display form: "Google" or "Apple". */
+    providerName: string;
   };
   "social-account-linked": {
     provider: "google" | "apple";
@@ -202,6 +207,7 @@ export const authTemplates = {
     "email-changed": "snapshot",
     "phone-verified": "live",
     "phone-removed": "live",
+    "sign-in-method-removed": "live",
     "social-account-linked": "live",
     "social-account-unlinked": "live",
     "new-device-login": "live",
