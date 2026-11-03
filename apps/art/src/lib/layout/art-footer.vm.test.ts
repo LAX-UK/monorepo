@@ -4,23 +4,18 @@ import { buildArtFooterVm } from "./art-footer.vm";
 
 const ALL_POLICIES = LAX_ART_POLICY_ORDER;
 
-function legalLinks(cookieSettings: boolean) {
+function legalLinks() {
   const vm = buildArtFooterVm({
     crossProductLinks: [],
     accountState: { kind: "guest" },
-    cookieSettings,
     linkablePolicies: ALL_POLICIES,
   });
   return vm.columns.find((column) => column.id === "legal")?.links ?? [];
 }
 
 describe("buildArtFooterVm", () => {
-  it("offers cookie settings under Legal only when analytics consent is collected", () => {
-    expect(legalLinks(true)).toContainEqual({
-      label: "Cookie settings",
-      href: "#cookie-settings",
-    });
-    expect(legalLinks(false).some((link) => link.label === "Cookie settings")).toBe(false);
+  it("always ends the Legal column with cookie settings", () => {
+    expect(legalLinks().at(-1)).toEqual({ label: "Cookie settings", href: "#cookie-settings" });
   });
 
   it("orders navigation, account, products, then legal", () => {
@@ -35,7 +30,6 @@ describe("buildArtFooterVm", () => {
         },
       ],
       accountState: { kind: "guest" },
-      cookieSettings: false,
       linkablePolicies: ALL_POLICIES,
     });
     expect(vm.columns.map((column) => column.id)).toEqual([
@@ -55,7 +49,6 @@ describe("buildArtFooterVm", () => {
     const vm = buildArtFooterVm({
       crossProductLinks: [],
       accountState: { kind: "authenticated" },
-      cookieSettings: false,
       linkablePolicies: ALL_POLICIES,
     });
     const linksOf = (id: string) => vm.columns.find((column) => column.id === id)?.links ?? [];
@@ -88,7 +81,6 @@ describe("buildArtFooterVm", () => {
     const vm = buildArtFooterVm({
       crossProductLinks: [],
       accountState: { kind: "guest" },
-      cookieSettings: false,
       linkablePolicies: ["terms"],
     });
     const legal = vm.columns.find((column) => column.id === "legal")?.links ?? [];

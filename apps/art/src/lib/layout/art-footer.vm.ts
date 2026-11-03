@@ -1,8 +1,8 @@
-import { ART_COOKIE_SETTINGS_HASH } from "@/lib/analytics/art-consent";
 import type { ArtFooterAccountState } from "@/lib/layout/art-footer-account-state";
 import { ART_LEGAL_INDEX_HREF, artLegalLinks } from "@/lib/layout/art-legal-links";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import {
+  COOKIE_SETTINGS_HASH,
   type LaxArtPolicySlug,
   type MarketingFooterColumn,
   buildFooterLegalColumn,
@@ -21,8 +21,6 @@ export type ArtFooterVm = {
 export function buildArtFooterVm(input: {
   crossProductLinks: LaxProductLinkVm[];
   accountState: ArtFooterAccountState;
-  /** Shows the link that reopens the analytics consent banner. */
-  cookieSettings: boolean;
   /** Policies that can be linked; drafts hidden on production are left out. */
   linkablePolicies: readonly LaxArtPolicySlug[];
 }): ArtFooterVm {
@@ -79,7 +77,9 @@ export function buildArtFooterVm(input: {
     terms: policyHref("terms"),
     privacy: policyHref("privacy"),
     cookies: policyHref("cookies"),
-    cookiePreferences: input.cookieSettings ? ART_COOKIE_SETTINGS_HASH : undefined,
+    // With analytics the link reopens the consent banner; without, a dialog says only essential
+    // cookies are used.
+    cookiePreferences: COOKIE_SETTINGS_HASH,
   });
   if (legal) columns.push(legal);
 
