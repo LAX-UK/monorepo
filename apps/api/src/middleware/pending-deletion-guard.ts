@@ -11,7 +11,7 @@ type GuardedRoute = {
 
 /**
  * Every Bid route through which a person takes on something new: a bid, a registration to bid,
- * checkout, and starting a payout account. While a deletion request stands, each answers 403
+ * a telephone bid booking, consigning a lot, checkout, and starting a payout account. While a deletion request stands, each answers 403
  * with the same message, so the person is stopped wherever they try and told what to do.
  *
  * Adding a route here is the only change needed to put it behind the rule.
@@ -21,6 +21,11 @@ export const PENDING_DELETION_GUARDED_ROUTES: readonly GuardedRoute[] = [
   { method: "POST", path: "/lots/:id/absentee-bids" },
   { method: "PUT", path: "/lots/:id/auto-bid" },
   { method: "POST", path: "/sales/:id/register" },
+  { method: "POST", path: "/sales/:id/telephone-bookings" },
+  { method: "POST", path: "/telephone-bookings/:id/limit-increase" },
+  { method: "POST", path: "/submissions" },
+  { method: "POST", path: "/submissions/:id/submit" },
+  { method: "POST", path: "/submissions/:id/agreement/accept" },
   { method: "POST", path: "/payments" },
   { method: "POST", path: "/stripe-connect/account" },
   { method: "POST", path: "/stripe-connect/onboarding-link" },

@@ -35,6 +35,28 @@ describe("pending deletion guard", () => {
     }
   });
 
+  it.each([
+    ["POST", "/sales/s1/telephone-bookings"],
+    ["POST", "/telephone-bookings/b1/limit-increase"],
+    ["POST", "/submissions"],
+    ["POST", "/submissions/x1/submit"],
+    ["POST", "/submissions/x1/agreement/accept"],
+  ])("stops %s %s", async (method, path) => {
+    const { app } = appWith({ user: { id: "u1" }, requestedAt: REQUESTED_AT });
+    expect((await app.request(path, { method })).status).toBe(403);
+  });
+
+  it.each([
+    ["PATCH", "/submissions/x1"],
+    ["POST", "/telephone-bookings/b1/cancel"],
+    ["POST", "/legal-entities"],
+  ])("leaves %s %s open", async (method, path) => {
+    const { app, reader } = appWith({ user: { id: "u1" }, requestedAt: REQUESTED_AT });
+    app.on(method, path, (c) => c.json({ reached: true }));
+    expect((await app.request(path, { method })).status).toBe(200);
+    expect(reader.requestedAt).not.toHaveBeenCalled();
+  });
+
   it("lets a person with no request through", async () => {
     const { app } = appWith({ user: { id: "u1" }, requestedAt: null });
     const res = await app.request("/bids", { method: "POST" });
