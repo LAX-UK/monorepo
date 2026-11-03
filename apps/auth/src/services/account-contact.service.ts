@@ -1,4 +1,5 @@
 import type { AccountContactResponse } from "@auction/identity-contracts";
+import { pendingEmailChangeState } from "../lib/pending-email-change.js";
 import type { EmailChangeResult, EmailChangeService } from "./email-change.service.js";
 import type { IdentityOperationsService } from "./identity-operations.service.js";
 import { RecentSessionGuard } from "./recent-session-guard.js";
@@ -9,6 +10,8 @@ export type AccountContactPorts = {
     "readSubject" | "readSecurityStatus" | "listSessions"
   >;
   emailChange: Pick<EmailChangeService, "start" | "cancel">;
+  /** Whether the issuer can send phone codes; when false Account hides the phone editor. */
+  phoneAvailable: () => boolean;
 };
 
 /** The caller's own sign-in no longer exists, or is too old for a sensitive change. */
@@ -26,9 +29,9 @@ export class AccountContactService {
 
   constructor(
     private readonly ports: AccountContactPorts,
-    now: () => Date = () => new Date(),
+    private readonly now: () => Date = () => new Date(),
   ) {
-    this.sessions = new RecentSessionGuard(ports.operations, now);
+    this.sessions = new RecentSessionGuard(ports.operations, this.now);
   }
 
   async read(subjectId: string): Promise<AccountContactResponse | null> {
@@ -37,12 +40,15 @@ export class AccountContactService {
       this.ports.operations.readSecurityStatus(subjectId),
     ]);
     if (!subject || !status) return null;
+    const pending = pendingEmailChangeState(status, this.now());
     return {
       email: subject.email,
       emailVerified: subject.emailVerified,
-      pendingEmail: status.pendingNewEmail,
+      pendingEmail: pending.kind === "waiting" ? pending.email : null,
+      pendingEmailExpired: pending.kind === "expired",
       phone: status.phoneNumber,
       phoneVerified: status.phoneNumberVerified,
+      phoneAvailable: this.ports.phoneAvailable(),
     };
   }
 

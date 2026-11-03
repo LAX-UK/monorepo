@@ -98,10 +98,11 @@ export default async function PersonalDetailsPage() {
           {section.id === "email" ? (
             <EmailChangeEditor
               pendingEmailMasked={maskPendingEmail(contact)}
+              pendingExpired={contact.pendingEmailExpired}
               returnTo={ACCOUNT_ROUTES.profile}
             />
           ) : null}
-          {section.id === "phone" ? (
+          {section.id === "phone" && contact.phoneAvailable ? (
             <PhoneEditor
               phone={contact.phone}
               phoneVerified={contact.phoneVerified}

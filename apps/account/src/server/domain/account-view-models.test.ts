@@ -100,6 +100,22 @@ describe("signInNotice", () => {
     expect(signInNotice("mfa_required")?.tone).toBe("error");
     expect(signInNotice("invalid_state")?.title).toBe("We couldn't sign you in");
   });
+
+  it("tells a suspended person the account is suspended and offers contact, not a retry", () => {
+    expect(signInNotice("account_suspended")).toEqual({
+      tone: "error",
+      title: "This account is suspended",
+      message: "You can't sign in to LAX Account while it is suspended.",
+      canRetry: false,
+      offerContact: true,
+    });
+  });
+
+  it("offers a retry and no contact link for every other reason", () => {
+    for (const reason of ["access_denied", "login_required", "mfa_required", "invalid_state"]) {
+      expect(signInNotice(reason)).toMatchObject({ canRetry: true, offerContact: false });
+    }
+  });
 });
 
 describe("staff platforms", () => {

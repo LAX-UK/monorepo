@@ -24,6 +24,16 @@ describe("EmailChangeEditor", () => {
     expect(html).not.toContain("Cancel the change");
   });
 
+  it("says the request expired and offers to start again, with no pending address", () => {
+    const html = renderToStaticMarkup(
+      <EmailChangeEditor pendingEmailMasked={null} pendingExpired returnTo="/account/profile" />,
+    );
+    expect(html).toContain("Your request expired. Start again.");
+    expect(html).toContain("Change email");
+    expect(html).not.toContain("Waiting for you to confirm");
+    expect(html).not.toContain("Cancel the change");
+  });
+
   it("says which address a pending change is for and offers to cancel or start again", () => {
     const html = renderToStaticMarkup(
       <EmailChangeEditor pendingEmailMasked="n***@example.com" returnTo="/account/profile" />,

@@ -4,7 +4,7 @@ import { HOSTED_AUTH_MESSAGES as msg } from "./messages.js";
 export type AuthFailureContext = "sign-in" | "two-factor" | "other";
 
 /** A follow-up the screen offers next to the message, because the user can fix the problem from here. */
-export type AuthFailureAction = "resend-verification" | "start-again";
+export type AuthFailureAction = "resend-verification" | "start-again" | "contact-support";
 
 export type AuthFailure = {
   message: string;
@@ -21,6 +21,7 @@ export type FailedResponse = {
 };
 
 const EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
+const IDENTITY_DISABLED = "IDENTITY_DISABLED";
 const INVALID_TWO_FACTOR_COOKIE = "INVALID_TWO_FACTOR_COOKIE";
 const ACCOUNT_TEMPORARILY_LOCKED = "ACCOUNT_TEMPORARILY_LOCKED";
 const INVALID_BACKUP_CODE = "INVALID_BACKUP_CODE";
@@ -106,6 +107,9 @@ export function describeAuthFailure(
   if (context === "sign-in") {
     if (response.status === 403 && errorCode(response.data) === EMAIL_NOT_VERIFIED) {
       return { message: msg.EMAIL_NOT_VERIFIED, action: "resend-verification" };
+    }
+    if (response.status === 403 && errorCode(response.data) === IDENTITY_DISABLED) {
+      return { message: msg.ACCOUNT_SUSPENDED, action: "contact-support" };
     }
     if (response.status === 400 || response.status === 401) {
       return { message: msg.GENERIC_SIGN_IN };

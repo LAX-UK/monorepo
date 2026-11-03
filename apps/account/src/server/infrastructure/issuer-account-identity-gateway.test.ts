@@ -145,7 +145,13 @@ describe("createIssuerAccountIdentityGateway", () => {
         phoneVerified: true,
       };
       const { fetchImpl, gateway: g } = gateway(async () => Response.json(contact));
-      expect(await g.readContact(actor)).toEqual(contact);
+      // An issuer that predates the expiry and phone-availability flags reads as "not expired,
+      // phone available".
+      expect(await g.readContact(actor)).toEqual({
+        ...contact,
+        pendingEmailExpired: false,
+        phoneAvailable: true,
+      });
       expect(lastRequest(fetchImpl).url).toBe("https://auth.internal/api/auth/lax/account-contact");
       expect(Object.fromEntries(lastRequest(fetchImpl).body)).toEqual({ token: "access-token" });
     });

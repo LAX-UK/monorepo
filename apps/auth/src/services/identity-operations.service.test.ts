@@ -69,8 +69,12 @@ function createRepositories(): IdentityOperationsRepositories {
       purgeSubjectSessionsAndTokens: vi.fn().mockResolvedValue(undefined),
     },
     emailChanges: {
-      startChange: vi.fn().mockResolvedValue(undefined),
-      readPending: vi.fn().mockResolvedValue("next@example.com"),
+      startChange: vi.fn().mockResolvedValue("started"),
+      clearExpired: vi.fn().mockResolvedValue(0),
+      readPending: vi.fn().mockResolvedValue({
+        pendingNewEmail: "next@example.com",
+        emailChangeExpiresAt: null,
+      }),
       clearPending: vi.fn().mockResolvedValue(undefined),
       loadForConfirmation: vi.fn().mockResolvedValue(null),
       markConfirmed: vi.fn().mockResolvedValue(undefined),
@@ -132,6 +136,65 @@ describe("IdentityOperationsService", () => {
     ).rejects.toMatchObject({ code: "invalid_expiry" });
 
     expect(repositories.subjects.findById).not.toHaveBeenCalled();
+  });
+
+  describe("pending email change", () => {
+    it("refuses an address another person's live change is waiting on", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.startChange).mockResolvedValue("address_pending");
+      await expect(
+        service.startEmailChange("subject", "next@example.com", new Date(now.getTime() + 1_000)),
+      ).rejects.toMatchObject({ code: "email_taken" });
+    });
+
+    it("sweeps expired changes through the repository", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.clearExpired).mockResolvedValue(3);
+      await expect(service.purgeExpiredEmailChanges()).resolves.toBe(3);
+      expect(repositories.emailChanges.clearExpired).toHaveBeenCalledWith(now);
+    });
+
+    const expired = new Date(now.getTime() - 1_000);
+    const live = new Date(now.getTime() + 60_000);
+
+    it("reports the address while the links are valid", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.readPending).mockResolvedValue({
+        pendingNewEmail: "next@example.com",
+        emailChangeExpiresAt: live,
+      });
+      await expect(service.pendingEmailChange("subject")).resolves.toBe("next@example.com");
+    });
+
+    it("treats an expired change as none", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.readPending).mockResolvedValue({
+        pendingNewEmail: "next@example.com",
+        emailChangeExpiresAt: expired,
+      });
+      await expect(service.pendingEmailChange("subject")).resolves.toBeNull();
+    });
+
+    it("lets a person clear an expired change", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.readPending).mockResolvedValue({
+        pendingNewEmail: "next@example.com",
+        emailChangeExpiresAt: expired,
+      });
+      await service.cancelEmailChange("subject");
+      expect(repositories.emailChanges.clearPending).toHaveBeenCalledWith("subject", now);
+    });
+
+    it("refuses to cancel when nothing was ever started", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.readPending).mockResolvedValue({
+        pendingNewEmail: null,
+        emailChangeExpiresAt: null,
+      });
+      await expect(service.cancelEmailChange("subject")).rejects.toMatchObject({
+        code: "none_in_progress",
+      });
+    });
   });
 
   it("reports breached passwords distinctly and fails open when the breach check is unknown", async () => {

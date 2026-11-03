@@ -27,8 +27,12 @@ export const accountContactSchema = z.object({
   emailVerified: z.boolean(),
   /** The address a change is waiting on, or null when no change is in progress. */
   pendingEmail: z.string().nullable(),
+  /** True when a change was started and its links have since expired; the person must start again. */
+  pendingEmailExpired: z.boolean().default(false),
   phone: z.string().nullable(),
   phoneVerified: z.boolean(),
+  /** False when the issuer has no way to send codes, so Account must not offer to add or change a number. */
+  phoneAvailable: z.boolean().default(true),
 });
 
 export const accountEmailChangeStartedSchema = z.object({ pendingEmail: z.string() });
