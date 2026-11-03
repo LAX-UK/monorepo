@@ -11,11 +11,13 @@ import {
   ENQUIRY_STATUSES,
   PRODUCTION_TASK_STATUSES,
 } from "@auction/shop-contracts";
+import { SHOP_RETURN_STATUSES } from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
 import { type LaxStatusDomain, staffStatus } from "./staff-status";
 
 const DOMAINS: [LaxStatusDomain, readonly string[]][] = [
   ["fulfilment", ADMIN_FULFILMENT_STATUSES],
+  ["return", SHOP_RETURN_STATUSES],
   ["payout", ADMIN_PAYOUT_STATUSES],
   ["hold", ADMIN_STOCK_HOLD_STATUSES],
   ["thirdPartySale", ADMIN_THIRD_PARTY_SALE_STATUSES],

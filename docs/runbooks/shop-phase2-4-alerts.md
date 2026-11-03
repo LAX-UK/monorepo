@@ -8,7 +8,7 @@ Monitor these signals after Phase 2–4 flags are enabled on test or production.
 
 | Signal | Meaning | Action |
 | --- | --- | --- |
-| Sentry `shop_refund_submit_terminal_failure` | Refund outbox row exceeded `MAX_SUBMIT_ATTEMPTS` (8) or Stripe returned a non-retryable error | Open the order in LAX Admin (Overview > Failed refunds): the Refunds list shows the reason. Fix the cause (for example the payment is already refunded in the Stripe Dashboard), then choose Retry refund. The artist's payout for a cancelled item stays held until the refund succeeds |
+| Sentry `shop_refund_submit_terminal_failure` | Refund outbox row exceeded `MAX_SUBMIT_ATTEMPTS` (8) or Stripe returned a non-retryable error | Open the order in LAX Admin (Overview > Failed refunds): the Refunds list shows the reason. Fix the cause (for example the payment is already refunded in the Stripe Dashboard), then choose Retry refund. If the customer was already refunded another way (for example from the Stripe Dashboard) and retrying cannot work, finance chooses Mark as refunded outside LAX, with the refund's reference and a reason; the refund then counts as paid and the artist's payout is settled as for any successful refund. The artist's payout for a cancelled item stays held until one of the two happens |
 | Elevated `submit_attempts` without terminal event | Backoff in progress (`refundSubmitBackoffMs`) | Usually self-heals; investigate if sustained >24h |
 
 **Suggested alert:** count of `shop_refund_submit_terminal_failure` ≥ 1 in 15 minutes (page finance + on-call).
@@ -63,3 +63,13 @@ Monitor these signals after Phase 2–4 flags are enabled on test or production.
 - Stripe webhook signing secret rotation: update env and verify delivery success rate after deploy.
 
 See also [shop-v1-phase-gates.md](./shop-v1-phase-gates.md) and [shop-stripe-setup.md](./shop-stripe-setup.md).
+
+## Returns and stock
+
+A cancelled print goes back on sale by its position, not by its refund. A refund on its own, including a goodwill refund where the customer keeps the work, never changes stock.
+
+| Situation | What happens | Action |
+| --- | --- | --- |
+| The item never left the gallery (in storage, awaiting dispatch, ready for collection) | Cancelling puts the print back on sale at once, and anyone waiting for the edition is emailed on the next notify-me run | None |
+| The item was dispatched or collected | Cancelling opens a return on the order page (Returns panel). Operations marks it in transit, then received | On receipt choose Back on sale (the default) or Withdraw (damaged) |
+| A receipt is refused as "no longer marked as sold", "belongs to someone else" or "checkout open" | The print changed hands or was reserved after the cancellation | Check the edition in the catalogue before trying again |

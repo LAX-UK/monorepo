@@ -12,6 +12,7 @@ function createApp(staffRoles: StaffRoles | undefined) {
   const dataRequests = {
     list: vi.fn().mockResolvedValue({ items: [], nextCursor: null }),
     summary: vi.fn().mockResolvedValue({ open: 1 }),
+    findAccount: vi.fn().mockResolvedValue({ subjectId: "user_1", name: "Lena", status: "active" }),
     record: vi.fn().mockResolvedValue(ok),
     create: vi.fn().mockResolvedValue(ok),
     patch: vi.fn().mockResolvedValue(ok),
@@ -53,6 +54,7 @@ describe("data requests access", () => {
   const routes: [string, string, unknown?][] = [
     ["GET", "/data-requests"],
     ["GET", "/data-requests/summary"],
+    ["GET", "/data-requests/account?email=lena%40north.com"],
     ["GET", "/data-requests/DR-0001"],
     ["POST", "/data-requests", NEW_REQUEST],
     ["PATCH", "/data-requests/DR-0001", { version: 1, notes: "x" }],
@@ -109,6 +111,18 @@ describe("data requests routes", () => {
     const { app, dataRequests } = compliance();
     const res = await app.request("http://test/data-requests/summary");
     expect(await res.json()).toEqual({ data: { open: 1 } });
+    expect(dataRequests.record).not.toHaveBeenCalled();
+  });
+
+  it("finds an account by a full email address, and refuses anything that is not one", async () => {
+    const { app, dataRequests } = compliance();
+    const res = await app.request("http://test/data-requests/account?email=lena%40north.com");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      data: { subjectId: "user_1", name: "Lena", status: "active" },
+    });
+    expect(dataRequests.findAccount).toHaveBeenCalledWith("lena@north.com");
+    expect((await app.request("http://test/data-requests/account?email=lena")).status).toBe(400);
     expect(dataRequests.record).not.toHaveBeenCalled();
   });
 
