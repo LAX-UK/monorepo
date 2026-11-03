@@ -195,6 +195,17 @@ export const SHOP_EMAIL_OUTBOX_TABLES = ["email_outbox"] as const;
  * reached the CRM. shop_app reads them and never writes: the worker owns both.
  */
 export const SHOP_CRM_READ_TABLES = ["crm_record_link", "domain_event_delivery"] as const;
+/**
+ * LAX Admin reviews the artwork register: shop_app reads the records and the Zoho sync results,
+ * records a decision on a conflict (SELECT, UPDATE) and the history entry that goes with it
+ * (INSERT, SELECT). It never creates or changes a record; the worker and the offer moves do that.
+ */
+export const SHOP_ARTWORK_REGISTER_READ_TABLES = [
+  "artwork_register",
+  "zoho_artwork_sync_outcome",
+] as const;
+export const SHOP_ARTWORK_REGISTER_CONFLICT_TABLES = ["artwork_register_conflict"] as const;
+export const SHOP_ARTWORK_REGISTER_EVENT_TABLES = ["artwork_register_event"] as const;
 /** Worker projectors upsert Shop/Bid local projections from Identity domain events. */
 export const WORKER_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -702,6 +713,15 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of SHOP_CRM_READ_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT");
+        }
+        for (const tableName of SHOP_ARTWORK_REGISTER_READ_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT");
+        }
+        for (const tableName of SHOP_ARTWORK_REGISTER_CONFLICT_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");
+        }
+        for (const tableName of SHOP_ARTWORK_REGISTER_EVENT_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of WORKER_LOCK_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");

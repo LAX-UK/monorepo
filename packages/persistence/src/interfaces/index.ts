@@ -1155,12 +1155,22 @@ export type {
 } from "./artwork-register.js";
 
 export type {
+  ArtworkRegisterArtistCount,
+  IArtworkRegisterQueue,
+  QueuedConflict,
+  RegisterQueueFilter,
+  RegisterQueuePage,
+} from "./artwork-register-queue.js";
+
+export type {
   IZohoArtworkSyncReport,
+  IZohoArtworkSyncRunReader,
   IZohoArtworkSyncWatermark,
   ZohoArtworkSyncMode,
   ZohoArtworkSyncOutcome,
   ZohoArtworkSyncOutcomeInput,
   ZohoArtworkSyncOutcomeKind,
+  ZohoArtworkSyncRunSummary,
   ZohoArtworkSyncSummary,
 } from "./zoho-artwork-sync.js";
 
