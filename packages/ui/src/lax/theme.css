@@ -93,6 +93,9 @@
   --color-lax-info-bg: var(--lax-info-bg);
   --color-lax-info-fg: var(--lax-info-fg);
   --color-lax-info-dot: var(--lax-info-dot);
+  --color-lax-accepted-bg: var(--lax-accepted-bg);
+  --color-lax-accepted-fg: var(--lax-accepted-fg);
+  --color-lax-accepted-dot: var(--lax-accepted-dot);
   --color-lax-success-bg: var(--lax-success-bg);
   --color-lax-success-fg: var(--lax-success-fg);
   --color-lax-success-dot: var(--lax-success-dot);
@@ -108,8 +111,6 @@
   --color-lax-danger-solid-pressed: var(--lax-danger-solid-pressed);
   --color-lax-on-danger: var(--lax-on-danger);
   --color-lax-live-dot: var(--lax-live-dot);
-  --color-lax-live-bg: var(--lax-live-bg);
-  --color-lax-on-live: var(--lax-on-live);
 }
 
 /* Icons: one stroke weight, whatever size an icon is drawn at. Portalled layers (menus, tooltips,

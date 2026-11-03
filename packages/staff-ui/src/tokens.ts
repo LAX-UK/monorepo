@@ -86,15 +86,16 @@ export const STAFF_STICKY_LAYERS = {
 export const STAFF_CONTROL_BORDER_MIN_CONTRAST = 3;
 
 /**
- * Status tones. `live` is Bid's "happening now" (a lot or sale open for bidding): a solid fill
- * with a pulsing dot, kept apart from `danger`, which means failed, blocked or withdrawn.
+ * Status tones. Something happening now (a lot or sale open for bidding) is the neutral tone
+ * with the pulsing live dot, so it is never mistaken for `danger`, which means failed, blocked or
+ * withdrawn. `accepted` is work taken on, apart from the blue of work still in review.
  */
 export const STAFF_STATUS_TONES = [
   "neutral",
   "info",
+  "accepted",
   "success",
   "warning",
   "danger",
-  "live",
 ] as const;
 export type StaffStatusTone = (typeof STAFF_STATUS_TONES)[number];

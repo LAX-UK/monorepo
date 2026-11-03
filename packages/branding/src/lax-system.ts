@@ -44,8 +44,18 @@ export const LAX_ELEVATION = {
 /** The one focus ring: a 2px outline in `--lax-focus`, offset 2px (inset on rows). */
 export const LAX_FOCUS_RING = { width: 2, offset: 2 } as const;
 
-/** Status tones. Each has `--lax-<tone>-bg`, `-fg` and `-dot`; `live` is a solid fill. */
-export const LAX_STATUS_TONES = ["neutral", "info", "success", "warning", "danger"] as const;
+/**
+ * Status tones. Each has `--lax-<tone>-bg`, `-fg` and `-dot`. Live is not a tone: it is the
+ * neutral badge with the `--lax-live-dot` dot.
+ */
+export const LAX_STATUS_TONES = [
+  "neutral",
+  "info",
+  "accepted",
+  "success",
+  "warning",
+  "danger",
+] as const;
 export type LaxStatusTone = (typeof LAX_STATUS_TONES)[number];
 
 /** Surfaces a control, label or badge can sit on, as `--lax-<surface>`. */

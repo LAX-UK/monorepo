@@ -195,6 +195,15 @@ describe("loading and motion", () => {
     expect(within(media).getAllByText("Live")).toHaveLength(1);
   });
 
+  it("draws the live dot before a live badge, on the page and on the picture, and before no other", () => {
+    const live = renderFixture(fixture(BID_COVER_FIXTURES, "live"));
+    const dots = live.container.querySelectorAll("span.rounded-full.size-1\\.5");
+    expect(dots.length).toBe(2);
+    live.unmount();
+    const upcoming = renderFixture(fixture(BID_COVER_FIXTURES, "upcoming"));
+    expect(upcoming.container.querySelectorAll("span.rounded-full.size-1\\.5")).toHaveLength(0);
+  });
+
   it("states where the person stands", () => {
     renderFixture(fixture(BID_COVER_FIXTURES, "approved"));
     expect(screen.getByText("You’re approved to bid in this sale")).toBeInTheDocument();
