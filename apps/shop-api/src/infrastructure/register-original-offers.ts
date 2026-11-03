@@ -40,18 +40,20 @@ export function createRegisterOriginalOffers(
 ): OriginalOfferRegister {
   return {
     assertCanPublish: (session, artwork) =>
-      translated(() => lockFor(session).assertCanOffer(linkOf(artwork), refOf(artwork))),
+      translated(() =>
+        lockFor(session as Database).assertCanOffer(linkOf(artwork), refOf(artwork)),
+      ),
     recordPublished: (session, artwork, actor) =>
-      translated(() => lockFor(session).offer(linkOf(artwork), refOf(artwork), actor)).then(
-        () => undefined,
-      ),
+      translated(() =>
+        lockFor(session as Database).offer(linkOf(artwork), refOf(artwork), actor),
+      ).then(() => undefined),
     recordWithdrawn: (session, artwork, actor) =>
-      translated(() => lockFor(session).withdraw(linkOf(artwork), refOf(artwork), actor)).then(
-        () => undefined,
-      ),
+      translated(() =>
+        lockFor(session as Database).withdraw(linkOf(artwork), refOf(artwork), actor),
+      ).then(() => undefined),
     recordSold: (session, artwork, actor) =>
-      translated(() => lockFor(session).markSold(linkOf(artwork), refOf(artwork), actor)).then(
-        () => undefined,
-      ),
+      translated(() =>
+        lockFor(session as Database).markSold(linkOf(artwork), refOf(artwork), actor),
+      ).then(() => undefined),
   };
 }
