@@ -268,6 +268,8 @@ export {
   type MarketingFormError,
   type MarketingFormErrorSummaryProps,
 } from "./marketing-form-error-summary.js";
+export { marketingEmailError } from "./marketing-email-error.js";
+export { useMarketingFormErrors } from "./use-marketing-form-errors.js";
 export {
   MarketingStatusAction,
   MarketingStatusMotif,

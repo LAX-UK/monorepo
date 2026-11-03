@@ -3,11 +3,16 @@
 import { requestGuestOrderLink } from "@/app/actions/guest-checkout.actions";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
-import { MarketingFormField } from "@auction/marketing-ui";
+import {
+  MarketingFormErrorSummary,
+  MarketingFormField,
+  marketingEmailError,
+  useMarketingFormErrors,
+} from "@auction/marketing-ui";
 import { Input } from "@auction/ui";
 import { useState, useTransition } from "react";
 
-type Errors = { email?: string; reference?: string };
+const FIELD_IDS = { email: "guest-link-email", reference: "guest-link-reference" } as const;
 
 /**
  * Asks for a new link to a guest order. The answer is the same whether or not the email and
@@ -16,7 +21,7 @@ type Errors = { email?: string; reference?: string };
 export function GuestOrderLinkRequest() {
   const [email, setEmail] = useState("");
   const [reference, setReference] = useState("");
-  const [errors, setErrors] = useState<Errors>({});
+  const errors = useMarketingFormErrors(FIELD_IDS);
   const [failure, setFailure] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -33,12 +38,10 @@ export function GuestOrderLinkRequest() {
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (pending) return;
-    const next: Errors = {};
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      next.email = "Enter the email address you used for the order";
-    }
+    const next: Partial<Record<keyof typeof FIELD_IDS, string>> = {};
+    if (marketingEmailError(email)) next.email = "Enter the email address you used for the order";
     if (reference.trim().length < 3) next.reference = "Enter the order reference, like LAX-S-10482";
-    setErrors(next);
+    errors.fail(next);
     setFailure(null);
     if (next.email || next.reference) return;
     startTransition(async () => {
@@ -50,11 +53,12 @@ export function GuestOrderLinkRequest() {
 
   return (
     <form className="shop-guest-email" noValidate onSubmit={onSubmit}>
+      <MarketingFormErrorSummary errors={errors.summary} focusKey={errors.failedSubmits} />
       <div className="shop-checkout__field-grid">
         <MarketingFormField
-          id="guest-link-email"
+          id={FIELD_IDS.email}
           label="Email address"
-          error={errors.email ?? null}
+          error={errors.messages.email ?? null}
           className="shop-checkout__field--full"
         >
           {(control) => (
@@ -67,15 +71,18 @@ export function GuestOrderLinkRequest() {
               className="shop-field"
               disabled={pending}
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                errors.clear("email");
+              }}
             />
           )}
         </MarketingFormField>
         <MarketingFormField
-          id="guest-link-reference"
+          id={FIELD_IDS.reference}
           label="Order reference"
           hint="In your order confirmation email"
-          error={errors.reference ?? null}
+          error={errors.messages.reference ?? null}
           className="shop-checkout__field--full"
         >
           {(control) => (
@@ -86,7 +93,10 @@ export function GuestOrderLinkRequest() {
               className="shop-field"
               disabled={pending}
               value={reference}
-              onChange={(event) => setReference(event.target.value)}
+              onChange={(event) => {
+                setReference(event.target.value);
+                errors.clear("reference");
+              }}
             />
           )}
         </MarketingFormField>

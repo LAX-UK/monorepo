@@ -5,7 +5,7 @@ import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
 import { Button, Field, Notice, TextInput } from "@auction/ui/lax";
 import { type NewsletterSubscribeInput, newsletterSubscribeSchema } from "@auction/validators";
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import { useForm } from "react-hook-form";
 
 /** Email sign-up for the newsletter, in the home page's closing band. */
@@ -20,8 +20,11 @@ export function NewsletterSignupForm() {
     defaultValues: { email: "" },
     reValidateMode: "onBlur",
   });
+  // One field: the message sits under it and focus goes to it. A field that already has focus when
+  // the check fails announces the message itself, because focus does not move.
+  const [announce, setAnnounce] = useState(false);
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  const submit = form.handleSubmit(async (values) => {
     const result = await run({ email: values.email });
     if (result.ok) {
       form.reset();
@@ -30,6 +33,11 @@ export function NewsletterSignupForm() {
       );
     }
   });
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    setAnnounce(document.activeElement?.id === "newsletter-email");
+    return submit(event);
+  };
 
   if (status) {
     return (
@@ -56,6 +64,7 @@ export function NewsletterSignupForm() {
           labelHidden
           id="newsletter-email"
           error={form.formState.errors.email?.message}
+          announce={announce}
           className="flex-1"
         >
           <TextInput
