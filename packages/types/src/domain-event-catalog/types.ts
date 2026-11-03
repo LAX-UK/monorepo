@@ -13,7 +13,6 @@ export type DomainEventConsumer =
   | "zoho"
   | "xero"
   | "notifications"
-  | "marketing_contacts"
   | "lot_lifecycle_snapshot"
   | "aml_match_review"
   | "source_of_funds_review"

@@ -67,10 +67,6 @@ const envSchema = z
     ATG_TIMEZONE: z.preprocess(emptyToUndefined, z.string().default("Europe/London")),
     /** Must stay under the 5-minute worker readiness heartbeat window. */
     ATG_POLL_INTERVAL_MS: z.coerce.number().int().min(30_000).max(240_000).default(120_000),
-    /** Interim marketing-contacts ESP for registered-user lifecycle campaigns (Plan B). */
-    MARKETING_CONTACT_SYNC_PROVIDER: z.enum(["none", "brevo"]).default("none"),
-    BREVO_API_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
-    BREVO_LIST_ID: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().optional()),
     STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
     STORAGE_LOCAL_ROOT: z.string().default("uploads"),
     S3_BUCKET: z.string().optional(),
@@ -228,16 +224,6 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         message: "POSTMARK_SERVER_TOKEN is required when EMAIL_PROVIDER=postmark",
       });
-    }
-    if (e.MARKETING_CONTACT_SYNC_PROVIDER === "brevo") {
-      if (!e.BREVO_API_KEY || !e.BREVO_LIST_ID) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message:
-            "BREVO_API_KEY and BREVO_LIST_ID are required when MARKETING_CONTACT_SYNC_PROVIDER=brevo",
-          path: ["MARKETING_CONTACT_SYNC_PROVIDER"],
-        });
-      }
     }
     if (e.ATG_SYNC_ENABLED) {
       const missing = (

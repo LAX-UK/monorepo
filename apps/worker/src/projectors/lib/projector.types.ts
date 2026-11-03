@@ -76,9 +76,6 @@ export type ProjectorRunContext = {
   deliveryRepo?: IDomainEventDeliveryRepository | undefined;
   crmRecordLinkRepo?: ICrmRecordLinkRepository | undefined;
   crmSyncService?: CrmSyncService | undefined;
-  enqueueMarketingContactSync?:
-    | ((data: { userId: string; reason: string; eventId: number }) => Promise<void>)
-    | undefined;
   shopIdentityProjection?: ShopIdentityProjectionService | undefined;
 };
 
