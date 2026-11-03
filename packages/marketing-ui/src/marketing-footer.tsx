@@ -24,7 +24,10 @@ export type MarketingFooterProps = {
   renderLink?: (link: MarketingFooterLink) => ReactNode;
 };
 
-/** One desktop row: columns plus the Connect column when socials are present. */
+/**
+ * One desktop row: the columns plus the Connect column when socials are present. Seven columns are
+ * a full row only from 1280px; below that they wrap onto a second row.
+ */
 const DESKTOP_GRID_COLUMNS: Record<number, string> = {
   1: "lg:grid-cols-1",
   2: "lg:grid-cols-2",
@@ -32,6 +35,7 @@ const DESKTOP_GRID_COLUMNS: Record<number, string> = {
   4: "lg:grid-cols-4",
   5: "lg:grid-cols-5",
   6: "lg:grid-cols-6",
+  7: "lg:grid-cols-4 xl:grid-cols-7",
 };
 
 export function MarketingFooter({
@@ -70,7 +74,7 @@ export function MarketingFooter({
         <div
           className={cn(
             "grid max-w-[var(--container-inner,86rem)] grid-cols-1 gap-x-8 gap-y-0 sm:grid-cols-2 sm:gap-y-12 md:grid-cols-3",
-            DESKTOP_GRID_COLUMNS[Math.min(columns.length + (socials ? 1 : 0), 6)],
+            DESKTOP_GRID_COLUMNS[Math.min(columns.length + (socials ? 1 : 0), 7)],
           )}
         >
           {columns.map((column) => (

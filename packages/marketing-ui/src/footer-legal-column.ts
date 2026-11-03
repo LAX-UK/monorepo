@@ -10,6 +10,12 @@ export const FOOTER_LEGAL = {
   cookiePreferences: "Cookie settings",
 } as const;
 
+/**
+ * Where the "Cookie settings" link of a footer points on a product that opens its settings in
+ * place; Bid opens its dialog from the same link with a button.
+ */
+export const COOKIE_SETTINGS_HASH = "#cookie-settings";
+
 const LEGAL_LINK_ORDER = ["index", "terms", "privacy", "cookies", "cookiePreferences"] as const;
 
 type FooterLegalHrefs = {
