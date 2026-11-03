@@ -1139,6 +1139,22 @@ export type {
 } from "./dispute-case.repository.js";
 
 export type {
+  ApplyZohoChangeResult,
+  ConflictCursor,
+  CreateRegisterEntryResult,
+  IArtworkRegisterReader,
+  IArtworkRegisterRepository,
+  MoveOfferInput,
+  MoveOfferResult,
+  RegisterActor,
+  RegisterConflict,
+  RegisterEvent,
+  RegisterEventType,
+  ResolveConflictInput,
+  ResolveConflictResult,
+} from "./artwork-register.js";
+
+export type {
   AnnouncedSale,
   IBidAlertSaleNoticeWriter,
   IBidAlertSaleReader,
