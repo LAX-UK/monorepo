@@ -73,3 +73,34 @@ export function bindWebhookEventsQueue(
 }
 
 export { LEGAL_ENTITY_ARCHIVE_JOB_NAME };
+
+/** Asks the email provider to stop blocking a person's address. Runs on the email queue. */
+export const REACTIVATE_EMAIL_ADDRESS_JOB_NAME = "reactivate-email-address" as const;
+
+/** Carries ids only; the worker looks the address up, so no email address sits in the queue. */
+export type ReactivateEmailAddressJobData = {
+  userId: string;
+  emailHash: string;
+};
+
+export interface EmailAddressReactivationProducer {
+  request(data: ReactivateEmailAddressJobData): Promise<void>;
+}
+
+/** The job retries with backoff, and ends in Failed jobs when it runs out of attempts. */
+export function bindEmailAddressReactivationQueue(
+  queue: Queue,
+  now: () => number = Date.now,
+): EmailAddressReactivationProducer {
+  return {
+    async request(data) {
+      await queue.add(REACTIVATE_EMAIL_ADDRESS_JOB_NAME, data, {
+        jobId: `reactivate-${data.emailHash}-${now()}`,
+        attempts: 5,
+        backoff: { type: "exponential", delay: 30_000 },
+        removeOnComplete: 1000,
+        removeOnFail: 5000,
+      });
+    },
+  };
+}

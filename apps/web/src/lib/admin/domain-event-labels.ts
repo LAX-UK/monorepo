@@ -170,6 +170,7 @@ const LABELS: Record<string, string> = {
   "marketing_enquiry.assigned": "Enquiry assigned",
   "marketing_enquiry.status_changed": "Enquiry status changed",
   "marketing_enquiry.converted": "Enquiry converted",
+  "email.block_lifted": "Email block lifted",
   "enquiry_routing.changed": "Enquiry routing changed",
   "payout.transfer_reversed": "Payout transfer reversed",
   "purchase_problem.reported": "Purchase problem reported",

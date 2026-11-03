@@ -29,6 +29,7 @@ import type { ICoverAnalysisJobRepository } from "../interfaces/cover-analysis-j
 import type { IDataExportJobRepository } from "../interfaces/data-export.repository.js";
 import type { IDomainEventProjectorReader } from "../interfaces/domain-event-projector.reader.js";
 import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
+import type { IEmailAddressLookup } from "../interfaces/email-provider-suppression.js";
 import type { IIdentityOutboxRelayRepository } from "../interfaces/identity-outbox-relay.repository.js";
 import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
 import type { IKycRetentionSubjectStore } from "../interfaces/kyc-retention-subject.store.js";
@@ -70,6 +71,7 @@ import { DrizzleComplianceRecipientReader } from "../repositories/drizzle-compli
 import { DrizzleCoverAnalysisJobRepository } from "../repositories/drizzle-cover-analysis-job.repository.js";
 import { DrizzleDataExportJobRepository } from "../repositories/drizzle-data-export.repository.js";
 import { DrizzleDomainEventProjectorReader } from "../repositories/drizzle-domain-event-projector.reader.js";
+import { DrizzleEmailAddressLookup } from "../repositories/drizzle-email-address.lookup.js";
 import { DrizzleEmailOutboxRepository } from "../repositories/drizzle-email-outbox.repository.js";
 import { DrizzleIdentityOutboxRelayRepository } from "../repositories/drizzle-identity-outbox-relay.repository.js";
 import { DrizzleImpersonationSweepRepository } from "../repositories/drizzle-impersonation-sweep.repository.js";
@@ -107,6 +109,7 @@ import type { WorkerDb } from "../workers/types.js";
 export type WorkerRepositories = {
   uploadValidationRepo: IUploadValidationRepository;
   emailOutboxRepo: IEmailOutboxRepository;
+  emailAddressLookup: IEmailAddressLookup;
   payoutStatementRepo: IPayoutStatementRepository;
   profileMarketingReader: IMarketingProfileReader;
   marketingEventOutboxWorker: IMarketingEventOutboxWorker;
@@ -163,6 +166,7 @@ export function createWorkerRepositories(
   return {
     uploadValidationRepo: new DrizzleUploadValidationRepository(db),
     emailOutboxRepo: new DrizzleEmailOutboxRepository(db),
+    emailAddressLookup: new DrizzleEmailAddressLookup(db),
     payoutStatementRepo: new DrizzlePayoutStatementRepository(db),
     profileMarketingReader: new DrizzleProfileMarketingReader(db),
     marketingEventOutboxWorker: new DrizzleMarketingEventOutboxWorker(db),
