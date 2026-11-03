@@ -142,7 +142,21 @@ export {
   MarketingFooterSocials,
   type MarketingFooterSocialsProps,
 } from "./marketing-footer-socials.js";
-export { FOOTER_LEGAL, buildFooterLegalColumn } from "./footer-legal-column.js";
+export {
+  COOKIE_SETTINGS_HASH,
+  FOOTER_LEGAL,
+  buildFooterLegalColumn,
+} from "./footer-legal-column.js";
+export {
+  EssentialCookiesDialog,
+  type EssentialCookiesDialogProps,
+} from "./essential-cookies-dialog.js";
+export {
+  MarketingNotFound,
+  type MarketingNotFoundLink,
+  type MarketingNotFoundProps,
+  type MarketingNotFoundSearch,
+} from "./marketing-not-found.js";
 export {
   MarketingFooter,
   type MarketingFooterColumn,
