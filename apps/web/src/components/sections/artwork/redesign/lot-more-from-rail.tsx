@@ -85,7 +85,7 @@ export function LotMoreFromRail({
               : closingText(new Date(c.endTime).getTime() - nowMs, nowMs);
           return (
             <li key={c.id} className="w-[200px] shrink-0 min-w-0">
-              <div className="flex flex-col gap-4">
+              <div className="flex h-full flex-col gap-4">
                 <AdaptiveMediaFrame src={c.imageUrl} objectFit="cover" slots={LOT_CARD_GRID_SLOTS}>
                   <Link
                     href={c.href}
@@ -174,7 +174,7 @@ export function LotMoreFromRail({
                     </p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2">
+                  <div className="flex flex-1 flex-col gap-2">
                     <p className="text-sm font-bold leading-4 text-warning-on-surface">
                       {c.lotNumber != null ? `Lot ${c.lotNumber}` : "Lot"}
                     </p>
@@ -208,7 +208,7 @@ export function LotMoreFromRail({
                         {closing ?? "\u00A0"}
                       </span>
                     </p>
-                    <div className="flex flex-col gap-2 pt-1 w-full">
+                    <div className="mt-auto flex w-full flex-col gap-2 pt-1">
                       {c.deliveryMode !== "onsite" ? (
                         <Button
                           variant="secondary"
