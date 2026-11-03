@@ -102,6 +102,7 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "shop-checkout-ops-alert": "Shop checkout alert (staff)",
   "shop-refund-issued": "Shop refund",
   "shop-cancellation-confirmed": "Shop order cancelled",
+  "shop-return-closed-seller": "Shop return received (seller)",
   "art-general-enquiry-alert": "lax.art enquiry alert (staff)",
   "art-enquiry-received": "lax.art enquiry received",
   "art-artist-application-received": "Artist application received",

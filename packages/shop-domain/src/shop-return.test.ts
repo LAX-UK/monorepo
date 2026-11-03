@@ -4,10 +4,13 @@ import {
   SHOP_RETURN_STATUSES,
   canTransitionReturn,
   cancellationStockOutcome,
+  editionDisplayLabel,
   isShopReturnDisposition,
   isShopReturnStatus,
   listingAfterReturn,
   nextReturnStatuses,
+  returnSellerPayout,
+  returnStockOutcome,
 } from "./shop-return.js";
 
 describe("return transitions", () => {
@@ -58,5 +61,27 @@ describe("listing after a return", () => {
   it("puts an undamaged item back on sale and withdraws a damaged one", () => {
     expect(listingAfterReturn("back_on_sale")).toBe("authorised");
     expect(listingAfterReturn("withdrawn_damaged")).toBe("withdrawn");
+  });
+});
+
+describe("what a received return means for the seller", () => {
+  it("names the stock outcome from the listing the print ends up in", () => {
+    expect(returnStockOutcome("authorised")).toBe("back_on_sale");
+    expect(returnStockOutcome("not_authorised")).toBe("in_stock_not_on_sale");
+    expect(returnStockOutcome("withdrawn")).toBe("written_off");
+  });
+
+  it("holds back an unpaid payout, recovers a paid one and ignores a sale with none", () => {
+    expect(returnSellerPayout(null)).toBe("none");
+    expect(returnSellerPayout("pending_refund_period")).toBe("withheld");
+    expect(returnSellerPayout("due")).toBe("withheld");
+    expect(returnSellerPayout("cancelled")).toBe("withheld");
+    expect(returnSellerPayout("paid")).toBe("recovered");
+  });
+
+  it("labels numbered prints, proofs and open editions", () => {
+    expect(editionDisplayLabel({ editionNumber: 3, proofNumber: null })).toBe("Edition 3");
+    expect(editionDisplayLabel({ editionNumber: null, proofNumber: 1 })).toBe("Proof 1");
+    expect(editionDisplayLabel({ editionNumber: null, proofNumber: null })).toBe("Open edition");
   });
 });
