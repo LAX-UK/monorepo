@@ -26,6 +26,7 @@ export const DOMAIN_EVENT_PROJECTOR_NAMES = [
   "unsold_follow_up",
   "xero",
   "zoho",
+  "zoho_artwork_writeback",
 ];
 
 export const ALL_STAGING_PROJECTOR_NAMES = [

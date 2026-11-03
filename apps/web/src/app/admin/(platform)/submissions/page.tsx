@@ -1,3 +1,4 @@
+import { AdminFlashNotice } from "@/components/admin/staff/admin-flash-notice";
 import { SubmissionsStaffList } from "@/components/admin/submissions/submissions-staff-list";
 import { categoryPickerOptions } from "@/lib/admin/catalog/category-picker-options";
 import { loadAdminSubmissionsListPage } from "@/lib/admin/submissions/load-submissions-list-page";
@@ -66,6 +67,7 @@ export default async function AdminSubmissionsPage({
       currentUserId={user.id}
       exportFilters={model.exportFilters}
       listError={vm.loadError}
+      notice={<AdminFlashNotice path="/admin/submissions" />}
       filtered={Boolean(
         model.initialQ.trim() || query.categoryId || query.qualityGaps || query.assignedToMe,
       )}
