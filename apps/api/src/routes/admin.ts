@@ -43,6 +43,7 @@ import {
   attachAdminPaymentsListRoutes,
   attachAdminPaymentsManualReviewRoutes,
 } from "./admin/payments.routes.js";
+import { attachAdminPersonEmailDeliveryRoutes } from "./admin/person-email-delivery.routes.js";
 import { attachAdminQrCodesRoutes } from "./admin/qr-codes.routes.js";
 import { attachAdminSaleCoverRoutes } from "./admin/sale-cover.routes.js";
 import { attachAdminSaleRegistrationsRoutes } from "./admin/sale-registrations.routes.js";
@@ -125,6 +126,7 @@ export function createAdminRoutes(
   attachAdminAuditRoutes(platform, container);
   attachAdminCatalogRoutes(platform, container);
   attachAdminEmailRoutes(platform, container);
+  attachAdminPersonEmailDeliveryRoutes(platform, container);
   attachAdminUsersDirectoryRoutes(platform, container, guards);
   attachAdminComplianceRoutes(platform, container);
   attachAdminUsersManagementRoutes(platform, container, guards);

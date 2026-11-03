@@ -171,6 +171,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "lot.voided",
   "lot.withdrawal_declined",
   "lot.withdrawal_requested",
+  "email.block_lifted",
   "enquiry_routing.changed",
   "marketing_enquiry.assigned",
   "marketing_enquiry.converted",
@@ -628,6 +629,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "marketing_enquiry.converted": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "email.block_lifted": {
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",

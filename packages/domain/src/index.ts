@@ -942,3 +942,4 @@ export {
   type VisitorAlertSignupState,
   type VisitorAlertStatus,
 } from "./visitor-sale-alerts.js";
+export * from "./email/email-block-rules.js";

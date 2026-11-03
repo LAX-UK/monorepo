@@ -389,6 +389,15 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   "marketing_enquiry.status_changed": new Set(["enquiryId", "intent", "from", "to", "closeReason"]),
   "marketing_enquiry.converted": new Set(["enquiryId", "intent", "from"]),
+  /** Codes and dates; the note is typed by staff, and the address itself is never recorded. */
+  "email.block_lifted": new Set([
+    "userId",
+    "reason",
+    "note",
+    "previousReason",
+    "previousSince",
+    "provider",
+  ]),
   /** One event per changed routing row: a department slug (or none for the fallback) and staff user ids. */
   "enquiry_routing.changed": new Set([
     "departmentSlug",

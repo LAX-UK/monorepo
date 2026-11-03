@@ -15,15 +15,4 @@ export class AdminEmailApplicationService implements IAdminEmailApplicationServi
   listSuppressions(input: Parameters<IEmailObservabilityRepository["listSuppressions"]>[0]) {
     return this.emailObservabilityRepository.listSuppressions(input);
   }
-
-  deleteSuppression(input: { emailHash: string }): Promise<void> {
-    return this.emailObservabilityRepository.deleteSuppression(input);
-  }
-
-  async deleteSuppressionsBulk(emailHashes: string[]): Promise<number> {
-    for (const emailHash of emailHashes) {
-      await this.emailObservabilityRepository.deleteSuppression({ emailHash });
-    }
-    return emailHashes.length;
-  }
 }

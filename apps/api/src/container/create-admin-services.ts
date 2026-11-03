@@ -1,8 +1,11 @@
 import type { Database } from "@auction/db";
 import {
   DrizzleAdminSubmissionsSummaryReader,
+  DrizzleEmailBlockRepository,
   DrizzleExportJobRepository,
+  DrizzlePersonEmailDeliveryReader,
 } from "@auction/persistence/repositories";
+import { bindEmailAddressReactivationQueue } from "@auction/queues";
 import type { Env } from "../env.js";
 import { AdminLotAttentionService } from "../services/admin/admin-lot-attention.service.js";
 import { AdminLotDetailMetricsService } from "../services/admin/admin-lot-detail-metrics.service.js";
@@ -173,6 +176,9 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     categoryService,
     artistProfileService,
     emailObservabilityRepository,
+    personEmailDeliveryReader: new DrizzlePersonEmailDeliveryReader(db),
+    emailBlockRepository: new DrizzleEmailBlockRepository(db),
+    emailReactivation: bindEmailAddressReactivationQueue(infra.emailQueue),
     adminUserService,
     adminUserReader,
     profileService,

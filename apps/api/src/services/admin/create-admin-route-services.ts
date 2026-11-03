@@ -127,6 +127,9 @@ export type CreateAdminRouteServicesInput = {
   categoryService: CategoryService;
   artistProfileService: ArtistProfileService;
   emailObservabilityRepository: IEmailObservabilityRepository;
+  personEmailDeliveryReader: import("@auction/persistence/interfaces").IPersonEmailDeliveryReader;
+  emailBlockRepository: import("@auction/persistence/interfaces").IEmailBlockRepository;
+  emailReactivation: import("@auction/queues").EmailAddressReactivationProducer;
   adminUserService: AdminUserService;
   adminUserReader: import("@auction/persistence/interfaces").IAdminUserReader;
   profileService: ProfileService;
@@ -217,6 +220,11 @@ export function createAdminRouteServices(
     attentionFeedReader: input.attentionFeedReader,
     itemSubmissionAdminApi: input.itemSubmissionAdminApi,
     emailObservabilityRepository: input.emailObservabilityRepository,
+    personEmailDeliveryReader: input.personEmailDeliveryReader,
+    emailBlockRepository: input.emailBlockRepository,
+    emailReactivation: input.emailReactivation,
+    transactionRunner: input.transactionRunner,
+    domainEventSink: input.domainEventSink,
     displayPairingService: input.displayPairingService,
     displayOverlayService: input.displayOverlayService,
     saleroomService: input.saleroomService,
