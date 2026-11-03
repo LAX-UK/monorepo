@@ -122,10 +122,10 @@ describe("Hosted sign-in theme contract", () => {
     }
   });
 
-  it("points the hosted link and focus-ring tokens at neutral ink and Account teal", () => {
+  it("points the hosted link and focus-ring tokens at neutral ink", () => {
     const css = readFileSync(join(hostedAuthSrc, "styles.ts"), "utf8");
-    assert.match(css, /--color-ring: \$\{t\.accent\}/);
-    assert.match(css, /--color-ring: \$\{t\.accentOnDark\}/);
+    assert.match(css, /--color-ring: \$\{t\.obsidian\}/);
+    assert.match(css, /--color-ring: \$\{t\.lightCream\}/);
     assert.match(css, /--color-link: \$\{t\.ink\}/);
   });
 

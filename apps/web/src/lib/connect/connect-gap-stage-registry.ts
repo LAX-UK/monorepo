@@ -1,10 +1,10 @@
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
+import type { StatusBadgeVariant } from "@/lib/presenters/status/core";
 import type { ConnectGapStage } from "@auction/connect";
-import type { StatusBadgeProps } from "@auction/ui/components/status-badge";
 
 type ConnectGapStageCopy = {
   label: string;
-  badgeVariant: NonNullable<StatusBadgeProps["tone"]>;
+  badgeVariant: StatusBadgeVariant;
   summary: string;
   readOnlySummary: string;
   actionHint: string | null;
