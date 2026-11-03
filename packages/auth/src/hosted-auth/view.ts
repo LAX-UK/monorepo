@@ -23,6 +23,7 @@ export type HostedAuthPageConfig = {
   loginPath: string;
   twoFactorPath: string;
   restartUrl: string;
+  contactUrl: string;
   allowedRedirectOrigins: string[];
   turnstileSiteKey: string | null;
   requireEmailVerification: boolean;
@@ -60,6 +61,7 @@ export function buildHostedAuthPageConfig(
     loginPath: flow.loginPath,
     twoFactorPath: continuationHref("/two-factor", flow),
     restartUrl,
+    contactUrl: `${trimOrigin(capabilities.bidOrigin)}/contact`,
     allowedRedirectOrigins: flow.allowedRedirectOrigins,
     turnstileSiteKey: capabilities.turnstileSiteKey,
     requireEmailVerification: capabilities.requireEmailVerification,

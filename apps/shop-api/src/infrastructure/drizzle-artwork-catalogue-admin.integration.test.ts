@@ -1,6 +1,6 @@
-import { shopAdminAudit, shopMediaAsset } from "@auction/db/schema";
+import { emailOutbox, shopAdminAudit, shopMediaAsset } from "@auction/db/schema";
 import { ShopDomainError } from "@auction/shop-domain";
-import { eq } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalizeArtworkCatalogueFilters } from "../application/artwork-catalogue-filters.js";
@@ -17,12 +17,16 @@ import { createDrizzleAdminArtworkReader } from "./drizzle-admin-artwork.reader.
 import { createDrizzleArtistCatalogueWriter } from "./drizzle-artist-catalogue.writer.js";
 import { createDrizzleArtworkCatalogueRepository } from "./drizzle-artwork-catalogue.repository.js";
 import { createDrizzleArtworkCatalogueWriter } from "./drizzle-artwork-catalogue.writer.js";
+import { createDrizzleReleaseAlertAnnouncer } from "./drizzle-release-alert.announcer.js";
+import { createDrizzleReleaseAlertStore } from "./drizzle-release-alert.store.js";
+import { createDrizzleShopNotificationPublisher } from "./drizzle-shop-notification.publisher.js";
 import { createDrizzleShopUnitOfWork } from "./drizzle-shop-transaction-effects.js";
 import { createDrizzleEditionRunUnitOfWork } from "./edition-runs/drizzle-edition-run.unit-of-work.js";
 
 const ACTOR = "artwork-catalogue-it-staff";
 const key = () => `idem-${integrationSuffix("a")}`;
 const resolveMediaUrl = (value: string | null | undefined) => (value ? `/${value}` : null);
+const ORIGINS = { shop: "http://localhost:3020", art: "http://localhost:3050" };
 
 /** Facts that let a LAX standard run be published: unsigned, not numbered, no certificate. */
 const CONFIRMED_FACTS = {
@@ -51,14 +55,23 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
   function setup() {
     const db = createShopDb(shopPool);
     const uow = createDrizzleShopUnitOfWork(db, "off");
+    const notifications = createDrizzleShopNotificationPublisher();
     return {
       db,
+      releaseAlertStore: createDrizzleReleaseAlertStore(db, {
+        notifications,
+        shopOrigin: ORIGINS.shop,
+      }),
       writer: createDrizzleArtworkCatalogueWriter(uow, {
         resolveMediaUrl,
         editionRuns: createEditionRunServices({
           uow: createDrizzleEditionRunUnitOfWork(uow),
           clock: { now: () => new Date() },
         }).recorder,
+        releaseAlerts: createDrizzleReleaseAlertAnnouncer({
+          notifications,
+          storefrontOrigins: ORIGINS,
+        }),
       }),
       artists: createDrizzleArtistCatalogueWriter(uow),
       reader: createDrizzleAdminArtworkReader(db, { resolveMediaUrl }),
@@ -262,6 +275,89 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
     await expect(writer.updateArtwork({ ...editable(opened), title: "Second" })).rejects.toThrow(
       StaleVersionError,
     );
+  });
+
+  it("emails confirmed release alert subscribers once when an edition is published with the alert on", async () => {
+    const { writer, releaseAlertStore, db } = setup();
+    const suffix = integrationSuffix("release");
+    const now = new Date();
+    const confirmed = `confirmed-${suffix}@example.com`;
+    const waiting = `waiting-${suffix}@example.com`;
+    const stopped = `stopped-${suffix}@example.com`;
+    const consent = { text: "consent", source: "shop_home" };
+    await releaseAlertStore.subscribeAccount({
+      email: confirmed,
+      identitySubjectId: `subject-${suffix}`,
+      consent,
+      now,
+    });
+    await releaseAlertStore.requestConfirmation({ email: waiting, consent, now });
+    await releaseAlertStore.subscribeAccount({
+      email: stopped,
+      identitySubjectId: `subject-stopped-${suffix}`,
+      consent,
+      now,
+    });
+    await releaseAlertStore.stopByEmail(stopped, now);
+
+    const publish = async (artworkId: string, sendReleaseAlert: boolean) =>
+      writer.setVisibility({
+        artworkId,
+        action: "publish",
+        sendReleaseAlert,
+        actorSubjectId: ACTOR,
+        idempotencyKey: key(),
+      });
+    const readyArtwork = async (label: string) => {
+      const artwork = await newArtwork(label);
+      await writer.updateArtwork({
+        ...editable(await detailOf(artwork.artworkId)),
+        printPricePence: 45_000,
+        images: [{ mediaKey: await uploadedImage(), alt: "The work" }],
+      });
+      return artwork;
+    };
+    const alertsFor = async (address: string) =>
+      db
+        .select({ template: emailOutbox.template, vars: emailOutbox.vars })
+        .from(emailOutbox)
+        .where(like(emailOutbox.toSnapshot, address));
+
+    const quiet = await readyArtwork("release-quiet");
+    expect((await publish(quiet.artworkId, false)).releaseAlertsQueued).toBeUndefined();
+    expect(
+      (await alertsFor(confirmed)).filter((row) => row.template === "shop-release-alert"),
+    ).toHaveLength(0);
+
+    const loud = await readyArtwork("release-loud");
+    const result = await publish(loud.artworkId, true);
+    expect(result.releaseAlertsQueued).toBeGreaterThanOrEqual(1);
+    const sent = (await alertsFor(confirmed)).filter(
+      (row) => row.template === "shop-release-alert",
+    );
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.vars).toMatchObject({
+      artworkTitle: "Artwork release-loud",
+      artistName: "Artist release-loud",
+      artworkUrl: `${ORIGINS.shop}/artworks/${loud.slug}`,
+    });
+    expect(String(sent[0]?.vars.unsubscribeUrl)).toContain("/release-alerts/unsubscribe?token=");
+    expect((await alertsFor(waiting)).map((row) => row.template)).toEqual([
+      "shop-release-alert-confirm",
+    ]);
+    expect(await alertsFor(stopped)).toHaveLength(0);
+
+    // Unpublishing and publishing again never emails the same person about the same edition twice.
+    await writer.setVisibility({
+      artworkId: loud.artworkId,
+      action: "unpublish",
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+    await publish(loud.artworkId, true);
+    expect(
+      (await alertsFor(confirmed)).filter((row) => row.template === "shop-release-alert"),
+    ).toHaveLength(1);
   });
 
   it("reports each artwork's outcome in a bulk publish", async () => {

@@ -35,6 +35,15 @@ export const LEGACY_STAFF_ROLE_LABELS: Record<LegacyStaffRole, string> = {
   operations: "Operations",
 };
 
+/**
+ * Capabilities introduced after the clean-up was designed. The report compares the permissions of
+ * the old roles with the new ones as the clean-up defined them, so these are left out of its gains.
+ */
+export const CAPABILITIES_ADDED_AFTER_CLEANUP: ReadonlySet<RoleCapability> = new Set([
+  "enquiries.private_sale.read",
+  "private_sale.manage",
+]);
+
 /** A capability the clean-up removed, and the one that now opens what it used to open. */
 export type RetiredCapability = "content.write";
 

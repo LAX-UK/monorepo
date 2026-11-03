@@ -13,26 +13,27 @@ const TONE: Record<AttentionChip["kind"], string> = {
     "border-warning/30 bg-warning-container text-warning-on-surface hover:border-warning/50",
 };
 
-function Chip({ chip }: { chip: AttentionChip }) {
+/** The chip itself: a link that names the work, truncated to fit, with the full text read aloud. */
+export function AttentionChipLink({ chip }: { chip: AttentionChip }) {
   return (
     <Link
       href={chip.href}
+      aria-label={chip.accessibleName}
       className={cn(
-        "relative inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 font-body text-[0.8125rem] font-medium whitespace-nowrap transition-colors max-sm:h-7 max-sm:gap-1 max-sm:px-2 max-sm:text-xs",
+        "relative inline-flex h-8 min-w-0 max-w-[17.5rem] items-center gap-1.5 rounded-full border px-3 font-body text-[0.8125rem] font-medium whitespace-nowrap transition-colors max-sm:h-7 max-sm:max-w-[9.5rem] max-sm:gap-1 max-sm:px-2 max-sm:text-xs",
         "after:absolute after:-inset-y-1.5 after:inset-x-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
         TONE[chip.kind],
       )}
     >
       <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />
-      <span className="hidden sm:inline">{chip.label}</span>
-      <span className="sm:hidden">{chip.shortLabel}</span>
+      <span className="min-w-0 truncate">{chip.label}</span>
     </Link>
   );
 }
 
 function ClientChip({ user }: { user: SessionUser }) {
   const state = useHeaderAccountMenu(user);
-  return state.kind === "client" && state.chip ? <Chip chip={state.chip} /> : null;
+  return state.kind === "client" && state.chip ? <AttentionChipLink chip={state.chip} /> : null;
 }
 
 /**

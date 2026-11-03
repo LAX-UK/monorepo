@@ -15,6 +15,7 @@ export const IDENTITY_EMAIL_TEMPLATE_NAMES = [
   "backup-codes-regenerated",
   "email-changed",
   "phone-verified",
+  "phone-removed",
   "social-account-linked",
   "social-account-unlinked",
   "new-device-login",

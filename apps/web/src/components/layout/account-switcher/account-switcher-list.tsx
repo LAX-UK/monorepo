@@ -11,7 +11,7 @@ import {
 } from "@/lib/navigation/account-switcher-model";
 import { cn } from "@auction/ui";
 import { Button, TextInput } from "@auction/ui/lax";
-import { Check, Loader2, Mail, Plus, Search } from "lucide-react";
+import { Check, Loader2, Mail, Plus, Search, Users } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { useAccountNeedsYou } from "./account-needs-you";
@@ -183,6 +183,14 @@ export function AccountSwitcherList({
           </span>
         </Link>
       ) : null}
+      <Link
+        href={switcher.accountsHref}
+        onClick={onNavigate}
+        className={cn(SWITCHER_ROW, rowHeight)}
+      >
+        <Users aria-hidden strokeWidth={1.75} />
+        All accounts
+      </Link>
       <Link
         href={switcher.registerHref}
         onClick={onNavigate}

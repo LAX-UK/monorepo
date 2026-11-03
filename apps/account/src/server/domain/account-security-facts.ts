@@ -15,6 +15,11 @@ export type AccountSecurityFacts = {
   hasEmail: boolean;
   emailVerified: boolean;
   twoStep: TwoStepState;
+  /**
+   * Whether the account has a password. Null whenever the issuer did not say, which is treated
+   * as "has one": asking for a current password is the safe way to be wrong.
+   */
+  hasPassword: boolean | null;
   /** Unused backup codes; null whenever the issuer did not say, which is not the same as none. */
   backupCodesRemaining: number | null;
   /** Devices signed in besides this one; null whenever the issuer did not say. */
@@ -42,6 +47,7 @@ export function readAccountSecurityFacts(
     hasEmail: overview.email !== null,
     emailVerified: overview.email !== null && overview.emailVerified,
     twoStep,
+    hasPassword: live?.hasPassword ?? null,
     backupCodesRemaining: live?.twoFactorEnabled ? live.backupCodesRemaining : null,
     otherSessionCount: sessions ? sessions.filter((session) => !session.isCurrent).length : null,
   };

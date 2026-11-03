@@ -25,7 +25,8 @@ export type PurchaseInvoiceFacts = {
  * - `overdue`: raised and unpaid past the due date;
  * - `processing`: paid by the buyer and being confirmed (card authorised or held for review);
  * - `paid`, `refunded`: settled;
- * - `cancelled`: the invoice was withdrawn (for example the lot was re-awarded).
+ * - `cancelled`: reserved for a withdrawn invoice. A cancelled payment row (an abandoned checkout,
+ *   the buyer's own cancel, a failed transfer) is not one: the lot is still owed, see below.
  */
 export type PurchaseInvoiceStatus =
   | "not_invoiced"
@@ -43,14 +44,13 @@ export type PurchaseInvoiceState = {
 };
 
 const SETTLED: Record<
-  Exclude<NonNullable<PurchaseInvoiceFacts["payment"]>["status"], "pending">,
+  Exclude<NonNullable<PurchaseInvoiceFacts["payment"]>["status"], "pending" | "cancelled">,
   PurchaseInvoiceStatus
 > = {
   authorized: "processing",
   requires_manual_review: "processing",
   captured: "paid",
   refunded: "refunded",
-  cancelled: "cancelled",
 };
 
 /** The due date of an invoice raised at `raisedAt`: the payment terms, the same for every sale. */
@@ -66,8 +66,11 @@ export function purchaseInvoiceState(facts: PurchaseInvoiceFacts, now: Date): Pu
   const { payment } = facts;
   if (!payment) return { status: "not_invoiced", dueAt: null };
   const dueAt = invoiceDueAt(payment.raisedAt);
-  if (payment.status !== "pending") return { status: SETTLED[payment.status], dueAt };
-  return { status: now.getTime() > dueAt.getTime() ? "overdue" : "due", dueAt };
+  // A cancelled row ended an attempt, not the purchase: it stays owed from the original date.
+  if (payment.status === "pending" || payment.status === "cancelled") {
+    return { status: now.getTime() > dueAt.getTime() ? "overdue" : "due", dueAt };
+  }
+  return { status: SETTLED[payment.status], dueAt };
 }
 
 /** Whether the invoice is still owed by the buyer (it can be paid now). */

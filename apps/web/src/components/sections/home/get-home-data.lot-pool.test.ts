@@ -1,6 +1,5 @@
 import {
   allocateHomePageLots,
-  buildHomeCatalogLotPool,
   homePinnedSaleIds,
 } from "@/components/sections/home/get-home-data.lot-pool";
 import type { Lot } from "@auction/types";
@@ -36,175 +35,97 @@ const baseLot = (overrides: Partial<Lot> = {}): Lot => ({
   ...overrides,
 });
 
-describe("buildHomeCatalogLotPool", () => {
-  it("merges active then scheduled and dedupes by id", () => {
-    const active = [baseLot({ id: "a" }), baseLot({ id: "b" })];
-    const scheduled = [
-      baseLot({ id: "b", status: "scheduled" }),
-      baseLot({ id: "c", status: "scheduled" }),
-    ];
-    expect(buildHomeCatalogLotPool(active, scheduled).map((l) => l.id)).toEqual(["a", "b", "c"]);
-  });
-
-  it("excludes draft lots even when callers pass them", () => {
-    const active = [baseLot({ id: "draft-1", status: "draft" })];
-    const scheduled = [
-      baseLot({ id: "sched-1", status: "scheduled" }),
-      baseLot({ id: "draft-2", status: "draft" }),
-    ];
-    expect(buildHomeCatalogLotPool(active, scheduled).map((l) => l.id)).toEqual(["sched-1"]);
-  });
-});
+const lots = (n: number, prefix = "lot") =>
+  Array.from({ length: n }, (_, i) => baseLot({ id: `${prefix}-${i}` }));
+const ids = (xs: Lot[]) => xs.map((l) => l.id);
+const sizes = { railLimit: 8, railMin: 4, railRow: 4, resultsLimit: 4, resultsMin: 2 };
 
 describe("allocateHomePageLots", () => {
-  const lots = (n: number, prefix = "lot") =>
-    Array.from({ length: n }, (_, i) => baseLot({ id: `${prefix}-${i}` }));
-  const ids = (xs: Lot[]) => xs.map((l) => l.id);
-
-  it("never repeats a rail lot in More lots", () => {
-    const pool = lots(8);
-    const { rail, more } = allocateHomePageLots({
-      railLots: pool.slice(0, 3),
-      pool,
-      moreLimit: 8,
-    });
-    expect(ids(rail)).toEqual(["lot-0", "lot-1", "lot-2"]);
-    expect(ids(more)).toEqual(["lot-3", "lot-4", "lot-5", "lot-6", "lot-7"]);
-  });
-
-  it("reserves the hero's lots first, so the hang, the rail and More lots never repeat them", () => {
+  it("reserves the hero's lots first, so nothing below repeats them", () => {
     const pool = lots(12);
-    const hero = pool[0] as Lot;
-    const { hang, rail, more } = allocateHomePageLots({
-      heroLots: [hero],
+    const { hang, rail } = allocateHomePageLots({
+      ...sizes,
+      heroLots: [pool[0] as Lot],
       hangLots: pool.slice(0, 4),
-      hangLimit: 4,
-      railLots: pool.slice(0, 2),
-      pool,
-      moreLimit: 8,
+      hangLimit: 12,
+      railLots: pool,
     });
     expect(ids(hang)).toEqual(["lot-1", "lot-2", "lot-3"]);
-    expect(ids(rail)).not.toContain("lot-0");
-    expect(ids(more)).not.toContain("lot-0");
+    expect(ids(rail)).toEqual([
+      "lot-4",
+      "lot-5",
+      "lot-6",
+      "lot-7",
+      "lot-8",
+      "lot-9",
+      "lot-10",
+      "lot-11",
+    ]);
   });
 
-  it("hides More lots when fewer than four unseen lots remain", () => {
-    const pool = lots(6);
-    expect(allocateHomePageLots({ railLots: pool.slice(0, 3), pool, moreLimit: 8 }).more).toEqual(
-      [],
-    );
-  });
-
-  it("shows exactly four unseen lots", () => {
-    expect(allocateHomePageLots({ railLots: [], pool: lots(4), moreLimit: 8 }).more).toHaveLength(
-      4,
-    );
-  });
-
-  it("respects the limit", () => {
-    expect(allocateHomePageLots({ railLots: [], pool: lots(12), moreLimit: 8 }).more).toHaveLength(
-      8,
-    );
-  });
-
-  it("excludes draft lots from the pool", () => {
-    const pool = buildHomeCatalogLotPool(
-      [],
-      [...lots(3), baseLot({ id: "draft-1", status: "draft" })],
-    );
-    expect(allocateHomePageLots({ railLots: [], pool, moreLimit: 8 }).more).toEqual([]);
-  });
-});
-
-describe("featured lots", () => {
-  const lots = (n: number) => Array.from({ length: n }, (_, i) => baseLot({ id: `lot-${i}` }));
-  const ids = (xs: Lot[]) => xs.map((l) => l.id);
-
-  it("leads the rail with featured lots in staff order, then the current order", () => {
-    const pool = lots(8);
-    const { rail, more } = allocateHomePageLots({
-      railLots: pool.slice(0, 3),
-      pool,
-      moreLimit: 8,
-      featuredLotIds: ["lot-6", "lot-2"],
-    });
-    expect(ids(rail)).toEqual(["lot-6", "lot-2", "lot-0"]);
-    expect(ids(more)).toEqual(["lot-1", "lot-3", "lot-4", "lot-5", "lot-7"]);
-  });
-
-  it("skips featured ids that are not in the pool", () => {
-    const pool = lots(5);
-    const { rail } = allocateHomePageLots({
-      railLots: pool.slice(0, 2),
-      pool,
-      moreLimit: 8,
-      featuredLotIds: ["gone", "lot-4"],
-    });
-    expect(ids(rail)).toEqual(["lot-4", "lot-0"]);
-  });
-
-  it("keeps the current order without featured lots", () => {
-    const pool = lots(5);
-    expect(
-      ids(allocateHomePageLots({ railLots: pool.slice(0, 2), pool, moreLimit: 8 }).rail),
-    ).toEqual(["lot-0", "lot-1"]);
-  });
-});
-
-describe("the hang slot", () => {
-  const lots = (n: number) => Array.from({ length: n }, (_, i) => baseLot({ id: `lot-${i}` }));
-  const ids = (xs: Lot[]) => xs.map((l) => l.id);
-
-  it("claims its lots before the rail and More lots, so neither repeats them", () => {
-    const pool = lots(12);
-    const { hang, rail, more } = allocateHomePageLots({
-      railLots: pool.slice(0, 3),
-      pool,
-      moreLimit: 8,
-      hangLots: pool.slice(0, 5),
+  it("gives the hang its lots before the rail, and keeps the hanging order", () => {
+    const pool = lots(10);
+    const { hang, rail } = allocateHomePageLots({
+      ...sizes,
+      hangLots: [pool[5] as Lot, pool[1] as Lot, pool[2] as Lot],
       hangLimit: 12,
+      railLots: pool,
     });
-    expect(ids(hang)).toEqual(["lot-0", "lot-1", "lot-2", "lot-3", "lot-4"]);
-    expect(rail).toEqual([]);
-    expect(ids(more)).toEqual(["lot-5", "lot-6", "lot-7", "lot-8", "lot-9", "lot-10", "lot-11"]);
+    expect(ids(hang)).toEqual(["lot-5", "lot-1", "lot-2"]);
+    expect(ids(rail)).not.toContain("lot-5");
+    expect(ids(rail)).toHaveLength(4);
   });
 
-  it("takes lots outside the pool too, and keeps the hanging order", () => {
+  it("leaves the hang empty, claiming nothing, with fewer than two lots to hang", () => {
     const pool = lots(8);
-    const outside = [baseLot({ id: "ended-1" }), baseLot({ id: "ended-2" })];
-    const { hang } = allocateHomePageLots({
-      railLots: [],
-      pool,
-      moreLimit: 8,
-      hangLots: [...outside, pool[3] as Lot],
-      hangLimit: 12,
-    });
-    expect(ids(hang)).toEqual(["ended-1", "ended-2", "lot-3"]);
-  });
-
-  it("stays empty, and claims nothing, with fewer than two lots to hang", () => {
-    const pool = lots(8);
-    const { hang, more } = allocateHomePageLots({
-      railLots: [],
-      pool,
-      moreLimit: 8,
+    const { hang, rail } = allocateHomePageLots({
+      ...sizes,
       hangLots: [pool[0] as Lot],
       hangLimit: 12,
+      railLots: pool,
     });
     expect(hang).toEqual([]);
-    expect(ids(more)).toContain("lot-0");
+    expect(ids(rail)).toContain("lot-0");
   });
 
-  it("respects the limit", () => {
+  it("hides the rail, and releases its lots, when fewer than the minimum remain", () => {
+    const pool = lots(4);
+    const { rail, results } = allocateHomePageLots({
+      ...sizes,
+      hangLots: pool.slice(0, 2),
+      hangLimit: 12,
+      railLots: pool,
+      resultsLots: pool,
+    });
+    expect(rail).toEqual([]);
+    expect(ids(results)).toEqual(["lot-2", "lot-3"]);
+  });
+
+  it("gives the results band lots the rail did not use, up to its limit", () => {
+    const rail = lots(8, "rail");
+    const sold = lots(10, "sold");
+    const placed = allocateHomePageLots({
+      ...sizes,
+      railLots: rail,
+      resultsLots: [...rail, ...sold],
+    });
+    expect(ids(placed.results)).toEqual(["sold-0", "sold-1", "sold-2", "sold-3"]);
+  });
+
+  it("rounds the rail down to whole rows and gives the rest to the results band", () => {
+    const pool = lots(6);
+    const { rail, results } = allocateHomePageLots({ ...sizes, railLots: pool, resultsLots: pool });
+    expect(ids(rail)).toEqual(["lot-0", "lot-1", "lot-2", "lot-3"]);
+    expect(ids(results)).toEqual(["lot-4", "lot-5"]);
+  });
+
+  it("respects the hang limit", () => {
     const pool = lots(20);
-    expect(
-      allocateHomePageLots({ railLots: [], pool, moreLimit: 8, hangLots: pool, hangLimit: 12 })
-        .hang,
-    ).toHaveLength(12);
+    expect(allocateHomePageLots({ ...sizes, hangLots: pool, hangLimit: 12 }).hang).toHaveLength(12);
   });
 
-  it("is absent when the page has no hang", () => {
-    expect(allocateHomePageLots({ railLots: [], pool: lots(5), moreLimit: 8 }).hang).toEqual([]);
+  it("is empty when the page has no candidates", () => {
+    expect(allocateHomePageLots(sizes)).toEqual({ hang: [], rail: [], results: [] });
   });
 });
 

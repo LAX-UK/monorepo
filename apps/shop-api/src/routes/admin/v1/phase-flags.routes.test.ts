@@ -25,6 +25,7 @@ describe("admin phase feature flags", () => {
       { method: "POST", url: "/admin/v1/fulfilment/possession" },
       { method: "POST", url: "/admin/v1/cancellations" },
       { method: "POST", url: "/admin/v1/refunds" },
+      { method: "POST", url: "/admin/v1/refunds/retry" },
       { method: "POST", url: "/admin/v1/payouts/mark-paid" },
     ];
     for (const { method, url } of routes) {

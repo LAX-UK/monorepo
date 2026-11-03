@@ -35,6 +35,10 @@ import { createFinanceRouteServices } from "./container/create-finance-route-ser
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
 import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
+import {
+  createEnquiryDraftTokens,
+  createMarketingEnquiryServices,
+} from "./container/create-marketing-enquiry-services.js";
 import { createOrganisationAccessServices } from "./container/create-organisation-access-services.js";
 import { createOrganisationBuyingServices } from "./container/create-organisation-buying-services.js";
 import { createOrganisationHomeServices } from "./container/create-organisation-home-services.js";
@@ -179,6 +183,7 @@ export function createContainer(env: Env): Container {
     biddingSaleroom,
     complianceMedia,
   });
+  const enquiryDrafts = createEnquiryDraftTokens(env);
   const compliance = createComplianceRouteServices({
     db,
     transactionRunner: platform.transactionRunner,
@@ -195,6 +200,7 @@ export function createContainer(env: Env): Container {
     lotDocumentService: complianceMedia.lotDocumentService,
     saleDocumentService: complianceMedia.saleDocumentService,
     storageDriver: env.STORAGE_DRIVER,
+    enquiryDrafts,
   });
   const finance = createFinanceRouteServices({
     redis: infra.redis,
@@ -379,6 +385,8 @@ export function createContainer(env: Env): Container {
     env,
     lots: repos.lotRepo,
     sales: repos.saleRepo,
+    transactionRunner: platform.transactionRunner,
+    events: platform.domainEventSink,
     notificationDispatcher: platform.notificationDispatcher,
     notificationFactory: platform.notificationFactory,
     payments: {
@@ -386,6 +394,15 @@ export function createContainer(env: Env): Container {
       compliance: payments.settlementCompliancePolicy,
       groupCheckout: payments.paymentGroupCheckout,
     },
+  });
+  const marketingEnquiries = createMarketingEnquiryServices({
+    db,
+    env,
+    email: infra.emailService,
+    memberships: repos.legalEntityRepository,
+    transactionRunner: platform.transactionRunner,
+    events: platform.domainEventSink,
+    drafts: enquiryDrafts,
   });
   const organisationNames = {
     nameOf: async (id: string) =>
@@ -523,6 +540,11 @@ export function createContainer(env: Env): Container {
     watchlistService: userMisc.watchlistService,
     savedSearchService: userMisc.savedSearchService,
     newsletterSignupService: userMisc.newsletterSignupService,
+    visitorSaleAlertService: userMisc.visitorSaleAlertService,
+    marketingEnquiryService: marketingEnquiries.intake,
+    enquiryDraftTokens: marketingEnquiries.drafts,
+    enquirySubmission: marketingEnquiries.submission,
+    enquirerOrganisations: marketingEnquiries.organisations,
     webhookEventRepository: repos.webhookEventRepository,
     artistWatchlistService: userMisc.artistWatchlistService,
     notificationService: platform.notificationService,
@@ -709,6 +731,8 @@ export function createContainer(env: Env): Container {
       atg,
       buyerAgentAuthorisations,
       deliveryQuotes: organisationBuying.staffDeliveryQuotes,
+      marketingEnquiries: marketingEnquiries.desk,
+      enquiryRouting: marketingEnquiries.routing,
       stepUp: new StaffStepUpService(identityIssuer),
       idempotencyStore: new RedisIdempotencyStore(infra.redis),
     },
@@ -784,7 +808,9 @@ export type {
   ContainerLotRoutesSlice,
   ContainerLotSaleSlice,
   ContainerMarketingRoutesSlice,
+  ContainerMarketingEnquiryRoutesSlice,
   ContainerNewsletterRoutesSlice,
+  ContainerSaleAlertRoutesSlice,
   ContainerOnsiteEventRoutesSlice,
   ContainerOnsiteEventSlice,
   ContainerOrganizationOnboardingRoutesSlice,

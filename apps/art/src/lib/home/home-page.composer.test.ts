@@ -22,7 +22,10 @@ describe("composeArtHomePage", () => {
     expect(services.favorites.savedArtworkSlugs).not.toHaveBeenCalled();
     expect(services.favorites.followedArtistSlugs).not.toHaveBeenCalled();
     expect(vm.featuredArtworks[0]).toMatchObject({ slug: "warm-basket", saved: false });
-    expect(vm.featuredArtists[0]).toMatchObject({ href: "/artists/flora-powers" });
+    expect(vm.featuredArtists).toMatchObject({
+      layout: "feature",
+      solo: { card: { href: "/artists/flora-powers" } },
+    });
     expect(vm.favoriteAuth).toEqual({ signedIn: false, loginHref: "/login?returnTo=%2F" });
     expect(vm.sectionErrors).toEqual([]);
   });
@@ -45,7 +48,9 @@ describe("composeArtHomePage", () => {
 
     const vm = await composeArtHomePage(services);
 
-    expect(vm.featuredArtists[0]?.following).toBe(true);
+    expect(vm.featuredArtists).toMatchObject({
+      solo: { card: { following: true } },
+    });
     expect(services.favorites.followedArtistSlugs).toHaveBeenCalledTimes(1);
   });
 
@@ -73,7 +78,7 @@ describe("composeArtHomePage", () => {
     expect(services.catalogue.listArtworks).toHaveBeenLastCalledWith({ limit: 8 });
     expect(services.catalogue.listArtists).toHaveBeenLastCalledWith({ limit: 6 });
     expect(vm.featuredArtworks).toHaveLength(1);
-    expect(vm.featuredArtists).toHaveLength(1);
+    expect(vm.featuredArtists).toMatchObject({ layout: "feature" });
   });
 });
 
@@ -116,6 +121,29 @@ describe("composeArtHomePage sections", () => {
 
     expect(vm.sections).toEqual(["guide", "closing-cta"]);
     expect(vm.guidePromo.imageUrl).toBeNull();
+  });
+
+  it("reads the detail of a single featured artist, and keeps the feature when that read fails", async () => {
+    const services = fakeArtServices();
+    services.catalogue.listArtists.mockResolvedValue({ items: [artistSummary()] });
+    services.catalogue.getArtist.mockRejectedValue(new Error("down"));
+
+    const vm = await composeArtHomePage(services);
+
+    expect(services.catalogue.getArtist).toHaveBeenCalledWith("flora-powers");
+    expect(vm.featuredArtists).toMatchObject({ layout: "feature", solo: { shortBio: null } });
+  });
+
+  it("does not read artist details for a pair or a rail", async () => {
+    const services = fakeArtServices();
+    services.catalogue.listArtists.mockResolvedValue({
+      items: ["a", "b"].map((slug) => artistSummary({ slug })),
+    });
+
+    const vm = await composeArtHomePage(services);
+
+    expect(vm.featuredArtists).toMatchObject({ layout: "pair" });
+    expect(services.catalogue.getArtist).not.toHaveBeenCalled();
   });
 
   it("hides a rail with fewer than three items rather than leaving its row mostly empty", async () => {

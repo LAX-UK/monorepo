@@ -1,12 +1,14 @@
 import { parseDomainEventPayload } from "@auction/types";
 import {
   CRM_FIELD,
+  CRM_LEAD_SOURCE_BID_ENQUIRY,
   CRM_LEAD_SOURCE_PLATFORM,
   lotWonDealKey,
   shopOrderDealKey,
 } from "./crm-field-constants.js";
 import type { CrmFieldValue } from "./crm-gateway.js";
 import { splitDisplayName } from "./crm-name-fields.js";
+import type { CrmEnquiryRecord } from "./crm-readers.js";
 
 export type DomainEventRowForCrm = {
   id: number;
@@ -65,6 +67,8 @@ export type CrmMapperContext = {
 /** Values resolved outside the catalog payload (e.g. lot id for refunds). */
 export type CrmMapperResolved = {
   paymentRefundLotId?: string;
+  /** The enquiry a `marketing_enquiry.received` event refers to; null when it no longer exists. */
+  enquiry?: CrmEnquiryRecord | null;
 };
 
 function requireDealConfig(
@@ -89,6 +93,33 @@ const GUEST_LEAD_STATUS_LABEL = {
   ordered: "ordered",
   enquired: "enquired",
 } as const;
+
+const ENQUIRY_INTENT_LABEL: Readonly<Record<string, string>> = {
+  private_sale_sell: "Sell privately",
+  private_sale_buy: "Buy privately",
+};
+const ENQUIRY_INTENT_GENERAL = "General";
+
+function mapEnquiryReceived(
+  enquiry: CrmEnquiryRecord | null | undefined,
+  attribution: Record<string, CrmFieldValue> | null | undefined,
+): CrmMappedIntent {
+  if (!enquiry) return { kind: "skip", reason: "enquiry_not_found" };
+  // A signed-in sender keeps their account's lead; a guest gets a lead keyed by the enquiry.
+  const subjectId = enquiry.userId ?? `enquiry:${enquiry.id}`;
+  const fields = withAttribution(
+    personBaseFields(enquiry.email, enquiry.name, "bid", "enquiry"),
+    attribution,
+  );
+  fields[CRM_FIELD.subjectExternalId] = subjectId;
+  fields[CRM_FIELD.leadSourceDetailed] = CRM_LEAD_SOURCE_BID_ENQUIRY;
+  fields[CRM_FIELD.enquiryIntent] = ENQUIRY_INTENT_LABEL[enquiry.intent] ?? ENQUIRY_INTENT_GENERAL;
+  fields[CRM_FIELD.enquiryReference] = enquiry.reference;
+  if (enquiry.departmentSlug) fields[CRM_FIELD.enquiryDepartment] = enquiry.departmentSlug;
+  if (enquiry.phone) fields.Phone = enquiry.phone;
+  fields[CRM_FIELD.emailOptOut] = !enquiry.marketingOptIn;
+  return { kind: "person_upsert", subjectId, email: enquiry.email, fields };
+}
 
 function leadSourceDetailed(source: string, channel: "bid" | "shop" | "identity"): string {
   return `${channel}:${source}`.slice(0, 120);
@@ -320,6 +351,8 @@ export function mapDomainEventToCrmIntent(
       fields[CRM_FIELD.emailOptOut] = !p.marketingConsent;
       return { kind: "person_upsert", subjectId: p.leadSubjectId, email: p.email, fields };
     }
+    case "marketing_enquiry.received":
+      return mapEnquiryReceived(resolved.enquiry, ctx.attribution);
     case "shop.guest_lead.claimed": {
       if (payload === null) return { kind: "skip", reason: "invalid_payload" };
       const p = payload as { leadSubjectId: string; subjectId: string };

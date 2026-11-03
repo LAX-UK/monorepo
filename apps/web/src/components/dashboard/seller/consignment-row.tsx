@@ -1,8 +1,10 @@
 "use client";
 
 import { MediaImage } from "@/components/ui/media-image";
+import { RowStep } from "@/components/workspace/row-step";
 import type { ConsignmentRecord } from "@/lib/seller/consignment-records";
 import { CONSIGNMENT_STATUS } from "@/lib/seller/consignment-status";
+import type { ConsignmentStep } from "@/lib/seller/consignment-step";
 import { notify } from "@/lib/ui/notify";
 import {
   InlineActionMenu,
@@ -10,7 +12,7 @@ import {
   RecordRow,
   RecordRowMedia,
 } from "@auction/ui";
-import { Button, ButtonLink, StatusBadge } from "@auction/ui/lax";
+import { StatusBadge } from "@auction/ui/lax";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -23,14 +25,6 @@ async function copyReference(reference: string) {
   }
 }
 
-/** The step a row offers, or why it is held. */
-export type ConsignmentRowStep = {
-  label: string;
-  href: string;
-  /** Set while the account's state holds the step; the button stays, disabled, with the reason. */
-  blockedReason: string | null;
-};
-
 /**
  * One consignment as a row: the work, its reference and who sent it, the date that matters now
  * and its estimate (or hammer), where it stands, and at most one step. The row opens the
@@ -41,7 +35,7 @@ export function ConsignmentRow({
   step,
 }: {
   record: ConsignmentRecord;
-  step: ConsignmentRowStep | null;
+  step: ConsignmentStep | null;
 }) {
   const router = useRouter();
   const status = CONSIGNMENT_STATUS[record.status];
@@ -101,30 +95,21 @@ export function ConsignmentRow({
       ]}
       aligned
       status={
-        <StatusBadge tone={status.tone} shape={status.shape}>
+        <StatusBadge tone={status.tone} shape={status.shape} live={status.live ?? false}>
           {status.label}
         </StatusBadge>
       }
       action={
         step ? (
-          step.blockedReason ? (
-            <Button size="sm" disabledReason={step.blockedReason}>
-              {step.label}
-            </Button>
-          ) : (
-            <ButtonLink
-              href={step.href}
-              Link={Link}
-              size="sm"
-              // Row steps are secondary: a list never holds the page's one primary action.
-              variant="secondary"
-              aria-label={`${step.label}, ${record.title}`}
-            >
-              {step.label}
-            </ButtonLink>
-          )
+          <RowStep
+            label={step.label}
+            accessibleName={`${step.label}, ${record.title}`}
+            href={step.href}
+            blockedReason={step.blockedReason}
+          />
         ) : null
       }
+      needsYou={step?.needsYou ?? false}
       menu={<InlineActionMenu label={`More for ${record.title}`} items={menu} />}
     />
   );

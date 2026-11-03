@@ -667,16 +667,23 @@ export function findSubjectExportCategory(
   return SUBJECT_EXPORT_CATEGORIES[product].find((entry) => entry.id === categoryId);
 }
 
+/**
+ * The company that answers for a product's data, by id. The registered names live in
+ * @auction/branding (`LEGAL_ENTITIES`), which renderers use to print them; this package stays
+ * free of company names so the Identity closure needs no branding dependency.
+ */
+export type SubjectExportControllerId = "london-auction-xchange" | "london-art-exchange";
+
 /** Who answers for each product's data, and how the product is named to the person (D13). */
 export const SUBJECT_EXPORT_PRODUCT_INFO: {
-  readonly [P in SubjectExportProduct]: { readonly name: string; readonly controller: string };
+  readonly [P in SubjectExportProduct]: {
+    readonly name: string;
+    readonly controllers: readonly SubjectExportControllerId[];
+  };
 } = {
-  account: {
-    name: "LAX Account",
-    controller: "London Auction Xchange LTD and London Art Exchange Ltd",
-  },
-  bid: { name: "LAX Bid", controller: "London Auction Xchange LTD" },
-  shop: { name: "LAX Shop and lax.art", controller: "London Art Exchange Ltd" },
+  account: { name: "LAX Account", controllers: ["london-auction-xchange", "london-art-exchange"] },
+  bid: { name: "LAX Bid", controllers: ["london-auction-xchange"] },
+  shop: { name: "LAX Shop and lax.art", controllers: ["london-art-exchange"] },
 };
 
 /** The versioned schema name written into every file, e.g. `lax.subject-export/bid/bids@1`. */

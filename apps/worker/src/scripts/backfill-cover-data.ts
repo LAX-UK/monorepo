@@ -4,7 +4,17 @@ import { createDb, sale } from "@auction/db";
  *   1. width, height and blur preview for lot photographs, sale covers and cover slot pictures
  *      that have no `media_asset` row yet;
  *   2. optionally, named cover slots for sales that still hold their covers in the old array;
- *   3. the measured colours and text scrim for every cover slot that has none.
+ *   3. the measured colours and text scrim for every cover slot that has none;
+ *   4. width, height and blur preview for lot photographs and sale covers held as full https
+ *      addresses (seeded or imported, never uploaded), stored under the address itself.
+ *
+ * Every picture is held to the floors: a lot photograph needs a long side of 800 px to hang on
+ * the plate, and a cover slot needs its slot floor (default 2400 px wide, wide 2880 × 1080,
+ * phone 1200 × 1200). A picture below its floor is never stretched or written as a slot; it is
+ * listed in the report instead. A slot staff have already set is never changed, and a second
+ * run finds nothing left to do.
+ *
+ * The dry run reads the pictures (a read-only fetch and measure) and writes nothing.
  *
  * Dry-run (default):
  *   pnpm --filter @auction/worker backfill:cover-data
@@ -22,12 +32,16 @@ import { createDb, sale } from "@auction/db";
 import { coverAnalysisHash } from "@auction/domain";
 import { resolveCoverSlotSources } from "@auction/domain";
 import { SALE_COVER_SLOT_NAMES, type SaleCoverSlot, type SaleCoverSlotName } from "@auction/types";
-import { eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import pino from "pino";
 import { loadWorkerEnv } from "../env.js";
 import { analyseSaleCoversJob } from "../jobs/analyse-sale-covers.js";
 import { processImageJob } from "../jobs/process-image.js";
 import { listCatalogueImageKeys, normalizeCatalogueKey } from "../lib/catalogue-image-keys.js";
+import { type PictureReport, summarisePictures } from "../lib/cover-backfill-report.js";
+import { coverSlotVerdict, lotPlateVerdict } from "../lib/cover-picture-verdict.js";
+import { fetchExternalPicture, meanLuminance } from "../lib/external-picture.js";
+import { loadMediaAssetSizes } from "../lib/media-asset-sizes.js";
 import { SharpCoverImageAnalyser } from "../lib/sharp-cover-image-analyser.js";
 import { SharpImageProcessor } from "../lib/sharp-image-processor.js";
 import { createUploadStorage } from "../lib/upload-storage.js";
@@ -73,6 +87,64 @@ async function legacyCoverSlots(db: Db, limit: number | undefined) {
   return out;
 }
 
+/** Full https addresses the lots lead with, and the ones the sales use as covers, with no stored size. */
+async function externalPictures(db: Db, limit: number | undefined) {
+  const cap = limit ?? 100_000;
+  const lots = await db.execute<{ url: string }>(sql`
+    select distinct refs.url as url
+    from (select l.images[1] as url from lot l where cardinality(l.images) > 0) refs
+    where refs.url like 'https://%'
+      and not exists (select 1 from media_asset ma where ma.key = refs.url)
+    order by refs.url limit ${cap}`);
+  const covers = await db.execute<{ url: string }>(sql`
+    select distinct refs.url as url
+    from (select unnest(s.cover_images) as url from sale s where s.deleted_at is null) refs
+    where refs.url like 'https://%'
+      and not exists (select 1 from media_asset ma where ma.key = refs.url)
+    order by refs.url limit ${cap}`);
+  return {
+    lots: lots.rows.map((row) => row.url),
+    covers: covers.rows.map((row) => row.url),
+  };
+}
+
+type Measured = { url: string; report: PictureReport; bytes?: Buffer; blurDataURL?: string };
+
+async function measureExternal(
+  role: PictureReport["role"],
+  url: string,
+  processor: SharpImageProcessor,
+): Promise<Measured> {
+  try {
+    const bytes = await fetchExternalPicture(url);
+    const { width, height } = await processor.analyze(bytes);
+    const luminance = await meanLuminance(bytes);
+    const verdict =
+      role === "lot-primary"
+        ? lotPlateVerdict({ width, height })
+        : coverSlotVerdict("default", { width, height });
+    return {
+      url,
+      bytes,
+      blurDataURL: await processor.makeLqip(bytes),
+      report: { role, source: url, width, height, luminance, verdict },
+    };
+  } catch (error) {
+    return {
+      url,
+      report: {
+        role,
+        source: url,
+        verdict: {
+          ok: false,
+          reason: "unreadable",
+          error: error instanceof Error ? error.message : String(error),
+        },
+      },
+    };
+  }
+}
+
 async function main() {
   const { apply, materialise, limit } = parseArgs(process.argv.slice(2));
   const env = loadWorkerEnv();
@@ -96,12 +168,43 @@ async function main() {
   const jobRepo = new DrizzleCoverAnalysisJobRepository(db);
   const pending = await jobRepo.listPending(limit ?? 1000);
 
+  const legacySizes = await loadMediaAssetSizes(
+    db,
+    legacy.map((item) => item.key),
+  );
+  const legacyPlan = legacy.map((item) => {
+    const size = legacySizes.get(item.key);
+    return {
+      sale: item.saleId,
+      slot: item.name,
+      key: item.key,
+      outcome: !size
+        ? "waits for size"
+        : coverSlotVerdict(item.name, size).ok
+          ? "would become a slot"
+          : "below floor, skipped",
+    };
+  });
+
+  // 0. Pictures held as full https addresses: read and measured now, stored only on --apply.
+  const processor = new SharpImageProcessor();
+  const external = await externalPictures(db, limit);
+  const measured: Measured[] = [];
+  for (const url of external.lots)
+    measured.push(await measureExternal("lot-primary", url, processor));
+  for (const url of external.covers) {
+    measured.push(await measureExternal("sale-cover", url, processor));
+  }
+  const externalSummary = summarisePictures(measured.map((entry) => entry.report));
+
   console.log(
     JSON.stringify(
       {
         mode: apply ? "apply" : "dry-run",
+        externalPictures: { ...externalSummary, pictures: measured.map((entry) => entry.report) },
         picturesWithoutSize: keys.length,
         legacyCoversToMaterialise: legacy.length,
+        legacyPlan,
         coverSlotsToAnalyse: pending.length,
         sample: keys.slice(0, 5),
       },
@@ -115,7 +218,18 @@ async function main() {
   }
 
   const mediaAssetProcessorRepo = new DrizzleMediaAssetProcessorRepository(db);
-  const processor = new SharpImageProcessor();
+  let externalStored = 0;
+  for (const entry of measured) {
+    const { report, blurDataURL } = entry;
+    if (!blurDataURL || report.width == null || report.height == null) continue;
+    await mediaAssetProcessorRepo.upsertProcessed({
+      key: entry.url,
+      width: report.width,
+      height: report.height,
+      blurDataURL,
+    });
+    externalStored += 1;
+  }
   let sized = 0;
   let sizeFailed = 0;
   for (const key of keys) {
@@ -130,6 +244,7 @@ async function main() {
 
   // 2. Named slots from the old array. Needs a connection that may write sales.
   let materialised = 0;
+  const belowFloor: PictureReport[] = [];
   if (materialise && legacy.length > 0) {
     const writer = createDb(env.DATABASE_URL);
     for (const item of legacy) {
@@ -138,6 +253,17 @@ async function main() {
       );
       const row = size.rows[0];
       if (!row) continue;
+      const verdict = coverSlotVerdict(item.name, { width: row.width, height: row.height });
+      if (!verdict.ok) {
+        belowFloor.push({
+          role: "sale-cover",
+          source: `${item.saleId} ${item.name}: ${item.key}`,
+          width: row.width,
+          height: row.height,
+          verdict,
+        });
+        continue;
+      }
       const draft = {
         key: item.key,
         width: row.width,
@@ -152,7 +278,9 @@ async function main() {
         .set({
           coverSlots: sql`${sale.coverSlots} || ${JSON.stringify({ [item.name]: slot })}::jsonb`,
         })
-        .where(eq(sale.id, item.saleId));
+        .where(
+          and(eq(sale.id, item.saleId), sql`not jsonb_exists(${sale.coverSlots}, ${item.name})`),
+        );
       materialised += 1;
     }
   }
@@ -169,7 +297,19 @@ async function main() {
   }
 
   console.log(
-    JSON.stringify({ sized, sizeFailed, materialised, analysed: ready, failed }, null, 2),
+    JSON.stringify(
+      {
+        sized,
+        sizeFailed,
+        externalStored,
+        materialised,
+        slotsBelowFloor: summarisePictures(belowFloor).skipped,
+        analysed: ready,
+        failed,
+      },
+      null,
+      2,
+    ),
   );
 }
 

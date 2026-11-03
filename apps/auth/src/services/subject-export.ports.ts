@@ -6,7 +6,8 @@ export type SubjectExportProgressMap = Record<SubjectExportProduct, SubjectExpor
 /** One request as Identity stores it. The object key stays inside Identity. */
 export type SubjectExportRow = {
   id: string;
-  subjectId: string;
+  /** Null once the user row has been hard-deleted; the request is kept as a record. */
+  subjectId: string | null;
   status: SubjectExportStatus;
   productProgress: SubjectExportProgressMap;
   requestedAt: Date;

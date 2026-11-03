@@ -8,8 +8,11 @@ describe("purchaseEnding", () => {
     ["pending", null, null],
     ["captured", "released", null],
     ["refunded", null, "refunded"],
-    ["cancelled", null, "cancelled"],
+    ["cancelled", null, null],
+    ["cancelled", "awaiting_payment", null],
     ["pending", "cancelled", "cancelled"],
+    ["cancelled", "cancelled", "cancelled"],
+    ["refunded", "cancelled", "refunded"],
     ["captured", "cancelled", "cancelled"],
   ] as const)("payment %s, fulfilment %s: %s", (paymentStatus, fulfilmentStatus, ending) => {
     expect(purchaseEnding({ paymentStatus, fulfilmentStatus })).toBe(ending);
@@ -24,9 +27,21 @@ describe("purchaseIsToPay", () => {
     ["authorized", false],
     ["captured", false],
     ["refunded", false],
-    ["cancelled", false],
+    ["cancelled", true],
   ])("payment %s: %s", (paymentStatus, owed) => {
     expect(purchaseIsToPay({ paymentStatus })).toBe(owed);
+  });
+
+  it("still owes after an abandoned, cancelled or failed payment row", () => {
+    expect(
+      purchaseIsToPay({ paymentStatus: "cancelled", fulfilmentStatus: "awaiting_payment" }),
+    ).toBe(true);
+  });
+
+  it("is never owed once the sale was cancelled, whatever the payment row says", () => {
+    for (const paymentStatus of ["pending", "cancelled", null] as const) {
+      expect(purchaseIsToPay({ paymentStatus, fulfilmentStatus: "cancelled" })).toBe(false);
+    }
   });
 
   it("is never owed once delivery was cancelled", () => {

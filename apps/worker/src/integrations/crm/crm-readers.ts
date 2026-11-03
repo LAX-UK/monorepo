@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { marketingAttribution, payment } from "@auction/db/schema";
+import { marketingAttribution, marketingEnquiry, payment } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import { CRM_FIELD } from "./crm-field-constants.js";
 import type { CrmFieldValue } from "./crm-gateway.js";
@@ -10,6 +10,50 @@ export interface CrmPaymentLotReader {
 
 export interface CrmAttributionReader {
   loadFirstTouchFields(userId: string): Promise<Record<string, CrmFieldValue> | null>;
+}
+
+/**
+ * The parts of an enquiry the CRM receives. The price in mind, the message and attachments are
+ * deliberately not part of it.
+ */
+export type CrmEnquiryRecord = {
+  id: string;
+  reference: string;
+  intent: string;
+  departmentSlug: string | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  marketingOptIn: boolean;
+  /** The signed-in account that sent the enquiry, when there was one. */
+  userId: string | null;
+};
+
+export interface CrmEnquiryReader {
+  findById(enquiryId: string): Promise<CrmEnquiryRecord | null>;
+}
+
+export function createDrizzleCrmEnquiryReader(db: Database): CrmEnquiryReader {
+  return {
+    async findById(enquiryId: string): Promise<CrmEnquiryRecord | null> {
+      const [row] = await db
+        .select({
+          id: marketingEnquiry.id,
+          reference: marketingEnquiry.reference,
+          intent: marketingEnquiry.intent,
+          departmentSlug: marketingEnquiry.departmentSlug,
+          name: marketingEnquiry.name,
+          email: marketingEnquiry.email,
+          phone: marketingEnquiry.phone,
+          marketingOptIn: marketingEnquiry.marketingOptIn,
+          userId: marketingEnquiry.userId,
+        })
+        .from(marketingEnquiry)
+        .where(eq(marketingEnquiry.id, enquiryId))
+        .limit(1);
+      return row ?? null;
+    },
+  };
 }
 
 export function createDrizzleCrmPaymentLotReader(db: Database): CrmPaymentLotReader {

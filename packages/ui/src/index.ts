@@ -268,8 +268,6 @@ export { TocNav } from "./components/ui/toc-nav.js";
 export type { TocNavItem, TocNavProps } from "./components/ui/toc-nav.js";
 export { SectionCta } from "./components/ui/section-cta.js";
 export type { SectionCtaProps } from "./components/ui/section-cta.js";
-export { StickyBidBar } from "./components/ui/sticky-bid-bar.js";
-export type { StickyBidBarProps } from "./components/ui/sticky-bid-bar.js";
 export { CompareDelta } from "./components/ui/compare-delta.js";
 export type { CompareDeltaProps, CompareDeltaTone } from "./components/ui/compare-delta.js";
 export { StatStrip } from "./components/ui/stat-strip.js";

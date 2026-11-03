@@ -3,11 +3,16 @@
 import { BidGate } from "@/components/bid/bid-gate";
 import { useBiddingAccountFreshness } from "@/components/bid/use-bidding-account-freshness";
 import { LotBidDialog } from "@/components/lot-page/bid/bid-dialog";
-import { BidEntryControls, type BidEntryHrefs } from "@/components/lot-page/bid/bid-entry-controls";
+import {
+  BidControlButton,
+  BidEntryControls,
+  type BidEntryHrefs,
+} from "@/components/lot-page/bid/bid-entry-controls";
 import { LotBidBlocker } from "@/components/lot-page/bid/lot-bid-blocker";
 import { useViewerAnnouncements } from "@/components/lot-page/bid/use-viewer-announcements";
 import { useAnnounce } from "@/components/lot-page/lot-announcer";
 import { useLotPageViewContext } from "@/components/lot-page/lot-page-view-context";
+import { LotPhoneBar } from "@/components/lot-page/lot-phone-bar";
 import type { BiddingAccount } from "@/lib/bid/bidding-account";
 import { defaultBidPolicies } from "@/lib/bid/policies";
 import { notLivePolicy } from "@/lib/bid/policies/not-live.policy";
@@ -24,6 +29,7 @@ import type { SessionUser } from "@/lib/data/contracts";
 import { createBidSubmitter } from "@/lib/lot-page/bid-dialog/bid-submitter";
 import type { PlacedBidResult } from "@/lib/lot-page/bid-dialog/use-bid-dialog";
 import { formatLotMoney } from "@/lib/lot-page/lot-money";
+import { buildPhoneBarSummary } from "@/lib/lot-page/phone-bar";
 import { lotPageKeys } from "@/lib/lot-page/use-lot-reads";
 import { notify } from "@/lib/ui/notify";
 import {
@@ -91,7 +97,7 @@ function hrefsOf(gate: LotBidEntryGate): BidEntryHrefs {
  * from the domain; it wires the live lot, the ports and the page's announcements to it.
  */
 export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: LotBidEntryProps) {
-  const { view, currentPrice, nextBid, viewer } = useLotPageViewContext();
+  const { view, currentPrice, nextBid, viewer, nowMs } = useLotPageViewContext();
   const { bidWriter, absenteeBidWriter } = useLotPorts();
   const { applyOwnBid } = useLotBidHistory();
   const { biddingAllowed } = useLiveConnection();
@@ -143,6 +149,19 @@ export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: L
       buyersPremium && nextBid ? bidSummary(buyersPremium, nextBid).percentLabel : null,
     format,
   });
+
+  const phoneBar = buildPhoneBarSummary(view, nowMs, viewer.position);
+  // The bar carries the one control that matters: the main button, or the quieter one for a
+  // bidder who is already leading.
+  const barControl = entry.primary
+    ? {
+        control: entry.primary.control,
+        emphasis: "bar" as const,
+        disabledReason: entry.primary.disabledReason,
+      }
+    : entry.secondary
+      ? { control: entry.secondary, emphasis: "barSecondary" as const, disabledReason: null }
+      : null;
 
   const onPlaced = useCallback(
     (result: PlacedBidResult) => {
@@ -197,7 +216,20 @@ export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: L
           POLICY_GATED.has(view.action) && decision.kind === "block" ? (
             <LotBidBlocker presentation={decision.presentation} />
           ) : (
-            <BidEntryControls entry={entry} hrefs={hrefsOf(gate)} onOpen={open} />
+            <>
+              <BidEntryControls entry={entry} hrefs={hrefsOf(gate)} onOpen={open} />
+              {phoneBar && barControl ? (
+                <LotPhoneBar summary={phoneBar} target={entryRef}>
+                  <BidControlButton
+                    control={barControl.control}
+                    emphasis={barControl.emphasis}
+                    disabledReason={barControl.disabledReason}
+                    hrefs={hrefsOf(gate)}
+                    onOpen={open}
+                  />
+                </LotPhoneBar>
+              ) : null}
+            </>
           )
         }
       </BidGate>

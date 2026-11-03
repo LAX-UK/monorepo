@@ -121,6 +121,14 @@ export async function loadSaleroomDetailPage(input: {
       }))
     : { status: "none" as const, currentLotId: null };
 
+  // The hang opens the first page of the whole catalogue, not a filtered or later page of it.
+  const hangLots =
+    query.pageNum === 1 && !query.statusFilter && query.catalogSearch === ""
+      ? (await saleroomPageDataService.loadHangLots(input.id, shell.sale, lotsPage)).map((lot) =>
+          atgDisplayLot(lot, shell.sale),
+        )
+      : [];
+
   const vm = buildSaleroomPageVM({
     shell,
     lotsPage,
@@ -136,6 +144,7 @@ export async function loadSaleroomDetailPage(input: {
     initialSaleroomStatus,
     categoryLabel,
     categoryLabels,
+    hangLots,
   });
 
   const jsonLdText = buildSaleroomPageJsonLd({

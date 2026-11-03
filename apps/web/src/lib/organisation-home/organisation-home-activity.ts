@@ -5,7 +5,7 @@ import type { ItemSubmission, Lot, PortfolioRow } from "@auction/types";
 export type HomeActivitySources = {
   submissions: readonly Pick<
     ItemSubmission,
-    "id" | "title" | "status" | "createdAt" | "reviewedAt" | "changesRequestedAt"
+    "id" | "title" | "status" | "createdAt" | "reviewedAt" | "changesRequestedAt" | "sentBy"
   >[];
   lots: readonly Pick<Lot, "id" | "title" | "status" | "winnerId" | "endTime">[];
   purchases: readonly Pick<PortfolioRow, "lot">[];
@@ -33,7 +33,14 @@ function submissionEvents(sources: HomeActivitySources): HomeActivityEvent[] {
   return sources.submissions.flatMap((s) => {
     const subject = { id: s.id, title: s.title };
     const events: HomeActivityEvent[] = [];
-    if (SENT.has(s.status)) events.push({ kind: "submission_sent", at: s.createdAt, subject });
+    if (SENT.has(s.status)) {
+      events.push({
+        kind: "submission_sent",
+        at: s.createdAt,
+        subject,
+        actor: s.sentBy?.name ?? undefined,
+      });
+    }
     if (s.status === "changes_requested" && s.changesRequestedAt) {
       events.push({ kind: "changes_requested", at: s.changesRequestedAt, subject });
     }

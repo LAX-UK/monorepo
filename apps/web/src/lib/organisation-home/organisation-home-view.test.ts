@@ -69,7 +69,9 @@ describe("organisationHomeView", () => {
     const withTask = organisationHomeView(
       {
         ...requested,
-        tasks: [{ kind: "documents", link: { page: "organisation", view: "documents" } }],
+        tasks: [
+          { kind: "documents", raisedAt: null, link: { page: "organisation", view: "documents" } },
+        ],
       },
       ctx,
     );
@@ -84,7 +86,9 @@ describe("organisationHomeView", () => {
       {
         ...model,
         state,
-        tasks: [{ kind: "payouts", link: { page: "organisation", view: "payouts" } }],
+        tasks: [
+          { kind: "payouts", raisedAt: null, link: { page: "organisation", view: "payouts" } },
+        ],
       },
       ctx,
     );

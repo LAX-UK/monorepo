@@ -108,6 +108,14 @@ const ENTITY_CAPABILITY_RULES = {
    * authorisations, agreements, unsold choices, payouts and bank changes.
    */
   "entity.activity.read": { access: "read", roles: ["owner", "admin"] },
+  /**
+   * Ask LAX to introduce works privately for the organisation. It states what the organisation
+   * wants to spend, so only the people who buy for it may send it.
+   */
+  "entity.private_sale.buy": {
+    access: "write",
+    roles: ["owner", "admin", "finance", "buyer_agent"],
+  },
   /** See the works the organisation owns, without any prices. */
   "entity.holdings.read": {
     access: "read",

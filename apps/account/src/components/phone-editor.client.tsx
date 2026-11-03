@@ -3,13 +3,19 @@
 import { Button, LoadingButton } from "@/components/account-button";
 import { FIELD } from "@/components/account-ui";
 import {
+  removePhoneAction,
   sendPhoneCodeAction,
   verifyPhoneAction,
 } from "@/server/application/account-identity-actions.server";
 import type { AccountActionResult } from "@/server/domain/account-action-result";
-import { normalisePhoneInput, phoneEntryLabel } from "@/server/domain/account-contact.vm";
+import {
+  REMOVE_PHONE_CONFIRM,
+  normalisePhoneInput,
+  phoneEntryLabel,
+} from "@/server/domain/account-contact.vm";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import { ACCOUNT_PHONE_CODE_LENGTH } from "@auction/identity-contracts/account";
+import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { useRouter } from "next/navigation";
@@ -42,6 +48,8 @@ export function PhoneEditor({ phone, phoneVerified, returnTo }: PhoneEditorProps
   const [code, setCode] = useState("");
   const [notice, setNotice] = useState<Notice | null>(null);
   const [pending, startTransition] = useTransition();
+  const [confirmingRemoval, setConfirmingRemoval] = useState(false);
+  const [removalError, setRemovalError] = useState<string | null>(null);
 
   function run(action: () => Promise<AccountActionResult>, onOk: () => void) {
     startTransition(async () => {
@@ -90,6 +98,28 @@ export function PhoneEditor({ phone, phoneVerified, returnTo }: PhoneEditorProps
         router.refresh();
       },
     );
+  }
+
+  function closeRemoval() {
+    setConfirmingRemoval(false);
+    setRemovalError(null);
+  }
+
+  function removeNumber() {
+    startTransition(async () => {
+      const result = await removePhoneAction();
+      if (result.status === "reauth_required") {
+        window.location.assign(buildReauthHref(returnTo));
+        return;
+      }
+      if (result.status === "error") {
+        setRemovalError(result.message);
+        return;
+      }
+      closeRemoval();
+      setNotice({ kind: "success", message: result.message });
+      router.refresh();
+    });
   }
 
   function cancel() {
@@ -239,20 +269,58 @@ export function PhoneEditor({ phone, phoneVerified, returnTo }: PhoneEditorProps
 
   return (
     <div className="flex flex-col gap-4">
-      <Button
-        type="button"
-        variant="outline"
-        className="min-h-11 self-start"
-        disabled={pending}
-        onClick={() => {
-          setNotice(null);
-          if (phone && !phoneVerified) sendCode(phone, { kind: "code", target: phone });
-          else setStep({ kind: "enter" });
-        }}
-      >
-        {phoneEntryLabel(phone, phoneVerified)}
-      </Button>
+      <div className="flex flex-wrap gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11"
+          disabled={pending}
+          onClick={() => {
+            setNotice(null);
+            if (phone && !phoneVerified) sendCode(phone, { kind: "code", target: phone });
+            else setStep({ kind: "enter" });
+          }}
+        >
+          {phoneEntryLabel(phone, phoneVerified)}
+        </Button>
+        {phone ? (
+          <Button
+            type="button"
+            variant="ghost"
+            className="min-h-11"
+            disabled={pending}
+            onClick={() => {
+              setNotice(null);
+              setConfirmingRemoval(true);
+            }}
+          >
+            Remove
+          </Button>
+        ) : null}
+      </div>
       {message}
+      {confirmingRemoval ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) closeRemoval();
+          }}
+          title={REMOVE_PHONE_CONFIRM.title}
+          body={
+            <>
+              <p>{REMOVE_PHONE_CONFIRM.body}</p>
+              {removalError ? (
+                <p role="alert" className="mt-3 text-error">
+                  {removalError}
+                </p>
+              ) : null}
+            </>
+          }
+          confirmLabel={REMOVE_PHONE_CONFIRM.confirmLabel}
+          loading={pending}
+          onConfirm={removeNumber}
+        />
+      ) : null}
     </div>
   );
 }

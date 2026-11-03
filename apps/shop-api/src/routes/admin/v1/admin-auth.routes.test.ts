@@ -178,6 +178,31 @@ describe("admin auth and authz", () => {
     await app.close();
   });
 
+  it("asks for a recent sign-in before a failed refund is retried", async () => {
+    vi.mocked(verifyBearerToken).mockResolvedValueOnce({
+      subject: "finance-subject",
+      payload: {
+        scope: "shop.admin",
+        acr: OIDC_ACR_SILVER,
+        auth_time: Math.floor(Date.now() / 1000) - 10_000,
+      },
+    } as never);
+    const app = createShopApiApp({ deps: adminDeps(), logger: false });
+    await app.ready();
+    const response = await app.inject({
+      method: "POST",
+      url: "/admin/v1/refunds/retry",
+      headers: {
+        authorization: `Bearer ${ADMIN_TOKEN}`,
+        "idempotency-key": "test-key-retry-1",
+      },
+      payload: { refundId: "00000000-0000-4000-8000-000000000004" },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ code: SHOP_API_ERROR_CODES.STEP_UP_REQUIRED });
+    await app.close();
+  });
+
   it("returns staff session with role, capabilities, and feature flags", async () => {
     vi.mocked(verifyBearerToken).mockResolvedValueOnce({
       subject: "admin-subject",

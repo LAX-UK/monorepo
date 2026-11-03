@@ -66,9 +66,9 @@ When a visitor lands on the site, our consent system checks whether they've made
 | Button | Result |
 |----|----|
 | **Accept all** | Analytics ON, Marketing ON. Everything starts firing immediately. Primary action on the banner. |
-| **Customise** | Opens the cookie preferences dialog to review categories or reject optional cookies. |
+| **Customise** | Opens the cookie settings dialog to review categories or reject optional cookies. |
 
-**Reject all** is not shown on the first-layer banner. Visitors who want to refuse optional cookies open **Customise** (or **Cookie preferences** in the footer) and use **Reject all** or leave toggles off and click **Save preferences**.
+**Reject all** is not shown on the first-layer banner. Visitors who want to refuse optional cookies open **Customise** (or **Cookie settings** in the footer) and use **Reject all** or leave toggles off and click **Save preferences**.
 
 ### Inside the "Customise" dialog
 
@@ -89,7 +89,7 @@ Optional category toggles default to **off** for first-time visitors. Dialog act
 
 ### Footer link
 
-The cookie banner is **not the only entry point**. There is a **"Cookie preferences"** link in the site footer that opens the same Customise dialog. Visitors can change their mind at any time.
+The cookie banner is **not the only entry point**. There is a **"Cookie settings"** link in the site footer that opens the same Customise dialog. Visitors can change their mind at any time.
 
 ### What the consent choice persists
 
@@ -271,7 +271,7 @@ Use Meta's **Events Manager → Test events** view with `META_CAPI_TEST_EVENT_CO
 1. Open in incognito → don't touch the banner. No network requests to `gtm.lax.bid` or `googletagmanager.com` should appear.
 2. Click **Customise** → **Reject all** (or leave toggles off and click **Save preferences**) → same as above.
 3. Click **Accept all** → GTM loads and a `page_view` fires immediately.
-4. Open Cookie preferences from the footer → toggle Analytics off → save → reload → GTM no longer loads.
+4. Open Cookie settings from the footer → toggle Analytics off → save → reload → GTM no longer loads.
 
 ---
 
@@ -391,7 +391,7 @@ Three things to check, in order:
 2. Is the event in Meta's **Test events** view? If yes, the data is reaching Meta; you're looking at a Meta-side delay or attribution issue.
 3. Check the `marketing_event_outbox` database table (ask a developer) — if the row shows `state='failed'` there will be an error message explaining what Meta rejected.
 
-**"Why is Marketing greyed out in the cookie preferences?"**
+**"Why is Marketing greyed out in the cookie settings?"**
 Because Analytics is off. GTM is what runs marketing tags, so without Analytics there's no runtime. Turn Analytics on first.
 
 **"Can I track events without GTM?"**

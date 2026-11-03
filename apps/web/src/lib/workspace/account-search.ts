@@ -96,7 +96,7 @@ const GROUP_LABEL: Record<AccountSearchGroup, string> = {
   consignments: "Consignments",
   purchases: "Purchases",
   bids: "Bids",
-  works: "Works",
+  works: "Collection",
   invoices: "Invoices",
   members: "People",
 };
@@ -106,7 +106,7 @@ const GROUP_NOUN: Record<AccountSearchGroup, string> = {
   consignments: "consignments",
   purchases: "purchases",
   bids: "bids",
-  works: "works",
+  works: "collection",
   invoices: "invoices",
   members: "people",
 };

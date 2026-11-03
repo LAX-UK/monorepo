@@ -165,6 +165,8 @@ export type AdminArtworkVisibilityAction = (typeof ADMIN_ARTWORK_VISIBILITY_ACTI
 export const AdminArtworkVersionResponseSchema = Type.Object({
   version: CatalogueVersionSchema,
   state: AdminArtworkStateSchema,
+  /** Publishing only: how many release alert subscribers were emailed about the edition. */
+  releaseAlertsQueued: Type.Optional(Type.Integer({ minimum: 0 })),
 });
 export type AdminArtworkVersionResponse = Static<typeof AdminArtworkVersionResponseSchema>;
 

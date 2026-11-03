@@ -30,9 +30,19 @@ const Alert = React.forwardRef<
 ));
 Alert.displayName = "Alert";
 
-const AlertTitle = React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement>>(
-  ({ className, ...props }, ref) => (
-    <h5
+export type AlertTitleLevel = "h2" | "h3" | "h4" | "h5" | "h6";
+
+type AlertTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
+  /**
+   * The heading level that fits where the alert sits: h2 directly under the page title, h3
+   * inside a section that has its own h2. Never skip a level. Defaults to h2.
+   */
+  as?: AlertTitleLevel;
+};
+
+const AlertTitle = React.forwardRef<HTMLHeadingElement, AlertTitleProps>(
+  ({ className, as: Heading = "h2", ...props }, ref) => (
+    <Heading
       ref={ref}
       className={cn("mb-1 font-medium leading-none tracking-tight", className)}
       {...props}

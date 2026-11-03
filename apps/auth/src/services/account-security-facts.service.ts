@@ -1,6 +1,6 @@
 import type { AccountSecurityFactsResponse } from "@auction/identity-contracts";
 
-export type AccountSecurityBaseFacts = { twoFactorEnabled: boolean };
+export type AccountSecurityBaseFacts = { twoFactorEnabled: boolean; hasPassword: boolean };
 
 export type AccountSecurityFactsPorts = {
   /** Null when the subject no longer exists. */

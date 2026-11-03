@@ -1,7 +1,6 @@
 "use client";
 
 import type { StepProps } from "@/components/dashboard/submission-wizard/step-props";
-import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   FormControl,
   FormField,
@@ -11,6 +10,7 @@ import {
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
+import { Checkbox } from "@auction/ui/lax";
 
 export function DetailsStep({ form }: StepProps) {
   return (

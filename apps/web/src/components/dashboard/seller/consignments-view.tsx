@@ -15,6 +15,7 @@ import {
   type ConsignmentView,
   type ConsignmentsListQuery,
   appliedConsignmentFilters,
+  consignmentSales,
   consignmentSenders,
   consignmentViewCounts,
   consignmentsInView,
@@ -139,8 +140,9 @@ export function ConsignmentsView({
     ...(id === "needs-you" && counts[id] > 0 ? { countTone: "attention" as const } : {}),
   }));
   const chips = appliedConsignmentFilters(query);
-  const filterable = senders.length > 1;
-  const clearAll = () => setQuery({ ...query, q: "", sentBy: null, stage: null });
+  const sales = consignmentSales(records);
+  const filterable = senders.length > 1 || sales.length > 1;
+  const clearAll = () => setQuery({ ...query, q: "", sentBy: null, sale: null, stage: null });
   const empty = EMPTY_VIEW[query.view];
   const access = { canSell, pausedReason };
 
@@ -206,20 +208,36 @@ export function ConsignmentsView({
           onOpenChange={setFilterOpen}
           resultCount={consignmentsInView(records, draft).length}
           onApply={() => setQuery(draft)}
-          onClear={() => setDraft({ ...draft, sentBy: null, stage: null })}
+          onClear={() => setDraft({ ...draft, sentBy: null, sale: null, stage: null })}
         >
-          <Field label="Sent by">
-            <NativeSelect
-              value={draft.sentBy ?? ANY}
-              onValueChange={(value) =>
-                setDraft({ ...draft, sentBy: value === ANY ? null : value })
-              }
-              options={[
-                { value: ANY, label: "Anyone" },
-                ...senders.map((name) => ({ value: name, label: name })),
-              ]}
-            />
-          </Field>
+          {senders.length > 1 ? (
+            <Field label="Sent by">
+              <NativeSelect
+                value={draft.sentBy ?? ANY}
+                onValueChange={(value) =>
+                  setDraft({ ...draft, sentBy: value === ANY ? null : value })
+                }
+                options={[
+                  { value: ANY, label: "Anyone" },
+                  ...senders.map((name) => ({ value: name, label: name })),
+                ]}
+              />
+            </Field>
+          ) : null}
+          {sales.length > 1 ? (
+            <Field label="Sale">
+              <NativeSelect
+                value={draft.sale ?? ANY}
+                onValueChange={(value) =>
+                  setDraft({ ...draft, sale: value === ANY ? null : value })
+                }
+                options={[
+                  { value: ANY, label: "Any sale" },
+                  ...sales.map((title) => ({ value: title, label: title })),
+                ]}
+              />
+            </Field>
+          ) : null}
         </FilterSheet>
       ) : null}
     </div>

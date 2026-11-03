@@ -1,4 +1,5 @@
 import type { IEmailService } from "@auction/email";
+import { LOTS_READ_ACCESS, adminRoutes } from "@auction/types";
 import type pino from "pino";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 
@@ -50,7 +51,7 @@ export async function processLotVoidedAntiShillingAdminNotify(options: {
     try {
       const lotTitle = (await lotNotifyReader.getLotTitle(lotId)) ?? "Lot";
 
-      const staffOps = await staffOpsRecipientReader.listRecipients();
+      const staffOps = await staffOpsRecipientReader.listRecipients(LOTS_READ_ACCESS);
       if (staffOps.length > 0) {
         for (const s of staffOps) {
           await emailService.enqueue({
@@ -60,7 +61,7 @@ export async function processLotVoidedAntiShillingAdminNotify(options: {
             vars: {
               lotTitle,
               lotId,
-              adminLotUrl: `${base}/admin/lots/${lotId}`,
+              adminLotUrl: `${base}${adminRoutes.lot(lotId)}`,
               supportContactEmail,
             },
             category: "transactional",
@@ -75,7 +76,7 @@ export async function processLotVoidedAntiShillingAdminNotify(options: {
           vars: {
             lotTitle,
             lotId,
-            adminLotUrl: `${base}/admin/lots/${lotId}`,
+            adminLotUrl: `${base}${adminRoutes.lot(lotId)}`,
             supportContactEmail,
           },
           category: "transactional",

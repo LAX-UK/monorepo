@@ -3,11 +3,18 @@ import { describe, expect, it } from "vitest";
 import {
   buildOrderTimeline,
   canRefundOrder,
+  cancelAfterPossessionDescription,
+  cancelledLineBadge,
+  failedRefunds,
   fulfilmentNextOptions,
+  lineCancellation,
+  lineCancellationRefund,
   orderLineLabel,
   presentFulfilmentStatus,
   presentOrderStatus,
   productionCandidateLines,
+  refundRowContext,
+  refundTargetOptions,
   refundableRemainingPence,
 } from "./order-detail.vm";
 
@@ -182,5 +189,130 @@ describe("buildOrderTimeline", () => {
     expect(events[0]?.detail).toBe("Tracking Royal Mail RM123");
     expect(events[1]?.detail).toBe("Damaged in transit — Torn");
     expect(events[3]?.actor).toBe("Robert Thorne");
+  });
+});
+
+describe("cancelling an item after possession", () => {
+  const cancellation = (
+    status: string,
+    overrides: Partial<AdminOrderDetail["refunds"][number]> = {},
+  ): AdminOrderDetail["refunds"][number] => ({
+    refundId: "c1",
+    orderLineId: LINE_A,
+    amountPence: 60_000,
+    status,
+    source: "cancellation",
+    createdAt: "2026-10-15T00:00:00Z",
+    ...overrides,
+  });
+  const [lineA, lineB] = order().lines as [
+    AdminOrderDetail["lines"][number],
+    AdminOrderDetail["lines"][number],
+  ];
+
+  it("states the refund the system makes, so staff never repeat it", () => {
+    expect(lineCancellation(order(), lineA)).toEqual({ refundPence: 60_000 });
+    const copy = cancelAfterPossessionDescription(60_000);
+    expect(copy).toContain("refunds £600.00 for this item to the customer's card");
+    expect(copy).not.toMatch(/separately/i);
+  });
+
+  it("offers no cancellation once the item has been cancelled, whatever its refund's state", () => {
+    for (const status of ["pending", "succeeded", "failed"]) {
+      expect(lineCancellation(order({ refunds: [cancellation(status)] }), lineA)).toBeNull();
+    }
+    expect(lineCancellation(order({ refunds: [cancellation("pending")] }), lineB)).toEqual({
+      refundPence: 40_000,
+    });
+  });
+
+  it("offers no cancellation on an order that is not paid", () => {
+    expect(lineCancellation(order({ status: "refunded" }), lineA)).toBeNull();
+  });
+
+  it("keeps the whole-order balance clear of a cancelled item whose refund failed", () => {
+    const detail = order({ refunds: [cancellation("failed")] });
+    expect(refundableRemainingPence(detail, null)).toBe(40_000);
+    expect(refundableRemainingPence(detail, LINE_A)).toBe(0);
+  });
+
+  it("finds the refund that belongs to a cancelled line and labels it by state", () => {
+    const detail = order({ refunds: [cancellation("pending")] });
+    expect(lineCancellationRefund(detail, LINE_A)?.refundId).toBe("c1");
+    expect(lineCancellationRefund(detail, LINE_B)).toBeNull();
+    expect(
+      lineCancellationRefund(order({ refunds: [cancellation("cancelled")] }), LINE_A),
+    ).toBeNull();
+    expect(cancelledLineBadge(cancellation("pending"))).toEqual({
+      label: "Cancelled, refund pending",
+      tone: "warning",
+    });
+    expect(cancelledLineBadge(cancellation("succeeded")).label).toBe("Cancelled, refunded");
+    expect(cancelledLineBadge(cancellation("failed"))).toEqual({
+      label: "Cancelled, refund failed",
+      tone: "danger",
+    });
+  });
+
+  it("says the whole order leaves cancelled items out", () => {
+    expect(refundTargetOptions(order())[0]?.description).not.toContain("excluded");
+    expect(
+      refundTargetOptions(order({ refunds: [cancellation("pending")] }))[0]?.description,
+    ).toContain("cancelled items excluded");
+  });
+
+  it("describes where a refund came from", () => {
+    expect(refundRowContext(cancellation("pending"), lineA)).toContain(
+      "Marylebone at dusk, edition 12 · Cancelled after possession",
+    );
+    expect(refundRowContext(cancellation("pending", { source: "admin" }), undefined)).toContain(
+      "Whole order · Admin",
+    );
+  });
+});
+
+describe("failed refunds", () => {
+  it("lists only the refunds waiting for a retry", () => {
+    const detail = order({
+      refunds: [
+        {
+          refundId: "f1",
+          orderLineId: null,
+          amountPence: 1_000,
+          status: "failed",
+          source: "admin",
+          createdAt: "2026-10-15T00:00:00Z",
+          failureReason: "charge_already_refunded",
+        },
+        {
+          refundId: "p1",
+          orderLineId: null,
+          amountPence: 1_000,
+          status: "pending",
+          source: "admin",
+          createdAt: "2026-10-15T00:00:00Z",
+        },
+      ],
+    });
+    expect(failedRefunds(detail).map((refund) => refund.refundId)).toEqual(["f1"]);
+  });
+
+  it("shows a retried refund on the timeline", () => {
+    const events = buildOrderTimeline(
+      order({
+        activity: [
+          {
+            auditId: "a1",
+            action: "retry_refund",
+            targetType: "shop_refund",
+            actorSubjectId: "s",
+            actorName: "Finance",
+            createdAt: "2026-10-16T00:00:00Z",
+            detail: { amountPence: 60_000 },
+          },
+        ],
+      }),
+    );
+    expect(events.find((event) => event.id === "a1")?.title).toBe("Refund of £600.00 sent again");
   });
 });

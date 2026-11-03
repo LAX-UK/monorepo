@@ -4,7 +4,7 @@ import {
   subjectExportPageSchema,
 } from "@auction/identity-contracts";
 import { describe, expect, it, vi } from "vitest";
-import { createAccountSubjectExportRegistry } from "./create-account-subject-export-categories.js";
+import { createAccountSubjectExportRegistry } from "../infrastructure/subject-export/create-account-subject-export-categories.js";
 import {
   SubjectExportReader,
   UnknownSubjectExportCategoryError,

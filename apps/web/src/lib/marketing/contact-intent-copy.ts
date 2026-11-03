@@ -2,20 +2,54 @@ export type ContactSellIntent = "selling" | "private-sale";
 
 export type ContactSellType = "prints" | "corporate" | "estate";
 
-export type ContactIntentConfig = {
-  topic: "buying" | "selling" | "shipping" | "press" | "other";
+export type ContactTopic = "buying" | "selling" | "shipping" | "press" | "other";
+
+/** An intent can replace the general topic list with its own question and choices. */
+export type ContactTopicField = {
+  label: string;
+  options: readonly { value: ContactTopic; label: string }[];
+};
+
+/** How an intent words the form. Defaults keep the general contact form unchanged. */
+export type ContactIntentFormCopy = {
+  topicField: ContactTopicField | null;
+  messageLabel: string;
+  /** Opens every message so staff can tell the enquiry apart; null for the general form. */
+  messageTag: string | null;
+  submitLabel: string;
+};
+
+export type ContactIntentConfig = ContactIntentFormCopy & {
+  topic: ContactTopic;
   headline: string | null;
   successMessage: string;
   successCtaHref: string | null;
   successCtaLabel: string | null;
 };
 
+/** The longest sale name carried in a link; longer text is cut so a link cannot fill the form. */
+const SALE_NAME_MAX = 120;
+
+function saleNameFrom(raw: string | null | undefined): string | null {
+  const name = raw?.replace(/\s+/g, " ").trim().slice(0, SALE_NAME_MAX).trim();
+  return name || null;
+}
+
 export function contactIntentFromSearchParams(input: {
   intent?: string | null;
   type?: string | null;
+  /** The sale an enquiry is about, as its title. */
+  sale?: string | null;
 }): ContactIntentConfig {
   const intent = input.intent?.trim();
   const type = input.type?.trim() as ContactSellType | undefined;
+
+  const defaultForm: ContactIntentFormCopy = {
+    topicField: null,
+    messageLabel: "Message",
+    messageTag: null,
+    submitLabel: "Send message",
+  };
 
   const defaultSuccess = {
     successMessage:
@@ -24,12 +58,37 @@ export function contactIntentFromSearchParams(input: {
     successCtaLabel: null,
   };
 
+  if (intent === "registration") {
+    const sale = saleNameFrom(input.sale);
+    return {
+      topic: "buying",
+      headline: sale
+        ? `Ask about your registration for ${sale}. Tell us what you need to know; client services reply within two business days.`
+        : "Ask about your registration. Tell us which sale and what you need to know; client services reply within two business days.",
+      ...defaultForm,
+      messageTag: sale ? `Registration enquiry: ${sale}` : "Registration enquiry",
+      ...defaultSuccess,
+    };
+  }
+
   if (intent === "private-sale") {
     return {
       topic: "buying",
-      headline:
-        "Enquire about a private sale — our advisors will respond within two business days.",
-      ...defaultSuccess,
+      headline: null,
+      topicField: {
+        label: "I would like to",
+        options: [
+          { value: "buying", label: "Buy a work privately" },
+          { value: "selling", label: "Sell a work privately" },
+        ],
+      },
+      messageLabel: "Tell us about the work",
+      messageTag: "Private sale enquiry",
+      submitLabel: "Send enquiry",
+      successMessage:
+        "Thank you. Your enquiry has been received and a specialist will reply within two business days (GMT).",
+      successCtaHref: "/sell",
+      successCtaLabel: "How selling works",
     };
   }
 
@@ -38,6 +97,7 @@ export function contactIntentFromSearchParams(input: {
       topic: "buying",
       headline:
         "Report a problem with a purchase. Tell us the lot and what happened; client services reply within two business days.",
+      ...defaultForm,
       ...defaultSuccess,
     };
   }
@@ -47,12 +107,14 @@ export function contactIntentFromSearchParams(input: {
       topic: "buying",
       headline:
         "Ask to raise your bidding limit. Tell us which sale and the amount; client services reply within two business days.",
+      ...defaultForm,
       ...defaultSuccess,
     };
   }
 
   if (intent === "press") {
     return {
+      ...defaultForm,
       topic: "press",
       headline: "Press & media enquiry — our team responds within two business hours (GMT).",
       successMessage:
@@ -85,6 +147,7 @@ export function contactIntentFromSearchParams(input: {
         ? successByType[type as ContactSellType]
         : "Thanks — a selling specialist will respond shortly. If you already have photos and details, you can start a submission now.";
     return {
+      ...defaultForm,
       topic: "selling",
       headline,
       successMessage,
@@ -93,5 +156,5 @@ export function contactIntentFromSearchParams(input: {
     };
   }
 
-  return { topic: "buying", headline: null, ...defaultSuccess };
+  return { ...defaultForm, topic: "buying", headline: null, ...defaultSuccess };
 }

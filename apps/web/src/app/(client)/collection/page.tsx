@@ -19,7 +19,7 @@ import { redirect } from "next/navigation";
 
 const PATH = CLIENT_ROUTES.collection;
 
-export const metadata: Metadata = { title: "Works" };
+export const metadata: Metadata = { title: "Collection" };
 
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -53,7 +53,7 @@ export default async function CollectionPage({ searchParams }: PageProps) {
   const showPrice = sellerCan(ctx, "entity.finance.read");
   return (
     <DashboardListPage
-      title="Works"
+      title="Collection"
       description={`Works ${organisation} owns through LAX Bid, and where each one is.`}
       actions={
         works && works.length > 0 ? (
@@ -64,7 +64,7 @@ export default async function CollectionPage({ searchParams }: PageProps) {
         ) : null
       }
     >
-      <SetMobileShellTitle title="Works" />
+      <SetMobileShellTitle title="Collection" />
       <p className="text-lax-13 text-lax-muted">
         Your collection across LAX lives in{" "}
         <a

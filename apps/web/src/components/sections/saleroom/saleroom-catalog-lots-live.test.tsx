@@ -7,6 +7,10 @@ import {
 import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/components/lot-card/lot-card-bidder-state", () => ({
+  LotCardBidderState: () => null,
+}));
+
 vi.mock("@/lib/context/saleroom-live-provider", () => ({
   useSaleroomLive: () => null,
 }));
@@ -84,6 +88,13 @@ const lot = {
   estimateValue: "£1,000",
   currentBidLabel: "Current bid",
   currentBidValue: "£500",
+  cardLine: {
+    label: "Current bid",
+    value: "£500",
+    time: "none",
+    startsAt: null,
+    endsAt: null,
+  },
   bidsCountLabel: null,
   closingLabel: null,
   closingShort: null,

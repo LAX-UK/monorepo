@@ -37,6 +37,8 @@ type ContactFormProps = {
   nameMode?: "split" | "single";
   intent?: string | null;
   sellType?: string | null;
+  /** The sale an enquiry is about, by title. */
+  sale?: string | null;
 };
 
 /** The control ids the error summary links to, in page order. */
@@ -60,8 +62,9 @@ export function ContactForm({
   nameMode = "split",
   intent = null,
   sellType = null,
+  sale = null,
 }: ContactFormProps = {}) {
-  const intentConfig = contactIntentFromSearchParams({ intent, type: sellType });
+  const intentConfig = contactIntentFromSearchParams({ intent, type: sellType, sale });
   const [done, setDone] = useState(false);
   const { form, onSubmit, isSubmitting, rootError } = useActionForm({
     schema: contactFormValuesSchema,
@@ -74,7 +77,12 @@ export function ContactForm({
       message: "",
       website: "",
     },
-    action: submitContactFormResult,
+    action: (values) =>
+      submitContactFormResult(
+        intentConfig.messageTag
+          ? { ...values, message: `${intentConfig.messageTag}\n\n${values.message}` }
+          : values,
+      ),
     onSuccess: () => setDone(true),
     errorMap: publicFormErrorMap,
     // The summary takes focus after a failed submit, and a failed send shows in the form's notice.
@@ -161,7 +169,11 @@ export function ContactForm({
         />
       </Field>
 
-      <Field label="Topic" id="contact-topic" error={errors.topic?.message}>
+      <Field
+        label={intentConfig.topicField?.label ?? "Topic"}
+        id="contact-topic"
+        error={errors.topic?.message}
+      >
         <Controller
           control={form.control}
           name="topic"
@@ -170,19 +182,19 @@ export function ContactForm({
               value={field.value}
               onValueChange={field.onChange}
               onBlur={field.onBlur}
-              options={topics}
+              options={intentConfig.topicField?.options ?? topics}
             />
           )}
         />
       </Field>
 
-      <Field label="Message" id="contact-message" error={errors.message?.message}>
+      <Field label={intentConfig.messageLabel} id="contact-message" error={errors.message?.message}>
         <TextArea rows={5} {...form.register("message")} />
       </Field>
 
       <div>
         <Button type="submit" variant="primary" loading={isSubmitting}>
-          {isSubmitting ? "Sending…" : "Send message"}
+          {isSubmitting ? "Sending…" : intentConfig.submitLabel}
         </Button>
       </div>
     </form>

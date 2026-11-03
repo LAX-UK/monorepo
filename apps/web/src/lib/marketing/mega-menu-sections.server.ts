@@ -7,6 +7,8 @@ import { CATALOGUE_FETCH_POLICIES, catalogueFetch } from "@/lib/data/http/catalo
 import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { getMarketingMegaMenuSections } from "@/lib/marketing/mega-menu-catalog";
 import { rewriteMegaMenuForGuest } from "@/lib/marketing/mega-menu-href-rewrite";
+import { applyNavActivity } from "@/lib/marketing/nav-activity";
+import { loadNavActivity } from "@/lib/marketing/nav-activity.server";
 import { artistPath } from "@/lib/seo/url";
 import { cache } from "react";
 
@@ -52,18 +54,23 @@ function mergeArtistTeasersIntoSections(
   });
 }
 
-/** Session-free mega menu for cacheable marketing chrome (guest dashboard href rewrite). */
-export const loadCachedMegaMenuSections = cache(async (): Promise<MegaMenuSection[]> => {
-  const base = getMarketingMegaMenuSections();
-  if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") {
-    return rewriteMegaMenuForGuest(base);
-  }
+async function loadMenuArtistsOrNone(): Promise<ArtistProfile[]> {
+  if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return [];
   try {
-    const artists = await fetchMenuArtists();
-    return rewriteMegaMenuForGuest(mergeArtistTeasersIntoSections(base, artists));
+    return await fetchMenuArtists();
   } catch {
-    return rewriteMegaMenuForGuest(base);
+    return [];
   }
+}
+
+/**
+ * Session-free mega menu for cacheable marketing chrome (guest dashboard href rewrite). Items that
+ * point at an empty live list are left out, using what the catalogue holds this minute.
+ */
+export const loadCachedMegaMenuSections = cache(async (): Promise<MegaMenuSection[]> => {
+  const [activity, artists] = await Promise.all([loadNavActivity(), loadMenuArtistsOrNone()]);
+  const base = applyNavActivity(getMarketingMegaMenuSections(), activity);
+  return rewriteMegaMenuForGuest(mergeArtistTeasersIntoSections(base, artists));
 });
 
 /** @deprecated Prefer {@link loadCachedMegaMenuSections} — kept for callers that need session-aware hrefs. */

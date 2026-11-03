@@ -4,6 +4,7 @@ import {
   SUBJECT_EXPORT_PRODUCT_INFO,
 } from "@auction/identity-contracts";
 import { describe, expect, it } from "vitest";
+import { controllerNamesFor } from "./controller-names.js";
 import { renderReadme } from "./readme.renderer.js";
 
 const readme = renderReadme({
@@ -35,7 +36,7 @@ describe("README.txt", () => {
     for (const product of SUBJECT_EXPORT_PRODUCTS) {
       const info = SUBJECT_EXPORT_PRODUCT_INFO[product];
       expect(readme).toContain(info.name);
-      expect(readme).toContain(info.controller);
+      expect(readme).toContain(controllerNamesFor(product));
     }
     expect(readme).toContain("London Auction Xchange LTD");
     expect(readme).toContain("London Art Exchange Ltd");

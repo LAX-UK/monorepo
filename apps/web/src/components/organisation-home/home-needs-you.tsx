@@ -18,11 +18,12 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { HomeNotices } from "./home-notices";
 import { HomePanel, HomeSection } from "./home-section";
+import { NeedsYouRaisedTime } from "./needs-you-raised-time";
 
 /** Rows shown before "View all"; the rest are one press away, never cut silently. */
 export const NEEDS_YOU_VISIBLE = 5;
 
-const TOPIC_ICON: Record<NeedsYouTopic, LucideIcon> = {
+export const TOPIC_ICON: Record<NeedsYouTopic, LucideIcon> = {
   bid: Gavel,
   purchase: Receipt,
   delivery: Truck,
@@ -64,6 +65,7 @@ function NeedsYouRow({ row }: { row: NeedsYouRowView }) {
         <span className="mt-0.5 line-clamp-2 block text-lax-13 text-lax-muted sm:line-clamp-1">
           {row.detail}
         </span>
+        <NeedsYouRaisedTime raised={row.raised} className="mt-0.5 block" />
         {row.due ? (
           <span className="mt-1.5 block sm:hidden">
             <DueBadge due={row.due} />

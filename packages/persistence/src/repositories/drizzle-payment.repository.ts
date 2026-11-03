@@ -13,12 +13,14 @@ import type {
   AdminPaymentTableRowDto,
   AdminPaymentsDailyAmounts,
   AdminPaymentsSummaryStats,
+  BlockedCapture,
   CreatePaymentRow,
   IPaymentWriteRepository,
   ListPaymentsAdminTableFilter,
   ListPaymentsExportFilter,
   PaymentRecord,
 } from "../interfaces/payment-write.repository.js";
+import { findBlockedCaptureEvent } from "./blocked-capture.query.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 
 type Row = InferSelectModel<typeof payment>;
@@ -122,6 +124,10 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     const rows = await this.db.select().from(payment).where(eq(payment.id, id)).limit(1);
     const row = rows[0];
     return row ? mapRow(row, null) : null;
+  }
+
+  findBlockedCapture(paymentId: string): Promise<BlockedCapture | null> {
+    return findBlockedCaptureEvent(this.db, paymentId);
   }
 
   async findOpenByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null> {
@@ -257,6 +263,28 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .update(payment)
       .set({ status: "pending" })
       .where(and(eq(payment.id, id), eq(payment.status, "requires_manual_review")))
+      .returning({ id: payment.id });
+    return rows.length > 0;
+  }
+
+  async applyReopenedFromCancelledInTransaction(tx: Database, id: string): Promise<boolean> {
+    const rows = await tx
+      .update(payment)
+      .set({ status: "pending" })
+      .where(and(eq(payment.id, id), eq(payment.status, "cancelled")))
+      .returning({ id: payment.id });
+    return rows.length > 0;
+  }
+
+  async applyRefundedFromCancelledInTransaction(
+    tx: Database,
+    id: string,
+    stripeRefundId: string | null,
+  ): Promise<boolean> {
+    const rows = await tx
+      .update(payment)
+      .set({ status: "refunded", stripeRefundId })
+      .where(and(eq(payment.id, id), eq(payment.status, "cancelled")))
       .returning({ id: payment.id });
     return rows.length > 0;
   }

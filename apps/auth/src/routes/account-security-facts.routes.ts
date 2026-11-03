@@ -33,6 +33,7 @@ export function createAccountSecurityFactsRoutes(deps: AccountSecurityFactsRoute
       // Picked field by field so a future reader that returns more can never widen the response.
       return c.json({
         twoFactorEnabled: facts.twoFactorEnabled,
+        hasPassword: facts.hasPassword,
         backupCodesRemaining: facts.backupCodesRemaining,
       });
     } catch (error) {

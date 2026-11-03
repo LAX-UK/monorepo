@@ -20,6 +20,7 @@ export default function SellMotorCarsPage() {
       eyebrow="Motor cars"
       lead="Selling a classic or collectible motor car? Share VIN details, mileage, ownership history, and photographs of the exterior, interior, and mechanical condition."
       categorySlug="motor-cars"
+      departmentNoun="motor cars"
       bullets={[
         "Exterior from several angles, interior, and odometer reading",
         "VIN plate, engine bay, and any known ownership history",

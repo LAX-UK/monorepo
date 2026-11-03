@@ -22,12 +22,13 @@ describe("purchaseNextStep", () => {
     },
   );
 
-  it.each(["authorized", "refunded", "cancelled"] as const)(
-    "payment %s: nothing for the buyer",
-    (status) => {
-      expect(purchaseNextStep(facts({ paymentStatus: status }))).toBeNull();
-    },
-  );
+  it.each(["authorized", "refunded"] as const)("payment %s: nothing for the buyer", (status) => {
+    expect(purchaseNextStep(facts({ paymentStatus: status }))).toBeNull();
+  });
+
+  it("a cancelled payment row still leaves the purchase to pay", () => {
+    expect(purchaseNextStep(facts({ paymentStatus: "cancelled" }))).toBe("pay");
+  });
 
   it("an unpaid purchase whose delivery was cancelled is not to pay", () => {
     expect(

@@ -5,7 +5,8 @@ import type { SessionUser } from "@/lib/data/contracts";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerCategoryInterests } from "@/lib/data/http/category-interests.server";
 import { getServerNotificationMutes } from "@/lib/data/http/notifications-inbox.server";
-import { loadBiddingOrganisation } from "@/lib/settings/bidding-card.server";
+import { getServerVisitorAlertState } from "@/lib/data/http/sale-alerts.server";
+import { loadBiddingOrganisation, loadPersonalLimit } from "@/lib/settings/bidding-card.server";
 import { biddingRows } from "@/lib/settings/bidding-standing";
 import type { ThemePreference } from "@auction/validators";
 import { AlertsSettings } from "./alerts-settings";
@@ -13,6 +14,7 @@ import { AppearanceSettings } from "./appearance-settings";
 import { BidSettingsSection, BidSettingsSectionError } from "./bid-settings-section";
 import { BiddingCard } from "./bidding-card";
 import { MutedOrganisations } from "./muted-organisations";
+import { VisitorAlertsLink } from "./visitor-alerts-link";
 
 /**
  * Bidding: for yourself, your identity check and limit; inside an organisation, its check, its
@@ -20,6 +22,8 @@ import { MutedOrganisations } from "./muted-organisations";
  */
 export async function BiddingSettings({ user }: { user: SessionUser }) {
   const organisation = await loadBiddingOrganisation(user).catch(() => undefined);
+  const personalLimit =
+    organisation === null && user.kycStatus === "approved" ? await loadPersonalLimit() : undefined;
   if (organisation === undefined) {
     return (
       <BidSettingsSection id="bidding" title="Bidding" description="Where you stand to bid.">
@@ -37,7 +41,7 @@ export async function BiddingSettings({ user }: { user: SessionUser }) {
           : "Where you stand to bid on LAX Bid."
       }
     >
-      <BiddingCard rows={biddingRows(user.kycStatus, organisation)} />
+      <BiddingCard rows={biddingRows(user.kycStatus, organisation, personalLimit)} />
     </BidSettingsSection>
   );
 }
@@ -55,9 +59,10 @@ export async function AlertsSection({
   belongsToOrganisations: boolean;
 }) {
   const c = await getServerDataContainer();
-  const [prefs, mutes] = await Promise.all([
+  const [prefs, mutes, visitorAlerts] = await Promise.all([
     c.notificationPreferences.getMine().catch(() => null),
     belongsToOrganisations ? getServerNotificationMutes() : Promise.resolve(null),
+    getServerVisitorAlertState(),
   ]);
   return (
     <BidSettingsSection
@@ -68,6 +73,9 @@ export async function AlertsSection({
       {/* Alerts only reach an address that can receive them, so a problem shows here. */}
       <EmailStatusBanner user={user} />
       {prefs ? <AlertsSettings initial={prefs} /> : <BidSettingsSectionError what="alerts" />}
+      {visitorAlerts === "on" || visitorAlerts === "linked" ? (
+        <VisitorAlertsLink initial={visitorAlerts} />
+      ) : null}
       {belongsToOrganisations ? (
         mutes ? (
           <MutedOrganisations initial={mutes} />

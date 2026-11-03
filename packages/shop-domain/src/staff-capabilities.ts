@@ -177,6 +177,7 @@ export function rolesGranting(capability: ShopStaffCapability): ShopStaffRole[] 
 export const OVERVIEW_KPI_CAPABILITY = {
   fulfilmentOpenCount: "fulfilment.write",
   payoutsDueCount: "payout.mark_paid",
+  failedRefundsCount: "refund.write",
   activeHoldsCount: "stock_hold.write",
   pendingAuthorityRequestsCount: "sale_authority.write",
 } as const satisfies Record<string, ShopStaffCapability>;

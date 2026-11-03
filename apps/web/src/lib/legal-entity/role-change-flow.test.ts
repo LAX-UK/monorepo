@@ -83,4 +83,14 @@ describe("changeMemberRole", () => {
     await changeMemberRole(p, LENA, "finance", "finance", ORG);
     expect(log).toEqual([]);
   });
+
+  it("returns the outcome so a dialog can stay open on a refusal", async () => {
+    const refused = ports([{ ok: false, code: "owner_only", error: "Only an owner can." }]);
+    expect(await changeMemberRole(refused.p, LENA, "finance", "owner", ORG)).toMatchObject({
+      ok: false,
+      error: "Only an owner can.",
+    });
+    const agreed = ports([{ ok: true }]);
+    expect(await changeMemberRole(agreed.p, LENA, "finance", "admin", ORG)).toEqual({ ok: true });
+  });
 });

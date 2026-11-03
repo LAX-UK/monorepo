@@ -3,6 +3,7 @@ import { ArtworkArtistBlock } from "@/components/artwork/artwork-artist-block";
 import { ArtworkBuyBox } from "@/components/artwork/artwork-buy-box.client";
 import { ArtworkGallery } from "@/components/artwork/artwork-gallery.client";
 import { ArtworkKeyFacts } from "@/components/artwork/artwork-key-facts";
+import { ArtworkMoreAbout } from "@/components/artwork/artwork-more-about.client";
 import { ArtworkPurchaseFacts } from "@/components/artwork/artwork-purchase-facts";
 import { ArtworkSpecList } from "@/components/artwork/artwork-spec-list";
 import { ArtworkUnavailablePanel } from "@/components/artwork/artwork-unavailable-panel";
@@ -218,24 +219,26 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
 
             <ArtworkAboutEditions />
 
-            {vm.description ? (
-              <section className="shop-product__section" aria-labelledby="about-work-heading">
-                <h2 id="about-work-heading">About the work</h2>
-                <p className="shop-product__prose">{vm.description}</p>
-              </section>
-            ) : null}
+            <ArtworkMoreAbout>
+              {vm.description ? (
+                <section className="shop-product__section" aria-labelledby="about-work-heading">
+                  <h2 id="about-work-heading">About the work</h2>
+                  <p className="shop-product__prose">{vm.description}</p>
+                </section>
+              ) : null}
 
-            <section className="shop-product__section" aria-labelledby="included-heading">
-              <h2 id="included-heading">Included</h2>
-              <ul className="shop-product__included">
-                {vm.included.map((item) => (
-                  <li key={item}>
-                    <MarketingCheckIcon className="shop-product__included-icon" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </section>
+              <section className="shop-product__section" aria-labelledby="included-heading">
+                <h2 id="included-heading">Included</h2>
+                <ul className="shop-product__included">
+                  {vm.included.map((item) => (
+                    <li key={item}>
+                      <MarketingCheckIcon className="shop-product__included-icon" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </ArtworkMoreAbout>
 
             {vm.crossLinks.originalOnArtHref ? (
               <a

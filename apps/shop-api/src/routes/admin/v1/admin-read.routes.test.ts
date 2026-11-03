@@ -58,7 +58,7 @@ describe("admin read routes", () => {
     }
 
     it.each([
-      ["finance", ["payoutsDueCount"]],
+      ["finance", ["payoutsDueCount", "failedRefundsCount"]],
       ["operations", ["fulfilmentOpenCount"]],
       ["broker", ["activeHoldsCount"]],
       ["catalogue_editor", []],
@@ -67,6 +67,7 @@ describe("admin read routes", () => {
         [
           "fulfilmentOpenCount",
           "payoutsDueCount",
+          "failedRefundsCount",
           "activeHoldsCount",
           "pendingAuthorityRequestsCount",
         ],

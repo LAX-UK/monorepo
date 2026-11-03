@@ -1,8 +1,11 @@
 "use client";
 
+import { LotCardBidderState } from "@/components/lot-card/lot-card-bidder-state";
+import { LotCardLine } from "@/components/lot-card/lot-card-line";
+import { LotEstimateLine } from "@/components/lot-card/lot-estimate-line";
 import { LotStatusBadge } from "@/components/marketing/lot-status-badge";
 import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
-import { formatMoney } from "@/lib/format-currency";
+import { lotCardLineModel, lotCardShowsStatusBadge } from "@/lib/lot-card/lot-card-line";
 import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import type { CatalogLotVM } from "@auction/types";
 
@@ -20,6 +23,7 @@ export function CatalogLotEditorialCalmCaption({
   subtitle,
   estimate,
 }: CatalogLotEditorialCalmCaptionProps) {
+  const line = lotCardLineModel(lot, new Date());
   return (
     <div className="space-y-2">
       <div className="space-y-2">
@@ -27,15 +31,14 @@ export function CatalogLotEditorialCalmCaption({
           {title}
         </h2>
         {subtitle ? <p className="font-body text-sm text-on-surface-variant">{subtitle}</p> : null}
-        {isPublicLotStatus(lot.status) ? <LotStatusBadge {...lotStatusBadgeProps(lot)} /> : null}
-      </div>
-      <div className="flex flex-wrap items-baseline justify-between gap-4 pt-2">
-        <p className="font-label text-xs text-on-surface-variant">
-          {formatMoney(lot.currentPrice)}
-        </p>
-        {estimate ? (
-          <p className="font-label text-xs text-on-surface-variant">Est. {estimate}</p>
+        {isPublicLotStatus(lot.status) && lotCardShowsStatusBadge(line) ? (
+          <LotStatusBadge {...lotStatusBadgeProps(lot)} />
         ) : null}
+      </div>
+      <div className="flex flex-col gap-1.5 pt-2">
+        <LotEstimateLine value={estimate} />
+        <LotCardLine model={line} />
+        <LotCardBidderState lotId={lot.id} />
       </div>
     </div>
   );

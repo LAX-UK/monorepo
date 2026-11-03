@@ -1,4 +1,5 @@
 import type {
+  AdminEnquiryRouteServices,
   AdminIntegrationRouteServices,
   AdminStaffSecurityRouteServices,
 } from "./admin-satellite-routes.js";
@@ -68,6 +69,8 @@ export type AdminFinancePayoutRoutesContainer = Pick<
   admin: Pick<AdminRouteServices, "payouts"> &
     Pick<AdminStaffSecurityRouteServices, "stepUp" | "idempotencyStore">;
 };
+
+export type AdminEnquiryRoutesContainer = { admin: AdminEnquiryRouteServices };
 
 export type AdminSatelliteJobQueuesRoutesContainer = AdminRoutePick<"jobQueues">;
 

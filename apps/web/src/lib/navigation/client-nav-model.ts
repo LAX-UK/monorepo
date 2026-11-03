@@ -174,12 +174,12 @@ const CONSIGNMENTS: NavSpec = {
   personalWhen: (scope) => scope.hasSubmissions,
 };
 
-const WORKS: NavSpec = {
-  // An organisation's own works, its collection; a person's are in Purchases and LAX Account.
+const COLLECTION: NavSpec = {
+  // An organisation's own works, shown as its Collection; a person's are in Purchases and LAX Account.
   audience: "organisation",
   item: () => ({
-    id: "works",
-    label: "Works",
+    id: "collection",
+    label: "Collection",
     href: CLIENT_ROUTES.collection,
     icon: Layers,
     match: exactOrNested(CLIENT_ROUTES.collection),
@@ -279,7 +279,7 @@ const SECTIONS: readonly SectionSpec[] = [
     specs: [SELL_WITH_LAX, CONSIGNMENTS, SOLD_AND_PAYOUTS],
     subNav: { kind: "one-link", prefix: CLIENT_ROUTES.selling },
   },
-  { id: "collection", label: "Collection", specs: [WORKS], subNav: { kind: "hidden" } },
+  { id: "collection", label: null, specs: [COLLECTION], subNav: { kind: "hidden" } },
   {
     id: "organisation",
     label: "Organisation",
@@ -414,7 +414,7 @@ const ORGANISATION_TABS: Readonly<Record<LegalEntityMemberRole, readonly string[
   finance: ["home", "purchases", "payouts"],
   buyer_agent: ["home", "bids", "purchases", "watchlist"],
   consignor: ["home", "consignments", "watchlist"],
-  viewer: ["home", "consignments", "works"],
+  viewer: ["home", "consignments", "collection"],
 };
 
 /** Which entries earn a place in a personal account's bottom bar, most important first. */
@@ -425,7 +425,7 @@ const MOBILE_TAB_PRIORITY = [
   "watchlist",
   "consignments",
   "payouts",
-  "works",
+  "collection",
   "notifications",
 ] as const;
 

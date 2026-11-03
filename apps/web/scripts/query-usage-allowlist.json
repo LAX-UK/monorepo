@@ -10,6 +10,7 @@
     "lib/context/saleroom-live-provider.tsx",
     "lib/context/lot-bid-history-provider.tsx",
     "lib/lot-page/use-lot-reads.ts",
+    "lib/lot-card/use-lot-card-state.ts",
     "app/admin/(platform)/invitations/page.tsx",
     "components/admin/admin-invitations-board-container.tsx",
     "lib/admin/invitations-list-nuqs.ts"

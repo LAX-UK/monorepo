@@ -4,6 +4,7 @@ import type {
   HomeSubject,
   PendingAccessRequest,
   PurchaseNextStepFacts,
+  PurchaseNextStepTimes,
   UnreadReply,
 } from "@auction/domain";
 import type { SubmissionSenderFilter } from "./item-submission.repository.js";
@@ -20,28 +21,28 @@ export interface INeedsYouFactsReader {
     bidderId: string | null;
     now: Date;
     limit: number;
-  }): Promise<Array<HomeSubject & { endsAt: Date }>>;
+  }): Promise<Array<HomeSubject & { endsAt: Date; outbidAt: Date | null }>>;
 
   /** Won lots that are not finished: unpaid, or paid and not yet delivered or collected. */
   openPurchases(input: {
     legalEntityId: string;
     winnerId: string | null;
     limit: number;
-  }): Promise<Array<HomeSubject & PurchaseNextStepFacts>>;
+  }): Promise<Array<HomeSubject & PurchaseNextStepFacts & PurchaseNextStepTimes>>;
 
   /** Open consignments whose specialist's terms are complete and not accepted. */
   agreementsToAccept(input: {
     legalEntityId: string;
     visibleTo: SubmissionSenderFilter | undefined;
     limit: number;
-  }): Promise<HomeSubject[]>;
+  }): Promise<Array<HomeSubject & { proposedAt: Date | null }>>;
 
   /** Submissions sent back with changes requested. */
   changesRequested(input: {
     legalEntityId: string;
     visibleTo: SubmissionSenderFilter | undefined;
     limit: number;
-  }): Promise<Array<HomeSubject & { note: string | null }>>;
+  }): Promise<Array<HomeSubject & { note: string | null; requestedAt: Date | null }>>;
 
   /**
    * Invitations to the account that lapsed since `since` and were not followed by a newer
@@ -77,9 +78,11 @@ export interface INeedsYouFactsReader {
     limit: number;
   }): Promise<PendingAccessRequest[]>;
 
-  /** The member's own checks: identity, and whether source of funds documents were asked for. */
+  /** The member's own checks: identity, and whether and when source of funds documents were asked for. */
   viewerChecks(userId: string): Promise<{
     identity: "verified" | "checking" | "required";
     sourceOfFundsRequested: boolean;
+    /** When LAX asked for the documents; `null` when none are being asked for. */
+    sourceOfFundsRequestedAt: Date | null;
   }>;
 }

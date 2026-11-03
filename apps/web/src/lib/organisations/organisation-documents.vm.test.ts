@@ -89,6 +89,34 @@ describe("buildOrganisationDocumentsView", () => {
     expect(rows[1]?.badge.label).toBe("Received");
   });
 
+  it("shows an approved organisation's requested documents as accepted, with the check date", () => {
+    const approved = buildOrganisationDocumentsView({
+      actor: { role: "owner" },
+      status: "approved",
+      organisationName: "Northbank Gallery",
+      slots: [{ title: "VAT certificate", kind: "vat_certificate" }],
+      received: [],
+      checkedOn: new Date("2026-05-09T10:00:00Z"),
+    });
+    const [row] = approved.rows;
+    expect(row?.badge.label).toBe("Accepted");
+    expect(row?.hint).toBe("Checked on 9 May 2026");
+    expect(row?.action).toBeNull();
+  });
+
+  it("says Accepted alone when the check date is unknown", () => {
+    const approved = buildOrganisationDocumentsView({
+      actor: { role: "owner" },
+      status: "approved",
+      organisationName: "Northbank Gallery",
+      slots: [{ title: "VAT certificate", kind: "vat_certificate" }],
+      received: [],
+      checkedOn: "not a date",
+    });
+    expect(approved.rows[0]?.badge.label).toBe("Accepted");
+    expect(approved.rows[0]?.hint).toBeNull();
+  });
+
   it("says so when nothing was asked for", () => {
     const empty = buildOrganisationDocumentsView({
       actor: { role: "owner" },

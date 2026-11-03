@@ -15,6 +15,7 @@ const names = [
   "backup-codes-regenerated",
   "email-changed",
   "phone-verified",
+  "phone-removed",
   "social-account-linked",
   "social-account-unlinked",
   "new-device-login",
@@ -94,6 +95,10 @@ type AuthTemplateVarsBase = {
     /** Already masked, for example "+44 •••• 1234". */
     maskedPhone: string;
   };
+  "phone-removed": SecurityNoticeVars & {
+    /** Already masked, for example "+44 •••• 1234". */
+    maskedPhone: string;
+  };
   "social-account-linked": {
     provider: "google" | "apple";
     userName?: string | null;
@@ -163,6 +168,7 @@ export const authTemplates = {
     "backup-codes-regenerated": "live",
     "email-changed": "snapshot",
     "phone-verified": "live",
+    "phone-removed": "live",
     "social-account-linked": "live",
     "social-account-unlinked": "live",
     "new-device-login": "live",

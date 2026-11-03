@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const adminWorkItemKindSchema = z.enum([
   "payment_manual_review",
+  "payment_capture_blocked",
   "aml_screening",
   "sof_case",
   "submission_review",
@@ -13,6 +14,8 @@ export const adminWorkItemKindSchema = z.enum([
   "lot_withdrawal",
   "lot_draft_past_start",
   "unsold_lot_choice",
+  "marketing_enquiry",
+  "purchase_problem",
 ]);
 
 export const adminWorkItemDomainSchema = z.enum([
@@ -35,6 +38,7 @@ export const adminWorkItemActionSchema = z.enum([
   "decline",
   "capture",
   "refund",
+  "reinstate_payment",
   "approve_registration",
   "reject_registration",
   "confirm_telephone",

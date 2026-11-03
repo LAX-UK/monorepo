@@ -16,10 +16,12 @@ import {
   presentLeadCrm,
   presentLeadStatus,
 } from "@/server/domain/lead-list.vm";
+import { releaseAlertMetrics } from "@/server/domain/release-alert-metrics";
 import {
   ADMIN_LEAD_SEARCH_MAX_LENGTH,
   type AdminLeadListResponse,
   type AdminLeadSummary,
+  type AdminReleaseAlertSummary,
 } from "@auction/shop-contracts";
 import {
   GUEST_LEAD_CRM_STATE_LABEL,
@@ -64,10 +66,13 @@ export function LeadList({
   query,
   page,
   now,
+  releaseAlerts,
 }: {
   query: LeadListQuery;
   page: AdminLeadListResponse;
   now: string;
+  /** Who is on the release alert list; null when the figure could not be read. */
+  releaseAlerts: AdminReleaseAlertSummary | null;
 }) {
   const { pending, navigate, Link: ListLink } = useListNavigation();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -205,6 +210,15 @@ export function LeadList({
       description="People who checked out or enquired without a LAX account. A lead moves to Joined LAX when they open an account with the same email."
       Link={ListLink}
       listKey="leads"
+      {...(releaseAlerts
+        ? {
+            metrics: {
+              label: "Release alerts",
+              period: "People who asked to hear about new editions",
+              items: releaseAlertMetrics(releaseAlerts),
+            },
+          }
+        : {})}
       exportAction={
         page.items.length > 0 ? (
           <StaffButton

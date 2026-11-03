@@ -17,6 +17,7 @@ import type {
 import type { Env } from "../env.js";
 import type { IMyBuyerAgentAuthorisationsService } from "../services/buyer-agents/my-buyer-agent-authorisations.service.js";
 import type {
+  AdminEnquiryRouteServices,
   AdminIntegrationRouteServices,
   AdminRouteServices,
   AdminStaffSecurityRouteServices,
@@ -47,6 +48,7 @@ import type {
 } from "../services/interfaces/identity-issuer-client.js";
 import type { IdentityRouteServices } from "../services/interfaces/identity-routes.js";
 import type { ILotLifecycleService, ILotReadService } from "../services/interfaces/lot-service.js";
+import type { IMarketingEnquiryIntake } from "../services/interfaces/marketing-enquiry-service.js";
 import type { IOAuthAttributionStore } from "../services/interfaces/oauth-attribution-store.js";
 import type { IOrganisationBiddingLimitsService } from "../services/interfaces/organisation-bidding-limits-service.js";
 import type { PlatformCronRouteServices } from "../services/interfaces/platform-cron-routes/index.js";
@@ -74,6 +76,9 @@ import type {
   IUserSuspensionCacheInvalidator,
   IUserSuspensionChecker,
 } from "../services/interfaces/user-suspension.js";
+import type { EnquirerOrganisationsService } from "../services/marketing-enquiry/enquirer-organisations.service.js";
+import type { IEnquiryDraftTokens } from "../services/marketing-enquiry/enquiry-draft-token.js";
+import type { IEnquirySubmission } from "../services/marketing-enquiry/enquiry-submission.service.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
 import type { SubjectExportService } from "../subject-export/subject-export.service.js";
 import type { ContainerAdminServices } from "./create-admin-services.js";
@@ -317,7 +322,10 @@ export type ContainerSubjectExportSlice = { subjectExportService: SubjectExportS
 
 /** Route-facing admin bag (mirrors `container.admin`). */
 export type ContainerAdminRoutesSlice = {
-  admin: AdminRouteServices & AdminStaffSecurityRouteServices & AdminIntegrationRouteServices;
+  admin: AdminRouteServices &
+    AdminStaffSecurityRouteServices &
+    AdminIntegrationRouteServices &
+    AdminEnquiryRouteServices;
 };
 
 /** Route-facing bidding bag (mirrors `container.bidding`). */
@@ -421,6 +429,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerOrganisationWorkspaceSlice &
   ContainerOrganisationTeamSlice &
   ContainerOrganisationSecuritySlice &
+  ContainerMarketingEnquirySlice &
   ContainerUserRouteServicesSlice;
 
 export type Container = ContainerComposedSlices;
@@ -520,8 +529,33 @@ export type ContainerOnsiteEventRoutesSlice = Pick<
   | "onsiteEventStaffCheckInService"
 >;
 
+/** Public contact form enquiries. */
+export type ContainerMarketingEnquirySlice = {
+  marketingEnquiryService: IMarketingEnquiryIntake;
+  /** Draft tokens for uploading files before an enquiry is sent. */
+  enquiryDraftTokens: IEnquiryDraftTokens;
+  enquirySubmission: IEnquirySubmission;
+  enquirerOrganisations: EnquirerOrganisationsService;
+};
+
+/** Public contact enquiry HTTP handler. */
+export type ContainerMarketingEnquiryRoutesSlice = Pick<
+  Container,
+  | "rateLimitStore"
+  | "enquiryDraftTokens"
+  | "enquirySubmission"
+  | "enquirerOrganisations"
+  | "userSuspensionChecker"
+>;
+
 /** Newsletter signup. */
 export type ContainerNewsletterRoutesSlice = Pick<Container, "newsletterSignupService">;
+
+/** Visitor sale alerts: sign-up, confirm, unsubscribe and the client's settings view. */
+export type ContainerSaleAlertRoutesSlice = Pick<
+  Container,
+  "visitorSaleAlertService" | "userSuspensionChecker"
+>;
 
 /** Email unsubscribe + preview. */
 export type ContainerEmailRoutesSlice = Pick<

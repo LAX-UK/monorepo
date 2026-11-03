@@ -5,6 +5,7 @@ import {
   artistWatchlist,
   bidIdentityDirectory,
   deliveryQuote,
+  domainEvent,
   legalEntity,
   lot,
   lotFulfilment,
@@ -13,10 +14,13 @@ import {
   saleRegistration,
   user,
 } from "@auction/db/schema";
+import { purchaseEnding, purchaseIsToPay } from "@auction/domain";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { DrizzleAdminWorkItemsReader } from "./drizzle-admin-work-items.reader.js";
 import { DrizzleArtistWatchlistRepository } from "./drizzle-artist-watchlist.repository.js";
 import { DrizzleDeliveryQuoteRepository } from "./drizzle-delivery-quote.repository.js";
+import { DrizzlePaymentRepository } from "./drizzle-payment.repository.js";
 import {
   DrizzleAccountPurchaseFactsReader,
   DrizzleAccountRegistrationsReader,
@@ -41,7 +45,14 @@ describe.skipIf(!HAS_DB)("workspace buying readers (integration)", () => {
   const sellerId = randomUUID();
   const saleId = randomUUID();
   const artistId = randomUUID();
-  const lots = { paid: randomUUID(), due: randomUUID(), agent: randomUUID(), other: randomUUID() };
+  const lots = {
+    paid: randomUUID(),
+    due: randomUUID(),
+    agent: randomUUID(),
+    other: randomUUID(),
+    abandoned: randomUUID(),
+    saleCancelled: randomUUID(),
+  };
   const now = new Date("2026-11-10T12:00:00Z");
   const day = 86_400_000;
 
@@ -113,6 +124,8 @@ describe.skipIf(!HAS_DB)("workspace buying readers (integration)", () => {
         wonLot(lots.due, ownerId, orgId, "1500.00"),
         wonLot(lots.agent, agentId, orgId, "900.00"),
         wonLot(lots.other, agentId, otherOrgId, "700.00"),
+        wonLot(lots.abandoned, ownerId, orgId, "600.00"),
+        wonLot(lots.saleCancelled, ownerId, orgId, "500.00"),
       ]);
     await db.insert(payment).values([
       {
@@ -146,10 +159,22 @@ describe.skipIf(!HAS_DB)("workspace buying readers (integration)", () => {
         status: "cancelled",
         createdAt: new Date(now.getTime() - day),
       },
+      // An abandoned checkout and a cancelled sale: each has only a cancelled payment row.
+      ...[lots.abandoned, lots.saleCancelled].map((lotId) => ({
+        lotId,
+        buyerId: ownerId,
+        buyerLegalEntityId: orgId,
+        sellerLegalEntityId: sellerId,
+        amount: "700.00",
+        platformFee: "35.00",
+        status: "cancelled" as const,
+        createdAt: new Date(now.getTime() - 3 * day),
+      })),
     ]);
-    await db
-      .insert(lotFulfilment)
-      .values({ lotId: lots.paid, status: "released", fulfilmentMethod: "collection" });
+    await db.insert(lotFulfilment).values([
+      { lotId: lots.paid, status: "released", fulfilmentMethod: "collection" },
+      { lotId: lots.saleCancelled, status: "cancelled" },
+    ]);
     await db
       .insert(artistProfile)
       .values({ id: artistId, displayName: "A. Artist", slug: `a-${artistId}` });
@@ -157,6 +182,12 @@ describe.skipIf(!HAS_DB)("workspace buying readers (integration)", () => {
 
   afterAll(async () => {
     const lotIds = Object.values(lots);
+    const paymentIds = (
+      await db.select({ id: payment.id }).from(payment).where(inArray(payment.lotId, lotIds))
+    ).map((p) => p.id);
+    if (paymentIds.length > 0) {
+      await db.delete(domainEvent).where(inArray(domainEvent.aggregateId, paymentIds));
+    }
     await db.delete(deliveryQuote).where(inArray(deliveryQuote.lotId, lotIds));
     await db.delete(lotFulfilment).where(inArray(lotFulfilment.lotId, lotIds));
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
@@ -201,7 +232,9 @@ describe.skipIf(!HAS_DB)("workspace buying readers (integration)", () => {
       limit: 50,
       offset: 0,
     });
-    expect(rows.map((r) => r.lotId).sort()).toEqual([lots.agent, lots.due, lots.paid].sort());
+    expect(rows.map((r) => r.lotId).sort()).toEqual(
+      [lots.abandoned, lots.agent, lots.due, lots.paid, lots.saleCancelled].sort(),
+    );
     const paid = rows.find((r) => r.lotId === lots.paid);
     expect(paid).toMatchObject({
       buyerAccountKind: "organisation",
@@ -213,6 +246,75 @@ describe.skipIf(!HAS_DB)("workspace buying readers (integration)", () => {
     const due = rows.find((r) => r.lotId === lots.due);
     expect(due?.payment?.status).toBe("pending");
     expect(rows.find((r) => r.lotId === lots.agent)?.payment).toBeNull();
+  });
+
+  it("keeps a purchase owed after an abandoned checkout, and ends it only when the sale is cancelled", async () => {
+    const rows = await purchases.list({
+      legalEntityId: orgId,
+      memberUserId: null,
+      limit: 50,
+      offset: 0,
+    });
+    const facts = (lotId: string) => {
+      const row = rows.find((r) => r.lotId === lotId);
+      return {
+        paymentStatus: row?.payment?.status ?? null,
+        fulfilmentStatus: row?.fulfilment?.status ?? null,
+      };
+    };
+    const abandoned = facts(lots.abandoned);
+    expect(abandoned.paymentStatus).toBe("cancelled");
+    expect(purchaseEnding(abandoned)).toBeNull();
+    expect(purchaseIsToPay(abandoned)).toBe(true);
+
+    const saleCancelled = facts(lots.saleCancelled);
+    expect(purchaseEnding(saleCancelled)).toBe("cancelled");
+    expect(purchaseIsToPay(saleCancelled)).toBe(false);
+  });
+
+  it("lists money taken on a closed payment until the payment moves on", async () => {
+    const [abandoned] = await db
+      .select({ id: payment.id })
+      .from(payment)
+      .where(eq(payment.lotId, lots.abandoned));
+    const [paid] = await db
+      .select({ id: payment.id })
+      .from(payment)
+      .where(eq(payment.lotId, lots.paid));
+    const blockedEvent = (aggregateId: string) => ({
+      aggregateType: "payment",
+      aggregateId,
+      eventType: "payment.capture_blocked_terminal_status",
+      payload: {
+        paymentId: aggregateId,
+        stripePaymentIntentId: "pi_blocked",
+        stripeChargeId: "ch_blocked",
+        amountCents: 70_000,
+        statusBefore: "cancelled",
+      },
+      producer: "integration-test",
+    });
+    // The paid payment's event is stale: it was reinstated since.
+    await db
+      .insert(domainEvent)
+      .values([blockedEvent(abandoned?.id ?? ""), blockedEvent(paid?.id ?? "")]);
+
+    const items = await new DrizzleAdminWorkItemsReader(db).listBlockedCaptures(50);
+    const mine = items.filter((i) => [abandoned?.id, paid?.id].includes(i.sourceId));
+    expect(mine.map((i) => i.sourceId)).toEqual([abandoned?.id]);
+    expect(mine[0]).toMatchObject({
+      kind: "payment_capture_blocked",
+      domain: "finance",
+      href: `/admin/payments?payment=${abandoned?.id}`,
+    });
+
+    const found = await new DrizzlePaymentRepository(db).findBlockedCapture(abandoned?.id ?? "");
+    expect(found).toMatchObject({
+      stripePaymentIntentId: "pi_blocked",
+      stripeChargeId: "ch_blocked",
+      amountCents: 70_000,
+    });
+    expect(await new DrizzlePaymentRepository(db).findBlockedCapture(randomUUID())).toBeNull();
   });
 
   it("narrows purchases to one member's wins and to picked lots", async () => {
