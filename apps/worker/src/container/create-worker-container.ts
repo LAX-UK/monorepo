@@ -86,6 +86,7 @@ import { createAtgSyncRuntime } from "./create-atg-sync-runtime.js";
 import { createBidAlertRuntime } from "./create-bid-alert-runtime.js";
 import { createExportProviderDeps } from "./create-export-provider-deps.js";
 import { createWorkerRepositories } from "./create-worker-repositories.js";
+import { createZohoArtworkSyncRuntime } from "./create-zoho-artwork-sync.js";
 
 export type WorkerContainer = {
   env: WorkerEnv;
@@ -349,10 +350,12 @@ export function createWorkerContainer(): WorkerContainer {
     lifecycleExecutor,
   };
 
+  const zohoArtworkSync = createZohoArtworkSyncRuntime({ env, db, log });
   const webhookProcessorDeps: ProcessInboundWebhookDeps = {
     env,
     log,
     webhookEvents: new DrizzleWebhookEventRepository(db),
+    processZohoArtworkNotice: zohoArtworkSync.jobs.processNotice,
     ...(internalCronSecret && workerFinanceServices
       ? {
           syncXeroInvoiceWebhook: async (input) =>
@@ -363,7 +366,13 @@ export function createWorkerContainer(): WorkerContainer {
         : {}),
   };
 
-  const webhookWorkers = registerWebhookWorker({ ...deps, webhookProcessorDeps });
+  const webhookWorkers = registerWebhookWorker({
+    ...deps,
+    webhookProcessorDeps,
+    ...(zohoArtworkSync.scheduleNightly
+      ? { runZohoArtworkNightlyCheck: zohoArtworkSync.jobs.runNightlyCheck }
+      : {}),
+  });
   const mediaWorkers = registerMediaWorkers(deps);
   const emailWorkers = registerEmailWorker(deps);
   const marketingWorkers = registerMarketingWorkers(deps);

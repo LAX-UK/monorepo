@@ -321,7 +321,7 @@ export type ContainerAdminSlice = Pick<ContainerAdminServices, "admin">;
 
 export type ContainerCronSlice = Pick<
   ContainerCronServices,
-  "accountDeletionEligibilityService" | "brevoWebhookIngestService"
+  "accountDeletionEligibilityService" | "brevoWebhookIngestService" | "zohoArtworkNoticeService"
 >;
 
 /** "Download my data" readers for LAX Bid. */
@@ -603,9 +603,13 @@ export type ContainerBrevoWebhookRoutesSlice = Pick<Container, "env" | "brevoWeb
 /** Postmark delivery webhook. */
 export type ContainerPostmarkWebhookRoutesSlice = Pick<Container, "env" | "postmarkWebhookService">;
 
+/** Zoho workflow notices for artwork Products. */
+export type ContainerZohoWebhookRoutesSlice = Pick<Container, "zohoArtworkNoticeService">;
+
 /** Aggregated third-party webhook routes (`routes/webhooks/index.ts`). */
 export type ContainerInboundWebhookRoutesSlice = ContainerBrevoWebhookRoutesSlice &
-  ContainerPostmarkWebhookRoutesSlice;
+  ContainerPostmarkWebhookRoutesSlice &
+  ContainerZohoWebhookRoutesSlice;
 
 /** Venue CRUD (staff). */
 export type ContainerVenueRoutesSlice = Pick<Container, "catalogRoutes" | "userSuspensionChecker">;

@@ -13,9 +13,11 @@ import { NOINDEX_ROBOTS } from "@/lib/seo/art-indexing";
 import { artSiteJsonLd } from "@/lib/seo/art-structured-data";
 import { ART_THEME_COOKIE, parseArtTheme } from "@/lib/theme/art-theme";
 import { laxFaviconMetadataIcons } from "@auction/branding";
+import { EssentialCookiesDialog } from "@auction/marketing-ui";
 import { CatalogueImageProvider } from "@auction/shop-portal/react";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
+import Link from "next/link";
 import { montserrat, outfit } from "./fonts";
 import "./base.css";
 import "./footer.css";
@@ -83,7 +85,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 initialChoice={parseArtConsent(cookieStore.get(ART_CONSENT_COOKIE)?.value)}
                 cookiePolicyLinked={chrome.linkablePolicies.includes("cookies")}
               />
-            ) : null}
+            ) : (
+              <EssentialCookiesDialog
+                productName="lax.art"
+                cookiePolicyHref={
+                  chrome.linkablePolicies.includes("cookies") ? "/legal/cookies" : undefined
+                }
+                Link={Link}
+              />
+            )}
           </ArtSmoothScroll>
         </CatalogueImageProvider>
       </body>

@@ -338,6 +338,10 @@
       "types": "./dist/components/ui/filter-row.d.ts",
       "default": "./dist/components/ui/filter-row.js"
     },
+    "./components/scroll-row": {
+      "types": "./dist/components/ui/scroll-row.d.ts",
+      "default": "./dist/components/ui/scroll-row.js"
+    },
     "./components/section-tabs": {
       "types": "./dist/components/ui/section-tabs.d.ts",
       "default": "./dist/components/ui/section-tabs.js"

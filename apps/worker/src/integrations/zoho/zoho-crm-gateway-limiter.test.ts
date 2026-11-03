@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CrmGateway } from "../crm/crm-gateway.js";
+import type { CrmCoqlQuery, CrmGateway } from "../crm/crm-gateway.js";
 import { ZohoCrmHttpError } from "./types.js";
 import { ZohoCrmGatewayLimiter } from "./zoho-crm-gateway-limiter.js";
 
-function fakeGateway(overrides: Partial<CrmGateway> = {}): CrmGateway {
+function fakeGateway(
+  overrides: Partial<CrmGateway & CrmCoqlQuery> = {},
+): CrmGateway & CrmCoqlQuery {
   return {
     upsert: vi.fn(),
     upsertMany: vi.fn(),
@@ -11,6 +13,7 @@ function fakeGateway(overrides: Partial<CrmGateway> = {}): CrmGateway {
     findByEmail: vi.fn(),
     findDealIdsByContact: vi.fn(),
     executeCoql: vi.fn(),
+    queryCoql: vi.fn(),
     convertLead: vi.fn(),
     deleteRecord: vi.fn(),
     purgeFromRecycleBin: vi.fn(),

@@ -29,7 +29,8 @@ export type AccountMenuFacts = {
   user: Pick<SessionUser, "role" | "staffRoles">;
 };
 
-const PRIMARY: readonly AccountMenuEntry[] = [
+/** A client's everyday pages: the first group of the account menu, and the footer's Account column. */
+export const ACCOUNT_PRIMARY_ENTRIES: readonly AccountMenuEntry[] = [
   { id: "bids", label: "My bids", href: "/bids" },
   { id: "purchases", label: "Purchases", href: "/purchases" },
   { id: "watching", label: "Watching", href: "/watching" },
@@ -100,5 +101,5 @@ export function buildAccountMenu(facts: AccountMenuFacts): AccountMenuEntry[][] 
     { id: "settings", label: "Bid settings", href: "/settings" },
   ];
 
-  return [[...PRIMARY], switches, account];
+  return [[...ACCOUNT_PRIMARY_ENTRIES], switches, account];
 }
