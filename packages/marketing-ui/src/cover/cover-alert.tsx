@@ -1,7 +1,9 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import { Button, TextInput } from "@auction/ui/lax";
+import { Button, ErrorSummary, TextInput } from "@auction/ui/lax";
+import { type FormEvent, useId, useState } from "react";
+import { marketingEmailError } from "../marketing-email-error.js";
 import {
   ON_IMAGE_DARK_THEME,
   ON_IMAGE_FIELD,
@@ -30,45 +32,69 @@ export function CoverAlertField({
   swap?: boolean;
 }) {
   const field = tone ? ON_IMAGE_FIELD[tone] : null;
+  const fieldId = useId();
+  const [error, setError] = useState<string | null>(null);
+  const [failedSubmits, setFailedSubmits] = useState(0);
+
+  function onSubmit(event: FormEvent<HTMLFormElement>) {
+    const email = new FormData(event.currentTarget).get("email");
+    const problem = marketingEmailError(typeof email === "string" ? email : "");
+    setError(problem);
+    if (!problem) return;
+    event.preventDefault();
+    setFailedSubmits((count) => count + 1);
+  }
+
   return (
     <form
       method="post"
       action={alert.action}
-      className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center"
+      noValidate
+      onSubmit={onSubmit}
+      className="flex w-full flex-col gap-2 md:w-auto"
     >
-      <TextInput
-        type="email"
-        name="email"
-        required
-        autoComplete="email"
-        inputMode="email"
-        aria-label={alert.fieldLabel}
-        placeholder={alert.fieldLabel}
-        size="md"
-        boxClassName={cn(
-          "max-md:h-lax-control-lg md:w-[280px]",
-          field?.box,
-          tone && swap && ON_IMAGE_DARK_THEME.field.box,
-          tone && onImageFocus(tone, swap),
-        )}
-        className={cn(
-          "max-md:text-base",
-          field?.input,
-          tone && swap && ON_IMAGE_DARK_THEME.field.input,
-        )}
+      <ErrorSummary
+        errors={error ? [{ fieldId, message: error }] : []}
+        focusKey={failedSubmits}
+        className="md:max-w-[360px]"
       />
-      <Button
-        type="submit"
-        variant="primary"
-        size="md"
-        className={cn(
-          "max-md:h-lax-control-lg max-md:w-full",
-          tone && onImageButton(tone, swap),
-          tone && onImageFocus(tone, swap),
-        )}
-      >
-        {submitLabel}
-      </Button>
+      <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row md:items-center">
+        <TextInput
+          id={fieldId}
+          invalid={Boolean(error)}
+          type="email"
+          name="email"
+          required
+          autoComplete="email"
+          inputMode="email"
+          aria-label={alert.fieldLabel}
+          placeholder={alert.fieldLabel}
+          size="md"
+          boxClassName={cn(
+            "max-md:h-lax-control-lg md:w-[280px]",
+            field?.box,
+            tone && swap && ON_IMAGE_DARK_THEME.field.box,
+            tone && onImageFocus(tone, swap),
+          )}
+          className={cn(
+            "max-md:text-base",
+            field?.input,
+            tone && swap && ON_IMAGE_DARK_THEME.field.input,
+          )}
+        />
+        <Button
+          type="submit"
+          variant="primary"
+          size="md"
+          className={cn(
+            "max-md:h-lax-control-lg max-md:w-full",
+            tone && onImageButton(tone, swap),
+            tone && onImageFocus(tone, swap),
+          )}
+        >
+          {submitLabel}
+        </Button>
+      </div>
     </form>
   );
 }
