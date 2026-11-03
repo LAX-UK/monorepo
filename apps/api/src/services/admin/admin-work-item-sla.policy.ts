@@ -32,6 +32,9 @@ const SLA_MS: Partial<Record<AdminWorkItemSourceKind, number>> = {
   sof_case: 24 * 60 * 60 * 1000,
   legal_entity_kyb: 72 * 60 * 60 * 1000,
   unsold_lot_choice: 72 * 60 * 60 * 1000,
+  unsold_choice_follow_up: 72 * 60 * 60 * 1000,
+  // The seller was told a specialist would contact them.
+  unsold_choice_lapsed: 48 * 60 * 60 * 1000,
   purchase_problem: 48 * 60 * 60 * 1000,
   deletion_hold: 72 * 60 * 60 * 1000,
 };
@@ -68,6 +71,8 @@ const BASE_SEVERITY: Record<AdminWorkItemSourceKind, WorkItemSeverity> = {
   lot_withdrawal: "medium",
   lot_draft_past_start: "critical",
   unsold_lot_choice: "medium",
+  unsold_choice_follow_up: "medium",
+  unsold_choice_lapsed: "medium",
   marketing_enquiry: "medium",
   purchase_problem: "high",
   deletion_hold: "medium",

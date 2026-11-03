@@ -578,6 +578,8 @@ describe("admin dashboard metrics routes", () => {
       listPendingRegistrations: empty,
       listPendingTelephoneBookings: empty,
       listDraftLotsPastStart: empty,
+      listOpenUnsoldFollowUps: empty,
+      listLapsedUnsoldChoices: empty,
       listUnsoldLotChoices: empty,
       listMarketingEnquiries: empty,
       listPurchaseProblems: empty,
