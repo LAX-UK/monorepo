@@ -47,7 +47,7 @@ describe("SectionTabs, underline", () => {
       fireEvent.scroll(scroller);
     });
     expect(scroller.className).toContain(
-      "[mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)]",
+      "[mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)]",
     );
 
     sizeScroller(scroller, { scrollWidth: 420, clientWidth: 343, scrollLeft: 40 });
@@ -55,7 +55,7 @@ describe("SectionTabs, underline", () => {
       fireEvent.scroll(scroller);
     });
     expect(scroller.className).toContain(
-      "[mask-image:linear-gradient(to_right,transparent,black_1.5rem,black_calc(100%-1.5rem),transparent)]",
+      "[mask-image:linear-gradient(to_right,transparent,black_2rem,black_calc(100%-2rem),transparent)]",
     );
 
     sizeScroller(scroller, { scrollWidth: 420, clientWidth: 343, scrollLeft: 77 });
@@ -63,7 +63,7 @@ describe("SectionTabs, underline", () => {
       fireEvent.scroll(scroller);
     });
     expect(scroller.className).toContain(
-      "[mask-image:linear-gradient(to_right,transparent,black_1.5rem)]",
+      "[mask-image:linear-gradient(to_right,transparent,black_2rem)]",
     );
   });
 

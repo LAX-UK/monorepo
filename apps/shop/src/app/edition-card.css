@@ -164,6 +164,20 @@
   text-underline-offset: 3px;
 }
 
+/* A 44px target on touch, drawn over the card's own line so the layout stays as it is. */
+@media (pointer: coarse) {
+  .shop-edition-card__alert::after {
+    position: absolute;
+    top: 50%;
+    right: 0;
+    left: 0;
+    height: 100%;
+    min-height: 2.75rem;
+    transform: translateY(-50%);
+    content: "";
+  }
+}
+
 .shop-edition-card__alert:hover {
   text-decoration-color: currentColor;
 }

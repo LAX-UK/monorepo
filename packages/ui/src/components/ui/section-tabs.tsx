@@ -1,8 +1,8 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef } from "react";
-import { type ScrollEdges, useScrollEdges } from "../../hooks/use-scroll-edges.js";
+import type { ReactNode } from "react";
 import { cn } from "../../lib/utils.js";
+import { ScrollRow } from "./scroll-row.js";
 
 export type SectionTabItem<Id extends string = string> = {
   id: Id;
@@ -55,25 +55,9 @@ const pillLinkClass = (isActive: boolean, sentence: boolean) =>
       : "border-border-hairline bg-surface-container-lowest text-on-surface-variant hover:border-primary/25 hover:bg-surface-container-high hover:text-on-surface",
   );
 
-/** The fade drawn at an edge that hides more tabs: the cue that the row scrolls. */
-const EDGE_FADE: Record<"none" | "start" | "end" | "both", string | undefined> = {
-  none: undefined,
-  start: "[mask-image:linear-gradient(to_right,transparent,black_1.5rem)]",
-  end: "[mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)]",
-  both: "[mask-image:linear-gradient(to_right,transparent,black_1.5rem,black_calc(100%-1.5rem),transparent)]",
-};
-
-function edgeFade({ start, end }: ScrollEdges): string | undefined {
-  if (start && end) return EDGE_FADE.both;
-  if (start) return EDGE_FADE.start;
-  if (end) return EDGE_FADE.end;
-  return EDGE_FADE.none;
-}
-
 /**
- * Underline tabs stay on one line. When they do not fit (on a phone) the row scrolls sideways,
- * with a fade at the edge that hides more, and the current tab is scrolled into view. The
- * scroller pads its edges so a focus ring is never clipped.
+ * Underline tabs stay on one line. When they do not fit (on a phone) the row scrolls sideways
+ * (see `ScrollRow`). The scroller pads its edges so a focus ring is never clipped.
  */
 function UnderlineScroller({
   sticky,
@@ -82,29 +66,16 @@ function UnderlineScroller({
   sticky: boolean;
   children: ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const edges = useScrollEdges(ref);
-
-  useEffect(() => {
-    const el = ref.current;
-    const current = el?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (!el || !current) return;
-    const right = current.offsetLeft + current.offsetWidth;
-    if (right > el.scrollLeft + el.clientWidth) el.scrollLeft = right - el.clientWidth + 24;
-  }, []);
-
   return (
-    <div
-      ref={ref}
+    <ScrollRow
       data-tabs-scroller
       className={cn(
-        "-mx-1 min-w-0 overflow-x-auto px-1 pt-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "-mx-1 px-1 pt-1 pb-1",
         sticky && "sticky top-0 z-10 bg-surface/95 py-2 backdrop-blur-sm",
-        edgeFade(edges),
       )}
     >
       {children}
-    </div>
+    </ScrollRow>
   );
 }
 
