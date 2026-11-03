@@ -16,7 +16,7 @@ const DEPT_CARD_CLASS = cn(
 );
 
 function departmentAffordance(): string {
-  return "Start submission →";
+  return "Sell a work →";
 }
 
 function DepartmentCard({ dept }: { dept: SellDepartment }) {
@@ -30,7 +30,7 @@ function DepartmentCard({ dept }: { dept: SellDepartment }) {
         href={href}
         source={`sell_dept_${dept.id}`}
         data-testid={`sell-department-${dept.id}`}
-        aria-label={`${dept.label}: start submission`}
+        aria-label={`${dept.label}: sell a work`}
         className={cn(DEPT_CARD_CLASS)}
       >
         <div className="flex items-start gap-3">
@@ -65,7 +65,7 @@ export function SellDepartmentsSection() {
       <p>{SELL_PAGE_ACCEPTANCE}</p>
       <p>
         Browse by department below — we also review watches, motor cars, design, books, coins, and
-        more. Every submission is assessed for suitability; acceptance is not guaranteed.
+        more. Every work is assessed for suitability; acceptance is not guaranteed.
       </p>
 
       {visibleSellDepartmentGroups().map((group) => (

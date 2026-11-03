@@ -23,7 +23,7 @@ export default function SellEstatePage() {
         "Representative photographs of key works and any inventory spreadsheet you have",
         "Provenance summaries and certificates where available",
         "Location, access, and preferred timelines for collection review",
-        "Single items can still be submitted directly through the standard wizard",
+        "Single items can still be sent directly through Sell a work",
       ]}
     />
   );

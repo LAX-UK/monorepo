@@ -1,5 +1,6 @@
 import { SellCtaLink } from "@/components/marketing/sell-cta-link";
 import { MediaImage } from "@/components/ui/media-image";
+import { REPLY_WINDOW } from "@/lib/copy/glossary";
 import type { HomeSelling } from "@/lib/home-sections/types";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
@@ -13,7 +14,7 @@ const BODY =
 
 const STEPS = [
   { title: "Tell us about it", body: "Photos and a few details, in about three minutes." },
-  { title: "Free valuation", body: "A specialist’s estimate within two working days." },
+  { title: "Free valuation", body: `A specialist’s estimate, usually ${REPLY_WINDOW}.` },
   { title: "Consign", body: "We catalogue, photograph and sell it, and pay you after the sale." },
 ] as const;
 

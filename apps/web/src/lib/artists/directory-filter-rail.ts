@@ -162,7 +162,7 @@ export function buildArtistDirectoryFilterGroups(
           active: preset.id === "kind-artists",
         },
         {
-          label: "Makers & studios",
+          label: "Makers and studios",
           href: artistDirectoryWithQuery("/artists/kind/makers", {}, carry),
           count: facets.byKind.maker,
           active: preset.id === "kind-makers",

@@ -1,15 +1,20 @@
+import { PAYOUT_ACCOUNT, REPLY_WINDOW } from "@/lib/copy/glossary";
+import { CONSIGNMENT_STATUS } from "@/lib/seller/consignment-status";
 import type { ItemSubmissionStatus } from "@auction/types";
 
-/** Seller-facing status labels — see docs/sell-flow-ux.md */
+/**
+ * Seller-facing status labels. A submission reads as the consignment stage it belongs to, so a
+ * badge here and a tab on the consignments list use the same name.
+ */
 export const SELLER_SUBMISSION_STATUS_LABELS: Record<ItemSubmissionStatus, string> = {
-  draft: "Draft",
-  submitted: "Submitted",
-  under_review: "Under review",
-  changes_requested: "Needs changes",
-  approved: "Accepted",
-  converted: "Catalogue prep",
-  rejected: "Not accepted",
-  withdrawn: "Withdrawn",
+  draft: CONSIGNMENT_STATUS.draft.label,
+  submitted: CONSIGNMENT_STATUS.in_review.label,
+  under_review: CONSIGNMENT_STATUS.in_review.label,
+  changes_requested: CONSIGNMENT_STATUS.needs_changes.label,
+  approved: CONSIGNMENT_STATUS.preparing.label,
+  converted: CONSIGNMENT_STATUS.preparing.label,
+  rejected: CONSIGNMENT_STATUS.not_accepted.label,
+  withdrawn: CONSIGNMENT_STATUS.withdrawn.label,
 };
 
 /** The one name for handing a work to LAX: page actions, empty states, Home and the form. */
@@ -19,12 +24,11 @@ export const SELL_PREREQUISITES = [
   "1+ photos of the item (3+ recommended: overall, detail, signature or markings)",
   "Title, description, dimensions, and medium — include artist or maker in the title or description",
   "Provenance or acquisition history, if available",
-  "A verified email on your LAX account (required to submit)",
-  "Stripe Connect for payouts (complete after acceptance — not required to start)",
+  "A verified email on your LAX Account (required to send)",
+  `A ${PAYOUT_ACCOUNT} (set up after acceptance, not needed to start)`,
 ] as const;
 
-export const SELL_TIME_EXPECTATIONS =
-  "~3 minutes to submit · Progress saves after your first save · Response within 24 hours";
+export const SELL_TIME_EXPECTATIONS = `About 3 minutes to send · Progress saves after your first save · Reply ${REPLY_WINDOW}`;
 
 /** Opening paragraph for `/sell` LegalPage intro. */
 export const SELL_PAGE_INTRO =
@@ -32,11 +36,11 @@ export const SELL_PAGE_INTRO =
 
 /** Acceptance criteria prose — heart of legacy “What we accept”. */
 export const SELL_PAGE_ACCEPTANCE =
-  "We review editorial fine art and exceptional objects with clear provenance, condition information, and market fit for upcoming auctions. Share photographs, dimensions, artist or maker details (in your title or description), acquisition history, and any available documentation when you submit an item.";
+  "We review editorial fine art and exceptional objects with clear provenance, condition information, and market fit for upcoming auctions. Share photographs, dimensions, artist or maker details (in your title or description), acquisition history, and any available documentation when you send a work.";
 
-/** Post-submission consignment workflow — heart of legacy “How consignment works”. */
+/** What happens after a work is sent. */
 export const SELL_PAGE_CONSIGNMENT_WORKS =
-  "Start with a submission, then our team vets the object, confirms sale suitability, prepares catalogue materials, coordinates photography and logistics, and markets the lot to collectors. After the auction, we coordinate payment, buyer handover, and consignor settlement.";
+  "Start with Sell a work, then our team reviews the object, confirms sale suitability, prepares catalogue materials, coordinates photography and logistics, and markets the lot to collectors. After the auction, we coordinate payment, buyer handover, and consignor settlement.";
 
 export const SELL_PHOTO_TIPS = [
   "Shoot in natural daylight or neutral indoor light — avoid harsh flash.",
@@ -45,7 +49,7 @@ export const SELL_PHOTO_TIPS = [
   "Upload the highest resolution your connection allows — we accept up to 20 images.",
 ] as const;
 
-/** Shown while editing an in-progress submission in the wizard (autosave chrome only). */
+/** Shown while editing an in-progress work in the form (autosave chrome only). */
 export const SUBMISSION_AUTOSAVE_EXPLAINER = "Saved automatically";
 
 export const SUBMISSION_FINISH_LATER_LABEL = "Save and finish later";
@@ -56,7 +60,7 @@ export const SUBMISSION_SUBMIT_LABEL = "Send to our specialists";
 export const SUBMISSION_CHANGES_SUBMIT_LABEL = "Send back to your specialist";
 
 /** The one response-time promise made to a seller, wherever a screen makes it. */
-export const SPECIALIST_RESPONSE_PROMISE = "Our specialists usually reply within one working day.";
+export const SPECIALIST_RESPONSE_PROMISE = `Our specialists usually reply ${REPLY_WINDOW}.`;
 
 export const SUBMISSION_LEAVE_WITHOUT_SAVING_LABEL = "Leave without saving";
 
@@ -65,23 +69,22 @@ export const SUBMISSION_LEAVE_WITHOUT_SAVING_HINT =
 
 /** Collapsible hints on the last step: what follows a send, not a second progress timeline. */
 export const SUBMISSION_AFTER_SUBMIT_HINTS = [
-  "In review: a specialist reads your submission and may ask for more detail or photos.",
-  "Accepted: we prepare the catalogue entry and ask you to set up your payout details.",
+  "In review: a specialist reads your answers and may ask for more detail or photos.",
+  "Accepted: we prepare the catalogue entry and ask you to set up your payout account.",
   "In a sale: your work is scheduled for an upcoming sale.",
 ] as const;
 
 /** One-line status copy on read-only submission detail pages. */
 export const SUBMISSION_STATUS_HINTS: Partial<Record<ItemSubmissionStatus, string>> = {
-  draft: "Complete your submission and submit for specialist review.",
+  draft: "Finish your answers, then send the work to our specialists.",
   submitted: "Our specialists will start the review soon.",
-  under_review: "Our specialists are reviewing your submission.",
+  under_review: "Our specialists are reviewing your work.",
   changes_requested:
-    "A specialist asked for a few changes. Edit this submission and send it back for review.",
+    "A specialist asked for a few changes. Edit your answers and send the work back.",
   approved: "Accepted. Read and accept the consignment agreement so we can catalogue your work.",
   converted: "We are preparing the catalogue entry. Finish the checklist items below.",
-  rejected:
-    "Not accepted. Read the reason below and start a new submission if you wish to resubmit.",
-  withdrawn: "Withdrawn. You can start a new submission when you are ready.",
+  rejected: "Not accepted. Read the reason below and sell a work again if you wish.",
+  withdrawn: "Withdrawn. You can sell a work again when you are ready.",
 };
 
 export const WIZARD_STEP_SUMMARIES: Record<string, string> = {

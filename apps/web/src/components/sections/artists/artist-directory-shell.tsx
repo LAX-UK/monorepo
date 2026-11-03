@@ -12,6 +12,7 @@ import { CatalogArtistViewClient } from "@/components/sections/artists/catalog-a
 import type { ArtistDirectoryPreset } from "@/lib/artists/directory-presets";
 import { artistDirectoryWithQuery } from "@/lib/artists/directory-url";
 import { loadArtistDirectoryPage } from "@/lib/artists/load-artist-directory-page";
+import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { artistPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
@@ -243,12 +244,12 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
           ) : null}
           <div className="mt-10">
             <MarketingPromoCta
-              title="Submit your portfolio"
-              description="Request a valuation or submit work to be considered for an upcoming auction."
+              title="Sell your work"
+              description="Ask for a free valuation, or tell us about a work to be considered for an upcoming sale."
               actions={
                 <>
                   <ButtonLink Link={Link} variant="primary" href="/selling/new">
-                    Submit work
+                    {SELL_A_WORK_LABEL}
                   </ButtonLink>
                   <ButtonLink Link={Link} variant="secondary" href="/sell">
                     Selling guide

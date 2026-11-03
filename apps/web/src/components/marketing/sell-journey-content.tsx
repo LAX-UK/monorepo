@@ -1,4 +1,5 @@
 import type { MarketingProcessStep } from "@/components/marketing/marketing-process-steps";
+import { PAYOUT_ACCOUNT, REPLY_WINDOW } from "@/lib/copy/glossary";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { Banknote, FileText, Gavel, Search, ShieldCheck, Tag, UserPlus } from "lucide-react";
 import Link from "next/link";
@@ -31,15 +32,15 @@ export const SELL_MARKETING_JOURNEY_STEPS: readonly MarketingProcessStep[] = [
   },
   {
     id: "submit",
-    title: "Submit",
+    title: "Send",
     icon: FileText,
-    description: "Complete the 6-step wizard — about 3 minutes.",
+    description: "Answer a few questions about the work. It takes about 3 minutes.",
   },
   {
     id: "review",
     title: "Specialist review",
     icon: ShieldCheck,
-    description: "Our team vets your object within 24 hours.",
+    description: `A specialist reviews your work and usually replies ${REPLY_WINDOW}.`,
   },
   {
     id: "listed",
@@ -58,8 +59,7 @@ export const SELL_MARKETING_JOURNEY_STEPS: readonly MarketingProcessStep[] = [
     id: "payout",
     title: "Get paid",
     icon: Banknote,
-    description:
-      "Complete Stripe Connect after acceptance so we can transfer your proceeds once the buyer has paid.",
+    description: `Set up your ${PAYOUT_ACCOUNT} after acceptance so we can pay you once the buyer has paid.`,
   },
 ];
 
@@ -67,12 +67,12 @@ export const SELL_MARKETING_JOURNEY_STEPS: readonly MarketingProcessStep[] = [
 export function SellValuationIntro({ cta }: { cta: ReactNode }) {
   return (
     <p>
-      Specialists provide guidance and estimates by reviewing your submission — there is no separate
-      online appraisal form. Share key details and images via {cta}, or{" "}
+      Specialists give guidance and estimates by reviewing your work, so there is no separate online
+      appraisal form. Share key details and images through {cta}, or{" "}
       <Link href="/contact" className={MARKETING_PROSE_LINK}>
         contact our team
       </Link>{" "}
-      for estates, corporate collections, and complex consignments. We respond within 24 hours.
+      for estates, corporate collections, and complex consignments. We usually reply {REPLY_WINDOW}.
     </p>
   );
 }

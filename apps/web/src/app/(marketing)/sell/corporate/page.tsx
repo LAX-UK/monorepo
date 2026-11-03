@@ -23,7 +23,7 @@ export default function SellCorporatePage() {
         "Overview of collection size, locations, and disposal timeline",
         "Compliance or data-retention requirements we should know about",
         "Representative images and inventory where available",
-        "Individual works can be submitted through the standard consignment wizard",
+        "Individual works can be sent through Sell a work",
       ]}
     />
   );

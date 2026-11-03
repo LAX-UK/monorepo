@@ -7,7 +7,7 @@ type PaletteVariant = "marketing" | "dashboard" | "admin";
 const PLACEHOLDERS: Record<PaletteVariant, string> = {
   admin: "Search pages, lots, payments, clients…",
   marketing: "Search lots, artists, sales…",
-  dashboard: "Search your dashboard…",
+  dashboard: "Search your account…",
 };
 
 type Props = {

@@ -14,7 +14,11 @@ import { SellValuationSection } from "@/components/marketing/sell-journey/sell-v
 import { SellPageClosingPromo } from "@/components/marketing/sell-page-closing-promo";
 import { SITE_SEO_NAME } from "@/lib/brand";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
-import { SELL_PAGE_INTRO, SELL_TIME_EXPECTATIONS } from "@/lib/marketing/sell-flow-copy";
+import {
+  SELL_A_WORK_LABEL,
+  SELL_PAGE_INTRO,
+  SELL_TIME_EXPECTATIONS,
+} from "@/lib/marketing/sell-flow-copy";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { SELL_PAGE_TOC } from "@/lib/marketing/sell-page-toc";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
@@ -26,7 +30,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
   title: "Selling with LAX Bid",
-  description: `How to sell with ${SITE_SEO_NAME}: submit a consignment, work with specialists, prepare catalogue materials, and settle after auction.`,
+  description: `How to sell with ${SITE_SEO_NAME}: send a work, work with specialists, prepare catalogue materials, and settle after auction.`,
   path: "/sell",
 });
 
@@ -54,7 +58,7 @@ export default function SellPage() {
             className={MARKETING_HUB_BREADCRUMB_CLASS}
           />
         }
-        kicker="Consign with LAX"
+        kicker="Sell with LAX Bid"
         embedded
         toc={SELL_PAGE_TOC}
       >
@@ -63,15 +67,15 @@ export default function SellPage() {
 
         <MarketingPromoCta
           className="mt-8"
-          title="Start your submission"
-          description="Create an account and complete the consignment wizard in about 3 minutes."
+          title={SELL_A_WORK_LABEL}
+          description="Create an account and tell us about your work in about 3 minutes."
           actions={
             <SellCtaLink
               href={sellIntakeHref()}
               source="sell_intro"
               className={buttonVariants({ variant: "primary" })}
             >
-              Start your submission
+              {SELL_A_WORK_LABEL}
             </SellCtaLink>
           }
         />

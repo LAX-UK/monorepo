@@ -8,9 +8,11 @@ import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { MarketingSectionSubheading } from "@/components/marketing/marketing-section-subheading";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import { SellCtaLink } from "@/components/marketing/sell-cta-link";
+import { REPLY_WINDOW } from "@/lib/copy/glossary";
 import { hasDepartmentEvidence } from "@/lib/departments/department-evidence";
 import { loadDepartmentEvidence } from "@/lib/departments/load-department-evidence";
 import { MARKETING_PAGE_SHELL, MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
+import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -70,21 +72,21 @@ export async function SellTailoredLandingPage({
       <MarketingPromoCta
         className={evidence ? "" : "mt-8"}
         title="Ready to begin?"
-        description="Create an account and start your submission — our specialists review every item within 24 hours."
+        description={`Create an account and tell us about your work. Our specialists usually reply ${REPLY_WINDOW}.`}
         actions={
           <SellCtaLink
             href={sellIntakeHref(categorySlug ? { categorySlug } : undefined)}
             source={`${path}_submit`}
             className={buttonVariants({ variant: "primary" })}
           >
-            Start your submission
+            {SELL_A_WORK_LABEL}
           </SellCtaLink>
         }
       />
       <p className="mt-6 font-body text-sm text-on-surface-variant">
         Back to{" "}
         <Link href="/sell" className={MARKETING_PROSE_LINK}>
-          Selling with LAX
+          Selling with LAX Bid
         </Link>
       </p>
     </>

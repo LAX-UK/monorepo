@@ -3,8 +3,6 @@ import { type KycLinkActionFeedback, kycLinkActionLabel } from "@/lib/kyc/kyc-li
 
 export { kycLinkActionLabel, type KycLinkActionFeedback };
 
-export const KYC_PROVIDER_NAME = "Veriff";
-
 export type KycUiPhase =
   | "idle"
   | "starting"
@@ -108,7 +106,7 @@ export function kycVerifyButtonLabel(
 }
 
 export const KYC_VERIFY_DESCRIPTION =
-  "Complete a secure document and selfie check with Veriff. You can finish in a few minutes without leaving this page.";
+  "Complete a secure document and selfie identity check. You can finish in a few minutes without leaving this page.";
 
 export const KYC_BANNER_DESCRIPTION =
   "Complete identity verification to keep bidding and settle outstanding commitments.";

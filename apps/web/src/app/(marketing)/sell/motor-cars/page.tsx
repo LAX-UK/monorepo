@@ -24,9 +24,9 @@ export default function SellMotorCarsPage() {
       bullets={[
         "Exterior from several angles, interior, and odometer reading",
         "VIN plate, engine bay, and any known ownership history",
-        "Mechanical condition and recent service records in submitter notes",
+        "Mechanical condition and recent service records in your notes",
         "Logistics and location details for collection or inspection",
-        "Single vehicles can be submitted through the standard wizard in about 3 minutes",
+        "Single vehicles can be sent through Sell a work in about 3 minutes",
       ]}
     />
   );

@@ -26,7 +26,7 @@ export default function SellPrintsPage() {
         "Publisher, printer, and year of publication where known",
         "Overall, signature, and condition detail photographs",
         "Provenance or acquisition history when available",
-        "Single prints can also be submitted through the standard wizard",
+        "Single prints can also be sent through Sell a work",
       ]}
     />
   );

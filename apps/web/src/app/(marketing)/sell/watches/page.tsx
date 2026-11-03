@@ -24,9 +24,9 @@ export default function SellWatchesPage() {
       bullets={[
         "Reference number, case material, and bracelet or strap",
         "Dial, caseback, movement, and serial markings",
-        "Box, papers, and service history in your submitter notes",
+        "Box, papers, and service history in your your notes",
         "Overall and detail photographs — avoid heavy filters or glare",
-        "Single watches can be submitted through the standard wizard in about 3 minutes",
+        "Single watches can be sent through Sell a work in about 3 minutes",
       ]}
     />
   );

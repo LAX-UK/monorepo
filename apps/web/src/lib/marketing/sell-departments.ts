@@ -56,7 +56,7 @@ export const SELL_DEPARTMENT_GROUPS: readonly SellDepartmentGroup[] = [
         id: "digital-art",
         label: "Digital art",
         slug: "digital-art",
-        examples: ["NFT-backed works", "Digital editions"],
+        examples: ["Digital works", "Digital editions"],
         intake: "wizard",
       },
       {
