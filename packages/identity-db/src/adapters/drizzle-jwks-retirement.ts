@@ -1,10 +1,24 @@
+import { ACCESS_TOKEN_TTL_SECONDS } from "@auction/identity-contracts";
 import { and, eq, lt, sql } from "drizzle-orm";
 import { jwksKey } from "../schema/jwks-key.js";
 import type { IdentityDatabase } from "./drizzle-consent-store.js";
 
-const RETIREMENT_WINDOW_MS = 30 * 60 * 1000;
+/** How long consumers may cache `/.well-known/jwks.json`. */
+const DISCOVERY_CACHE_TTL_MS = 60 * 1000;
+const SAFETY_MARGIN_MS = 15 * 60 * 1000;
+
+/**
+ * A rotating key stays published until every token it signed has expired and
+ * every consumer has refreshed its JWKS cache, plus a safety margin. Derived
+ * from the access-token lifetime so a longer lifetime widens the window.
+ */
+export const JWKS_RETIREMENT_WINDOW_MS =
+  Math.max(DISCOVERY_CACHE_TTL_MS, ACCESS_TOKEN_TTL_SECONDS * 1000) + SAFETY_MARGIN_MS;
+
 const DEFAULT_INTERVAL_MS = 15 * 60 * 1000;
-const DEFAULT_LOCK_KEY = 0x4a574b5f52455452n;
+/** Serialises key retirement ticks and key rotation. */
+export const JWKS_ADVISORY_LOCK_KEY = 0x4a574b5f52455452n;
+const DEFAULT_LOCK_KEY = JWKS_ADVISORY_LOCK_KEY;
 
 type Logger = {
   info: (bindings: Record<string, unknown>, message: string) => void;
@@ -33,7 +47,7 @@ function rowsFromExecuteResult(result: unknown): LockRow[] {
 }
 
 export async function retireExpiredJwksKeys(db: IdentityDatabase, now = new Date()): Promise<void> {
-  const cutoff = new Date(now.getTime() - RETIREMENT_WINDOW_MS);
+  const cutoff = new Date(now.getTime() - JWKS_RETIREMENT_WINDOW_MS);
   await db
     .update(jwksKey)
     .set({ status: "retired" })
