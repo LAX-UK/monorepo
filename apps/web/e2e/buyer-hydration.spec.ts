@@ -36,7 +36,11 @@ test.describe("hydration @smoke", () => {
     playwright,
   }) => {
     test.setTimeout(120_000);
-    const request = await playwright.request.newContext();
+    // Signed out: the project's saved buyer session is not needed to find public routes.
+    const request = await playwright.request.newContext({
+      baseURL: baseURL ?? "http://localhost:3000",
+      storageState: { cookies: [], origins: [] },
+    });
     const routes = [...(await resolveSaleRoutes(request)), ...(await resolveLotRoutes(request))];
     await request.dispose();
     expect(routes.length, "the seeded stack has a sale and a lot to open").toBeGreaterThan(0);
