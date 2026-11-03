@@ -6,6 +6,8 @@ export type AdminWorkItemLinkIds = {
   /** The payment, submission, lot, legal entity, case or screening the item is about. */
   subjectId?: string | null;
   saleId?: string | null;
+  /** The payment a purchase problem was reported against. */
+  paymentId?: string | null;
   /** Telephone booking status the item is filtered by on its sale tab. */
   status?: string | null;
 };
@@ -40,6 +42,10 @@ export function adminWorkItemHref(
       return requireId(kind, subjectId, adminRoutes.submission);
     case "unsold_lot_choice":
       return requireId(kind, subjectId, adminRoutes.submissionDecision);
+    case "marketing_enquiry":
+      return requireId(kind, subjectId, adminRoutes.enquiry);
+    case "purchase_problem":
+      return requireId(kind, ids.paymentId ?? null, adminRoutes.payments.panel);
     case "condition_report":
       return adminRoutes.conditionReports.list();
     case "lot_fulfilment":

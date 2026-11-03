@@ -58,6 +58,8 @@ export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRe
   lot_withdrawal: LOTS_ACCESS,
   lot_draft_past_start: LOTS_ACCESS,
   unsold_lot_choice: SUBMISSIONS_ACCESS,
+  marketing_enquiry: MARKETING_ENQUIRIES_ACCESS,
+  purchase_problem: FINANCE_ACCESS,
 };
 
 const REVIEW_TASK_SOURCE_ACCESS: CapabilityRequirement = {
@@ -223,11 +225,11 @@ export class AdminWorkItemsService {
         fetch: () => this.reader.listUnsoldLotChoices(perSourceLimit),
       },
       {
-        access: MARKETING_ENQUIRIES_ACCESS,
+        access: WORK_ITEM_KIND_ACCESS.marketing_enquiry,
         fetch: () => this.reader.listMarketingEnquiries(perSourceLimit),
       },
       {
-        access: FINANCE_ACCESS,
+        access: WORK_ITEM_KIND_ACCESS.purchase_problem,
         fetch: () => this.reader.listPurchaseProblems(perSourceLimit),
       },
     ];

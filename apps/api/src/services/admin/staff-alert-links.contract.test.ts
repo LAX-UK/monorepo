@@ -36,6 +36,8 @@ const WORK_ITEM_SAMPLES: Record<AdminWorkItemSourceKind, AdminWorkItemLinkIds> =
   lot_withdrawal: { subjectId: "lot-1" },
   lot_draft_past_start: { subjectId: "lot-1" },
   unsold_lot_choice: { subjectId: "sub-1" },
+  marketing_enquiry: { subjectId: "enq-1" },
+  purchase_problem: { paymentId: "pay-1" },
 };
 
 const KINDS = Object.keys(WORK_ITEM_SAMPLES) as AdminWorkItemSourceKind[];
@@ -65,6 +67,15 @@ describe("work item links", () => {
     expect(adminWorkItemHref("aml_screening", {})).toBe(adminRoutes.aml.list());
     expect(adminWorkItemHref("sof_case", {})).toBe(adminRoutes.sourceOfFunds.list());
     expect(adminWorkItemHref("lot_withdrawal", {})).toBe(adminRoutes.lots.list());
+  });
+
+  it("opens an enquiry by its record and a purchase problem on its payment", () => {
+    expect(adminWorkItemHref("marketing_enquiry", { subjectId: "enq 1" })).toBe(
+      "/admin/enquiries/enq%201",
+    );
+    expect(adminWorkItemHref("purchase_problem", { paymentId: "pay-1" })).toBe(
+      "/admin/payments?payment=pay-1",
+    );
   });
 
   it("refuses to build a link that needs an id it was not given", () => {

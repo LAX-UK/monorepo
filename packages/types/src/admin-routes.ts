@@ -1,6 +1,7 @@
 import {
   AML_REVIEW_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
+  ENQUIRIES_ACCESS,
   FAILED_JOBS_READ_ACCESS,
   FINANCE_ACCESS,
   LEGAL_ENTITY_BROWSE_ACCESS,
@@ -61,6 +62,7 @@ export const ADMIN_ROUTE_TABLE = [
     area: "platform",
     requirement: CONDITION_REPORTS_READ_ACCESS,
   },
+  { pattern: "/admin/enquiries/[reference]", area: "platform", requirement: ENQUIRIES_ACCESS },
   { pattern: "/admin/failed-jobs", area: "platform", requirement: FAILED_JOBS_READ_ACCESS },
   { pattern: "/admin/failed-jobs/[id]", area: "platform", requirement: FAILED_JOBS_READ_ACCESS },
   {
@@ -99,6 +101,8 @@ export const adminRoutes = {
   payments: {
     list: () => "/admin/payments",
     manualReview: () => "/admin/payments?manualReview=1",
+    /** The payments list with one payment's panel open. */
+    panel: (paymentId: string) => `/admin/payments?payment=${encodeURIComponent(paymentId)}`,
   },
   aml: {
     list: () => "/admin/compliance/aml",
@@ -109,6 +113,8 @@ export const adminRoutes = {
     list: () => "/admin/compliance/source-of-funds",
     detail: (id: string) => `/admin/compliance/source-of-funds/${seg(id)}`,
   },
+  /** An enquiry record; the page accepts its reference or its id. */
+  enquiry: (referenceOrId: string) => `/admin/enquiries/${seg(referenceOrId)}`,
   conditionReports: { list: () => "/admin/condition-reports" },
   lotFulfilment: { list: () => "/admin/lot-fulfilment" },
   legalEntity: (id: string) => `/admin/legal-entities/${seg(id)}`,
