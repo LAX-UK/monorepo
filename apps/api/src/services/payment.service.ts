@@ -16,6 +16,7 @@ import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.po
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IBuyerPaymentAuthority } from "./interfaces/buyer-payment-authority.js";
 import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
+import type { IErrorReporter } from "./interfaces/error-handling.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
@@ -41,6 +42,10 @@ import {
   sumCapturedBetween,
   syncPaymentFromXeroAsAdmin,
 } from "./payment/payment-admin-ops.js";
+import {
+  refundBlockedCapture,
+  reinstateBlockedCapture,
+} from "./payment/payment-blocked-capture-ops.js";
 import {
   type EntityWonLotDTO,
   cancelPendingAsBuyer,
@@ -105,6 +110,7 @@ export class PaymentService
     xeroInvoiceBlocking = true,
     paymentDomainEvents: IPaymentDomainEventsRepository | null = null,
     buyerPaymentAuthority: IBuyerPaymentAuthority | null = null,
+    errorReporter: IErrorReporter | null = null,
   ) {
     const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
       payments,
@@ -117,6 +123,7 @@ export class PaymentService
       legalEntityRepository,
       paymentEvents: paymentDomainEvents ?? null,
       xeroInvoiceBlocking,
+      errorReporter: errorReporter ?? undefined,
     };
     this.deps = {
       lots,
@@ -257,6 +264,32 @@ export class PaymentService
       userRole,
       paymentId,
       userStaffRoles,
+    );
+  }
+
+  reinstateBlockedCapture(
+    adminUserId: string,
+    userRole: string,
+    paymentId: string,
+    userStaffRoles?: StaffRoles | undefined,
+  ): Promise<Result<void, AuthzError | PaymentProviderError>> {
+    return reinstateBlockedCapture(this.deps, adminUserId, userRole, paymentId, userStaffRoles);
+  }
+
+  refundBlockedCapture(
+    adminUserId: string,
+    userRole: string,
+    paymentId: string,
+    userStaffRoles: StaffRoles | undefined,
+    reason?: string,
+  ): Promise<Result<void, AuthzError | PaymentProviderError>> {
+    return refundBlockedCapture(
+      this.deps,
+      adminUserId,
+      userRole,
+      paymentId,
+      userStaffRoles,
+      reason,
     );
   }
 

@@ -45,6 +45,24 @@ export function searchAlertQuery(q: string, categoryId?: string): Record<string,
   return { q, ...(categoryId ? { categoryId } : {}) };
 }
 
+function sameQuery(a: Readonly<Record<string, string>>, b: Readonly<Record<string, string>>) {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const key of keys) {
+    if ((a[key] ?? "") !== (b[key] ?? "")) return false;
+  }
+  return true;
+}
+
+/** Whether the saved searches already hold an alert for this search text and category. */
+export function hasSearchAlert(
+  saved: readonly { query: Readonly<Record<string, string>> }[],
+  q: string,
+  categoryId?: string,
+): boolean {
+  const query = searchAlertQuery(q, categoryId);
+  return saved.some((row) => sameQuery(row.query, query));
+}
+
 export function searchAlertLabel(q: string): string {
   return `Search: ${q}`;
 }

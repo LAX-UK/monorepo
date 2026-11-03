@@ -6,6 +6,10 @@ import {
   adminRejectSubmissionResultAction,
   adminStartSubmissionReviewResultAction,
 } from "@/lib/actions/admin-submissions";
+import {
+  refundBlockedCaptureResultAction,
+  reinstateBlockedCaptureResultAction,
+} from "@/lib/actions/admin/admin-blocked-capture";
 import { recordDashboardTelemetry } from "@/lib/admin/dashboard/dashboard-telemetry";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -107,9 +111,19 @@ export async function executeWorkItemActionAction(input: unknown): Promise<Actio
           return actionSuccess();
         });
       }
+      case "reinstate_payment": {
+        const denied = await denyUnlessAdminCapability(PAYMENT_WRITE_ACCESS);
+        if (denied) return denied;
+        return runWithTelemetry(kind, action, () => reinstateBlockedCaptureResultAction(id));
+      }
       case "refund": {
         const denied = await denyUnlessAdminCapability(PAYMENT_WRITE_ACCESS);
         if (denied) return denied;
+        if (kind === "payment_capture_blocked") {
+          return runWithTelemetry(kind, action, () =>
+            refundBlockedCaptureResultAction(id, { reason: notes ?? "" }),
+          );
+        }
         // A refund is audited with its reason, wherever it starts.
         const reason = notes?.trim() ?? "";
         if (reason.length < ADMIN_REFUND_BUYER_REASON_MIN) {

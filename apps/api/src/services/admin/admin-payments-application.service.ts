@@ -26,6 +26,31 @@ export class AdminPaymentsApplicationService implements IAdminPaymentsApplicatio
     );
   }
 
+  reinstateBlockedCapture(
+    adminUserId: string,
+    userRole: string,
+    paymentId: string,
+    userStaffRoles?: StaffRoles | undefined,
+  ): Promise<Result<void, AuthzError>> {
+    return this.payments.reinstateBlockedCapture(adminUserId, userRole, paymentId, userStaffRoles);
+  }
+
+  refundBlockedCapture(
+    adminUserId: string,
+    userRole: string,
+    paymentId: string,
+    userStaffRoles: StaffRoles | undefined,
+    reason?: string,
+  ): Promise<Result<void, AuthzError>> {
+    return this.payments.refundBlockedCapture(
+      adminUserId,
+      userRole,
+      paymentId,
+      userStaffRoles,
+      reason,
+    );
+  }
+
   refundManualReviewPayment(
     adminUserId: string,
     userRole: string,

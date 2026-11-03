@@ -46,6 +46,9 @@ const ENDING_SOON_COUNTDOWN =
 const ENDING_SOON_MUTED_SHELL_SHARED =
   "inline-flex h-8 items-center rounded-[5.33px] border-transparent bg-[rgba(18,18,18,0.4)] px-[10.67px] backdrop-blur-[8px] font-supporting text-xs font-medium leading-4 text-brand-100/85";
 
+/** What a lot shows, and says aloud, when its times did not load. */
+const UNKNOWN_TIMER_TEXT = "Times not available";
+
 function ariaLabelFor(state: LotTimerState, timer?: TimerText): string {
   switch (state.kind) {
     case "live":
@@ -59,7 +62,7 @@ function ariaLabelFor(state: LotTimerState, timer?: TimerText): string {
     case "cancelled":
       return "Auction cancelled.";
     case "unknown":
-      return "Auction timing unavailable. Coming soon.";
+      return UNKNOWN_TIMER_TEXT;
     default:
       return assertNever(state);
   }
@@ -266,7 +269,7 @@ export function LotTimerPill({
           )}
           {...toneProps}
         >
-          Soon
+          {UNKNOWN_TIMER_TEXT}
         </output>,
       );
     default:

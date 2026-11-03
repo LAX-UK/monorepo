@@ -104,4 +104,49 @@ export function attachAdminPaymentsManualReviewRoutes(
       );
     },
   );
+
+  finance.post(
+    "/payments/:id/reinstate-blocked-capture",
+    requirePaymentManualReviewWrite,
+    guards.requireStepUp,
+    guards.idempotent("payments.reinstate-blocked-capture"),
+    zValidator("param", adminPaymentIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const result = await container.admin.payments.reinstateBlockedCapture(
+        c.get("userId") as string,
+        c.get("userRole") ?? "client",
+        id,
+        c.get("userStaffRoles"),
+      );
+      return result.match(
+        () => c.json({ ok: true }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
+
+  finance.post(
+    "/payments/:id/refund-blocked-capture",
+    requirePaymentManualReviewWrite,
+    guards.requireStepUp,
+    guards.idempotent("payments.refund-blocked-capture"),
+    zValidator("param", adminPaymentIdParamSchema),
+    zValidator("json", adminRefundBuyerBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { reason } = c.req.valid("json");
+      const result = await container.admin.payments.refundBlockedCapture(
+        c.get("userId") as string,
+        c.get("userRole") ?? "client",
+        id,
+        c.get("userStaffRoles"),
+        reason,
+      );
+      return result.match(
+        () => c.json({ ok: true }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
 }

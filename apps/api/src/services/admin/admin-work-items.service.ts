@@ -47,6 +47,7 @@ export type AdminWorkItemsListResult = {
  */
 export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRequirement> = {
   payment_manual_review: FINANCE_ACCESS,
+  payment_capture_blocked: FINANCE_ACCESS,
   aml_screening: AML_REVIEW_ACCESS,
   sof_case: AML_REVIEW_ACCESS,
   submission_review: SUBMISSIONS_ACCESS,
@@ -103,6 +104,9 @@ function stampActions(
       break;
     case "payment_manual_review":
       if (can(PAYMENT_WRITE_ACCESS)) actions.push("capture", "refund");
+      break;
+    case "payment_capture_blocked":
+      if (can(PAYMENT_WRITE_ACCESS)) actions.push("reinstate_payment", "refund");
       break;
     case "aml_screening":
       break;
@@ -189,6 +193,10 @@ export class AdminWorkItemsService {
       {
         access: WORK_ITEM_KIND_ACCESS.payment_manual_review,
         fetch: () => this.reader.listManualReviewPayments(perSourceLimit),
+      },
+      {
+        access: WORK_ITEM_KIND_ACCESS.payment_capture_blocked,
+        fetch: () => this.reader.listBlockedCaptures(perSourceLimit),
       },
       {
         access: WORK_ITEM_KIND_ACCESS.submission_review,

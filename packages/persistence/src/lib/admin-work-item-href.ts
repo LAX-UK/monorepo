@@ -45,6 +45,7 @@ export function adminWorkItemHref(
     case "marketing_enquiry":
       return requireId(kind, subjectId, adminRoutes.enquiry);
     case "purchase_problem":
+    case "payment_capture_blocked":
       return requireId(kind, ids.paymentId ?? null, adminRoutes.payments.panel);
     case "condition_report":
       return adminRoutes.conditionReports.list();

@@ -55,14 +55,20 @@ describe("purchaseState", () => {
       paymentStatus: Parameters<typeof purchaseState>[0]["paymentStatus"],
       f: LotFulfilmentSnapshot | null = null,
     ) => purchaseState({ paymentStatus, reviewReason: "aml_hold", fulfilment: f });
-    expect(state("cancelled")).toBe("cancelled");
     expect(state("refunded")).toBe("refunded");
     expect(state("pending", fulfilment({ status: "cancelled" }))).toBe("cancelled");
     expect(state("captured", fulfilment({ status: "cancelled" }))).toBe("cancelled");
     expect(purchaseTab("cancelled")).toBe("completed");
-    expect(isToPay("cancelled")).toBe(false);
+    expect(isToPay("cancelled")).toBe(true);
     expect(isToPay("refunded")).toBe(false);
     expect(isToPay("pending")).toBe(true);
+  });
+
+  it("keeps a cancelled payment row owed: the buyer can pay again", () => {
+    expect(
+      purchaseState({ paymentStatus: "cancelled", reviewReason: null, fulfilment: null }),
+    ).toBe("payment-due");
+    expect(purchaseTab("payment-due")).toBe("to-pay");
   });
 
   it("follows delivery once paid", () => {
@@ -192,12 +198,30 @@ describe("buildPurchasesVm", () => {
     expect(vm.sales).toEqual([{ id: "sale-2", title: "Jewels and objects of vertu" }]);
   });
 
+  it("keeps a purchase with a cancelled payment row in To pay, with Pay available", () => {
+    const vm = buildPurchasesVm(
+      sources({
+        rows: [row("lot-6", 6, { id: "p6", status: "cancelled", manualReviewReason: null })],
+        factsByLot: {
+          "lot-6": facts("lot-6", {
+            status: "due",
+            dueAt: new Date("2026-11-06T12:00:00Z"),
+            paymentId: "p6",
+            totalDue: "2875.00",
+          }),
+        },
+      }),
+    );
+    expect(vm.cardsByTab["to-pay"].map((card) => card.lotId)).toEqual(["lot-6"]);
+    expect(vm.cardsByTab.completed).toEqual([]);
+    expect(vm.payNow).toMatchObject({ kind: "pay", lotIds: ["lot-6"] });
+  });
+
   it("keeps a cancelled purchase out of To pay, the banner and the badge, whatever its invoice says", () => {
     const vm = buildPurchasesVm(
       sources({
         rows: [
           row("lot-5", 5, { id: "p5", status: "pending", manualReviewReason: null }),
-          row("lot-6", 6, { id: "p6", status: "cancelled", manualReviewReason: null }),
           row("lot-8", 8, null),
         ],
         factsByLot: {
@@ -206,12 +230,6 @@ describe("buildPurchasesVm", () => {
             dueAt: new Date("2026-11-06T12:00:00Z"),
             paymentId: "p5",
             totalDue: "8000.00",
-          }),
-          "lot-6": facts("lot-6", {
-            status: "cancelled",
-            dueAt: new Date("2026-10-22T12:00:00Z"),
-            paymentId: "p6",
-            totalDue: "2875.00",
           }),
           // Unpaid, and cancelled on delivery.
           "lot-8": facts(
@@ -240,10 +258,7 @@ describe("buildPurchasesVm", () => {
     expect(vm.cardsByTab["to-pay"].map((card) => card.lotId)).toEqual(["lot-5"]);
     expect(
       vm.cardsByTab.completed.map((card) => [card.lotId, card.badge.label, card.amountLabel]),
-    ).toEqual([
-      ["lot-6", "Cancelled", "was due"],
-      ["lot-8", "Cancelled", "was due"],
-    ]);
+    ).toEqual([["lot-8", "Cancelled", "was due"]]);
     expect(vm.payNow).toMatchObject({ kind: "pay", lotIds: ["lot-5"] });
   });
 

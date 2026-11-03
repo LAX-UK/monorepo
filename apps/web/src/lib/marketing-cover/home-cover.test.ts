@@ -218,3 +218,9 @@ describe("pinned sales", () => {
     ]);
   });
 });
+
+describe("HOME_COVER_LINKS", () => {
+  it("sends Your bids to the client area's bids page", () => {
+    expect(HOME_COVER_LINKS.bids).toBe("/bids");
+  });
+});

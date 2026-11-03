@@ -32,11 +32,12 @@ export const metadata: Metadata = metadataForStatic({
 export default async function ContactPage({
   searchParams,
 }: {
-  searchParams: Promise<{ intent?: string; type?: string }>;
+  searchParams: Promise<{ intent?: string; type?: string; sale?: string }>;
 }) {
   const sp = await searchParams;
   const intent = sp.intent ?? null;
   const type = sp.type ?? null;
+  const sale = sp.sale ?? null;
   const crumbs = breadcrumbJsonLd([
     { name: "Home", path: "/" },
     { name: "Contact", path: "/contact" },
@@ -126,7 +127,7 @@ export default async function ContactPage({
         <p className="text-on-surface-variant">
           Our team will respond in due course with the relevant information or next steps.
         </p>
-        <ContactForm intent={intent} sellType={type} />
+        <ContactForm intent={intent} sellType={type} sale={sale} />
 
         <div className="mt-10 border-t border-divider-soft pt-6 font-body text-sm text-on-surface-variant">
           For bidding support during a live sale, signed-in collectors can reach us through{" "}

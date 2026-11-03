@@ -274,6 +274,7 @@ export function createPaymentsServices(
     env.XERO_INVOICE_BLOCKING,
     paymentDomainEventsRepository,
     buyerPaymentAuthority,
+    errorReporter,
   );
 
   const lotInvoiceInitiationService = new LotInvoiceInitiationService(

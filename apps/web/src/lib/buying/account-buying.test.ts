@@ -112,7 +112,8 @@ const PURCHASES: PortfolioRow[] = [
   purchase("lot-14", "authorized"),
   purchase("lot-15", "captured"),
   purchase("lot-16", "refunded"),
-  // Cancelled: owed by nobody, so it joins no count, figure or banner.
+  // An abandoned checkout: its only payment row is cancelled, but the buyer still owes, so it
+  // counts everywhere and Pay stays available.
   purchase("lot-17", "cancelled"),
 ];
 
@@ -153,15 +154,27 @@ describe("Home, the lists and the menu agree", () => {
         purchasesToPay: purchasesToPayBy(scope, PURCHASES),
         unreadNotifications: [],
       });
-      expect(figure.purchases).toBe(3);
-      expect(vm.cardsByTab.completed.map((card) => card.lotId)).toContain("lot-17");
+      expect(figure.purchases).toBe(4);
+      expect(vm.cardsByTab["to-pay"].map((card) => card.lotId)).toContain("lot-17");
+      expect(vm.cardsByTab.completed.map((card) => card.lotId)).not.toContain("lot-17");
       expect(toPayTab).toBe(figure.purchases);
       expect(attention.paymentsDue).toBe(figure.purchases);
-      expect(figure.totals).toEqual([{ currency: "GBP", amount: "3750.00" }]);
+      expect(figure.totals).toEqual([{ currency: "GBP", amount: "5000.00" }]);
       // One payment covers what can be paid now; the lot held for checks waits on its own row.
-      expect(vm.payNow?.title).toBe("2 invoices · £2,500.00 due");
+      expect(vm.payNow?.title).toBe("3 invoices · £3,750.00 due");
     },
   );
+
+  it("ends a purchase only when the sale is cancelled, whatever its payment row says", () => {
+    const scope = organisation("owner");
+    const sources = {
+      ...purchaseSources(scope, PURCHASES),
+      fulfilmentByLot: { "lot-17": { status: "cancelled" } as never },
+    };
+    const vm = buildPurchasesVm(sources);
+    expect(vm.cardsByTab["to-pay"].map((card) => card.lotId)).not.toContain("lot-17");
+    expect(vm.cardsByTab.completed.map((card) => card.lotId)).toContain("lot-17");
+  });
 
   it("never asks a buyer agent to pay, while Purchases still lists what they won", () => {
     const scope = organisation("buyer_agent");
@@ -177,6 +190,7 @@ describe("Home, the lists and the menu agree", () => {
         card.primaryAction,
       ]),
     ).toEqual([
+      ["Awaiting payment", "Waiting for payment by Northbank Gallery", null],
       ["Awaiting payment", "Waiting for payment by Northbank Gallery", null],
       ["Awaiting payment", "Waiting for payment by Northbank Gallery", null],
       ["Awaiting payment", "Waiting for payment by Northbank Gallery", null],

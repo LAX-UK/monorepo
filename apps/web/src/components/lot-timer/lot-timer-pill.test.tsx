@@ -93,6 +93,16 @@ describe("LotTimerPill value", () => {
   });
 });
 
+describe("unknown timing", () => {
+  it.each(["default", "endingSoon"] as const)("says times are not available (%s)", (variant) => {
+    const { container } = render(<LotTimerPill state={{ kind: "unknown" }} variant={variant} />);
+    const pill = container.querySelector("output");
+    expect(pill?.textContent).toBe("Times not available");
+    expect(pill?.getAttribute("aria-label")).toBe("Times not available");
+    expect(container.textContent).not.toMatch(/coming soon/i);
+  });
+});
+
 describe("LotCardTimer layout", () => {
   it("passes inline layout to the pill", () => {
     const { container } = render(

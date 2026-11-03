@@ -11,7 +11,7 @@ import {
 } from "./bid-cover.adapter";
 
 const now = new Date("2026-11-01T15:25:00Z");
-const links = { register: "/register", bids: "/account/bids", sell: "/sell", contact: "/contact" };
+const links = { register: "/register", bids: "/bids", sell: "/sell", contact: "/contact" };
 const context = { now, viewer: "anonymous" as const, links };
 
 const slot = (over: Partial<SaleCoverSlotAsset> = {}): SaleCoverSlotAsset => ({
@@ -153,7 +153,7 @@ describe("toBidCoverSlide", () => {
 
   it("swaps the register prompt for the viewer's real next step", () => {
     const approved = toBidCoverSlide(sale(), { ...context, viewer: "approved" });
-    expect(approved.link).toEqual({ label: "Your bids", href: "/account/bids" });
+    expect(approved.link).toEqual({ label: "Your bids", href: "/bids" });
     expect(approved.status).toEqual({ icon: "check", text: "You’re approved to bid in this sale" });
     const pending = toBidCoverSlide(sale(), { ...context, viewer: "pending" });
     expect(pending.link).toEqual({
@@ -181,7 +181,7 @@ describe("toBidCoverSlide", () => {
   it("applies a viewer to a rendered slide without touching anything else", () => {
     const base = toBidCoverSlide(sale(), context);
     const swapped = withBidViewer(base, sale(), "approved", links);
-    expect(swapped.link).toEqual({ label: "Your bids", href: "/account/bids" });
+    expect(swapped.link).toEqual({ label: "Your bids", href: "/bids" });
     expect(swapped.status?.icon).toBe("check");
     expect({ ...swapped, link: undefined, status: undefined }).toEqual({
       ...base,
