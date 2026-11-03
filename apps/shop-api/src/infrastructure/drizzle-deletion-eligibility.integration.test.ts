@@ -2,6 +2,7 @@ import { createDbFromPool } from "@auction/db";
 import { applyApplicationRoleGrants } from "@auction/db/migrate-roles";
 import {
   shopArtist,
+  shopDispute,
   shopEdition,
   shopFulfilment,
   shopOrder,
@@ -139,6 +140,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle deletion eligibility repository"
       pendingPayouts: 0,
       openOriginalSales: 0,
       activeHolds: 0,
+      openDisputes: 0,
     });
   });
 
@@ -149,6 +151,27 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle deletion eligibility repository"
       pendingPayouts: 0,
       openOriginalSales: 0,
       activeHolds: 0,
+      openDisputes: 0,
+    });
+  });
+
+  describe("disputes", () => {
+    it("counts an open dispute on the person's order and not a settled one", async () => {
+      const { db, repository, subject, order } = await fixture();
+      const orderId = await order("paid", {}, "delivered");
+      await db.insert(shopDispute).values({
+        orderId,
+        stripeDisputeId: `dp_open_${suffix()}`,
+        status: "opened",
+        amountPence: 1000,
+      });
+      await db.insert(shopDispute).values({
+        orderId,
+        stripeDisputeId: `dp_won_${suffix()}`,
+        status: "won",
+        amountPence: 1000,
+      });
+      expect((await repository.readOpenItems(subject)).openDisputes).toBe(1);
     });
   });
 
