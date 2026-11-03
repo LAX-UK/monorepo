@@ -23,7 +23,7 @@ export default async function DeleteAccountPage() {
   if (session.status !== "ok") redirect(`/api/auth/login?returnTo=${ACCOUNT_ROUTES.deleteAccount}`);
 
   return (
-    <AccountShell>
+    <AccountShell showDeletionBanner={false}>
       <AccountPageHeader
         title="Delete your account"
         description="This permanently removes your LAX account and everything in it."

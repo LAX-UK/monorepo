@@ -17,6 +17,15 @@ import AccountActivation, {
 import AccountDeletionCancelledEmail, {
   subject as accountDeletionCancelledSubject,
 } from "./templates/account-deletion-cancelled.js";
+import AccountDeletionCompletedEmail, {
+  subject as accountDeletionCompletedSubject,
+} from "./templates/account-deletion-completed.js";
+import AccountDeletionHeldEmail, {
+  subject as accountDeletionHeldSubject,
+} from "./templates/account-deletion-held.js";
+import AccountDeletionReminderEmail, {
+  subject as accountDeletionReminderSubject,
+} from "./templates/account-deletion-reminder.js";
 import AccountDeletionRequestedEmail, {
   subject as accountDeletionRequestedSubject,
 } from "./templates/account-deletion-requested.js";
@@ -81,6 +90,8 @@ import DisputeOpenedNoticeEmail, {
 } from "./templates/dispute-opened-notice.js";
 import EmailChangedEmail, { subject as emailChangedSubject } from "./templates/email-changed.js";
 import InviteEmail, { subject as inviteSubject } from "./templates/invite.js";
+import KycApprovedEmail, { subject as kycApprovedSubject } from "./templates/kyc-approved.js";
+import KycDeclinedEmail, { subject as kycDeclinedSubject } from "./templates/kyc-declined.js";
 import KycResubmissionRequiredEmail, {
   subject as kycResubmissionRequiredSubject,
 } from "./templates/kyc-resubmission-required.js";
@@ -185,6 +196,9 @@ import ProxyCancelledNoticeEmail, {
   subject as proxyCancelledNoticeSubject,
 } from "./templates/proxy-cancelled-notice.js";
 import ResetPassword, { subject as resetPasswordSubject } from "./templates/reset-password.js";
+import SaleCancelledNoticeEmail, {
+  subject as saleCancelledNoticeSubject,
+} from "./templates/sale-cancelled-notice.js";
 import SaleRegistrationDecisionNoticeEmail, {
   subject as saleRegistrationDecisionNoticeSubject,
 } from "./templates/sale-registration-decision-notice.js";
@@ -333,6 +347,18 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "data-export-ready": {
     subject: dataExportReadySubject,
     component: (vars) => <DataExportReadyEmail {...vars} />,
+  },
+  "account-deletion-reminder": {
+    subject: accountDeletionReminderSubject,
+    component: (vars) => <AccountDeletionReminderEmail {...vars} />,
+  },
+  "account-deletion-held": {
+    subject: accountDeletionHeldSubject,
+    component: (vars) => <AccountDeletionHeldEmail {...vars} />,
+  },
+  "account-deletion-completed": {
+    subject: accountDeletionCompletedSubject,
+    component: (vars) => <AccountDeletionCompletedEmail {...vars} />,
   },
   "backup-codes-regenerated": {
     subject: backupCodesRegeneratedSubject,
@@ -520,6 +546,18 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "kyc-resubmission-required": {
     subject: kycResubmissionRequiredSubject,
     component: (vars) => <KycResubmissionRequiredEmail {...vars} />,
+  },
+  "kyc-approved": {
+    subject: kycApprovedSubject,
+    component: (vars) => <KycApprovedEmail {...vars} />,
+  },
+  "kyc-declined": {
+    subject: kycDeclinedSubject,
+    component: (vars) => <KycDeclinedEmail {...vars} />,
+  },
+  "sale-cancelled-notice": {
+    subject: saleCancelledNoticeSubject,
+    component: (vars) => <SaleCancelledNoticeEmail {...vars} />,
   },
   "bid-enquiry-received": {
     subject: bidEnquiryReceivedSubject,

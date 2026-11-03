@@ -75,6 +75,11 @@ export type LotVoidedPayload = {
   reason: string;
 };
 
+/** Sale cancelled; names the lots that were cancelled with it. */
+export type SaleCancelledPayload = {
+  cancelledLotIds?: string[];
+};
+
 export type LotWithdrawalDeclinedPayload = {
   sellerLegalEntityId: string;
   reason: string;
@@ -95,6 +100,7 @@ export const SUPPORTED_EVENT_TYPES = [
   "sale_registration.bid_limit_changed",
   "legal_entity.bidding_limit_changed",
   "payment.cancelled",
+  "sale.cancelled",
 ] as const;
 
 export function formatReason(reason: string): string {

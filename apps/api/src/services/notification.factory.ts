@@ -1,3 +1,4 @@
+import { KYC_APPROVED_COPY, KYC_DECLINED_COPY } from "@auction/branding";
 import { buyerDefaultCopy, formatMoneyMajor, paymentReminderCopy } from "@auction/email";
 import type {
   BuyerDefaultAudience,
@@ -426,6 +427,27 @@ export class NotificationFactory implements INotificationFactory {
       lotId: lot.id,
       legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: { lotTitle: lot.title, fulfilmentMethod: input.method },
+    };
+  }
+
+  createKycApproved(userId: string): CreateNotificationRow {
+    return {
+      userId,
+      type: "kyc_approved",
+      // Identity checks are for the person, so the notice is personal.
+      legalEntityId: null,
+      title: KYC_APPROVED_COPY.headline,
+      message: KYC_APPROVED_COPY.detail,
+    };
+  }
+
+  createKycDeclined(userId: string): CreateNotificationRow {
+    return {
+      userId,
+      type: "kyc_declined",
+      legalEntityId: null,
+      title: KYC_DECLINED_COPY.headline,
+      message: KYC_DECLINED_COPY.detail,
     };
   }
 }

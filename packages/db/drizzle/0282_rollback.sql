@@ -2,7 +2,7 @@
 -- release neither reads nor writes these tables. The record of which buyer defaults were
 -- recorded and which reminders were sent is lost; the voided invoices stay cancelled. Reminder
 -- and default notices already delivered are deleted, since the previous constraint does not
--- allow their types.
+-- allow their types. The constraint is restored to the 0281 list.
 SET LOCAL lock_timeout = '30s';
 
 DROP TABLE IF EXISTS "payment_reminder";
@@ -54,6 +54,9 @@ ALTER TABLE notification
       'access_requested',
       'access_request_decided',
       'consignment_message',
-      'watchlist_reminder'
+      'watchlist_reminder',
+      'kyc_approved',
+      'kyc_declined',
+      'sale_cancelled'
     )
   );

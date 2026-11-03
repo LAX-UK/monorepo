@@ -46,6 +46,7 @@ export {
   sourceOfFundsRequiredPayloadSchemaV1,
   sourceOfFundsReviewedPayloadSchemaV1,
   userDeletionCancelledPayloadSchemaV1,
+  userDeletionHeldPayloadSchemaV1,
   userDeletionRequestedPayloadSchemaV1,
   userEmailVerifiedPayloadSchemaV1,
   userCredentialChangedPayloadSchemaV1,

@@ -57,6 +57,7 @@ import { createUserMiscServices } from "./container/create-user-misc-services.js
 import { createUserNotificationComposition } from "./container/create-user-notification-composition.js";
 import { createUserRouteServices } from "./container/create-user-route-services.js";
 import type { Env } from "./env.js";
+import { DrizzlePendingDeletionReader } from "./infrastructure/drizzle-pending-deletion.reader.js";
 import { DrizzleSubjectUsageReader } from "./infrastructure/drizzle-subject-usage.reader.js";
 import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.client.js";
 import { IdentityAddressBookRepository } from "./infrastructure/identity-address-book.repository.js";
@@ -204,6 +205,7 @@ export function createContainer(env: Env): Container {
     stripeConnectService: platform.stripeConnectService,
     marketingEventService: complianceMedia.marketingEventService,
     kycResubmissionNotifier: complianceMedia.kycResubmissionNotifier,
+    kycOutcomeNotifier: complianceMedia.kycOutcomeNotifier,
     sourceOfFundsDocumentCollectionService: complianceMedia.sourceOfFundsDocumentCollectionService,
     uploadService: complianceMedia.uploadService,
     exportService: complianceMedia.exportService,
@@ -570,6 +572,7 @@ export function createContainer(env: Env): Container {
     emailService: infra.emailService,
     emailObservabilityRepository: repos.emailObservabilityRepository,
     userSuspensionChecker: platform.cachedUserSuspensionChecker,
+    pendingDeletionReader: new DrizzlePendingDeletionReader(db),
     userSuspensionCacheInvalidator: platform.cachedUserSuspensionChecker,
     accountOnboardingService: userMisc.accountOnboardingService,
     accountOnboardingGate: userMisc.accountOnboardingGate,
@@ -605,6 +608,7 @@ export function createContainer(env: Env): Container {
     kycRepository: repos.kycRepository,
     kycService: complianceMedia.kycService,
     kycResubmissionNotifier: complianceMedia.kycResubmissionNotifier,
+    kycOutcomeNotifier: complianceMedia.kycOutcomeNotifier,
     amlService: complianceMedia.amlService,
     sourceOfFundsService: complianceMedia.sourceOfFundsService,
     adminSourceOfFundsQueryService: complianceMedia.adminSourceOfFundsQueryService,

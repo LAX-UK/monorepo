@@ -239,8 +239,34 @@ describe("applyBidIdentityDirectoryEvent", () => {
     });
     expect(db.set).toHaveBeenNthCalledWith(2, {
       deletionRequestedAt: null,
+      deletionHeldAt: null,
+      deletionHoldReasons: null,
       replicatedAt,
       lastEventId: 15,
+    });
+  });
+
+  it("records a held deletion with its reasons", async () => {
+    const db = createTx();
+    const reasons = [
+      { code: "bid_unpaid_invoices", message: "You have an unpaid invoice.", href: null },
+    ];
+    await applyBidIdentityDirectoryEvent(
+      db.tx as never,
+      event(16, "user.deletion_held", {
+        schemaVersion: 1,
+        subjectId: "subject-1",
+        heldAt: "2026-12-02T03:00:00.000Z",
+        reasons,
+      }),
+      replicatedAt,
+    );
+
+    expect(db.set).toHaveBeenCalledWith({
+      deletionHeldAt: new Date("2026-12-02T03:00:00.000Z"),
+      deletionHoldReasons: reasons,
+      replicatedAt,
+      lastEventId: 16,
     });
   });
 

@@ -18,7 +18,7 @@ import {
 } from "@auction/db/schema";
 import { invoiceDueAt } from "@auction/domain";
 import { INVOICE_PAYMENT_DUE_DAYS } from "@auction/types";
-import { and, desc, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type {
   AdminAssignableWorkItemsQuery,
   AdminWorkItemSourceRow,
@@ -583,6 +583,40 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       sourceUpdatedAt: row.createdAt,
       assignedToUserId: null,
     }));
+  }
+
+  async listDeletionHolds(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const rows = await this.db
+      .select({
+        subjectId: bidIdentityDirectory.subjectId,
+        heldAt: bidIdentityDirectory.deletionHeldAt,
+        requestedAt: bidIdentityDirectory.deletionRequestedAt,
+        reasons: bidIdentityDirectory.deletionHoldReasons,
+      })
+      .from(bidIdentityDirectory)
+      .where(isNotNull(bidIdentityDirectory.deletionHeldAt))
+      .orderBy(desc(bidIdentityDirectory.deletionHeldAt))
+      .limit(limit);
+
+    return rows.map((row) => {
+      const reasons = Array.isArray(row.reasons) ? (row.reasons as { message?: unknown }[]) : [];
+      const first = typeof reasons[0]?.message === "string" ? reasons[0].message : null;
+      const heldAt = row.heldAt as Date;
+      return {
+        sourceId: row.subjectId,
+        kind: "deletion_hold" as const,
+        domain: "clients" as const,
+        title: "Account deletion on hold",
+        subtitle: first
+          ? `${first}${reasons.length > 1 ? ` (+${reasons.length - 1} more)` : ""}`
+          : null,
+        href: adminWorkItemHref("deletion_hold", { subjectId: row.subjectId }),
+        saleId: null,
+        createdAt: heldAt,
+        sourceUpdatedAt: heldAt,
+        assignedToUserId: null,
+      };
+    });
   }
 }
 

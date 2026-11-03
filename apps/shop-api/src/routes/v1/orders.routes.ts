@@ -223,6 +223,7 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
         response: {
           200: CheckoutSessionSchema,
           400: ShopApiErrorBodySchema,
+          403: ShopApiErrorBodySchema,
           409: ShopApiErrorBodySchema,
         },
       },

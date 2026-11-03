@@ -218,7 +218,7 @@ export function useCheckoutPurchaseState({
         }
         notifyAdminCannotBuyIfNeeded(r.error, r.status ?? 500);
         const msg = r.errorCode ? checkoutPaymentErrorMessage(r.error, r.errorCode) : r.error;
-        form.setError("root", { message: msg });
+        form.setError("root", { message: msg, ...(r.errorCode ? { type: r.errorCode } : {}) });
         return;
       }
       if (r.data) handlePaymentResult(r.data);

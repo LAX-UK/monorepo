@@ -5,7 +5,7 @@
 --   payment_reminder: one row per invoice and reminder step, written before the reminder is
 --     sent so a repeated run sends nothing twice.
 -- Two new notice types, `payment_reminder` and `buyer_default_notice`, are allowed on
--- `notification`. Additive: the running services keep working until they restart.
+-- `notification`, alongside every type 0281 allowed. Additive: the running services keep working until they restart.
 SET LOCAL lock_timeout = '30s';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "buyer_default" (
@@ -107,6 +107,9 @@ ALTER TABLE notification
       'access_request_decided',
       'consignment_message',
       'watchlist_reminder',
+      'kyc_approved',
+      'kyc_declined',
+      'sale_cancelled',
       'payment_reminder',
       'buyer_default_notice'
     )

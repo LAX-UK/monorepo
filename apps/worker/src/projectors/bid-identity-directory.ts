@@ -1,6 +1,7 @@
 import { bidIdentityDirectory } from "@auction/db/schema";
 import {
   userDeletionCancelledPayloadSchemaV1,
+  userDeletionHeldPayloadSchemaV1,
   userDeletionRequestedPayloadSchemaV1,
   userIdentityDeletedPayloadSchemaV1,
   userIdentityMergedPayloadSchemaV1,
@@ -20,6 +21,7 @@ export const BID_IDENTITY_DIRECTORY_EVENT_TYPES = [
   "user.email_verified",
   "user.deletion_requested",
   "user.deletion_cancelled",
+  "user.deletion_held",
   "user.identity_merged",
   "user.identity_deleted",
 ] as const;
@@ -214,6 +216,16 @@ export async function applyBidIdentityDirectoryEvent(
       const payload = userDeletionCancelledPayloadSchemaV1.parse(row.payload);
       await updateSubject(tx, payload.subjectId, row.id, replicatedAt, {
         deletionRequestedAt: null,
+        deletionHeldAt: null,
+        deletionHoldReasons: null,
+      });
+      return;
+    }
+    case "user.deletion_held": {
+      const payload = userDeletionHeldPayloadSchemaV1.parse(row.payload);
+      await updateSubject(tx, payload.subjectId, row.id, replicatedAt, {
+        deletionHeldAt: new Date(payload.heldAt),
+        deletionHoldReasons: payload.reasons,
       });
       return;
     }

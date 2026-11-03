@@ -8,6 +8,22 @@ export type DataExportJobPayload = {
   filters: Record<string, unknown>;
 };
 
+export const SUBJECT_DATA_EXPORT_JOB_NAMES = {
+  assemble: "assemble",
+  purgeObjects: "purge-objects",
+} as const;
+
+/** Ids only: the payload is shown masked in the failed jobs list and carries no personal data. */
+export type SubjectDataExportJobPayload = {
+  exportId: string;
+  subjectId: string;
+};
+
+/** One job per request: the id is the export id, so relaying the same event twice enqueues once. */
+export function subjectDataExportJobId(exportId: string): string {
+  return `subject-data-export__${exportId}`;
+}
+
 export type QrCodeScanJobPayload = {
   qrCodeId: string;
   ip?: string | null;

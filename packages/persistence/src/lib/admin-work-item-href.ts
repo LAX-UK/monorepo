@@ -49,6 +49,8 @@ export function adminWorkItemHref(
     case "purchase_problem":
     case "payment_capture_blocked":
       return requireId(kind, ids.paymentId ?? null, adminRoutes.payments.panel);
+    case "deletion_hold":
+      return requireId(kind, subjectId, adminRoutes.client);
     case "condition_report":
       return adminRoutes.conditionReports.list();
     case "lot_fulfilment":

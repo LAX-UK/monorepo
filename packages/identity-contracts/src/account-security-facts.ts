@@ -16,6 +16,8 @@ export const accountSecurityFactsSchema = z.object({
    * could not read the codes; callers must treat null as "unknown", not as zero.
    */
   backupCodesRemaining: z.number().int().nonnegative().nullable(),
+  /** When the person asked to delete the account; null when they have not. Read by the shell banner. */
+  deletionRequestedAt: z.string().datetime({ offset: true }).nullable().optional(),
 });
 
 export type AccountSecurityFactsResponse = z.infer<typeof accountSecurityFactsSchema>;

@@ -1,6 +1,7 @@
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
+import { createCheckoutPaymentAction } from "@/lib/actions/checkout";
 import type { SessionUser } from "@/lib/data/contracts";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -262,5 +263,28 @@ describe("CheckoutPurchasePanel", () => {
     fireEvent.keyDown(radiogroup, { key: "ArrowUp" });
     const afterWrap = within(radiogroup).getAllByRole("radio");
     expect(afterWrap[1]).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("tells a buyer whose account is due to be deleted why checkout stopped, and how to carry on", async () => {
+    const message = "Your account is due to be deleted on 2 December. Cancel deletion to continue.";
+    vi.mocked(createCheckoutPaymentAction).mockResolvedValue({
+      ok: false,
+      error: message,
+      status: 403,
+      errorCode: "account_deletion_pending",
+    } as never);
+    render(<CheckoutPurchasePanel {...baseProps()} />);
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(
+      screen.getAllByRole("button", { name: /complete purchase/i })[0] as HTMLElement,
+    );
+
+    const alert = await screen.findByRole("alert");
+    await waitFor(() => expect(alert).toHaveTextContent(message));
+    expect(within(alert).getByRole("link", { name: "Cancel deletion" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/account/security/delete"),
+    );
   });
 });

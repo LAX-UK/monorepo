@@ -30,8 +30,15 @@ export {
   type IdentityOutboxPublisher,
 } from "./adapters/drizzle-identity-outbox-publisher.js";
 export {
+  JWKS_ADVISORY_LOCK_KEY,
+  JWKS_RETIREMENT_WINDOW_MS,
   retireExpiredJwksKeys,
   startJwksRetirementSchedule,
 } from "./adapters/drizzle-jwks-retirement.js";
 export type { EnvelopeCrypto } from "./adapters/envelope.js";
 export * from "./schema/index.js";
+export {
+  type JwksRotationResult,
+  type NewSigningKey,
+  rotateJwksSigningKey,
+} from "./adapters/drizzle-jwks-rotation.js";

@@ -24,6 +24,9 @@ The shape of every secret in this list:
 | `CHECK_IN_TOKEN_SECRET` | DO App Platform env on `apps/api`; 1Password | `apps/api`; founders | Quarterly |
 | `IDENTITY_MACHINE_CLIENT_ID` / `IDENTITY_MACHINE_CLIENT_SECRET` | DO App Platform env on `apps/api` and `apps/auth`; 1Password | `apps/api`, `apps/auth`; founders | Quarterly |
 | `IDENTITY_SUBJECT_EXPORT_CLIENT_ID` / `IDENTITY_SUBJECT_EXPORT_CLIENT_SECRET` | DO App Platform env on `apps/api`, `apps/shop-api` and the worker; 1Password | `apps/api` (Bid export routes), `apps/shop-api` (Shop export routes), the data-export worker; founders | Quarterly |
+| `SUBJECT_EXPORT_MACHINE_CLIENT_ID` / `SUBJECT_EXPORT_MACHINE_CLIENT_SECRET` | DO App Platform env on `apps/auth` and the worker; 1Password | `apps/auth` (checks it), the data-export worker (reports progress and reads Identity's own data); founders | Quarterly |
+| `SUBJECT_EXPORT_READ_ACCESS_KEY_ID` / `SUBJECT_EXPORT_READ_SECRET_ACCESS_KEY` | DO App Platform env on `apps/auth`; Spaces key limited to the export bucket, read only; 1Password | `apps/auth` only (signs 5-minute downloads); founders | Quarterly |
+| `SUBJECT_EXPORT_WRITE_ACCESS_KEY_ID` / `SUBJECT_EXPORT_WRITE_SECRET_ACCESS_KEY` | DO App Platform env on the worker; Spaces key limited to the export bucket, read/write/delete; 1Password | The data-export worker only; founders | Quarterly |
 | `OIDC_CLIENT_SECRET_LAX_BID_WEB` | DO App Platform env on `apps/web`; 1Password | Bid BFF and one-time client provisioning only | Quarterly |
 | `BID_BFF_SESSION_ENCRYPTION_KEY` | DO App Platform env on `apps/web`; 1Password | Bid BFF only | Quarterly; rotation logs out Bid sessions |
 | `OIDC_CLIENT_SECRET` (`lax-shop-web`) | DO App Platform env on the Shop BFF; 1Password | Shop BFF and one-time client provisioning only | Quarterly |

@@ -58,7 +58,7 @@ export function ArtEditorialPageView({
         <ArtEditorialStatus
           result={result}
           disabledTitle="Page unavailable"
-          disabledDescription="Editorial pages are not enabled in this environment yet."
+          disabledDescription="This page will be available soon."
           emptyTitle="Page not found"
           emptyDescription="This page is not available."
         />

@@ -147,6 +147,31 @@ describe("bidFailureNotice", () => {
     expect(noticeBlocksConfirm(notice)).toBe(true);
   });
 
+  it("tells a bidder who asked to delete their account when, and sends them to cancel", () => {
+    const notice = bidFailureNotice(
+      {
+        kind: "refused",
+        refusal: { code: "account_deletion_pending", details: { dueOn: "2 December" } },
+      },
+      next,
+    );
+    expect(notice.tone).toBe("warning");
+    expect(notice.title).toBe("Bidding is on hold");
+    expect(notice.detail).toBe(
+      "Your account is due to be deleted on 2 December. Cancel deletion to continue.",
+    );
+    expect(notice.remedy).toEqual({ kind: "cancel_deletion" });
+    expect(noticeBlocksConfirm(notice)).toBe(true);
+  });
+
+  it("still tells the bidder to cancel when the date is not known", () => {
+    const notice = bidFailureNotice(
+      { kind: "refused", refusal: { code: "account_deletion_pending", details: {} } },
+      next,
+    );
+    expect(notice.detail).toBe("Your account is due to be deleted. Cancel deletion to continue.");
+  });
+
   it("tells a bidder whose registration is pending to wait", () => {
     const notice = bidFailureNotice(
       { kind: "refused", refusal: { code: "registration_pending", details: {} } },

@@ -1,4 +1,9 @@
-import { type IEmailSender, type TemplateName, suppressionBlocksTemplate } from "@auction/email";
+import {
+  type IEmailSender,
+  SNAPSHOT_DISCARDED_AFTER_SEND,
+  type TemplateName,
+  suppressionBlocksTemplate,
+} from "@auction/email";
 import type pino from "pino";
 import type {
   EmailOutboxRow,
@@ -68,7 +73,11 @@ export async function sendEmailUseCase(
     });
     providerMessageId = result.messageId;
     try {
-      await outboxRepo.markSent(row.id, result.messageId);
+      await outboxRepo.markSent(
+        row.id,
+        result.messageId,
+        ...(SNAPSHOT_DISCARDED_AFTER_SEND.has(row.template) ? [{ discardSnapshot: true }] : []),
+      );
     } catch (markErr) {
       const message = markErr instanceof Error ? markErr.message : String(markErr);
       await outboxRepo.markSentPersistenceFailed(row.id, result.messageId, message);

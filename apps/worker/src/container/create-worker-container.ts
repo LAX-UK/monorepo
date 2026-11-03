@@ -70,6 +70,7 @@ import { registerMarketingWorkers } from "../workers/register-marketing-workers.
 import { registerMediaWorkers } from "../workers/register-media-workers.js";
 import { registerPayoutWorkers } from "../workers/register-payout-workers.js";
 import { registerPurgeWorkers } from "../workers/register-purge-workers.js";
+import { registerSubjectExportWorker } from "../workers/register-subject-export-worker.js";
 import { registerWebhookWorker } from "../workers/register-webhook-worker.js";
 import type { WorkerBootstrapDeps, WorkerDb } from "../workers/types.js";
 import {
@@ -98,6 +99,7 @@ export type WorkerContainer = {
   complianceWorkers: ReturnType<typeof registerComplianceWorkers>;
   purgeWorkers: ReturnType<typeof registerPurgeWorkers>;
   atgSyncWorkers: ReturnType<typeof registerAtgSyncWorker>;
+  subjectExportWorkers: ReturnType<typeof registerSubjectExportWorker>;
   cronWorkers: ReturnType<typeof registerCronWorkers>;
   deadLetterQueue: Queue;
   projectorRunner: ReturnType<typeof createProjectorRunner>;
@@ -363,6 +365,7 @@ export function createWorkerContainer(): WorkerContainer {
   });
   const purgeWorkers = registerPurgeWorkers(deps);
   const cronWorkers = registerCronWorkers(deps);
+  const subjectExportWorkers = registerSubjectExportWorker(deps);
   const atgSyncWorkers = registerAtgSyncWorker(
     deps,
     createAtgSyncRuntime({
@@ -393,6 +396,7 @@ export function createWorkerContainer(): WorkerContainer {
       ...purgeWorkers.errorHandlers,
       ...cronWorkers.errorHandlers,
       ...atgSyncWorkers.errorHandlers,
+      ...subjectExportWorkers.errorHandlers,
     ],
     log,
   );
@@ -403,6 +407,7 @@ export function createWorkerContainer(): WorkerContainer {
       ...emailWorkers.dlqHandlers,
       ...payoutWorkers.dlqHandlers,
       ...complianceWorkers.dlqHandlers,
+      ...subjectExportWorkers.dlqHandlers,
       ...marketingWorkers.dlqHandlers,
       ...(lotLifecycleConsumer?.dlqHandlers ?? []),
     ],
@@ -463,6 +468,7 @@ export function createWorkerContainer(): WorkerContainer {
       await runIdentityOutboxRelayJob({
         identityOutboxRelayRepo: repositories.identityOutboxRelayRepo,
         log,
+        observer: subjectExportWorkers.relayObserver,
       });
     },
     buildContext: () => ({
@@ -571,6 +577,7 @@ export function createWorkerContainer(): WorkerContainer {
     purgeWorkers,
     cronWorkers,
     atgSyncWorkers,
+    subjectExportWorkers,
     deadLetterQueue,
     projectorRunner,
     lotLifecycleConsumer,
@@ -603,6 +610,7 @@ export async function shutdownWorkerContainer(
         container.purgeWorkers.close(),
         container.cronWorkers.close(),
         container.atgSyncWorkers.close(),
+        container.subjectExportWorkers.close(),
         container.lotLifecycleConsumer?.close(),
         container.deadLetterQueue.close(),
         container.projectorRunner.stop(),

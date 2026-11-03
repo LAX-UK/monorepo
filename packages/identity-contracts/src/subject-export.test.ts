@@ -17,6 +17,8 @@ import {
   subjectExportPageSchema,
   subjectExportProgressPath,
   subjectExportProgressSchema,
+  subjectExportPurgePendingPath,
+  subjectExportPurgedPath,
   subjectExportSchemaName,
   subjectExportStatusSchema,
   subjectExportViewSchema,
@@ -141,6 +143,15 @@ describe("paths and names", () => {
     );
     expect(subjectExportProgressPath("exp_1")).toBe(
       "/internal/identity/subject-exports/exp_1/progress",
+    );
+    expect(subjectExportPurgePendingPath()).toBe(
+      "/internal/identity/subject-exports/purge-pending",
+    );
+    expect(subjectExportPurgePendingPath(50)).toBe(
+      "/internal/identity/subject-exports/purge-pending?limit=50",
+    );
+    expect(subjectExportPurgedPath("exp/1")).toBe(
+      "/internal/identity/subject-exports/exp%2F1/purged",
     );
   });
 

@@ -148,4 +148,48 @@ describe("LAX Account deletion emails", () => {
     expect(rendered.text).toContain("nothing will be erased");
     expectSharedParts(rendered);
   });
+
+  it("renders the reminder a week before the deletion, with a cancel link", async () => {
+    const rendered = await renderEmail("account-deletion-reminder", {
+      userName: "Ada",
+      effectiveDateDisplay: "2 December 2026",
+      daysLeft: 7,
+      cancelDeletionUrl: "https://account.lax.bid/account/security/delete",
+    });
+    expect(rendered.subject).toBe("Your LAX Account will be deleted next week");
+    for (const body of [rendered.html, rendered.text]) {
+      expect(body).toContain("2 December 2026");
+      expect(body).toContain("https://account.lax.bid/account/security/delete");
+    }
+    expect(rendered.text).toContain("In 7 days");
+    expect(rendered.html).toContain('alt="LAX Account"');
+  });
+
+  it("renders the hold with every reason and the date it will be checked again", async () => {
+    const rendered = await renderEmail("account-deletion-held", {
+      userName: "Ada",
+      title: "Your account deletion is on hold",
+      basis: "We can't delete your account yet.",
+      reasonsIntro: "What is still open:",
+      reasons: ["You have an unpaid invoice.", "A payout to you has not been paid yet."],
+      recheck: "We'll check again on 4 December.",
+      resolution: "Once these are settled we'll delete your account automatically.",
+      cancelDeletionUrl: "https://account.lax.bid/account/security/delete",
+    });
+    expect(rendered.subject).toBe("Your LAX Account deletion is on hold");
+    for (const body of [rendered.html, rendered.text]) {
+      expect(body).toContain("You have an unpaid invoice.");
+      expect(body).toContain("A payout to you has not been paid yet.");
+    }
+    expect(rendered.text).toContain("We'll check again on 4 December.");
+  });
+
+  it("renders the completion notice without any personal detail", async () => {
+    const rendered = await renderEmail("account-deletion-completed", {
+      erasedOnDisplay: "2 December 2026",
+    });
+    expect(rendered.subject).toBe("Your LAX Account was deleted");
+    expect(rendered.text).toContain("we deleted your LAX Account on 2 December 2026");
+    expect(rendered.text).not.toMatch(/Hi /);
+  });
 });

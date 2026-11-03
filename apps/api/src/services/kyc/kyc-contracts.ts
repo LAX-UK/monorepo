@@ -18,6 +18,13 @@ export type KycWebhookHandleResult = {
   shouldProgressIndividuals: boolean;
   /** Staged in the same transaction as KYC approval; enqueue after handleWebhook returns. */
   marketingEventToEnqueue?: MarketingEvent;
+  /** Tell the user their identity check passed or did not pass. */
+  outcomeNotify?: {
+    userId: string;
+    outcome: "approved" | "declined";
+    providerSessionId: string;
+    providerAttemptId: string | null;
+  };
   /** Notify the user to resubmit after Veriff requested more input. */
   resubmissionNotify?: {
     userId: string;

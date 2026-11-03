@@ -51,7 +51,7 @@ export async function ArtStoriesIndex({ tab }: { tab: StoriesTabId }) {
           <ArtEditorialStatus
             result={result}
             disabledTitle="Stories coming soon"
-            disabledDescription="Editorial programming is not enabled in this environment yet."
+            disabledDescription="Stories, films and episodes will be published here soon."
             emptyTitle="No stories yet"
             emptyDescription={EMPTY_COPY[tab]}
           />
