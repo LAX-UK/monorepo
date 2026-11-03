@@ -1139,6 +1139,14 @@ export type {
 } from "./dispute-case.repository.js";
 
 export type {
+  AlertableLot,
+  ArtistWatcher,
+  IBidAlertFollowerProvisioner,
+  IBidAlertLotReader,
+  IBidAlertWatcherReader,
+  SearchWatcher,
+} from "./bid-alert-lot.js";
+export type {
   AnnouncedSale,
   IBidAlertSaleNoticeWriter,
   IBidAlertSaleReader,
