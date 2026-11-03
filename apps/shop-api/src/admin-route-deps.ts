@@ -40,6 +40,7 @@ import type {
 import type { ProductionTaskService } from "./application/production-task.service.js";
 import type { SavedViewService } from "./application/saved-view.service.js";
 import type { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
+import type { createAdvanceReturnHandler } from "./infrastructure/handlers/admin/advance-return.handler.js";
 import type { createCancelAfterPossessionHandler } from "./infrastructure/handlers/admin/cancel-after-possession.handler.js";
 import type { createCreateMerchandiseProductHandler } from "./infrastructure/handlers/admin/create-merchandise-product.handler.js";
 import type { createCreateProductionTaskHandler } from "./infrastructure/handlers/admin/create-production-task.handler.js";
@@ -49,6 +50,7 @@ import type {
   createUnlinkArtistIdentityHandler,
 } from "./infrastructure/handlers/admin/link-artist-identity.handler.js";
 import type { createMarkPayoutPaidHandler } from "./infrastructure/handlers/admin/mark-payout-paid.handler.js";
+import type { createMarkRefundSettledOutsideHandler } from "./infrastructure/handlers/admin/mark-refund-settled-outside.handler.js";
 import type { createRecordPossessionHandler } from "./infrastructure/handlers/admin/record-possession.handler.js";
 import type { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import type { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
@@ -89,6 +91,8 @@ export type AdminRoutesDeps = {
   cancelAfterPossession: ReturnType<typeof createCancelAfterPossessionHandler>;
   requestRefund: ReturnType<typeof createRequestRefundHandler>;
   retryRefund: ReturnType<typeof createRetryRefundHandler>;
+  markRefundSettledOutside: ReturnType<typeof createMarkRefundSettledOutsideHandler>;
+  advanceReturn: ReturnType<typeof createAdvanceReturnHandler>;
   markPayoutPaid: ReturnType<typeof createMarkPayoutPaidHandler>;
   saleFees: {
     approveFee(

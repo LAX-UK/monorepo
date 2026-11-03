@@ -4,9 +4,11 @@ import {
   type AdminRefundReason,
 } from "@auction/shop-contracts";
 import {
+  type CancellationStockOutcome,
   type RefundLineInput,
   SHOP_FULFILMENT_STATUSES,
   type ShopFulfilmentStatus,
+  cancellationStockOutcome,
   cancelledLineIds,
   isShopFulfilmentStatus,
   nextFulfilmentStatuses,
@@ -143,17 +145,33 @@ export function refundableRemainingPence(detail: AdminOrderDetail, orderLineId: 
 export function lineCancellation(
   detail: AdminOrderDetail,
   line: OrderLine,
-): { refundPence: number } | null {
+): { refundPence: number; stock: CancellationStockOutcome } | null {
   if (detail.status !== "paid" && detail.status !== "partially_refunded") return null;
   const refundPence = refundableRemainingPence(detail, line.orderLineId);
-  return refundPence > 0 ? { refundPence } : null;
+  if (refundPence <= 0) return null;
+  const fulfilment = detail.fulfilmentRecord?.status;
+  // With no fulfilment record there is no proof the item is still in the gallery.
+  const stock =
+    fulfilment && isShopFulfilmentStatus(fulfilment)
+      ? cancellationStockOutcome(fulfilment)
+      : "await_return";
+  return { refundPence, stock };
 }
 
+const CANCELLATION_STOCK_COPY: Record<CancellationStockOutcome, string> = {
+  restock_now: "The print never left the gallery, so it goes back on sale straight away.",
+  await_return:
+    "The print is with the customer, so a return is opened under Returns. It goes back on sale when you receive it.",
+};
+
 /** The dialog text for cancelling an item: what the system does, so staff never repeat it. */
-export function cancelAfterPossessionDescription(refundPence: number): string {
-  return `Use this when the customer returns an item they already have. This refunds ${formatGbp(
+export function cancelAfterPossessionDescription(
+  refundPence: number,
+  stock: CancellationStockOutcome,
+): string {
+  return `Use this when the customer cancels an item they already have. This refunds ${formatGbp(
     refundPence,
-  )} for this item to the customer's card, and holds the artist's payout for it. Do not refund the item again.`;
+  )} for this item to the customer's card, and holds the artist's payout for it. ${CANCELLATION_STOCK_COPY[stock]} Do not refund the item again.`;
 }
 
 type Refund = AdminOrderDetail["refunds"][number];
@@ -186,6 +204,14 @@ export function cancelledLineBadge(refund: Refund): StatusPresentation {
   );
 }
 
+/** The refund row's note when finance settled it outside LAX: where it is, and who recorded it. */
+export function settledOutsideNote(refund: Refund): string | null {
+  const settled = refund.settledOutside;
+  if (!settled) return null;
+  const who = settled.byName ? ` by ${settled.byName}` : "";
+  return `Reference ${settled.reference}. Marked ${formatStaffDateTime(settled.at)}${who}: ${settled.reason}`;
+}
+
 /** Refunds that could not be sent to the customer's card and wait for staff. */
 export function failedRefunds(detail: AdminOrderDetail): Refund[] {
   return detail.refunds.filter((refund) => refund.status === "failed");
@@ -193,8 +219,11 @@ export function failedRefunds(detail: AdminOrderDetail): Refund[] {
 
 /** The Refunds list's second line: what was refunded, why it exists and when. */
 export function refundRowContext(refund: Refund, line: OrderLine | undefined): string {
-  const origin =
-    refund.source === "cancellation" ? "Cancelled after possession" : humanizeStatus(refund.source);
+  const origin = refund.settledOutside
+    ? "Refunded outside LAX"
+    : refund.source === "cancellation"
+      ? "Cancelled after possession"
+      : humanizeStatus(refund.source);
   return `${line ? orderLineLabel(line) : "Whole order"} · ${origin} · ${formatStaffDateTime(
     refund.createdAt,
   )}`;
@@ -284,7 +313,42 @@ function describeActivity(entry: AdminOrderDetail["activity"][number]): {
       };
     }
     case "cancel_after_possession":
-      return { title: "Line cancelled after possession", tone: "warning" };
+      return {
+        title: "Line cancelled after possession",
+        ...(detail.stock === "restocked"
+          ? { detail: "The print never left the gallery and is back on sale" }
+          : detail.stock === "awaiting_return"
+            ? { detail: "The print comes back to the gallery before it is sold again" }
+            : {}),
+        tone: "warning",
+      };
+    case "refund_settled_outside": {
+      const reference = text(detail.reference);
+      const reason = text(detail.reason);
+      return {
+        title: `Refund of ${money(detail.amountPence) ?? "an amount"} marked as refunded outside LAX`,
+        ...(reference || reason
+          ? {
+              detail: [reference ? `Reference ${reference}` : null, reason]
+                .filter(Boolean)
+                .join(" — "),
+            }
+          : {}),
+        tone: "success",
+      };
+    }
+    case "return_in_transit":
+      return { title: "Return marked in transit", tone: "info" };
+    case "return_received": {
+      const back = text(detail.disposition) === "back_on_sale";
+      return {
+        title: back ? "Return received and put back on sale" : "Return received and withdrawn",
+        ...(back ? {} : { detail: "Damaged" }),
+        tone: back ? "success" : "neutral",
+      };
+    }
+    case "edition_back_on_sale":
+      return { title: "Print back on sale", tone: "success" };
     default:
       return { title: humanizeStatus(entry.action), tone: "neutral" };
   }

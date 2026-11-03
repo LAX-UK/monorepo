@@ -1,11 +1,12 @@
 import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { FulfilmentSection } from "@/components/orders/fulfilment-section.client";
 import {
+  FailedRefundActions,
   OrderHeaderActions,
   OrderLineMenu,
-  RetryRefundButton,
   SendToProductionButton,
 } from "@/components/orders/order-actions.client";
+import { ReturnsPanel } from "@/components/orders/returns-panel.client";
 import { guestErasedLine } from "@/server/domain/guest-erasure.vm";
 import {
   buildOrderTimeline,
@@ -19,8 +20,10 @@ import {
   presentProductionStatus,
   presentRefundStatus,
   refundRowContext,
+  settledOutsideNote,
 } from "@/server/domain/order-detail.vm";
 import { orderBuyerAccountLabel, orderNumber } from "@/server/domain/order-list.vm";
+import { cancelledLineStock, orderReturnRows } from "@/server/domain/order-returns.vm";
 import type { AdminGuestErasureState, AdminOrderDetail } from "@auction/shop-contracts";
 import {
   KeyValueList,
@@ -73,6 +76,7 @@ export function OrderDetailView({
   const buyer =
     detail.buyerName ?? detail.buyerEmail ?? (erased ? "Erased guest" : "Unknown buyer");
   const failed = failedRefunds(detail);
+  const returnRows = orderReturnRows(detail);
   const failedPence = failed.reduce((sum, refund) => sum + refund.amountPence, 0);
   const refundedPence = detail.refunds
     .filter((refund) => refund.status !== "failed" && refund.status !== "cancelled")
@@ -121,7 +125,9 @@ export function OrderDetailView({
         >
           The customer has not been refunded. The artist's payout for a cancelled item stays held
           until its refund goes through.
-          {permissions.refund ? " Retry it from the Refunds list below." : ""}
+          {permissions.refund
+            ? " Retry it from the Refunds list below, or mark it as refunded outside LAX if the customer was refunded another way."
+            : ""}
         </Notice>
       ) : null}
 
@@ -137,6 +143,9 @@ export function OrderDetailView({
                 const cancellationRefund = lineCancellationRefund(detail, line.orderLineId);
                 const cancelledBadge = cancellationRefund
                   ? cancelledLineBadge(cancellationRefund)
+                  : null;
+                const stockBadge = cancellationRefund
+                  ? cancelledLineStock(detail, line.orderLineId)
                   : null;
                 return (
                   <li
@@ -180,15 +189,18 @@ export function OrderDetailView({
                         <SendToProductionButton line={line} />
                       ) : null}
                       {cancelledBadge ? (
-                        <StatusBadge tone={cancelledBadge.tone}>{cancelledBadge.label}</StatusBadge>
+                        <>
+                          <StatusBadge tone={cancelledBadge.tone}>
+                            {cancelledBadge.label}
+                          </StatusBadge>
+                          {stockBadge ? (
+                            <StatusBadge tone={stockBadge.tone}>{stockBadge.label}</StatusBadge>
+                          ) : null}
+                        </>
                       ) : null}
                       <OrderLineMenu
                         line={line}
-                        refundPence={
-                          permissions.refund
-                            ? (lineCancellation(detail, line)?.refundPence ?? null)
-                            : null
-                        }
+                        cancellation={permissions.refund ? lineCancellation(detail, line) : null}
                       />
                     </div>
                   </li>
@@ -196,6 +208,8 @@ export function OrderDetailView({
               })}
             </ul>
           </Section>
+
+          <ReturnsPanel rows={returnRows} canWrite={permissions.fulfilment} />
 
           <FulfilmentSection
             fulfilment={detail.fulfilmentRecord}
@@ -236,13 +250,24 @@ export function OrderDetailView({
                             Not sent: {refund.failureReason}
                           </p>
                         ) : null}
+                        {settledOutsideNote(refund) ? (
+                          <p className="text-staff-xs text-staff-muted">
+                            {settledOutsideNote(refund)}
+                          </p>
+                        ) : null}
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center gap-3">
-                        <MappedStatusBadge status={refund.status} present={presentRefundStatus} />
+                        {refund.settledOutside ? (
+                          <StatusBadge tone="success">Refunded outside LAX</StatusBadge>
+                        ) : (
+                          <MappedStatusBadge status={refund.status} present={presentRefundStatus} />
+                        )}
                         {refund.status === "failed" && permissions.refund ? (
-                          <RetryRefundButton
+                          <FailedRefundActions
                             refundId={refund.refundId}
-                            label={formatGbp(refund.amountPence)}
+                            amountPence={refund.amountPence}
+                            itemLabel={line ? orderLineLabel(line) : "Whole order"}
+                            failureReason={refund.failureReason ?? null}
                           />
                         ) : null}
                       </div>

@@ -109,6 +109,7 @@ import { createEnquiryFollowUp } from "./infrastructure/enquiry-follow-up.js";
 import { grantShopStaffRole } from "./infrastructure/grant-staff-role.js";
 import { createDrizzleGuestErasureStore } from "./infrastructure/guest-checkout/drizzle-guest-erasure.store.js";
 import { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
+import { createAdvanceReturnHandler } from "./infrastructure/handlers/admin/advance-return.handler.js";
 import { createCancelAfterPossessionHandler } from "./infrastructure/handlers/admin/cancel-after-possession.handler.js";
 import { createCreateMerchandiseProductHandler } from "./infrastructure/handlers/admin/create-merchandise-product.handler.js";
 import { createCreateProductionTaskHandler } from "./infrastructure/handlers/admin/create-production-task.handler.js";
@@ -118,6 +119,7 @@ import {
   createUnlinkArtistIdentityHandler,
 } from "./infrastructure/handlers/admin/link-artist-identity.handler.js";
 import { createMarkPayoutPaidHandler } from "./infrastructure/handlers/admin/mark-payout-paid.handler.js";
+import { createMarkRefundSettledOutsideHandler } from "./infrastructure/handlers/admin/mark-refund-settled-outside.handler.js";
 import { createRecordPossessionHandler } from "./infrastructure/handlers/admin/record-possession.handler.js";
 import { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
@@ -304,6 +306,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const createProductionTask = createCreateProductionTaskHandler({ uow: shopUow });
   const requestRefund = createRequestRefundHandler({ uow: shopUow });
   const retryRefund = createRetryRefundHandler({ uow: shopUow });
+  const markRefundSettledOutside = createMarkRefundSettledOutsideHandler({ uow: shopUow });
+  const advanceReturn = createAdvanceReturnHandler({ uow: shopUow });
   const markPayoutPaid = createMarkPayoutPaidHandler({ uow: shopUow });
   const updateFulfilment = createUpdateFulfilmentHandler({
     uow: shopUow,
@@ -552,6 +556,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         cancelAfterPossession,
         requestRefund,
         retryRefund,
+        markRefundSettledOutside,
+        advanceReturn,
         markPayoutPaid,
         saleFees,
         stockHolds,
