@@ -118,6 +118,20 @@ const ACTIONS: AdminAction[] = [
     expectedRoles: ["administrator", "sales_manager"],
   },
   {
+    name: "list dead-lettered deliveries",
+    rule: FAILED_JOBS_READ_ACCESS,
+    method: "GET",
+    path: "/admin/system/delivery/dead-letter",
+    expectedRoles: ["administrator", "read_only"],
+  },
+  {
+    name: "open a domain delivery",
+    rule: FAILED_JOBS_READ_ACCESS,
+    method: "GET",
+    path: "/admin/system/delivery/42",
+    expectedRoles: ["administrator", "read_only"],
+  },
+  {
     name: "replay a dead-lettered delivery",
     rule: DELIVERY_REPLAY_ACCESS,
     method: "POST",
