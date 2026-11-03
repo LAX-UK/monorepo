@@ -1,6 +1,7 @@
 "use server";
 
 import { postBulkAction } from "@/lib/actions/admin/_shared/bulk-action";
+import { redirectWithAdminFlash } from "@/lib/admin/flash/flash.server";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
@@ -70,7 +71,7 @@ export async function adminCreateInvitationAction(formData: FormData): Promise<v
         targetRole: String(formData.get("targetRole") ?? "").trim(),
       });
       if (!r.ok) {
-        redirect(`/admin/invitations?error=${encodeURIComponent(r.error)}`);
+        return redirectWithAdminFlash("/admin/invitations", "error", r.error);
       }
       redirect("/admin/invitations");
     },
@@ -104,7 +105,7 @@ export async function adminRevokeInvitationAction(formData: FormData): Promise<v
       const id = String(formData.get("invitationId") ?? "").trim();
       const r = await adminRevokeInvitationResultAction(id);
       if (!r.ok) {
-        redirect(`/admin/invitations?error=${encodeURIComponent(r.error)}`);
+        return redirectWithAdminFlash("/admin/invitations", "error", r.error);
       }
       redirect("/admin/invitations");
     },
@@ -138,7 +139,7 @@ export async function adminResendInvitationAction(formData: FormData): Promise<v
       const id = String(formData.get("invitationId") ?? "").trim();
       const r = await adminResendInvitationResultAction(id);
       if (!r.ok) {
-        redirect(`/admin/invitations?error=${encodeURIComponent(r.error)}`);
+        return redirectWithAdminFlash("/admin/invitations", "error", r.error);
       }
       redirect("/admin/invitations");
     },
