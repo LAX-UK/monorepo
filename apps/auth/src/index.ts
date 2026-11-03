@@ -24,12 +24,14 @@ import {
 import { createSubjectExportService } from "./container/create-subject-export.js";
 import { loadAuthEnv } from "./env.js";
 import { withAlertingLog } from "./infrastructure/alerting-log.js";
+import { createAccountSubjectExportRegistry } from "./infrastructure/subject-export/create-account-subject-export-categories.js";
 import { createInternalIdentityRoutes } from "./routes/internal-identity.routes.js";
 import { createAccountAccessClaimsResolver } from "./services/account-access-claims.js";
 import { AccountDeletionService } from "./services/account-deletion.service.js";
 import { EmailChangeService } from "./services/email-change.service.js";
 import { createSubjectReadRateLimiter } from "./services/subject-read-rate-limiter.js";
 import { createTwoFactorRequirementReader } from "./services/two-factor-requirement.service.js";
+import { SubjectExportReader } from "./subject-export/subject-export-reader.service.js";
 
 /** LAX Account's production origin, used for the security-notice link when `LAX_ACCOUNT_ORIGIN` is unset. */
 const DEFAULT_LAX_ACCOUNT_ORIGIN = "https://account.lax.bid";
@@ -211,6 +213,7 @@ const internal =
             ? {
                 subjectExport: {
                   exports: subjectExports,
+                  reader: new SubjectExportReader(createAccountSubjectExportRegistry(db)),
                   redis,
                   clientId: env.SUBJECT_EXPORT_MACHINE_CLIENT_ID,
                   clientSecret: env.SUBJECT_EXPORT_MACHINE_CLIENT_SECRET,
@@ -224,7 +227,17 @@ const internal =
                     onError: (error) =>
                       log.warn({ err: error }, "subject_export_progress_rate_limit_unavailable"),
                   }),
-                  onFailure: (error) => log.error({ err: error }, "subject_export_progress_failed"),
+                  // A copy is a few dozen pages per person; this caps a runaway loop, not a real run.
+                  readRateLimit: createSubjectReadRateLimiter({
+                    redis,
+                    keyPrefix: "rl:auth-issuer:subject-export-read",
+                    windowSec: 60,
+                    max: 600,
+                    failClosed: true,
+                    onError: (error) =>
+                      log.warn({ err: error }, "subject_export_read_rate_limit_unavailable"),
+                  }),
+                  onFailure: (error) => log.error({ err: error }, "subject_export_failed"),
                 },
               }
             : {}),

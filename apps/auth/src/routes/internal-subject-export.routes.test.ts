@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SubjectExportProgressResult } from "../services/subject-export.service.js";
+import { UnknownSubjectExportCategoryError } from "../subject-export/subject-export-reader.service.js";
+import { InvalidSubjectExportCursorError } from "../subject-export/subject-export.types.js";
 import { createInternalIdentityRoutes } from "./internal-identity.routes.js";
 import { subjectExportTokenKey } from "./internal-subject-export.routes.js";
 
@@ -12,12 +14,20 @@ const EXPORT_BASIC = Buffer.from(
 ).toString("base64");
 const SHA = "b".repeat(64);
 
-function setup(options: { exportLimit?: number | null; withExport?: boolean } = {}) {
+function setup(
+  options: { exportLimit?: number | null; readLimit?: number | null; withExport?: boolean } = {},
+) {
   const store = new Map<string, string>();
   const applyProgress = vi.fn<(...args: unknown[]) => Promise<SubjectExportProgressResult>>(
     async () => "applied",
   );
   const rateLimit = vi.fn(async () => options.exportLimit ?? null);
+  const readRateLimit = vi.fn(async () => options.readLimit ?? null);
+  const manifest = vi.fn(async () => ({ product: "account", categories: [] }));
+  const page = vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
+    records: [],
+    nextCursor: null,
+  }));
   const lifecycle = { disable: vi.fn(async () => undefined), enable: vi.fn(), merge: vi.fn() };
   const app = createInternalIdentityRoutes({
     lifecycle: lifecycle as never,
@@ -47,10 +57,12 @@ function setup(options: { exportLimit?: number | null; withExport?: boolean } = 
       : {
           subjectExport: {
             exports: { applyProgress },
+            reader: { manifest, page } as never,
             redis: { get: async (key: string) => store.get(key) ?? null },
             clientId: "subject-export-worker",
             clientSecret: "export-secret-at-least-32-characters",
             rateLimit,
+            readRateLimit,
           },
         }),
   });
@@ -72,7 +84,23 @@ function setup(options: { exportLimit?: number | null; withExport?: boolean } = 
       },
       body: JSON.stringify(body),
     });
-  return { app, token, progress, applyProgress, rateLimit, lifecycle, store };
+  const read = (bearer: string | null, path: string) =>
+    app.request(`/identity/subjects/person-1/export${path}`, {
+      headers: bearer ? { authorization: `Bearer ${bearer}` } : {},
+    });
+  return {
+    app,
+    token,
+    progress,
+    read,
+    manifest,
+    page,
+    readRateLimit,
+    applyProgress,
+    rateLimit,
+    lifecycle,
+    store,
+  };
 }
 
 async function exportToken(ctx: ReturnType<typeof setup>): Promise<string> {
@@ -219,5 +247,63 @@ describe("POST /identity/subject-exports/:exportId/progress", () => {
     expect(response.headers.get("retry-after")).toBe("30");
     expect(ctx.applyProgress).not.toHaveBeenCalled();
     expect(ctx.rateLimit).toHaveBeenCalledWith(EXPORT_ID);
+  });
+});
+
+describe("GET /identity/subjects/:subjectId/export", () => {
+  it("answers the manifest for an export token, uncached", async () => {
+    const ctx = setup();
+    const response = await ctx.read(await exportToken(ctx), "");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.json()).toEqual({ product: "account", categories: [] });
+    expect(ctx.manifest).toHaveBeenCalledWith("person-1");
+  });
+
+  it("pages a category and passes the cursor on", async () => {
+    const ctx = setup();
+    const response = await ctx.read(await exportToken(ctx), "/addresses?cursor=abc");
+    expect(response.status).toBe(200);
+    expect(ctx.page).toHaveBeenCalledWith("person-1", "addresses", "abc");
+  });
+
+  it("refuses a call without a token, a lifecycle token, or an expired one", async () => {
+    const ctx = setup();
+    expect((await ctx.read(null, "")).status).toBe(401);
+    const lifecycle = (await (await ctx.token(LIFECYCLE_BASIC, "identity.lifecycle")).json()) as {
+      access_token: string;
+    };
+    expect((await ctx.read(lifecycle.access_token, "")).status).toBe(401);
+    const exportAccess = await exportToken(ctx);
+    ctx.store.delete(subjectExportTokenKey(exportAccess));
+    expect((await ctx.read(exportAccess, "/profile")).status).toBe(401);
+    expect(ctx.manifest).not.toHaveBeenCalled();
+    expect(ctx.page).not.toHaveBeenCalled();
+  });
+
+  it("is rate limited per person", async () => {
+    const ctx = setup({ readLimit: 12 });
+    const response = await ctx.read(await exportToken(ctx), "/profile");
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("12");
+    expect(ctx.readRateLimit).toHaveBeenCalledWith("person-1");
+    expect(ctx.page).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 for an unknown category and 400 for a bad cursor", async () => {
+    const ctx = setup();
+    const accessToken = await exportToken(ctx);
+    ctx.page.mockRejectedValueOnce(new UnknownSubjectExportCategoryError("nope"));
+    expect((await ctx.read(accessToken, "/nope")).status).toBe(404);
+    ctx.page.mockRejectedValueOnce(new InvalidSubjectExportCursorError());
+    expect((await ctx.read(accessToken, "/profile?cursor=bad")).status).toBe(400);
+  });
+
+  it("answers 503 without detail when a reader fails", async () => {
+    const ctx = setup();
+    ctx.manifest.mockRejectedValueOnce(new Error("db down: secret detail"));
+    const response = await ctx.read(await exportToken(ctx), "");
+    expect(response.status).toBe(503);
+    expect(JSON.stringify(await response.json())).not.toContain("secret detail");
   });
 });
