@@ -56,6 +56,7 @@ async function buildApp(
           facts: { ...runs.facts, ...overrides.facts },
           stock: { ...runs.stock, ...overrides.stock },
           listings: { ...runs.listings, ...overrides.listings },
+          printsFromOriginal: { ...runs.printsFromOriginal, ...overrides.printsFromOriginal },
         },
       },
     }),
@@ -154,6 +155,57 @@ describe("admin edition run routes", () => {
       expect.objectContaining({ canApproveHorsCommerce: true, canSetPrice: true }),
     );
     await admin.close();
+  });
+
+  it("creates prints of an original for catalogue editors, with the actor, key and run", async () => {
+    const create = vi.fn(async () => ({
+      artworkId: ARTWORK,
+      slug: "harbour-prints",
+      version: "2026-10-01T10:00:00.000Z",
+      editionCount: 24,
+    }));
+    const app = await buildApp("catalogue_editor", { printsFromOriginal: { create } });
+    const response = await app.inject({
+      method: "POST",
+      url: `/admin/v1/artworks/${ARTWORK}/prints`,
+      headers,
+      payload: { title: "Harbour", run: { spec: { type: "lax_standard" } } },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().editionCount).toBe(24);
+    expect(create).toHaveBeenCalledWith({
+      originalArtworkId: ARTWORK,
+      title: "Harbour",
+      run: { spec: { type: "lax_standard" } },
+      actorSubjectId: "catalogue_editor-subject",
+      idempotencyKey: headers["idempotency-key"],
+    });
+    await app.close();
+  });
+
+  it("refuses creating prints to staff without catalogue access, and a missing title or run", async () => {
+    const create = vi.fn();
+    const finance = await buildApp("finance", { printsFromOriginal: { create } });
+    const refused = await finance.inject({
+      method: "POST",
+      url: `/admin/v1/artworks/${ARTWORK}/prints`,
+      headers,
+      payload: { title: "Harbour", run: { spec: { type: "lax_standard" } } },
+    });
+    expect(refused.statusCode).toBe(403);
+    await finance.close();
+    const editor = await buildApp("catalogue_editor", { printsFromOriginal: { create } });
+    for (const payload of [{ run: { spec: { type: "lax_standard" } } }, { title: "Harbour" }]) {
+      const response = await editor.inject({
+        method: "POST",
+        url: `/admin/v1/artworks/${ARTWORK}/prints`,
+        headers,
+        payload,
+      });
+      expect(response.statusCode).toBe(400);
+    }
+    expect(create).not.toHaveBeenCalled();
+    await editor.close();
   });
 
   it("needs an idempotency key and refuses a malformed run", async () => {

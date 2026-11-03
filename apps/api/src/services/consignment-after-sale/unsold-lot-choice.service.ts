@@ -12,10 +12,13 @@ import {
   relistReserveRefusal,
   unsoldChoicePaused,
   unsoldChoiceRefusalMessage,
+  unsoldFollowUpFinishedByStaff,
 } from "@auction/domain";
 import type {
   IConsignmentAgreementRepository,
   IUnsoldChoiceDeadlineStore,
+  IUnsoldFollowUpReader,
+  IUnsoldFollowUpWriter,
   IUnsoldLotChoiceRepository,
   SubmissionSenderFilter,
 } from "@auction/persistence/interfaces";
@@ -27,9 +30,11 @@ import type {
   Lot,
   SellerUnsoldLotView,
   SellerUnsoldOutcome,
+  StaffUnsoldLotView,
   UnsoldLotChoice,
   UnsoldLotChoiceDecisionInput,
   UnsoldLotChoiceRequestInput,
+  UnsoldLotFollowUp,
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../../lib/errors.js";
@@ -58,6 +63,8 @@ export type UnsoldLotChoiceServiceDeps = {
   /** The date each unsold choice is due by, from the stored dates. */
   deadlines: IUnsoldChoiceDeadlines;
   storedDeadlines: Pick<IUnsoldChoiceDeadlineStore, "kept">;
+  /** The staff work a confirmed choice leaves behind. */
+  followUps: IUnsoldFollowUpReader & IUnsoldFollowUpWriter;
   events: IDomainEventSink | null;
   now?: () => Date;
 };
@@ -68,9 +75,7 @@ export interface IUnsoldLotChoiceService {
     submission: ItemSubmission,
     actor: EntityActor | null,
   ): Promise<SellerUnsoldLotView | null>;
-  staffView(
-    submission: ItemSubmission,
-  ): Promise<Omit<SellerUnsoldLotView, "canChoose" | "choicePaused"> | null>;
+  staffView(submission: ItemSubmission): Promise<StaffUnsoldLotView | null>;
   /** Where the consignment is after the sale (or its submission status before it). */
   stageOf(submission: ItemSubmission): Promise<ConsignmentStage>;
   /** A page of the account's consigned lots that ended unsold, with what was chosen. */
@@ -92,6 +97,11 @@ export interface IUnsoldLotChoiceService {
     submissionId: string,
     floor: string | null,
   ): Promise<Result<ConsignmentAgreement, SubmissionError>>;
+  /** Staff say the lot was returned to its seller, or handed to the private sales team. */
+  completeFollowUp(
+    submissionId: string,
+    staffUserId: string,
+  ): Promise<Result<UnsoldLotFollowUp, SubmissionError>>;
 }
 
 const REFUSAL_STATUS: Record<UnsoldChoiceRefusal, number> = {
@@ -239,11 +249,23 @@ export class UnsoldLotChoiceService implements IUnsoldLotChoiceService {
     return consignmentStage({ submissionStatus: submission.status, lot, unsoldChoice: choice });
   }
 
-  async staffView(
-    submission: ItemSubmission,
-  ): Promise<Omit<SellerUnsoldLotView, "canChoose" | "choicePaused"> | null> {
+  async staffView(submission: ItemSubmission): Promise<StaffUnsoldLotView | null> {
     const context = await this.unsoldContext(submission);
-    return context ? this.view(context) : null;
+    if (!context) return null;
+    const [view, followUp] = await Promise.all([
+      this.view(context),
+      this.deps.followUps.findForOutcome({
+        lotId: context.lot.id,
+        lotEndTime: context.lot.endTime,
+      }),
+    ]);
+    return { ...view, followUp: followUp ? await this.followUpWithName(followUp) : null };
+  }
+
+  private async followUpWithName(followUp: UnsoldLotFollowUp): Promise<UnsoldLotFollowUp> {
+    const id = followUp.completedByUserId;
+    const person = id ? await this.deps.people.findById(id).catch(() => null) : null;
+    return { ...followUp, completedByName: person?.name ?? null };
   }
 
   private refused(reason: UnsoldChoiceRefusal): SubmissionError {
@@ -394,5 +416,41 @@ export class UnsoldLotChoiceService implements IUnsoldLotChoiceService {
       return err(new SubmissionError("This consignment has no agreement to set a floor on.", 404));
     }
     return ok(stored);
+  }
+
+  async completeFollowUp(
+    submissionId: string,
+    staffUserId: string,
+  ): Promise<Result<UnsoldLotFollowUp, SubmissionError>> {
+    const submission = await this.deps.submissions.findById(submissionId);
+    if (!submission) return err(new SubmissionError("Not found", 404));
+    const context = await this.unsoldContext(submission);
+    if (!context) return err(this.refused("not_unsold"));
+    const key = { lotId: context.lot.id, lotEndTime: context.lot.endTime };
+    const current = await this.deps.followUps.findForOutcome(key);
+    if (!current) {
+      return err(new SubmissionError("There is no work to finish for this lot yet.", 404));
+    }
+    if (!unsoldFollowUpFinishedByStaff(current.kind)) {
+      return err(
+        new SubmissionError(
+          "A relist finishes when the lot is returned to inventory, with the agreed reserve.",
+          409,
+        ),
+      );
+    }
+    const done = await this.deps.followUps.completeByStaff(key, staffUserId, this.now());
+    if (!done) return err(new SubmissionError("This has already been marked done.", 409));
+
+    await this.deps.events?.publish({
+      aggregateType: "submission",
+      aggregateId: submissionId,
+      eventType: "submission.unsold_follow_up_completed",
+      payload: { submissionId, lotId: context.lot.id, kind: done.kind },
+      actorUserId: staffUserId,
+      actingLegalEntityId: submission.legalEntityId ?? null,
+      schemaVersion: 1,
+    });
+    return ok(await this.followUpWithName(done));
   }
 }

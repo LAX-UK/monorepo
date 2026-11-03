@@ -39,6 +39,8 @@ function createReader(overrides: Partial<IAdminWorkItemsReader> = {}): IAdminWor
     listPendingTelephoneBookings: vi.fn().mockResolvedValue([]),
     listDraftLotsPastStart: vi.fn().mockResolvedValue([]),
     listUnsoldLotChoices: vi.fn().mockResolvedValue([]),
+    listOpenUnsoldFollowUps: vi.fn().mockResolvedValue([]),
+    listLapsedUnsoldChoices: vi.fn().mockResolvedValue([]),
     listMarketingEnquiries: vi.fn().mockResolvedValue([]),
     listPurchaseProblems: vi.fn().mockResolvedValue([]),
     listDeletionHolds: vi.fn().mockResolvedValue([]),
@@ -211,6 +213,58 @@ describe("AdminWorkItemsService", () => {
       expect(result.items.some((item) => item.kind === "marketing_enquiry")).toBe(false);
     }
     expect(listMarketingEnquiries).not.toHaveBeenCalled();
+  });
+
+  it("shows confirmed and lapsed unsold-lot work to the people who see the requested choice", async () => {
+    const listOpenUnsoldFollowUps = vi.fn().mockResolvedValue([
+      row({
+        sourceId: "fu-1",
+        kind: "unsold_choice_follow_up",
+        domain: "catalogue",
+        title: "Arrange return — Lot 4: Blue",
+      }),
+    ]);
+    const listLapsedUnsoldChoices = vi.fn().mockResolvedValue([
+      row({
+        sourceId: "lot-9",
+        kind: "unsold_choice_lapsed",
+        domain: "catalogue",
+        title: "No choice made — Lot 9: Red",
+      }),
+    ]);
+    const now = new Date("2026-11-20T09:00:00.000Z");
+    const service = new AdminWorkItemsService(
+      createReader({ listOpenUnsoldFollowUps, listLapsedUnsoldChoices }),
+      () => now,
+    );
+    const query = { limit: 25, assignment: "all" as const, urgentOnly: false };
+
+    for (const staffRoles of [["administrator"], ["specialist"]] as const) {
+      const result = await service.listWorkItems({
+        actorUserId: "u1",
+        actorRole: "staff",
+        actorStaffRoles: [...staffRoles],
+        query,
+      });
+      expect(result.items.map((item) => item.id).sort()).toEqual([
+        "unsold_choice_follow_up:fu-1",
+        "unsold_choice_lapsed:lot-9",
+      ]);
+      expect(result.items.every((item) => item.href.startsWith("/admin/submissions/"))).toBe(true);
+    }
+    expect(listLapsedUnsoldChoices).toHaveBeenCalledWith(expect.any(Number), now);
+
+    listOpenUnsoldFollowUps.mockClear();
+    listLapsedUnsoldChoices.mockClear();
+    const financeOnly = await service.listWorkItems({
+      actorUserId: "u1",
+      actorRole: "staff",
+      actorStaffRoles: ["finance"],
+      query,
+    });
+    expect(financeOnly.items).toEqual([]);
+    expect(listOpenUnsoldFollowUps).not.toHaveBeenCalled();
+    expect(listLapsedUnsoldChoices).not.toHaveBeenCalled();
   });
 
   it("shows held account deletions to client services and administrators only", async () => {

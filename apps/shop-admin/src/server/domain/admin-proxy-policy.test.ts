@@ -52,6 +52,7 @@ describe("resolveAdminProxyTarget", () => {
   it.each([
     ["POST", "/api/admin/refunds"],
     ["POST", "/api/admin/refunds/retry"],
+    ["POST", "/api/admin/refunds/settled-outside"],
     ["POST", "/api/admin/cancellations"],
   ])("requires recent auth for money change %s %s", (method, bffPath) => {
     const resolved = resolveAdminProxyTarget({
@@ -63,6 +64,19 @@ describe("resolveAdminProxyTarget", () => {
   });
 
   const ID = "11111111-1111-4111-8111-111111111111";
+
+  it.each([
+    ["POST", `/api/admin/returns/${ID}/in-transit`],
+    ["POST", `/api/admin/returns/${ID}/receive`],
+  ])("does not ask for a recent sign-in to move a return: %s %s", (method, bffPath) => {
+    const resolved = resolveAdminProxyTarget({
+      bffPath,
+      shopApiBaseUrl: "http://shop-api:3011",
+      method,
+    });
+    expect(resolved?.requiresRecentAuth).toBe(false);
+  });
+
   it.each([
     ["POST", `/api/admin/original-sales/${ID}/invoice`],
     ["POST", `/api/admin/sale-authority-requests/${ID}/decision`],

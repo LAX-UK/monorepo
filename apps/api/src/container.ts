@@ -775,6 +775,17 @@ export function createContainer(env: Env): Container {
           clientSecret: env.IDENTITY_DATA_REQUESTS_CLIENT_SECRET,
         }),
         audit: new DomainEventDataRequestAuditTrail(platform.domainEventSink),
+        accounts: {
+          findByEmail: async (email) => {
+            const subject = await identityIssuer.findSubjectByEmail(email);
+            if (!subject) return null;
+            return {
+              subjectId: subject.id,
+              name: subject.name,
+              status: subject.identityDisabledAt ? "disabled" : "active",
+            };
+          },
+        },
       }),
       stepUp: new StaffStepUpService(identityIssuer),
       idempotencyStore: new RedisIdempotencyStore(infra.redis),

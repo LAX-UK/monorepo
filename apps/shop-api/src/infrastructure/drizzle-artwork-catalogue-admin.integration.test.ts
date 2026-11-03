@@ -39,6 +39,14 @@ const CONFIRMED_FACTS = {
   factsConfirmed: true,
 };
 
+function runRecorders(uow: ReturnType<typeof createDrizzleShopUnitOfWork>) {
+  const services = createEditionRunServices({
+    uow: createDrizzleEditionRunUnitOfWork(uow),
+    clock: { now: () => new Date() },
+  });
+  return { editionRuns: services.recorder, originalPrints: services.originalPrintsRecorder };
+}
+
 describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () => {
   let shopPool: pg.Pool;
   let ownerPool: pg.Pool;
@@ -64,10 +72,7 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
       }),
       writer: createDrizzleArtworkCatalogueWriter(uow, {
         resolveMediaUrl,
-        editionRuns: createEditionRunServices({
-          uow: createDrizzleEditionRunUnitOfWork(uow),
-          clock: { now: () => new Date() },
-        }).recorder,
+        ...runRecorders(uow),
         releaseAlerts: createDrizzleReleaseAlertAnnouncer({
           notifications,
           storefrontOrigins: ORIGINS,

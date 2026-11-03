@@ -9,6 +9,10 @@ import type {
   AdminArtworkVisibilityAction,
   AdminNewRunInput,
 } from "@auction/shop-contracts";
+import type {
+  OriginalPrintsRequest,
+  PrintsFromOriginalResult,
+} from "../edition-runs/create-prints-from-original.service.js";
 import type { CursorListInput, CursorListResult } from "./cursor-list.js";
 
 export type AdminArtworkListInput = CursorListInput & {
@@ -71,6 +75,8 @@ export type CreateArtworkInput = StaffWrite &
     slug: string;
     /** The run of prints the artwork sells, recorded with it; null for an original. */
     run: AdminNewRunInput | null;
+    /** For an original: its prints, created with it in the same transaction. */
+    prints?: OriginalPrintsRequest | null | undefined;
   };
 
 export type UpdateArtworkInput = StaffWrite &
@@ -109,9 +115,14 @@ export type BulkArtworkVisibilityInput = StaffWrite & {
  * `ShopDomainError` (409) when a catalogue rule refuses the change.
  */
 export interface ArtworkCatalogueWriter {
-  createArtwork(
-    input: CreateArtworkInput,
-  ): Promise<{ artworkId: string; slug: string; version: string } & ArtRefresh>;
+  createArtwork(input: CreateArtworkInput): Promise<
+    {
+      artworkId: string;
+      slug: string;
+      version: string;
+      prints?: PrintsFromOriginalResult;
+    } & ArtRefresh
+  >;
   updateArtwork(input: UpdateArtworkInput): Promise<{ version: string } & ArtRefresh>;
   setPrice(input: SetArtworkPriceInput): Promise<{ version: string } & ArtRefresh>;
   setVisibility(

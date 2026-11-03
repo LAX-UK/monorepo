@@ -2,9 +2,9 @@ import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
 import {
   allocateOrderLevelRefundsToLines,
-  completeRefundFromWebhook,
   computeEffectiveLineRefundedPence,
-} from "./complete-refund.handler.js";
+} from "../../refund-settlement.js";
+import { completeRefundFromWebhook } from "./complete-refund.handler.js";
 
 vi.mock("../../shop-domain-event-publisher.js", () => ({
   createShopDomainEventPublisher: () => ({

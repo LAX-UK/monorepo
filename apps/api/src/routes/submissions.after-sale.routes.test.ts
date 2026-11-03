@@ -22,6 +22,7 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { ISubmissionAccessGuard } from "../services/interfaces/submission-routes/submission-access.js";
 import { SubmissionAccessGuard } from "../services/submission/submission-access-guard.js";
 import { InMemoryConsignmentAgreements } from "../testing/in-memory-consignment-agreements.js";
+import { InMemoryUnsoldFollowUps } from "../testing/in-memory-unsold-follow-ups.js";
 import { InMemoryUnsoldLotChoices } from "../testing/in-memory-unsold-lot-choices.js";
 import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubSubmissionRouteServices } from "../testing/stub-submission-route-services.js";
@@ -87,6 +88,7 @@ function setup(options: Setup = {}) {
       : {}),
   });
   const choices = new InMemoryUnsoldLotChoices();
+  const followUps = new InMemoryUnsoldFollowUps();
   const notifier = {
     notify: vi.fn().mockResolvedValue(undefined),
     notifyStaff: vi.fn().mockResolvedValue(undefined),
@@ -155,6 +157,7 @@ function setup(options: Setup = {}) {
       notifier,
       deadlines: new UnsoldChoiceDeadlines({ warn: () => {} }),
       storedDeadlines: { kept: async () => [] },
+      followUps,
       events,
       now,
     }),
@@ -234,6 +237,7 @@ function setup(options: Setup = {}) {
     get,
     getMine,
     choices,
+    followUps,
     notifier,
     events,
     writer,
@@ -530,6 +534,54 @@ describe("staff confirmation", () => {
     expect(
       (await json<{ data: { relistReserveFloor: string } }>(res)).data.relistReserveFloor,
     ).toBe("2500");
+  });
+});
+
+describe("POST /submissions/:id/unsold-choice/follow-up/complete", () => {
+  const path = "/unsold-choice/follow-up/complete";
+
+  it("marks a return as done and records who did it", async () => {
+    const s = setup({ userRole: "staff" });
+    s.followUps.seed({ lotId, lotEndTime: endTime, kind: "collect" });
+    const res = await s.post(path);
+    expect(res.status).toBe(200);
+    expect(await json<{ data: { status: string; completedByUserId: string } }>(res)).toMatchObject({
+      data: { status: "done", completedByUserId: "u1" },
+    });
+    expect(s.events.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "submission.unsold_follow_up_completed",
+        payload: expect.objectContaining({ kind: "collect" }),
+      }),
+    );
+  });
+
+  it("finishes a private sale hand-over the same way", async () => {
+    const s = setup({ userRole: "staff" });
+    s.followUps.seed({ lotId, lotEndTime: endTime, kind: "private_sale" });
+    expect((await s.post(path)).status).toBe(200);
+  });
+
+  it("leaves a relist to finish when the lot returns to inventory", async () => {
+    const s = setup({ userRole: "staff" });
+    s.followUps.seed({ lotId, lotEndTime: endTime, kind: "relist", reserve: "4200.00" });
+    const res = await s.post(path);
+    expect(res.status).toBe(409);
+    expect((await json<{ error: string }>(res)).error).toContain("returned to inventory");
+  });
+
+  it("refuses when nothing is open and when it was already done", async () => {
+    const s = setup({ userRole: "staff" });
+    expect((await s.post(path)).status).toBe(404);
+    s.followUps.seed({ lotId, lotEndTime: endTime, kind: "collect" });
+    expect((await s.post(path)).status).toBe(200);
+    expect((await s.post(path)).status).toBe(409);
+  });
+
+  it("is for staff only", async () => {
+    const s = setup({ userRole: "client" });
+    s.followUps.seed({ lotId, lotEndTime: endTime, kind: "collect" });
+    expect((await s.post(path)).status).toBe(403);
   });
 });
 

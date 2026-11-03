@@ -130,6 +130,13 @@ export type {
   UnsoldOutcomeListFilter,
   UnsoldOutcomeRow,
 } from "./unsold-lot-choice.repository.js";
+export type {
+  IRelistReserveSettlement,
+  IUnsoldFollowUpReader,
+  IUnsoldFollowUpStore,
+  IUnsoldFollowUpWriter,
+  RelistReserveSettlement,
+} from "./unsold-lot-follow-up.repository.js";
 export type { ConsignmentMoveRow, IConsignmentMoveWriter } from "./consignment-move.writer.js";
 export type { ISellerIdentityReminderStore } from "./seller-identity-reminder.store.js";
 export type {

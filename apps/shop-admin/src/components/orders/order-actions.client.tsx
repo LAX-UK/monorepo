@@ -2,6 +2,7 @@
 
 import { GuestErasureDialog } from "@/components/orders/guest-erasure-dialog.client";
 import { RefundDialog } from "@/components/orders/refund-dialog.client";
+import { RefundedOutsideDialog } from "@/components/orders/refund-outside-dialog.client";
 import { useAdminMutation } from "@/components/use-admin-mutation";
 import {
   cancelOrderAfterPossession,
@@ -11,6 +12,7 @@ import {
 import { GUEST_ERASURE_COPY, guestErasureMenuReason } from "@/server/domain/guest-erasure.vm";
 import { cancelAfterPossessionDescription, orderLineLabel } from "@/server/domain/order-detail.vm";
 import type { AdminGuestErasureState, AdminOrderDetail } from "@auction/shop-contracts";
+import type { CancellationStockOutcome } from "@auction/shop-domain";
 import {
   ConfirmActionDialog,
   OverflowMenu,
@@ -23,6 +25,7 @@ import {
   CreditCard,
   Eraser,
   Factory,
+  HandCoins,
   RotateCw,
   Undo2,
   XCircle,
@@ -198,20 +201,64 @@ export function RetryRefundButton({ refundId, label }: { refundId: string; label
 }
 
 /**
+ * What staff can do with a refund that failed for good: send it again, or, when the customer was
+ * refunded another way, record that. The second asks for the reference and a reason.
+ */
+export function FailedRefundActions({
+  refundId,
+  amountPence,
+  itemLabel,
+  failureReason,
+}: {
+  refundId: string;
+  amountPence: number;
+  itemLabel: string;
+  failureReason: string | null;
+}) {
+  const [settling, setSettling] = useState(false);
+  return (
+    <>
+      <RetryRefundButton refundId={refundId} label={formatGbp(amountPence)} />
+      <StaffButton
+        size="sm"
+        variant="secondary"
+        requires="refund.write"
+        icon={<HandCoins aria-hidden />}
+        aria-label={`Mark refund of ${formatGbp(amountPence)} as refunded outside LAX`}
+        onClick={() => setSettling(true)}
+      >
+        Mark as refunded outside LAX
+      </StaffButton>
+      {settling ? (
+        <RefundedOutsideDialog
+          refundId={refundId}
+          amountPence={amountPence}
+          itemLabel={itemLabel}
+          failureReason={failureReason}
+          open={settling}
+          onOpenChange={setSettling}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/**
  * A line's own actions: cancelling after possession needs the line's edition, taken from it, and
  * says exactly what it refunds.
  */
 export function OrderLineMenu({
   line,
-  refundPence,
+  cancellation,
 }: {
   line: Line;
-  /** What cancelling refunds to the customer; null when the line cannot be cancelled. */
-  refundPence: number | null;
+  /** What cancelling does; null when the line cannot be cancelled. */
+  cancellation: { refundPence: number; stock: CancellationStockOutcome } | null;
 }) {
   const mutation = useAdminMutation();
   const [confirming, setConfirming] = useState(false);
-  if (refundPence === null || !line.editionId) return null;
+  if (cancellation === null || !line.editionId) return null;
+  const { refundPence, stock } = cancellation;
   const editionId = line.editionId;
   return (
     <>
@@ -233,7 +280,7 @@ export function OrderLineMenu({
         open={confirming}
         onOpenChange={setConfirming}
         title={`Cancel ${orderLineLabel(line)}?`}
-        description={cancelAfterPossessionDescription(refundPence)}
+        description={cancelAfterPossessionDescription(refundPence, stock)}
         confirmLabel={`Cancel and refund ${formatGbp(refundPence)}`}
         tone="danger"
         loading={mutation.pending}

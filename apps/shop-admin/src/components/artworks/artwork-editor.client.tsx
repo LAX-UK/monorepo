@@ -8,10 +8,13 @@ import {
   ReadOnlyMedia,
   ReadOnlySearchListing,
 } from "@/components/artworks/artwork-read-only-sections";
+import { CreatePrintsDialog } from "@/components/artworks/edition-runs/create-prints-dialog.client";
 import { EditionFactsCard } from "@/components/artworks/edition-runs/edition-facts-card.client";
 import { EditionRunCard } from "@/components/artworks/edition-runs/edition-run-card.client";
 import { LinkedListingsCard } from "@/components/artworks/edition-runs/linked-listings-card.client";
+import { LinkedPrintsCard } from "@/components/artworks/edition-runs/linked-prints-card.client";
 import { OpenStockCard } from "@/components/artworks/edition-runs/open-stock-card.client";
+import { OriginalPrintsSection } from "@/components/artworks/edition-runs/original-prints-section.client";
 import {
   PrintsConfirmSection,
   PrintsFactsSection,
@@ -53,6 +56,14 @@ import {
   validateRunForm,
 } from "@/lib/edition-run-form";
 import {
+  createOriginalAndPrintsLabel,
+  emptyOriginalPrintsForm,
+  originalPrintsBody,
+  originalPrintsCount,
+  originalPrintsErrorSummary,
+  validateOriginalPrintsForm,
+} from "@/lib/original-prints-form";
+import {
   createArtwork,
   getArtworkDetail,
   saveArtwork,
@@ -76,6 +87,7 @@ import {
   canHaveLinkedListings,
   isOpenSpec,
   mainRunLine,
+  originalAndPrintsCreatedLine,
   proofsAvailable,
 } from "@/server/domain/edition-run.vm";
 import {
@@ -215,6 +227,10 @@ export function ArtworkEditor({
   const [runValues, setRunValues] = useState(emptyRunForm);
   const [factsValues, setFactsValues] = useState(emptyFactsForm);
   const [listingProofs, setListingProofs] = useState(false);
+  // A new original may also create its prints; a saved one creates them from a dialog.
+  const [printsValues, setPrintsValues] = useState(emptyOriginalPrintsForm);
+  const [creatingPrints, setCreatingPrints] = useState(false);
+  const [linkedPrints, setLinkedPrints] = useState(detail?.linkedPrints ?? []);
 
   const live = record?.state === "live" || record?.state === "sold_out";
   const context = {
@@ -235,6 +251,14 @@ export function ArtworkEditor({
   const attempted = failedSubmits > 0;
   const clientErrors = attempted ? validateArtworkForm(values, context) : {};
   const prints = mode === "create" && values.editionRun === "editions";
+  const wantsPrints =
+    mode === "create" && !companion && values.editionRun === "original" && printsValues.enabled;
+  const printsErrors =
+    wantsPrints && attempted ? validateOriginalPrintsForm(printsValues, values.title) : {};
+  const printsSummary = originalPrintsErrorSummary(printsErrors, runErrorSummary(printsErrors));
+  const createLabel = wantsPrints
+    ? createOriginalAndPrintsLabel(originalPrintsCount(printsValues))
+    : "Create draft";
   const runContext = {
     linkedToOriginal: companion
       ? companion.spec.type === "custom_limited"
@@ -273,6 +297,7 @@ export function ArtworkEditor({
     ...runErrorSummary(runErrors),
     ...factsErrorSummary(factsErrors),
     ...artworkErrorSummary(errors),
+    ...printsSummary,
   ];
 
   function update(patch: Partial<ArtworkFormValues>) {
@@ -283,7 +308,9 @@ export function ArtworkEditor({
   async function submit(expectedVersion = version) {
     const found = validateArtworkForm(values, context);
     const run = prints ? newRunInput() : null;
-    if (Object.keys(found).length > 0 || (prints && !run)) {
+    const printsInvalid =
+      wantsPrints && Object.keys(validateOriginalPrintsForm(printsValues, values.title)).length > 0;
+    if (Object.keys(found).length > 0 || (prints && !run) || printsInvalid) {
       setFailedSubmits((count) => count + 1);
       return;
     }
@@ -319,7 +346,12 @@ export function ArtworkEditor({
     }
     if (mode === "create") {
       const result = await createArtwork({
-        body: buildArtworkCreateBody(values, context, run),
+        body: buildArtworkCreateBody(
+          values,
+          context,
+          run,
+          wantsPrints ? originalPrintsBody(printsValues, values.title) : null,
+        ),
         idempotencyKey,
       }).catch(() => ({ ok: false, kind: "failed", message: "Save failed. Try again." }) as const);
       setSaving(false);
@@ -329,11 +361,16 @@ export function ArtworkEditor({
           setServerErrors({ [field]: result.message });
           setFailedSubmits((count) => count + 1);
         } else setFormError(adminMutationErrorMessage(result));
-        toast.error("The artwork was not created");
+        toast.error(wantsPrints ? "Nothing was created" : "The artwork was not created");
         return;
       }
       setBaseline(values);
-      toast.success(`Created “${values.title.trim()}” as a draft`);
+      const created = result.data.prints;
+      toast.success(
+        created
+          ? originalAndPrintsCreatedLine(values.title.trim(), created.editionCount)
+          : `Created “${values.title.trim()}” as a draft`,
+      );
       await guard.release();
       router.replace(`/artworks/${result.data.artworkId}`);
       return;
@@ -391,6 +428,14 @@ export function ArtworkEditor({
     setIdempotencyKey(crypto.randomUUID());
   }
 
+  /** After prints are created: read the original again so its list of prints is current. */
+  async function refreshLinkedPrints() {
+    if (!record) return;
+    const result = await getArtworkDetail(record.artworkId);
+    if (result.ok) setLinkedPrints(result.data.linkedPrints ?? []);
+    router.refresh();
+  }
+
   async function changeVisibility(action: AdminArtworkVisibilityAction) {
     if (!record) return;
     setChangingVisibility(true);
@@ -432,6 +477,24 @@ export function ArtworkEditor({
       ? values.title.trim() || (companion ? "New companion listing" : "New artwork")
       : record?.title;
   const run = record?.run ?? null;
+  // Prints can be made from a saved original that is still in the catalogue.
+  const canCreatePrints =
+    record !== null &&
+    record.run === null &&
+    record.archivedAt === null &&
+    permissions.write &&
+    mode === "edit";
+  const printsActions = canCreatePrints
+    ? [
+        {
+          id: "create-prints",
+          label: "Create prints",
+          icon: Layers,
+          disabled: dirty,
+          onSelect: () => setCreatingPrints(true),
+        },
+      ]
+    : [];
   const linkedActions =
     run && canHaveLinkedListings(run.spec) && permissions.write
       ? [
@@ -490,10 +553,11 @@ export function ArtworkEditor({
         overflow={
           record &&
           visibility &&
-          (visibility.more.length > 0 || linkedActions.length > 0) &&
+          (visibility.more.length > 0 || linkedActions.length > 0 || printsActions.length > 0) &&
           !readOnly ? (
             <OverflowMenu
               actions={[
+                ...printsActions,
                 ...linkedActions,
                 ...visibility.more.map((action) => ({
                   id: action,
@@ -522,7 +586,7 @@ export function ArtworkEditor({
               loading={saving}
               disabled={mode === "edit" && !dirty}
             >
-              {mode === "create" ? "Create draft" : dirty ? "Save changes" : "Saved"}
+              {mode === "create" ? createLabel : dirty ? "Save changes" : "Saved"}
             </StaffButton>
           )
         }
@@ -900,6 +964,16 @@ export function ArtworkEditor({
           )}
         </FormSection>
 
+        {mode === "create" && !companion && values.editionRun === "original" && canSave ? (
+          <OriginalPrintsSection
+            values={printsValues}
+            errors={printsErrors}
+            originalTitle={values.title}
+            disabled={saving}
+            onChange={(patch) => setPrintsValues((current) => ({ ...current, ...patch }))}
+          />
+        ) : null}
+
         {companion ? null : readOnly && record ? (
           <ReadOnlyMedia images={values.images} importedImageUrl={record.importedImageUrl} />
         ) : (
@@ -1048,7 +1122,7 @@ export function ArtworkEditor({
                 loading={saving}
                 disabled={mode === "edit" && !dirty}
               >
-                {mode === "create" ? "Create draft" : dirty ? "Save changes" : "Saved"}
+                {mode === "create" ? createLabel : dirty ? "Save changes" : "Saved"}
               </StaffButton>
             )}
           </FormActions>
@@ -1100,6 +1174,42 @@ export function ArtworkEditor({
                 setPrice: permissions.setPrice,
                 approveHorsCommerce: permissions.approveHorsCommerce,
               }}
+            />
+          ) : null}
+        </>
+      ) : null}
+
+      {record && record.run === null && mode === "edit" ? (
+        <>
+          <LinkedPrintsCard
+            prints={linkedPrints}
+            action={
+              canCreatePrints ? (
+                <StaffButton
+                  variant="secondary"
+                  size="sm"
+                  icon={<Layers aria-hidden />}
+                  disabled={dirty}
+                  onClick={() => setCreatingPrints(true)}
+                >
+                  Create prints
+                </StaffButton>
+              ) : null
+            }
+            emptyDescription={
+              record.archivedAt !== null
+                ? "This original is archived. Restore it to create prints."
+                : "Create prints of this original as Shop drafts linked to it. The artist, medium, dimensions and images are copied."
+            }
+          />
+          {canCreatePrints ? (
+            <CreatePrintsDialog
+              open={creatingPrints}
+              onOpenChange={setCreatingPrints}
+              artworkId={record.artworkId}
+              title={record.title}
+              linked={linkedPrints}
+              onCreated={() => void refreshLinkedPrints()}
             />
           ) : null}
         </>

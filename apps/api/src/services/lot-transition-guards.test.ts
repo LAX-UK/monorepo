@@ -5,6 +5,7 @@ import { LotTransitionGuards } from "./lot-transition-guards.js";
 describe("LotTransitionGuards.assertReturnToInventoryAllowed", () => {
   it("blocks when payment records exist", async () => {
     const guards = new LotTransitionGuards({} as Database);
+    vi.spyOn(guards, "confirmedForReturn").mockResolvedValue(false);
     vi.spyOn(guards, "countForLot").mockResolvedValue({
       paymentCount: 1,
       openDisputeCount: 0,
@@ -19,6 +20,7 @@ describe("LotTransitionGuards.assertReturnToInventoryAllowed", () => {
 
   it("allows when no blocking conditions", async () => {
     const guards = new LotTransitionGuards({} as Database);
+    vi.spyOn(guards, "confirmedForReturn").mockResolvedValue(false);
     vi.spyOn(guards, "countForLot").mockResolvedValue({
       paymentCount: 0,
       openDisputeCount: 0,
@@ -27,5 +29,16 @@ describe("LotTransitionGuards.assertReturnToInventoryAllowed", () => {
     });
 
     await expect(guards.assertReturnToInventoryAllowed("lot-1")).resolves.toBeNull();
+  });
+
+  it("refuses a lot the seller asked to have returned, before anything else", async () => {
+    const guards = new LotTransitionGuards({} as Database);
+    vi.spyOn(guards, "confirmedForReturn").mockResolvedValue(true);
+    const counts = vi.spyOn(guards, "countForLot");
+
+    await expect(guards.assertReturnToInventoryAllowed("lot-1")).resolves.toMatch(
+      /confirmed for return/,
+    );
+    expect(counts).not.toHaveBeenCalled();
   });
 });
