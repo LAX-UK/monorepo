@@ -1,9 +1,7 @@
 import "server-only";
 
 import { getAdminFailedJobs } from "@/lib/data/http/admin-failed-jobs.reader";
-import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { FAILED_JOBS_WRITE_ACCESS } from "@/lib/navigation/staff-nav-access";
-import { type FailedJobList, type UserRole, userHasAccessTo } from "@auction/types";
+import type { FailedJobList } from "@auction/types";
 import {
   FAILED_JOBS_PAGE_SIZE,
   type FailedJobsSearch,
@@ -23,10 +21,6 @@ export type FailedJobsPagination = {
 export async function loadAdminFailedJobsPage(sp: FailedJobsSearch) {
   const filters = parseFailedJobsSearch(sp);
   const filtered = hasFailedJobsFilters(filters);
-  const user = await getServerSessionUser();
-  const canAct = user
-    ? userHasAccessTo(user.role as UserRole, user.staffRoles, FAILED_JOBS_WRITE_ACCESS)
-    : false;
 
   try {
     const list = await getAdminFailedJobs({
@@ -35,6 +29,7 @@ export async function loadAdminFailedJobsPage(sp: FailedJobsSearch) {
       limit: FAILED_JOBS_PAGE_SIZE,
       offset: filters.offset,
       ...(filters.q ? { q: filters.q } : {}),
+      ...(filters.source ? { source: filters.source } : {}),
       ...(filters.queue ? { queue: filters.queue } : {}),
       ...(filters.from ? { from: filters.from } : {}),
       ...(filters.to ? { to: filters.to } : {}),
@@ -59,7 +54,6 @@ export async function loadAdminFailedJobsPage(sp: FailedJobsSearch) {
     return {
       filters,
       filtered,
-      canAct,
       list: list as FailedJobList | null,
       pagination,
       loadError: null as string | null,
@@ -69,7 +63,6 @@ export async function loadAdminFailedJobsPage(sp: FailedJobsSearch) {
     return {
       filters,
       filtered,
-      canAct,
       list: null as FailedJobList | null,
       pagination: null,
       loadError:

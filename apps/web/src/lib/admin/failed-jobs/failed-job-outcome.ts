@@ -3,6 +3,7 @@ import type { FailedJobBatchResult } from "@auction/types";
 /** What the API says when it refuses one job, in words a person can act on. */
 const REFUSAL_COPY: Readonly<Record<string, string>> = {
   job_not_found: "This job no longer exists.",
+  not_permitted: "Your role can look at this but not change it.",
   actions_disabled:
     "Retries and discards are switched off while an incident is handled. Ask engineering to switch them back on.",
   retry_not_allowed: "This kind of job can't be retried from here.",

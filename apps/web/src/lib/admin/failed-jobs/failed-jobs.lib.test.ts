@@ -17,12 +17,18 @@ describe("parseFailedJobsSearch", () => {
     expect(parseFailedJobsSearch({})).toEqual({
       view: "needs_review",
       q: "",
+      source: "",
       queue: "",
       from: "",
       to: "",
       sort: "failed_desc",
       offset: 0,
     });
+  });
+
+  it("keeps a known source and drops an unknown one", () => {
+    expect(parseFailedJobsSearch({ source: "integrations" }).source).toBe("integrations");
+    expect(parseFailedJobsSearch({ source: "xero" }).source).toBe("");
   });
 
   it("ignores an unknown view, a bad day and a bad offset", () => {
@@ -65,14 +71,23 @@ describe("failedJobsHref", () => {
 
 describe("buildFailedJobsChips", () => {
   it("makes a removable chip for each filter, worded like the toolbar", () => {
-    const search = { q: "invoice", queue: "email", from: "2026-10-30", to: "2026-11-01" };
+    const search = {
+      q: "invoice",
+      source: "integrations",
+      queue: "email",
+      from: "2026-10-30",
+      to: "2026-11-01",
+    };
     const chips = buildFailedJobsChips(parseFailedJobsSearch(search), search, () => "Email");
     expect(chips.map((chip) => chip.label)).toEqual([
       "Search: invoice",
+      "Source: Integrations",
       "Type: Email",
       "Last failed: 30 Oct 2026 – 1 Nov 2026",
     ]);
-    expect(chips[1]?.clearHref).toBe("/admin/failed-jobs?q=invoice&from=2026-10-30&to=2026-11-01");
+    expect(chips[2]?.clearHref).toBe(
+      "/admin/failed-jobs?q=invoice&source=integrations&from=2026-10-30&to=2026-11-01",
+    );
   });
 });
 

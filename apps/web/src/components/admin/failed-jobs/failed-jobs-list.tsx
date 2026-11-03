@@ -9,8 +9,8 @@ import {
   failedJobsHref,
 } from "@/lib/admin/failed-jobs/failed-jobs-search";
 import {
-  FAILED_JOBS_EMPTY,
   FAILED_JOB_STATE_BADGE,
+  failedJobsEmpty,
   failedJobsViewTabs,
 } from "@/lib/admin/failed-jobs/failed-jobs.vm";
 import { copyToClipboard } from "@/lib/ui/copy-to-clipboard";
@@ -30,7 +30,7 @@ import {
 import type { FailedJobList, FailedJobSummary } from "@auction/types";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { ACTIONS_OFF_COPY } from "./failed-job-copy";
+import { ACTIONS_OFF_COPY, FAILED_JOBS_DESCRIPTION } from "./failed-job-copy";
 import { useFailedJobActions } from "./use-failed-job-actions";
 
 export type FailedJobsListProps = {
@@ -61,6 +61,8 @@ export function FailedJobsList(props: FailedJobsListProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const actions = useFailedJobActions();
   const tabs = list ? failedJobsViewTabs(list.counts) : [];
+  // A person who can only see one kind of failure (Finance) gets that kind's wording.
+  const onlySource = list?.sources.length === 1 ? (list.sources[0]?.id ?? "") : "";
 
   const actionsFor = useCallback(
     (row: FailedJobSummary): OverflowAction[] => {
@@ -70,7 +72,7 @@ export function FailedJobsList(props: FailedJobsListProps) {
         label: "Copy job ID",
         onSelect: () => copyToClipboard(row.id, "Job ID"),
       };
-      if (!canAct) return [open, copy];
+      if (!canAct || !row.canAct) return [open, copy];
       if (row.state === "discarded") {
         return [
           open,
@@ -212,7 +214,7 @@ export function FailedJobsList(props: FailedJobsListProps) {
     <>
       <ListPage<FailedJobSummary>
         title="Failed jobs"
-        description="Background jobs that ran out of attempts. Retry them once the cause is fixed, or discard them with a reason."
+        description={FAILED_JOBS_DESCRIPTION}
         Link={ListLink}
         listKey="bid-admin.failed-jobs"
         access={canAct ? "full" : "read-only"}
@@ -242,7 +244,7 @@ export function FailedJobsList(props: FailedJobsListProps) {
             key={filters.q}
             fullWidth
             label="Search failed jobs"
-            placeholder="Search job type, error or job ID"
+            placeholder="Search type, error or ID"
             value={filters.q}
             onSearch={(q) => navigate(failedJobsHref(search, { q: q || null }))}
           />
@@ -251,6 +253,22 @@ export function FailedJobsList(props: FailedJobsListProps) {
           <FilterSheet
             title="Filter failed jobs"
             sections={[
+              ...((list?.sources.length ?? 0) > 1
+                ? [
+                    {
+                      kind: "radio" as const,
+                      id: "source",
+                      label: "Source",
+                      value: filters.source,
+                      anyLabel: "All sources",
+                      options: (list?.sources ?? []).map((source) => ({
+                        value: source.id,
+                        label: source.label,
+                        count: source.count,
+                      })),
+                    },
+                  ]
+                : []),
               {
                 kind: "radio",
                 id: "queue",
@@ -274,6 +292,7 @@ export function FailedJobsList(props: FailedJobsListProps) {
               const date = values.date as { from: string; to: string };
               navigate(
                 failedJobsHref(search, {
+                  source: (values.source as string | undefined) || null,
                   queue: (values.queue as string) || null,
                   from: date.from || null,
                   to: date.to || null,
@@ -288,7 +307,9 @@ export function FailedJobsList(props: FailedJobsListProps) {
           onRemove: () => navigate(chip.clearHref),
         }))}
         onClearFilters={() =>
-          navigate(failedJobsHref(search, { q: null, queue: null, from: null, to: null }))
+          navigate(
+            failedJobsHref(search, { q: null, source: null, queue: null, from: null, to: null }),
+          )
         }
         loading={pending}
         filtered={props.filtered}
@@ -301,7 +322,7 @@ export function FailedJobsList(props: FailedJobsListProps) {
               }
             : null
         }
-        empty={FAILED_JOBS_EMPTY[filters.view]}
+        empty={failedJobsEmpty(filters.view, filters.source || onlySource)}
         noResults={{ noun: "failed jobs" }}
         table={{
           columns,

@@ -143,7 +143,7 @@ export function RetryFailedJobsDialog({
             <ChoiceRow
               htmlFor={tickId}
               label="I've checked these won't send anything twice."
-              description="An email that reached the provider before failing could arrive again."
+              description="An email, or something a webhook did before it failed, could happen a second time."
               control={
                 <StaffCheckbox
                   id={tickId}

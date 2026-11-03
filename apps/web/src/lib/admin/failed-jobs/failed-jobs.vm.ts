@@ -3,6 +3,7 @@ import {
   FAILED_JOB_VIEW_IDS,
   FAILED_JOB_VIEW_LABELS,
   type FailedJobList,
+  type FailedJobSourceFamily,
   type FailedJobState,
   type FailedJobView,
 } from "@auction/types";
@@ -44,6 +45,32 @@ export const FAILED_JOBS_EMPTY: Readonly<
     description: "Jobs you set aside with a reason move here, and can be restored.",
   },
 };
+
+/** What the empty list says when only integrations are in view (a filter, or Finance's own page). */
+const INTEGRATIONS_EMPTY: Readonly<Record<FailedJobView, { title: string; description: string }>> =
+  {
+    needs_review: {
+      title: "No integration failures need review",
+      description:
+        "Every delivery to Xero, Zoho and every inbound webhook has gone through or been set aside. New failures appear here.",
+    },
+    retried: {
+      title: "No retried deliveries",
+      description: "Deliveries you retry from Needs review move here.",
+    },
+    discarded: {
+      title: "No discarded deliveries",
+      description: "Deliveries you set aside with a reason move here, and can be restored.",
+    },
+  };
+
+/** The empty-state wording for a view, in the words of the kind of failure being shown. */
+export function failedJobsEmpty(
+  view: FailedJobView,
+  source: FailedJobSourceFamily | "",
+): { title: string; description: string } {
+  return source === "integrations" ? INTEGRATIONS_EMPTY[view] : FAILED_JOBS_EMPTY[view];
+}
 
 /** "1–50 of 312 jobs" under the table; "3 jobs" when the whole list fits. */
 export function pageSummary(offset: number, shown: number, total: number): string {
