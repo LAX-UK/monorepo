@@ -1,7 +1,6 @@
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { ArtistPageVm } from "@/lib/artist/artist-page.composer";
-import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
-import { MarketingReadMore } from "@auction/marketing-ui";
+import { MarketingReadMore, marketingArtistInitials } from "@auction/marketing-ui";
 
 /**
  * Biography with a clamped "Read more" and, when one exists, the portrait beside it. The page
@@ -31,7 +30,7 @@ export function ArtArtistBiography({ vm }: { vm: ArtistPageVm }) {
             alt={vm.portraitAlt}
             aspect={[8, 11]}
             sizes="(min-width: 64rem) 20rem, 80vw"
-            label={ART_MEDIA_LABELS.artistPortrait}
+            monogram={marketingArtistInitials(vm.name)}
             className="absolute inset-0 size-full"
             imgClassName="object-cover"
           />

@@ -9,6 +9,7 @@ export {
   formatStaffDateTime,
   formatStaffMoney,
   formatStaffRelative,
+  staffShortDateFormat,
 } from "./lib/format.js";
 
 // Primitives

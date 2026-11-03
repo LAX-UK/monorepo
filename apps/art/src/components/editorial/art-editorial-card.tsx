@@ -17,6 +17,8 @@ type ArtEditorialCardProps = {
   layout?: MarketingEditorialCardProps["layout"];
   /** Overrides the image `sizes` when the host knows the card's width (rails). */
   sizes?: string;
+  /** `h2` when the cards follow the page title directly, with no section heading between. */
+  titleAs?: MarketingEditorialCardProps["titleAs"];
 };
 
 const SIZES = {
@@ -37,10 +39,12 @@ export function ArtEditorialCard({
   aspect = "landscape",
   layout = "stacked",
   sizes,
+  titleAs,
 }: ArtEditorialCardProps) {
   return (
     <MarketingEditorialCard
       data-testid="art-editorial-card"
+      {...(titleAs ? { titleAs } : {})}
       aspect={aspect}
       layout={layout}
       href={card.href}
@@ -72,12 +76,15 @@ export function ArtEditorialCardGrid({
   ariaLabel,
   priorityCount = 0,
   max,
+  titleAs,
 }: {
   cards: readonly EditorialCardVm[];
   ariaLabel: string;
   priorityCount?: number;
   /** Caps the row to whole rows (`marketingRowCap`); the host links to the rest. */
   max?: number;
+  /** Heading level of the card titles; see `ArtEditorialCard`. */
+  titleAs?: MarketingEditorialCardProps["titleAs"];
 }) {
   return (
     <MarketingCardRow
@@ -91,6 +98,7 @@ export function ArtEditorialCardGrid({
             card={card}
             layout={layout === "feature" ? "split" : "stacked"}
             priority={index < priorityCount}
+            {...(titleAs ? { titleAs } : {})}
           />
         </MarketingCardReveal>
       )}

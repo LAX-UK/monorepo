@@ -1,7 +1,6 @@
 import { ShopMediaImage } from "@/components/media/shop-media-image";
 import type { CatalogueArtistCardVm } from "@/lib/catalogue/catalogue-artist-card.vm";
-import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
-import { MarketingArtistCard } from "@auction/marketing-ui";
+import { MarketingArtistCard, marketingArtistInitials } from "@auction/marketing-ui";
 
 const CARD_SIZES = "(min-width: 64rem) 22vw, (min-width: 40rem) 30vw, 45vw";
 
@@ -26,7 +25,7 @@ export function ShopArtistCard({
               <ShopMediaImage
                 src={card.image}
                 alt=""
-                label={SHOP_MEDIA_LABELS.artistPortrait}
+                monogram={marketingArtistInitials(card.name)}
                 aspect={[4, 5]}
                 sizes={CARD_SIZES}
                 className="absolute inset-0 size-full object-cover"
