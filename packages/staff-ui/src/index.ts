@@ -107,7 +107,7 @@ export {
   metricChange,
 } from "@auction/ui/lax";
 export type { Metric, MetricCellItem, MetricComparison, MetricTone } from "@auction/ui/lax";
-export { ProgressBar } from "./display/progress-bar.js";
+export { ProgressBar, type ProgressTone } from "./display/progress-bar.js";
 export type { AttentionStripItem } from "./display/attention-strip.js";
 
 // Forms
