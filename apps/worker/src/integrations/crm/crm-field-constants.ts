@@ -14,9 +14,17 @@ export const CRM_FIELD = {
   landingPageUrl: "Landing_Page_URL",
   /** Zoho's standard opt-out flag: true unless the person opted in to marketing. */
   emailOptOut: "Email_Opt_Out",
+  /** What an enquirer asked for: sell privately, buy privately or a general question. */
+  enquiryIntent: "LAX_Enquiry_Intent",
+  enquiryDepartment: "LAX_Department",
+  /** The reference the sender quotes, for example E-1001. */
+  enquiryReference: "LAX_Enquiry_Reference",
 } as const;
 
 export const CRM_LEAD_SOURCE_PLATFORM = "LAX Platform";
+
+/** Lead_Source_Detailed for a person who sent an enquiry through LAX Bid. */
+export const CRM_LEAD_SOURCE_BID_ENQUIRY = "LAX Bid enquiry";
 
 export const CRM_ENTITY = {
   subject: "subject",
