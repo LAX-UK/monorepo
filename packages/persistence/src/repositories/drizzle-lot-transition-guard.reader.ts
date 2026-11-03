@@ -89,7 +89,7 @@ export class DrizzleLotTransitionGuardReader implements ILotTransitionGuardReade
   }
 
   /** The seller asked for the lot back and a specialist confirmed it, for the outcome it is in. */
-  private async confirmedForReturn(lotId: string): Promise<boolean> {
+  async confirmedForReturn(lotId: string): Promise<boolean> {
     const [row] = await this.db
       .select({ id: unsoldLotChoice.id })
       .from(unsoldLotChoice)
