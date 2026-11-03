@@ -12,6 +12,7 @@ import type { ReauthRequired } from "./account-contact.service.js";
 import type { IdentityOperationsService } from "./identity-operations.service.js";
 import { RecentSessionGuard } from "./recent-session-guard.js";
 import type {
+  SubjectExportPendingPurge,
   SubjectExportReadSigner,
   SubjectExportRepository,
   SubjectExportRequestContext,
@@ -227,6 +228,18 @@ export class SubjectExportService {
       });
     }
     return "applied";
+  }
+
+  /** Stored copies the worker has to delete: the person deleted them or they expired. */
+  pendingObjectPurges(limit = 100): Promise<SubjectExportPendingPurge[]> {
+    return this.ports.repository.listPendingObjectPurges(limit);
+  }
+
+  /** The worker confirms a stored copy is gone. A repeat answers `ignored`. */
+  async confirmObjectPurged(exportId: string): Promise<"applied" | "ignored"> {
+    return (await this.ports.repository.markObjectPurged(exportId, this.now()))
+      ? "applied"
+      : "ignored";
   }
 
   /** Marks copies past their expiry as expired; returns how many. The stored files are queued for deletion. */

@@ -587,6 +587,27 @@ describe("deleting a copy", () => {
   });
 });
 
+describe("object purge", () => {
+  it("lists copies whose deletion was requested and confirms each once", async () => {
+    const ctx = setup();
+    const id = await readyCopy(ctx);
+    expect(await ctx.service.pendingObjectPurges()).toEqual([]);
+    await ctx.service.deleteCopy(SUBJECT, id, "current");
+    expect(await ctx.service.pendingObjectPurges()).toEqual([
+      { exportId: id, objectKey: ctx.repository.rows[0]?.objectKey },
+    ]);
+    expect(await ctx.service.confirmObjectPurged(id)).toBe("applied");
+    expect(await ctx.service.pendingObjectPurges()).toEqual([]);
+    expect(await ctx.service.confirmObjectPurged(id)).toBe("ignored");
+  });
+
+  it("ignores a confirmation for a copy that was never queued for deletion", async () => {
+    const ctx = setup();
+    const id = await readyCopy(ctx);
+    expect(await ctx.service.confirmObjectPurged(id)).toBe("ignored");
+  });
+});
+
 describe("expiry and deadline alerts", () => {
   it("marks ready copies past their expiry as expired and queues their files", async () => {
     const ctx = setup();

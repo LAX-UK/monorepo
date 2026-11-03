@@ -40,6 +40,7 @@
     "@sentry/node": "10.51.0",
     "bullmq": "^5.74.1",
     "drizzle-orm": "^0.45.2",
+    "fflate": "^0.8.3",
     "hono": "^4.12.25",
     "ioredis": "^5.4.2",
     "pdfkit": "0.15.0",

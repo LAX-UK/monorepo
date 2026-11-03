@@ -3,6 +3,8 @@ import {
   SUBJECT_EXPORT_MANIFEST_SUBROUTE,
   SUBJECT_EXPORT_PAGE_SUBROUTE,
   SUBJECT_EXPORT_PROGRESS_SUBROUTE,
+  SUBJECT_EXPORT_PURGED_SUBROUTE,
+  SUBJECT_EXPORT_PURGE_PENDING_SUBROUTE,
   subjectExportProgressSchema,
 } from "@auction/identity-contracts";
 import type { Context, Hono } from "hono";
@@ -15,7 +17,10 @@ import { InvalidSubjectExportCursorError } from "../subject-export/subject-expor
 
 /** The machine credential the worker uses for the export routes. It is not the lifecycle credential. */
 export type SubjectExportMachineDeps = {
-  exports: Pick<SubjectExportService, "applyProgress">;
+  exports: Pick<
+    SubjectExportService,
+    "applyProgress" | "pendingObjectPurges" | "confirmObjectPurged"
+  >;
   /** Answers for LAX Account's own data, the same way Bid and Shop answer for theirs. */
   reader: Pick<SubjectExportReader, "manifest" | "page">;
   /** Tokens issued for the `subject_export` scope are stored and looked up under their own key. */
@@ -40,6 +45,8 @@ function safeEqual(left: string, right: string): boolean {
     createHash("sha256").update(right).digest(),
   );
 }
+
+const MAX_PURGE_BATCH = 100;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -122,6 +129,34 @@ export function mountSubjectExportMachineRoutes(app: Hono, deps: SubjectExportMa
       if (result === "not_found") return c.json({ error: "not_found" }, 404);
       if (result === "invalid_object_key") return c.json({ error: "invalid_object_key" }, 422);
       return c.json({ result });
+    } catch (error) {
+      deps.onFailure?.(error);
+      return c.json({ error: "temporarily_unavailable" }, 503);
+    }
+  });
+  // Stored copies to delete. The worker deletes each object, then confirms it below.
+  app.get(`/identity${SUBJECT_EXPORT_PURGE_PENDING_SUBROUTE}`, async (c) => {
+    c.header("Cache-Control", "no-store");
+    if (!(await hasExportToken(c))) return c.json({ error: "unauthorized" }, 401);
+    const requested = Number.parseInt(c.req.query("limit") ?? "", 10);
+    const limit = Number.isInteger(requested)
+      ? Math.min(Math.max(requested, 1), MAX_PURGE_BATCH)
+      : MAX_PURGE_BATCH;
+    try {
+      return c.json({ items: await deps.exports.pendingObjectPurges(limit) });
+    } catch (error) {
+      deps.onFailure?.(error);
+      return c.json({ error: "temporarily_unavailable" }, 503);
+    }
+  });
+
+  app.post(`/identity${SUBJECT_EXPORT_PURGED_SUBROUTE}`, async (c) => {
+    c.header("Cache-Control", "no-store");
+    if (!(await hasExportToken(c))) return c.json({ error: "unauthorized" }, 401);
+    const exportId = c.req.param("exportId");
+    if (!UUID.test(exportId)) return c.json({ error: "invalid_request" }, 400);
+    try {
+      return c.json({ result: await deps.exports.confirmObjectPurged(exportId) });
     } catch (error) {
       deps.onFailure?.(error);
       return c.json({ error: "temporarily_unavailable" }, 503);

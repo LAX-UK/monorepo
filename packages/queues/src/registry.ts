@@ -7,6 +7,7 @@ import {
   LOT_LIFECYCLE_QUEUE_NAME,
   PROCESS_IMAGE_QUEUE_NAME,
   QR_CODE_SCAN_QUEUE_NAME,
+  SUBJECT_DATA_EXPORT_QUEUE_NAME,
   VALIDATE_UPLOAD_QUEUE_NAME,
   WEBHOOK_EVENTS_QUEUE_NAME,
 } from "./queue-names.js";
@@ -188,6 +189,27 @@ export const QUEUE_REGISTRY = {
       removeOnFail: 200,
     },
     description: "Async CSV data exports",
+  },
+  [SUBJECT_DATA_EXPORT_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "normal",
+    pauseOrder: null,
+    // Jobs arrive only when someone asks, so there is no steady beat for readiness to expect.
+    heartbeatKey: null,
+    dlq: true,
+    showInUi: true,
+    allowUiRetries: true,
+    repeatable: true,
+    defaultJobOptions: {
+      // A product that does not answer is retried for 72 hours: 13 attempts spaced exponentially
+      // from 63 seconds put the last one at about 71.7 hours.
+      attempts: 13,
+      backoff: { type: "exponential", delay: 63_000 },
+      removeOnComplete: { age: 7 * 24 * 3600, count: 500 },
+      removeOnFail: 200,
+    },
+    description: "Personal data copies (Download my data)",
   },
   [DEAD_LETTER_QUEUE_NAME]: {
     producers: ["api", "worker"],
