@@ -9,9 +9,7 @@ describe("marketingEmailError", () => {
 
   it("shows the format when the address is malformed", () => {
     for (const value of ["nope", "nope@", "a@b", "a b@c.com"]) {
-      expect(marketingEmailError(value)).toBe(
-        "Enter an email address in the correct format, like name@example.com",
-      );
+      expect(marketingEmailError(value)).toBe("Enter an email address like name@example.com");
     }
   });
 

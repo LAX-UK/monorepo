@@ -32,7 +32,7 @@ function alertFailure(status: number, body: unknown): EditionAlertActionResult {
     return {
       ok: false,
       field: "email",
-      message: "Enter an email address in the correct format, like name@example.com",
+      message: "Enter an email address like name@example.com",
     };
   }
   if (status === 429) {

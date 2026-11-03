@@ -33,7 +33,7 @@ describe("ShopReleaseAlertsForm", () => {
     expect(screen.getByRole("alert").textContent).toContain("Enter your email address");
     fireEvent.change(input, { target: { value: "nope" } });
     fireEvent.click(screen.getByRole("button", GET));
-    expect(screen.getByRole("alert").textContent).toContain("correct format");
+    expect(screen.getByRole("alert").textContent).toContain("like name@example.com");
     expect(subscribeMock).not.toHaveBeenCalled();
   });
 
@@ -57,7 +57,7 @@ describe("ShopReleaseAlertsForm", () => {
     subscribeMock.mockResolvedValueOnce({
       ok: false,
       kind: "invalid",
-      message: "Enter an email address in the correct format, like name@example.com",
+      message: "Enter an email address like name@example.com",
     });
     render(<ShopReleaseAlertsForm viewer={{ kind: "guest" }} source="shop_home" />);
     fireEvent.change(screen.getByLabelText("Email address"), {

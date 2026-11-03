@@ -38,7 +38,7 @@ describe("ArtworkEditionAlert", () => {
     expect(document.activeElement).toBe(summary);
     fireEvent.change(input, { target: { value: "nope" } });
     fireEvent.click(screen.getByRole("button", { name: "Email me" }));
-    expect(screen.getByRole("alert").textContent).toContain("correct format");
+    expect(screen.getByRole("alert").textContent).toContain("like name@example.com");
     expect(registerMock).not.toHaveBeenCalled();
   });
 

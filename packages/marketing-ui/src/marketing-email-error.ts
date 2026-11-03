@@ -5,7 +5,7 @@ export function marketingEmailError(value: string): string | null {
   const email = value.trim();
   if (!email) return "Enter your email address";
   if (!EMAIL_PATTERN.test(email)) {
-    return "Enter an email address in the correct format, like name@example.com";
+    return "Enter an email address like name@example.com";
   }
   return null;
 }

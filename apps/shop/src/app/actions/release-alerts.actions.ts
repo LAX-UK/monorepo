@@ -19,7 +19,7 @@ export type ReleaseAlertStopResult = { ok: true } | { ok: false; message: string
 
 const SAVE_FAILED = "We could not save that just now. Try again in a moment.";
 const STOP_FAILED = "We could not stop the alerts just now. Try again in a moment.";
-const INVALID_EMAIL = "Enter an email address in the correct format, like name@example.com";
+const INVALID_EMAIL = "Enter an email address like name@example.com";
 
 async function readJson(response: Response): Promise<unknown> {
   return response.json().catch(() => ({}));

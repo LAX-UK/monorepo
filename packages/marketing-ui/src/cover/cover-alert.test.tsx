@@ -21,7 +21,7 @@ describe("CoverAlertField", () => {
     render(<CoverAlertField alert={alert} submitLabel="Get alerts" tone={null} />);
     fireEvent.change(screen.getByLabelText("Your email address"), { target: { value: "nope@" } });
     fireEvent.click(screen.getByRole("button", { name: "Get alerts" }));
-    expect(screen.getByRole("alert").textContent).toContain("correct format");
+    expect(screen.getByRole("alert").textContent).toContain("like name@example.com");
     fireEvent.change(screen.getByLabelText("Your email address"), {
       target: { value: "grace@example.com" },
     });
