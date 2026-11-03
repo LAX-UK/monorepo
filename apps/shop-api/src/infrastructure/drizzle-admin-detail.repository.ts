@@ -14,6 +14,7 @@ import {
   shopProductVariant,
   shopProductionTask,
   shopRefund,
+  shopReturn,
   shopSaleAuthorityGrant,
   shopSaleAuthorityRequest,
   shopUserProfile,
@@ -361,6 +362,30 @@ export function createDrizzleAdminDetailReaders(db: Database) {
         .orderBy(desc(shopRefund.createdAt));
 
       const lineIds = lines.map((line) => line.orderLineId);
+      const returns = lineIds.length
+        ? await db
+            .select()
+            .from(shopReturn)
+            .where(inArray(shopReturn.orderLineId, lineIds))
+            .orderBy(desc(shopReturn.createdAt))
+        : [];
+      const settlerIds = [
+        ...new Set(
+          refunds.flatMap((row) =>
+            row.settledOutsideBySubjectId ? [row.settledOutsideBySubjectId] : [],
+          ),
+        ),
+      ];
+      const settlerNames = new Map(
+        settlerIds.length
+          ? (
+              await db
+                .select({ id: shopUserProfile.identitySubjectId, name: shopUserProfile.name })
+                .from(shopUserProfile)
+                .where(inArray(shopUserProfile.identitySubjectId, settlerIds))
+            ).map((row) => [row.id, row.name?.trim() || null] as const)
+          : [],
+      );
       const tasks = lineIds.length
         ? await db
             .select({
@@ -384,6 +409,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
         order.id,
         ...lineIds,
         ...refunds.map((row) => row.id),
+        ...returns.map((row) => row.id),
         ...tasks.map((task) => task.taskId),
         ...(fulfilmentRecord ? [fulfilmentRecord.id] : []),
       ];
@@ -459,6 +485,27 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           source: row.source,
           createdAt: row.createdAt.toISOString(),
           ...(row.status === "failed" ? { failureReason: row.lastError } : {}),
+          settledOutside:
+            row.settledOutsideAt && row.settledOutsideReference && row.settledOutsideReason
+              ? {
+                  reference: row.settledOutsideReference,
+                  reason: row.settledOutsideReason,
+                  at: row.settledOutsideAt.toISOString(),
+                  byName: row.settledOutsideBySubjectId
+                    ? (settlerNames.get(row.settledOutsideBySubjectId) ?? null)
+                    : null,
+                }
+              : null,
+        })),
+        returns: returns.map((row) => ({
+          returnId: row.id,
+          orderLineId: row.orderLineId,
+          editionId: row.editionId,
+          status: row.status,
+          disposition: row.disposition,
+          receivedAt: row.receivedAt?.toISOString() ?? null,
+          createdAt: row.createdAt.toISOString(),
+          updatedAt: row.updatedAt.toISOString(),
         })),
         activity: activity.map(({ audit, actorName }) => ({
           auditId: audit.id,

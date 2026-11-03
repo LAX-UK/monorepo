@@ -15,6 +15,7 @@ export type LaxStatusDomain =
   | "order"
   | "fulfilment"
   | "refund"
+  | "return"
   | "payout"
   | "hold"
   | "thirdPartySale"
@@ -58,6 +59,12 @@ const LAX_STATUS: Record<LaxStatusDomain, Readonly<Record<string, StatusPresenta
     pending: { label: "Pending", tone: "warning" },
     succeeded: { label: "Refunded", tone: "success" },
     failed: { label: "Failed", tone: "danger" },
+    cancelled: { label: "Cancelled", tone: "neutral" },
+  },
+  return: {
+    requested: { label: "Return requested", tone: "warning" },
+    in_transit: { label: "On its way back", tone: "info" },
+    received: { label: "Received", tone: "success" },
     cancelled: { label: "Cancelled", tone: "neutral" },
   },
   payout: {

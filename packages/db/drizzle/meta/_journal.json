@@ -1996,6 +1996,13 @@
       "when": 1800086400000,
       "tag": "0284_alert_engine",
       "breakpoints": true
+    },
+    {
+      "idx": 285,
+      "version": "7",
+      "when": 1800172800000,
+      "tag": "0285_shop_returns_stock",
+      "breakpoints": true
     }
   ]
 }

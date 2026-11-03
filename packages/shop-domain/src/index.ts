@@ -236,6 +236,20 @@ export {
   type OrderLineAmount,
   type RefundLineInput,
 } from "./refundable-balance.js";
+export {
+  SHOP_RETURN_DISPOSITIONS,
+  SHOP_RETURN_STATUSES,
+  canTransitionReturn,
+  cancellationStockOutcome,
+  isShopReturnDisposition,
+  isShopReturnStatus,
+  listingAfterReturn,
+  nextReturnStatuses,
+  type CancellationStockOutcome,
+  type ReturnedItemListing,
+  type ShopReturnDisposition,
+  type ShopReturnStatus,
+} from "./shop-return.js";
 export { validatePossessionTimestamp, type PossessionBoundsResult } from "./possession-bounds.js";
 export {
   FULFILMENT_SURCHARGE_PENCE,
