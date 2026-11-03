@@ -7,7 +7,11 @@ describe("MarketingFilterLinkGroups", () => {
     render(
       <MarketingFilterLinkGroups
         groups={[
-          { id: "medium", title: "Medium", links: [{ label: "Oil", href: "/?medium=oil" }] },
+          {
+            id: "medium",
+            title: "Medium",
+            links: [{ label: "Oil", href: "/?medium=oil", active: false }],
+          },
           { id: "empty", title: "Empty group", links: [] },
         ]}
       />,

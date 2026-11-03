@@ -10,6 +10,7 @@ import {
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
+import { EmailLink } from "@auction/marketing-ui";
 import type { Metadata } from "next";
 
 const OPERATOR = legalEntityFor("bid");
@@ -271,10 +272,7 @@ export default function PrivacyPage() {
         </address>
         <p>
           For privacy enquiries, please contact{" "}
-          <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className={MARKETING_PROSE_LINK}>
-            {SITE_SUPPORT_EMAIL}
-          </a>
-          .
+          <EmailLink address={SITE_SUPPORT_EMAIL} className={MARKETING_PROSE_LINK} />.
         </p>
 
         <LegalH2 id="information-we-collect" className="scroll-mt-28">
@@ -453,10 +451,7 @@ export default function PrivacyPage() {
           permitted to do so under applicable law. You can opt out of marketing at any time by
           clicking the unsubscribe link in our emails, updating your account or dashboard
           preferences, or contacting us at{" "}
-          <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className={MARKETING_PROSE_LINK}>
-            {SITE_SUPPORT_EMAIL}
-          </a>
-          .
+          <EmailLink address={SITE_SUPPORT_EMAIL} className={MARKETING_PROSE_LINK} />.
         </p>
         <p>
           Opting out of marketing will not prevent us from sending important service communications,
@@ -476,10 +471,8 @@ export default function PrivacyPage() {
         </p>
         <p>
           To exercise your rights, please contact{" "}
-          <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className={MARKETING_PROSE_LINK}>
-            {SITE_SUPPORT_EMAIL}
-          </a>
-          . We may need to verify your identity before responding to a rights request.
+          <EmailLink address={SITE_SUPPORT_EMAIL} className={MARKETING_PROSE_LINK} />. We may need
+          to verify your identity before responding to a rights request.
         </p>
 
         <LegalH2 id="security" className="scroll-mt-28">
@@ -539,10 +532,7 @@ export default function PrivacyPage() {
         </LegalH2>
         <p>
           For privacy, data protection, or account-data enquiries, please contact{" "}
-          <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className={MARKETING_PROSE_LINK}>
-            {SITE_SUPPORT_EMAIL}
-          </a>
-          .
+          <EmailLink address={SITE_SUPPORT_EMAIL} className={MARKETING_PROSE_LINK} />.
         </p>
         <p>
           For complaints, please contact{" "}

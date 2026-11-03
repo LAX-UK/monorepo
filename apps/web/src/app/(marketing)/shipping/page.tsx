@@ -11,6 +11,7 @@ import {
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
+import { EmailLink } from "@auction/marketing-ui";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForStatic({
@@ -224,17 +225,11 @@ export default function ShippingPage() {
         <LegalUL>
           <li>
             For shipping, collection, or logistics enquiries, please contact{" "}
-            <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className={MARKETING_PROSE_LINK}>
-              {SITE_SUPPORT_EMAIL}
-            </a>
-            .
+            <EmailLink address={SITE_SUPPORT_EMAIL} className={MARKETING_PROSE_LINK} />.
           </li>
           <li>
             For general enquiries, contact{" "}
-            <a href={`mailto:${SITE_CONTACT_EMAIL}`} className={MARKETING_PROSE_LINK}>
-              {SITE_CONTACT_EMAIL}
-            </a>
-            .
+            <EmailLink address={SITE_CONTACT_EMAIL} className={MARKETING_PROSE_LINK} />.
           </li>
           <li>
             Telephone:{" "}
