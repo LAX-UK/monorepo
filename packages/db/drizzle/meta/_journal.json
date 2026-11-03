@@ -1975,6 +1975,13 @@
       "when": 1799827200000,
       "tag": "0281_kyc_outcome_sale_cancelled_notices",
       "breakpoints": true
+    },
+    {
+      "idx": 286,
+      "version": "7",
+      "when": 1800259200000,
+      "tag": "0286_unsold_lot_follow_up",
+      "breakpoints": true
     }
   ]
 }

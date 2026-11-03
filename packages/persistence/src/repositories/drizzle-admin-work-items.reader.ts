@@ -14,8 +14,12 @@ import {
   sale,
   saleRegistration,
   telephoneBidBooking,
+  unsoldChoiceDeadline,
   unsoldLotChoice,
+  unsoldLotFollowUp,
 } from "@auction/db/schema";
+import { UNSOLD_LOT_END_STATUSES } from "@auction/domain";
+import type { UnsoldLotChoiceKind } from "@auction/types";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import type {
   AdminAssignableWorkItemsQuery,
@@ -472,6 +476,90 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
     }));
   }
 
+  async listOpenUnsoldFollowUps(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const rows = await this.db
+      .select({
+        id: unsoldLotFollowUp.id,
+        submissionId: unsoldLotFollowUp.submissionId,
+        kind: unsoldLotFollowUp.kind,
+        reserve: unsoldLotFollowUp.reserve,
+        createdAt: unsoldLotFollowUp.createdAt,
+        updatedAt: unsoldLotFollowUp.updatedAt,
+        lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+      })
+      .from(unsoldLotFollowUp)
+      .innerJoin(lot, eq(unsoldLotFollowUp.lotId, lot.id))
+      .where(and(eq(unsoldLotFollowUp.status, "open"), lotNotDeleted()))
+      .orderBy(desc(unsoldLotFollowUp.createdAt))
+      .limit(limit);
+
+    return rows.map((row) => {
+      const work = UNSOLD_FOLLOW_UP_WORK[row.kind as UnsoldLotChoiceKind];
+      return {
+        sourceId: row.id,
+        kind: "unsold_choice_follow_up" as const,
+        domain: "catalogue" as const,
+        title: lotWorkItemTitle(work.title, row.lotNumber, row.lotTitle),
+        subtitle: work.subtitle(row.reserve),
+        href: adminWorkItemHref("unsold_choice_follow_up", { subjectId: row.submissionId }),
+        saleId: null,
+        createdAt: row.createdAt,
+        sourceUpdatedAt: row.createdAt,
+        assignedToUserId: null,
+      };
+    });
+  }
+
+  async listLapsedUnsoldChoices(limit: number, now: Date): Promise<AdminWorkItemSourceRow[]> {
+    const rows = await this.db
+      .select({
+        lotId: lot.id,
+        submissionId: itemSubmission.id,
+        chooseBy: unsoldChoiceDeadline.chooseBy,
+        lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+      })
+      .from(unsoldChoiceDeadline)
+      .innerJoin(
+        lot,
+        and(
+          eq(lot.id, unsoldChoiceDeadline.lotId),
+          eq(lot.endTime, unsoldChoiceDeadline.lotEndTime),
+        ),
+      )
+      .innerJoin(itemSubmission, eq(itemSubmission.convertedLotId, lot.id))
+      .leftJoin(
+        unsoldLotChoice,
+        and(eq(unsoldLotChoice.lotId, lot.id), eq(unsoldLotChoice.lotEndTime, lot.endTime)),
+      )
+      .where(
+        and(
+          lt(unsoldChoiceDeadline.chooseBy, now),
+          isNull(lot.winnerId),
+          inArray(lot.status, [...UNSOLD_LOT_END_STATUSES]),
+          // A request waiting for a specialist has its own item, and a confirmed choice its work.
+          isNull(unsoldLotChoice.id),
+          lotNotDeleted(),
+        ),
+      )
+      .orderBy(desc(unsoldChoiceDeadline.chooseBy))
+      .limit(limit);
+
+    return rows.map((row) => ({
+      sourceId: row.lotId,
+      kind: "unsold_choice_lapsed" as const,
+      domain: "catalogue" as const,
+      title: lotWorkItemTitle("No choice made", row.lotNumber, row.lotTitle),
+      subtitle: `Choose-by date was ${LAPSED_DATE.format(row.chooseBy)}. Contact the seller`,
+      href: adminWorkItemHref("unsold_choice_lapsed", { subjectId: row.submissionId }),
+      saleId: null,
+      createdAt: row.chooseBy,
+      sourceUpdatedAt: row.chooseBy,
+      assignedToUserId: null,
+    }));
+  }
+
   async listMarketingEnquiries(limit: number): Promise<AdminWorkItemSourceRow[]> {
     const rows = await this.db
       .select({
@@ -571,6 +659,28 @@ const PURCHASE_PROBLEM_SUBTITLES: Record<string, string> = {
   not_received: "Not received",
   invoice_or_payment: "Invoice or payment",
   other: "Other",
+};
+
+const LAPSED_DATE = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  timeZone: "Europe/London",
+});
+
+/** The work a confirmed choice leaves, as the inbox words it. One entry per kind of choice. */
+const UNSOLD_FOLLOW_UP_WORK: Record<
+  UnsoldLotChoiceKind,
+  { title: string; subtitle: (reserve: string | null) => string }
+> = {
+  relist: {
+    title: "Relist",
+    subtitle: (reserve) =>
+      reserve
+        ? `Return to inventory at a reserve of ${formatWorkItemAmount(reserve)}`
+        : "Return to inventory with its current reserve",
+  },
+  collect: { title: "Arrange return", subtitle: () => "Seller asked for the lot back" },
+  private_sale: { title: "Private sale", subtitle: () => "For the private sales team" },
 };
 
 const UNSOLD_CHOICE_SUBTITLES: Record<string, string> = {

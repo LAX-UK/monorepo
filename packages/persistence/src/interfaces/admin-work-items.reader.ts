@@ -15,6 +15,8 @@ export type AdminWorkItemSourceRow = {
     | "lot_withdrawal"
     | "lot_draft_past_start"
     | "unsold_lot_choice"
+    | "unsold_choice_follow_up"
+    | "unsold_choice_lapsed"
     | "marketing_enquiry"
     | "purchase_problem"
     | "deletion_hold";
@@ -51,6 +53,10 @@ export interface IAdminWorkItemsReader {
   listDraftLotsPastStart(limit: number): Promise<AdminWorkItemSourceRow[]>;
   /** Sellers' choices for unsold lots waiting for a specialist to confirm. */
   listUnsoldLotChoices(limit: number): Promise<AdminWorkItemSourceRow[]>;
+  /** Choices a specialist confirmed whose work (relist, return, private sale) is still open. */
+  listOpenUnsoldFollowUps(limit: number): Promise<AdminWorkItemSourceRow[]>;
+  /** Unsold lots whose choose-by date has passed with no choice made, for the specialist to contact the seller. */
+  listLapsedUnsoldChoices(limit: number, now: Date): Promise<AdminWorkItemSourceRow[]>;
   /** Contact form enquiries waiting for client services. */
   listMarketingEnquiries(limit: number): Promise<AdminWorkItemSourceRow[]>;
   /** Problems buyers reported on paid purchases, waiting for client services. */

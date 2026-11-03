@@ -170,6 +170,14 @@ export {
   type UnsoldLotFacts,
 } from "./unsold-lot-choice.js";
 export {
+  LOT_CONFIRMED_FOR_RETURN_MESSAGE,
+  relistReserveToApply,
+  unsoldFollowUpFinishedByStaff,
+  unsoldFollowUpPlan,
+  type UnsoldFollowUpPlan,
+  type UnsoldFollowUpStatus,
+} from "./unsold-follow-up.js";
+export {
   WITHDRAWAL_FORBIDDEN_MESSAGE,
   canActOnConsignmentWithdrawal,
   consignmentWithdrawalPath,
