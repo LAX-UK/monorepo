@@ -1,3 +1,4 @@
+import { DEV_ALERT_LINK_SECRET, isUsableAlertLinkSecret } from "@auction/alerts";
 import { resolveStrictBidEligibilityRollout } from "@auction/domain";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
@@ -147,7 +148,7 @@ const envSchema = z
      */
     ALERTS_SEND_MODE: z.enum(["off", "dry_run", "on"]).default("off"),
     /** Signs the confirm and stop links in alert emails; the API verifies them. */
-    ALERT_LINK_SECRET: z.string().min(16).default("dev-alert-link-secret-not-for-production"),
+    ALERT_LINK_SECRET: z.string().min(16).default(DEV_ALERT_LINK_SECRET),
     ALERT_LINK_KEY_ID: z.string().min(1).max(32).default("k1"),
     ALERT_LINK_PREVIOUS_SECRET: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
     ALERT_LINK_PREVIOUS_KEY_ID: z.preprocess(
@@ -293,7 +294,8 @@ const envSchema = z
       if (!cron || cron.length < 32) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "CRON_INTERNAL_SECRET is required in deployed environments (min 32 characters)",
+          message:
+            "CRON_INTERNAL_SECRET is required in deployed environments (min 32 characters, not the development default)",
           path: ["CRON_INTERNAL_SECRET"],
         });
       }
@@ -307,10 +309,11 @@ const envSchema = z
     }
     // Admin email required only in production (test stack uses debug channels).
     if (e.APP_ENV === "production") {
-      if (e.ALERTS_SEND_MODE !== "off" && e.ALERT_LINK_SECRET.length < 32) {
+      if (e.ALERTS_SEND_MODE !== "off" && !isUsableAlertLinkSecret(e.ALERT_LINK_SECRET)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "ALERT_LINK_SECRET is required in production when alerts are on (min 32)",
+          message:
+            "ALERT_LINK_SECRET is required in production when alerts are on (min 32 characters, not the development default)",
           path: ["ALERT_LINK_SECRET"],
         });
       }

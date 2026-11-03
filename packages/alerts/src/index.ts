@@ -56,6 +56,7 @@ export {
   type LinkPayload,
   type VerifiedLink,
 } from "./links/codec.js";
+export { DEV_ALERT_LINK_SECRET, isUsableAlertLinkSecret } from "./links/secret.js";
 export { keyringFrom, webAlertUrls, type LinkKeyConfig } from "./links/urls.js";
 export type * from "./ports.js";
 export { SubscribeService, type AccountEnableOutcome } from "./application/subscribe.service.js";
