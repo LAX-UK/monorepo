@@ -1178,6 +1178,16 @@ export type {
 } from "./artwork-register.js";
 
 export type {
+  IZohoArtworkSyncReport,
+  IZohoArtworkSyncWatermark,
+  ZohoArtworkSyncMode,
+  ZohoArtworkSyncOutcome,
+  ZohoArtworkSyncOutcomeInput,
+  ZohoArtworkSyncOutcomeKind,
+  ZohoArtworkSyncSummary,
+} from "./zoho-artwork-sync.js";
+
+export type {
   AnnouncedSale,
   IBidAlertSaleNoticeWriter,
   IBidAlertSaleReader,

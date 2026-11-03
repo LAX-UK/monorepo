@@ -1,6 +1,7 @@
 "use client";
 
 import { LayoutGrid, Rows3, Square } from "lucide-react";
+import { TAP_AREA } from "../../lib/tap-area.js";
 import { cn } from "../../lib/utils.js";
 
 export type CatalogLayoutView = "grid" | "card" | "list";
@@ -51,6 +52,7 @@ export function ViewSwitcher({
               disabled={disabled}
               onClick={() => onValueChange(m)}
               className={cn(
+                TAP_AREA,
                 "flex size-9 items-center justify-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50 md:size-8",
                 selected
                   ? "bg-primary text-on-primary"

@@ -1,26 +1,19 @@
-import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-state";
-import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { cn } from "@auction/ui";
+import { MarketingNotFound } from "@auction/marketing-ui";
+import Link from "next/link";
 
 export default function ArtNotFound() {
   return (
-    <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
-      <ArtStatusState
-        variant="empty"
-        icon="ticket"
-        layout="page"
-        titleAs="h1"
-        title="Page not found"
-        description="This page may have moved, or the work is no longer listed."
-        actions={
-          <>
-            <ArtStatusStateLink href="/artworks" priority="primary">
-              Browse artworks
-            </ArtStatusStateLink>
-            <ArtStatusStateLink href="/search">Search</ArtStatusStateLink>
-          </>
-        }
-      />
-    </div>
+    <MarketingNotFound
+      Link={Link}
+      illustration="ticket"
+      title="We can’t find that page"
+      description="The link may be mistyped, or the work may no longer be listed. Search for it, or browse the artworks."
+      search={{ action: "/search", label: "Search artworks and artists" }}
+      links={[
+        { href: "/artworks", label: "Browse artworks" },
+        { href: "/artists", label: "See the artists" },
+        { href: "/contact", label: "Contact us" },
+      ]}
+    />
   );
 }
