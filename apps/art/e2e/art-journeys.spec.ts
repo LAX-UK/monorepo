@@ -118,7 +118,8 @@ test.describe("lax.art journeys", () => {
     await email.fill("not-an-email");
     await email.blur();
     await expect(email).toHaveAttribute("aria-invalid", "true");
-    await expect(sheet.getByText(/valid email address/)).toBeVisible();
+    // The message under the field; the summary repeats it as a link, so scope to the field's own error.
+    await expect(sheet.locator('[id$="-email-error"]')).toContainText(/valid email address/);
 
     await email.fill(`grace+${Date.now()}@example.com`);
     await sheet.getByLabel("Message (optional)").fill("Is this work still available to view?");
