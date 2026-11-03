@@ -208,8 +208,8 @@ export function cancelledLineBadge(refund: Refund): StatusPresentation {
 export function settledOutsideNote(refund: Refund): string | null {
   const settled = refund.settledOutside;
   if (!settled) return null;
-  const who = settled.byName ? ` by ${settled.byName}` : "";
-  return `Reference ${settled.reference}. Marked ${formatStaffDateTime(settled.at)}${who}: ${settled.reason}`;
+  const who = settled.byName ? ` Recorded by ${settled.byName}.` : "";
+  return `Reference ${settled.reference}. ${settled.reason}.${who}`.replace(/\.\./g, ".");
 }
 
 /** Refunds that could not be sent to the customer's card and wait for staff. */

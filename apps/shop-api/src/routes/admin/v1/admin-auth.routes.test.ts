@@ -209,7 +209,7 @@ describe("admin auth and authz", () => {
   async function postAs(
     subject: string,
     url: string,
-    payload: unknown,
+    payload: Record<string, unknown>,
     authTime = Math.floor(Date.now() / 1000),
   ) {
     vi.mocked(verifyBearerToken).mockResolvedValueOnce({

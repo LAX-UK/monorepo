@@ -417,7 +417,7 @@ describe("a refund settled outside LAX", () => {
   it("notes the reference, who recorded it and why", () => {
     const note = settledOutsideNote(settled);
     expect(note).toContain("Reference re_3Qdashboard");
-    expect(note).toContain("by Maya Okafor");
+    expect(note).toContain("Recorded by Maya Okafor");
     expect(note).toContain("Refunded in the dashboard");
     expect(settledOutsideNote({ ...settled, settledOutside: null })).toBeNull();
   });
