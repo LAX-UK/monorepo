@@ -385,12 +385,19 @@ export class IdentityOperationsService {
     ]);
     if (!subject) throw new IdentityOperationError("subject_not_found");
     if (clash && clash.id !== subjectId) throw new IdentityOperationError("email_taken");
-    await this.repositories.emailChanges.startChange({
+    const started = await this.repositories.emailChanges.startChange({
       subjectId,
       newEmail: normalized,
       expiresAt,
       now: this.now(),
     });
+    // Another person's change to this address is still waiting on its links.
+    if (started === "address_pending") throw new IdentityOperationError("email_taken");
+  }
+
+  /** Frees addresses held by changes whose links have expired. */
+  purgeExpiredEmailChanges(now = this.now()): Promise<number> {
+    return this.repositories.emailChanges.clearExpired(now);
   }
 
   /** The address a change is still waiting on; an expired change counts as none. */

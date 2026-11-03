@@ -4,6 +4,11 @@ export type PendingEmailChangeState =
   | { kind: "waiting"; email: string }
   | { kind: "expired" };
 
+/** A pending change is expired once its emailed links have stopped working. No expiry means never. */
+export function isPendingEmailExpired(expiresAt: Date | null, now: Date): boolean {
+  return expiresAt !== null && expiresAt.getTime() <= now.getTime();
+}
+
 /**
  * A change lives only as long as its emailed links. Once `expiresAt` has passed, the pending row
  * is history: it must not be reported as waiting, only as expired so the person can start again.
@@ -14,7 +19,7 @@ export function pendingEmailChangeState(
   now: Date,
 ): PendingEmailChangeState {
   if (!row.pendingNewEmail) return { kind: "none" };
-  if (row.emailChangeExpiresAt && row.emailChangeExpiresAt.getTime() <= now.getTime()) {
+  if (isPendingEmailExpired(row.emailChangeExpiresAt, now)) {
     return { kind: "expired" };
   }
   return { kind: "waiting", email: row.pendingNewEmail };

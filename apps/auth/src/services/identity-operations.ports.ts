@@ -154,7 +154,9 @@ export interface IIdentityEmailChangeRepository {
     newEmail: string;
     expiresAt: Date;
     now: Date;
-  }): Promise<void>;
+  }): Promise<"started" | "address_pending">;
+  /** Clears every change whose links have expired; returns how many rows were cleared. */
+  clearExpired(now: Date): Promise<number>;
   readPending(
     subjectId: string,
   ): Promise<{ pendingNewEmail: string | null; emailChangeExpiresAt: Date | null } | null>;

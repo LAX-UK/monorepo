@@ -69,7 +69,8 @@ function createRepositories(): IdentityOperationsRepositories {
       purgeSubjectSessionsAndTokens: vi.fn().mockResolvedValue(undefined),
     },
     emailChanges: {
-      startChange: vi.fn().mockResolvedValue(undefined),
+      startChange: vi.fn().mockResolvedValue("started"),
+      clearExpired: vi.fn().mockResolvedValue(0),
       readPending: vi.fn().mockResolvedValue({
         pendingNewEmail: "next@example.com",
         emailChangeExpiresAt: null,
@@ -138,6 +139,21 @@ describe("IdentityOperationsService", () => {
   });
 
   describe("pending email change", () => {
+    it("refuses an address another person's live change is waiting on", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.startChange).mockResolvedValue("address_pending");
+      await expect(
+        service.startEmailChange("subject", "next@example.com", new Date(now.getTime() + 1_000)),
+      ).rejects.toMatchObject({ code: "email_taken" });
+    });
+
+    it("sweeps expired changes through the repository", async () => {
+      const { repositories, service } = createService();
+      vi.mocked(repositories.emailChanges.clearExpired).mockResolvedValue(3);
+      await expect(service.purgeExpiredEmailChanges()).resolves.toBe(3);
+      expect(repositories.emailChanges.clearExpired).toHaveBeenCalledWith(now);
+    });
+
     const expired = new Date(now.getTime() - 1_000);
     const live = new Date(now.getTime() + 60_000);
 
