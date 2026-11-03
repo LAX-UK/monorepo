@@ -70,6 +70,25 @@ Wire each to PagerDuty / email per your observability stack.
 
 ---
 
+## JWKS signing key age
+
+The JWT signing key is rotated quarterly ([jwks-rotation.md](./jwks-rotation.md)). Auth exposes no metric for key age yet, so this rule runs as a scheduled read-only query against the auth database (daily, as a role that can read `jwks_key`) and notifies the on-call inbox.
+
+```sql
+SELECT kid, status, now() - created_at AS age, now() - rotated_at AS since_rotation
+FROM jwks_key
+WHERE status IN ('active', 'rotating');
+```
+
+| Alert | Trigger | Meaning | Immediate action |
+|-------|---------|---------|------------------|
+| **Signing key due** | `active` key older than 100 days | Quarterly rotation is due within about 10 days | Schedule the rotation; follow [jwks-rotation.md](./jwks-rotation.md) on test first. |
+| **Signing key overdue** | `active` key older than 120 days | Rotation was missed | Rotate now, outside the quarterly slot. |
+| **Rotation not finished** | `rotating` key with `rotated_at` older than 45 minutes (30-minute window plus one 15-minute tick) | The retirement schedule is not running | Check `jwks_retirement_tick` and `jwks_retirement_tick_failed` in `apps/auth` logs and the advisory lock; see the runbook's step 6. |
+| **No active key** | No `active` row, or more than one | Rotation was interrupted | Treat as an incident: restore from the latest snapshot (`pnpm jwks:restore <env>`) or rerun the rotation. |
+
+---
+
 ## Sentry (Terraform-managed)
 
 Issue and metric alerts are defined in:
