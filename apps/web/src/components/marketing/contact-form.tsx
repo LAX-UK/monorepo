@@ -37,6 +37,8 @@ type ContactFormProps = {
   nameMode?: "split" | "single";
   intent?: string | null;
   sellType?: string | null;
+  /** The sale an enquiry is about, by title. */
+  sale?: string | null;
 };
 
 /** The control ids the error summary links to, in page order. */
@@ -60,8 +62,9 @@ export function ContactForm({
   nameMode = "split",
   intent = null,
   sellType = null,
+  sale = null,
 }: ContactFormProps = {}) {
-  const intentConfig = contactIntentFromSearchParams({ intent, type: sellType });
+  const intentConfig = contactIntentFromSearchParams({ intent, type: sellType, sale });
   const [done, setDone] = useState(false);
   const { form, onSubmit, isSubmitting, rootError } = useActionForm({
     schema: contactFormValuesSchema,

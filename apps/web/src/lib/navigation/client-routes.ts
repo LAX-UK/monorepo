@@ -11,6 +11,8 @@ export const CLIENT_ROUTES = {
   purchases: "/purchases",
   checkout: "/purchases/checkout",
   watching: "/watching",
+  /** Saved searches and their alerts, a view of Watching. */
+  watchingSearches: "/watching?tab=searches",
   notifications: "/notifications",
   settings: "/settings",
   selling: "/selling",

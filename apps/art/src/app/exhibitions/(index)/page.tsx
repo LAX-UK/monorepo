@@ -62,7 +62,7 @@ export default async function ExhibitionsPage({ searchParams }: ExhibitionsPageP
           <ArtEditorialStatus
             result={result}
             disabledTitle="Exhibitions coming soon"
-            disabledDescription="Editorial exhibitions are not enabled in this environment yet."
+            disabledDescription="Exhibitions will be listed here soon."
             emptyTitle="No exhibitions found"
             emptyDescription={EMPTY_COPY[status]}
           />

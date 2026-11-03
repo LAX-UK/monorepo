@@ -33,7 +33,7 @@ export default async function EditorialPreviewPage({ params }: PreviewPageProps)
         <ArtEditorialStatus
           result={result}
           disabledTitle="Preview unavailable"
-          disabledDescription="Editorial preview is not enabled in this environment yet."
+          disabledDescription="Draft previews can't be opened right now."
           emptyTitle="Preview unavailable"
           emptyDescription="This preview has no content to show."
         />

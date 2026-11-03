@@ -32,7 +32,7 @@ export default async function VisitPage() {
         <ArtEditorialStatus
           result={result}
           disabledTitle="Visit information coming soon"
-          disabledDescription="Gallery visit content is not enabled in this environment yet."
+          disabledDescription="Visiting details will be published here soon."
           emptyTitle="No venues listed"
           emptyDescription="Visit details will appear here when venues are published."
         />

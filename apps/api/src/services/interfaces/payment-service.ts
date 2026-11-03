@@ -73,6 +73,23 @@ export interface IPaymentAdminService {
     staffReason?: string,
   ): Promise<Result<void, AuthzError | PaymentProviderError>>;
 
+  /** Puts a closed payment back to paid when Stripe took the money after it was closed. */
+  reinstateBlockedCapture(
+    adminUserId: string,
+    userRole: string,
+    paymentId: string,
+    userStaffRoles?: StaffRoles | undefined,
+  ): Promise<Result<void, AuthzError | PaymentProviderError>>;
+
+  /** Returns money Stripe took after the payment was closed. */
+  refundBlockedCapture(
+    adminUserId: string,
+    userRole: string,
+    paymentId: string,
+    userStaffRoles: StaffRoles | undefined,
+    reason?: string,
+  ): Promise<Result<void, AuthzError | PaymentProviderError>>;
+
   refundManualReviewPayment(
     adminUserId: string,
     userRole: string,

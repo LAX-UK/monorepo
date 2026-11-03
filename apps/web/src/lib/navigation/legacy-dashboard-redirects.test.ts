@@ -114,6 +114,12 @@ describe("retired client pages", () => {
     expect(servesPage("/collection")).toBe(true);
   });
 
+  it("sends the retired cover link /account/bids to Your bids", () => {
+    expect(resolveLegacyDashboardRedirect("/account/bids")).toBe("/bids");
+    expect(servesPage("/account/bids")).toBe(false);
+    expect(servesPage("/bids")).toBe(true);
+  });
+
   it("leaves every page under Selling where it is", () => {
     for (const path of ["/selling/new", "/selling/consignments", "/selling/payouts"]) {
       expect(resolveLegacyDashboardRedirect(path)).toBeNull();

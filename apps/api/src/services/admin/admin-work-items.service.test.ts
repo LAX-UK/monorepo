@@ -13,7 +13,11 @@ function row(
   const now = new Date("2026-07-27T10:00:00.000Z");
   return {
     subtitle: null,
-    href: adminWorkItemHref(partial.kind, { subjectId: partial.sourceId, saleId: "sale-1" }),
+    href: adminWorkItemHref(partial.kind, {
+      subjectId: partial.sourceId,
+      paymentId: partial.sourceId,
+      saleId: "sale-1",
+    }),
     saleId: null,
     createdAt: now,
     sourceUpdatedAt: now,
@@ -25,6 +29,7 @@ function row(
 function createReader(overrides: Partial<IAdminWorkItemsReader> = {}): IAdminWorkItemsReader {
   return {
     listManualReviewPayments: vi.fn().mockResolvedValue([]),
+    listBlockedCaptures: vi.fn().mockResolvedValue([]),
     listPendingReviewTasks: vi.fn().mockResolvedValue([]),
     listSubmissionReviews: vi.fn().mockResolvedValue([]),
     listConditionReports: vi.fn().mockResolvedValue([]),
@@ -73,6 +78,37 @@ describe("AdminWorkItemsService", () => {
     expect(listManualReviewPayments).toHaveBeenCalled();
     expect(result.items.some((item) => item.kind === "payment_manual_review")).toBe(true);
     expect(result.items.some((item) => item.kind === "aml_screening")).toBe(false);
+  });
+
+  it("offers finance Reinstate payment and Refund on money taken for a closed payment", async () => {
+    const listBlockedCaptures = vi.fn().mockResolvedValue([
+      row({
+        sourceId: "pay-9",
+        kind: "payment_capture_blocked",
+        domain: "finance",
+        title: "Payment taken on a closed payment",
+      }),
+    ]);
+    const service = new AdminWorkItemsService(createReader({ listBlockedCaptures }));
+
+    const asFinance = await service.listWorkItems({
+      actorUserId: "u1",
+      actorRole: "staff",
+      actorStaffRoles: ["finance"],
+      query: { limit: 25, assignment: "all", urgentOnly: false },
+    });
+    const item = asFinance.items.find((i) => i.kind === "payment_capture_blocked");
+    expect(item?.id).toBe("payment_capture_blocked:pay-9");
+    expect(item?.severity).toBe("critical");
+    expect(item?.actions).toEqual(["reinstate_payment", "refund"]);
+
+    const asClientServices = await service.listWorkItems({
+      actorUserId: "u2",
+      actorRole: "staff",
+      actorStaffRoles: ["client_services"],
+      query: { limit: 25, assignment: "all", urgentOnly: false },
+    });
+    expect(asClientServices.items.some((i) => i.kind === "payment_capture_blocked")).toBe(false);
   });
 
   it("does not show an entity review to finance-only staff, who cannot open the entity page", async () => {

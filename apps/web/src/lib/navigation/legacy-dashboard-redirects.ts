@@ -98,6 +98,8 @@ export const LEGACY_DASHBOARD_REDIRECTS: readonly LegacyDashboardRedirect[] = [
   // Collection.
   rule("/organisation/members", "/team"),
   rule("/selling/works", "/collection"),
+  // The home cover once linked "Your bids" to an Account-style address that Bid never served.
+  rule("/account/bids", "/bids"),
 ];
 
 /**

@@ -26,6 +26,8 @@ type Props = {
   /** This page with `alert=1`, for signing in and coming back. */
   alertReturnHref: string;
   saveAlertOnArrival: boolean;
+  /** True when the account already has an alert for this search. */
+  alertSet: boolean;
   catalogLinkParams?: CatalogLinkParams;
 };
 
@@ -84,6 +86,7 @@ export function SearchNoMatches(props: Props) {
                 {...(categoryId ? { categoryId } : {})}
                 returnHref={props.alertReturnHref}
                 saveOnArrival={props.saveAlertOnArrival}
+                alertSet={props.alertSet}
               />
               <ButtonLink Link={Link} variant="ghost" href={props.clearHref}>
                 Clear search

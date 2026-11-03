@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { pastResultsSentence, searchAlertQuery, shouldOfferPastResults } from "./search-fallback";
+import {
+  hasSearchAlert,
+  pastResultsSentence,
+  searchAlertQuery,
+  shouldOfferPastResults,
+} from "./search-fallback";
 
 const base = {
   q: "harbour",
@@ -37,5 +42,21 @@ describe("searchAlertQuery", () => {
   it("keeps the text and the category only", () => {
     expect(searchAlertQuery("harbour")).toEqual({ q: "harbour" });
     expect(searchAlertQuery("harbour", "c1")).toEqual({ q: "harbour", categoryId: "c1" });
+  });
+});
+
+describe("hasSearchAlert", () => {
+  const saved = [{ query: { q: "harbour" } }, { query: { q: "oil", categoryId: "c1" } }];
+
+  it("finds an alert for the same text and category", () => {
+    expect(hasSearchAlert(saved, "harbour")).toBe(true);
+    expect(hasSearchAlert(saved, "oil", "c1")).toBe(true);
+  });
+
+  it("does not match a different text or category", () => {
+    expect(hasSearchAlert(saved, "harbours")).toBe(false);
+    expect(hasSearchAlert(saved, "oil")).toBe(false);
+    expect(hasSearchAlert(saved, "harbour", "c1")).toBe(false);
+    expect(hasSearchAlert([], "harbour")).toBe(false);
   });
 });

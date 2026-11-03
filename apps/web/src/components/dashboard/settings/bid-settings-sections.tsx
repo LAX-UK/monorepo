@@ -6,7 +6,7 @@ import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerCategoryInterests } from "@/lib/data/http/category-interests.server";
 import { getServerNotificationMutes } from "@/lib/data/http/notifications-inbox.server";
 import { getServerVisitorAlertState } from "@/lib/data/http/sale-alerts.server";
-import { loadBiddingOrganisation } from "@/lib/settings/bidding-card.server";
+import { loadBiddingOrganisation, loadPersonalLimit } from "@/lib/settings/bidding-card.server";
 import { biddingRows } from "@/lib/settings/bidding-standing";
 import type { ThemePreference } from "@auction/validators";
 import { AlertsSettings } from "./alerts-settings";
@@ -22,6 +22,8 @@ import { VisitorAlertsLink } from "./visitor-alerts-link";
  */
 export async function BiddingSettings({ user }: { user: SessionUser }) {
   const organisation = await loadBiddingOrganisation(user).catch(() => undefined);
+  const personalLimit =
+    organisation === null && user.kycStatus === "approved" ? await loadPersonalLimit() : undefined;
   if (organisation === undefined) {
     return (
       <BidSettingsSection id="bidding" title="Bidding" description="Where you stand to bid.">
@@ -39,7 +41,7 @@ export async function BiddingSettings({ user }: { user: SessionUser }) {
           : "Where you stand to bid on LAX Bid."
       }
     >
-      <BiddingCard rows={biddingRows(user.kycStatus, organisation)} />
+      <BiddingCard rows={biddingRows(user.kycStatus, organisation, personalLimit)} />
     </BidSettingsSection>
   );
 }

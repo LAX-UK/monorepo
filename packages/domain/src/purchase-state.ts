@@ -17,21 +17,26 @@ export type PurchaseStateFacts = {
   fulfilmentStatus?: string | null | undefined;
 };
 
-/** Payment states that leave a purchase owed (until it ends, see `purchaseEnding`). */
-export const OWED_PAYMENT_STATUSES = ["pending", "requires_manual_review"] as const;
+/**
+ * Payment states that leave a purchase owed (until it ends, see `purchaseEnding`). A `cancelled`
+ * row is an abandoned or failed attempt, not the end of the purchase: the buyer can pay again.
+ */
+export const OWED_PAYMENT_STATUSES = ["pending", "requires_manual_review", "cancelled"] as const;
 
-/** Whether the purchase was refunded or cancelled; such a purchase is never owed or owned. */
+/**
+ * Whether the purchase was refunded or cancelled; such a purchase is never owed or owned. Only a
+ * refund or a cancelled sale ends it: a cancelled payment row does not.
+ */
 export function purchaseEnding(facts: PurchaseStateFacts): PurchaseEnding | null {
   if (facts.paymentStatus === "refunded") return "refunded";
-  if (facts.paymentStatus === "cancelled" || facts.fulfilmentStatus === "cancelled") {
-    return "cancelled";
-  }
+  if (facts.fulfilmentStatus === "cancelled") return "cancelled";
   return null;
 }
 
 /**
- * Whether the buyer still has to pay for the lot: no payment yet, or one waiting or held for
- * checks. A payment on its way, a paid, refunded or cancelled purchase is not owed.
+ * Whether the buyer still has to pay for the lot: no payment yet, or one waiting, held for
+ * checks or cancelled before it was paid. A payment on its way, a paid or refunded purchase, or a
+ * cancelled sale, is not owed.
  */
 export function purchaseIsToPay(facts: PurchaseStateFacts): boolean {
   if (purchaseEnding(facts)) return false;

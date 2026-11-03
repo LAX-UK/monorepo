@@ -71,6 +71,12 @@ console.
       those revokes. After a grant rollback, lower or clear the variable before
       the next Job. `head` is only for the main-to-release cutover window (see
       `docs/engineering/release-main-parity.md`).
+- [ ] Decide the editorial flags for this release. `SHOP_EDITORIAL_ENABLED` and
+      `ART_EDITORIAL_ENABLED` are GitHub `prod` environment variables that
+      default to `false`; with them off, lax.art shows its "coming soon" empty
+      states instead of editorial content. Turn both on together, only after
+      seeded content has been reviewed and `SHOP_EDITORIAL_PREVIEW_SECRET` is
+      set (see [lax-art-editorial.md](./lax-art-editorial.md)).
 - [ ] Watch `/health/ready` for every component during the rolling restart.
 - [ ] Smoke test the changed path against `lax.bid`.
 - [ ] Confirm required production Identity/BFF/client secrets are bound under
