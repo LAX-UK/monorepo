@@ -10,3 +10,10 @@ export const montserrat = localFont({
   weight: "100 900",
   display: "swap",
 });
+
+export const outfit = localFont({
+  src: "../../../../packages/branding/fonts/outfit-latin-wght-normal.woff2",
+  variable: "--font-outfit",
+  weight: "100 900",
+  display: "swap",
+});

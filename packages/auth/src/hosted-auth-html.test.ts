@@ -486,8 +486,8 @@ describe("hosted colour rule", () => {
       "--color-product-bid: #a5b7e9;",
     ]);
     expect(HOSTED_AUTH_STYLES).not.toMatch(/#202759|midnight/i);
-    expect(HOSTED_AUTH_STYLES).toContain("--color-ring: #0f766e");
-    expect(HOSTED_AUTH_STYLES).toContain("--color-ring: #2dd4bf");
+    expect(HOSTED_AUTH_STYLES).toContain("--color-ring: #000000");
+    expect(HOSTED_AUTH_STYLES).toContain("--color-ring: #f2f1df");
     expect(HOSTED_AUTH_STYLES).toContain("--color-link: #191919");
   });
 

@@ -10,7 +10,7 @@
 /* Token names match apps/art/src/app/base.css so the shared @auction/ui primitives resolve.
    LAX colour rule (docs/DESIGN_SYSTEM.md): Account's accent is deep teal (PRODUCT_ACCENTS in
    @auction/branding) and navy stays Bid's. Teal marks the product only: the lockup descriptor,
-   the primary button and the focus ring. It never signals success; --color-success stays green.
+   and the primary button. The focus ring is ink, as in every LAX product. It never signals success; --color-success stays green.
    The theme is the system setting until the person uses the header toggle; the choice is kept
    for this origin only because no theme preference is shared across LAX origins. */
 @theme {
@@ -26,7 +26,7 @@
   --color-primary-container: #e8e8e8;
   --color-secondary-container: #f3f3f3;
   --color-on-secondary-container: #1c170d;
-  /* Teal on white is 5.47:1, so white button text and the focus ring both clear WCAG AA.
+  /* Teal on white is 5.47:1, so white button text clears WCAG AA.
      Do not set teal text on --color-surface-container-high: that pair is 4.47:1. */
   --color-product-accent: #0f766e;
   --color-cta-bg: var(--color-product-accent);
@@ -38,7 +38,7 @@
   --color-accent-brand: var(--color-product-accent);
   /* Links stay neutral and underlined (they share the text colour), so colour is never the only cue. */
   --color-link: var(--brand-obsidian);
-  --color-ring: var(--color-product-accent);
+  --color-ring: var(--brand-obsidian);
   /* Product names (the ProductName component): each product in its own lockup's accent, lax.art
      in ink until it chooses one. Bid's navy is allowed here and nowhere else in Account, so
      naming Bid is the only place it shows; Account's own controls never use it. */
@@ -76,9 +76,10 @@
   --color-on-error-container: #410002;
 
   --text-label-caps-tracking: 0.22em;
+  /* Montserrat sets titles; Outfit sets interface text, as in Bid, Shop and lax.art. */
   --font-headline: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
-  --font-label: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 }
 
 html.dark {
@@ -99,7 +100,7 @@ html.dark {
   --color-cta-on: var(--brand-obsidian);
   --color-accent-brand: var(--color-product-accent);
   --color-link: var(--brand-light-cream);
-  --color-ring: var(--color-product-accent);
+  --color-ring: var(--brand-light-cream);
   --color-product-bid: var(--brand-midnight-on-dark);
   /* Light aubergine (PRODUCT_ACCENTS_ON_DARK.shop): 9.2:1 on #121414, 5.7:1 on #383a39. */
   --color-product-shop: #d6a8d4;
@@ -161,7 +162,7 @@ html.dark {
 }
 
 /* The shared @auction/ui controls draw their focus ring in --color-primary (obsidian or cream).
-   Account's focus ring is its teal, so the ring colour is re-pointed here. This sits outside any
+   The focus ring is the one ink ring of every product (--color-ring), so it is re-pointed here. This sits outside any
    layer on purpose: unlayered rules win over Tailwind's utilities layer. */
 .focus-visible\:ring-primary:focus-visible,
 .focus\:ring-primary:focus {

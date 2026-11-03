@@ -276,9 +276,9 @@ export function continuationAnchor(label: string, path: string, flow: HostedAuth
 
 const PRODUCT_BACK_CHEVRON = `<svg class="product-back-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-/** Only Montserrat is preloaded: every hosted page sets its text in it, as LAX Account does. */
+/** Both faces are preloaded: Montserrat sets the title and Outfit the interface text. */
 function fontPreloadTags(): string {
-  return [HOSTED_FONT_FILES.montserrat]
+  return [HOSTED_FONT_FILES.montserrat, HOSTED_FONT_FILES.outfit]
     .map(
       (file) =>
         `  <link rel="preload" href="${hostedFontPath(file)}?v=${HOSTED_AUTH_ASSET_VERSION}" as="font" type="font/woff2" crossorigin>`,
