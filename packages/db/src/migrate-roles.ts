@@ -319,6 +319,15 @@ export const WORKER_UNSOLD_CHOICE_DEADLINE_TABLES = ["unsold_choice_deadline"] a
 export const WORKER_UNSOLD_FOLLOW_UP_TABLES = ["unsold_lot_follow_up"] as const;
 
 /**
+ * The artwork register: the Zoho inbound sync creates and updates records and records conflicts.
+ * History is append-only, so the worker may add to it and read it, never change it.
+ */
+export const WORKER_ARTWORK_REGISTER_TABLES = [
+  "artwork_register",
+  "artwork_register_conflict",
+] as const;
+export const WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES = ["artwork_register_event"] as const;
+/**
  * The alert engine's Bid tables: the matching projector records matches and announcements, and the
  * 08:00 digest claims digests, attaches matches and drops stale ones. Nothing is deleted here.
  */
@@ -761,6 +770,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_BID_ALERT_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_ARTWORK_REGISTER_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of WORKER_UNSOLD_CHOICE_DEADLINE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
