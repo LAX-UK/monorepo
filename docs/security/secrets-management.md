@@ -23,7 +23,7 @@ The shape of every secret in this list:
 | `BETTER_AUTH_SECRET` | DO App Platform env on `apps/auth`; 1Password | `apps/auth`; founders | Quarterly |
 | `CHECK_IN_TOKEN_SECRET` | DO App Platform env on `apps/api`; 1Password | `apps/api`; founders | Quarterly |
 | `IDENTITY_MACHINE_CLIENT_ID` / `IDENTITY_MACHINE_CLIENT_SECRET` | DO App Platform env on `apps/api` and `apps/auth`; 1Password | `apps/api`, `apps/auth`; founders | Quarterly |
-| `IDENTITY_SUBJECT_EXPORT_CLIENT_ID` / `IDENTITY_SUBJECT_EXPORT_CLIENT_SECRET` | DO App Platform env on `apps/api` and the worker; 1Password | `apps/api` (Bid export routes), the data-export worker; founders | Quarterly |
+| `IDENTITY_SUBJECT_EXPORT_CLIENT_ID` / `IDENTITY_SUBJECT_EXPORT_CLIENT_SECRET` | DO App Platform env on `apps/api`, `apps/shop-api` and the worker; 1Password | `apps/api` (Bid export routes), `apps/shop-api` (Shop export routes), the data-export worker; founders | Quarterly |
 | `OIDC_CLIENT_SECRET_LAX_BID_WEB` | DO App Platform env on `apps/web`; 1Password | Bid BFF and one-time client provisioning only | Quarterly |
 | `BID_BFF_SESSION_ENCRYPTION_KEY` | DO App Platform env on `apps/web`; 1Password | Bid BFF only | Quarterly; rotation logs out Bid sessions |
 | `OIDC_CLIENT_SECRET` (`lax-shop-web`) | DO App Platform env on the Shop BFF; 1Password | Shop BFF and one-time client provisioning only | Quarterly |

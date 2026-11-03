@@ -16,6 +16,10 @@
       "types": "./dist/account.d.ts",
       "default": "./dist/account.js"
     },
+    "./subject-export-readers": {
+      "types": "./dist/subject-export-readers.d.ts",
+      "default": "./dist/subject-export-readers.js"
+    },
     "./staff-step-up": {
       "types": "./dist/staff-step-up.d.ts",
       "default": "./dist/staff-step-up.js"

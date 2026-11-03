@@ -47,6 +47,19 @@ export const shopApiEnvSchema = z.object({
     (val) => (val === "" ? undefined : val),
     z.string().min(32).optional(),
   ),
+  /**
+   * Credentials for the "download my data" routes only (scope `subject_export`), separate from the
+   * pair above so a leaked eligibility credential cannot read personal data. With either unset
+   * those routes answer 503.
+   */
+  IDENTITY_SUBJECT_EXPORT_CLIENT_ID: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(1).optional(),
+  ),
+  IDENTITY_SUBJECT_EXPORT_CLIENT_SECRET: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(32).optional(),
+  ),
   /** Shares enquiry rate-limit counters across instances; without it each instance counts alone. */
   REDIS_URL: z.preprocess((val) => (val === "" ? undefined : val), z.string().url().optional()),
   STRIPE_SECRET_KEY: z.preprocess(
