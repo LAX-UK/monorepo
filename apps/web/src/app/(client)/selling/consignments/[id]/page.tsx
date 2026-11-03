@@ -14,7 +14,6 @@ import { ConsignmentHistoryTab } from "@/components/dashboard/seller/consignment
 import { ConsignmentThread } from "@/components/dashboard/seller/consignment-messages/consignment-thread";
 import { ConsignmentWithdrawPanel } from "@/components/dashboard/seller/consignment-withdraw-panel";
 import { SubmissionChangesRequestedPanel } from "@/components/dashboard/seller/submission-changes-requested-panel";
-import { SubmissionSubmittedNotice } from "@/components/dashboard/seller/submission-submitted-notice";
 import { UnsoldLotChoicePanel } from "@/components/dashboard/seller/unsold-lot-choice-panel";
 import { SubmissionDetailLiveRefresh } from "@/components/dashboard/submission-detail-live-refresh";
 import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
@@ -93,7 +92,7 @@ export default async function SubmissionDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; submitted?: string; tab?: string }>;
+  searchParams: Promise<{ error?: string; tab?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -362,7 +361,6 @@ export default async function SubmissionDetailPage({
       {actionError ? (
         <DashboardSliceErrorAlert failure={describeSettingsActionError(actionError)} />
       ) : null}
-      {sp.submitted === "1" ? <SubmissionSubmittedNotice submissionId={submission.id} /> : null}
       {tab === "overview" ? <SubmissionDetailLiveRefresh status={submission.status} /> : null}
       {nextStep ? (
         <Notice
