@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readCookie } from "./read-cookie";
+import { readCookie } from "./read-cookie.js";
 
 describe("readCookie", () => {
   it("finds a cookie by exact name", () => {

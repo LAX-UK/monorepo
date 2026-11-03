@@ -455,6 +455,143 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
     });
   });
 
+  describe("domain events for the Zoho writeback", () => {
+    async function published() {
+      const result = await db.execute(
+        sql`SELECT event_type, aggregate_id, producer, payload FROM domain_events
+            WHERE aggregate_type = 'artwork_register' ORDER BY id`,
+      );
+      return result.rows as {
+        event_type: string;
+        aggregate_id: string;
+        producer: string;
+        payload: Record<string, unknown>;
+      }[];
+    }
+
+    beforeEach(async () => {
+      await db.execute(sql`DELETE FROM domain_events WHERE aggregate_type = 'artwork_register'`);
+    });
+
+    it("publishes the stock code when LAX creates an entry", async () => {
+      const entry = await created();
+      expect(await published()).toEqual([
+        {
+          event_type: "artwork_register.stock_code_assigned",
+          aggregate_id: entry.id,
+          producer: "packages/db",
+          payload: {
+            schemaVersion: 1,
+            registerId: entry.id,
+            zohoProductId: "5001",
+            stockCode: "LAX-ORI-PH-GAC-26-0001",
+          },
+        },
+      ]);
+    });
+
+    it("publishes nothing for an entry that came from Zoho, which already holds its code", async () => {
+      const result = await repo.create(newEntry(), "zoho", T0);
+      expect(result.ok).toBe(true);
+      expect(await published()).toEqual([]);
+    });
+
+    it("publishes the move in the same transaction as the move itself", async () => {
+      const entry = await created();
+      await repo.moveOffer({
+        registerId: entry.id,
+        expectedVersion: 1,
+        to: "lax_art",
+        ref: { kind: "shop_artwork", id: "shop-1" },
+        actor: staff,
+        now: T1,
+      });
+      const moves = (await published()).filter(
+        (e) => e.event_type === "artwork_register.offer_changed",
+      );
+      expect(moves).toHaveLength(1);
+      expect(moves[0]?.payload).toEqual({
+        schemaVersion: 1,
+        registerId: entry.id,
+        zohoProductId: "5001",
+        stockCode: "LAX-ORI-PH-GAC-26-0001",
+        fromState: "held",
+        toState: "lax_art",
+      });
+    });
+
+    it("publishes nothing for a refused move", async () => {
+      const entry = await created();
+      const before = (await published()).length;
+      await repo.moveOffer({
+        registerId: entry.id,
+        expectedVersion: 99,
+        to: "lax_art",
+        ref: { kind: "shop_artwork", id: "shop-1" },
+        actor: staff,
+        now: T1,
+      });
+      expect((await published()).length).toBe(before);
+    });
+  });
+
+  describe("recordCatalogueStatusWritten", () => {
+    it("holds the written Status without moving the version, and records it", async () => {
+      const entry = await created();
+      expect(
+        await repo.recordCatalogueStatusWritten({
+          registerId: entry.id,
+          status: "In Auction",
+          now: T1,
+        }),
+      ).toEqual({ status: "recorded" });
+      const after = await repo.findById(entry.id);
+      expect(after?.catalogueStatus).toBe("In Auction");
+      expect(after?.version).toBe(entry.version);
+      expect((await repo.listEvents(entry.id, 10)).at(-1)).toMatchObject({
+        type: "zoho_writeback_recorded",
+        actor: "system",
+        payload: { field: "catalogueStatus", from: "Available", to: "In Auction" },
+      });
+    });
+
+    it("does nothing when the register already holds that Status, and for an unknown entry", async () => {
+      const entry = await created();
+      expect(
+        await repo.recordCatalogueStatusWritten({
+          registerId: entry.id,
+          status: "Available",
+          now: T1,
+        }),
+      ).toEqual({ status: "unchanged" });
+      expect(
+        await repo.recordCatalogueStatusWritten({
+          registerId: "00000000-0000-4000-8000-000000000000",
+          status: "Sold",
+          now: T1,
+        }),
+      ).toEqual({ status: "not_found" });
+    });
+
+    it("leaves an optimistic move unaffected", async () => {
+      const entry = await created();
+      await repo.recordCatalogueStatusWritten({
+        registerId: entry.id,
+        status: "Reserved",
+        now: T1,
+      });
+      const moved = await repo.moveOffer({
+        registerId: entry.id,
+        expectedVersion: entry.version,
+        to: "withdrawn",
+        ref: null,
+        actor: staff,
+        now: T2,
+      });
+      expect(moved.ok).toBe(true);
+    });
+  });
+
   it("refuses to change or delete history", async () => {
     const entry = await created();
     await expect(

@@ -17,7 +17,8 @@ export type RegisterEventType =
   | "offer_moved"
   | "zoho_change_applied"
   | "conflict_recorded"
-  | "conflict_resolved";
+  | "conflict_resolved"
+  | "zoho_writeback_recorded";
 
 export type RegisterEvent = {
   id: string;
@@ -110,6 +111,17 @@ export type ResolveConflictResult =
         | "stock_code_taken";
     };
 
+export type RecordCatalogueStatusWrittenInput = {
+  registerId: string;
+  /** The Status LAX wrote to the Zoho Product. */
+  status: string;
+  now: Date;
+};
+
+export type RecordCatalogueStatusWrittenResult = {
+  status: "not_found" | "unchanged" | "recorded";
+};
+
 /**
  * Writes to the register. Every write that changes a record is optimistic (the version moves
  * on) and leaves an event. Bid and Shop reach the register only through this port.
@@ -128,6 +140,13 @@ export interface IArtworkRegisterRepository extends IArtworkRegisterReader {
   applyZohoChange(change: ZohoChange, now: Date): Promise<ApplyZohoChangeResult>;
   /** Moves the artwork to a new place under the one-place-at-a-time rules. */
   moveOffer(input: MoveOfferInput): Promise<MoveOfferResult>;
+  /**
+   * Notes that LAX wrote this Status to the Zoho Product, so the register's copy of Zoho's value
+   * matches and the change coming back through the inbound sync is seen as no change.
+   */
+  recordCatalogueStatusWritten(
+    input: RecordCatalogueStatusWrittenInput,
+  ): Promise<RecordCatalogueStatusWrittenResult>;
   /**
    * Decides a conflict. Keeping LAX's value changes nothing in the register. Accepting Zoho's value
    * for a stock code applies it in the same transaction, after checking it is a valid code for

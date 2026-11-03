@@ -41,6 +41,13 @@ export const DELIVERY_ENDPOINTS: Readonly<Record<string, IntegrationEndpoint>> =
     retryEffect: "Updates the same CRM record again. Nothing is created twice.",
     mayRepeat: false,
   },
+  zoho_artwork_writeback: {
+    scope: "integrations.zoho",
+    label: "Zoho artworks (write-back)",
+    retryEffect:
+      "Reads the Zoho Product again first and sends only what differs, so a retry can't write twice.",
+    mayRepeat: false,
+  },
 };
 
 /** Webhooks we receive, by sender. */
@@ -49,6 +56,14 @@ export const WEBHOOK_ENDPOINTS: Readonly<Record<string, IntegrationEndpoint>> = 
     ...UNKNOWN_WEBHOOK,
     scope: "integrations.xero",
     label: "Xero",
+  },
+  zoho_artwork: {
+    ...UNKNOWN_WEBHOOK,
+    scope: "integrations.zoho",
+    label: "Zoho artworks",
+    retryEffect:
+      "Reads the Zoho Product again and applies it to the artwork register. Applying the same change twice changes nothing.",
+    mayRepeat: false,
   },
   stripe: { ...UNKNOWN_WEBHOOK, label: "Stripe" },
   postmark: { ...UNKNOWN_WEBHOOK, label: "Postmark" },

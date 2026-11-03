@@ -1,15 +1,10 @@
-/** Fixed locale so SSR and client hydration match (avoid `undefined` → user OS locale). */
-const ADMIN_USER_DATE_LOCALE = "en-GB";
+import { formatStaffDate } from "@auction/staff-ui";
 
-/** Short date for admin user tables (joined / created). */
+/** Short date for admin user tables (joined / created): "30 Sep 2026". */
 export function formatAdminUserDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(ADMIN_USER_DATE_LOCALE, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatStaffDate(d);
 }
 
 /** Count rows created within the last N days (page-local KPI). */

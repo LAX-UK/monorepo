@@ -1,4 +1,3 @@
-import { StaffActionError } from "@/components/admin/staff/staff-action-error";
 import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { VenueEditForm } from "@/components/admin/venue-detail/venue-edit-form";
 import { loadAdminVenueEditPage } from "@/lib/admin/venues/load-venue-edit-page";
@@ -9,7 +8,6 @@ import Link from "next/link";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -18,9 +16,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return metadataForPrivate(`Edit ${page.venue.name}`, "Update venue details.");
 }
 
-export default async function AdminVenueEditPage({ params, searchParams }: Props) {
+export default async function AdminVenueEditPage({ params }: Props) {
   const { id } = await params;
-  const sp = await searchParams;
   const page = await loadAdminVenueEditPage(id);
   const { venue, salesUsingCount, legalEntityDisplayName } = page;
   const isArchived = venue.status === "archived";
@@ -39,22 +36,19 @@ export default async function AdminVenueEditPage({ params, searchParams }: Props
       title={`Edit ${venue.name}`}
       description="Update the reusable gallery or branch details that onsite sales draw on."
       notice={
-        <>
-          <StaffActionError error={sp.error} title="The venue was not saved" />
-          {isArchived ? (
-            <Notice
-              tone="info"
-              title="This venue is archived and cannot be edited"
-              actions={
-                <StaffButtonLink size="sm" variant="secondary" href={page.detailHref} Link={Link}>
-                  Back to venue
-                </StaffButtonLink>
-              }
-            >
-              Sales already held there keep it, but it cannot be chosen for new sales.
-            </Notice>
-          ) : null}
-        </>
+        isArchived ? (
+          <Notice
+            tone="info"
+            title="This venue is archived and cannot be edited"
+            actions={
+              <StaffButtonLink size="sm" variant="secondary" href={page.detailHref} Link={Link}>
+                Back to venue
+              </StaffButtonLink>
+            }
+          >
+            Sales already held there keep it, but it cannot be chosen for new sales.
+          </Notice>
+        ) : null
       }
     >
       {isArchived ? null : (

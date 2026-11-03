@@ -10,7 +10,7 @@ describe("renderEmail", () => {
       submissionUrl: "https://lax.bid/selling/consignments/abc",
       unsubscribeUrl: "https://lax.bid/unsubscribe",
     });
-    expect(rendered.subject).toBe("An update on your LAX.BID consignment");
+    expect(rendered.subject).toBe("An update on your LAX Bid consignment");
     expect(rendered.html).toContain("Your specialist confirmed what happens next");
     expect(rendered.text).toContain("will be relisted with a reserve of £4,000.");
     expect(rendered.html).toContain("https://lax.bid/selling/consignments/abc");
@@ -470,7 +470,7 @@ describe("renderEmail", () => {
       userName: "Ada",
     });
 
-    expect(rendered.subject).toBe("A sign-in method was linked to your LAX.BID account");
+    expect(rendered.subject).toBe("A sign-in method was linked to your LAX Bid account");
     expect(rendered.html).toContain("Google account linked");
     expect(rendered.text).toContain("Google account was linked");
   });
@@ -481,7 +481,7 @@ describe("renderEmail", () => {
       userName: "Ada",
     });
 
-    expect(rendered.subject).toBe("A sign-in method was disconnected from your LAX.BID account");
+    expect(rendered.subject).toBe("A sign-in method was disconnected from your LAX Bid account");
     expect(rendered.html).toContain("Apple account disconnected");
     expect(rendered.text).toContain("Apple account was disconnected");
   });

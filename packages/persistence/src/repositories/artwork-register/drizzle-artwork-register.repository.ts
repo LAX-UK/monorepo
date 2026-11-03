@@ -12,6 +12,7 @@ import {
 import type { Database } from "@auction/db";
 import {
   artworkRegisterConflict as conflict,
+  domainEvent,
   artworkRegisterEvent as event,
   artworkRegister as register,
 } from "@auction/db/schema";
@@ -23,6 +24,8 @@ import type {
   IArtworkRegisterRepository,
   MoveOfferInput,
   MoveOfferResult,
+  RecordCatalogueStatusWrittenInput,
+  RecordCatalogueStatusWrittenResult,
   RegisterActor,
   RegisterConflict,
   RegisterEvent,
@@ -137,6 +140,15 @@ export class DrizzleArtworkRegisterRepository implements IArtworkRegisterReposit
         stockCode: row.stockCode,
         zohoProductId: row.zohoProductId,
       });
+      // A code that came from Zoho is already there; only one LAX issued needs sending.
+      if (actor !== "zoho") {
+        await this.publish(tx, row.id, "artwork_register.stock_code_assigned", {
+          schemaVersion: 1,
+          registerId: row.id,
+          zohoProductId: row.zohoProductId,
+          stockCode: row.stockCode,
+        });
+      }
       return { ok: true, entry: toEntry(row) };
     });
   }
@@ -217,6 +229,16 @@ export class DrizzleArtworkRegisterRepository implements IArtworkRegisterReposit
         from,
         to: { state: move.state, ref: move.ref },
       });
+      if (from.state !== move.state) {
+        await this.publish(tx, row.id, "artwork_register.offer_changed", {
+          schemaVersion: 1,
+          registerId: row.id,
+          zohoProductId: row.zohoProductId,
+          stockCode: row.stockCode,
+          fromState: from.state,
+          toState: move.state,
+        });
+      }
       return { ok: true, entry: toEntry(row) };
     });
   }
@@ -257,6 +279,31 @@ export class DrizzleArtworkRegisterRepository implements IArtworkRegisterReposit
         ...(applied ? { applied } : {}),
       });
       return { ok: true, conflict: toConflict(row) };
+    });
+  }
+
+  async recordCatalogueStatusWritten(
+    input: RecordCatalogueStatusWrittenInput,
+  ): Promise<RecordCatalogueStatusWrittenResult> {
+    return this.db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select()
+        .from(register)
+        .where(eq(register.id, input.registerId))
+        .for("update");
+      if (!locked) return { status: "not_found" };
+      if (locked.catalogueStatus === input.status) return { status: "unchanged" };
+      // The version stays put: this is a copy of what Zoho now shows, not a change to LAX's record.
+      await tx
+        .update(register)
+        .set({ catalogueStatus: input.status, updatedAt: input.now })
+        .where(eq(register.id, locked.id));
+      await this.record(tx, locked.id, "zoho_writeback_recorded", "system", input.now, {
+        field: "catalogueStatus",
+        from: locked.catalogueStatus,
+        to: input.status,
+      });
+      return { status: "recorded" };
     });
   }
 
@@ -341,6 +388,23 @@ export class DrizzleArtworkRegisterRepository implements IArtworkRegisterReposit
       field: found.field,
       zohoValue: found.zohoValue,
       laxValue: found.laxValue,
+    });
+  }
+
+  /** Appends a domain event in the caller's transaction, so it exists exactly when the change does. */
+  private async publish(
+    tx: Tx,
+    registerId: string,
+    eventType: "artwork_register.offer_changed" | "artwork_register.stock_code_assigned",
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    await tx.insert(domainEvent).values({
+      aggregateType: "artwork_register",
+      aggregateId: registerId,
+      eventType,
+      producer: "packages/db",
+      payload,
+      schemaVersion: 1,
     });
   }
 

@@ -1,49 +1,36 @@
 import { describe, expect, it } from "vitest";
-import { type SelectedArtworkRow, toArtworkCatalogueRow } from "./public-artwork-rows.js";
+import { firstImageByArtworkId } from "./public-artwork-rows.js";
 
-const row: SelectedArtworkRow = {
-  artworkId: "a1",
-  slug: "whispers-of-mortality",
-  title: "Whispers of Mortality",
-  description: null,
-  primaryImageUrl: "shop/artwork/thelax-whispers.jpg",
-  saleState: "price_on_application",
-  dimensions: null,
-  heightCm: null,
-  widthCm: null,
-  depthCm: null,
-  medium: null,
-  yearCreated: null,
-  objectType: null,
-  rarity: null,
-  hasCertificate: false,
-  provenance: null,
-  exhibitionHistory: null,
-  seoTitle: null,
-  seoDescription: null,
-  updatedAt: new Date("2026-10-30T00:00:00Z"),
-  salesChannel: "art",
-  artistName: "Artist",
-  artistSlug: "artist",
-  eligibleForEditionAllocation: false,
-  printPricePence: null,
-  createdAt: new Date("2026-10-30T00:00:00Z"),
-} as SelectedArtworkRow;
+const resolve = (key: string | null | undefined) => (key ? `https://media.test/${key}` : null);
 
-describe("toArtworkCatalogueRow", () => {
-  const resolve = (value: string | null | undefined) =>
-    value ? (value.startsWith("/") ? value : `https://media.example/${value}`) : null;
-
-  it("resolves a stored media key to a public URL, so list cards show the image", () => {
-    expect(toArtworkCatalogueRow(row, new Map(), resolve).primaryImageUrl).toBe(
-      "https://media.example/shop/artwork/thelax-whispers.jpg",
+describe("firstImageByArtworkId", () => {
+  it("keeps the first image of each work in the order given", () => {
+    const covers = firstImageByArtworkId(
+      [
+        { artworkId: "a", mediaKey: "a-1.webp" },
+        { artworkId: "a", mediaKey: "a-2.webp" },
+        { artworkId: "b", mediaKey: "b-1.webp" },
+      ],
+      resolve,
     );
+
+    expect(covers.get("a")?.url).toBe("https://media.test/a-1.webp");
+    expect(covers.get("b")?.url).toBe("https://media.test/b-1.webp");
   });
 
-  it("keeps root-relative seed paths as they are", () => {
-    const seeded = { ...row, primaryImageUrl: "/art/seed/original-3.webp" };
-    expect(toArtworkCatalogueRow(seeded, new Map(), resolve).primaryImageUrl).toBe(
-      "/art/seed/original-3.webp",
+  it("skips an image that does not resolve and takes the next one", () => {
+    const covers = firstImageByArtworkId(
+      [
+        { artworkId: "a", mediaKey: "" },
+        { artworkId: "a", mediaKey: "a-2.webp" },
+      ],
+      resolve,
     );
+
+    expect(covers.get("a")?.url).toBe("https://media.test/a-2.webp");
+  });
+
+  it("returns nothing for a work with no images", () => {
+    expect(firstImageByArtworkId([], resolve).size).toBe(0);
   });
 });

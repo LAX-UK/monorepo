@@ -11,16 +11,16 @@ import {
   pushRecent,
   serializeRecentsCookie,
 } from "@/components/layout/palette/recents-store";
+import { readCookie } from "@auction/ui";
 
 const RECENTS_COOKIE = "lax_palette_recents";
 const PINNED_COOKIE = "lax_palette_pinned";
 const MAX_AGE_SEC = 60 * 60 * 24 * 90;
 export const PALETTE_PINNED_CHANGE_EVENT = "lax:palette-pinned-change";
 
-function readCookie(name: string): string | null {
+function readPaletteCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match?.[1] ? decodeURIComponent(match[1]) : null;
+  return readCookie(document.cookie, name) || null;
 }
 
 function writeCookie(name: string, value: string): void {
@@ -29,7 +29,7 @@ function writeCookie(name: string, value: string): void {
 }
 
 export function readPaletteRecents(): PaletteRecentRef[] {
-  return parseRecentsCookie(readCookie(RECENTS_COOKIE));
+  return parseRecentsCookie(readPaletteCookie(RECENTS_COOKIE));
 }
 
 export function pushPaletteRecent(entry: {
@@ -43,7 +43,7 @@ export function pushPaletteRecent(entry: {
 }
 
 export function readPalettePinned(): PalettePinnedRef[] {
-  return parsePinnedCookie(readCookie(PINNED_COOKIE));
+  return parsePinnedCookie(readPaletteCookie(PINNED_COOKIE));
 }
 
 export function isPalettePinned(kind: PaletteEntityKind, id: string): boolean {

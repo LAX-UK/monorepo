@@ -126,6 +126,34 @@ where run_id = 'nightly:dry_run:2026-11-03' group by 1, 2 order by 3 desc;
 
 Roll out in this order: sandbox org with `dry_run`; review the first nightly report; then production with `dry_run`; switch to `live` only after the report is approved.
 
+## Artwork state to Zoho Products (outbound)
+
+LAX writes the state it owns back to the Zoho Product, and nothing else (Zoho owns the catalogue):
+
+| LAX offer state | Zoho `Status` |
+|-----------------|---------------|
+| `held`, `lax_art` | `Available` |
+| `bid_sale` | `In Auction` |
+| `private_sale` | `Reserved` |
+| `sold` | `Sold` |
+| `withdrawn` | `Withdrawn` |
+
+The stock code is written to `Reference_Stock_Code` when LAX issues one. A stock code that came from Zoho is not sent back, and a stock code edited later in Zoho is a conflict for staff, never overwritten.
+
+The register repository publishes `artwork_register.offer_changed` and `artwork_register.stock_code_assigned` in the same transaction as the change. The worker's `zoho_artwork_writeback` projector has its own cursor and its own `domain_event_delivery` consumer (`zoho_artwork_writeback`), independent of `ZOHO_CRM_SYNC_MODE` and its event allowlist. Failures retry with the shared backoff and then dead-letter in the same delivery ledger as the CRM sync.
+
+Each delivery reads the register's current state (never the event's), then reads the Product from Zoho and skips the write when Zoho already holds the value, so a repeated or late event sends at most one update. After a Status write the register records the value as Zoho's own copy (`catalogue_status`, history event `zoho_writeback_recorded`), so the change coming back through the inbound sync is an `unchanged` outcome, not a Zoho edit. Updates are sent with `ZOHO_CRM_UPSERT_TRIGGER` (empty by default), so no Zoho workflow fires from LAX's own write.
+
+| Variable | App | Purpose |
+|----------|-----|---------|
+| `ZOHO_ARTWORK_WRITEBACK_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `dry_run` logs the update that would be sent (`zoho_artwork_writeback_dry_run`) and does not call Zoho; its deliveries are recorded as skipped, so changes made during a dry run are not sent on switching to `live` (replay them from the delivery ledger or re-save the artwork). `live` writes and needs the three OAuth values. |
+
+**Extra OAuth scope** for the refresh token: `ZohoCRM.modules.products.UPDATE`. Generate a new refresh token after adding it. A missing scope shows as failed deliveries.
+
+**Wrong-org guard.** With `ZOHO_ARTWORK_WRITEBACK_MODE=live` the worker refuses to start unless `ZOHO_CRM_EXPECTED_ORG_TYPE` (`sandbox` or `production`) is set, and at startup it reads the connected Zoho org and refuses to start if it does not match. This is the same check the CRM sync uses in canary and live; `dry_run` and `off` skip it.
+
+Roll out: sandbox org with `dry_run`; then `live` in the sandbox and check one Product; then production.
+
 ## Ops scripts
 
 ```bash

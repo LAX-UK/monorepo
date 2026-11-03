@@ -5,6 +5,7 @@ import {
   revalidateAdminUserDetailPaths,
   revalidateAdminUserListPaths,
 } from "@/lib/actions/admin/_shared/revalidate-paths";
+import { redirectWithAdminFlash } from "@/lib/admin/flash/flash.server";
 import {
   assertAdminCapabilityForRedirect,
   denyUnlessAdminCapability,
@@ -46,19 +47,19 @@ export async function adminSuspendUserAction(formData: FormData): Promise<void> 
     async () => {
       const denied = await denyUnlessAdminCapability(USER_MODERATION_ACCESS);
       if (denied && !denied.ok) {
-        redirect(`/admin/clients?error=${encodeURIComponent(denied.error)}`);
+        return redirectWithAdminFlash("/admin/clients", "error", denied.error);
       }
       const id = String(formData.get("userId") ?? "").trim();
-      if (!id) redirect(`/admin/clients?error=${encodeURIComponent("Missing user")}`);
+      if (!id) return redirectWithAdminFlash("/admin/clients", "error", "Missing user");
       const { adminUsers } = getWriteContainer();
       const body = adminSuspendBodySchema.safeParse({ reason: formData.get("reason") ?? "" });
       if (!body.success) {
-        redirect(`/admin/clients?error=${encodeURIComponent(firstZodErrorMessage(body.error))}`);
+        return redirectWithAdminFlash("/admin/clients", "error", firstZodErrorMessage(body.error));
       }
       const r = await adminUsers.suspend(id, body.data);
       if (!r.ok) {
         if (stepUpErrorCode(r)) await redirectToStaffReauth("/admin/clients");
-        redirect(`/admin/clients?error=${encodeURIComponent(r.message)}`);
+        return redirectWithAdminFlash("/admin/clients", "error", r.message);
       }
       revalidateAdminUserDetailPaths(id);
       redirect("/admin/clients");
@@ -73,15 +74,15 @@ export async function adminUnsuspendUserAction(formData: FormData): Promise<void
     async () => {
       const denied = await denyUnlessAdminCapability(USER_MODERATION_ACCESS);
       if (denied && !denied.ok) {
-        redirect(`/admin/clients?error=${encodeURIComponent(denied.error)}`);
+        return redirectWithAdminFlash("/admin/clients", "error", denied.error);
       }
       const id = String(formData.get("userId") ?? "").trim();
-      if (!id) redirect(`/admin/clients?error=${encodeURIComponent("Missing user")}`);
+      if (!id) return redirectWithAdminFlash("/admin/clients", "error", "Missing user");
       const { adminUsers } = getWriteContainer();
       const r = await adminUsers.unsuspend(id);
       if (!r.ok) {
         if (stepUpErrorCode(r)) await redirectToStaffReauth("/admin/clients");
-        redirect(`/admin/clients?error=${encodeURIComponent(r.message)}`);
+        return redirectWithAdminFlash("/admin/clients", "error", r.message);
       }
       revalidateAdminUserDetailPaths(id);
       redirect("/admin/clients");
@@ -96,18 +97,18 @@ export async function adminSetUserRoleAction(formData: FormData): Promise<void> 
     async () => {
       const denied = await assertAdminCapabilityForRedirect(USER_ROLE_MANAGEMENT_ACCESS);
       if (!denied.ok) {
-        redirect(`/admin/clients?error=${encodeURIComponent(denied.message)}`);
+        return redirectWithAdminFlash("/admin/clients", "error", denied.message);
       }
       const id = String(formData.get("userId") ?? "").trim();
       const roleRaw = String(formData.get("role") ?? "").trim();
       const bodyParsed = adminSetRoleBodySchema.safeParse({ role: roleRaw });
       if (!id || !bodyParsed.success)
-        redirect(`/admin/clients?error=${encodeURIComponent("Missing fields")}`);
+        return redirectWithAdminFlash("/admin/clients", "error", "Missing fields");
       const { adminUsers } = getWriteContainer();
       const r = await adminUsers.setRole(id, bodyParsed.data);
       if (!r.ok) {
         if (stepUpErrorCode(r)) await redirectToStaffReauth("/admin/clients");
-        redirect(`/admin/clients?error=${encodeURIComponent(r.message)}`);
+        return redirectWithAdminFlash("/admin/clients", "error", r.message);
       }
       revalidateAdminUserListPaths();
       redirect(bodyParsed.data.role === "staff" ? "/admin/staff" : "/admin/clients");

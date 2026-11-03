@@ -1,4 +1,6 @@
-const DAY_LABEL = new Intl.DateTimeFormat("en-GB", {
+import { staffShortDateFormat } from "@auction/staff-ui";
+
+const DAY_LABEL = staffShortDateFormat({
   day: "numeric",
   month: "short",
   year: "numeric",

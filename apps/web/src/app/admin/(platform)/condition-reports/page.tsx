@@ -9,7 +9,6 @@ import {
   toConditionReportStaffRows,
 } from "@/lib/admin/condition-reports/condition-reports-staff-list.vm";
 import { loadAdminConditionReportsListPage } from "@/lib/admin/load-condition-reports-list-page";
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { CONDITION_REPORTS_READ_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
@@ -32,7 +31,6 @@ export default async function AdminConditionReportsPage({
 
   const { model, rows, summary, total, loadError } = await loadAdminConditionReportsListPage(sp);
   const { query } = model;
-  const listError = loadError ?? safeDecodeAdminErrorParam(sp.error);
   const hasNextPage = query.offset + rows.length < total;
 
   return (
@@ -61,7 +59,7 @@ export default async function AdminConditionReportsPage({
             }
           : null
       }
-      listError={listError}
+      listError={loadError}
     />
   );
 }
