@@ -45,6 +45,7 @@ export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly str
     "bid.user_suspended",
     "bid.user_anonymised",
     "shop.user_anonymised",
+    "data_request.",
   ],
   operations: ["failed_job.", "marketing_enquiry.", "enquiry_routing."],
 };

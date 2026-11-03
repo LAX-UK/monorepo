@@ -22,10 +22,15 @@ const PREPARING: readonly SubjectExportStatus[] = ["requested", "collecting", "d
 
 /** The request is overdue by these amounts: ops hears at 24 hours, the data protection contact at 7 days, an on-call page at 21. */
 export const SUBJECT_EXPORT_DEADLINE_TIERS = [
-  { tier: 1, afterMs: 24 * HOUR_MS },
-  { tier: 2, afterMs: 7 * DAY_MS },
-  { tier: 3, afterMs: 21 * DAY_MS },
+  { tier: 1, afterMs: 24 * HOUR_MS, audience: "operations" },
+  { tier: 2, afterMs: 7 * DAY_MS, audience: "data_protection_contact" },
+  { tier: 3, afterMs: 21 * DAY_MS, audience: "on_call" },
 ] as const;
+
+/** Who an alert at this tier goes to, recorded on the request's timeline. */
+export function deadlineAlertAudience(tier: number): string | null {
+  return SUBJECT_EXPORT_DEADLINE_TIERS.find((entry) => entry.tier === tier)?.audience ?? null;
+}
 
 export function isPreparing(status: SubjectExportStatus): boolean {
   return PREPARING.includes(status);

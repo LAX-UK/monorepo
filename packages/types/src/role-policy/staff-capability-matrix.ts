@@ -33,6 +33,7 @@ export const STAFF_CAPABILITIES: readonly RoleCapability[] = [
   "bids.read",
   "aml.review",
   "compliance.mlro",
+  "data_requests.manage",
   "admin.read",
 ];
 
@@ -84,8 +85,15 @@ const STAFF_ROLE_PERMISSIONS: Record<UserStaffRole, ReadonlySet<RoleCapability>>
     "legal_entity.read",
   ]),
   fulfilment: new Set(["operations.fulfilment", "legal_entity.read", "artist.read"]),
-  // Reads personal data on screening records (audit.read_pii) for the cases it decides.
-  compliance: new Set(["aml.review", "compliance.mlro", "legal_entity.read", "audit.read_pii"]),
+  // Reads personal data on screening records (audit.read_pii) for the cases it decides, and
+  // answers requests for a copy of a person's data.
+  compliance: new Set([
+    "aml.review",
+    "compliance.mlro",
+    "data_requests.manage",
+    "legal_entity.read",
+    "audit.read_pii",
+  ]),
   // Organisations and artists were readable to the staff viewer before admin.read existed; they
   // stay explicit so the role keeps every read it had.
   read_only: new Set(["admin.read", "legal_entity.read", "artist.read"]),

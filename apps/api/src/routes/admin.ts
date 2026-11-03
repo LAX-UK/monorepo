@@ -23,6 +23,7 @@ import { attachAdminAuditRoutes } from "./admin/audit.routes.js";
 import { attachAdminCatalogRoutes } from "./admin/catalog.routes.js";
 import { attachAdminComplianceRoutes } from "./admin/compliance.routes.js";
 import { attachAdminConditionReportsRoutes } from "./admin/condition-reports.routes.js";
+import { attachAdminDataRequestsRoutes } from "./admin/data-requests.routes.js";
 import { attachAdminDeliveryOpsRoutes } from "./admin/delivery-ops.routes.js";
 import { attachAdminDisputeDeskRoutes } from "./admin/dispute-desk.routes.js";
 import { attachAdminEmailRoutes } from "./admin/email.routes.js";
@@ -156,6 +157,7 @@ export function createAdminRoutes(
   attachAdminDeliveryOpsRoutes(platform, container);
 
   attachAdminFailedJobsRoutes(platform, container);
+  attachAdminDataRequestsRoutes(platform, container);
 
   attachAdminMarketingEnquiryRoutes(platform, container);
 

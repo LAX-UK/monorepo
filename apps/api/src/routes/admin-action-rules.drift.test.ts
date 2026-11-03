@@ -1,5 +1,6 @@
 import {
   type CapabilityRequirement,
+  DATA_REQUESTS_MANAGE_ACCESS,
   DELIVERY_REPLAY_ACCESS,
   DISPUTE_ALLOCATION_WRITE_ACCESS,
   EMAIL_ADMIN_ACCESS,
@@ -253,6 +254,28 @@ const ACTIONS: AdminAction[] = [
     path: `/admin/email/suppressions/${"a".repeat(64)}`,
     body: { reason: "mailbox_fixed", expectedSince: "2026-11-01T10:00:00.000Z" },
     expectedRoles: ["administrator"],
+  },
+  {
+    name: "open the data requests list",
+    rule: DATA_REQUESTS_MANAGE_ACCESS,
+    method: "GET",
+    path: "/admin/data-requests",
+    expectedRoles: ["administrator", "compliance"],
+  },
+  {
+    name: "open a data request's record",
+    rule: DATA_REQUESTS_MANAGE_ACCESS,
+    method: "GET",
+    path: "/admin/data-requests/DR-0001",
+    expectedRoles: ["administrator", "compliance"],
+  },
+  {
+    name: "close a data request",
+    rule: DATA_REQUESTS_MANAGE_ACCESS,
+    method: "POST",
+    path: "/admin/data-requests/DR-0001/close",
+    body: { version: 1, outcome: "sent" },
+    expectedRoles: ["administrator", "compliance"],
   },
   {
     name: "list sale registrations",
