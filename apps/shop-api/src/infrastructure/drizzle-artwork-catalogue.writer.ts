@@ -30,6 +30,10 @@ import type {
   ArtworkCatalogueWriter,
   ArtworkEditableFields,
 } from "../application/ports/artwork-catalogue-admin.js";
+import {
+  type OriginalOfferRegister,
+  noOriginalOfferRegister,
+} from "../application/ports/original-offer-register.js";
 import type { ReleaseAlertAnnouncer } from "../application/ports/release-alert.store.js";
 import type { ShopTransactionEffects } from "../application/ports/shop-unit-of-work.js";
 import type { ShopUnitOfWorkFactory } from "../application/ports/shop-unit-of-work.js";
@@ -256,6 +260,7 @@ async function applyVisibility(
   artwork: ArtworkRow,
   action: AdminArtworkVisibilityAction,
   actorSubjectId: string,
+  offers: OriginalOfferRegister,
   releaseAlerts?: { announcer: ReleaseAlertAnnouncer; send: boolean },
 ): Promise<VisibilityOutcome> {
   const now = new Date();
@@ -279,6 +284,12 @@ async function applyVisibility(
       });
       if (blocker)
         return { outcome: "refused", message: ARTWORK_PUBLISH_BLOCKER_MESSAGES[blocker] };
+      try {
+        await offers.assertCanPublish(artwork);
+      } catch (error) {
+        if (error instanceof ShopDomainError) return { outcome: "refused", message: error.message };
+        throw error;
+      }
       patch = { publishedAt: now };
       break;
     }
@@ -315,6 +326,7 @@ async function applyVisibility(
     },
     afterJson: { published: after.publishedAt !== null, archived: after.archivedAt !== null },
   });
+  await recordOffer(offers, action, after, `staff:${actorSubjectId}`);
   if (action !== "publish" || !releaseAlerts?.send || !isShopEditionRelease(after)) {
     return { outcome: "changed", artwork: after };
   }
@@ -325,6 +337,19 @@ async function applyVisibility(
     artistName: await artistDisplayName(tx, after.artistId),
   });
   return { outcome: "changed", artwork: after, releaseAlertsQueued: queued };
+}
+
+/** Tells the register where the original now is. Restoring a draft changes nothing there. */
+async function recordOffer(
+  offers: OriginalOfferRegister,
+  action: AdminArtworkVisibilityAction,
+  artwork: ArtworkRow,
+  actor: string,
+): Promise<void> {
+  if (action === "publish") await offers.recordPublished(artwork, actor);
+  else if (action === "unpublish" || action === "archive") {
+    await offers.recordWithdrawn(artwork, actor);
+  }
 }
 
 async function artistDisplayName(tx: ShopTransactionEffects, artistId: string): Promise<string> {
@@ -343,9 +368,12 @@ export function createDrizzleArtworkCatalogueWriter(
     resolveMediaUrl: ResolveMediaUrl;
     editionRuns: EditionRunRecorder;
     releaseAlerts: ReleaseAlertAnnouncer;
+    /** One place at a time for originals; omitted where no register is wired. */
+    offers?: OriginalOfferRegister;
   },
 ): ArtworkCatalogueWriter {
   const { resolveMediaUrl, editionRuns, releaseAlerts } = options;
+  const offers = options.offers ?? noOriginalOfferRegister;
   return {
     createArtwork: (input) =>
       uow.run((tx) =>
@@ -627,10 +655,17 @@ export function createDrizzleArtworkCatalogueWriter(
           requestPayload: input,
           run: async () => {
             const artwork = await lockArtwork(tx, input.artworkId);
-            const result = await applyVisibility(tx, artwork, input.action, input.actorSubjectId, {
-              announcer: releaseAlerts,
-              send: input.sendReleaseAlert === true,
-            });
+            const result = await applyVisibility(
+              tx,
+              artwork,
+              input.action,
+              input.actorSubjectId,
+              offers,
+              {
+                announcer: releaseAlerts,
+                send: input.sendReleaseAlert === true,
+              },
+            );
             if (result.outcome === "refused") throw new ShopDomainError(result.message);
             return {
               version: result.artwork.updatedAt.toISOString(),
@@ -671,7 +706,13 @@ export function createDrizzleArtworkCatalogueWriter(
                 results.push({ artworkId, outcome: "not_found" as const });
                 continue;
               }
-              const result = await applyVisibility(tx, artwork, input.action, input.actorSubjectId);
+              const result = await applyVisibility(
+                tx,
+                artwork,
+                input.action,
+                input.actorSubjectId,
+                offers,
+              );
               if (result.outcome === "changed" && changesArtStorefront(artwork, result.artwork)) {
                 refreshesArt = true;
               }

@@ -5,6 +5,7 @@ import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalizeArtworkCatalogueFilters } from "../application/artwork-catalogue-filters.js";
 import { createEditionRunServices } from "../application/edition-runs/edition-run-services.js";
+import type { OriginalOfferRegister } from "../application/ports/original-offer-register.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { StaleVersionError } from "../errors/stale-version-error.js";
 import { integrationSuffix, requireDefined } from "../test-support/shop-fixtures.js";
@@ -52,7 +53,7 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
     await ownerPool.end();
   });
 
-  function setup() {
+  function setup(offers?: OriginalOfferRegister) {
     const db = createShopDb(shopPool);
     const uow = createDrizzleShopUnitOfWork(db, "off");
     const notifications = createDrizzleShopNotificationPublisher();
@@ -72,6 +73,7 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
           notifications,
           storefrontOrigins: ORIGINS,
         }),
+        ...(offers ? { offers } : {}),
       }),
       artists: createDrizzleArtistCatalogueWriter(uow),
       reader: createDrizzleAdminArtworkReader(db, { resolveMediaUrl }),
@@ -385,6 +387,70 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
       },
       { artworkId: missing, outcome: "not_found" },
     ]);
+  });
+
+  it("asks the register before publishing an original and tells it when the original leaves", async () => {
+    const calls: string[] = [];
+    const offers: OriginalOfferRegister = {
+      assertCanPublish: async (artwork) => {
+        calls.push(`check:${artwork.id}`);
+        if (artwork.id === blocked.artworkId) {
+          throw new ShopDomainError(
+            "This artwork is already offered in a LAX Bid sale. Withdraw it there first.",
+          );
+        }
+      },
+      recordPublished: async (artwork) => void calls.push(`published:${artwork.id}`),
+      recordWithdrawn: async (artwork) => void calls.push(`withdrawn:${artwork.id}`),
+      recordSold: async () => {},
+    };
+    const { writer } = setup(offers);
+    const ready = await newArtwork("offer-ready", { editions: false });
+    const blocked = await newArtwork("offer-blocked", { editions: false });
+    for (const artwork of [ready, blocked]) {
+      await writer.updateArtwork({
+        ...editable(await detailOf(artwork.artworkId)),
+        images: [{ mediaKey: await uploadedImage(), alt: null }],
+      });
+    }
+
+    await expect(
+      writer.setVisibility({
+        artworkId: blocked.artworkId,
+        action: "publish",
+        actorSubjectId: ACTOR,
+        idempotencyKey: key(),
+      }),
+    ).rejects.toThrow("already offered in a LAX Bid sale");
+    expect((await detailOf(blocked.artworkId)).state).toBe("draft");
+
+    const { results } = await writer.applyBulkVisibility({
+      action: "publish",
+      artworkIds: [ready.artworkId, blocked.artworkId],
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+    expect(results).toEqual([
+      { artworkId: ready.artworkId, outcome: "changed" },
+      {
+        artworkId: blocked.artworkId,
+        outcome: "refused",
+        message: "This artwork is already offered in a LAX Bid sale. Withdraw it there first.",
+      },
+    ]);
+
+    await writer.setVisibility({
+      artworkId: ready.artworkId,
+      action: "unpublish",
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+    expect(calls.filter((call) => call.endsWith(ready.artworkId))).toEqual([
+      `check:${ready.artworkId}`,
+      `published:${ready.artworkId}`,
+      `withdrawn:${ready.artworkId}`,
+    ]);
+    expect(calls).not.toContain(`published:${blocked.artworkId}`);
   });
 
   it("lists by view with counts and searches by artist name", async () => {

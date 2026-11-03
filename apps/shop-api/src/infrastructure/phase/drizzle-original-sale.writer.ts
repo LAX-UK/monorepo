@@ -17,6 +17,10 @@ import {
 import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
 import { withAdminIdempotency } from "../../application/admin/with-admin-idempotency.js";
 import type { InvoiceGateway } from "../../application/ports/invoice.gateway.js";
+import {
+  type OriginalOfferRegister,
+  noOriginalOfferRegister,
+} from "../../application/ports/original-offer-register.js";
 import type { OriginalSaleWriter } from "../../application/ports/original-sale.writer.js";
 import type { ShopUnitOfWorkFactory } from "../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
@@ -34,6 +38,7 @@ async function assignOriginalSaleInTransaction(
   input: {
     originalSaleId: string;
     domainEventMode: ShopDomainEventPublisherMode;
+    offers: OriginalOfferRegister;
   },
 ): Promise<void> {
   const [sale] = await tx
@@ -56,6 +61,9 @@ async function assignOriginalSaleInTransaction(
     .select({
       id: shopArtwork.id,
       artistId: shopArtwork.artistId,
+      zohoProductId: shopArtwork.zohoProductId,
+      salesChannel: shopArtwork.salesChannel,
+      runKind: shopArtwork.runKind,
     })
     .from(shopArtwork)
     .where(eq(shopArtwork.id, sale.artworkId))
@@ -111,6 +119,7 @@ async function assignOriginalSaleInTransaction(
     .update(shopArtwork)
     .set({ saleState: "sold", updatedAt: new Date() })
     .where(eq(shopArtwork.id, sale.artworkId));
+  await input.offers.recordSold(artwork, "system");
 
   const payoutDueAt = computePayoutDueAt(new Date());
   await tx.insert(shopPayoutLedger).values({
@@ -147,8 +156,11 @@ export function createDrizzleOriginalSaleWriter(deps: {
   uow: ShopUnitOfWorkFactory;
   invoiceGateway: InvoiceGateway;
   domainEventMode: ShopDomainEventPublisherMode;
+  /** One place at a time for originals; omitted where no register is wired. */
+  offers?: OriginalOfferRegister;
 }): OriginalSaleWriter {
   const { db, uow, invoiceGateway, domainEventMode } = deps;
+  const offers = deps.offers ?? noOriginalOfferRegister;
 
   return {
     async createReservation(command) {
@@ -285,6 +297,7 @@ export function createDrizzleOriginalSaleWriter(deps: {
         await assignOriginalSaleInTransaction(dbTx, {
           originalSaleId: sale.id,
           domainEventMode,
+          offers,
         });
 
         return { originalSaleId: sale.id, status: "assigned" as const };
@@ -299,6 +312,7 @@ export async function completeOriginalSaleFromStripeInvoice(
     stripeInvoiceId: string;
     paidAt: Date;
     domainEventMode: ShopDomainEventPublisherMode;
+    offers?: OriginalOfferRegister;
   },
 ): Promise<"processed" | "ignored" | "duplicate"> {
   const [sale] = await db
@@ -322,6 +336,7 @@ export async function completeOriginalSaleFromStripeInvoice(
       },
     },
     domainEventMode: input.domainEventMode,
+    ...(input.offers ? { offers: input.offers } : {}),
   }).completePaidAndAssign({
     originalSaleId: sale.id,
     stripeInvoiceId: input.stripeInvoiceId,
