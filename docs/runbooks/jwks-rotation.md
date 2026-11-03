@@ -52,3 +52,7 @@ Exactly one `active` row. Any `rotating` row has a `rotated_at` less than 30 min
 ## Why rotation is still started by a person
 
 Retirement is automated. Rotation is started by a person from the workflow, because the timing, the smoke test and on-call coordination need judgement, and an unattended rotation that fails halfway is worse than a late one.
+
+## If sign-in fails after a rotation
+
+Run the `jwks-restore-active` workflow for the same environment with the previous key id (shown under "Before" in the rotation job summary), dry run first, then for real. It makes that key active again and retires the new one, under the same advisory lock. Then sign in on every product to confirm. A rotation is only done once a real sign-in has worked on Bid, LAX Account, LAX Shop and lax.art.
