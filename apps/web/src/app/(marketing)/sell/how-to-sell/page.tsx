@@ -74,7 +74,7 @@ export default function HowToSellPage() {
             </MarketingSectionReveal>
 
             <LegalH2 id="prepare" className="scroll-mt-28">
-              Prepare your submission
+              Prepare your work
             </LegalH2>
             <MarketingSectionReveal index={1}>
               <SellPrepareSection />
