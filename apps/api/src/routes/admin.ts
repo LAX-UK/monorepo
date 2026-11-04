@@ -32,6 +32,7 @@ import { attachAdminFinanceRoutes } from "./admin/finance.routes.js";
 import { attachAdminImpersonationRoutes } from "./admin/impersonation.routes.js";
 import { attachAdminLegalEntityBuyerAgentRoutes } from "./admin/legal-entity-buyer-agents.routes.js";
 import { attachAdminLotFulfilmentRoutes } from "./admin/lot-fulfilment.routes.js";
+import { attachAdminLotLaxArtReturnRoutes } from "./admin/lot-lax-art-return.routes.js";
 import { attachAdminLotsCatalogRoutes } from "./admin/lots-catalog.routes.js";
 import { attachAdminLotsRoutes } from "./admin/lots.routes.js";
 import { attachAdminMarketingEnquiryRoutes } from "./admin/marketing-enquiries.routes.js";
@@ -125,6 +126,7 @@ export function createAdminRoutes(
   attachAdminLotsCatalogRoutes(platform, container);
   attachAdminAttentionRoutes(platform, container);
   attachAdminLotsRoutes(platform, container, guards);
+  attachAdminLotLaxArtReturnRoutes(platform, container);
   attachAdminAuditRoutes(platform, container);
   attachAdminCatalogRoutes(platform, container);
   attachAdminEmailRoutes(platform, container);

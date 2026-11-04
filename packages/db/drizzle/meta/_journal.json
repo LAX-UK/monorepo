@@ -2066,6 +2066,13 @@
       "when": 1801036800000,
       "tag": "0295_private_sale_deal",
       "breakpoints": true
+    },
+    {
+      "idx": 296,
+      "version": "7",
+      "when": 1801123200000,
+      "tag": "0296_artwork_register_move_event",
+      "breakpoints": true
     }
   ]
 }

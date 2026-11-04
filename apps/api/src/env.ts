@@ -55,6 +55,13 @@ const envSchema = z
       z.string().min(32).optional(),
     ),
     /**
+     * Moving originals between lax.art and LAX Bid: LAX Shop's API address and the credential pair
+     * both products hold. Without them the move answers that it is not set up; nothing else changes.
+     */
+    SHOP_API_INTERNAL_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    INVENTORY_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    INVENTORY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
+    /**
      * The staff-assisted email change's credential for Identity (scope `staff_email_change`),
      * separate from the lifecycle credential so neither can do the other's work. Without it the
      * change answers 502.
