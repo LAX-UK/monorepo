@@ -1,3 +1,4 @@
+import { DEV_ALERT_LINK_SECRET, isUsableAlertLinkSecret } from "@auction/alerts";
 import { legalEntityFor } from "@auction/branding";
 import { STAFF_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts";
 import { parseFinancialYearEnd } from "@auction/shop-domain";
@@ -10,9 +11,6 @@ function resolveAppEnv(source: NodeJS.ProcessEnv): AppEnv {
   if (raw === "production" || raw === "test" || raw === "development") return raw;
   return (source.NODE_ENV ?? "development") === "production" ? "production" : "development";
 }
-
-/** What the link secret is until one is configured; never accepted when alerts are on in production. */
-const DEV_ALERT_LINK_SECRET = "dev-alert-link-secret-not-for-production";
 
 export const shopApiEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -323,8 +321,7 @@ export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApi
     assertStripeConfigured(parsed.data);
     if (
       parsed.data.ALERTS_SEND_MODE !== "off" &&
-      (parsed.data.ALERT_LINK_SECRET.length < 32 ||
-        parsed.data.ALERT_LINK_SECRET === DEV_ALERT_LINK_SECRET)
+      !isUsableAlertLinkSecret(parsed.data.ALERT_LINK_SECRET)
     ) {
       throw new Error("ALERT_LINK_SECRET (min 32 characters) is required when alerts are on");
     }

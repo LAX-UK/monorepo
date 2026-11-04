@@ -17,7 +17,7 @@ function emptyToUndefined(val: unknown): unknown {
   return val === "" || val === null ? undefined : val;
 }
 
-const envSchema = z
+export const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
     /** Deployment environment for financial / ops validation — decoupled from NODE_ENV. */
@@ -307,11 +307,11 @@ const envSchema = z
     }
     // Admin email required only in production (test stack uses debug channels).
     if (e.APP_ENV === "production") {
-      if (e.ALERTS_SEND_MODE !== "off" && !isUsableAlertLinkSecret(e.ALERT_LINK_SECRET)) {
+      if (!isUsableAlertLinkSecret(e.ALERT_LINK_SECRET)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message:
-            "ALERT_LINK_SECRET is required in production when alerts are on (min 32 characters, not the development default)",
+            "ALERT_LINK_SECRET is required in production (min 32 characters, not the development default)",
           path: ["ALERT_LINK_SECRET"],
         });
       }
