@@ -50,7 +50,7 @@ describe.skipIf(!migrationUrl)(
       const lotRow = await client.query(
         `insert into lot (title, auction_type, starting_price, current_price, start_time, end_time,
            status, seller_legal_entity_id)
-         values ('Unsold', 'english', 100, 100, now() - interval '3 days',
+         values ('Unsold', 'english', 100, 100, '2026-10-29T18:00:00Z',
            '2026-11-01T18:00:00Z', 'ended', $1) returning id`,
         [entityId],
       );
