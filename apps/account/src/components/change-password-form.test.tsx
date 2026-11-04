@@ -38,6 +38,8 @@ describe("ChangePasswordForm", () => {
     expect(html).toContain("Different from your current password");
     expect(html).toContain("Both new passwords match");
     expect(html).toContain("(not yet)");
+    expect(html).toContain("lucide-minus");
+    expect(html).not.toContain("rounded-full border");
   });
 
   it("keeps the forgotten-password link for people who do not know their current password", () => {

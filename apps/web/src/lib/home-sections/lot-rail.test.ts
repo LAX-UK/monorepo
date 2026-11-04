@@ -16,7 +16,7 @@ describe("buildLotRail", () => {
   it("says when bidding closes for a live sale and links to all its lots", () => {
     const rail = buildLotRail({ ...base, kind: "inThisSale", lots: lots(4) });
     expect(rail?.heading).toBe("More from this sale");
-    expect(rail?.subtitle).toBe("Bidding closes from 3 Nov 2026, 21:00 GMT");
+    expect(rail?.subtitle).toBe("Bidding closes from Tue 3 Nov, 21:00 GMT");
     expect(rail?.seeAll.label).toBe("View all 12 lots");
   });
 
@@ -24,7 +24,7 @@ describe("buildLotRail", () => {
     const sale = hangSale({ status: "scheduled", startTime: new Date("2026-11-10T18:00:00.000Z") });
     const rail = buildLotRail({ ...base, sale, kind: "highlightsFromNextSale", lots: lots(4) });
     expect(rail?.heading).toBe("Highlights from the next sale");
-    expect(rail?.subtitle).toBe("Estimates shown; bidding opens 10 Nov 2026, 18:00 GMT");
+    expect(rail?.subtitle).toBe("Estimates shown; bidding opens Tue 10 Nov, 18:00 GMT");
   });
 
   it("names the results of an ended sale and states that prices include premium", () => {

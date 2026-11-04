@@ -8,6 +8,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import {
   DrizzleEnquiryAttachmentRepository,
+  DrizzleEnquiryErasureRepository,
   DrizzleEnquiryNoteRepository,
   DrizzleEnquiryRoutingRepository,
   DrizzleMarketingEnquiryRepository,
@@ -31,6 +32,10 @@ import {
   HmacEnquiryDraftTokens,
   type IEnquiryDraftTokens,
 } from "../services/marketing-enquiry/enquiry-draft-token.js";
+import {
+  EnquiryErasureService,
+  type IEnquiryErasure,
+} from "../services/marketing-enquiry/enquiry-erasure.service.js";
 import { EnquiryRoutingService } from "../services/marketing-enquiry/enquiry-routing.service.js";
 import {
   EnquirySubmissionService,
@@ -79,6 +84,8 @@ export type MarketingEnquiryServices = {
   intake: IMarketingEnquiryIntake;
   desk: IMarketingEnquiryDesk;
   routing: IEnquiryRouting;
+  /** Staff-initiated erasure of a sender's enquiries. */
+  erasure: IEnquiryErasure;
   /** Draft tokens for visitors who upload files before they send an enquiry. */
   drafts: IEnquiryDraftTokens;
   /** Takes a request to the enquiry it makes: whose account, and whose files, go with it. */
@@ -138,6 +145,11 @@ export function createMarketingEnquiryServices(
       transactionRunner: input.transactionRunner,
       events: input.events,
       now: () => new Date(),
+    }),
+    erasure: new EnquiryErasureService({
+      erasure: new DrizzleEnquiryErasureRepository(),
+      transactionRunner: input.transactionRunner,
+      events: input.events,
     }),
     organisations: new EnquirerOrganisationsService({ memberships: input.memberships }),
     routing: new EnquiryRoutingService({

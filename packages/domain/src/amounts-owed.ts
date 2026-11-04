@@ -9,6 +9,13 @@ import { purchaseEnding, purchaseIsToPay } from "./purchase-state.js";
  * Purchases, the Needs-you counts and the LAX Account portfolio can only ever agree.
  */
 
+/**
+ * The most won lots one read of an account's purchases follows. Purchases lists exactly these and
+ * the amounts owed add up exactly these, so the list and its totals cannot disagree; a screen that
+ * reaches the limit says it is showing the latest ones.
+ */
+export const PURCHASE_LIST_LIMIT = 500;
+
 /** The buyer's account-wide checks: they hold every unpaid purchase until cleared. */
 export type AccountHold = "clear" | "aml_hold" | "source_of_funds_required";
 

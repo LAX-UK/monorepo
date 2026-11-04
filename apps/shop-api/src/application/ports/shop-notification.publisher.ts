@@ -195,4 +195,21 @@ export type ShopNotificationPublisher = {
       editionLabel: string;
     },
   ): Promise<void>;
+
+  /**
+   * Tells the seller of a returned print that staff have received it, what it means for their
+   * stock and for their payout. Carries nothing about the buyer.
+   */
+  queueReturnClosedSeller(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      sellerIdentitySubjectId: string;
+      artworkTitle: string;
+      /** "Edition 3", "Proof 1" or "Open edition". */
+      editionLabel: string;
+      stockOutcome: "back_on_sale" | "in_stock_not_on_sale" | "written_off";
+      payout: "none" | "withheld" | "recovered";
+    },
+  ): Promise<void>;
 };

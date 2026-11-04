@@ -1,0 +1,89 @@
+{
+  "data": [
+    {
+      "id": "5000000000001000001",
+      "Product_Name": "Harbour at dusk",
+      "Reference_Stock_Code": "LAX-ORI-PH-GAC-26-0001",
+      "Artist": { "id": "5000000000000077001", "name": "Aidan Phelan" },
+      "Medium": "Oil on canvas",
+      "Dimensions": "60 x 80 cm",
+      "Status": "Available",
+      "Year": "2024",
+      "Unit_Price": 4200,
+      "Modified_Time": "2026-09-07T10:15:30+01:00"
+    },
+    {
+      "id": "5000000000001000002",
+      "Product_Name": "Study in blue",
+      "Reference_Stock_Code": "LAX-ORI-AD-GAC-26-0002",
+      "Artist": { "id": "5000000000000077002", "name": "Alan Davie" },
+      "Medium": null,
+      "Dimensions": "",
+      "Status": "Reserved",
+      "Year": null,
+      "Unit_Price": 0,
+      "Modified_Time": "2026-09-07T10:20:00+01:00"
+    },
+    {
+      "id": "5000000000001000003",
+      "Product_Name": "Sample landscape",
+      "Reference_Stock_Code": "LAX-ORI-DM-GAC-26-0003",
+      "Artist": { "id": "5000000000000077003", "name": "DEMO - Sample Painter" },
+      "Medium": "Acrylic",
+      "Dimensions": "20 x 20 cm",
+      "Status": "Available",
+      "Year": null,
+      "Unit_Price": 100,
+      "Modified_Time": "2026-09-07T10:21:00+01:00"
+    },
+    {
+      "id": "5000000000001000004",
+      "Product_Name": "No code yet",
+      "Reference_Stock_Code": null,
+      "Artist": { "id": "5000000000000077001", "name": "Aidan Phelan" },
+      "Medium": "Gouache",
+      "Dimensions": "30 x 40 cm",
+      "Status": "Available",
+      "Year": "2023",
+      "Unit_Price": null,
+      "Modified_Time": "2026-09-07T10:22:00+01:00"
+    },
+    {
+      "id": "5000000000001000005",
+      "Product_Name": "Old code style",
+      "Reference_Stock_Code": "GAC-0005",
+      "Artist": { "id": "5000000000000077001", "name": "Aidan Phelan" },
+      "Medium": "Gouache",
+      "Dimensions": "30 x 40 cm",
+      "Status": "Available",
+      "Year": null,
+      "Unit_Price": 900,
+      "Modified_Time": "2026-09-07T10:23:00+01:00"
+    },
+    {
+      "id": "5000000000001000006",
+      "Product_Name": "Artist missing from Zoho",
+      "Reference_Stock_Code": "LAX-ORI-TG-PC-26-0006",
+      "Artist": null,
+      "Medium": "Print",
+      "Dimensions": "50 x 70 cm",
+      "Status": "Available",
+      "Year": null,
+      "Unit_Price": 300,
+      "Modified_Time": "2026-09-07T10:24:00+01:00"
+    },
+    {
+      "id": "5000000000001000007",
+      "Product_Name": "Girl with balloon, print",
+      "Reference_Stock_Code": "LAX-PRI-BA-PC-26-0007",
+      "Artist": { "id": "5000000000000077004", "name": "Banksy" },
+      "Medium": "Screenprint",
+      "Dimensions": "70 x 50 cm",
+      "Status": "Available",
+      "Year": "2006",
+      "Unit_Price": 2500,
+      "Modified_Time": "2026-09-07T10:25:00+01:00"
+    }
+  ],
+  "info": { "per_page": 200, "count": 7, "page": 1, "more_records": false }
+}

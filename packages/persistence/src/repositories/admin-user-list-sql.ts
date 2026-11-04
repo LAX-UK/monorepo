@@ -25,7 +25,7 @@ import type {
   AdminUserListSort,
 } from "../interfaces/admin-user.repository.js";
 import { activeIdentitySubject } from "../lib/bid-identity-directory-query.js";
-import { escapeLikePattern } from "../lib/like-pattern.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import { holdsStaffRoleNow, staffRolesInForceFor } from "../lib/staff-role-assignment-sql.js";
 
 export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | undefined {
@@ -34,9 +34,9 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
   const q = filter.q?.trim();
   if (q) {
     const searchClause = or(
-      ilike(bidIdentityDirectory.email, `%${escapeLikePattern(q)}%`),
-      ilike(bidIdentityDirectory.name, `%${escapeLikePattern(q)}%`),
-      ilike(bidUserProfile.mobile, `%${escapeLikePattern(q)}%`),
+      ilike(bidIdentityDirectory.email, containsPattern(q)),
+      ilike(bidIdentityDirectory.name, containsPattern(q)),
+      ilike(bidUserProfile.mobile, containsPattern(q)),
     );
     if (searchClause) clauses.push(searchClause);
   }

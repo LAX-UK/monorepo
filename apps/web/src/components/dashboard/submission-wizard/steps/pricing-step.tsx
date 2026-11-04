@@ -2,6 +2,7 @@
 
 import { CurrencyInput } from "@/components/dashboard/submission-wizard/currency-input";
 import type { StepProps } from "@/components/dashboard/submission-wizard/step-props";
+import { sellFieldItemId } from "@/lib/forms/submission/step-errors";
 import {
   FormControl,
   FormField,
@@ -19,7 +20,7 @@ export function PricingStep({ form }: StepProps) {
           control={form.control}
           name="askingPrice"
           render={({ field }) => (
-            <FormItem>
+            <FormItem fieldId={sellFieldItemId("askingPrice")}>
               <FormLabel>Asking price (optional)</FormLabel>
               <p className="mb-1 font-body text-xs text-on-surface-variant">
                 For specialist context only — not shown to bidders until published as a lot.
@@ -35,7 +36,7 @@ export function PricingStep({ form }: StepProps) {
           control={form.control}
           name="reservePrice"
           render={({ field }) => (
-            <FormItem>
+            <FormItem fieldId={sellFieldItemId("reservePrice")}>
               <FormLabel>Reserve (optional)</FormLabel>
               <FormControl>
                 <CurrencyInput placeholder="0.00" value={field.value} onChange={field.onChange} />

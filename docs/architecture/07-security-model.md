@@ -86,7 +86,7 @@ SSF receivers separately validate resource-addressed `secevent+jwt`, reserve
 
 **App to database.** The most important internal trust boundary in the system. Each app holds a different Postgres role with different grants. A SQL injection in apps/api cannot read JWT signing keys — the `api_app` role has no grant on `jwks_key`. This is not theoretical defense; this is the actual mechanism that limits blast radius if any single app is compromised.
 
-**External webhook to API.** Active inbound providers use source-specific verification per D6: Stripe and Xero validate signatures over the raw body, Postmark uses dedicated Basic Auth, Brevo uses its webhook secret, and Veriff validates its provider signature. Authentication is checked before business logic runs.
+**External webhook to API.** Active inbound providers use source-specific verification per D6: Stripe and Xero validate signatures over the raw body, Postmark uses dedicated Basic Auth, and Veriff validates its provider signature. Authentication is checked before business logic runs.
 
 **Postmark webhook to API.** Postmark posts delivery, bounce, complaint, open, click, and `SubscriptionChange` callbacks to `POST /webhooks/postmark`. We authenticate them with HTTP Basic Auth (`POSTMARK_WEBHOOK_BASIC_AUTH`) configured on the Postmark side and validated in `apps/api/src/routes/webhooks/postmark.ts`. The handler also writes through `email_event` so a replay is observable in the audit log even if it slips past the auth check. A Cloudflare rate-limit rule on `/webhooks/postmark` bounds enumeration attempts. Postmark does not currently sign webhook bodies, which is why the Basic Auth credential is treated as the trust boundary; on rotation, both Postmark and our env var must be updated together.
 
@@ -181,7 +181,7 @@ host-only cookie or mint a token for an unregistered resource.
 
 **Impact:** An attacker impersonating an active webhook provider could inject false delivery, identity, or finance events.
 
-**Mitigations.** Every active webhook source uses its provider-specific authentication contract (D6). Stripe and Xero bind signatures to the raw body; Postmark, Brevo, and Veriff use dedicated credentials or signatures. Invalid requests are rejected before business logic.
+**Mitigations.** Every active webhook source uses its provider-specific authentication contract (D6). Stripe and Xero bind signatures to the raw body; Postmark and Veriff use dedicated credentials or signatures. Invalid requests are rejected before business logic.
 
 The dedupe key (`event_key`) on `webhook_event` ensures persisted provider events are processed only once on retries. Provider-specific event ledgers and idempotency keys provide the equivalent guarantee for routes that do not use the generic table.
 

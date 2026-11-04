@@ -57,6 +57,8 @@ const LABELS: Record<string, string> = {
 
   "export.requested": "Export requested",
 
+  "artwork_register.offer_changed": "Artwork moved to a new place",
+  "artwork_register.stock_code_assigned": "Artwork stock code assigned",
   "data_request.viewed": "Data request opened",
   "data_request.logged": "Data request logged",
   "data_request.updated": "Data request updated",
@@ -172,6 +174,7 @@ const LABELS: Record<string, string> = {
   "marketing_enquiry.assigned": "Enquiry assigned",
   "marketing_enquiry.status_changed": "Enquiry status changed",
   "marketing_enquiry.converted": "Enquiry converted",
+  "marketing_enquiry.erased": "Enquiries erased",
   "email.block_lifted": "Email block lifted",
   "enquiry_routing.changed": "Enquiry routing changed",
   "private_sale_deal.created": "Private sale started",

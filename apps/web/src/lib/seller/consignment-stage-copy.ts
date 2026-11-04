@@ -7,7 +7,7 @@ export const AFTER_SALE_STAGE_PRESENTATION: Record<
   { label: string; hint: string; tone: DotStatusPillTone }
 > = {
   unsold: {
-    label: "Unsold",
+    label: "Did not sell",
     hint: "It did not sell this time. Choose what happens next below.",
     tone: "warning",
   },

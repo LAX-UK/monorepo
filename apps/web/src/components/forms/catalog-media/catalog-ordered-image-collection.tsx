@@ -8,7 +8,6 @@ import {
   useImageReorder,
 } from "@/lib/forms/image/use-image-reorder";
 import { useUploadGallery } from "@/lib/forms/image/use-upload-gallery";
-import { notify } from "@/lib/ui/notify";
 import type { CatalogImageUploadKind } from "@/lib/upload/upload-policies.client";
 import {
   catalogImageAccept,
@@ -92,7 +91,6 @@ export function CatalogOrderedImageCollection({
     value,
     maxFiles,
     onChange,
-    onError: (message) => notify.error("Upload failed", { description: message }),
   });
 
   useEffect(() => {

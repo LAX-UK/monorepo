@@ -61,6 +61,8 @@ export type PaymentsStaffListProps = {
   pageSize: number;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
   loadError: string | null;
+  /** What the action that sent staff here has to say, shown under the header. */
+  notice?: ReactNode;
 };
 
 /**
@@ -273,6 +275,7 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         activeFilters={activeFilters}
         onClearFilters={() => navigate(clearHref)}
         loading={pending}
+        notice={props.notice}
         filtered={filtered}
         error={
           props.loadError

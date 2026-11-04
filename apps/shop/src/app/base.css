@@ -80,7 +80,7 @@
   );
   /* Links take the accent and stay underlined, so colour is never the only cue. */
   --color-link: var(--color-product-accent);
-  --color-ring: var(--color-product-accent);
+  --color-ring: var(--color-brand-obsidian);
   --color-cta-bg: var(--color-brand-obsidian);
   --color-cta-on: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-brand-light-gray) 60%, white);
@@ -192,10 +192,12 @@
   --shop-text-sm: 0.875rem;
   --shop-text-md: 1rem;
   --shop-text-lg: 1.125rem;
-  /* Button scale: commerce actions (buy, checkout, pay) and standard actions. */
-  --shop-button-commerce-height: 3rem;
-  --shop-button-commerce-text: 1rem;
-  --shop-button-standard-height: 2.5rem;
+  /* Button scale, the family's two heights: commerce actions (buy, checkout, pay) are 44px and
+     standard actions 36px. Buttons take them from the kit's size prop; these tokens serve the
+     few links drawn by hand. */
+  --shop-button-commerce-height: 2.75rem;
+  --shop-button-commerce-text: 0.875rem;
+  --shop-button-standard-height: 2.25rem;
   --shop-button-standard-text: 0.875rem;
   --shop-control-height: 2.75rem;
   --motion-duration-sm: 200ms;
@@ -204,6 +206,13 @@
   --motion-duration-xl: 900ms;
   --motion-ease-emphasize: cubic-bezier(0.16, 1, 0.3, 1);
   --motion-ease-decelerate: cubic-bezier(0, 0, 0, 1);
+}
+
+/* On a touch screen the standard 36px action grows to the 44px commerce height. */
+@media (pointer: coarse) {
+  :root {
+    --shop-button-standard-height: var(--shop-button-commerce-height);
+  }
 }
 
 /* Page gutter 16 / 24 / 40px — pairs with MARKETING_PAGE_GUTTER_X (@auction/branding). */
@@ -322,7 +331,7 @@ html.dark {
   );
   --color-alert-border: color-mix(in srgb, var(--color-outline-variant) 70%, transparent);
   --color-link: var(--color-product-accent);
-  --color-ring: var(--color-product-accent);
+  --color-ring: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
   --color-input-border: var(--brand-field-edge-on-dark);
   --color-control-border-hover: #b3b3b3;

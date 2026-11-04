@@ -29,7 +29,6 @@ import { AdminSaleOverviewKpiTrendService } from "../services/admin/admin-sale-o
 import { AdminSalesKpiTrendService } from "../services/admin/admin-sales-kpi-trend.service.js";
 import { AdminSalesListSummaryService } from "../services/admin/admin-sales-list-summary.service.js";
 import { AdminSubmissionsKpiTrendService } from "../services/admin/admin-submissions-kpi-trend.service.js";
-import { AdminSubmissionsListSummaryService } from "../services/admin/admin-submissions-list-summary.service.js";
 import {
   attachAdminDashboardMetrics,
   attachAdminDetailBoardServices,
@@ -229,7 +228,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     saleroomService,
     adminSaleOperationsSnapshotService,
     saleroomCheckInService,
-    saleExpectedGuestsService: catalog.saleExpectedGuestsService,
+    saleExpectedGuestsReader: repos.saleExpectedGuestsReader,
     lotFulfilmentService,
     lotFulfilmentRepository,
     bidService,
@@ -277,9 +276,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     lotRepo,
     adminReviewTaskReader,
   );
-  const adminSubmissionsListSummaryService = new AdminSubmissionsListSummaryService(
-    new DrizzleAdminSubmissionsSummaryReader(db),
-  );
+  const adminSubmissionsSummaryReader = new DrizzleAdminSubmissionsSummaryReader(db);
   const adminSaleDetailMetricsService = new AdminSaleDetailMetricsService(
     lotRepo,
     saleRevenueSnapshotReader,
@@ -341,7 +338,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
         submissionsKpiTrend: adminSubmissionsKpiTrendService,
         salesListSummary: adminSalesListSummaryService,
         lotsListSummary: adminLotsListSummaryService,
-        submissionsListSummary: adminSubmissionsListSummaryService,
+        submissionsSummaryReader: adminSubmissionsSummaryReader,
       }),
       {
         saleDetailMetrics: adminSaleDetailMetricsService,

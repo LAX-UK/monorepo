@@ -33,6 +33,8 @@ export interface IAdminLotService {
     id: string,
     body: ReturnLotToInventoryBody,
   ): Promise<ServiceResult<Record<string, unknown>>>;
+  /** Reopens the artwork's lax.art listing as a draft; the lot must have ended unsold or been withdrawn. */
+  returnToLaxArt(id: string): Promise<ServiceResult<{ reopened: boolean }>>;
   recordBuyerDefault(
     id: string,
     body: RecordBuyerDefaultInput,

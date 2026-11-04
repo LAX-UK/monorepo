@@ -2,10 +2,10 @@ import { mapPressRefToVM } from "@/components/sections/press/mappers";
 import { atgLiveBidLabel } from "@/lib/catalog/atg-white-label";
 import {
   formatLondonDateRange,
-  formatLondonDateTime,
   formatLondonTimeWithZone,
+  formatLondonWhen,
 } from "@/lib/datetime/london-time";
-import { formatEstimateRange, formatMoney } from "@/lib/format-currency";
+import { formatEstimateRangeWhole, formatMoney } from "@/lib/format-currency";
 import { type LotCardLineModel, lotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
@@ -39,9 +39,9 @@ export function formatSaleDateLabel(start: Date, end: Date): string {
   return formatLondonDateRange(start, end);
 }
 
-/** "3 Nov 2026, 21:00 GMT". */
+/** "Thu 12 Nov, 21:00 GMT". */
 export function formatLongDateTime(d: Date): string {
-  return formatLondonDateTime(d);
+  return formatLondonWhen(d);
 }
 
 /** Relative short copy e.g. "10 days" for UI rows (not "in 10 days"). */
@@ -114,7 +114,11 @@ export function aggregateSaleEstimateTotal(
   if (!currency || withEstimate === 0) return null;
 
   try {
-    const range = formatEstimateRange({ low: String(lowSum), high: String(highSum), currency });
+    const range = formatEstimateRangeWhole({
+      low: String(lowSum),
+      high: String(highSum),
+      currency,
+    });
     if (withEstimate < lots.length) {
       return `${range} (from ${withEstimate} lots)`;
     }

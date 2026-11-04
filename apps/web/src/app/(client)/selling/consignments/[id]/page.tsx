@@ -1,5 +1,4 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
 import { ConsignmentAgreementPanel } from "@/components/dashboard/seller/consignment-agreement-panel";
 import { ConsignmentChecklist } from "@/components/dashboard/seller/consignment-checklist";
@@ -14,23 +13,20 @@ import { ConsignmentHistoryTab } from "@/components/dashboard/seller/consignment
 import { ConsignmentThread } from "@/components/dashboard/seller/consignment-messages/consignment-thread";
 import { ConsignmentWithdrawPanel } from "@/components/dashboard/seller/consignment-withdraw-panel";
 import { SubmissionChangesRequestedPanel } from "@/components/dashboard/seller/submission-changes-requested-panel";
-import { SubmissionSubmittedNotice } from "@/components/dashboard/seller/submission-submitted-notice";
 import { UnsoldLotChoicePanel } from "@/components/dashboard/seller/unsold-lot-choice-panel";
 import { SubmissionDetailLiveRefresh } from "@/components/dashboard/submission-detail-live-refresh";
 import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
 import { SubmissionRejectionPanel } from "@/components/dashboard/submission-rejection-panel";
 import { SubmissionSellerDocumentsPanel } from "@/components/dashboard/submission-seller-documents-panel";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
+import { ClientFlashNotice } from "@/components/flash/client-flash-notice";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { formatLotMoment } from "@/lib/bid/lot-moment";
 import { ACCOUNT_LOAD_ERROR } from "@/lib/dashboard/dashboard-copy";
-import {
-  describeDashboardSliceFailure,
-  describeSettingsActionError,
-} from "@/lib/dashboard/dashboard-fetch-errors";
+import { describeDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerConsignmentAfterSale } from "@/lib/data/http/consignment-after-sale.server";
 import { getServerConsignmentAgreement } from "@/lib/data/http/consignment-agreements.server";
@@ -93,12 +89,11 @@ export default async function SubmissionDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; submitted?: string; tab?: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
   const tab = consignmentDetailTab(sp.tab);
-  const actionError = sp.error ? decodeURIComponent(sp.error) : null;
   const user = await requireAuthenticatedUser({
     shell: "client",
     loginNext: `/selling/consignments/${id}`,
@@ -359,10 +354,7 @@ export default async function SubmissionDetailPage({
           </StatusBadge>
         }
       />
-      {actionError ? (
-        <DashboardSliceErrorAlert failure={describeSettingsActionError(actionError)} />
-      ) : null}
-      {sp.submitted === "1" ? <SubmissionSubmittedNotice submissionId={submission.id} /> : null}
+      <ClientFlashNotice path={consignmentHref(id)} />
       {tab === "overview" ? <SubmissionDetailLiveRefresh status={submission.status} /> : null}
       {nextStep ? (
         <Notice

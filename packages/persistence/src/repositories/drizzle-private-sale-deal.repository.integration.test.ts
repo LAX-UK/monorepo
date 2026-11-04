@@ -325,7 +325,9 @@ describe.skipIf(!HAS_DB)("private sale deals (integration)", () => {
       const repo = new DrizzlePrivateSaleDealRepository(db);
       const deal = await repo.create(newDeal(submissionId));
       const attempt = (change: () => Promise<unknown>) =>
-        expect(db.transaction(async () => change())).rejects.toThrow(/append-only/);
+        expect(db.transaction(async () => change())).rejects.toMatchObject({
+          cause: { message: expect.stringMatching(/append-only/) },
+        });
       await attempt(() =>
         db
           .update(privateSaleDealStageHistory)

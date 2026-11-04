@@ -17,6 +17,7 @@ import {
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, localBusinessJsonLd } from "@/lib/seo/structured-data";
+import { EmailLink } from "@auction/marketing-ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -74,9 +75,7 @@ export default async function ContactPage({
         <LegalH2>Client Services</LegalH2>
         <p>
           General enquiries:{" "}
-          <a href={`mailto:${SITE_CONTACT_EMAIL}`} className={MARKETING_PROSE_LINK}>
-            {SITE_CONTACT_EMAIL}
-          </a>
+          <EmailLink address={SITE_CONTACT_EMAIL} className={MARKETING_PROSE_LINK} />
         </p>
         <p>
           Telephone:{" "}
@@ -92,19 +91,13 @@ export default async function ContactPage({
           available on a continuous basis.
         </p>
         <p>
-          Email:{" "}
-          <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className={MARKETING_PROSE_LINK}>
-            {SITE_SUPPORT_EMAIL}
-          </a>
+          Email: <EmailLink address={SITE_SUPPORT_EMAIL} className={MARKETING_PROSE_LINK} />
         </p>
 
         <LegalH2>Press &amp; Media</LegalH2>
         <p>For press enquiries, editorial features, or partnership discussions, please contact:</p>
         <p>
-          Email:{" "}
-          <a href={`mailto:${SITE_PRESS_EMAIL}`} className={MARKETING_PROSE_LINK}>
-            {SITE_PRESS_EMAIL}
-          </a>
+          Email: <EmailLink address={SITE_PRESS_EMAIL} className={MARKETING_PROSE_LINK} />
         </p>
 
         <LegalH2>Registered office</LegalH2>

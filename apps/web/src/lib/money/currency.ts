@@ -36,6 +36,18 @@ export function formatEstimateRange(input: {
   return `${formatMoney(input.low, currency)} – ${formatMoney(input.high, currency)}`;
 }
 
+/**
+ * An estimate for a page figure: whole units at both ends ("£8,000 – £12,000"). A total of many
+ * estimates is a round figure, so pennies would only be noise.
+ */
+export function formatEstimateRangeWhole(input: {
+  low: string;
+  high: string;
+  currency: string;
+}): string {
+  return `${formatWholeMoney(input.low, input.currency)} – ${formatWholeMoney(input.high, input.currency)}`;
+}
+
 function toAmount(amount: string | number): number {
   return typeof amount === "string" ? Number.parseFloat(amount) : amount;
 }

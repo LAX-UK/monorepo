@@ -5,6 +5,7 @@ export const IDENTITY_LIFECYCLE_OUTBOX_RELAY_PROJECTOR = "identity_lifecycle_out
 export const DOMAIN_EVENT_PROJECTOR_NAMES = [
   "admin_impersonation_notify",
   "aml_match_review",
+  "artwork_offer_lock",
   "bid_alert_matching",
   "bid_identity_directory",
   "bid_personal_data_anonymisation",
@@ -13,7 +14,6 @@ export const DOMAIN_EVENT_PROJECTOR_NAMES = [
   "legal_entity_provisioning",
   "lot_invoice_initiation",
   "lot_voided_anti_shilling_admin_notify",
-  "marketing_contacts",
   "notification_fanout",
   "payment_refund_notify",
   "payout_transfer_failed_notify",
@@ -26,6 +26,7 @@ export const DOMAIN_EVENT_PROJECTOR_NAMES = [
   "unsold_follow_up",
   "xero",
   "zoho",
+  "zoho_artwork_writeback",
 ];
 
 export const ALL_STAGING_PROJECTOR_NAMES = [

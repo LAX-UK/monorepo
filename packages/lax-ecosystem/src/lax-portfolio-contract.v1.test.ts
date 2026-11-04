@@ -53,6 +53,7 @@ describe("owed", () => {
 
   it("stays optional, so an older product still validates", () => {
     expect(Value.Check(LaxPortfolioItemV1, item({ status: "awaiting_payment" }))).toBe(true);
+    expect(Value.Check(LaxPortfolioItemV1, item({ status: "payment_confirming" }))).toBe(true);
   });
 
   it.each([

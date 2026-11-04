@@ -8,6 +8,7 @@ export type AdminNavIcon =
   | "overview"
   | "artworks"
   | "artists"
+  | "fromZoho"
   | "applications"
   | "exhibitions"
   | "stories"
@@ -92,6 +93,12 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
           icon: "artists" as const,
           label: "Artists",
           capability: "catalogue.read",
+        },
+        {
+          href: "/from-zoho",
+          icon: "fromZoho" as const,
+          label: "From Zoho",
+          capability: "artwork_register.read" as const,
         },
         {
           href: "/artist-applications",

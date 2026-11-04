@@ -92,12 +92,7 @@ export function MarketingArtistCard({
               (work ? (
                 <span className="relative block size-full [&_img]:!object-contain">{work}</span>
               ) : (
-                <>
-                  <MediaPlaceholder fill />
-                  <span className="absolute inset-0 flex items-center justify-center font-headline text-4xl font-medium tracking-tight text-on-surface-variant">
-                    {marketingArtistInitials(name)}
-                  </span>
-                </>
+                <MediaPlaceholder fill monogram={marketingArtistInitials(name)} />
               ))}
           </Link>
           {badges ? (

@@ -4,7 +4,11 @@ import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import type { ShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { type MarketingFooterColumn, buildFooterLegalColumn } from "@auction/marketing-ui";
+import {
+  COOKIE_SETTINGS_HASH,
+  type MarketingFooterColumn,
+  buildFooterLegalColumn,
+} from "@auction/marketing-ui";
 
 export type ShopFooterVm = {
   columns: MarketingFooterColumn[];
@@ -86,6 +90,8 @@ export function buildShopFooterVm(input: {
     terms: legalHref("terms"),
     privacy: legalHref("privacy"),
     cookies: legalHref("cookies"),
+    // Shop sets no optional cookies; the link opens a dialog that says so.
+    cookiePreferences: COOKIE_SETTINGS_HASH,
   });
   if (legal) columns.push(legal);
   return { columns };

@@ -53,3 +53,36 @@ export type ReturnedItemListing = "authorised" | "withdrawn";
 export function listingAfterReturn(disposition: ShopReturnDisposition): ReturnedItemListing {
   return disposition === "back_on_sale" ? "authorised" : "withdrawn";
 }
+
+/** What a returned print means for the seller's stock once staff have received it. */
+export type ReturnStockOutcome = "back_on_sale" | "in_stock_not_on_sale" | "written_off";
+
+export function returnStockOutcome(
+  listingStatus: "authorised" | "not_authorised" | "withdrawn",
+): ReturnStockOutcome {
+  if (listingStatus === "authorised") return "back_on_sale";
+  return listingStatus === "withdrawn" ? "written_off" : "in_stock_not_on_sale";
+}
+
+/**
+ * What the return does to the seller's payout for the sale: nothing was ever due, it is held back
+ * and will not be paid, or it was already paid and is recovered from a later payout.
+ */
+export type ReturnSellerPayout = "none" | "withheld" | "recovered";
+
+export function returnSellerPayout(
+  ledgerStatus: "pending_refund_period" | "due" | "paid" | "cancelled" | null,
+): ReturnSellerPayout {
+  if (ledgerStatus === null) return "none";
+  return ledgerStatus === "paid" ? "recovered" : "withheld";
+}
+
+/** How a print reads to people: "Edition 3", "Proof 1" or "Open edition". */
+export function editionDisplayLabel(edition: {
+  editionNumber: number | null;
+  proofNumber: number | null;
+}): string {
+  if (edition.editionNumber !== null) return `Edition ${edition.editionNumber}`;
+  if (edition.proofNumber !== null) return `Proof ${edition.proofNumber}`;
+  return "Open edition";
+}

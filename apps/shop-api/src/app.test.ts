@@ -169,4 +169,26 @@ describe("createShopApiApp", () => {
     expect(docsUi.statusCode).toBe(200);
     await app.close();
   });
+
+  it("guards /metrics with its bearer token", async () => {
+    const base = createMinimalShopApiTestDeps();
+    const deps = { ...base, env: { ...base.env, METRICS_TOKEN: "metrics-token-for-tests" } };
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+    const missing = await app.inject({ method: "GET", url: "/metrics" });
+    const wrong = await app.inject({
+      method: "GET",
+      url: "/metrics",
+      headers: { authorization: "Bearer metrics-token-for-testX" },
+    });
+    const right = await app.inject({
+      method: "GET",
+      url: "/metrics",
+      headers: { authorization: "Bearer metrics-token-for-tests" },
+    });
+    expect(missing.statusCode).toBe(401);
+    expect(wrong.statusCode).toBe(401);
+    expect(right.statusCode).toBe(200);
+    await app.close();
+  });
 });

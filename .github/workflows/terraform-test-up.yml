@@ -45,7 +45,7 @@ on:
         required: false
         default: false
       app_image_tag:
-        description: Immutable monorepo SHA for web/api/ws/worker/migrate (defaults to live pinned web tag)
+        description: Immutable monorepo SHA to pin web/api/ws/worker/migrate to together (default - keep each on its own live image tag)
         type: string
         required: false
       shop_admin_sha:
@@ -98,6 +98,10 @@ jobs:
       TF_VAR_zoho_crm_deal_stage_payment_refunded: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED || '' }}
       TF_VAR_zoho_crm_deal_stage_shop_paid: ${{ vars.ZOHO_CRM_DEAL_STAGE_SHOP_PAID || '' }}
       TF_VAR_zoho_crm_lead_conversion_enabled: ${{ vars.ZOHO_CRM_LEAD_CONVERSION_ENABLED || 'false' }}
+      TF_VAR_zoho_crm_lead_status_new: ${{ vars.ZOHO_CRM_LEAD_STATUS_NEW || 'New (Unassigned)' }}
+      TF_VAR_zoho_artwork_sync_mode: ${{ vars.ZOHO_ARTWORK_SYNC_MODE || 'off' }}
+      TF_VAR_zoho_artwork_writeback_mode: ${{ vars.ZOHO_ARTWORK_WRITEBACK_MODE || 'off' }}
+      TF_VAR_zoho_artwork_webhook_secret: ${{ secrets.ZOHO_ARTWORK_WEBHOOK_SECRET }}
       TF_VAR_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
       TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
       TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
@@ -205,6 +209,10 @@ jobs:
             if [[ "$line" == TF_VAR_app_image_tag=* ]]; then
               echo "APP_IMAGE_TAG=${line#TF_VAR_app_image_tag=}" >> "$GITHUB_ENV"
             fi
+            if [[ "$line" =~ ^TF_VAR_(web|api|ws|worker|migrate)_image_tag=(.*)$ ]]; then
+              component_upper="$(tr '[:lower:]' '[:upper:]' <<<"${BASH_REMATCH[1]}")"
+              echo "${component_upper}_IMAGE_TAG=${BASH_REMATCH[2]}" >> "$GITHUB_ENV"
+            fi
             if [[ "$line" == TF_VAR_account_image_tag=* ]]; then
               echo "ACCOUNT_IMAGE_TAG=${line#TF_VAR_account_image_tag=}" >> "$GITHUB_ENV"
             fi
@@ -246,20 +254,31 @@ jobs:
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
         env:
           APP_IMAGE_TAG: ${{ env.APP_IMAGE_TAG }}
+          WEB_IMAGE_TAG: ${{ env.WEB_IMAGE_TAG }}
         run: |
           set -euo pipefail
           node scripts/ci/verify-prebuilt-web-for-deploy.mjs \
             --environment test \
-            --sha "$APP_IMAGE_TAG"
-      - name: Verify prebuilt monorepo app images for Terraform app_image_tag
+            --sha "${WEB_IMAGE_TAG:-$APP_IMAGE_TAG}"
+      - name: Verify prebuilt monorepo app images for Terraform image tags
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
         env:
           APP_IMAGE_TAG: ${{ env.APP_IMAGE_TAG }}
+          WEB_IMAGE_TAG: ${{ env.WEB_IMAGE_TAG }}
+          API_IMAGE_TAG: ${{ env.API_IMAGE_TAG }}
+          WS_IMAGE_TAG: ${{ env.WS_IMAGE_TAG }}
+          WORKER_IMAGE_TAG: ${{ env.WORKER_IMAGE_TAG }}
+          MIGRATE_IMAGE_TAG: ${{ env.MIGRATE_IMAGE_TAG }}
         run: |
           set -euo pipefail
-          node scripts/ci/verify-prebuilt-monorepo-app-images.mjs \
-            --environment test \
-            --sha "$APP_IMAGE_TAG"
+          # Each component is checked against the tag Terraform will pin it to: its own live
+          # image tag, or the shared app_image_tag when one was given (or none is live).
+          pins=()
+          for component in web api ws worker migrate; do
+            var="${component^^}_IMAGE_TAG"
+            pins+=(--pin "${component}=${!var:-$APP_IMAGE_TAG}")
+          done
+          node scripts/ci/verify-prebuilt-monorepo-app-images.mjs --environment test "${pins[@]}"
       - name: Prepare staging image contract env
         if: vars.APP_DEPLOY_SOURCE_TEST == 'image'
         env:

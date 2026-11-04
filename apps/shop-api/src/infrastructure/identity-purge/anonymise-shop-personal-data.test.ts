@@ -62,7 +62,7 @@ describe("Shop anonymisation policy", () => {
     }
   });
 
-  it("covers profile, party, orders, enquiries, saved works and followed artists", () => {
+  it("covers profile, party, orders, enquiries, saved works, followed artists and alert sign-ups", () => {
     expect(tables).toEqual(
       expect.arrayContaining([
         "shop_user_profile",
@@ -72,8 +72,39 @@ describe("Shop anonymisation policy", () => {
         "shop_general_enquiry",
         "shop_saved_artwork",
         "shop_followed_artist",
+        "shop_alert_subscriber",
+        "shop_basket",
+        "shop_release_alert_subscription",
+        "shop_artist_application",
+        "shop_party_invite",
+        "shop_identity_session",
       ]),
     );
+  });
+
+  it("deletes preference data and scrubs, never deletes, rows that records point at", () => {
+    const treatment = Object.fromEntries(
+      SHOP_ANONYMISATION_RULES.map((r) => [r.table, r.treatment]),
+    );
+    for (const table of [
+      "shop_basket",
+      "shop_release_alert_subscription",
+      "shop_alert_subscriber",
+      "shop_saved_artwork",
+      "shop_followed_artist",
+    ]) {
+      expect(treatment[table]).toBe("delete");
+    }
+    for (const table of ["shop_order", "shop_artist_application", "shop_party"]) {
+      expect(treatment[table]).toBe("scrub");
+    }
+  });
+
+  it("never touches the application columns its status checks depend on", () => {
+    const application = SHOP_ANONYMISATION_RULES.find((r) => r.table === "shop_artist_application");
+    for (const tied of ["status", "submitted_at", "decided_at", "artist_id"]) {
+      expect(application?.fields).not.toContain(tied);
+    }
   });
 
   it("keeps the financial records", () => {

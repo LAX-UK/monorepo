@@ -2,8 +2,11 @@ import { ArtArtistFollowButton } from "@/components/favorites/art-artist-follow-
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { CatalogueArtistCardVm } from "@/lib/catalogue/catalogue-artist-card.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
-import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
-import { MarketingArtistCard, MarketingArtistGrid } from "@auction/marketing-ui";
+import {
+  MarketingArtistCard,
+  MarketingArtistGrid,
+  marketingArtistInitials,
+} from "@auction/marketing-ui";
 
 export type ArtArtistGridProps = {
   cards: readonly CatalogueArtistCardVm[];
@@ -37,7 +40,7 @@ export function ArtArtistCard({ card, favoriteAuth, nameAs = "h3" }: ArtArtistCa
               <ArtMediaImage
                 src={card.image}
                 alt={card.imageAlt}
-                label={ART_MEDIA_LABELS.artistPortrait}
+                monogram={marketingArtistInitials(card.name)}
                 aspect={[4, 5]}
                 sizes="(min-width: 96rem) 20vw, (min-width: 64rem) 25vw, (min-width: 48rem) 30vw, 50vw"
                 className="absolute inset-0 size-full"

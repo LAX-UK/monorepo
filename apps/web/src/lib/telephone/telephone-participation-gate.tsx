@@ -139,7 +139,7 @@ export function TelephoneParticipationGate({
         </div>
         <p className="font-body text-xs text-on-surface-variant">
           You already have a telephone booking for this sale. Track status and request limit changes
-          from your dashboard.
+          from your account.
         </p>
         <Button size="default" variant="outline" className="w-full" asChild>
           <Link href={`/bids/telephone/${existingBooking.id}`}>View booking</Link>

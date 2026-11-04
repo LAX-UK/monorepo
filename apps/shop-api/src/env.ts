@@ -11,6 +11,9 @@ function resolveAppEnv(source: NodeJS.ProcessEnv): AppEnv {
   return (source.NODE_ENV ?? "development") === "production" ? "production" : "development";
 }
 
+/** What the link secret is until one is configured; never accepted when alerts are on in production. */
+const DEV_ALERT_LINK_SECRET = "dev-alert-link-secret-not-for-production";
+
 export const shopApiEnvSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(3011),
@@ -44,6 +47,22 @@ export const shopApiEnvSchema = z.object({
     z.string().min(1).optional(),
   ),
   IDENTITY_MACHINE_CLIENT_SECRET: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(32).optional(),
+  ),
+  /**
+   * Moving originals between lax.art and LAX Bid: LAX Bid's API address and the credential pair
+   * both products hold. Without them the move answers that it is not set up; nothing else changes.
+   */
+  BID_API_INTERNAL_URL: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().url().optional(),
+  ),
+  INVENTORY_MACHINE_CLIENT_ID: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(1).optional(),
+  ),
+  INVENTORY_MACHINE_CLIENT_SECRET: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.string().min(32).optional(),
   ),
@@ -94,6 +113,23 @@ export const shopApiEnvSchema = z.object({
     .transform((value) => value === "true"),
   SHOP_SCHEDULER_INTERVAL_MS: z.coerce.number().int().min(5_000).default(60_000),
   /**
+   * LAX Shop and lax.art email alerts. `off` sends no digest; `dry_run` records matches and logs
+   * each digest without sending; `on` sends the 08:00 London digest. Confirmation emails and back
+   * in stock notices are not held back by this switch.
+   */
+  ALERTS_SEND_MODE: z.enum(["off", "dry_run", "on"]).default("off"),
+  /** Signs the confirm and stop links in alert emails. Not shared with LAX Bid. */
+  ALERT_LINK_SECRET: z.string().min(16).default(DEV_ALERT_LINK_SECRET),
+  ALERT_LINK_KEY_ID: z.string().min(1).max(32).default("k1"),
+  ALERT_LINK_PREVIOUS_SECRET: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(16).optional(),
+  ),
+  ALERT_LINK_PREVIOUS_KEY_ID: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(1).max(32).optional(),
+  ),
+  /**
    * The last day of London Art Exchange Ltd's financial year, as "MM-DD". The kept invoice name
    * and address of an erased guest are purged six years after the end of the financial year the
    * invoice falls in. Defaults to 30 September, the company's accounting reference date.
@@ -143,6 +179,14 @@ export const shopApiEnvSchema = z.object({
     .default("false")
     .transform((value) => value === "true"),
   DOMAIN_EVENT_PUBLISH_VALIDATE: z.enum(["off", "observe", "enforce"]).default("observe"),
+  /**
+   * Requests one client address may make a minute. Unset keeps the default of 120. LAX Admin makes
+   * every call from one address, so a browser check that walks every staff page raises it.
+   */
+  SHOP_API_RATE_LIMIT_PER_MINUTE: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : Number(val)),
+    z.number().int().min(1).max(100_000).optional(),
+  ),
   SHOP_ADMIN_ENABLED: z
     .enum(["true", "false"])
     .default("false")
@@ -293,6 +337,13 @@ export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApi
       throw new Error("SHOP_API_BFF_TOKEN is required in production");
     }
     assertStripeConfigured(parsed.data);
+    if (
+      parsed.data.ALERTS_SEND_MODE !== "off" &&
+      (parsed.data.ALERT_LINK_SECRET.length < 32 ||
+        parsed.data.ALERT_LINK_SECRET === DEV_ALERT_LINK_SECRET)
+    ) {
+      throw new Error("ALERT_LINK_SECRET (min 32 characters) is required when alerts are on");
+    }
     if (parsed.data.SHOP_FAKE_CHECKOUT_ENABLED) {
       throw new Error("SHOP_FAKE_CHECKOUT_ENABLED must not be enabled in production");
     }

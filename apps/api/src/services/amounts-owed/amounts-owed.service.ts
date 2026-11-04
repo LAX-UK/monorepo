@@ -1,6 +1,7 @@
 import {
   type AccountHold,
   type AmountOwedEntry,
+  PURCHASE_LIST_LIMIT,
   accountPurchaseScope,
   amountOwedEntry,
   purchasePaymentRole,
@@ -16,8 +17,6 @@ import type {
 import type { IPaymentBuyerService } from "../interfaces/payment-service.js";
 import { accountPurchaseLots, personalPurchaseLots } from "./purchase-lot-queries.js";
 
-/** The most won lots one read follows; a longer history is settled long before it matters here. */
-const AMOUNTS_OWED_LOT_LIMIT = 500;
 const PLATFORM_CURRENCY = "GBP";
 
 type PaymentRow = Awaited<
@@ -60,7 +59,7 @@ export class AmountsOwedService implements IAmountsOwedService {
     if (!scope) return null;
     const [lots, payments] = await Promise.all([
       this.deps.lotService.list(
-        accountPurchaseLots(account.legalEntityId, scope, userId, AMOUNTS_OWED_LOT_LIMIT),
+        accountPurchaseLots(account.legalEntityId, scope, userId, PURCHASE_LIST_LIMIT),
       ),
       this.deps.paymentBuyerService
         .listEntityPaymentsForBuyerApi(account.legalEntityId, {})
@@ -77,7 +76,7 @@ export class AmountsOwedService implements IAmountsOwedService {
 
   private async personal(userId: string, personalId: string): Promise<AmountsOwedView> {
     const [lots, payments] = await Promise.all([
-      this.deps.lotService.list(personalPurchaseLots(userId, AMOUNTS_OWED_LOT_LIMIT)),
+      this.deps.lotService.list(personalPurchaseLots(userId, PURCHASE_LIST_LIMIT)),
       this.deps.paymentBuyerService
         .listMyPaymentsForBuyerApi(userId, {})
         .then((result) => result.data),

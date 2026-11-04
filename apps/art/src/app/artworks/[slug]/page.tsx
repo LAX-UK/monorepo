@@ -21,7 +21,7 @@ import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import {
   MarketingCertificateIcon,
   MarketingClockIcon,
-  MarketingFaqPills,
+  MarketingFaqAccordion,
   MarketingMapPinIcon,
   MarketingShareButton,
 } from "@auction/marketing-ui";
@@ -165,7 +165,7 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
             {vm.artist ? (
               <ArtArtworkArtistSummary artist={vm.artist} favoriteAuth={vm.favoriteAuth} />
             ) : null}
-            <MarketingFaqPills items={vm.faqs} />
+            <MarketingFaqAccordion items={vm.faqs} />
           </div>
         </div>
 
