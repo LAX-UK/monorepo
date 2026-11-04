@@ -19,7 +19,7 @@ export function SaleroomHowToBidStrip({ saleHref, isAuthenticated }: Props) {
         <li>
           <strong className="font-medium">Online (private collectors):</strong>{" "}
           {isAuthenticated ? (
-            "Complete KYC, then bid on lots in this catalogue."
+            "Complete your identity check, then bid on lots in this catalogue."
           ) : (
             <>
               <Link href={loginHref} className="text-link underline-offset-4 hover:underline">

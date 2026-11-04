@@ -4,7 +4,7 @@ import {
 } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { OnsiteSaleFactsStrip } from "@/components/sections/artwork/onsite/onsite-sale-facts-strip";
 import type { SaleOverviewVM } from "@/components/sections/saleroom/view-models";
-import { formatLondonDateTime } from "@/lib/datetime/london-time";
+import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { formatOnsitePreviewHoursLabel } from "@/lib/onsite/preview-hours-label";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, PublicLotView, Sale } from "@auction/types";
@@ -35,12 +35,10 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
 
   const previewStart = sale.previewStartTime ? new Date(sale.previewStartTime) : null;
   const previewLabel =
-    previewStart && Number.isFinite(previewStart.getTime())
-      ? formatLondonDateTime(previewStart)
-      : null;
+    previewStart && Number.isFinite(previewStart.getTime()) ? formatLondonWhen(previewStart) : null;
 
-  const eventStartLabel = formatLondonDateTime(new Date(sale.startTime));
-  const eventEndLabel = formatLondonDateTime(new Date(sale.endTime));
+  const eventStartLabel = formatLondonWhen(new Date(sale.startTime));
+  const eventEndLabel = formatLondonWhen(new Date(sale.endTime));
 
   return (
     <section

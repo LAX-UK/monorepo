@@ -5,7 +5,11 @@ import {
   restoreFailedJobsAction,
   retryFailedJobsAction,
 } from "@/lib/actions/admin/admin-failed-jobs";
-import { type FailedJobOutcome, outcomeToast } from "@/lib/admin/failed-jobs/failed-job-outcome";
+import {
+  type FailedJobOutcome,
+  nounForIds,
+  outcomeToast,
+} from "@/lib/admin/failed-jobs/failed-job-outcome";
 import { notify } from "@/lib/ui/notify";
 import type { FailedJobDiscardReason, FailedJobSummary } from "@auction/types";
 import { useRouter } from "next/navigation";
@@ -63,7 +67,7 @@ export function useFailedJobActions(actions: FailedJobActions = SERVER_ACTIONS) 
       startTransition(async () => {
         const result = await actions.restore({ ids });
         if (result.ok && result.data && result.data.failures.length === 0) {
-          notify.success(outcomeToast("Restored", result.data));
+          notify.success(outcomeToast("Restored", result.data, nounForIds(ids)));
         } else {
           notify.error(
             result.ok
@@ -106,7 +110,7 @@ export function useFailedJobActions(actions: FailedJobActions = SERVER_ACTIONS) 
         return;
       }
       close();
-      notify.success(outcomeToast("Retrying", result.data));
+      notify.success(outcomeToast("Retrying", result.data, nounForIds(details.ids)));
       router.refresh();
     });
   };
@@ -137,7 +141,7 @@ export function useFailedJobActions(actions: FailedJobActions = SERVER_ACTIONS) 
       }
       const discardedIds = details.ids;
       close();
-      notify.success(outcomeToast("Discarded", result.data), {
+      notify.success(outcomeToast("Discarded", result.data, nounForIds(discardedIds)), {
         action: { label: "Undo", onClick: () => restore(discardedIds) },
       });
       router.refresh();

@@ -11,7 +11,7 @@ import { loadAccountSession } from "@/server/application/load-account-session";
 import { getLaxAccountContainer } from "@/server/container";
 import { resolveProfileContact } from "@/server/domain/account-contact.vm";
 import { buildAccountLinks } from "@/server/domain/account-links";
-import { buildProfileSections, maskPendingEmail } from "@/server/domain/account-profile.vm";
+import { buildProfileSections } from "@/server/domain/account-profile.vm";
 import { ACCOUNT_ROUTES } from "@/server/domain/account-settings.vm";
 import { ACCOUNT_NAME_MAX_LENGTH } from "@auction/identity-contracts";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
@@ -97,7 +97,7 @@ export default async function PersonalDetailsPage() {
           {section.note ? <p className="text-sm text-on-surface-variant">{section.note}</p> : null}
           {section.id === "email" ? (
             <EmailChangeEditor
-              pendingEmailMasked={maskPendingEmail(contact)}
+              pendingEmail={contact.pendingEmail}
               pendingExpired={contact.pendingEmailExpired}
               returnTo={ACCOUNT_ROUTES.profile}
             />

@@ -1,6 +1,7 @@
 import { formatCurrencyTotals } from "@/lib/format-money";
 import { PRODUCT_LABELS, STATUS_LABELS, STATUS_TONES } from "@/server/domain/portfolio-labels";
 import type { CurrencyTotal, LaxPortfolioItemStatus, LaxProductId } from "@auction/lax-ecosystem";
+import { MediaPlaceholder } from "@auction/ui/components/media-placeholder";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { ProductName } from "./product-name";
 
@@ -25,8 +26,8 @@ export function CurrencyAmounts({ totals }: { totals: readonly CurrencyTotal[] }
 }
 
 /**
- * The work's image, or an empty frame when there is none. The alt text is empty because the
- * title is always printed beside it.
+ * The work's image, or the established hatched placeholder when there is none. Both are hidden from
+ * assistive technology because the title is always printed beside them.
  */
 export function WorkThumbnail({
   src,
@@ -38,9 +39,8 @@ export function WorkThumbnail({
   return src ? (
     <img src={src} alt="" loading="lazy" className={`${className} rounded-lg object-cover`} />
   ) : (
-    <span
-      aria-hidden="true"
-      className={`${className} block rounded-lg border border-border-hairline bg-surface-container`}
-    />
+    <span aria-hidden="true" className={`${className} relative block overflow-hidden rounded-lg`}>
+      <MediaPlaceholder fill />
+    </span>
   );
 }

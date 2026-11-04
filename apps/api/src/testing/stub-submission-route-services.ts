@@ -49,6 +49,7 @@ export function stubSubmissionRouteServices(
       getForStaff: vi.fn(),
       decideUnsoldChoice: vi.fn(),
       setRelistReserveFloor: vi.fn(),
+      completeUnsoldFollowUp: vi.fn(),
       moveOptions: vi.fn(),
       move: vi.fn(),
       remindSeller: vi.fn(),

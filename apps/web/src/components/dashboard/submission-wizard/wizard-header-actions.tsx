@@ -74,23 +74,6 @@ export function WizardHeaderActions({
             </BottomSheetTitle>
           </BottomSheetHeader>
           <ul className="mt-4 flex flex-col gap-1 px-6 pb-6">
-            {showFinishLater ? (
-              <li>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-12 w-full justify-start font-body text-base"
-                  disabled={isSubmitting}
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onFinishLater();
-                  }}
-                  data-testid="wizard-finish-later-mobile"
-                >
-                  {SUBMISSION_FINISH_LATER_LABEL}
-                </Button>
-              </li>
-            ) : null}
             <li>
               <Button
                 type="button"

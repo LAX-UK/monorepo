@@ -2,7 +2,6 @@ import {
   AML_REVIEW_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
   ENQUIRIES_ACCESS,
-  FAILED_JOBS_READ_ACCESS,
   FINANCE_ACCESS,
   LEGAL_ENTITY_BROWSE_ACCESS,
   LOTS_READ_ACCESS,
@@ -16,6 +15,7 @@ import {
   SUBMISSIONS_READ_ACCESS,
   USERS_DIRECTORY_ACCESS,
 } from "./admin-access.js";
+import { FAILED_JOBS_ANY_SOURCE_READ_ACCESS } from "./failed-jobs.js";
 import {
   type CapabilityRequirement,
   type StaffRoles,
@@ -64,8 +64,16 @@ export const ADMIN_ROUTE_TABLE = [
     requirement: CONDITION_REPORTS_READ_ACCESS,
   },
   { pattern: "/admin/enquiries/[reference]", area: "platform", requirement: ENQUIRIES_ACCESS },
-  { pattern: "/admin/failed-jobs", area: "platform", requirement: FAILED_JOBS_READ_ACCESS },
-  { pattern: "/admin/failed-jobs/[id]", area: "platform", requirement: FAILED_JOBS_READ_ACCESS },
+  {
+    pattern: "/admin/failed-jobs",
+    area: "shared",
+    requirement: FAILED_JOBS_ANY_SOURCE_READ_ACCESS,
+  },
+  {
+    pattern: "/admin/failed-jobs/[id]",
+    area: "shared",
+    requirement: FAILED_JOBS_ANY_SOURCE_READ_ACCESS,
+  },
   {
     pattern: "/admin/legal-entities/[id]",
     area: "platform",

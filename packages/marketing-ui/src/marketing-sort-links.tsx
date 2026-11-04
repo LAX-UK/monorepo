@@ -27,7 +27,7 @@ export function MarketingSortLinks({
               href={option.href}
               aria-current={option.active ? "page" : undefined}
               className={cn(
-                "inline-flex min-h-9 items-center whitespace-nowrap rounded-full px-3 font-body text-sm transition-colors motion-reduce:transition-none",
+                "inline-flex min-h-9 pointer-coarse:min-h-11 items-center whitespace-nowrap rounded-full px-3 font-body text-sm transition-colors motion-reduce:transition-none",
                 FOCUS_RING,
                 option.active
                   ? "bg-primary font-medium text-on-primary"

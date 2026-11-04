@@ -20,7 +20,7 @@ export type WizardStepDefinition = {
 export const WIZARD_STEPS: readonly WizardStepDefinition[] = [
   {
     id: "basics",
-    label: "Basics",
+    label: "About the work",
     fields: ["title", "categoryIds", "yearOfWork", "edition"],
   },
   {
@@ -40,7 +40,7 @@ export const WIZARD_STEPS: readonly WizardStepDefinition[] = [
   },
   {
     id: "pricing",
-    label: "Pricing",
+    label: "Price and notes",
     fields: ["askingPrice", "reservePrice", "conditionSelfReport", "submitterNotes"],
   },
   {

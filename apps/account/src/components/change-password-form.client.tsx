@@ -16,7 +16,7 @@ import {
   validatePasswordForm,
 } from "@/server/domain/account-password.vm";
 import { buildReauthHref } from "@/server/domain/account-reauth";
-import { MarketingCheckIcon } from "@auction/marketing-ui";
+import { MarketingCheckIcon, MarketingMinusIcon } from "@auction/marketing-ui";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { ErrorSummary, TextLink } from "@auction/ui/lax";
@@ -172,10 +172,7 @@ export function ChangePasswordForm({
                     {hint.met ? (
                       <MarketingCheckIcon className="size-4 shrink-0" strokeWidth={1.75} />
                     ) : (
-                      <span
-                        aria-hidden
-                        className="size-4 shrink-0 rounded-full border border-control-border"
-                      />
+                      <MarketingMinusIcon className="size-4 shrink-0" strokeWidth={1.75} />
                     )}
                     <span>
                       {hint.label}

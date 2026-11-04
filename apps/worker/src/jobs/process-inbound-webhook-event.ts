@@ -2,6 +2,7 @@ import type {
   IWebhookEventRepository,
   WebhookEventDrainRow,
 } from "@auction/persistence/interfaces";
+import { ZOHO_ARTWORK_WEBHOOK_SOURCE } from "@auction/queues";
 import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
 import type { WebhookEventStoredPayload } from "./webhook-event-payload.js";
@@ -15,6 +16,8 @@ export type ProcessInboundWebhookDeps = {
     resourceId: string;
     eventKey: string;
   }) => Promise<void>;
+  /** Reads the Zoho Product a notice names and brings it into the artwork register. */
+  processZohoArtworkNotice?: (input: { productId: string; eventKey: string }) => Promise<void>;
 };
 
 function parseStoredPayload(payload: unknown): WebhookEventStoredPayload | null {
@@ -54,6 +57,33 @@ async function dispatchXeroInvoiceWebhook(
   });
 }
 
+async function dispatchZohoArtworkNotice(
+  deps: ProcessInboundWebhookDeps,
+  row: WebhookEventDrainRow,
+  stored: WebhookEventStoredPayload,
+): Promise<void> {
+  const productId = stored.routing.productId;
+  if (typeof productId !== "string" || productId === "") {
+    throw new Error("zoho artwork notice missing productId routing");
+  }
+  if (!deps.processZohoArtworkNotice) {
+    throw new Error("zoho artwork processor not configured");
+  }
+  await deps.processZohoArtworkNotice({ productId, eventKey: row.eventKey });
+}
+
+type WebhookSourceHandler = (
+  deps: ProcessInboundWebhookDeps,
+  row: WebhookEventDrainRow,
+  stored: WebhookEventStoredPayload,
+) => Promise<void>;
+
+/** One handler per inbound webhook source; a source with none is logged and marked processed. */
+const SOURCE_HANDLERS: Readonly<Record<string, WebhookSourceHandler>> = {
+  xero: dispatchXeroInvoiceWebhook,
+  [ZOHO_ARTWORK_WEBHOOK_SOURCE]: dispatchZohoArtworkNotice,
+};
+
 async function dispatchWebhookRow(
   deps: ProcessInboundWebhookDeps,
   row: WebhookEventDrainRow,
@@ -63,8 +93,9 @@ async function dispatchWebhookRow(
     throw new Error("invalid webhook_event payload shape");
   }
 
-  if (row.source === "xero") {
-    await dispatchXeroInvoiceWebhook(deps, row, stored);
+  const handler = SOURCE_HANDLERS[row.source];
+  if (handler) {
+    await handler(deps, row, stored);
     return;
   }
 

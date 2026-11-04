@@ -66,6 +66,18 @@ export type CrmGatewayMetrics = {
   apiCreditsRemaining: number | null;
 };
 
+/** One page of rows from a COQL select. */
+export type CrmCoqlPage = {
+  rows: Record<string, unknown>[];
+  /** True when Zoho has more rows beyond this page. */
+  moreRecords: boolean;
+};
+
+/** Narrow port for reading rows with a COQL select (separate from the write gateway). */
+export interface CrmCoqlQuery {
+  queryCoql(selectQuery: string): Promise<CrmCoqlPage>;
+}
+
 /** Narrow port for outbound Zoho CRM writes (real adapter + fake for tests). */
 export interface CrmGateway {
   upsert(input: CrmUpsertInput): Promise<CrmRecordResult>;

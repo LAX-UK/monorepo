@@ -1,22 +1,16 @@
 "use client";
 
+import { ADMIN_NOTICE_PARAM, resolveAdminNotice } from "@/lib/admin/admin-notice";
 import { Notice } from "@auction/staff-ui";
 import { useSearchParams } from "next/navigation";
 
-function decodeParam(value: string | null): string | null {
-  if (!value?.trim()) return null;
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-}
-
-/** What an action that redirected back here reports, from the page's `?success=` and `?error=`. */
+/**
+ * What an action that redirected back here reports, from the page's `?notice=` code. The copy is
+ * fixed in the notice table, so nothing in the URL is shown as text.
+ */
 export function LegalEntityDetailAlerts() {
   const searchParams = useSearchParams();
-  const success = decodeParam(searchParams.get("success"));
-  const error = decodeParam(searchParams.get("error"));
+  const { success, error } = resolveAdminNotice(searchParams.get(ADMIN_NOTICE_PARAM));
 
   if (!success && !error) return null;
 

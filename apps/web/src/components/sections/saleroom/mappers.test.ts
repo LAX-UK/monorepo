@@ -283,6 +283,7 @@ describe("aggregateSaleEstimateTotal", () => {
     const label = aggregateSaleEstimateTotal(lots, { loadedCount: 2, totalLots: 2 });
     expect(label).toBeTruthy();
     expect(label).toContain("700");
+    expect(label).not.toContain(".00");
   });
 
   it("returns null when catalogue is paginated", async () => {

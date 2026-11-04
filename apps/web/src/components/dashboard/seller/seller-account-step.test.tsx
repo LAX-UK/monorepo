@@ -85,7 +85,7 @@ describe("SellerAccountStep", () => {
     expect(screen.getByRole("heading", { name: "Who is selling?" })).toBeInTheDocument();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
     expect(screen.getByText(/sold under your own name/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Submit for review" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send to our specialists" }));
     expect(handlers.onSubmit).toHaveBeenCalled();
     expect(screen.getByRole("link", { name: "Register an organisation" })).toHaveAttribute(
       "href",
@@ -101,7 +101,7 @@ describe("SellerAccountStep", () => {
     expect(screen.getByText("Admin")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: "Personal" }));
     expect(handlers.onSelect).toHaveBeenCalledWith("me");
-    expect(screen.getByRole("button", { name: "Submit as Northbank Gallery" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Send as Northbank Gallery" })).toBeEnabled();
   });
 
   it("lets an organisation under review save a draft, saying why it cannot submit", () => {

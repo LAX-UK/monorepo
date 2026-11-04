@@ -19,9 +19,10 @@ import {
   Timeline,
 } from "@auction/staff-ui";
 import { Copy, Lock, RotateCcw, Trash2, Undo2 } from "@auction/staff-ui/icons";
-import type { FailedJobDetail } from "@auction/types";
+import { type FailedJobDetail, failedJobSourceFamily } from "@auction/types";
 import Link from "next/link";
 import { useState } from "react";
+import { FAILED_JOB_DETAIL_COPY, integrationReferenceLabel } from "./failed-job-copy";
 import { useFailedJobActions } from "./use-failed-job-actions";
 
 const NextLink: StaffLinkComponent = Link;
@@ -86,9 +87,11 @@ export function FailedJobView({ job, canAct }: { job: FailedJobDetail; canAct: b
   const badge = FAILED_JOB_STATE_BADGE[job.state];
   const needsReview = job.state === "needs_review";
   const retryBlocked = needsReview && !job.retry.allowed;
+  const family = failedJobSourceFamily(job.source);
+  const copy = FAILED_JOB_DETAIL_COPY[family];
 
   const notice = job.discard ? (
-    <Notice tone="info" title="This job was discarded">
+    <Notice tone="info" title={copy.discardedTitle}>
       {job.discard.reasonLabel}
       {job.discard.note ? `: ${job.discard.note}` : ""}
       {job.discard.byName ? ` Discarded by ${job.discard.byName}.` : ""}
@@ -98,8 +101,8 @@ export function FailedJobView({ job, canAct }: { job: FailedJobDetail; canAct: b
       {job.retry.reason}
     </Notice>
   ) : job.state === "retried" ? (
-    <Notice tone="info" title="This job has been retried">
-      It runs again from the start. If it fails again, it comes back to Needs review.
+    <Notice tone="info" title="This has been retried">
+      {copy.retriedNotice}
     </Notice>
   ) : null;
 
@@ -169,35 +172,38 @@ export function FailedJobView({ job, canAct }: { job: FailedJobDetail; canAct: b
             actions={[
               {
                 id: "copy-id",
-                label: "Copy job ID",
+                label: `Copy ${copy.idLabel}`,
                 icon: Copy,
-                onSelect: () => copyToClipboard(job.id, "Job ID"),
+                onSelect: () => copyToClipboard(job.id, copy.idLabel),
               },
             ]}
           />
         }
         {...(notice ? { notice } : {})}
         rail={
-          <Section id="job" title="Job">
+          <Section id="job" title={copy.sectionTitle}>
             <KeyValueList
               items={[
-                ...(job.jobLabel ? [{ label: "Task", value: job.jobLabel }] : []),
+                ...(job.jobLabel ? [{ label: copy.taskLabel, value: job.jobLabel }] : []),
                 { label: "First failed", value: <StaffDate value={job.firstFailedAt} withTime /> },
                 ...(job.originalJobId
                   ? [
                       {
-                        label: "Original job",
+                        label:
+                          family === "integrations"
+                            ? integrationReferenceLabel(job.id)
+                            : copy.originalLabel,
                         value: job.originalJobId,
                         copyValue: job.originalJobId,
                       },
                     ]
                   : []),
-                { label: "Job ID", value: job.id, copyValue: job.id },
+                { label: copy.idLabel, value: job.id, copyValue: job.id },
               ]}
             />
           </Section>
         }
-        railLabel="Job details"
+        railLabel={copy.railLabel}
       >
         <Section
           id="retry-effect"
@@ -215,7 +221,7 @@ export function FailedJobView({ job, canAct }: { job: FailedJobDetail; canAct: b
           id="payload"
           title="Payload"
           action={<StatusBadge tone="neutral">Masked</StatusBadge>}
-          description="What the job was asked to do. Personal details are partly hidden."
+          description={copy.payloadDescription}
         >
           {job.payload.length > 0 ? (
             <KeyValueList
@@ -232,9 +238,7 @@ export function FailedJobView({ job, canAct }: { job: FailedJobDetail; canAct: b
               }))}
             />
           ) : (
-            <p className="text-staff-sm text-staff-muted">
-              The job's data can't be shown here, or it carried none.
-            </p>
+            <p className="text-staff-sm text-staff-muted">{copy.emptyPayload}</p>
           )}
           {job.omittedPayloadFields > 0 ? (
             <p className="mt-3 text-staff-xs text-staff-muted">

@@ -388,6 +388,9 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */
   /** Queue and job names are code identifiers; the discard note is a staff-typed operational note. */
   /** The reference of the request (DR-0001 or DL-7F3C1A) and nothing about the person or the notes. */
+  /** Stock codes and offer states are catalogue identifiers, not personal data. */
+  "artwork_register.offer_changed": new Set(["stockCode", "fromState", "toState"]),
+  "artwork_register.stock_code_assigned": new Set(["stockCode"]),
   "data_request.viewed": new Set(["reference"]),
   "data_request.logged": new Set(["reference"]),
   "data_request.updated": new Set(["reference"]),
@@ -410,6 +413,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   "marketing_enquiry.status_changed": new Set(["enquiryId", "intent", "from", "to", "closeReason"]),
   "marketing_enquiry.converted": new Set(["enquiryId", "intent", "from"]),
+  /** Row counts and the reason staff typed; the address that was erased is never recorded. */
+  "marketing_enquiry.erased": new Set(["enquiries", "notes", "attachments", "held", "reason"]),
   /** Codes and dates; the note is typed by staff, and the address itself is never recorded. */
   "email.block_lifted": new Set([
     "userId",

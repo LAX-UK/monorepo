@@ -2,7 +2,7 @@ import { laxFaviconMetadataIcons } from "@auction/branding";
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { THEME_INIT_SNIPPET } from "../lib/theme";
-import { montserrat } from "./fonts";
+import { montserrat, outfit } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -23,7 +23,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // The theme script sets the `dark` class before React hydrates, so the attribute differs.
-    <html lang="en-GB" className={montserrat.variable} suppressHydrationWarning>
+    <html
+      lang="en-GB"
+      className={`${montserrat.variable} ${outfit.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script
           // biome-ignore lint/security/noDangerouslySetInnerHtml: trusted static theme bootstrap, no user input

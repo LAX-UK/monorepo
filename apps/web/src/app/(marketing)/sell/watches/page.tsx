@@ -17,16 +17,14 @@ export default function SellWatchesPage() {
       breadcrumbLabel="Watches & clocks"
       title="Watches & clocks"
       description="Our watch specialists review reference numbers, condition, and supporting documentation before catalogue preparation."
-      eyebrow="Watches & clocks"
       lead="Selling a wristwatch, pocket watch, or clock? Share reference details, box and papers where available, and clear photographs of the dial, caseback, and movement."
       categorySlug="watches-clocks"
       departmentNoun="watches and clocks"
       bullets={[
         "Reference number, case material, and bracelet or strap",
         "Dial, caseback, movement, and serial markings",
-        "Box, papers, and service history in your submitter notes",
+        "Box, papers, and service history in your notes",
         "Overall and detail photographs — avoid heavy filters or glare",
-        "Single watches can be submitted through the standard wizard in about 3 minutes",
       ]}
     />
   );

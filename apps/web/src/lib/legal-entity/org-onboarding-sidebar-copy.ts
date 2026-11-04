@@ -31,7 +31,7 @@ const BASE_SECTIONS: Record<OrgOnboardingStepKey, Omit<OrgOnboardingSidebarSecti
   connect: {
     title: "Payout setup",
     items: [
-      "Stripe Connect account for secure payouts",
+      "A payout account for secure payouts",
       "Bank account details verified by Stripe",
       "Business representative information",
     ],

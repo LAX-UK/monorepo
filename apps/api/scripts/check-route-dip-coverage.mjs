@@ -107,6 +107,7 @@ const EXPLICIT_ALLOWLIST = new Set([
   "src/routes/webhooks/veriff.ts",
   "src/routes/webhooks/brevo.ts",
   "src/routes/webhooks/postmark.ts",
+  "src/routes/webhooks/zoho.ts",
   "src/routes/admin.ts",
   "src/routes/admin/_schemas.ts",
   "src/routes/telephone-bookings/index.ts",

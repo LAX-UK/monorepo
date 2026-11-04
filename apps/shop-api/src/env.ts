@@ -163,6 +163,14 @@ export const shopApiEnvSchema = z.object({
     .default("false")
     .transform((value) => value === "true"),
   DOMAIN_EVENT_PUBLISH_VALIDATE: z.enum(["off", "observe", "enforce"]).default("observe"),
+  /**
+   * Requests one client address may make a minute. Unset keeps the default of 120. LAX Admin makes
+   * every call from one address, so a browser check that walks every staff page raises it.
+   */
+  SHOP_API_RATE_LIMIT_PER_MINUTE: z.preprocess(
+    (val) => (val === "" || val === undefined ? undefined : Number(val)),
+    z.number().int().min(1).max(100_000).optional(),
+  ),
   SHOP_ADMIN_ENABLED: z
     .enum(["true", "false"])
     .default("false")

@@ -1,5 +1,9 @@
 import type { z } from "zod";
 import {
+  artworkRegisterOfferChangedPayloadSchemaV1,
+  artworkRegisterStockCodeAssignedPayloadSchemaV1,
+} from "./artwork-register-payload-schemas.js";
+import {
   paymentCapturedPayloadSchemaV1,
   paymentRefundedPayloadSchemaV1,
   payoutPaidPayloadSchemaV1,
@@ -89,6 +93,8 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "artist.merged",
   "artist.propose_matches",
   "artist.reviewed",
+  "artwork_register.offer_changed",
+  "artwork_register.stock_code_assigned",
   "auth.account_suspended",
   "auth.email_change_cancelled",
   "auth.email_change_completed",
@@ -185,6 +191,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "enquiry_routing.changed",
   "marketing_enquiry.assigned",
   "marketing_enquiry.converted",
+  "marketing_enquiry.erased",
   "marketing_enquiry.handled",
   "marketing_enquiry.received",
   "marketing_enquiry.status_changed",
@@ -694,6 +701,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     idempotencyPolicy: "none",
     piiClassification: "none",
   },
+  "marketing_enquiry.erased": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
   "email.block_lifted": {
     producers: ["apps/api"],
     consumers: [],
@@ -921,6 +934,20 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     consumers: ["zoho"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
+  },
+  "artwork_register.offer_changed": {
+    schema: artworkRegisterOfferChangedPayloadSchemaV1,
+    producers: ["packages/db"],
+    consumers: ["zoho_artwork_writeback"],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
+  },
+  "artwork_register.stock_code_assigned": {
+    schema: artworkRegisterStockCodeAssignedPayloadSchemaV1,
+    producers: ["packages/db"],
+    consumers: ["zoho_artwork_writeback"],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
   },
   "shop.original_sale.reserved": {
     schema: shopOriginalSaleReservedPayloadSchemaV1,

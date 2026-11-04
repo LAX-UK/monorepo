@@ -1,3 +1,4 @@
+import { LAX_PRODUCT_NAMES, legalEntityNamesFor } from "@auction/branding";
 import {
   DATA_REQUEST_CHANNELS,
   type DATA_REQUEST_EXTENSION_REASONS,
@@ -18,6 +19,7 @@ import {
   SUBJECT_EXPORT_STATUSES,
   type SubjectExportStatus,
 } from "@auction/identity-contracts/data-requests";
+import { staffShortDateFormat } from "@auction/staff-ui";
 import type { AttentionStripItem, Metric, StatusPresentation } from "@auction/staff-ui";
 
 const COUNT = new Intl.NumberFormat("en-GB");
@@ -34,12 +36,12 @@ export const PRODUCT_LABELS: Readonly<Record<DataRequestProduct, string>> = {
 export const PRODUCT_DETAILS: Readonly<
   Record<DataRequestProduct, { name: string; company: string }>
 > = {
-  account: {
-    name: "LAX Account",
-    company: "London Auction Xchange LTD and London Art Exchange Ltd",
+  account: { name: LAX_PRODUCT_NAMES.account, company: legalEntityNamesFor("account") },
+  bid: { name: LAX_PRODUCT_NAMES.bid, company: legalEntityNamesFor("bid") },
+  shop: {
+    name: `${LAX_PRODUCT_NAMES.shop} and ${LAX_PRODUCT_NAMES.art}`,
+    company: legalEntityNamesFor("shop"),
   },
-  bid: { name: "LAX Bid", company: "London Auction Xchange LTD" },
-  shop: { name: "LAX Shop and lax.art", company: "London Art Exchange Ltd" },
 };
 
 export const REASON_LABELS: Readonly<Record<DataRequestReason, string>> = {
@@ -184,7 +186,7 @@ export const DUE_TONE: Readonly<Record<DueStateKind, "neutral" | "warning" | "da
   overdue: "danger",
 };
 
-const DAY = new Intl.DateTimeFormat("en-GB", {
+const DAY = staffShortDateFormat({
   day: "numeric",
   month: "short",
   year: "numeric",
@@ -437,7 +439,7 @@ export function formatBytes(bytes: number): string {
   return `${unit === 0 ? value : value.toFixed(1)} ${BYTE_UNITS[unit]}`;
 }
 
-const DAY_TIME = new Intl.DateTimeFormat("en-GB", {
+const DAY_TIME = staffShortDateFormat({
   day: "numeric",
   month: "short",
   hour: "2-digit",

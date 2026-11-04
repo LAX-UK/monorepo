@@ -1,5 +1,4 @@
 import { AdminSubmissionDecisionPanel } from "@/components/admin/admin-submission-decision-panel";
-import { StaffActionError } from "@/components/admin/staff/staff-action-error";
 import { SubmissionDecisionTab } from "@/components/admin/submission-detail/tabs/decision-tab";
 import { loadAdminSubmissionDecisionPage } from "@/lib/admin/submissions/load-submission-decision-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
@@ -10,12 +9,10 @@ import { notFound } from "next/navigation";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
 };
 
-export default async function AdminSubmissionDecisionPage({ params, searchParams }: Props) {
+export default async function AdminSubmissionDecisionPage({ params }: Props) {
   const { id } = await params;
-  const sp = await searchParams;
   await requireAdminCapability(SUBMISSIONS_ACCESS, `/admin/submissions/${id}`);
   const loaded = await loadAdminSubmissionDecisionPage(id);
   if (!loaded) notFound();
@@ -55,10 +52,5 @@ export default async function AdminSubmissionDecisionPage({ params, searchParams
     />
   );
 
-  return (
-    <>
-      <StaffActionError error={sp.error} title="The submission was not updated" />
-      <SubmissionDecisionTab decision={decision} />
-    </>
-  );
+  return <SubmissionDecisionTab decision={decision} />;
 }

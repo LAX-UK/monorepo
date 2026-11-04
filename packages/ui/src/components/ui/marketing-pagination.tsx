@@ -1,4 +1,5 @@
 import * as React from "react";
+import { TAP_AREA } from "../../lib/tap-area.js";
 import { cn } from "../../lib/utils.js";
 
 export type MarketingPaginationPage = {
@@ -66,8 +67,10 @@ export function MarketingPagination({
         {prev.href ? (
           Link({
             href: prev.href,
-            className:
+            className: cn(
+              TAP_AREA,
               "flex items-center gap-4 font-label text-xs text-on-surface-variant transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+            ),
             children: prev.label ?? "Previous",
           })
         ) : (
@@ -79,7 +82,7 @@ export function MarketingPagination({
             {prev.label ?? "Previous"}
           </button>
         )}
-        <div className="flex items-center gap-6 md:gap-8">
+        <div className="flex items-center gap-6 pointer-coarse:gap-7 md:gap-8">
           {pages.map((p) => (
             <React.Fragment key={p.page}>
               {Link(
@@ -88,6 +91,7 @@ export function MarketingPagination({
                       href: p.href,
                       "aria-current": "page" as const,
                       className: cn(
+                        TAP_AREA,
                         "font-label text-xs transition-colors focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                         "font-bold text-primary",
                       ),
@@ -96,6 +100,7 @@ export function MarketingPagination({
                   : {
                       href: p.href,
                       className: cn(
+                        TAP_AREA,
                         "font-label text-xs transition-colors focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                         "text-on-surface-variant hover:text-on-surface",
                       ),
@@ -112,8 +117,10 @@ export function MarketingPagination({
           {trailingPage
             ? Link({
                 href: trailingPage.href,
-                className:
+                className: cn(
+                  TAP_AREA,
                   "font-label text-xs text-on-surface-variant transition-colors hover:text-on-surface focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                ),
                 children: String(trailingPage.page).padStart(2, "0"),
               })
             : null}
@@ -121,8 +128,10 @@ export function MarketingPagination({
         {next.href ? (
           Link({
             href: next.href,
-            className:
+            className: cn(
+              TAP_AREA,
               "flex items-center gap-4 font-label text-xs text-on-surface transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+            ),
             children: next.label ?? "Next",
           })
         ) : (

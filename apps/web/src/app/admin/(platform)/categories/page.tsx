@@ -9,7 +9,6 @@ import {
   toCategoriesStaffRows,
 } from "@/lib/admin/categories/categories-staff-list.vm";
 import { loadAdminCategoriesListPage } from "@/lib/admin/categories/load-categories-list-page";
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -32,7 +31,6 @@ export default async function AdminCategoriesPage({
   }
   const query = categoriesListController.parseQuery(sp);
   const { rows, total, summary, listError } = await loadAdminCategoriesListPage(query);
-  const error = listError ?? safeDecodeAdminErrorParam(sp.error);
 
   return (
     <CategoriesStaffList
@@ -57,7 +55,7 @@ export default async function AdminCategoriesPage({
             }
           : null
       }
-      listError={error}
+      listError={listError}
       filtered={Boolean(query.q)}
     />
   );

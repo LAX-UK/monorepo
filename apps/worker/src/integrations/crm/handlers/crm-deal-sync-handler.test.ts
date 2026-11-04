@@ -19,6 +19,7 @@ function baseLinkRepo(overrides: Partial<ICrmRecordLinkRepository> = {}): ICrmRe
     markRecyclePurged: vi.fn(),
     isErased: vi.fn().mockResolvedValue(false),
     listActiveDealLinksBySubject: vi.fn().mockResolvedValue([]),
+    listActiveSubjectLinksByZohoRecord: vi.fn().mockResolvedValue([]),
     listActiveByEntityType: vi.fn(),
     listErasedWithRealZohoLinks: vi.fn(),
     reassignDealLinksSubjectId: vi.fn(),

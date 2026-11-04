@@ -96,7 +96,7 @@ export function LegalEntityDocsRequestedNoticeEmail(
       <TextBlock>Hi {vars.recipientFirstName || "there"},</TextBlock>
       <TextBlock>
         We need additional documents for <strong>{vars.entityName}</strong>. Upload them in your
-        dashboard, then resubmit for review.
+        account, then send them for review for review.
       </TextBlock>
       <Button href={vars.docsUrl}>Upload documents</Button>
       <HelpBlock email={vars.supportContactEmail} />

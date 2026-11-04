@@ -19,6 +19,8 @@ export type BuildInput = {
   legalEntities: LegalEntity[];
   amlScreenings: AdminAmlScreeningRow[];
   canViewAml: boolean;
+  /** The viewer may see the email delivery panel, so the line can point to it. */
+  canViewEmailDelivery?: boolean;
 };
 
 type AttentionSignal = UserAttentionItem & { priority: number };
@@ -31,7 +33,7 @@ function countConnectGaps(entities: LegalEntity[]): number {
 }
 
 function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
-  const { user, legalEntities, amlScreenings, canViewAml } = input;
+  const { user, legalEntities, amlScreenings, canViewAml, canViewEmailDelivery = false } = input;
   const latestAml = amlScreenings[0] ?? null;
   const connectGaps = countConnectGaps(legalEntities);
   const kycStatus = user.kycStatus ?? "";
@@ -105,6 +107,22 @@ function collectAttentionSignals(input: BuildInput): AttentionSignal[] {
       message: `Seller setup incomplete on ${connectGaps} entit${connectGaps === 1 ? "y" : "ies"}: ${stage.toLowerCase()}`,
       href: "?tab=overview#legal-entities",
       severity: "warning",
+    });
+  }
+
+  if (
+    canViewEmailDelivery &&
+    (user.emailStatus === "bounced" || user.emailStatus === "complained")
+  ) {
+    signals.push({
+      id: "email-blocked",
+      priority: 45,
+      message:
+        user.emailStatus === "complained"
+          ? "Email is blocked: marked as spam. Invoices and reminders aren’t reaching them"
+          : "Email is blocked: the address bounced. Invoices and reminders aren’t reaching them",
+      href: "?tab=overview#email-delivery",
+      severity: "critical",
     });
   }
 

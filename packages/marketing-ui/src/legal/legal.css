@@ -308,6 +308,13 @@
     color: var(--color-primary);
   }
 
+  /* A touch screen has no hover to reveal the link, and a 24px target is too small to hit. */
+  @media (pointer: coarse) {
+    .lax-legal__anchor {
+      display: none;
+    }
+  }
+
   @media (hover: hover) {
     .lax-legal__anchor {
       opacity: 0;

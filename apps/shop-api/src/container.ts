@@ -1,9 +1,15 @@
 import { type Database, closeDb, createDb } from "@auction/db";
+import {
+  DrizzleArtworkRegisterQueueReader,
+  DrizzleArtworkRegisterRepository,
+  DrizzleZohoArtworkSyncStore,
+} from "@auction/persistence/repositories";
 import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import type { AdminRoutesDeps } from "./admin-route-deps.js";
 import { createAlertingPortalFavorites } from "./application/alerts/alerting-portal-favorites.js";
 import type { ArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
+import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
 import { createEditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
@@ -102,6 +108,7 @@ import {
 import { createDrizzleShopReadinessAdapter } from "./infrastructure/drizzle-shop-readiness.adapter.js";
 import { createDrizzleShopStaffMemberReader } from "./infrastructure/drizzle-shop-staff-member.reader.js";
 import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-transaction-effects.js";
+import { createDrizzleStaffNameReader } from "./infrastructure/drizzle-staff-name.reader.js";
 import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-storefront-curation.repository.js";
 import { createDrizzleEditionRunUnitOfWork } from "./infrastructure/edition-runs/drizzle-edition-run.unit-of-work.js";
 import { createEnquiryFollowUp } from "./infrastructure/enquiry-follow-up.js";
@@ -305,6 +312,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     shopAlerts.followAlerts,
   );
   const adminRead = createDrizzleAdminReadRepository(db, env, { resolveMediaUrl });
+  const artworkRegisterRepository = new DrizzleArtworkRegisterRepository(db);
   const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const cancellationPolicy = loadShopCancellationPolicy(env);
   const createProductionTask = createCreateProductionTaskHandler({ uow: shopUow });
@@ -543,6 +551,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           staffReader,
         }),
         leads: new LeadsService(createDrizzleLeadReader(db)),
+        artworkRegister: new ArtworkRegisterReviewService({
+          queue: new DrizzleArtworkRegisterQueueReader(db),
+          register: artworkRegisterRepository,
+          resolver: artworkRegisterRepository,
+          runs: new DrizzleZohoArtworkSyncStore(db),
+          staffNames: createDrizzleStaffNameReader(db),
+        }),
         releaseAlertSummary: shopAlerts.summary,
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {

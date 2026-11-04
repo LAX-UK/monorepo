@@ -2,6 +2,7 @@ import {
   FAILED_JOB_BATCH_MAX,
   FAILED_JOB_DISCARD_REASONS,
   FAILED_JOB_NOTE_MAX,
+  FAILED_JOB_SOURCE_FAMILIES,
   FAILED_JOB_VIEW_IDS,
 } from "@auction/types";
 import { z } from "zod";
@@ -12,11 +13,12 @@ export const adminFailedJobIdParamSchema = z.object({
   id: z.string().min(1).max(191),
 });
 
-/** The failed jobs list: a view, text search, a queue, and the last-failed day range. */
+/** The failed jobs list: a view, text search, a source, a queue, and the last-failed day range. */
 export const adminFailedJobsQuerySchema = z.object({
   view: z.enum(FAILED_JOB_VIEW_IDS).default("needs_review"),
   sort: z.enum(["failed_desc", "failed_asc"]).default("failed_desc"),
   q: z.string().trim().max(100).optional(),
+  source: z.enum(FAILED_JOB_SOURCE_FAMILIES).optional(),
   queue: z.string().trim().min(1).max(80).optional(),
   from: calendarDay.optional(),
   to: calendarDay.optional(),

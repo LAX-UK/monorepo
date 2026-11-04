@@ -2,7 +2,6 @@ import { firstString } from "@/lib/admin/admin-list-params";
 import {
   type ArtistDirectoryCarryParams,
   type ArtistDirectoryFilterRailInput,
-  artistDirectoryPresetChips,
   buildArtistDirectoryFilterGroups,
   buildArtistDirectoryNationalityLinks,
 } from "@/lib/artists/directory-filter-rail";
@@ -40,7 +39,6 @@ export type ArtistDirectoryPageContext = {
   browse: PublicArtistDirectoryResult;
   carry: ArtistDirectoryCarryParams;
   filterRailInput: ArtistDirectoryFilterRailInput;
-  presetChips: ReturnType<typeof artistDirectoryPresetChips>;
   filterGroups: ReturnType<typeof buildArtistDirectoryFilterGroups>;
   nationalityLinks: ReturnType<typeof buildArtistDirectoryNationalityLinks>;
   hasUserFilters: boolean;
@@ -198,7 +196,6 @@ export async function loadArtistDirectoryPage(
     browse,
     carry,
     filterRailInput,
-    presetChips: artistDirectoryPresetChips(preset.id, searchParams, layoutView),
     filterGroups: buildArtistDirectoryFilterGroups(filterRailInput),
     nationalityLinks: buildArtistDirectoryNationalityLinks(filterRailInput),
     hasUserFilters,

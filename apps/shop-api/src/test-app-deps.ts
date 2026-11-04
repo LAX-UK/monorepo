@@ -2,6 +2,7 @@ import { legalEntityFor } from "@auction/branding";
 import { createArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
 import { createArtistApplicationRateLimiters } from "./application/artist-applications/artist-application-rate-limits.js";
 import { createArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
+import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import {
   createEditionAlertRateLimiter,
@@ -239,6 +240,20 @@ export function createMinimalShopApiTestDeps(
           counts: { all: 0, ordered: 0, abandoned_checkout: 0, enquired: 0, joined: 0 },
         }),
         get: async () => null,
+      }),
+      artworkRegister: new ArtworkRegisterReviewService({
+        queue: {
+          listHeld: async () => ({ entries: [], total: 0 }),
+          listOpenConflicts: async () => ({ items: [], total: 0 }),
+          listConflictsFor: async () => [],
+          countHeld: async () => 0,
+          countOpenConflicts: async () => 0,
+          listHeldArtists: async () => [],
+        },
+        register: { findById: async () => null, listEvents: async () => [] },
+        resolver: { resolveConflict: async () => ({ ok: false, reason: "not_found" }) },
+        runs: { latestNightlyRun: async () => null },
+        staffNames: { namesFor: async () => new Map() },
       }),
       guestErasure: new GuestErasureService({
         read: async () => null,
