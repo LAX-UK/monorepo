@@ -385,7 +385,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "legal_entity.two_step_reminder_sent": { piiClassification: "none" },
   "legal_entity.contact_details_changed": { piiClassification: "none" },
   "legal_entity.payout_bank_changed": { piiClassification: "none" },
-  "kyc.verified": { consumers: ["marketing_contacts"], piiClassification: "contains_pii" },
+  "kyc.verified": { piiClassification: "contains_pii" },
   "legal_entity.member_invited": { piiClassification: "contains_pii" },
   "lot.activated": { schema: LotEventSchemas["lot.activated"], piiClassification: "none" },
   "lot.attached_to_sale": {
@@ -511,14 +511,14 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "user.deletion_requested": {
     schema: userDeletionRequestedPayloadSchemaV1,
     producers: ["apps/auth"],
-    consumers: ["marketing_contacts", "bid_identity_directory", "shop_identity_projection", "zoho"],
+    consumers: ["bid_identity_directory", "shop_identity_projection", "zoho"],
     idempotencyPolicy: "none",
     piiClassification: "none",
   },
   "user.email_verified": {
     schema: userEmailVerifiedPayloadSchemaV1,
     producers: ["apps/auth", "packages/db"],
-    consumers: ["marketing_contacts", "zoho", "bid_identity_directory"],
+    consumers: ["zoho", "bid_identity_directory"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
   },
@@ -602,7 +602,6 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
       "bid_profile_provisioning",
       "bid_identity_directory",
       "legal_entity_provisioning",
-      "marketing_contacts",
       "shop_identity_projection",
       "zoho",
     ],

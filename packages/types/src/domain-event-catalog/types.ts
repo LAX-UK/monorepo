@@ -14,7 +14,6 @@ export type DomainEventConsumer =
   | "zoho_artwork_writeback"
   | "xero"
   | "notifications"
-  | "marketing_contacts"
   | "lot_lifecycle_snapshot"
   | "aml_match_review"
   | "source_of_funds_review"

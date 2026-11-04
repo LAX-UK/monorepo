@@ -13,7 +13,6 @@ export const DOMAIN_EVENT_PROJECTOR_NAMES = [
   "legal_entity_provisioning",
   "lot_invoice_initiation",
   "lot_voided_anti_shilling_admin_notify",
-  "marketing_contacts",
   "notification_fanout",
   "payment_refund_notify",
   "payout_transfer_failed_notify",

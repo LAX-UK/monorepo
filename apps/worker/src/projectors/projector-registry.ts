@@ -21,7 +21,6 @@ import {
   processLotInvoiceInitiation,
 } from "./lot-invoice-initiation.js";
 import { processLotVoidedAntiShillingAdminNotify } from "./lot-voided-anti-shilling-admin-notify.js";
-import { createMarketingContactsProjector } from "./marketing-contacts-projector.js";
 import { NOTIFICATION_FANOUT_PROJECTOR, processNotificationFanout } from "./notification-fanout.js";
 import { processPaymentRefundNotify } from "./payment-refund-notify.js";
 import { processPayoutTransferFailedNotify } from "./payout-transfer-failed-notify.js";
@@ -89,7 +88,6 @@ function emailProjectorArgs(ctx: ProjectorRunContext) {
 export function createDefaultProjectorRegistry(): ProjectorRegistry {
   const projectors: Projector[] = [
     createXeroProjector(),
-    createMarketingContactsProjector(),
     createZohoProjector(),
     {
       name: SHOP_IDENTITY_PROJECTION_PROJECTOR,

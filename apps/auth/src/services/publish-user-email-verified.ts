@@ -5,7 +5,7 @@ export type PublishUserEmailVerifiedInput = {
   email: string;
 };
 
-/** Emits `user.email_verified` for the worker marketing-contacts projector.
+/** Emits `user.email_verified` for the worker projectors.
  *
  * Idempotent: the magic-link verify hook fires on every passwordless sign-in. The cheap
  * pre-check skips the insert in the common (already-verified) path; `onConflictDoNothing`

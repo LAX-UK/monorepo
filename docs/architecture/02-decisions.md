@@ -14,7 +14,7 @@ This document is the source of truth for *why* the system is built the way it is
 
 **Why this wins.** The HTTP request boundary is where authentication, rate limiting, and origin verification already happen — adding webhook ingest there means it inherits all of that. Splitting outbound into the worker means we can scale Zoho throughput without scaling the API, and a Zoho outage doesn't backpressure into HTTP request handlers.
 
-**Status.** *Implemented.* Xero ingress is handled by [apps/api/src/routes/xero-webhook.ts](../../apps/api/src/routes/xero-webhook.ts), while Postmark, Brevo, Stripe, and Veriff use their provider-specific routes. Generic `webhook_event` persistence and the `webhook-events` worker remain available for asynchronous provider processing. Zoho and Xero projectors perform outbound work in `apps/worker` and default to disabled modes.
+**Status.** *Implemented.* Xero ingress is handled by [apps/api/src/routes/xero-webhook.ts](../../apps/api/src/routes/xero-webhook.ts), while Postmark, Stripe, and Veriff use their provider-specific routes. Generic `webhook_event` persistence and the `webhook-events` worker remain available for asynchronous provider processing. Zoho and Xero projectors perform outbound work in `apps/worker` and default to disabled modes.
 
 ## D2. JWKS keys live in Postgres, scoped to the auth_app role
 
@@ -88,7 +88,7 @@ providers only. Shop identity and lifecycle synchronization use OIDC,
 back-channel logout, SSF, and internal domain events rather than commerce
 webhooks.
 
-**Chosen.** Each inbound webhook source has its own verification mechanism. Stripe and Xero bind signatures to the raw request body. Postmark uses a dedicated Basic Auth credential, Brevo uses its configured webhook secret, and Veriff verifies its provider signature.
+**Chosen.** Each inbound webhook source has its own verification mechanism. Stripe and Xero bind signatures to the raw request body. Postmark uses a dedicated Basic Auth credential, and Veriff verifies its provider signature.
 
 All sources reject any payload whose timestamp is more than five minutes old, comparing against the `Date` header or a source-specific `X-*-Triggered-At` header. This bounds replay-attack windows to five minutes.
 

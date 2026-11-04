@@ -6,7 +6,6 @@ import { BID_IDENTITY_DIRECTORY_PROJECTOR } from "./bid-identity-directory.js";
 import { BID_PERSONAL_DATA_ANONYMISATION_PROJECTOR } from "./bid-personal-data-anonymisation.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { LOT_INVOICE_INITIATION_PROJECTOR } from "./lot-invoice-initiation.js";
-import { MARKETING_CONTACTS_PROJECTOR } from "./marketing-contacts-projector.js";
 import { NOTIFICATION_FANOUT_PROJECTOR } from "./notification-fanout.js";
 import { createDefaultProjectorRegistry } from "./projector-registry.js";
 import { SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR } from "./source-of-funds-document-review.js";
@@ -22,7 +21,6 @@ import { ZOHO_PROJECTOR } from "./zoho-projector.js";
 /** Pin tick order and projector names from the pre-registry runner. */
 const EXPECTED_PROJECTOR_ORDER = [
   XERO_PROJECTOR,
-  MARKETING_CONTACTS_PROJECTOR,
   ZOHO_PROJECTOR,
   "shop_identity_projection",
   "admin_impersonation_notify",
@@ -196,19 +194,6 @@ describe("createDefaultProjectorRegistry", () => {
       }),
     );
     expect(withOrigin).toContain("lot_voided_anti_shilling_admin_notify");
-  });
-
-  it("skips marketing contacts when enqueueMarketingContactSync is unset", () => {
-    expect(registry.listEnabledProjectorNames(baseCtx())).not.toContain(
-      MARKETING_CONTACTS_PROJECTOR,
-    );
-    expect(
-      registry.listEnabledProjectorNames(
-        baseCtx({
-          enqueueMarketingContactSync: vi.fn(),
-        }),
-      ),
-    ).toContain(MARKETING_CONTACTS_PROJECTOR);
   });
 
   it("skips lot invoice initiation when ensureLotInvoice is unset", () => {

@@ -79,9 +79,6 @@ export type ProjectorRunContext = {
   deliveryRepo?: IDomainEventDeliveryRepository | undefined;
   crmRecordLinkRepo?: ICrmRecordLinkRepository | undefined;
   crmSyncService?: CrmSyncService | undefined;
-  enqueueMarketingContactSync?:
-    | ((data: { userId: string; reason: string; eventId: number }) => Promise<void>)
-    | undefined;
   shopIdentityProjection?: ShopIdentityProjectionService | undefined;
   /** Sends artwork register changes to Zoho Products; absent while the writeback mode is off. */
   zohoArtworkWriteback?: ZohoArtworkWritebackService | undefined;
