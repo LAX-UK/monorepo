@@ -1,13 +1,9 @@
 "use client";
 
-import { requestAdminFlashClear } from "@/lib/admin/flash/flash-clear.client";
-import { useEffect } from "react";
+import { FlashClear } from "@/components/flash/flash-clear";
+import { ADMIN_FLASH_CLEAR_ENDPOINT } from "@/lib/admin/flash/admin-flash";
 
-/** Tells the server the message for this page has been shown, so a reload does not repeat it. */
+/** Tells the server the staff message for this page has been shown. */
 export function AdminFlashClear({ path }: { path: string }) {
-  useEffect(() => {
-    void requestAdminFlashClear(path);
-  }, [path]);
-
-  return null;
+  return <FlashClear endpoint={ADMIN_FLASH_CLEAR_ENDPOINT} path={path} />;
 }

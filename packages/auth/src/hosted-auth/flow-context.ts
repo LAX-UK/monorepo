@@ -4,6 +4,8 @@ import {
   type RegisteredOidcClientId,
 } from "@auction/identity-contracts";
 
+/** Set by a product that knows why the person is here (selling); read only to word the page. */
+const HOSTED_CONTEXT_QUERY = "hosted_context";
 const AUTHORIZE_PATH = "/api/auth/oauth2/authorize";
 
 export const ALLOWED_OIDC_AUTHORIZE_QUERY_PARAMS = [
@@ -19,6 +21,7 @@ export const ALLOWED_OIDC_AUTHORIZE_QUERY_PARAMS = [
   "max_age",
   "acr_values",
   "login_hint",
+  HOSTED_CONTEXT_QUERY,
 ] as const;
 
 /** Copy OIDC authorize query params onto a hosted MFA/setup URL so authorize can resume. */
@@ -37,6 +40,13 @@ export function appendOidcAuthorizeParams(
 }
 
 export type HostedAuthProduct = "shop" | "art" | "bid" | "shop-admin" | "account" | "unknown";
+/** What the person set out to do, when the product says so: selling is Bid with a sell intent. */
+export type HostedContext = "sell";
+
+export function parseHostedContext(value: string | null): HostedContext | null {
+  return value === "sell" ? "sell" : null;
+}
+
 export type HostedAuthAudience = "customer" | "staff";
 
 export type HostedAuthFlow = {
@@ -49,6 +59,7 @@ export type HostedAuthFlow = {
   allowedRedirectOrigins: string[];
   /** The email a product already knows (OIDC `login_hint`), to prefill sign-in and sign-up. */
   loginHint: string | null;
+  context: HostedContext | null;
 };
 
 /** Only a plausible email is used as a hint; anything else is ignored. */
@@ -93,6 +104,7 @@ function emptyFlow(): HostedAuthFlow {
     loginPath: "/login",
     allowedRedirectOrigins: [],
     loginHint: null,
+    context: null,
   };
 }
 
@@ -136,6 +148,7 @@ export function parseHostedAuthFlow(searchParams: URLSearchParams): HostedAuthFl
     loginPath: `/login?${productHintQuery}`,
     allowedRedirectOrigins,
     loginHint: parseLoginHint(searchParams.get("login_hint")),
+    context: parseHostedContext(searchParams.get(HOSTED_CONTEXT_QUERY)),
   };
 }
 
