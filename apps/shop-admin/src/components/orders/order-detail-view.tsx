@@ -6,6 +6,7 @@ import {
   OrderLineMenu,
   SendToProductionButton,
 } from "@/components/orders/order-actions.client";
+import { PickAndPackPanel } from "@/components/orders/pick-and-pack-panel.client";
 import { ReturnsPanel } from "@/components/orders/returns-panel.client";
 import { guestErasedLine } from "@/server/domain/guest-erasure.vm";
 import {
@@ -25,7 +26,11 @@ import {
 } from "@/server/domain/order-detail.vm";
 import { orderBuyerAccountLabel, orderNumber } from "@/server/domain/order-list.vm";
 import { cancelledLineStock, orderReturnRows } from "@/server/domain/order-returns.vm";
-import type { AdminGuestErasureState, AdminOrderDetail } from "@auction/shop-contracts";
+import type {
+  AdminGuestErasureState,
+  AdminOrderDetail,
+  AdminPickAndPack,
+} from "@auction/shop-contracts";
 import {
   KeyValueList,
   MappedStatusBadge,
@@ -44,6 +49,8 @@ export type OrderPermissions = {
   refund: boolean;
   fulfilment: boolean;
   production: boolean;
+  /** Sending a print another party owns in place of the one sold (shop admins). */
+  swapAcrossOwners: boolean;
   /** Erasing a guest buyer's personal data on request. */
   eraseGuest: boolean;
 };
@@ -54,6 +61,7 @@ export function orderPermissions(capabilities: readonly string[]): OrderPermissi
     refund: capabilities.includes("refund.write"),
     fulfilment: capabilities.includes("fulfilment.write"),
     production: capabilities.includes("production.write"),
+    swapAcrossOwners: capabilities.includes("print_swap.cross_owner"),
     eraseGuest: capabilities.includes("lead.erase"),
   };
 }
@@ -66,9 +74,12 @@ export function OrderDetailView({
   detail,
   permissions,
   guestErasure = null,
+  pickAndPack = null,
 }: {
   detail: AdminOrderDetail;
   permissions: OrderPermissions;
+  /** The order's prints and where packing has got to; absent when it could not be read. */
+  pickAndPack?: AdminPickAndPack | null;
   /** Loaded only for a guest's order, for people who may erase guest data. */
   guestErasure?: AdminGuestErasureState | null;
 }) {
@@ -209,6 +220,14 @@ export function OrderDetailView({
               })}
             </ul>
           </Section>
+
+          {pickAndPack ? (
+            <PickAndPackPanel
+              pack={pickAndPack}
+              canWrite={permissions.fulfilment}
+              canSwapAcrossOwners={permissions.swapAcrossOwners}
+            />
+          ) : null}
 
           <ReturnsPanel rows={returnRows} canWrite={permissions.fulfilment} />
 

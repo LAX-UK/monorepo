@@ -8,9 +8,14 @@ import {
   ReadOnlyMedia,
   ReadOnlySearchListing,
 } from "@/components/artworks/artwork-read-only-sections";
+import {
+  CertificateAuthorityCard,
+  laxIssuesCertificate,
+} from "@/components/artworks/edition-runs/certificate-authority-card.client";
 import { CreatePrintsDialog } from "@/components/artworks/edition-runs/create-prints-dialog.client";
 import { EditionFactsCard } from "@/components/artworks/edition-runs/edition-facts-card.client";
 import { EditionRunCard } from "@/components/artworks/edition-runs/edition-run-card.client";
+import { HorsCommerceApprovalCard } from "@/components/artworks/edition-runs/hors-commerce-approval-card.client";
 import { LinkedListingsCard } from "@/components/artworks/edition-runs/linked-listings-card.client";
 import { LinkedPrintsCard } from "@/components/artworks/edition-runs/linked-prints-card.client";
 import { OpenStockCard } from "@/components/artworks/edition-runs/open-stock-card.client";
@@ -1145,6 +1150,20 @@ export function ArtworkEditor({
             run={run}
             permissions={{ write: permissions.write, correct: permissions.correctFacts }}
           />
+          {laxIssuesCertificate(run) ? (
+            <CertificateAuthorityCard
+              artworkId={record.artworkId}
+              authority={run.certificateAuthority}
+              canWrite={permissions.write}
+            />
+          ) : null}
+          {run.horsCommerce ? (
+            <HorsCommerceApprovalCard
+              artworkId={record.artworkId}
+              horsCommerce={run.horsCommerce}
+              canApprove={permissions.approveHorsCommerce}
+            />
+          ) : null}
           {run.stock && isOpenSpec(run.spec) ? (
             <OpenStockCard
               artworkId={record.artworkId}
