@@ -2059,6 +2059,13 @@
       "when": 1800950400000,
       "tag": "0294_lot_artwork_register_link",
       "breakpoints": true
+    },
+    {
+      "idx": 295,
+      "version": "7",
+      "when": 1801036800000,
+      "tag": "0295_private_sale_deal",
+      "breakpoints": true
     }
   ]
 }

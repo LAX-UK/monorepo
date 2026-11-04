@@ -293,3 +293,4 @@ export {
   DrizzleBuyerDefaultRepository,
 } from "./drizzle-buyer-default.repository.js";
 export { DrizzlePaymentReminderStore } from "./drizzle-payment-reminder.store.js";
+export { DrizzlePrivateSaleDealRepository } from "./drizzle-private-sale-deal.repository.js";
