@@ -12,6 +12,9 @@ import type { IEmailService } from "@auction/email";
 import {
   BidAlertAnnouncementStore,
   BidAlertDigestLedger,
+  BidAlertFollowerProvisioner,
+  BidAlertLotReader,
+  BidAlertLotStart,
   BidAlertMatchLedger,
   BidAlertMatchValidator,
   BidAlertSaleNoticeWriter,
@@ -19,8 +22,10 @@ import {
   BidAlertSeed,
   BidAlertSubscriberStore,
   BidAlertTopicStore,
+  BidAlertWatcherReader,
 } from "@auction/persistence/repositories";
 import type pino from "pino";
+import { BidLotMatcher } from "../alerts/bid-lot-matcher.js";
 import { BidSaleAnnouncer } from "../alerts/bid-sale-announcer.js";
 import type { WorkerEnv } from "../env.js";
 import { BID_ALERT_MATCHING_PROJECTOR } from "../projectors/bid-alert-matching.js";
@@ -68,6 +73,14 @@ export function createBidAlertRuntime(input: {
     notices: new BidAlertSaleNoticeWriter(db),
     sendNotices: mode === "on",
   });
+  const lotStart = new BidAlertLotStart(db);
+  const lotMatcher = new BidLotMatcher({
+    lots: new BidAlertLotReader(db),
+    watchers: new BidAlertWatcherReader(db),
+    provisioner: new BidAlertFollowerProvisioner(db),
+    matches,
+    clock,
+  });
   const codec = new AlertLinkCodec(
     keyringFrom({
       keyId: env.ALERT_LINK_KEY_ID,
@@ -80,7 +93,12 @@ export function createBidAlertRuntime(input: {
   );
   return {
     mode,
-    matching: { isSeeded: () => seed.isSeeded(), handle: (event) => announcer.handle(event) },
+    matching: {
+      isSeeded: () => seed.isSeeded(),
+      handle: (event) => announcer.handle(event),
+      lotStart: () => lotStart.position(),
+      handleLots: (events) => lotMatcher.handle(events),
+    },
     digest: new DigestRun({
       product: "bid",
       subscribers,

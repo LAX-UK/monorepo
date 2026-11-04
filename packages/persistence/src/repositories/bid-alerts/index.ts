@@ -12,3 +12,6 @@ export {
   BidAlertSaleReader,
   BidAlertSeed,
 } from "./bid-alert-sale.js";
+export { BidAlertLotReader } from "./bid-alert-lot.reader.js";
+export { BidAlertFollowerProvisioner, BidAlertWatcherReader } from "./bid-alert-watchers.js";
+export { BID_ALERT_LOT_START, BidAlertLotStart } from "./bid-alert-lot-start.js";
