@@ -92,13 +92,8 @@ export function formatLondonDate(date: Date, options: LondonDateOptions = {}): s
   return (options.month === "long" ? DAY_LONG_MONTH_YEAR : DAY_MONTH_YEAR).format(date);
 }
 
-/** "3 Nov 2026, 21:00 GMT": a closing or opening moment. */
-export function formatLondonDateTime(date: Date): string {
-  return `${formatLondonDate(date)}, ${formatLondonTimeWithZone(date)}`;
-}
-
 /**
- * "Thu 12 Nov, 04:31 GMT": the one full moment line, for a countdown beyond a week. The weekday
+ * "Thu 12 Nov, 04:31 GMT": the one full moment line shown to people (closing, opening, collection times, countdowns beyond a week). The weekday
  * leads and the year appears only when it is not `now`'s. Its short form is `formatLondonWeekday`
  * plus `formatLondonDayMonth` ("Thu 12 Nov").
  */
