@@ -11,7 +11,6 @@ import {
   shopOrder,
   shopParty,
   shopPartyInvite,
-  shopReleaseAlertSubscription,
   shopUserProfile,
 } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
@@ -80,13 +79,6 @@ describe.skipIf(!ownerUrl || !shopUrl)("anonymise Shop personal data", () => {
       await db.insert(shopBasket).values({
         identitySubjectId: subjectId,
         expiresAt: new Date(now.getTime() + HOUR),
-      });
-      await db.insert(shopReleaseAlertSubscription).values({
-        email: `${subjectId}@example.test`,
-        identitySubjectId: subjectId,
-        consentText: "Tell me about new editions",
-        consentSource: "test",
-        unsubscribeToken: `unsub-${suffix()}`,
       });
       const [alertSubscriber] = await db
         .insert(shopAlertSubscriber)
@@ -160,7 +152,6 @@ describe.skipIf(!ownerUrl || !shopUrl)("anonymise Shop personal data", () => {
       shop_party: 1,
       shop_order: 1,
       shop_basket: 1,
-      shop_release_alert_subscription: 1,
       shop_alert_subscriber: 1,
       shop_identity_session: 1,
       shop_artist_application: 1,
@@ -200,7 +191,6 @@ describe.skipIf(!ownerUrl || !shopUrl)("anonymise Shop personal data", () => {
 
     for (const [table, column] of [
       [shopBasket, shopBasket.identitySubjectId],
-      [shopReleaseAlertSubscription, shopReleaseAlertSubscription.identitySubjectId],
       [shopAlertSubscriber, shopAlertSubscriber.subjectId],
       [shopIdentitySession, shopIdentitySession.subjectId],
     ] as const) {
@@ -231,7 +221,6 @@ describe.skipIf(!ownerUrl || !shopUrl)("anonymise Shop personal data", () => {
     const again = await anonymiseShopPersonalData(db, subject, new Date(now.getTime() + HOUR));
     for (const table of [
       "shop_basket",
-      "shop_release_alert_subscription",
       "shop_alert_subscriber",
       "shop_identity_session",
       "shop_party_invite",
