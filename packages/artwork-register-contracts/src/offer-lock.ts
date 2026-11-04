@@ -1,12 +1,12 @@
 import type { ArtworkRegisterEntry } from "./entry.js";
+import {
+  type LockMessage,
+  type LockReason,
+  type OfferPlaceDetail,
+  lockMessage,
+} from "./lock-messages.js";
 import type { OfferRef, OfferRefKind, OfferState, OfferTransitionRefusal } from "./offer-state.js";
-
-/** How a place reads in a message to staff. */
-const PLACE_LABEL: Partial<Record<OfferState, string>> = {
-  lax_art: "lax.art",
-  bid_sale: "a LAX Bid sale",
-  private_sale: "a private sale",
-};
+import { isReservedInZoho, isSoldInZoho } from "./sold-in-gallery.js";
 
 const STATE_FOR_REF_KIND: Record<OfferRefKind, OfferState> = {
   shop_artwork: "lax_art",
@@ -14,25 +14,65 @@ const STATE_FOR_REF_KIND: Record<OfferRefKind, OfferState> = {
   private_sale: "private_sale",
 };
 
-export type OfferRefusalReason = "offered_elsewhere" | "sold";
+/**
+ * Why an offer is refused. `sold` is a sale made through LAX; `sold_in_gallery` is a sale only
+ * Zoho knows about; `reserved_in_zoho` is a hold set by hand in Zoho.
+ */
+export type OfferRefusalReason =
+  | "offered_elsewhere"
+  | "sold"
+  | "sold_in_gallery"
+  | "reserved_in_zoho";
 
-export function offerRefusalMessage(reason: OfferRefusalReason, state: OfferState): string {
-  if (reason === "sold") {
-    return "This artwork has already been sold, so it cannot be offered again.";
-  }
-  const place = PLACE_LABEL[state] ?? "another place";
-  return `This artwork is already offered in ${place}. Withdraw it there first.`;
+const LOCK_REASON_FOR_PLACE: Partial<Record<OfferState, LockReason>> = {
+  lax_art: "live_on_lax_art",
+  bid_sale: "in_bid_sale",
+  private_sale: "in_private_sale",
+};
+
+function lockReasonFor(reason: OfferRefusalReason, state: OfferState): LockReason {
+  if (reason === "sold") return "sold_through_lax";
+  if (reason === "sold_in_gallery") return "sold_in_gallery";
+  if (reason === "reserved_in_zoho") return "reserved_in_zoho";
+  return LOCK_REASON_FOR_PLACE[state] ?? "live_on_lax_art";
+}
+
+/** The refusal with its message and the link that goes with it. */
+export function offerRefusal(
+  reason: OfferRefusalReason,
+  state: OfferState,
+  detail?: OfferPlaceDetail,
+): LockMessage {
+  return lockMessage(lockReasonFor(reason, state), detail);
+}
+
+export function offerRefusalMessage(
+  reason: OfferRefusalReason,
+  state: OfferState,
+  detail?: OfferPlaceDetail,
+): string {
+  return offerRefusal(reason, state, detail).message;
+}
+
+/** Why an offer in this state is refused: sold through LAX, sold in the gallery, or held elsewhere. */
+export function offerRefusalReason(offer: ArtworkRegisterEntry["offer"]): OfferRefusalReason {
+  if (offer.state !== "sold") return "offered_elsewhere";
+  return offer.ref === null ? "sold_in_gallery" : "sold";
 }
 
 /** Staff tried to offer an artwork that is already offered in another place, or already sold. */
 export class ArtworkOfferedElsewhereError extends Error {
   readonly code = "artwork_offered_elsewhere";
+  readonly lock: LockMessage;
   constructor(
     readonly reason: OfferRefusalReason,
     readonly state: OfferState,
+    detail?: OfferPlaceDetail,
   ) {
-    super(offerRefusalMessage(reason, state));
+    const lock = offerRefusal(reason, state, detail);
+    super(lock.message);
     this.name = "ArtworkOfferedElsewhereError";
+    this.lock = lock;
   }
 }
 
@@ -60,7 +100,9 @@ export function isOfferedAt(entry: ArtworkRegisterEntry, ref: OfferRef): boolean
 /**
  * Whether an artwork may be offered at this place. Prints are sold in runs, not one place at a
  * time, so only originals are governed. An artwork that is held or withdrawn may be offered; one
- * already offered at this place may be offered again (a retry); anything else is refused.
+ * already offered at this place may be offered again (a retry); anything else is refused. Zoho's
+ * own status counts too: Sold means it left the building, and Reserved holds back new offers
+ * (an offer already made is left alone).
  */
 export function checkOfferable(
   entry: ArtworkRegisterEntry,
@@ -68,10 +110,20 @@ export function checkOfferable(
 ): { ok: true } | { ok: false; error: ArtworkOfferedElsewhereError } {
   if (entry.kind !== "original") return { ok: true };
   const { state } = entry.offer;
-  if (state === "held" || state === "withdrawn") return { ok: true };
+  if (state === "held" || state === "withdrawn") {
+    if (isSoldInZoho(entry.catalogueStatus)) {
+      return { ok: false, error: new ArtworkOfferedElsewhereError("sold_in_gallery", state) };
+    }
+    if (isReservedInZoho(entry.catalogueStatus)) {
+      return { ok: false, error: new ArtworkOfferedElsewhereError("reserved_in_zoho", state) };
+    }
+    return { ok: true };
+  }
   if (isOfferedAt(entry, ref)) return { ok: true };
-  const reason: OfferRefusalReason = state === "sold" ? "sold" : "offered_elsewhere";
-  return { ok: false, error: new ArtworkOfferedElsewhereError(reason, state) };
+  return {
+    ok: false,
+    error: new ArtworkOfferedElsewhereError(offerRefusalReason(entry.offer), state),
+  };
 }
 
 /** How a product points at its register entry: by id, or by the Zoho Product id it already holds. */
