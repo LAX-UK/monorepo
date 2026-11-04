@@ -6,6 +6,7 @@ import {
 } from "@/lib/favorites/art-favorites-actions.server";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { ArtArtistFollowButton } from "./art-artist-follow-button.client";
 
@@ -100,14 +101,15 @@ export function ArtArtistFollowControl({
           ) : (
             <>
               Emails about followed artists are off.{" "}
-              <button
+              <Button
                 type="button"
+                variant="underline"
                 onClick={turnOn}
                 disabled={pending}
-                className={cn(link, "min-h-11 disabled:cursor-wait")}
+                className="inline h-auto min-h-11 p-0 text-inherit"
               >
                 {pending ? "Turning on…" : "Turn on"}
-              </button>
+              </Button>
               {error ? <span role="alert"> {error}</span> : null}
             </>
           )}
