@@ -1,3 +1,4 @@
+import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import { type Database, closeDb, createDb } from "@auction/db";
 import {
   DrizzleArtworkRegisterQueueReader,
@@ -142,6 +143,7 @@ import { idempotentAdminCommand } from "./infrastructure/idempotent-admin-comman
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createDrizzleOriginalSaleWriter } from "./infrastructure/phase/drizzle-original-sale.writer.js";
 import { createRedisFixedWindowCounter } from "./infrastructure/redis-fixed-window-counter.js";
+import { createRegisterOriginalOffers } from "./infrastructure/register-original-offers.js";
 import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
@@ -246,7 +248,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const rateLimitCounter = rateLimitRedis
     ? createRedisFixedWindowCounter(rateLimitRedis)
     : createInMemoryFixedWindowCounter();
-  const { commerce, stripeWebhook } = createCommerceServices(db, env, { rateLimitCounter });
+  const originalOffers = createRegisterOriginalOffers(
+    (session) => new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(session)),
+  );
+  const { commerce, stripeWebhook } = createCommerceServices(db, env, {
+    rateLimitCounter,
+    originalOffers,
+  });
   const readiness = createDrizzleShopReadinessAdapter(db);
   const storefrontOrigins = resolveStorefrontOrigins({
     shopStorefrontUrl: env.SHOP_STOREFRONT_URL,
@@ -401,6 +409,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     editionRuns: editionRuns.recorder,
     originalPrints: editionRuns.originalPrintsRecorder,
     releaseAlerts: shopAlerts.announcer,
+    offers: originalOffers,
   });
   const artistCatalogue = createDrizzleArtistCatalogueWriter(shopUow);
   const homeFeatures = createHomeFeaturesService({
@@ -446,6 +455,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       uow: shopUow,
       invoiceGateway,
       domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+      offers: originalOffers,
     });
   const originalSales = originalSaleWriterFor(db);
   const adminOriginalSales = {

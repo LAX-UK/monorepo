@@ -395,7 +395,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "lot.cancelled": {
     schema: LotEventSchemas["lot.cancelled"],
-    consumers: ["lot_lifecycle_snapshot"],
+    consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot"],
     piiClassification: "none",
   },
   "lot.created": {
@@ -410,7 +410,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "lot.ended": {
     schema: LotEventSchemas["lot.ended"],
-    consumers: ["lot_invoice_initiation", "notification_fanout", "unsold_choice_deadline", "xero"],
+    consumers: [
+      "artwork_offer_lock",
+      "lot_invoice_initiation",
+      "notification_fanout",
+      "unsold_choice_deadline",
+      "xero",
+    ],
     piiClassification: "none",
   },
   "lot.published": {
@@ -425,18 +431,18 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "lot.returned_to_inventory": {
     schema: LotEventSchemas["lot.returned_to_inventory"],
-    consumers: ["lot_lifecycle_snapshot"],
+    consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot"],
     piiClassification: "none",
   },
   "lot.soft_deleted": { schema: LotEventSchemas["lot.soft_deleted"], piiClassification: "none" },
   "lot.unpublished": {
     schema: LotEventSchemas["lot.unpublished"],
-    consumers: ["lot_lifecycle_snapshot"],
+    consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot"],
     piiClassification: "none",
   },
   "lot.voided": {
     schema: LotEventSchemas["lot.voided"],
-    consumers: ["lot_voided_anti_shilling", "notification_fanout"],
+    consumers: ["artwork_offer_lock", "lot_voided_anti_shilling", "notification_fanout"],
     piiClassification: "none",
   },
   "lot.withdrawal_declined": {
@@ -451,7 +457,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "payment.captured": {
     schema: paymentCapturedPayloadSchemaV1,
-    consumers: ["xero", "zoho"],
+    consumers: ["artwork_offer_lock", "xero", "zoho"],
     piiClassification: "contains_pii",
   },
   "payment.dispute_closed": { consumers: ["notification_fanout"] },

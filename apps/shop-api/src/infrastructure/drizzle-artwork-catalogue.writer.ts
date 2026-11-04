@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Database } from "@auction/db";
 import {
   shopArtist,
   shopArtwork,
@@ -32,6 +33,10 @@ import type {
   ArtworkCatalogueWriter,
   ArtworkEditableFields,
 } from "../application/ports/artwork-catalogue-admin.js";
+import {
+  type OriginalOfferRegister,
+  noOriginalOfferRegister,
+} from "../application/ports/original-offer-register.js";
 import type { ShopTransactionEffects } from "../application/ports/shop-unit-of-work.js";
 import type { ShopUnitOfWorkFactory } from "../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
@@ -257,6 +262,7 @@ async function applyVisibility(
   artwork: ArtworkRow,
   action: AdminArtworkVisibilityAction,
   actorSubjectId: string,
+  offers: OriginalOfferRegister,
   releaseAlerts?: { announcer: ShopAlertAnnouncer; send: boolean },
 ): Promise<VisibilityOutcome> {
   const now = new Date();
@@ -280,6 +286,12 @@ async function applyVisibility(
       });
       if (blocker)
         return { outcome: "refused", message: ARTWORK_PUBLISH_BLOCKER_MESSAGES[blocker] };
+      try {
+        await offers.assertCanPublish(shopPhaseDbSession(tx), artwork);
+      } catch (error) {
+        if (error instanceof ShopDomainError) return { outcome: "refused", message: error.message };
+        throw error;
+      }
       patch = { publishedAt: now };
       break;
     }
@@ -316,6 +328,7 @@ async function applyVisibility(
     },
     afterJson: { published: after.publishedAt !== null, archived: after.archivedAt !== null },
   });
+  await recordOffer(shopPhaseDbSession(tx), offers, action, after, `staff:${actorSubjectId}`);
   if (action !== "publish" || !releaseAlerts) return { outcome: "changed", artwork: after };
   // The work is recorded as announced here, in the publishing transaction, and turned into matches
   // later. Staff choose whether an edition tells subscribers; an original always tells followers.
@@ -337,6 +350,20 @@ async function applyVisibility(
   };
 }
 
+/** Tells the register where the original now is. Restoring a draft changes nothing there. */
+async function recordOffer(
+  session: Database,
+  offers: OriginalOfferRegister,
+  action: AdminArtworkVisibilityAction,
+  artwork: ArtworkRow,
+  actor: string,
+): Promise<void> {
+  if (action === "publish") await offers.recordPublished(session, artwork, actor);
+  else if (action === "unpublish" || action === "archive") {
+    await offers.recordWithdrawn(session, artwork, actor);
+  }
+}
+
 export function createDrizzleArtworkCatalogueWriter(
   uow: ShopUnitOfWorkFactory,
   options: {
@@ -344,9 +371,12 @@ export function createDrizzleArtworkCatalogueWriter(
     editionRuns: EditionRunRecorder;
     originalPrints: OriginalPrintsRecorder;
     releaseAlerts: ShopAlertAnnouncer;
+    /** One place at a time for originals; omitted where no register is wired. */
+    offers?: OriginalOfferRegister;
   },
 ): ArtworkCatalogueWriter {
   const { resolveMediaUrl, editionRuns, originalPrints, releaseAlerts } = options;
+  const offers = options.offers ?? noOriginalOfferRegister;
   return {
     createArtwork: (input) =>
       uow.run((tx) =>
@@ -644,10 +674,17 @@ export function createDrizzleArtworkCatalogueWriter(
           requestPayload: input,
           run: async () => {
             const artwork = await lockArtwork(tx, input.artworkId);
-            const result = await applyVisibility(tx, artwork, input.action, input.actorSubjectId, {
-              announcer: releaseAlerts,
-              send: input.sendReleaseAlert === true,
-            });
+            const result = await applyVisibility(
+              tx,
+              artwork,
+              input.action,
+              input.actorSubjectId,
+              offers,
+              {
+                announcer: releaseAlerts,
+                send: input.sendReleaseAlert === true,
+              },
+            );
             if (result.outcome === "refused") throw new ShopDomainError(result.message);
             return {
               version: result.artwork.updatedAt.toISOString(),
@@ -693,6 +730,7 @@ export function createDrizzleArtworkCatalogueWriter(
                 artwork,
                 input.action,
                 input.actorSubjectId,
+                offers,
                 {
                   announcer: releaseAlerts,
                   send: input.sendReleaseAlert === true,

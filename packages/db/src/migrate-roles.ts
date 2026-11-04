@@ -212,6 +212,11 @@ export const SHOP_ARTWORK_REGISTER_READ_TABLES = [
 ] as const;
 export const SHOP_ARTWORK_REGISTER_CONFLICT_TABLES = ["artwork_register_conflict"] as const;
 export const SHOP_ARTWORK_REGISTER_EVENT_TABLES = ["artwork_register_event"] as const;
+/**
+ * Shop moves an original's offer state through the register (one place at a time across lax.art
+ * and LAX Bid): it reads records and updates the offer. History is append-only (see above).
+ */
+export const SHOP_ARTWORK_REGISTER_OFFER_TABLES = ["artwork_register"] as const;
 /** Worker projectors upsert Shop/Bid local projections from Identity domain events. */
 export const WORKER_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -727,6 +732,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of SHOP_ARTWORK_REGISTER_READ_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT");
+        }
+        for (const tableName of SHOP_ARTWORK_REGISTER_OFFER_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");
         }
         for (const tableName of SHOP_ARTWORK_REGISTER_CONFLICT_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");

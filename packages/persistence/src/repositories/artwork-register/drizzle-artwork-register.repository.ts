@@ -37,8 +37,19 @@ import { columnsForZohoFields, toConflict, toEntry, toEvent } from "./artwork-re
 
 type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
+/**
+ * Built over a connection pool, every write opens its own transaction. Built over an open
+ * transaction (the register shares the product's database), each write becomes a savepoint inside
+ * it, so the move commits or rolls back with the caller's change; the row lock, version check and
+ * history/event writes are unchanged.
+ */
 export class DrizzleArtworkRegisterRepository implements IArtworkRegisterRepository {
   constructor(private readonly db: Database) {}
+
+  /** The same repository over the caller's open transaction. */
+  withExecutor(executor: Database): DrizzleArtworkRegisterRepository {
+    return new DrizzleArtworkRegisterRepository(executor);
+  }
 
   async findById(id: string): Promise<ArtworkRegisterEntry | null> {
     return this.findOne(eq(register.id, id));

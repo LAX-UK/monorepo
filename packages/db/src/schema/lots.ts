@@ -14,6 +14,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { artistProfile } from "./artist-profiles.js";
+import { artworkRegister } from "./artwork-register.js";
 import { user } from "./auth.js";
 import { legalEntity } from "./legal-entities.js";
 import { sale } from "./sales.js";
@@ -46,6 +47,13 @@ export const lot = pgTable(
       .references(() => legalEntity.id, { onDelete: "restrict" }),
     /** artist registry FK */
     artistId: uuid("artist_id").references(() => artistProfile.id, {
+      onDelete: "restrict",
+    }),
+    /**
+     * The artwork register record this lot offers, when it has one. The register holds the offer
+     * state (one place at a time across lax.art and Bid); a lot with no link behaves as before.
+     */
+    artworkRegisterId: uuid("artwork_register_id").references(() => artworkRegister.id, {
       onDelete: "restrict",
     }),
     /** gates publish when artist is pending */
@@ -114,6 +122,9 @@ export const lot = pgTable(
     index("lot_artist_id_idx").on(table.artistId),
     index("lot_artist_review_required_idx").on(table.artistReviewRequired),
     index("lot_buyer_legal_entity_id_idx").on(table.buyerLegalEntityId),
+    index("lot_artwork_register_id_idx")
+      .on(table.artworkRegisterId)
+      .where(sql`${table.artworkRegisterId} IS NOT NULL`),
     index("lot_status_end_time_idx").on(table.status, table.endTime),
     index("lot_sale_id_idx").on(table.saleId),
     index("lot_sale_id_status_idx").on(table.saleId, table.status),

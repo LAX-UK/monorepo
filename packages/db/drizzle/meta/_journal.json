@@ -2052,6 +2052,13 @@
       "when": 1800864000000,
       "tag": "0293_drop_marketing_contact_sync_log",
       "breakpoints": true
+    },
+    {
+      "idx": 294,
+      "version": "7",
+      "when": 1800950400000,
+      "tag": "0294_lot_artwork_register_link",
+      "breakpoints": true
     }
   ]
 }

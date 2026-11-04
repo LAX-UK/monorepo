@@ -1179,6 +1179,8 @@ export type {
   ApplyZohoChangeResult,
   ConflictCursor,
   CreateRegisterEntryResult,
+  ILotRegisterLinkReader,
+  LotRegisterLink,
   IArtworkRegisterReader,
   IArtworkRegisterRepository,
   MoveOfferInput,

@@ -5,6 +5,7 @@ export const IDENTITY_LIFECYCLE_OUTBOX_RELAY_PROJECTOR = "identity_lifecycle_out
 export const DOMAIN_EVENT_PROJECTOR_NAMES = [
   "admin_impersonation_notify",
   "aml_match_review",
+  "artwork_offer_lock",
   "bid_alert_matching",
   "bid_identity_directory",
   "bid_personal_data_anonymisation",

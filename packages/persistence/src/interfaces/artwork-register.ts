@@ -154,3 +154,18 @@ export interface IArtworkRegisterRepository extends IArtworkRegisterReader {
    */
   resolveConflict(input: ResolveConflictInput): Promise<ResolveConflictResult>;
 }
+
+export type LotRegisterLink = {
+  registerId: string;
+  status: "draft" | "scheduled" | "active" | "ended" | "cancelled" | "voided";
+  hasWinner: boolean;
+};
+
+/**
+ * Which register record a Bid lot offers, and where the lot stands. The lot stores the link in its
+ * own table; this reads it so the offer lock never needs the lot's other columns.
+ */
+export interface ILotRegisterLinkReader {
+  /** The lot's link to the register, or null when the lot has none (or does not exist). */
+  findLink(lotId: string): Promise<LotRegisterLink | null>;
+}
