@@ -92,6 +92,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("anonymise Shop personal data", () => {
       await db.insert(shopArtistApplication).values({
         applicantSubjectId: subjectId,
         status: "declined",
+        submittedAt: new Date(now.getTime() - 2 * HOUR),
         decidedAt: now,
         artistName: "Ada",
         contactEmail: `${subjectId}@example.test`,

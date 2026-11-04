@@ -98,6 +98,13 @@ describe("Shop anonymisation policy", () => {
     }
   });
 
+  it("never touches the application columns its status checks depend on", () => {
+    const application = SHOP_ANONYMISATION_RULES.find((r) => r.table === "shop_artist_application");
+    for (const tied of ["status", "submitted_at", "decided_at", "artist_id"]) {
+      expect(application?.fields).not.toContain(tied);
+    }
+  });
+
   it("keeps the financial records", () => {
     for (const kept of ["shop_order_line", "shop_refund", "shop_payout_ledger", "shop_sale_fee"]) {
       expect(tables).not.toContain(kept);
