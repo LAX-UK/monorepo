@@ -5,6 +5,7 @@ import {
   formatStaffMoney,
   formatStaffRelative,
   formatStaffTime,
+  formatStaffWhen,
   londonZoneLabel,
   staffShortDateFormat,
 } from "./format.js";
@@ -44,7 +45,30 @@ describe("staff date and time formatters", () => {
     expect(formatStaffDateTime("2026-10-24T13:05:00Z")).toBe("24 Oct 2026, 14:05");
   });
 
+  it("writes the one date style: weekday, day and month, 24-hour time and zone", () => {
+    const now = "2026-11-04T12:00:00Z";
+    expect(formatStaffWhen("2026-11-12T04:49:00Z", now)).toBe("Thu 12 Nov, 04:49 GMT");
+    expect(formatStaffWhen("2026-07-14T13:05:00Z", now)).toBe("Tue 14 Jul, 14:05 BST");
+    expect(formatStaffWhen("2026-09-30T12:00:00Z", now)).toBe("Wed 30 Sep, 13:00 BST");
+  });
+
+  it("adds the year only when it is not this year's", () => {
+    expect(formatStaffWhen("2025-12-31T23:30:00Z", "2026-11-04T12:00:00Z")).toBe(
+      "Wed 31 Dec 2025, 23:30 GMT",
+    );
+    expect(formatStaffWhen("2026-12-31T23:30:00Z", "2026-11-04T12:00:00Z")).toBe(
+      "Thu 31 Dec, 23:30 GMT",
+    );
+  });
+
+  it("reads the day in London, not UTC, across midnight", () => {
+    expect(formatStaffWhen("2026-07-14T23:30:00Z", "2026-07-14T12:00:00Z")).toBe(
+      "Wed 15 Jul, 00:30 BST",
+    );
+  });
+
   it("returns unreadable input unchanged rather than inventing a date", () => {
+    expect(formatStaffWhen("not a date")).toBe("not a date");
     expect(formatStaffDate("not a date")).toBe("not a date");
     expect(formatStaffDateTime("")).toBe("");
   });
