@@ -1,4 +1,3 @@
-import { maskAccountEmail } from "@auction/lax-ecosystem";
 import type { ProfileContactVm } from "./account-contact.vm";
 import type { AccountLinksVm } from "./account-links";
 
@@ -25,8 +24,7 @@ function verified(isVerified: boolean): ProfileStatusVm {
 /**
  * The contact part of Personal details (Figma 950:13732); the name above it is edited in
  * Account. Email and phone are changed in place by the editors the page renders under each
- * section. The email is masked because the page can be shown on a shared screen; the phone is
- * the person's own contact number and is shown in full. Without Bid configured the address
+ * section. Both are the signed-in person's own details and are shown in full. Without Bid configured the address
  * book, which Account cannot read, is hidden.
  */
 export function buildProfileSections(
@@ -40,7 +38,7 @@ export function buildProfileSections(
       fields: [
         {
           label: "Email address",
-          value: contact.email ? maskAccountEmail(contact.email) : null,
+          value: contact.email,
           ...(contact.email ? { status: verified(contact.emailVerified) } : {}),
         },
       ],
@@ -69,9 +67,4 @@ export function buildProfileSections(
   return sections.filter(
     (section) => section.id !== "phone" || contact.phone !== null || contact.phoneAvailable,
   );
-}
-
-/** The address a pending change is waiting on, masked like the current one. */
-export function maskPendingEmail(contact: ProfileContactVm): string | null {
-  return contact.pendingEmail ? maskAccountEmail(contact.pendingEmail) : null;
 }
