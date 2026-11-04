@@ -3,6 +3,7 @@ import { SellerProfileUnavailableAlert } from "@/components/dashboard/seller-pro
 import { ConsignmentsExportButton } from "@/components/dashboard/seller/consignments-export-button";
 import { ConsignmentsView } from "@/components/dashboard/seller/consignments-view";
 import { SubmissionsListAutoRefresh } from "@/components/dashboard/submissions/submissions-list-auto-refresh";
+import { ClientFlashNotice } from "@/components/flash/client-flash-notice";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -60,7 +61,12 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
           ? `Works ${access.organisation} has sent us to sell, from review to sale.`
           : "Works you've sent us to sell, from review to sale."
       }
-      banner={sellerCtx.sellerEntityId ? null : <SellerProfileUnavailableAlert />}
+      banner={
+        <>
+          <ClientFlashNotice path={PATH} />
+          {sellerCtx.sellerEntityId ? null : <SellerProfileUnavailableAlert />}
+        </>
+      }
       actions={
         hasAny ? (
           <>

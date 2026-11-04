@@ -12,6 +12,7 @@ import { PressPageToolbar } from "@/components/sections/press/press-page-toolbar
 import { PressPagination } from "@/components/sections/press/press-pagination";
 import { getServerPressArchiveReader } from "@/lib/data/http/press.server";
 import { computePressHubStats } from "@/lib/marketing/press-hub-stats";
+import { resolvePressPageState } from "@/lib/marketing/press-page-state";
 import {
   PRESS_HUB_PAGE_SIZE,
   buildPressHubClampedPageQuery,
@@ -82,6 +83,11 @@ export default async function PressPage({ searchParams }: PageProps) {
   const totalPages = pressHubTotalPages(meta.total);
   const includeItemList = !nonCanonical && params.page === 1 && data.length > 0;
   const hubStats = computePressHubStats(meta);
+  const pageState = resolvePressPageState({
+    matchingCount: data.length,
+    archiveTotal: meta.archiveTotal,
+    hasActiveFilters,
+  });
 
   const base = getSiteUrl();
   const crumbs = breadcrumbJsonLd([
@@ -129,7 +135,12 @@ export default async function PressPage({ searchParams }: PageProps) {
 
   return (
     <MarketingCatalogHubShell
-      hero={<PressHubHero lastUpdated={meta.lastUpdated} stats={hubStats} />}
+      hero={
+        <PressHubHero
+          lastUpdated={meta.lastUpdated}
+          stats={pageState.showHeroStats ? hubStats : undefined}
+        />
+      }
       footer={
         totalPages > 1 ? (
           <Suspense fallback={null}>
@@ -147,13 +158,26 @@ export default async function PressPage({ searchParams }: PageProps) {
         <section id="press-coverage" aria-labelledby="press-coverage-archive-title">
           <PressCoverageList
             items={coverageItems}
-            hasActiveFilters={hasActiveFilters}
-            toolbar={<PressPageToolbar params={params} years={years} resultCount={meta.total} />}
+            view={pageState.view}
+            toolbar={
+              pageState.showToolbar ? (
+                <PressPageToolbar params={params} years={years} resultCount={meta.total} />
+              ) : null
+            }
           />
         </section>
 
-        <PressDayMediaRail items={dayMediaItems} />
-        <PressMediaKitBlock />
+        {pageState.view === "empty" ? (
+          <>
+            <PressMediaKitBlock />
+            <PressDayMediaRail items={dayMediaItems} />
+          </>
+        ) : (
+          <>
+            <PressDayMediaRail items={dayMediaItems} />
+            <PressMediaKitBlock />
+          </>
+        )}
       </div>
     </MarketingCatalogHubShell>
   );

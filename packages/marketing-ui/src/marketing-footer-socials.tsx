@@ -3,7 +3,7 @@ import {
   type LaxSocialNetwork,
   socialProfilesFor,
 } from "@auction/branding";
-import { cn } from "@auction/ui";
+import { TAP_AREA, cn } from "@auction/ui";
 import type { ReactNode, SVGProps } from "react";
 import {
   MarketingInstagramIcon,
@@ -37,14 +37,14 @@ export function MarketingFooterSocials({
   const profiles = socialProfilesFor(product);
   if (profiles.length === 0) return null;
   return (
-    <div className={cn("flex flex-row items-center gap-4", className)}>
+    <div className={cn("flex flex-row items-center gap-4 pointer-coarse:gap-5", className)}>
       {profiles.map(({ network, href, label }) => {
         const Icon = SOCIAL_ICON[network];
         return (
           <a
             key={network}
             href={href}
-            className={linkClassName}
+            className={cn(TAP_AREA, linkClassName)}
             aria-label={label}
             rel="noreferrer noopener"
             target="_blank"

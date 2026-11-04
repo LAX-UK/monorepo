@@ -2,14 +2,12 @@ import "server-only";
 
 import { venuesListController } from "@/lib/admin/admin-list-controllers";
 import { enrichVenueListWithLegalEntityNames } from "@/lib/admin/enrich-venue-list-rows";
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import type { AdminVenueListRow } from "@/lib/services/interfaces/admin-venue-service";
 
 export type AdminVenuesListSearchParams = Record<string, string | string[] | undefined>;
 
 /** One page of venues with the total behind it, and the organisation filter's display name. */
 export async function loadAdminVenuesListPage(sp: AdminVenuesListSearchParams) {
-  const error = safeDecodeAdminErrorParam(sp.error);
   const query = venuesListController.parseQuery(sp);
   const legalEntityId = query.legalEntityId;
 
@@ -42,7 +40,6 @@ export async function loadAdminVenuesListPage(sp: AdminVenuesListSearchParams) {
 
   return {
     query,
-    error,
     venues,
     total,
     listError,

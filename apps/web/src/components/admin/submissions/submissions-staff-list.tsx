@@ -40,7 +40,7 @@ import {
   staffButtonVariants,
   useSavedViews,
 } from "@auction/staff-ui";
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 
 export type SubmissionsStaffListProps = {
   rows: SubmissionsStaffRow[];
@@ -56,6 +56,8 @@ export type SubmissionsStaffListProps = {
   currentUserId: string;
   exportFilters: Record<string, unknown>;
   listError: string | null;
+  /** What the action that sent staff here has to say, shown under the header. */
+  notice?: ReactNode;
   filtered: boolean;
 };
 
@@ -291,6 +293,7 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
         activeFilters={activeFilters}
         onClearFilters={() => navigate(clearHref)}
         loading={pending}
+        notice={props.notice}
         filtered={filtered}
         error={
           props.listError

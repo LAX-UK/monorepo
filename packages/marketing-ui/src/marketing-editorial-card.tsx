@@ -28,6 +28,12 @@ const LAYOUT_CLASS = {
   },
 } as const;
 
+/** A card without media: the text under a hairline, at a readable measure. */
+const TEXT_LED_CLASS = {
+  card: "flex h-full flex-col border-t border-outline-variant pt-5",
+  text: "flex max-w-[40rem] flex-col gap-4",
+} as const;
+
 const TITLE_CLASS: Record<keyof typeof LAYOUT_CLASS, string> = {
   stacked: "text-lg leading-7 md:text-xl",
   split: "text-xl leading-7 md:text-[1.75rem] md:leading-tight",
@@ -37,8 +43,13 @@ const TITLE_CLASS: Record<keyof typeof LAYOUT_CLASS, string> = {
 type EditorialCardLinkProps = { href: string; className?: string; children: ReactNode };
 
 export type MarketingEditorialCardProps = {
-  /** Fills the media slot (`absolute inset-0 size-full`). */
-  media: ReactNode;
+  /** Heading level of the title: `h2` on a page whose cards follow the page title directly. */
+  titleAs?: "h2" | "h3";
+  /**
+   * Fills the media slot (`absolute inset-0 size-full`). Without it the card is text-led: a
+   * hairline above the text instead of an image or placeholder, at any layout.
+   */
+  media?: ReactNode;
   /**
    * `landscape` 4:3 for features and rails; `portrait` 8:11 for story grids (Figma `251:1312`);
    * `wide` 21:10 for a full-width lead (Figma `285:3008`, drawn about 1200×568).
@@ -64,6 +75,7 @@ export type MarketingEditorialCardProps = {
  * title link stretches over the whole card so media and text share one tab stop.
  */
 export function MarketingEditorialCard({
+  titleAs = "h3",
   media,
   aspect = "landscape",
   layout = "stacked",
@@ -75,16 +87,22 @@ export function MarketingEditorialCard({
   linkAs: LinkComponent = Link,
   "data-testid": testId,
 }: MarketingEditorialCardProps) {
+  const Title = titleAs;
+  const textLed = media === undefined;
+  const classes = textLed ? TEXT_LED_CLASS : LAYOUT_CLASS[layout];
   return (
     <article
-      className={cn("group relative", LAYOUT_CLASS[layout].card)}
+      className={cn("group relative", classes.card)}
       data-layout={layout}
+      data-text-led={textLed ? "" : undefined}
       data-testid={testId}
     >
-      <MarketingCardMedia className={cn("bg-surface-container", ASPECT_CLASS[aspect])}>
-        {media}
-      </MarketingCardMedia>
-      <div className={LAYOUT_CLASS[layout].text}>
+      {textLed ? null : (
+        <MarketingCardMedia className={cn("bg-surface-container", ASPECT_CLASS[aspect])}>
+          {media}
+        </MarketingCardMedia>
+      )}
+      <div className={classes.text}>
         <div className="flex flex-col gap-1">
           {kicker.length > 0 ? (
             <p className="flex flex-wrap items-center font-label text-xs leading-[1.125rem] text-on-surface-variant">
@@ -102,7 +120,7 @@ export function MarketingEditorialCard({
             </p>
           ) : null}
           <div className="flex items-start gap-4">
-            <h3
+            <Title
               className={cn(
                 "min-w-0 flex-1 font-headline font-medium text-on-surface",
                 TITLE_CLASS[layout],
@@ -121,7 +139,7 @@ export function MarketingEditorialCard({
               ) : (
                 title
               )}
-            </h3>
+            </Title>
             {trailing ? <div className="relative z-[1] -mt-2 shrink-0">{trailing}</div> : null}
           </div>
         </div>

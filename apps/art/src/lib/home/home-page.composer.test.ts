@@ -217,6 +217,33 @@ describe("composeArtHomePage sections", () => {
     expect(vm.surfaces.guide).toBe("band");
   });
 
+  it("marks a section text-led when none of its items has an image", async () => {
+    const services = fakeArtServices();
+    services.editorial.home.mockResolvedValue({
+      status: "ok",
+      data: {
+        placements: [
+          placement("home_whats_on", 0),
+          placement("home_whats_on", 1),
+          placement("home_stories", 0),
+          placement("home_stories", 1, { mediaUrl: "https://cdn.test/story.jpg" }),
+        ],
+      },
+    });
+    services.editorial.listVenues.mockResolvedValue({
+      status: "ok",
+      data: { items: [{ slug: "marylebone", name: "Marylebone", coverUrl: null }] },
+    });
+    services.editorial.getVenue.mockResolvedValue({
+      status: "ok",
+      data: venueDetail("marylebone", { coverUrl: null }),
+    });
+
+    const vm = await composeArtHomePage(services);
+
+    expect(vm.textLed).toEqual({ whatsOn: true, stories: false, galleries: true });
+  });
+
   it("caps What's on at a lead plus three and stories at a lead plus two", async () => {
     const services = fakeArtServices();
     services.editorial.home.mockResolvedValue({

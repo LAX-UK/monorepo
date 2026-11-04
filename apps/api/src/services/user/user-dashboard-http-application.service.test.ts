@@ -1,3 +1,4 @@
+import { PURCHASE_LIST_LIMIT } from "@auction/domain";
 import { describe, expect, it, vi } from "vitest";
 import { UserDashboardHttpApplicationService } from "./user-dashboard-http-application.service.js";
 
@@ -67,6 +68,23 @@ describe("purchases list only ended lots", () => {
     await service.listPortfolio({ userId: "buyer-1" });
     expect(list).toHaveBeenCalledWith(
       expect.objectContaining({ winnerId: "buyer-1", statuses: ["ended"] }),
+    );
+  });
+
+  it("reads as many purchases as the amounts owed add up, for a person and an account", async () => {
+    const { service, list } = buildPurchases();
+    await service.listPortfolio({ userId: "buyer-1" });
+    await service.listAccountPurchases({
+      userId: "owner-1",
+      account: { legalEntityId: ACCOUNT, role: "owner" },
+    });
+    expect(list).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ limit: PURCHASE_LIST_LIMIT }),
+    );
+    expect(list).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ limit: PURCHASE_LIST_LIMIT }),
     );
   });
 

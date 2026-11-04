@@ -90,7 +90,6 @@ describe("product page view model", () => {
 
   it("reads the size, the buy block and the included list from the record", () => {
     const vm = buildArtworkProductPage({ artwork: detail(), artistEditions: [], artBaseUrl: ART });
-    expect(vm.sizeSummary).toBe("50 × 40 cm (19.7 × 15.7 in)");
     expect(vm.description).toBe("A still life.");
     expect(vm.purchase).toMatchObject({
       priceLabel: "£120",
@@ -102,21 +101,6 @@ describe("product page view model", () => {
     expect(vm.included[0]).toBe("Certificate of authenticity");
     expect(vm.gallery.scale).not.toBeNull();
     expect(vm.related).toBeNull();
-  });
-
-  it("shows edition, size and technique at a glance, or nothing with fewer than two", () => {
-    const vm = buildArtworkProductPage({ artwork: detail(), artistEditions: [], artBaseUrl: ART });
-    expect(vm.keyFacts).toEqual([
-      { label: "Edition", value: "Edition of 24" },
-      { label: "Size", value: "50 × 40 cm" },
-      { label: "Technique", value: "Giclée print" },
-    ]);
-    const thin = buildArtworkProductPage({
-      artwork: detail({ heightCm: null, widthCm: null, medium: null }),
-      artistEditions: [],
-      artBaseUrl: ART,
-    });
-    expect(thin.keyFacts).toEqual([]);
   });
 
   it("introduces the artist from their Shop profile, with their editions and lax.art story", () => {

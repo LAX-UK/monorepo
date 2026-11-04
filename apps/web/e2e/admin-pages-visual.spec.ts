@@ -44,7 +44,7 @@ async function prepareCase(
   }
 
   if (visualCase.setup === "lot-filters") {
-    const filters = page.getByRole("button", { name: /^filters$/i });
+    const filters = page.getByRole("button", { name: /^filter\b/i });
     await expect(filters).toBeVisible({ timeout: visualTimeout });
     await filters.click();
     await expect(page.getByRole("dialog").filter({ hasText: /apply filters/i })).toBeVisible({

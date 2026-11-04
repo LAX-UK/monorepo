@@ -95,9 +95,7 @@ export function DensityTweakSection() {
           size="icon"
           className="min-h-10 min-w-10 border-outline-variant/40 text-secondary hover:bg-surface-container-low hover:text-link"
           onClick={toggleDensity}
-          aria-label={
-            isCompact ? "Use comfortable dashboard density" : "Use compact dashboard density"
-          }
+          aria-label={isCompact ? "Use comfortable density" : "Use compact density"}
           aria-pressed={isCompact}
         >
           {isCompact ? (
@@ -108,7 +106,7 @@ export function DensityTweakSection() {
         </Button>
       </div>
       <fieldset className="flex flex-col gap-2">
-        <legend className="sr-only">Choose dashboard density</legend>
+        <legend className="sr-only">Choose density</legend>
         <RadioGroup
           value={density}
           onValueChange={(v) => setDensity(v as "normal" | "compact")}

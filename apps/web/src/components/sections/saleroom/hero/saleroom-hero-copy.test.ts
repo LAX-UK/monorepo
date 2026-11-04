@@ -12,7 +12,7 @@ describe("saleroom-hero-copy", () => {
         { isLive: true, liveLotsCount: 1, itemsLabel: "120 lots" },
         { liveSession: null, catalogLotRefs: [] },
       ),
-    ).toBe("· 1 lot live");
+    ).toBe("· 1 lot");
   });
 
   it("pluralises live lot count", () => {
@@ -21,7 +21,7 @@ describe("saleroom-hero-copy", () => {
         { isLive: true, liveLotsCount: 3, itemsLabel: "120 lots" },
         { liveSession: null, catalogLotRefs: [] },
       ),
-    ).toBe("· 3 lots live");
+    ).toBe("· 3 lots");
   });
 
   it("shows on-block hybrid copy when session is live", () => {

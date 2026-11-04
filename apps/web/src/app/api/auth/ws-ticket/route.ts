@@ -2,12 +2,27 @@ import { createHash, randomBytes } from "node:crypto";
 import { BID_API_AUDIENCE, WS_AUDIENCE, bffConfig } from "@/lib/bff/config.server";
 import { ensureBffRedisConnected, getBffRedis } from "@/lib/bff/redis.server";
 import { readBidSessionId } from "@/lib/bff/session-cookie.server";
-import { BidBffTokenService } from "@/lib/bff/token-service.server";
+import { BidBffSessionRequiredError, BidBffTokenService } from "@/lib/bff/token-service.server";
 import { fetchBidApi } from "@/lib/data/http/bid-api.server";
 import { parseSessionUser } from "@/lib/data/http/parse/session.parse";
 import { type NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
+
+/** Upper bound for the identity check so a hung API surfaces as 503, not a hung socket. */
+const API_TIMEOUT_MS = 10_000;
+
+const SESSION_REQUIRED = () => NextResponse.json({ error: "session_required" }, { status: 401 });
+
+/** Dependency failure: the person is still signed in and the client may try again. */
+function ticketUnavailable(cause: unknown) {
+  // Only the error class is logged: never tokens, cookies or user details.
+  console.error("[ws-ticket] unavailable", cause instanceof Error ? cause.name : "unknown");
+  return NextResponse.json(
+    { error: "ws_ticket_unavailable" },
+    { status: 503, headers: { "retry-after": "5", "cache-control": "no-store" } },
+  );
+}
 
 export async function POST(request: NextRequest) {
   if (
@@ -18,7 +33,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "csrf_rejected" }, { status: 403 });
   }
   const sessionId = readBidSessionId(request);
-  if (!sessionId) return NextResponse.json({ error: "session_required" }, { status: 401 });
+  if (!sessionId) return SESSION_REQUIRED();
   try {
     const tokens = new BidBffTokenService();
     const apiResource = await tokens.resourceToken(sessionId, BID_API_AUDIENCE, "bid.read");
@@ -26,16 +41,15 @@ export async function POST(request: NextRequest) {
     const meResponse = await fetchBidApi(`${bffConfig().apiBaseUrl}/users/me`, {
       headers: { authorization: `Bearer ${apiResource.token}`, accept: "application/json" },
       cache: "no-store",
+      signal: AbortSignal.timeout(API_TIMEOUT_MS),
     });
+    if (meResponse.status === 401 || meResponse.status === 403) return SESSION_REQUIRED();
+    if (!meResponse.ok) return ticketUnavailable(new Error(`API status ${meResponse.status}`));
     const me = (await meResponse.json()) as {
       data?: { id?: string; role?: string; staffRole?: unknown; staffRoles?: unknown };
     };
-    if (
-      !meResponse.ok ||
-      me.data?.id !== apiResource.session.subject ||
-      typeof me.data.role !== "string"
-    ) {
-      return NextResponse.json({ error: "session_required" }, { status: 401 });
+    if (me.data?.id !== apiResource.session.subject || typeof me.data.role !== "string") {
+      return SESSION_REQUIRED();
     }
     const ticket = randomBytes(32).toString("base64url");
     const key = `bid:ws-ticket:${createHash("sha256").update(ticket).digest("base64url")}`;
@@ -60,7 +74,8 @@ export async function POST(request: NextRequest) {
       { ticket, expiresIn: 60 },
       { headers: { "cache-control": "no-store" } },
     );
-  } catch {
-    return NextResponse.json({ error: "session_required" }, { status: 401 });
+  } catch (error) {
+    if (error instanceof BidBffSessionRequiredError) return SESSION_REQUIRED();
+    return ticketUnavailable(error);
   }
 }

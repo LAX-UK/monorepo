@@ -1,3 +1,4 @@
+import { SPECIALIST_RESPONSE_PROMISE } from "@/lib/marketing/sell-flow-copy";
 const STEPS = [
   {
     title: "Tell us about the work",
@@ -5,7 +6,7 @@ const STEPS = [
   },
   {
     title: "Our specialists review it",
-    description: "We reply within 5 working days with an estimate and terms.",
+    description: `${SPECIALIST_RESPONSE_PROMISE} They reply with an estimate and terms.`,
   },
   {
     title: "It goes into a sale",

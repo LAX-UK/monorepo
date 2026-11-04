@@ -1,12 +1,11 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SellWithLaxFlow } from "@/components/dashboard/seller/sell-with-lax-flow";
 import { SubmissionResubmitBanner } from "@/components/dashboard/submission-resubmit-banner";
+import { ClientFlashNotice } from "@/components/flash/client-flash-notice";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
-import { describeSettingsActionError } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import {
   EMPTY_SUBMISSION_FORM_VALUES,
@@ -52,7 +51,6 @@ export default async function NewSubmissionPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    error?: string;
     fromRejected?: string;
     categorySlug?: string;
     /** "Consign this work" from the collection: a work the organisation bought. */
@@ -62,7 +60,6 @@ export default async function NewSubmissionPage({
   }>;
 }) {
   const sp = await searchParams;
-  const error = sp.error ? decodeURIComponent(sp.error) : null;
   const categorySlug =
     typeof sp.categorySlug === "string" && sp.categorySlug.length > 0 ? sp.categorySlug : null;
   const loginNext = categorySlug
@@ -114,7 +111,7 @@ export default async function NewSubmissionPage({
         title={SELL_A_WORK_LABEL}
         description="Tell us about the work. A specialist reviews every work, and there's no obligation to sell."
       />
-      {error ? <DashboardSliceErrorAlert failure={describeSettingsActionError(error)} /> : null}
+      <ClientFlashNotice path="/selling/new" />
       {resubmitFrom ? (
         <SubmissionResubmitBanner
           rejectionReason={resubmitFrom.rejectionReason}

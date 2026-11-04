@@ -29,7 +29,9 @@ describe("run form", () => {
     const values = emptyRunForm();
     expect(values.template).toBe("lax_standard");
     expect(validateRunForm(values, unlinked)).toEqual({});
-    expect(formNumberingText(values)).toBe("Numbering: 1–10 buyers · 11–20 artist · 21–24 LAX");
+    expect(formNumberingText(values)).toBe(
+      "Prints 1–10 go to the buyer of the original, 11–20 to the artist and 21–24 to LAX.",
+    );
     expect(runSpecInput(values)).toEqual({ type: "lax_standard" });
   });
 
@@ -54,7 +56,7 @@ describe("run form", () => {
 
   it("numbers buyers first, then the artist, then LAX, leaving out empty groups", () => {
     expect(formNumberingText(custom("40", "0", "30", "10"))).toBe(
-      "Numbering: 1–30 artist · 31–40 LAX",
+      "Prints 1–30 go to the artist and 31–40 to LAX.",
     );
     expect(formNumberingText(custom("40", "0", "30", "9"))).toBeNull();
   });

@@ -3,7 +3,14 @@ import { Check, CircleAlert } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../../lib/utils.js";
 
-export type StatusBadgeTone = "neutral" | "info" | "success" | "warning" | "danger" | "live";
+export type StatusBadgeTone =
+  | "neutral"
+  | "info"
+  | "accepted"
+  | "success"
+  | "warning"
+  | "danger"
+  | "live";
 
 /**
  * The cue drawn before the label, so a status never relies on its colour alone:
@@ -18,26 +25,31 @@ export type StatusBadgeShape = "ring" | "dot" | "check" | "alert";
  * Tint and label colour per tone: the LAX status palette (`--lax-<tone>-bg` and `-fg`), one for
  * Bid, the client workspace and both staff tools, whose text meets 4.5:1 on its tint in light and
  * dark (packages/branding/tests/lax-system.test.ts). A product that does not load the LAX system
- * (Shop, LAX Account) falls back to its own theme's status tokens. `live` is a solid fill, so
- * something happening now never reads as the tinted danger of a failed record.
+ * (Shop, LAX Account) falls back to its own theme's status tokens. `accepted` is its own violet,
+ * so work the house has taken on never shares the blue of work still in review. `live` is the
+ * neutral badge with the pulsing live dot: something happening now is a state, not an alarm, and
+ * red stays for outbid and overdue.
  */
 export const STATUS_BADGE_TONE_CLASSES: Readonly<Record<StatusBadgeTone, string>> = {
   neutral:
     "bg-[var(--lax-neutral-bg,var(--color-surface-container-high))] text-[var(--lax-neutral-fg,var(--color-on-surface-variant))]",
   info: "bg-[var(--lax-info-bg,var(--color-info-container))] text-[var(--lax-info-fg,var(--color-info-on-surface))]",
+  accepted:
+    "bg-[var(--lax-accepted-bg,var(--color-info-container))] text-[var(--lax-accepted-fg,var(--color-info-on-surface))]",
   success:
     "bg-[var(--lax-success-bg,var(--color-success-container))] text-[var(--lax-success-fg,var(--color-on-success-container))]",
   warning:
     "bg-[var(--lax-warning-bg,var(--color-warning-container))] text-[var(--lax-warning-fg,var(--color-warning-on-surface))]",
   danger:
     "bg-[var(--lax-danger-bg,var(--color-danger-container))] text-[var(--lax-danger-fg,var(--color-danger-on-surface))]",
-  live: "bg-[var(--lax-live-bg,var(--color-danger-container))] text-[var(--lax-on-live,var(--color-danger-on-surface))]",
+  live: "bg-[var(--lax-neutral-bg,var(--color-surface-container-high))] text-[var(--lax-neutral-fg,var(--color-on-surface-variant))]",
 };
 
 /** The cue a tone draws when the caller does not name one. */
 export const STATUS_BADGE_DEFAULT_SHAPE: Readonly<Record<StatusBadgeTone, StatusBadgeShape>> = {
   neutral: "ring",
   info: "dot",
+  accepted: "dot",
   success: "check",
   warning: "alert",
   danger: "alert",
@@ -65,7 +77,7 @@ function StatusBadgeCue({
 }: {
   shape: StatusBadgeShape;
   pulse: boolean;
-  /** A tinted badge that is live shows the live red dot; the solid live badge keeps its own. */
+  /** A live badge draws the live red dot in place of the current-colour dot. */
   liveDot: boolean;
 }) {
   switch (shape) {
@@ -106,7 +118,7 @@ export type StatusBadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
   tone?: StatusBadgeTone;
   /** Overrides the tone's default cue (see `StatusBadgeShape`). */
   shape?: StatusBadgeShape;
-  /** Something happening now: a pulsing dot (red on a tinted badge). The `live` tone always is. */
+  /** Something happening now: the pulsing live dot. The `live` tone always is. */
   live?: boolean;
   /** A glyph in place of the status cue, for a tag that names a kind rather than a state. */
   icon?: React.ReactNode;
@@ -148,7 +160,7 @@ export function StatusBadge({
         <StatusBadgeCue
           shape={live ? "dot" : (shape ?? STATUS_BADGE_DEFAULT_SHAPE[tone])}
           pulse={pulsing}
-          liveDot={live && tone !== "live"}
+          liveDot={pulsing}
         />
       )}
       <span>{children}</span>

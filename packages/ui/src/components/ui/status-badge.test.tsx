@@ -67,6 +67,7 @@ describe("StatusBadge", () => {
     expect(STATUS_BADGE_DEFAULT_SHAPE).toEqual({
       neutral: "ring",
       info: "dot",
+      accepted: "dot",
       success: "check",
       warning: "alert",
       danger: "alert",

@@ -227,6 +227,17 @@ describe("artwork form payloads", () => {
     expect(artworkFormValues(detail).sourceOriginalId).toBeNull();
   });
 
+  it("sends an original's prints with it, and never sends them with an edition", () => {
+    const prints = { title: "Harbour at Dusk", run: { spec: { type: "lax_standard" as const } } };
+    const original = filled({ editionRun: "original", salesChannel: "art" });
+    expect(buildArtworkCreateBody(original, create, null, prints)).toMatchObject({
+      run: null,
+      prints,
+    });
+    expect(buildArtworkCreateBody(original, create, null)).not.toHaveProperty("prints");
+    expect(buildArtworkCreateBody(filled(), create, STANDARD, prints)).not.toHaveProperty("prints");
+  });
+
   it("never sends a price for an original, and omits a blank one", () => {
     expect(
       buildArtworkCreateBody(filled({ editionRun: "original" }), create, null),

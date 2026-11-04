@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { DashboardDataSources } from "@/lib/admin/dashboard/dashboard-data-sources";
+import { getAdminDataRequestSummary } from "@/lib/data/http/admin-data-requests.reader";
 import { getAdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { getAdminSaleReadiness } from "@/lib/data/http/admin-sale-readiness.server";
@@ -30,4 +31,5 @@ export const dashboardHttpDataSources: DashboardDataSources = {
     const summary = await fetchConsignmentInboxSummary();
     return summary.ok ? summary.data : null;
   },
+  getDataRequestSummary: () => getAdminDataRequestSummary().catch(() => null),
 };

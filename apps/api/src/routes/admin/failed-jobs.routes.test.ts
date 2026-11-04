@@ -43,7 +43,19 @@ describe("failed jobs routes", () => {
     expect(res.status).toBe(200);
     expect(failedJobs.list).toHaveBeenCalledWith(
       expect.objectContaining({ view: "needs_review", sort: "failed_desc", limit: 50, offset: 0 }),
+      expect.objectContaining({ userId: "staff-1" }),
     );
+  });
+
+  it("passes a source filter through and refuses an unknown one", async () => {
+    const { app, failedJobs } = createApp(["administrator"]);
+    const ok = await app.request("http://test/system/failed-jobs?source=integrations");
+    expect(ok.status).toBe(200);
+    expect(failedJobs.list).toHaveBeenCalledWith(
+      expect.objectContaining({ source: "integrations" }),
+      expect.anything(),
+    );
+    expect((await app.request("http://test/system/failed-jobs?source=xero")).status).toBe(400);
   });
 
   it("rejects an unknown view and a malformed day", async () => {
@@ -56,7 +68,10 @@ describe("failed jobs routes", () => {
     const { app, failedJobs } = createApp(["administrator"]);
     const ok = await app.request("http://test/system/failed-jobs/dlq%3Aemail%3A1");
     expect(ok.status).toBe(200);
-    expect(failedJobs.detail).toHaveBeenCalledWith("dlq:email:1");
+    expect(failedJobs.detail).toHaveBeenCalledWith(
+      "dlq:email:1",
+      expect.objectContaining({ userId: "staff-1" }),
+    );
     failedJobs.detail.mockResolvedValue(null);
     const missing = await app.request("http://test/system/failed-jobs/nope");
     expect(missing.status).toBe(404);
@@ -139,6 +154,20 @@ describe("failed jobs routes", () => {
     expect(discard.status).toBe(403);
     expect(failedJobs.retry).not.toHaveBeenCalled();
     expect(failedJobs.discard).not.toHaveBeenCalled();
+  });
+
+  it("lets finance in, to be narrowed to Xero by the service", async () => {
+    const { app, failedJobs } = createApp(["finance"]);
+    expect((await app.request("http://test/system/failed-jobs")).status).toBe(200);
+    expect(failedJobs.list).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ staffRoles: ["finance"] }),
+    );
+    const retry = await app.request(
+      "http://test/system/failed-jobs/retry",
+      json({ ids: ["delivery:1"] }),
+    );
+    expect(retry.status).toBe(200);
   });
 
   it("keeps everyone else out", async () => {

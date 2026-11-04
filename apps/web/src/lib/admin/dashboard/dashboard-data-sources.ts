@@ -12,6 +12,7 @@ import type {
   AdminFinanceIssuesPayload,
   AdminTodayMetricsPayload,
 } from "@/lib/data/http/admin.server";
+import type { DataRequestSummary } from "@auction/identity-contracts/data-requests";
 import type { ConsignmentInboxSummary } from "@auction/validators";
 
 type RecentLotRow = {
@@ -40,6 +41,8 @@ export type DashboardDataSources = {
   getSaleReadiness(limit?: number): Promise<readonly AdminSaleReadinessRow[]>;
   /** The viewer's client-message queues; null when they could not be read. */
   getConsignmentInboxSummary?(): Promise<ConsignmentInboxSummary | null>;
+  /** Open data requests against their deadlines; null when Identity could not be read. */
+  getDataRequestSummary?(): Promise<DataRequestSummary | null>;
 };
 
 export type DashboardRawActivity = AdminActivityRow[];

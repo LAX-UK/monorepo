@@ -70,7 +70,7 @@ describe("SaleroomHeroActionRow", () => {
   it("keeps Notify me in the same action row as the register button, after it", () => {
     render(
       <SaleroomHeroActionRow
-        hero={hero}
+        hero={{ ...hero, status: "scheduled", isLive: false }}
         isAuthenticated
         deliveryMode="hybrid"
         saleId="sale-1"
@@ -109,5 +109,23 @@ describe("SaleroomHeroActionRow", () => {
     expect(screen.getByText(KYC_BID_BLOCKED_DESCRIPTION).className).toContain(
       "text-on-surface-variant",
     );
+  });
+
+  it("offers no Notify me while the sale is live, and keeps the utility with the actions", () => {
+    render(
+      <SaleroomHeroActionRow
+        hero={hero}
+        isAuthenticated={false}
+        saleId="sale-1"
+        saleHref="/sales/test/sale-1"
+        initialFollowing={false}
+        utility={<button type="button">Share</button>}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: /notify me/i })).not.toBeInTheDocument();
+    const register = screen.getByRole("link", { name: /register to bid/i });
+    const share = screen.getByRole("button", { name: "Share" });
+    expect(register.parentElement).toBe(share.parentElement);
   });
 });

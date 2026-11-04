@@ -197,7 +197,7 @@ export function buildLotPageViewModel(input: {
     parentSale,
     saleLots,
     relatedRaw,
-    (l) => (l.sellerId === auction.sellerId ? sellerName : "Seller"),
+    (l) => (catalogArtist && l.artistId === catalogArtist.id ? catalogArtist.displayName : null),
     catalogLinkParams,
   );
 

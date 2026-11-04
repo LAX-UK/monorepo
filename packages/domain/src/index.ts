@@ -170,6 +170,14 @@ export {
   type UnsoldLotFacts,
 } from "./unsold-lot-choice.js";
 export {
+  LOT_CONFIRMED_FOR_RETURN_MESSAGE,
+  relistReserveToApply,
+  unsoldFollowUpFinishedByStaff,
+  unsoldFollowUpPlan,
+  type UnsoldFollowUpPlan,
+  type UnsoldFollowUpStatus,
+} from "./unsold-follow-up.js";
+export {
   WITHDRAWAL_FORBIDDEN_MESSAGE,
   canActOnConsignmentWithdrawal,
   consignmentWithdrawalPath,
@@ -607,6 +615,7 @@ export {
   type NeedsYouTask,
 } from "./needs-you.js";
 export {
+  PURCHASE_LIST_LIMIT,
   amountOwedEntry,
   summariseAmountsOwed,
   type AccountHold,
@@ -940,6 +949,7 @@ export * from "./marketing-enquiry-visibility.js";
 export * from "./marketing-enquiry-views.js";
 export * from "./marketing-enquiry-attachments.js";
 export * from "./marketing-enquiry-entity.js";
+export * from "./marketing-enquiry-erasure.js";
 export * from "./email/email-block-rules.js";
 export {
   BUYER_DEFAULT_OUTCOMES,

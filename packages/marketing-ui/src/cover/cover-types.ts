@@ -89,6 +89,8 @@ export type CoverSlide = {
   id: string;
   /** Status, such as "Live now". Neutral: one badge style, never an accent. */
   badge?: string;
+  /** The badge names something happening now: it carries the pulsing live dot. */
+  badgeLive?: boolean;
   /** The time that goes with the status, already worded by the product's time rule. */
   time?: string;
   /** Set in the final hour: the time line then updates every second. */

@@ -277,6 +277,23 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
       });
     },
 
+    async queueReturnClosedSeller(tx, input) {
+      const db = asDb(tx);
+      const to = await resolveShopUserEmail(db, input.sellerIdentitySubjectId);
+      if (!to) return;
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to,
+        template: "shop-return-closed-seller",
+        vars: {
+          artworkTitle: input.artworkTitle,
+          editionLabel: input.editionLabel,
+          stockOutcome: input.stockOutcome,
+          payout: input.payout,
+        },
+      });
+    },
+
     async queueReleaseAlertConfirmation(tx, input) {
       await insertShopEmailOutbox(asDb(tx), {
         idempotencyKey: input.idempotencyKey,

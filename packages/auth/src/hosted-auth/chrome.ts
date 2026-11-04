@@ -1,6 +1,7 @@
 import type { HostedNamedProduct, HostedProductChip } from "./brand.js";
 import { HOSTED_COPY } from "./copy.js";
 import { escapeHostedHtml } from "./escape.js";
+import type { HostedContext } from "./flow-context.js";
 import type { HostedFooterLinks } from "./legal-links.js";
 import {
   HOSTED_LOCKUP_BASE_PATH,
@@ -65,13 +66,24 @@ export function productName(product: HostedNamedProduct, label: string): string 
   return `<span class="product-name product-name--${product}">${escapeHostedHtml(label)}</span>`;
 }
 
-export type HostedLeadKey = keyof typeof HOSTED_COPY.leads;
+/**
+ * "to bid at LAX Bid", under the heading, naming what the account is for. The product name keeps
+ * its own colour. Empty without a customer product, so the page says nothing it cannot back up.
+ */
+export function contextLine(chip: HostedProductChip | null, context: HostedContext | null): string {
+  // Shop Admin wears the Shop colour but is staff-only: it has no customer reason to name.
+  if (!chip || chip.label === HOSTED_COPY.products.shopAdmin) return "";
+  const words = contextWords(chip.product, context);
+  if (!words) return "";
+  const name = productName(chip.product, chip.label);
+  const after = words.after ? ` ${escapeHostedHtml(words.after)}` : "";
+  return `<p class="destination">${escapeHostedHtml(words.before)} ${name}${after}</p>`;
+}
 
-/** A page's lead, naming the destination product in its own colour when there is one. */
-export function leadWithDestination(key: HostedLeadKey, chip: HostedProductChip | null): string {
-  const lead = HOSTED_COPY.leads[key];
-  if (!chip) return escapeHostedHtml(lead.alone);
-  return `${escapeHostedHtml(lead.toProduct)} ${productName(chip.product, chip.label)}.`;
+function contextWords(product: HostedNamedProduct, context: HostedContext | null) {
+  const lines = HOSTED_COPY.contextLines;
+  if (product === "bid") return context === "sell" ? lines.bidSell : lines.bid;
+  return lines[product];
 }
 
 /** "to continue to LAX Bid", under the heading, when the person came from a product. */

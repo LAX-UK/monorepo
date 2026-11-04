@@ -171,7 +171,11 @@ export function CarouselPrevious({
       type="button"
       variant={variant}
       size={size}
-      className={cn("absolute size-8 rounded-full", "top-1/2 -left-12 -translate-y-1/2", className)}
+      className={cn(
+        "absolute size-8 pointer-coarse:size-11 rounded-full",
+        "top-1/2 -left-12 -translate-y-1/2",
+        className,
+      )}
       disabled={!canScrollPrev}
       onClick={scrollPrev}
       {...props}
@@ -196,7 +200,7 @@ export function CarouselNext({
       variant={variant}
       size={size}
       className={cn(
-        "absolute size-8 rounded-full",
+        "absolute size-8 pointer-coarse:size-11 rounded-full",
         "top-1/2 -right-12 -translate-y-1/2",
         className,
       )}

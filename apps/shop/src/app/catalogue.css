@@ -216,7 +216,7 @@
   min-height: var(--shop-button-commerce-height);
   align-items: center;
   justify-content: center;
-  padding: var(--shop-space-3) var(--shop-space-6);
+  padding: 0 var(--shop-space-6);
   border-radius: var(--radius-control);
   background: var(--color-primary);
   color: var(--color-on-primary);
@@ -415,6 +415,12 @@
   border: 1px solid var(--color-input-border);
   border-radius: var(--radius-control);
   padding-inline: var(--shop-space-4) var(--shop-space-3);
+}
+
+@media (pointer: coarse) {
+  .shop-catalogue-sort.shop-catalogue-sort {
+    min-height: 2.75rem;
+  }
 }
 
 .shop-catalogue-sort.shop-catalogue-sort:hover {

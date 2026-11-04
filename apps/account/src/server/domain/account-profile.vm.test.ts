@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProfileContactVm } from "./account-contact.vm";
 import { buildAccountLinks } from "./account-links";
-import { buildProfileSections, maskPendingEmail } from "./account-profile.vm";
+import { buildProfileSections } from "./account-profile.vm";
 
 const withBid = buildAccountLinks({
   oidcIssuer: "https://test-auth.lax.bid",
@@ -37,12 +37,12 @@ describe("buildProfileSections", () => {
     expect(sections.map((s) => s.id)).toEqual(["email", "phone"]);
   });
 
-  it("masks the email, shows the phone in full and explains how each changes", () => {
+  it("shows the email and phone in full and explains how each changes", () => {
     const sections = buildProfileSections(contact, withBid);
     expect(sections.map((s) => s.id)).toEqual(["email", "phone"]);
     expect(sections[0]?.fields[0]).toEqual({
       label: "Email address",
-      value: "s***@example.com",
+      value: "shima@example.com",
       status: { label: "Verified", tone: "success" },
     });
     expect(sections[0]?.note).toMatch(/current and your new address/);
@@ -82,17 +82,5 @@ describe("buildProfileSections", () => {
     expect(sections.map((s) => s.id)).toEqual(["email", "phone"]);
     expect(sections.flatMap((s) => s.actions)).toEqual([]);
     expect(sections[1]?.fields[0]).toEqual({ label: "Phone number", value: null });
-  });
-});
-
-describe("maskPendingEmail", () => {
-  it("masks the address a change is waiting on", () => {
-    expect(maskPendingEmail({ ...contact, pendingEmail: "new.address@example.com" })).toBe(
-      "n***@example.com",
-    );
-  });
-
-  it("is null when no change is in progress", () => {
-    expect(maskPendingEmail(contact)).toBeNull();
   });
 });

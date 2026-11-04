@@ -1,11 +1,14 @@
 import type { AdminEditionRunSpec } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
+  allocationSentence,
   bulkFactsSummary,
   factsLockedBody,
   factsStatusLabel,
   lowStockTitle,
   mainRunLine,
+  originalAndPrintsCreatedLine,
+  printsCreatedLine,
   proofsAvailable,
   runListLabel,
   runSummaryText,
@@ -96,5 +99,47 @@ describe("edition run states", () => {
       message: "Edition facts set for 1 run; 1 run left as they were",
       details: ["Blue study II: Sold prints were described this way."],
     });
+  });
+});
+
+describe("printsCreatedLine", () => {
+  it("says how many prints were created as a draft", () => {
+    expect(printsCreatedLine(24)).toBe("Created 24 prints as a draft");
+    expect(printsCreatedLine(1)).toBe("Created 1 print as a draft");
+    expect(printsCreatedLine(0)).toBe("Created the listing as a draft");
+  });
+});
+
+describe("originalAndPrintsCreatedLine", () => {
+  it("names the original and the prints created with it", () => {
+    expect(originalAndPrintsCreatedLine("Harbour", 24)).toBe(
+      "Created “Harbour” and 24 prints as drafts",
+    );
+    expect(originalAndPrintsCreatedLine("Harbour", 1)).toBe(
+      "Created “Harbour” and 1 print as drafts",
+    );
+    expect(originalAndPrintsCreatedLine("Harbour", 0)).toBe(
+      "Created “Harbour” and its listing as drafts",
+    );
+  });
+});
+
+describe("allocationSentence", () => {
+  it("says who holds which numbers", () => {
+    expect(allocationSentence({ buyer: 10, artist: 10, lax: 4 })).toBe(
+      "Prints 1–10 go to the buyer of the original, 11–20 to the artist and 21–24 to LAX.",
+    );
+  });
+  it("leaves out empty groups", () => {
+    expect(allocationSentence({ buyer: 0, artist: 20, lax: 4 })).toBe(
+      "Prints 1–20 go to the artist and 21–24 to LAX.",
+    );
+    expect(allocationSentence({ buyer: 0, artist: 0, lax: 4 })).toBe("Prints 1–4 go to LAX.");
+    expect(allocationSentence({ buyer: 3, artist: 0, lax: 1 })).toBe(
+      "Prints 1–3 go to the buyer of the original and 4 to LAX.",
+    );
+  });
+  it("says nothing without prints", () => {
+    expect(allocationSentence({ buyer: 0, artist: 0, lax: 0 })).toBeNull();
   });
 });

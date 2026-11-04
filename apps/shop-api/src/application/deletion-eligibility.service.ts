@@ -8,6 +8,7 @@ export const SHOP_DELETION_BLOCKER_CODES = {
   pendingPayouts: "shop_pending_payouts",
   openOriginalSales: "shop_open_original_sales",
   activeHolds: "shop_active_holds",
+  openDisputes: "shop_open_disputes",
 } as const;
 
 export type ShopDeletionEligibilityService = {
@@ -61,6 +62,13 @@ export function createShopDeletionEligibilityService(deps: {
           code: SHOP_DELETION_BLOCKER_CODES.activeHolds,
           message: `${open.activeHolds} ${plural(open.activeHolds, "work is", "works are")} being held for you. Ask for ${plural(open.activeHolds, "it", "them")} to be released first.`,
           href: link(origins.art, "/account/enquiries"),
+        });
+      }
+      if (open.openDisputes > 0) {
+        blockers.push({
+          code: SHOP_DELETION_BLOCKER_CODES.openDisputes,
+          message: `${open.openDisputes} ${plural(open.openDisputes, "payment dispute is", "payment disputes are")} still open on your orders. ${plural(open.openDisputes, "It needs", "They need")} to be settled first.`,
+          href: link(origins.shop, "/account/orders"),
         });
       }
       return blockers;

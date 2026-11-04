@@ -383,10 +383,44 @@ describe("admin artwork catalogue routes", () => {
         ...cleaned,
         slug: "harbour-at-dusk",
         run: { spec: { type: "lax_standard" } },
+        prints: null,
         canSetPrice: true,
         actorSubjectId: "shop_admin-subject",
         idempotencyKey: IDEMPOTENCY_KEY,
       });
+      await app.close();
+    });
+
+    it("passes an original's prints to the writer and returns them with the original", async () => {
+      const prints = {
+        artworkId: "7e4b0a0c-6b1a-4a55-9d7e-0f6f1b0b0a11",
+        slug: "harbour-at-dusk-prints",
+        version: VERSION,
+        editionCount: 24,
+      };
+      const createArtwork = vi.fn(async () => ({
+        artworkId: ARTWORK,
+        slug: "harbour-at-dusk",
+        version: VERSION,
+        prints,
+        refreshesArt: false,
+      }));
+      const app = await buildApp("shop_admin", { writer: { createArtwork } });
+      const request = writes[0];
+      const payload = {
+        ...(request?.payload as Record<string, unknown>),
+        run: null,
+        prints: { title: "Harbour at dusk", run: { spec: { type: "lax_standard" } } },
+      };
+      const response = await app.inject({ ...request, payload, headers });
+      expect(response.statusCode).toBe(200);
+      expect(response.json().prints).toEqual(prints);
+      expect(createArtwork).toHaveBeenCalledWith(
+        expect.objectContaining({
+          run: null,
+          prints: { title: "Harbour at dusk", run: { spec: { type: "lax_standard" } } },
+        }),
+      );
       await app.close();
     });
 

@@ -79,11 +79,11 @@ export async function adminTelephoneBookingStartLineAction(formData: FormData): 
         bookingId: String(formData.get("bookingId") ?? "").trim(),
         lotId: String(formData.get("lotId") ?? "").trim(),
       });
-      if (!parsed.success) redirectSaleroomError("", "Invalid start line");
+      if (!parsed.success) return redirectSaleroomError("", "Invalid start line");
       const { saleId, bookingId, lotId } = parsed.data;
       const res = await postTelephoneBookingAction(saleId, bookingId, "start-line", { lotId });
       if (!res.ok) {
-        redirectSaleroomError(saleId, readApiError(res.body, "Start line failed"));
+        return redirectSaleroomError(saleId, readApiError(res.body, "Start line failed"));
       }
       revalidateTelephoneBookingPaths(saleId);
       redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);
@@ -101,11 +101,11 @@ export async function adminTelephoneBookingCompleteLineAction(formData: FormData
         bookingId: String(formData.get("bookingId") ?? "").trim(),
         lotId: String(formData.get("lotId") ?? "").trim(),
       });
-      if (!parsed.success) redirectSaleroomError("", "Invalid complete line");
+      if (!parsed.success) return redirectSaleroomError("", "Invalid complete line");
       const { saleId, bookingId, lotId } = parsed.data;
       const res = await postTelephoneBookingAction(saleId, bookingId, "complete-line", { lotId });
       if (!res.ok) {
-        redirectSaleroomError(saleId, readApiError(res.body, "Complete line failed"));
+        return redirectSaleroomError(saleId, readApiError(res.body, "Complete line failed"));
       }
       revalidateTelephoneBookingPaths(saleId);
       redirect(`/admin/saleroom/${encodeURIComponent(saleId)}`);

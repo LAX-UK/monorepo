@@ -4,9 +4,11 @@ import type {
   FailedJobList,
   FailedJobSummary,
 } from "@auction/types";
+import { FAILED_JOB_SOURCES } from "@auction/types";
 import { z } from "zod";
 
 const state = z.enum(["needs_review", "retried", "discarded"]);
+const source = z.enum(FAILED_JOB_SOURCES);
 
 const retryAvailability = z.union([
   z.object({ allowed: z.literal(true) }),
@@ -15,6 +17,8 @@ const retryAvailability = z.union([
 
 export const failedJobSummarySchema: z.ZodType<FailedJobSummary> = z.object({
   id: z.string(),
+  source,
+  canAct: z.boolean(),
   queue: z.string(),
   typeLabel: z.string(),
   jobLabel: z.string().nullable(),
@@ -31,6 +35,15 @@ export const failedJobSummarySchema: z.ZodType<FailedJobSummary> = z.object({
 export const failedJobListSchema: z.ZodType<FailedJobList> = z.object({
   rows: z.array(failedJobSummarySchema),
   total: z.number(),
+  canAct: z.boolean(),
+  limitedTo: z.string().nullable(),
+  sources: z.array(
+    z.object({
+      id: z.enum(["background_jobs", "integrations"]),
+      label: z.string(),
+      count: z.number(),
+    }),
+  ),
   counts: z.object({ needs_review: z.number(), retried: z.number(), discarded: z.number() }),
   queues: z.array(z.object({ id: z.string(), label: z.string(), count: z.number() })),
   actionsEnabled: z.boolean(),

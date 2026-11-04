@@ -12,7 +12,7 @@ export default function InterestsOnboardingError({
   return (
     <BuyerOnboardingRouteError
       title="Interests setup is temporarily unavailable"
-      detail="Your progress is safe. Try loading this step again, or return to your dashboard."
+      detail="Your progress is safe. Try loading this step again, or return to your account."
       reset={reset}
       error={error}
     />

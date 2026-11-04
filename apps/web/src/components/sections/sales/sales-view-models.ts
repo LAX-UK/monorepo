@@ -7,7 +7,7 @@ import {
   londonDayKey,
 } from "@/lib/datetime/london-time";
 import { formatMoney } from "@/lib/format-currency";
-import { type SaleListRow, formatSaleItemsLabel, formatSaleLotsLabel } from "@/lib/sale-list-row";
+import { type SaleListRow, formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { saleVenueLabel } from "@/lib/sale-location-label";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
@@ -70,7 +70,7 @@ export function mapSaleToCalendarCardVM(row: SaleListRow): SaleCalendarCardVM {
   const timeLabel = formatLondonTimeWithZone(start);
   const dateLabel = `${dateRangeLabel} · ${timeLabel}`;
 
-  const itemsLabel = formatSaleItemsLabel(lotCount);
+  const itemsLabel = formatSaleLotsLabel(lotCount);
 
   const categoryLabel = deriveCategoryLabel(sale);
   const hammer = sale.status === "ended" ? endedHammerTotal(lots) : undefined;
@@ -225,7 +225,7 @@ export function mapSaleToAuctionRowVM(
   const { lotCount } = row;
   const sale = atgDisplaySale(row.sale);
   const { lead, rest } = buildRowScheduleParts(sale);
-  const itemsLabel = formatSaleItemsLabel(lotCount);
+  const itemsLabel = formatSaleLotsLabel(lotCount);
   const countdownEndIso = toSaleCountdownEndIso(sale);
   const endTimeIso = toOptionalIsoString(sale.endTime);
 

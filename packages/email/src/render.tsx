@@ -237,6 +237,9 @@ import ShopReleaseAlertConfirmEmail, {
 import ShopReleaseAlertEmail, {
   subject as shopReleaseAlertSubject,
 } from "./templates/shop-release-alert.js";
+import ShopReturnClosedSellerEmail, {
+  subject as shopReturnClosedSellerSubject,
+} from "./templates/shop-return-closed-seller.js";
 import ShopZohoDeadLetterNoticeEmail, {
   subject as shopZohoDeadLetterNoticeSubject,
 } from "./templates/shop-zoho-dead-letter-notice.js";
@@ -722,6 +725,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-cancellation-confirmed": {
     subject: shopCancellationConfirmedSubject,
     component: (vars) => <ShopCancellationConfirmedEmail {...vars} />,
+  },
+  "shop-return-closed-seller": {
+    subject: shopReturnClosedSellerSubject,
+    component: (vars) => <ShopReturnClosedSellerEmail {...vars} />,
   },
 };
 

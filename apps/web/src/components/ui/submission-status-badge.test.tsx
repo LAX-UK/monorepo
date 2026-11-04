@@ -9,12 +9,12 @@ describe("SubmissionStatusBadge", () => {
     label: string;
   }> = [
     { status: "draft", label: "Draft" },
-    { status: "submitted", label: "Submitted" },
-    { status: "under_review", label: "Under review" },
+    { status: "submitted", label: "In review" },
+    { status: "under_review", label: "In review" },
     { status: "approved", label: "Accepted" },
     { status: "rejected", label: "Not accepted" },
     { status: "withdrawn", label: "Withdrawn" },
-    { status: "converted", label: "Catalogue prep" },
+    { status: "converted", label: "Accepted" },
   ];
 
   for (const { status, label } of cases) {
@@ -32,7 +32,7 @@ describe("SubmissionStatusBadge", () => {
   it("shows a hint button that opens the status explanation in a popover", () => {
     render(<SubmissionStatusBadge status="submitted" />);
 
-    const hintButton = screen.getByRole("button", { name: /What Submitted means/i });
+    const hintButton = screen.getByRole("button", { name: /What In review means/i });
     expect(hintButton).toBeInTheDocument();
 
     fireEvent.click(hintButton);
@@ -54,7 +54,7 @@ describe("SubmissionStatusBadge", () => {
 
     render(<SubmissionStatusBadge status="submitted" />);
 
-    const hintButton = screen.getByRole("button", { name: /What Submitted means/i });
+    const hintButton = screen.getByRole("button", { name: /What In review means/i });
     fireEvent.mouseEnter(hintButton);
 
     expect(screen.getByText(SUBMISSION_STATUS_HINTS.submitted ?? "")).toBeInTheDocument();
@@ -63,6 +63,6 @@ describe("SubmissionStatusBadge", () => {
   it("hides the hint button when showHint is false", () => {
     render(<SubmissionStatusBadge status="submitted" showHint={false} />);
 
-    expect(screen.queryByRole("button", { name: /What Submitted means/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /What In review means/i })).not.toBeInTheDocument();
   });
 });
