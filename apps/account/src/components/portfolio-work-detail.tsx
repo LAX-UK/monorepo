@@ -40,7 +40,11 @@ function Section({
 }
 
 function AcquisitionRecord({ work }: { work: WorkDetailVm }) {
-  const amountHeading = work.costsAreDue ? "Amount due" : "Amount paid";
+  const amountHeading = work.costsAreDue
+    ? "Amount due"
+    : work.paymentConfirming
+      ? "Amount being confirmed"
+      : "Amount paid";
   return (
     <Section id="acquisition" heading="Acquisition record">
       <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">

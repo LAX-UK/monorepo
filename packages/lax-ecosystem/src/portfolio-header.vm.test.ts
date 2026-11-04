@@ -26,6 +26,17 @@ describe("buildPortfolioHeader", () => {
     expect(header).toMatchObject({ worksOwned: 2, inSaleOrConsigned: 2, awaitingPayment: 1 });
   });
 
+  it("counts a payment being confirmed as neither owed nor paid", () => {
+    const header = buildPortfolioHeader([
+      item({
+        id: "a",
+        status: "payment_confirming",
+        paid: { lines: [{ kind: "hammer", amount: 1000, currency: "GBP" }] },
+      }),
+    ]);
+    expect(header).toMatchObject({ awaitingPayment: 0, totalDue: [], paidSoFar: [] });
+  });
+
   it("keeps each currency separate and never sums across them", () => {
     const header = buildPortfolioHeader([
       item({

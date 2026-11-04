@@ -615,6 +615,7 @@ export {
   type NeedsYouTask,
 } from "./needs-you.js";
 export {
+  PURCHASE_LIST_LIMIT,
   amountOwedEntry,
   summariseAmountsOwed,
   type AccountHold,
