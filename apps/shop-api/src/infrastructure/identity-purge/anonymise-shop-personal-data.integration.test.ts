@@ -1,6 +1,10 @@
 import { createDbFromPool } from "@auction/db";
 import { applyApplicationRoleGrants } from "@auction/db/migrate-roles";
 import {
+  shopAlertDigest,
+  shopAlertMatch,
+  shopAlertSubscriber,
+  shopAlertTopic,
   shopArtistApplication,
   shopBasket,
   shopIdentitySession,
@@ -84,6 +88,39 @@ describe.skipIf(!ownerUrl || !shopUrl)("anonymise Shop personal data", () => {
         consentSource: "test",
         unsubscribeToken: `unsub-${suffix()}`,
       });
+      const [alertSubscriber] = await db
+        .insert(shopAlertSubscriber)
+        .values({
+          product: "art",
+          email: `${subjectId}@example.test`,
+          subjectId,
+          status: "confirmed",
+          consentText: "Tell me when artists I follow publish",
+          consentSource: "test",
+          requestedAt: now,
+        })
+        .returning({ id: shopAlertSubscriber.id });
+      const alertId = alertSubscriber?.id as string;
+      await db
+        .insert(shopAlertTopic)
+        .values({ subscriberId: alertId, topic: "art.followed_artists", emailOn: true });
+      const [alertDigest] = await db
+        .insert(shopAlertDigest)
+        .values({
+          subscriberId: alertId,
+          product: "art",
+          localDate: "2026-11-04",
+          itemCount: 1,
+          outboxIdempotencyKey: `digest-${suffix()}`,
+        })
+        .returning({ id: shopAlertDigest.id });
+      await db.insert(shopAlertMatch).values({
+        subscriberId: alertId,
+        topic: "art.followed_artists",
+        itemKey: `artwork:${suffix()}`,
+        snapshot: { title: "Untitled" },
+        digestId: alertDigest?.id,
+      });
       await db.insert(shopIdentitySession).values({
         id: `session-${suffix()}`,
         subjectId,
@@ -106,14 +143,14 @@ describe.skipIf(!ownerUrl || !shopUrl)("anonymise Shop personal data", () => {
         tokenHash: `hash-${suffix()}`,
         expiresAt: new Date(now.getTime() + HOUR),
       });
-      return { partyId: party?.id as string, orderId: order?.id as string };
+      return { partyId: party?.id as string, orderId: order?.id as string, alertId };
     };
     return { db, subject, other, seed };
   }
 
   it("clears a person's personal data, keeps the financial record and leaves others alone", async () => {
     const { db, subject, other, seed } = await fixture();
-    const { orderId } = await seed(subject);
+    const { orderId, alertId } = await seed(subject);
     const untouched = await seed(other);
 
     const counts = await anonymiseShopPersonalData(db, subject, now);
@@ -124,6 +161,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("anonymise Shop personal data", () => {
       shop_order: 1,
       shop_basket: 1,
       shop_release_alert_subscription: 1,
+      shop_alert_subscriber: 1,
       shop_identity_session: 1,
       shop_artist_application: 1,
       shop_party_invite: 1,
@@ -163,10 +201,18 @@ describe.skipIf(!ownerUrl || !shopUrl)("anonymise Shop personal data", () => {
     for (const [table, column] of [
       [shopBasket, shopBasket.identitySubjectId],
       [shopReleaseAlertSubscription, shopReleaseAlertSubscription.identitySubjectId],
+      [shopAlertSubscriber, shopAlertSubscriber.subjectId],
       [shopIdentitySession, shopIdentitySession.subjectId],
     ] as const) {
       expect(await db.select().from(table).where(eq(column, subject))).toHaveLength(0);
       expect(await db.select().from(table).where(eq(column, other))).toHaveLength(1);
+    }
+    // Topics, matches and digests go with the subscriber; the other person's remain.
+    for (const table of [shopAlertTopic, shopAlertMatch, shopAlertDigest]) {
+      expect(await db.select().from(table).where(eq(table.subscriberId, alertId))).toHaveLength(0);
+      expect(
+        await db.select().from(table).where(eq(table.subscriberId, untouched.alertId)),
+      ).toHaveLength(1);
     }
     expect(
       await db.select().from(shopPartyInvite).where(eq(shopPartyInvite.partyId, untouched.partyId)),
@@ -186,6 +232,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("anonymise Shop personal data", () => {
     for (const table of [
       "shop_basket",
       "shop_release_alert_subscription",
+      "shop_alert_subscriber",
       "shop_identity_session",
       "shop_party_invite",
       "shop_artist_application",

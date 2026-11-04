@@ -58,6 +58,8 @@ export async function insertShopEmailOutbox(
     to: string;
     template: string;
     vars: Record<string, unknown>;
+    /** Bulk mail goes on the broadcast stream, apart from receipts and confirmations. */
+    stream?: "transactional" | "broadcast";
   },
 ): Promise<void> {
   const now = new Date();
@@ -73,7 +75,7 @@ export async function insertShopEmailOutbox(
       template: input.template,
       vars: input.vars,
       status: "pending",
-      stream: "transactional",
+      stream: input.stream ?? "transactional",
       category: "transactional",
       flaggedAddress: false,
       createdAt: now,

@@ -2038,6 +2038,13 @@
       "when": 1800604800000,
       "tag": "0290_alert_followers",
       "breakpoints": true
+    },
+    {
+      "idx": 292,
+      "version": "7",
+      "when": 1800777600000,
+      "tag": "0292_shop_alert_engine",
+      "breakpoints": true
     }
   ]
 }

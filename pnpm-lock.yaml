@@ -686,6 +686,9 @@ importers:
 
   apps/shop-api:
     dependencies:
+      '@auction/alerts':
+        specifier: workspace:*
+        version: link:../../packages/alerts
       '@auction/artwork-register-contracts':
         specifier: workspace:*
         version: link:../../packages/artwork-register-contracts
@@ -701,6 +704,9 @@ importers:
       '@auction/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@auction/email':
+        specifier: workspace:*
+        version: link:../../packages/email
       '@auction/identity-contracts':
         specifier: workspace:*
         version: link:../../packages/identity-contracts
