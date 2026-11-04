@@ -310,6 +310,7 @@ export type {
   StaffBreadcrumb,
   StaffCommand,
   StaffCommandSearch,
+  StaffNavCountTone,
   StaffNavGroup,
   StaffNavItem,
   StaffProduct,
