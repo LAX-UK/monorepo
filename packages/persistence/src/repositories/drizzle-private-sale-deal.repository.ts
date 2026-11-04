@@ -140,6 +140,8 @@ export class DrizzlePrivateSaleDealRepository
         fromStage: null,
         toStage: "proposed",
         actorUserId: input.actorUserId,
+        // The wall clock, not the transaction start: entries written in one transaction keep their order.
+        createdAt: sql`clock_timestamp()`,
       });
       const deal = await this.load(tx, eq(privateSaleDeal.id, row.id));
       if (!deal) throw new Error("private sale deal was not readable after it was created");
@@ -218,6 +220,7 @@ export class DrizzlePrivateSaleDealRepository
         toStage: change.to,
         actorUserId: change.actorUserId,
         reason: change.reason,
+        createdAt: sql`clock_timestamp()`,
       });
       return this.okOf(tx, dealId);
     });
@@ -234,6 +237,7 @@ export class DrizzlePrivateSaleDealRepository
         version: input.version,
         uploadObjectId: input.uploadObjectId,
         createdByUserId: input.createdByUserId,
+        createdAt: sql`clock_timestamp()`,
       })
       .returning();
     if (!row) throw new Error("private sale document was not created");
@@ -259,6 +263,7 @@ export class DrizzlePrivateSaleDealRepository
         acceptedAt: input.at,
         acceptedByUserId: input.userId,
         createdByUserId: input.userId,
+        createdAt: sql`clock_timestamp()`,
       })
       .onConflictDoNothing()
       .returning();
