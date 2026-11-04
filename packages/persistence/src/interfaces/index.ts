@@ -1058,6 +1058,15 @@ export type {
   PurchaseProblemRecord,
 } from "./purchase-problem.repository.js";
 export type {
+  IPurchaseProblemDeskRepository,
+  IPurchaseProblemNoteRepository,
+  PurchaseProblemChange,
+  PurchaseProblemDeskQuery,
+  PurchaseProblemDeskRecord,
+  PurchaseProblemNoteRecord,
+  PurchaseProblemStatusCounts,
+} from "./purchase-problem-desk.repository.js";
+export type {
   AccountSearchCriteria,
   AccountSearchHits,
   BidSearchHit,

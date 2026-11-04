@@ -178,6 +178,9 @@ const LABELS: Record<string, string> = {
   "enquiry_routing.changed": "Enquiry routing changed",
   "payout.transfer_reversed": "Payout transfer reversed",
   "purchase_problem.reported": "Purchase problem reported",
+  "purchase_problem.assigned": "Purchase problem assigned",
+  "purchase_problem.status_changed": "Purchase problem status changed",
+  "purchase_problem.note_added": "Purchase problem note added",
 
   "sale.created": "Sale created",
   "sale.published": "Sale published",
