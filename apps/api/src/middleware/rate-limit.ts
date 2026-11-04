@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { readForwardedClientIp } from "@auction/auth";
 import { createMiddleware } from "hono/factory";
 import type { IRateLimitStore } from "../services/interfaces/rate-limit-store.js";
+import { clientIpOf } from "./client-ip.js";
 
 const WINDOW_SEC = 60;
 const MAX_REQUESTS = 120;
@@ -36,7 +36,7 @@ export function createRateLimitMiddleware(store: IRateLimitStore, options: RateL
       await next();
       return;
     }
-    const ip = readForwardedClientIp((name) => c.req.header(name)) ?? "unknown";
+    const ip = clientIpOf(c);
     const session = sessionRead === undefined ? null : sessionKey(c.req.header("authorization"));
     const key = session ? `rl:session:${session}:${c.req.path}` : `rl:${ip}:${c.req.path}`;
     const max =
