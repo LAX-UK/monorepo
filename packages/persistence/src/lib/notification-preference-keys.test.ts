@@ -178,6 +178,20 @@ const EXPECTED: Record<(typeof NOTIFICATION_TYPES)[number], ExpectedRow> = {
     push: null,
     template: "access-request-decided-notice",
   },
+  artist_lots_listed: {
+    email: null,
+    whatsapp: null,
+    inApp: "artistAlertsInApp",
+    push: null,
+    template: null,
+  },
+  search_lots_listed: {
+    email: null,
+    whatsapp: null,
+    inApp: "searchAlertsInApp",
+    push: null,
+    template: null,
+  },
   watchlist_reminder: {
     email: "watchlistEmail",
     whatsapp: null,

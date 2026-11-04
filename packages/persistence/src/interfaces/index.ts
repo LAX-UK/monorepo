@@ -1227,6 +1227,10 @@ export type {
 } from "./zoho-artwork-sync.js";
 
 export type {
+  BidAlertLotNotice,
+  IBidAlertLotNoticeWriter,
+} from "./bid-alert-lot-notice.js";
+export type {
   AnnouncedSale,
   IBidAlertSaleNoticeWriter,
   IBidAlertSaleReader,
