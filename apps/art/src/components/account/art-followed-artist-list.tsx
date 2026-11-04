@@ -2,8 +2,7 @@ import { ArtArtistFollowButton } from "@/components/favorites/art-artist-follow-
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { CatalogueArtistCardVm } from "@/lib/catalogue/catalogue-artist-card.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
-import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
-import { MarketingFollowRow } from "@auction/marketing-ui";
+import { MarketingFollowRow, marketingArtistInitials } from "@auction/marketing-ui";
 
 /** Followed artists, one row each (Figma 867:15613). */
 export function ArtFollowedArtistList({
@@ -26,7 +25,7 @@ export function ArtFollowedArtistList({
                 <ArtMediaImage
                   src={card.image}
                   alt=""
-                  label={ART_MEDIA_LABELS.artistPortrait}
+                  monogram={marketingArtistInitials(card.name)}
                   aspect={[1, 1]}
                   sizes="64px"
                   className="absolute inset-0 size-full"

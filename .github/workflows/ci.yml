@@ -108,6 +108,9 @@ jobs:
       - name: Client copy (no system terms)
         run: pnpm lint:client-copy
 
+      - name: Brand name
+        run: pnpm lint:brand-name
+
       - name: Lint
         run: pnpm turbo run lint --affected
 

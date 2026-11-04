@@ -1,4 +1,6 @@
 import type { SaleroomOnBlockPolicy } from "@auction/bidding-runtime";
+import type { IAdminSubmissionsSummaryReader } from "@auction/persistence/interfaces";
+import type { ISaleExpectedGuestsReader } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { IUserInvitationRepository } from "@auction/persistence/interfaces";
 import type { IBidRepository, ITransactionRunner } from "@auction/persistence/interfaces";
@@ -73,7 +75,6 @@ import type { PaddleService } from "../paddle.service.js";
 import type { ProfileService } from "../profile.service.js";
 import type { QrCodeAnalyticsService } from "../qr-code-analytics.service.js";
 import type { QrCodeService } from "../qr-code.service.js";
-import type { SaleExpectedGuestsService } from "../sale-expected-guests.service.js";
 import type { SaleroomCheckInService } from "../saleroom-check-in.service.js";
 import type { SourceOfFundsDocumentCollectionService } from "../source-of-funds/source-of-funds-document-collection.service.js";
 import type { SourceOfFundsDocumentReviewService } from "../source-of-funds/source-of-funds-document-review.service.js";
@@ -102,7 +103,6 @@ import type { AdminSalesKpiTrendService } from "./admin-sales-kpi-trend.service.
 import type { AdminSalesListSummaryService } from "./admin-sales-list-summary.service.js";
 import type { AdminSourceOfFundsQueryService } from "./admin-source-of-funds-query.service.js";
 import type { AdminSubmissionsKpiTrendService } from "./admin-submissions-kpi-trend.service.js";
-import type { AdminSubmissionsListSummaryService } from "./admin-submissions-list-summary.service.js";
 import { createAdminCatalogServices } from "./create-admin-catalog-services.js";
 import { createAdminComplianceServices } from "./create-admin-compliance-services.js";
 import { createAdminFinanceServices } from "./create-admin-finance-services.js";
@@ -175,7 +175,7 @@ export type CreateAdminRouteServicesInput = {
   saleroomService: SaleroomServicePort;
   adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
   saleroomCheckInService: SaleroomCheckInService;
-  saleExpectedGuestsService: SaleExpectedGuestsService;
+  saleExpectedGuestsReader: ISaleExpectedGuestsReader;
   lotFulfilmentService: ILotFulfilmentService;
   lotFulfilmentRepository: ILotFulfilmentRepository;
   bidService: BidService;
@@ -232,7 +232,7 @@ export function createAdminRouteServices(
     saleroomService: input.saleroomService,
     adminSaleOperationsSnapshotService: input.adminSaleOperationsSnapshotService,
     saleroomCheckInService: input.saleroomCheckInService,
-    saleExpectedGuestsService: input.saleExpectedGuestsService,
+    saleExpectedGuestsReader: input.saleExpectedGuestsReader,
     bidService: input.bidService,
     saleroomOnBlockPolicy: input.saleroomOnBlockPolicy,
     paddleService: input.paddleService,
@@ -347,7 +347,7 @@ export type AttachAdminDashboardMetricsInput = {
   submissionsKpiTrend: AdminSubmissionsKpiTrendService;
   salesListSummary: AdminSalesListSummaryService;
   lotsListSummary: AdminLotsListSummaryService;
-  submissionsListSummary: AdminSubmissionsListSummaryService;
+  submissionsSummaryReader: IAdminSubmissionsSummaryReader;
 };
 
 export type AdminRouteServicesWithMetrics = AdminRouteServicesCore & AdminMetricsQueryServices;
@@ -368,7 +368,7 @@ export function attachAdminMetricsQueries(
     metrics.submissionsKpiTrend,
     metrics.salesListSummary,
     metrics.lotsListSummary,
-    metrics.submissionsListSummary,
+    metrics.submissionsSummaryReader,
     metrics.lotsLiveKpiTrend,
   );
   return {

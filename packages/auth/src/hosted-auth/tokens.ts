@@ -50,6 +50,9 @@ export const HOSTED_AUTH_TOKENS = {
   darkTextSecondary: "#c9c5bc",
   darkBorder: "#333534",
   companyName: "London Art Exchange",
-  fontBody: '"Montserrat", "Outfit", Helvetica, Arial, "Helvetica Neue", sans-serif',
+  /** Titles only. */
+  fontHeading: '"Montserrat", "Outfit", Helvetica, Arial, "Helvetica Neue", sans-serif',
+  /** Interface and body text. */
+  fontBody: '"Outfit", "Montserrat", Helvetica, Arial, "Helvetica Neue", sans-serif',
   fontSupporting: '"Outfit", "Montserrat", Helvetica, Arial, sans-serif',
 } as const;

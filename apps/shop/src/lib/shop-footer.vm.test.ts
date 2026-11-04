@@ -34,16 +34,18 @@ describe("buildShopFooterVm", () => {
     }
     expect(vm.columns.find((column) => column.id === "legal")?.links.map((l) => l.label)).toEqual([
       "Terms",
+      "Cookie settings",
     ]);
   });
 
-  it("drops the legal column when nothing in it can be linked", () => {
+  it("keeps cookie settings when no policy can be linked, since the dialog needs none", () => {
     const vm = buildShopFooterVm({
       crossProductLinks: [],
       accountState: { kind: "guest" },
       linkablePolicies: [],
     });
-    expect(vm.columns.map((column) => column.id)).toEqual(["shop", "account"]);
+    expect(vm.columns.map((column) => column.id)).toEqual(["shop", "account", "legal"]);
+    expect(vm.columns[2]?.links).toEqual([{ label: "Cookie settings", href: "#cookie-settings" }]);
   });
 
   it("orders shop, account, products, then the policies and lax.art's legal index", () => {
@@ -72,6 +74,7 @@ describe("buildShopFooterVm", () => {
       { label: "Terms", href: "/terms" },
       { label: "Privacy", href: "/privacy" },
       { label: "Cookies", href: "/cookies" },
+      { label: "Cookie settings", href: "#cookie-settings" },
     ]);
     const hrefs = vm.columns.flatMap((column) => column.links.map((link) => link.href));
     expect(hrefs.filter((href) => href.startsWith("https://bid.example/"))).toEqual([
@@ -90,6 +93,7 @@ describe("buildShopFooterVm", () => {
       "/terms",
       "/privacy",
       "/cookies",
+      "#cookie-settings",
     ]);
     expect(vm.columns[1]?.links).toEqual([{ label: "Account status", href: "/account/disabled" }]);
   });

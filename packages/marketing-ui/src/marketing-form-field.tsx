@@ -17,6 +17,8 @@ export type MarketingFormFieldProps = {
   hint?: ReactNode;
   /** Shown under the label (above the control) and linked to it; the control is marked invalid. */
   error?: string | null;
+  /** Announces the error as it appears: for a field that already has focus when it fails. */
+  announce?: boolean;
   className?: string;
   children: (control: MarketingFormControlProps) => ReactNode;
 };
@@ -32,6 +34,7 @@ export function MarketingFormField({
   optional,
   hint,
   error,
+  announce,
   className,
   children,
 }: MarketingFormFieldProps) {
@@ -50,7 +53,11 @@ export function MarketingFormField({
         </p>
       ) : null}
       {error ? (
-        <p id={errorId} className="marketing-form-field__error">
+        <p
+          id={errorId}
+          className="marketing-form-field__error"
+          {...(announce ? { role: "alert" } : {})}
+        >
           <span className="sr-only">Error: </span>
           {error}
         </p>

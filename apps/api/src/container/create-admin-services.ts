@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import {
   DrizzleAdminSubmissionsSummaryReader,
+  DrizzleDomainEventDeliveryRepository,
   DrizzleEmailBlockRepository,
   DrizzleExportJobRepository,
   DrizzlePersonEmailDeliveryReader,
@@ -28,7 +29,6 @@ import { AdminSaleOverviewKpiTrendService } from "../services/admin/admin-sale-o
 import { AdminSalesKpiTrendService } from "../services/admin/admin-sales-kpi-trend.service.js";
 import { AdminSalesListSummaryService } from "../services/admin/admin-sales-list-summary.service.js";
 import { AdminSubmissionsKpiTrendService } from "../services/admin/admin-submissions-kpi-trend.service.js";
-import { AdminSubmissionsListSummaryService } from "../services/admin/admin-submissions-list-summary.service.js";
 import {
   attachAdminDashboardMetrics,
   attachAdminDetailBoardServices,
@@ -37,6 +37,8 @@ import {
 import { attachAdminSatelliteServices } from "../services/admin/create-admin-satellite-services.js";
 import { AdminFailedJobsService } from "../services/admin/failed-jobs/admin-failed-jobs.service.js";
 import { DomainEventFailedJobAuditTrail } from "../services/admin/failed-jobs/failed-job-audit-trail.js";
+import { BackgroundJobsSource } from "../services/admin/failed-jobs/sources/background-jobs.source.js";
+import { IntegrationDeliveriesSource } from "../services/admin/failed-jobs/sources/integration-deliveries.source.js";
 import type { BuyerDefaultService } from "../services/buyer-default/buyer-default.service.js";
 import type { AdminRouteServices } from "../services/interfaces/admin-routes.js";
 import type { IPayoutStatementApplicationService } from "../services/interfaces/finance-routes/finance-payout-statement.js";
@@ -104,6 +106,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     impersonationSessionRepository,
     impersonationDomainEventReader,
     failedJobReviewRepository,
+    integrationDeadLetterRepository,
   } = repos;
   const {
     domainEventSink,
@@ -225,7 +228,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     saleroomService,
     adminSaleOperationsSnapshotService,
     saleroomCheckInService,
-    saleExpectedGuestsService: catalog.saleExpectedGuestsService,
+    saleExpectedGuestsReader: repos.saleExpectedGuestsReader,
     lotFulfilmentService,
     lotFulfilmentRepository,
     bidService,
@@ -273,9 +276,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     lotRepo,
     adminReviewTaskReader,
   );
-  const adminSubmissionsListSummaryService = new AdminSubmissionsListSummaryService(
-    new DrizzleAdminSubmissionsSummaryReader(db),
-  );
+  const adminSubmissionsSummaryReader = new DrizzleAdminSubmissionsSummaryReader(db);
   const adminSaleDetailMetricsService = new AdminSaleDetailMetricsService(
     lotRepo,
     saleRevenueSnapshotReader,
@@ -337,7 +338,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
         submissionsKpiTrend: adminSubmissionsKpiTrendService,
         salesListSummary: adminSalesListSummaryService,
         lotsListSummary: adminLotsListSummaryService,
-        submissionsListSummary: adminSubmissionsListSummaryService,
+        submissionsSummaryReader: adminSubmissionsSummaryReader,
       }),
       {
         saleDetailMetrics: adminSaleDetailMetricsService,
@@ -353,9 +354,19 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
       queueInspector: userMisc.queueAdmin.inspector,
       queueMutator: userMisc.queueAdmin.mutator,
       failedJobs: new AdminFailedJobsService({
-        reader: failedJobReviewRepository,
-        disposition: failedJobReviewRepository,
-        retrier: userMisc.queueAdmin.mutator,
+        sources: [
+          new BackgroundJobsSource({
+            reader: failedJobReviewRepository,
+            disposition: failedJobReviewRepository,
+            retrier: userMisc.queueAdmin.mutator,
+          }),
+          new IntegrationDeliveriesSource({
+            reader: integrationDeadLetterRepository,
+            disposition: integrationDeadLetterRepository,
+            deliveries: new DrizzleDomainEventDeliveryRepository(db),
+            webhooks: integrationDeadLetterRepository,
+          }),
+        ],
         audit: new DomainEventFailedJobAuditTrail(domainEventSink, adminDomainEventReader),
         actionsEnabled: env.FAILED_JOB_ACTIONS_ENABLED,
       }),

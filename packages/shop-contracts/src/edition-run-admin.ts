@@ -269,6 +269,28 @@ export const AdminCompanionListingBodySchema = Type.Object(
 );
 export type AdminCompanionListingBody = Static<typeof AdminCompanionListingBodySchema>;
 
+/**
+ * Prints made from an original: a Shop draft linked to it, with its own title and run. The
+ * artist, images, medium and dimensions are copied from the original.
+ */
+export const AdminOriginalPrintsSchema = Type.Object(
+  {
+    title: Type.String({ minLength: 1, maxLength: 200 }),
+    run: AdminNewRunInputSchema,
+  },
+  { additionalProperties: false },
+);
+export type AdminOriginalPrints = Static<typeof AdminOriginalPrintsSchema>;
+
+export const AdminPrintsFromOriginalResponseSchema = Type.Object({
+  artworkId: Type.String({ format: "uuid" }),
+  slug: Type.String(),
+  version: Type.String(),
+  /** How many prints the run created. */
+  editionCount: Type.Integer({ minimum: 0 }),
+});
+export type AdminPrintsFromOriginalResponse = Static<typeof AdminPrintsFromOriginalResponseSchema>;
+
 export const AdminLinkedListingResponseSchema = Type.Object({
   artworkId: Type.String({ format: "uuid" }),
   slug: Type.String(),

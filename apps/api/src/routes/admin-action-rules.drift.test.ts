@@ -8,8 +8,11 @@ import {
   EMAIL_DELIVERY_READ_ACCESS,
   ENQUIRIES_ACCESS,
   ENQUIRY_ROUTING_MANAGE_ACCESS,
+  FAILED_JOBS_ANY_SOURCE_ACT_ACCESS,
+  FAILED_JOBS_ANY_SOURCE_READ_ACCESS,
   FAILED_JOBS_READ_ACCESS,
-  FAILED_JOBS_WRITE_ACCESS,
+  FAILED_JOB_SOURCE_ACCESS,
+  type FailedJobSource,
   PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
   PAYMENT_WRITE_ACCESS,
   SALES_ACCESS,
@@ -154,34 +157,41 @@ const ACTIONS: AdminAction[] = [
   },
   {
     name: "open the failed jobs list",
-    rule: FAILED_JOBS_READ_ACCESS,
+    rule: FAILED_JOBS_ANY_SOURCE_READ_ACCESS,
     method: "GET",
     path: "/admin/system/failed-jobs",
-    expectedRoles: ["administrator", "read_only"],
+    expectedRoles: ["administrator", "finance", "read_only"],
+  },
+  {
+    name: "open one failed job",
+    rule: FAILED_JOBS_ANY_SOURCE_READ_ACCESS,
+    method: "GET",
+    path: "/admin/system/failed-jobs/delivery%3A42",
+    expectedRoles: ["administrator", "finance", "read_only"],
   },
   {
     name: "retry failed jobs",
-    rule: FAILED_JOBS_WRITE_ACCESS,
+    rule: FAILED_JOBS_ANY_SOURCE_ACT_ACCESS,
     method: "POST",
     path: "/admin/system/failed-jobs/retry",
     body: { ids: ["dlq:email:1"], confirmRepeat: true },
-    expectedRoles: ["administrator"],
+    expectedRoles: ["administrator", "finance"],
   },
   {
     name: "discard failed jobs",
-    rule: FAILED_JOBS_WRITE_ACCESS,
+    rule: FAILED_JOBS_ANY_SOURCE_ACT_ACCESS,
     method: "POST",
     path: "/admin/system/failed-jobs/discard",
     body: { ids: ["dlq:email:1"], reason: "duplicate" },
-    expectedRoles: ["administrator"],
+    expectedRoles: ["administrator", "finance"],
   },
   {
     name: "restore discarded failed jobs",
-    rule: FAILED_JOBS_WRITE_ACCESS,
+    rule: FAILED_JOBS_ANY_SOURCE_ACT_ACCESS,
     method: "POST",
     path: "/admin/system/failed-jobs/restore",
     body: { ids: ["dlq:email:1"] },
-    expectedRoles: ["administrator"],
+    expectedRoles: ["administrator", "finance"],
   },
   {
     name: "list enquiries",
@@ -348,6 +358,41 @@ describe("admin action rules match the API routes", () => {
     expect([401, 403]).not.toContain(res.status);
     const denied = await buildApp(["sales_manager"]).request("http://test/admin/payments");
     expect(denied.status).toBe(403);
+  });
+});
+
+/**
+ * The routes let in anyone who works with at least one source; the service narrows each job to
+ * the sources the person's roles cover. This pins that table, so the screen and the API cannot
+ * disagree about who sees or changes what.
+ */
+const SOURCE_ROLES: Record<FailedJobSource, { read: UserStaffRole[]; act: UserStaffRole[] }> = {
+  background_jobs: { read: ["administrator", "read_only"], act: ["administrator"] },
+  "integrations.xero": {
+    read: ["administrator", "finance", "read_only"],
+    act: ["administrator", "finance"],
+  },
+  "integrations.zoho": { read: ["administrator", "read_only"], act: ["administrator"] },
+  "integrations.other": { read: ["administrator", "read_only"], act: ["administrator"] },
+};
+
+describe("failed jobs per-source access", () => {
+  for (const [source, expected] of Object.entries(SOURCE_ROLES) as [
+    FailedJobSource,
+    (typeof SOURCE_ROLES)[FailedJobSource],
+  ][]) {
+    it(`${source}: reads and acts for exactly the documented roles`, () => {
+      const holding = (mode: "read" | "act") =>
+        userStaffRoles.filter((role) =>
+          userHasAccessTo("staff" as UserRole, [role], FAILED_JOB_SOURCE_ACCESS[source][mode]),
+        );
+      expect(holding("read")).toEqual(expected.read);
+      expect(holding("act")).toEqual(expected.act);
+    });
+  }
+
+  it("keeps the engineers' delivery routes on the background jobs read rule", () => {
+    expect(FAILED_JOB_SOURCE_ACCESS.background_jobs.read).toBe(FAILED_JOBS_READ_ACCESS);
   });
 });
 

@@ -244,6 +244,8 @@ export const WORKER_READ_TABLES = [
   "marketing_enquiry_attachment",
   /** The CRM projector reads an enquiry by id to build its Zoho lead (the event carries no personal data). */
   "marketing_enquiry",
+  /** The follow-up projector reads the confirmed choice it opens work for. */
+  "unsold_lot_choice",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
@@ -313,6 +315,23 @@ export const WORKER_KYC_RETENTION_TOMBSTONE_TABLES = ["kyc_retention_tombstone"]
 export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;
 /** The unsold-choice projector stores each unsold outcome's choose-by date, once. */
 export const WORKER_UNSOLD_CHOICE_DEADLINE_TABLES = ["unsold_choice_deadline"] as const;
+/** The follow-up projector opens the staff work a confirmed unsold-lot choice leaves behind. */
+export const WORKER_UNSOLD_FOLLOW_UP_TABLES = ["unsold_lot_follow_up"] as const;
+
+/**
+ * The artwork register: the Zoho inbound sync creates and updates records and records conflicts.
+ * History is append-only, so the worker may add to it and read it, never change it.
+ */
+export const WORKER_ARTWORK_REGISTER_TABLES = [
+  "artwork_register",
+  "artwork_register_conflict",
+] as const;
+export const WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES = ["artwork_register_event"] as const;
+/** The Zoho artwork sync keeps its watermark and the result for each Product it reads. */
+export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
+  "zoho_artwork_sync_state",
+  "zoho_artwork_sync_outcome",
+] as const;
 /**
  * The alert engine's Bid tables: the matching projector records matches and announcements, and the
  * 08:00 digest claims digests, attaches matches and drops stale ones. Nothing is deleted here.
@@ -757,7 +776,19 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of WORKER_BID_ALERT_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
+        for (const tableName of WORKER_ARTWORK_REGISTER_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
         for (const tableName of WORKER_UNSOLD_CHOICE_DEADLINE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_UNSOLD_FOLLOW_UP_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of WORKER_DOMAIN_EVENT_DELIVERY_TABLES) {

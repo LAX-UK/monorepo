@@ -47,6 +47,8 @@ export type PersonalDashboardProps = {
   workInbox: WorkInboxSlice;
   /** Client messages waiting; the card is left out when there are none. */
   inboxQueues?: readonly AttentionItem[];
+  /** Data requests past or close to their legal due date; the card is left out when there are none. */
+  dataRequestQueues?: readonly AttentionItem[];
   workAreas: readonly AdminWorkItemDomain[];
   area: WorkArea;
   assignment: WorkAssignment;
@@ -102,6 +104,10 @@ export function PersonalDashboard(props: PersonalDashboardProps) {
 
       {props.inboxQueues && props.inboxQueues.length > 0 ? (
         <AttentionList title="Client messages" items={props.inboxQueues} Link={NextLink} />
+      ) : null}
+
+      {props.dataRequestQueues && props.dataRequestQueues.length > 0 ? (
+        <AttentionList title="Data requests" items={props.dataRequestQueues} Link={NextLink} />
       ) : null}
 
       {show("my-queue") ? (

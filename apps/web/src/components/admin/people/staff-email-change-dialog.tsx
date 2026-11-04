@@ -23,6 +23,7 @@ import {
   ChoiceFieldset,
   ChoiceRow,
   Field,
+  FieldError,
   FormErrorSummary,
   Notice,
   StaffButton,
@@ -300,6 +301,9 @@ export function StaffEmailChangeDialog({ target, blockedReason = null, onClose }
                         checked={draft.kycConfirmed}
                         disabled={busy}
                         aria-invalid={errors.kycConfirmed ? true : undefined}
+                        aria-describedby={
+                          errors.kycConfirmed ? `${fieldIds.kycConfirmed}-error` : undefined
+                        }
                         onCheckedChange={(checked) =>
                           setDraft((current) => ({ ...current, kycConfirmed: checked === true }))
                         }
@@ -307,9 +311,9 @@ export function StaffEmailChangeDialog({ target, blockedReason = null, onClose }
                     }
                   />
                   {errors.kycConfirmed ? (
-                    <p className="text-staff-xs font-medium text-staff-danger">
+                    <FieldError id={`${fieldIds.kycConfirmed}-error`}>
                       {errors.kycConfirmed}
-                    </p>
+                    </FieldError>
                   ) : null}
                 </div>
               ) : null}

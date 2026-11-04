@@ -1,3 +1,5 @@
+import { readCookie } from "@auction/ui";
+
 /** Read GA4 browser identifiers under analytics consent for server-event stitching. */
 
 export type Ga4BrowserIds = {
@@ -5,16 +7,9 @@ export type Ga4BrowserIds = {
   sessionId?: string;
 };
 
-function readCookie(name: string): string | null {
+function readBrowserCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = document.cookie.match(new RegExp(`(?:^|; )${escaped}=([^;]*)`));
-  if (!match?.[1]) return null;
-  try {
-    return decodeURIComponent(match[1]);
-  } catch {
-    return match[1];
-  }
+  return readCookie(document.cookie, name) || null;
 }
 
 export function parseGaClientId(raw: string | null | undefined): string | null {
@@ -53,10 +48,10 @@ function measurementCookieSuffix(): string | null {
 }
 
 export function readGa4BrowserIdsFromDocument(): Ga4BrowserIds | null {
-  const clientId = parseGaClientId(readCookie("_ga"));
+  const clientId = parseGaClientId(readBrowserCookie("_ga"));
   if (!clientId) return null;
   const suffix = measurementCookieSuffix();
-  const sessionId = suffix ? parseGaSessionId(readCookie(`_ga_${suffix}`)) : null;
+  const sessionId = suffix ? parseGaSessionId(readBrowserCookie(`_ga_${suffix}`)) : null;
   return sessionId ? { clientId, sessionId } : { clientId };
 }
 

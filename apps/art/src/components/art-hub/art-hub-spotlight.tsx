@@ -1,7 +1,6 @@
 import { ArtSectionHeader } from "@/components/layout/art-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { ART_HUB_HEADINGS, type ArtHubSpotlightVm } from "@/lib/editorial/art-hub.vm";
-import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
 import {
   MarketingArrowRightIcon,
   MarketingCardMedia,
@@ -25,7 +24,7 @@ function SpotlightCard({ artist, solo }: { artist: ArtHubSpotlightVm; solo: bool
           <ArtMediaImage
             src={artist.imageUrl}
             alt={artist.imageAlt}
-            label={ART_MEDIA_LABELS.artistPortrait}
+            monogram={marketingArtistInitials(artist.name)}
             sizes="(min-width: 48rem) 50vw, 100vw"
             className="absolute inset-0 size-full"
             imgClassName="object-cover"

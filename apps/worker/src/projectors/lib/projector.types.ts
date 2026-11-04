@@ -11,6 +11,7 @@ import type pino from "pino";
 import type { WorkerEnv } from "../../env.js";
 import type { CrmSyncService } from "../../integrations/crm/crm-sync-service.js";
 import type { XeroLiveExecutorPorts } from "../../integrations/xero/xero-live-executor.js";
+import type { ZohoArtworkWritebackService } from "../../integrations/zoho/artwork/zoho-artwork-writeback-service.js";
 import type { IAdminImpersonationNotifyReader } from "../../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../../interfaces/admin-review-task-projector.repository.js";
 import type { IClearArtistBlocksRepository } from "../../interfaces/clear-artist-blocks.repository.js";
@@ -70,6 +71,8 @@ export type ProjectorRunContext = {
   bidAlerts?: import("./bid-alert-matching.types.js").BidAlertMatching | undefined;
   /** Stores the choose-by date when a consigned lot ends unsold. */
   unsoldChoiceDeadlines?: { record(lotId: string): Promise<void> } | undefined;
+  /** Opens the staff work for a confirmed unsold-lot choice. */
+  unsoldFollowUps?: { open(submissionId: string, lotId: string): Promise<void> } | undefined;
   xeroLiveExecutorPorts?: XeroLiveExecutorPorts | undefined;
   env?: WorkerEnv | undefined;
   db?: Database | undefined;
@@ -80,6 +83,8 @@ export type ProjectorRunContext = {
     | ((data: { userId: string; reason: string; eventId: number }) => Promise<void>)
     | undefined;
   shopIdentityProjection?: ShopIdentityProjectionService | undefined;
+  /** Sends artwork register changes to Zoho Products; absent while the writeback mode is off. */
+  zohoArtworkWriteback?: ZohoArtworkWritebackService | undefined;
 };
 
 export interface Projector {

@@ -15,6 +15,8 @@ export const adminWorkItemKindSchema = z.enum([
   "lot_withdrawal",
   "lot_draft_past_start",
   "unsold_lot_choice",
+  "unsold_choice_follow_up",
+  "unsold_choice_lapsed",
   "marketing_enquiry",
   "purchase_problem",
   "deletion_hold",

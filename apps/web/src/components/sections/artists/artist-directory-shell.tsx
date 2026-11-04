@@ -162,16 +162,6 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
               }}
             />
           }
-          chips={
-            <MarketingSortLinks
-              label="Browse"
-              options={page.presetChips.map((c) => ({
-                label: c.label,
-                href: c.href,
-                active: c.active,
-              }))}
-            />
-          }
           letterBar={
             <MarketingAlphabetFilter
               basePath="/artists"
@@ -243,15 +233,15 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
           ) : null}
           <div className="mt-10">
             <MarketingPromoCta
-              title="Submit your portfolio"
-              description="Request a valuation or submit work to be considered for an upcoming auction."
+              title="Own a work by one of these artists?"
+              description="Send it to our specialists for a valuation and a place in a coming sale."
               actions={
                 <>
                   <ButtonLink Link={Link} variant="primary" href="/selling/new">
-                    Submit work
+                    Sell a work
                   </ButtonLink>
                   <ButtonLink Link={Link} variant="secondary" href="/sell">
-                    Selling guide
+                    How to sell
                   </ButtonLink>
                 </>
               }

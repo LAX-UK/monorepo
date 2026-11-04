@@ -64,6 +64,7 @@ export function buildAuthorizationUrl(input: {
   codeChallenge: string;
   prompt?: OidcAuthorizePrompt;
   maxAge?: number;
+  hostedContext?: "sell";
 }): URL {
   const config = bffConfig();
   const href = buildAuthorizeUrl({
@@ -76,6 +77,7 @@ export function buildAuthorizationUrl(input: {
     codeChallenge: input.codeChallenge,
     ...(input.prompt ? { prompt: input.prompt } : {}),
     ...(input.maxAge != null ? { maxAge: input.maxAge } : {}),
+    ...(input.hostedContext ? { hostedContext: input.hostedContext } : {}),
   });
   return new URL(href);
 }

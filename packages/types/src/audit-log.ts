@@ -23,6 +23,7 @@ export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly str
     "lot.",
     "sale.",
     "artist.",
+    "artwork_register.",
     "category.",
     "venue.",
     "condition_report.",

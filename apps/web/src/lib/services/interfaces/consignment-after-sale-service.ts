@@ -25,6 +25,8 @@ export interface IAdminConsignmentAfterSaleService {
     submissionId: string,
     floor: string | null,
   ): Promise<ServiceResult<unknown>>;
+  /** Marks the return, or the hand-over to the private sales team, as done. */
+  completeUnsoldFollowUp(submissionId: string): Promise<ServiceResult<unknown>>;
   move(submissionId: string, body: ConsignmentMoveBody): Promise<ServiceResult<unknown>>;
   remindSeller(
     submissionId: string,

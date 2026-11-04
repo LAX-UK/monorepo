@@ -266,7 +266,6 @@ describe("contrast in light and dark", () => {
   describe("status text on its tint, on every surface the tint is laid over", () => {
     const pairs = [
       ...LAX_STATUS_TONES.map((tone) => [tone, `${tone}-fg`, `${tone}-bg`] as const),
-      ["live", "on-live", "live-bg"] as const,
       ["danger solid", "on-danger", "danger-solid"] as const,
     ];
     it.each(

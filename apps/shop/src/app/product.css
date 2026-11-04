@@ -262,13 +262,6 @@
   gap: var(--shop-space-2);
 }
 
-.shop-alert__label {
-  color: var(--color-on-surface);
-  font-family: var(--font-body);
-  font-size: var(--shop-text-sm);
-  font-weight: 600;
-}
-
 .shop-alert__row {
   display: flex;
   flex-direction: column;
@@ -278,12 +271,16 @@
 @media (min-width: 30rem) {
   .shop-alert__row {
     flex-direction: row;
-    align-items: stretch;
+    align-items: flex-end;
   }
 }
 
-.shop-alert__input {
+.shop-alert__field {
   flex: 1 1 auto;
+}
+
+.shop-alert__input {
+  width: 100%;
   min-width: 0;
 }
 
@@ -291,13 +288,6 @@
 .shop-alert__submit.shop-button {
   min-height: var(--shop-control-height);
   flex: 0 0 auto;
-}
-
-.shop-alert__error {
-  margin: 0;
-  color: var(--color-error);
-  font-size: var(--shop-text-sm);
-  font-weight: 500;
 }
 
 .shop-alert__note {

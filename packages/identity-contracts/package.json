@@ -16,6 +16,10 @@
       "types": "./dist/account.d.ts",
       "default": "./dist/account.js"
     },
+    "./data-requests": {
+      "types": "./dist/data-requests-entry.d.ts",
+      "default": "./dist/data-requests-entry.js"
+    },
     "./subject-export-readers": {
       "types": "./dist/subject-export-readers.d.ts",
       "default": "./dist/subject-export-readers.js"

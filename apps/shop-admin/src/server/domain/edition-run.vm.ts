@@ -5,7 +5,12 @@ import type {
   AdminEditionRunSpec,
   AdminProofType,
 } from "@auction/shop-contracts";
-import { OPEN_EDITION_LOW_STOCK_AT, isOpenStockLow, runAllocation } from "@auction/shop-domain";
+import {
+  OPEN_EDITION_LOW_STOCK_AT,
+  allocationNumbering,
+  isOpenStockLow,
+  runAllocation,
+} from "@auction/shop-domain";
 import type { StatItem } from "@auction/staff-ui";
 
 /*
@@ -84,6 +89,18 @@ export function mainRunLine(main: { title: string; spec: AdminEditionRunSpec }):
         ? "proof listing"
         : `limited edition of ${spec.type === "lax_standard" ? 24 : spec.size}`;
   return `${main.title}, ${kind}`;
+}
+
+/** "Created 24 prints as a draft", for the toast after prints are made from an original. */
+export function printsCreatedLine(count: number): string {
+  if (count === 0) return "Created the listing as a draft";
+  return `Created ${count === 1 ? "1 print" : `${count} prints`} as a draft`;
+}
+
+/** "Created “Harbour” and 24 prints as drafts", after an original is saved with its prints. */
+export function originalAndPrintsCreatedLine(title: string, count: number): string {
+  const prints = count === 0 ? "its listing" : count === 1 ? "1 print" : `${count} prints`;
+  return `Created “${title}” and ${prints} as drafts`;
 }
 
 /** How a linked listing differs from its main run, for the main run's list of listings. */
@@ -205,4 +222,30 @@ export function bulkFactsSummary(
 export function factsListLabel(run: AdminArtworkRunSummary | null): string | null {
   if (!run) return null;
   return run.factsStatus === "confirmed" ? "Confirmed" : "Needs review";
+}
+
+const HOLDER_NAMES = {
+  original_buyer_entitlement: "the buyer of the original",
+  artist: "the artist",
+  lax: "LAX",
+} as const;
+
+/**
+ * Who holds which numbers in a limited run, as one sentence: "Prints 1–10 go to the buyer of the
+ * original, 11–20 to the artist and 21–24 to LAX." Groups with no prints are left out; null while
+ * there are none.
+ */
+export function allocationSentence(allocation: {
+  buyer: number;
+  artist: number;
+  lax: number;
+}): string | null {
+  const ranges = allocationNumbering(allocation);
+  if (ranges.length === 0) return null;
+  const span = (range: { from: number; to: number }) =>
+    range.from === range.to ? `${range.from}` : `${range.from}–${range.to}`;
+  const parts = ranges.map((range) => `${span(range)} to ${HOLDER_NAMES[range.allocation]}`);
+  const last = parts.pop();
+  const joined = parts.length > 0 ? `${parts.join(", ")} and ${last}` : last;
+  return `Prints ${joined}.`.replace(" to ", " go to ");
 }

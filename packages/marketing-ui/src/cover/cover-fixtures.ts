@@ -101,6 +101,7 @@ function plate(
 const LIVE: CoverSlide = {
   id: "live",
   badge: "Live",
+  badgeLive: true,
   time: "Closes from Tue 3 Nov, 21:00 GMT · 2 days 5 hours left",
   title: "Modern & Contemporary: Online",
   fact: "British and European paintings and works on paper · 8 lots, bid online",

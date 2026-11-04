@@ -4,6 +4,7 @@ import {
   type SellerIdentityReminderState,
   type StaffAfterSaleView,
   type UnsoldLotChoice,
+  type UnsoldLotFollowUp,
   consignmentAfterSaleStages,
   itemSubmissionStatuses,
   unsoldLotChoiceKinds,
@@ -50,6 +51,22 @@ const choiceSchema: z.ZodType<UnsoldLotChoice, z.ZodTypeDef, unknown> = z.object
   updatedAt: requiredDate,
 });
 
+const followUpSchema: z.ZodType<UnsoldLotFollowUp, z.ZodTypeDef, unknown> = z.object({
+  id: z.string(),
+  choiceId: z.string(),
+  lotId: z.string(),
+  lotEndTime: requiredDate,
+  submissionId: z.string(),
+  kind: z.enum(unsoldLotChoiceKinds),
+  reserve: money,
+  status: z.enum(["open", "done"]),
+  reserveAppliedAt: date,
+  completedAt: date,
+  completedByUserId: name,
+  completedByName: name,
+  createdAt: requiredDate,
+});
+
 const unsoldSchema = z.object({
   lotId: z.string(),
   currentReserve: money,
@@ -86,7 +103,11 @@ export const sellerAfterSaleSchema = z.object({
 }) as z.ZodType<SellerAfterSaleView>;
 
 export const staffAfterSaleSchema = z.object({
-  unsold: unsoldSchema.nullable().optional().default(null),
+  unsold: unsoldSchema
+    .extend({ followUp: followUpSchema.nullable().optional().default(null) })
+    .nullable()
+    .optional()
+    .default(null),
   withdrawal: requestSchema,
 }) as z.ZodType<StaffAfterSaleView>;
 

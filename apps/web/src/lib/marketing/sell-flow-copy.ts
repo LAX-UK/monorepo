@@ -28,7 +28,7 @@ export const SELL_TIME_EXPECTATIONS =
 
 /** Opening paragraph for `/sell` LegalPage intro. */
 export const SELL_PAGE_INTRO =
-  "LAX.BID works with consignors to place fine art, watches, motor cars, design, and exceptional objects into carefully edited online timed sales and in-person saleroom events. Our specialists guide each consignment from first review through catalogue, sale, payment, and settlement.";
+  "LAX Bid works with consignors to place fine art, watches, motor cars, design, and exceptional objects into carefully edited online timed sales and in-person saleroom events. Our specialists guide each consignment from first review through catalogue, sale, payment, and settlement.";
 
 /** Acceptance criteria prose — heart of legacy “What we accept”. */
 export const SELL_PAGE_ACCEPTANCE =

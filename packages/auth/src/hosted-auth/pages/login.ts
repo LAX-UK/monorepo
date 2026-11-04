@@ -1,4 +1,5 @@
-import { oneAccountSection } from "../chrome.js";
+import { contextLine, oneAccountSection } from "../chrome.js";
+import { HOSTED_COPY } from "../copy.js";
 import {
   buildHostedAuthHtml,
   continuationAnchor,
@@ -106,9 +107,9 @@ export function buildHostedLoginHtml(view: HostedAuthView = hostedAuthViewFromSe
   const lead =
     view.flow.audience === "staff"
       ? { description: "Staff sign-in for LAX Shop Admin.", showDestination: false }
-      : { lead: "signIn" as const };
+      : { contextLine: contextLine(view.brand.chip, view.flow.context) };
   return buildHostedAuthHtml({
-    title: "Sign in",
+    title: HOSTED_COPY.titles.signIn,
     ...lead,
     ...viewChrome(view),
     body: view.capabilities.emailFirst ? emailFirstBody(view) : combinedBody(view),

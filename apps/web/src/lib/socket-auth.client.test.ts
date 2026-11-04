@@ -6,6 +6,7 @@ describe("fetchSocketTicket", () => {
 
   beforeEach(() => {
     vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockReset();
   });
 
   afterEach(() => {
@@ -35,6 +36,41 @@ describe("fetchSocketTicket", () => {
     fetchMock.mockResolvedValue({ ok: false });
 
     await expect(fetchSocketTicket()).resolves.toBeNull();
+  });
+
+  it("does not retry a 401 sign-out", async () => {
+    vi.stubGlobal("window", {} as Window);
+    fetchMock.mockResolvedValue({ ok: false, status: 401 });
+
+    await expect(fetchSocketTicket()).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries a 503 and returns the ticket once the service recovers", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("window", {} as Window);
+    fetchMock
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockRejectedValueOnce(new Error("network"))
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ticket: "ticket-abc" }) });
+
+    const result = fetchSocketTicket();
+    await vi.runAllTimersAsync();
+    await expect(result).resolves.toBe("ticket-abc");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    vi.useRealTimers();
+  });
+
+  it("gives up after the retries are spent", async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal("window", {} as Window);
+    fetchMock.mockResolvedValue({ ok: false, status: 503 });
+
+    const result = fetchSocketTicket();
+    await vi.runAllTimersAsync();
+    await expect(result).resolves.toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    vi.useRealTimers();
   });
 });
 

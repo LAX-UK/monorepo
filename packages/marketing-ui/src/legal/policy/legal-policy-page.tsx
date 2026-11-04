@@ -1,6 +1,7 @@
 import { type LaxOperatedProduct, legalEntityFor, legalOperatorSentence } from "@auction/branding";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
+import { TextWithEmails } from "../../email-text.js";
 import { LegalDocument, LegalNotice, LegalPlaceholder, LegalSection } from "../legal-document.js";
 import { LegalEntityDetails } from "../legal-entity-details.js";
 import { LegalHub, type LegalHubLink } from "../legal-hub.js";
@@ -34,7 +35,11 @@ function PolicyText({ text }: { text: LegalPolicyText }) {
         const key = `${part.kind}-${index}`;
         switch (part.kind) {
           case "text":
-            return <Fragment key={key}>{part.value}</Fragment>;
+            return (
+              <Fragment key={key}>
+                <TextWithEmails text={part.value} />
+              </Fragment>
+            );
           case "strong":
             return <strong key={key}>{part.value}</strong>;
           case "placeholder":

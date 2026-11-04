@@ -33,7 +33,7 @@ export function AddSaleToCalendarButton({ sale, lotTitle, locationLine, classNam
     const lines = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//LAX.BID//Lot//EN",
+      "PRODID:-//LAX Bid//Lot//EN",
       "BEGIN:VEVENT",
       `UID:${uid}`,
       `DTSTAMP:${dtStamp}`,

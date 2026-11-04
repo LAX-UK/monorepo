@@ -20,7 +20,7 @@ import {
   unsoldLotChoiceDecisionBodySchema,
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
-import type { z } from "zod";
+import { z } from "zod";
 
 function refresh(id: string) {
   revalidatePath("/admin/submissions");
@@ -68,6 +68,19 @@ export async function adminSetRelistReserveFloorAction(
     staffWrite(submissionId, relistReserveFloorBodySchema, { floor }, async (id, body) =>
       mapServiceToActionVoid(
         await getWriteContainer().adminConsignmentAfterSale.setRelistReserveFloor(id, body.floor),
+      ),
+    ),
+  );
+}
+
+/** Marks the return, or the hand-over to the private sales team, as done. */
+export async function adminCompleteUnsoldFollowUpAction(
+  submissionId: string,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminCompleteUnsoldFollowUpAction", () =>
+    staffWrite(submissionId, z.object({}), {}, async (id) =>
+      mapServiceToActionVoid(
+        await getWriteContainer().adminConsignmentAfterSale.completeUnsoldFollowUp(id),
       ),
     ),
   );

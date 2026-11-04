@@ -6,11 +6,22 @@ import {
   formatStaffRelative,
   formatStaffTime,
   londonZoneLabel,
+  staffShortDateFormat,
 } from "./format.js";
 
 describe("staff date and time formatters", () => {
   it("writes dates in full, never as digits that read two ways", () => {
     expect(formatStaffDate("2026-10-24T13:05:00Z")).toBe("24 Oct 2026");
+  });
+
+  it("writes September as Sep so every month is three letters", () => {
+    expect(formatStaffDate("2026-09-30T12:00:00Z")).toBe("30 Sep 2026");
+    expect(formatStaffDateTime("2026-09-30T12:00:00Z")).toBe("30 Sep 2026, 13:00");
+    expect(
+      staffShortDateFormat({ day: "numeric", month: "short" }).format(
+        new Date("2026-09-03T12:00:00Z"),
+      ),
+    ).toBe("3 Sep");
   });
 
   it("shows London time on a 24-hour clock, whatever the zone of the input", () => {

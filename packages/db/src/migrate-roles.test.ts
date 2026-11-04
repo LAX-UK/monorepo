@@ -15,6 +15,8 @@ import {
   AUTH_READ_TABLES,
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
+  WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
+  WORKER_ARTWORK_REGISTER_TABLES,
   WORKER_BID_ALERT_TABLES,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DENY_TABLES,
@@ -29,6 +31,7 @@ import {
   WORKER_PROVISIONING_TABLES,
   WORKER_QR_CODE_SCAN_TABLES,
   WORKER_READ_TABLES,
+  WORKER_ZOHO_ARTWORK_SYNC_TABLES,
 } from "./migrate-roles.js";
 
 /** AST-based audit of every `db.update(user|userTable).set({ ... })` call in `apps/api`.
@@ -461,6 +464,30 @@ describe("migrate-roles invariants", () => {
       "bid_alert_topic",
     ]);
     for (const table of WORKER_BID_ALERT_TABLES) {
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+    }
+  });
+
+  it("lets the worker maintain the artwork register but only append to its history", () => {
+    expect([...WORKER_ARTWORK_REGISTER_TABLES].sort()).toEqual([
+      "artwork_register",
+      "artwork_register_conflict",
+    ]);
+    expect([...WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES]).toEqual(["artwork_register_event"]);
+    for (const table of [
+      ...WORKER_ARTWORK_REGISTER_TABLES,
+      ...WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
+    ]) {
+      expect([...WORKER_DENY_TABLES]).not.toContain(table);
+    }
+  });
+
+  it("lets the worker keep the Zoho artwork sync watermark and per-Product results", () => {
+    expect([...WORKER_ZOHO_ARTWORK_SYNC_TABLES].sort()).toEqual([
+      "zoho_artwork_sync_outcome",
+      "zoho_artwork_sync_state",
+    ]);
+    for (const table of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);
     }
   });
