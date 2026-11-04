@@ -57,7 +57,7 @@ describe.skipIf(!migrationUrl)("migration 0292 shop alert engine", { timeout: 30
 
   it("moves every release subscriber with its id, state and consent record", async () => {
     const confirmed = await releaseSubscriber({
-      email: "Confirmed@Example.com",
+      email: "confirmed@example.com",
       status: "confirmed",
       token: "token-confirmed",
       subject: "subject-1",
