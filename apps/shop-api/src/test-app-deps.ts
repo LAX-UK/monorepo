@@ -139,6 +139,8 @@ export function createMinimalShopApiTestDeps(
         priceBands: [],
         sizes: [],
         techniques: [],
+        objectTypes: [],
+        saleStates: [],
       }),
       listPublicCategories: async () => ({ items: [] }),
       getPublicCategory: async () => null,

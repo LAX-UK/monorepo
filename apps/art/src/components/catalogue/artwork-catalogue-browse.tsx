@@ -48,6 +48,7 @@ type Props = {
   categories: CatalogueFilterOption[];
   artists: CatalogueFilterOption[];
   mediumOptions: ArtworkFilterOption[];
+  saleStateOptions: ArtworkFilterOption[];
   /** Server-resolved layout; the switcher keeps it in sync with `?view=`. */
   view: CatalogLayoutView;
   children: ReactNode;
@@ -67,6 +68,7 @@ export function ArtworkCatalogueBrowse({
   categories,
   artists,
   mediumOptions,
+  saleStateOptions,
   view,
   children,
 }: Props) {
@@ -175,6 +177,7 @@ export function ArtworkCatalogueBrowse({
           categories={categories}
           artists={artists}
           mediumOptions={mediumOptions}
+          saleStateOptions={saleStateOptions}
         />
       </SplitFilterSheet>
 

@@ -1,5 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MarketingArtistCard } from "./marketing-artist-card.js";
 import { MarketingArtistCrossLinks } from "./marketing-artist-cross-links.js";
 import {
@@ -11,6 +11,8 @@ import {
 import { MarketingArtistHero } from "./marketing-artist-hero.js";
 import { MarketingFilterLinkGroups } from "./marketing-filter-link-groups.js";
 import { MarketingWorkCard } from "./marketing-work-card.js";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 describe("artist facts", () => {
   it("formats life spans from numbers and registry strings", () => {
@@ -153,19 +155,13 @@ describe("MarketingFilterLinkGroups", () => {
       {
         id: "show",
         title: "Show",
-        links: [
-          { label: "All artists", href: "/artists", active: false },
-          { label: "Featured", href: "/artists?featured=1", active: true, count: 4 },
-        ],
+        links: [{ label: "Featured", href: "/artists", active: true, count: 4 }],
       },
     ];
     const { rerender } = render(
       <MarketingFilterLinkGroups groups={groups} clearHref="/artists" hasFilters />,
     );
-    expect(screen.getByRole("link", { name: "Featured 4" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    expect(screen.getByRole("checkbox", { name: "Featured , 4" })).toBeChecked();
     expect(screen.getByRole("link", { name: "Clear all filters" })).toBeInTheDocument();
     rerender(<MarketingFilterLinkGroups groups={groups} clearHref="/artists" hasFilters={false} />);
     expect(screen.queryByRole("link", { name: "Clear all filters" })).toBeNull();

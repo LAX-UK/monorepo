@@ -206,6 +206,10 @@ export const PublicArtworkFacetCountsSchema = Type.Object(
         ),
       ),
     ),
+    /** Works per object type (the medium on lax.art); only types with works. */
+    objectTypes: Type.Optional(Type.Array(BandFacetCount)),
+    /** Works per sale state (`for_sale`, `price_on_application`, `sold`); only states with works. */
+    saleStates: Type.Optional(Type.Array(BandFacetCount)),
   },
   { additionalProperties: false },
 );
