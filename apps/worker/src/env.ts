@@ -182,9 +182,8 @@ const envSchema = z
     SHOP_ZOHO_FINANCIALS_ENABLED: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),
-    ZOHO_CRM_LEAD_CONVERSION_ENABLED: z
-      .preprocess((val) => val === "true" || val === true, z.boolean())
-      .default(false),
+    /** Lead Status a new website lead starts with; must exist in the org's Lead Status picklist. */
+    ZOHO_CRM_LEAD_STATUS_NEW: z.string().trim().min(1).default("New (Unassigned)"),
     ZOHO_CRM_CURSOR_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(100),
     ZOHO_CRM_TICK_TIME_BUDGET_MS: z.coerce.number().int().min(100).max(120_000).default(2_000),
     XERO_PROJECTOR_MODE: z.enum(["off", "shadow", "canary", "live"]).default("off"),

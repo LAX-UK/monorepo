@@ -266,6 +266,8 @@ export const WORKER_READ_TABLES = [
   "marketing_enquiry_attachment",
   /** The CRM projector reads an enquiry by id to build its Zoho lead (the event carries no personal data). */
   "marketing_enquiry",
+  /** ... and the artist a private sale enquiry names, for the lead's Interest: Artist. */
+  "private_sale_enquiry_detail",
   /** The follow-up projector reads the confirmed choice it opens work for. */
   "unsold_lot_choice",
 ];

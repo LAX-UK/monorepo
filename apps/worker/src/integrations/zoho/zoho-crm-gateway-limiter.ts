@@ -1,14 +1,14 @@
 import { classifyDeliveryError } from "../../lib/delivery-retry.js";
 import type {
   CrmBatchUpsertInput,
-  CrmConvertLeadInput,
-  CrmConvertLeadResult,
   CrmCoqlPage,
   CrmCoqlQuery,
+  CrmCreateInput,
   CrmDeleteRecordInput,
   CrmDeleteRecordResult,
   CrmGateway,
   CrmGatewayMetrics,
+  CrmLeadSummary,
   CrmRecordResult,
   CrmSearchByEmailInput,
   CrmSearchByEmailResult,
@@ -64,8 +64,12 @@ export class ZohoCrmGatewayLimiter implements CrmGateway, CrmCoqlQuery {
     return this.guard(() => this.inner.queryCoql(selectQuery));
   }
 
-  async convertLead(input: CrmConvertLeadInput): Promise<CrmConvertLeadResult> {
-    return this.guard(() => this.inner.convertLead(input));
+  async createRecord(input: CrmCreateInput): Promise<CrmRecordResult> {
+    return this.guard(() => this.inner.createRecord(input));
+  }
+
+  async findLead(leadId: string): Promise<CrmLeadSummary | null> {
+    return this.guard(() => this.inner.findLead(leadId));
   }
 
   async deleteRecord(input: CrmDeleteRecordInput): Promise<CrmDeleteRecordResult> {
