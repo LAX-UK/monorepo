@@ -20,6 +20,7 @@ import {
   createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
+import { createAccountEmailAlertHandlers } from "./application/handlers/account-email-alerts.handler.js";
 import { createCountArtworkFacetsHandler } from "./application/handlers/count-artwork-facets.handler.js";
 import { createEditionAlertHandlers } from "./application/handlers/edition-alerts.handler.js";
 import { createGetArtworkInterestHandler } from "./application/handlers/get-artwork-interest.handler.js";
@@ -660,6 +661,11 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         editionAlertRateLimiter,
         releaseAlerts,
         releaseAlertRateLimiter,
+        accountEmailAlerts: createAccountEmailAlertHandlers({
+          preferences: shopAlerts.preferences,
+          countWaitingEditions: async (identitySubjectId) =>
+            (await editionAlerts.listForSubject(identitySubjectId)).length,
+        }),
       },
       editorial,
     },

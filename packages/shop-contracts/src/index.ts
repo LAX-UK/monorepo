@@ -77,6 +77,19 @@ export {
   type ReleaseAlertUnsubscribePreview,
 } from "./release-alerts-public.js";
 export {
+  ACCOUNT_EMAIL_ALERT_TOPICS,
+  AccountEmailAlertRefusalSchema,
+  AccountEmailAlertSavedSchema,
+  AccountEmailAlertSwitchBodySchema,
+  AccountEmailAlertTopicParamsSchema,
+  AccountEmailAlertTopicSchema,
+  AccountEmailAlertsSchema,
+  parseAccountEmailAlerts,
+  type AccountEmailAlertRefusal,
+  type AccountEmailAlertTopic,
+  type AccountEmailAlerts,
+} from "./account-email-alerts.js";
+export {
   AdminArtworkPublishBodySchema,
   AdminReleaseAlertSummarySchema,
   type AdminArtworkPublishBody,

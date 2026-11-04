@@ -168,6 +168,10 @@ export function createMinimalShopApiTestDeps(
         unsubscribe: async () => false,
       },
       releaseAlertRateLimiter: createReleaseAlertRateLimiter(createInMemoryFixedWindowCounter()),
+      accountEmailAlerts: {
+        view: async () => ({ topics: [], waitingEditions: 0 }),
+        setTopic: async () => null,
+      },
     },
     staffReader: {
       findActiveByIdentitySubject: async () => null,

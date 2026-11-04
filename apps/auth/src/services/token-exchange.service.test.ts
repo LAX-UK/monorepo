@@ -106,6 +106,28 @@ describe("token exchange policy", () => {
     }
   });
 
+  it("lets LAX Account read and switch the person's own alerts on Bid and Shop", () => {
+    for (const [resource, audience] of [
+      ["https://api.lax.bid", "lax-bid-api"],
+      ["https://shop.lax.art/api", "lax-shop-api"],
+    ] as const) {
+      for (const scope of ["lax.alerts.read", "lax.alerts.read lax.alerts.write"]) {
+        expect(
+          resolveTokenExchangePolicy({ clientId: "lax-account-web", resource, scope }),
+        ).toEqual({ audience, scopes: scope.split(" ") });
+      }
+    }
+    for (const clientId of ["lax-shop-web", "lax-shop-admin"] as const) {
+      expect(() =>
+        resolveTokenExchangePolicy({
+          clientId,
+          resource: "https://api.lax.bid",
+          scope: "lax.alerts.read",
+        }),
+      ).toThrowError(new TokenExchangeError("invalid_scope", "The requested scope is not allowed"));
+    }
+  });
+
   it("lets LAX Account read portfolios from Bid and Shop with the narrow scope only", () => {
     for (const [resource, audience] of [
       ["https://api.lax.bid", "lax-bid-api"],

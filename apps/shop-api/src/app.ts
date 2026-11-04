@@ -39,6 +39,7 @@ import { registerAdminThirdPartyRoutes } from "./routes/admin/v1/third-party.rou
 import { registerHealthRoutes } from "./routes/health.routes.js";
 import { registerIdentityDeletionEligibilityRoutes } from "./routes/internal/identity-deletion-eligibility.routes.js";
 import { registerIdentitySubjectExportRoutes } from "./routes/internal/identity-subject-export.routes.js";
+import { registerAccountEmailAlertRoutes } from "./routes/v1/account-email-alerts.routes.js";
 import { registerArtistApplicationRoutes } from "./routes/v1/artist-application.routes.js";
 import { registerArtistRoutes } from "./routes/v1/artists.routes.js";
 import { registerArtworkInterestRoutes } from "./routes/v1/artwork-interest.routes.js";
@@ -147,6 +148,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerArtworkInterestRoutes(app, options.deps.interest);
   void registerEditionAlertRoutes(app, options.deps.interest);
   void registerReleaseAlertRoutes(app, options.deps.interest);
+  void registerAccountEmailAlertRoutes(app, options.deps.interest);
   void registerBasketRoutes(app, options.deps.commerce);
   void registerOrderRoutes(app, options.deps.commerce);
   void registerGuestCheckoutRoutes(app, options.deps.commerce.guestCheckout);

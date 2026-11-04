@@ -77,6 +77,8 @@ export type ShopAlertRuntime = {
   mode: SendMode;
   /** Sign-up, confirm and stop, for the public routes. */
   handlers: ShopAlertHandlers;
+  /** A signed-in person's own switches, for the Email alerts page in LAX Account. */
+  preferences: Pick<PreferencesService, "view" | "setTopic">;
   /** Switches emails on when someone follows an artist on lax.art. */
   followAlerts: FollowAlertsService;
   /** Written inside the publish transaction. */
@@ -179,6 +181,7 @@ export function createShopAlertRuntime(input: {
 
   return {
     mode: env.ALERTS_SEND_MODE,
+    preferences,
     handlers: createShopAlertHandlers({
       subscribe,
       confirm: new ConfirmService({
