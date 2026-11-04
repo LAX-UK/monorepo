@@ -712,7 +712,7 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
       position: 0,
       refKind: "exhibition",
       refId: exhibitionId,
-      headline: "New Originals, now on in Marylebone",
+      headline: "New originals, now showing in Marylebone",
       linkUrl: `/exhibitions/${EXHIBITION_SLUG}`,
     },
     {

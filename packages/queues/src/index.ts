@@ -1,4 +1,5 @@
 export * from "./queue-producers.js";
+export * from "./zoho-artwork-notice.js";
 export * from "./queue-names.js";
 export * from "./queue-names-finance-cron.js";
 export * from "./queue-names-platform-cron.js";

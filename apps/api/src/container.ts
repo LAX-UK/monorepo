@@ -667,6 +667,7 @@ export function createContainer(env: Env): Container {
     attributionStore: complianceMedia.attributionStore,
     marketingAttributionEnabled: complianceMedia.marketingAttributionEnabled,
     postmarkWebhookService: userMisc.postmarkWebhookService,
+    zohoArtworkNoticeService: cron.zohoArtworkNoticeService,
     accountDeletionEligibilityService: cron.accountDeletionEligibilityService,
     subjectExportService: createBidSubjectExportService({
       db,
@@ -767,6 +768,7 @@ export function createContainer(env: Env): Container {
       deliveryQuotes: organisationBuying.staffDeliveryQuotes,
       marketingEnquiries: marketingEnquiries.desk,
       enquiryRouting: marketingEnquiries.routing,
+      enquiryErasure: marketingEnquiries.erasure,
       dataRequests: new AdminDataRequestsService({
         identity: new HttpIdentityDataRequestsClient({
           issuerBaseUrl: env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL,
@@ -898,6 +900,7 @@ export type {
   ContainerVenueRoutesSlice,
   ContainerVeriffWebhookRoutesSlice,
   ContainerXeroWebhookRoutesSlice,
+  ContainerZohoWebhookRoutesSlice,
   ContainerSaleAuxRoutesSlice,
   ContainerSaleFollowRoutesSlice,
   ContainerSaleLifecycleWriteRoutesSlice,

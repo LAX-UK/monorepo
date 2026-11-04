@@ -19,6 +19,7 @@ import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hu
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
 import { payoutSetupSteps } from "@/lib/presenters/payout-setup-steps";
+import { EmailLink } from "@auction/marketing-ui";
 import { redirect } from "next/navigation";
 
 export default async function SellerPayoutSetupPage() {
@@ -108,10 +109,7 @@ export default async function SellerPayoutSetupPage() {
       ) : null}
 
       <p className="font-body text-xs text-on-surface-variant">
-        Questions?{" "}
-        <a href={`mailto:${SITE_SUPPORT_EMAIL}`} className="text-link underline">
-          {SITE_SUPPORT_EMAIL}
-        </a>
+        Questions? <EmailLink address={SITE_SUPPORT_EMAIL} className="text-link underline" />
       </p>
     </DashboardPage>
   );

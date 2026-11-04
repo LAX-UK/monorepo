@@ -6,6 +6,7 @@ import { AccountDeletionEligibilityService } from "../services/account-deletion-
 import { proactiveRefreshXeroTokens } from "../services/accounting/xero-auth-runtime.js";
 import { HygieneCronService } from "../services/cron/hygiene-cron.service.js";
 import { SettlementCronService } from "../services/cron/settlement-cron.service.js";
+import { ZohoArtworkNoticeService } from "../services/zoho-artwork-notice.service.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
@@ -22,6 +23,7 @@ export type ContainerCronServices = {
   lifecycleCronService: LifecycleCronService;
   hygieneCronService: HygieneCronService;
   accountDeletionEligibilityService: AccountDeletionEligibilityService;
+  zohoArtworkNoticeService: ZohoArtworkNoticeService;
 };
 
 export type CreateCronServicesInput = {
@@ -112,6 +114,12 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
     env.WEB_ORIGIN,
   );
 
+  const zohoArtworkNoticeService = new ZohoArtworkNoticeService(
+    env.ZOHO_ARTWORK_WEBHOOK_SECRET,
+    repos.webhookEventRepository,
+    infra.webhookEventsProducer,
+  );
+
   return {
     settlementCronService,
     accountingReplayCronService,
@@ -119,5 +127,6 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
     lifecycleCronService,
     hygieneCronService,
     accountDeletionEligibilityService,
+    zohoArtworkNoticeService,
   };
 }

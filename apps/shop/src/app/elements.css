@@ -125,7 +125,8 @@
   border-color: var(--color-primary);
 }
 
-/* Buttons. The scale tokens are in base.css; ShopCommerceButton applies these classes. */
+/* Buttons. Height, padding and label size come from the kit's size scale (see
+   shop-commerce-button.tsx); these classes add Shop's shape and weight. */
 .shop-button {
   height: auto;
   border-radius: var(--radius-control);
@@ -136,16 +137,10 @@
 }
 
 .shop-button--commerce {
-  min-height: var(--shop-button-commerce-height);
-  padding: var(--shop-space-3) var(--shop-space-6);
-  font-size: var(--shop-button-commerce-text);
   font-weight: 600;
 }
 
 .shop-button--standard {
-  min-height: var(--shop-button-standard-height);
-  padding: var(--shop-space-2) var(--shop-space-4);
-  font-size: var(--shop-button-standard-text);
   font-weight: 500;
 }
 
@@ -187,7 +182,7 @@
 /* Shared status-state actions (empty, error and not-found pages) use the standard button. */
 .marketing-status-state__action {
   min-height: var(--shop-button-standard-height);
-  padding: var(--shop-space-2) var(--shop-space-4);
+  padding: 0 var(--shop-space-4);
   border-radius: var(--radius-control);
   font-family: var(--font-body);
   font-weight: 500;

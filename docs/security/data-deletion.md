@@ -8,7 +8,7 @@ The day-to-day steps are in [the deletion request runbook](../runbooks/deletion-
 ## What happens
 
 1. **Request.** Identity asks Bid and Shop what the person still has in flight there (open orders,
-   unpaid wins, unpaid payouts, holds). If either product names something, or cannot be reached,
+   unpaid wins, unpaid payouts, open payment disputes, holds). If either product names something, or cannot be reached,
    nothing starts and the person is shown what to resolve. Otherwise the 30-day grace period begins
    and Identity publishes `user.deletion_requested`. The person gets an email that says the date
    and links to cancel.

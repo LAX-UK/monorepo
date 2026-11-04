@@ -1,6 +1,12 @@
 import type { Database } from "@auction/db";
-import { shopArtist, shopArtwork, shopEdition, shopParty } from "@auction/db/schema";
-import { count, inArray } from "drizzle-orm";
+import {
+  shopArtist,
+  shopArtwork,
+  shopArtworkImage,
+  shopEdition,
+  shopParty,
+} from "@auction/db/schema";
+import { asc, count, inArray } from "drizzle-orm";
 import type {
   ArtworkImageReadModel,
   ArtworkSummaryReadModel,
@@ -140,17 +146,63 @@ export function toArtworkCatalogueRow(
   };
 }
 
-/** Edition availability is loaded in one batch for the whole page of rows. */
+type StoredCoverImage = { artworkId: string; mediaKey: string };
+
+/**
+ * The first gallery image of each artwork, in position order, as a public URL. `rows` must already
+ * be ordered by position; an image that does not resolve to a URL is skipped.
+ */
+export function firstImageByArtworkId(
+  rows: readonly StoredCoverImage[],
+  resolveMediaUrl: ResolveArtworkMediaUrl,
+): Map<string, ArtworkImageReadModel> {
+  const covers = new Map<string, ArtworkImageReadModel>();
+  for (const row of rows) {
+    if (covers.has(row.artworkId)) continue;
+    const url = resolveMediaUrl(row.mediaKey);
+    if (url) covers.set(row.artworkId, { url, alt: null, caption: null, blurDataUrl: null });
+  }
+  return covers;
+}
+
+/**
+ * Gallery covers for works that have no primary image of their own, so a list card shows the same
+ * photo as the work's page. Works with a primary image are left alone.
+ */
+async function coverImagesForWorksWithoutPrimary(
+  db: Database,
+  rows: SelectedArtworkRow[],
+  resolveMediaUrl: ResolveArtworkMediaUrl,
+): Promise<Map<string, ArtworkImageReadModel>> {
+  const missing = rows
+    .filter((row) => !resolveMediaUrl(row.primaryImageUrl))
+    .map((row) => row.artworkId);
+  if (missing.length === 0) return new Map();
+  const stored = await db
+    .select({ artworkId: shopArtworkImage.artworkId, mediaKey: shopArtworkImage.mediaKey })
+    .from(shopArtworkImage)
+    .where(inArray(shopArtworkImage.artworkId, missing))
+    .orderBy(asc(shopArtworkImage.position));
+  return firstImageByArtworkId(stored, resolveMediaUrl);
+}
+
+/** Edition availability and missing covers are loaded in one batch for the whole page of rows. */
 export async function toPublicArtworkSummaries(
   db: Database,
   rows: SelectedArtworkRow[],
   resolveMediaUrl: ResolveArtworkMediaUrl,
 ): Promise<ArtworkSummaryReadModel[]> {
-  const editionCounts = await editionCountsByArtworkId(
-    db,
-    rows.map((row) => row.artworkId),
-  );
-  return rows.map((row) =>
-    toPublicArtworkSummary(toArtworkCatalogueRow(row, editionCounts, resolveMediaUrl)),
-  );
+  const [editionCounts, covers] = await Promise.all([
+    editionCountsByArtworkId(
+      db,
+      rows.map((row) => row.artworkId),
+    ),
+    coverImagesForWorksWithoutPrimary(db, rows, resolveMediaUrl),
+  ]);
+  return rows.map((row) => {
+    const cover = covers.get(row.artworkId);
+    return toPublicArtworkSummary(
+      toArtworkCatalogueRow(row, editionCounts, resolveMediaUrl, cover ? [cover] : []),
+    );
+  });
 }

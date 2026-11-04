@@ -11,6 +11,7 @@ export type DomainEventProducer =
 /** Downstream async consumers (projectors, CRM, notifications). */
 export type DomainEventConsumer =
   | "zoho"
+  | "zoho_artwork_writeback"
   | "xero"
   | "notifications"
   | "lot_lifecycle_snapshot"

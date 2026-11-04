@@ -1,4 +1,5 @@
 import { ClientsStaffList } from "@/components/admin/people/clients-staff-list";
+import { AdminFlashNotice } from "@/components/admin/staff/admin-flash-notice";
 import { peopleRangeSummary, toClientsStaffRows } from "@/lib/admin/people/clients-staff-list.vm";
 import { loadAdminClientsListPage } from "@/lib/admin/people/load-clients-list-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
@@ -54,6 +55,7 @@ export default async function AdminClientsPage({
       canManageRoles={userHasAccessTo(role, staffRoles, USER_ROLE_MANAGEMENT_ACCESS)}
       exportFilters={model.exportFilters}
       loadError={loadError}
+      notice={<AdminFlashNotice path="/admin/clients" />}
       filtered={model.hasFilters}
     />
   );

@@ -3,6 +3,27 @@ import { describe, expect, it, vi } from "vitest";
 import { Button } from "./button.js";
 import { LoadingButton } from "./loading-button.js";
 
+describe("Button size scale", () => {
+  it.each([
+    ["sm", "min-h-8"],
+    ["default", "min-h-9"],
+    ["lg", "min-h-11"],
+  ] as const)(
+    "%s sets its height as a minimum with no vertical padding, so an edge never adds to it",
+    (size, height) => {
+      render(
+        <Button variant="secondaryOutline" size={size}>
+          Save
+        </Button>,
+      );
+      const { className } = screen.getByRole("button", { name: "Save" });
+      expect(className).toContain(height);
+      expect(className).toContain("py-0");
+      expect(className).not.toMatch(/\bpy-[1-9]/);
+    },
+  );
+});
+
 describe("Button underline variant", () => {
   it("renders an underlined text action that keeps the 44px tap target", () => {
     render(<Button variant="underline">Enquire</Button>);

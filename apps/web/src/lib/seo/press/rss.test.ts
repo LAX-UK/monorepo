@@ -25,7 +25,7 @@ describe("buildPressRssFeed", () => {
   it("escapes XML and includes atom self link", () => {
     const xml = buildPressRssFeed({
       siteUrl: "https://lax.bid",
-      siteName: "LAX.BID",
+      siteName: "LAX Bid",
       entries: [entry],
       lastUpdated: new Date("2026-06-03T12:00:00.000Z"),
     });

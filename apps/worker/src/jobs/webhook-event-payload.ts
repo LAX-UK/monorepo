@@ -9,5 +9,8 @@ export type WebhookEventStoredPayload = {
     eventCategory?: string;
     eventType?: string;
     eventDateUtc?: string;
+    /** Zoho artwork notices: the Product that changed and when Zoho says it did. */
+    productId?: string;
+    modifiedTime?: string;
   };
 };

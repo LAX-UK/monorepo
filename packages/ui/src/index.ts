@@ -1,4 +1,8 @@
 export { cn } from "./lib/utils.js";
+export { formatGbp, formatPenceAsPounds, parsePoundsToPence } from "./lib/money.js";
+export type { ParsedPence } from "./lib/money.js";
+export { readCookie } from "./lib/read-cookie.js";
+export { TAP_AREA } from "./lib/tap-area.js";
 export { Alert, AlertDescription, AlertTitle, alertVariants } from "./components/ui/alert.js";
 export {
   Breadcrumb,
@@ -401,6 +405,8 @@ export type {
   FilterRowProps,
   FilterRowToggleItem,
 } from "./components/ui/filter-row.js";
+export { ScrollRow } from "./components/ui/scroll-row.js";
+export type { ScrollRowProps } from "./components/ui/scroll-row.js";
 export { SectionTabs } from "./components/ui/section-tabs.js";
 export type { SectionTabItem, SectionTabsProps } from "./components/ui/section-tabs.js";
 export { ConfirmDialog } from "./components/ui/confirm-dialog.js";

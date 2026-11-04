@@ -10,8 +10,11 @@ export type MarketingVenueCardProps = {
   name: string;
   /** Street, then postcode line; empty lines are skipped. */
   addressLines: readonly string[];
-  /** Media filling the frame (`absolute inset-0 size-full object-cover`). */
-  image: ReactNode;
+  /**
+   * Media filling the frame (`absolute inset-0 size-full object-cover`). Without it the card is
+   * text-led: the name and address under a hairline, across the width at any layout.
+   */
+  image?: ReactNode;
   headingLevel?: "h2" | "h3";
   /**
    * `tile` (default) stacks the photograph over the name, for a grid of galleries. `wide` puts
@@ -32,6 +35,11 @@ const LAYOUT = {
   },
 } as const;
 
+const TEXT_LED = {
+  card: "flex h-full flex-col border-t border-outline-variant",
+  text: "py-6",
+} as const;
+
 /** Gallery location tile: photograph, name and postal address (Figma home "Our galleries", `880:21501`). */
 export function MarketingVenueCard({
   href,
@@ -44,7 +52,8 @@ export function MarketingVenueCard({
   className,
 }: MarketingVenueCardProps) {
   const lines = addressLines.filter((line) => line.trim().length > 0);
-  const styles = LAYOUT[layout];
+  const textLed = image === undefined;
+  const styles = textLed ? TEXT_LED : LAYOUT[layout];
 
   return (
     <MarketingCardShell
@@ -53,9 +62,11 @@ export function MarketingVenueCard({
       data-layout={layout}
     >
       <Link href={href}>
-        <MarketingCardMedia className={cn(styles.media, "bg-surface-container")}>
-          {image}
-        </MarketingCardMedia>
+        {textLed ? null : (
+          <MarketingCardMedia className={cn(LAYOUT[layout].media, "bg-surface-container")}>
+            {image}
+          </MarketingCardMedia>
+        )}
         <div className={cn("flex flex-col gap-2", styles.text)}>
           <Heading className="m-0 font-headline text-2xl font-medium leading-tight text-on-surface group-hover:underline sm:text-[1.75rem]">
             {name}

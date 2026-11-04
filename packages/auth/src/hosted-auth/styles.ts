@@ -35,7 +35,7 @@ const DARK_TOKENS = `
     --color-cta-on: ${t.obsidian};
     --color-error: #ffb4ab;
     --color-success: #56d364;
-    --color-ring: ${t.accentOnDark};
+    --color-ring: ${t.lightCream};
     --color-product-bid: ${t.productBidOnDark};
     --color-product-shop: ${t.productShopOnDark};
     --color-product-art: ${t.lightCream};
@@ -87,16 +87,17 @@ ${fontFace("Outfit", HOSTED_FONT_FILES.outfit)}
   --color-cta-on: ${t.white};
   --color-error: ${t.errorOnLight};
   --color-success: ${t.successOnLight};
-  --color-ring: ${t.accent};
+  --color-ring: ${t.obsidian};
   --color-product-bid: ${t.productBid};
   --color-product-shop: ${t.productShop};
   --color-product-art: ${t.ink};
   --auth-column: 28rem;
   --radius: 0.375rem;
   --control-min: 2.75rem;
+  /* Outfit sets the interface and Montserrat the titles, as in every LAX product. */
+  --font-heading: ${t.fontHeading};
   --font-body: ${t.fontBody};
-  /* LAX Account sets all of its text in Montserrat, so the hosted pages do too. */
-  --font-supporting: ${t.fontBody};
+  --font-supporting: ${t.fontSupporting};
 }
 
 html.dark {${DARK_TOKENS}
@@ -240,7 +241,8 @@ body {
   color: var(--color-on-surface);
 }
 
-@media (min-width: 40rem) {
+/* The panel's gutters step up at 768px, as every LAX page's do. */
+@media (min-width: 48rem) {
   .auth-header,
   .auth-main,
   .auth-footer {
@@ -338,6 +340,7 @@ body {
 
 h1 {
   margin: 0;
+  font-family: var(--font-heading);
   font-size: 1.875rem;
   line-height: 1.2;
   font-weight: 600;
@@ -768,6 +771,7 @@ a:focus-visible {
 
 .one-account h2 {
   margin: 0;
+  font-family: var(--font-heading);
   font-size: 1rem;
   font-weight: 600;
   line-height: 1.4;

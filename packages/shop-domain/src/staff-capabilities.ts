@@ -49,6 +49,10 @@ export const SHOP_STAFF_CAPABILITIES = [
    * the people who handle invoices hold it.
    */
   "retained_invoice_data.read",
+  /** Opening the From Zoho queue and an artwork's record in the register, without changing them. */
+  "artwork_register.read",
+  /** Deciding a conflict between Zoho and LAX on an artwork's record. */
+  "artwork_register.review",
 ] as const;
 
 export type ShopStaffCapability = (typeof SHOP_STAFF_CAPABILITIES)[number];
@@ -78,6 +82,7 @@ export const READ_ONLY_CAPABILITIES = [
   "merchandise.read",
   "catalogue.read",
   "editorial.read",
+  "artwork_register.read",
 ] as const satisfies readonly ShopStaffCapability[];
 
 /**
@@ -87,6 +92,7 @@ export const READ_ONLY_CAPABILITIES = [
 export const READ_IMPLIED_BY_WRITE = {
   "catalogue.write": "catalogue.read",
   "editorial.write": "editorial.read",
+  "artwork_register.review": "artwork_register.read",
 } as const satisfies Partial<Record<ShopStaffCapability, ShopStaffCapability>>;
 
 function withImpliedReads(granted: readonly ShopStaffCapability[]): readonly ShopStaffCapability[] {
@@ -131,8 +137,8 @@ const GRANTED_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]
     "order.read",
     "artwork_price.write",
   ],
-  /** Artworks, edition runs and stock, artists, and artists' applications. */
-  catalogue_editor: ["catalogue.write", "artist_application.review"],
+  /** Artworks, edition runs and stock, artists, artists' applications and the From Zoho queue. */
+  catalogue_editor: ["catalogue.write", "artist_application.review", "artwork_register.review"],
   /** Stories, exhibitions, venues, pages and help, written and published. */
   editor: ["editorial.write", "editorial.publish"],
   read_only: READ_ONLY_CAPABILITIES,

@@ -194,7 +194,7 @@ describe("SaleroomClerkConsole phase layout", () => {
     expect(screen.getByTestId("display-control-panel")).toBeInTheDocument();
   });
 
-  it("toasts action errors and clears the query param", async () => {
+  it("toasts the message an action left for the page", async () => {
     replace.mockClear();
     vi.mocked(notify.error).mockClear();
 
@@ -204,13 +204,12 @@ describe("SaleroomClerkConsole phase layout", () => {
         saleTitle="Evening sale"
         initial={sessionSnapshot("live", "lot-1")}
         lots={lots}
-        actionError="Saleroom%20must%20be%20live%20to%20advance%20lots"
+        actionError="Saleroom must be live to advance lots"
       />,
     );
 
     await waitFor(() => {
       expect(notify.error).toHaveBeenCalledWith("Saleroom must be live to advance lots");
-      expect(replace).toHaveBeenCalledWith("/admin/saleroom/sale-1", { scroll: false });
     });
   });
 });

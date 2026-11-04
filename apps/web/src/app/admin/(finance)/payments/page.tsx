@@ -1,5 +1,6 @@
 import { ManualReviewStaffList } from "@/components/admin/payments/manual-review-staff-list";
 import { PaymentsStaffList } from "@/components/admin/payments/payments-staff-list";
+import { AdminFlashNotice } from "@/components/admin/staff/admin-flash-notice";
 import type { PaymentsListSearchParams } from "@/lib/admin/build-payments-list-page-model";
 import { loadAdminPaymentsListPage } from "@/lib/admin/finance/load-payments-list-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
@@ -9,6 +10,8 @@ export const metadata: Metadata = metadataForPrivate(
   "Payments",
   "Capture, review, and reconcile buyer payments.",
 );
+
+const PAYMENTS_PATH = "/admin/payments";
 
 export default async function AdminPaymentsPage({
   searchParams,
@@ -31,6 +34,7 @@ export default async function AdminPaymentsPage({
         canOpenLot={page.canOpenLot}
         canOpenClient={page.canOpenClient}
         loadError={page.loadError}
+        notice={<AdminFlashNotice path={PAYMENTS_PATH} />}
       />
     );
   }
@@ -49,6 +53,7 @@ export default async function AdminPaymentsPage({
       pageSize={page.pageSize}
       pagination={page.pagination}
       loadError={page.loadError}
+      notice={<AdminFlashNotice path={PAYMENTS_PATH} />}
     />
   );
 }

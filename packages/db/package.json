@@ -12,6 +12,10 @@
       "types": "./dist/schema/index.d.ts",
       "default": "./dist/schema/index.js"
     },
+    "./qualified-column": {
+      "types": "./dist/lib/qualified-column.d.ts",
+      "default": "./dist/lib/qualified-column.js"
+    },
     "./migrate-roles": {
       "types": "./dist/migrate-roles.d.ts",
       "default": "./dist/migrate-roles.js"

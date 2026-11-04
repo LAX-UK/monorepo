@@ -21,6 +21,15 @@
   }
 }
 
+/* A cover with no photograph is only type, so on a phone it has no picture to set apart from the
+   rows below it: its own bottom padding and the browse rows' margin are the space, not a
+   whole band gap on top of them. */
+@media (max-width: 47.99rem) {
+  .shop-home--marketing > section:has([data-cover-mode="type"]) {
+    margin-bottom: calc(-1 * var(--shop-space-16));
+  }
+}
+
 /* Sentence-case label above a title; the Shop accent marks it. */
 .shop-home-eyebrow {
   margin: 0;

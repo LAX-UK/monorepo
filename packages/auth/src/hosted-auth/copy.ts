@@ -15,20 +15,17 @@ export const HOSTED_COPY = {
   oneAccountProducts: { bid: "LAX Bid", shop: "LAX Shop", art: "lax.art" },
   /** Quiet line under the heading when the person came from a product: "to continue to LAX Bid". */
   continueTo: "to continue to",
+  /** The page headings: the account is named in words, whichever product the person came from. */
+  titles: { signIn: "Sign in to LAX Account", signUp: "Create your LAX Account" },
   /**
-   * The line under sign-in and sign-up headings: on its own, or naming the product the person is
-   * heading to ("Sign in with your LAX Account to continue to LAX Bid."), so the page never says
-   * the same thing twice.
+   * The quiet line under the heading, naming what the account is for: the words around the product
+   * name ("to bid at" + "LAX Bid"). Selling is Bid with a sell intent. No product, no line.
    */
-  leads: {
-    signIn: {
-      alone: "Sign in with your LAX Account.",
-      toProduct: "Sign in with your LAX Account to continue to",
-    },
-    signUp: {
-      alone: "Create an account once and use it across LAX.",
-      toProduct: "Create your account to continue to",
-    },
+  contextLines: {
+    bid: { before: "to bid at", after: "" },
+    bidSell: { before: "to send your work to", after: "specialists" },
+    shop: { before: "to buy at", after: "" },
+    art: { before: "to enquire and follow artists on", after: "" },
   },
   /**
    * Who provides the account, for the footer. The issuer may not import `@auction/branding`, so

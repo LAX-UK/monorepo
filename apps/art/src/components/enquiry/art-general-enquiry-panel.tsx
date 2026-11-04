@@ -2,6 +2,7 @@ import { ArtGeneralEnquirySheet } from "@/components/enquiry/art-general-enquiry
 import type { ArtViewerState } from "@/lib/art-viewer-state";
 import type { ArtGeneralEnquiryTopic } from "@/lib/enquiry/submit-general-enquiry";
 import { SITE_SUPPORT_EMAIL } from "@auction/branding";
+import { EmailLink } from "@auction/marketing-ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 
 type Props = {
@@ -60,12 +61,10 @@ export function ArtGeneralEnquiryPanel({
         <Alert variant="warning">
           <AlertDescription>
             {viewer.message} You can also email{" "}
-            <a
-              href={`mailto:${SITE_SUPPORT_EMAIL}`}
+            <EmailLink
+              address={SITE_SUPPORT_EMAIL}
               className="art-focus-ring font-medium underline underline-offset-2"
-            >
-              {SITE_SUPPORT_EMAIL}
-            </a>
+            />
             .
           </AlertDescription>
         </Alert>

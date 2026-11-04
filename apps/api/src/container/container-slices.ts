@@ -319,7 +319,10 @@ export type ContainerUserNotificationSlice = ContainerUserNotificationCompositio
 
 export type ContainerAdminSlice = Pick<ContainerAdminServices, "admin">;
 
-export type ContainerCronSlice = Pick<ContainerCronServices, "accountDeletionEligibilityService">;
+export type ContainerCronSlice = Pick<
+  ContainerCronServices,
+  "accountDeletionEligibilityService" | "zohoArtworkNoticeService"
+>;
 
 /** "Download my data" readers for LAX Bid. */
 export type ContainerSubjectExportSlice = { subjectExportService: SubjectExportService };
@@ -597,8 +600,12 @@ export type ContainerInternalIdentitySubjectExportRoutesSlice = Pick<
 /** Postmark delivery webhook. */
 export type ContainerPostmarkWebhookRoutesSlice = Pick<Container, "env" | "postmarkWebhookService">;
 
+/** Zoho workflow notices for artwork Products. */
+export type ContainerZohoWebhookRoutesSlice = Pick<Container, "zohoArtworkNoticeService">;
+
 /** Aggregated third-party webhook routes (`routes/webhooks/index.ts`). */
-export type ContainerInboundWebhookRoutesSlice = ContainerPostmarkWebhookRoutesSlice;
+export type ContainerInboundWebhookRoutesSlice = ContainerPostmarkWebhookRoutesSlice &
+  ContainerZohoWebhookRoutesSlice;
 
 /** Venue CRUD (staff). */
 export type ContainerVenueRoutesSlice = Pick<Container, "catalogRoutes" | "userSuspensionChecker">;

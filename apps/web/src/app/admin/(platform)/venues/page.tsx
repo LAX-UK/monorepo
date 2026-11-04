@@ -56,7 +56,7 @@ export default async function AdminVenuesPage({
             }
           : null
       }
-      listError={listError ?? loaded.error}
+      listError={listError}
       filtered={Boolean(query.q || legalEntityId)}
     />
   );

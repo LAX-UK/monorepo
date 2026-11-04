@@ -11,7 +11,7 @@ import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-
 import { restoreMegaMenuAuthedHrefs } from "@/lib/marketing/mega-menu-href-rewrite";
 import type { LaxFamilyLinkVm, LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { LaxFamilyBar, headerChromeClassName, useHeaderChrome } from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import { TAP_AREA, cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -101,7 +101,11 @@ function SiteHeaderShell({
             logo={
               <Link
                 href="/"
-                className={cn("site-header-logo shrink-0 rounded-sm sm:min-w-[76px]", FOCUS_RING)}
+                className={cn(
+                  "site-header-logo shrink-0 rounded-sm sm:min-w-[76px]",
+                  TAP_AREA,
+                  FOCUS_RING,
+                )}
               >
                 {/* Phones get the compact mark, as the workspace bar does, so the lockup never
                     crowds the attention chip and the account controls. */}

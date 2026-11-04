@@ -5,7 +5,7 @@ describe("auth-entry-intent", () => {
   it("maps sell funnel to signup screen with create prompt", () => {
     const sellEntry = resolveHostedAuthEntry(new URLSearchParams("intent=sell"));
     expect(sellEntry).toMatchObject({ screen: "signup", funnel: "sell", reauth: false });
-    expect(authorizeParamsForEntry(sellEntry)).toEqual({ prompt: "create" });
+    expect(authorizeParamsForEntry(sellEntry)).toEqual({ prompt: "create", hostedContext: "sell" });
   });
 
   it("maps reauth to login prompt without hosted chrome", () => {

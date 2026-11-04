@@ -74,4 +74,23 @@ describe("WizardFooter", () => {
     );
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("offers Save and finish later as a link above the bar, for a phone", () => {
+    const onFinishLater = vi.fn();
+    render(
+      <WizardFooter
+        isLastStep={false}
+        isSubmitting={false}
+        autosaveStatus="idle"
+        lastSavedAt={null}
+        showAutosave={false}
+        onBack={vi.fn()}
+        onNext={vi.fn()}
+        canGoBack
+        onFinishLater={onFinishLater}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save and finish later" }));
+    expect(onFinishLater).toHaveBeenCalledTimes(1);
+  });
 });

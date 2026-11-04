@@ -1,4 +1,5 @@
 import type { SaleroomOnBlockPolicy } from "@auction/bidding-runtime";
+import type { ISaleExpectedGuestsReader } from "@auction/persistence/interfaces";
 import type { IBidRepository } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import type { AdminMetricsService } from "../admin-metrics.service.js";
@@ -15,7 +16,6 @@ import type { IBidPlacerWithIdempotency } from "../interfaces/place-bid.js";
 import type { SaleroomServicePort } from "../interfaces/saleroom-service.js";
 import type { ITelephoneBidBookingBidPolicy } from "../interfaces/telephone-bid-booking-service.js";
 import type { PaddleService } from "../paddle.service.js";
-import type { SaleExpectedGuestsService } from "../sale-expected-guests.service.js";
 import type { SaleroomCheckInService } from "../saleroom-check-in.service.js";
 import { AdminLiveBiddingApplicationService } from "./admin-live-bidding-application.service.js";
 import { AdminSaleroomApplicationService } from "./admin-saleroom-application.service.js";
@@ -34,7 +34,7 @@ export type CreateAdminSaleroomRouteServicesInput = {
   saleroomService: SaleroomServicePort;
   adminSaleOperationsSnapshotService: AdminSaleOperationsSnapshotService;
   saleroomCheckInService: SaleroomCheckInService;
-  saleExpectedGuestsService: SaleExpectedGuestsService;
+  saleExpectedGuestsReader: ISaleExpectedGuestsReader;
   bidPlacer: IBidPlacerWithIdempotency;
   saleroomOnBlockPolicy: SaleroomOnBlockPolicy;
   paddleClerk: IAdminPaddleClerkOperations;
@@ -62,7 +62,7 @@ export function createAdminSaleroomRouteServices(
   );
   const saleroomCheckIn = new AdminSaleroomCheckInApplicationService(
     input.saleroomCheckInService,
-    input.saleExpectedGuestsService,
+    input.saleExpectedGuestsReader,
     input.redis,
   );
   const clerkPaddleBidSummaryPublisher: IClerkPaddleBidSummaryPublisher = {

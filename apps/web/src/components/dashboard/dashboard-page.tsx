@@ -17,7 +17,7 @@ export function DashboardPage({
 }) {
   return (
     <section
-      aria-label="Dashboard content"
+      aria-label="Page content"
       className={cn("screen space-y-8 md:space-y-10", WORKSPACE_PAGE_WIDTH_CLASS, className)}
     >
       {children}

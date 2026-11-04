@@ -2,6 +2,8 @@ import type {
   CrmBatchUpsertInput,
   CrmConvertLeadInput,
   CrmConvertLeadResult,
+  CrmCoqlPage,
+  CrmCoqlQuery,
   CrmDeleteRecordInput,
   CrmDeleteRecordResult,
   CrmGateway,
@@ -15,8 +17,8 @@ import type {
 import { mapZohoErrorToCrmGatewayError } from "./map-zoho-to-crm-gateway-error.js";
 
 /** Maps Zoho-layer throws to {@link CrmGatewayError} for CRM handlers. */
-export class ZohoCrmGatewayCrmErrorAdapter implements CrmGateway {
-  constructor(private readonly inner: CrmGateway) {}
+export class ZohoCrmGatewayCrmErrorAdapter implements CrmGateway, CrmCoqlQuery {
+  constructor(private readonly inner: CrmGateway & CrmCoqlQuery) {}
 
   getMetrics(): CrmGatewayMetrics {
     return this.inner.getMetrics();
@@ -44,6 +46,10 @@ export class ZohoCrmGatewayCrmErrorAdapter implements CrmGateway {
 
   async executeCoql(selectQuery: string): Promise<string[]> {
     return this.guard(() => this.inner.executeCoql(selectQuery));
+  }
+
+  async queryCoql(selectQuery: string): Promise<CrmCoqlPage> {
+    return this.guard(() => this.inner.queryCoql(selectQuery));
   }
 
   async convertLead(input: CrmConvertLeadInput): Promise<CrmConvertLeadResult> {

@@ -60,6 +60,8 @@ export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRe
   lot_withdrawal: LOTS_ACCESS,
   lot_draft_past_start: LOTS_ACCESS,
   unsold_lot_choice: SUBMISSIONS_ACCESS,
+  unsold_choice_follow_up: SUBMISSIONS_ACCESS,
+  unsold_choice_lapsed: SUBMISSIONS_ACCESS,
   marketing_enquiry: MARKETING_ENQUIRIES_ACCESS,
   purchase_problem: FINANCE_ACCESS,
   // The default action lives on the lot page, which finance-only staff cannot open.
@@ -146,6 +148,8 @@ function stampActions(
     case "lot_draft_past_start":
       break;
     case "unsold_lot_choice":
+    case "unsold_choice_follow_up":
+    case "unsold_choice_lapsed":
       break;
     case "marketing_enquiry":
     case "purchase_problem":
@@ -183,7 +187,10 @@ const EMPTY_DOMAIN_COUNTS: Record<AdminWorkItemDto["domain"], number> = {
 };
 
 export class AdminWorkItemsService {
-  constructor(private readonly reader: IAdminWorkItemsReader) {}
+  constructor(
+    private readonly reader: IAdminWorkItemsReader,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
 
   async listWorkItems(input: {
     actorUserId: string;
@@ -237,6 +244,14 @@ export class AdminWorkItemsService {
       {
         access: WORK_ITEM_KIND_ACCESS.unsold_lot_choice,
         fetch: () => this.reader.listUnsoldLotChoices(perSourceLimit),
+      },
+      {
+        access: WORK_ITEM_KIND_ACCESS.unsold_choice_follow_up,
+        fetch: () => this.reader.listOpenUnsoldFollowUps(perSourceLimit),
+      },
+      {
+        access: WORK_ITEM_KIND_ACCESS.unsold_choice_lapsed,
+        fetch: () => this.reader.listLapsedUnsoldChoices(perSourceLimit, this.now()),
       },
       {
         access: WORK_ITEM_KIND_ACCESS.marketing_enquiry,

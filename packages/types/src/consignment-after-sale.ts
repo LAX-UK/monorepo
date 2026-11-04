@@ -117,9 +117,34 @@ export type SellerAfterSaleView = {
   };
 };
 
+/** The staff work a confirmed choice leaves behind: relist, arrange the return, or private sale. */
+export type UnsoldLotFollowUp = {
+  id: string;
+  choiceId: string;
+  lotId: string;
+  /** The unsold outcome it belongs to: when the sale the lot did not sell in ended. */
+  lotEndTime: Date;
+  submissionId: string;
+  kind: UnsoldLotChoiceKind;
+  /** The reserve agreed for a relist; `null` keeps the reserve the lot ended with. */
+  reserve: string | null;
+  status: "open" | "done";
+  /** When the agreed reserve was put on the lot (set once, when the lot returned to inventory). */
+  reserveAppliedAt: Date | null;
+  completedAt: Date | null;
+  completedByUserId: string | null;
+  completedByName?: string | null;
+  createdAt: Date;
+};
+
+/** What staff see about an unsold lot: the seller's view plus the work the choice opened. */
+export type StaffUnsoldLotView = Omit<SellerUnsoldLotView, "canChoose" | "choicePaused"> & {
+  followUp: UnsoldLotFollowUp | null;
+};
+
 /** After-sale facts for one consignment, for staff. */
 export type StaffAfterSaleView = {
-  unsold: Omit<SellerUnsoldLotView, "canChoose" | "choicePaused"> | null;
+  unsold: StaffUnsoldLotView | null;
   withdrawal: LotWithdrawalRequestState | null;
 };
 
