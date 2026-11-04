@@ -58,7 +58,7 @@ ON CONFLICT ("subscriber_id", "topic") DO NOTHING;
 -- Lot matching starts here: lots published before this migration are never announced, and every
 -- lot published after it is, however long the worker takes to get to it.
 INSERT INTO "projector_state" ("projector_name", "last_processed_event_id")
-SELECT 'bid_alert_lot_matching_start', COALESCE(max("id"), 0) FROM "domain_event"
+SELECT 'bid_alert_lot_matching_start', COALESCE(max("id"), 0) FROM "domain_events"
 ON CONFLICT ("projector_name") DO NOTHING;
 --> statement-breakpoint
 -- A lot reaches a person once, whichever topic matched it, even across batches and runs.
