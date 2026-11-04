@@ -90,6 +90,7 @@ export function fakeArtServices(viewer: ArtViewerState = GUEST_VIEWER) {
     favorites: {
       savedArtworkSlugs: vi.fn().mockResolvedValue(new Set<string>()),
       followedArtistSlugs: vi.fn().mockResolvedValue(new Set<string>()),
+      followEmailsOn: vi.fn().mockResolvedValue(null),
       listSavedArtworks: vi.fn().mockResolvedValue({ status: "empty" }),
       listFollowedArtists: vi.fn().mockResolvedValue({ status: "empty" }),
     },

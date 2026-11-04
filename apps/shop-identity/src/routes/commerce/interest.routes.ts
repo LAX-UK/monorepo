@@ -1,8 +1,13 @@
 import type { Hono } from "hono";
+import { z } from "zod";
 import { artworkInterestBodySchema, releaseAlertBodySchema } from "../../commerce-bodies.js";
 import type { CommerceRoutesDeps } from "./commerce-route-types.js";
 import { proxyAuthenticatedCommerce } from "./proxy-authenticated-commerce.js";
 import { proxyEnquiry } from "./proxy-enquiry.js";
+
+const emailAlertSwitchBodySchema = z.object({ on: z.boolean() }).strict();
+/** The topics a person switches themselves; "Notify me" requests are per edition. */
+const EMAIL_ALERT_TOPICS: ReadonlySet<string> = new Set(["shop.releases", "art.followed_artists"]);
 
 export function registerCommerceInterestRoutes(app: Hono, deps: CommerceRoutesDeps): void {
   app.get("/commerce/artworks/:slug/interest", (c) => {
@@ -58,6 +63,30 @@ export function registerCommerceInterestRoutes(app: Hono, deps: CommerceRoutesDe
       requireCsrf: true,
     }),
   );
+
+  // The shopper's own alert switches, for the Follow button's email state on lax.art.
+  app.get("/commerce/me/email-alerts", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/email-alerts",
+      scopes: "shop.read",
+    }),
+  );
+
+  app.put("/commerce/me/email-alerts/topics/:topic", async (c) => {
+    const topic = c.req.param("topic");
+    const parsed = emailAlertSwitchBodySchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success || !EMAIL_ALERT_TOPICS.has(topic)) {
+      return c.json({ error: "validation_failed" }, 400);
+    }
+    return proxyAuthenticatedCommerce(c, deps, {
+      method: "PUT",
+      path: `/v1/me/email-alerts/topics/${encodeURIComponent(topic)}`,
+      scopes: "shop.write",
+      body: parsed.data,
+      requireCsrf: true,
+    });
+  });
 
   // Release alerts: a visitor confirms by email; a signed-in shopper is subscribed straight away.
   app.post("/commerce/release-alerts", async (c) => {

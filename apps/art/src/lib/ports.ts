@@ -90,6 +90,8 @@ export type ArtViewerPort = {
 export type ArtFavoritesReadPort = {
   savedArtworkSlugs(): Promise<ReadonlySet<string>>;
   followedArtistSlugs(): Promise<ReadonlySet<string>>;
+  /** Whether emails about followed artists are on; null when that is not known. */
+  followEmailsOn(): Promise<boolean | null>;
   listSavedArtworks(): Promise<ShopPortalFetchResult<PortalSavedArtwork[]>>;
   listFollowedArtists(): Promise<ShopPortalFetchResult<PortalFollowedArtist[]>>;
 };
