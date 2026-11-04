@@ -299,3 +299,4 @@ export {
 } from "./subject-export.js";
 export * from "./data-request-dates.js";
 export * from "./data-requests.js";
+export * from "./legal-documents.js";

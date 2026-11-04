@@ -2045,6 +2045,13 @@
       "when": 1800777600000,
       "tag": "0292_shop_alert_engine",
       "breakpoints": true
+    },
+    {
+      "idx": 308,
+      "version": "7",
+      "when": 1802160000000,
+      "tag": "0308_subject_legal_acceptance",
+      "breakpoints": true
     }
   ]
 }

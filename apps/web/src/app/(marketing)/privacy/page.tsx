@@ -10,6 +10,7 @@ import {
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { policyHubPageJsonLd } from "@/lib/seo/jsonld";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
+import { LEGAL_DOCUMENT_SETS, formatLegalDocumentDate } from "@auction/identity-contracts";
 import { EmailLink } from "@auction/marketing-ui";
 import type { Metadata } from "next";
 
@@ -239,7 +240,9 @@ export default function PrivacyPage() {
       <LegalPage
         title="Privacy notice"
         toc={[...toc]}
-        lastUpdated="21 April 2026"
+        lastUpdated={formatLegalDocumentDate(
+          LEGAL_DOCUMENT_SETS["london-auction-xchange"].privacy.effectiveOn,
+        )}
         kicker={null}
         dividerUnderDate
         embedded

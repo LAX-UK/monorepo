@@ -44,6 +44,12 @@ export const AUTH_EXPORT_AUDIT_TABLES = [
   "subject_data_export_audit",
   "subject_data_request_audit",
 ] as const;
+/**
+ * Which Terms and Privacy notice each person accepted when they created their account. Identity
+ * only adds rows and reads them: auth_app may INSERT and SELECT, and api_app and worker_app are
+ * denied.
+ */
+export const AUTH_LEGAL_ACCEPTANCE_TABLES = ["subject_legal_acceptance"] as const;
 export const AUTH_DENY_TABLES = [
   "email_outbox",
   "email_suppression",
@@ -171,6 +177,7 @@ export const API_DENY_TABLES = [
   ...AUTH_ADDRESS_TABLES,
   ...AUTH_EXPORT_TABLES,
   ...AUTH_EXPORT_AUDIT_TABLES,
+  ...AUTH_LEGAL_ACCEPTANCE_TABLES,
   ...SHOP_COMMERCE_TABLES,
   ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
 ] as const;
@@ -224,6 +231,7 @@ export const WORKER_DENY_TABLES = [
   /** The worker reports export progress through Identity's internal route, never to its tables. */
   ...AUTH_EXPORT_TABLES,
   ...AUTH_EXPORT_AUDIT_TABLES,
+  ...AUTH_LEGAL_ACCEPTANCE_TABLES,
   ...API_SSF_RECEIVER_TABLES,
   "shop_identity_session",
   "shop_logout_token_replay",
@@ -676,6 +684,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of AUTH_EXPORT_AUDIT_TABLES) {
+          await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of AUTH_LEGAL_ACCEPTANCE_TABLES) {
           await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of tables) {
