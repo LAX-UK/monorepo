@@ -142,3 +142,4 @@ export {
   staffRoleAssignmentInForceAt,
   staffRolesInForceFor,
 } from "./staff-role-assignment-sql.js";
+export { anonymiseEnquiries } from "./anonymise-enquiries.js";

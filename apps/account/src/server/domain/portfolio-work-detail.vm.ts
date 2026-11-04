@@ -48,6 +48,8 @@ export type WorkDetailVm = {
   shipping: CurrencyTotal[];
   /** True while the invoice is unpaid, so the amounts read as due rather than paid. */
   costsAreDue: boolean;
+  /** The payment is made and still being confirmed: the amount is neither due nor paid. */
+  paymentConfirming: boolean;
   documents: WorkDocumentVm[];
   actions: WorkActionVm[];
   valueNote: string;
@@ -98,6 +100,7 @@ export function buildWorkDetail(
     costBasis: sumByCurrency(costBasisLines(item)),
     shipping: sumByCurrency(item.paid.lines.filter((line) => line.kind === "shipping")),
     costsAreDue: item.status === "awaiting_payment",
+    paymentConfirming: item.status === "payment_confirming",
     // Documents that exist come first; the ones still to come follow with their note.
     documents: [...documents.filter((doc) => doc.href), ...documents.filter((doc) => !doc.href)],
     actions,

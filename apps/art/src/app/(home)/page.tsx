@@ -57,6 +57,7 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
                   aspect={role === "feature" ? "wide" : "landscape"}
                   layout={role === "solo" ? "split" : "stacked"}
                   priority={card.key === vm.whatsOn[0]?.key}
+                  textLed={vm.textLed.whatsOn}
                 />
               )}
             />
@@ -109,6 +110,7 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
                   card={card}
                   aspect={role === "feature" ? "wide" : "landscape"}
                   layout={role === "solo" ? "split" : "stacked"}
+                  textLed={vm.textLed.stories}
                 />
               )}
             />
@@ -159,21 +161,25 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
                   name={gallery.name}
                   addressLines={gallery.addressLines}
                   layout={layout === "feature" ? "wide" : "tile"}
-                  image={
-                    <ArtMediaImage
-                      src={gallery.imageUrl}
-                      alt=""
-                      label="Gallery"
-                      placeholderTitle={gallery.name}
-                      sizes={
-                        layout === "feature"
-                          ? "(min-width: 48rem) 55vw, 100vw"
-                          : "(min-width: 48rem) 45vw, 100vw"
-                      }
-                      className="absolute inset-0 size-full"
-                      imgClassName="object-cover"
-                    />
-                  }
+                  {...(vm.textLed.galleries
+                    ? {}
+                    : {
+                        image: (
+                          <ArtMediaImage
+                            src={gallery.imageUrl}
+                            alt=""
+                            label="Gallery"
+                            placeholderTitle={gallery.name}
+                            sizes={
+                              layout === "feature"
+                                ? "(min-width: 48rem) 55vw, 100vw"
+                                : "(min-width: 48rem) 45vw, 100vw"
+                            }
+                            className="absolute inset-0 size-full"
+                            imgClassName="object-cover"
+                          />
+                        ),
+                      })}
                 />
               )}
             />

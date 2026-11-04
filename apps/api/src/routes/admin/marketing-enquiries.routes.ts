@@ -14,8 +14,10 @@ import {
   marketingEnquiryIdParamSchema,
 } from "@auction/validators";
 import type { Context } from "hono";
+import { z } from "zod";
 import { zValidator } from "../../lib/z-validator.js";
 import {
+  requireDataRequestsManage,
   requireEnquiries,
   requireEnquiryRoutingManage,
 } from "../../middleware/require-capability.js";
@@ -34,6 +36,12 @@ function viewerOf(c: Context): EnquiryStaffViewer {
     canAssign: userHasAccessTo(role, staff, ENQUIRY_ASSIGN_ACCESS),
   };
 }
+
+const enquiryErasureBodySchema = z.object({
+  email: z.string().trim().email().max(320),
+  confirmation: z.string().trim().max(320),
+  reason: z.string().trim().min(5).max(500),
+});
 
 const UPDATE_ERROR_STATUS = {
   enquiry_not_found: 404,
@@ -61,6 +69,27 @@ export function attachAdminMarketingEnquiryRoutes(
   platform.use("/enquiries/*", requireEnquiries);
   platform.use("/enquiry-routing", requireEnquiries);
   platform.use("/enquiry-assignees", requireEnquiries);
+  platform.use("/data-requests/enquiry-erasure", requireDataRequestsManage);
+
+  /**
+   * POST /admin/data-requests/enquiry-erasure: anonymise every enquiry from one email address.
+   * Name, email, phone and message are replaced, notes cleared and files deleted. Enquiries tied
+   * to a deal are held and counted. Safe to repeat.
+   */
+  platform.post(
+    "/data-requests/enquiry-erasure",
+    zValidator("json", enquiryErasureBodySchema),
+    async (c) => {
+      c.header("Cache-Control", "no-store");
+      const result = await container.admin.enquiryErasure.eraseByEmail({
+        ...c.req.valid("json"),
+        actorUserId: c.get("userId") as string,
+      });
+      if (!result.ok) return c.json({ error: result.error }, 422);
+      const { enquiries, notes, attachments, held } = result;
+      return c.json({ data: { enquiries, notes, attachments, held } });
+    },
+  );
 
   /** GET /admin/enquiries — one page of a view, with filters. */
   platform.get("/enquiries", zValidator("query", adminEnquiryListQuerySchema), async (c) => {

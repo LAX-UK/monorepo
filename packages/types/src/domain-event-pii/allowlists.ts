@@ -413,6 +413,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   "marketing_enquiry.status_changed": new Set(["enquiryId", "intent", "from", "to", "closeReason"]),
   "marketing_enquiry.converted": new Set(["enquiryId", "intent", "from"]),
+  /** Row counts and the reason staff typed; the address that was erased is never recorded. */
+  "marketing_enquiry.erased": new Set(["enquiries", "notes", "attachments", "held", "reason"]),
   /** Codes and dates; the note is typed by staff, and the address itself is never recorded. */
   "email.block_lifted": new Set([
     "userId",

@@ -1,12 +1,14 @@
 import type { Database } from "@auction/db";
 import { zohoArtworkSyncOutcome as outcomeTable, zohoArtworkSyncState } from "@auction/db/schema";
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, like, sql } from "drizzle-orm";
 import type {
   IZohoArtworkSyncReport,
+  IZohoArtworkSyncRunReader,
   IZohoArtworkSyncWatermark,
   ZohoArtworkSyncMode,
   ZohoArtworkSyncOutcome,
   ZohoArtworkSyncOutcomeInput,
+  ZohoArtworkSyncRunSummary,
   ZohoArtworkSyncSummary,
 } from "../../interfaces/zoho-artwork-sync.js";
 
@@ -21,7 +23,7 @@ const EMPTY_SUMMARY: ZohoArtworkSyncSummary = {
 
 /** The watermark and the per-Product report of the Zoho artwork sync. */
 export class DrizzleZohoArtworkSyncStore
-  implements IZohoArtworkSyncWatermark, IZohoArtworkSyncReport
+  implements IZohoArtworkSyncWatermark, IZohoArtworkSyncReport, IZohoArtworkSyncRunReader
 {
   constructor(private readonly db: Database) {}
 
@@ -117,4 +119,63 @@ export class DrizzleZohoArtworkSyncStore
     for (const row of rows) summary[row.outcome] = row.count;
     return summary;
   }
+
+  async latestNightlyRun(): Promise<ZohoArtworkSyncRunSummary | null> {
+    const [latest] = await this.db
+      .select({ runId: outcomeTable.runId, mode: outcomeTable.mode })
+      .from(outcomeTable)
+      .where(like(outcomeTable.runId, "nightly:%"))
+      .orderBy(desc(outcomeTable.recordedAt), desc(outcomeTable.id))
+      .limit(1);
+    if (!latest) return null;
+
+    const inRun = eq(outcomeTable.runId, latest.runId);
+    const [byOutcome, finished, skipped, gaps] = await Promise.all([
+      this.summarise(latest.runId),
+      this.db
+        .select({ at: sql<Date>`max(${outcomeTable.recordedAt})` })
+        .from(outcomeTable)
+        .where(inRun),
+      this.db
+        .select({ reason: outcomeTable.reason, count: sql<number>`count(*)::int` })
+        .from(outcomeTable)
+        .where(and(inRun, eq(outcomeTable.outcome, "skipped")))
+        .groupBy(outcomeTable.reason)
+        .orderBy(sql`count(*) DESC`, asc(outcomeTable.reason)),
+      this.createGaps(latest.runId),
+    ]);
+    const total = Object.values(byOutcome).reduce((sum, n) => sum + n, 0);
+    return {
+      runId: latest.runId,
+      mode: latest.mode,
+      finishedAt: new Date(finished[0]?.at ?? 0),
+      total,
+      byOutcome,
+      skippedReasons: skipped.map((row) => ({ reason: row.reason ?? "unknown", count: row.count })),
+      gaps,
+    };
+  }
+
+  /** What Products that would be created lack, from the gaps each result recorded. */
+  private async createGaps(runId: string): Promise<{ gap: string; count: number }[]> {
+    const result = await this.db.execute(sql`
+      SELECT g.gap AS gap, count(*)::int AS count
+      FROM zoho_artwork_sync_outcome o,
+        LATERAL jsonb_array_elements_text(
+          CASE WHEN jsonb_typeof(o.detail -> 'gaps') = 'array' THEN o.detail -> 'gaps' ELSE '[]'::jsonb END
+        ) AS g(gap)
+      WHERE o.run_id = ${runId} AND o.outcome = 'create'
+      GROUP BY g.gap
+      ORDER BY count(*) DESC, g.gap
+    `);
+    return rowsOf<{ gap: string; count: number }>(result);
+  }
+}
+
+function rowsOf<T>(result: unknown): T[] {
+  if (Array.isArray(result)) return result as T[];
+  if (result && typeof result === "object" && "rows" in result) {
+    return (result as { rows?: T[] }).rows ?? [];
+  }
+  return [];
 }

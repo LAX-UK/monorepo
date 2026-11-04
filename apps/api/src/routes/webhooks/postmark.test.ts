@@ -52,6 +52,29 @@ describe("Postmark webhook auth", () => {
     expect(handle).toHaveBeenCalled();
     expect(warn).toHaveBeenCalled();
   });
+
+  const basic = (credentials: string) =>
+    `Basic ${Buffer.from(credentials, "utf8").toString("base64")}`;
+  const post = (app: Hono, authorization: string) =>
+    app.request("/webhooks/postmark", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization },
+      body: JSON.stringify({ RecordType: "Delivery" }),
+    });
+
+  it("accepts matching credentials", async () => {
+    const { app, handle } = appWithEnv("production", "user:pass");
+    expect((await post(app, basic("user:pass"))).status).toBe(200);
+    expect(handle).toHaveBeenCalled();
+  });
+
+  it("rejects credentials that differ in value or length", async () => {
+    const { app, handle } = appWithEnv("production", "user:pass");
+    expect((await post(app, basic("user:wrong"))).status).toBe(401);
+    expect((await post(app, basic("user:pass-and-more"))).status).toBe(401);
+    expect((await post(app, basic("user"))).status).toBe(401);
+    expect(handle).not.toHaveBeenCalled();
+  });
 });
 
 describe("Postmark bounce without outbox match", () => {

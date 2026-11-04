@@ -62,14 +62,14 @@ describe("ListCard", () => {
         <ListCardRow title="Password" subtitle="Change it" href="/change" />
         <ListCardRow
           title="Email address"
-          value="a***@example.com"
+          value="ada@example.com"
           trailing={<span>Verified</span>}
         />
       </ListCard>,
     );
     expect(html).toContain('<a href="/change"');
     expect(html).toContain("Change it");
-    expect(html).toContain("a***@example.com");
+    expect(html).toContain("ada@example.com");
     expect(html).toContain("Verified");
     // The second row is not a link.
     expect(html.match(/<a /g)).toHaveLength(1);

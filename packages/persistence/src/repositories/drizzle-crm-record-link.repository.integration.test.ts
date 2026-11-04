@@ -128,4 +128,39 @@ describe.skipIf(!HAS_DB)("DrizzleCrmRecordLinkRepository (integration)", () => {
     const dealRow = await repo.findByEntity("deal", dealEntityId);
     expect(dealRow?.subjectId).toBe(canonical);
   });
+
+  it("lists the unerased subject links that share one Zoho record, and drops them once erased", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const db = createDb(process.env.DATABASE_URL!);
+    const repo = new DrizzleCrmRecordLinkRepository(db);
+    const zohoRecordId = `lead-${randomUUID()}`;
+    const guest = `guest:${randomUUID()}`;
+    const enquiry = `enquiry:${randomUUID()}`;
+    const other = `enquiry:${randomUUID()}`;
+    for (const [entityId, recordId] of [
+      [guest, zohoRecordId],
+      [enquiry, zohoRecordId],
+      [other, `lead-${randomUUID()}`],
+    ] as const) {
+      await repo.upsertLink({
+        entityType: "subject",
+        entityId,
+        zohoModule: "Leads",
+        zohoRecordId: recordId,
+      });
+    }
+
+    const shared = await repo.listActiveSubjectLinksByZohoRecord("Leads", zohoRecordId);
+    expect(shared.map((row) => row.entityId).sort()).toEqual([enquiry, guest].sort());
+
+    await repo.tombstone({
+      entityType: "subject",
+      entityId: enquiry,
+      tombstoneModule: "__tombstone__",
+      tombstoneRecordId: "__none__",
+    });
+    const remaining = await repo.listActiveSubjectLinksByZohoRecord("Leads", zohoRecordId);
+    expect(remaining.map((row) => row.entityId)).toEqual([guest]);
+    expect(await repo.isErased("subject", enquiry)).toBe(true);
+  });
 });
