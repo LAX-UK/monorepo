@@ -14,6 +14,10 @@ import {
 } from "@auction/alerts";
 import type { Database } from "@auction/db";
 import {
+  laxAccountPageUrl,
+  resolveLaxAccountOrigin,
+} from "@auction/lax-ecosystem/lax-account-origin";
+import {
   AlertMatchingService,
   type ArtworkMatchers,
 } from "../../application/alerts/alert-matching.service.js";
@@ -64,6 +68,8 @@ export type ShopAlertRuntimeEnv = {
   ALERTS_SEND_MODE: SendMode;
   ALERT_LINK_SECRET: string;
   ALERT_LINK_KEY_ID: string;
+  LAX_ACCOUNT_PUBLIC_ORIGIN?: string | undefined;
+  NODE_ENV?: string | undefined;
   ALERT_LINK_PREVIOUS_SECRET?: string | undefined;
   ALERT_LINK_PREVIOUS_KEY_ID?: string | undefined;
 };
@@ -131,7 +137,14 @@ export function createShopAlertRuntime(input: {
       return email ? { email, verified: true } : null;
     },
   };
-  const urls = { shop: shopAlertUrls(origins.shop), art: artAlertUrls(origins.art) } as const;
+  const manageUrl = laxAccountPageUrl(
+    resolveLaxAccountOrigin(env.LAX_ACCOUNT_PUBLIC_ORIGIN, env.NODE_ENV),
+    "alerts",
+  );
+  const urls = {
+    shop: shopAlertUrls(origins.shop, manageUrl),
+    art: artAlertUrls(origins.art, manageUrl),
+  } as const;
   const subscribe = new SubscribeService({
     subscribers,
     topics,

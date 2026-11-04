@@ -1,6 +1,6 @@
 import { DEV_ALERT_LINK_SECRET } from "@auction/alerts";
 import { describe, expect, it } from "vitest";
-import { envSchema } from "./env";
+import { envSchema } from "./env.js";
 
 function alertSecretIssues(env: Record<string, unknown>): string[] {
   const result = envSchema.safeParse({ DATABASE_URL: "postgres://localhost/test", ...env });

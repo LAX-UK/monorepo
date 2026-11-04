@@ -22,6 +22,11 @@ export const shopApiEnvSchema = z.object({
     (val) => (val === "" ? undefined : val),
     z.string().url().optional(),
   ),
+  /** Where LAX Account lives; the "manage your alerts" link in alert emails goes there. */
+  LAX_ACCOUNT_PUBLIC_ORIGIN: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().url().optional(),
+  ),
   SHOP_API_PUBLIC_BASE_URL: z.string().url().default("http://localhost:3011"),
   SHOP_STOREFRONT_URL: z.string().url().default("http://localhost:3020"),
   LAX_ART_PUBLIC_URL: z.preprocess(

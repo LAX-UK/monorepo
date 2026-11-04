@@ -78,6 +78,8 @@ const envSchema = z
       z.string().min(32).optional(),
     ),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+    /** Where LAX Account lives; the "manage your alerts" link in alert emails goes there. */
+    LAX_ACCOUNT_PUBLIC_ORIGIN: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /**
      * Legal entity that owns Bid records in the cross-product portfolio. Defaults to Bid's
      * operator from `legalEntityFor("bid")`; override it only if the company changes.

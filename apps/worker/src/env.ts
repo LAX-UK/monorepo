@@ -117,6 +117,8 @@ export const envSchema = z
     CRON_INTERNAL_SECRET: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
     /** Web app origin for constructing admin dashboard URLs in emails. */
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+    /** Where LAX Account lives; the "manage your alerts" link in alert emails goes there. */
+    LAX_ACCOUNT_PUBLIC_ORIGIN: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /** Platform admin email for ops notifications (refunds, disputes, etc.). */
     ADMIN_EMAIL_ADDRESS: z.preprocess(emptyToUndefined, z.string().email().optional()),
     SGTM_ENDPOINT_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
