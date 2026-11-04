@@ -82,6 +82,7 @@ jobs:
       TF_VAR_zoho_crm_deal_stage_payment_refunded: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED || '' }}
       TF_VAR_zoho_crm_deal_stage_shop_paid: ${{ vars.ZOHO_CRM_DEAL_STAGE_SHOP_PAID || '' }}
       TF_VAR_zoho_crm_lead_conversion_enabled: ${{ vars.ZOHO_CRM_LEAD_CONVERSION_ENABLED || 'false' }}
+      TF_VAR_zoho_crm_lead_status_new: ${{ vars.ZOHO_CRM_LEAD_STATUS_NEW || 'New (Unassigned)' }}
       TF_VAR_zoho_artwork_sync_mode: ${{ vars.ZOHO_ARTWORK_SYNC_MODE || 'off' }}
       TF_VAR_zoho_artwork_writeback_mode: ${{ vars.ZOHO_ARTWORK_WRITEBACK_MODE || 'off' }}
       TF_VAR_zoho_artwork_webhook_secret: ${{ secrets.ZOHO_ARTWORK_WEBHOOK_SECRET }}
