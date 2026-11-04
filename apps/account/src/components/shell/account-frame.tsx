@@ -3,7 +3,12 @@ import { buildAccountFooterColumns } from "@/server/domain/account-footer.vm";
 import type { SupportLinksVm } from "@/server/domain/account-links";
 import type { AccountNavItemVm } from "@/server/domain/account-nav.vm";
 import type { BackToProductVm } from "@/server/domain/origin-product";
-import { FOCUS_RING, legalOperatorSentence, siteCopyrightYear } from "@auction/branding";
+import {
+  FOCUS_RING,
+  MARKETING_PAGE_GUTTER_X,
+  legalOperatorSentence,
+  siteCopyrightYear,
+} from "@auction/branding";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { LaxFamilyBar, LaxLockup, MarketingFooter } from "@auction/marketing-ui";
 import type { ReactNode } from "react";
@@ -29,7 +34,8 @@ export type PageWidth = "narrow" | "wide";
 
 /** Widest the header and page may grow on a large screen. */
 const CONTAINER_MAX = "max-w-[1440px]";
-const GUTTER = "px-4 sm:px-6 lg:px-10";
+/** The page gutters every LAX product uses: 16px, then 24px from 768px and 40px from 1024px. */
+const GUTTER = MARKETING_PAGE_GUTTER_X;
 const CONTAINER = `mx-auto w-full ${CONTAINER_MAX} ${GUTTER}`;
 
 export type AccountFrameProps = {

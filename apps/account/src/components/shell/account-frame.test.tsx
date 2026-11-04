@@ -131,6 +131,14 @@ describe("AccountFrame signed out", () => {
   });
 });
 
+describe("AccountFrame gutters", () => {
+  it("uses the page gutters of the other LAX products, stepping up at 768px and 1024px", () => {
+    const html = render(true);
+    expect(html).toContain("px-4 md:px-6 lg:px-10");
+    expect(html).not.toContain("sm:px-6");
+  });
+});
+
 describe("AccountFrame widths", () => {
   const frame = (width?: "narrow" | "wide") =>
     renderToStaticMarkup(
