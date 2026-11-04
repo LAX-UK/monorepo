@@ -76,6 +76,7 @@ export function SheetWhereItIs() {
   return (
     <SheetSection
       id="where-it-is"
+      densities={["staff"]}
       title="Where it is"
       description="One block for the From Zoho record, the lax.art artwork page and the Bid lot page. A hollow marker means buyers can't see it yet, a filled one that they can, a tick that it is sold. The words always name the place."
     >
