@@ -30,6 +30,32 @@ describe("isZohoEventTypeEnabled", () => {
     expect(isZohoEventTypeEnabled(notSynced, "shop.guest_lead.erased")).toBe(false);
   });
 
+  it("runs an account purge and a guest erasure wherever enquiries are synced", () => {
+    const enquiriesOnly = env({
+      ZOHO_CRM_SYNC_MODE: "live",
+      ZOHO_CRM_ENABLED_EVENT_TYPES: "marketing_enquiry.received",
+    });
+    expect(isZohoEventTypeEnabled(enquiriesOnly, "user.identity_deleted")).toBe(true);
+    expect(isZohoEventTypeEnabled(enquiriesOnly, "shop.guest_lead.erased")).toBe(true);
+    expect(isZohoEventTypeEnabled(enquiriesOnly, "user.deletion_requested")).toBe(false);
+  });
+
+  it("makes no erasure call in dry_run or off", () => {
+    const types = "marketing_enquiry.received";
+    expect(
+      resolveZohoDeliveryMode(
+        env({ ZOHO_CRM_SYNC_MODE: "dry_run", ZOHO_CRM_ENABLED_EVENT_TYPES: types }),
+        "user.identity_deleted",
+      ),
+    ).toBe("dry_run");
+    expect(
+      resolveZohoDeliveryMode(
+        env({ ZOHO_CRM_SYNC_MODE: "off", ZOHO_CRM_ENABLED_EVENT_TYPES: types }),
+        "shop.guest_lead.erased",
+      ),
+    ).toBe("off");
+  });
+
   it("respects dry_run for enabled types", () => {
     const e = env({
       ZOHO_CRM_SYNC_MODE: "dry_run",

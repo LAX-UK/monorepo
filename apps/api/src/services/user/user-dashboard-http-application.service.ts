@@ -1,4 +1,4 @@
-import { accountBidScope, accountPurchaseScope } from "@auction/domain";
+import { PURCHASE_LIST_LIMIT, accountBidScope, accountPurchaseScope } from "@auction/domain";
 import type { IRecordPeopleReader } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import type { LotReadPort, SaleLookupPort } from "../../container/container-slices.js";
@@ -16,9 +16,6 @@ import type {
 } from "../interfaces/user-routes/user-dashboard-http.js";
 import type { UserHttpJson } from "../interfaces/user-routes/user-route-http.js";
 import type { UserDashboardReadService } from "../user-dashboard-read.service.js";
-
-/** Won lots a purchases list reads; the same for a person and for an account. */
-const PURCHASES_LIMIT = 50;
 
 /** A role that does not follow the account's buying records. */
 const NOT_YOURS: UserHttpJson = {
@@ -65,7 +62,7 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
   async listPortfolio(input: { userId: string }): Promise<UserHttpJson> {
     const userId = input.userId;
     const [lots, { data: payments }] = await Promise.all([
-      this.deps.lotService.list(personalPurchaseLots(userId, PURCHASES_LIMIT)),
+      this.deps.lotService.list(personalPurchaseLots(userId, PURCHASE_LIST_LIMIT)),
       this.deps.paymentBuyerService.listMyPaymentsForBuyerApi(userId, {}),
     ]);
     return { status: 200, body: { data: await this.toPurchaseRows(lots, payments) } };
@@ -104,7 +101,7 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
     const accountId = input.account.legalEntityId;
     const [lots, { data: payments }] = await Promise.all([
       this.deps.lotService.list(
-        accountPurchaseLots(accountId, scope, input.userId, PURCHASES_LIMIT),
+        accountPurchaseLots(accountId, scope, input.userId, PURCHASE_LIST_LIMIT),
       ),
       this.deps.paymentBuyerService.listEntityPaymentsForBuyerApi(accountId, {}),
     ]);

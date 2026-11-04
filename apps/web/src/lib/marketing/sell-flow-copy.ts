@@ -1,6 +1,7 @@
+import type { ItemSubmissionStatus } from "@auction/types";
+
 import { PAYOUT_ACCOUNT, REPLY_WINDOW } from "@/lib/copy/glossary";
 import { CONSIGNMENT_STATUS } from "@/lib/seller/consignment-status";
-import type { ItemSubmissionStatus } from "@auction/types";
 
 /**
  * Seller-facing status labels. A submission reads as the consignment stage it belongs to, so a
@@ -28,9 +29,7 @@ export const SELL_PREREQUISITES = [
   `A ${PAYOUT_ACCOUNT} (set up after acceptance, not needed to start)`,
 ] as const;
 
-export const SELL_TIME_EXPECTATIONS = `About 3 minutes to send · Progress saves after your first save · Reply ${REPLY_WINDOW}`;
-
-/** Opening paragraph for `/sell` LegalPage intro. */
+/** Opening paragraph of the step by step guide. */
 export const SELL_PAGE_INTRO =
   "LAX Bid works with consignors to place fine art, watches, motor cars, design, and exceptional objects into carefully edited online timed sales and in-person saleroom events. Our specialists guide each consignment from first review through catalogue, sale, payment, and settlement.";
 
