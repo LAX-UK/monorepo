@@ -1,5 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { WhereItIsChip, type WhereItIsChipSpec, WhereItIsSection } from "./where-it-is.js";
 
 const CHIPS: ReadonlyArray<[WhereItIsChipSpec, string]> = [
@@ -56,6 +56,23 @@ describe("WhereItIsSection", () => {
       "href",
       "/history",
     );
+  });
+
+  it("writes each move's time in the one date style", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-05T09:00:00Z"));
+    try {
+      render(
+        <WhereItIsSection
+          chip={chip}
+          lead="x"
+          moves={{ events: [{ ...event, actor: "Lena Hart" }] }}
+        />,
+      );
+      expect(screen.getByText("Mon 2 Nov, 15:20 GMT")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("leaves out what it has nothing for", () => {

@@ -142,7 +142,7 @@ export function SheetWhereItIs() {
           <WhereItIsSection
             chip={CHIPS.sold}
             lead="Sold in LAX Bid"
-            trail=" · lot 14, Thu 26 Nov"
+            trail=" · lot 14 · Thu 26 Nov"
             note="Sold is final. Nothing can offer it again."
             actions={
               <StaffButton variant="ghost" size="sm">

@@ -7,6 +7,7 @@ export { formatStaffPercent } from "./lib/percent.js";
 export {
   formatStaffDate,
   formatStaffDateTime,
+  formatStaffWhen,
   formatStaffMoney,
   formatStaffRelative,
   staffShortDateFormat,
