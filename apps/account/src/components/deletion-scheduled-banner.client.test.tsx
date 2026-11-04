@@ -45,6 +45,7 @@ describe("DeletionScheduledBanner", () => {
     renderBanner();
     await keepAccount();
     expect(screen.getByRole("alert").textContent).toContain("Try again.");
+    expect(screen.queryByRole("link", { name: "Sign in" })).toBeNull();
     expect(screen.getByText("Your account will be deleted on 2 December.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Keep my account" })).toBeTruthy();
   });

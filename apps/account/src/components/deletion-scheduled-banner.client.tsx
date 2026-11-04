@@ -9,7 +9,8 @@ import { NOTICE, NoticeTitle } from "./account-ui";
 type Outcome =
   | { kind: "scheduled" }
   | { kind: "kept"; message: string }
-  | { kind: "failed"; message: string };
+  | { kind: "failed"; message: string }
+  | { kind: "signed_out" };
 
 /**
  * Shown on every page while the person has asked to delete their account, so a request made a
@@ -43,13 +44,11 @@ export function DeletionScheduledBanner({
         setOutcome({ kind: "kept", message: result.message });
         return;
       }
-      setOutcome({
-        kind: "failed",
-        message:
-          result.status === "error"
-            ? result.message
-            : "Your sign-in has ended. Sign in again, then keep your account.",
-      });
+      setOutcome(
+        result.status === "error"
+          ? { kind: "failed", message: result.message }
+          : { kind: "signed_out" },
+      );
     });
   }
 
@@ -59,27 +58,31 @@ export function DeletionScheduledBanner({
       <AlertDescription>
         Changed your mind? Keep your account and nothing is removed.
       </AlertDescription>
-      <div className="mt-2 flex flex-col gap-2">
-        <LoadingButton
-          type="button"
-          variant="outline"
-          loading={pending}
-          loadingLabel="Keeping your account…"
-          className="self-start"
-          onClick={keepAccount}
-        >
-          Keep my account
-        </LoadingButton>
-        <div aria-live="polite">
-          {outcome.kind === "failed" ? (
-            <p role="alert" className="text-sm text-error">
-              {outcome.message}{" "}
-              <a href={signInHref} className="font-semibold underline underline-offset-4">
-                Sign in
-              </a>
-            </p>
-          ) : null}
-        </div>
+      <LoadingButton
+        type="button"
+        variant="outline"
+        loading={pending}
+        loadingLabel="Keeping your account…"
+        className="mt-2 self-start"
+        onClick={keepAccount}
+      >
+        Keep my account
+      </LoadingButton>
+      <div aria-live="polite">
+        {outcome.kind === "failed" ? (
+          <p role="alert" className="mt-2 text-sm text-error">
+            {outcome.message}
+          </p>
+        ) : null}
+        {outcome.kind === "signed_out" ? (
+          <p role="alert" className="mt-2 text-sm text-error">
+            Your sign-in has ended.{" "}
+            <a href={signInHref} className="font-semibold underline underline-offset-4">
+              Sign in
+            </a>{" "}
+            again, then keep your account.
+          </p>
+        ) : null}
       </div>
     </Alert>
   );
