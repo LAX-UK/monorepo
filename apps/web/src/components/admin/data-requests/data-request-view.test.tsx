@@ -80,6 +80,12 @@ describe("DataRequestView: an overdue manual request", () => {
     expect(screen.getByText(/Opening this record is logged/)).toBeInTheDocument();
   });
 
+  it("draws the time-allowed meter in the danger tone once the request is overdue", () => {
+    renderView(manualRecord);
+    const meter = screen.getByRole("progressbar", { name: "Time allowed used" });
+    expect(meter.firstElementChild).toHaveAttribute("data-tone", "danger");
+  });
+
   it("makes Close with outcome the primary action and disables Extend with its reason", () => {
     renderView(manualRecord);
     expect(screen.getByRole("button", { name: "Close with outcome…" })).toBeEnabled();

@@ -59,7 +59,7 @@ test.describe("admin viewport audit @a11y", () => {
   test("mobile filters sheet on lots list does not overflow horizontally", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/admin/lots");
-    await page.getByRole("button", { name: /^filters$/i }).click();
+    await page.getByRole("button", { name: /^filter\b/i }).click();
     await expect(page.getByRole("dialog")).toBeVisible();
     await assertNoHorizontalOverflow(page);
   });

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import type { ContainerBrevoWebhookRoutesSlice } from "../../container.js";
+import { sharedSecretMatches } from "../../lib/shared-secret.js";
 import type { BrevoWebhookPayload } from "../../services/brevo-webhook-ingest.service.js";
 
 let warnedMissingSecret = false;
@@ -45,5 +46,5 @@ function isAuthorized(
     return true;
   }
   const provided = c.req.query("secret") ?? c.req.header("x-brevo-secret");
-  return provided === expected;
+  return sharedSecretMatches(provided, expected);
 }

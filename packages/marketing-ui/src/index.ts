@@ -527,10 +527,10 @@ export {
   type MarketingGalleryTeamStep,
 } from "./marketing-gallery-team-band.js";
 export {
-  type MarketingFaqPill,
-  MarketingFaqPills,
-  type MarketingFaqPillsProps,
-} from "./marketing-faq-pills.js";
+  MarketingFaqAccordion,
+  type MarketingFaqAccordionProps,
+  type MarketingFaqItem,
+} from "./marketing-faq-accordion.js";
 export {
   MarketingEnquiryConfirmation,
   type MarketingEnquiryConfirmationProps,

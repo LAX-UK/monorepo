@@ -949,6 +949,7 @@ export * from "./marketing-enquiry-visibility.js";
 export * from "./marketing-enquiry-views.js";
 export * from "./marketing-enquiry-attachments.js";
 export * from "./marketing-enquiry-entity.js";
+export * from "./marketing-enquiry-erasure.js";
 export * from "./email/email-block-rules.js";
 export {
   BUYER_DEFAULT_OUTCOMES,

@@ -17,7 +17,7 @@ vi.mock("@/server/application/account-identity-actions.server", () => ({
 describe("EmailChangeEditor", () => {
   it("offers Change email when nothing is pending", () => {
     const html = renderToStaticMarkup(
-      <EmailChangeEditor pendingEmailMasked={null} returnTo="/account/profile" />,
+      <EmailChangeEditor pendingEmail={null} returnTo="/account/profile" />,
     );
     expect(html).toContain("Change email");
     expect(html).not.toContain("Waiting for you to confirm");
@@ -26,7 +26,7 @@ describe("EmailChangeEditor", () => {
 
   it("says the request expired and offers to start again, with no pending address", () => {
     const html = renderToStaticMarkup(
-      <EmailChangeEditor pendingEmailMasked={null} pendingExpired returnTo="/account/profile" />,
+      <EmailChangeEditor pendingEmail={null} pendingExpired returnTo="/account/profile" />,
     );
     expect(html).toContain("Your request expired. Start again.");
     expect(html).toContain("Change email");
@@ -36,10 +36,10 @@ describe("EmailChangeEditor", () => {
 
   it("says which address a pending change is for and offers to cancel or start again", () => {
     const html = renderToStaticMarkup(
-      <EmailChangeEditor pendingEmailMasked="n***@example.com" returnTo="/account/profile" />,
+      <EmailChangeEditor pendingEmail="new@example.com" returnTo="/account/profile" />,
     );
     expect(html).toContain("Waiting for you to confirm the change to");
-    expect(html).toContain("n***@example.com");
+    expect(html).toContain("new@example.com");
     expect(html).toContain("Cancel the change");
     expect(html).toContain("Use a different address");
   });

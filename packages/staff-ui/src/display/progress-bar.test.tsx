@@ -18,4 +18,16 @@ describe("ProgressBar", () => {
     rerender(<ProgressBar value={3} max={0} label="Lots complete" />);
     expect(screen.getByRole("progressbar").firstElementChild).toHaveStyle({ width: "0%" });
   });
+
+  it("is neutral by default and takes the warning or danger fill when asked", () => {
+    const { rerender } = render(<ProgressBar value={1} max={4} label="Time used" />);
+    const fill = () => screen.getByRole("progressbar").firstElementChild;
+    expect(fill()).toHaveAttribute("data-tone", "neutral");
+    expect(fill()).toHaveClass("bg-staff-ink");
+    rerender(<ProgressBar value={1} max={4} label="Time used" tone="warning" />);
+    expect(fill()).toHaveClass("bg-staff-warning-dot");
+    rerender(<ProgressBar value={1} max={4} label="Time used" tone="danger" />);
+    expect(fill()).toHaveClass("bg-staff-danger-dot");
+    expect(fill()).not.toHaveClass("bg-staff-ink");
+  });
 });
