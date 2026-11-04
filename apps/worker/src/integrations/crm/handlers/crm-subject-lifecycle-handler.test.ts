@@ -108,6 +108,8 @@ describe("CrmSubjectLifecycleHandler", () => {
         updatedAt: new Date(),
       }),
       listActiveDealLinksBySubject: vi.fn().mockResolvedValue([dealLink("1")]),
+      listActiveLinksBySubject: vi.fn().mockResolvedValue([]),
+      eraseHeldDealsBySubject: vi.fn().mockResolvedValue(0),
       listActiveSubjectLinksByZohoRecord: vi.fn().mockResolvedValue([]),
       tombstone: vi.fn(),
       tombstoneDealByZohoRecordId: vi.fn(),
