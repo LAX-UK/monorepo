@@ -76,11 +76,6 @@
   color: var(--color-on-surface);
 }
 
-.shop-product__size {
-  color: var(--color-on-surface-variant);
-  font-size: var(--shop-text-sm);
-}
-
 /* Buy block */
 .shop-buy {
   display: flex;
