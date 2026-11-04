@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ScrollRow } from "../components/ui/scroll-row.js";
 import { cn } from "../lib/utils.js";
 
 export type TabPanelItem = {
@@ -47,20 +48,8 @@ export function Tabs({
 }) {
   const base = React.useId();
   const tabRefs = React.useRef(new Map<string, HTMLButtonElement>());
-  const rowRef = React.useRef<HTMLDivElement>(null);
-  const [more, setMore] = React.useState(false);
   const tabId = (id: string) => `${base}-tab-${id}`;
   const panelId = (id: string) => `${base}-panel-${id}`;
-
-  const update = React.useCallback(() => {
-    const row = rowRef.current;
-    if (row) setMore(row.scrollLeft + row.clientWidth < row.scrollWidth - 1);
-  }, []);
-  React.useEffect(() => {
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [update]);
 
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     const at = items.findIndex((item) => item.id === value);
@@ -86,15 +75,7 @@ export function Tabs({
   return (
     <div className={className}>
       <div className={cn("flex min-w-0 items-center gap-4 border-b border-lax-line", barClassName)}>
-        <div
-          ref={rowRef}
-          onScroll={update}
-          data-more={more || undefined}
-          className={cn(
-            "-ml-2.5 flex min-w-0 flex-1 items-center overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-            "data-[more]:[mask-image:linear-gradient(to_right,black_calc(100%-40px),transparent)]",
-          )}
-        >
+        <ScrollRow className="-ml-2.5 flex flex-1 items-center">
           <div className="flex w-max items-stretch">
             <div
               role="tablist"
@@ -146,7 +127,7 @@ export function Tabs({
               <span className="flex shrink-0 items-center px-3 md:hidden">{trailing}</span>
             ) : null}
           </div>
-        </div>
+        </ScrollRow>
         {trailing ? <span className="shrink-0 max-md:hidden">{trailing}</span> : null}
       </div>
       <div className="grid grid-cols-[minmax(0,1fr)]">

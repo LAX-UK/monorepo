@@ -11,8 +11,9 @@ import type { ReleaseAlertViewer } from "@/lib/shop-release-alerts.server";
 import { FOCUS_RING } from "@auction/branding";
 import {
   MarketingCheckIcon,
-  MarketingFormErrorSummary,
   MarketingFormField,
+  marketingEmailError,
+  useMarketingFormErrors,
 } from "@auction/marketing-ui";
 import { RELEASE_ALERT_CONSENT_TEXT } from "@auction/shop-domain";
 import { cn } from "@auction/ui";
@@ -32,16 +33,6 @@ type Phase =
   | { kind: "check-email"; email: string }
   | { kind: "on"; email: string; justNow: boolean }
   | { kind: "stopped" };
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function emailError(value: string): string | null {
-  if (!value.trim()) return "Enter your email address";
-  if (!EMAIL_PATTERN.test(value.trim())) {
-    return "Enter an email address in the correct format, like name@example.com";
-  }
-  return null;
-}
 
 type Problem = { tone: "warning" | "error"; title: string; message: string };
 
@@ -68,8 +59,7 @@ export function ShopReleaseAlertsForm({ viewer, source, layout = "inline" }: Pro
   );
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
-  const [fieldError, setFieldError] = useState<string | null>(null);
-  const [failedSubmits, setFailedSubmits] = useState(0);
+  const errors = useMarketingFormErrors({ email: emailId });
   const [problem, setProblem] = useState<Problem | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -83,8 +73,7 @@ export function ShopReleaseAlertsForm({ viewer, source, layout = "inline" }: Pro
       });
       if (!result.ok) {
         if (result.kind === "invalid") {
-          setFieldError(result.message);
-          setFailedSubmits((count) => count + 1);
+          errors.fail({ email: result.message });
         } else {
           setProblem(problemFor(result));
         }
@@ -100,12 +89,9 @@ export function ShopReleaseAlertsForm({ viewer, source, layout = "inline" }: Pro
 
   function onGuestSubmit(event: FormEvent) {
     event.preventDefault();
-    const error = emailError(email);
-    setFieldError(error);
-    if (error) {
-      setFailedSubmits((count) => count + 1);
-      return;
-    }
+    const error = marketingEmailError(email);
+    errors.fail(error ? { email: error } : {});
+    if (error) return;
     subscribe(email.trim());
   }
 
@@ -206,15 +192,12 @@ export function ShopReleaseAlertsForm({ viewer, source, layout = "inline" }: Pro
         </div>
       ) : (
         <form className="shop-release-alerts__form" noValidate onSubmit={onGuestSubmit}>
-          <MarketingFormErrorSummary
-            errors={fieldError ? [{ fieldId: emailId, message: fieldError }] : []}
-            focusKey={failedSubmits}
-          />
           <div className="shop-release-alerts__row">
             <MarketingFormField
               id={emailId}
               label="Email address"
-              error={fieldError}
+              error={errors.messages.email ?? null}
+              announce={errors.announce}
               className="shop-release-alerts__field"
             >
               {(control) => (

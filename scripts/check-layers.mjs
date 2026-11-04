@@ -87,6 +87,16 @@ const rules = [
     ],
   },
   {
+    dir: "packages/artwork-register-contracts",
+    label: "packages/artwork-register-contracts must stay pure: no apps, database or framework",
+    forbiddenSpecifiers: [
+      /^@auction\/(api|web|worker|ws|auth-app|event|db|persistence|domain|shop-domain|bidding-runtime)(\/|$)/,
+      /(^|\/)apps\//,
+      /^drizzle-orm(\/|$)/,
+      /^(fastify|hono|next|react)(\/|$)/,
+    ],
+  },
+  {
     dir: "packages/shop-portal",
     label: "packages/shop-portal must not import from apps/**",
     forbiddenSpecifiers: [/^@auction\/(api|web|worker|ws|auth-app|event)(\/|$)/, /(^|\/)apps\//],

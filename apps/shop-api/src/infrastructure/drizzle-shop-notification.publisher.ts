@@ -58,6 +58,8 @@ export async function insertShopEmailOutbox(
     to: string;
     template: string;
     vars: Record<string, unknown>;
+    /** Bulk mail goes on the broadcast stream, apart from receipts and confirmations. */
+    stream?: "transactional" | "broadcast";
   },
 ): Promise<void> {
   const now = new Date();
@@ -73,7 +75,7 @@ export async function insertShopEmailOutbox(
       template: input.template,
       vars: input.vars,
       status: "pending",
-      stream: "transactional",
+      stream: input.stream ?? "transactional",
       category: "transactional",
       flaggedAddress: false,
       createdAt: now,
@@ -273,6 +275,23 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
           orderReference: input.orderReference,
           artworkTitle: input.artworkTitle,
           editionLabel: input.editionLabel,
+        },
+      });
+    },
+
+    async queueReturnClosedSeller(tx, input) {
+      const db = asDb(tx);
+      const to = await resolveShopUserEmail(db, input.sellerIdentitySubjectId);
+      if (!to) return;
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to,
+        template: "shop-return-closed-seller",
+        vars: {
+          artworkTitle: input.artworkTitle,
+          editionLabel: input.editionLabel,
+          stockOutcome: input.stockOutcome,
+          payout: input.payout,
         },
       });
     },

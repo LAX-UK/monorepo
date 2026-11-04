@@ -32,7 +32,7 @@ export function resolveSaleroomHeroLiveTrailing(
   }
 
   if (hero.isLive && typeof hero.liveLotsCount === "number" && hero.liveLotsCount > 0) {
-    return hero.liveLotsCount === 1 ? "· 1 lot live" : `· ${hero.liveLotsCount} lots live`;
+    return hero.liveLotsCount === 1 ? "· 1 lot" : `· ${hero.liveLotsCount} lots`;
   }
 
   return "";

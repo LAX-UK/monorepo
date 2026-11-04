@@ -12,6 +12,11 @@ function required(name: string): string {
   return value;
 }
 
+/** The server secret the Bid BFF keeps its sessions under; other signed values derive from it. */
+export function bffSecretKeyMaterial(): string {
+  return required("BID_BFF_SESSION_ENCRYPTION_KEY");
+}
+
 export function bffConfig() {
   const publicOrigin = (
     process.env.NEXT_PUBLIC_SITE_URL ??
@@ -36,6 +41,6 @@ export function bffConfig() {
     redirectUri: `${publicOrigin}/api/auth/callback/lax-bid-web`,
     postLogoutRedirectUri: `${publicOrigin}/`,
     redisUrl: process.env.REDIS_URL ?? "redis://127.0.0.1:6379",
-    encryptionKey: required("BID_BFF_SESSION_ENCRYPTION_KEY"),
+    encryptionKey: bffSecretKeyMaterial(),
   };
 }

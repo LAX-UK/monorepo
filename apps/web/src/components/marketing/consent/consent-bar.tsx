@@ -54,7 +54,7 @@ function CookieBanner() {
       onFocus={rememberOrigin}
       {...laxDensityAttributes("client")}
       className={cn(
-        "pointer-events-auto mx-2 mb-2 rounded-lax-card border border-lax-line bg-lax-raised max-md:p-4 font-lax text-lax-fg shadow-lax-md",
+        "pointer-events-auto mx-2 mb-2 rounded-lax-card border border-lax-line bg-lax-raised max-md:p-3 font-lax text-lax-fg shadow-lax-md",
         "md:mx-0 md:mb-0 md:rounded-none md:border-x-0 md:border-b-0 md:shadow-[0_-8px_24px_-12px_rgb(0_0_0/0.18)]",
       )}
     >
@@ -66,10 +66,8 @@ function CookieBanner() {
           "max-md:px-0",
         )}
       >
-        <p className="mb-3 text-lax-13 leading-5 text-lax-muted md:mb-0 md:max-w-[760px] md:flex-1">
-          <b className="font-semibold text-lax-fg">Cookies on LAX Bid.</b> We use essential cookies
-          to run the site and keep you signed in. With your permission we'd also use analytics
-          cookies to learn how the site is used.{" "}
+        <p className="mb-2 text-lax-13 leading-5 text-lax-muted md:mb-0 md:max-w-[760px] md:flex-1">
+          Essential cookies keep LAX Bid running; analytics cookies need your permission.{" "}
           <TextLink href="/cookies" Link={Link}>
             Cookie policy
           </TextLink>

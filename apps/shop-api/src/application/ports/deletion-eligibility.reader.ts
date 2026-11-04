@@ -13,6 +13,8 @@ export type ShopDeletionOpenItems = {
   pendingPayouts: number;
   /** Original-work sales to the person that are still between reservation and handover. */
   openOriginalSales: number;
+  /** Card disputes on the person's orders that are still open. */
+  openDisputes: number;
   /** Works a broker is holding for the person while they decide. */
   activeHolds: number;
 };

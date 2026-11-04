@@ -101,6 +101,7 @@ export class CrmSubjectLifecycleHandler {
       }
     }
 
+    await this.tombstoneSharingSubjects(link.zohoModule, link.zohoRecordId, subjectId);
     await this.deps.linkRepo.tombstone({
       entityType: CRM_ENTITY.subject,
       entityId: subjectId,
@@ -116,6 +117,31 @@ export class CrmSubjectLifecycleHandler {
         action: "delete",
       }),
     };
+  }
+
+  /**
+   * A person's account, guest checkout and the enquiries they sent share one lead when they share
+   * an email address. That lead is gone, so each of those subjects is marked erased and none can
+   * write to a deleted record or recreate it from a replayed event.
+   */
+  private async tombstoneSharingSubjects(
+    zohoModule: string,
+    zohoRecordId: string,
+    erasedSubjectId: string,
+  ): Promise<void> {
+    const sharing = await this.deps.linkRepo.listActiveSubjectLinksByZohoRecord(
+      zohoModule,
+      zohoRecordId,
+    );
+    for (const other of sharing) {
+      if (other.entityId === erasedSubjectId) continue;
+      await this.deps.linkRepo.tombstone({
+        entityType: CRM_ENTITY.subject,
+        entityId: other.entityId,
+        tombstoneModule: CRM_TOMBSTONE_MODULE,
+        tombstoneRecordId: CRM_TOMBSTONE_RECORD_ID,
+      });
+    }
   }
 
   private async cascadeDeleteDealsForSubject(

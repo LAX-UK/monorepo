@@ -17,6 +17,11 @@ function createApp(staffRoles: StaffRoles | undefined) {
     assignees: vi.fn().mockResolvedValue([{ id: "u1", name: "Sofia Okafor" }]),
     replace: vi.fn().mockResolvedValue({ ok: true, rules: [] }),
   };
+  const enquiryErasure = {
+    eraseByEmail: vi
+      .fn()
+      .mockResolvedValue({ ok: true, enquiries: 2, notes: 1, attachments: 3, held: 1 }),
+  };
   const app = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
@@ -29,10 +34,10 @@ function createApp(staffRoles: StaffRoles | undefined) {
   attachAdminMarketingEnquiryRoutes(
     app as never,
     {
-      admin: { marketingEnquiries, enquiryRouting },
+      admin: { marketingEnquiries, enquiryRouting, enquiryErasure },
     } as never,
   );
-  return { app, marketingEnquiries, enquiryRouting };
+  return { app, marketingEnquiries, enquiryRouting, enquiryErasure };
 }
 
 const json = (body: unknown) => ({
@@ -272,5 +277,54 @@ describe("who may open the Enquiries routes", () => {
     expect(marketingEnquiries.markHandled).not.toHaveBeenCalled();
     expect(enquiryRouting.rules).not.toHaveBeenCalled();
     expect(enquiryRouting.assignees).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /data-requests/enquiry-erasure", () => {
+  const post = (body: unknown) => ({
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const body = {
+    email: "ada@example.com",
+    confirmation: "ada@example.com",
+    reason: "Asked to be forgotten",
+  };
+
+  it("lets compliance erase by email and returns the counts only", async () => {
+    const { app, enquiryErasure } = createApp(["compliance"]);
+    const res = await app.request("http://test/data-requests/enquiry-erasure", post(body));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(await res.json()).toEqual({
+      data: { enquiries: 2, notes: 1, attachments: 3, held: 1 },
+    });
+    expect(enquiryErasure.eraseByEmail).toHaveBeenCalledWith({ ...body, actorUserId: "staff-1" });
+  });
+
+  it("answers a failed confirmation as 422", async () => {
+    const { app, enquiryErasure } = createApp(["administrator"]);
+    enquiryErasure.eraseByEmail.mockResolvedValue({ ok: false, error: "confirmation_mismatch" });
+    const res = await app.request("http://test/data-requests/enquiry-erasure", post(body));
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({ error: "confirmation_mismatch" });
+  });
+
+  it("refuses roles without data request access, and an invalid body", async () => {
+    const denied = createApp(["client_services"]);
+    expect(
+      (await denied.app.request("http://test/data-requests/enquiry-erasure", post(body))).status,
+    ).toBe(403);
+    expect(denied.enquiryErasure.eraseByEmail).not.toHaveBeenCalled();
+    const { app } = createApp(["compliance"]);
+    expect(
+      (
+        await app.request(
+          "http://test/data-requests/enquiry-erasure",
+          post({ ...body, email: "nope" }),
+        )
+      ).status,
+    ).toBe(400);
   });
 });

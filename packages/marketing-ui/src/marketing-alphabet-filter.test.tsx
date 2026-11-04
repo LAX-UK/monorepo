@@ -42,6 +42,8 @@ describe("MarketingAlphabetFilter", () => {
     expect(screen.getByRole("link", { name: "A" })).toHaveAttribute("href", "/artists/letter/a");
     expect(screen.queryByRole("link", { name: "C" })).toBeNull();
     expect(screen.getByLabelText("C, no names")).toHaveAttribute("aria-disabled", "true");
+    // Greyed letters use the kit disabled colour (3:1), not a faded text opacity.
+    expect(screen.getByLabelText("C, no names")).toHaveClass("text-lax-disabled-fg");
     expect(screen.getByRole("link", { name: "Names starting with a number" })).toHaveAttribute(
       "href",
       "/artists/letter/0",

@@ -8,7 +8,7 @@ The day-to-day steps are in [the deletion request runbook](../runbooks/deletion-
 ## What happens
 
 1. **Request.** Identity asks Bid and Shop what the person still has in flight there (open orders,
-   unpaid wins, unpaid payouts, holds). If either product names something, or cannot be reached,
+   unpaid wins, unpaid payouts, open payment disputes, holds). If either product names something, or cannot be reached,
    nothing starts and the person is shown what to resolve. Otherwise the 30-day grace period begins
    and Identity publishes `user.deletion_requested`. The person gets an email that says the date
    and links to cancel.
@@ -49,7 +49,7 @@ The day-to-day steps are in [the deletion request runbook](../runbooks/deletion-
 |---|---|---|
 | Bid | worker projector `bid_personal_data_anonymisation` | `apps/worker/src/anonymisation/bid-personal-data-policy.ts` |
 | Shop and lax.art | shop-api task `personal-data-anonymisation` | `apps/shop-api/src/infrastructure/identity-purge/shop-personal-data-policy.ts` |
-| Marketing, CRM | worker lifecycle consumers | `docs/integrations/marketing-contacts.md`, `docs/integrations/zoho.md` |
+| Marketing, CRM | worker lifecycle consumers | `docs/integrations/zoho.md` |
 
 Rows that only describe the person are deleted. Rows that financial, legal or auction records point
 at stay, with personal fields cleared or replaced by the pseudonym `Deleted user XXXX`. Each product

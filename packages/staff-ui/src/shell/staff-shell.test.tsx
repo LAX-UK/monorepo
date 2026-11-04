@@ -82,6 +82,9 @@ function renderShell(pathname = "/orders/123", navigate = vi.fn()) {
           items: [
             { href: "/orders", label: "Orders", icon: Receipt, count: 3, countTone: "attention" },
             { href: "/staff", label: "Staff", icon: Users },
+            { href: "/refunds", label: "Refunds", icon: Receipt, count: 2, countTone: "warning" },
+            { href: "/payouts", label: "Payouts", icon: Receipt, count: 5, countTone: "danger" },
+            { href: "/notes", label: "Notes", icon: Receipt, count: 7 },
           ],
         },
       ]}
@@ -111,6 +114,23 @@ describe("StaffShell", () => {
     );
     expect(within(nav).getByRole("link", { name: /Orders/ })).toHaveTextContent("3 waiting");
     expect(within(nav).getByRole("list", { name: "Shop" })).toBeInTheDocument();
+  });
+
+  it("gives each nav count its tone and says what it means in words", () => {
+    renderShell();
+    const nav = screen.getAllByRole("navigation", { name: "Main" })[0] as HTMLElement;
+    const toneOf = (name: RegExp) =>
+      within(nav)
+        .getByRole("link", { name })
+        .querySelector("[data-tone]")
+        ?.getAttribute("data-tone");
+    expect(toneOf(/Orders/)).toBe("attention");
+    expect(toneOf(/Refunds/)).toBe("warning");
+    expect(toneOf(/Payouts/)).toBe("danger");
+    expect(toneOf(/Notes/)).toBe("neutral");
+    expect(within(nav).getByRole("link", { name: /Refunds/ })).toHaveTextContent("2 waiting");
+    expect(within(nav).getByRole("link", { name: /Payouts/ })).toHaveTextContent("5 overdue");
+    expect(within(nav).getByRole("link", { name: /Payouts/ })).not.toHaveTextContent("5 waiting");
   });
 
   it("collapses the nav and remembers it in a cookie", () => {

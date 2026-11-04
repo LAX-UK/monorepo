@@ -13,6 +13,8 @@ export function buildAuthorizeUrl(input: {
   maxAge?: number;
   /** OIDC `login_hint`: an email the relying party already knows, prefilled at sign-in. */
   loginHint?: string;
+  /** Why the person is here, so the hosted page can say so ("sell"); it changes wording only. */
+  hostedContext?: "sell";
 }): string {
   const url = new URL(input.authorizationEndpoint);
   url.searchParams.set("response_type", "code");
@@ -24,6 +26,7 @@ export function buildAuthorizeUrl(input: {
     url.searchParams.set("max_age", String(Math.max(0, Math.floor(input.maxAge))));
   }
   if (input.loginHint) url.searchParams.set("login_hint", input.loginHint);
+  if (input.hostedContext) url.searchParams.set("hosted_context", input.hostedContext);
   url.searchParams.set("state", input.state);
   url.searchParams.set("nonce", input.nonce);
   url.searchParams.set("code_challenge", input.codeChallenge);

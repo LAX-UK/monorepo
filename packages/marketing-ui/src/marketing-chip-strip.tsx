@@ -1,4 +1,4 @@
-import { cn } from "@auction/ui";
+import { ScrollRow, cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
 export type MarketingChipStripProps = {
@@ -18,11 +18,11 @@ export function MarketingChipStrip({
   wrapOnDesktop = false,
 }: MarketingChipStripProps) {
   return (
-    <div
+    <ScrollRow
       aria-label={ariaLabel}
       className={cn(
-        "w-full overflow-x-auto scroll-pl-0 scroll-pr-4 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-        wrapOnDesktop && "md:flex-wrap md:overflow-visible md:snap-none",
+        "w-full",
+        wrapOnDesktop && "md:flex-wrap md:overflow-visible md:[mask-image:none]",
         className,
       )}
     >
@@ -34,6 +34,6 @@ export function MarketingChipStrip({
       >
         {children}
       </div>
-    </div>
+    </ScrollRow>
   );
 }

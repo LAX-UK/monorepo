@@ -40,10 +40,12 @@ import {
 import { dispatchStripeWebhookEvent } from "./infrastructure/stripe-webhook-registry.js";
 import { constructStripeWebhookEvent } from "./infrastructure/stripe-webhook-verifier.js";
 
+import type { OriginalOfferRegister } from "./application/ports/original-offer-register.js";
+
 export function createCommerceServices(
   db: Database,
   env: ShopApiEnv,
-  options: { rateLimitCounter: FixedWindowCounter },
+  options: { rateLimitCounter: FixedWindowCounter; originalOffers: OriginalOfferRegister },
 ): { commerce: CommerceRoutesDeps; stripeWebhook: StripeWebhookDeps } {
   const paymentGateway = createStripeShopCheckoutGateway({
     secretKey: env.STRIPE_SECRET_KEY,
@@ -104,6 +106,7 @@ export function createCommerceServices(
   });
   const moneyWebhook = createDrizzleStripeMoneyWebhookProcessor(db, {
     domainEventMode,
+    offers: options.originalOffers,
     notifications,
     opsAlertEmail,
     ...(fetchPaymentIntentMetadata ? { fetchPaymentIntentMetadata } : {}),

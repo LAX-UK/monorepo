@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { qualifiedColumn } from "@auction/db/qualified-column";
 import {
   shopArtist,
   shopArtwork,
@@ -36,7 +37,7 @@ const liveShopEditionSql = and(shopEditionSql, publicArtworkVisible()) as SQL;
 
 const firstImageKeySql = sql<string | null>`(
   select ${shopArtworkImage.mediaKey} from ${shopArtworkImage}
-  where ${shopArtworkImage.artworkId} = ${shopArtwork.id}
+  where ${shopArtworkImage.artworkId} = ${qualifiedColumn(shopArtwork.id)}
   order by ${shopArtworkImage.position} asc limit 1
 )`;
 
@@ -76,15 +77,19 @@ function artistColumns(db: Database) {
   };
 }
 
+/** Live Shop editions in the category in the same row. */
+export const categoryEditionCountSql = sql<number>`(
+  select count(*)::int from ${shopArtworkCategory}
+  inner join ${shopArtwork} on ${shopArtwork.id} = ${shopArtworkCategory.artworkId}
+  where ${shopArtworkCategory.categoryId} = ${qualifiedColumn(shopCategory.id)}
+    and ${liveShopEditionSql}
+)`;
+
 function categoryColumns() {
   return {
     id: shopCategory.id,
     name: shopCategory.label,
-    editionCount: sql<number>`(
-      select count(*)::int from ${shopArtworkCategory}
-      inner join ${shopArtwork} on ${shopArtwork.id} = ${shopArtworkCategory.artworkId}
-      where ${shopArtworkCategory.categoryId} = ${shopCategory.id} and ${liveShopEditionSql}
-    )`,
+    editionCount: categoryEditionCountSql,
   };
 }
 

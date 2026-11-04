@@ -10,6 +10,7 @@ import { lotPath } from "@/lib/seo/url";
 import {
   type AmountOwedBlocker,
   type AmountOwedEntry,
+  PURCHASE_LIST_LIMIT,
   type PurchasePaymentRole,
   addMoneyStrings,
   summariseAmountsOwed,
@@ -111,6 +112,8 @@ export type PurchasesVm = {
   payNow: PayNowVm | null;
   /** Every won lot. */
   total: number;
+  /** The list holds the most purchases one read follows, so older ones are not shown. */
+  truncated: boolean;
   /** The sales and winners in the list, A to Z, for the filters. */
   sales: { id: string; title: string }[];
   winners: string[];
@@ -440,6 +443,7 @@ export function buildPurchasesVm(sources: PurchaseSources): PurchasesVm {
     cardsByTab,
     payNow: payNowFor(cards, sources),
     total: cards.length,
+    truncated: cards.length >= PURCHASE_LIST_LIMIT,
     sales: [...sales]
       .map(([id, title]) => ({ id, title }))
       .sort((a, b) => a.title.localeCompare(b.title)),

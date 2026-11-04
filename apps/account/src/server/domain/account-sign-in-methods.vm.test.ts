@@ -38,12 +38,11 @@ describe("buildSignInMethodsSection", () => {
     expect(vm.hint).toContain("Add a password");
   });
 
-  it("masks the email and dates the link", () => {
+  it("shows the email in full and dates the link", () => {
     const vm = buildSignInMethodsSection(ok(true, [google]), "ada@example.com");
     if (vm.status !== "list") throw new Error("expected list");
     const row = vm.rows[1];
-    expect(row?.kind === "social" && row.detail).toBe("a***@example.com · Linked 1 Oct 2026");
-    expect(JSON.stringify(vm)).not.toContain("ada@example.com");
+    expect(row?.kind === "social" && row.detail).toBe("ada@example.com · Linked 1 Oct 2026");
   });
 
   it("allows removing either provider when there are two, and when a password is set", () => {

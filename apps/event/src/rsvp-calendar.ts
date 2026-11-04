@@ -26,7 +26,7 @@ export function downloadOpeningEventCalendar(segment = "full_evening"): void {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//LAX.BID//Opening Event//EN",
+    "PRODID:-//LAX Bid//Opening Event//EN",
     "BEGIN:VEVENT",
     `UID:${uid}`,
     `DTSTAMP:${dtStamp}`,

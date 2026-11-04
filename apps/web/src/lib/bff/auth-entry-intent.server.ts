@@ -17,6 +17,8 @@ export type HostedAuthEntry = {
 
 export type AuthorizePromptParams = {
   prompt?: OidcAuthorizePrompt;
+  /** Tells the hosted page why the person is here, so it can say so. */
+  hostedContext?: "sell";
 };
 
 export function resolveHostedAuthEntry(searchParams: URLSearchParams): HostedAuthEntry {
@@ -45,7 +47,9 @@ export function authorizeParamsForEntry(entry: HostedAuthEntry): AuthorizePrompt
     return { prompt: "login" };
   }
   if (entry.screen === "signup") {
-    return { prompt: "create" };
+    return entry.funnel === "sell"
+      ? { prompt: "create", hostedContext: "sell" }
+      : { prompt: "create" };
   }
   return {};
 }

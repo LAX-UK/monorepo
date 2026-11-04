@@ -18,20 +18,17 @@ const clientEmail = process.env.PLAYWRIGHT_CLIENT_EMAIL ?? "";
 const clientPassword = process.env.PLAYWRIGHT_CLIENT_PASSWORD ?? "";
 
 test.describe("sell funnel smoke @journey", () => {
-  test("/sell exposes LegalPage intro, toc sections, and primary CTA", async ({ page }) => {
+  test("/sell shows the offer, how it works, departments and fees", async ({ page }) => {
     test.skip(!enabled, skipReason);
 
     const res = await page.goto("/sell");
     expect(res?.ok()).toBeTruthy();
     await expect(page.locator("#main-content")).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: /selling with lax\.bid/i, level: 1 }),
-    ).toBeVisible();
-    await expect(page.getByRole("heading", { name: /what we accept/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /prepare your submission/i })).toBeVisible();
-    const submitCtas = page.getByRole("link", { name: /start your submission/i });
-    await expect(submitCtas).toHaveCount(2);
-    await expect(submitCtas.first()).toHaveAttribute("href", /^\/selling\/new/);
+    await expect(page.getByRole("heading", { name: /sell with lax bid/i, level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /how it works/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /fees in plain words/i })).toBeVisible();
+    const sellLinks = page.getByRole("link", { name: /^sell a work$/i });
+    await expect(sellLinks.first()).toHaveAttribute("href", /^\/selling\/new/);
   });
 
   test("/sell#departments exposes department grid", async ({ page }) => {
@@ -39,9 +36,18 @@ test.describe("sell funnel smoke @journey", () => {
 
     const res = await page.goto("/sell#departments");
     expect(res?.ok()).toBeTruthy();
-    await expect(page.getByRole("heading", { name: /what we accept/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^departments$/i })).toBeVisible();
     await expect(page.getByTestId("sell-department-watches-clocks")).toBeVisible();
     await expect(page.getByTestId("sell-department-motor-cars")).toBeVisible();
+  });
+
+  test("/sell/how-to-sell keeps the step by step guide", async ({ page }) => {
+    test.skip(!enabled, skipReason);
+
+    const res = await page.goto("/sell/how-to-sell");
+    expect(res?.ok()).toBeTruthy();
+    await expect(page.getByRole("heading", { name: /how to sell, step by step/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /prepare your work/i })).toBeVisible();
   });
 
   test("mega menu sell column links to departments and vertical landings", async ({ page }) => {
@@ -63,13 +69,13 @@ test.describe("sell funnel smoke @journey", () => {
     );
   });
 
-  test("/sell/estate landing routes its CTA into the submission wizard", async ({ page }) => {
+  test("/sell/estate landing routes its CTA into the form", async ({ page }) => {
     test.skip(!enabled, skipReason);
 
     const res = await page.goto("/sell/estate");
     expect(res?.ok()).toBeTruthy();
     await expect(page.getByRole("heading", { name: /estate & collections/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: /start your submission/i })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: /^sell a work$/i }).first()).toHaveAttribute(
       "href",
       /^\/selling\/new/,
     );

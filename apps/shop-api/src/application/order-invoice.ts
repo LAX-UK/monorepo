@@ -1,3 +1,4 @@
+import { clientLabel, formatDocumentFileName } from "@auction/artwork-register-contracts";
 import type { LegalEntity } from "@auction/branding";
 import PDFDocument from "pdfkit";
 import { orderRecordVat } from "./order-vat.js";
@@ -11,6 +12,7 @@ type InvoiceRow = { description: string; detail: string | null; vatRate: string;
 export type OrderInvoiceModel = {
   /** "VAT invoice" only when the supplier has a VAT number and the order recorded VAT. */
   title: "VAT invoice" | "Invoice";
+  /** "Paid Invoice — Mears — LAX-S-10482 — 2026-02-14.pdf": the LAX document naming convention. */
   fileName: string;
   /** "LAX-INV-000124": the invoice's own number, from the gap-free invoice sequence. */
   number: string;
@@ -125,7 +127,12 @@ export function buildOrderInvoiceModel(input: {
 
   return {
     title: vatInvoice ? "VAT invoice" : "Invoice",
-    fileName: `${invoiceNumber}.pdf`,
+    fileName: formatDocumentFileName({
+      docType: "Paid Invoice",
+      client: clientLabel({ personName: input.customer.name ?? address?.recipientName }),
+      reference: order.reference,
+      at: paidAt,
+    }),
     number: invoiceNumber,
     orderReference: order.reference,
     issuedOn: day(paidAt),

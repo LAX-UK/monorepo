@@ -16,7 +16,7 @@ Browser / Next.js app (apps/web, port 3000)
   │         ├─ PostgreSQL 16 via Drizzle ORM (api_app role)
   │         ├─ Redis cache, pub/sub, idempotency keys
   │         ├─ BullMQ lot-lifecycle queue (in-process today, target: apps/worker)
-  │         └─ Inbound webhooks: Xero, Stripe, Postmark, Brevo, Veriff
+  │         └─ Inbound webhooks: Xero, Stripe, Postmark, Veriff
   ├─ Socket.IO client
   │    └─ WebSocket gateway (apps/ws, port 3002)
   │         └─ Redis PSUBSCRIBE: lot:*:events, sale:*:saleroom, sale:*:display, user:*:notifications

@@ -125,6 +125,12 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_guest_order_link",
   /** People who asked to hear about new editions: confirmed by email, stopped with one click. */
   "shop_release_alert_subscription",
+  /** The alert engine for LAX Shop and lax.art: subscribers, topic switches, matches, digests. */
+  "shop_alert_subscriber",
+  "shop_alert_topic",
+  "shop_alert_match",
+  "shop_alert_digest",
+  "shop_alert_announcement",
   /** How far shop-api has read the shared event log for each of its own projections. */
   "shop_projection_cursor",
 ] as const;
@@ -195,6 +201,22 @@ export const SHOP_EMAIL_OUTBOX_TABLES = ["email_outbox"] as const;
  * reached the CRM. shop_app reads them and never writes: the worker owns both.
  */
 export const SHOP_CRM_READ_TABLES = ["crm_record_link", "domain_event_delivery"] as const;
+/**
+ * LAX Admin reviews the artwork register: shop_app reads the records and the Zoho sync results,
+ * records a decision on a conflict (SELECT, UPDATE) and the history entry that goes with it
+ * (INSERT, SELECT). It never creates or changes a record; the worker and the offer moves do that.
+ */
+export const SHOP_ARTWORK_REGISTER_READ_TABLES = [
+  "artwork_register",
+  "zoho_artwork_sync_outcome",
+] as const;
+export const SHOP_ARTWORK_REGISTER_CONFLICT_TABLES = ["artwork_register_conflict"] as const;
+export const SHOP_ARTWORK_REGISTER_EVENT_TABLES = ["artwork_register_event"] as const;
+/**
+ * Shop moves an original's offer state through the register (one place at a time across lax.art
+ * and LAX Bid): it reads records and updates the offer. History is append-only (see above).
+ */
+export const SHOP_ARTWORK_REGISTER_OFFER_TABLES = ["artwork_register"] as const;
 /** Worker projectors upsert Shop/Bid local projections from Identity domain events. */
 export const WORKER_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -318,6 +340,20 @@ export const WORKER_UNSOLD_CHOICE_DEADLINE_TABLES = ["unsold_choice_deadline"] a
 /** The follow-up projector opens the staff work a confirmed unsold-lot choice leaves behind. */
 export const WORKER_UNSOLD_FOLLOW_UP_TABLES = ["unsold_lot_follow_up"] as const;
 
+/**
+ * The artwork register: the Zoho inbound sync creates and updates records and records conflicts.
+ * History is append-only, so the worker may add to it and read it, never change it.
+ */
+export const WORKER_ARTWORK_REGISTER_TABLES = [
+  "artwork_register",
+  "artwork_register_conflict",
+] as const;
+export const WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES = ["artwork_register_event"] as const;
+/** The Zoho artwork sync keeps its watermark and the result for each Product it reads. */
+export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
+  "zoho_artwork_sync_state",
+  "zoho_artwork_sync_outcome",
+] as const;
 /**
  * The alert engine's Bid tables: the matching projector records matches and announcements, and the
  * 08:00 digest claims digests, attaches matches and drops stale ones. Nothing is deleted here.
@@ -694,6 +730,18 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of SHOP_CRM_READ_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT");
         }
+        for (const tableName of SHOP_ARTWORK_REGISTER_READ_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT");
+        }
+        for (const tableName of SHOP_ARTWORK_REGISTER_OFFER_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");
+        }
+        for (const tableName of SHOP_ARTWORK_REGISTER_CONFLICT_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");
+        }
+        for (const tableName of SHOP_ARTWORK_REGISTER_EVENT_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
+        }
         for (const tableName of WORKER_LOCK_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
         }
@@ -732,9 +780,6 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           "marketing_event_outbox",
           "INSERT, SELECT, UPDATE, DELETE",
         );
-        /** worker writes one audit row per marketing-contact-sync attempt (Brevo). INSERT + SELECT
-         * only; rows are an immutable audit trail (no UPDATE/DELETE from app code). */
-        await grantIfExists(client, "worker_app", "marketing_contact_sync_log", "INSERT, SELECT");
         for (const tableName of WORKER_DATA_EXPORT_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE, DELETE");
         }
@@ -760,6 +805,15 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_BID_ALERT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_ARTWORK_REGISTER_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_UNSOLD_CHOICE_DEADLINE_TABLES) {

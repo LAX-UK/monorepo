@@ -1,4 +1,5 @@
 import { InvitationsStaffList } from "@/components/admin/people/invitations-staff-list";
+import { AdminFlashNotice } from "@/components/admin/staff/admin-flash-notice";
 import { peopleRangeSummary } from "@/lib/admin/people/clients-staff-list.vm";
 import { toInvitationStaffRows } from "@/lib/admin/people/invitations-staff-list.vm";
 import { loadAdminInvitationsListPage } from "@/lib/admin/people/load-invitations-list-page";
@@ -48,6 +49,7 @@ export default async function AdminInvitationsPage({
       }
       offPage={offPage}
       loadError={loadError}
+      notice={<AdminFlashNotice path="/admin/invitations" />}
       filtered={Boolean(model.listFilters.q)}
     />
   );

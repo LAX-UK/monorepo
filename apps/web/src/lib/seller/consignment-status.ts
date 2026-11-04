@@ -71,7 +71,7 @@ export const CONSIGNMENT_STATUS: Record<ConsignmentStatus, ConsignmentStatusPres
     stage: "in-review",
   },
   agreement: { label: "Accepted", tone: "warning", shape: "alert", stage: "accepted" },
-  preparing: { label: "Accepted", tone: "info", shape: "dot", stage: "accepted" },
+  preparing: { label: "Accepted", tone: "accepted", shape: "dot", stage: "accepted" },
   in_sale: { label: "In a sale", tone: "info", shape: "dot", stage: "in-sale" },
   live: { label: "In a sale", tone: "neutral", shape: "dot", stage: "in-sale", live: true },
   sold: { label: "Sold", tone: "success", shape: "check", stage: "sold" },

@@ -21,7 +21,7 @@ describe("identity check outcome emails", () => {
       retryUrl: "https://lax.bid/verify-identity",
       contactUrl: "https://lax.bid/contact",
     });
-    expect(rendered.subject).toBe("We couldn't verify your LAX.BID identity");
+    expect(rendered.subject).toBe("We couldn't verify your LAX Bid identity");
     for (const body of [rendered.html, rendered.text]) {
       expect(body).toContain(KYC_DECLINED_COPY.retryLabel);
       expect(body).toContain(KYC_DECLINED_COPY.contactLabel);

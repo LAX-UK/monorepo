@@ -54,7 +54,6 @@ const baseProps = {
   sale: { deliveryMode: "onsite" } as Sale,
   liveish: true,
   fetchError: null,
-  actionError: null,
 };
 
 function Menu({ row }: { row: AdminTelephoneBookingRow }) {
@@ -96,18 +95,10 @@ describe("SaleTelephoneBookingsTab", () => {
     expect(screen.getByText("No telephone bookings yet")).toBeInTheDocument();
   });
 
-  it("shows a failed load as an error and a refused action as a notice", () => {
-    render(
-      <SaleTelephoneBookingsTab
-        {...baseProps}
-        rows={[]}
-        fetchError="Timed out"
-        actionError="Booking already cancelled"
-      />,
-    );
+  it("shows a failed load as an error", () => {
+    render(<SaleTelephoneBookingsTab {...baseProps} rows={[]} fetchError="Timed out" />);
 
     expect(screen.getByText("Telephone bookings could not be loaded")).toBeInTheDocument();
-    expect(screen.getByText("Booking already cancelled")).toBeInTheDocument();
   });
 });
 

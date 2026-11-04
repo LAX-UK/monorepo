@@ -2,17 +2,22 @@ import type { Database } from "@auction/db";
 import type { FastifyBaseLogger } from "fastify";
 import { resolveStorefrontOrigins } from "./domain/storefront-origins.js";
 import type { ShopApiEnv } from "./env.js";
+import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
 import { createDrizzleShopPayeeConnectAccountRepository } from "./infrastructure/drizzle-shop-payee-connect-account.repository.js";
 import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-transaction-effects.js";
 import { createRunConnectPayoutTransfersHandler } from "./infrastructure/handlers/scheduler/run-connect-payout-transfers.handler.js";
+import { resolveShopMediaStorage } from "./infrastructure/shop-media-storage.js";
 import { createStripePaymentRefundGateway } from "./infrastructure/stripe-payment-refund.gateway.js";
 import { createStripeShopCheckoutGateway } from "./infrastructure/stripe-shop-checkout.gateway.js";
 import { createStripeShopConnectGateway } from "./infrastructure/stripe-shop-connect.gateway.js";
+import { resolveShopMediaPublicUrl } from "./presenters/resolve-shop-media-url.js";
 import { createShopScheduler } from "./scheduler/create-shop-scheduler.js";
 import type { ShopSchedulerHandle } from "./scheduler/create-shop-scheduler.js";
 import type { ShopSchedulerTask } from "./scheduler/shop-scheduler-task.js";
 import { createAdminCommandPruneTask } from "./scheduler/tasks/admin-command-prune.task.js";
+import { createAlertDigestTask } from "./scheduler/tasks/alert-digest.task.js";
+import { createAlertMatchingTask } from "./scheduler/tasks/alert-matching.task.js";
 import { createConnectPayoutTransferTask } from "./scheduler/tasks/connect-payout-transfer.task.js";
 import { createGuestOrderClaimTask } from "./scheduler/tasks/guest-order-claim.task.js";
 import { createIdentityMergeTask } from "./scheduler/tasks/identity-merge.task.js";
@@ -58,7 +63,23 @@ export function buildShopApiSchedulerTasks(input: {
   });
   const opsAlertEmail =
     input.env.SHOP_OPS_ALERT_EMAIL ?? input.env.SHOP_ENQUIRY_NOTIFICATION_EMAIL ?? null;
+  const mediaStorage = resolveShopMediaStorage(input.env);
+  const alerts = createShopAlertRuntime({
+    db: input.db,
+    env: input.env,
+    origins: resolveStorefrontOrigins({
+      shopStorefrontUrl: input.env.SHOP_STOREFRONT_URL,
+      laxArtPublicUrl: input.env.LAX_ART_PUBLIC_URL,
+    }),
+    resolveMediaUrl: (value) => resolveShopMediaPublicUrl(mediaStorage?.storage ?? null, value),
+    log: {
+      info: (fields, message) => input.log.info(fields, message),
+      warn: (fields, message) => input.log.warn(fields, message),
+    },
+  });
   return [
+    createAlertMatchingTask(alerts.matching),
+    createAlertDigestTask({ mode: alerts.mode, runs: alerts.digests }),
     createStaleCheckoutReaperTask(input.db, paymentGateway),
     createIdentityMergeTask(input.db, opsAlertEmail),
     createGuestOrderClaimTask(input.db, input.env),

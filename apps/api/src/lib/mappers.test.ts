@@ -20,6 +20,7 @@ function lotRow(
     lotNumber: null,
     sellerLegalEntityId: "00000000-0000-4000-8000-000000000010",
     artistId: null,
+    artworkRegisterId: null,
     artistReviewRequired: false,
     title: "Lot",
     description: null,
