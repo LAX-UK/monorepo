@@ -63,6 +63,7 @@ async function buildApp(role: ShopStaffRole) {
         roles: [role],
         identitySubjectId: subject,
       }),
+      brokerCanAccessClientParty: async () => false,
     },
   });
   const offer = vi.fn(async () => ({

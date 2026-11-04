@@ -3,6 +3,8 @@ import type { AdminArtworkDetail, AdminLaxArtListing } from "@auction/shop-contr
 import type { AdminArtworkReader } from "../ports/artwork-catalogue-admin.js";
 import type { RegisterEventRecord } from "../ports/artwork-register-review.ports.js";
 import type { LaxArtListingReader } from "../ports/offer-on-lax-art.ports.js";
+import type { StaffNameReader } from "../ports/staff-name.reader.js";
+import { presentRegisterEvent, recentMovesOf, staffIdsOf } from "./register-event.presenter.js";
 import { presentWhereItIs } from "./where-it-is.presenter.js";
 
 export type ZohoLinkRegister = {
@@ -14,13 +16,20 @@ type ZohoLink = NonNullable<AdminArtworkDetail["zohoLink"]>;
 
 /** Enough history to find the last move into the current place. */
 const HISTORY_LIMIT = 100;
+const RECENT_MOVES = 3;
 
 /**
  * The Zoho record behind a lax.art artwork, for its page: the stock code, Zoho's status and where
  * the artwork is. An artwork with no record, or whose record is gone, has no link.
  */
 export class ArtworkZohoLinkService {
-  constructor(private readonly deps: { register: ZohoLinkRegister; now?: () => Date }) {}
+  constructor(
+    private readonly deps: {
+      register: ZohoLinkRegister;
+      staffNames: StaffNameReader;
+      now?: () => Date;
+    },
+  ) {}
 
   async linkFor(artwork: {
     zohoProductId: string | null;
@@ -39,6 +48,8 @@ export class ArtworkZohoLinkService {
       published: artwork.published,
       createdAt: artwork.createdAt,
     };
+    const moves = recentMovesOf(events, RECENT_MOVES);
+    const names = await this.deps.staffNames.namesFor(staffIdsOf(moves));
     return {
       registerId: entry.id,
       zohoProductId: entry.zohoProductId,
@@ -50,6 +61,7 @@ export class ArtworkZohoLinkService {
         laxArt,
         now: (this.deps.now ?? (() => new Date()))(),
       }),
+      recentMoves: moves.map((event) => presentRegisterEvent(event, names)),
     };
   }
 }

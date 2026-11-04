@@ -1,5 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
-import { CATALOGUE_SLUG_MAX_LENGTH, CATALOGUE_SLUG_PATTERN } from "./artwork-admin.js";
+import { CATALOGUE_SLUG_MAX_LENGTH, CATALOGUE_SLUG_PATTERN } from "./catalogue-slug.js";
 
 /**
  * LAX Admin's "Offer on lax.art": staff turn an original from the From Zoho register into a

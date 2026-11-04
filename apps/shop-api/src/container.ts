@@ -342,7 +342,10 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const adminRead = {
     ...baseAdminRead,
     artworks: withZohoLinks(baseAdminRead.artworks, {
-      links: new ArtworkZohoLinkService({ register: artworkRegisterRepository }),
+      links: new ArtworkZohoLinkService({
+        register: artworkRegisterRepository,
+        staffNames: createDrizzleStaffNameReader(db),
+      }),
       listings: laxArtListings,
     }),
   };

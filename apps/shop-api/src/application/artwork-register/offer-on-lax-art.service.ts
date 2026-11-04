@@ -1,4 +1,4 @@
-import { type OfferPlaceRef, catalogueGapsOf } from "@auction/artwork-register-contracts";
+import { catalogueGapsOf } from "@auction/artwork-register-contracts";
 import type {
   AdminLaxArtOfferAssessment,
   AdminLaxArtOfferBody,
@@ -14,7 +14,7 @@ import {
   type LaxArtListingReader,
   LaxArtOfferRefusedError,
 } from "../ports/offer-on-lax-art.ports.js";
-import { laxArtOfferBlockers } from "./lax-art-offer-blockers.js";
+import { DRAFT_PROBE, laxArtOfferBlockers } from "./lax-art-offer-blockers.js";
 
 export type OfferOnLaxArtDeps = {
   register: Pick<ArtworkRegisterRecords, "findById">;
@@ -22,9 +22,6 @@ export type OfferOnLaxArtDeps = {
   listings: LaxArtListingReader;
   drafts: LaxArtDraftWriter;
 };
-
-/** A probe place for the check: the draft does not exist yet, and the lock only compares places. */
-const DRAFT_PROBE: OfferPlaceRef = { kind: "shop_artwork", id: "new-lax-art-draft" };
 
 /**
  * "Offer on lax.art" for the From Zoho record. The assessment reads the record and says what the

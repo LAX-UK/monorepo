@@ -1,5 +1,7 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { AdminRegisterEventSchema } from "./admin-artwork-register.js";
 import { AdminWhereItIsSchema } from "./admin-where-it-is.js";
+import { CATALOGUE_SLUG_MAX_LENGTH, CATALOGUE_SLUG_PATTERN } from "./catalogue-slug.js";
 import { createCursorListResponseSchema } from "./cursor-list.js";
 import {
   AdminArtworkRunSummarySchema,
@@ -16,9 +18,7 @@ import { SEO_DESCRIPTION_MAX_LENGTH, SEO_TITLE_MAX_LENGTH } from "./seo-fields.j
  * show only `available` or `sold_out`.
  */
 
-/** Lower-case words joined by single hyphens, so every slug is a clean URL segment. */
-export const CATALOGUE_SLUG_PATTERN = "^[a-z0-9]+(?:-[a-z0-9]+)*$";
-export const CATALOGUE_SLUG_MAX_LENGTH = 120;
+export { CATALOGUE_SLUG_MAX_LENGTH, CATALOGUE_SLUG_PATTERN };
 
 export const ARTWORK_TITLE_MAX_LENGTH = 200;
 export const ARTWORK_MEDIUM_MAX_LENGTH = 200;
@@ -370,6 +370,8 @@ export const AdminArtworkDetailSchema = Type.Object({
         stockCode: Type.String(),
         zohoStatus: Type.Union([Type.String(), Type.Null()]),
         whereItIs: AdminWhereItIsSchema,
+        /** The last few moves, newest first. */
+        recentMoves: Type.Array(AdminRegisterEventSchema),
       }),
       Type.Null(),
     ]),

@@ -7,6 +7,7 @@ import {
   checkFootnote,
   conflictDecisionCopy,
   hasActiveZohoFilters,
+  laxArtOfferAvailability,
   missingSummary,
   pageLinks,
   pageSummary,
@@ -85,7 +86,7 @@ describe("what is missing", () => {
 
 describe("offer states and values", () => {
   it("reads held as not offered yet", () => {
-    expect(presentOfferState("held")).toEqual({ label: "Not offered yet", tone: "neutral" });
+    expect(presentOfferState("held")).toEqual({ label: "Not offered", tone: "neutral" });
     expect(presentOfferState("mystery").label).toBe("mystery");
   });
 
@@ -215,13 +216,15 @@ describe("buildRegisterTimeline", () => {
         actor: "staff",
         payload: { from: { state: "held" }, to: { state: "lax_art" } },
       }),
+      event({ type: "lax_art_draft_created", actor: "staff", payload: { artworkId: "a1" } }),
     ]);
     expect(titles.map((t) => t.title)).toEqual([
       "Came in from Zoho",
       "Updated from Zoho: medium, size",
       "Zoho changed the stock code; LAX kept its own until someone decides",
       "Kept the LAX value for the stock code",
-      "Moved from Not offered yet to On lax.art",
+      "Moved from Not offered to On lax.art",
+      "lax.art draft created",
     ]);
     expect(titles[2]).toMatchObject({
       detail: "Zoho now has LAX-ORI-PH-GAC-26-0099",
@@ -235,5 +238,48 @@ describe("buildRegisterTimeline", () => {
       event({ type: "conflict_recorded", payload: { field: "somethingNew" } }),
     ]);
     expect(item?.title).toBe("Zoho changed a field; LAX kept its own until someone decides");
+  });
+});
+
+describe("laxArtOfferAvailability", () => {
+  const original = { kind: "original" as const, laxArt: null, offerBlockers: [] };
+
+  it("offers an original that is not held anywhere", () => {
+    expect(laxArtOfferAvailability(original)).toEqual({ kind: "offer" });
+  });
+
+  it("draws nothing for a print", () => {
+    expect(laxArtOfferAvailability({ ...original, kind: "print" })).toEqual({ kind: "hidden" });
+  });
+
+  it("opens the listing once there is one, even when the register holds the artwork there", () => {
+    const laxArt = {
+      artworkId: "a1",
+      slug: "s",
+      published: true,
+      createdAt: "2026-11-04T10:00:00Z",
+    };
+    expect(
+      laxArtOfferAvailability({
+        ...original,
+        laxArt,
+        offerBlockers: [{ message: "This artwork is live on lax.art.", link: null }],
+      }),
+    ).toEqual({ kind: "open", href: "/artworks/a1" });
+  });
+
+  it("stays, disabled, with every reason in words", () => {
+    expect(
+      laxArtOfferAvailability({
+        ...original,
+        offerBlockers: [
+          { message: "This artwork is in a LAX Bid sale.", link: null },
+          { message: "Zoho shows this artwork as reserved.", link: null },
+        ],
+      }),
+    ).toEqual({
+      kind: "blocked",
+      reason: "This artwork is in a LAX Bid sale. Zoho shows this artwork as reserved.",
+    });
   });
 });

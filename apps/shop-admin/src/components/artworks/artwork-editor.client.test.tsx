@@ -816,3 +816,103 @@ describe("artwork editor", () => {
     expect(screen.queryByRole("button", { name: "Unpublish" })).toBeNull();
   });
 });
+
+describe("a lax.art original made from a Zoho record", () => {
+  const linked: AdminArtworkDetail = {
+    ...detail,
+    run: null,
+    salesChannel: "art",
+    printPricePence: null,
+    dimensions: null,
+    editions: {
+      size: 0,
+      committed: 0,
+      byStatus: { not_authorised: 0, authorised: 0, reserved: 0, held: 0, sold: 0, withdrawn: 0 },
+      byAllocation: { original_buyer_entitlement: 0, artist: 0, lax: 0 },
+    },
+    publishBlockers: ["no_zoho_image", "no_size"],
+    zohoLink: {
+      registerId: "33333333-3333-4333-8333-333333333333",
+      zohoProductId: "1023341000017963004",
+      stockCode: "LAX-ORI-AR-TM-26-0004",
+      zohoStatus: "Available",
+      whereItIs: {
+        key: "draft_lax_art",
+        chip: { label: "Draft on lax.art", tone: "info", marker: "hollow" },
+        from: null,
+        since: null,
+      },
+      recentMoves: [],
+    },
+  };
+
+  beforeEach(() => {
+    window.history.replaceState(null, "", "/artworks/a-1");
+  });
+
+  it("marks the details Zoho owns, and leaves only LAX's own fields to type into", () => {
+    renderEditor({ detail: linked, zohoUrl: "https://crm.example/Products/1" });
+    expect(screen.getAllByText("From Zoho").length).toBeGreaterThanOrEqual(5);
+    expect(screen.getAllByText("Harbour at Dusk").length).toBeGreaterThan(1);
+    expect(screen.queryByLabelText("Title")).toBeNull();
+    expect(screen.queryByLabelText(/Medium/)).toBeNull();
+    expect(screen.getByLabelText(/Description/)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /Edit in Zoho/ })[0]).toHaveAttribute(
+      "href",
+      "https://crm.example/Products/1",
+    );
+  });
+
+  it("says size is not in Zoho yet instead of leaving a blank", () => {
+    renderEditor({ detail: linked });
+    expect(screen.getByText("Not in Zoho yet")).toBeInTheDocument();
+  });
+
+  it("shows where it is in the rail, with the record behind it", () => {
+    renderEditor({ detail: linked });
+    const rail = screen.getByRole("complementary", { name: "Where it is" });
+    expect(within(rail).getAllByText("Draft on lax.art").length).toBeGreaterThan(0);
+    expect(within(rail).getByText("LAX-ORI-AR-TM-26-0004")).toBeInTheDocument();
+    expect(within(rail).getByRole("link", { name: "From Zoho record" })).toHaveAttribute(
+      "href",
+      "/from-zoho/33333333-3333-4333-8333-333333333333",
+    );
+  });
+
+  it("names what Zoho lacks before publishing, with a way to fix it", () => {
+    renderEditor({ detail: linked, zohoUrl: "https://crm.example/Products/1" });
+    const notice = screen.getByText("Not ready to publish").closest("[role=status]") as HTMLElement;
+    expect(notice).toHaveTextContent("Zoho has no image for this artwork. Add one in Zoho.");
+    expect(notice).toHaveTextContent("Zoho has no size for this artwork. Add it in Zoho.");
+    expect(within(notice).getByRole("link", { name: /Edit in Zoho/ })).toBeInTheDocument();
+  });
+
+  it("tells staff what to do next on arrival, and lets them dismiss it", () => {
+    renderEditor({ detail: linked, arrivedFromZoho: true });
+    expect(screen.getByText("Draft created from Zoho")).toBeInTheDocument();
+    expect(
+      screen.getByText("Write the description, check the images, then publish."),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(screen.queryByText("Draft created from Zoho")).toBeNull();
+  });
+
+  it("does not show the arrival notice on an ordinary visit", () => {
+    renderEditor({ detail: linked });
+    expect(screen.queryByText("Draft created from Zoho")).toBeNull();
+  });
+
+  it("shows the images as Zoho's, with no upload", () => {
+    renderEditor({ detail: linked });
+    expect(screen.getByText("No images in Zoho yet")).toBeInTheDocument();
+    expect(
+      screen.getByText("Add or reorder images in Zoho. They arrive here by themselves."),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves an unlinked original exactly as it was", () => {
+    renderEditor({ detail: { ...linked, zohoLink: null } });
+    expect(screen.getByLabelText("Title")).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Where it is" })).toBeNull();
+  });
+});

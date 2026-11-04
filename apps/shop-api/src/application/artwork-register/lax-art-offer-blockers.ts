@@ -7,6 +7,9 @@ import {
   lockMessage,
 } from "@auction/artwork-register-contracts";
 
+/** A probe place for the check: the draft does not exist yet, and the lock only compares places. */
+export const DRAFT_PROBE: OfferPlaceRef = { kind: "shop_artwork", id: "new-lax-art-draft" };
+
 /**
  * Why an original cannot go on lax.art now, most important first. A print never takes this path.
  * `checkOfferable` names the first reason; Zoho's Reserved is added beside a place that holds the
