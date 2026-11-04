@@ -1,13 +1,8 @@
-"use client";
-
 import { FOCUS_RING } from "@auction/branding";
 import { cn } from "@auction/ui";
-import { RadioGroup } from "@auction/ui/components/radio-group";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { MARKETING_FILTER_GROUP_TITLE } from "./catalog-filter-rail.js";
-import { MarketingFilterCheckboxRow } from "./marketing-filter-checkbox-row.js";
-import { MarketingFilterRadioRow } from "./marketing-filter-radio-row.js";
+import { MarketingFilterLinkRow } from "./marketing-filter-link-row.js";
 
 /**
  * One option. `href` is where choosing the option goes: when it is `active`, the address with it
@@ -42,8 +37,9 @@ export type MarketingFilterLinkGroupsProps = {
 };
 
 /**
- * Filter groups as checkbox rows with counts. Choosing a row opens its address, so the URL stays
- * the one source of the applied filters. Used by the desktop rail and the mobile filter sheet.
+ * Filter groups as checkbox rows with counts. Each row is a real link to its address, so filtering
+ * works without JavaScript and stays crawlable, and the URL stays the one source of the applied
+ * filters. Used by the desktop rail and the mobile filter sheet.
  */
 export function MarketingFilterLinkGroups({
   groups,
@@ -52,7 +48,6 @@ export function MarketingFilterLinkGroups({
   idPrefix = "filter",
   className,
 }: MarketingFilterLinkGroupsProps) {
-  const router = useRouter();
   return (
     <div className={cn("flex flex-col gap-7", className)}>
       {hasFilters && clearHref ? (
@@ -75,44 +70,23 @@ export function MarketingFilterLinkGroups({
               <h2 id={headingId} className={MARKETING_FILTER_GROUP_TITLE}>
                 {group.title}
               </h2>
-              {group.selection === "single" ? (
-                <RadioGroup
-                  aria-labelledby={headingId}
-                  value={String(group.links.findIndex((link) => link.active))}
-                  onValueChange={(index) => {
-                    const link = group.links[Number(index)];
-                    if (link) router.push(link.href, { scroll: false });
-                  }}
-                  className="gap-0"
-                >
-                  {group.links.map((link, index) => (
-                    <MarketingFilterRadioRow
-                      key={`${link.label}-${link.href}`}
-                      id={`${headingId}-${index}`}
-                      value={String(index)}
-                      label={link.label}
-                      count={link.count}
-                      checked={link.active}
-                      dense
-                    />
-                  ))}
-                </RadioGroup>
-              ) : (
-                <ul className="flex flex-col">
-                  {group.links.map((link, index) => (
-                    <li key={`${link.label}-${link.href}`}>
-                      <MarketingFilterCheckboxRow
-                        id={`${headingId}-${index}`}
-                        label={link.label}
-                        count={link.count}
-                        checked={link.active}
-                        dense
-                        onCheckedChange={() => router.push(link.href, { scroll: false })}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <div
+                role={group.selection === "single" ? "radiogroup" : "group"}
+                aria-labelledby={headingId}
+                className="flex flex-col"
+              >
+                {group.links.map((link) => (
+                  <MarketingFilterLinkRow
+                    key={`${link.label}-${link.href}`}
+                    label={link.label}
+                    href={link.href}
+                    count={link.count}
+                    checked={link.active}
+                    kind={group.selection === "single" ? "radio" : "checkbox"}
+                    dense
+                  />
+                ))}
+              </div>
             </section>
           );
         })}
