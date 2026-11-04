@@ -47,7 +47,7 @@ test.describe("sell funnel smoke @journey", () => {
     const res = await page.goto("/sell/how-to-sell");
     expect(res?.ok()).toBeTruthy();
     await expect(page.getByRole("heading", { name: /how to sell, step by step/i })).toBeVisible();
-    await expect(page.getByRole("heading", { name: /prepare your submission/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /prepare your work/i })).toBeVisible();
   });
 
   test("mega menu sell column links to departments and vertical landings", async ({ page }) => {
