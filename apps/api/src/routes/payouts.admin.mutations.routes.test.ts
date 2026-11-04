@@ -25,6 +25,7 @@ function mount(
       .fn()
       .mockResolvedValue({ ok: true, payout: { id: PAYOUT_ID, status: "in_transit" } }),
     adminManualReverse: vi.fn().mockResolvedValue({ id: PAYOUT_ID, status: "reversed" }),
+    addAdjustment: vi.fn().mockResolvedValue({ id: "adj-1", amount: "-25.00" }),
     createSettlement: vi.fn().mockResolvedValue({ ok: true, payout: { id: PAYOUT_ID, lines: [] } }),
   };
   const container = {
@@ -174,6 +175,66 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
     expect(failed.status).toBe(409);
     expect(retried.status).toBe(200);
     expect(payouts.markPaid).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("POST /admin/payouts/:payoutId/adjustments", () => {
+  const adjustment = { amount: "-25.00", note: "Refunded the buyer outside the platform." };
+
+  it("adds the adjustment with the actor recorded", async () => {
+    const { app, payouts } = mount("finance");
+
+    const res = await post(app, `/${PAYOUT_ID}/adjustments`, adjustment, key("adjust-key-1"));
+
+    expect(res.status).toBe(201);
+    expect(payouts.addAdjustment).toHaveBeenCalledWith(ACTOR_ID, PAYOUT_ID, adjustment);
+  });
+
+  it("asks for a fresh sign-in, and adds nothing", async () => {
+    const { app, payouts } = mount("finance", { recent: false });
+
+    const res = await post(app, `/${PAYOUT_ID}/adjustments`, adjustment, key("adjust-key-2"));
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual(STEP_UP);
+    expect(payouts.addAdjustment).not.toHaveBeenCalled();
+  });
+
+  it("refuses a request without an Idempotency-Key", async () => {
+    const { app, payouts } = mount("finance");
+
+    const res = await post(app, `/${PAYOUT_ID}/adjustments`, adjustment);
+
+    expect(res.status).toBe(400);
+    expect(payouts.addAdjustment).not.toHaveBeenCalled();
+  });
+
+  it("adds one adjustment when the same request is retried", async () => {
+    const { app, payouts } = mount("finance");
+    const send = () => post(app, `/${PAYOUT_ID}/adjustments`, adjustment, key("adjust-key-3"));
+
+    const first = await send();
+    const retry = await send();
+
+    expect(retry.status).toBe(201);
+    expect(retry.headers.get("Idempotent-Replayed")).toBe("true");
+    expect(await retry.json()).toEqual(await first.json());
+    expect(payouts.addAdjustment).toHaveBeenCalledOnce();
+  });
+
+  it("refuses the same key for a different amount", async () => {
+    const { app, payouts } = mount("finance");
+    await post(app, `/${PAYOUT_ID}/adjustments`, adjustment, key("adjust-key-4"));
+
+    const res = await post(
+      app,
+      `/${PAYOUT_ID}/adjustments`,
+      { ...adjustment, amount: "-2500.00" },
+      key("adjust-key-4"),
+    );
+
+    expect(res.status).toBe(422);
+    expect(payouts.addAdjustment).toHaveBeenCalledOnce();
   });
 });
 
