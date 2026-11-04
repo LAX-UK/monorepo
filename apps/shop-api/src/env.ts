@@ -171,6 +171,15 @@ export const shopApiEnvSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),
+  /**
+   * Whether London Art Exchange Ltd issues digital certificates of authenticity in LAX Account, on
+   * the artist's written authority. Off until the legal position is confirmed: with it off, such
+   * certificates wait on the "to send" list instead of being issued.
+   */
+  SHOP_LAX_CERTIFICATES_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
   SHOP_MERCHANDISE_ENABLED: z
     .enum(["true", "false"])
     .default("false")

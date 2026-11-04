@@ -277,6 +277,25 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
       });
     },
 
+    async queuePrintSwapped(tx, input) {
+      const db = asDb(tx);
+      const to =
+        (await resolveShopUserEmail(db, input.identitySubjectId)) ?? input.fallbackEmail?.trim();
+      if (!to || !to.includes("@")) return;
+
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to,
+        template: "shop-print-swapped",
+        vars: {
+          orderReference: input.orderReference,
+          artworkTitle: input.artworkTitle,
+          previousLabel: input.previousLabel,
+          newLabel: input.newLabel,
+        },
+      });
+    },
+
     async queueReturnClosedSeller(tx, input) {
       const db = asDb(tx);
       const to = await resolveShopUserEmail(db, input.sellerIdentitySubjectId);
