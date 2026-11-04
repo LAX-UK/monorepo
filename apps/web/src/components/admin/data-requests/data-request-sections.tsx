@@ -317,7 +317,12 @@ export function DeadlineSection({
               .join(" · ")}
           </span>
           {progress ? (
-            <ProgressBar value={progress.used} max={progress.total} label="Time allowed used" />
+            <ProgressBar
+              value={progress.used}
+              max={progress.total}
+              label="Time allowed used"
+              tone={overdue ? "danger" : "neutral"}
+            />
           ) : null}
         </div>
       ) : (
