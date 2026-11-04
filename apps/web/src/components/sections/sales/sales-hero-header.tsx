@@ -6,7 +6,7 @@ import { MarketingPageHero } from "@/components/marketing/marketing-page-hero";
 import { DisplayHeading } from "@auction/ui";
 
 const SUBTITLE =
-  "Explore upcoming auctions and browse past results from London, featuring the best of Modern & Contemporary Art, Design, and luxury.";
+  "Live and upcoming auctions from London, with modern and contemporary art, design and luxury.";
 
 /** Calendar rail — title + blurb via `MarketingPageHero`. */
 export function SalesHeroHeader() {

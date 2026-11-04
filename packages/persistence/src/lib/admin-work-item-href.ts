@@ -43,6 +43,8 @@ export function adminWorkItemHref(
     case "submission_review":
       return requireId(kind, subjectId, adminRoutes.submission);
     case "unsold_lot_choice":
+    case "unsold_choice_follow_up":
+    case "unsold_choice_lapsed":
       return requireId(kind, subjectId, adminRoutes.submissionDecision);
     case "marketing_enquiry":
       return requireId(kind, subjectId, adminRoutes.enquiry);

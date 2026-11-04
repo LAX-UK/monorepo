@@ -144,15 +144,11 @@ export function SaleDetailShell({
   const seller = firstBlockedSeller(lots, connectRequiredByLotId);
   const connectRequired = seller.blocked || searchParams.get("error_code") === "connect_required";
 
-  const onConnectRequired = useCallback(
-    (message: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("error_code", "connect_required");
-      params.set("error", message);
-      router.replace(`?${params.toString()}`, { scroll: false });
-    },
-    [router, searchParams],
-  );
+  const onConnectRequired = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("error_code", "connect_required");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
   const afterDelete = useCallback(() => router.push("/admin/sales"), [router]);
   const saleActions = useSaleActions({ canManageSales }, { afterDelete, onConnectRequired });
 

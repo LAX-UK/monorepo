@@ -10,6 +10,7 @@ import { AdminUserKycHistoryPanel } from "@/components/admin/admin-user-kyc-hist
 import { AdminUserProfilePanel } from "@/components/admin/admin-user-profile-panel";
 import { AdminUserSofPanel } from "@/components/admin/admin-user-sof-panel";
 import type { PeopleDetailTab } from "@/components/admin/people-detail-shell";
+import { EmailDeliveryPanel } from "@/components/admin/people/email-delivery/email-delivery-panel";
 import type { AdminClientDetailBundle } from "@/lib/admin/load-admin-client-detail";
 import { buildClientOverviewStats } from "@/lib/data/view-models/people-overview.vm";
 import { StatGrid } from "@auction/staff-ui";
@@ -28,6 +29,7 @@ function overviewTab(bundle: AdminClientDetailBundle): PeopleDetailTab {
           items={buildClientOverviewStats({ summaryMetrics, payments })}
         />
         <AdminUserProfilePanel user={user} />
+        <EmailDeliveryPanel userId={user.id} personName={user.name} email={user.email} />
         {bundle.canViewKyc ? (
           <AdminUserKycHistoryPanel
             sessions={bundle.kycSessions}

@@ -2,6 +2,7 @@ import { legalEntityFor } from "@auction/branding";
 import { createArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
 import { createArtistApplicationRateLimiters } from "./application/artist-applications/artist-application-rate-limits.js";
 import { createArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
+import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import {
   createEditionAlertRateLimiter,
@@ -38,6 +39,9 @@ export function createMinimalShopApiTestDeps(
       OIDC_ISSUER_URL: "http://localhost:3001",
       SHOP_SCHEDULER_ENABLED: false,
       SHOP_SCHEDULER_INTERVAL_MS: 60_000,
+      ALERTS_SEND_MODE: "off",
+      ALERT_LINK_SECRET: "test-alert-link-secret-not-for-production", // gitleaks:allow
+      ALERT_LINK_KEY_ID: "k1",
       SHOP_REQUIRE_STRIPE: true,
       SHOP_FAKE_CHECKOUT_ENABLED: false,
       DOMAIN_EVENT_PUBLISH_VALIDATE: "off",
@@ -246,6 +250,20 @@ export function createMinimalShopApiTestDeps(
         }),
         get: async () => null,
       }),
+      artworkRegister: new ArtworkRegisterReviewService({
+        queue: {
+          listHeld: async () => ({ entries: [], total: 0 }),
+          listOpenConflicts: async () => ({ items: [], total: 0 }),
+          listConflictsFor: async () => [],
+          countHeld: async () => 0,
+          countOpenConflicts: async () => 0,
+          listHeldArtists: async () => [],
+        },
+        register: { findById: async () => null, listEvents: async () => [] },
+        resolver: { resolveConflict: async () => ({ ok: false, reason: "not_found" }) },
+        runs: { latestNightlyRun: async () => null },
+        staffNames: { namesFor: async () => new Map() },
+      }),
       guestErasure: new GuestErasureService({
         read: async () => null,
         withLockedGuest: async () => null,
@@ -411,6 +429,20 @@ export function createMinimalShopApiTestDeps(
         }),
       },
       editionRuns: {
+        printsFromOriginal: {
+          recordIn: async () => ({
+            artworkId: "00000000-0000-4000-8000-000000000001",
+            slug: "prints",
+            version: "2026-01-01T00:00:00.000Z",
+            editionCount: 0,
+          }),
+          create: async () => ({
+            artworkId: "00000000-0000-4000-8000-000000000001",
+            slug: "prints",
+            version: "2026-01-01T00:00:00.000Z",
+            editionCount: 0,
+          }),
+        },
         runs: {
           record: async () => 0,
           replace: async () => ({ version: "2026-01-01T00:00:00.000Z" }),
@@ -486,6 +518,14 @@ export function createMinimalShopApiTestDeps(
       retryRefund: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",
         status: "pending" as const,
+      }),
+      markRefundSettledOutside: async () => ({
+        refundId: "00000000-0000-4000-8000-000000000012",
+        status: "succeeded" as const,
+      }),
+      advanceReturn: async () => ({
+        returnId: "00000000-0000-4000-8000-000000000013",
+        status: "in_transit" as const,
       }),
       markPayoutPaid: async () => ({
         payoutId: "00000000-0000-4000-8000-000000000016",

@@ -13,8 +13,10 @@ import {
   AUTH_INSERT_SELECT_TABLES,
   AUTH_POLICY_TABLES,
   AUTH_READ_TABLES,
-  SHOP_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
-  SHOP_ARTWORK_REGISTER_TABLES,
+  SHOP_ARTWORK_REGISTER_CONFLICT_TABLES,
+  SHOP_ARTWORK_REGISTER_EVENT_TABLES,
+  SHOP_ARTWORK_REGISTER_OFFER_TABLES,
+  SHOP_ARTWORK_REGISTER_READ_TABLES,
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
   WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
@@ -484,9 +486,23 @@ describe("migrate-roles invariants", () => {
     }
   });
 
-  it("lets Shop move an original's offer through the register but only append to its history", () => {
-    expect([...SHOP_ARTWORK_REGISTER_TABLES]).toEqual(["artwork_register"]);
-    expect([...SHOP_ARTWORK_REGISTER_APPEND_ONLY_TABLES]).toEqual(["artwork_register_event"]);
+  it("lets LAX Admin read the artwork register and only decide conflicts, never change records", () => {
+    expect([...SHOP_ARTWORK_REGISTER_READ_TABLES].sort()).toEqual([
+      "artwork_register",
+      "zoho_artwork_sync_outcome",
+    ]);
+    expect([...SHOP_ARTWORK_REGISTER_CONFLICT_TABLES]).toEqual(["artwork_register_conflict"]);
+    expect([...SHOP_ARTWORK_REGISTER_EVENT_TABLES]).toEqual(["artwork_register_event"]);
+    // The records themselves and the sync results are read-only for LAX Admin.
+    for (const table of SHOP_ARTWORK_REGISTER_READ_TABLES) {
+      expect([...SHOP_ARTWORK_REGISTER_CONFLICT_TABLES]).not.toContain(table);
+      expect([...SHOP_ARTWORK_REGISTER_EVENT_TABLES]).not.toContain(table);
+    }
+    expect([...WORKER_DENY_TABLES]).not.toContain("artwork_register");
+  });
+
+  it("lets Shop move an original's offer through the register", () => {
+    expect([...SHOP_ARTWORK_REGISTER_OFFER_TABLES]).toEqual(["artwork_register"]);
   });
 
   it("lets the worker keep the Zoho artwork sync watermark and per-Product results", () => {

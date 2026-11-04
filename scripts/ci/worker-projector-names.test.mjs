@@ -37,6 +37,6 @@ test("worker projector SSOT matches worker source constants", () => {
     [...DOMAIN_EVENT_PROJECTOR_NAMES].sort(),
     fromWorker.filter((n) => n !== IDENTITY_LIFECYCLE_OUTBOX_RELAY_PROJECTOR).sort(),
   );
-  assert.equal(ALL_STAGING_PROJECTOR_NAMES.length, 20);
+  assert.equal(ALL_STAGING_PROJECTOR_NAMES.length, DOMAIN_EVENT_PROJECTOR_NAMES.length + 1);
   assert.ok(ALL_STAGING_PROJECTOR_NAMES.includes(IDENTITY_LIFECYCLE_OUTBOX_RELAY_PROJECTOR));
 });

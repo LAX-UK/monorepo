@@ -168,6 +168,24 @@ export class DrizzleCrmRecordLinkRepository implements ICrmRecordLinkRepository 
       });
   }
 
+  async listActiveSubjectLinksByZohoRecord(
+    zohoModule: string,
+    zohoRecordId: string,
+  ): Promise<CrmRecordLinkRow[]> {
+    const rows = await this.db
+      .select()
+      .from(crmRecordLink)
+      .where(
+        and(
+          eq(crmRecordLink.entityType, "subject"),
+          eq(crmRecordLink.zohoModule, zohoModule),
+          eq(crmRecordLink.zohoRecordId, zohoRecordId),
+          isNull(crmRecordLink.erasedAt),
+        ),
+      );
+    return rows.map(mapRow);
+  }
+
   async tombstoneDealByZohoRecordId(zohoRecordId: string, now?: Date): Promise<void> {
     const at = now ?? new Date();
     await this.db

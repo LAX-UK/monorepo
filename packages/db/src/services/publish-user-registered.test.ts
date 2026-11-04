@@ -77,7 +77,7 @@ describe("publishUserRegistered", () => {
     await publishUserRegistered(
       db,
       { userId: "user-3", email: "x@b.com", name: "X B" },
-      { producer: "ops/backfill-brevo", source: "backfill", accountDb },
+      { producer: "ops/backfill", source: "backfill", accountDb },
     );
 
     expect(values).toHaveBeenCalledWith(

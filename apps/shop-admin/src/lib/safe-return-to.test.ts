@@ -17,6 +17,7 @@ describe("safeReturnTo", () => {
     expect(safeReturnTo("https://evil.example")).toBe("/overview");
     expect(safeReturnTo("//evil.example")).toBe("/overview");
     expect(safeReturnTo("/\\evil.example")).toBe("/overview");
+    expect(safeReturnTo("/\n//evil.example")).toBe("/overview");
   });
 
   it("honours custom fallback", () => {

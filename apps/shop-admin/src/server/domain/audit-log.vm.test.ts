@@ -16,6 +16,15 @@ describe("an audit event", () => {
     expect(auditActionLabel("editorial.preview_token.issue")).toBe("Preview link created");
   });
 
+  it("reads the return and outside-refund actions in words", () => {
+    expect(auditActionLabel("refund_settled_outside")).toBe(
+      "Refund marked as refunded outside LAX",
+    );
+    expect(auditActionLabel("return_in_transit")).toBe("Return marked in transit");
+    expect(auditActionLabel("return_received")).toBe("Return received");
+    expect(auditActionLabel("edition_back_on_sale")).toBe("Print back on sale");
+  });
+
   it("names the record kind, and links to the record when it has a page", () => {
     expect(auditRecordLabel("shop_payout_ledger")).toBe("Payout");
     expect(auditRecordLabel("shop_mystery_box")).toBe("Mystery box");
@@ -30,12 +39,28 @@ describe("an audit event", () => {
       name: "Payment provider",
       email: null,
       kind: "system",
+      source: "Automated: stripe webhook",
     });
     expect(auditActor({ actorSubjectId: "system:other" }).name).toBe("System");
     expect(
       auditActor({ actorSubjectId: "sub-1", actorName: "Sam Lee", actorEmail: "sam@lax.art" }),
-    ).toEqual({ name: "Sam Lee", email: "sam@lax.art", kind: "person" });
-    expect(auditActor({ actorSubjectId: "sub-1" }).name).toBe("Unknown staff member");
+    ).toEqual({ name: "Sam Lee", email: "sam@lax.art", kind: "person", source: null });
+    expect(auditActor({ actorSubjectId: "sub-1" }).name).toBe("Former staff member");
+  });
+
+  it("reads script and seed actors as System with their source", () => {
+    expect(auditActor({ actorSubjectId: "seed:local-admin-staff" })).toEqual({
+      name: "System",
+      email: null,
+      kind: "system",
+      source: "Script: local admin staff",
+    });
+    expect(auditActor({ actorSubjectId: "ops:sam@lax.art" })).toMatchObject({
+      name: "System",
+      kind: "system",
+      source: "Operations script, run by sam@lax.art",
+    });
+    expect(auditActor({ actorSubjectId: "system:identity-purge" }).name).toBe("LAX scheduler");
   });
 
   it("lists what changed in words, with ids as copyable facts", () => {

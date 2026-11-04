@@ -1,4 +1,3 @@
-import { loadArtEnv } from "@/env.server";
 import { loadArtAccountChromeState } from "@/lib/ecosystem/art-account-chrome.server";
 import {
   loadArtCrossProductFooterLinks,
@@ -46,7 +45,6 @@ export async function composeArtChrome(): Promise<ArtChromeVm> {
     footer: buildArtFooterVm({
       crossProductLinks,
       accountState: toArtFooterAccountState(account),
-      cookieSettings: Boolean(loadArtEnv().ART_GA_MEASUREMENT_ID),
       linkablePolicies,
     }),
   };

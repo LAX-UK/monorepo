@@ -186,6 +186,22 @@ describe("separate approver", () => {
   });
 });
 
+describe("the From Zoho queue", () => {
+  it("lets the Administrator and Catalogue editor decide, and anyone who decides read", () => {
+    expect(rolesGranting("artwork_register.review")).toEqual(["shop_admin", "catalogue_editor"]);
+    expect(rolesGranting("artwork_register.read")).toEqual([
+      "shop_admin",
+      "catalogue_editor",
+      "read_only",
+    ]);
+  });
+
+  it("keeps Read-only to viewing", () => {
+    expect(capabilitiesForRole("read_only")).toContain("artwork_register.read");
+    expect(capabilitiesForRole("read_only")).not.toContain("artwork_register.review");
+  });
+});
+
 describe("catalogue and editorial reads", () => {
   it("gives every role that writes a kind of record the read for it", () => {
     for (const role of SHOP_STAFF_ROLES)

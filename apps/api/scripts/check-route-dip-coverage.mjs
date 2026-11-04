@@ -106,7 +106,6 @@ const EXPLICIT_ALLOWLIST = new Set([
   "src/routes/xero-webhook.ts",
   "src/routes/webhooks/stripe.ts",
   "src/routes/webhooks/veriff.ts",
-  "src/routes/webhooks/brevo.ts",
   "src/routes/webhooks/postmark.ts",
   "src/routes/webhooks/zoho.ts",
   "src/routes/admin.ts",

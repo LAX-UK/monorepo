@@ -7,6 +7,7 @@ import Fastify from "fastify";
 import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client";
 import type { ShopApiAppDeps } from "./container.js";
 import { noopArtCacheInvalidator } from "./infrastructure/http-art-cache-invalidator.js";
+import { constantTimeEqual } from "./lib/constant-time-equal.js";
 import { registerPublicCatalogueCaching } from "./plugins/cache-control.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
 import { registerShopAdminScope } from "./plugins/shop-admin-auth.js";
@@ -14,6 +15,7 @@ import { registerShopAuthPlugin } from "./plugins/shop-auth.js";
 import { registerAdminArtistApplicationRoutes } from "./routes/admin/v1/admin-artist-applications.routes.js";
 import { registerAdminArtistIdentityRoutes } from "./routes/admin/v1/admin-artist-identity.routes.js";
 import { registerAdminArtistRoutes } from "./routes/admin/v1/admin-artists.routes.js";
+import { registerAdminArtworkRegisterRoutes } from "./routes/admin/v1/admin-artwork-register.routes.js";
 import { registerAdminEditorialRoutes } from "./routes/admin/v1/admin-editorial.routes.js";
 import { registerAdminEnquiryRoutes } from "./routes/admin/v1/admin-enquiries.routes.js";
 import { registerAdminGuestRoutes } from "./routes/admin/v1/admin-guests.routes.js";
@@ -98,7 +100,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   registerShopAuthPlugin(app, options.deps.auth);
   void app.register(etag);
   void app.register(rateLimit, {
-    max: 120,
+    max: options.deps.env.SHOP_API_RATE_LIMIT_PER_MINUTE ?? 120,
     timeWindow: "1 minute",
     allowList: (request) =>
       request.url.startsWith("/health") ||
@@ -127,8 +129,8 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
 
   app.get("/metrics", async (request, reply) => {
     if (options.deps.env.METRICS_TOKEN) {
-      const token = request.headers.authorization?.replace(/^Bearer\s+/i, "");
-      if (token !== options.deps.env.METRICS_TOKEN) {
+      const token = request.headers.authorization?.replace(/^Bearer\s+/i, "") ?? "";
+      if (!constantTimeEqual(token, options.deps.env.METRICS_TOKEN)) {
         return reply.status(401).send("Unauthorized");
       }
     }
@@ -189,6 +191,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminSavedViewRoutes(adminScope, options.deps.admin.savedViews);
         void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
         void registerAdminGuestRoutes(adminScope, options.deps.admin);
+        void registerAdminArtworkRegisterRoutes(adminScope, options.deps.admin.artworkRegister);
         void registerAdminReleaseAlertRoutes(adminScope, options.deps.admin.releaseAlertSummary);
         void registerAdminArtistApplicationRoutes(
           adminScope,

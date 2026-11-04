@@ -17,6 +17,10 @@ type ArtEditorialCardProps = {
   layout?: MarketingEditorialCardProps["layout"];
   /** Overrides the image `sizes` when the host knows the card's width (rails). */
   sizes?: string;
+  /** `h2` when the cards follow the page title directly, with no section heading between. */
+  titleAs?: MarketingEditorialCardProps["titleAs"];
+  /** Leaves out the image and its placeholder; for a section where no card has an image. */
+  textLed?: boolean;
 };
 
 const SIZES = {
@@ -37,10 +41,13 @@ export function ArtEditorialCard({
   aspect = "landscape",
   layout = "stacked",
   sizes,
+  titleAs,
+  textLed = false,
 }: ArtEditorialCardProps) {
   return (
     <MarketingEditorialCard
       data-testid="art-editorial-card"
+      {...(titleAs ? { titleAs } : {})}
       aspect={aspect}
       layout={layout}
       href={card.href}
@@ -48,17 +55,21 @@ export function ArtEditorialCard({
       title={card.headline}
       kicker={[card.kicker, card.kickerDetail].filter((part): part is string => Boolean(part))}
       details={card.meta ? [card.meta] : []}
-      media={
-        <ArtMediaImage
-          src={card.imageUrl}
-          alt=""
-          label={card.kicker ?? "lax.art"}
-          sizes={sizes ?? (layout === "stacked" ? SIZES[aspect] : SIZES[layout])}
-          priority={priority}
-          className="absolute inset-0 size-full"
-          imgClassName="object-cover"
-        />
-      }
+      {...(textLed
+        ? {}
+        : {
+            media: (
+              <ArtMediaImage
+                src={card.imageUrl}
+                alt=""
+                label={card.kicker ?? "lax.art"}
+                sizes={sizes ?? (layout === "stacked" ? SIZES[aspect] : SIZES[layout])}
+                priority={priority}
+                className="absolute inset-0 size-full"
+                imgClassName="object-cover"
+              />
+            ),
+          })}
     />
   );
 }
@@ -72,12 +83,15 @@ export function ArtEditorialCardGrid({
   ariaLabel,
   priorityCount = 0,
   max,
+  titleAs,
 }: {
   cards: readonly EditorialCardVm[];
   ariaLabel: string;
   priorityCount?: number;
   /** Caps the row to whole rows (`marketingRowCap`); the host links to the rest. */
   max?: number;
+  /** Heading level of the card titles; see `ArtEditorialCard`. */
+  titleAs?: MarketingEditorialCardProps["titleAs"];
 }) {
   return (
     <MarketingCardRow
@@ -91,6 +105,7 @@ export function ArtEditorialCardGrid({
             card={card}
             layout={layout === "feature" ? "split" : "stacked"}
             priority={index < priorityCount}
+            {...(titleAs ? { titleAs } : {})}
           />
         </MarketingCardReveal>
       )}

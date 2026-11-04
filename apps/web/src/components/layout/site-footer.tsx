@@ -1,3 +1,5 @@
+"use client";
+
 import {
   BID_COOKIE_PREFERENCES_HREF,
   buildBidFooterColumns,
@@ -6,6 +8,7 @@ import { FooterNavLink } from "@/components/layout/footer-nav-link";
 import { FooterSocials } from "@/components/layout/footer-socials";
 import { LaxLogo } from "@/components/layout/lax-logo";
 import { CookiePreferencesLink } from "@/components/marketing/consent/cookie-preferences-link";
+import { useAppSession } from "@/lib/auth/use-app-session";
 import { productCopyrightLine } from "@/lib/brand";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
@@ -38,6 +41,7 @@ function renderLink(link: MarketingFooterLink) {
 }
 
 export function SiteFooter({ crossProductLinks = [] }: SiteFooterProps = {}) {
+  const { user } = useAppSession();
   return (
     <MarketingFooter
       headingId="bid-footer-heading"
@@ -46,7 +50,7 @@ export function SiteFooter({ crossProductLinks = [] }: SiteFooterProps = {}) {
           <LaxLogo variant="footer" />
         </Link>
       }
-      columns={buildBidFooterColumns(crossProductLinks)}
+      columns={buildBidFooterColumns(crossProductLinks, user)}
       socials={<FooterSocials />}
       copyright={productCopyrightLine("bid")}
       renderLink={renderLink}

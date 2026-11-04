@@ -1,4 +1,4 @@
-import type { Database } from "@auction/db";
+import type { ShopPhaseDbSession } from "./shop-unit-of-work.js";
 
 /** What the register needs to know about an artwork row to decide whether it is governed. */
 export type OfferedArtwork = {
@@ -20,13 +20,21 @@ export type OfferedArtwork = {
  * artwork is offered elsewhere or already sold.
  */
 export interface OriginalOfferRegister {
-  assertCanPublish(session: Database, artwork: OfferedArtwork): Promise<void>;
+  assertCanPublish(session: ShopPhaseDbSession, artwork: OfferedArtwork): Promise<void>;
   /** Checks again and records the original as offered on lax.art. */
-  recordPublished(session: Database, artwork: OfferedArtwork, actor: string): Promise<void>;
+  recordPublished(
+    session: ShopPhaseDbSession,
+    artwork: OfferedArtwork,
+    actor: string,
+  ): Promise<void>;
   /** The original left lax.art without selling (unpublished or archived). */
-  recordWithdrawn(session: Database, artwork: OfferedArtwork, actor: string): Promise<void>;
+  recordWithdrawn(
+    session: ShopPhaseDbSession,
+    artwork: OfferedArtwork,
+    actor: string,
+  ): Promise<void>;
   /** The original sold on lax.art. */
-  recordSold(session: Database, artwork: OfferedArtwork, actor: string): Promise<void>;
+  recordSold(session: ShopPhaseDbSession, artwork: OfferedArtwork, actor: string): Promise<void>;
 }
 
 export const noOriginalOfferRegister: OriginalOfferRegister = {

@@ -105,6 +105,7 @@ describe("toBidCoverSlide", () => {
   it("maps a live sale: photo first, then the plate, credited to the lot", () => {
     const slide = toBidCoverSlide(sale(), context);
     expect(slide.badge).toBe("Live");
+    expect(slide.badgeLive).toBe(true);
     expect(slide.time).toBe("Lots close from Tue 3 Nov, 21:00 GMT · 2 days 5 hours left");
     expect(slide.media.map((m) => m.kind)).toEqual(["photo", "plate"]);
     expect(slide.credit).toEqual({
@@ -140,6 +141,7 @@ describe("toBidCoverSlide", () => {
       context,
     );
     expect(upcoming.badge).toBe("Upcoming");
+    expect(upcoming.badgeLive).toBeUndefined();
     expect(upcoming.time).toBe("Opens Tue 10 Nov, 21:00 GMT");
     expect(upcoming.primary.label).toBe("Preview the lots");
     const ended = toBidCoverSlide(

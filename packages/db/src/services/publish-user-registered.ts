@@ -11,7 +11,7 @@ export type PublishUserRegisteredInput = {
 };
 
 export type PublishUserRegisteredOptions = {
-  /** Event producer label (e.g. `apps/auth`, `apps/api`, `ops/backfill-brevo`). */
+  /** Event producer label (e.g. `apps/auth`, `apps/api`, `ops/backfill`). */
   producer: string;
   /** Auth-owned DB handle for `account` lookups when event + account tables are split. */
   accountDb?: Database;
@@ -39,7 +39,7 @@ async function resolveRegistrationSource(
   return "credential";
 }
 
-/** Idempotently appends `user.registered` for marketing-contacts + legal-entity projectors.
+/** Idempotently appends `user.registered` for the Zoho and legal-entity projectors.
  *
  * Uses a cheap SELECT pre-check plus the `domain_events_user_registered_uid` partial unique
  * index (see migration 0112) so concurrent callers collapse to a single event per user.

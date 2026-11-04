@@ -677,7 +677,6 @@ export function createContainer(env: Env): Container {
     attributionStore: complianceMedia.attributionStore,
     marketingAttributionEnabled: complianceMedia.marketingAttributionEnabled,
     postmarkWebhookService: userMisc.postmarkWebhookService,
-    brevoWebhookIngestService: cron.brevoWebhookIngestService,
     zohoArtworkNoticeService: cron.zohoArtworkNoticeService,
     accountDeletionEligibilityService: cron.accountDeletionEligibilityService,
     subjectExportService: createBidSubjectExportService({
@@ -780,6 +779,7 @@ export function createContainer(env: Env): Container {
       deliveryQuotes: organisationBuying.staffDeliveryQuotes,
       marketingEnquiries: marketingEnquiries.desk,
       enquiryRouting: marketingEnquiries.routing,
+      enquiryErasure: marketingEnquiries.erasure,
       dataRequests: new AdminDataRequestsService({
         identity: new HttpIdentityDataRequestsClient({
           issuerBaseUrl: env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL,
@@ -787,6 +787,17 @@ export function createContainer(env: Env): Container {
           clientSecret: env.IDENTITY_DATA_REQUESTS_CLIENT_SECRET,
         }),
         audit: new DomainEventDataRequestAuditTrail(platform.domainEventSink),
+        accounts: {
+          findByEmail: async (email) => {
+            const subject = await identityIssuer.findSubjectByEmail(email);
+            if (!subject) return null;
+            return {
+              subjectId: subject.id,
+              name: subject.name,
+              status: subject.identityDisabledAt ? "disabled" : "active",
+            };
+          },
+        },
       }),
       stepUp: new StaffStepUpService(identityIssuer),
       idempotencyStore: new RedisIdempotencyStore(infra.redis),
@@ -825,7 +836,6 @@ export type {
   ContainerBiddingRoutesSlice,
   ContainerIdentityRoutesSlice,
   ContainerBiddingSaleroomSlice,
-  ContainerBrevoWebhookRoutesSlice,
   ContainerCatalogAdminReadersSlice,
   ContainerCatalogSlice,
   ContainerCategoryRoutesSlice,

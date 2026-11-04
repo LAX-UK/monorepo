@@ -32,11 +32,6 @@ export type {
   RetentionHolding,
 } from "./kyc-retention-subject.store.js";
 export type {
-  IMarketingContactSyncRepository,
-  MarketingContactSyncAuditInput,
-  MarketingContactSyncUserRow,
-} from "./marketing-contact-sync.repository.js";
-export type {
   IStaffOpsRecipientReader,
   StaffOpsRecipient,
 } from "./staff-ops-recipient.reader.js";

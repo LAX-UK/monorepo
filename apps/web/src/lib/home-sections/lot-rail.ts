@@ -1,4 +1,4 @@
-import { formatLondonDateTime } from "@/lib/datetime/london-time";
+import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { HOME_SECTION_LIMITS } from "@/lib/home-sections/limits";
 import { type ArtistNames, homeLotCard } from "@/lib/home-sections/lot-card";
 import type { HomeLotRail } from "@/lib/home-sections/types";
@@ -10,7 +10,7 @@ export type LotRailKind = "inThisSale" | "highlightsFromNextSale" | "topLotsOfSa
 
 type RailCopy = {
   heading: string;
-  subtitle: (sale: Sale, lots: readonly Lot[]) => string;
+  subtitle: (sale: Sale, now: Date) => string;
   seeAll: (total: number) => string;
 };
 
@@ -18,12 +18,13 @@ type RailCopy = {
 const RAIL_COPY: Record<LotRailKind, RailCopy> = {
   inThisSale: {
     heading: "More from this sale",
-    subtitle: (sale) => `Bidding closes from ${formatLondonDateTime(sale.endTime)}`,
+    subtitle: (sale, now) => `Bidding closes from ${formatLondonWhen(sale.endTime, now)}`,
     seeAll: (total) => `View all ${formatSaleLotsLabel(total)}`,
   },
   highlightsFromNextSale: {
     heading: "Highlights from the next sale",
-    subtitle: (sale) => `Estimates shown; bidding opens ${formatLondonDateTime(sale.startTime)}`,
+    subtitle: (sale, now) =>
+      `Estimates shown; bidding opens ${formatLondonWhen(sale.startTime, now)}`,
     seeAll: (total) => `View all ${formatSaleLotsLabel(total)}`,
   },
   topLotsOfSale: {
@@ -50,7 +51,7 @@ export function buildLotRail(input: {
   const copy = RAIL_COPY[input.kind];
   return {
     heading: copy.heading,
-    subtitle: copy.subtitle(input.sale, input.lots),
+    subtitle: copy.subtitle(input.sale, input.now),
     seeAll: {
       href: salePath(input.sale),
       label: copy.seeAll(Math.max(input.lotCount, input.lots.length)),

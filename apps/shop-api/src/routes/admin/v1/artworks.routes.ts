@@ -187,6 +187,7 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
         ...cleanArtworkFields(body),
         slug: body.slug,
         run: body.run,
+        prints: body.prints ?? null,
       });
       return afterArtCatalogueWrite(request, deps.artCache, "artworks", result);
     },
@@ -283,6 +284,7 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
         ...actor,
         action: body.action,
         artworkIds: body.artworkIds,
+        ...(body.action === "publish" ? { sendReleaseAlert: body.sendReleaseAlert === true } : {}),
       });
       return afterArtCatalogueWrite(request, deps.artCache, "artworks", result);
     },

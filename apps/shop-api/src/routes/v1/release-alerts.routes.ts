@@ -12,13 +12,13 @@ import {
 } from "@auction/shop-contracts";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import type { EnquiryRateLimiter } from "../../application/enquiry-rate-limit.js";
-import type { ReleaseAlertHandlers } from "../../application/handlers/release-alerts.handler.js";
+import type { ShopAlertHandlers } from "../../application/handlers/shop-alerts.handler.js";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
 import { requireShopScope, requireShopSubject } from "../../plugins/shop-auth.js";
 import { admissionClientIp } from "./enquiry-admission.js";
 
 export type ReleaseAlertRoutesDeps = {
-  releaseAlerts: ReleaseAlertHandlers;
+  releaseAlerts: ShopAlertHandlers;
   releaseAlertRateLimiter: EnquiryRateLimiter;
 };
 
@@ -148,8 +148,23 @@ export async function registerReleaseAlertRoutes(
     },
   );
 
+  for (const base of LINK_BASES) registerLinkRoutes(app, deps, base);
+}
+
+/**
+ * The pages behind the links in alert emails. They are served under both addresses: the release
+ * alert pages LAX Shop already has, and the shared alert address lax.art uses. The token says
+ * which product it belongs to.
+ */
+const LINK_BASES = ["/v1/release-alerts", "/v1/email-alerts"] as const;
+
+function registerLinkRoutes(
+  app: FastifyInstance,
+  deps: ReleaseAlertRoutesDeps,
+  base: (typeof LINK_BASES)[number],
+) {
   app.post(
-    "/v1/release-alerts/confirm",
+    `${base}/confirm`,
     {
       schema: {
         tags: ["catalogue"],
@@ -170,7 +185,7 @@ export async function registerReleaseAlertRoutes(
   );
 
   app.get(
-    "/v1/release-alerts/unsubscribe",
+    `${base}/unsubscribe`,
     {
       schema: {
         tags: ["catalogue"],
@@ -192,7 +207,7 @@ export async function registerReleaseAlertRoutes(
   );
 
   app.post(
-    "/v1/release-alerts/unsubscribe",
+    `${base}/unsubscribe`,
     {
       schema: {
         tags: ["catalogue"],

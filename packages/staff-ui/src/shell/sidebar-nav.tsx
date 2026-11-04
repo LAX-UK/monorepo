@@ -1,9 +1,10 @@
 "use client";
 
-import { Count, type LinkComponent } from "@auction/ui/lax";
+import type { LinkComponent } from "@auction/ui/lax";
 import { resolveActiveNavHref } from "@auction/ui/shell";
 import { cn } from "../lib/cn.js";
 import { StaffTooltip } from "../primitives/menu.js";
+import { NavCountDot, NavCountPill, navCountText } from "./nav-count.js";
 import type { StaffNavGroup, StaffNavItem } from "./types.js";
 
 export function resolveActiveItem(
@@ -68,6 +69,7 @@ export function SidebarNav({
               {group.items.map((item) => {
                 const isActive = active?.href === item.href;
                 const Icon = item.icon;
+                const countTone = item.countTone ?? "neutral";
                 const link = (
                   <Link
                     href={item.href}
@@ -98,20 +100,17 @@ export function SidebarNav({
                             : "text-staff-subtle group-hover/nav:text-staff-fg",
                         )}
                       />
-                      {collapsed && item.count ? (
-                        <span
-                          aria-hidden
-                          className="absolute -top-1 -right-1 size-2 rounded-full bg-staff-ink ring-2 ring-staff-sunken"
-                        />
-                      ) : null}
+                      {collapsed && item.count ? <NavCountDot tone={countTone} /> : null}
                     </span>
                     {collapsed ? null : (
                       <span className="min-w-0 flex-1 truncate">{item.label}</span>
                     )}
                     {!collapsed && item.count ? (
-                      <Count value={item.count} tone={item.countTone ?? "neutral"} />
+                      <NavCountPill value={item.count} tone={countTone} />
                     ) : null}
-                    {item.count ? <span className="sr-only">, {item.count} waiting</span> : null}
+                    {item.count ? (
+                      <span className="sr-only">, {navCountText(item.count, countTone)}</span>
+                    ) : null}
                   </Link>
                 );
                 return (

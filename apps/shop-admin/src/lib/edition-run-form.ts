@@ -1,3 +1,4 @@
+import { allocationSentence } from "@/server/domain/edition-run.vm";
 import {
   type AdminEditionRunSpec,
   type AdminMainRunInput,
@@ -10,7 +11,6 @@ import {
 import {
   LAX_STANDARD_ALLOCATION,
   SHOP_EDITION_COUNT,
-  allocationNumbering,
   defaultCustomAllocation,
 } from "@auction/shop-domain";
 
@@ -157,21 +157,9 @@ export function allocationTotalText(totals: AllocationTotals): {
   return { text: `${base}: ${-(totals.left ?? 0)} too many`, complete: false };
 }
 
-const RANGE_NAMES = {
-  original_buyer_entitlement: "buyers",
-  artist: "artist",
-  lax: "LAX",
-} as const;
-
-/** "Numbering: 1–10 buyers · 11–20 artist · 21–24 LAX"; null until the numbers add up. */
+/** Who holds which numbers, once the allocation adds up; null until then. */
 export function numberingText(allocation: { buyer: number; artist: number; lax: number }) {
-  const ranges = allocationNumbering(allocation);
-  if (ranges.length === 0) return null;
-  const parts = ranges.map((range) => {
-    const span = range.from === range.to ? `${range.from}` : `${range.from}–${range.to}`;
-    return `${span} ${RANGE_NAMES[range.allocation]}`;
-  });
-  return `Numbering: ${parts.join(" · ")}`;
+  return allocationSentence(allocation);
 }
 
 /** The numbering of the run being edited, once its allocation adds up. */

@@ -22,7 +22,6 @@ import {
   processLotInvoiceInitiation,
 } from "./lot-invoice-initiation.js";
 import { processLotVoidedAntiShillingAdminNotify } from "./lot-voided-anti-shilling-admin-notify.js";
-import { createMarketingContactsProjector } from "./marketing-contacts-projector.js";
 import { NOTIFICATION_FANOUT_PROJECTOR, processNotificationFanout } from "./notification-fanout.js";
 import { processPaymentRefundNotify } from "./payment-refund-notify.js";
 import { processPayoutTransferFailedNotify } from "./payout-transfer-failed-notify.js";
@@ -50,6 +49,7 @@ import {
   UNSOLD_CHOICE_DEADLINE_PROJECTOR,
   processUnsoldChoiceDeadline,
 } from "./unsold-choice-deadline.js";
+import { UNSOLD_FOLLOW_UP_PROJECTOR, processUnsoldFollowUp } from "./unsold-follow-up.js";
 import { createXeroProjector } from "./xero-projector.js";
 import { createZohoArtworkWritebackProjector } from "./zoho-artwork-writeback-projector.js";
 import { createZohoProjector } from "./zoho-projector.js";
@@ -89,7 +89,6 @@ function emailProjectorArgs(ctx: ProjectorRunContext) {
 export function createDefaultProjectorRegistry(): ProjectorRegistry {
   const projectors: Projector[] = [
     createXeroProjector(),
-    createMarketingContactsProjector(),
     createZohoProjector(),
     {
       name: SHOP_IDENTITY_PROJECTION_PROJECTOR,
@@ -258,6 +257,20 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
           recorder: ctx.unsoldChoiceDeadlines as NonNullable<
             ProjectorRunContext["unsoldChoiceDeadlines"]
           >,
+        });
+      },
+    },
+    {
+      name: UNSOLD_FOLLOW_UP_PROJECTOR,
+      isEnabled(ctx) {
+        return ctx.unsoldFollowUps != null;
+      },
+      async run(ctx) {
+        await ctx.projectorStateRepo.ensureCursor(UNSOLD_FOLLOW_UP_PROJECTOR);
+        await processUnsoldFollowUp({
+          ctx,
+          log: ctx.log,
+          opener: ctx.unsoldFollowUps as NonNullable<ProjectorRunContext["unsoldFollowUps"]>,
         });
       },
     },

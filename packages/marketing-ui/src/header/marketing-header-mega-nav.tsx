@@ -280,8 +280,9 @@ export function MarketingHeaderMegaNav<TSection extends MarketingMegaNavSection>
                     className={headerMegaNavTriggerClass(
                       headerTone,
                       { active, open: false },
-                      // Matches the trigger Button's box (min-h-9, pt-2) so labels share a baseline.
-                      "inline-flex min-h-9 items-center whitespace-nowrap pt-2",
+                      // Same box as the trigger Button (36px tall, no top padding) so a plain link's
+                      // label sits on the same line as the labels with a chevron.
+                      "inline-flex min-h-9 items-center whitespace-nowrap",
                     )}
                     aria-current={active ? "page" : undefined}
                     onMouseEnter={() => {

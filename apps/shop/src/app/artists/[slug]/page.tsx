@@ -5,7 +5,6 @@ import {
   loadShopArtBaseUrl,
   loadShopStorefrontBaseUrl,
 } from "@/lib/ecosystem/product-directory.server";
-import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
 import { fetchPublicArtistBySlug, fetchPublicArtworks } from "@/lib/shop-api.server";
 import { FOCUS_RING } from "@auction/branding";
 import {
@@ -17,6 +16,7 @@ import {
   MarketingReadMore,
   MarketingShareButton,
   marketingArtistFacts,
+  marketingArtistInitials,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
@@ -142,7 +142,7 @@ export default async function ArtistDetailPage({ params, searchParams }: ArtistD
             <ShopMediaImage
               src={artist.portraitUrl}
               alt={`Portrait of ${artist.name}`}
-              label={SHOP_MEDIA_LABELS.artistPortrait}
+              monogram={marketingArtistInitials(artist.name)}
               aspect={[4, 5]}
               sizes="(min-width: 48rem) 20rem, 14rem"
               priority

@@ -1,5 +1,6 @@
 "use server";
 
+import { redirectWithAdminFlash } from "@/lib/admin/flash/flash.server";
 import {
   assertAdminCapabilityForRedirect,
   denyUnlessAdminCapability,
@@ -20,14 +21,14 @@ export async function adminRefundPaymentAction(formData: FormData): Promise<void
     async () => {
       const denied = await assertAdminCapabilityForRedirect(PAYMENT_WRITE_ACCESS);
       if (!denied.ok) {
-        redirect(`/admin/payments?error=${encodeURIComponent(denied.message)}`);
+        return redirectWithAdminFlash("/admin/payments", "error", denied.message);
       }
       const id = String(formData.get("paymentId") ?? "").trim();
-      if (!id) redirect(`/admin/payments?error=${encodeURIComponent("Missing payment")}`);
+      if (!id) return redirectWithAdminFlash("/admin/payments", "error", "Missing payment");
       const { adminPayments } = getWriteContainer();
       const r = await adminPayments.refund(id);
       if (!r.ok) {
-        redirect(`/admin/payments?error=${encodeURIComponent(r.message)}`);
+        return redirectWithAdminFlash("/admin/payments", "error", r.message);
       }
       revalidatePath("/admin/payments");
       redirect("/admin/payments");
@@ -42,14 +43,14 @@ export async function adminCapturePaymentAction(formData: FormData): Promise<voi
     async () => {
       const denied = await assertAdminCapabilityForRedirect(PAYMENT_WRITE_ACCESS);
       if (!denied.ok) {
-        redirect(`/admin/payments?error=${encodeURIComponent(denied.message)}`);
+        return redirectWithAdminFlash("/admin/payments", "error", denied.message);
       }
       const id = String(formData.get("paymentId") ?? "").trim();
-      if (!id) redirect(`/admin/payments?error=${encodeURIComponent("Missing payment")}`);
+      if (!id) return redirectWithAdminFlash("/admin/payments", "error", "Missing payment");
       const { adminPayments } = getWriteContainer();
       const r = await adminPayments.capture(id);
       if (!r.ok) {
-        redirect(`/admin/payments?error=${encodeURIComponent(r.message)}`);
+        return redirectWithAdminFlash("/admin/payments", "error", r.message);
       }
       revalidatePath("/admin/payments");
       redirect("/admin/payments");
@@ -135,12 +136,14 @@ export async function adminXeroOAuthStartAction(): Promise<void> {
   return instrumentServerAction("adminXeroOAuthStartAction", async () => {
     const denied = await assertAdminCapabilityForRedirect(FINANCE_ACCESS);
     if (!denied.ok) {
-      redirect(`/admin/integrations/xero?error=${encodeURIComponent(denied.message)}`);
+      return redirectWithAdminFlash("/admin/integrations/xero", "error", denied.message);
     }
     const url = await getAdminXeroOAuthConsentUrl();
     if (!url) {
-      redirect(
-        `/admin/integrations/xero?error=${encodeURIComponent("Could not start Xero OAuth")}`,
+      return redirectWithAdminFlash(
+        "/admin/integrations/xero",
+        "error",
+        "Could not start Xero OAuth",
       );
     }
     redirect(url);
@@ -151,11 +154,11 @@ export async function adminXeroDisconnectAction(): Promise<void> {
   return instrumentServerAction("adminXeroDisconnectAction", async () => {
     const denied = await assertAdminCapabilityForRedirect(FINANCE_ACCESS);
     if (!denied.ok) {
-      redirect(`/admin/integrations/xero?error=${encodeURIComponent(denied.message)}`);
+      return redirectWithAdminFlash("/admin/integrations/xero", "error", denied.message);
     }
     const res = await authedServerFetch("/admin/integrations/xero/disconnect", { method: "POST" });
     if (!res.ok) {
-      redirect(`/admin/integrations/xero?error=${encodeURIComponent("Disconnect failed")}`);
+      return redirectWithAdminFlash("/admin/integrations/xero", "error", "Disconnect failed");
     }
     revalidatePath("/admin/integrations/xero");
     redirect("/admin/integrations/xero");

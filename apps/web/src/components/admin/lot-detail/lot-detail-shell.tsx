@@ -111,15 +111,11 @@ export function LotDetailShell({
     }
     router.push("/admin/lots");
   }, [parentSale, context.parentSaleLotCount, router]);
-  const onConnectRequired = useCallback(
-    (message: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("error_code", "connect_required");
-      params.set("error", message);
-      router.replace(`?${params.toString()}`, { scroll: false });
-    },
-    [router, searchParams],
-  );
+  const onConnectRequired = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("error_code", "connect_required");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
   const lotActions = useLotActions(
     { canManageCatalog, canManageAuction, canDecideWithdrawals },
     { afterDelete, onConnectRequired },

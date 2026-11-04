@@ -12,6 +12,8 @@ const url = process.env.DATABASE_URL;
 const db = url ? createDb(url) : (null as never);
 
 const NOW = new Date("2026-11-03T09:00:00.000Z");
+/** Later than NOW so the lock's history entries sort after the one written at creation. */
+const LATER = new Date("2026-11-03T09:05:00.000Z");
 const shop = { kind: "shop_artwork", id: "art-1" } as const;
 const lot = { kind: "bid_lot", id: "lot-1" } as const;
 
@@ -34,12 +36,16 @@ function newEntry(overrides: Partial<NewArtworkRegisterEntry> = {}): NewArtworkR
 
 describe.skipIf(!url)("one place at a time (Postgres)", { timeout: 30_000 }, () => {
   const repo = new DrizzleArtworkRegisterRepository(db);
-  const lock = new ArtworkOfferLock(repo, () => NOW);
+  const lock = new ArtworkOfferLock(repo, () => LATER);
 
   beforeEach(async () => {
+    // Not TRUNCATE ... CASCADE: Bid lots reference the register, and a cascade would wipe them too.
     await db.execute(
-      sql`TRUNCATE artwork_register_conflict, artwork_register_event, artwork_register CASCADE`,
+      sql`UPDATE lot SET artwork_register_id = NULL WHERE artwork_register_id IS NOT NULL`,
     );
+    await db.execute(sql`TRUNCATE artwork_register_conflict, artwork_register_event`);
+    await db.execute(sql`UPDATE artwork_register SET source_original_id = NULL`);
+    await db.execute(sql`DELETE FROM artwork_register`);
     await db.execute(sql`DELETE FROM domain_events WHERE aggregate_type = 'artwork_register'`);
   });
 
@@ -115,7 +121,7 @@ describe.skipIf(!url)("one place at a time (Postgres)", { timeout: 30_000 }, () 
     const entry = await created();
     await expect(
       db.transaction(async (tx) => {
-        const inTx = new ArtworkOfferLock(repo.withExecutor(tx as never), () => NOW);
+        const inTx = new ArtworkOfferLock(repo.withExecutor(tx as never), () => LATER);
         expect((await inTx.offer({ registerId: entry.id }, shop, "staff:u1")).status).toBe("moved");
         throw new Error("the product change failed");
       }),
@@ -124,7 +130,7 @@ describe.skipIf(!url)("one place at a time (Postgres)", { timeout: 30_000 }, () 
     expect(await repo.listEvents(entry.id, 10)).toHaveLength(1);
 
     await db.transaction(async (tx) => {
-      const inTx = new ArtworkOfferLock(repo.withExecutor(tx as never), () => NOW);
+      const inTx = new ArtworkOfferLock(repo.withExecutor(tx as never), () => LATER);
       await inTx.offer({ registerId: entry.id }, shop, "staff:u1");
     });
     expect((await repo.findById(entry.id))?.offer.state).toBe("lax_art");

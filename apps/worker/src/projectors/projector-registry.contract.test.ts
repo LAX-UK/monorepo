@@ -7,7 +7,6 @@ import { BID_IDENTITY_DIRECTORY_PROJECTOR } from "./bid-identity-directory.js";
 import { BID_PERSONAL_DATA_ANONYMISATION_PROJECTOR } from "./bid-personal-data-anonymisation.js";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
 import { LOT_INVOICE_INITIATION_PROJECTOR } from "./lot-invoice-initiation.js";
-import { MARKETING_CONTACTS_PROJECTOR } from "./marketing-contacts-projector.js";
 import { NOTIFICATION_FANOUT_PROJECTOR } from "./notification-fanout.js";
 import { createDefaultProjectorRegistry } from "./projector-registry.js";
 import { SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR } from "./source-of-funds-document-review.js";
@@ -15,6 +14,7 @@ import { SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR } from "./source-of-funds-documents
 import { SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR } from "./source-of-funds-review-resolution.js";
 import { SOURCE_OF_FUNDS_REVIEW_PROJECTOR } from "./source-of-funds-review.js";
 import { UNSOLD_CHOICE_DEADLINE_PROJECTOR } from "./unsold-choice-deadline.js";
+import { UNSOLD_FOLLOW_UP_PROJECTOR } from "./unsold-follow-up.js";
 import { XERO_PROJECTOR } from "./xero-projector.js";
 import { ZOHO_ARTWORK_WRITEBACK_PROJECTOR } from "./zoho-artwork-writeback-projector.js";
 import { ZOHO_PROJECTOR } from "./zoho-projector.js";
@@ -22,7 +22,6 @@ import { ZOHO_PROJECTOR } from "./zoho-projector.js";
 /** Pin tick order and projector names from the pre-registry runner. */
 const EXPECTED_PROJECTOR_ORDER = [
   XERO_PROJECTOR,
-  MARKETING_CONTACTS_PROJECTOR,
   ZOHO_PROJECTOR,
   "shop_identity_projection",
   "admin_impersonation_notify",
@@ -42,6 +41,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR,
   LOT_INVOICE_INITIATION_PROJECTOR,
   UNSOLD_CHOICE_DEADLINE_PROJECTOR,
+  UNSOLD_FOLLOW_UP_PROJECTOR,
   BID_ALERT_MATCHING_PROJECTOR,
   ARTWORK_OFFER_LOCK_PROJECTOR,
   ZOHO_ARTWORK_WRITEBACK_PROJECTOR,
@@ -122,7 +122,14 @@ describe("createDefaultProjectorRegistry", () => {
       BID_ALERT_MATCHING_PROJECTOR,
     );
     const on = registry.listEnabledProjectorNames(
-      baseCtx({ bidAlerts: { isSeeded: async () => true, handle: async () => undefined } }),
+      baseCtx({
+        bidAlerts: {
+          isSeeded: async () => true,
+          handle: async () => undefined,
+          lotStart: async () => 0,
+          handleLots: async () => undefined,
+        },
+      }),
     );
     expect(on).toContain(BID_ALERT_MATCHING_PROJECTOR);
   });
@@ -189,19 +196,6 @@ describe("createDefaultProjectorRegistry", () => {
       }),
     );
     expect(withOrigin).toContain("lot_voided_anti_shilling_admin_notify");
-  });
-
-  it("skips marketing contacts when enqueueMarketingContactSync is unset", () => {
-    expect(registry.listEnabledProjectorNames(baseCtx())).not.toContain(
-      MARKETING_CONTACTS_PROJECTOR,
-    );
-    expect(
-      registry.listEnabledProjectorNames(
-        baseCtx({
-          enqueueMarketingContactSync: vi.fn(),
-        }),
-      ),
-    ).toContain(MARKETING_CONTACTS_PROJECTOR);
   });
 
   it("skips lot invoice initiation when ensureLotInvoice is unset", () => {

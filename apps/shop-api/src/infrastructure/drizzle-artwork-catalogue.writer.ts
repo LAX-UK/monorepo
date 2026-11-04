@@ -7,7 +7,6 @@ import {
   shopEdition,
   shopEditionFacts,
   shopMediaAsset,
-  shopParty,
 } from "@auction/db/schema";
 import {
   type AdminArtworkState,
@@ -22,10 +21,13 @@ import {
   assertEditionPrice,
   assertLivePriceKept,
   assertSourceOriginal,
+  isArtOriginalRelease,
   isShopEditionRelease,
 } from "@auction/shop-domain";
 import { and, asc, count, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { withAdminIdempotency } from "../application/admin/with-admin-idempotency.js";
+import type { ShopAlertAnnouncer } from "../application/alerts/alert-ports.js";
+import type { OriginalPrintsRecorder } from "../application/edition-runs/create-prints-from-original.service.js";
 import type { EditionRunRecorder } from "../application/edition-runs/edition-run-services.js";
 import type {
   ArtworkCatalogueWriter,
@@ -35,7 +37,6 @@ import {
   type OriginalOfferRegister,
   noOriginalOfferRegister,
 } from "../application/ports/original-offer-register.js";
-import type { ReleaseAlertAnnouncer } from "../application/ports/release-alert.store.js";
 import type { ShopTransactionEffects } from "../application/ports/shop-unit-of-work.js";
 import type { ShopUnitOfWorkFactory } from "../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
@@ -262,7 +263,7 @@ async function applyVisibility(
   action: AdminArtworkVisibilityAction,
   actorSubjectId: string,
   offers: OriginalOfferRegister,
-  releaseAlerts?: { announcer: ReleaseAlertAnnouncer; send: boolean },
+  releaseAlerts?: { announcer: ShopAlertAnnouncer; send: boolean },
 ): Promise<VisibilityOutcome> {
   const now = new Date();
   let patch: Partial<Pick<ArtworkRow, "publishedAt" | "archivedAt">> | null = null;
@@ -328,16 +329,25 @@ async function applyVisibility(
     afterJson: { published: after.publishedAt !== null, archived: after.archivedAt !== null },
   });
   await recordOffer(shopPhaseDbSession(tx), offers, action, after, `staff:${actorSubjectId}`);
-  if (action !== "publish" || !releaseAlerts?.send || !isShopEditionRelease(after)) {
-    return { outcome: "changed", artwork: after };
-  }
-  const { queued } = await releaseAlerts.announcer.announce(tx.session, {
+  if (action !== "publish" || !releaseAlerts) return { outcome: "changed", artwork: after };
+  // The work is recorded as announced here, in the publishing transaction, and turned into matches
+  // later. Staff choose whether an edition tells subscribers; an original always tells followers.
+  const kind = isShopEditionRelease(after)
+    ? ("shop_release" as const)
+    : isArtOriginalRelease(after)
+      ? ("art_original" as const)
+      : null;
+  if (!kind) return { outcome: "changed", artwork: after };
+  const { queued } = await releaseAlerts.announcer.recordPublished(tx.session, {
     artworkId: after.id,
-    slug: after.slug,
-    title: after.title,
-    artistName: await artistDisplayName(tx, after.artistId),
+    kind,
+    announce: kind === "art_original" || releaseAlerts.send,
   });
-  return { outcome: "changed", artwork: after, releaseAlertsQueued: queued };
+  return {
+    outcome: "changed",
+    artwork: after,
+    ...(kind === "shop_release" && releaseAlerts.send ? { releaseAlertsQueued: queued } : {}),
+  };
 }
 
 /** Tells the register where the original now is. Restoring a draft changes nothing there. */
@@ -354,27 +364,18 @@ async function recordOffer(
   }
 }
 
-async function artistDisplayName(tx: ShopTransactionEffects, artistId: string): Promise<string> {
-  const [row] = await shopPhaseDbSession(tx)
-    .select({ displayName: shopParty.displayName })
-    .from(shopArtist)
-    .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-    .where(eq(shopArtist.id, artistId))
-    .limit(1);
-  return row?.displayName ?? "";
-}
-
 export function createDrizzleArtworkCatalogueWriter(
   uow: ShopUnitOfWorkFactory,
   options: {
     resolveMediaUrl: ResolveMediaUrl;
     editionRuns: EditionRunRecorder;
-    releaseAlerts: ReleaseAlertAnnouncer;
+    originalPrints: OriginalPrintsRecorder;
+    releaseAlerts: ShopAlertAnnouncer;
     /** One place at a time for originals; omitted where no register is wired. */
     offers?: OriginalOfferRegister;
   },
 ): ArtworkCatalogueWriter {
-  const { resolveMediaUrl, editionRuns, releaseAlerts } = options;
+  const { resolveMediaUrl, editionRuns, originalPrints, releaseAlerts } = options;
   const offers = options.offers ?? noOriginalOfferRegister;
   return {
     createArtwork: (input) =>
@@ -388,6 +389,13 @@ export function createDrizzleArtworkCatalogueWriter(
           run: async () => {
             if (input.printPricePence !== null && !input.canSetPrice) throw priceForbidden();
             const eligibleForEditionAllocation = input.run !== null;
+            if (input.prints && eligibleForEditionAllocation) {
+              throw new ShopApiError(
+                SHOP_API_ERROR_CODES.VALIDATION,
+                "Prints can be created together with an original only",
+                400,
+              );
+            }
             assertEditionPrice({ pricePence: input.printPricePence, eligibleForEditionAllocation });
             const artist = await readArtist(tx, input.artistId);
             if (artist.archivedAt) {
@@ -466,6 +474,14 @@ export function createDrizzleArtworkCatalogueWriter(
                 payload: { schemaVersion: 1, importKey, editionCount },
               });
             }
+            // The original's prints join this transaction: any failure here saves nothing.
+            const prints = input.prints
+              ? await originalPrints.recordPrints(tx, {
+                  ...input.prints,
+                  originalArtworkId: artwork.id,
+                  actorSubjectId: input.actorSubjectId,
+                })
+              : null;
             await tx.audit.append({
               actorSubjectId: input.actorSubjectId,
               capability: CAPABILITY,
@@ -486,6 +502,7 @@ export function createDrizzleArtworkCatalogueWriter(
               artworkId: artwork.id,
               slug: artwork.slug,
               version: artwork.updatedAt.toISOString(),
+              ...(prints ? { prints } : {}),
               // A new artwork is a draft: nothing on lax.art changes until it is published.
               refreshesArt: false,
             };
@@ -714,6 +731,10 @@ export function createDrizzleArtworkCatalogueWriter(
                 input.action,
                 input.actorSubjectId,
                 offers,
+                {
+                  announcer: releaseAlerts,
+                  send: input.sendReleaseAlert === true,
+                },
               );
               if (result.outcome === "changed" && changesArtStorefront(artwork, result.artwork)) {
                 refreshesArt = true;

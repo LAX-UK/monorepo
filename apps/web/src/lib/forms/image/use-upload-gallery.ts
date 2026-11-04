@@ -4,6 +4,7 @@ import {
   type ConfirmedUpload,
   useUploadObjectLifecycle,
 } from "@/hooks/use-upload-object-lifecycle";
+import { uploadFailureCopy } from "@/lib/forms/image/upload-failure-copy";
 import {
   type CatalogImageUploadKind,
   getCatalogImagePolicy,
@@ -63,11 +64,12 @@ export function useUploadGallery({ kind, value, onChange, maxFiles, onError }: A
       ]);
       const policy = getCatalogImagePolicy(kind);
       const acceptedTypes = new Set(policy.accept.split(","));
+      const copy = uploadFailureCopy(kind);
       const validationMessage =
         file.size > policy.maxBytes
-          ? `This file is over the ${Math.round(policy.maxBytes / 1024 / 1024)} MB limit.`
+          ? copy.tooLarge(policy.maxBytes)
           : file.type && !acceptedTypes.has(file.type)
-            ? "This file type is not supported."
+            ? copy.wrongType
             : null;
       if (validationMessage) {
         updateItem(itemId, { status: "error", message: validationMessage, retryable: false });
@@ -84,7 +86,10 @@ export function useUploadGallery({ kind, value, onChange, maxFiles, onError }: A
         }
         return uploaded;
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Upload failed";
+        // Whatever the cause, the person's next move is the same: try the photo again.
+        const message = uploadFailureCopy(kind).failed(
+          err instanceof Error ? err.message : "Upload failed",
+        );
         updateItem(itemId, { status: "error", message });
         onError?.(message);
         return null;

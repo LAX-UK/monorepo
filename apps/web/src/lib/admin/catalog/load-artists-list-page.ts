@@ -3,7 +3,6 @@ import "server-only";
 import { artistsListController } from "@/lib/admin/admin-list-controllers";
 import { artistsQueue } from "@/lib/admin/artists/artists-staff-list.vm";
 import { categoryPickerOptions } from "@/lib/admin/catalog/category-picker-options";
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { getAdminArtistStats, getLotArtistBackfillReviewTasks } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
@@ -34,7 +33,6 @@ export async function loadAdminArtistsListPage(sp: AdminArtistsListSearchParams)
     canMerge: can(ARTIST_MERGE_ACCESS),
   };
   const query = artistsListController.parseQuery(sp);
-  const error = safeDecodeAdminErrorParam(sp.error);
 
   if (queue) {
     return {
@@ -45,7 +43,7 @@ export async function loadAdminArtistsListPage(sp: AdminArtistsListSearchParams)
       stats: null,
       backfillTasks: 0,
       categoryOptions: [] as EntityOption[],
-      loadError: error,
+      loadError: null,
       permissions,
     };
   }
@@ -78,7 +76,7 @@ export async function loadAdminArtistsListPage(sp: AdminArtistsListSearchParams)
     stats,
     backfillTasks,
     categoryOptions,
-    loadError: list.error ?? error,
+    loadError: list.error,
     permissions,
   };
 }

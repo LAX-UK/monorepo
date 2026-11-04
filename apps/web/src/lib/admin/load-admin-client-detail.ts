@@ -34,6 +34,7 @@ import {
   ARTIST_WRITE_ACCESS,
   CLIENT_BIDS_ACCESS,
   CLIENT_KYC_ACCESS,
+  EMAIL_DELIVERY_READ_ACCESS,
   FINANCE_ACCESS,
   USER_MODERATION_ACCESS,
   USER_ROLE_MANAGEMENT_ACCESS,
@@ -99,6 +100,8 @@ export const loadAdminClientDetail = cache(
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, USER_ROLE_MANAGEMENT_ACCESS);
     const canModerate =
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, USER_MODERATION_ACCESS);
+    const canViewEmailDelivery =
+      sessionUser != null && userHasAccessTo(actorRole, actorStaff, EMAIL_DELIVERY_READ_ACCESS);
     const canWriteArtists =
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, ARTIST_WRITE_ACCESS);
 
@@ -141,6 +144,7 @@ export const loadAdminClientDetail = cache(
       legalEntities,
       amlScreenings,
       canViewAml,
+      canViewEmailDelivery,
     };
 
     return {

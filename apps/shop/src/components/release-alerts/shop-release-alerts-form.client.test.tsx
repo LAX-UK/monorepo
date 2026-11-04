@@ -25,15 +25,17 @@ describe("ShopReleaseAlertsForm", () => {
     expect(document.activeElement).toBe(document.body);
   });
 
-  it("checks the address before sending and summarises what to fix", () => {
+  it("checks the address before sending: one message under the field, focus on the field", () => {
     render(<ShopReleaseAlertsForm viewer={{ kind: "guest" }} source="shop_home" />);
     fireEvent.click(screen.getByRole("button", GET));
     const input = screen.getByLabelText("Email address");
     expect(input.getAttribute("aria-invalid")).toBe("true");
-    expect(screen.getByRole("alert").textContent).toContain("Enter your email address");
+    expect(screen.queryByText("There is a problem")).toBeNull();
+    expect(screen.getAllByText("Enter your email address")).toHaveLength(1);
+    expect(document.activeElement).toBe(input);
     fireEvent.change(input, { target: { value: "nope" } });
     fireEvent.click(screen.getByRole("button", GET));
-    expect(screen.getByRole("alert").textContent).toContain("correct format");
+    expect(screen.getByText(/like name@example.com/)).toBeTruthy();
     expect(subscribeMock).not.toHaveBeenCalled();
   });
 
@@ -57,7 +59,7 @@ describe("ShopReleaseAlertsForm", () => {
     subscribeMock.mockResolvedValueOnce({
       ok: false,
       kind: "invalid",
-      message: "Enter an email address in the correct format, like name@example.com",
+      message: "Enter an email address like name@example.com",
     });
     render(<ShopReleaseAlertsForm viewer={{ kind: "guest" }} source="shop_home" />);
     fireEvent.change(screen.getByLabelText("Email address"), {

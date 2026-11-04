@@ -109,7 +109,17 @@ function Scrims({ scrims, side }: { scrims: PhotoScrims; side: CoverSide }) {
   );
 }
 
-function Badge({ label, ground }: { label: string; ground: Ground }) {
+/** The live dot: the status badge's red dot, pulsing unless the person asks for less motion. */
+function LiveDot() {
+  return (
+    <span
+      aria-hidden
+      className="mr-1.5 size-1.5 shrink-0 rounded-full bg-[var(--lax-live-dot,#e83030)] motion-safe:animate-pulse"
+    />
+  );
+}
+
+function Badge({ label, live, ground }: { label: string; live: boolean; ground: Ground }) {
   const surface =
     ground.mode === "type"
       ? "md:bg-on-surface md:text-surface"
@@ -121,6 +131,7 @@ function Badge({ label, ground }: { label: string; ground: Ground }) {
     <>
       {/* On a phone the badge sits on the picture; this copy is for screen readers there. */}
       <span className={cn(BADGE_BASE, "bg-on-surface text-surface max-md:sr-only", surface)}>
+        {live ? <LiveDot /> : null}
         {label}
       </span>
     </>
@@ -237,6 +248,7 @@ export function CoverSlideView({
               aria-hidden
               className={cn(BADGE_BASE, PHONE_IMAGE_BADGE, "absolute left-4 top-4 md:hidden")}
             >
+              {slide.badgeLive ? <LiveDot /> : null}
               {slide.badge}
             </span>
           ) : null}
@@ -268,7 +280,9 @@ export function CoverSlideView({
       >
         {slide.badge || slide.time ? (
           <p className="mb-4 flex items-center gap-3 font-body text-[13px] leading-5 text-on-surface-variant md:text-sm md:text-[color:var(--cover-eyebrow)]">
-            {slide.badge ? <Badge label={slide.badge} ground={ground} /> : null}
+            {slide.badge ? (
+              <Badge label={slide.badge} live={slide.badgeLive === true} ground={ground} />
+            ) : null}
             {slide.time ? <CoverTimeLine text={slide.time} tick={slide.timeTick} /> : null}
           </p>
         ) : null}

@@ -17,6 +17,7 @@ import type { AdminDataRequestsService } from "../../admin/data-requests/admin-d
 import type { StaffAccessAdminService } from "../../admin/staff-access-admin.service.js";
 import type { DeliveryOpsApplicationService } from "../../delivery-ops.application.service.js";
 import type { InventoryMoveServices } from "../../inventory/inventory-move-services.js";
+import type { IEnquiryErasure } from "../../marketing-enquiry/enquiry-erasure.service.js";
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
 import type { IStaffStepUpGuard } from "../../staff-step-up.service.js";
 import type { LaxAdminRolesService } from "../../staff/lax-admin-roles.service.js";
@@ -92,6 +93,8 @@ export type AdminSatelliteRouteServices = {
 export type AdminEnquiryRouteServices = {
   marketingEnquiries: IMarketingEnquiryDesk;
   enquiryRouting: IEnquiryRouting;
+  /** Staff erase a sender's enquiries by email address. */
+  enquiryErasure: IEnquiryErasure;
 };
 
 /** Third-party integrations staff operate from the admin (composed in the container root). */
@@ -104,7 +107,15 @@ export type AdminIntegrationRouteServices = {
   /** Requests for a copy of a person's data, answered through Identity's internal routes. */
   dataRequests: Pick<
     AdminDataRequestsService,
-    "list" | "summary" | "record" | "create" | "patch" | "extend" | "close" | "continueDownload"
+    | "list"
+    | "summary"
+    | "findAccount"
+    | "record"
+    | "create"
+    | "patch"
+    | "extend"
+    | "close"
+    | "continueDownload"
   >;
   /** Originals moving between LAX Bid and lax.art. */
   inventoryMoves: InventoryMoveServices;

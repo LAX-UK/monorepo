@@ -1,10 +1,16 @@
 import { Button } from "@/components/account-button";
+import { buildAccountFooterColumns } from "@/server/domain/account-footer.vm";
 import type { SupportLinksVm } from "@/server/domain/account-links";
 import type { AccountNavItemVm } from "@/server/domain/account-nav.vm";
 import type { BackToProductVm } from "@/server/domain/origin-product";
-import { legalOperatorSentence, siteCopyrightYear } from "@auction/branding";
+import {
+  FOCUS_RING,
+  MARKETING_PAGE_GUTTER_X,
+  legalOperatorSentence,
+  siteCopyrightYear,
+} from "@auction/branding";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
-import { LaxFamilyBar, LaxLockup } from "@auction/marketing-ui";
+import { LaxFamilyBar, LaxLockup, MarketingFooter } from "@auction/marketing-ui";
 import type { ReactNode } from "react";
 import { AccountAvatarMenu } from "./account-avatar-menu.client";
 import { AccountMenuSheet } from "./account-menu-sheet.client";
@@ -28,7 +34,8 @@ export type PageWidth = "narrow" | "wide";
 
 /** Widest the header and page may grow on a large screen. */
 const CONTAINER_MAX = "max-w-[1440px]";
-const GUTTER = "px-4 sm:px-6 lg:px-10";
+/** The page gutters every LAX product uses: 16px, then 24px from 768px and 40px from 1024px. */
+const GUTTER = MARKETING_PAGE_GUTTER_X;
 const CONTAINER = `mx-auto w-full ${CONTAINER_MAX} ${GUTTER}`;
 
 export type AccountFrameProps = {
@@ -110,27 +117,36 @@ export function AccountFrame({
           {children}
         </main>
       </div>
-      <AccountFooter support={support} />
+      <MarketingFooter
+        logo={
+          <a
+            href="/"
+            aria-label="LAX Account home"
+            className={`inline-flex rounded-sm ${FOCUS_RING}`}
+          >
+            <LaxLockup kind="account" className="block h-9 w-auto" />
+          </a>
+        }
+        columns={buildAccountFooterColumns(products, support)}
+        copyright={accountCopyright()}
+      />
     </div>
   );
 }
 
-/** Who provides LAX Account, then privacy and help (Bid publishes the policies that cover it). */
-export function AccountFooter({
-  support,
-  bare = false,
-}: {
-  support: SupportLinksVm | null;
-  /** Skip the page container, for a footer that sits inside a panel with its own padding. */
-  bare?: boolean;
-}) {
+/** Who provides LAX Account, in the words every page of it uses. */
+function accountCopyright(): string {
+  return `© ${siteCopyrightYear()} LAX. ${legalOperatorSentence("account")}`;
+}
+
+/**
+ * The compact footer for the sign-in panel, which has no room for the full one: who provides LAX
+ * Account, then privacy and help (Bid publishes the policies that cover it).
+ */
+export function AccountFooter({ support }: { support: SupportLinksVm | null }) {
   return (
-    <footer
-      className={`${bare ? "" : CONTAINER} flex flex-wrap items-center gap-x-6 gap-y-2 pt-4 pb-8 text-xs text-on-surface-variant`}
-    >
-      <p className="m-0">
-        © {siteCopyrightYear()} LAX. {legalOperatorSentence("account")}
-      </p>
+    <footer className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-4 pb-8 text-xs text-on-surface-variant">
+      <p className="m-0">{accountCopyright()}</p>
       {support ? (
         <nav aria-label="Legal and help" className="flex flex-wrap gap-x-6 gap-y-2">
           <a
