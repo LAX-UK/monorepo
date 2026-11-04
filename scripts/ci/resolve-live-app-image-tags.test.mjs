@@ -89,4 +89,51 @@ describe("resolveLiveTerraformImageTags", () => {
       /account image tag .*pass account_sha/,
     );
   });
+
+  it("keeps each monorepo component on its own live tag when no app_image_tag is given", () => {
+    const tags = resolveLiveTerraformImageTags({
+      services: [
+        ...liveServices,
+        { name: "account", image: { tag: sha("7") } },
+        { name: "api", image: { tag: sha("a") } },
+        { name: "ws", image: { tag: sha("2") } },
+      ],
+      workers: [{ name: "worker", image: { tag: sha("a") } }],
+      jobs: [{ name: "migrate", image: { tag: sha("a") } }],
+    });
+    assert.equal(tags.app_image_tag, sha("a"));
+    assert.equal(tags.web_image_tag, sha("a"));
+    assert.equal(tags.api_image_tag, sha("a"));
+    assert.equal(tags.ws_image_tag, sha("2"));
+    assert.equal(tags.worker_image_tag, sha("a"));
+    assert.equal(tags.migrate_image_tag, sha("a"));
+  });
+
+  it("leaves per-component tags empty when app_image_tag pins every component", () => {
+    const tags = resolveLiveTerraformImageTags(
+      {
+        services: [
+          ...liveServices,
+          { name: "account", image: { tag: sha("7") } },
+          { name: "ws", image: { tag: sha("2") } },
+        ],
+      },
+      { inputAppImageTag: sha("9") },
+    );
+    assert.equal(tags.app_image_tag, sha("9"));
+    for (const name of ["web", "api", "ws", "worker", "migrate"]) {
+      assert.equal(tags[`${name}_image_tag`], "");
+    }
+  });
+
+  it("falls back to the shared tag for a component with a rolling live tag", () => {
+    const tags = resolveLiveTerraformImageTags({
+      services: [
+        ...liveServices,
+        { name: "account", image: { tag: sha("7") } },
+        { name: "ws", image: { tag: "test" } },
+      ],
+    });
+    assert.equal(tags.ws_image_tag, "");
+  });
 });
