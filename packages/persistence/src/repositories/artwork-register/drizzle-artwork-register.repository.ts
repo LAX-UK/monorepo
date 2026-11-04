@@ -3,9 +3,15 @@ import {
   type FieldConflict,
   type NewArtworkRegisterEntry,
   type RegisterField,
+  StockCodeError,
+  type StockCodeKind,
+  type StockCodeSeries,
   type ZohoChange,
+  assertSeries,
   canAcceptZohoValue,
+  nextStockCode,
   parseStockCode,
+  printCodeForOriginal,
   reconcileZohoChange,
   transitionOffer,
 } from "@auction/artwork-register-contracts";
@@ -16,13 +22,15 @@ import {
   artworkRegisterEvent as event,
   artworkRegister as register,
 } from "@auction/db/schema";
-import { and, asc, desc, eq, gt, like, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, or, sql } from "drizzle-orm";
 import type {
   ApplyZohoChangeResult,
   ConflictCursor,
   CreateRegisterEntryResult,
   IArtworkMoveHistory,
   IArtworkRegisterRepository,
+  IssueRegisterEntry,
+  IssueRegisterEntryResult,
   MoveOfferInput,
   MoveOfferResult,
   RecordCatalogueStatusWrittenInput,
@@ -67,16 +75,8 @@ export class DrizzleArtworkRegisterRepository
     return this.findOne(eq(register.stockCode, stockCode));
   }
 
-  async highestStockNumber(prefix: string): Promise<number | null> {
-    const [row] = await this.db
-      .select({ stockCode: register.stockCode })
-      .from(register)
-      .where(like(register.stockCode, `${escapeLike(prefix)}-%`))
-      .orderBy(desc(register.stockCode))
-      .limit(1);
-    if (!row) return null;
-    const number = Number(row.stockCode.slice(row.stockCode.lastIndexOf("-") + 1));
-    return Number.isInteger(number) ? number : null;
+  async highestStockNumber(series: StockCodeSeries): Promise<number | null> {
+    return this.highestNumber(this.db, series);
   }
 
   async listEvents(registerId: string, limit: number): Promise<RegisterEvent[]> {
@@ -114,58 +114,199 @@ export class DrizzleArtworkRegisterRepository
     actor: RegisterActor,
     now: Date,
   ): Promise<CreateRegisterEntryResult> {
-    return this.db.transaction(async (tx) => {
-      if (!(await this.sourceOriginalIsValid(tx, entry))) {
-        return { ok: false, reason: "source_original_invalid" };
+    return this.db.transaction((tx) => this.insertEntry(tx, entry, actor, now));
+  }
+
+  async issue(
+    kind: StockCodeKind,
+    entry: IssueRegisterEntry,
+    actor: RegisterActor,
+    now: Date,
+  ): Promise<IssueRegisterEntryResult> {
+    const series = { kind, artist: entry.artist.code, second: entry.collectionCode };
+    try {
+      assertSeries(series);
+    } catch (error) {
+      if (error instanceof StockCodeError) {
+        return { ok: false, reason: "invalid_code", message: error.message };
       }
-      const [row] = await tx
-        .insert(register)
-        .values({
-          zohoProductId: entry.zohoProductId,
-          stockCode: entry.stockCode,
-          kind: entry.kind,
-          sourceOriginalId: entry.sourceOriginalId,
-          title: entry.title,
-          artistZohoId: entry.artist.zohoArtistId,
-          artistName: entry.artist.name,
-          artistCode: entry.artist.code,
-          medium: entry.medium,
-          dimensions: entry.dimensions,
-          year: entry.year,
-          imageRefs: entry.imageRefs,
-          catalogueStatus: entry.catalogueStatus,
-          zohoModifiedAt: entry.zohoModifiedAt ?? null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .onConflictDoNothing()
-        .returning();
-      if (!row) {
-        const [byProduct] = await tx
-          .select({ id: register.id })
-          .from(register)
-          .where(eq(register.zohoProductId, entry.zohoProductId))
-          .limit(1);
+      throw error;
+    }
+    return this.db.transaction(async (tx) => {
+      await this.lockSeries(tx, series);
+      let stockCode: string;
+      try {
+        stockCode = nextStockCode(
+          { ...series, year: registrationYear(now) },
+          await this.highestNumber(tx, series),
+        );
+      } catch (error) {
+        if (error instanceof StockCodeError) {
+          return { ok: false, reason: "numbers_exhausted", message: error.message } as const;
+        }
+        throw error;
+      }
+      const { collectionCode: _collection, ...rest } = entry;
+      return this.insertIssued(
+        tx,
+        { ...rest, stockCode, kind, sourceOriginalId: null },
+        actor,
+        now,
+      );
+    });
+  }
+
+  async issuePrintGroup(
+    originalId: string,
+    entry: Omit<IssueRegisterEntry, "collectionCode" | "artist">,
+    actor: RegisterActor,
+    now: Date,
+  ): Promise<IssueRegisterEntryResult> {
+    return this.db.transaction(async (tx) => {
+      const [original] = await tx
+        .select()
+        .from(register)
+        .where(eq(register.id, originalId))
+        .for("share");
+      if (!original || original.kind !== "original") {
         return {
           ok: false,
-          reason: byProduct ? "duplicate_zoho_product" : "duplicate_stock_code",
-        };
+          reason: "original_not_found",
+          message: "The original this print group is made from was not found",
+        } as const;
       }
-      await this.record(tx, row.id, "created", actor, now, {
-        stockCode: row.stockCode,
-        zohoProductId: row.zohoProductId,
-      });
-      // A code that came from Zoho is already there; only one LAX issued needs sending.
-      if (actor !== "zoho") {
-        await this.publish(tx, row.id, "artwork_register.stock_code_assigned", {
-          schemaVersion: 1,
-          registerId: row.id,
-          zohoProductId: row.zohoProductId,
-          stockCode: row.stockCode,
-        });
+      const stockCode = printCodeForOriginal(original.stockCode);
+      const [holder] = await tx
+        .select({ id: register.id, sourceOriginalId: register.sourceOriginalId })
+        .from(register)
+        .where(eq(register.stockCode, stockCode))
+        .limit(1);
+      if (holder) {
+        const sameOriginal = holder.sourceOriginalId === originalId;
+        return {
+          ok: false,
+          reason: sameOriginal ? "print_group_exists" : "print_code_taken_by_other_original",
+          message: sameOriginal
+            ? `${stockCode} already exists for this original`
+            : `${stockCode} already belongs to a print of a different original`,
+        } as const;
       }
-      return { ok: true, entry: toEntry(row) };
+      return this.insertIssued(
+        tx,
+        {
+          ...entry,
+          artist: {
+            zohoArtistId: original.artistZohoId,
+            name: original.artistName,
+            code: original.artistCode,
+          },
+          stockCode,
+          kind: "print",
+          sourceOriginalId: originalId,
+        },
+        actor,
+        now,
+      );
     });
+  }
+
+  private async insertIssued(
+    tx: Tx,
+    entry: NewArtworkRegisterEntry,
+    actor: RegisterActor,
+    now: Date,
+  ): Promise<IssueRegisterEntryResult> {
+    const result = await this.insertEntry(tx, entry, actor, now);
+    if (result.ok) return result;
+    const duplicateProduct = result.reason === "duplicate_zoho_product";
+    return {
+      ok: false,
+      reason: duplicateProduct ? "duplicate_zoho_product" : "invalid_code",
+      message: duplicateProduct
+        ? "This Zoho Product is already in the register"
+        : `${entry.stockCode} could not be issued`,
+    };
+  }
+
+  /** Serialises issuing for one kind, artist and collection until the transaction ends. */
+  private async lockSeries(tx: Tx, series: StockCodeSeries): Promise<void> {
+    const key = `stock-code:${series.kind}:${series.artist}:${series.second}`;
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${key}))`);
+  }
+
+  private async highestNumber(
+    executor: Pick<Database, "execute">,
+    series: StockCodeSeries,
+  ): Promise<number | null> {
+    for (const part of [series.artist, series.second]) {
+      if (!/^[A-Z0-9]{1,6}$/.test(part)) return null;
+    }
+    const segment = series.kind === "original" ? "ORI" : "(PRT|PRI)";
+    const pattern = `^LAX-${segment}-${series.artist}-${series.second}-[0-9]{2}-[0-9]{4}$`;
+    const result = await executor.execute(
+      sql`SELECT max(substring(stock_code from '[0-9]{4}$')::int) AS highest
+          FROM artwork_register WHERE stock_code ~ ${pattern}`,
+    );
+    const highest = (result.rows[0] as { highest: number | null } | undefined)?.highest;
+    return highest === null || highest === undefined ? null : Number(highest);
+  }
+
+  private async insertEntry(
+    tx: Tx,
+    entry: NewArtworkRegisterEntry,
+    actor: RegisterActor,
+    now: Date,
+  ): Promise<CreateRegisterEntryResult> {
+    if (!(await this.sourceOriginalIsValid(tx, entry))) {
+      return { ok: false, reason: "source_original_invalid" };
+    }
+    const [row] = await tx
+      .insert(register)
+      .values({
+        zohoProductId: entry.zohoProductId,
+        stockCode: entry.stockCode,
+        kind: entry.kind,
+        sourceOriginalId: entry.sourceOriginalId,
+        title: entry.title,
+        artistZohoId: entry.artist.zohoArtistId,
+        artistName: entry.artist.name,
+        artistCode: entry.artist.code,
+        medium: entry.medium,
+        dimensions: entry.dimensions,
+        year: entry.year,
+        imageRefs: entry.imageRefs,
+        catalogueStatus: entry.catalogueStatus,
+        zohoModifiedAt: entry.zohoModifiedAt ?? null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing()
+      .returning();
+    if (!row) {
+      const [byProduct] = await tx
+        .select({ id: register.id })
+        .from(register)
+        .where(eq(register.zohoProductId, entry.zohoProductId))
+        .limit(1);
+      return {
+        ok: false,
+        reason: byProduct ? "duplicate_zoho_product" : "duplicate_stock_code",
+      };
+    }
+    await this.record(tx, row.id, "created", actor, now, {
+      stockCode: row.stockCode,
+      zohoProductId: row.zohoProductId,
+    });
+    // A code that came from Zoho is already there; only one LAX issued needs sending.
+    if (actor !== "zoho") {
+      await this.publish(tx, row.id, "artwork_register.stock_code_assigned", {
+        schemaVersion: 1,
+        registerId: row.id,
+        zohoProductId: row.zohoProductId,
+        stockCode: row.stockCode,
+      });
+    }
+    return { ok: true, entry: toEntry(row) };
   }
 
   async applyZohoChange(change: ZohoChange, now: Date): Promise<ApplyZohoChangeResult> {
@@ -452,6 +593,11 @@ export class DrizzleArtworkRegisterRepository
   }
 }
 
-function escapeLike(value: string): string {
-  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+/** The two-digit registration year, in London time. */
+function registrationYear(now: Date): number {
+  const year = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+  }).format(now);
+  return Number(year) % 100;
 }
