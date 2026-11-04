@@ -88,7 +88,7 @@ export function LotDetailsInline({
           href="/terms"
           className="text-center text-base font-semibold leading-6 tracking-[0.8px] text-on-surface underline"
         >
-          Conditions of Business
+          Conditions of business
         </Link>
         <Link
           href="/faq"

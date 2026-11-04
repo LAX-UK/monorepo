@@ -4,6 +4,8 @@ import {
   type NewArtworkRegisterEntry,
   type RegisterField,
   type ZohoChange,
+  canAcceptZohoValue,
+  parseStockCode,
   reconcileZohoChange,
   transitionOffer,
 } from "@auction/artwork-register-contracts";
@@ -19,11 +21,13 @@ import type {
   ApplyZohoChangeResult,
   ConflictCursor,
   CreateRegisterEntryResult,
+  IArtworkMoveHistory,
   IArtworkRegisterRepository,
   MoveOfferInput,
   MoveOfferResult,
   RecordCatalogueStatusWrittenInput,
   RecordCatalogueStatusWrittenResult,
+  RecordMoveConfirmedInput,
   RegisterActor,
   RegisterConflict,
   RegisterEvent,
@@ -35,8 +39,21 @@ import { columnsForZohoFields, toConflict, toEntry, toEvent } from "./artwork-re
 
 type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
-export class DrizzleArtworkRegisterRepository implements IArtworkRegisterRepository {
+/**
+ * Built over a connection pool, every write opens its own transaction. Built over an open
+ * transaction (the register shares the product's database), each write becomes a savepoint inside
+ * it, so the move commits or rolls back with the caller's change; the row lock, version check and
+ * history/event writes are unchanged.
+ */
+export class DrizzleArtworkRegisterRepository
+  implements IArtworkRegisterRepository, IArtworkMoveHistory
+{
   constructor(private readonly db: Database) {}
+
+  /** The same repository over the caller's open transaction. */
+  withExecutor(executor: Database): DrizzleArtworkRegisterRepository {
+    return new DrizzleArtworkRegisterRepository(executor);
+  }
 
   async findById(id: string): Promise<ArtworkRegisterEntry | null> {
     return this.findOne(eq(register.id, id));
@@ -243,6 +260,22 @@ export class DrizzleArtworkRegisterRepository implements IArtworkRegisterReposit
 
   async resolveConflict(input: ResolveConflictInput): Promise<ResolveConflictResult> {
     return this.db.transaction(async (tx) => {
+      const [open] = await tx
+        .select()
+        .from(conflict)
+        .where(eq(conflict.id, input.conflictId))
+        .for("update");
+      if (!open) return { ok: false, reason: "not_found" };
+      if (open.status !== "open") return { ok: false, reason: "already_resolved" };
+
+      let applied: { field: string; from: string; to: string } | null = null;
+      if (input.resolution === "accepted_zoho") {
+        if (!canAcceptZohoValue(open.field)) return { ok: false, reason: "cannot_accept_field" };
+        const taken = await this.applyZohoStockCode(tx, open, input.now);
+        if (!taken.ok) return taken;
+        applied = taken.applied;
+      }
+
       const [row] = await tx
         .update(conflict)
         .set({
@@ -251,20 +284,14 @@ export class DrizzleArtworkRegisterRepository implements IArtworkRegisterReposit
           resolvedBy: input.resolvedBy,
           resolvedAt: input.now,
         })
-        .where(and(eq(conflict.id, input.conflictId), eq(conflict.status, "open")))
+        .where(eq(conflict.id, open.id))
         .returning();
-      if (!row) {
-        const [existing] = await tx
-          .select({ id: conflict.id })
-          .from(conflict)
-          .where(eq(conflict.id, input.conflictId))
-          .limit(1);
-        return { ok: false, reason: existing ? "already_resolved" : "not_found" };
-      }
+      if (!row) return { ok: false, reason: "already_resolved" };
       await this.record(tx, row.registerId, "conflict_resolved", input.resolvedBy, input.now, {
         conflictId: row.id,
         field: row.field,
         resolution: input.resolution,
+        ...(applied ? { applied } : {}),
       });
       return { ok: true, conflict: toConflict(row) };
     });
@@ -290,6 +317,57 @@ export class DrizzleArtworkRegisterRepository implements IArtworkRegisterReposit
         field: "catalogueStatus",
         from: locked.catalogueStatus,
         to: input.status,
+      });
+      return { status: "recorded" };
+    });
+  }
+
+  /** Puts Zoho's stock code on the artwork, if it is valid for it and free. */
+  private async applyZohoStockCode(
+    tx: Tx,
+    open: typeof conflict.$inferSelect,
+    now: Date,
+  ): Promise<
+    | { ok: true; applied: { field: string; from: string; to: string } }
+    | { ok: false; reason: "invalid_stock_code" | "stock_code_taken" }
+  > {
+    const code = typeof open.zohoValue === "string" ? open.zohoValue : null;
+    const parts = code ? parseStockCode(code) : null;
+    const [entry] = await tx
+      .select()
+      .from(register)
+      .where(eq(register.id, open.registerId))
+      .for("update");
+    if (!code || !parts || !entry || parts.kind !== entry.kind) {
+      return { ok: false, reason: "invalid_stock_code" };
+    }
+    if (code === entry.stockCode)
+      return { ok: true, applied: { field: "stockCode", from: code, to: code } };
+    const [holder] = await tx
+      .select({ id: register.id })
+      .from(register)
+      .where(eq(register.stockCode, code))
+      .limit(1);
+    if (holder) return { ok: false, reason: "stock_code_taken" };
+    await tx
+      .update(register)
+      .set({ stockCode: code, updatedAt: now, version: sql`${register.version} + 1` })
+      .where(eq(register.id, entry.id));
+    return { ok: true, applied: { field: "stockCode", from: entry.stockCode, to: code } };
+  }
+
+  async recordMoveConfirmed(
+    input: RecordMoveConfirmedInput,
+  ): Promise<{ status: "not_found" | "recorded" }> {
+    return this.db.transaction(async (tx) => {
+      const [found] = await tx
+        .select({ id: register.id })
+        .from(register)
+        .where(eq(register.id, input.registerId))
+        .limit(1);
+      if (!found) return { status: "not_found" };
+      await this.record(tx, found.id, "move_confirmed", input.actor, input.now, {
+        ...input.record,
       });
       return { status: "recorded" };
     });
@@ -370,7 +448,19 @@ export class DrizzleArtworkRegisterRepository implements IArtworkRegisterReposit
     now: Date,
     payload: Record<string, unknown>,
   ): Promise<void> {
-    await tx.insert(event).values({ registerId, type, actor, payload, createdAt: now });
+    // History is read in time order, so each entry is stamped strictly after the one before it,
+    // even when the caller's clock repeats or steps back.
+    const [latest] = await tx
+      .select({ createdAt: event.createdAt })
+      .from(event)
+      .where(eq(event.registerId, registerId))
+      .orderBy(desc(event.createdAt))
+      .limit(1);
+    const createdAt =
+      latest && latest.createdAt.getTime() >= now.getTime()
+        ? new Date(latest.createdAt.getTime() + 1)
+        : now;
+    await tx.insert(event).values({ registerId, type, actor, payload, createdAt });
   }
 }
 

@@ -19,7 +19,7 @@ describe("buildOrderInvoiceModel", () => {
     expect(model.title).toBe("VAT invoice");
     expect(model.number).toBe("LAX-INV-000124");
     expect(model.orderReference).toBe("LAX-S-10482");
-    expect(model.fileName).toBe("LAX-INV-000124.pdf");
+    expect(model.fileName).toBe("Paid Invoice — Thorne — LAX-S-10482 — 2026-10-01.pdf");
     expect(model.issuedOn).toBe("1 Oct 2026");
     expect(model.supplier).toContain("London Art Exchange Ltd");
     expect(model.supplier).toContain("VAT number GB123456789");
@@ -103,5 +103,27 @@ describe("renderOrderInvoicePdf", () => {
     const pdf = await renderOrderInvoicePdf(model, { compress: false });
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
     expect(pdf.length).toBeGreaterThan(1000);
+  });
+});
+
+describe("invoice file name", () => {
+  it("omits the client when the order has no name and never uses the email", () => {
+    const model = buildOrderInvoiceModel({
+      order: sampleOrderRecord({ deliveryAddress: null }),
+      customer: { name: null, email: "robert@example.test" },
+      supplier,
+      vatNumber: null,
+    });
+    expect(model.fileName).toBe("Paid Invoice — LAX-S-10482 — 2026-10-01.pdf");
+  });
+
+  it("keeps accented surnames", () => {
+    const model = buildOrderInvoiceModel({
+      order: sampleOrderRecord(),
+      customer: { name: "Zoë Léger", email: null },
+      supplier,
+      vatNumber: null,
+    });
+    expect(model.fileName).toBe("Paid Invoice — Léger — LAX-S-10482 — 2026-10-01.pdf");
   });
 });

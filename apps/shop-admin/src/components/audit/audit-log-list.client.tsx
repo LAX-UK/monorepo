@@ -49,7 +49,7 @@ function actorOptions(facets: AdminAuditFacets): EntityOption[] {
     return {
       id: actor.subjectId,
       label: who.name,
-      ...(who.email ? { description: who.email } : {}),
+      ...((who.email ?? who.source) ? { description: who.email ?? who.source ?? "" } : {}),
     };
   });
 }
@@ -115,7 +115,7 @@ export function AuditLogList({
         mobile: "meta",
         cell: (row) => {
           const who = auditActor(row);
-          return <PersonCell name={who.name} secondary={who.email} kind={who.kind} />;
+          return <PersonCell name={who.name} secondary={who.email ?? who.source} kind={who.kind} />;
         },
       },
       {
@@ -362,7 +362,11 @@ function AuditEventPanel({ row, onClose }: { row: AuditRow | null; onClose: () =
               items={[
                 {
                   label: "Who",
-                  value: who?.email ? `${who.name} (${who.email})` : (who?.name ?? ""),
+                  value: who?.email
+                    ? `${who.name} (${who.email})`
+                    : who?.source
+                      ? `${who.name} (${who.source})`
+                      : (who?.name ?? ""),
                 },
                 { label: "Record", value: auditRecordLabel(row.targetType) },
                 { label: "Record ID", value: row.targetId, copyValue: row.targetId },

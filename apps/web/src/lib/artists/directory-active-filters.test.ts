@@ -26,7 +26,7 @@ describe("buildArtistDirectoryActiveFilterChips", () => {
 
     expect(chips).toHaveLength(3);
     expect(chips[0]).toMatchObject({ key: "q", label: "Search: “monet”" });
-    expect(chips[1]).toMatchObject({ key: "hasUpcoming", label: "Has upcoming lots" });
+    expect(chips[1]).toMatchObject({ key: "hasUpcoming", label: "Has works on sale" });
     expect(chips[2]).toMatchObject({ key: "sort", label: "Most lots" });
   });
 

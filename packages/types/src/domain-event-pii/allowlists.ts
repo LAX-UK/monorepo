@@ -414,6 +414,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   "marketing_enquiry.status_changed": new Set(["enquiryId", "intent", "from", "to", "closeReason"]),
   "marketing_enquiry.converted": new Set(["enquiryId", "intent", "from"]),
+  /** Row counts and the reason staff typed; the address that was erased is never recorded. */
+  "marketing_enquiry.erased": new Set(["enquiries", "notes", "attachments", "held", "reason"]),
   /** Codes and dates; the note is typed by staff, and the address itself is never recorded. */
   "email.block_lifted": new Set([
     "userId",
@@ -424,6 +426,30 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "provider",
   ]),
   /** One event per changed routing row: a department slug (or none for the fallback) and staff user ids. */
+  /** Identifiers and stage codes only: the parties, the price and the cancel reason stay on the deal. */
+  "private_sale_deal.created": new Set(["dealId", "reference", "stage"]),
+  "private_sale_deal.stage_changed": new Set(["dealId", "reference", "from", "to"]),
+  "private_sale_deal.payment_started": new Set([
+    "dealId",
+    "reference",
+    "paymentId",
+    "rail",
+    "amountMinor",
+  ]),
+  "private_sale_deal.payment_paid": new Set(["dealId", "reference", "paymentId", "amountMinor"]),
+  "private_sale_deal.payment_cancelled": new Set(["dealId", "reference", "paymentId", "reason"]),
+  "private_sale_deal.payment_refunded": new Set([
+    "dealId",
+    "reference",
+    "paymentId",
+    "amountMinor",
+  ]),
+  "private_sale_deal.payout_queued": new Set([
+    "dealId",
+    "reference",
+    "payoutId",
+    "netToSellerMinor",
+  ]),
   "enquiry_routing.changed": new Set([
     "departmentSlug",
     "assignedToUserId",

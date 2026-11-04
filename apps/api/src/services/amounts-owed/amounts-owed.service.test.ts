@@ -1,3 +1,4 @@
+import { PURCHASE_LIST_LIMIT } from "@auction/domain";
 import type { PaymentStatus } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AmountsOwedService } from "./amounts-owed.service.js";
@@ -79,6 +80,33 @@ const entryFor = async (fixture: Fixture, gate?: Parameters<typeof build>[1]) =>
   const view = await service.forPerson(USER);
   return view.entries.find((entry) => entry.lotId === fixture.lotId) ?? null;
 };
+
+describe("which purchases the amounts owed follow", () => {
+  it("reads the same number of lots as the Purchases list, for a person and an account", async () => {
+    const { service, lotList } = build([{ lotId: "a" }]);
+    await service.forPerson(USER);
+    await service.forAccount({
+      userId: USER,
+      account: { legalEntityId: ORG, role: "owner", isImpersonation: false },
+    });
+    expect(lotList).toHaveBeenCalledTimes(2);
+    for (const [filter] of lotList.mock.calls as unknown as [{ limit: number }][]) {
+      expect(filter.limit).toBe(PURCHASE_LIST_LIMIT);
+    }
+  });
+
+  it("leaves a purchase whose sale was cancelled out of what is to pay", async () => {
+    const { service } = build([
+      { lotId: "a" },
+      { lotId: "b", payment: { status: "pending" }, fulfilment: "cancelled" },
+    ]);
+    const { entries } = await service.forPerson(USER);
+    expect(entries.map((entry) => [entry.lotId, entry.state])).toEqual([
+      ["a", "payment-due"],
+      ["b", "cancelled"],
+    ]);
+  });
+});
 
 describe("amounts owed for a person", () => {
   it("owes the whole total, premium included, before any payment starts", async () => {

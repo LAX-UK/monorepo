@@ -11,6 +11,7 @@ import type {
   LotFulfilmentRow,
   UpdateLotFulfilmentInput,
 } from "../interfaces/lot-fulfilment.repository.js";
+import { containsPattern } from "../lib/like-pattern.js";
 
 function buildSearchWhereClause(q?: string) {
   const needle = q?.trim();
@@ -19,7 +20,7 @@ function buildSearchWhereClause(q?: string) {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(needle);
   if (!needle) return undefined;
   return or(
-    ilike(lot.title, `%${needle}%`),
+    ilike(lot.title, containsPattern(needle)),
     ...(needleIsUuid ? [eq(lotFulfilment.lotId, needle), eq(lotFulfilment.id, needle)] : []),
   );
 }

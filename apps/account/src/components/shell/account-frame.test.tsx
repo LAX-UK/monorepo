@@ -108,10 +108,15 @@ describe("AccountFrame signed in", () => {
     expect(sheet).toContain("Sign out");
   });
 
-  it("keeps a minimal footer with privacy and help and renders the page body", () => {
+  it("wears the shared footer: the lockup, the other products, help, legal and who provides it", () => {
     expect(html).toContain("Page body");
-    expect(html).toContain('href="https://lax.bid/privacy"');
-    expect(html).toContain('href="https://lax.bid/faq"');
+    const footer = html.slice(html.indexOf('aria-labelledby="marketing-footer-heading"'));
+    expect(footer).toContain('aria-label="LAX Account home"');
+    for (const heading of ["LAX products", "Help", "Legal"]) expect(footer).toContain(heading);
+    expect(footer).toContain('href="https://lax.bid/privacy"');
+    expect(footer).toContain('href="https://lax.bid/faq"');
+    expect(footer).toContain('href="https://lax.bid/terms"');
+    expect(footer).toContain("LAX Account is provided by London Auction Xchange LTD");
   });
 });
 
@@ -123,6 +128,14 @@ describe("AccountFrame signed out", () => {
     expect(html).not.toContain("Account menu for");
     expect(html).not.toContain('aria-label="Open menu"');
     expect(html).toContain("Sign in");
+  });
+});
+
+describe("AccountFrame gutters", () => {
+  it("uses the page gutters of the other LAX products, stepping up at 768px and 1024px", () => {
+    const html = render(true);
+    expect(html).toContain("px-4 md:px-6 lg:px-10");
+    expect(html).not.toContain("sm:px-6");
   });
 });
 

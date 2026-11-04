@@ -1,12 +1,6 @@
 import type { HostedBrandProfile } from "./brand.js";
 import type { HostedFieldKind } from "./browser/constraints.js";
-import {
-  type HostedLeadKey,
-  destinationLine,
-  hostedFooter,
-  hostedHeader,
-  leadWithDestination,
-} from "./chrome.js";
+import { destinationLine, hostedFooter, hostedHeader } from "./chrome.js";
 import { HOSTED_COPY } from "./copy.js";
 import { escapeHostedHtml, escapeJsonScript } from "./escape.js";
 import { hostedFaviconLinkTags } from "./favicons.js";
@@ -49,8 +43,8 @@ export type HostedAuthPage = {
   footer?: HostedFooterLinks;
   /** "to continue to LAX Bid" under the heading. Off for error pages, which go nowhere yet. */
   showDestination?: boolean;
-  /** A lead that names the destination itself, in place of the description and the separate line. */
-  lead?: HostedLeadKey;
+  /** The line that says what the account is for ("to bid at LAX Bid"), in place of the destination line. */
+  contextLine?: string;
   productBack?: { href: string; label: string };
 };
 
@@ -288,17 +282,15 @@ function fontPreloadTags(): string {
 
 export function buildHostedAuthHtml(page: HostedAuthPage): string {
   const asset = `?v=${HOSTED_AUTH_ASSET_VERSION}`;
-  const documentTitle = `${page.title} · ${HOSTED_COPY.accountName}`;
+  const documentTitle = page.title.includes(HOSTED_COPY.accountName)
+    ? page.title
+    : `${page.title} · ${HOSTED_COPY.accountName}`;
   const productBack = page.productBack
     ? `<p class="product-back"><a class="product-back-link" href="${escapeHostedHtml(page.productBack.href)}">${PRODUCT_BACK_CHEVRON}<span>${escapeHostedHtml(page.productBack.label)}</span></a></p>`
     : "";
   const destination =
-    page.lead || page.showDestination === false ? "" : destinationLine(page.brand.chip);
-  const lead = page.lead
-    ? leadWithDestination(page.lead, page.brand.chip)
-    : page.description
-      ? escapeHostedHtml(page.description)
-      : "";
+    page.contextLine ?? (page.showDestination === false ? "" : destinationLine(page.brand.chip));
+  const lead = page.description ? escapeHostedHtml(page.description) : "";
   // Every hosted page is the LAX Account, whichever product the person came from. The theme
   // script has no `defer`: it sets the theme class before the first paint.
   return `<!doctype html>

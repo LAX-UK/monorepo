@@ -5,6 +5,7 @@ import type { CreateSaleInput, Sale, SaleStatus } from "@auction/types";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import type { ISaleRepository, ListSalesFilter } from "../interfaces/index.js";
 import { mapSaleRow } from "../lib/entity-row-mappers.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import { atgOwnedDraftSaleForStatusesSql } from "./atg-public-catalog.sql.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 import { queryAvgLotsPerSale } from "./sale/sale-analytics-queries.js";
@@ -57,10 +58,7 @@ function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
   }
   const q = input.q?.trim();
   if (q) {
-    const safe = q.replace(/[%_\\]/g, "");
-    if (safe.length > 0) {
-      conditions.push(ilike(sale.title, `%${safe}%`));
-    }
+    conditions.push(ilike(sale.title, containsPattern(q)));
   }
   if (input.deliveryMode) conditions.push(eq(sale.deliveryMode, input.deliveryMode));
   if (input.settlementStatus === "settled") {

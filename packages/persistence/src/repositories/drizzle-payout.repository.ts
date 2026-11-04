@@ -1,5 +1,13 @@
 import type { Database } from "@auction/db";
-import { domainEvent, legalEntity, payment, payout, payoutLine } from "@auction/db/schema";
+import {
+  domainEvent,
+  legalEntity,
+  payment,
+  payout,
+  payoutLine,
+  privateSaleDeal,
+} from "@auction/db/schema";
+import { dealPayoutAmounts, minorUnitsToMoneyString } from "@auction/domain";
 import type { Payout, PayoutLine, PayoutLineKind, PayoutStatus } from "@auction/types";
 import { and, desc, eq, isNotNull, ne, sql } from "drizzle-orm";
 import type {
@@ -43,11 +51,34 @@ function rowToLine(row: PayoutLineRow): PayoutLine {
     id: row.id,
     payoutId: row.payoutId,
     paymentId: row.paymentId ?? null,
+    privateSaleDealId: row.privateSaleDealId ?? null,
     amount: String(row.amount),
     kind: row.kind as PayoutLineKind,
     createdByUserId: row.createdByUserId ?? null,
     note: row.note ?? null,
     createdAt: row.createdAt,
+  };
+}
+
+/**
+ * A deal's sale line splits like a lot's: the price, and the commission and agreed costs taken
+ * from it, so the payout's totals and the statement add up the same way.
+ */
+function dealLineFacts(deal: {
+  dealPriceMinor: number | null;
+  dealCommissionBps: number | null;
+  dealCostsMinor: number | null;
+}): { amount: string; platformFee: string } | null {
+  if (deal.dealPriceMinor === null || deal.dealCostsMinor === null) return null;
+  const amounts = dealPayoutAmounts({
+    priceMinor: deal.dealPriceMinor,
+    sellerCommissionBps: deal.dealCommissionBps,
+    costsMinor: deal.dealCostsMinor,
+  });
+  if (!amounts) return null;
+  return {
+    amount: minorUnitsToMoneyString(BigInt(amounts.grossMinor)),
+    platformFee: minorUnitsToMoneyString(BigInt(amounts.deductionsMinor)),
   };
 }
 
@@ -326,17 +357,21 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
         line: payoutLine,
         paymentAmount: payment.amount,
         platformFee: payment.platformFee,
+        dealPriceMinor: privateSaleDeal.priceMinor,
+        dealCommissionBps: privateSaleDeal.sellerCommissionBps,
+        dealCostsMinor: privateSaleDeal.costsMinor,
       })
       .from(payoutLine)
       .leftJoin(payment, eq(payment.id, payoutLine.paymentId))
+      .leftJoin(privateSaleDeal, eq(privateSaleDeal.id, payoutLine.privateSaleDealId))
       .where(eq(payoutLine.payoutId, payoutId))
       .orderBy(payoutLine.createdAt);
-    return rows.map(({ line, paymentAmount, platformFee }) => ({
+    return rows.map(({ line, paymentAmount, platformFee, ...deal }) => ({
       ...rowToLine(line),
       payment:
         paymentAmount != null && platformFee != null
           ? { amount: String(paymentAmount), platformFee: String(platformFee) }
-          : null,
+          : dealLineFacts(deal),
     }));
   }
 

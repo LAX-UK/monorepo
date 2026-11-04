@@ -41,9 +41,9 @@ export function SalesPriceSlider({ state, min = DEFAULT_MIN, max = DEFAULT_MAX }
   return (
     <div className="flex w-full flex-col gap-3">
       <div className="flex items-center gap-2 font-body text-sm font-semibold text-nav-text dark:text-on-surface">
-        <span>{lo.toLocaleString()}£</span>
+        <span>{lo.toLocaleString("en-GB")}£</span>
         <span className="font-medium">-</span>
-        <span>{hi.toLocaleString()}£</span>
+        <span>{hi.toLocaleString("en-GB")}£</span>
       </div>
       <Slider
         min={min}

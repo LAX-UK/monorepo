@@ -5,7 +5,6 @@ import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { SHOP_HOME_CONTENT } from "@/content/home/shop-home-content";
 import type { CatalogueArtistCardVm } from "@/lib/catalogue/catalogue-artist-card.vm";
 import type { HomeArtistsVm, HomeSoloArtistVm } from "@/lib/home/home-artists";
-import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
 import {
   MarketingArrowUpRightIcon,
   MarketingArtistFeature,
@@ -14,6 +13,7 @@ import {
   MarketingArtistPortraitFill,
   MarketingCardRow,
   MarketingHorizontalRail,
+  marketingArtistInitials,
 } from "@auction/marketing-ui";
 
 const copy = SHOP_HOME_CONTENT.artists;
@@ -27,7 +27,7 @@ function ArtistPortrait({ card, sizes }: { card: CatalogueArtistCardVm; sizes: s
           <ShopMediaImage
             src={card.image}
             alt=""
-            label={SHOP_MEDIA_LABELS.artistPortrait}
+            monogram={marketingArtistInitials(card.name)}
             aspect={[4, 5]}
             sizes={sizes}
             className="absolute inset-0 size-full object-cover"

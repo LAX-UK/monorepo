@@ -1,5 +1,6 @@
 import {
   ARTWORK_OBJECT_TYPE_OPTIONS,
+  ARTWORK_SALE_STATE_OPTIONS,
   type ArtworkFilterOption,
 } from "@/lib/catalogue/artwork-catalogue-filter-config";
 import {
@@ -13,6 +14,7 @@ import {
   artworkMediumLanding,
   parseArtworkCatalogueParams,
 } from "@/lib/catalogue/artwork-catalogue-params";
+import { buildArtworkFacetCountsVm, withFacetCounts } from "@/lib/catalogue/artwork-facet-counts";
 import {
   type ArtworkObjectTypeTileVm,
   buildArtworkObjectTypeTiles,
@@ -28,7 +30,7 @@ import type { PublicArtworkObjectTypeFacet } from "@auction/shop-contracts";
 
 export const ARTWORKS_PAGE_SIZE = 24;
 
-export type FilterOption = { slug: string; label: string };
+export type FilterOption = { slug: string; label: string; count?: number | undefined };
 
 /** Image hero for the medium landings (Figma 587:9412). */
 export type ArtworksLandingHeroVm = {
@@ -49,6 +51,8 @@ export type ArtworksPageVm = {
   artists: FilterOption[];
   /** Media with works on lax.art; every medium when the facet read fails. */
   mediumOptions: ArtworkFilterOption[];
+  /** Availability choices, counted; the plain list when the counts did not load. */
+  saleStateOptions: ArtworkFilterOption[];
   objectTypeTiles: ArtworkObjectTypeTileVm[];
   nextPageHref: string | null;
   failed: boolean;
@@ -82,7 +86,7 @@ export async function composeArtworksPage(
 ): Promise<ArtworksPageVm> {
   const state = parseArtworkCatalogueParams(searchParams);
   const favoritesPromise = loadViewerFavoriteContext(services, artworkCatalogueHref(state));
-  const [artworks, categories, artists, objectTypes] = await Promise.allSettled([
+  const [artworks, categories, artists, objectTypes, facetRead] = await Promise.allSettled([
     services.catalogue.listArtworks({
       limit: ARTWORKS_PAGE_SIZE,
       ...artworkCatalogueFetchQuery(state),
@@ -90,10 +94,13 @@ export async function composeArtworksPage(
     services.catalogue.listCategories({ limit: 50 }),
     services.catalogue.listArtists({ limit: 50 }),
     services.catalogue.listArtworkObjectTypes(),
+    services.catalogue.countArtworkFacets(artworkCatalogueFetchQuery(state)),
   ]);
   const favorites = await favoritesPromise;
   const list = artworks.status === "fulfilled" ? artworks.value : null;
   const facets = objectTypes.status === "fulfilled" ? objectTypes.value.items : [];
+  const counts =
+    facetRead.status === "fulfilled" ? buildArtworkFacetCountsVm(facetRead.value) : null;
   const landing = artworkMediumLanding(state.objectTypes);
   const landingCover = landing
     ? facets.find((facet) => facet.objectType === landing.objectType)?.coverImageUrl
@@ -111,13 +118,22 @@ export async function composeArtworksPage(
     resultCount: list ? (list.totalCount ?? list.items.length) : 0,
     categories:
       categories.status === "fulfilled"
-        ? categories.value.items.map((item) => ({ slug: item.slug, label: item.label }))
+        ? categories.value.items.map((item) => ({
+            slug: item.slug,
+            label: item.label,
+            ...(counts ? { count: counts.categories[item.slug] ?? 0 } : {}),
+          }))
         : [],
     artists:
       artists.status === "fulfilled"
-        ? artists.value.items.map((item) => ({ slug: item.slug, label: item.name }))
+        ? artists.value.items.map((item) => ({
+            slug: item.slug,
+            label: item.name,
+            ...(counts ? { count: counts.artists[item.slug] ?? 0 } : {}),
+          }))
         : [],
-    mediumOptions: buildMediumOptions(facets),
+    mediumOptions: withFacetCounts(buildMediumOptions(facets), counts?.objectTypes),
+    saleStateOptions: withFacetCounts(ARTWORK_SALE_STATE_OPTIONS, counts?.saleStates),
     // Figma's medium landings carry a hero instead of the tile rail.
     objectTypeTiles: landing ? [] : buildArtworkObjectTypeTiles(facets, state),
     nextPageHref: list?.nextCursor

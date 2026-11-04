@@ -1,9 +1,7 @@
 import { bidIdentityDirectory, bidUserProfile, domainEvent } from "@auction/db/schema";
 import { type SQL, and, eq, gte, ilike, inArray, lt, or, sql } from "drizzle-orm";
 import type { AuditLogSearchInput } from "../interfaces/admin-read-models.js";
-import { escapeLikePattern } from "../lib/like-pattern.js";
-
-export { escapeLikePattern };
+import { containsPattern, startsWithPattern } from "../lib/like-pattern.js";
 
 const LONDON = "Europe/London";
 
@@ -17,8 +15,8 @@ export function buildAuditLogWhere(input: AuditLogSearchInput): SQL | undefined 
 
   const text = input.q?.trim();
   if (text) {
-    const contains = `%${escapeLikePattern(text)}%`;
-    const asEventType = `%${escapeLikePattern(text.toLowerCase().replace(/\s+/g, "_"))}%`;
+    const contains = containsPattern(text);
+    const asEventType = containsPattern(text.toLowerCase().replace(/\s+/g, "_"));
     const actorMatch = or(
       ilike(bidIdentityDirectory.name, contains),
       ilike(bidIdentityDirectory.email, contains),
@@ -40,7 +38,7 @@ export function buildAuditLogWhere(input: AuditLogSearchInput): SQL | undefined 
   if (types.length > 0 || prefixes.length > 0) {
     const either = or(
       types.length > 0 ? inArray(domainEvent.eventType, [...types]) : undefined,
-      ...prefixes.map((prefix) => ilike(domainEvent.eventType, `${escapeLikePattern(prefix)}%`)),
+      ...prefixes.map((prefix) => ilike(domainEvent.eventType, startsWithPattern(prefix))),
     );
     if (either) clauses.push(either);
   }

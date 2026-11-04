@@ -7,6 +7,7 @@ import {
   connectGapStageLabel,
   connectGapStageSummary,
 } from "@/lib/connect/connect-gap-copy";
+import { formatLondonWhen } from "@/lib/datetime/london-time";
 import type { ConnectGapState } from "@auction/connect";
 import { presentationToDotStatus } from "@auction/ui";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
@@ -82,7 +83,7 @@ export function ConnectStatusHeader({
       ) : null}
       {lastSyncedAt ? (
         <p className="font-body text-xs text-on-surface-variant">
-          Last synced {lastSyncedAt.toLocaleString("en-GB")}
+          Last synced {formatLondonWhen(lastSyncedAt)}
         </p>
       ) : null}
     </Surface>

@@ -8,7 +8,7 @@ Turborepo + pnpm. Six Node.js apps, a ClamAV malware-scan service, and shared pa
 | `apps/api` | Hono on Node | HTTP backend: auctions, bids, payments, webhooks |
 | `apps/auth` | Hono + Better Auth | OIDC issuer (auth.lax.bid), JWKS, social providers |
 | `apps/ws` | Socket.IO + Redis | Real-time bid/lot fan-out |
-| `apps/worker` | BullMQ + Hono | Async jobs: email outbox, image validation, projectors, GC, marketing-sync |
+| `apps/worker` | BullMQ + Hono | Async jobs: email outbox, image validation, projectors, GC, Zoho Campaigns newsletter sync |
 | `apps/shop-identity` | Hono | Executable confidential OIDC/BFF boundary for the custom Shop at `shop.lax.art` |
 | `apps/clamav` | ClamAV REST (`ajilaag/clamav-rest`) | Internal malware scanning for Source-of-Funds document uploads (`/v2/scan` on port 9000); worker-only, prod App Platform |
 

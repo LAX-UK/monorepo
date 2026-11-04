@@ -1,10 +1,4 @@
-import { firstString } from "@/lib/admin/admin-list-params";
-import {
-  ARTIST_DIRECTORY_PRESETS,
-  type ArtistDirectoryPreset,
-  type ArtistDirectoryPresetId,
-  slugifyNationality,
-} from "@/lib/artists/directory-presets";
+import { type ArtistDirectoryPreset, slugifyNationality } from "@/lib/artists/directory-presets";
 import { artistDirectoryWithQuery } from "@/lib/artists/directory-url";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import type { PublicArtistDirectoryFacets } from "@auction/types";
@@ -38,34 +32,6 @@ export type ArtistDirectoryFilterRailInput = {
   categorySlug?: string;
 };
 
-/** Path-aware preset chip — preserves `q`, `sort` across slices. Nationality is
- * handled by canonical path-segment URLs so we don't carry it as a query param. */
-export function artistDirectoryPresetChips(
-  currentId: ArtistDirectoryPresetId,
-  sp: Record<string, string | string[] | undefined>,
-  layoutView: CatalogLayoutView,
-) {
-  const carry: ArtistDirectoryCarryParams = {
-    q: firstString(sp.q) ?? null,
-    sort: firstString(sp.sort) ?? null,
-    view: layoutView,
-  };
-  return ARTIST_DIRECTORY_PRESETS.filter(
-    (p) =>
-      p.id === "all" ||
-      p.id === "featured" ||
-      p.id === "living" ||
-      p.id === "historical" ||
-      p.id === "kind-brands" ||
-      p.id === "kind-makers",
-  ).map((p) => ({
-    id: p.id,
-    label: p.label,
-    href: artistDirectoryWithQuery(p.canonicalPath, {}, carry),
-    active: p.id === currentId,
-  }));
-}
-
 export function buildArtistDirectoryNationalityHref(
   input: ArtistDirectoryFilterRailInput,
   value: string | null,
@@ -89,19 +55,15 @@ export function buildArtistDirectoryNationalityLinks(
 ): ArtistDirectoryFilterLink[] | undefined {
   const { facets, nationality } = input;
   if (facets.topNationalities.length === 0) return undefined;
-  return [
-    {
-      label: "Any",
-      href: buildArtistDirectoryNationalityHref(input, null),
-      active: !nationality,
-    },
-    ...facets.topNationalities.map((n) => ({
+  return facets.topNationalities.map((n) => {
+    const active = nationality?.toLowerCase() === n.value.toLowerCase();
+    return {
       label: n.value,
-      href: buildArtistDirectoryNationalityHref(input, n.value),
+      href: buildArtistDirectoryNationalityHref(input, active ? null : n.value),
       count: n.count,
-      active: nationality?.toLowerCase() === n.value.toLowerCase(),
-    })),
-  ];
+      active,
+    };
+  });
 }
 
 export function buildArtistDirectoryFilterGroups(
@@ -120,73 +82,58 @@ export function buildArtistDirectoryFilterGroups(
   } = input;
   const sp = searchParams;
 
+  // Every option is a checkbox: choosing one opens its page, choosing it again goes back to all.
+  const all = artistDirectoryWithQuery("/artists", {}, carry);
+  const presetLink = (
+    label: string,
+    presetId: string,
+    path: string,
+    count: number | undefined,
+  ): ArtistDirectoryFilterLink => {
+    const active = preset.id === presetId;
+    return {
+      label,
+      href: active ? all : artistDirectoryWithQuery(path, {}, carry),
+      count,
+      active,
+    };
+  };
+
   return [
     {
+      id: "show",
+      title: "Show",
+      links: [presetLink("Featured", "featured", "/artists/featured", facets.featured)],
+    },
+    {
       id: "scenario",
-      title: "Scenario",
+      title: "Living or historical",
       links: [
-        {
-          label: "All",
-          href: artistDirectoryWithQuery("/artists", {}, carry),
-          count: facets.total,
-          active: preset.id === "all",
-        },
-        {
-          label: "Featured",
-          href: artistDirectoryWithQuery("/artists/featured", {}, carry),
-          count: facets.featured,
-          active: preset.id === "featured",
-        },
-        {
-          label: "Living",
-          href: artistDirectoryWithQuery("/artists/living", {}, carry),
-          count: facets.living,
-          active: preset.id === "living",
-        },
-        {
-          label: "Historical",
-          href: artistDirectoryWithQuery("/artists/historical", {}, carry),
-          count: facets.historical,
-          active: preset.id === "historical",
-        },
+        presetLink("Living", "living", "/artists/living", facets.living),
+        presetLink("Historical", "historical", "/artists/historical", facets.historical),
       ],
     },
     {
       id: "kind",
-      title: "Kind",
+      title: "Type",
       links: [
-        {
-          label: "Artists",
-          href: artistDirectoryWithQuery("/artists/kind/artists", {}, carry),
-          count: facets.byKind.artist,
-          active: preset.id === "kind-artists",
-        },
-        {
-          label: "Makers & studios",
-          href: artistDirectoryWithQuery("/artists/kind/makers", {}, carry),
-          count: facets.byKind.maker,
-          active: preset.id === "kind-makers",
-        },
-        {
-          label: "Brands",
-          href: artistDirectoryWithQuery("/artists/kind/brands", {}, carry),
-          count: facets.byKind.brand,
-          active: preset.id === "kind-brands",
-        },
-        {
-          label: "Marques",
-          href: artistDirectoryWithQuery("/artists/kind/marques", {}, carry),
-          count: facets.byKind.marque,
-          active: preset.id === "kind-marques",
-        },
+        presetLink("Artists", "kind-artists", "/artists/kind/artists", facets.byKind.artist ?? 0),
+        presetLink(
+          "Makers and studios",
+          "kind-makers",
+          "/artists/kind/makers",
+          facets.byKind.maker,
+        ),
+        presetLink("Brands", "kind-brands", "/artists/kind/brands", facets.byKind.brand ?? 0),
+        presetLink("Marques", "kind-marques", "/artists/kind/marques", facets.byKind.marque ?? 0),
       ],
     },
     {
       id: "lots",
-      title: "Lots",
+      title: "Has works on sale",
       links: [
         {
-          label: "Has upcoming lots",
+          label: "Only these artists",
           href: artistDirectoryWithQuery(preset.canonicalPath, sp, {
             hasUpcoming: hasUpcoming ? null : "true",
             offset: null,
@@ -203,19 +150,10 @@ export function buildArtistDirectoryFilterGroups(
             id: "department",
             title: "Department",
             links: [
-              {
-                label: "Any department",
-                href: artistDirectoryWithQuery(preset.canonicalPath, sp, {
-                  category: null,
-                  offset: null,
-                  view: layoutView,
-                }),
-                active: !categorySlug,
-              },
               ...facets.topCategories.map((c) => ({
                 label: c.name,
                 href: artistDirectoryWithQuery(preset.canonicalPath, sp, {
-                  category: c.slug,
+                  category: categorySlug === c.slug ? null : c.slug,
                   offset: null,
                   view: layoutView,
                 }),
@@ -232,23 +170,23 @@ export function buildArtistDirectoryFilterGroups(
             id: "decade",
             title: "Born",
             links: [
-              {
-                label: "Any decade",
-                href: decadeIsLocked
-                  ? artistDirectoryWithQuery("/artists", {}, carry)
-                  : artistDirectoryWithQuery(preset.canonicalPath, sp, {
-                      decade: null,
-                      offset: null,
-                      view: layoutView,
-                    }),
-                active: !decade,
-              },
-              ...facets.topDecades.map((d) => ({
-                label: d.label,
-                href: artistDirectoryWithQuery(`/artists/decade/${d.key}`, {}, carry),
-                count: d.count,
-                active: decade === d.key,
-              })),
+              ...facets.topDecades.map((d) => {
+                const active = decade === d.key;
+                return {
+                  label: d.label,
+                  href: active
+                    ? decadeIsLocked
+                      ? all
+                      : artistDirectoryWithQuery(preset.canonicalPath, sp, {
+                          decade: null,
+                          offset: null,
+                          view: layoutView,
+                        })
+                    : artistDirectoryWithQuery(`/artists/decade/${d.key}`, {}, carry),
+                  count: d.count,
+                  active,
+                };
+              }),
             ],
           },
         ]

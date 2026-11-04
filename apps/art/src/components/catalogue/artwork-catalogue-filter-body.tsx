@@ -3,7 +3,6 @@
 import type { ArtworkCatalogueDraft } from "@/lib/catalogue/artwork-catalogue-draft";
 import {
   ARTWORK_FILTER_DEFAULT_OPEN,
-  ARTWORK_SALE_STATE_OPTIONS,
   ARTWORK_SORT_OPTIONS,
   type ArtworkFilterOption,
 } from "@/lib/catalogue/artwork-catalogue-filter-config";
@@ -16,6 +15,7 @@ import { useState } from "react";
 export type CatalogueFilterOption = {
   slug: string;
   label: string;
+  count?: number | undefined;
 };
 
 type Props = {
@@ -24,12 +24,13 @@ type Props = {
   categories: readonly CatalogueFilterOption[];
   artists: readonly CatalogueFilterOption[];
   mediumOptions: readonly ArtworkFilterOption[];
+  saleStateOptions: readonly ArtworkFilterOption[];
 };
 
 const ID_PREFIX = "art-filters";
 
 function slugOptions(items: readonly CatalogueFilterOption[]): ArtworkFilterOption[] {
-  return items.map((item) => ({ value: item.slug, label: item.label }));
+  return items.map((item) => ({ value: item.slug, label: item.label, count: item.count }));
 }
 
 function PriceInput({
@@ -73,6 +74,7 @@ export function ArtworkCatalogueFilterBody({
   categories,
   artists,
   mediumOptions,
+  saleStateOptions,
 }: Props) {
   const [openSections, setOpenSections] = useState<string[]>(ARTWORK_FILTER_DEFAULT_OPEN);
   const categoryOptions = [{ value: "", label: "Any category" }, ...slugOptions(categories)];
@@ -129,7 +131,7 @@ export function ArtworkCatalogueFilterBody({
         title="Availability"
         idPrefix={`${ID_PREFIX}-availability`}
         selection="single"
-        options={ARTWORK_SALE_STATE_OPTIONS}
+        options={saleStateOptions}
         selected={[draft.saleState]}
         onChange={([saleState = ""]) =>
           onDraftChange({

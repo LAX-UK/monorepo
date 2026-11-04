@@ -19,6 +19,8 @@ export * from "./admin-routes.js";
 export * from "./item-submission.js";
 export * from "./consignment-agreement.js";
 export * from "./consignment-after-sale.js";
+export * from "./private-sale-deal.js";
+export * from "./private-sale-deal-payment.js";
 /** Legal Entity Model types */
 export * from "./legal-entity.js";
 export * from "./buyer-agent-authorisation.js";

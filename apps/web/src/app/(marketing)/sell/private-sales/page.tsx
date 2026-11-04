@@ -21,7 +21,7 @@ export default async function PrivateSalesRoute({
   const jsonLdText = jsonLdScript(
     breadcrumbJsonLd([
       { name: "Home", path: "/" },
-      { name: "Selling with LAX.BID", path: "/sell" },
+      { name: "Selling with LAX Bid", path: "/sell" },
       { name: "Private sales", path: PRIVATE_SALES_PATH },
     ]),
   );

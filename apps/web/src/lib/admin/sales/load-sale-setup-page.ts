@@ -4,6 +4,7 @@ import { loadSaleSellersWithoutPayouts } from "@/lib/admin/connect-readiness";
 import type { NamedSellerWithoutPayouts } from "@/lib/admin/sale-setup/sellers-without-payouts";
 
 import { firstString } from "@/lib/admin/admin-list-params";
+import { ADMIN_NOTICE_PARAM } from "@/lib/admin/admin-notice";
 import { connectRequiredFromLots } from "@/lib/admin/connect-readiness";
 import {
   loadAdminSaleDetail,
@@ -75,7 +76,7 @@ export async function loadAdminSaleSetupPage({
 
   const redirectTo =
     sale.status !== "draft"
-      ? `/admin/sales/${saleId}?error=${encodeURIComponent("Setup is only available for draft sales")}`
+      ? `/admin/sales/${saleId}?${ADMIN_NOTICE_PARAM}=setup_draft_only`
       : null;
 
   const stepParam = firstString(step)?.trim() as SaleSetupStepId | undefined;

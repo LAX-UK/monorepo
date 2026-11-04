@@ -19,6 +19,7 @@ export const ADMIN_NOTICES = {
     message: "Type the confirmation phrase shown exactly to confirm archiving.",
   },
   reason_too_short: { tone: "error", message: "Reason must be at least 3 characters." },
+  setup_draft_only: { tone: "error", message: "Setup is only available for draft sales." },
   not_permitted: { tone: "error", message: "Your role does not allow this change." },
   conflict: {
     tone: "error",

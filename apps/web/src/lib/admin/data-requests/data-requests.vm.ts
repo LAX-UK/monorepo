@@ -19,6 +19,7 @@ import {
   SUBJECT_EXPORT_STATUSES,
   type SubjectExportStatus,
 } from "@auction/identity-contracts/data-requests";
+import { staffShortDateFormat } from "@auction/staff-ui";
 import type { AttentionStripItem, Metric, StatusPresentation } from "@auction/staff-ui";
 
 const COUNT = new Intl.NumberFormat("en-GB");
@@ -185,7 +186,7 @@ export const DUE_TONE: Readonly<Record<DueStateKind, "neutral" | "warning" | "da
   overdue: "danger",
 };
 
-const DAY = new Intl.DateTimeFormat("en-GB", {
+const DAY = staffShortDateFormat({
   day: "numeric",
   month: "short",
   year: "numeric",
@@ -438,7 +439,7 @@ export function formatBytes(bytes: number): string {
   return `${unit === 0 ? value : value.toFixed(1)} ${BYTE_UNITS[unit]}`;
 }
 
-const DAY_TIME = new Intl.DateTimeFormat("en-GB", {
+const DAY_TIME = staffShortDateFormat({
   day: "numeric",
   month: "short",
   hour: "2-digit",

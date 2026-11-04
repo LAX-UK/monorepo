@@ -13,6 +13,7 @@ import {
 import { user } from "./auth.js";
 import { legalEntity } from "./legal-entities.js";
 import { payment } from "./payments.js";
+import { privateSaleDeal } from "./private-sale-deal.js";
 
 export const legalEntityPayoutMethod = pgTable(
   "legal_entity_payout_method",
@@ -87,6 +88,10 @@ export const payoutLine = pgTable(
     paymentId: uuid("payment_id").references(() => payment.id, {
       onDelete: "restrict",
     }),
+    /** The private sale deal a sale line settles, in place of a lot payment. */
+    privateSaleDealId: uuid("private_sale_deal_id").references(() => privateSaleDeal.id, {
+      onDelete: "restrict",
+    }),
     amount: numeric("amount", { precision: 18, scale: 2 }).notNull(),
     kind: text("kind").notNull(),
     createdByUserId: text("created_by_user_id").references(() => user.id, {
@@ -104,6 +109,10 @@ export const payoutLine = pgTable(
     uniqueIndex("payout_line_sale_payment_uidx")
       .on(table.paymentId)
       .where(sql`${table.kind} = 'sale' AND ${table.paymentId} IS NOT NULL`),
+    // A deal is settled by one sale line, ever.
+    uniqueIndex("payout_line_sale_deal_uidx")
+      .on(table.privateSaleDealId)
+      .where(sql`${table.kind} = 'sale' AND ${table.privateSaleDealId} IS NOT NULL`),
     uniqueIndex("payout_line_source_event_uidx")
       .on(table.payoutId, table.paymentId, table.kind, table.sourceEventId)
       .where(sql`${table.sourceEventId} IS NOT NULL`),
@@ -120,6 +129,15 @@ export const payoutLine = pgTable(
         ${table.kind} = 'adjustment'
         OR ${table.kind} IN ('refund', 'dispute', 'chargeback', 'reversal')
         OR ${table.paymentId} IS NOT NULL
+        OR ${table.privateSaleDealId} IS NOT NULL
+      )`,
+    ),
+    // A line settles a lot payment or a deal, never both, and only a sale line settles a deal.
+    check(
+      "payout_line_one_subject",
+      sql`(
+        ${table.privateSaleDealId} IS NULL
+        OR (${table.paymentId} IS NULL AND ${table.kind} = 'sale')
       )`,
     ),
   ],

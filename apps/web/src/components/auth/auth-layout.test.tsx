@@ -27,6 +27,15 @@ describe("AuthLayout", () => {
     expect(screen.getByText("Form content")).toBeInTheDocument();
   });
 
+  it("shows the title as written, without an uppercase transform", () => {
+    render(
+      <AuthLayout title="Sign in" description="Test description">
+        <p>Form content</p>
+      </AuthLayout>,
+    );
+    expect(screen.getByRole("heading", { name: "Sign in" })).not.toHaveClass("uppercase");
+  });
+
   it("task chrome renders centered logo without browse catalogue link", () => {
     render(
       <AuthLayout chrome="task" title="Sign in" description="Test description">

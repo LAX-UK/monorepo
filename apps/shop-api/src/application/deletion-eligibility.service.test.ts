@@ -11,6 +11,7 @@ const NONE: ShopDeletionOpenItems = {
   pendingPayouts: 0,
   openOriginalSales: 0,
   activeHolds: 0,
+  openDisputes: 0,
 };
 
 function service(
@@ -68,13 +69,24 @@ describe("shop deletion eligibility service", () => {
       pendingPayouts: 1,
       openOriginalSales: 1,
       activeHolds: 1,
+      openDisputes: 1,
     }).service.listBlockers("s");
     expect(blockers.map((blocker) => blocker.code)).toEqual([
       "shop_open_orders",
       "shop_pending_payouts",
       "shop_open_original_sales",
       "shop_active_holds",
+      "shop_open_disputes",
     ]);
+  });
+
+  it("holds the deletion while a payment dispute is open, and words it for one or many", async () => {
+    const [one] = await service({ openDisputes: 1 }).service.listBlockers("s");
+    expect(one?.message).toBe(
+      "1 payment dispute is still open on your orders. It needs to be settled first.",
+    );
+    const [many] = await service({ openDisputes: 2 }).service.listBlockers("s");
+    expect(many?.message).toContain("2 payment disputes are still open");
   });
 
   it("falls back to the Shop origin for lax.art pages when no separate art origin is set", async () => {
@@ -92,6 +104,7 @@ describe("shop deletion eligibility service", () => {
       pendingPayouts: 5,
       openOriginalSales: 5,
       activeHolds: 5,
+      openDisputes: 5,
     }).service.listBlockers("s");
     for (const blocker of blockers) {
       expect(deletionBlockerSchema.safeParse(blocker).success).toBe(true);

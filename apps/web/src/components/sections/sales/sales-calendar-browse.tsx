@@ -8,6 +8,7 @@ import {
   MARKETING_CATALOG_FILTER_RAIL_SLOT,
   MARKETING_CATALOG_MAIN_COLUMN,
 } from "@/lib/marketing/chrome";
+import type { SalesFacetCounts } from "@/lib/marketing/sales-calendar-facets";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
@@ -19,6 +20,8 @@ type Props = {
   resultCount: number;
   categories: Category[];
   years: number[];
+  /** Sales per rail option; null when they could not be counted. */
+  facets: SalesFacetCounts | null;
   calendarView: SalesBrowseView;
   children: ReactNode;
 };
@@ -28,6 +31,7 @@ export function SalesCalendarBrowse({
   resultCount,
   categories,
   years,
+  facets,
   calendarView,
   children,
 }: Props) {
@@ -38,6 +42,7 @@ export function SalesCalendarBrowse({
         resultCount={resultCount}
         categories={categories}
         years={years}
+        facets={facets}
         calendarView={calendarView}
       />
 
@@ -48,6 +53,7 @@ export function SalesCalendarBrowse({
             resultCount={resultCount}
             categories={categories}
             years={years}
+            facets={facets}
             showResultCount={false}
           />
         </div>

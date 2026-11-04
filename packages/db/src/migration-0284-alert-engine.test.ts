@@ -65,8 +65,12 @@ describe("migration 0284 alert engine", () => {
       const list = sql.slice(at, sql.indexOf(")", sql.indexOf("IN (", at)));
       return [...list.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
     };
-    expect(typesIn(migration)).toEqual([...NOTIFICATION_TYPES]);
-    expect(typesIn(rollback)).toEqual(NOTIFICATION_TYPES.filter((t) => t !== "sale_announced"));
+    // Types added by later migrations are not part of what 0284 allowed.
+    const asOf0284 = NOTIFICATION_TYPES.filter(
+      (t) => !["artist_lots_listed", "search_lots_listed"].includes(t),
+    );
+    expect(typesIn(migration)).toEqual(asOf0284);
+    expect(typesIn(rollback)).toEqual(asOf0284.filter((t) => t !== "sale_announced"));
     for (const type of [
       "kyc_approved",
       "kyc_declined",

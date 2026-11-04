@@ -25,6 +25,9 @@ export const adminSoftDeleteLotResultAction = _adminSoftDeleteLotResultAction;
 import { adminReturnLotToInventoryResultAction as _adminReturnLotToInventoryResultAction } from "./admin/admin-lots";
 export const adminReturnLotToInventoryResultAction = _adminReturnLotToInventoryResultAction;
 
+import { adminReturnLotToLaxArtResultAction as _adminReturnLotToLaxArtResultAction } from "./admin/admin-lots";
+export const adminReturnLotToLaxArtResultAction = _adminReturnLotToLaxArtResultAction;
+
 import { adminRecordBuyerDefaultResultAction as _adminRecordBuyerDefaultResultAction } from "./admin/admin-lots";
 export const adminRecordBuyerDefaultResultAction = _adminRecordBuyerDefaultResultAction;
 

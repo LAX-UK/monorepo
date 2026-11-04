@@ -21,6 +21,7 @@ import {
   PrintsRunSection,
 } from "@/components/artworks/edition-runs/prints-create-sections.client";
 import { ProofListingDialog } from "@/components/artworks/edition-runs/proof-listing-dialog.client";
+import { OfferAtAuctionDialog } from "@/components/artworks/offer-at-auction-dialog.client";
 import { OriginalArtworkPicker } from "@/components/artworks/original-artwork-picker.client";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import {
@@ -131,7 +132,16 @@ import {
   toast,
   useUnsavedChanges,
 } from "@auction/staff-ui";
-import { Archive, ArchiveRestore, Eye, EyeOff, Layers, Save, Stamp } from "@auction/staff-ui/icons";
+import {
+  Archive,
+  ArchiveRestore,
+  Eye,
+  EyeOff,
+  Gavel,
+  Layers,
+  Save,
+  Stamp,
+} from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
@@ -231,6 +241,7 @@ export function ArtworkEditor({
   const [printsValues, setPrintsValues] = useState(emptyOriginalPrintsForm);
   const [creatingPrints, setCreatingPrints] = useState(false);
   const [linkedPrints, setLinkedPrints] = useState(detail?.linkedPrints ?? []);
+  const [offeringAtAuction, setOfferingAtAuction] = useState(false);
 
   const live = record?.state === "live" || record?.state === "sold_out";
   const context = {
@@ -515,6 +526,20 @@ export function ArtworkEditor({
         ]
       : [];
 
+  // Originals on lax.art can move to a LAX Bid sale; editions are sold in runs, not at auction.
+  const auctionActions =
+    record && record.salesChannel === "art" && run === null && permissions.write
+      ? [
+          {
+            id: "offer-at-auction",
+            label: "Offer at auction…",
+            icon: Gavel,
+            disabled: dirty,
+            onSelect: () => setOfferingAtAuction(true),
+          },
+        ]
+      : [];
+
   const visibilityButton = (
     action: AdminArtworkVisibilityAction,
     variant: "primary" | "secondary",
@@ -553,12 +578,16 @@ export function ArtworkEditor({
         overflow={
           record &&
           visibility &&
-          (visibility.more.length > 0 || linkedActions.length > 0 || printsActions.length > 0) &&
+          (visibility.more.length > 0 ||
+            linkedActions.length > 0 ||
+            printsActions.length > 0 ||
+            auctionActions.length > 0) &&
           !readOnly ? (
             <OverflowMenu
               actions={[
                 ...printsActions,
                 ...linkedActions,
+                ...auctionActions,
                 ...visibility.more.map((action) => ({
                   id: action,
                   label: VISIBILITY_ACTION_LABELS[action].verb,
@@ -1246,6 +1275,14 @@ export function ArtworkEditor({
           />
         ) : null}
       </ConfirmActionDialog>
+      {record && auctionActions.length > 0 ? (
+        <OfferAtAuctionDialog
+          open={offeringAtAuction}
+          onOpenChange={setOfferingAtAuction}
+          artworkId={record.artworkId}
+          title={record.title}
+        />
+      ) : null}
       <UnsavedChangesDialog guard={guard} />
     </div>
   );

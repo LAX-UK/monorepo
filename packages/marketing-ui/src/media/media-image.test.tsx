@@ -36,6 +36,15 @@ beforeAll(() => {
 });
 
 describe("MediaImage", () => {
+  it("shows initials, not a label, on the placeholder of an artist without a portrait", () => {
+    render(
+      <MediaImage src={null} alt="Portrait of Ada Cole" label="Artist portrait" monogram="AC" />,
+    );
+
+    expect(screen.getByText("AC")).toBeInTheDocument();
+    expect(screen.queryByText("Artist portrait")).not.toBeInTheDocument();
+  });
+
   it("forwards crossOrigin to next/image", () => {
     render(<MediaImage src="/artwork.jpg" alt="Artwork" label="Cover" crossOrigin="anonymous" />);
 

@@ -14,6 +14,8 @@ export type DigestItem = {
 
 export type DigestSubgroup = {
   label: string | null;
+  /** The page listing every item of the group, when the matcher gave one. */
+  path: string | null;
   criteria: string | null;
   items: DigestItem[];
 };
@@ -57,6 +59,7 @@ function groupOf(topic: AlertTopic, matches: PendingMatch[], limit: number): Dig
     if (!sub) {
       sub = {
         label: match.snapshot.groupLabel ?? null,
+        path: match.snapshot.groupPath ?? null,
         criteria: match.snapshot.groupCriteria ?? null,
         items: [],
       };

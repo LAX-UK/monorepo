@@ -15,6 +15,7 @@ import {
   SALE_CATALOG_TOOLBAR_STICKY_TOP,
 } from "@/lib/marketing/chrome";
 import { SALEROOM_CATALOG_SORT_OPTIONS } from "@/lib/marketing/saleroom-catalog-sort";
+import type { SaleroomStatusCounts } from "@/lib/marketing/saleroom-status-counts";
 import type { CatalogueControls } from "@/lib/marketing/saleroom/catalogue-controls";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
@@ -27,6 +28,8 @@ type Props = {
   resultCountLabel: string;
   /** What this sale's size earns: lots only, the toolbar, or the toolbar with search. */
   controls: CatalogueControls;
+  /** Lots per status; null when they could not be counted. */
+  statusCounts: SaleroomStatusCounts | null;
 };
 
 export function SaleroomCatalogToolbarRow({
@@ -35,6 +38,7 @@ export function SaleroomCatalogToolbarRow({
   countLabel,
   resultCountLabel,
   controls,
+  statusCounts,
 }: Props) {
   const params = useSearchParams();
   const sortValue = params?.get("sort") ?? "lot";
@@ -55,7 +59,11 @@ export function SaleroomCatalogToolbarRow({
           countLabel={countLabel}
           mobileFilterTrigger={
             <HydrationDeferred fallback={<MarketingFilterTrigger activeCount={0} />}>
-              <SaleroomCatalogFilterSheet basePath={basePath} resultCountLabel={resultCountLabel} />
+              <SaleroomCatalogFilterSheet
+                basePath={basePath}
+                resultCountLabel={resultCountLabel}
+                statusCounts={statusCounts}
+              />
             </HydrationDeferred>
           }
           filters={

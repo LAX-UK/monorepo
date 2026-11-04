@@ -1,5 +1,7 @@
 import type { MarketingProcessStep } from "@/components/marketing/marketing-process-steps";
+import { PAYOUT_ACCOUNT, REPLY_WINDOW } from "@/lib/copy/glossary";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
+import { SPECIALIST_RESPONSE_PROMISE } from "@/lib/marketing/sell-flow-copy";
 import { Banknote, FileText, Gavel, Search, ShieldCheck, Tag, UserPlus } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -7,7 +9,7 @@ import type { ReactNode } from "react";
 /** CTA link label for the valuation section — distinct from intro/closing bands. */
 export const SELL_VALUATION_CTA_LABEL = "Request a specialist review";
 
-/** Extended consignment journey for `/sell` — icons + post-listing lifecycle. */
+/** Extended consignment journey for the step by step guide — icons + post-listing lifecycle. */
 export const SELL_MARKETING_JOURNEY_STEPS: readonly MarketingProcessStep[] = [
   {
     id: "discover",
@@ -16,9 +18,9 @@ export const SELL_MARKETING_JOURNEY_STEPS: readonly MarketingProcessStep[] = [
     description: (
       <>
         Read what we accept and gather photos and details. See{" "}
-        <a href="#departments" className={MARKETING_PROSE_LINK}>
+        <Link href="/sell#departments" className={MARKETING_PROSE_LINK}>
           what we accept
-        </a>
+        </Link>
         .
       </>
     ),
@@ -31,15 +33,15 @@ export const SELL_MARKETING_JOURNEY_STEPS: readonly MarketingProcessStep[] = [
   },
   {
     id: "submit",
-    title: "Submit",
+    title: "Send",
     icon: FileText,
-    description: "Complete the 6-step wizard — about 3 minutes.",
+    description: "Answer a few questions about the work. It takes about 3 minutes.",
   },
   {
     id: "review",
     title: "Specialist review",
     icon: ShieldCheck,
-    description: "Our team vets your object within 24 hours.",
+    description: `A specialist reviews your work and usually replies ${REPLY_WINDOW}.`,
   },
   {
     id: "listed",
@@ -58,8 +60,7 @@ export const SELL_MARKETING_JOURNEY_STEPS: readonly MarketingProcessStep[] = [
     id: "payout",
     title: "Get paid",
     icon: Banknote,
-    description:
-      "Complete Stripe Connect after acceptance so we can transfer your proceeds once the buyer has paid.",
+    description: `Set up your ${PAYOUT_ACCOUNT} after acceptance so we can pay you once the buyer has paid.`,
   },
 ];
 
@@ -67,12 +68,12 @@ export const SELL_MARKETING_JOURNEY_STEPS: readonly MarketingProcessStep[] = [
 export function SellValuationIntro({ cta }: { cta: ReactNode }) {
   return (
     <p>
-      Specialists provide guidance and estimates by reviewing your submission — there is no separate
-      online appraisal form. Share key details and images via {cta}, or{" "}
+      Specialists give guidance and estimates by reviewing your work, so there is no separate online
+      appraisal form. Share key details and images via {cta}, or{" "}
       <Link href="/contact" className={MARKETING_PROSE_LINK}>
         contact our team
       </Link>{" "}
-      for estates, corporate collections, and complex consignments. We respond within 24 hours.
+      for estates, corporate collections, and complex consignments. {SPECIALIST_RESPONSE_PROMISE}
     </p>
   );
 }

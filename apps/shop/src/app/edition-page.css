@@ -1,6 +1,5 @@
 /* The edition page in the gallery direction: the full container, the work on the paper wall,
-   edition / size / technique at a glance, a dated delivery line, then the artist and the
-   gallery team. */
+   a dated delivery line, then the artist and the gallery team. */
 
 .shop-page--edition {
   max-width: var(--container-max, 90rem);
@@ -19,46 +18,6 @@
 /* The sold-out alert is the target of a card's "Get alerts"; keep it clear of the header. */
 #edition-alert {
   scroll-margin-top: calc(var(--header-height, 7rem) + var(--shop-space-6));
-}
-
-/* ── Key facts ───────────────────────────────────────────────────────────────────────────── */
-.shop-key-facts {
-  display: grid;
-  grid-template-columns: repeat(var(--facts, 3), minmax(0, 1fr));
-  margin: 0;
-  border: 1px solid var(--color-border-hairline);
-  border-radius: var(--radius-card);
-}
-
-.shop-key-facts[data-count="2"] {
-  --facts: 2;
-}
-
-.shop-key-facts__item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--shop-space-1);
-  min-width: 0;
-  padding: var(--shop-space-3) var(--shop-space-4);
-}
-
-.shop-key-facts__item + .shop-key-facts__item {
-  border-left: 1px solid var(--color-border-hairline);
-}
-
-.shop-key-facts__label {
-  font-size: var(--shop-text-xs);
-  line-height: 1rem;
-  color: var(--color-on-surface-variant);
-}
-
-.shop-key-facts__value {
-  margin: 0;
-  font-size: var(--shop-text-sm);
-  font-weight: 600;
-  line-height: 1.25rem;
-  color: var(--color-on-surface);
-  overflow-wrap: anywhere;
 }
 
 /* ── Dated delivery line ─────────────────────────────────────────────────────────────────── */

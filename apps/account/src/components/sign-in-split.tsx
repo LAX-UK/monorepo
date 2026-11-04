@@ -27,7 +27,7 @@ export function SignInSplit({
   return (
     <div className="flex min-h-screen bg-page-bg">
       <div className="flex min-w-0 flex-1 flex-col lg:max-w-[50%]">
-        <header className="flex items-center justify-between px-4 pt-6 sm:px-10 lg:px-16 lg:pt-10">
+        <header className="flex items-center justify-between px-4 pt-6 md:px-10 lg:px-16 lg:pt-10">
           <a href="/" className="flex min-h-11 items-center rounded-sm">
             <LaxLockup kind="account" className="block h-9 w-auto sm:h-10" />
           </a>
@@ -35,12 +35,12 @@ export function SignInSplit({
         </header>
         <main
           id="main"
-          className="flex flex-1 flex-col justify-center px-4 py-12 sm:px-10 lg:px-16"
+          className="flex flex-1 flex-col justify-center px-4 py-12 md:px-10 lg:px-16"
         >
           <div className="flex w-full max-w-md flex-col gap-8">{children}</div>
         </main>
-        <div className="px-4 sm:px-10 lg:px-16">
-          <AccountFooter support={support} bare />
+        <div className="px-4 md:px-10 lg:px-16">
+          <AccountFooter support={support} />
         </div>
       </div>
       {/* The painting is decoration: the panel says everything the page means. */}

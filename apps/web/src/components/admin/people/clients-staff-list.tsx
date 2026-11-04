@@ -40,7 +40,7 @@ import {
 } from "@auction/staff-ui";
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 
 export type ClientsStaffListProps = {
   rows: ClientsStaffRow[];
@@ -53,6 +53,8 @@ export type ClientsStaffListProps = {
   canManageRoles: boolean;
   exportFilters: Record<string, unknown>;
   loadError: string | null;
+  /** What the action that sent staff here has to say, shown under the header. */
+  notice?: ReactNode;
   filtered: boolean;
 };
 
@@ -301,6 +303,7 @@ export function ClientsStaffList(props: ClientsStaffListProps) {
         }))}
         onClearFilters={() => navigate(clearHref)}
         loading={pending}
+        notice={props.notice}
         filtered={filtered}
         error={
           props.loadError

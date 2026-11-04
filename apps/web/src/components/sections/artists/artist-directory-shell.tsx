@@ -12,6 +12,7 @@ import { CatalogArtistViewClient } from "@/components/sections/artists/catalog-a
 import type { ArtistDirectoryPreset } from "@/lib/artists/directory-presets";
 import { artistDirectoryWithQuery } from "@/lib/artists/directory-url";
 import { loadArtistDirectoryPage } from "@/lib/artists/load-artist-directory-page";
+import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { artistPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
@@ -162,16 +163,6 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
               }}
             />
           }
-          chips={
-            <MarketingSortLinks
-              label="Browse"
-              options={page.presetChips.map((c) => ({
-                label: c.label,
-                href: c.href,
-                active: c.active,
-              }))}
-            />
-          }
           letterBar={
             <MarketingAlphabetFilter
               basePath="/artists"
@@ -205,7 +196,10 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
               resetHref={preset.canonicalPath}
             >
               <MarketingFilterLinkGroups
-                groups={[...railGroups, { id: "sort", title: "Sort by", links: sortLinks }]}
+                groups={[
+                  ...railGroups,
+                  { id: "sort", title: "Sort by", links: sortLinks, selection: "single" as const },
+                ]}
                 clearHref={preset.canonicalPath}
                 hasFilters={hasUserFilters}
                 idPrefix="sheet"
@@ -243,15 +237,15 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
           ) : null}
           <div className="mt-10">
             <MarketingPromoCta
-              title="Submit your portfolio"
-              description="Request a valuation or submit work to be considered for an upcoming auction."
+              title="Own a work by one of these artists?"
+              description="Send it to our specialists for a valuation and a place in a coming sale."
               actions={
                 <>
                   <ButtonLink Link={Link} variant="primary" href="/selling/new">
-                    Submit work
+                    {SELL_A_WORK_LABEL}
                   </ButtonLink>
                   <ButtonLink Link={Link} variant="secondary" href="/sell">
-                    Selling guide
+                    How to sell
                   </ButtonLink>
                 </>
               }

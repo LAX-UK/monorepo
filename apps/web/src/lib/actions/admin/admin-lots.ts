@@ -241,6 +241,27 @@ export async function adminSoftDeleteLotResultAction(
   });
 }
 
+/** Reopens the artwork's lax.art listing as a draft once its lot has ended unsold or been withdrawn. */
+export async function adminReturnLotToLaxArtResultAction(
+  lotId: string,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminReturnLotToLaxArtResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SALES_ACCESS);
+    if (denied) return denied;
+    const id = lotId.trim();
+    if (!id) return actionFailure("Missing lot");
+    const { adminLots } = getWriteContainer();
+    const r = await adminLots.returnToLaxArt(id);
+    if (!r.ok) {
+      const meta = readApiActionErrorMeta(r.body);
+      return actionFailure(r.message, undefined, r.status, meta?.code as string | undefined);
+    }
+    revalidatePath("/admin/lots");
+    revalidatePath(`/admin/lots/${id}`);
+    return actionSuccess();
+  });
+}
+
 export async function adminReturnLotToInventoryResultAction(
   lotId: string,
   body: z.infer<typeof returnLotToInventoryBodySchema>,

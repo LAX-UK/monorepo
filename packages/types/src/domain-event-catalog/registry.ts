@@ -189,8 +189,16 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "lot.withdrawal_requested",
   "email.block_lifted",
   "enquiry_routing.changed",
+  "private_sale_deal.created",
+  "private_sale_deal.stage_changed",
+  "private_sale_deal.payment_started",
+  "private_sale_deal.payment_paid",
+  "private_sale_deal.payment_cancelled",
+  "private_sale_deal.payment_refunded",
+  "private_sale_deal.payout_queued",
   "marketing_enquiry.assigned",
   "marketing_enquiry.converted",
+  "marketing_enquiry.erased",
   "marketing_enquiry.handled",
   "marketing_enquiry.received",
   "marketing_enquiry.status_changed",
@@ -385,7 +393,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "legal_entity.two_step_reminder_sent": { piiClassification: "none" },
   "legal_entity.contact_details_changed": { piiClassification: "none" },
   "legal_entity.payout_bank_changed": { piiClassification: "none" },
-  "kyc.verified": { consumers: ["marketing_contacts"], piiClassification: "contains_pii" },
+  "kyc.verified": { piiClassification: "contains_pii" },
   "legal_entity.member_invited": { piiClassification: "contains_pii" },
   "lot.activated": { schema: LotEventSchemas["lot.activated"], piiClassification: "none" },
   "lot.attached_to_sale": {
@@ -395,7 +403,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "lot.cancelled": {
     schema: LotEventSchemas["lot.cancelled"],
-    consumers: ["lot_lifecycle_snapshot"],
+    consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot"],
     piiClassification: "none",
   },
   "lot.created": {
@@ -410,7 +418,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "lot.ended": {
     schema: LotEventSchemas["lot.ended"],
-    consumers: ["lot_invoice_initiation", "notification_fanout", "unsold_choice_deadline", "xero"],
+    consumers: [
+      "artwork_offer_lock",
+      "lot_invoice_initiation",
+      "notification_fanout",
+      "unsold_choice_deadline",
+      "xero",
+    ],
     piiClassification: "none",
   },
   "lot.published": {
@@ -425,18 +439,18 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "lot.returned_to_inventory": {
     schema: LotEventSchemas["lot.returned_to_inventory"],
-    consumers: ["lot_lifecycle_snapshot"],
+    consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot"],
     piiClassification: "none",
   },
   "lot.soft_deleted": { schema: LotEventSchemas["lot.soft_deleted"], piiClassification: "none" },
   "lot.unpublished": {
     schema: LotEventSchemas["lot.unpublished"],
-    consumers: ["lot_lifecycle_snapshot"],
+    consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot"],
     piiClassification: "none",
   },
   "lot.voided": {
     schema: LotEventSchemas["lot.voided"],
-    consumers: ["lot_voided_anti_shilling", "notification_fanout"],
+    consumers: ["artwork_offer_lock", "lot_voided_anti_shilling", "notification_fanout"],
     piiClassification: "none",
   },
   "lot.withdrawal_declined": {
@@ -451,7 +465,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "payment.captured": {
     schema: paymentCapturedPayloadSchemaV1,
-    consumers: ["xero", "zoho"],
+    consumers: ["artwork_offer_lock", "xero", "zoho"],
     piiClassification: "contains_pii",
   },
   "payment.dispute_closed": { consumers: ["notification_fanout"] },
@@ -511,14 +525,14 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "user.deletion_requested": {
     schema: userDeletionRequestedPayloadSchemaV1,
     producers: ["apps/auth"],
-    consumers: ["marketing_contacts", "bid_identity_directory", "shop_identity_projection", "zoho"],
+    consumers: ["bid_identity_directory", "shop_identity_projection", "zoho"],
     idempotencyPolicy: "none",
     piiClassification: "none",
   },
   "user.email_verified": {
     schema: userEmailVerifiedPayloadSchemaV1,
     producers: ["apps/auth", "packages/db"],
-    consumers: ["marketing_contacts", "zoho", "bid_identity_directory"],
+    consumers: ["zoho", "bid_identity_directory"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
   },
@@ -602,7 +616,6 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
       "bid_profile_provisioning",
       "bid_identity_directory",
       "legal_entity_provisioning",
-      "marketing_contacts",
       "shop_identity_projection",
       "zoho",
     ],
@@ -701,6 +714,12 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     idempotencyPolicy: "none",
     piiClassification: "none",
   },
+  "marketing_enquiry.erased": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
   "email.block_lifted": {
     producers: ["apps/api"],
     consumers: [],
@@ -708,6 +727,48 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "enquiry_routing.changed": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "private_sale_deal.created": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "private_sale_deal.stage_changed": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "private_sale_deal.payment_started": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "private_sale_deal.payment_paid": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "private_sale_deal.payment_cancelled": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "private_sale_deal.payment_refunded": {
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "none",
+  },
+  "private_sale_deal.payout_queued": {
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",

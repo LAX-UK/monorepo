@@ -1,4 +1,4 @@
-import { oneAccountSection } from "../chrome.js";
+import { contextLine, oneAccountSection } from "../chrome.js";
 import { HOSTED_COPY } from "../copy.js";
 import {
   buildHostedAuthHtml,
@@ -35,8 +35,8 @@ function agreementLine(view: HostedAuthView): string {
 export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromSearch("")): string {
   const productBack = resolveHostedProductBackLink(view);
   return buildHostedAuthHtml({
-    title: `Create your ${HOSTED_COPY.accountName}`,
-    lead: "signUp",
+    title: HOSTED_COPY.titles.signUp,
+    contextLine: contextLine(view.brand.chip, view.flow.context),
     ...viewChrome(view),
     body: `<div id="signup-root" class="auth-stack">
       ${socialActions(view)}

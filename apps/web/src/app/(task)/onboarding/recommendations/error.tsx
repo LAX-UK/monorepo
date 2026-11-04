@@ -12,7 +12,7 @@ export default function RecommendationsOnboardingError({
   return (
     <BuyerOnboardingRouteError
       title="Recommendations are temporarily unavailable"
-      detail="Your interests are saved. Try loading this step again, or continue to identity verification later from your dashboard."
+      detail="Your interests are saved. Try loading this step again, or continue to your identity check later from your account."
       reset={reset}
       error={error}
     />
