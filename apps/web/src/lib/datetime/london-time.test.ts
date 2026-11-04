@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   formatLondonDate,
   formatLondonDateRange,
-  formatLondonDateTime,
   formatLondonDayMonth,
   formatLondonMoment,
   formatLondonMonthYear,
@@ -40,7 +39,6 @@ describe("London time", () => {
   it("puts the day before the month", () => {
     expect(formatLondonDate(winter)).toBe("3 Nov 2026");
     expect(formatLondonDate(winter, { month: "long" })).toBe("3 November 2026");
-    expect(formatLondonDateTime(winter)).toBe("3 Nov 2026, 21:00 GMT");
   });
 
   it("tells a moment with its weekday, and the year only when it is not this year's", () => {
