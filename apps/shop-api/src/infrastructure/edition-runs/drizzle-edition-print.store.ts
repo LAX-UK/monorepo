@@ -58,6 +58,7 @@ export function createDrizzleEditionPrintStore(db: Database): EditionPrintStore 
           title: shopArtwork.title,
           sourceOriginalArtworkId: shopArtwork.sourceOriginalArtworkId,
           eligibleForEditionAllocation: shopArtwork.eligibleForEditionAllocation,
+          archivedAt: shopArtwork.archivedAt,
           updatedAt: shopArtwork.updatedAt,
         })
         .from(shopArtwork)
@@ -72,6 +73,7 @@ export function createDrizzleEditionPrintStore(db: Database): EditionPrintStore 
         title: row.title,
         sourceOriginalArtworkId: row.sourceOriginalArtworkId,
         sellsPrints: row.eligibleForEditionAllocation,
+        archived: row.archivedAt !== null,
         updatedAt: row.updatedAt,
       };
     },

@@ -1,3 +1,4 @@
+import { DEV_ALERT_LINK_SECRET, isUsableAlertLinkSecret } from "@auction/alerts";
 import { legalEntityFor } from "@auction/branding";
 import { resolveStrictBidEligibilityRollout } from "@auction/domain";
 import { parseOptionalBooleanFlag } from "@auction/validators";
@@ -151,8 +152,6 @@ const envSchema = z
     POSTMARK_TRANSACTIONAL_STREAM: z.string().default("outbound"),
     POSTMARK_BROADCAST_STREAM: z.string().default("broadcast"),
     POSTMARK_WEBHOOK_BASIC_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),
-    /** Shared secret for the Brevo marketing-contacts webhook (opt-out / bounce ingest). */
-    BREVO_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     /**
      * Shared secret the Zoho workflow sends in `X-LAX-Webhook-Secret` with each artwork notice.
      * Unset, the notice route answers 503 and nothing is stored.
@@ -160,7 +159,7 @@ const envSchema = z
     ZOHO_ARTWORK_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
     EMAIL_UNSUBSCRIBE_SECRET: z.string().min(16).default("dev-email-unsubscribe-secret"),
     /** Signs the confirm and stop links in alert emails. Separate from the account unsubscribe secret. */
-    ALERT_LINK_SECRET: z.string().min(16).default("dev-alert-link-secret-not-for-production"),
+    ALERT_LINK_SECRET: z.string().min(16).default(DEV_ALERT_LINK_SECRET),
     ALERT_LINK_KEY_ID: z.string().min(1).max(32).default("k1"),
     /** The key being retired during a rotation: still accepted for links already sent. */
     ALERT_LINK_PREVIOUS_SECRET: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
@@ -387,13 +386,6 @@ const envSchema = z
         message: "POSTMARK_WEBHOOK_BASIC_AUTH is required when NODE_ENV=production",
       });
     }
-    if (e.NODE_ENV === "production" && !e.BREVO_WEBHOOK_SECRET) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "BREVO_WEBHOOK_SECRET is required when NODE_ENV=production",
-        path: ["BREVO_WEBHOOK_SECRET"],
-      });
-    }
     if (e.STORAGE_DRIVER === "s3") {
       if (!e.S3_BUCKET || !e.S3_REGION || !e.S3_ACCESS_KEY_ID || !e.S3_SECRET_ACCESS_KEY) {
         ctx.addIssue({
@@ -528,10 +520,11 @@ const envSchema = z
       }
     }
 
-    if (appEnv === "production" && e.ALERT_LINK_SECRET.length < 32) {
+    if (appEnv === "production" && !isUsableAlertLinkSecret(e.ALERT_LINK_SECRET)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "ALERT_LINK_SECRET is required in production (min 32 characters)",
+        message:
+          "ALERT_LINK_SECRET is required in production (min 32 characters, not the development default)",
         path: ["ALERT_LINK_SECRET"],
       });
     }
@@ -549,7 +542,8 @@ const envSchema = z
       if (!cron || cron.length < 32) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "CRON_INTERNAL_SECRET is required in deployed environments (min 32 characters)",
+          message:
+            "CRON_INTERNAL_SECRET is required in deployed environments (min 32 characters, not the development default)",
           path: ["CRON_INTERNAL_SECRET"],
         });
       }

@@ -256,6 +256,7 @@ export {
   DrizzleEnquiryNoteRepository,
   DrizzleEnquiryRoutingRepository,
 } from "./drizzle-enquiry-workflow.repositories.js";
+export { DrizzleEnquiryErasureRepository } from "./drizzle-enquiry-erasure.repository.js";
 export { DrizzleDeliveryQuoteRepository } from "./drizzle-delivery-quote.repository.js";
 export { DrizzlePurchaseProblemRepository } from "./drizzle-purchase-problem.repository.js";
 export { DrizzleAccountRecordSearchReader } from "./drizzle-account-record-search.reader.js";
@@ -266,6 +267,7 @@ export {
 } from "./drizzle-organisation-team.readers.js";
 export { DrizzleContactDetailsRepository } from "./drizzle-contact-details.repository.js";
 export { DrizzleUnsoldChoiceDeadlineStore } from "./drizzle-unsold-choice-deadline.store.js";
+export { DrizzleUnsoldLotFollowUpRepository } from "./drizzle-unsold-lot-follow-up.repository.js";
 export {
   DrizzleAgreementDocumentFactsReader,
   DrizzlePayoutLinesReader,

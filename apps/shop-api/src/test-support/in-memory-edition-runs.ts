@@ -17,6 +17,7 @@ import type {
   EditionStockBatch,
 } from "../application/ports/edition-run.repository.js";
 import type { ShopAdminAuditRecord } from "../application/ports/shop-admin-audit.writer.js";
+import type { ShopDomainEventRecord } from "../application/ports/shop-domain-event.writer.js";
 
 export type MemoryPrint = {
   artworkId: string;
@@ -40,6 +41,7 @@ export function createInMemoryEditionRuns() {
   const prints: MemoryPrint[] = [];
   const batches: EditionStockBatch[] = [];
   const audit: ShopAdminAuditRecord[] = [];
+  const events: ShopDomainEventRecord[] = [];
   const paidOrders = new Map<string, { orderId: string; reference: string; paidAt: Date }[]>();
   const snapshots = new Map<string, Record<string, unknown>>();
   let factsSaves = 0;
@@ -52,6 +54,7 @@ export function createInMemoryEditionRuns() {
       title: `Artwork ${patch.artworkId}`,
       sourceOriginalArtworkId: null,
       sellsPrints: true,
+      archived: false,
       updatedAt: new Date("2026-10-01T10:00:00.000Z"),
       ...patch,
     };
@@ -220,6 +223,28 @@ export function createInMemoryEditionRuns() {
         return { artworkId: copy.artworkId, slug, version: copy.updatedAt.toISOString() };
       },
     },
+    originalPrints: {
+      async copyFromOriginal(input) {
+        const original = artworks.get(input.originalArtworkId);
+        if (!original) throw new Error("missing original");
+        let slug = input.slug;
+        const taken = () => [...artworks.values()].some((a) => a.slug === slug);
+        for (let n = 2; taken(); n += 1) slug = `${input.slug}-${n}`;
+        const copy = addArtwork({
+          artworkId: `prints-${++serial}`,
+          artistId: original.artistId,
+          slug,
+          title: input.title,
+          sourceOriginalArtworkId: original.artworkId,
+        });
+        return { artworkId: copy.artworkId, slug, importKey: `staff:${copy.artworkId}` };
+      },
+    },
+    events: {
+      async append(event) {
+        events.push(event);
+      },
+    },
     audit: {
       async append(record) {
         audit.push(record);
@@ -248,6 +273,7 @@ export function createInMemoryEditionRuns() {
     prints,
     batches,
     audit,
+    events,
     paidOrders,
     snapshots,
     addArtwork,

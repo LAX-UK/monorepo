@@ -6,6 +6,8 @@ import type {
   AdminEditionFactsBulkResponse,
   AdminEditionFactsCorrectBody,
   AdminEditionFactsSaveBody,
+  AdminOriginalPrints,
+  AdminPrintsFromOriginalResponse,
   AdminProofListingBody,
   AdminRunUpdateBody,
   AdminStockBatchBody,
@@ -15,8 +17,8 @@ import { forwardAdminJsonMutation } from "./forward-admin-mutation";
 
 /*
  * LAX Admin's calls for runs of prints: change a draft's run, save, confirm or correct its
- * edition facts, add open edition stock, and create proof and companion listings. Each forwards
- * to shop-api, which applies the rules again.
+ * edition facts, add open edition stock, create proof and companion listings, and create prints of
+ * an original. Each forwards to shop-api, which applies the rules again.
  */
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -124,6 +126,20 @@ export async function createCompanionListing(
   input: Write<AdminCompanionListingBody>,
 ): Promise<ListingResult> {
   const path = artworkPath(input.artworkId, "companion-listings");
+  if (!path) return invalidInput;
+  return forwardAdminJsonMutation({
+    bffPath: path,
+    method: "POST",
+    jsonBody: input.body,
+    idempotencyKey: input.idempotencyKey,
+  });
+}
+
+/** "Create prints" on a saved original: a linked Shop draft with its run, in one save. */
+export async function createPrintsFromOriginal(
+  input: Write<AdminOriginalPrints>,
+): Promise<AdminMutationResult<AdminPrintsFromOriginalResponse>> {
+  const path = artworkPath(input.artworkId, "prints");
   if (!path) return invalidInput;
   return forwardAdminJsonMutation({
     bffPath: path,

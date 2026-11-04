@@ -1,11 +1,11 @@
 import { SofCaseDetailShell } from "@/components/admin/compliance-sof-board/sof-case-detail-shell";
+import { resolveAdminNotice } from "@/lib/admin/admin-notice";
 import { loadSofCaseDetailPage } from "@/lib/admin/compliance/load-sof-case-detail-page";
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { notFound } from "next/navigation";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; success?: string; returnTo?: string }>;
+  searchParams: Promise<{ notice?: string; returnTo?: string }>;
 };
 
 export default async function AdminSofCaseDetailPage({ params, searchParams }: Props) {
@@ -15,8 +15,7 @@ export default async function AdminSofCaseDetailPage({ params, searchParams }: P
   if (!bundle) notFound();
 
   const { row, detail, canTriage, canDecide, currentUserId } = bundle;
-  const success = safeDecodeAdminErrorParam(sp.success);
-  const error = safeDecodeAdminErrorParam(sp.error);
+  const { success, error } = resolveAdminNotice(sp.notice);
   const buyerLabel = detail.buyer.label ?? detail.buyer.email ?? "Buyer";
 
   return (

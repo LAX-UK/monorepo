@@ -193,7 +193,7 @@ describe.skipIf(!hasShopIntegrationDb)("editorial content fields", () => {
 
     const placements = await repo.getHomePlacements();
     expect(placements.find((p) => p.slot === "home_hero")).toMatchObject({
-      headline: "New Originals, now on in Marylebone",
+      headline: "New originals, now showing in Marylebone",
     });
     expect(placements.some((p) => p.slot.startsWith("home_promo_"))).toBe(false);
   });

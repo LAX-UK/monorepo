@@ -48,7 +48,7 @@ export function ArtArtworkList({
             <span className="flex flex-col gap-1">
               <Link
                 href={card.artistHref}
-                className="art-focus-ring inline-flex min-h-6 w-fit items-center rounded-sm hover:text-on-surface"
+                className="art-focus-ring inline-flex min-h-6 pointer-coarse:min-h-11 w-fit items-center rounded-sm hover:text-on-surface"
               >
                 {card.artistName}
               </Link>

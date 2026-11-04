@@ -6,6 +6,7 @@ import {
   DrizzleArtworkRegisterRepository,
   DrizzleLotRegisterLinkReader,
   DrizzleUnsoldChoiceDeadlineStore,
+  DrizzleUnsoldLotFollowUpRepository,
 } from "@auction/persistence/repositories";
 import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import { DrizzleWebhookEventRepository } from "@auction/persistence/repositories";
@@ -40,7 +41,6 @@ import {
 import { createZohoCrmGateway } from "../integrations/zoho/create-zoho-crm-gateway.js";
 import { assertZohoCrmOrgEnvironment } from "../integrations/zoho/zoho-crm-org-check.js";
 import { runIdentityOutboxRelayJob } from "../jobs/identity-outbox-relay.job.js";
-import type { MarketingContactSyncJobData } from "../jobs/marketing-contact-sync.js";
 import { marketingEventsOutcomeTotal } from "../jobs/marketing-event-processor.js";
 import type { ProcessInboundWebhookDeps } from "../jobs/process-inbound-webhook-event.js";
 import {
@@ -64,6 +64,7 @@ import { marketingEventsCapiBatchSize } from "../marketing/meta-capi-batch-colle
 import { BidOfferLockRecorder } from "../projectors/artwork-offer-lock.js";
 import { createProjectorRunner } from "../projectors/runner.js";
 import { UnsoldChoiceDeadlineRecorder } from "../projectors/unsold-choice-deadline.js";
+import { UnsoldFollowUpOpener } from "../projectors/unsold-follow-up.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import { registerAlertWorkers } from "../workers/register-alert-workers.js";
 import { registerAtgSyncWorker } from "../workers/register-atg-sync-worker.js";
@@ -325,7 +326,6 @@ export function createWorkerContainer(): WorkerContainer {
     staffRoleReader: repositories.staffRoleReader,
     newsletterSignupSyncRepo: repositories.newsletterSignupSyncRepo,
     kycRetentionStores: repositories.kycRetentionStores,
-    marketingContactSyncRepo: repositories.marketingContactSyncRepo,
     staffOpsRecipientReader: repositories.staffOpsRecipientReader,
     complianceRecipientReader: repositories.complianceRecipientReader,
     mediaAssetProcessorRepo: repositories.mediaAssetProcessorRepo,
@@ -520,6 +520,7 @@ export function createWorkerContainer(): WorkerContainer {
       unsoldChoiceDeadlines: new UnsoldChoiceDeadlineRecorder(
         new DrizzleUnsoldChoiceDeadlineStore(db),
       ),
+      unsoldFollowUps: new UnsoldFollowUpOpener(new DrizzleUnsoldLotFollowUpRepository(db)),
       env,
       db,
       deliveryRepo: repositories.domainEventDeliveryRepo,
@@ -539,27 +540,6 @@ export function createWorkerContainer(): WorkerContainer {
       staffOpsRecipientReader: repositories.staffOpsRecipientReader,
       complianceRecipientReader: repositories.complianceRecipientReader,
       shopIdentityProjection,
-      ...(marketingWorkers.marketingContactSync
-        ? {
-            enqueueMarketingContactSync: async (data: {
-              userId: string;
-              reason: string;
-              eventId: number;
-            }) => {
-              await marketingWorkers.marketingSyncQueue.add(
-                "marketing-contact-sync",
-                { userId: data.userId, reason: data.reason } satisfies MarketingContactSyncJobData,
-                {
-                  jobId: `marketing-contact-sync-${data.eventId}`,
-                  attempts: 5,
-                  backoff: { type: "exponential", delay: 30_000 },
-                  removeOnComplete: 1000,
-                  removeOnFail: 5000,
-                },
-              );
-            },
-          }
-        : {}),
       ...(workerFinanceServices
         ? {
             xeroLiveExecutorPorts: createXeroLiveExecutorPortsFromStack(

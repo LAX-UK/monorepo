@@ -4,14 +4,13 @@ import { loadMenuSellerAccess } from "@/server/application/load-selling";
 import { getLaxAccountContainer } from "@/server/container";
 import { buildAccountLinks } from "@/server/domain/account-links";
 import { buildAccountNav, buildProductBar } from "@/server/domain/account-nav.vm";
-import { ACCOUNT_ROUTES } from "@/server/domain/account-settings.vm";
 import { buildDeletionBannerVm } from "@/server/domain/deletion-banner.vm";
 import { buildBackToProduct, originProductUrls } from "@/server/domain/origin-product";
 import { showsSelling } from "@/server/domain/selling/selling-access";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import type { ReactNode } from "react";
-import { DeletionScheduledBanner } from "./deletion-scheduled-banner";
+import { DeletionScheduledBanner } from "./deletion-scheduled-banner.client";
 import { AccountFrame, type PageWidth } from "./shell/account-frame";
 import { type AccountViewer, toAccountViewer } from "./shell/account-viewer";
 
@@ -66,7 +65,7 @@ export async function AccountShell({
       width={width}
       notice={
         banner ? (
-          <DeletionScheduledBanner dueOn={banner.dueOn} cancelHref={ACCOUNT_ROUTES.deleteAccount} />
+          <DeletionScheduledBanner dueOn={banner.dueOn} signInHref="/api/auth/login" />
         ) : null
       }
     >

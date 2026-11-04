@@ -34,9 +34,14 @@ function renderLink(link: MarketingFooterLink) {
       </ShopAuthLink>
     );
   }
-  if (link.href.startsWith("http://") || link.href.startsWith("https://")) {
+  const inPage = link.href.startsWith("#");
+  if (inPage || link.href.startsWith("http://") || link.href.startsWith("https://")) {
     return (
-      <a href={link.href} className={LINK_CLASS} rel="noopener noreferrer">
+      <a
+        href={link.href}
+        className={LINK_CLASS}
+        {...(inPage ? {} : { rel: "noopener noreferrer" })}
+      >
         {link.label}
       </a>
     );

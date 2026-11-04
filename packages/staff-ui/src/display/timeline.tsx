@@ -13,12 +13,14 @@ export type TimelineEvent = {
   actor?: string;
   /** Extra detail, e.g. a reason or a tracking number. */
   detail?: React.ReactNode;
-  tone?: StaffStatusTone;
+  /** A status tone, or `live` for something happening now (the live dot). */
+  tone?: StaffStatusTone | "live";
 };
 
-const dotTone: Record<StaffStatusTone, string> = {
+const dotTone: Record<StaffStatusTone | "live", string> = {
   neutral: "bg-staff-neutral-dot",
   info: "bg-staff-info-dot",
+  accepted: "bg-staff-accepted-dot",
   success: "bg-staff-success-dot",
   warning: "bg-staff-warning-dot",
   danger: "bg-staff-danger-dot",

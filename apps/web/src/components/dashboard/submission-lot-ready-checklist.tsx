@@ -71,7 +71,7 @@ export function SubmissionLotReadyChecklist({ submission, lot, connectRequired =
                         href="/selling/consignments?tab=in-sale"
                         className="text-link underline-offset-4 hover:underline"
                       >
-                        In-sale dashboard
+                        Works in a sale
                       </Link>
                     </>
                   ) : null}

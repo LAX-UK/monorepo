@@ -28,7 +28,7 @@ const TEMPLATES: ReadonlyArray<{ value: RunTemplate; label: string; description:
   {
     value: "lax_standard",
     label: "LAX standard: limited edition of 24",
-    description: "10 for buyers of the original, 10 for the artist, 4 for LAX.",
+    description: "10 for the buyer of the original, 10 for the artist, 4 for LAX.",
   },
   {
     value: "custom_limited",
@@ -151,12 +151,7 @@ export function RunFields({
 
       {original}
 
-      {numbering ? (
-        <p className="text-staff-sm text-staff-muted">
-          {linkedToOriginal ? "Its buyer receives prints 1 to 10. " : ""}
-          {numbering}
-        </p>
-      ) : null}
+      {numbering ? <p className="text-staff-sm text-staff-muted">{numbering}</p> : null}
 
       {values.template === "open" ? (
         <div className="flex flex-col gap-4">

@@ -71,15 +71,14 @@ export type ProjectorRunContext = {
   bidAlerts?: import("./bid-alert-matching.types.js").BidAlertMatching | undefined;
   /** Stores the choose-by date when a consigned lot ends unsold. */
   unsoldChoiceDeadlines?: { record(lotId: string): Promise<void> } | undefined;
+  /** Opens the staff work for a confirmed unsold-lot choice. */
+  unsoldFollowUps?: { open(submissionId: string, lotId: string): Promise<void> } | undefined;
   xeroLiveExecutorPorts?: XeroLiveExecutorPorts | undefined;
   env?: WorkerEnv | undefined;
   db?: Database | undefined;
   deliveryRepo?: IDomainEventDeliveryRepository | undefined;
   crmRecordLinkRepo?: ICrmRecordLinkRepository | undefined;
   crmSyncService?: CrmSyncService | undefined;
-  enqueueMarketingContactSync?:
-    | ((data: { userId: string; reason: string; eventId: number }) => Promise<void>)
-    | undefined;
   shopIdentityProjection?: ShopIdentityProjectionService | undefined;
   /** Records, in the artwork register, where a Bid lot's artwork is offered and when it sells. */
   artworkOfferLock?: import("../artwork-offer-lock.types.js").BidOfferLockApplier | undefined;

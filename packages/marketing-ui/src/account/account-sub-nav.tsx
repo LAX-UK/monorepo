@@ -1,9 +1,8 @@
 "use client";
 
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { cn } from "@auction/ui";
+import { ScrollRow, cn } from "@auction/ui";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
 import {
   type AccountSubNavCount,
   accountSubNavCountText,
@@ -34,19 +33,6 @@ const COUNT_TONE: Record<AccountSubNavCount["tone"], string> = {
   neutral: "bg-surface-container-high text-on-surface",
 };
 
-/** Scrolls the band sideways (never the page) so the current link is fully visible. */
-function keepInView(scroller: HTMLElement, link: HTMLElement) {
-  const box = scroller.getBoundingClientRect();
-  const item = link.getBoundingClientRect();
-  // The row fades out over its last 15% on phones; keep the link clear of the fade.
-  const fade = box.width * 0.15 + 8;
-  if (item.left < box.left) {
-    scroller.scrollLeft += item.left - box.left - 8;
-  } else if (item.right > box.right - fade) {
-    scroller.scrollLeft += item.right - (box.right - fade);
-  }
-}
-
 /**
  * The account pages' own row under the public header: one text link per page, the current one
  * underlined in the product accent. It scrolls sideways on phones and keeps the current link in
@@ -59,17 +45,6 @@ export function AccountSubNav({
   currentId,
   className,
 }: AccountSubNavProps) {
-  const scrollerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    if (!scroller || currentId === null) return;
-    const link = [...scroller.querySelectorAll<HTMLElement>("[data-sub-nav-id]")].find(
-      (candidate) => candidate.dataset.subNavId === currentId,
-    );
-    if (link) keepInView(scroller, link);
-  }, [currentId]);
-
   return (
     <nav
       aria-label={label}
@@ -93,13 +68,7 @@ export function AccountSubNav({
           {label}
           <span className="ml-2 h-4 w-px bg-outline-variant" />
         </span>
-        <div
-          ref={scrollerRef}
-          className={cn(
-            "flex min-w-0 flex-1 items-stretch gap-1 overflow-x-auto [scrollbar-width:none] max-md:px-2 [&::-webkit-scrollbar]:hidden",
-            "max-md:[mask-image:linear-gradient(90deg,#000_85%,transparent)]",
-          )}
-        >
+        <ScrollRow className="flex flex-1 items-stretch gap-1 max-md:px-2">
           {items.map((item) => {
             const current = item.id === currentId;
             const count = visibleAccountSubNavCount(item.count);
@@ -107,7 +76,6 @@ export function AccountSubNav({
               <Link
                 key={item.id}
                 href={item.href}
-                data-sub-nav-id={item.id}
                 aria-current={current ? "page" : undefined}
                 className={cn(
                   "relative inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2.5 font-body text-sm",
@@ -133,7 +101,7 @@ export function AccountSubNav({
               </Link>
             );
           })}
-        </div>
+        </ScrollRow>
       </div>
     </nav>
   );

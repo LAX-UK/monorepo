@@ -6,7 +6,18 @@ import {
   rolesHaveCapability,
 } from "@auction/shop-domain";
 import { normalizeLaxAdminRoles } from "@auction/types";
-import { type AnyColumn, type SQL, eq, isNull, sql } from "drizzle-orm";
+import { type AnyColumn, Column, type SQL, eq, getTableName, isNull, sql } from "drizzle-orm";
+
+/**
+ * The subject column written with its table name. A single-table query prints a column bare, and
+ * inside the subquery below a bare identity_subject_id is the assignment's own column, which
+ * makes the match always true and hands every person the roles of everyone.
+ */
+function outer(subject: AnyColumn | SQL): SQL {
+  return subject instanceof Column
+    ? sql.raw(`"${getTableName(subject.table)}"."${subject.name}"`)
+    : subject;
+}
 
 /**
  * The LAX Admin roles a staff member holds in force right now, as an array (empty when none),
@@ -17,7 +28,7 @@ export function activeShopStaffRolesSql(subjectColumn: AnyColumn | SQL): SQL<str
   return sql<string[]>`coalesce((
     select array_agg(distinct a.role::text)
     from ${shopStaffRoleAssignment} a
-    where a.identity_subject_id = ${subjectColumn}
+    where a.identity_subject_id = ${outer(subjectColumn)}
       and a.starts_at <= now()
       and (a.ends_at is null or a.ends_at > now())
   ), '{}'::text[])`;
@@ -37,7 +48,7 @@ export function currentShopStaffRolesSql(
       'endsAt', to_char(a.ends_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
     ) order by a.starts_at)
     from ${shopStaffRoleAssignment} a
-    where a.identity_subject_id = ${subjectColumn}
+    where a.identity_subject_id = ${outer(subjectColumn)}
       and (a.ends_at is null or a.ends_at > now())
   ), '[]'::json)`;
 }
@@ -49,7 +60,7 @@ export function holdsAnyShopStaffRoleSql(
 ): SQL<boolean> {
   return sql<boolean>`exists (
     select 1 from ${shopStaffRoleAssignment} a
-    where a.identity_subject_id = ${subjectColumn}
+    where a.identity_subject_id = ${outer(subjectColumn)}
       and a.role::text = any(${`{${roles.join(",")}}`}::text[])
       and a.starts_at <= now()
       and (a.ends_at is null or a.ends_at > now())

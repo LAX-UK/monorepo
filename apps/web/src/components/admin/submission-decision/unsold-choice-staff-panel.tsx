@@ -36,6 +36,7 @@ import { useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { RELIST_FLOOR_FORM_ID, UNSOLD_CHOICE_DECISION_FORM_ID } from "./form-ids";
+import { UnsoldFollowUpBlock } from "./unsold-follow-up-block";
 
 type Unsold = NonNullable<StaffAfterSaleView["unsold"]>;
 
@@ -231,14 +232,23 @@ export function UnsoldChoiceStaffPanel({ submissionId, unsold }: Props) {
     >
       <KeyValueList items={facts(unsold, Boolean(confirmed))} />
       {confirmed?.decidedChoice ? (
-        <Notice
-          tone="success"
-          title={`Confirmed: ${unsoldChoiceSummary(confirmed.decidedChoice, confirmed.decidedReserve, confirmed.currency)}`}
-        >
-          {confirmed.staffNote
-            ? `Note to the seller: ${confirmed.staffNote}`
-            : `By ${confirmed.decidedByName ?? "a specialist"}${confirmed.decidedAt ? `, ${formatDate(confirmed.decidedAt)}` : ""}.`}
-        </Notice>
+        <>
+          <Notice
+            tone="success"
+            title={`Confirmed: ${unsoldChoiceSummary(confirmed.decidedChoice, confirmed.decidedReserve, confirmed.currency)}`}
+          >
+            {confirmed.staffNote
+              ? `Note to the seller: ${confirmed.staffNote}`
+              : `By ${confirmed.decidedByName ?? "a specialist"}${confirmed.decidedAt ? `, ${formatDate(confirmed.decidedAt)}` : ""}.`}
+          </Notice>
+          {unsold.followUp ? (
+            <UnsoldFollowUpBlock
+              submissionId={submissionId}
+              followUp={unsold.followUp}
+              currency={confirmed.currency}
+            />
+          ) : null}
+        </>
       ) : (
         <>
           <div className="border-t border-staff-line-subtle pt-5">

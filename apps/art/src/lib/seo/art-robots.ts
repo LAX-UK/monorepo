@@ -3,6 +3,7 @@ import type { MetadataRoute } from "next";
 /** Private, auth and thin search-result routes stay out of the index. */
 export const ART_ROBOTS_DISALLOW = [
   "/account",
+  "/alerts",
   "/preview",
   "/search",
   "/login",

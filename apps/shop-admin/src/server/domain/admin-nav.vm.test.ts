@@ -46,6 +46,7 @@ describe("buildAdminNavGroups", () => {
       "/overview",
       "/artworks",
       "/artists",
+      "/from-zoho",
       "/artist-applications",
     ]);
     expect(navHrefsFor("editor")).toEqual(["/overview", ...EDITORIAL_HREFS]);
@@ -53,7 +54,9 @@ describe("buildAdminNavGroups", () => {
 
   it("shows Read-only the catalogue and editorial pages, and nothing from clients or the audit log", () => {
     const hrefs = navHrefsFor("read_only");
-    for (const href of ["/artworks", "/artists", ...EDITORIAL_HREFS]) expect(hrefs).toContain(href);
+    for (const href of ["/artworks", "/artists", "/from-zoho", ...EDITORIAL_HREFS]) {
+      expect(hrefs).toContain(href);
+    }
     expect(hrefs).not.toContain("/artist-applications");
     expect(hrefs).not.toContain("/clients");
     expect(hrefs).not.toContain("/audit");
@@ -70,6 +73,7 @@ describe("buildAdminNavGroups", () => {
       "/overview",
       "/artworks",
       "/artists",
+      "/from-zoho",
       "/artist-applications",
       ...EDITORIAL_HREFS,
     ]);
@@ -105,6 +109,15 @@ describe("buildAdminNavGroups", () => {
     expect(hrefs).toContain("/audit");
     expect(hrefs).not.toContain("/enquiries");
     expect(EDITORIAL_HREFS.filter((href) => hrefs.includes(href))).toEqual([]);
+  });
+
+  it("keeps the From Zoho queue to the roles that manage artworks and Read-only", () => {
+    for (const role of ["shop_admin", "catalogue_editor", "read_only"] as const) {
+      expect(navHrefsFor(role), role).toContain("/from-zoho");
+    }
+    for (const role of ["finance", "operations", "broker", "account_manager", "editor"] as const) {
+      expect(navHrefsFor(role), role).not.toContain("/from-zoho");
+    }
   });
 
   it("lets finance open artworks to set prices, but not artists", () => {
@@ -166,6 +179,7 @@ describe("buildAdminNavGroups", () => {
         [
           "Artworks",
           "Artists",
+          "From Zoho",
           "Artist applications",
           "Exhibitions",
           "Stories",

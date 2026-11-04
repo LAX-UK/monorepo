@@ -26,7 +26,7 @@ export default function LegalEntityArchivedNoticeEmail(
       </TextBlock>
       <HelpBlock email={supportContactEmail} />
       <Button href={dashboardUrl} tone="subtle">
-        Open your dashboard
+        Open your account
       </Button>
     </Layout>
   );

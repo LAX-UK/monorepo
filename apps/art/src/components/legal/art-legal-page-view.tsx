@@ -40,7 +40,7 @@ export function ArtLegalPageView({
   }));
 
   return (
-    <LegalHub label="Legal" links={links}>
+    <LegalHub label="Legal pages" links={links}>
       <LegalDocument title={page.title} {...(toc ? { toc } : {})}>
         <EditorialLegalBody body={page.body} />
         <LegalSection id={WHO_WE_ARE_ID} heading="Who we are">

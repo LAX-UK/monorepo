@@ -8,6 +8,23 @@ import { resolveAppImageTag } from "./resolve-app-image-tag.mjs";
 
 const SHA = /^[0-9a-f]{40}$/;
 
+/** Monorepo components that App deploy test pins independently of each other. */
+export const MONOREPO_APP_COMPONENTS = ["web", "api", "ws", "worker", "migrate"];
+
+/**
+ * Without an explicit app_image_tag every component keeps its own live SHA, so a selective
+ * deploy that left them on different commits stays untouched. An explicit app_image_tag pins
+ * all of them to that one SHA (empty per-component values inherit it in Terraform).
+ */
+function perComponentLiveTags(live, inputAppImageTag) {
+  const tags = {};
+  for (const component of MONOREPO_APP_COMPONENTS) {
+    const liveTag = live[component] ?? "";
+    tags[`${component}_image_tag`] = !inputAppImageTag && SHA.test(liveTag) ? liveTag : "";
+  }
+  return tags;
+}
+
 function parseArgs(argv) {
   let appId = "";
   let format = "github-env";
@@ -98,6 +115,7 @@ export function resolveLiveTerraformImageTags(
   });
   return {
     app_image_tag: appImageTag,
+    ...perComponentLiveTags(live, inputAppImageTag),
     shop_identity_image_tag: inputOrLive(
       "shop-identity",
       inputShopIdentityImageTag,

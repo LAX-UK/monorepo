@@ -1,6 +1,5 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
-import { EMPTY_STATE_VOICE } from "@/lib/ui/empty-state-copy";
 import { MarketingCardReveal } from "@auction/marketing-ui";
 import { DisplayHeading } from "@auction/ui";
 import { ButtonLink } from "@auction/ui/lax";
@@ -11,11 +10,12 @@ import { PressCoverageCard } from "./press-coverage-card";
 
 type Props = {
   items: PressArchiveEntryVM[];
-  hasActiveFilters?: boolean;
+  /** What to show: from `resolvePressPageState`. */
+  view: "empty" | "filteredEmpty" | "list";
   toolbar?: ReactNode;
 };
 
-export function PressCoverageList({ items, hasActiveFilters = false, toolbar }: Props) {
+export function PressCoverageList({ items, view, toolbar }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <MarketingSectionHeader
@@ -34,25 +34,32 @@ export function PressCoverageList({ items, hasActiveFilters = false, toolbar }: 
 
       {toolbar}
 
-      {items.length === 0 ? (
+      {view === "empty" ? (
         <MarketingEmptyState
           variant="marketing"
-          context={hasActiveFilters ? "filtered" : "noResults"}
+          context="noResults"
           illustration="press"
-          title={
-            hasActiveFilters ? EMPTY_STATE_VOICE.filteredTitle("articles") : "No press coverage yet"
-          }
-          description={
-            hasActiveFilters
-              ? "Try adjusting your search or year filter."
-              : "Check back as new coverage is added to our sales."
-          }
+          headingLevel="h3"
+          title="No coverage yet"
+          description="Articles about LAX Bid sales will appear here."
           action={
-            hasActiveFilters ? (
-              <ButtonLink Link={Link} variant="primary" href="/press">
-                Clear filters
-              </ButtonLink>
-            ) : undefined
+            <ButtonLink Link={Link} variant="primary" href="/contact?intent=press">
+              Contact the press office
+            </ButtonLink>
+          }
+        />
+      ) : view === "filteredEmpty" ? (
+        <MarketingEmptyState
+          variant="marketing"
+          context="filtered"
+          illustration="press"
+          headingLevel="h3"
+          title="No articles match"
+          description="Try adjusting your search or year filter."
+          action={
+            <ButtonLink Link={Link} variant="primary" href="/press">
+              Clear filters
+            </ButtonLink>
           }
         />
       ) : (

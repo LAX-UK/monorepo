@@ -1,5 +1,11 @@
+import { staffShortDateFormat } from "@auction/staff-ui";
+
 /** Locale-stable relative time for admin UI (avoids hydration mismatches). */
-const RELATIVE_LOCALE = "en-GB";
+const OLDER_DATE = staffShortDateFormat({
+  year: "2-digit",
+  month: "short",
+  day: "numeric",
+});
 
 export function relativeFromIso(iso: string, now = new Date()): string {
   const t = new Date(iso).getTime();
@@ -16,11 +22,7 @@ export function relativeFromIso(iso: string, now = new Date()): string {
   if (days < 7) return `${days}d ago`;
   const weeks = Math.floor(days / 7);
   if (weeks < 5) return `${weeks}w ago`;
-  return new Date(iso).toLocaleDateString(RELATIVE_LOCALE, {
-    year: "2-digit",
-    month: "short",
-    day: "numeric",
-  });
+  return OLDER_DATE.format(new Date(iso));
 }
 
 export function daysSinceIso(iso: string, now = new Date()): number {

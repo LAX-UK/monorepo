@@ -1,8 +1,8 @@
 "use client";
 
+import { formatPenceAsPounds, parsePoundsToPence } from "@auction/ui";
 import { TextInput, type TextInputProps } from "@auction/ui/lax";
 import * as React from "react";
-import { formatPenceAsPounds, parsePoundsToPence } from "../lib/money.js";
 
 export type MoneyInputProps = Omit<
   TextInputProps,

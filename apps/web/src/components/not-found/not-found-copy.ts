@@ -22,7 +22,7 @@ export type NotFoundCopy = {
 export const NOT_FOUND_COPY: Readonly<Record<NotFoundKind, NotFoundCopy>> = {
   page: {
     documentTitle: "Page not found",
-    title: "We can't find that page",
+    title: "We can’t find that page",
     description: "The link may be mistyped, or the page may have moved.",
     illustration: "ticket",
     search: true,
@@ -34,7 +34,7 @@ export const NOT_FOUND_COPY: Readonly<Record<NotFoundKind, NotFoundCopy>> = {
   },
   lot: {
     documentTitle: "Lot not found",
-    title: "We can't find that lot",
+    title: "We can’t find that lot",
     description: "The link may be mistyped, or the lot may have moved to another sale.",
     illustration: "ticket",
     search: false,
@@ -45,7 +45,7 @@ export const NOT_FOUND_COPY: Readonly<Record<NotFoundKind, NotFoundCopy>> = {
   },
   sale: {
     documentTitle: "Sale not found",
-    title: "We can't find that sale",
+    title: "We can’t find that sale",
     description: "It may have been renamed or moved to results.",
     illustration: "gavel",
     search: false,
@@ -56,7 +56,7 @@ export const NOT_FOUND_COPY: Readonly<Record<NotFoundKind, NotFoundCopy>> = {
   },
   artist: {
     documentTitle: "Artist not found",
-    title: "We can't find that artist",
+    title: "We can’t find that artist",
     description: "Try the artist directory.",
     illustration: "frame",
     search: false,

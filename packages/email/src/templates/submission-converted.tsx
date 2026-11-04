@@ -23,7 +23,7 @@ export default function SubmissionConvertedEmail({
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
         A draft catalogue lot was created for <strong>{submissionTitle}</strong>. Complete any
-        remaining steps in your seller dashboard when you are ready.
+        remaining steps in your account when you are ready.
       </TextBlock>
       <Button href={submissionUrl}>View submission</Button>
     </Layout>

@@ -23,7 +23,7 @@ const DESCRIPTION =
 
 type Props = {
   lastUpdated?: Date | null;
-  stats?: PressHubStats;
+  stats?: PressHubStats | undefined;
 };
 
 export function PressHubHero({ lastUpdated, stats }: Props) {

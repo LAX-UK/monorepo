@@ -14,7 +14,12 @@ const ACTION_LABELS: Record<string, string> = {
   request_refund: "Refund requested",
   "refund.request": "Refund requested",
   full_refund_edition_reversal: "Edition returned after a full refund",
+  retry_refund: "Refund sent again",
+  refund_settled_outside: "Refund marked as refunded outside LAX",
   cancel_after_possession: "Order cancelled after delivery",
+  return_in_transit: "Return marked in transit",
+  return_received: "Return received",
+  edition_back_on_sale: "Print back on sale",
   mark_payout_paid: "Payout marked paid",
   "payout.mark_paid": "Payout marked paid",
   connect_transfer_payout: "Payout sent by transfer",
@@ -175,24 +180,61 @@ export function auditRecordHref(targetType: string, targetId: string): string | 
   }
 }
 
-export type AuditActor = { name: string; email: string | null; kind: "person" | "system" };
+export type AuditActor = {
+  name: string;
+  email: string | null;
+  kind: "person" | "system";
+  /** For a system actor, where the action came from ("Script: local admin staff"), when recorded. */
+  source: string | null;
+};
 
 const SYSTEM_ACTORS: Record<string, string> = {
   "system:shop-scheduler": "LAX scheduler",
   "system:stripe-webhook": "Payment provider",
+  "system:stripe-connect": "Payment provider",
+  "system:identity-purge": "LAX scheduler",
 };
 
-/** Who acted: a person by their profile name, or the platform itself, never a raw subject. */
+/** Subject prefixes written by scripts, seeds and the ops CLI: none of them is a person's account. */
+const SYSTEM_SOURCE_PREFIXES = ["system:", "seed:", "ops:"] as const;
+
+function systemSource(subjectId: string): string | null {
+  const separator = subjectId.indexOf(":");
+  const prefix = subjectId.slice(0, separator);
+  const rest = subjectId.slice(separator + 1).trim();
+  if (!rest) return null;
+  if (prefix === "ops") return `Operations script, run by ${rest}`;
+  const words = rest.replaceAll(/[-_]/g, " ");
+  if (prefix === "seed") return `Script: ${words}`;
+  return `Automated: ${words}`;
+}
+
+/**
+ * Who acted: a person by their profile name, or the platform itself (scheduler, webhook, seed or
+ * ops script) as "System" with its source. A person whose record is gone reads as a former staff
+ * member, never as unknown.
+ */
 export function auditActor(entry: {
   actorSubjectId: string;
   actorName?: string | null;
   actorEmail?: string | null;
 }): AuditActor {
-  if (entry.actorSubjectId.startsWith("system:")) {
-    return { name: SYSTEM_ACTORS[entry.actorSubjectId] ?? "System", email: null, kind: "system" };
+  const id = entry.actorSubjectId;
+  if (SYSTEM_SOURCE_PREFIXES.some((prefix) => id.startsWith(prefix))) {
+    return {
+      name: SYSTEM_ACTORS[id] ?? "System",
+      email: null,
+      kind: "system",
+      source: systemSource(id),
+    };
   }
   const email = entry.actorEmail ?? null;
-  return { name: entry.actorName ?? email ?? "Unknown staff member", email, kind: "person" };
+  return {
+    name: entry.actorName ?? email ?? "Former staff member",
+    email,
+    kind: "person",
+    source: null,
+  };
 }
 
 export type AuditFact = { label: string; value: string; copyValue?: string };

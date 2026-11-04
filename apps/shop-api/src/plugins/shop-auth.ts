@@ -1,9 +1,9 @@
-import { timingSafeEqual } from "node:crypto";
 import { verifyBearerToken } from "@auction/auth/token-verifier";
 import type { ProductScope } from "@auction/identity-contracts";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { ShopApiError } from "../errors/shop-api-error.js";
+import { constantTimeEqual } from "../lib/constant-time-equal.js";
 
 export type ShopAuthContext =
   | { kind: "user"; subject: string; scopes: readonly ProductScope[] }
@@ -61,11 +61,6 @@ export function registerShopAuthPlugin(
       .filter(Boolean) as ProductScope[];
     request.shopAuth = { kind: "user", subject: verified.subject, scopes };
   });
-}
-
-function constantTimeEqual(left: string, right: string): boolean {
-  if (left.length !== right.length) return false;
-  return timingSafeEqual(Buffer.from(left), Buffer.from(right));
 }
 
 /** Seller routes also open to LAX Account acting as the person with its narrow selling scopes. */

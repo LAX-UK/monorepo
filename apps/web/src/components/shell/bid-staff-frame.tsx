@@ -3,12 +3,14 @@
 import { DensityProvider } from "@/components/layout/density-provider";
 import { artistsPaletteSource } from "@/components/layout/palette/sources/artists-source";
 import { clientsPaletteSource } from "@/components/layout/palette/sources/clients-source";
+import { dataRequestsPaletteSource } from "@/components/layout/palette/sources/data-requests-source";
 import { lotsPaletteSource } from "@/components/layout/palette/sources/lots-source";
 import { paymentsPaletteSource } from "@/components/layout/palette/sources/payments-source";
 import { salesPaletteSource } from "@/components/layout/palette/sources/sales-source";
 import type { PaletteSource } from "@/components/layout/palette/types";
 import { getStaffNavGroups } from "@/components/layout/staff-nav";
 import { StaffRouteRecentTracker } from "@/components/layout/staff-route-recent-tracker";
+import { staffNavCountTone } from "@/components/shell/bid-staff-nav-tone";
 import { ContextBannerSlot } from "@/components/shell/context-banner-slot";
 import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
 import { staffRolesLabel } from "@/lib/admin/staff-role-presenter";
@@ -49,6 +51,7 @@ const SEARCH_SOURCES: readonly PaletteSource[] = [
   clientsPaletteSource,
   artistsPaletteSource,
   paymentsPaletteSource,
+  dataRequestsPaletteSource,
 ];
 
 async function searchRecords(query: string): Promise<StaffCommand[]> {
@@ -95,12 +98,7 @@ function toStaffNav(
       ...(item.badge
         ? {
             count: item.badge,
-            countTone:
-              item.badgeTone === "warning" ||
-              item.badgeTone === "danger" ||
-              item.badgeTone === "live"
-                ? ("attention" as const)
-                : ("neutral" as const),
+            countTone: staffNavCountTone(item.badgeTone),
           }
         : {}),
     })),

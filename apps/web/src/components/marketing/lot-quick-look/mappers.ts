@@ -45,7 +45,7 @@ export function lotQuickLookFromRailCard(card: LotRailCardVM): LotQuickLookVM {
     id: card.id,
     href: card.href,
     title: card.title,
-    subtitle: card.artistOrSellerName,
+    subtitle: card.artistName ?? "",
     imageUrl: card.imageUrl,
     imageAlt: card.title,
     status: card.status,

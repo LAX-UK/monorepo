@@ -1,12 +1,6 @@
 import type { HostedBrandProfile } from "./brand.js";
 import type { HostedFieldKind } from "./browser/constraints.js";
-import {
-  type HostedLeadKey,
-  destinationLine,
-  hostedFooter,
-  hostedHeader,
-  leadWithDestination,
-} from "./chrome.js";
+import { destinationLine, hostedFooter, hostedHeader } from "./chrome.js";
 import { HOSTED_COPY } from "./copy.js";
 import { escapeHostedHtml, escapeJsonScript } from "./escape.js";
 import { hostedFaviconLinkTags } from "./favicons.js";
@@ -49,8 +43,8 @@ export type HostedAuthPage = {
   footer?: HostedFooterLinks;
   /** "to continue to LAX Bid" under the heading. Off for error pages, which go nowhere yet. */
   showDestination?: boolean;
-  /** A lead that names the destination itself, in place of the description and the separate line. */
-  lead?: HostedLeadKey;
+  /** The line that says what the account is for ("to bid at LAX Bid"), in place of the destination line. */
+  contextLine?: string;
   productBack?: { href: string; label: string };
 };
 
@@ -276,9 +270,9 @@ export function continuationAnchor(label: string, path: string, flow: HostedAuth
 
 const PRODUCT_BACK_CHEVRON = `<svg class="product-back-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-/** Only Montserrat is preloaded: every hosted page sets its text in it, as LAX Account does. */
+/** Both faces are preloaded: Montserrat sets the title and Outfit the interface text. */
 function fontPreloadTags(): string {
-  return [HOSTED_FONT_FILES.montserrat]
+  return [HOSTED_FONT_FILES.montserrat, HOSTED_FONT_FILES.outfit]
     .map(
       (file) =>
         `  <link rel="preload" href="${hostedFontPath(file)}?v=${HOSTED_AUTH_ASSET_VERSION}" as="font" type="font/woff2" crossorigin>`,
@@ -288,17 +282,15 @@ function fontPreloadTags(): string {
 
 export function buildHostedAuthHtml(page: HostedAuthPage): string {
   const asset = `?v=${HOSTED_AUTH_ASSET_VERSION}`;
-  const documentTitle = `${page.title} · ${HOSTED_COPY.accountName}`;
+  const documentTitle = page.title.includes(HOSTED_COPY.accountName)
+    ? page.title
+    : `${page.title} · ${HOSTED_COPY.accountName}`;
   const productBack = page.productBack
     ? `<p class="product-back"><a class="product-back-link" href="${escapeHostedHtml(page.productBack.href)}">${PRODUCT_BACK_CHEVRON}<span>${escapeHostedHtml(page.productBack.label)}</span></a></p>`
     : "";
   const destination =
-    page.lead || page.showDestination === false ? "" : destinationLine(page.brand.chip);
-  const lead = page.lead
-    ? leadWithDestination(page.lead, page.brand.chip)
-    : page.description
-      ? escapeHostedHtml(page.description)
-      : "";
+    page.contextLine ?? (page.showDestination === false ? "" : destinationLine(page.brand.chip));
+  const lead = page.description ? escapeHostedHtml(page.description) : "";
   // Every hosted page is the LAX Account, whichever product the person came from. The theme
   // script has no `defer`: it sets the theme class before the first paint.
   return `<!doctype html>

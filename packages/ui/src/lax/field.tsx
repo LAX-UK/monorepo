@@ -54,6 +54,8 @@ export type FieldProps = {
   description?: React.ReactNode;
   /** Shown under the control and announced; marks the control invalid. */
   error?: string | null | undefined;
+  /** Announces the error as it appears: for a field that already has focus when it fails. */
+  announce?: boolean;
   /** Marks the label "Optional" instead; required is the default. */
   optional?: boolean;
   /** With `optional`, drops the visible "Optional" mark: for filters, where every field is optional. */
@@ -76,6 +78,7 @@ export function Field({
   label,
   description,
   error,
+  announce = false,
   optional = false,
   quiet = false,
   labelHidden = false,
@@ -128,17 +131,39 @@ export function Field({
       </div>
       <FieldContext.Provider value={value}>{children}</FieldContext.Provider>
       {error ? (
-        <p
-          id={errorId}
-          className="flex items-start gap-1.5 text-lax-12 font-medium text-lax-danger in-data-[lax-density=client]:text-lax-13 in-data-[lax-density=client]:leading-5"
-        >
-          <CircleAlert
-            aria-hidden
-            className="mt-px size-3.5 shrink-0 in-data-[lax-density=client]:mt-[3px]"
-          />
+        <FieldError id={errorId} announce={announce}>
           {error}
-        </p>
+        </FieldError>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The inline error under a control: an icon, the message in the danger colour. `Field` uses it
+ * for its own control; a checkbox or radio row that stands outside a `Field` uses it directly,
+ * with the id its control names in `aria-describedby`.
+ */
+export function FieldError({
+  id,
+  announce = false,
+  children,
+}: {
+  id?: string | undefined;
+  announce?: boolean | undefined;
+  children: React.ReactNode;
+}) {
+  return (
+    <p
+      {...(id ? { id } : {})}
+      {...(announce ? { role: "alert" } : {})}
+      className="flex items-start gap-1.5 text-lax-12 font-medium text-lax-danger in-data-[lax-density=client]:text-lax-13 in-data-[lax-density=client]:leading-5"
+    >
+      <CircleAlert
+        aria-hidden
+        className="mt-px size-3.5 shrink-0 in-data-[lax-density=client]:mt-[3px]"
+      />
+      {children}
+    </p>
   );
 }

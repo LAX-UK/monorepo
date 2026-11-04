@@ -4,7 +4,6 @@ import {
   type AccountSignInMethodsResponse,
   type SocialSignInProvider,
 } from "@auction/identity-contracts/account";
-import { maskAccountEmail } from "@auction/lax-ecosystem";
 import type { IdentityCallResult } from "../ports/account-identity-gateway";
 
 export const PROVIDER_LABEL: Record<SocialSignInProvider, string> = {
@@ -28,7 +27,7 @@ export type SocialRowVm = {
   kind: "social";
   provider: SocialSignInProvider;
   title: string;
-  /** The account's address, masked, and when the provider was linked. */
+  /** The account's address and when the provider was linked. */
   detail: string;
   /** Null when it can be removed; otherwise the sentence that says why not. */
   blockedReason: string | null;
@@ -69,7 +68,6 @@ export function buildSignInMethodsSection(
   }
   if (result.status === "reauth_required") return { status: "reauth_required" };
   const { hasPassword, social } = result.value;
-  const masked = email ? maskAccountEmail(email) : null;
   const isLastMethod = !hasPassword && social.length === 1;
   const rows: SignInMethodRowVm[] = [
     {
@@ -88,7 +86,7 @@ export function buildSignInMethodsSection(
         kind: "social",
         provider: method.provider,
         title: PROVIDER_LABEL[method.provider],
-        detail: [masked, `Linked ${formatLinkedDate(method.linkedAt)}`].filter(Boolean).join(" · "),
+        detail: [email, `Linked ${formatLinkedDate(method.linkedAt)}`].filter(Boolean).join(" · "),
         blockedReason: isLastMethod ? ONLY_METHOD_REASON : null,
       }),
     ),

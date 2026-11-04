@@ -1,4 +1,6 @@
+import type { ReleaseAlertSummaryReader } from "./application/alerts/alert-ports.js";
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
+import type { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import type { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
@@ -21,7 +23,6 @@ import type {
   CreateOriginalSaleCommand,
   OriginalSaleWriter,
 } from "./application/ports/original-sale.writer.js";
-import type { ReleaseAlertSummaryReader } from "./application/ports/release-alert.store.js";
 import type {
   GrantSaleAuthorityCommand,
   SaleAuthorityWriter,
@@ -40,6 +41,7 @@ import type {
 import type { ProductionTaskService } from "./application/production-task.service.js";
 import type { SavedViewService } from "./application/saved-view.service.js";
 import type { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
+import type { createAdvanceReturnHandler } from "./infrastructure/handlers/admin/advance-return.handler.js";
 import type { createCancelAfterPossessionHandler } from "./infrastructure/handlers/admin/cancel-after-possession.handler.js";
 import type { createCreateMerchandiseProductHandler } from "./infrastructure/handlers/admin/create-merchandise-product.handler.js";
 import type { createCreateProductionTaskHandler } from "./infrastructure/handlers/admin/create-production-task.handler.js";
@@ -49,6 +51,7 @@ import type {
   createUnlinkArtistIdentityHandler,
 } from "./infrastructure/handlers/admin/link-artist-identity.handler.js";
 import type { createMarkPayoutPaidHandler } from "./infrastructure/handlers/admin/mark-payout-paid.handler.js";
+import type { createMarkRefundSettledOutsideHandler } from "./infrastructure/handlers/admin/mark-refund-settled-outside.handler.js";
 import type { createRecordPossessionHandler } from "./infrastructure/handlers/admin/record-possession.handler.js";
 import type { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handlers/admin/reject-sale-authority-request.handler.js";
 import type { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
@@ -77,6 +80,8 @@ export type AdminRoutesDeps = {
   guestErasure: GuestErasureService;
   /** Guest leads: the list and one lead's record. */
   leads: LeadsService;
+  /** The From Zoho queue: new artworks, conflicts, the latest check and each record. */
+  artworkRegister: ArtworkRegisterReviewService;
   /** Release alert subscriber counts. */
   releaseAlertSummary: ReleaseAlertSummaryReader;
   artistApplicationReview: ArtistApplicationReviewService;
@@ -89,6 +94,8 @@ export type AdminRoutesDeps = {
   cancelAfterPossession: ReturnType<typeof createCancelAfterPossessionHandler>;
   requestRefund: ReturnType<typeof createRequestRefundHandler>;
   retryRefund: ReturnType<typeof createRetryRefundHandler>;
+  markRefundSettledOutside: ReturnType<typeof createMarkRefundSettledOutsideHandler>;
+  advanceReturn: ReturnType<typeof createAdvanceReturnHandler>;
   markPayoutPaid: ReturnType<typeof createMarkPayoutPaidHandler>;
   saleFees: {
     approveFee(
@@ -108,7 +115,7 @@ export type AdminRoutesDeps = {
   merchandiseCatalogue: MerchandiseCatalogueWriter;
   artworkCatalogue: ArtworkCatalogueWriter;
   /** Runs of prints: change a draft's run, edition facts, open edition stock, linked listings. */
-  editionRuns: Omit<EditionRunServices, "recorder">;
+  editionRuns: Omit<EditionRunServices, "recorder" | "originalPrintsRecorder">;
   artistCatalogue: ArtistCatalogueWriter;
   /** Refreshes lax.art after catalogue writes that change what it serves. */
   artCache: ArtCacheInvalidator;
