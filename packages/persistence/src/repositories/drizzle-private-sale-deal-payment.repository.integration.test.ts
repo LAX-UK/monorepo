@@ -156,7 +156,14 @@ describe.skipIf(!HAS_DB)("private sale deal payments and payouts (integration)",
       const payouts = new DrizzlePayoutRepository(db);
       await db
         .update(privateSaleDeal)
-        .set({ priceMinor: 4_800_000, costsMinor: 25_000, agreedAt: t, stage: "released" })
+        .set({
+          priceMinor: 4_800_000,
+          costsMinor: 25_000,
+          agreedAt: t,
+          vatTreatment: "margin_scheme",
+          paymentDueAt: t,
+          stage: "released",
+        })
         .where(eq(privateSaleDeal.id, dealId));
       // Held until the buyer's money is in.
       expect(await store.findUnsettledReleased(sellerEntityId)).toEqual([]);

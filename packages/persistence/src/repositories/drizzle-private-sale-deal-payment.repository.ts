@@ -51,10 +51,6 @@ function mapPayment(row: PaymentRow): PrivateSaleDealPayment {
   };
 }
 
-function isUniqueViolation(err: unknown): boolean {
-  return typeof err === "object" && err !== null && (err as { code?: unknown }).code === "23505";
-}
-
 /** The buyer's payment for a private sale deal. */
 export class DrizzlePrivateSaleDealPaymentRepository
   implements IPrivateSaleDealPaymentReader, IPrivateSaleDealPaymentWriter
@@ -98,25 +94,22 @@ export class DrizzlePrivateSaleDealPaymentRepository
   }
 
   async claim(input: NewPrivateSaleDealPayment): Promise<ClaimDealPaymentResult> {
-    try {
-      const [row] = await this.db
-        .insert(privateSaleDealPayment)
-        .values({
-          dealId: input.dealId,
-          buyerLegalEntityId: input.buyerLegalEntityId,
-          createdByUserId: input.createdByUserId,
-          rail: input.rail,
-          amountMinor: input.amountMinor,
-        })
-        .returning();
-      if (!row) throw new Error("private sale deal payment was not created");
-      return { kind: "created", payment: mapPayment(row) };
-    } catch (err) {
-      if (!isUniqueViolation(err)) throw err;
-      const existing = await this.findLiveForDeal(input.dealId);
-      if (!existing) throw err;
-      return { kind: "existing", payment: existing };
-    }
+    // A deal has at most one live payment; losing that race hands back the one that won.
+    const [row] = await this.db
+      .insert(privateSaleDealPayment)
+      .values({
+        dealId: input.dealId,
+        buyerLegalEntityId: input.buyerLegalEntityId,
+        createdByUserId: input.createdByUserId,
+        rail: input.rail,
+        amountMinor: input.amountMinor,
+      })
+      .onConflictDoNothing()
+      .returning();
+    if (row) return { kind: "created", payment: mapPayment(row) };
+    const existing = await this.findLiveForDeal(input.dealId);
+    if (!existing) throw new Error("private sale deal payment was not created");
+    return { kind: "existing", payment: existing };
   }
 
   async recordCheckout(
