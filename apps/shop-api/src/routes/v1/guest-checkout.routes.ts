@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { attachmentContentDisposition } from "@auction/artwork-register-contracts";
 import {
   type GuestCheckoutRequest,
   GuestCheckoutRequestSchema,
@@ -238,7 +239,7 @@ export async function registerGuestCheckoutRoutes(
       const pdf = await renderOrderInvoicePdf(model);
       return reply
         .header("content-type", "application/pdf")
-        .header("content-disposition", `attachment; filename="${model.fileName}"`)
+        .header("content-disposition", attachmentContentDisposition(model.fileName))
         .header("cache-control", "private, no-store")
         .send(pdf);
     },
