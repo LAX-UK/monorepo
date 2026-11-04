@@ -8,6 +8,8 @@ const url = process.env.DATABASE_URL;
 const db = url ? createDb(url) : (null as never);
 
 const NOW = new Date("2026-11-03T09:00:00.000Z");
+// A later moment, so the history has one unambiguous order.
+const LATER = new Date("2026-11-03T09:05:00.000Z");
 
 const entry: NewArtworkRegisterEntry = {
   zohoProductId: "5001",
@@ -49,7 +51,7 @@ describe.skipIf(!url)("moving an original between lax.art and LAX Bid (Postgres)
         consignorAgreed: true,
         confirmedBy: "staff:u1",
       },
-      now: NOW,
+      now: LATER,
     });
     expect(result).toEqual({ status: "recorded" });
     const events = await repo.listEvents(created.entry.id, 10);
