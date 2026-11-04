@@ -82,6 +82,10 @@ function service(overrides: Partial<ArtworkRegisterReviewDeps> = {}) {
     },
     runs: { latestNightlyRun: vi.fn(async () => null) },
     staffNames: { namesFor: async () => new Map([["u1", "Cat Alogue"]]) },
+    listings: {
+      findByZohoProductId: vi.fn(async () => null),
+      findZohoProductId: vi.fn(async () => null),
+    },
     now: () => T0,
     ...overrides,
   };
@@ -186,6 +190,26 @@ describe("ArtworkRegisterReviewService", () => {
     expect(detail?.events.map((e) => e.actorName)).toEqual(["Cat Alogue", null]);
     expect(detail).toMatchObject({ imageCount: 0, missing: ["image", "size"], offerState: "held" });
     expect(detail?.conflicts).toHaveLength(1);
+  });
+
+  it("says where the artwork is, from the draft made from it", async () => {
+    const { service: s } = service({
+      listings: {
+        findByZohoProductId: async () => ({
+          artworkId: "a0000000-0000-4000-8000-000000000001",
+          slug: "aidan-phelan-harbour-at-dusk",
+          published: false,
+          createdAt: T0.toISOString(),
+        }),
+        findZohoProductId: async () => null,
+      },
+    });
+    const detail = await s.get(ID);
+    expect(detail?.whereItIs).toMatchObject({ key: "draft_lax_art" });
+    expect(detail?.laxArt).toMatchObject({
+      slug: "aidan-phelan-harbour-at-dusk",
+      published: false,
+    });
   });
 
   it("finds nothing for an unknown artwork", async () => {

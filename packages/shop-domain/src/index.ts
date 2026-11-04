@@ -438,3 +438,12 @@ export {
   isArtOriginalRelease,
   isShopEditionRelease,
 } from "./release-alert.js";
+export {
+  ZOHO_OWNED_ARTWORK_FIELDS,
+  ZOHO_OWNED_FIELDS_MESSAGE,
+  assertZohoOwnedFieldsUnchanged,
+  changedZohoOwnedFields,
+  isZohoOwnedOriginal,
+  zohoCatalogueOf,
+  type ZohoOwnedArtworkField,
+} from "./zoho-owned-fields.js";

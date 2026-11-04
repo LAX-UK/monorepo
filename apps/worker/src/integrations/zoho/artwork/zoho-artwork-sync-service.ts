@@ -10,6 +10,7 @@ import type { Logger } from "pino";
 import { type ProductAssessment, assessProduct } from "./assess-product.js";
 import type { CatalogueProduct } from "./catalogue-product.js";
 import { type ArtworkDecision, decideArtworkOutcome } from "./decide-outcome.js";
+import { type LinkedListingProjector, listingFactsOf } from "./linked-listing-projector.js";
 import type { ZohoCatalogueReader } from "./zoho-catalogue-reader.js";
 
 /** `off` does nothing; `dry_run` reports what would change; `live` changes the register. */
@@ -21,6 +22,8 @@ export type ZohoArtworkSyncDeps = {
   register: IArtworkRegisterRepository;
   report: IZohoArtworkSyncReport;
   watermark: IZohoArtworkSyncWatermark;
+  /** Carries Zoho's fields onto the lax.art listing made from a record, when there is one. */
+  listings?: LinkedListingProjector;
   log: Logger;
   now?: () => Date;
 };
@@ -139,9 +142,28 @@ export class ZohoArtworkSyncService {
         : null;
 
     let decision = decideArtworkOutcome(assessment, { existing, holderOfStockCode });
-    if (mode === "live") decision = await this.apply(assessment, decision);
+    if (mode === "live") {
+      decision = await this.apply(assessment, decision);
+      await this.projectListing(assessment.productId, decision);
+    }
 
     return toOutcome(assessment, decision);
+  }
+
+  /**
+   * Brings the lax.art listing made from this record in step with what the register now holds.
+   * It runs for every record Zoho touched, changed or not, so a listing missed once is put right
+   * the next time. A failure is logged and does not stop the pass: the register is already right.
+   */
+  private async projectListing(productId: string, decision: ArtworkDecision): Promise<void> {
+    const { listings, register, log } = this.deps;
+    if (!listings || decision.outcome === "create" || decision.outcome === "skipped") return;
+    try {
+      const entry = await register.findByZohoProductId(productId);
+      if (entry) await listings.project(listingFactsOf(entry));
+    } catch (error) {
+      log.error({ err: error, productId }, "zoho artwork could not update its lax.art listing");
+    }
   }
 
   /** Carries a decision out on the register. A refusal turns it into a skip, never an error. */

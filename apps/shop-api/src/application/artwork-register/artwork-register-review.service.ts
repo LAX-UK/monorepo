@@ -25,7 +25,9 @@ import type {
   RegisterQueueFilter,
   SyncRunReader,
 } from "../ports/artwork-register-review.ports.js";
+import type { LaxArtListingReader } from "../ports/offer-on-lax-art.ports.js";
 import type { StaffNameReader } from "../ports/staff-name.reader.js";
+import { presentWhereItIs } from "./where-it-is.presenter.js";
 
 /** How much history one artwork's page shows. */
 const HISTORY_LIMIT = 100;
@@ -36,6 +38,8 @@ export type ArtworkRegisterReviewDeps = {
   resolver: ConflictResolver;
   runs: SyncRunReader;
   staffNames: StaffNameReader;
+  /** The lax.art listing made from a record, for "Where it is". */
+  listings: LaxArtListingReader;
   now?: () => Date;
 };
 
@@ -180,9 +184,10 @@ export class ArtworkRegisterReviewService {
   async get(registerId: string): Promise<AdminRegisterDetail | null> {
     const entry = await this.deps.register.findById(registerId);
     if (!entry) return null;
-    const [conflicts, events] = await Promise.all([
+    const [conflicts, events, laxArt] = await Promise.all([
       this.deps.queue.listConflictsFor(registerId),
       this.deps.register.listEvents(registerId, HISTORY_LIMIT),
+      this.deps.listings.findByZohoProductId(entry.zohoProductId),
     ]);
     const names = await this.deps.staffNames.namesFor(
       events.filter((e) => e.actor.startsWith("staff:")).map((e) => e.actor.slice("staff:".length)),
@@ -201,6 +206,13 @@ export class ArtworkRegisterReviewService {
       imageCount: entry.imageRefs.length,
       catalogueStatus: entry.catalogueStatus,
       offerState: entry.offer.state,
+      whereItIs: presentWhereItIs({
+        entry,
+        events,
+        laxArt,
+        now: (this.deps.now ?? (() => new Date()))(),
+      }),
+      laxArt,
       missing: catalogueGapsOf(entry),
       zohoModifiedAt: iso(entry.zohoModifiedAt),
       createdAt: entry.createdAt.toISOString(),

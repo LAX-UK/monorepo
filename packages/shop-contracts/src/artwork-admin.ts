@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { AdminWhereItIsSchema } from "./admin-where-it-is.js";
 import { createCursorListResponseSchema } from "./cursor-list.js";
 import {
   AdminArtworkRunSummarySchema,
@@ -290,6 +291,9 @@ export const AdminArtworkPublishBlockerSchema = Type.Union([
   Type.Literal("archived"),
   Type.Literal("artist_archived"),
   Type.Literal("no_image"),
+  Type.Literal("no_zoho_image"),
+  Type.Literal("no_size"),
+  Type.Literal("no_medium"),
   Type.Literal("no_edition_price"),
   Type.Literal("edition_facts_incomplete"),
 ]);
@@ -354,6 +358,22 @@ export const AdminArtworkDetailSchema = Type.Object({
     byStatus: StatusCountsSchema,
     byAllocation: AllocationCountsSchema,
   }),
+  /**
+   * The Zoho record this original was made from. While it is set, Zoho owns the title, artist,
+   * medium, size, year and images. Absent from an older shop-api; null for an unlinked artwork.
+   */
+  zohoLink: Type.Optional(
+    Type.Union([
+      Type.Object({
+        registerId: Type.String({ format: "uuid" }),
+        zohoProductId: Type.String(),
+        stockCode: Type.String(),
+        zohoStatus: Type.Union([Type.String(), Type.Null()]),
+        whereItIs: AdminWhereItIsSchema,
+      }),
+      Type.Null(),
+    ]),
+  ),
   state: AdminArtworkStateSchema,
   publishBlockers: Type.Array(AdminArtworkPublishBlockerSchema),
   publishedAt: Type.Union([Type.String({ format: "date-time" }), Type.Null()]),

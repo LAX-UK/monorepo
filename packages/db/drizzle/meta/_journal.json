@@ -2094,6 +2094,13 @@
       "when": 1801382400000,
       "tag": "0299_artwork_register_gallery_sale_ref",
       "breakpoints": true
+    },
+    {
+      "idx": 300,
+      "version": "7",
+      "when": 1801468800000,
+      "tag": "0300_lax_art_draft_from_register",
+      "breakpoints": true
     }
   ]
 }

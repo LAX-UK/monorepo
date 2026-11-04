@@ -265,7 +265,16 @@ export function createMinimalShopApiTestDeps(
         resolver: { resolveConflict: async () => ({ ok: false, reason: "not_found" }) },
         runs: { latestNightlyRun: async () => null },
         staffNames: { namesFor: async () => new Map() },
+        listings: { findByZohoProductId: async () => null, findZohoProductId: async () => null },
       }),
+      offerOnLaxArt: {
+        assess: async () => {
+          throw new Error("offerOnLaxArt.assess is not stubbed");
+        },
+        offer: async () => {
+          throw new Error("offerOnLaxArt.offer is not stubbed");
+        },
+      },
       guestErasure: new GuestErasureService({
         read: async () => null,
         withLockedGuest: async () => null,

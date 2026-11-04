@@ -83,6 +83,7 @@ async function buildApp(
     resolver: { resolveConflict },
     runs: { latestNightlyRun: async () => null },
     staffNames: { namesFor: async () => new Map() },
+    listings: { findByZohoProductId: async () => null, findZohoProductId: async () => null },
   });
   const app = createShopApiApp({ deps, logger: false });
   await app.ready();
