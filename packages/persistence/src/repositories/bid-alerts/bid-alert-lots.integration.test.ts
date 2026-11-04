@@ -219,10 +219,13 @@ describe.skipIf(!HAS_DB)("Bid lot alert adapters (integration)", () => {
       const person = await insertUser();
       const category = randomUUID();
       const id = await saveSearch(person.id, { q: "tide", categoryId: category });
-      await saveSearch(person.id, { q: "off" }, false);
+      const off = await saveSearch(person.id, { q: "off" }, false);
       await provisioner.ensureSearchers(NOW);
 
-      const found = await watchers.alertingSearches();
+      // saved_search is shared with earlier tests in this file; read only this test's rows.
+      const all = await watchers.alertingSearches();
+      expect(all.some((w) => w.searchId === off)).toBe(false);
+      const found = all.filter((w) => w.searchId === id);
       expect(found).toHaveLength(1);
       expect(found[0]).toMatchObject({
         searchId: id,
