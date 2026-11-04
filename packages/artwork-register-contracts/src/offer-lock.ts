@@ -5,10 +5,16 @@ import {
   type OfferPlaceDetail,
   lockMessage,
 } from "./lock-messages.js";
-import type { OfferRef, OfferRefKind, OfferState, OfferTransitionRefusal } from "./offer-state.js";
-import { isReservedInZoho, isSoldInZoho } from "./sold-in-gallery.js";
+import type {
+  OfferPlaceRef,
+  OfferPlaceRefKind,
+  OfferRef,
+  OfferState,
+  OfferTransitionRefusal,
+} from "./offer-state.js";
+import { isReservedInZoho, isSoldInZoho, soldWhere } from "./sold-in-gallery.js";
 
-const STATE_FOR_REF_KIND: Record<OfferRefKind, OfferState> = {
+const STATE_FOR_REF_KIND: Record<OfferPlaceRefKind, OfferState> = {
   shop_artwork: "lax_art",
   bid_lot: "bid_sale",
   private_sale: "private_sale",
@@ -54,10 +60,13 @@ export function offerRefusalMessage(
   return offerRefusal(reason, state, detail).message;
 }
 
-/** Why an offer in this state is refused: sold through LAX, sold in the gallery, or held elsewhere. */
+/**
+ * Why an offer in this state is refused: sold in the gallery, sold some other way (including a
+ * sold row that records no place), or held elsewhere.
+ */
 export function offerRefusalReason(offer: ArtworkRegisterEntry["offer"]): OfferRefusalReason {
   if (offer.state !== "sold") return "offered_elsewhere";
-  return offer.ref === null ? "sold_in_gallery" : "sold";
+  return soldWhere(offer) === "gallery" ? "sold_in_gallery" : "sold";
 }
 
 /** Staff tried to offer an artwork that is already offered in another place, or already sold. */
@@ -93,7 +102,7 @@ function sameRef(a: OfferRef | null, b: OfferRef): boolean {
 }
 
 /** True when this entry is currently offered at exactly this place. */
-export function isOfferedAt(entry: ArtworkRegisterEntry, ref: OfferRef): boolean {
+export function isOfferedAt(entry: ArtworkRegisterEntry, ref: OfferPlaceRef): boolean {
   return entry.offer.state === STATE_FOR_REF_KIND[ref.kind] && sameRef(entry.offer.ref, ref);
 }
 
@@ -106,7 +115,7 @@ export function isOfferedAt(entry: ArtworkRegisterEntry, ref: OfferRef): boolean
  */
 export function checkOfferable(
   entry: ArtworkRegisterEntry,
-  ref: OfferRef,
+  ref: OfferPlaceRef,
 ): { ok: true } | { ok: false; error: ArtworkOfferedElsewhereError } {
   if (entry.kind !== "original") return { ok: true };
   const { state } = entry.offer;
@@ -172,7 +181,7 @@ export class ArtworkOfferLock {
   ) {}
 
   /** Throws `ArtworkOfferedElsewhereError` when the artwork cannot be offered at this place. */
-  async assertCanOffer(link: RegisterLink | null, ref: OfferRef): Promise<void> {
+  async assertCanOffer(link: RegisterLink | null, ref: OfferPlaceRef): Promise<void> {
     const entry = await this.resolve(link);
     if (!entry) return;
     const check = checkOfferable(entry, ref);
@@ -180,7 +189,7 @@ export class ArtworkOfferLock {
   }
 
   /** Checks, then records the artwork as offered at this place. Safe to repeat. */
-  offer(link: RegisterLink | null, ref: OfferRef, actor: string): Promise<OfferLockOutcome> {
+  offer(link: RegisterLink | null, ref: OfferPlaceRef, actor: string): Promise<OfferLockOutcome> {
     return this.change(link, async (entry) => {
       if (entry.kind !== "original") return { status: "not_governed" };
       const check = checkOfferable(entry, ref);
@@ -191,7 +200,11 @@ export class ArtworkOfferLock {
   }
 
   /** Records that the offer at this place ended. An offer made elsewhere is left alone. */
-  withdraw(link: RegisterLink | null, ref: OfferRef, actor: string): Promise<OfferLockOutcome> {
+  withdraw(
+    link: RegisterLink | null,
+    ref: OfferPlaceRef,
+    actor: string,
+  ): Promise<OfferLockOutcome> {
     return this.change(link, async (entry) => {
       if (entry.kind !== "original") return { status: "not_governed" };
       if (!isOfferedAt(entry, ref)) return { status: "unchanged", entry };
@@ -204,7 +217,11 @@ export class ArtworkOfferLock {
    * (the offer was never recorded) is recorded through that place first; a sale the register
    * places elsewhere is reported as skipped, never forced.
    */
-  markSold(link: RegisterLink | null, ref: OfferRef, actor: string): Promise<OfferLockOutcome> {
+  markSold(
+    link: RegisterLink | null,
+    ref: OfferPlaceRef,
+    actor: string,
+  ): Promise<OfferLockOutcome> {
     return this.change(link, async (entry) => {
       if (entry.kind !== "original") return { status: "not_governed" };
       const { state } = entry.offer;

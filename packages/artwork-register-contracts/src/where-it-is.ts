@@ -54,11 +54,12 @@ export const WITHDRAWN_FROM_LABEL: Record<WithdrawnFrom, string> = {
 };
 
 /** Where a sale was made, as it reads after "Sold". */
-export const SOLD_WHERE_LABEL: Record<SoldWhere, string> = {
+export const SOLD_WHERE_LABEL: Record<SoldWhere, string | null> = {
   lax_art: "On lax.art",
   bid_sale: "In LAX Bid",
   private_sale: "In a private sale",
   gallery: "In the gallery, per Zoho",
+  unknown: null,
 };
 
 /** Withdrawn shows for this long after the artwork leaves a place, then it reads Not offered. */
@@ -84,7 +85,7 @@ type Placed<K extends WhereItIsKey, Extra = object> = {
 export type WhereItIs =
   | Placed<Exclude<WhereItIsKey, "withdrawn" | "sold">>
   | Placed<"withdrawn", { from: WithdrawnFrom | null; showUntil: Date | null }>
-  | Placed<"sold", { soldWhere: SoldWhere; soldWhereLabel: string }>;
+  | Placed<"sold", { soldWhere: SoldWhere; soldWhereLabel: string | null }>;
 
 function placed<K extends Exclude<WhereItIsKey, "withdrawn" | "sold">>(key: K): Placed<K> {
   return { key, chip: WHERE_IT_IS_CHIPS[key] };
@@ -111,7 +112,7 @@ export function deriveWhereItIs(input: WhereItIsInput): WhereItIs {
     case "private_sale":
       return placed("private_sale");
     case "sold": {
-      const where = soldWhere(offer) ?? "gallery";
+      const where = soldWhere(offer) ?? "unknown";
       return {
         key: "sold",
         chip: WHERE_IT_IS_CHIPS.sold,

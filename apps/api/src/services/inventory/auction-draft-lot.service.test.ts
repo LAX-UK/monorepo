@@ -196,7 +196,7 @@ describe("AuctionDraftLotService.createDraft", () => {
     expect(sold).toMatchObject({ status: 409 });
     expect((sold as { refusal: { message: string } }).refusal.message).toMatch(/has been sold/);
     const soldInGallery = await setup({
-      register: entry({ offer: { state: "sold", ref: null } }),
+      register: entry({ offer: { state: "sold", ref: { kind: "gallery_sale", id: "z-1" } } }),
     }).service.createDraft(request);
     expect((soldInGallery as { refusal: { message: string } }).refusal.message).toMatch(
       /sold in the gallery/,

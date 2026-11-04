@@ -41,7 +41,9 @@ export const artworkRegister = pgTable(
       .$type<"held" | "lax_art" | "bid_sale" | "private_sale" | "sold" | "withdrawn">()
       .notNull()
       .default("held"),
-    offerRefKind: text("offer_ref_kind").$type<"shop_artwork" | "bid_lot" | "private_sale">(),
+    offerRefKind: text("offer_ref_kind").$type<
+      "shop_artwork" | "bid_lot" | "private_sale" | "gallery_sale"
+    >(),
     offerRefId: text("offer_ref_id"),
     zohoModifiedAt: timestamp("zoho_modified_at", { mode: "date", withTimezone: true }),
     version: integer("version").notNull().default(1),

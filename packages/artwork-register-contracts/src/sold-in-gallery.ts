@@ -3,11 +3,17 @@
  * artwork's Status to Sold; LAX has to treat that as sold everywhere. These rules are pure: they
  * say what the register should record and when a person has to decide, and the callers do the work.
  *
- * A sold artwork with no sale reference was sold in the gallery. A sale made through LAX always
- * keeps the reference of the place that closed it (see `ArtworkOfferLock.markSold`).
+ * A sale made in the gallery is recorded with an explicit reference (`gallery_sale`, naming the
+ * Zoho product). A sale made through LAX keeps the reference of the place that closed it. A sold
+ * row with no reference at all says nothing about where it was sold, and reads as plain Sold.
  */
 
-import type { OfferRef, OfferRefKind, OfferState } from "./offer-state.js";
+import {
+  GALLERY_SALE_REF_KIND,
+  type OfferPlaceRefKind,
+  type OfferRef,
+  type OfferState,
+} from "./offer-state.js";
 
 export const ZOHO_STATUS_SOLD = "Sold";
 export const ZOHO_STATUS_RESERVED = "Reserved";
@@ -24,10 +30,11 @@ export function isReservedInZoho(status: string | null | undefined): boolean {
   return sameStatus(status, ZOHO_STATUS_RESERVED);
 }
 
-export const SOLD_WHERE = ["lax_art", "bid_sale", "private_sale", "gallery"] as const;
+/** Where a sale was made; `unknown` is a sold row that records no place. */
+export const SOLD_WHERE = ["lax_art", "bid_sale", "private_sale", "gallery", "unknown"] as const;
 export type SoldWhere = (typeof SOLD_WHERE)[number];
 
-const SOLD_WHERE_FOR_REF_KIND: Record<OfferRefKind, SoldWhere> = {
+const SOLD_WHERE_FOR_PLACE_KIND: Record<OfferPlaceRefKind, SoldWhere> = {
   shop_artwork: "lax_art",
   bid_lot: "bid_sale",
   private_sale: "private_sale",
@@ -38,22 +45,27 @@ type RegisterOffer = { state: OfferState; ref: OfferRef | null };
 /** Where a sold artwork was sold; null when it is not sold. */
 export function soldWhere(offer: RegisterOffer): SoldWhere | null {
   if (offer.state !== "sold") return null;
-  return offer.ref ? SOLD_WHERE_FOR_REF_KIND[offer.ref.kind] : "gallery";
+  if (!offer.ref) return "unknown";
+  return offer.ref.kind === GALLERY_SALE_REF_KIND
+    ? "gallery"
+    : SOLD_WHERE_FOR_PLACE_KIND[offer.ref.kind];
 }
 
 export type GallerySaleResult =
-  /** The register moves to sold with no sale reference. */
-  | { ok: true; changed: true; from: OfferState; state: "sold"; ref: null }
+  /** The register moves to sold, with the gallery sale as its reference. */
+  | { ok: true; changed: true; from: OfferState; state: "sold"; ref: OfferRef }
   /** Already sold, whether through LAX (its own write-back to Zoho) or in the gallery. */
   | { ok: true; changed: false; state: "sold"; ref: OfferRef | null };
 
 /**
- * Zoho says Sold. From any state the register moves to sold in the gallery; an artwork the
- * register already shows as sold is left as it is, so a repeat or LAX's own write-back is a no-op.
+ * Zoho says Sold. From any state the register moves to sold in the gallery, naming the Zoho
+ * product that said so; an artwork the register already shows as sold is left as it is, so a
+ * repeat or LAX's own write-back is a no-op.
  */
-export function recordGallerySale(offer: RegisterOffer): GallerySaleResult {
+export function recordGallerySale(offer: RegisterOffer, zohoProductId: string): GallerySaleResult {
   if (offer.state === "sold") return { ok: true, changed: false, state: "sold", ref: offer.ref };
-  return { ok: true, changed: true, from: offer.state, state: "sold", ref: null };
+  const ref: OfferRef = { kind: GALLERY_SALE_REF_KIND, id: zohoProductId };
+  return { ok: true, changed: true, from: offer.state, state: "sold", ref };
 }
 
 export const REOPEN_REASON_MAX_LENGTH = 500;

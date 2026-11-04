@@ -89,9 +89,17 @@ describe("deriveWhereItIs", () => {
       soldWhere: "private_sale",
       soldWhereLabel: "In a private sale",
     });
-    expect(where("sold", null)).toMatchObject({
+    expect(where("sold", { kind: "gallery_sale", id: "z-1" })).toMatchObject({
       soldWhere: "gallery",
       soldWhereLabel: "In the gallery, per Zoho",
+    });
+  });
+
+  it("reads a sold row that records no place as plain Sold, not as the gallery", () => {
+    expect(where("sold", null)).toMatchObject({
+      key: "sold",
+      soldWhere: "unknown",
+      soldWhereLabel: null,
     });
   });
 

@@ -114,7 +114,9 @@ describe("checkOfferable", () => {
 
   it("tells a sale through LAX from a sale in the gallery", () => {
     const lax = checkOfferable(entry("sold", shop), lot);
-    const gallery = checkOfferable(entry("sold", null), lot);
+    const gallery = checkOfferable(entry("sold", { kind: "gallery_sale", id: "z-1" }), lot);
+    const unplaced = checkOfferable(entry("sold", null), lot);
+    expect(!unplaced.ok && unplaced.error.reason).toBe("sold");
     expect(!lax.ok && lax.error.message).toBe(
       "This artwork has been sold, so it can't be offered again.",
     );
