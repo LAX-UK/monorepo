@@ -93,10 +93,10 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
     return { label: "Consignment", Icon: BellRing, tone: "info" };
   }
   if (type === "submission_approved") {
-    return { label: "Approved", Icon: Trophy, tone: "success" };
+    return { label: "Accepted", Icon: Trophy, tone: "success" };
   }
   if (type === "submission_converted") {
-    return { label: "Catalogue prep", Icon: FileText, tone: "success" };
+    return { label: "Accepted", Icon: FileText, tone: "success" };
   }
   if (type === "submission_rejected") {
     return { label: "Not accepted", Icon: XCircle, tone: "neutral" };

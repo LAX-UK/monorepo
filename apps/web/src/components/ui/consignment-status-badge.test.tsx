@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { ConsignmentStatusBadge } from "./consignment-status-badge";
 
 describe("ConsignmentStatusBadge", () => {
-  it("reads Unsold, then follows the request and the confirmation", () => {
+  it("reads Did not sell, then follows the request and the confirmation", () => {
     const { rerender } = render(<ConsignmentStatusBadge stage="unsold" />);
-    expect(screen.getByText("Unsold")).toBeTruthy();
+    expect(screen.getByText("Did not sell")).toBeTruthy();
     rerender(<ConsignmentStatusBadge stage="relist_requested" />);
     expect(screen.getByText("Relist requested")).toBeTruthy();
     rerender(<ConsignmentStatusBadge stage="relist_confirmed" />);
@@ -14,6 +14,6 @@ describe("ConsignmentStatusBadge", () => {
 
   it("keeps the submission status before the sale", () => {
     render(<ConsignmentStatusBadge stage="under_review" />);
-    expect(screen.getByText("Under review")).toBeTruthy();
+    expect(screen.getByText("In review")).toBeTruthy();
   });
 });

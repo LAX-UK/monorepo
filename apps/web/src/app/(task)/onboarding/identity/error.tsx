@@ -12,7 +12,7 @@ export default function IdentityOnboardingError({
   return (
     <BuyerOnboardingRouteError
       title="Verification setup is temporarily unavailable"
-      detail="Your progress is safe. Try loading this step again, or return to your dashboard."
+      detail="Your progress is safe. Try loading this step again, or return to your account."
       reset={reset}
       error={error}
     />

@@ -154,7 +154,7 @@ export const SELL_DEPARTMENT_GROUPS: readonly SellDepartmentGroup[] = [
         examples: ["Signed pieces", "Gem-set", "Vintage"],
         intake: "wizard",
         hidden: true,
-        note: "Specialist review before submission",
+        note: "Specialist review before you send it",
       },
       {
         id: "handbags-accessories",
@@ -193,7 +193,7 @@ export const SELL_DEPARTMENT_PHOTO_HINTS: Record<string, readonly string[]> = {
   "watches-clocks": [
     "Reference number, case material, and bracelet or strap",
     "Dial, caseback, movement, and serial markings",
-    "Box, papers, and service history in submitter notes",
+    "Box, papers, and service history in your notes",
   ],
   "motor-cars": [
     "Exterior from several angles, interior, and odometer",

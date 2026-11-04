@@ -23,7 +23,7 @@ export default function SellMotorCarsPage() {
       bullets={[
         "Exterior from several angles, interior, and odometer reading",
         "VIN plate, engine bay, and any known ownership history",
-        "Mechanical condition and recent service records in submitter notes",
+        "Mechanical condition and recent service records in your notes",
         "Logistics and location details for collection or inspection",
       ]}
     />

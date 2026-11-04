@@ -23,7 +23,7 @@ export default function SellWatchesPage() {
       bullets={[
         "Reference number, case material, and bracelet or strap",
         "Dial, caseback, movement, and serial markings",
-        "Box, papers, and service history in your submitter notes",
+        "Box, papers, and service history in your notes",
         "Overall and detail photographs — avoid heavy filters or glare",
       ]}
     />
