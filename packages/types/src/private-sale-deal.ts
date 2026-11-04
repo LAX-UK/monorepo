@@ -99,6 +99,8 @@ export type PrivateSaleDeal = {
   agreedAt: Date | null;
   agreedByUserId: string | null;
   invoicedByUserId: string | null;
+  /** The invoice's reference in the finance system that issued it; `null` until one exists. */
+  invoiceReference: string | null;
   cancelReason: string | null;
   cancelledAt: Date | null;
   version: number;

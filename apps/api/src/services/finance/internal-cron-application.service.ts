@@ -5,6 +5,7 @@ import type {
   BulkPayoutSettlementCronResult,
   IInternalCronApplicationService,
 } from "../interfaces/finance-routes/finance-internal-cron.js";
+import type { IDealPayoutSettler } from "../private-sale-deal/deal-payout-settlement.service.js";
 
 export const BULK_PAYOUT_SETTLEMENT_LOCK_KEY = "payout:settlement:lock";
 const BULK_PAYOUT_SETTLEMENT_LOCK_TTL_SEC = 30 * 60;
@@ -14,6 +15,7 @@ export class InternalCronApplicationService implements IInternalCronApplicationS
     private readonly redis: Redis,
     private readonly settlementCronService: SettlementCronService,
     private readonly paymentMaintenanceCronService: PaymentMaintenanceCronService,
+    private readonly dealPayoutSettler: IDealPayoutSettler | null = null,
   ) {}
 
   async runBulkPayoutSettlementWithLock(input: {
@@ -39,6 +41,9 @@ export class InternalCronApplicationService implements IInternalCronApplicationS
         };
       }
       const bulk = await this.settlementCronService.runBulkSettlement();
+      // Deals whose payout has gone through are settled after every run, so a payout that was
+      // paid since the last run settles its deal too.
+      await this.dealPayoutSettler?.settlePaidPayouts();
       return {
         ok: true,
         data: {

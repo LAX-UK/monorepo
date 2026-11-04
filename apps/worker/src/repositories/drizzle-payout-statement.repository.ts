@@ -6,6 +6,7 @@ import {
   payment,
   payout,
   payoutLine,
+  privateSaleDeal,
 } from "@auction/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import type {
@@ -64,8 +65,10 @@ export class DrizzlePayoutStatementRepository implements IPayoutStatementReposit
         lotTitle: lot.title,
         lotNumber: lot.lotNumber,
         buyerName: bidIdentityDirectory.name,
+        dealReference: privateSaleDeal.reference,
       })
       .from(payoutLine)
+      .leftJoin(privateSaleDeal, eq(payoutLine.privateSaleDealId, privateSaleDeal.id))
       .leftJoin(payment, eq(payoutLine.paymentId, payment.id))
       .leftJoin(lot, eq(payment.lotId, lot.id))
       .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))

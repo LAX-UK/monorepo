@@ -428,6 +428,27 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   /** Identifiers and stage codes only: the parties, the price and the cancel reason stay on the deal. */
   "private_sale_deal.created": new Set(["dealId", "reference", "stage"]),
   "private_sale_deal.stage_changed": new Set(["dealId", "reference", "from", "to"]),
+  "private_sale_deal.payment_started": new Set([
+    "dealId",
+    "reference",
+    "paymentId",
+    "rail",
+    "amountMinor",
+  ]),
+  "private_sale_deal.payment_paid": new Set(["dealId", "reference", "paymentId", "amountMinor"]),
+  "private_sale_deal.payment_cancelled": new Set(["dealId", "reference", "paymentId", "reason"]),
+  "private_sale_deal.payment_refunded": new Set([
+    "dealId",
+    "reference",
+    "paymentId",
+    "amountMinor",
+  ]),
+  "private_sale_deal.payout_queued": new Set([
+    "dealId",
+    "reference",
+    "payoutId",
+    "netToSellerMinor",
+  ]),
   "enquiry_routing.changed": new Set([
     "departmentSlug",
     "assignedToUserId",

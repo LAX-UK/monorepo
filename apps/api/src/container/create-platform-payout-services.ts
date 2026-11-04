@@ -1,5 +1,8 @@
 import type { Database } from "@auction/db";
-import { DrizzleInvoiceDetailsRepository } from "@auction/persistence/repositories";
+import {
+  DrizzleInvoiceDetailsRepository,
+  DrizzlePrivateSaleDealPayoutStore,
+} from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { createBaseLogger } from "../lib/logger.js";
 import type {
@@ -77,6 +80,7 @@ export function createPlatformPayoutServices(
       input.notificationDispatcher,
       core.notificationFactory,
     ),
+    new DrizzlePrivateSaleDealPayoutStore(input.db),
   );
   const payoutService: IPayoutService = payoutServiceInstance;
   const payoutSellerService: IPayoutSellerService = payoutServiceInstance;

@@ -268,6 +268,8 @@ export const WORKER_READ_TABLES = [
   "marketing_enquiry",
   /** The follow-up projector reads the confirmed choice it opens work for. */
   "unsold_lot_choice",
+  /** The payout statement names the private sale a payout line settles by its PS reference. */
+  "private_sale_deal",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,

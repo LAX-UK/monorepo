@@ -34,10 +34,13 @@ import type {
 } from "../services/interfaces/payment-service.js";
 import type { IPayoutSellerService } from "../services/interfaces/payout.js";
 import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
+import type { IDealPayoutSettler } from "../services/private-sale-deal/deal-payout-settlement.service.js";
 import type { SourceOfFundsDocumentCollectionService } from "../services/source-of-funds/source-of-funds-document-collection.service.js";
 import type { StripePaymentWebhookService } from "../services/stripe-payment-webhook.service.js";
 
 export type CreateFinanceRouteServicesInput = {
+  /** Settles private sale deals whose payout was paid, after each bulk payout run. */
+  dealPayoutSettler: IDealPayoutSettler;
   redis: Redis;
   legalEntityRepository: ILegalEntityRepository;
   payoutRepository: IPayoutRepository;
@@ -90,6 +93,7 @@ export function createFinanceRouteServices(
       input.redis,
       input.settlementCronService,
       input.paymentMaintenanceCronService,
+      input.dealPayoutSettler,
     ),
     accountingCron: new FinanceAccountingCronApplicationService(
       input.accountingReplayCronService,

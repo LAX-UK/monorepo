@@ -238,6 +238,7 @@ export function createContainer(env: Env): Container {
     attributionStore: complianceMedia.attributionStore,
     marketingAttributionEnabled: complianceMedia.marketingAttributionEnabled,
     sourceOfFundsDocumentCollectionService: complianceMedia.sourceOfFundsDocumentCollectionService,
+    dealPayoutSettler: payments.privateSaleDeals.payoutSettlement,
     settlementCronService: cron.settlementCronService,
     paymentMaintenanceCronService: cron.paymentMaintenanceCronService,
     accountingReplayCronService: cron.accountingReplayCronService,

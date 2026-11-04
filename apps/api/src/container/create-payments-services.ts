@@ -50,6 +50,10 @@ import {
   createPaymentGroupServices,
 } from "./create-payment-group-services.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
+import {
+  type PrivateSaleDealServices,
+  createPrivateSaleDealServices,
+} from "./create-private-sale-deal-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
 
 export type ContainerPaymentsServices = {
@@ -71,6 +75,7 @@ export type ContainerPaymentsServices = {
   adminMetricsService: AdminMetricsService;
   /** "Pay several": one checkout for several invoices of an account. */
   paymentGroupCheckout: PaymentGroupServices["checkout"];
+  privateSaleDeals: PrivateSaleDealServices;
   /** Allocates a dispute across the invoices it falls on, moving each seller's payout. */
   disputeAllocationService: DisputeAllocationService;
   paymentTierPolicy: PaymentTierPolicy;
@@ -316,6 +321,22 @@ export function createPaymentsServices(
     stripeCustomers: stripeCustomerGateway,
   });
 
+  const privateSaleDeals = createPrivateSaleDealServices({
+    db,
+    env,
+    stripeClientFactory,
+    transactionRunner: platform.transactionRunner,
+    events: domainEventSink,
+    tiers: paymentTierPolicy,
+    stripePayments: stripePaymentGateway,
+    stripeCustomers: stripeCustomerGateway,
+    users: userRepo,
+    kyc: repos.kycRepository,
+    amlHolds: amlHoldStore,
+    screenings: repos.amlScreeningRepository,
+    sourceOfFunds: repos.sourceOfFundsRepository,
+  });
+
   const stripePaymentWebhookService: StripePaymentWebhookService | null =
     env.STRIPE_SECRET_KEY && env.STRIPE_PAYMENTS_WEBHOOK_SECRET
       ? new StripePaymentWebhookService(
@@ -333,6 +354,7 @@ export function createPaymentsServices(
             events: domainEventSink,
           }),
           paymentGroups.webhooks,
+          privateSaleDeals.webhooks,
         )
       : null;
 
@@ -363,6 +385,7 @@ export function createPaymentsServices(
     xeroOAuthService,
     adminMetricsService,
     paymentGroupCheckout: paymentGroups.checkout,
+    privateSaleDeals,
     disputeAllocationService: createDisputeAllocationService({
       db,
       transactionRunner: platform.transactionRunner,
