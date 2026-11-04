@@ -66,6 +66,8 @@ export { StatGrid } from "./display/stat-grid.js";
 export type { StatItem } from "./display/stat-grid.js";
 export type { KeyValueItem } from "./display/key-value-list.js";
 export { Timeline } from "./display/timeline.js";
+export { WhereItIsChip, WhereItIsSection } from "./display/where-it-is.js";
+export type { WhereItIsChipSpec, WhereItIsSectionProps } from "./display/where-it-is.js";
 export { MessageThread } from "./display/message-thread.js";
 export type {
   MessageThreadProps,
