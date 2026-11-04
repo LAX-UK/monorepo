@@ -26,6 +26,7 @@ import {
 } from "../../test-support/shop-integration-setup.js";
 import { createDrizzleArtistCatalogueWriter } from "../drizzle-artist-catalogue.writer.js";
 import { createDrizzleArtworkCatalogueWriter } from "../drizzle-artwork-catalogue.writer.js";
+import { createDrizzleOrderRepository } from "../drizzle-order.repository.js";
 import { completeShopCheckoutSession } from "../drizzle-payment-event.processor.js";
 import { createDrizzleSaleAuthorityWriter } from "../drizzle-sale-authority.writer.js";
 import { createDrizzleShopUnitOfWork } from "../drizzle-shop-transaction-effects.js";
@@ -521,6 +522,40 @@ describe.skipIf(!hasShopIntegrationDb)("packing numbered prints", { timeout: 90_
       artworkId: listing.artworkId,
     });
     expect((await grant()).authorisedCount).toBe(1);
+  });
+
+  it("keeps the facts the buyer paid under, so a later correction does not rewrite their order", async () => {
+    const { runs } = setup();
+    const artworkId = await runOfTwelve("snapshot");
+    const { orderId, line } = await buyNextPrint(artworkId);
+    expect(line.editionFactsSnapshot).toMatchObject({
+      schemaVersion: 1,
+      run: { type: "custom_limited", size: 12 },
+      facts: { numbering: "on_print", signature: { kind: "hand_signed", medium: "pencil" } },
+    });
+
+    const [stored] = await db
+      .select({ updatedAt: shopEditionFacts.updatedAt })
+      .from(shopEditionFacts)
+      .where(eq(shopEditionFacts.artworkId, artworkId));
+    await runs.facts.correct({
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+      artworkId,
+      facts: editionFactsInput({ ...PAPER_CERTIFICATE_FACTS, signature: { kind: "plate_signed" } }),
+      reason: "The studio confirmed the signature is printed in the plate",
+      expectedFactsVersion: requireDefined(stored, "facts").updatedAt.toISOString(),
+    });
+
+    const [order] = await db.select().from(shopOrder).where(eq(shopOrder.id, orderId));
+    const record = await createDrizzleOrderRepository(db).getOrder(
+      requireDefined(order, "order").identitySubjectId,
+      orderId,
+    );
+    const described = requireDefined(record?.lines[0], "line");
+    expect(described.editionSummary).toContain("Hand-signed");
+    expect(described.editionSummary).toMatch(/^No\. \d+ of 12/);
+    expect(described.editionInvoiceDetail).toContain("signed by hand");
   });
 
   it("refuses a second certificate for one print at the database", async () => {

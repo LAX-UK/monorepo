@@ -35,6 +35,8 @@ export type WorkActionVm = { key: string; label: string; href: string };
 export type WorkDetailVm = {
   title: string;
   artist: string;
+  /** Which print this is: "No. 7 of 24 · Hand-signed". Null for a work with no edition to describe. */
+  edition: string | null;
   image: string | null;
   statusLabel: string;
   statusTone: StatusTone;
@@ -67,7 +69,7 @@ function documentVm(doc: LaxPortfolioItemV1["documents"][number]): WorkDocumentV
   const href = doc.available ? safeDeepLink(doc.href) : null;
   return {
     key: doc.kind,
-    label: DOCUMENT_LABELS[doc.kind],
+    label: doc.label ?? DOCUMENT_LABELS[doc.kind],
     href,
     note: href ? null : (doc.expectedNote ?? DOCUMENT_PENDING_NOTE),
   };
@@ -85,6 +87,7 @@ export function buildWorkDetail(
   return {
     title: item.title || "Untitled work",
     artist: item.artist,
+    edition: item.edition ?? null,
     image: safeImageUrl(item.image, imageOrigins),
     statusLabel: STATUS_LABELS[item.status],
     statusTone: STATUS_TONES[item.status],

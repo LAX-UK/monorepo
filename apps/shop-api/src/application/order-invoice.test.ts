@@ -92,6 +92,52 @@ describe("buildOrderInvoiceModel", () => {
   });
 });
 
+describe("buildOrderInvoiceModel: the print on a line", () => {
+  const rowDetail = (line: Parameters<typeof sampleOrderLine>[0]) =>
+    buildOrderInvoiceModel({
+      order: sampleOrderRecord({ lines: [sampleOrderLine(line)] }),
+      customer,
+      supplier,
+      vatNumber: "GB123456789",
+    }).rows[0]?.detail;
+
+  it("describes the print as the buyer was told at payment", () => {
+    expect(
+      rowDetail({
+        editionNumber: 7,
+        editionInvoiceDetail:
+          "Limited edition of 24, no. 7, signed by hand, with certificate of authenticity",
+      }),
+    ).toBe(
+      "Emmett King · Limited edition of 24, no. 7, signed by hand, with certificate of authenticity",
+    );
+  });
+
+  it("never prints a number for an unnumbered print", () => {
+    expect(
+      rowDetail({
+        editionNumber: null,
+        editionSize: null,
+        editionInvoiceDetail: "Open edition, unsigned",
+      }),
+    ).toBe("Emmett King · Open edition, unsigned");
+  });
+
+  it("falls back to the plain edition when no facts were recorded", () => {
+    expect(rowDetail({ editionNumber: 3, editionSize: 24 })).toBe("Emmett King · Edition 3 of 24");
+  });
+
+  it("is issued by London Art Exchange Ltd", () => {
+    const model = buildOrderInvoiceModel({
+      order: sampleOrderRecord(),
+      customer,
+      supplier,
+      vatNumber: null,
+    });
+    expect(model.supplier[0]).toBe("London Art Exchange Ltd");
+  });
+});
+
 describe("renderOrderInvoicePdf", () => {
   it("draws a PDF with the invoice number and totals", async () => {
     const model = buildOrderInvoiceModel({
