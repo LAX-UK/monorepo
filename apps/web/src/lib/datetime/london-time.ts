@@ -41,6 +41,7 @@ const DAY_LONG_MONTH_YEAR = formatter({ day: "numeric", month: "long", year: "nu
 const MONTH_YEAR = formatter({ month: "long", year: "numeric" });
 const SHORT_MONTH_YEAR = shortMonthFormatter({ year: "numeric" });
 const WEEKDAY = formatter({ weekday: "short" });
+const WEEKDAY_LONG = formatter({ weekday: "long" });
 
 /** A date, a timestamp, or an ISO string, as the API and view models hand them over. */
 export type DateInput = Date | string | number;
@@ -91,18 +92,18 @@ export function formatLondonDate(date: Date, options: LondonDateOptions = {}): s
   return (options.month === "long" ? DAY_LONG_MONTH_YEAR : DAY_MONTH_YEAR).format(date);
 }
 
-/** "3 Nov 2026, 21:00 GMT": a closing or opening moment. */
-export function formatLondonDateTime(date: Date): string {
-  return `${formatLondonDate(date)}, ${formatLondonTimeWithZone(date)}`;
-}
-
 /**
- * "Thu 12 Nov, 04:31 GMT": the one full moment line, for a countdown beyond a week. The weekday
+ * "Thu 12 Nov, 04:31 GMT": the one full moment line shown to people (closing, opening, collection times, countdowns beyond a week). The weekday
  * leads and the year appears only when it is not `now`'s. Its short form is `formatLondonWeekday`
  * plus `formatLondonDayMonth` ("Thu 12 Nov").
  */
 export function formatLondonWhen(date: Date, now: Date = new Date()): string {
   return `${formatLondonWeekday(date)} ${formatLondonDayMonth(date, now)}, ${formatLondonTimeWithZone(date)}`;
+}
+
+/** "Saturday 31 October 2026, 14:02": the full date and time, for a tooltip. */
+export function formatLondonFullMoment(date: Date): string {
+  return `${WEEKDAY_LONG.format(date)} ${formatLondonDate(date, { month: "long" })}, ${formatLondonTime(date)}`;
 }
 
 /** "November 2026" (calendar headings), or "Nov 2026" with `short`. */
@@ -135,7 +136,8 @@ export function formatLondonDateRange(start: Date, end: Date): string {
   return `${formatLondonDate(start)} – ${formatLondonDate(end)}`;
 }
 
-function dayOffset(date: Date, now: Date): number {
+/** Whole London calendar days from `now`'s day to `date`'s: 0 today, -1 yesterday, 1 tomorrow. */
+export function londonDayOffset(date: Date, now: Date): number {
   const a = Date.parse(londonDayKey(date));
   const b = Date.parse(londonDayKey(now));
   return Math.round((a - b) / 86_400_000);
@@ -153,7 +155,7 @@ export function formatLondonMoment(
 ): string {
   const withTime = options.time ?? true;
   const time = withTime ? ` ${formatLondonTime(date)}` : "";
-  const offset = dayOffset(date, now);
+  const offset = londonDayOffset(date, now);
   const word = (w: string) => (options.inSentence ? w.toLowerCase() : w);
   if (offset === 0) return `${word("Today")}${time}`;
   if (offset === 1) return `${word("Tomorrow")}${time}`;

@@ -1,8 +1,10 @@
+import { AdminFlashClear } from "@/components/admin/staff/admin-flash-clear";
 import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { UrlSuccessToast } from "@/components/admin/staff/url-success-toast";
 import { XeroIntegrationPanel } from "@/components/admin/xero-integration-panel";
 import { adminXeroDisconnectAction, adminXeroOAuthStartAction } from "@/lib/actions/admin";
 import { loadAdminXeroIntegrationPage } from "@/lib/admin/finance/load-xero-integration-page";
+import { readAdminFlashForPath } from "@/lib/admin/flash/flash.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Notice, PageHeader } from "@auction/staff-ui";
 import type { Metadata } from "next";
@@ -12,6 +14,8 @@ export const metadata: Metadata = metadataForPrivate(
   "Connect a Xero organisation for hosted invoices and payment collection.",
 );
 
+const XERO_PATH = "/admin/integrations/xero";
+
 export default async function AdminXeroIntegrationPage({
   searchParams,
 }: {
@@ -20,15 +24,21 @@ export default async function AdminXeroIntegrationPage({
   const { error, connected, status, loadError } = await loadAdminXeroIntegrationPage(
     await searchParams,
   );
-  const notice = error ? (
+  const flash = await readAdminFlashForPath(XERO_PATH);
+  const failure = flash?.kind === "error" ? flash.message : error;
+  const notice = failure ? (
     <Notice tone="danger" alert title="Xero did not connect">
-      {error}
+      {failure}
     </Notice>
   ) : null;
 
   return (
     <>
-      <UrlSuccessToast message={connected && !error ? "Xero connected" : null} param="connected" />
+      {flash ? <AdminFlashClear path={XERO_PATH} /> : null}
+      <UrlSuccessToast
+        message={connected && !failure ? "Xero connected" : null}
+        param="connected"
+      />
       {status ? (
         <XeroIntegrationPanel
           status={status}

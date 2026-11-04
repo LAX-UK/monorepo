@@ -133,7 +133,7 @@ describe("useSubmissionWizardController", () => {
         await result.current.submitForReview();
       });
       expect(submitForReviewFromValuesAction).toHaveBeenCalledWith("sub-1", {});
-      expect(assign).toHaveBeenCalledWith("/selling/consignments/sub-1?submitted=1");
+      expect(assign).toHaveBeenCalledWith("/selling/consignments/sub-1/sent");
       expect(push).not.toHaveBeenCalled();
     } finally {
       Object.defineProperty(window, "location", { value: realLocation, configurable: true });

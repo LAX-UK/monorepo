@@ -25,7 +25,7 @@ const google = (blockedReason: string | null) =>
     kind: "social",
     provider: "google",
     title: "Google",
-    detail: "a***@example.com · Linked 1 Oct 2026",
+    detail: "ada@example.com · Linked 1 Oct 2026",
     blockedReason,
   }) as const;
 
@@ -50,7 +50,7 @@ describe("SignInMethodsSection", () => {
   it("offers Remove for a linked provider when another method remains", () => {
     const html = render({ status: "list", rows: [password(true), google(null)], hint: null });
     expect(html).toContain('aria-label="Remove Google sign-in"');
-    expect(html).toContain("a***@example.com");
+    expect(html).toContain("ada@example.com");
     expect(html).not.toMatch(/aria-label="Remove Google sign-in"[^>]*disabled/);
   });
 

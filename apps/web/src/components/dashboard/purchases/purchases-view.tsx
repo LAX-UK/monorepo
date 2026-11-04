@@ -239,6 +239,12 @@ export function PurchasesView({
             <ShowingCount shown={cards.length} total={cards.length} />
           </>
         )}
+        {vm.truncated ? (
+          <p className="text-lax-13 text-lax-muted">
+            Showing your latest {vm.total} purchases. Older ones are settled and are not listed
+            here.
+          </p>
+        ) : null}
         {organisation ? (
           <p className="text-lax-13 text-lax-muted">
             Owners, admins and finance can pay. Buyer agents see their own wins.

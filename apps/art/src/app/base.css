@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "@auction/branding/brand-primitives.css" layer(base);
+@import "@auction/branding/lax-system.css" layer(base);
+@import "@auction/ui/lax-theme.css";
 @import "@auction/marketing-ui/marketing-ui.css";
 @import "@auction/marketing-ui/marketing-header.css" layer(base);
 /* Labels, tabs, buttons and navigation are sentence case on lax.art, as on Shop. */

@@ -1,8 +1,19 @@
+import { randomUUID } from "node:crypto";
+import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import { type Database, closeDb, createDb } from "@auction/db";
+import {
+  DrizzleArtworkRegisterQueueReader,
+  DrizzleArtworkRegisterRepository,
+  DrizzleZohoArtworkSyncStore,
+} from "@auction/persistence/repositories";
 import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import type { AdminRoutesDeps } from "./admin-route-deps.js";
+import { OriginalMoveService } from "./application/admin/original-move.service.js";
+import { ReopenArtListingService } from "./application/admin/reopen-art-listing.service.js";
+import { createAlertingPortalFavorites } from "./application/alerts/alerting-portal-favorites.js";
 import type { ArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
+import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
 import { createEditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
@@ -28,7 +39,6 @@ import { createListPublicCategoriesHandler } from "./application/handlers/list-p
 import { createListPublicMerchandiseProductsHandler } from "./application/handlers/list-public-merchandise-products.handler.js";
 import { createPortalFavoritesHandlers } from "./application/handlers/portal-favorites.handler.js";
 import { createRegisterArtworkInterestHandler } from "./application/handlers/register-artwork-interest.handler.js";
-import { createReleaseAlertHandlers } from "./application/handlers/release-alerts.handler.js";
 import { createShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
 import { createLaxPortfolioHandlers } from "./application/lax-portfolio/lax-portfolio.handler.js";
@@ -59,6 +69,7 @@ import type {
   IdentityDeletionRouteDeps,
   IdentitySubjectExportRouteDeps,
 } from "./identity-route-deps.js";
+import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
 import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtistCatalogueWriter } from "./infrastructure/drizzle-artist-catalogue.writer.js";
@@ -81,14 +92,13 @@ import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/dr
 import { createDrizzleMerchandiseCatalogueWriter } from "./infrastructure/drizzle-merchandise-catalogue.writer.js";
 import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
 import { createDrizzleOrderProblemReportWriter } from "./infrastructure/drizzle-order-problem-report.writer.js";
+import { createDrizzleOriginalMoveReader } from "./infrastructure/drizzle-original-move.reader.js";
 import { createDrizzlePortalArtistRepository } from "./infrastructure/drizzle-portal-artist.repository.js";
 import { createDrizzlePortalFavoritesRepository } from "./infrastructure/drizzle-portal-favorites.repository.js";
 import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
 import { createDrizzlePortalPortfolioRepository } from "./infrastructure/drizzle-portal-portfolio.repository.js";
 import { createDrizzlePortalSalesRepository } from "./infrastructure/drizzle-portal-sales.repository.js";
 import { createDrizzleProductionTaskRepository } from "./infrastructure/drizzle-production-task.repository.js";
-import { createDrizzleReleaseAlertAnnouncer } from "./infrastructure/drizzle-release-alert.announcer.js";
-import { createDrizzleReleaseAlertStore } from "./infrastructure/drizzle-release-alert.store.js";
 import { createDrizzleSaleAuthorityWriter } from "./infrastructure/drizzle-sale-authority.writer.js";
 import { createDrizzleSavedViewRepository } from "./infrastructure/drizzle-saved-view.repository.js";
 import { createDrizzleShopMediaAssetRepository } from "./infrastructure/drizzle-shop-media-asset.repository.js";
@@ -103,6 +113,7 @@ import {
 import { createDrizzleShopReadinessAdapter } from "./infrastructure/drizzle-shop-readiness.adapter.js";
 import { createDrizzleShopStaffMemberReader } from "./infrastructure/drizzle-shop-staff-member.reader.js";
 import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-transaction-effects.js";
+import { createDrizzleStaffNameReader } from "./infrastructure/drizzle-staff-name.reader.js";
 import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-storefront-curation.repository.js";
 import { createDrizzleEditionRunUnitOfWork } from "./infrastructure/edition-runs/drizzle-edition-run.unit-of-work.js";
 import { createEnquiryFollowUp } from "./infrastructure/enquiry-follow-up.js";
@@ -132,11 +143,12 @@ import {
   createHttpArtCacheInvalidator,
   noopArtCacheInvalidator,
 } from "./infrastructure/http-art-cache-invalidator.js";
+import { createHttpAuctionOfferGateway } from "./infrastructure/http-auction-offer.gateway.js";
 import { idempotentAdminCommand } from "./infrastructure/idempotent-admin-command.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createDrizzleOriginalSaleWriter } from "./infrastructure/phase/drizzle-original-sale.writer.js";
 import { createRedisFixedWindowCounter } from "./infrastructure/redis-fixed-window-counter.js";
-import { resolveShopUserEmail } from "./infrastructure/resolve-shop-user-email.js";
+import { createRegisterOriginalOffers } from "./infrastructure/register-original-offers.js";
 import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
@@ -155,6 +167,7 @@ import {
   unconfiguredSubjectExportStorage,
 } from "./infrastructure/subject-export/subject-export-file-signer.js";
 import type { InterestRoutesDeps } from "./interest-route-deps.js";
+import type { InventoryRouteDeps } from "./inventory-route-deps.js";
 import type { MerchandiseRoutesDeps } from "./merchandise-route-deps.js";
 import type { PortalRoutesDeps } from "./portal-route-deps.js";
 import { resolveShopMediaPublicUrl } from "./presenters/resolve-shop-media-url.js";
@@ -181,6 +194,7 @@ export type ShopApiAppDeps = {
   admin: AdminRoutesDeps;
   portal: PortalRoutesDeps;
   identityDeletion: IdentityDeletionRouteDeps;
+  inventory: InventoryRouteDeps;
   identitySubjectExport: IdentitySubjectExportRouteDeps;
   payeeConnect: ShopPayeeConnectPort;
   stripeConnectWebhook: StripeConnectWebhookDeps;
@@ -241,7 +255,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   const rateLimitCounter = rateLimitRedis
     ? createRedisFixedWindowCounter(rateLimitRedis)
     : createInMemoryFixedWindowCounter();
-  const { commerce, stripeWebhook } = createCommerceServices(db, env, { rateLimitCounter });
+  const originalOffers = createRegisterOriginalOffers(
+    (session) => new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(session)),
+  );
+  const { commerce, stripeWebhook } = createCommerceServices(db, env, {
+    rateLimitCounter,
+    originalOffers,
+  });
   const readiness = createDrizzleShopReadinessAdapter(db);
   const storefrontOrigins = resolveStorefrontOrigins({
     shopStorefrontUrl: env.SHOP_STOREFRONT_URL,
@@ -266,14 +286,17 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     }),
   });
   const releaseAlertRateLimiter = createReleaseAlertRateLimiter(rateLimitCounter);
-  const releaseAlertStore = createDrizzleReleaseAlertStore(db, {
-    notifications,
-    shopOrigin: storefrontOrigins.shop,
+  const shopAlerts = createShopAlertRuntime({
+    db,
+    env,
+    origins: storefrontOrigins,
+    resolveMediaUrl,
+    log: {
+      info: (fields, message) => console.info(message, fields),
+      warn: (fields, message) => console.warn(message, fields),
+    },
   });
-  const releaseAlerts = createReleaseAlertHandlers({
-    store: releaseAlertStore,
-    accountEmail: (identitySubjectId) => resolveShopUserEmail(db, identitySubjectId),
-  });
+  const releaseAlerts = shopAlerts.handlers;
   const internalBase = env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL;
   const jwksUrl = `${internalBase.replace(/\/+$/, "")}/.well-known/jwks.json`;
   const staffReader = createDrizzleShopStaffMemberReader(db);
@@ -299,8 +322,12 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     resolveMediaUrl,
   });
   const portalArtist = createDrizzlePortalArtistRepository(db);
-  const portalFavorites = createPortalFavoritesHandlers(createDrizzlePortalFavoritesRepository(db));
+  const portalFavorites = createAlertingPortalFavorites(
+    createPortalFavoritesHandlers(createDrizzlePortalFavoritesRepository(db)),
+    shopAlerts.followAlerts,
+  );
   const adminRead = createDrizzleAdminReadRepository(db, env, { resolveMediaUrl });
+  const artworkRegisterRepository = new DrizzleArtworkRegisterRepository(db);
   const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const cancellationPolicy = loadShopCancellationPolicy(env);
   const createProductionTask = createCreateProductionTaskHandler({ uow: shopUow });
@@ -388,9 +415,39 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     resolveMediaUrl,
     editionRuns: editionRuns.recorder,
     originalPrints: editionRuns.originalPrintsRecorder,
-    releaseAlerts: createDrizzleReleaseAlertAnnouncer({ notifications, storefrontOrigins }),
+    releaseAlerts: shopAlerts.announcer,
+    offers: originalOffers,
   });
   const artistCatalogue = createDrizzleArtistCatalogueWriter(shopUow);
+  const originalMoveReader = createDrizzleOriginalMoveReader(db);
+  const artworkRegister = new DrizzleArtworkRegisterRepository(db);
+  const inventoryMoves = new OriginalMoveService({
+    originals: originalMoveReader,
+    register: artworkRegister,
+    history: artworkRegister,
+    auction: createHttpAuctionOfferGateway(env),
+    withdrawFromLaxArt: async ({ artworkId, actorSubjectId }) => {
+      await artworkCatalogue.setVisibility({
+        artworkId,
+        action: "unpublish",
+        actorSubjectId,
+        idempotencyKey: randomUUID(),
+      });
+    },
+    resolveImageUrl: resolveMediaUrl,
+  });
+  const reopenArtListing = new ReopenArtListingService({
+    originals: originalMoveReader,
+    register: artworkRegister,
+    restoreListing: async ({ artworkId, actor }) => {
+      await artworkCatalogue.setVisibility({
+        artworkId,
+        action: "restore",
+        actorSubjectId: actor,
+        idempotencyKey: randomUUID(),
+      });
+    },
+  });
   const homeFeatures = createHomeFeaturesService({
     uow: createDrizzleHomeFeaturesUnitOfWork(shopUow, { resolveMediaUrl }),
     lists: createDrizzleHomeFeatureListReader(db, { resolveMediaUrl }),
@@ -434,6 +491,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       uow: shopUow,
       invoiceGateway,
       domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+      offers: originalOffers,
     });
   const originalSales = originalSaleWriterFor(db);
   const adminOriginalSales = {
@@ -539,7 +597,14 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           staffReader,
         }),
         leads: new LeadsService(createDrizzleLeadReader(db)),
-        releaseAlertSummary: releaseAlertStore,
+        artworkRegister: new ArtworkRegisterReviewService({
+          queue: new DrizzleArtworkRegisterQueueReader(db),
+          register: artworkRegisterRepository,
+          resolver: artworkRegisterRepository,
+          runs: new DrizzleZohoArtworkSyncStore(db),
+          staffNames: createDrizzleStaffNameReader(db),
+        }),
+        releaseAlertSummary: shopAlerts.summary,
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {
             domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
@@ -567,6 +632,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         createMerchandiseProduct,
         merchandiseCatalogue,
         artworkCatalogue,
+        inventoryMoves,
         editionRuns,
         artistCatalogue,
         artCache,
@@ -594,6 +660,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         machine: {
           clientId: env.IDENTITY_MACHINE_CLIENT_ID,
           clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
+        },
+      },
+      inventory: {
+        reopen: reopenArtListing,
+        machine: {
+          clientId: env.INVENTORY_MACHINE_CLIENT_ID,
+          clientSecret: env.INVENTORY_MACHINE_CLIENT_SECRET,
         },
       },
       identitySubjectExport: {

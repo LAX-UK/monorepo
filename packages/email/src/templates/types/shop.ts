@@ -13,6 +13,7 @@ const names = [
   "shop-checkout-ops-alert",
   "shop-refund-issued",
   "shop-cancellation-confirmed",
+  "shop-return-closed-seller",
   "art-general-enquiry-alert",
   "art-enquiry-received",
   "art-artist-application-received",
@@ -122,6 +123,14 @@ type ShopTemplateVars = {
     /** What goes back to the card: the item's price less anything already refunded. */
     amountPence: number;
   };
+  /** To the seller of a returned print; never carries anything about the buyer. */
+  "shop-return-closed-seller": {
+    artworkTitle: string;
+    /** "Edition 3", "Proof 1" or "Open edition". */
+    editionLabel: string;
+    stockOutcome: "back_on_sale" | "in_stock_not_on_sale" | "written_off";
+    payout: "none" | "withheld" | "recovered";
+  };
   "art-general-enquiry-alert": {
     topicLabel: string;
     buyerEmail: string;
@@ -193,6 +202,7 @@ export const shopTemplates = {
     "shop-checkout-ops-alert": "snapshot",
     "shop-refund-issued": "snapshot",
     "shop-cancellation-confirmed": "snapshot",
+    "shop-return-closed-seller": "snapshot",
     "art-general-enquiry-alert": "snapshot",
     "art-enquiry-received": "snapshot",
     "art-artist-application-received": "snapshot",

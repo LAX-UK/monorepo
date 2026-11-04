@@ -18,6 +18,8 @@ export type MediaImageProps = {
   src: string | null | undefined;
   alt: string;
   label?: string | undefined;
+  /** Initials for an artist without a portrait; shown instead of `label`. */
+  monogram?: string | undefined;
   /** The work's title for the placeholder mat; defaults to `alt`. */
   placeholderTitle?: string | undefined;
   tone?: MediaPlaceholderProps["tone"] | undefined;
@@ -42,6 +44,7 @@ export function MediaImage({
   src,
   alt,
   label,
+  monogram,
   placeholderTitle,
   tone = "auto",
   aspect,
@@ -99,6 +102,7 @@ export function MediaImage({
           shape={shape}
           loading={Boolean(normalizedSrc && status === "loading")}
           {...(label !== undefined ? { label } : {})}
+          {...(monogram !== undefined ? { monogram } : {})}
           {...((placeholderTitle ?? alt) ? { title: placeholderTitle ?? alt } : {})}
           {...(placeholderClassName !== undefined ? { className: placeholderClassName } : {})}
         />

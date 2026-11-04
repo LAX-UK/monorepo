@@ -4,6 +4,11 @@ import { cn } from "../../lib/utils.js";
 export type MediaPlaceholderProps = {
   /** Short label, e.g. "Lot artwork", "Auction cover", or initials. */
   label?: string | undefined;
+  /**
+   * Initials shown large over the hatch, for an artist without a portrait. They scale with the
+   * frame, and take the place of a text label.
+   */
+  monogram?: string | undefined;
   /** The work's title; read to assistive tech when there is no label. */
   title?: string | undefined;
   tone?: "light" | "dark" | "auto" | undefined;
@@ -37,6 +42,7 @@ const LABEL_CLASS = {
 
 export function MediaPlaceholder({
   label,
+  monogram,
   title,
   tone = "auto",
   aspect,
@@ -47,7 +53,8 @@ export function MediaPlaceholder({
 }: MediaPlaceholderProps) {
   const patternId = useId().replace(/:/g, "");
   const shouldFill = fill ?? !aspect;
-  const normalizedLabel = label?.trim();
+  const normalizedLabel = monogram ? undefined : label?.trim();
+  const normalizedMonogram = monogram?.trim();
   const spoken = normalizedLabel || title?.trim();
 
   return (
@@ -58,6 +65,7 @@ export function MediaPlaceholder({
         "overflow-hidden",
         shouldFill ? "absolute inset-0 h-full w-full" : "relative w-full",
         shape === "circle" && "rounded-full",
+        normalizedMonogram && "[container-type:inline-size]",
         loading && "animate-pulse",
         SURFACE_CLASS[tone],
         className,
@@ -89,6 +97,18 @@ export function MediaPlaceholder({
         </defs>
         <rect width="100%" height="100%" fill={`url(#${patternId})`} suppressHydrationWarning />
       </svg>
+      {normalizedMonogram ? (
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute inset-0 flex items-center justify-center font-headline font-medium tracking-tight",
+            LABEL_CLASS[tone],
+          )}
+          style={{ fontSize: "clamp(0.875rem, 24cqw, 2.25rem)" }}
+        >
+          {normalizedMonogram}
+        </span>
+      ) : null}
       {normalizedLabel ? (
         <span
           className={cn(

@@ -10,6 +10,7 @@ export { DrizzleEmailWebhookIngestRepository } from "./drizzle-email-webhook-ing
 export { DrizzleNewsletterSignupRepository } from "./drizzle-newsletter-signup.repository.js";
 export * from "./bid-alerts/index.js";
 export * from "./artwork-register/index.js";
+export * from "./zoho-artwork-sync/index.js";
 export { DrizzleWebhookEventRepository } from "./drizzle-webhook-event.repository.js";
 export { DrizzleExternalAccountRepository } from "./drizzle-external-account.repository.js";
 export { DrizzleUploadObjectReader } from "./drizzle-upload-object.reader.js";
@@ -255,6 +256,7 @@ export {
   DrizzleEnquiryNoteRepository,
   DrizzleEnquiryRoutingRepository,
 } from "./drizzle-enquiry-workflow.repositories.js";
+export { DrizzleEnquiryErasureRepository } from "./drizzle-enquiry-erasure.repository.js";
 export { DrizzleDeliveryQuoteRepository } from "./drizzle-delivery-quote.repository.js";
 export { DrizzlePurchaseProblemRepository } from "./drizzle-purchase-problem.repository.js";
 export { DrizzleAccountRecordSearchReader } from "./drizzle-account-record-search.reader.js";
@@ -291,3 +293,4 @@ export {
   DrizzleBuyerDefaultRepository,
 } from "./drizzle-buyer-default.repository.js";
 export { DrizzlePaymentReminderStore } from "./drizzle-payment-reminder.store.js";
+export { DrizzlePrivateSaleDealRepository } from "./drizzle-private-sale-deal.repository.js";

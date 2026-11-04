@@ -28,6 +28,13 @@ describe("MarketingEditorialCard", () => {
     expect(card.className).not.toContain("rounded");
   });
 
+  it("takes its heading level from the page", () => {
+    render(<MarketingEditorialCard media={<span />} title="Forms in Suspension" titleAs="h2" />);
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Forms in Suspension" }),
+    ).toBeInTheDocument();
+  });
+
   it("supports portrait media, a custom link component and a trailing control", () => {
     function SafeLink({
       href,
@@ -67,6 +74,18 @@ describe("MarketingEditorialCard", () => {
     render(<MarketingEditorialCard media={null} title="Untitled" />);
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.getByRole("heading", { name: "Untitled" })).toBeInTheDocument();
+  });
+
+  it("is text-led without a media slot, at any layout", () => {
+    const { container } = render(
+      <MarketingEditorialCard title="New Originals" layout="split" href="/x" />,
+    );
+    const article = container.querySelector("article");
+    expect(article).toHaveAttribute("data-text-led");
+    expect(article?.className).toContain("border-t");
+    expect(article?.className).not.toContain("md:grid-cols-[7fr_5fr]");
+    expect(container.querySelector(".aspect-\\[4\\/3\\]")).toBeNull();
+    expect(screen.getByRole("link", { name: "New Originals" })).toBeInTheDocument();
   });
 
   it("puts media and text side by side for a card alone in its row", () => {

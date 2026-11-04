@@ -56,9 +56,9 @@ export function MarketingFilterLinkGroups({
           const headingId = `${idPrefix}-${group.id}`;
           return (
             <section key={group.id} aria-labelledby={headingId}>
-              <h3 id={headingId} className={MARKETING_FILTER_GROUP_TITLE}>
+              <h2 id={headingId} className={MARKETING_FILTER_GROUP_TITLE}>
                 {group.title}
-              </h3>
+              </h2>
               <ul className="flex flex-col gap-0.5">
                 {group.links.map((link) => (
                   <li key={`${link.label}-${link.href}`}>

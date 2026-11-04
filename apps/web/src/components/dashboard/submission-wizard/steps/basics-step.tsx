@@ -3,6 +3,7 @@
 import type { BasicsStepProps } from "@/components/dashboard/submission-wizard/step-props";
 import { CategoryPicker } from "@/components/forms/category-picker";
 import { SellPrerequisitesInline } from "@/components/marketing/sell-journey/sell-prerequisites-inline";
+import { sellFieldItemId } from "@/lib/forms/submission/step-errors";
 import {
   FormControl,
   FormField,
@@ -20,7 +21,7 @@ export function BasicsStep({ form, categories }: BasicsStepProps) {
         control={form.control}
         name="title"
         render={({ field }) => (
-          <FormItem>
+          <FormItem fieldId={sellFieldItemId("title")}>
             <FormLabel>Title</FormLabel>
             <FormControl>
               <Input placeholder="Work title" {...field} />
@@ -33,7 +34,7 @@ export function BasicsStep({ form, categories }: BasicsStepProps) {
         control={form.control}
         name="categoryIds"
         render={({ field }) => (
-          <FormItem>
+          <FormItem fieldId={sellFieldItemId("categoryIds")}>
             <FormLabel>Categories</FormLabel>
             <FormControl>
               <CategoryPicker

@@ -33,9 +33,13 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
   const repo = new DrizzleArtworkRegisterRepository(db);
 
   beforeEach(async () => {
+    // Not TRUNCATE ... CASCADE: Bid lots reference the register, and a cascade would wipe them too.
     await db.execute(
-      sql`TRUNCATE artwork_register_conflict, artwork_register_event, artwork_register CASCADE`,
+      sql`UPDATE lot SET artwork_register_id = NULL WHERE artwork_register_id IS NOT NULL`,
     );
+    await db.execute(sql`TRUNCATE artwork_register_conflict, artwork_register_event`);
+    await db.execute(sql`UPDATE artwork_register SET source_original_id = NULL`);
+    await db.execute(sql`DELETE FROM artwork_register`);
   });
 
   async function created() {
@@ -377,6 +381,72 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
       expect(await repo.listOpenConflicts(10)).toHaveLength(1);
     });
 
+    async function stockConflict(zohoCode: string) {
+      const entry = await created();
+      await repo.applyZohoChange(
+        { zohoProductId: "5001", modifiedAt: T2, fields: { stockCode: zohoCode } },
+        T2,
+      );
+      const [open] = await repo.listOpenConflicts(10);
+      if (!open) throw new Error("no conflict");
+      return { entry, open };
+    }
+    const accept = (conflictId: string) =>
+      repo.resolveConflict({ conflictId, resolution: "accepted_zoho", resolvedBy: staff, now: T2 });
+
+    it("applies Zoho's stock code when it is accepted, in the same step", async () => {
+      const { entry, open } = await stockConflict("LAX-ORI-PH-GAC-26-0099");
+      expect(await accept(open.id)).toMatchObject({ ok: true });
+      const after = await repo.findById(entry.id);
+      expect(after?.stockCode).toBe("LAX-ORI-PH-GAC-26-0099");
+      expect(after?.version).toBe(entry.version + 1);
+      expect(await repo.listOpenConflicts(10)).toHaveLength(0);
+      const events = await repo.listEvents(entry.id, 10);
+      // The conflict and its decision share a timestamp here, so pick the event by type.
+      expect(events.find((e) => e.type === "conflict_resolved")?.payload).toMatchObject({
+        resolution: "accepted_zoho",
+        applied: { from: "LAX-ORI-PH-GAC-26-0001", to: "LAX-ORI-PH-GAC-26-0099" },
+      });
+    });
+
+    it("refuses a stock code another artwork holds, and keeps the conflict open", async () => {
+      const { entry, open } = await stockConflict("LAX-ORI-PH-GAC-26-0099");
+      await repo.create(
+        newEntry({ zohoProductId: "5002", stockCode: "LAX-ORI-PH-GAC-26-0099" }),
+        "system",
+        T0,
+      );
+      expect(await accept(open.id)).toEqual({ ok: false, reason: "stock_code_taken" });
+      expect((await repo.findById(entry.id))?.stockCode).toBe("LAX-ORI-PH-GAC-26-0001");
+      expect(await repo.listOpenConflicts(10)).toHaveLength(1);
+    });
+
+    it("refuses a stock code that is not a LAX code or would make a print of an original", async () => {
+      const bad = await stockConflict("not-a-code");
+      expect(await accept(bad.open.id)).toEqual({ ok: false, reason: "invalid_stock_code" });
+      await repo.applyZohoChange(
+        {
+          zohoProductId: "5001",
+          modifiedAt: new Date(T2.getTime() + 1000),
+          fields: { stockCode: "LAX-PRI-PH-GAC-26-0001" },
+        },
+        T2,
+      );
+      const [open] = await repo.listOpenConflicts(10);
+      expect(await accept(open?.id ?? "")).toEqual({ ok: false, reason: "invalid_stock_code" });
+      expect(await repo.listOpenConflicts(10)).toHaveLength(1);
+    });
+
+    it("never accepts Zoho's value for where an artwork is offered", async () => {
+      await created();
+      await repo.applyZohoChange(
+        { zohoProductId: "5001", modifiedAt: T2, fields: { offerState: "withdrawn" } },
+        T2,
+      );
+      const [open] = await repo.listOpenConflicts(10);
+      expect(await accept(open?.id ?? "")).toEqual({ ok: false, reason: "cannot_accept_field" });
+    });
+
     it("reports an unknown conflict", async () => {
       expect(
         await repo.resolveConflict({
@@ -386,6 +456,143 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
           now: T1,
         }),
       ).toEqual({ ok: false, reason: "not_found" });
+    });
+  });
+
+  describe("domain events for the Zoho writeback", () => {
+    async function published() {
+      const result = await db.execute(
+        sql`SELECT event_type, aggregate_id, producer, payload FROM domain_events
+            WHERE aggregate_type = 'artwork_register' ORDER BY id`,
+      );
+      return result.rows as {
+        event_type: string;
+        aggregate_id: string;
+        producer: string;
+        payload: Record<string, unknown>;
+      }[];
+    }
+
+    beforeEach(async () => {
+      await db.execute(sql`DELETE FROM domain_events WHERE aggregate_type = 'artwork_register'`);
+    });
+
+    it("publishes the stock code when LAX creates an entry", async () => {
+      const entry = await created();
+      expect(await published()).toEqual([
+        {
+          event_type: "artwork_register.stock_code_assigned",
+          aggregate_id: entry.id,
+          producer: "packages/db",
+          payload: {
+            schemaVersion: 1,
+            registerId: entry.id,
+            zohoProductId: "5001",
+            stockCode: "LAX-ORI-PH-GAC-26-0001",
+          },
+        },
+      ]);
+    });
+
+    it("publishes nothing for an entry that came from Zoho, which already holds its code", async () => {
+      const result = await repo.create(newEntry(), "zoho", T0);
+      expect(result.ok).toBe(true);
+      expect(await published()).toEqual([]);
+    });
+
+    it("publishes the move in the same transaction as the move itself", async () => {
+      const entry = await created();
+      await repo.moveOffer({
+        registerId: entry.id,
+        expectedVersion: 1,
+        to: "lax_art",
+        ref: { kind: "shop_artwork", id: "shop-1" },
+        actor: staff,
+        now: T1,
+      });
+      const moves = (await published()).filter(
+        (e) => e.event_type === "artwork_register.offer_changed",
+      );
+      expect(moves).toHaveLength(1);
+      expect(moves[0]?.payload).toEqual({
+        schemaVersion: 1,
+        registerId: entry.id,
+        zohoProductId: "5001",
+        stockCode: "LAX-ORI-PH-GAC-26-0001",
+        fromState: "held",
+        toState: "lax_art",
+      });
+    });
+
+    it("publishes nothing for a refused move", async () => {
+      const entry = await created();
+      const before = (await published()).length;
+      await repo.moveOffer({
+        registerId: entry.id,
+        expectedVersion: 99,
+        to: "lax_art",
+        ref: { kind: "shop_artwork", id: "shop-1" },
+        actor: staff,
+        now: T1,
+      });
+      expect((await published()).length).toBe(before);
+    });
+  });
+
+  describe("recordCatalogueStatusWritten", () => {
+    it("holds the written Status without moving the version, and records it", async () => {
+      const entry = await created();
+      expect(
+        await repo.recordCatalogueStatusWritten({
+          registerId: entry.id,
+          status: "In Auction",
+          now: T1,
+        }),
+      ).toEqual({ status: "recorded" });
+      const after = await repo.findById(entry.id);
+      expect(after?.catalogueStatus).toBe("In Auction");
+      expect(after?.version).toBe(entry.version);
+      expect((await repo.listEvents(entry.id, 10)).at(-1)).toMatchObject({
+        type: "zoho_writeback_recorded",
+        actor: "system",
+        payload: { field: "catalogueStatus", from: "Available", to: "In Auction" },
+      });
+    });
+
+    it("does nothing when the register already holds that Status, and for an unknown entry", async () => {
+      const entry = await created();
+      expect(
+        await repo.recordCatalogueStatusWritten({
+          registerId: entry.id,
+          status: "Available",
+          now: T1,
+        }),
+      ).toEqual({ status: "unchanged" });
+      expect(
+        await repo.recordCatalogueStatusWritten({
+          registerId: "00000000-0000-4000-8000-000000000000",
+          status: "Sold",
+          now: T1,
+        }),
+      ).toEqual({ status: "not_found" });
+    });
+
+    it("leaves an optimistic move unaffected", async () => {
+      const entry = await created();
+      await repo.recordCatalogueStatusWritten({
+        registerId: entry.id,
+        status: "Reserved",
+        now: T1,
+      });
+      const moved = await repo.moveOffer({
+        registerId: entry.id,
+        expectedVersion: entry.version,
+        to: "withdrawn",
+        ref: null,
+        actor: staff,
+        now: T2,
+      });
+      expect(moved.ok).toBe(true);
     });
   });
 

@@ -39,6 +39,30 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     });
   });
 
+  it("routes artwork register events to the Zoho artwork writeback only", () => {
+    const base = {
+      schemaVersion: 1,
+      registerId: "11111111-1111-4111-8111-111111111111",
+      zohoProductId: "5000000000001000001",
+      stockCode: "LAX-ORI-PH-GAC-26-0001",
+    };
+    for (const [type, payload] of [
+      ["artwork_register.offer_changed", { ...base, fromState: "held", toState: "bid_sale" }],
+      ["artwork_register.stock_code_assigned", base],
+    ] as const) {
+      expect(DOMAIN_EVENT_REGISTRY[type].consumers).toEqual(["zoho_artwork_writeback"]);
+      expect(DOMAIN_EVENT_REGISTRY[type].piiClassification).toBe("operational");
+      expect(parseDomainEventPayload(type, 1, payload).ok).toBe(true);
+    }
+    expect(
+      parseDomainEventPayload("artwork_register.offer_changed", 1, {
+        ...base,
+        fromState: "held",
+        toState: "nowhere",
+      }).ok,
+    ).toBe(false);
+  });
+
   it("fails safely for unknown schema versions", () => {
     const result = parseDomainEventPayload("bid.outbid", 99, {
       previousBidId: "33333333-3333-4333-8333-333333333333",

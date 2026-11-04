@@ -68,7 +68,7 @@ describe.skipIf(!hasShopIntegrationDb)("edition runs end to end", { timeout: 60_
         resolveMediaUrl,
         editionRuns: services.recorder,
         originalPrints: services.originalPrintsRecorder,
-        releaseAlerts: { announce: async () => ({ queued: 0 }) },
+        releaseAlerts: { recordPublished: async () => ({ queued: 0 }) },
       }),
       artists: createDrizzleArtistCatalogueWriter(uow),
       reader: createDrizzleAdminArtworkReader(db, { resolveMediaUrl }),

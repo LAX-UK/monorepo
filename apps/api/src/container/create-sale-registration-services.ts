@@ -10,7 +10,6 @@ import { IdentityTelephoneBookingUserPhoneReader } from "../infrastructure/ident
 import type { IIdentitySecurityClient } from "../services/interfaces/identity-issuer-client.js";
 import type { TelephoneBidBookingServicePort } from "../services/interfaces/telephone-bid-booking-service.js";
 import { PaddleService } from "../services/paddle.service.js";
-import { SaleExpectedGuestsService } from "../services/sale-expected-guests.service.js";
 import { SaleroomCheckInEligibilityValidator } from "../services/saleroom-check-in-eligibility.validator.js";
 import { SaleroomCheckInService } from "../services/saleroom-check-in.service.js";
 import { buildTelephoneBidBookingService } from "../services/telephone-bid-booking.service.js";
@@ -27,7 +26,6 @@ export type ContainerSaleRegistrationServices = {
   telephoneBidBookingService: TelephoneBidBookingServicePort;
   paddleService: PaddleService;
   saleroomCheckInService: SaleroomCheckInService;
-  saleExpectedGuestsService: SaleExpectedGuestsService;
 };
 
 export type CreateSaleRegistrationServicesInput = {
@@ -51,7 +49,6 @@ export function createSaleRegistrationServices(
     telephoneBidBookingRepo,
     paddleRepo,
     saleroomCheckInRepo,
-    saleExpectedGuestsReader,
     legalEntityRepository,
     amlHoldStore,
   } = repos;
@@ -105,13 +102,11 @@ export function createSaleRegistrationServices(
     saleroomCheckInEligibility,
     paddleService,
   );
-  const saleExpectedGuestsService = new SaleExpectedGuestsService(saleExpectedGuestsReader);
 
   return {
     bidAuthority,
     telephoneBidBookingService,
     paddleService,
     saleroomCheckInService,
-    saleExpectedGuestsService,
   };
 }

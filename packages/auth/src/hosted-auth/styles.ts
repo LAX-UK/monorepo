@@ -241,7 +241,8 @@ body {
   color: var(--color-on-surface);
 }
 
-@media (min-width: 40rem) {
+/* The panel's gutters step up at 768px, as every LAX page's do. */
+@media (min-width: 48rem) {
   .auth-header,
   .auth-main,
   .auth-footer {

@@ -1053,6 +1053,11 @@ export type {
   PrivateSaleEnquiryDetail,
 } from "./marketing-enquiry.repository.js";
 export type {
+  EnquiryErasureCounts,
+  EnquiryErasureTarget,
+  IEnquiryErasureRepository,
+} from "./enquiry-erasure.repository.js";
+export type {
   IPurchaseProblemRepository,
   NewPurchaseProblem,
   PurchaseProblemRecord,
@@ -1162,9 +1167,25 @@ export type {
 } from "./dispute-case.repository.js";
 
 export type {
+  AlertableLot,
+  ArtistWatcher,
+  IBidAlertFollowerProvisioner,
+  IBidAlertLotReader,
+  IBidAlertWatcherReader,
+  SearchWatcher,
+} from "./bid-alert-lot.js";
+
+export type {
   ApplyZohoChangeResult,
   ConflictCursor,
   CreateRegisterEntryResult,
+  AuctionOfferDraftLot,
+  AuctionOfferSale,
+  IArtworkMoveHistory,
+  IAuctionOfferReader,
+  RecordMoveConfirmedInput,
+  ILotRegisterLinkReader,
+  LotRegisterLink,
   IArtworkRegisterReader,
   IArtworkRegisterRepository,
   MoveOfferInput,
@@ -1176,6 +1197,26 @@ export type {
   ResolveConflictInput,
   ResolveConflictResult,
 } from "./artwork-register.js";
+
+export type {
+  ArtworkRegisterArtistCount,
+  IArtworkRegisterQueue,
+  QueuedConflict,
+  RegisterQueueFilter,
+  RegisterQueuePage,
+} from "./artwork-register-queue.js";
+
+export type {
+  IZohoArtworkSyncReport,
+  IZohoArtworkSyncRunReader,
+  IZohoArtworkSyncWatermark,
+  ZohoArtworkSyncMode,
+  ZohoArtworkSyncOutcome,
+  ZohoArtworkSyncOutcomeInput,
+  ZohoArtworkSyncOutcomeKind,
+  ZohoArtworkSyncRunSummary,
+  ZohoArtworkSyncSummary,
+} from "./zoho-artwork-sync.js";
 
 export type {
   AnnouncedSale,
@@ -1191,3 +1232,12 @@ export {
   type PaymentReminderCandidate,
   type RecordBuyerDefaultInput,
 } from "./buyer-default.js";
+export type {
+  IPrivateSaleDealReader,
+  IPrivateSaleDealWriter,
+  IPrivateSaleDocumentWriter,
+  NewPrivateSaleDeal,
+  NewPrivateSaleDocument,
+  PrivateSaleDealTermsPatch,
+  PrivateSaleDealWriteResult,
+} from "./private-sale-deal.repository.js";

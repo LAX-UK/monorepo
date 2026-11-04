@@ -35,7 +35,7 @@ import {
   toast,
 } from "@auction/staff-ui";
 import { Plus } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 
 export type InvitationsStaffListProps = {
   rows: InvitationStaffRow[];
@@ -47,6 +47,8 @@ export type InvitationsStaffListProps = {
   /** An invitation opened from a link that is not on this page. */
   offPage: InvitationStaffRow | null;
   loadError: string | null;
+  /** What the action that sent staff here has to say, shown under the header. */
+  notice?: ReactNode;
   filtered: boolean;
 };
 
@@ -294,6 +296,7 @@ export function InvitationsStaffList(props: InvitationsStaffListProps) {
           }))}
         onClearFilters={() => navigate(invitationsListHref(search, { q: null }))}
         loading={pending}
+        notice={props.notice}
         filtered={filtered}
         error={
           props.loadError

@@ -208,6 +208,13 @@
   --motion-ease-decelerate: cubic-bezier(0, 0, 0, 1);
 }
 
+/* On a touch screen the standard 36px action grows to the 44px commerce height. */
+@media (pointer: coarse) {
+  :root {
+    --shop-button-standard-height: var(--shop-button-commerce-height);
+  }
+}
+
 /* Page gutter 16 / 24 / 40px — pairs with MARKETING_PAGE_GUTTER_X (@auction/branding). */
 @media (min-width: 48rem) {
   :root {

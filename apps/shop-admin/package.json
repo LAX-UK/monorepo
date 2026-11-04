@@ -12,7 +12,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:e2e": "node ../../scripts/ci/require-node-version.mjs && playwright test",
-    "test:e2e:local-setup": "playwright test --config playwright.local.config.ts"
+    "test:e2e:local-setup": "playwright test --config playwright.local.config.ts",
+    "test:e2e:a11y": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 playwright test e2e/axe.spec.ts e2e/staff-roles.spec.ts",
+    "test:e2e:visual": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 PLAYWRIGHT_VISUAL=1 playwright test e2e/pages-visual.spec.ts",
+    "test:e2e:visual-update": "node ../../scripts/ci/require-node-version.mjs && PLAYWRIGHT_E2E=1 PLAYWRIGHT_VISUAL=1 playwright test e2e/pages-visual.spec.ts --update-snapshots --workers=1"
   },
   "dependencies": {
     "@auction/branding": "workspace:*",
@@ -33,6 +36,7 @@
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
+    "@axe-core/playwright": "^4.10.1",
     "@playwright/test": "^1.55.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",

@@ -31,12 +31,12 @@ export default function AboutPage() {
         {policyHubPageJsonLd({
           path: "/about",
           breadcrumbName: "About",
-          pageName: "About LAX.BID",
+          pageName: "About LAX Bid",
           description: `Learn about ${SITE_NAME}, the dedicated auction platform of ${SITE_COMPANY_NAME}.`,
         })}
       </script>
       <LegalPage
-        title="About LAX.BID"
+        title="About LAX Bid"
         breadcrumb={
           <MarketingBreadcrumb
             items={[
@@ -86,7 +86,7 @@ export default function AboutPage() {
         </MarketingSectionReveal>
 
         <MarketingSectionReveal index={1}>
-          <LegalH2>Development of LAX.BID</LegalH2>
+          <LegalH2>Development of LAX Bid</LegalH2>
           <p>
             Planning for {SITE_NAME} commenced in 2024, marking a deliberate transition towards the
             establishment of a dedicated auction environment. This was not approached as an

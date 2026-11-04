@@ -14,8 +14,8 @@ import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
 
 type EmailChangeEditorProps = {
-  /** The address a change is waiting on, already masked; null when none is in progress. */
-  pendingEmailMasked: string | null;
+  /** The address a change is waiting on, shown in full; null when none is in progress. */
+  pendingEmail: string | null;
   /** A change was started and its links have expired; shown until the person starts again. */
   pendingExpired?: boolean;
   /** Where to come back to after a fresh sign-in, which starting a change may require. */
@@ -30,7 +30,7 @@ type Notice = { kind: "error" | "success"; message: string };
  * change is waiting the person sees which address it is for, and can cancel or start again.
  */
 export function EmailChangeEditor({
-  pendingEmailMasked,
+  pendingEmail,
   pendingExpired = false,
   returnTo,
 }: EmailChangeEditorProps) {
@@ -76,14 +76,14 @@ export function EmailChangeEditor({
 
   return (
     <div className="flex flex-col gap-4">
-      {pendingEmailMasked ? (
+      {pendingEmail ? (
         <p className="text-sm text-on-surface">
           Waiting for you to confirm the change to{" "}
-          <span className="font-medium break-all">{pendingEmailMasked}</span>. Open the links we
-          emailed to both addresses.
+          <span className="font-medium break-all">{pendingEmail}</span>. Open the links we emailed
+          to both addresses.
         </p>
       ) : null}
-      {pendingExpired && !pendingEmailMasked ? (
+      {pendingExpired && !pendingEmail ? (
         <p className="text-sm text-on-surface">Your request expired. Start again.</p>
       ) : null}
       {editing ? (
@@ -159,9 +159,9 @@ export function EmailChangeEditor({
               setEditing(true);
             }}
           >
-            {pendingEmailMasked ? "Use a different address" : "Change email"}
+            {pendingEmail ? "Use a different address" : "Change email"}
           </Button>
-          {pendingEmailMasked ? (
+          {pendingEmail ? (
             <LoadingButton
               type="button"
               variant="outline"

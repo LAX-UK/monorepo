@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import {
+  shopDispute,
   shopFulfilment,
   shopOrder,
   shopOriginalSale,
@@ -62,10 +63,24 @@ export function createDrizzleDeletionEligibilityRepository(
           ),
       );
 
+      const openDisputes = count(
+        db
+          .select({ n: sql<number>`count(*)::int` })
+          .from(shopDispute)
+          .innerJoin(shopOrder, eq(shopOrder.id, shopDispute.orderId))
+          .where(
+            and(
+              eq(shopOrder.identitySubjectId, identitySubjectId),
+              eq(shopDispute.status, "opened"),
+            ),
+          ),
+      );
+
       // Party-linked records can only exist when the person has a party.
       if (partyIds.length === 0) {
         return {
           openOrders: await openOrders,
+          openDisputes: await openDisputes,
           pendingPayouts: 0,
           openOriginalSales: 0,
           activeHolds: 0,
@@ -107,14 +122,16 @@ export function createDrizzleDeletionEligibilityRepository(
           ),
       );
 
-      const [orders, payouts, sales, holds] = await Promise.all([
+      const [orders, disputes, payouts, sales, holds] = await Promise.all([
         openOrders,
+        openDisputes,
         pendingPayouts,
         openOriginalSales,
         activeHolds,
       ]);
       return {
         openOrders: orders,
+        openDisputes: disputes,
         pendingPayouts: payouts,
         openOriginalSales: sales,
         activeHolds: holds,

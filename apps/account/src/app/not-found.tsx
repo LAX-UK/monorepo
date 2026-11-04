@@ -1,6 +1,6 @@
 import { Button } from "@/components/account-button";
 import { AccountShell } from "@/components/account-shell";
-import { EmptyState } from "@auction/ui/components/empty-state";
+import { MarketingNotFound } from "@auction/marketing-ui";
 import { connection } from "next/server";
 
 export default async function NotFound() {
@@ -9,14 +9,12 @@ export default async function NotFound() {
   await connection();
   return (
     <AccountShell>
-      <EmptyState
-        variant="plain"
-        size="page"
+      <MarketingNotFound
         illustration="ticket"
-        headingLevel="h1"
-        title="Page not found"
-        description="This page doesn't exist. Your account settings are one click away."
-        action={
+        title="We can’t find that page"
+        description="The link may be mistyped, or the page may have moved. Your account settings are one click away."
+        links={[]}
+        actions={
           <Button asChild variant="cta" size="lg">
             <a href="/account">Go to my account</a>
           </Button>

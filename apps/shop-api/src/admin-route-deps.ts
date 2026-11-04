@@ -1,4 +1,7 @@
+import type { OriginalMoveService } from "./application/admin/original-move.service.js";
+import type { ReleaseAlertSummaryReader } from "./application/alerts/alert-ports.js";
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
+import type { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import type { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
@@ -21,7 +24,6 @@ import type {
   CreateOriginalSaleCommand,
   OriginalSaleWriter,
 } from "./application/ports/original-sale.writer.js";
-import type { ReleaseAlertSummaryReader } from "./application/ports/release-alert.store.js";
 import type {
   GrantSaleAuthorityCommand,
   SaleAuthorityWriter,
@@ -79,6 +81,8 @@ export type AdminRoutesDeps = {
   guestErasure: GuestErasureService;
   /** Guest leads: the list and one lead's record. */
   leads: LeadsService;
+  /** The From Zoho queue: new artworks, conflicts, the latest check and each record. */
+  artworkRegister: ArtworkRegisterReviewService;
   /** Release alert subscriber counts. */
   releaseAlertSummary: ReleaseAlertSummaryReader;
   artistApplicationReview: ArtistApplicationReviewService;
@@ -111,6 +115,8 @@ export type AdminRoutesDeps = {
   createMerchandiseProduct: ReturnType<typeof createCreateMerchandiseProductHandler>;
   merchandiseCatalogue: MerchandiseCatalogueWriter;
   artworkCatalogue: ArtworkCatalogueWriter;
+  /** Offering an original at auction in LAX Bid. */
+  inventoryMoves: Pick<OriginalMoveService, "assess" | "listSales" | "offerAtAuction">;
   /** Runs of prints: change a draft's run, edition facts, open edition stock, linked listings. */
   editionRuns: Omit<EditionRunServices, "recorder" | "originalPrintsRecorder">;
   artistCatalogue: ArtistCatalogueWriter;

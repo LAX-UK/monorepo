@@ -14,15 +14,5 @@ export type MarketingArtistPortraitFillProps = {
  */
 export function MarketingArtistPortraitFill({ name, image }: MarketingArtistPortraitFillProps) {
   if (image) return <>{image}</>;
-  return (
-    <>
-      <MediaPlaceholder fill />
-      <span
-        aria-hidden="true"
-        className="absolute inset-0 flex items-center justify-center font-headline text-4xl font-medium tracking-tight text-on-surface-variant"
-      >
-        {marketingArtistInitials(name)}
-      </span>
-    </>
-  );
+  return <MediaPlaceholder fill monogram={marketingArtistInitials(name)} />;
 }

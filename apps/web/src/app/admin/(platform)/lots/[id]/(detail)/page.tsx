@@ -1,11 +1,10 @@
 import { AtgLotStatus } from "@/components/admin/atg/atg-lot-status";
-import { CatalogDetailActionError } from "@/components/admin/catalog/catalog-detail-action-error";
 import { LotOverviewTab } from "@/components/admin/lot-detail/tabs/overview-tab";
 import { loadAdminLotOverviewPage } from "@/lib/admin/lots/load-lot-overview-page";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; error_code?: string; period?: string }>;
+  searchParams: Promise<{ period?: string }>;
 };
 
 export default async function AdminLotOverviewPage({ params, searchParams }: Props) {
@@ -15,9 +14,6 @@ export default async function AdminLotOverviewPage({ params, searchParams }: Pro
 
   return (
     <>
-      {sp.error && sp.error_code !== "connect_required" ? (
-        <CatalogDetailActionError error={sp.error} />
-      ) : null}
       {page.atgLot ? <AtgLotStatus lot={page.atgLot} /> : null}
       <LotOverviewTab
         lotId={page.lotId}

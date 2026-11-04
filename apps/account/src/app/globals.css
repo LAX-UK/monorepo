@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @import "@auction/branding/brand-primitives.css" layer(base);
+@import "@auction/branding/lax-system.css" layer(base);
+@import "@auction/ui/lax-theme.css";
 
 @source "../../../../packages/ui/src/**/*.{ts,tsx}";
 @source "../../../../packages/marketing-ui/src/**/*.{ts,tsx}";
@@ -15,6 +17,7 @@
    for this origin only because no theme preference is shared across LAX origins. */
 @theme {
   --color-page-bg: #ffffff;
+  --color-footer-bg: #ededef;
   --color-background: #ffffff;
   --color-surface: #ffffff;
   --color-on-surface: #1c170d;
@@ -84,6 +87,7 @@
 
 html.dark {
   --color-page-bg: #121414;
+  --color-footer-bg: #0d0f0f;
   --color-background: #121414;
   --color-surface: #1a1c1c;
   --color-on-surface: var(--brand-light-cream);

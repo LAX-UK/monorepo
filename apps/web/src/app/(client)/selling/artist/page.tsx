@@ -5,6 +5,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { SITE_CONSIGNMENT_EMAIL } from "@/lib/brand";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { EmailLink } from "@auction/marketing-ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { redirect } from "next/navigation";
 
@@ -30,12 +31,10 @@ export default async function SellerArtistProfilePage() {
           The artist, maker, or brand attached to your lots is part of the platform&apos;s curated
           catalogue and can only be edited by an administrator. Use the form below to request a
           change. Requests go to the catalogue team at{" "}
-          <a
-            href={`mailto:${SITE_CONSIGNMENT_EMAIL}`}
+          <EmailLink
+            address={SITE_CONSIGNMENT_EMAIL}
             className="underline underline-offset-2 hover:text-on-surface"
-          >
-            {SITE_CONSIGNMENT_EMAIL}
-          </a>
+          />
           .
         </AlertDescription>
       </Alert>

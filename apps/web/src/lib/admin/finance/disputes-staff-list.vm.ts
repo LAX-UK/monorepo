@@ -1,5 +1,6 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { disputeDeadline } from "@auction/domain";
+import { staffShortDateFormat } from "@auction/staff-ui";
 import {
   type FilterOption,
   type DataView as StaffDataView,
@@ -77,7 +78,7 @@ export function disputeAllocationPresentation(
   return { label: "Not needed", tone: "neutral" };
 }
 
-const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
+const DAY_MONTH = staffShortDateFormat({
   day: "numeric",
   month: "short",
   timeZone: "Europe/London",

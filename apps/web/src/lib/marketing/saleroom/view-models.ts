@@ -43,7 +43,7 @@ export type SaleHeroVM = {
   rightColumnLabel: "Bidding starts" | null;
   /** Optional precomputed count of lots that are currently live within this
    * sale. When present and the sale is live, the hero kicker reads
-   * "· {liveLotsCount} lots live"; when omitted, the existing
+   * "· {liveLotsCount} lots"; when omitted, the existing
    * "· {itemsLabel}" copy is preserved.
    */
   liveLotsCount?: number;
