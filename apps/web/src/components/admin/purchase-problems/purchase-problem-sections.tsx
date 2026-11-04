@@ -32,6 +32,9 @@ import {
 } from "./purchase-problem-write-failure";
 import { type PurchaseProblemWriteResult, failureOf } from "./use-purchase-problem-writes";
 
+const LINK_CLASS =
+  "staff-focus rounded-staff-xs font-medium text-staff-fg underline underline-offset-2 decoration-staff-line-strong hover:decoration-staff-fg";
+
 /** What the buyer reported: the reason they chose and their own words. */
 export function ReportSection({ problem }: { problem: PurchaseProblemView }) {
   return (
@@ -65,7 +68,9 @@ export function PurchaseSection({
           {
             label: "Lot",
             value: links.lot ? (
-              <Link href={adminRoutes.lot(problem.lot.id)}>{lotName}</Link>
+              <Link href={adminRoutes.lot(problem.lot.id)} className={LINK_CLASS}>
+                {lotName}
+              </Link>
             ) : (
               lotName
             ),
@@ -75,7 +80,7 @@ export function PurchaseSection({
                 {
                   label: "Sale",
                   value: problem.lot.saleId ? (
-                    <Link href={adminRoutes.sale.detail(problem.lot.saleId)}>
+                    <Link href={adminRoutes.sale.detail(problem.lot.saleId)} className={LINK_CLASS}>
                       {problem.lot.saleTitle}
                     </Link>
                   ) : (
@@ -93,7 +98,7 @@ export function PurchaseSection({
           {
             label: "Payment",
             value: links.payment ? (
-              <Link href={adminRoutes.payments.panel(problem.payment.id)}>
+              <Link href={adminRoutes.payments.panel(problem.payment.id)} className={LINK_CLASS}>
                 {paymentStateLabel(problem.payment.status)}
               </Link>
             ) : (
@@ -149,7 +154,9 @@ export function PutRightSection({
       <ul className="m-0 flex list-none flex-col gap-2 p-0">
         {items.map((item) => (
           <li key={item.id} className="text-staff-sm">
-            <Link href={item.href}>{item.label}</Link>
+            <Link href={item.href} className={LINK_CLASS}>
+              {item.label}
+            </Link>
             <span className="text-staff-muted"> · {item.hint}</span>
           </li>
         ))}
@@ -195,11 +202,7 @@ export function NotesSection({
   }
 
   return (
-    <Section
-      id="notes"
-      title="Notes"
-      description="Internal. The buyer doesn't see them, and they don't belong to the buyer's message."
-    >
+    <Section id="notes" title="Notes" description="Internal. The buyer doesn't see notes.">
       <div className="flex flex-col gap-4">
         {notes.length === 0 ? (
           <p className="m-0 text-staff-sm text-staff-muted">No notes have been added.</p>

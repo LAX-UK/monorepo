@@ -97,7 +97,7 @@ export function PurchaseProblemsList(props: PurchaseProblemsListProps) {
       {
         id: "lot",
         header: "Lot",
-        width: "26%",
+        width: "28%",
         hideBelow: "md",
         mobile: "hidden",
         cell: (row) => {
@@ -111,7 +111,7 @@ export function PurchaseProblemsList(props: PurchaseProblemsListProps) {
         header: "Reason",
         width: "150px",
         hideBelow: "lg",
-        mobile: "hidden",
+        mobile: "meta",
         cell: (row) => PURCHASE_PROBLEM_CATEGORY_LABELS[row.category],
       },
       {
