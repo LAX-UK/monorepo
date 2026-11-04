@@ -223,10 +223,10 @@ export function useSubmissionWizardController(
 
       setAutosaveStatus("saved");
       setLastSavedAt(new Date());
-      // A full load of the submission's page, which confirms the send. A server redirect was
+      // A full load of the confirmation page for the send. A server redirect was
       // tried first: its response carried the right page (checked in the CI trace), but the
       // router kept showing the page as it was before the send, so only a load is reliable.
-      window.location.assign(`/selling/consignments/${id}?submitted=1`);
+      window.location.assign(`/selling/consignments/${id}/sent`);
     } finally {
       saveInFlight.current = false;
       setSubmitInFlight(false);

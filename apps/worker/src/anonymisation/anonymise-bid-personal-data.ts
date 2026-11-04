@@ -48,7 +48,10 @@ export async function anonymiseBidPersonalData(
   const counts: AnonymisationCounts = {};
   for (const rule of rules) {
     const changed = await rule.apply(tx, scope);
-    if (changed > 0) counts[rule.table] = changed;
+    const byTable = typeof changed === "number" ? { [rule.table]: changed } : changed;
+    for (const [table, count] of Object.entries(byTable)) {
+      if (count > 0) counts[table] = count;
+    }
   }
   return counts;
 }

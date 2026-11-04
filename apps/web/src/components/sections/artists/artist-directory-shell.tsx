@@ -12,6 +12,7 @@ import { CatalogArtistViewClient } from "@/components/sections/artists/catalog-a
 import type { ArtistDirectoryPreset } from "@/lib/artists/directory-presets";
 import { artistDirectoryWithQuery } from "@/lib/artists/directory-url";
 import { loadArtistDirectoryPage } from "@/lib/artists/load-artist-directory-page";
+import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { artistPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
@@ -238,7 +239,7 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
               actions={
                 <>
                   <ButtonLink Link={Link} variant="primary" href="/selling/new">
-                    Sell a work
+                    {SELL_A_WORK_LABEL}
                   </ButtonLink>
                   <ButtonLink Link={Link} variant="secondary" href="/sell">
                     How to sell

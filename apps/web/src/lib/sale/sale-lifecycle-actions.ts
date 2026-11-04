@@ -6,18 +6,19 @@ type SaleLifecycleStatus = SaleHeroVM["status"];
 export type SaleLifecycleActions = {
   /** Register to bid (or sign up to): only while bidding can still happen. */
   register: boolean;
-  /** Follow the sale to hear when it opens or closes. */
+  /** Follow the sale to hear when it opens: offered until it is live. */
   follow: boolean;
 };
 
 const OPEN: SaleLifecycleActions = { register: true, follow: true };
+const LIVE: SaleLifecycleActions = { register: true, follow: false };
 const CLOSED: SaleLifecycleActions = { register: false, follow: false };
 
 /** One row per sale status; an ended sale is a results page, not an invitation to bid. */
 const ACTIONS_BY_STATUS: Record<SaleLifecycleStatus, SaleLifecycleActions> = {
   draft: OPEN,
   scheduled: OPEN,
-  active: OPEN,
+  active: LIVE,
   ended: CLOSED,
   cancelled: CLOSED,
   voided: CLOSED,

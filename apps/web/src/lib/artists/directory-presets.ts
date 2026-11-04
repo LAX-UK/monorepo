@@ -78,8 +78,8 @@ export const ARTIST_DIRECTORY_PRESETS: ReadonlyArray<ArtistDirectoryPreset> = [
   {
     id: "historical",
     canonicalPath: "/artists/historical",
-    label: "Historical & deceased",
-    heroTitle: "Historical & deceased artists",
+    label: "Historical and deceased",
+    heroTitle: "Historical and deceased artists",
     heroDescription:
       "Catalogue of historical and deceased artists with works appearing in LAX Bid auctions.",
     filter: { historical: true },
@@ -96,8 +96,8 @@ export const ARTIST_DIRECTORY_PRESETS: ReadonlyArray<ArtistDirectoryPreset> = [
   {
     id: "kind-makers",
     canonicalPath: "/artists/kind/makers",
-    label: "Makers & studios",
-    heroTitle: "Makers & studios",
+    label: "Makers and studios",
+    heroTitle: "Makers and studios",
     heroDescription:
       "Craftspeople, ateliers, and studios — furniture, ceramics, watchmaking and more — in the LAX Bid catalogue.",
     filter: { kinds: ["maker"] },

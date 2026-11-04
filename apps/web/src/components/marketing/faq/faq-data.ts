@@ -141,7 +141,7 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "consign-work",
         title: "How do I consign a work?",
-        body: "Start with our selling guide at /sell, then sign in to complete the submission wizard (about 3 minutes). Gather photos, title, dimensions, and provenance before you begin. Estate and corporate collections use the same wizard — add collection details in submitter notes.",
+        body: "Choose Sell a work at /sell, sign in and complete the form, which takes about three minutes. Gather photos, title, dimensions and provenance before you begin. Estate and corporate collections use the same form: add collection details in your notes to our specialists.",
       },
       {
         id: "submission-information",
@@ -201,12 +201,12 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "accept-watches-cars",
         title: "Do you accept watches and motor cars?",
-        body: "Yes. We review wristwatches, pocket watches, clocks, and collectible motor cars through the same submission wizard as fine art. See our selling guide at /sell#departments for department-specific photo guidance, or visit /sell/watches and /sell/motor-cars for tailored preparation tips.",
+        body: "Yes. We review wristwatches, pocket watches, clocks, and collectible motor cars through the same form as fine art. See /sell/how-to-sell for photo guidance, or visit /sell/watches and /sell/motor-cars for tips on preparing them.",
       },
       {
         id: "accept-design-books-coins",
         title: "Do you accept design furniture, books, or coins?",
-        body: "We review design and decorative arts, books and manuscripts, and coins and medals when they align with upcoming sales. Submit through the wizard at /sell with clear photographs and provenance where available.",
+        body: "We review design and decorative arts, books and manuscripts, and coins and medals when they align with upcoming sales. Choose Sell a work at /sell with clear photographs and provenance where available.",
       },
       {
         id: "watch-car-photos",
@@ -221,7 +221,7 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "single-vs-collection",
         title: "Should I submit one item or contact you for a collection?",
-        body: "Single items can be submitted through the wizard in about 3 minutes. Estates, corporate collections, and multi-item consignments should use /sell/estate or /sell/corporate, or contact us with an inventory list and representative photographs.",
+        body: "Single items can be sent through the form at /sell in about three minutes. Estates, corporate collections, and multi-item consignments should use /sell/estate or /sell/corporate, or contact us with an inventory list and representative photographs.",
       },
       {
         id: "minimum-standards",
@@ -231,7 +231,7 @@ export const faqGroups: FaqGroup[] = [
       {
         id: "maker-field",
         title: "Do I need to name the artist or maker?",
-        body: "Include the artist, maker, or manufacturer in the title or description. The wizard does not have a separate maker field — use the title and catalogue description to identify who created or produced the item.",
+        body: "Include the artist, maker, or manufacturer in the title or description. The form does not have a separate maker field — use the title and catalogue description to identify who created or produced the item.",
       },
     ],
   },

@@ -1,5 +1,6 @@
 "use client";
 
+import { SUBMISSION_SUBMIT_LABEL } from "@/lib/marketing/sell-flow-copy";
 import type { SellerAccountOption } from "@/lib/seller/seller-account-options";
 import { Button, ButtonLink, Notice, PresetCards, TextLink } from "@auction/ui/lax";
 import Link from "next/link";
@@ -146,10 +147,10 @@ export function SellerAccountStep({
               data-testid="sell-flow-submit"
             >
               {busy
-                ? "Submitting…"
+                ? "Sending…"
                 : selected?.kind === "organisation"
-                  ? `Submit as ${selected.name}`
-                  : "Submit for review"}
+                  ? `Send as ${selected.name}`
+                  : SUBMISSION_SUBMIT_LABEL}
             </Button>
           )}
         </div>

@@ -1,0 +1,256 @@
+import { type ArtworkRegisterEntry, CATALOGUE_GAPS } from "@auction/artwork-register-contracts";
+import { REGISTER_GAP_VALUES } from "@auction/shop-contracts";
+import { describe, expect, it, vi } from "vitest";
+import type {
+  ArtworkRegisterQueue,
+  RegisterConflictRecord,
+  RegisterEventRecord,
+} from "../ports/artwork-register-review.ports.js";
+import {
+  type ArtworkRegisterReviewDeps,
+  ArtworkRegisterReviewService,
+} from "./artwork-register-review.service.js";
+
+const ID = "2f0b6d7e-0000-4000-8000-000000000001";
+const T0 = new Date("2026-11-03T09:00:00.000Z");
+
+function entry(overrides: Partial<ArtworkRegisterEntry> = {}): ArtworkRegisterEntry {
+  return {
+    id: ID,
+    zohoProductId: "5001",
+    stockCode: "LAX-ORI-PH-GAC-26-0001",
+    kind: "original",
+    sourceOriginalId: null,
+    title: "Harbour at dusk",
+    artist: { zohoArtistId: "77", name: "Aidan Phelan", code: "PH" },
+    medium: "Oil on canvas",
+    dimensions: null,
+    year: 2024,
+    imageRefs: [],
+    catalogueStatus: "Available",
+    offer: { state: "held", ref: null },
+    zohoModifiedAt: T0,
+    createdAt: T0,
+    updatedAt: T0,
+    version: 1,
+    ...overrides,
+  };
+}
+
+function conflict(overrides: Partial<RegisterConflictRecord> = {}): RegisterConflictRecord {
+  return {
+    id: "c0000000-0000-4000-8000-000000000001",
+    registerId: ID,
+    field: "stockCode",
+    zohoValue: "LAX-ORI-PH-GAC-26-0099",
+    laxValue: "LAX-ORI-PH-GAC-26-0001",
+    status: "open",
+    resolution: null,
+    resolvedBy: null,
+    resolvedAt: null,
+    zohoModifiedAt: T0,
+    detectedAt: T0,
+    ...overrides,
+  };
+}
+
+function service(overrides: Partial<ArtworkRegisterReviewDeps> = {}) {
+  const queue: ArtworkRegisterQueue = {
+    listHeld: vi.fn(async () => ({ entries: [entry()], total: 31 })),
+    listOpenConflicts: vi.fn(async () => ({
+      items: [{ conflict: conflict(), entry: entry() }],
+      total: 1,
+    })),
+    listConflictsFor: vi.fn(async () => [conflict()]),
+    countHeld: vi.fn(async () => 31),
+    countOpenConflicts: vi.fn(async () => 1),
+    listHeldArtists: vi.fn(async () => [{ code: "PH", name: "Aidan Phelan", count: 31 }]),
+  };
+  const deps: ArtworkRegisterReviewDeps = {
+    queue,
+    register: { findById: vi.fn(async () => entry()), listEvents: vi.fn(async () => []) },
+    resolver: {
+      resolveConflict: vi.fn(async () => ({
+        ok: true as const,
+        conflict: conflict({
+          status: "resolved",
+          resolution: "kept_lax",
+          resolvedBy: "staff:u1",
+          resolvedAt: T0,
+        }),
+      })),
+    },
+    runs: { latestNightlyRun: vi.fn(async () => null) },
+    staffNames: { namesFor: async () => new Map([["u1", "Cat Alogue"]]) },
+    now: () => T0,
+    ...overrides,
+  };
+  return { service: new ArtworkRegisterReviewService(deps), deps, queue };
+}
+
+describe("ArtworkRegisterReviewService", () => {
+  it("lists new artworks with what each lacks, the artists and both counts", async () => {
+    const { service: s } = service();
+    const list = await s.listNew({});
+    expect(list).toMatchObject({
+      total: 31,
+      page: 1,
+      pageSize: 25,
+      counts: { new: 31, decisions: 1 },
+      artists: [{ code: "PH", name: "Aidan Phelan", count: 31 }],
+    });
+    expect(list.items[0]).toMatchObject({
+      title: "Harbour at dusk",
+      artistCode: "PH",
+      missing: ["image", "size"],
+      zohoModifiedAt: T0.toISOString(),
+    });
+  });
+
+  it("passes the filters and the page offset to the queue", async () => {
+    const { service: s, queue } = service();
+    await s.listNew({ artist: "PH", missing: "image", page: 3 });
+    expect(queue.listHeld).toHaveBeenCalledWith(
+      { artistCode: "PH", missing: "image" },
+      { limit: 25, offset: 50 },
+    );
+  });
+
+  it("lists open conflicts with their artwork and plain values", async () => {
+    const { service: s } = service();
+    const list = await s.listConflicts({});
+    expect(list.items[0]?.conflict).toMatchObject({
+      field: "stockCode",
+      zohoValue: "LAX-ORI-PH-GAC-26-0099",
+      laxValue: "LAX-ORI-PH-GAC-26-0001",
+      status: "open",
+    });
+    expect(list.items[0]?.artwork.title).toBe("Harbour at dusk");
+    expect(list.counts).toEqual({ new: 31, decisions: 1 });
+  });
+
+  it("says there has been no check until one has run", async () => {
+    expect(await service().service.lastCheck()).toEqual({
+      counts: { new: 31, decisions: 1 },
+      run: null,
+    });
+  });
+
+  it("presents the latest check with its mode and counts", async () => {
+    const { service: s } = service({
+      runs: {
+        latestNightlyRun: async () => ({
+          runId: "nightly:dry_run:2026-11-03",
+          mode: "dry_run",
+          finishedAt: T0,
+          total: 859,
+          byOutcome: { create: 376, update: 0, conflict: 0, unchanged: 0, stale: 0, skipped: 483 },
+          skippedReasons: [{ reason: "missing_artist", count: 230 }],
+          gaps: [{ gap: "missing_price", count: 432 }],
+        }),
+      },
+    });
+    expect(await s.lastCheck()).toEqual({
+      counts: { new: 31, decisions: 1 },
+      run: {
+        mode: "dry_run",
+        finishedAt: T0.toISOString(),
+        total: 859,
+        outcomes: { create: 376, update: 0, conflict: 0, unchanged: 0, stale: 0, skipped: 483 },
+        skippedReasons: [{ reason: "missing_artist", count: 230 }],
+        gaps: [{ gap: "missing_price", count: 432 }],
+      },
+    });
+  });
+
+  it("opens one artwork with its conflicts and history, newest first, naming staff", async () => {
+    const events: RegisterEventRecord[] = [
+      { id: "e1", registerId: ID, type: "created", actor: "zoho", payload: {}, createdAt: T0 },
+      {
+        id: "e2",
+        registerId: ID,
+        type: "conflict_resolved",
+        actor: "staff:u1",
+        payload: { resolution: "kept_lax" },
+        createdAt: new Date(T0.getTime() + 1000),
+      },
+    ];
+    const { service: s } = service({
+      register: { findById: async () => entry(), listEvents: async () => events },
+    });
+    const detail = await s.get(ID);
+    expect(detail?.events.map((e) => [e.id, e.actor])).toEqual([
+      ["e2", "staff"],
+      ["e1", "zoho"],
+    ]);
+    expect(detail?.events.map((e) => e.actorName)).toEqual(["Cat Alogue", null]);
+    expect(detail).toMatchObject({ imageCount: 0, missing: ["image", "size"], offerState: "held" });
+    expect(detail?.conflicts).toHaveLength(1);
+  });
+
+  it("finds nothing for an unknown artwork", async () => {
+    const { service: s } = service({
+      register: { findById: async () => null, listEvents: async () => [] },
+    });
+    expect(await s.get(ID)).toBeNull();
+  });
+
+  it("records a decision under the staff member", async () => {
+    const { service: s, deps } = service();
+    const outcome = await s.resolve({
+      conflictId: "c0000000-0000-4000-8000-000000000001",
+      body: { resolution: "kept_lax" },
+      actorSubjectId: "u1",
+    });
+    expect(deps.resolver.resolveConflict).toHaveBeenCalledWith({
+      conflictId: "c0000000-0000-4000-8000-000000000001",
+      resolution: "kept_lax",
+      resolvedBy: "staff:u1",
+      now: T0,
+    });
+    expect(outcome).toMatchObject({
+      kind: "resolved",
+      result: { registerId: ID, conflict: { status: "resolved", resolution: "kept_lax" } },
+    });
+  });
+
+  it("says which conflicts can take Zoho's value", async () => {
+    const { service: s } = service({
+      queue: {
+        ...service().queue,
+        listOpenConflicts: async () => ({
+          items: [
+            { conflict: conflict(), entry: entry() },
+            { conflict: conflict({ field: "offerState" }), entry: entry() },
+          ],
+          total: 2,
+        }),
+      },
+    });
+    const list = await s.listConflicts({});
+    expect(list.items.map((i) => i.conflict.canAcceptZoho)).toEqual([true, false]);
+  });
+
+  it.each([
+    "not_found",
+    "already_resolved",
+    "cannot_accept_field",
+    "invalid_stock_code",
+    "stock_code_taken",
+  ] as const)("passes on %s", async (reason) => {
+    const { service: s } = service({
+      resolver: { resolveConflict: async () => ({ ok: false, reason }) },
+    });
+    expect(
+      await s.resolve({
+        conflictId: "x",
+        body: { resolution: "accepted_zoho" },
+        actorSubjectId: "u",
+      }),
+    ).toEqual({ kind: reason });
+  });
+
+  it("keeps the contract's gap list in step with the register's", () => {
+    expect([...REGISTER_GAP_VALUES]).toEqual([...CATALOGUE_GAPS]);
+  });
+});

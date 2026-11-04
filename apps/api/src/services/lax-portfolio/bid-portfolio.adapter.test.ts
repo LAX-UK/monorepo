@@ -137,10 +137,19 @@ describe("buildBidPortfolioItems: wins", () => {
     expect(itemsFor({ wonLots: [wonLot()], payments: [payment()] }, [cancelled])).toEqual([]);
   });
 
-  it("still lists a payment being confirmed as awaiting payment, with nothing owed", () => {
+  it("lists a payment being confirmed as such: nothing owed, nothing to pay", () => {
     const [item] = itemsFor({ wonLots: [wonLot()], payments: [payment({ status: "authorized" })] });
-    expect(item?.status).toBe("awaiting_payment");
+    expect(item?.status).toBe("payment_confirming");
     expect(item?.owed).toBeUndefined();
+    expect(item?.actions.map((action) => action.kind)).toEqual(["view"]);
+  });
+
+  it("drops a payment being confirmed once the sale is cancelled", () => {
+    expect(
+      itemsFor({ wonLots: [wonLot()], payments: [payment({ status: "authorized" })] }, [
+        owedEntry({ state: "cancelled" }),
+      ]),
+    ).toEqual([]);
   });
 
   it.each([

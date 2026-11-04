@@ -57,6 +57,14 @@ export interface ICrmRecordLinkRepository {
   markRecyclePurged(entityType: string, entityId: string, now?: Date): Promise<void>;
   isErased(entityType: string, entityId: string): Promise<boolean>;
   listActiveDealLinksBySubject(subjectId: string): Promise<CrmRecordLinkRow[]>;
+  /**
+   * The people-and-leads links, not yet erased, that point at one Zoho record. A person's account,
+   * guest checkout and enquiries share one record when they share an email address.
+   */
+  listActiveSubjectLinksByZohoRecord(
+    zohoModule: string,
+    zohoRecordId: string,
+  ): Promise<CrmRecordLinkRow[]>;
   listActiveByEntityType(
     entityType: string,
     limit: number,

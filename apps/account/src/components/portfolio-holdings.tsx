@@ -64,6 +64,12 @@ function amountsOf(row: HoldingRowVm) {
   return row.due.length > 0 ? row.due : row.paid;
 }
 
+/** What the amount in a row is: owed, being confirmed, or paid. */
+function amountLabel(status: HoldingRowVm["item"]["status"]): string {
+  if (status === "awaiting_payment") return "Due";
+  return status === "payment_confirming" ? "Confirming" : "Paid";
+}
+
 /** A work whose payment waits on account checks says so beside its amount. */
 function InReviewNote({ row }: { row: HoldingRowVm }) {
   if (row.item.owed?.state !== "in_review") return null;
@@ -74,8 +80,9 @@ function PaidCell({ row }: { row: HoldingRowVm }) {
   const amounts = amountsOf(row);
   return (
     <>
-      {row.item.status === "awaiting_payment" && amounts.length > 0 ? (
-        <span className="mr-1 text-xs text-on-surface-variant">Due</span>
+      {(row.item.status === "awaiting_payment" || row.item.status === "payment_confirming") &&
+      amounts.length > 0 ? (
+        <span className="mr-1 text-xs text-on-surface-variant">{amountLabel(row.item.status)}</span>
       ) : null}
       <CurrencyAmounts totals={amounts} />
       <InReviewNote row={row} />
@@ -164,9 +171,7 @@ function HoldingsCards({
             <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
               <dt className="text-on-surface-variant">Acquired</dt>
               <dd>{formatDate(row.item.acquiredAt)}</dd>
-              <dt className="text-on-surface-variant">
-                {row.item.status === "awaiting_payment" ? "Due" : "Paid"}
-              </dt>
+              <dt className="text-on-surface-variant">{amountLabel(row.item.status)}</dt>
               <dd>
                 <CurrencyAmounts totals={amountsOf(row)} />
                 <InReviewNote row={row} />

@@ -9,12 +9,7 @@ import {
   presentArtworkPurchase,
 } from "@/lib/presenters/artwork-purchase.presenter";
 import { type ArtworkScaleVm, presentArtworkScale } from "@/lib/presenters/artwork-scale.presenter";
-import {
-  type ArtworkSpecRow,
-  artworkSizeLines,
-  artworkSizeSummary,
-  presentArtworkSpecs,
-} from "@/lib/presenters/artwork-specs.presenter";
+import { type ArtworkSpecRow, presentArtworkSpecs } from "@/lib/presenters/artwork-specs.presenter";
 import type { MarketingSectionSurface } from "@auction/marketing-ui";
 import type {
   PublicArtistDetail,
@@ -42,9 +37,6 @@ export type ArtworkCrossLinksVm = {
   originalOnArtHref: string | null;
 };
 
-/** One fact in the strip under the title: edition, size and technique. */
-export type ArtworkKeyFactVm = { label: string; value: string };
-
 /** The artist, after the details: who made the work, with ways to their editions and story. */
 export type ArtworkArtistBlockVm = {
   name: string;
@@ -63,10 +55,6 @@ export type ArtworkProductPageVm = {
   artistName: string;
   /** The artist's page on Shop: their editions. */
   artistHref: string;
-  /** "50 × 40 cm (19.7 × 15.7 in)" under the title; null when the size is not catalogued. */
-  sizeSummary: string | null;
-  /** Edition, size and technique at a glance; empty when fewer than two are catalogued. */
-  keyFacts: ArtworkKeyFactVm[];
   gallery: ArtworkGalleryVm;
   /** Null when the edition has no price yet, so it cannot be bought. */
   purchase: ArtworkPurchaseVm | null;
@@ -156,20 +144,6 @@ export function selectRelatedEditions(
   return [...available, ...soldOut].slice(0, RELATED_EDITIONS_LIMIT);
 }
 
-const MIN_KEY_FACTS = 2;
-
-export function buildArtworkKeyFacts(artwork: PublicArtworkDetail): ArtworkKeyFactVm[] {
-  const { totalEditions } = artwork.availability;
-  // "60 × 40 cm" without the inches, which the details list carries.
-  const size = artworkSizeLines(artwork)[0] ?? null;
-  const medium = artwork.medium?.trim() || null;
-  const facts: ArtworkKeyFactVm[] = [];
-  if (totalEditions > 0) facts.push({ label: "Edition", value: `Edition of ${totalEditions}` });
-  if (size) facts.push({ label: "Size", value: size });
-  if (medium) facts.push({ label: "Technique", value: medium });
-  return facts.length >= MIN_KEY_FACTS ? facts : [];
-}
-
 /**
  * The row after the artist: their other editions when they have enough for a row; otherwise
  * their few topped up with other editions on sale, as "You might also like"; nothing when even
@@ -238,8 +212,6 @@ export function buildArtworkProductPage(input: {
     title: artwork.title,
     artistName: artwork.artistName,
     artistHref: `/artists/${artistSlug}`,
-    sizeSummary: artworkSizeSummary(artwork),
-    keyFacts: buildArtworkKeyFacts(artwork),
     gallery: { images: buildGalleryImages(artwork), scale: presentArtworkScale(artwork) },
     purchase: presentArtworkPurchase(artwork),
     specs: presentArtworkSpecs(artwork),

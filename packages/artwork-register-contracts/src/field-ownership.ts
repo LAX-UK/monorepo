@@ -153,3 +153,14 @@ export function reconcileZohoChange(
     stale: false,
   };
 }
+
+/**
+ * The LAX-owned fields where Zoho's value can be taken over. The stock code is a plain value LAX
+ * can change; where an artwork is offered, and the identity facts behind it, are set in LAX only,
+ * so the answer there is always to keep LAX's value and send it back to Zoho.
+ */
+export const ZOHO_ACCEPTABLE_FIELDS = ["stockCode"] as const satisfies readonly LaxOwnedField[];
+
+export function canAcceptZohoValue(field: LaxOwnedField): boolean {
+  return (ZOHO_ACCEPTABLE_FIELDS as readonly LaxOwnedField[]).includes(field);
+}

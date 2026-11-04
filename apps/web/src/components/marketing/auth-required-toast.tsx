@@ -6,7 +6,7 @@ import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 export function AuthRequiredToast() {
   return (
     <MarketingQueryToast param="auth" whenValue="required" durationMs={8000}>
-      <p className="mb-3 font-body text-sm">Sign in to access your dashboard and place bids.</p>
+      <p className="mb-3 font-body text-sm">Sign in to open your account and place bids.</p>
       <a
         href={buildHostedLoginStartHref({ next: "/home" })}
         className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 font-label text-xs font-bold text-on-primary"

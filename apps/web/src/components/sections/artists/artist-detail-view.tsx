@@ -11,6 +11,7 @@ import { ArtistWorksSection } from "@/components/sections/artists/artist-works-s
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { ArtistDetailPageData } from "@/lib/marketing/load-artist-detail-page";
+import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import {
   MarketingArtistFacts,
   MarketingArtistHero,
@@ -194,12 +195,12 @@ export function ArtistDetailView({ vm, jsonLdText }: ArtistDetailViewProps) {
 
       <MarketingPromoCta
         className="mt-12"
-        title="Submit your portfolio"
-        description="Request a valuation or submit work to be considered for an upcoming auction."
+        title="Sell your work"
+        description="Ask for a free valuation, or tell us about a work to be considered for an upcoming sale."
         actions={
           <>
             <ButtonLink Link={Link} variant="primary" href="/selling/new">
-              Submit work
+              {SELL_A_WORK_LABEL}
             </ButtonLink>
             <ButtonLink Link={Link} variant="secondary" href="/sell">
               Selling guide
