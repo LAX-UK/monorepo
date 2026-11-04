@@ -49,6 +49,7 @@ import { createInternalIdentityDeletionEligibilityRoutes } from "./routes/intern
 import { createInternalIdentityEmailRoutes } from "./routes/internal-identity-email.routes.js";
 import { createInternalIdentitySubjectExportRoutes } from "./routes/internal-identity-subject-export.routes.js";
 import { createInternalIdentitySubjectUsageRoutes } from "./routes/internal-identity-subject-usage.routes.js";
+import { createInternalInventoryRoutes } from "./routes/internal-inventory.routes.js";
 import { createKycRoutes } from "./routes/kyc.js";
 import { createActingContextUserRoutes, createLegalEntityRoutes } from "./routes/legal-entities.js";
 import { createLegalEntityBiddingLimitRoutes } from "./routes/legal-entity-bidding-limits.js";
@@ -244,6 +245,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/internal/identity", createInternalIdentitySubjectUsageRoutes(container, env))
     .route("/internal/identity", createInternalIdentityDeletionEligibilityRoutes(container, env))
     .route("/internal/identity", createInternalIdentitySubjectExportRoutes(container, env))
+    .route("/internal/inventory", createInternalInventoryRoutes(container, env))
     .route("/invitations", createPublicInvitationRoutes(container.admin.invitations))
     .route("/lots", createLotRoutes(container, authenticator, requireAccountOnboarding))
     .route("/lots", createLotDocumentRoutes(container, authenticator))

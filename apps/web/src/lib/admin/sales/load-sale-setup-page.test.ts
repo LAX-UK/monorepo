@@ -75,8 +75,6 @@ describe("loadAdminSaleSetupPage", () => {
       role: "staff",
       staffRoles: [],
     });
-    expect(decodeURIComponent(model.redirectTo ?? "")).toContain(
-      "Setup is only available for draft sales",
-    );
+    expect(model.redirectTo).toBe("/admin/sales/sale-1?notice=setup_draft_only");
   });
 });

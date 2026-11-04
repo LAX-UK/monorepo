@@ -16,6 +16,8 @@ import type { AdminTwoFactorResetService } from "../../admin/admin-two-factor-re
 import type { AdminDataRequestsService } from "../../admin/data-requests/admin-data-requests.service.js";
 import type { StaffAccessAdminService } from "../../admin/staff-access-admin.service.js";
 import type { DeliveryOpsApplicationService } from "../../delivery-ops.application.service.js";
+import type { InventoryMoveServices } from "../../inventory/inventory-move-services.js";
+import type { IEnquiryErasure } from "../../marketing-enquiry/enquiry-erasure.service.js";
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
 import type { IStaffStepUpGuard } from "../../staff-step-up.service.js";
 import type { LaxAdminRolesService } from "../../staff/lax-admin-roles.service.js";
@@ -53,10 +55,10 @@ export interface IAdminJobQueuesApplicationService {
   replayFromDlq(dlqJobId: string, actor: ActorContext, confirmIdempotency: boolean): Promise<void>;
 }
 
-/** Staff review of failed background jobs (see AdminFailedJobsService). */
+/** Staff review of failed jobs and integration deliveries (see AdminFailedJobsService). */
 export interface IAdminFailedJobsService {
-  list(query: AdminFailedJobsQuery): Promise<FailedJobList>;
-  detail(id: string): Promise<FailedJobDetail | null>;
+  list(query: AdminFailedJobsQuery, actor: ActorContext): Promise<FailedJobList>;
+  detail(id: string, actor: ActorContext): Promise<FailedJobDetail | null>;
   retry(
     ids: readonly string[],
     confirmRepeat: boolean,
@@ -91,6 +93,8 @@ export type AdminSatelliteRouteServices = {
 export type AdminEnquiryRouteServices = {
   marketingEnquiries: IMarketingEnquiryDesk;
   enquiryRouting: IEnquiryRouting;
+  /** Staff erase a sender's enquiries by email address. */
+  enquiryErasure: IEnquiryErasure;
 };
 
 /** Third-party integrations staff operate from the admin (composed in the container root). */
@@ -103,8 +107,18 @@ export type AdminIntegrationRouteServices = {
   /** Requests for a copy of a person's data, answered through Identity's internal routes. */
   dataRequests: Pick<
     AdminDataRequestsService,
-    "list" | "summary" | "record" | "create" | "patch" | "extend" | "close" | "continueDownload"
+    | "list"
+    | "summary"
+    | "findAccount"
+    | "record"
+    | "create"
+    | "patch"
+    | "extend"
+    | "close"
+    | "continueDownload"
   >;
+  /** Originals moving between LAX Bid and lax.art. */
+  inventoryMoves: InventoryMoveServices;
 };
 
 /** Wired in the container root because the policy client lives outside the admin graph. */

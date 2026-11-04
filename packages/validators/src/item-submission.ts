@@ -9,7 +9,7 @@ const decimalString = z.string().regex(/^\d+(\.\d{1,2})?$/, "Must be a valid dec
 const decimalRegex = /^\d+(\.\d{1,2})?$/;
 const categoryIdsSchema = z
   .array(z.string().uuid())
-  .min(1, "Choose at least one category")
+  .min(1, "Choose a category")
   .max(8, "Choose no more than 8 categories");
 
 function normalizeCategoryIdsInput(raw: unknown): unknown {
@@ -45,7 +45,7 @@ export function splitSubmissionUrlLines(raw: string): string[] {
  */
 export const itemSubmissionFormSchema = z
   .object({
-    title: z.string().min(1, "Title is required").max(500),
+    title: z.string().min(1, "Enter the title of the work").max(500),
     description: z.string().max(10_000),
     medium: z.string().max(500),
     dimensions: z.string().max(200),
@@ -67,7 +67,7 @@ export const itemSubmissionFormSchema = z
     if (ap && !decimalRegex.test(ap)) {
       ctx.addIssue({
         code: "custom",
-        message: "Must be a valid decimal (e.g. 1200 or 1200.50)",
+        message: "Enter a price in pounds, like 2,500",
         path: ["askingPrice"],
       });
     }
@@ -75,7 +75,7 @@ export const itemSubmissionFormSchema = z
     if (rp && !decimalRegex.test(rp)) {
       ctx.addIssue({
         code: "custom",
-        message: "Must be a valid decimal (e.g. 1200 or 1200.50)",
+        message: "Enter a price in pounds, like 2,500",
         path: ["reservePrice"],
       });
     }

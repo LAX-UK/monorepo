@@ -4,6 +4,7 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 
 import { mapServiceToActionVoid } from "@/lib/actions/map-service-result";
 import { getWriteContainer } from "@/lib/data/write-container.server";
+import { redirectWithClientFlash } from "@/lib/flash/client-flash.server";
 import {
   type ActionResult,
   actionFailure,
@@ -15,6 +16,7 @@ import {
   formValuesToCreateItemSubmissionInput,
   formValuesToUpdateItemSubmissionInput,
 } from "@/lib/forms/submission/submission-form-data";
+import { consignmentHref } from "@/lib/seller/consignment-records";
 import type { SubmissionAccountScope } from "@/lib/services/interfaces/submission-service";
 import {
   createItemSubmissionSchema,
@@ -140,9 +142,10 @@ export async function createSubmissionAction(formData: FormData): Promise<void> 
       const input = parseFormDataToCreateInput(formData);
       const parsed = createItemSubmissionSchema.safeParse(input);
       if (!parsed.success) {
-        const { redirect } = await import("next/navigation");
-        redirect(
-          `/selling/new?error=${encodeURIComponent(parsed.error.issues.map((e) => e.message).join("; "))}`,
+        await redirectWithClientFlash(
+          "/selling/new",
+          "error",
+          parsed.error.issues.map((e) => e.message).join("; "),
         );
         return;
       }
@@ -153,8 +156,7 @@ export async function createSubmissionAction(formData: FormData): Promise<void> 
       }
       const r = await submissions.create(toCreate);
       if (!r.ok) {
-        const { redirect } = await import("next/navigation");
-        redirect(`/selling/new?error=${encodeURIComponent(r.message)}`);
+        await redirectWithClientFlash("/selling/new", "error", r.message);
       }
       revalidatePath("/selling/consignments");
       const { redirect } = await import("next/navigation");
@@ -208,15 +210,15 @@ export async function updateSubmissionAction(formData: FormData): Promise<void> 
     async () => {
       const id = String(formData.get("submissionId") ?? "").trim();
       if (!id) {
-        const { redirect } = await import("next/navigation");
-        redirect(`/selling/consignments?error=${encodeURIComponent("Missing submission")}`);
+        await redirectWithClientFlash("/selling/consignments", "error", "Missing submission");
       }
       const input = parseFormDataToUpdateInput(formData);
       const parsed = updateItemSubmissionSchema.safeParse(input);
       if (!parsed.success) {
-        const { redirect } = await import("next/navigation");
-        redirect(
-          `/selling/consignments/${id}?error=${encodeURIComponent(parsed.error.issues.map((e) => e.message).join("; "))}`,
+        await redirectWithClientFlash(
+          consignmentHref(id),
+          "error",
+          parsed.error.issues.map((e) => e.message).join("; "),
         );
         return;
       }
@@ -227,8 +229,7 @@ export async function updateSubmissionAction(formData: FormData): Promise<void> 
       }
       const r = await submissions.update(id, patch);
       if (!r.ok) {
-        const { redirect } = await import("next/navigation");
-        redirect(`/selling/consignments/${id}?error=${encodeURIComponent(r.message)}`);
+        await redirectWithClientFlash(consignmentHref(id), "error", r.message);
       }
       revalidatePath("/selling/consignments");
       revalidatePath(`/selling/consignments/${id}`);
@@ -280,14 +281,12 @@ export async function submitForReviewAction(formData: FormData): Promise<void> {
     async () => {
       const id = String(formData.get("submissionId") ?? "").trim();
       if (!id) {
-        const { redirect } = await import("next/navigation");
-        redirect(`/selling/consignments?error=${encodeURIComponent("Missing submission")}`);
+        await redirectWithClientFlash("/selling/consignments", "error", "Missing submission");
       }
       const { submissions } = getWriteContainer();
       const r = await submissions.submitForReview(id);
       if (!r.ok) {
-        const { redirect } = await import("next/navigation");
-        redirect(`/selling/consignments/${id}?error=${encodeURIComponent(r.message)}`);
+        await redirectWithClientFlash(consignmentHref(id), "error", r.message);
       }
       revalidatePath("/selling/consignments");
       revalidatePath(`/selling/consignments/${id}`);
@@ -304,14 +303,12 @@ export async function withdrawSubmissionAction(formData: FormData): Promise<void
     async () => {
       const id = String(formData.get("submissionId") ?? "").trim();
       if (!id) {
-        const { redirect } = await import("next/navigation");
-        redirect(`/selling/consignments?error=${encodeURIComponent("Missing submission")}`);
+        await redirectWithClientFlash("/selling/consignments", "error", "Missing submission");
       }
       const { submissions } = getWriteContainer();
       const r = await submissions.withdraw(id);
       if (!r.ok) {
-        const { redirect } = await import("next/navigation");
-        redirect(`/selling/consignments/${id}?error=${encodeURIComponent(r.message)}`);
+        await redirectWithClientFlash(consignmentHref(id), "error", r.message);
       }
       revalidatePath("/selling/consignments");
       revalidatePath(`/selling/consignments/${id}`);

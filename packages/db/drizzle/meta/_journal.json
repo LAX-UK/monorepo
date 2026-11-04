@@ -2005,10 +2005,87 @@
       "breakpoints": true
     },
     {
+      "idx": 286,
+      "version": "7",
+      "when": 1800259200000,
+      "tag": "0286_unsold_lot_follow_up",
+      "breakpoints": true
+    },
+    {
+      "idx": 287,
+      "version": "7",
+      "when": 1800345600000,
+      "tag": "0287_artwork_register",
+      "breakpoints": true
+    },
+    {
+      "idx": 288,
+      "version": "7",
+      "when": 1800432000000,
+      "tag": "0288_zoho_artwork_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 289,
+      "version": "7",
+      "when": 1800518400000,
+      "tag": "0289_artwork_register_writeback_event",
+      "breakpoints": true
+    },
+    {
       "idx": 290,
       "version": "7",
       "when": 1800604800000,
       "tag": "0290_alert_followers",
+      "breakpoints": true
+    },
+    {
+      "idx": 292,
+      "version": "7",
+      "when": 1800777600000,
+      "tag": "0292_shop_alert_engine",
+      "breakpoints": true
+    },
+    {
+      "idx": 293,
+      "version": "7",
+      "when": 1800864000000,
+      "tag": "0293_drop_marketing_contact_sync_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 294,
+      "version": "7",
+      "when": 1800950400000,
+      "tag": "0294_lot_artwork_register_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 295,
+      "version": "7",
+      "when": 1801036800000,
+      "tag": "0295_private_sale_deal",
+      "breakpoints": true
+    },
+    {
+      "idx": 296,
+      "version": "7",
+      "when": 1801123200000,
+      "tag": "0296_artwork_register_move_event",
+      "breakpoints": true
+    },
+    {
+      "idx": 297,
+      "version": "7",
+      "when": 1801209600000,
+      "tag": "0297_bid_search_trigram_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 298,
+      "version": "7",
+      "when": 1801296000000,
+      "tag": "0298_private_sale_deal_payment",
       "breakpoints": true
     },
     {

@@ -27,16 +27,18 @@ describe("ArtworkEditionAlert", () => {
     expect(document.activeElement).toBe(document.body);
   });
 
-  it("checks the address before sending and focuses the field to correct it", async () => {
+  it("checks the address before sending: one message under the field, focus on the field", async () => {
     render(<ArtworkEditionAlert slug="reed-study" viewer={{ kind: "guest" }} />);
     fireEvent.click(screen.getByRole("button", { name: "Email me" }));
     const input = screen.getByLabelText("Email address");
-    expect(screen.getByText("Enter your email address")).toBeTruthy();
+    expect(screen.queryByText("There is a problem")).toBeNull();
+    expect(screen.getAllByText("Enter your email address")).toHaveLength(1);
     expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(input.getAttribute("aria-describedby")).toContain("-error");
     expect(document.activeElement).toBe(input);
     fireEvent.change(input, { target: { value: "nope" } });
     fireEvent.click(screen.getByRole("button", { name: "Email me" }));
-    expect(screen.getByText(/correct format/)).toBeTruthy();
+    expect(screen.getByText(/like name@example.com/)).toBeTruthy();
     expect(registerMock).not.toHaveBeenCalled();
   });
 

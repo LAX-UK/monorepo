@@ -6,6 +6,7 @@ import {
   shopProductionTask,
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
+import { editionDisplayLabel } from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
 import { operatorContextAuditFields } from "../../../application/admin/operator-context.js";
 import { withAdminIdempotency } from "../../../application/admin/with-admin-idempotency.js";
@@ -20,16 +21,6 @@ export type CreateProductionTaskCommand = {
   idempotencyKey: string;
   operatorContext?: import("../../../application/admin/operator-context.js").ShopOperatorContext;
 };
-
-/** How the edition reads in the buyer's email. */
-function productionEditionLabel(edition: {
-  editionNumber: number | null;
-  proofNumber: number | null;
-}): string {
-  if (edition.editionNumber !== null) return `Edition ${edition.editionNumber}`;
-  if (edition.proofNumber !== null) return `Proof ${edition.proofNumber}`;
-  return "Open edition";
-}
 
 export type CreateProductionTaskResult = { taskId: string; status: "queued" };
 
@@ -154,7 +145,7 @@ export function createCreateProductionTaskHandler(deps: {
             fallbackEmail: null,
             orderReference: order.reference,
             artworkTitle: artwork?.title ?? "Your print",
-            editionLabel: productionEditionLabel(edition),
+            editionLabel: editionDisplayLabel(edition),
           });
           return result;
         },

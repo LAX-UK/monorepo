@@ -2,6 +2,7 @@
 
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 
+import { redirectWithAdminFlash } from "@/lib/admin/flash/flash.server";
 import {
   assertAdminCapabilityForRedirect,
   denyUnlessAdminCapability,
@@ -32,13 +33,17 @@ export async function adminStartSubmissionReviewAction(formData: FormData): Prom
     "adminStartSubmissionReviewAction",
     async () => {
       const gate = await assertAdminCapabilityForRedirect(SUBMISSIONS_ACCESS);
-      if (!gate.ok) redirect(`/admin/submissions?error=${encodeURIComponent(gate.message)}`);
+      if (!gate.ok) return redirectWithAdminFlash("/admin/submissions", "error", gate.message);
       const id = String(formData.get("submissionId") ?? "").trim();
-      if (!id) redirect(`/admin/submissions?error=${encodeURIComponent("Missing submission")}`);
+      if (!id) return redirectWithAdminFlash("/admin/submissions", "error", "Missing submission");
       const { adminSubmissions } = getWriteContainer();
       const r = await adminSubmissions.startReview(id);
       if (!r.ok) {
-        redirect(`/admin/submissions/${id}?error=${encodeURIComponent(r.message)}`);
+        return redirectWithAdminFlash(
+          `/admin/submissions/${encodeURIComponent(id)}`,
+          "error",
+          r.message,
+        );
       }
       revalidatePath("/admin/submissions");
       revalidatePath(`/admin/submissions/${id}`);
@@ -53,19 +58,27 @@ export async function adminApproveSubmissionAction(formData: FormData): Promise<
     "adminApproveSubmissionAction",
     async () => {
       const gate = await assertAdminCapabilityForRedirect(SUBMISSIONS_ACCESS);
-      if (!gate.ok) redirect(`/admin/submissions?error=${encodeURIComponent(gate.message)}`);
+      if (!gate.ok) return redirectWithAdminFlash("/admin/submissions", "error", gate.message);
       const id = String(formData.get("submissionId") ?? "").trim();
-      if (!id) redirect(`/admin/submissions?error=${encodeURIComponent("Missing submission")}`);
+      if (!id) return redirectWithAdminFlash("/admin/submissions", "error", "Missing submission");
       const parsed = approveSubmissionBodySchema.safeParse({
         reviewNotes: String(formData.get("reviewNotes") ?? "").trim() || undefined,
       });
       if (!parsed.success) {
-        redirect(`/admin/submissions/${id}?error=${encodeURIComponent("Invalid form")}`);
+        return redirectWithAdminFlash(
+          `/admin/submissions/${encodeURIComponent(id)}`,
+          "error",
+          "Invalid form",
+        );
       }
       const { adminSubmissions } = getWriteContainer();
       const r = await adminSubmissions.approve(id, parsed.data);
       if (!r.ok) {
-        redirect(`/admin/submissions/${id}?error=${encodeURIComponent(r.message)}`);
+        return redirectWithAdminFlash(
+          `/admin/submissions/${encodeURIComponent(id)}`,
+          "error",
+          r.message,
+        );
       }
       const lotId = r.data.lotId;
       revalidatePath("/admin/submissions");
@@ -85,20 +98,28 @@ export async function adminRejectSubmissionAction(formData: FormData): Promise<v
     "adminRejectSubmissionAction",
     async () => {
       const gate = await assertAdminCapabilityForRedirect(SUBMISSIONS_ACCESS);
-      if (!gate.ok) redirect(`/admin/submissions?error=${encodeURIComponent(gate.message)}`);
+      if (!gate.ok) return redirectWithAdminFlash("/admin/submissions", "error", gate.message);
       const id = String(formData.get("submissionId") ?? "").trim();
-      if (!id) redirect(`/admin/submissions?error=${encodeURIComponent("Missing submission")}`);
+      if (!id) return redirectWithAdminFlash("/admin/submissions", "error", "Missing submission");
       const parsed = rejectSubmissionBodySchema.safeParse({
         rejectionReason: String(formData.get("rejectionReason") ?? "").trim(),
         reviewNotes: String(formData.get("reviewNotes") ?? "").trim() || undefined,
       });
       if (!parsed.success) {
-        redirect(`/admin/submissions/${id}?error=${encodeURIComponent("Invalid form")}`);
+        return redirectWithAdminFlash(
+          `/admin/submissions/${encodeURIComponent(id)}`,
+          "error",
+          "Invalid form",
+        );
       }
       const { adminSubmissions } = getWriteContainer();
       const r = await adminSubmissions.reject(id, parsed.data);
       if (!r.ok) {
-        redirect(`/admin/submissions/${id}?error=${encodeURIComponent(r.message)}`);
+        return redirectWithAdminFlash(
+          `/admin/submissions/${encodeURIComponent(id)}`,
+          "error",
+          r.message,
+        );
       }
       revalidatePath("/admin/submissions");
       revalidatePath(`/admin/submissions/${id}`);

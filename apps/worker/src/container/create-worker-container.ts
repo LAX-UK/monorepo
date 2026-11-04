@@ -1,7 +1,13 @@
+import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import { assertRuntimeOwnership } from "@auction/background-runtime";
 import { closeDb, createDb } from "@auction/db";
 import { captureBackgroundError, initNodeSentry } from "@auction/observability";
-import { DrizzleUnsoldChoiceDeadlineStore } from "@auction/persistence/repositories";
+import {
+  DrizzleArtworkRegisterRepository,
+  DrizzleLotRegisterLinkReader,
+  DrizzleUnsoldChoiceDeadlineStore,
+  DrizzleUnsoldLotFollowUpRepository,
+} from "@auction/persistence/repositories";
 import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import { DrizzleWebhookEventRepository } from "@auction/persistence/repositories";
 import {
@@ -33,12 +39,8 @@ import {
   syncXeroInvoiceWebhookLocal,
 } from "../integrations/xero/create-xero-live-executor-ports-local.js";
 import { createZohoCrmGateway } from "../integrations/zoho/create-zoho-crm-gateway.js";
-import {
-  assertZohoCrmOrgEnvironment,
-  shouldRunZohoCrmOrgCheck,
-} from "../integrations/zoho/zoho-crm-org-check.js";
+import { assertZohoCrmOrgEnvironment } from "../integrations/zoho/zoho-crm-org-check.js";
 import { runIdentityOutboxRelayJob } from "../jobs/identity-outbox-relay.job.js";
-import type { MarketingContactSyncJobData } from "../jobs/marketing-contact-sync.js";
 import { marketingEventsOutcomeTotal } from "../jobs/marketing-event-processor.js";
 import type { ProcessInboundWebhookDeps } from "../jobs/process-inbound-webhook-event.js";
 import {
@@ -59,8 +61,10 @@ import {
   createWorkerLifecycleExecutor,
 } from "../lifecycle/worker-lifecycle-executor.js";
 import { marketingEventsCapiBatchSize } from "../marketing/meta-capi-batch-collector.js";
+import { BidOfferLockRecorder } from "../projectors/artwork-offer-lock.js";
 import { createProjectorRunner } from "../projectors/runner.js";
 import { UnsoldChoiceDeadlineRecorder } from "../projectors/unsold-choice-deadline.js";
+import { UnsoldFollowUpOpener } from "../projectors/unsold-follow-up.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import { registerAlertWorkers } from "../workers/register-alert-workers.js";
 import { registerAtgSyncWorker } from "../workers/register-atg-sync-worker.js";
@@ -82,6 +86,8 @@ import { createAtgSyncRuntime } from "./create-atg-sync-runtime.js";
 import { createBidAlertRuntime } from "./create-bid-alert-runtime.js";
 import { createExportProviderDeps } from "./create-export-provider-deps.js";
 import { createWorkerRepositories } from "./create-worker-repositories.js";
+import { createZohoArtworkSyncRuntime } from "./create-zoho-artwork-sync.js";
+import { createZohoArtworkWriteback } from "./create-zoho-artwork-writeback.js";
 
 export type WorkerContainer = {
   env: WorkerEnv;
@@ -320,7 +326,6 @@ export function createWorkerContainer(): WorkerContainer {
     staffRoleReader: repositories.staffRoleReader,
     newsletterSignupSyncRepo: repositories.newsletterSignupSyncRepo,
     kycRetentionStores: repositories.kycRetentionStores,
-    marketingContactSyncRepo: repositories.marketingContactSyncRepo,
     staffOpsRecipientReader: repositories.staffOpsRecipientReader,
     complianceRecipientReader: repositories.complianceRecipientReader,
     mediaAssetProcessorRepo: repositories.mediaAssetProcessorRepo,
@@ -345,10 +350,13 @@ export function createWorkerContainer(): WorkerContainer {
     lifecycleExecutor,
   };
 
+  const zohoArtworkSync = createZohoArtworkSyncRuntime({ env, db, log });
+  const zohoArtworkWriteback = createZohoArtworkWriteback({ env, db, log });
   const webhookProcessorDeps: ProcessInboundWebhookDeps = {
     env,
     log,
     webhookEvents: new DrizzleWebhookEventRepository(db),
+    processZohoArtworkNotice: zohoArtworkSync.jobs.processNotice,
     ...(internalCronSecret && workerFinanceServices
       ? {
           syncXeroInvoiceWebhook: async (input) =>
@@ -359,7 +367,13 @@ export function createWorkerContainer(): WorkerContainer {
         : {}),
   };
 
-  const webhookWorkers = registerWebhookWorker({ ...deps, webhookProcessorDeps });
+  const webhookWorkers = registerWebhookWorker({
+    ...deps,
+    webhookProcessorDeps,
+    ...(zohoArtworkSync.scheduleNightly
+      ? { runZohoArtworkNightlyCheck: zohoArtworkSync.jobs.runNightlyCheck }
+      : {}),
+  });
   const mediaWorkers = registerMediaWorkers(deps);
   const emailWorkers = registerEmailWorker(deps);
   const marketingWorkers = registerMarketingWorkers(deps);
@@ -506,11 +520,17 @@ export function createWorkerContainer(): WorkerContainer {
       unsoldChoiceDeadlines: new UnsoldChoiceDeadlineRecorder(
         new DrizzleUnsoldChoiceDeadlineStore(db),
       ),
+      unsoldFollowUps: new UnsoldFollowUpOpener(new DrizzleUnsoldLotFollowUpRepository(db)),
       env,
       db,
       deliveryRepo: repositories.domainEventDeliveryRepo,
       crmRecordLinkRepo: repositories.crmRecordLinkRepo,
       crmSyncService,
+      ...(zohoArtworkWriteback ? { zohoArtworkWriteback } : {}),
+      artworkOfferLock: new BidOfferLockRecorder(
+        new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(db)),
+        new DrizzleLotRegisterLinkReader(db),
+      ),
       log,
       emailService: emailWorkers.emailOutboxService,
       supportContactEmail: env.EMAIL_REPLY_TO ?? "support@lax.bid",
@@ -520,27 +540,6 @@ export function createWorkerContainer(): WorkerContainer {
       staffOpsRecipientReader: repositories.staffOpsRecipientReader,
       complianceRecipientReader: repositories.complianceRecipientReader,
       shopIdentityProjection,
-      ...(marketingWorkers.marketingContactSync
-        ? {
-            enqueueMarketingContactSync: async (data: {
-              userId: string;
-              reason: string;
-              eventId: number;
-            }) => {
-              await marketingWorkers.marketingSyncQueue.add(
-                "marketing-contact-sync",
-                { userId: data.userId, reason: data.reason } satisfies MarketingContactSyncJobData,
-                {
-                  jobId: `marketing-contact-sync-${data.eventId}`,
-                  attempts: 5,
-                  backoff: { type: "exponential", delay: 30_000 },
-                  removeOnComplete: 1000,
-                  removeOnFail: 5000,
-                },
-              );
-            },
-          }
-        : {}),
       ...(workerFinanceServices
         ? {
             xeroLiveExecutorPorts: createXeroLiveExecutorPortsFromStack(
@@ -596,7 +595,7 @@ export function createWorkerContainer(): WorkerContainer {
     projectorRunner,
     lotLifecycleConsumer,
     ensureReady: async () => {
-      if (!shouldRunZohoCrmOrgCheck(env)) return;
+      // Refuses live writes without an expected org, then checks the connected org matches it.
       await assertZohoCrmOrgEnvironment(env);
     },
   };

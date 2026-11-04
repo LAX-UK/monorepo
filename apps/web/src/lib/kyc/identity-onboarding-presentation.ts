@@ -36,9 +36,9 @@ export function resolveIdentityVerifySkipLabel(source: IdentityOnboardingSource)
 
 export function resolveIdentityVerifyDescription(source: IdentityOnboardingSource): string {
   if (isContextualHardGate(source)) {
-    return "Complete the secure Veriff document and selfie checks to continue.";
+    return "Complete the secure document and selfie identity check to continue.";
   }
-  return "Complete the secure Veriff document and selfie checks. You can finish later and resume without losing your place.";
+  return "Complete the secure document and selfie identity check. You can finish later and resume without losing your place.";
 }
 
 export function resolveIdentityStartButtonLabel(
@@ -96,7 +96,7 @@ export function resolveIdentityOnboardingPresentation(
     return {
       title: "Verify to continue",
       message: "Identity verification is required before you can complete this action.",
-      detail: "~2 minutes · photo ID and a quick selfie · processed securely by Veriff",
+      detail: "~2 minutes · photo ID and a quick selfie · processed securely",
       showPreparation: true,
       showProgress: false,
     };

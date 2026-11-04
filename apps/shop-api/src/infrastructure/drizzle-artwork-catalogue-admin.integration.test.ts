@@ -1,10 +1,17 @@
-import { emailOutbox, shopAdminAudit, shopMediaAsset } from "@auction/db/schema";
+import {
+  shopAdminAudit,
+  shopAlertAnnouncement,
+  shopAlertMatch,
+  shopFollowedArtist,
+  shopMediaAsset,
+} from "@auction/db/schema";
 import { ShopDomainError } from "@auction/shop-domain";
-import { eq, like } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalizeArtworkCatalogueFilters } from "../application/artwork-catalogue-filters.js";
 import { createEditionRunServices } from "../application/edition-runs/edition-run-services.js";
+import type { OriginalOfferRegister } from "../application/ports/original-offer-register.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { StaleVersionError } from "../errors/stale-version-error.js";
 import { integrationSuffix, requireDefined } from "../test-support/shop-fixtures.js";
@@ -13,13 +20,13 @@ import {
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../test-support/shop-integration-setup.js";
+import { createShopAlertRuntime } from "./alerts/create-shop-alert-runtime.js";
+import { ShopAlertSubscriberStore } from "./alerts/shop-alert-subscriber.store.js";
+import { ShopAlertTopicStore } from "./alerts/shop-alert-topic.store.js";
 import { createDrizzleAdminArtworkReader } from "./drizzle-admin-artwork.reader.js";
 import { createDrizzleArtistCatalogueWriter } from "./drizzle-artist-catalogue.writer.js";
 import { createDrizzleArtworkCatalogueRepository } from "./drizzle-artwork-catalogue.repository.js";
 import { createDrizzleArtworkCatalogueWriter } from "./drizzle-artwork-catalogue.writer.js";
-import { createDrizzleReleaseAlertAnnouncer } from "./drizzle-release-alert.announcer.js";
-import { createDrizzleReleaseAlertStore } from "./drizzle-release-alert.store.js";
-import { createDrizzleShopNotificationPublisher } from "./drizzle-shop-notification.publisher.js";
 import { createDrizzleShopUnitOfWork } from "./drizzle-shop-transaction-effects.js";
 import { createDrizzleEditionRunUnitOfWork } from "./edition-runs/drizzle-edition-run.unit-of-work.js";
 
@@ -39,6 +46,14 @@ const CONFIRMED_FACTS = {
   factsConfirmed: true,
 };
 
+function runRecorders(uow: ReturnType<typeof createDrizzleShopUnitOfWork>) {
+  const services = createEditionRunServices({
+    uow: createDrizzleEditionRunUnitOfWork(uow),
+    clock: { now: () => new Date() },
+  });
+  return { editionRuns: services.recorder, originalPrints: services.originalPrintsRecorder };
+}
+
 describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () => {
   let shopPool: pg.Pool;
   let ownerPool: pg.Pool;
@@ -52,26 +67,30 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
     await ownerPool.end();
   });
 
-  function setup() {
+  function setup(offers?: OriginalOfferRegister) {
     const db = createShopDb(shopPool);
     const uow = createDrizzleShopUnitOfWork(db, "off");
-    const notifications = createDrizzleShopNotificationPublisher();
+    const alerts = createShopAlertRuntime({
+      db,
+      env: {
+        ALERTS_SEND_MODE: "off",
+        ALERT_LINK_SECRET: "integration-alert-link-secret-0123456789", // gitleaks:allow
+        ALERT_LINK_KEY_ID: "k1",
+      },
+      origins: ORIGINS,
+      resolveMediaUrl,
+      log: { info: () => undefined, warn: () => undefined },
+    });
     return {
       db,
-      releaseAlertStore: createDrizzleReleaseAlertStore(db, {
-        notifications,
-        shopOrigin: ORIGINS.shop,
-      }),
+      alerts,
+      subscribers: new ShopAlertSubscriberStore(db),
+      topics: new ShopAlertTopicStore(db),
       writer: createDrizzleArtworkCatalogueWriter(uow, {
         resolveMediaUrl,
-        editionRuns: createEditionRunServices({
-          uow: createDrizzleEditionRunUnitOfWork(uow),
-          clock: { now: () => new Date() },
-        }).recorder,
-        releaseAlerts: createDrizzleReleaseAlertAnnouncer({
-          notifications,
-          storefrontOrigins: ORIGINS,
-        }),
+        ...runRecorders(uow),
+        releaseAlerts: alerts.announcer,
+        ...(offers ? { offers } : {}),
       }),
       artists: createDrizzleArtistCatalogueWriter(uow),
       reader: createDrizzleAdminArtworkReader(db, { resolveMediaUrl }),
@@ -277,28 +296,35 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
     );
   });
 
-  it("emails confirmed release alert subscribers once when an edition is published with the alert on", async () => {
-    const { writer, releaseAlertStore, db } = setup();
+  it("records a published edition for the next digest once, and only when staff tell subscribers", async () => {
+    const { writer, alerts, subscribers, topics, db } = setup();
     const suffix = integrationSuffix("release");
     const now = new Date();
-    const confirmed = `confirmed-${suffix}@example.com`;
-    const waiting = `waiting-${suffix}@example.com`;
-    const stopped = `stopped-${suffix}@example.com`;
-    const consent = { text: "consent", source: "shop_home" };
-    await releaseAlertStore.subscribeAccount({
-      email: confirmed,
-      identitySubjectId: `subject-${suffix}`,
-      consent,
+    const consent = { consentText: "consent", consentSource: "shop_home" };
+    const confirmed = await subscribers.saveConfirmedForAccount({
+      ...consent,
+      product: "shop",
+      email: `confirmed-${suffix}@example.com`,
+      subjectId: `subject-${suffix}`,
       now,
     });
-    await releaseAlertStore.requestConfirmation({ email: waiting, consent, now });
-    await releaseAlertStore.subscribeAccount({
-      email: stopped,
-      identitySubjectId: `subject-stopped-${suffix}`,
-      consent,
+    await topics.setEmail(confirmed.id, "shop.releases", true, "person", now);
+    const waiting = await subscribers.savePending({
+      ...consent,
+      product: "shop",
+      email: `waiting-${suffix}@example.com`,
       now,
     });
-    await releaseAlertStore.stopByEmail(stopped, now);
+    await topics.setEmail(waiting.id, "shop.releases", false, "person", now);
+    const stopped = await subscribers.saveConfirmedForAccount({
+      ...consent,
+      product: "shop",
+      email: `stopped-${suffix}@example.com`,
+      subjectId: `subject-stopped-${suffix}`,
+      now,
+    });
+    await topics.setEmail(stopped.id, "shop.releases", true, "person", now);
+    await subscribers.stop(stopped.id, "link", now);
 
     const publish = async (artworkId: string, sendReleaseAlert: boolean) =>
       writer.setVisibility({
@@ -317,47 +343,95 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
       });
       return artwork;
     };
-    const alertsFor = async (address: string) =>
-      db
-        .select({ template: emailOutbox.template, vars: emailOutbox.vars })
-        .from(emailOutbox)
-        .where(like(emailOutbox.toSnapshot, address));
+    const announcementOf = async (artworkId: string) =>
+      (
+        await db
+          .select()
+          .from(shopAlertAnnouncement)
+          .where(eq(shopAlertAnnouncement.itemKey, `artwork:${artworkId}`))
+      )[0];
+    const matchesOf = async (subscriberId: string) =>
+      db.select().from(shopAlertMatch).where(eq(shopAlertMatch.subscriberId, subscriberId));
 
     const quiet = await readyArtwork("release-quiet");
     expect((await publish(quiet.artworkId, false)).releaseAlertsQueued).toBeUndefined();
-    expect(
-      (await alertsFor(confirmed)).filter((row) => row.template === "shop-release-alert"),
-    ).toHaveLength(0);
+    expect(await announcementOf(quiet.artworkId)).toMatchObject({ announce: false });
 
     const loud = await readyArtwork("release-loud");
     const result = await publish(loud.artworkId, true);
     expect(result.releaseAlertsQueued).toBeGreaterThanOrEqual(1);
-    const sent = (await alertsFor(confirmed)).filter(
-      (row) => row.template === "shop-release-alert",
-    );
-    expect(sent).toHaveLength(1);
-    expect(sent[0]?.vars).toMatchObject({
-      artworkTitle: "Artwork release-loud",
-      artistName: "Artist release-loud",
-      artworkUrl: `${ORIGINS.shop}/artworks/${loud.slug}`,
+    expect(await announcementOf(loud.artworkId)).toMatchObject({
+      announce: true,
+      expandedAt: null,
     });
-    expect(String(sent[0]?.vars.unsubscribeUrl)).toContain("/release-alerts/unsubscribe?token=");
-    expect((await alertsFor(waiting)).map((row) => row.template)).toEqual([
-      "shop-release-alert-confirm",
-    ]);
-    expect(await alertsFor(stopped)).toHaveLength(0);
 
-    // Unpublishing and publishing again never emails the same person about the same edition twice.
+    await alerts.matching.run();
+    expect((await matchesOf(confirmed.id)).map((m) => m.itemKey)).toEqual([
+      `artwork:${loud.artworkId}`,
+    ]);
+    expect(await matchesOf(waiting.id)).toHaveLength(0);
+    expect(await matchesOf(stopped.id)).toHaveLength(0);
+    expect(await announcementOf(loud.artworkId)).not.toMatchObject({ expandedAt: null });
+
+    // Unpublishing and publishing again never tells the same person about the same edition twice.
     await writer.setVisibility({
       artworkId: loud.artworkId,
       action: "unpublish",
       actorSubjectId: ACTOR,
       idempotencyKey: key(),
     });
-    await publish(loud.artworkId, true);
-    expect(
-      (await alertsFor(confirmed)).filter((row) => row.template === "shop-release-alert"),
-    ).toHaveLength(1);
+    expect((await publish(loud.artworkId, true)).releaseAlertsQueued).toBe(0);
+    await alerts.matching.run();
+    expect(await matchesOf(confirmed.id)).toHaveLength(1);
+  });
+
+  it("tells the followers of an artist about a published original, and nobody else", async () => {
+    const { writer, alerts, subscribers, topics, db } = setup();
+    const suffix = integrationSuffix("follow");
+    const now = new Date();
+    const consent = { consentText: "consent", consentSource: "art_follow" };
+    const original = await newArtwork("follow-original", { editions: false });
+    const follower = await subscribers.saveConfirmedForAccount({
+      ...consent,
+      product: "art",
+      email: `follower-${suffix}@example.com`,
+      subjectId: `follower-${suffix}`,
+      now,
+    });
+    await topics.setEmail(follower.id, "art.followed_artists", true, "person", now);
+    const other = await subscribers.saveConfirmedForAccount({
+      ...consent,
+      product: "art",
+      email: `other-${suffix}@example.com`,
+      subjectId: `other-${suffix}`,
+      now,
+    });
+    await topics.setEmail(other.id, "art.followed_artists", true, "person", now);
+    await db
+      .insert(shopFollowedArtist)
+      .values({ identitySubjectId: `follower-${suffix}`, artistId: original.artistId });
+
+    await writer.updateArtwork({
+      ...editable(await detailOf(original.artworkId)),
+      salesChannel: "art",
+      images: [{ mediaKey: await uploadedImage(), alt: "The work" }],
+    });
+    // The staff choice for editions does not apply: an original always tells its followers.
+    await writer.setVisibility({
+      artworkId: original.artworkId,
+      action: "publish",
+      sendReleaseAlert: false,
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+    await alerts.matching.run();
+
+    const matches = (id: string) =>
+      db.select().from(shopAlertMatch).where(eq(shopAlertMatch.subscriberId, id));
+    expect((await matches(follower.id)).map((m) => [m.topic, m.itemKey, m.groupKey])).toEqual([
+      ["art.followed_artists", `artwork:${original.artworkId}`, original.artistId],
+    ]);
+    expect(await matches(other.id)).toHaveLength(0);
   });
 
   it("reports each artwork's outcome in a bulk publish", async () => {
@@ -385,6 +459,70 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
       },
       { artworkId: missing, outcome: "not_found" },
     ]);
+  });
+
+  it("asks the register before publishing an original and tells it when the original leaves", async () => {
+    const calls: string[] = [];
+    const offers: OriginalOfferRegister = {
+      assertCanPublish: async (_session, artwork) => {
+        calls.push(`check:${artwork.id}`);
+        if (artwork.id === blocked.artworkId) {
+          throw new ShopDomainError(
+            "This artwork is already offered in a LAX Bid sale. Withdraw it there first.",
+          );
+        }
+      },
+      recordPublished: async (_session, artwork) => void calls.push(`published:${artwork.id}`),
+      recordWithdrawn: async (_session, artwork) => void calls.push(`withdrawn:${artwork.id}`),
+      recordSold: async () => {},
+    };
+    const { writer } = setup(offers);
+    const ready = await newArtwork("offer-ready", { editions: false });
+    const blocked = await newArtwork("offer-blocked", { editions: false });
+    for (const artwork of [ready, blocked]) {
+      await writer.updateArtwork({
+        ...editable(await detailOf(artwork.artworkId)),
+        images: [{ mediaKey: await uploadedImage(), alt: null }],
+      });
+    }
+
+    await expect(
+      writer.setVisibility({
+        artworkId: blocked.artworkId,
+        action: "publish",
+        actorSubjectId: ACTOR,
+        idempotencyKey: key(),
+      }),
+    ).rejects.toThrow("already offered in a LAX Bid sale");
+    expect((await detailOf(blocked.artworkId)).state).toBe("draft");
+
+    const { results } = await writer.applyBulkVisibility({
+      action: "publish",
+      artworkIds: [ready.artworkId, blocked.artworkId],
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+    expect(results).toEqual([
+      { artworkId: ready.artworkId, outcome: "changed" },
+      {
+        artworkId: blocked.artworkId,
+        outcome: "refused",
+        message: "This artwork is already offered in a LAX Bid sale. Withdraw it there first.",
+      },
+    ]);
+
+    await writer.setVisibility({
+      artworkId: ready.artworkId,
+      action: "unpublish",
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+    expect(calls.filter((call) => call.endsWith(ready.artworkId))).toEqual([
+      `check:${ready.artworkId}`,
+      `published:${ready.artworkId}`,
+      `withdrawn:${ready.artworkId}`,
+    ]);
+    expect(calls).not.toContain(`published:${blocked.artworkId}`);
   });
 
   it("lists by view with counts and searches by artist name", async () => {

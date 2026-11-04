@@ -3,6 +3,8 @@ import type {
   CrmBatchUpsertInput,
   CrmConvertLeadInput,
   CrmConvertLeadResult,
+  CrmCoqlPage,
+  CrmCoqlQuery,
   CrmDeleteRecordInput,
   CrmDeleteRecordResult,
   CrmGateway,
@@ -25,7 +27,7 @@ export type ZohoCrmGatewayConfig = {
 
 const ALREADY_DELETED_CODES = new Set(["INVALID_DATA", "ID_INVALID", "RECORD_NOT_FOUND"]);
 
-export class ZohoCrmGateway implements CrmGateway {
+export class ZohoCrmGateway implements CrmGateway, CrmCoqlQuery {
   private apiCreditsRemaining: number | null = null;
 
   constructor(
@@ -145,6 +147,26 @@ export class ZohoCrmGateway implements CrmGateway {
     return (parsed.data ?? [])
       .map((row) => row.id)
       .filter((id): id is string => typeof id === "string" && id.length > 0);
+  }
+
+  async queryCoql(selectQuery: string): Promise<CrmCoqlPage> {
+    const res = await this.request("POST", "/crm/v8/coql", { select_query: selectQuery });
+    if (res.status === 204) return { rows: [], moreRecords: false };
+    if (!res.ok) {
+      throw new ZohoCrmHttpError(res.status, res.text.slice(0, 4_000), res.retryAfterMs);
+    }
+    let parsed: { data?: unknown; info?: { more_records?: boolean } };
+    try {
+      parsed = JSON.parse(res.text) as typeof parsed;
+    } catch {
+      throw new ZohoCrmHttpError(502, "zoho_coql_invalid_json");
+    }
+    const rows = Array.isArray(parsed.data)
+      ? parsed.data.filter(
+          (row): row is Record<string, unknown> => typeof row === "object" && row !== null,
+        )
+      : [];
+    return { rows, moreRecords: parsed.info?.more_records === true };
   }
 
   async findDealIdsByContact(contactId: string): Promise<string[]> {

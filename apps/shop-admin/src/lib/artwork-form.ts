@@ -14,6 +14,7 @@ import {
   type AdminArtworkSaleState,
   type AdminArtworkUpdateBody,
   type AdminNewRunInput,
+  type AdminOriginalPrints,
   CATALOGUE_SLUG_MAX_LENGTH,
   CATALOGUE_SLUG_PATTERN,
   SEO_DESCRIPTION_MAX_LENGTH,
@@ -304,16 +305,21 @@ function editablePayload(
   };
 }
 
-/** The new artwork with its run of prints (from the create steps), or none for an original. */
+/**
+ * The new artwork with its run of prints (from the create steps), or none for an original. An
+ * original may also carry the prints to create with it; an edition never does.
+ */
 export function buildArtworkCreateBody(
   values: ArtworkFormValues,
   context: Pick<ArtworkFormContext, "canSetPrice">,
   run: AdminNewRunInput | null,
+  prints: AdminOriginalPrints | null = null,
 ): AdminArtworkCreateBody {
   return {
     ...editablePayload(values, context, null),
     slug: values.slug.trim(),
     run: values.editionRun === "editions" ? run : null,
+    ...(values.editionRun === "original" && prints ? { prints } : {}),
   };
 }
 

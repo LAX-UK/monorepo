@@ -9,6 +9,8 @@ export { DrizzleEmailSuppressionRepository } from "./drizzle-email-suppression.r
 export { DrizzleEmailWebhookIngestRepository } from "./drizzle-email-webhook-ingest.repository.js";
 export { DrizzleNewsletterSignupRepository } from "./drizzle-newsletter-signup.repository.js";
 export * from "./bid-alerts/index.js";
+export * from "./artwork-register/index.js";
+export * from "./zoho-artwork-sync/index.js";
 export { DrizzleWebhookEventRepository } from "./drizzle-webhook-event.repository.js";
 export { DrizzleExternalAccountRepository } from "./drizzle-external-account.repository.js";
 export { DrizzleUploadObjectReader } from "./drizzle-upload-object.reader.js";
@@ -156,6 +158,7 @@ export { DrizzleSaleroomOnBlockReader } from "./drizzle-saleroom-on-block.reader
 export { DrizzleSaleroomLiveSessionCounter } from "./drizzle-saleroom-live-session-counter.js";
 export { DrizzleFailedJobRepository } from "./drizzle-failed-job.repository.js";
 export { DrizzleFailedJobReviewRepository } from "./drizzle-failed-job-review.repository.js";
+export { DrizzleIntegrationDeadLetterRepository } from "./drizzle-integration-dead-letter.repository.js";
 export { DrizzleUserEmailVerifiedPublisher } from "./drizzle-user-email-verified.publisher.js";
 export {
   DrizzlePlatformCatalogLegalEntityReader,
@@ -253,6 +256,7 @@ export {
   DrizzleEnquiryNoteRepository,
   DrizzleEnquiryRoutingRepository,
 } from "./drizzle-enquiry-workflow.repositories.js";
+export { DrizzleEnquiryErasureRepository } from "./drizzle-enquiry-erasure.repository.js";
 export { DrizzleDeliveryQuoteRepository } from "./drizzle-delivery-quote.repository.js";
 export { DrizzlePurchaseProblemRepository } from "./drizzle-purchase-problem.repository.js";
 export { DrizzleAccountRecordSearchReader } from "./drizzle-account-record-search.reader.js";
@@ -263,6 +267,7 @@ export {
 } from "./drizzle-organisation-team.readers.js";
 export { DrizzleContactDetailsRepository } from "./drizzle-contact-details.repository.js";
 export { DrizzleUnsoldChoiceDeadlineStore } from "./drizzle-unsold-choice-deadline.store.js";
+export { DrizzleUnsoldLotFollowUpRepository } from "./drizzle-unsold-lot-follow-up.repository.js";
 export {
   DrizzleAgreementDocumentFactsReader,
   DrizzlePayoutLinesReader,
@@ -288,3 +293,9 @@ export {
   DrizzleBuyerDefaultRepository,
 } from "./drizzle-buyer-default.repository.js";
 export { DrizzlePaymentReminderStore } from "./drizzle-payment-reminder.store.js";
+export { DrizzlePrivateSaleDealRepository } from "./drizzle-private-sale-deal.repository.js";
+export {
+  DrizzlePrivateSaleDealFinanceStore,
+  DrizzlePrivateSaleDealPaymentRepository,
+  DrizzlePrivateSaleDealPayoutStore,
+} from "./drizzle-private-sale-deal-payment.repository.js";

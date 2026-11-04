@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ActorContext } from "../../interfaces/queue-inspector.js";
 import { AdminFailedJobsService } from "./admin-failed-jobs.service.js";
 import type { IFailedJobAuditTrail } from "./failed-job-audit-trail.js";
+import { BackgroundJobsSource } from "./sources/background-jobs.source.js";
 
 const actor: ActorContext = { userId: "staff-1", staffRoles: ["administrator"] };
 
@@ -65,9 +66,7 @@ function setup(
     history: vi.fn().mockResolvedValue([]),
   };
   const service = new AdminFailedJobsService({
-    reader,
-    disposition,
-    retrier: { replayFromDlq },
+    sources: [new BackgroundJobsSource({ reader, disposition, retrier: { replayFromDlq } })],
     audit,
     actionsEnabled: options.actionsEnabled ?? true,
   });
@@ -77,14 +76,20 @@ function setup(
 describe("AdminFailedJobsService.list", () => {
   it("presents rows with a scrubbed one-line error and the retry decision", async () => {
     const { service } = setup([record()]);
-    const list = await service.list({
-      view: "needs_review",
-      sort: "failed_desc",
-      limit: 50,
-      offset: 0,
-    });
+    const list = await service.list(
+      {
+        view: "needs_review",
+        sort: "failed_desc",
+        limit: 50,
+        offset: 0,
+      },
+      actor,
+    );
     const row = list.rows[0];
     expect(row).toMatchObject({
+      id: "job:dlq:email:1",
+      source: "background_jobs",
+      canAct: true,
       typeLabel: "Email",
       jobLabel: "Outbid notice",
       state: "needs_review",
@@ -98,15 +103,18 @@ describe("AdminFailedJobsService.list", () => {
 
   it("passes only the filters that are set", async () => {
     const { service, reader } = setup([]);
-    await service.list({
-      view: "discarded",
-      sort: "failed_asc",
-      q: "bounce",
-      queue: "email",
-      from: "2026-10-30",
-      limit: 25,
-      offset: 50,
-    });
+    await service.list(
+      {
+        view: "discarded",
+        sort: "failed_asc",
+        q: "bounce",
+        queue: "email",
+        from: "2026-10-30",
+        limit: 25,
+        offset: 50,
+      },
+      actor,
+    );
     expect(reader.search).toHaveBeenCalledWith({
       view: "discarded",
       sort: "failed_asc",
@@ -131,7 +139,7 @@ describe("AdminFailedJobsService.detail", () => {
         detail: null,
       },
     ]);
-    const detail = await service.detail("dlq:email:1");
+    const detail = await service.detail("dlq:email:1", actor);
     expect(detail?.payload).toEqual([
       { label: "Email", value: "l•••••@n•••••.com", masked: true },
       { label: "Lot ID", value: "lot-14", masked: false },
@@ -143,7 +151,7 @@ describe("AdminFailedJobsService.detail", () => {
 
   it("is null for a job that does not exist", async () => {
     const { service } = setup([]);
-    expect(await service.detail("nope")).toBeNull();
+    expect(await service.detail("nope", actor)).toBeNull();
   });
 });
 

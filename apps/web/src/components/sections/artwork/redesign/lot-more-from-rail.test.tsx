@@ -61,7 +61,7 @@ const rail: LotRelatedRailVM = {
       imageUrl: "https://example.com/a.jpg",
       lotNumber: 2,
       title: "Related Lot A",
-      artistOrSellerName: "Artist One",
+      artistName: "Artist One",
       estimateLine: "$1,000 – $2,000",
       currentPrice: "900.00",
       priceLabel: "Current bid",

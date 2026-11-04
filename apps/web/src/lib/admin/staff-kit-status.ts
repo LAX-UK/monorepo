@@ -7,7 +7,7 @@ import { type AtgSellingBadge, atgLotStateLabel } from "@auction/types";
 
 /**
  * Bid's status registries (lib/presenters/status) speak in badge variants; the staff kit speaks
- * in tones. "live" is its own solid tone with a pulsing dot, so live lots and sales read as
+ * in tones. "live" is the neutral badge with a pulsing dot, so live lots and sales read as
  * happening now and never as a withdrawn or failed record. One adapter keeps the registries the single source of each label and tone.
  */
 export function toStaffStatus(variant: StatusBadgeVariant, label: string): StatusPresentation {

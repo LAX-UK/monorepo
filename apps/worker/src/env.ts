@@ -1,3 +1,4 @@
+import { DEV_ALERT_LINK_SECRET, isUsableAlertLinkSecret } from "@auction/alerts";
 import { resolveStrictBidEligibilityRollout } from "@auction/domain";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
@@ -67,10 +68,6 @@ const envSchema = z
     ATG_TIMEZONE: z.preprocess(emptyToUndefined, z.string().default("Europe/London")),
     /** Must stay under the 5-minute worker readiness heartbeat window. */
     ATG_POLL_INTERVAL_MS: z.coerce.number().int().min(30_000).max(240_000).default(120_000),
-    /** Interim marketing-contacts ESP for registered-user lifecycle campaigns (Plan B). */
-    MARKETING_CONTACT_SYNC_PROVIDER: z.enum(["none", "brevo"]).default("none"),
-    BREVO_API_KEY: z.preprocess(emptyToUndefined, z.string().optional()),
-    BREVO_LIST_ID: z.preprocess(emptyToUndefined, z.coerce.number().int().positive().optional()),
     STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
     STORAGE_LOCAL_ROOT: z.string().default("uploads"),
     S3_BUCKET: z.string().optional(),
@@ -142,12 +139,24 @@ const envSchema = z
     CLAMAV_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     ZOHO_CRM_SYNC_MODE: z.enum(["off", "dry_run", "canary", "live"]).default("off"),
     /**
+     * Artworks coming in from Zoho Products. `off` does nothing; `dry_run` reads Zoho and records
+     * what would be created, updated or left as a conflict without touching the register; `live`
+     * applies it. Never `live` unless set on purpose.
+     */
+    ZOHO_ARTWORK_SYNC_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
+    /**
+     * LAX-owned artwork state going out to Zoho Products (Status and stock code). `off` does
+     * nothing; `dry_run` logs the update that would be sent without calling Zoho; `live` writes.
+     * Needs the ZohoCRM.modules.products.UPDATE scope. Never `live` unless set on purpose.
+     */
+    ZOHO_ARTWORK_WRITEBACK_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
+    /**
      * LAX Bid email alerts. `off` does nothing; `dry_run` records matches and logs each digest
      * without sending; `on` sends. Run the seed command before leaving `off`.
      */
     ALERTS_SEND_MODE: z.enum(["off", "dry_run", "on"]).default("off"),
     /** Signs the confirm and stop links in alert emails; the API verifies them. */
-    ALERT_LINK_SECRET: z.string().min(16).default("dev-alert-link-secret-not-for-production"),
+    ALERT_LINK_SECRET: z.string().min(16).default(DEV_ALERT_LINK_SECRET),
     ALERT_LINK_KEY_ID: z.string().min(1).max(32).default("k1"),
     ALERT_LINK_PREVIOUS_SECRET: z.preprocess(emptyToUndefined, z.string().min(16).optional()),
     ALERT_LINK_PREVIOUS_KEY_ID: z.preprocess(
@@ -229,16 +238,6 @@ const envSchema = z
         message: "POSTMARK_SERVER_TOKEN is required when EMAIL_PROVIDER=postmark",
       });
     }
-    if (e.MARKETING_CONTACT_SYNC_PROVIDER === "brevo") {
-      if (!e.BREVO_API_KEY || !e.BREVO_LIST_ID) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message:
-            "BREVO_API_KEY and BREVO_LIST_ID are required when MARKETING_CONTACT_SYNC_PROVIDER=brevo",
-          path: ["MARKETING_CONTACT_SYNC_PROVIDER"],
-        });
-      }
-    }
     if (e.ATG_SYNC_ENABLED) {
       const missing = (
         [
@@ -293,7 +292,8 @@ const envSchema = z
       if (!cron || cron.length < 32) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "CRON_INTERNAL_SECRET is required in deployed environments (min 32 characters)",
+          message:
+            "CRON_INTERNAL_SECRET is required in deployed environments (min 32 characters, not the development default)",
           path: ["CRON_INTERNAL_SECRET"],
         });
       }
@@ -307,10 +307,11 @@ const envSchema = z
     }
     // Admin email required only in production (test stack uses debug channels).
     if (e.APP_ENV === "production") {
-      if (e.ALERTS_SEND_MODE !== "off" && e.ALERT_LINK_SECRET.length < 32) {
+      if (e.ALERTS_SEND_MODE !== "off" && !isUsableAlertLinkSecret(e.ALERT_LINK_SECRET)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: "ALERT_LINK_SECRET is required in production when alerts are on (min 32)",
+          message:
+            "ALERT_LINK_SECRET is required in production when alerts are on (min 32 characters, not the development default)",
           path: ["ALERT_LINK_SECRET"],
         });
       }
@@ -336,6 +337,36 @@ const envSchema = z
           path: ["CLAMAV_URL"],
         });
       }
+    }
+    if (
+      e.ZOHO_ARTWORK_SYNC_MODE !== "off" &&
+      (!e.ZOHO_CLIENT_ID || !e.ZOHO_CLIENT_SECRET || !e.ZOHO_REFRESH_TOKEN)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN are required when ZOHO_ARTWORK_SYNC_MODE is not off",
+        path: ["ZOHO_ARTWORK_SYNC_MODE"],
+      });
+    }
+    if (
+      e.ZOHO_ARTWORK_WRITEBACK_MODE === "live" &&
+      (!e.ZOHO_CLIENT_ID || !e.ZOHO_CLIENT_SECRET || !e.ZOHO_REFRESH_TOKEN)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN are required when ZOHO_ARTWORK_WRITEBACK_MODE is live",
+        path: ["ZOHO_ARTWORK_WRITEBACK_MODE"],
+      });
+    }
+    if (e.ZOHO_ARTWORK_SYNC_MODE !== "off" && !e.WEBHOOK_EVENTS_PROCESS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "WEBHOOK_EVENTS_PROCESS must be true when ZOHO_ARTWORK_SYNC_MODE is not off, so signed notices are processed",
+        path: ["WEBHOOK_EVENTS_PROCESS"],
+      });
     }
     if (e.ZOHO_CRM_SYNC_MODE !== "off") {
       const enabled = e.ZOHO_CRM_ENABLED_EVENT_TYPES.split(",")

@@ -13,8 +13,8 @@ export function SellPhotosSection() {
   return (
     <div className="space-y-4">
       <p>
-        Strong photos help specialists assess your object faster. Upload at least one image to
-        submit; three or more is recommended.
+        Strong photos help specialists assess your object faster. Upload at least one image to send;
+        three or more is recommended.
       </p>
 
       <LegalUL>

@@ -1,6 +1,6 @@
 "use client";
 
-import { jobCount } from "@/lib/admin/failed-jobs/failed-job-outcome";
+import { jobCount, nounForIds } from "@/lib/admin/failed-jobs/failed-job-outcome";
 import {
   ChoiceFieldset,
   ChoiceRow,
@@ -52,6 +52,7 @@ export function DiscardFailedJobsDialog({
   const [noteError, setNoteError] = useState<string | null>(null);
 
   const count = jobs.length;
+  const noun = nounForIds(jobs.map((job) => job.id));
 
   const confirm = () => {
     if (!reason) {
@@ -82,7 +83,7 @@ export function DiscardFailedJobsDialog({
       onOpenChange={handleOpenChange}
       initialFocusRef={cancelRef}
       size="md"
-      title={`Discard ${jobCount(count)}?`}
+      title={`Discard ${jobCount(count, noun)}?`}
       description={
         count === 1
           ? "It moves to Discarded. Nothing is deleted, and you can restore it from there."
@@ -99,7 +100,7 @@ export function DiscardFailedJobsDialog({
             Cancel
           </StaffButton>
           <StaffButton variant="primary" loading={busy} onClick={confirm}>
-            {`Discard ${jobCount(count)}`}
+            {`Discard ${jobCount(count, noun)}`}
           </StaffButton>
         </>
       }

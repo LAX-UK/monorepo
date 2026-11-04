@@ -16,17 +16,13 @@ import {
   closeMarketingPurgeWorkers,
   registerMarketingPurgeWorkers,
 } from "./marketing/register-marketing-purge-workers.js";
-import {
-  type MarketingSyncWorkersHandle,
-  registerMarketingSyncWorkers,
-} from "./marketing/register-marketing-sync-workers.js";
+import { registerMarketingSyncWorkers } from "./marketing/register-marketing-sync-workers.js";
 import type { DlqHandlerEntry, WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
 
 export type MarketingWorkersHandle = {
   errorHandlers: WorkerErrorHandlerEntry[];
   dlqHandlers: DlqHandlerEntry[];
   marketingSyncQueue: Queue;
-  marketingContactSync: MarketingSyncWorkersHandle["marketingContactSync"];
   marketingCapiBatchCollector: MetaCapiBatchCollector | undefined;
   drainMarketingPipeline: () => Promise<void>;
   close: () => Promise<void>;
@@ -93,7 +89,6 @@ export function registerMarketingWorkers(deps: WorkerBootstrapDeps): MarketingWo
     errorHandlers,
     dlqHandlers,
     marketingSyncQueue: sync.marketingSyncQueue,
-    marketingContactSync: sync.marketingContactSync,
     marketingCapiBatchCollector,
     drainMarketingPipeline,
     close: () => sync.close(),

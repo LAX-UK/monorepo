@@ -23,6 +23,13 @@ describe("ErrorSummary", () => {
     expect(screen.getAllByRole("link")).toHaveLength(2);
   });
 
+  it("draws each link as a block that wraps within its own box, so the underline stays inside the line", () => {
+    render(<ErrorSummary errors={ERRORS} />);
+    const link = screen.getByRole("link", { name: "Enter your email address" });
+    expect(link).toHaveClass("block", "max-w-full", "underline-offset-2");
+    expect(link).not.toHaveClass("inline-block");
+  });
+
   it("takes focus when it appears", () => {
     render(<ErrorSummary errors={ERRORS} />);
     expect(screen.getByRole("alert")).toHaveFocus();

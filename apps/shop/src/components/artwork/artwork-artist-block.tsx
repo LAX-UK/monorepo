@@ -2,8 +2,11 @@ import { ShopMediaImage } from "@/components/media/shop-media-image";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import type { ArtworkArtistBlockVm } from "@/lib/artwork/artwork-product-page.vm";
 import { artistInitials } from "@/lib/catalogue/catalogue-artist-card.vm";
-import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
-import { MarketingArrowUpRightIcon, type MarketingSectionSurface } from "@auction/marketing-ui";
+import {
+  MarketingArrowUpRightIcon,
+  type MarketingSectionSurface,
+  marketingArtistInitials,
+} from "@auction/marketing-ui";
 import { MediaPlaceholder } from "@auction/ui/components/media-placeholder";
 
 /**
@@ -29,7 +32,7 @@ export function ArtworkArtistBlock({
           <ShopMediaImage
             src={artist.portraitUrl}
             alt=""
-            label={SHOP_MEDIA_LABELS.artistPortrait}
+            monogram={marketingArtistInitials(artist.name)}
             sizes="(min-width: 64rem) 30vw, 90vw"
             className="absolute inset-0 size-full"
             imgClassName="object-cover"

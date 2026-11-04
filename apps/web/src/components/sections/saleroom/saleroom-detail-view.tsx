@@ -80,7 +80,11 @@ export function SaleroomDetailView({
             coverBlurDataURL={vm.coverBlurDataURL}
             showOnlineBiddingGatedBadge={vm.showOnlineBiddingGatedBadge}
             explainerContext={explainerContext}
-            toolbar={<SaleroomHeroToolbar shareUrl={vm.shareUrl} shareTitle={vm.sale.title} />}
+            toolbar={
+              vm.atgReadOnly ? (
+                <SaleroomHeroToolbar shareUrl={vm.shareUrl} shareTitle={vm.sale.title} />
+              ) : null
+            }
             actions={
               vm.atgReadOnly ? (
                 <AtgExternalBiddingPanel sale={vm.sale} />
@@ -103,6 +107,9 @@ export function SaleroomDetailView({
                     saleCurrency: "GBP",
                   }}
                   hasApprovedRegistration={vm.myRegistrations.some((r) => r.status === "approved")}
+                  utility={
+                    <SaleroomHeroToolbar shareUrl={vm.shareUrl} shareTitle={vm.sale.title} />
+                  }
                 />
               )
             }
@@ -151,6 +158,7 @@ export function SaleroomDetailView({
                 countLabel={vm.countLabel}
                 resultCountLabel={vm.resultCountLabel}
                 controls={vm.controls}
+                statusCounts={vm.statusCounts}
               />
               {vm.catalogSearchFilterCapped ? (
                 <p className="mb-4 text-sm text-on-surface-variant">

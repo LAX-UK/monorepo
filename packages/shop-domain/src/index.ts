@@ -130,8 +130,10 @@ export {
 export {
   CORRECTION_REASON_MAX_LENGTH,
   assertCorrectionReason,
+  assertPrintsCanBeMadeFrom,
   assertProofListingApproved,
   defaultProofOwner,
+  printsListingSlug,
   proofListingSlug,
   proofListingTitle,
   type ProofOwner,
@@ -244,9 +246,14 @@ export {
   isShopReturnDisposition,
   isShopReturnStatus,
   listingAfterReturn,
+  editionDisplayLabel,
+  returnSellerPayout,
+  returnStockOutcome,
   nextReturnStatuses,
   type CancellationStockOutcome,
   type ReturnedItemListing,
+  type ReturnSellerPayout,
+  type ReturnStockOutcome,
   type ShopReturnDisposition,
   type ShopReturnStatus,
 } from "./shop-return.js";
@@ -427,13 +434,7 @@ export {
   type GuestErasureOrder,
 } from "./guest-erasure.js";
 export {
-  RELEASE_ALERT_CONFIRM_TTL_MS,
   RELEASE_ALERT_CONSENT_TEXT,
-  RELEASE_ALERT_RESEND_AFTER_MS,
-  evaluateReleaseAlertConfirmation,
+  isArtOriginalRelease,
   isShopEditionRelease,
-  shouldSendReleaseAlertConfirmation,
-  type ReleaseAlertConfirmation,
-  type ReleaseAlertSnapshot,
-  type ReleaseAlertStatus,
 } from "./release-alert.js";

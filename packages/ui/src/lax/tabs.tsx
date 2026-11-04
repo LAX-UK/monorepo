@@ -2,6 +2,7 @@
 
 import { ChevronDown } from "lucide-react";
 import * as React from "react";
+import { ScrollRow } from "../components/ui/scroll-row.js";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group.js";
 import { cn } from "../lib/utils.js";
 import { Button } from "./button.js";
@@ -128,33 +129,8 @@ function ScrollingTabs({
   Link: LinkComponent;
   label: string;
 }) {
-  const navRef = React.useRef<HTMLElement>(null);
-  const [more, setMore] = React.useState(false);
-  const update = React.useCallback(() => {
-    const nav = navRef.current;
-    if (nav) setMore(nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
-  }, []);
-  React.useEffect(() => {
-    const nav = navRef.current;
-    nav?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView?.({
-      block: "nearest",
-      inline: "nearest",
-    });
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [update]);
   return (
-    <nav
-      aria-label={label}
-      ref={navRef}
-      onScroll={update}
-      data-more={more || undefined}
-      className={cn(
-        "min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-        "data-[more]:[mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]",
-      )}
-    >
+    <ScrollRow as="nav" aria-label={label} className="flex-1">
       <ul className="flex w-max items-center gap-0.5">
         {tabs.map((view) => {
           const active = view.id === currentId;
@@ -168,7 +144,7 @@ function ScrollingTabs({
           );
         })}
       </ul>
-    </nav>
+    </ScrollRow>
   );
 }
 
@@ -340,13 +316,11 @@ export function SecondaryTabNav({
   className?: string;
 }) {
   return (
-    <nav
+    <ScrollRow
+      as="nav"
       aria-label={label}
-      className={cn(
-        // The scroll box clips; 4px of padding (cancelled by the margin) keeps the focus ring whole.
-        "-m-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-        className,
-      )}
+      // The scroll box clips; 4px of padding (cancelled by the margin) keeps the focus ring whole.
+      className={cn("-m-1 p-1", className)}
     >
       <ul className="flex w-max items-center gap-1">
         {items.map((item) => {
@@ -370,7 +344,7 @@ export function SecondaryTabNav({
           );
         })}
       </ul>
-    </nav>
+    </ScrollRow>
   );
 }
 

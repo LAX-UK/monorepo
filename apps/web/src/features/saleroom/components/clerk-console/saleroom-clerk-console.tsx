@@ -17,7 +17,6 @@ import { useClerkConsoleModel } from "@/features/saleroom/hooks/use-clerk-consol
 import { useClerkLotRosterSync } from "@/features/saleroom/hooks/use-clerk-lot-roster-sync";
 import { useClerkPaddleRoster } from "@/features/saleroom/hooks/use-clerk-paddle-roster";
 import { useClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
-import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import type {
   AdminPaddleRosterEntry,
   AdminSaleroomSessionSnapshot,
@@ -92,10 +91,8 @@ function ClerkConsoleInner({
 
   useEffect(() => {
     if (!actionError) return;
-    const message = safeDecodeAdminErrorParam(actionError);
-    if (message) notify.error(message);
-    router.replace(`/admin/saleroom/${saleId}`, { scroll: false });
-  }, [actionError, router, saleId]);
+    notify.error(actionError);
+  }, [actionError]);
 
   const currentLotId = session.currentLotId;
   const currentLotForBid = syncedLots.find((lot) => lot.id === currentLotId) ?? null;

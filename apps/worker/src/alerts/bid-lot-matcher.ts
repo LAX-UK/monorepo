@@ -36,7 +36,8 @@ export class BidLotMatcher {
 
   async handle(events: readonly LotPublishedEvent[]): Promise<LotMatchOutcome> {
     const ids = [...new Set(events.map((e) => e.lotId))];
-    const lots = await this.deps.lots.findAlertable(ids);
+    // A sale staff chose not to announce never produces lot alerts, however its lots match.
+    const lots = (await this.deps.lots.findAlertable(ids)).filter((lot) => lot.saleAnnounced);
     if (lots.length === 0) return { lots: 0, artistMatches: 0, searchMatches: 0 };
     const now = this.deps.clock.now();
 

@@ -1,12 +1,12 @@
 import { ShopMediaImage } from "@/components/media/shop-media-image";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
-import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
 import { fetchPublicArtists } from "@/lib/shop-api.server";
 import {
   MarketingArtistCard,
   MarketingArtistDirectory,
   type MarketingArtistDirectoryQuery,
   MarketingArtistGrid,
+  marketingArtistInitials,
   parseMarketingArtistDirectoryQuery,
 } from "@auction/marketing-ui";
 import type { PublicArtistList } from "@auction/shop-contracts";
@@ -109,7 +109,7 @@ export default async function ArtistsIndexPage({ searchParams }: ArtistsIndexPag
                       <ShopMediaImage
                         src={artist.portraitUrl}
                         alt=""
-                        label={SHOP_MEDIA_LABELS.artistPortrait}
+                        monogram={marketingArtistInitials(artist.name)}
                         aspect={[4, 5]}
                         sizes="(min-width: 96rem) 20vw, (min-width: 64rem) 25vw, (min-width: 48rem) 30vw, 50vw"
                         className="absolute inset-0 size-full object-cover"

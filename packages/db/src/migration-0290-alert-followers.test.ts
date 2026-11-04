@@ -40,7 +40,7 @@ describe("migration 0290 alert followers", () => {
 
   it("starts lot matching at the newest event, once", () => {
     expect(migration).toContain(
-      '\'bid_alert_lot_matching_start\', COALESCE(max("id"), 0) FROM "domain_event"',
+      '\'bid_alert_lot_matching_start\', COALESCE(max("id"), 0) FROM "domain_events"',
     );
     expect(migration).toContain('ON CONFLICT ("projector_name") DO NOTHING');
     expect(rollback).toContain(

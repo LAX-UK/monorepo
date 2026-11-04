@@ -1,8 +1,13 @@
 import { FOCUS_RING } from "@auction/branding";
 import { cn } from "@auction/ui";
 import Link from "next/link";
-import { MARKETING_FILTER_GROUP_TITLE, marketingFilterRailLink } from "./catalog-filter-rail.js";
+import { MARKETING_FILTER_GROUP_TITLE } from "./catalog-filter-rail.js";
+import { MarketingFilterLinkRow } from "./marketing-filter-link-row.js";
 
+/**
+ * One option. `href` is where choosing the option goes: when it is `active`, the address with it
+ * taken off, so the row works as a checkbox.
+ */
 export type MarketingFilterLink = {
   label: string;
   href: string;
@@ -14,6 +19,11 @@ export type MarketingFilterLinkGroup = {
   id: string;
   title: string;
   links: readonly MarketingFilterLink[];
+  /**
+   * `single` is a choice of one, such as a sort order: radios, where the chosen option cannot be
+   * taken off. The default is checkboxes, where choosing an applied option takes it off.
+   */
+  selection?: "multiple" | "single";
 };
 
 export type MarketingFilterLinkGroupsProps = {
@@ -27,8 +37,9 @@ export type MarketingFilterLinkGroupsProps = {
 };
 
 /**
- * Filter groups as plain links, so filtering works without JavaScript and stays crawlable.
- * Used by the desktop rail and the mobile filter sheet.
+ * Filter groups as checkbox rows with counts. Each row is a real link to its address, so filtering
+ * works without JavaScript and stays crawlable, and the URL stays the one source of the applied
+ * filters. Used by the desktop rail and the mobile filter sheet.
  */
 export function MarketingFilterLinkGroups({
   groups,
@@ -56,30 +67,26 @@ export function MarketingFilterLinkGroups({
           const headingId = `${idPrefix}-${group.id}`;
           return (
             <section key={group.id} aria-labelledby={headingId}>
-              <h3 id={headingId} className={MARKETING_FILTER_GROUP_TITLE}>
+              <h2 id={headingId} className={MARKETING_FILTER_GROUP_TITLE}>
                 {group.title}
-              </h3>
-              <ul className="flex flex-col gap-0.5">
+              </h2>
+              <div
+                role={group.selection === "single" ? "radiogroup" : "group"}
+                aria-labelledby={headingId}
+                className="flex flex-col"
+              >
                 {group.links.map((link) => (
-                  <li key={`${link.label}-${link.href}`}>
-                    <Link
-                      href={link.href}
-                      aria-current={link.active ? "page" : undefined}
-                      className={cn(
-                        marketingFilterRailLink(link.active),
-                        "min-h-9 justify-between gap-2",
-                      )}
-                    >
-                      <span>{link.label}</span>
-                      {typeof link.count === "number" ? (
-                        <span className="font-body text-xs tabular-nums text-on-surface-variant">
-                          {link.count}
-                        </span>
-                      ) : null}
-                    </Link>
-                  </li>
+                  <MarketingFilterLinkRow
+                    key={`${link.label}-${link.href}`}
+                    label={link.label}
+                    href={link.href}
+                    count={link.count}
+                    checked={link.active}
+                    kind={group.selection === "single" ? "radio" : "checkbox"}
+                    dense
+                  />
                 ))}
-              </ul>
+              </div>
             </section>
           );
         })}

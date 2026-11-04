@@ -35,6 +35,7 @@ import { createCronServices } from "./container/create-cron-services.js";
 import { createFinanceRouteServices } from "./container/create-finance-route-services.js";
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
+import { createInventoryMoveServices } from "./container/create-inventory-move-services.js";
 import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
 import {
   createEnquiryDraftTokens,
@@ -237,6 +238,7 @@ export function createContainer(env: Env): Container {
     attributionStore: complianceMedia.attributionStore,
     marketingAttributionEnabled: complianceMedia.marketingAttributionEnabled,
     sourceOfFundsDocumentCollectionService: complianceMedia.sourceOfFundsDocumentCollectionService,
+    dealPayoutSettler: payments.privateSaleDeals.payoutSettlement,
     settlementCronService: cron.settlementCronService,
     paymentMaintenanceCronService: cron.paymentMaintenanceCronService,
     accountingReplayCronService: cron.accountingReplayCronService,
@@ -498,9 +500,18 @@ export function createContainer(env: Env): Container {
     createAppLogger(env),
   );
 
+  const inventoryMoves = createInventoryMoveServices({
+    db,
+    env,
+    lots: catalog.lotService,
+    artists: platform.artistRegistryService,
+    resolveHouseSellerLegalEntityId: catalog.resolvePlatformCatalogLegalEntityId,
+  });
+
   return {
     env,
     db,
+    inventoryMoves,
     sessionRevocation,
     redis: infra.redis,
     rateLimitStore: infra.rateLimitStore,
@@ -667,7 +678,7 @@ export function createContainer(env: Env): Container {
     attributionStore: complianceMedia.attributionStore,
     marketingAttributionEnabled: complianceMedia.marketingAttributionEnabled,
     postmarkWebhookService: userMisc.postmarkWebhookService,
-    brevoWebhookIngestService: cron.brevoWebhookIngestService,
+    zohoArtworkNoticeService: cron.zohoArtworkNoticeService,
     accountDeletionEligibilityService: cron.accountDeletionEligibilityService,
     subjectExportService: createBidSubjectExportService({
       db,
@@ -756,6 +767,7 @@ export function createContainer(env: Env): Container {
     }),
     admin: {
       ...admin.admin,
+      inventoryMoves,
       staffTwoFactorPolicy: twoFactorPolicy,
       twoFactorReset,
       staffEmailChange,
@@ -768,6 +780,7 @@ export function createContainer(env: Env): Container {
       deliveryQuotes: organisationBuying.staffDeliveryQuotes,
       marketingEnquiries: marketingEnquiries.desk,
       enquiryRouting: marketingEnquiries.routing,
+      enquiryErasure: marketingEnquiries.erasure,
       dataRequests: new AdminDataRequestsService({
         identity: new HttpIdentityDataRequestsClient({
           issuerBaseUrl: env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL,
@@ -775,6 +788,17 @@ export function createContainer(env: Env): Container {
           clientSecret: env.IDENTITY_DATA_REQUESTS_CLIENT_SECRET,
         }),
         audit: new DomainEventDataRequestAuditTrail(platform.domainEventSink),
+        accounts: {
+          findByEmail: async (email) => {
+            const subject = await identityIssuer.findSubjectByEmail(email);
+            if (!subject) return null;
+            return {
+              subjectId: subject.id,
+              name: subject.name,
+              status: subject.identityDisabledAt ? "disabled" : "active",
+            };
+          },
+        },
       }),
       stepUp: new StaffStepUpService(identityIssuer),
       idempotencyStore: new RedisIdempotencyStore(infra.redis),
@@ -813,7 +837,6 @@ export type {
   ContainerBiddingRoutesSlice,
   ContainerIdentityRoutesSlice,
   ContainerBiddingSaleroomSlice,
-  ContainerBrevoWebhookRoutesSlice,
   ContainerCatalogAdminReadersSlice,
   ContainerCatalogSlice,
   ContainerCategoryRoutesSlice,
@@ -829,6 +852,7 @@ export type {
   ContainerInternalCronRoutesSlice,
   ContainerInternalIdentityEmailRoutesSlice,
   ContainerInternalIdentityDeletionEligibilityRoutesSlice,
+  ContainerInternalInventoryRoutesSlice,
   ContainerInternalIdentitySubjectExportRoutesSlice,
   ContainerInternalIdentitySubjectUsageRoutesSlice,
   ContainerKycRoutesSlice,
@@ -889,6 +913,7 @@ export type {
   ContainerVenueRoutesSlice,
   ContainerVeriffWebhookRoutesSlice,
   ContainerXeroWebhookRoutesSlice,
+  ContainerZohoWebhookRoutesSlice,
   ContainerSaleAuxRoutesSlice,
   ContainerSaleFollowRoutesSlice,
   ContainerSaleLifecycleWriteRoutesSlice,

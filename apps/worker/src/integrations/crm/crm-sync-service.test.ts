@@ -5,6 +5,12 @@ import type { CrmGateway } from "./crm-gateway.js";
 import type { CrmAttributionReader, CrmPaymentLotReader } from "./crm-readers.js";
 import { CrmSyncService } from "./crm-sync-service.js";
 
+const noDealNaming = {
+  forLotWon: vi.fn(),
+  forShopEnquiry: vi.fn(),
+  forShopOrder: vi.fn(),
+};
+
 function baseEnv(): WorkerEnv {
   return {
     ZOHO_CRM_LEAD_CONVERSION_ENABLED: false,
@@ -63,6 +69,7 @@ function baseLinkRepo(): ICrmRecordLinkRepository {
     markRecyclePurged: vi.fn(),
     isErased: vi.fn().mockResolvedValue(false),
     listActiveDealLinksBySubject: vi.fn().mockResolvedValue([]),
+    listActiveSubjectLinksByZohoRecord: vi.fn().mockResolvedValue([]),
     listActiveByEntityType: vi.fn(),
     listErasedWithRealZohoLinks: vi.fn(),
     reassignDealLinksSubjectId: vi.fn(),
@@ -89,6 +96,7 @@ describe("CrmSyncService payment.refunded", () => {
       paymentLotReader,
       attributionReader: { loadFirstTouchFields: vi.fn() } satisfies CrmAttributionReader,
       enquiryReader: { findById: vi.fn() },
+      dealNamingReader: noDealNaming,
     });
 
     const result = await service.syncEvent({
@@ -128,6 +136,7 @@ describe("CrmSyncService payment.refunded", () => {
       paymentLotReader,
       attributionReader: { loadFirstTouchFields: vi.fn() } satisfies CrmAttributionReader,
       enquiryReader: { findById: vi.fn() },
+      dealNamingReader: noDealNaming,
     });
 
     const result = await service.syncEvent({

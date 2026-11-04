@@ -75,6 +75,14 @@ const TRAILS: readonly [RegExp, (match: RegExpMatchArray) => Crumb[]][] = [
       here("Make changes"),
     ],
   ],
+  [
+    /^\/selling\/consignments\/([^/]+)\/sent$/,
+    (m) => [
+      CONSIGNMENTS,
+      { label: "Consignment", href: `${CLIENT_ROUTES.consignments}/${m[1] ?? ""}` },
+      here("Sent"),
+    ],
+  ],
   [/^\/collection$/, () => [here("Collection")]],
   [/^\/selling\/payouts$/, () => [here("Sold & payouts")]],
   [/^\/selling\/payouts\/[^/]+$/, () => [PAYOUTS, record("Payout")]],

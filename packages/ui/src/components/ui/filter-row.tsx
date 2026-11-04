@@ -3,13 +3,14 @@
 import type { ReactNode } from "react";
 import { cn } from "../../lib/utils.js";
 import { FilterChip } from "./filter-chip.js";
+import { ScrollRow } from "./scroll-row.js";
 
 const CHIP_BASE =
-  "inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border px-4 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  "inline-flex min-h-10 pointer-coarse:min-h-11 shrink-0 items-center justify-center rounded-full border px-4 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
 /** Sentence case for chips that read as plain words rather than as labels. */
 const CHIP_BASE_SENTENCE =
-  "inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border px-4 font-label text-sm font-medium normal-case tracking-normal transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  "inline-flex min-h-10 pointer-coarse:min-h-11 shrink-0 items-center justify-center rounded-full border px-4 font-label text-sm font-medium normal-case tracking-normal transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
 const CHIP_ACTIVE = "border-primary/35 bg-primary-container/45 text-primary shadow-sm";
 const CHIP_IDLE =
@@ -67,7 +68,7 @@ export function FilterRow(props: FilterRowProps) {
       )}
     >
       <legend className="sr-only">{label}</legend>
-      <div className="-mx-1 flex min-w-0 gap-2 overflow-x-auto px-1 pb-0.5 sm:flex-wrap sm:overflow-visible">
+      <ScrollRow className="-mx-1 flex gap-2 px-1 pb-0.5 sm:flex-wrap sm:overflow-visible">
         {props.mode === "link"
           ? props.items.map((item) => {
               const classNameChip = cn(
@@ -128,7 +129,7 @@ export function FilterRow(props: FilterRowProps) {
                 {item.label}
               </FilterChip>
             ))}
-      </div>
+      </ScrollRow>
     </fieldset>
   );
 }

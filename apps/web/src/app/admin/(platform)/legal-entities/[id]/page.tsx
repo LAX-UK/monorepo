@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; returnTo?: string; error?: string; success?: string }>;
+  searchParams: Promise<{ tab?: string; returnTo?: string; notice?: string }>;
 };
 
 export default async function AdminLegalEntityOverviewPage({ params, searchParams }: Props) {
@@ -19,8 +19,7 @@ export default async function AdminLegalEntityOverviewPage({ params, searchParam
     const target = legalEntityDetailTabHref(id, routeTab);
     const qs = new URLSearchParams();
     if (sp.returnTo) qs.set("returnTo", sp.returnTo);
-    if (sp.error) qs.set("error", sp.error);
-    if (sp.success) qs.set("success", sp.success);
+    if (sp.notice) qs.set("notice", sp.notice);
     const suffix = qs.toString();
     redirect(suffix ? `${target}?${suffix}` : target);
   }

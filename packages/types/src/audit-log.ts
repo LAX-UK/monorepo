@@ -18,11 +18,13 @@ export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly str
     "shop.payout.",
     "shop.dispute.",
     "shop.sale_fee.",
+    "private_sale_deal.",
   ],
   catalogue: [
     "lot.",
     "sale.",
     "artist.",
+    "artwork_register.",
     "category.",
     "venue.",
     "condition_report.",

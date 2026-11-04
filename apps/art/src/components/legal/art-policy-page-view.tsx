@@ -50,7 +50,7 @@ export function ArtPolicyPageView({ slug }: { slug: LaxArtPolicySlug }) {
       document={policy.document}
       release={policy.release}
       draft={visibility === "draft-preview"}
-      hubLabel="Legal"
+      hubLabel="Legal pages"
       hubLinks={hubLinks(slug)}
       company="art"
     />
@@ -70,7 +70,7 @@ export function ArtLegalIndexView() {
     <LegalPolicyIndex
       hrefFor={(slug) => LAX_ART_POLICIES[slug].artPath}
       isListed={(slug) => linkable.has(slug)}
-      hubLabel="Legal"
+      hubLabel="Legal pages"
       hubLinks={hubLinks(null)}
     />
   );

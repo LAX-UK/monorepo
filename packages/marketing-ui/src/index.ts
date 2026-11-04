@@ -142,7 +142,21 @@ export {
   MarketingFooterSocials,
   type MarketingFooterSocialsProps,
 } from "./marketing-footer-socials.js";
-export { FOOTER_LEGAL, buildFooterLegalColumn } from "./footer-legal-column.js";
+export {
+  COOKIE_SETTINGS_HASH,
+  FOOTER_LEGAL,
+  buildFooterLegalColumn,
+} from "./footer-legal-column.js";
+export {
+  EssentialCookiesDialog,
+  type EssentialCookiesDialogProps,
+} from "./essential-cookies-dialog.js";
+export {
+  MarketingNotFound,
+  type MarketingNotFoundLink,
+  type MarketingNotFoundProps,
+  type MarketingNotFoundSearch,
+} from "./marketing-not-found.js";
 export {
   MarketingFooter,
   type MarketingFooterColumn,
@@ -241,6 +255,14 @@ export type {
   MarketingFilterSelection,
 } from "./marketing-filter-option-list.js";
 export {
+  MarketingFilterRadioRow,
+  type MarketingFilterRadioRowProps,
+} from "./marketing-filter-radio-row.js";
+export {
+  MarketingFilterCheckboxRow,
+  type MarketingFilterCheckboxRowProps,
+} from "./marketing-filter-checkbox-row.js";
+export {
   MarketingFilterAccordionSection,
   type MarketingFilterAccordionSectionProps,
   MarketingFilterFacetGroup,
@@ -268,6 +290,8 @@ export {
   type MarketingFormError,
   type MarketingFormErrorSummaryProps,
 } from "./marketing-form-error-summary.js";
+export { marketingEmailError } from "./marketing-email-error.js";
+export { useMarketingFormErrors } from "./use-marketing-form-errors.js";
 export {
   MarketingStatusAction,
   MarketingStatusMotif,
@@ -337,6 +361,12 @@ export {
   marketingArtistFactsLine,
 } from "./marketing-artist-facts.js";
 export { MarketingArtistHero, type MarketingArtistHeroProps } from "./marketing-artist-hero.js";
+export {
+  EmailAddressText,
+  EmailLink,
+  type EmailLinkProps,
+  TextWithEmails,
+} from "./email-text.js";
 export {
   MarketingArtistCard,
   type MarketingArtistCardProps,
@@ -505,10 +535,10 @@ export {
   type MarketingGalleryTeamStep,
 } from "./marketing-gallery-team-band.js";
 export {
-  type MarketingFaqPill,
-  MarketingFaqPills,
-  type MarketingFaqPillsProps,
-} from "./marketing-faq-pills.js";
+  MarketingFaqAccordion,
+  type MarketingFaqAccordionProps,
+  type MarketingFaqItem,
+} from "./marketing-faq-accordion.js";
 export {
   MarketingEnquiryConfirmation,
   type MarketingEnquiryConfirmationProps,

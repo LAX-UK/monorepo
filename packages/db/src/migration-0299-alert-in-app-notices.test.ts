@@ -61,6 +61,22 @@ describe("migration 0299 alert in-app notices", () => {
     expect(rollback).toContain('DROP INDEX IF EXISTS "notification_alert_digest_type_uid"');
   });
 
+  it("starts lot matching at the newest event, once", () => {
+    expect(migration).toContain(
+      '\'bid_alert_lot_matching_start\', COALESCE(max("id"), 0) FROM "domain_events"',
+    );
+    expect(migration).toContain('ON CONFLICT ("projector_name") DO NOTHING');
+    expect(rollback).toContain(
+      'DELETE FROM "projector_state" WHERE "projector_name" = \'bid_alert_lot_matching_start\'',
+    );
+  });
+
+  it("lets a lot reach a person once across topics, and drops the index on rollback", () => {
+    expect(migration).toContain('CREATE UNIQUE INDEX IF NOT EXISTS "bid_alert_match_lot_once_uid"');
+    expect(migration).toContain('("subscriber_id", "item_key") WHERE "item_key" LIKE \'lot:%\'');
+    expect(rollback).toContain('DROP INDEX IF EXISTS "bid_alert_match_lot_once_uid"');
+  });
+
   it("is rerunnable", () => {
     expect(migration).not.toMatch(/CREATE (UNIQUE )?INDEX (?!IF NOT EXISTS)/);
     expect(migration.match(/ADD COLUMN/g)?.length).toBe(4);

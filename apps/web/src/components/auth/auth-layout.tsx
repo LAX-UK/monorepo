@@ -51,7 +51,7 @@ export function AuthLayout({
       >
         <LaxLogo variant="auth" className="shrink-0" />
         <div className="flex flex-col items-center gap-3 text-center">
-          <DisplayHeading as="h1" size="section" className="font-semibold uppercase tracking-tight">
+          <DisplayHeading as="h1" size="section" className="font-semibold tracking-tight">
             {title}
           </DisplayHeading>
           {description ? (

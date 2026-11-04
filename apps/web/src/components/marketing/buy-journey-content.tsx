@@ -1,4 +1,3 @@
-import { KYC_PROVIDER_NAME } from "@/components/kyc/kyc-copy";
 import type { MarketingProcessStep } from "@/components/marketing/marketing-process-steps";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { CreditCard, Gavel, Receipt, Search, ShieldCheck, Truck, UserPlus } from "lucide-react";
@@ -56,10 +55,10 @@ export const BUY_JOURNEY_STEPS: readonly MarketingProcessStep[] = [
     icon: ShieldCheck,
     description: (
       <>
-        Identity verification may be required before you can bid. We use {KYC_PROVIDER_NAME} for a
-        short check, typically using a government ID and a selfie. Requirements are applied when
-        your bidding activity reaches our verification threshold, or when a specific sale or lot
-        needs additional checks. If you have trouble completing verification, contact our{" "}
+        An identity check may be required before you can bid. It is a short check, typically using a
+        government ID and a selfie. Requirements are applied when your bidding activity reaches our
+        verification threshold, or when a specific sale or lot needs additional checks. If you have
+        trouble completing verification, contact our{" "}
         <Link href="/contact" className={MARKETING_PROSE_LINK}>
           client services team
         </Link>{" "}

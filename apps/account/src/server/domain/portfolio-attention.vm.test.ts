@@ -21,6 +21,16 @@ describe("buildAttentionRows", () => {
     ]);
   });
 
+  it("says a payment is being confirmed and offers no pay link", () => {
+    expect(buildAttentionRows([item({ status: "payment_confirming", actions: [] })])).toEqual([
+      expect.objectContaining({
+        text: "Payment for Green Line is being confirmed",
+        href: "/account/portfolio/bid/lot-1",
+        external: false,
+      }),
+    ]);
+  });
+
   it("does not ask for payment while the account's checks are open", () => {
     const [row] = buildAttentionRows([
       item({

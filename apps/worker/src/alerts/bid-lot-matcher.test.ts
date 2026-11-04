@@ -17,6 +17,7 @@ const lot = (over: Partial<AlertableLot> = {}): AlertableLot => ({
   price: "5000.00",
   estimate: { low: "5000.00", high: "8000.00", currency: "GBP" },
   startingPrice: "3000.00",
+  saleAnnounced: true,
   ...over,
 });
 
@@ -221,5 +222,44 @@ describe("snapshot copy", () => {
   it("shows the estimate, else the start price", () => {
     expect(lotPriceLine(lot())).toBe("Estimate £5,000 to £8,000");
     expect(lotPriceLine(lot({ estimate: null }))).toBe("Starting at £3,000");
+  });
+});
+
+describe("BidLotMatcher: sales that are not announced", () => {
+  const follower = [{ subscriberId: "sub-1", artistId: "artist-1", criteria: criteria() }];
+
+  it("matches lots of an announced sale", async () => {
+    const t = setup({ lots: [lot({ saleAnnounced: true })], artists: follower });
+    expect((await t.matcher.handle([event("lot-1")])).artistMatches).toBe(1);
+  });
+
+  it("records nothing for a sale staff chose not to announce, for artists or searches", async () => {
+    const t = setup({
+      lots: [lot({ saleAnnounced: false })],
+      artists: follower,
+      searches: [search()],
+      finds: { tide: ["lot-1"] },
+    });
+    expect(await t.matcher.handle([event("lot-1")])).toEqual({
+      lots: 0,
+      artistMatches: 0,
+      searchMatches: 0,
+    });
+    expect(t.record).not.toHaveBeenCalled();
+    expect(t.matchingSearch).not.toHaveBeenCalled();
+  });
+
+  it("matches only the announced lots of a mixed batch", async () => {
+    const t = setup({
+      lots: [
+        lot({ id: "lot-1", saleAnnounced: true }),
+        lot({ id: "lot-2", saleAnnounced: false }),
+        lot({ id: "lot-3", saleAnnounced: true }),
+      ],
+      artists: follower,
+    });
+    const out = await t.matcher.handle([event("lot-1"), event("lot-2"), event("lot-3")]);
+    expect(out).toMatchObject({ lots: 2, artistMatches: 2 });
+    expect(t.recorded().map((m) => m.itemKey)).toEqual(["lot:lot-1", "lot:lot-3"]);
   });
 });

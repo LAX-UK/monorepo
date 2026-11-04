@@ -9,6 +9,11 @@ import {
   drainUnprocessedWebhookEvents,
   processInboundWebhookEvent,
 } from "../jobs/process-inbound-webhook-event.js";
+import {
+  ZOHO_ARTWORK_NIGHTLY_JOB_NAME,
+  ZOHO_ARTWORK_NIGHTLY_PATTERN,
+  ZOHO_ARTWORK_NIGHTLY_TIME_ZONE,
+} from "../jobs/zoho-artwork-sync.job.js";
 import type { WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
 import { closeAll } from "./worker-utils.js";
 
@@ -19,6 +24,8 @@ export type WebhookWorkersHandle = {
 
 export type RegisterWebhookWorkerInput = WorkerBootstrapDeps & {
   webhookProcessorDeps: ProcessInboundWebhookDeps;
+  /** Set when the Zoho artwork sync is on; schedules its nightly check on this queue. */
+  runZohoArtworkNightlyCheck?: () => Promise<void>;
 };
 
 export function registerWebhookWorker(input: RegisterWebhookWorkerInput): WebhookWorkersHandle {
@@ -27,6 +34,7 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
     heartbeat,
     reportWorkerJobFailure,
     webhookProcessorDeps,
+    runZohoArtworkNightlyCheck,
     queueOpts,
     log,
   } = input;
@@ -42,6 +50,14 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
       if (job.name === WEBHOOK_EVENT_DRAIN_JOB_NAME) {
         const count = await drainUnprocessedWebhookEvents(webhookProcessorDeps);
         log.info({ count }, "webhook_event drain completed");
+        await heartbeat("webhook-events");
+        return;
+      }
+
+      if (job.name === ZOHO_ARTWORK_NIGHTLY_JOB_NAME) {
+        if (!runZohoArtworkNightlyCheck)
+          throw new Error("zoho artwork nightly check not configured");
+        await runZohoArtworkNightlyCheck();
         await heartbeat("webhook-events");
         return;
       }
@@ -70,6 +86,21 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
       removeOnComplete: 100,
     },
   );
+
+  if (runZohoArtworkNightlyCheck) {
+    void webhookQueue.add(
+      ZOHO_ARTWORK_NIGHTLY_JOB_NAME,
+      { eventKey: ZOHO_ARTWORK_NIGHTLY_JOB_NAME },
+      {
+        jobId: ZOHO_ARTWORK_NIGHTLY_JOB_NAME,
+        repeat: {
+          pattern: ZOHO_ARTWORK_NIGHTLY_PATTERN,
+          tz: ZOHO_ARTWORK_NIGHTLY_TIME_ZONE,
+        },
+        removeOnComplete: 30,
+      },
+    );
+  }
 
   return {
     errorHandlers: [{ worker: webhookWorker, queue: WEBHOOK_EVENTS_QUEUE_NAME }],

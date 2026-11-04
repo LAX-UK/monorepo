@@ -32,6 +32,29 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
       REDIS_URL: redis://127.0.0.1:6379
+      BETTER_AUTH_SECRET: ci-auth-secret-at-least-sixteen-characters
+      AUTH_DEK_KEY: "0707070707070707070707070707070707070707070707070707070707070707"
+      CHECK_IN_TOKEN_SECRET: ci-api-token-secret-at-least-sixteen-characters
+      IDENTITY_MACHINE_CLIENT_ID: api-service
+      IDENTITY_MACHINE_CLIENT_SECRET: ci-identity-machine-secret-at-least-32
+      API_PUBLIC_URL: http://localhost:3001
+      OIDC_ISSUER_URL: http://localhost:3003
+      OIDC_INTERNAL_BASE_URL: http://localhost:3003
+      OIDC_CLIENT_SECRET_LAX_BID_WEB: ci-bid-web-client-secret-at-least-32
+      BID_BFF_SESSION_ENCRYPTION_KEY: "0808080808080808080808080808080808080808080808080808080808080808"
+      LAX_BID_PUBLIC_URL: http://localhost:3000
+      AUTH_APP_DB_PASSWORD: postgres
+      API_APP_DB_PASSWORD: postgres
+      WORKER_APP_DB_PASSWORD: postgres
+      WEB_ORIGIN: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_AUTH_URL: http://localhost:3003
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      ALLOW_HTTP_COOKIES: "true"
+      REQUIRE_EMAIL_VERIFICATION: "false"
+      APP_ENV: development
+      MARKETING_PROMPTS_ENABLED: "false"
+      ADMIN_KPI_TREND_ANCHOR: "2026-08-25T12:00:00.000Z"
       PLAYWRIGHT_E2E: "1"
       PLAYWRIGHT_VISUAL: "1"
       PLAYWRIGHT_BASE_URL: http://localhost:3000
@@ -46,22 +69,41 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @auction/web exec playwright install chromium --with-deps
-      - run: |
-          pnpm turbo run build --filter=@auction/api... --filter=@auction/web...
+      - name: Migrate and seed
+        run: |
+          pnpm --filter @auction/db... build
           pnpm --filter @auction/db db:migrate
           pnpm --filter @auction/db db:seed:dev
+          DATABASE_URL_OWNER="$DATABASE_URL" pnpm --filter @auction/db db:roles
+          DATABASE_URL_AUTH="$DATABASE_URL" \
+            OIDC_CLIENT_IDS=lax-bid-web \
+            OIDC_CLIENT_SECRET_LAX_BID_WEB="$OIDC_CLIENT_SECRET_LAX_BID_WEB" \
+            pnpm --filter @auction/db db:configure-oidc-clients
+      - name: Build web, API, and auth issuer
+        run: pnpm turbo run build --filter=@auction/api --filter=@auction/auth-app --filter=@auction/web
       - name: Start stack
         run: |
-          pnpm --filter @auction/api start &
-          pnpm --filter @auction/web start &
-          npx --yes wait-on http://localhost:3000 --timeout 120000
+          mkdir -p /tmp/e2e-logs
+          PORT=3001 pnpm --filter @auction/api start > /tmp/e2e-logs/api.log 2>&1 &
+          PORT=3003 pnpm --filter @auction/auth-app start > /tmp/e2e-logs/auth.log 2>&1 &
+          PORT=3000 node scripts/ci/start-e2e-web.mjs > /tmp/e2e-logs/web.log 2>&1 &
+          npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http://localhost:3003/health/live --timeout 120000
       - name: Generate reviewed candidates
         run: pnpm --filter @auction/web test:e2e:admin-visual-update
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: admin-visual-baseline-candidates-playwright-1.52.0
           path: apps/web/e2e/__snapshots__/admin-pages-visual.spec.ts
+          if-no-files-found: warn
           retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: admin-baseline-logs
+          path: /tmp/e2e-logs
+          if-no-files-found: ignore
+          retention-days: 7
 
   cover-baselines:
     runs-on: ubuntu-24.04
@@ -92,3 +134,99 @@ jobs:
           name: cover-visual-baseline-candidates-playwright-1.52.0
           path: apps/web/e2e/__snapshots__/cover-visual.spec.ts
           retention-days: 14
+
+  lax-admin-baselines:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
+      REDIS_URL: redis://127.0.0.1:6379
+      BETTER_AUTH_SECRET: ci-auth-secret-at-least-sixteen-characters
+      AUTH_DEK_KEY: "0707070707070707070707070707070707070707070707070707070707070707"
+      IDENTITY_MACHINE_CLIENT_ID: api-service
+      IDENTITY_MACHINE_CLIENT_SECRET: ci-identity-machine-secret-at-least-32
+      API_PUBLIC_URL: http://localhost:3001
+      OIDC_ISSUER_URL: http://localhost:3003
+      OIDC_INTERNAL_BASE_URL: http://localhost:3003
+      OIDC_CLIENT_SECRET_LAX_SHOP_ADMIN: ci-shop-admin-client-secret-at-least-32-chars
+      SHOP_API_BFF_TOKEN: ci-shop-api-bff-token-at-least-32-characters
+      AUTH_APP_DB_PASSWORD: postgres
+      API_APP_DB_PASSWORD: postgres
+      SHOP_APP_DB_PASSWORD: postgres
+      WORKER_APP_DB_PASSWORD: postgres
+      NEXT_PUBLIC_AUTH_URL: http://localhost:3003
+      ALLOW_HTTP_COOKIES: "true"
+      REQUIRE_EMAIL_VERIFICATION: "false"
+      APP_ENV: development
+      PLAYWRIGHT_E2E: "1"
+      PLAYWRIGHT_VISUAL: "1"
+      PLAYWRIGHT_BASE_URL: http://localhost:3030
+      AUTH_BASE_URL: http://localhost:3003
+      PLAYWRIGHT_STAFF_EMAIL: admin@lax.bid
+      PLAYWRIGHT_STAFF_PASSWORD: Password123!
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @auction/shop-admin exec playwright install chromium --with-deps
+      - name: Migrate and seed
+        run: |
+          pnpm --filter @auction/db... build
+          pnpm --filter @auction/db db:migrate
+          pnpm --filter @auction/db db:seed:dev
+          DATABASE_URL_OWNER="$DATABASE_URL" pnpm --filter @auction/db db:roles
+          DATABASE_URL_AUTH="$DATABASE_URL" \
+            OIDC_CLIENT_IDS=lax-shop-admin \
+            pnpm --filter @auction/db db:configure-oidc-clients
+      - name: Build applications
+        run: pnpm turbo run build --filter=@auction/auth-app --filter=@auction/shop-api --filter=@auction/shop-admin
+      - name: Start identity service
+        run: |
+          mkdir -p /tmp/e2e-logs
+          PORT=3003 pnpm --filter @auction/auth-app start > /tmp/e2e-logs/auth.log 2>&1 &
+          npx --yes wait-on http://localhost:3003/health/live --timeout 120000
+      - name: Start LAX Admin
+        run: scripts/ci/start-lax-admin-stack.sh
+      - name: Generate reviewed candidates
+        run: pnpm --filter @auction/shop-admin test:e2e:visual-update
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: lax-admin-visual-baseline-candidates-playwright-1.55.1
+          path: apps/shop-admin/e2e/__snapshots__/pages-visual.spec.ts
+          if-no-files-found: warn
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: lax-admin-baseline-logs
+          path: /tmp/e2e-logs
+          if-no-files-found: ignore
+          retention-days: 7

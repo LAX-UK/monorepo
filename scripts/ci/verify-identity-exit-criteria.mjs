@@ -112,13 +112,6 @@ function verifyProductReaders() {
     throw new Error("drizzle-profile.repository still reads Identity user");
   }
 
-  const workerMarketing = read(
-    "apps/worker/src/repositories/drizzle-marketing-contact-sync.repository.ts",
-  );
-  if (/user\.role/.test(workerMarketing) || /user\.firstName/.test(workerMarketing)) {
-    throw new Error("worker marketing sync still reads bid columns from user");
-  }
-
   const roles = read("packages/db/src/migrate-roles.ts");
   if (/API_READ_TABLES\s*=\s*\[[^\]]*["']user["']/.test(roles)) {
     throw new Error("api_app still has user in API_READ_TABLES");

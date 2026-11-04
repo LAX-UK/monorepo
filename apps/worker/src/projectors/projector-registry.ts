@@ -1,5 +1,6 @@
 import { processAdminImpersonationNotify } from "./admin-impersonation-notify.js";
 import { AML_MATCH_REVIEW_PROJECTOR, processAmlMatchReview } from "./aml-match-review.js";
+import { ARTWORK_OFFER_LOCK_PROJECTOR, processArtworkOfferLock } from "./artwork-offer-lock.js";
 import { BID_ALERT_MATCHING_PROJECTOR, processBidAlertMatching } from "./bid-alert-matching.js";
 import {
   BID_IDENTITY_DIRECTORY_PROJECTOR,
@@ -21,7 +22,6 @@ import {
   processLotInvoiceInitiation,
 } from "./lot-invoice-initiation.js";
 import { processLotVoidedAntiShillingAdminNotify } from "./lot-voided-anti-shilling-admin-notify.js";
-import { createMarketingContactsProjector } from "./marketing-contacts-projector.js";
 import { NOTIFICATION_FANOUT_PROJECTOR, processNotificationFanout } from "./notification-fanout.js";
 import { processPaymentRefundNotify } from "./payment-refund-notify.js";
 import { processPayoutTransferFailedNotify } from "./payout-transfer-failed-notify.js";
@@ -49,7 +49,9 @@ import {
   UNSOLD_CHOICE_DEADLINE_PROJECTOR,
   processUnsoldChoiceDeadline,
 } from "./unsold-choice-deadline.js";
+import { UNSOLD_FOLLOW_UP_PROJECTOR, processUnsoldFollowUp } from "./unsold-follow-up.js";
 import { createXeroProjector } from "./xero-projector.js";
+import { createZohoArtworkWritebackProjector } from "./zoho-artwork-writeback-projector.js";
 import { createZohoProjector } from "./zoho-projector.js";
 
 export class ProjectorRegistry {
@@ -87,7 +89,6 @@ function emailProjectorArgs(ctx: ProjectorRunContext) {
 export function createDefaultProjectorRegistry(): ProjectorRegistry {
   const projectors: Projector[] = [
     createXeroProjector(),
-    createMarketingContactsProjector(),
     createZohoProjector(),
     {
       name: SHOP_IDENTITY_PROJECTION_PROJECTOR,
@@ -260,6 +261,20 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
       },
     },
     {
+      name: UNSOLD_FOLLOW_UP_PROJECTOR,
+      isEnabled(ctx) {
+        return ctx.unsoldFollowUps != null;
+      },
+      async run(ctx) {
+        await ctx.projectorStateRepo.ensureCursor(UNSOLD_FOLLOW_UP_PROJECTOR);
+        await processUnsoldFollowUp({
+          ctx,
+          log: ctx.log,
+          opener: ctx.unsoldFollowUps as NonNullable<ProjectorRunContext["unsoldFollowUps"]>,
+        });
+      },
+    },
+    {
       name: BID_ALERT_MATCHING_PROJECTOR,
       isEnabled(ctx) {
         return ctx.bidAlerts != null;
@@ -273,6 +288,21 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
         });
       },
     },
+    {
+      name: ARTWORK_OFFER_LOCK_PROJECTOR,
+      isEnabled(ctx) {
+        return ctx.artworkOfferLock != null;
+      },
+      async run(ctx) {
+        await ctx.projectorStateRepo.ensureCursor(ARTWORK_OFFER_LOCK_PROJECTOR);
+        await processArtworkOfferLock({
+          ctx,
+          log: ctx.log,
+          recorder: ctx.artworkOfferLock as NonNullable<ProjectorRunContext["artworkOfferLock"]>,
+        });
+      },
+    },
+    createZohoArtworkWritebackProjector(),
   ];
 
   return new ProjectorRegistry(projectors);

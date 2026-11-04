@@ -1,6 +1,5 @@
 export {
   KYC_BANNER_DESCRIPTION,
-  KYC_PROVIDER_NAME,
   KYC_VERIFY_DESCRIPTION,
   type KycComplianceIdentityPill,
   type KycCompliancePillTone,

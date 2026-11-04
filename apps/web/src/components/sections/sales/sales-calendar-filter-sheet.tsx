@@ -4,6 +4,7 @@ import { MarketingFilterSheet } from "@/components/marketing/marketing-filter-sh
 import { MarketingFilterTrigger } from "@/components/marketing/marketing-filter-trigger";
 import { SalesFilterSidebar } from "@/components/sections/sales/sales-filter-sidebar";
 import { MARKETING_FILTER_RAIL_IN_SHEET } from "@/lib/marketing/filter-rail";
+import type { SalesFacetCounts } from "@/lib/marketing/sales-calendar-facets";
 import {
   type CalendarSalesUrlState,
   calendarClearFiltersHref,
@@ -19,6 +20,7 @@ export type SalesCalendarFilterSheetProps = {
   resultCount: number;
   categories: Category[];
   years: number[];
+  facets: SalesFacetCounts | null;
   resultCountLabel: string;
 };
 
@@ -28,6 +30,7 @@ export function SalesCalendarFilterSheet({
   resultCount,
   categories,
   years,
+  facets,
   resultCountLabel,
 }: SalesCalendarFilterSheetProps) {
   const [open, setOpen] = useState(false);
@@ -53,6 +56,7 @@ export function SalesCalendarFilterSheet({
         resultCount={resultCount}
         categories={categories}
         years={years}
+        facets={facets}
         showResultCount={false}
         onLinkClick={close}
         className={MARKETING_FILTER_RAIL_IN_SHEET}

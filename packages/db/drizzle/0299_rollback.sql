@@ -66,3 +66,6 @@ ALTER TABLE notification
       'sale_announced'
     )
   );
+
+DROP INDEX IF EXISTS "bid_alert_match_lot_once_uid";
+DELETE FROM "projector_state" WHERE "projector_name" = 'bid_alert_lot_matching_start';

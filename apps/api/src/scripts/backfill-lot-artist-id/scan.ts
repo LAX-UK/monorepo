@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { artistProfile, lot } from "@auction/db/schema";
+import { containsPattern } from "@auction/persistence/lib";
 import { and, eq, ilike, inArray, ne } from "drizzle-orm";
 import {
   type ArtistCandidate,
@@ -66,7 +67,7 @@ export async function analyzeLotArtistBackfill(
 
   let textCandidates: ArtistCandidate[] = [];
   if (hintText && hintText.length >= 2) {
-    const pattern = `%${hintText.trim()}%`;
+    const pattern = containsPattern(hintText.trim());
     textCandidates = await db
       .select({ id: artistProfile.id, displayName: artistProfile.displayName })
       .from(artistProfile)

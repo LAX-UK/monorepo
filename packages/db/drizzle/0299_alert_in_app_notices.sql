@@ -82,3 +82,13 @@ ALTER TABLE notification
       'search_lots_listed'
     )
   );
+--> statement-breakpoint
+-- Lot matching starts here: lots published before this migration are never announced, and every
+-- lot published after it is, however long the worker takes to get to it.
+INSERT INTO "projector_state" ("projector_name", "last_processed_event_id")
+SELECT 'bid_alert_lot_matching_start', COALESCE(max("id"), 0) FROM "domain_events"
+ON CONFLICT ("projector_name") DO NOTHING;
+--> statement-breakpoint
+-- A lot reaches a person once, whichever topic matched it, even across batches and runs.
+CREATE UNIQUE INDEX IF NOT EXISTS "bid_alert_match_lot_once_uid"
+  ON "bid_alert_match" ("subscriber_id", "item_key") WHERE "item_key" LIKE 'lot:%';

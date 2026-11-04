@@ -15,7 +15,7 @@ export class BidAlertLotStart {
   async position(): Promise<number> {
     await this.db.execute(sql`
       INSERT INTO projector_state (projector_name, last_processed_event_id)
-      SELECT ${BID_ALERT_LOT_START}, COALESCE(max(id), 0) FROM domain_event
+      SELECT ${BID_ALERT_LOT_START}, COALESCE(max(id), 0) FROM domain_events
       ON CONFLICT (projector_name) DO NOTHING`);
     const [row] = await this.db
       .select({ at: projectorState.lastProcessedEventId })
