@@ -5,6 +5,7 @@ import {
   type PublicArtistDetail,
   type PublicArtistList,
   type PublicArtworkDetail,
+  type PublicArtworkFacetCounts,
   type PublicArtworkList,
   type PublicArtworkObjectTypeFacetList,
   type PublicCategoryList,
@@ -12,6 +13,7 @@ import {
   parsePublicArtistDetail,
   parsePublicArtistList,
   parsePublicArtworkDetail,
+  parsePublicArtworkFacetCounts,
   parsePublicArtworkList,
   parsePublicArtworkObjectTypeFacets,
   parsePublicCategoryList,
@@ -80,13 +82,10 @@ async function readValidatedJson<T>(
   }
 }
 
-export async function fetchArtChannelArtworks(
-  input: ArtArtworkListQuery,
-): Promise<PublicArtworkList> {
+/** The filters a list and its counts share, so an option's count matches the list it opens. */
+function artworkFilterParams(input: ArtArtworkListQuery): URLSearchParams {
   const params = new URLSearchParams();
-  params.set("limit", String(input.limit ?? 24));
   params.set("salesChannel", ART_SALES_CHANNEL);
-  if (input.cursor) params.set("cursor", input.cursor);
   if (input.placement) params.set("placement", input.placement);
   if (input.categorySlug) params.set("categorySlug", input.categorySlug);
   if (input.artistSlugs?.length) params.set("artistSlug", input.artistSlugs.join(","));
@@ -94,9 +93,18 @@ export async function fetchArtChannelArtworks(
   if (input.relatedTo) params.set("relatedTo", input.relatedTo);
   if (input.minPrice !== undefined) params.set("minPrice", String(input.minPrice));
   if (input.maxPrice !== undefined) params.set("maxPrice", String(input.maxPrice));
-  if (input.sort && input.sort !== "newest") params.set("sort", input.sort);
   if (input.saleState) params.set("saleState", input.saleState);
   if (input.q) params.set("q", input.q);
+  return params;
+}
+
+export async function fetchArtChannelArtworks(
+  input: ArtArtworkListQuery,
+): Promise<PublicArtworkList> {
+  const params = artworkFilterParams(input);
+  params.set("limit", String(input.limit ?? 24));
+  if (input.cursor) params.set("cursor", input.cursor);
+  if (input.sort && input.sort !== "newest") params.set("sort", input.sort);
   const response = await artCatalogueFetch(`/v1/artworks?${params.toString()}`);
   if (!response.ok) {
     throw new ArtApiBffError("upstream", `Art catalogue request failed (${response.status})`);
@@ -155,6 +163,19 @@ export async function fetchArtChannelArtworkBySlug(
     throw new ArtApiBffError("upstream", `Art artwork request failed (${response.status})`);
   }
   return readValidatedJson(response, parsePublicArtworkDetail, "artwork detail");
+}
+
+/** Works behind each filter option on lax.art, with the other filters applied. */
+export async function fetchArtChannelArtworkFacets(
+  input: ArtArtworkListQuery,
+): Promise<PublicArtworkFacetCounts> {
+  const response = await artCatalogueFetch(
+    `/v1/artwork-facets?${artworkFilterParams(input).toString()}`,
+  );
+  if (!response.ok) {
+    throw new ArtApiBffError("upstream", `Art facet request failed (${response.status})`);
+  }
+  return readValidatedJson(response, parsePublicArtworkFacetCounts, "artwork facets");
 }
 
 export async function fetchArtChannelArtworkObjectTypes(): Promise<PublicArtworkObjectTypeFacetList> {

@@ -7,7 +7,12 @@ import {
   type ArtworkObjectType,
 } from "./artwork-catalogue-params";
 
-export type ArtworkFilterOption<T extends string = string> = { value: T; label: string };
+export type ArtworkFilterOption<T extends string = string> = {
+  value: T;
+  label: string;
+  /** Works the option would give with the other filters; absent when counts did not load. */
+  count?: number | undefined;
+};
 
 /**
  * Drawer order follows Figma 541:6507 (Sort, Artist), then the facets with data. Figma's

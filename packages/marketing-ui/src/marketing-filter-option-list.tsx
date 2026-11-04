@@ -1,13 +1,15 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import { Checkbox } from "@auction/ui/components/checkbox";
-import { Label } from "@auction/ui/components/label";
-import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
+import { RadioGroup } from "@auction/ui/components/radio-group";
+import { MarketingFilterCheckboxRow } from "./marketing-filter-checkbox-row.js";
+import { MarketingFilterRadioRow } from "./marketing-filter-radio-row.js";
 
 export type MarketingFilterOption = {
   value: string;
   label: string;
+  /** Works the option would give with the other filters; absent when counts are not offered. */
+  count?: number | undefined;
 };
 
 /**
@@ -28,9 +30,6 @@ export type MarketingFilterOptionListProps = {
   className?: string;
 };
 
-const rowClass = "flex min-h-11 items-center gap-3";
-const labelClass = "flex-1 cursor-pointer py-2 font-body text-sm font-normal text-on-surface";
-
 /** Checkbox or radio list shared by toolbar dropdowns and drawer facet groups. */
 export function MarketingFilterOptionList({
   legend,
@@ -49,17 +48,16 @@ export function MarketingFilterOptionList({
         onValueChange={(value) => onChange([value])}
         className={cn("gap-0", className)}
       >
-        {options.map((option) => {
-          const id = `${idPrefix}-${option.value || "any"}`;
-          return (
-            <div key={option.value} className={rowClass}>
-              <RadioGroupItem id={id} value={option.value} />
-              <Label htmlFor={id} className={labelClass}>
-                {option.label}
-              </Label>
-            </div>
-          );
-        })}
+        {options.map((option) => (
+          <MarketingFilterRadioRow
+            key={option.value}
+            id={`${idPrefix}-${option.value || "any"}`}
+            value={option.value}
+            label={option.label}
+            count={option.count}
+            checked={option.value === (selected[0] ?? "")}
+          />
+        ))}
       </RadioGroup>
     );
   }
@@ -71,22 +69,20 @@ export function MarketingFilterOptionList({
         const id = `${idPrefix}-${option.value}`;
         const checked = selected.includes(option.value);
         return (
-          <div key={option.value} className={rowClass}>
-            <Checkbox
-              id={id}
-              checked={checked}
-              onCheckedChange={(next) =>
-                onChange(
-                  next === true
-                    ? [...selected, option.value]
-                    : selected.filter((value) => value !== option.value),
-                )
-              }
-            />
-            <Label htmlFor={id} className={labelClass}>
-              {option.label}
-            </Label>
-          </div>
+          <MarketingFilterCheckboxRow
+            key={option.value}
+            id={id}
+            label={option.label}
+            count={option.count}
+            checked={checked}
+            onCheckedChange={(next) =>
+              onChange(
+                next
+                  ? [...selected, option.value]
+                  : selected.filter((value) => value !== option.value),
+              )
+            }
+          />
         );
       })}
     </fieldset>

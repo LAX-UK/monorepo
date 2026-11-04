@@ -22,6 +22,8 @@ function createCatalogueDeps() {
         priceBands: [],
         sizes: [],
         techniques: [],
+        objectTypes: [],
+        saleStates: [],
       }),
       listPublicCategories: async () => ({ items: [] }),
       getPublicCategory: async () => null,
@@ -41,6 +43,8 @@ describe("artworks routes", () => {
       priceBands: [{ key: "under-50", count: 4 }],
       sizes: [{ key: "small", count: 4 }],
       techniques: [{ value: "Screenprint", count: 4 }],
+      objectTypes: [],
+      saleStates: [],
     }));
     deps.catalogue.countArtworkFacets = countArtworkFacets;
     const app = createShopApiApp({ deps, logger: false });
@@ -338,6 +342,8 @@ describe("artworks routes", () => {
         priceBands: [],
         sizes: [],
         techniques: [],
+        objectTypes: [],
+        saleStates: [],
       }),
     });
     const app = createShopApiApp({ deps, logger: false });
