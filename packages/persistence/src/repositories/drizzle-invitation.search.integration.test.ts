@@ -92,7 +92,7 @@ describe.skipIf(!HAS_DB)("containsPattern against PostgreSQL (integration)", () 
     const db = createDb(process.env.DATABASE_URL!);
     const matches = async (text: string) => {
       const result = await db.execute(
-        sql`select t from (values ('50%'), ('500'), ('a_b'), ('axb'), ('c\d'), ('cd')) as v(t) where t ilike ${containsPattern(text)} order by t`,
+        sql`select t from (values ('50%'), ('500'), ('a_b'), ('axb'), ('c' || chr(92) || 'd'), ('cd')) as v(t) where t ilike ${containsPattern(text)} order by t`,
       );
       return ((result as unknown as { rows: { t: string }[] }).rows ?? []).map((row) => row.t);
     };
