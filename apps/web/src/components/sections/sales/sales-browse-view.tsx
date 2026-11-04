@@ -34,9 +34,7 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
         </>
       }
       hero={
-        <section
-          className={cn(MARKETING_PAGE_SHELL, "pt-12 pb-8 sm:pt-16 sm:pb-10 lg:pt-20 lg:pb-0")}
-        >
+        <section className={cn(MARKETING_PAGE_SHELL, "pt-4 pb-8 sm:pt-6 sm:pb-10 lg:pt-8 lg:pb-0")}>
           <div className="flex flex-col gap-10 sm:gap-12 lg:gap-12">
             <SalesHeroHeader />
             {vm.featuredVms.length > 0 ? (
@@ -90,9 +88,10 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
             {vm.listState === "filteredEmpty" ? (
               <SalesCalendarEmpty vm={vm} />
             ) : (
-              <>
+              <div className="flex flex-col">
+                {/* The list is the page's job: on phones the invitation follows it. */}
                 {!vm.session ? (
-                  <MarketingBidPromoCta className="mb-6 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40" />
+                  <MarketingBidPromoCta className="order-2 mt-8 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 md:order-none md:mt-0 md:mb-6 dark:border-outline-variant/30 dark:bg-surface-container-low/40" />
                 ) : null}
                 <SalesBrowseResults
                   initialView={vm.calendarView}
@@ -101,7 +100,7 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
                   gridVms={vm.gridVms}
                   rowVms={vm.rowVms}
                 />
-              </>
+              </div>
             )}
             <SalesCalendarPagination
               state={vm.calendarState}

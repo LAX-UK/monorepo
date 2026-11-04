@@ -2,13 +2,12 @@ import { describe, expect, it } from "vitest";
 import { saleLifecycleActions } from "./sale-lifecycle-actions";
 
 describe("saleLifecycleActions", () => {
-  it("invites registration and following while a sale can still take bids", () => {
-    for (const status of ["scheduled", "active"] as const) {
-      expect(saleLifecycleActions(status)).toEqual({
-        register: true,
-        follow: true,
-      });
-    }
+  it("invites registration and following before a sale opens", () => {
+    expect(saleLifecycleActions("scheduled")).toEqual({ register: true, follow: true });
+  });
+
+  it("keeps registration but drops following once the sale is live", () => {
+    expect(saleLifecycleActions("active")).toEqual({ register: true, follow: false });
   });
 
   it("offers no register or notify action once the sale has ended", () => {
