@@ -5,7 +5,7 @@ import {
   formatLondonTimeWithZone,
   formatLondonWhen,
 } from "@/lib/datetime/london-time";
-import { formatEstimateRange, formatMoney } from "@/lib/format-currency";
+import { formatEstimateRangeWhole, formatMoney } from "@/lib/format-currency";
 import { type LotCardLineModel, lotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
@@ -114,7 +114,11 @@ export function aggregateSaleEstimateTotal(
   if (!currency || withEstimate === 0) return null;
 
   try {
-    const range = formatEstimateRange({ low: String(lowSum), high: String(highSum), currency });
+    const range = formatEstimateRangeWhole({
+      low: String(lowSum),
+      high: String(highSum),
+      currency,
+    });
     if (withEstimate < lots.length) {
       return `${range} (from ${withEstimate} lots)`;
     }

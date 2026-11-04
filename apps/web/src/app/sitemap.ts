@@ -26,6 +26,7 @@ const STATIC_PATHS = [
   "/about",
   "/buy",
   "/sell",
+  "/sell/how-to-sell",
   "/sell/estate",
   "/sell/corporate",
   "/sell/prints",

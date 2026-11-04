@@ -2,7 +2,6 @@ import { ArtworkAboutEditions } from "@/components/artwork/artwork-about-edition
 import { ArtworkArtistBlock } from "@/components/artwork/artwork-artist-block";
 import { ArtworkBuyBox } from "@/components/artwork/artwork-buy-box.client";
 import { ArtworkGallery } from "@/components/artwork/artwork-gallery.client";
-import { ArtworkKeyFacts } from "@/components/artwork/artwork-key-facts";
 import { ArtworkMoreAbout } from "@/components/artwork/artwork-more-about.client";
 import { ArtworkPurchaseFacts } from "@/components/artwork/artwork-purchase-facts";
 import { ArtworkSpecList } from "@/components/artwork/artwork-spec-list";
@@ -158,11 +157,7 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
                   {vm.artistName}
                 </Link>
               </p>
-              {vm.keyFacts.length === 0 && vm.sizeSummary ? (
-                <p className="shop-product__size">{vm.sizeSummary}</p>
-              ) : null}
             </header>
-            <ArtworkKeyFacts facts={vm.keyFacts} />
 
             {purchasable && vm.purchase ? (
               <ArtworkBuyBox

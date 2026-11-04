@@ -5,6 +5,7 @@ import { MarketingStickyBidBar } from "@/components/marketing/marketing-sticky-b
 import { SaleLifecycleBadge } from "@/components/marketing/sale-lifecycle-badge";
 import { SaleroomMobileSummaryBar } from "@/components/marketing/saleroom-mobile-summary-bar";
 import { AddSaleToCalendarButton } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
+import { useSalePhoneBarVisible } from "@/hooks/use-sale-phone-bar-visible";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { formatLondonWhen } from "@/lib/datetime/london-time";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
@@ -76,6 +77,7 @@ export function SaleMobileSummaryBar({
   canParticipate = true,
 }: Props) {
   const saleroomLive = useSaleroomLive();
+  const heroActionsScrolledOut = useSalePhoneBarVisible();
   const reactiveLiveEndIso = useActiveSaleCountdownEndIso({
     status,
     endTime: end,
@@ -117,6 +119,9 @@ export function SaleMobileSummaryBar({
       />
     );
   }
+
+  // The hero's own actions are on screen first; the bar takes over once they scroll out.
+  if (!heroActionsScrolledOut) return null;
 
   const isUpcoming = status === "scheduled" || status === "draft";
   const target = isUpcoming ? start : end;

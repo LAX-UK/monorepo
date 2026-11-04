@@ -15,6 +15,7 @@ import { registerShopAuthPlugin } from "./plugins/shop-auth.js";
 import { registerAdminArtistApplicationRoutes } from "./routes/admin/v1/admin-artist-applications.routes.js";
 import { registerAdminArtistIdentityRoutes } from "./routes/admin/v1/admin-artist-identity.routes.js";
 import { registerAdminArtistRoutes } from "./routes/admin/v1/admin-artists.routes.js";
+import { registerAdminArtworkRegisterRoutes } from "./routes/admin/v1/admin-artwork-register.routes.js";
 import { registerAdminEditorialRoutes } from "./routes/admin/v1/admin-editorial.routes.js";
 import { registerAdminEnquiryRoutes } from "./routes/admin/v1/admin-enquiries.routes.js";
 import { registerAdminGuestRoutes } from "./routes/admin/v1/admin-guests.routes.js";
@@ -187,6 +188,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminSavedViewRoutes(adminScope, options.deps.admin.savedViews);
         void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
         void registerAdminGuestRoutes(adminScope, options.deps.admin);
+        void registerAdminArtworkRegisterRoutes(adminScope, options.deps.admin.artworkRegister);
         void registerAdminReleaseAlertRoutes(adminScope, options.deps.admin.releaseAlertSummary);
         void registerAdminArtistApplicationRoutes(
           adminScope,

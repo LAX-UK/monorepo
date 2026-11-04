@@ -1053,6 +1053,11 @@ export type {
   PrivateSaleEnquiryDetail,
 } from "./marketing-enquiry.repository.js";
 export type {
+  EnquiryErasureCounts,
+  EnquiryErasureTarget,
+  IEnquiryErasureRepository,
+} from "./enquiry-erasure.repository.js";
+export type {
   IPurchaseProblemRepository,
   NewPurchaseProblem,
   PurchaseProblemRecord,
@@ -1178,12 +1183,22 @@ export type {
 } from "./artwork-register.js";
 
 export type {
+  ArtworkRegisterArtistCount,
+  IArtworkRegisterQueue,
+  QueuedConflict,
+  RegisterQueueFilter,
+  RegisterQueuePage,
+} from "./artwork-register-queue.js";
+
+export type {
   IZohoArtworkSyncReport,
+  IZohoArtworkSyncRunReader,
   IZohoArtworkSyncWatermark,
   ZohoArtworkSyncMode,
   ZohoArtworkSyncOutcome,
   ZohoArtworkSyncOutcomeInput,
   ZohoArtworkSyncOutcomeKind,
+  ZohoArtworkSyncRunSummary,
   ZohoArtworkSyncSummary,
 } from "./zoho-artwork-sync.js";
 

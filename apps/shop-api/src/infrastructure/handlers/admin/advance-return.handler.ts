@@ -11,6 +11,7 @@ import { withAdminIdempotency } from "../../../application/admin/with-admin-idem
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
+import { notifySellerReturnClosed } from "./notify-seller-return-closed.js";
 import { applyReturnedEditionStock } from "./returned-edition-stock.js";
 
 export type AdvanceReturnCommand = {
@@ -150,6 +151,13 @@ export function createAdvanceReturnHandler(deps: {
               payload: { schemaVersion: 1, orderId: line.orderId, editionId: row.editionId },
             });
           }
+          await notifySellerReturnClosed(db, tx, {
+            returnId: row.id,
+            editionId: row.editionId,
+            orderLineId: row.orderLineId,
+            sellerPartyId: line.sellerPartyId,
+            listingStatus: stock.listingStatus,
+          });
           return { returnId: row.id, status: "received", onSale: stock.onSale };
         },
       }),

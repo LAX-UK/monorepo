@@ -43,6 +43,8 @@ describe("getStaffSessionView", () => {
         "editorial.write",
         "editorial.publish",
         "artist_application.review",
+        "artwork_register.read",
+        "artwork_register.review",
       ].sort(),
     );
   });

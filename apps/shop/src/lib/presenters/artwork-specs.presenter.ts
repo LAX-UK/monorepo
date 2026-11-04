@@ -21,13 +21,6 @@ export function artworkSizeLines(artwork: SizeFacts): string[] {
   return text ? [text] : [];
 }
 
-/** "50 × 40 cm (19.7 × 15.7 in)" under the title, or the catalogued text; null when unknown. */
-export function artworkSizeSummary(artwork: SizeFacts): string | null {
-  const [first, second] = artworkSizeLines(artwork);
-  if (!first) return null;
-  return second ? `${first} (${second})` : first;
-}
-
 /**
  * The "Details" list, in a fixed order, from the fields the catalogue holds. A field with no
  * value is left out, so the list never shows an empty label.

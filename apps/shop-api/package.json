@@ -26,6 +26,7 @@
     "print:test-policy-env": "tsx src/scripts/print-test-policy-env.ts"
   },
   "dependencies": {
+    "@auction/artwork-register-contracts": "workspace:*",
     "@auction/auth": "workspace:*",
     "@auction/branding": "workspace:*",
     "@auction/connect": "workspace:*",
@@ -34,6 +35,7 @@
     "@auction/lax-ecosystem": "workspace:*",
     "@auction/object-storage": "workspace:*",
     "@auction/observability": "workspace:*",
+    "@auction/persistence": "workspace:*",
     "@auction/shop-contracts": "workspace:*",
     "@auction/shop-domain": "workspace:*",
     "@auction/stripe-connect": "workspace:*",

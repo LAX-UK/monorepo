@@ -39,12 +39,28 @@ describe("an audit event", () => {
       name: "Payment provider",
       email: null,
       kind: "system",
+      source: "Automated: stripe webhook",
     });
     expect(auditActor({ actorSubjectId: "system:other" }).name).toBe("System");
     expect(
       auditActor({ actorSubjectId: "sub-1", actorName: "Sam Lee", actorEmail: "sam@lax.art" }),
-    ).toEqual({ name: "Sam Lee", email: "sam@lax.art", kind: "person" });
-    expect(auditActor({ actorSubjectId: "sub-1" }).name).toBe("Unknown staff member");
+    ).toEqual({ name: "Sam Lee", email: "sam@lax.art", kind: "person", source: null });
+    expect(auditActor({ actorSubjectId: "sub-1" }).name).toBe("Former staff member");
+  });
+
+  it("reads script and seed actors as System with their source", () => {
+    expect(auditActor({ actorSubjectId: "seed:local-admin-staff" })).toEqual({
+      name: "System",
+      email: null,
+      kind: "system",
+      source: "Script: local admin staff",
+    });
+    expect(auditActor({ actorSubjectId: "ops:sam@lax.art" })).toMatchObject({
+      name: "System",
+      kind: "system",
+      source: "Operations script, run by sam@lax.art",
+    });
+    expect(auditActor({ actorSubjectId: "system:identity-purge" }).name).toBe("LAX scheduler");
   });
 
   it("lists what changed in words, with ids as copyable facts", () => {
