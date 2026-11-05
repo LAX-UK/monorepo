@@ -137,7 +137,7 @@ export function FromZohoRecord({
           />
         }
         title={detail.title}
-        status={<WhereItIsChip chip={detail.whereItIs.chip} />}
+        status={isPrint ? undefined : <WhereItIsChip chip={detail.whereItIs.chip} />}
         meta={
           <>
             <MetaItem label="Stock code">{detail.stockCode}</MetaItem>
