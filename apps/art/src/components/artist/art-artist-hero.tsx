@@ -1,6 +1,7 @@
-import { ArtArtistFollowButton } from "@/components/favorites/art-artist-follow-button.client";
+import { ArtArtistFollowControl } from "@/components/favorites/art-artist-follow-control.client";
 import { ArtHeroSignal } from "@/components/header/art-hero-signal.client";
 import type { ArtistPageVm } from "@/lib/artist/artist-page.composer";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import { ART_HERO_UNDER_HEADER_CLASS } from "@/lib/layout/art-header-chrome.vm";
 import {
   MarketingArtistCrossLinks,
@@ -42,10 +43,12 @@ export function ArtArtistHero({ vm, pageUrl }: { vm: ArtistPageVm; pageUrl: stri
         }
         actions={
           <>
-            <ArtArtistFollowButton
+            <ArtArtistFollowControl
               slug={vm.slug}
               name={vm.name}
               initialFollowing={vm.following}
+              initialEmailsOn={vm.followEmailsOn}
+              manageHref={laxAccountUrl("alerts")}
               auth={vm.favoriteAuth}
               {...(onMedia ? { className: ON_MEDIA_CONTROL } : {})}
             />

@@ -18,6 +18,7 @@ import {
   artworkCatalogueState,
   artworkPublishBlockers,
   summariseEditionRun,
+  zohoCatalogueOf,
 } from "@auction/shop-domain";
 import { type SQL, and, asc, count, eq, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -377,6 +378,7 @@ export function toAdminArtworkDetail(input: {
       saleState: artwork.saleState,
       printPricePence: artwork.printPricePence,
       editionFactsConfirmed: input.run?.factsConfirmed != null,
+      zohoCatalogue: zohoCatalogueOf(artwork),
     }),
     publishedAt: artwork.publishedAt?.toISOString() ?? null,
     archivedAt: artwork.archivedAt?.toISOString() ?? null,

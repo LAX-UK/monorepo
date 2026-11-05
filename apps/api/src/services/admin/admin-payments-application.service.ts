@@ -4,13 +4,31 @@ import type { Result } from "neverthrow";
 import type { AuthzError } from "../../lib/errors.js";
 import type { IAdminPaymentsApplicationService } from "../interfaces/admin-routes.js";
 import type { IPaymentAdminService } from "../interfaces/payment-service.js";
+import type { IUnappliedMoneyHandling } from "../payment/unapplied-money-handling.service.js";
 import type { AdminPaymentListQueryService } from "./admin-payment-list-query.service.js";
 
 export class AdminPaymentsApplicationService implements IAdminPaymentsApplicationService {
   constructor(
     private readonly payments: IPaymentAdminService,
     private readonly paymentListQuery: AdminPaymentListQueryService,
+    private readonly unappliedMoney: IUnappliedMoneyHandling,
   ) {}
+
+  markUnappliedMoneyHandled(
+    adminUserId: string,
+    userRole: string,
+    dedupeKey: string,
+    userStaffRoles: StaffRoles | undefined,
+    reason: string,
+  ): Promise<Result<void, AuthzError>> {
+    return this.unappliedMoney.markHandled({
+      actorUserId: adminUserId,
+      role: userRole,
+      staffRoles: userStaffRoles,
+      dedupeKey,
+      reason,
+    });
+  }
 
   releaseManualReviewForCapture(
     adminUserId: string,

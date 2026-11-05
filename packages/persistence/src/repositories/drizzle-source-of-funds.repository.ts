@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { payment, sourceOfFunds } from "@auction/db/schema";
-import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, notInArray, sql } from "drizzle-orm";
 import { ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES } from "../interfaces/source-of-funds-settlement.types.js";
 import type {
   CreateSourceOfFundsCaseInput,
@@ -276,15 +276,18 @@ export class DrizzleSourceOfFundsRepository implements ISourceOfFundsRepository 
 
   async sumActiveBuyerSettlementPence(
     userId: string,
-    excludePaymentId?: string,
+    excludePaymentIds?: string | readonly string[],
     conn?: Database,
   ): Promise<number> {
     const conditions = [
       eq(payment.buyerId, userId),
       inArray(payment.status, [...ACTIVE_BUYER_SETTLEMENT_PAYMENT_STATUSES]),
     ];
-    if (excludePaymentId) {
-      conditions.push(ne(payment.id, excludePaymentId));
+    // The invoices being paid now are counted once, as the amount being paid, never again here.
+    const excluded =
+      typeof excludePaymentIds === "string" ? [excludePaymentIds] : (excludePaymentIds ?? []);
+    if (excluded.length > 0) {
+      conditions.push(notInArray(payment.id, [...excluded]));
     }
     const [row] = await this.conn(conn)
       .select({

@@ -211,9 +211,14 @@ function verifyStaticContracts() {
 
 function runFixtureVerification() {
   verifyStaticContracts();
-  for (const [packageName] of focusedTests) {
-    run("pnpm", ["--filter", `${packageName}^...`, "run", "build"]);
-  }
+  // One turbo invocation builds every package the focused tests depend on. Turbo replays
+  // cached builds (shared from the build-packages CI job / remote cache) and still rebuilds on a miss.
+  run("pnpm", [
+    "turbo",
+    "run",
+    "build",
+    ...focusedTests.map(([packageName]) => `--filter=${packageName}^...`),
+  ]);
   for (const [packageName, tests] of focusedTests) {
     run("pnpm", ["--filter", packageName, "exec", "vitest", "run", ...tests]);
   }
@@ -264,6 +269,8 @@ async function runLiveVerification() {
       "lax.staff.tools.read",
       "lax.selling.read",
       "lax.selling.write",
+      "lax.alerts.read",
+      "lax.alerts.write",
       "phone",
     ],
     token_endpoint_auth_methods_supported: ["client_secret_basic", "client_secret_post", "none"],

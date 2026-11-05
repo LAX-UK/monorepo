@@ -16,7 +16,3 @@ export type {
   IRefundReconcileCronRunner,
   IStalePaymentMaintenance,
 } from "./ports.js";
-export {
-  expireStalePaymentsWithPorts,
-  type PaymentMaintenanceCronPorts,
-} from "./expire-stale-payments.js";

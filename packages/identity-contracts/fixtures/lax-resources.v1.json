@@ -3,7 +3,14 @@
     "lax-bid-api": {
       "id": "lax-bid-api",
       "uri": "https://api.lax.bid",
-      "allowedScopes": ["bid.read", "bid.write", "lax.portfolio.read", "lax.staff.tools.read"]
+      "allowedScopes": [
+        "bid.read",
+        "bid.write",
+        "lax.portfolio.read",
+        "lax.alerts.read",
+        "lax.alerts.write",
+        "lax.staff.tools.read"
+      ]
     },
     "lax-ws": {
       "id": "lax-ws",
@@ -19,7 +26,9 @@
         "shop.admin",
         "lax.portfolio.read",
         "lax.selling.read",
-        "lax.selling.write"
+        "lax.selling.write",
+        "lax.alerts.read",
+        "lax.alerts.write"
       ]
     }
   },
@@ -31,6 +40,8 @@
     "phone",
     "bid.read",
     "bid.write",
+    "lax.alerts.read",
+    "lax.alerts.write",
     "lax.portfolio.read",
     "lax.selling.read",
     "lax.selling.write",

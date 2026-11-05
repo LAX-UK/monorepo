@@ -16,26 +16,12 @@ import type {
   ResourceTokenProvider,
   SessionHandle,
 } from "../ports/portfolio-gateway";
+import { withDeadline } from "./with-deadline";
 
 /** A product that does not answer in this time is reported unavailable; the page must not hang on it. */
 export const PRODUCT_READ_TIMEOUT_MS = 4_000;
 
 type ParsedBody<Row> = { rows: readonly Row[]; partial?: boolean | undefined } | null;
-
-/**
- * Bounds the whole read, token exchange included, because the exchange has no abort signal of
- * its own. The signal also cancels the HTTP request when the deadline passes.
- */
-function withDeadline<T>(ms: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  const deadline = new Promise<never>((_resolve, reject) => {
-    controller.signal.addEventListener("abort", () => reject(new Error("deadline")), {
-      once: true,
-    });
-  });
-  return Promise.race([run(controller.signal), deadline]).finally(() => clearTimeout(timer));
-}
 
 /**
  * Calls each product's portfolio routes with its own audience-bound token, in parallel. Every

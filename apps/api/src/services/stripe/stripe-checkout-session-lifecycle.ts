@@ -31,9 +31,14 @@ export type RenewCheckoutSessionOutcome =
   | { kind: "already_complete" }
   | { kind: "unavailable"; error: string };
 
+/** How many expired sessions in a row a renewal may step over before giving up. */
+const MAX_RENEWALS = 3;
+
 /**
- * Creates a Checkout Session (idempotent on `paymentId`), then renews with a fresh
- * idempotency key when Stripe returns an expired or unusable session.
+ * Creates a Checkout Session (idempotent on `paymentId`), then renews it when Stripe returns an
+ * expired or unusable one. The renewal key is derived from the session it replaces, so two
+ * requests renewing at once (two tabs, a double click) get the same new session, never two
+ * payable ones.
  */
 export async function createOrRenewCheckoutSession(
   gateway: IStripePaymentGateway,
@@ -42,28 +47,18 @@ export async function createOrRenewCheckoutSession(
   create: (idempotencyKey: string) => Promise<CreateCheckoutSessionResult>,
 ): Promise<RenewCheckoutSessionOutcome> {
   const baseKey = checkoutSessionIdempotencyKey(rail, paymentId);
-  let created = await create(baseKey);
-  let stripeSession = await gateway.retrieveCheckoutSession(created.sessionId);
-
-  if (stripeSession.status === "complete") {
-    return { kind: "already_complete" };
+  let key = baseKey;
+  for (let attempt = 0; attempt <= MAX_RENEWALS; attempt += 1) {
+    const created = await create(key);
+    const stripeSession = await gateway.retrieveCheckoutSession(created.sessionId);
+    if (stripeSession.status === "complete") return { kind: "already_complete" };
+    if (isCheckoutSessionUsable(stripeSession)) return { kind: "ready", session: created };
+    key = renewalIdempotencyKey(baseKey, created.sessionId);
   }
+  return { kind: "unavailable", error: "Stripe checkout session is not open" };
+}
 
-  if (isCheckoutSessionUsable(stripeSession)) {
-    return { kind: "ready", session: created };
-  }
-
-  const renewKey = `${baseKey}:renewed:${Date.now()}`;
-  created = await create(renewKey);
-  stripeSession = await gateway.retrieveCheckoutSession(created.sessionId);
-
-  if (stripeSession.status === "complete") {
-    return { kind: "already_complete" };
-  }
-
-  if (!isCheckoutSessionUsable(stripeSession)) {
-    return { kind: "unavailable", error: "Stripe checkout session is not open" };
-  }
-
-  return { kind: "ready", session: created };
+/** The key for the session that replaces `expiredSessionId`: the same for every caller. */
+export function renewalIdempotencyKey(baseKey: string, expiredSessionId: string): string {
+  return `${baseKey}:renewed:${expiredSessionId}`;
 }

@@ -3,6 +3,7 @@ import { lot, sale } from "@auction/db/schema";
 import { and, asc, eq, gt, inArray, isNull } from "drizzle-orm";
 import type {
   AuctionOfferDraftLot,
+  AuctionOfferDraftLotSummary,
   AuctionOfferSale,
   IAuctionOfferReader,
 } from "../../interfaces/artwork-register.js";
@@ -33,6 +34,19 @@ export class DrizzleAuctionOfferReader implements IAuctionOfferReader {
           isNull(lot.deletedAt),
           inArray(lot.status, [...OPEN_LOT_STATUSES]),
         ),
+      )
+      .orderBy(asc(lot.createdAt))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async findDraftLotForRegister(registerId: string): Promise<AuctionOfferDraftLotSummary | null> {
+    const [row] = await this.db
+      .select({ lotId: lot.id, saleId: lot.saleId, saleTitle: sale.title })
+      .from(lot)
+      .leftJoin(sale, eq(sale.id, lot.saleId))
+      .where(
+        and(eq(lot.artworkRegisterId, registerId), isNull(lot.deletedAt), eq(lot.status, "draft")),
       )
       .orderBy(asc(lot.createdAt))
       .limit(1);

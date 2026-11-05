@@ -65,6 +65,6 @@ describe("buildHomeSections", () => {
         hangSale({ id: "n", status: "scheduled", startTime: new Date("2026-11-10T18:00:00.000Z") }),
       ],
     });
-    expect(buildHomeSections(upcoming).alerts).toBe(true);
+    expect(buildHomeSections(upcoming).alerts).toEqual({ thumbnails: [] });
   });
 });

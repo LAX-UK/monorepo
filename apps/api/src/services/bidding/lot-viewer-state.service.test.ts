@@ -125,7 +125,8 @@ describe("LotViewerStateService.forLot", () => {
     const view = await svc.forLot({ actor: owner, lotId: "lot-1" });
     expect(view?.position).toBe("won");
     expect(view?.purchase).toMatchObject({ id: "pay-1", status: "due" });
-    expect(view?.purchase?.dueAt).toBe("2026-11-08T12:00:00.000Z");
+    // Due at the end of the seventh London day after it was raised.
+    expect(view?.purchase?.dueAt).toBe("2026-11-08T23:59:59.999Z");
   });
 
   it("leaves the purchase out for a lot the account did not win", async () => {

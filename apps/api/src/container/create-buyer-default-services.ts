@@ -62,8 +62,10 @@ export function createBuyerDefaultServices(input: {
   const paymentReminderService = new PaymentReminderService({
     store: new DrizzlePaymentReminderStore(db),
     compliance: payments.settlementCompliancePolicy,
-    dispatcher: platform.notificationDispatcher,
+    outbox: platform.notificationOutboxService,
     factory: platform.notificationFactory,
+    recipients: payments.invoiceRecipients,
+    eligibility: payments.paymentEligibility,
   });
 
   return { buyerDefaultService, paymentReminderService };

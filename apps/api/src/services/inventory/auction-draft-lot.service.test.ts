@@ -41,6 +41,7 @@ function setup(
   over: {
     register?: ArtworkRegisterEntry | null;
     existing?: { lotId: string; saleId: string | null; status: "draft" } | null;
+    draft?: { lotId: string; saleId: string | null; saleTitle: string | null } | null;
     sales?: Array<{ id: string; title: string; startsAt: Date; endsAt: Date }>;
     seller?: string | null;
     artists?: Array<{ id: string; displayName: string }>;
@@ -64,6 +65,7 @@ function setup(
         ],
       ),
       findOpenLotForRegister,
+      findDraftLotForRegister: vi.fn().mockResolvedValue(over.draft ?? null),
     },
     register: {
       findById: vi.fn().mockResolvedValue(over.register === undefined ? entry() : over.register),
@@ -87,7 +89,34 @@ describe("AuctionDraftLotService.listSales", () => {
   });
 });
 
+describe("AuctionDraftLotService.findDraft", () => {
+  it("answers with the draft lot and its sale, or nothing", async () => {
+    const draft = { lotId: "lot-1", saleId: SALE_ID, saleTitle: "Winter sale" };
+    expect(await setup({ draft }).service.findDraft(REGISTER_ID)).toEqual(draft);
+    expect(await setup().service.findDraft(REGISTER_ID)).toBeNull();
+  });
+});
+
 describe("AuctionDraftLotService.createDraft", () => {
+  it("refuses an artwork Zoho shows as reserved, without making a lot", async () => {
+    const { service, create } = setup({ register: entry({ catalogueStatus: "Reserved" }) });
+    const result = await service.createDraft(request);
+    expect(result).toMatchObject({ ok: false, status: 409 });
+    expect(result.ok ? "" : result.refusal.message).toMatch(/reserved/);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("still returns the lot it already made when Zoho later shows the artwork as reserved", async () => {
+    const { service } = setup({
+      register: entry({ catalogueStatus: "Reserved" }),
+      existing: { lotId: "lot-1", saleId: SALE_ID, status: "draft" },
+    });
+    expect(await service.createDraft(request)).toEqual({
+      ok: true,
+      data: { lotId: "lot-1", saleId: SALE_ID, created: false },
+    });
+  });
+
   it("makes a draft lot in the chosen sale, linked to the register and filled from the artwork", async () => {
     const { service, create } = setup({ artists: [{ id: "artist-1", displayName: "A. Artist" }] });
     const outcome = await service.createDraft(request);
@@ -191,10 +220,16 @@ describe("AuctionDraftLotService.createDraft", () => {
       await setup({ register: entry({ kind: "print" }) }).service.createDraft(request),
     ).toMatchObject({ status: 409, refusal: { error: "artwork_offered_elsewhere" } });
     const sold = await setup({
-      register: entry({ offer: { state: "sold", ref: null } }),
+      register: entry({ offer: { state: "sold", ref: { kind: "shop_artwork", id: "a" } } }),
     }).service.createDraft(request);
     expect(sold).toMatchObject({ status: 409 });
-    expect((sold as { refusal: { message: string } }).refusal.message).toMatch(/already been sold/);
+    expect((sold as { refusal: { message: string } }).refusal.message).toMatch(/has been sold/);
+    const soldInGallery = await setup({
+      register: entry({ offer: { state: "sold", ref: { kind: "gallery_sale", id: "z-1" } } }),
+    }).service.createDraft(request);
+    expect((soldInGallery as { refusal: { message: string } }).refusal.message).toMatch(
+      /sold in the gallery/,
+    );
     const privateSale = await setup({
       register: entry({ offer: { state: "private_sale", ref: { kind: "private_sale", id: "p" } } }),
     }).service.createDraft(request);

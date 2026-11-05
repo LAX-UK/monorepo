@@ -425,6 +425,7 @@ export function createContainer(env: Env): Container {
     payments: {
       tierLimits: payments.paymentTierPolicy.limitsSnapshot,
       compliance: payments.settlementCompliancePolicy,
+      eligibility: payments.paymentEligibility,
       groupCheckout: payments.paymentGroupCheckout,
     },
   });

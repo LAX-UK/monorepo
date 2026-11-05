@@ -15,6 +15,8 @@ export type InventoryPeerClientConfig = {
   clientId: string;
   clientSecret: string;
   fetchImpl?: typeof fetch;
+  /** How long to wait for an answer; a read that must not hold a page up asks for less. */
+  timeoutMs?: number;
 };
 
 export type InventoryPeerClient = {
@@ -51,7 +53,7 @@ export function createInventoryPeerClient(config: InventoryPeerClientConfig): In
           ...(body === undefined ? {} : { "content-type": "application/json" }),
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: AbortSignal.timeout(config.timeoutMs ?? REQUEST_TIMEOUT_MS),
       });
     } catch (error) {
       throw new InventoryPeerUnavailableError(error instanceof Error ? error.name : "network");

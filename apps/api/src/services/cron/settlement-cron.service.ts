@@ -49,9 +49,6 @@ export class SettlementCronService {
   }
 
   async ensureLotInvoice(lotId: string) {
-    if (this.env.XERO_API_WRITES_DISABLED) {
-      return { created: false, reason: "xero_api_writes_disabled", lotId };
-    }
     const data = await this.lotInvoiceInitiationService.ensureForLot(lotId);
     return data;
   }

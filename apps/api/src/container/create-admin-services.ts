@@ -191,6 +191,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     attentionFeedReader,
     itemSubmissionAdminApi,
     paymentService: paymentAdminService,
+    unappliedMoneyHandling: payments.unappliedMoneyHandling,
     adminPaymentListQueryService,
     lotService,
     adminLotBrowseService,

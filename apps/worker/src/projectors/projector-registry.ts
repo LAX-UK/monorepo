@@ -51,6 +51,7 @@ import {
 } from "./unsold-choice-deadline.js";
 import { UNSOLD_FOLLOW_UP_PROJECTOR, processUnsoldFollowUp } from "./unsold-follow-up.js";
 import { createXeroProjector } from "./xero-projector.js";
+import { createZohoArtworkListingProjector } from "./zoho-artwork-listing-projector.js";
 import { createZohoArtworkWritebackProjector } from "./zoho-artwork-writeback-projector.js";
 import { createZohoProjector } from "./zoho-projector.js";
 
@@ -303,6 +304,7 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
       },
     },
     createZohoArtworkWritebackProjector(),
+    createZohoArtworkListingProjector(),
   ];
 
   return new ProjectorRegistry(projectors);

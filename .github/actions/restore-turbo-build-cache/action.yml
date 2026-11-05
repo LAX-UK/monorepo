@@ -1,0 +1,19 @@
+name: Restore shared Turborepo build cache
+description: >-
+  Downloads the local Turborepo cache produced by the build-packages job so that
+  `turbo run build` in this job replays workspace package builds instead of re-running tsc.
+  A missing or failed download is harmless: turbo simply rebuilds on a cache miss.
+runs:
+  using: composite
+  steps:
+    - name: Download shared turbo cache
+      id: download
+      continue-on-error: true
+      uses: actions/download-artifact@v4
+      with:
+        name: turbo-cache-packages
+        path: .turbo/cache
+    - name: Report shared cache status
+      if: steps.download.outcome != 'success'
+      shell: bash
+      run: echo "::notice::Shared turbo cache not restored; this job will build workspace packages itself."

@@ -13,9 +13,10 @@ import {
   PURCHASE_LIST_LIMIT,
   type PurchasePaymentRole,
   addMoneyStrings,
+  invoiceDueAt,
   summariseAmountsOwed,
 } from "@auction/domain";
-import { INVOICE_PAYMENT_DUE_DAYS, type PortfolioRow } from "@auction/types";
+import type { PortfolioRow } from "@auction/types";
 import { PURCHASE_STATE_LABEL } from "./purchase-labels";
 import { purchaseProblemHref } from "./purchase-problem";
 import {
@@ -143,15 +144,21 @@ export type PurchaseSources = {
   showWonBy?: boolean;
 };
 
-const DAY_MONTH = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
-const DAY_MONTH_LONG = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" });
+const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  timeZone: "Europe/London",
+});
+const DAY_MONTH_LONG = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  timeZone: "Europe/London",
+});
 
 function dueDate(row: PortfolioRow, facts: AccountPurchaseFacts | null = null): Date {
   if (facts?.invoice.dueAt) return facts.invoice.dueAt;
   const from = row.payment?.createdAt ? new Date(row.payment.createdAt) : row.lot.endTime;
-  const due = new Date(from);
-  due.setUTCDate(due.getUTCDate() + INVOICE_PAYMENT_DUE_DAYS);
-  return due;
+  return invoiceDueAt(new Date(from));
 }
 
 function noteFor(

@@ -1,5 +1,6 @@
 import {
   type ArtworkRegisterEntry,
+  BID_NOT_CONNECTED_MESSAGE,
   InventoryPeerRefusedError,
   InventoryPeerUnavailableError,
 } from "@auction/artwork-register-contracts";
@@ -39,21 +40,38 @@ const original = (over: Partial<OriginalForMove> = {}): OriginalForMove => ({
 const entry = (over: Partial<ArtworkRegisterEntry> = {}): ArtworkRegisterEntry =>
   ({
     id: REGISTER_ID,
+    zohoProductId: "z-1",
     kind: "original",
     stockCode: "LAX-ORI-PH-GAC-26-0001",
+    title: "Tidal margin IV",
+    artist: { zohoArtistId: "7", name: "Zoho Artist", code: "ZA" },
+    medium: "Gouache",
+    dimensions: "40 x 30 cm",
+    year: 2024,
+    imageRefs: ["z1.jpg", "z2.jpg", "z1.jpg"],
+    catalogueStatus: "Available",
     offer: { state: "lax_art", ref: { kind: "shop_artwork", id: ARTWORK_ID } },
     ...over,
   }) as ArtworkRegisterEntry;
 
-function setup(
-  over: {
-    original?: OriginalForMove | null;
-    entry?: ArtworkRegisterEntry | null;
-    sales?: Array<{ id: string; title: string; startsAt: string }>;
-    createDraftLot?: () => Promise<unknown>;
-    withdraw?: () => Promise<void>;
-  } = {},
-) {
+/** A record with no lax.art listing: held, and nothing for the register path to take down. */
+const heldEntry = (over: Partial<ArtworkRegisterEntry> = {}) =>
+  entry({ offer: { state: "held", ref: null }, ...over });
+
+type Setup = {
+  /** The lax.art listing; null for a record with none. */
+  original?: OriginalForMove | null;
+  entry?: ArtworkRegisterEntry | null;
+  sales?: Array<{ id: string; title: string; startsAt: string }>;
+  createDraftLot?: () => Promise<unknown>;
+  listSales?: () => Promise<unknown>;
+  findDraftLot?: () => Promise<unknown>;
+  withdraw?: () => Promise<void>;
+};
+
+function setup(over: Setup = {}) {
+  const found = over.original === undefined ? original() : over.original;
+  const register = over.entry === undefined ? entry() : over.entry;
   const withdrawFromLaxArt = vi.fn(over.withdraw ?? (async () => undefined));
   const createDraftLot = vi.fn(
     over.createDraftLot ?? (async () => ({ lotId: LOT_ID, saleId: SALE_ID, created: true })),
@@ -61,24 +79,25 @@ function setup(
   const recordMoveConfirmed = vi.fn().mockResolvedValue({ status: "recorded" });
   const service = new OriginalMoveService({
     originals: {
-      findById: vi.fn().mockResolvedValue(over.original === undefined ? original() : over.original),
-      findByZohoProductId: vi.fn(),
+      findById: vi.fn().mockResolvedValue(found),
+      findByZohoProductId: vi.fn().mockResolvedValue(found),
     },
     register: {
-      findByZohoProductId: vi
-        .fn()
-        .mockResolvedValue(over.entry === undefined ? entry() : over.entry),
+      findById: vi.fn().mockResolvedValue(register),
+      findByZohoProductId: vi.fn().mockResolvedValue(register),
     },
     history: { recordMoveConfirmed },
     auction: {
-      listSales: vi
-        .fn()
-        .mockResolvedValue(
-          over.sales ?? [
-            { id: SALE_ID, title: "Winter sale", startsAt: "2026-12-01T10:00:00.000Z" },
-          ],
-        ),
+      listSales: (over.listSales ??
+        vi
+          .fn()
+          .mockResolvedValue(
+            over.sales ?? [
+              { id: SALE_ID, title: "Winter sale", startsAt: "2026-12-01T10:00:00.000Z" },
+            ],
+          )) as never,
       createDraftLot: createDraftLot as never,
+      findDraftLot: (over.findDraftLot ?? (async () => null)) as never,
     },
     withdrawFromLaxArt,
     resolveImageUrl: (value) => (value ? `https://media.example/${value}` : null),
@@ -87,50 +106,152 @@ function setup(
   return { service, withdrawFromLaxArt, createDraftLot, recordMoveConfirmed };
 }
 
-const command = {
-  artworkId: ARTWORK_ID,
-  saleId: SALE_ID,
-  startingPrice: "250.00",
-  actorSubjectId: "user-1",
-};
+const terms = { saleId: SALE_ID, startingPrice: "250.00", actorSubjectId: "user-1" };
+const command = { artworkId: ARTWORK_ID, ...terms };
+const registerCommand = { registerId: REGISTER_ID, ...terms };
+
+const messages = (assessment: { blockers: Array<{ message: string }> }) =>
+  assessment.blockers.map((blocker) => blocker.message).join(" ");
 
 describe("OriginalMoveService.assess", () => {
   it("says an original on lax.art can move, with its stock code", async () => {
     expect(await setup().service.assess(ARTWORK_ID)).toEqual({
+      registerId: REGISTER_ID,
       artworkId: ARTWORK_ID,
       title: "Blue room",
       stockCode: "LAX-ORI-PH-GAC-26-0001",
       onLaxArt: true,
+      laxArtDraft: false,
+      draftLot: null,
+      holdingLotId: null,
       eligible: true,
-      reasons: [],
+      blockers: [],
     });
   });
 
-  it("gives every reason in words for staff", async () => {
+  it("gives every reason in words for staff, each with the link that goes with it", async () => {
     const result = await setup({
       original: original({ openOriginalSale: true }),
       entry: entry({ offer: { state: "bid_sale", ref: { kind: "bid_lot", id: LOT_ID } } }),
     }).service.assess(ARTWORK_ID);
     expect(result.eligible).toBe(false);
-    expect(result.reasons).toHaveLength(2);
-    expect(result.reasons.join(" ")).toMatch(/reserved/);
-    expect(result.reasons.join(" ")).toMatch(/already in a LAX Bid sale/);
+    expect(result.blockers).toHaveLength(2);
+    expect(messages(result)).toMatch(/reserved/);
+    expect(messages(result)).toMatch(/in a LAX Bid sale/);
+    expect(result.blockers[1]?.link).toEqual({
+      label: "Open lot in LAX Bid",
+      target: "bid_lot",
+    });
+    expect(result.holdingLotId).toBe(LOT_ID);
   });
 
   it("refuses an artwork with no register record, and an edition run", async () => {
-    expect((await setup({ entry: null }).service.assess(ARTWORK_ID)).reasons[0]).toMatch(
-      /not in the artwork register/,
+    const unlinked = await setup({ entry: null }).service.assess(ARTWORK_ID);
+    expect(unlinked.eligible).toBe(false);
+    expect(messages(unlinked)).toMatch(/not in the artwork register/);
+    expect(unlinked.registerId).toBeNull();
+    const run = await setup({ original: original({ runKind: "limited" }) }).service.assess(
+      ARTWORK_ID,
     );
-    expect(
-      (await setup({ original: original({ runKind: "limited" }) }).service.assess(ARTWORK_ID))
-        .reasons[0],
-    ).toMatch(/Only originals/);
+    expect(messages(run)).toMatch(/Prints are sold in runs/);
   });
 
   it("is a 404 for an artwork that does not exist", async () => {
     await expect(setup({ original: null }).service.assess(ARTWORK_ID)).rejects.toMatchObject({
       statusCode: 404,
     });
+  });
+});
+
+describe("OriginalMoveService.assessRegister", () => {
+  it("says a record with no lax.art listing can go straight to a draft lot", async () => {
+    const result = await setup({ original: null, entry: heldEntry() }).service.assessRegister(
+      REGISTER_ID,
+    );
+    expect(result).toMatchObject({
+      registerId: REGISTER_ID,
+      artworkId: null,
+      title: "Tidal margin IV",
+      onLaxArt: false,
+      laxArtDraft: false,
+      eligible: true,
+      blockers: [],
+    });
+  });
+
+  it("notes a lax.art draft, which stays a draft and does not block", async () => {
+    const result = await setup({
+      original: original({ onLaxArt: false }),
+      entry: heldEntry(),
+    }).service.assessRegister(REGISTER_ID);
+    expect(result).toMatchObject({ eligible: true, laxArtDraft: true, onLaxArt: false });
+  });
+
+  it("names the reason for each place or state that refuses it", async () => {
+    const cases: Array<[Partial<ArtworkRegisterEntry>, RegExp]> = [
+      [{ kind: "print" }, /Prints are sold in runs/],
+      [{ catalogueStatus: "Reserved" }, /reserved/],
+      [{ catalogueStatus: "Sold" }, /sold in the gallery/],
+      [{ offer: { state: "sold", ref: { kind: "bid_lot", id: LOT_ID } } }, /has been sold/],
+      [{ offer: { state: "bid_sale", ref: { kind: "bid_lot", id: LOT_ID } } }, /LAX Bid sale/],
+      [
+        { offer: { state: "private_sale", ref: { kind: "private_sale", id: "p1" } } },
+        /private sale/,
+      ],
+    ];
+    for (const [over, expected] of cases) {
+      const result = await setup({ original: null, entry: heldEntry(over) }).service.assessRegister(
+        REGISTER_ID,
+      );
+      expect(result.eligible).toBe(false);
+      expect(messages(result)).toMatch(expected);
+    }
+  });
+
+  it("shows the draft lot LAX Bid already holds, and carries on when LAX Bid cannot answer", async () => {
+    const lot = { lotId: LOT_ID, saleId: SALE_ID, saleTitle: "Winter sale" };
+    const withLot = await setup({
+      original: null,
+      entry: heldEntry(),
+      findDraftLot: async () => lot,
+    }).service.assessRegister(REGISTER_ID);
+    expect(withLot.draftLot).toEqual({ lotId: LOT_ID, saleTitle: "Winter sale" });
+
+    const unreachable = await setup({
+      original: null,
+      entry: heldEntry(),
+      findDraftLot: async () => {
+        throw new InventoryPeerUnavailableError("network");
+      },
+    }).service.assessRegister(REGISTER_ID);
+    expect(unreachable).toMatchObject({ draftLot: null, eligible: true });
+  });
+
+  it("is a 404 for a record that does not exist", async () => {
+    await expect(
+      setup({ original: null, entry: null }).service.assessRegister(REGISTER_ID),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
+});
+
+describe("OriginalMoveService.listSales", () => {
+  it("lists the sales that can take a lot", async () => {
+    expect(await setup().service.listSales()).toEqual({
+      connected: true,
+      sales: [{ id: SALE_ID, title: "Winter sale", startsAt: "2026-12-01T10:00:00.000Z" }],
+    });
+  });
+
+  it("says so when LAX Bid is not set up here, instead of failing", async () => {
+    const { service } = setup({
+      listSales: async () => {
+        throw new InventoryPeerRefusedError(
+          { error: "not_configured", message: BID_NOT_CONNECTED_MESSAGE },
+          503,
+        );
+      },
+    });
+    expect(await service.listSales()).toEqual({ connected: false, sales: [] });
   });
 });
 
@@ -154,6 +275,7 @@ describe("OriginalMoveService.offerAtAuction", () => {
       saleId: SALE_ID,
       saleTitle: "Winter sale",
       withdrawnFromLaxArt: true,
+      created: true,
     });
     expect(order).toEqual(["lot", "withdraw", "record"]);
     expect(createDraftLot).toHaveBeenCalledWith(
@@ -166,6 +288,7 @@ describe("OriginalMoveService.offerAtAuction", () => {
           title: "Blue room",
           artistName: "A. Artist",
           year: 2021,
+          description: "A quiet interior.",
           imageUrls: ["https://media.example/k1.jpg", "https://media.example/k2.jpg"],
         }),
       }),
@@ -180,7 +303,9 @@ describe("OriginalMoveService.offerAtAuction", () => {
       record: {
         direction: "to_auction",
         saleId: SALE_ID,
+        saleTitle: "Winter sale",
         lotId: LOT_ID,
+        withdrawnFromLaxArt: true,
         consignorAgreed: true,
         confirmedBy: "staff:user-1",
       },
@@ -189,7 +314,10 @@ describe("OriginalMoveService.offerAtAuction", () => {
   });
 
   it("leaves an original that is not on lax.art alone", async () => {
-    const { service, withdrawFromLaxArt } = setup({ original: original({ onLaxArt: false }) });
+    const { service, withdrawFromLaxArt } = setup({
+      original: original({ onLaxArt: false }),
+      entry: heldEntry(),
+    });
     expect(await service.offerAtAuction(command)).toMatchObject({ withdrawnFromLaxArt: false });
     expect(withdrawFromLaxArt).not.toHaveBeenCalled();
   });
@@ -201,6 +329,12 @@ describe("OriginalMoveService.offerAtAuction", () => {
     await expect(service.offerAtAuction(command)).rejects.toBeInstanceOf(ShopDomainError);
     expect(createDraftLot).not.toHaveBeenCalled();
     expect(withdrawFromLaxArt).not.toHaveBeenCalled();
+  });
+
+  it("refuses an artwork with no register record", async () => {
+    const { service, createDraftLot } = setup({ entry: null });
+    await expect(service.offerAtAuction(command)).rejects.toThrow(/not in the artwork register/);
+    expect(createDraftLot).not.toHaveBeenCalled();
   });
 
   it("refuses a sale that is no longer offered", async () => {
@@ -247,7 +381,145 @@ describe("OriginalMoveService.offerAtAuction", () => {
     expect(first.message).toMatch(/draft lot is ready in Winter sale/);
     fail = false;
     createDraftLot.mockResolvedValueOnce({ lotId: LOT_ID, saleId: SALE_ID, created: false });
-    expect(await service.offerAtAuction(command)).toMatchObject({ lotId: LOT_ID });
+    expect(await service.offerAtAuction(command)).toMatchObject({ lotId: LOT_ID, created: false });
     expect(withdrawFromLaxArt).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("OriginalMoveService.offerRegisterAtAuction", () => {
+  const fromZoho = () => setup({ original: null, entry: heldEntry() });
+
+  it("makes a draft lot from Zoho's details, with nothing on lax.art to take down", async () => {
+    const { service, createDraftLot, withdrawFromLaxArt, recordMoveConfirmed } = fromZoho();
+    expect(await service.offerRegisterAtAuction(registerCommand)).toEqual({
+      lotId: LOT_ID,
+      saleId: SALE_ID,
+      saleTitle: "Winter sale",
+      withdrawnFromLaxArt: false,
+      created: true,
+    });
+    expect(createDraftLot).toHaveBeenCalledWith({
+      registerId: REGISTER_ID,
+      saleId: SALE_ID,
+      startingPrice: "250.00",
+      actor: "staff:user-1",
+      content: {
+        title: "Tidal margin IV",
+        artistName: "Zoho Artist",
+        medium: "Gouache",
+        dimensions: "40 x 30 cm",
+        year: 2024,
+        description: null,
+        provenance: null,
+        imageUrls: ["https://media.example/z1.jpg", "https://media.example/z2.jpg"],
+      },
+    });
+    expect(withdrawFromLaxArt).not.toHaveBeenCalled();
+    expect(recordMoveConfirmed).toHaveBeenCalledWith(
+      expect.objectContaining({
+        registerId: REGISTER_ID,
+        actor: "staff:user-1",
+        record: expect.objectContaining({
+          direction: "to_auction",
+          lotId: LOT_ID,
+          consignorAgreed: true,
+          confirmedBy: "staff:user-1",
+        }),
+      }),
+    );
+  });
+
+  it("takes a lax.art draft's description and provenance, and leaves the draft a draft", async () => {
+    const { service, createDraftLot, withdrawFromLaxArt } = setup({
+      original: original({ onLaxArt: false }),
+      entry: heldEntry(),
+    });
+    await service.offerRegisterAtAuction(registerCommand);
+    expect(createDraftLot).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.objectContaining({
+          description: "A quiet interior.",
+          provenance: "The artist",
+        }),
+      }),
+    );
+    expect(withdrawFromLaxArt).not.toHaveBeenCalled();
+  });
+
+  it("takes a live linked listing down, the same as from the artwork page", async () => {
+    const { service, withdrawFromLaxArt } = setup({ entry: entry() });
+    expect(await service.offerRegisterAtAuction(registerCommand)).toMatchObject({
+      withdrawnFromLaxArt: true,
+    });
+    expect(withdrawFromLaxArt).toHaveBeenCalledWith({
+      artworkId: ARTWORK_ID,
+      actorSubjectId: "user-1",
+    });
+  });
+
+  it("is safe to repeat: a second click or a retry gets the same lot and records it again", async () => {
+    const { service, createDraftLot, recordMoveConfirmed } = fromZoho();
+    const first = await service.offerRegisterAtAuction(registerCommand);
+    createDraftLot.mockResolvedValueOnce({ lotId: LOT_ID, saleId: SALE_ID, created: false });
+    recordMoveConfirmed.mockResolvedValueOnce({ status: "already_recorded" });
+    const second = await service.offerRegisterAtAuction(registerCommand);
+    expect(second).toEqual({ ...first, created: false });
+    expect(createDraftLot).toHaveBeenCalledTimes(2);
+  });
+
+  it("changes nothing when the artwork cannot be offered, and says why", async () => {
+    const cases: Array<[Partial<ArtworkRegisterEntry>, RegExp]> = [
+      [{ kind: "print" }, /Prints are sold in runs/],
+      [{ catalogueStatus: "Reserved" }, /reserved/],
+      [{ offer: { state: "sold", ref: { kind: "bid_lot", id: LOT_ID } } }, /has been sold/],
+      [{ offer: { state: "bid_sale", ref: { kind: "bid_lot", id: LOT_ID } } }, /LAX Bid sale/],
+    ];
+    for (const [over, expected] of cases) {
+      const { service, createDraftLot, recordMoveConfirmed } = setup({
+        original: null,
+        entry: heldEntry(over),
+      });
+      await expect(service.offerRegisterAtAuction(registerCommand)).rejects.toThrow(expected);
+      expect(createDraftLot).not.toHaveBeenCalled();
+      expect(recordMoveConfirmed).not.toHaveBeenCalled();
+    }
+  });
+
+  it("refuses when someone else moved the artwork after the dialog was checked", async () => {
+    const stale = setup({
+      original: null,
+      entry: heldEntry({
+        offer: { state: "private_sale", ref: { kind: "private_sale", id: "p" } },
+      }),
+    });
+    await expect(stale.service.offerRegisterAtAuction(registerCommand)).rejects.toThrow(
+      /private sale/,
+    );
+    expect(stale.createDraftLot).not.toHaveBeenCalled();
+  });
+
+  it("is a 404 for a record that does not exist", async () => {
+    const { service } = setup({ original: null, entry: null });
+    await expect(service.offerRegisterAtAuction(registerCommand)).rejects.toMatchObject({
+      statusCode: 404,
+    });
+  });
+
+  it("refuses a sale that is no longer offered, and LAX Bid being down keeps nothing half-done", async () => {
+    const closed = setup({ original: null, entry: heldEntry(), sales: [] });
+    await expect(closed.service.offerRegisterAtAuction(registerCommand)).rejects.toThrow(
+      /no longer open/,
+    );
+    const down = setup({
+      original: null,
+      entry: heldEntry(),
+      createDraftLot: async () => {
+        throw new InventoryPeerUnavailableError("network");
+      },
+    });
+    await expect(down.service.offerRegisterAtAuction(registerCommand)).rejects.toMatchObject({
+      statusCode: 502,
+    });
+    expect(down.recordMoveConfirmed).not.toHaveBeenCalled();
   });
 });

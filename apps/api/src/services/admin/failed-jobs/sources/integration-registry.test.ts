@@ -36,6 +36,11 @@ describe("Zoho artwork endpoints", () => {
       label: "Zoho artworks (write-back)",
       mayRepeat: false,
     });
+    expect(integrationEndpoint("delivery", "zoho_artwork_listing")).toMatchObject({
+      scope: "integrations.zoho",
+      label: "Zoho artworks (LAX listing)",
+      mayRepeat: false,
+    });
     expect(integrationEndpoint("webhook", "zoho_artwork")).toMatchObject({
       scope: "integrations.zoho",
       label: "Zoho artworks",
@@ -49,7 +54,7 @@ describe("Zoho artwork endpoints", () => {
     });
     expect(nameFilterFor("delivery", set("integrations.zoho"))).toEqual({
       mode: "in",
-      names: ["zoho", "zoho_artwork_writeback"],
+      names: ["zoho", "zoho_artwork_writeback", "zoho_artwork_listing"],
     });
     expect(nameFilterFor("webhook", set("integrations.zoho"))).toEqual({
       mode: "in",
