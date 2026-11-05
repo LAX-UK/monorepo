@@ -3993,6 +3993,24 @@ export async function runLegacyDemoSeed() {
     },
   ]);
 
+  // A confirmed telephone line for Room A's lot on the block, so the clerk console offers a
+  // telephone bid beside the paddle bid. Sale deletion cascades to it on a re-seed.
+  await db.insert(schema.telephoneBidBooking).values({
+    id: "d1000001-0000-4000-8000-000000000001",
+    saleId: S.hybridA,
+    userId: USER1_ID,
+    buyerLegalEntityId: LE.user1,
+    phoneE164: "+442079460958",
+    lotIds: [L.hybridA3],
+    reserveAltMax: "20000.00",
+    status: "confirmed",
+    clerkUserId: STAFF_AUCTION_MGR_ID,
+    approvedByUserId: STAFF_AUCTION_MGR_ID,
+    confirmedAt: new Date(now - 60 * 60_000),
+    createdAt: stamp,
+    updatedAt: stamp,
+  });
+
   // ── Admin review tasks ──────────────────────────────────────────────────────
   await db.insert(adminReviewTask).values([
     {
