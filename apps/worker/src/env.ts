@@ -151,6 +151,20 @@ const envSchema = z
      */
     ZOHO_ARTWORK_WRITEBACK_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
     /**
+     * The LAX listing on Zoho Products (where each original is today, with a link). `off` does
+     * nothing; `dry_run` reads LAX, lax.art and Zoho and logs what it would change, and the
+     * nightly pass reports it in LAX Admin; `live` writes. Never `live` unless set on purpose.
+     */
+    ZOHO_ARTWORK_LISTING_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
+    /** LAX Shop's API, for the inventory machine routes the listing reads lax.art through. */
+    SHOP_API_INVENTORY_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /** The credential pair LAX Shop and LAX Bid hold for the inventory machine routes. */
+    INVENTORY_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    INVENTORY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
+    /** lax.art and LAX Admin public addresses, for the link on the Zoho Product. */
+    LAX_ART_PUBLIC_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    LAX_ADMIN_PUBLIC_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    /**
      * LAX Bid email alerts. `off` does nothing; `dry_run` records matches and logs each digest
      * without sending; `on` sends. Run the seed command before leaving `off`.
      */
@@ -359,6 +373,26 @@ const envSchema = z
           "ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN are required when ZOHO_ARTWORK_WRITEBACK_MODE is live",
         path: ["ZOHO_ARTWORK_WRITEBACK_MODE"],
       });
+    }
+    if (e.ZOHO_ARTWORK_LISTING_MODE !== "off") {
+      const listingSettings = [
+        "ZOHO_CLIENT_ID",
+        "ZOHO_CLIENT_SECRET",
+        "ZOHO_REFRESH_TOKEN",
+        "SHOP_API_INVENTORY_BASE_URL",
+        "INVENTORY_MACHINE_CLIENT_ID",
+        "INVENTORY_MACHINE_CLIENT_SECRET",
+        "LAX_ART_PUBLIC_URL",
+        "LAX_ADMIN_PUBLIC_URL",
+      ] as const;
+      const missing = listingSettings.filter((key) => !e[key]);
+      if (missing.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${missing.join(", ")} required when ZOHO_ARTWORK_LISTING_MODE is not off`,
+          path: ["ZOHO_ARTWORK_LISTING_MODE"],
+        });
+      }
     }
     if (e.ZOHO_ARTWORK_SYNC_MODE !== "off" && !e.WEBHOOK_EVENTS_PROCESS) {
       ctx.addIssue({

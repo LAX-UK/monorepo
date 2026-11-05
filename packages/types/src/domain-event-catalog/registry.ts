@@ -369,7 +369,10 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "none",
   },
   "bid.proxy_cancelled": { consumers: ["notification_fanout"], piiClassification: "none" },
-  "sale.cancelled": { consumers: ["notification_fanout"], piiClassification: "none" },
+  "sale.cancelled": {
+    consumers: ["notification_fanout", "zoho_artwork_listing"],
+    piiClassification: "none",
+  },
   "sale_registration.decided": { consumers: ["notification_fanout"], piiClassification: "none" },
   "sale_registration.bid_limit_changed": {
     consumers: ["notification_fanout"],
@@ -395,25 +398,29 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "legal_entity.payout_bank_changed": { piiClassification: "none" },
   "kyc.verified": { piiClassification: "contains_pii" },
   "legal_entity.member_invited": { piiClassification: "contains_pii" },
-  "lot.activated": { schema: LotEventSchemas["lot.activated"], piiClassification: "none" },
+  "lot.activated": {
+    consumers: ["zoho_artwork_listing"],
+    schema: LotEventSchemas["lot.activated"],
+    piiClassification: "none",
+  },
   "lot.attached_to_sale": {
     schema: LotEventSchemas["lot.attached_to_sale"],
-    consumers: ["lot_lifecycle_snapshot"],
+    consumers: ["lot_lifecycle_snapshot", "zoho_artwork_listing"],
     piiClassification: "none",
   },
   "lot.cancelled": {
     schema: LotEventSchemas["lot.cancelled"],
-    consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot"],
+    consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot", "zoho_artwork_listing"],
     piiClassification: "none",
   },
   "lot.created": {
     schema: LotEventSchemas["lot.created"],
-    consumers: ["lot_lifecycle_snapshot"],
+    consumers: ["lot_lifecycle_snapshot", "zoho_artwork_listing"],
     piiClassification: "none",
   },
   "lot.detached_from_sale": {
     schema: LotEventSchemas["lot.detached_from_sale"],
-    consumers: ["lot_lifecycle_snapshot"],
+    consumers: ["lot_lifecycle_snapshot", "zoho_artwork_listing"],
     piiClassification: "none",
   },
   "lot.ended": {
@@ -424,12 +431,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
       "notification_fanout",
       "unsold_choice_deadline",
       "xero",
+      "zoho_artwork_listing",
     ],
     piiClassification: "none",
   },
   "lot.published": {
     schema: LotEventSchemas["lot.published"],
-    consumers: ["lot_lifecycle_snapshot"],
+    consumers: ["lot_lifecycle_snapshot", "zoho_artwork_listing"],
     piiClassification: "none",
   },
   "lot.buyer_defaulted": {
@@ -439,18 +447,23 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "lot.returned_to_inventory": {
     schema: LotEventSchemas["lot.returned_to_inventory"],
-    consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot"],
+    consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot", "zoho_artwork_listing"],
     piiClassification: "none",
   },
   "lot.soft_deleted": { schema: LotEventSchemas["lot.soft_deleted"], piiClassification: "none" },
   "lot.unpublished": {
     schema: LotEventSchemas["lot.unpublished"],
-    consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot"],
+    consumers: ["artwork_offer_lock", "lot_lifecycle_snapshot", "zoho_artwork_listing"],
     piiClassification: "none",
   },
   "lot.voided": {
     schema: LotEventSchemas["lot.voided"],
-    consumers: ["artwork_offer_lock", "lot_voided_anti_shilling", "notification_fanout"],
+    consumers: [
+      "artwork_offer_lock",
+      "lot_voided_anti_shilling",
+      "notification_fanout",
+      "zoho_artwork_listing",
+    ],
     piiClassification: "none",
   },
   "lot.withdrawal_declined": {
@@ -839,7 +852,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "shop.artwork.created": {
     schema: shopArtworkCreatedPayloadSchemaV1,
     producers: ["shop-api"],
-    consumers: ["zoho"],
+    consumers: ["zoho", "zoho_artwork_listing"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
   },
@@ -881,7 +894,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   "shop.artwork.updated": {
     schema: shopArtworkUpdatedPayloadSchemaV1,
     producers: ["shop-api"],
-    consumers: [],
+    consumers: ["zoho_artwork_listing"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
   },
@@ -990,10 +1003,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "none",
   },
+  "sale.published": { consumers: ["zoho_artwork_listing"] },
+  "sale.unpublished": { consumers: ["zoho_artwork_listing"] },
+  "sale.ended": { consumers: ["zoho_artwork_listing"] },
   "artwork_register.offer_changed": {
     schema: artworkRegisterOfferChangedPayloadSchemaV1,
     producers: ["packages/db"],
-    consumers: ["zoho_artwork_writeback"],
+    consumers: ["zoho_artwork_writeback", "zoho_artwork_listing"],
     idempotencyPolicy: "none",
     piiClassification: "operational",
   },

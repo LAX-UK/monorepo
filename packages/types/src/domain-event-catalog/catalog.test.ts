@@ -39,7 +39,7 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     });
   });
 
-  it("routes artwork register events to the Zoho artwork writeback only", () => {
+  it("routes artwork register events to the Zoho artwork writeback, and moves to the listing", () => {
     const base = {
       schemaVersion: 1,
       registerId: "11111111-1111-4111-8111-111111111111",
@@ -50,10 +50,17 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
       ["artwork_register.offer_changed", { ...base, fromState: "held", toState: "bid_sale" }],
       ["artwork_register.stock_code_assigned", base],
     ] as const) {
-      expect(DOMAIN_EVENT_REGISTRY[type].consumers).toEqual(["zoho_artwork_writeback"]);
+      expect(DOMAIN_EVENT_REGISTRY[type].consumers[0]).toBe("zoho_artwork_writeback");
       expect(DOMAIN_EVENT_REGISTRY[type].piiClassification).toBe("operational");
       expect(parseDomainEventPayload(type, 1, payload).ok).toBe(true);
     }
+    expect(DOMAIN_EVENT_REGISTRY["artwork_register.offer_changed"].consumers).toEqual([
+      "zoho_artwork_writeback",
+      "zoho_artwork_listing",
+    ]);
+    expect(DOMAIN_EVENT_REGISTRY["artwork_register.stock_code_assigned"].consumers).toEqual([
+      "zoho_artwork_writeback",
+    ]);
     expect(
       parseDomainEventPayload("artwork_register.offer_changed", 1, {
         ...base,
