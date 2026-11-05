@@ -26,6 +26,8 @@ export type PaymentRowLookup = {
   sellerLegalEntityId: string;
   status: string;
   amount: string;
+  stripeChargeId?: string | null;
+  everCaptured?: boolean;
 };
 
 export async function findPaymentRow(

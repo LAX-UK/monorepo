@@ -1,12 +1,16 @@
-import type { PublicArtworkDetail, PublicArtworkSummary } from "@auction/shop-contracts";
+import type {
+  PublicArtistDetail,
+  PublicArtworkDetail,
+  PublicArtworkEdition,
+  PublicArtworkSummary,
+} from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import { addToBasketErrorMessage } from "./add-to-basket-error";
 import {
   buildArtworkProductPage,
   buildGalleryImages,
-  buildRelatedEditions,
-  resolveArtworkClosingSurfaces,
-  selectRelatedEditions,
+  buildMoreBy,
+  selectMoreByEditions,
 } from "./artwork-product-page.vm";
 
 function summary(overrides: Partial<PublicArtworkSummary> = {}): PublicArtworkSummary {
@@ -41,7 +45,64 @@ function detail(overrides: Partial<PublicArtworkDetail> = {}): PublicArtworkDeta
   };
 }
 
+function artist(overrides: Partial<PublicArtistDetail> = {}): PublicArtistDetail {
+  return {
+    slug: "emmett-king",
+    name: "Emmett King",
+    discipline: null,
+    portraitUrl: null,
+    artworkCount: 3,
+    bio: null,
+    shortBio: null,
+    ...overrides,
+  } as PublicArtistDetail;
+}
+
 const ART = new URL("https://www.thelax.art/");
+
+const handSigned = {
+  numbering: "on_print",
+  signature: { kind: "hand_signed", medium: "pencil", place: "front_lower_margin" },
+  certificate: {
+    kind: "included",
+    issuer: "artist",
+    form: "paper",
+    arrives: { kind: "with_print" },
+    numberedToMatch: true,
+  },
+} as const;
+
+const unsigned = {
+  numbering: "none",
+  signature: { kind: "unsigned" },
+  certificate: { kind: "none" },
+} as const;
+
+function limited(overrides: Partial<PublicArtworkEdition> = {}): PublicArtworkEdition {
+  return {
+    run: { kind: "limited", size: 24 },
+    facts: handSigned,
+    proofsKept: { ap: 0, pp: 0, hc: 0 },
+    otherRuns: [],
+    ...overrides,
+  };
+}
+
+function page(
+  artwork: PublicArtworkDetail,
+  extra: Partial<Parameters<typeof buildArtworkProductPage>[0]> = {},
+) {
+  return buildArtworkProductPage({ artwork, artistEditions: [], artBaseUrl: ART, ...extra });
+}
+
+const more = (n: number, availability: "available" | "sold_out" = "available") =>
+  Array.from({ length: n }, (_, i) =>
+    summary({
+      slug: `other-${availability}-${i}`,
+      title: `Other ${i}`,
+      availability: { totalEditions: 24, state: availability },
+    }),
+  );
 
 describe("product page view model", () => {
   it("offers every image the API returns, in order, with the primary as a fallback", () => {
@@ -65,146 +126,274 @@ describe("product page view model", () => {
     expect(buildGalleryImages(detail({ imageUrl: null }))).toEqual([]);
   });
 
-  it("links the artist and the original to lax.art only when they can be linked", () => {
-    const linked = buildArtworkProductPage({
-      artwork: detail({ sourceOriginalSlug: "warm-basket-original" }),
-      artistEditions: [],
-      artBaseUrl: ART,
-    });
-    expect(linked.crossLinks).toEqual({
-      artistOnArtHref: "https://www.thelax.art/artists/emmett-king",
-      originalOnArtHref: "https://www.thelax.art/artworks/warm-basket-original",
-    });
-    expect(
-      buildArtworkProductPage({ artwork: detail(), artistEditions: [], artBaseUrl: ART }).crossLinks
-        .originalOnArtHref,
-    ).toBeNull();
-    expect(
-      buildArtworkProductPage({
-        artwork: detail({ sourceOriginalSlug: "warm-basket-original" }),
-        artistEditions: [],
-        artBaseUrl: null,
-      }).crossLinks,
-    ).toEqual({ artistOnArtHref: null, originalOnArtHref: null });
+  it("heads the buy column: the eyebrow from the facts, the title with its year, the artist", () => {
+    const vm = page(
+      detail({
+        edition: limited(),
+        yearCreated: 2025,
+        medium: "Giclée print",
+        printPaper: "cotton rag",
+        heightCm: 60,
+        widthCm: 45,
+      }),
+    );
+    expect(vm.eyebrow).toBe("Limited edition print");
+    expect(vm.year).toBe(2025);
+    expect(vm.artistHref).toBe("/artists/emmett-king");
+    expect(vm.metaLine).toBe("Giclée print on cotton rag · 60 × 45 cm (23.6 × 17.7 in)");
   });
 
-  it("reads the size, the buy block and the included list from the record", () => {
-    const vm = buildArtworkProductPage({ artwork: detail(), artistEditions: [], artBaseUrl: ART });
-    expect(vm.description).toBe("A still life.");
-    expect(vm.purchase).toMatchObject({
-      priceLabel: "£120",
-      vatNote: "Includes VAT",
-      editionSize: "Limited edition of 24",
-      editionShort: "Edition of 24",
-      availabilityLabel: "Available",
-    });
-    expect(vm.included[0]).toBe("Certificate of authenticity");
-    expect(vm.gallery.scale).not.toBeNull();
-    expect(vm.related).toBeNull();
+  it("words the eyebrow for an open edition and an artist's proof from the contract", () => {
+    expect(
+      page(detail({ edition: limited({ run: { kind: "open" }, facts: unsigned }) })).eyebrow,
+    ).toBe("Open edition print");
+    expect(
+      page(detail({ edition: limited({ run: { kind: "proof", proofType: "ap", size: 3 } }) }))
+        .eyebrow,
+    ).toBe("Artist's proof");
   });
 
-  it("introduces the artist from their Shop profile, with their editions and lax.art story", () => {
-    const vm = buildArtworkProductPage({
-      artwork: detail(),
-      artistEditions: [],
-      artBaseUrl: ART,
-      artistDetail: {
-        slug: "emmett-king",
-        name: "Emmett King",
-        discipline: "Painter",
-        bio: "A long biography.",
-        shortBio: " Paints still lifes in Margate. ",
-        portraitUrl: "/emmett.webp",
-        artworkCount: 3,
-      },
-    });
-    expect(vm.artist).toEqual({
-      name: "Emmett King",
-      discipline: "Painter",
-      summary: "Paints still lifes in Margate.",
-      portraitUrl: "/emmett.webp",
-      editionsHref: "/artists/emmett-king",
-      editionsLabel: "Editions by Emmett King",
-      laxArtHref: "https://www.thelax.art/artists/emmett-king",
-    });
-    const unread = buildArtworkProductPage({
-      artwork: detail(),
-      artistEditions: [],
-      artBaseUrl: null,
-    });
-    expect(unread.artist).toMatchObject({ summary: null, portraitUrl: null, laxArtHref: null });
-  });
-
-  it("shows other editions by the artist, available first, and only available ones when sold out", () => {
-    const items = [
-      summary({ slug: "warm-basket" }),
-      summary({ slug: "sold", availability: { totalEditions: 24, state: "sold_out" } }),
-      summary({ slug: "one" }),
-      summary({ slug: "two" }),
-    ];
-    expect(
-      selectRelatedEditions("warm-basket", items, { availableOnly: false }).map((i) => i.slug),
-    ).toEqual(["one", "two", "sold"]);
-    expect(
-      selectRelatedEditions("warm-basket", items, { availableOnly: true }).map((i) => i.slug),
-    ).toEqual(["one", "two"]);
+  it("leaves the meta line to what is known", () => {
+    expect(page(detail({ medium: null, heightCm: null, widthCm: null })).metaLine).toBeNull();
+    expect(page(detail({ medium: "Giclée print", heightCm: null, widthCm: null })).metaLine).toBe(
+      "Giclée print",
+    );
   });
 });
 
-describe("related editions row", () => {
-  const byArtist = (slugs: string[]) => slugs.map((slug) => summary({ slug }));
-  const byOthers = (slugs: string[]) =>
-    slugs.map((slug) => summary({ slug, artistName: "Mara Ellison", artistSlug: "mara-ellison" }));
+describe("sold out", () => {
+  it("leaves the image unchanged and the price visible", () => {
+    const soldOut = page(
+      detail({ edition: limited(), availability: { totalEditions: 24, state: "sold_out" } }),
+    );
+    const available = page(detail({ edition: limited() }));
+    expect(soldOut.gallery).toEqual(available.gallery);
+    expect(soldOut.purchase?.availability).toBe("sold_out");
+    expect(soldOut.eyebrow).toBe(available.eyebrow);
+  });
+});
 
-  it("shows more by the artist when they have a row's worth", () => {
-    const related = buildRelatedEditions({
-      artwork: detail(),
-      artistEditions: byArtist(["warm-basket", "one", "two", "three"]),
-      otherEditions: byOthers(["x"]),
-    });
-    expect(related?.title).toBe("More by Emmett King");
-    expect(related?.viewAll).toEqual({
-      srLabel: "editions by Emmett King",
-      href: "/artists/emmett-king",
-    });
-    expect(related?.items.map((i) => i.slug)).toEqual(["one", "two", "three"]);
+describe("About this edition", () => {
+  it("lists edition, signature, number and certificate, written by the shared contract", () => {
+    const facts = page(detail({ edition: limited() })).facts;
+    expect(facts?.rows).toEqual([
+      { label: "Edition", value: "Limited edition of 24" },
+      {
+        label: "Signature",
+        value: "Signed by hand in pencil by the artist, front lower margin",
+      },
+      {
+        label: "Number",
+        value:
+          "Numbered by hand on the print. Your number appears in your order once payment is confirmed.",
+      },
+      {
+        label: "Certificate",
+        value: "Certificate of authenticity from the artist, sent with your print",
+      },
+    ]);
+    expect(facts?.statement).toBe(
+      "A limited edition is a fixed number of prints from one image. No more will be made in this size and form.",
+    );
   });
 
-  it("tops a short row up with other editions on sale, as you might also like", () => {
-    const related = buildRelatedEditions({
-      artwork: detail(),
-      artistEditions: byArtist(["warm-basket", "one"]),
-      otherEditions: [
-        ...byOthers(["warm-basket", "one", "x", "y"]),
-        summary({ slug: "gone", availability: { totalEditions: 5, state: "sold_out" } }),
-        ...byOthers(["z", "w"]),
-      ],
+  it("adds the proofs row only when proofs were kept, never a remaining count", () => {
+    const kept = page(detail({ edition: limited({ proofsKept: { ap: 2, pp: 0, hc: 0 } }) })).facts;
+    expect(kept?.rows.at(-1)).toEqual({
+      label: "Proofs",
+      value: "The artist also kept 2 artist's proofs, outside the edition of 24.",
     });
-    expect(related?.title).toBe("You might also like");
-    expect(related?.viewAll.href).toBe("/artworks?availability=available");
-    expect(related?.items.map((i) => i.slug)).toEqual(["one", "x", "y", "z"]);
+    const none = page(detail({ edition: limited() })).facts;
+    expect(none?.rows.map((row) => row.label)).not.toContain("Proofs");
   });
 
-  it("leaves the row out when even that is too thin", () => {
-    expect(
-      buildRelatedEditions({
-        artwork: detail(),
-        artistEditions: byArtist(["warm-basket", "one"]),
-        otherEditions: byOthers(["x"]),
+  it("says 'Edition of 24' once on the page", () => {
+    const vm = page(detail({ edition: limited() }));
+    const shown = JSON.stringify([vm.eyebrow, vm.title, vm.metaLine, vm.facts, vm.about]);
+    expect(shown.match(/edition of 24/gi)?.length).toBe(1);
+  });
+
+  it("has no statement or other runs for an open edition", () => {
+    const facts = page(
+      detail({
+        edition: limited({
+          run: { kind: "open" },
+          facts: unsigned,
+          otherRuns: [
+            {
+              slug: "ap",
+              run: { kind: "proof", proofType: "ap", size: 3 },
+              facts: handSigned,
+              printPricePence: 65_000,
+              availability: "available",
+            },
+          ],
+        }),
       }),
+    ).facts;
+    expect(facts?.statement).toBeNull();
+    expect(facts?.alsoAvailable).toEqual([]);
+    expect(facts?.rows[0]).toEqual({ label: "Edition", value: "Open edition" });
+    expect(facts?.rows.find((row) => row.label === "Number")?.value).toBe("Not numbered");
+  });
+
+  it("names the other runs of a limited edition with a price or 'Sold out'", () => {
+    const facts = page(
+      detail({
+        edition: limited({
+          otherRuns: [
+            {
+              slug: "warm-basket-ap",
+              run: { kind: "proof", proofType: "ap", size: 3 },
+              facts: handSigned,
+              printPricePence: 65_000,
+              availability: "available",
+            },
+            {
+              slug: "warm-basket-open",
+              run: { kind: "open" },
+              facts: unsigned,
+              printPricePence: 9_000,
+              availability: "sold_out",
+            },
+          ],
+        }),
+      }),
+    ).facts;
+    expect(facts?.alsoAvailable).toEqual([
+      {
+        slug: "warm-basket-ap",
+        href: "/artworks/warm-basket-ap",
+        label: "As an artist's proof",
+        trailing: "£650",
+      },
+      {
+        slug: "warm-basket-open",
+        href: "/artworks/warm-basket-open",
+        label: "Unsigned, open edition",
+        trailing: "Sold out",
+      },
+    ]);
+  });
+
+  it("links the original on lax.art only when there is a source original to link to", () => {
+    const linked = page(
+      detail({ edition: limited(), sourceOriginalSlug: "warm-basket-original" }),
+    ).facts;
+    expect(linked?.originalOnArtHref).toBe("https://www.thelax.art/artworks/warm-basket-original");
+    expect(
+      page(detail({ edition: limited(), sourceOriginalSlug: null })).facts?.originalOnArtHref,
+    ).toBeNull();
+    expect(
+      page(detail({ edition: limited(), sourceOriginalSlug: "x" }), { artBaseUrl: null }).facts
+        ?.originalOnArtHref,
     ).toBeNull();
   });
 
-  it("offers only editions that can be bought from a sold-out page", () => {
-    const related = buildRelatedEditions({
-      artwork: detail({ availability: { totalEditions: 24, state: "sold_out" } }),
-      artistEditions: [
-        ...byArtist(["one", "two"]),
-        summary({ slug: "sold", availability: { totalEditions: 24, state: "sold_out" } }),
-      ],
-      otherEditions: byOthers(["x"]),
+  it("names only the run while the facts are unconfirmed, and falls back to the size on older APIs", () => {
+    const unconfirmed = page(detail({ edition: limited({ facts: null }) })).facts;
+    expect(unconfirmed?.rows).toEqual([{ label: "Edition", value: "Limited edition of 24" }]);
+    const older = page(detail()).facts;
+    expect(older?.rows[0]).toEqual({ label: "Edition", value: "Limited edition of 24" });
+    expect(
+      page(
+        detail({
+          eligibleForEditionAllocation: false,
+          availability: { totalEditions: 0, state: "sold_out" },
+        }),
+      ).facts,
+    ).toBeNull();
+  });
+});
+
+describe("About the work and the print", () => {
+  it("trims the description and lists medium, paper and sheet size, leaving out what is unknown", () => {
+    const vm = page(detail({ printPaper: "Somerset Satin 410gsm", printSize: "76 × 56 cm" }));
+    expect(vm.about.description).toBe("A still life.");
+    expect(vm.about.rows).toEqual([
+      { label: "Medium", value: "Giclée print" },
+      { label: "Paper", value: "Somerset Satin 410gsm" },
+      { label: "Sheet size", value: "76 × 56 cm" },
+    ]);
+    expect(page(detail({ medium: null, description: null })).about).toEqual({
+      description: null,
+      rows: [],
     });
-    expect(related?.items.map((i) => i.slug)).toEqual(["one", "two", "x"]);
+  });
+});
+
+describe("About the artist", () => {
+  it("counts the artist's editions and links lax.art when it is configured", () => {
+    const vm = page(detail(), {
+      artistEditionCount: 7,
+      artistDetail: artist({ shortBio: " Paints. " }),
+    });
+    expect(vm.artist).toMatchObject({
+      name: "Emmett King",
+      href: "/artists/emmett-king",
+      bio: "Paints.",
+      editionsLabel: "Editions by Emmett King (7)",
+      laxArtHref: "https://www.thelax.art/artists/emmett-king",
+      laxArtLabel: "Profile on lax.art",
+    });
+    expect(page(detail(), { artBaseUrl: null }).artist.laxArtHref).toBeNull();
+  });
+
+  it("has no bio or portrait without a profile", () => {
+    const vm = page(detail(), { artistDetail: null });
+    expect(vm.artist.bio).toBeNull();
+    expect(vm.artist.portraitUrl).toBeNull();
+    expect(vm.artist.editionsLabel).toBe("Editions by Emmett King (0)");
+  });
+});
+
+describe("More by the artist", () => {
+  const input = {
+    slug: "warm-basket",
+    artistName: "Emmett King",
+    artistHref: "/artists/emmett-king",
+  };
+
+  it("puts available editions first and leaves this one out", () => {
+    const items = [...more(1, "sold_out"), summary(), ...more(2, "available")];
+    expect(selectMoreByEditions("warm-basket", items).map((item) => item.slug)).toEqual([
+      "other-available-0",
+      "other-available-1",
+      "other-sold_out-0",
+    ]);
+  });
+
+  it("is hidden with no other edition", () => {
+    expect(buildMoreBy({ ...input, artistEditions: [summary()] })).toBeNull();
+  });
+
+  it("pairs one other edition with a text tile", () => {
+    const vm = buildMoreBy({ ...input, artistEditions: [summary(), ...more(1)] });
+    expect(vm?.items).toHaveLength(1);
+    expect(vm?.tile).toEqual({
+      label: "1 more edition by Emmett King",
+      href: "/artists/emmett-king",
+    });
+    expect(vm?.allLink).toBeNull();
+  });
+
+  it("makes a row of two or three", () => {
+    const vm = buildMoreBy({ ...input, artistEditions: more(3) });
+    expect(vm?.items).toHaveLength(3);
+    expect(vm?.tile).toBeNull();
+    expect(vm?.allLink).toBeNull();
+  });
+
+  it("makes a row of four then 'All N editions' for four or more", () => {
+    const vm = buildMoreBy({ ...input, artistEditions: more(5), artistEditionCount: 12 });
+    expect(vm?.items).toHaveLength(4);
+    expect(vm?.allLink).toEqual({
+      label: "All 12 editions by Emmett King",
+      href: "/artists/emmett-king",
+    });
+    expect(buildMoreBy({ ...input, artistEditions: more(5) })?.allLink?.label).toBe(
+      "All 6 editions by Emmett King",
+    );
   });
 });
 
@@ -226,21 +415,5 @@ describe("add to basket errors", () => {
     expect(addToBasketErrorMessage(null).message).toBe(
       "We could not add this edition to your basket. Try again.",
     );
-  });
-});
-
-describe("resolveArtworkClosingSurfaces", () => {
-  it("keeps the artist on the paper wall when the related row sits before the gallery team", () => {
-    expect(resolveArtworkClosingSurfaces({ hasRelated: true })).toEqual({
-      artist: "band",
-      related: "plain",
-      "gallery-team": "band",
-    });
-  });
-
-  it("puts the artist on the plain page when it would touch the gallery team band", () => {
-    const surfaces = resolveArtworkClosingSurfaces({ hasRelated: false });
-    expect(surfaces.artist).toBe("plain");
-    expect(surfaces["gallery-team"]).toBe("band");
   });
 });

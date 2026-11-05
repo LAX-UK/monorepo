@@ -49,13 +49,35 @@ export async function createOrRenewCheckoutSession(
   const baseKey = checkoutSessionIdempotencyKey(rail, paymentId);
   let key = baseKey;
   for (let attempt = 0; attempt <= MAX_RENEWALS; attempt += 1) {
-    const created = await create(key);
+    const created = await createWithKey(create, key);
     const stripeSession = await gateway.retrieveCheckoutSession(created.sessionId);
     if (stripeSession.status === "complete") return { kind: "already_complete" };
     if (isCheckoutSessionUsable(stripeSession)) return { kind: "ready", session: created };
     key = renewalIdempotencyKey(baseKey, created.sessionId);
   }
   return { kind: "unavailable", error: "Stripe checkout session is not open" };
+}
+
+/**
+ * Stripe refuses a key reused with different parameters (a checkout's lines changed in a release,
+ * within the key's 24 hours). That request is reissued under a key derived from the refused one,
+ * the same for every caller, so it neither fails for a day nor opens two sessions.
+ */
+async function createWithKey(
+  create: (idempotencyKey: string) => Promise<CreateCheckoutSessionResult>,
+  key: string,
+): Promise<CreateCheckoutSessionResult> {
+  try {
+    return await create(key);
+  } catch (err) {
+    if (!isIdempotencyParameterMismatch(err)) throw err;
+    return create(`${key}:reissued`);
+  }
+}
+
+export function isIdempotencyParameterMismatch(err: unknown): boolean {
+  const e = err as { type?: unknown; code?: unknown } | null;
+  return e?.type === "StripeIdempotencyError" && e.code !== "idempotency_key_in_use";
 }
 
 /** The key for the session that replaces `expiredSessionId`: the same for every caller. */

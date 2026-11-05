@@ -34,6 +34,7 @@ export function handleCustomerBalanceFundsAvailable(
           stripePaymentIntentId: null,
           stripeChargeId: null,
           stripeCustomerId: balance.customer,
+          stripeEventId: `${event.id}:${currency}`,
           amountCents,
           currency,
         },

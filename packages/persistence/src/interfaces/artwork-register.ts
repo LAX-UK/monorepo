@@ -22,7 +22,8 @@ export type RegisterEventType =
   | "conflict_recorded"
   | "conflict_resolved"
   | "zoho_writeback_recorded"
-  | "move_confirmed";
+  | "move_confirmed"
+  | "lax_art_draft_created";
 
 export type RegisterEvent = {
   id: string;
@@ -226,6 +227,19 @@ export interface IArtworkMoveHistory {
   recordMoveConfirmed(
     input: RecordMoveConfirmedInput,
   ): Promise<{ status: "not_found" | "recorded" }>;
+}
+
+export type RecordLaxArtDraftCreatedInput = {
+  registerId: string;
+  /** `staff:<user id>` of the person who made the draft. */
+  actor: RegisterActor;
+  artworkId: string;
+  now: Date;
+};
+
+/** Keeps "a lax.art draft was made from this record" in the register's history. */
+export interface IArtworkDraftHistory {
+  recordLaxArtDraftCreated(input: RecordLaxArtDraftCreatedInput): Promise<void>;
 }
 
 export type AuctionOfferSale = { id: string; title: string; startsAt: Date; endsAt: Date };

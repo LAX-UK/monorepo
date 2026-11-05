@@ -1,10 +1,6 @@
 import { FINANCE_ACCESS } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
-import {
-  alertFromBlockedCapture,
-  alertFromUnappliedMoney,
-  fanoutUnappliedMoney,
-} from "./unapplied-money-fanout.js";
+import { alertFromUnappliedMoney, fanoutUnappliedMoney } from "./unapplied-money-fanout.js";
 
 describe("unapplied money alert", () => {
   it("emails each finance member once per event, linking to the payment", async () => {
@@ -44,15 +40,5 @@ describe("unapplied money alert", () => {
         }),
       }),
     );
-  });
-
-  it("a blocked capture on a cancelled invoice alerts; on a refunded one the unapplied event does", () => {
-    expect(
-      alertFromBlockedCapture("pay-1", { statusBefore: "cancelled", amountCents: 100 }),
-    ).toMatchObject({
-      situation: "invoice_cancelled",
-      paymentId: "pay-1",
-    });
-    expect(alertFromBlockedCapture("pay-1", { statusBefore: "refunded" })).toBeNull();
   });
 });

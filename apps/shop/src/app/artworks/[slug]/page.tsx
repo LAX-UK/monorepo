@@ -1,14 +1,13 @@
-import { ArtworkAboutEditions } from "@/components/artwork/artwork-about-editions";
-import { ArtworkArtistBlock } from "@/components/artwork/artwork-artist-block";
+import { ArtworkAboutWork } from "@/components/artwork/artwork-about-work";
+import { ArtworkArtistSummary } from "@/components/artwork/artwork-artist-summary";
 import { ArtworkBuyBox } from "@/components/artwork/artwork-buy-box.client";
+import { ArtworkBuyColumn, ArtworkPriceBlock } from "@/components/artwork/artwork-buy-column";
+import { ArtworkEditionFacts } from "@/components/artwork/artwork-edition-facts";
 import { ArtworkGallery } from "@/components/artwork/artwork-gallery.client";
 import { ArtworkMoreAbout } from "@/components/artwork/artwork-more-about.client";
-import { ArtworkPurchaseFacts } from "@/components/artwork/artwork-purchase-facts";
-import { ArtworkSpecList } from "@/components/artwork/artwork-spec-list";
+import { ArtworkMoreBy } from "@/components/artwork/artwork-more-by";
 import { ArtworkUnavailablePanel } from "@/components/artwork/artwork-unavailable-panel";
-import { CatalogueGrid } from "@/components/catalogue-grid";
 import { ShopGalleryTeamBand } from "@/components/gallery-team/shop-gallery-team-band";
-import { ShopSection } from "@/components/layout/shop-section";
 import { ShopJsonLd } from "@/components/seo/shop-json-ld";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { SHOP_POLICY_PATHS, type ShopPolicySlug } from "@/content/policies/shop-policy-status";
@@ -25,7 +24,7 @@ import {
   isArtworkPurchasable,
   resolveArtworkUnavailableReason,
 } from "@/lib/presenters/artwork-commerce.presenter";
-import { presentDeliveryEstimate } from "@/lib/presenters/delivery-estimate.presenter";
+import { presentDeliveryLine } from "@/lib/presenters/delivery-estimate.presenter";
 import { artworkProductJsonLd } from "@/lib/seo/artwork-structured-data";
 import {
   fetchPublicArtistBySlug,
@@ -36,22 +35,15 @@ import { fetchArtworkInterestStatus } from "@/lib/shop-artwork-interest.server";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
-import { FOCUS_RING } from "@auction/branding";
-import {
-  MarketingArrowUpRightIcon,
-  MarketingCheckIcon,
-  MarketingDetailShell,
-} from "@auction/marketing-ui";
-import { cn } from "@auction/ui";
+import { MarketingDetailShell } from "@auction/marketing-ui";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 
 type ArtworkPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-/** Enough of the artist's editions to fill "Editions by {artist}" after leaving this one out. */
+/** Enough of the artist's editions to fill "More by {artist}" after leaving this one out. */
 const ARTIST_EDITIONS_FETCH = 9;
 
 export async function generateMetadata({ params }: ArtworkPageProps): Promise<Metadata> {
@@ -101,13 +93,10 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
       : undefined;
   const purchasable = isArtworkPurchasable(artwork);
   const unavailableReason = resolveArtworkUnavailableReason(artwork);
-  const [artistEditions, otherEditions, artistDetail, interestRead] = await Promise.all([
-    fetchPublicArtworks({ artistSlug: artwork.artistSlug, limit: ARTIST_EDITIONS_FETCH })
-      .then((list) => list.items)
-      .catch(() => []),
-    fetchPublicArtworks({ availability: "available", limit: ARTIST_EDITIONS_FETCH })
-      .then((list) => list.items)
-      .catch(() => []),
+  const [artistList, artistDetail, interestRead] = await Promise.all([
+    fetchPublicArtworks({ artistSlug: artwork.artistSlug, limit: ARTIST_EDITIONS_FETCH }).catch(
+      () => null,
+    ),
     fetchPublicArtistBySlug(artwork.artistSlug).catch(() => null),
     viewer.kind === "authenticated" && unavailableReason === "edition_sold_out"
       ? fetchArtworkInterestStatus(slug)
@@ -115,12 +104,12 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
   ]);
   const vm = buildArtworkProductPage({
     artwork,
-    artistEditions,
-    otherEditions,
+    artistEditions: artistList?.items ?? [],
+    artistEditionCount: artistList?.totalCount,
     artistDetail,
     artBaseUrl: loadShopArtBaseUrl(),
   });
-  const deliveryEstimate = presentDeliveryEstimate({
+  const deliveryLine = presentDeliveryLine({
     now: new Date(),
     times: loadCheckoutDeliveryTimes(),
   });
@@ -143,131 +132,59 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
         }}
         contentClassName="shop-detail-route"
       >
-        <article className="shop-product">
-          <div className="shop-product__media">
+        <article className="shop-edition">
+          <div className="shop-edition__stage">
             <ArtworkGallery title={vm.title} gallery={vm.gallery} />
           </div>
 
-          <div className="shop-product__summary">
-            <header className="shop-product__heading">
-              <p className="shop-product__eyebrow">Limited edition print</p>
-              <h1 className="shop-product__title">{vm.title}</h1>
-              <p className="shop-product__artist">
-                <Link href={vm.artistHref} className={cn("shop-inline-link", FOCUS_RING)}>
-                  {vm.artistName}
-                </Link>
-              </p>
-            </header>
-
-            {purchasable && vm.purchase ? (
-              <ArtworkBuyBox
-                slug={vm.slug}
-                title={vm.title}
-                artistName={vm.artistName}
-                imageUrl={primaryImageUrl}
-                purchase={vm.purchase}
-                inBasket={Boolean(basketLine)}
-                basketLineId={basketLine?.lineId ?? null}
-                signInHref={shopStorefrontLoginHref(returnTo)}
-                facts={
-                  <ArtworkPurchaseFacts
-                    deliveryLine={vm.purchase.deliveryLine}
-                    deliveryEstimate={deliveryEstimate}
-                    returnsLine={vm.purchase.returnsLine}
-                    deliveryHref={policyHref(linkablePolicies, "delivery")}
-                    returnsHref={policyHref(linkablePolicies, "returns")}
-                  />
-                }
-              />
-            ) : unavailableReason ? (
-              <div className="shop-buy shop-buy--sold-out">
-                {vm.purchase ? (
-                  <>
-                    <div className="shop-buy__price">
-                      <p className="shop-buy__amount">{vm.purchase.priceLabel}</p>
-                      <p className="shop-buy__vat">{vm.purchase.vatNote}</p>
-                    </div>
-                    <p className="shop-buy__edition">
-                      {vm.purchase.editionSize}
-                      <span aria-hidden="true"> · </span>
-                      <span className="shop-buy__availability" data-state="sold_out">
-                        Sold out
-                      </span>
-                    </p>
-                  </>
-                ) : null}
-                <ArtworkUnavailablePanel
-                  viewer={viewer}
-                  artworkSlug={artwork.slug}
-                  reason={unavailableReason}
-                  interestRead={interestRead}
+          <div className="shop-edition__buy">
+            <ArtworkBuyColumn vm={vm}>
+              {purchasable && vm.purchase ? (
+                <ArtworkBuyBox
+                  slug={vm.slug}
+                  title={vm.title}
+                  artistName={vm.artistName}
+                  imageUrl={primaryImageUrl}
+                  purchase={vm.purchase}
+                  inBasket={Boolean(basketLine)}
+                  basketLineId={basketLine?.lineId ?? null}
+                  signInHref={shopStorefrontLoginHref(returnTo)}
+                  deliveryLine={deliveryLine}
+                  deliveryHref={policyHref(linkablePolicies, "delivery")}
+                  editionLine={vm.basketLine}
                 />
-              </div>
-            ) : null}
-
-            {vm.specs.length > 0 ? (
-              <section className="shop-product__section" aria-labelledby="details-heading">
-                <h2 id="details-heading">Details</h2>
-                <ArtworkSpecList rows={vm.specs} />
-              </section>
-            ) : null}
-
-            <ArtworkAboutEditions />
-
-            <ArtworkMoreAbout>
-              {vm.description ? (
-                <section className="shop-product__section" aria-labelledby="about-work-heading">
-                  <h2 id="about-work-heading">About the work</h2>
-                  <p className="shop-product__prose">{vm.description}</p>
-                </section>
+              ) : unavailableReason ? (
+                <div className="shop-buy shop-buy--sold-out">
+                  {vm.purchase ? (
+                    <ArtworkPriceBlock
+                      priceLabel={vm.purchase.priceLabel}
+                      vatNote={vm.purchase.vatNote}
+                    />
+                  ) : null}
+                  <ArtworkUnavailablePanel
+                    viewer={viewer}
+                    artworkSlug={artwork.slug}
+                    reason={unavailableReason}
+                    interestRead={interestRead}
+                  />
+                </div>
               ) : null}
+            </ArtworkBuyColumn>
+          </div>
 
-              <section className="shop-product__section" aria-labelledby="included-heading">
-                <h2 id="included-heading">Included</h2>
-                <ul className="shop-product__included">
-                  {vm.included.map((item) => (
-                    <li key={item}>
-                      <MarketingCheckIcon className="shop-product__included-icon" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            </ArtworkMoreAbout>
-
-            {vm.crossLinks.originalOnArtHref ? (
-              <a
-                href={vm.crossLinks.originalOnArtHref}
-                className={cn("shop-original-link", FOCUS_RING)}
-              >
-                <span className="shop-original-link__text">
-                  <span className="shop-original-link__title">See the original at lax.art</span>
-                  <span className="shop-original-link__body">
-                    This edition is made from an original work by {vm.artistName}.
-                  </span>
-                </span>
-                <MarketingArrowUpRightIcon className="shop-original-link__icon" />
-              </a>
+          <div className="shop-edition__details">
+            {vm.facts ? <ArtworkEditionFacts facts={vm.facts} /> : null}
+            {vm.about.description || vm.about.rows.length > 0 ? (
+              <ArtworkMoreAbout>
+                <ArtworkAboutWork about={vm.about} />
+              </ArtworkMoreAbout>
             ) : null}
           </div>
         </article>
 
-        <ArtworkArtistBlock artist={vm.artist} surface={vm.closingSurfaces.artist} />
+        <ArtworkArtistSummary artist={vm.artist} />
 
-        {vm.related ? (
-          <ShopSection
-            id="related"
-            title={vm.related.title}
-            viewAll={{ href: vm.related.viewAll.href, srLabel: vm.related.viewAll.srLabel }}
-            className="shop-product__related"
-          >
-            <CatalogueGrid
-              items={vm.related.items}
-              titleLevel={3}
-              className="shop-catalogue__list--four"
-            />
-          </ShopSection>
-        ) : null}
+        {vm.moreBy ? <ArtworkMoreBy moreBy={vm.moreBy} /> : null}
 
         <ShopGalleryTeamBand team={buildGalleryTeam({ context: "edition" })} />
       </ShopCommercePageShell>

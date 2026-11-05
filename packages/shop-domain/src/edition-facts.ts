@@ -318,6 +318,26 @@ function numberedPrintText(
   };
 }
 
+/** What a page can say about a run before staff have confirmed its facts. */
+export function describeEditionRun(run: EditionRunSpec): { eyebrow: string; edition: string } {
+  return { eyebrow: eyebrow(run), edition: editionRow(run) };
+}
+
+/**
+ * How another run of the same image is named beside this one: "As an artist's proof",
+ * "Unsigned, open edition", "Hand-signed, limited edition of 24". Without confirmed facts only the
+ * run is named.
+ */
+export function describeAlsoAvailable(run: EditionRunSpec, facts: EditionFacts | null): string {
+  if (run.type === "proof") {
+    const noun = PROOF_NAMES[run.proofType].singular;
+    return `As ${/^[aeiou]/.test(noun) ? "an" : "a"} ${noun}`;
+  }
+  const name = runName(run);
+  if (!facts) return name;
+  return `${signatureShort(facts.signature)}, ${name.charAt(0).toLowerCase()}${name.slice(1)}`;
+}
+
 /** Writes every public sentence about a run and its confirmed facts. */
 export function describeEditionFacts(
   run: EditionRunSpec,

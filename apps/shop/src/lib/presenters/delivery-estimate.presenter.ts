@@ -1,5 +1,11 @@
 import { SHOP_HELP_CONTACT } from "@/content/policies/help";
-import { type CheckoutDeliveryTimes, workingDayWindowLine } from "@/lib/checkout/checkout-delivery";
+import {
+  type CheckoutDeliveryTimes,
+  type WorkingDayWindow,
+  addWorkingDays,
+  londonToday,
+  workingDayWindowLine,
+} from "@/lib/checkout/checkout-delivery";
 import { FULFILMENT_SURCHARGE_PENCE } from "@auction/shop-domain";
 import { formatGbpPenceForDisplay } from "@auction/shop-portal/vm";
 
@@ -36,4 +42,49 @@ export function presentDeliveryEstimate(input: {
         )}`
       : null,
   };
+}
+
+const dayMonth = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "UTC",
+  day: "numeric",
+  month: "short",
+});
+const dayMonthParts = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "UTC",
+  day: "numeric",
+  month: "short",
+  weekday: "short",
+});
+
+/** "2 to 4 Nov", "30 Oct to 3 Nov" or "4 Nov": the days a window covers, from today in London. */
+function arrivalRange(today: Date, window: WorkingDayWindow): string {
+  const first = addWorkingDays(today, window.min);
+  if (window.max === window.min) return dayMonth.format(first);
+  const last = addWorkingDays(today, window.max);
+  const sameMonth = first.getUTCMonth() === last.getUTCMonth();
+  const start = sameMonth ? String(first.getUTCDate()) : dayMonth.format(first);
+  return `${start} to ${dayMonth.format(last)}`;
+}
+
+/**
+ * The one delivery line under "Add to basket": "Insured UK delivery £15, arrives 2 to 4 Nov · Free
+ * collection, ready Fri 30 Oct". Prices come from the surcharges checkout charges and the days
+ * from the rules it counts by; a delivery time that is not configured is left out, not guessed.
+ */
+export function presentDeliveryLine(input: { now: Date; times: CheckoutDeliveryTimes }): string {
+  const today = londonToday(input.now);
+  const { ukDelivery, collection } = input.times;
+  const deliveryPrice = formatGbpPenceForDisplay(FULFILMENT_SURCHARGE_PENCE.uk_insured_delivery);
+  const collectionPence = FULFILMENT_SURCHARGE_PENCE.collect_new_cavendish;
+  const delivery = `Insured UK delivery ${deliveryPrice}${
+    ukDelivery ? `, arrives ${arrivalRange(today, ukDelivery)}` : ""
+  }`;
+  const collectionPrice =
+    collectionPence === 0
+      ? "Free collection"
+      : `Collection ${formatGbpPenceForDisplay(collectionPence)}`;
+  const ready = collection
+    ? `, ready ${dayMonthParts.format(addWorkingDays(today, collection.min)).replace(",", "")}`
+    : "";
+  return `${delivery} · ${collectionPrice}${ready}`;
 }

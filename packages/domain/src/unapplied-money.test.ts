@@ -24,7 +24,7 @@ describe("unappliedMoneyDedupeKey", () => {
     );
   });
 
-  it("keys balance money by customer and amount", () => {
+  it("keys balance money by the Stripe event that reported it, not by customer and amount", () => {
     expect(
       unappliedMoneyDedupeKey({
         ...base,
@@ -33,8 +33,9 @@ describe("unappliedMoneyDedupeKey", () => {
         stripePaymentIntentId: null,
         stripeChargeId: null,
         stripeCustomerId: "cus_1",
+        stripeEventId: "evt_1:gbp",
       }),
-    ).toBe("customer_balance_unapplied:cus_1:1000");
+    ).toBe("customer_balance_unapplied:evt_1:gbp");
   });
 
   it("the same money for a different reason is a different task", () => {

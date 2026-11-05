@@ -9,6 +9,7 @@ import {
 import type {
   IPaymentCheckoutSessionStore,
   IPaymentWriteRepository,
+  IStalePaymentCanceller,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import type { IStripeClientFactory } from "../lib/stripe-client.js";
@@ -20,6 +21,9 @@ import type { IPaymentCaptureService } from "../services/interfaces/payment-capt
 export function createStalePaymentExpiry(input: {
   payments: IPaymentWriteRepository;
   checkoutSessions: IPaymentCheckoutSessionStore;
+  canceller: IStalePaymentCanceller;
+  /** On a deployment that takes payments, an unreachable Stripe never counts as "no money". */
+  stripeExpected: boolean;
   transactionRunner: ITransactionRunner;
   stripeClientFactory: IStripeClientFactory;
   paymentCapture: IPaymentCaptureService;
@@ -30,9 +34,12 @@ export function createStalePaymentExpiry(input: {
     payments: new StalePaymentStore(
       input.payments,
       input.checkoutSessions,
+      input.canceller,
       input.transactionRunner,
     ),
-    provider: new StripeCheckoutCloser(input.stripeClientFactory),
+    provider: new StripeCheckoutCloser(input.stripeClientFactory, {
+      stripeExpected: input.stripeExpected,
+    }),
     latePayments: new CapturingLatePaymentRecorder(
       input.paymentCapture,
       input.unappliedMoney,

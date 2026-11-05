@@ -14,14 +14,25 @@ export const OFFER_STATES = [
 ] as const;
 export type OfferState = (typeof OFFER_STATES)[number];
 
-/** What the offer points at in the product that holds it. */
-export const OFFER_REF_KINDS = ["shop_artwork", "bid_lot", "private_sale"] as const;
+/** What an offer points at in the product that holds it. */
+export const OFFER_PLACE_REF_KINDS = ["shop_artwork", "bid_lot", "private_sale"] as const;
+export type OfferPlaceRefKind = (typeof OFFER_PLACE_REF_KINDS)[number];
+
+/**
+ * A sale made in the gallery points at the Zoho product that said so (its id is the Zoho product
+ * id). It is only ever the reference of a sold artwork, never a place something is offered.
+ */
+export const GALLERY_SALE_REF_KIND = "gallery_sale";
+
+export const OFFER_REF_KINDS = [...OFFER_PLACE_REF_KINDS, GALLERY_SALE_REF_KIND] as const;
 export type OfferRefKind = (typeof OFFER_REF_KINDS)[number];
 
 export type OfferRef = { kind: OfferRefKind; id: string };
+/** The reference of a place an artwork is offered at. */
+export type OfferPlaceRef = { kind: OfferPlaceRefKind; id: string };
 
 /** The reference each place needs; the other states carry none (a sale may keep the one it closed). */
-export const OFFER_STATE_REF_KIND: Partial<Record<OfferState, OfferRefKind>> = {
+export const OFFER_STATE_REF_KIND: Partial<Record<OfferState, OfferPlaceRefKind>> = {
   lax_art: "shop_artwork",
   bid_sale: "bid_lot",
   private_sale: "private_sale",

@@ -85,9 +85,13 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
           actorUserId: null,
           actingLegalEntityId: paymentRow.buyerLegalEntityId ?? null,
         });
-        if (paymentRow.status === "refunded") {
-          await this.unapplied(tx, paymentRow, paymentIntent, chargeId, "invoice_refunded");
-        }
+        await this.unapplied(
+          tx,
+          paymentRow,
+          paymentIntent,
+          chargeId,
+          paymentRow.status === "refunded" ? "invoice_refunded" : "invoice_cancelled",
+        );
         return {
           processed: true,
           action: "payment_intent_succeeded_terminal_blocked",

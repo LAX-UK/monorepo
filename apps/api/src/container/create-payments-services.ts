@@ -6,6 +6,7 @@ import {
   DrizzleLotFulfilmentRepository,
   DrizzlePaymentCheckoutSessionRepository,
   DrizzlePaymentDomainEventsRepository,
+  DrizzleStalePaymentCanceller,
   DrizzleUnappliedMoneyReader,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
@@ -44,6 +45,10 @@ import {
 } from "../services/payment/payment-tier.policy.js";
 import { PlatformFeePolicy } from "../services/payment/platform-fee.policy.js";
 import { StripeCheckoutService } from "../services/payment/stripe-checkout.service.js";
+import {
+  type IUnappliedMoneyHandling,
+  UnappliedMoneyHandlingService,
+} from "../services/payment/unapplied-money-handling.service.js";
 import { UnappliedMoneyRecorder } from "../services/payment/unapplied-money.recorder.js";
 import { StripePaymentWebhookService } from "../services/stripe-payment-webhook.service.js";
 import { UnappliedMoneyRefundHandler } from "../services/stripe-webhook/unapplied-money-refund.handler.js";
@@ -88,6 +93,8 @@ export type ContainerPaymentsServices = {
   /** The account checks both ways of paying share (closed organisations, unverified buyers). */
   paymentEligibility: IPaymentEligibilityGate;
   invoiceRecipients: IInvoiceRecipients;
+  /** Finance closing an unapplied-money task by hand. */
+  unappliedMoneyHandling: IUnappliedMoneyHandling;
   lotInvoiceInitiationService: LotInvoiceInitiationService;
   stripePaymentWebhookService: StripePaymentWebhookService | null;
   xeroOAuthService: XeroOAuthService | null;
@@ -221,6 +228,10 @@ export function createPaymentsServices(
     buyerPaymentAuthority,
   );
 
+  const unappliedMoneyReader = new DrizzleUnappliedMoneyReader(db);
+  const unappliedMoney = new UnappliedMoneyRecorder(unappliedMoneyReader, domainEventSink, {
+    record: recordMoneyPathEvent,
+  });
   const paymentCaptureService = new PaymentCaptureService(
     platform.transactionRunner,
     paymentRepo,
@@ -239,6 +250,7 @@ export function createPaymentsServices(
     marketingEventService,
     xeroPaymentRecorder,
     stripePaymentGateway,
+    unappliedMoney,
   );
   const stripeCustomerGateway = new StripeCustomerGateway(
     env,
@@ -334,13 +346,11 @@ export function createPaymentsServices(
     { record: recordMoneyPathEvent },
   );
 
-  const unappliedMoneyReader = new DrizzleUnappliedMoneyReader(db);
-  const unappliedMoney = new UnappliedMoneyRecorder(unappliedMoneyReader, domainEventSink, {
-    record: recordMoneyPathEvent,
-  });
   const stalePaymentMaintenance = createStalePaymentExpiry({
     payments: paymentRepo,
     checkoutSessions,
+    canceller: new DrizzleStalePaymentCanceller(db),
+    stripeExpected: env.NODE_ENV === "production",
     transactionRunner: platform.transactionRunner,
     stripeClientFactory,
     paymentCapture: paymentCaptureService,
@@ -432,6 +442,11 @@ export function createPaymentsServices(
     paymentAdminService: paymentService,
     paymentMaintenanceService: paymentService,
     stalePaymentMaintenance,
+    unappliedMoneyHandling: new UnappliedMoneyHandlingService({
+      reader: unappliedMoneyReader,
+      recorder: unappliedMoney,
+      transactionRunner: platform.transactionRunner,
+    }),
     lotInvoiceInitiationService,
     stripePaymentWebhookService,
     xeroOAuthService,

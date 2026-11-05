@@ -54,6 +54,15 @@ export const adminPaymentIdParamSchema = z.object({
   id: z.string().uuid(),
 });
 
+/** An unapplied-money task's key (its reason and the Stripe reference, joined by a colon). */
+export const unappliedMoneyKeyParamSchema = z.object({
+  key: z
+    .string()
+    .min(3)
+    .max(300)
+    .regex(/^[a-z_]+:[A-Za-z0-9_:-]+$/),
+});
+
 export const amlScreeningIdParamSchema = z.object({
   id: z.string().uuid(),
 });

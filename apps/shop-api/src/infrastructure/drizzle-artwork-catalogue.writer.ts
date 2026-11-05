@@ -21,8 +21,11 @@ import {
   assertEditionPrice,
   assertLivePriceKept,
   assertSourceOriginal,
+  assertZohoOwnedFieldsUnchanged,
   isArtOriginalRelease,
   isShopEditionRelease,
+  isZohoOwnedOriginal,
+  zohoCatalogueOf,
 } from "@auction/shop-domain";
 import { and, asc, count, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { withAdminIdempotency } from "../application/admin/with-admin-idempotency.js";
@@ -283,6 +286,7 @@ async function applyVisibility(
         saleState: artwork.saleState,
         printPricePence: artwork.printPricePence,
         editionFactsConfirmed: factsConfirmed,
+        zohoCatalogue: zohoCatalogueOf(artwork),
       });
       if (blocker)
         return { outcome: "refused", message: ARTWORK_PUBLISH_BLOCKER_MESSAGES[blocker] };
@@ -558,6 +562,13 @@ export function createDrizzleArtworkCatalogueWriter(
             }
             const beforeKeys = await imageKeysOf(tx, input.artworkId);
             const nextKeys = input.images.map((image) => image.mediaKey);
+            // Zoho owns what a linked original is; a save may only change what LAX owns.
+            if (isZohoOwnedOriginal(before)) {
+              assertZohoOwnedFieldsUnchanged(
+                { ...before, images: beforeKeys },
+                { ...input, images: nextKeys },
+              );
+            }
             await assertUploadedImages(
               tx,
               nextKeys.filter((key) => !beforeKeys.includes(key)),

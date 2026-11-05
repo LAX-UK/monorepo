@@ -7,6 +7,11 @@ export const UNAPPLIED_MONEY_EVENT = "payment.unapplied_money_received";
 export const UNAPPLIED_MONEY_RESOLVED_EVENT = "payment.unapplied_money_resolved";
 
 export const UNAPPLIED_MONEY_REASONS = [
+  /**
+   * The invoice was cancelled before this money arrived. Finance reinstates or refunds it from
+   * the closed-payment item; recording it here keeps its refund away from the seller's payout.
+   */
+  "invoice_cancelled",
   /** The invoice was refunded before this money arrived. */
   "invoice_refunded",
   /** The invoice was already paid, by other money (a second checkout, or single and group). */
@@ -23,6 +28,17 @@ export const UNAPPLIED_MONEY_REASONS = [
 
 export type UnappliedMoneyReason = (typeof UNAPPLIED_MONEY_REASONS)[number];
 
+/** Reasons that close once the money is captured for its invoice (recorded, or reinstated). */
+export const UNAPPLIED_MONEY_CLOSED_BY_CAPTURE: readonly UnappliedMoneyReason[] = [
+  "paid_not_recorded",
+  "invoice_cancelled",
+];
+
+/** Reasons finance handles from another inbox item (the closed-payment item), not this one. */
+export const UNAPPLIED_MONEY_HANDLED_ELSEWHERE: readonly UnappliedMoneyReason[] = [
+  "invoice_cancelled",
+];
+
 export type UnappliedMoney = {
   reason: UnappliedMoneyReason;
   paymentId: string | null;
@@ -31,6 +47,8 @@ export type UnappliedMoney = {
   stripeChargeId: string | null;
   /** Stripe customer, for money sitting in a customer balance. */
   stripeCustomerId: string | null;
+  /** The Stripe event that reported money with no intent or charge (a balance credit). */
+  stripeEventId?: string | null;
   amountCents: number;
   currency: string;
 };
@@ -45,7 +63,7 @@ export function unappliedMoneyDedupeKey(money: UnappliedMoney): string {
   const reference =
     money.stripePaymentIntentId ??
     money.stripeChargeId ??
-    (money.stripeCustomerId ? `${money.stripeCustomerId}:${money.amountCents}` : null) ??
+    money.stripeEventId ??
     money.paymentGroupId ??
     money.paymentId ??
     "unknown";

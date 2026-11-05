@@ -1,6 +1,7 @@
 import type {
   IPaymentCheckoutSessionStore,
   IPaymentWriteRepository,
+  IStalePaymentCanceller,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import { gbpAmountToPence } from "../decimal-money.js";
@@ -14,10 +15,10 @@ export class StalePaymentStore implements IStalePaymentStore {
       | "listStalePendingBefore"
       | "listStaleAuthorizedBefore"
       | "findById"
-      | "applyCancelledInTransaction"
       | "applyAuthorizedInTransaction"
     >,
     private readonly sessions: Pick<IPaymentCheckoutSessionStore, "listSessionIds">,
+    private readonly canceller: IStalePaymentCanceller,
     private readonly transactionRunner: ITransactionRunner,
   ) {}
 
@@ -45,10 +46,8 @@ export class StalePaymentStore implements IStalePaymentStore {
     return this.sessions.listSessionIds(paymentId);
   }
 
-  cancelIfUnpaid(paymentId: string) {
-    return this.transactionRunner.runInTransaction((tx) =>
-      this.payments.applyCancelledInTransaction(tx, paymentId),
-    );
+  cancelIfUnpaid(paymentId: string, checkStartedAt: Date) {
+    return this.canceller.cancelIfUntouchedSince(paymentId, checkStartedAt);
   }
 
   markAuthorizedIfPending(paymentId: string) {

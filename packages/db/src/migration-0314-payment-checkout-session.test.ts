@@ -8,18 +8,18 @@ import { paymentCheckoutSession } from "./schema/payment-checkout-session.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0312_payment_checkout_session.sql");
-const rollback = read("0312_rollback.sql");
+const migration = read("0314_payment_checkout_session.sql");
+const rollback = read("0314_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0312 payment checkout session", () => {
-  it("is journalled as entry 307, after 0311", () => {
-    const entry = journal.entries.find((e) => e.tag === "0312_payment_checkout_session");
-    expect(entry?.idx).toBe(307);
-    expect(entry?.when).toBe(1802073600000);
-    expect(journal.entries.at(-1)?.tag).toBe("0312_payment_checkout_session");
+describe("migration 0314 payment checkout session", () => {
+  it("is journalled as entry 309, after 0313", () => {
+    const entry = journal.entries.find((e) => e.tag === "0314_payment_checkout_session");
+    expect(entry?.idx).toBe(309);
+    expect(entry?.when).toBe(1802246400000);
+    expect(journal.entries.at(-1)?.tag).toBe("0314_payment_checkout_session");
   });
 
   it("only adds one table and its index, idempotently", () => {

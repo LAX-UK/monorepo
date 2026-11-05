@@ -3,7 +3,7 @@
 -- found by the payment's metadata. The expiry job closes each open session and re-reads it before
 -- it cancels an invoice, and never cancels one whose money is paid or on its way.
 -- Additive: one new table, so the running services keep working until they restart.
-SET LOCAL lock_timeout = '30s';
+SET LOCAL lock_timeout = '5s';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "payment_checkout_session" (
   "stripe_session_id" text PRIMARY KEY NOT NULL,

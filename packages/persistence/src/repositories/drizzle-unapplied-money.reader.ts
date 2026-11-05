@@ -1,14 +1,15 @@
 import type { Database } from "@auction/db";
-import { domainEvent } from "@auction/db/schema";
+import { domainEvent, payment } from "@auction/db/schema";
 import {
   UNAPPLIED_MONEY_EVENT,
   UNAPPLIED_MONEY_RESOLVED_EVENT,
   type UnappliedMoneyPayload,
 } from "@auction/domain";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 import type {
   IUnappliedMoneyReader,
   OpenUnappliedMoney,
+  OpenUnappliedMoneyFilter,
 } from "../interfaces/unapplied-money.reader.js";
 
 const resolvedFor = (key: ReturnType<typeof sql>) => sql`not exists (
@@ -16,6 +17,8 @@ const resolvedFor = (key: ReturnType<typeof sql>) => sql`not exists (
   where r.event_type = ${UNAPPLIED_MONEY_RESOLVED_EVENT}
     and r.payload->>'dedupeKey' = ${key}
 )`;
+
+const field = (name: string) => sql`${domainEvent.payload}->>${name}`;
 
 /**
  * Unapplied money is read from the events that record it: a finance task is open from the
@@ -31,7 +34,7 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
       .where(
         and(
           eq(domainEvent.eventType, UNAPPLIED_MONEY_EVENT),
-          sql`${domainEvent.payload}->>'dedupeKey' = ${dedupeKey}`,
+          sql`${field("dedupeKey")} = ${dedupeKey}`,
         ),
       )
       .limit(1);
@@ -42,7 +45,37 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
     return this.listOpen({ chargeId, limit: 10 });
   }
 
-  async listOpen(input: { limit: number; chargeId?: string }): Promise<OpenUnappliedMoney[]> {
+  async findOpen(dedupeKey: string): Promise<OpenUnappliedMoney | null> {
+    const [open] = await this.listOpen({ dedupeKey, limit: 1 });
+    return open ?? null;
+  }
+
+  async isChargeOfPaidInvoice(chargeId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: payment.id })
+      .from(payment)
+      .where(
+        and(
+          eq(payment.stripeChargeId, chargeId),
+          inArray(payment.status, ["captured", "refunded"]),
+        ),
+      )
+      .limit(1);
+    return Boolean(row);
+  }
+
+  async listOpen(
+    input: OpenUnappliedMoneyFilter & { limit: number },
+  ): Promise<OpenUnappliedMoney[]> {
+    const money =
+      input.paymentIntentId || input.chargeId
+        ? or(
+            input.paymentIntentId
+              ? sql`${field("stripePaymentIntentId")} = ${input.paymentIntentId}`
+              : undefined,
+            input.chargeId ? sql`${field("stripeChargeId")} = ${input.chargeId}` : undefined,
+          )
+        : undefined;
     const rows = await this.db
       .select({
         id: domainEvent.id,
@@ -53,10 +86,21 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
       .where(
         and(
           eq(domainEvent.eventType, UNAPPLIED_MONEY_EVENT),
-          resolvedFor(sql`${domainEvent.payload}->>'dedupeKey'`),
-          input.chargeId
-            ? sql`${domainEvent.payload}->>'stripeChargeId' = ${input.chargeId}`
+          resolvedFor(field("dedupeKey")),
+          money,
+          input.reasons?.length
+            ? sql`${field("reason")} in (${sql.join(
+                input.reasons.map((r) => sql`${r}`),
+                sql`, `,
+              )})`
             : undefined,
+          input.excludeReasons?.length
+            ? sql`${field("reason")} not in (${sql.join(
+                input.excludeReasons.map((r) => sql`${r}`),
+                sql`, `,
+              )})`
+            : undefined,
+          input.dedupeKey ? sql`${field("dedupeKey")} = ${input.dedupeKey}` : undefined,
         ),
       )
       .orderBy(desc(domainEvent.occurredAt))

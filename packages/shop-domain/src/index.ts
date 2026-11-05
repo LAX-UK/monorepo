@@ -61,7 +61,9 @@ export {
   SIGNATURE_MEDIA,
   SIGNATURE_PLACES,
   assertEditionFacts,
+  describeAlsoAvailable,
   describeEditionFacts,
+  describeEditionRun,
   type Certificate,
   type CertificateArrival,
   type CertificateForm,
@@ -75,6 +77,16 @@ export {
   type SignatureMedium,
   type SignaturePlace,
 } from "./edition-facts.js";
+export {
+  describePublicEdition,
+  describeOtherRun,
+  editionRunFromPublic,
+  publicEditionRun,
+  type PublicEditionDescription,
+  type PublicEditionFacts,
+  type PublicEditionRun,
+  type PublicProofsKept,
+} from "./public-edition.js";
 export {
   EDITION_SNAPSHOT_VERSION,
   createEditionSnapshot,
@@ -470,3 +482,12 @@ export {
   isArtOriginalRelease,
   isShopEditionRelease,
 } from "./release-alert.js";
+export {
+  ZOHO_OWNED_ARTWORK_FIELDS,
+  ZOHO_OWNED_FIELDS_MESSAGE,
+  assertZohoOwnedFieldsUnchanged,
+  changedZohoOwnedFields,
+  isZohoOwnedOriginal,
+  zohoCatalogueOf,
+  type ZohoOwnedArtworkField,
+} from "./zoho-owned-fields.js";

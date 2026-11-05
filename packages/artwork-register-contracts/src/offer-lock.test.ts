@@ -89,11 +89,64 @@ describe("checkOfferable", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.error.message).toBe(
-        "This artwork is already offered in lax.art. Withdraw it there first.",
+        "This artwork is live on lax.art. Take it off lax.art first, or use Offer at auction to move it.",
       );
+      expect(result.error.lock.link).toEqual({
+        label: "Open on lax.art",
+        target: "lax_art_listing",
+      });
     }
     expect(offerRefusalMessage("offered_elsewhere", "bid_sale")).toBe(
-      "This artwork is already offered in a LAX Bid sale. Withdraw it there first.",
+      "This artwork is in a LAX Bid sale. Withdraw the lot there first.",
+    );
+    expect(
+      offerRefusalMessage("offered_elsewhere", "bid_sale", {
+        saleName: "Winter Modern and Contemporary",
+        lotNumber: 14,
+      }),
+    ).toBe(
+      "This artwork is in a LAX Bid sale (Winter Modern and Contemporary, lot 14). Withdraw the lot there first.",
+    );
+    expect(offerRefusalMessage("offered_elsewhere", "private_sale")).toBe(
+      "This artwork is in a private sale. Withdraw it there first.",
+    );
+  });
+
+  it("tells a sale through LAX from a sale in the gallery", () => {
+    const lax = checkOfferable(entry("sold", shop), lot);
+    const gallery = checkOfferable(entry("sold", { kind: "gallery_sale", id: "z-1" }), lot);
+    const unplaced = checkOfferable(entry("sold", null), lot);
+    expect(!unplaced.ok && unplaced.error.reason).toBe("sold");
+    expect(!lax.ok && lax.error.message).toBe(
+      "This artwork has been sold, so it can't be offered again.",
+    );
+    expect(!gallery.ok && gallery.error.reason).toBe("sold_in_gallery");
+    expect(!gallery.ok && gallery.error.message).toBe(
+      "Zoho shows this artwork as sold in the gallery, so it can't be offered.",
+    );
+  });
+
+  it("refuses a held artwork Zoho shows as sold, before the sale reaches the register", () => {
+    for (const status of ["Sold", " sold "]) {
+      const result = checkOfferable(entry("held", null, { catalogueStatus: status }), shop);
+      expect(!result.ok && result.error.reason).toBe("sold_in_gallery");
+    }
+  });
+
+  it("refuses a new offer on an artwork reserved in Zoho, but not one already offered here", () => {
+    const held = checkOfferable(entry("held", null, { catalogueStatus: "Reserved" }), shop);
+    expect(!held.ok && held.error.reason).toBe("reserved_in_zoho");
+    expect(!held.ok && held.error.lock.link?.target).toBe("zoho_record");
+    const withdrawn = checkOfferable(
+      entry("withdrawn", null, { catalogueStatus: "Reserved" }),
+      lot,
+    );
+    expect(withdrawn.ok).toBe(false);
+    expect(checkOfferable(entry("lax_art", shop, { catalogueStatus: "Reserved" }), shop).ok).toBe(
+      true,
+    );
+    expect(checkOfferable(entry("held", null, { catalogueStatus: "Available" }), shop).ok).toBe(
+      true,
     );
   });
 
