@@ -1058,6 +1058,11 @@ export type {
   IEnquiryErasureRepository,
 } from "./enquiry-erasure.repository.js";
 export type {
+  AlertSubscriberErasureCounts,
+  AlertSubscriberErasureTarget,
+  IAlertSubscriberErasureRepository,
+} from "./alert-subscriber-erasure.repository.js";
+export type {
   IPurchaseProblemRepository,
   NewPurchaseProblem,
   PurchaseProblemRecord,

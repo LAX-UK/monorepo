@@ -71,6 +71,7 @@ import type {
   IdentitySubjectExportRouteDeps,
 } from "./identity-route-deps.js";
 import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
+import { DrizzleShopAlertSubscriberErasure } from "./infrastructure/alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtistCatalogueWriter } from "./infrastructure/drizzle-artist-catalogue.writer.js";
@@ -620,6 +621,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {
             domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+            alerts: new DrizzleShopAlertSubscriberErasure(),
           }),
         ),
         productionTasks: createProductionTaskService({

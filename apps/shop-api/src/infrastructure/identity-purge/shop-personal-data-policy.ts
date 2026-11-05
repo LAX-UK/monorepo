@@ -1,6 +1,5 @@
 import type { Database } from "@auction/db";
 import {
-  shopAlertSubscriber,
   shopArtistApplication,
   shopArtworkInterest,
   shopBasket,
@@ -19,6 +18,7 @@ import {
 import { ERASED_ENQUIRY_MESSAGE } from "@auction/shop-domain";
 import { and, inArray, ne, or, sql } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
+import { DrizzleShopAlertSubscriberErasure } from "../alerts/drizzle-shop-alert-subscriber-erasure.js";
 
 /**
  * What Shop does with a person's data when Identity purges their account. This file is the single
@@ -57,8 +57,11 @@ export type ShopAnonymisationRule = {
   treatment: "delete" | "scrub";
   /** Fields changed by a scrub; empty for a delete. Documentation and test oracle. */
   fields: readonly string[];
-  /** Returns the number of rows changed. */
-  apply(tx: Database, scope: ShopAnonymisationScope): Promise<number>;
+  /**
+   * Returns the number of rows changed, or, when one rule touches several tables, the rows changed
+   * per table name.
+   */
+  apply(tx: Database, scope: ShopAnonymisationScope): Promise<number | Record<string, number>>;
 };
 
 function deleteBySubject(name: string, table: PgTable, column: AnyPgColumn): ShopAnonymisationRule {
@@ -75,6 +78,8 @@ function deleteBySubject(name: string, table: PgTable, column: AnyPgColumn): Sho
     },
   };
 }
+
+const alertErasure = new DrizzleShopAlertSubscriberErasure();
 
 const EMPTY_JSON_LIST = sql`'[]'::jsonb`;
 
@@ -301,5 +306,19 @@ export const SHOP_ANONYMISATION_RULES: readonly ShopAnonymisationRule[] = [
   // Alert sign-ups (Shop releases, back in stock, lax.art followed artists) hold the person's
   // address and consent record; topics, matches and digests go with the row by cascade. The
   // release list the engine replaced is cleared above until its table is dropped.
-  deleteBySubject("shop_alert_subscriber", shopAlertSubscriber, shopAlertSubscriber.subjectId),
+  // The address the account's rows hold is erased too, so an email-only row for it goes with them;
+  // a subscriber stopped by a complaint is kept as a suppression, detached from the account.
+  {
+    table: "shop_alert_subscriber",
+    treatment: "delete",
+    fields: [],
+    async apply(tx, scope) {
+      const counts = await alertErasure.erase(tx, { emails: [], subjectIds: scope.subjectIds });
+      return {
+        shop_alert_subscriber: counts.alertSubscribers,
+        shop_release_alert_subscription_by_email: counts.releaseAlerts,
+        shop_alert_suppression_kept: counts.suppressionsKept,
+      };
+    },
+  },
 ];
