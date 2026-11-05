@@ -8,6 +8,7 @@ import type {
   OfferTransitionRefusal,
   RegisterField,
   ZohoChange,
+  ZohoImageSource,
 } from "@auction/artwork-register-contracts";
 
 /** `zoho`, `system`, or `staff:<user id>`. */
@@ -188,6 +189,40 @@ export type RecordLaxArtDraftCreatedInput = {
 /** Keeps "a lax.art draft was made from this record" in the register's history. */
 export interface IArtworkDraftHistory {
   recordLaxArtDraftCreated(input: RecordLaxArtDraftCreatedInput): Promise<void>;
+}
+
+export type ReplaceZohoImagesInput = {
+  zohoProductId: string;
+  /** Zoho's pictures in Zoho's order; the first is the cover. May be empty. */
+  sources: readonly ZohoImageSource[];
+  now: Date;
+};
+
+export type ReplaceZohoImagesResult =
+  | { status: "not_found" }
+  /** The pictures already matched; only the time they were checked moved. */
+  | { status: "unchanged" }
+  | { status: "replaced"; entry: ArtworkRegisterEntry };
+
+export type ImageCheckCandidate = {
+  zohoProductId: string;
+  sources: ZohoImageSource[];
+};
+
+/**
+ * The record of which Zoho picture each stored copy came from. Separate from the register's other
+ * Zoho-owned fields because pictures change without Zoho changing the Product's modified time.
+ */
+export interface IArtworkImageStore {
+  /** The pictures the register holds for a Product, or null when it has no record. */
+  findImageSources(zohoProductId: string): Promise<ZohoImageSource[] | null>;
+  /**
+   * Replaces the pictures with Zoho's current ones and notes the check. A change bumps the record's
+   * version and leaves a history entry; an unchanged list leaves both alone.
+   */
+  replaceZohoImages(input: ReplaceZohoImagesInput): Promise<ReplaceZohoImagesResult>;
+  /** Records never checked, then those checked longest ago before `before`. */
+  listImageCheckCandidates(before: Date, limit: number): Promise<ImageCheckCandidate[]>;
 }
 
 export type AuctionOfferSale = { id: string; title: string; startsAt: Date; endsAt: Date };

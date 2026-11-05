@@ -350,6 +350,18 @@ const envSchema = z
       });
     }
     if (
+      e.ZOHO_ARTWORK_SYNC_MODE === "live" &&
+      e.APP_ENV === "production" &&
+      e.STORAGE_DRIVER !== "s3"
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "STORAGE_DRIVER must be s3 in production when ZOHO_ARTWORK_SYNC_MODE is live, so Zoho pictures are stored where lax.art serves them from",
+        path: ["STORAGE_DRIVER"],
+      });
+    }
+    if (
       e.ZOHO_ARTWORK_WRITEBACK_MODE === "live" &&
       (!e.ZOHO_CLIENT_ID || !e.ZOHO_CLIENT_SECRET || !e.ZOHO_REFRESH_TOKEN)
     ) {
