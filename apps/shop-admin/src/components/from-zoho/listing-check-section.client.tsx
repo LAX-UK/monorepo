@@ -7,7 +7,14 @@ import {
   listingFigures,
 } from "@/server/domain/zoho-register.vm";
 import type { AdminRegisterLastCheck } from "@auction/shop-contracts";
-import { Notice, StatGrid, StatusBadge, TextLink, formatStaffDateTime } from "@auction/staff-ui";
+import {
+  EmptyState,
+  Notice,
+  StatGrid,
+  StatusBadge,
+  TextLink,
+  formatStaffDateTime,
+} from "@auction/staff-ui";
 import Link from "next/link";
 
 const recordHref = (registerId: string) => `/from-zoho/${registerId}`;
@@ -78,9 +85,11 @@ export function ListingCheckSection({ listing }: { listing: AdminRegisterLastChe
           ) : null}
         </>
       ) : (
-        <p className="text-staff-sm text-staff-muted">
-          No listing check has run yet. Its result appears here after the first night.
-        </p>
+        <EmptyState
+          size="compact"
+          title="No listing check has run yet"
+          description="Its result appears here after the first night."
+        />
       )}
 
       {note ? <Notice tone="warning" title={note} /> : null}
