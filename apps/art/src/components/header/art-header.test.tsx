@@ -22,7 +22,7 @@ const SIGNED_IN: AccountChromeState = {
 };
 const FAMILY: LaxFamilyLinkVm[] = [
   { id: "art", label: "lax.art", href: "https://lax.art", current: true },
-  { id: "shop", label: "lax.shop", href: "https://lax.shop", current: false },
+  { id: "shop", label: "lax.shop", href: "https://shop.example.test", current: false },
   { id: "account", label: "LAX Account", href: "https://account.lax", current: false },
 ] as LaxFamilyLinkVm[];
 
