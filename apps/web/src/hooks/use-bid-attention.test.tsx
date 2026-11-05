@@ -37,6 +37,11 @@ describe("useBidAttention", () => {
     expect(result.current).toMatchObject({ signedIn: false, attention: null, chip: null });
   });
 
+  it("names the signed-in person for the Account tab's avatar", () => {
+    const { result } = renderHook(() => useBidAttention());
+    expect(result.current.viewer).toMatchObject({ email: expect.any(String) });
+  });
+
   it("has nothing until the client's facts load", () => {
     const { result } = renderHook(() => useBidAttention());
     expect(result.current).toMatchObject({ signedIn: true, attention: null, chip: null });

@@ -60,7 +60,13 @@ const USER = {
   role: "client",
 } as unknown as SessionUser;
 
-const QUIET: BidAttention = { signedIn: true, pending: false, attention: null, chip: null };
+const QUIET: BidAttention = {
+  signedIn: true,
+  viewer: { displayName: USER.name, email: USER.email },
+  pending: false,
+  attention: null,
+  chip: null,
+};
 
 beforeEach(() => {
   user = null;

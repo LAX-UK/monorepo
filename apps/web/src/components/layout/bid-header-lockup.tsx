@@ -7,8 +7,8 @@ import { cn } from "@auction/ui";
 import Link from "next/link";
 
 /**
- * LAX Bid's header lockup. Below 768px it is the LAX mark (28px) with the ".BID" tag, not the
- * gavel on its own; from 768px it is the full Bid lockup, 40px tall. The lockup takes its colour
+ * LAX Bid's header lockup. Below 1024px, where the bar is the slim 56px one, it is the LAX mark
+ * (28px) with the ".BID" tag, not the gavel on its own; from 1024px it is the full Bid lockup, 40px tall. The lockup takes its colour
  * from the text, so over a hero photograph it is white and on the page it follows the theme.
  */
 export function BidHeaderLockup({
@@ -28,8 +28,8 @@ export function BidHeaderLockup({
       {...(onNavigate ? { onClick: onNavigate } : {})}
     >
       {/* h-7 is LOCKUP_HEIGHTS.phoneMark (28px) and h-10 is LOCKUP_HEIGHTS.desktopBid (40px). */}
-      <LaxLockup kind="bid-compact" className="block h-7 w-auto md:hidden" />
-      <LaxLockup kind="bid" className="hidden h-10 w-auto md:block" />
+      <LaxLockup kind="bid-compact" className="block h-7 w-auto lg:hidden" />
+      <LaxLockup kind="bid" className="hidden h-10 w-auto lg:block" />
     </Link>
   );
 }

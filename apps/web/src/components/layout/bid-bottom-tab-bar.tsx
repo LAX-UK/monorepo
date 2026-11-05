@@ -5,6 +5,7 @@ import { useBidAttention } from "@/hooks/use-bid-attention";
 import { showsPublicBottomBar } from "@/lib/layout/bottom-chrome";
 import { buildBidBottomTabs } from "@/lib/navigation/bid-bottom-tabs";
 import {
+  MarketingAvatar,
   MarketingBottomTabBar,
   MarketingEyeIcon,
   MarketingGavelIcon,
@@ -20,7 +21,6 @@ const ICONS = {
   auctions: <MarketingGavelIcon />,
   search: <MarketingSearchIcon />,
   watching: <MarketingEyeIcon />,
-  account: <MarketingUserIcon />,
 };
 
 /**
@@ -30,12 +30,28 @@ const ICONS = {
  */
 export function BidBottomTabBar() {
   const pathname = usePathname() ?? "/";
-  const { signedIn, pending, attention } = useBidAttention();
+  const { signedIn, viewer, pending, attention } = useBidAttention();
   // While the session is still being read, link straight to the pages: the server sends a
   // guest to Sign in anyway, and the tabs never flash a Sign in address for a signed-in person.
   const tabs = useMemo(
-    () => buildBidBottomTabs({ signedIn: signedIn || pending, attention, icons: ICONS }),
-    [signedIn, pending, attention],
+    () =>
+      buildBidBottomTabs({
+        signedIn: signedIn || pending,
+        attention,
+        icons: {
+          ...ICONS,
+          // Signed in, the person's avatar takes the Account tab's icon.
+          account: viewer ? (
+            <MarketingAvatar
+              viewer={viewer}
+              className="size-6 bg-surface-container-high text-[10px] font-semibold leading-none text-on-surface"
+            />
+          ) : (
+            <MarketingUserIcon />
+          ),
+        },
+      }),
+    [signedIn, viewer, pending, attention],
   );
   if (!showsPublicBottomBar(pathname)) return null;
   return (

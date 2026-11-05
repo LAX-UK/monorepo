@@ -9,6 +9,7 @@ vi.mock("@/hooks/use-bid-attention", () => ({ useBidAttention: () => state }));
 
 const chip = (kind: AttentionChip["kind"], label: string, href: string): BidAttention => ({
   signedIn: true,
+  viewer: { displayName: "Jordan Hale", email: "jordan@example.com" },
   pending: false,
   attention: null,
   chip: { kind, label, href, accessibleName: `${label}. Go` },
@@ -16,16 +17,16 @@ const chip = (kind: AttentionChip["kind"], label: string, href: string): BidAtte
 
 describe("BidAttentionPrompt", () => {
   it("renders nothing for a guest or when nothing is pressing", () => {
-    state = { signedIn: false, pending: false, attention: null, chip: null };
+    state = { signedIn: false, viewer: null, pending: false, attention: null, chip: null };
     const { container } = render(<BidAttentionPrompt placement="strip" />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("says 'Payment due · Pay now ›' in the strip", () => {
+  it("says 'Payment due' with 'Pay now ›' in the strip", () => {
     state = chip("payment-due", "Payment due", "/purchases");
     render(<BidAttentionPrompt placement="strip" />);
     const strip = screen.getByTestId("attention-strip");
-    expect(strip).toHaveTextContent("Payment due·Pay now›");
+    expect(strip).toHaveTextContent("Payment duePay now›");
     expect(strip).toHaveAttribute("href", "/purchases");
     expect(strip.className).toContain("bg-warning-container");
   });

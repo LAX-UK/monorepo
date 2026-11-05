@@ -8,7 +8,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({ usePathname: () => "/lot/estuary-at-dawn/abc-123" }));
 vi.mock("@/hooks/use-bid-attention", () => ({
-  useBidAttention: () => ({ signedIn: false, pending: false, attention: null, chip: null }),
+  useBidAttention: () => ({
+    signedIn: false,
+    viewer: null,
+    pending: false,
+    attention: null,
+    chip: null,
+  }),
 }));
 
 type Observed = { callback: IntersectionObserverCallback; options?: IntersectionObserverInit };

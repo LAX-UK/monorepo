@@ -8,10 +8,13 @@ import {
   attentionChip,
 } from "@/lib/navigation/client-attention";
 import { useAccountMenuContext } from "@/lib/navigation/use-account-menu-context.client";
+import type { MarketingAccountEntryViewer } from "@auction/marketing-ui";
 import { useMemo } from "react";
 
 export type BidAttention = {
   signedIn: boolean;
+  /** Who is signed in, for the Account tab's avatar; `null` when signed out. */
+  viewer: MarketingAccountEntryViewer | null;
   /** The session is still being read. */
   pending: boolean;
   /** What is waiting for a signed-in client; `null` for guests, staff and until it loads. */
@@ -31,5 +34,16 @@ export function useBidAttention(): BidAttention {
   const context = useAccountMenuContext(user?.id ?? "", isClient);
   const attention = isClient ? (context?.attention ?? null) : null;
   const chip = useMemo(() => (attention ? attentionChip(attention) : null), [attention]);
-  return { signedIn: Boolean(user), pending, attention, chip };
+  const viewer = useMemo(
+    () =>
+      user
+        ? {
+            displayName: user.name,
+            email: user.email,
+            ...(user.image ? { avatarUrl: user.image } : {}),
+          }
+        : null,
+    [user],
+  );
+  return { signedIn: Boolean(user), viewer, pending, attention, chip };
 }

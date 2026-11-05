@@ -11,11 +11,11 @@ const TONE: Record<AttentionChip["kind"], MarketingAttentionTone> = {
   "account-in-review": "info",
 };
 
-/** What the strip says on a phone, where there is room for the action: "Payment due · Pay now ›". */
+/** The action the strip adds on a phone, where there is room for it. */
 const STRIP_ACTION: Record<AttentionChip["kind"], string> = {
-  outbid: "View",
+  outbid: "Bid again",
   "payment-due": "Pay now",
-  "account-in-review": "View",
+  "account-in-review": "See why",
 };
 
 type Placement = "bar" | "strip";

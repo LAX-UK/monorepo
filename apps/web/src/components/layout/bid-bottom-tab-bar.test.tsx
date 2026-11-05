@@ -17,9 +17,16 @@ vi.mock("@/components/layout/command-palette-events", () => ({
   openCommandPalette: () => openPalette(),
 }));
 
-const SIGNED_OUT: BidAttention = { signedIn: false, pending: false, attention: null, chip: null };
+const SIGNED_OUT: BidAttention = {
+  signedIn: false,
+  viewer: null,
+  pending: false,
+  attention: null,
+  chip: null,
+};
 const signedIn = (attention = NO_ATTENTION): BidAttention => ({
   signedIn: true,
+  viewer: { displayName: "Jordan Hale", email: "jordan@example.com" },
   pending: false,
   attention,
   chip: null,
@@ -44,6 +51,16 @@ describe("BidBottomTabBar tabs", () => {
     render(<BidBottomTabBar />);
     const items = screen.getAllByRole("listitem").map((li) => li.textContent);
     expect(items).toEqual(["Home", "Auctions", "Search", "Watching", "Account"]);
+  });
+
+  it("shows the person's initials on the Account tab when signed in, and a person icon when not", () => {
+    session = signedIn();
+    const { unmount } = render(<BidBottomTabBar />);
+    expect(tab("Account")).toHaveTextContent("JH");
+    unmount();
+    session = SIGNED_OUT;
+    render(<BidBottomTabBar />);
+    expect(tab("Account")).not.toHaveTextContent("JH");
   });
 
   it.each([
@@ -124,7 +141,7 @@ describe("BidBottomTabBar signed out", () => {
   });
 
   it("links straight to the pages while the session is still loading", () => {
-    session = { signedIn: false, pending: true, attention: null, chip: null };
+    session = { signedIn: false, viewer: null, pending: true, attention: null, chip: null };
     render(<BidBottomTabBar />);
     expect(tab("Watching")).toHaveAttribute("href", "/watching");
   });

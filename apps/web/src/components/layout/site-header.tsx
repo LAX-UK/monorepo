@@ -94,8 +94,8 @@ function SiteHeaderShell({
           {/* 36px, from 1024px. About us, Contact us and FAQ sit at its right. */}
           <LaxFamilyBar links={familyLinks} helpLinks={utilityNav} tone={headerTone} />
 
-          {/* The main row: 56px on a phone, 64px on a tablet, 72px on a desktop. */}
-          <div className="flex h-14 items-center md:h-16 lg:h-[72px]">
+          {/* The main row: the slim 56px bar up to 1023px, 72px on a desktop. */}
+          <div className="flex h-14 items-center lg:h-[72px]">
             <HeaderMegaNav
               sections={nav}
               pathname={pathname}
@@ -136,15 +136,20 @@ function SiteHeaderShell({
               }
             />
           </div>
-          <BidAttentionPrompt placement="strip" />
-          {marketingPageTitle ? (
+        </div>
+        {/* Edge to edge under the bar, outside the page gutter. */}
+        <BidAttentionPrompt placement="strip" />
+        {marketingPageTitle ? (
+          <div
+            className={cn("mx-auto max-w-[var(--container-max,1440px)]", MARKETING_PAGE_GUTTER_X)}
+          >
             <div className="site-header-page-title border-t border-nav-border px-2 pb-2 pt-1 lg:hidden">
               <p className="truncate text-center font-headline text-sm font-semibold text-on-surface">
                 {marketingPageTitle}
               </p>
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <BidPhoneMenu
           open={menuOpen}

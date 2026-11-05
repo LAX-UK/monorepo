@@ -78,9 +78,16 @@ const FAMILY: LaxFamilyLinkVm[] = [
   { id: "account", label: "LAX Account", href: "https://account.lax.art", current: false },
 ];
 
-const GUEST: BidAttention = { signedIn: false, pending: false, attention: null, chip: null };
+const GUEST: BidAttention = {
+  signedIn: false,
+  viewer: null,
+  pending: false,
+  attention: null,
+  chip: null,
+};
 const OUTBID: BidAttention = {
   signedIn: true,
+  viewer: { displayName: "Jordan Hale", email: "jordan@example.com" },
   pending: false,
   attention: null,
   chip: {
@@ -96,25 +103,25 @@ beforeEach(() => {
 });
 
 describe("SiteHeader", () => {
-  it("uses the Bid lockup: mark and .BID tag on phones (28px), the full lockup from 768px (40px)", () => {
+  it("uses the Bid lockup: mark and .BID tag on phones (28px), the full lockup from 1024px (40px)", () => {
     render(<SiteHeader familyLinks={FAMILY} />);
     const lockups = screen.getAllByRole("img", { hidden: true, name: "LAX Bid" });
     expect(lockups).toHaveLength(2);
     const [phone, desktop] = lockups;
     expect(phone?.getAttribute("class")).toContain("h-7");
-    expect(phone?.getAttribute("class")).toContain("md:hidden");
+    expect(phone?.getAttribute("class")).toContain("lg:hidden");
     expect(desktop?.getAttribute("class")).toContain("h-10");
-    expect(desktop?.getAttribute("class")).toContain("md:block");
+    expect(desktop?.getAttribute("class")).toContain("lg:block");
     // Not the gavel-only short mark image.
     expect(document.querySelector('img[src*="logo-short"]')).toBeNull();
     expect(screen.getByRole("link", { name: "LAX Bid home" })).toHaveAttribute("href", "/");
   });
 
-  it("makes the main row 56px on a phone, 64px on a tablet and 72px on a desktop", () => {
+  it("makes the main row the slim 56px bar up to a tablet and 72px on a desktop", () => {
     render(<SiteHeader familyLinks={FAMILY} />);
     const row = screen.getByRole("navigation", { name: "Primary" }).parentElement;
     expect(row?.className).toContain("h-14");
-    expect(row?.className).toContain("md:h-16");
+    expect(row?.className).not.toContain("md:h-16");
     expect(row?.className).toContain("lg:h-[72px]");
   });
 
