@@ -2141,7 +2141,14 @@
       "idx": 306,
       "version": "7",
       "when": 1801987200000,
-      "tag": "0311_payment_checkout_session",
+      "tag": "0311_artwork_register_print_code",
+      "breakpoints": true
+    },
+    {
+      "idx": 307,
+      "version": "7",
+      "when": 1802073600000,
+      "tag": "0312_payment_checkout_session",
       "breakpoints": true
     }
   ]
