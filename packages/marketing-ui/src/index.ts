@@ -123,7 +123,23 @@ export {
 } from "./marketing-horizontal-rail.js";
 export { MarketingOverlayCard, type MarketingOverlayCardProps } from "./marketing-overlay-card.js";
 export { MARKETING_SURFACE_TONE } from "./marketing-surface-tone.js";
-export { LaxFamilyBar, type LaxFamilyBarLink, type LaxFamilyBarProps } from "./lax-family-bar.js";
+export {
+  LaxFamilyBar,
+  type LaxFamilyBarHelpLink,
+  type LaxFamilyBarLink,
+  type LaxFamilyBarProps,
+} from "./lax-family-bar.js";
+export { ACCOUNT_ENTRY_NAME_MAX, cutAccountEntryName } from "./account-entry-name.js";
+export {
+  MarketingAccountEntry,
+  type MarketingAccountEntryProps,
+  type MarketingAccountEntryViewer,
+} from "./marketing-account-entry.js";
+export {
+  MarketingAttentionStrip,
+  type MarketingAttentionStripProps,
+  type MarketingAttentionTone,
+} from "./marketing-attention-strip.js";
 export { LaxFamilyMenuLinks, type LaxFamilyMenuLinksProps } from "./lax-family-menu-links.js";
 export { LaxLockup, type LaxLockupProps } from "./lax-lockup.js";
 export { LaxLogo, type LaxLogoProps } from "./lax-logo.js";
