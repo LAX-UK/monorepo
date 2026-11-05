@@ -11,6 +11,7 @@ import {
   AUTH_EXPORT_TABLES,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
+  AUTH_LEGAL_ACCEPTANCE_TABLES,
   AUTH_POLICY_TABLES,
   AUTH_READ_TABLES,
   SHOP_ARTWORK_REGISTER_CONFLICT_TABLES,
@@ -370,6 +371,15 @@ describe("migrate-roles invariants", () => {
       "subject_data_request_audit",
     ]);
     for (const table of [...AUTH_EXPORT_TABLES, ...AUTH_EXPORT_AUDIT_TABLES]) {
+      expect([...API_DENY_TABLES]).toContain(table);
+      expect([...WORKER_DENY_TABLES]).toContain(table);
+      expect([...AUTH_FULL_TABLES]).not.toContain(table);
+    }
+  });
+
+  it("lets auth_app add and read sign-up acceptances only, and denies api_app and worker_app", () => {
+    expect([...AUTH_LEGAL_ACCEPTANCE_TABLES]).toEqual(["subject_legal_acceptance"]);
+    for (const table of AUTH_LEGAL_ACCEPTANCE_TABLES) {
       expect([...API_DENY_TABLES]).toContain(table);
       expect([...WORKER_DENY_TABLES]).toContain(table);
       expect([...AUTH_FULL_TABLES]).not.toContain(table);

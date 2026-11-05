@@ -1,5 +1,15 @@
+import {
+  LEGAL_DOCUMENT_PRODUCT_NAMES,
+  LEGAL_ENTITY_NAMES,
+  type LegalDocumentProduct,
+  type LegalEntityId,
+} from "@auction/identity-contracts";
 import type { IdentityDatabase } from "@auction/identity-db";
-import { oauthApplication, oauthConsent } from "@auction/identity-db/schema";
+import {
+  oauthApplication,
+  oauthConsent,
+  subjectLegalAcceptance,
+} from "@auction/identity-db/schema";
 import { and, asc, eq } from "drizzle-orm";
 import {
   type ExportSource,
@@ -29,9 +39,33 @@ export function mapProductAccess(row: ConsentRow) {
   };
 }
 
+type LegalAcceptanceExportRow = {
+  id: string;
+  documentKind: string;
+  documentVersion: string;
+  legalEntity: string;
+  product: string;
+  acceptedAt: Date;
+};
+
+/** The Terms or Privacy notice accepted when the person created their account. */
+export function mapLegalAcceptance(row: LegalAcceptanceExportRow) {
+  return {
+    id: row.id,
+    origin: "provided" as const,
+    kind: row.documentKind,
+    version: row.documentVersion,
+    choice: "accepted",
+    acceptedAt: isoRequired(row.acceptedAt),
+    product: LEGAL_DOCUMENT_PRODUCT_NAMES[row.product as LegalDocumentProduct] ?? row.product,
+    company: LEGAL_ENTITY_NAMES[row.legalEntity as LegalEntityId] ?? row.legalEntity,
+  };
+}
+
 /**
- * The LAX products the person has allowed to sign them in. Terms, privacy-notice and cookie
- * choices have no server-side record in Identity, so they are not listed here.
+ * The Terms and Privacy notice the person accepted when they created their account, and the LAX
+ * products they have allowed to sign them in. Cookie choices have no server-side record in
+ * Identity, so they are not listed here.
  */
 export class ConsentsExportCategory extends SourcedExportCategory {
   readonly id = "consents";
@@ -57,6 +91,31 @@ export class ConsentsExportCategory extends SourcedExportCategory {
             .orderBy(asc(oauthConsent.id))
             .limit(limit);
           return rows.map((row) => ({ key: row.id, record: mapProductAccess(row) }));
+        },
+      },
+      {
+        count: (subjectId) =>
+          countWhere(db, subjectLegalAcceptance, eq(subjectLegalAcceptance.subjectId, subjectId)),
+        page: async (subjectId, key, limit) => {
+          const rows = await db
+            .select({
+              id: subjectLegalAcceptance.id,
+              documentKind: subjectLegalAcceptance.documentKind,
+              documentVersion: subjectLegalAcceptance.documentVersion,
+              legalEntity: subjectLegalAcceptance.legalEntity,
+              product: subjectLegalAcceptance.product,
+              acceptedAt: subjectLegalAcceptance.acceptedAt,
+            })
+            .from(subjectLegalAcceptance)
+            .where(
+              and(
+                eq(subjectLegalAcceptance.subjectId, subjectId),
+                afterKey(subjectLegalAcceptance.id, key),
+              ),
+            )
+            .orderBy(asc(subjectLegalAcceptance.id))
+            .limit(limit);
+          return rows.map((row) => ({ key: row.id, record: mapLegalAcceptance(row) }));
         },
       },
     ];

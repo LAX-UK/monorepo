@@ -2115,6 +2115,13 @@
       "when": 1801641600000,
       "tag": "0306_shop_print_fulfilment",
       "breakpoints": true
+    },
+    {
+      "idx": 303,
+      "version": "7",
+      "when": 1801728000000,
+      "tag": "0308_subject_legal_acceptance",
+      "breakpoints": true
     }
   ]
 }

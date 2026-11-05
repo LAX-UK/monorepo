@@ -1,5 +1,6 @@
-import { APIError } from "better-auth/api";
+import { APIError, getOAuthState } from "better-auth/api";
 import type { AuthHookDeps } from "./auth-hook-deps.js";
+import { signUpLegalAcceptance } from "./legal-acceptance.js";
 
 export function buildUserDatabaseHooks(deps: AuthHookDeps) {
   return {
@@ -10,12 +11,25 @@ export function buildUserDatabaseHooks(deps: AuthHookDeps) {
           message: "New registrations are temporarily disabled",
         });
       },
-      after: async (authUser: {
-        id: string;
-        email: string;
-        name: string;
-        emailVerified: boolean;
-      }) => {
+      after: async (
+        authUser: {
+          id: string;
+          email: string;
+          name: string;
+          emailVerified: boolean;
+        },
+        context?: { path?: string | undefined; body?: unknown } | null,
+      ) => {
+        // Written with the account: when it cannot be recorded the sign-up fails, so no account
+        // exists without the record of what its owner was shown.
+        if (deps.ports.legalAcceptance) {
+          const acceptance = signUpLegalAcceptance(
+            authUser.id,
+            context,
+            await getOAuthState().catch(() => null),
+          );
+          if (acceptance) await deps.ports.legalAcceptance.recordSignUp(acceptance);
+        }
         if (deps.onUserCreated) {
           await deps.onUserCreated({
             id: authUser.id,
