@@ -19,6 +19,15 @@ async function assertNoHorizontalOverflow(page: import("@playwright/test").Page)
   expect(overflow).toBe(true);
 }
 
+/** A cover slide with a photograph must have drawn it; a slide without one has nothing to check. */
+async function expectCoverPhotoLoadedWhenPresent(cover: import("@playwright/test").Locator) {
+  const photo = cover.locator("picture img").first();
+  if ((await photo.count()) === 0) return;
+  await expect
+    .poll(() => photo.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
+}
+
 test.describe("marketing viewport audit @a11y", () => {
   for (const viewport of VIEWPORTS) {
     test(`${viewport.label} (${viewport.width}x${viewport.height}) — no horizontal overflow on / and /search`, async ({
@@ -41,13 +50,11 @@ test.describe("marketing viewport audit @a11y", () => {
     await page.goto("/");
     await page.waitForLoadState("domcontentloaded");
 
-    const heroImg = page
-      .locator('[aria-label="Upcoming salerooms"] picture img, section picture img')
-      .first();
-    await expect(heroImg).toBeVisible();
-
-    const naturalWidth = await heroImg.evaluate((el) => (el as HTMLImageElement).naturalWidth);
-    expect(naturalWidth).toBeGreaterThan(0);
+    // The seeded sales carry no photograph, so the cover is checked on its type and its button;
+    // a photograph, where a slide has one, must have loaded.
+    const cover = page.getByRole("region", { name: "Featured sales" });
+    await expect(cover).toBeVisible();
+    await expectCoverPhotoLoadedWhenPresent(cover);
 
     const cta = page.getByRole("link", { name: /^(Join the saleroom|View lots)$/ }).first();
     await expect(cta).toBeVisible();
@@ -75,17 +82,9 @@ test.describe("marketing viewport audit @a11y", () => {
     await page.goto("/");
     await page.waitForLoadState("domcontentloaded");
 
-    const heroShell = page.locator('[aria-label="Upcoming salerooms"]').first();
-    const heroImg = page
-      .locator('[aria-label="Upcoming salerooms"] picture img, section picture img')
-      .first();
-
-    const hasRotator = (await heroShell.count()) > 0;
-    test.skip(!hasRotator, "No hero rotator on home; seed scheduled sales for this check");
-
-    await expect(heroImg).toBeVisible();
-    const naturalWidth = await heroImg.evaluate((el) => (el as HTMLImageElement).naturalWidth);
-    expect(naturalWidth).toBeGreaterThan(0);
+    const heroShell = page.getByRole("region", { name: "Featured sales" });
+    await expect(heroShell).toBeVisible();
+    await expectCoverPhotoLoadedWhenPresent(heroShell);
 
     // Hero bleeds under the fixed header: one viewport tall below the header (HOME_HERO_MIN_H).
     const heroBox = await heroShell.boundingBox();

@@ -2,7 +2,12 @@ import { type Page, expect, test } from "@playwright/test";
 /**
  * E2E test: Marketing header shows authenticated state after client-side navigation.
  */
-import { buyerLogin, e2eEnabled, e2eSkipReason } from "./helpers/auth";
+import {
+  buyerLogin,
+  dismissCookieConsentIfVisible,
+  e2eEnabled,
+  e2eSkipReason,
+} from "./helpers/auth";
 
 const accountMenu = (page: Page) => page.getByRole("button", { name: /account menu/i });
 const guestMenu = (page: Page) => page.getByRole("button", { name: "Account", exact: true });
@@ -37,6 +42,9 @@ test.describe("marketing header auth @journey", () => {
     await page2.goto("/");
     await expect(accountMenu(page2)).toBeVisible({ timeout: 10_000 });
 
+    // The account menu is long enough to reach the cookie banner at the foot of the window, so a
+    // visitor answers the banner first, as the test does.
+    await dismissCookieConsentIfVisible(page1);
     await accountMenu(page1).click();
     await page1.getByRole("menuitem", { name: /sign out/i }).click();
 

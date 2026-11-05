@@ -13,7 +13,7 @@ async function assertNoHorizontalOverflow(page: import("@playwright/test").Page)
     const doc = document.documentElement;
     return doc.scrollWidth <= doc.clientWidth + 1;
   });
-  expect(overflow).toBe(true);
+  expect(overflow, `${page.url()} scrolls sideways`).toBe(true);
 }
 
 test.describe("admin viewport audit @a11y", () => {

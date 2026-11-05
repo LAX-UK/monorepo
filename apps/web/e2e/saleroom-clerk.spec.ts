@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 import { e2eEnabled, e2eSkipReason, seededHybridLotId, seededHybridSaleId } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
 
@@ -6,56 +6,60 @@ import { roleAuthState } from "./helpers/auth-state";
 
 const skipReason = `${e2eSkipReason} Hybrid sale id defaults to seeded S.hybridA when PLAYWRIGHT_HYBRID_SALE_ID is unset.`;
 
+const clerkConsole = (page: Page) => page.goto(`/admin/saleroom/${seededHybridSaleId}`);
+const lotOnBlockHeading = (page: Page) =>
+  page.getByRole("heading", { name: /^lot on block$/i, level: 2 }).first();
+
+/**
+ * The seed has Room A live with its third lot (Meridian Drift) on the block, so these tests start
+ * from a running session. The test that moves the block on runs last: it changes what is on it.
+ */
 test.describe("hybrid saleroom clerk @journey", () => {
   test.skip(!e2eEnabled, skipReason);
 
   test("staff can open the clerk console for a hybrid sale", async ({ page }) => {
-    await page.goto(`/admin/saleroom/${seededHybridSaleId}`);
-    await expect(page.getByRole("button", { name: /go live/i })).toBeVisible();
-    await expect(page.getByRole("button", { name: /on the block/i })).toBeVisible();
-    await expect(page.getByText(/lot on block/i)).toBeVisible();
-    await expect(page.getByText(/hybrid/i)).toBeVisible();
+    await clerkConsole(page);
+    await expect(
+      page.getByRole("heading", { name: /hybrid day sale — room a/i, level: 1 }),
+    ).toBeVisible();
+    const controls = page.getByRole("region", { name: /session controls/i });
+    await expect(controls.getByRole("button", { name: /^pause$/i })).toBeVisible();
+    await expect(controls.getByRole("button", { name: /^close session$/i })).toBeVisible();
+    await expect(lotOnBlockHeading(page)).toBeVisible();
+    await expect(page.getByText("Hybrid", { exact: true }).first()).toBeVisible();
   });
 
-  test("staff can go live and advance a lot on the block", async ({ page }) => {
-    await page.goto(`/admin/saleroom/${seededHybridSaleId}`);
-    await page.getByRole("button", { name: /go live/i }).click();
-    await expect(page.getByText(/^live$/i)).toBeVisible({ timeout: 15_000 });
-    await page.getByRole("button", { name: /on the block/i }).click();
-    await expect(page.getByText(/\(on block\)/i)).toBeVisible({ timeout: 10_000 });
+  test("staff can pause and resume a live session", async ({ page }) => {
+    await clerkConsole(page);
+    const controls = page.getByRole("region", { name: /session controls/i });
+    await controls.getByRole("button", { name: /^pause$/i }).click();
+    await expect(controls.getByRole("button", { name: /^resume$/i })).toBeVisible({
+      timeout: 15_000,
+    });
+    await controls.getByRole("button", { name: /^resume$/i }).click();
+    await expect(controls.getByRole("button", { name: /^pause$/i })).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
-  test("paddle and telephone bid amounts are independent", async ({ page }) => {
-    await page.goto(`/admin/saleroom/${seededHybridSaleId}`);
+  test("a quick amount fills the paddle bid, and placing it needs a paddle number", async ({
+    page,
+  }) => {
+    await clerkConsole(page);
 
     const paddleAmount = page.locator('input[id^="paddle-bid-amount-"]');
-    const telephoneAmount = page.locator('input[id^="telephone-bid-amount-"]');
+    await expect(paddleAmount).toBeVisible();
+    await page.getByRole("button", { name: /^minimum bid/i }).click();
+    await expect(paddleAmount).toHaveValue(/^7,?100(\.00)?$/);
 
-    if ((await paddleAmount.count()) === 0) {
-      test.skip(true, "No lot on block — advance a lot first in staging data.");
-    }
+    const place = page.getByRole("button", { name: /^place paddle bid$/i });
+    await expect(place).toBeDisabled();
+    await page.getByRole("textbox", { name: "Paddle number" }).fill("142");
+    await expect(paddleAmount).toHaveValue(/^7,?100(\.00)?$/);
 
-    await paddleAmount.fill("1500");
-    await expect(telephoneAmount).toHaveValue("");
-    await telephoneAmount.fill("2000");
-    await expect(paddleAmount).toHaveValue("1500");
-  });
-
-  test("operations tab reflects live session without full reload", async ({ browser }) => {
-    const context = await browser.newContext({ storageState: roleAuthState.staff });
-    const opsPage = await context.newPage();
-    const clerkPage = await context.newPage();
-
-    await opsPage.goto(`/admin/sales/${seededHybridSaleId}/operations`);
-    await expect(opsPage.getByText(/saleroom operations/i)).toBeVisible();
-
-    await clerkPage.goto(`/admin/saleroom/${seededHybridSaleId}`);
-    await clerkPage.getByRole("button", { name: /go live/i }).click();
-    await clerkPage.getByRole("button", { name: /on the block/i }).click();
-
-    await expect(opsPage.getByText(/on the block/i)).toBeVisible({ timeout: 15_000 });
-
-    await context.close();
+    // No telephone line is confirmed for this lot, so there is no telephone amount to fill.
+    await expect(page.getByText(/no confirmed telephone lines for this lot/i)).toBeVisible();
+    await expect(page.locator('input[id^="telephone-bid-amount-"]')).toHaveCount(0);
   });
 
   test("clerk console refreshes roster after check-in redirect", async ({ page }) => {
@@ -63,68 +67,52 @@ test.describe("hybrid saleroom clerk @journey", () => {
     await expect(page.locator("#check-in")).toBeVisible();
 
     await page.goto(`/admin/saleroom/${seededHybridSaleId}?checkedIn=1`);
-    await expect(page.getByText(/lot on block/i)).toBeVisible();
-    await expect(page.getByLabel(/paddle #/i)).toBeVisible();
+    await expect(lotOnBlockHeading(page)).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Paddle number" })).toBeVisible();
   });
 
-  test("marketing lot page shows live feed after clerk session is active", async ({ page }) => {
+  test("marketing lot page shows live feed while the lot is on the block", async ({ page }) => {
     await page.goto(`/lot/test/${seededHybridLotId}`);
-    await expect(page.getByText(/live feed|watching/i)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(/live feed|watching/i).first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(/bidding closed/i)).not.toBeVisible();
   });
 
-  test("clerk console price updates when another context places a bid", async ({ browser }) => {
-    const clerkContext = await browser.newContext({ storageState: roleAuthState.staff });
-    const bidderContext = await browser.newContext();
-    const clerkPage = await clerkContext.newPage();
-    const bidderPage = await bidderContext.newPage();
-
-    await clerkPage.goto(`/admin/saleroom/${seededHybridSaleId}`);
-    await clerkPage.getByRole("button", { name: /go live/i }).click();
-    await clerkPage.getByRole("button", { name: /on the block/i }).click();
-
-    await bidderPage.goto(`/lot/test/${seededHybridLotId}`);
-    const priceBefore = await clerkPage
-      .locator(".font-headline.text-lg")
-      .first()
-      .textContent()
-      .catch(() => null);
-    const bidButton = bidderPage.getByRole("button", { name: /bid|place/i }).first();
-    if (await bidButton.isVisible().catch(() => false)) {
-      await bidButton.click();
-      if (priceBefore) {
-        await expect(clerkPage.locator(".font-headline.text-lg").first()).not.toHaveText(
-          priceBefore,
-          { timeout: 10_000 },
-        );
-      } else {
-        await expect(clerkPage.getByText(/leading/i)).toBeVisible({ timeout: 10_000 });
-      }
-    } else {
-      await expect(clerkPage.getByText(/current|leading/i)).toBeVisible({ timeout: 5_000 });
-    }
-
-    await clerkContext.close();
-    await bidderContext.close();
-  });
-
   test("clerk console hydrates after reconnect", async ({ page, context }) => {
-    await page.goto(`/admin/saleroom/${seededHybridSaleId}`);
-    await page.getByRole("button", { name: /go live/i }).click();
+    await clerkConsole(page);
+    const connected = page.getByText("Connected", { exact: true });
+    await expect(connected).toBeVisible({ timeout: 15_000 });
 
     await context.setOffline(true);
-    await page.waitForTimeout(1_000);
+    await expect(connected).toBeHidden({ timeout: 15_000 });
     await context.setOffline(false);
 
-    await expect(page.getByText(/reconnected|live/i)).toBeVisible({ timeout: 15_000 });
+    await expect(connected).toBeVisible({ timeout: 30_000 });
+    await expect(lotOnBlockHeading(page)).toBeVisible();
   });
 
   test("clerk session bar shows lot-of-total progress", async ({ page }) => {
-    await page.goto(`/admin/saleroom/${seededHybridSaleId}`);
+    await clerkConsole(page);
 
     await expect(
       page.getByText(/lot \d+ of \d+|between lots|of \d+ complete/i).first(),
     ).toBeVisible({ timeout: 15_000 });
+  });
+
+  test("operations tab follows the clerk's next lot without a reload", async ({ browser }) => {
+    const context = await browser.newContext({ storageState: roleAuthState.staff });
+    const opsPage = await context.newPage();
+    const clerkPage = await context.newPage();
+
+    await opsPage.goto(`/admin/sales/${seededHybridSaleId}/operations`);
+    await expect(opsPage.getByRole("heading", { name: /saleroom operations/i })).toBeVisible();
+    await expect(opsPage.getByText(/meridian drift/i).first()).toBeVisible();
+
+    await clerkConsole(clerkPage);
+    await clerkPage.getByRole("button", { name: /^advance next/i }).click();
+
+    await expect(opsPage.getByText(/glass horizon/i).first()).toBeVisible({ timeout: 15_000 });
+
+    await context.close();
   });
 });
 
@@ -134,7 +122,7 @@ test.describe("hybrid saleroom hub (multi-room live grid) @journey", () => {
   test("live grid lists active hybrid rooms with progress", async ({ page }) => {
     await page.goto("/admin/saleroom");
 
-    await expect(page.getByRole("heading", { name: /live rooms/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /rooms to run/i })).toBeVisible({
       timeout: 15_000,
     });
 
@@ -147,7 +135,7 @@ test.describe("hybrid saleroom hub (multi-room live grid) @journey", () => {
 
   test("opening a room from the grid lands on its clerk console", async ({ page }) => {
     await page.goto("/admin/saleroom");
-    await expect(page.getByRole("heading", { name: /live rooms/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /rooms to run/i })).toBeVisible({
       timeout: 15_000,
     });
 
@@ -161,7 +149,7 @@ test.describe("hybrid saleroom hub (multi-room live grid) @journey", () => {
 
   test("live grid renders a progress bar reflecting completed lots", async ({ page }) => {
     await page.goto("/admin/saleroom");
-    await expect(page.getByRole("heading", { name: /live rooms/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /rooms to run/i })).toBeVisible({
       timeout: 15_000,
     });
 

@@ -18,7 +18,7 @@ test.describe("seller connect embedded @journey", () => {
 
     await clientSession(page);
     await page.goto("/selling/payout-setup");
-    await expect(page.getByRole("heading", { name: /payout setup/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^payout setup$/i })).toBeVisible();
     const workspace = page.getByTestId("connect-workspace");
     const empty = page.getByText(/payout setup is not available/i);
     await expect(workspace.or(empty)).toBeVisible({ timeout: 15_000 });
@@ -45,7 +45,10 @@ test.describe("seller connect embedded @journey", () => {
     await clientSession(page);
     await page.goto("/selling/payout-setup");
     const workspace = page.getByTestId("connect-workspace");
-    await expect(workspace).toBeVisible({ timeout: 15_000 });
+    // Without Stripe (a test stack) the page says payout setup is not available here yet.
+    const empty = page.getByText(/payout setup is not available/i);
+    await expect(workspace.or(empty)).toBeVisible({ timeout: 15_000 });
+    if (await empty.isVisible()) return;
     const hasStatusOrPreparing = await page
       .getByText(/payout setup|setting up your secure payout account|loading payout setup/i)
       .first()
@@ -64,7 +67,8 @@ test.describe("seller connect embedded @journey", () => {
       page
         .getByTestId("connect-page-header-skeleton")
         .or(page.getByTestId("connect-workspace-skeleton"))
-        .or(page.getByTestId("connect-workspace")),
+        .or(page.getByTestId("connect-workspace"))
+        .or(page.getByText(/payout setup is not available/i)),
     ).toBeVisible({
       timeout: 15_000,
     });
@@ -72,14 +76,18 @@ test.describe("seller connect embedded @journey", () => {
 });
 
 test.describe("seller workspace navigation @journey", () => {
-  test("mobile more sheet includes payout setup in selling workspace", async ({ page }) => {
+  test("selling workspace navigation reaches sold and payouts", async ({ page }) => {
     test.skip(!enabled, skipReason);
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
 
     await clientSession(page);
     await page.goto("/selling");
-    await page.getByRole("button", { name: /open more dashboard actions/i }).click();
-    await expect(page.getByRole("link", { name: /^payout setup$/i })).toBeVisible();
+    // Payout setup is reached from Sold & payouts, so that is the navigation item to find.
+    await page
+      .getByRole("link", { name: /^sold & payouts$/i })
+      .first()
+      .click();
+    await expect(page).toHaveURL(/\/selling\/payouts/);
   });
 
   test("sold and payouts page loads", async ({ page }) => {
@@ -203,7 +211,7 @@ test.describe("buying workspace notifications @journey", () => {
     await expect(page.getByRole("heading", { name: /^notifications$/i })).toBeVisible({
       timeout: 15_000,
     });
-    const inboxNav = page.getByRole("navigation", { name: /notification inbox/i });
+    const inboxNav = page.getByRole("navigation", { name: /^notifications$/i });
     await expect(inboxNav.getByRole("link", { name: /^all$/i })).toBeVisible();
     await expect(inboxNav.getByRole("link", { name: /unread/i })).toBeVisible();
     await expect(inboxNav.getByRole("link", { name: /^archived$/i })).toBeVisible();

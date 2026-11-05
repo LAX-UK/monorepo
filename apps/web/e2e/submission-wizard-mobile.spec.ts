@@ -38,12 +38,13 @@ test.describe("submission wizard mobile @journey", () => {
     if (draftId) {
       await page.goto(`/selling/consignments/${draftId}`);
     } else {
-      await page.goto("/selling/consignments?tab=drafts");
-      // Each draft row's title opens the consignment.
-      const draftLink = page.locator("[data-record-link]").first();
-      await expect(draftLink).toBeVisible({ timeout: 15_000 });
-      await draftLink.click();
-      await page.waitForURL(/\/selling\/consignments\/[^/]+$/);
+      // The seed has no draft for this account, so the wizard opens from a new submission.
+      await page.goto("/selling/new");
+      // Someone who can sell for more than one account chooses who is selling first.
+      const toWork = page.getByTestId("sell-flow-continue");
+      const basics = page.getByTestId("submission-wizard-step-basics");
+      await expect(toWork.or(basics).first()).toBeVisible({ timeout: 15_000 });
+      if (await toWork.isVisible()) await toWork.click();
     }
 
     await expect(page.getByTestId("submission-wizard-step-basics")).toBeVisible({

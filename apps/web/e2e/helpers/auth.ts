@@ -71,11 +71,14 @@ const onboardingIncompleteCredentials: Credentials = {
   password: process.env.PLAYWRIGHT_ONBOARDING_INCOMPLETE_PASSWORD ?? "Password123!",
 };
 
-/** Seeded hybrid saleroom ids — see packages/db dev seed (S.hybridA, L.hybridA1). */
+/**
+ * Seeded hybrid saleroom ids — see packages/db dev seed. Room A (S.hybridA) is live with its third
+ * lot (L.hybridA3) on the block; the first two lots are complete.
+ */
 export const seededHybridSaleId =
   process.env.PLAYWRIGHT_HYBRID_SALE_ID ?? "e1000003-0000-4000-8000-000000000003";
 export const seededHybridLotId =
-  process.env.PLAYWRIGHT_HYBRID_LOT_ID ?? "b1000101-0000-4000-8000-000000000101";
+  process.env.PLAYWRIGHT_HYBRID_LOT_ID ?? "b1000103-0000-4000-8000-000000000103";
 
 /** Stable seeded ids for visual/detail E2E routes. */
 export const seededStaffRoutes = {
