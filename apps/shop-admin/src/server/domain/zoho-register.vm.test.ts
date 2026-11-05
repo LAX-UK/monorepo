@@ -199,6 +199,44 @@ describe("buildRegisterTimeline", () => {
     ...over,
   });
 
+  it("tells a draft lot with the sale, the consignor's agreement and a take-down", () => {
+    const [moved, plain, back, writeback] = buildRegisterTimeline([
+      event({
+        type: "move_confirmed",
+        actor: "staff",
+        actorName: "Lena Hart",
+        payload: {
+          direction: "to_auction",
+          saleTitle: "Winter Modern and Contemporary",
+          consignorAgreed: true,
+          withdrawnFromLaxArt: true,
+        },
+      }),
+      event({
+        type: "move_confirmed",
+        payload: { direction: "to_auction", consignorAgreed: true },
+      }),
+      event({ type: "move_confirmed", payload: { direction: "to_lax_art" } }),
+      event({ type: "zoho_writeback_recorded", payload: { to: "In Auction" } }),
+    ]);
+    expect(moved).toMatchObject({
+      title: "Draft lot created",
+      actor: "Lena Hart",
+      detail: "Consignor agreement confirmed · Winter Modern and Contemporary · Taken off lax.art",
+    });
+    expect(plain).toMatchObject({ detail: "Consignor agreement confirmed" });
+    expect(back).toMatchObject({ title: "Returned to lax.art as a draft" });
+    expect(writeback).toMatchObject({
+      title: "Status set in Zoho",
+      detail: "Zoho Status is now In Auction",
+    });
+  });
+
+  it("never falls back to a bare Changed", () => {
+    const [first] = buildRegisterTimeline([event({ type: "created", payload: {} })]);
+    expect(first?.title).not.toBe("Changed");
+  });
+
   it("tells each kind of event in a sentence", () => {
     const titles = buildRegisterTimeline([
       event({ type: "created" }),

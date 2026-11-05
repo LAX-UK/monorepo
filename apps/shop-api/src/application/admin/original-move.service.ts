@@ -271,7 +271,9 @@ export class OriginalMoveService {
       record: {
         direction: "to_auction",
         saleId: draft.saleId,
+        saleTitle: sale.title,
         lotId: draft.lotId,
+        ...(takenDown ? { withdrawnFromLaxArt: true as const } : {}),
         consignorAgreed: true,
         confirmedBy: actor,
       },

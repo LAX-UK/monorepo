@@ -303,7 +303,9 @@ describe("OriginalMoveService.offerAtAuction", () => {
       record: {
         direction: "to_auction",
         saleId: SALE_ID,
+        saleTitle: "Winter sale",
         lotId: LOT_ID,
+        withdrawnFromLaxArt: true,
         consignorAgreed: true,
         confirmedBy: "staff:user-1",
       },

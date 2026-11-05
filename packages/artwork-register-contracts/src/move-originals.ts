@@ -199,6 +199,10 @@ export type MoveRecord = {
   direction: MoveDirection;
   /** The sale chosen, for a move to auction. */
   saleId?: string;
+  /** The sale's title when it was chosen, so the history reads without asking LAX Bid. */
+  saleTitle?: string;
+  /** A live lax.art listing was taken down as part of the move. */
+  withdrawnFromLaxArt?: true;
   /** The draft lot made (to auction) or the lot handed back (to lax.art). */
   lotId?: string;
   /** The Shop artwork reopened as a draft, for a return. */

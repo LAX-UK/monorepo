@@ -344,9 +344,50 @@ function describeEvent(
       return { title: `Moved from ${stateOf(payload.from)} to ${stateOf(payload.to)}` };
     case "lax_art_draft_created":
       return { title: "lax.art draft created", tone: "success" };
+    case "move_confirmed":
+      return describeMove(payload);
+    case "zoho_writeback_recorded":
+      return describeWriteback(payload);
     default:
-      return { title: "Changed" };
+      return { title: "Something changed" };
   }
+}
+
+const text = (value: unknown): string | null =>
+  typeof value === "string" && value.trim() !== "" ? value : null;
+
+/** A draft lot made for an offer at auction, or a return to lax.art; the actor says who confirmed. */
+function describeMove(
+  payload: Record<string, unknown>,
+): Pick<TimelineEvent, "title" | "detail" | "tone"> {
+  if (payload.direction === "to_lax_art") {
+    return {
+      title: "Returned to lax.art as a draft",
+      detail: "From a LAX Bid lot",
+      tone: "success",
+    };
+  }
+  const parts = [
+    payload.consignorAgreed === true ? "Consignor agreement confirmed" : null,
+    text(payload.saleTitle),
+    payload.withdrawnFromLaxArt === true ? "Taken off lax.art" : null,
+  ].filter((part): part is string => part !== null);
+  return {
+    title: "Draft lot created",
+    ...(parts.length > 0 ? { detail: parts.join(" · ") } : {}),
+    tone: "success",
+  };
+}
+
+/** LAX set Zoho's Status after an offer or a sale in LAX. */
+function describeWriteback(
+  payload: Record<string, unknown>,
+): Pick<TimelineEvent, "title" | "detail"> {
+  const to = text(payload.to);
+  return {
+    title: "Status set in Zoho",
+    ...(to ? { detail: `Zoho Status is now ${to}` } : {}),
+  };
 }
 
 /** The register's history as the shared timeline reads it. */
