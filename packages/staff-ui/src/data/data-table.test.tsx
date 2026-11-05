@@ -270,6 +270,20 @@ describe("DataTable selection", () => {
     rerender(<SelectableTable key="clear" />);
     expect(document.querySelector("[data-staff-bulk-bar]")).not.toBeInTheDocument();
   });
+
+  it("keeps the bar in the page flow after the table, so the last row is never under it", () => {
+    render(<SelectableTable initial={["a"]} />);
+    const bar = document.querySelector("[data-staff-bulk-bar]") as HTMLElement;
+    const table = document.querySelector("table") as HTMLElement;
+    // Follows the table in the document, and floats with `sticky`, never `fixed` or `absolute`.
+    expect(table.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(bar.className).toMatch(/\bsticky\b/);
+    expect(bar.className).not.toMatch(/\b(fixed|absolute)\b/);
+    // On a phone the bar wraps, so the actions are never squeezed out by the scope control.
+    expect(screen.getByRole("region", { name: "Bulk actions" }).className).toMatch(
+      /max-sm:flex-wrap/,
+    );
+  });
 });
 
 describe("DataTable sorting", () => {

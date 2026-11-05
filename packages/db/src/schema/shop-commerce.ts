@@ -1919,3 +1919,14 @@ export const shopStaffSavedView = pgTable(
     index("shop_staff_saved_view_owner_list_idx").on(table.ownerSubjectId, table.listKey),
   ],
 );
+
+/**
+ * Staff-controlled switches for the catalogue, one row per switch. Absent means off. Created in
+ * migration 0318 for "block publishing originals that are not linked to Zoho".
+ */
+export const shopCatalogueSetting = pgTable("shop_catalogue_setting", {
+  key: text("key").primaryKey(),
+  enabled: boolean("enabled").notNull().default(false),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  updatedBy: text("updated_by"),
+});

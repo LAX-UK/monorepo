@@ -94,6 +94,8 @@ export const artworkRegisterEvent = pgTable(
         | "zoho_writeback_recorded"
         | "move_confirmed"
         | "lax_art_draft_created"
+        | "zoho_link_linked"
+        | "zoho_link_unlinked"
       >()
       .notNull(),
     /** `zoho`, `system`, or `staff:<user id>`. */

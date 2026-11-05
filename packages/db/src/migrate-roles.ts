@@ -59,6 +59,7 @@ export const AUTH_DENY_TABLES = [
 ] as const;
 /** Shop commerce catalogue tables owned by apps/shop-api under shop_app. */
 export const SHOP_COMMERCE_TABLES = [
+  "shop_catalogue_setting",
   "shop_party",
   "shop_artist",
   "shop_artwork",
