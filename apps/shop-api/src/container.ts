@@ -19,6 +19,7 @@ import {
   withZohoLinks,
 } from "./application/artwork-register/artwork-zoho-link.service.js";
 import { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
+import { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
 import { createEditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
@@ -125,6 +126,12 @@ import { createDrizzleShopStaffMemberReader } from "./infrastructure/drizzle-sho
 import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-transaction-effects.js";
 import { createDrizzleStaffNameReader } from "./infrastructure/drizzle-staff-name.reader.js";
 import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-storefront-curation.repository.js";
+import {
+  createDrizzleZohoLinkListingReader,
+  createDrizzleZohoLinkRecordReader,
+  createDrizzleZohoLinkSettings,
+  createDrizzleZohoLinkWriter,
+} from "./infrastructure/drizzle-zoho-link.js";
 import { createDrizzleEditionRunUnitOfWork } from "./infrastructure/edition-runs/drizzle-edition-run.unit-of-work.js";
 import { createEnquiryFollowUp } from "./infrastructure/enquiry-follow-up.js";
 import { grantShopStaffRole } from "./infrastructure/grant-staff-role.js";
@@ -267,6 +274,9 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     : createInMemoryFixedWindowCounter();
   const originalOffers = createRegisterOriginalOffers(
     (session) => new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(session)),
+    {
+      blockUnlinked: (session) => createDrizzleZohoLinkSettings(session).blockUnlinkedPublish(),
+    },
   );
   const { commerce, stripeWebhook } = createCommerceServices(db, env, {
     rateLimitCounter,
@@ -634,6 +644,17 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
             registerFor: (session) => artworkRegisterRepository.withExecutor(session),
             listings: laxArtListings,
           }),
+        }),
+        zohoLink: new ZohoLinkService({
+          listings: createDrizzleZohoLinkListingReader(db),
+          records: createDrizzleZohoLinkRecordReader(db, artworkRegisterRepository),
+          artists: createDrizzleLaxArtArtistDirectory(db),
+          writer: createDrizzleZohoLinkWriter(shopUow, {
+            registerFor: (session) => artworkRegisterRepository.withExecutor(session),
+            lockFor: (session) =>
+              new ArtworkOfferLock(artworkRegisterRepository.withExecutor(session)),
+          }),
+          settings: createDrizzleZohoLinkSettings(db),
         }),
         releaseAlertSummary: shopAlerts.summary,
         guestErasure: new GuestErasureService(
