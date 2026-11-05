@@ -173,7 +173,7 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 ## CI
 
 - Staging: [shop-staging-acceptance.yml](../../.github/workflows/shop-staging-acceptance.yml). Tier 1 on every deploy (`seed_catalogue=false`): health pin, auth contracts, portal smoke. Full matrix with `seed_catalogue=true`: catalogue seeds, portal/commerce fixtures, guest basket, filters, POA interest, desktop + mobile a11y, Stripe redirect smoke + webhook paid-order rehearsal on `acceptance-stripe-print`, **staff-operations** seed + `apps/shop-admin` Playwright + `apps/shop/e2e/merchandise.spec.ts`, and strict Playwright skip audit (feature-off skips allowed).
-- PR Postgres smoke: [ci.yml](../../.github/workflows/ci.yml) job **`shop-v1-phase-smoke`** (shop-domain + migration contract tests, shop-api Postgres integration, shop build) when Shop-related paths change.
+- PR Postgres smoke: [ci.yml](../../.github/workflows/ci.yml) job **`shop-v1-phase-smoke`** (three parallel parts: `contracts` = shop-domain + migration contract tests, `integration` = shop-api Postgres integration + admin route tests, `shop-build` = shop build) when Shop-related paths change.
 - PR browser gates: [e2e-pr.yml](../../.github/workflows/e2e-pr.yml) (Shop buyer flow + phase 1 portal smoke with portal flag on shop-api and storefront).
 
 ## Test environment deploy sequence (Phase 1)
