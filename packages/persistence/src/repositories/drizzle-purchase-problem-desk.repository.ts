@@ -223,7 +223,11 @@ export class DrizzlePurchaseProblemNoteRepository implements IPurchaseProblemNot
     tx: Database,
     input: { purchaseProblemId: string; authorUserId: string; body: string },
   ) {
-    const [row] = await tx.insert(purchaseProblemNote).values(input).returning();
+    const [row] = await tx
+      .insert(purchaseProblemNote)
+      // clock_timestamp() keeps notes added in one transaction in the order they were written.
+      .values({ ...input, createdAt: sql`clock_timestamp()` })
+      .returning();
     if (!row) throw new Error("purchase problem note insert returned no row");
     return toNote(row);
   }
