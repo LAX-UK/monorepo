@@ -2092,14 +2092,28 @@
       "idx": 299,
       "version": "7",
       "when": 1801382400000,
-      "tag": "0299_artwork_register_gallery_sale_ref",
+      "tag": "0299_alert_in_app_notices",
       "breakpoints": true
     },
     {
       "idx": 300,
       "version": "7",
       "when": 1801468800000,
-      "tag": "0300_lax_art_draft_from_register",
+      "tag": "0300_sale_test_flag",
+      "breakpoints": true
+    },
+    {
+      "idx": 301,
+      "version": "7",
+      "when": 1801555200000,
+      "tag": "0301_artwork_register_gallery_sale_ref",
+      "breakpoints": true
+    },
+    {
+      "idx": 302,
+      "version": "7",
+      "when": 1801641600000,
+      "tag": "0302_lax_art_draft_from_register",
       "breakpoints": true
     }
   ]

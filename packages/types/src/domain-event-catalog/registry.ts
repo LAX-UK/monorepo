@@ -234,6 +234,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "sale.ended",
   "sale.published",
   "sale.soft_deleted",
+  "sale.test_flag_changed",
   "sale.unpublished",
   "sale_registration.decided",
   "sale_registration.bid_limit_changed",

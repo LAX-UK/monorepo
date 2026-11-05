@@ -1,7 +1,7 @@
 import type { MatchSnapshot } from "@auction/alerts";
 import type { ArtistAlertCriteria } from "@auction/domain";
 import type { AlertableLot } from "@auction/persistence/interfaces";
-import { lotPath } from "@auction/types";
+import { artistPath, lotPath } from "@auction/types";
 
 function money(amount: string, currency = "GBP"): string {
   const value = Number(amount);
@@ -25,7 +25,7 @@ export function lotPriceLine(lot: AlertableLot): string {
 /** What an email shows about a lot, whichever alert it matched. */
 export function lotSnapshot(
   lot: AlertableLot,
-  group?: { label: string; criteria?: string },
+  group?: { label: string; criteria?: string; path?: string },
 ): MatchSnapshot {
   const subtitle = [lot.medium, lot.saleTitle].filter((part): part is string => Boolean(part));
   return {
@@ -34,8 +34,23 @@ export function lotSnapshot(
     detail: lotPriceLine(lot),
     path: lotPath(lot),
     ...(group ? { groupLabel: group.label } : {}),
+    ...(group?.path ? { groupPath: group.path } : {}),
     ...(group?.criteria ? { groupCriteria: group.criteria } : {}),
   };
+}
+
+/** The artist's page on the site. */
+export function artistPagePath(artistId: string, artistName: string | null): string {
+  return artistPath({ id: artistId, name: artistName ?? "artist" });
+}
+
+/** The search results page for a saved search, as the search page reads its parameters. */
+export function searchResultsPath(query: { q: string; categoryId: string | null }): string {
+  const params = new URLSearchParams();
+  if (query.q.trim()) params.set("q", query.q.trim());
+  if (query.categoryId) params.set("categoryId", query.categoryId);
+  const text = params.toString();
+  return text ? `/search?${text}` : "/search";
 }
 
 /** The person's criteria in words, shown under the artist: "Oil · £2,000 to £20,000". */

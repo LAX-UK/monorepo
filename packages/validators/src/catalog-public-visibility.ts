@@ -13,6 +13,8 @@ import {
 } from "@auction/types";
 
 export type PublicCatalogSaleContext = Pick<Sale, "status"> & {
+  /** Test sales are never public, whatever their status. */
+  isTest?: boolean | null;
   sellingPlatform?: AtgOwnershipState | null;
   atgDistribution?: AtgDistribution | null;
 };
@@ -78,6 +80,7 @@ export function isPublicSaleStatus(status: SaleStatus): boolean {
  */
 export function isAtgOwnedCatalogSale(sale: PublicCatalogSaleContext): boolean {
   return (
+    !sale.isTest &&
     sale.status === "draft" &&
     sale.sellingPlatform === "atg" &&
     sale.atgDistribution === "public_marketplace"
@@ -85,6 +88,7 @@ export function isAtgOwnedCatalogSale(sale: PublicCatalogSaleContext): boolean {
 }
 
 export function isPublicCatalogSale(sale: PublicCatalogSaleContext): boolean {
+  if (sale.isTest) return false;
   return isPublicSaleStatus(sale.status) || isAtgOwnedCatalogSale(sale);
 }
 

@@ -6,20 +6,28 @@ import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 type SaleIdRef = SQL | AnyPgColumn;
 
+/** True unless the sale is flagged as a test sale (a test sale is never public or announced). */
+export function saleIsNotTestSql(saleIdRef: SaleIdRef): SQL {
+  return sql`not exists (
+    select 1 from sale test_sale
+    where test_sale.id = ${saleIdRef} and test_sale.is_test = true
+  )`;
+}
+
 /** Sale whose ATG auction is published (bidding open on the White Label). */
 export function saleIsLiveOnAtgSql(saleIdRef: SaleIdRef): SQL {
-  return sql`exists (
+  return sql`(${saleIsNotTestSql(saleIdRef)} and exists (
     select 1 from ${atgAuctionLink} al
     where al.sale_id = ${saleIdRef}
       and al.atg_auction_id is not null
       and al.remote_status = 'published'
       and al.distribution = 'public_marketplace'
-  )`;
+  ))`;
 }
 
 /** Sale whose ATG auction closed with at least one lot sold. */
 export function saleEndedOnAtgWithSalesSql(saleIdRef: SaleIdRef): SQL {
-  return sql`exists (
+  return sql`(${saleIsNotTestSql(saleIdRef)} and exists (
     select 1 from ${atgAuctionLink} al
     where al.sale_id = ${saleIdRef}
       and al.atg_auction_id is not null
@@ -29,7 +37,7 @@ export function saleEndedOnAtgWithSalesSql(saleIdRef: SaleIdRef): SQL {
         select 1 from ${atgLotLink} ll
         where ll.sale_id = al.sale_id and ll.sold = true
       )
-  )`;
+  ))`;
 }
 
 /** Draft LAX sale owned by ATG (see `resolveSaleSellingPlatform`) — read-only on lax.bid. */
@@ -73,9 +81,12 @@ function requireSql(condition: SQL | undefined, name: string): SQL {
 /** Public marketing visibility for sales (includes ATG-owned drafts). */
 export function publicSaleCondition(): SQL {
   return requireSql(
-    or(
-      inArray(sale.status, [...PUBLIC_SALE_STATUSES] as SaleStatus[]),
-      and(eq(sale.status, "draft"), saleIsAtgOwnedSql(sale.id)),
+    and(
+      eq(sale.isTest, false),
+      or(
+        inArray(sale.status, [...PUBLIC_SALE_STATUSES] as SaleStatus[]),
+        and(eq(sale.status, "draft"), saleIsAtgOwnedSql(sale.id)),
+      ),
     ),
     "publicSaleCondition",
   );
@@ -87,7 +98,14 @@ export function publicSaleCondition(): SQL {
  */
 export function publicCatalogueLotCondition(): SQL {
   return requireSql(
-    or(publicLotCondition(), and(eq(lot.status, "cancelled"), sql`${lot.saleId} is not null`)),
+    or(
+      publicLotCondition(),
+      and(
+        eq(lot.status, "cancelled"),
+        sql`${lot.saleId} is not null`,
+        saleIsNotTestSql(lot.saleId),
+      ),
+    ),
     "publicCatalogueLotCondition",
   );
 }
@@ -95,9 +113,12 @@ export function publicCatalogueLotCondition(): SQL {
 /** Public marketing visibility for lots joined to their sale. */
 export function publicLotCondition(): SQL {
   return requireSql(
-    or(
-      inArray(lot.status, [...PUBLIC_LOT_STATUSES] as LotStatus[]),
-      and(eq(lot.status, "draft"), sql`${lot.saleId} is not null`, saleIsAtgOwnedSql(lot.saleId)),
+    and(
+      sql`(${lot.saleId} is null or ${saleIsNotTestSql(lot.saleId)})`,
+      or(
+        inArray(lot.status, [...PUBLIC_LOT_STATUSES] as LotStatus[]),
+        and(eq(lot.status, "draft"), sql`${lot.saleId} is not null`, saleIsAtgOwnedSql(lot.saleId)),
+      ),
     ),
     "publicLotCondition",
   );

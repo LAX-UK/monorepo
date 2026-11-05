@@ -37,6 +37,7 @@ function parentSaleIsPublicSql(saleStatusesSql: SQL, atgDraftSql: AtgSaleSql) {
       from sale parent_sale
       where parent_sale.id = lot.sale_id
         and parent_sale.deleted_at is null
+        and parent_sale.is_test = false
         and (
           parent_sale.status in (${saleStatusesSql})
           or (parent_sale.status = 'draft' and ${atgDraftSql(sql`parent_sale.id`)})

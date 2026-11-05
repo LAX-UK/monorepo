@@ -9,6 +9,8 @@ const DEFAULTS: NotificationPreference = {
   watchlistInApp: true,
   paymentInApp: true,
   newSalesInApp: true,
+  artistAlertsInApp: true,
+  searchAlertsInApp: true,
   outbidPush: true,
   wonPush: true,
   endingSoonPush: false,
@@ -106,6 +108,25 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
    */
   sale_announced: {
     inApp: "newSalesInApp",
+    push: null,
+    email: null,
+    whatsapp: null,
+    template: null,
+  },
+  /**
+   * New lots by an artist the person follows. It follows the Artists you follow app switch; the
+   * email goes through the alert engine's own digest, not through this dispatcher.
+   */
+  artist_lots_listed: {
+    inApp: "artistAlertsInApp",
+    push: null,
+    email: null,
+    whatsapp: null,
+    template: null,
+  },
+  /** New lots matching a saved search: the Saved searches app switch; the email is the digest. */
+  search_lots_listed: {
+    inApp: "searchAlertsInApp",
     push: null,
     email: null,
     whatsapp: null,

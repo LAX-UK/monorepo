@@ -16,6 +16,14 @@ const FULFILMENT_NOTIFICATION_TYPES = new Set([
   "lot_delivered",
 ]);
 
+/** Followed-artist and saved-search notices carry the page that lists the new lots. */
+const ALERT_LOT_NOTIFICATION_TYPES = new Set(["artist_lots_listed", "search_lots_listed"]);
+
+/** A path on this site: one slash first, never a protocol-relative or absolute address. */
+function isSitePath(path: string | null | undefined): path is string {
+  return typeof path === "string" && path.startsWith("/") && !path.startsWith("//");
+}
+
 /** Notices about the organisation itself open the page where the person acts on them. */
 const PAGE_BY_TYPE: Readonly<Record<string, string>> = {
   delivery_quote_ready: "/purchases",
@@ -46,6 +54,9 @@ export function notificationHref(item: UserNotification): string | null {
   }
   if (item.submissionId) return `/selling/consignments/${item.submissionId}`;
   if (item.type === "sale_announced" && item.saleId) return `/sales/${item.saleId}`;
+  if (ALERT_LOT_NOTIFICATION_TYPES.has(item.type) && isSitePath(item.linkPath)) {
+    return item.linkPath;
+  }
   if (item.lotId) return lotPath({ id: item.lotId, title: item.title });
   return null;
 }

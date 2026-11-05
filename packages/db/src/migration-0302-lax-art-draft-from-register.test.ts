@@ -5,19 +5,19 @@ import { describe, expect, it } from "vitest";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0300_lax_art_draft_from_register.sql");
-const rollback = read("0300_rollback.sql");
+const migration = read("0302_lax_art_draft_from_register.sql");
+const rollback = read("0302_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0300 lax.art draft from the register", () => {
+describe("migration 0302 lax.art draft from the register", () => {
   it("is journalled after the previous migration", () => {
-    const entry = journal.entries.find((e) => e.tag === "0300_lax_art_draft_from_register");
+    const entry = journal.entries.find((e) => e.tag === "0302_lax_art_draft_from_register");
     const previous = journal.entries.find(
-      (e) => e.tag === "0299_artwork_register_gallery_sale_ref",
+      (e) => e.tag === "0301_artwork_register_gallery_sale_ref",
     );
-    expect(entry?.idx).toBe(300);
+    expect(entry?.idx).toBe(302);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
   });
 

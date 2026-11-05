@@ -1,0 +1,43 @@
+name: Worker task (test)
+
+# Runs a one-off worker task against the test database from main. Each task is idempotent.
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: Task to run
+        type: choice
+        required: true
+        options:
+          - alerts-seed
+
+concurrency:
+  group: worker-task-test
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: ${{ inputs.task }}
+    runs-on: ubuntu-latest
+    environment: test
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build worker dependencies
+        run: pnpm turbo run build --filter=@auction/worker^...
+      - name: Alerts first-run seed
+        if: inputs.task == 'alerts-seed'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_OWNER }}
+        run: pnpm --filter @auction/worker exec tsx src/scripts/seed-bid-alerts.ts

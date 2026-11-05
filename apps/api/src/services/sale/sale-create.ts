@@ -96,6 +96,7 @@ export async function createSale(
     to_status: sale.status,
     deliveryMode: sale.deliveryMode,
     lotCount: input.lots?.length ?? 0,
+    isTest: sale.isTest === true,
   });
   return sale;
 }

@@ -96,12 +96,13 @@ export class DrizzleSaleCoverRepository implements ISaleCoverRepository {
     return { saleId: row.saleId ?? null, images: row.images ?? [] };
   }
 
+  /** Statuses of the named sales that can lead the home page. A test sale is left out. */
   async getSaleStatuses(saleIds: readonly string[]): Promise<Map<string, SaleStatus>> {
     if (saleIds.length === 0) return new Map();
     const rows = await this.db
       .select({ id: sale.id, status: sale.status })
       .from(sale)
-      .where(and(inArray(sale.id, [...saleIds]), isNull(sale.deletedAt)));
+      .where(and(inArray(sale.id, [...saleIds]), isNull(sale.deletedAt), eq(sale.isTest, false)));
     return new Map(rows.map((row) => [row.id, row.status as SaleStatus]));
   }
 

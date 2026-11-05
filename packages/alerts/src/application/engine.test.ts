@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createEngineHarness } from "../testing/harness.js";
+import { RecordingNotices, createEngineHarness } from "../testing/harness.js";
 
 const snapshot = { title: "Modern British and Irish Art", path: "/sales/modern" };
 
@@ -582,6 +582,73 @@ describe("announcing and the daily digest", () => {
     expect(h.mailer.digests[0]).toMatchObject({
       audience: "account",
       manageUrl: "https://lax.bid/settings#alerts",
+    });
+  });
+
+  describe("in-app notices", () => {
+    async function accountWithMatch(h: ReturnType<typeof createEngineHarness>) {
+      h.accounts.set("u1", { email: "client@example.com", verified: true });
+      await h.subscribe.enableForAccount({
+        product: "bid",
+        subjectId: "u1",
+        topic: "bid.new_sales",
+        source: "s",
+      });
+      await h.record.announce({
+        topic: "bid.new_sales",
+        itemKey: "sale:1",
+        snapshot,
+        announce: true,
+      });
+    }
+
+    it("hands a signed-in person's digest to the notice writer, with the digest and day", async () => {
+      const h = createEngineHarness();
+      const notices = new RecordingNotices();
+      await accountWithMatch(h);
+      await h.digestRun("bid", notices).run("on");
+      expect(notices.written).toHaveLength(1);
+      expect(notices.written[0]).toMatchObject({ subjectId: "u1", localDate: "2026-11-03" });
+      expect(notices.written[0]?.vm.totalItems).toBe(1);
+    });
+
+    it("writes none for a visitor, in a dry run, or when the day's digest is already taken", async () => {
+      const visitor = createEngineHarness();
+      const visitorNotices = new RecordingNotices();
+      await confirmedVisitor(visitor);
+      await visitor.record.announce({
+        topic: "bid.new_sales",
+        itemKey: "sale:1",
+        snapshot,
+        announce: true,
+      });
+      await visitor.digestRun("bid", visitorNotices).run("on");
+      expect(visitorNotices.written).toHaveLength(0);
+
+      const h = createEngineHarness();
+      const notices = new RecordingNotices();
+      await accountWithMatch(h);
+      await h.digestRun("bid", notices).run("dry_run");
+      expect(notices.written).toHaveLength(0);
+      await h.digestRun("bid", notices).run("on");
+      await h.record.announce({
+        topic: "bid.new_sales",
+        itemKey: "sale:2",
+        snapshot: { ...snapshot, title: "Prints" },
+        announce: true,
+      });
+      await h.digestRun("bid", notices).run("on");
+      expect(notices.written).toHaveLength(1);
+    });
+
+    it("never holds back the email when the notice fails", async () => {
+      const h = createEngineHarness();
+      const notices = new RecordingNotices();
+      await accountWithMatch(h);
+      notices.failNext = true;
+      await h.digestRun("bid", notices).run("on");
+      expect(h.mailer.digests).toHaveLength(1);
+      expect(notices.written).toHaveLength(0);
     });
   });
 });
