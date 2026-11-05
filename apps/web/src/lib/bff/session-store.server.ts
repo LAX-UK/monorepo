@@ -59,7 +59,8 @@ return 1
 
 const ROTATE_SESSION_SCRIPT = `
 -- bff:rotate-session
-if redis.call('exists', KEYS[1]) == 0 or redis.call('exists', KEYS[3]) == 1 then
+if redis.call('exists', KEYS[1]) == 0 or redis.call('exists', KEYS[3]) == 1
+  or redis.call('exists', KEYS[5]) == 1 then
   return 0
 end
 local pendingIndexes = redis.call('smembers', KEYS[2])
@@ -69,7 +70,7 @@ for _, indexKey in ipairs(pendingIndexes) do
 end
 redis.call('del', KEYS[1], KEYS[2])
 redis.call('set', KEYS[3], ARGV[1], 'EX', ARGV[3])
-for index = 5, #KEYS do
+for index = 6, #KEYS do
   redis.call('sadd', KEYS[index], ARGV[4])
   redis.call('expire', KEYS[index], ARGV[3])
   redis.call('sadd', KEYS[4], KEYS[index])
@@ -148,6 +149,11 @@ function sessionFingerprint(id: string): string {
 
 function sessionKey(id: string): string {
   return `bid:bff:session:${sessionFingerprint(id)}`;
+}
+
+/** Marks a session id as signed out, so a login still in flight for it cannot bring it back. */
+function revocationKey(id: string): string {
+  return `bid:bff:revoked:${sessionFingerprint(id)}`;
 }
 
 function sessionIndexRefsKey(id: string): string {
@@ -248,16 +254,19 @@ export class BidBffSessionStore {
   async rotateAuthenticated(
     pendingId: string,
     session: AuthenticatedBidSession,
+    replacesSessionId?: string,
   ): Promise<string | null> {
     const redis = await ensureBffRedisConnected(this.redis);
     const authenticatedId = generateSessionId();
     const stored = await redis.eval(
       ROTATE_SESSION_SCRIPT,
-      6,
+      7,
       sessionKey(pendingId),
       sessionIndexRefsKey(pendingId),
       sessionKey(authenticatedId),
       sessionIndexRefsKey(authenticatedId),
+      // The rotation is refused, atomically, when the session this login replaces signed out.
+      revocationKey(replacesSessionId ?? pendingId),
       ...authenticatedIndexKeys(session),
       encryptSession(session),
       sessionFingerprint(pendingId),
@@ -282,6 +291,29 @@ export class BidBffSessionStore {
         sessionFingerprint(id),
       );
     }
+  }
+
+  /**
+   * Signs a browser out: ends its session and, when a login is in flight (the cookie holds a
+   * pending session that replaces an authenticated one), ends both and revokes the replaced id.
+   * A callback that arrives later finds the revocation and cannot revive the session.
+   */
+  async revoke(id: string | null): Promise<void> {
+    if (!isBidSessionId(id)) return;
+    const redis = await ensureBffRedisConnected(this.redis);
+    const session = await this.read(id);
+    const replaced = session?.kind === "pending" ? session.replacesSessionId : undefined;
+    for (const target of [id, replaced]) {
+      if (!target) continue;
+      await redis.set(revocationKey(target), "1", "EX", LOGIN_TTL_SECONDS);
+      await this.invalidate(target);
+    }
+  }
+
+  /** Whether `id` signed out: a login that would replace it must not complete. */
+  async isRevoked(id: string): Promise<boolean> {
+    if (!isBidSessionId(id)) return false;
+    return (await (await ensureBffRedisConnected(this.redis)).exists(revocationKey(id))) === 1;
   }
 
   async invalidateBySidOrSubject(input: { sid?: string; sub?: string }): Promise<void> {

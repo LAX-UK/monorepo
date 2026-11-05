@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const readBidSessionId = vi.fn();
-const invalidate = vi.fn(async () => undefined);
+const revoke = vi.fn(async () => undefined);
 const readSession = vi.fn();
 
 vi.mock("@/lib/bff/config.server", () => ({
@@ -25,7 +25,7 @@ vi.mock("@/lib/bff/session-cookie.server", () => ({
 vi.mock("@/lib/bff/session-store.server", () => ({
   BidBffSessionStore: class {
     read = readSession;
-    invalidate = invalidate;
+    revoke = revoke;
   },
 }));
 
@@ -49,5 +49,16 @@ describe("POST /api/auth/logout", () => {
     expect(response.headers.get("set-cookie")).toContain(
       `${BID_SILENT_SSO_COOKIE_NAMES.suppressed}=`,
     );
+  });
+
+  it("revokes the session and any login in flight", async () => {
+    readBidSessionId.mockReturnValue("session-id");
+    await POST(
+      new NextRequest("https://lax.bid/api/auth/logout", {
+        method: "POST",
+        headers: { origin: "https://lax.bid" },
+      }),
+    );
+    expect(revoke).toHaveBeenCalledWith("session-id");
   });
 });

@@ -45,6 +45,9 @@ class FakeRedis {
     this.purge(key);
     return this.values.get(key) ?? null;
   }
+  async exists(key: string) {
+    return this.has(key) ? 1 : 0;
+  }
   async del(...keys: string[]) {
     let deleted = 0;
     for (const key of keys) {
@@ -95,13 +98,14 @@ class FakeRedis {
       return 1;
     }
     if (script.includes("bff:rotate-session")) {
-      const [pendingKey, pendingRefs, sessionKey, refsKey, ...indexes] = keys;
+      const [pendingKey, pendingRefs, sessionKey, refsKey, revokedKey, ...indexes] = keys;
       const [encrypted, pendingMember, ttl, member] = args;
       if (
         !pendingKey ||
         !pendingRefs ||
         !sessionKey ||
         !refsKey ||
+        !revokedKey ||
         !encrypted ||
         !pendingMember ||
         !ttl ||
@@ -109,7 +113,14 @@ class FakeRedis {
       ) {
         throw new Error("Invalid rotate-session test invocation");
       }
-      if (this.rejectRotate || !this.has(pendingKey) || this.has(sessionKey)) return 0;
+      if (
+        this.rejectRotate ||
+        !this.has(pendingKey) ||
+        this.has(sessionKey) ||
+        this.has(revokedKey)
+      ) {
+        return 0;
+      }
       this.removeMemberships(pendingRefs, pendingMember);
       await this.del(pendingKey, pendingRefs);
       this.values.set(sessionKey, encrypted);
@@ -306,6 +317,44 @@ describe("BidBffSessionStore", () => {
 
     await expect(store.rotateAuthenticated(pendingId, authenticated())).resolves.toBeNull();
     await expect(store.read(pendingId)).resolves.toMatchObject({ kind: "pending" });
+  });
+
+  it("refuses a login in flight that replaces a session which signed out", async () => {
+    const redis = new FakeRedis();
+    const store = new BidBffSessionStore(redis as never);
+    const oldId = generateSessionId();
+    const pendingId = await store.createPending({
+      kind: "pending",
+      state: "s",
+      nonce: "n",
+      codeVerifier: "v",
+      nextPath: "/",
+      replacesSessionId: oldId,
+    });
+
+    await store.revoke(pendingId);
+
+    await expect(store.isRevoked(oldId)).resolves.toBe(true);
+    await expect(store.rotateAuthenticated(pendingId, authenticated(), oldId)).resolves.toBeNull();
+  });
+
+  it("refuses the rotation when logout revoked the replaced session after the pending read", async () => {
+    const redis = new FakeRedis();
+    const store = new BidBffSessionStore(redis as never);
+    const oldId = generateSessionId();
+    const pendingId = await store.createPending({
+      kind: "pending",
+      state: "s",
+      nonce: "n",
+      codeVerifier: "v",
+      nextPath: "/",
+      replacesSessionId: oldId,
+    });
+    // Logout carried the old cookie: it revokes the old id while the pending login survives.
+    await store.revoke(oldId);
+    await expect(store.read(pendingId)).resolves.toMatchObject({ kind: "pending" });
+
+    await expect(store.rotateAuthenticated(pendingId, authenticated(), oldId)).resolves.toBeNull();
   });
 
   it("cleans stale index members when their session has already expired", async () => {

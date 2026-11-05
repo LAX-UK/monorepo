@@ -1,6 +1,7 @@
 import {
   browserAccountId,
   carryOutHop,
+  hardNavigation,
   hopNext,
   hopUser,
   isImpersonating,
@@ -9,7 +10,7 @@ import {
 import { planRestoreHop } from "@/lib/legal-entity/account-hops";
 import { restoreAccount } from "@/lib/legal-entity/remembered-account.server";
 import { accountsUnavailableHref, restoreAccountHref } from "@/lib/navigation/account-link";
-import { isPrefetchRequest } from "@/lib/security/fetch-metadata";
+import { isPrefetchRequest, isRscRequest } from "@/lib/security/fetch-metadata";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,11 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   if (isPrefetchRequest(request.headers)) {
     return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+  }
+  // The client router cannot run this hop: tell it, once, to open the page as a document.
+  if (isRscRequest(request.headers)) {
+    const url = new URL(request.url);
+    return hardNavigation(`${url.pathname}?${new URLSearchParams({ next: hopNext(request) })}`);
   }
   const signedIn = await hopUser(request);
   if (signedIn instanceof Response) return signedIn;
