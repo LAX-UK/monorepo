@@ -46,6 +46,7 @@ export type ArtworkCatalogueRow = {
   printPaper?: string | null;
   printSize?: string | null;
   sourceOriginalSlug?: string | null;
+  edition?: ArtworkDetailReadModel["edition"];
 };
 
 export function parseDbNumeric(value: string | null | undefined): number | null {
@@ -118,5 +119,6 @@ export function toPublicArtworkDetail(row: ArtworkCatalogueRow): ArtworkDetailRe
     exhibitionHistory: row.exhibitionHistory,
     seoTitle: row.seoTitle,
     seoDescription: row.seoDescription,
+    ...(row.edition !== undefined ? { edition: row.edition } : {}),
   };
 }

@@ -1,3 +1,5 @@
+import type { PublicEditionFacts, PublicEditionRun, PublicProofsKept } from "@auction/shop-domain";
+
 export type ArtworkSaleState = "for_sale" | "price_on_application" | "sold";
 
 export type EditionAvailabilityReadModel = {
@@ -72,6 +74,20 @@ export type ArtworkSummaryReadModel = {
   editionCardLine?: string | null;
 };
 
+export type ArtworkEditionReadModel = {
+  run: PublicEditionRun;
+  /** Null until staff confirm the facts. */
+  facts: PublicEditionFacts | null;
+  proofsKept: PublicProofsKept | null;
+  otherRuns: Array<{
+    slug: string;
+    run: PublicEditionRun;
+    facts: PublicEditionFacts | null;
+    printPricePence: number | null;
+    availability: "available" | "sold_out";
+  }>;
+};
+
 export type ArtworkDetailReadModel = ArtworkSummaryReadModel & {
   description: string | null;
   images: ArtworkImageReadModel[];
@@ -87,6 +103,8 @@ export type ArtworkDetailReadModel = ArtworkSummaryReadModel & {
   exhibitionHistory: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
+  /** The run and its confirmed facts; absent for an original. */
+  edition?: ArtworkEditionReadModel | null;
 };
 
 export type ArtistSummaryReadModel = {

@@ -13,7 +13,7 @@ type Props = {
 
 const COPY: Record<ArtworkUnavailableReason, { title: string; description: string }> = {
   edition_sold_out: {
-    title: "Get an email if this edition is back",
+    title: "Sold out",
     description:
       "Sold editions sometimes come back, when an order is cancelled or a reserved copy is released. We will email you once if that happens.",
   },

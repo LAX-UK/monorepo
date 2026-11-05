@@ -70,4 +70,30 @@ describe("MarketingArtistSummary", () => {
     );
     expect(container.querySelector('[data-slot="artist-summary-actions"]')).toBeNull();
   });
+
+  it("keeps the name on one line by default and allows two", () => {
+    const { rerender } = render(
+      <MarketingArtistSummary title="About the artist" name="Ada Lane" href="/a" />,
+    );
+    expect(screen.getByRole("link", { name: "Ada Lane" })).toHaveClass("truncate");
+    rerender(
+      <MarketingArtistSummary title="About the artist" name="Ada Lane" href="/a" nameLines={2} />,
+    );
+    expect(screen.getByRole("link", { name: "Ada Lane" })).toHaveClass("line-clamp-2");
+    expect(screen.getByRole("link", { name: "Ada Lane" })).not.toHaveClass("truncate");
+  });
+
+  it("clamps the bio to the lines asked for", () => {
+    const { container } = render(
+      <MarketingArtistSummary
+        title="About the artist"
+        name="Ada Lane"
+        href="/a"
+        bio="Ada Lane paints the Thames."
+        bioLines={2}
+      />,
+    );
+    const clamp = container.querySelector<HTMLElement>("[style*='line-clamp']");
+    expect(clamp?.style.webkitLineClamp).toBe("2");
+  });
 });
