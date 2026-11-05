@@ -2164,6 +2164,13 @@
       "when": 1802246400000,
       "tag": "0314_artwork_register_zoho_images",
       "breakpoints": true
+    },
+    {
+      "idx": 310,
+      "version": "7",
+      "when": 1802332800000,
+      "tag": "0315_payment_checkout_session",
+      "breakpoints": true
     }
   ]
 }

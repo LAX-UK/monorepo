@@ -16,6 +16,7 @@ describe("STRIPE_PAYMENT_EVENT_HANDLERS", () => {
   it("covers all supported Stripe payment webhook event types", () => {
     expect(Object.keys(STRIPE_PAYMENT_EVENT_HANDLERS).sort()).toEqual(
       [
+        "cash_balance.funds_available",
         "charge.dispute.closed",
         "charge.dispute.created",
         "charge.dispute.funds_reinstated",

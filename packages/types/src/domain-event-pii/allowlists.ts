@@ -174,6 +174,16 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "amountRemainingCents",
     "currency",
   ]),
+  /** Money we could not apply to an invoice: operational codes and provider references only. */
+  "payment.unapplied_money_received": new Set([
+    "reason",
+    "dedupeKey",
+    "stripeChargeId",
+    "stripeCustomerId",
+    "stripeEventId",
+  ]),
+  /** How it was closed; a staff note is kept, as a refund's staff reason is. */
+  "payment.unapplied_money_resolved": new Set(["dedupeKey", "stripeChargeId", "via", "note"]),
   /** Several invoices of one account put into one checkout ("Pay several"); amounts and rail. */
   "payment_group.created": new Set(["total", "checkoutRail"]),
   "payment_group.paid": new Set(["total"]),

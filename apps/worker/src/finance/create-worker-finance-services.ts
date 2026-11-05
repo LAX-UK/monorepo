@@ -34,6 +34,7 @@ import type { WorkerEnv } from "../env.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
 import { createWorkerLotInvoiceInitiationService } from "./create-worker-lot-invoice-initiation.js";
 import { createWorkerPayoutSettlementContext } from "./create-worker-payout-settlement-runtime.js";
+import { createWorkerStalePaymentExpiry } from "./create-worker-stale-payment-expiry.js";
 import { runWorkerBulkPayoutSettlement } from "./worker-bulk-payout-settlement.js";
 import { workerFinanceDomainEventSinkPort } from "./worker-finance-domain-event-port.js";
 import { WorkerNotificationOutboxDrain } from "./worker-notification-outbox-drain.js";
@@ -90,21 +91,7 @@ export function createWorkerFinanceServices(
     accounting: null,
     lots,
     users,
-    publishCancelled: async (event) => {
-      await domainEventSink.publish({
-        aggregateType: "payment",
-        aggregateId: event.paymentId,
-        eventType: "payment.cancelled",
-        payload: {
-          lotId: event.lotId,
-          buyerUserId: event.buyerUserId,
-          reason: event.reason,
-        },
-        actorUserId: null,
-        actingLegalEntityId: null,
-        producer: "apps/worker",
-      });
-    },
+    expireStale: createWorkerStalePaymentExpiry({ db, env, domainEventSink }),
   });
 
   const xeroStack = createXeroAccountingStack({

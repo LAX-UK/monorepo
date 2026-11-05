@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { expireStalePaymentsWithPorts } from "./expire-stale-payments.js";
 import { LifecycleCronService } from "./lifecycle-cron.service.js";
 import { PaymentMaintenanceCronService } from "./payment-maintenance-cron.service.js";
 
@@ -32,35 +31,5 @@ describe("LifecycleCronService", () => {
     expect(sale.reconcileSaleStatuses).toHaveBeenCalled();
     await svc.processNotificationOutbox();
     expect(outbox.processBatch).toHaveBeenCalledWith(50);
-  });
-});
-
-describe("expireStalePaymentsWithPorts", () => {
-  it("cancels stale pending and authorized rows", async () => {
-    const cancelPayment = vi.fn().mockResolvedValue(undefined);
-    const publishPaymentCancelled = vi.fn().mockResolvedValue(undefined);
-    const ports = {
-      listStalePendingBefore: vi.fn().mockResolvedValue([{ id: "p1", lotId: "l1", buyerId: "u1" }]),
-      listStaleAuthorizedBefore: vi
-        .fn()
-        .mockResolvedValue([{ id: "p2", lotId: "l2", buyerId: "u2" }]),
-      cancelPayment,
-      publishPaymentCancelled,
-    };
-    const result = await expireStalePaymentsWithPorts(ports, 14, 30);
-    expect(result).toEqual({ expired: 2 });
-    expect(cancelPayment).toHaveBeenCalledTimes(2);
-    expect(publishPaymentCancelled).toHaveBeenNthCalledWith(1, {
-      paymentId: "p1",
-      lotId: "l1",
-      buyerUserId: "u1",
-      reason: "stale_pending_expired",
-    });
-    expect(publishPaymentCancelled).toHaveBeenNthCalledWith(2, {
-      paymentId: "p2",
-      lotId: "l2",
-      buyerUserId: "u2",
-      reason: "stale_authorized_expired",
-    });
   });
 });

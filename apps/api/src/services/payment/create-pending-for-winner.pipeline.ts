@@ -9,6 +9,7 @@ import type { PaymentRefusal } from "../interfaces/buyer-payment-authority.js";
 import { notificationRowToPayload } from "../notification-payload.js";
 import { resolveCheckoutAddressSnapshot } from "./checkout-address.js";
 import { resolveCheckoutForPendingOrPromoteCompliance } from "./checkout-orchestrator.js";
+import { isOpenPaymentUniqueViolation } from "./is-open-payment-unique-violation.js";
 import { formatPaymentDueDateFromCreated } from "./payment-due-date.js";
 import type { CreatePendingPaymentResult, PaymentServiceDeps } from "./payment-service-types.js";
 import type { CheckoutRailKind, ManualReviewReason } from "./payment-tier.policy.js";
@@ -315,6 +316,38 @@ export async function createPaymentRecordForWinner(
   return created;
 }
 
+/**
+ * Creates the invoice, or joins the one another request created a moment earlier: two first
+ * "Pay" requests at once (a double click, two tabs) both continue the same invoice and get the
+ * same checkout, instead of the second failing on the open-payment unique index.
+ */
+export async function createOrJoinPaymentRecord(
+  deps: PaymentServiceDeps,
+  lot: Lot,
+  buyerId: string,
+  addressSnapshot: LotFulfilmentAddressSnapshot,
+  terms: Parameters<typeof createPaymentRecordForWinner>[3],
+): Promise<
+  | { kind: "created"; payment: PaymentRecord }
+  | {
+      kind: "joined";
+      result: Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError>;
+    }
+> {
+  try {
+    return {
+      kind: "created",
+      payment: await createPaymentRecordForWinner(deps, lot, buyerId, terms),
+    };
+  } catch (e) {
+    if (!isOpenPaymentUniqueViolation(e)) throw e;
+    recordMoneyPathEvent("payment_create_race_joined");
+    const joined = await handleExistingPaymentForWinner(deps, lot, buyerId, addressSnapshot);
+    if (!joined) throw e;
+    return { kind: "joined", result: joined };
+  }
+}
+
 export async function resolveCheckoutForNewPayment(
   deps: PaymentServiceDeps,
   paymentId: string,
@@ -398,12 +431,14 @@ export async function createPendingForWinner(
   if (termsResult.isErr()) return err(termsResult.error);
   const { amount, platformFee, requiresManualReview, manualReviewReason } = termsResult.value;
 
-  const created = await createPaymentRecordForWinner(deps, lot, buyerId, {
+  const record = await createOrJoinPaymentRecord(deps, lot, buyerId, addressSnapshot, {
     amount,
     platformFee,
     requiresManualReview,
     manualReviewReason,
   });
+  if (record.kind === "joined") return record.result;
+  const created = record.payment;
 
   let checkoutUrl: string | null = null;
   let checkoutRail: CheckoutRailKind | null = null;
