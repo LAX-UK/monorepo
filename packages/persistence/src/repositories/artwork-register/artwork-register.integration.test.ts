@@ -763,4 +763,88 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
       db.execute(sql`DELETE FROM artwork_register_event WHERE register_id = ${entry.id}`),
     ).rejects.toThrow();
   });
+
+  describe("Zoho pictures", () => {
+    const source = (id: string) => ({
+      zohoFileId: id,
+      fingerprint: "10:t",
+      sha256: id.repeat(64).slice(0, 64),
+      key: `shop/artwork/zoho-${id}.jpg`,
+    });
+
+    it("replaces the pictures, keeps imageRefs as their distinct keys and records it once", async () => {
+      const entry = await created();
+      const same = { ...source("b"), zohoFileId: "other-file" };
+      const result = await repo.replaceZohoImages({
+        zohoProductId: "5001",
+        sources: [source("a"), source("b"), same],
+        now: T1,
+      });
+      expect(result.status).toBe("replaced");
+      const after = await repo.findById(entry.id);
+      expect(after?.imageRefs).toEqual(["shop/artwork/zoho-a.jpg", "shop/artwork/zoho-b.jpg"]);
+      expect(after?.version).toBe(entry.version + 1);
+      expect(await repo.findImageSources("5001")).toEqual([source("a"), source("b"), same]);
+
+      const again = await repo.replaceZohoImages({
+        zohoProductId: "5001",
+        sources: [source("a"), source("b"), same],
+        now: T2,
+      });
+      expect(again.status).toBe("unchanged");
+      expect((await repo.findById(entry.id))?.version).toBe(entry.version + 1);
+      const types = (await repo.listEvents(entry.id, 10)).map((e) => e.type);
+      expect(types.filter((t) => t === "zoho_change_applied")).toHaveLength(1);
+    });
+
+    it("clears the pictures when Zoho has none, and answers not_found for an unknown Product", async () => {
+      await created();
+      await repo.replaceZohoImages({ zohoProductId: "5001", sources: [source("a")], now: T1 });
+      expect(
+        (await repo.replaceZohoImages({ zohoProductId: "5001", sources: [], now: T2 })).status,
+      ).toBe("replaced");
+      expect((await repo.findByZohoProductId("5001"))?.imageRefs).toEqual([]);
+      expect(
+        (await repo.replaceZohoImages({ zohoProductId: "nope", sources: [], now: T2 })).status,
+      ).toBe("not_found");
+      expect(await repo.findImageSources("nope")).toBeNull();
+    });
+
+    it("lists originals never checked first, then those checked longest ago, and skips fresh ones", async () => {
+      await created();
+      await repo.create(
+        newEntry({ zohoProductId: "5002", stockCode: "LAX-ORI-PH-GAC-26-0002", imageRefs: [] }),
+        "system",
+        T0,
+      );
+      await repo.create(
+        newEntry({ zohoProductId: "5003", stockCode: "LAX-ORI-PH-GAC-26-0003", imageRefs: [] }),
+        "system",
+        T0,
+      );
+      await repo.replaceZohoImages({ zohoProductId: "5002", sources: [], now: T0 });
+      await repo.replaceZohoImages({ zohoProductId: "5003", sources: [], now: T2 });
+      const due = await repo.listImageCheckCandidates(T1, 10);
+      expect(due.map((c) => c.zohoProductId)).toEqual(["5001", "5002"]);
+      expect(await repo.listImageCheckCandidates(T1, 1)).toHaveLength(1);
+    });
+
+    it("never lists a print", async () => {
+      const original = await created();
+      const print = await repo.create(
+        newEntry({
+          zohoProductId: "5009",
+          stockCode: "LAX-PRI-PH-GAC-26-0009",
+          kind: "print",
+          sourceOriginalId: original.id,
+          imageRefs: [],
+        }),
+        "system",
+        T0,
+      );
+      expect(print.ok).toBe(true);
+      const due = await repo.listImageCheckCandidates(T2, 10);
+      expect(due.map((c) => c.zohoProductId)).toEqual(["5001"]);
+    });
+  });
 });

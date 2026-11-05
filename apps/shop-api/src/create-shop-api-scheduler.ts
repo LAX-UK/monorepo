@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type { FastifyBaseLogger } from "fastify";
+import { registerMissingMediaAssets } from "./application/artwork-register/register-media-assets.js";
 import { resolveStorefrontOrigins } from "./domain/storefront-origins.js";
 import type { ShopApiEnv } from "./env.js";
 import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
@@ -11,6 +12,8 @@ import {
   createHttpArtCacheInvalidator,
   noopArtCacheInvalidator,
 } from "./infrastructure/http-art-cache-invalidator.js";
+import { createDrizzleRegisterMediaAssetStore } from "./infrastructure/scheduler/drizzle-register-media-asset.store.js";
+import { createSharpImageProbe } from "./infrastructure/sharp-image-probe.js";
 import { resolveShopMediaStorage } from "./infrastructure/shop-media-storage.js";
 import { createStripePaymentRefundGateway } from "./infrastructure/stripe-payment-refund.gateway.js";
 import { createStripeShopCheckoutGateway } from "./infrastructure/stripe-shop-checkout.gateway.js";
@@ -113,11 +116,24 @@ export function buildShopApiSchedulerTasks(input: {
       opsAlertEmail,
     ),
     createAdminCommandPruneTask(input.db),
-    createLinkedListingSyncTask(input.db, artCache, (error) =>
-      input.log.warn(
-        { err: error },
-        "lax.art catalogue refresh failed after a Zoho listing update",
-      ),
+    createLinkedListingSyncTask(
+      input.db,
+      artCache,
+      (error) =>
+        input.log.warn(
+          { err: error },
+          "lax.art catalogue refresh failed after a Zoho listing update",
+        ),
+      mediaStorage
+        ? () =>
+            registerMissingMediaAssets({
+              store: createDrizzleRegisterMediaAssetStore(input.db),
+              storage: mediaStorage.storage,
+              probe: createSharpImageProbe(),
+              onSkipped: (key, reason) =>
+                input.log.warn({ key, reason }, "Zoho picture not registered yet"),
+            })
+        : undefined,
     ),
     ...(input.env.SHOP_THIRD_PARTY_ENABLED
       ? [createStockHoldExpiryTask(input.db, input.env.DOMAIN_EVENT_PUBLISH_VALIDATE)]
