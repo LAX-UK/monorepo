@@ -7,6 +7,15 @@ import {
   type PaymentWebhookResult,
 } from "./payment-webhook-types.js";
 
+/** Whether the refunded charge is the money that paid this invoice. */
+function isInvoiceMoney(
+  row: { stripeChargeId?: string | null; everCaptured?: boolean },
+  chargeId: string,
+): boolean {
+  if (row.everCaptured === false) return false;
+  return !row.stripeChargeId || row.stripeChargeId === chargeId;
+}
+
 export async function handleChargeRefunded(
   deps: StripePaymentWebhookDeps,
   event: Stripe.Event,
@@ -32,6 +41,11 @@ export async function handleChargeRefunded(
     });
     if (!paymentRow) {
       return { processed: true, action: "skipped", reason: "no_matching_payment" };
+    }
+    // Only money captured for this invoice is clawed back from its seller. A refund of money on a
+    // closed invoice (sent back by finance) or of another charge never reached the seller.
+    if (!isInvoiceMoney(paymentRow, charge.id)) {
+      return { processed: true, action: "skipped", reason: "refund_of_money_not_applied" };
     }
 
     const payoutRepo = payoutRepoForTx(deps.payoutRepository, tx);

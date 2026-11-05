@@ -4,6 +4,7 @@ import {
   DrizzleLotFulfilmentRepository,
   DrizzlePaymentCheckoutSessionRepository,
   DrizzlePaymentDomainEventsRepository,
+  DrizzleStalePaymentCanceller,
   DrizzleUnappliedMoneyReader,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
@@ -213,6 +214,10 @@ export function createPaymentsServices(
     buyerPaymentAuthority,
   );
 
+  const unappliedMoneyReader = new DrizzleUnappliedMoneyReader(db);
+  const unappliedMoney = new UnappliedMoneyRecorder(unappliedMoneyReader, domainEventSink, {
+    record: recordMoneyPathEvent,
+  });
   const paymentCaptureService = new PaymentCaptureService(
     platform.transactionRunner,
     paymentRepo,
@@ -231,6 +236,7 @@ export function createPaymentsServices(
     marketingEventService,
     xeroPaymentRecorder,
     stripePaymentGateway,
+    unappliedMoney,
   );
   const stripeCustomerGateway = new StripeCustomerGateway(
     env,
@@ -316,13 +322,11 @@ export function createPaymentsServices(
     { record: recordMoneyPathEvent },
   );
 
-  const unappliedMoneyReader = new DrizzleUnappliedMoneyReader(db);
-  const unappliedMoney = new UnappliedMoneyRecorder(unappliedMoneyReader, domainEventSink, {
-    record: recordMoneyPathEvent,
-  });
   const stalePaymentMaintenance = createStalePaymentExpiry({
     payments: paymentRepo,
     checkoutSessions,
+    canceller: new DrizzleStalePaymentCanceller(db),
+    stripeExpected: env.NODE_ENV === "production",
     transactionRunner: platform.transactionRunner,
     stripeClientFactory,
     paymentCapture: paymentCaptureService,

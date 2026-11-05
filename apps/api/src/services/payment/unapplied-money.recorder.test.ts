@@ -27,6 +27,8 @@ function reader(existing: string[] = []) {
     exists: vi.fn(async (key: string) => existing.includes(key)),
     listOpenByChargeId: vi.fn().mockResolvedValue([]),
     listOpen: vi.fn().mockResolvedValue([]),
+    findOpen: vi.fn().mockResolvedValue(null),
+    isChargeOfPaidInvoice: vi.fn().mockResolvedValue(false),
   };
 }
 
@@ -82,6 +84,37 @@ describe("UnappliedMoneyRecorder", () => {
     );
   });
 
+  it("capture closes a paid-not-recorded task for the same intent or charge", async () => {
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const r = reader();
+    r.listOpen.mockResolvedValue([
+      {
+        ...money,
+        reason: "paid_not_recorded",
+        dedupeKey: "paid_not_recorded:pi_2",
+        eventId: 9,
+        receivedAt: new Date(),
+      },
+    ]);
+    await new UnappliedMoneyRecorder(r, mockDomainEventSink(publish)).resolveApplied(tx, {
+      paymentIntentId: "pi_2",
+      chargeId: "ch_2",
+    });
+    expect(r.listOpen).toHaveBeenCalledWith(
+      expect.objectContaining({
+        paymentIntentId: "pi_2",
+        chargeId: "ch_2",
+        reasons: ["paid_not_recorded", "invoice_cancelled"],
+      }),
+    );
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "payment.unapplied_money_resolved",
+        payload: { dedupeKey: "paid_not_recorded:pi_2", via: "captured" },
+      }),
+    );
+  });
+
   it("an unwired recorder fails loudly, so money is never dropped", async () => {
     await expect(NO_UNAPPLIED_MONEY_RECORDER.record(tx, money, null)).rejects.toThrow(
       "unapplied_money_recorder_not_configured",
@@ -100,7 +133,10 @@ describe("UnappliedMoneyRefundHandler", () => {
   it("leaves an invoice's own charge to the normal refund handling", async () => {
     const handler = new UnappliedMoneyRefundHandler({
       transactionRunner: runner,
-      reader: { listOpenByChargeId: vi.fn().mockResolvedValue([]) },
+      reader: {
+        listOpenByChargeId: vi.fn().mockResolvedValue([]),
+        isChargeOfPaidInvoice: vi.fn().mockResolvedValue(false),
+      },
       recorder: { resolveRefundedCharge: vi.fn() },
     });
     await expect(handler.handle(event, charge(125000))).resolves.toBeNull();
@@ -110,7 +146,10 @@ describe("UnappliedMoneyRefundHandler", () => {
     const resolveRefundedCharge = vi.fn().mockResolvedValue(undefined);
     const handler = new UnappliedMoneyRefundHandler({
       transactionRunner: runner,
-      reader: { listOpenByChargeId: vi.fn().mockResolvedValue([{ dedupeKey: "k" }]) },
+      reader: {
+        listOpenByChargeId: vi.fn().mockResolvedValue([{ dedupeKey: "k" }]),
+        isChargeOfPaidInvoice: vi.fn().mockResolvedValue(false),
+      },
       recorder: { resolveRefundedCharge },
     });
     await expect(handler.handle(event, charge(125000))).resolves.toEqual({
@@ -121,11 +160,28 @@ describe("UnappliedMoneyRefundHandler", () => {
     expect(resolveRefundedCharge).toHaveBeenCalledWith(tx, "ch_2");
   });
 
+  it("a refund of a paid invoice's own charge goes to the invoice's refund handling", async () => {
+    const resolveRefundedCharge = vi.fn();
+    const handler = new UnappliedMoneyRefundHandler({
+      transactionRunner: runner,
+      reader: {
+        listOpenByChargeId: vi.fn().mockResolvedValue([{ dedupeKey: "k" }]),
+        isChargeOfPaidInvoice: vi.fn().mockResolvedValue(true),
+      },
+      recorder: { resolveRefundedCharge },
+    });
+    await expect(handler.handle(event, charge(125000))).resolves.toBeNull();
+    expect(resolveRefundedCharge).not.toHaveBeenCalled();
+  });
+
   it("a part refund keeps the task open and still does not touch the invoice", async () => {
     const resolveRefundedCharge = vi.fn();
     const handler = new UnappliedMoneyRefundHandler({
       transactionRunner: runner,
-      reader: { listOpenByChargeId: vi.fn().mockResolvedValue([{ dedupeKey: "k" }]) },
+      reader: {
+        listOpenByChargeId: vi.fn().mockResolvedValue([{ dedupeKey: "k" }]),
+        isChargeOfPaidInvoice: vi.fn().mockResolvedValue(false),
+      },
       recorder: { resolveRefundedCharge },
     });
     await expect(handler.handle(event, charge(1000))).resolves.toMatchObject({

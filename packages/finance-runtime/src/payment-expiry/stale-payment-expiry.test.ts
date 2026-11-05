@@ -55,7 +55,7 @@ describe("expireStalePayments", () => {
       paymentIntentId: null,
       checkoutSessionIds: ["cs_1"],
     });
-    expect(t.cancelIfUnpaid).toHaveBeenCalledWith("pay-1");
+    expect(t.cancelIfUnpaid).toHaveBeenCalledWith("pay-1", NOW);
     expect(t.publishCancelled).toHaveBeenCalledWith({
       paymentId: "pay-1",
       lotId: "lot-1",

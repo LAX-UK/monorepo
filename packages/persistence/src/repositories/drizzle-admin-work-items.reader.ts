@@ -18,7 +18,11 @@ import {
   unsoldLotChoice,
   unsoldLotFollowUp,
 } from "@auction/db/schema";
-import { UNSOLD_LOT_END_STATUSES, invoiceDueAt } from "@auction/domain";
+import {
+  UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
+  UNSOLD_LOT_END_STATUSES,
+  invoiceDueAt,
+} from "@auction/domain";
 import { INVOICE_PAYMENT_DUE_DAYS, type UnsoldLotChoiceKind } from "@auction/types";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type {
@@ -195,7 +199,10 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
   }
 
   async listUnappliedMoney(limit: number): Promise<AdminWorkItemSourceRow[]> {
-    const open = await new DrizzleUnappliedMoneyReader(this.db).listOpen({ limit });
+    const open = await new DrizzleUnappliedMoneyReader(this.db).listOpen({
+      limit,
+      excludeReasons: UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
+    });
     return open.map((money) => ({
       sourceId: money.dedupeKey,
       kind: "payment_money_unapplied" as const,

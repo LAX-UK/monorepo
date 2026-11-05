@@ -173,10 +173,17 @@ describe("StripeCheckoutCloser", () => {
   });
 
   it("without Stripe, only an invoice that never reached Stripe may be cancelled", async () => {
-    const closer = new StripeCheckoutCloser({ get: () => null });
+    const closer = new StripeCheckoutCloser({ get: () => null }, { stripeExpected: false });
     await expect(closer.closeAndRead(input)).resolves.toMatchObject({ kind: "unknown" });
     await expect(
       closer.closeAndRead({ paymentId: "pay-1", paymentIntentId: null, checkoutSessionIds: [] }),
     ).resolves.toEqual({ kind: "no_money" });
+  });
+
+  it("where payments are taken, a missing Stripe client never counts as no money", async () => {
+    const closer = new StripeCheckoutCloser({ get: () => null }, { stripeExpected: true });
+    await expect(
+      closer.closeAndRead({ paymentId: "pay-1", paymentIntentId: null, checkoutSessionIds: [] }),
+    ).resolves.toEqual({ kind: "unknown", error: "stripe_not_configured" });
   });
 });

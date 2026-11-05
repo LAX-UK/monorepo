@@ -22,8 +22,11 @@ export interface IStalePaymentStore {
     buyerLegalEntityId: string | null;
   } | null>;
   checkoutSessionIds(paymentId: string): Promise<string[]>;
-  /** Cancels only while the invoice is still unpaid (pending or authorized); false otherwise. */
-  cancelIfUnpaid(paymentId: string): Promise<boolean>;
+  /**
+   * Cancels only while the invoice is still unpaid, outside any "Pay several" payment, and with no
+   * checkout opened since `checkStartedAt`; false otherwise (the next run looks again).
+   */
+  cancelIfUnpaid(paymentId: string, checkStartedAt: Date): Promise<boolean>;
   /** Money is on its way: an unpaid invoice is marked as such, as the "processing" webhook does. */
   markAuthorizedIfPending(paymentId: string): Promise<boolean>;
 }
@@ -106,6 +109,7 @@ export async function expireStalePayments(
       // A payment in a "Pay several" group is released with its group, never on its own.
       if (current.paymentGroupId) continue;
 
+      const checkStartedAt = new Date((deps.now ?? (() => new Date()))().getTime());
       const state = await deps.provider.closeAndRead({
         paymentId: row.id,
         paymentIntentId: current.stripePaymentIntentId,
@@ -114,7 +118,7 @@ export async function expireStalePayments(
 
       switch (staleExpiryAction(state)) {
         case "cancel":
-          if (await deps.payments.cancelIfUnpaid(row.id)) {
+          if (await deps.payments.cancelIfUnpaid(row.id, checkStartedAt)) {
             await deps.events.publishCancelled({
               paymentId: row.id,
               lotId: row.lotId,

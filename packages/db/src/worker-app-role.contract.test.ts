@@ -161,7 +161,10 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         has_table_privilege(current_user, 'lot_fulfilment', 'INSERT') as fulfilment_insert,
         has_table_privilege(current_user, 'lot_fulfilment', 'UPDATE') as fulfilment_update,
         has_table_privilege(current_user, 'source_of_funds', 'INSERT') as source_of_funds,
-        has_table_privilege(current_user, 'payment', 'DELETE') as payment_delete
+        has_table_privilege(current_user, 'payment', 'DELETE') as payment_delete,
+        has_table_privilege(current_user, 'payment', 'TRUNCATE') as payment_truncate,
+        has_table_privilege(current_user, 'lot_fulfilment', 'DELETE') as fulfilment_delete,
+        has_table_privilege(current_user, 'lot_fulfilment', 'TRUNCATE') as fulfilment_truncate
     `);
     expect(granted.rows[0]).toEqual({
       payment: true,
@@ -169,6 +172,9 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       fulfilment_update: true,
       source_of_funds: true,
       payment_delete: false,
+      payment_truncate: false,
+      fulfilment_delete: false,
+      fulfilment_truncate: false,
     });
   });
 

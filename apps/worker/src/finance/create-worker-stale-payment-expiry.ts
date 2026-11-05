@@ -10,6 +10,7 @@ import {
 import {
   DrizzlePaymentCheckoutSessionRepository,
   DrizzlePaymentRepository,
+  DrizzleStalePaymentCanceller,
   DrizzleTransactionRunner,
   DrizzleUnappliedMoneyReader,
 } from "@auction/persistence/repositories";
@@ -23,7 +24,7 @@ import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-s
  */
 export function createWorkerStalePaymentExpiry(input: {
   db: Database;
-  env: Pick<WorkerEnv, "STRIPE_SECRET_KEY">;
+  env: Pick<WorkerEnv, "STRIPE_SECRET_KEY" | "NODE_ENV">;
   domainEventSink: IWorkerDomainEventSink;
 }) {
   const { db, env, domainEventSink } = input;
@@ -32,9 +33,12 @@ export function createWorkerStalePaymentExpiry(input: {
     payments: new StalePaymentStore(
       new DrizzlePaymentRepository(db),
       new DrizzlePaymentCheckoutSessionRepository(db),
+      new DrizzleStalePaymentCanceller(db),
       runner,
     ),
-    provider: new StripeCheckoutCloser(new StripeClientFactory(env.STRIPE_SECRET_KEY)),
+    provider: new StripeCheckoutCloser(new StripeClientFactory(env.STRIPE_SECRET_KEY), {
+      stripeExpected: env.NODE_ENV === "production",
+    }),
     latePayments: new FinanceTaskLatePaymentRecorder(
       new UnappliedMoneyRecorder(new DrizzleUnappliedMoneyReader(db), domainEventSink),
       runner,

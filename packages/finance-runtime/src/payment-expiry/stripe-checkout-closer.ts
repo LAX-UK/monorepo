@@ -26,7 +26,11 @@ const message = (err: unknown) => (err instanceof Error ? err.message : String(e
  * object after closing it: a checkout or intent can complete between our read and our close.
  */
 export class StripeCheckoutCloser implements IPaymentProviderCloser {
-  constructor(private readonly stripeFactory: IStripeClientFactory) {}
+  constructor(
+    private readonly stripeFactory: IStripeClientFactory,
+    /** True where payments are taken (production): there, no Stripe client means "unknown". */
+    private readonly options: { stripeExpected: boolean } = { stripeExpected: true },
+  ) {}
 
   async closeAndRead(input: {
     paymentId: string;
@@ -35,10 +39,13 @@ export class StripeCheckoutCloser implements IPaymentProviderCloser {
   }): Promise<ProviderMoneyState> {
     const stripe = this.stripeFactory.get();
     if (!stripe) {
-      // Without Stripe nothing can be checked; an invoice that never reached Stripe is safe.
-      return input.paymentIntentId || input.checkoutSessionIds.length > 0
-        ? { kind: "unknown", error: "stripe_not_configured" }
-        : { kind: "no_money" };
+      // Without Stripe nothing can be checked. Only a deployment that takes no payments (local,
+      // test) may expire an invoice that never reached Stripe; anywhere else it waits.
+      return !this.options.stripeExpected &&
+        !input.paymentIntentId &&
+        input.checkoutSessionIds.length === 0
+        ? { kind: "no_money" }
+        : { kind: "unknown", error: "stripe_not_configured" };
     }
     try {
       const intentIds = new Set<string>(input.paymentIntentId ? [input.paymentIntentId] : []);

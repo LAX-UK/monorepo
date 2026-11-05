@@ -218,6 +218,7 @@ export { DrizzleLotFulfilmentRepository } from "./drizzle-lot-fulfilment.reposit
 export { DrizzleAttentionFeedReader } from "./drizzle-attention-feed.reader.js";
 export { DrizzleAdminWorkItemsReader } from "./drizzle-admin-work-items.reader.js";
 export { DrizzlePaymentCheckoutSessionRepository } from "./drizzle-payment-checkout-session.repository.js";
+export { DrizzleStalePaymentCanceller } from "./drizzle-stale-payment-canceller.js";
 export { DrizzleUnappliedMoneyReader } from "./drizzle-unapplied-money.reader.js";
 export { DrizzleAdminSaleReadinessReader } from "./drizzle-admin-sale-readiness.reader.js";
 export { DrizzleSaleAttentionSignalsReader } from "./drizzle-sale-attention-signals.reader.js";

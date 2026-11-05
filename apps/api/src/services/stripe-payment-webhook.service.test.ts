@@ -94,6 +94,7 @@ function createWebhookService(deps: {
   const unappliedMoney = deps.unappliedMoney ?? {
     record: vi.fn().mockResolvedValue(undefined),
     resolveRefundedCharge: vi.fn().mockResolvedValue(undefined),
+    resolveApplied: vi.fn().mockResolvedValue(undefined),
   };
   const payments = {
     applyRefundedInTransaction: vi.fn().mockResolvedValue(true),

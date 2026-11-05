@@ -16,7 +16,7 @@ export class UnappliedMoneyRefundHandler {
   constructor(
     private readonly deps: {
       transactionRunner: ITransactionRunner;
-      reader: Pick<IUnappliedMoneyReader, "listOpenByChargeId">;
+      reader: Pick<IUnappliedMoneyReader, "listOpenByChargeId" | "isChargeOfPaidInvoice">;
       recorder: Pick<IUnappliedMoneyRecorder, "resolveRefundedCharge">;
     },
   ) {}
@@ -25,6 +25,9 @@ export class UnappliedMoneyRefundHandler {
   async handle(event: Stripe.Event, charge: Stripe.Charge): Promise<PaymentWebhookResult | null> {
     const open = await this.deps.reader.listOpenByChargeId(charge.id);
     if (open.length === 0) return null;
+    // The charge pays an invoice (the task was raised before the payment was recorded): this is
+    // that invoice's refund, so it goes through the invoice's refund handling and clawback.
+    if (await this.deps.reader.isChargeOfPaidInvoice(charge.id)) return null;
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const { claimed } = await tryClaimProcessedStripeEvent(
         tx,

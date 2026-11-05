@@ -6,7 +6,7 @@ import type { IStaffOpsRecipientReader } from "../../interfaces/staff-ops-recipi
 import { centsToAmount, listStaffAlertTargets } from "./notification-fanout-helpers.js";
 
 /** What finance is told happened, for each kind of money we could not apply. */
-const SITUATION: Record<UnappliedMoneyReason | "invoice_cancelled", string> = {
+const SITUATION: Record<UnappliedMoneyReason, string> = {
   invoice_cancelled: "A payment arrived for an invoice that had been cancelled.",
   invoice_refunded: "A payment arrived for an invoice that had already been refunded.",
   invoice_already_paid: "A second payment arrived for an invoice that was already paid.",
@@ -18,7 +18,7 @@ const SITUATION: Record<UnappliedMoneyReason | "invoice_cancelled", string> = {
   paid_not_recorded: "Stripe shows an invoice paid, but the payment has not been recorded here.",
 };
 
-/** The two events that mean money arrived and was not applied. */
+/** What one alert says: the money, the situation and where to look. */
 export type UnappliedMoneyAlert = {
   situation: keyof typeof SITUATION;
   paymentId: string | null;
@@ -38,22 +38,6 @@ export function alertFromUnappliedMoney(payload: UnappliedMoneyPayload): Unappli
       payload.dedupeKey,
     amountCents: payload.amountCents,
     currency: payload.currency,
-  };
-}
-
-/** `payment.capture_blocked_terminal_status`: money on a cancelled (or refunded) invoice. */
-export function alertFromBlockedCapture(
-  paymentId: string,
-  payload: { stripePaymentIntentId?: string; amountCents?: number; statusBefore?: string },
-): UnappliedMoneyAlert | null {
-  // A refunded invoice is reported as unapplied money too; alert once, from that event.
-  if (payload.statusBefore === "refunded") return null;
-  return {
-    situation: "invoice_cancelled",
-    paymentId,
-    reference: payload.stripePaymentIntentId ?? paymentId,
-    amountCents: payload.amountCents ?? 0,
-    currency: "GBP",
   };
 }
 
