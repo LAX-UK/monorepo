@@ -91,4 +91,14 @@ describe("ArtworkGallery", () => {
     expect(screen.queryByRole("list", { name: "Choose an image" })).toBeNull();
     expect(screen.queryByRole("button", { name: "View full screen" })).toBeNull();
   });
+
+  it("keeps the hatch as the whole view when there is no image but a size, with the scale beside it", () => {
+    render(<ArtworkGallery title="Warm Basket" gallery={{ images: [], scale: gallery.scale }} />);
+    expect(screen.getByRole("button", { name: "Whole view" }).getAttribute("aria-current")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "To scale" })).toBeTruthy();
+    expect(screen.queryByRole("img", { name: /drawn to scale/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "View full screen" })).toBeNull();
+  });
 });

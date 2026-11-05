@@ -179,7 +179,7 @@
 
 .shop-buy__remove {
   min-height: 1.5rem;
-  padding: 0 var(--shop-space-1);
+  padding: 0;
   color: var(--color-link);
   font-family: var(--font-body);
   font-size: var(--shop-text-sm);
