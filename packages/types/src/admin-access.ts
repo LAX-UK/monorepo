@@ -344,6 +344,15 @@ export const DELETION_HOLD_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "support.respond"],
 };
 
+/**
+ * Purchase problems buyers report on a paid purchase: what they wrote, the purchase, and the
+ * work to resolve it. Client services answer the buyer; administrators hold the same access.
+ * Finance reaches the payment itself from the payments screens.
+ */
+export const PURCHASE_PROBLEMS_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond"],
+};
+
 /** Private sale enquiries: the work offered, the budget and how to reach the sender. */
 export const PRIVATE_SALE_ENQUIRIES_READ_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "enquiries.private_sale.read"],

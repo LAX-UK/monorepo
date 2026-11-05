@@ -113,9 +113,16 @@ describe.skipIf(!HAS_DB)("Bid lot alert adapters (integration)", () => {
   const lots = new BidAlertLotReader(db);
 
   beforeEach(async () => {
-    await db.execute(
-      sql`TRUNCATE bid_alert_match, bid_alert_digest, bid_alert_topic, bid_alert_subscriber, bid_alert_announcement CASCADE`,
-    );
+    // Plain deletes, not TRUNCATE ... CASCADE: the cascade reaches shared tables other tests use.
+    for (const table of [
+      "bid_alert_match",
+      "bid_alert_digest",
+      "bid_alert_topic",
+      "bid_alert_announcement",
+      "bid_alert_subscriber",
+    ]) {
+      await db.execute(sql.raw(`DELETE FROM ${table}`));
+    }
   });
 
   describe("provisioning", () => {

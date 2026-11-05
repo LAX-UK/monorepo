@@ -52,6 +52,7 @@ import { createOrganisationWorkspaceServices } from "./container/create-organisa
 import { createPaymentsServices } from "./container/create-payments-services.js";
 import { createPlatformCronRouteServices } from "./container/create-platform-cron-route-services.js";
 import { createPlatformServices } from "./container/create-platform-services.js";
+import { createPurchaseProblemDesk } from "./container/create-purchase-problem-desk.js";
 import { createRepositories } from "./container/create-repositories.js";
 import { createSubmissionRouteServices } from "./container/create-submission-route-services.js";
 import { createUserMiscServices } from "./container/create-user-misc-services.js";
@@ -780,6 +781,11 @@ export function createContainer(env: Env): Container {
       deliveryQuotes: organisationBuying.staffDeliveryQuotes,
       marketingEnquiries: marketingEnquiries.desk,
       enquiryRouting: marketingEnquiries.routing,
+      purchaseProblems: createPurchaseProblemDesk({
+        db,
+        transactionRunner: platform.transactionRunner,
+        events: platform.domainEventSink,
+      }),
       enquiryErasure: marketingEnquiries.erasure,
       dataRequests: new AdminDataRequestsService({
         identity: new HttpIdentityDataRequestsClient({

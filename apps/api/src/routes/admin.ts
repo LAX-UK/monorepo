@@ -46,6 +46,7 @@ import {
   attachAdminPaymentsManualReviewRoutes,
 } from "./admin/payments.routes.js";
 import { attachAdminPersonEmailDeliveryRoutes } from "./admin/person-email-delivery.routes.js";
+import { attachAdminPurchaseProblemRoutes } from "./admin/purchase-problems.routes.js";
 import { attachAdminQrCodesRoutes } from "./admin/qr-codes.routes.js";
 import { attachAdminSaleCoverRoutes } from "./admin/sale-cover.routes.js";
 import { attachAdminSaleRegistrationsRoutes } from "./admin/sale-registrations.routes.js";
@@ -163,6 +164,8 @@ export function createAdminRoutes(
   attachAdminDataRequestsRoutes(platform, container);
 
   attachAdminMarketingEnquiryRoutes(platform, container);
+
+  attachAdminPurchaseProblemRoutes(platform, container);
 
   // Finance-shell routes must stay reachable for finance, who fails
   // `requirePlatformShell`. Guards are path-scoped (not `use("*")`) so they don't

@@ -644,7 +644,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
     const rows = await this.db
       .select({
         id: purchaseProblem.id,
-        paymentId: purchaseProblem.paymentId,
+        assignedToUserId: purchaseProblem.assignedToUserId,
         category: purchaseProblem.category,
         createdAt: purchaseProblem.createdAt,
         updatedAt: purchaseProblem.updatedAt,
@@ -653,7 +653,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       })
       .from(purchaseProblem)
       .innerJoin(lot, eq(purchaseProblem.lotId, lot.id))
-      .where(eq(purchaseProblem.status, "open"))
+      .where(ne(purchaseProblem.status, "resolved"))
       .orderBy(desc(purchaseProblem.createdAt))
       .limit(limit);
 
@@ -663,11 +663,11 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       domain: "clients" as const,
       title: lotWorkItemTitle("Purchase problem", row.lotNumber, row.lotTitle),
       subtitle: PURCHASE_PROBLEM_SUBTITLES[row.category] ?? null,
-      href: adminWorkItemHref("purchase_problem", { paymentId: row.paymentId }),
+      href: adminWorkItemHref("purchase_problem", { subjectId: row.id }),
       saleId: null,
       createdAt: row.createdAt,
-      sourceUpdatedAt: row.createdAt,
-      assignedToUserId: null,
+      sourceUpdatedAt: row.updatedAt,
+      assignedToUserId: row.assignedToUserId,
     }));
   }
 
