@@ -1,5 +1,5 @@
 import type { AdminWhereItIs } from "@auction/shop-contracts";
-import { formatStaffWhen } from "@auction/staff-ui";
+import { formatStaffDateTime } from "@auction/staff-ui";
 
 /*
  * "Where it is" in words: the line under the place's badge, what follows it, and the one sentence
@@ -21,15 +21,13 @@ export type WhereItIsContext = {
   isPrint?: boolean;
   /** When the lax.art draft was made, for a draft. */
   draftCreatedAt?: string | null;
-  now?: Date;
 };
 
-const when = (value: string | null, now: Date | undefined) =>
-  value ? formatStaffWhen(value, now) : null;
+const when = (value: string | null) => (value ? formatStaffDateTime(value) : null);
 
 /** " · Mon 2 Nov, 15:20 GMT", or nothing when the history does not say. */
-const dotWhen = (value: string | null, now: Date | undefined) => {
-  const text = when(value, now);
+const dotWhen = (value: string | null) => {
+  const text = when(value);
   return text ? ` · ${text}` : "";
 };
 
@@ -37,7 +35,6 @@ export function whereItIsLine(
   place: AdminWhereItIs,
   context: WhereItIsContext = {},
 ): WhereItIsLine {
-  const { now } = context;
   if (context.isPrint) {
     return {
       lead: "Prints are sold in runs",
@@ -53,7 +50,7 @@ export function whereItIsLine(
         note: "It can go on lax.art or into a LAX Bid sale. Only one place at a time.",
       };
     case "draft_lax_art": {
-      const created = when(context.draftCreatedAt ?? null, now);
+      const created = when(context.draftCreatedAt ?? null);
       return {
         lead: "Draft on lax.art",
         trail: created ? ` · created ${created}` : "",
@@ -63,7 +60,7 @@ export function whereItIsLine(
     case "lax_art":
       return {
         lead: "Live on lax.art",
-        trail: place.since ? ` since ${when(place.since, now)}` : "",
+        trail: place.since ? ` since ${when(place.since)}` : "",
         note: "Enquiries open. To move it to auction, use Offer at auction.",
       };
     case "draft_bid_lot":
@@ -84,13 +81,13 @@ export function whereItIsLine(
     case "withdrawn":
       return {
         lead: "Withdrawn",
-        trail: `${place.from ? ` from ${place.from}` : ""}${dotWhen(place.since, now)}`,
+        trail: `${place.from ? ` from ${place.from}` : ""}${dotWhen(place.since)}`,
         note: "It can be offered again.",
       };
     case "sold":
       return {
         lead: "Sold",
-        trail: `${place.from ? ` · ${place.from}` : ""}${dotWhen(place.since, now)}`,
+        trail: `${place.from ? ` · ${place.from}` : ""}${dotWhen(place.since)}`,
         note: "Sold is final. Nothing can offer it again.",
       };
   }

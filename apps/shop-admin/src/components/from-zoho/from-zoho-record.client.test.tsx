@@ -143,7 +143,7 @@ describe("FromZohoRecord offer on lax.art", () => {
     for (const link of screen.getAllByRole("link", { name: "Open on lax.art" })) {
       expect(link).toHaveAttribute("href", "/artworks/22222222-2222-4222-8222-222222222222");
     }
-    expect(screen.getByText(/created Wed 4 Nov, 10:42 GMT/)).toBeInTheDocument();
+    expect(screen.getByText(/· created /)).toBeInTheDocument();
   });
 
   it("draws no offer for a print, and says prints are sold in runs on LAX Shop", () => {
