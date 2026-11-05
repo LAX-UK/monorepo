@@ -319,7 +319,8 @@ jobs:
         run: pnpm turbo run test --affected --filter=!@auction/web --filter=!@auction/api --filter=!@auction/shop-api --summarize --concurrency=1
 
       - name: Runtime ownership smoke gates
-        run: pnpm turbo run build --filter=@auction/types --filter=@auction/background-runtime && node scripts/ci/run-runtime-ownership-smoke-gates.mjs
+        # The smoke suites import several workspace packages by their built output; cache hits replay them.
+        run: pnpm turbo run build --filter='./packages/*' && node scripts/ci/run-runtime-ownership-smoke-gates.mjs
 
       - name: Domain event smoke gates
         run: node scripts/ci/run-domain-event-smoke-gates.mjs
