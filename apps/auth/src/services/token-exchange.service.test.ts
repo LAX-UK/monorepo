@@ -121,7 +121,7 @@ describe("token exchange policy", () => {
       expect(() =>
         resolveTokenExchangePolicy({
           clientId,
-          resource: "https://api.lax.bid",
+          resource: "https://shop.lax.art/api",
           scope: "lax.alerts.read",
         }),
       ).toThrowError(new TokenExchangeError("invalid_scope", "The requested scope is not allowed"));
