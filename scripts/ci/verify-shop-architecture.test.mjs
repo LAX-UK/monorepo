@@ -138,7 +138,7 @@ describe("Shop commerce architecture SSOT", () => {
 
     const browserGate = readFileSync(join(root, "apps/shop/e2e/home.spec.ts"), "utf8");
     assert.match(browserGate, /passes whole-page axe/);
-    assert.match(browserGate, /mobile menu exposes account actions/);
+    assert.match(browserGate, /phone menu has navigation and help links, no account block/);
     assert.match(browserGate, /visible without JavaScript/);
   });
 
