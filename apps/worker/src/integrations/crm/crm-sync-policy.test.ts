@@ -25,6 +25,7 @@ describe("resolvePersonMatch", () => {
         erasedAt: null,
         deletionRequestedAt: null,
         recyclePurgedAt: null,
+        heldPayload: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       },

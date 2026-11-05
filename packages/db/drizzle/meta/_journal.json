@@ -2129,6 +2129,13 @@
       "when": 1801814400000,
       "tag": "0309_drop_shop_release_alert_subscription",
       "breakpoints": true
+    },
+    {
+      "idx": 305,
+      "version": "7",
+      "when": 1801900800000,
+      "tag": "0310_crm_held_deal_payload",
+      "breakpoints": true
     }
   ]
 }
