@@ -233,6 +233,8 @@ jobs:
         with:
           name: turbo-cache-packages
           path: .turbo/cache
+          include-hidden-files: true
+          overwrite: true
           retention-days: 1
           if-no-files-found: warn
 
@@ -326,7 +328,6 @@ jobs:
         run: node scripts/ci/verify-cutover-readiness.mjs
   identity-boundary:
     name: identity boundary conformance
-    needs: build-packages
     needs: build-packages
     runs-on: ubuntu-latest
     services:
