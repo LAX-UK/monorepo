@@ -15,6 +15,8 @@ type TabBase = {
    * sign-in, which must not be fetched ahead of a tap.
    */
   fullPageNavigation?: boolean;
+  /** Set to `false` for a tab that goes through a sign-in redirect, so it is never prefetched. */
+  prefetch?: boolean;
 };
 
 /** A tab that goes to a page. */

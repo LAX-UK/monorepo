@@ -16,10 +16,11 @@ export type MarketingAttentionStripProps = {
   className?: string;
 };
 
+/** Each strip sits on its tone with a hairline of the same tone at the foot. */
 const STRIP_TONE: Record<MarketingAttentionTone, string> = {
-  danger: "bg-danger-container text-danger-on-surface",
-  warning: "bg-warning-container text-warning-on-surface",
-  info: "bg-info-container text-info-on-surface",
+  danger: "bg-danger-container text-danger-on-surface border-danger/25",
+  warning: "bg-warning-container text-warning-on-surface border-warning/30",
+  info: "bg-info-container text-info-on-surface border-info/30",
 };
 
 const CHIP_TONE: Record<MarketingAttentionTone, string> = {
@@ -30,7 +31,8 @@ const CHIP_TONE: Record<MarketingAttentionTone, string> = {
 
 /**
  * The header's one urgent prompt. Below 640px it is a 44px full-width strip under the phone bar
- * ("Payment due · Pay now ›") that scrolls with the page; from 640px it is the inline chip.
+ * (a dot and the label on the left, the underlined action and a chevron on the right) that
+ * scrolls with the page; from 640px it is the inline chip.
  * Both are one link, so exactly one is visible at a time.
  */
 export function MarketingAttentionStrip({
@@ -49,16 +51,20 @@ export function MarketingAttentionStrip({
         aria-label={name}
         data-testid="attention-strip"
         className={cn(
-          "flex h-11 w-full items-center justify-center gap-1.5 px-4 font-body text-sm font-medium sm:hidden",
+          "flex h-11 w-full items-center justify-between gap-3 border-b px-4 font-body text-sm font-medium sm:hidden",
           STRIP_TONE[tone],
           FOCUS_RING,
           className,
         )}
       >
-        <span>{label}</span>
-        <span aria-hidden>·</span>
-        <span className="font-semibold">{actionLabel}</span>
-        <span aria-hidden>›</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-current" />
+          <span className="truncate">{label}</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-0.5 font-semibold">
+          <span className="underline underline-offset-2">{actionLabel}</span>
+          <span aria-hidden>›</span>
+        </span>
       </Link>
       <Link
         href={href}

@@ -88,11 +88,15 @@ export function MarketingBottomTabBar({
 }: MarketingBottomTabBarProps) {
   const { visible, reason } = useBottomBarVisibility({ forceHidden: hidden });
 
-  // Tells the page's single bottom spacer (see marketing-ui.css) that a bar is mounted.
+  // Tells the page's single bottom spacer (see marketing-ui.css) that the bar takes the bottom
+  // edge. Another bar holding the slot (or the bar being forced off) gives the space back, so
+  // that bar sits at the screen edge instead of floating above an empty strip.
+  const reservesSpace = reason !== "slot-claimed" && reason !== "forced";
   useEffect(() => {
+    if (!reservesSpace) return;
     document.documentElement.setAttribute("data-lax-bottom-bar", "");
     return () => document.documentElement.removeAttribute("data-lax-bottom-bar");
-  }, []);
+  }, [reservesSpace]);
 
   const style = {
     ...(accent ? { "--lax-tab-accent": accent } : { "--lax-tab-accent": "var(--color-primary)" }),
@@ -151,6 +155,7 @@ export function MarketingBottomTabBar({
               ) : (
                 <Link
                   href={tab.href}
+                  {...(tab.prefetch === false ? { prefetch: false } : {})}
                   aria-current={current ? "page" : undefined}
                   aria-label={`${tab.label}${badgeSpeech(tab.badge)}`}
                   className={cn(TAB_BASE, current && TAB_CURRENT, FOCUS_RING)}

@@ -8,7 +8,7 @@ import { buildAccountMenu } from "@/lib/navigation/account-menu-model";
 import { useAccountMenuContext } from "@/lib/navigation/use-account-menu-context.client";
 import { cn } from "@auction/ui";
 import Link from "next/link";
-import { Fragment, useMemo } from "react";
+import { Fragment, type ReactElement, useMemo } from "react";
 
 export type AccountMenuVariant = "header" | "shell" | "drawer";
 
@@ -51,40 +51,50 @@ type AccountMenuItemsProps = {
   /** Menu popovers expose menuitem semantics and keyboard roving; the drawer is a plain list. */
   menu: boolean;
   onNavigate: () => void;
+  /** Wraps each row as a dropdown item (Radix gives it arrow keys); the sheet passes none. */
+  wrapItem?: (row: ReactElement) => ReactElement;
 };
 
 /** The shared body of every signed-in account menu: grouped links divided by separators. */
-export function AccountMenuItems({ groups, variant, menu, onNavigate }: AccountMenuItemsProps) {
+export function AccountMenuItems({
+  groups,
+  variant,
+  menu,
+  onNavigate,
+  wrapItem = (row) => row,
+}: AccountMenuItemsProps) {
   const itemProps = menu ? { role: "menuitem", "data-account-menu-item": "" } : {};
   return (
     <>
       {groups.map((group, index) => (
         <Fragment key={group[0]?.id ?? index}>
           {index > 0 ? <hr className={SEPARATOR_CLASS[variant]} /> : null}
-          {group.map((entry) =>
-            entry.external ? (
-              <a
-                key={entry.id}
-                href={entry.href}
-                rel="noopener noreferrer"
-                className={ITEM_CLASS[variant]}
-                onClick={onNavigate}
-                {...itemProps}
-              >
-                {entry.label}
-              </a>
-            ) : (
-              <Link
-                key={entry.id}
-                href={entry.href}
-                className={ITEM_CLASS[variant]}
-                onClick={onNavigate}
-                {...itemProps}
-              >
-                {entry.label}
-              </Link>
-            ),
-          )}
+          {group.map((entry) => (
+            <Fragment key={entry.id}>
+              {wrapItem(
+                entry.external ? (
+                  <a
+                    href={entry.href}
+                    rel="noopener noreferrer"
+                    className={ITEM_CLASS[variant]}
+                    onClick={onNavigate}
+                    {...itemProps}
+                  >
+                    {entry.label}
+                  </a>
+                ) : (
+                  <Link
+                    href={entry.href}
+                    className={ITEM_CLASS[variant]}
+                    onClick={onNavigate}
+                    {...itemProps}
+                  >
+                    {entry.label}
+                  </Link>
+                ),
+              )}
+            </Fragment>
+          ))}
         </Fragment>
       ))}
     </>

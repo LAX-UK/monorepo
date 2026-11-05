@@ -196,6 +196,10 @@ describe("the From Zoho queue", () => {
     ]);
   });
 
+  it("lets only the Administrator remove a link between a lax.art original and its Zoho record", () => {
+    expect(rolesGranting("artwork_register.unlink")).toEqual(["shop_admin"]);
+  });
+
   it("keeps Read-only to viewing", () => {
     expect(capabilitiesForRole("read_only")).toContain("artwork_register.read");
     expect(capabilitiesForRole("read_only")).not.toContain("artwork_register.review");

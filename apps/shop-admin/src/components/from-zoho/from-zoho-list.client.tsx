@@ -86,15 +86,18 @@ export function NewFromZohoList({
   query,
   page,
   zohoUrlTemplate = null,
+  unlinked = 0,
   bidAdminUrl = null,
 }: {
   query: ZohoQueueQuery;
   page: AdminRegisterNewList;
   zohoUrlTemplate?: string | null;
+  /** lax.art originals not linked to Zoho yet; the Link lax.art tab shows while there are any. */
+  unlinked?: number;
   /** Where Bid admin lives, for a person who can open it. */
   bidAdminUrl?: string | null;
 }) {
-  const { pending, navigate, ListLink, views } = useQueueFrame(query, page.counts);
+  const { pending, navigate, ListLink, views } = useQueueFrame(query, page.counts, unlinked);
   const filtered = hasActiveZohoFilters(query);
   const artistName = page.artists.find((artist) => artist.code === query.artist)?.name;
 
@@ -300,11 +303,13 @@ export function NewFromZohoList({
 export function NeedsDecisionList({
   query,
   page,
+  unlinked = 0,
 }: {
   query: ZohoQueueQuery;
   page: AdminRegisterConflictList;
+  unlinked?: number;
 }) {
-  const { pending, navigate, ListLink, views } = useQueueFrame(query, page.counts);
+  const { pending, navigate, ListLink, views } = useQueueFrame(query, page.counts, unlinked);
   const links = pageLinks(query, page);
 
   const columns = useMemo<DataColumn<AdminRegisterConflictItem>[]>(

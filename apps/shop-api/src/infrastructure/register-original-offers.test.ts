@@ -97,3 +97,41 @@ describe("createRegisterOriginalOffers", () => {
     expect(register.moveOffer.mock.calls.map(([input]) => input.to)).toEqual(["withdrawn", "sold"]);
   });
 });
+
+describe("the switch that blocks publishing unlinked originals", () => {
+  const unlinked: OfferedArtwork = { ...original, zohoProductId: null };
+
+  it("lets an unlinked original be published while the switch is off", async () => {
+    const { lock } = lockOver({});
+    const offers = createRegisterOriginalOffers(lock, { blockUnlinked: async () => false });
+    await expect(offers.assertCanPublish(session, unlinked)).resolves.toBeUndefined();
+  });
+
+  it("refuses an unlinked original once the switch is on, saying how to link it", async () => {
+    const { lock } = lockOver({});
+    const offers = createRegisterOriginalOffers(lock, { blockUnlinked: async () => true });
+    await expect(offers.assertCanPublish(session, unlinked)).rejects.toThrow(ShopDomainError);
+    await expect(offers.assertCanPublish(session, unlinked)).rejects.toThrow(
+      /Link this artwork to its Zoho record/,
+    );
+  });
+
+  it("still publishes a linked original and never reads the switch for one", async () => {
+    const { lock } = lockOver({});
+    const blockUnlinked = vi.fn(async () => true);
+    const offers = createRegisterOriginalOffers(lock, { blockUnlinked });
+    await expect(offers.assertCanPublish(session, original)).resolves.toBeUndefined();
+    expect(blockUnlinked).not.toHaveBeenCalled();
+  });
+
+  it("does not govern a print run or a shop artwork", async () => {
+    const { lock } = lockOver({});
+    const offers = createRegisterOriginalOffers(lock, { blockUnlinked: async () => true });
+    await expect(
+      offers.assertCanPublish(session, { ...unlinked, runKind: "limited" }),
+    ).resolves.toBeUndefined();
+    await expect(
+      offers.assertCanPublish(session, { ...unlinked, salesChannel: "shop" }),
+    ).resolves.toBeUndefined();
+  });
+});

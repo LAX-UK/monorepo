@@ -24,7 +24,9 @@ export type RegisterEventType =
   | "conflict_resolved"
   | "zoho_writeback_recorded"
   | "move_confirmed"
-  | "lax_art_draft_created";
+  | "lax_art_draft_created"
+  | "zoho_link_linked"
+  | "zoho_link_unlinked";
 
 export type RegisterEvent = {
   id: string;
@@ -316,4 +318,23 @@ export type LotRegisterLink = {
 export interface ILotRegisterLinkReader {
   /** The lot's link to the register, or null when the lot has none (or does not exist). */
   findLink(lotId: string): Promise<LotRegisterLink | null>;
+}
+
+export type RecordZohoLinkInput = {
+  registerId: string;
+  /** `staff:<user id>` of the person who linked or unlinked. */
+  actor: RegisterActor;
+  artworkId: string;
+  now: Date;
+  /** What lax.art held before Zoho's values replaced it (linking), or why it was undone (unlinking). */
+  detail: Record<string, unknown>;
+};
+
+/**
+ * Keeps every link between a lax.art original and its register record in the record's history:
+ * who linked or unlinked it, when, and why.
+ */
+export interface IArtworkLinkHistory {
+  recordZohoLinked(input: RecordZohoLinkInput): Promise<void>;
+  recordZohoUnlinked(input: RecordZohoLinkInput): Promise<void>;
 }

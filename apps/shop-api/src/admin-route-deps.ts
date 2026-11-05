@@ -3,6 +3,7 @@ import type { ReleaseAlertSummaryReader } from "./application/alerts/alert-ports
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import type { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import type { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
+import type { ZohoLinkService } from "./application/artwork-register/zoho-link.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import type { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
@@ -87,6 +88,19 @@ export type AdminRoutesDeps = {
   artworkRegister: ArtworkRegisterReviewService;
   /** Offer on lax.art: check a From Zoho record and make the lax.art draft from it. */
   offerOnLaxArt: Pick<OfferOnLaxArtService, "assess" | "offer">;
+  /** Link lax.art: match originals made before the register to their Zoho records, and link them. */
+  zohoLink: Pick<
+    ZohoLinkService,
+    | "count"
+    | "report"
+    | "preview"
+    | "search"
+    | "link"
+    | "linkBulk"
+    | "unlink"
+    | "settings"
+    | "updateSettings"
+  >;
   /** Release alert subscriber counts. */
   releaseAlertSummary: ReleaseAlertSummaryReader;
   artistApplicationReview: ArtistApplicationReviewService;
