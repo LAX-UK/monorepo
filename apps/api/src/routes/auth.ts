@@ -15,6 +15,7 @@ import {
   createForgotPasswordRateLimitMiddleware,
   createSetupPasswordRateLimitMiddleware,
 } from "../middleware/auth-rate-limit.js";
+import { clientIpOrNull } from "../middleware/client-ip.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   PASSWORD_REQUIRED_POLICY,
@@ -74,10 +75,7 @@ export function createProductAuthRoutes(container: ContainerAuthRoutesSlice) {
       const body = c.req.valid("json");
       const email = body.email.trim().toLowerCase();
       const webOrigin = container.env.WEB_ORIGIN.replace(/\/$/, "");
-      const clientIp =
-        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-        c.req.header("x-real-ip") ??
-        undefined;
+      const clientIp = clientIpOrNull(c) ?? undefined;
       const response = await accountSecurity.forgotPassword({
         email,
         webOrigin,
