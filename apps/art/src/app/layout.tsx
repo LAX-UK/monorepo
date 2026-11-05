@@ -81,7 +81,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <ArtFooter vm={chrome.footer} />
             {/* The one place content reserves the docked tab bar's height (--lax-bottom-bar-space). */}
             <MarketingBottomBarSpace />
-            <ArtBottomBar signedOut={chrome.account.kind === "guest"} replyDot={chrome.replyDot} />
+            <ArtBottomBar
+              signedOut={chrome.account.kind === "guest"}
+              replyDot={chrome.replyDot}
+              viewer={
+                chrome.account.kind === "authenticated"
+                  ? { displayName: chrome.account.displayName, email: chrome.account.email }
+                  : null
+              }
+            />
             {measurementId ? (
               <ArtAnalyticsConsent
                 measurementId={measurementId}

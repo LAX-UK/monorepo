@@ -134,6 +134,7 @@ export {
 export { ACCOUNT_ENTRY_NAME_MAX, cutAccountEntryName } from "./account-entry-name.js";
 export {
   MarketingAccountEntry,
+  MarketingAvatar,
   type MarketingAccountEntryProps,
   type MarketingAccountEntryViewer,
 } from "./marketing-account-entry.js";
@@ -343,6 +344,7 @@ export {
 } from "./marketing-bottom-tab-bar.js";
 export {
   BOTTOM_TAB_COUNT_CAP,
+  MARKETING_COUNT_BADGE_CLASS,
   badgeCountText,
   isTabCurrent,
   type MarketingBottomTab,

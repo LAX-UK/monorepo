@@ -53,6 +53,31 @@ function initialsOf(viewer: MarketingAccountEntryViewer): string {
   return (first + last).toUpperCase() || "?";
 }
 
+/** The person's avatar image, or their initials on a round chip. Decorative: the control names it. */
+export function MarketingAvatar({
+  viewer,
+  className,
+}: {
+  viewer: MarketingAccountEntryViewer;
+  className?: string;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "flex shrink-0 items-center justify-center overflow-hidden rounded-full",
+        className,
+      )}
+    >
+      {viewer.avatarUrl ? (
+        <img src={viewer.avatarUrl} alt="" className="size-full object-cover" />
+      ) : (
+        initialsOf(viewer)
+      )}
+    </span>
+  );
+}
+
 /**
  * The header's single account control. Signed out it is a person icon and "Account" that opens a
  * small menu (what the account is, Sign in, Create account). Signed in it is the avatar, the
@@ -109,19 +134,13 @@ export function MarketingAccountEntry({
         className,
       )}
     >
-      <span
-        aria-hidden
+      <MarketingAvatar
+        viewer={viewer}
         className={cn(
-          "flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs",
+          "size-8 text-xs",
           onDark ? "bg-hero-foreground/15" : "bg-surface-container-high",
         )}
-      >
-        {viewer.avatarUrl ? (
-          <img src={viewer.avatarUrl} alt="" className="size-full object-cover" />
-        ) : (
-          initialsOf(viewer)
-        )}
-      </span>
+      />
       <span data-testid="account-entry-name">
         {cutAccountEntryName(accountTriggerName(viewer.displayName, viewer.email))}
       </span>

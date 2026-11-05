@@ -69,6 +69,18 @@ describe("ArtBottomBar", () => {
     expect(tab(html, "Account")).toContain('href="/account"');
   });
 
+  it("signed in, draws the person's initials as the Account icon", () => {
+    pathname = "/artworks";
+    const html = renderToStaticMarkup(
+      <ArtBottomBar
+        signedOut={false}
+        replyDot={false}
+        viewer={{ displayName: "Alex Collector", email: "alex@example.com" }}
+      />,
+    );
+    expect(tab(html, "Account")).toContain(">AC<");
+  });
+
   it("shows a dot on Account for a reply, and says so to screen readers", () => {
     const html = render("/artworks", { replyDot: true });
     expect(html).toContain('data-testid="tab-badge-Account"');

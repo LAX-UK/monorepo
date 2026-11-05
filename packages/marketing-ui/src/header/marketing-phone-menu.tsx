@@ -116,21 +116,18 @@ export function MarketingPhoneMenu<TSection extends MarketingMegaNavSection>({
 
           {sections.length > 0 ? (
             <nav aria-label="Main">
-              <ul className="m-0 flex list-none flex-col gap-1 p-0">
+              <ul className="m-0 flex list-none flex-col p-0">
                 {sections.map((section) => {
                   const isOpen = expanded === section.id;
                   const panelId = `phone-menu-${section.id}`;
                   const active = isSectionActive(section);
                   const rowClass = cn(
-                    "flex min-h-11 w-full items-center justify-between gap-2 rounded-sm py-2 text-left font-label text-sm font-medium",
-                    active ? "text-on-surface" : "text-on-surface-variant",
+                    "flex min-h-12 w-full items-center justify-between gap-2 rounded-sm text-left font-label text-base font-medium text-on-surface",
+                    active && "font-semibold",
                     FOCUS_RING,
                   );
                   return (
-                    <li
-                      key={section.id}
-                      className="border-b border-nav-border pb-2 last:border-b-0"
-                    >
+                    <li key={section.id} className="border-b border-nav-border last:border-b-0">
                       {section.linkHref ? (
                         <Link
                           href={section.linkHref}
@@ -209,7 +206,7 @@ export function MarketingPhoneMenu<TSection extends MarketingMegaNavSection>({
                       href={link.href}
                       onClick={close}
                       className={cn(
-                        "flex min-h-11 items-center rounded-sm font-label text-sm font-medium text-on-surface hover:underline",
+                        "flex min-h-11 items-center rounded-sm font-label text-[15px] font-normal text-on-surface hover:underline",
                         FOCUS_RING,
                       )}
                     >
