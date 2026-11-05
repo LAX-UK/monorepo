@@ -2136,6 +2136,13 @@
       "when": 1801900800000,
       "tag": "0310_crm_held_deal_payload",
       "breakpoints": true
+    },
+    {
+      "idx": 306,
+      "version": "7",
+      "when": 1801987200000,
+      "tag": "0311_artwork_register_print_code",
+      "breakpoints": true
     }
   ]
 }
