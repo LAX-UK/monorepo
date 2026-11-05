@@ -98,7 +98,7 @@ describe("email sign-up through Better Auth", () => {
     oauthState.current = null;
     const { recorder, recordSignUp } = recorderDouble();
     const auth = betterAuth({
-      secret: "test-secret-that-is-long-enough",
+      secret: "test-secret-that-is-long-enough", // gitleaks:allow synthetic fixture secret
       baseURL: "http://localhost:3003",
       database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
       emailAndPassword: { enabled: true, autoSignIn: false },
@@ -108,7 +108,7 @@ describe("email sign-up through Better Auth", () => {
       body: {
         name: "Sarah",
         email: "sarah@example.com",
-        password: "correct-horse-battery-staple-32",
+        password: "correct-horse-battery-staple-32", // gitleaks:allow synthetic fixture password
         ...body,
       },
     });

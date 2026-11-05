@@ -12,8 +12,6 @@ paths = [
   # Vitest-only HMAC fixture; historical commits used a hex-looking literal.
   '''apps/api/src/routes/auth-email-change\.routes\.test\.ts''',
   '''packages/auth/src/oidc-first-party-consent\.test\.ts''',
-  # Sign-up hook test fixture password (synthetic, never a real credential).
-  '''packages/auth/src/auth-hooks/legal-acceptance\.sign-up\.test\.ts''',
   # Server-side fetch fixtures use synthetic internal base URLs, not secrets.
   '''apps/web/src/lib/data/http/.*\.server\.test\.ts''',
   '''apps/web/src/app/api/display/.*\.test\.ts''',
