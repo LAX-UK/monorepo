@@ -4,6 +4,7 @@ import { type Page, expect, test } from "@playwright/test";
  */
 import {
   buyerLogin,
+  buyerSession,
   dismissCookieConsentIfVisible,
   e2eEnabled,
   e2eSkipReason,
