@@ -3,7 +3,7 @@ import "server-only";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { deriveSsrOrigin } from "@/lib/data/http/server-request-headers";
-import { headers as nextHeaders } from "next/headers";
+import { currentVisitorIpHeaders } from "@/lib/http/visitor-ip.server";
 
 /** Where LAX Bid's alerts API lives. */
 const base = () => `${getServerApiBase()}/alerts`;
@@ -33,13 +33,8 @@ export type AccountAlerts = {
  * The visitor's address, passed on so the API limits sign-ups per visitor and not per web server
  * (every visitor reaches the API from the same place).
  */
-async function clientIpHeaders(): Promise<Record<string, string>> {
-  const incoming = await nextHeaders();
-  const ip =
-    incoming.get("cf-connecting-ip")?.trim() ||
-    incoming.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    incoming.get("x-real-ip")?.trim();
-  return ip ? { "x-forwarded-for": ip } : {};
+function clientIpHeaders(): Promise<Record<string, string>> {
+  return currentVisitorIpHeaders();
 }
 
 export async function forwardAlertSignup(input: {

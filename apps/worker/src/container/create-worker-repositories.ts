@@ -37,7 +37,6 @@ import type { ILegalEntityArchiveCascadeReader } from "../interfaces/legal-entit
 import type { ILotNotifyReader } from "../interfaces/lot-notify.reader.js";
 import type { IMarketingAttributionPurgeRepository } from "../interfaces/marketing-attribution-purge.repository.js";
 import type { IMarketingClickIdPurgeRepository } from "../interfaces/marketing-click-id-purge.repository.js";
-import type { IMarketingContactSyncRepository } from "../interfaces/marketing-contact-sync.repository.js";
 import type { IMarketingEventOutboxWorker } from "../interfaces/marketing-event-outbox.worker.js";
 import type { IMediaAssetCleanupRepository } from "../interfaces/media-asset-cleanup.repository.js";
 import type { IMediaAssetProcessorRepository } from "../interfaces/media-asset-processor.repository.js";
@@ -81,7 +80,6 @@ import { DrizzleLegalEntityArchiveCascadeReader } from "../repositories/drizzle-
 import { DrizzleLotNotifyReader } from "../repositories/drizzle-lot-notify.reader.js";
 import { DrizzleMarketingAttributionPurgeRepository } from "../repositories/drizzle-marketing-attribution-purge.repository.js";
 import { DrizzleMarketingClickIdPurgeRepository } from "../repositories/drizzle-marketing-click-id-purge.repository.js";
-import { DrizzleMarketingContactSyncRepository } from "../repositories/drizzle-marketing-contact-sync.repository.js";
 import { DrizzleMarketingEventOutboxWorker } from "../repositories/drizzle-marketing-event-outbox.worker.js";
 import { DrizzleMediaAssetCleanupRepository } from "../repositories/drizzle-media-asset-cleanup.repository.js";
 import { DrizzleMediaAssetProcessorRepository } from "../repositories/drizzle-media-asset-processor.repository.js";
@@ -117,7 +115,6 @@ export type WorkerRepositories = {
   staffRoleReader: IStaffRoleAssignmentReader;
   newsletterSignupSyncRepo: INewsletterSignupSyncRepository;
   kycRetentionStores: readonly IKycRetentionSubjectStore[];
-  marketingContactSyncRepo: IMarketingContactSyncRepository;
   staffOpsRecipientReader: IStaffOpsRecipientReader;
   complianceRecipientReader: IComplianceRecipientReader;
   mediaAssetProcessorRepo: IMediaAssetProcessorRepository;
@@ -177,7 +174,6 @@ export function createWorkerRepositories(
       new DrizzleKycRetentionPersonStore(db),
       new DrizzleKycRetentionLegalEntityStore(db),
     ],
-    marketingContactSyncRepo: new DrizzleMarketingContactSyncRepository(db),
     staffOpsRecipientReader: new DrizzleStaffOpsRecipientReader(db),
     complianceRecipientReader: new DrizzleComplianceRecipientReader(db),
     mediaAssetProcessorRepo: new DrizzleMediaAssetProcessorRepository(db),

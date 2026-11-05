@@ -399,6 +399,19 @@ export const AdminEditionRunDetailSchema = Type.Object({
   linkedListings: Type.Array(LinkedRunSchema),
   /** Open editions only. */
   stock: Type.Union([AdminOpenStockSchema, Type.Null()]),
+  /** The artist's written authority for certificates LAX issues, once recorded. */
+  certificateAuthority: Type.Union([
+    Type.Object({
+      reference: Type.String(),
+      recordedAt: Type.String({ format: "date-time" }),
+    }),
+    Type.Null(),
+  ]),
+  /** Hors commerce proof listings only: whether a shop admin has approved selling them. */
+  horsCommerce: Type.Union([
+    Type.Object({ approvedAt: Type.Union([Type.String({ format: "date-time" }), Type.Null()]) }),
+    Type.Null(),
+  ]),
 });
 export type AdminEditionRunDetail = Static<typeof AdminEditionRunDetailSchema>;
 

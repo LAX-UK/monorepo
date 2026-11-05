@@ -200,6 +200,8 @@ describe.skipIf(!migrationUrl)("migration 0284 alert engine", { timeout: 30_000 
        values ($1, 'sale_announced', 't', 'm'), ($1, 'outbid', 't', 'm')`,
       [userId],
     );
+    // Rollbacks run newest first: 0299 holds a foreign key to the digest table 0284 drops.
+    await client.query(read("0299_rollback.sql"));
     await client.query(read("0284_rollback.sql"));
     const tables = await client.query(`select to_regclass('bid_alert_subscriber') as t`);
     expect(tables.rows[0].t).toBeNull();

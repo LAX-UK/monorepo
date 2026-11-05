@@ -1,11 +1,12 @@
 import type { artistProfile } from "@auction/db/schema";
 import type { ArtistKind, ArtistStatus } from "@auction/types";
 import type { ArtistRecord } from "../interfaces/artist-registry.types.js";
+import { containsPattern } from "../lib/like-pattern.js";
 
 export const FUZZY_THRESHOLD = 0.4;
 
 export function partialSearchPattern(query: string): string {
-  return `%${query.trim().replace(/[%_\\]/g, "")}%`;
+  return containsPattern(query.trim());
 }
 
 export function slugify(name: string): string {

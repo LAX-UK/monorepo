@@ -209,6 +209,14 @@ export const SHOP_EMAIL_OUTBOX_TABLES = ["email_outbox"] as const;
  */
 export const SHOP_CRM_READ_TABLES = ["crm_record_link", "domain_event_delivery"] as const;
 /**
+ * "Download my data" for LAX Shop reads a person's suppression entry and newsletter sign-ups from
+ * the shared mail tables. shop_app reads them and never writes: the worker and the Bid API own them.
+ */
+export const SHOP_SUBJECT_EXPORT_READ_TABLES = [
+  "email_suppression",
+  "newsletter_signup_log",
+] as const;
+/**
  * LAX Admin reviews the artwork register: shop_app reads the records and the Zoho sync results,
  * records a decision on a conflict (SELECT, UPDATE) and the history entry that goes with it
  * (INSERT, SELECT). It never creates or changes a record; the worker and the offer moves do that.
@@ -219,6 +227,11 @@ export const SHOP_ARTWORK_REGISTER_READ_TABLES = [
 ] as const;
 export const SHOP_ARTWORK_REGISTER_CONFLICT_TABLES = ["artwork_register_conflict"] as const;
 export const SHOP_ARTWORK_REGISTER_EVENT_TABLES = ["artwork_register_event"] as const;
+/**
+ * Shop moves an original's offer state through the register (one place at a time across lax.art
+ * and LAX Bid): it reads records and updates the offer. History is append-only (see above).
+ */
+export const SHOP_ARTWORK_REGISTER_OFFER_TABLES = ["artwork_register"] as const;
 /** Worker projectors upsert Shop/Bid local projections from Identity domain events. */
 export const WORKER_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -271,6 +284,8 @@ export const WORKER_READ_TABLES = [
   "marketing_enquiry",
   /** The follow-up projector reads the confirmed choice it opens work for. */
   "unsold_lot_choice",
+  /** The payout statement names the private sale a payout line settles by its PS reference. */
+  "private_sale_deal",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
@@ -736,8 +751,14 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of SHOP_CRM_READ_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT");
         }
+        for (const tableName of SHOP_SUBJECT_EXPORT_READ_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT");
+        }
         for (const tableName of SHOP_ARTWORK_REGISTER_READ_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT");
+        }
+        for (const tableName of SHOP_ARTWORK_REGISTER_OFFER_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");
         }
         for (const tableName of SHOP_ARTWORK_REGISTER_CONFLICT_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT, UPDATE");
@@ -783,9 +804,6 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           "marketing_event_outbox",
           "INSERT, SELECT, UPDATE, DELETE",
         );
-        /** worker writes one audit row per marketing-contact-sync attempt (Brevo). INSERT + SELECT
-         * only; rows are an immutable audit trail (no UPDATE/DELETE from app code). */
-        await grantIfExists(client, "worker_app", "marketing_contact_sync_log", "INSERT, SELECT");
         for (const tableName of WORKER_DATA_EXPORT_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE, DELETE");
         }

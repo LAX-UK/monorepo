@@ -94,7 +94,7 @@ export function useFormDraft<T extends FieldValues>({
         </>
       }
     >
-      Saved on this device {formatStaffDateTime(offered.savedAt, { zoneLabel: true })}.
+      Saved on this device {formatStaffDateTime(offered.savedAt)}.
     </Notice>
   ) : null;
 

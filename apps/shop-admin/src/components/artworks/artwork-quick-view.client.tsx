@@ -165,7 +165,7 @@ export function ArtworkQuickView({
                 { label: "Sold on", value: CHANNEL_LABELS[detail.salesChannel] },
                 {
                   label: "Last changed",
-                  value: formatStaffDateTime(detail.updatedAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(detail.updatedAt),
                 },
                 { label: "Artwork ID", value: detail.artworkId, copyValue: detail.artworkId },
               ]}

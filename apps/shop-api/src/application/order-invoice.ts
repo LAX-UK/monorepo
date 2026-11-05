@@ -1,3 +1,4 @@
+import { clientLabel, formatDocumentFileName } from "@auction/artwork-register-contracts";
 import type { LegalEntity } from "@auction/branding";
 import PDFDocument from "pdfkit";
 import { orderRecordVat } from "./order-vat.js";
@@ -11,6 +12,7 @@ type InvoiceRow = { description: string; detail: string | null; vatRate: string;
 export type OrderInvoiceModel = {
   /** "VAT invoice" only when the supplier has a VAT number and the order recorded VAT. */
   title: "VAT invoice" | "Invoice";
+  /** "Paid Invoice — Mears — LAX-S-10482 — 2026-02-14.pdf": the LAX document naming convention. */
   fileName: string;
   /** "LAX-INV-000124": the invoice's own number, from the gap-free invoice sequence. */
   number: string;
@@ -47,6 +49,17 @@ const FULFILMENT_LINE: Record<OrderRecord["fulfilment"], string> = {
   international_quotation: "Delivery outside the UK",
 };
 
+/** The print or SKU under an item: the facts the buyer was given at payment, else the plain edition. */
+function invoiceEditionDetail(line: OrderRecord["lines"][number]): string | null {
+  if (line.editionInvoiceDetail) return line.editionInvoiceDetail;
+  if (line.editionNumber !== null) {
+    return line.editionSize
+      ? `Edition ${line.editionNumber} of ${line.editionSize}`
+      : `Edition ${line.editionNumber}`;
+  }
+  return line.variantSku ? `SKU ${line.variantSku}` : null;
+}
+
 /**
  * The invoice for a paid order. Its number comes from the invoice sequence, issued without gaps
  * when the order was paid; the order reference is shown beside it. The supply date is the payment
@@ -68,14 +81,7 @@ export function buildOrderInvoiceModel(input: {
 
   const rows: InvoiceRow[] = order.lines.map((line) => {
     const title = line.productTitle ?? line.artworkTitle ?? "Item";
-    const edition =
-      line.editionNumber !== null
-        ? line.editionSize
-          ? `Edition ${line.editionNumber} of ${line.editionSize}`
-          : `Edition ${line.editionNumber}`
-        : line.variantSku
-          ? `SKU ${line.variantSku}`
-          : null;
+    const edition = invoiceEditionDetail(line);
     const detail = [line.artistName, edition].filter(Boolean).join(" · ") || null;
     return {
       description: title,
@@ -125,7 +131,12 @@ export function buildOrderInvoiceModel(input: {
 
   return {
     title: vatInvoice ? "VAT invoice" : "Invoice",
-    fileName: `${invoiceNumber}.pdf`,
+    fileName: formatDocumentFileName({
+      docType: "Paid Invoice",
+      client: clientLabel({ personName: input.customer.name ?? address?.recipientName }),
+      reference: order.reference,
+      at: paidAt,
+    }),
     number: invoiceNumber,
     orderReference: order.reference,
     issuedOn: day(paidAt),

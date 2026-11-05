@@ -74,6 +74,62 @@ describe("CrmSubjectLifecycleHandler", () => {
     }
   });
 
+  it("deletes and purges every deal of an erased person, so the surname in its name goes too", async () => {
+    const dealLink = (id: string) => ({
+      entityType: "deal",
+      entityId: `deal-${id}`,
+      zohoModule: "Deals",
+      zohoRecordId: `z-deal-${id}`,
+      subjectId: "sub-1",
+      erasedAt: null,
+      deletionRequestedAt: null,
+      recyclePurgedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const linkRepo = {
+      findByEntity: vi.fn().mockResolvedValue({
+        entityType: "subject",
+        entityId: "sub-1",
+        zohoModule: "Contacts",
+        zohoRecordId: "contact-1",
+        subjectId: null,
+        erasedAt: null,
+        deletionRequestedAt: null,
+        recyclePurgedAt: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
+      listActiveDealLinksBySubject: vi.fn().mockResolvedValue([dealLink("1")]),
+      listActiveSubjectLinksByZohoRecord: vi.fn().mockResolvedValue([]),
+      tombstone: vi.fn(),
+      tombstoneDealByZohoRecordId: vi.fn(),
+      markRecyclePurged: vi.fn(),
+    };
+    const gateway = {
+      deleteRecord: vi.fn().mockResolvedValue({ status: "success" }),
+      purgeFromRecycleBin: vi.fn().mockResolvedValue(undefined),
+      // A deal made in the CRM itself, found through the contact.
+      findDealIdsByContact: vi.fn().mockResolvedValue(["z-deal-2"]),
+    };
+    const handler = new CrmSubjectLifecycleHandler({
+      gateway: gateway as unknown as CrmGateway,
+      linkRepo: linkRepo as unknown as ICrmRecordLinkRepository,
+    });
+    const result = await handler.eraseSubject("sub-1");
+    expect(result.outcome).toBe("success");
+    const deleted = gateway.deleteRecord.mock.calls.map(([arg]) => arg);
+    expect(deleted).toEqual(
+      expect.arrayContaining([
+        { module: "Deals", recordId: "z-deal-1" },
+        { module: "Deals", recordId: "z-deal-2" },
+      ]),
+    );
+    expect(gateway.purgeFromRecycleBin).toHaveBeenCalledWith("z-deal-1");
+    expect(gateway.purgeFromRecycleBin).toHaveBeenCalledWith("z-deal-2");
+    expect(linkRepo.tombstoneDealByZohoRecordId).toHaveBeenCalledWith("z-deal-1");
+  });
+
   it("records deletion requested as success", async () => {
     const setDeletionRequested = vi.fn().mockResolvedValue(undefined);
     const handler = new CrmSubjectLifecycleHandler({

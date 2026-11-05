@@ -48,15 +48,19 @@ export function SheetSection({
   id,
   title,
   description,
+  densities: only,
   children,
 }: {
   id: string;
   title: string;
   description: string;
+  /** Draws the element at these densities alone: for what lives in one product's screens. */
+  densities?: readonly LaxDensity[];
   /** Renders the element's states for one density. */
   children: (density: LaxDensity) => ReactNode;
 }) {
-  const densities = useContext(SheetDensities);
+  const sheetDensities = useContext(SheetDensities);
+  const densities = only ?? sheetDensities;
   return (
     <section
       aria-labelledby={`${id}-title`}

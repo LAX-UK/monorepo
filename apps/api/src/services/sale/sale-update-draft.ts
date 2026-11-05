@@ -13,11 +13,25 @@ import { canManageCatalogue } from "../../lib/catalogue-auth.js";
 import { type AuthzError, LotError, missingCatalogueCapabilityError } from "../../lib/errors.js";
 import { lotTimingViolationForSale } from "../../lib/lot-sale-timing.js";
 import { enrichPressCoverageWithOpenGraphImages } from "../../lib/press-coverage-enrichment.js";
-import { txRepos } from "./sale-mutation-context.js";
+import { publishSaleEvent, txRepos } from "./sale-mutation-context.js";
 import type { SaleServiceDeps } from "./sale-types.js";
 import { applyVenueSnapshot } from "./venue-snapshot.js";
 
 export type UpdateSaleBody = z.infer<typeof updateSaleSchema>;
+
+/** Records that staff marked a sale as a test sale, or cleared it, when the flag actually changed. */
+async function recordTestFlagChange(
+  deps: SaleServiceDeps,
+  actorUserId: string | undefined,
+  before: Sale,
+  after: Sale,
+): Promise<void> {
+  if (!actorUserId || (before.isTest === true) === (after.isTest === true)) return;
+  await publishSaleEvent(deps, actorUserId, after.id, "sale.test_flag_changed", {
+    isTest: after.isTest === true,
+    status: after.status,
+  });
+}
 
 export async function updateDraftSale(
   deps: SaleServiceDeps,
@@ -25,6 +39,7 @@ export async function updateDraftSale(
   saleId: string,
   patch: UpdateSaleBody,
   userStaffRoles?: StaffRoles | undefined,
+  actorUserId?: string | undefined,
 ): Promise<Result<Sale, LotError | AuthzError>> {
   const role = userRole as UserRole;
   const staff = userStaffRoles;
@@ -50,6 +65,16 @@ export async function updateDraftSale(
   let pressCoverage = patch.pressCoverage;
   if (pressCoverage !== undefined) {
     pressCoverage = await enrichPressCoverageWithOpenGraphImages(sale.pressCoverage, pressCoverage);
+  }
+
+  // A test sale is decided before anything is published, bid on or paid for. Once a sale has left
+  // draft it may already have been announced, followed or bid on, so the flag is fixed.
+  if (
+    patch.isTest !== undefined &&
+    patch.isTest !== (sale.isTest === true) &&
+    sale.status !== "draft"
+  ) {
+    return err(new LotError("Only a draft sale can be marked as, or cleared of, a test sale", 422));
   }
 
   if (sale.status !== "draft") {
@@ -171,6 +196,7 @@ export async function updateDraftSale(
       if (patch.coverImages !== undefined) {
         await deps.imageCleanup?.enqueueRemovedMany(sale.coverImages, patch.coverImages);
       }
+      await recordTestFlagChange(deps, actorUserId, sale, updated);
       return ok(updated);
     }
     await syncDraftLots(deps.lotRepo);
@@ -194,6 +220,7 @@ export async function updateDraftSale(
     }
   }
   const updated = await deps.saleRepo.update(saleId, normalized);
+  await recordTestFlagChange(deps, actorUserId, sale, updated);
   if (patch.coverImages !== undefined) {
     await deps.imageCleanup?.enqueueRemovedMany(sale.coverImages, patch.coverImages);
   }

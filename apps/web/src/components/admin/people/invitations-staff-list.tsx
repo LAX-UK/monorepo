@@ -405,9 +405,7 @@ export function InvitationQuickView({
       }}
       title={row?.email ?? "Invitation"}
       status={row ? <StatusBadge tone={row.status.tone}>{row.status.label}</StatusBadge> : null}
-      meta={
-        row ? [{ label: "Sent", value: formatStaffDateTime(row.sentAt, { zoneLabel: true }) }] : []
-      }
+      meta={row ? [{ label: "Sent", value: formatStaffDateTime(row.sentAt) }] : []}
       overflow={
         row ? (
           <OverflowMenu
@@ -440,13 +438,11 @@ export function InvitationQuickView({
               { label: "Invited by", value: row.invitedBy ?? "Not recorded" },
               {
                 label: "Opened",
-                value: row.openedAt
-                  ? formatStaffDateTime(row.openedAt, { zoneLabel: true })
-                  : "Not yet",
+                value: row.openedAt ? formatStaffDateTime(row.openedAt) : "Not yet",
               },
               {
                 label: accepted ? "Link expired" : "Expires",
-                value: formatStaffDateTime(row.expiresAt, { zoneLabel: true }),
+                value: formatStaffDateTime(row.expiresAt),
               },
               { label: "Email delivery", value: row.delivery ?? "Not reported yet" },
               { label: "Invitation ID", value: row.id, copyValue: row.id },

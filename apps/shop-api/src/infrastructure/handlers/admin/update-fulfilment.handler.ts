@@ -11,6 +11,7 @@ import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
 import { fulfilmentStageStamp } from "../../fulfilment-stage-stamp.js";
+import { linesAwaitingPackConfirmation } from "../../print-fulfilment/packing-gate.js";
 
 function parseFulfilmentStatus(raw: string): ShopFulfilmentStatus {
   if ((SHOP_FULFILMENT_STATUSES as readonly string[]).includes(raw)) {
@@ -74,6 +75,19 @@ export function createUpdateFulfilmentHandler(deps: {
               `Invalid fulfilment transition from ${currentStatus} to ${nextStatus}`,
               409,
             );
+          }
+          if (nextStatus === "awaiting_dispatch") {
+            const unpacked = await linesAwaitingPackConfirmation(
+              shopPhaseDbSession(tx),
+              existing.orderId,
+            );
+            if (unpacked.length > 0) {
+              throw new ShopApiError(
+                SHOP_API_ERROR_CODES.CONFLICT,
+                "Confirm each numbered print against its order line before the order is ready to dispatch",
+                409,
+              );
+            }
           }
           await shopPhaseDbSession(tx)
             .update(shopFulfilment)

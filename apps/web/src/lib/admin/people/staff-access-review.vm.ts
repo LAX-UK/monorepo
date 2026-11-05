@@ -6,11 +6,10 @@ import {
   STAFF_ROLE_ENDING_SOON_DAYS,
   type StaffRoleChipView,
   staffRoleChip,
-  staffRoleLastDay,
   staffRoleName,
 } from "@/lib/admin/people/staff-roles.vm";
 import type { StaffAccessReviewRow } from "@/lib/data/http/staff-roles.server";
-import { formatStaffDate } from "@auction/staff-ui";
+import { formatStaffExportDate } from "@auction/staff-ui";
 import {
   type LaxStaffAccessProduct,
   isLaxAdminRole,
@@ -281,8 +280,10 @@ export function accessReviewCsvRows(
       ...base,
       admin: role.admin,
       role: role.role,
-      since: formatStaffDate(role.startsAt),
-      lastDay: role.endsAt ? staffRoleLastDay(role.endsAt) : "",
+      since: formatStaffExportDate(role.startsAt),
+      lastDay: role.endsAt
+        ? formatStaffExportDate(new Date(new Date(role.endsAt).getTime() - 1))
+        : "",
     }));
   });
 }

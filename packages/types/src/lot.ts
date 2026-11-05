@@ -218,6 +218,11 @@ export type CreateLotInput = {
   /** Artist registry FK. Pass `null` to clear an existing attribution; pass a
    * uuid to attach. Admin-only via the route layer. */
   artistId?: string | null | undefined;
+  /**
+   * The artwork register record this lot offers. Set only by the move from lax.art; never taken
+   * from a request body.
+   */
+  artworkRegisterId?: string | undefined;
   categoryIds?: string[];
   /** @deprecated Prefer categoryIds. Accepted during the migration window. */
   categoryId?: string | undefined;

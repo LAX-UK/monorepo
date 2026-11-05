@@ -20,8 +20,11 @@ vi.mock("@/lib/data/http/server-request-headers", () => ({
   },
 }));
 vi.mock("next/headers", () => ({
-  headers: async () => new Headers({ "x-forwarded-for": "203.0.113.9, 10.0.0.1" }),
+  headers: async () => new Headers({ "x-forwarded-for": "1.2.3.4, 203.0.113.9, 10.0.0.1" }),
 }));
+
+const CLIENT_IP_TOKEN = "t".repeat(32);
+process.env.API_SSR_CLIENT_IP_TOKEN = CLIENT_IP_TOKEN;
 
 const { httpContactDispatcher } = await import("./http-contact-dispatcher.server");
 const { ContactDispatchError } = await import("./contact-dispatcher");
@@ -59,7 +62,9 @@ describe("httpContactDispatcher", () => {
     const sent = new Headers(init?.headers);
     expect(sent.get("content-type")).toBe("application/json");
     expect(sent.get("origin")).toBe("https://lax.bid");
-    expect(sent.get("x-forwarded-for")).toBe("203.0.113.9");
+    expect(sent.get("x-lax-client-ip")).toBe("203.0.113.9");
+    expect(sent.get("x-lax-client-ip-token")).toBe(CLIENT_IP_TOKEN);
+    expect(sent.get("x-forwarded-for")).toBeNull();
     expect(sent.get("authorization")).toBeNull();
     expect(JSON.parse(String(init?.body))).toEqual(payload);
     expect(receipt).toEqual({ reference: "E-1042", replyBy: "2026-11-04T10:30:00.000Z" });

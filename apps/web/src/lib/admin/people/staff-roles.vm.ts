@@ -84,15 +84,15 @@ export function staffRoleEndsAtFromLastDay(lastDay: string | null): string | nul
 }
 
 /** The last day a role is held: the day before the moment it ends. */
-export function staffRoleLastDay(endsAt: string): string {
-  return formatStaffDate(new Date(new Date(endsAt).getTime() - 1));
+export function staffRoleLastDay(endsAt: string, now: Date = new Date()): string {
+  return formatStaffDate(new Date(new Date(endsAt).getTime() - 1), now);
 }
 
 export type StaffRoleChipView<R extends string = UserStaffRole> = {
   id: string;
   role: R;
   label: string;
-  /** "Since 3 Oct 2026 · Until 30 Nov 2026", or what LAX Admin has still to apply. */
+  /** "Since Sat 3 Oct · Until Mon 30 Nov", or what LAX Admin has still to apply. */
   meta: string;
   /** Ends within {@link STAFF_ROLE_ENDING_SOON_DAYS} days, or waits for LAX Admin. */
   endingSoon: boolean;
@@ -103,7 +103,7 @@ export type StaffRoleChipView<R extends string = UserStaffRole> = {
 function untilText(endsAt: string, now: Date): string {
   const daysLeft = Math.ceil((new Date(endsAt).getTime() - now.getTime()) / DAY_MS);
   if (daysLeft <= 1) return "Ends today";
-  return `Until ${staffRoleLastDay(endsAt)} · ${daysLeft} days left`;
+  return `Until ${staffRoleLastDay(endsAt, now)} · ${daysLeft} days left`;
 }
 
 /** A held role as a chip shows it: its name, since when, and until when. */
@@ -129,12 +129,12 @@ export function staffRoleChip<R extends string>(
   }
   const assignment = toAssignment(view);
   const started = assignment.startsAt.getTime() <= now.getTime();
-  const from = `${started ? "Since" : "Starts"} ${formatStaffDate(view.startsAt)}`;
+  const from = `${started ? "Since" : "Starts"} ${formatStaffDate(view.startsAt, now)}`;
   const endingSoon = staffRoleAssignmentEndsWithin(assignment, now, STAFF_ROLE_ENDING_SOON_DAYS);
   const until = view.endsAt
     ? endingSoon
       ? untilText(view.endsAt, now)
-      : `Until ${staffRoleLastDay(view.endsAt)}`
+      : `Until ${staffRoleLastDay(view.endsAt, now)}`
     : null;
   return {
     id: view.id,

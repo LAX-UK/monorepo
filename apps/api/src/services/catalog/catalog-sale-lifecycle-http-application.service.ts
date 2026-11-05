@@ -69,6 +69,7 @@ export class CatalogSaleLifecycleHttpApplicationService
   }
 
   async updateDraft(input: {
+    userId: string;
     role: UserRole;
     saleId: string;
     patch: Parameters<ISaleService["updateDraft"]>[2];
@@ -79,6 +80,7 @@ export class CatalogSaleLifecycleHttpApplicationService
       input.saleId,
       input.patch,
       input.staffRoles,
+      input.userId,
     );
     if (result.isErr()) return catalogRouteFromResult(result);
     const data = await presentSaleImages(

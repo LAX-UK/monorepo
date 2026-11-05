@@ -153,5 +153,16 @@ export async function readEditionRunDetail(
       return linked ? [{ artworkId: row.id, title: row.title, spec: linked.spec }] : [];
     }),
     stock: isOpen ? await readStock(db, artwork.id) : null,
+    certificateAuthority:
+      factsRow?.facts.certificateAuthorityReference && factsRow.facts.certificateAuthorityRecordedAt
+        ? {
+            reference: factsRow.facts.certificateAuthorityReference,
+            recordedAt: factsRow.facts.certificateAuthorityRecordedAt.toISOString(),
+          }
+        : null,
+    horsCommerce:
+      artwork.proofType === "hc"
+        ? { approvedAt: artwork.horsCommerceApprovedAt?.toISOString() ?? null }
+        : null,
   };
 }

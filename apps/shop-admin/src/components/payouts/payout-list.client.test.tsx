@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { pinClock } from "@/test/pin-clock";
 import type { AdminPayoutList } from "@auction/shop-contracts";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type * as React from "react";
@@ -95,13 +96,15 @@ beforeEach(() => {
   markPayoutPaid.mockResolvedValue({ ok: true, data: { id: "x", status: "paid" } });
 });
 
+pinClock();
+
 describe("the payouts list", () => {
   it("reads statuses in words, money formatted and dates in London", () => {
     renderList();
     const table = grid();
     expect(within(table).getByText("Waiting for refund period")).toBeInTheDocument();
     expect(within(tableRow("Theo Marsh")).getByText("Due")).toBeInTheDocument();
-    expect(within(tableRow("Theo Marsh")).getByText("2 Oct 2026")).toBeInTheDocument();
+    expect(within(tableRow("Theo Marsh")).getByText("Fri 2 Oct")).toBeInTheDocument();
     expect(table.textContent).not.toMatch(/pending_refund_period|\d{2}\/\d{2}\/\d{4}/);
     expect(within(table).getByText("£85.00")).toBeInTheDocument();
   });

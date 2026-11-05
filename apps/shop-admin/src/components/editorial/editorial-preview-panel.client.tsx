@@ -46,10 +46,7 @@ export function EditorialPreviewPanel({
         </>
       }
     >
-      <p>
-        Anyone with the link can view the draft until{" "}
-        {formatStaffDateTime(preview.expiresAt, { zoneLabel: true })}.
-      </p>
+      <p>Anyone with the link can view the draft until {formatStaffDateTime(preview.expiresAt)}.</p>
       {preview.url ? null : (
         <p>
           The lax.art address is not set up here, so only the token is available. Open{" "}

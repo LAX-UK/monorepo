@@ -98,10 +98,9 @@ export function marketingArtistDirectoryControls(
       id: "show",
       title: "Show",
       links: [
-        { label: "All artists", href: href({ show: null }), active: !query.show },
         {
           label: "Featured artists",
-          href: href({ show: "featured" }),
+          href: href({ show: query.show === "featured" ? null : "featured" }),
           active: query.show === "featured",
         },
       ],

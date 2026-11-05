@@ -71,7 +71,6 @@ export * from "./webhook-events.js";
 export * from "./marketing-event-outbox.js";
 export * from "./marketing-click-ids.js";
 export * from "./marketing-attribution.js";
-export * from "./marketing-contact-sync.js";
 export * from "./qr-code.js";
 export * from "./processed-stripe-events.js";
 export * from "./processed-webhook-events.js";
@@ -128,3 +127,4 @@ export {
 export * from "./access-request.js";
 export * from "./consignment-messages.js";
 export * from "./subject-data-export.js";
+export * from "./private-sale-deal.js";

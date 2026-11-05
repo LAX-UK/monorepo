@@ -158,6 +158,7 @@ export function SaleroomDetailView({
                 countLabel={vm.countLabel}
                 resultCountLabel={vm.resultCountLabel}
                 controls={vm.controls}
+                statusCounts={vm.statusCounts}
               />
               {vm.catalogSearchFilterCapped ? (
                 <p className="mb-4 text-sm text-on-surface-variant">

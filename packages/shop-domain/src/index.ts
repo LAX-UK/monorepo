@@ -76,12 +76,44 @@ export {
   type SignaturePlace,
 } from "./edition-facts.js";
 export {
+  EDITION_SNAPSHOT_VERSION,
+  createEditionSnapshot,
+  describeCertificateStatus,
+  describeSnapshotPrint,
+  editionFactsToPlain,
+  readEditionSnapshot,
+  type CertificateStatus,
+  type EditionFactsSnapshot,
+  type PlainEditionFacts,
+  type PrintDescription,
+  type ReadEditionSnapshot,
+} from "./edition-snapshot.js";
+export {
   confirmPackedPrint,
   type ExpectedPrint,
   type PackCandidate,
   type PackConfirmation,
   type ScannedPrint,
 } from "./print-confirmation.js";
+export {
+  AUTHORITY_REFERENCE_MAX_LENGTH,
+  SWAP_REASON_MAX_LENGTH,
+  assertAuthorityReference,
+  assertHorsCommerceSellable,
+  assertSwapAllowed,
+  assertSwapReason,
+  certificateToSendLabel,
+  decideCertificate,
+  linesBlockingDispatch,
+  nextPrintToSend,
+  payoutAfterSwap,
+  type CertificateDecision,
+  type CertificateSettings,
+  type PackingLine,
+  type PayoutFollowsSwap,
+  type SendCandidate,
+  type SwapAuthority,
+} from "./print-fulfilment.js";
 export {
   PLACEMENT_SLOTS,
   PLACEMENT_SLOT_RULES,

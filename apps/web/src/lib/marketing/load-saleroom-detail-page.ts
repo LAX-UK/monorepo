@@ -1,3 +1,4 @@
+import { countSaleroomStatuses } from "@/lib/marketing/saleroom-status-counts";
 import "server-only";
 
 import { isSessionLookupTransientError } from "@/lib/auth/session-lookup-error";
@@ -112,6 +113,12 @@ export async function loadSaleroomDetailPage(input: {
     catalogSearch: query.catalogSearch,
   });
 
+  // Counts only while the page holds every lot, which a status or search always loads.
+  const statusCounts = countSaleroomStatuses(lotsPage.items, {
+    catalogSearch: query.catalogSearch,
+    holdsWholeCatalogue: lotsPage.items.length + lotsPage.withdrawn.length >= lotsPage.total,
+  });
+
   const registeredBidderCount = await getServerSaleBidderCount(shell.sale.id).catch(() => null);
   const isSaleroomSale = isSaleroomDeliveryMode(shell.sale.deliveryMode);
   const initialSaleroomStatus = isSaleroomSale
@@ -145,6 +152,7 @@ export async function loadSaleroomDetailPage(input: {
     categoryLabel,
     categoryLabels,
     hangLots,
+    statusCounts,
   });
 
   const jsonLdText = buildSaleroomPageJsonLd({

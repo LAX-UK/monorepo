@@ -8,6 +8,7 @@ import {
   adminDeclineWithdrawalRequestResultAction,
   adminPublishLotResultAction,
   adminReturnLotToInventoryResultAction,
+  adminReturnLotToLaxArtResultAction,
   adminSoftDeleteLotResultAction,
 } from "@/lib/actions/admin";
 import { humanizeSetupError } from "@/lib/admin/sale-setup/humanize-setup-error";
@@ -32,6 +33,11 @@ export type LotActionTarget = {
   withdrawalRequested: boolean;
   /** Why publishing is blocked (e.g. no photos), when it is. */
   publishBlockedReason?: string | null;
+  /**
+   * The artwork register record behind the lot, with whether it can go back to lax.art. Left out
+   * for a lot with no record, and wherever the lot page's check is not at hand (list rows).
+   */
+  laxArtReturn?: { title: string; stockCode: string; canReturn: boolean; reasons: string[] } | null;
 };
 
 export type LotActionAccess = {
@@ -162,6 +168,19 @@ export function useLotActions(
     [ask],
   );
 
+  const returnToLaxArt = useCallback(
+    (lot: LotActionTarget) =>
+      ask({
+        title: `Return ${lot.title} to lax.art?`,
+        description:
+          "The artwork's lax.art listing is reopened as a draft. Nothing goes live until you publish it in LAX Admin. This lot stays here as it is.",
+        confirmLabel: "Return to lax.art",
+        run: () => adminReturnLotToLaxArtResultAction(lot.id),
+        success: `${lot.title} is back on lax.art as a draft`,
+      }),
+    [ask],
+  );
+
   const remove = useCallback(
     (lot: LotActionTarget) => {
       const phrase = lotDeleteConfirmationPhrase(lot.title);
@@ -230,6 +249,15 @@ export function useLotActions(
             : {}),
         });
       }
+      if (access.canManageAuction && lot.laxArtReturn) {
+        const { canReturn, reasons } = lot.laxArtReturn;
+        actions.push({
+          id: "return-to-lax-art",
+          label: "Return to lax.art…",
+          onSelect: () => returnToLaxArt(lot),
+          ...(canReturn ? {} : { disabledReason: reasons[0] ?? "This lot cannot go back yet" }),
+        });
+      }
       if (access.canManageAuction && lot.status === "ended" && lot.hasWinner) {
         actions.push({
           id: "buyer-default",
@@ -255,6 +283,7 @@ export function useLotActions(
       declineWithdrawal,
       withdraw,
       returnToInventory,
+      returnToLaxArt,
       buyerDefault,
       remove,
     ],

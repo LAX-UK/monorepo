@@ -39,6 +39,7 @@ import type {
   DisputeDeskListInput,
   IAdminDisputeDeskReader,
 } from "../interfaces/admin-dispute-desk.reader.js";
+import { containsPattern } from "../lib/like-pattern.js";
 
 type CaseRow = typeof disputeCase.$inferSelect;
 
@@ -62,8 +63,6 @@ function viewCondition(view: DisputeDeskView): SQL | undefined {
       return undefined;
   }
 }
-
-const escapeLike = (text: string) => text.replace(/[\\%_]/g, "\\$&");
 
 const INVOICE_COLUMNS = {
   paymentId: payment.id,
@@ -212,7 +211,7 @@ export class DrizzleAdminDisputeDeskReader implements IAdminDisputeDeskReader {
   }
 
   private searchCondition(q: string): SQL | undefined {
-    const pattern = `%${escapeLike(q)}%`;
+    const pattern = containsPattern(q);
     const onInvoice = this.db
       .select({ one: sql`1` })
       .from(disputeCaseCandidate)

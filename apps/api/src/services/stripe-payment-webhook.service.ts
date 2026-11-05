@@ -14,6 +14,11 @@ import {
   type PaymentGroupWebhookDeps,
   createPaymentWebhookHandlers,
 } from "./stripe-webhook/create-payment-webhook-handlers.js";
+import {
+  type DealPaymentWebhookDeps,
+  dealChargeRefunded,
+  withDealPaymentHandlers,
+} from "./stripe-webhook/deal-payment-webhook-handlers.js";
 import type { StripePaymentWebhookDeps } from "./stripe-webhook/payment-webhook-lookup.js";
 import type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-types.js";
 
@@ -34,6 +39,7 @@ export class StripePaymentWebhookService {
     domainEventSink: IDomainEventSink,
     private readonly disputes: IDisputeWebhookRecorder,
     private readonly paymentGroups: PaymentGroupWebhookDeps | null = null,
+    private readonly dealPayments: DealPaymentWebhookDeps | null = null,
   ) {
     this.deps = {
       transactionRunner,
@@ -44,7 +50,8 @@ export class StripePaymentWebhookService {
       paymentCapture,
       domainEventSink,
     };
-    this.handlers = createPaymentWebhookHandlers(this.deps, paymentGroups);
+    const handlers = createPaymentWebhookHandlers(this.deps, paymentGroups);
+    this.handlers = dealPayments ? withDealPaymentHandlers(handlers, dealPayments) : handlers;
   }
 
   async handlePaymentIntentSucceeded(
@@ -132,6 +139,10 @@ export class StripePaymentWebhookService {
     event: Stripe.Event,
     charge: Stripe.Charge,
   ): Promise<PaymentWebhookResult> {
+    const deal = this.dealPayments
+      ? await dealChargeRefunded(this.dealPayments, event, charge)
+      : null;
+    if (deal) return deal;
     const grouped = await this.paymentGroups?.chargeEvents.chargeRefunded(event, charge);
     return grouped ?? handleChargeRefunded(this.deps, event, charge);
   }

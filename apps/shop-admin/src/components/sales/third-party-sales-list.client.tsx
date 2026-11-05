@@ -334,9 +334,7 @@ export function ThirdPartySalesList({
                 { label: "Paid by buyer", value: formatStaffMoney(opened.grossPence) },
                 {
                   label: "Recorded",
-                  value: opened.recordedAt
-                    ? formatStaffDateTime(opened.recordedAt, { zoneLabel: true })
-                    : "Not yet",
+                  value: opened.recordedAt ? formatStaffDateTime(opened.recordedAt) : "Not yet",
                 },
               ]
             : []
@@ -348,9 +346,7 @@ export function ThirdPartySalesList({
                 { label: "Buyer", value: opened.buyerName ?? null },
                 {
                   label: "Created",
-                  value: opened.createdAt
-                    ? formatStaffDateTime(opened.createdAt, { zoneLabel: true })
-                    : null,
+                  value: opened.createdAt ? formatStaffDateTime(opened.createdAt) : null,
                 },
                 { label: "Sale ID", value: opened.saleId, copyValue: opened.saleId },
               ])

@@ -1,3 +1,4 @@
+import { pinClock } from "@/test/pin-clock";
 import { describe, expect, it } from "vitest";
 import {
   STAFF_ROLE_OPTIONS,
@@ -7,6 +8,8 @@ import {
   staffRoleNames,
   staffRolesAllow,
 } from "./staff-directory.vm";
+
+pinClock();
 
 describe("a staff member", () => {
   it("is named by their profile name, then their email, never by an account id", () => {
@@ -54,8 +57,8 @@ describe("LAX Admin roles", () => {
       new Date("2026-10-29T12:00:00Z"),
     );
     expect(chips.map((c) => [c.label, c.meta])).toEqual([
-      ["Catalogue editor", "Since 3 Oct 2026"],
-      ["Editor", "Since 3 Oct 2026 · Until 30 Nov 2026"],
+      ["Catalogue editor", "Since Sat 3 Oct"],
+      ["Editor", "Since Sat 3 Oct · Until Mon 30 Nov"],
     ]);
   });
 

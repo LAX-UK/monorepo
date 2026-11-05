@@ -52,7 +52,7 @@ export function CatalogueScheduleSection({ form, fields, sales }: Props) {
 
   const saleWindowLabel =
     sale != null
-      ? `${formatStaffDateTime(sale.startTime, { zoneLabel: true })} to ${formatStaffDateTime(sale.endTime, { zoneLabel: true })}`
+      ? `${formatStaffDateTime(sale.startTime)} to ${formatStaffDateTime(sale.endTime)}`
       : null;
 
   let scheduleViolation: string | null = null;

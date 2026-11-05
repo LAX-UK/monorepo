@@ -172,13 +172,13 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
 
   return (
     <Section title="Evidence review" description={sufficiency.summary}>
-      <div className="grid gap-4 lg:grid-cols-[minmax(12rem,16rem)_1fr]">
-        <ul aria-label="Submitted documents" className="flex flex-col gap-1">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(12rem,16rem)_1fr]">
+        <ul aria-label="Submitted documents" className="flex min-w-0 flex-col gap-1">
           {docs.map((doc) => {
             const reviewed = doc.staffReview != null;
             const current = selectedId === doc.id;
             return (
-              <li key={doc.id}>
+              <li key={doc.id} className="min-w-0">
                 <StaffButton
                   variant="ghost"
                   aria-current={current ? "true" : undefined}

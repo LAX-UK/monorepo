@@ -11,6 +11,7 @@ import { SheetMenus } from "./sheet-menus";
 import { SheetEmptyStates, SheetPresets, SheetToggles } from "./sheet-settings";
 import { SheetStatus } from "./sheet-status";
 import { SheetTabs } from "./sheet-tabs";
+import { SheetWhereItIs } from "./sheet-where-it-is";
 
 /**
  * The LAX system component sheet: the shared primitives from `@auction/ui/lax` in every state,
@@ -47,6 +48,7 @@ export function LaxComponentSheet({
         <SheetPresets />
         <SheetToggles />
         <SheetEmptyStates />
+        <SheetWhereItIs />
       </div>
     </SheetDensitiesProvider>
   );

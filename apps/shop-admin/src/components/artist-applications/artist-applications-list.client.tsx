@@ -322,7 +322,7 @@ export function ArtistApplicationsList({
                   : []),
                 {
                   label: "Sent",
-                  value: formatStaffDateTime(opened.submittedAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.submittedAt),
                 },
               ])
             : []
