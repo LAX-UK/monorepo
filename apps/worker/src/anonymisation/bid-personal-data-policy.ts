@@ -17,7 +17,7 @@ import {
   userUiPreference,
   watchlist,
 } from "@auction/db/schema";
-import { anonymiseEnquiries } from "@auction/persistence/lib";
+import { anonymiseEnquiries, eraseAlertSubscribers } from "@auction/persistence/lib";
 import { inArray } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
@@ -31,6 +31,10 @@ import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
  * - delete: the rows only describe the person (address book, alerts, preferences) and are removed.
  * - scrub: the row stays because other records point at it, with the personal fields nulled or
  *   replaced by the person's pseudonym.
+ *
+ * Alert subscriptions are deleted by account and by the addresses those rows hold, including a
+ * visitor new-sale alert for the same address; a subscriber stopped by a complaint is kept as a
+ * suppression, detached from the account.
  *
  * Enquiries the person sent are scrubbed too (see the enquiry rule): the sender details and
  * message are replaced, internal notes are cleared, and their photos and documents are detached
@@ -119,6 +123,23 @@ const enquiryRule: BidAnonymisationRule = {
       marketing_enquiry_note: counts.notes,
       marketing_enquiry_attachment: counts.attachments,
       marketing_enquiry_held: counts.held,
+    };
+  },
+};
+
+const alertSubscribersRule: BidAnonymisationRule = {
+  table: "bid_alert_subscriber",
+  treatment: "delete",
+  fields: [],
+  async apply(tx, scope) {
+    const counts = await eraseAlertSubscribers(tx as never, {
+      emails: [],
+      userIds: scope.subjectIds,
+    });
+    return {
+      bid_alert_subscriber: counts.alertSubscribers,
+      visitor_sale_alert_subscriber: counts.visitorSaleAlerts,
+      bid_alert_suppression_kept: counts.suppressionsKept,
     };
   },
 };
@@ -216,4 +237,5 @@ export const BID_ANONYMISATION_RULES: readonly BidAnonymisationRule[] = [
   deleteBySubject(marketingClickIds, "marketing_click_ids", marketingClickIds.userId),
   deleteBySubject(userUiPreference, "user_ui_preference", userUiPreference.userId),
   enquiryRule,
+  alertSubscribersRule,
 ];

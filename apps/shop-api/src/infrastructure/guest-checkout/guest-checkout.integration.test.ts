@@ -2,6 +2,7 @@ import {
   domainEvent,
   emailOutbox,
   shopAdminAudit,
+  shopAlertSubscriber,
   shopGeneralEnquiry,
   shopGuestCustomer,
   shopOrder,
@@ -29,6 +30,7 @@ import {
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
+import { DrizzleShopAlertSubscriberErasure } from "../alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { createDrizzleOrderRepository } from "../drizzle-order.repository.js";
 import { createDrizzleShopNotificationPublisher } from "../drizzle-shop-notification.publisher.js";
 import { createEnquiryFollowUp } from "../enquiry-follow-up.js";
@@ -222,6 +224,17 @@ describe.skipIf(!hasShopIntegrationDb)("guest checkout persistence", () => {
     await db
       .insert(shopGeneralEnquiry)
       .values({ topic: "art_advisory", message: "My flat is in Hackney.", contactEmail: email });
+    // Email-only alert sign-ups for the same address (Shop and lax.art),.
+    await db.insert(shopAlertSubscriber).values(
+      (["shop", "art"] as const).map((product) => ({
+        product,
+        email,
+        status: "confirmed",
+        consentText: "We'll email you.",
+        consentSource: "test",
+        requestedAt: new Date(),
+      })),
+    );
     const links = createDrizzleGuestOrderLinks(db, {
       orders: createDrizzleOrderRepository(db),
       notifications: { queueGuestOrderLink: async () => undefined },
@@ -230,7 +243,10 @@ describe.skipIf(!hasShopIntegrationDb)("guest checkout persistence", () => {
     });
     const { token } = await links.issue(fixture.orderId, new Date());
     const service = new GuestErasureService(
-      createDrizzleGuestErasureStore(db, { domainEventMode: "off" }),
+      createDrizzleGuestErasureStore(db, {
+        domainEventMode: "off",
+        alerts: new DrizzleShopAlertSubscriberErasure(),
+      }),
     );
     const request = {
       guestCustomerId,
@@ -248,7 +264,13 @@ describe.skipIf(!hasShopIntegrationDb)("guest checkout persistence", () => {
       orders: 1,
       enquiries: 1,
       links: 1,
+      alertSubscribers: 2,
+      releaseAlerts: 0,
+      suppressionsKept: 0,
     });
+    expect(
+      await db.select().from(shopAlertSubscriber).where(eq(shopAlertSubscriber.email, email)),
+    ).toHaveLength(0);
     const [order] = await db.select().from(shopOrder).where(eq(shopOrder.id, fixture.orderId));
     // The invoice name and address stay for the accounting record; the phone goes.
     expect(order).toMatchObject({

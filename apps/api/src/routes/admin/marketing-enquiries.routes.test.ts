@@ -18,9 +18,16 @@ function createApp(staffRoles: StaffRoles | undefined) {
     replace: vi.fn().mockResolvedValue({ ok: true, rules: [] }),
   };
   const enquiryErasure = {
-    eraseByEmail: vi
-      .fn()
-      .mockResolvedValue({ ok: true, enquiries: 2, notes: 1, attachments: 3, held: 1 }),
+    eraseByEmail: vi.fn().mockResolvedValue({
+      ok: true,
+      enquiries: 2,
+      notes: 1,
+      attachments: 3,
+      held: 1,
+      alertSubscribers: 2,
+      visitorSaleAlerts: 1,
+      suppressionsKept: 0,
+    }),
   };
   const app = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
@@ -298,7 +305,15 @@ describe("POST /data-requests/enquiry-erasure", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Cache-Control")).toBe("no-store");
     expect(await res.json()).toEqual({
-      data: { enquiries: 2, notes: 1, attachments: 3, held: 1 },
+      data: {
+        enquiries: 2,
+        notes: 1,
+        attachments: 3,
+        held: 1,
+        alertSubscribers: 2,
+        visitorSaleAlerts: 1,
+        suppressionsKept: 0,
+      },
     });
     expect(enquiryErasure.eraseByEmail).toHaveBeenCalledWith({ ...body, actorUserId: "staff-1" });
   });

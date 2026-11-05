@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
+import { DrizzleShopAlertSubscriberErasure } from "../alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { anonymiseShopPersonalData } from "./anonymise-shop-personal-data.js";
 import {
   SHOP_ANONYMISATION_RULES,
@@ -111,5 +112,35 @@ describe("Shop anonymisation policy", () => {
     for (const kept of ["shop_order_line", "shop_refund", "shop_payout_ledger", "shop_sale_fee"]) {
       expect(tables).not.toContain(kept);
     }
+  });
+});
+
+describe("alert sign-ups on purge", () => {
+  it("lists a multi-table rule's counts per table and drops zeros", async () => {
+    const counts = await anonymiseShopPersonalData(aliasTx([]), "user_1", now, [
+      rule("shop_alert_subscriber", async () => ({
+        shop_alert_subscriber: 2,
+        shop_alert_suppression_kept: 0,
+      })),
+    ]);
+    expect(counts).toEqual({ shop_alert_subscriber: 2 });
+  });
+
+  it("erases by the subject and merged aliases, with no typed address", async () => {
+    const erase = vi
+      .spyOn(DrizzleShopAlertSubscriberErasure.prototype, "erase")
+      .mockResolvedValue({ alertSubscribers: 1, releaseAlerts: 1, suppressionsKept: 1 });
+    const policy = SHOP_ANONYMISATION_RULES.filter((r) => r.table === "shop_alert_subscriber");
+    const counts = await anonymiseShopPersonalData(aliasTx(["old_1"]), "user_1", now, policy);
+    expect(erase).toHaveBeenCalledWith(expect.anything(), {
+      emails: [],
+      subjectIds: ["user_1", "old_1"],
+    });
+    expect(counts).toEqual({
+      shop_alert_subscriber: 1,
+      shop_release_alert_subscription_by_email: 1,
+      shop_alert_suppression_kept: 1,
+    });
+    erase.mockRestore();
   });
 });

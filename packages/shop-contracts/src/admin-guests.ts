@@ -38,6 +38,10 @@ export const AdminGuestErasureResultSchema = Type.Object({
   orders: Type.Integer({ minimum: 0 }),
   enquiries: Type.Integer({ minimum: 0 }),
   links: Type.Integer({ minimum: 0 }),
+  /** Email-only alert subscriptions deleted (Shop and lax.art), release list rows, and complaint suppressions kept. */
+  alertSubscribers: Type.Integer({ minimum: 0 }),
+  releaseAlerts: Type.Integer({ minimum: 0 }),
+  suppressionsKept: Type.Integer({ minimum: 0 }),
 });
 
 export type AdminGuestErasureState = Static<typeof AdminGuestErasureStateSchema>;
