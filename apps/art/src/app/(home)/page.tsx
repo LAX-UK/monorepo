@@ -20,6 +20,7 @@ import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import {
   MarketingCardRow,
   MarketingFeatureGrid,
+  type MarketingFeatureGridRole,
   MarketingReveal,
   MarketingSplitFeature,
   MarketingVenueCard,
@@ -39,6 +40,12 @@ export const metadata: Metadata = {
 
 function Shell({ children }: { children: ReactNode }) {
   return <div className={MARKETING_PAGE_SHELL}>{children}</div>;
+}
+
+/** Three stories: a lead and two compact cards beside it, so the column never ends in empty space. */
+function storyCardLayout(role: MarketingFeatureGridRole, count: number) {
+  if (role === "solo") return "split";
+  return role === "item" && count > 2 ? "row" : "stacked";
 }
 
 function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
@@ -96,7 +103,7 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
                 <ArtEditorialCard
                   card={card}
                   aspect="cover"
-                  layout={role === "solo" ? "split" : "stacked"}
+                  layout={storyCardLayout(role, vm.stories.length)}
                 />
               )}
             />

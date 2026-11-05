@@ -15,10 +15,12 @@ export function ArtHomeWhatsOn({ cards }: { cards: readonly EditorialCardVm[] })
     <div
       className={cn(
         "grid gap-10 lg:gap-12",
-        second && "lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start",
+        second && "lg:grid-cols-[minmax(0,5fr)_minmax(0,2fr)] lg:items-start",
       )}
     >
-      <ArtEditorialCard card={lead} layout="split" aspect="landscape" priority />
+      <div className="self-start">
+        <ArtEditorialCard card={lead} layout="split" aspect="landscape" priority />
+      </div>
       {second ? <ArtEditorialCard card={second} aspect="landscape" /> : null}
     </div>
   );
