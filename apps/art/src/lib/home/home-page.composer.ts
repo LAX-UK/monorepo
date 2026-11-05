@@ -5,6 +5,11 @@ import {
   buildCatalogueArtworkCards,
 } from "@/lib/catalogue/catalogue-artwork-card.vm";
 import type { ArtEditorialPlacement } from "@/lib/editorial/art-editorial.types";
+import type {
+  ArtEditorialExhibitionDetail,
+  ArtEditorialExhibitionSummary,
+  ArtEditorialStorySummary,
+} from "@/lib/editorial/art-editorial.types";
 import { type EditorialCardVm, buildPlacementCards } from "@/lib/editorial/editorial-card.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
@@ -21,7 +26,14 @@ import {
 } from "@/lib/home/art-home-galleries.vm";
 import { ART_HOME_HERO_HEADLINE } from "@/lib/home/art-home-hero.vm";
 import { type ArtHomeGuidePromoVm, buildArtHomeGuidePromoVm } from "@/lib/home/art-home-promos.vm";
+import { buildHomeStoryCards } from "@/lib/home/art-home-stories.vm";
 import { isTextLedSection } from "@/lib/home/art-home-text-led";
+import {
+  type WhatsOnPick,
+  buildWhatsOnCards,
+  pickWhatsOn,
+  whatsOnNeedsDetail,
+} from "@/lib/home/art-home-whats-on.vm";
 import type {
   ArtCataloguePort,
   ArtEcosystemPort,
@@ -56,8 +68,6 @@ type ArtHomeEditorialVm =
   | {
       kind: "ok";
       hero: EditorialCardVm | null;
-      whatsOn: EditorialCardVm[];
-      stories: EditorialCardVm[];
       guide: EditorialCardVm[];
       promos: ArtEditorialPlacement[];
     }
@@ -69,18 +79,21 @@ export type ArtHomePageVm = {
   /** The surface each visible section renders on, so two tinted bands never sit together. */
   surfaces: Record<ArtHomeSectionId, MarketingSectionSurface>;
   hero: EditorialCardVm | null;
-  /** One lead plus up to three (Figma `285:3008`). */
+  /**
+   * The lead exhibition (a large card with "Visit" and "See the works") and a second as a
+   * smaller card. Every card has an image frame: never text-only.
+   */
   whatsOn: EditorialCardVm[];
   featuredArtworks: CatalogueArtworkCardVm[];
   /** Laid out for its count; null when no artist is featured. */
   featuredArtists: FeaturedArtistsVm | null;
   productDoors: MarketingProductDoorVm[];
-  /** One lead plus up to two (Figma `285:3061`). */
+  /** Up to three stories, each with a cover image; a story without one is left out. */
   stories: EditorialCardVm[];
   guidePromo: ArtHomeGuidePromoVm;
   galleries: ArtHomeGalleryCardVm[];
   /** Sections with no image among their items; they lead with text instead of placeholders. */
-  textLed: { whatsOn: boolean; stories: boolean; galleries: boolean };
+  textLed: { galleries: boolean };
   viewer: ArtViewerState;
   favoriteAuth: ArtFavoriteAuth;
   /** Sections whose upstream read failed; the page shows an inline error instead. */
@@ -105,8 +118,6 @@ const SECTION_SURFACE: Record<
   "closing-cta": { surface: "band", flexible: false },
 };
 
-const WHATS_ON_LIMIT = 4;
-const STORIES_LIMIT = 3;
 /** Figma shows two galleries (`285:2928`). */
 const GALLERIES_LIMIT = 2;
 
@@ -127,6 +138,38 @@ async function loadGalleryEntries(
   );
 }
 
+/** The exhibitions on now; a failed read leaves the curated placements to stand alone. */
+async function loadCurrentExhibitions(
+  editorial: Pick<ArtEditorialPort, "listExhibitions">,
+): Promise<ArtEditorialExhibitionSummary[]> {
+  const result = await editorial.listExhibitions("current").catch(() => null);
+  return result?.status === "ok" ? result.data.items : [];
+}
+
+/** Published stories, for their covers and reading times; a failed read leaves placements bare. */
+async function loadStories(
+  editorial: Pick<ArtEditorialPort, "listStories">,
+): Promise<ArtEditorialStorySummary[]> {
+  const result = await editorial.listStories().catch(() => null);
+  return result?.status === "ok" ? result.data.items : [];
+}
+
+/** Reads the detail of the shown exhibitions that need it (venue, lead artwork image). */
+async function loadWhatsOnDetails(
+  editorial: Pick<ArtEditorialPort, "getExhibition">,
+  picks: readonly WhatsOnPick[],
+): Promise<Map<string, ArtEditorialExhibitionDetail>> {
+  const details = new Map<string, ArtEditorialExhibitionDetail>();
+  await Promise.all(
+    picks.map(async (pick) => {
+      if (!pick.slug || !whatsOnNeedsDetail(pick)) return;
+      const result = await editorial.getExhibition(pick.slug).catch(() => null);
+      if (result?.status === "ok") details.set(pick.slug, result.data);
+    }),
+  );
+  return details;
+}
+
 /** Home placements are curated in Shop admin and may hold no Art-channel items yet. */
 export async function curatedOrNewest<T extends { items: readonly unknown[] }>(
   curated: () => Promise<T>,
@@ -143,8 +186,6 @@ function homeEditorial(result: Awaited<ReturnType<ArtEditorialPort["home"]>>): A
   return {
     kind: "ok",
     hero: buildPlacementCards(placements, "home_hero", ART_HOME_HERO_HEADLINE)[0] ?? null,
-    whatsOn: buildPlacementCards(placements, "home_whats_on", "What's on"),
-    stories: buildPlacementCards(placements, "home_stories", "Story"),
     guide: buildPlacementCards(placements, "home_guide", "Guide"),
     promos: placements,
   };
@@ -168,7 +209,10 @@ export async function composeArtHomePage(services: {
   catalogue: ArtCataloguePort;
   viewer: ArtViewerPort;
   favorites: ArtFavoritesReadPort;
-  editorial: Pick<ArtEditorialPort, "home" | "listVenues" | "getVenue">;
+  editorial: Pick<
+    ArtEditorialPort,
+    "home" | "listVenues" | "getVenue" | "listExhibitions" | "getExhibition" | "listStories"
+  >;
   ecosystem: ArtEcosystemPort;
 }): Promise<ArtHomePageVm> {
   const favoritesPromise = loadViewerFavoriteContext(services, "/", {
@@ -177,6 +221,8 @@ export async function composeArtHomePage(services: {
   });
   const editorialPromise = services.editorial.home();
   const venuesPromise = loadGalleryEntries(services.editorial);
+  const exhibitionsPromise = loadCurrentExhibitions(services.editorial);
+  const storiesPromise = loadStories(services.editorial);
   const [artworks, artists] = await Promise.allSettled([
     curatedOrNewest(
       () => services.catalogue.listArtworks({ limit: 8, placement: "featured_originals" }),
@@ -191,15 +237,23 @@ export async function composeArtHomePage(services: {
       () => services.catalogue.listArtists({ limit: FEATURED_ARTISTS_LIMIT }),
     ),
   ]);
-  const [favorites, editorialResult, venuesResult] = await Promise.all([
-    favoritesPromise,
-    editorialPromise,
-    venuesPromise,
-  ]);
+  const [favorites, editorialResult, venuesResult, currentExhibitions, publishedStories] =
+    await Promise.all([
+      favoritesPromise,
+      editorialPromise,
+      venuesPromise,
+      exhibitionsPromise,
+      storiesPromise,
+    ]);
 
   const editorial = homeEditorial(editorialResult);
-  const whatsOn = editorial.kind === "ok" ? editorial.whatsOn.slice(0, WHATS_ON_LIMIT) : [];
-  const stories = editorial.kind === "ok" ? editorial.stories.slice(0, STORIES_LIMIT) : [];
+  const placements = editorial.kind === "ok" ? editorial.promos : [];
+  const whatsOnPicks = pickWhatsOn(placements, currentExhibitions);
+  const whatsOn = buildWhatsOnCards(
+    whatsOnPicks,
+    await loadWhatsOnDetails(services.editorial, whatsOnPicks),
+  );
+  const stories = buildHomeStoryCards({ placements, stories: publishedStories });
   const featuredArtists = await loadFeaturedArtists(
     services.catalogue,
     artists.status === "fulfilled" ? artists.value.items : [],
@@ -248,11 +302,7 @@ export async function composeArtHomePage(services: {
     stories,
     guidePromo: buildArtHomeGuidePromoVm(editorial.kind === "ok" ? editorial.guide : []),
     galleries,
-    textLed: {
-      whatsOn: isTextLedSection(whatsOn),
-      stories: isTextLedSection(stories),
-      galleries: isTextLedSection(galleries),
-    },
+    textLed: { galleries: isTextLedSection(galleries) },
     viewer: favorites.viewer,
     favoriteAuth: favorites.favoriteAuth,
     sectionErrors,

@@ -33,6 +33,7 @@ import {
   exhibitionFormFromDetail,
   pageFormFromDetail,
   storyFormFromDetail,
+  storyPublishErrors,
   venueFormFromDetail,
 } from "@/lib/editorial-entity-forms";
 import type { LinksPayload } from "@/server/domain/editorial-links.vm";
@@ -92,6 +93,7 @@ export function StoryEditor({ links, ...props }: LinkedEditorProps<StoryDetail>)
     empty: emptyStoryForm,
     fromDetail: storyFormFromDetail,
     buildPayload: buildStoryPayload,
+    publishErrors: storyPublishErrors,
     nameOf: (form) => form.title,
     afterSave: (form) => ({ ...form, savedKind: form.kind }),
     renderFields: (fields) => <StoryFields {...fields} />,
