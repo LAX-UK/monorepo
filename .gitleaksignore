@@ -12,3 +12,4 @@ a458b28276851535706b3f8bfd5c2f5c180b0d1d:infra/terraform/ephemeral/prod/main.tf:
 621d600652cbd4ca0209508728ef57cd96acc5a9:apps/web/src/lib/bff/public-origin-url.server.test.ts:generic-api-key:36
 bed42353f0dd79931718678c393c414761ff90b0:apps/api/src/lib/visitor-alert-token.test.ts:generic-api-key:4
 bed42353f0dd79931718678c393c414761ff90b0:apps/api/src/services/visitor-sale-alert.service.test.ts:generic-api-key:10
+f86a307c2bf23be4b059903c430463f4b05c5515:packages/auth/src/auth-hooks/legal-acceptance.sign-up.test.ts:generic-api-key:111
