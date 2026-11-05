@@ -147,6 +147,9 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   if (type === "sale_announced") {
     return { label: "New sale", Icon: CalendarDays, tone: "info" };
   }
+  if (type === "artist_lots_listed" || type === "search_lots_listed") {
+    return { label: "New lots", Icon: Eye, tone: "info" };
+  }
   if (type.startsWith("watchlist")) {
     return { label: "Watchlist", Icon: Eye, tone: "info" };
   }

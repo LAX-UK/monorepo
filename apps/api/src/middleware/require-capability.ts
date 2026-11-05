@@ -42,6 +42,7 @@ import {
   PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
   PAYMENT_WRITE_ACCESS,
   PLATFORM_ADMIN_ACCESS,
+  PURCHASE_PROBLEMS_ACCESS,
   QR_CODES_ACCESS,
   QR_CODES_READ_ACCESS,
   type RoleCapability,
@@ -139,6 +140,7 @@ export const requireWithdrawalDecision = createRequireAccess(WITHDRAWAL_DECISION
 export const requireDeliveryReplay = createRequireAccess(DELIVERY_REPLAY_ACCESS);
 /** The Enquiries list and records: general enquiries, private sale enquiries, or both. */
 export const requireEnquiries = createRequireAccess(ENQUIRIES_ACCESS);
+export const requirePurchaseProblems = createRequireAccess(PURCHASE_PROBLEMS_ACCESS);
 export const requireEnquiryRoutingManage = createRequireAccess(ENQUIRY_ROUTING_MANAGE_ACCESS);
 export const requireDataRequestsManage = createRequireAccess(DATA_REQUESTS_MANAGE_ACCESS);
 export const requireFailedJobsRead = createRequireAccess(FAILED_JOBS_READ_ACCESS);

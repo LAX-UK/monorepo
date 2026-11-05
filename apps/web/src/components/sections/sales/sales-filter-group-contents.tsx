@@ -1,12 +1,13 @@
 "use client";
 
 import { SalesPriceSlider } from "@/components/sections/sales/sales-price-slider";
-import { marketingFilterRailLink } from "@/lib/marketing/filter-rail";
+import type { SalesFacetCounts } from "@/lib/marketing/sales-calendar-facets";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import { calendarSalesHrefFromState } from "@/lib/marketing/sales-calendar-params";
 import type { SalesFilterSidebarGroupValue } from "@/lib/marketing/sales-filter-sidebar-catalog";
-import Link from "next/link";
-import type { ReactNode } from "react";
+import { MarketingFilterCheckboxRow, MarketingFilterRadioRow } from "@auction/marketing-ui";
+import { RadioGroup } from "@auction/ui/components/radio-group";
+import { useRouter } from "next/navigation";
 
 const MONTHS = [
   { n: 1, label: "January" },
@@ -30,43 +31,59 @@ export type SalesFilterGroupContentsProps = {
   state: CalendarSalesUrlState;
   categories: Category[];
   years: number[];
+  /** Sales per option; null when they could not be counted. */
+  facets: SalesFacetCounts | null;
   onLinkClick?: () => void;
 };
 
-const linkClass = (active: boolean) => marketingFilterRailLink(active);
+const SORTS = [
+  ["startAsc", "Start date (soonest first)"],
+  ["createdDesc", "Newly listed"],
+] as const;
 
-function FilterLink({
-  href,
+/** A rail option as a checkbox: choosing it applies it, choosing it again takes it off. */
+function FilterCheckbox({
+  id,
+  label,
+  count,
   active,
-  children,
+  onHref,
+  offHref,
   onLinkClick,
 }: {
-  href: string;
+  id: string;
+  label: string;
+  count: number | undefined;
   active: boolean;
-  children: ReactNode;
+  onHref: string;
+  offHref: string;
   onLinkClick?: () => void;
 }) {
+  const router = useRouter();
   return (
-    <Link
-      href={href}
-      scroll={false}
-      className={linkClass(active)}
-      {...(onLinkClick ? { onClick: onLinkClick } : {})}
-    >
-      {children}
-    </Link>
+    <MarketingFilterCheckboxRow
+      id={id}
+      label={label}
+      count={count}
+      checked={active}
+      dense
+      onCheckedChange={() => {
+        router.push(active ? offHref : onHref, { scroll: false });
+        onLinkClick?.();
+      }}
+    />
   );
 }
 
 /** AccordionContent `className` per group (layout scroll / spacing). */
 export const salesFilterAccordionContentClass: Record<SalesFilterSidebarGroupValue, string> = {
-  delivery: "flex flex-col gap-1 pb-3",
-  location: "flex flex-col gap-1 pb-3",
+  delivery: "flex flex-col pb-3",
+  location: "flex flex-col pb-3",
   sort: "flex flex-col gap-1 pb-3",
   price: "pb-3",
-  department: "flex max-h-52 flex-col gap-1 overflow-y-auto pb-3",
-  month: "flex max-h-48 flex-col gap-1 overflow-y-auto pb-3",
-  year: "flex max-h-48 flex-col gap-1 overflow-y-auto pb-3",
+  department: "flex max-h-64 flex-col overflow-y-auto pb-3",
+  month: "flex max-h-64 flex-col overflow-y-auto pb-3",
+  year: "flex max-h-64 flex-col overflow-y-auto pb-3",
 };
 
 export function SalesFilterGroupContents({
@@ -74,145 +91,133 @@ export function SalesFilterGroupContents({
   state,
   categories,
   years,
+  facets,
   onLinkClick,
 }: SalesFilterGroupContentsProps) {
+  const router = useRouter();
+  const link = onLinkClick ? { onLinkClick } : {};
+  const clear = { page: undefined } as const;
   switch (group) {
     case "delivery":
       return (
         <>
-          <FilterLink
-            href={calendarSalesHrefFromState(state, { deliveryMode: "all", page: undefined })}
-            active={state.deliveryMode === "all"}
-            {...(onLinkClick ? { onLinkClick } : {})}
-          >
-            All types
-          </FilterLink>
-          <FilterLink
-            href={calendarSalesHrefFromState(state, { deliveryMode: "online", page: undefined })}
-            active={state.deliveryMode === "online"}
-            {...(onLinkClick ? { onLinkClick } : {})}
-          >
-            Online
-          </FilterLink>
-          <FilterLink
-            href={calendarSalesHrefFromState(state, { deliveryMode: "onsite", page: undefined })}
-            active={state.deliveryMode === "onsite"}
-            {...(onLinkClick ? { onLinkClick } : {})}
-          >
-            In-person
-          </FilterLink>
+          {(
+            [
+              ["online", "Online", facets?.delivery.online],
+              ["onsite", "In-person", facets?.delivery.onsite],
+            ] as const
+          ).map(([mode, label, count]) => (
+            <FilterCheckbox
+              key={mode}
+              id={`sales-delivery-${mode}`}
+              label={label}
+              count={count}
+              active={state.deliveryMode === mode}
+              onHref={calendarSalesHrefFromState(state, { deliveryMode: mode, ...clear })}
+              offHref={calendarSalesHrefFromState(state, { deliveryMode: "all", ...clear })}
+              {...link}
+            />
+          ))}
         </>
       );
     case "location":
       return (
         <>
-          <FilterLink
-            href={calendarSalesHrefFromState(state, { location: "all", page: undefined })}
-            active={state.location === "all"}
-            {...(onLinkClick ? { onLinkClick } : {})}
-          >
-            All locations
-          </FilterLink>
-          <FilterLink
-            href={calendarSalesHrefFromState(state, { location: "online", page: undefined })}
-            active={state.location === "online"}
-            {...(onLinkClick ? { onLinkClick } : {})}
-          >
-            Online
-          </FilterLink>
-          <FilterLink
-            href={calendarSalesHrefFromState(state, { location: "london", page: undefined })}
-            active={state.location === "london"}
-            {...(onLinkClick ? { onLinkClick } : {})}
-          >
-            London
-          </FilterLink>
+          {(
+            [
+              ["online", "Online", facets?.location.online],
+              ["london", "London", facets?.location.london],
+            ] as const
+          ).map(([place, label, count]) => (
+            <FilterCheckbox
+              key={place}
+              id={`sales-location-${place}`}
+              label={label}
+              count={count}
+              active={state.location === place}
+              onHref={calendarSalesHrefFromState(state, { location: place, ...clear })}
+              offHref={calendarSalesHrefFromState(state, { location: "all", ...clear })}
+              {...link}
+            />
+          ))}
         </>
       );
     case "sort":
       return (
-        <>
-          <FilterLink
-            href={calendarSalesHrefFromState(state, { sort: "startAsc", page: undefined })}
-            active={state.sort === "startAsc"}
-            {...(onLinkClick ? { onLinkClick } : {})}
-          >
-            Start date (soonest first)
-          </FilterLink>
-          <FilterLink
-            href={calendarSalesHrefFromState(state, { sort: "createdDesc", page: undefined })}
-            active={state.sort === "createdDesc"}
-            {...(onLinkClick ? { onLinkClick } : {})}
-          >
-            Newly listed
-          </FilterLink>
-        </>
+        <RadioGroup
+          aria-label="Sort by date"
+          value={state.sort}
+          onValueChange={(sort) => {
+            router.push(
+              calendarSalesHrefFromState(state, { sort: sort as typeof state.sort, ...clear }),
+              { scroll: false },
+            );
+            onLinkClick?.();
+          }}
+          className="gap-0"
+        >
+          {SORTS.map(([value, label]) => (
+            <MarketingFilterRadioRow
+              key={value}
+              id={`sales-sort-${value}`}
+              value={value}
+              label={label}
+              checked={state.sort === value}
+              dense
+            />
+          ))}
+        </RadioGroup>
       );
     case "price":
       return <SalesPriceSlider state={state} />;
     case "department":
       return (
         <>
-          <FilterLink
-            href={calendarSalesHrefFromState(state, { categoryId: undefined, page: undefined })}
-            active={!state.categoryId}
-            {...(onLinkClick ? { onLinkClick } : {})}
-          >
-            All departments
-          </FilterLink>
           {categories.map((c) => (
-            <FilterLink
+            <FilterCheckbox
               key={c.id}
-              href={calendarSalesHrefFromState(state, { categoryId: c.id, page: undefined })}
+              id={`sales-department-${c.id}`}
+              label={c.name}
+              count={facets ? (facets.departments[c.id] ?? 0) : undefined}
               active={state.categoryId === c.id}
-              {...(onLinkClick ? { onLinkClick } : {})}
-            >
-              {c.name}
-            </FilterLink>
+              onHref={calendarSalesHrefFromState(state, { categoryId: c.id, ...clear })}
+              offHref={calendarSalesHrefFromState(state, { categoryId: undefined, ...clear })}
+              {...link}
+            />
           ))}
         </>
       );
     case "month":
       return (
         <>
-          <FilterLink
-            href={calendarSalesHrefFromState(state, { month: undefined, page: undefined })}
-            active={state.month == null}
-            {...(onLinkClick ? { onLinkClick } : {})}
-          >
-            Any month
-          </FilterLink>
           {MONTHS.map((m) => (
-            <FilterLink
+            <FilterCheckbox
               key={m.n}
-              href={calendarSalesHrefFromState(state, { month: m.n, page: undefined })}
+              id={`sales-month-${m.n}`}
+              label={m.label}
+              count={facets ? (facets.months[m.n] ?? 0) : undefined}
               active={state.month === m.n}
-              {...(onLinkClick ? { onLinkClick } : {})}
-            >
-              {m.label}
-            </FilterLink>
+              onHref={calendarSalesHrefFromState(state, { month: m.n, ...clear })}
+              offHref={calendarSalesHrefFromState(state, { month: undefined, ...clear })}
+              {...link}
+            />
           ))}
         </>
       );
     case "year":
       return (
         <>
-          <FilterLink
-            href={calendarSalesHrefFromState(state, { year: undefined, page: undefined })}
-            active={state.year == null}
-            {...(onLinkClick ? { onLinkClick } : {})}
-          >
-            Any year
-          </FilterLink>
           {years.map((y) => (
-            <FilterLink
+            <FilterCheckbox
               key={y}
-              href={calendarSalesHrefFromState(state, { year: y, page: undefined })}
+              id={`sales-year-${y}`}
+              label={String(y)}
+              count={facets ? (facets.years[y] ?? 0) : undefined}
               active={state.year === y}
-              {...(onLinkClick ? { onLinkClick } : {})}
-            >
-              {y}
-            </FilterLink>
+              onHref={calendarSalesHrefFromState(state, { year: y, ...clear })}
+              offHref={calendarSalesHrefFromState(state, { year: undefined, ...clear })}
+              {...link}
+            />
           ))}
         </>
       );

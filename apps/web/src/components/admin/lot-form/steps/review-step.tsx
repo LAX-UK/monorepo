@@ -30,7 +30,7 @@ function money(value: string | null | undefined): string | null {
 function londonTime(value: string | null | undefined): string | null {
   const [day, time] = (value ?? "").split("T");
   const iso = day && time ? londonWallTimeToIso(day, time.slice(0, 5)) : null;
-  return iso && isoToLondonWallTime(iso) ? formatStaffDateTime(iso, { zoneLabel: true }) : null;
+  return iso && isoToLondonWallTime(iso) ? formatStaffDateTime(iso) : null;
 }
 
 function categoryNames(ids: readonly string[], nodes: readonly CategoryNode[]): string | null {

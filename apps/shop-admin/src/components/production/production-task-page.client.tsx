@@ -66,9 +66,7 @@ export function ProductionTaskPage({
         meta={
           <>
             <MetaItem label="Order">{orderNumber(task.orderId, task.orderReference)}</MetaItem>
-            <MetaItem label="Created">
-              {formatStaffDateTime(task.createdAt, { zoneLabel: true })}
-            </MetaItem>
+            <MetaItem label="Created">{formatStaffDateTime(task.createdAt)}</MetaItem>
           </>
         }
         primaryAction={
@@ -92,7 +90,7 @@ export function ProductionTaskPage({
         summary={[
           {
             label: "Last change",
-            value: formatStaffDateTime(task.updatedAt, { zoneLabel: true }),
+            value: formatStaffDateTime(task.updatedAt),
           },
           { label: "Task ID", value: task.taskId, copyValue: task.taskId },
         ]}

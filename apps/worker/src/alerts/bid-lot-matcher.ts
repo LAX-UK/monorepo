@@ -8,7 +8,12 @@ import type {
   SearchWatcher,
 } from "@auction/persistence/interfaces";
 import type { LotPublishedEvent } from "../projectors/lib/bid-alert-matching.types.js";
-import { artistCriteriaLine, lotSnapshot } from "./lot-snapshot.js";
+import {
+  artistCriteriaLine,
+  artistPagePath,
+  lotSnapshot,
+  searchResultsPath,
+} from "./lot-snapshot.js";
 
 export type LotMatchOutcome = { lots: number; artistMatches: number; searchMatches: number };
 
@@ -31,7 +36,8 @@ export class BidLotMatcher {
 
   async handle(events: readonly LotPublishedEvent[]): Promise<LotMatchOutcome> {
     const ids = [...new Set(events.map((e) => e.lotId))];
-    const lots = await this.deps.lots.findAlertable(ids);
+    // A sale staff chose not to announce never produces lot alerts, however its lots match.
+    const lots = (await this.deps.lots.findAlertable(ids)).filter((lot) => lot.saleAnnounced);
     if (lots.length === 0) return { lots: 0, artistMatches: 0, searchMatches: 0 };
     const now = this.deps.clock.now();
 
@@ -69,6 +75,7 @@ export class BidLotMatcher {
           groupKey: watcher.artistId,
           snapshot: lotSnapshot(lot, {
             label: lot.artistName ?? "An artist you follow",
+            path: artistPagePath(watcher.artistId, lot.artistName),
             criteria: artistCriteriaLine(watcher.criteria),
           }),
           matchedAt: now,
@@ -111,7 +118,10 @@ export class BidLotMatcher {
           topic: "bid.searches",
           itemKey: `lot:${lotId}`,
           groupKey: search.searchId,
-          snapshot: lotSnapshot(lot, { label: search.label }),
+          snapshot: lotSnapshot(lot, {
+            label: search.label,
+            path: searchResultsPath(search.query),
+          }),
           matchedAt: now,
         });
       }

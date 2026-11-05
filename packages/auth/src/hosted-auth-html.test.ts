@@ -234,6 +234,12 @@ describe("issuer-hosted credential HTML", () => {
     expect(HOSTED_AUTH_STYLES).toContain("--control-min: 2.75rem");
   });
 
+  it("widens the panel gutters at 768px, where every LAX page's gutters step up", () => {
+    const gutterRule =
+      /@media \(min-width: (\S+)\) \{\s*\.auth-header,\s*\.auth-main,\s*\.auth-footer \{\s*padding-left: 2\.5rem/;
+    expect(HOSTED_AUTH_STYLES.match(gutterRule)?.[1]).toBe("48rem");
+  });
+
   it("wears the LAX Account lockup and names the Shop as the destination for lax-shop-web", () => {
     const view = hostedAuthViewFromSearch(shopSearch, shopCapabilities);
     const html = buildHostedLoginHtml(view);

@@ -14,6 +14,12 @@ describe("composeArtworksPage", () => {
       items: [{ slug: "painting", label: "Painting" }],
     });
 
+    services.catalogue.countArtworkFacets.mockResolvedValue({
+      availability: { available: 0, soldOut: 0 },
+      categories: [{ slug: "painting", label: "Painting", count: 12 }],
+      artists: [],
+    });
+
     const vm = await composeArtworksPage(services, {
       saleState: "for_sale",
       minPrice: "100",
@@ -26,9 +32,15 @@ describe("composeArtworksPage", () => {
       minPrice: 10000,
       sort: "priceAsc",
     });
+    // The counts follow the same filters as the list, without its sort or page.
+    expect(services.catalogue.countArtworkFacets).toHaveBeenCalledWith({
+      saleState: "for_sale",
+      minPrice: 10000,
+      sort: "priceAsc",
+    });
     expect(vm.resultCount).toBe(30);
     expect(vm.hasActiveFilters).toBe(true);
-    expect(vm.categories).toEqual([{ slug: "painting", label: "Painting" }]);
+    expect(vm.categories).toEqual([{ slug: "painting", label: "Painting", count: 12 }]);
     expect(vm.nextPageHref).toBe(
       "/artworks?saleState=for_sale&minPrice=100&sort=priceAsc&cursor=c2",
     );
@@ -44,12 +56,62 @@ describe("composeArtworksPage", () => {
       items: [{ slug: "a", name: "A", discipline: null, portraitUrl: null, artworkCount: 1 }],
     });
 
+    services.catalogue.countArtworkFacets.mockRejectedValue(new Error("down"));
+
     const vm = await composeArtworksPage(services, {});
 
     expect(vm.failed).toBe(true);
     expect(vm.cards).toEqual([]);
     expect(vm.artists).toEqual([{ slug: "a", label: "A" }]);
     expect(vm.nextPageHref).toBeNull();
+  });
+
+  it("counts the medium and availability options, and leaves a missing count at zero", async () => {
+    const services = fakeArtServices();
+    services.catalogue.listArtworkObjectTypes.mockResolvedValue({
+      items: [
+        { objectType: "painting", artworkCount: 2, coverImageUrl: null },
+        { objectType: "print", artworkCount: 5, coverImageUrl: null },
+      ],
+    });
+    services.catalogue.countArtworkFacets.mockResolvedValue({
+      availability: { available: 0, soldOut: 0 },
+      categories: [],
+      artists: [{ slug: "ada", name: "Ada", count: 3 }],
+      objectTypes: [{ key: "painting", count: 7 }],
+      saleStates: [{ key: "for_sale", count: 5 }],
+    });
+    services.catalogue.listArtists.mockResolvedValue({
+      items: [
+        { slug: "ada", name: "Ada", discipline: null, portraitUrl: null, artworkCount: 3 },
+        { slug: "bo", name: "Bo", discipline: null, portraitUrl: null, artworkCount: 1 },
+      ],
+    });
+
+    const vm = await composeArtworksPage(services, {});
+
+    expect(vm.mediumOptions).toEqual([
+      { value: "painting", label: "Paintings", count: 7 },
+      { value: "print", label: "Prints", count: 0 },
+    ]);
+    expect(vm.saleStateOptions.map((o) => [o.value, o.count])).toEqual([
+      ["", undefined],
+      ["for_sale", 5],
+      ["price_on_application", 0],
+      ["sold", 0],
+    ]);
+    expect(vm.artists.map((a) => [a.slug, a.count])).toEqual([
+      ["ada", 3],
+      ["bo", 0],
+    ]);
+  });
+
+  it("shows the options without counts when the counts do not load", async () => {
+    const services = fakeArtServices();
+    services.catalogue.countArtworkFacets.mockRejectedValue(new Error("down"));
+    const vm = await composeArtworksPage(services, {});
+    expect(vm.mediumOptions.every((o) => o.count === undefined)).toBe(true);
+    expect(vm.saleStateOptions.every((o) => o.count === undefined)).toBe(true);
   });
 
   it("builds medium tiles and medium options from facets, degrading when facets fail", async () => {

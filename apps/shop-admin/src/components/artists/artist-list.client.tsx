@@ -255,7 +255,7 @@ export function ArtistList({
                 { label: "Web address", value: `/${opened.slug}` },
                 {
                   label: "Added",
-                  value: formatStaffDateTime(opened.createdAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.createdAt),
                 },
                 { label: "Artist ID", value: opened.artistId, copyValue: opened.artistId },
               ]

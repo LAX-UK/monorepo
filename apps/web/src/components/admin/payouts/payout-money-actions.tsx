@@ -229,7 +229,7 @@ export function usePayoutMoneyActions({
         }}
         onConfirm={({ reason }) => {
           if (pending?.kind !== "adjust") return;
-          const { payout } = pending;
+          const { payout, idempotencyKey } = pending;
           if (!adjustment.ok) {
             setFailure("Enter an amount in pounds, such as -25.00 or 40.00.");
             return;
@@ -239,6 +239,7 @@ export function usePayoutMoneyActions({
               adminAddPayoutAdjustmentResultAction(payout.id, {
                 amount: adjustment.amount,
                 note: reason,
+                idempotencyKey,
               }),
             `add ${formatStaffMoney(adjustment.pence)} to this payout`,
             `Added ${formatStaffMoney(adjustment.pence)} to the payout for ${payout.seller}`,

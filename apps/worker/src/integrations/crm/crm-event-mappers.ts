@@ -1,4 +1,6 @@
+import { type DealType, clientLabel, formatDealName } from "@auction/artwork-register-contracts";
 import { parseDomainEventPayload } from "@auction/types";
+import type { CrmDealNamingFacts } from "./crm-deal-naming-reader.js";
 import {
   CRM_FIELD,
   CRM_LEAD_SOURCE_BID_ENQUIRY,
@@ -69,6 +71,10 @@ export type CrmMapperResolved = {
   paymentRefundLotId?: string;
   /** The enquiry a `marketing_enquiry.received` event refers to; null when it no longer exists. */
   enquiry?: CrmEnquiryRecord | null;
+  /** The client and work a deal is named after (lot won, Shop enquiry, Shop order). */
+  dealNaming?: CrmDealNamingFacts;
+  /** When the event is processed; names the month of a deal whose event carries no timestamp. */
+  now?: Date;
 };
 
 function requireDealConfig(
@@ -81,6 +87,27 @@ function requireDealConfig(
     return { ok: false, reason: "deal_pipeline_or_stage_not_configured" };
   }
   return { ok: true, pipeline, stage: resolvedStage };
+}
+
+/**
+ * The deal name under the LAX naming convention. The reference stands in for the stock number
+ * when the work has no register stock code; with no facts at all the name is the reference, deal
+ * type and month.
+ */
+function dealNameFor(
+  facts: CrmDealNamingFacts | undefined,
+  dealType: DealType,
+  at: Date,
+  fallbackReference: string,
+): string {
+  return formatDealName({
+    client: clientLabel({ personName: facts?.clientName }),
+    stockCode: facts?.stockCode,
+    reference: facts?.reference ?? fallbackReference,
+    additionalWorks: facts?.additionalWorks ?? 0,
+    dealType,
+    at,
+  });
 }
 
 function parsePayload(event: DomainEventRowForCrm): unknown | null {
@@ -257,7 +284,7 @@ export function mapDomainEventToCrmIntent(
         dealEntityId: `lot-won:${p.lotId}`,
         dealKey,
         dealFields: {
-          Deal_Name: `Lot won ${p.lotId}`,
+          Deal_Name: dealNameFor(resolved.dealNaming, "Acquisition", new Date(p.endedAt), p.lotId),
           Amount: p.amountCents / 100,
           Stage: dealConfig.stage,
           Pipeline: dealConfig.pipeline,
@@ -323,7 +350,12 @@ export function mapDomainEventToCrmIntent(
         dealKey,
         subjectId: p.identitySubjectId,
         fields: {
-          Deal_Name: `Shop original enquiry ${p.artworkId.slice(0, 8)}`,
+          Deal_Name: dealNameFor(
+            resolved.dealNaming,
+            "Acquisition",
+            resolved.now ?? new Date(),
+            p.artworkId.slice(0, 8),
+          ),
           Stage: dealConfig.stage,
           Pipeline: dealConfig.pipeline,
           [CRM_FIELD.dealExternalKey]: dealKey,
@@ -382,7 +414,12 @@ export function mapDomainEventToCrmIntent(
         dealKey,
         subjectId: p.identitySubjectId,
         fields: {
-          Deal_Name: `Shop order ${p.orderId}`,
+          Deal_Name: dealNameFor(
+            resolved.dealNaming,
+            resolved.dealNaming?.artworkKind === "original" ? "Acquisition" : "Print Order",
+            new Date(p.paidAt),
+            p.orderId,
+          ),
           Amount: p.totalPence / 100,
           Stage: dealConfig.stage,
           Pipeline: dealConfig.pipeline,

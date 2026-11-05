@@ -24,3 +24,18 @@ export function machineCallerStatus(
     (requiredScope === undefined || request.headers["x-identity-client-scope"] === requiredScope);
   return authorised ? 200 : 401;
 }
+
+/**
+ * The same check for the credential LAX Bid shares for moving originals between the products:
+ * 503 when it is not configured, 401 when the id or secret does not match.
+ */
+export function inventoryMachineStatus(
+  request: FastifyRequest,
+  machine: { clientId: string | undefined; clientSecret: string | undefined },
+): 200 | 401 | 503 {
+  if (!machine.clientId || !machine.clientSecret) return 503;
+  const authorised =
+    sameSecret(request.headers["x-inventory-client-id"], machine.clientId) &&
+    sameSecret(request.headers["x-inventory-client-secret"], machine.clientSecret);
+  return authorised ? 200 : 401;
+}

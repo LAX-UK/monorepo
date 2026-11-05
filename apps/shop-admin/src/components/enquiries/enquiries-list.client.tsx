@@ -345,7 +345,7 @@ export function EnquiriesList({
                 },
                 {
                   label: "Received",
-                  value: formatStaffDateTime(opened.createdAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.createdAt),
                 },
                 { label: "Enquiry ID", value: opened.id, copyValue: opened.id },
               ])

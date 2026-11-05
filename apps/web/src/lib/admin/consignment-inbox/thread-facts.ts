@@ -60,9 +60,7 @@ export function consignmentFacts(detail: ConsignmentThreadDetail): ThreadFact[] 
       id: "sale",
       label: "Sale",
       value: facts.sale.name,
-      ...(facts.sale.startsAt
-        ? { detail: formatStaffDateTime(facts.sale.startsAt, { zoneLabel: true }) }
-        : {}),
+      ...(facts.sale.startsAt ? { detail: formatStaffDateTime(facts.sale.startsAt) } : {}),
       href: `/admin/sales/${facts.sale.id}`,
     });
   }

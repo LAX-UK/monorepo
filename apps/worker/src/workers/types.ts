@@ -24,7 +24,6 @@ import type { IKycRetentionSubjectStore } from "../interfaces/kyc-retention-subj
 import type { ILegalEntityArchiveCascadeReader } from "../interfaces/legal-entity-archive-cascade.reader.js";
 import type { IMarketingAttributionPurgeRepository } from "../interfaces/marketing-attribution-purge.repository.js";
 import type { IMarketingClickIdPurgeRepository } from "../interfaces/marketing-click-id-purge.repository.js";
-import type { IMarketingContactSyncRepository } from "../interfaces/marketing-contact-sync.repository.js";
 import type { IMarketingEventOutboxWorker } from "../interfaces/marketing-event-outbox.worker.js";
 import type { IMediaAssetCleanupRepository } from "../interfaces/media-asset-cleanup.repository.js";
 import type { IMediaAssetProcessorRepository } from "../interfaces/media-asset-processor.repository.js";
@@ -69,7 +68,6 @@ export type WorkerBootstrapDeps = {
   staffRoleReader: IStaffRoleAssignmentReader;
   newsletterSignupSyncRepo: INewsletterSignupSyncRepository;
   kycRetentionStores: readonly IKycRetentionSubjectStore[];
-  marketingContactSyncRepo: IMarketingContactSyncRepository;
   staffOpsRecipientReader: IStaffOpsRecipientReader;
   complianceRecipientReader: IComplianceRecipientReader;
   mediaAssetProcessorRepo: IMediaAssetProcessorRepository;

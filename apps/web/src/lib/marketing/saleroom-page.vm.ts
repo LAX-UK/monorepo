@@ -16,6 +16,7 @@ import {
   SALEROOM_CATALOG_PAGE_SIZE,
   type SaleroomPageQuery,
 } from "@/lib/marketing/saleroom-page.query";
+import type { SaleroomStatusCounts } from "@/lib/marketing/saleroom-status-counts";
 import {
   type CatalogueControls,
   catalogueControls,
@@ -97,6 +98,8 @@ export type SaleroomDetailPageVM = {
   pageState: SalePageState;
   /** Which catalogue controls this sale's size earns. */
   controls: CatalogueControls;
+  /** Lots per status for the status options; null when the page holds only part of the sale. */
+  statusCounts: SaleroomStatusCounts | null;
   /** The hang that opens the catalogue; null when there is nothing honest to hang. */
   hang: SaleHangVM | null;
   /** Server results of an ended sale, shown above the catalogue. */
@@ -173,6 +176,7 @@ export type BuildSaleroomPageVMInput = {
   categoryLabels: string[];
   /** The lots the hang chooses from (display copies); empty when the page is filtered or paged. */
   hangLots?: readonly Lot[];
+  statusCounts?: SaleroomStatusCounts | null;
   now?: Date;
 };
 
@@ -401,6 +405,7 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     catalogueRows,
     pageState,
     controls: catalogueControls(lotsPage.total),
+    statusCounts: input.statusCounts ?? null,
     resultsBand,
     hang,
     preparing: pageState === "preparing" ? cataloguePreparingCopy(bundle.sale, now) : null,

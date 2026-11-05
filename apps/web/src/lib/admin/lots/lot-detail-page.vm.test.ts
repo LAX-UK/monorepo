@@ -1,4 +1,5 @@
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
+import { pinClock } from "@/test/pin-clock";
 import { describe, expect, it } from "vitest";
 import { lotDetailNotice, lotEditLink } from "./lot-detail-page.vm";
 
@@ -41,6 +42,8 @@ const base = {
   canManageCatalog: true,
 };
 
+pinClock();
+
 describe("lot detail notice", () => {
   it("puts a waiting withdrawal request first, whatever the status", () => {
     const notice = lotDetailNotice({
@@ -49,7 +52,7 @@ describe("lot detail notice", () => {
       withdrawalRequestedAt: "2026-10-20T09:00:00.000Z",
     });
     expect(notice?.id).toBe("withdrawal");
-    expect(notice?.body).toContain("20 Oct 2026");
+    expect(notice?.body).toContain("Tue 20 Oct");
   });
 
   it("says the seller cannot be paid before anything else on a draft, linking to the seller", () => {

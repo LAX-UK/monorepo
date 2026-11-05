@@ -248,7 +248,7 @@ export function ProductionQueue({
                 { label: "Order", value: orderNumber(opened.orderId, opened.orderReference) },
                 {
                   label: "Created",
-                  value: formatStaffDateTime(opened.createdAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.createdAt),
                 },
               ]
             : []
@@ -258,7 +258,7 @@ export function ProductionQueue({
             ? [
                 {
                   label: "Last change",
-                  value: formatStaffDateTime(opened.updatedAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.updatedAt),
                 },
                 { label: "Task ID", value: opened.taskId, copyValue: opened.taskId },
               ]

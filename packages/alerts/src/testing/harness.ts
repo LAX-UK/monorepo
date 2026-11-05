@@ -10,6 +10,8 @@ import type {
   AlertUrls,
   ConfirmationMessage,
   DigestMessage,
+  DigestNoticeInput,
+  DigestNoticeWriter,
   MatchValidator,
   VerifiedAddressLookup,
 } from "../ports.js";
@@ -30,6 +32,19 @@ export class RecordingMailer implements AlertMailer {
       throw new Error("outbox down");
     }
     this.digests.push(message);
+  }
+}
+
+/** Records the in-app notices a digest asks for; can be told to fail. */
+export class RecordingNotices implements DigestNoticeWriter {
+  written: DigestNoticeInput[] = [];
+  failNext = false;
+  async write(input: DigestNoticeInput) {
+    if (this.failNext) {
+      this.failNext = false;
+      throw new Error("notice store down");
+    }
+    this.written.push(input);
   }
 }
 
@@ -90,7 +105,7 @@ export function createEngineHarness(start = new Date("2026-11-03T09:00:00Z")) {
       announcements: stores,
       clock,
     }),
-    digestRun: (product: "bid" | "shop" | "art" = "bid") =>
+    digestRun: (product: "bid" | "shop" | "art" = "bid", notices?: DigestNoticeWriter) =>
       new DigestRun({
         product,
         subscribers: stores,
@@ -103,6 +118,7 @@ export function createEngineHarness(start = new Date("2026-11-03T09:00:00Z")) {
         urls: testUrls,
         clock,
         log,
+        ...(notices ? { notices } : {}),
       }),
     set now(value: Date) {
       current = value;

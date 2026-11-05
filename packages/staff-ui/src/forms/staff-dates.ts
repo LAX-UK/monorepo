@@ -1,4 +1,4 @@
-import { STAFF_TIME_ZONE, formatStaffDate } from "../lib/format.js";
+import { STAFF_TIME_ZONE, formatStaffDate, staffShortDateFormat } from "../lib/format.js";
 
 /*
  * Dates are typed first ("24 Oct 2026", "24/10/2026", "2026-10-24"); the calendar is a shortcut,
@@ -70,9 +70,21 @@ export function dateToDay(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-/** "24 Oct 2026" for a `YYYY-MM-DD` day, read as a calendar day (no zone shift). */
+const FIELD_DAY = staffShortDateFormat({ day: "numeric", month: "short", year: "numeric" });
+
+/**
+ * "24 Oct 2026" for a `YYYY-MM-DD` day, read as a calendar day (no zone shift). The year is always
+ * there and there is no weekday: this is the text a date field shows and parses back, and how a
+ * date of birth reads.
+ */
 export function formatStaffDay(day: string): string {
-  return formatStaffDate(`${day}T12:00:00Z`);
+  const date = new Date(`${day}T12:00:00Z`);
+  return Number.isNaN(date.getTime()) ? day : FIELD_DAY.format(date);
+}
+
+/** "Sat 24 Oct" (year when not this one) for a `YYYY-MM-DD` calendar day: the display style. */
+export function formatStaffCalendarDay(day: string, now: Date = new Date()): string {
+  return formatStaffDate(`${day.slice(0, 10)}T12:00:00Z`, now);
 }
 
 /** Minutes London is ahead of UTC at that instant: 60 in summer, 0 in winter. */

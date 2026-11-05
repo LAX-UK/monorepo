@@ -14,6 +14,7 @@ import { createAppLogger } from "./lib/logger.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import { buildTrustedWebOrigins } from "./lib/trusted-web-origins.js";
 import { createAuditAccessMiddleware } from "./middleware/audit-access.js";
+import { createClientIpMiddleware } from "./middleware/client-ip.js";
 import { createMarketingClientContextMiddleware } from "./middleware/marketing-client-context.js";
 import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
@@ -49,6 +50,7 @@ import { createInternalIdentityDeletionEligibilityRoutes } from "./routes/intern
 import { createInternalIdentityEmailRoutes } from "./routes/internal-identity-email.routes.js";
 import { createInternalIdentitySubjectExportRoutes } from "./routes/internal-identity-subject-export.routes.js";
 import { createInternalIdentitySubjectUsageRoutes } from "./routes/internal-identity-subject-usage.routes.js";
+import { createInternalInventoryRoutes } from "./routes/internal-inventory.routes.js";
 import { createKycRoutes } from "./routes/kyc.js";
 import { createActingContextUserRoutes, createLegalEntityRoutes } from "./routes/legal-entities.js";
 import { createLegalEntityBiddingLimitRoutes } from "./routes/legal-entity-bidding-limits.js";
@@ -130,6 +132,14 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
         "",
       )}/.well-known/jwks.json`,
       publish: (channel, message) => container.redis.publish(channel, message),
+    }),
+  );
+  app.use(
+    "*",
+    createClientIpMiddleware({
+      trustedProxyCidrs: env.API_TRUSTED_PROXY_CIDRS,
+      trustedCloudflareProxyCidrs: env.API_TRUSTED_CLOUDFLARE_PROXY_CIDRS,
+      serverClientIpToken: env.API_SSR_CLIENT_IP_TOKEN,
     }),
   );
   app.use("*", createMarketingConsentMiddleware());
@@ -244,6 +254,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/internal/identity", createInternalIdentitySubjectUsageRoutes(container, env))
     .route("/internal/identity", createInternalIdentityDeletionEligibilityRoutes(container, env))
     .route("/internal/identity", createInternalIdentitySubjectExportRoutes(container, env))
+    .route("/internal/inventory", createInternalInventoryRoutes(container, env))
     .route("/invitations", createPublicInvitationRoutes(container.admin.invitations))
     .route("/lots", createLotRoutes(container, authenticator, requireAccountOnboarding))
     .route("/lots", createLotDocumentRoutes(container, authenticator))

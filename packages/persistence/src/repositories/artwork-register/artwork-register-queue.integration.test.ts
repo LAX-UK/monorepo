@@ -34,9 +34,13 @@ describe.skipIf(!url)("artwork register queues (Postgres)", { timeout: 30_000 },
   const queue = new DrizzleArtworkRegisterQueueReader(db);
 
   beforeEach(async () => {
+    // Not TRUNCATE ... CASCADE: Bid lots reference the register, and a cascade would wipe them too.
     await db.execute(
-      sql`TRUNCATE artwork_register_conflict, artwork_register_event, artwork_register CASCADE`,
+      sql`UPDATE lot SET artwork_register_id = NULL WHERE artwork_register_id IS NOT NULL`,
     );
+    await db.execute(sql`TRUNCATE artwork_register_conflict, artwork_register_event`);
+    await db.execute(sql`UPDATE artwork_register SET source_original_id = NULL`);
+    await db.execute(sql`DELETE FROM artwork_register`);
   });
 
   async function add(entry: NewArtworkRegisterEntry) {

@@ -1,13 +1,18 @@
+import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
-import { DrizzleTransactionRunner } from "@auction/persistence/repositories";
+import {
+  DrizzleArtworkRegisterRepository,
+  DrizzleLotRegisterLinkReader,
+  DrizzleTransactionRunner,
+} from "@auction/persistence/repositories";
 import { AuthAuditPublisher } from "../services/auth-audit.publisher.js";
 import { DomainEventSink, type IDomainEventSink } from "../services/domain-event-sink.js";
 import { DomainEventPublisher } from "../services/domain-event.publisher.js";
 import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
 import { LotLifecycleEventRecorder } from "../services/lot-lifecycle-event-recorder.js";
-import { LotLifecycleRecording } from "../services/lot-lifecycle-recording.service.js";
 import { NotificationFactory } from "../services/notification.factory.js";
+import { OfferLockLotLifecycleRecording } from "../services/offer-lock-lot-lifecycle-recording.service.js";
 import { LotStrategyFactory } from "../strategies/strategy.factory.js";
 
 import type { ContainerRepositories } from "./create-repositories.js";
@@ -36,8 +41,10 @@ export function createPlatformCore(
     domainEventSink,
     repos.lotLifecycleSnapshotRepository,
   );
-  const lotLifecycleRecording: ILotLifecycleRecorder = new LotLifecycleRecording(
+  const lotLifecycleRecording: ILotLifecycleRecorder = new OfferLockLotLifecycleRecording(
     lotLifecycleEventRecorder,
+    new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(db)),
+    new DrizzleLotRegisterLinkReader(db),
   );
   const authAuditPublisher = new AuthAuditPublisher(domainEventSink);
   const strategyFactory = new LotStrategyFactory();

@@ -14,6 +14,7 @@ import {
 import { adminSaleDetailTabHref } from "@/lib/admin/catalog-route-helpers";
 import { computeLotDetailReadiness } from "@/lib/admin/compute-lot-detail-readiness";
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
+import { type LaxArtReturnView, laxArtReturnTarget } from "@/lib/admin/lots/lax-art-return";
 import { lotDetailNotice, lotEditLink } from "@/lib/admin/lots/lot-detail-page.vm";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { LOTS_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -54,6 +55,8 @@ type Props = {
   publishReadiness?: CatalogReadinessResult | null;
   /** Where the lot sells: its ATG state, or lax.bid with the rest of its sale. */
   selling?: AtgLotSellingSummary | null;
+  /** Whether the lot can hand its artwork back to lax.art; null when it has no register link. */
+  laxArtReturn?: LaxArtReturnView | null;
   children: ReactNode;
 };
 
@@ -75,6 +78,7 @@ export function LotDetailShell({
   withdrawalRequestedAt = null,
   publishReadiness: publishReadinessProp,
   selling = null,
+  laxArtReturn = null,
   children,
 }: Props) {
   const router = useRouter();
@@ -125,6 +129,7 @@ export function LotDetailShell({
     canDelete: bundle.deleteEligibility?.canDelete === true,
     hasWinner: auction.winnerId != null,
     withdrawalRequested: withdrawalRequestedAt !== null,
+    laxArtReturn: laxArtReturnTarget(laxArtReturn),
     publishBlockedReason: connectBlocked
       ? "The seller's payout account is not ready"
       : publishReadiness

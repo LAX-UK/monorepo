@@ -66,6 +66,20 @@ describe("MarketingHeaderMegaNav", () => {
     expect(within(nav).queryByRole("button", { name: "Art Hub" })).toBeNull();
   });
 
+  it("gives plain links the same vertical padding as chevron triggers so labels line up", () => {
+    const nav = renderNav();
+    const hub = within(nav).getByRole("link", { name: "Art Hub" });
+    const trigger = within(nav).getAllByRole("button")[0] as HTMLElement;
+    const classes = (el: HTMLElement) => el.className.split(/\s+/);
+    // A top padding on only one of them pushes its label below the others (it was pt-2 on links).
+    const topPadding = (el: HTMLElement) =>
+      classes(el).filter((c) => /^(pt|py|p)-/.test(c) && !/^(pt|py|p)-0$/.test(c));
+    expect(topPadding(hub)).toEqual([]);
+    expect(topPadding(trigger)).toEqual([]);
+    const bottom = (el: HTMLElement) => classes(el).filter((c) => /^pb-/.test(c));
+    expect(bottom(hub)).toEqual(bottom(trigger));
+  });
+
   it("shows the first item's featured media and follows the focused item", () => {
     const nav = renderNav();
     fireEvent.click(within(nav).getByRole("button", { name: "Artists" }));

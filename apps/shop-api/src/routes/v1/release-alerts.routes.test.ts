@@ -12,7 +12,7 @@ import {
   type EnquiryRateLimiter,
   createReleaseAlertRateLimiter,
 } from "../../application/enquiry-rate-limit.js";
-import type { ReleaseAlertHandlers } from "../../application/handlers/release-alerts.handler.js";
+import type { ShopAlertHandlers } from "../../application/handlers/shop-alerts.handler.js";
 import { createInMemoryFixedWindowCounter } from "../../infrastructure/in-memory-fixed-window-counter.js";
 import { createMinimalShopApiTestDeps } from "../../test-app-deps.js";
 
@@ -23,7 +23,7 @@ const bffHeaders = {
 };
 const TOKEN = "a".repeat(43);
 
-function handlers(overrides: Partial<ReleaseAlertHandlers> = {}): ReleaseAlertHandlers {
+function handlers(overrides: Partial<ShopAlertHandlers> = {}): ShopAlertHandlers {
   return {
     subscribeGuest: vi.fn(async () => "check_email" as const),
     subscribeAccount: vi.fn(async () => "subscribed" as const),
@@ -37,7 +37,7 @@ function handlers(overrides: Partial<ReleaseAlertHandlers> = {}): ReleaseAlertHa
 }
 
 async function buildApp(
-  releaseAlerts: ReleaseAlertHandlers = handlers(),
+  releaseAlerts: ShopAlertHandlers = handlers(),
   releaseAlertRateLimiter: EnquiryRateLimiter = createReleaseAlertRateLimiter(
     createInMemoryFixedWindowCounter(),
   ),
@@ -173,7 +173,7 @@ describe("release alert routes", () => {
 
   it("confirms with the emailed token and treats an unknown one as not found", async () => {
     const confirm = vi
-      .fn<ReleaseAlertHandlers["confirm"]>()
+      .fn<ShopAlertHandlers["confirm"]>()
       .mockResolvedValueOnce("confirmed")
       .mockResolvedValueOnce("expired")
       .mockResolvedValueOnce("invalid");
@@ -194,7 +194,7 @@ describe("release alert routes", () => {
 
   it("previews and stops alerts from an email link without signing in", async () => {
     const unsubscribe = vi
-      .fn<ReleaseAlertHandlers["unsubscribe"]>()
+      .fn<ShopAlertHandlers["unsubscribe"]>()
       .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(false);
     const { app } = await buildApp(
@@ -217,6 +217,39 @@ describe("release alert routes", () => {
       });
     expect((await stop()).json()).toEqual({ subscribed: false });
     expect((await stop()).statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("serves the same links for lax.art under the shared address, with signed tokens", async () => {
+    const signed = `${"e".repeat(60)}.${"f".repeat(43)}`;
+    const unsubscribe = vi.fn<ShopAlertHandlers["unsubscribe"]>(async () => true);
+    const confirm = vi.fn<ShopAlertHandlers["confirm"]>(async () => "confirmed");
+    const { app } = await buildApp(
+      handlers({
+        unsubscribe,
+        confirm,
+        previewUnsubscribe: vi.fn(async () => ({ maskedEmail: "c•••@example.com", active: true })),
+      }),
+    );
+    const preview = await app.inject({
+      method: "GET",
+      url: `/v1/email-alerts/unsubscribe?token=${signed}`,
+    });
+    expect(preview.json()).toEqual({ maskedEmail: "c•••@example.com", active: true });
+    const stop = await app.inject({
+      method: "POST",
+      url: "/v1/email-alerts/unsubscribe",
+      payload: { token: signed },
+    });
+    expect(stop.json()).toEqual({ subscribed: false });
+    expect(unsubscribe).toHaveBeenCalledWith(signed);
+    const confirmed = await app.inject({
+      method: "POST",
+      url: "/v1/release-alerts/confirm",
+      payload: { token: signed },
+    });
+    expect(confirmed.json()).toEqual({ outcome: "confirmed" });
+    expect(confirm).toHaveBeenCalledWith(signed);
     await app.close();
   });
 });

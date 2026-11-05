@@ -81,7 +81,7 @@ describe("buildThreadView", () => {
     const messages = view.items.filter((item) => item.type === "message");
     expect(messages.find((m) => m.id === "m3")?.note).toBe(true);
     expect(messages.find((m) => m.id === "m4")?.receipt).toBe(
-      "Read by Northbank Gallery · Thu 29 Oct, 17:02",
+      "Read by Northbank Gallery · Thu 29 Oct, 17:02 GMT",
     );
     expect(messages.find((m) => m.id === "m1")?.receipt).toBeNull();
   });

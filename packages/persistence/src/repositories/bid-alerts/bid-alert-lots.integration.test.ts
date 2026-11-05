@@ -68,6 +68,8 @@ async function insertLot(input: {
   medium?: string | null;
   startingPrice?: string;
   estimate?: { low: string; high: string };
+  /** Staff's choice recorded when the sale was published; null records none. */
+  announce?: boolean | null;
 }): Promise<string> {
   if (!entityId) {
     const owner = await insertUser();
@@ -86,6 +88,11 @@ async function insertLot(input: {
     insert into sale (id, title, status, start_time, end_time, delivery_mode, created_by_legal_entity_id)
     values (${saleId}, 'Modern British', ${input.saleStatus ?? "scheduled"}::sale_status,
       '2026-11-18T10:00:00Z', '2026-11-26T18:00:00Z', 'online', ${entityId})`);
+  if (input.announce !== null) {
+    await db.execute(sql`
+      insert into bid_alert_announcement (item_key, announce)
+      values (${`sale:${saleId}`}, ${input.announce ?? true})`);
+  }
   const id = randomUUID();
   const details = input.estimate ? { estimate: { ...input.estimate, currency: "GBP" } } : {};
   await db.execute(sql`
@@ -106,9 +113,16 @@ describe.skipIf(!HAS_DB)("Bid lot alert adapters (integration)", () => {
   const lots = new BidAlertLotReader(db);
 
   beforeEach(async () => {
-    await db.execute(
-      sql`TRUNCATE bid_alert_match, bid_alert_digest, bid_alert_topic, bid_alert_subscriber, bid_alert_announcement CASCADE`,
-    );
+    // Plain deletes, not TRUNCATE ... CASCADE: the cascade reaches shared tables other tests use.
+    for (const table of [
+      "bid_alert_match",
+      "bid_alert_digest",
+      "bid_alert_topic",
+      "bid_alert_announcement",
+      "bid_alert_subscriber",
+    ]) {
+      await db.execute(sql.raw(`DELETE FROM ${table}`));
+    }
   });
 
   describe("provisioning", () => {
@@ -257,6 +271,17 @@ describe.skipIf(!HAS_DB)("Bid lot alert adapters (integration)", () => {
         estimate: { low: "5000.00", high: "8000.00", currency: "GBP" },
       });
       expect(found.find((l) => l.id === plain)).toMatchObject({ price: "250.00", estimate: null });
+    });
+
+    it("reports whether the sale was announced, and treats a sale with no recorded choice as not", async () => {
+      const announced = await insertLot({});
+      const quiet = await insertLot({ announce: false });
+      const unrecorded = await insertLot({ announce: null });
+      const found = await lots.findAlertable([announced, quiet, unrecorded]);
+      const flag = (id: string) => found.find((l) => l.id === id)?.saleAnnounced;
+      expect(flag(announced)).toBe(true);
+      expect(flag(quiet)).toBe(false);
+      expect(flag(unrecorded)).toBe(false);
     });
 
     it("applies the search page's text filter to the batch, and never matches an empty search", async () => {

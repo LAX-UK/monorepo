@@ -6,8 +6,8 @@ import {
   deriveSsrOrigin,
   withBidApiBearer,
 } from "@/lib/data/http/server-request-headers";
+import { currentVisitorIpHeaders } from "@/lib/http/visitor-ip.server";
 import type { EnquirerOrganisation } from "@/lib/private-sales/enquiring-as";
-import { headers } from "next/headers";
 import {
   ContactDispatchError,
   type ContactDispatcher,
@@ -18,20 +18,14 @@ import {
 
 const REQUEST_TIMEOUT_MS = 10_000;
 
-/** The visitor's address, so the API limits them and not the web server every visitor shares. */
-async function forwardedClientAddress(): Promise<string | null> {
-  const h = await headers();
-  const forwarded = h.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || h.get("x-real-ip") || null;
-}
-
 /** Origin, the visitor's address and, when they are signed in, their session. */
 async function requestHeaders(): Promise<Headers> {
-  const [origin, clientAddress] = await Promise.all([deriveSsrOrigin(), forwardedClientAddress()]);
+  // The visitor's address, so the API limits them and not the web server every visitor shares.
+  const [origin, clientAddress] = await Promise.all([deriveSsrOrigin(), currentVisitorIpHeaders()]);
   return new ComposableServerRequestHeaders([withBidApiBearer()]).build({
     "content-type": "application/json",
     origin,
-    ...(clientAddress ? { "x-forwarded-for": clientAddress } : {}),
+    ...clientAddress,
   });
 }
 

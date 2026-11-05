@@ -35,6 +35,8 @@ export const adminSaleFormValuesSchema = z
     description: z.string().max(10_000),
     coverImages: z.array(mediaReferenceSchema).max(20),
     categoryId: z.string(),
+    /** Test sale: hidden from the public and never announced. Draft sales only. */
+    isTest: z.boolean(),
     deliveryMode: z.enum(saleDeliveryModes),
     /** UI-only: true = gated (allowOnlineBidsBeforeGoLive false). Hybrid sales only. */
     requireSaleroomGoLiveBeforeOnlineBids: z.boolean(),
@@ -247,6 +249,7 @@ export function safeParseCreateSaleFromForm(values: AdminSaleFormValues) {
     description: values.description.trim() || undefined,
     coverImages: values.coverImages.length > 0 ? values.coverImages : undefined,
     categoryId: parseCategoryId(values.categoryId),
+    ...(values.isTest ? { isTest: true } : {}),
     deliveryMode: values.deliveryMode,
     ...(values.deliveryMode === "hybrid"
       ? { allowOnlineBidsBeforeGoLive: !values.requireSaleroomGoLiveBeforeOnlineBids }
@@ -291,6 +294,7 @@ export function safeParseUpdateSaleFromForm(values: AdminSaleFormValues) {
     description: values.description.trim() || undefined,
     coverImages: values.coverImages,
     categoryId: parseCategoryId(values.categoryId),
+    isTest: values.isTest,
     deliveryMode: values.deliveryMode,
     ...(values.deliveryMode === "hybrid"
       ? { allowOnlineBidsBeforeGoLive: !values.requireSaleroomGoLiveBeforeOnlineBids }

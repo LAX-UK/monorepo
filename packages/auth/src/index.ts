@@ -7,7 +7,6 @@ export type {
 export {
   AUTH_IP_ADDRESS_HEADERS,
   CLIENT_IP_HEADER_NAMES,
-  readForwardedClientIp,
 } from "./client-ip-headers.js";
 export { AUTH_TIMINGS, DEFAULT_JWT_AUDIENCE } from "./auth-timings.js";
 export { createEnvelopeCrypto, type EnvelopeCrypto } from "./crypto/envelope.js";

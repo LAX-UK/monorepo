@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import { artistProfile, lot, sale } from "@auction/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { artistProfile, bidAlertAnnouncement, lot, sale } from "@auction/db/schema";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type {
   AlertableLot,
   IBidAlertLotReader,
@@ -10,6 +10,9 @@ import { listWhere } from "../lot/lot-list-filters.js";
 
 /** A lot an alert may announce: on sale or scheduled, in a sale the public can see. */
 const ALERTABLE_STATUSES = ["scheduled", "active"] as const;
+
+/** Matches the item key the sale announcer claims when a sale is published. */
+const SALE_ITEM_KEY_PREFIX = "sale:";
 
 const MONEY = /^\d+(\.\d{1,2})?$/;
 
@@ -44,10 +47,16 @@ export class BidAlertLotReader implements IBidAlertLotReader {
         saleTitle: sale.title,
         startingPrice: lot.startingPrice,
         marketingDetails: lot.marketingDetails,
+        saleId: lot.saleId,
+        saleAnnounce: bidAlertAnnouncement.announce,
       })
       .from(lot)
       .leftJoin(artistProfile, eq(artistProfile.id, lot.artistId))
       .leftJoin(sale, eq(sale.id, lot.saleId))
+      .leftJoin(
+        bidAlertAnnouncement,
+        eq(bidAlertAnnouncement.itemKey, sql`${SALE_ITEM_KEY_PREFIX} || ${lot.saleId}::text`),
+      )
       .where(
         and(
           inArray(lot.id, [...lotIds]),
@@ -66,6 +75,8 @@ export class BidAlertLotReader implements IBidAlertLotReader {
         startingPrice: row.startingPrice,
         estimate,
         price: estimate?.low ?? row.startingPrice,
+        // A sale counts as announced only once staff's choice was recorded as yes.
+        saleAnnounced: row.saleId === null || row.saleAnnounce === true,
       };
     });
   }

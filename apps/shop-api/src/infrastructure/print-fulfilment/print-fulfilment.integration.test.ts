@@ -91,7 +91,7 @@ describe.skipIf(!hasShopIntegrationDb)("packing numbered prints", { timeout: 90_
         resolveMediaUrl,
         editionRuns: runs.recorder,
         originalPrints: runs.originalPrintsRecorder,
-        releaseAlerts: { announce: async () => ({ queued: 0 }) },
+        releaseAlerts: { recordPublished: async () => ({ queued: 0 }) },
       }),
       artists: createDrizzleArtistCatalogueWriter(uow),
       authority: createDrizzleSaleAuthorityWriter(db, "off"),

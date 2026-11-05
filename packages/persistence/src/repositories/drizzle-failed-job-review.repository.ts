@@ -11,6 +11,7 @@ import type {
   IFailedJobDisposition,
   IFailedJobReviewReader,
 } from "../interfaces/failed-job-review.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import { INTEGRATION_DISPOSITION_QUEUE } from "./drizzle-integration-dead-letter.repository.js";
 
 const LONDON_DAY = sql`((${failedJobs.failedAt} AT TIME ZONE 'Europe/London')::date)`;
@@ -52,10 +53,6 @@ const LIST_COLUMNS = {
   discardNote: failedJobs.discardNote,
 } as const;
 
-function escapeLike(text: string): string {
-  return text.replace(/[\\%_]/g, (char) => `\\${char}`);
-}
-
 function filterConditions(input: FailedJobFilter, options: { ignoreQueue?: boolean } = {}): SQL[] {
   const conditions: SQL[] = [];
   if (input.queue && !options.ignoreQueue)
@@ -63,7 +60,7 @@ function filterConditions(input: FailedJobFilter, options: { ignoreQueue?: boole
   if (input.fromDay) conditions.push(sql`${LONDON_DAY} >= ${input.fromDay}::date`);
   if (input.toDay) conditions.push(sql`${LONDON_DAY} <= ${input.toDay}::date`);
   if (input.q) {
-    const pattern = `%${escapeLike(input.q)}%`;
+    const pattern = containsPattern(input.q);
     conditions.push(
       sql`(${failedJobs.id} ILIKE ${pattern} OR ${failedJobs.originalQueue} ILIKE ${pattern}
         OR ${failedJobs.originalJobName} ILIKE ${pattern} OR ${failedJobs.originalJobId} ILIKE ${pattern}
