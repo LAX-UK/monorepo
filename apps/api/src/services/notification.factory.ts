@@ -1,4 +1,5 @@
 import { KYC_APPROVED_COPY, KYC_DECLINED_COPY } from "@auction/branding";
+import type { PaymentReminderHoldKey } from "@auction/email";
 import { buyerDefaultCopy, formatMoneyMajor, paymentReminderCopy } from "@auction/email";
 import type {
   BuyerDefaultAudience,
@@ -205,12 +206,15 @@ export class NotificationFactory implements INotificationFactory {
     /** The due date in words ("10 November 2026"). */
     dueDate: string;
     step: PaymentReminderStepKey;
+    /** The invoice cannot be paid yet: the reminder says what to do instead. */
+    held?: PaymentReminderHoldKey | null;
   }): CreateNotificationRow {
     const amount = formatMoneyMajor(input.amount) ?? input.amount;
     const copy = paymentReminderCopy(input.step, {
       lotTitle: input.lotTitle,
       amount,
       dueDate: input.dueDate,
+      held: input.held ?? null,
     });
     return {
       userId: input.userId,
@@ -225,6 +229,7 @@ export class NotificationFactory implements INotificationFactory {
         dueDate: input.dueDate,
         lotTitle: input.lotTitle,
         reminderStep: input.step,
+        ...(input.held ? { heldReason: input.held } : {}),
         audience: "buyer",
         // One email per person per step: an organisation's payers are each reminded.
         emailIdempotencyKey: `payment-reminder:${input.paymentId}:${input.step}:${input.userId}`,

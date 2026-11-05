@@ -7,8 +7,9 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
 import type { INotificationFactory } from "../interfaces/notification-factory.js";
+import type { INotificationOutboxService } from "../interfaces/notification-outbox.js";
 import { notificationRowToPayload } from "../notification-payload.js";
-import type { NotificationDispatcher } from "../notification.dispatcher.js";
+import type { IPaymentEligibilityGate } from "../payment/payment-eligibility.gate.js";
 
 const DUE_DATE = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
@@ -21,10 +22,13 @@ export type PaymentReminderServiceDeps = {
   store: IPaymentReminderStore;
   /** Tells whether LAX itself is holding the buyer (AML or source of funds). */
   compliance: Pick<ISettlementCompliancePolicy, "peek"> | null;
-  dispatcher: Pick<NotificationDispatcher, "dispatch">;
+  /** Each reminder is staged for each person with its own key, so nobody gets it twice. */
+  outbox: Pick<INotificationOutboxService, "stageDispatch">;
   factory: Pick<INotificationFactory, "createPaymentReminder">;
   /** Who is reminded: the winner and the account's payers. */
   recipients: IInvoiceRecipients;
+  /** Whether the account can pay yet; a held invoice's reminder says what to do instead. */
+  eligibility?: Pick<IPaymentEligibilityGate, "check">;
   now?: () => Date;
 };
 
@@ -46,14 +50,23 @@ export class PaymentReminderService {
       if (!step) continue;
       if (!(await this.deps.store.claim(candidate.paymentId, step))) continue;
       try {
+        const eligibility = candidate.buyerLegalEntityId
+          ? await this.deps.eligibility?.check({
+              payerUserId: candidate.buyerId,
+              buyerLegalEntityId: candidate.buyerLegalEntityId,
+            })
+          : undefined;
+        // A closed account is not chased for payment.
+        if (eligibility?.kind === "refused") continue;
+        const held = eligibility?.kind === "held" ? eligibility.reason : null;
         const recipients = await this.deps.recipients.forInvoice({
           buyerLegalEntityId: candidate.buyerLegalEntityId,
           winnerUserId: candidate.buyerId,
         });
         for (const recipientId of recipients) {
-          await this.deps.dispatcher.dispatch(
-            recipientId,
-            notificationRowToPayload(
+          await this.deps.outbox.stageDispatch({
+            userId: recipientId,
+            payload: notificationRowToPayload(
               this.deps.factory.createPaymentReminder({
                 userId: recipientId,
                 legalEntityId: candidate.buyerLegalEntityId,
@@ -63,9 +76,11 @@ export class PaymentReminderService {
                 amount: candidate.amount,
                 dueDate: DUE_DATE.format(invoiceDueAt(candidate.raisedAt)),
                 step,
+                held,
               }),
             ),
-          );
+            idempotencyKey: `payment_reminder:${candidate.paymentId}:${step}:${recipientId}`,
+          });
         }
         reminded += 1;
       } catch (error) {

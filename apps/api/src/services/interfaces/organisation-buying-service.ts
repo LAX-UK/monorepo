@@ -33,6 +33,7 @@ export type OrganisationBuyingErrorCode =
   | "pay_several_payer_on_hold"
   | "pay_several_winner_on_hold"
   | "organisation_closed"
+  | "organisation_under_review"
   | "identity_verification_required"
   | "pay_several_below_minimum"
   | "pay_several_over_limit"

@@ -307,6 +307,11 @@ export class EmailNotificationChannel implements INotificationChannel {
             ? `${this.baseUrl()}/purchases/checkout/${encodeURIComponent(payload.lotId)}`
             : `${this.baseUrl()}/purchases`,
           supportContactEmail: SUPPORT_EMAIL,
+          held: m?.heldReason ?? null,
+          actionUrl:
+            m?.heldReason === "identity_verification_required"
+              ? `${this.baseUrl()}/verify-identity`
+              : null,
         };
       }
       case "buyer-default-notice": {

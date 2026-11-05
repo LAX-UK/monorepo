@@ -16,7 +16,10 @@ import type {
   PurchaseQuoteView,
 } from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
-import { PAYMENT_ELIGIBILITY_REFUSAL } from "../payment/payment-eligibility.gate.js";
+import {
+  PAYMENT_ELIGIBILITY_HOLD,
+  PAYMENT_ELIGIBILITY_REFUSAL,
+} from "../payment/payment-eligibility.gate.js";
 
 const STATUS: Record<OrganisationBuyingErrorCode, OrganisationBuyingError["status"]> = {
   insufficient_entity_role: 403,
@@ -33,7 +36,8 @@ const STATUS: Record<OrganisationBuyingErrorCode, OrganisationBuyingError["statu
   pay_several_payer_on_hold: 409,
   pay_several_winner_on_hold: 409,
   organisation_closed: PAYMENT_ELIGIBILITY_REFUSAL.organisation_closed.status,
-  identity_verification_required: PAYMENT_ELIGIBILITY_REFUSAL.identity_verification_required.status,
+  organisation_under_review: PAYMENT_ELIGIBILITY_HOLD.organisation_under_review.status,
+  identity_verification_required: PAYMENT_ELIGIBILITY_HOLD.identity_verification_required.status,
   pay_several_below_minimum: 409,
   pay_several_over_limit: 409,
   pay_several_needs_finance_review: 409,
@@ -58,8 +62,8 @@ const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
   pay_several_winner_on_hold:
     "We need to complete a check on one of these purchases before it can be paid. Our team will be in touch.",
   organisation_closed: PAYMENT_ELIGIBILITY_REFUSAL.organisation_closed.message,
-  identity_verification_required:
-    PAYMENT_ELIGIBILITY_REFUSAL.identity_verification_required.message,
+  organisation_under_review: PAYMENT_ELIGIBILITY_HOLD.organisation_under_review.message,
+  identity_verification_required: PAYMENT_ELIGIBILITY_HOLD.identity_verification_required.message,
   pay_several_below_minimum: "The total is too small to pay online. Choose more invoices.",
   pay_several_over_limit:
     "The total is more than one online payment can take. Choose fewer invoices, or contact our settlements team.",

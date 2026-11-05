@@ -1,4 +1,5 @@
-import type { PaymentTierLimits } from "@auction/domain";
+import type { PaymentEligibility, PaymentTierLimits } from "@auction/domain";
+import { AmlSettlementCompliancePolicy, SourceOfFundsGateService } from "@auction/finance-runtime";
 import type { PaySeveralInvoiceFlags } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { err, ok } from "neverthrow";
@@ -37,7 +38,7 @@ function service(
     evaluateHold?: boolean;
     /** Only this person is on hold (the payer or a lot's winner). */
     holdFor?: string;
-    refusal?: "organisation_closed" | "identity_verification_required";
+    eligibility?: PaymentEligibility;
     start?: ReturnType<typeof vi.fn>;
   } = {},
 ) {
@@ -61,7 +62,7 @@ function service(
     },
     limits: over.limits ?? LIMITS,
     compliance,
-    eligibility: { refusal: vi.fn(async () => over.refusal ?? null) },
+    eligibility: { check: vi.fn(async () => over.eligibility ?? { kind: "payable" as const }) },
     checkout: { start },
     now: () => NOW,
   });
@@ -158,6 +159,7 @@ describe("PaySeveralService.pay", () => {
     expect(compliance.evaluate).toHaveBeenCalledWith({
       buyerUserId: "finance-1",
       amountPence: 100_010,
+      excludePaymentIds: ["pay-2", "pay-3"],
     });
     expect(started).toMatchObject({
       paymentGroupId: "group-1",
@@ -209,12 +211,20 @@ describe("PaySeveralService.pay", () => {
     expect(start).not.toHaveBeenCalled();
   });
 
-  it.each(["organisation_closed", "identity_verification_required"] as const)(
-    "an account refused for %s can neither plan nor pay, as with one invoice",
-    async (refusal) => {
-      const { svc, start } = service({ refusal });
-      expect((await svc.plan(actor("owner"), [LOTS.due]))._unsafeUnwrapErr().code).toBe(refusal);
-      expect((await svc.pay(actor("owner"), [LOTS.due]))._unsafeUnwrapErr().code).toBe(refusal);
+  it.each([
+    [{ kind: "refused", reason: "organisation_closed" }],
+    [{ kind: "held", reason: "organisation_under_review" }],
+    [{ kind: "held", reason: "identity_verification_required" }],
+  ] as const)(
+    "an account %o can neither plan nor pay, as with one invoice",
+    async (eligibility) => {
+      const { svc, start } = service({ eligibility });
+      expect((await svc.plan(actor("owner"), [LOTS.due]))._unsafeUnwrapErr().code).toBe(
+        eligibility.reason,
+      );
+      const paid = (await svc.pay(actor("owner"), [LOTS.due]))._unsafeUnwrapErr();
+      expect(paid.code).toBe(eligibility.reason);
+      expect(paid.status).toBe(eligibility.kind === "refused" ? 403 : 409);
       expect(start).not.toHaveBeenCalled();
     },
   );
@@ -230,5 +240,66 @@ describe("PaySeveralService.pay", () => {
       code: "pay_several_unavailable",
       status: 503,
     });
+  });
+});
+
+describe("PaySeveralService source of funds, counted once", () => {
+  // The winner (owner-1) has two open invoices, pay-2 (£600.10) and pay-3 (£400.00), and a
+  // finance member pays both. Threshold £1,500: £1,000.10 is under it.
+  const OPEN = [
+    { id: "pay-2", buyerId: "owner-1", pence: 60_010 },
+    { id: "pay-3", buyerId: "owner-1", pence: 40_000 },
+  ];
+  function realCompliance() {
+    const sumActiveBuyerSettlementPence = vi.fn(
+      async (userId: string, exclude?: string | readonly string[]) => {
+        const excluded = new Set(typeof exclude === "string" ? [exclude] : (exclude ?? []));
+        return OPEN.filter((p) => p.buyerId === userId && !excluded.has(p.id)).reduce(
+          (sum, p) => sum + p.pence,
+          0,
+        );
+      },
+    );
+    const repo = {
+      sumActiveBuyerSettlementPence,
+      findLatestApprovedForUser: vi.fn(async () => null),
+      findPendingForUser: vi.fn(async () => null),
+      findLatestForUser: vi.fn(async () => null),
+      create: vi.fn(async (input: { userId: string }) => ({ id: "sof-1", ...input })),
+    };
+    const policy = new AmlSettlementCompliancePolicy(
+      { getHold: vi.fn(async () => null) } as never,
+      new SourceOfFundsGateService(repo as never, {
+        thresholdAmount: 1500,
+        currency: "GBP",
+        approvalValidityDays: 365,
+      }),
+    );
+    return { policy, repo };
+  }
+
+  it("leaves the invoices being paid out of each person's exposure, so they count once", async () => {
+    const { policy, repo } = realCompliance();
+    const start = vi.fn(async (input: { rail: string }) =>
+      ok({ paymentGroupId: "group-1", checkoutUrl: "https://pay.example/g1", rail: input.rail }),
+    );
+    const svc = new PaySeveralService({
+      reader: new InMemoryPurchaseFacts(),
+      flags: { flagsFor: async () => new Map() },
+      limits: LIMITS,
+      compliance: {
+        peek: vi.fn(async () => ({ hold: false, reason: null })),
+        evaluate: (i) => policy.evaluate(i),
+      },
+      eligibility: { check: vi.fn(async () => ({ kind: "payable" as const })) },
+      checkout: { start } as never,
+      now: () => NOW,
+    });
+    const result = await svc.pay(actor("finance"), [LOTS.due, LOTS.overdue]);
+    expect(result.isOk()).toBe(true);
+    expect(repo.create).not.toHaveBeenCalled();
+    for (const [, exclude] of repo.sumActiveBuyerSettlementPence.mock.calls) {
+      expect(exclude).toEqual(["pay-2", "pay-3"]);
+    }
   });
 });

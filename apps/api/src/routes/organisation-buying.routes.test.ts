@@ -57,7 +57,7 @@ function mount(
           absoluteMaxPence: 10_000_000,
         },
         compliance: null,
-        eligibility: { refusal: async () => null },
+        eligibility: { check: async () => ({ kind: "payable" as const }) },
         checkout: {
           start: async (input) =>
             ok({

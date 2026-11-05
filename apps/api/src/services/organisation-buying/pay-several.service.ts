@@ -69,11 +69,13 @@ export class PaySeveralService implements IPaySeveralService {
   ): BuyingResult<PaySeveralQuote> {
     const scope = accountPurchaseScope(entityActorOf(actor));
     if (!scope) return err(buyingError("insufficient_entity_role"));
-    const refusal = await this.deps.eligibility.refusal({
+    // The same account rule as paying one invoice: closed accounts are refused, and accounts that
+    // cannot pay yet are told what happens next instead of being offered a payment.
+    const eligibility = await this.deps.eligibility.check({
       payerUserId: actor.userId,
       buyerLegalEntityId: actor.legalEntityId,
     });
-    if (refusal) return err(buyingError(refusal));
+    if (eligibility.kind !== "payable") return err(buyingError(eligibility.reason));
     const { picks } = await this.candidates(actor, scope === "own", lotIds);
     const decision = planPaySeveral(actor.legalEntityId, picks);
     if (!decision.allowed) return err(buyingError(decision.reason));

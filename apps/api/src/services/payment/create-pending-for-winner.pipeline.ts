@@ -1,3 +1,4 @@
+import type { PaymentEligibilityHold } from "@auction/domain";
 import type { LotFulfilmentAddressSnapshot } from "@auction/persistence/interfaces";
 import type { PaymentRecord } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
@@ -23,6 +24,8 @@ type ExistingPaymentHandlerContext = {
   lot: Lot;
   buyerId: string;
   addressSnapshot: LotFulfilmentAddressSnapshot;
+  /** The account cannot pay yet (identity, organisation review): no checkout is opened. */
+  held: PaymentEligibilityHold | null;
 };
 
 type ExistingPaymentHandler = (
@@ -38,6 +41,14 @@ const TERMINAL_CHECKOUT_RESULT = (
     checkoutRail: null,
     manualReviewReason: null,
   });
+
+/** An invoice the account cannot pay yet: no checkout, and the reason the page shows. */
+function heldResult(
+  paymentId: string,
+  reason: PaymentEligibilityHold,
+): Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError> {
+  return ok({ paymentId, checkoutUrl: null, checkoutRail: null, manualReviewReason: reason });
+}
 
 export const EXISTING_PAYMENT_STATUS_HANDLERS: Partial<
   Record<PaymentRecord["status"], ExistingPaymentHandler>
@@ -82,6 +93,7 @@ async function handleExistingOpenPayment(
   ctx: ExistingPaymentHandlerContext,
 ): Promise<Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError>> {
   const { deps, existing, lot, buyerId } = ctx;
+  if (ctx.held) return heldResult(existing.id, ctx.held);
   if (existing.paymentGroupId) {
     // Held by a "Pay several" payment: a second checkout could take the same money twice.
     return err(
@@ -156,14 +168,6 @@ export async function validatePayerCanPay(
   if (!lot.sellerLegalEntityId) {
     return err(new AuthzError("Seller legal entity is missing for this lot", 400));
   }
-  const refusal = await deps.paymentEligibility.refusal({
-    payerUserId: payerId,
-    buyerLegalEntityId: lot.buyerLegalEntityId,
-  });
-  if (refusal) {
-    const { message, status } = PAYMENT_ELIGIBILITY_REFUSAL[refusal];
-    return err(new AuthzError(message, status, { code: refusal }));
-  }
   return ok(lot);
 }
 
@@ -193,6 +197,7 @@ export async function handleExistingPaymentForWinner(
   lot: Lot,
   buyerId: string,
   addressSnapshot: LotFulfilmentAddressSnapshot,
+  held: PaymentEligibilityHold | null = null,
 ): Promise<Result<
   CreatePendingPaymentResult,
   AuthzError | LotError | PaymentProviderError
@@ -204,7 +209,14 @@ export async function handleExistingPaymentForWinner(
 
   await deps.lotFulfilmentHooks?.ensureAwaitingPayment(lot.id, existing.id, addressSnapshot);
 
-  const ctx: ExistingPaymentHandlerContext = { deps, existing, lot, buyerId, addressSnapshot };
+  const ctx: ExistingPaymentHandlerContext = {
+    deps,
+    existing,
+    lot,
+    buyerId,
+    addressSnapshot,
+    held,
+  };
   const handler = EXISTING_PAYMENT_STATUS_HANDLERS[existing.status] ?? handleExistingOpenPayment;
   return handler(ctx);
 }
@@ -337,6 +349,7 @@ export async function createOrJoinPaymentRecord(
   buyerId: string,
   addressSnapshot: LotFulfilmentAddressSnapshot,
   terms: Parameters<typeof createPaymentRecordForWinner>[3],
+  held: PaymentEligibilityHold | null = null,
 ): Promise<
   | { kind: "created"; payment: PaymentRecord }
   | {
@@ -352,7 +365,7 @@ export async function createOrJoinPaymentRecord(
   } catch (e) {
     if (!isOpenPaymentUniqueViolation(e)) throw e;
     recordMoneyPathEvent("payment_create_race_joined");
-    const joined = await handleExistingPaymentForWinner(deps, lot, buyerId, addressSnapshot);
+    const joined = await handleExistingPaymentForWinner(deps, lot, buyerId, addressSnapshot, held);
     if (!joined) throw e;
     return { kind: "joined", result: joined };
   }
@@ -443,25 +456,44 @@ export async function createPendingForWinner(
   if (addressResult.isErr()) return err(addressResult.error);
   const addressSnapshot = addressResult.value;
 
-  const existingResult = await handleExistingPaymentForWinner(deps, lot, buyerId, addressSnapshot);
+  // Closed accounts are refused; accounts that cannot pay yet keep the invoice, with no checkout.
+  const eligibility = await deps.paymentEligibility.check({
+    payerUserId: buyerId,
+    buyerLegalEntityId: lot.buyerLegalEntityId as string,
+  });
+  if (eligibility.kind === "refused") {
+    const { message, status } = PAYMENT_ELIGIBILITY_REFUSAL[eligibility.reason];
+    return err(new AuthzError(message, status, { code: eligibility.reason }));
+  }
+  const held = eligibility.kind === "held" ? eligibility.reason : null;
+
+  const existingResult = await handleExistingPaymentForWinner(
+    deps,
+    lot,
+    buyerId,
+    addressSnapshot,
+    held,
+  );
   if (existingResult) return existingResult;
 
   const termsResult = await computeNewPaymentTerms(deps, lot, buyerId);
   if (termsResult.isErr()) return err(termsResult.error);
   const { amount, platformFee, requiresManualReview, manualReviewReason } = termsResult.value;
 
-  const record = await createOrJoinPaymentRecord(deps, lot, buyerId, addressSnapshot, {
-    amount,
-    platformFee,
-    requiresManualReview,
-    manualReviewReason,
-  });
+  const record = await createOrJoinPaymentRecord(
+    deps,
+    lot,
+    buyerId,
+    addressSnapshot,
+    { amount, platformFee, requiresManualReview, manualReviewReason },
+    held,
+  );
   if (record.kind === "joined") return record.result;
   const created = record.payment;
 
   let checkoutUrl: string | null = null;
   let checkoutRail: CheckoutRailKind | null = null;
-  if (!requiresManualReview) {
+  if (!requiresManualReview && !held) {
     const checkoutResult = await resolveCheckoutForNewPayment(
       deps,
       created.id,
@@ -497,6 +529,6 @@ export async function createPendingForWinner(
     paymentId: created.id,
     checkoutUrl,
     checkoutRail,
-    manualReviewReason,
+    manualReviewReason: manualReviewReason ?? held,
   });
 }

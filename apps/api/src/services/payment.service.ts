@@ -89,7 +89,7 @@ const WINNER_ONLY: IInvoiceRecipients = {
 
 /** Without the account to read, nothing can be checked, so nothing is paid. */
 const REFUSE_ALL_ELIGIBILITY: IPaymentEligibilityGate = {
-  refusal: async () => "organisation_closed",
+  check: async () => ({ kind: "refused", reason: "organisation_closed" }),
 };
 
 export class PaymentService

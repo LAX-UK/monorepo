@@ -1,48 +1,57 @@
 import type { LegalEntityStatus } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { paymentEligibilityRefusal } from "./payment-eligibility.js";
+import { paymentEligibility } from "./payment-eligibility.js";
 
 const org = (accountStatus: LegalEntityStatus) =>
-  paymentEligibilityRefusal({ accountKind: "organisation", accountStatus, payerKycStatus: null });
+  paymentEligibility({ accountKind: "organisation", accountStatus, payerKycStatus: null });
 
-describe("paymentEligibilityRefusal", () => {
-  it.each(["rejected", "archived"] as const)("a %s organisation cannot pay", (status) => {
-    expect(org(status)).toBe("organisation_closed");
+describe("paymentEligibility", () => {
+  it.each(["rejected", "archived"] as const)("a %s organisation is refused", (status) => {
+    expect(org(status)).toEqual({ kind: "refused", reason: "organisation_closed" });
   });
 
-  it.each(["approved", "restricted", "connect_pending", "docs_requested"] as const)(
+  it.each(["lead", "docs_requested", "docs_received", "under_review"] as const)(
+    "a %s organisation's invoices are held until LAX has checked it",
+    (status) => {
+      expect(org(status)).toEqual({ kind: "held", reason: "organisation_under_review" });
+    },
+  );
+
+  it.each(["approved", "restricted", "connect_pending"] as const)(
     "a %s organisation can pay its invoices",
     (status) => {
-      expect(org(status)).toBeNull();
+      expect(org(status)).toEqual({ kind: "payable" });
     },
   );
 
   it.each(["unverified", "pending", "rejected"] as const)(
-    "a personal buyer whose identity is %s cannot pay",
+    "a personal buyer whose identity is %s is held until they verify it",
     (kyc) => {
       expect(
-        paymentEligibilityRefusal({
+        paymentEligibility({
           accountKind: "individual",
           accountStatus: "approved",
           payerKycStatus: kyc,
         }),
-      ).toBe("identity_verification_required");
+      ).toEqual({ kind: "held", reason: "identity_verification_required" });
     },
   );
 
   it("a verified personal buyer can pay; the check is skipped where it cannot be made", () => {
     const base = { accountKind: "individual" as const, accountStatus: "approved" as const };
-    expect(paymentEligibilityRefusal({ ...base, payerKycStatus: "approved" })).toBeNull();
-    expect(paymentEligibilityRefusal({ ...base, payerKycStatus: null })).toBeNull();
+    expect(paymentEligibility({ ...base, payerKycStatus: "approved" })).toEqual({
+      kind: "payable",
+    });
+    expect(paymentEligibility({ ...base, payerKycStatus: null })).toEqual({ kind: "payable" });
   });
 
   it("an organisation's payer is not asked for personal identity (the organisation is checked)", () => {
     expect(
-      paymentEligibilityRefusal({
+      paymentEligibility({
         accountKind: "organisation",
         accountStatus: "approved",
         payerKycStatus: "unverified",
       }),
-    ).toBeNull();
+    ).toEqual({ kind: "payable" });
   });
 });

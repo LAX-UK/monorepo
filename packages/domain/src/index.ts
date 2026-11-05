@@ -988,7 +988,9 @@ export {
 } from "./unapplied-money.js";
 export {
   PAYMENT_CLOSED_ORGANISATION_STATUSES,
-  paymentEligibilityRefusal,
+  paymentEligibility,
+  type PaymentEligibility,
   type PaymentEligibilityFacts,
+  type PaymentEligibilityHold,
   type PaymentEligibilityRefusal,
 } from "./payment-eligibility.js";

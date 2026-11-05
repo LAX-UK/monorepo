@@ -73,7 +73,10 @@ type PaymentTemplateVars = {
     dueDate: string;
     /** Checkout for this lot. */
     payUrl: string;
-    supportContactEmail: string;
+    supportContactEmail: string /** The invoice cannot be paid yet; the email says what to do instead of "Pay now". */;
+    held?: "identity_verification_required" | "organisation_under_review" | null;
+    /** Where the held step is done (identity verification). */
+    actionUrl?: string | null;
   };
   /** After a buyer default: told to the buyer, the seller or the next bidder. */
   "buyer-default-notice": {

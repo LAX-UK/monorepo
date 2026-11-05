@@ -26,7 +26,12 @@ type Member = { role: LegalEntityMemberRole; removed?: boolean };
  * in-memory accounts: a lot the organisation's buyer agent won, already invoiced and paid, so the
  * pipeline returns at the existing payment without touching the card rails.
  */
-function mount(payer: string, member: Member | null, status: LegalEntity["status"] = "approved") {
+function mount(
+  payer: string,
+  member: Member | null,
+  status: LegalEntity["status"] = "approved",
+  existingStatus: "captured" | "pending" = "captured",
+) {
   const lot = {
     id: LOT_ID,
     status: "ended",
@@ -43,7 +48,12 @@ function mount(payer: string, member: Member | null, status: LegalEntity["status
     ),
   };
   const payments = {
-    findOpenByLotAndBuyerAccount: vi.fn(async () => ({ id: PAYMENT_ID, status: "captured" })),
+    findOpenByLotAndBuyerAccount: vi.fn(async () => ({
+      id: PAYMENT_ID,
+      status: existingStatus,
+      amount: "100.00",
+      paymentGroupId: null,
+    })),
   };
   const deps = {
     lots: { findById: vi.fn(async () => lot) },
@@ -128,6 +138,22 @@ describe("POST /payments for an organisation's purchase", () => {
     const { app } = mount("user-payer", { role: "finance" }, "restricted");
     expect((await pay(app)).status).toBe(201);
   });
+
+  it.each(["lead", "docs_requested", "under_review"] as const)(
+    "holds the invoice of a %s organisation: no checkout, and the reason to show",
+    async (status) => {
+      const { app } = mount("user-payer", { role: "finance" }, status, "pending");
+      const res = await pay(app);
+      expect(res.status).toBe(201);
+      expect(await res.json()).toMatchObject({
+        data: {
+          paymentId: PAYMENT_ID,
+          checkoutUrl: null,
+          manualReviewReason: "organisation_under_review",
+        },
+      });
+    },
+  );
 
   it.each(["rejected", "archived"] as const)(
     "refuses a %s organisation on the server, before any invoice is touched",

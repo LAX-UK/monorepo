@@ -13,42 +13,40 @@ const identity = (kycStatus: "unverified" | "pending" | "approved" | "rejected" 
 const input = { payerUserId: "user-1", buyerLegalEntityId: "le-1" };
 
 describe("PaymentEligibilityGate", () => {
-  it("a personal buyer must be verified to pay", async () => {
+  it("a personal buyer is held until verified", async () => {
     await expect(
-      new PaymentEligibilityGate(account("individual"), identity("pending")).refusal(input),
-    ).resolves.toBe("identity_verification_required");
+      new PaymentEligibilityGate(account("individual"), identity("pending")).check(input),
+    ).resolves.toEqual({ kind: "held", reason: "identity_verification_required" });
     await expect(
-      new PaymentEligibilityGate(account("individual"), identity("approved")).refusal(input),
-    ).resolves.toBeNull();
+      new PaymentEligibilityGate(account("individual"), identity("approved")).check(input),
+    ).resolves.toEqual({ kind: "payable" });
   });
 
-  it("a buyer with no identity record at all counts as unverified", async () => {
+  it("a buyer with no identity record at all counts as unverified (held)", async () => {
     await expect(
-      new PaymentEligibilityGate(account("individual"), identity(null)).refusal(input),
-    ).resolves.toBe("identity_verification_required");
+      new PaymentEligibilityGate(account("individual"), identity(null)).check(input),
+    ).resolves.toEqual({ kind: "held", reason: "identity_verification_required" });
   });
 
   it("where no identity provider can verify anyone, identity is not asked for", async () => {
     await expect(
-      new PaymentEligibilityGate(account("individual"), null).refusal(input),
-    ).resolves.toBeNull();
+      new PaymentEligibilityGate(account("individual"), null).check(input),
+    ).resolves.toEqual({ kind: "payable" });
   });
 
-  it("an archived organisation cannot pay", async () => {
+  it("an archived organisation is refused", async () => {
     await expect(
-      new PaymentEligibilityGate(account("organisation", "archived"), identity(null)).refusal(
-        input,
-      ),
-    ).resolves.toBe("organisation_closed");
+      new PaymentEligibilityGate(account("organisation", "archived"), identity(null)).check(input),
+    ).resolves.toEqual({ kind: "refused", reason: "organisation_closed" });
   });
 
   it("fails closed: an account that cannot be read stops the payment", async () => {
     const gate = new PaymentEligibilityGate({ findById: vi.fn(async () => null) }, null);
-    await expect(gate.refusal(input)).rejects.toThrow("payment_buyer_account_not_found");
+    await expect(gate.check(input)).rejects.toThrow("payment_buyer_account_not_found");
     const broken = new PaymentEligibilityGate(
       { findById: vi.fn().mockRejectedValue(new Error("db down")) },
       null,
     );
-    await expect(broken.refusal(input)).rejects.toThrow("db down");
+    await expect(broken.check(input)).rejects.toThrow("db down");
   });
 });
