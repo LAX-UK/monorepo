@@ -68,7 +68,8 @@ test.describe("seller connect embedded @journey", () => {
         .getByTestId("connect-page-header-skeleton")
         .or(page.getByTestId("connect-workspace-skeleton"))
         .or(page.getByTestId("connect-workspace"))
-        .or(page.getByText(/payout setup is not available/i)),
+        .or(page.getByText(/payout setup is not available/i))
+        .first(),
     ).toBeVisible({
       timeout: 15_000,
     });
