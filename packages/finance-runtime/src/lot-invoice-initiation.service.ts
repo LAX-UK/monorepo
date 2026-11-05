@@ -9,8 +9,8 @@ import type {
   NotificationPayload,
   PaymentRecord,
 } from "@auction/persistence/interfaces";
-import { computeLotCheckoutPricing } from "@auction/validators";
-import { gbpAmountToPence, gbpPenceToMajorString } from "./decimal-money.js";
+import { lotTotalDuePence } from "@auction/validators";
+import { gbpPenceToMajorString } from "./decimal-money.js";
 import type { DomainEventPublishInput } from "./domain-event-sink-port.js";
 import { ensureXeroInvoiceForPayment } from "./ensure-xero-invoice.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
@@ -120,8 +120,7 @@ export class LotInvoiceInitiationService {
     }
 
     const sale = lot.saleId ? await this.sales.findById(lot.saleId) : null;
-    const pricing = computeLotCheckoutPricing(lot, sale);
-    const amountPence = gbpAmountToPence(pricing.totalMajor);
+    const amountPence = lotTotalDuePence(lot, sale);
     const amount = gbpPenceToMajorString(amountPence);
 
     const amountValidation = this.paymentTierPolicy.validateCheckoutAmountPence(amountPence);
