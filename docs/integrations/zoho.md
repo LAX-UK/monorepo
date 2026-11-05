@@ -189,6 +189,34 @@ Each delivery reads the register's current state (never the event's), then reads
 
 Roll out: sandbox org with `dry_run`; then `live` in the sandbox and check one Product; then production.
 
+## LAX listing on Zoho Products (outbound)
+
+Staff who work from Zoho see where each original is today, without opening LAX. Four fields on Products, filled by LAX only:
+
+| Field (API name) | Type | Holds |
+|------------------|------|-------|
+| `LAX_Listing` | picklist | The place, in the "Where it is" words LAX Admin uses, with the Bid sale phase and where a sale was made. |
+| `LAX_Listing_Detail` | text (255) | Sale name, lot number and dates, or the private sale reference; empty when there is nothing to add. |
+| `LAX_Listing_Link` | URL | The public lax.art page or Bid lot when buyers can see it; otherwise the LAX Admin or LAX Bid admin page. |
+| `LAX_Listing_Updated` | date-time | When LAX last changed the listing. Also the ordering guard (below). |
+
+Picklist values, in order: Not offered, Draft on lax.art, On lax.art, Draft lot in LAX Bid, In a LAX Bid sale — upcoming, In a LAX Bid sale — live now, In a LAX Bid sale — ended, In a private sale, Sold on lax.art, Sold in LAX Bid, Sold privately, Sold in the gallery, Sold, Withdrawn. The words come from `packages/artwork-register-contracts` (`lax-listing.ts`, built on `where-it-is.ts`), so LAX Admin and Zoho cannot drift. `Status` is unchanged and keeps its own write-back above.
+
+**Setting up an org.** Create the four fields on Products with the labels LAX Listing, LAX Listing Detail, LAX Listing Link and LAX Listing Updated (Zoho derives the API names above), add the picklist values in the order above, and set field permissions to read-only for every profile except the one the integration user has (and Administrator, who can always change field settings). In the sandbox (`laxintegrationtest`) this is done; plain "Sold" still has to be added to the picklist there in Setup (Zoho stores it without the option, but views and filters only offer listed values). Add the fields to the Products layout.
+
+**When it changes.** The worker's `zoho_artwork_listing` projector (own cursor and delivery consumer) refreshes the artworks an event can move: register moves (`artwork_register.offer_changed`), lax.art listings (`shop.artwork.created`, `shop.artwork.updated`), Bid lots (`lot.created`, `.published`, `.unpublished`, `.attached_to_sale`, `.detached_from_sale`, `.cancelled`, `.voided`, `.ended`, `.returned_to_inventory`) and sales (`sale.published`, `.unpublished`, `.ended`, `.cancelled`). `lot.activated` refreshes every lot of its sale, since the first lot on the block makes the whole sale live now. A nightly pass at 03:00 London (`zoho-listing-nightly-check` on the webhook queue) checks every original and corrects drift: a missed event, a Withdrawn artwork's 30 days running out, an edit in Zoho.
+
+**How it writes.** The event only says what to look at; the listing is worked out from what LAX holds when it is handled. Per batch of 50: take a per-artwork advisory lock, read the facts (register, Bid lot and sale, private sale, and lax.art through LAX Shop's `POST /internal/inventory/art-listings/lookup`), read the four fields from Zoho with one COQL query, and send only the Products that differ in one `PUT /crm/v8/Products`. A repeat sends nothing. The lock means a later writer always reads newer facts; on top of that, a listing whose `LAX_Listing_Updated` is newer than the facts being sent is left alone. Zoho's other fields are never written. Rate limit, circuit breaker and retries are the shared gateway's; a delivery that keeps failing dead-letters as "Zoho artworks (LAX listing)" in Failed jobs. LAX Admin's From Zoho › Last check shows the latest nightly pass, the artworks not written (linked to their records) and how many writes are waiting in Failed jobs.
+
+| Variable | App | Purpose |
+|----------|-----|---------|
+| `ZOHO_ARTWORK_LISTING_MODE` | worker | `off` (default) \| `dry_run` \| `live`. `dry_run` reads LAX, lax.art and Zoho, logs each update it would send (`zoho_listing_dry_run`) and the nightly pass reports it in Last check; `live` writes. Independent of `ZOHO_ARTWORK_WRITEBACK_MODE`. |
+| `SHOP_API_INVENTORY_BASE_URL` | worker | LAX Shop's API, for the lax.art lookup. |
+| `INVENTORY_MACHINE_CLIENT_ID`, `INVENTORY_MACHINE_CLIENT_SECRET` | worker | The inventory machine pair LAX Shop holds. |
+| `LAX_ART_PUBLIC_URL`, `LAX_ADMIN_PUBLIC_URL` | worker | For the link. LAX Bid's comes from `WEB_ORIGIN`. |
+
+Everything is required once the mode is not `off`; `live` also turns on the wrong-org guard. Roll out: sandbox `dry_run`, review Last check; sandbox `live`, check a few Products; production `dry_run`; production `live` with the owner's go.
+
 ## Ops scripts
 
 ```bash

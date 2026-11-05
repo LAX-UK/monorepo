@@ -264,6 +264,48 @@ export function checkFootnote(run: CheckRun): string | null {
 }
 
 // ---------------------------------------------------------------------------------------------
+// The LAX listing LAX keeps on each Zoho Product.
+
+type ListingRun = NonNullable<AdminRegisterLastCheck["listing"]["run"]>;
+
+/** The headline figures of a listing pass; a dry run says what it would have corrected. */
+export function listingFigures(run: ListingRun): CheckFigure[] {
+  const dry = run.mode === "dry_run";
+  return [
+    { id: "checked", label: "Artworks checked", value: String(run.checked) },
+    {
+      id: "changed",
+      label: dry ? "Would be corrected" : "Corrected",
+      value: String(run.changed),
+    },
+    { id: "unchanged", label: "Already right", value: String(run.unchanged) },
+    { id: "failed", label: "Not written", value: String(run.failed) },
+  ];
+}
+
+const LISTING_FAILURE_LABEL: Record<string, string> = {
+  product_not_found: "No longer in Zoho",
+  INVALID_DATA: "Zoho refused the value",
+  NO_PERMISSION: "The LAX integration may not write these fields",
+  OAUTH_SCOPE_MISMATCH: "The LAX integration may not write these fields",
+  TOO_MANY_REQUESTS: "Zoho was busy",
+  lax_art_unavailable: "lax.art could not be reached",
+  lax_art_refused: "lax.art refused the request",
+};
+
+export function listingFailureLabel(code: string): string {
+  return LISTING_FAILURE_LABEL[code] ?? "Zoho did not accept it";
+}
+
+/** The writes that stopped after their retries, as one line; null when there are none. */
+export function failedDeliveriesNote(count: number): string | null {
+  if (count === 0) return null;
+  const updates = count === 1 ? "1 update to Zoho" : `${count} updates to Zoho`;
+  const they = count === 1 ? "It is" : "They are";
+  return `${updates} stopped after ${count === 1 ? "its" : "their"} retries. ${they} waiting in Failed jobs in LAX Bid admin.`;
+}
+
+// ---------------------------------------------------------------------------------------------
 // An artwork's history.
 
 const ACTOR_LABEL: Record<AdminRegisterEvent["actor"], string> = {

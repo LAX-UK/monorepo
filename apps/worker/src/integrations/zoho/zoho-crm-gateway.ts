@@ -1,5 +1,7 @@
 import type { WorkerEnv } from "../../env.js";
 import type {
+  CrmBatchUpdate,
+  CrmBatchUpdateInput,
   CrmBatchUpsertInput,
   CrmCoqlPage,
   CrmCoqlQuery,
@@ -27,7 +29,7 @@ export type ZohoCrmGatewayConfig = {
 
 const ALREADY_DELETED_CODES = new Set(["INVALID_DATA", "ID_INVALID", "RECORD_NOT_FOUND"]);
 
-export class ZohoCrmGateway implements CrmGateway, CrmCoqlQuery {
+export class ZohoCrmGateway implements CrmGateway, CrmCoqlQuery, CrmBatchUpdate {
   private apiCreditsRemaining: number | null = null;
 
   constructor(
@@ -114,6 +116,36 @@ export class ZohoCrmGateway implements CrmGateway, CrmCoqlQuery {
       action: "update",
       status: "success",
     };
+  }
+
+  async updateMany(input: CrmBatchUpdateInput): Promise<CrmRecordResult[]> {
+    if (input.records.length === 0) return [];
+    const body = { data: input.records, trigger: this.config.trigger };
+    const res = await this.request("PUT", `/crm/v8/${input.module}`, body);
+    if (res.status !== 207 && !res.ok) {
+      this.throwOnHttpError(res);
+    }
+    const rows = parseZohoRecordResponses(res.status, res.text, res.retryAfterMs);
+    return input.records.map((record, index) => {
+      const row = rows[index];
+      if (row?.status === "success") {
+        return {
+          module: input.module,
+          recordId: record.id,
+          action: "update" as const,
+          status: "success" as const,
+        };
+      }
+      return {
+        module: input.module,
+        recordId: record.id,
+        action: "update" as const,
+        status: "error" as const,
+        code: row?.code ?? "EMPTY_RESPONSE",
+        ...(row?.fieldApiName ? { fieldApiName: row.fieldApiName } : {}),
+        message: row?.message ?? `update_row_${index}_failed`,
+      };
+    });
   }
 
   async findByEmail(input: CrmSearchByEmailInput): Promise<CrmSearchByEmailResult> {

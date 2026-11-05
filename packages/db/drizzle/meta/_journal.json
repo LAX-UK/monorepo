@@ -2178,6 +2178,13 @@
       "when": 1802419200000,
       "tag": "0316_shop_order_created_id_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 312,
+      "version": "7",
+      "when": 1802505600000,
+      "tag": "0317_zoho_listing_sync_run",
+      "breakpoints": true
     }
   ]
 }
