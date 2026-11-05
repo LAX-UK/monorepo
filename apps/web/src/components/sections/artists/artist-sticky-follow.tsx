@@ -46,7 +46,7 @@ export function ArtistStickyFollow({
     <div
       aria-hidden={!show}
       inert={!show}
-      className={`pointer-events-none fixed inset-x-0 bottom-[var(--cookie-dock-height,0px)] z-30 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] transition-opacity duration-200 lg:hidden ${
+      className={`pointer-events-none fixed inset-x-0 bottom-[calc(var(--cookie-dock-height,0px)+var(--lax-bottom-bar-space,0px))] z-30 flex justify-center px-4 pb-[max(1rem,env(safe-area-inset-bottom))] transition-opacity duration-200 lg:hidden ${
         show ? "opacity-100" : "opacity-0"
       }`}
     >

@@ -112,7 +112,7 @@ export function MarketingPhoneMenu<TSection extends MarketingMegaNavSection>({
             </DialogClose>
           </div>
 
-          <LaxFamilyMenuLinks links={familyLinks} onNavigate={close} />
+          <LaxFamilyMenuLinks links={familyLinks} onNavigate={close} layout="row" />
 
           {sections.length > 0 ? (
             <nav aria-label="Main">

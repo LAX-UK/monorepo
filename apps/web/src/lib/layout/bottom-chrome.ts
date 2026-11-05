@@ -37,6 +37,18 @@ export function pageBottomPadding(state: BottomChromeState): string {
   return "1.5rem";
 }
 
+/**
+ * Whether the public docked tab bar (Home, Auctions, Search, Watching, Account) belongs on this
+ * route. Never inside the signed-in account area, which has its own approved phone bar (only one
+ * bar shows at a time), and never on pay and checkout routes, where the page's own pay bar owns
+ * the bottom edge. The space the bar takes is the shared `--lax-bottom-bar-space`, reserved once
+ * at the end of the page; nothing else pads for it.
+ */
+export function showsPublicBottomBar(pathname: string): boolean {
+  if (isClientAreaPath(pathname)) return false;
+  return !/^\/(?:pay|checkout)(?:\/|$)/.test(pathname);
+}
+
 export function isDashboardTabBarRoute(pathname: string): boolean {
   return isClientAreaPath(pathname);
 }

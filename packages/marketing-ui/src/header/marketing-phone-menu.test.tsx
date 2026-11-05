@@ -6,6 +6,7 @@ import { MarketingPhoneMenu } from "./marketing-phone-menu.js";
 const FAMILY = [
   { id: "art", label: "lax.art", href: "https://lax.art", current: false },
   { id: "shop", label: "lax.shop", href: "https://shop.lax.art", current: true },
+  { id: "account", label: "LAX Account", href: "https://account.lax.art", current: false },
 ];
 const SECTIONS = [
   { id: "shop", label: "Shop", items: [{ label: "Prints", href: "/prints" }] },
@@ -38,6 +39,15 @@ function Harness({ initiallyOpen = true }: { initiallyOpen?: boolean }) {
 }
 
 describe("MarketingPhoneMenu", () => {
+  it("shows the LAX top bar as one row, with LAX Account after a divider", () => {
+    render(<Harness />);
+    const family = within(screen.getByRole("dialog")).getByTestId("lax-family-menu-links");
+    expect(family.querySelectorAll("ul")).toHaveLength(1);
+    expect(family.textContent).not.toContain("You're here");
+    const account = within(family).getByRole("link", { name: "LAX Account" });
+    expect(account.parentElement?.className).toContain("border-l");
+  });
+
   it("orders: lockup and Close, family row, main nav, help links, Theme last", () => {
     render(<Harness />);
     const dialog = screen.getByRole("dialog");
