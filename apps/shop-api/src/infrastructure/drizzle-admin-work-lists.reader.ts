@@ -126,6 +126,7 @@ export function pageOf<T, R>(
     nextCursor: encodeCatalogueCursor({
       createdAt: truncateCatalogueCursorDate(key.createdAt),
       id: key.id,
+      createdAtMicros: key.createdAtMicros,
     }),
   };
 }

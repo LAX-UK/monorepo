@@ -1,7 +1,7 @@
+import type { ImageNormalizerPort } from "@auction/image-processing";
 import { describe, expect, it, vi } from "vitest";
 import { createFakeObjectStorage } from "../../test-support/fake-object-storage.js";
 import { createMemoryShopMediaAssetRepository } from "../../test-support/memory-shop-media-asset.repository.js";
-import type { ImageNormalizerPort } from "../ports/image-normalizer.port.js";
 import type { ImageProbePort } from "../ports/image-probe.port.js";
 import { createLegacyMediaImporter, legacyMediaKey } from "./legacy-media-importer.js";
 
