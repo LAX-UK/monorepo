@@ -102,7 +102,26 @@ jobs:
           if test "${TF_VAR_app_deploy_source}" != "image"; then
             exit 0
           fi
-          node scripts/ci/resolve-live-app-image-tags.mjs --app-id "$APP_ID" >> "$GITHUB_ENV"
+          if test "${{ matrix.env }}" = "prod"; then
+            # Prod App Platform pins rolling tags (e.g. "prod"), so the spec has no SHA. The live
+            # release SHA comes from the readiness endpoint (same contract terraform-apply-prod
+            # verifies) and is passed explicitly, pinning every component like the apply does.
+            sha="$(curl -fsS --retry 3 https://lax.bid/api/health/ready | jq -r '.release // empty')"
+            if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::Could not resolve a 40-character live release SHA from https://lax.bid/api/health/ready (got \"$sha\")."
+              exit 1
+            fi
+            node scripts/ci/resolve-live-app-image-tags.mjs --app-id "$APP_ID" \
+              --input-app-image-tag "$sha" \
+              --input-shop-admin-image-tag "$sha" \
+              --input-account-image-tag "$sha" \
+              --input-shop-image-tag "$sha" \
+              --input-shop-identity-image-tag "$sha" \
+              --input-shop-api-image-tag "$sha" \
+              --input-art-image-tag "$sha" >> "$GITHUB_ENV"
+          else
+            node scripts/ci/resolve-live-app-image-tags.mjs --app-id "$APP_ID" >> "$GITHUB_ENV"
+          fi
       - uses: ./.github/actions/terraform-setup
         with:
           working-directory: .infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }}
