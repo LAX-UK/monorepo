@@ -5,7 +5,7 @@ import {
 } from "../ports/legal-acceptance-recorder.js";
 
 /**
- * The field the hosted sign-up page adds to the request when it showed the person the Terms and
+ * The field the hosted sign-up and sign-in pages add to the request when it showed the person the Terms and
  * Privacy statement: `{ legalAcceptance: { product } }` in the email sign-up body, and the same
  * object in the social sign-in `additionalData`, which comes back with the provider callback.
  */
@@ -29,8 +29,8 @@ function fieldOf(container: unknown): unknown {
 
 /**
  * What the person was shown when this account was created, or null when the request did not come
- * from the sign-up page (sign-in with an existing account, an unknown product value, or a sign-up
- * from anywhere else). A null result records nothing: no statement was shown, so none is claimed.
+ * from a page that showed the statement (an unknown product value, or a sign-up from anywhere
+ * else). A null result records nothing: no statement was shown, so none is claimed.
  */
 export function signUpLegalAcceptance(
   subjectId: string,

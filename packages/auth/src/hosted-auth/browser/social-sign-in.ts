@@ -7,7 +7,7 @@ function asButton(node: Element | null): HTMLButtonElement | null {
 
 /**
  * `additionalData` is carried through the provider round trip and read back when the callback
- * creates the account; the sign-up page uses it to say which Terms and Privacy notice it showed.
+ * creates the account; the sign-up and sign-in pages use it to say which Terms and Privacy notice it showed.
  */
 export function bindSocialSignIn(
   auth: HostedAuthApi,
