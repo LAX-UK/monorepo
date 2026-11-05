@@ -60,10 +60,11 @@ test.describe("identity onboarding @journey", () => {
     await page.getByRole("link", { name: /verify later|finish later/i }).click();
     await expect(page).toHaveURL(/\/watching/);
 
-    // /home lands on My bids, where account alerts sit behind one compact button.
+    // /home lands on My bids, where the identity notice offers the way back into verification.
     await page.goto("/home");
-    await page.getByTestId("dashboard-alerts-preview").click();
-    await expect(page.getByRole("link", { name: /identity|verification/i }).first()).toBeVisible();
+    await expect(
+      page.getByTestId("kyc-banner").getByRole("link", { name: /identity|verif/i }),
+    ).toBeVisible();
   });
 
   test("starts the production-like Veriff flow when explicitly enabled", async ({ page }) => {

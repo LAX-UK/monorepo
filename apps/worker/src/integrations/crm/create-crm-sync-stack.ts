@@ -25,6 +25,7 @@ export function createCrmSyncService(input: {
     enquiryReader: createDrizzleCrmEnquiryReader(input.db),
     dealNamingReader: createDrizzleCrmDealNamingReader(input.db),
     mapperContext: {
+      leadStatusNew: input.env.ZOHO_CRM_LEAD_STATUS_NEW,
       auctionPipeline: input.env.ZOHO_CRM_AUCTION_PIPELINE,
       dealStageLotWon: input.env.ZOHO_CRM_DEAL_STAGE_LOT_WON,
       dealStagePaymentCaptured: input.env.ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED,

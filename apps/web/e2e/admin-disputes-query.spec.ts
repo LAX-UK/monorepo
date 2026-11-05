@@ -12,12 +12,16 @@ test.describe("admin disputes @journey", () => {
   test("disputes page loads with its queues and table shell", async ({ page }) => {
     await page.goto("/admin/disputes");
     await expect(page.getByRole("heading", { name: "Disputes", level: 1 })).toBeVisible();
-    await expect(page.locator('a[href="/admin/disputes?view=closed"]')).toBeVisible();
+    const views = page.getByRole("navigation", { name: /^views$/i });
+    await expect(views.getByRole("link", { name: /^closed/i })).toBeVisible();
   });
 
   test("choosing a queue updates the URL", async ({ page }) => {
     await page.goto("/admin/disputes");
-    await page.locator('a[href^="/admin/disputes?view=needs_allocation"]').click();
+    await page
+      .getByRole("navigation", { name: /^views$/i })
+      .getByRole("link", { name: /^needs allocation/i })
+      .click();
     await expect(page).toHaveURL(/view=needs_allocation/);
   });
 

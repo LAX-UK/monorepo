@@ -40,6 +40,12 @@ export const HOSTED_COPY = {
     terms: "Terms",
     privacy: "Privacy notice",
   },
+  /** Under Google and Apple on sign-in, which can also create the account. */
+  socialSignInAgreement: {
+    lead: "By continuing, you agree to the",
+    terms: "Terms",
+    privacy: "Privacy notice",
+  },
   theme: { toDark: "Switch to dark theme", toLight: "Switch to light theme" },
   products: {
     bid: "LAX Bid",

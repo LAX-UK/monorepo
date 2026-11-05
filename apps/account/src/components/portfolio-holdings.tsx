@@ -55,6 +55,9 @@ function WorkTitle({ row }: { row: HoldingRowVm }) {
       {row.item.artist ? (
         <span className="block text-xs text-on-surface-variant">{row.item.artist}</span>
       ) : null}
+      {row.item.edition ? (
+        <span className="block text-xs text-on-surface-variant">{row.item.edition}</span>
+      ) : null}
     </>
   );
 }

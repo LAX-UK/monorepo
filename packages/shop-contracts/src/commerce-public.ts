@@ -131,6 +131,12 @@ export const OrderLineSchema = Type.Object(
     imageUrl: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
     /** How many editions the run has ("Edition 3 of 24"); null for merchandise. */
     editionSize: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.Null()])),
+    /**
+     * What the buyer reads about the print, from the facts kept when the order was paid:
+     * "No. 7 of 24 · Hand-signed · Certificate from the artist". Absent from older responses and
+     * null for merchandise or a print with no recorded facts, where the plain edition is shown.
+     */
+    editionSummary: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
     artistName: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
   },
   { additionalProperties: false },

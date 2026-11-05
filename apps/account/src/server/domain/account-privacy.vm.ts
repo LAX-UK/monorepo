@@ -6,28 +6,27 @@ import { DEFAULT_DATA_EXPORT_SUBTITLE } from "./data-export.vm";
 
 /**
  * Notifications and privacy (Figma 956:14309). The data-sharing switch is left out: no LAX
- * service stores an account-level data-sharing choice yet. Notification preferences run in
- * LAX Bid, which owns them; deleting the account is an Account page, whatever else is configured.
+ * service stores an account-level data-sharing choice yet. Alert emails from every product are
+ * one Account page; deleting the account is an Account page, whatever else is configured.
  */
 export function buildPrivacyGroups(
-  links: Pick<AccountLinksVm, "bidSettings" | "support">,
+  links: Pick<AccountLinksVm, "support">,
   /** Where the person's data download stands, as a line (see buildDataExportRowSubtitle). */
   dataExportSubtitle: string = DEFAULT_DATA_EXPORT_SUBTITLE,
 ): SettingsGroupVm[] {
-  const groups: SettingsGroupVm[] = [];
-  if (links.bidSettings) {
-    groups.push({
+  const groups: SettingsGroupVm[] = [
+    {
       id: "notifications",
       label: "Notifications",
       rows: [
         {
-          title: "Notification preferences",
-          subtitle: "Managed in LAX Bid",
-          href: links.bidSettings.notifications,
+          title: "Email alerts",
+          subtitle: "Alerts from LAX Bid, LAX Shop and lax.art",
+          href: ACCOUNT_ROUTES.alerts,
         },
       ],
-    });
-  }
+    },
+  ];
   groups.push({
     id: "your-data",
     label: "Your data",

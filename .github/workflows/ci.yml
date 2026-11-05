@@ -275,9 +275,10 @@ jobs:
       - name: Identity boundary conformance
         run: pnpm ci:identity-boundary
 
-      - name: Test affected packages (excluding web and api)
+      - name: Test affected packages (excluding web, api and shop-api)
         # One package at a time: shared auction_ci Postgres (migrations, role grants, shop integration).
-        run: pnpm turbo run test --affected --filter=!@auction/web --filter=!@auction/api --summarize --concurrency=1
+        # shop-api runs sharded in its own job below (same suite, own database per shard).
+        run: pnpm turbo run test --affected --filter=!@auction/web --filter=!@auction/api --filter=!@auction/shop-api --summarize --concurrency=1
 
       - name: Runtime ownership smoke gates
         run: pnpm --filter @auction/types build && pnpm --filter @auction/background-runtime build && node scripts/ci/run-runtime-ownership-smoke-gates.mjs
@@ -423,6 +424,101 @@ jobs:
           fi
           pnpm turbo run build --filter=@auction/api^...
           pnpm --filter @auction/api exec vitest run --shard=${{ matrix.shard }}/2
+
+  shop-api-vitest:
+    name: shop-api vitest (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
+      SHOP_APP_DB_PASSWORD: postgres
+      REDIS_URL: redis://127.0.0.1:6379
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch base for turbo affected
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git fetch origin main:main
+          else
+            git fetch origin "${{ github.event.merge_group.base_sha }}"
+          fi
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != '' && github.event_name != 'merge_group'
+        uses: ./.github/actions/setup-turbo-remote-cache
+        with:
+          team: ${{ vars.TURBO_TEAM }}
+
+      - name: Detect whether shop-api tests are affected
+        id: affected
+        run: |
+          set -euo pipefail
+          pnpm turbo run test --affected --filter=@auction/shop-api --dry-run=json > /tmp/affected.json
+          if jq -e '.tasks[] | select(.taskId == "@auction/shop-api#test")' /tmp/affected.json > /dev/null; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "shop-api tests not affected; skipping shard ${{ matrix.shard }}/4."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build shop-api dependencies
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm turbo run build --filter=@auction/shop-api^...
+
+      - name: Migrate test database
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm --filter @auction/db db:migrate
+
+      - name: Apply application role grants
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm --filter @auction/db db:roles
+
+      - name: Vitest shard
+        if: steps.affected.outputs.run == 'true'
+        run: pnpm --filter @auction/shop-api exec vitest run --shard=${{ matrix.shard }}/4
 
   shop-v1-paths:
     runs-on: ubuntu-latest
@@ -797,6 +893,7 @@ jobs:
       - test
       - api-vitest
       - web-vitest
+      - shop-api-vitest
       - shop-v1-phase-smoke
       - worker-role-contract
       - auth-role-contract

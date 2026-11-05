@@ -264,6 +264,14 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "legal_entity.invitation_restored": new Set(["invitation_id", "role"]),
   /** A buyer reported a problem with a paid purchase; what they wrote stays on the report. */
   "purchase_problem.reported": new Set(["lotId", "paymentId", "category"]),
+  /** Staff and status are identifiers and codes; the buyer's message and staff notes stay on the report. */
+  "purchase_problem.assigned": new Set([
+    "problemId",
+    "assignedToUserId",
+    "previousAssignedToUserId",
+  ]),
+  "purchase_problem.status_changed": new Set(["problemId", "from", "to"]),
+  "purchase_problem.note_added": new Set(["problemId"]),
   /** A member asked for a role or capability; the reason stays on the request, not the event. */
   "legal_entity.access_requested": new Set([
     "request_id",

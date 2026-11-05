@@ -12,6 +12,8 @@ export function sampleOrderLine(overrides: Partial<OrderLineRecord> = {}): Order
     variantSku: null,
     editionNumber: null,
     editionSize: 24,
+    editionSummary: null,
+    editionInvoiceDetail: null,
     unitPricePence: 12_000,
     vatRateBp: 2000,
     vatPence: 2000,

@@ -10,6 +10,10 @@ import type { Database } from "@auction/db";
 import { OutboxAlertMailer } from "@auction/email";
 import type { IEmailService } from "@auction/email";
 import {
+  laxAccountPageUrl,
+  resolveLaxAccountOrigin,
+} from "@auction/lax-ecosystem/lax-account-origin";
+import {
   BidAlertAnnouncementStore,
   BidAlertDigestLedger,
   BidAlertFollowerProvisioner,
@@ -50,6 +54,8 @@ export function createBidAlertRuntime(input: {
     | "ALERT_LINK_PREVIOUS_SECRET"
     | "ALERT_LINK_PREVIOUS_KEY_ID"
     | "WEB_ORIGIN"
+    | "LAX_ACCOUNT_PUBLIC_ORIGIN"
+    | "NODE_ENV"
   >;
   db: Database;
   email: IEmailService;
@@ -111,7 +117,13 @@ export function createBidAlertRuntime(input: {
       mailer: new OutboxAlertMailer({ email }),
       notices: new BidDigestNotices({ notices: new BidAlertLotNoticeWriter(db) }),
       codec,
-      urls: webAlertUrls(env.WEB_ORIGIN, "/settings#alerts"),
+      urls: webAlertUrls(
+        env.WEB_ORIGIN,
+        laxAccountPageUrl(
+          resolveLaxAccountOrigin(env.LAX_ACCOUNT_PUBLIC_ORIGIN, env.NODE_ENV),
+          "alerts",
+        ),
+      ),
       clock,
       log: { info: (f, m) => log.info(f, m), warn: (f, m) => log.warn(f, m) },
     }),

@@ -1,6 +1,11 @@
 import { DEV_ALERT_LINK_SECRET, isUsableAlertLinkSecret } from "@auction/alerts";
 import { legalEntityFor } from "@auction/branding";
 import { resolveStrictBidEligibilityRollout } from "@auction/domain";
+import {
+  DEFAULT_CLOUDFLARE_PROXY_CIDRS,
+  DEFAULT_TRUSTED_PROXY_CIDRS,
+  parseCidrList,
+} from "@auction/http-headers/client-ip";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
@@ -85,6 +90,8 @@ const envSchema = z
       z.string().min(32).optional(),
     ),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+    /** Where LAX Account lives; the "manage your alerts" link in alert emails goes there. */
+    LAX_ACCOUNT_PUBLIC_ORIGIN: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /**
      * Legal entity that owns Bid records in the cross-product portfolio. Defaults to Bid's
      * operator from `legalEntityFor("bid")`; override it only if the company changes.
@@ -332,6 +339,26 @@ const envSchema = z
     ),
     /** The private sale terms version both sides accept. */
     PRIVATE_SALE_TERMS_VERSION: z.preprocess(emptyToUndefined, z.string().max(40).optional()),
+    /**
+     * Proxies whose forwarded client-address headers are believed (comma-separated CIDRs). A
+     * request from any other peer is keyed on the peer itself.
+     */
+    API_TRUSTED_PROXY_CIDRS: z.preprocess(
+      (val) =>
+        parseCidrList(typeof val === "string" ? val : undefined, DEFAULT_TRUSTED_PROXY_CIDRS),
+      z.array(z.string().min(1)),
+    ),
+    /** Cloudflare edge ranges; defaults to Cloudflare's published list. */
+    API_TRUSTED_CLOUDFLARE_PROXY_CIDRS: z.preprocess(
+      (val) =>
+        parseCidrList(typeof val === "string" ? val : undefined, DEFAULT_CLOUDFLARE_PROXY_CIDRS),
+      z.array(z.string().min(1)),
+    ),
+    /**
+     * Shared with the web servers. When a request carries it in `x-lax-client-ip-token`, the
+     * visitor address in `x-lax-client-ip` is used. Unset: that header is ignored.
+     */
+    API_SSR_CLIENT_IP_TOKEN: z.preprocess(trimEmptyToUndefined, z.string().min(24).optional()),
     /** Shared secret for worker → API internal cron routes (`X-Cron-Secret` header).
      * Optional until bulk jobs are enabled in deploy.
      */

@@ -225,6 +225,9 @@ import ShopGuestOrderLinkEmail, {
 import ShopOrderReceiptEmail, {
   subject as shopOrderReceiptSubject,
 } from "./templates/shop-order-receipt.js";
+import ShopPrintSwappedEmail, {
+  subject as shopPrintSwappedSubject,
+} from "./templates/shop-print-swapped.js";
 import ShopProductionStartedEmail, {
   subject as shopProductionStartedSubject,
 } from "./templates/shop-production-started.js";
@@ -713,6 +716,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-production-started": {
     subject: shopProductionStartedSubject,
     component: (vars) => <ShopProductionStartedEmail {...vars} />,
+  },
+  "shop-print-swapped": {
+    subject: shopPrintSwappedSubject,
+    component: (vars) => <ShopPrintSwappedEmail {...vars} />,
   },
   "shop-dispatch-notice": {
     subject: shopDispatchNoticeSubject,

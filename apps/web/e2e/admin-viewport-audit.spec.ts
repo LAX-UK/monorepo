@@ -9,11 +9,24 @@ const VIEWPORTS = [
 ] as const;
 
 async function assertNoHorizontalOverflow(page: import("@playwright/test").Page) {
-  const overflow = await page.evaluate(() => {
+  const wider = await page.evaluate(() => {
     const doc = document.documentElement;
-    return doc.scrollWidth <= doc.clientWidth + 1;
+    if (doc.scrollWidth <= doc.clientWidth + 1) return [];
+    // Name the widest elements past the edge, so a failure says what scrolls the page.
+    // An element inside a box that scrolls on its own (a stepper, a table) does not widen the page.
+    const scrollsInside = (el: Element) => {
+      for (let box = el.parentElement; box && box !== document.body; box = box.parentElement) {
+        const clips = getComputedStyle(box).overflowX !== "visible";
+        if (clips && box.getBoundingClientRect().right <= doc.clientWidth + 1) return true;
+      }
+      return false;
+    };
+    return [...document.body.querySelectorAll("*")]
+      .filter((el) => el.getBoundingClientRect().right > doc.clientWidth + 1 && !scrollsInside(el))
+      .slice(0, 6)
+      .map((el) => `${el.tagName.toLowerCase()}.${String(el.getAttribute("class")).slice(0, 90)}`);
   });
-  expect(overflow).toBe(true);
+  expect(wider, `${page.url()} scrolls sideways`).toEqual([]);
 }
 
 test.describe("admin viewport audit @a11y", () => {

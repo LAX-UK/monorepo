@@ -10,6 +10,7 @@ import {
   turnstileHost,
   viewChrome,
 } from "../html.js";
+import { hostedLegalProduct } from "../legal-links.js";
 import { HOSTED_AUTH_ASSET_VERSION } from "../policy.js";
 import { socialActions } from "../social-actions.js";
 import {
@@ -41,8 +42,8 @@ function magicLinkInsteadButton(view: HostedAuthView): string {
 }
 
 function emailFirstBody(view: HostedAuthView): string {
-  return `<div id="login-root" class="auth-stack" data-email-first="true">
-    ${socialActions(view)}
+  return `<div id="login-root" class="auth-stack" data-email-first="true" data-legal-product="${hostedLegalProduct(view.flow.product)}">
+    ${socialActions(view, HOSTED_COPY.socialSignInAgreement)}
     <form id="login-form" class="auth-form" novalidate>
       <div class="auth-step" data-login-step="email">
         ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username", ...(view.flow.loginHint ? { value: view.flow.loginHint } : {}) })}
@@ -80,8 +81,8 @@ function emailFirstBody(view: HostedAuthView): string {
 }
 
 function combinedBody(view: HostedAuthView): string {
-  return `<div id="login-root" class="auth-stack" data-email-first="false">
-    ${socialActions(view)}
+  return `<div id="login-root" class="auth-stack" data-email-first="false" data-legal-product="${hostedLegalProduct(view.flow.product)}">
+    ${socialActions(view, HOSTED_COPY.socialSignInAgreement)}
     <form id="login-form" class="auth-form" novalidate>
       ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username", ...(view.flow.loginHint ? { value: view.flow.loginHint } : {}) })}
       ${passwordField({ id: "password", label: "Password", autocomplete: "current-password" })}

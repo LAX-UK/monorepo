@@ -174,6 +174,7 @@ export function PortfolioWorkDetail({ work }: { work: WorkDetailVm }) {
             {work.title}
           </h1>
           {work.artist ? <p className="text-sm text-on-surface-variant">{work.artist}</p> : null}
+          {work.edition ? <p className="text-sm text-on-surface-variant">{work.edition}</p> : null}
           <StatusBadge tone={work.statusTone}>{work.statusLabel}</StatusBadge>
         </div>
       </header>

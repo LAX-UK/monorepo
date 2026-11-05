@@ -9,6 +9,7 @@ vi.mock("@/lib/data/http/hc-server", () => ({
 describe("GET /q/[shortCode]", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.stubEnv("API_SSR_CLIENT_IP_TOKEN", "t".repeat(32));
     vi.mocked(getServerApiBase).mockReturnValue("http://127.0.0.1:3001");
   });
 
@@ -50,7 +51,7 @@ describe("GET /q/[shortCode]", () => {
         headers: {
           "user-agent": "Mozilla/5.0",
           referer: "https://example.test",
-          "x-forwarded-for": "203.0.113.42",
+          "x-forwarded-for": "1.2.3.4, 203.0.113.42, 10.0.0.1",
         },
       }),
       { params: Promise.resolve({ shortCode: "Abc12345" }) },
@@ -60,7 +61,9 @@ describe("GET /q/[shortCode]", () => {
     const headers = init.headers as Headers;
     expect(headers.get("user-agent")).toBe("Mozilla/5.0");
     expect(headers.get("referer")).toBe("https://example.test");
-    expect(headers.get("x-forwarded-for")).toBe("203.0.113.42");
+    expect(headers.get("x-lax-client-ip")).toBe("203.0.113.42");
+    expect(headers.get("x-lax-client-ip-token")).toBe("t".repeat(32));
+    expect(headers.get("x-forwarded-for")).toBeNull();
   });
 
   it("returns 410 body from the API for inactive codes", async () => {

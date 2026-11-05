@@ -258,6 +258,32 @@ function storefrontsOf(rows: ReadonlyArray<Pick<AdminArtworkListItem, "salesChan
   return channels.length === 1 && only ? CHANNEL_LABELS[only] : "LAX Shop and lax.art";
 }
 
+/** An edition sold in LAX Shop is a release; originals and lax.art works are not. */
+export function isEditionRelease(artwork: {
+  salesChannel: AdminArtworkListItem["salesChannel"];
+  run: unknown;
+}): boolean {
+  return artwork.salesChannel === "shop" && artwork.run !== null;
+}
+
+/**
+ * The "Tell subscribers" choice a publish offers: shown when at least one of the artworks is an
+ * edition release, with words that match how many there are. Null when nothing publishes as a
+ * release, so the box is not offered.
+ */
+export function releaseAlertChoice(
+  rows: ReadonlyArray<{ salesChannel: AdminArtworkListItem["salesChannel"]; run: unknown }>,
+): { label: string; description: string } | null {
+  const releases = rows.filter(isEditionRelease).length;
+  if (releases === 0) return null;
+  const mixed = releases < rows.length;
+  const editions = releases === 1 ? "this edition" : `these ${releases} editions`;
+  return {
+    label: "Tell subscribers",
+    description: `Includes ${editions} in the next release alert email${mixed ? " (originals are not announced)" : ""}. Each person is emailed once for each edition. Untick to publish quietly.`,
+  };
+}
+
 /**
  * What a visibility change asks before it runs, for one artwork or a selection: the title names
  * what changes, the description says what the public sees afterwards, and the button names the

@@ -74,7 +74,6 @@ describe("Shop anonymisation policy", () => {
         "shop_followed_artist",
         "shop_alert_subscriber",
         "shop_basket",
-        "shop_release_alert_subscription",
         "shop_artist_application",
         "shop_party_invite",
         "shop_identity_session",
@@ -88,7 +87,6 @@ describe("Shop anonymisation policy", () => {
     );
     for (const table of [
       "shop_basket",
-      "shop_release_alert_subscription",
       "shop_alert_subscriber",
       "shop_saved_artwork",
       "shop_followed_artist",

@@ -47,6 +47,8 @@ export interface EditionPrintStore {
   listedProofCount(mainRunId: string, proofType: ProofType): Promise<number>;
   /** Marks the artwork changed and returns its new version. */
   touch(artworkId: string): Promise<string>;
+  /** Records the shop admin's approval to sell a hors commerce proof listing. */
+  recordHorsCommerceApproval(artworkId: string, actorSubjectId: string): Promise<void>;
 }
 
 export type StoredFacts = {

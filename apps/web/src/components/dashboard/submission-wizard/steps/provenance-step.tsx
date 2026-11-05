@@ -19,7 +19,7 @@ export function ProvenanceStep({ form }: StepProps) {
   const exhibitionFields = useFieldArray({ control: form.control, name: "exhibitions" });
 
   return (
-    <div className="space-y-8" data-testid="submission-wizard-step-provenance">
+    <div className="space-y-8">
       <section className="space-y-4">
         <div>
           <h3 className="font-headline text-lg font-semibold text-on-surface">Provenance</h3>

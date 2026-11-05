@@ -11,6 +11,15 @@ describe("connectLoadErrorOf", () => {
     ).resolves.toBe("account_unreachable");
   });
 
+  it("reads a Stripe that is not set up as nothing to load, not a failure", async () => {
+    await expect(connectLoadErrorOf(json(503, { error: "stripe_not_configured" }))).resolves.toBe(
+      "not_connected",
+    );
+    await expect(
+      connectLoadErrorOf(json(503, { error: "stripe_platform_profile_incomplete" })),
+    ).resolves.toBe("server_error");
+  });
+
   it("keeps the other outcomes", async () => {
     await expect(connectLoadErrorOf(json(401, {}))).resolves.toBe("unauthorized");
     await expect(connectLoadErrorOf(json(404, {}))).resolves.toBe("not_connected");

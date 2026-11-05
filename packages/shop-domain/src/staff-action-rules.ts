@@ -36,12 +36,13 @@ export function checkSeparateApprover(input: {
 
 /**
  * Capabilities only the Administrator holds, whatever other roles are added later: correcting a
- * run's edition facts after sales, approving hors commerce proofs, settings, and erasing a
+ * run's edition facts after sales, approving hors commerce proofs, moving a sold print to a print another party owns, settings, and erasing a
  * guest's personal data.
  */
 export const ADMINISTRATOR_ONLY_CAPABILITIES = [
   "edition_facts.correct",
   "hors_commerce.approve",
+  "print_swap.cross_owner",
   "settings.write",
   "lead.erase",
 ] as const satisfies readonly ShopStaffCapability[];

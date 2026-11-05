@@ -1,5 +1,5 @@
 import type { ICrmRecordLinkRepository } from "@auction/persistence/interfaces";
-import { CRM_ENTITY, CRM_FIELD } from "../crm-field-constants.js";
+import { CRM_ENTITY, CRM_FIELD, CRM_LEAD_ONLY_FIELDS } from "../crm-field-constants.js";
 import { CrmGatewayError, crmPersonNotLinkedError } from "../crm-gateway-error.js";
 import type { CrmGateway } from "../crm-gateway.js";
 import {
@@ -24,7 +24,11 @@ export class CrmPersonSyncHandler {
     email: string,
     fields: Record<string, unknown>,
     mode: "upsert" | "patch",
-    options?: { allowStaleLinkRecovery?: boolean },
+    options?: {
+      allowStaleLinkRecovery?: boolean;
+      /** Sent only when this call creates the lead; never to an existing lead or a Contact. */
+      createOnlyFields?: Record<string, unknown>;
+    },
   ): Promise<CrmSyncResult> {
     if (await this.deps.linkRepo.isDeletionRequested(CRM_ENTITY.subject, subjectId)) {
       return { outcome: "skipped", reason: "deletion_requested" };
@@ -92,9 +96,14 @@ export class CrmPersonSyncHandler {
     }
 
     const upsertFields = {
+      ...(match.kind === "create_lead" ? options?.createOnlyFields : {}),
       ...fields,
       [CRM_FIELD.subjectExternalId]: subjectId,
     } as Record<string, string | number | boolean | null>;
+    if (module === "Contacts") {
+      // Lead-only fields do not exist on Contacts.
+      for (const name of CRM_LEAD_ONLY_FIELDS) delete upsertFields[name];
+    }
 
     const result = await this.deps.gateway.upsert({
       module,

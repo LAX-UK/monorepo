@@ -8,9 +8,14 @@ import {
   ReadOnlyMedia,
   ReadOnlySearchListing,
 } from "@/components/artworks/artwork-read-only-sections";
+import {
+  CertificateAuthorityCard,
+  laxIssuesCertificate,
+} from "@/components/artworks/edition-runs/certificate-authority-card.client";
 import { CreatePrintsDialog } from "@/components/artworks/edition-runs/create-prints-dialog.client";
 import { EditionFactsCard } from "@/components/artworks/edition-runs/edition-facts-card.client";
 import { EditionRunCard } from "@/components/artworks/edition-runs/edition-run-card.client";
+import { HorsCommerceApprovalCard } from "@/components/artworks/edition-runs/hors-commerce-approval-card.client";
 import { LinkedListingsCard } from "@/components/artworks/edition-runs/linked-listings-card.client";
 import { LinkedPrintsCard } from "@/components/artworks/edition-runs/linked-prints-card.client";
 import { OpenStockCard } from "@/components/artworks/edition-runs/open-stock-card.client";
@@ -84,6 +89,7 @@ import {
   CHANNEL_LABELS,
   SALE_STATE_LABELS,
   VISIBILITY_ACTION_LABELS,
+  isEditionRelease,
   presentArtworkState,
 } from "@/server/domain/artwork-list.vm";
 import {
@@ -503,8 +509,7 @@ export function ArtworkEditor({
 
   const visibility = record ? artworkVisibilityActions(record) : null;
   // Only an edition sold in the Shop is a release; originals and lax.art works are not.
-  const offersReleaseAlert =
-    record !== null && record.salesChannel === "shop" && record.run !== null && permissions.write;
+  const offersReleaseAlert = record !== null && isEditionRelease(record) && permissions.write;
   // The money field resets its text whenever `value` differs from what it last parsed, so it is
   // fed its own reading of the text; the form's stricter rules apply on validation.
   const typedPence = parsePoundsToPence(values.priceText);
@@ -1274,6 +1279,20 @@ export function ArtworkEditor({
               run={run}
               permissions={{ write: permissions.write, correct: permissions.correctFacts }}
             />
+            {laxIssuesCertificate(run) ? (
+              <CertificateAuthorityCard
+                artworkId={record.artworkId}
+                authority={run.certificateAuthority}
+                canWrite={permissions.write}
+              />
+            ) : null}
+            {run.horsCommerce ? (
+              <HorsCommerceApprovalCard
+                artworkId={record.artworkId}
+                horsCommerce={run.horsCommerce}
+                canApprove={permissions.approveHorsCommerce}
+              />
+            ) : null}
             {run.stock && isOpenSpec(run.spec) ? (
               <OpenStockCard
                 artworkId={record.artworkId}
@@ -1371,7 +1390,7 @@ export function ArtworkEditor({
                 onCheckedChange={(checked) => setSendReleaseAlert(checked === true)}
               />
             }
-            label="Send release alert"
+            label="Tell subscribers"
             description="Emails everyone who asked to hear about new editions. Each person is emailed once for this edition."
           />
         ) : null}
