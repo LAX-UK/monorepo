@@ -800,6 +800,7 @@ export const shopOrder = pgTable(
     uniqueIndex("shop_order_invoice_number_uid").on(table.invoiceNumber),
     index("shop_order_subject_idx").on(table.identitySubjectId),
     index("shop_order_subject_created_idx").on(table.identitySubjectId, table.createdAt),
+    index("shop_order_created_id_idx").on(table.createdAt, table.id),
     index("shop_order_status_created_idx").on(table.status, table.createdAt),
     index("shop_order_guest_customer_idx")
       .on(table.guestCustomerId)
