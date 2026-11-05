@@ -33,6 +33,38 @@ describe("PublicArtworkSummarySchema", () => {
     ).toBe(true);
   });
 
+  describe("editionCardLine", () => {
+    const base = {
+      slug: "demo",
+      title: "Demo",
+      artistName: "Artist",
+      artistSlug: "artist",
+      imageUrl: null,
+      saleState: "for_sale",
+      dimensions: null,
+      medium: null,
+      yearCreated: null,
+      salesChannel: "shop",
+      eligibleForEditionAllocation: true,
+      printPricePence: 12000,
+      availability: { totalEditions: 25, state: "available" },
+    };
+
+    it("is optional, so an older shop-api still parses", () => {
+      expect(check.Check(base)).toBe(true);
+    });
+
+    it("accepts a line or null", () => {
+      expect(check.Check({ ...base, editionCardLine: "Open edition · Plate-signed" })).toBe(true);
+      expect(check.Check({ ...base, editionCardLine: null })).toBe(true);
+    });
+
+    it("rejects an empty line and a non-string", () => {
+      expect(check.Check({ ...base, editionCardLine: "" })).toBe(false);
+      expect(check.Check({ ...base, editionCardLine: 3 })).toBe(false);
+    });
+  });
+
   it("rejects internal allocation fields", () => {
     expect(
       check.Check({
