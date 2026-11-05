@@ -18,6 +18,7 @@ function isRetryableStripeError(
   );
 }
 
+/** Retries up to 3 attempts with exponential backoff (same basis as Connect transfer path). */
 export async function executeWithStripeRetries<T>(run: () => Promise<T>): Promise<T> {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {

@@ -6,6 +6,7 @@ import {
 import type { Env } from "../env.js";
 import { NoOpErrorReporter } from "../infrastructure/no-op-error.reporter.js";
 import { SentryErrorReporter } from "../infrastructure/sentry-error.reporter.js";
+import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import { NoOpAccountingProvider } from "../services/accounting/no-op-accounting.provider.js";
 import { XeroAccountingProvider } from "../services/accounting/xero-accounting.provider.js";
 import { XeroPaymentRecorder } from "../services/accounting/xero-payment-recorder.js";
@@ -301,6 +302,7 @@ export function createPaymentsServices(
     },
     legalEntityRepository,
     userRepo,
+    { record: recordMoneyPathEvent },
   );
 
   const paymentGroups = createPaymentGroupServices({

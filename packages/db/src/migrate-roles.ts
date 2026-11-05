@@ -394,6 +394,14 @@ export const WORKER_DOMAIN_EVENT_DELIVERY_TABLES = ["domain_event_delivery"] as 
 /** Worker-local finance cron: expire stale pending/authorized payments. */
 export const WORKER_PAYMENT_MAINTENANCE_TABLES = ["payment"] as const;
 
+/**
+ * Raising the invoice when a lot is sold, with the same implementation as the API: the payment
+ * row, its fulfilment record ("awaiting payment") and, when the amount needs it, a pending
+ * source-of-funds case. Inserts only; the worker still never deletes any of them.
+ */
+export const WORKER_INVOICE_RAISE_INSERT_TABLES = ["payment", "source_of_funds"] as const;
+export const WORKER_INVOICE_RAISE_FULFILMENT_TABLES = ["lot_fulfilment"] as const;
+
 /** Worker-local finance cron: Xero OAuth, external refs, webhook replay, refund reconcile. */
 export const WORKER_FINANCE_INTEGRATION_TABLES = [
   "xero_connection",
@@ -851,6 +859,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_PAYMENT_MAINTENANCE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_INVOICE_RAISE_INSERT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_INVOICE_RAISE_FULFILMENT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_FINANCE_INTEGRATION_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
