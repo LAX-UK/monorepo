@@ -15,6 +15,7 @@ import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPaymentCaptureInTransaction } from "../interfaces/payment-capture.js";
+import type { IUnappliedMoneyRecorder } from "../payment/unapplied-money.recorder.js";
 import type { PaymentWebhookResult } from "../stripe-webhook/payment-webhook-types.js";
 
 /** Records a provider event as handled inside `tx`; `false` when it was handled before. */
@@ -44,6 +45,8 @@ export type PaymentGroupSettlementDeps = {
   events: IDomainEventSink;
   claims: IProviderEventClaim;
   receipt: IPaymentGroupReceipt;
+  /** The finance task for money that arrived but could not settle the group. */
+  unappliedMoney: Pick<IUnappliedMoneyRecorder, "record">;
 };
 
 const LIVE: PaymentGroupStatus[] = ["open", "processing"];
@@ -264,5 +267,19 @@ export class PaymentGroupSettlementService {
       actorUserId: null,
       actingLegalEntityId: group.buyerLegalEntityId,
     });
+    await this.deps.unappliedMoney.record(
+      tx,
+      {
+        reason: "group_not_settleable",
+        paymentId: null,
+        paymentGroupId: group.id,
+        stripePaymentIntentId: received.paymentIntentId,
+        stripeChargeId: received.chargeId,
+        stripeCustomerId: null,
+        amountCents: received.amountPence,
+        currency: received.currency,
+      },
+      group.buyerLegalEntityId,
+    );
   }
 }

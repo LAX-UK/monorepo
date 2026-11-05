@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import {
   DrizzleLotFulfilmentRepository,
   DrizzlePaymentDomainEventsRepository,
+  DrizzleUnappliedMoneyReader,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { NoOpErrorReporter } from "../infrastructure/no-op-error.reporter.js";
@@ -35,7 +36,9 @@ import {
 } from "../services/payment/payment-tier.policy.js";
 import { PlatformFeePolicy } from "../services/payment/platform-fee.policy.js";
 import { StripeCheckoutService } from "../services/payment/stripe-checkout.service.js";
+import { UnappliedMoneyRecorder } from "../services/payment/unapplied-money.recorder.js";
 import { StripePaymentWebhookService } from "../services/stripe-payment-webhook.service.js";
+import { UnappliedMoneyRefundHandler } from "../services/stripe-webhook/unapplied-money-refund.handler.js";
 import { StripeCustomerGateway } from "../services/stripe/stripe-customer.gateway.js";
 import { StripePaymentGateway } from "../services/stripe/stripe-payment-gateway.js";
 import { XeroOAuthService } from "../services/xero-oauth.service.js";
@@ -305,6 +308,8 @@ export function createPaymentsServices(
     { record: recordMoneyPathEvent },
   );
 
+  const unappliedMoneyReader = new DrizzleUnappliedMoneyReader(db);
+  const unappliedMoney = new UnappliedMoneyRecorder(unappliedMoneyReader, domainEventSink);
   const paymentGroups = createPaymentGroupServices({
     db,
     env,
@@ -321,6 +326,7 @@ export function createPaymentsServices(
     accounting: accountingProvider,
     stripePayments: stripePaymentGateway,
     stripeCustomers: stripeCustomerGateway,
+    unappliedMoney,
   });
 
   const privateSaleDeals = createPrivateSaleDealServices({
@@ -357,6 +363,12 @@ export function createPaymentsServices(
           }),
           paymentGroups.webhooks,
           privateSaleDeals.webhooks,
+          unappliedMoney,
+          new UnappliedMoneyRefundHandler({
+            transactionRunner: platform.transactionRunner,
+            reader: unappliedMoneyReader,
+            recorder: unappliedMoney,
+          }),
         )
       : null;
 

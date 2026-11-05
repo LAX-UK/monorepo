@@ -1,3 +1,4 @@
+import type { UnappliedMoneyPayload } from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import type pino from "pino";
 import type { ProjectorRunContext } from "./lib/projector.types.js";
@@ -31,6 +32,11 @@ import { fanoutPayoutInitiated } from "./notification-fanout/payout-fanout.js";
 import { fanoutProxyCancelled } from "./notification-fanout/proxy-fanout.js";
 import { fanoutSaleCancelled } from "./notification-fanout/sale-cancelled-fanout.js";
 import { fanoutPayoutTransferBlocked } from "./notification-fanout/transfer-blocked-fanout.js";
+import {
+  alertFromBlockedCapture,
+  alertFromUnappliedMoney,
+  fanoutUnappliedMoney,
+} from "./notification-fanout/unapplied-money-fanout.js";
 import { fanoutLotWithdrawalDeclined } from "./notification-fanout/withdrawal-declined-fanout.js";
 
 export const NOTIFICATION_FANOUT_PROJECTOR = "notification_fanout";
@@ -214,6 +220,32 @@ export async function processNotificationFanout(options: {
           saleId: row.aggregateId,
           payload: row.payload as SaleCancelledPayload,
         });
+      }
+      if (row.eventType === "payment.unapplied_money_received") {
+        await fanoutUnappliedMoney({
+          staffOpsRecipientReader: ctx.staffOpsRecipientReader,
+          emailService,
+          adminEmailAddress: ctx.adminEmailAddress,
+          webOrigin: ctx.webOrigin,
+          eventId: row.id,
+          alert: alertFromUnappliedMoney(row.payload as UnappliedMoneyPayload),
+        });
+      }
+      if (row.eventType === "payment.capture_blocked_terminal_status") {
+        const alert = alertFromBlockedCapture(
+          row.aggregateId,
+          row.payload as Parameters<typeof alertFromBlockedCapture>[1],
+        );
+        if (alert) {
+          await fanoutUnappliedMoney({
+            staffOpsRecipientReader: ctx.staffOpsRecipientReader,
+            emailService,
+            adminEmailAddress: ctx.adminEmailAddress,
+            webOrigin: ctx.webOrigin,
+            eventId: row.id,
+            alert,
+          });
+        }
       }
       if (row.eventType === "payout.clawback_required") {
         await fanoutPayoutClawbackRequired({

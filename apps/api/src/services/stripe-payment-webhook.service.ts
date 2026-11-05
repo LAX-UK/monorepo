@@ -9,11 +9,16 @@ import type { IDisputeWebhookRecorder } from "./disputes/dispute-case-recorder.j
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
+import {
+  type IUnappliedMoneyRecorder,
+  NO_UNAPPLIED_MONEY_RECORDER,
+} from "./payment/unapplied-money.recorder.js";
 import { handleChargeRefunded } from "./stripe-webhook/checkout-refund-handlers.js";
 import {
   type PaymentGroupWebhookDeps,
   createPaymentWebhookHandlers,
 } from "./stripe-webhook/create-payment-webhook-handlers.js";
+import { handleCustomerBalanceFundsAvailable } from "./stripe-webhook/customer-balance-unapplied.handler.js";
 import {
   type DealPaymentWebhookDeps,
   dealChargeRefunded,
@@ -21,6 +26,7 @@ import {
 } from "./stripe-webhook/deal-payment-webhook-handlers.js";
 import type { StripePaymentWebhookDeps } from "./stripe-webhook/payment-webhook-lookup.js";
 import type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-types.js";
+import type { UnappliedMoneyRefundHandler } from "./stripe-webhook/unapplied-money-refund.handler.js";
 
 export type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-types.js";
 
@@ -40,6 +46,8 @@ export class StripePaymentWebhookService {
     private readonly disputes: IDisputeWebhookRecorder,
     private readonly paymentGroups: PaymentGroupWebhookDeps | null = null,
     private readonly dealPayments: DealPaymentWebhookDeps | null = null,
+    unappliedMoney: IUnappliedMoneyRecorder | null = null,
+    private readonly unappliedRefunds: UnappliedMoneyRefundHandler | null = null,
   ) {
     this.deps = {
       transactionRunner,
@@ -49,6 +57,7 @@ export class StripePaymentWebhookService {
       payoutAdjustments,
       paymentCapture,
       domainEventSink,
+      unappliedMoney: unappliedMoney ?? NO_UNAPPLIED_MONEY_RECORDER,
     };
     const handlers = createPaymentWebhookHandlers(this.deps, paymentGroups);
     this.handlers = dealPayments ? withDealPaymentHandlers(handlers, dealPayments) : handlers;
@@ -139,11 +148,21 @@ export class StripePaymentWebhookService {
     event: Stripe.Event,
     charge: Stripe.Charge,
   ): Promise<PaymentWebhookResult> {
+    const unapplied = await this.unappliedRefunds?.handle(event, charge);
+    if (unapplied) return unapplied;
     const deal = this.dealPayments
       ? await dealChargeRefunded(this.dealPayments, event, charge)
       : null;
     if (deal) return deal;
     const grouped = await this.paymentGroups?.chargeEvents.chargeRefunded(event, charge);
     return grouped ?? handleChargeRefunded(this.deps, event, charge);
+  }
+
+  /** A bank transfer reached the buyer's Stripe balance and Stripe could not apply it. */
+  handleCashBalanceFundsAvailable(
+    event: Stripe.Event,
+    balance: Stripe.CashBalance,
+  ): Promise<PaymentWebhookResult> {
+    return handleCustomerBalanceFundsAvailable(this.deps, event, balance);
   }
 }

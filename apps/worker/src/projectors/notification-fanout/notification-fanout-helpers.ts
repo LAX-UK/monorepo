@@ -101,6 +101,8 @@ export const SUPPORTED_EVENT_TYPES = [
   "legal_entity.bidding_limit_changed",
   "payment.cancelled",
   "sale.cancelled",
+  "payment.unapplied_money_received",
+  "payment.capture_blocked_terminal_status",
 ] as const;
 
 export function formatReason(reason: string): string {

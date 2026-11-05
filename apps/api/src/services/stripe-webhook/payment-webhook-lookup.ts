@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPaymentCaptureService } from "../interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
+import type { IUnappliedMoneyRecorder } from "../payment/unapplied-money.recorder.js";
 
 export type StripePaymentWebhookDeps = {
   transactionRunner: ITransactionRunner;
@@ -16,6 +17,8 @@ export type StripePaymentWebhookDeps = {
   payoutAdjustments: IPayoutAdjustmentService;
   paymentCapture: IPaymentCaptureService;
   domainEventSink: IDomainEventSink;
+  /** Where money that cannot be applied to its invoice goes: a finance task, never a refund. */
+  unappliedMoney: IUnappliedMoneyRecorder;
 };
 
 export type PaymentRowLookup = {

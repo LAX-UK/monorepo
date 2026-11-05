@@ -28,6 +28,7 @@ import type {
 } from "../interfaces/admin-work-items.reader.js";
 import { adminWorkItemHref } from "../lib/admin-work-item-href.js";
 import { BLOCKED_CAPTURE_EVENT, toBlockedCapture } from "./blocked-capture.query.js";
+import { DrizzleUnappliedMoneyReader } from "./drizzle-unapplied-money.reader.js";
 import { lotWorkItemTitle, sentenceCase } from "./work-item-labels.js";
 
 const DUE_DATE = new Intl.DateTimeFormat("en-GB", {
@@ -191,6 +192,22 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         assignedToUserId: null,
       };
     });
+  }
+
+  async listUnappliedMoney(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const open = await new DrizzleUnappliedMoneyReader(this.db).listOpen({ limit });
+    return open.map((money) => ({
+      sourceId: money.dedupeKey,
+      kind: "payment_money_unapplied" as const,
+      domain: "finance" as const,
+      title: "Money received that could not be applied",
+      subtitle: `${sentenceCase(money.reason)} · ${formatWorkItemAmount(money.amountCents / 100)}`,
+      href: adminWorkItemHref("payment_money_unapplied", { paymentId: money.paymentId }),
+      saleId: null,
+      createdAt: money.receivedAt,
+      sourceUpdatedAt: money.receivedAt,
+      assignedToUserId: null,
+    }));
   }
 
   async listOverduePayments(limit: number, now: Date): Promise<AdminWorkItemSourceRow[]> {
