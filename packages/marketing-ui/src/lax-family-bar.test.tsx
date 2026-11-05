@@ -155,4 +155,31 @@ describe("LaxFamilyMenuLinks", () => {
     const { container } = render(<LaxFamilyMenuLinks links={[]} />);
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("lists up to three help links in a Help landmark with 36px hit areas", () => {
+    render(
+      <LaxFamilyBar
+        links={LINKS}
+        helpLinks={[
+          { label: "Help", href: "/help" },
+          { label: "Contact", href: "/contact" },
+          { label: "Delivery", href: "/delivery" },
+          { label: "Extra", href: "/extra" },
+        ]}
+      />,
+    );
+    const nav = screen.getByRole("navigation", { name: "Help" });
+    const links = within(nav).getAllByRole("link");
+    expect(links.map((link) => link.textContent)).toEqual(["Help", "Contact", "Delivery"]);
+    for (const link of links) {
+      expect(link.className).toContain("min-h-9");
+      expect(link.className).toContain("text-xs");
+      expect(link.className).toContain("text-on-surface-variant");
+    }
+  });
+
+  it("renders no Help landmark without help links", () => {
+    render(<LaxFamilyBar links={LINKS} />);
+    expect(screen.queryByRole("navigation", { name: "Help" })).toBeNull();
+  });
 });

@@ -16,6 +16,9 @@ export type LinkedListingSyncResult = {
  * differs, so a pass with nothing to do changes nothing. The artist follows Zoho's artist code; a
  * code no lax.art artist carries leaves the artist as it is. The web address never changes.
  *
+ * Images follow Zoho's order, so the first is the cover. A picture the listing already shows keeps
+ * the alt text and caption staff wrote for it; only pictures new to the listing start without.
+ *
  * Runs as Shop, because Shop owns the listing: the Zoho sync only ever writes the register.
  */
 export function createLinkedListingSyncRunner(
@@ -66,25 +69,40 @@ export function createLinkedListingSyncRunner(
       for (const row of candidates.rows) {
         const next = [...new Set(row.image_refs)];
         const current = await tx
-          .select({ mediaKey: shopArtworkImage.mediaKey })
+          .select({
+            mediaKey: shopArtworkImage.mediaKey,
+            alt: shopArtworkImage.alt,
+            caption: shopArtworkImage.caption,
+          })
           .from(shopArtworkImage)
           .where(eq(shopArtworkImage.artworkId, row.id))
           .orderBy(shopArtworkImage.position);
         if (current.map((image) => image.mediaKey).join("\n") === next.join("\n")) continue;
         await tx.delete(shopArtworkImage).where(eq(shopArtworkImage.artworkId, row.id));
         if (next.length > 0) {
-          await tx.insert(shopArtworkImage).values(
-            next.map((mediaKey, position) => ({
-              artworkId: row.id,
-              mediaKey,
-              position,
-              alt: null,
-            })),
-          );
+          await tx.insert(shopArtworkImage).values(keepStaffText(row.id, next, current));
         }
         await tx.execute(sql`UPDATE shop_artwork SET updated_at = now() WHERE id = ${row.id}`);
         images += 1;
       }
       return { details: details.rows.length, images };
     });
+}
+
+type ListingImage = { mediaKey: string; alt: string | null; caption: string | null };
+
+/** The listing's pictures in Zoho's order, each keeping the text already written for it. */
+export function keepStaffText(
+  artworkId: string,
+  keys: readonly string[],
+  current: readonly ListingImage[],
+) {
+  const written = new Map(current.map((image) => [image.mediaKey, image]));
+  return keys.map((mediaKey, position) => ({
+    artworkId,
+    mediaKey,
+    position,
+    alt: written.get(mediaKey)?.alt ?? null,
+    caption: written.get(mediaKey)?.caption ?? null,
+  }));
 }

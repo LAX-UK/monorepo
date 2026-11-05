@@ -2,8 +2,9 @@ name: Terraform plan prod
 # READ-ONLY. Runs `terraform plan` for terraform/ephemeral/prod against the real backend.
 # Never applies: there is no apply step and no -auto-approve anywhere in this file.
 # Locking: the repo never uses -lock=false (plan, drift check and apply all take the state
-# lock), so this plan keeps the default lock too. The shared concurrency group below makes it
-# queue behind a running prod ephemeral apply instead of racing it for the lock.
+# lock), so this plan keeps the lock too, and waits up to 5 minutes for a running apply to
+# release it (-lock-timeout=5m). It has its OWN concurrency group: sharing the apply's group
+# would let a newly queued plan replace a pending apply, since a group keeps one pending run.
 on:
   workflow_dispatch:
     inputs:
@@ -22,7 +23,7 @@ on:
         required: false
         default: main
 concurrency:
-  group: terraform-prod-ephemeral
+  group: terraform-plan-prod-ephemeral
   cancel-in-progress: false
 permissions:
   contents: read
@@ -169,15 +170,30 @@ jobs:
       TF_VAR_container_registry_region: ${{ vars.DOCR_REGISTRY_REGION || 'fra1' }}
       TF_VAR_container_registry_subscription_tier: ${{ vars.DOCR_REGISTRY_TIER || 'professional' }}
     steps:
-      - name: Validate app_image_tag
+      - name: Validate inputs
         env:
           INPUT_APP_IMAGE_TAG: ${{ inputs.app_image_tag }}
+          INPUT_INFRA_REF: ${{ inputs.infra_ref }}
+          INPUT_APP_GIT_BRANCH: ${{ inputs.app_git_branch }}
         run: |
           set -euo pipefail
           if ! [[ "$INPUT_APP_IMAGE_TAG" =~ ^[0-9a-f]{40}$ ]]; then
             echo "::error::app_image_tag must be a 40-character lowercase git SHA."
             exit 1
           fi
+          # Git ref characters only; a leading "-" or ".." would be read as an option or a path.
+          ref_pattern='^[A-Za-z0-9._/-]{1,200}$'
+          for pair in "infra_ref:$INPUT_INFRA_REF" "app_git_branch:$INPUT_APP_GIT_BRANCH"; do
+            name="${pair%%:*}"
+            value="${pair#*:}"
+            if [ -z "$value" ] && [ "$name" = "app_git_branch" ]; then
+              continue
+            fi
+            if ! [[ "$value" =~ $ref_pattern ]] || [[ "$value" == -* ]] || [[ "$value" == *..* ]]; then
+              echo "::error::$name must be a git ref (letters, digits, ., _, /, -), at most 200 characters."
+              exit 1
+            fi
+          done
       - uses: actions/checkout@v4
       - uses: ./.github/actions/checkout-infra
         with:
@@ -185,13 +201,37 @@ jobs:
           app-id: ${{ vars.INFRA_REPO_APP_ID }}
           private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
       - name: App Platform Git branch
+        env:
+          INPUT_APP_GIT_BRANCH: ${{ inputs.app_git_branch }}
         run: |
-          b="${{ inputs.app_git_branch }}"
+          b="$INPUT_APP_GIT_BRANCH"
           [ -n "$b" ] || b="main"
           echo "TF_VAR_app_git_branch=$b" >> "$GITHUB_ENV"
       - name: Pin app image tag
         if: vars.APP_DEPLOY_SOURCE_PROD == 'image'
-        run: echo "TF_VAR_app_image_tag=${{ inputs.app_image_tag }}" >> "$GITHUB_ENV"
+        env:
+          INPUT_APP_IMAGE_TAG: ${{ inputs.app_image_tag }}
+        run: |
+          echo "APP_IMAGE_TAG=$INPUT_APP_IMAGE_TAG" >> "$GITHUB_ENV"
+          echo "TF_VAR_app_image_tag=$INPUT_APP_IMAGE_TAG" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        if: vars.APP_DEPLOY_SOURCE_PROD == 'image'
+        with:
+          node-version: "22"
+      - uses: digitalocean/action-doctl@v2
+        if: vars.APP_DEPLOY_SOURCE_PROD == 'image'
+        with:
+          version: 2.0.0
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Verify prebuilt web image exists for app pin
+        if: vars.APP_DEPLOY_SOURCE_PROD == 'image'
+        env:
+          APP_IMAGE_TAG: ${{ env.APP_IMAGE_TAG }}
+        run: |
+          set -euo pipefail
+          node scripts/ci/verify-prebuilt-web-for-deploy.mjs \
+            --environment prod \
+            --sha "$APP_IMAGE_TAG"
       - uses: ./.github/actions/terraform-setup
         with:
           working-directory: .infra-config/terraform/ephemeral/prod
@@ -202,7 +242,7 @@ jobs:
         working-directory: .infra-config/terraform/ephemeral/prod
         run: |
           set +e
-          terraform plan -input=false -detailed-exitcode -out=prod-ephemeral.tfplan
+          terraform plan -input=false -lock-timeout=5m -detailed-exitcode -out=prod-ephemeral.tfplan
           code=$?
           set -e
           echo "exitcode=$code" >> "$GITHUB_OUTPUT"
@@ -213,13 +253,18 @@ jobs:
         run: terraform show -no-color prod-ephemeral.tfplan > prod-ephemeral-plan.txt
       - name: Job summary
         working-directory: .infra-config/terraform/ephemeral/prod
+        env:
+          INPUT_APP_IMAGE_TAG: ${{ inputs.app_image_tag }}
+          INPUT_INFRA_REF: ${{ inputs.infra_ref }}
+          INPUT_APP_GIT_BRANCH: ${{ inputs.app_git_branch }}
+          PLAN_EXITCODE: ${{ steps.plan.outputs.exitcode }}
         run: |
           {
             echo "## Terraform plan: ephemeral/prod (read-only, nothing applied)"
-            echo "- app_image_tag: \`${{ inputs.app_image_tag }}\`"
-            echo "- infra ref: \`${{ inputs.infra_ref }}\`"
-            echo "- app_git_branch: \`${{ inputs.app_git_branch }}\`"
-            if [ "${{ steps.plan.outputs.exitcode }}" = "2" ]; then
+            echo "- app_image_tag: \`$INPUT_APP_IMAGE_TAG\`"
+            echo "- infra ref: \`$INPUT_INFRA_REF\`"
+            echo "- app_git_branch: \`$INPUT_APP_GIT_BRANCH\`"
+            if [ "$PLAN_EXITCODE" = "2" ]; then
               echo "- Result: **changes present**"
             else
               echo "- Result: **no changes**"

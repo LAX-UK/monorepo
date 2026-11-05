@@ -36,6 +36,16 @@ export const artworkRegister = pgTable(
     dimensions: text("dimensions"),
     year: integer("year"),
     imageRefs: jsonb("image_refs").$type<string[]>().notNull().default([]),
+    /**
+     * Where each picture came from in Zoho and which stored copy it became, in Zoho's order.
+     * `imageRefs` is always the distinct keys of this list.
+     */
+    imageSources: jsonb("image_sources")
+      .$type<{ zohoFileId: string; fingerprint: string; sha256: string; key: string }[]>()
+      .notNull()
+      .default([]),
+    /** When the pictures were last compared with Zoho's; null until the first check. */
+    imagesCheckedAt: timestamp("images_checked_at", { mode: "date", withTimezone: true }),
     catalogueStatus: text("catalogue_status"),
     offerState: text("offer_state")
       .$type<"held" | "lax_art" | "bid_sale" | "private_sale" | "sold" | "withdrawn">()
@@ -57,6 +67,7 @@ export const artworkRegister = pgTable(
       .on(table.sourceOriginalId)
       .where(sql`${table.sourceOriginalId} IS NOT NULL`),
     index("artwork_register_offer_state_idx").on(table.offerState),
+    index("artwork_register_images_checked_idx").on(table.imagesCheckedAt),
     index("artwork_register_offer_ref_idx")
       .on(table.offerRefKind, table.offerRefId)
       .where(sql`${table.offerRefId} IS NOT NULL`),
