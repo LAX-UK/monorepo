@@ -433,3 +433,31 @@ export function laxArtOfferAvailability(
   }
   return { kind: "offer" };
 }
+
+// ---------------------------------------------------------------------------------------------
+// Offering an artwork at auction.
+
+export type AuctionOfferAvailability =
+  /** A print: prints are sold in runs on LAX Shop, so no offer is drawn at all. */
+  | { kind: "hidden" }
+  /** Staff can offer it now. */
+  | { kind: "offer" }
+  /** A reason is in the way; the action stays, disabled, and says why. */
+  | { kind: "blocked"; reason: string };
+
+/** What the record's "Offer at auction…" action does for this artwork. */
+export function auctionOfferAvailability(
+  detail: Pick<AdminRegisterDetail, "kind" | "auctionBlockers" | "whereItIs">,
+): AuctionOfferAvailability {
+  if (detail.kind !== "original") return { kind: "hidden" };
+  if (detail.whereItIs.key === "draft_bid_lot") {
+    return {
+      kind: "blocked",
+      reason: "A draft lot is already in LAX Bid. Open it there to finish and publish it.",
+    };
+  }
+  if (detail.auctionBlockers.length > 0) {
+    return { kind: "blocked", reason: detail.auctionBlockers.map((b) => b.message).join(" ") };
+  }
+  return { kind: "offer" };
+}

@@ -8,11 +8,25 @@ function place(overrides: Partial<AdminWhereItIs> & Pick<AdminWhereItIs, "key">)
     chip: { label: "x", tone: "neutral", marker: "hollow" },
     from: null,
     since: null,
+    bidLot: null,
     ...overrides,
   };
 }
 
 describe("whereItIsLine", () => {
+  it("names the sale a draft lot or a lot in a sale is in, when LAX Bid said", () => {
+    const bidLot = { lotId: "lot-1", saleTitle: "Winter sale" };
+    expect(whereItIsLine(place({ key: "draft_bid_lot", bidLot }), {})).toMatchObject({
+      lead: "Draft lot in LAX Bid",
+      trail: " · Winter sale",
+    });
+    expect(whereItIsLine(place({ key: "bid_sale", bidLot }), {})).toMatchObject({
+      lead: "In a LAX Bid sale",
+      trail: " · Winter sale",
+    });
+    expect(whereItIsLine(place({ key: "bid_sale" }), {}).trail).toBe("");
+  });
+
   it("says an unplaced artwork is not offered, and what it can do", () => {
     expect(whereItIsLine(place({ key: "not_offered" }), {})).toEqual({
       lead: "Not offered",

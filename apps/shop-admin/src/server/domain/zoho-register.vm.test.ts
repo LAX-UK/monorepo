@@ -2,6 +2,7 @@ import type { AdminRegisterEvent, AdminRegisterLastCheck } from "@auction/shop-c
 import { describe, expect, it } from "vitest";
 import {
   activeZohoTab,
+  auctionOfferAvailability,
   buildRegisterTimeline,
   checkFigures,
   checkFootnote,
@@ -281,5 +282,48 @@ describe("laxArtOfferAvailability", () => {
       kind: "blocked",
       reason: "This artwork is in a LAX Bid sale. Zoho shows this artwork as reserved.",
     });
+  });
+});
+
+describe("auctionOfferAvailability", () => {
+  const place = (key: string) => ({ key }) as never;
+  const original = {
+    kind: "original" as const,
+    auctionBlockers: [],
+    whereItIs: place("not_offered"),
+  };
+
+  it("offers an original that can be offered, with or without a lax.art draft", () => {
+    expect(auctionOfferAvailability(original)).toEqual({ kind: "offer" });
+    expect(auctionOfferAvailability({ ...original, whereItIs: place("draft_lax_art") })).toEqual({
+      kind: "offer",
+    });
+  });
+
+  it("draws nothing for a print", () => {
+    expect(auctionOfferAvailability({ ...original, kind: "print" })).toEqual({ kind: "hidden" });
+  });
+
+  it("stays, disabled, with every reason in words", () => {
+    expect(
+      auctionOfferAvailability({
+        ...original,
+        auctionBlockers: [
+          { message: "Zoho shows this artwork as reserved.", link: null },
+          { message: "This artwork is in a private sale.", link: null },
+        ],
+      }),
+    ).toEqual({
+      kind: "blocked",
+      reason: "Zoho shows this artwork as reserved. This artwork is in a private sale.",
+    });
+  });
+
+  it("points at the draft lot once there is one, instead of offering again", () => {
+    const result = auctionOfferAvailability({ ...original, whereItIs: place("draft_bid_lot") });
+    expect(result).toMatchObject({ kind: "blocked" });
+    expect(result.kind === "blocked" ? result.reason : "").toMatch(
+      /draft lot is already in LAX Bid/,
+    );
   });
 });
