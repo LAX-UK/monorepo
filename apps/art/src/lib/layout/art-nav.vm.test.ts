@@ -2,10 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   type ArtHeaderNavData,
   buildArtMegaNavSections,
-  buildArtMobileNavItems,
   buildArtNavItems,
   buildArtSearchSuggestions,
-  resolveArtMobileNavKey,
   resolveArtNavKey,
 } from "./art-nav.vm.js";
 
@@ -38,34 +36,6 @@ describe("art navigation view model", () => {
         .filter((item) => item.active)
         .map((item) => item.key),
     ).toEqual(["exhibitions"]);
-  });
-
-  it.each([
-    ["/", "home"],
-    ["/artworks", "discover"],
-    ["/artists/flora-powers", "discover"],
-    ["/search", "discover"],
-    ["/account/favourites", "favorites"],
-    ["/account/enquiries", "account"],
-    ["/account", "account"],
-    ["/accounting", null],
-    ["/login", "account"],
-    ["/signed-out", "account"],
-    ["/session-expired", "account"],
-    ["/exhibitions", null],
-  ] as const)("maps mobile %s to %s", (pathname, key) => {
-    expect(resolveArtMobileNavKey(pathname)).toBe(key);
-  });
-
-  it("builds the Home, Discover, Favorites, Account tab bar with one active tab", () => {
-    const mobile = buildArtMobileNavItems("/account/favourites");
-    expect(mobile.map(({ label, href }) => [label, href])).toEqual([
-      ["Home", "/"],
-      ["Discover", "/artworks"],
-      ["Favourites", "/account/favourites"],
-      ["Account", "/account"],
-    ]);
-    expect(mobile.filter((item) => item.active).map((item) => item.key)).toEqual(["favorites"]);
   });
 
   describe("desktop mega nav", () => {

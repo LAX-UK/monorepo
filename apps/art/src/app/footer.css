@@ -4,7 +4,26 @@
   max-width: 100%;
 }
 
+/* Lockup heights come from the shared constants (LOCKUP_HEIGHTS) via --lockup-h. */
 .art-header__logo .lax-lockup {
   width: auto;
-  height: 2.75rem;
+  height: var(--lockup-h, 2.5rem);
+}
+
+/* The ".ART" tag beside the phone mark takes the same tone as the mark. */
+.art-lockup__tag {
+  color: var(--color-brand-900);
+  font-family: var(--font-label, inherit);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+html.dark .art-lockup__tag {
+  color: var(--color-on-surface);
+}
+
+[data-header-tone="on-dark"] .art-lockup__tag,
+html.dark [data-header-tone="on-dark"] .art-lockup__tag {
+  color: var(--color-hero-foreground);
 }

@@ -122,8 +122,8 @@
   --container-inner: 86rem;
   --header-height: 3.5rem;
   --page-bottom-padding: 3rem;
-  /* Figma footer `235:226` (light only; dark keeps its own surface). */
-  --color-footer-bg: #f8f8f8;
+  /* The shared footer surface; the dark theme sets its own below. */
+  --color-footer-bg: #ededef;
   --color-nav-border: #e6e8eb;
   --color-nav-text: var(--color-brand-obsidian);
   --color-hero-foreground: #ffffff;
@@ -184,8 +184,6 @@
   --section-spacing-tight: 3rem;
   --section-spacing-loose: 7.5rem;
   --art-page-gutter: 1rem;
-  /* Space reserved below content for the floating MarketingBottomTabBar: 66px pill + 1rem inset + safe area. */
-  --art-bottom-nav-height: calc(4.125rem + 1rem + env(safe-area-inset-bottom, 0px));
   --motion-duration-sm: 200ms;
   --motion-duration-md: 320ms;
   --motion-duration-lg: 520ms;
@@ -194,10 +192,17 @@
   --motion-ease-decelerate: cubic-bezier(0, 0, 0, 1);
 }
 
-/* Header is h-14 below lg and h-16 at lg+ (art-header.client.tsx). */
+/* Header: a 56px row on phones, a 72px row from 768px, plus the 36px LAX top bar from 1024px
+   (art-header.client.tsx). The header publishes its measured height over these. */
+@media (min-width: 48rem) {
+  :root {
+    --header-height: 4.5rem;
+  }
+}
+
 @media (min-width: 64rem) {
   :root {
-    --header-height: 4rem;
+    --header-height: 6.75rem;
   }
 }
 
@@ -335,7 +340,7 @@ html.dark {
   --color-ring: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
   --color-input-border: var(--brand-field-edge-on-dark);
-  --color-footer-bg: #0d0f0f;
+  --color-footer-bg: #1b1d1d;
   --color-nav-border: #333534;
   --color-nav-text: var(--color-brand-light-cream);
   --color-hero-foreground: #fafafa;
@@ -356,15 +361,15 @@ html.dark {
   --color-destructive-foreground: var(--color-on-error);
 }
 
-/* A page action bar (artwork detail) takes the bottom of the screen below `md`, and the bottom
-   tab bar gives way to it, so the fixed chrome is one bar, never two stacked over the page. The
-   footer sits outside <main>, so the page cannot pad for the bar; reserve its height at the end
-   of the document instead so the footer's last row stays reachable. */
+/* A page action bar (artwork detail) takes the bottom of the screen below `md` and claims the
+   shared bottom slot, so the tab bar steps aside and the bar's own height is reserved instead of
+   the tab bar's. The footer sits outside <main>, so the page cannot pad for the action bar;
+   reserve its height at the end of the document so the footer's last row stays reachable. */
 @media (max-width: 47.99rem) {
   body:has(.art-action-bar) {
     padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
   }
-  body:has(.art-action-bar) .art-bottom-nav {
-    display: none;
+  :root[data-lax-bottom-bar]:has(.art-action-bar) {
+    --lax-bottom-bar-space: 0px;
   }
 }
