@@ -187,7 +187,10 @@ describe("composeArtHomePage sections", () => {
     services.editorial.home.mockResolvedValue({
       status: "ok",
       data: {
-        placements: [placement("home_whats_on", 0), placement("home_stories", 0)],
+        placements: [
+          placement("home_whats_on", 0),
+          placement("home_stories", 0, { mediaUrl: "https://cdn.test/story.jpg" }),
+        ],
       },
     });
     services.editorial.listVenues.mockResolvedValue({
@@ -217,19 +220,8 @@ describe("composeArtHomePage sections", () => {
     expect(vm.surfaces.guide).toBe("band");
   });
 
-  it("marks a section text-led when none of its items has an image", async () => {
+  it("marks the galleries text-led when none has an image; What's on and stories never are", async () => {
     const services = fakeArtServices();
-    services.editorial.home.mockResolvedValue({
-      status: "ok",
-      data: {
-        placements: [
-          placement("home_whats_on", 0),
-          placement("home_whats_on", 1),
-          placement("home_stories", 0),
-          placement("home_stories", 1, { mediaUrl: "https://cdn.test/story.jpg" }),
-        ],
-      },
-    });
     services.editorial.listVenues.mockResolvedValue({
       status: "ok",
       data: { items: [{ slug: "marylebone", name: "Marylebone", coverUrl: null }] },
@@ -241,29 +233,26 @@ describe("composeArtHomePage sections", () => {
 
     const vm = await composeArtHomePage(services);
 
-    expect(vm.textLed).toEqual({ whatsOn: true, stories: false, galleries: true });
+    expect(vm.textLed).toEqual({ galleries: true });
   });
 
-  it("caps What's on at a lead plus three and stories at a lead plus two", async () => {
+  it("caps What's on at two and stories at three", async () => {
     const services = fakeArtServices();
     services.editorial.home.mockResolvedValue({
       status: "ok",
       data: {
         placements: [
           ...[0, 1, 2, 3, 4].map((position) => placement("home_whats_on", position)),
-          ...[0, 1, 2, 3].map((position) => placement("home_stories", position)),
+          ...[0, 1, 2, 3].map((position) =>
+            placement("home_stories", position, { mediaUrl: "https://cdn.test/story.jpg" }),
+          ),
         ],
       },
     });
 
     const vm = await composeArtHomePage(services);
 
-    expect(vm.whatsOn.map((card) => card.headline)).toEqual([
-      "home_whats_on 0",
-      "home_whats_on 1",
-      "home_whats_on 2",
-      "home_whats_on 3",
-    ]);
+    expect(vm.whatsOn.map((card) => card.headline)).toEqual(["home_whats_on 0", "home_whats_on 1"]);
     expect(vm.stories).toHaveLength(3);
   });
 
@@ -485,5 +474,178 @@ describe("composeArtHomePage promo placements", () => {
       title: "Art and collectibles at auction",
       imageUrl: null,
     });
+  });
+});
+
+function exhibitionSummary(slug: string, overrides: Record<string, unknown> = {}) {
+  return {
+    slug,
+    kind: "exhibition",
+    title: `Show ${slug}`,
+    subtitle: null,
+    summary: null,
+    startsOn: "2026-10-01",
+    endsOn: "2026-12-12",
+    coverUrl: `https://cdn.test/${slug}.jpg`,
+    featured: false,
+    venue: { slug: "marylebone", name: "Marylebone" },
+    ...overrides,
+  };
+}
+
+function storySummary(slug: string, overrides: Record<string, unknown> = {}) {
+  return {
+    slug,
+    kind: "article",
+    title: `Story ${slug}`,
+    standfirst: null,
+    coverUrl: `https://cdn.test/${slug}.jpg`,
+    featured: true,
+    readMinutes: 3,
+    ...overrides,
+  };
+}
+
+describe("composeArtHomePage What's on", () => {
+  it("leads with the current exhibitions: a large lead and a second card", async () => {
+    const services = fakeArtServices();
+    services.editorial.listExhibitions.mockResolvedValue({
+      status: "ok",
+      data: { items: ["a", "b", "c"].map((slug) => exhibitionSummary(slug)) },
+    });
+
+    const vm = await composeArtHomePage(services);
+
+    expect(services.editorial.listExhibitions).toHaveBeenCalledWith("current");
+    expect(vm.sections).toContain("whats-on");
+    expect(vm.whatsOn).toHaveLength(2);
+    expect(vm.whatsOn[0]).toMatchObject({
+      kicker: "Exhibition",
+      kickerDetail: "Marylebone",
+      meta: "1 Oct – 12 Dec 2026",
+      actions: [
+        { label: "Visit", href: "/exhibitions/a" },
+        { label: "See the works", href: "/exhibitions/a#works" },
+      ],
+    });
+    expect(vm.whatsOn[1]).not.toHaveProperty("actions");
+    expect(services.editorial.getExhibition).not.toHaveBeenCalled();
+  });
+
+  it("hides the section with no exhibitions", async () => {
+    const vm = await composeArtHomePage(fakeArtServices());
+    expect(vm.whatsOn).toEqual([]);
+    expect(vm.sections).not.toContain("whats-on");
+  });
+
+  it("shows one exhibition alone", async () => {
+    const services = fakeArtServices();
+    services.editorial.listExhibitions.mockResolvedValue({
+      status: "ok",
+      data: { items: [exhibitionSummary("a")] },
+    });
+    const vm = await composeArtHomePage(services);
+    expect(vm.whatsOn).toHaveLength(1);
+    expect(vm.sections).toContain("whats-on");
+  });
+
+  it("uses the lead artwork's image for an exhibition without a cover", async () => {
+    const services = fakeArtServices();
+    services.editorial.listExhibitions.mockResolvedValue({
+      status: "ok",
+      data: { items: [exhibitionSummary("a", { coverUrl: null })] },
+    });
+    services.editorial.getExhibition.mockResolvedValue({
+      status: "ok",
+      data: {
+        ...exhibitionSummary("a", { coverUrl: null }),
+        artworks: [{ ...artworkSummary(), imageUrl: "https://cdn.test/work.jpg" }],
+      },
+    } as never);
+
+    const vm = await composeArtHomePage(services);
+
+    expect(services.editorial.getExhibition).toHaveBeenCalledWith("a");
+    expect(vm.whatsOn[0]?.imageUrl).toBe("https://cdn.test/work.jpg");
+  });
+
+  it("keeps the card (with its image frame) when the detail read fails", async () => {
+    const services = fakeArtServices();
+    services.editorial.listExhibitions.mockResolvedValue({
+      status: "ok",
+      data: { items: [exhibitionSummary("a", { coverUrl: null })] },
+    });
+    services.editorial.getExhibition.mockRejectedValue(new Error("down"));
+
+    const vm = await composeArtHomePage(services);
+
+    expect(vm.whatsOn).toMatchObject([{ headline: "Show a", imageUrl: null }]);
+  });
+
+  it("falls back to the current exhibitions when the home read fails", async () => {
+    const services = fakeArtServices();
+    services.editorial.home.mockResolvedValue({ status: "error" });
+    services.editorial.listExhibitions.mockResolvedValue({
+      status: "ok",
+      data: { items: [exhibitionSummary("a")] },
+    });
+    const vm = await composeArtHomePage(services);
+    expect(vm.whatsOn).toHaveLength(1);
+  });
+});
+
+describe("composeArtHomePage Featured stories", () => {
+  it("takes a placed story's cover and reading time from the story", async () => {
+    const services = fakeArtServices();
+    services.editorial.home.mockResolvedValue({
+      status: "ok",
+      data: { placements: [placement("home_stories", 0, { refSlug: "welcome" })] },
+    });
+    services.editorial.listStories.mockResolvedValue({
+      status: "ok",
+      data: { items: [storySummary("welcome")] },
+    });
+
+    const vm = await composeArtHomePage(services);
+
+    expect(vm.stories).toMatchObject([
+      { kicker: "Story", kickerDetail: "3 min read", imageUrl: "https://cdn.test/welcome.jpg" },
+    ]);
+  });
+
+  it("hides a story published without a cover, and the rail with it when nothing else is left", async () => {
+    const services = fakeArtServices();
+    services.editorial.home.mockResolvedValue({
+      status: "ok",
+      data: {
+        placements: [
+          placement("home_stories", 0, { refSlug: "welcome", headline: "Welcome to lax.art" }),
+        ],
+      },
+    });
+    services.editorial.listStories.mockResolvedValue({
+      status: "ok",
+      data: { items: [storySummary("welcome", { coverUrl: null })] },
+    });
+
+    const vm = await composeArtHomePage(services);
+
+    expect(vm.stories).toEqual([]);
+    expect(vm.sections).not.toContain("stories");
+  });
+
+  it("keeps the covered stories when another has none", async () => {
+    const services = fakeArtServices();
+    services.editorial.listStories.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [storySummary("welcome", { coverUrl: null }), storySummary("studio-visit")],
+      },
+    });
+
+    const vm = await composeArtHomePage(services);
+
+    expect(vm.stories.map((card) => card.href)).toEqual(["/stories/studio-visit"]);
+    expect(vm.sections).toContain("stories");
   });
 });

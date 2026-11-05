@@ -27,6 +27,8 @@ export const SHOP_API_ERROR_CODES = {
   ACCOUNT_EXISTS: "shop.account_exists",
   /** The person has asked to delete their account, so they cannot take on a new order. */
   ACCOUNT_DELETION_PENDING: "shop.account_deletion_pending",
+  /** A story needs a cover image before it is published or featured; the body names the field. */
+  STORY_COVER_REQUIRED: "shop.story_cover_required",
   SAVED_VIEW_DUPLICATE: "shop.saved_view_duplicate",
   SAVED_VIEW_LIMIT: "shop.saved_view_limit",
   SAVED_VIEW_ORDER_CHANGED: "shop.saved_view_order_changed",

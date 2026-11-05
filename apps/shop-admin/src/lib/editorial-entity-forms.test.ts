@@ -13,6 +13,7 @@ import {
   emptyVenueForm,
   exhibitionFormFromDetail,
   storyFormFromDetail,
+  storyPublishErrors,
   venueFormFromDetail,
 } from "./editorial-entity-forms";
 import { emptyWeek } from "./editorial-opening-hours";
@@ -222,6 +223,33 @@ describe("story form", () => {
     externalUrl: null,
     body: [],
   };
+
+  it("asks for a cover image before a story is featured, on the cover field", () => {
+    const result = buildStoryPayload({ ...base, featured: true, coverMediaKey: null }, []);
+    expect(result).toEqual({
+      ok: false,
+      errors: { coverMediaKey: "Add a cover image before featuring this story." },
+    });
+    expect(
+      buildStoryPayload(
+        { ...base, featured: true, coverMediaKey: "shop/editorial-cover/a.jpg" },
+        [],
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("lets a draft be saved without a cover when it is not featured", () => {
+    expect(buildStoryPayload({ ...base, coverMediaKey: null }, []).ok).toBe(true);
+  });
+
+  it("stops publishing a story without a cover, and only that", () => {
+    expect(storyPublishErrors({ ...base, coverMediaKey: null })).toEqual({
+      coverMediaKey: "Add a cover image before publishing this story.",
+    });
+    expect(storyPublishErrors({ ...base, coverMediaKey: "shop/editorial-cover/a.jpg" })).toEqual(
+      {},
+    );
+  });
 
   it("requires an https video URL when one is given", () => {
     const result = buildStoryPayload({ ...base, videoUrl: "youtube.com/x" }, []);

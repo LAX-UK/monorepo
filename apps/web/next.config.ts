@@ -105,6 +105,22 @@ const nextConfig: NextConfig = {
         hostname: "media.lax.bid",
         pathname: "/**",
       },
+      // Public-domain pictures used by the test environment's demo catalogue.
+      {
+        protocol: "https",
+        hostname: "images.metmuseum.org",
+        pathname: "/CRDImages/**",
+      },
+      {
+        protocol: "https",
+        hostname: "openaccess-cdn.clevelandart.org",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "test.lax.bid",
+        pathname: "/demo/**",
+      },
       {
         protocol: "https",
         hostname: "test-media.lax.bid",
