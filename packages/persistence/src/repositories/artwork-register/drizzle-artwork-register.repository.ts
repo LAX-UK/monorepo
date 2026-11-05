@@ -22,7 +22,7 @@ import {
   artworkRegisterEvent as event,
   artworkRegister as register,
 } from "@auction/db/schema";
-import { and, asc, eq, gt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, or, sql } from "drizzle-orm";
 import type {
   ApplyZohoChangeResult,
   ConflictCursor,
