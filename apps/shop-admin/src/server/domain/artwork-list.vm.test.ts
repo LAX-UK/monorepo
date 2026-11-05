@@ -11,8 +11,10 @@ import {
   bulkVisibilityActions,
   editionSizeLabel,
   hasActiveArtworkFilters,
+  isEditionRelease,
   parseArtworkListQuery,
   presentArtworkState,
+  releaseAlertChoice,
   summariseBulkVisibility,
   visibilityConfirmCopy,
 } from "./artwork-list.vm";
@@ -225,5 +227,32 @@ describe("visibilityConfirmCopy", () => {
     expect(copy.description).toContain("LAX Shop and lax.art");
     expect(copy.confirmLabel).toBe("Archive 2 artworks");
     expect(copy.tone).toBe("danger");
+  });
+});
+
+describe("release alert choice", () => {
+  const edition = { salesChannel: "shop" as const, run: {} };
+  const original = { salesChannel: "art" as const, run: null };
+
+  it("treats only an edition sold in LAX Shop as a release", () => {
+    expect(isEditionRelease(edition)).toBe(true);
+    expect(isEditionRelease(original)).toBe(false);
+    expect(isEditionRelease({ salesChannel: "art", run: {} })).toBe(false);
+  });
+
+  it("is not offered when nothing is a release", () => {
+    expect(releaseAlertChoice([original])).toBeNull();
+    expect(releaseAlertChoice([])).toBeNull();
+  });
+
+  it("counts the editions and says when originals stay quiet", () => {
+    expect(releaseAlertChoice([edition])?.description).toContain("this edition");
+    expect(releaseAlertChoice([edition, edition, edition])?.description).toContain(
+      "these 3 editions",
+    );
+    expect(releaseAlertChoice([edition, original])?.description).toContain(
+      "originals are not announced",
+    );
+    expect(releaseAlertChoice([edition])?.description).not.toContain("originals");
   });
 });

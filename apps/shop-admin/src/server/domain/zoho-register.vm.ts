@@ -237,7 +237,8 @@ const SKIPPED_REASON_LABEL: Record<string, string> = {
   invalid_modified_time: "Zoho gave no usable edit time",
   missing_title: "No title",
   missing_stock_code: "No stock code",
-  invalid_stock_code: "Stock code is not in the LAX format",
+  invalid_stock_code:
+    "Stock code is not in the LAX format: LAX-ORI or LAX-PRT, artist, collection, year, number",
   missing_artist: "No artist",
   missing_artist_code: "Artist has no code",
   duplicate_stock_code: "Stock code already belongs to another artwork",
@@ -255,6 +256,8 @@ const NEW_ARTWORK_GAP_LABEL: Record<string, string> = {
   missing_medium: "No medium",
   missing_dimensions: "No size",
   artist_code_differs_from_stock_code: "Artist code differs from the stock code",
+  non_standard_code_parts:
+    "Artist code should be 2 to 3 letters and collection code 2 to 4 letters or digits",
 };
 
 export function newArtworkGapLabel(gap: string): string {
@@ -291,6 +294,48 @@ export function checkFootnote(run: CheckRun): string | null {
     run.outcomes.stale > 0 ? `${run.outcomes.stale} older than what LAX has` : null,
   ].filter((part): part is string => part !== null);
   return parts.length > 0 ? `${parts.join(", ")}.` : null;
+}
+
+// ---------------------------------------------------------------------------------------------
+// The LAX listing LAX keeps on each Zoho Product.
+
+type ListingRun = NonNullable<AdminRegisterLastCheck["listing"]["run"]>;
+
+/** The headline figures of a listing pass; a dry run says what it would have corrected. */
+export function listingFigures(run: ListingRun): CheckFigure[] {
+  const dry = run.mode === "dry_run";
+  return [
+    { id: "checked", label: "Artworks checked", value: String(run.checked) },
+    {
+      id: "changed",
+      label: dry ? "Would be corrected" : "Corrected",
+      value: String(run.changed),
+    },
+    { id: "unchanged", label: "Already right", value: String(run.unchanged) },
+    { id: "failed", label: "Not written", value: String(run.failed) },
+  ];
+}
+
+const LISTING_FAILURE_LABEL: Record<string, string> = {
+  product_not_found: "No longer in Zoho",
+  INVALID_DATA: "Zoho refused the value",
+  NO_PERMISSION: "The LAX integration may not write these fields",
+  OAUTH_SCOPE_MISMATCH: "The LAX integration may not write these fields",
+  TOO_MANY_REQUESTS: "Zoho was busy",
+  lax_art_unavailable: "lax.art could not be reached",
+  lax_art_refused: "lax.art refused the request",
+};
+
+export function listingFailureLabel(code: string): string {
+  return LISTING_FAILURE_LABEL[code] ?? "Zoho did not accept it";
+}
+
+/** The writes that stopped after their retries, as one line; null when there are none. */
+export function failedDeliveriesNote(count: number): string | null {
+  if (count === 0) return null;
+  const updates = count === 1 ? "1 update to Zoho" : `${count} updates to Zoho`;
+  const they = count === 1 ? "It is" : "They are";
+  return `${updates} stopped after ${count === 1 ? "its" : "their"} retries. ${they} waiting in Failed jobs in LAX Bid admin.`;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -389,9 +434,50 @@ function describeEvent(
         ...(typeof payload.reason === "string" ? { detail: `Reason: ${payload.reason}` } : {}),
         tone: "warning",
       };
+    case "move_confirmed":
+      return describeMove(payload);
+    case "zoho_writeback_recorded":
+      return describeWriteback(payload);
     default:
-      return { title: "Changed" };
+      return { title: "Something changed" };
   }
+}
+
+const text = (value: unknown): string | null =>
+  typeof value === "string" && value.trim() !== "" ? value : null;
+
+/** A draft lot made for an offer at auction, or a return to lax.art; the actor says who confirmed. */
+function describeMove(
+  payload: Record<string, unknown>,
+): Pick<TimelineEvent, "title" | "detail" | "tone"> {
+  if (payload.direction === "to_lax_art") {
+    return {
+      title: "Returned to lax.art as a draft",
+      detail: "From a LAX Bid lot",
+      tone: "success",
+    };
+  }
+  const parts = [
+    payload.consignorAgreed === true ? "Consignor agreement confirmed" : null,
+    text(payload.saleTitle),
+    payload.withdrawnFromLaxArt === true ? "Taken off lax.art" : null,
+  ].filter((part): part is string => part !== null);
+  return {
+    title: "Draft lot created",
+    ...(parts.length > 0 ? { detail: parts.join(" · ") } : {}),
+    tone: "success",
+  };
+}
+
+/** LAX set Zoho's Status after an offer or a sale in LAX. */
+function describeWriteback(
+  payload: Record<string, unknown>,
+): Pick<TimelineEvent, "title" | "detail"> {
+  const to = text(payload.to);
+  return {
+    title: "Status set in Zoho",
+    ...(to ? { detail: `Zoho Status is now ${to}` } : {}),
+  };
 }
 
 /** The register's history as the shared timeline reads it. */
@@ -475,6 +561,34 @@ export function laxArtOfferAvailability(
   }
   if (detail.offerBlockers.length > 0) {
     return { kind: "blocked", reason: detail.offerBlockers.map((b) => b.message).join(" ") };
+  }
+  return { kind: "offer" };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Offering an artwork at auction.
+
+export type AuctionOfferAvailability =
+  /** A print: prints are sold in runs on LAX Shop, so no offer is drawn at all. */
+  | { kind: "hidden" }
+  /** Staff can offer it now. */
+  | { kind: "offer" }
+  /** A reason is in the way; the action stays, disabled, and says why. */
+  | { kind: "blocked"; reason: string };
+
+/** What the record's "Offer at auction…" action does for this artwork. */
+export function auctionOfferAvailability(
+  detail: Pick<AdminRegisterDetail, "kind" | "auctionBlockers" | "whereItIs">,
+): AuctionOfferAvailability {
+  if (detail.kind !== "original") return { kind: "hidden" };
+  if (detail.whereItIs.key === "draft_bid_lot") {
+    return {
+      kind: "blocked",
+      reason: "A draft lot is already in LAX Bid. Open it there to finish and publish it.",
+    };
+  }
+  if (detail.auctionBlockers.length > 0) {
+    return { kind: "blocked", reason: detail.auctionBlockers.map((b) => b.message).join(" ") };
   }
   return { kind: "offer" };
 }

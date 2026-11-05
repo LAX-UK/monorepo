@@ -88,4 +88,30 @@ describe("presentWhereItIs", () => {
     });
     expect(place).toMatchObject({ key: "sold", from: "On lax.art", since: day(1).toISOString() });
   });
+
+  it("reads a held artwork with a draft lot in LAX Bid as a draft lot, and names the lot", () => {
+    const bidDraft = { lotId: "lot-1", saleTitle: "Winter sale" };
+    expect(
+      presentWhereItIs({ entry: held, events: [], laxArt: draft, bidDraft, now: NOW }),
+    ).toMatchObject({
+      key: "draft_bid_lot",
+      chip: { label: "Draft lot in LAX Bid", marker: "hollow" },
+      bidLot: bidDraft,
+    });
+  });
+
+  it("reads an artwork in a LAX Bid sale from the lot the register holds", () => {
+    const entry = {
+      offer: { state: "bid_sale" as const, ref: { kind: "bid_lot" as const, id: "lot-9" } },
+    };
+    expect(presentWhereItIs({ entry, events: [], laxArt: null, now: NOW })).toMatchObject({
+      key: "bid_sale",
+      chip: { label: "In a LAX Bid sale", marker: "filled" },
+      bidLot: { lotId: "lot-9", saleTitle: null },
+    });
+  });
+
+  it("has no lot where there is none", () => {
+    expect(presentWhereItIs({ entry: held, events: [], laxArt: null, now: NOW }).bidLot).toBeNull();
+  });
 });

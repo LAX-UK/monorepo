@@ -2,6 +2,7 @@ import type {
   AuctionSaleOption,
   DraftLotAnswer,
   DraftLotRequest,
+  DraftLotSummary,
 } from "@auction/artwork-register-contracts";
 
 /** What lax.art holds about an original that a move needs: its facts, and where it stands. */
@@ -39,4 +40,6 @@ export interface OriginalMoveReader {
 export interface AuctionOfferGateway {
   listSales(): Promise<AuctionSaleOption[]>;
   createDraftLot(request: DraftLotRequest): Promise<DraftLotAnswer>;
+  /** The draft lot LAX Bid holds for a register record, if any. */
+  findDraftLot(registerId: string): Promise<DraftLotSummary | null>;
 }

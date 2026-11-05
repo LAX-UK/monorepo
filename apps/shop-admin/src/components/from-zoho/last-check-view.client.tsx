@@ -1,5 +1,6 @@
 "use client";
 
+import { ListingCheckSection } from "@/components/from-zoho/listing-check-section.client";
 import {
   FROM_ZOHO_DESCRIPTION,
   FROM_ZOHO_TITLE,
@@ -50,7 +51,8 @@ function CountList({ title, empty, rows }: { title: string; empty: string; rows:
 /**
  * The latest nightly check as a summary: how many Products it read and what became of them, why
  * some were left out and what new artworks still lack. A dry run says plainly that nothing was
- * applied, since its counts describe what would happen.
+ * applied, since its counts describe what would happen. Below it, the other direction: the LAX
+ * listing LAX keeps on each Zoho Product.
  */
 export function LastCheckView({
   query,
@@ -119,6 +121,7 @@ export function LastCheckView({
             description="The nightly check reads every Product in Zoho. Its result appears here after the first run."
           />
         )}
+        <ListingCheckSection listing={check.listing} />
       </div>
     </div>
   );

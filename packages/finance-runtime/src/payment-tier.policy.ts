@@ -40,7 +40,7 @@ export class PaymentTierPolicy {
     return resolveManualReviewReason(amountPence, this.limits, sellerArchived);
   }
 
-  validateCheckoutAmountPence(amountPence: number) {
+  validateCheckoutAmountPence(amountPence: number): "ok" | "invalid_amount" | "blocked" {
     return validateCheckoutAmountPence(amountPence, this.limits);
   }
 

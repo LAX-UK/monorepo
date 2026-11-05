@@ -17,6 +17,7 @@ import type { Redis } from "ioredis";
 import type pino from "pino";
 import type { AuthAppEnv } from "../env.js";
 import { buildDrizzleDatabase } from "../infrastructure/build-drizzle-database.js";
+import { DrizzleLegalAcceptanceRecorder } from "../infrastructure/drizzle-legal-acceptance.recorder.js";
 import { HibpRangeBreachedPasswordChecker } from "../infrastructure/hibp-range-breached-password-checker.js";
 import {
   type OidcClaims,
@@ -138,6 +139,7 @@ export function createAuthIssuer(options: {
     sms: options.phoneVerification,
     events: options.identityEventPublisher,
     securityNotices: options.securityNotices,
+    legalAcceptance: new DrizzleLegalAcceptanceRecorder(options.db),
   };
   return createAuth({
     database: buildDrizzleDatabase(options.db, envelope),

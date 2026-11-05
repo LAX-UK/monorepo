@@ -5,7 +5,7 @@ import {
 } from "@auction/identity-contracts";
 import { describe, expect, it } from "vitest";
 import { mapAddress } from "./addresses.category.js";
-import { mapProductAccess } from "./consents.category.js";
+import { mapLegalAcceptance, mapProductAccess } from "./consents.category.js";
 import { mapContact } from "./contact.category.js";
 import { mapProfile } from "./profile.category.js";
 import { mapDataDownload, mapDeletionRequests } from "./requests.category.js";
@@ -161,6 +161,19 @@ const cases: Record<string, Case> = {
       consentGiven: true,
       createdAt: AT,
       clientId: LEAK,
+    } as never),
+  },
+  legalAcceptance: {
+    category: "consents",
+    record: mapLegalAcceptance({
+      id: "a1",
+      documentKind: "terms",
+      documentVersion: "1.0",
+      legalEntity: "london-art-exchange",
+      product: "shop",
+      acceptedAt: AT,
+      subjectId: LEAK,
+      source: LEAK,
     } as never),
   },
   download: {

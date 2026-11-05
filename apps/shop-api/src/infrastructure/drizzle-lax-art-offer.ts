@@ -24,6 +24,12 @@ import { shopPhaseDbSession } from "./drizzle-shop-transaction-effects.js";
 
 const CAPABILITY = "catalogue.write";
 const ZOHO_PRODUCT_INDEX = "shop_artwork_zoho_product_uid";
+const IMPORT_KEY_INDEX = "shop_artwork_import_key_uid";
+// Both indexes describe the same draft (its register record), so either one names the race.
+const SAME_DRAFT_INDEXES: ReadonlySet<string | null> = new Set([
+  ZOHO_PRODUCT_INDEX,
+  IMPORT_KEY_INDEX,
+]);
 
 export function createDrizzleLaxArtArtistDirectory(db: Database): LaxArtArtistDirectory {
   return {
@@ -279,9 +285,9 @@ export function createDrizzleLaxArtDraftWriter(
       try {
         return await create(command);
       } catch (error) {
-        // Two people (or two clicks) made the draft at once: the loser's insert hit the unique
+        // Two people (or two clicks) made the draft at once: the loser's insert hit a unique
         // index, and the winner's draft is the one both of them get.
-        if (pgUniqueViolationConstraint(error) === ZOHO_PRODUCT_INDEX) {
+        if (SAME_DRAFT_INDEXES.has(pgUniqueViolationConstraint(error))) {
           const winner = await existingDraft(command.entry.zohoProductId);
           if (winner) return winner;
         }

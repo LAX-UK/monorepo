@@ -82,8 +82,14 @@ async function buildApp(
     },
     resolver: { resolveConflict },
     runs: { latestNightlyRun: async () => null },
+    listingRuns: { latestRun: async () => null, countFailedDeliveries: async () => 0 },
     staffNames: { namesFor: async () => new Map() },
     listings: { findByZohoProductId: async () => null, findZohoProductId: async () => null },
+    auction: {
+      assessRegister: async () => {
+        throw new Error("assessRegister is not stubbed");
+      },
+    },
   });
   const app = createShopApiApp({ deps, logger: false });
   await app.ready();

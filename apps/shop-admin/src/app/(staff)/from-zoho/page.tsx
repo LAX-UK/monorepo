@@ -3,6 +3,7 @@ import { NeedsDecisionList, NewFromZohoList } from "@/components/from-zoho/from-
 import { LastCheckView } from "@/components/from-zoho/last-check-view.client";
 import { LinkLaxArtReport } from "@/components/from-zoho/link-lax-art-report.client";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { loadBidAdminUrl } from "@/server/application/load-bid-admin-url";
 import { getShopAdminContainer } from "@/server/container";
 import {
   activeZohoTab,
@@ -82,6 +83,7 @@ export default async function FromZohoPage({
       query={query}
       page={result.data}
       unlinked={unlinked}
+      bidAdminUrl={await loadBidAdminUrl()}
       zohoUrlTemplate={getShopAdminContainer().config.crmRecordUrlTemplate ?? null}
     />
   );

@@ -114,8 +114,9 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
     }
   });
 
-  it("reports the highest number issued under a prefix", async () => {
-    expect(await repo.highestStockNumber("LAX-ORI-PH-GAC-26")).toBeNull();
+  it("reports the highest number for a kind, artist and collection across years", async () => {
+    const series = { kind: "original", artist: "PH", second: "GAC" } as const;
+    expect(await repo.highestStockNumber(series)).toBeNull();
     await created();
     await repo.create(
       newEntry({ zohoProductId: "5002", stockCode: "LAX-ORI-PH-GAC-26-0011" }),
@@ -127,9 +128,164 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
       "system",
       T0,
     );
-    expect(await repo.highestStockNumber("LAX-ORI-PH-GAC-26")).toBe(11);
-    expect(await repo.highestStockNumber("LAX-ORI-PH-GAC-27")).toBe(99);
-    expect(await repo.highestStockNumber("LAX-PRI-PH-GAC-26")).toBeNull();
+    await repo.create(
+      newEntry({ zohoProductId: "5004", stockCode: "LAX-ORI-PH-GAS-26-0500" }),
+      "system",
+      T0,
+    );
+    expect(await repo.highestStockNumber(series)).toBe(99);
+    expect(await repo.highestStockNumber({ ...series, second: "GAS" })).toBe(500);
+    expect(await repo.highestStockNumber({ ...series, kind: "print" })).toBeNull();
+  });
+
+  describe("issue", () => {
+    const issueInput = (zohoProductId: string, collectionCode = "GAC") => ({
+      zohoProductId,
+      collectionCode,
+      title: "Harbour at dusk",
+      artist: { zohoArtistId: "77", name: "Aidan Phelan", code: "PH" },
+      medium: null,
+      dimensions: null,
+      year: 2024,
+      imageRefs: [],
+      catalogueStatus: null,
+    });
+
+    it("numbers on across years instead of restarting", async () => {
+      const first = await repo.issue("original", issueInput("6001"), "system", T0);
+      const next = await repo.issue(
+        "original",
+        issueInput("6002"),
+        "system",
+        new Date("2027-02-01T10:00:00.000Z"),
+      );
+      expect(first).toMatchObject({ ok: true, entry: { stockCode: "LAX-ORI-PH-GAC-26-0001" } });
+      expect(next).toMatchObject({ ok: true, entry: { stockCode: "LAX-ORI-PH-GAC-27-0002" } });
+    });
+
+    it("keeps separate runs per collection and per kind, and counts legacy PRI codes", async () => {
+      await repo.issue("original", issueInput("6001"), "system", T0);
+      const other = await repo.issue("original", issueInput("6002", "GAS"), "system", T0);
+      expect(other).toMatchObject({ ok: true, entry: { stockCode: "LAX-ORI-PH-GAS-26-0001" } });
+      await repo.create(
+        newEntry({
+          zohoProductId: "6003",
+          stockCode: "LAX-PRI-PH-GAC-25-0012",
+          kind: "print",
+        }),
+        "system",
+        T0,
+      );
+      const print = await repo.issue("print", issueInput("6004"), "system", T0);
+      expect(print).toMatchObject({ ok: true, entry: { stockCode: "LAX-PRT-PH-GAC-26-0013" } });
+    });
+
+    it("never hands the same number to concurrent calls", async () => {
+      const results = await Promise.all(
+        Array.from({ length: 8 }, (_, i) =>
+          repo.issue("original", issueInput(`7${i}`), "system", T0),
+        ),
+      );
+      const codes = results.map((r) => (r.ok ? r.entry.stockCode : r.reason));
+      expect(new Set(codes).size).toBe(8);
+      expect([...codes].sort()).toEqual(
+        Array.from({ length: 8 }, (_, i) => `LAX-ORI-PH-GAC-26-${String(i + 1).padStart(4, "0")}`),
+      );
+    });
+
+    it("refuses artist and collection codes LAX would not issue", async () => {
+      const badCollection = await repo.issue(
+        "original",
+        issueInput("6001", "TOOLONG"),
+        "system",
+        T0,
+      );
+      expect(badCollection).toMatchObject({ ok: false, reason: "invalid_code" });
+      const badArtist = await repo.issue(
+        "original",
+        { ...issueInput("6002"), artist: { zohoArtistId: null, name: "A", code: "A" } },
+        "system",
+        T0,
+      );
+      expect(badArtist).toMatchObject({ ok: false, reason: "invalid_code" });
+    });
+  });
+
+  describe("issuePrintGroup", () => {
+    const printInput = (zohoProductId: string) => ({
+      zohoProductId,
+      title: "Harbour at dusk (print)",
+      medium: null,
+      dimensions: null,
+      year: 2024,
+      imageRefs: [],
+      catalogueStatus: null,
+    });
+
+    it("mirrors the original's artist, collection, year and number", async () => {
+      const original = await repo.issue(
+        "original",
+        {
+          zohoProductId: "8001",
+          collectionCode: "GAC",
+          title: "Harbour at dusk",
+          artist: { zohoArtistId: "77", name: "Aidan Phelan", code: "PH" },
+          medium: null,
+          dimensions: null,
+          year: 2024,
+          imageRefs: [],
+          catalogueStatus: null,
+        },
+        "system",
+        T0,
+      );
+      if (!original.ok) throw new Error(original.reason);
+      const print = await repo.issuePrintGroup(
+        original.entry.id,
+        printInput("8002"),
+        "system",
+        new Date("2027-05-01T10:00:00.000Z"),
+      );
+      expect(print).toMatchObject({
+        ok: true,
+        entry: {
+          stockCode: "LAX-PRT-PH-GAC-26-0001",
+          kind: "print",
+          sourceOriginalId: original.entry.id,
+          artist: { code: "PH" },
+        },
+      });
+      expect(
+        await repo.issuePrintGroup(original.entry.id, printInput("8003"), "system", T0),
+      ).toMatchObject({ ok: false, reason: "print_group_exists" });
+    });
+
+    it("fails clearly when the mirrored code belongs to another original's print", async () => {
+      const original = await created();
+      await repo.create(
+        newEntry({
+          zohoProductId: "8010",
+          stockCode: "LAX-PRT-PH-GAC-26-0001",
+          kind: "print",
+          sourceOriginalId: null,
+        }),
+        "system",
+        T0,
+      );
+      const result = await repo.issuePrintGroup(original.id, printInput("8011"), "system", T0);
+      expect(result).toMatchObject({ ok: false, reason: "print_code_taken_by_other_original" });
+    });
+
+    it("refuses an unknown original or a print as the source", async () => {
+      expect(
+        await repo.issuePrintGroup(
+          "00000000-0000-4000-8000-000000000000",
+          printInput("8020"),
+          "system",
+          T0,
+        ),
+      ).toMatchObject({ ok: false, reason: "original_not_found" });
+    });
   });
 
   describe("applyZohoChange", () => {
@@ -606,5 +762,89 @@ describe.skipIf(!url)("artwork register repository (Postgres)", { timeout: 30_00
     await expect(
       db.execute(sql`DELETE FROM artwork_register_event WHERE register_id = ${entry.id}`),
     ).rejects.toThrow();
+  });
+
+  describe("Zoho pictures", () => {
+    const source = (id: string) => ({
+      zohoFileId: id,
+      fingerprint: "10:t",
+      sha256: id.repeat(64).slice(0, 64),
+      key: `shop/artwork/zoho-${id}.jpg`,
+    });
+
+    it("replaces the pictures, keeps imageRefs as their distinct keys and records it once", async () => {
+      const entry = await created();
+      const same = { ...source("b"), zohoFileId: "other-file" };
+      const result = await repo.replaceZohoImages({
+        zohoProductId: "5001",
+        sources: [source("a"), source("b"), same],
+        now: T1,
+      });
+      expect(result.status).toBe("replaced");
+      const after = await repo.findById(entry.id);
+      expect(after?.imageRefs).toEqual(["shop/artwork/zoho-a.jpg", "shop/artwork/zoho-b.jpg"]);
+      expect(after?.version).toBe(entry.version + 1);
+      expect(await repo.findImageSources("5001")).toEqual([source("a"), source("b"), same]);
+
+      const again = await repo.replaceZohoImages({
+        zohoProductId: "5001",
+        sources: [source("a"), source("b"), same],
+        now: T2,
+      });
+      expect(again.status).toBe("unchanged");
+      expect((await repo.findById(entry.id))?.version).toBe(entry.version + 1);
+      const types = (await repo.listEvents(entry.id, 10)).map((e) => e.type);
+      expect(types.filter((t) => t === "zoho_change_applied")).toHaveLength(1);
+    });
+
+    it("clears the pictures when Zoho has none, and answers not_found for an unknown Product", async () => {
+      await created();
+      await repo.replaceZohoImages({ zohoProductId: "5001", sources: [source("a")], now: T1 });
+      expect(
+        (await repo.replaceZohoImages({ zohoProductId: "5001", sources: [], now: T2 })).status,
+      ).toBe("replaced");
+      expect((await repo.findByZohoProductId("5001"))?.imageRefs).toEqual([]);
+      expect(
+        (await repo.replaceZohoImages({ zohoProductId: "nope", sources: [], now: T2 })).status,
+      ).toBe("not_found");
+      expect(await repo.findImageSources("nope")).toBeNull();
+    });
+
+    it("lists originals never checked first, then those checked longest ago, and skips fresh ones", async () => {
+      await created();
+      await repo.create(
+        newEntry({ zohoProductId: "5002", stockCode: "LAX-ORI-PH-GAC-26-0002", imageRefs: [] }),
+        "system",
+        T0,
+      );
+      await repo.create(
+        newEntry({ zohoProductId: "5003", stockCode: "LAX-ORI-PH-GAC-26-0003", imageRefs: [] }),
+        "system",
+        T0,
+      );
+      await repo.replaceZohoImages({ zohoProductId: "5002", sources: [], now: T0 });
+      await repo.replaceZohoImages({ zohoProductId: "5003", sources: [], now: T2 });
+      const due = await repo.listImageCheckCandidates(T1, 10);
+      expect(due.map((c) => c.zohoProductId)).toEqual(["5001", "5002"]);
+      expect(await repo.listImageCheckCandidates(T1, 1)).toHaveLength(1);
+    });
+
+    it("never lists a print", async () => {
+      const original = await created();
+      const print = await repo.create(
+        newEntry({
+          zohoProductId: "5009",
+          stockCode: "LAX-PRI-PH-GAC-26-0009",
+          kind: "print",
+          sourceOriginalId: original.id,
+          imageRefs: [],
+        }),
+        "system",
+        T0,
+      );
+      expect(print.ok).toBe(true);
+      const due = await repo.listImageCheckCandidates(T2, 10);
+      expect(due.map((c) => c.zohoProductId)).toEqual(["5001"]);
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { ArtworkEditor } from "@/components/artworks/artwork-editor.client";
 import { loadArtworkEditorPage } from "@/server/application/load-artwork-pages";
+import { loadBidAdminUrl } from "@/server/application/load-bid-admin-url";
 import { getShopAdminContainer } from "@/server/container";
 import { zohoProductUrl } from "@/server/domain/zoho-register.vm";
 import { notFound, redirect } from "next/navigation";
@@ -32,6 +33,7 @@ export default async function ArtworkEditorPage({
       permissions={permissions}
       currentYear={new Date().getFullYear()}
       arrivedFromZoho={arrived === "zoho"}
+      bidAdminUrl={await loadBidAdminUrl()}
       zohoUrl={
         zohoLink
           ? zohoProductUrl(

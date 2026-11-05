@@ -5,18 +5,20 @@ import { artAlertUrls, shopAlertUrls } from "./shop-alert-urls.js";
 
 describe("alert links", () => {
   it("point LAX Shop's links at the pages Shop already serves", () => {
-    const urls = shopAlertUrls("https://shop.example/");
+    const urls = shopAlertUrls("https://shop.example/", "https://account.example/account/alerts");
     expect(urls.confirm("a.b")).toBe("https://shop.example/release-alerts/confirm?token=a.b");
     expect(urls.stop("a.b")).toBe("https://shop.example/release-alerts/unsubscribe?token=a.b");
     expect(urls.oneClick("a.b")).toBe(urls.stop("a.b"));
     expect(urls.site("/artworks/x")).toBe("https://shop.example/artworks/x");
-    expect(urls.manage()).toBeNull();
+    expect(urls.manage()).toBe("https://account.example/account/alerts");
+    expect(shopAlertUrls("https://shop.example").manage()).toBeNull();
   });
 
   it("point lax.art's stop link at lax.art, never at Shop", () => {
-    const urls = artAlertUrls("https://lax.art");
+    const urls = artAlertUrls("https://lax.art", "https://account.example/account/alerts");
     expect(urls.stop("a.b")).toBe("https://lax.art/alerts/unsubscribe?token=a.b");
     expect(urls.site("/artworks/x")).toBe("https://lax.art/artworks/x");
+    expect(urls.manage()).toBe("https://account.example/account/alerts");
   });
 
   it("carry a signed token the Shop pages accept", () => {

@@ -110,7 +110,7 @@ export interface ISourceOfFundsRepository {
    */
   sumActiveBuyerSettlementPence(
     userId: string,
-    excludePaymentId?: string,
+    excludePaymentIds?: string | readonly string[],
     conn?: Database,
   ): Promise<number>;
   listForUser(userId: string, limit: number, conn?: Database): Promise<SourceOfFundsCase[]>;

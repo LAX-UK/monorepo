@@ -10,10 +10,17 @@ import {
   validateOfferAtAuctionForm,
 } from "@/lib/offer-at-auction-form";
 import {
+  type BlockerLink,
+  type OfferAtAuctionLinks,
+  bidLotUrl,
+  blockerLink,
+} from "@/lib/offer-at-auction-links";
+import {
   getAuctionOfferAssessment,
   listAuctionSales,
   offerAtAuction,
 } from "@/server/application/admin-inventory-actions.server";
+import type { AuctionOfferTarget } from "@/server/application/auction-offer-target";
 import type {
   AdminAuctionOfferAssessment,
   AdminAuctionSaleOption,
@@ -32,6 +39,7 @@ import {
   TextInput,
   toast,
 } from "@auction/staff-ui";
+import { ExternalLink } from "@auction/staff-ui/icons";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -41,6 +49,8 @@ export type OfferAtAuctionLoaded =
   | { phase: "loading" }
   /** The check or the sale list could not be read; "Try again" loads them again. */
   | { phase: "unavailable"; message: string }
+  /** LAX Bid's address and credential are not set on this environment. */
+  | { phase: "not_connected" }
   | { phase: "blocked"; assessment: AdminAuctionOfferAssessment }
   | {
       phase: "ready";
@@ -52,6 +62,10 @@ export type OfferAtAuctionViewProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
+  /** Where the dialog was opened from; it words the description. */
+  source: AuctionOfferTarget["kind"];
+  /** What this person can open: the lot in Bid admin, the record in Zoho. */
+  links: OfferAtAuctionLinks;
   loaded: OfferAtAuctionLoaded;
   values: OfferAtAuctionForm;
   onValuesChange: (update: (current: OfferAtAuctionForm) => OfferAtAuctionForm) => void;
@@ -65,11 +79,42 @@ export type OfferAtAuctionViewProps = {
   onRetryLoad: () => void;
 };
 
+const DESCRIPTION: Record<AuctionOfferTarget["kind"], (title: string) => string> = {
+  artwork: (title) =>
+    `Move ${title} from lax.art to a LAX Bid sale. It starts as a draft lot with the same title, images and details.`,
+  register: (title) =>
+    `Offer ${title} in a LAX Bid sale. It starts as a draft lot with Zoho's title, images and details.`,
+};
+
+/** A reason in words, with the link that goes with it when this person can follow it. */
+function BlockerItem({ message, link }: { message: string; link: BlockerLink | null }) {
+  return (
+    <li>
+      {message}
+      {link ? (
+        <>
+          {" "}
+          <a
+            href={link.href}
+            className="font-medium text-staff-fg underline underline-offset-2"
+            {...(link.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+          >
+            {link.label}
+            {link.external ? <span className="sr-only"> (opens in a new tab)</span> : null}
+          </a>
+        </>
+      ) : null}
+    </li>
+  );
+}
+
 /** The dialog as staff see it in every state. It holds no data fetching, so it renders from props. */
 export function OfferAtAuctionDialogView({
   open,
   onOpenChange,
   title,
+  source,
+  links,
   loaded,
   values,
   onValuesChange,
@@ -86,15 +131,27 @@ export function OfferAtAuctionDialogView({
       value: sale.id,
       label: saleOptionLabel(sale.title, sale.startsAt),
     })) ?? [];
+  const doneLotUrl = done ? bidLotUrl(links.bidAdminUrl, done.lotId) : null;
+  const closing = loaded.phase === "blocked" || loaded.phase === "not_connected";
 
   const footer = done ? (
-    <StaffButton variant="primary" onClick={() => onOpenChange(false)}>
-      Done
-    </StaffButton>
+    <>
+      {doneLotUrl ? (
+        <StaffButton variant="secondary" icon={<ExternalLink aria-hidden />} asChild>
+          <a href={doneLotUrl} target="_blank" rel="noopener noreferrer">
+            Open lot in LAX Bid
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        </StaffButton>
+      ) : null}
+      <StaffButton variant="primary" onClick={() => onOpenChange(false)}>
+        Done
+      </StaffButton>
+    </>
   ) : (
     <>
       <StaffButton variant="secondary" disabled={saving} onClick={() => onOpenChange(false)}>
-        {loaded.phase === "blocked" ? "Close" : "Cancel"}
+        {closing ? "Close" : "Cancel"}
       </StaffButton>
       {loaded.phase === "unavailable" ? (
         <StaffButton variant="primary" onClick={onRetryLoad}>
@@ -115,11 +172,18 @@ export function OfferAtAuctionDialogView({
       onOpenChange={onOpenChange}
       size="md"
       title="Offer at auction"
-      description={`Move ${title} from lax.art to a LAX Bid sale. It starts as a draft lot with the same title, images and details.`}
+      description={DESCRIPTION[source](title)}
       footer={footer}
     >
       {done ? (
-        <Notice tone="success" title={`Draft lot created in ${done.saleTitle}`}>
+        <Notice
+          tone="success"
+          title={
+            done.created
+              ? `Draft lot created in ${done.saleTitle}`
+              : `Draft lot ready in ${done.saleTitle}`
+          }
+        >
           {done.withdrawnFromLaxArt
             ? "The artwork is off lax.art. Finish the lot in LAX Bid and publish it there to put it on sale."
             : "Finish the lot in LAX Bid and publish it there to put it on sale."}
@@ -135,17 +199,26 @@ export function OfferAtAuctionDialogView({
         <Notice tone="danger" alert title="Could not check this artwork">
           {loaded.message}
         </Notice>
+      ) : loaded.phase === "not_connected" ? (
+        <Notice
+          tone="info"
+          title="LAX Bid isn't connected to LAX Admin yet, so artworks can't be offered at auction from here."
+        />
       ) : loaded.phase === "blocked" ? (
-        <Notice tone="warning" title="This artwork cannot be offered at auction yet">
+        <Notice tone="warning" title="This artwork can't be offered at auction yet">
           <ul className="list-disc pl-5">
-            {loaded.assessment.reasons.map((reason) => (
-              <li key={reason}>{reason}</li>
+            {loaded.assessment.blockers.map((blocker) => (
+              <BlockerItem
+                key={blocker.message}
+                message={blocker.message}
+                link={blockerLink(blocker, loaded.assessment, links)}
+              />
             ))}
           </ul>
         </Notice>
       ) : ready && ready.sales.length === 0 ? (
         <Notice tone="info" title="No LAX Bid sale is open for new lots">
-          Create a sale in LAX Bid first, then come back to offer this artwork in it.
+          Create a sale in LAX Bid first, then come back.
         </Notice>
       ) : ready ? (
         <form
@@ -162,6 +235,16 @@ export function OfferAtAuctionDialogView({
             <Notice tone="info" title="This takes the artwork off lax.art">
               The lax.art listing is withdrawn once the draft lot exists. Publishing the lot in LAX
               Bid puts it on sale there.
+            </Notice>
+          ) : null}
+          {ready.assessment.laxArtDraft ? (
+            <Notice tone="info" title="The lax.art draft stays a draft" />
+          ) : null}
+          {ready.assessment.draftLot ? (
+            <Notice tone="info" title="This artwork already has a draft lot">
+              {ready.assessment.draftLot.saleTitle
+                ? `It is in ${ready.assessment.draftLot.saleTitle}. Choosing that sale opens the same lot.`
+                : "Choosing the same sale opens that lot."}
             </Notice>
           ) : null}
           <Field label="Sale" error={errors.saleId} id="offer-sale">
@@ -217,21 +300,25 @@ export function OfferAtAuctionDialogView({
 }
 
 /**
- * "Offer at auction": moves an original from lax.art to a LAX Bid sale. It checks the original
- * may move (and says why not), lets staff choose the sale and starting price, and needs the
- * consignor's agreement ticked, which is recorded against the person who confirmed it. The draft
- * lot is made in LAX Bid; staff finish and publish it there.
+ * "Offer at auction": makes a draft lot in a LAX Bid sale that has not started, from an original's
+ * lax.art page or from its From Zoho record. It checks the original may move (and says why not),
+ * lets staff choose the sale and starting price, and needs the consignor's agreement ticked, which
+ * is recorded against the person who confirmed it. Staff finish and publish the lot in LAX Bid.
+ * If the artwork changed while the dialog was open, the refusal is checked again and the dialog
+ * shows the new reason.
  */
 export function OfferAtAuctionDialog({
   open,
   onOpenChange,
-  artworkId,
+  target,
   title,
+  links,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  artworkId: string;
+  target: AuctionOfferTarget;
   title: string;
+  links: OfferAtAuctionLinks;
 }) {
   const router = useRouter();
   const [loaded, setLoaded] = useState<OfferAtAuctionLoaded>({ phase: "loading" });
@@ -242,11 +329,13 @@ export function OfferAtAuctionDialog({
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [done, setDone] = useState<AdminOfferAtAuctionResponse | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const targetKey = target.kind === "artwork" ? target.artworkId : target.registerId;
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the target is read through its id.
   const load = useCallback(async () => {
     setLoaded({ phase: "loading" });
     const [assessment, sales] = await Promise.all([
-      getAuctionOfferAssessment(artworkId).catch(() => null),
+      getAuctionOfferAssessment(target).catch(() => null),
       listAuctionSales().catch(() => null),
     ]);
     if (!assessment || !assessment.ok) {
@@ -254,7 +343,7 @@ export function OfferAtAuctionDialog({
         phase: "unavailable",
         message: assessment
           ? adminMutationErrorMessage(assessment)
-          : "Could not check this artwork.",
+          : "Could not check this artwork. Try again in a moment.",
       });
       return;
     }
@@ -269,8 +358,12 @@ export function OfferAtAuctionDialog({
       });
       return;
     }
+    if (!sales.data.connected) {
+      setLoaded({ phase: "not_connected" });
+      return;
+    }
     setLoaded({ phase: "ready", assessment: assessment.data, sales: sales.data.sales });
-  }, [artworkId]);
+  }, [targetKey]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `attempt` re-runs the check on "Try again".
   useEffect(() => {
@@ -289,6 +382,14 @@ export function OfferAtAuctionDialog({
     onOpenChange(next);
   }
 
+  /** The artwork may have moved while the dialog was open: if so, show why instead of the form. */
+  async function showNewReasonIfBlocked(): Promise<void> {
+    const assessment = await getAuctionOfferAssessment(target).catch(() => null);
+    if (assessment?.ok && !assessment.data.eligible) {
+      setLoaded({ phase: "blocked", assessment: assessment.data });
+    }
+  }
+
   async function submit() {
     const body = offerAtAuctionBody(values);
     if (!body) {
@@ -297,16 +398,22 @@ export function OfferAtAuctionDialog({
     }
     setSaving(true);
     setFormError(null);
-    const result = await offerAtAuction({ artworkId, body, idempotencyKey }).catch(
+    const result = await offerAtAuction({ target, body, idempotencyKey }).catch(
       () => ({ ok: false, kind: "failed", message: "Offering failed. Try again." }) as const,
     );
-    setSaving(false);
     if (!result.ok) {
       setFormError(adminMutationErrorMessage(result));
+      await showNewReasonIfBlocked();
+      setSaving(false);
       return;
     }
+    setSaving(false);
     setDone(result.data);
-    toast.success(`Draft lot created in ${result.data.saleTitle}`);
+    toast.success(
+      result.data.created
+        ? `Draft lot created in ${result.data.saleTitle}`
+        : `Draft lot ready in ${result.data.saleTitle}`,
+    );
     router.refresh();
   }
 
@@ -315,6 +422,8 @@ export function OfferAtAuctionDialog({
       open={open}
       onOpenChange={onChange}
       title={title}
+      source={target.kind}
+      links={links}
       loaded={loaded}
       values={values}
       onValuesChange={(update) => setValues(update)}

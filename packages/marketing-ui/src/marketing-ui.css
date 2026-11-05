@@ -709,3 +709,19 @@ html.lenis {
   --cover-link: var(--cover-link-dark) !important;
   --cover-credit: var(--cover-credit-dark) !important;
 }
+
+/*
+ * Space the docked bottom tab bar needs: its 56px row plus the device safe area. Zero until a bar
+ * is mounted (it sets data-lax-bottom-bar on <html>) and from 768px, where the bar is hidden.
+ * MarketingBottomBarSpace reserves it once at the end of the page; cookie docks and toasts sit
+ * above it with `bottom: var(--lax-bottom-bar-space)`.
+ */
+:root {
+  --lax-bottom-bar-space: 0px;
+}
+
+@media (max-width: 767.98px) {
+  :root[data-lax-bottom-bar] {
+    --lax-bottom-bar-space: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+}

@@ -7,6 +7,7 @@ import {
   shopGuestCustomer,
   shopOrder,
 } from "@auction/db/schema";
+import { containsPattern } from "@auction/persistence/lib";
 import {
   type CrmDeliveryStatus,
   GUEST_LEAD_CRM_STATE_MATCH,
@@ -83,7 +84,7 @@ function crmCondition(state: GuestLeadCrmState): SQL | undefined {
 function filterConditions(filter: LeadListFilter): SQL[] {
   const conditions: SQL[] = [isNull(lead.erasedAt)];
   if (filter.q) {
-    const contains = `%${filter.q.replaceAll("\\", "\\\\").replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
+    const contains = containsPattern(filter.q);
     const search = or(sql`${lead.email} ILIKE ${contains}`, sql`${lead.name} ILIKE ${contains}`);
     if (search) conditions.push(search);
   }

@@ -13,6 +13,8 @@ import {
   CircleAlert,
   Clock,
   Ellipsis,
+  Eye,
+  Gavel,
   Heart,
   House,
   ImageIcon,
@@ -229,4 +231,12 @@ export function MarketingPlusIcon({ className, ...props }: MarketingIconProps) {
 
 export function MarketingTrashIcon({ className, ...props }: MarketingIconProps) {
   return <Trash2 className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingGavelIcon({ className, ...props }: MarketingIconProps) {
+  return <Gavel className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
+}
+
+export function MarketingEyeIcon({ className, ...props }: MarketingIconProps) {
+  return <Eye className={cn("size-5 shrink-0", className)} aria-hidden {...props} />;
 }

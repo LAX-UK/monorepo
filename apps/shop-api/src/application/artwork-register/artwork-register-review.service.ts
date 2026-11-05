@@ -5,6 +5,7 @@ import {
 } from "@auction/artwork-register-contracts";
 import {
   ADMIN_REGISTER_PAGE_SIZE,
+  type AdminAuctionOfferAssessment,
   type AdminRegisterArtworkSummary,
   type AdminRegisterConflict,
   type AdminRegisterConflictList,
@@ -19,6 +20,7 @@ import type {
   ArtworkRegisterQueue,
   ArtworkRegisterRecords,
   ConflictResolver,
+  ListingRunReader,
   RegisterConflictRecord,
   RegisterQueueFilter,
   SyncRunReader,
@@ -37,9 +39,13 @@ export type ArtworkRegisterReviewDeps = {
   register: ArtworkRegisterRecords;
   resolver: ConflictResolver;
   runs: SyncRunReader;
+  /** The LAX listing LAX keeps on Zoho Products. */
+  listingRuns: ListingRunReader;
   staffNames: StaffNameReader;
   /** The lax.art listing made from a record, for "Where it is". */
   listings: LaxArtListingReader;
+  /** Whether the record can be offered at auction, and the draft lot LAX Bid already holds. */
+  auction: { assessRegister(registerId: string): Promise<AdminAuctionOfferAssessment> };
   now?: () => Date;
 };
 
@@ -147,10 +153,15 @@ export class ArtworkRegisterReviewService {
   }
 
   async lastCheck(): Promise<AdminRegisterLastCheck> {
-    const [run, counts] = await Promise.all([this.deps.runs.latestNightlyRun(), this.counts()]);
-    if (!run) return { counts, run: null };
+    const [run, counts, listing] = await Promise.all([
+      this.deps.runs.latestNightlyRun(),
+      this.counts(),
+      this.listingCheck(),
+    ]);
+    if (!run) return { counts, run: null, listing };
     return {
       counts,
+      listing,
       run: {
         mode: run.mode,
         finishedAt: run.finishedAt.toISOString(),
@@ -162,13 +173,35 @@ export class ArtworkRegisterReviewService {
     };
   }
 
+  private async listingCheck(): Promise<AdminRegisterLastCheck["listing"]> {
+    const [run, failedDeliveries] = await Promise.all([
+      this.deps.listingRuns.latestRun(),
+      this.deps.listingRuns.countFailedDeliveries(),
+    ]);
+    return {
+      failedDeliveries,
+      run: run
+        ? {
+            mode: run.mode,
+            finishedAt: run.finishedAt.toISOString(),
+            checked: run.checked,
+            changed: run.changed,
+            unchanged: run.unchanged,
+            failed: run.failed,
+            failures: run.failures,
+          }
+        : null,
+    };
+  }
+
   async get(registerId: string): Promise<AdminRegisterDetail | null> {
     const entry = await this.deps.register.findById(registerId);
     if (!entry) return null;
-    const [conflicts, events, laxArt] = await Promise.all([
+    const [conflicts, events, laxArt, auction] = await Promise.all([
       this.deps.queue.listConflictsFor(registerId),
       this.deps.register.listEvents(registerId, HISTORY_LIMIT),
       this.deps.listings.findByZohoProductId(entry.zohoProductId),
+      this.deps.auction.assessRegister(registerId),
     ]);
     const names = await this.deps.staffNames.namesFor(staffIdsOf(events));
     return {
@@ -189,6 +222,7 @@ export class ArtworkRegisterReviewService {
         entry,
         events,
         laxArt,
+        bidDraft: auction.draftLot,
         now: (this.deps.now ?? (() => new Date()))(),
       }),
       laxArt,
@@ -196,6 +230,7 @@ export class ArtworkRegisterReviewService {
       offerBlockers: laxArt
         ? []
         : laxArtOfferBlockers(entry, DRAFT_PROBE).map(({ message, link }) => ({ message, link })),
+      auctionBlockers: auction.blockers,
       missing: catalogueGapsOf(entry),
       zohoModifiedAt: iso(entry.zohoModifiedAt),
       createdAt: entry.createdAt.toISOString(),

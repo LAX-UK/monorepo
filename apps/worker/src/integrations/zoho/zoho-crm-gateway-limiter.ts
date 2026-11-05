@@ -1,14 +1,16 @@
 import { classifyDeliveryError } from "../../lib/delivery-retry.js";
 import type {
+  CrmBatchUpdate,
+  CrmBatchUpdateInput,
   CrmBatchUpsertInput,
-  CrmConvertLeadInput,
-  CrmConvertLeadResult,
   CrmCoqlPage,
   CrmCoqlQuery,
+  CrmCreateInput,
   CrmDeleteRecordInput,
   CrmDeleteRecordResult,
   CrmGateway,
   CrmGatewayMetrics,
+  CrmLeadSummary,
   CrmRecordResult,
   CrmSearchByEmailInput,
   CrmSearchByEmailResult,
@@ -26,11 +28,11 @@ const MAX_CONSECUTIVE_TRANSIENT_FAILURES = 5;
 const CIRCUIT_OPEN_MS = 60_000;
 const MIN_INTERVAL_MS = 100;
 
-export class ZohoCrmGatewayLimiter implements CrmGateway, CrmCoqlQuery {
+export class ZohoCrmGatewayLimiter implements CrmGateway, CrmCoqlQuery, CrmBatchUpdate {
   private state: LimiterState = { consecutiveTransientFailures: 0, circuitOpenUntilMs: 0 };
   private lastCallMs = 0;
 
-  constructor(private readonly inner: CrmGateway & CrmCoqlQuery) {}
+  constructor(private readonly inner: CrmGateway & CrmCoqlQuery & CrmBatchUpdate) {}
 
   getMetrics(): CrmGatewayMetrics {
     return this.inner.getMetrics();
@@ -46,6 +48,10 @@ export class ZohoCrmGatewayLimiter implements CrmGateway, CrmCoqlQuery {
 
   async updateById(input: CrmUpdateByIdInput): Promise<CrmRecordResult> {
     return this.guard(() => this.inner.updateById(input));
+  }
+
+  async updateMany(input: CrmBatchUpdateInput): Promise<CrmRecordResult[]> {
+    return this.guard(() => this.inner.updateMany(input));
   }
 
   async findByEmail(input: CrmSearchByEmailInput): Promise<CrmSearchByEmailResult> {
@@ -64,8 +70,12 @@ export class ZohoCrmGatewayLimiter implements CrmGateway, CrmCoqlQuery {
     return this.guard(() => this.inner.queryCoql(selectQuery));
   }
 
-  async convertLead(input: CrmConvertLeadInput): Promise<CrmConvertLeadResult> {
-    return this.guard(() => this.inner.convertLead(input));
+  async createRecord(input: CrmCreateInput): Promise<CrmRecordResult> {
+    return this.guard(() => this.inner.createRecord(input));
+  }
+
+  async findLead(leadId: string): Promise<CrmLeadSummary | null> {
+    return this.guard(() => this.inner.findLead(leadId));
   }
 
   async deleteRecord(input: CrmDeleteRecordInput): Promise<CrmDeleteRecordResult> {

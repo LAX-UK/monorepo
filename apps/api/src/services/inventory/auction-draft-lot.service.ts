@@ -2,8 +2,11 @@ import {
   type AuctionSaleOption,
   type DraftLotAnswer,
   type DraftLotRequest,
+  type DraftLotSummary,
   type MoveRefusal,
   type MoveRefusalCode,
+  isReservedInZoho,
+  lockMessage,
   offerRefusalMessage,
   offerRefusalReason,
 } from "@auction/artwork-register-contracts";
@@ -81,6 +84,11 @@ export class AuctionDraftLotService {
     }));
   }
 
+  /** The draft lot that holds a record's place, for LAX Admin's "Where it is". */
+  async findDraft(registerId: string): Promise<DraftLotSummary | null> {
+    return this.deps.offers.findDraftLotForRegister(registerId);
+  }
+
   async createDraft(request: DraftLotRequest): Promise<InventoryOutcome<DraftLotAnswer>> {
     const entry = await this.deps.register.findById(request.registerId);
     if (!entry) {
@@ -96,6 +104,11 @@ export class AuctionDraftLotService {
     }
 
     const existing = await this.deps.offers.findOpenLotForRegister(entry.id);
+    // A hold set by hand in Zoho stops a new lot. A lot already made is left alone: a retry still
+    // finds it below.
+    if (!existing && isReservedInZoho(entry.catalogueStatus)) {
+      return refuse(409, "artwork_offered_elsewhere", lockMessage("reserved_in_zoho").message);
+    }
     if (existing) {
       if (existing.saleId === request.saleId) {
         return {

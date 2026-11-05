@@ -24,6 +24,8 @@ const SLA_MS: Partial<Record<AdminWorkItemSourceKind, number>> = {
   payment_manual_review: 48 * 60 * 60 * 1000,
   // The buyer has been charged and has nothing to show for it.
   payment_capture_blocked: 24 * 60 * 60 * 1000,
+  // Money was taken and not applied; it is never refunded automatically.
+  payment_money_unapplied: 24 * 60 * 60 * 1000,
   submission_review: 72 * 60 * 60 * 1000,
   condition_report: 48 * 60 * 60 * 1000,
   sale_registration: 24 * 60 * 60 * 1000,
@@ -62,6 +64,7 @@ export function addBusinessDays(from: Date, days: number): Date {
 const BASE_SEVERITY: Record<AdminWorkItemSourceKind, WorkItemSeverity> = {
   payment_manual_review: "critical",
   payment_capture_blocked: "critical",
+  payment_money_unapplied: "critical",
   aml_screening: "high",
   sof_case: "high",
   submission_review: "medium",

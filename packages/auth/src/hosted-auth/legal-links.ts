@@ -1,3 +1,4 @@
+import type { LegalAcceptanceProduct } from "../ports/legal-acceptance-recorder.js";
 import type { HostedAuthProduct } from "./flow-context.js";
 import type { HostedAuthCapabilities } from "./view.js";
 
@@ -30,7 +31,22 @@ const DOCUMENTS: Readonly<Record<HostedAuthProduct, PublishedDocuments>> = {
   art: { origin: "artOrigin", terms: "/legal/terms", privacy: "/legal/privacy" },
 };
 
+/** The product whose documents the sign-up page links, as the record of acceptance names it. */
+const LEGAL_PRODUCT: Readonly<Record<HostedAuthProduct, LegalAcceptanceProduct>> = {
+  bid: "bid",
+  account: "account",
+  unknown: "account",
+  shop: "shop",
+  "shop-admin": "shop",
+  art: "art",
+};
+
 const ACCOUNT_HELP = "/faq";
+
+/** Which product's Terms and Privacy notice a person is shown when they sign up through `product`. */
+export function hostedLegalProduct(product: HostedAuthProduct): LegalAcceptanceProduct {
+  return LEGAL_PRODUCT[product];
+}
 
 function absolute(capabilities: HostedAuthCapabilities, origin: OriginKey, path: string): string {
   return new URL(path, capabilities[origin]).toString();

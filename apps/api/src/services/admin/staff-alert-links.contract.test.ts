@@ -25,6 +25,7 @@ import { WORK_ITEM_KIND_ACCESS } from "./admin-work-items.service.js";
 
 const WORK_ITEM_SAMPLES: Record<AdminWorkItemSourceKind, AdminWorkItemLinkIds> = {
   payment_manual_review: { subjectId: "pay-1" },
+  payment_money_unapplied: { paymentId: "pay-1" },
   aml_screening: { subjectId: "scr-1" },
   sof_case: { subjectId: "sof-1" },
   submission_review: { subjectId: "sub-1" },
@@ -39,7 +40,7 @@ const WORK_ITEM_SAMPLES: Record<AdminWorkItemSourceKind, AdminWorkItemLinkIds> =
   unsold_choice_follow_up: { subjectId: "sub-1" },
   unsold_choice_lapsed: { subjectId: "sub-1" },
   marketing_enquiry: { subjectId: "enq-1" },
-  purchase_problem: { paymentId: "pay-1" },
+  purchase_problem: { subjectId: "pp-1" },
   payment_capture_blocked: { paymentId: "pay-1" },
   payment_overdue: { subjectId: "lot-1" },
   deletion_hold: { subjectId: "subject-1" },
@@ -74,11 +75,14 @@ describe("work item links", () => {
     expect(adminWorkItemHref("lot_withdrawal", {})).toBe(adminRoutes.lots.list());
   });
 
-  it("opens an enquiry by its record and a purchase problem on its payment", () => {
+  it("opens an enquiry and a purchase problem by their records", () => {
     expect(adminWorkItemHref("marketing_enquiry", { subjectId: "enq 1" })).toBe(
       "/admin/enquiries/enq%201",
     );
-    expect(adminWorkItemHref("purchase_problem", { paymentId: "pay-1" })).toBe(
+    expect(adminWorkItemHref("purchase_problem", { subjectId: "pp-1" })).toBe(
+      "/admin/purchase-problems/pp-1",
+    );
+    expect(adminWorkItemHref("payment_capture_blocked", { paymentId: "pay-1" })).toBe(
       "/admin/payments?payment=pay-1",
     );
   });

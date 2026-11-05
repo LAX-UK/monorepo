@@ -18,7 +18,11 @@ import {
   unsoldLotChoice,
   unsoldLotFollowUp,
 } from "@auction/db/schema";
-import { UNSOLD_LOT_END_STATUSES, invoiceDueAt } from "@auction/domain";
+import {
+  UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
+  UNSOLD_LOT_END_STATUSES,
+  invoiceDueAt,
+} from "@auction/domain";
 import { INVOICE_PAYMENT_DUE_DAYS, type UnsoldLotChoiceKind } from "@auction/types";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type {
@@ -28,6 +32,7 @@ import type {
 } from "../interfaces/admin-work-items.reader.js";
 import { adminWorkItemHref } from "../lib/admin-work-item-href.js";
 import { BLOCKED_CAPTURE_EVENT, toBlockedCapture } from "./blocked-capture.query.js";
+import { DrizzleUnappliedMoneyReader } from "./drizzle-unapplied-money.reader.js";
 import { lotWorkItemTitle, sentenceCase } from "./work-item-labels.js";
 
 const DUE_DATE = new Intl.DateTimeFormat("en-GB", {
@@ -191,6 +196,25 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         assignedToUserId: null,
       };
     });
+  }
+
+  async listUnappliedMoney(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const open = await new DrizzleUnappliedMoneyReader(this.db).listOpen({
+      limit,
+      excludeReasons: UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
+    });
+    return open.map((money) => ({
+      sourceId: money.dedupeKey,
+      kind: "payment_money_unapplied" as const,
+      domain: "finance" as const,
+      title: "Money received that could not be applied",
+      subtitle: `${sentenceCase(money.reason)} · ${formatWorkItemAmount(money.amountCents / 100)}`,
+      href: adminWorkItemHref("payment_money_unapplied", { paymentId: money.paymentId }),
+      saleId: null,
+      createdAt: money.receivedAt,
+      sourceUpdatedAt: money.receivedAt,
+      assignedToUserId: null,
+    }));
   }
 
   async listOverduePayments(limit: number, now: Date): Promise<AdminWorkItemSourceRow[]> {
@@ -644,7 +668,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
     const rows = await this.db
       .select({
         id: purchaseProblem.id,
-        paymentId: purchaseProblem.paymentId,
+        assignedToUserId: purchaseProblem.assignedToUserId,
         category: purchaseProblem.category,
         createdAt: purchaseProblem.createdAt,
         updatedAt: purchaseProblem.updatedAt,
@@ -653,7 +677,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       })
       .from(purchaseProblem)
       .innerJoin(lot, eq(purchaseProblem.lotId, lot.id))
-      .where(eq(purchaseProblem.status, "open"))
+      .where(ne(purchaseProblem.status, "resolved"))
       .orderBy(desc(purchaseProblem.createdAt))
       .limit(limit);
 
@@ -663,11 +687,11 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       domain: "clients" as const,
       title: lotWorkItemTitle("Purchase problem", row.lotNumber, row.lotTitle),
       subtitle: PURCHASE_PROBLEM_SUBTITLES[row.category] ?? null,
-      href: adminWorkItemHref("purchase_problem", { paymentId: row.paymentId }),
+      href: adminWorkItemHref("purchase_problem", { subjectId: row.id }),
       saleId: null,
       createdAt: row.createdAt,
-      sourceUpdatedAt: row.createdAt,
-      assignedToUserId: null,
+      sourceUpdatedAt: row.updatedAt,
+      assignedToUserId: row.assignedToUserId,
     }));
   }
 

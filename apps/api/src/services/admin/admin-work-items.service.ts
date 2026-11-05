@@ -13,6 +13,7 @@ import {
   LOT_FULFILMENT_ACCESS,
   MARKETING_ENQUIRIES_ACCESS,
   PAYMENT_WRITE_ACCESS,
+  PURCHASE_PROBLEMS_ACCESS,
   SALES_ACCESS,
   SUBMISSIONS_ACCESS,
   canOpenAdminLink,
@@ -49,6 +50,7 @@ export type AdminWorkItemsListResult = {
 export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRequirement> = {
   payment_manual_review: FINANCE_ACCESS,
   payment_capture_blocked: FINANCE_ACCESS,
+  payment_money_unapplied: FINANCE_ACCESS,
   aml_screening: AML_REVIEW_ACCESS,
   sof_case: AML_REVIEW_ACCESS,
   submission_review: SUBMISSIONS_ACCESS,
@@ -63,7 +65,7 @@ export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRe
   unsold_choice_follow_up: SUBMISSIONS_ACCESS,
   unsold_choice_lapsed: SUBMISSIONS_ACCESS,
   marketing_enquiry: MARKETING_ENQUIRIES_ACCESS,
-  purchase_problem: FINANCE_ACCESS,
+  purchase_problem: PURCHASE_PROBLEMS_ACCESS,
   // The default action lives on the lot page, which finance-only staff cannot open.
   payment_overdue: SALES_ACCESS,
   deletion_hold: DELETION_HOLD_ACCESS,
@@ -113,6 +115,9 @@ function stampActions(
       break;
     case "payment_capture_blocked":
       if (can(PAYMENT_WRITE_ACCESS)) actions.push("reinstate_payment", "refund");
+      break;
+    case "payment_money_unapplied":
+      if (can(PAYMENT_WRITE_ACCESS)) actions.push("mark_handled");
       break;
     case "aml_screening":
       break;
@@ -210,6 +215,10 @@ export class AdminWorkItemsService {
       {
         access: WORK_ITEM_KIND_ACCESS.payment_capture_blocked,
         fetch: () => this.reader.listBlockedCaptures(perSourceLimit),
+      },
+      {
+        access: WORK_ITEM_KIND_ACCESS.payment_money_unapplied,
+        fetch: () => this.reader.listUnappliedMoney(perSourceLimit),
       },
       {
         access: WORK_ITEM_KIND_ACCESS.submission_review,

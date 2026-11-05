@@ -132,52 +132,6 @@ export async function cancelPendingAsBuyer(
   return ok(undefined);
 }
 
-/** Cron: expire pending and authorized payments older than configured thresholds. */
-export async function expireStalePendingPayments(
-  deps: PaymentServiceDeps,
-  pendingMaxAgeDays: number,
-  authorizedMaxAgeDays?: number,
-): Promise<number> {
-  const pendingCutoff = new Date(Date.now() - pendingMaxAgeDays * 86_400_000);
-  const stalePending = await deps.payments.listStalePendingBefore(pendingCutoff);
-  const authorizedDays = authorizedMaxAgeDays ?? pendingMaxAgeDays * 2;
-  const authorizedCutoff = new Date(Date.now() - authorizedDays * 86_400_000);
-  const staleAuthorized = await deps.payments.listStaleAuthorizedBefore(authorizedCutoff);
-  let expired = 0;
-  for (const row of stalePending) {
-    await cancelStalePayment(deps, row, "stale_pending_expired");
-    expired += 1;
-  }
-  for (const row of staleAuthorized) {
-    await cancelStalePayment(deps, row, "stale_authorized_expired");
-    expired += 1;
-  }
-  return expired;
-}
-
-async function cancelStalePayment(
-  deps: PaymentServiceDeps,
-  row: { id: string; lotId: string; buyerId: string },
-  reason: string,
-): Promise<void> {
-  await deps.payments.updateStatus(row.id, "cancelled");
-  await revokeOpenStripeCheckoutForPayment(deps.checkoutOrchestratorDeps, row.id);
-  if (deps.domainEventSink) {
-    await deps.domainEventSink.publish({
-      aggregateType: "payment",
-      aggregateId: row.id,
-      eventType: "payment.cancelled",
-      payload: {
-        lotId: row.lotId,
-        buyerUserId: row.buyerId,
-        reason,
-      },
-      actorUserId: null,
-      actingLegalEntityId: null,
-    });
-  }
-}
-
 /** A work won for an organisation. `hammerPrice` is present only for members who may see money. */
 export type EntityWonLotDTO = {
   lotId: string;

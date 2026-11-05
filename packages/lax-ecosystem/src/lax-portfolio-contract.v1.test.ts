@@ -36,6 +36,48 @@ describe("LaxPortfolioItemV1", () => {
   });
 });
 
+describe("edition and document label", () => {
+  it("stay optional, so a product that does not send them still validates", () => {
+    expect(Value.Check(LaxPortfolioItemV1, item())).toBe(true);
+    expect(
+      Value.Check(
+        LaxPortfolioItemV1,
+        item({ documents: [{ kind: "certificate", available: false }] }),
+      ),
+    ).toBe(true);
+  });
+
+  it("accept the print's description and a document's own name", () => {
+    expect(
+      Value.Check(
+        LaxPortfolioItemV1,
+        item({
+          edition: "No. 7 of 24 · Hand-signed",
+          documents: [
+            {
+              kind: "certificate",
+              available: true,
+              href: "/documents",
+              label: "Certificate of authenticity No. 7/24",
+            },
+          ],
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    ["an empty edition", { edition: "" }],
+    ["a non-text edition", { edition: 7 }],
+    [
+      "an empty document label",
+      { documents: [{ kind: "certificate", available: false, label: "" }] },
+    ],
+  ])("rejects %s", (_name, patch) => {
+    expect(Value.Check(LaxPortfolioItemV1, { ...item(), ...patch })).toBe(false);
+  });
+});
+
 describe("owed", () => {
   const owedItem = (owed: unknown) => ({ ...item({ status: "awaiting_payment" }), owed });
 

@@ -71,3 +71,28 @@ describe("edition card", () => {
     expect(toEditionCardVm(artworkSummary({ printPricePence: null }), NOW).priceLabel).toBeNull();
   });
 });
+
+describe("edition card line", () => {
+  it("passes the contract's line through untouched", () => {
+    const line = "Limited edition of 25 · Hand-signed";
+    expect(toEditionCardVm(artworkSummary({ editionCardLine: line }), NOW).editionLine).toBe(line);
+  });
+
+  it("has no line for an original, missing facts or an older shop-api", () => {
+    expect(toEditionCardVm(artworkSummary({ editionCardLine: null }), NOW).editionLine).toBeNull();
+    expect(toEditionCardVm(artworkSummary(), NOW).editionLine).toBeNull();
+    expect(toEditionCardVm(artworkSummary({ editionCardLine: "  " }), NOW).editionLine).toBeNull();
+  });
+
+  it("keeps the line on a sold-out card", () => {
+    const card = toEditionCardVm(
+      artworkSummary({
+        editionCardLine: "Open edition · Plate-signed",
+        availability: { totalEditions: 0, state: "sold_out" },
+      }),
+      NOW,
+    );
+    expect(card.editionLine).toBe("Open edition · Plate-signed");
+    expect(card.status?.kind).toBe("sold_out");
+  });
+});

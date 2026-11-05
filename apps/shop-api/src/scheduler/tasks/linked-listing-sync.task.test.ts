@@ -41,4 +41,20 @@ describe("linked listing sync task", () => {
     );
     expect(onError).toHaveBeenCalledWith(failure);
   });
+
+  it("registers new pictures before listings take them, and refreshes lax.art for them", async () => {
+    const order: string[] = [];
+    sync.mockImplementation(async () => {
+      order.push("sync");
+      return { details: 0, images: 0 };
+    });
+    const register = vi.fn(async () => {
+      order.push("register");
+      return 2;
+    });
+    const cache = artCache();
+    await createLinkedListingSyncTask({} as never, cache, vi.fn(), register).run(NOW);
+    expect(order).toEqual(["register", "sync"]);
+    expect(cache.invalidateCatalogue).toHaveBeenCalledWith("artworks");
+  });
 });

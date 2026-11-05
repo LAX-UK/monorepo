@@ -6,6 +6,7 @@ import type {
   LaxPortfolioDocumentV1,
   LaxPortfolioItemV1,
 } from "@auction/lax-ecosystem";
+import { describeCertificateStatus, describeSnapshotPrint, printLabel } from "@auction/shop-domain";
 import type {
   PortalPortfolioFacts,
   PortfolioChannel,
@@ -81,28 +82,44 @@ function payoutsHref(ctx: ShopPortfolioContext, channel: PortfolioChannel): stri
   return `${originOf(ctx, channel)}/account/payouts`;
 }
 
+/**
+ * The certificate row of a print: issued, or what the owner was promised about when it arrives.
+ * Its number is the print's, written only where the certificate is numbered to match.
+ */
 function certificateDocument(
   fact: PortfolioEditionFact,
   channel: PortfolioChannel,
   ctx: ShopPortfolioContext,
 ): LaxPortfolioDocumentV1[] {
-  if (fact.certificate === "issued") {
+  const issued = fact.certificate === "issued";
+  const status = describeCertificateStatus({
+    facts: fact.runFacts?.facts ?? null,
+    issued,
+    printLabel: fact.runFacts ? printLabel(fact.print, fact.runFacts.run) : null,
+    legacyExpected: fact.certificate === "expected",
+  });
+  if (!status) return [];
+  if (issued) {
     const href =
       channel === "art"
         ? collectionHref(ctx, channel)
         : `${originOf(ctx, channel)}/account/documents`;
-    return [{ kind: "certificate", available: true, href }];
+    return [{ kind: "certificate", available: true, href, label: status.label }];
   }
-  if (fact.certificate === "expected") {
-    return [
-      {
-        kind: "certificate",
-        available: false,
-        expectedNote: "Your certificate appears here once it has been issued.",
-      },
-    ];
-  }
-  return [];
+  return [
+    {
+      kind: "certificate",
+      available: false,
+      label: status.label,
+      ...(status.expectedNote ? { expectedNote: status.expectedNote } : {}),
+    },
+  ];
+}
+
+/** "No. 7 of 24 · Hand-signed", from the facts the owner was told; nothing when none are recorded. */
+function editionDescription(fact: PortfolioEditionFact): string | undefined {
+  if (!fact.runFacts) return undefined;
+  return describeSnapshotPrint(fact.runFacts, fact.print)?.summary;
 }
 
 function editionStatus(fact: PortfolioEditionFact): LaxPortfolioItemV1["status"] | null {
@@ -145,6 +162,7 @@ function editionItem(
   }
   actions.push({ kind: "view", href: artworkHref(ctx, work) });
 
+  const edition = editionDescription(fact);
   return {
     product: channel,
     id: fact.editionId,
@@ -157,6 +175,7 @@ function editionItem(
     documents: certificateDocument(fact, channel, ctx),
     actions,
     business: businessOf(ctx),
+    ...(edition ? { edition } : {}),
   };
 }
 

@@ -30,11 +30,9 @@ describe("ArtworkUnavailablePanel", () => {
         interestRead={{ status: "guest" }}
       />,
     );
-    expect(
-      screen.getByRole("heading", { name: "Get an email if this edition is back" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Sold out" })).toBeTruthy();
     expect(screen.getByLabelText("Email address")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Email me" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Get an email if it comes back" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: /sign in/i })).toBeNull();
   });
 
@@ -47,7 +45,7 @@ describe("ArtworkUnavailablePanel", () => {
         interestRead={{ status: "ok", data: { subscribed: false } }}
       />,
     );
-    expect(screen.getByRole("button", { name: "Email me if it is back" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Get an email if it comes back" })).toBeTruthy();
     expect(screen.getByText("a@example.com")).toBeTruthy();
     expect(screen.queryByLabelText("Email address")).toBeNull();
   });
@@ -77,7 +75,7 @@ describe("ArtworkUnavailablePanel", () => {
         interestRead={{ status: "failed" }}
       />,
     );
-    expect(screen.getByRole("button", { name: "Email me if it is back" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Get an email if it comes back" })).toBeTruthy();
   });
 
   it("falls back to the email form when the sign-in has lapsed", () => {

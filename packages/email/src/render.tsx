@@ -177,6 +177,9 @@ import PaymentRefundNoticeEmail, {
 import PaymentReminderEmail, {
   subject as paymentReminderSubject,
 } from "./templates/payment-reminder.js";
+import PaymentUnappliedMoneyAdminNoticeEmail, {
+  subject as paymentUnappliedMoneyAdminNoticeSubject,
+} from "./templates/payment-unapplied-money-admin-notice.js";
 import PayoutBankChangedNoticeEmail, {
   subject as payoutBankChangedNoticeSubject,
 } from "./templates/payout-bank-changed-notice.js";
@@ -225,6 +228,9 @@ import ShopGuestOrderLinkEmail, {
 import ShopOrderReceiptEmail, {
   subject as shopOrderReceiptSubject,
 } from "./templates/shop-order-receipt.js";
+import ShopPrintSwappedEmail, {
+  subject as shopPrintSwappedSubject,
+} from "./templates/shop-print-swapped.js";
 import ShopProductionStartedEmail, {
   subject as shopProductionStartedSubject,
 } from "./templates/shop-production-started.js";
@@ -486,6 +492,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     subject: paymentManualReviewAdminNoticeSubject,
     component: (vars) => <PaymentManualReviewAdminNoticeEmail {...vars} />,
   },
+  "payment-unapplied-money-admin-notice": {
+    subject: paymentUnappliedMoneyAdminNoticeSubject,
+    component: (vars) => <PaymentUnappliedMoneyAdminNoticeEmail {...vars} />,
+  },
   "payout-initiated-notice": {
     subject: payoutInitiatedNoticeSubject,
     component: (vars) => <PayoutInitiatedNoticeEmail {...vars} />,
@@ -713,6 +723,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-production-started": {
     subject: shopProductionStartedSubject,
     component: (vars) => <ShopProductionStartedEmail {...vars} />,
+  },
+  "shop-print-swapped": {
+    subject: shopPrintSwappedSubject,
+    component: (vars) => <ShopPrintSwappedEmail {...vars} />,
   },
   "shop-dispatch-notice": {
     subject: shopDispatchNoticeSubject,

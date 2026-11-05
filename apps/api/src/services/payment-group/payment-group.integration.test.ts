@@ -18,6 +18,7 @@ import {
   DrizzlePaymentRepository,
   DrizzlePaymentWebhookLookupReader,
   DrizzlePayoutRepository,
+  DrizzleUnappliedMoneyReader,
 } from "@auction/persistence/repositories";
 import { and, eq, inArray, like, sql } from "drizzle-orm";
 import type Stripe from "stripe";
@@ -33,6 +34,7 @@ import { DisputeAllocationService } from "../disputes/dispute-allocation.service
 import { DisputeCaseRecorder } from "../disputes/dispute-case-recorder.js";
 import { DisputeLineEffects } from "../disputes/dispute-line-effects.js";
 import { PaymentCaptureService } from "../payment/payment-capture.service.js";
+import { UnappliedMoneyRecorder } from "../payment/unapplied-money.recorder.js";
 import { PayoutAdjustmentService } from "../payout/payout-adjustment.service.js";
 import { StripePaymentWebhookService } from "../stripe-payment-webhook.service.js";
 import { PAYMENT_WEBHOOK_EVENT_SOURCE } from "../stripe-webhook/payment-webhook-types.js";
@@ -93,6 +95,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     events,
     claims,
     receipt,
+    unappliedMoney: new UnappliedMoneyRecorder(new DrizzleUnappliedMoneyReader(db), events),
   });
   const checkout = new PaymentGroupCheckoutService({
     groups,

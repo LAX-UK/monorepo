@@ -1,12 +1,15 @@
 "use client";
 
+import { OfferAtAuctionDialog } from "@/components/artworks/offer-at-auction-dialog.client";
 import { OfferOnLaxArtDialog } from "@/components/from-zoho/offer-on-lax-art-dialog.client";
+import { useCanOfferAtAuction } from "@/components/from-zoho/use-offer-at-auction.client";
 import { useCanOfferOnLaxArt } from "@/components/from-zoho/use-offer-on-lax-art.client";
 import {
   FROM_ZOHO_DESCRIPTION,
   FROM_ZOHO_TITLE,
   useQueueFrame,
 } from "@/components/from-zoho/use-queue-frame.client";
+import { NO_OFFER_LINKS } from "@/lib/offer-at-auction-links";
 import {
   CONFLICT_FIELD_LABEL,
   GAP_LABEL,
@@ -35,7 +38,7 @@ import {
   StatusBadge,
   toast,
 } from "@auction/staff-ui";
-import { Copy, ExternalLink, Globe, PanelRight } from "@auction/staff-ui/icons";
+import { Copy, ExternalLink, Gavel, Globe, PanelRight } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 
@@ -77,19 +80,22 @@ const MISSING_COLUMN: DataColumn<AdminRegisterArtworkSummary> = {
  * Artworks that came in from Zoho and are not offered anywhere yet, on the staff list template:
  * what each one still lacks, filters for artist and for one missing part, and a link to each
  * record. Catalogue details are changed in Zoho; each row's "…" menu offers the artwork on
- * lax.art from here.
+ * lax.art or at auction from here.
  */
 export function NewFromZohoList({
   query,
   page,
   zohoUrlTemplate = null,
   unlinked = 0,
+  bidAdminUrl = null,
 }: {
   query: ZohoQueueQuery;
   page: AdminRegisterNewList;
   zohoUrlTemplate?: string | null;
   /** lax.art originals not linked to Zoho yet; the Link lax.art tab shows while there are any. */
   unlinked?: number;
+  /** Where Bid admin lives, for a person who can open it. */
+  bidAdminUrl?: string | null;
 }) {
   const { pending, navigate, ListLink, views } = useQueueFrame(query, page.counts, unlinked);
   const filtered = hasActiveZohoFilters(query);
@@ -133,7 +139,11 @@ export function NewFromZohoList({
   ];
   const links = pageLinks(query, page);
   const canOffer = useCanOfferOnLaxArt();
+  const canOfferAtAuction = useCanOfferAtAuction();
   const [offering, setOffering] = useState<AdminRegisterArtworkSummary | null>(null);
+  const [offeringAtAuction, setOfferingAtAuction] = useState<AdminRegisterArtworkSummary | null>(
+    null,
+  );
 
   const rowActions = useCallback(
     (row: AdminRegisterArtworkSummary): OverflowAction[] => {
@@ -152,6 +162,16 @@ export function NewFromZohoList({
                 label: "Offer on lax.art…",
                 icon: Globe,
                 onSelect: () => setOffering(row),
+              },
+            ]
+          : []),
+        ...(canOfferAtAuction && row.kind === "original"
+          ? [
+              {
+                id: "offer-at-auction",
+                label: "Offer at auction…",
+                icon: Gavel,
+                onSelect: () => setOfferingAtAuction(row),
               },
             ]
           : []),
@@ -178,7 +198,7 @@ export function NewFromZohoList({
         },
       ];
     },
-    [canOffer, navigate, zohoUrlTemplate],
+    [canOffer, canOfferAtAuction, navigate, zohoUrlTemplate],
   );
 
   return (
@@ -257,6 +277,22 @@ export function NewFromZohoList({
           }}
           registerId={offering.registerId}
           title={offering.title}
+        />
+      ) : null}
+      {offeringAtAuction ? (
+        <OfferAtAuctionDialog
+          key={offeringAtAuction.registerId}
+          open
+          onOpenChange={(open) => {
+            if (!open) setOfferingAtAuction(null);
+          }}
+          target={{ kind: "register", registerId: offeringAtAuction.registerId }}
+          title={offeringAtAuction.title}
+          links={{
+            ...NO_OFFER_LINKS,
+            bidAdminUrl,
+            zohoUrl: zohoProductUrl(zohoUrlTemplate, offeringAtAuction.zohoProductId),
+          }}
         />
       ) : null}
     </>

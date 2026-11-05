@@ -77,6 +77,19 @@ export {
   type ReleaseAlertUnsubscribePreview,
 } from "./release-alerts-public.js";
 export {
+  ACCOUNT_EMAIL_ALERT_TOPICS,
+  AccountEmailAlertRefusalSchema,
+  AccountEmailAlertSavedSchema,
+  AccountEmailAlertSwitchBodySchema,
+  AccountEmailAlertTopicParamsSchema,
+  AccountEmailAlertTopicSchema,
+  AccountEmailAlertsSchema,
+  parseAccountEmailAlerts,
+  type AccountEmailAlertRefusal,
+  type AccountEmailAlertTopic,
+  type AccountEmailAlerts,
+} from "./account-email-alerts.js";
+export {
   AdminArtworkPublishBodySchema,
   AdminReleaseAlertSummarySchema,
   type AdminArtworkPublishBody,
@@ -102,8 +115,14 @@ export {
   PublicArtworkTypeFilterSchema,
   PublicAvailabilityStateSchema,
   PublicEditionAvailabilitySchema,
+  PublicEditionFactsSchema,
+  PublicEditionRunSchema,
+  PublicArtworkEditionSchema,
+  PublicOtherRunSchema,
   ShopApiErrorBodySchema,
   type PublicArtworkDetail,
+  type PublicArtworkEdition,
+  type PublicOtherRun,
   type PublicArtworkFacetCounts,
   type PublicArtworkList,
   type PublicArtworkObjectTypeFacet,
@@ -672,6 +691,35 @@ export {
   type AdminStockBatchInput,
 } from "./edition-run-admin.js";
 export {
+  AUTHORITY_REFERENCE_FIELD_MAX,
+  AdminCertificateAuthorityBodySchema,
+  AdminCertificateStatusSchema,
+  AdminCertificateToSendSchema,
+  AdminCertificatesToSendSchema,
+  AdminConfirmPrintBodySchema,
+  AdminConfirmPrintResponseSchema,
+  AdminHorsCommerceApprovalResponseSchema,
+  AdminLineCertificateSchema,
+  AdminPickAndPackSchema,
+  AdminPickLineSchema,
+  AdminSwapPrintBodySchema,
+  AdminSwapPrintResponseSchema,
+  PRINT_SCAN_MAX_LENGTH,
+  SWAP_REASON_FIELD_MAX,
+  type AdminCertificateAuthorityBody,
+  type AdminCertificateStatus,
+  type AdminCertificateToSend,
+  type AdminCertificatesToSend,
+  type AdminConfirmPrintBody,
+  type AdminConfirmPrintResponse,
+  type AdminHorsCommerceApprovalResponse,
+  type AdminLineCertificate,
+  type AdminPickAndPack,
+  type AdminPickLine,
+  type AdminSwapPrintBody,
+  type AdminSwapPrintResponse,
+} from "./print-fulfilment-admin.js";
+export {
   ADMIN_HOME_FEATURE_MAX_IDS,
   ADMIN_HOME_FEATURE_SLOT_VALUES,
   AdminHomeFeatureArtistSchema,
@@ -962,7 +1010,9 @@ export {
   type AdminLaxArtOfferResponse,
 } from "./admin-offer-on-lax-art.js";
 export {
+  AdminBidLotRefSchema,
   AdminWhereItIsSchema,
+  type AdminBidLotRef,
   type AdminWhereItIs,
 } from "./admin-where-it-is.js";
 

@@ -33,6 +33,12 @@ const SOURCE_FILE = /\.(ts|tsx|mts|js|mjs)$/;
 const TEST_FILE = /(\.test\.|\.spec\.|\.test-util\.|\/testing\/|\/__tests__\/|\/e2e\/)/;
 /** Policies published verbatim from the business team; they name the company in their own words. */
 const VERBATIM_POLICY_DIR = "packages/marketing-ui/src/legal/london-art-exchange/";
+/**
+ * Identity cannot depend on the products' packages, so its contract keeps its own copy of the
+ * registered names. apps/web/src/lib/legal/sign-up-accepted-versions.test.ts checks every name in
+ * it against legal-entity.ts, so the copy cannot drift.
+ */
+const IDENTITY_NAME_MIRROR = "packages/identity-contracts/src/legal-documents.ts";
 
 /** Registered company names, in any casing of the suffix. */
 const COMPANY_NAME = /London Auction Xchange|London Art Exchange (Ltd|Limited)\b/i;
@@ -60,7 +66,13 @@ function findViolations(pattern: RegExp): string[] {
   for (const root of SCANNED_ROOTS) {
     for (const file of listSources(join(REPO_ROOT, root))) {
       const rel = relative(REPO_ROOT, file);
-      if (TEST_FILE.test(rel) || rel.startsWith(VERBATIM_POLICY_DIR)) continue;
+      if (
+        TEST_FILE.test(rel) ||
+        rel.startsWith(VERBATIM_POLICY_DIR) ||
+        rel === IDENTITY_NAME_MIRROR
+      ) {
+        continue;
+      }
       readFileSync(file, "utf8")
         .split("\n")
         .forEach((line, index) => {

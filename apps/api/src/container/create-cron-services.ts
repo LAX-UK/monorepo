@@ -92,7 +92,7 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
   );
 
   const paymentMaintenanceCronService = new PaymentMaintenanceCronService(
-    payments.paymentMaintenanceService,
+    payments.stalePaymentMaintenance,
     platform.paymentRefundReconcileService,
   );
 

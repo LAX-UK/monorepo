@@ -136,6 +136,19 @@ export async function processZohoProjector(ctx: ProjectorRunContext): Promise<vo
     },
   });
 
+  // Admins convert leads in Zoho; purchases that waited for a Contact are released afterwards.
+  if (
+    ctx.crmSyncService &&
+    (ctx.env.ZOHO_CRM_SYNC_MODE === "live" || ctx.env.ZOHO_CRM_SYNC_MODE === "canary")
+  ) {
+    try {
+      const sweep = await ctx.crmSyncService.releaseConvertedLeads();
+      if (sweep.checked > 0) ctx.log.info(sweep, "zoho_crm_held_deals_swept");
+    } catch (err) {
+      ctx.log.warn({ err }, "zoho_crm_held_deals_sweep_failed");
+    }
+  }
+
   const oldestPendingAt = await deliveryRepo.oldestPendingAt({ consumer: ZOHO_CONSUMER });
   recordDeliveryOldestPendingAgeSeconds(ZOHO_CONSUMER, oldestPendingAt);
   if (ctx.crmSyncService) {

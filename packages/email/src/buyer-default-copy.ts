@@ -20,7 +20,34 @@ export type PaymentReminderCopy = {
   paragraphs: string[];
 };
 
-type ReminderInput = { lotTitle: string; amount: string; dueDate: string };
+/** Why an invoice cannot be paid yet: the reminder says what to do instead of "pay now". */
+export type PaymentReminderHoldKey = "identity_verification_required" | "organisation_under_review";
+
+type ReminderInput = {
+  lotTitle: string;
+  amount: string;
+  dueDate: string;
+  held?: PaymentReminderHoldKey | null;
+};
+
+const HELD: Record<PaymentReminderHoldKey, (input: ReminderInput) => PaymentReminderCopy> = {
+  identity_verification_required: ({ lotTitle, amount, dueDate }) => ({
+    title: `Verify your identity to pay for ${lotTitle}`,
+    heading: "Verify your identity to pay",
+    paragraphs: [
+      `Payment of ${amount} for ${lotTitle} is due on ${dueDate}. Before you can pay, we need to verify your identity.`,
+      "It takes a few minutes. Once you are verified you can pay from your purchases.",
+    ],
+  }),
+  organisation_under_review: ({ lotTitle, amount, dueDate }) => ({
+    title: `Your invoice for ${lotTitle}`,
+    heading: "We are checking your organisation",
+    paragraphs: [
+      `Payment of ${amount} for ${lotTitle} is due on ${dueDate}. We are still checking your organisation's details, so it cannot be paid yet.`,
+      "There is nothing you need to do now. We will let you know as soon as you can pay.",
+    ],
+  }),
+};
 
 const REMINDERS: Record<PaymentReminderStepKey, (input: ReminderInput) => PaymentReminderCopy> = {
   before_due: ({ lotTitle, amount, dueDate }) => ({
@@ -53,7 +80,7 @@ export function paymentReminderCopy(
   step: PaymentReminderStepKey,
   input: ReminderInput,
 ): PaymentReminderCopy {
-  return REMINDERS[step](input);
+  return input.held ? HELD[input.held](input) : REMINDERS[step](input);
 }
 
 export type BuyerDefaultAudience = "buyer" | "seller" | "underbidder";
