@@ -7,6 +7,10 @@ import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle
 import { createDrizzleShopPayeeConnectAccountRepository } from "./infrastructure/drizzle-shop-payee-connect-account.repository.js";
 import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-transaction-effects.js";
 import { createRunConnectPayoutTransfersHandler } from "./infrastructure/handlers/scheduler/run-connect-payout-transfers.handler.js";
+import {
+  createHttpArtCacheInvalidator,
+  noopArtCacheInvalidator,
+} from "./infrastructure/http-art-cache-invalidator.js";
 import { resolveShopMediaStorage } from "./infrastructure/shop-media-storage.js";
 import { createStripePaymentRefundGateway } from "./infrastructure/stripe-payment-refund.gateway.js";
 import { createStripeShopCheckoutGateway } from "./infrastructure/stripe-shop-checkout.gateway.js";
@@ -21,6 +25,7 @@ import { createAlertMatchingTask } from "./scheduler/tasks/alert-matching.task.j
 import { createConnectPayoutTransferTask } from "./scheduler/tasks/connect-payout-transfer.task.js";
 import { createGuestOrderClaimTask } from "./scheduler/tasks/guest-order-claim.task.js";
 import { createIdentityMergeTask } from "./scheduler/tasks/identity-merge.task.js";
+import { createLinkedListingSyncTask } from "./scheduler/tasks/linked-listing-sync.task.js";
 import { createNotifyMeDispatchTask } from "./scheduler/tasks/notify-me-dispatch.task.js";
 import { createPayoutEligibilityTask } from "./scheduler/tasks/payout-eligibility.task.js";
 import { createPersonalDataAnonymisationTask } from "./scheduler/tasks/personal-data-anonymisation.task.js";
@@ -77,6 +82,13 @@ export function buildShopApiSchedulerTasks(input: {
       warn: (fields, message) => input.log.warn(fields, message),
     },
   });
+  const artCache =
+    input.env.ART_REVALIDATE_URL && input.env.ART_REVALIDATE_SECRET
+      ? createHttpArtCacheInvalidator({
+          url: input.env.ART_REVALIDATE_URL,
+          secret: input.env.ART_REVALIDATE_SECRET,
+        })
+      : noopArtCacheInvalidator;
   return [
     createAlertMatchingTask(alerts.matching),
     createAlertDigestTask({ mode: alerts.mode, runs: alerts.digests }),
@@ -101,6 +113,12 @@ export function buildShopApiSchedulerTasks(input: {
       opsAlertEmail,
     ),
     createAdminCommandPruneTask(input.db),
+    createLinkedListingSyncTask(input.db, artCache, (error) =>
+      input.log.warn(
+        { err: error },
+        "lax.art catalogue refresh failed after a Zoho listing update",
+      ),
+    ),
     ...(input.env.SHOP_THIRD_PARTY_ENABLED
       ? [createStockHoldExpiryTask(input.db, input.env.DOMAIN_EVENT_PUBLISH_VALIDATE)]
       : []),

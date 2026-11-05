@@ -17,6 +17,11 @@ import type {
 } from "./crm-readers.js";
 import type { CrmSyncResult } from "./crm-sync-result.js";
 import { CrmDealSyncHandler } from "./handlers/crm-deal-sync-handler.js";
+import {
+  type CrmConversionSweepResult,
+  CrmLeadConversionHandler,
+} from "./handlers/crm-lead-conversion-handler.js";
+import { CrmPaidBuyerHandler } from "./handlers/crm-paid-buyer-handler.js";
 import { CrmPersonSyncHandler } from "./handlers/crm-person-sync-handler.js";
 import { CrmShopRecordSyncHandler } from "./handlers/crm-shop-record-sync-handler.js";
 import { CrmSubjectLifecycleHandler } from "./handlers/crm-subject-lifecycle-handler.js";
@@ -37,6 +42,7 @@ export type CrmSyncServiceDeps = {
 export class CrmSyncService {
   private readonly personHandler: CrmPersonSyncHandler;
   private readonly dealHandler: CrmDealSyncHandler;
+  private readonly conversionHandler: CrmLeadConversionHandler;
   private readonly lifecycleHandler: CrmSubjectLifecycleHandler;
   private readonly shopRecordHandler: CrmShopRecordSyncHandler;
 
@@ -45,16 +51,27 @@ export class CrmSyncService {
     this.personHandler = new CrmPersonSyncHandler({
       gateway: deps.gateway,
       linkRepo: deps.linkRepo,
-      onContactLinked: (subjectId) =>
-        dealHandlerRef.current?.patchDealContactLookupsForSubject(subjectId) ?? Promise.resolve(),
+      onContactLinked: async (subjectId) => {
+        // The person now has a Contact: waiting purchases become Deals on it.
+        await dealHandlerRef.current?.releaseHeldDealsForSubject(subjectId);
+        await dealHandlerRef.current?.patchDealContactLookupsForSubject(subjectId);
+      },
     });
     this.dealHandler = new CrmDealSyncHandler({
       gateway: deps.gateway,
       linkRepo: deps.linkRepo,
       personHandler: this.personHandler,
-      leadConversionEnabled: deps.env.ZOHO_CRM_LEAD_CONVERSION_ENABLED,
+      paidBuyerHandler: new CrmPaidBuyerHandler({
+        gateway: deps.gateway,
+        linkRepo: deps.linkRepo,
+      }),
     });
     dealHandlerRef.current = this.dealHandler;
+    this.conversionHandler = new CrmLeadConversionHandler({
+      gateway: deps.gateway,
+      linkRepo: deps.linkRepo,
+      dealHandler: this.dealHandler,
+    });
     this.lifecycleHandler = new CrmSubjectLifecycleHandler({
       gateway: deps.gateway,
       linkRepo: deps.linkRepo,
@@ -102,6 +119,11 @@ export class CrmSyncService {
       default:
         return undefined;
     }
+  }
+
+  /** Puts purchases that waited for an admin's lead conversion onto the new Contact. */
+  async releaseConvertedLeads(): Promise<CrmConversionSweepResult> {
+    return this.conversionHandler.releaseConvertedLeads();
   }
 
   async syncEvent(event: DomainEventRowForCrm): Promise<CrmSyncResult> {
@@ -195,6 +217,7 @@ export class CrmSyncService {
           intent.email,
           intent.fields,
           "upsert",
+          { createOnlyFields: intent.createOnlyFields },
         );
       case "person_patch":
         return this.personHandler.syncPerson(intent.subjectId, "", intent.fields, "patch");
@@ -202,8 +225,8 @@ export class CrmSyncService {
         return this.dealHandler.syncDeal(intent);
       case "deal_stage":
         return this.dealHandler.updateDealStage(intent.dealEntityId, intent.stage);
-      case "convert_lead_on_win":
-        return this.dealHandler.convertLeadAndCreateDeal(intent);
+      case "purchase_paid":
+        return this.dealHandler.markPurchasePaid(intent);
       case "shop_artwork_product_upsert":
         return this.shopRecordHandler.syncArtworkCreated(intent);
       default:

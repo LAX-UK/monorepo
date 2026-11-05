@@ -1149,6 +1149,9 @@ importers:
       '@auction/identity-db':
         specifier: workspace:*
         version: link:../../packages/identity-db
+      '@auction/lax-ecosystem':
+        specifier: workspace:*
+        version: link:../../packages/lax-ecosystem
       '@auction/lot-lifecycle-app':
         specifier: workspace:*
         version: link:../../packages/lot-lifecycle-app
@@ -1630,6 +1633,9 @@ importers:
       '@auction/domain':
         specifier: workspace:*
         version: link:../domain
+      '@auction/email':
+        specifier: workspace:*
+        version: link:../email
       '@auction/finance-cron-app':
         specifier: workspace:*
         version: link:../finance-cron-app

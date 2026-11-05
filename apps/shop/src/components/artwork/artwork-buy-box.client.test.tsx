@@ -18,13 +18,10 @@ const addMock = vi.mocked(addArtworkToBasket);
 const purchase: ArtworkPurchaseVm = {
   priceLabel: "£120.00",
   vatNote: "Includes VAT",
-  editionSize: "Limited edition of 24",
-  editionShort: "Edition of 24",
   availability: "available",
-  availabilityLabel: "Available",
-  deliveryLine: "UK insured delivery £15.00 · Collection in London free",
-  returnsLine: "14-day cancellation",
 };
+
+const DELIVERY = "Insured UK delivery £15, arrives 2 to 4 Nov · Free collection, ready Fri 30 Oct";
 
 function renderBuyBox(props: Partial<React.ComponentProps<typeof ArtworkBuyBox>> = {}) {
   return render(
@@ -37,7 +34,9 @@ function renderBuyBox(props: Partial<React.ComponentProps<typeof ArtworkBuyBox>>
       inBasket={false}
       basketLineId={null}
       signInHref="/login?returnTo=%2Fartworks%2Fwarm-basket"
-      facts={<p>{purchase.deliveryLine}</p>}
+      deliveryLine={DELIVERY}
+      deliveryHref={null}
+      editionLine="Limited edition of 24 · Hand-signed"
       {...props}
     />,
   );
@@ -58,13 +57,19 @@ describe("ArtworkBuyBox", () => {
     refresh.mockReset();
   });
 
-  it("shows the price with VAT, the edition line and the delivery line", () => {
+  it("shows the price with VAT, the action and one delivery line, and no edition line", () => {
     renderBuyBox();
     expect(screen.getByText("£120.00")).toBeTruthy();
     expect(screen.getByText("Includes VAT")).toBeTruthy();
-    expect(screen.getByText(/Limited edition of 24/)).toBeTruthy();
-    expect(screen.getByText("Available")).toBeTruthy();
-    expect(screen.getByText(/UK insured delivery £15.00/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add to basket" })).toBeTruthy();
+    expect(screen.getByText(DELIVERY)).toBeTruthy();
+    expect(screen.queryByText(/Limited edition of 24/)).toBeNull();
+    expect(screen.queryByText("Available")).toBeNull();
+  });
+
+  it("links the delivery line to the policy when it is live", () => {
+    renderBuyBox({ deliveryHref: "/delivery" });
+    expect(screen.getByRole("link", { name: DELIVERY }).getAttribute("href")).toBe("/delivery");
   });
 
   it("adds one edition: loading, then added, the confirmation, an announcement and a header refresh", async () => {
@@ -116,10 +121,11 @@ describe("ArtworkBuyBox", () => {
     );
   });
 
-  it("offers the basket when the edition is already in it", () => {
+  it("says 'In your basket · View basket' when the edition is already in it", () => {
     renderBuyBox({ inBasket: true, basketLineId: "line-1" });
-    expect(screen.getByRole("link", { name: "View basket" })).toBeTruthy();
-    expect(screen.getByText(/In your basket/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "View basket" }).getAttribute("href")).toBe("/basket");
+    expect(screen.getByText(/In your basket/).textContent).toBe("In your basket · View basket");
     expect(screen.queryByRole("button", { name: "Add to basket" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Remove from basket" })).toBeTruthy();
   });
 });

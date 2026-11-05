@@ -14,7 +14,14 @@ describe("LAX resource registry", () => {
       "lax-bid-api": {
         id: "lax-bid-api",
         uri: "https://api.lax.bid",
-        allowedScopes: ["bid.read", "bid.write", "lax.portfolio.read", "lax.staff.tools.read"],
+        allowedScopes: [
+          "bid.read",
+          "bid.write",
+          "lax.portfolio.read",
+          "lax.alerts.read",
+          "lax.alerts.write",
+          "lax.staff.tools.read",
+        ],
       },
       "lax-ws": {
         id: "lax-ws",
@@ -31,6 +38,8 @@ describe("LAX resource registry", () => {
           "lax.portfolio.read",
           "lax.selling.read",
           "lax.selling.write",
+          "lax.alerts.read",
+          "lax.alerts.write",
         ],
       },
     });
@@ -48,6 +57,8 @@ describe("LAX resource registry", () => {
       "phone",
       "bid.read",
       "bid.write",
+      "lax.alerts.read",
+      "lax.alerts.write",
       "lax.portfolio.read",
       "lax.selling.read",
       "lax.selling.write",

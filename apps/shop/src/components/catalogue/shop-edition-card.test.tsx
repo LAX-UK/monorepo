@@ -54,4 +54,44 @@ describe("ShopEditionCard", () => {
     renderCard(OLDER, true);
     expect(screen.queryByText("Mara Ellison")).toBeNull();
   });
+
+  describe("edition line", () => {
+    it.each([
+      ["limited", "Limited edition of 25 · Hand-signed"],
+      ["open", "Open edition · Plate-signed"],
+      ["proof", "Artist's proof · Hand-signed"],
+    ])("shows the %s line once, under the meta", (_name, line) => {
+      renderCard({ ...OLDER, editionCardLine: line });
+      expect(screen.getAllByText(line)).toHaveLength(1);
+      const meta = screen.getByText("Giclée print · Edition of 50");
+      expect(meta.nextElementSibling?.textContent).toBe(line);
+      expect(meta.nextElementSibling?.className).toBe(meta.className);
+    });
+
+    it("shows no line for an original", () => {
+      renderCard({ ...OLDER, editionCardLine: null });
+      expect(
+        screen.getByRole("article").querySelectorAll(".shop-edition-card__facts"),
+      ).toHaveLength(1);
+    });
+
+    it("shows no line while no facts are confirmed", () => {
+      renderCard(OLDER);
+      expect(
+        screen.getByRole("article").querySelectorAll(".shop-edition-card__facts"),
+      ).toHaveLength(1);
+    });
+
+    it("keeps the line and the sold-out treatment on a sold-out card, with no count", () => {
+      renderCard({
+        ...OLDER,
+        editionCardLine: "Limited edition of 25 · Hand-signed",
+        availability: { totalEditions: 25, state: "sold_out" },
+      });
+      expect(screen.getByText("Limited edition of 25 · Hand-signed")).toBeTruthy();
+      expect(screen.getByText("Sold out")).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Get alerts for Harbour light" })).toBeTruthy();
+      expect(screen.queryByText(/left|remaining/i)).toBeNull();
+    });
+  });
 });

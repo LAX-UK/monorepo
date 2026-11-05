@@ -2,6 +2,7 @@ import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { NeedsDecisionList, NewFromZohoList } from "@/components/from-zoho/from-zoho-list.client";
 import { LastCheckView } from "@/components/from-zoho/last-check-view.client";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { getShopAdminContainer } from "@/server/container";
 import {
   activeZohoTab,
   parseZohoQueueQuery,
@@ -47,5 +48,11 @@ export default async function FromZohoPage({
   const result = await fetchAdminJson<AdminRegisterNewList>(`artwork-register/new${suffix}`);
   if (result.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") return <AdminFailedPage title={TITLE} status={result.status} />;
-  return <NewFromZohoList query={query} page={result.data} />;
+  return (
+    <NewFromZohoList
+      query={query}
+      page={result.data}
+      zohoUrlTemplate={getShopAdminContainer().config.crmRecordUrlTemplate ?? null}
+    />
+  );
 }

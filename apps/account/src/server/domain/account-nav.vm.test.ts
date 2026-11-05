@@ -9,7 +9,7 @@ const support = {
 };
 
 describe("buildAccountNav", () => {
-  it("lists the seven destinations in order, with the routes that exist", () => {
+  it("lists the eight destinations in order, with the routes that exist", () => {
     const items = buildAccountNav({ support });
     expect(items.map((item) => item.label)).toEqual([
       "Home",
@@ -17,6 +17,7 @@ describe("buildAccountNav", () => {
       "Security",
       "Portfolio",
       "Money",
+      "Email alerts",
       "Privacy",
       "Help",
     ]);
@@ -26,6 +27,7 @@ describe("buildAccountNav", () => {
       "/account/security",
       "/account/portfolio",
       "/account/portfolio/money",
+      "/account/alerts",
       "/account/privacy",
       "/account/help",
     ]);
@@ -41,6 +43,7 @@ describe("buildAccountNav", () => {
       "portfolio",
       "money",
       "selling",
+      "alerts",
       "privacy",
       "help",
     ]);

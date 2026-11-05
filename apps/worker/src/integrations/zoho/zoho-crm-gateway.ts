@@ -1,14 +1,14 @@
 import type { WorkerEnv } from "../../env.js";
 import type {
   CrmBatchUpsertInput,
-  CrmConvertLeadInput,
-  CrmConvertLeadResult,
   CrmCoqlPage,
   CrmCoqlQuery,
+  CrmCreateInput,
   CrmDeleteRecordInput,
   CrmDeleteRecordResult,
   CrmGateway,
   CrmGatewayMetrics,
+  CrmLeadSummary,
   CrmRecordResult,
   CrmSearchByEmailInput,
   CrmSearchByEmailResult,
@@ -17,7 +17,7 @@ import type {
 } from "../crm/crm-gateway.js";
 import { getZohoCrmAccessToken, invalidateZohoCrmAccessToken } from "./oauth-token-refresh.js";
 import { ZohoCrmAuthError, ZohoCrmHttpError } from "./types.js";
-import { parseConvertLeadContactId } from "./zoho-crm-convert-response.js";
+import { parseLeadRecord } from "./zoho-crm-lead-record.js";
 import { parseZohoRecordResponses } from "./zoho-crm-response.js";
 
 export type ZohoCrmGatewayConfig = {
@@ -186,16 +186,39 @@ export class ZohoCrmGateway implements CrmGateway, CrmCoqlQuery {
       .filter((id): id is string => typeof id === "string" && id.length > 0);
   }
 
-  async convertLead(input: CrmConvertLeadInput): Promise<CrmConvertLeadResult> {
-    const dataRow: Record<string, unknown> = { notify_lead_owner: false };
-    if (input.contactFields && Object.keys(input.contactFields).length > 0) {
-      dataRow.Contacts = input.contactFields;
+  async createRecord(input: CrmCreateInput): Promise<CrmRecordResult> {
+    const res = await this.request("POST", `/crm/v8/${input.module}`, {
+      data: [input.fields],
+      trigger: this.config.trigger,
+    });
+    if (res.status !== 207 && !res.ok) {
+      this.throwOnHttpError(res);
     }
-    const body = { data: [dataRow] };
-    const res = await this.request("POST", `/crm/v8/Leads/${input.leadId}/actions/convert`, body);
+    const first = parseZohoRecordResponses(res.status, res.text, res.retryAfterMs)[0];
+    if (first?.status === "success" && first.recordId) {
+      return {
+        module: input.module,
+        recordId: first.recordId,
+        action: "insert",
+        status: "success",
+      };
+    }
+    return {
+      module: input.module,
+      recordId: first?.recordId ?? "",
+      action: "insert",
+      status: "error",
+      ...(first?.code ? { code: first.code } : {}),
+      ...(first?.fieldApiName ? { fieldApiName: first.fieldApiName } : {}),
+      message: first?.message ?? "create_record_failed",
+    };
+  }
+
+  async findLead(leadId: string): Promise<CrmLeadSummary | null> {
+    const res = await this.request("GET", `/crm/v8/Leads/${encodeURIComponent(leadId)}`);
+    if (res.status === 404 || res.status === 204) return null;
     this.throwOnHttpError(res);
-    const contactId = parseConvertLeadContactId(res.status, res.text);
-    return { contactId };
+    return parseLeadRecord(res.text);
   }
 
   async deleteRecord(input: CrmDeleteRecordInput): Promise<CrmDeleteRecordResult> {

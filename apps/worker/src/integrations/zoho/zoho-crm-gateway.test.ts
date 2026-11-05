@@ -117,7 +117,7 @@ describe("ZohoCrmGateway", () => {
     await expect(gateway.purgeFromRecycleBin("rec-1")).resolves.toBeUndefined();
   });
 
-  it("parses convert response contact id object shape", async () => {
+  it("reads the converted contact of a lead", async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,
       status: 200,
@@ -126,15 +126,35 @@ describe("ZohoCrmGateway", () => {
         JSON.stringify({
           data: [
             {
-              Contacts: { id: "contact-99", name: "A B" },
-              status: "success",
+              Lead_Status: "New",
+              Owner: { id: "u1" },
+              Converted_Detail: { contact: { id: "contact-99" } },
             },
           ],
         }),
     } as Response);
 
     const gateway = new ZohoCrmGateway(env(), { apiHost: "https://www.zohoapis.eu/", trigger: [] });
-    const result = await gateway.convertLead({ leadId: "lead-1" });
-    expect(result.contactId).toBe("contact-99");
+    expect(await gateway.findLead("lead-1")).toEqual({
+      status: "New",
+      ownerId: "u1",
+      convertedContactId: "contact-99",
+    });
+  });
+
+  it("creates a note record", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      status: 201,
+      headers: new Headers(),
+      text: async () =>
+        JSON.stringify({
+          data: [{ code: "SUCCESS", status: "success", details: { id: "note-1" } }],
+        }),
+    } as Response);
+
+    const gateway = new ZohoCrmGateway(env(), { apiHost: "https://www.zohoapis.eu/", trigger: [] });
+    const result = await gateway.createRecord({ module: "Notes", fields: { Note_Content: "x" } });
+    expect(result).toMatchObject({ module: "Notes", recordId: "note-1", status: "success" });
   });
 });

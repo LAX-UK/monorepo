@@ -77,6 +77,19 @@ export {
   type ReleaseAlertUnsubscribePreview,
 } from "./release-alerts-public.js";
 export {
+  ACCOUNT_EMAIL_ALERT_TOPICS,
+  AccountEmailAlertRefusalSchema,
+  AccountEmailAlertSavedSchema,
+  AccountEmailAlertSwitchBodySchema,
+  AccountEmailAlertTopicParamsSchema,
+  AccountEmailAlertTopicSchema,
+  AccountEmailAlertsSchema,
+  parseAccountEmailAlerts,
+  type AccountEmailAlertRefusal,
+  type AccountEmailAlertTopic,
+  type AccountEmailAlerts,
+} from "./account-email-alerts.js";
+export {
   AdminArtworkPublishBodySchema,
   AdminReleaseAlertSummarySchema,
   type AdminArtworkPublishBody,
@@ -102,8 +115,14 @@ export {
   PublicArtworkTypeFilterSchema,
   PublicAvailabilityStateSchema,
   PublicEditionAvailabilitySchema,
+  PublicEditionFactsSchema,
+  PublicEditionRunSchema,
+  PublicArtworkEditionSchema,
+  PublicOtherRunSchema,
   ShopApiErrorBodySchema,
   type PublicArtworkDetail,
+  type PublicArtworkEdition,
+  type PublicOtherRun,
   type PublicArtworkFacetCounts,
   type PublicArtworkList,
   type PublicArtworkObjectTypeFacet,
@@ -977,3 +996,20 @@ export {
   type AdminOfferAtAuctionBody,
   type AdminOfferAtAuctionResponse,
 } from "./admin-auction-offer.js";
+export {
+  AdminLaxArtListingSchema,
+  AdminLaxArtOfferAssessmentSchema,
+  AdminLaxArtOfferBlockerSchema,
+  AdminLaxArtOfferBodySchema,
+  AdminLaxArtOfferResponseSchema,
+  LAX_ART_OFFER_SALE_STATES,
+  type AdminLaxArtListing,
+  type AdminLaxArtOfferAssessment,
+  type AdminLaxArtOfferBlocker,
+  type AdminLaxArtOfferBody,
+  type AdminLaxArtOfferResponse,
+} from "./admin-offer-on-lax-art.js";
+export {
+  AdminWhereItIsSchema,
+  type AdminWhereItIs,
+} from "./admin-where-it-is.js";

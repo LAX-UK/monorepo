@@ -1,5 +1,6 @@
 import type {
   AdminRegisterConflict,
+  AdminRegisterDetail,
   AdminRegisterEvent,
   AdminRegisterGap,
   AdminRegisterLastCheck,
@@ -119,7 +120,7 @@ export type RegisterTone = "info" | "success" | "warning" | "danger" | "neutral"
 type OfferPresentation = { label: string; tone: RegisterTone };
 
 const OFFER_STATE: Record<string, OfferPresentation> = {
-  held: { label: "Not offered yet", tone: "neutral" },
+  held: { label: "Not offered", tone: "neutral" },
   lax_art: { label: "On lax.art", tone: "success" },
   bid_sale: { label: "In a LAX Bid sale", tone: "info" },
   private_sale: { label: "In a private sale", tone: "info" },
@@ -203,7 +204,8 @@ const SKIPPED_REASON_LABEL: Record<string, string> = {
   invalid_modified_time: "Zoho gave no usable edit time",
   missing_title: "No title",
   missing_stock_code: "No stock code",
-  invalid_stock_code: "Stock code is not in the LAX format",
+  invalid_stock_code:
+    "Stock code is not in the LAX format: LAX-ORI or LAX-PRT, artist, collection, year, number",
   missing_artist: "No artist",
   missing_artist_code: "Artist has no code",
   duplicate_stock_code: "Stock code already belongs to another artwork",
@@ -221,6 +223,8 @@ const NEW_ARTWORK_GAP_LABEL: Record<string, string> = {
   missing_medium: "No medium",
   missing_dimensions: "No size",
   artist_code_differs_from_stock_code: "Artist code differs from the stock code",
+  non_standard_code_parts:
+    "Artist code should be 2 to 3 letters and collection code 2 to 4 letters or digits",
 };
 
 export function newArtworkGapLabel(gap: string): string {
@@ -341,6 +345,8 @@ function describeEvent(
     }
     case "offer_moved":
       return { title: `Moved from ${stateOf(payload.from)} to ${stateOf(payload.to)}` };
+    case "lax_art_draft_created":
+      return { title: "lax.art draft created", tone: "success" };
     default:
       return { title: "Changed" };
   }
@@ -400,4 +406,33 @@ export function setInLaxLine(conflict: Pick<AdminRegisterConflict, "field" | "la
   return lax
     ? `${label} is set in LAX. LAX will set Zoho back to ${lax}.`
     : `${label} is set in LAX. LAX will clear it in Zoho.`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Offering an artwork on lax.art.
+
+export const LAX_ART_ARTWORK_PATH = "/artworks";
+
+export type LaxArtOfferAvailability =
+  /** A print: prints are sold in runs on LAX Shop, so no offer is drawn at all. */
+  | { kind: "hidden" }
+  /** The record already has a lax.art listing: open it. */
+  | { kind: "open"; href: string }
+  /** Staff can offer it now. */
+  | { kind: "offer" }
+  /** The register or Zoho holds it; the action stays, disabled, and says why. */
+  | { kind: "blocked"; reason: string };
+
+/** What the record's "Offer on lax.art…" action does for this artwork. */
+export function laxArtOfferAvailability(
+  detail: Pick<AdminRegisterDetail, "kind" | "laxArt" | "offerBlockers">,
+): LaxArtOfferAvailability {
+  if (detail.kind !== "original") return { kind: "hidden" };
+  if (detail.laxArt) {
+    return { kind: "open", href: `${LAX_ART_ARTWORK_PATH}/${detail.laxArt.artworkId}` };
+  }
+  if (detail.offerBlockers.length > 0) {
+    return { kind: "blocked", reason: detail.offerBlockers.map((b) => b.message).join(" ") };
+  }
+  return { kind: "offer" };
 }
