@@ -18,6 +18,10 @@ export type MarketingArtistSummaryProps = {
   bio?: string | null;
   /** One line under the name, e.g. "British · b. 1956 · Printmaker". */
   meta?: string | null;
+  /** Lines the name may take before it is cut off. Defaults to one. */
+  nameLines?: 1 | 2;
+  /** Lines of the bio shown before "Read more". Defaults to three. */
+  bioLines?: number;
   className?: string;
 };
 
@@ -43,6 +47,8 @@ export function MarketingArtistSummary({
   actions,
   bio,
   meta,
+  nameLines = 1,
+  bioLines,
   className,
 }: MarketingArtistSummaryProps) {
   const headingId = useId();
@@ -62,7 +68,8 @@ export function MarketingArtistSummary({
           <Link
             href={href}
             className={cn(
-              "w-fit max-w-full truncate rounded-sm text-base font-semibold text-on-surface hover:underline",
+              "w-fit max-w-full rounded-sm text-base font-semibold text-on-surface hover:underline",
+              nameLines === 2 ? "line-clamp-2" : "truncate",
               FOCUS_RING,
             )}
           >
@@ -73,7 +80,7 @@ export function MarketingArtistSummary({
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
       {bio ? (
-        <MarketingReadMore>
+        <MarketingReadMore {...(bioLines ? { lines: bioLines } : {})}>
           <p className="whitespace-pre-line text-sm leading-6 text-on-surface-variant">{bio}</p>
         </MarketingReadMore>
       ) : null}

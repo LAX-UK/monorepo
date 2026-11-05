@@ -74,7 +74,8 @@ export function attachAdminMarketingEnquiryRoutes(
   /**
    * POST /admin/data-requests/enquiry-erasure: anonymise every enquiry from one email address.
    * Name, email, phone and message are replaced, notes cleared and files deleted. Enquiries tied
-   * to a deal are held and counted. Safe to repeat.
+   * to a deal are held and counted. The address's email-only alert subscriptions are erased too.
+   * Safe to repeat.
    */
   platform.post(
     "/data-requests/enquiry-erasure",
@@ -86,8 +87,8 @@ export function attachAdminMarketingEnquiryRoutes(
         actorUserId: c.get("userId") as string,
       });
       if (!result.ok) return c.json({ error: result.error }, 422);
-      const { enquiries, notes, attachments, held } = result;
-      return c.json({ data: { enquiries, notes, attachments, held } });
+      const { ok: _ok, ...counts } = result;
+      return c.json({ data: counts });
     },
   );
 

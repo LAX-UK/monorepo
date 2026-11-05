@@ -60,6 +60,32 @@ describe.skipIf(!url)("moving an original between lax.art and LAX Bid (Postgres)
     });
   });
 
+  it("records a move once per lot, so a retry or a second click adds no second entry", async () => {
+    const created = await repo.create(entry, "zoho", NOW);
+    if (!created.ok) throw new Error(created.reason);
+    const input = {
+      registerId: created.entry.id,
+      actor: "staff:u1",
+      record: {
+        direction: "to_auction" as const,
+        saleId: "sale-1",
+        lotId: "lot-1",
+        consignorAgreed: true as const,
+        confirmedBy: "staff:u1",
+      },
+      now: NOW,
+    };
+    expect(await repo.recordMoveConfirmed(input)).toEqual({ status: "recorded" });
+    expect(
+      await Promise.all([repo.recordMoveConfirmed(input), repo.recordMoveConfirmed(input)]),
+    ).toEqual([{ status: "already_recorded" }, { status: "already_recorded" }]);
+    // A different lot is a different move.
+    const other = { ...input, record: { ...input.record, lotId: "lot-2" } };
+    expect(await repo.recordMoveConfirmed(other)).toEqual({ status: "recorded" });
+    const events = await repo.listEvents(created.entry.id, 10);
+    expect(events.filter((e) => e.type === "move_confirmed")).toHaveLength(2);
+  });
+
   it("says so for a register record that does not exist", async () => {
     expect(
       await repo.recordMoveConfirmed({
@@ -83,6 +109,7 @@ describe.skipIf(!url)("moving an original between lax.art and LAX Bid (Postgres)
   it("finds no sale or lot when there is none", async () => {
     const reader = new DrizzleAuctionOfferReader(db);
     expect(await reader.findOpenLotForRegister("00000000-0000-4000-8000-000000000000")).toBeNull();
+    expect(await reader.findDraftLotForRegister("00000000-0000-4000-8000-000000000000")).toBeNull();
     const sales = await reader.listSalesOpenForOffer(NOW);
     expect(Array.isArray(sales)).toBe(true);
   });

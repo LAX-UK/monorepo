@@ -558,6 +558,7 @@ describe("admin dashboard metrics routes", () => {
     const reader: IAdminWorkItemsReader = {
       listManualReviewPayments: vi.fn().mockResolvedValue([]),
       listBlockedCaptures: vi.fn().mockResolvedValue([]),
+      listUnappliedMoney: vi.fn().mockResolvedValue([]),
       listOverduePayments: vi.fn().mockResolvedValue([]),
       listPendingReviewTasks: vi.fn().mockResolvedValue([
         {

@@ -14,6 +14,11 @@ import {
   ZOHO_ARTWORK_NIGHTLY_PATTERN,
   ZOHO_ARTWORK_NIGHTLY_TIME_ZONE,
 } from "../jobs/zoho-artwork-sync.job.js";
+import {
+  ZOHO_LISTING_NIGHTLY_JOB_NAME,
+  ZOHO_LISTING_NIGHTLY_PATTERN,
+  ZOHO_LISTING_NIGHTLY_TIME_ZONE,
+} from "../jobs/zoho-listing-reconcile.job.js";
 import type { WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
 import { closeAll } from "./worker-utils.js";
 
@@ -26,6 +31,8 @@ export type RegisterWebhookWorkerInput = WorkerBootstrapDeps & {
   webhookProcessorDeps: ProcessInboundWebhookDeps;
   /** Set when the Zoho artwork sync is on; schedules its nightly check on this queue. */
   runZohoArtworkNightlyCheck?: () => Promise<void>;
+  /** Set when the LAX listing on Zoho is on; schedules its nightly pass on this queue. */
+  runZohoListingNightlyCheck?: () => Promise<void>;
 };
 
 export function registerWebhookWorker(input: RegisterWebhookWorkerInput): WebhookWorkersHandle {
@@ -35,6 +42,7 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
     reportWorkerJobFailure,
     webhookProcessorDeps,
     runZohoArtworkNightlyCheck,
+    runZohoListingNightlyCheck,
     queueOpts,
     log,
   } = input;
@@ -58,6 +66,14 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
         if (!runZohoArtworkNightlyCheck)
           throw new Error("zoho artwork nightly check not configured");
         await runZohoArtworkNightlyCheck();
+        await heartbeat("webhook-events");
+        return;
+      }
+
+      if (job.name === ZOHO_LISTING_NIGHTLY_JOB_NAME) {
+        if (!runZohoListingNightlyCheck)
+          throw new Error("zoho listing nightly check not configured");
+        await runZohoListingNightlyCheck();
         await heartbeat("webhook-events");
         return;
       }
@@ -97,6 +113,18 @@ export function registerWebhookWorker(input: RegisterWebhookWorkerInput): Webhoo
           pattern: ZOHO_ARTWORK_NIGHTLY_PATTERN,
           tz: ZOHO_ARTWORK_NIGHTLY_TIME_ZONE,
         },
+        removeOnComplete: 30,
+      },
+    );
+  }
+
+  if (runZohoListingNightlyCheck) {
+    void webhookQueue.add(
+      ZOHO_LISTING_NIGHTLY_JOB_NAME,
+      { eventKey: ZOHO_LISTING_NIGHTLY_JOB_NAME },
+      {
+        jobId: ZOHO_LISTING_NIGHTLY_JOB_NAME,
+        repeat: { pattern: ZOHO_LISTING_NIGHTLY_PATTERN, tz: ZOHO_LISTING_NIGHTLY_TIME_ZONE },
         removeOnComplete: 30,
       },
     );

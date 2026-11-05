@@ -70,6 +70,8 @@ export type ArtistPageVm = {
   soldSurface: MarketingSectionSurface;
   viewer: ArtViewerState;
   following: boolean;
+  /** Whether emails about followed artists are on; null when that is not known. */
+  followEmailsOn: boolean | null;
   favoriteAuth: ArtFavoriteAuth;
   structuredData: JsonLd[];
 };
@@ -160,6 +162,7 @@ export async function composeArtistPage(
   const favoritesPromise = loadViewerFavoriteContext(services, artistHref(slug), {
     savedArtworks: true,
     followedArtists: true,
+    followEmails: true,
   });
   // lax.art lists originals only: available works first, then sold works as the artist's record.
   const [artist, works, sold, relations] = await Promise.allSettled([
@@ -239,6 +242,7 @@ export async function composeArtistPage(
       ),
       viewer: favorites.viewer,
       following: favorites.followedArtistSlugs.has(detail.slug),
+      followEmailsOn: favorites.followEmailsOn,
       favoriteAuth: favorites.favoriteAuth,
       structuredData: artistJsonLd(detail, siteUrl),
     },

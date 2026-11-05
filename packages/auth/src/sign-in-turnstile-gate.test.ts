@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { TRUSTED_CLIENT_IP_HEADER } from "./client-ip-headers.js";
 import {
   isSignInEmailPost,
   isSignInMagicLinkPost,
@@ -73,5 +74,41 @@ describe("runSignInTurnstileGate failure counter", () => {
     });
 
     expect(redis.incr).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("runSignInTurnstileGate remote address", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  async function siteverifyRemoteIp(headers: Record<string, string>): Promise<string | null> {
+    const fetchMock = vi.fn(async (_url: string, init: { body: URLSearchParams }) => {
+      void init;
+      return Response.json({ success: true });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    await runSignInTurnstileGate({
+      incoming: new Request("https://auth.example.com/api/auth/sign-in/magic-link", {
+        method: "POST",
+        headers: { "content-type": "application/json", ...headers },
+        body: JSON.stringify({ email: "user@example.com", turnstileToken: "token" }),
+      }),
+      redis: { get: vi.fn(), incr: vi.fn(), expire: vi.fn(), del: vi.fn() },
+      turnstileSecret: "secret",
+      authHandler: vi.fn(async () => new Response("{}", { status: 200 })),
+    });
+    const call = fetchMock.mock.calls[0];
+    return call ? call[1].body.get("remoteip") : null;
+  }
+
+  it("sends the trusted address to Turnstile", async () => {
+    await expect(siteverifyRemoteIp({ [TRUSTED_CLIENT_IP_HEADER]: "203.0.113.7" })).resolves.toBe(
+      "203.0.113.7",
+    );
+  });
+
+  it("does not send a spoofed forwarding header to Turnstile", async () => {
+    await expect(
+      siteverifyRemoteIp({ "x-forwarded-for": "198.51.100.9", "x-real-ip": "198.51.100.10" }),
+    ).resolves.toBeNull();
   });
 });

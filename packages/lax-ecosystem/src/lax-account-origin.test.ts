@@ -25,5 +25,6 @@ describe("laxAccountPageUrl", () => {
     const origin = "https://account.lax.bid";
     expect(laxAccountPageUrl(origin, "portfolio")).toBe(`${origin}/account/portfolio`);
     expect(laxAccountPageUrl(origin, "sellingPayouts")).toBe(`${origin}/account/selling/payouts`);
+    expect(laxAccountPageUrl(origin, "alerts")).toBe(`${origin}/account/alerts`);
   });
 });

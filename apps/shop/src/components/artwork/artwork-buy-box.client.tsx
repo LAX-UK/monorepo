@@ -3,6 +3,7 @@
 import { addArtworkToBasket, removeBasketLine } from "@/app/actions/basket.actions";
 import { BasketAddedPanel } from "@/components/artwork/basket-added-panel.client";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
+import { EDITION_PAGE_COPY } from "@/content/artwork-edition-copy";
 import { addToBasketErrorMessage } from "@/lib/artwork/add-to-basket-error";
 import type { ArtworkPurchaseVm } from "@/lib/presenters/artwork-purchase.presenter";
 import {
@@ -15,7 +16,7 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 /** How long the button says "Added" before it becomes "View basket". */
 const ADDED_FLASH_MS = 2000;
@@ -30,8 +31,12 @@ type Props = {
   basketLineId: string | null;
   /** Sign in and come back to this page, for a guest asked to sign in first. */
   signInHref: string;
-  /** Delivery and returns lines, rendered under the button. */
-  facts: ReactNode;
+  /** "Insured UK delivery £15, arrives 2 to 4 Nov · Free collection, ready Fri 30 Oct". */
+  deliveryLine: string;
+  /** The delivery policy page, when it is live. */
+  deliveryHref: string | null;
+  /** The edition as the basket confirmation describes it, from the facts. */
+  editionLine: string | null;
 };
 
 type Phase = "idle" | "adding" | "added";
@@ -42,10 +47,10 @@ function focusFirstControl(container: HTMLElement | null) {
 }
 
 /**
- * The buy block: price with VAT, the edition line, "Add to basket" and the delivery and returns
- * lines. Adding shows a loading then a success state, opens the basket confirmation, refreshes the
- * header count and is announced to screen readers. On a phone a bar with the price and the same
- * action appears once the main button has scrolled out of view.
+ * The buy block: price with VAT, "Add to basket" and one delivery line. Adding shows a loading
+ * then a success state, opens the basket confirmation, refreshes the header count and is
+ * announced to screen readers. In the basket, it says so with a way to the basket. On a phone a
+ * bar with the price and the same action appears once the main button has scrolled out of view.
  */
 export function ArtworkBuyBox({
   slug,
@@ -56,7 +61,9 @@ export function ArtworkBuyBox({
   inBasket: initialInBasket,
   basketLineId,
   signInHref,
-  facts,
+  deliveryLine,
+  deliveryHref,
+  editionLine,
 }: Props) {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
@@ -157,9 +164,12 @@ export function ArtworkBuyBox({
     }
     if (inBasket) {
       return (
-        <ShopCommerceButton href="/basket" className={className}>
-          View basket
-        </ShopCommerceButton>
+        <p className={cn("shop-buy__in-basket-line", placement === "bar" && "is-bar")}>
+          {EDITION_PAGE_COPY.inBasket} <span aria-hidden="true">·</span>{" "}
+          <Link href="/basket" className="shop-inline-link shop-focus-ring">
+            {EDITION_PAGE_COPY.viewBasket}
+          </Link>
+        </p>
       );
     }
     return (
@@ -176,7 +186,7 @@ export function ArtworkBuyBox({
             Adding…
           </>
         ) : (
-          "Add to basket"
+          EDITION_PAGE_COPY.addToBasket
         )}
       </ShopCommerceButton>
     );
@@ -188,19 +198,11 @@ export function ArtworkBuyBox({
         <p className="shop-buy__amount">{purchase.priceLabel}</p>
         <p className="shop-buy__vat">{purchase.vatNote}</p>
       </div>
-      <p className="shop-buy__edition">
-        {purchase.editionSize}
-        <span aria-hidden="true"> · </span>
-        <span className="shop-buy__availability" data-state={purchase.availability}>
-          {purchase.availabilityLabel}
-        </span>
-      </p>
 
       <div ref={actionRef} className="shop-buy__action">
         {actionButton("main")}
         {inBasket && phase !== "added" ? (
           <p className="shop-buy__in-basket">
-            In your basket.{" "}
             <Button
               type="button"
               variant="link"
@@ -209,7 +211,7 @@ export function ArtworkBuyBox({
               disabled={removing || !basketLineId}
               onClick={remove}
             >
-              {removing ? "Removing…" : "Remove"}
+              {removing ? "Removing…" : "Remove from basket"}
             </Button>
           </p>
         ) : null}
@@ -229,7 +231,15 @@ export function ArtworkBuyBox({
         </p>
       ) : null}
 
-      {facts}
+      <p className="shop-buy__delivery">
+        {deliveryHref ? (
+          <Link href={deliveryHref} className="shop-inline-link shop-focus-ring">
+            {deliveryLine}
+          </Link>
+        ) : (
+          deliveryLine
+        )}
+      </p>
 
       <output className="sr-only" aria-live="polite">
         {announcement}
@@ -241,7 +251,6 @@ export function ArtworkBuyBox({
             <p className="shop-buy-bar__amount">
               {purchase.priceLabel} <span className="shop-buy-bar__vat">incl. VAT</span>
             </p>
-            <p className="shop-buy-bar__edition">{purchase.editionShort}</p>
           </div>
           <div ref={barRef} className="shop-buy-bar__action">
             {actionButton("bar")}
@@ -261,7 +270,7 @@ export function ArtworkBuyBox({
           title,
           artistName,
           imageUrl,
-          editionSize: purchase.editionSize,
+          editionLine,
           priceLabel: purchase.priceLabel,
         }}
       />

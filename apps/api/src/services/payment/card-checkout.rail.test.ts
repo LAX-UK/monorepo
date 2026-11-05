@@ -73,6 +73,7 @@ describe("CardCheckoutRail", () => {
         expires_at: Math.floor(Date.now() / 1000) + 3600,
       }),
       findChargeIdForPayment: vi.fn(),
+      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
@@ -102,10 +103,7 @@ describe("CardCheckoutRail", () => {
         lotId: "lot-1",
         amountCents: 12_500,
         buyerEmail: "buyer@test.com",
-        lineItems: expect.arrayContaining([
-          expect.objectContaining({ name: expect.stringContaining("Hammer price") }),
-          expect.objectContaining({ name: expect.stringContaining("Buyer's premium") }),
-        ]),
+        lineItems: [expect.objectContaining({ unitAmountCents: 12_500 })],
         paymentIntentDescription: expect.stringContaining("Test lot"),
         statementDescriptorSuffix: "LOT 1",
       }),
@@ -123,6 +121,7 @@ describe("CardCheckoutRail", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const rail = new CardCheckoutRail({ WEB_ORIGIN: "https://app.test" }, gateway, {

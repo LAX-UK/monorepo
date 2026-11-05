@@ -179,7 +179,7 @@
 
 .shop-buy__remove {
   min-height: 1.5rem;
-  padding: 0 var(--shop-space-1);
+  padding: 0;
   color: var(--color-link);
   font-family: var(--font-body);
   font-size: var(--shop-text-sm);
@@ -640,8 +640,9 @@
 }
 
 .shop-scale__floor,
-.shop-scale__sofa rect,
-.shop-scale__sofa line {
+.shop-scale__figure circle,
+.shop-scale__figure path,
+.shop-scale__figure line {
   fill: none;
   stroke: var(--color-on-surface-variant);
   stroke-width: 1.5;

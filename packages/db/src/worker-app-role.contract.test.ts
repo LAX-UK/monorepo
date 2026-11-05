@@ -5,7 +5,11 @@ import { describe, expect, it } from "vitest";
 import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import { createDb } from "./client.js";
 import { WORKER_DENY_TABLES } from "./migrate-roles.js";
-import { expectTablePrivileges, readTablePrivileges } from "./role-contract/table-privileges.js";
+import {
+  expectTablePrivileges,
+  expectUniformTablePrivileges,
+  readTablePrivileges,
+} from "./role-contract/table-privileges.js";
 import {
   absenteeBid,
   bid,
@@ -111,6 +115,23 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
+  it("can erase email-only alert subscribers on purge, and nothing else in the alert tables", async () => {
+    await withWorkerClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["bid_alert_subscriber", "visitor_sale_alert_subscriber"],
+        ["SELECT", "DELETE"],
+      );
+      expectUniformTablePrivileges(rows, true);
+      const topics = await readTablePrivileges(
+        client,
+        ["bid_alert_topic", "bid_alert_match", "bid_alert_digest"],
+        ["DELETE"],
+      );
+      expectUniformTablePrivileges(topics, false);
+    });
+  });
+
   it("can lease domain_event_delivery and append domain_events", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const db = createDb(WORKER_URL!);
@@ -150,6 +171,32 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const db = createDb(WORKER_URL!);
     await db.select({ id: payment.id }).from(payment).limit(1);
+  });
+
+  it("can raise an invoice: payment, fulfilment and source-of-funds rows (lot end path)", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
+    const db = createDb(WORKER_URL!);
+    const granted = await db.execute(sql`
+      select
+        has_table_privilege(current_user, 'payment', 'INSERT') as payment,
+        has_table_privilege(current_user, 'lot_fulfilment', 'INSERT') as fulfilment_insert,
+        has_table_privilege(current_user, 'lot_fulfilment', 'UPDATE') as fulfilment_update,
+        has_table_privilege(current_user, 'source_of_funds', 'INSERT') as source_of_funds,
+        has_table_privilege(current_user, 'payment', 'DELETE') as payment_delete,
+        has_table_privilege(current_user, 'payment', 'TRUNCATE') as payment_truncate,
+        has_table_privilege(current_user, 'lot_fulfilment', 'DELETE') as fulfilment_delete,
+        has_table_privilege(current_user, 'lot_fulfilment', 'TRUNCATE') as fulfilment_truncate
+    `);
+    expect(granted.rows[0]).toEqual({
+      payment: true,
+      fulfilment_insert: true,
+      fulfilment_update: true,
+      source_of_funds: true,
+      payment_delete: false,
+      payment_truncate: false,
+      fulfilment_delete: false,
+      fulfilment_truncate: false,
+    });
   });
 
   it("can read notification_outbox (lifecycle staging drain path)", async () => {

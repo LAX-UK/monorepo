@@ -94,22 +94,52 @@ jobs:
           version: 2.0.0
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - name: Resolve monorepo app image tag for Terraform drift check
+        id: resolve
         if: matrix.layer == 'ephemeral'
         env:
           APP_ID: ${{ env.APP_ID }}
+          MATRIX_ENV: ${{ matrix.env }}
         run: |
           set -euo pipefail
           if test "${TF_VAR_app_deploy_source}" != "image"; then
             exit 0
           fi
-          node scripts/ci/resolve-live-app-image-tags.mjs --app-id "$APP_ID" >> "$GITHUB_ENV"
+          if test "${MATRIX_ENV}" = "prod"; then
+            # Prod App Platform pins rolling tags (e.g. "prod") for the monorepo components, so the
+            # spec holds no SHA for them. They deploy together and the readiness endpoint reports
+            # their release (the contract terraform-apply-prod verifies), so it pins only those five
+            # (web, api, ws, worker, migrate) via app_image_tag. shop, shop-api, shop-admin,
+            # shop-identity, account and art release separately and keep the SHA in the live spec;
+            # the resolver still fails closed if one of them is on a rolling tag.
+            body="$(mktemp)"
+            status="$(curl -sS -o "$body" -w '%{http_code}' --retry 3 --max-time 20 \
+              https://lax.bid/api/health/ready || echo 000)"
+            if test "$status" != "200"; then
+              # Planned maintenance (or an outage) takes the readiness endpoint away. Without a
+              # trustworthy release SHA a plan would report false drift, so skip this run loudly.
+              echo "::warning::Skipping prod ephemeral drift check: https://lax.bid/api/health/ready returned HTTP ${status} (maintenance mode or outage)."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              echo "Drift check skipped: readiness unavailable (HTTP ${status})." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sha="$(jq -r '.release // empty' "$body" 2>/dev/null || true)"
+            if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::Readiness answered 200 but its release is not a 40-character SHA (got \"$sha\")."
+              exit 1
+            fi
+            node scripts/ci/resolve-live-app-image-tags.mjs --app-id "$APP_ID" \
+              --input-app-image-tag "$sha" >> "$GITHUB_ENV"
+          else
+            node scripts/ci/resolve-live-app-image-tags.mjs --app-id "$APP_ID" >> "$GITHUB_ENV"
+          fi
       - uses: ./.github/actions/terraform-setup
+        if: steps.resolve.outputs.skip != 'true'
         with:
           working-directory: .infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }}
           spaces-access-key-id: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
       - name: Resolve sentry remote state (ephemeral)
-        if: matrix.layer == 'ephemeral'
+        if: matrix.layer == 'ephemeral' && steps.resolve.outputs.skip != 'true'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
@@ -123,6 +153,7 @@ jobs:
           fi
       - name: Detect drift
         id: plan
+        if: steps.resolve.outputs.skip != 'true'
         working-directory: .infra-config/terraform/${{ matrix.layer }}/${{ matrix.env }}
         run: terraform plan -detailed-exitcode -input=false
         continue-on-error: true

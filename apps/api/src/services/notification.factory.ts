@@ -1,10 +1,12 @@
 import { KYC_APPROVED_COPY, KYC_DECLINED_COPY } from "@auction/branding";
+import type { PaymentReminderHoldKey } from "@auction/email";
 import { buyerDefaultCopy, formatMoneyMajor, paymentReminderCopy } from "@auction/email";
 import type {
   BuyerDefaultAudience,
   BuyerDefaultOutcomeKey,
   PaymentReminderStepKey,
 } from "@auction/email";
+import { paymentDueNotification } from "@auction/finance-runtime";
 import type { AccessRequestRow, CreateNotificationRow } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import type { Lot } from "@auction/types";
@@ -191,23 +193,7 @@ export class NotificationFactory implements INotificationFactory {
     buyerId: string,
     input: { paymentId: string; amount: string; checkoutUrl: string | null; dueDate?: string },
   ): CreateNotificationRow {
-    const dueSuffix = input.dueDate ? ` Payment due by ${input.dueDate}.` : "";
-    return {
-      userId: buyerId,
-      type: "payment_due",
-      title: `Payment due — ${lot.title}`,
-      message: `Complete payment of ${formatMoneyMajor(input.amount) ?? input.amount} for this lot.${dueSuffix}`,
-      lotId: lot.id,
-      legalEntityId: lot.buyerLegalEntityId ?? null,
-      meta: {
-        paymentId: input.paymentId,
-        amount: input.amount,
-        invoiceUrl: input.checkoutUrl,
-        invoiceNumber: `PAY-${input.paymentId.slice(0, 8).toUpperCase()}`,
-        lotTitle: lot.title,
-        ...(input.dueDate ? { dueDate: input.dueDate } : {}),
-      },
-    };
+    return paymentDueNotification(lot, buyerId, input);
   }
 
   createPaymentReminder(input: {
@@ -220,12 +206,15 @@ export class NotificationFactory implements INotificationFactory {
     /** The due date in words ("10 November 2026"). */
     dueDate: string;
     step: PaymentReminderStepKey;
+    /** The invoice cannot be paid yet: the reminder says what to do instead. */
+    held?: PaymentReminderHoldKey | null;
   }): CreateNotificationRow {
     const amount = formatMoneyMajor(input.amount) ?? input.amount;
     const copy = paymentReminderCopy(input.step, {
       lotTitle: input.lotTitle,
       amount,
       dueDate: input.dueDate,
+      held: input.held ?? null,
     });
     return {
       userId: input.userId,
@@ -240,8 +229,10 @@ export class NotificationFactory implements INotificationFactory {
         dueDate: input.dueDate,
         lotTitle: input.lotTitle,
         reminderStep: input.step,
+        ...(input.held ? { heldReason: input.held } : {}),
         audience: "buyer",
-        emailIdempotencyKey: `payment-reminder:${input.paymentId}:${input.step}`,
+        // One email per person per step: an organisation's payers are each reminded.
+        emailIdempotencyKey: `payment-reminder:${input.paymentId}:${input.step}:${input.userId}`,
       },
     };
   }

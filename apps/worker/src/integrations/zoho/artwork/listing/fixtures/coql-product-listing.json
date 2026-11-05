@@ -1,0 +1,26 @@
+{
+  "data": [
+    {
+      "LAX_Listing_Link": "https://lax.bid/lot/harbour-at-dusk/6f1c1d0e-0000-4000-8000-000000000001",
+      "LAX_Listing": "In a LAX Bid sale — live now",
+      "LAX_Listing_Updated": "2026-11-05T11:30:00+03:00",
+      "id": "1023341000017963001",
+      "LAX_Listing_Detail": "Autumn Modern & Contemporary · Lot 12 · live now, ends 14 Nov 2026, 20:00"
+    },
+    {
+      "LAX_Listing_Link": null,
+      "LAX_Listing": "Sold",
+      "LAX_Listing_Updated": "2026-11-05T11:30:00+03:00",
+      "id": "1023341000017963002",
+      "LAX_Listing_Detail": null
+    },
+    {
+      "LAX_Listing_Link": null,
+      "LAX_Listing": null,
+      "LAX_Listing_Updated": null,
+      "id": "1023341000017963003",
+      "LAX_Listing_Detail": null
+    }
+  ],
+  "info": { "count": 3, "more_records": false }
+}

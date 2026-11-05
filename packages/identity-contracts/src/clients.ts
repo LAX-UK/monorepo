@@ -193,6 +193,8 @@ export const REGISTERED_OIDC_CLIENTS: Record<RegisteredOidcClientId, RegisteredO
         "lax.portfolio.read",
         "lax.selling.read",
         "lax.selling.write",
+        "lax.alerts.read",
+        "lax.alerts.write",
       ],
       allowedResources: [LAX_RESOURCE_IDS.LAX_BID_API, LAX_RESOURCE_IDS.LAX_SHOP_API],
       pkceRequired: true,

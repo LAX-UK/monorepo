@@ -1,0 +1,231 @@
+{
+  "fields": [
+    {
+      "api_name": "LAX_Listing",
+      "data_type": "picklist",
+      "field_label": "LAX Listing",
+      "length": 120,
+      "pick_list_values": [
+        "-None-",
+        "Not offered",
+        "Draft on lax.art",
+        "On lax.art",
+        "Draft lot in LAX Bid",
+        "In a LAX Bid sale — upcoming",
+        "In a LAX Bid sale — live now",
+        "In a LAX Bid sale — ended",
+        "In a private sale",
+        "Sold on lax.art",
+        "Sold in LAX Bid",
+        "Sold privately",
+        "Sold in the gallery",
+        "Withdrawn"
+      ],
+      "profiles": [
+        {
+          "name": "Administrator",
+          "permission_type": "read_write"
+        },
+        {
+          "name": "Standard",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Full System Authority",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Compliance and Oversight",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "IT and Integrations",
+          "permission_type": "read_write"
+        },
+        {
+          "name": "Storage and Logistics",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Printing Facility",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Sales and Advisory",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Social Media",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Account",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Marketing agent",
+          "permission_type": "read_only"
+        }
+      ]
+    },
+    {
+      "api_name": "LAX_Listing_Detail",
+      "data_type": "text",
+      "field_label": "LAX Listing Detail",
+      "length": 255,
+      "pick_list_values": null,
+      "profiles": [
+        {
+          "name": "Administrator",
+          "permission_type": "read_write"
+        },
+        {
+          "name": "Standard",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Full System Authority",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Compliance and Oversight",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "IT and Integrations",
+          "permission_type": "read_write"
+        },
+        {
+          "name": "Storage and Logistics",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Printing Facility",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Sales and Advisory",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Social Media",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Account",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Marketing agent",
+          "permission_type": "read_only"
+        }
+      ]
+    },
+    {
+      "api_name": "LAX_Listing_Link",
+      "data_type": "website",
+      "field_label": "LAX Listing Link",
+      "length": 450,
+      "pick_list_values": null,
+      "profiles": [
+        {
+          "name": "Administrator",
+          "permission_type": "read_write"
+        },
+        {
+          "name": "Standard",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Full System Authority",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Compliance and Oversight",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "IT and Integrations",
+          "permission_type": "read_write"
+        },
+        {
+          "name": "Storage and Logistics",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Printing Facility",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Sales and Advisory",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Social Media",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Account",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Marketing agent",
+          "permission_type": "read_only"
+        }
+      ]
+    },
+    {
+      "api_name": "LAX_Listing_Updated",
+      "data_type": "datetime",
+      "field_label": "LAX Listing Updated",
+      "length": 120,
+      "pick_list_values": null,
+      "profiles": [
+        {
+          "name": "Administrator",
+          "permission_type": "read_write"
+        },
+        {
+          "name": "Standard",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Full System Authority",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Compliance and Oversight",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "IT and Integrations",
+          "permission_type": "read_write"
+        },
+        {
+          "name": "Storage and Logistics",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Printing Facility",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Sales and Advisory",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Social Media",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Account",
+          "permission_type": "read_only"
+        },
+        {
+          "name": "Marketing agent",
+          "permission_type": "read_only"
+        }
+      ]
+    }
+  ]
+}

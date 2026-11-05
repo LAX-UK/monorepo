@@ -2,9 +2,7 @@ import type { Database } from "@auction/db";
 import {
   type IFinanceCronHandlers,
   PaymentMaintenanceCronService,
-  expireStalePaymentsWithPorts,
 } from "@auction/finance-cron-app";
-import { DrizzlePaymentRepository } from "@auction/persistence/repositories";
 import type pino from "pino";
 import type { WorkerRepositories } from "../container/create-worker-repositories.js";
 import type { WorkerEnv } from "../env.js";
@@ -13,6 +11,7 @@ import {
   type WorkerFinanceServices,
   createWorkerFinanceServices,
 } from "./create-worker-finance-services.js";
+import { createWorkerStalePaymentExpiry } from "./create-worker-stale-payment-expiry.js";
 
 export type CreateWorkerFinanceCronHandlersInput = {
   env: WorkerEnv;
@@ -25,35 +24,6 @@ export type CreateWorkerFinanceCronHandlersInput = {
   /** Pre-built local finance services (required for worker execution owner). */
   financeServices?: WorkerFinanceServices | null;
 };
-
-function paymentPorts(db: Database, domainEventSink: IWorkerDomainEventSink) {
-  const payments = new DrizzlePaymentRepository(db);
-  return {
-    listStalePendingBefore: (cutoff: Date) => payments.listStalePendingBefore(cutoff),
-    listStaleAuthorizedBefore: (cutoff: Date) => payments.listStaleAuthorizedBefore(cutoff),
-    cancelPayment: (paymentId: string) => payments.updateStatus(paymentId, "cancelled"),
-    publishPaymentCancelled: async (event: {
-      paymentId: string;
-      lotId: string;
-      buyerUserId: string;
-      reason: string;
-    }) => {
-      await domainEventSink.publish({
-        aggregateType: "payment",
-        aggregateId: event.paymentId,
-        eventType: "payment.cancelled",
-        payload: {
-          lotId: event.lotId,
-          buyerUserId: event.buyerUserId,
-          reason: event.reason,
-        },
-        actorUserId: null,
-        actingLegalEntityId: null,
-        producer: "apps/worker",
-      });
-    },
-  };
-}
 
 /**
  * Worker finance cron application handlers. When `financeServices` is provided, all jobs run locally.
@@ -68,11 +38,11 @@ export function createWorkerFinanceCronHandlers(
   const paymentMaintenanceCronService = new PaymentMaintenanceCronService(
     {
       expireStalePendingPayments: (pendingDays, authorizedDays) =>
-        expireStalePaymentsWithPorts(
-          paymentPorts(input.db, input.domainEventSink),
-          pendingDays,
-          authorizedDays ?? pendingDays * 2,
-        ).then((r) => r.expired),
+        createWorkerStalePaymentExpiry({
+          db: input.db,
+          env: input.env,
+          domainEventSink: input.domainEventSink,
+        })(pendingDays, authorizedDays ?? pendingDays * 2),
     },
     {
       replayPending: async () => ({ attempted: 0, reconciled: 0 }),

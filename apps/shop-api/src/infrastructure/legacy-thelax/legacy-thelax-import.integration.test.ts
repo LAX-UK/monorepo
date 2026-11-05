@@ -8,6 +8,7 @@ import {
   shopMediaAsset,
   shopParty,
 } from "@auction/db/schema";
+import { createSharpImageNormalizer } from "@auction/image-processing";
 import { eq, inArray, like } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -27,7 +28,6 @@ import {
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
 import { createDrizzleShopMediaAssetRepository } from "../drizzle-shop-media-asset.repository.js";
-import { createSharpImageNormalizer } from "../sharp-image-normalizer.js";
 import { createSharpImageProbe } from "../sharp-image-probe.js";
 import { upsertShopArtist } from "../upsert-shop-artist.js";
 import { createDrizzleLegacyThelaxContentStore } from "./drizzle-legacy-thelax-content.store.js";

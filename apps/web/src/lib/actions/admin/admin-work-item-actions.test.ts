@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const refund = vi.hoisted(() => vi.fn());
+const markHandled = vi.hoisted(() => vi.fn());
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -17,6 +18,11 @@ vi.mock("@/lib/data/write-container.server", () => ({
   getWriteContainer: () => ({ adminPayments: { refund } }),
 }));
 vi.mock("@/lib/actions/admin-submissions", () => ({}));
+vi.mock("@/lib/actions/admin/admin-blocked-capture", () => ({
+  markUnappliedMoneyHandledResultAction: markHandled,
+  refundBlockedCaptureResultAction: vi.fn(),
+  reinstateBlockedCaptureResultAction: vi.fn(),
+}));
 vi.mock("@/lib/auth/guards.server", () => ({ requireAuthenticatedUser: vi.fn() }));
 
 const { executeWorkItemActionAction } = await import("./admin-work-item-actions");
@@ -59,5 +65,19 @@ describe("work inbox refund", () => {
     const result = await executeWorkItemActionAction(refundInput(REASON));
 
     expect(result).toMatchObject({ ok: false, errorCode: "step_up_required" });
+  });
+});
+
+describe("work inbox: mark unapplied money handled", () => {
+  it("sends the whole task key (it holds colons) and the reason", async () => {
+    markHandled.mockResolvedValue({ ok: true, data: undefined });
+    const result = await executeWorkItemActionAction({
+      itemId: "payment_money_unapplied:invoice_already_paid:pi_123",
+      kind: "payment_money_unapplied",
+      action: "mark_handled",
+      notes: REASON,
+    });
+    expect(result.ok).toBe(true);
+    expect(markHandled).toHaveBeenCalledWith("invoice_already_paid:pi_123", { reason: REASON });
   });
 });

@@ -143,7 +143,7 @@ export function CoverPlate({
           media.side === "left" ? "md:left-1/2" : "md:right-1/2",
         )}
       >
-        <div className="relative">
+        <div className="relative flex w-full justify-center">
           <img
             ref={ref}
             src={media.src}
@@ -157,7 +157,7 @@ export function CoverPlate({
             onLoad={onLoad}
             onError={onFail}
             className={cn(
-              "block h-auto max-h-[270px] w-auto max-w-[290px] object-contain md:max-h-[470px] md:max-w-[600px]",
+              "block h-auto max-h-[270px] w-auto max-w-[min(290px,100%)] object-contain md:max-h-[470px] md:max-w-[min(600px,100%)]",
               "shadow-[0_2px_4px_rgba(0,0,0,0.28),0_28px_56px_-18px_rgba(0,0,0,0.6)]",
               FADE_CLASS,
               hidden ? "opacity-0" : "opacity-100",

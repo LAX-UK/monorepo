@@ -7,5 +7,8 @@ export function isTombstoneLink(zohoModule: string, zohoRecordId: string): boole
 }
 
 export function isRealZohoLink(zohoModule: string, zohoRecordId: string): boolean {
-  return !isTombstoneLink(zohoModule, zohoRecordId);
+  return !isTombstoneLink(zohoModule, zohoRecordId) && zohoModule !== CRM_HELD_MODULE;
 }
+
+/** Module of a deal held in the ledger until its buyer has a Contact; not a Zoho record. */
+export const CRM_HELD_MODULE = "__held__";

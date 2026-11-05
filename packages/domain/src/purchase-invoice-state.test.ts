@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { invoiceDueAt, invoiceIsOwed, purchaseInvoiceState } from "./purchase-invoice-state.js";
 
 const raisedAt = new Date("2026-11-01T10:00:00Z");
-const dueAt = new Date("2026-11-08T10:00:00Z");
+const dueAt = new Date("2026-11-08T23:59:59.999Z");
 const pending = { payment: { status: "pending" as const, raisedAt } };
 
 describe("purchaseInvoiceState", () => {
@@ -19,6 +19,16 @@ describe("purchaseInvoiceState", () => {
       status: "due",
       dueAt,
     });
+  });
+
+  it("uses the London calendar: a late summer evening counts as the next London day", () => {
+    // 23:30 UTC on 1 July is 00:30 on 2 July in London (BST): due at the end of 9 July, London.
+    expect(invoiceDueAt(new Date("2026-07-01T23:30:00Z"))).toEqual(
+      new Date("2026-07-09T22:59:59.999Z"),
+    );
+    expect(invoiceDueAt(new Date("2026-07-01T22:30:00Z"))).toEqual(
+      new Date("2026-07-08T22:59:59.999Z"),
+    );
   });
 
   it("is still due at the due moment and overdue just after", () => {
@@ -74,7 +84,7 @@ describe("a cancelled sale", () => {
       now,
     );
     expect(state.status).toBe("cancelled");
-    expect(state.dueAt).toEqual(new Date("2026-11-08T10:00:00Z"));
+    expect(state.dueAt).toEqual(new Date("2026-11-08T23:59:59.999Z"));
     expect(invoiceIsOwed(state.status)).toBe(false);
   });
 

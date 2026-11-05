@@ -17,6 +17,7 @@ import type {
   GuestErasureSnapshot,
   GuestErasureStore,
 } from "../../application/ports/guest-erasure.store.js";
+import type { ShopAlertSubscriberErasure } from "../../application/ports/shop-alert-subscriber-erasure.js";
 import {
   type ShopDomainEventPublisherMode,
   createShopDomainEventPublisher,
@@ -153,7 +154,11 @@ async function redactEnquiries(tx: Database, email: string, placeholder: string,
 
 export function createDrizzleGuestErasureStore(
   db: Database,
-  options: { domainEventMode: ShopDomainEventPublisherMode },
+  options: {
+    domainEventMode: ShopDomainEventPublisherMode;
+    /** Erases the guest's email-only alert subscriptions in the same transaction. */
+    alerts: ShopAlertSubscriberErasure;
+  },
 ): GuestErasureStore {
   const events = createShopDomainEventPublisher(options.domainEventMode);
   return {
@@ -182,7 +187,9 @@ export function createDrizzleGuestErasureStore(
               updatedAt: now,
             })
             .where(eq(shopGuestCustomer.id, guest.guestCustomerId));
-          const counts: GuestErasureCounts = { ...orderCounts, enquiries };
+          // Email-only alert sign-ups for the same address (Shop releases, back in stock, lax.art).
+          const alerts = await options.alerts.erase(tx, { emails: [guest.email] });
+          const counts: GuestErasureCounts = { ...orderCounts, enquiries, ...alerts };
           // The audit entry says who, when and why, and what changed; it holds no personal data.
           await tx.insert(shopAdminAudit).values({
             actorSubjectId,

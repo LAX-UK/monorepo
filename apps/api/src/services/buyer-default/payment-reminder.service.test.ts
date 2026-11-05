@@ -1,3 +1,4 @@
+import { InvoiceRecipients } from "@auction/finance-runtime";
 import type {
   IPaymentReminderStore,
   PaymentReminderCandidate,
@@ -29,7 +30,15 @@ function candidate(over: Partial<PaymentReminderCandidate> = {}): PaymentReminde
   };
 }
 
-function setup(rows: PaymentReminderCandidate[], opts: { hold?: boolean; at: Date }) {
+function setup(
+  rows: PaymentReminderCandidate[],
+  opts: {
+    hold?: boolean;
+    at: Date;
+    payers?: string[];
+    eligibility?: import("@auction/domain").PaymentEligibility;
+  },
+) {
   const claimed = new Set<string>();
   const store: IPaymentReminderStore = {
     listCandidates: vi.fn().mockResolvedValue(rows),
@@ -44,14 +53,28 @@ function setup(rows: PaymentReminderCandidate[], opts: { hold?: boolean; at: Dat
     }),
   };
   const dispatch = vi.fn().mockResolvedValue(undefined);
+  const staged: string[] = [];
   const service = new PaymentReminderService({
     store,
     compliance: { peek: vi.fn().mockResolvedValue({ hold: opts.hold ?? false, reason: null }) },
-    dispatcher: { dispatch },
+    outbox: {
+      stageDispatch: vi.fn(
+        async (input: { userId: string; payload: unknown; idempotencyKey: string }) => {
+          staged.push(input.idempotencyKey);
+          await dispatch(input.userId, input.payload);
+        },
+      ),
+    },
+    ...(opts.eligibility
+      ? { eligibility: { check: vi.fn(async () => opts.eligibility as never) } }
+      : {}),
     factory: new NotificationFactory(),
+    recipients: new InvoiceRecipients({
+      listUserIdsForAudience: vi.fn(async () => opts.payers ?? []),
+    }),
     now: () => opts.at,
   });
-  return { service, dispatch, store };
+  return { service, dispatch, store, staged };
 }
 
 describe("PaymentReminderService", () => {
@@ -64,6 +87,62 @@ describe("PaymentReminderService", () => {
     expect(payload.title).toBe("Payment due today: Harbour at dusk");
     expect(payload.meta.dueDate).toBe("8 November 2026");
     expect(payload.meta.reminderStep).toBe("due_day");
+  });
+
+  it("reminds an organisation's payers as well as the winner, each by their own email", async () => {
+    const { service, dispatch } = setup([candidate({ buyerId: "agent-1", winnerId: "agent-1" })], {
+      at: dueAt,
+      payers: ["owner-1", "finance-1", "agent-1"],
+    });
+    expect(await service.sendDueReminders()).toEqual({ reminded: 1 });
+    const sent = dispatch.mock.calls.map(([userId, payload]) => [
+      userId,
+      payload.meta.emailIdempotencyKey,
+    ]);
+    expect(sent.map(([userId]) => userId)).toEqual(["agent-1", "owner-1", "finance-1"]);
+    expect(new Set(sent.map(([, key]) => key)).size).toBe(3);
+  });
+
+  it("stages each person's reminder under their own key, so a retry never repeats it", async () => {
+    const { service, staged } = setup([candidate({ buyerId: "agent-1", winnerId: "agent-1" })], {
+      at: dueAt,
+      payers: ["owner-1"],
+    });
+    await service.sendDueReminders();
+    expect(staged).toEqual([
+      `payment_reminder:${candidate().paymentId}:due_day:agent-1`,
+      `payment_reminder:${candidate().paymentId}:due_day:owner-1`,
+    ]);
+  });
+
+  it("a held invoice's reminder says what to do instead of asking for payment", async () => {
+    const { service, dispatch } = setup([candidate()], {
+      at: dueAt,
+      eligibility: { kind: "held", reason: "identity_verification_required" },
+    });
+    await service.sendDueReminders();
+    const [, payload] = dispatch.mock.calls[0] ?? [];
+    expect(payload.title).toBe("Verify your identity to pay for Harbour at dusk");
+    expect(payload.meta.heldReason).toBe("identity_verification_required");
+  });
+
+  it("an organisation under review is told it cannot pay yet, with nothing to do", async () => {
+    const { service, dispatch } = setup([candidate()], {
+      at: dueAt,
+      eligibility: { kind: "held", reason: "organisation_under_review" },
+    });
+    await service.sendDueReminders();
+    const [, payload] = dispatch.mock.calls[0] ?? [];
+    expect(payload.message).toContain("cannot be paid yet");
+  });
+
+  it("a closed account is not chased for payment", async () => {
+    const { service, dispatch } = setup([candidate()], {
+      at: dueAt,
+      eligibility: { kind: "refused", reason: "organisation_closed" },
+    });
+    await service.sendDueReminders();
+    expect(dispatch).not.toHaveBeenCalled();
   });
 
   it("sends each step once however often the cron runs", async () => {

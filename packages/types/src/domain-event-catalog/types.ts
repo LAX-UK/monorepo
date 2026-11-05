@@ -12,6 +12,7 @@ export type DomainEventProducer =
 export type DomainEventConsumer =
   | "zoho"
   | "zoho_artwork_writeback"
+  | "zoho_artwork_listing"
   | "artwork_offer_lock"
   | "xero"
   | "notifications"

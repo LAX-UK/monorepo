@@ -17,16 +17,24 @@ import { type KeyboardEvent, type PointerEvent, useRef, useState } from "react";
 
 const SWIPE_THRESHOLD_PX = 48;
 
-type Slide = { kind: "image"; imageIndex: number } | { kind: "scale" };
+/** The views of a work, in order: the whole, then each detail, then the size drawn to scale. */
+const VIEW_LABELS = { whole: "Whole view", detail: "Detail view", scale: "To scale" } as const;
+
+type Slide = { kind: "image"; imageIndex: number } | { kind: "missing" } | { kind: "scale" };
 
 /**
- * The product gallery: every photograph on a neutral mat, uncropped, then a to-scale drawing when
- * the size is known. Thumbnails choose a slide (arrow keys move between them); the stage swipes on
- * touch; a photograph opens full screen with zoom.
+ * The edition stage: the work whole on the paper mat, uncropped, then each detail photograph, then
+ * the size drawn to scale beside a figure when the size is known. A view with no image is left out.
+ * A row of thumbnails under the stage chooses the view (arrow keys move between them) and shows
+ * only when there is more than one view; the stage swipes on touch; a photograph opens full
+ * screen with zoom.
  */
 export function ArtworkGallery({ title, gallery }: { title: string; gallery: ArtworkGalleryVm }) {
   const slides: Slide[] = [
-    ...gallery.images.map((_, imageIndex) => ({ kind: "image" as const, imageIndex })),
+    // A work with no photograph still has a whole view: the hatch on the mat.
+    ...(gallery.images.length === 0
+      ? [{ kind: "missing" as const }]
+      : gallery.images.map((_, imageIndex) => ({ kind: "image" as const, imageIndex }))),
     ...(gallery.scale ? [{ kind: "scale" as const }] : []),
   ];
   const [active, setActive] = useState(0);
@@ -89,8 +97,14 @@ export function ArtworkGallery({ title, gallery }: { title: string; gallery: Art
   }
 
   const activeImage = slide.kind === "image" ? gallery.images[slide.imageIndex] : undefined;
-  const slideLabel = (item: Slide, index: number) =>
-    item.kind === "scale" ? "View to scale" : `Image ${index + 1} of ${gallery.images.length}`;
+  const slideLabel = (item: Slide) => {
+    if (item.kind === "scale") return VIEW_LABELS.scale;
+    if (item.kind === "missing") return VIEW_LABELS.whole;
+    if (item.imageIndex === 0) return VIEW_LABELS.whole;
+    return gallery.images.length > 2
+      ? `${VIEW_LABELS.detail} ${item.imageIndex}`
+      : VIEW_LABELS.detail;
+  };
 
   return (
     <section className="shop-gallery" aria-label={`Images of ${title}`}>
@@ -110,15 +124,22 @@ export function ArtworkGallery({ title, gallery }: { title: string; gallery: Art
               src={activeImage.url}
               alt={activeImage.alt}
               label={SHOP_MEDIA_LABELS.artwork}
-              sizes="(min-width: 64rem) 52vw, 100vw"
+              sizes="(min-width: 64rem) 58vw, 100vw"
               priority={active === 0}
               className="absolute inset-0 size-full"
               imgClassName="object-contain"
             />
           </div>
-        ) : gallery.scale ? (
+        ) : slide.kind === "scale" && gallery.scale ? (
           <ArtworkScaleFigure scale={gallery.scale} imageUrl={primaryImageUrl} />
-        ) : null}
+        ) : (
+          <ShopMediaImage
+            src={null}
+            alt={title}
+            label={SHOP_MEDIA_LABELS.artwork}
+            className="absolute inset-0 size-full"
+          />
+        )}
 
         {activeImage ? (
           <Button
@@ -163,7 +184,7 @@ export function ArtworkGallery({ title, gallery }: { title: string; gallery: Art
             const image = item.kind === "image" ? gallery.images[item.imageIndex] : undefined;
             const selected = index === active;
             return (
-              <li key={image?.url ?? "scale"}>
+              <li key={image?.url ?? item.kind}>
                 <Button
                   ref={(element) => {
                     thumbRefs.current[index] = element;
@@ -171,7 +192,7 @@ export function ArtworkGallery({ title, gallery }: { title: string; gallery: Art
                   type="button"
                   variant="ghost"
                   className={cn("shop-gallery__thumb shop-focus-ring", selected && "is-selected")}
-                  aria-label={slideLabel(item, index)}
+                  aria-label={slideLabel(item)}
                   aria-current={selected ? "true" : undefined}
                   tabIndex={selected ? 0 : -1}
                   onClick={() => select(index)}
@@ -186,10 +207,17 @@ export function ArtworkGallery({ title, gallery }: { title: string; gallery: Art
                       className="absolute inset-0 size-full"
                       imgClassName="object-contain"
                     />
+                  ) : item.kind === "missing" ? (
+                    <ShopMediaImage
+                      src={null}
+                      alt=""
+                      label={SHOP_MEDIA_LABELS.artwork}
+                      className="absolute inset-0 size-full"
+                    />
                   ) : (
                     <span className="shop-gallery__thumb-scale">
                       <MarketingRulerIcon />
-                      <span>Scale</span>
+                      <span>{VIEW_LABELS.scale}</span>
                     </span>
                   )}
                 </Button>

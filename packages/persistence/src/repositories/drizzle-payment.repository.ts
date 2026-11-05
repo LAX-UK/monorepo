@@ -247,6 +247,23 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     return rows.length > 0;
   }
 
+  async applyHeldMoneyInTransaction(
+    tx: Database,
+    id: string,
+    money: { stripePaymentIntentId: string; stripeChargeId: string | null },
+  ): Promise<boolean> {
+    const rows = await tx
+      .update(payment)
+      .set({
+        status: "requires_manual_review",
+        stripePaymentIntentId: money.stripePaymentIntentId,
+        ...(money.stripeChargeId ? { stripeChargeId: money.stripeChargeId } : {}),
+      })
+      .where(and(eq(payment.id, id), inArray(payment.status, ["pending", "authorized"])))
+      .returning({ id: payment.id });
+    return rows.length > 0;
+  }
+
   async applyCapturedInTransaction(
     tx: Database,
     id: string,

@@ -40,3 +40,12 @@ export function isPrefetchRequest(headers: HeaderReader): boolean {
   const purpose = (headers.get("sec-purpose") ?? headers.get("purpose") ?? "").toLowerCase();
   return purpose.includes("prefetch");
 }
+
+/**
+ * A client-side navigation or prefetch fetching a page's React Server Component payload. It
+ * cannot follow a hop's `303`s (cookies set on the way and the redirect chain are not a page), so
+ * a hop answers it with a signal to load the page as a whole instead.
+ */
+export function isRscRequest(headers: HeaderReader): boolean {
+  return headers.get("rsc") === "1";
+}
