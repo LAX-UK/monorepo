@@ -35,6 +35,7 @@ import { registerAdminHomeFeatureRoutes } from "./routes/admin/v1/home-features.
 import { registerAdminInventoryMoveRoutes } from "./routes/admin/v1/inventory-moves.routes.js";
 import { registerAdminOperationsRoutes } from "./routes/admin/v1/operations.routes.js";
 import { registerAdminOriginalSaleRoutes } from "./routes/admin/v1/original-sales.routes.js";
+import { registerAdminPrintFulfilmentRoutes } from "./routes/admin/v1/print-fulfilment.routes.js";
 import { registerAdminSessionRoutes } from "./routes/admin/v1/session.routes.js";
 import { registerAdminThirdPartyRoutes } from "./routes/admin/v1/third-party.routes.js";
 import { registerHealthRoutes } from "./routes/health.routes.js";
@@ -202,6 +203,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
         void registerAdminInventoryMoveRoutes(adminScope, options.deps.admin);
         void registerAdminEditionRunRoutes(adminScope, options.deps.admin);
+        void registerAdminPrintFulfilmentRoutes(adminScope, options.deps.admin);
         void registerAdminHomeFeatureRoutes(adminScope, options.deps.admin);
         void registerAdminMediaRoutes(adminScope, options.deps.admin);
         if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {

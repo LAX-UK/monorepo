@@ -83,6 +83,25 @@ export {
   type ScannedPrint,
 } from "./print-confirmation.js";
 export {
+  AUTHORITY_REFERENCE_MAX_LENGTH,
+  SWAP_REASON_MAX_LENGTH,
+  assertAuthorityReference,
+  assertHorsCommerceSellable,
+  assertSwapAllowed,
+  assertSwapReason,
+  certificateToSendLabel,
+  decideCertificate,
+  linesBlockingDispatch,
+  nextPrintToSend,
+  payoutAfterSwap,
+  type CertificateDecision,
+  type CertificateSettings,
+  type PackingLine,
+  type PayoutFollowsSwap,
+  type SendCandidate,
+  type SwapAuthority,
+} from "./print-fulfilment.js";
+export {
   PLACEMENT_SLOTS,
   PLACEMENT_SLOT_RULES,
   assertValidPlacement,

@@ -56,6 +56,7 @@ import type {
   ReleaseStockHoldCommand,
 } from "./application/ports/stock-hold.writer.js";
 import type { RecordThirdPartySaleCommand } from "./application/ports/third-party-sale.writer.js";
+import { createPrintFulfilmentServices } from "./application/print-fulfilment/print-fulfilment-services.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
 import { createSavedViewService } from "./application/saved-view.service.js";
 import { SubjectExportService } from "./application/subject-export/subject-export.service.js";
@@ -147,6 +148,10 @@ import { createHttpAuctionOfferGateway } from "./infrastructure/http-auction-off
 import { idempotentAdminCommand } from "./infrastructure/idempotent-admin-command.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createDrizzleOriginalSaleWriter } from "./infrastructure/phase/drizzle-original-sale.writer.js";
+import {
+  createDrizzlePickListReader,
+  createDrizzlePrintFulfilmentUnitOfWork,
+} from "./infrastructure/print-fulfilment/drizzle-print-fulfilment.unit-of-work.js";
 import { createRedisFixedWindowCounter } from "./infrastructure/redis-fixed-window-counter.js";
 import { createRegisterOriginalOffers } from "./infrastructure/register-original-offers.js";
 import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
@@ -411,6 +416,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     uow: createDrizzleEditionRunUnitOfWork(shopUow),
     clock: { now: () => new Date() },
   });
+  const printFulfilment = createPrintFulfilmentServices({
+    uow: createDrizzlePrintFulfilmentUnitOfWork(shopUow),
+    pickList: createDrizzlePickListReader(db),
+    staffNames: createDrizzleStaffNameReader(db),
+    certificateSettings: { laxCertificatesEnabled: () => env.SHOP_LAX_CERTIFICATES_ENABLED },
+    clock: { now: () => new Date() },
+  });
   const artworkCatalogue = createDrizzleArtworkCatalogueWriter(shopUow, {
     resolveMediaUrl,
     editionRuns: editionRuns.recorder,
@@ -634,6 +646,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         artworkCatalogue,
         inventoryMoves,
         editionRuns,
+        printFulfilment,
         artistCatalogue,
         artCache,
         homeFeatures,
