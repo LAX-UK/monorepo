@@ -26,6 +26,7 @@ export function EditorialImageField({
   alt,
   optional = true,
   disabled = false,
+  error,
 }: {
   /** Names the control for the form's error summary. */
   name: string;
@@ -40,6 +41,8 @@ export function EditorialImageField({
   alt?: string;
   optional?: boolean;
   disabled?: boolean;
+  /** A rule the form found broken for this image, shown under the field. */
+  error?: string | undefined;
 }) {
   const readOnly = !useStaffCan("editorial.write");
   const resolveImage = useStaffCatalogueImage();
@@ -81,7 +84,7 @@ export function EditorialImageField({
       label={label}
       id={editorialFieldId(name)}
       disabled={disabled}
-      error={failure}
+      error={failure ?? error}
       {...(description ? { description } : {})}
       {...(optional ? { optional } : {})}
     >

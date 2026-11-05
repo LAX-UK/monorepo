@@ -4,6 +4,7 @@ import { ArtEditorialCard } from "@/components/editorial/art-editorial-card";
 import { ArtGalleryTeamBand } from "@/components/gallery-team/art-gallery-team-band";
 import { ArtFeaturedArtists } from "@/components/home/art-featured-artists";
 import { ArtHomeHero } from "@/components/home/art-home-hero";
+import { ArtHomeWhatsOn } from "@/components/home/art-home-whats-on";
 import { ArtSection } from "@/components/layout/art-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { ArtProductDoors } from "@/components/product-doors/art-product-doors";
@@ -46,21 +47,7 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
       return (
         <Shell>
           <ArtSection id="home-whats-on" title="What's on across LAX" viewAllHref="/exhibitions">
-            <MarketingFeatureGrid
-              variant="lead-plus-row"
-              aria-label="What's on"
-              items={vm.whatsOn}
-              getKey={(card) => card.key}
-              renderItem={(card, role) => (
-                <ArtEditorialCard
-                  card={card}
-                  aspect={role === "feature" ? "wide" : "landscape"}
-                  layout={role === "solo" ? "split" : "stacked"}
-                  priority={card.key === vm.whatsOn[0]?.key}
-                  textLed={vm.textLed.whatsOn}
-                />
-              )}
-            />
+            <ArtHomeWhatsOn cards={vm.whatsOn} />
           </ArtSection>
         </Shell>
       );
@@ -108,9 +95,8 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
               renderItem={(card, role) => (
                 <ArtEditorialCard
                   card={card}
-                  aspect={role === "feature" ? "wide" : "landscape"}
+                  aspect="cover"
                   layout={role === "solo" ? "split" : "stacked"}
-                  textLed={vm.textLed.stories}
                 />
               )}
             />

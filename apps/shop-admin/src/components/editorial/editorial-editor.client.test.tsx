@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { ExhibitionDetail } from "@/lib/editorial-entity-forms";
+import type { ExhibitionDetail, StoryDetail } from "@/lib/editorial-entity-forms";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -39,7 +39,7 @@ globalThis.ResizeObserver ??= class {
   disconnect() {}
 };
 
-const { ExhibitionEditor } = await import("./editorial-editors.client");
+const { ExhibitionEditor, StoryEditor } = await import("./editorial-editors.client");
 
 const OPENED = "2026-03-01T10:00:00.000Z";
 const THEIRS = "2026-03-01T11:30:00.000Z";
@@ -334,5 +334,87 @@ describe("exhibition editor publishing and leaving", () => {
         screen.queryByRole("dialog", { name: "Discard changes to “Summer show”?" }),
       ).toBeNull();
     });
+  });
+});
+
+describe("story editor cover rule", () => {
+  const story: StoryDetail = {
+    id: "5b1c2d3e-0000-4000-8000-000000000002",
+    slug: "welcome",
+    status: "draft",
+    label: "Welcome to lax.art",
+    updatedAt: OPENED,
+    kind: "article",
+    category: null,
+    title: "Welcome to lax.art",
+    standfirst: null,
+    coverMediaKey: null,
+    videoUrl: null,
+    featured: false,
+    authorName: null,
+    readMinutes: null,
+    series: null,
+    episodeNumber: null,
+    audioUrl: null,
+    durationSeconds: null,
+    publicationName: null,
+    externalUrl: null,
+    body: [],
+  };
+
+  beforeEach(() => {
+    cleanup();
+    for (const action of [saveEditorialEntity, setEditorialPublication]) action.mockReset();
+  });
+
+  it("shows the problem on the cover field instead of asking to publish a story without a cover", () => {
+    render(<StoryEditor detail={story} artPublicUrl="https://lax.test" />);
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(setEditorialPublication).not.toHaveBeenCalled();
+    expect(
+      screen.getAllByText("Add a cover image before publishing this story.").length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByRole("alert", { name: /could not/i })).not.toBeInTheDocument();
+  });
+
+  it("asks to publish a story that has a cover", async () => {
+    render(
+      <StoryEditor
+        detail={{ ...story, coverMediaKey: "shop/editorial-cover/a.jpg" }}
+        artPublicUrl="https://lax.test"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    expect(
+      await screen.findByRole("dialog", { name: "Publish “Welcome to lax.art”?" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the field the API names when it refuses, with no banner", async () => {
+    setEditorialPublication.mockResolvedValue({
+      ok: false,
+      kind: "validation",
+      message: "Add a cover image before publishing this story.",
+      issues: [
+        { field: "coverMediaKey", message: "Add a cover image before publishing this story." },
+      ],
+    });
+    render(
+      <StoryEditor
+        detail={{ ...story, coverMediaKey: "shop/editorial-cover/a.jpg" }}
+        artPublicUrl="https://lax.test"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Publish" }));
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Publish story" }));
+
+    await waitFor(() => expect(setEditorialPublication).toHaveBeenCalledTimes(1));
+    expect(
+      (await screen.findAllByText("Add a cover image before publishing this story.")).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/Could not publish/)).not.toBeInTheDocument();
   });
 });

@@ -25,7 +25,9 @@ import {
   type EditorialPreviewEntity,
   signEditorialPreviewToken,
 } from "../../../domain/editorial-preview-token.js";
+import { storyCoverViolation } from "../../../domain/editorial-story-cover-rule.js";
 import type { EditorialRoutesDeps } from "../../../editorial-route-deps.js";
+import { StoryCoverRequiredError } from "../../../errors/story-cover-required-error.js";
 import {
   requireShopAdminSubject,
   requireShopStaffCapability,
@@ -169,6 +171,16 @@ const PlacementRowSchema = Type.Object({
   ctaLabel: NullableString,
   publishedAt: Type.Union([Type.String(), Type.Null()]),
 });
+
+/** A story needs a cover before it is published or featured; the editor shows it on the field. */
+function assertStoryCover(state: {
+  coverMediaKey: string | null | undefined;
+  featured: boolean;
+  published: boolean;
+}): void {
+  const violation = storyCoverViolation(state);
+  if (violation) throw new StoryCoverRequiredError(violation);
+}
 
 function adminSubject(request: FastifyRequest): string {
   return requireShopAdminSubject(request);
@@ -537,6 +549,7 @@ export async function registerAdminEditorialRoutes(
       requireShopStaffCapability(request, "editorial.write");
       const subject = adminSubject(request);
       const body = request.body as Omit<Parameters<typeof repo.createStory>[0], "updatedBy">;
+      assertStoryCover({ ...body, published: false });
       const created = await repo.createStory({ ...body, updatedBy: subject });
       return reply.status(201).send(created);
     },
@@ -557,6 +570,8 @@ export async function registerAdminEditorialRoutes(
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       const body = request.body as Omit<Parameters<typeof repo.updateStory>[1], "updatedBy">;
+      const current = await repo.getAdminStoryById(id);
+      assertStoryCover({ ...body, published: current?.status === "published" });
       const outcome = await repo.updateStory(id, { ...body, updatedBy: subject });
       return sendUpdateOutcome(request, reply, "Story", outcome);
     },
@@ -575,6 +590,10 @@ export async function registerAdminEditorialRoutes(
       requireShopStaffCapability(request, "editorial.publish");
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
+      const current = await repo.getAdminStoryById(id);
+      if (current) {
+        assertStoryCover({ ...current, published: true });
+      }
       await repo.setStoryPublication(id, true, subject);
       return reply.status(204).send();
     },

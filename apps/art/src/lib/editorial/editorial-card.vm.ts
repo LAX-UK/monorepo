@@ -15,6 +15,8 @@ export type EditorialCardVm = {
   kickerDetail?: string | null;
   meta: string | null;
   imageUrl: string | null;
+  /** Buttons under the card's text (a lead exhibition: "Visit", "See the works"). */
+  actions?: readonly { label: string; href: string }[];
 };
 
 type PlacementSlot = ArtEditorialPlacement["slot"];
