@@ -274,7 +274,7 @@ function factValue(key: string, value: unknown): AuditFact | null {
     return { label: idLabel, value, copyValue: value };
   }
   if (ISO_TIME.test(value)) {
-    return { label, value: formatStaffDateTime(value, { zoneLabel: true }) };
+    return { label, value: formatStaffDateTime(value) };
   }
   if (CODE.test(value)) return { label, value: humanizeStatus(value) };
   return { label, value };

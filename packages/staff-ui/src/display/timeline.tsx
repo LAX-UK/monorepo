@@ -1,6 +1,6 @@
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
-import { formatStaffWhen } from "../lib/format.js";
+import { formatStaffDateTime } from "../lib/format.js";
 import type { StaffStatusTone } from "../tokens.js";
 
 export type TimelineEvent = {
@@ -69,7 +69,7 @@ export function Timeline({
             ) : null}
             <p className="mt-0.5 text-staff-xs text-staff-subtle">
               {event.actor ? <span>{event.actor} · </span> : null}
-              <time dateTime={event.at}>{formatStaffWhen(event.at)}</time>
+              <time dateTime={event.at}>{formatStaffDateTime(event.at)}</time>
             </p>
           </div>
         </li>

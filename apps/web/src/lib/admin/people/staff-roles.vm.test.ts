@@ -1,4 +1,5 @@
 import type { StaffRoleAssignmentView } from "@/lib/data/http/staff-roles.server";
+import { pinClock } from "@/test/pin-clock";
 import {
   FORBIDDEN_STAFF_ROLE_COMBINATIONS,
   type LaxShopStaffRole,
@@ -32,11 +33,13 @@ function held(role: UserStaffRole, overrides: Partial<StaffRoleAssignmentView> =
   } satisfies StaffRoleAssignmentView;
 }
 
+pinClock();
+
 describe("staffRoleChip", () => {
   it("says since when an open-ended role is held", () => {
     expect(staffRoleChip(held("finance"), NOW, BID)).toMatchObject({
       label: "Finance",
-      meta: "Since 3 Oct 2026",
+      meta: "Since Sat 3 Oct",
       endingSoon: false,
     });
   });
@@ -47,20 +50,20 @@ describe("staffRoleChip", () => {
       NOW,
       BID,
     );
-    expect(later.meta).toBe("Since 3 Oct 2026 · Until 28 Feb 2027");
+    expect(later.meta).toBe("Since Sat 3 Oct · Until Sun 28 Feb 2027");
     const soon = staffRoleChip(
       held("fulfilment", { endsAt: "2026-11-10T00:00:00.000Z" }),
       NOW,
       BID,
     );
     expect(soon).toMatchObject({ endingSoon: true });
-    expect(soon.meta).toBe("Since 3 Oct 2026 · Until 9 Nov 2026 · 13 days left");
+    expect(soon.meta).toBe("Since Sat 3 Oct · Until Mon 9 Nov · 13 days left");
   });
 
   it("says when a role starts later", () => {
     expect(
       staffRoleChip(held("finance", { startsAt: "2026-11-02T09:00:00.000Z" }), NOW, BID).meta,
-    ).toBe("Starts 2 Nov 2026");
+    ).toBe("Starts Mon 2 Nov");
   });
 });
 

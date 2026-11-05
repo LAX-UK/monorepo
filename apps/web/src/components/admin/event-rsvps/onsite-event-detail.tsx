@@ -84,7 +84,7 @@ function useGuestListExport(slug: string) {
 }
 
 function when(iso: string | null): string | null {
-  return iso ? formatStaffDateTime(iso, { zoneLabel: true }) : null;
+  return iso ? formatStaffDateTime(iso) : null;
 }
 
 /**

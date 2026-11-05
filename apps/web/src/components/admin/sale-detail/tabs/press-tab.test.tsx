@@ -1,4 +1,5 @@
 import { SalePressTab } from "@/components/admin/sale-detail/tabs/press-tab";
+import { pinClock } from "@/test/pin-clock";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -44,6 +45,8 @@ const QUOTE = {
   mentionType: "quote" as const,
 };
 
+pinClock();
+
 describe("SalePressTab", () => {
   afterEach(cleanup);
 
@@ -60,7 +63,7 @@ describe("SalePressTab", () => {
     expect(within(rows[0] as HTMLElement).getByText("Feature story")).toBeInTheDocument();
     expect(within(rows[0] as HTMLElement).getByText("Art Daily")).toBeInTheDocument();
     expect(within(rows[0] as HTMLElement).getByText("Feature")).toBeInTheDocument();
-    expect(within(rows[0] as HTMLElement).getByText("18 May 2026")).toBeInTheDocument();
+    expect(within(rows[0] as HTMLElement).getByText("Mon 18 May")).toBeInTheDocument();
     expect(within(rows[1] as HTMLElement).getByText("Quote")).toBeInTheDocument();
   });
 

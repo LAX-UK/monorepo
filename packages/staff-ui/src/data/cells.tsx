@@ -229,7 +229,7 @@ export function StaffDate({
   if (value === null || value === undefined || value === "") return <EmptyValue />;
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return <EmptyValue />;
-  const exact = formatStaffDateTime(date, { zoneLabel: true });
+  const exact = formatStaffDateTime(date);
   return (
     <Tooltip>
       <TooltipTrigger asChild>

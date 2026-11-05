@@ -32,10 +32,7 @@ export function SaleroomActivityLog({ entries, panelVariant = "bordered" }: Prop
             <p key={entry.id} className="flex flex-wrap items-baseline gap-x-2">
               <span className="font-medium text-staff-fg">{entry.label}</span>
               {entry.detail ? <span>{entry.detail}</span> : null}
-              <span
-                className="tabular-nums"
-                title={formatStaffDateTime(entry.occurredAt, { zoneLabel: true })}
-              >
+              <span className="tabular-nums" title={formatStaffDateTime(entry.occurredAt)}>
                 {formatStaffRelative(entry.occurredAt)}
               </span>
             </p>

@@ -50,18 +50,18 @@ export function staffRolesAllow(roles: readonly string[]): string | null {
 export type StaffRoleChip = { key: string; label: string; meta: string };
 
 /** A role chosen to run "until 30 Nov" ends as 1 Dec starts, so the last day is the day before. */
-function lastDay(endsAt: string): string {
-  return formatStaffDate(new Date(new Date(endsAt).getTime() - 1));
+function lastDay(endsAt: string, now: Date): string {
+  return formatStaffDate(new Date(new Date(endsAt).getTime() - 1), now);
 }
 
 export function staffRoleChips(row: Pick<StaffMemberRow, "roles">, now: Date): StaffRoleChip[] {
   return row.roles.map((held) => {
     const started = new Date(held.startsAt).getTime() <= now.getTime();
-    const from = `${started ? "Since" : "Starts"} ${formatStaffDate(held.startsAt)}`;
+    const from = `${started ? "Since" : "Starts"} ${formatStaffDate(held.startsAt, now)}`;
     return {
       key: `${held.role}-${held.startsAt}`,
       label: staffRoleLabel(held.role),
-      meta: held.endsAt ? `${from} · Until ${lastDay(held.endsAt)}` : from,
+      meta: held.endsAt ? `${from} · Until ${lastDay(held.endsAt, now)}` : from,
     };
   });
 }
