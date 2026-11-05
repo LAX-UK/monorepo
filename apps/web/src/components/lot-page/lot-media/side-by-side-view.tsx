@@ -47,7 +47,8 @@ export function SideBySideView({
         className={cn(
           STAGE_BOX,
           STUDIO_GROUND,
-          "flex aspect-[5/4] items-stretch justify-center gap-px overflow-hidden md:aspect-[4/3]",
+          "flex aspect-[5/4] justify-center gap-px overflow-hidden md:aspect-[4/3]",
+          faces ? "items-center" : "items-stretch",
         )}
       >
         {pages.map((pageIndex, position) => {
@@ -62,13 +63,7 @@ export function SideBySideView({
                 pages.length === 2 && position === 0 && !faces && "border-r border-lax-line",
               )}
             >
-              <Button
-                variant="ghost"
-                onClick={() => onOpenViewer(pageIndex)}
-                aria-haspopup="dialog"
-                aria-label={`Zoom in on ${caption ?? `page ${pageIndex + 1}`}`}
-                className="relative block size-full min-h-0 flex-1 cursor-zoom-in rounded-md p-0 hover:bg-transparent"
-              >
+              <div className={cn("relative w-full", faces ? "aspect-square" : "min-h-0 flex-1")}>
                 <MediaImage
                   src={image.src}
                   alt={image.alt ?? (caption ? `${title}, ${caption.toLowerCase()}` : title)}
@@ -78,7 +73,14 @@ export function SideBySideView({
                   className="overflow-visible"
                   imgClassName="object-contain"
                 />
-              </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => onOpenViewer(pageIndex)}
+                  aria-haspopup="dialog"
+                  aria-label={`Zoom in on ${caption ?? `page ${pageIndex + 1}`}`}
+                  className="absolute inset-0 size-full cursor-zoom-in rounded-md p-0 hover:bg-transparent"
+                />
+              </div>
               {caption ? (
                 <figcaption className="mt-2 text-lax-13 text-lax-muted">{caption}</figcaption>
               ) : null}

@@ -18,7 +18,7 @@ export function HomeDepartmentsSection({
     <MarketingSection id="home-departments" heading="Departments" subtitle="What we sell">
       <ScrollRegion
         id="home-departments-rail"
-        label="Departments"
+        label="Department tiles"
         className="-mx-4 px-4 md:mx-0 md:overflow-visible md:px-0"
       >
         <ul className="m-0 flex list-none snap-x snap-proximity gap-3 p-0 md:grid md:grid-cols-3 md:gap-6 lg:grid-cols-6">

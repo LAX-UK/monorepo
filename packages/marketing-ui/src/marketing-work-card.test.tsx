@@ -66,9 +66,9 @@ describe("MarketingWorkCard media style", () => {
   it.each([
     ["wall", "aspect-[4/5]", "object-contain"],
     ["object", "aspect-[4/5]", "object-contain"],
-    ["product", "aspect-square", "object-cover"],
-    ["showcase", "aspect-[3/2]", "object-cover"],
-    ["document", "aspect-[3/4]", "object-contain"],
+    ["product", "aspect-[4/5]", "object-cover"],
+    ["showcase", "aspect-[4/5]", "object-contain"],
+    ["document", "aspect-[4/5]", "object-contain"],
   ] as const)("frames a %s lot as %s and fits its picture with %s", (style, aspect, fit) => {
     const { container } = render(
       <MarketingWorkCard

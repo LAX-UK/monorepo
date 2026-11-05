@@ -5,16 +5,20 @@ import type { DepartmentDisplayStyle } from "@auction/domain";
  * (sale page, search, results, watching, home) reads this one table, so a style looks the same
  * wherever the lot appears.
  *
- * - wall: shown whole at its true ratio, with the soft wall shadow
+ * Every style has the same 4:5 box, so titles, estimates and status line up across a row of
+ * mixed lots. The style changes only what happens inside the box:
+ * - wall: shown whole at its true ratio on the mat, with the soft wall shadow
  * - object: shown whole on a plain studio ground, no shadow
- * - product: fills a square frame
- * - showcase: fills a wide 3:2 frame
- * - document: shown whole at page ratio on the studio ground
+ * - product: fills the box
+ * - showcase: shown whole at its own (3:2) ratio across the full width of the box, centred on
+ *   the studio ground. A 3:2 car photograph cropped to 4:5 would lose its ends; this keeps the
+ *   whole car and still reads as a wide image.
+ * - document: the page shown whole on the mat
  */
 export type LotCardMediaFrame = {
-  /** The frame's ratio. */
+  /** The frame's ratio: the same for every style. */
   aspect: string;
-  /** Space around the picture; none where it fills the frame. */
+  /** Space around the picture; none where it spans the box. */
   inset: string;
   fit: "contain" | "cover";
   /** What the picture sits on. */
@@ -23,30 +27,14 @@ export type LotCardMediaFrame = {
   shadow: boolean;
 };
 
+const BOX = "aspect-[4/5]";
+
 export const LOT_CARD_MEDIA_FRAMES: Readonly<Record<DepartmentDisplayStyle, LotCardMediaFrame>> = {
-  wall: { aspect: "aspect-[4/5]", inset: "p-[7%]", fit: "contain", ground: "mat", shadow: true },
-  object: {
-    aspect: "aspect-[4/5]",
-    inset: "p-[7%]",
-    fit: "contain",
-    ground: "studio",
-    shadow: false,
-  },
-  product: { aspect: "aspect-square", inset: "p-0", fit: "cover", ground: "studio", shadow: false },
-  showcase: {
-    aspect: "aspect-[3/2]",
-    inset: "p-0",
-    fit: "cover",
-    ground: "studio",
-    shadow: false,
-  },
-  document: {
-    aspect: "aspect-[3/4]",
-    inset: "p-[7%]",
-    fit: "contain",
-    ground: "studio",
-    shadow: false,
-  },
+  wall: { aspect: BOX, inset: "p-[7%]", fit: "contain", ground: "mat", shadow: true },
+  object: { aspect: BOX, inset: "p-[7%]", fit: "contain", ground: "studio", shadow: false },
+  product: { aspect: BOX, inset: "p-0", fit: "cover", ground: "studio", shadow: false },
+  showcase: { aspect: BOX, inset: "p-0", fit: "contain", ground: "studio", shadow: false },
+  document: { aspect: BOX, inset: "p-[7%]", fit: "contain", ground: "mat", shadow: false },
 };
 
 export function lotCardMediaFrame(style: DepartmentDisplayStyle): LotCardMediaFrame {

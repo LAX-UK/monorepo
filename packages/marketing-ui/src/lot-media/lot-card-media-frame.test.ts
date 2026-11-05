@@ -19,23 +19,30 @@ describe("lotCardMediaFrame", () => {
     });
   });
 
-  it("fills a square for a product and a 3:2 frame for a showcase", () => {
-    expect(lotCardMediaFrame("product")).toMatchObject({ aspect: "aspect-square", fit: "cover" });
-    expect(lotCardMediaFrame("showcase")).toMatchObject({ aspect: "aspect-[3/2]", fit: "cover" });
+  it("gives every style the same 4:5 box, so a mixed row lines up", () => {
+    for (const style of DEPARTMENT_DISPLAY_STYLES) {
+      expect(lotCardMediaFrame(style).aspect).toBe("aspect-[4/5]");
+    }
   });
 
-  it("shows a document whole at page ratio", () => {
-    expect(lotCardMediaFrame("document")).toMatchObject({
-      aspect: "aspect-[3/4]",
+  it("fills the box for a product", () => {
+    expect(lotCardMediaFrame("product")).toMatchObject({ fit: "cover", inset: "p-0" });
+  });
+
+  it("shows a showcase whole across the full width of the box", () => {
+    expect(lotCardMediaFrame("showcase")).toMatchObject({
       fit: "contain",
+      inset: "p-0",
+      ground: "studio",
     });
   });
 
-  it("leaves no room around a picture that fills its frame", () => {
-    for (const style of DEPARTMENT_DISPLAY_STYLES) {
-      const frame = lotCardMediaFrame(style);
-      expect(frame.inset === "p-0").toBe(frame.fit === "cover");
-    }
+  it("shows a document page whole on the mat, without a shadow", () => {
+    expect(lotCardMediaFrame("document")).toMatchObject({
+      fit: "contain",
+      ground: "mat",
+      shadow: false,
+    });
   });
 });
 
@@ -45,8 +52,8 @@ describe("lotCardMediaClasses", () => {
     expect(lotCardMediaClasses("wall").frame).toContain("marketing-work-mat");
     for (const style of ["object", "product", "showcase", "document"] as const) {
       expect(lotCardMediaClasses(style).frame).not.toContain("marketing-lot-wall");
-      expect(lotCardMediaClasses(style).frame).toContain("marketing-studio-ground");
     }
+    expect(lotCardMediaClasses("object").frame).toContain("marketing-studio-ground");
   });
 
   it("fits the image by the style", () => {
