@@ -51,9 +51,8 @@ test.describe("marketing header auth @journey", () => {
     const signOut = page1.getByRole("menuitem", { name: /sign out/i });
     await expect(async () => {
       if (!(await signOut.isVisible())) await accountMenu(page1).click();
-      await expect(signOut).toBeVisible({ timeout: 2_000 });
+      await signOut.click({ timeout: 2_000 });
     }).toPass({ timeout: 15_000 });
-    await signOut.click();
 
     await expect(guestMenu(page2)).toBeVisible({ timeout: 10_000 });
   });
@@ -68,11 +67,6 @@ test.describe("marketing header auth @journey", () => {
 
     await page2.goto("/");
     await expect(accountMenu(page2)).toBeVisible({ timeout: 10_000 });
-
-    // Sign-in is still settling its session in the background right after the redirect; logging
-    // out in the middle of that lets the session come back.
-    await page1.waitForLoadState("networkidle");
-    await page2.waitForLoadState("networkidle");
 
     const logoutStatus = await page1.evaluate(async () => {
       const response = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
