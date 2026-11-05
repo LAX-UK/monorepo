@@ -2,7 +2,7 @@
 
 import { type ArtMobileNavKey, buildArtMobileNavItems } from "@/lib/layout/art-nav.vm";
 import {
-  MarketingBottomTabBar,
+  MarketingFloatingTabBar,
   MarketingGridIcon,
   MarketingHeartIcon,
   MarketingHomeIcon,
@@ -28,7 +28,7 @@ export function ArtMobileBottomNav() {
   }));
 
   return (
-    <MarketingBottomTabBar
+    <MarketingFloatingTabBar
       variant="floating"
       items={items}
       className="art-bottom-nav"
