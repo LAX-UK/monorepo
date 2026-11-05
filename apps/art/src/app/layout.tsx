@@ -1,7 +1,7 @@
 import { ArtAnalyticsConsent } from "@/components/analytics/art-analytics-consent.client";
 import { ArtHeaderClient } from "@/components/header/art-header.client";
+import { ArtBottomBar } from "@/components/layout/art-bottom-bar.client";
 import { ArtFooter } from "@/components/layout/art-footer";
-import { ArtMobileBottomNav } from "@/components/layout/art-mobile-bottom-nav.client";
 import { ArtSmoothScroll } from "@/components/layout/art-smooth-scroll.client";
 import { ArtThemeInit } from "@/components/layout/art-theme-init";
 import { ArtJsonLd } from "@/components/seo/art-json-ld";
@@ -13,7 +13,7 @@ import { NOINDEX_ROBOTS } from "@/lib/seo/art-indexing";
 import { artSiteJsonLd } from "@/lib/seo/art-structured-data";
 import { ART_THEME_COOKIE, parseArtTheme } from "@/lib/theme/art-theme";
 import { laxFaviconMetadataIcons } from "@auction/branding";
-import { EssentialCookiesDialog } from "@auction/marketing-ui";
+import { EssentialCookiesDialog, MarketingBottomBarSpace } from "@auction/marketing-ui";
 import { CatalogueImageProvider } from "@auction/shop-portal/react";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
@@ -69,6 +69,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               productLinks={chrome.productLinks}
               familyLinks={chrome.familyLinks}
               headerNav={chrome.headerNav}
+              replyDot={chrome.replyDot}
             />
             <main
               id="main-content"
@@ -78,7 +79,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {children}
             </main>
             <ArtFooter vm={chrome.footer} />
-            <ArtMobileBottomNav />
+            {/* The one place content reserves the docked tab bar's height (--lax-bottom-bar-space). */}
+            <MarketingBottomBarSpace />
+            <ArtBottomBar signedOut={chrome.account.kind === "guest"} replyDot={chrome.replyDot} />
             {measurementId ? (
               <ArtAnalyticsConsent
                 measurementId={measurementId}

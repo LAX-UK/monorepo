@@ -35,6 +35,8 @@ export type MarketingAccountEntryProps = {
   createAccountLabel?: string;
   /** Shows a dot on the entry while something needs the person. */
   attention?: boolean;
+  /** Renders the Sign in and Create account links, e.g. a plain anchor for auth-start routes. */
+  renderAuthLink?: (props: { href: string; className: string; children: ReactNode }) => ReactNode;
   headerTone?: MarketingHeaderTone;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -65,6 +67,7 @@ export function MarketingAccountEntry({
   signInLabel = "Sign in",
   createAccountLabel = "Create account",
   attention = false,
+  renderAuthLink,
   headerTone = "on-light",
   open,
   onOpenChange,
@@ -78,6 +81,14 @@ export function MarketingAccountEntry({
       : onOpenChange
         ? { onOpenChange }
         : {};
+  const authLink = (href: string, linkClass: string, children: ReactNode) =>
+    renderAuthLink ? (
+      renderAuthLink({ href, className: linkClass, children })
+    ) : (
+      <Link href={href} className={linkClass}>
+        {children}
+      </Link>
+    );
   const dot = attention ? (
     <span
       aria-hidden
@@ -145,20 +156,17 @@ export function MarketingAccountEntry({
           <div className="flex flex-col gap-3 p-3">
             <p className="m-0 font-body text-sm text-on-surface">{signedOutIntro}</p>
             <DropdownMenuItem asChild className="p-0 focus:bg-transparent">
-              <Link
-                href={signInHref}
-                className={cn(
+              {authLink(
+                signInHref,
+                cn(
                   "inline-flex min-h-11 w-full items-center justify-center rounded bg-cta-bg px-3 py-2 font-label text-sm font-semibold text-cta-on hover:opacity-95",
                   FOCUS_RING,
-                )}
-              >
-                {signInLabel}
-              </Link>
+                ),
+                signInLabel,
+              )}
             </DropdownMenuItem>
             <DropdownMenuItem asChild className="min-h-11 cursor-pointer justify-center">
-              <Link href={createAccountHref} className="font-label text-sm font-medium">
-                {createAccountLabel}
-              </Link>
+              {authLink(createAccountHref, "font-label text-sm font-medium", createAccountLabel)}
             </DropdownMenuItem>
           </div>
         )}

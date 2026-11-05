@@ -66,7 +66,7 @@ test.describe("lax.art accessibility @a11y", () => {
     const axe = await new AxeBuilder({ page })
       .include("[data-testid='art-header']")
       .include("footer")
-      .include("[data-testid='art-mobile-bottom-nav']")
+      .include("[data-testid='art-bottom-tab-bar']")
       .withTags(["wcag2a", "wcag2aa"])
       .analyze();
     expect(axe.violations.filter((v) => BLOCKING_IMPACTS.includes(v.impact ?? ""))).toEqual([]);

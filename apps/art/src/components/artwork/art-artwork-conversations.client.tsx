@@ -4,7 +4,7 @@ import { ArtEnquiryPanel } from "@/components/enquiry/art-enquiry-panel";
 import { ArtGeneralEnquirySheet } from "@/components/enquiry/art-general-enquiry-sheet.client";
 import { ArtArtworkFavoriteToggle } from "@/components/favorites/art-artwork-favorite-toggle.client";
 import type { ArtworkDetailVm } from "@/lib/artwork/artwork-detail-page.composer";
-import { MarketingStickyActionBar } from "@auction/marketing-ui";
+import { MarketingStickyActionBar, useClaimBottomSlot } from "@auction/marketing-ui";
 import { Button } from "@auction/ui/components/button";
 
 type ConversationsVm = Pick<
@@ -21,6 +21,8 @@ type ConversationsVm = Pick<
 export function ArtArtworkConversations({ vm }: { vm: ConversationsVm }) {
   const specialist = vm.specialistContact.kind === "ready" ? vm.specialistContact : null;
   const available = vm.enquiry.kind === "ready";
+  // The sticky action bar takes the bottom of the phone screen; the tab bar steps aside.
+  useClaimBottomSlot("art-action-bar", available);
   const subject = { contextSlug: vm.slug, contextLabel: vm.title };
 
   return (

@@ -371,47 +371,80 @@ test.describe("lax.art journeys", () => {
     ).toHaveAttribute("href", "/contact");
   });
 
-  test("mobile bottom nav marks the current tab", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "chromium-mobile", "bottom nav is mobile-only");
-    await page.goto("/search");
-    const nav = page.getByTestId("art-mobile-bottom-nav");
-    await expect(nav).toBeVisible();
-    await expect(nav.getByRole("link")).toHaveText(["Home", "Discover", "Favourites", "Account"]);
-    await expect(nav.getByRole("link", { name: "Discover" })).toHaveAttribute(
+  test("mobile bottom bar marks the current tab and sends signed-out taps to Sign in", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-mobile", "bottom bar is below md only");
+    await page.goto("/paintings");
+    const bar = page.getByTestId("art-bottom-tab-bar");
+    await expect(bar).toBeVisible();
+    await expect(bar.getByRole("listitem")).toHaveText([
+      "Home",
+      "Artworks",
+      "Search",
+      "Favourites",
+      "Account",
+    ]);
+    await expect(bar.getByRole("link", { name: "Artworks" })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    await expect(nav.getByRole("link", { name: "Home" })).not.toHaveAttribute(
+    await expect(bar.getByRole("link", { name: "Home" })).not.toHaveAttribute(
       "aria-current",
       "page",
+    );
+    await expect(bar.getByRole("link", { name: "Favourites" })).toHaveAttribute(
+      "href",
+      "/login?returnTo=%2Faccount%2Ffavourites",
+    );
+    await expect(bar.getByRole("link", { name: "Account" })).toHaveAttribute(
+      "href",
+      "/login?returnTo=%2Faccount",
     );
   });
 
-  test("mobile menu drawer lists primary nav and guest auth, and Escape returns focus", async ({
+  test("mobile bottom bar leaves no tab current on search results and opens the search sheet", async ({
     page,
   }, testInfo) => {
-    test.skip(testInfo.project.name !== "chromium-mobile", "menu drawer is below lg only");
+    test.skip(testInfo.project.name !== "chromium-mobile", "bottom bar is below md only");
+    await page.goto("/search");
+    const bar = page.getByTestId("art-bottom-tab-bar");
+    await expect(bar.locator("[aria-current]")).toHaveCount(0);
+    await bar.getByRole("button", { name: "Search" }).click();
+    await expect(page.getByRole("dialog", { name: "Search" })).toBeVisible();
+  });
+
+  test("phone menu lists lockup, main nav, help links and Theme last, and Escape returns focus", async ({
+    page,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium-mobile", "phone menu is below lg only");
     await page.goto("/artworks");
     const trigger = page.getByRole("button", { name: "Open menu" });
     await trigger.click();
 
-    const drawer = page.getByRole("dialog", { name: "Site navigation" });
-    await expect(drawer).toBeVisible();
+    const menu = page.getByRole("dialog", { name: "Menu" });
+    await expect(menu).toBeVisible();
+    await expect(menu.getByRole("navigation", { name: "Main" }).getByRole("link")).toHaveText([
+      "Artists",
+      "Artworks",
+      "Exhibitions",
+      "Art Hub",
+      "Collecting",
+    ]);
     await expect(
-      drawer.getByRole("navigation", { name: "Main menu" }).getByRole("link"),
-    ).toHaveText(["Artists", "Artworks", "Exhibitions", "Art Hub", "Collecting"]);
-    await expect(drawer.getByRole("link", { name: "Artworks" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    await expect(drawer.getByRole("link", { name: "Sign in" })).toHaveAttribute(
-      "href",
-      "/login?returnTo=%2Fartworks",
-    );
-    await expect(drawer.getByRole("link", { name: "Create account" })).toBeVisible();
+      menu.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Artworks" }),
+    ).toHaveAttribute("aria-current", "page");
+    await expect(menu.getByRole("navigation", { name: "Help" }).getByRole("link")).toHaveText([
+      "Visit us",
+      "Enquire",
+      "Help",
+    ]);
+    // Search and account have their own places; the menu carries neither.
+    await expect(menu.getByRole("link", { name: "Sign in" })).toHaveCount(0);
+    await expect(menu.getByRole("searchbox")).toHaveCount(0);
 
     await page.keyboard.press("Escape");
-    await expect(drawer).toBeHidden();
+    await expect(menu).toBeHidden();
     await expect(trigger).toBeFocused();
   });
 

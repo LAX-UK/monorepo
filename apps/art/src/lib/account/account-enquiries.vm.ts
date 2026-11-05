@@ -21,6 +21,13 @@ export type ArtEnquiryItemVm = {
 const AWAITING = new Set(["open", "new", "received", "pending", "awaiting"]);
 const REPLIED = new Set(["replied", "responded", "answered", "closed", "resolved"]);
 
+/** A status that means the gallery has written back (closed and resolved enquiries do not count). */
+const REPLY_WAITING = new Set(["replied", "responded", "answered"]);
+
+export function isEnquiryReplyWaiting(status: string): boolean {
+  return REPLY_WAITING.has(status.trim().toLowerCase());
+}
+
 /** Statuses are free text in the contract; unknown ones keep their own words on a neutral pill. */
 export function mapEnquiryStatus(status: string): NonNullable<ArtEnquiryItemVm["status"]> {
   const key = status.trim().toLowerCase();

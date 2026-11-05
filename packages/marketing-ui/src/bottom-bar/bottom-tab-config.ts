@@ -10,6 +10,11 @@ type TabBase = {
   /** Paths that make this tab the current one. "/" matches only the home page. */
   paths: readonly string[];
   badge?: MarketingBottomTabBadge | null;
+  /**
+   * Leave the app with a plain anchor (no client navigation, no prefetch). For links that start a
+   * sign-in, which must not be fetched ahead of a tap.
+   */
+  fullPageNavigation?: boolean;
 };
 
 /** A tab that goes to a page. */

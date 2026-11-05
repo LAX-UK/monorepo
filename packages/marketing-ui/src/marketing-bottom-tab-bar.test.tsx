@@ -59,6 +59,27 @@ afterEach(() => {
   document.documentElement.removeAttribute("data-lax-bottom-bar");
 });
 
+describe("MarketingBottomTabBar full-page tabs", () => {
+  it("renders a plain anchor, with no client navigation, for a tab that starts a sign-in", () => {
+    const tabs: MarketingBottomTab[] = [
+      { key: "home", label: "Home", icon, href: "/", paths: ["/"] },
+      {
+        key: "account",
+        label: "Account",
+        icon,
+        href: "/login?returnTo=%2Faccount",
+        paths: ["/account"],
+        fullPageNavigation: true,
+      },
+    ];
+    render(<MarketingBottomTabBar tabs={tabs} pathname="/" onSearch={() => {}} />);
+    const account = screen.getByRole("link", { name: "Account" });
+    expect(account).toHaveAttribute("href", "/login?returnTo=%2Faccount");
+    expect(account.tagName).toBe("A");
+    expect(account).not.toHaveAttribute("data-prefetch");
+  });
+});
+
 describe("MarketingBottomTabBar", () => {
   it("is a Shortcuts navigation of links, not ARIA tabs", () => {
     render(bar());
