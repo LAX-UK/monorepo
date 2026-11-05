@@ -2,6 +2,7 @@
 
 import { MediaImage } from "@/components/ui/media-image";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/lax";
 import {
   EmptyStage,
   LotMediaStrip,
@@ -57,12 +58,12 @@ export function AnglesView({
           imgClassName={fill ? "object-cover" : "object-contain"}
         />
         {fill ? (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             onClick={() => onOpenViewer()}
             aria-haspopup="dialog"
             aria-label={`Zoom in on ${title}`}
-            className="lax-focus absolute inset-0 cursor-zoom-in md:rounded-xl"
+            className="absolute inset-0 size-full cursor-zoom-in rounded-none p-0 hover:bg-transparent md:rounded-xl"
           />
         ) : null}
         <ViewerButton onClick={() => onOpenViewer()} zoom={fill} />

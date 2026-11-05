@@ -3,6 +3,7 @@
 import { MediaImage } from "@/components/ui/media-image";
 import { spreadPages } from "@/lib/lot-page/lot-media-plan";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/lax";
 import {
   EmptyStage,
   LotMediaStrip,
@@ -61,12 +62,12 @@ export function SideBySideView({
                 pages.length === 2 && position === 0 && !faces && "border-r border-lax-line",
               )}
             >
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 onClick={() => onOpenViewer(pageIndex)}
                 aria-haspopup="dialog"
                 aria-label={`Zoom in on ${caption ?? `page ${pageIndex + 1}`}`}
-                className="lax-focus relative block size-full min-h-0 flex-1 cursor-zoom-in rounded-md"
+                className="relative block size-full min-h-0 flex-1 cursor-zoom-in rounded-md p-0 hover:bg-transparent"
               >
                 <MediaImage
                   src={image.src}
@@ -77,7 +78,7 @@ export function SideBySideView({
                   className="overflow-visible"
                   imgClassName="object-contain"
                 />
-              </button>
+              </Button>
               {caption ? (
                 <figcaption className="mt-2 text-lax-13 text-lax-muted">{caption}</figcaption>
               ) : null}
