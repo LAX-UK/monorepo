@@ -38,12 +38,13 @@ test.describe("submission wizard mobile @journey", () => {
     if (draftId) {
       await page.goto(`/selling/consignments/${draftId}`);
     } else {
-      await page.goto("/selling/consignments?tab=drafts");
-      // Each draft row's title opens the consignment.
-      const draftLink = page.locator("[data-record-link]").first();
-      await expect(draftLink).toBeVisible({ timeout: 15_000 });
-      await draftLink.click();
-      await page.waitForURL(/\/selling\/consignments\/[^/]+$/);
+      // The seed has no draft for this account, so the wizard opens from a new submission.
+      await page.goto("/selling/new");
+      // Someone who can sell for more than one account chooses who is selling first.
+      const toWork = page.getByTestId("sell-flow-continue");
+      const basics = page.getByTestId("submission-wizard-step-basics");
+      await expect(toWork.or(basics).first()).toBeVisible({ timeout: 15_000 });
+      if (await toWork.isVisible()) await toWork.click();
     }
 
     await expect(page.getByTestId("submission-wizard-step-basics")).toBeVisible({
@@ -55,8 +56,26 @@ test.describe("submission wizard mobile @journey", () => {
     });
     await expect(bottomNav).toHaveCount(0);
 
+    // A new submission starts empty, and each step is checked before the next opens. The form
+    // may still be hydrating when the first key is typed, so an entry counts once it has stuck.
+    const title = page.getByRole("textbox", { name: "Title", exact: true });
+    const year = page.getByRole("textbox", { name: "Year of work", exact: true });
+    await expect(async () => {
+      await title.fill("Harbour study");
+      await year.fill("2024");
+      await expect(title).toHaveValue("Harbour study");
+      await expect(year).toHaveValue("2024");
+    }).toPass({ timeout: 15_000 });
+    await page.getByRole("button", { name: /select categories/i }).click();
+    await page.getByRole("option").first().click();
+    await page.keyboard.press("Escape");
+
     await page.getByTestId("wizard-next").click();
     await expect(page.getByTestId("submission-wizard-step-details")).toBeVisible();
+
+    await page
+      .getByRole("textbox", { name: "Description", exact: true })
+      .fill("A small oil study, signed lower right, from a private collection.");
 
     const urlBefore = page.url();
     await page.getByTestId("wizard-next").click();
