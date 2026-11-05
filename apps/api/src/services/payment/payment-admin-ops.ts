@@ -65,6 +65,7 @@ export async function backfillXeroInvoiceForPayment(
     lot,
     buyerId,
     p.amount,
+    p.createdAt,
   );
   if (result.ok) {
     recordMoneyPathEvent("xero_invoice_backfilled");

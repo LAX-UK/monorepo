@@ -12,7 +12,6 @@ import type { XeroTokenService } from "./xero-token.service.js";
 const env = {
   XERO_DEFAULT_REVENUE_ACCOUNT_CODE: "200",
   XERO_DEFAULT_TAX_TYPE: "NONE",
-  XERO_INVOICE_DUE_DAYS: 14,
   XERO_USE_LEGAL_ENTITY_CONTACT: false,
   XERO_API_WRITES_DISABLED: false,
 };
@@ -23,6 +22,7 @@ const ctx: InvoiceAccountingContext = {
   buyerEmail: "buyer@example.com",
   buyerName: "Buyer",
   amount: "1250.00",
+  raisedAt: new Date("2026-11-02T23:30:00.000Z"),
 };
 
 function build(overrides: { env?: Partial<typeof env> } = {}) {
@@ -84,12 +84,24 @@ describe("XeroInvoiceWriter.ensureInvoiceForPayment", () => {
     );
   });
 
-  it("dates the invoice today and makes it due XERO_INVOICE_DUE_DAYS later", async () => {
+  it("dates the invoice when it was raised and makes it due on the buyer's 7-day term", async () => {
     const { writer, createInvoices } = build();
+    // Written to Xero three days late; still dated and due as the buyer's invoice is.
     await writer.ensureInvoiceForPayment(ctx);
     const invoice = createInvoices.mock.calls[0]?.[1].invoices[0];
-    expect(invoice.date).toBe("2026-11-05");
-    expect(invoice.dueDate).toBe("2026-11-19");
+    expect(invoice.date).toBe("2026-11-02");
+    expect(invoice.dueDate).toBe("2026-11-09");
+  });
+
+  it("uses the London calendar day, so a late-evening invoice in summer is not a day early", async () => {
+    const { writer, createInvoices } = build();
+    await writer.ensureInvoiceForPayment({
+      ...ctx,
+      raisedAt: new Date("2026-07-01T23:30:00.000Z"),
+    });
+    const invoice = createInvoices.mock.calls[0]?.[1].invoices[0];
+    expect(invoice.date).toBe("2026-07-02");
+    expect(invoice.dueDate).toBe("2026-07-09");
   });
 
   it("writes nothing while Xero writes are switched off in this process", async () => {

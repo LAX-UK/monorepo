@@ -153,6 +153,8 @@ export async function issueCheckoutForPendingPayment(
   lot: Lot,
   buyerId: string,
   amount: string,
+  /** When the invoice was raised: its accounting copy is dated and due from then. */
+  raisedAt: Date,
 ): Promise<
   Result<
     { checkoutUrl: string | null; checkoutRail: CheckoutRailKind | null },
@@ -199,6 +201,7 @@ export async function issueCheckoutForPendingPayment(
     lot,
     buyerId,
     amount,
+    raisedAt,
   );
   if (!invoiceResult.ok) {
     if (deps.xeroInvoiceBlocking) {
@@ -277,6 +280,7 @@ export async function resolveCheckoutForPendingOrPromoteCompliance(
   lot: Lot,
   buyerId: string,
   amount: string,
+  raisedAt: Date,
 ): Promise<
   Result<
     {
@@ -307,7 +311,14 @@ export async function resolveCheckoutForPendingOrPromoteCompliance(
     );
   }
 
-  const checkout = await issueCheckoutForPendingPayment(deps, paymentId, lot, buyerId, amount);
+  const checkout = await issueCheckoutForPendingPayment(
+    deps,
+    paymentId,
+    lot,
+    buyerId,
+    amount,
+    raisedAt,
+  );
   if (checkout.isOk()) {
     return ok({
       checkoutUrl: checkout.value.checkoutUrl,

@@ -1,3 +1,4 @@
+import { invoiceDueAt } from "@auction/domain";
 import type {
   IPaymentExternalRefRepository,
   IXeroConnectionRepository,
@@ -15,14 +16,9 @@ import { assertXeroApiWritesAllowed } from "../xero-api-writes-guard.js";
 import type { XeroContactSync } from "./xero-contact-sync.js";
 import type { XeroTokenService } from "./xero-token.service.js";
 
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function dueDate(from: Date, days: number): string {
-  const t = new Date(from);
-  t.setUTCDate(t.getUTCDate() + days);
-  return isoDate(t);
+/** The calendar day in London, as Xero dates are (YYYY-MM-DD). */
+function londonDate(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(d);
 }
 
 export class XeroInvoiceWriter {
@@ -31,7 +27,6 @@ export class XeroInvoiceWriter {
       FinanceRuntimeEnv,
       | "XERO_DEFAULT_REVENUE_ACCOUNT_CODE"
       | "XERO_DEFAULT_TAX_TYPE"
-      | "XERO_INVOICE_DUE_DAYS"
       | "XERO_USE_LEGAL_ENTITY_CONTACT"
       | "XERO_API_WRITES_DISABLED"
     >,
@@ -107,9 +102,10 @@ export class XeroInvoiceWriter {
         this.env.XERO_DEFAULT_TAX_TYPE === "NONE"
           ? LineAmountTypes.NoTax
           : LineAmountTypes.Exclusive;
-      const today = new Date();
-      inv.date = isoDate(today);
-      inv.dueDate = dueDate(today, this.env.XERO_INVOICE_DUE_DAYS);
+      // Dated when the invoice was raised and due on the buyer's term, so the books show the
+      // same due date as the buyer's invoice and reminders, however late Xero is written.
+      inv.date = londonDate(ctx.raisedAt);
+      inv.dueDate = londonDate(invoiceDueAt(ctx.raisedAt));
       inv.reference = `payment:${ctx.paymentId}`;
       inv.status = Invoice.StatusEnum.AUTHORISED;
 

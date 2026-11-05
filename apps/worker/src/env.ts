@@ -213,7 +213,6 @@ export const envSchema = z
     XERO_REDIRECT_URI: z.preprocess(emptyToUndefined, z.string().url().optional()),
     XERO_DEFAULT_REVENUE_ACCOUNT_CODE: z.string().min(1).default("200"),
     XERO_DEFAULT_TAX_TYPE: z.string().min(1).default("NONE"),
-    XERO_INVOICE_DUE_DAYS: z.coerce.number().int().min(0).max(365).default(14),
     XERO_USE_LEGAL_ENTITY_CONTACT: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),

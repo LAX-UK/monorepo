@@ -224,6 +224,7 @@ export class LotInvoiceInitiationService {
       lot,
       buyerId,
       created.amount,
+      created.createdAt,
     );
     if (!xeroResult.ok) {
       this.metrics.record("xero_invoice_deferred");

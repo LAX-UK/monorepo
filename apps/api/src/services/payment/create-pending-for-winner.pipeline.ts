@@ -98,6 +98,7 @@ async function handleExistingOpenPayment(
     lot,
     buyerId,
     existing.amount,
+    existing.createdAt,
   );
   if (checkout.isErr()) return err(checkout.error);
   return ok({
@@ -363,6 +364,7 @@ export async function resolveCheckoutForNewPayment(
   lot: Lot,
   buyerId: string,
   amount: string,
+  raisedAt: Date,
 ): Promise<
   Result<
     {
@@ -379,6 +381,7 @@ export async function resolveCheckoutForNewPayment(
     lot,
     buyerId,
     amount,
+    raisedAt,
   );
   if (checkout.isErr()) return err(checkout.error);
   return ok({
@@ -458,6 +461,7 @@ export async function createPendingForWinner(
       lot,
       buyerId,
       created.amount,
+      created.createdAt,
     );
     if (checkoutResult.isErr()) return err(checkoutResult.error);
     if (checkoutResult.value.manualReviewReason) {

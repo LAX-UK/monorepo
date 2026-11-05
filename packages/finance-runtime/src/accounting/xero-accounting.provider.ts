@@ -30,7 +30,6 @@ export class XeroAccountingProvider implements IInvoiceAccountingProvider {
       | "XERO_REDIRECT_URI"
       | "XERO_DEFAULT_REVENUE_ACCOUNT_CODE"
       | "XERO_DEFAULT_TAX_TYPE"
-      | "XERO_INVOICE_DUE_DAYS"
       | "XERO_USE_LEGAL_ENTITY_CONTACT"
       | "XERO_API_WRITES_DISABLED"
     >,

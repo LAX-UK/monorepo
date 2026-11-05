@@ -7,6 +7,8 @@ export type InvoiceAccountingContext = {
   buyerEmail: string;
   buyerName: string;
   amount: string;
+  /** When the invoice was raised: the Xero invoice is dated then and due on the same term. */
+  raisedAt: Date;
   buyerLegalEntityId?: string | undefined;
 };
 

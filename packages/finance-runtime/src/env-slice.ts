@@ -6,7 +6,6 @@ export type FinanceRuntimeEnv = {
   XERO_REDIRECT_URI?: string | undefined;
   XERO_DEFAULT_REVENUE_ACCOUNT_CODE: string;
   XERO_DEFAULT_TAX_TYPE: string;
-  XERO_INVOICE_DUE_DAYS: number;
   XERO_USE_LEGAL_ENTITY_CONTACT: boolean;
   XERO_PAYOUT_BILL_ACCOUNT_CODE: string;
   XERO_PAYMENT_BANK_ACCOUNT_CODE: string;
