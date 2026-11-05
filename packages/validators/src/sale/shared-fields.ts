@@ -189,6 +189,8 @@ export const saleCreateBodySchema = z.object({
   categoryId: z.string().uuid().optional(),
   deliveryMode: z.enum(saleDeliveryModes).optional(),
   allowOnlineBidsBeforeGoLive: z.coerce.boolean().optional(),
+  /** Test sale: hidden from the public and never announced. Draft sales only. */
+  isTest: z.boolean().optional(),
   streamUrl: streamUrlField,
   heroPresentation: heroPresentationField,
   heroVideoUrl: heroVideoUrlField,

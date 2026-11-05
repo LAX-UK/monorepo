@@ -2094,6 +2094,13 @@
       "when": 1801382400000,
       "tag": "0299_alert_in_app_notices",
       "breakpoints": true
+    },
+    {
+      "idx": 300,
+      "version": "7",
+      "when": 1801468800000,
+      "tag": "0300_sale_test_flag",
+      "breakpoints": true
     }
   ]
 }

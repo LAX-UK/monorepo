@@ -21,7 +21,7 @@ vi.mock("@/lib/forms/image/use-upload-gallery", () => ({
 
 const verifyStreamUrlActionMock = vi.mocked(verifyStreamUrlAction);
 
-function SaleIdentityHarness() {
+function SaleIdentityHarness({ isDraft = true }: { isDraft?: boolean } = {}) {
   const form = useForm<AdminSaleFormValues>({
     defaultValues: {
       ...emptyAdminSaleFormValues(),
@@ -36,6 +36,7 @@ function SaleIdentityHarness() {
         form={form}
         categories={[]}
         pending={false}
+        isDraft={isDraft}
         previewUrlByKey={{ "https://cdn.example/cover.jpg": "https://cdn.example/cover.jpg" }}
       />
     </FormProvider>
@@ -91,5 +92,21 @@ describe("SaleIdentityStep", () => {
       );
       expect(screen.getByText('"Homepage campaign"')).toBeInTheDocument();
     });
+  });
+
+  it("lets staff mark a draft sale as a test sale", () => {
+    render(<SaleIdentityHarness />);
+
+    const checkbox = screen.getByRole("checkbox", { name: /Test sale/ });
+    expect(checkbox).not.toBeChecked();
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+  });
+
+  it("fixes the test setting once the sale has left draft", () => {
+    render(<SaleIdentityHarness isDraft={false} />);
+
+    expect(screen.getByRole("checkbox", { name: /Test sale/ })).toBeDisabled();
+    expect(screen.getByText(/Fixed once a sale leaves draft/)).toBeInTheDocument();
   });
 });
