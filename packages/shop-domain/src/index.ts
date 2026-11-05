@@ -76,6 +76,19 @@ export {
   type SignaturePlace,
 } from "./edition-facts.js";
 export {
+  EDITION_SNAPSHOT_VERSION,
+  createEditionSnapshot,
+  describeCertificateStatus,
+  describeSnapshotPrint,
+  editionFactsToPlain,
+  readEditionSnapshot,
+  type CertificateStatus,
+  type EditionFactsSnapshot,
+  type PlainEditionFacts,
+  type PrintDescription,
+  type ReadEditionSnapshot,
+} from "./edition-snapshot.js";
+export {
   confirmPackedPrint,
   type ExpectedPrint,
   type PackCandidate,

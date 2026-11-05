@@ -1,4 +1,11 @@
-import { shopArtist, shopArtwork, shopEdition, shopHomePlacement } from "@auction/db/schema";
+import {
+  shopArtist,
+  shopArtwork,
+  shopEdition,
+  shopHomePlacement,
+  shopOrder,
+  shopOrderLine,
+} from "@auction/db/schema";
 import { assertEditionFacts } from "@auction/shop-domain";
 import { asc, eq, inArray } from "drizzle-orm";
 import type pg from "pg";
@@ -98,6 +105,41 @@ describe.skipIf(!hasShopIntegrationDb)("foundation catalogue seed", () => {
       "harbour-light-edition-large",
     ]);
     expect(editions.every((edition) => edition.channel === "shop")).toBe(true);
+  });
+
+  it("gives each numbered demo run one paid order with the facts kept (idempotent)", async () => {
+    const db = createShopDb(shopPool);
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
+    const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
+    const seed = () =>
+      seedShopFoundationCatalogue(
+        importWriter.importArtwork.bind(importWriter),
+        db,
+        authorityWriter.grantSaleAuthority.bind(authorityWriter),
+      );
+    await seed();
+    await seed();
+
+    const lines = await db
+      .select({
+        slug: shopArtwork.slug,
+        status: shopOrder.status,
+        snapshot: shopOrderLine.editionFactsSnapshot,
+      })
+      .from(shopOrderLine)
+      .innerJoin(shopOrder, eq(shopOrder.id, shopOrderLine.orderId))
+      .innerJoin(shopArtwork, eq(shopArtwork.id, shopOrderLine.artworkId))
+      .where(eq(shopOrder.identitySubjectId, "seed:edition-buyer"));
+    expect(lines.map((line) => line.slug).sort()).toEqual([
+      "composition-1964",
+      "harbour-at-dusk",
+      "harbour-at-dusk-artists-proof",
+      "shoreline-estate",
+    ]);
+    for (const line of lines) {
+      expect(line.status, line.slug).toBe("paid");
+      expect(line.snapshot, line.slug).toMatchObject({ schemaVersion: 1, facts: {} });
+    }
   });
 
   it("seeds confirmed facts and custom, open, proof and companion runs (idempotent)", async () => {

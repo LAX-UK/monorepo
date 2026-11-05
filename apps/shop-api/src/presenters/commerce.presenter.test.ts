@@ -146,6 +146,26 @@ describe("presentOrder", () => {
     deliveryAddress: null,
   });
 
+  it("carries what the buyer was told about each print", () => {
+    const view = presentOrder(
+      sampleOrderRecord({
+        lines: [
+          sampleOrderLine({
+            editionNumber: 7,
+            editionSummary: "No. 7 of 24 · Hand-signed",
+            editionInvoiceDetail: "Limited edition of 24, no. 7, signed by hand",
+          }),
+        ],
+      }),
+      new Date("2026-10-04T09:00:00.000Z"),
+    );
+    expect(view.lines[0]).toMatchObject({
+      editionNumber: 7,
+      editionSummary: "No. 7 of 24 · Hand-signed",
+    });
+    expect(view.lines[0]).not.toHaveProperty("editionInvoiceDetail");
+  });
+
   it("gives the reference, the VAT included and the tracking link", () => {
     const view = presentOrder(
       sampleOrderRecord({
