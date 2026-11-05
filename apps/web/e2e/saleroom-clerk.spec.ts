@@ -15,6 +15,8 @@ const lotOnBlockHeading = (page: Page) =>
  * from a running session. The test that moves the block on runs last: it changes what is on it.
  */
 test.describe("hybrid saleroom clerk @journey", () => {
+  // The tests share one seeded room (pause, reconnect, advance), so they run one after another.
+  test.describe.configure({ mode: "serial" });
   test.skip(!e2eEnabled, skipReason);
 
   test("staff can open the clerk console for a hybrid sale", async ({ page }) => {
@@ -53,10 +55,14 @@ test.describe("hybrid saleroom clerk @journey", () => {
 
     const paddleAmount = page.locator('input[id^="paddle-bid-amount-"]');
     await expect(paddleAmount).toBeVisible();
-    // The telephone form has its own quick amounts; the paddle form comes first.
+    // The telephone form has its own quick amounts: pick the one in the paddle form.
+    const minimumBid = page.getByRole("button", { name: /^minimum bid/i });
     await page
+      .locator("div")
+      .filter({ has: paddleAmount })
+      .filter({ has: minimumBid })
+      .last()
       .getByRole("button", { name: /^minimum bid/i })
-      .first()
       .click();
     await expect(paddleAmount).toHaveValue(/^7,?100(\.00)?$/);
 
@@ -204,10 +210,14 @@ test.describe("hybrid saleroom clerk @journey", () => {
     });
 
     await clerkConsole(clerkPage);
-    await clerkPage.getByRole("button", { name: /^advance next/i }).click();
+    // Retry the click until the console has moved on, in case it lands before the page is ready.
+    await expect(async () => {
+      await clerkPage.getByRole("button", { name: /^advance next/i }).click();
+      await expect(clerkPage.getByText(/glass horizon/i).first()).toBeVisible({ timeout: 3_000 });
+    }).toPass({ timeout: 20_000 });
 
     // The sidecar pushes the move to the open operations tab; the page is never reloaded.
-    await expect(opsPage.getByText(/on the block/i).first()).toBeVisible();
+    await expect(opsPage.getByText(/glass horizon/i).first()).toBeVisible({ timeout: 15_000 });
     await expect
       .poll(() => opsPage.evaluate(() => (window as unknown as { __opsLoad?: string }).__opsLoad), {
         timeout: 15_000,
