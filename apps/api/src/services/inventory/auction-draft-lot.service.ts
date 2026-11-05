@@ -4,8 +4,8 @@ import {
   type DraftLotRequest,
   type MoveRefusal,
   type MoveRefusalCode,
-  type OfferRefusalReason,
   offerRefusalMessage,
+  offerRefusalReason,
 } from "@auction/artwork-register-contracts";
 import type { IArtworkRegisterReader, IAuctionOfferReader } from "@auction/persistence/interfaces";
 import type { ArtistSearchHit } from "@auction/persistence/interfaces";
@@ -91,7 +91,7 @@ export class AuctionDraftLotService {
     }
     const { state } = entry.offer;
     if (state === "sold" || state === "private_sale") {
-      const reason: OfferRefusalReason = state === "sold" ? "sold" : "offered_elsewhere";
+      const reason = offerRefusalReason(entry.offer);
       return refuse(409, "artwork_offered_elsewhere", offerRefusalMessage(reason, state));
     }
 

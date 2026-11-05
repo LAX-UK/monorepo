@@ -28,6 +28,8 @@ import {
 import { ProofListingDialog } from "@/components/artworks/edition-runs/proof-listing-dialog.client";
 import { OfferAtAuctionDialog } from "@/components/artworks/offer-at-auction-dialog.client";
 import { OriginalArtworkPicker } from "@/components/artworks/original-artwork-picker.client";
+import { ZohoOwnedDetails, ZohoOwnedMedia } from "@/components/artworks/zoho-owned-details";
+import { ZohoWherePanel } from "@/components/artworks/zoho-where-it-is-panel";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import {
   type ArtworkFormField,
@@ -110,6 +112,7 @@ import {
 import {
   ChoiceRow,
   ConfirmActionDialog,
+  DetailColumns,
   EnumSelect,
   Field,
   FieldRow,
@@ -147,10 +150,11 @@ import {
   Layers,
   Save,
   Stamp,
+  X,
 } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 
 export type ArtworkEditorPermissions = {
   /** `catalogue.write`: edit, publish, unpublish, archive. */
@@ -186,6 +190,19 @@ function ActionIcon({ action }: { action: AdminArtworkVisibilityAction }) {
   return <Icon aria-hidden />;
 }
 
+/**
+ * A linked artwork's page has a rail for where it is; every other artwork keeps the single
+ * column it always had.
+ */
+function MaybeColumns({ rail, children }: { rail: ReactNode; children: ReactNode }) {
+  if (!rail) return <>{children}</>;
+  return (
+    <DetailColumns rail={rail} railLabel="Where it is" railPlacement="before">
+      {children}
+    </DetailColumns>
+  );
+}
+
 function counter(value: string, max: number) {
   return `${value.trim().length} of ${max} characters`;
 }
@@ -202,6 +219,8 @@ export function ArtworkEditor({
   companionOf = null,
   permissions,
   currentYear,
+  arrivedFromZoho = false,
+  zohoUrl = null,
 }: {
   detail: AdminArtworkDetail | null;
   /** For a new artwork started from an artist's page. */
@@ -210,6 +229,10 @@ export function ArtworkEditor({
   companionOf?: CompanionOf | null;
   permissions: ArtworkEditorPermissions;
   currentYear: number;
+  /** Arrived from "Offer on lax.art": tell the person what to do next. */
+  arrivedFromZoho?: boolean;
+  /** The Zoho Product's page, for "Edit in Zoho" on a linked artwork. */
+  zohoUrl?: string | null;
 }) {
   const router = useRouter();
   const mode = detail ? "edit" : "create";
@@ -248,7 +271,9 @@ export function ArtworkEditor({
   const [creatingPrints, setCreatingPrints] = useState(false);
   const [linkedPrints, setLinkedPrints] = useState(detail?.linkedPrints ?? []);
   const [offeringAtAuction, setOfferingAtAuction] = useState(false);
+  const [arrivalOpen, setArrivalOpen] = useState(arrivedFromZoho);
 
+  const zohoLink = record?.zohoLink ?? null;
   const live = record?.state === "live" || record?.state === "sold_out";
   const context = {
     mode,
@@ -650,6 +675,24 @@ export function ArtworkEditor({
         </Notice>
       ) : null}
       {formError ? <Notice tone="danger" alert title={formError} /> : null}
+      {zohoLink && arrivalOpen ? (
+        <Notice
+          tone="success"
+          title="Draft created from Zoho"
+          actions={
+            <StaffButton
+              size="icon-sm"
+              variant="ghost"
+              aria-label="Dismiss"
+              onClick={() => setArrivalOpen(false)}
+            >
+              <X aria-hidden />
+            </StaffButton>
+          }
+        >
+          Write the description, check the images, then publish.
+        </Notice>
+      ) : null}
       {priceOnly ? (
         <Notice title="You can change the edition price">
           The other details are edited by staff who manage the catalogue.
@@ -662,606 +705,664 @@ export function ArtworkEditor({
         </p>
       ) : null}
 
-      <form
-        id="artwork-form"
-        noValidate
-        aria-label={mode === "create" ? "New artwork" : `Edit ${record?.title ?? "artwork"}`}
-        className="flex flex-col gap-6 rounded-staff-lg border border-staff-line bg-staff-surface p-4 sm:p-6"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submit();
-        }}
+      <MaybeColumns
+        rail={
+          zohoLink && record ? (
+            <ZohoWherePanel link={zohoLink} createdAt={record.createdAt} />
+          ) : null
+        }
       >
-        <FormErrorSummary errors={attempted ? summary : []} focusKey={failedSubmits} />
+        <form
+          id="artwork-form"
+          noValidate
+          aria-label={mode === "create" ? "New artwork" : `Edit ${record?.title ?? "artwork"}`}
+          className="flex flex-col gap-6 rounded-staff-lg border border-staff-line bg-staff-surface p-4 sm:p-6"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+        >
+          <FormErrorSummary errors={attempted ? summary : []} focusKey={failedSubmits} />
 
-        {mode === "create" && !companion ? (
-          <FormSection
-            title="What are you adding?"
-            description="Prints sell on LAX Shop; an original is shown on lax.art and sold by enquiry."
-          >
-            <StaffRadioGroup
-              aria-label="What are you adding?"
-              value={values.editionRun}
-              onValueChange={(kind) =>
-                update(withArtworkKind(values, kind === "original" ? "original" : "editions"))
-              }
+          {mode === "create" && !companion ? (
+            <FormSection
+              title="What are you adding?"
+              description="Prints sell on LAX Shop; an original is shown on lax.art and sold by enquiry."
             >
-              <ChoiceRow
-                htmlFor="artwork-kind-prints"
-                control={<StaffRadio id="artwork-kind-prints" value="editions" />}
-                label="Prints"
-                description="A run of prints of one image: LAX standard, a custom limited edition or an open edition."
-              />
-              <ChoiceRow
-                htmlFor="artwork-kind-original"
-                control={<StaffRadio id="artwork-kind-original" value="original" />}
-                label="Original"
-                description="A unique work on lax.art, sold by enquiry. It has no edition price."
-              />
-            </StaffRadioGroup>
-          </FormSection>
-        ) : null}
-        {companion ? (
-          <Notice title={`Main run: ${mainRunLine(companion)}`}>
-            The artist, details and images are copied from it. Choose this listing's own run and
-            edition facts, such as an unsigned open edition beside a signed one.
-          </Notice>
-        ) : null}
+              <StaffRadioGroup
+                aria-label="What are you adding?"
+                value={values.editionRun}
+                onValueChange={(kind) =>
+                  update(withArtworkKind(values, kind === "original" ? "original" : "editions"))
+                }
+              >
+                <ChoiceRow
+                  htmlFor="artwork-kind-prints"
+                  control={<StaffRadio id="artwork-kind-prints" value="editions" />}
+                  label="Prints"
+                  description="A run of prints of one image: LAX standard, a custom limited edition or an open edition."
+                />
+                <ChoiceRow
+                  htmlFor="artwork-kind-original"
+                  control={<StaffRadio id="artwork-kind-original" value="original" />}
+                  label="Original"
+                  description="A unique work on lax.art, sold by enquiry. It has no edition price."
+                />
+              </StaffRadioGroup>
+            </FormSection>
+          ) : null}
+          {companion ? (
+            <Notice title={`Main run: ${mainRunLine(companion)}`}>
+              The artist, details and images are copied from it. Choose this listing's own run and
+              edition facts, such as an unsigned open edition beside a signed one.
+            </Notice>
+          ) : null}
 
-        {prints ? (
-          <>
-            <PrintsRunSection
-              values={runValues}
-              errors={runErrors}
-              linkedToOriginal={runContext.linkedToOriginal}
-              onChange={(patch) => setRunValues((current) => ({ ...current, ...patch }))}
-              original={
-                companion ? null : (
-                  <Field
-                    label="Original on lax.art"
-                    optional={!runErrors.original}
-                    description="The original these prints were made from. Buyer prints go to its buyer."
-                    error={runErrors.original}
-                    id="run-original"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="w-full sm:max-w-80">
-                        <OriginalArtworkPicker
-                          value={values.sourceOriginalId}
-                          selectedTitle={values.sourceOriginalTitle}
-                          onChange={(original) =>
-                            update({
-                              sourceOriginalId: original?.id ?? null,
-                              sourceOriginalTitle: original?.label ?? null,
-                            })
-                          }
-                        />
+          {prints ? (
+            <>
+              <PrintsRunSection
+                values={runValues}
+                errors={runErrors}
+                linkedToOriginal={runContext.linkedToOriginal}
+                onChange={(patch) => setRunValues((current) => ({ ...current, ...patch }))}
+                original={
+                  companion ? null : (
+                    <Field
+                      label="Original on lax.art"
+                      optional={!runErrors.original}
+                      description="The original these prints were made from. Buyer prints go to its buyer."
+                      error={runErrors.original}
+                      id="run-original"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="w-full sm:max-w-80">
+                          <OriginalArtworkPicker
+                            value={values.sourceOriginalId}
+                            selectedTitle={values.sourceOriginalTitle}
+                            onChange={(original) =>
+                              update({
+                                sourceOriginalId: original?.id ?? null,
+                                sourceOriginalTitle: original?.label ?? null,
+                              })
+                            }
+                          />
+                        </div>
+                        {values.sourceOriginalId ? (
+                          <StaffButton
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() =>
+                              update({ sourceOriginalId: null, sourceOriginalTitle: null })
+                            }
+                          >
+                            Remove link
+                          </StaffButton>
+                        ) : null}
                       </div>
-                      {values.sourceOriginalId ? (
-                        <StaffButton
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            update({ sourceOriginalId: null, sourceOriginalTitle: null })
+                    </Field>
+                  )
+                }
+              />
+              <PrintsFactsSection
+                values={factsValues}
+                errors={factsErrors}
+                spec={chosenSpec}
+                preview={factsPreviewModel}
+                onChange={updateFacts}
+              />
+            </>
+          ) : null}
+
+          {readOnly && record ? (
+            <ReadOnlyDetails values={values} record={record} />
+          ) : zohoLink && record ? (
+            <ZohoOwnedDetails
+              zohoUrl={zohoUrl}
+              values={{
+                title: values.title,
+                artistName: values.artistName ?? record.artist.displayName,
+                yearCreated: values.yearCreated,
+                medium: values.medium,
+                dimensions: values.dimensions,
+                slug: record.slug,
+              }}
+            >
+              <Field
+                label="Description"
+                optional
+                description="Shown on lax.art. Kept in LAX; Zoho doesn't hold it."
+                error={errors.description}
+                id={artworkFieldId("description")}
+              >
+                <TextArea
+                  rows={6}
+                  value={values.description}
+                  placeholder="Write about the work for lax.art buyers: what it shows, how it was made, why it matters."
+                  onChange={(event) => update({ description: event.target.value })}
+                />
+              </Field>
+            </ZohoOwnedDetails>
+          ) : (
+            <FormSection
+              title="Details"
+              description="What the work is and who made it, as shown on its storefront page."
+            >
+              <Field
+                label="Title"
+                error={errors.title}
+                id={artworkFieldId("title")}
+                disabled={readOnly}
+              >
+                <TextInput
+                  value={values.title}
+                  autoComplete="off"
+                  onChange={(event) => update(withTitle(values, event.target.value))}
+                />
+              </Field>
+              {mode === "create" ? (
+                <Field
+                  label="Web address"
+                  description="Lower case words joined by hyphens. Fixed once the artwork is created."
+                  error={errors.slug}
+                  id={artworkFieldId("slug")}
+                >
+                  <TextInput
+                    value={values.slug}
+                    leading={<span className="text-staff-muted">/artworks/</span>}
+                    autoComplete="off"
+                    spellCheck={false}
+                    onChange={(event) => update({ slug: event.target.value, slugEdited: true })}
+                  />
+                </Field>
+              ) : (
+                <KeyValueList
+                  items={[
+                    {
+                      label: "Web address",
+                      value: `/artworks/${record?.slug ?? ""}`,
+                      ...(record ? { copyValue: record.slug } : {}),
+                    },
+                  ]}
+                />
+              )}
+              {companion ? null : (
+                <>
+                  <Field
+                    label="Artist"
+                    error={errors.artistId}
+                    id={artworkFieldId("artistId")}
+                    disabled={readOnly}
+                  >
+                    <ArtistPicker
+                      value={values.artistId}
+                      selectedName={values.artistName}
+                      onChange={(artist) =>
+                        update({ artistId: artist?.id ?? null, artistName: artist?.label ?? null })
+                      }
+                    />
+                  </Field>
+                  <FieldRow>
+                    <Field
+                      label="Year"
+                      optional
+                      error={errors.yearCreated}
+                      id={artworkFieldId("yearCreated")}
+                      disabled={readOnly}
+                    >
+                      <TextInput
+                        inputMode="numeric"
+                        autoComplete="off"
+                        placeholder={String(currentYear)}
+                        value={values.yearCreated}
+                        onChange={(event) => update({ yearCreated: event.target.value })}
+                      />
+                    </Field>
+                    <Field
+                      label="Medium"
+                      optional
+                      error={errors.medium}
+                      id={artworkFieldId("medium")}
+                      disabled={readOnly}
+                    >
+                      <TextInput
+                        placeholder="Oil on linen"
+                        value={values.medium}
+                        onChange={(event) => update({ medium: event.target.value })}
+                      />
+                    </Field>
+                  </FieldRow>
+                  <Field
+                    label="Dimensions"
+                    optional
+                    description="As it should read, such as 60 × 80 cm."
+                    error={errors.dimensions}
+                    id={artworkFieldId("dimensions")}
+                    disabled={readOnly}
+                  >
+                    <TextInput
+                      value={values.dimensions}
+                      onChange={(event) => update({ dimensions: event.target.value })}
+                    />
+                  </Field>
+                  <Field
+                    label="Description"
+                    optional
+                    error={errors.description}
+                    id={artworkFieldId("description")}
+                    disabled={readOnly}
+                  >
+                    <TextArea
+                      rows={6}
+                      value={values.description}
+                      onChange={(event) => update({ description: event.target.value })}
+                    />
+                  </Field>
+                </>
+              )}
+            </FormSection>
+          )}
+
+          <FormSection
+            title={prints ? "Price" : "Editions and pricing"}
+            description={
+              prints
+                ? "Every print in the run sells at one price."
+                : "Editions are sold at one price each. Counts here are for staff only; the storefront shows only whether editions are available."
+            }
+          >
+            {mode === "create" ? null : record?.run ? (
+              record.run.stock ? null : (
+                <StatGrid label="Edition counts" items={editionRunFacts(record.editions)} />
+              )
+            ) : (
+              <KeyValueList
+                items={[{ label: "Edition run", value: "Original only, sold by enquiry" }]}
+              />
+            )}
+
+            {values.editionRun === "editions" ? (
+              <StaffReadOnly readOnly={!permissions.setPrice}>
+                <Field
+                  label="Price per edition"
+                  optional={!(live && values.saleState === "for_sale")}
+                  description={
+                    permissions.setPrice
+                      ? "In pounds, including VAT. Leave blank until the price is agreed."
+                      : "Only a shop admin can set or change the price."
+                  }
+                  error={errors.price}
+                  id={artworkFieldId("price")}
+                >
+                  <MoneyInput
+                    value={typedPence.ok ? typedPence.pence : null}
+                    onValueChange={() => undefined}
+                    onInput={(event) => update({ priceText: event.currentTarget.value })}
+                    placeholder="0.00"
+                    boxClassName="sm:max-w-60"
+                  />
+                </Field>
+              </StaffReadOnly>
+            ) : null}
+
+            {values.editionRun === "editions" && mode === "edit" ? (
+              readOnly ? (
+                <KeyValueList
+                  items={[
+                    {
+                      label: "Original on lax.art",
+                      value: values.sourceOriginalTitle ?? "None linked",
+                    },
+                  ]}
+                />
+              ) : (
+                <Field
+                  label="Original on lax.art"
+                  optional
+                  description="The original this edition was made from. Once both are live, the edition's page links to the original and the original's page lists this edition."
+                  id="artwork-source-original"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="w-full sm:max-w-80">
+                      <OriginalArtworkPicker
+                        value={values.sourceOriginalId}
+                        selectedTitle={values.sourceOriginalTitle}
+                        onChange={(original) =>
+                          update({
+                            sourceOriginalId: original?.id ?? null,
+                            sourceOriginalTitle: original?.label ?? null,
+                          })
+                        }
+                      />
+                    </div>
+                    {values.sourceOriginalId ? (
+                      <StaffButton
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          update({ sourceOriginalId: null, sourceOriginalTitle: null })
+                        }
+                      >
+                        Remove link
+                      </StaffButton>
+                    ) : null}
+                  </div>
+                </Field>
+              )
+            ) : null}
+
+            {companion ? null : readOnly ? (
+              <KeyValueList
+                items={[{ label: "Sale", value: SALE_STATE_LABELS[values.saleState] }]}
+              />
+            ) : (
+              <Field label="Sale" id="artwork-sale-state" disabled={readOnly}>
+                <EnumSelect
+                  value={values.saleState}
+                  onValueChange={(saleState) => update({ saleState })}
+                  options={ADMIN_ARTWORK_SALE_STATES.map((value) => ({
+                    value,
+                    label: SALE_STATE_LABELS[value],
+                    ...(value === "price_on_application"
+                      ? { description: "Shows “Price on application” and takes enquiries" }
+                      : value === "sold"
+                        ? { description: "The original has sold" }
+                        : {
+                            description:
+                              "Buyable at the edition price, or by enquiry for an original",
+                          }),
+                  }))}
+                  className="sm:max-w-80"
+                />
+              </Field>
+            )}
+          </FormSection>
+
+          {mode === "create" && !companion && values.editionRun === "original" && canSave ? (
+            <OriginalPrintsSection
+              values={printsValues}
+              errors={printsErrors}
+              originalTitle={values.title}
+              disabled={saving}
+              onChange={(patch) => setPrintsValues((current) => ({ ...current, ...patch }))}
+            />
+          ) : null}
+
+          {companion ? null : readOnly && record ? (
+            <ReadOnlyMedia images={values.images} importedImageUrl={record.importedImageUrl} />
+          ) : zohoLink ? (
+            <ZohoOwnedMedia images={values.images} />
+          ) : (
+            <FormSection
+              title="Media"
+              description="The first image is the primary one: it leads the gallery and is the thumbnail in lists."
+            >
+              <ArtworkMediaField
+                id={artworkFieldId("images")}
+                images={values.images}
+                importedImageUrl={record?.importedImageUrl ?? null}
+                disabled={readOnly}
+                error={errors.images}
+                onChange={(images) => update({ images })}
+              />
+            </FormSection>
+          )}
+
+          {companion ? null : (
+            <FormSection
+              title="Visibility"
+              description="Where the artwork is sold, and whether it is on the storefront."
+            >
+              {readOnly ? (
+                <KeyValueList
+                  items={[{ label: "Sales channel", value: CHANNEL_LABELS[values.salesChannel] }]}
+                />
+              ) : (
+                <Field label="Sales channel" id="artwork-channel" disabled={readOnly}>
+                  <SegmentedControl
+                    label="Sales channel"
+                    size="md"
+                    value={values.salesChannel}
+                    onValueChange={(salesChannel) => update({ salesChannel })}
+                    options={ADMIN_ARTWORK_CHANNELS.map((value) => ({
+                      value,
+                      label: CHANNEL_LABELS[value],
+                    }))}
+                  />
+                </Field>
+              )}
+              {record ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center gap-2 text-staff-sm text-staff-muted">
+                    <span>Now</span>
+                    <MappedStatusBadge status={record.state} present={presentArtworkState} />
+                    {record.publishedAt && live ? (
+                      <span>since {formatStaffDateTime(record.publishedAt)}</span>
+                    ) : null}
+                  </div>
+                  {record.state === "draft" && record.publishBlockers.length > 0 ? (
+                    <Notice
+                      tone="warning"
+                      title="Not ready to publish"
+                      {...(zohoUrl && zohoLink
+                        ? {
+                            actions: (
+                              <StaffButton asChild size="sm" variant="secondary">
+                                <a href={zohoUrl} target="_blank" rel="noopener noreferrer">
+                                  Edit in Zoho
+                                  <span className="sr-only"> (opens in a new tab)</span>
+                                </a>
+                              </StaffButton>
+                            ),
                           }
+                        : {})}
+                    >
+                      {publishBlockerMessages(record).join(" ")}
+                    </Notice>
+                  ) : null}
+                  {visibility && !readOnly ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {visibility.primary
+                        ? visibilityButton(visibility.primary, "secondary")
+                        : null}
+                      {visibility.more.map((action) => (
+                        <StaffButton
+                          key={action}
+                          variant={action === "archive" ? "danger-secondary" : "secondary"}
+                          icon={<ActionIcon action={action} />}
+                          disabled={dirty || changingVisibility}
+                          onClick={() => setConfirming(action)}
                         >
-                          Remove link
+                          {VISIBILITY_ACTION_LABELS[action].verb}
                         </StaffButton>
+                      ))}
+                      {dirty ? (
+                        <span className="text-staff-xs text-staff-muted">
+                          Save your changes first.
+                        </span>
                       ) : null}
                     </div>
-                  </Field>
-                )
-              }
-            />
-            <PrintsFactsSection
-              values={factsValues}
-              errors={factsErrors}
-              spec={chosenSpec}
+                  ) : null}
+                </div>
+              ) : (
+                <Notice title="New artworks start as drafts">
+                  {prints
+                    ? "Create the draft first, then publish it from here when it has an image, a price and confirmed edition facts."
+                    : "Create the draft first, then publish it from here when it has an image."}
+                </Notice>
+              )}
+            </FormSection>
+          )}
+
+          {companion ? null : readOnly && record ? (
+            <ReadOnlySearchListing values={values} />
+          ) : (
+            <FormSection
+              title="Search listing"
+              description="How the page appears in search results. Leave blank to use the title and description."
+            >
+              <Field
+                label="Search title"
+                optional
+                description={counter(values.seoTitle, SEO_TITLE_MAX_LENGTH)}
+                error={errors.seoTitle}
+                id={artworkFieldId("seoTitle")}
+                disabled={readOnly}
+              >
+                <TextInput
+                  value={values.seoTitle}
+                  placeholder={values.title.trim() || "The artwork's title"}
+                  onChange={(event) => update({ seoTitle: event.target.value })}
+                />
+              </Field>
+              <Field
+                label="Search description"
+                optional
+                description={counter(values.seoDescription, SEO_DESCRIPTION_MAX_LENGTH)}
+                error={errors.seoDescription}
+                id={artworkFieldId("seoDescription")}
+                disabled={readOnly}
+              >
+                <TextArea
+                  rows={3}
+                  value={values.seoDescription}
+                  onChange={(event) => update({ seoDescription: event.target.value })}
+                />
+              </Field>
+            </FormSection>
+          )}
+
+          {prints ? (
+            <PrintsConfirmSection
               preview={factsPreviewModel}
-              onChange={updateFacts}
+              confirmed={factsValues.confirmed}
+              saving={saving}
+              onConfirmedChange={(confirmed) => updateFacts({ confirmed })}
             />
+          ) : null}
+
+          {!canSave ? null : (
+            <FormActions className="border-t border-staff-line-subtle pt-4">
+              <StaffButton asChild variant="secondary">
+                <Link href={companion ? `/artworks/${companion.artworkId}` : "/artworks"}>
+                  Cancel
+                </Link>
+              </StaffButton>
+              {prints ? null : (
+                <StaffButton
+                  type="submit"
+                  variant="primary"
+                  loading={saving}
+                  disabled={mode === "edit" && !dirty}
+                >
+                  {mode === "create" ? createLabel : dirty ? "Save changes" : "Saved"}
+                </StaffButton>
+              )}
+            </FormActions>
+          )}
+        </form>
+
+        {record && run ? (
+          <>
+            <EditionRunCard
+              artworkId={record.artworkId}
+              run={run}
+              version={version ?? record.version}
+              linkedToOriginal={values.sourceOriginalId !== null}
+              canWrite={permissions.write}
+              onSaved={setVersion}
+            />
+            <EditionFactsCard
+              artworkId={record.artworkId}
+              title={record.title}
+              run={run}
+              permissions={{ write: permissions.write, correct: permissions.correctFacts }}
+            />
+            {laxIssuesCertificate(run) ? (
+              <CertificateAuthorityCard
+                artworkId={record.artworkId}
+                authority={run.certificateAuthority}
+                canWrite={permissions.write}
+              />
+            ) : null}
+            {run.horsCommerce ? (
+              <HorsCommerceApprovalCard
+                artworkId={record.artworkId}
+                horsCommerce={run.horsCommerce}
+                canApprove={permissions.approveHorsCommerce}
+              />
+            ) : null}
+            {run.stock && isOpenSpec(run.spec) ? (
+              <OpenStockCard
+                artworkId={record.artworkId}
+                title={record.title}
+                stock={run.stock}
+                defaultSplit={
+                  run.spec.type === "open"
+                    ? run.spec.defaultSplit
+                    : run.spec.type === "companion" && run.spec.run.type === "open"
+                      ? run.spec.run.defaultSplit
+                      : { artistPct: 50, laxPct: 50 }
+                }
+                canWrite={permissions.write}
+              />
+            ) : null}
+            {canHaveLinkedListings(run.spec) ? (
+              <LinkedListingsCard listings={run.linkedListings} />
+            ) : null}
+            {canHaveLinkedListings(run.spec) && permissions.write ? (
+              <ProofListingDialog
+                open={listingProofs}
+                onOpenChange={setListingProofs}
+                artworkId={record.artworkId}
+                title={record.title}
+                available={proofsAvailable(run)}
+                permissions={{
+                  setPrice: permissions.setPrice,
+                  approveHorsCommerce: permissions.approveHorsCommerce,
+                }}
+              />
+            ) : null}
           </>
         ) : null}
 
-        {readOnly && record ? (
-          <ReadOnlyDetails values={values} record={record} />
-        ) : (
-          <FormSection
-            title="Details"
-            description="What the work is and who made it, as shown on its storefront page."
-          >
-            <Field
-              label="Title"
-              error={errors.title}
-              id={artworkFieldId("title")}
-              disabled={readOnly}
-            >
-              <TextInput
-                value={values.title}
-                autoComplete="off"
-                onChange={(event) => update(withTitle(values, event.target.value))}
-              />
-            </Field>
-            {mode === "create" ? (
-              <Field
-                label="Web address"
-                description="Lower case words joined by hyphens. Fixed once the artwork is created."
-                error={errors.slug}
-                id={artworkFieldId("slug")}
-              >
-                <TextInput
-                  value={values.slug}
-                  leading={<span className="text-staff-muted">/artworks/</span>}
-                  autoComplete="off"
-                  spellCheck={false}
-                  onChange={(event) => update({ slug: event.target.value, slugEdited: true })}
-                />
-              </Field>
-            ) : (
-              <KeyValueList
-                items={[
-                  {
-                    label: "Web address",
-                    value: `/artworks/${record?.slug ?? ""}`,
-                    ...(record ? { copyValue: record.slug } : {}),
-                  },
-                ]}
-              />
-            )}
-            {companion ? null : (
-              <>
-                <Field
-                  label="Artist"
-                  error={errors.artistId}
-                  id={artworkFieldId("artistId")}
-                  disabled={readOnly}
-                >
-                  <ArtistPicker
-                    value={values.artistId}
-                    selectedName={values.artistName}
-                    onChange={(artist) =>
-                      update({ artistId: artist?.id ?? null, artistName: artist?.label ?? null })
-                    }
-                  />
-                </Field>
-                <FieldRow>
-                  <Field
-                    label="Year"
-                    optional
-                    error={errors.yearCreated}
-                    id={artworkFieldId("yearCreated")}
-                    disabled={readOnly}
+        {record && record.run === null && mode === "edit" ? (
+          <>
+            <LinkedPrintsCard
+              prints={linkedPrints}
+              action={
+                canCreatePrints ? (
+                  <StaffButton
+                    variant="secondary"
+                    size="sm"
+                    icon={<Layers aria-hidden />}
+                    disabled={dirty}
+                    onClick={() => setCreatingPrints(true)}
                   >
-                    <TextInput
-                      inputMode="numeric"
-                      autoComplete="off"
-                      placeholder={String(currentYear)}
-                      value={values.yearCreated}
-                      onChange={(event) => update({ yearCreated: event.target.value })}
-                    />
-                  </Field>
-                  <Field
-                    label="Medium"
-                    optional
-                    error={errors.medium}
-                    id={artworkFieldId("medium")}
-                    disabled={readOnly}
-                  >
-                    <TextInput
-                      placeholder="Oil on linen"
-                      value={values.medium}
-                      onChange={(event) => update({ medium: event.target.value })}
-                    />
-                  </Field>
-                </FieldRow>
-                <Field
-                  label="Dimensions"
-                  optional
-                  description="As it should read, such as 60 × 80 cm."
-                  error={errors.dimensions}
-                  id={artworkFieldId("dimensions")}
-                  disabled={readOnly}
-                >
-                  <TextInput
-                    value={values.dimensions}
-                    onChange={(event) => update({ dimensions: event.target.value })}
-                  />
-                </Field>
-                <Field
-                  label="Description"
-                  optional
-                  error={errors.description}
-                  id={artworkFieldId("description")}
-                  disabled={readOnly}
-                >
-                  <TextArea
-                    rows={6}
-                    value={values.description}
-                    onChange={(event) => update({ description: event.target.value })}
-                  />
-                </Field>
-              </>
-            )}
-          </FormSection>
-        )}
-
-        <FormSection
-          title={prints ? "Price" : "Editions and pricing"}
-          description={
-            prints
-              ? "Every print in the run sells at one price."
-              : "Editions are sold at one price each. Counts here are for staff only; the storefront shows only whether editions are available."
-          }
-        >
-          {mode === "create" ? null : record?.run ? (
-            record.run.stock ? null : (
-              <StatGrid label="Edition counts" items={editionRunFacts(record.editions)} />
-            )
-          ) : (
-            <KeyValueList
-              items={[{ label: "Edition run", value: "Original only, sold by enquiry" }]}
-            />
-          )}
-
-          {values.editionRun === "editions" ? (
-            <StaffReadOnly readOnly={!permissions.setPrice}>
-              <Field
-                label="Price per edition"
-                optional={!(live && values.saleState === "for_sale")}
-                description={
-                  permissions.setPrice
-                    ? "In pounds, including VAT. Leave blank until the price is agreed."
-                    : "Only a shop admin can set or change the price."
-                }
-                error={errors.price}
-                id={artworkFieldId("price")}
-              >
-                <MoneyInput
-                  value={typedPence.ok ? typedPence.pence : null}
-                  onValueChange={() => undefined}
-                  onInput={(event) => update({ priceText: event.currentTarget.value })}
-                  placeholder="0.00"
-                  boxClassName="sm:max-w-60"
-                />
-              </Field>
-            </StaffReadOnly>
-          ) : null}
-
-          {values.editionRun === "editions" && mode === "edit" ? (
-            readOnly ? (
-              <KeyValueList
-                items={[
-                  {
-                    label: "Original on lax.art",
-                    value: values.sourceOriginalTitle ?? "None linked",
-                  },
-                ]}
-              />
-            ) : (
-              <Field
-                label="Original on lax.art"
-                optional
-                description="The original this edition was made from. Once both are live, the edition's page links to the original and the original's page lists this edition."
-                id="artwork-source-original"
-              >
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="w-full sm:max-w-80">
-                    <OriginalArtworkPicker
-                      value={values.sourceOriginalId}
-                      selectedTitle={values.sourceOriginalTitle}
-                      onChange={(original) =>
-                        update({
-                          sourceOriginalId: original?.id ?? null,
-                          sourceOriginalTitle: original?.label ?? null,
-                        })
-                      }
-                    />
-                  </div>
-                  {values.sourceOriginalId ? (
-                    <StaffButton
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => update({ sourceOriginalId: null, sourceOriginalTitle: null })}
-                    >
-                      Remove link
-                    </StaffButton>
-                  ) : null}
-                </div>
-              </Field>
-            )
-          ) : null}
-
-          {companion ? null : readOnly ? (
-            <KeyValueList items={[{ label: "Sale", value: SALE_STATE_LABELS[values.saleState] }]} />
-          ) : (
-            <Field label="Sale" id="artwork-sale-state" disabled={readOnly}>
-              <EnumSelect
-                value={values.saleState}
-                onValueChange={(saleState) => update({ saleState })}
-                options={ADMIN_ARTWORK_SALE_STATES.map((value) => ({
-                  value,
-                  label: SALE_STATE_LABELS[value],
-                  ...(value === "price_on_application"
-                    ? { description: "Shows “Price on application” and takes enquiries" }
-                    : value === "sold"
-                      ? { description: "The original has sold" }
-                      : {
-                          description:
-                            "Buyable at the edition price, or by enquiry for an original",
-                        }),
-                }))}
-                className="sm:max-w-80"
-              />
-            </Field>
-          )}
-        </FormSection>
-
-        {mode === "create" && !companion && values.editionRun === "original" && canSave ? (
-          <OriginalPrintsSection
-            values={printsValues}
-            errors={printsErrors}
-            originalTitle={values.title}
-            disabled={saving}
-            onChange={(patch) => setPrintsValues((current) => ({ ...current, ...patch }))}
-          />
-        ) : null}
-
-        {companion ? null : readOnly && record ? (
-          <ReadOnlyMedia images={values.images} importedImageUrl={record.importedImageUrl} />
-        ) : (
-          <FormSection
-            title="Media"
-            description="The first image is the primary one: it leads the gallery and is the thumbnail in lists."
-          >
-            <ArtworkMediaField
-              id={artworkFieldId("images")}
-              images={values.images}
-              importedImageUrl={record?.importedImageUrl ?? null}
-              disabled={readOnly}
-              error={errors.images}
-              onChange={(images) => update({ images })}
-            />
-          </FormSection>
-        )}
-
-        {companion ? null : (
-          <FormSection
-            title="Visibility"
-            description="Where the artwork is sold, and whether it is on the storefront."
-          >
-            {readOnly ? (
-              <KeyValueList
-                items={[{ label: "Sales channel", value: CHANNEL_LABELS[values.salesChannel] }]}
-              />
-            ) : (
-              <Field label="Sales channel" id="artwork-channel" disabled={readOnly}>
-                <SegmentedControl
-                  label="Sales channel"
-                  size="md"
-                  value={values.salesChannel}
-                  onValueChange={(salesChannel) => update({ salesChannel })}
-                  options={ADMIN_ARTWORK_CHANNELS.map((value) => ({
-                    value,
-                    label: CHANNEL_LABELS[value],
-                  }))}
-                />
-              </Field>
-            )}
-            {record ? (
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-center gap-2 text-staff-sm text-staff-muted">
-                  <span>Now</span>
-                  <MappedStatusBadge status={record.state} present={presentArtworkState} />
-                  {record.publishedAt && live ? (
-                    <span>since {formatStaffDateTime(record.publishedAt)}</span>
-                  ) : null}
-                </div>
-                {record.state === "draft" && record.publishBlockers.length > 0 ? (
-                  <Notice tone="warning" title="Not ready to publish">
-                    {publishBlockerMessages(record).join(" ")}
-                  </Notice>
-                ) : null}
-                {visibility && !readOnly ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {visibility.primary ? visibilityButton(visibility.primary, "secondary") : null}
-                    {visibility.more.map((action) => (
-                      <StaffButton
-                        key={action}
-                        variant={action === "archive" ? "danger-secondary" : "secondary"}
-                        icon={<ActionIcon action={action} />}
-                        disabled={dirty || changingVisibility}
-                        onClick={() => setConfirming(action)}
-                      >
-                        {VISIBILITY_ACTION_LABELS[action].verb}
-                      </StaffButton>
-                    ))}
-                    {dirty ? (
-                      <span className="text-staff-xs text-staff-muted">
-                        Save your changes first.
-                      </span>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <Notice title="New artworks start as drafts">
-                {prints
-                  ? "Create the draft first, then publish it from here when it has an image, a price and confirmed edition facts."
-                  : "Create the draft first, then publish it from here when it has an image."}
-              </Notice>
-            )}
-          </FormSection>
-        )}
-
-        {companion ? null : readOnly && record ? (
-          <ReadOnlySearchListing values={values} />
-        ) : (
-          <FormSection
-            title="Search listing"
-            description="How the page appears in search results. Leave blank to use the title and description."
-          >
-            <Field
-              label="Search title"
-              optional
-              description={counter(values.seoTitle, SEO_TITLE_MAX_LENGTH)}
-              error={errors.seoTitle}
-              id={artworkFieldId("seoTitle")}
-              disabled={readOnly}
-            >
-              <TextInput
-                value={values.seoTitle}
-                placeholder={values.title.trim() || "The artwork's title"}
-                onChange={(event) => update({ seoTitle: event.target.value })}
-              />
-            </Field>
-            <Field
-              label="Search description"
-              optional
-              description={counter(values.seoDescription, SEO_DESCRIPTION_MAX_LENGTH)}
-              error={errors.seoDescription}
-              id={artworkFieldId("seoDescription")}
-              disabled={readOnly}
-            >
-              <TextArea
-                rows={3}
-                value={values.seoDescription}
-                onChange={(event) => update({ seoDescription: event.target.value })}
-              />
-            </Field>
-          </FormSection>
-        )}
-
-        {prints ? (
-          <PrintsConfirmSection
-            preview={factsPreviewModel}
-            confirmed={factsValues.confirmed}
-            saving={saving}
-            onConfirmedChange={(confirmed) => updateFacts({ confirmed })}
-          />
-        ) : null}
-
-        {!canSave ? null : (
-          <FormActions className="border-t border-staff-line-subtle pt-4">
-            <StaffButton asChild variant="secondary">
-              <Link href={companion ? `/artworks/${companion.artworkId}` : "/artworks"}>
-                Cancel
-              </Link>
-            </StaffButton>
-            {prints ? null : (
-              <StaffButton
-                type="submit"
-                variant="primary"
-                loading={saving}
-                disabled={mode === "edit" && !dirty}
-              >
-                {mode === "create" ? createLabel : dirty ? "Save changes" : "Saved"}
-              </StaffButton>
-            )}
-          </FormActions>
-        )}
-      </form>
-
-      {record && run ? (
-        <>
-          <EditionRunCard
-            artworkId={record.artworkId}
-            run={run}
-            version={version ?? record.version}
-            linkedToOriginal={values.sourceOriginalId !== null}
-            canWrite={permissions.write}
-            onSaved={setVersion}
-          />
-          <EditionFactsCard
-            artworkId={record.artworkId}
-            title={record.title}
-            run={run}
-            permissions={{ write: permissions.write, correct: permissions.correctFacts }}
-          />
-          {laxIssuesCertificate(run) ? (
-            <CertificateAuthorityCard
-              artworkId={record.artworkId}
-              authority={run.certificateAuthority}
-              canWrite={permissions.write}
-            />
-          ) : null}
-          {run.horsCommerce ? (
-            <HorsCommerceApprovalCard
-              artworkId={record.artworkId}
-              horsCommerce={run.horsCommerce}
-              canApprove={permissions.approveHorsCommerce}
-            />
-          ) : null}
-          {run.stock && isOpenSpec(run.spec) ? (
-            <OpenStockCard
-              artworkId={record.artworkId}
-              title={record.title}
-              stock={run.stock}
-              defaultSplit={
-                run.spec.type === "open"
-                  ? run.spec.defaultSplit
-                  : run.spec.type === "companion" && run.spec.run.type === "open"
-                    ? run.spec.run.defaultSplit
-                    : { artistPct: 50, laxPct: 50 }
+                    Create prints
+                  </StaffButton>
+                ) : null
               }
-              canWrite={permissions.write}
+              emptyDescription={
+                record.archivedAt !== null
+                  ? "This original is archived. Restore it to create prints."
+                  : "Create prints of this original as Shop drafts linked to it. The artist, medium, dimensions and images are copied."
+              }
             />
-          ) : null}
-          {canHaveLinkedListings(run.spec) ? (
-            <LinkedListingsCard listings={run.linkedListings} />
-          ) : null}
-          {canHaveLinkedListings(run.spec) && permissions.write ? (
-            <ProofListingDialog
-              open={listingProofs}
-              onOpenChange={setListingProofs}
-              artworkId={record.artworkId}
-              title={record.title}
-              available={proofsAvailable(run)}
-              permissions={{
-                setPrice: permissions.setPrice,
-                approveHorsCommerce: permissions.approveHorsCommerce,
-              }}
-            />
-          ) : null}
-        </>
-      ) : null}
-
-      {record && record.run === null && mode === "edit" ? (
-        <>
-          <LinkedPrintsCard
-            prints={linkedPrints}
-            action={
-              canCreatePrints ? (
-                <StaffButton
-                  variant="secondary"
-                  size="sm"
-                  icon={<Layers aria-hidden />}
-                  disabled={dirty}
-                  onClick={() => setCreatingPrints(true)}
-                >
-                  Create prints
-                </StaffButton>
-              ) : null
-            }
-            emptyDescription={
-              record.archivedAt !== null
-                ? "This original is archived. Restore it to create prints."
-                : "Create prints of this original as Shop drafts linked to it. The artist, medium, dimensions and images are copied."
-            }
-          />
-          {canCreatePrints ? (
-            <CreatePrintsDialog
-              open={creatingPrints}
-              onOpenChange={setCreatingPrints}
-              artworkId={record.artworkId}
-              title={record.title}
-              linked={linkedPrints}
-              onCreated={() => void refreshLinkedPrints()}
-            />
-          ) : null}
-        </>
-      ) : null}
+            {canCreatePrints ? (
+              <CreatePrintsDialog
+                open={creatingPrints}
+                onOpenChange={setCreatingPrints}
+                artworkId={record.artworkId}
+                title={record.title}
+                linked={linkedPrints}
+                onCreated={() => void refreshLinkedPrints()}
+              />
+            ) : null}
+          </>
+        ) : null}
+      </MaybeColumns>
 
       <ConfirmActionDialog
         open={confirming !== null}

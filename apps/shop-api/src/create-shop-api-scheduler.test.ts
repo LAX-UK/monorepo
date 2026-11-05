@@ -29,6 +29,7 @@ describe("createShopApiScheduler", () => {
     expect(names).toContain("staff-access");
     expect(names).toContain("personal-data-anonymisation");
     expect(names).toContain("notify-me-dispatch");
+    expect(names).toContain("linked-listing-sync");
     expect(names).not.toContain("payout-eligibility");
     expect(names).not.toContain("stock-hold-expiry");
     expect(names).not.toContain("connect-payout-transfer");

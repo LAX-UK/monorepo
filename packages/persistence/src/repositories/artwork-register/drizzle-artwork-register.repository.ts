@@ -27,6 +27,7 @@ import type {
   ApplyZohoChangeResult,
   ConflictCursor,
   CreateRegisterEntryResult,
+  IArtworkDraftHistory,
   IArtworkMoveHistory,
   IArtworkRegisterRepository,
   IssueRegisterEntry,
@@ -35,6 +36,7 @@ import type {
   MoveOfferResult,
   RecordCatalogueStatusWrittenInput,
   RecordCatalogueStatusWrittenResult,
+  RecordLaxArtDraftCreatedInput,
   RecordMoveConfirmedInput,
   RegisterActor,
   RegisterConflict,
@@ -54,7 +56,7 @@ type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
  * history/event writes are unchanged.
  */
 export class DrizzleArtworkRegisterRepository
-  implements IArtworkRegisterRepository, IArtworkMoveHistory
+  implements IArtworkRegisterRepository, IArtworkMoveHistory, IArtworkDraftHistory
 {
   constructor(private readonly db: Database) {}
 
@@ -511,6 +513,14 @@ export class DrizzleArtworkRegisterRepository
         ...input.record,
       });
       return { status: "recorded" };
+    });
+  }
+
+  async recordLaxArtDraftCreated(input: RecordLaxArtDraftCreatedInput): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await this.record(tx, input.registerId, "lax_art_draft_created", input.actor, input.now, {
+        artworkId: input.artworkId,
+      });
     });
   }
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { OfferOnLaxArtDialog } from "@/components/from-zoho/offer-on-lax-art-dialog.client";
+import { useCanOfferOnLaxArt } from "@/components/from-zoho/use-offer-on-lax-art.client";
 import {
   FROM_ZOHO_DESCRIPTION,
   FROM_ZOHO_TITLE,
@@ -14,6 +16,7 @@ import {
   pageLinks,
   pageSummary,
   presentConflictValue,
+  zohoProductUrl,
   zohoQueueHref,
 } from "@/server/domain/zoho-register.vm";
 import type {
@@ -26,12 +29,15 @@ import {
   type DataColumn,
   FilterSheet,
   ListPage,
+  type OverflowAction,
   PrimaryCell,
   StaffDate,
   StatusBadge,
+  toast,
 } from "@auction/staff-ui";
+import { Copy, ExternalLink, Globe, PanelRight } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 const recordHref = (registerId: string) => `/from-zoho/${registerId}`;
 
@@ -70,14 +76,17 @@ const MISSING_COLUMN: DataColumn<AdminRegisterArtworkSummary> = {
 /**
  * Artworks that came in from Zoho and are not offered anywhere yet, on the staff list template:
  * what each one still lacks, filters for artist and for one missing part, and a link to each
- * record. Catalogue details are changed in Zoho, so the rows carry no actions.
+ * record. Catalogue details are changed in Zoho; each row's "…" menu offers the artwork on
+ * lax.art from here.
  */
 export function NewFromZohoList({
   query,
   page,
+  zohoUrlTemplate = null,
 }: {
   query: ZohoQueueQuery;
   page: AdminRegisterNewList;
+  zohoUrlTemplate?: string | null;
 }) {
   const { pending, navigate, ListLink, views } = useQueueFrame(query, page.counts);
   const filtered = hasActiveZohoFilters(query);
@@ -120,72 +129,134 @@ export function NewFromZohoList({
       : []),
   ];
   const links = pageLinks(query, page);
+  const canOffer = useCanOfferOnLaxArt();
+  const [offering, setOffering] = useState<AdminRegisterArtworkSummary | null>(null);
+
+  const rowActions = useCallback(
+    (row: AdminRegisterArtworkSummary): OverflowAction[] => {
+      const zohoUrl = zohoProductUrl(zohoUrlTemplate, row.zohoProductId);
+      return [
+        {
+          id: "open",
+          label: "Open",
+          icon: PanelRight,
+          onSelect: () => navigate(recordHref(row.registerId)),
+        },
+        ...(canOffer && row.kind === "original"
+          ? [
+              {
+                id: "offer-on-lax-art",
+                label: "Offer on lax.art…",
+                icon: Globe,
+                onSelect: () => setOffering(row),
+              },
+            ]
+          : []),
+        ...(zohoUrl
+          ? [
+              {
+                id: "edit-in-zoho",
+                label: "Edit in Zoho",
+                icon: ExternalLink,
+                onSelect: () => window.open(zohoUrl, "_blank", "noopener,noreferrer"),
+              },
+            ]
+          : []),
+        {
+          id: "copy-stock-code",
+          label: "Copy stock code",
+          icon: Copy,
+          onSelect: () => {
+            navigator.clipboard
+              .writeText(row.stockCode)
+              .then(() => toast.success("Stock code copied"))
+              .catch(() => toast.error("Could not copy the stock code"));
+          },
+        },
+      ];
+    },
+    [canOffer, navigate, zohoUrlTemplate],
+  );
 
   return (
-    <ListPage<AdminRegisterArtworkSummary>
-      title={FROM_ZOHO_TITLE}
-      description={FROM_ZOHO_DESCRIPTION}
-      Link={ListLink}
-      listKey="from-zoho-new"
-      views={views}
-      filters={
-        <FilterSheet
-          title="Filter new artworks"
-          sections={[
-            {
-              kind: "radio",
-              id: "artist",
-              label: "Artist",
-              anyLabel: "Any artist",
-              options: page.artists.map((artist) => ({
-                value: artist.code,
-                label: `${artist.name} (${artist.count})`,
-              })),
-              value: query.artist ?? "",
-            },
-            {
-              kind: "radio",
-              id: "missing",
-              label: "Missing",
-              anyLabel: "Anything",
-              options: GAP_OPTIONS,
-              value: query.missing ?? "",
-            },
-          ]}
-          onApply={(values) =>
-            navigate(
-              zohoQueueHref(query, {
-                artist: (values.artist as string) || null,
-                missing: (values.missing as ZohoQueueQuery["missing"] | "") || null,
-              }),
-            )
-          }
+    <>
+      <ListPage<AdminRegisterArtworkSummary>
+        title={FROM_ZOHO_TITLE}
+        description={FROM_ZOHO_DESCRIPTION}
+        Link={ListLink}
+        listKey="from-zoho-new"
+        views={views}
+        filters={
+          <FilterSheet
+            title="Filter new artworks"
+            sections={[
+              {
+                kind: "radio",
+                id: "artist",
+                label: "Artist",
+                anyLabel: "Any artist",
+                options: page.artists.map((artist) => ({
+                  value: artist.code,
+                  label: `${artist.name} (${artist.count})`,
+                })),
+                value: query.artist ?? "",
+              },
+              {
+                kind: "radio",
+                id: "missing",
+                label: "Missing",
+                anyLabel: "Anything",
+                options: GAP_OPTIONS,
+                value: query.missing ?? "",
+              },
+            ]}
+            onApply={(values) =>
+              navigate(
+                zohoQueueHref(query, {
+                  artist: (values.artist as string) || null,
+                  missing: (values.missing as ZohoQueueQuery["missing"] | "") || null,
+                }),
+              )
+            }
+          />
+        }
+        activeFilters={activeFilters}
+        onClearFilters={() => navigate(zohoQueueHref({}))}
+        loading={pending}
+        filtered={filtered}
+        empty={{
+          illustration: "plinth",
+          title: "Nothing new from Zoho",
+          description:
+            "Artworks that come in from Zoho and are not offered anywhere yet appear here.",
+        }}
+        noResults={{ noun: "artworks" }}
+        table={{
+          columns,
+          data: page.items,
+          getRowId: (row) => row.registerId,
+          defaultDensity: "comfortable",
+          onRowOpen: (row) => navigate(recordHref(row.registerId)),
+          rowActions: { label: (row) => `Actions for ${row.title}`, actions: rowActions },
+        }}
+        pagination={
+          page.items.length > 0
+            ? { summary: pageSummary(page), prevLabel: "Previous page", ...links }
+            : null
+        }
+      />
+      {offering ? (
+        <OfferOnLaxArtDialog
+          key={offering.registerId}
+          open
+          onOpenChange={(open) => {
+            if (!open) setOffering(null);
+          }}
+          registerId={offering.registerId}
+          title={offering.title}
         />
-      }
-      activeFilters={activeFilters}
-      onClearFilters={() => navigate(zohoQueueHref({}))}
-      loading={pending}
-      filtered={filtered}
-      empty={{
-        illustration: "plinth",
-        title: "Nothing new from Zoho",
-        description:
-          "Artworks that come in from Zoho and are not offered anywhere yet appear here.",
-      }}
-      noResults={{ noun: "artworks" }}
-      table={{
-        columns,
-        data: page.items,
-        getRowId: (row) => row.registerId,
-        defaultDensity: "comfortable",
-        onRowOpen: (row) => navigate(recordHref(row.registerId)),
-      }}
-      pagination={
-        page.items.length > 0
-          ? { summary: pageSummary(page), prevLabel: "Previous page", ...links }
-          : null
-      }
-    />
+      ) : null}
+    </>
   );
 }
 

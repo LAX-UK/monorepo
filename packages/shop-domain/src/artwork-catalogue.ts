@@ -78,6 +78,9 @@ export const ARTWORK_PUBLISH_BLOCKERS = [
   "archived",
   "artist_archived",
   "no_image",
+  "no_zoho_image",
+  "no_size",
+  "no_medium",
   "no_edition_price",
   "edition_facts_incomplete",
 ] as const;
@@ -87,6 +90,9 @@ export const ARTWORK_PUBLISH_BLOCKER_MESSAGES: Record<ArtworkPublishBlocker, str
   archived: "Restore the artwork before publishing it",
   artist_archived: "The artist is archived; restore the artist first",
   no_image: "Add an image before publishing",
+  no_zoho_image: "Zoho has no image for this artwork. Add one in Zoho",
+  no_size: "Zoho has no size for this artwork. Add it in Zoho",
+  no_medium: "Zoho has no medium for this artwork. Add it in Zoho",
   no_edition_price: "Set the edition price before publishing",
   edition_facts_incomplete: "Confirm the edition facts",
 };
@@ -106,11 +112,19 @@ export function artworkPublishBlockers(input: {
   printPricePence: number | null;
   /** Whether the run's facts are recorded and confirmed. Ignored for an original. */
   editionFactsConfirmed: boolean;
+  /**
+   * An original made from a Zoho record. Zoho owns its image, size and medium, so publishing waits
+   * for all three and tells staff to add what is missing in Zoho.
+   */
+  zohoCatalogue?: { hasSize: boolean; hasMedium: boolean } | null;
 }): ArtworkPublishBlocker[] {
   const blockers: ArtworkPublishBlocker[] = [];
+  const zoho = input.zohoCatalogue ?? null;
   if (input.archived) blockers.push("archived");
   if (input.artistArchived) blockers.push("artist_archived");
-  if (!input.hasImage) blockers.push("no_image");
+  if (!input.hasImage) blockers.push(zoho ? "no_zoho_image" : "no_image");
+  if (zoho && !zoho.hasSize) blockers.push("no_size");
+  if (zoho && !zoho.hasMedium) blockers.push("no_medium");
   if (
     input.eligibleForEditionAllocation &&
     input.saleState === "for_sale" &&

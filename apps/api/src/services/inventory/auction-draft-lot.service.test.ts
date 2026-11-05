@@ -191,10 +191,16 @@ describe("AuctionDraftLotService.createDraft", () => {
       await setup({ register: entry({ kind: "print" }) }).service.createDraft(request),
     ).toMatchObject({ status: 409, refusal: { error: "artwork_offered_elsewhere" } });
     const sold = await setup({
-      register: entry({ offer: { state: "sold", ref: null } }),
+      register: entry({ offer: { state: "sold", ref: { kind: "shop_artwork", id: "a" } } }),
     }).service.createDraft(request);
     expect(sold).toMatchObject({ status: 409 });
-    expect((sold as { refusal: { message: string } }).refusal.message).toMatch(/already been sold/);
+    expect((sold as { refusal: { message: string } }).refusal.message).toMatch(/has been sold/);
+    const soldInGallery = await setup({
+      register: entry({ offer: { state: "sold", ref: { kind: "gallery_sale", id: "z-1" } } }),
+    }).service.createDraft(request);
+    expect((soldInGallery as { refusal: { message: string } }).refusal.message).toMatch(
+      /sold in the gallery/,
+    );
     const privateSale = await setup({
       register: entry({ offer: { state: "private_sale", ref: { kind: "private_sale", id: "p" } } }),
     }).service.createDraft(request);

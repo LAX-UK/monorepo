@@ -400,6 +400,10 @@ export const shopArtwork = pgTable(
   (table) => [
     uniqueIndex("shop_artwork_slug_uid").on(table.slug),
     uniqueIndex("shop_artwork_import_key_uid").on(table.importKey),
+    // One listing per register record; migration 0300.
+    uniqueIndex("shop_artwork_zoho_product_uid")
+      .on(table.zohoProductId)
+      .where(sql`${table.zohoProductId} IS NOT NULL`),
     index("shop_artwork_artist_idx").on(table.artistId),
     index("shop_artwork_created_id_idx").on(table.createdAt, table.id),
     index("shop_artwork_source_original_idx").on(table.sourceOriginalArtworkId),

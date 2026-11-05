@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { presentDeliveryEstimate } from "./delivery-estimate.presenter";
+import { presentDeliveryEstimate, presentDeliveryLine } from "./delivery-estimate.presenter";
 
 // A Wednesday in London.
 const NOW = new Date("2026-10-28T12:00:00.000Z");
@@ -35,5 +35,31 @@ describe("delivery estimate", () => {
         times: { ukDelivery: null, collection: { min: 2, max: 2 } },
       }),
     ).toBeNull();
+  });
+});
+
+describe("delivery line", () => {
+  it("reads as one line with delivery and collection dated", () => {
+    expect(
+      presentDeliveryLine({
+        now: NOW,
+        times: { ukDelivery: { min: 3, max: 5 }, collection: { min: 2, max: 2 } },
+      }),
+    ).toBe("Insured UK delivery £15, arrives 2 to 4 Nov · Free collection, ready Fri 30 Oct");
+  });
+
+  it("names both months when the window crosses one", () => {
+    expect(
+      presentDeliveryLine({
+        now: new Date("2026-10-28T12:00:00.000Z"),
+        times: { ukDelivery: { min: 2, max: 4 }, collection: null },
+      }),
+    ).toBe("Insured UK delivery £15, arrives 30 Oct to 3 Nov · Free collection");
+  });
+
+  it("leaves out times that are not configured", () => {
+    expect(presentDeliveryLine({ now: NOW, times: { ukDelivery: null, collection: null } })).toBe(
+      "Insured UK delivery £15 · Free collection",
+    );
   });
 });
