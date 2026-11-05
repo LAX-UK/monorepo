@@ -112,6 +112,32 @@ export const AdminRegisterLastCheckSchema = Type.Object({
     }),
     Type.Null(),
   ]),
+  /** The other direction: the LAX listing LAX keeps on each Zoho Product. */
+  listing: Type.Object({
+    /** Null before the first nightly pass. */
+    run: Type.Union([
+      Type.Object({
+        mode: Type.Union([Type.Literal("dry_run"), Type.Literal("live")]),
+        finishedAt: Type.String({ format: "date-time" }),
+        checked: Type.Integer({ minimum: 0 }),
+        /** Corrected in Zoho, or in a dry run, would have been. */
+        changed: Type.Integer({ minimum: 0 }),
+        unchanged: Type.Integer({ minimum: 0 }),
+        failed: Type.Integer({ minimum: 0 }),
+        /** The first failures; `failed` holds the count. */
+        failures: Type.Array(
+          Type.Object({
+            registerId: Type.String(),
+            stockCode: Type.String(),
+            code: Type.String(),
+          }),
+        ),
+      }),
+      Type.Null(),
+    ]),
+    /** Status and listing writes that gave up after their retries, waiting for a person. */
+    failedDeliveries: Type.Integer({ minimum: 0 }),
+  }),
 });
 
 export const AdminRegisterEventSchema = Type.Object({

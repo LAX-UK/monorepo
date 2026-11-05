@@ -5,6 +5,7 @@ import {
   DrizzleArtworkRegisterQueueReader,
   DrizzleArtworkRegisterRepository,
   DrizzleZohoArtworkSyncStore,
+  DrizzleZohoListingRunStore,
 } from "@auction/persistence/repositories";
 import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
@@ -624,6 +625,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           register: artworkRegisterRepository,
           resolver: artworkRegisterRepository,
           runs: new DrizzleZohoArtworkSyncStore(db),
+          listingRuns: new DrizzleZohoListingRunStore(db),
           staffNames: createDrizzleStaffNameReader(db),
           listings: laxArtListings,
         }),

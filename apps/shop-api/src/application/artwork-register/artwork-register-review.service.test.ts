@@ -81,6 +81,7 @@ function service(overrides: Partial<ArtworkRegisterReviewDeps> = {}) {
       })),
     },
     runs: { latestNightlyRun: vi.fn(async () => null) },
+    listingRuns: { latestRun: async () => null, countFailedDeliveries: async () => 0 },
     staffNames: { namesFor: async () => new Map([["u1", "Cat Alogue"]]) },
     listings: {
       findByZohoProductId: vi.fn(async () => null),
@@ -137,6 +138,7 @@ describe("ArtworkRegisterReviewService", () => {
     expect(await service().service.lastCheck()).toEqual({
       counts: { new: 31, decisions: 1 },
       run: null,
+      listing: { run: null, failedDeliveries: 0 },
     });
   });
 
@@ -163,6 +165,39 @@ describe("ArtworkRegisterReviewService", () => {
         outcomes: { create: 376, update: 0, conflict: 0, unchanged: 0, stale: 0, skipped: 483 },
         skippedReasons: [{ reason: "missing_artist", count: 230 }],
         gaps: [{ gap: "missing_price", count: 432 }],
+      },
+      listing: { run: null, failedDeliveries: 0 },
+    });
+  });
+
+  it("presents the latest listing pass and the writes that gave up", async () => {
+    const failures = [
+      { registerId: ID, stockCode: "LAX-ORI-PH-GAC-26-0001", code: "INVALID_DATA" },
+    ];
+    const { service: s } = service({
+      listingRuns: {
+        latestRun: async () => ({
+          mode: "live",
+          finishedAt: T0,
+          checked: 668,
+          changed: 12,
+          unchanged: 655,
+          failed: 1,
+          failures,
+        }),
+        countFailedDeliveries: async () => 2,
+      },
+    });
+    expect((await s.lastCheck()).listing).toEqual({
+      failedDeliveries: 2,
+      run: {
+        mode: "live",
+        finishedAt: T0.toISOString(),
+        checked: 668,
+        changed: 12,
+        unchanged: 655,
+        failed: 1,
+        failures,
       },
     });
   });

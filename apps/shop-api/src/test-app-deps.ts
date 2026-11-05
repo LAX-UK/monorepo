@@ -265,6 +265,7 @@ export function createMinimalShopApiTestDeps(
         register: { findById: async () => null, listEvents: async () => [] },
         resolver: { resolveConflict: async () => ({ ok: false, reason: "not_found" }) },
         runs: { latestNightlyRun: async () => null },
+        listingRuns: { latestRun: async () => null, countFailedDeliveries: async () => 0 },
         staffNames: { namesFor: async () => new Map() },
         listings: { findByZohoProductId: async () => null, findZohoProductId: async () => null },
       }),

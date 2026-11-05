@@ -82,6 +82,7 @@ async function buildApp(
     },
     resolver: { resolveConflict },
     runs: { latestNightlyRun: async () => null },
+    listingRuns: { latestRun: async () => null, countFailedDeliveries: async () => 0 },
     staffNames: { namesFor: async () => new Map() },
     listings: { findByZohoProductId: async () => null, findZohoProductId: async () => null },
   });

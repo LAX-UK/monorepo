@@ -19,6 +19,7 @@ import type {
   ArtworkRegisterQueue,
   ArtworkRegisterRecords,
   ConflictResolver,
+  ListingRunReader,
   RegisterConflictRecord,
   RegisterQueueFilter,
   SyncRunReader,
@@ -37,6 +38,8 @@ export type ArtworkRegisterReviewDeps = {
   register: ArtworkRegisterRecords;
   resolver: ConflictResolver;
   runs: SyncRunReader;
+  /** The LAX listing LAX keeps on Zoho Products. */
+  listingRuns: ListingRunReader;
   staffNames: StaffNameReader;
   /** The lax.art listing made from a record, for "Where it is". */
   listings: LaxArtListingReader;
@@ -147,10 +150,15 @@ export class ArtworkRegisterReviewService {
   }
 
   async lastCheck(): Promise<AdminRegisterLastCheck> {
-    const [run, counts] = await Promise.all([this.deps.runs.latestNightlyRun(), this.counts()]);
-    if (!run) return { counts, run: null };
+    const [run, counts, listing] = await Promise.all([
+      this.deps.runs.latestNightlyRun(),
+      this.counts(),
+      this.listingCheck(),
+    ]);
+    if (!run) return { counts, run: null, listing };
     return {
       counts,
+      listing,
       run: {
         mode: run.mode,
         finishedAt: run.finishedAt.toISOString(),
@@ -159,6 +167,27 @@ export class ArtworkRegisterReviewService {
         skippedReasons: run.skippedReasons,
         gaps: run.gaps,
       },
+    };
+  }
+
+  private async listingCheck(): Promise<AdminRegisterLastCheck["listing"]> {
+    const [run, failedDeliveries] = await Promise.all([
+      this.deps.listingRuns.latestRun(),
+      this.deps.listingRuns.countFailedDeliveries(),
+    ]);
+    return {
+      failedDeliveries,
+      run: run
+        ? {
+            mode: run.mode,
+            finishedAt: run.finishedAt.toISOString(),
+            checked: run.checked,
+            changed: run.changed,
+            unchanged: run.unchanged,
+            failed: run.failed,
+            failures: run.failures,
+          }
+        : null,
     };
   }
 
