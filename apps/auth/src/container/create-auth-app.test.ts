@@ -7,6 +7,7 @@ import { type CreateAuthAppOptions, createAuthApp } from "./create-auth-app.js";
 type BuildAppOptions = {
   fedcmEnabled?: boolean;
   authHandler?: (request: Request) => Promise<Response>;
+  trustedProxyCidrs?: string;
 };
 
 function buildApp(
@@ -30,6 +31,7 @@ function buildApp(
     OIDC_ISSUER_URL: "https://auth.test",
     WEB_ORIGIN: "https://web.test",
     ...(options.fedcmEnabled ? { FEDCM_ENABLED: "true" } : {}),
+    ...(options.trustedProxyCidrs ? { AUTH_TRUSTED_PROXY_CIDRS: options.trustedProxyCidrs } : {}),
   });
   const app = createAuthApp({
     log: pino({ enabled: false }),
@@ -323,5 +325,60 @@ describe("auth HTTP app composition", () => {
     expect(refresh).toBeGreaterThan(parser);
     expect(exchange).toBeGreaterThan(refresh);
     expect(internal).toBeLessThan(catchAll);
+  });
+});
+
+describe("trusted client address for Better Auth hooks", () => {
+  const TRUSTED = "x-lax-trusted-client-ip";
+
+  async function seenAddress(
+    peer: string,
+    headers: Record<string, string>,
+    trustedProxyCidrs?: string,
+  ): Promise<string | null> {
+    let seen: string | null = null;
+    const app = buildApp(null, undefined, {
+      ...(trustedProxyCidrs ? { trustedProxyCidrs } : {}),
+      authHandler: async (request) => {
+        seen = request.headers.get(TRUSTED);
+        return Response.json({});
+      },
+    });
+    await app.request(
+      "/api/auth/sign-in/email",
+      { method: "POST", headers, body: "{}" },
+      { incoming: { socket: { remoteAddress: peer } } },
+    );
+    return seen;
+  }
+
+  it("ignores a spoofed X-Forwarded-For from an untrusted peer", async () => {
+    await expect(
+      seenAddress("198.51.100.20", { "x-forwarded-for": "1.2.3.4" }, "10.0.0.0/8"),
+    ).resolves.toBe("198.51.100.20");
+  });
+
+  it("uses the forwarded client behind a trusted proxy", async () => {
+    await expect(
+      seenAddress("10.0.0.5", { "x-forwarded-for": "203.0.113.7" }, "10.0.0.0/8"),
+    ).resolves.toBe("203.0.113.7");
+  });
+
+  it("replaces a client-sent trusted header with the resolved address", async () => {
+    await expect(
+      seenAddress("198.51.100.20", { [TRUSTED]: "1.2.3.4" }, "10.0.0.0/8"),
+    ).resolves.toBe("198.51.100.20");
+  });
+
+  it("drops a client-sent trusted header when the peer is unknown", async () => {
+    const app = buildApp(null, undefined, {
+      authHandler: async (request) => Response.json({ seen: request.headers.get(TRUSTED) }),
+    });
+    const res = await app.request("/api/auth/sign-in/email", {
+      method: "POST",
+      headers: { [TRUSTED]: "1.2.3.4" },
+      body: "{}",
+    });
+    await expect(res.json()).resolves.toEqual({ seen: null });
   });
 });
