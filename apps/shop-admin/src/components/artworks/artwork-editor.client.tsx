@@ -25,6 +25,8 @@ import { OfferAtAuctionDialog } from "@/components/artworks/offer-at-auction-dia
 import { OriginalArtworkPicker } from "@/components/artworks/original-artwork-picker.client";
 import { ZohoOwnedDetails, ZohoOwnedMedia } from "@/components/artworks/zoho-owned-details";
 import { ZohoWherePanel } from "@/components/artworks/zoho-where-it-is-panel";
+import { LinkToZohoDialog } from "@/components/from-zoho/link-to-zoho-dialog.client";
+import { UnlinkZohoDialog } from "@/components/from-zoho/unlink-zoho-dialog.client";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import {
   type ArtworkFormField,
@@ -133,6 +135,7 @@ import {
   formatStaffDateTime,
   parsePoundsToPence,
   toast,
+  useStaffAccess,
   useUnsavedChanges,
 } from "@auction/staff-ui";
 import {
@@ -142,8 +145,10 @@ import {
   EyeOff,
   Gavel,
   Layers,
+  Link2,
   Save,
   Stamp,
+  Unlink,
   X,
 } from "@auction/staff-ui/icons";
 import Link from "next/link";
@@ -266,6 +271,9 @@ export function ArtworkEditor({
   const [linkedPrints, setLinkedPrints] = useState(detail?.linkedPrints ?? []);
   const [offeringAtAuction, setOfferingAtAuction] = useState(false);
   const [arrivalOpen, setArrivalOpen] = useState(arrivedFromZoho);
+  const [linkingToZoho, setLinkingToZoho] = useState(false);
+  const [unlinkingFromZoho, setUnlinkingFromZoho] = useState(false);
+  const staffAccess = useStaffAccess();
 
   const zohoLink = record?.zohoLink ?? null;
   const live = record?.state === "live" || record?.state === "sold_out";
@@ -565,6 +573,42 @@ export function ArtworkEditor({
         ]
       : [];
 
+  // An original put on lax.art before the register is not linked to its Zoho record, so the
+  // one-place lock and moves do not protect it. Linking needs the same permissions as the report.
+  const isOriginalOnLaxArt = record?.salesChannel === "art" && run === null;
+  const unlinkedOriginal = Boolean(record && isOriginalOnLaxArt && !zohoLink);
+  const canLinkToZoho =
+    unlinkedOriginal &&
+    staffAccess.can("catalogue.write") &&
+    staffAccess.can("artwork_register.review");
+  const canUnlinkFromZoho =
+    Boolean(record && isOriginalOnLaxArt && zohoLink) && staffAccess.can("artwork_register.unlink");
+  const zohoLinkActions = [
+    ...(canLinkToZoho
+      ? [
+          {
+            id: "link-to-zoho",
+            label: "Link to Zoho record…",
+            icon: Link2,
+            disabled: dirty,
+            onSelect: () => setLinkingToZoho(true),
+          },
+        ]
+      : []),
+    ...(canUnlinkFromZoho
+      ? [
+          {
+            id: "unlink-from-zoho",
+            label: "Remove link to Zoho…",
+            icon: Unlink,
+            tone: "danger" as const,
+            disabled: dirty,
+            onSelect: () => setUnlinkingFromZoho(true),
+          },
+        ]
+      : []),
+  ];
+
   const visibilityButton = (
     action: AdminArtworkVisibilityAction,
     variant: "primary" | "secondary",
@@ -606,13 +650,15 @@ export function ArtworkEditor({
           (visibility.more.length > 0 ||
             linkedActions.length > 0 ||
             printsActions.length > 0 ||
-            auctionActions.length > 0) &&
+            auctionActions.length > 0 ||
+            zohoLinkActions.length > 0) &&
           !readOnly ? (
             <OverflowMenu
               actions={[
                 ...printsActions,
                 ...linkedActions,
                 ...auctionActions,
+                ...zohoLinkActions,
                 ...visibility.more.map((action) => ({
                   id: action,
                   label: VISIBILITY_ACTION_LABELS[action].verb,
@@ -688,6 +734,30 @@ export function ArtworkEditor({
           Write the description, check the images, then publish.
         </Notice>
       ) : null}
+      {record && unlinkedOriginal ? (
+        <Notice
+          tone="warning"
+          title="Not linked to a Zoho record"
+          {...(canLinkToZoho
+            ? {
+                actions: (
+                  <StaffButton
+                    size="sm"
+                    variant="secondary"
+                    icon={<Link2 aria-hidden />}
+                    disabled={dirty}
+                    onClick={() => setLinkingToZoho(true)}
+                  >
+                    Link to Zoho record…
+                  </StaffButton>
+                ),
+              }
+            : {})}
+        >
+          This original was put on lax.art before Zoho. Until it is linked, the one-place lock and
+          moves between lax.art and Bid do not protect it.
+        </Notice>
+      ) : null}
       {priceOnly ? (
         <Notice title="You can change the edition price">
           The other details are edited by staff who manage the catalogue.
@@ -744,6 +814,19 @@ export function ArtworkEditor({
                   description="A unique work on lax.art, sold by enquiry. It has no edition price."
                 />
               </StaffRadioGroup>
+              {values.editionRun === "original" ? (
+                <Notice
+                  tone="info"
+                  title="Originals come from Zoho"
+                  actions={
+                    <StaffButton size="sm" variant="secondary" asChild>
+                      <Link href="/from-zoho">Open From Zoho</Link>
+                    </StaffButton>
+                  }
+                >
+                  Originals come from Zoho. Find it in From Zoho and choose Offer on lax.art.
+                </Notice>
+              ) : null}
             </FormSection>
           ) : null}
           {companion ? (
@@ -1376,6 +1459,24 @@ export function ArtworkEditor({
           />
         ) : null}
       </ConfirmActionDialog>
+      {record && canLinkToZoho && linkingToZoho ? (
+        <LinkToZohoDialog
+          open
+          onOpenChange={setLinkingToZoho}
+          artworkId={record.artworkId}
+          artworkTitle={record.title}
+          onLinked={() => router.refresh()}
+        />
+      ) : null}
+      {record && canUnlinkFromZoho ? (
+        <UnlinkZohoDialog
+          open={unlinkingFromZoho}
+          onOpenChange={setUnlinkingFromZoho}
+          artworkId={record.artworkId}
+          artworkTitle={record.title}
+          onUnlinked={() => router.refresh()}
+        />
+      ) : null}
       {record && auctionActions.length > 0 ? (
         <OfferAtAuctionDialog
           open={offeringAtAuction}

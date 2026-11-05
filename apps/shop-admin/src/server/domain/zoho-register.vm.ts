@@ -11,12 +11,13 @@ import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-s
 
 export const ZOHO_QUEUE_PATH = "/from-zoho";
 
-export const ZOHO_QUEUE_TABS = ["new", "decisions", "check"] as const;
+export const ZOHO_QUEUE_TABS = ["new", "decisions", "link", "check"] as const;
 export type ZohoQueueTab = (typeof ZOHO_QUEUE_TABS)[number];
 
 export const ZOHO_QUEUE_TAB_LABEL: Record<ZohoQueueTab, string> = {
   new: "New from Zoho",
   decisions: "Needs a decision",
+  link: "Link lax.art",
   check: "Last check",
 };
 
@@ -40,7 +41,7 @@ export const GAP_OPTIONS = REGISTER_GAP_VALUES.map((value) => ({
 }));
 
 export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
-  const tab = oneOf(singleParam(params.tab), ["decisions", "check"] as const);
+  const tab = oneOf(singleParam(params.tab), ["decisions", "link", "check"] as const);
   const artist = singleParam(params.artist)?.slice(0, 20);
   const missing = oneOf(singleParam(params.missing), REGISTER_GAP_VALUES);
   const page = singleParam(params.page);
@@ -344,6 +345,18 @@ function describeEvent(
       return { title: `Moved from ${stateOf(payload.from)} to ${stateOf(payload.to)}` };
     case "lax_art_draft_created":
       return { title: "lax.art draft created", tone: "success" };
+    case "zoho_link_linked":
+      return {
+        title: "Linked to a lax.art artwork",
+        ...(typeof payload.slug === "string" ? { detail: `lax.art/${payload.slug}` } : {}),
+        tone: "success",
+      };
+    case "zoho_link_unlinked":
+      return {
+        title: "Link to the lax.art artwork removed",
+        ...(typeof payload.reason === "string" ? { detail: `Reason: ${payload.reason}` } : {}),
+        tone: "warning",
+      };
     default:
       return { title: "Changed" };
   }
