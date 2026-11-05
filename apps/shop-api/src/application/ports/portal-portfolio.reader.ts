@@ -1,3 +1,5 @@
+import type { PrintIdentity, ReadEditionSnapshot } from "@auction/shop-domain";
+
 /**
  * Raw facts behind a person's LAX portfolio and money for Shop and lax.art. They follow the
  * same ownership rules as the owner-portal reads (the person's own party plus a linked artist
@@ -33,6 +35,13 @@ export type PortfolioEditionFact = {
   editionId: string;
   work: PortfolioWork;
   editionNumber: number;
+  /** The numbers the print itself carries; unlike `editionNumber`, null where it has none. */
+  print: PrintIdentity;
+  /**
+   * The run and facts the owner was told about: those kept when they paid, else those staff have
+   * confirmed today. Null for a print whose run has no recorded facts.
+   */
+  runFacts: ReadEditionSnapshot | null;
   /** Whether the owner has offered this edition for sale (`authorised`, `reserved`, `held`...). */
   listingStatus: string;
   /** Null for an edition granted rather than bought (artist or LAX allocation). */

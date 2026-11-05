@@ -13,6 +13,7 @@ import {
   LOT_FULFILMENT_ACCESS,
   MARKETING_ENQUIRIES_ACCESS,
   PAYMENT_WRITE_ACCESS,
+  PURCHASE_PROBLEMS_ACCESS,
   SALES_ACCESS,
   SUBMISSIONS_ACCESS,
   canOpenAdminLink,
@@ -63,7 +64,7 @@ export const WORK_ITEM_KIND_ACCESS: Record<AdminWorkItemSourceKind, CapabilityRe
   unsold_choice_follow_up: SUBMISSIONS_ACCESS,
   unsold_choice_lapsed: SUBMISSIONS_ACCESS,
   marketing_enquiry: MARKETING_ENQUIRIES_ACCESS,
-  purchase_problem: FINANCE_ACCESS,
+  purchase_problem: PURCHASE_PROBLEMS_ACCESS,
   // The default action lives on the lot page, which finance-only staff cannot open.
   payment_overdue: SALES_ACCESS,
   deletion_hold: DELETION_HOLD_ACCESS,

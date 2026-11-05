@@ -1,36 +1,51 @@
 /**
- * The LAX stock code: `LAX-{ORI|PRI}-{ARTIST}-{SECOND}-{YY}-{NNNN}`, for example
- * `LAX-ORI-PH-GAC-26-0001`. Staff already read and quote these, so the shape is fixed. LAX issues
- * the next number for a prefix; Zoho never does, so a code is never issued twice.
+ * The LAX stock code: `LAX-{ORI|PRT}-{ARTIST}-{COLLECTION}-{YY}-{NNNN}`, for example
+ * `LAX-ORI-MP-GAC-26-0037`. Staff already read and quote these, so the shape is fixed.
+ *
+ * - The artist code is 2 to 3 capital letters; the collection code is 2 to 4 capital letters or
+ *   digits. Both are checked when LAX issues a code. Reading is lenient (1 to 6) so older codes
+ *   still parse.
+ * - YY is the registration year. The number runs per artist and collection across years: the year
+ *   never restarts it.
+ * - A print group mirrors its original (`LAX-ORI-MP-GAC-26-0037` is `LAX-PRT-MP-GAC-26-0037`).
+ * - Older prints carry `PRI`. They still parse as prints; new print codes use `PRT`.
+ * - LAX issues numbers; Zoho never does, so a code is never issued twice.
  */
 
 export const STOCK_CODE_KINDS = ["original", "print"] as const;
 export type StockCodeKind = (typeof STOCK_CODE_KINDS)[number];
 
-const KIND_SEGMENT: Record<StockCodeKind, "ORI" | "PRI"> = { original: "ORI", print: "PRI" };
-const SEGMENT_KIND: Record<string, StockCodeKind> = { ORI: "original", PRI: "print" };
+const KIND_SEGMENT: Record<StockCodeKind, "ORI" | "PRT"> = { original: "ORI", print: "PRT" };
+/** `PRI` is the segment older prints were issued with; it is read but never issued. */
+const SEGMENT_KIND: Record<string, StockCodeKind> = { ORI: "original", PRT: "print", PRI: "print" };
 
 export const STOCK_CODE_MAX_NUMBER = 9999;
 
 const CODE_PART = "[A-Z0-9]{1,6}";
 export const STOCK_CODE_PATTERN = new RegExp(
-  `^LAX-(ORI|PRI)-(${CODE_PART})-(${CODE_PART})-(\\d{2})-(\\d{4})$`,
+  `^LAX-(ORI|PRT|PRI)-(${CODE_PART})-(${CODE_PART})-(\\d{2})-(\\d{4})$`,
 );
-const CODE_PART_PATTERN = new RegExp(`^${CODE_PART}$`);
+
+/** What LAX accepts when it issues a new code. */
+export const ARTIST_CODE_PATTERN = /^[A-Z]{2,3}$/;
+export const COLLECTION_CODE_PATTERN = /^[A-Z0-9]{2,4}$/;
 
 export type StockCodeParts = {
   kind: StockCodeKind;
-  /** The artist's code, for example PH. */
+  /** The artist's code, for example MP. */
   artist: string;
-  /** The second code, for example GAC. */
+  /** The collection code, for example GAC. */
   second: string;
   /** Two-digit year. */
   year: number;
-  /** Running number within the prefix, 1 to 9999. */
+  /** Running number within the artist and collection, 1 to 9999. */
   number: number;
 };
 
 export type StockCodePrefix = Omit<StockCodeParts, "number">;
+
+/** What one run of numbers belongs to: the kind, the artist and the collection, in any year. */
+export type StockCodeSeries = Pick<StockCodeParts, "kind" | "artist" | "second">;
 
 export class StockCodeError extends Error {
   constructor(message: string) {
@@ -61,19 +76,34 @@ export function isStockCode(value: string): boolean {
 }
 
 function assertPrefix(prefix: StockCodePrefix): void {
-  if (!CODE_PART_PATTERN.test(prefix.artist)) {
-    throw new StockCodeError(
-      `Artist code "${prefix.artist}" must be 1 to 6 capital letters or digits`,
-    );
-  }
-  if (!CODE_PART_PATTERN.test(prefix.second)) {
-    throw new StockCodeError(
-      `Second code "${prefix.second}" must be 1 to 6 capital letters or digits`,
-    );
-  }
+  assertSeries(prefix);
   if (!Number.isInteger(prefix.year) || prefix.year < 0 || prefix.year > 99) {
     throw new StockCodeError(`Year ${prefix.year} must be a two-digit year`);
   }
+}
+
+/** Throws unless the artist and collection codes are ones LAX may issue new codes under. */
+export function assertSeries(series: StockCodeSeries): void {
+  if (!ARTIST_CODE_PATTERN.test(series.artist)) {
+    throw new StockCodeError(`Artist code "${series.artist}" must be 2 to 3 capital letters`);
+  }
+  if (!COLLECTION_CODE_PATTERN.test(series.second)) {
+    throw new StockCodeError(
+      `Collection code "${series.second}" must be 2 to 4 capital letters or digits`,
+    );
+  }
+}
+
+/**
+ * Which part of an existing code LAX would not issue today (artist or collection), or null when
+ * both conform. For reporting legacy data; reading it is still allowed.
+ */
+export function nonConformingCodePart(value: string): "artist" | "collection" | null {
+  const parts = parseStockCode(value);
+  if (!parts) return null;
+  if (!ARTIST_CODE_PATTERN.test(parts.artist)) return "artist";
+  if (!COLLECTION_CODE_PATTERN.test(parts.second)) return "collection";
+  return null;
 }
 
 /** The part of a code shared by a run of numbers, for example `LAX-ORI-PH-GAC-26`. */
@@ -93,14 +123,15 @@ export function formatStockCode(parts: StockCodeParts): string {
 }
 
 /**
- * The next code for a prefix, given the highest number already issued under it (null when none).
- * Throws when the run is full rather than reusing a number.
+ * The next code for an artist and collection, given the highest number already issued for them in
+ * any year (null when none). The year is only the registration year written into the code. Throws
+ * when the run is full rather than reusing a number.
  */
 export function nextStockCode(prefix: StockCodePrefix, highestIssued: number | null): string {
   const next = (highestIssued ?? 0) + 1;
   if (next > STOCK_CODE_MAX_NUMBER) {
     throw new StockCodeError(
-      `${formatStockCodePrefix(prefix)} has used all ${STOCK_CODE_MAX_NUMBER} numbers`,
+      `${prefix.artist}-${prefix.second} has used all ${STOCK_CODE_MAX_NUMBER} numbers`,
     );
   }
   return formatStockCode({ ...prefix, number: next });
@@ -112,4 +143,17 @@ export function stockCodePrefixOf(value: string): string | null {
   if (!parts) return null;
   const { number: _number, ...prefix } = parts;
   return formatStockCodePrefix(prefix);
+}
+
+/**
+ * The print group code for an original: same artist, collection, year and number, kind print
+ * (`LAX-ORI-MP-GAC-26-0037` gives `LAX-PRT-MP-GAC-26-0037`). Throws when the code is not an
+ * original's.
+ */
+export function printCodeForOriginal(originalCode: string): string {
+  const parts = parseStockCode(originalCode);
+  if (!parts || parts.kind !== "original") {
+    throw new StockCodeError(`"${originalCode}" is not an original's stock code`);
+  }
+  return formatStockCode({ ...parts, kind: "print" });
 }

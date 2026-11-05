@@ -204,7 +204,8 @@ const SKIPPED_REASON_LABEL: Record<string, string> = {
   invalid_modified_time: "Zoho gave no usable edit time",
   missing_title: "No title",
   missing_stock_code: "No stock code",
-  invalid_stock_code: "Stock code is not in the LAX format",
+  invalid_stock_code:
+    "Stock code is not in the LAX format: LAX-ORI or LAX-PRT, artist, collection, year, number",
   missing_artist: "No artist",
   missing_artist_code: "Artist has no code",
   duplicate_stock_code: "Stock code already belongs to another artwork",
@@ -222,6 +223,8 @@ const NEW_ARTWORK_GAP_LABEL: Record<string, string> = {
   missing_medium: "No medium",
   missing_dimensions: "No size",
   artist_code_differs_from_stock_code: "Artist code differs from the stock code",
+  non_standard_code_parts:
+    "Artist code should be 2 to 3 letters and collection code 2 to 4 letters or digits",
 };
 
 export function newArtworkGapLabel(gap: string): string {

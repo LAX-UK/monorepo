@@ -437,4 +437,15 @@ describe("describeEditionFacts: order line and invoice", () => {
       }),
     ).toBe("Artist's proof, AP 2/3, signed by hand");
   });
+
+  it("says hors commerce proofs were originally not for sale", () => {
+    const hc: EditionRunSpec = { ...ap3, proofType: "hc" };
+    const text = describeEditionFacts(hc, facts({ certificate: { kind: "none" } }));
+    expect(text.orderLine({ proofNumber: 1 })).toBe(
+      "HC 1/3 · Originally not for sale · Hand-signed",
+    );
+    expect(text.invoiceDetail({ proofNumber: 1 })).toBe(
+      "Hors commerce proof, originally not for sale, HC 1/3, signed by hand",
+    );
+  });
 });

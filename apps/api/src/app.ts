@@ -14,6 +14,7 @@ import { createAppLogger } from "./lib/logger.js";
 import { connectionOptionsFromRedisUrl } from "./lib/redis-url.js";
 import { buildTrustedWebOrigins } from "./lib/trusted-web-origins.js";
 import { createAuditAccessMiddleware } from "./middleware/audit-access.js";
+import { createClientIpMiddleware } from "./middleware/client-ip.js";
 import { createMarketingClientContextMiddleware } from "./middleware/marketing-client-context.js";
 import { createMarketingConsentMiddleware } from "./middleware/marketing-consent.js";
 import { createMetricsMiddleware, renderMetrics } from "./middleware/metrics.js";
@@ -131,6 +132,14 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
         "",
       )}/.well-known/jwks.json`,
       publish: (channel, message) => container.redis.publish(channel, message),
+    }),
+  );
+  app.use(
+    "*",
+    createClientIpMiddleware({
+      trustedProxyCidrs: env.API_TRUSTED_PROXY_CIDRS,
+      trustedCloudflareProxyCidrs: env.API_TRUSTED_CLOUDFLARE_PROXY_CIDRS,
+      serverClientIpToken: env.API_SSR_CLIENT_IP_TOKEN,
     }),
   );
   app.use("*", createMarketingConsentMiddleware());

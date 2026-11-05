@@ -1,6 +1,6 @@
-import { readForwardedClientIp } from "@auction/auth";
 import { createMiddleware } from "hono/factory";
 import type { IRateLimitStore } from "../services/interfaces/rate-limit-store.js";
+import { clientIpOf } from "./client-ip.js";
 
 /** Windows for the public contact form, per client address: a burst and a day. */
 const LIMITS = [
@@ -20,7 +20,7 @@ export function createContactEnquiryRateLimitMiddleware(
   bucket = "contact-enquiry",
 ) {
   return createMiddleware(async (c, next) => {
-    const ip = readForwardedClientIp((name) => c.req.header(name)) ?? "unknown";
+    const ip = clientIpOf(c);
     try {
       for (const { window, windowSec, max } of LIMITS) {
         const result = await store.increment(`rl:${bucket}:${window}:${ip}`, max, windowSec);

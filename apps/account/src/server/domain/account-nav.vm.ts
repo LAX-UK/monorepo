@@ -12,6 +12,7 @@ export type AccountNavId =
   | "portfolio"
   | "money"
   | "selling"
+  | "alerts"
   | "privacy"
   | "help";
 
@@ -35,6 +36,7 @@ export function buildAccountNav(
     ...(options.selling
       ? [{ id: "selling" as const, label: "Selling", href: SELLING_ROUTES.overview }]
       : []),
+    { id: "alerts", label: "Email alerts", href: ACCOUNT_ROUTES.alerts },
     { id: "privacy", label: "Privacy", href: ACCOUNT_ROUTES.privacy },
   ];
   if (links.support) items.push({ id: "help", label: "Help", href: ACCOUNT_ROUTES.help });

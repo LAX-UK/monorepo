@@ -44,6 +44,12 @@ export const AUTH_EXPORT_AUDIT_TABLES = [
   "subject_data_export_audit",
   "subject_data_request_audit",
 ] as const;
+/**
+ * Which Terms and Privacy notice each person accepted when they created their account. Identity
+ * only adds rows and reads them: auth_app may INSERT and SELECT, and api_app and worker_app are
+ * denied.
+ */
+export const AUTH_LEGAL_ACCEPTANCE_TABLES = ["subject_legal_acceptance"] as const;
 export const AUTH_DENY_TABLES = [
   "email_outbox",
   "email_suppression",
@@ -123,8 +129,6 @@ export const SHOP_COMMERCE_TABLES = [
   /** Guest checkout: the guest and lead behind guest orders, and their emailed order links. */
   "shop_guest_customer",
   "shop_guest_order_link",
-  /** People who asked to hear about new editions: confirmed by email, stopped with one click. */
-  "shop_release_alert_subscription",
   /** The alert engine for LAX Shop and lax.art: subscribers, topic switches, matches, digests. */
   "shop_alert_subscriber",
   "shop_alert_topic",
@@ -171,6 +175,7 @@ export const API_DENY_TABLES = [
   ...AUTH_ADDRESS_TABLES,
   ...AUTH_EXPORT_TABLES,
   ...AUTH_EXPORT_AUDIT_TABLES,
+  ...AUTH_LEGAL_ACCEPTANCE_TABLES,
   ...SHOP_COMMERCE_TABLES,
   ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
 ] as const;
@@ -202,6 +207,14 @@ export const SHOP_EMAIL_OUTBOX_TABLES = ["email_outbox"] as const;
  */
 export const SHOP_CRM_READ_TABLES = ["crm_record_link", "domain_event_delivery"] as const;
 /**
+ * "Download my data" for LAX Shop reads a person's suppression entry and newsletter sign-ups from
+ * the shared mail tables. shop_app reads them and never writes: the worker and the Bid API own them.
+ */
+export const SHOP_SUBJECT_EXPORT_READ_TABLES = [
+  "email_suppression",
+  "newsletter_signup_log",
+] as const;
+/**
  * LAX Admin reviews the artwork register: shop_app reads the records and the Zoho sync results,
  * records a decision on a conflict (SELECT, UPDATE) and the history entry that goes with it
  * (INSERT, SELECT). It never creates or changes a record; the worker and the offer moves do that.
@@ -229,6 +242,7 @@ export const WORKER_DENY_TABLES = [
   /** The worker reports export progress through Identity's internal route, never to its tables. */
   ...AUTH_EXPORT_TABLES,
   ...AUTH_EXPORT_AUDIT_TABLES,
+  ...AUTH_LEGAL_ACCEPTANCE_TABLES,
   ...API_SSF_RECEIVER_TABLES,
   "shop_identity_session",
   "shop_logout_token_replay",
@@ -266,6 +280,8 @@ export const WORKER_READ_TABLES = [
   "marketing_enquiry_attachment",
   /** The CRM projector reads an enquiry by id to build its Zoho lead (the event carries no personal data). */
   "marketing_enquiry",
+  /** ... and the artist a private sale enquiry names, for the lead's Interest: Artist. */
+  "private_sale_enquiry_detail",
   /** The follow-up projector reads the confirmed choice it opens work for. */
   "unsold_lot_choice",
   /** The payout statement names the private sale a payout line settles by its PS reference. */
@@ -685,6 +701,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of AUTH_EXPORT_AUDIT_TABLES) {
           await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");
         }
+        for (const tableName of AUTH_LEGAL_ACCEPTANCE_TABLES) {
+          await grantIfExists(client, "auth_app", tableName, "INSERT, SELECT");
+        }
         for (const tableName of tables) {
           if ((API_DENY_TABLES as readonly string[]).includes(tableName)) {
             await revokeIfExists(client, "api_app", tableName);
@@ -730,6 +749,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of SHOP_CRM_READ_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT");
+        }
+        for (const tableName of SHOP_SUBJECT_EXPORT_READ_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT");
         }
         for (const tableName of SHOP_ARTWORK_REGISTER_READ_TABLES) {

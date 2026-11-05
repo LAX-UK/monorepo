@@ -15,7 +15,7 @@ import { Input } from "@auction/ui/components/input";
 
 export function BasicsStep({ form, categories }: BasicsStepProps) {
   return (
-    <div className="space-y-6" data-testid="submission-wizard-step-basics">
+    <div className="space-y-6">
       <SellPrerequisitesInline />
       <FormField
         control={form.control}

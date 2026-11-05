@@ -13,6 +13,7 @@ import {
   shopRefund,
   shopThirdPartySale,
 } from "@auction/db/schema";
+import { readEditionSnapshot } from "@auction/shop-domain";
 import { and, desc, eq, gt, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import type {
   PortalPortfolioFacts,
@@ -24,6 +25,7 @@ import type {
   PortfolioWork,
 } from "../application/ports/portal-portfolio.reader.js";
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
+import { liveEditionSnapshots } from "./edition-snapshot-source.js";
 import { resolvePortalPartyIds } from "./portal-party-ids.js";
 import { printedEditionNumber } from "./printed-edition-number.js";
 
@@ -66,6 +68,10 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
         .select({
           editionId: shopEdition.id,
           editionNumber: printedEditionNumber,
+          printedNumber: shopEdition.editionNumber,
+          proofNumber: shopEdition.proofNumber,
+          stockRef: shopEdition.stockRef,
+          editionSnapshot: shopOrderLine.editionFactsSnapshot,
           listingStatus: shopEdition.listingStatus,
           createdAt: shopEdition.createdAt,
           artworkId: shopEdition.artworkId,
@@ -230,6 +236,14 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
         ...saleRows.flatMap((row) => (row.artworkId ? [row.artworkId] : [])),
       ]);
 
+      // Facts kept at payment describe a bought print; today's facts describe any other.
+      const live = await liveEditionSnapshots(
+        db,
+        editionRows
+          .filter((row) => !(row.orderId && row.editionSnapshot))
+          .map((row) => row.artworkId),
+      );
+
       const editions = editionRows.flatMap((row): PortfolioEditionFact[] => {
         const work = works.get(row.artworkId);
         if (!work) return [];
@@ -238,6 +252,14 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
             editionId: row.editionId,
             work,
             editionNumber: row.editionNumber,
+            print: {
+              editionNumber: row.printedNumber,
+              proofNumber: row.proofNumber,
+              stockRef: row.stockRef,
+            },
+            runFacts:
+              (row.orderId ? readEditionSnapshot(row.editionSnapshot) : null) ??
+              readEditionSnapshot(live.get(row.artworkId)),
             listingStatus: row.listingStatus,
             createdAt: row.createdAt,
             purchase:

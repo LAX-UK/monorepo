@@ -32,7 +32,7 @@ test.describe("staff catalog detail and edit @journey", () => {
     await dismissStaffPaletteIfOpen(page);
     await expect(page.getByRole("heading", { name: /paintings/i, level: 1 })).toBeVisible();
     await gotoAdminPath(page, `/admin/categories/${seededStaffRoutes.categoryDetail}/edit`);
-    await expect(page.getByRole("heading", { name: /edit category/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /^edit paintings$/i, level: 1 })).toBeVisible({
       timeout: 20_000,
     });
   });
@@ -53,7 +53,9 @@ test.describe("staff catalog detail and edit @journey", () => {
 
   test("venue edit loads", async ({ page }) => {
     await gotoAdminPath(page, `/admin/venues/${seededStaffRoutes.venueDetail}/edit`);
-    await expect(page.getByRole("heading", { name: /edit venue/i })).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: /^edit lax mayfair saleroom$/i, level: 1 }),
+    ).toBeVisible({
       timeout: 20_000,
     });
   });

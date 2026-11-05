@@ -38,7 +38,9 @@ function container(e = engine()) {
   } as unknown as ContainerAlertRoutesSlice;
 }
 
-function authenticator(user: { role: string; staffRoles?: unknown } | null): IAuthenticator {
+function authenticator(
+  user: { role: string; staffRoles?: unknown; scopes?: string[] } | null,
+): IAuthenticator {
   return {
     getSessionUser: async () =>
       user
@@ -129,6 +131,38 @@ describe("a signed-in client's alert routes", () => {
       on: true,
       email: false,
     });
+  });
+
+  it("lets LAX Account read and switch alerts with its own scopes, and nothing wider", async () => {
+    const e = engine();
+    const read = createAlertRoutes(
+      container(e),
+      authenticator({ role: "client", scopes: ["lax.alerts.read"] }),
+    );
+    expect((await read.request("/me")).status).toBe(200);
+    const readOnlyWrite = await read.request("/me/topics/bid.new_sales", {
+      ...json({ on: false }),
+      method: "PUT",
+    });
+    expect(readOnlyWrite.status).toBe(403);
+    const write = createAlertRoutes(
+      container(e),
+      authenticator({ role: "client", scopes: ["lax.alerts.write"] }),
+    );
+    expect(
+      (
+        await write.request("/me/topics/bid.new_sales", {
+          ...json({ on: false }),
+          method: "PUT",
+        })
+      ).status,
+    ).toBe(200);
+    expect((await write.request("/me")).status).toBe(403);
+    const portfolio = createAlertRoutes(
+      container(e),
+      authenticator({ role: "client", scopes: ["lax.portfolio.read"] }),
+    );
+    expect((await portfolio.request("/me")).status).toBe(403);
   });
 
   it("says why when an address cannot be switched on", async () => {

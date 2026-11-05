@@ -15,7 +15,7 @@ export function PhotosStep({ form }: StepProps) {
   const imageCount = form.watch("images").length;
 
   return (
-    <div className="space-y-6" data-testid="submission-wizard-step-photos">
+    <div className="space-y-6">
       <FormField
         control={form.control}
         name="images"

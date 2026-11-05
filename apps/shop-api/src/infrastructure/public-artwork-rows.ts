@@ -7,10 +7,12 @@ import {
   shopParty,
 } from "@auction/db/schema";
 import { asc, count, inArray } from "drizzle-orm";
+import { editionCardLines } from "../application/edition-runs/edition-card-lines.js";
 import type {
   ArtworkImageReadModel,
   ArtworkSummaryReadModel,
 } from "../application/read-models/catalogue.read-model.js";
+import { createDrizzleEditionCardFactsReader } from "./edition-runs/drizzle-edition-card-facts.reader.js";
 import {
   type ArtworkCatalogueRow,
   parseDbNumeric,
@@ -192,17 +194,22 @@ export async function toPublicArtworkSummaries(
   rows: SelectedArtworkRow[],
   resolveMediaUrl: ResolveArtworkMediaUrl,
 ): Promise<ArtworkSummaryReadModel[]> {
-  const [editionCounts, covers] = await Promise.all([
+  const [editionCounts, covers, cardLines] = await Promise.all([
     editionCountsByArtworkId(
       db,
       rows.map((row) => row.artworkId),
     ),
     coverImagesForWorksWithoutPrimary(db, rows, resolveMediaUrl),
+    editionCardLines(
+      createDrizzleEditionCardFactsReader(db),
+      rows.map((row) => row.artworkId),
+    ),
   ]);
   return rows.map((row) => {
     const cover = covers.get(row.artworkId);
     return toPublicArtworkSummary(
       toArtworkCatalogueRow(row, editionCounts, resolveMediaUrl, cover ? [cover] : []),
+      cardLines.get(row.artworkId) ?? null,
     );
   });
 }

@@ -31,6 +31,7 @@
     "@auction/finance-runtime": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
     "@auction/identity-db": "workspace:*",
+    "@auction/lax-ecosystem": "workspace:*",
     "@auction/lot-lifecycle-app": "workspace:*",
     "@auction/marketing-events": "workspace:*",
     "@auction/observability": "workspace:*",

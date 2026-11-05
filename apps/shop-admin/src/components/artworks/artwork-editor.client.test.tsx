@@ -180,6 +180,8 @@ const detail: AdminArtworkDetail = {
     mainRun: null,
     linkedListings: [],
     stock: null,
+    certificateAuthority: null,
+    horsCommerce: null,
   },
   printPricePence: 45_000,
   saleState: "for_sale",

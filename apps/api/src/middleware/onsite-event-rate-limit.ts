@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { createMiddleware } from "hono/factory";
 import type { Redis } from "ioredis";
 import { RATE_LIMIT_CONFIG } from "./auth-rate-limit.js";
+import { clientIpOf } from "./client-ip.js";
 
 async function slidingIncrement(redis: Redis, key: string, windowSec: number): Promise<number> {
   const now = Date.now();
@@ -18,12 +19,6 @@ async function slidingIncrement(redis: Redis, key: string, windowSec: number): P
   return typeof card === "number" ? card : Number(card ?? 0);
 }
 
-function clientIp(c: { req: { header: (name: string) => string | undefined } }): string {
-  return (
-    c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? "unknown"
-  );
-}
-
 function emailHash(email: string): string {
   return createHash("sha256").update(email.trim().toLowerCase()).digest("hex").slice(0, 16);
 }
@@ -31,7 +26,7 @@ function emailHash(email: string): string {
 /** Tighter limits for public onsite-event lookup (enumeration) and RSVP submit. */
 export function createOnsiteEventLookupRateLimitMiddleware(redis: Redis) {
   return createMiddleware(async (c, next) => {
-    const ip = clientIp(c);
+    const ip = clientIpOf(c);
     const ipKey = `rl:onsite:lookup:ip:${ip}`;
     const ipCount = await slidingIncrement(redis, ipKey, 60);
     if (ipCount > 15) {
@@ -53,7 +48,7 @@ export async function checkOnsiteEventLookupEmailLimit(
 
 export function createOnsiteEventRsvpRateLimitMiddleware(redis: Redis) {
   return createMiddleware(async (c, next) => {
-    const ip = clientIp(c);
+    const ip = clientIpOf(c);
     const ipKey = `rl:onsite:rsvp:ip:${ip}`;
     const ipCount = await slidingIncrement(redis, ipKey, 60);
     if (ipCount > RATE_LIMIT_CONFIG.setupPasswordMax) {
@@ -65,7 +60,7 @@ export function createOnsiteEventRsvpRateLimitMiddleware(redis: Redis) {
 
 export function createOnsiteEventResendRateLimitMiddleware(redis: Redis) {
   return createMiddleware(async (c, next) => {
-    const staffId = c.get("userId") ?? clientIp(c);
+    const staffId = c.get("userId") ?? clientIpOf(c);
     const key = `rl:onsite:resend:${staffId}`;
     const n = await slidingIncrement(redis, key, 60);
     if (n > 20) {

@@ -29,6 +29,7 @@ import {
   bulkVisibilityActions,
   editionSizeLabel,
   hasActiveArtworkFilters,
+  releaseAlertChoice,
   summariseBulkVisibility,
   visibilityConfirmCopy,
 } from "@/server/domain/artwork-list.vm";
@@ -46,6 +47,7 @@ import {
 } from "@auction/shop-contracts";
 import {
   type ActiveFilter,
+  ChoiceRow,
   ConfirmActionDialog,
   type DataColumn,
   DataViews,
@@ -56,6 +58,7 @@ import {
   OverflowMenu,
   PrimaryCell,
   StaffButton,
+  StaffCheckbox,
   StaffDate,
   type StaffLinkComponent,
   StatusBadge,
@@ -76,7 +79,7 @@ import {
 } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useId, useMemo, useState } from "react";
 
 const NextLink: StaffLinkComponent = Link;
 
@@ -96,7 +99,7 @@ export type ArtworkListPermissions = {
 
 type PendingChange = {
   action: AdminArtworkVisibilityAction;
-  rows: Pick<AdminArtworkListItem, "artworkId" | "title" | "salesChannel">[];
+  rows: (Pick<AdminArtworkListItem, "artworkId" | "title" | "salesChannel"> & { run: unknown })[];
 };
 
 /**
@@ -126,6 +129,8 @@ export function ArtworkList({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [change, setChange] = useState<PendingChange | null>(null);
   const [running, setRunning] = useState(false);
+  const [tellSubscribers, setTellSubscribers] = useState(true);
+  const tellSubscribersId = useId();
   const [settingFacts, setSettingFacts] = useState<AdminArtworkListItem[] | null>(null);
   const filtered = hasActiveArtworkFilters(query);
   const counts = page.counts;
@@ -163,9 +168,14 @@ export function ArtworkList({
       action: pendingChange.action,
       artworkIds: pendingChange.rows.map((row) => row.artworkId),
       idempotencyKey: crypto.randomUUID(),
+      sendReleaseAlert:
+        pendingChange.action === "publish" &&
+        releaseAlertChoice(pendingChange.rows) !== null &&
+        tellSubscribers,
     }).catch(() => ({ ok: false, kind: "failed", message: "Action failed. Try again." }) as const);
     setRunning(false);
     setChange(null);
+    setTellSubscribers(true);
     if (!result.ok) {
       toast.error(adminMutationErrorMessage(result));
       return;
@@ -330,6 +340,7 @@ export function ArtworkList({
   ) : undefined;
 
   const confirm = change ? visibilityConfirmCopy(change.action, change.rows) : null;
+  const releaseChoice = change?.action === "publish" ? releaseAlertChoice(change.rows) : null;
 
   return (
     <>
@@ -571,6 +582,7 @@ export function ArtworkList({
                 artworkId: detail.artworkId,
                 title: detail.title,
                 salesChannel: detail.salesChannel,
+                run: detail.run,
               },
             ],
           })
@@ -579,7 +591,10 @@ export function ArtworkList({
       <ConfirmActionDialog
         open={change !== null}
         onOpenChange={(open) => {
-          if (!open && !running) setChange(null);
+          if (!open && !running) {
+            setChange(null);
+            setTellSubscribers(true);
+          }
         }}
         title={confirm?.title ?? ""}
         description={confirm?.description ?? ""}
@@ -589,7 +604,24 @@ export function ArtworkList({
         onConfirm={() => {
           if (change) void apply(change);
         }}
-      />
+      >
+        {releaseChoice ? (
+          <ChoiceRow
+            htmlFor={tellSubscribersId}
+            disabled={running}
+            control={
+              <StaffCheckbox
+                id={tellSubscribersId}
+                checked={tellSubscribers}
+                disabled={running}
+                onCheckedChange={(checked) => setTellSubscribers(checked === true)}
+              />
+            }
+            label={releaseChoice.label}
+            description={releaseChoice.description}
+          />
+        ) : null}
+      </ConfirmActionDialog>
     </>
   );
 }

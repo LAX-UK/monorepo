@@ -21,6 +21,8 @@ export const LAX_ACCOUNT_PATHS = {
   portfolio: "/account/portfolio",
   /** The portfolio filtered to works bought through LAX Shop. */
   shopPortfolio: "/account/portfolio?product=shop",
+  /** Email alerts from every LAX product, switched on and off in one place. */
+  alerts: "/account/alerts",
   /** Seller tools: editions a person may sell, the sales statement, payouts, an artist's works. */
   sellingEditions: "/account/selling/editions",
   sellingSales: "/account/selling/sales",

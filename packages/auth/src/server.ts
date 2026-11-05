@@ -237,6 +237,7 @@ export function createAuth(env: AuthEnv): Auth {
         phoneNumberStore: ports.phoneNumberStore,
         email: ports.email,
         securityNotices: ports.securityNotices,
+        legalAcceptance: ports.legalAcceptance,
       },
       onUserCreated: env.onUserCreated,
       onAccountCreated: env.onAccountCreated,
