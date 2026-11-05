@@ -196,14 +196,14 @@ export function EditableLotRowForm({
               name="startTime"
               label="Bidding opens"
               disabled={readOnly}
-              description={`The sale opens ${formatStaffDateTime(ctx.saleStartTime, { zoneLabel: true })}.`}
+              description={`The sale opens ${formatStaffDateTime(ctx.saleStartTime)}.`}
             />
             <StaffDateTimeField
               {...f}
               name="endTime"
               label="Bidding closes"
               disabled={readOnly}
-              description={`The sale closes ${formatStaffDateTime(ctx.saleEndTime, { zoneLabel: true })}.`}
+              description={`The sale closes ${formatStaffDateTime(ctx.saleEndTime)}.`}
             />
           </FieldRow>
         )}

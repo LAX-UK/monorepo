@@ -21,6 +21,7 @@ import type {
   ListPaymentsExportFilter,
   PaymentRecord,
 } from "../interfaces/payment-write.repository.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import { findBlockedCaptureEvent } from "./blocked-capture.query.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 
@@ -54,7 +55,7 @@ export function adminTableWhere(filter: Omit<ListPaymentsAdminTableFilter, "limi
   }
   const needle = filter.q?.trim();
   if (needle) {
-    const pattern = `%${needle}%`;
+    const pattern = containsPattern(needle);
     conditions.push(
       or(
         ilike(sql`${payment.id}::text`, pattern),

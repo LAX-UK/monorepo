@@ -16,6 +16,7 @@ import {
 import type { AccountProductScope, ResourceTokenProvider } from "../ports/portfolio-gateway";
 import type { SessionHandle } from "../ports/portfolio-gateway";
 import type { SellingGateway, SellingRead, SellingWrite } from "../ports/selling-gateway";
+import { withDeadline } from "./with-deadline";
 
 /** A read that does not answer in this time is reported unavailable; the page must not hang on it. */
 export const SELLING_READ_TIMEOUT_MS = 4_000;
@@ -28,18 +29,6 @@ function readErrorCode(body: unknown): string | undefined {
   if (!body || typeof body !== "object") return undefined;
   const code = (body as { code?: unknown }).code;
   return typeof code === "string" ? code : undefined;
-}
-
-/** Bounds the whole call, token exchange included, as the portfolio gateway does. */
-function withDeadline<T>(ms: number, run: (signal: AbortSignal) => Promise<T>): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  const deadline = new Promise<never>((_resolve, reject) => {
-    controller.signal.addEventListener("abort", () => reject(new Error("deadline")), {
-      once: true,
-    });
-  });
-  return Promise.race([run(controller.signal), deadline]).finally(() => clearTimeout(timer));
 }
 
 /**

@@ -133,6 +133,7 @@ export function presentOrder(record: OrderRecord, now: Date = new Date()): Order
       variantSku: line.variantSku,
       editionNumber: line.editionNumber,
       editionSize: line.editionSize,
+      editionSummary: line.editionSummary,
       artistName: line.artistName,
       unitPricePence: line.unitPricePence,
       imageUrl: line.imageUrl,

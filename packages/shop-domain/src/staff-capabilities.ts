@@ -38,6 +38,11 @@ export const SHOP_STAFF_CAPABILITIES = [
   /** Approving the listing of hors commerce proofs, which were not made to be sold. */
   "hors_commerce.approve",
   /**
+   * Sending a print owned by someone else in place of the one sold, which moves the seller and
+   * the pending payout. Administrators only; swaps within one owner need only `fulfilment.write`.
+   */
+  "print_swap.cross_owner",
+  /**
    * Erasing a guest's personal data on request. Administrators only: it cannot be undone, and it
    * removes the only way to contact the guest about their orders.
    */

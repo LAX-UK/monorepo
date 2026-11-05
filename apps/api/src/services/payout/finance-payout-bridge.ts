@@ -43,6 +43,8 @@ export function toPayoutSettlementDeps(deps: PayoutServiceDeps): PayoutSettlemen
     domainEventSink: apiDomainEventSinkPort(deps.domainEventSink),
     payoutAdjustments: adjustments,
     payoutRepoForTx: deps.payoutRepoForTx,
+    dealPayouts: deps.dealPayouts,
+    dealPayoutsForTx: deps.dealPayoutsForTx,
   };
 }
 

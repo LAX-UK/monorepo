@@ -6,6 +6,8 @@ import {
   assertCorrectionReason,
   assertEditionFacts,
   assertFactsEditable,
+  createEditionSnapshot,
+  editionFactsToPlain,
   runLocks,
 } from "@auction/shop-domain";
 import { notFound } from "../../errors/shop-api-error.js";
@@ -55,17 +57,7 @@ export type BulkFactsCommand = StaffCommand & {
   confirmed: boolean;
 };
 
-function plain(facts: EditionFacts | null) {
-  if (!facts) return null;
-  return {
-    numbering: facts.numbering,
-    signature: facts.signature,
-    certificate: facts.certificate,
-    confirmed: facts.confirmed
-      ? { by: facts.confirmed.by, at: facts.confirmed.at.toISOString() }
-      : null,
-  };
-}
+const plain = editionFactsToPlain;
 
 /**
  * Saving what is true of a run: numbering, signature and certificate. The domain checks the facts
@@ -167,12 +159,14 @@ export function createSaveEditionFactsService(deps: { uow: EditionRunUnitOfWork;
             const before = await assertVersion(tx, command.artworkId, command.expectedFactsVersion);
             const orders = await tx.facts.paidOrders(command.artworkId);
             if (before) {
-              await tx.facts.keepOrderSnapshots(command.artworkId, {
-                schemaVersion: 1,
-                run: run.spec,
-                proofsKept: run.proofsKept,
-                facts: plain(before.facts),
-              });
+              await tx.facts.keepOrderSnapshots(
+                command.artworkId,
+                createEditionSnapshot({
+                  run: run.spec,
+                  proofsKept: run.proofsKept,
+                  facts: before.facts,
+                }),
+              );
             }
             const factsVersion = await apply(tx, {
               artworkId: command.artworkId,

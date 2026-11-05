@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
+import { behindIngress, testClientIpMiddleware } from "../testing/client-ip-test-app.js";
 import { createQrRoutes } from "./qr.js";
 
 describe("QR redirect routes", () => {
   it("redirects with a noindex header and records scans asynchronously", async () => {
     const enqueueScan = vi.fn().mockResolvedValue(undefined);
     const app = new Hono();
+    app.use("*", testClientIpMiddleware);
     app.route(
       "/q",
       createQrRoutes({
@@ -20,9 +22,11 @@ describe("QR redirect routes", () => {
       } as never),
     );
 
-    const res = await app.request("/q/Abc12345", {
-      headers: { "user-agent": "Mozilla/5.0", "x-forwarded-for": "203.0.113.42" },
-    });
+    const res = await app.request(
+      "/q/Abc12345",
+      { headers: { "user-agent": "Mozilla/5.0", "x-forwarded-for": "1.2.3.4, 203.0.113.42" } },
+      behindIngress,
+    );
 
     expect(res.status).toBe(302);
     expect(res.headers.get("location")).toBe("https://example.test/sales/sale/id");

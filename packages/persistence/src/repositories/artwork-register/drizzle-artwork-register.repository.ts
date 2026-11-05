@@ -21,11 +21,13 @@ import type {
   ApplyZohoChangeResult,
   ConflictCursor,
   CreateRegisterEntryResult,
+  IArtworkMoveHistory,
   IArtworkRegisterRepository,
   MoveOfferInput,
   MoveOfferResult,
   RecordCatalogueStatusWrittenInput,
   RecordCatalogueStatusWrittenResult,
+  RecordMoveConfirmedInput,
   RegisterActor,
   RegisterConflict,
   RegisterEvent,
@@ -43,7 +45,9 @@ type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
  * it, so the move commits or rolls back with the caller's change; the row lock, version check and
  * history/event writes are unchanged.
  */
-export class DrizzleArtworkRegisterRepository implements IArtworkRegisterRepository {
+export class DrizzleArtworkRegisterRepository
+  implements IArtworkRegisterRepository, IArtworkMoveHistory
+{
   constructor(private readonly db: Database) {}
 
   /** The same repository over the caller's open transaction. */
@@ -352,6 +356,23 @@ export class DrizzleArtworkRegisterRepository implements IArtworkRegisterReposit
     return { ok: true, applied: { field: "stockCode", from: entry.stockCode, to: code } };
   }
 
+  async recordMoveConfirmed(
+    input: RecordMoveConfirmedInput,
+  ): Promise<{ status: "not_found" | "recorded" }> {
+    return this.db.transaction(async (tx) => {
+      const [found] = await tx
+        .select({ id: register.id })
+        .from(register)
+        .where(eq(register.id, input.registerId))
+        .limit(1);
+      if (!found) return { status: "not_found" };
+      await this.record(tx, found.id, "move_confirmed", input.actor, input.now, {
+        ...input.record,
+      });
+      return { status: "recorded" };
+    });
+  }
+
   private async findOne(where: ReturnType<typeof eq>): Promise<ArtworkRegisterEntry | null> {
     const [row] = await this.db.select().from(register).where(where).limit(1);
     return row ? toEntry(row) : null;
@@ -427,7 +448,19 @@ export class DrizzleArtworkRegisterRepository implements IArtworkRegisterReposit
     now: Date,
     payload: Record<string, unknown>,
   ): Promise<void> {
-    await tx.insert(event).values({ registerId, type, actor, payload, createdAt: now });
+    // History is read in time order, so each entry is stamped strictly after the one before it,
+    // even when the caller's clock repeats or steps back.
+    const [latest] = await tx
+      .select({ createdAt: event.createdAt })
+      .from(event)
+      .where(eq(event.registerId, registerId))
+      .orderBy(desc(event.createdAt))
+      .limit(1);
+    const createdAt =
+      latest && latest.createdAt.getTime() >= now.getTime()
+        ? new Date(latest.createdAt.getTime() + 1)
+        : now;
+    await tx.insert(event).values({ registerId, type, actor, payload, createdAt });
   }
 }
 

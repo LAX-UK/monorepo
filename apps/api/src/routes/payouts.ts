@@ -218,6 +218,8 @@ export function createAdminPayoutRoutes(
     "/:payoutId/adjustments",
     requireAuth,
     adminMutate,
+    requireStepUp,
+    idempotent("payouts.add-adjustment"),
     zValidator("param", payoutIdParam),
     zValidator("json", createPayoutAdjustmentSchema),
     async (c) => {

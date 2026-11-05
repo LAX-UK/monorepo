@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  StaffCheckboxField,
   StaffEntityField,
   StaffRadioField,
   StaffTextAreaField,
@@ -28,6 +29,8 @@ type Props = {
   previewUrlByKey: Record<string, string>;
   initialHeroVideoUrl?: string;
   heroVideoUrlGateRef?: RefObject<StreamUrlVerificationGate | null>;
+  /** The test setting can only change while the sale is a draft. */
+  isDraft?: boolean;
 };
 
 /** The sale's cover images, in order: the first is the main cover on the sale page. */
@@ -64,6 +67,7 @@ export function SaleIdentityStep({
   previewUrlByKey,
   initialHeroVideoUrl = "",
   heroVideoUrlGateRef,
+  isDraft = true,
 }: Props) {
   const heroPresentation = form.watch("heroPresentation");
   const heroBlurRef = useRef<(() => void) | null>(null);
@@ -169,6 +173,17 @@ export function SaleIdentityStep({
           placeholder="No theme"
           searchPlaceholder="Search categories"
           emptyText="No categories match."
+        />
+        <StaffCheckboxField
+          {...f}
+          name="isTest"
+          label="Test sale"
+          description={
+            isDraft
+              ? "Hidden from the public and never announced. Staff can still open and bid in it. Can only be changed while the sale is a draft."
+              : "Fixed once a sale leaves draft. Return the sale to draft to change it."
+          }
+          disabled={pending || !isDraft}
         />
       </FormSection>
     </>

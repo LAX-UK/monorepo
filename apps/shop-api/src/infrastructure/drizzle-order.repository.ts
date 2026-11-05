@@ -13,12 +13,14 @@ import {
   shopRefund,
 } from "@auction/db/schema";
 import {
+  type EditionFactsSnapshot,
   SHOP_FULFILMENT_STATUSES,
   SHOP_ORDER_STATUSES,
   type ShopFulfilmentStatus,
   type ShopOrderStatus,
 } from "@auction/shop-domain";
 import { and, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
+import { describeOrderLineEdition } from "../application/order-line-edition.js";
 import type {
   ListOrdersResult,
   OrderLineRecord,
@@ -29,6 +31,7 @@ import type {
   ShopDeliveryAddressRecord,
 } from "../application/ports/commerce.ports.js";
 import { MAX_ORDER_LIST_LIMIT } from "../application/ports/commerce.ports.js";
+import { liveEditionSnapshots } from "./edition-snapshot-source.js";
 import { readShopCustomerContact } from "./resolve-shop-user-email.js";
 
 function deliveryAddressFromOrder(
@@ -72,10 +75,23 @@ function parseFulfilmentStatus(value: string): ShopFulfilmentStatus {
 /** Statuses in which a paid order still holds its editions. */
 const HOLDING_STATUSES: ReadonlySet<ShopOrderStatus> = new Set(["paid", "partially_refunded"]);
 
-export type LineRow = Omit<OrderLineRecord, "editionNumber"> & {
+/** What a line needs to describe its print once the order's state is known. */
+export type LineEditionBasis = {
+  /** The run and facts kept at payment; null before payment and on older orders. */
+  snapshot: unknown;
+  /** Today's run and facts, read only for a print line with no snapshot. */
+  live: EditionFactsSnapshot | undefined;
+  proofNumber: number | null;
+};
+
+export type LineRow = Omit<
+  OrderLineRecord,
+  "editionNumber" | "editionSummary" | "editionInvoiceDetail"
+> & {
   orderId: string;
   editionNumber: number | null;
   releasedAt: Date | null;
+  editionBasis: LineEditionBasis;
 };
 
 export type OrderExtras = {
@@ -86,22 +102,28 @@ export type OrderExtras = {
 };
 
 /**
- * An edition number is the shopper's only while the order is paid and still holds that edition:
- * the line was not released and has not been refunded in full. Anything else shows no number.
+ * A print is the shopper's only while the order is paid and still holds it: the line was not
+ * released and has not been refunded in full. Only then is its number theirs to be shown.
  */
+export function holdsPrint(
+  status: ShopOrderStatus,
+  line: Pick<LineRow, "orderLineId" | "releasedAt" | "unitPricePence">,
+  refunds: OrderExtras["refunds"],
+): boolean {
+  if (line.releasedAt !== null || !HOLDING_STATUSES.has(status)) return false;
+  const refundedOnLine = refunds
+    .filter((refund) => refund.status === "succeeded" && refund.orderLineId === line.orderLineId)
+    .reduce((sum, refund) => sum + refund.amountPence, 0);
+  return !(refundedOnLine >= line.unitPricePence && line.unitPricePence > 0);
+}
+
 export function visibleEditionNumber(
   status: ShopOrderStatus,
   line: LineRow,
   refunds: OrderExtras["refunds"],
 ): number | null {
-  if (line.editionNumber === null || line.releasedAt !== null) return null;
-  if (!HOLDING_STATUSES.has(status)) return null;
-  const refundedOnLine = refunds
-    .filter((refund) => refund.status === "succeeded" && refund.orderLineId === line.orderLineId)
-    .reduce((sum, refund) => sum + refund.amountPence, 0);
-  return refundedOnLine >= line.unitPricePence && line.unitPricePence > 0
-    ? null
-    : line.editionNumber;
+  if (line.editionNumber === null) return null;
+  return holdsPrint(status, line, refunds) ? line.editionNumber : null;
 }
 
 function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExtras): OrderRecord {
@@ -121,8 +143,19 @@ function orderRowToRecord(order: typeof shopOrder.$inferSelect, extras: OrderExt
       .filter((refund) => refund.status === "succeeded")
       .reduce((sum, refund) => sum + refund.amountPence, 0),
     lines: extras.lines.map((line) => {
-      const { orderId: _order, releasedAt: _released, ...record } = line;
-      return { ...record, editionNumber: visibleEditionNumber(status, line, extras.refunds) };
+      const { orderId: _order, releasedAt: _released, editionBasis, ...record } = line;
+      const holds = holdsPrint(status, line, extras.refunds);
+      const described = describeOrderLineEdition({
+        ...editionBasis,
+        holdsPrint: holds,
+        editionNumber: line.editionNumber,
+      });
+      return {
+        ...record,
+        editionNumber: holds ? line.editionNumber : null,
+        editionSummary: described?.summary ?? null,
+        editionInvoiceDetail: described?.invoiceDetail ?? null,
+      };
     }),
     createdAt: order.createdAt,
     paidAt: order.paidAt,
@@ -157,6 +190,9 @@ async function fetchLinesByOrderIds(
       variantSku: shopProductVariant.sku,
       editionNumber: shopOrderLine.editionNumber,
       editionSize,
+      artworkId: shopOrderLine.artworkId,
+      editionSnapshot: shopOrderLine.editionFactsSnapshot,
+      proofNumber: shopEdition.proofNumber,
       unitPricePence: shopOrderLine.unitPricePence,
       vatRateBp: shopOrderLine.vatRateBp,
       vatPence: shopOrderLine.vatPence,
@@ -165,6 +201,7 @@ async function fetchLinesByOrderIds(
       createdAt: shopOrderLine.createdAt,
     })
     .from(shopOrderLine)
+    .leftJoin(shopEdition, eq(shopOrderLine.editionId, shopEdition.id))
     .leftJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
     .leftJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
     .leftJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
@@ -172,13 +209,33 @@ async function fetchLinesByOrderIds(
     .leftJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
     .where(inArray(shopOrderLine.orderId, orderIds))
     .orderBy(shopOrderLine.createdAt, shopOrderLine.id);
+  // Today's facts are read only for print lines that were not snapshotted at payment.
+  const live = await liveEditionSnapshots(
+    db,
+    lineRows.flatMap((row) =>
+      row.artworkId && row.editionSnapshot === null && row.productVariantId === null
+        ? [row.artworkId]
+        : [],
+    ),
+  );
   const linesByOrder = new Map<string, LineRow[]>();
-  for (const { createdAt: _created, ...line } of lineRows) {
+  for (const {
+    createdAt: _created,
+    artworkId,
+    editionSnapshot,
+    proofNumber,
+    ...line
+  } of lineRows) {
     const bucket = linesByOrder.get(line.orderId) ?? [];
     bucket.push({
       ...line,
       artistName: line.artistName?.trim() || null,
       editionSize: line.editionSize === null ? null : Number(line.editionSize),
+      editionBasis: {
+        snapshot: editionSnapshot,
+        live: artworkId ? live.get(artworkId) : undefined,
+        proofNumber,
+      },
     });
     linesByOrder.set(line.orderId, bucket);
   }

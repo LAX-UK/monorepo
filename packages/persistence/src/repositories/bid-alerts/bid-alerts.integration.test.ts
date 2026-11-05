@@ -23,9 +23,16 @@ const HAS_DB = Boolean(url);
 const db = HAS_DB ? createDb(url!) : (null as never);
 
 async function clean() {
-  await db.execute(
-    sql`TRUNCATE bid_alert_match, bid_alert_digest, bid_alert_topic, bid_alert_subscriber, bid_alert_announcement CASCADE`,
-  );
+  // Plain deletes, not TRUNCATE ... CASCADE: the cascade reaches shared tables other tests use.
+  for (const table of [
+    "bid_alert_match",
+    "bid_alert_digest",
+    "bid_alert_topic",
+    "bid_alert_announcement",
+    "bid_alert_subscriber",
+  ]) {
+    await db.execute(sql.raw(`DELETE FROM ${table}`));
+  }
 }
 
 async function createStores() {

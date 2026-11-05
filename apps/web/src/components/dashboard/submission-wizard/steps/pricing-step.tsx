@@ -14,7 +14,7 @@ import { Textarea } from "@auction/ui/components/textarea";
 
 export function PricingStep({ form }: StepProps) {
   return (
-    <div className="space-y-6" data-testid="submission-wizard-step-pricing">
+    <div className="space-y-6">
       <div className="grid gap-6 sm:grid-cols-2">
         <FormField
           control={form.control}

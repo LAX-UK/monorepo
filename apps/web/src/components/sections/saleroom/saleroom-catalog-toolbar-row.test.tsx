@@ -16,6 +16,7 @@ const baseProps = {
   countLabel: "24 lots",
   resultCountLabel: "Show 24 lots",
   controls: { toolbar: true, search: true },
+  statusCounts: null,
 };
 
 describe("SaleroomCatalogToolbarRow", () => {

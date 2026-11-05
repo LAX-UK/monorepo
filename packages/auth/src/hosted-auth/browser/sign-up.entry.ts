@@ -1,11 +1,12 @@
 import { showPasswordBreached } from "./password-breached.js";
+import { signUpLegalAcceptanceFields } from "./sign-up-legal-acceptance.js";
 import { signUpOutcome } from "./sign-up-outcome.js";
 import { bindSocialCallbackError, bindSocialSignIn } from "./social-sign-in.js";
 import { hostedAuth, inputValue, submitButton } from "./window-auth.js";
 
 const auth = hostedAuth();
 bindSocialCallbackError(auth);
-bindSocialSignIn(auth);
+bindSocialSignIn(auth, signUpLegalAcceptanceFields);
 const form = document.getElementById("signup-form");
 if (!(form instanceof HTMLFormElement)) {
   throw new Error("hosted sign-up form missing");
@@ -22,6 +23,7 @@ form.addEventListener("submit", async (event) => {
       name: inputValue("name").trim(),
       email: inputValue("email").trim(),
       password: inputValue("password"),
+      ...signUpLegalAcceptanceFields(),
     });
     if (response.status === 429 || response.status >= 500) {
       auth.reportFailure({ response, data }, "other", auth.GENERIC_REGISTER);

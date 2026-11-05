@@ -1,3 +1,4 @@
+import { pinClock } from "@/test/pin-clock";
 import type { AdminGuestErasureState } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
@@ -18,6 +19,8 @@ const blocked = (overrides: Partial<AdminGuestErasureState>): AdminGuestErasureS
   ...overrides,
 });
 
+pinClock();
+
 describe("guest erasure view model", () => {
   it("offers erasure only on a guest's own order to people who may erase", () => {
     const guest = { canErase: true, buyerIsGuest: true, guestCustomerId: "g-1" };
@@ -34,7 +37,7 @@ describe("guest erasure view model", () => {
 
   it("keeps a quiet, dated line once the guest is erased", () => {
     expect(guestErasedLine("2026-10-30T12:00:00.000Z")).toBe(
-      "Guest data erased on 30 Oct 2026 by LAX",
+      "Guest data erased on Fri 30 Oct by LAX",
     );
   });
 
@@ -56,7 +59,7 @@ describe("guest erasure view model", () => {
         blocked({ blockedReason: "cancellation_window", availableFrom: "2026-11-11T12:00:00Z" }),
         "LAX-S-10018",
       ),
-    ).toBe("Available after 11 Nov 2026");
+    ).toBe("Available after Wed 11 Nov");
     expect(guestErasureMenuReason(blocked({ allowed: true, blockedReason: null }), "x")).toBeNull();
   });
 });

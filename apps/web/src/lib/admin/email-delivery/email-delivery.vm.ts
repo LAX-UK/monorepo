@@ -65,7 +65,7 @@ function blockVm(block: EmailBlockView, who: string, viewerCanLift: boolean): Em
     reason: block.reason,
     title: copy.title,
     tone: block.stopsEssentialEmail ? "danger" : "info",
-    body: `Since ${formatStaffDateTime(block.since, { zoneLabel: true })}. ${copy.body(who)}`,
+    body: `Since ${formatStaffDateTime(block.since)}. ${copy.body(who)}`,
     detail: block.providerDetail?.trim() || null,
     lift: liftVm(block, viewerCanLift),
   };
@@ -73,7 +73,7 @@ function blockVm(block: EmailBlockView, who: string, viewerCanLift: boolean): Em
 
 function factsFor(view: PersonEmailDeliveryView): EmailFact[] {
   const delivered = view.lastDeliveredAt
-    ? `Last delivered ${formatStaffDateTime(view.lastDeliveredAt, { zoneLabel: true })}`
+    ? `Last delivered ${formatStaffDateTime(view.lastDeliveredAt)}`
     : "No delivery report yet";
   const block = view.block;
   const facts: EmailFact[] = [];
@@ -130,7 +130,7 @@ export function buildEmailDeliveryPanelVm({
       label: send.label,
       necessity: send.essential ? "Essential" : "Optional",
       product: PRODUCT_LABEL[send.product],
-      at: formatStaffDateTime(send.sentAt ?? send.createdAt, { zoneLabel: true }),
+      at: formatStaffDateTime(send.sentAt ?? send.createdAt),
       status: SEND_STATUS[send.status],
       statusKey: send.status,
       events: send.events.map((event, index) => ({

@@ -108,6 +108,8 @@ export const sale = pgTable(
     locationPostcode: text("location_postcode"),
     locationCountry: text("location_country"),
     status: saleStatusEnum("status").notNull().default("draft"),
+    /** Internal test sale: never public, never announced. Staff-only toggle. */
+    isTest: boolean("is_test").notNull().default(false),
     startTime: timestamp("start_time", { mode: "date", withTimezone: true }).notNull(),
     endTime: timestamp("end_time", { mode: "date", withTimezone: true }).notNull(),
     previewStartTime: timestamp("preview_start_time", {

@@ -153,18 +153,15 @@ describe("MarketingFilterLinkGroups", () => {
       {
         id: "show",
         title: "Show",
-        links: [
-          { label: "All artists", href: "/artists", active: false },
-          { label: "Featured", href: "/artists?featured=1", active: true, count: 4 },
-        ],
+        links: [{ label: "Featured", href: "/artists", active: true, count: 4 }],
       },
     ];
     const { rerender } = render(
       <MarketingFilterLinkGroups groups={groups} clearHref="/artists" hasFilters />,
     );
-    expect(screen.getByRole("link", { name: "Featured 4" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    expect(screen.getByRole("checkbox", { name: "Featured , 4" })).toHaveAttribute(
+      "aria-checked",
+      "true",
     );
     expect(screen.getByRole("link", { name: "Clear all filters" })).toBeInTheDocument();
     rerender(<MarketingFilterLinkGroups groups={groups} clearHref="/artists" hasFilters={false} />);

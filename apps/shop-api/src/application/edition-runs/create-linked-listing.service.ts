@@ -145,6 +145,9 @@ export function createLinkedListingService(deps: {
                 actorSubjectId: command.actorSubjectId,
               });
             }
+            if (command.proofType === "hc") {
+              await tx.prints.recordHorsCommerceApproval(listing.artworkId, command.actorSubjectId);
+            }
             await tx.audit.append({
               actorSubjectId: command.actorSubjectId,
               capability: command.proofType === "hc" ? HORS_COMMERCE_CAPABILITY : CAPABILITY,

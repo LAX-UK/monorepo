@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { sampleOrderLine } from "../test-support/order-record.fixture.js";
 import {
   type LineRow,
+  holdsPrint,
   parseOrderStatus,
   visibleEditionNumber,
 } from "./drizzle-order.repository.js";
@@ -28,10 +29,16 @@ describe("parseOrderStatus", () => {
 });
 
 describe("visibleEditionNumber", () => {
+  const {
+    editionSummary: _summary,
+    editionInvoiceDetail: _detail,
+    ...record
+  } = sampleOrderLine({ editionNumber: 21 });
   const line: LineRow = {
-    ...sampleOrderLine({ editionNumber: 21 }),
+    ...record,
     orderId: "550e8400-e29b-41d4-a716-846655440001",
     releasedAt: null,
+    editionBasis: { snapshot: null, live: undefined, proofNumber: null },
   };
 
   it("names the edition on a paid order that still holds it", () => {
@@ -45,6 +52,13 @@ describe("visibleEditionNumber", () => {
       expect(visibleEditionNumber(status, line, [])).toBeNull();
     },
   );
+
+  it("holds an unnumbered print on a paid order, so a proof keeps its number", () => {
+    const proof = { ...line, editionNumber: null };
+    expect(visibleEditionNumber("paid", proof, [])).toBeNull();
+    expect(holdsPrint("paid", proof, [])).toBe(true);
+    expect(holdsPrint("cancelled", proof, [])).toBe(false);
+  });
 
   it("names no edition once the line was released or refunded in full", () => {
     expect(visibleEditionNumber("paid", { ...line, releasedAt: new Date() }, [])).toBeNull();

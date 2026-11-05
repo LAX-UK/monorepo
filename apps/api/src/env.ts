@@ -1,6 +1,11 @@
 import { DEV_ALERT_LINK_SECRET, isUsableAlertLinkSecret } from "@auction/alerts";
 import { legalEntityFor } from "@auction/branding";
 import { resolveStrictBidEligibilityRollout } from "@auction/domain";
+import {
+  DEFAULT_CLOUDFLARE_PROXY_CIDRS,
+  DEFAULT_TRUSTED_PROXY_CIDRS,
+  parseCidrList,
+} from "@auction/http-headers/client-ip";
 import { parseOptionalBooleanFlag } from "@auction/validators";
 import { z } from "zod";
 
@@ -55,6 +60,13 @@ const envSchema = z
       z.string().min(32).optional(),
     ),
     /**
+     * Moving originals between lax.art and LAX Bid: LAX Shop's API address and the credential pair
+     * both products hold. Without them the move answers that it is not set up; nothing else changes.
+     */
+    SHOP_API_INTERNAL_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    INVENTORY_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    INVENTORY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
+    /**
      * The staff-assisted email change's credential for Identity (scope `staff_email_change`),
      * separate from the lifecycle credential so neither can do the other's work. Without it the
      * change answers 502.
@@ -78,6 +90,8 @@ const envSchema = z
       z.string().min(32).optional(),
     ),
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+    /** Where LAX Account lives; the "manage your alerts" link in alert emails goes there. */
+    LAX_ACCOUNT_PUBLIC_ORIGIN: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /**
      * Legal entity that owns Bid records in the cross-product portfolio. Defaults to Bid's
      * operator from `legalEntityFor("bid")`; override it only if the company changes.
@@ -297,6 +311,54 @@ const envSchema = z
      * event-driven re-validation (material exposure increase always re-triggers).
      */
     SOF_APPROVAL_VALIDITY_DAYS: z.coerce.number().int().positive().default(365),
+    /**
+     * Private sales. Every value is optional: while one is missing, the step that needs it stays
+     * blocked on the deal rather than guessing. See `private-sale-policy.config.ts`.
+     * Seller's commission for new deals, in basis points (1500 is 15%).
+     */
+    PRIVATE_SALE_COMMISSION_BPS: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(0).max(10_000).optional(),
+    ),
+    /** Buyer's fee on new deals, in basis points. None unless set. */
+    PRIVATE_SALE_BUYER_FEE_BPS: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(0).max(10_000).optional(),
+    ),
+    /** The accountant's VAT treatments, as `code:Label` pairs separated by semicolons. */
+    PRIVATE_SALE_VAT_TREATMENTS: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Days from the invoice to payment due. */
+    PRIVATE_SALE_PAYMENT_DUE_DAYS: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(1).max(365).optional(),
+    ),
+    /** Days from payment to collection due. */
+    PRIVATE_SALE_COLLECTION_DUE_DAYS: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(1).max(365).optional(),
+    ),
+    /** The private sale terms version both sides accept. */
+    PRIVATE_SALE_TERMS_VERSION: z.preprocess(emptyToUndefined, z.string().max(40).optional()),
+    /**
+     * Proxies whose forwarded client-address headers are believed (comma-separated CIDRs). A
+     * request from any other peer is keyed on the peer itself.
+     */
+    API_TRUSTED_PROXY_CIDRS: z.preprocess(
+      (val) =>
+        parseCidrList(typeof val === "string" ? val : undefined, DEFAULT_TRUSTED_PROXY_CIDRS),
+      z.array(z.string().min(1)),
+    ),
+    /** Cloudflare edge ranges; defaults to Cloudflare's published list. */
+    API_TRUSTED_CLOUDFLARE_PROXY_CIDRS: z.preprocess(
+      (val) =>
+        parseCidrList(typeof val === "string" ? val : undefined, DEFAULT_CLOUDFLARE_PROXY_CIDRS),
+      z.array(z.string().min(1)),
+    ),
+    /**
+     * Shared with the web servers. When a request carries it in `x-lax-client-ip-token`, the
+     * visitor address in `x-lax-client-ip` is used. Unset: that header is ignored.
+     */
+    API_SSR_CLIENT_IP_TOKEN: z.preprocess(trimEmptyToUndefined, z.string().min(24).optional()),
     /** Shared secret for worker → API internal cron routes (`X-Cron-Secret` header).
      * Optional until bulk jobs are enabled in deploy.
      */

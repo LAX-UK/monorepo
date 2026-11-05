@@ -346,7 +346,7 @@ function AuditEventPanel({ row, onClose }: { row: AuditRow | null; onClose: () =
       }}
       size="lg"
       title={row ? auditActionLabel(row.action) : "Event"}
-      description={row ? formatStaffDateTime(row.createdAt, { zoneLabel: true }) : undefined}
+      description={row ? formatStaffDateTime(row.createdAt) : undefined}
       footer={
         row && href ? (
           <StaffButton asChild variant="primary" icon={<ArrowUpRight aria-hidden />}>

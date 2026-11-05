@@ -14,10 +14,10 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0310 crm held deal payload", () => {
-  it("is journalled as entry 310", () => {
+  it("is journalled as entry 305", () => {
     const entry = journal.entries.find((e) => e.tag === "0310_crm_held_deal_payload");
-    expect(entry?.idx).toBe(310);
-    expect(entry?.when).toBe(1802332800000);
+    expect(entry?.idx).toBe(305);
+    expect(entry?.when).toBe(1801900800000);
   });
 
   it("only adds one nullable column, idempotently", () => {

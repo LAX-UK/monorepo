@@ -75,6 +75,8 @@ export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput
         line.lotNumber != null ? `Lot #${line.lotNumber}` : `Lot ${line.paymentId.slice(0, 8)}`;
       const buyer = line.buyerName?.trim() || "—";
       desc = `${lotRef} — ${line.lotTitle} — buyer: ${buyer}`;
+    } else if (line.dealReference) {
+      desc = `Private sale ${line.dealReference}`;
     } else if (kind === "adjustment") {
       desc = `Adjustment${line.note ? `: ${line.note}` : ""}`;
     } else {

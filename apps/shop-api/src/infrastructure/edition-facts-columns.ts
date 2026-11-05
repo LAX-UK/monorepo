@@ -7,7 +7,16 @@ import {
 } from "@auction/shop-domain";
 
 type FactsRow = typeof shopEditionFacts.$inferSelect;
-export type FactsColumns = Omit<FactsRow, "artworkId" | "createdAt" | "updatedAt">;
+/** The facts a run's staff confirm; the certificate authority is recorded on its own. */
+export type FactsColumns = Omit<
+  FactsRow,
+  | "artworkId"
+  | "createdAt"
+  | "updatedAt"
+  | "certificateAuthorityReference"
+  | "certificateAuthorityRecordedBy"
+  | "certificateAuthorityRecordedAt"
+>;
 
 type SignatureColumns = Pick<FactsColumns, "signatureKind" | "signatureMedium" | "signaturePlace">;
 type CertificateColumns = Omit<

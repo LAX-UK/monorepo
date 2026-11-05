@@ -275,7 +275,7 @@ export function LotFulfilmentQuickView({
               { label: "Carrier and tracking", value: row.shipping ?? "Not shipped" },
               {
                 label: "Last change",
-                value: formatStaffDateTime(row.updatedAt, { zoneLabel: true }),
+                value: formatStaffDateTime(row.updatedAt),
               },
               {
                 label: "Sale",

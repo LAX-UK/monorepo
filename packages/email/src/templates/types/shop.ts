@@ -9,6 +9,7 @@ const names = [
   "shop-release-alert",
   "shop-zoho-dead-letter-notice",
   "shop-production-started",
+  "shop-print-swapped",
   "shop-dispatch-notice",
   "shop-checkout-ops-alert",
   "shop-refund-issued",
@@ -95,6 +96,15 @@ type ShopTemplateVars = {
     artworkTitle: string;
     /** "Edition 3", "Proof 1" or "Open edition". */
     editionLabel: string;
+  };
+  "shop-print-swapped": {
+    /** "LAX-S-10482". */
+    orderReference: string;
+    artworkTitle: string;
+    /** The print the buyer was first told about: "7/24". */
+    previousLabel: string;
+    /** The print being sent instead: "9/24". */
+    newLabel: string;
   };
   "shop-dispatch-notice": {
     /** "LAX-S-10482"; absent on notices queued before orders had references. */
@@ -198,6 +208,7 @@ export const shopTemplates = {
     "shop-release-alert": "snapshot",
     "shop-zoho-dead-letter-notice": "snapshot",
     "shop-production-started": "snapshot",
+    "shop-print-swapped": "snapshot",
     "shop-dispatch-notice": "snapshot",
     "shop-checkout-ops-alert": "snapshot",
     "shop-refund-issued": "snapshot",

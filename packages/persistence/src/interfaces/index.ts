@@ -1063,6 +1063,15 @@ export type {
   PurchaseProblemRecord,
 } from "./purchase-problem.repository.js";
 export type {
+  IPurchaseProblemDeskRepository,
+  IPurchaseProblemNoteRepository,
+  PurchaseProblemChange,
+  PurchaseProblemDeskQuery,
+  PurchaseProblemDeskRecord,
+  PurchaseProblemNoteRecord,
+  PurchaseProblemStatusCounts,
+} from "./purchase-problem-desk.repository.js";
+export type {
   AccountSearchCriteria,
   AccountSearchHits,
   BidSearchHit,
@@ -1145,6 +1154,14 @@ export type {
   IConsignmentStaffDirectory,
 } from "./consignment-staff-directory.reader.js";
 export type {
+  ClaimDealPaymentResult,
+  IPrivateSaleDealFinanceStore,
+  IPrivateSaleDealPaymentReader,
+  IPrivateSaleDealPaymentWriter,
+  IPrivateSaleDealPayoutStore,
+  NewPrivateSaleDealPayment,
+} from "./private-sale-deal-payment.repository.js";
+export type {
   ClaimPaymentGroupInput,
   ClaimPaymentGroupResult,
   IPaySeveralInvoiceFlagsReader,
@@ -1179,6 +1196,11 @@ export type {
   ApplyZohoChangeResult,
   ConflictCursor,
   CreateRegisterEntryResult,
+  AuctionOfferDraftLot,
+  AuctionOfferSale,
+  IArtworkMoveHistory,
+  IAuctionOfferReader,
+  RecordMoveConfirmedInput,
   ILotRegisterLinkReader,
   LotRegisterLink,
   IArtworkRegisterReader,
@@ -1214,6 +1236,10 @@ export type {
 } from "./zoho-artwork-sync.js";
 
 export type {
+  BidAlertLotNotice,
+  IBidAlertLotNoticeWriter,
+} from "./bid-alert-lot-notice.js";
+export type {
   AnnouncedSale,
   IBidAlertSaleNoticeWriter,
   IBidAlertSaleReader,
@@ -1227,3 +1253,12 @@ export {
   type PaymentReminderCandidate,
   type RecordBuyerDefaultInput,
 } from "./buyer-default.js";
+export type {
+  IPrivateSaleDealReader,
+  IPrivateSaleDealWriter,
+  IPrivateSaleDocumentWriter,
+  NewPrivateSaleDeal,
+  NewPrivateSaleDocument,
+  PrivateSaleDealTermsPatch,
+  PrivateSaleDealWriteResult,
+} from "./private-sale-deal.repository.js";

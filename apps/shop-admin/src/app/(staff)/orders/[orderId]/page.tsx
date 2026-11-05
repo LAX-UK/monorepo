@@ -3,7 +3,11 @@ import { OrderDetailView, orderPermissions } from "@/components/orders/order-det
 import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
 import { shouldLoadGuestErasure } from "@/server/domain/guest-erasure.vm";
 import { orderNumber } from "@/server/domain/order-list.vm";
-import type { AdminGuestErasureState, AdminOrderDetail } from "@auction/shop-contracts";
+import type {
+  AdminGuestErasureState,
+  AdminOrderDetail,
+  AdminPickAndPack,
+} from "@auction/shop-contracts";
 import { notFound, redirect } from "next/navigation";
 
 export async function generateMetadata({ params }: { params: Promise<{ orderId: string }> }) {
@@ -43,9 +47,14 @@ export default async function OrderDetailPage({
         `guests/${erasureTarget.guestCustomerId}/erasure`,
       )
     : null;
+  // The pick list is extra to the order: a failed read leaves the panel out, not the page.
+  const pack = detail.lines.some((line) => line.editionId)
+    ? await fetchAdminJson<AdminPickAndPack>(`orders/${orderId}/pick-and-pack`)
+    : null;
   return (
     <OrderDetailView
       detail={detail}
+      pickAndPack={pack?.status === "ok" ? pack.data : null}
       permissions={permissions}
       guestErasure={erasure?.status === "ok" ? erasure.data : null}
     />

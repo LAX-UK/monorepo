@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import { type Database, closeDb, createDb } from "@auction/db";
 import {
@@ -8,6 +9,8 @@ import {
 import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import type { AdminRoutesDeps } from "./admin-route-deps.js";
+import { OriginalMoveService } from "./application/admin/original-move.service.js";
+import { ReopenArtListingService } from "./application/admin/reopen-art-listing.service.js";
 import { createAlertingPortalFavorites } from "./application/alerts/alerting-portal-favorites.js";
 import type { ArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
 import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
@@ -21,6 +24,7 @@ import {
   createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
+import { createAccountEmailAlertHandlers } from "./application/handlers/account-email-alerts.handler.js";
 import { createCountArtworkFacetsHandler } from "./application/handlers/count-artwork-facets.handler.js";
 import { createEditionAlertHandlers } from "./application/handlers/edition-alerts.handler.js";
 import { createGetArtworkInterestHandler } from "./application/handlers/get-artwork-interest.handler.js";
@@ -53,6 +57,7 @@ import type {
   ReleaseStockHoldCommand,
 } from "./application/ports/stock-hold.writer.js";
 import type { RecordThirdPartySaleCommand } from "./application/ports/third-party-sale.writer.js";
+import { createPrintFulfilmentServices } from "./application/print-fulfilment/print-fulfilment-services.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
 import { createSavedViewService } from "./application/saved-view.service.js";
 import { SubjectExportService } from "./application/subject-export/subject-export.service.js";
@@ -89,6 +94,7 @@ import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/dr
 import { createDrizzleMerchandiseCatalogueWriter } from "./infrastructure/drizzle-merchandise-catalogue.writer.js";
 import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
 import { createDrizzleOrderProblemReportWriter } from "./infrastructure/drizzle-order-problem-report.writer.js";
+import { createDrizzleOriginalMoveReader } from "./infrastructure/drizzle-original-move.reader.js";
 import { createDrizzlePortalArtistRepository } from "./infrastructure/drizzle-portal-artist.repository.js";
 import { createDrizzlePortalFavoritesRepository } from "./infrastructure/drizzle-portal-favorites.repository.js";
 import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
@@ -139,9 +145,14 @@ import {
   createHttpArtCacheInvalidator,
   noopArtCacheInvalidator,
 } from "./infrastructure/http-art-cache-invalidator.js";
+import { createHttpAuctionOfferGateway } from "./infrastructure/http-auction-offer.gateway.js";
 import { idempotentAdminCommand } from "./infrastructure/idempotent-admin-command.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createDrizzleOriginalSaleWriter } from "./infrastructure/phase/drizzle-original-sale.writer.js";
+import {
+  createDrizzlePickListReader,
+  createDrizzlePrintFulfilmentUnitOfWork,
+} from "./infrastructure/print-fulfilment/drizzle-print-fulfilment.unit-of-work.js";
 import { createRedisFixedWindowCounter } from "./infrastructure/redis-fixed-window-counter.js";
 import { createRegisterOriginalOffers } from "./infrastructure/register-original-offers.js";
 import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
@@ -162,6 +173,7 @@ import {
   unconfiguredSubjectExportStorage,
 } from "./infrastructure/subject-export/subject-export-file-signer.js";
 import type { InterestRoutesDeps } from "./interest-route-deps.js";
+import type { InventoryRouteDeps } from "./inventory-route-deps.js";
 import type { MerchandiseRoutesDeps } from "./merchandise-route-deps.js";
 import type { PortalRoutesDeps } from "./portal-route-deps.js";
 import { resolveShopMediaPublicUrl } from "./presenters/resolve-shop-media-url.js";
@@ -188,6 +200,7 @@ export type ShopApiAppDeps = {
   admin: AdminRoutesDeps;
   portal: PortalRoutesDeps;
   identityDeletion: IdentityDeletionRouteDeps;
+  inventory: InventoryRouteDeps;
   identitySubjectExport: IdentitySubjectExportRouteDeps;
   payeeConnect: ShopPayeeConnectPort;
   stripeConnectWebhook: StripeConnectWebhookDeps;
@@ -404,6 +417,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     uow: createDrizzleEditionRunUnitOfWork(shopUow),
     clock: { now: () => new Date() },
   });
+  const printFulfilment = createPrintFulfilmentServices({
+    uow: createDrizzlePrintFulfilmentUnitOfWork(shopUow),
+    pickList: createDrizzlePickListReader(db),
+    staffNames: createDrizzleStaffNameReader(db),
+    certificateSettings: { laxCertificatesEnabled: () => env.SHOP_LAX_CERTIFICATES_ENABLED },
+    clock: { now: () => new Date() },
+  });
   const artworkCatalogue = createDrizzleArtworkCatalogueWriter(shopUow, {
     resolveMediaUrl,
     editionRuns: editionRuns.recorder,
@@ -412,6 +432,35 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     offers: originalOffers,
   });
   const artistCatalogue = createDrizzleArtistCatalogueWriter(shopUow);
+  const originalMoveReader = createDrizzleOriginalMoveReader(db);
+  const artworkRegister = new DrizzleArtworkRegisterRepository(db);
+  const inventoryMoves = new OriginalMoveService({
+    originals: originalMoveReader,
+    register: artworkRegister,
+    history: artworkRegister,
+    auction: createHttpAuctionOfferGateway(env),
+    withdrawFromLaxArt: async ({ artworkId, actorSubjectId }) => {
+      await artworkCatalogue.setVisibility({
+        artworkId,
+        action: "unpublish",
+        actorSubjectId,
+        idempotencyKey: randomUUID(),
+      });
+    },
+    resolveImageUrl: resolveMediaUrl,
+  });
+  const reopenArtListing = new ReopenArtListingService({
+    originals: originalMoveReader,
+    register: artworkRegister,
+    restoreListing: async ({ artworkId, actor }) => {
+      await artworkCatalogue.setVisibility({
+        artworkId,
+        action: "restore",
+        actorSubjectId: actor,
+        idempotencyKey: randomUUID(),
+      });
+    },
+  });
   const homeFeatures = createHomeFeaturesService({
     uow: createDrizzleHomeFeaturesUnitOfWork(shopUow, { resolveMediaUrl }),
     lists: createDrizzleHomeFeatureListReader(db, { resolveMediaUrl }),
@@ -596,7 +645,9 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         createMerchandiseProduct,
         merchandiseCatalogue,
         artworkCatalogue,
+        inventoryMoves,
         editionRuns,
+        printFulfilment,
         artistCatalogue,
         artCache,
         homeFeatures,
@@ -623,6 +674,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         machine: {
           clientId: env.IDENTITY_MACHINE_CLIENT_ID,
           clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
+        },
+      },
+      inventory: {
+        reopen: reopenArtListing,
+        machine: {
+          clientId: env.INVENTORY_MACHINE_CLIENT_ID,
+          clientSecret: env.INVENTORY_MACHINE_CLIENT_SECRET,
         },
       },
       identitySubjectExport: {
@@ -670,6 +728,11 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         editionAlertRateLimiter,
         releaseAlerts,
         releaseAlertRateLimiter,
+        accountEmailAlerts: createAccountEmailAlertHandlers({
+          preferences: shopAlerts.preferences,
+          countWaitingEditions: async (identitySubjectId) =>
+            (await editionAlerts.listForSubject(identitySubjectId)).length,
+        }),
       },
       editorial,
     },

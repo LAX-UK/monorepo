@@ -12,7 +12,6 @@ import {
   shopOrder,
   shopParty,
   shopPartyInvite,
-  shopReleaseAlertSubscription,
   shopSavedArtwork,
   shopUserProfile,
 } from "@auction/db/schema";
@@ -290,16 +289,10 @@ export const SHOP_ANONYMISATION_RULES: readonly ShopAnonymisationRule[] = [
   },
   // Basket lines are removed by the basket's cascade; the count is the baskets.
   deleteBySubject("shop_basket", shopBasket, shopBasket.identitySubjectId),
-  deleteBySubject(
-    "shop_release_alert_subscription",
-    shopReleaseAlertSubscription,
-    shopReleaseAlertSubscription.identitySubjectId,
-  ),
   deleteBySubject("shop_identity_session", shopIdentitySession, shopIdentitySession.subjectId),
   deleteBySubject("shop_saved_artwork", shopSavedArtwork, shopSavedArtwork.identitySubjectId),
   deleteBySubject("shop_followed_artist", shopFollowedArtist, shopFollowedArtist.identitySubjectId),
   // Alert sign-ups (Shop releases, back in stock, lax.art followed artists) hold the person's
-  // address and consent record; topics, matches and digests go with the row by cascade. The
-  // release list the engine replaced is cleared above until its table is dropped.
+  // address and consent record; topics, matches and digests go with the row by cascade.
   deleteBySubject("shop_alert_subscriber", shopAlertSubscriber, shopAlertSubscriber.subjectId),
 ];

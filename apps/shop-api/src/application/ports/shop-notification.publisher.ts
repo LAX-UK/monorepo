@@ -196,6 +196,21 @@ export type ShopNotificationPublisher = {
     },
   ): Promise<void>;
 
+  /** The buyer's notice that the numbered print they were told about has been replaced. */
+  queuePrintSwapped(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      identitySubjectId: string;
+      /** A guest buyer's address, used when the identity has no account email. */
+      fallbackEmail: string | null;
+      orderReference: string;
+      artworkTitle: string;
+      previousLabel: string;
+      newLabel: string;
+    },
+  ): Promise<void>;
+
   /**
    * Tells the seller of a returned print that staff have received it, what it means for their
    * stock and for their payout. Carries nothing about the buyer.

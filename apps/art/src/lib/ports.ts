@@ -30,6 +30,7 @@ import type {
   PublicArtistDetail,
   PublicArtistList,
   PublicArtworkDetail,
+  PublicArtworkFacetCounts,
   PublicArtworkList,
   PublicArtworkObjectTypeFacetList,
   PublicCategoryList,
@@ -74,6 +75,8 @@ export type ArtCataloguePort = {
   listArtists(query: ArtArtistListQuery): Promise<PublicArtistList>;
   getArtist(slug: string): Promise<PublicArtistDetail | null>;
   listCategories(query?: { limit?: number }): Promise<PublicCategoryList>;
+  /** Works behind each filter option, with the other filters applied (sort and paging are ignored). */
+  countArtworkFacets(query: ArtArtworkListQuery): Promise<PublicArtworkFacetCounts>;
   /** Medium tiles: object types with works on lax.art, each with a cover image. */
   listArtworkObjectTypes(): Promise<PublicArtworkObjectTypeFacetList>;
   /** LAX Shop editions made from the original with this slug. */
@@ -90,6 +93,8 @@ export type ArtViewerPort = {
 export type ArtFavoritesReadPort = {
   savedArtworkSlugs(): Promise<ReadonlySet<string>>;
   followedArtistSlugs(): Promise<ReadonlySet<string>>;
+  /** Whether emails about followed artists are on; null when that is not known. */
+  followEmailsOn(): Promise<boolean | null>;
   listSavedArtworks(): Promise<ShopPortalFetchResult<PortalSavedArtwork[]>>;
   listFollowedArtists(): Promise<ShopPortalFetchResult<PortalFollowedArtist[]>>;
 };

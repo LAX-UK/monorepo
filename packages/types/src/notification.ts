@@ -8,6 +8,8 @@ export type UserNotification = {
   submissionId: string | null;
   /** The sale a sale notice is about. */
   saleId?: string | null;
+  /** A page on this site the notice opens when no id says where to go (artist page, search). */
+  linkPath?: string | null;
   /** The account the notification is about; `null` for the person's own personal account. */
   legalEntityId?: string | null;
   read: boolean;
@@ -52,6 +54,10 @@ export type NotificationPreference = {
   paymentInApp: boolean;
   /** A notice in the app when LAX Bid announces a new sale. */
   newSalesInApp: boolean;
+  /** A notice in the app when a followed artist has new lots on sale. */
+  artistAlertsInApp: boolean;
+  /** A notice in the app when new lots match a saved search. */
+  searchAlertsInApp: boolean;
   outbidPush: boolean;
   wonPush: boolean;
   endingSoonPush: boolean;

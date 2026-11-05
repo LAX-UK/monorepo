@@ -1,5 +1,9 @@
 import type { Database } from "@auction/db";
-import type { IPayoutProcessorReader, IPayoutRepository } from "@auction/persistence/interfaces";
+import type {
+  IPayoutProcessorReader,
+  IPayoutRepository,
+  IPrivateSaleDealPayoutStore,
+} from "@auction/persistence/interfaces";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
@@ -43,6 +47,7 @@ import {
 import { runBulkSettlementWithTransfers } from "./payout/payout-bulk-transfer.js";
 import {
   type PayoutServiceDeps,
+  dealPayoutsForTx,
   payoutProcessorReaderForTx,
   payoutRepoForTx,
 } from "./payout/payout-helpers.js";
@@ -60,6 +65,7 @@ export class PayoutService implements IPayoutService {
     repoForTx?: (tx: Database) => IPayoutRepository,
     processorsForTx: (tx: Database) => IPayoutProcessorReader = payoutProcessorReaderForTx,
     problemNotifier?: IPayoutProblemNotifier,
+    dealPayouts?: IPrivateSaleDealPayoutStore,
   ) {
     this.deps = {
       repo,
@@ -70,6 +76,8 @@ export class PayoutService implements IPayoutService {
         repoForTx ?? (transactionRunner ? (tx) => payoutRepoForTx(repo, tx) : () => repo),
       payoutProcessorsForTx: processorsForTx,
       problemNotifier,
+      dealPayouts,
+      dealPayoutsForTx: dealPayouts && transactionRunner ? dealPayoutsForTx : undefined,
     };
   }
 

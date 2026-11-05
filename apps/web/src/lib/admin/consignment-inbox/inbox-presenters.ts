@@ -75,7 +75,10 @@ export function dueWhen(dueAt: Date, now: Date): { prefix: string; text: string 
   if (days <= 0) return { prefix: "Reply by", text: time };
   if (days === 1) return { prefix: "Reply", text: `tomorrow ${time}` };
   if (days < 7) return { prefix: "Reply by", text: `${WEEKDAY.format(dueAt)} ${time}` };
-  return { prefix: "Reply by", text: `${DAY_MONTH.format(dueAt)}, ${time}` };
+  return {
+    prefix: "Reply by",
+    text: `${WEEKDAY.format(dueAt)} ${DAY_MONTH.format(dueAt)}, ${time}`,
+  };
 }
 
 /**
@@ -106,13 +109,9 @@ export function waitingCue(clock: ConsignmentReplyClockView, now: Date): Waiting
   return { kind: "text", label: `${due.prefix} ${due.text}` };
 }
 
-/** The last day of a cover, "30 Nov"; with the year when it is not this one. */
+/** The last day of a cover, "Mon 30 Nov"; with the year when it is not this one. */
 export function coverLastDay(endsAt: string, now: Date = new Date()): string {
-  const day = staffRoleLastDay(endsAt);
-  const thisYear = new Intl.DateTimeFormat("en-GB", { year: "numeric", timeZone: ZONE }).format(
-    now,
-  );
-  return day.endsWith(` ${thisYear}`) ? day.slice(0, -(thisYear.length + 1)) : day;
+  return staffRoleLastDay(endsAt, now);
 }
 
 /** "Covering", or "Covering until 30 Nov" when the cover has an end date. */

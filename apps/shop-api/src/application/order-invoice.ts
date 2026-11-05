@@ -49,6 +49,17 @@ const FULFILMENT_LINE: Record<OrderRecord["fulfilment"], string> = {
   international_quotation: "Delivery outside the UK",
 };
 
+/** The print or SKU under an item: the facts the buyer was given at payment, else the plain edition. */
+function invoiceEditionDetail(line: OrderRecord["lines"][number]): string | null {
+  if (line.editionInvoiceDetail) return line.editionInvoiceDetail;
+  if (line.editionNumber !== null) {
+    return line.editionSize
+      ? `Edition ${line.editionNumber} of ${line.editionSize}`
+      : `Edition ${line.editionNumber}`;
+  }
+  return line.variantSku ? `SKU ${line.variantSku}` : null;
+}
+
 /**
  * The invoice for a paid order. Its number comes from the invoice sequence, issued without gaps
  * when the order was paid; the order reference is shown beside it. The supply date is the payment
@@ -70,14 +81,7 @@ export function buildOrderInvoiceModel(input: {
 
   const rows: InvoiceRow[] = order.lines.map((line) => {
     const title = line.productTitle ?? line.artworkTitle ?? "Item";
-    const edition =
-      line.editionNumber !== null
-        ? line.editionSize
-          ? `Edition ${line.editionNumber} of ${line.editionSize}`
-          : `Edition ${line.editionNumber}`
-        : line.variantSku
-          ? `SKU ${line.variantSku}`
-          : null;
+    const edition = invoiceEditionDetail(line);
     const detail = [line.artistName, edition].filter(Boolean).join(" · ") || null;
     return {
       description: title,
