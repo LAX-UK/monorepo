@@ -14,13 +14,12 @@ type Props = {
 
 /** Three small works from recent sales: what the emails are about, never a large picture. */
 function Thumbnails({ items }: { items: readonly HomeAlertThumbnail[] }) {
-  if (items.length === 0) return null;
   return (
-    <ul className="m-0 flex list-none justify-center gap-2 p-0" data-alerts-thumbnails="">
+    <ul className="m-0 flex list-none gap-2 p-0" data-alerts-thumbnails="">
       {items.map((item) => (
         <li
           key={item.src}
-          className="h-14 w-11 overflow-hidden rounded-lax-control bg-surface-container"
+          className="h-14 w-11 overflow-hidden rounded-lax-control bg-surface-container md:h-[72px] md:w-14"
         >
           <img
             src={item.src}
@@ -36,24 +35,21 @@ function Thumbnails({ items }: { items: readonly HomeAlertThumbnail[] }) {
 }
 
 /**
- * The sale-alerts panel. It is the same panel LAX Shop uses for release alerts (the shared split
- * feature, centred, on the feature tone); only the words, the form and the accent differ.
+ * The sale-alerts panel: the shared split feature in its compact row (the family's prompt
+ * panel, as in LAX Shop), with three recent works at the start. Only the words, the form and
+ * the accent differ between products.
  */
 export function HomeAlertsPanel({ title, body, action, thumbnails }: Props) {
   return (
     <div id={HOME_ALERTS_ANCHOR} className="scroll-mt-[var(--header-height,4rem)] pt-16 md:pt-24">
       <div className={MARKETING_PAGE_SHELL}>
         <MarketingSplitFeature
+          compact
           tone="feature"
-          className="overflow-hidden rounded-lax-card [&>div]:py-10 md:[&>div]:py-14"
-          eyebrow="Sale alerts"
+          className="overflow-hidden rounded-lax-card"
           title={title}
-          body={
-            <div className="flex flex-col items-center gap-5">
-              <Thumbnails items={thumbnails} />
-              <p className="m-0">{body}</p>
-            </div>
-          }
+          body={body}
+          {...(thumbnails.length > 0 ? { leading: <Thumbnails items={thumbnails} /> } : {})}
           action={action}
         />
       </div>

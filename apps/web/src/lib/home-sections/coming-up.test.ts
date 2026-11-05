@@ -28,7 +28,8 @@ describe("buildComingUp", () => {
       meta: "In the room, London · 6 lots",
       action: { label: "Preview" },
     });
-    expect(list?.rows[1]).toMatchObject({ dateMain: "Mar 2027", dateSub: "Opens Tue 9 Mar 2027" });
+    expect(list?.rows[1]).toMatchObject({ dateMain: "9 Mar 2027", dateSub: "Tue · 19:00 GMT" });
+    expect(list?.rows[1]?.time).toBeNull();
   });
 
   it("offers to consign to a sale that has no lots yet and a deadline ahead", () => {
@@ -69,11 +70,32 @@ describe("buildComingUp", () => {
   it("counts down in the final hour and words the time left within a week", () => {
     const rows = [scheduled("soon", { startTime: new Date("2026-11-01T12:30:00.000Z") })];
     const row = buildComingUp(rows, ["soon"], now)?.rows[0];
-    expect(row?.time?.tick?.template).toContain("in {time}");
+    expect(row?.time?.tick?.template).toBe("Opens in {time}");
     const week = [scheduled("w", { startTime: new Date("2026-11-04T12:00:00.000Z") })];
     const near = buildComingUp(week, ["w"], now)?.rows[0];
-    expect(near?.time?.text).toContain("in 3 days");
+    expect(near?.time?.text).toBe("Opens in 3 days");
     expect(near?.time?.tick).toBeUndefined();
+  });
+
+  it("says Live now once the start has passed and nothing the date block already says", () => {
+    const started = [scheduled("p", { startTime: new Date("2026-11-01T11:00:00.000Z") })];
+    expect(buildComingUp(started, ["p"], now)?.rows[0]?.time).toEqual({ text: "Live now" });
+    const far = [scheduled("f", { startTime: new Date("2026-12-01T12:00:00.000Z") })];
+    expect(buildComingUp(far, ["f"], now)?.rows[0]?.time).toBeNull();
+  });
+
+  it("gives each card its own sale's date and time line", () => {
+    const rows = [
+      scheduled("a", { startTime: new Date("2026-11-03T12:00:00.000Z") }),
+      scheduled("b", { startTime: new Date("2026-11-04T18:00:00.000Z") }),
+      scheduled("c", { startTime: new Date("2027-03-09T19:00:00.000Z") }),
+    ];
+    const list = buildComingUp(rows, ["a", "b", "c"], now);
+    expect(list?.rows.map((r) => [r.id, r.dateMain, r.time?.text ?? null])).toEqual([
+      ["a", "3 Nov", "Opens in 2 days"],
+      ["b", "4 Nov", "Opens in 3 days 6 hours"],
+      ["c", "9 Mar 2027", null],
+    ]);
   });
 
   it("carries the staff-chosen cover and its focal point, or none", () => {

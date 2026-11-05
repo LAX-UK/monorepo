@@ -2,7 +2,6 @@ import { atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
 import {
   formatLondonDate,
   formatLondonDayMonth,
-  formatLondonMonthYear,
   formatLondonTimeWithZone,
   formatLondonWeekday,
   toDate,
@@ -14,15 +13,13 @@ import type {
   HomeComingUpLayout,
   HomeComingUpRow,
 } from "@/lib/home-sections/types";
-import { coverTimeLine } from "@/lib/marketing-cover/cover-time";
+import { coverTimeLeft } from "@/lib/marketing-cover/cover-time";
 import type { SaleListRow } from "@/lib/sale-list-row";
 import { formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { salePath } from "@/lib/seo/url";
 import type { Sale } from "@auction/types";
 
-/** Sales further off than this are shown by month, not by day. */
-const EXACT_DATE_DAYS = 60;
-const DAY_MS = 24 * 60 * 60 * 1000;
+const HOUR_MS = 60 * 60 * 1000;
 
 export const CONSIGN_HREF = "/sell";
 
@@ -38,16 +35,11 @@ function consignmentDeadline(sale: Sale, now: Date): Date | null {
   return deadline && deadline.getTime() > now.getTime() ? deadline : null;
 }
 
+/** Always day and month, the year only when it is not this year; the weekday and time beside it. */
 function dates(sale: Sale, now: Date): Pick<HomeComingUpRow, "dateMain" | "dateSub"> {
   const start = sale.startTime;
-  if (start.getTime() - now.getTime() > EXACT_DATE_DAYS * DAY_MS) {
-    return {
-      dateMain: formatLondonMonthYear(start, { short: true }),
-      dateSub: `Opens ${formatLondonWeekday(start)} ${formatLondonDayMonth(start, now)}`,
-    };
-  }
   return {
-    dateMain: formatLondonDayMonth(start, now).replace(/ \d{4}$/, ""),
+    dateMain: formatLondonDayMonth(start, now),
     dateSub: `${formatLondonWeekday(start)} · ${formatLondonTimeWithZone(start)}`,
   };
 }
@@ -63,10 +55,20 @@ export function comingUpLayout(count: number): HomeComingUpLayout {
   return count <= 1 ? "feature" : "row";
 }
 
+/**
+ * What the date block does not say: how long to go. Nothing beyond a week (the date is enough),
+ * days and hours within it, seconds in the final hour, "Live now" once the start has passed.
+ */
 function timeFor(sale: Sale, now: Date): HomeComingUpRow["time"] {
-  const line = coverTimeLine({ status: "scheduled", start: sale.startTime, end: null, now });
-  if (!line) return null;
-  return { text: line.time, ...(line.timeTick ? { tick: line.timeTick } : {}) };
+  const ms = sale.startTime.getTime() - now.getTime();
+  if (ms <= 0) return { text: "Live now" };
+  const left = coverTimeLeft(ms);
+  if (!left) return null;
+  if (ms >= HOUR_MS) return { text: `Opens in ${left}` };
+  return {
+    text: `Opens in ${left}`,
+    tick: { endsAt: sale.startTime.toISOString(), template: "Opens in {time}" },
+  };
 }
 
 function rowFor(row: SaleListRow, now: Date): HomeComingUpRow {

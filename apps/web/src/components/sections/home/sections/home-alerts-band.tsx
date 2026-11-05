@@ -40,7 +40,7 @@ export function HomeAlertsBand({ signedIn, outcome, thumbnails = [] }: Props) {
       thumbnails={thumbnails}
       action={
         submitted && message ? (
-          <Notice tone={message.tone} title={message.title} className="text-start">
+          <Notice tone={message.tone} title={message.title} className="text-start md:w-[30rem]">
             {message.body}
           </Notice>
         ) : (
