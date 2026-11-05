@@ -23,6 +23,7 @@ import {
   count,
   desc,
   eq,
+  ilike,
   inArray,
   isNotNull,
   isNull,
@@ -78,10 +79,6 @@ function inRoleOrder(roles: readonly CurrentShopStaffRole[]): CurrentShopStaffRo
 const AUDIT_FACET_LIMIT = 200;
 
 const clean = (value: string | null | undefined) => value?.trim() || null;
-
-function ilike(column: AnyPgColumn | SQL, pattern: string): SQL {
-  return sql`${column} ILIKE ${pattern}`;
-}
 
 /** From the start of a calendar day in UK time (inclusive). */
 function fromLondonDay(column: AnyPgColumn, day: string): SQL {

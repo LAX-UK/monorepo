@@ -25,7 +25,19 @@ import {
   type AdminSaleAuthorityRequestListQuery,
   type AdminThirdPartySaleListQuery,
 } from "@auction/shop-contracts";
-import { type SQL, and, asc, count, eq, exists, inArray, notInArray, or, sql } from "drizzle-orm";
+import {
+  type SQL,
+  and,
+  asc,
+  count,
+  eq,
+  exists,
+  ilike,
+  inArray,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { alias } from "drizzle-orm/pg-core";
 import {
@@ -85,10 +97,6 @@ export function searchPatterns(q: string | undefined): { contains: string; prefi
   if (!trimmed) return null;
   const contains = containsPattern(trimmed);
   return { contains, prefix: contains.slice(1) };
-}
-
-function ilike(column: AnyPgColumn | SQL, pattern: string): SQL {
-  return sql`${column} ILIKE ${pattern}`;
 }
 
 function idPrefix(column: AnyPgColumn, pattern: string): SQL {

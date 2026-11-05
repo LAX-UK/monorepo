@@ -23,6 +23,21 @@ describe("parsePoundsToPence", () => {
   });
 });
 
+describe("parsePoundsToPence, the cases every caller relies on", () => {
+  it.each([
+    ["1,200", { ok: true, pence: 120000 }],
+    ["1,200.50", { ok: true, pence: 120050 }],
+    ["£1,200", { ok: true, pence: 120000 }],
+    ["1.2", { ok: true, pence: 120 }],
+    ["0.005", { ok: false, reason: "too_precise" }],
+    ["", { ok: false, reason: "empty" }],
+    ["-1", { ok: false, reason: "invalid" }],
+    ["abc", { ok: false, reason: "invalid" }],
+  ])("reads %j", (input, expected) => {
+    expect(parsePoundsToPence(input)).toEqual(expected);
+  });
+});
+
 describe("formatting", () => {
   it("shows pounds with two decimals and grouping", () => {
     expect(formatPenceAsPounds(123456)).toBe("1,234.56");

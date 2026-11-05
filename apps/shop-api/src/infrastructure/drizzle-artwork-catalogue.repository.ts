@@ -9,6 +9,7 @@ import {
   shopMediaAsset,
   shopParty,
 } from "@auction/db/schema";
+import { containsPattern } from "@auction/persistence/lib";
 import {
   CATALOGUE_PRICE_BANDS,
   CATALOGUE_SIZE_BANDS,
@@ -220,7 +221,7 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
   }
   const textQuery = filter.q?.trim();
   if (textQuery && textQuery.length > 0) {
-    const pattern = `%${textQuery}%`;
+    const pattern = containsPattern(textQuery);
     conditions.push(
       or(
         ilike(shopArtwork.title, pattern),

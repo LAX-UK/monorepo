@@ -56,7 +56,6 @@ import { createDrizzleAdminLookupReader } from "./drizzle-admin-lookup.reader.js
 import { createDrizzleAdminPeopleListsReader } from "./drizzle-admin-people-lists.reader.js";
 import { createDrizzleAdminWorkListsReader } from "./drizzle-admin-work-lists.reader.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
-import { escapeLikePattern } from "./escape-like-pattern.js";
 import { loadShopCancellationPolicy } from "./shop-cancellation-policy.js";
 import { loadShopVatPolicy } from "./shop-vat-policy.js";
 
@@ -382,7 +381,7 @@ export function createDrizzleAdminReadRepository(
         const limit = resolveLimit(input.limit);
         const cursor = decodeCatalogueCursor(input.cursor);
         const search = input.q?.trim();
-        const pattern = search ? `%${escapeLikePattern(search)}%` : null;
+        const pattern = search ? containsPattern(search) : null;
         // The search applies to the page and to the view counts alike; the status only to the page.
         const matchesSearch = pattern
           ? or(
