@@ -7,7 +7,10 @@ import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentProviderError } from "../../lib/errors.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
-import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
+import {
+  type ISettlementCompliancePolicy,
+  evaluateSettlementSubjects,
+} from "../aml/settlement-compliance.policy.js";
 import type { IStripeCheckoutService } from "../interfaces/checkout-rail.js";
 import type { IErrorReporter } from "../interfaces/error-handling.js";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
@@ -34,6 +37,19 @@ export type CheckoutOrchestratorDeps = {
   /** Where a failed revoke is reported, so someone can check the payment was not charged. */
   errorReporter?: IErrorReporter | undefined;
 };
+
+/**
+ * Who an invoice is checked for at checkout: the person paying, and the lot's winner when someone
+ * else pays for them (an organisation's finance member paying for a colleague's win).
+ */
+export function settlementSubjects(lot: Lot, payerId: string, amountPence: number) {
+  return [
+    { buyerUserId: payerId, amountPence },
+    ...(lot.winnerId && lot.winnerId !== payerId
+      ? [{ buyerUserId: lot.winnerId, amountPence }]
+      : []),
+  ];
+}
 
 export async function revokeOpenStripeCheckoutForPayment(
   deps: Pick<CheckoutOrchestratorDeps, "payments" | "stripePayments" | "errorReporter">,
@@ -73,11 +89,11 @@ export async function resolvePendingCheckoutManualReviewReason(
 ): Promise<ManualReviewReason | null> {
   const amountPence = gbpAmountToPence(amount);
   if (deps.settlementCompliance) {
-    const compliance = await deps.settlementCompliance.evaluate({
-      buyerUserId: buyerId,
-      amountPence,
-      excludePaymentId: paymentId,
-    });
+    const compliance = await evaluateSettlementSubjects(
+      deps.settlementCompliance,
+      settlementSubjects(lot, buyerId, amountPence),
+      paymentId,
+    );
     if (compliance.hold && compliance.reason) {
       return compliance.reason;
     }
@@ -145,11 +161,11 @@ export async function issueCheckoutForPendingPayment(
 > {
   const amountPence = gbpAmountToPence(amount);
   if (deps.settlementCompliance) {
-    const compliance = await deps.settlementCompliance.evaluate({
-      buyerUserId: buyerId,
-      amountPence,
-      excludePaymentId: paymentId,
-    });
+    const compliance = await evaluateSettlementSubjects(
+      deps.settlementCompliance,
+      settlementSubjects(lot, buyerId, amountPence),
+      paymentId,
+    );
     if (compliance.hold) {
       const code =
         compliance.reason === "aml_hold"

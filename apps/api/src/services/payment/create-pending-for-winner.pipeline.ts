@@ -11,6 +11,7 @@ import { resolveCheckoutAddressSnapshot } from "./checkout-address.js";
 import { resolveCheckoutForPendingOrPromoteCompliance } from "./checkout-orchestrator.js";
 import { isOpenPaymentUniqueViolation } from "./is-open-payment-unique-violation.js";
 import { formatPaymentDueDateFromCreated } from "./payment-due-date.js";
+import { PAYMENT_ELIGIBILITY_REFUSAL } from "./payment-eligibility.gate.js";
 import type { CreatePendingPaymentResult, PaymentServiceDeps } from "./payment-service-types.js";
 import type { CheckoutRailKind, ManualReviewReason } from "./payment-tier.policy.js";
 import { resolveNewPaymentReviewDecision } from "./resolve-manual-review-reason.js";
@@ -153,6 +154,14 @@ export async function validatePayerCanPay(
   }
   if (!lot.sellerLegalEntityId) {
     return err(new AuthzError("Seller legal entity is missing for this lot", 400));
+  }
+  const refusal = await deps.paymentEligibility.refusal({
+    payerUserId: payerId,
+    buyerLegalEntityId: lot.buyerLegalEntityId,
+  });
+  if (refusal) {
+    const { message, status } = PAYMENT_ELIGIBILITY_REFUSAL[refusal];
+    return err(new AuthzError(message, status, { code: refusal }));
   }
   return ok(lot);
 }

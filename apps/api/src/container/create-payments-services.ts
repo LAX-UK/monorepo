@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import type { IStalePaymentMaintenance } from "@auction/finance-cron-app";
 import {
+  DrizzleBidActorEligibilityReader,
   DrizzleLotFulfilmentRepository,
   DrizzlePaymentCheckoutSessionRepository,
   DrizzlePaymentDomainEventsRepository,
@@ -32,6 +33,10 @@ import { BankTransferCheckoutRail } from "../services/payment/bank-transfer-chec
 import { CardCheckoutRail } from "../services/payment/card-checkout.rail.js";
 import { LegalEntityBuyerPaymentAuthority } from "../services/payment/legal-entity-buyer-payment-authority.js";
 import { PaymentCaptureService } from "../services/payment/payment-capture.service.js";
+import {
+  type IPaymentEligibilityGate,
+  PaymentEligibilityGate,
+} from "../services/payment/payment-eligibility.gate.js";
 import {
   PaymentTierPolicy,
   parsePaymentTierLimits,
@@ -79,6 +84,8 @@ export type ContainerPaymentsServices = {
   paymentMaintenanceService: IPaymentMaintenanceService;
   /** Expires unpaid invoices only once Stripe confirms no money can still reach them. */
   stalePaymentMaintenance: IStalePaymentMaintenance;
+  /** The account checks both ways of paying share (closed organisations, unverified buyers). */
+  paymentEligibility: IPaymentEligibilityGate;
   lotInvoiceInitiationService: LotInvoiceInitiationService;
   stripePaymentWebhookService: StripePaymentWebhookService | null;
   xeroOAuthService: XeroOAuthService | null;
@@ -259,6 +266,11 @@ export function createPaymentsServices(
   const paymentDomainEventsRepository = new DrizzlePaymentDomainEventsRepository(db, {
     publish: (conn, event) => domainEventSink.withTx(conn).publish(event),
   });
+  // Personal buyers must be verified to pay, wherever an identity provider can verify them.
+  const paymentEligibility = new PaymentEligibilityGate(
+    legalEntityRepository,
+    complianceMedia.kycService.isConfigured() ? new DrizzleBidActorEligibilityReader(db) : null,
+  );
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
@@ -292,6 +304,7 @@ export function createPaymentsServices(
     paymentDomainEventsRepository,
     buyerPaymentAuthority,
     errorReporter,
+    paymentEligibility,
   );
 
   const lotInvoiceInitiationService = new LotInvoiceInitiationService(
@@ -428,5 +441,6 @@ export function createPaymentsServices(
     }),
     paymentTierPolicy,
     settlementCompliancePolicy,
+    paymentEligibility,
   };
 }

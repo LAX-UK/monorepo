@@ -85,3 +85,30 @@ export class AmlSettlementCompliancePolicy implements ISettlementCompliancePolic
     return { hold: false, reason: null };
   }
 }
+
+/** Who a payment is checked for, and the amount each one is exposed to. */
+export type SettlementSubject = { buyerUserId: string; amountPence: number };
+
+/**
+ * A payment is checked for everyone it settles for: the person paying and the winner of each lot
+ * (an organisation's payer is often not its winner). The first hold found stops the payment.
+ * Subjects named twice are checked once, on their combined amount.
+ */
+export async function evaluateSettlementSubjects(
+  policy: Pick<ISettlementCompliancePolicy, "evaluate">,
+  subjects: readonly SettlementSubject[],
+  excludePaymentId?: string,
+): Promise<SettlementComplianceDecision & { subject: string | null }> {
+  const byUser = new Map<string, number>();
+  for (const s of subjects)
+    byUser.set(s.buyerUserId, (byUser.get(s.buyerUserId) ?? 0) + s.amountPence);
+  for (const [buyerUserId, amountPence] of byUser) {
+    const decision = await policy.evaluate({
+      buyerUserId,
+      amountPence,
+      ...(excludePaymentId ? { excludePaymentId } : {}),
+    });
+    if (decision.hold) return { ...decision, subject: buyerUserId };
+  }
+  return { hold: false, reason: null, subject: null };
+}

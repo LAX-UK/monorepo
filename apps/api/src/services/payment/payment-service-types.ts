@@ -21,6 +21,7 @@ import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type { NotificationFactory } from "../notification.factory.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import type { CheckoutOrchestratorDeps } from "./checkout-orchestrator.js";
+import type { IPaymentEligibilityGate } from "./payment-eligibility.gate.js";
 import type { PaymentRefundReconcileService } from "./payment-refund-reconcile.service.js";
 import type { PaymentTierPolicy } from "./payment-tier.policy.js";
 import type { CheckoutRailKind, ManualReviewReason } from "./payment-tier.policy.js";
@@ -63,4 +64,6 @@ export type PaymentServiceDeps = {
   checkoutOrchestratorDeps: CheckoutOrchestratorDeps;
   /** Who may pay for a won lot. */
   buyerPaymentAuthority: IBuyerPaymentAuthority;
+  /** Closed organisations and unverified personal buyers cannot pay (both ways of paying). */
+  paymentEligibility: IPaymentEligibilityGate;
 };

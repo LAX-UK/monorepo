@@ -7,6 +7,7 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { IPaymentBuyerService } from "../services/interfaces/payment-service.js";
 import { createPendingForWinner } from "../services/payment/create-pending-for-winner.pipeline.js";
 import { LegalEntityBuyerPaymentAuthority } from "../services/payment/legal-entity-buyer-payment-authority.js";
+import { PaymentEligibilityGate } from "../services/payment/payment-eligibility.gate.js";
 import type { PaymentServiceDeps } from "../services/payment/payment-service-types.js";
 import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { createPaymentRoutes } from "./payments.js";
@@ -62,6 +63,7 @@ function mount(payer: string, member: Member | null, status: LegalEntity["status
     },
     lotFulfilmentHooks: null,
     buyerPaymentAuthority: new LegalEntityBuyerPaymentAuthority(accounts),
+    paymentEligibility: new PaymentEligibilityGate(accounts, null),
   } as unknown as PaymentServiceDeps;
   const paymentBuyerService = {
     createPendingForWinner: (buyerId: string, lotId: string, addressId: string) =>
@@ -126,6 +128,17 @@ describe("POST /payments for an organisation's purchase", () => {
     const { app } = mount("user-payer", { role: "finance" }, "restricted");
     expect((await pay(app)).status).toBe(201);
   });
+
+  it.each(["rejected", "archived"] as const)(
+    "refuses a %s organisation on the server, before any invoice is touched",
+    async (status) => {
+      const { app, payments } = mount("user-payer", { role: "finance" }, status);
+      const res = await pay(app);
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ code: "organisation_closed" });
+      expect(payments.findOpenByLotAndBuyerAccount).not.toHaveBeenCalled();
+    },
+  );
 
   it.each(["viewer", "consignor"] as const)("refuses a %s", async (role) => {
     const { app, payments } = mount("user-payer", { role });

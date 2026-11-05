@@ -984,3 +984,9 @@ export {
   type UnappliedMoneyPayload,
   type UnappliedMoneyReason,
 } from "./unapplied-money.js";
+export {
+  PAYMENT_CLOSED_ORGANISATION_STATUSES,
+  paymentEligibilityRefusal,
+  type PaymentEligibilityFacts,
+  type PaymentEligibilityRefusal,
+} from "./payment-eligibility.js";

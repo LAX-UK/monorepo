@@ -32,6 +32,8 @@ export type {
 } from "./interfaces/error-handling.js";
 export {
   AmlSettlementCompliancePolicy,
+  evaluateSettlementSubjects,
+  type SettlementSubject,
   type ISettlementCompliancePolicy,
   type ISourceOfFundsGate,
   type SettlementComplianceDecision,

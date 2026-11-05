@@ -108,6 +108,40 @@ describe("resolvePendingCheckoutManualReviewReason", () => {
     expect(reason).toBe("aml_hold");
   });
 
+  it("checks the lot's winner as well as an organisation payer paying for them", async () => {
+    const evaluate = vi.fn(async (input: { buyerUserId: string }) =>
+      input.buyerUserId === "agent-1"
+        ? { hold: true, reason: "aml_hold" as const }
+        : { hold: false, reason: null },
+    );
+    const reason = await resolvePendingCheckoutManualReviewReason(
+      baseDeps({ settlementCompliance: { evaluate, peek: vi.fn() } }),
+      "pay-1",
+      { ...baseLot(), winnerId: "agent-1" },
+      "finance-1",
+      "100.00",
+    );
+    expect(reason).toBe("aml_hold");
+    expect(evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({ buyerUserId: "finance-1", excludePaymentId: "pay-1" }),
+    );
+    expect(evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({ buyerUserId: "agent-1", amountPence: 10_000 }),
+    );
+  });
+
+  it("a winner paying their own lot is checked once", async () => {
+    const evaluate = vi.fn(async () => ({ hold: false, reason: null }));
+    await resolvePendingCheckoutManualReviewReason(
+      baseDeps({ settlementCompliance: { evaluate, peek: vi.fn() } }),
+      "pay-1",
+      { ...baseLot(), winnerId: "buyer-1" },
+      "buyer-1",
+      "100.00",
+    );
+    expect(evaluate).toHaveBeenCalledTimes(1);
+  });
+
   it("returns tier reason when seller is archived", async () => {
     const deps = baseDeps({
       legalEntityRepository: {

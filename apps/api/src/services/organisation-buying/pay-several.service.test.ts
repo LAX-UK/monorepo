@@ -35,6 +35,9 @@ function service(
     limits?: PaymentTierLimits;
     peekHold?: boolean;
     evaluateHold?: boolean;
+    /** Only this person is on hold (the payer or a lot's winner). */
+    holdFor?: string;
+    refusal?: "organisation_closed" | "identity_verification_required";
     start?: ReturnType<typeof vi.fn>;
   } = {},
 ) {
@@ -45,7 +48,10 @@ function service(
     );
   const compliance = {
     peek: vi.fn(async () => ({ hold: over.peekHold ?? false, reason: null })),
-    evaluate: vi.fn(async () => ({ hold: over.evaluateHold ?? false, reason: null })),
+    evaluate: vi.fn(async (input: { buyerUserId: string }) => ({
+      hold: over.evaluateHold ?? input.buyerUserId === over.holdFor,
+      reason: null,
+    })),
   };
   const svc = new PaySeveralService({
     reader: new InMemoryPurchaseFacts(),
@@ -55,6 +61,7 @@ function service(
     },
     limits: over.limits ?? LIMITS,
     compliance,
+    eligibility: { refusal: vi.fn(async () => over.refusal ?? null) },
     checkout: { start },
     now: () => NOW,
   });
@@ -186,6 +193,31 @@ describe("PaySeveralService.pay", () => {
     );
     expect(start).not.toHaveBeenCalled();
   });
+
+  it("checks each lot's winner as well as the payer: a held winner stops the payment", async () => {
+    // Maya (owner-1) won the lot; the finance member pays for it.
+    const { svc, start, compliance } = service({ holdFor: "owner-1" });
+    expect((await svc.pay(actor("finance"), [LOTS.due]))._unsafeUnwrapErr().code).toBe(
+      "pay_several_winner_on_hold",
+    );
+    expect(compliance.evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({ buyerUserId: "finance-1" }),
+    );
+    expect(compliance.evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({ buyerUserId: "owner-1" }),
+    );
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it.each(["organisation_closed", "identity_verification_required"] as const)(
+    "an account refused for %s can neither plan nor pay, as with one invoice",
+    async (refusal) => {
+      const { svc, start } = service({ refusal });
+      expect((await svc.plan(actor("owner"), [LOTS.due]))._unsafeUnwrapErr().code).toBe(refusal);
+      expect((await svc.pay(actor("owner"), [LOTS.due]))._unsafeUnwrapErr().code).toBe(refusal);
+      expect(start).not.toHaveBeenCalled();
+    },
+  );
 
   it("answers a race for the same invoices with a conflict, and an outage with unavailable", async () => {
     const conflict = service({ start: vi.fn(async () => err("conflict")) });

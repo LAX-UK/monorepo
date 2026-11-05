@@ -11,7 +11,10 @@ import type {
 } from "@auction/persistence/interfaces";
 import { err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
-import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
+import {
+  type ISettlementCompliancePolicy,
+  evaluateSettlementSubjects,
+} from "../aml/settlement-compliance.policy.js";
 import type {
   BuyingResult,
   IPaySeveralService,
@@ -24,6 +27,7 @@ import type {
   GroupCheckoutError,
   PaymentGroupCheckoutService,
 } from "../payment-group/payment-group-checkout.service.js";
+import type { IPaymentEligibilityGate } from "../payment/payment-eligibility.gate.js";
 import {
   buyingError,
   entityActorOf,
@@ -45,6 +49,8 @@ export type PaySeveralDeps = {
   flags: IPaySeveralInvoiceFlagsReader;
   limits: PaymentTierLimits;
   compliance: Pick<ISettlementCompliancePolicy, "peek" | "evaluate"> | null;
+  /** The same account checks as paying one invoice: closed organisations, unverified buyers. */
+  eligibility: IPaymentEligibilityGate;
   checkout: Pick<PaymentGroupCheckoutService, "start">;
   now: () => Date;
 };
@@ -63,7 +69,12 @@ export class PaySeveralService implements IPaySeveralService {
   ): BuyingResult<PaySeveralQuote> {
     const scope = accountPurchaseScope(entityActorOf(actor));
     if (!scope) return err(buyingError("insufficient_entity_role"));
-    const picks = await this.candidates(actor, scope === "own", lotIds);
+    const refusal = await this.deps.eligibility.refusal({
+      payerUserId: actor.userId,
+      buyerLegalEntityId: actor.legalEntityId,
+    });
+    if (refusal) return err(buyingError(refusal));
+    const { picks } = await this.candidates(actor, scope === "own", lotIds);
     const decision = planPaySeveral(actor.legalEntityId, picks);
     if (!decision.allowed) return err(buyingError(decision.reason));
     const payerOnHold = this.deps.compliance
@@ -91,13 +102,31 @@ export class PaySeveralService implements IPaySeveralService {
       return err(buyingError(`pay_several_${plan.payTogether.reason}`));
     }
     // The full check (which can open a source-of-funds case) runs only when money is about to
-    // move, on the total the payer is paying.
+    // move: for the payer on the total, and for each lot's winner on what they won.
     if (this.deps.compliance) {
-      const hold = await this.deps.compliance.evaluate({
-        buyerUserId: actor.userId,
-        amountPence: gbpAmountToPence(plan.total),
-      });
-      if (hold.hold) return err(buyingError("pay_several_payer_on_hold"));
+      const { winners } = await this.candidates(
+        actor,
+        false,
+        plan.payable.map((p) => p.lotId),
+      );
+      const hold = await evaluateSettlementSubjects(this.deps.compliance, [
+        { buyerUserId: actor.userId, amountPence: gbpAmountToPence(plan.total) },
+        ...plan.payable.flatMap((p) => {
+          const winner = winners.get(p.lotId);
+          return winner && winner !== actor.userId && p.totalDue
+            ? [{ buyerUserId: winner, amountPence: gbpAmountToPence(p.totalDue) }]
+            : [];
+        }),
+      ]);
+      if (hold.hold) {
+        return err(
+          buyingError(
+            hold.subject === actor.userId
+              ? "pay_several_payer_on_hold"
+              : "pay_several_winner_on_hold",
+          ),
+        );
+      }
     }
     const started = await this.deps.checkout.start({
       payerUserId: actor.userId,
@@ -125,7 +154,7 @@ export class PaySeveralService implements IPaySeveralService {
     actor: OrganisationMemberActor,
     ownOnly: boolean,
     lotIds: readonly string[],
-  ): Promise<PaySeveralCandidate[]> {
+  ): Promise<{ picks: PaySeveralCandidate[]; winners: Map<string, string | null> }> {
     const rows = lotIds.length
       ? await this.deps.reader.list({
           legalEntityId: actor.legalEntityId,
@@ -137,6 +166,7 @@ export class PaySeveralService implements IPaySeveralService {
       : [];
     const now = this.deps.now();
     const views = rows.map((row) => purchaseView(row, actor, now));
+    const winners = new Map(rows.map((row) => [row.lotId, row.wonBy?.userId ?? null]));
     const paymentIds = views.flatMap((v) => (v.invoice.paymentId ? [v.invoice.paymentId] : []));
     const flags = await this.deps.flags.flagsFor(paymentIds);
     const byLot = new Map(
@@ -152,7 +182,7 @@ export class PaySeveralService implements IPaySeveralService {
       }),
     );
     // A pick outside what the member follows in this account is treated as another account's.
-    return lotIds.map(
+    const picks = lotIds.map<PaySeveralCandidate>(
       (lotId) =>
         byLot.get(lotId) ?? {
           lotId,
@@ -166,5 +196,6 @@ export class PaySeveralService implements IPaySeveralService {
           inPaymentInProgress: false,
         },
     );
+    return { picks, winners };
   }
 }

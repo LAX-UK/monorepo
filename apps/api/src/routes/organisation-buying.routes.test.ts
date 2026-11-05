@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { ContainerOrganisationBuyingRoutesSlice } from "../container.js";
+import { createRequireAccountOnboarding } from "../middleware/require-account-onboarding.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { AccountPurchasesService } from "../services/organisation-buying/account-purchases.service.js";
@@ -22,7 +23,10 @@ import {
 } from "../testing/in-memory-workspace-buying.js";
 import { createOrganisationBuyingRoutes } from "./organisation-buying.js";
 
-function mount(role: LegalEntityMemberRole) {
+function mount(
+  role: LegalEntityMemberRole,
+  opts: { onboarded?: boolean; platformRole?: string } = {},
+) {
   const quotes = new InMemoryDeliveryQuotes();
   const purchases = new InMemoryPurchaseFacts(undefined, quotes);
   const context: LegalEntityContext = {
@@ -53,6 +57,7 @@ function mount(role: LegalEntityMemberRole) {
           absoluteMaxPence: 10_000_000,
         },
         compliance: null,
+        eligibility: { refusal: async () => null },
         checkout: {
           start: async (input) =>
             ok({
@@ -89,12 +94,20 @@ function mount(role: LegalEntityMemberRole) {
     },
   } as unknown as ContainerOrganisationBuyingRoutesSlice;
   const authenticator: IAuthenticator = {
-    getSessionUser: vi
-      .fn()
-      .mockResolvedValue({ id: context.userId, role: "client", scopes: ["bid.read", "bid.write"] }),
+    getSessionUser: vi.fn().mockResolvedValue({
+      id: context.userId,
+      role: opts.platformRole ?? "client",
+      scopes: ["bid.read", "bid.write"],
+    }),
   };
   const app = new Hono();
-  app.route("/legal-entities", createOrganisationBuyingRoutes(container, authenticator));
+  const onboarding = createRequireAccountOnboarding({
+    isComplete: async () => opts.onboarded ?? true,
+  });
+  app.route(
+    "/legal-entities",
+    createOrganisationBuyingRoutes(container, authenticator, onboarding),
+  );
   return app;
 }
 
@@ -241,6 +254,23 @@ describe("organisation buying routes", () => {
     });
     const malformed = await post(mount("finance"), "/purchases/pay-several", { lotIds: [] });
     expect(malformed.status).toBe(400);
+  });
+
+  it("paying several needs completed account setup, as paying one does", async () => {
+    const res = await post(mount("finance", { onboarded: false }), "/purchases/pay-several", {
+      lotIds: [LOTS.due],
+    });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: "onboarding_required" });
+  });
+
+  it("a staff account can neither plan nor pay several invoices", async () => {
+    const app = mount("finance", { platformRole: "admin" });
+    for (const path of ["/purchases/pay-several/plan", "/purchases/pay-several"]) {
+      const res = await post(app, path, { lotIds: [LOTS.due] });
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ error: "bidding_not_allowed_for_role" });
+    }
   });
 
   it("reports a problem once, and reading it back shows the same reference", async () => {
