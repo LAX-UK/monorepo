@@ -12,7 +12,7 @@ import {
   turnstileHost,
   viewChrome,
 } from "../html.js";
-import { hostedAgreementLinks } from "../legal-links.js";
+import { hostedAgreementLinks, hostedLegalProduct } from "../legal-links.js";
 import { HOSTED_AUTH_ASSET_VERSION, HOSTED_AUTH_POLICY } from "../policy.js";
 import { socialActions } from "../social-actions.js";
 import {
@@ -38,7 +38,7 @@ export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromS
     title: HOSTED_COPY.titles.signUp,
     contextLine: contextLine(view.brand.chip, view.flow.context),
     ...viewChrome(view),
-    body: `<div id="signup-root" class="auth-stack">
+    body: `<div id="signup-root" class="auth-stack" data-legal-product="${hostedLegalProduct(view.flow.product)}">
       ${socialActions(view)}
       <form id="signup-form" class="auth-form" novalidate>
       ${floatingInput({ id: "name", label: "Full name", autocomplete: "name" })}

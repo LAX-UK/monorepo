@@ -6,6 +6,7 @@ import {
   SHOP_EMAIL_OUTBOX_TABLES,
   SHOP_PRODUCT_PROFILE_TABLES,
   SHOP_SSF_RECEIVER_TABLES,
+  SHOP_SUBJECT_EXPORT_READ_TABLES,
 } from "./migrate-roles.js";
 import { buildPgConnectionConfig } from "./ssl.js";
 
@@ -140,6 +141,25 @@ describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => 
   it("reads the CRM integration's records without writing them", async () => {
     await withShopClient(async (client) => {
       for (const table of SHOP_CRM_READ_TABLES) {
+        for (const [privilege, allowed] of [
+          ["SELECT", true],
+          ["INSERT", false],
+          ["UPDATE", false],
+          ["DELETE", false],
+        ] as const) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(allowed);
+        }
+      }
+    });
+  });
+
+  it("reads the shared mail tables for Download my data without writing them", async () => {
+    await withShopClient(async (client) => {
+      for (const table of SHOP_SUBJECT_EXPORT_READ_TABLES) {
         for (const [privilege, allowed] of [
           ["SELECT", true],
           ["INSERT", false],

@@ -8,6 +8,7 @@ import {
   type SalesBrowseView,
   SalesViewSwitcher,
 } from "@/components/sections/sales/sales-view-switcher";
+import type { SalesFacetCounts } from "@/lib/marketing/sales-calendar-facets";
 import {
   type CalendarSalesUrlState,
   countActiveCalendarFilters,
@@ -20,6 +21,7 @@ export type SalesCalendarToolbarProps = {
   resultCount: number;
   categories: Category[];
   years: number[];
+  facets: SalesFacetCounts | null;
   calendarView: SalesBrowseView;
 };
 
@@ -29,6 +31,7 @@ export function SalesCalendarToolbar({
   resultCount,
   categories,
   years,
+  facets,
   calendarView,
 }: SalesCalendarToolbarProps) {
   // The tab carries the count; it is repeated here only while a filter narrows the list.
@@ -48,6 +51,7 @@ export function SalesCalendarToolbar({
             resultCount={resultCount}
             categories={categories}
             years={years}
+            facets={facets}
             resultCountLabel={resultCountLabel}
           />
         }

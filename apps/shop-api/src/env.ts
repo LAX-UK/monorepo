@@ -54,6 +54,22 @@ export const shopApiEnvSchema = z.object({
     z.string().min(32).optional(),
   ),
   /**
+   * Moving originals between lax.art and LAX Bid: LAX Bid's API address and the credential pair
+   * both products hold. Without them the move answers that it is not set up; nothing else changes.
+   */
+  BID_API_INTERNAL_URL: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().url().optional(),
+  ),
+  INVENTORY_MACHINE_CLIENT_ID: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(1).optional(),
+  ),
+  INVENTORY_MACHINE_CLIENT_SECRET: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().min(32).optional(),
+  ),
+  /**
    * Credentials for the "download my data" routes only (scope `subject_export`), separate from the
    * pair above so a leaked eligibility credential cannot read personal data. With either unset
    * those routes answer 503.
@@ -191,6 +207,15 @@ export const shopApiEnvSchema = z.object({
     .default("false")
     .transform((value) => value === "true"),
   SHOP_ORIGINALS_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  /**
+   * Whether London Art Exchange Ltd issues digital certificates of authenticity in LAX Account, on
+   * the artist's written authority. Off until the legal position is confirmed: with it off, such
+   * certificates wait on the "to send" list instead of being issued.
+   */
+  SHOP_LAX_CERTIFICATES_ENABLED: z
     .enum(["true", "false"])
     .default("false")
     .transform((value) => value === "true"),

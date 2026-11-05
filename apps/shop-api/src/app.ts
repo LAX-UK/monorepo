@@ -32,13 +32,16 @@ import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js
 import { registerAdminEditionRunRoutes } from "./routes/admin/v1/edition-runs.routes.js";
 import { registerAdminHealthRoutes } from "./routes/admin/v1/health.routes.js";
 import { registerAdminHomeFeatureRoutes } from "./routes/admin/v1/home-features.routes.js";
+import { registerAdminInventoryMoveRoutes } from "./routes/admin/v1/inventory-moves.routes.js";
 import { registerAdminOperationsRoutes } from "./routes/admin/v1/operations.routes.js";
 import { registerAdminOriginalSaleRoutes } from "./routes/admin/v1/original-sales.routes.js";
+import { registerAdminPrintFulfilmentRoutes } from "./routes/admin/v1/print-fulfilment.routes.js";
 import { registerAdminSessionRoutes } from "./routes/admin/v1/session.routes.js";
 import { registerAdminThirdPartyRoutes } from "./routes/admin/v1/third-party.routes.js";
 import { registerHealthRoutes } from "./routes/health.routes.js";
 import { registerIdentityDeletionEligibilityRoutes } from "./routes/internal/identity-deletion-eligibility.routes.js";
 import { registerIdentitySubjectExportRoutes } from "./routes/internal/identity-subject-export.routes.js";
+import { registerInventoryArtListingRoutes } from "./routes/internal/inventory-art-listing.routes.js";
 import { registerAccountEmailAlertRoutes } from "./routes/v1/account-email-alerts.routes.js";
 import { registerArtistApplicationRoutes } from "./routes/v1/artist-application.routes.js";
 import { registerArtistRoutes } from "./routes/v1/artists.routes.js";
@@ -140,6 +143,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerHealthRoutes(app, options.deps.health);
   void registerIdentityDeletionEligibilityRoutes(app, options.deps.identityDeletion);
   void registerIdentitySubjectExportRoutes(app, options.deps.identitySubjectExport);
+  void registerInventoryArtListingRoutes(app, options.deps.inventory);
   void registerStripeWebhookRoutes(app, options.deps.stripeWebhook);
   if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
     void registerStripeConnectWebhookRoutes(app, options.deps.stripeConnectWebhook);
@@ -199,7 +203,9 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminArtistIdentityRoutes(adminScope, options.deps.admin);
         void registerAdminArtistRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
+        void registerAdminInventoryMoveRoutes(adminScope, options.deps.admin);
         void registerAdminEditionRunRoutes(adminScope, options.deps.admin);
+        void registerAdminPrintFulfilmentRoutes(adminScope, options.deps.admin);
         void registerAdminHomeFeatureRoutes(adminScope, options.deps.admin);
         void registerAdminMediaRoutes(adminScope, options.deps.admin);
         if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {

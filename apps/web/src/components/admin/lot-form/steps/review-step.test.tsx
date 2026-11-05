@@ -1,4 +1,5 @@
 import type { AdminLotFormValues } from "@/lib/forms/schemas/admin-lot-form";
+import { pinClock } from "@/test/pin-clock";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { UseFormReturn } from "react-hook-form";
 import { describe, expect, it, vi } from "vitest";
@@ -17,6 +18,8 @@ const values = {
   images: ["a.jpg", "b.jpg"],
   categoryIds: ["c2"],
 } as unknown as AdminLotFormValues;
+
+pinClock();
 
 describe("LotFormReviewStep", () => {
   it("reads each answer in plain words, and goes back to a step with Change", () => {
@@ -44,7 +47,7 @@ describe("LotFormReviewStep", () => {
     expect(within(catalogue).getByText("£1,200.00")).toBeInTheDocument();
     expect(within(catalogue).getByText("No reserve")).toBeInTheDocument();
     expect(within(catalogue).getByText("Oil")).toBeInTheDocument();
-    expect(within(catalogue).getByText(/4 Nov 2026, 18:30/)).toBeInTheDocument();
+    expect(within(catalogue).getByText(/Wed 4 Nov, 18:30/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Change sale and seller" }));
     expect(onEditStep).toHaveBeenCalledWith(1);
   });

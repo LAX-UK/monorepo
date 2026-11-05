@@ -1,3 +1,4 @@
+import { pinClock } from "@/test/pin-clock";
 import { describe, expect, it } from "vitest";
 import {
   type EditorialListApiRow,
@@ -45,6 +46,8 @@ const rows = [
 ].map((row) => toEditorialListRow("exhibitions", row));
 
 const state = (params: Record<string, string>) => parseEditorialList("exhibitions", params);
+
+pinClock();
 
 describe("parseEditorialList", () => {
   it("reads view, search, kind, sort, page and the open record from the URL", () => {
@@ -99,7 +102,7 @@ describe("editorialList", () => {
 
 describe("toEditorialListRow", () => {
   it("labels kinds, dates and cities per entity", () => {
-    expect(rows[1]).toMatchObject({ kindLabel: "Film", dates: "1 Jun 2026 – 30 Jun 2026" });
+    expect(rows[1]).toMatchObject({ kindLabel: "Film", dates: "Mon 1 Jun – Tue 30 Jun" });
     const venue = toEditorialListRow("venues", {
       id: "v",
       slug: "mayfair",

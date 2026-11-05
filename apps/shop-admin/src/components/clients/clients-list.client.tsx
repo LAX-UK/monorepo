@@ -192,7 +192,7 @@ export function ClientsList({
             ? [
                 {
                   label: "Joined",
-                  value: formatStaffDateTime(opened.createdAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.createdAt),
                 },
               ]
             : []

@@ -3,16 +3,16 @@ import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shar
 import { signupPersonaFilterLabel } from "@/lib/admin/signup-persona-presenter";
 import { staffIdentityStatus } from "@/lib/admin/staff-kit-status";
 import type { UsersListFilters } from "@/lib/admin/users-list-query";
-import { formatStaffDay, searchChipLabel } from "@auction/staff-ui";
+import { formatStaffCalendarDay, searchChipLabel } from "@auction/staff-ui";
 
 function identityLabel(status: string): string {
   return staffIdentityStatus(status).label;
 }
 
 function dayRangeLabel(from: string | undefined, to: string | undefined): string {
-  if (from && to) return `${formatStaffDay(from)} to ${formatStaffDay(to)}`;
-  if (from) return `from ${formatStaffDay(from)}`;
-  return `until ${formatStaffDay(to ?? "")}`;
+  if (from && to) return `${formatStaffCalendarDay(from)} to ${formatStaffCalendarDay(to)}`;
+  if (from) return `from ${formatStaffCalendarDay(from)}`;
+  return `until ${formatStaffCalendarDay(to ?? "")}`;
 }
 
 /**

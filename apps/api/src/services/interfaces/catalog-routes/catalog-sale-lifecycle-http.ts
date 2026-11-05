@@ -33,6 +33,7 @@ export interface ICatalogSaleLifecycleHttpApplicationService {
   }): Promise<CatalogRouteOutcome<PresentedSale>>;
 
   updateDraft(input: {
+    userId: string;
     role: UserRole;
     saleId: string;
     patch: z.infer<typeof updateSaleSchema>;

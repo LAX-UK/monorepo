@@ -19,13 +19,10 @@ const REFRESH_MS = 60_000;
  */
 export function RelativeTime({
   value,
-  zoneLabel = false,
   className,
 }: {
   /** ISO timestamp. */
   value: string;
-  /** Adds BST or GMT to the exact time, where the moment matters. */
-  zoneLabel?: boolean;
   className?: string;
 }) {
   const [now, setNow] = React.useState<Date | null>(null);
@@ -34,7 +31,7 @@ export function RelativeTime({
     const timer = window.setInterval(() => setNow(new Date()), REFRESH_MS);
     return () => window.clearInterval(timer);
   }, []);
-  const exact = formatStaffDateTime(value, { zoneLabel });
+  const exact = formatStaffDateTime(value);
   // Until the browser has a clock, render the exact time, so server and client agree.
   const relative = now ? formatStaffRelative(value, now) : exact;
   return (

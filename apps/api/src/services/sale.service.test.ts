@@ -1980,6 +1980,140 @@ describe("SaleService venue assignment", () => {
     );
   });
 
+  describe("test sale flag", () => {
+    function draftWithFlagRepo(status: Sale["status"], isTest: boolean) {
+      const sale = baseSale({ status, isTest });
+      const saleRepo: ISaleRepository = {
+        findById: vi.fn().mockResolvedValue(sale),
+        update: vi.fn().mockImplementation(async (_id: string, patch: Partial<Sale>) => ({
+          ...sale,
+          ...patch,
+        })),
+      } as unknown as ISaleRepository;
+      const lotRepo: ILotRepository = {
+        findBySaleId: vi.fn().mockResolvedValue([]),
+      } as unknown as ILotRepository;
+      const publish = vi.fn().mockResolvedValue(undefined);
+      const svc = new SaleService(
+        saleServiceOpts({
+          saleRepo,
+          lotRepo,
+          jobScheduler: null,
+          domainEventSink: { publish, withTx: vi.fn() } as unknown as IDomainEventSink,
+        }),
+      );
+      return { sale, saleRepo, svc, publish };
+    }
+
+    it("marks a draft sale as a test sale and records who changed it", async () => {
+      const { sale, saleRepo, svc, publish } = draftWithFlagRepo("draft", false);
+
+      const result = await svc.updateDraft(
+        "staff",
+        sale.id,
+        { isTest: true },
+        ["administrator"],
+        "staff-1",
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(saleRepo.update).toHaveBeenCalledWith(
+        sale.id,
+        expect.objectContaining({ isTest: true }),
+      );
+      expect(publish).toHaveBeenCalledWith({
+        aggregateType: "sale",
+        aggregateId: sale.id,
+        eventType: "sale.test_flag_changed",
+        payload: { isTest: true, status: "draft" },
+        actorUserId: "staff-1",
+      });
+    });
+
+    it("clears the flag on a draft sale and records it", async () => {
+      const { sale, svc, publish } = draftWithFlagRepo("draft", true);
+
+      const result = await svc.updateDraft(
+        "staff",
+        sale.id,
+        { isTest: false },
+        ["administrator"],
+        "staff-1",
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(publish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: "sale.test_flag_changed",
+          payload: { isTest: false, status: "draft" },
+        }),
+      );
+    });
+
+    it("records nothing when the flag is saved unchanged", async () => {
+      const { sale, svc, publish } = draftWithFlagRepo("draft", true);
+
+      const result = await svc.updateDraft(
+        "staff",
+        sale.id,
+        { isTest: true, title: "Renamed" },
+        ["administrator"],
+        "staff-1",
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(publish).not.toHaveBeenCalled();
+    });
+
+    it.each(["scheduled", "active", "ended"] as const)(
+      "refuses to change the flag once a sale is %s",
+      async (status) => {
+        const { sale, saleRepo, svc, publish } = draftWithFlagRepo(status, false);
+
+        const result = await svc.updateDraft(
+          "staff",
+          sale.id,
+          { isTest: true },
+          ["administrator"],
+          "staff-1",
+        );
+
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) expect(result.error.status).toBe(422);
+        expect(saleRepo.update).not.toHaveBeenCalled();
+        expect(publish).not.toHaveBeenCalled();
+      },
+    );
+
+    it("lets a published test sale keep saving other fields with the flag unchanged", async () => {
+      const { sale, svc } = draftWithFlagRepo("scheduled", true);
+
+      const result = await svc.updateDraft(
+        "staff",
+        sale.id,
+        { isTest: true, title: "Renamed" },
+        ["administrator"],
+        "staff-1",
+      );
+
+      expect(result.isOk()).toBe(true);
+    });
+
+    it("refuses staff who cannot edit sales", async () => {
+      const { sale, svc } = draftWithFlagRepo("draft", false);
+
+      const result = await svc.updateDraft(
+        "staff",
+        sale.id,
+        { isTest: true },
+        ["read_only"],
+        "staff-1",
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+  });
+
   it("snapshots venue address onto the sale at publish", async () => {
     const venueRepo: IVenueRepository = {
       findById: vi.fn().mockResolvedValue(testVenue()),

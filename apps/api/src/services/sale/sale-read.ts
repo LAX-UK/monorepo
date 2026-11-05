@@ -123,7 +123,7 @@ export async function listSalesForPublicApi(
       : resolved.status !== undefined
         ? { status: resolved.status, statuses: undefined }
         : {}),
-    ...(canPreview ? {} : { includeAtgOwnedDrafts: true }),
+    ...(canPreview ? {} : { includeAtgOwnedDrafts: true, excludeTestSales: true }),
   };
   const rows = await list(deps, queryFilter);
   const data = await presentSalesWithLotsImages(

@@ -80,6 +80,8 @@ export type ProjectorRunContext = {
   crmRecordLinkRepo?: ICrmRecordLinkRepository | undefined;
   crmSyncService?: CrmSyncService | undefined;
   shopIdentityProjection?: ShopIdentityProjectionService | undefined;
+  /** Records, in the artwork register, where a Bid lot's artwork is offered and when it sells. */
+  artworkOfferLock?: import("../artwork-offer-lock.types.js").BidOfferLockApplier | undefined;
   /** Sends artwork register changes to Zoho Products; absent while the writeback mode is off. */
   zohoArtworkWriteback?: ZohoArtworkWritebackService | undefined;
 };

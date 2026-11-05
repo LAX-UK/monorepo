@@ -5,6 +5,7 @@ import {
   parseRevalidateTags,
   secretMatches,
 } from "@/lib/revalidate/revalidate-request";
+import { createServerClientIpResolver } from "@auction/http-headers/client-ip";
 import { revalidateTag } from "next/cache";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -24,11 +25,13 @@ function respond(status: number, error?: string) {
  * instead of when the 120 second cache expires. The route is outside the page middleware
  * (`/api` is excluded from its matcher), so the shared secret is the only gate.
  */
+const resolveCallerIp = createServerClientIpResolver();
+
 export async function POST(request: NextRequest) {
   const expected = loadArtEnv().ART_REVALIDATE_SECRET;
   if (!expected) return respond(404);
 
-  const caller = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const caller = resolveCallerIp(request.headers);
   if (!limiter.allow(caller)) return respond(429, "rate_limited");
 
   if (!secretMatches(request.headers.get(REVALIDATE_SECRET_HEADER), expected)) {

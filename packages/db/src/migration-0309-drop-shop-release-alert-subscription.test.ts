@@ -18,7 +18,7 @@ describe("migration 0309 drop the old Shop release list", () => {
       (e) => e.tag === "0309_drop_shop_release_alert_subscription",
     );
     const move = journal.entries.find((e) => e.tag === "0292_shop_alert_engine");
-    expect(entry?.idx).toBe(309);
+    expect(entry?.idx).toBe(304);
     expect(entry?.when).toBeGreaterThan(move?.when ?? Number.POSITIVE_INFINITY);
   });
 

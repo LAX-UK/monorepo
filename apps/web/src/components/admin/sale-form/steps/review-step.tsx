@@ -101,8 +101,8 @@ export function SaleSetupReviewStep({
         onChange={() => go("schedule")}
         items={[
           { label: "Format", value: deliveryModeShortLabel(sale.deliveryMode) },
-          { label: "Opens", value: formatStaffDateTime(sale.startTime, { zoneLabel: true }) },
-          { label: "Closes", value: formatStaffDateTime(sale.endTime, { zoneLabel: true }) },
+          { label: "Opens", value: formatStaffDateTime(sale.startTime) },
+          { label: "Closes", value: formatStaffDateTime(sale.endTime) },
           { label: "Buyer's premium", value: buyerPremiumSummary(sale) },
         ]}
       />

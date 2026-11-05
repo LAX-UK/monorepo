@@ -150,6 +150,7 @@ export type {
   AdminComplianceRoutesContainer,
   AdminFinancePayoutRoutesContainer,
   AdminFinanceShellRoutesContainer,
+  AdminInventoryRoutesContainer,
   AdminLotsRoutesContainer,
   AdminOpsDashboardRoutesContainer,
   AdminOpsMetricsRoutesContainer,

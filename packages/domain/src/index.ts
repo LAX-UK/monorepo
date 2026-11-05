@@ -669,10 +669,15 @@ export {
 } from "./purchase-invoice-state.js";
 export {
   PURCHASE_PROBLEM_CATEGORIES,
+  PURCHASE_PROBLEM_NOTE_MAX,
   PURCHASE_PROBLEM_STATUSES,
+  PURCHASE_PROBLEM_UNRESOLVED_STATUSES,
+  purchaseProblemNextStatuses,
   purchaseProblemReference,
+  purchaseProblemTransitionRefusal,
   type PurchaseProblemCategory,
   type PurchaseProblemStatus,
+  type PurchaseProblemTransitionRefusal,
 } from "./purchase-problem.js";
 export {
   DELIVERY_QUOTE_STATUSES,
@@ -968,3 +973,4 @@ export {
   type PaymentReminderFacts,
   type PaymentReminderStep,
 } from "./payment-reminder.js";
+export * from "./private-sale-deal/index.js";

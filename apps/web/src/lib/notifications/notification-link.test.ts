@@ -127,6 +127,30 @@ describe("notificationHref for delivery notices", () => {
     },
   );
 
+  it("opens an artist or search notice on its page, and ignores an address that leaves the site", () => {
+    const base = {
+      id: "n11",
+      userId: "u1",
+      title: "3 new lots by Iris Calder",
+      message: "Including Chrome Horizon",
+      lotId: null,
+      submissionId: null,
+      read: false,
+      createdAt: new Date(),
+    };
+    expect(
+      notificationHref({
+        ...base,
+        type: "artist_lots_listed",
+        linkPath: "/artist/iris-calder/a1",
+      }),
+    ).toBe("/artist/iris-calder/a1");
+    expect(
+      notificationHref({ ...base, type: "search_lots_listed", linkPath: "//evil.example/x" }),
+    ).toBeNull();
+    expect(notificationHref({ ...base, type: "search_lots_listed", linkPath: null })).toBeNull();
+  });
+
   it("opens a sale announcement on the sale", () => {
     expect(
       notificationHref({

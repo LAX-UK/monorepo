@@ -24,7 +24,9 @@ export function createInternalIdentityEmailRoutes(
   env: Pick<Env, "IDENTITY_MACHINE_CLIENT_ID" | "IDENTITY_MACHINE_CLIENT_SECRET">,
 ) {
   const routes = new Hono();
-  routes.use("*", createIdentityMachineAuth(env));
+  // Scoped to this group's own path: several groups share the /internal/identity prefix, each
+  // with its own credential, so a catch-all would also run in front of the other groups.
+  routes.use("/emails", createIdentityMachineAuth(env));
 
   routes.post("/emails", async (c) => {
     const payload = await c.req.json().catch(() => null);

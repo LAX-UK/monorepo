@@ -8,9 +8,14 @@ import {
   ReadOnlyMedia,
   ReadOnlySearchListing,
 } from "@/components/artworks/artwork-read-only-sections";
+import {
+  CertificateAuthorityCard,
+  laxIssuesCertificate,
+} from "@/components/artworks/edition-runs/certificate-authority-card.client";
 import { CreatePrintsDialog } from "@/components/artworks/edition-runs/create-prints-dialog.client";
 import { EditionFactsCard } from "@/components/artworks/edition-runs/edition-facts-card.client";
 import { EditionRunCard } from "@/components/artworks/edition-runs/edition-run-card.client";
+import { HorsCommerceApprovalCard } from "@/components/artworks/edition-runs/hors-commerce-approval-card.client";
 import { LinkedListingsCard } from "@/components/artworks/edition-runs/linked-listings-card.client";
 import { LinkedPrintsCard } from "@/components/artworks/edition-runs/linked-prints-card.client";
 import { OpenStockCard } from "@/components/artworks/edition-runs/open-stock-card.client";
@@ -21,6 +26,7 @@ import {
   PrintsRunSection,
 } from "@/components/artworks/edition-runs/prints-create-sections.client";
 import { ProofListingDialog } from "@/components/artworks/edition-runs/proof-listing-dialog.client";
+import { OfferAtAuctionDialog } from "@/components/artworks/offer-at-auction-dialog.client";
 import { OriginalArtworkPicker } from "@/components/artworks/original-artwork-picker.client";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import {
@@ -132,7 +138,16 @@ import {
   toast,
   useUnsavedChanges,
 } from "@auction/staff-ui";
-import { Archive, ArchiveRestore, Eye, EyeOff, Layers, Save, Stamp } from "@auction/staff-ui/icons";
+import {
+  Archive,
+  ArchiveRestore,
+  Eye,
+  EyeOff,
+  Gavel,
+  Layers,
+  Save,
+  Stamp,
+} from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
@@ -232,6 +247,7 @@ export function ArtworkEditor({
   const [printsValues, setPrintsValues] = useState(emptyOriginalPrintsForm);
   const [creatingPrints, setCreatingPrints] = useState(false);
   const [linkedPrints, setLinkedPrints] = useState(detail?.linkedPrints ?? []);
+  const [offeringAtAuction, setOfferingAtAuction] = useState(false);
 
   const live = record?.state === "live" || record?.state === "sold_out";
   const context = {
@@ -515,6 +531,20 @@ export function ArtworkEditor({
         ]
       : [];
 
+  // Originals on lax.art can move to a LAX Bid sale; editions are sold in runs, not at auction.
+  const auctionActions =
+    record && record.salesChannel === "art" && run === null && permissions.write
+      ? [
+          {
+            id: "offer-at-auction",
+            label: "Offer at auction…",
+            icon: Gavel,
+            disabled: dirty,
+            onSelect: () => setOfferingAtAuction(true),
+          },
+        ]
+      : [];
+
   const visibilityButton = (
     action: AdminArtworkVisibilityAction,
     variant: "primary" | "secondary",
@@ -553,12 +583,16 @@ export function ArtworkEditor({
         overflow={
           record &&
           visibility &&
-          (visibility.more.length > 0 || linkedActions.length > 0 || printsActions.length > 0) &&
+          (visibility.more.length > 0 ||
+            linkedActions.length > 0 ||
+            printsActions.length > 0 ||
+            auctionActions.length > 0) &&
           !readOnly ? (
             <OverflowMenu
               actions={[
                 ...printsActions,
                 ...linkedActions,
+                ...auctionActions,
                 ...visibility.more.map((action) => ({
                   id: action,
                   label: VISIBILITY_ACTION_LABELS[action].verb,
@@ -1145,6 +1179,20 @@ export function ArtworkEditor({
             run={run}
             permissions={{ write: permissions.write, correct: permissions.correctFacts }}
           />
+          {laxIssuesCertificate(run) ? (
+            <CertificateAuthorityCard
+              artworkId={record.artworkId}
+              authority={run.certificateAuthority}
+              canWrite={permissions.write}
+            />
+          ) : null}
+          {run.horsCommerce ? (
+            <HorsCommerceApprovalCard
+              artworkId={record.artworkId}
+              horsCommerce={run.horsCommerce}
+              canApprove={permissions.approveHorsCommerce}
+            />
+          ) : null}
           {run.stock && isOpenSpec(run.spec) ? (
             <OpenStockCard
               artworkId={record.artworkId}
@@ -1246,6 +1294,14 @@ export function ArtworkEditor({
           />
         ) : null}
       </ConfirmActionDialog>
+      {record && auctionActions.length > 0 ? (
+        <OfferAtAuctionDialog
+          open={offeringAtAuction}
+          onOpenChange={setOfferingAtAuction}
+          artworkId={record.artworkId}
+          title={record.title}
+        />
+      ) : null}
       <UnsavedChangesDialog guard={guard} />
     </div>
   );

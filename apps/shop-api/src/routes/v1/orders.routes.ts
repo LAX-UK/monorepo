@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { attachmentContentDisposition } from "@auction/artwork-register-contracts";
 import {
   CheckoutSessionSchema,
   type OrderProblemReportRequest,
@@ -118,7 +119,7 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
       const pdf = await renderOrderInvoicePdf(model);
       return reply
         .header("content-type", "application/pdf")
-        .header("content-disposition", `attachment; filename="${model.fileName}"`)
+        .header("content-disposition", attachmentContentDisposition(model.fileName))
         .header("cache-control", "private, no-store")
         .send(pdf);
     },

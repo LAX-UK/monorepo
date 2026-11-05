@@ -255,6 +255,14 @@ export type {
   MarketingFilterSelection,
 } from "./marketing-filter-option-list.js";
 export {
+  MarketingFilterRadioRow,
+  type MarketingFilterRadioRowProps,
+} from "./marketing-filter-radio-row.js";
+export {
+  MarketingFilterCheckboxRow,
+  type MarketingFilterCheckboxRowProps,
+} from "./marketing-filter-checkbox-row.js";
+export {
   MarketingFilterAccordionSection,
   type MarketingFilterAccordionSectionProps,
   MarketingFilterFacetGroup,

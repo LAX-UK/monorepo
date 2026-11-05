@@ -53,6 +53,7 @@ export async function ArtArtworksCataloguePage({
           categories={vm.categories}
           artists={vm.artists}
           mediumOptions={vm.mediumOptions}
+          saleStateOptions={vm.saleStateOptions}
           resultCount={vm.resultCount}
           view={view}
         >

@@ -83,6 +83,7 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
             resultCount={vm.filteredSalesCount}
             categories={vm.categories}
             years={vm.yearOptions}
+            facets={vm.facets}
             calendarView={vm.calendarView}
           >
             {vm.listState === "filteredEmpty" ? (

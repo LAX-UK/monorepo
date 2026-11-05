@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import type { ImportArtworkHandler } from "../../application/handlers/import-artwork.handler.js";
 import { seedEditionsOfArtOriginals } from "./art-edition-links-seed.js";
 import { seedArtChannelOriginals } from "./art-originals-seed.js";
+import { seedEditionOrders } from "./edition-orders-seed.js";
 import { seedEditionRuns } from "./edition-runs-seed.js";
 import type { GrantSaleAuthorityFn } from "./edition-stock-seed.js";
 import { depleteEditionStockForSlug, grantSeedAuthorityForArtwork } from "./edition-stock-seed.js";
@@ -129,5 +130,7 @@ export async function seedShopFoundationCatalogue(
     await seedArtChannelOriginals(importArtwork, db);
     await seedEditionsOfArtOriginals(importArtwork, db, grantSaleAuthority);
     await seedEditionRuns(importArtwork, db, grantSaleAuthority);
+    // Needs prints on sale, which only a sale authority grant puts there.
+    if (grantSaleAuthority) await seedEditionOrders(db);
   }
 }

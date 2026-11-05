@@ -81,6 +81,7 @@ export function mapSaleRow(row: SaleRow, categoryIds: string[] = []): Sale {
     coverSlots: row.coverSlots ?? {},
     subtitle: row.subtitle ?? null,
     featuredLotIds: row.featuredLotIds ?? [],
+    isTest: row.isTest ?? false,
     homePinOrder: row.homePinOrder ?? null,
     consignmentDeadline: row.consignmentDeadline ?? null,
     categoryIds,

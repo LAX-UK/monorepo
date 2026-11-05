@@ -43,16 +43,90 @@ export async function waitForShaTag(repository, sha, options = {}) {
   );
 }
 
+/**
+ * The digest a tag resolves to, asked of the registry itself (a manifest HEAD request).
+ * DOCR's tag listing can keep showing an alias on its previous image after the registry has
+ * moved it, so a listing mismatch is checked here before it counts. Null when the registry
+ * can't be asked (no doctl login, network error); the listing answer then stands.
+ */
+export async function registryDigestForTag(repository, tag, deps = {}) {
+  const readDockerConfig = deps.readDockerConfig ?? defaultReadDockerConfig;
+  const fetchImpl = deps.fetchImpl ?? globalThis.fetch;
+  const auth = readDockerConfig();
+  if (!auth || !fetchImpl) return null;
+  const [host, ...path] = registry.split("/");
+  const name = [...path, repository].join("/");
+  const url = `https://${host}/v2/${name}/manifests/${encodeURIComponent(tag)}`;
+  try {
+    const bearer = await pullToken(fetchImpl, url, auth, name);
+    if (!bearer) return null;
+    const res = await fetchImpl(url, {
+      method: "HEAD",
+      headers: {
+        Authorization: `Bearer ${bearer}`,
+        Accept: [
+          "application/vnd.oci.image.index.v1+json",
+          "application/vnd.docker.distribution.manifest.list.v2+json",
+          "application/vnd.oci.image.manifest.v1+json",
+          "application/vnd.docker.distribution.manifest.v2+json",
+        ].join(", "),
+      },
+    });
+    if (!res.ok) return null;
+    return res.headers.get("docker-content-digest");
+  } catch {
+    return null;
+  }
+}
+
+/** Registry token flow: the 401 names the auth realm; Basic credentials buy a pull-scoped token. */
+async function pullToken(fetchImpl, url, basicAuth, name) {
+  const challenge = await fetchImpl(url, { method: "HEAD" });
+  const header = challenge.headers.get("www-authenticate") ?? "";
+  const realm = /realm="([^"]+)"/.exec(header)?.[1];
+  const service = /service="([^"]+)"/.exec(header)?.[1];
+  if (!realm) return null;
+  const tokenUrl = new URL(realm);
+  if (service) tokenUrl.searchParams.set("service", service);
+  tokenUrl.searchParams.set("scope", `repository:${name}:pull`);
+  const res = await fetchImpl(tokenUrl, { headers: { Authorization: `Basic ${basicAuth}` } });
+  if (!res.ok) return null;
+  const body = await res.json();
+  return body.token ?? body.access_token ?? null;
+}
+
+function defaultReadDockerConfig() {
+  const result = spawnSync("doctl", ["registry", "docker-config", "--expiry-seconds", "600"], {
+    encoding: "utf8",
+  });
+  if (result.status !== 0 || !result.stdout) return null;
+  try {
+    const host = registry.split("/")[0];
+    return JSON.parse(result.stdout)?.auths?.[host]?.auth ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function waitForTagDigest(repository, tag, expectedDigest, options = {}) {
   const maxAttempts = options.maxAttempts ?? 8;
   let delayMs = options.initialDelayMs ?? 1_000;
   let lastActual = null;
+  const askRegistry = options.registryDigestForTag ?? registryDigestForTag;
+  const list = options.listTags ?? listTags;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    const tags = listTags(repository);
+    const tags = list(repository);
     lastActual = digestForTag(tags, tag);
     if (lastActual === expectedDigest) {
       return lastActual;
+    }
+    const fromRegistry = await askRegistry(repository, tag);
+    if (fromRegistry === expectedDigest) {
+      console.log(
+        `${repository}:${tag} listing still shows ${lastActual}; the registry resolves it to ${expectedDigest}`,
+      );
+      return fromRegistry;
     }
     if (attempt < maxAttempts) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));

@@ -87,6 +87,13 @@ export type OrderLineRecord = {
   editionNumber: number | null;
   /** Editions in the run; null for merchandise. */
   editionSize: number | null;
+  /**
+   * What the buyer reads about the print ("No. 7 of 24 · Hand-signed"), from the facts kept at
+   * payment. Null for merchandise and for prints with no recorded facts.
+   */
+  editionSummary: string | null;
+  /** The same print as one invoice detail: "Limited edition of 24, no. 7, signed by hand". */
+  editionInvoiceDetail: string | null;
   unitPricePence: number;
   /** The rate recorded when the line was sold; null when no VAT policy was configured. */
   vatRateBp: number | null;

@@ -6,6 +6,8 @@ export type AnnouncedSale = {
   endTime: Date;
   status: "draft" | "scheduled" | "active" | "ended" | "cancelled";
   deliveryMode: "online" | "onsite" | "hybrid";
+  /** A test sale is never announced. */
+  isTest: boolean;
 };
 
 export interface IBidAlertSaleReader {

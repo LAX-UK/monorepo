@@ -220,8 +220,9 @@ export class SaleService implements ISaleService {
     saleId: string,
     patch: UpdateSaleBody,
     userStaffRoles?: StaffRoles | undefined,
+    actorUserId?: string | undefined,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    return updateDraftSale(this.deps, userRole, saleId, patch, userStaffRoles);
+    return updateDraftSale(this.deps, userRole, saleId, patch, userStaffRoles, actorUserId);
   }
 
   async getById(id: string): Promise<Sale | null> {

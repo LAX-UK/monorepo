@@ -378,6 +378,12 @@ export const shopArtwork = pgTable(
     proofsKeptPp: integer("proofs_kept_pp"),
     proofsKeptHc: integer("proofs_kept_hc"),
     proofsKeptBat: integer("proofs_kept_bat"),
+    /** Hors commerce proof listings: the shop admin who approved selling them, and when. */
+    horsCommerceApprovedBySubjectId: text("hors_commerce_approved_by_subject_id"),
+    horsCommerceApprovedAt: timestamp("hors_commerce_approved_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     version: integer("version").default(1).notNull(),
@@ -407,6 +413,10 @@ export const shopArtwork = pgTable(
     check(
       "shop_artwork_run_size_ck",
       sql`${table.runKind} IS DISTINCT FROM 'limited' OR (${table.runSize} IS NOT NULL AND ${table.runSize} BETWEEN CASE WHEN ${table.runRole} = 'proof' THEN 1 ELSE 2 END AND 500)`,
+    ),
+    check(
+      "shop_artwork_hors_commerce_approval_ck",
+      sql`(${table.horsCommerceApprovedBySubjectId} IS NULL) = (${table.horsCommerceApprovedAt} IS NULL) AND (${table.horsCommerceApprovedAt} IS NULL OR ${table.proofType} = 'hc')`,
     ),
   ],
 );
@@ -566,6 +576,16 @@ export const shopEditionFacts = pgTable(
     certificateWithinWeeks: integer("certificate_within_weeks"),
     certificateNumberedToMatch: boolean("certificate_numbered_to_match"),
     certificateNumberedToMatchReason: text("certificate_numbered_to_match_reason"),
+    /**
+     * The artist's written authority for certificates London Art Exchange Ltd issues on their
+     * behalf: a reference to the document kept, who recorded it and when. The three are set together.
+     */
+    certificateAuthorityReference: text("certificate_authority_reference"),
+    certificateAuthorityRecordedBy: text("certificate_authority_recorded_by"),
+    certificateAuthorityRecordedAt: timestamp("certificate_authority_recorded_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     confirmedBySubjectId: text("confirmed_by_subject_id"),
     confirmedAt: timestamp("confirmed_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
@@ -577,6 +597,10 @@ export const shopEditionFacts = pgTable(
     check(
       "shop_edition_facts_confirmed_ck",
       sql`(${table.confirmedBySubjectId} IS NULL) = (${table.confirmedAt} IS NULL)`,
+    ),
+    check(
+      "shop_edition_facts_certificate_authority_ck",
+      sql`((${table.certificateAuthorityReference} IS NULL) = (${table.certificateAuthorityRecordedBy} IS NULL)) AND ((${table.certificateAuthorityReference} IS NULL) = (${table.certificateAuthorityRecordedAt} IS NULL)) AND (${table.certificateAuthorityReference} IS NULL OR length(btrim(${table.certificateAuthorityReference})) > 0)`,
     ),
   ],
 );
@@ -934,6 +958,10 @@ export const shopOrderLine = pgTable(
       .where(sql`${table.releasedAt} is null`),
     index("shop_order_line_order_idx").on(table.orderId),
     check("shop_order_line_price_nonnegative", sql`${table.unitPricePence} >= 0`),
+    check(
+      "shop_order_line_pack_confirmed_ck",
+      sql`(${table.packConfirmedAt} IS NULL) = (${table.packConfirmedBy} IS NULL)`,
+    ),
     check(
       "shop_order_line_target_xor",
       sql`((${table.editionId} IS NOT NULL)::int + (${table.productVariantId} IS NOT NULL)::int) = 1`,
@@ -1370,9 +1398,15 @@ export const shopCertificate = pgTable(
     certificateReference: text("certificate_reference"),
     issuer: text("issuer").$type<"artist" | "publisher" | "lax">(),
     form: text("form").$type<"paper" | "digital" | "both">(),
+    /** The number the certificate carries, as confirmed at packing: "7/24". */
+    printLabel: text("print_label"),
+    /** The artist's written authority the certificate was issued under, when LAX issues it. */
+    authorityReference: text("authority_reference"),
+    issuedBySubjectId: text("issued_by_subject_id"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
+    index("shop_certificate_pending_idx").on(table.createdAt).where(sql`${table.issuedAt} IS NULL`),
     uniqueIndex("shop_certificate_edition_uid").on(table.editionId),
     uniqueIndex("shop_certificate_reference_uid")
       .on(table.certificateReference)

@@ -8,6 +8,7 @@ import {
   STAFF_DEFAULT_PAGE_SIZE,
   type TeamView,
   formatGbp,
+  formatStaffCalendarDay,
   metricChange,
   parseStaffPageSize,
 } from "@auction/staff-ui";
@@ -200,16 +201,10 @@ export function orderTeamViews(now: Date): TeamView[] {
   });
 }
 
-/** "3 Mar – 9 Mar 2026" for a range chip; one day reads as that day. */
+/** "Tue 3 Mar – Mon 9 Mar" for a range chip; one day reads as that day. */
 export function createdRangeLabel(query: OrderListQuery): string | null {
   if (!query.from && !query.to) return null;
-  const format = (day: string) =>
-    new Intl.DateTimeFormat("en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(new Date(`${day}T00:00:00Z`));
+  const format = formatStaffCalendarDay;
   if (query.from && query.to) {
     return query.from === query.to
       ? `Created ${format(query.from)}`

@@ -12,6 +12,12 @@ describe("notificationTypePresenter", () => {
     expect(p.tone).toBe("info");
   });
 
+  it("labels followed-artist and saved-search notices as new lots", () => {
+    for (const type of ["artist_lots_listed", "search_lots_listed"]) {
+      expect(notificationTypePresenter(type)).toMatchObject({ label: "New lots", tone: "info" });
+    }
+  });
+
   it("maps condition_report_ready", () => {
     const p = notificationTypePresenter("condition_report_ready");
     expect(p.label).toBe("Condition report");

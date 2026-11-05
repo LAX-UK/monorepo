@@ -83,6 +83,11 @@ export function fakeArtServices(viewer: ArtViewerState = GUEST_VIEWER) {
       getArtist: vi.fn().mockResolvedValue(null),
       listCategories: vi.fn().mockResolvedValue({ items: [] }),
       listArtworkObjectTypes: vi.fn().mockResolvedValue({ items: [] }),
+      countArtworkFacets: vi.fn().mockResolvedValue({
+        availability: { available: 0, soldOut: 0 },
+        categories: [],
+        artists: [],
+      }),
       listShopEditionsOfOriginal: vi.fn().mockResolvedValue({ items: [] }),
       listShopEditionsByArtist: vi.fn().mockResolvedValue({ items: [] }),
     },

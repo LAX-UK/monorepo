@@ -42,6 +42,10 @@ export type ArtworkFacetCountsReadModel = {
   sizes: Array<{ key: string; count: number }>;
   /** Techniques with works, most works first. */
   techniques: Array<{ value: string; count: number }>;
+  /** Object types (the medium on lax.art) with works, in canonical type order. */
+  objectTypes: Array<{ key: string; count: number }>;
+  /** Sale states with works: for sale, price on request and sold. */
+  saleStates: Array<{ key: string; count: number }>;
 };
 
 export type ArtworkSummaryReadModel = {

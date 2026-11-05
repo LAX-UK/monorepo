@@ -37,7 +37,7 @@ export function lotDetailNotice(input: {
       id: "withdrawal",
       tone: "warning",
       title: "The seller has asked to withdraw this lot",
-      body: `Asked ${formatStaffDateTime(input.withdrawalRequestedAt, { zoneLabel: true })}. Approve or decline the request from the lot's actions.`,
+      body: `Asked ${formatStaffDateTime(input.withdrawalRequestedAt)}. Approve or decline the request from the lot's actions.`,
       action: null,
     };
   }

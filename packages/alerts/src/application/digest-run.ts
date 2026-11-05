@@ -10,6 +10,7 @@ import type {
   AlertUrls,
   Clock,
   DigestLedger,
+  DigestNoticeWriter,
   MatchLedger,
   MatchValidator,
   SubscriberStore,
@@ -48,6 +49,8 @@ export type DigestRunDeps = {
   urls: AlertUrls;
   clock: Clock;
   log: AlertLogger;
+  /** In-app notices for signed-in people; omitted where a product has none. */
+  notices?: DigestNoticeWriter;
   batchSize?: number;
 };
 
@@ -109,6 +112,7 @@ export class DigestRun {
         const record = await subscribers.findById(digest.subscriberId);
         const vm = assembleDigest(await digests.matchesOf(digest.digestId));
         if (record && vm) {
+          await this.notify(record, digest.digestId, vm, localDate);
           await this.send(
             record,
             vm,
@@ -169,9 +173,29 @@ export class DigestRun {
       stats.capped += 1;
       return;
     }
+    await this.notify(record, claim.digestId, vm, localDate);
     await this.send(record, vm, active, localDate, idempotencyKey);
     await digests.markSent(claim.digestId, clock.now());
     stats.sent += 1;
+  }
+
+  /**
+   * The same digest, told in the app. A failure here is logged and never holds back the email;
+   * the writer is idempotent per digest, so an interrupted digest that is resumed fills it in.
+   */
+  private async notify(
+    record: SubscriberRecord,
+    digestId: string,
+    vm: NonNullable<ReturnType<typeof assembleDigest>>,
+    localDate: string,
+  ) {
+    const { notices, log } = this.deps;
+    if (!notices || !record.subjectId) return;
+    try {
+      await notices.write({ digestId, subjectId: record.subjectId, localDate, vm });
+    } catch (err) {
+      log.warn({ err, digestId }, "alert digest in-app notice failed");
+    }
   }
 
   private async send(

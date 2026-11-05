@@ -14,23 +14,24 @@ test.describe("staff wizard journeys @journey", () => {
     await expect(page.getByRole("button", { name: /^continue/i })).toBeVisible();
   });
 
-  test("creates a category through the full wizard", async ({ page }) => {
+  test("creates a category from its one-page form", async ({ page }) => {
     await page.goto("/admin/categories/new");
-    await page.getByLabel(/name/i).first().fill(`E2E Test Category ${Date.now()}`);
-    await page.getByRole("button", { name: /^continue/i }).click();
-    await page.getByRole("button", { name: /create category/i }).click();
+    await page
+      .getByRole("textbox", { name: "Name", exact: true })
+      .fill(`E2E Test Category ${Date.now()}`);
+    await page.getByRole("button", { name: /^create category$/i }).click();
     await expect(page).toHaveURL(/\/admin\/categories/);
   });
 
   for (const route of [
-    { path: "/admin/artists/new", heading: /new artist/i, submit: /create artist/i },
-    { path: "/admin/venues/new", heading: /new venue/i, submit: /create venue/i },
+    { path: "/admin/artists/new", heading: /new artist/i, submit: /^create artist$/i },
+    { path: "/admin/venues/new", heading: /new venue/i, submit: /^create venue$/i },
   ]) {
-    test(`${route.path} starts on the first wizard step`, async ({ page }) => {
+    test(`${route.path} opens its one-page form`, async ({ page }) => {
       await page.goto(route.path);
-      await expect(page.getByRole("heading", { name: route.heading })).toBeVisible();
-      await expect(page.getByRole("button", { name: /^continue/i })).toBeVisible();
-      await expect(page.getByRole("button", { name: route.submit })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: route.heading, level: 1 })).toBeVisible();
+      await expect(page.getByRole("button", { name: route.submit })).toBeVisible();
+      await expect(page.getByRole("link", { name: /^cancel$/i })).toBeVisible();
     });
   }
 

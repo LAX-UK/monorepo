@@ -9,6 +9,7 @@ import type {
   AdminLegalEntityBrowseRow,
   AdminLegalEntityBrowseSummary,
 } from "../lib/admin-legal-entity-browse.types.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import {
   stripeConnectHasOutstandingExpr,
   stripeConnectOutstandingCountExpr,
@@ -22,7 +23,7 @@ function buildBrowseWhere(params: AdminLegalEntityBrowseFilter): SQL | undefined
   const clauses: SQL[] = [];
 
   if (trimmed.length > 0) {
-    clauses.push(ilike(legalEntity.displayName, `%${trimmed}%`));
+    clauses.push(ilike(legalEntity.displayName, containsPattern(trimmed)));
   }
   if (params.createdByUserId?.trim()) {
     clauses.push(eq(legalEntity.createdByUserId, params.createdByUserId.trim()));

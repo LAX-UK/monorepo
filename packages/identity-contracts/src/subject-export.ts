@@ -297,7 +297,11 @@ const ACCOUNT_CATEGORIES = [
       f("version", "The version of the document or policy."),
       f("acceptedAt", "When you accepted or chose."),
       f("choice", "What you chose, where there is a choice."),
-      f("product", "The LAX product you granted access to, for product access."),
+      f(
+        "product",
+        "The LAX product you granted access to, or whose terms you were shown when you created your account.",
+      ),
+      f("company", "The company whose terms and privacy notice you accepted, for those records."),
       f("scopes", "What you allowed that product to read, for product access."),
     ],
   ),

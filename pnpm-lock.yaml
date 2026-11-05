@@ -76,6 +76,9 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding
+      '@auction/http-headers':
+        specifier: workspace:*
+        version: link:../../packages/http-headers
       '@auction/identity-contracts':
         specifier: workspace:*
         version: link:../../packages/identity-contracts
@@ -155,6 +158,9 @@ importers:
       '@auction/alerts':
         specifier: workspace:*
         version: link:../../packages/alerts
+      '@auction/artwork-register-contracts':
+        specifier: workspace:*
+        version: link:../../packages/artwork-register-contracts
       '@auction/auth':
         specifier: workspace:*
         version: link:../../packages/auth
@@ -321,6 +327,9 @@ importers:
       '@auction/branding':
         specifier: workspace:*
         version: link:../../packages/branding
+      '@auction/http-headers':
+        specifier: workspace:*
+        version: link:../../packages/http-headers
       '@auction/identity-rp':
         specifier: workspace:*
         version: link:../../packages/identity-rp
@@ -1670,9 +1679,15 @@ importers:
       '@auction/config-ts':
         specifier: workspace:*
         version: link:../config-ts
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
 
   packages/identity-contracts:
     dependencies:

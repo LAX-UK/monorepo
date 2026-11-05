@@ -38,11 +38,11 @@ import type {
   MemberSearchHit,
   PurchaseSearchHit,
 } from "../interfaces/account-record-search.reader.js";
-import { escapeLikePattern } from "./audit-log-sql.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import { lotCurrencySql } from "./organisation-dashboard.sql.js";
 import { submissionSenderSql } from "./submission-sender.sql.js";
 
-const contains = (terms: AccountSearchTerms) => `%${escapeLikePattern(terms.text)}%`;
+const contains = (terms: AccountSearchTerms) => containsPattern(terms.text);
 
 /** A lot matches on its title, its artist's name or its lot number. */
 function lotMatches(terms: AccountSearchTerms): SQL | undefined {

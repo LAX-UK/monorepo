@@ -58,11 +58,13 @@ export function shopOrderTitle(order: Pick<OrderSummary, "lines">): string {
 const HOLDING_STATUSES: ReadonlySet<OrderStatus> = new Set(["paid", "partially_refunded"]);
 
 /**
- * The edition a line holds ("Edition 3 of 24"). An edition number is shown only while a paid
- * order holds it: shop-api names none otherwise, and an order read from an older shop-api is
- * checked here too. Anything else shows the run instead ("Edition of 24").
+ * The print a line holds. shop-api describes it from the facts the buyer paid under ("No. 7 of
+ * 24 · Hand-signed") and names the number only while a paid order holds it. For an order with no
+ * recorded facts, or one read from an older shop-api, the plain edition is shown ("Edition 3 of
+ * 24", or "Edition of 24" once the number is no longer theirs).
  */
 export function shopOrderLineEdition(line: OrderLine, status: OrderStatus): string | null {
+  if (line.editionSummary) return line.editionSummary;
   if (line.editionNumber && HOLDING_STATUSES.has(status)) {
     return line.editionSize
       ? `Edition ${line.editionNumber} of ${line.editionSize}`
