@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import {
+  shopAlertSubscriber,
   shopArtistApplication,
   shopArtworkInterest,
   shopBasket,
@@ -29,7 +30,7 @@ import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
  * - scrub: the row stays because orders or staff history point at it, with the personal fields
  *   nulled or replaced by the person's pseudonym.
  *
- * Also deleted: the basket (its lines go with it), release alert subscriptions, invitations sent to
+ * Also deleted: the basket (its lines go with it), release alert subscriptions and alert sign-ups (Shop releases and lax.art followed artists, with their topics, matches and digests), invitations sent to
  * the person's parties and their login sessions. An artist application keeps its reference, status,
  * dates and (when accepted) the artist name that is public anyway; the contact and portfolio text is
  * cleared. Its event history is append-only staff history that holds no contact details, and stays.
@@ -297,4 +298,8 @@ export const SHOP_ANONYMISATION_RULES: readonly ShopAnonymisationRule[] = [
   deleteBySubject("shop_identity_session", shopIdentitySession, shopIdentitySession.subjectId),
   deleteBySubject("shop_saved_artwork", shopSavedArtwork, shopSavedArtwork.identitySubjectId),
   deleteBySubject("shop_followed_artist", shopFollowedArtist, shopFollowedArtist.identitySubjectId),
+  // Alert sign-ups (Shop releases, back in stock, lax.art followed artists) hold the person's
+  // address and consent record; topics, matches and digests go with the row by cascade. The
+  // release list the engine replaced is cleared above until its table is dropped.
+  deleteBySubject("shop_alert_subscriber", shopAlertSubscriber, shopAlertSubscriber.subjectId),
 ];

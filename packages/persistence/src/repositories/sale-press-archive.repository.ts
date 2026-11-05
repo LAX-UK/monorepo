@@ -129,6 +129,8 @@ export class SalePressArchiveRepository implements IPressArchiveRepository {
     while (true) {
       const batch = await this.saleRepo.list({
         statuses,
+        // Press coverage, its day media and its sitemap are public: a test sale never appears.
+        excludeTestSales: true,
         limit: SALES_PAGE_SIZE,
         offset,
         sort: "startAsc",

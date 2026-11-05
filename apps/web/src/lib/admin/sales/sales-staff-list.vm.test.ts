@@ -43,6 +43,12 @@ describe("sales staff list view model", () => {
     expect(lotCountLabel(1204)).toBe("1,204 lots");
   });
 
+  it("marks test sales so the list can badge them", () => {
+    const [test, ordinary] = toSalesStaffRows([{ ...row, isTest: true }, row]);
+    expect(test?.isTest).toBe(true);
+    expect(ordinary?.isTest).toBeUndefined();
+  });
+
   it("marks draft sales linked to ATG and disables lax.bid actions only when ATG owns them", () => {
     const summary = (remoteStatus: "created" | "published"): AtgSaleSellingSummary =>
       toAtgSaleSellingSummary({

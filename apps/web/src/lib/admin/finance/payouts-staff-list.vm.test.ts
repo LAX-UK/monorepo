@@ -1,5 +1,6 @@
 import type { AdminPayoutListSummary } from "@/lib/data/http/admin-payouts.shared";
 import type { AdminPayoutRow } from "@/lib/data/http/admin.server";
+import { pinClock } from "@/test/pin-clock";
 import { describe, expect, it } from "vitest";
 import {
   activePayoutsView,
@@ -57,6 +58,8 @@ const row: AdminPayoutRow = {
   createdAt: "2026-11-01T00:00:00.000Z",
 };
 
+pinClock();
+
 describe("payouts staff list view model", () => {
   it("shows a paid date only for a payout that was paid", () => {
     const at = "2026-10-05T09:00:00.000Z";
@@ -88,7 +91,7 @@ describe("payouts staff list view model", () => {
     );
     expect(scheduled).toMatchObject({
       seller: "Gallery One",
-      period: "1 Oct 2026 – 31 Oct 2026",
+      period: "Thu 1 Oct – Sat 31 Oct",
       net: "£4,499.50",
       netPence: 449_950,
       canMarkPaid: true,
@@ -178,13 +181,13 @@ describe("payouts staff list view model", () => {
 describe("payoutPeriod", () => {
   it("shows both ends of a bounded period", () => {
     expect(payoutPeriod("2026-10-01T00:00:00.000Z", "2026-10-31T00:00:00.000Z")).toBe(
-      "1 Oct 2026 – 31 Oct 2026",
+      "Thu 1 Oct – Sat 31 Oct",
     );
   });
 
   it("reads an epoch start as everything up to the end date", () => {
     expect(payoutPeriod("1970-01-01T00:00:00.000Z", "2026-06-22T00:00:00.000Z")).toBe(
-      "Up to 22 Jun 2026",
+      "Up to Mon 22 Jun",
     );
   });
 });

@@ -65,7 +65,7 @@ export function CheckInSearchTab({
                 {row.checkedInAt ? (
                   <span className="flex items-center gap-2 text-staff-sm text-staff-muted">
                     <StatusBadge tone="success">Arrived</StatusBadge>
-                    {formatStaffDateTime(row.checkedInAt, { zoneLabel: true })}
+                    {formatStaffDateTime(row.checkedInAt)}
                   </span>
                 ) : null}
               </div>

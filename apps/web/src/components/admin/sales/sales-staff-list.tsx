@@ -118,6 +118,7 @@ export function SalesStaffList(props: SalesStaffListProps) {
             <StatusBadge tone={row.status.tone} live={row.status.live ?? false}>
               {row.status.label}
             </StatusBadge>
+            {row.isTest ? <StatusBadge tone="neutral">Test</StatusBadge> : null}
             {row.onAtg ? <AtgListMarker label="Linked to ATG" /> : null}
           </span>
         ),

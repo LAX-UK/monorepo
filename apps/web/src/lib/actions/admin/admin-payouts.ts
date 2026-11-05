@@ -72,7 +72,7 @@ export async function adminMarkPayoutPaidResultAction(
 /** Adds a signed adjustment line to a payout that has not been paid yet. */
 export async function adminAddPayoutAdjustmentResultAction(
   payoutId: string,
-  input: { amount: string; note: string },
+  input: { amount: string; note: string; idempotencyKey?: string },
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminAddPayoutAdjustmentResultAction", async () => {
     const denied = await denyUnlessAdminCapability(FINANCE_ACCESS);
@@ -89,7 +89,7 @@ export async function adminAddPayoutAdjustmentResultAction(
     }
     const res = await authedServerFetch(`/admin/payouts/${encodeURIComponent(id)}/adjustments`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...idempotencyHeader(input.idempotencyKey) },
       body: JSON.stringify({ amount, note }),
     });
     const result = await payoutCallResult(res, "The adjustment could not be added.");

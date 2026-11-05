@@ -38,7 +38,7 @@ export function xeroHealth(status: AdminXeroIntegrationStatus): StatusPresentati
   return { label: "Connected", tone: "success" };
 }
 
-const when = (iso: string | null) => (iso ? formatStaffDateTime(iso, { zoneLabel: true }) : null);
+const when = (iso: string | null) => (iso ? formatStaffDateTime(iso) : null);
 
 /**
  * Bid's link to Xero for hosted invoices and payment sync: its state and organisation in the

@@ -52,13 +52,14 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
     zValidator("param", saleIdParamSchema),
     zValidator("json", updateSaleSchema),
     async (c) => {
+      const userId = c.get("userId") as string;
       const role = (c.get("userRole") ?? "client") as UserRole;
       const staffRoles = c.get("userStaffRoles");
       const { id } = c.req.valid("param");
       const patch = c.req.valid("json");
       return respondCatalogRouteOutcome(
         c,
-        await http().updateDraft({ role, saleId: id, patch, staffRoles }),
+        await http().updateDraft({ userId, role, saleId: id, patch, staffRoles }),
       );
     },
   );

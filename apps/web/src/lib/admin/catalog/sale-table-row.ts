@@ -17,6 +17,8 @@ export type AdminSaleBoardRow = {
   endTimeLabel: string;
   sparklineValues: number[];
   canDelete: boolean;
+  /** Test sale: hidden from the public and never announced. */
+  isTest?: boolean;
   createdAtIso: string;
 };
 

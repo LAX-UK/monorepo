@@ -1,4 +1,4 @@
-import type { PayoutSettlementDeps } from "./payout-helpers.js";
+import { type PayoutSettlementDeps, listSettlementEntityIds } from "./payout-helpers.js";
 import { createSettlement } from "./payout-settlement.js";
 import type {
   BulkPayoutSettlementResult,
@@ -84,7 +84,7 @@ export async function runBulkSettlementWithTransfers(
     port.onEntityOutcome?.(row);
   };
 
-  const legalEntityIds = await deps.repo.listLegalEntityIdsWithUnlinkedCapturedPayments();
+  const legalEntityIds = await listSettlementEntityIds(deps);
 
   for (const legalEntityId of legalEntityIds) {
     try {

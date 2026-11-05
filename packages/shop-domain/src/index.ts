@@ -453,13 +453,7 @@ export {
   type GuestErasureOrder,
 } from "./guest-erasure.js";
 export {
-  RELEASE_ALERT_CONFIRM_TTL_MS,
   RELEASE_ALERT_CONSENT_TEXT,
-  RELEASE_ALERT_RESEND_AFTER_MS,
-  evaluateReleaseAlertConfirmation,
+  isArtOriginalRelease,
   isShopEditionRelease,
-  shouldSendReleaseAlertConfirmation,
-  type ReleaseAlertConfirmation,
-  type ReleaseAlertSnapshot,
-  type ReleaseAlertStatus,
 } from "./release-alert.js";

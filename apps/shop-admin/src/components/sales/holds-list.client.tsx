@@ -245,7 +245,7 @@ export function HoldsList({
                 { label: "Held for", value: opened.clientName ?? "" },
                 {
                   label: "Ends",
-                  value: formatStaffDateTime(opened.expiresAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.expiresAt),
                 },
               ]
             : []
@@ -257,9 +257,7 @@ export function HoldsList({
                 { label: "Note", value: opened.note ?? null },
                 {
                   label: "Created",
-                  value: opened.createdAt
-                    ? formatStaffDateTime(opened.createdAt, { zoneLabel: true })
-                    : null,
+                  value: opened.createdAt ? formatStaffDateTime(opened.createdAt) : null,
                 },
                 { label: "Hold ID", value: opened.holdId, copyValue: opened.holdId },
               ])

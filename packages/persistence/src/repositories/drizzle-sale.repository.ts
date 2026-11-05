@@ -5,6 +5,7 @@ import type { CreateSaleInput, Sale, SaleStatus } from "@auction/types";
 import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import type { ISaleRepository, ListSalesFilter } from "../interfaces/index.js";
 import { mapSaleRow } from "../lib/entity-row-mappers.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import { atgOwnedDraftSaleForStatusesSql } from "./atg-public-catalog.sql.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 import { queryAvgLotsPerSale } from "./sale/sale-analytics-queries.js";
@@ -27,6 +28,7 @@ function soldLotMissingSettledPayment() {
 
 function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
   const conditions = [saleNotDeleted()];
+  if (input.excludeTestSales) conditions.push(eq(sale.isTest, false));
   const statuses = input.statuses?.length
     ? input.statuses
     : input.status
@@ -56,10 +58,7 @@ function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
   }
   const q = input.q?.trim();
   if (q) {
-    const safe = q.replace(/[%_\\]/g, "");
-    if (safe.length > 0) {
-      conditions.push(ilike(sale.title, `%${safe}%`));
-    }
+    conditions.push(ilike(sale.title, containsPattern(q)));
   }
   if (input.deliveryMode) conditions.push(eq(sale.deliveryMode, input.deliveryMode));
   if (input.settlementStatus === "settled") {
@@ -154,6 +153,7 @@ export class DrizzleSaleRepository implements ISaleRepository {
         coverImages,
         deliveryMode: input.deliveryMode ?? "onsite",
         allowOnlineBidsBeforeGoLive: input.allowOnlineBidsBeforeGoLive ?? false,
+        isTest: input.isTest ?? false,
         streamUrl: input.streamUrl ?? null,
         heroPresentation: input.heroPresentation ?? "cover",
         heroVideoUrl: input.heroVideoUrl ?? null,
@@ -253,6 +253,7 @@ export class DrizzleSaleRepository implements ISaleRepository {
     if (patch.allowOnlineBidsBeforeGoLive !== undefined) {
       rowPatch.allowOnlineBidsBeforeGoLive = patch.allowOnlineBidsBeforeGoLive;
     }
+    if (patch.isTest !== undefined) rowPatch.isTest = patch.isTest;
     if (patch.streamUrl !== undefined) rowPatch.streamUrl = patch.streamUrl;
     if (patch.heroPresentation !== undefined) rowPatch.heroPresentation = patch.heroPresentation;
     if (patch.heroVideoUrl !== undefined) rowPatch.heroVideoUrl = patch.heroVideoUrl;

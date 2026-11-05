@@ -1,3 +1,5 @@
+import type { OriginalMoveService } from "./application/admin/original-move.service.js";
+import type { ReleaseAlertSummaryReader } from "./application/alerts/alert-ports.js";
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import type { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
@@ -22,7 +24,6 @@ import type {
   CreateOriginalSaleCommand,
   OriginalSaleWriter,
 } from "./application/ports/original-sale.writer.js";
-import type { ReleaseAlertSummaryReader } from "./application/ports/release-alert.store.js";
 import type {
   GrantSaleAuthorityCommand,
   SaleAuthorityWriter,
@@ -115,6 +116,8 @@ export type AdminRoutesDeps = {
   createMerchandiseProduct: ReturnType<typeof createCreateMerchandiseProductHandler>;
   merchandiseCatalogue: MerchandiseCatalogueWriter;
   artworkCatalogue: ArtworkCatalogueWriter;
+  /** Offering an original at auction in LAX Bid. */
+  inventoryMoves: Pick<OriginalMoveService, "assess" | "listSales" | "offerAtAuction">;
   /** Runs of prints: change a draft's run, edition facts, open edition stock, linked listings. */
   editionRuns: Omit<EditionRunServices, "recorder" | "originalPrintsRecorder">;
   /** Packing: the pick list, confirming the print in hand, swaps and certificates. */

@@ -99,6 +99,8 @@ export type Sale = {
   subtitle?: string | null;
   /** Lots staff chose to lead with, in order (up to 12). */
   featuredLotIds?: string[];
+  /** Internal test sale: hidden from every public surface and never announced. */
+  isTest?: boolean;
   /** Position (1 to 3) among the sales pinned to the home page, or null when not pinned. */
   homePinOrder?: number | null;
   /** Last day to consign to the next sale. */
@@ -211,6 +213,8 @@ export type CreateSaleInput = {
   categoryId?: string | undefined;
   deliveryMode?: SaleDeliveryMode | undefined;
   allowOnlineBidsBeforeGoLive?: boolean | undefined;
+  /** Test sale: hidden from the public and never announced. */
+  isTest?: boolean | undefined;
   streamUrl?: string | null | undefined;
   heroPresentation?: SaleHeroPresentation | undefined;
   heroVideoUrl?: string | null | undefined;

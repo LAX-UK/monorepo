@@ -62,7 +62,7 @@ export class SaleListReadService implements ISaleListReadService {
         : resolved.status !== undefined
           ? { status: resolved.status, statuses: undefined }
           : {}),
-      ...(canPreview ? {} : { includeAtgOwnedDrafts: true }),
+      ...(canPreview ? {} : { includeAtgOwnedDrafts: true, excludeTestSales: true }),
     };
 
     const sales = await withSellingPlatforms(

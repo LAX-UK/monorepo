@@ -100,6 +100,13 @@ export class AdminLotService implements IAdminLotService {
     );
   }
 
+  async returnToLaxArt(id: string): Promise<ServiceResult<{ reopened: boolean }>> {
+    return this.api.json<{ reopened: boolean }>(
+      `/admin/lots/${encodeURIComponent(id)}/return-to-lax-art`,
+      { method: "POST" },
+    );
+  }
+
   async recordBuyerDefault(
     id: string,
     body: RecordBuyerDefaultInput,

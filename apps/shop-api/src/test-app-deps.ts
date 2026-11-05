@@ -39,6 +39,9 @@ export function createMinimalShopApiTestDeps(
       OIDC_ISSUER_URL: "http://localhost:3001",
       SHOP_SCHEDULER_ENABLED: false,
       SHOP_SCHEDULER_INTERVAL_MS: 60_000,
+      ALERTS_SEND_MODE: "off",
+      ALERT_LINK_SECRET: "test-alert-link-secret-not-for-production", // gitleaks:allow
+      ALERT_LINK_KEY_ID: "k1",
       SHOP_REQUIRE_STRIPE: true,
       SHOP_FAKE_CHECKOUT_ENABLED: false,
       DOMAIN_EVENT_PUBLISH_VALIDATE: "off",
@@ -65,6 +68,15 @@ export function createMinimalShopApiTestDeps(
     },
     identityDeletion: {
       eligibility: { listBlockers: async () => [] },
+      machine: { clientId: undefined, clientSecret: undefined },
+    },
+    inventory: {
+      reopen: {
+        reopen: async () => ({
+          ok: true as const,
+          data: { artworkId: "00000000-0000-4000-8000-000000000001", reopened: false },
+        }),
+      },
       machine: { clientId: undefined, clientSecret: undefined },
     },
     identitySubjectExport: {
@@ -128,6 +140,8 @@ export function createMinimalShopApiTestDeps(
         priceBands: [],
         sizes: [],
         techniques: [],
+        objectTypes: [],
+        saleStates: [],
       }),
       listPublicCategories: async () => ({ items: [] }),
       getPublicCategory: async () => null,
@@ -374,6 +388,20 @@ export function createMinimalShopApiTestDeps(
         variantId: "00000000-0000-4000-8000-000000000018",
         slug: "test-product",
       }),
+      inventoryMoves: {
+        assess: async (artworkId: string) => ({
+          artworkId,
+          title: "Test artwork",
+          stockCode: null,
+          onLaxArt: false,
+          eligible: false,
+          reasons: ["Not set up in tests."],
+        }),
+        listSales: async () => [],
+        offerAtAuction: async () => {
+          throw new Error("not implemented");
+        },
+      },
       merchandiseCatalogue: {
         updateProduct: async () => ({ version: "2026-01-01T00:00:00.000Z" }),
         setProductArchived: async () => ({ version: "2026-01-01T00:00:00.000Z" }),

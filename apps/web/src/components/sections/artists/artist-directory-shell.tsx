@@ -196,7 +196,10 @@ export async function ArtistsDirectoryShell({ preset, searchParams }: ArtistsDir
               resetHref={preset.canonicalPath}
             >
               <MarketingFilterLinkGroups
-                groups={[...railGroups, { id: "sort", title: "Sort by", links: sortLinks }]}
+                groups={[
+                  ...railGroups,
+                  { id: "sort", title: "Sort by", links: sortLinks, selection: "single" as const },
+                ]}
                 clearHref={preset.canonicalPath}
                 hasFilters={hasUserFilters}
                 idPrefix="sheet"

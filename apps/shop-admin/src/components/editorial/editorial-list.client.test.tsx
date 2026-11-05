@@ -1,5 +1,6 @@
-// @vitest-environment jsdom
 import { EDITORIAL_ENTITIES } from "@/lib/editorial-entities";
+// @vitest-environment jsdom
+import { pinClock } from "@/test/pin-clock";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -93,6 +94,8 @@ beforeEach(() => {
   setEditorialPublication.mockResolvedValue({ ok: true, data: { version: "v2" } });
 });
 
+pinClock();
+
 describe("the exhibitions list", () => {
   it("shows a view per status with counts, and the newest edit first", () => {
     renderList();
@@ -180,7 +183,7 @@ describe("the exhibitions list", () => {
     const panel = await screen.findByRole("dialog", { name: /Summer Show/ });
     expect(within(panel).getByText("Published")).toBeInTheDocument();
     expect(within(panel).getByText("Exhibition")).toBeInTheDocument();
-    expect(within(panel).getByText("1 Jun 2026 – 30 Jun 2026")).toBeInTheDocument();
+    expect(within(panel).getByText("Mon 1 Jun – Tue 30 Jun")).toBeInTheDocument();
     expect(within(panel).getByText("lax.test/exhibitions/summer-show")).toBeInTheDocument();
     expect(within(panel).getByText(SUMMER)).toBeInTheDocument();
     expect(within(panel).getByRole("link", { name: "Edit exhibition" })).toHaveAttribute(

@@ -32,6 +32,7 @@ import { attachAdminFinanceRoutes } from "./admin/finance.routes.js";
 import { attachAdminImpersonationRoutes } from "./admin/impersonation.routes.js";
 import { attachAdminLegalEntityBuyerAgentRoutes } from "./admin/legal-entity-buyer-agents.routes.js";
 import { attachAdminLotFulfilmentRoutes } from "./admin/lot-fulfilment.routes.js";
+import { attachAdminLotLaxArtReturnRoutes } from "./admin/lot-lax-art-return.routes.js";
 import { attachAdminLotsCatalogRoutes } from "./admin/lots-catalog.routes.js";
 import { attachAdminLotsRoutes } from "./admin/lots.routes.js";
 import { attachAdminMarketingEnquiryRoutes } from "./admin/marketing-enquiries.routes.js";
@@ -45,6 +46,7 @@ import {
   attachAdminPaymentsManualReviewRoutes,
 } from "./admin/payments.routes.js";
 import { attachAdminPersonEmailDeliveryRoutes } from "./admin/person-email-delivery.routes.js";
+import { attachAdminPurchaseProblemRoutes } from "./admin/purchase-problems.routes.js";
 import { attachAdminQrCodesRoutes } from "./admin/qr-codes.routes.js";
 import { attachAdminSaleCoverRoutes } from "./admin/sale-cover.routes.js";
 import { attachAdminSaleRegistrationsRoutes } from "./admin/sale-registrations.routes.js";
@@ -125,6 +127,7 @@ export function createAdminRoutes(
   attachAdminLotsCatalogRoutes(platform, container);
   attachAdminAttentionRoutes(platform, container);
   attachAdminLotsRoutes(platform, container, guards);
+  attachAdminLotLaxArtReturnRoutes(platform, container);
   attachAdminAuditRoutes(platform, container);
   attachAdminCatalogRoutes(platform, container);
   attachAdminEmailRoutes(platform, container);
@@ -161,6 +164,8 @@ export function createAdminRoutes(
   attachAdminDataRequestsRoutes(platform, container);
 
   attachAdminMarketingEnquiryRoutes(platform, container);
+
+  attachAdminPurchaseProblemRoutes(platform, container);
 
   // Finance-shell routes must stay reachable for finance, who fails
   // `requirePlatformShell`. Guards are path-scoped (not `use("*")`) so they don't

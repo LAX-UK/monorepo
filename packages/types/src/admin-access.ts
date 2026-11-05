@@ -344,6 +344,15 @@ export const DELETION_HOLD_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "support.respond"],
 };
 
+/**
+ * Purchase problems buyers report on a paid purchase: what they wrote, the purchase, and the
+ * work to resolve it. Client services answer the buyer; administrators hold the same access.
+ * Finance reaches the payment itself from the payments screens.
+ */
+export const PURCHASE_PROBLEMS_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "support.respond"],
+};
+
 /** Private sale enquiries: the work offered, the budget and how to reach the sender. */
 export const PRIVATE_SALE_ENQUIRIES_READ_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "enquiries.private_sale.read"],
@@ -357,6 +366,16 @@ export const ENQUIRIES_ACCESS: CapabilityRequirement = {
 /** Hand an enquiry to a colleague, or take it back. */
 export const ENQUIRY_ASSIGN_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "support.respond", "private_sale.manage"],
+};
+
+/** Open a private sale deal and move it through its stages. */
+export const PRIVATE_SALE_DEALS_MANAGE_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "private_sale.manage"],
+};
+
+/** Read a private sale deal: those who run it, and Compliance, who decide its checks. */
+export const PRIVATE_SALE_DEALS_READ_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "private_sale.manage", "aml.review", "compliance.mlro"],
 };
 
 /** Choose which specialist receives each department's enquiries. */

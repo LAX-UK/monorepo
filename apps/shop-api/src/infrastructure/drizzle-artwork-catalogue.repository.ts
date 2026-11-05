@@ -47,6 +47,7 @@ import type {
 } from "../application/ports/artwork-catalogue.reader.js";
 import type { ArtworkImageReadModel } from "../application/read-models/catalogue.read-model.js";
 import { publicArtworkVisible } from "./artwork-visibility-sql.js";
+import { FACET_SALE_STATES, orderedCounts } from "./facet-counts.js";
 import { toPublicArtworkDetail } from "./map-public-artwork.js";
 import {
   type SelectedArtworkRow,
@@ -457,6 +458,8 @@ export function createDrizzleArtworkCatalogueRepository(
       const { minPricePence: _min, maxPricePence: _max, ...priceScope } = filter;
       const { sizeBand: _size, ...sizeScope } = filter;
       const { technique: _technique, ...techniqueScope } = filter;
+      const { objectTypes: _objectTypes, ...objectTypeScope } = filter;
+      const { saleState: _saleState, ...saleStateScope } = filter;
       const bandCounts = (
         value: SQL,
         bands: ReadonlyArray<{ key: string; range: CatalogueBandRange }>,
@@ -483,46 +486,68 @@ export function createDrizzleArtworkCatalogueRepository(
         key: band.key,
         range: band.longestSideCm,
       }));
-      const [availabilityRows, categoryRows, artistRows, priceRows, sizeRows, techniqueRows] =
-        await Promise.all([
-          db
-            .select({
-              total: count(),
-              available: sql<number>`count(*) filter (where ${artworkAvailableNowSql})`,
-            })
-            .from(shopArtwork)
-            .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
-            .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-            .where(and(...buildArtworkFilters(availabilityScope))),
-          db
-            .select({ slug: shopCategory.slug, label: shopCategory.label, count: count() })
-            .from(shopArtwork)
-            .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
-            .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-            .innerJoin(shopArtworkCategory, eq(shopArtworkCategory.artworkId, shopArtwork.id))
-            .innerJoin(shopCategory, eq(shopArtworkCategory.categoryId, shopCategory.id))
-            .where(and(...buildArtworkFilters(categoryScope)))
-            .groupBy(shopCategory.slug, shopCategory.label, shopCategory.sortOrder)
-            .orderBy(asc(shopCategory.sortOrder), asc(shopCategory.label)),
-          db
-            .select({ slug: shopArtist.slug, name: shopParty.displayName, count: count() })
-            .from(shopArtwork)
-            .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
-            .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-            .where(and(...buildArtworkFilters(artistScope)))
-            .groupBy(shopArtist.slug, shopParty.displayName)
-            .orderBy(asc(shopParty.displayName)),
-          bandCounts(sql`${shopArtwork.printPricePence}`, priceBands, priceScope),
-          bandCounts(longestSideCmSql, sizeBands, sizeScope),
-          db
-            .select({ value: sql<string>`${techniqueSql}`, count: count() })
-            .from(shopArtwork)
-            .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
-            .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-            .where(and(...buildArtworkFilters(techniqueScope), sql`${techniqueSql} IS NOT NULL`))
-            .groupBy(techniqueSql)
-            .orderBy(desc(count()), asc(techniqueSql)),
-        ]);
+      const [
+        availabilityRows,
+        categoryRows,
+        artistRows,
+        priceRows,
+        sizeRows,
+        techniqueRows,
+        objectTypeRows,
+        saleStateRows,
+      ] = await Promise.all([
+        db
+          .select({
+            total: count(),
+            available: sql<number>`count(*) filter (where ${artworkAvailableNowSql})`,
+          })
+          .from(shopArtwork)
+          .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+          .where(and(...buildArtworkFilters(availabilityScope))),
+        db
+          .select({ slug: shopCategory.slug, label: shopCategory.label, count: count() })
+          .from(shopArtwork)
+          .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+          .innerJoin(shopArtworkCategory, eq(shopArtworkCategory.artworkId, shopArtwork.id))
+          .innerJoin(shopCategory, eq(shopArtworkCategory.categoryId, shopCategory.id))
+          .where(and(...buildArtworkFilters(categoryScope)))
+          .groupBy(shopCategory.slug, shopCategory.label, shopCategory.sortOrder)
+          .orderBy(asc(shopCategory.sortOrder), asc(shopCategory.label)),
+        db
+          .select({ slug: shopArtist.slug, name: shopParty.displayName, count: count() })
+          .from(shopArtwork)
+          .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+          .where(and(...buildArtworkFilters(artistScope)))
+          .groupBy(shopArtist.slug, shopParty.displayName)
+          .orderBy(asc(shopParty.displayName)),
+        bandCounts(sql`${shopArtwork.printPricePence}`, priceBands, priceScope),
+        bandCounts(longestSideCmSql, sizeBands, sizeScope),
+        db
+          .select({ value: sql<string>`${techniqueSql}`, count: count() })
+          .from(shopArtwork)
+          .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+          .where(and(...buildArtworkFilters(techniqueScope), sql`${techniqueSql} IS NOT NULL`))
+          .groupBy(techniqueSql)
+          .orderBy(desc(count()), asc(techniqueSql)),
+        db
+          .select({ key: shopArtwork.objectType, count: count() })
+          .from(shopArtwork)
+          .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+          .where(and(...buildArtworkFilters(objectTypeScope), isNotNull(shopArtwork.objectType)))
+          .groupBy(shopArtwork.objectType),
+        db
+          .select({ key: shopArtwork.saleState, count: count() })
+          .from(shopArtwork)
+          .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+          .where(and(...buildArtworkFilters(saleStateScope)))
+          .groupBy(shopArtwork.saleState),
+      ]);
       const total = Number(availabilityRows[0]?.total ?? 0);
       const available = Number(availabilityRows[0]?.available ?? 0);
       const bandRow = (
@@ -536,6 +561,8 @@ export function createDrizzleArtworkCatalogueRepository(
         priceBands: bandRow(priceRows, priceBands),
         sizes: bandRow(sizeRows, sizeBands),
         techniques: techniqueRows.map((row) => ({ value: row.value, count: Number(row.count) })),
+        objectTypes: orderedCounts(ARTWORK_OBJECT_TYPES, objectTypeRows),
+        saleStates: orderedCounts(FACET_SALE_STATES, saleStateRows),
       };
     },
 

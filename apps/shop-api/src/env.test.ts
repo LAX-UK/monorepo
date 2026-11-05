@@ -222,3 +222,36 @@ describe("loadShopApiEnv Stripe requirement", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 });
+
+describe("loadShopApiEnv email alerts", () => {
+  it("leaves digests off by default", () => {
+    const env = loadShopApiEnv(productionNodeBase());
+    expect(env.ALERTS_SEND_MODE).toBe("off");
+    expect(env.ALERT_LINK_KEY_ID).toBe("k1");
+  });
+
+  it("refuses to send in production without a strong link secret", () => {
+    expect(() => loadShopApiEnv(productionNodeBase({ ALERTS_SEND_MODE: "on" }))).toThrow(
+      "ALERT_LINK_SECRET",
+    );
+    expect(
+      loadShopApiEnv(
+        productionNodeBase({ ALERTS_SEND_MODE: "on", ALERT_LINK_SECRET: "s".repeat(40) }),
+      ).ALERTS_SEND_MODE,
+    ).toBe("on");
+  });
+
+  it("takes the previous key during a rotation, and treats empty values as unset", () => {
+    const env = loadShopApiEnv(
+      productionNodeBase({
+        ALERT_LINK_PREVIOUS_SECRET: "p".repeat(20),
+        ALERT_LINK_PREVIOUS_KEY_ID: "k0",
+      }),
+    );
+    expect(env.ALERT_LINK_PREVIOUS_KEY_ID).toBe("k0");
+    const empty = loadShopApiEnv(
+      productionNodeBase({ ALERT_LINK_PREVIOUS_SECRET: "", ALERT_LINK_PREVIOUS_KEY_ID: "" }),
+    );
+    expect(empty.ALERT_LINK_PREVIOUS_SECRET).toBeUndefined();
+  });
+});

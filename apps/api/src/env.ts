@@ -55,6 +55,13 @@ const envSchema = z
       z.string().min(32).optional(),
     ),
     /**
+     * Moving originals between lax.art and LAX Bid: LAX Shop's API address and the credential pair
+     * both products hold. Without them the move answers that it is not set up; nothing else changes.
+     */
+    SHOP_API_INTERNAL_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+    INVENTORY_MACHINE_CLIENT_ID: z.preprocess(emptyToUndefined, z.string().min(1).optional()),
+    INVENTORY_MACHINE_CLIENT_SECRET: z.preprocess(emptyToUndefined, z.string().min(32).optional()),
+    /**
      * The staff-assisted email change's credential for Identity (scope `staff_email_change`),
      * separate from the lifecycle credential so neither can do the other's work. Without it the
      * change answers 502.
@@ -152,8 +159,6 @@ const envSchema = z
     POSTMARK_TRANSACTIONAL_STREAM: z.string().default("outbound"),
     POSTMARK_BROADCAST_STREAM: z.string().default("broadcast"),
     POSTMARK_WEBHOOK_BASIC_AUTH: z.preprocess(emptyToUndefined, z.string().optional()),
-    /** Shared secret for the Brevo marketing-contacts webhook (opt-out / bounce ingest). */
-    BREVO_WEBHOOK_SECRET: z.preprocess(emptyToUndefined, z.string().optional()),
     /**
      * Shared secret the Zoho workflow sends in `X-LAX-Webhook-Secret` with each artwork notice.
      * Unset, the notice route answers 503 and nothing is stored.
@@ -299,6 +304,34 @@ const envSchema = z
      * event-driven re-validation (material exposure increase always re-triggers).
      */
     SOF_APPROVAL_VALIDITY_DAYS: z.coerce.number().int().positive().default(365),
+    /**
+     * Private sales. Every value is optional: while one is missing, the step that needs it stays
+     * blocked on the deal rather than guessing. See `private-sale-policy.config.ts`.
+     * Seller's commission for new deals, in basis points (1500 is 15%).
+     */
+    PRIVATE_SALE_COMMISSION_BPS: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(0).max(10_000).optional(),
+    ),
+    /** Buyer's fee on new deals, in basis points. None unless set. */
+    PRIVATE_SALE_BUYER_FEE_BPS: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(0).max(10_000).optional(),
+    ),
+    /** The accountant's VAT treatments, as `code:Label` pairs separated by semicolons. */
+    PRIVATE_SALE_VAT_TREATMENTS: z.preprocess(emptyToUndefined, z.string().optional()),
+    /** Days from the invoice to payment due. */
+    PRIVATE_SALE_PAYMENT_DUE_DAYS: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(1).max(365).optional(),
+    ),
+    /** Days from payment to collection due. */
+    PRIVATE_SALE_COLLECTION_DUE_DAYS: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(1).max(365).optional(),
+    ),
+    /** The private sale terms version both sides accept. */
+    PRIVATE_SALE_TERMS_VERSION: z.preprocess(emptyToUndefined, z.string().max(40).optional()),
     /** Shared secret for worker → API internal cron routes (`X-Cron-Secret` header).
      * Optional until bulk jobs are enabled in deploy.
      */
@@ -386,13 +419,6 @@ const envSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "POSTMARK_WEBHOOK_BASIC_AUTH is required when NODE_ENV=production",
-      });
-    }
-    if (e.NODE_ENV === "production" && !e.BREVO_WEBHOOK_SECRET) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "BREVO_WEBHOOK_SECRET is required when NODE_ENV=production",
-        path: ["BREVO_WEBHOOK_SECRET"],
       });
     }
     if (e.STORAGE_DRIVER === "s3") {

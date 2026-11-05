@@ -2,6 +2,8 @@ import {
   type ThreadItem,
   type ThreadMessage,
   type ThreadTime,
+  formatStaffDate,
+  formatStaffDateTime,
   initialsOf,
 } from "@auction/staff-ui";
 import type {
@@ -23,69 +25,32 @@ const TIME = new Intl.DateTimeFormat("en-GB", {
   minute: "2-digit",
   timeZone: ZONE,
 });
-const DAY_TIME = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: ZONE,
-});
-const WEEKDAY_TIME = new Intl.DateTimeFormat("en-GB", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: ZONE,
-});
-const DAY_LONG = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  timeZone: ZONE,
-});
-const DAY_LONG_YEAR = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: ZONE,
-});
-const FULL = new Intl.DateTimeFormat("en-GB", {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  timeZone: ZONE,
-});
 const DATE_KEY = new Intl.DateTimeFormat("en-CA", {
   year: "numeric",
   month: "2-digit",
   day: "2-digit",
   timeZone: ZONE,
 });
-const YEAR = new Intl.DateTimeFormat("en-GB", { year: "numeric", timeZone: ZONE });
 
 /** Messages shown before older ones fold behind "Show N earlier". */
 export const THREAD_VISIBLE_MESSAGES = 8;
 /** A thread folds only once it holds more than this many messages. */
 export const THREAD_FOLD_AFTER = 12;
 
-/** "14:05" today, "Sat 31 Oct, 10:15" this week, else "27 Oct, 14:05". */
+/** "14:05" today, otherwise the one staff date style: "Sat 31 Oct, 10:15 GMT". */
 export function threadTime(iso: string, now: Date): ThreadTime {
   const at = new Date(iso);
   const sameDay = DATE_KEY.format(at) === DATE_KEY.format(now);
-  const days = (now.getTime() - at.getTime()) / 86_400_000;
-  const label = sameDay
-    ? TIME.format(at)
-    : days < 6
-      ? WEEKDAY_TIME.format(at)
-      : DAY_TIME.format(at);
-  return { label: label.replace(" at ", ", "), dateTime: at.toISOString(), full: FULL.format(at) };
+  const full = formatStaffDateTime(at, now);
+  return {
+    label: sameDay ? TIME.format(at) : full,
+    dateTime: at.toISOString(),
+    full,
+  };
 }
 
 function dayLabel(at: Date, now: Date): string {
-  return YEAR.format(at) === YEAR.format(now) ? DAY_LONG.format(at) : DAY_LONG_YEAR.format(at);
+  return formatStaffDate(at, now);
 }
 
 /** "2.1 MB", "340 KB". */

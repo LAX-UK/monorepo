@@ -8,6 +8,7 @@ import type {
   ListLotsSort,
   SaleCatalogLotsSort,
 } from "../../interfaces/index.js";
+import { containsPattern } from "../../lib/like-pattern.js";
 import {
   atgOwnedDraftLotForStatusesSql,
   publicCatalogueLotCondition,
@@ -31,6 +32,7 @@ export function publicParentSaleExists() {
       SELECT 1 FROM ${sale} AS parent_sale
       WHERE parent_sale.id = ${lot.saleId}
         AND parent_sale.deleted_at IS NULL
+        AND parent_sale.is_test = false
         AND (
           parent_sale.status IN (${sql.join(
             PUBLIC_SALE_STATUSES.map((status) => sql`${status}`),
@@ -92,13 +94,10 @@ export function listWhere(input: ListWhereInput) {
     conditions.push(lte(lot.endTime, endBefore));
   }
   if (input.search?.trim()) {
-    const safe = input.search
-      .trim()
-      .slice(0, 200)
-      .replace(/[%_\\]/g, "");
-    if (safe.length >= 3) {
-      conditions.push(ilike(lot.title, `%${safe}%`));
-    } else if (safe.length > 0) {
+    const text = input.search.trim().slice(0, 200);
+    if (text.length >= 3) {
+      conditions.push(ilike(lot.title, containsPattern(text)));
+    } else if (text.length > 0) {
       conditions.push(sql`false`);
     }
   }

@@ -362,9 +362,7 @@ export function StaffQuickView({
           ? [
               {
                 label: "Last sign-in",
-                value: row.lastSignInAt
-                  ? formatStaffDateTime(row.lastSignInAt, { zoneLabel: true })
-                  : "Not yet",
+                value: row.lastSignInAt ? formatStaffDateTime(row.lastSignInAt) : "Not yet",
               },
             ]
           : []
@@ -383,7 +381,7 @@ export function StaffQuickView({
                 value: row.access.length > 0 ? <AccessBadges access={row.access} /> : "None",
               },
               { label: "Two-step", value: twoFactorLabel(row.twoFactor) },
-              { label: "Joined", value: formatStaffDateTime(row.joinedAt, { zoneLabel: true }) },
+              { label: "Joined", value: formatStaffDateTime(row.joinedAt) },
               { label: "User ID", value: row.id, copyValue: row.id },
             ]
           : []

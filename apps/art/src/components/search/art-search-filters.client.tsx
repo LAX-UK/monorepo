@@ -2,6 +2,7 @@
 
 import { ARTWORK_OBJECT_TYPE_OPTIONS } from "@/lib/catalogue/artwork-catalogue-filter-config";
 import type { ArtworkObjectType } from "@/lib/catalogue/artwork-catalogue-params";
+import { type ArtworkFacetCountsVm, withFacetCounts } from "@/lib/catalogue/artwork-facet-counts";
 import {
   type SearchAvailability,
   type SearchUrlState,
@@ -11,6 +12,7 @@ import {
 import {
   MARKETING_FILTER_ACCORDION_TRIGGER,
   MARKETING_FILTER_RAIL_IN_SHEET,
+  MarketingFilterRadioRow,
   MarketingFilterSheet,
   MarketingFilterSidebar,
   MarketingFilterTrigger,
@@ -18,7 +20,7 @@ import {
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@auction/ui";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
-import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
+import { RadioGroup } from "@auction/ui/components/radio-group";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
@@ -29,7 +31,7 @@ type Draft = {
   maxPrice: string;
 };
 
-type Option = { value: string; label: string };
+type Option = { value: string; label: string; count?: number | undefined };
 
 const ANY = "";
 
@@ -75,12 +77,14 @@ function OptionGroup({
       {options.map((option) => {
         const id = `${idPrefix}-${option.value || "any"}`;
         return (
-          <div key={id} className="flex min-h-11 items-center gap-3">
-            <RadioGroupItem id={id} value={option.value} />
-            <Label htmlFor={id} className="flex-1 cursor-pointer py-2 font-body text-sm">
-              {option.label}
-            </Label>
-          </div>
+          <MarketingFilterRadioRow
+            key={id}
+            id={id}
+            value={option.value}
+            label={option.label}
+            count={option.count}
+            checked={option.value === value}
+          />
         );
       })}
     </RadioGroup>
@@ -121,9 +125,12 @@ function PriceField({
 export function ArtSearchFilters({
   state,
   activeCount,
+  counts,
 }: {
   state: SearchUrlState;
   activeCount: number;
+  /** Works behind each option; null when they did not load. */
+  counts: ArtworkFacetCountsVm | null;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -181,7 +188,7 @@ export function ArtSearchFilters({
                 <OptionGroup
                   idPrefix="art-search-availability"
                   label="Availability"
-                  options={AVAILABILITY_OPTIONS}
+                  options={withFacetCounts(AVAILABILITY_OPTIONS, counts?.saleStates)}
                   value={draft.availability}
                   onChange={(value) =>
                     setDraft({ ...draft, availability: value as Draft["availability"] })
@@ -198,7 +205,7 @@ export function ArtSearchFilters({
               <OptionGroup
                 idPrefix="art-search-medium"
                 label="Medium"
-                options={MEDIUM_OPTIONS}
+                options={withFacetCounts(MEDIUM_OPTIONS, counts?.objectTypes)}
                 value={draft.objectType}
                 onChange={(value) =>
                   setDraft({ ...draft, objectType: value as Draft["objectType"] })

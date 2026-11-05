@@ -1,5 +1,8 @@
+import { pinClock } from "@/test/pin-clock";
 import { describe, expect, it } from "vitest";
 import { formatCalendarDay, formatDateRange, formatLondonTime } from "./editorial-time";
+
+pinClock();
 
 describe("formatLondonTime", () => {
   it("reads in London time, summer and winter", () => {
@@ -14,14 +17,14 @@ describe("formatLondonTime", () => {
 
 describe("calendar days", () => {
   it("does not shift a date across a day boundary", () => {
-    expect(formatCalendarDay("2026-06-01")).toBe("1 Jun 2026");
-    expect(formatCalendarDay("2026-06-01T00:00:00.000Z")).toBe("1 Jun 2026");
+    expect(formatCalendarDay("2026-06-01")).toBe("Mon 1 Jun");
+    expect(formatCalendarDay("2026-06-01T00:00:00.000Z")).toBe("Mon 1 Jun");
   });
 
   it("describes ranges with one or both ends", () => {
-    expect(formatDateRange("2026-06-01", "2026-06-30")).toBe("1 Jun 2026 – 30 Jun 2026");
-    expect(formatDateRange("2026-06-01", null)).toBe("From 1 Jun 2026");
-    expect(formatDateRange(null, "2026-06-30")).toBe("Until 30 Jun 2026");
+    expect(formatDateRange("2026-06-01", "2026-06-30")).toBe("Mon 1 Jun – Tue 30 Jun");
+    expect(formatDateRange("2026-06-01", null)).toBe("From Mon 1 Jun");
+    expect(formatDateRange(null, "2026-06-30")).toBe("Until Tue 30 Jun");
     expect(formatDateRange(null, null)).toBeNull();
   });
 });

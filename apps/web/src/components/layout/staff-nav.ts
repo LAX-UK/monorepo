@@ -28,6 +28,7 @@ import {
   LOT_FULFILMENT_ACCESS,
   ONBOARDING_QUEUES_ACCESS,
   PLATFORM_ADMIN_ACCESS,
+  PURCHASE_PROBLEMS_ACCESS,
   SALEROOM_ACCESS,
   SALE_CATALOG_READ_ACCESS,
   STAFF_ACCESS_REVIEW_ACCESS,
@@ -56,6 +57,7 @@ import {
   MonitorPlay,
   MoreHorizontal,
   Package,
+  PackageX,
   PartyPopper,
   Plug,
   ScrollText,
@@ -399,6 +401,16 @@ function buildStaffNavGroupSpecs(
             navCounts.enquiriesWaiting,
             navCounts.enquiriesLate > 0 ? "warning" : "default",
           ),
+        },
+        {
+          // Problems buyers report with a paid purchase. It sits beside Enquiries: both are
+          // client services answering a person, and the work item opens here.
+          id: "purchase-problems",
+          href: "/admin/purchase-problems",
+          label: "Purchase problems",
+          icon: PackageX,
+          match: exactOrNested("/admin/purchase-problems"),
+          requirement: PURCHASE_PROBLEMS_ACCESS,
         },
         {
           id: "legal-entities",

@@ -9,6 +9,7 @@ const sale = {
   endTime: new Date("2026-11-26T18:00:00Z"),
   status: "scheduled" as const,
   deliveryMode: "online" as const,
+  isTest: false,
 };
 
 function setup(
@@ -35,6 +36,14 @@ function setup(
 }
 
 describe("BidSaleAnnouncer", () => {
+  it("never announces a test sale: no match is recorded and nobody is notified", async () => {
+    const { announcer, announce, notifySubscribers } = setup({ sale: { ...sale, isTest: true } });
+    const outcome = await announcer.handle({ saleId: sale.id, announce: true, lotCount: 3 });
+    expect(outcome).toBe("skipped_test_sale");
+    expect(announce).not.toHaveBeenCalled();
+    expect(notifySubscribers).not.toHaveBeenCalled();
+  });
+
   it("records the sale for subscribers and tells signed-in clients in the app", async () => {
     const { announcer, announce, notifySubscribers } = setup();
     const outcome = await announcer.handle({ saleId: sale.id, announce: true, lotCount: 214 });

@@ -1,13 +1,18 @@
 import type { LucideIcon } from "lucide-react";
 
+export type StaffNavCountTone = "neutral" | "attention" | "warning" | "danger";
+
 export type StaffNavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
   /** Records waiting for this person, beside the label. */
   count?: number;
-  /** "attention" fills the count in ink: something needs doing, not just exists. */
-  countTone?: "neutral" | "attention";
+  /**
+   * "attention" fills the count in ink: something needs doing, not just exists. "warning" is work
+   * waiting on someone; "danger" is overdue or failed. Defaults to neutral.
+   */
+  countTone?: StaffNavCountTone;
   /** Overrides the default longest-prefix match, for items that own unrelated paths. */
   match?: (pathname: string) => boolean;
   /** Extra words ⌘K should match, e.g. "people" for Staff. */

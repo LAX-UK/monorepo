@@ -237,4 +237,134 @@ describe("mapDomainEventToCrmIntent", () => {
     );
     expect(intent).toEqual({ kind: "erase_subject", subjectId: `guest:${guestId}` });
   });
+
+  describe("deal names", () => {
+    const facts = {
+      clientName: "Ann Mears",
+      stockCode: "LAX-ORI-MP-GAC-26-0037",
+      artworkKind: "original" as const,
+      additionalWorks: 0,
+      reference: null,
+    };
+    const name = (intent: ReturnType<typeof mapDomainEventToCrmIntent>) =>
+      intent.kind === "convert_lead_on_win"
+        ? intent.dealFields.Deal_Name
+        : intent.kind === "deal_upsert"
+          ? intent.fields.Deal_Name
+          : undefined;
+
+    const lotWon = {
+      id: 20,
+      eventType: "bid.lot_won",
+      aggregateId: "lot-1",
+      schemaVersion: 1,
+      payload: {
+        lotId: "44444444-4444-4444-8444-444444444444",
+        userId: "u1",
+        winningBidId: "55555555-5555-4555-8555-555555555555",
+        amountCents: 120000,
+        endedAt: "2026-02-14T15:00:00Z",
+      },
+    };
+
+    it("names a won lot as an acquisition", () => {
+      expect(name(mapDomainEventToCrmIntent(lotWon, ctx, { dealNaming: facts }))).toBe(
+        "Mears — MP — LAX-ORI-MP-GAC-26-0037 — Acquisition — 2026-02",
+      );
+    });
+
+    it("falls back to the lot id when the work has no stock code and the client no name", () => {
+      const bare = { ...facts, clientName: null, stockCode: null, artworkKind: null };
+      expect(name(mapDomainEventToCrmIntent(lotWon, ctx, { dealNaming: bare }))).toBe(
+        "44444444-4444-4444-8444-444444444444 — Acquisition — 2026-02",
+      );
+      expect(name(mapDomainEventToCrmIntent(lotWon, ctx))).toBe(
+        "44444444-4444-4444-8444-444444444444 — Acquisition — 2026-02",
+      );
+    });
+
+    it("uses the London month of the lot ending", () => {
+      const late = {
+        ...lotWon,
+        payload: { ...lotWon.payload, endedAt: "2026-03-31T23:30:00Z" },
+      };
+      expect(name(mapDomainEventToCrmIntent(late, ctx, { dealNaming: facts }))).toContain(
+        "— 2026-04",
+      );
+    });
+
+    const orderPaid = {
+      id: 21,
+      eventType: "shop.order.paid",
+      aggregateId: "order-1",
+      schemaVersion: 1,
+      payload: {
+        schemaVersion: 1,
+        orderId: "66666666-6666-4666-8666-666666666666",
+        identitySubjectId: "u1",
+        totalPence: 4500,
+        paidAt: "2026-02-14T15:00:00Z",
+        lineCount: 3,
+      },
+    };
+
+    it("names a print order after its first line with +N for the others", () => {
+      const print = {
+        ...facts,
+        stockCode: "LAX-PRI-MP-GAC-26-0005",
+        artworkKind: "print" as const,
+        additionalWorks: 2,
+        reference: "LAX-S-10482",
+      };
+      expect(name(mapDomainEventToCrmIntent(orderPaid, ctx, { dealNaming: print }))).toBe(
+        "Mears — MP — LAX-PRI-MP-GAC-26-0005 +2 — Print Order — 2026-02",
+      );
+    });
+
+    it("names a Shop sale of an original an acquisition", () => {
+      expect(name(mapDomainEventToCrmIntent(orderPaid, ctx, { dealNaming: facts }))).toContain(
+        "— Acquisition —",
+      );
+    });
+
+    it("uses the order reference when the line has no register entry", () => {
+      const merch = {
+        clientName: "Ann Mears",
+        stockCode: null,
+        artworkKind: null,
+        additionalWorks: 0,
+        reference: "LAX-S-10482",
+      };
+      expect(name(mapDomainEventToCrmIntent(orderPaid, ctx, { dealNaming: merch }))).toBe(
+        "Mears — LAX-S-10482 — Print Order — 2026-02",
+      );
+    });
+
+    it("names a Shop original enquiry with the processing month", () => {
+      const intent = mapDomainEventToCrmIntent(
+        {
+          id: 22,
+          eventType: "shop.artwork.interest_registered",
+          aggregateId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          schemaVersion: 1,
+          payload: {
+            schemaVersion: 1,
+            artworkId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            identitySubjectId: "u1",
+            intent: "enquiry",
+          },
+        },
+        ctx,
+        { dealNaming: facts, now: new Date("2026-05-02T09:00:00Z") },
+      );
+      expect(name(intent)).toBe("Mears — MP — LAX-ORI-MP-GAC-26-0037 — Acquisition — 2026-05");
+    });
+
+    it("never puts an email address in a deal name", () => {
+      const emailOnly = { ...facts, clientName: "ann@example.com" };
+      expect(
+        name(mapDomainEventToCrmIntent(orderPaid, ctx, { dealNaming: emailOnly })),
+      ).not.toContain("@");
+    });
+  });
 });
