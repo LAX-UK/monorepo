@@ -452,6 +452,9 @@ export const WORKER_ANONYMISATION_DELETE_TABLES = [
   "notification_preference",
   "notification_account_mute",
   "user_ui_preference",
+  /** Email-only alert sign-ups: erased by account and by address (cascades to topics, matches, digests). */
+  "bid_alert_subscriber",
+  "visitor_sale_alert_subscriber",
 ] as const;
 
 /**

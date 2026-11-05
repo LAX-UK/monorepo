@@ -1,4 +1,5 @@
 import type { GuestErasureOrder } from "@auction/shop-domain";
+import type { ShopAlertErasureCounts } from "./shop-alert-subscriber-erasure.js";
 
 /** What the erasure rules need to know about a guest, read under a lock. */
 export type GuestErasureSnapshot = {
@@ -16,7 +17,7 @@ export type GuestErasureCounts = {
   orders: number;
   enquiries: number;
   links: number;
-};
+} & ShopAlertErasureCounts;
 
 export type EraseGuestData = (input: {
   actorSubjectId: string;
