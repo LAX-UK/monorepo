@@ -202,6 +202,14 @@ export const SHOP_EMAIL_OUTBOX_TABLES = ["email_outbox"] as const;
  */
 export const SHOP_CRM_READ_TABLES = ["crm_record_link", "domain_event_delivery"] as const;
 /**
+ * "Download my data" for LAX Shop reads a person's suppression entry and newsletter sign-ups from
+ * the shared mail tables. shop_app reads them and never writes: the worker and the Bid API own them.
+ */
+export const SHOP_SUBJECT_EXPORT_READ_TABLES = [
+  "email_suppression",
+  "newsletter_signup_log",
+] as const;
+/**
  * LAX Admin reviews the artwork register: shop_app reads the records and the Zoho sync results,
  * records a decision on a conflict (SELECT, UPDATE) and the history entry that goes with it
  * (INSERT, SELECT). It never creates or changes a record; the worker and the offer moves do that.
@@ -730,6 +738,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of SHOP_CRM_READ_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT");
+        }
+        for (const tableName of SHOP_SUBJECT_EXPORT_READ_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "SELECT");
         }
         for (const tableName of SHOP_ARTWORK_REGISTER_READ_TABLES) {
