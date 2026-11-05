@@ -404,17 +404,24 @@ export async function finalizePendingPaymentForWinner(
 
   if (deps.notificationDispatcher && !requiresManualReview) {
     const dueDate = formatPaymentDueDateFromCreated(created.createdAt);
-    await deps.notificationDispatcher.dispatch(
-      buyerId,
-      notificationRowToPayload(
-        deps.notificationFactory.createPaymentDue(lot, buyerId, {
-          paymentId: created.id,
-          amount: created.amount,
-          checkoutUrl,
-          dueDate,
-        }),
-      ),
-    );
+    // The winner and the account's payers, as when the invoice is raised at lot end.
+    const recipients = await deps.invoiceRecipients.forInvoice({
+      buyerLegalEntityId: lot.buyerLegalEntityId ?? null,
+      winnerUserId: lot.winnerId ?? buyerId,
+    });
+    for (const recipientId of new Set([...recipients, buyerId])) {
+      await deps.notificationDispatcher.dispatch(
+        recipientId,
+        notificationRowToPayload(
+          deps.notificationFactory.createPaymentDue(lot, recipientId, {
+            paymentId: created.id,
+            amount: created.amount,
+            checkoutUrl,
+            dueDate,
+          }),
+        ),
+      );
+    }
   }
 }
 

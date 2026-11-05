@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { parsePaymentTierLimits } from "@auction/domain";
 import {
   AmlSettlementCompliancePolicy,
+  InvoiceRecipients,
   LotFulfilmentPaymentSync,
   LotInvoiceInitiationService,
   PaymentTierPolicy,
@@ -12,6 +13,7 @@ import type { XeroAccountingStack } from "@auction/finance-runtime";
 import {
   DrizzleAmlHoldStore,
   DrizzleLegalEntityMembershipReader,
+  DrizzleLegalEntityNotificationRecipientRepository,
   DrizzleLegalEntityReader,
   DrizzleLegalEntityRepository,
   DrizzleLotFulfilmentRepository,
@@ -104,6 +106,7 @@ export function createWorkerLotInvoiceInitiationService(input: {
     new LotFulfilmentPaymentSync(new DrizzleLotFulfilmentRepository(db)),
     legalEntities,
     new DrizzleUserRepository(db),
+    new InvoiceRecipients(new DrizzleLegalEntityNotificationRecipientRepository(db)),
   );
 }
 

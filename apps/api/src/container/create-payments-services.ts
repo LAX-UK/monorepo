@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type { IStalePaymentMaintenance } from "@auction/finance-cron-app";
+import { type IInvoiceRecipients, InvoiceRecipients } from "@auction/finance-runtime";
 import {
   DrizzleBidActorEligibilityReader,
   DrizzleLotFulfilmentRepository,
@@ -86,6 +87,7 @@ export type ContainerPaymentsServices = {
   stalePaymentMaintenance: IStalePaymentMaintenance;
   /** The account checks both ways of paying share (closed organisations, unverified buyers). */
   paymentEligibility: IPaymentEligibilityGate;
+  invoiceRecipients: IInvoiceRecipients;
   lotInvoiceInitiationService: LotInvoiceInitiationService;
   stripePaymentWebhookService: StripePaymentWebhookService | null;
   xeroOAuthService: XeroOAuthService | null;
@@ -265,6 +267,8 @@ export function createPaymentsServices(
   const paymentDomainEventsRepository = new DrizzlePaymentDomainEventsRepository(db, {
     publish: (conn, event) => domainEventSink.withTx(conn).publish(event),
   });
+  // The payment-due notice and reminders go to the winner and the account's payers.
+  const invoiceRecipients = new InvoiceRecipients(legalEntityNotificationRecipients);
   // Personal buyers must be verified to pay, wherever an identity provider can verify them.
   const paymentEligibility = new PaymentEligibilityGate(
     legalEntityRepository,
@@ -304,6 +308,7 @@ export function createPaymentsServices(
     buyerPaymentAuthority,
     errorReporter,
     paymentEligibility,
+    invoiceRecipients,
   );
 
   const lotInvoiceInitiationService = new LotInvoiceInitiationService(
@@ -325,6 +330,7 @@ export function createPaymentsServices(
     },
     legalEntityRepository,
     userRepo,
+    invoiceRecipients,
     { record: recordMoneyPathEvent },
   );
 
@@ -441,5 +447,6 @@ export function createPaymentsServices(
     paymentTierPolicy,
     settlementCompliancePolicy,
     paymentEligibility,
+    invoiceRecipients,
   };
 }

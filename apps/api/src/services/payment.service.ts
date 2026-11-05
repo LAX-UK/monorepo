@@ -1,3 +1,4 @@
+import type { IInvoiceRecipients } from "@auction/finance-runtime";
 import type { IPaymentDomainEventsRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
@@ -81,6 +82,11 @@ const REFUSE_ALL_PAYMENTS: IBuyerPaymentAuthority = {
   canPay: async () => ({ allowed: false, reason: "not_member" }),
 };
 
+/** Where the account's payers are not wired (tests of checkout itself), only the winner is told. */
+const WINNER_ONLY: IInvoiceRecipients = {
+  forInvoice: async ({ winnerUserId }) => [winnerUserId],
+};
+
 /** Without the account to read, nothing can be checked, so nothing is paid. */
 const REFUSE_ALL_ELIGIBILITY: IPaymentEligibilityGate = {
   refusal: async () => "organisation_closed",
@@ -120,6 +126,7 @@ export class PaymentService
     buyerPaymentAuthority: IBuyerPaymentAuthority | null = null,
     errorReporter: IErrorReporter | null = null,
     paymentEligibility: IPaymentEligibilityGate | null = null,
+    invoiceRecipients: IInvoiceRecipients | null = null,
   ) {
     const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
       payments,
@@ -169,6 +176,7 @@ export class PaymentService
         (legalEntityRepository
           ? new PaymentEligibilityGate(legalEntityRepository, null)
           : REFUSE_ALL_ELIGIBILITY),
+      invoiceRecipients: invoiceRecipients ?? WINNER_ONLY,
     };
   }
 

@@ -64,6 +64,7 @@ export function createBuyerDefaultServices(input: {
     compliance: payments.settlementCompliancePolicy,
     dispatcher: platform.notificationDispatcher,
     factory: platform.notificationFactory,
+    recipients: payments.invoiceRecipients,
   });
 
   return { buyerDefaultService, paymentReminderService };

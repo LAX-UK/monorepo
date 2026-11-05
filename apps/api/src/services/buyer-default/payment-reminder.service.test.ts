@@ -1,3 +1,4 @@
+import { InvoiceRecipients } from "@auction/finance-runtime";
 import type {
   IPaymentReminderStore,
   PaymentReminderCandidate,
@@ -29,7 +30,10 @@ function candidate(over: Partial<PaymentReminderCandidate> = {}): PaymentReminde
   };
 }
 
-function setup(rows: PaymentReminderCandidate[], opts: { hold?: boolean; at: Date }) {
+function setup(
+  rows: PaymentReminderCandidate[],
+  opts: { hold?: boolean; at: Date; payers?: string[] },
+) {
   const claimed = new Set<string>();
   const store: IPaymentReminderStore = {
     listCandidates: vi.fn().mockResolvedValue(rows),
@@ -49,6 +53,9 @@ function setup(rows: PaymentReminderCandidate[], opts: { hold?: boolean; at: Dat
     compliance: { peek: vi.fn().mockResolvedValue({ hold: opts.hold ?? false, reason: null }) },
     dispatcher: { dispatch },
     factory: new NotificationFactory(),
+    recipients: new InvoiceRecipients({
+      listUserIdsForAudience: vi.fn(async () => opts.payers ?? []),
+    }),
     now: () => opts.at,
   });
   return { service, dispatch, store };
@@ -64,6 +71,20 @@ describe("PaymentReminderService", () => {
     expect(payload.title).toBe("Payment due today: Harbour at dusk");
     expect(payload.meta.dueDate).toBe("8 November 2026");
     expect(payload.meta.reminderStep).toBe("due_day");
+  });
+
+  it("reminds an organisation's payers as well as the winner, each by their own email", async () => {
+    const { service, dispatch } = setup([candidate({ buyerId: "agent-1", winnerId: "agent-1" })], {
+      at: dueAt,
+      payers: ["owner-1", "finance-1", "agent-1"],
+    });
+    expect(await service.sendDueReminders()).toEqual({ reminded: 1 });
+    const sent = dispatch.mock.calls.map(([userId, payload]) => [
+      userId,
+      payload.meta.emailIdempotencyKey,
+    ]);
+    expect(sent.map(([userId]) => userId)).toEqual(["agent-1", "owner-1", "finance-1"]);
+    expect(new Set(sent.map(([, key]) => key)).size).toBe(3);
   });
 
   it("sends each step once however often the cron runs", async () => {

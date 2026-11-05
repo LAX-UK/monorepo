@@ -226,7 +226,8 @@ export class NotificationFactory implements INotificationFactory {
         lotTitle: input.lotTitle,
         reminderStep: input.step,
         audience: "buyer",
-        emailIdempotencyKey: `payment-reminder:${input.paymentId}:${input.step}`,
+        // One email per person per step: an organisation's payers are each reminded.
+        emailIdempotencyKey: `payment-reminder:${input.paymentId}:${input.step}:${input.userId}`,
       },
     };
   }

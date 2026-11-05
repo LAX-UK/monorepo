@@ -175,3 +175,8 @@ export {
   FinanceTaskLatePaymentRecorder,
   type ILatePaymentCapture,
 } from "./payment-expiry/late-payment-recorders.js";
+export {
+  InvoiceRecipients,
+  paymentDueNoticeKey,
+  type IInvoiceRecipients,
+} from "./notifications/invoice-recipients.js";

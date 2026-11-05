@@ -1,5 +1,6 @@
 import { invoiceDueAt, paymentReminderToSend } from "@auction/domain";
 import type { PaymentReminderStep } from "@auction/domain";
+import type { IInvoiceRecipients } from "@auction/finance-runtime";
 import type {
   IPaymentReminderStore,
   PaymentReminderCandidate,
@@ -22,6 +23,8 @@ export type PaymentReminderServiceDeps = {
   compliance: Pick<ISettlementCompliancePolicy, "peek"> | null;
   dispatcher: Pick<NotificationDispatcher, "dispatch">;
   factory: Pick<INotificationFactory, "createPaymentReminder">;
+  /** Who is reminded: the winner and the account's payers. */
+  recipients: IInvoiceRecipients;
   now?: () => Date;
 };
 
@@ -43,21 +46,27 @@ export class PaymentReminderService {
       if (!step) continue;
       if (!(await this.deps.store.claim(candidate.paymentId, step))) continue;
       try {
-        await this.deps.dispatcher.dispatch(
-          candidate.buyerId,
-          notificationRowToPayload(
-            this.deps.factory.createPaymentReminder({
-              userId: candidate.buyerId,
-              legalEntityId: candidate.buyerLegalEntityId,
-              lotId: candidate.lotId,
-              lotTitle: candidate.lotTitle,
-              paymentId: candidate.paymentId,
-              amount: candidate.amount,
-              dueDate: DUE_DATE.format(invoiceDueAt(candidate.raisedAt)),
-              step,
-            }),
-          ),
-        );
+        const recipients = await this.deps.recipients.forInvoice({
+          buyerLegalEntityId: candidate.buyerLegalEntityId,
+          winnerUserId: candidate.buyerId,
+        });
+        for (const recipientId of recipients) {
+          await this.deps.dispatcher.dispatch(
+            recipientId,
+            notificationRowToPayload(
+              this.deps.factory.createPaymentReminder({
+                userId: recipientId,
+                legalEntityId: candidate.buyerLegalEntityId,
+                lotId: candidate.lotId,
+                lotTitle: candidate.lotTitle,
+                paymentId: candidate.paymentId,
+                amount: candidate.amount,
+                dueDate: DUE_DATE.format(invoiceDueAt(candidate.raisedAt)),
+                step,
+              }),
+            ),
+          );
+        }
         reminded += 1;
       } catch (error) {
         await this.deps.store.release(candidate.paymentId, step);
