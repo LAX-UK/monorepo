@@ -49,4 +49,20 @@ describe("PaymentEligibilityGate", () => {
     );
     await expect(broken.check(input)).rejects.toThrow("db down");
   });
+
+  it("in production with no identity provider, a personal payer is held, never paid unchecked", async () => {
+    await expect(
+      new PaymentEligibilityGate(account("individual"), null, { identityRequired: true }).check(
+        input,
+      ),
+    ).resolves.toEqual({ kind: "held", reason: "identity_verification_required" });
+  });
+
+  it("an organisation does not need the identity provider to pay", async () => {
+    await expect(
+      new PaymentEligibilityGate(account("organisation", "approved"), null, {
+        identityRequired: true,
+      }).check(input),
+    ).resolves.toEqual({ kind: "payable" });
+  });
 });

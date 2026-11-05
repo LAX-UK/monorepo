@@ -1,6 +1,18 @@
 import type { Database } from "@auction/db";
 import { payment, paymentCheckoutSession } from "@auction/db/schema";
-import { and, eq, gte, inArray, isNull, notExists, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  exists,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
 import type { IStalePaymentCanceller } from "../interfaces/stale-payment-canceller.js";
 
 export class DrizzleStalePaymentCanceller implements IStalePaymentCanceller {
@@ -10,6 +22,36 @@ export class DrizzleStalePaymentCanceller implements IStalePaymentCanceller {
     const result = await this.db.execute(sql`select now() as now`);
     const row = (result.rows as { now: string | Date }[])[0];
     return new Date(row?.now ?? Date.now());
+  }
+
+  async listUnpaidWithCheckout(
+    limit: number,
+  ): Promise<{ id: string; payerUserId: string; buyerLegalEntityId: string }[]> {
+    const rows = await this.db
+      .select({
+        id: payment.id,
+        payerUserId: payment.buyerId,
+        buyerLegalEntityId: payment.buyerLegalEntityId,
+      })
+      .from(payment)
+      .where(
+        and(
+          inArray(payment.status, ["pending", "authorized"]),
+          isNull(payment.paymentGroupId),
+          or(
+            isNotNull(payment.stripePaymentIntentId),
+            exists(
+              this.db
+                .select({ id: paymentCheckoutSession.stripeSessionId })
+                .from(paymentCheckoutSession)
+                .where(eq(paymentCheckoutSession.paymentId, payment.id)),
+            ),
+          ),
+        ),
+      )
+      .orderBy(asc(payment.createdAt))
+      .limit(limit);
+    return rows;
   }
 
   async cancelIfUntouchedSince(paymentId: string, since: Date): Promise<boolean> {

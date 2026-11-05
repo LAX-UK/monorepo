@@ -1,6 +1,12 @@
 import type { Database } from "@auction/db";
 import type { IStalePaymentMaintenance } from "@auction/finance-cron-app";
-import { type IInvoiceRecipients, InvoiceRecipients } from "@auction/finance-runtime";
+import {
+  HeldInvoiceCheckouts,
+  type IInvoiceRecipients,
+  InvoiceRecipients,
+  StalePaymentStore,
+  StripeCheckoutCloser,
+} from "@auction/finance-runtime";
 import {
   DrizzleBidActorEligibilityReader,
   DrizzleLotFulfilmentRepository,
@@ -281,11 +287,28 @@ export function createPaymentsServices(
   });
   // The payment-due notice and reminders go to the winner and the account's payers.
   const invoiceRecipients = new InvoiceRecipients(legalEntityNotificationRecipients);
-  // Personal buyers must be verified to pay, wherever an identity provider can verify them.
+  // Personal buyers must be verified to pay. In production a missing identity provider holds
+  // them (nobody can be verified) rather than letting them pay unchecked.
   const paymentEligibility = new PaymentEligibilityGate(
     legalEntityRepository,
     complianceMedia.kycService.isConfigured() ? new DrizzleBidActorEligibilityReader(db) : null,
+    { identityRequired: env.NODE_ENV === "production" },
   );
+  // A held invoice keeps no open checkout: closed when the hold is seen, and swept with expiry.
+  const staleCanceller = new DrizzleStalePaymentCanceller(db);
+  const heldCheckouts = new HeldInvoiceCheckouts({
+    payments: new StalePaymentStore(
+      paymentRepo,
+      checkoutSessions,
+      staleCanceller,
+      platform.transactionRunner,
+    ),
+    provider: new StripeCheckoutCloser(stripeClientFactory, {
+      stripeExpected: env.NODE_ENV === "production",
+    }),
+    eligibility: paymentEligibility,
+    listUnpaidWithCheckout: (limit: number) => staleCanceller.listUnpaidWithCheckout(limit),
+  });
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
@@ -321,6 +344,7 @@ export function createPaymentsServices(
     errorReporter,
     paymentEligibility,
     invoiceRecipients,
+    heldCheckouts,
   );
 
   const lotInvoiceInitiationService = new LotInvoiceInitiationService(
@@ -349,13 +373,14 @@ export function createPaymentsServices(
   const stalePaymentMaintenance = createStalePaymentExpiry({
     payments: paymentRepo,
     checkoutSessions,
-    canceller: new DrizzleStalePaymentCanceller(db),
+    canceller: staleCanceller,
     stripeExpected: env.NODE_ENV === "production",
     transactionRunner: platform.transactionRunner,
     stripeClientFactory,
     paymentCapture: paymentCaptureService,
     unappliedMoney,
     events: domainEventSink,
+    heldCheckouts,
   });
   const paymentGroups = createPaymentGroupServices({
     db,
@@ -416,6 +441,7 @@ export function createPaymentsServices(
             reader: unappliedMoneyReader,
             recorder: unappliedMoney,
           }),
+          paymentEligibility,
         )
       : null;
 

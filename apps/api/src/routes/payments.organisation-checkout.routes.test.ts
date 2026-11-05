@@ -55,6 +55,7 @@ function mount(
       paymentGroupId: null,
     })),
   };
+  const heldCheckouts = { close: vi.fn(async () => undefined) };
   const deps = {
     lots: { findById: vi.fn(async () => lot) },
     payments,
@@ -74,6 +75,7 @@ function mount(
     lotFulfilmentHooks: null,
     buyerPaymentAuthority: new LegalEntityBuyerPaymentAuthority(accounts),
     paymentEligibility: new PaymentEligibilityGate(accounts, null),
+    heldCheckouts,
   } as unknown as PaymentServiceDeps;
   const paymentBuyerService = {
     createPendingForWinner: (buyerId: string, lotId: string, addressId: string) =>
@@ -111,7 +113,7 @@ function mount(
     "/payments",
     createPaymentRoutes(container, authenticator, passThroughAccountOnboarding),
   );
-  return { app, payments };
+  return { app, payments, heldCheckouts };
 }
 
 function pay(app: Hono) {
@@ -142,9 +144,11 @@ describe("POST /payments for an organisation's purchase", () => {
   it.each(["lead", "docs_requested", "under_review"] as const)(
     "holds the invoice of a %s organisation: no checkout, and the reason to show",
     async (status) => {
-      const { app } = mount("user-payer", { role: "finance" }, status, "pending");
+      const { app, heldCheckouts } = mount("user-payer", { role: "finance" }, status, "pending");
       const res = await pay(app);
       expect(res.status).toBe(201);
+      // A checkout opened before the hold is closed, so the invoice cannot be paid while held.
+      expect(heldCheckouts.close).toHaveBeenCalledWith(PAYMENT_ID);
       expect(await res.json()).toMatchObject({
         data: {
           paymentId: PAYMENT_ID,
@@ -191,5 +195,11 @@ describe("POST /payments for an organisation's purchase", () => {
   it("refuses someone with no membership at all", async () => {
     const { app } = mount("user-stranger", null);
     expect((await pay(app)).status).toBe(403);
+  });
+
+  it("a payable organisation's checkout is left open", async () => {
+    const { app, heldCheckouts } = mount("user-payer", { role: "finance" });
+    await pay(app);
+    expect(heldCheckouts.close).not.toHaveBeenCalled();
   });
 });

@@ -33,6 +33,22 @@ describe("reminder schedule", () => {
   });
 });
 
+describe("reminder schedule in British Summer Time", () => {
+  it("sends at 09:00 London (08:00 UTC) in summer", () => {
+    const endOfDueDay = new Date("2026-07-08T22:59:59.999Z");
+    expect(reminderDueAt("before_due", endOfDueDay)).toEqual(new Date("2026-07-06T08:00:00Z"));
+    expect(reminderDueAt("due_day", endOfDueDay)).toEqual(new Date("2026-07-08T08:00:00Z"));
+    expect(reminderDueAt("overdue", endOfDueDay)).toEqual(new Date("2026-07-11T08:00:00Z"));
+  });
+
+  it("keeps 09:00 London either side of the October clock change", () => {
+    // Due at the end of Monday 26 October 2026 (GMT); the clocks went back on 25 October.
+    const endOfDueDay = new Date("2026-10-26T23:59:59.999Z");
+    expect(reminderDueAt("before_due", endOfDueDay)).toEqual(new Date("2026-10-24T08:00:00Z"));
+    expect(reminderDueAt("due_day", endOfDueDay)).toEqual(new Date("2026-10-26T09:00:00Z"));
+  });
+});
+
 describe("paymentReminderToSend", () => {
   it("sends nothing before the first step", () => {
     expect(paymentReminderToSend(owed, at(-2 * DAY - 1))).toBeNull();

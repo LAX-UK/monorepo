@@ -194,6 +194,19 @@ export async function releaseManualReviewForCapture(
       return err(new AuthzError(message, 403, { code }));
     }
   }
+  // Money already arrived while the account was held: capture it now, never reopen a checkout
+  // (the buyer would be asked to pay a second time).
+  if (p.stripeChargeId && p.stripePaymentIntentId && deps.paymentCapture) {
+    await deps.paymentCapture.capture({
+      paymentId,
+      via: "admin_manual",
+      stripeChargeId: p.stripeChargeId,
+      stripePaymentIntentId: p.stripePaymentIntentId,
+      actorUserId: adminUserId,
+      requireApply: true,
+    });
+    return ok(undefined);
+  }
   const transactionRunner = deps.transactionRunner;
   const publisher = deps.domainEventSink;
   if (!transactionRunner || !publisher) {

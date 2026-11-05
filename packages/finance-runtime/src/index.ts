@@ -180,3 +180,14 @@ export {
   paymentDueNoticeKey,
   type IInvoiceRecipients,
 } from "./notifications/invoice-recipients.js";
+export {
+  HeldInvoiceCheckouts,
+  type HeldInvoiceCheckoutsDeps,
+  type IHeldEligibility,
+  type IHeldInvoiceCheckouts,
+} from "./payment-expiry/held-invoice-checkouts.js";
+export {
+  type IPaymentEligibilityGate,
+  PaymentEligibilityGate,
+  type PaymentEligibilityGateOptions,
+} from "./payment-eligibility.gate.js";

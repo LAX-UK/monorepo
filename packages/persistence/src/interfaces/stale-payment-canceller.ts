@@ -8,4 +8,11 @@ export interface IStalePaymentCanceller {
   cancelIfUntouchedSince(paymentId: string, since: Date): Promise<boolean>;
   /** The database's clock, so "since" is compared with the same clock that stamps sessions. */
   now(): Promise<Date>;
+  /**
+   * Unpaid invoices (not in a "Pay several" payment) that have a Stripe checkout or intent, with
+   * who pays them, oldest first: what a hold has to close.
+   */
+  listUnpaidWithCheckout(
+    limit: number,
+  ): Promise<{ id: string; payerUserId: string; buyerLegalEntityId: string }[]>;
 }

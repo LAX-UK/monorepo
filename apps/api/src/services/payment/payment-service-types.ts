@@ -1,4 +1,4 @@
-import type { IInvoiceRecipients } from "@auction/finance-runtime";
+import type { IHeldInvoiceCheckouts, IInvoiceRecipients } from "@auction/finance-runtime";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
@@ -67,6 +67,8 @@ export type PaymentServiceDeps = {
   buyerPaymentAuthority: IBuyerPaymentAuthority;
   /** Closed organisations and unverified personal buyers cannot pay (both ways of paying). */
   paymentEligibility: IPaymentEligibilityGate;
+  /** Closes a held invoice's open checkouts, so it cannot be paid while held. */
+  heldCheckouts: Pick<IHeldInvoiceCheckouts, "close"> | null;
   /** Who is told an invoice is due: the winner and the account's payers. */
   invoiceRecipients: IInvoiceRecipients;
 };

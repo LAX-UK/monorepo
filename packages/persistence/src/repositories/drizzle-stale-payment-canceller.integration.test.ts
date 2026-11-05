@@ -128,6 +128,21 @@ describe.skipIf(!HAS_DB)("stale payment cancel statement (integration)", () => {
     expect(await statusOf()).toBe("captured");
   });
 
+  it("lists an unpaid invoice once it has a checkout, with who pays it", async () => {
+    const before = await canceller.listUnpaidWithCheckout(500);
+    expect(before.some((r) => r.id === paymentId)).toBe(false);
+    await sessions.record(paymentId, `cs_spc_${run}_list`);
+    const after = await canceller.listUnpaidWithCheckout(500);
+    expect(after).toContainEqual({
+      id: paymentId,
+      payerUserId: buyerId,
+      buyerLegalEntityId: entityId,
+    });
+    await db.update(payment).set({ status: "captured" }).where(eq(payment.id, paymentId));
+    const paid = await canceller.listUnpaidWithCheckout(500);
+    expect(paid.some((r) => r.id === paymentId)).toBe(false);
+  });
+
   it("removes the checkout sessions with their payment", async () => {
     await sessions.record(paymentId, `cs_spc_${run}_gone`);
     await db.delete(payment).where(eq(payment.id, paymentId));

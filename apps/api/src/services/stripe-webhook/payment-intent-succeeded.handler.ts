@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { UnappliedMoneyReason } from "@auction/domain";
+import type { ManualReviewReason, UnappliedMoneyReason } from "@auction/domain";
 import type { PaymentRecord } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
@@ -39,6 +39,7 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
 
     const expectedPence = gbpAmountToPence(paymentRow.amount);
     const chargeId = chargeIdFromPaymentIntent(paymentIntent);
+    const hold = await this.holdReason(paymentRow);
 
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const { claimed } = await tryClaimProcessedStripeEvent(
@@ -108,6 +109,10 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
         return this.unapplied(tx, paymentRow, paymentIntent, chargeId, "invoice_already_paid");
       }
 
+      if (hold && (paymentRow.status === "pending" || paymentRow.status === "authorized")) {
+        return this.toManualReview(tx, paymentRow, paymentIntent.id, chargeId, hold);
+      }
+
       await this.deps.paymentCapture.capture({
         paymentId,
         via: "stripe_checkout_webhook",
@@ -119,6 +124,60 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
 
       return { processed: true, action: "payment_intent_succeeded" };
     });
+  }
+
+  /**
+   * Why this account may not be paid for now (identity, organisation review, closed), or null.
+   * Read before the money is applied; a failed read fails the webhook so Stripe retries.
+   */
+  private async holdReason(row: PaymentRecord): Promise<ManualReviewReason | null> {
+    const payerUserId = row.paidByUserId ?? row.buyerId;
+    if (!this.deps.paymentEligibility || !row.buyerLegalEntityId || !payerUserId) return null;
+    const eligibility = await this.deps.paymentEligibility.check({
+      payerUserId,
+      buyerLegalEntityId: row.buyerLegalEntityId,
+    });
+    if (eligibility.kind === "held") return eligibility.reason;
+    // A closed account's money is never captured either; finance refunds or applies it.
+    if (eligibility.kind === "refused") return "finance_release_required";
+    return null;
+  }
+
+  /**
+   * Money for an account that cannot pay yet: kept with the invoice in manual review, never
+   * captured. Finance captures it once the account can pay ("Capture and process"), or refunds it.
+   */
+  private async toManualReview(
+    tx: Database,
+    row: PaymentRecord,
+    paymentIntentId: string,
+    chargeId: string | null,
+    reason: ManualReviewReason,
+  ): Promise<PaymentWebhookResult> {
+    const moved = await this.deps.payments.applyHeldMoneyInTransaction(tx, row.id, {
+      stripePaymentIntentId: paymentIntentId,
+      stripeChargeId: chargeId,
+    });
+    if (!moved) throw new Error("held_money_not_applied");
+    recordMoneyPathEvent("payment_held_money_to_manual_review");
+    await this.deps.domainEventSink.withTx(tx).publish({
+      aggregateType: "payment",
+      aggregateId: row.id,
+      eventType: "payment.requires_manual_review",
+      payload: {
+        paymentId: row.id,
+        lotId: row.lotId,
+        buyerUserId: row.paidByUserId ?? row.buyerId ?? null,
+        buyerLegalEntityId: row.buyerLegalEntityId ?? null,
+        sellerLegalEntityId: row.sellerLegalEntityId ?? null,
+        amount: row.amount,
+        currency: "GBP",
+        reason,
+      },
+      actorUserId: null,
+      actingLegalEntityId: row.buyerLegalEntityId ?? null,
+    });
+    return { processed: true, action: "payment_intent_succeeded_held", reason };
   }
 
   private async unapplied(

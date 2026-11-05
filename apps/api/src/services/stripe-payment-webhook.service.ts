@@ -30,6 +30,8 @@ import type { UnappliedMoneyRefundHandler } from "./stripe-webhook/unapplied-mon
 
 export type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-types.js";
 
+import type { IPaymentEligibilityGate } from "@auction/finance-runtime";
+
 /** Routes Stripe payment webhooks to segregated handlers (no business logic). */
 export class StripePaymentWebhookService {
   private readonly deps: StripePaymentWebhookDeps;
@@ -48,6 +50,7 @@ export class StripePaymentWebhookService {
     private readonly dealPayments: DealPaymentWebhookDeps | null = null,
     unappliedMoney: IUnappliedMoneyRecorder | null = null,
     private readonly unappliedRefunds: UnappliedMoneyRefundHandler | null = null,
+    paymentEligibility: IPaymentEligibilityGate | null = null,
   ) {
     this.deps = {
       transactionRunner,
@@ -58,6 +61,7 @@ export class StripePaymentWebhookService {
       paymentCapture,
       domainEventSink,
       unappliedMoney: unappliedMoney ?? NO_UNAPPLIED_MONEY_RECORDER,
+      paymentEligibility,
     };
     const handlers = createPaymentWebhookHandlers(this.deps, paymentGroups);
     this.handlers = dealPayments ? withDealPaymentHandlers(handlers, dealPayments) : handlers;

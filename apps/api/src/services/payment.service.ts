@@ -1,4 +1,4 @@
-import type { IInvoiceRecipients } from "@auction/finance-runtime";
+import type { IHeldInvoiceCheckouts, IInvoiceRecipients } from "@auction/finance-runtime";
 import type { IPaymentDomainEventsRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
@@ -127,6 +127,7 @@ export class PaymentService
     errorReporter: IErrorReporter | null = null,
     paymentEligibility: IPaymentEligibilityGate | null = null,
     invoiceRecipients: IInvoiceRecipients | null = null,
+    heldCheckouts: Pick<IHeldInvoiceCheckouts, "close"> | null = null,
   ) {
     const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
       payments,
@@ -177,6 +178,7 @@ export class PaymentService
           ? new PaymentEligibilityGate(legalEntityRepository, null)
           : REFUSE_ALL_ELIGIBILITY),
       invoiceRecipients: invoiceRecipients ?? WINNER_ONLY,
+      heldCheckouts,
     };
   }
 

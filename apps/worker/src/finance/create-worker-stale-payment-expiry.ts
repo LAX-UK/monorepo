@@ -1,6 +1,8 @@
 import type { Database } from "@auction/db";
 import {
   FinanceTaskLatePaymentRecorder,
+  HeldInvoiceCheckouts,
+  PaymentEligibilityGate,
   StalePaymentStore,
   StripeCheckoutCloser,
   StripeClientFactory,
@@ -8,6 +10,10 @@ import {
   expireStalePayments,
 } from "@auction/finance-runtime";
 import {
+  DrizzleBidActorEligibilityReader,
+  DrizzleLegalEntityMembershipReader,
+  DrizzleLegalEntityReader,
+  DrizzleLegalEntityRepository,
   DrizzlePaymentCheckoutSessionRepository,
   DrizzlePaymentRepository,
   DrizzleStalePaymentCanceller,
@@ -24,21 +30,39 @@ import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-s
  */
 export function createWorkerStalePaymentExpiry(input: {
   db: Database;
-  env: Pick<WorkerEnv, "STRIPE_SECRET_KEY" | "NODE_ENV">;
+  env: Pick<WorkerEnv, "STRIPE_SECRET_KEY" | "NODE_ENV" | "VERIFF_API_KEY">;
   domainEventSink: IWorkerDomainEventSink;
 }) {
   const { db, env, domainEventSink } = input;
   const runner = new DrizzleTransactionRunner(db);
-  const deps = {
-    payments: new StalePaymentStore(
-      new DrizzlePaymentRepository(db),
-      new DrizzlePaymentCheckoutSessionRepository(db),
-      new DrizzleStalePaymentCanceller(db),
-      runner,
+  const canceller = new DrizzleStalePaymentCanceller(db);
+  const payments = new StalePaymentStore(
+    new DrizzlePaymentRepository(db),
+    new DrizzlePaymentCheckoutSessionRepository(db),
+    canceller,
+    runner,
+  );
+  const provider = new StripeCheckoutCloser(new StripeClientFactory(env.STRIPE_SECRET_KEY), {
+    stripeExpected: env.NODE_ENV === "production",
+  });
+  // The same account rule as the API: personal payers verified where Veriff can verify them,
+  // and held in production when it cannot.
+  const heldCheckouts = new HeldInvoiceCheckouts({
+    payments,
+    provider,
+    eligibility: new PaymentEligibilityGate(
+      new DrizzleLegalEntityRepository(
+        new DrizzleLegalEntityReader(db),
+        new DrizzleLegalEntityMembershipReader(db),
+      ),
+      env.VERIFF_API_KEY ? new DrizzleBidActorEligibilityReader(db) : null,
+      { identityRequired: env.NODE_ENV === "production" },
     ),
-    provider: new StripeCheckoutCloser(new StripeClientFactory(env.STRIPE_SECRET_KEY), {
-      stripeExpected: env.NODE_ENV === "production",
-    }),
+    listUnpaidWithCheckout: (limit) => canceller.listUnpaidWithCheckout(limit),
+  });
+  const deps = {
+    payments,
+    provider,
     latePayments: new FinanceTaskLatePaymentRecorder(
       new UnappliedMoneyRecorder(new DrizzleUnappliedMoneyReader(db), domainEventSink),
       runner,
@@ -65,6 +89,9 @@ export function createWorkerStalePaymentExpiry(input: {
   return async (pendingMaxAgeDays: number, authorizedMaxAgeDays: number): Promise<number> => {
     const report = await expireStalePayments(deps, pendingMaxAgeDays, authorizedMaxAgeDays);
     console.info(JSON.stringify({ msg: "stale_payment_expiry", ...report }));
+    // Idempotent: closes the checkouts of invoices held at deploy, and of any held since.
+    const held = await heldCheckouts.sweep();
+    console.info(JSON.stringify({ msg: "held_invoice_checkouts_closed", ...held }));
     return report.expired;
   };
 }

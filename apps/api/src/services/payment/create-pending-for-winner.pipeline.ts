@@ -50,6 +50,27 @@ function heldResult(
   return ok({ paymentId, checkoutUrl: null, checkoutRail: null, manualReviewReason: reason });
 }
 
+/**
+ * A checkout opened before the hold must not stay payable. Closing it is best effort here: the
+ * page still shows the hold, the expiry pass closes it again, and any money that still arrives
+ * goes to manual review rather than being captured.
+ */
+async function closeHeldCheckouts(deps: PaymentServiceDeps, paymentId: string): Promise<void> {
+  if (!deps.heldCheckouts) return;
+  try {
+    await deps.heldCheckouts.close(paymentId);
+  } catch (e) {
+    recordMoneyPathEvent("held_checkout_close_failed");
+    console.error(
+      JSON.stringify({
+        msg: "held_checkout_close_failed",
+        paymentId,
+        error: e instanceof Error ? e.message : String(e),
+      }),
+    );
+  }
+}
+
 export const EXISTING_PAYMENT_STATUS_HANDLERS: Partial<
   Record<PaymentRecord["status"], ExistingPaymentHandler>
 > = {
@@ -93,7 +114,10 @@ async function handleExistingOpenPayment(
   ctx: ExistingPaymentHandlerContext,
 ): Promise<Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError>> {
   const { deps, existing, lot, buyerId } = ctx;
-  if (ctx.held) return heldResult(existing.id, ctx.held);
+  if (ctx.held) {
+    await closeHeldCheckouts(deps, existing.id);
+    return heldResult(existing.id, ctx.held);
+  }
   if (existing.paymentGroupId) {
     // Held by a "Pay several" payment: a second checkout could take the same money twice.
     return err(

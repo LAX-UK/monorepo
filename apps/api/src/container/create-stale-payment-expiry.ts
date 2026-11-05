@@ -1,6 +1,7 @@
 import type { IStalePaymentMaintenance } from "@auction/finance-cron-app";
 import {
   CapturingLatePaymentRecorder,
+  type IHeldInvoiceCheckouts,
   type IUnappliedMoneyRecorder,
   StalePaymentStore,
   StripeCheckoutCloser,
@@ -29,6 +30,8 @@ export function createStalePaymentExpiry(input: {
   paymentCapture: IPaymentCaptureService;
   unappliedMoney: Pick<IUnappliedMoneyRecorder, "record">;
   events: IDomainEventSink;
+  /** Closes held invoices' checkouts; run with every expiry pass (idempotent). */
+  heldCheckouts: IHeldInvoiceCheckouts;
 }): IStalePaymentMaintenance {
   const deps = {
     payments: new StalePaymentStore(
@@ -72,6 +75,8 @@ export function createStalePaymentExpiry(input: {
         authorizedMaxAgeDays ?? pendingMaxAgeDays * 2,
       );
       console.info(JSON.stringify({ msg: "stale_payment_expiry", ...report }));
+      const held = await input.heldCheckouts.sweep();
+      console.info(JSON.stringify({ msg: "held_invoice_checkouts_closed", ...held }));
       return report.expired;
     },
   };
