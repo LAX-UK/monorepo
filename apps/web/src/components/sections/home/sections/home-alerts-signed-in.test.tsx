@@ -38,7 +38,7 @@ describe("HomeAlertsSignedIn", () => {
     setAlertTopic.mockResolvedValue({ ok: true });
     render(<HomeAlertsSignedIn />);
     fireEvent.click(await screen.findByRole("button", { name: "Turn on sale alerts" }));
-    await waitFor(() => expect(screen.getByText("Your sale alerts are on")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("You'll hear about new sales")).toBeTruthy());
     expect(setAlertTopic).toHaveBeenCalledWith("bid.new_sales", true);
     expect(success).toHaveBeenCalledWith("Sale alerts are on");
     expect(screen.queryByRole("button", { name: "Turn on sale alerts" })).toBeNull();
@@ -50,8 +50,12 @@ describe("HomeAlertsSignedIn", () => {
       topics: [{ topic: "bid.new_sales", emailOn: true }],
     });
     render(<HomeAlertsSignedIn />);
-    expect(await screen.findByText("Your sale alerts are on")).toBeTruthy();
+    expect(await screen.findByText("You'll hear about new sales")).toBeTruthy();
     expect(screen.getByText(/Artists and searches are in Watching/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Manage alerts" }).getAttribute("href")).toBe(
+      "/settings#alerts",
+    );
+    expect(screen.queryByRole("button", { name: "Turn on sale alerts" })).toBeNull();
   });
 
   it("keeps the button and says why when turning on fails", async () => {

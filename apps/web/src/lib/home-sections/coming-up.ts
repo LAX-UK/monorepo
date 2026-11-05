@@ -8,7 +8,13 @@ import {
   toDate,
 } from "@/lib/datetime/london-time";
 import { HOME_SECTION_LIMITS } from "@/lib/home-sections/limits";
-import type { HomeComingUp, HomeComingUpRow } from "@/lib/home-sections/types";
+import type {
+  HomeCardImage,
+  HomeComingUp,
+  HomeComingUpLayout,
+  HomeComingUpRow,
+} from "@/lib/home-sections/types";
+import { coverTimeLine } from "@/lib/marketing-cover/cover-time";
 import type { SaleListRow } from "@/lib/sale-list-row";
 import { formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { salePath } from "@/lib/seo/url";
@@ -46,13 +52,32 @@ function dates(sale: Sale, now: Date): Pick<HomeComingUpRow, "dateMain" | "dateS
   };
 }
 
+/** The sale's staff-chosen cover, when it has one; the card crops it at the focal point staff set. */
+function coverImage(sale: Sale): HomeCardImage | null {
+  const slot = sale.coverSlotAssets?.default;
+  return slot ? { src: slot.src, alt: slot.alt, focal: slot.focal } : null;
+}
+
+/** One sale stands alone as a wide card; two or three sit in a row. */
+export function comingUpLayout(count: number): HomeComingUpLayout {
+  return count <= 1 ? "feature" : "row";
+}
+
+function timeFor(sale: Sale, now: Date): HomeComingUpRow["time"] {
+  const line = coverTimeLine({ status: "scheduled", start: sale.startTime, end: null, now });
+  if (!line) return null;
+  return { text: line.time, ...(line.timeTick ? { tick: line.timeTick } : {}) };
+}
+
 function rowFor(row: SaleListRow, now: Date): HomeComingUpRow {
   const sale = atgDisplaySale(row.sale, now);
   const deadline = consignmentDeadline(sale, now);
   const hasLots = row.lotCount > 0;
+  const typeLabel = deliveryLine(sale);
+  const lotsLabel = hasLots ? formatSaleLotsLabel(row.lotCount) : null;
   const meta = [
-    deliveryLine(sale),
-    hasLots ? formatSaleLotsLabel(row.lotCount) : null,
+    typeLabel,
+    lotsLabel,
     !hasLots && deadline ? `consignments close ${formatLondonDate(deadline)}` : null,
   ]
     .filter((part): part is string => part !== null)
@@ -66,6 +91,10 @@ function rowFor(row: SaleListRow, now: Date): HomeComingUpRow {
     href: salePath(sale),
     title: sale.title,
     meta,
+    typeLabel,
+    lotsLabel,
+    image: coverImage(sale),
+    time: timeFor(sale, now),
     action,
     ...dates(sale, now),
   };
@@ -83,5 +112,9 @@ export function buildComingUp(
     .slice(0, HOME_SECTION_LIMITS.comingUp.max)
     .map((row) => rowFor(row, now));
   if (shown.length < HOME_SECTION_LIMITS.comingUp.min) return null;
-  return { rows: shown, seeAll: { href: "/sales", label: "Auction calendar" } };
+  return {
+    rows: shown,
+    layout: comingUpLayout(shown.length),
+    seeAll: { href: "/sales", label: "Auction calendar" },
+  };
 }

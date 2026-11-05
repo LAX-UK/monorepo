@@ -1,35 +1,40 @@
 "use client";
 
 import { loadAccountAlerts, setAlertTopic } from "@/lib/data/http/alerts.client";
+import type { HomeAlertThumbnail } from "@/lib/home-sections/types";
 import { bidSettingsHref } from "@/lib/navigation/settings-links";
 import { notify } from "@/lib/ui/notify";
 import { Button, ButtonLink, Skeleton } from "@auction/ui/lax";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { HomeAlertsPanel } from "./home-alerts-panel";
 
 type View = "checking" | "off" | "on";
 
-const COPY: Record<View, { heading: string; body: string }> = {
+const COPY: Record<View, { title: string; body: string }> = {
   checking: {
-    heading: "Hear about new sales first",
+    title: "Hear about new sales first",
     body: "We'll email you when a sale is announced, and tell you in the app.",
   },
   off: {
-    heading: "Hear about new sales first",
+    title: "Hear about new sales first",
     body: "We'll email you when a sale is announced, and tell you in the app.",
   },
   on: {
-    heading: "Your sale alerts are on",
+    title: "You'll hear about new sales",
     body: "New sales reach you by email at 08:00 and in the app. Artists and searches are in Watching.",
   },
 };
 
 /**
- * The alerts band for a signed-in client. The home page is cached for everyone, so what this
+ * The alerts panel for a signed-in client. The home page is cached for everyone, so what this
  * person has chosen is read here, in the browser. Turning alerts on takes one press and no
- * confirmation email: their address is already verified.
+ * confirmation email: their address is already verified. Once on, the panel only says so and
+ * links to the settings; it never asks again.
  */
-export function HomeAlertsSignedIn() {
+export function HomeAlertsSignedIn({
+  thumbnails = [],
+}: { thumbnails?: readonly HomeAlertThumbnail[] }) {
   const [view, setView] = useState<View>("checking");
   const [busy, setBusy] = useState(false);
 
@@ -61,38 +66,28 @@ export function HomeAlertsSignedIn() {
 
   const copy = COPY[view];
   return (
-    <>
-      <div className="min-w-0">
-        <h2
-          id="home-alerts-heading"
-          className="m-0 font-headline text-xl font-medium leading-7 text-on-surface md:text-2xl md:leading-8"
-        >
-          {copy.heading}
-        </h2>
-        <p className="m-0 mt-1.5 font-body text-sm leading-[22px] text-on-surface-variant">
-          {copy.body}
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2 md:justify-self-end">
-        {view === "checking" ? (
+    <HomeAlertsPanel
+      title={copy.title}
+      body={copy.body}
+      thumbnails={thumbnails}
+      action={
+        view === "checking" ? (
           <Skeleton className="h-lax-control-md w-44 rounded-lax-control" />
-        ) : (
+        ) : view === "off" ? (
           <>
-            {view === "off" ? (
-              <Button type="button" variant="primary" loading={busy} onClick={() => void turnOn()}>
-                Turn on sale alerts
-              </Button>
-            ) : null}
-            <ButtonLink
-              Link={Link}
-              href={bidSettingsHref("alerts")}
-              variant={view === "on" ? "primary" : "secondary"}
-            >
+            <Button type="button" variant="primary" loading={busy} onClick={() => void turnOn()}>
+              Turn on sale alerts
+            </Button>
+            <ButtonLink Link={Link} href={bidSettingsHref("alerts")} variant="secondary">
               Alert settings
             </ButtonLink>
           </>
-        )}
-      </div>
-    </>
+        ) : (
+          <ButtonLink Link={Link} href={bidSettingsHref("alerts")} variant="secondary">
+            Manage alerts
+          </ButtonLink>
+        )
+      }
+    />
   );
 }

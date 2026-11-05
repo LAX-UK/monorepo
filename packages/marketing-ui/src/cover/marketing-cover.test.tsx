@@ -38,6 +38,16 @@ describe("MarketingCover modes", () => {
     expect(container.querySelector("[data-cover-scrim]")).toBeNull();
   });
 
+  it("keeps the type column off the plate, but lets it run over a photograph", () => {
+    const plate = renderFixture(fixture(BID_COVER_FIXTURES, "no-cover"));
+    const plateColumn = plate.container.querySelector("h1")?.parentElement;
+    expect(plateColumn?.className).toContain("md:max-w-[min(640px,calc(50%-4.5rem))]");
+    plate.unmount();
+    const photo = renderFixture(fixture(BID_COVER_FIXTURES, "live"));
+    const photoColumn = photo.container.querySelector("h1")?.parentElement;
+    expect(photoColumn?.className).not.toContain("calc(50%-4.5rem)");
+  });
+
   it("draws type only when there are no pictures", () => {
     const { container } = renderFixture(fixture(BID_COVER_FIXTURES, "no-images"));
     expect(container.querySelector("[data-cover-mode='type']")).not.toBeNull();

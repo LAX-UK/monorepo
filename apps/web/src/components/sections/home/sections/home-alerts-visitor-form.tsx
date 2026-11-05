@@ -39,7 +39,7 @@ export function HomeAlertsVisitorForm({ action, outcome, message, consent }: Pro
       action={action}
       noValidate
       onSubmit={onSubmit}
-      className="w-full md:max-w-[480px] md:justify-self-end"
+      className="w-full max-w-[35rem] text-start"
     >
       <input type="hidden" name="source" value="web_home_alerts" />
       {message && !error ? (
