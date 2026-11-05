@@ -12,7 +12,6 @@ import {
   type ZohoArtworkSyncJobs,
   createZohoArtworkSyncJobs,
 } from "../jobs/zoho-artwork-sync.job.js";
-import { DrizzleLinkedListingProjector } from "../repositories/drizzle-linked-listing-projector.js";
 
 export type ZohoArtworkSyncRuntime = {
   jobs: ZohoArtworkSyncJobs;
@@ -37,7 +36,6 @@ export function createZohoArtworkSyncRuntime(deps: {
     register: new DrizzleArtworkRegisterRepository(db),
     report: store,
     watermark: store,
-    listings: new DrizzleLinkedListingProjector(db),
     log,
   });
   return {

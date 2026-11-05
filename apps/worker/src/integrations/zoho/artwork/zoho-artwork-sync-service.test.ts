@@ -10,7 +10,6 @@ import type {
 import { describe, expect, it, vi } from "vitest";
 import type { CatalogueProduct } from "./catalogue-product.js";
 import { product } from "./fixtures/load-fixtures.js";
-import type { LinkedListingProjector } from "./linked-listing-projector.js";
 import {
   type ZohoArtworkSyncModeSetting,
   ZohoArtworkSyncService,
@@ -36,7 +35,6 @@ function setup(
   mode: ZohoArtworkSyncModeSetting,
   pages: CatalogueProduct[][] = [],
   existing: ArtworkRegisterEntry[] = [],
-  listings?: LinkedListingProjector,
 ) {
   const register = new Map(existing.map((e) => [e.zohoProductId, e]));
   const recorded: ZohoArtworkSyncOutcomeInput[] = [];
@@ -89,8 +87,7 @@ function setup(
     register: registerRepo as never,
     report: report as never,
     watermark: watermark as never,
-    ...(listings ? { listings } : {}),
-    log: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() } as never,
+    log: { info: vi.fn(), debug: vi.fn(), warn: vi.fn() } as never,
     now: () => NOW,
   });
   return { service, registerRepo, reader, report, watermark, recorded, watermarks };
@@ -244,58 +241,5 @@ describe("ZohoArtworkSyncService notices", () => {
       changes: { title: { from: "Old title", to: "Harbour at dusk" } },
       conflicts: [{ field: "stockCode" }],
     });
-  });
-});
-
-describe("ZohoArtworkSyncService lax.art listings", () => {
-  const entry = {
-    id: "id",
-    zohoProductId: product(1).id,
-    stockCode: "LAX-ORI-PH-GAC-26-0001",
-    kind: "original",
-    sourceOriginalId: null,
-    title: "Old title",
-    artist: { zohoArtistId: "5000000000000077001", name: "Aidan Phelan", code: "PH" },
-    medium: "Oil on canvas",
-    dimensions: "60 x 80 cm",
-    year: 2024,
-    imageRefs: ["a.jpg"],
-    catalogueStatus: "Available",
-    offer: { state: "held", ref: null },
-    zohoModifiedAt: new Date("2026-09-01T00:00:00.000Z"),
-    version: 1,
-  } as unknown as ArtworkRegisterEntry;
-
-  it("carries the register's Zoho fields onto the listing after a change", async () => {
-    const project = vi.fn(async () => undefined);
-    const t = setup("live", [[product(1)]], [entry], { project });
-    await t.service.processNotice({ productId: product(1).id, runId: "notice:p1" });
-    expect(project).toHaveBeenCalledWith({
-      zohoProductId: product(1).id,
-      title: "Old title",
-      medium: "Oil on canvas",
-      dimensions: "60 x 80 cm",
-      year: 2024,
-      imageRefs: ["a.jpg"],
-      artistCode: "PH",
-    });
-  });
-
-  it("leaves listings alone in a dry run, and for a record it has just created", async () => {
-    const project = vi.fn(async () => undefined);
-    const dry = setup("dry_run", [[product(1)]], [entry], { project });
-    await dry.service.processNotice({ productId: product(1).id, runId: "notice:p2" });
-    const created = setup("live", [[product(1)]], [], { project });
-    await created.service.processNotice({ productId: product(1).id, runId: "notice:p3" });
-    expect(project).not.toHaveBeenCalled();
-  });
-
-  it("keeps going when a listing cannot be updated, and says so in the log", async () => {
-    const project = vi.fn(async () => {
-      throw new Error("listing locked");
-    });
-    const t = setup("live", [[product(1)]], [entry], { project });
-    await t.service.processNotice({ productId: product(1).id, runId: "notice:p4" });
-    expect(t.recorded).toHaveLength(1);
   });
 });
