@@ -330,9 +330,7 @@ export function HelpArticleEditor({
             record ? (
               <>
                 <MetaItem label="Category">{record.categoryTitle}</MetaItem>
-                <MetaItem label="Updated">
-                  {formatStaffDateTime(record.updatedAt, { zoneLabel: true })}
-                </MetaItem>
+                <MetaItem label="Updated">{formatStaffDateTime(record.updatedAt)}</MetaItem>
               </>
             ) : undefined
           }
@@ -411,7 +409,7 @@ export function HelpArticleEditor({
             }
           >
             Anyone with the link can see this draft on lax.art until{" "}
-            {formatStaffDateTime(preview.expiresAt, { zoneLabel: true })}.
+            {formatStaffDateTime(preview.expiresAt)}.
           </Notice>
         ) : null}
 

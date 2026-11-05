@@ -40,7 +40,7 @@ if (appId) {
 }
 
 const pairs = [
-  ["AUTH_SHA", "INPUT_AUTH_SHA", "", "lax-test-auth", authFromLive],
+  ["AUTH_SHA", "INPUT_AUTH_SHA", "TF_VAR_auth_image_tag", "lax-test-auth", authFromLive],
   [
     "SHOP_IDENTITY_SHA",
     "INPUT_SHOP_IDENTITY_SHA",
@@ -75,6 +75,8 @@ for (const [shaKey, inputKey, tfKey, repository, liveFallback] of pairs) {
   const digest = resolveDigest(repository, sha);
   writeEnv(shaKey, sha);
   writeEnv(digestKey, digest);
+  // Terraform pins each component to this tag; without it auth inherited app_image_tag.
+  if (tfKey) writeEnv(tfKey, sha);
 }
 
 for (const [shaKey, inputKey, tfKey, repository] of optionalPairs) {

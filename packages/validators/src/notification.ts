@@ -17,6 +17,8 @@ export const notificationPreferencePatchSchema = z.object({
   watchlistInApp: z.boolean().optional(),
   paymentInApp: z.boolean().optional(),
   newSalesInApp: z.boolean().optional(),
+  artistAlertsInApp: z.boolean().optional(),
+  searchAlertsInApp: z.boolean().optional(),
   outbidPush: z.boolean().optional(),
   wonPush: z.boolean().optional(),
   endingSoonPush: z.boolean().optional(),

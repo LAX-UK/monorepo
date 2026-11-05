@@ -129,7 +129,11 @@ export function ArtSearchResults({ vm }: { vm: SearchResultsVm }) {
         <div className="flex min-w-0 items-stretch border-b border-outline-variant">
           {showFilters ? (
             <div className="mr-4 flex shrink-0 items-center border-r border-on-surface pr-4 sm:mr-8 sm:pr-6">
-              <ArtSearchFilters state={vm.state} activeCount={vm.activeFilterCount} />
+              <ArtSearchFilters
+                state={vm.state}
+                activeCount={vm.activeFilterCount}
+                counts={vm.filterCounts}
+              />
             </div>
           ) : null}
           <SectionTabs

@@ -51,6 +51,7 @@ export function createMinimalShopApiTestDeps(
       SHOP_THIRD_PARTY_ENABLED: false,
       SHOP_ORIGINALS_ENABLED: false,
       SHOP_MERCHANDISE_ENABLED: false,
+      SHOP_LAX_CERTIFICATES_ENABLED: false,
       SHOP_EDITORIAL_ENABLED: false,
       SHOP_PERSONALISED_GOODS_CANCELLATION_EXEMPT: false,
       SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS: 900,
@@ -67,6 +68,15 @@ export function createMinimalShopApiTestDeps(
     },
     identityDeletion: {
       eligibility: { listBlockers: async () => [] },
+      machine: { clientId: undefined, clientSecret: undefined },
+    },
+    inventory: {
+      reopen: {
+        reopen: async () => ({
+          ok: true as const,
+          data: { artworkId: "00000000-0000-4000-8000-000000000001", reopened: false },
+        }),
+      },
       machine: { clientId: undefined, clientSecret: undefined },
     },
     identitySubjectExport: {
@@ -130,6 +140,8 @@ export function createMinimalShopApiTestDeps(
         priceBands: [],
         sizes: [],
         techniques: [],
+        objectTypes: [],
+        saleStates: [],
       }),
       listPublicCategories: async () => ({ items: [] }),
       getPublicCategory: async () => null,
@@ -376,6 +388,20 @@ export function createMinimalShopApiTestDeps(
         variantId: "00000000-0000-4000-8000-000000000018",
         slug: "test-product",
       }),
+      inventoryMoves: {
+        assess: async (artworkId: string) => ({
+          artworkId,
+          title: "Test artwork",
+          stockCode: null,
+          onLaxArt: false,
+          eligible: false,
+          reasons: ["Not set up in tests."],
+        }),
+        listSales: async () => [],
+        offerAtAuction: async () => {
+          throw new Error("not implemented");
+        },
+      },
       merchandiseCatalogue: {
         updateProduct: async () => ({ version: "2026-01-01T00:00:00.000Z" }),
         setProductArchived: async () => ({ version: "2026-01-01T00:00:00.000Z" }),
@@ -461,6 +487,40 @@ export function createMinimalShopApiTestDeps(
             artworkId: "00000000-0000-4000-8000-000000000032",
             slug: input.slug,
             version: "2026-01-01T00:00:00.000Z",
+          }),
+        },
+      },
+      printFulfilment: {
+        pickAndPack: {
+          forOrder: async (orderId) => ({ orderId, lines: [] }),
+        },
+        confirm: {
+          confirm: async () => ({
+            outcome: "confirmed" as const,
+            label: "7/24",
+            certificate: {
+              status: "none" as const,
+              certificateId: null,
+              note: null,
+              issuedAt: null,
+            },
+          }),
+        },
+        swap: {
+          swap: async () => ({
+            label: "9/24",
+            previousLabel: "7/24",
+            payoutMoved: false,
+            buyerNotified: false,
+          }),
+        },
+        certificates: {
+          listToSend: async () => ({ items: [] }),
+          markSent: async () => ({ issuedAt: "2026-01-01T00:00:00.000Z" }),
+          recordAuthority: async () => ({ recordedAt: "2026-01-01T00:00:00.000Z" }),
+          approveHorsCommerce: async () => ({
+            approvedAt: "2026-01-01T00:00:00.000Z",
+            approvedBy: "staff-1",
           }),
         },
       },

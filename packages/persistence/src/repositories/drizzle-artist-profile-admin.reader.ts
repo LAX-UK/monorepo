@@ -11,6 +11,7 @@ import type {
 import { and, asc, count, eq, sql } from "drizzle-orm";
 import type { AdminArtistListOptions } from "../interfaces/artist-profile-admin.reader.js";
 import type { IArtistProfileAdminReader } from "../interfaces/artist-profile-admin.reader.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import {
   aliasCountExpr,
   buildAdminListFilters,
@@ -38,7 +39,7 @@ export class DrizzleArtistProfileAdminReader implements IArtistProfileAdminReade
     const filters = [];
     if (!options.includeArchived) filters.push(eq(artistProfile.archived, false));
     if (options.q?.trim()) {
-      const q = `%${options.q.trim().replace(/[%_\\]/g, "")}%`;
+      const q = containsPattern(options.q.trim());
       filters.push(
         sql`(${artistProfile.displayName} ilike ${q} or ${artistProfile.slug} ilike ${q})`,
       );

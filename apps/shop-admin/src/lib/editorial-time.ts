@@ -1,3 +1,5 @@
+import { formatStaffCalendarDay } from "@auction/staff-ui";
+
 const LONDON = "Europe/London";
 
 function parse(iso: string): Date | null {
@@ -20,17 +22,9 @@ export function formatLondonTime(iso: string): string {
   }).format(date);
 }
 
-const DAY = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-/** Exhibition dates are calendar days with no time, so they are read in UTC to avoid a day shift. */
+/** Exhibition dates are calendar days with no time; midday UTC keeps them on that London date. */
 export function formatCalendarDay(value: string): string {
-  const date = parse(`${value.slice(0, 10)}T00:00:00Z`);
-  return date ? DAY.format(date) : value;
+  return parse(`${value.slice(0, 10)}T12:00:00Z`) ? formatStaffCalendarDay(value) : value;
 }
 
 export function formatDateRange(startsOn: string | null, endsOn: string | null): string | null {

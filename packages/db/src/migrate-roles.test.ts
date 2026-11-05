@@ -16,6 +16,7 @@ import {
   AUTH_READ_TABLES,
   SHOP_ARTWORK_REGISTER_CONFLICT_TABLES,
   SHOP_ARTWORK_REGISTER_EVENT_TABLES,
+  SHOP_ARTWORK_REGISTER_OFFER_TABLES,
   SHOP_ARTWORK_REGISTER_READ_TABLES,
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
@@ -508,6 +509,10 @@ describe("migrate-roles invariants", () => {
       expect([...SHOP_ARTWORK_REGISTER_EVENT_TABLES]).not.toContain(table);
     }
     expect([...WORKER_DENY_TABLES]).not.toContain("artwork_register");
+  });
+
+  it("lets Shop move an original's offer through the register", () => {
+    expect([...SHOP_ARTWORK_REGISTER_OFFER_TABLES]).toEqual(["artwork_register"]);
   });
 
   it("lets the worker keep the Zoho artwork sync watermark and per-Product results", () => {

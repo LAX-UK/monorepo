@@ -8,6 +8,7 @@ import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { type LoadResult, settle } from "@/lib/marketing/load-result";
 import { buildSalesBrowsePageJsonLd } from "@/lib/marketing/sales-browse-page.seo";
 import { buildSalesBrowsePageVM, showsFeaturedSales } from "@/lib/marketing/sales-browse-page.vm";
+import { countSaleFacets } from "@/lib/marketing/sales-calendar-facets";
 import { applyCalendarRowFilters } from "@/lib/marketing/sales-calendar-filter-utils";
 import { calendarTabCounts } from "@/lib/marketing/sales-calendar-overview";
 import { loadCalendarOverview } from "@/lib/marketing/sales-calendar-overview.server";
@@ -63,6 +64,27 @@ async function loadSaleRowsForTab(
     const hasMore = rows.length > CALENDAR_PAGE_SIZE;
     return { rows: rows.slice(0, CALENDAR_PAGE_SIZE), hasMore };
   });
+}
+
+/** The sales the rail's counts are made from: the whole section, in every department. */
+const FACET_ROW_LIMIT = 100;
+
+async function loadFacetRows(
+  tab: CalendarPrimaryTab,
+  categoryId: string | undefined,
+  overview: Awaited<ReturnType<typeof loadCalendarOverview>>,
+): Promise<SaleListRow[] | null> {
+  // The overview is already the whole section unless a department narrowed it.
+  if (!categoryId) return overview[tab] ?? null;
+  const result = await settle("sales calendar rail counts", () =>
+    getServerSalesList({
+      status: TAB_STATUS[tab],
+      limit: FACET_ROW_LIMIT,
+      offset: 0,
+      sort: TAB_STATUS[tab] === "ended" ? "endDesc" : "startAsc",
+    }),
+  );
+  return result.ok ? result.value : null;
 }
 
 export type SalesBrowsePageData = {
@@ -169,6 +191,19 @@ export async function loadSalesBrowsePage(
     ...(maxPrice != null ? { maxPrice } : {}),
   });
 
+  const facetRows = await loadFacetRows(tab, categoryId, overview);
+  const facets = facetRows
+    ? countSaleFacets(facetRows, {
+        ...(categoryId ? { categoryId } : {}),
+        deliveryMode,
+        location,
+        ...(month != null ? { month } : {}),
+        ...(year != null ? { year } : {}),
+        ...(minPrice != null ? { minPrice } : {}),
+        ...(maxPrice != null ? { maxPrice } : {}),
+      })
+    : null;
+
   const vm = buildSalesBrowsePageVM({
     session,
     calendarState,
@@ -179,6 +214,7 @@ export async function loadSalesBrowsePage(
     saleRows,
     featuredRows,
     filteredSales,
+    facets,
     calendarPage,
     calendarHasMore,
     now: new Date(),

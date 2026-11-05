@@ -36,8 +36,8 @@ export function LotConflictAlert({ lotConflicts, pendingWindow, lotsSetupHref }:
         ) : null
       }
     >
-      New sale window: {formatStaffDateTime(pendingWindow.startTime, { zoneLabel: true })} to{" "}
-      {formatStaffDateTime(pendingWindow.endTime, { zoneLabel: true })}.
+      New sale window: {formatStaffDateTime(pendingWindow.startTime)} to{" "}
+      {formatStaffDateTime(pendingWindow.endTime)}.
     </Notice>
   );
 }

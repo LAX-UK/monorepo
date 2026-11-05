@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { pinClock } from "@/test/pin-clock";
 import type { AdminStaffMemberList } from "@auction/shop-contracts";
 import { capabilitiesForRoles } from "@auction/shop-domain";
 import { StaffAccessProvider } from "@auction/staff-ui";
@@ -107,6 +108,8 @@ function renderList(
 const rowOf = (text: string) =>
   within(screen.getByRole("grid")).getByText(text).closest("tr") as HTMLElement;
 
+pinClock();
+
 describe("the staff list", () => {
   it("counts each view by access and shows every role a person holds", () => {
     renderList();
@@ -141,7 +144,7 @@ describe("the staff list", () => {
     const panel = await screen.findByRole("dialog", { name: /Eleanor Pereira/ });
     const roles = within(panel).getByRole("list", { name: "Eleanor Pereira's roles" });
     expect(within(roles).getByText("Catalogue editor")).toBeInTheDocument();
-    expect(within(roles).getByText(/Until 30 Nov 2026/)).toBeInTheDocument();
+    expect(within(roles).getByText(/Until Mon 30 Nov/)).toBeInTheDocument();
     expect(within(roles).queryByRole("button")).toBeNull();
     expect(
       within(panel).getByText(/Editor: Stories, exhibitions, pages and help/),

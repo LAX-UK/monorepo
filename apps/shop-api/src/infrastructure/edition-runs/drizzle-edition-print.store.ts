@@ -158,5 +158,17 @@ export function createDrizzleEditionPrintStore(db: Database): EditionPrintStore 
       if (!row) throw notFound("Artwork not found");
       return row.updatedAt.toISOString();
     },
+
+    async recordHorsCommerceApproval(artworkId, actorSubjectId) {
+      const [row] = await db
+        .update(shopArtwork)
+        .set({
+          horsCommerceApprovedBySubjectId: actorSubjectId,
+          horsCommerceApprovedAt: new Date(),
+        })
+        .where(and(eq(shopArtwork.id, artworkId), eq(shopArtwork.proofType, "hc")))
+        .returning({ id: shopArtwork.id });
+      if (!row) throw new ShopDomainError("Only a hors commerce proof listing can be approved");
+    },
   };
 }

@@ -22,7 +22,7 @@ export interface IDomainEventProjectorReader {
     options?: ListDomainEventsAfterCursorOptions,
   ): Promise<DomainEventProjectorRow[]>;
 
-  /** `FOR UPDATE SKIP LOCKED` poll used by zoho / marketing-contacts projectors. */
+  /** `FOR UPDATE SKIP LOCKED` poll used by the zoho projector. */
   listLockedForProjector(
     projectorName: string,
     limit: number,

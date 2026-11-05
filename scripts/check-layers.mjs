@@ -608,6 +608,7 @@ const SHOP_FORBIDDEN_IMPORT_RE =
   /^@auction\/(api|web|worker|ws|auth-app|event|db|persistence|domain|bidding-runtime)(\/|$)/;
 const SHOP_ALLOWED_AUCTION_IMPORTS = new Set([
   "@auction/config-ts",
+  "@auction/http-headers",
   "@auction/identity-rp",
   "@auction/identity-contracts",
   "@auction/lax-ecosystem",

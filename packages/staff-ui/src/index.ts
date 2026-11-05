@@ -7,8 +7,10 @@ export { formatStaffPercent } from "./lib/percent.js";
 export {
   formatStaffDate,
   formatStaffDateTime,
+  formatStaffExportDate,
   formatStaffMoney,
   formatStaffRelative,
+  formatStaffTime,
   staffShortDateFormat,
 } from "./lib/format.js";
 
@@ -66,6 +68,8 @@ export { StatGrid } from "./display/stat-grid.js";
 export type { StatItem } from "./display/stat-grid.js";
 export type { KeyValueItem } from "./display/key-value-list.js";
 export { Timeline } from "./display/timeline.js";
+export { WhereItIsChip, WhereItIsSection } from "./display/where-it-is.js";
+export type { WhereItIsChipSpec, WhereItIsSectionProps } from "./display/where-it-is.js";
 export { MessageThread } from "./display/message-thread.js";
 export type {
   MessageThreadProps,
@@ -116,7 +120,12 @@ export type { FieldProps } from "@auction/ui/lax";
 export { MoneyInput } from "./forms/money-input.js";
 export { DateInput, DateTimeInput } from "./forms/date-input.js";
 export type { DateInputProps, DateTimeInputProps } from "./forms/date-input.js";
-export { formatStaffDay, isoToLondonWallTime, londonWallTimeToIso } from "./forms/staff-dates.js";
+export {
+  formatStaffCalendarDay,
+  formatStaffDay,
+  isoToLondonWallTime,
+  londonWallTimeToIso,
+} from "./forms/staff-dates.js";
 export {
   UnsavedChangesDialog,
   UnsavedChangesGuard,

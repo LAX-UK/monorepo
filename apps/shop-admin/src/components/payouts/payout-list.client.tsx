@@ -285,7 +285,7 @@ export function PayoutList({
                   ? [
                       {
                         label: "Paid",
-                        value: formatStaffDateTime(opened.paidAt, { zoneLabel: true }),
+                        value: formatStaffDateTime(opened.paidAt),
                       },
                     ]
                   : []),

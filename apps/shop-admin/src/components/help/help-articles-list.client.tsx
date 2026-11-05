@@ -326,7 +326,7 @@ export function HelpArticlesList({
                 { label: "Category", value: opened.categoryTitle },
                 {
                   label: "Updated",
-                  value: formatStaffDateTime(opened.updatedAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.updatedAt),
                 },
               ]
             : []

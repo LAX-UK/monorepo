@@ -45,7 +45,6 @@
     "db:backfill-lot-lifecycle-snapshot": "tsx src/scripts/backfill-lot-lifecycle-snapshot.ts",
     "db:backfill-identity-addresses": "tsx src/scripts/backfill-identity-addresses.ts",
     "db:backfill-user-mobile-e164": "tsx src/scripts/backfill-user-mobile-e164.ts",
-    "db:backfill-user-registered-events": "tsx src/scripts/backfill-user-registered-events.ts",
     "db:reconcile-identity-profiles": "tsx src/scripts/reconcile-identity-profile-drift.ts",
     "db:report-user-read-cutover": "tsx src/scripts/report-user-read-cutover.ts",
     "db:report-staff-role-cleanup": "tsx src/scripts/report-staff-role-cleanup.ts",

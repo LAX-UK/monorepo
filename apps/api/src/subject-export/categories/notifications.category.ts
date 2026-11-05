@@ -51,6 +51,8 @@ const PREFERENCE_COLUMNS = [
   ["watchlistInApp", "watchlist", "in-app"],
   ["paymentInApp", "payment", "in-app"],
   ["newSalesInApp", "new sales", "in-app"],
+  ["artistAlertsInApp", "followed artists", "in-app"],
+  ["searchAlertsInApp", "saved searches", "in-app"],
   ["outbidPush", "outbid", "push"],
   ["wonPush", "won", "push"],
   ["endingSoonPush", "ending soon", "push"],

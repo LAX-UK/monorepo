@@ -196,7 +196,7 @@ export function EditorialList({
       return;
     }
     toast.success(`Preview of “${row.title}” is ready`, {
-      description: `The link works until ${formatStaffDateTime(result.data.expiresAt, { zoneLabel: true })}.`,
+      description: `The link works until ${formatStaffDateTime(result.data.expiresAt)}.`,
       action: {
         label: "Open preview",
         onClick: () => window.open(url, "_blank", "noopener,noreferrer"),
@@ -384,7 +384,7 @@ export function EditorialList({
                 { label: "Dates", value: opened.dates },
                 {
                   label: "Updated",
-                  value: formatStaffDateTime(opened.updatedAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.updatedAt),
                 },
                 {
                   label: "Public address",

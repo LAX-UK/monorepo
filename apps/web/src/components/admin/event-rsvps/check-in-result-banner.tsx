@@ -52,7 +52,7 @@ export function CheckInResultBanner({ result }: Props) {
           </li>
           {result.guest.checkedInAt ? (
             <li>
-              Checked in {formatStaffDateTime(result.guest.checkedInAt, { zoneLabel: true })}
+              Checked in {formatStaffDateTime(result.guest.checkedInAt)}
               {result.guest.checkedInByName ? ` by ${result.guest.checkedInByName}` : ""}
             </li>
           ) : null}

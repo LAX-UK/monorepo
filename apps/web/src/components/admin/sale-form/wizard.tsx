@@ -172,6 +172,7 @@ export function AdminSaleForm({
           previewUrlByKey={previewUrlByKey}
           initialHeroVideoUrl={defaultValues.heroVideoUrl}
           heroVideoUrlGateRef={heroVideoUrlGateRef}
+          isDraft={isDraft}
         />
         <SaleScheduleStep
           form={form}

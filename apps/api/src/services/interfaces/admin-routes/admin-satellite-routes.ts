@@ -16,6 +16,7 @@ import type { AdminTwoFactorResetService } from "../../admin/admin-two-factor-re
 import type { AdminDataRequestsService } from "../../admin/data-requests/admin-data-requests.service.js";
 import type { StaffAccessAdminService } from "../../admin/staff-access-admin.service.js";
 import type { DeliveryOpsApplicationService } from "../../delivery-ops.application.service.js";
+import type { InventoryMoveServices } from "../../inventory/inventory-move-services.js";
 import type { IEnquiryErasure } from "../../marketing-enquiry/enquiry-erasure.service.js";
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
 import type { IStaffStepUpGuard } from "../../staff-step-up.service.js";
@@ -28,6 +29,7 @@ import type { IEnquiryRouting, IMarketingEnquiryDesk } from "../marketing-enquir
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
 import type { IOnsiteEventStaffCheckInService } from "../onsite-event-staff-check-in-service.js";
 import type { IStaffDeliveryQuoteService } from "../organisation-buying-service.js";
+import type { IPurchaseProblemDesk } from "../purchase-problem-desk-service.js";
 import type {
   ActorContext,
   IQueueInspector,
@@ -88,10 +90,11 @@ export type AdminSatelliteRouteServices = {
   deliveryOps: DeliveryOpsApplicationService;
 };
 
-/** Contact form enquiries in the staff work inbox. */
+/** Contact form enquiries and buyers' purchase problems in the staff work inbox. */
 export type AdminEnquiryRouteServices = {
   marketingEnquiries: IMarketingEnquiryDesk;
   enquiryRouting: IEnquiryRouting;
+  purchaseProblems: IPurchaseProblemDesk;
   /** Staff erase a sender's enquiries by email address. */
   enquiryErasure: IEnquiryErasure;
 };
@@ -116,6 +119,8 @@ export type AdminIntegrationRouteServices = {
     | "close"
     | "continueDownload"
   >;
+  /** Originals moving between LAX Bid and lax.art. */
+  inventoryMoves: InventoryMoveServices;
 };
 
 /** Wired in the container root because the policy client lives outside the admin graph. */

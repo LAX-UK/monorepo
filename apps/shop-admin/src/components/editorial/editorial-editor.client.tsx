@@ -396,9 +396,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
             id ? (
               <>
                 {savedAt ? (
-                  <MetaItem label="Updated">
-                    {formatStaffDateTime(savedAt, { zoneLabel: true })}
-                  </MetaItem>
+                  <MetaItem label="Updated">{formatStaffDateTime(savedAt)}</MetaItem>
                 ) : null}
                 {status === "published" && address ? (
                   <MetaItem label="Public address">{address}</MetaItem>

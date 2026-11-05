@@ -10,6 +10,7 @@ const approveAction = vi.fn();
 const declineAction = vi.fn();
 const returnAction = vi.fn();
 const buyerDefaultAction = vi.fn();
+const returnToLaxArtAction = vi.fn();
 const notifySuccess = vi.fn();
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
@@ -20,6 +21,7 @@ vi.mock("@/lib/actions/admin", () => ({
   adminApproveWithdrawalRequestResultAction: (...args: unknown[]) => approveAction(...args),
   adminDeclineWithdrawalRequestResultAction: (...args: unknown[]) => declineAction(...args),
   adminReturnLotToInventoryResultAction: (...args: unknown[]) => returnAction(...args),
+  adminReturnLotToLaxArtResultAction: (...args: unknown[]) => returnToLaxArtAction(...args),
   adminRecordBuyerDefaultResultAction: (...args: unknown[]) => buyerDefaultAction(...args),
 }));
 vi.mock("@/lib/ui/notify", () => ({
@@ -78,6 +80,7 @@ describe("useLotActions", () => {
       approveAction,
       declineAction,
       returnAction,
+      returnToLaxArtAction,
       buyerDefaultAction,
       notifySuccess,
     ]) {
@@ -222,6 +225,73 @@ describe("useLotActions", () => {
     );
     await waitFor(() => expect(notifySuccess).toHaveBeenCalled());
     expect(refresh).toHaveBeenCalled();
+  });
+
+  describe("return to lax.art", () => {
+    const linked = {
+      title: "Blue Interior",
+      stockCode: "LAX-ORI-PH-GAC-26-0001",
+      canReturn: true,
+      reasons: [],
+    };
+
+    it("is offered only for a lot linked to the artwork register", () => {
+      render(<Harness target={{ ...lot, status: "ended" }} />);
+      expect(screen.queryByRole("button", { name: "Return to lax.art…" })).not.toBeInTheDocument();
+    });
+
+    it("is left out for a role that cannot manage the auction", () => {
+      render(
+        <Harness
+          target={{ ...lot, status: "ended", laxArtReturn: linked }}
+          access={{ canManageCatalog: true, canManageAuction: false, canDecideWithdrawals: false }}
+        />,
+      );
+      expect(screen.queryByRole("button", { name: "Return to lax.art…" })).not.toBeInTheDocument();
+    });
+
+    it("is disabled with the reason when the lot cannot go back", () => {
+      render(
+        <Harness
+          target={{
+            ...lot,
+            status: "active",
+            laxArtReturn: {
+              ...linked,
+              canReturn: false,
+              reasons: ["This lot is still in a sale."],
+            },
+          }}
+        />,
+      );
+      const button = screen.getByRole("button", { name: "Return to lax.art…" });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute("title", "This lot is still in a sale.");
+    });
+
+    it("asks first, then reopens the listing and says so", async () => {
+      returnToLaxArtAction.mockResolvedValue({ ok: true, data: undefined });
+      render(<Harness target={{ ...lot, status: "ended", laxArtReturn: linked }} />);
+      fireEvent.click(screen.getByRole("button", { name: "Return to lax.art…" }));
+      expect(screen.getByText(/Nothing goes live until you publish it in LAX Admin/)).toBeVisible();
+      fireEvent.click(screen.getByRole("button", { name: "Return to lax.art" }));
+      await waitFor(() => expect(returnToLaxArtAction).toHaveBeenCalledWith("lot_1"));
+      await waitFor(() =>
+        expect(notifySuccess).toHaveBeenCalledWith("Blue Interior is back on lax.art as a draft"),
+      );
+    });
+
+    it("keeps a refusal in the dialog so staff can try again", async () => {
+      returnToLaxArtAction.mockResolvedValue({
+        ok: false,
+        error: "The other product could not be reached (network). Try again in a moment.",
+      });
+      render(<Harness target={{ ...lot, status: "ended", laxArtReturn: linked }} />);
+      fireEvent.click(screen.getByRole("button", { name: "Return to lax.art…" }));
+      fireEvent.click(screen.getByRole("button", { name: "Return to lax.art" }));
+      expect(await screen.findByText(/Try again in a moment/)).toBeInTheDocument();
+      expect(notifySuccess).not.toHaveBeenCalled();
+    });
   });
 
   it("keeps a refusal in the dialog with what was typed", async () => {

@@ -33,7 +33,8 @@ export type LaxStatusDomain =
   | "enquiry"
   | "artistApplication"
   | "staffAccess"
-  | "custody";
+  | "custody"
+  | "certificate";
 
 const ORDER = Object.fromEntries(
   Object.entries(ORDER_STATUS_LABELS).map(([status, label]) => [
@@ -105,6 +106,13 @@ const LAX_STATUS: Record<LaxStatusDomain, Readonly<Record<string, StatusPresenta
     qc_passed: { label: "Quality check passed", tone: "success" },
     completed: { label: "Completed", tone: "success" },
     cancelled: { label: "Cancelled", tone: "neutral" },
+  },
+  certificate: {
+    none: { label: "No certificate", tone: "neutral" },
+    pending_confirmation: { label: "Issued on confirming", tone: "neutral" },
+    issued: { label: "Certificate issued", tone: "success" },
+    to_send: { label: "Certificate to send", tone: "warning" },
+    blocked: { label: "Certificate blocked", tone: "danger" },
   },
   dispute: {
     opened: { label: "Open", tone: "warning" },

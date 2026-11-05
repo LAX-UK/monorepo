@@ -2,6 +2,7 @@ import type { Database } from "@auction/db";
 import { shopOrder } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type Stripe from "stripe";
+import type { OriginalOfferRegister } from "../application/ports/original-offer-register.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import type { StripeMoneyWebhookOutcome } from "../application/ports/stripe-money-webhook.types.js";
 import { completeRefundFromWebhook } from "./handlers/webhooks/complete-refund.handler.js";
@@ -18,6 +19,7 @@ export function createDrizzleStripeMoneyWebhookProcessor(
   db: Database,
   options: {
     domainEventMode: ShopDomainEventPublisherMode;
+    offers?: OriginalOfferRegister;
     notifications?: ShopNotificationPublisher;
     opsAlertEmail?: string | null;
     fetchPaymentIntentMetadata?: (
@@ -43,6 +45,7 @@ export function createDrizzleStripeMoneyWebhookProcessor(
           stripeInvoiceId: invoice.id,
           paidAt,
           domainEventMode: options.domainEventMode,
+          ...(options.offers ? { offers: options.offers } : {}),
         });
         if (outcome === "ignored") {
           return "ignored";

@@ -1,6 +1,7 @@
 "use server";
 
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
+import { currentVisitorIp } from "@/lib/http/visitor-ip.server";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { consoleParticipationRequestDispatcher } from "@/lib/onsite/participation-request-dispatcher";
 import {
@@ -8,19 +9,11 @@ import {
   absenteeBidFormSchema,
 } from "@/lib/onsite/participation-request-input";
 import { createInMemorySlidingWindowRateLimiter } from "@/lib/rate-limit/in-memory-rate-limiter";
-import { headers } from "next/headers";
 
 const rateLimiter = createInMemorySlidingWindowRateLimiter({
   windowMs: 60_000,
   maxPerWindow: 6,
 });
-
-async function rateLimitKey(): Promise<string> {
-  const h = await headers();
-  const fwd = h.get("x-forwarded-for");
-  const ip = fwd?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? "unknown";
-  return ip;
-}
 
 function rejectHoneypot(website: string | undefined): ActionResult<void> | null {
   if (String(website ?? "").trim()) {
@@ -41,7 +34,7 @@ export async function submitAbsenteeBidRequest(
     const honeypot = rejectHoneypot(parsed.data.website);
     if (honeypot) return honeypot;
 
-    const key = await rateLimitKey();
+    const key = await currentVisitorIp();
     if (!rateLimiter.consume(key)) {
       return actionFailure("Too many submissions. Please wait a minute and try again.");
     }

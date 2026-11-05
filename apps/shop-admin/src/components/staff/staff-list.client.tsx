@@ -289,7 +289,7 @@ export function StaffList({
                 {
                   label: "Last active",
                   value: opened.lastActiveAt
-                    ? formatStaffDateTime(opened.lastActiveAt, { zoneLabel: true })
+                    ? formatStaffDateTime(opened.lastActiveAt)
                     : "No activity yet",
                 },
               ]
@@ -306,13 +306,13 @@ export function StaffList({
                   : []),
                 {
                   label: "Added",
-                  value: formatStaffDateTime(opened.createdAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.createdAt),
                 },
                 ...(opened.disabledAt
                   ? [
                       {
                         label: "Access removed",
-                        value: formatStaffDateTime(opened.disabledAt, { zoneLabel: true }),
+                        value: formatStaffDateTime(opened.disabledAt),
                       },
                     ]
                   : []),

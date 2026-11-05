@@ -17,7 +17,6 @@ function productionEnvBase(overrides: Record<string, unknown> = {}) {
     OPS_SUPPORT_EMAIL: "support@example.com",
     OPS_ONCALL_EMAIL: "oncall@example.com",
     POSTMARK_WEBHOOK_BASIC_AUTH: "basic-auth",
-    BREVO_WEBHOOK_SECRET: "brevo-webhook-secret",
     STRIPE_SECRET_KEY: "sk_live_test_key",
     STRIPE_PUBLISHABLE_KEY: "pk_live_test_key",
     STRIPE_CONNECT_WEBHOOK_SECRET: "whsec_connect",
@@ -160,5 +159,25 @@ describe("envSchema ALERT_LINK_SECRET in production", () => {
 
   it("accepts a real secret", () => {
     expect(envSchema.safeParse(productionEnvBase()).success).toBe(true);
+  });
+});
+
+describe("envSchema trusted proxies", () => {
+  it("trusts the platform's private range by default and Cloudflare's published edges", () => {
+    const parsed = envSchema.safeParse(productionEnvBase());
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.API_TRUSTED_PROXY_CIDRS).toEqual(["10.0.0.0/8"]);
+    expect(parsed.data.API_TRUSTED_CLOUDFLARE_PROXY_CIDRS).toContain("173.245.48.0/20");
+    expect(parsed.data.API_SSR_CLIENT_IP_TOKEN).toBeUndefined();
+  });
+
+  it("reads a comma-separated override", () => {
+    const parsed = envSchema.safeParse(
+      productionEnvBase({ API_TRUSTED_PROXY_CIDRS: "10.0.0.0/8, 172.16.0.0/12" }),
+    );
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.API_TRUSTED_PROXY_CIDRS).toEqual(["10.0.0.0/8", "172.16.0.0/12"]);
   });
 });

@@ -273,15 +273,11 @@ export function EventRsvpQuickView({
           ? [
               {
                 label: "Starts",
-                value: row.startsAt
-                  ? formatStaffDateTime(row.startsAt, { zoneLabel: true })
-                  : "Not set",
+                value: row.startsAt ? formatStaffDateTime(row.startsAt) : "Not set",
               },
               {
                 label: "RSVPs close",
-                value: row.rsvpCloseAt
-                  ? formatStaffDateTime(row.rsvpCloseAt, { zoneLabel: true })
-                  : "Not set",
+                value: row.rsvpCloseAt ? formatStaffDateTime(row.rsvpCloseAt) : "Not set",
               },
               { label: "Linked sale", value: row.saleId ? "Yes, with sale check-in" : "None" },
               { label: "Event address", value: row.slug, copyValue: row.slug },

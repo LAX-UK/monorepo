@@ -11,6 +11,7 @@ import {
   type EditionAuthorityRow,
   ShopDomainError,
   assertAuthorityReductionAllowed,
+  assertHorsCommerceSellable,
   authorisablePrintCount,
   selectEditionsToAuthorise,
   selectEditionsToRevokeAuthority,
@@ -93,7 +94,11 @@ export function createDrizzleSaleAuthorityWriter(
             }
           }
           const [artwork] = await tx
-            .select({ id: shopArtwork.id })
+            .select({
+              id: shopArtwork.id,
+              proofType: shopArtwork.proofType,
+              horsCommerceApprovedAt: shopArtwork.horsCommerceApprovedAt,
+            })
             .from(shopArtwork)
             .where(eq(shopArtwork.id, command.artworkId))
             .limit(1);
@@ -148,6 +153,12 @@ export function createDrizzleSaleAuthorityWriter(
               : [];
 
           const increaseNeeded = command.authorisedCount - currentAuthorised;
+          if (increaseNeeded > 0) {
+            assertHorsCommerceSellable({
+              proofType: artwork.proofType,
+              approvedAt: artwork.horsCommerceApprovedAt,
+            });
+          }
           if (increaseNeeded > 0 && toAuthorise.length < increaseNeeded) {
             throw new ShopDomainError("Not enough eligible editions to authorise");
           }

@@ -269,7 +269,7 @@ export function HelpCategoriesList({
                 { label: "Questions", value: opened.counts },
                 {
                   label: "Updated",
-                  value: formatStaffDateTime(opened.updatedAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.updatedAt),
                 },
               ]
             : []

@@ -164,7 +164,11 @@ describe("usePayoutMoneyActions", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add −£25.00" }));
 
     await waitFor(() =>
-      expect(adjustAction).toHaveBeenCalledWith("payout_1", { amount: "-25.00", note: REASON }),
+      expect(adjustAction).toHaveBeenCalledWith("payout_1", {
+        amount: "-25.00",
+        note: REASON,
+        idempotencyKey: expect.any(String),
+      }),
     );
     await waitFor(() =>
       expect(notifySuccess).toHaveBeenCalledWith("Added −£25.00 to the payout for Gallery One"),

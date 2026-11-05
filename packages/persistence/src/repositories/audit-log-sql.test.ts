@@ -1,6 +1,7 @@
 import { PgDialect } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
-import { buildAuditLogWhere, escapeLikePattern } from "./audit-log-sql.js";
+import { escapeLikePattern } from "../lib/like-pattern.js";
+import { buildAuditLogWhere } from "./audit-log-sql.js";
 
 const dialect = new PgDialect();
 const base = { limit: 50, offset: 0 };

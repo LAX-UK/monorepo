@@ -16,6 +16,10 @@ export type AdminCatalogRoutesContainer = AdminRoutePick<"catalog">;
 
 export type AdminLotsRoutesContainer = AdminRoutePick<"lots" | "reviewTasks">;
 
+export type AdminInventoryRoutesContainer = {
+  admin: Pick<AdminIntegrationRouteServices, "inventoryMoves">;
+};
+
 export type AdminCatalogBrowseRoutesContainer = AdminRoutePick<"catalog" | "legalEntityBrowse">;
 
 export type AdminOpsMetricsRoutesContainer = AdminRoutePick<

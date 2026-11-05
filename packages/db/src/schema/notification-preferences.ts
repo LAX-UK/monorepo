@@ -18,6 +18,10 @@ export const notificationPreference = pgTable(
     paymentInApp: boolean("payment_in_app").notNull().default(true),
     /** A notice in the app when LAX Bid announces a new sale. */
     newSalesInApp: boolean("new_sales_in_app").notNull().default(true),
+    /** A notice in the app when a followed artist has new lots on sale. */
+    artistAlertsInApp: boolean("artist_alerts_in_app").notNull().default(true),
+    /** A notice in the app when new lots match a saved search. */
+    searchAlertsInApp: boolean("search_alerts_in_app").notNull().default(true),
     outbidPush: boolean("outbid_push").notNull().default(true),
     wonPush: boolean("won_push").notNull().default(true),
     endingSoonPush: boolean("ending_soon_push").notNull().default(false),
