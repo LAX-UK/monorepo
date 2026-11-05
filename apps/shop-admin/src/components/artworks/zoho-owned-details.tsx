@@ -1,3 +1,5 @@
+"use client";
+
 import { ArtworkThumbnail } from "@/components/artworks/artwork-thumbnail";
 import type { ArtworkFormImage } from "@/lib/artwork-form";
 import {
