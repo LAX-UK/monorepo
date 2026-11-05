@@ -32,6 +32,7 @@ import type {
   CreateRegisterEntryResult,
   IArtworkDraftHistory,
   IArtworkImageStore,
+  IArtworkLinkHistory,
   IArtworkMoveHistory,
   IArtworkRegisterRepository,
   ImageCheckCandidate,
@@ -43,6 +44,7 @@ import type {
   RecordCatalogueStatusWrittenResult,
   RecordLaxArtDraftCreatedInput,
   RecordMoveConfirmedInput,
+  RecordZohoLinkInput,
   RegisterActor,
   RegisterConflict,
   RegisterEvent,
@@ -67,6 +69,7 @@ export class DrizzleArtworkRegisterRepository
     IArtworkRegisterRepository,
     IArtworkMoveHistory,
     IArtworkDraftHistory,
+    IArtworkLinkHistory,
     IArtworkImageStore
 {
   constructor(private readonly db: Database) {}
@@ -558,6 +561,24 @@ export class DrizzleArtworkRegisterRepository
     await this.db.transaction(async (tx) => {
       await this.record(tx, input.registerId, "lax_art_draft_created", input.actor, input.now, {
         artworkId: input.artworkId,
+      });
+    });
+  }
+
+  async recordZohoLinked(input: RecordZohoLinkInput): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await this.record(tx, input.registerId, "zoho_link_linked", input.actor, input.now, {
+        artworkId: input.artworkId,
+        ...input.detail,
+      });
+    });
+  }
+
+  async recordZohoUnlinked(input: RecordZohoLinkInput): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await this.record(tx, input.registerId, "zoho_link_unlinked", input.actor, input.now, {
+        artworkId: input.artworkId,
+        ...input.detail,
       });
     });
   }

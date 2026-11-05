@@ -4,6 +4,7 @@ import { CookieDockSlot } from "@/components/marketing/consent/cookie-dock";
 import { useOutOfView } from "@/hooks/use-out-of-view";
 import type { PhoneBarLine, PhoneBarSummary, PhoneBarTone } from "@/lib/lot-page/phone-bar";
 import type { LotStatusTone } from "@auction/domain";
+import { useClaimBottomSlot } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { laxDensityAttributes } from "@auction/ui/lax";
 import { Clock } from "lucide-react";
@@ -54,7 +55,9 @@ function Line({ line }: { line: PhoneBarLine }) {
 /**
  * The sticky bar on phones: the figure, the time and the one action for this moment of the lot. It
  * lives in the cookie dock, stacked under the banner, and appears only once the same action in the
- * page has scrolled out of view. It is a labelled region, not a dialog, so focus is never trapped.
+ * page has scrolled out of view. While it shows it holds the shared bottom slot, so the docked tab
+ * bar steps aside (the two are never stacked) and comes back when the bid panel does. It is a
+ * labelled region, not a dialog, so focus is never trapped.
  */
 export function LotPhoneBar({
   summary,
@@ -68,6 +71,7 @@ export function LotPhoneBar({
   children: ReactNode;
 }) {
   const outOfView = useOutOfView(target, BAR_STRIP_PX);
+  useClaimBottomSlot("lot-phone-bar", outOfView);
   if (!outOfView) return null;
   return (
     <CookieDockSlot>

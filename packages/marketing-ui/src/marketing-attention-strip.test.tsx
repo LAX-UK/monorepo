@@ -5,11 +5,12 @@ import { MarketingAttentionStrip } from "./marketing-attention-strip.js";
 const PROPS = { label: "Payment due", actionLabel: "Pay now", href: "/account/payments" };
 
 describe("MarketingAttentionStrip", () => {
-  it("below 640px is a 44px full-width strip reading 'label · action ›'", () => {
+  it("below 640px is a 44px full-width strip: label on the left, action and chevron on the right", () => {
     render(<MarketingAttentionStrip {...PROPS} />);
     const strip = screen.getByTestId("attention-strip");
     expect(strip).toHaveAttribute("href", "/account/payments");
-    expect(strip.textContent).toBe("Payment due·Pay now›");
+    expect(strip.textContent).toBe("Payment duePay now›");
+    expect(screen.getByText("Pay now").className).toContain("underline");
     expect(strip.className).toContain("h-11");
     expect(strip.className).toContain("w-full");
     expect(strip.className).toContain("sm:hidden");

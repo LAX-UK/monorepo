@@ -1,4 +1,5 @@
 import { AnnouncerProvider } from "@/components/layout/announcer";
+import { BidBottomTabBar } from "@/components/layout/bid-bottom-tab-bar";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import {
@@ -10,6 +11,7 @@ import { MarketingHeaderTitleProvider } from "@/lib/marketing/marketing-header-t
 import { loadCachedMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
 import { NavActivityProvider } from "@/lib/marketing/nav-activity-context";
 import { loadNavActivity } from "@/lib/marketing/nav-activity.server";
+import { MarketingBottomBarSpace } from "@auction/marketing-ui";
 import { LaxDensityProvider, laxDensityAttributes } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 
@@ -27,7 +29,8 @@ type BidSiteChromeProps = {
 /**
  * The public lax.bid frame: the LAX top bar and Bid header, the page, then the Bid footer.
  * The marketing pages and a personal client's account pages share it, so they read as one site.
- * The frame sets the client density, so kit controls are 36px on a desktop and 44px on a phone.
+ * On phones it also carries the docked tab bar (public pages only) and reserves its space once,
+ * after the footer. The frame sets the client density, so kit controls are 36px on a desktop and 44px on a phone.
  */
 export async function BidSiteChrome({
   wrap = (content) => content,
@@ -60,6 +63,12 @@ export async function BidSiteChrome({
             </NavActivityProvider>
           </div>
           <SiteFooter crossProductLinks={crossProductFooterLinks} />
+          {/* The one place the docked tab bar's space is reserved: the end of the page, on the
+              footer's own grey so the page never ends on a white strip. */}
+          <div className="bg-[var(--color-footer-bg,#ededef)]">
+            <MarketingBottomBarSpace />
+          </div>
+          <BidBottomTabBar />
         </div>
       </AnnouncerProvider>
     </LaxDensityProvider>

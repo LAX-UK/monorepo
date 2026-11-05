@@ -199,6 +199,42 @@ describe("MarketingBottomTabBar", () => {
     });
   });
 
+  it("gives the bottom space back while another bar holds the slot, and takes it again after", () => {
+    render(bar());
+    expect(document.documentElement).toHaveAttribute("data-lax-bottom-bar");
+    let release = () => {};
+    act(() => {
+      release = claimBottomSlot("bid-bar");
+    });
+    expect(document.documentElement).not.toHaveAttribute("data-lax-bottom-bar");
+    act(() => release());
+    expect(document.documentElement).toHaveAttribute("data-lax-bottom-bar");
+  });
+
+  it("keeps the space reserved while a modal or the keyboard hides the bar", async () => {
+    render(bar());
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("data-state", "open");
+    await act(async () => {
+      document.body.appendChild(dialog);
+    });
+    expect(screen.getByRole("navigation", { hidden: true })).toHaveAttribute(
+      "data-hidden-reason",
+      "modal",
+    );
+    expect(document.documentElement).toHaveAttribute("data-lax-bottom-bar");
+    dialog.remove();
+  });
+
+  it("does not prefetch a tab that asks for it", () => {
+    const tabs = shopTabs();
+    const account = tabs[4];
+    if (account) account.prefetch = false;
+    render(bar({ tabs }));
+    expect(screen.getByRole("link", { name: "Account" })).toBeInTheDocument();
+  });
+
   it("marks the page so the bottom space is reserved once, and clears it on unmount", () => {
     const { unmount } = render(bar());
     expect(document.documentElement).toHaveAttribute("data-lax-bottom-bar");

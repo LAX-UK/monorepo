@@ -4,8 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const pathname = vi.fn(() => "/");
 vi.mock("next/navigation", () => ({ usePathname: () => pathname() }));
 vi.mock("@auction/ui", () => ({
-  Toaster: ({ theme }: { theme: string }) => (
-    <div data-testid="public-toaster" data-theme={theme} />
+  Toaster: ({ theme, mobileOffset }: { theme: string; mobileOffset?: { bottom?: string } }) => (
+    <div
+      data-testid="public-toaster"
+      data-theme={theme}
+      data-bottom-offset={mobileOffset?.bottom ?? ""}
+    />
   ),
 }));
 vi.mock("@auction/ui/lax", () => ({
@@ -23,6 +27,14 @@ describe("Toaster", () => {
     pathname.mockReturnValue("/lots");
     const { getByTestId } = render(<Toaster />);
     expect(getByTestId("public-toaster")).toBeInTheDocument();
+  });
+
+  it("keeps a bottom toast above the docked tab bar", () => {
+    pathname.mockReturnValue("/sales");
+    const { getByTestId } = render(<Toaster />);
+    expect(getByTestId("public-toaster").getAttribute("data-bottom-offset")).toContain(
+      "--lax-bottom-bar-space",
+    );
   });
 
   it("hosts the client workspace's toasts on the LAX system toast, at the client density", () => {

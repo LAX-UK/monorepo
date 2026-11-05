@@ -47,8 +47,14 @@ function stableInitialSessionsKey(
 export function useSaleroomHubLive({
   saleIds,
   initialBySaleId,
-  socketAdapter = createSaleroomSocketAdapter(),
+  socketAdapter: socketAdapterProp,
 }: Options): SaleroomHubLiveState {
+  // One adapter for the life of the component: a new one each render re-runs the effects below
+  // and forgets that the socket had connected, so a reconnect would not re-read the session.
+  const socketAdapter = useMemo(
+    () => socketAdapterProp ?? createSaleroomSocketAdapter(),
+    [socketAdapterProp],
+  );
   const [sessions, setSessions] = useState<Record<string, SaleroomHubLiveSession>>(() =>
     buildInitialSessions(saleIds, initialBySaleId),
   );

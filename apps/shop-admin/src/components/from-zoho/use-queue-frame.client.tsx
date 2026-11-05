@@ -15,16 +15,21 @@ export const FROM_ZOHO_DESCRIPTION =
   "Artworks Zoho sends to LAX, and where Zoho and LAX disagree. Catalogue details are edited in Zoho.";
 
 /**
- * What the three tabs share: list navigation that keeps the URL as the state, and the tab strip
- * with the count of each queue (the last check has none).
+ * What the tabs share: list navigation that keeps the URL as the state, and the tab strip with
+ * the count of each queue (the last check has none). "Link lax.art" is a one-off: it shows only
+ * while some lax.art original is not linked to its Zoho record, and counts those.
  */
-export function useQueueFrame(query: ZohoQueueQuery, counts: { new: number; decisions: number }) {
+export function useQueueFrame(
+  query: ZohoQueueQuery,
+  counts: { new: number; decisions: number },
+  unlinked = 0,
+) {
   const { pending, navigate, Link: ListLink } = useListNavigation();
-  const views = ZOHO_QUEUE_TABS.map((id) => ({
+  const views = ZOHO_QUEUE_TABS.filter((id) => id !== "link" || unlinked > 0).map((id) => ({
     id,
     label: ZOHO_QUEUE_TAB_LABEL[id],
     href: zohoQueueHref({}, { tab: id === "new" ? null : id }),
-    ...(id === "check" ? {} : { count: counts[id] }),
+    ...(id === "check" ? {} : { count: id === "link" ? unlinked : counts[id] }),
   }));
   return {
     pending,

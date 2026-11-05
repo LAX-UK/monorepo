@@ -54,12 +54,18 @@ export function useStaffSaleroomLive({
   trackLiveFeed = false,
   liveFeedLimit = 40,
   dbEvents = [],
-  socketAdapter = createSaleroomSocketAdapter(),
+  socketAdapter: socketAdapterProp,
 }: Options): {
   session: StaffSaleroomSessionVM;
   liveFeed: SaleroomRealtimePayload[];
   activityLog: SaleroomActivityEntry[];
 } {
+  // One adapter for the life of the component: a new one each render re-runs the effects below
+  // and forgets that the socket had connected, so a reconnect would not re-read the session.
+  const socketAdapter = useMemo(
+    () => socketAdapterProp ?? createSaleroomSocketAdapter(),
+    [socketAdapterProp],
+  );
   const [session, setSession] = useState<PublicSaleroomSessionStatus>(initial);
   const [liveFeed, setLiveFeed] = useState<SaleroomRealtimePayload[]>([]);
   const [connectionStatus, setConnectionStatus] =

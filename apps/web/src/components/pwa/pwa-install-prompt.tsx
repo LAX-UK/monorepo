@@ -76,7 +76,7 @@ export function PwaInstallPrompt() {
       // biome-ignore lint/a11y/useSemanticElements: non-modal install CTA; native dialog showModal is heavier
       role="dialog"
       aria-label="Install LAX app"
-      className="fixed inset-x-4 bottom-[calc(var(--bottom-chrome-total,0px)+1rem)] z-[var(--z-banner,50)] mx-auto max-w-md rounded-lg border border-outline bg-surface-container-low p-4 shadow-lg"
+      className="fixed inset-x-4 bottom-[calc(var(--bottom-chrome-total,0px)+var(--cookie-dock-height,0px)+var(--lax-bottom-bar-space,0px)+1rem)] z-[var(--z-banner,50)] mx-auto max-w-md rounded-lg border border-outline bg-surface-container-low p-4 shadow-lg"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
