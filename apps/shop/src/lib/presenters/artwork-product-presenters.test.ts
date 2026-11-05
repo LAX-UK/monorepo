@@ -1,15 +1,9 @@
 import { artworkProductJsonLd } from "@/lib/seo/artwork-structured-data";
 import type { PublicArtworkDetail } from "@auction/shop-contracts";
-import { FULFILMENT_SURCHARGE_PENCE } from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
-import {
-  SHOP_RETURNS_LINE,
-  artworkIncludedItems,
-  presentArtworkPurchase,
-  shopDeliveryLine,
-} from "./artwork-purchase.presenter";
-import { SCALE_SOFA, presentArtworkScale } from "./artwork-scale.presenter";
-import { presentArtworkSpecs } from "./artwork-specs.presenter";
+import { presentArtworkPurchase } from "./artwork-purchase.presenter";
+import { SCALE_FIGURE, presentArtworkScale } from "./artwork-scale.presenter";
+import { artworkSizeText } from "./artwork-size.presenter";
 
 function detail(overrides: Partial<PublicArtworkDetail> = {}): PublicArtworkDetail {
   return {
@@ -36,93 +30,52 @@ function detail(overrides: Partial<PublicArtworkDetail> = {}): PublicArtworkDeta
   };
 }
 
-describe("Details list", () => {
-  it("lists the catalogued facts in a fixed order, cm and inches for sizes", () => {
-    expect(
-      presentArtworkSpecs(
-        detail({
-          medium: "Giclée print",
-          printPaper: "Hahnemühle Photo Rag 308gsm",
-          printSize: "60 × 50 cm",
-          heightCm: 50,
-          widthCm: 40,
-          yearCreated: 2025,
-          hasCertificate: true,
-        }),
-      ),
-    ).toEqual([
-      { label: "Edition", lines: ["Limited edition of 24"] },
-      { label: "Medium", lines: ["Giclée print"] },
-      { label: "Paper", lines: ["Hahnemühle Photo Rag 308gsm"] },
-      { label: "Image size", lines: ["50 × 40 cm", "19.7 × 15.7 in"] },
-      { label: "Paper size", lines: ["60 × 50 cm"] },
-      { label: "Year", lines: ["2025"] },
-      { label: "Certificate of authenticity", lines: ["Included"] },
-    ]);
+describe("size text", () => {
+  it("shows centimetres, then inches, from the structured size", () => {
+    expect(artworkSizeText(detail({ heightCm: 60, widthCm: 45 }))).toBe(
+      "60 × 45 cm (23.6 × 17.7 in)",
+    );
   });
 
-  it("never prints a label without a value", () => {
-    const rows = presentArtworkSpecs(
-      detail({ availability: { totalEditions: 0, state: "available" } }),
-    );
-    expect(rows).toEqual([]);
-    expect(presentArtworkSpecs(detail({ dimensions: "40 × 50 cm" }))).toContainEqual({
-      label: "Size",
-      lines: ["40 × 50 cm"],
-    });
+  it("falls back to the catalogued text on older records, and to nothing", () => {
+    expect(artworkSizeText(detail({ dimensions: "40 × 50 cm" }))).toBe("40 × 50 cm");
+    expect(artworkSizeText(detail())).toBeNull();
   });
 });
 
-describe("buy block copy", () => {
-  it("quotes delivery from the checkout surcharges and the 14-day cancellation", () => {
-    expect(FULFILMENT_SURCHARGE_PENCE.uk_insured_delivery).toBe(1500);
-    expect(shopDeliveryLine()).toBe("UK insured delivery £15 · Collection in London free");
-    expect(SHOP_RETURNS_LINE).toBe("14-day cancellation");
-  });
-
-  it("shows the price with VAT included and the edition size, never a count", () => {
+describe("buy block", () => {
+  it("shows the price with VAT included and whether it can be bought, never a count", () => {
     expect(presentArtworkPurchase(detail())).toEqual({
       priceLabel: "£120",
       vatNote: "Includes VAT",
-      editionSize: "Limited edition of 24",
-      editionShort: "Edition of 24",
       availability: "available",
-      availabilityLabel: "Available",
-      deliveryLine: shopDeliveryLine(),
-      returnsLine: "14-day cancellation",
     });
     expect(
       presentArtworkPurchase(detail({ availability: { totalEditions: 24, state: "sold_out" } }))
-        ?.availabilityLabel,
-    ).toBe("Sold out");
+        ?.availability,
+    ).toBe("sold_out");
     expect(presentArtworkPurchase(detail({ printPricePence: null }))).toBeNull();
-  });
-
-  it("includes the certificate only when the work has one", () => {
-    expect(artworkIncludedItems({ hasCertificate: true })[0]).toBe("Certificate of authenticity");
-    expect(artworkIncludedItems({ hasCertificate: false })).not.toContain(
-      "Certificate of authenticity",
-    );
   });
 });
 
 describe("scale drawing", () => {
-  it("draws the work at its real size above a standard sofa", () => {
+  it("draws the work at its real size beside a 1.7 m figure", () => {
     const scale = presentArtworkScale(detail({ heightCm: 50, widthCm: 40 }));
     expect(scale).not.toBeNull();
     if (!scale) return;
     expect(scale.artwork.width).toBe(40);
     expect(scale.artwork.height).toBe(50);
-    expect(scale.sofa.width).toBe(SCALE_SOFA.width);
+    expect(scale.figure.height).toBe(SCALE_FIGURE.height);
+    expect(scale.scene.height - scale.figure.y).toBe(SCALE_FIGURE.height);
     // Centred at 150 cm: the bottom edge sits 125 cm above the floor.
     expect(scale.scene.height - (scale.artwork.y + scale.artwork.height)).toBe(125);
-    expect(scale.caption).toBe("50 × 40 cm, drawn to scale above a 200 cm sofa.");
+    expect(scale.caption).toBe("50 × 40 cm, drawn to scale beside a 1.7 m figure.");
   });
 
-  it("keeps a large work clear of the sofa and widens the wall to fit it", () => {
+  it("keeps a large work on the wall and widens the wall to fit it", () => {
     const scale = presentArtworkScale(detail({ heightCm: 150, widthCm: 320 }));
     if (!scale) throw new Error("expected a drawing");
-    expect(scale.scene.height - (scale.artwork.y + scale.artwork.height)).toBe(105);
+    expect(scale.scene.height - (scale.artwork.y + scale.artwork.height)).toBe(75);
     expect(scale.scene.width).toBeGreaterThanOrEqual(320);
   });
 

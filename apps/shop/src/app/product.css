@@ -642,8 +642,9 @@
 }
 
 .shop-scale__floor,
-.shop-scale__sofa rect,
-.shop-scale__sofa line {
+.shop-scale__figure circle,
+.shop-scale__figure path,
+.shop-scale__figure line {
   fill: none;
   stroke: var(--color-on-surface-variant);
   stroke-width: 1.5;

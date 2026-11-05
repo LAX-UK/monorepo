@@ -146,7 +146,7 @@ export function ArtworkEditionAlert({ slug, viewer, initialWaiting = false }: Pr
             aria-busy={pending || undefined}
             onClick={() => register(null)}
           >
-            {pending ? "Saving…" : "Email me if it is back"}
+            {pending ? "Saving…" : "Get an email if it comes back"}
           </ShopCommerceButton>
           <p className="shop-alert__note">
             Alerts go to <span className="shop-alert__email">{viewer.email}</span>.
@@ -188,7 +188,7 @@ export function ArtworkEditionAlert({ slug, viewer, initialWaiting = false }: Pr
               aria-busy={pending || undefined}
               className="shop-alert__submit"
             >
-              {pending ? "Saving…" : "Email me"}
+              {pending ? "Saving…" : "Get an email if it comes back"}
             </ShopCommerceButton>
           </div>
           {/* Left empty by people; bots that fill every field are dropped by the API. */}

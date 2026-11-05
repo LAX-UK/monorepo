@@ -68,6 +68,7 @@ export function presentArtworkDetail(model: ArtworkDetailReadModel): PublicArtwo
     exhibitionHistory: model.exhibitionHistory,
     seoTitle: model.seoTitle,
     seoDescription: model.seoDescription,
+    ...(model.edition !== undefined ? { edition: model.edition } : {}),
   };
 }
 

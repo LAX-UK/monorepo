@@ -102,6 +102,121 @@ export const PublicArtworkListSchema = Type.Object({
   totalCount: Type.Optional(Type.Integer({ minimum: 0 })),
 });
 
+const PublicProofTypeSchema = Type.Union([
+  Type.Literal("ap"),
+  Type.Literal("pp"),
+  Type.Literal("hc"),
+]);
+
+/** A run as a storefront may know it: its kind and size, never its allocation or splits. */
+export const PublicEditionRunSchema = Type.Union([
+  Type.Object(
+    { kind: Type.Literal("limited"), size: Type.Integer({ minimum: 1 }) },
+    { additionalProperties: false },
+  ),
+  Type.Object({ kind: Type.Literal("open") }, { additionalProperties: false }),
+  Type.Object(
+    {
+      kind: Type.Literal("proof"),
+      proofType: PublicProofTypeSchema,
+      size: Type.Integer({ minimum: 1 }),
+    },
+    { additionalProperties: false },
+  ),
+]);
+
+const PublicSignaturePlaceSchema = Type.Union([
+  Type.Literal("front_lower_margin"),
+  Type.Literal("back"),
+]);
+
+const PublicSignatureSchema = Type.Union([
+  Type.Object(
+    {
+      kind: Type.Literal("hand_signed"),
+      medium: Type.Union([Type.Literal("pencil"), Type.Literal("ink")]),
+      place: PublicSignaturePlaceSchema,
+    },
+    { additionalProperties: false },
+  ),
+  Type.Object({ kind: Type.Literal("plate_signed") }, { additionalProperties: false }),
+  Type.Object({ kind: Type.Literal("estate_stamped") }, { additionalProperties: false }),
+  Type.Object(
+    { kind: Type.Literal("estate_signed"), place: PublicSignaturePlaceSchema },
+    { additionalProperties: false },
+  ),
+  Type.Object({ kind: Type.Literal("unsigned") }, { additionalProperties: false }),
+]);
+
+const PublicCertificateSchema = Type.Union([
+  Type.Object({ kind: Type.Literal("none") }, { additionalProperties: false }),
+  Type.Object(
+    {
+      kind: Type.Literal("included"),
+      issuer: Type.Union([Type.Literal("artist"), Type.Literal("publisher"), Type.Literal("lax")]),
+      form: Type.Union([Type.Literal("paper"), Type.Literal("digital"), Type.Literal("both")]),
+      arrives: Type.Union([
+        Type.Object({ kind: Type.Literal("with_print") }, { additionalProperties: false }),
+        Type.Object(
+          { kind: Type.Literal("separately"), withinWeeks: Type.Integer({ minimum: 1 }) },
+          { additionalProperties: false },
+        ),
+      ]),
+      numberedToMatch: Type.Boolean(),
+    },
+    { additionalProperties: false },
+  ),
+]);
+
+/** The facts staff confirmed about a run. Every sentence about them is written by shop-domain. */
+export const PublicEditionFactsSchema = Type.Object(
+  {
+    numbering: Type.Union([
+      Type.Literal("on_print"),
+      Type.Literal("on_certificate"),
+      Type.Literal("none"),
+    ]),
+    signature: PublicSignatureSchema,
+    certificate: PublicCertificateSchema,
+  },
+  { additionalProperties: false },
+);
+
+/** Another run of the same image, listed beside this one: a proof, an open run or a companion. */
+export const PublicOtherRunSchema = Type.Object(
+  {
+    slug: Type.String({ minLength: 1 }),
+    run: PublicEditionRunSchema,
+    facts: Type.Union([PublicEditionFactsSchema, Type.Null()]),
+    printPricePence: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
+    availability: PublicAvailabilityStateSchema,
+  },
+  { additionalProperties: false },
+);
+
+/** The run behind an edition page, its confirmed facts and the other runs of the same image. */
+export const PublicArtworkEditionSchema = Type.Object(
+  {
+    run: PublicEditionRunSchema,
+    /** Null until staff confirm the facts; a page then names the run and says no more. */
+    facts: Type.Union([PublicEditionFactsSchema, Type.Null()]),
+    /** Proofs the main run kept outside the edition; never the BAT proof. */
+    proofsKept: Type.Union([
+      Type.Object(
+        {
+          ap: Type.Integer({ minimum: 0 }),
+          pp: Type.Integer({ minimum: 0 }),
+          hc: Type.Integer({ minimum: 0 }),
+        },
+        { additionalProperties: false },
+      ),
+      Type.Null(),
+    ]),
+    otherRuns: Type.Array(PublicOtherRunSchema),
+  },
+  { additionalProperties: false },
+);
+
 export const PublicArtworkDetailSchema = Type.Object(
   {
     slug: Type.String({ minLength: 1 }),
@@ -138,6 +253,8 @@ export const PublicArtworkDetailSchema = Type.Object(
     eligibleForEditionAllocation: Type.Boolean(),
     printPricePence: Type.Union([Type.Integer({ minimum: 0 }), Type.Null()]),
     availability: PublicEditionAvailabilitySchema,
+    /** Optional so storefronts parse responses from an older shop-api; absent for an original. */
+    edition: Type.Optional(Type.Union([PublicArtworkEditionSchema, Type.Null()])),
     ...PublicSeoFieldsProperties,
   },
   { additionalProperties: false },
@@ -224,6 +341,8 @@ export const ShopApiErrorBodySchema = Type.Object({
 
 export type PublicArtworkSummary = typeof PublicArtworkSummarySchema.static;
 export type PublicArtworkList = typeof PublicArtworkListSchema.static;
+export type PublicArtworkEdition = typeof PublicArtworkEditionSchema.static;
+export type PublicOtherRun = typeof PublicOtherRunSchema.static;
 export type PublicArtworkDetail = typeof PublicArtworkDetailSchema.static;
 export type PublicArtworkObjectTypeFacet = typeof PublicArtworkObjectTypeFacetSchema.static;
 export type PublicArtworkObjectTypeFacetList = typeof PublicArtworkObjectTypeFacetListSchema.static;
