@@ -134,4 +134,14 @@ describe("expireStalePayments", () => {
     await expireStalePayments(t.deps, 14, 30);
     expect(t.listStaleAuthorizedBefore).toHaveBeenCalledWith(new Date("2026-10-06T12:00:00.000Z"));
   });
+
+  it("never expires an invoice before its 7-day due date, even if configured shorter", async () => {
+    const t = build({ kind: "no_money" });
+    const listStalePendingBefore = t.deps.payments.listStalePendingBefore as ReturnType<
+      typeof vi.fn
+    >;
+    await expireStalePayments(t.deps, 2, 3);
+    expect(listStalePendingBefore).toHaveBeenCalledWith(new Date("2026-10-29T12:00:00.000Z"));
+    expect(t.listStaleAuthorizedBefore).toHaveBeenCalledWith(new Date("2026-10-29T12:00:00.000Z"));
+  });
 });

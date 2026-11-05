@@ -160,6 +160,15 @@ export interface IPaymentLifecycleRepository {
   applyAuthorizedInTransaction(tx: Database, id: string): Promise<boolean>;
   /** Atomically cancel an open payment (pending or authorized). */
   applyCancelledInTransaction(tx: Database, id: string): Promise<boolean>;
+  /**
+   * Money arrived for an invoice its account cannot pay yet (held): the invoice goes to
+   * manual review with the money recorded on it, never captured. Only while still unpaid.
+   */
+  applyHeldMoneyInTransaction(
+    tx: Database,
+    id: string,
+    money: { stripePaymentIntentId: string; stripeChargeId: string | null },
+  ): Promise<boolean>;
   applyRefundedInTransaction(
     tx: Database,
     id: string,

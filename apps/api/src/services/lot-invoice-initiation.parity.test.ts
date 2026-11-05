@@ -92,6 +92,7 @@ function build(scenario: { hold?: boolean; xero?: { ok: boolean; error?: string 
     {
       findById: vi.fn().mockResolvedValue({ id: "buyer-1", email: "b@example.com", name: "B" }),
     } as unknown as IUserRepository,
+    { forInvoice: async ({ winnerUserId }) => [winnerUserId, "finance-1"] },
     { record },
   );
   return { service, create, stageDispatch, ensureInvoiceForPayment, ensureAwaitingPayment, record };
@@ -142,6 +143,15 @@ describe("lot invoice initiation: one implementation for the API and the worker"
     );
     expect(stageDispatch).toHaveBeenCalled();
     expect(record).toHaveBeenCalledWith("xero_invoice_deferred");
+  });
+
+  it("tells the winner and the account's payers, each once, with their own notice key", async () => {
+    const { service, stageDispatch } = build();
+    await service.ensureForLot(LOT_ID);
+    expect(stageDispatch.mock.calls.map(([call]) => [call.userId, call.idempotencyKey])).toEqual([
+      ["buyer-1", "payment_due:pay-new"],
+      ["finance-1", "payment_due:pay-new:finance-1"],
+    ]);
   });
 
   it("kept from the worker copy: results name the lot", async () => {

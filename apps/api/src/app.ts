@@ -273,7 +273,10 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/legal-entities", createLegalEntityBiddingLimitRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationMembershipRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationHomeRoutes(container, authenticator))
-    .route("/legal-entities", createOrganisationBuyingRoutes(container, authenticator))
+    .route(
+      "/legal-entities",
+      createOrganisationBuyingRoutes(container, authenticator, requireAccountOnboarding),
+    )
     .route("/legal-entities", createOrganisationSellingRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationAccessRequestRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationWorkspaceRoutes(container, authenticator))

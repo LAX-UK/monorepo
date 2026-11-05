@@ -1,3 +1,4 @@
+import { INVOICE_PAYMENT_DUE_DAYS } from "@auction/types";
 import { type IMoneyPathMetrics, noMoneyPathMetrics } from "../money-path-metrics.js";
 import {
   type IPaymentProviderCloser,
@@ -86,6 +87,9 @@ export async function expireStalePayments(
   authorizedMaxAgeDays: number,
 ): Promise<StalePaymentExpiryReport> {
   const metrics = deps.metrics ?? noMoneyPathMetrics;
+  // An invoice is never expired before it is due, whatever the configured ages.
+  const pendingDays = Math.max(pendingMaxAgeDays, INVOICE_PAYMENT_DUE_DAYS);
+  const authorizedDays = Math.max(authorizedMaxAgeDays, INVOICE_PAYMENT_DUE_DAYS);
   const now = (deps.now ?? (() => new Date()))().getTime();
   const report: StalePaymentExpiryReport = {
     expired: 0,
@@ -95,11 +99,11 @@ export async function expireStalePayments(
   };
   const batches: [StalePayment[], "stale_pending_expired" | "stale_authorized_expired"][] = [
     [
-      await deps.payments.listStalePendingBefore(new Date(now - pendingMaxAgeDays * DAY_MS)),
+      await deps.payments.listStalePendingBefore(new Date(now - pendingDays * DAY_MS)),
       "stale_pending_expired",
     ],
     [
-      await deps.payments.listStaleAuthorizedBefore(new Date(now - authorizedMaxAgeDays * DAY_MS)),
+      await deps.payments.listStaleAuthorizedBefore(new Date(now - authorizedDays * DAY_MS)),
       "stale_authorized_expired",
     ],
   ];

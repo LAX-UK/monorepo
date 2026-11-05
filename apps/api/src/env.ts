@@ -231,7 +231,6 @@ const envSchema = z
     /** Xero tax type for line items (e.g. OUTPUT2, NONE). Org-specific. */
     XERO_DEFAULT_TAX_TYPE: z.string().min(1).default("NONE"),
     /** Days after invoice date for due date. */
-    XERO_INVOICE_DUE_DAYS: z.coerce.number().int().min(0).max(365).default(14),
     /**
      * When true, a Xero invoice failure blocks buyer checkout (503). When false (default),
      * checkout proceeds and the invoice is created later by the `retry-xero-invoice-creation`

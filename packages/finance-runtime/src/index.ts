@@ -32,6 +32,8 @@ export type {
 } from "./interfaces/error-handling.js";
 export {
   AmlSettlementCompliancePolicy,
+  evaluateSettlementSubjects,
+  type SettlementSubject,
   type ISettlementCompliancePolicy,
   type ISourceOfFundsGate,
   type SettlementComplianceDecision,
@@ -173,3 +175,19 @@ export {
   FinanceTaskLatePaymentRecorder,
   type ILatePaymentCapture,
 } from "./payment-expiry/late-payment-recorders.js";
+export {
+  InvoiceRecipients,
+  paymentDueNoticeKey,
+  type IInvoiceRecipients,
+} from "./notifications/invoice-recipients.js";
+export {
+  HeldInvoiceCheckouts,
+  type HeldInvoiceCheckoutsDeps,
+  type IHeldEligibility,
+  type IHeldInvoiceCheckouts,
+} from "./payment-expiry/held-invoice-checkouts.js";
+export {
+  type IPaymentEligibilityGate,
+  PaymentEligibilityGate,
+  type PaymentEligibilityGateOptions,
+} from "./payment-eligibility.gate.js";

@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from "vitest";
 import { LotError, PaymentProviderError } from "../lib/errors.js";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
+import { eligibleForPaymentInTests } from "../testing/eligible-for-payment.js";
 import { winnerPaysForTests } from "../testing/winner-pays-authority.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
@@ -206,6 +207,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.markCapturedByAdmin(
@@ -302,6 +305,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.markCapturedByAdmin("admin-1", "staff", pay.id, undefined, [
@@ -370,6 +375,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.markCapturedByAdmin("admin-1", "staff", pay.id, undefined, [
@@ -445,6 +452,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.refundPayment(
@@ -527,6 +536,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.refundPayment("admin-1", "staff", pay.id, undefined, [
@@ -586,6 +597,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.refundPayment("admin-1", "staff", pay.id, undefined, [
@@ -631,6 +644,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.refundPayment(
@@ -697,6 +712,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
@@ -755,6 +772,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
@@ -820,6 +839,8 @@ describe("PaymentService", () => {
       true,
       publisher,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
@@ -885,6 +906,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
@@ -940,6 +963,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.releaseManualReviewForCapture(
@@ -1001,6 +1026,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.releaseManualReviewForCapture("finance-1", "staff", payment.id, [
@@ -1051,6 +1078,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.refundManualReviewPayment("admin-1", "staff", payment.id, [
@@ -1157,6 +1186,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.createPendingForWinner(
@@ -1208,6 +1239,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
     const out = await service.listMyPaymentsForBuyerApi("buyer-1", { status: "pending" });
     expect(out.data).toHaveLength(1);
@@ -1255,6 +1288,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
     const result = await service.createPendingForWinner(
       "buyer-1",
@@ -1308,6 +1343,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
     const result = await service.createPendingForWinner("buyer-1", highLot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
@@ -1361,6 +1398,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isErr()).toBe(true);
@@ -1413,6 +1452,8 @@ describe("PaymentService", () => {
       false,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
@@ -1471,6 +1512,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const winnerResult = await service.createPendingForWinner(
@@ -1544,6 +1587,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
@@ -1593,6 +1638,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
@@ -1645,6 +1692,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
@@ -1694,6 +1743,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isErr()).toBe(true);
@@ -1758,6 +1809,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const result = await service.cancelPendingAsBuyer("buyer-1", pendingPay.id);
@@ -1805,6 +1858,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const res = await service.backfillXeroInvoiceForPayment(pendingPay.id);
@@ -1844,6 +1899,8 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       winnerPaysForTests,
+      undefined,
+      eligibleForPaymentInTests,
     );
 
     const res = await service.backfillXeroInvoiceForPayment("pay-x");

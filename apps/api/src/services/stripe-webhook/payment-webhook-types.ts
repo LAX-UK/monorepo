@@ -9,6 +9,7 @@ export type PaymentWebhookResult = {
     | "refund_received"
     | "payment_intent_succeeded"
     | "payment_intent_succeeded_terminal_blocked"
+    | "payment_intent_succeeded_held"
     | "unapplied_money_recorded"
     | "unapplied_money_refunded"
     | "customer_balance_unapplied"

@@ -103,10 +103,7 @@ describe("CardCheckoutRail", () => {
         lotId: "lot-1",
         amountCents: 12_500,
         buyerEmail: "buyer@test.com",
-        lineItems: expect.arrayContaining([
-          expect.objectContaining({ name: expect.stringContaining("Hammer price") }),
-          expect.objectContaining({ name: expect.stringContaining("Buyer's premium") }),
-        ]),
+        lineItems: [expect.objectContaining({ unitAmountCents: 12_500 })],
         paymentIntentDescription: expect.stringContaining("Test lot"),
         statementDescriptorSuffix: "LOT 1",
       }),

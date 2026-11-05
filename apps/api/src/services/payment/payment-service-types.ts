@@ -1,3 +1,4 @@
+import type { IHeldInvoiceCheckouts, IInvoiceRecipients } from "@auction/finance-runtime";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
@@ -21,6 +22,7 @@ import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type { NotificationFactory } from "../notification.factory.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import type { CheckoutOrchestratorDeps } from "./checkout-orchestrator.js";
+import type { IPaymentEligibilityGate } from "./payment-eligibility.gate.js";
 import type { PaymentRefundReconcileService } from "./payment-refund-reconcile.service.js";
 import type { PaymentTierPolicy } from "./payment-tier.policy.js";
 import type { CheckoutRailKind, ManualReviewReason } from "./payment-tier.policy.js";
@@ -63,4 +65,10 @@ export type PaymentServiceDeps = {
   checkoutOrchestratorDeps: CheckoutOrchestratorDeps;
   /** Who may pay for a won lot. */
   buyerPaymentAuthority: IBuyerPaymentAuthority;
+  /** Closed organisations and unverified personal buyers cannot pay (both ways of paying). */
+  paymentEligibility: IPaymentEligibilityGate;
+  /** Closes a held invoice's open checkouts, so it cannot be paid while held. */
+  heldCheckouts: Pick<IHeldInvoiceCheckouts, "close"> | null;
+  /** Who is told an invoice is due: the winner and the account's payers. */
+  invoiceRecipients: IInvoiceRecipients;
 };

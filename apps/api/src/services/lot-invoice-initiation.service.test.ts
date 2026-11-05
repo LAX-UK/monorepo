@@ -106,6 +106,7 @@ function buildService(
         .fn()
         .mockResolvedValue({ id: "buyer-1", email: "buyer@example.com", name: "Buyer" }),
     } as unknown as IUserRepository,
+    { forInvoice: async ({ winnerUserId }) => [winnerUserId] },
   );
 
   return {

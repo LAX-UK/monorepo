@@ -61,7 +61,7 @@ export class SourceOfFundsGateService implements ISourceOfFundsGate {
 
     const linkedPence = await this.repo.sumActiveBuyerSettlementPence(
       input.buyerUserId,
-      input.excludePaymentId,
+      input.excludePaymentIds ?? input.excludePaymentId,
     );
     const exposurePence = linkedPence + input.amountPence;
     if (exposurePence < thresholdPence) return false;

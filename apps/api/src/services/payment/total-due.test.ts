@@ -42,11 +42,10 @@ describe("computeTotalDuePence", () => {
     expect(pence).toBe(115_000);
   });
 
-  it("falls back to lot rate when sale lookup fails", async () => {
+  it("fails when the sale cannot be read, rather than freezing the lot's flat rate", async () => {
     const sales = {
       findById: vi.fn().mockRejectedValue(new Error("db down")),
     } as unknown as ISaleRepository;
-    const pence = await computeTotalDuePence(sales, baseLot());
-    expect(pence).toBe(125_000);
+    await expect(computeTotalDuePence(sales, baseLot())).rejects.toThrow("db down");
   });
 });

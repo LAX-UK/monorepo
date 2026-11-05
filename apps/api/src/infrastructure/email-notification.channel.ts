@@ -97,7 +97,9 @@ export class EmailNotificationChannel implements INotificationChannel {
         : {}),
       vars: this.varsFor(template, payload, recipient.name, userId) as never,
     });
-    if (template === "payment-invoice") await this.copyInvoiceToBilling(payload, recipient.email);
+    if (template === "payment-invoice" || template === "payment-reminder") {
+      await this.copyInvoiceToBilling(template, payload, recipient.email);
+    }
   }
 
   /**
@@ -105,19 +107,26 @@ export class EmailNotificationChannel implements INotificationChannel {
    * payment, unless that is the member's own address. The member keeps their copy: there is no
    * cc in the outbox, so the billing inbox gets its own message.
    */
-  private async copyInvoiceToBilling(payload: NotificationPayload, memberEmail: string) {
+  private async copyInvoiceToBilling(
+    template: "payment-invoice" | "payment-reminder",
+    payload: NotificationPayload,
+    memberEmail: string,
+  ) {
     if (!payload.legalEntityId) return;
     const details = await this.invoiceDetails.find(payload.legalEntityId);
     const billingEmail = details?.billingEmail;
     if (!billingEmail || billingEmail.toLowerCase() === memberEmail.toLowerCase()) return;
-    const key = payload.meta?.paymentId ?? payload.meta?.invoiceNumber ?? payload.lotId ?? null;
+    const invoice = payload.meta?.paymentId ?? payload.meta?.invoiceNumber ?? payload.lotId ?? null;
+    // Once per invoice for the invoice email, once per step for each reminder.
+    const step = template === "payment-reminder" ? payload.meta?.reminderStep : undefined;
+    const key = invoice ? `${invoice}${step ? `:${step}` : ""}` : null;
     await this.email.enqueue({
-      template: "payment-invoice",
+      template,
       to: billingEmail,
       recipientResolution: "snapshot",
       category: "transactional",
-      ...(key ? { idempotencyKey: `payment-invoice-billing:${payload.legalEntityId}:${key}` } : {}),
-      vars: this.varsFor("payment-invoice", payload, "", "") as never,
+      ...(key ? { idempotencyKey: `${template}-billing:${payload.legalEntityId}:${key}` } : {}),
+      vars: this.varsFor(template, payload, "", "") as never,
     });
   }
 
@@ -298,6 +307,11 @@ export class EmailNotificationChannel implements INotificationChannel {
             ? `${this.baseUrl()}/purchases/checkout/${encodeURIComponent(payload.lotId)}`
             : `${this.baseUrl()}/purchases`,
           supportContactEmail: SUPPORT_EMAIL,
+          held: m?.heldReason ?? null,
+          actionUrl:
+            m?.heldReason === "identity_verification_required"
+              ? `${this.baseUrl()}/verify-identity`
+              : null,
         };
       }
       case "buyer-default-notice": {

@@ -5,11 +5,12 @@ import {
   reportPurchaseProblemSchema,
   requestDeliveryQuoteSchema,
 } from "@auction/validators";
-import { type Context, Hono } from "hono";
+import { type Context, Hono, type MiddlewareHandler } from "hono";
 import type { Result } from "neverthrow";
 import type { ContainerOrganisationBuyingRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
+import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { OrganisationBuyingError } from "../services/interfaces/organisation-buying-service.js";
@@ -44,6 +45,7 @@ function respond<T>(c: BuyingContext, result: Result<T, OrganisationBuyingError>
 export function createOrganisationBuyingRoutes(
   container: ContainerOrganisationBuyingRoutesSlice,
   authenticator: IAuthenticator,
+  requireAccountOnboarding: MiddlewareHandler,
 ) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
@@ -79,9 +81,12 @@ export function createOrganisationBuyingRoutes(
     return c.body(result.value);
   });
 
+  // Paying several invoices passes the same gates as paying one (`POST /payments`): signed in
+  // and not suspended, onboarding complete, and a buyer account (staff accounts never pay).
   r.post(
     "/purchases/pay-several/plan",
     requireAuth,
+    requireBuyerRole,
     requireContext,
     zValidator("json", paySeveralBodySchema),
     async (c) => respond(c, await paySeveral.plan(memberActor(c), c.req.valid("json").lotIds)),
@@ -91,6 +96,8 @@ export function createOrganisationBuyingRoutes(
   r.post(
     "/purchases/pay-several",
     requireAuth,
+    requireAccountOnboarding,
+    requireBuyerRole,
     requireContext,
     zValidator("json", paySeveralBodySchema),
     async (c) => respond(c, await paySeveral.pay(memberActor(c), c.req.valid("json").lotIds)),

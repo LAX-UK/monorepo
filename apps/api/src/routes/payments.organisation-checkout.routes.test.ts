@@ -7,6 +7,7 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { IPaymentBuyerService } from "../services/interfaces/payment-service.js";
 import { createPendingForWinner } from "../services/payment/create-pending-for-winner.pipeline.js";
 import { LegalEntityBuyerPaymentAuthority } from "../services/payment/legal-entity-buyer-payment-authority.js";
+import { PaymentEligibilityGate } from "../services/payment/payment-eligibility.gate.js";
 import type { PaymentServiceDeps } from "../services/payment/payment-service-types.js";
 import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { createPaymentRoutes } from "./payments.js";
@@ -25,7 +26,12 @@ type Member = { role: LegalEntityMemberRole; removed?: boolean };
  * in-memory accounts: a lot the organisation's buyer agent won, already invoiced and paid, so the
  * pipeline returns at the existing payment without touching the card rails.
  */
-function mount(payer: string, member: Member | null, status: LegalEntity["status"] = "approved") {
+function mount(
+  payer: string,
+  member: Member | null,
+  status: LegalEntity["status"] = "approved",
+  existingStatus: "captured" | "pending" = "captured",
+) {
   const lot = {
     id: LOT_ID,
     status: "ended",
@@ -42,8 +48,14 @@ function mount(payer: string, member: Member | null, status: LegalEntity["status
     ),
   };
   const payments = {
-    findOpenByLotAndBuyerAccount: vi.fn(async () => ({ id: PAYMENT_ID, status: "captured" })),
+    findOpenByLotAndBuyerAccount: vi.fn(async () => ({
+      id: PAYMENT_ID,
+      status: existingStatus,
+      amount: "100.00",
+      paymentGroupId: null,
+    })),
   };
+  const heldCheckouts = { close: vi.fn(async () => undefined) };
   const deps = {
     lots: { findById: vi.fn(async () => lot) },
     payments,
@@ -62,6 +74,8 @@ function mount(payer: string, member: Member | null, status: LegalEntity["status
     },
     lotFulfilmentHooks: null,
     buyerPaymentAuthority: new LegalEntityBuyerPaymentAuthority(accounts),
+    paymentEligibility: new PaymentEligibilityGate(accounts, null),
+    heldCheckouts,
   } as unknown as PaymentServiceDeps;
   const paymentBuyerService = {
     createPendingForWinner: (buyerId: string, lotId: string, addressId: string) =>
@@ -99,7 +113,7 @@ function mount(payer: string, member: Member | null, status: LegalEntity["status
     "/payments",
     createPaymentRoutes(container, authenticator, passThroughAccountOnboarding),
   );
-  return { app, payments };
+  return { app, payments, heldCheckouts };
 }
 
 function pay(app: Hono) {
@@ -127,6 +141,35 @@ describe("POST /payments for an organisation's purchase", () => {
     expect((await pay(app)).status).toBe(201);
   });
 
+  it.each(["lead", "docs_requested", "under_review"] as const)(
+    "holds the invoice of a %s organisation: no checkout, and the reason to show",
+    async (status) => {
+      const { app, heldCheckouts } = mount("user-payer", { role: "finance" }, status, "pending");
+      const res = await pay(app);
+      expect(res.status).toBe(201);
+      // A checkout opened before the hold is closed, so the invoice cannot be paid while held.
+      expect(heldCheckouts.close).toHaveBeenCalledWith(PAYMENT_ID);
+      expect(await res.json()).toMatchObject({
+        data: {
+          paymentId: PAYMENT_ID,
+          checkoutUrl: null,
+          manualReviewReason: "organisation_under_review",
+        },
+      });
+    },
+  );
+
+  it.each(["rejected", "archived"] as const)(
+    "refuses a %s organisation on the server, before any invoice is touched",
+    async (status) => {
+      const { app, payments } = mount("user-payer", { role: "finance" }, status);
+      const res = await pay(app);
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ code: "organisation_closed" });
+      expect(payments.findOpenByLotAndBuyerAccount).not.toHaveBeenCalled();
+    },
+  );
+
   it.each(["viewer", "consignor"] as const)("refuses a %s", async (role) => {
     const { app, payments } = mount("user-payer", { role });
     const res = await pay(app);
@@ -152,5 +195,11 @@ describe("POST /payments for an organisation's purchase", () => {
   it("refuses someone with no membership at all", async () => {
     const { app } = mount("user-stranger", null);
     expect((await pay(app)).status).toBe(403);
+  });
+
+  it("a payable organisation's checkout is left open", async () => {
+    const { app, heldCheckouts } = mount("user-payer", { role: "finance" });
+    await pay(app);
+    expect(heldCheckouts.close).not.toHaveBeenCalled();
   });
 });

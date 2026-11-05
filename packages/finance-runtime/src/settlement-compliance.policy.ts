@@ -17,6 +17,8 @@ export type SettlementComplianceInput = {
    * exclude it from linked-transaction aggregation so exposure is not double-counted.
    */
   excludePaymentId?: string;
+  /** Several invoices paid together ("Pay several"): all are left out of the linked exposure. */
+  excludePaymentIds?: readonly string[];
 };
 
 export interface ISettlementCompliancePolicy {
@@ -84,4 +86,34 @@ export class AmlSettlementCompliancePolicy implements ISettlementCompliancePolic
     }
     return { hold: false, reason: null };
   }
+}
+
+/** Who a payment is checked for, and the amount each one is exposed to. */
+export type SettlementSubject = { buyerUserId: string; amountPence: number };
+
+/**
+ * A payment is checked for everyone it settles for: the person paying and the winner of each lot
+ * (an organisation's payer is often not its winner). The first hold found stops the payment.
+ * Subjects named twice are checked once, on their combined amount.
+ */
+export async function evaluateSettlementSubjects(
+  policy: Pick<ISettlementCompliancePolicy, "evaluate">,
+  subjects: readonly SettlementSubject[],
+  /** The invoices this payment settles, left out of each subject's linked exposure. */
+  excludePaymentIds: string | readonly string[] = [],
+): Promise<SettlementComplianceDecision & { subject: string | null }> {
+  const excluded = typeof excludePaymentIds === "string" ? [excludePaymentIds] : excludePaymentIds;
+  const byUser = new Map<string, number>();
+  for (const s of subjects)
+    byUser.set(s.buyerUserId, (byUser.get(s.buyerUserId) ?? 0) + s.amountPence);
+  for (const [buyerUserId, amountPence] of byUser) {
+    const decision = await policy.evaluate({
+      buyerUserId,
+      amountPence,
+      ...(excluded.length === 1 ? { excludePaymentId: excluded[0] } : {}),
+      ...(excluded.length > 1 ? { excludePaymentIds: excluded } : {}),
+    });
+    if (decision.hold) return { ...decision, subject: buyerUserId };
+  }
+  return { hold: false, reason: null, subject: null };
 }

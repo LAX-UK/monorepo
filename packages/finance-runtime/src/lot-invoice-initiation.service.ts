@@ -9,13 +9,17 @@ import type {
   NotificationPayload,
   PaymentRecord,
 } from "@auction/persistence/interfaces";
-import { computeLotCheckoutPricing } from "@auction/validators";
-import { gbpAmountToPence, gbpPenceToMajorString } from "./decimal-money.js";
+import { lotTotalDuePence } from "@auction/validators";
+import { gbpPenceToMajorString } from "./decimal-money.js";
 import type { DomainEventPublishInput } from "./domain-event-sink-port.js";
 import { ensureXeroInvoiceForPayment } from "./ensure-xero-invoice.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import { isOpenPaymentUniqueViolation } from "./is-open-payment-unique-violation.js";
 import { type IMoneyPathMetrics, noMoneyPathMetrics } from "./money-path-metrics.js";
+import {
+  type IInvoiceRecipients,
+  paymentDueNoticeKey,
+} from "./notifications/invoice-recipients.js";
 import { formatPaymentDueDateFromCreated } from "./payment-due-date.js";
 import type { PaymentTierPolicy } from "./payment-tier.policy.js";
 import type { IPlatformFeePolicy } from "./platform-fee.policy.js";
@@ -84,6 +88,7 @@ export class LotInvoiceInitiationService {
     private readonly lotFulfilmentHooks: ILotFulfilmentPaymentHook | null,
     private readonly legalEntityRepository: ILegalEntityRepository | null,
     private readonly users: IUserRepository,
+    private readonly recipients: IInvoiceRecipients,
     private readonly metrics: IMoneyPathMetrics = noMoneyPathMetrics,
   ) {}
 
@@ -120,8 +125,7 @@ export class LotInvoiceInitiationService {
     }
 
     const sale = lot.saleId ? await this.sales.findById(lot.saleId) : null;
-    const pricing = computeLotCheckoutPricing(lot, sale);
-    const amountPence = gbpAmountToPence(pricing.totalMajor);
+    const amountPence = lotTotalDuePence(lot, sale);
     const amount = gbpPenceToMajorString(amountPence);
 
     const amountValidation = this.paymentTierPolicy.validateCheckoutAmountPence(amountPence);
@@ -205,18 +209,24 @@ export class LotInvoiceInitiationService {
     await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, created.id, null);
 
     const dueDate = formatPaymentDueDateFromCreated(created.createdAt);
-    await this.notificationOutbox.stageDispatch({
-      userId: buyerId,
-      payload: notificationRowToPayload(
-        this.notificationFactory.createPaymentDue(lot, buyerId, {
-          paymentId: created.id,
-          amount: created.amount,
-          checkoutUrl: null,
-          dueDate,
-        }),
-      ),
-      idempotencyKey: `payment_due:${created.id}`,
+    const recipients = await this.recipients.forInvoice({
+      buyerLegalEntityId: lot.buyerLegalEntityId,
+      winnerUserId: buyerId,
     });
+    for (const recipientId of recipients) {
+      await this.notificationOutbox.stageDispatch({
+        userId: recipientId,
+        payload: notificationRowToPayload(
+          this.notificationFactory.createPaymentDue(lot, recipientId, {
+            paymentId: created.id,
+            amount: created.amount,
+            checkoutUrl: null,
+            dueDate,
+          }),
+        ),
+        idempotencyKey: paymentDueNoticeKey(created.id, recipientId, buyerId),
+      });
+    }
 
     const xeroResult = await ensureXeroInvoiceForPayment(
       this.accounting,
@@ -225,6 +235,7 @@ export class LotInvoiceInitiationService {
       lot,
       buyerId,
       created.amount,
+      created.createdAt,
     );
     if (!xeroResult.ok) {
       this.metrics.record("xero_invoice_deferred");

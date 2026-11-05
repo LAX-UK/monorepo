@@ -1,3 +1,4 @@
+import type { IHeldInvoiceCheckouts, IInvoiceRecipients } from "@auction/finance-runtime";
 import type { IPaymentDomainEventsRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
@@ -56,6 +57,10 @@ import {
   listForBuyer,
   listMyPaymentsForBuyerApi,
 } from "./payment/payment-buyer-ops.js";
+import {
+  type IPaymentEligibilityGate,
+  PaymentEligibilityGate,
+} from "./payment/payment-eligibility.gate.js";
 import { refundManualReviewPayment, refundPayment } from "./payment/payment-refund-ops.js";
 import type { PaymentRefundReconcileService } from "./payment/payment-refund-reconcile.service.js";
 import type {
@@ -75,6 +80,16 @@ export type {
 /** Without a way to read accounts nobody can be shown to be a payer, so checkout stays closed. */
 const REFUSE_ALL_PAYMENTS: IBuyerPaymentAuthority = {
   canPay: async () => ({ allowed: false, reason: "not_member" }),
+};
+
+/** Where the account's payers are not wired (tests of checkout itself), only the winner is told. */
+const WINNER_ONLY: IInvoiceRecipients = {
+  forInvoice: async ({ winnerUserId }) => [winnerUserId],
+};
+
+/** Without the account to read, nothing can be checked, so nothing is paid. */
+const REFUSE_ALL_ELIGIBILITY: IPaymentEligibilityGate = {
+  check: async () => ({ kind: "refused", reason: "organisation_closed" }),
 };
 
 export class PaymentService
@@ -110,6 +125,9 @@ export class PaymentService
     paymentDomainEvents: IPaymentDomainEventsRepository | null = null,
     buyerPaymentAuthority: IBuyerPaymentAuthority | null = null,
     errorReporter: IErrorReporter | null = null,
+    paymentEligibility: IPaymentEligibilityGate | null = null,
+    invoiceRecipients: IInvoiceRecipients | null = null,
+    heldCheckouts: Pick<IHeldInvoiceCheckouts, "close"> | null = null,
   ) {
     const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
       payments,
@@ -154,6 +172,13 @@ export class PaymentService
         (legalEntityRepository
           ? new LegalEntityBuyerPaymentAuthority(legalEntityRepository)
           : REFUSE_ALL_PAYMENTS),
+      paymentEligibility:
+        paymentEligibility ??
+        (legalEntityRepository
+          ? new PaymentEligibilityGate(legalEntityRepository, null)
+          : REFUSE_ALL_ELIGIBILITY),
+      invoiceRecipients: invoiceRecipients ?? WINNER_ONLY,
+      heldCheckouts,
     };
   }
 
