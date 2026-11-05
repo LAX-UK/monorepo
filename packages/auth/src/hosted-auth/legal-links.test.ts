@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { HostedAuthProduct } from "./flow-context.js";
-import { hostedAgreementLinks, hostedFooterLinks } from "./legal-links.js";
+import { hostedAgreementLinks, hostedFooterLinks, hostedLegalProduct } from "./legal-links.js";
 import { EMPTY_HOSTED_AUTH_CAPABILITIES } from "./view.js";
 
 const capabilities = {
@@ -29,5 +29,18 @@ describe("hostedFooterLinks", () => {
       privacy: "https://lax.bid/privacy",
       help: "https://lax.bid/faq",
     });
+  });
+});
+
+describe("hostedLegalProduct", () => {
+  it.each<[HostedAuthProduct, string]>([
+    ["bid", "bid"],
+    ["account", "account"],
+    ["unknown", "account"],
+    ["shop", "shop"],
+    ["shop-admin", "shop"],
+    ["art", "art"],
+  ])("names %s sign-up as the %s documents", (product, legalProduct) => {
+    expect(hostedLegalProduct(product)).toBe(legalProduct);
   });
 });

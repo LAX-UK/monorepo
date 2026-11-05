@@ -91,7 +91,7 @@ export function ReviewStep({
   ];
 
   return (
-    <div className="space-y-6" data-testid="submission-wizard-step-review">
+    <div className="space-y-6">
       <p className="font-body text-sm text-on-surface-variant">
         Check your answers, then send them to our specialists. You can change anything before you
         send. {SPECIALIST_RESPONSE_PROMISE}

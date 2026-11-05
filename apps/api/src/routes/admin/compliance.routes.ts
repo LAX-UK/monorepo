@@ -1,6 +1,7 @@
 import { respondComplianceRouteError } from "../../lib/compliance-route-errors.js";
 import { applyStaffPreviewFramingHeaders } from "../../lib/staff-preview-framing.js";
 import { zValidator } from "../../lib/z-validator.js";
+import { clientIpOrNull } from "../../middleware/client-ip.js";
 import { requireAmlReview, requireMlroDecision } from "../../middleware/require-capability.js";
 import type { AdminComplianceRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import {
@@ -249,8 +250,7 @@ export function attachAdminComplianceRoutes(
     async (c) => {
       const { id, docId } = c.req.valid("param");
       const staffUserId = c.get("userId") as string;
-      const clientIp =
-        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? null;
+      const clientIp = clientIpOrNull(c);
       const result = await container.admin.sourceOfFunds.getStaffDownloadUrl({
         caseId: id,
         documentId: docId,
@@ -269,8 +269,7 @@ export function attachAdminComplianceRoutes(
     async (c) => {
       const { id } = c.req.valid("param");
       const staffUserId = c.get("userId") as string;
-      const clientIp =
-        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? null;
+      const clientIp = clientIpOrNull(c);
       const result = await container.admin.sourceOfFunds.getStaffBulkDownloadZip({
         caseId: id,
         staffUserId,
@@ -290,8 +289,7 @@ export function attachAdminComplianceRoutes(
     async (c) => {
       const { id, docId } = c.req.valid("param");
       const staffUserId = c.get("userId") as string;
-      const clientIp =
-        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? null;
+      const clientIp = clientIpOrNull(c);
       const result = await container.admin.sourceOfFunds.getStaffPreviewBytes({
         caseId: id,
         documentId: docId,

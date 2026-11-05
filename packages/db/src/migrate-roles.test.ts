@@ -11,6 +11,7 @@ import {
   AUTH_EXPORT_TABLES,
   AUTH_FULL_TABLES,
   AUTH_INSERT_SELECT_TABLES,
+  AUTH_LEGAL_ACCEPTANCE_TABLES,
   AUTH_POLICY_TABLES,
   AUTH_READ_TABLES,
   SHOP_ARTWORK_REGISTER_CONFLICT_TABLES,
@@ -19,6 +20,7 @@ import {
   SHOP_ARTWORK_REGISTER_READ_TABLES,
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
+  SHOP_SUBJECT_EXPORT_READ_TABLES,
   WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
   WORKER_ARTWORK_REGISTER_TABLES,
   WORKER_BID_ALERT_TABLES,
@@ -26,6 +28,8 @@ import {
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
   WORKER_FULL_TABLES,
+  WORKER_INVOICE_RAISE_FULFILMENT_TABLES,
+  WORKER_INVOICE_RAISE_INSERT_TABLES,
   WORKER_KYC_RETENTION_PURGE_TABLES,
   WORKER_KYC_RETENTION_TOMBSTONE_TABLES,
   WORKER_LIFECYCLE_READ_TABLES,
@@ -375,6 +379,15 @@ describe("migrate-roles invariants", () => {
     }
   });
 
+  it("lets auth_app add and read sign-up acceptances only, and denies api_app and worker_app", () => {
+    expect([...AUTH_LEGAL_ACCEPTANCE_TABLES]).toEqual(["subject_legal_acceptance"]);
+    for (const table of AUTH_LEGAL_ACCEPTANCE_TABLES) {
+      expect([...API_DENY_TABLES]).toContain(table);
+      expect([...WORKER_DENY_TABLES]).toContain(table);
+      expect([...AUTH_FULL_TABLES]).not.toContain(table);
+    }
+  });
+
   it("AUTH_FULL_TABLES includes two_factor (Better Auth twoFactor plugin uses auth_app)", () => {
     expect([...AUTH_FULL_TABLES]).toContain("two_factor");
   });
@@ -501,6 +514,13 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_DENY_TABLES]).not.toContain("artwork_register");
   });
 
+  it("lets Shop read the shared mail tables its data export needs, and nothing more", () => {
+    expect([...SHOP_SUBJECT_EXPORT_READ_TABLES].sort()).toEqual([
+      "email_suppression",
+      "newsletter_signup_log",
+    ]);
+  });
+
   it("lets Shop move an original's offer through the register", () => {
     expect([...SHOP_ARTWORK_REGISTER_OFFER_TABLES]).toEqual(["artwork_register"]);
   });
@@ -526,6 +546,11 @@ describe("migrate-roles invariants", () => {
 
   it("WORKER_DOMAIN_EVENT_DELIVERY_TABLES includes domain_event_delivery ledger", () => {
     expect([...WORKER_DOMAIN_EVENT_DELIVERY_TABLES]).toContain("domain_event_delivery");
+  });
+
+  it("the worker may raise an invoice: payment, source of funds and fulfilment, no deletes", () => {
+    expect([...WORKER_INVOICE_RAISE_INSERT_TABLES]).toEqual(["payment", "source_of_funds"]);
+    expect([...WORKER_INVOICE_RAISE_FULFILMENT_TABLES]).toEqual(["lot_fulfilment"]);
   });
 
   it("WORKER_PAYMENT_MAINTENANCE_TABLES includes payment (expire-stale-payments)", () => {

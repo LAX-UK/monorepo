@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { ContainerAlertRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
+import { ALERTS_READ_SCOPE, ALERTS_WRITE_SCOPE } from "../middleware/bid-scope-policy.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
@@ -25,8 +26,14 @@ export function createAlertRoutes(
   container: ContainerAlertRoutesSlice,
   authenticator: IAuthenticator,
 ) {
-  const requireAuth = createRequireAuth(authenticator, {
+  // A signed-in client's own browser session, or LAX Account acting as them with its narrow scopes.
+  const requireAlertsRead = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
+    acceptedScopes: ["bid.read", ALERTS_READ_SCOPE],
+  });
+  const requireAlertsWrite = createRequireAuth(authenticator, {
+    isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
+    acceptedScopes: ["bid.write", ALERTS_WRITE_SCOPE],
   });
   const engine = () => container.alertEngine;
   const r = new Hono<{ Variables: { userId?: string } }>();
@@ -71,14 +78,14 @@ export function createAlertRoutes(
     return c.json({ ok: outcome !== "invalid", outcome }, outcome === "invalid" ? 400 : 200);
   });
 
-  r.get("/me", requireAuth, async (c) => {
+  r.get("/me", requireAlertsRead, async (c) => {
     const view = await engine().preferences.view("bid", c.get("userId") as string);
     return c.json({ data: view });
   });
 
   r.put(
     "/me/topics/:topic",
-    requireAuth,
+    requireAlertsWrite,
     zValidator("param", z.object({ topic: bidAlertTopicSchema })),
     zValidator("json", alertTopicSwitchSchema),
     async (c) => {

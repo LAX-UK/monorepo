@@ -30,6 +30,10 @@ their money. Each is a TypeBox schema with a matching static type, exported from
 - Money is grouped by business and direction. What you owe is never netted against what you
   are owed.
 - A document that is not `available` has no `href` and may carry an `expectedNote`.
+- A document may carry its own `label` ("Certificate of authenticity No. 7/24"); without one the
+  consumer names it by its kind. A work may carry an `edition` line ("No. 7 of 24 · Hand-signed")
+  that the product has written for the owner. Both are optional additions within V1: a consumer
+  shows them when present and is unchanged when they are absent.
 
 ### Responses
 

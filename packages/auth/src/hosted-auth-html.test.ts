@@ -282,6 +282,13 @@ describe("issuer-hosted credential HTML", () => {
     expect(html).not.toMatch(/style=/);
   });
 
+  it("tells the sign-up script whose Terms and Privacy notice the page links", () => {
+    expect(buildHostedSignUpHtml(hostedAuthViewFromSearch(shopSearch, shopCapabilities))).toContain(
+      'id="signup-root" class="auth-stack" data-legal-product="shop"',
+    );
+    expect(buildHostedSignUpHtml()).toContain('data-legal-product="account"');
+  });
+
   it("keeps the combined email/password mode behind issuer configuration", () => {
     const view = hostedAuthViewFromSearch(shopSearch, { ...shopCapabilities, emailFirst: false });
     const html = buildHostedLoginHtml(view);

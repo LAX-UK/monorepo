@@ -71,11 +71,14 @@ const onboardingIncompleteCredentials: Credentials = {
   password: process.env.PLAYWRIGHT_ONBOARDING_INCOMPLETE_PASSWORD ?? "Password123!",
 };
 
-/** Seeded hybrid saleroom ids — see packages/db dev seed (S.hybridA, L.hybridA1). */
+/**
+ * Seeded hybrid saleroom ids — see packages/db dev seed. Room A (S.hybridA) is live with its third
+ * lot (L.hybridA3) on the block; the first two lots are complete.
+ */
 export const seededHybridSaleId =
   process.env.PLAYWRIGHT_HYBRID_SALE_ID ?? "e1000003-0000-4000-8000-000000000003";
 export const seededHybridLotId =
-  process.env.PLAYWRIGHT_HYBRID_LOT_ID ?? "b1000101-0000-4000-8000-000000000101";
+  process.env.PLAYWRIGHT_HYBRID_LOT_ID ?? "b1000103-0000-4000-8000-000000000103";
 
 /** Stable seeded ids for visual/detail E2E routes. */
 export const seededStaffRoutes = {
@@ -724,12 +727,31 @@ export async function clientSession(page: Page): Promise<void> {
     };
     await page.context().addCookies(state.cookies);
     await page.goto("/home");
+    // /home hands on to My bids; the next navigation waits for that, or it is interrupted by it.
+    await page.waitForURL((url) => url.pathname !== "/home", { timeout: 15_000 }).catch(() => {});
     if (!isLoginUrl(page.url())) {
       await assertNotStaffShell(page, "Client");
       return;
     }
   }
   await clientLogin(page);
+}
+
+/** Reuses the prepared buyer storage state, for specs that do not sign the buyer out. */
+export async function buyerSession(page: Page): Promise<void> {
+  if (existsSync(roleAuthState.buyer)) {
+    const state = JSON.parse(readFileSync(roleAuthState.buyer, "utf8")) as {
+      cookies: Parameters<BrowserContext["addCookies"]>[0];
+    };
+    await page.context().addCookies(state.cookies);
+    await page.goto("/home");
+    await page.waitForURL((url) => url.pathname !== "/home", { timeout: 15_000 }).catch(() => {});
+    if (!isLoginUrl(page.url())) {
+      await assertNotStaffShell(page, "Buyer");
+      return;
+    }
+  }
+  await buyerLogin(page);
 }
 
 export async function unapprovedLogin(page: Page): Promise<void> {

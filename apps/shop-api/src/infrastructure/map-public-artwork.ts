@@ -46,6 +46,7 @@ export type ArtworkCatalogueRow = {
   printPaper?: string | null;
   printSize?: string | null;
   sourceOriginalSlug?: string | null;
+  edition?: ArtworkDetailReadModel["edition"];
 };
 
 export function parseDbNumeric(value: string | null | undefined): number | null {
@@ -71,7 +72,10 @@ function primaryImageUrl(row: ArtworkCatalogueRow): string | null {
   return row.primaryImageUrl;
 }
 
-export function toPublicArtworkSummary(row: ArtworkCatalogueRow): ArtworkSummaryReadModel {
+export function toPublicArtworkSummary(
+  row: ArtworkCatalogueRow,
+  editionCardLine: string | null = null,
+): ArtworkSummaryReadModel {
   return {
     slug: row.slug,
     title: row.title,
@@ -90,6 +94,7 @@ export function toPublicArtworkSummary(row: ArtworkCatalogueRow): ArtworkSummary
     printPricePence: row.printPricePence,
     updatedAt: row.updatedAt.toISOString(),
     listedAt: row.listedAt.toISOString(),
+    editionCardLine,
     availability: publicEditionAvailability({
       eligibleForEditionAllocation: row.eligibleForEditionAllocation,
       totalEditionCount: row.totalEditionCount,
@@ -114,5 +119,6 @@ export function toPublicArtworkDetail(row: ArtworkCatalogueRow): ArtworkDetailRe
     exhibitionHistory: row.exhibitionHistory,
     seoTitle: row.seoTitle,
     seoDescription: row.seoDescription,
+    ...(row.edition !== undefined ? { edition: row.edition } : {}),
   };
 }

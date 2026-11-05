@@ -9,7 +9,8 @@ export function createInternalIdentitySubjectUsageRoutes(
   env: Pick<Env, "IDENTITY_MACHINE_CLIENT_ID" | "IDENTITY_MACHINE_CLIENT_SECRET">,
 ) {
   const routes = new Hono();
-  routes.use("*", createIdentityMachineAuth(env));
+  // Scoped to this group's own path; the /internal/identity prefix is shared (see app.ts).
+  routes.use("/subject-usage/*", createIdentityMachineAuth(env));
 
   routes.get("/subject-usage/:subjectId", async (c) => {
     const subjectId = c.req.param("subjectId");

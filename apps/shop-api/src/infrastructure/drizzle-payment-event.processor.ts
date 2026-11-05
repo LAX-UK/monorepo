@@ -17,6 +17,7 @@ import type { BasketOwner, PaymentCheckoutGateway } from "../application/ports/c
 import type { PaymentEventProcessor } from "../application/ports/payment-event.processor.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { ShopPaymentWebhookError } from "../errors/shop-payment-webhook.error.js";
+import { liveEditionSnapshots } from "./edition-snapshot-source.js";
 import { recordGuestOrderPaid } from "./guest-checkout/guest-lead-events.js";
 import { guestOrderLinkUrl, issueGuestOrderLink } from "./guest-checkout/guest-order-link-token.js";
 import {
@@ -41,6 +42,26 @@ type CheckoutTransitionOptions = {
   paymentGateway?: PaymentCheckoutGateway;
   domainEventMode?: ShopDomainEventPublisherMode;
 };
+
+/**
+ * Keeps what each buyer was told about their print: the run and confirmed facts at the moment of
+ * payment. Later corrections to the facts do not change an order already paid.
+ */
+async function keepEditionSnapshots(
+  tx: Database,
+  lines: ReadonlyArray<{ id: string; artworkId: string | null }>,
+): Promise<void> {
+  const artworkIds = lines.flatMap((line) => (line.artworkId ? [line.artworkId] : []));
+  const snapshots = await liveEditionSnapshots(tx, artworkIds);
+  for (const line of lines) {
+    const snapshot = line.artworkId ? snapshots.get(line.artworkId) : undefined;
+    if (!snapshot) continue;
+    await tx
+      .update(shopOrderLine)
+      .set({ editionFactsSnapshot: snapshot })
+      .where(eq(shopOrderLine.id, line.id));
+  }
+}
 
 async function queueCheckoutOpsAlertInTx(
   tx: Database,
@@ -361,6 +382,8 @@ export async function completeShopCheckoutSession(
         throw new ShopPaymentWebhookError("edition_state_invalid", { retryable: false });
       }
     }
+
+    await keepEditionSnapshots(tx as Database, editionLines);
 
     /** Placeholder until possession sets cancellation end; far-future avoids misleading near-term due dates. */
     const payoutDueAt = computePayoutDueAt(
