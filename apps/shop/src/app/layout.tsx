@@ -20,7 +20,7 @@ import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { SHOP_THEME_COOKIE, parseShopTheme } from "@/lib/theme/shop-theme";
 import { laxFaviconMetadataIcons } from "@auction/branding";
-import { EssentialCookiesDialog } from "@auction/marketing-ui";
+import { EssentialCookiesDialog, MarketingBottomBarSpace } from "@auction/marketing-ui";
 import { CatalogueImageProvider } from "@auction/shop-portal/react";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
@@ -107,6 +107,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               accountState={toShopFooterAccountState(viewer)}
               linkablePolicies={linkablePolicies}
             />
+            <MarketingBottomBarSpace />
             <EssentialCookiesDialog
               productName="LAX Shop"
               cookiePolicyHref={

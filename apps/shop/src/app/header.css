@@ -1,6 +1,7 @@
+/* Below 1024px the compact lockup's mark is 28px tall (LOCKUP_HEIGHTS.phoneMark). */
 .shop-header__logo .lax-lockup {
   width: auto;
-  height: 2.5rem;
+  height: 1.75rem;
 }
 
 /* Phones and tablets show the compact lockup (the mark and .SHOP); desktop shows the full
@@ -21,6 +22,14 @@
 
   .lax-logo.shop-header__logo--full {
     display: block;
+  }
+}
+
+/* From 1024px the 36px LAX top bar scrolls away with the page and the 72px row stays: the header
+   slides up by the scroll distance, up to the top bar's height (set by the header's scroll handler). */
+@media (min-width: 64rem) {
+  .shop-header {
+    transform: translateY(calc(-1 * var(--shop-top-bar-shift, 0px)));
   }
 }
 

@@ -9,6 +9,7 @@ import {
   MarketingCheckIcon,
   MarketingSpinnerIcon,
   MarketingStickyActionBar,
+  useClaimBottomSlot,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -64,6 +65,8 @@ export function ArtworkBuyBox({
   const [announcement, setAnnouncement] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
   const [barVisible, setBarVisible] = useState(false);
+  // The buy bar takes the bottom of the screen; the tab bar steps aside while it shows.
+  useClaimBottomSlot("shop-buy-bar", barVisible);
   const [removing, startRemove] = useTransition();
   const actionRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
