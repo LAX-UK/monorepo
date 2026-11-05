@@ -2,10 +2,18 @@ import type { WorkerEnv } from "../../env.js";
 import { getZohoCrmAccessToken } from "./oauth-token-refresh.js";
 import { ZohoCrmAuthError } from "./types.js";
 
-/** Anything that writes to Zoho: the CRM sync in canary/live, or the artwork writeback in live. */
+/**
+ * Anything that writes to Zoho: the CRM sync in canary/live, or the artwork writeback or the LAX
+ * listing in live.
+ */
 function writesToZoho(env: WorkerEnv): boolean {
   const mode = env.ZOHO_CRM_SYNC_MODE;
-  return mode === "live" || mode === "canary" || env.ZOHO_ARTWORK_WRITEBACK_MODE === "live";
+  return (
+    mode === "live" ||
+    mode === "canary" ||
+    env.ZOHO_ARTWORK_WRITEBACK_MODE === "live" ||
+    env.ZOHO_ARTWORK_LISTING_MODE === "live"
+  );
 }
 
 /** Org check runs whenever something writes to Zoho (not for off or dry_run). */

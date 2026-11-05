@@ -11,6 +11,7 @@ import type pino from "pino";
 import type { WorkerEnv } from "../../env.js";
 import type { CrmSyncService } from "../../integrations/crm/crm-sync-service.js";
 import type { XeroLiveExecutorPorts } from "../../integrations/xero/xero-live-executor.js";
+import type { ZohoListingWriteback } from "../../integrations/zoho/artwork/listing/zoho-listing-writeback.js";
 import type { ZohoArtworkWritebackService } from "../../integrations/zoho/artwork/zoho-artwork-writeback-service.js";
 import type { IAdminImpersonationNotifyReader } from "../../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../../interfaces/admin-review-task-projector.repository.js";
@@ -84,6 +85,8 @@ export type ProjectorRunContext = {
   artworkOfferLock?: import("../artwork-offer-lock.types.js").BidOfferLockApplier | undefined;
   /** Sends artwork register changes to Zoho Products; absent while the writeback mode is off. */
   zohoArtworkWriteback?: ZohoArtworkWritebackService | undefined;
+  /** Keeps the LAX listing on Zoho Products in line; absent while the writeback mode is off. */
+  zohoArtworkListing?: ZohoListingWriteback | undefined;
 };
 
 export interface Projector {

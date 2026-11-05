@@ -12,7 +12,7 @@ afterEach(cleanup);
 describe("HomeAlertsBand", () => {
   it("is the #alerts anchor and posts the form to the sign-up route", () => {
     const { container } = render(<HomeAlertsBand signedIn={false} outcome={null} />);
-    expect(container.querySelector("section#alerts")).not.toBeNull();
+    expect(container.querySelector("#alerts")).not.toBeNull();
     const form = container.querySelector("form");
     expect(form?.getAttribute("action")).toBe("/api/alerts/notify");
     expect(form?.querySelector('input[name="source"]')?.getAttribute("value")).toBe(

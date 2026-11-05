@@ -1,15 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CrmCoqlQuery, CrmGateway } from "../crm/crm-gateway.js";
+import type { CrmBatchUpdate, CrmCoqlQuery, CrmGateway } from "../crm/crm-gateway.js";
 import { ZohoCrmHttpError } from "./types.js";
 import { ZohoCrmGatewayLimiter } from "./zoho-crm-gateway-limiter.js";
 
 function fakeGateway(
-  overrides: Partial<CrmGateway & CrmCoqlQuery> = {},
-): CrmGateway & CrmCoqlQuery {
+  overrides: Partial<CrmGateway & CrmCoqlQuery & CrmBatchUpdate> = {},
+): CrmGateway & CrmCoqlQuery & CrmBatchUpdate {
   return {
     upsert: vi.fn(),
     upsertMany: vi.fn(),
     updateById: vi.fn(),
+    updateMany: vi.fn(),
     findByEmail: vi.fn(),
     findDealIdsByContact: vi.fn(),
     executeCoql: vi.fn(),

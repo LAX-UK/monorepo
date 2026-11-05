@@ -14,6 +14,8 @@ export {
   MarketingClockIcon,
   MarketingCloseIcon,
   MarketingExpandIcon,
+  MarketingEyeIcon,
+  MarketingGavelIcon,
   MarketingGridIcon,
   MarketingHeartIcon,
   MarketingHomeIcon,
@@ -132,6 +134,7 @@ export {
 export { ACCOUNT_ENTRY_NAME_MAX, cutAccountEntryName } from "./account-entry-name.js";
 export {
   MarketingAccountEntry,
+  MarketingAvatar,
   type MarketingAccountEntryProps,
   type MarketingAccountEntryViewer,
 } from "./marketing-account-entry.js";
@@ -334,10 +337,51 @@ export {
   type MarketingHeartToggleProps,
 } from "./marketing-heart-toggle.js";
 export {
+  BOTTOM_BAR_ABOVE_CLASS,
+  MarketingBottomBarSpace,
   MarketingBottomTabBar,
   type MarketingBottomTabBarProps,
-  type MarketingBottomTabItem,
 } from "./marketing-bottom-tab-bar.js";
+export {
+  BOTTOM_TAB_COUNT_CAP,
+  MARKETING_COUNT_BADGE_CLASS,
+  badgeCountText,
+  isTabCurrent,
+  type MarketingBottomTab,
+  type MarketingBottomTabAction,
+  type MarketingBottomTabBadge,
+  type MarketingBottomTabLink,
+} from "./bottom-bar/bottom-tab-config.js";
+export {
+  claimBottomSlot,
+  useBottomSlotClaimed,
+  useClaimBottomSlot,
+} from "./bottom-bar/bottom-slot.js";
+export {
+  type BottomBarVisibility,
+  KEYBOARD_VIEWPORT_RATIO,
+  isTextFieldFocused,
+  isViewportShrunk,
+  useBottomBarVisibility,
+} from "./bottom-bar/use-bottom-bar-visibility.js";
+export {
+  MarketingFloatingTabBar,
+  type MarketingFloatingTabBarProps,
+  type MarketingFloatingTabItem,
+} from "./marketing-floating-tab-bar.js";
+export {
+  MarketingPhoneMenu,
+  type MarketingPhoneMenuHelpLink,
+  type MarketingPhoneMenuProps,
+} from "./header/marketing-phone-menu.js";
+export {
+  MarketingAccountSheet,
+  type MarketingAccountSheetProps,
+} from "./header/marketing-account-sheet.js";
+export {
+  MarketingTopBarSlots,
+  type MarketingTopBarSlotsProps,
+} from "./header/marketing-top-bar-slots.js";
 export {
   MarketingSideSheet,
   type MarketingSideSheetProps,

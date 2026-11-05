@@ -1250,6 +1250,19 @@ export type {
 } from "./zoho-artwork-sync.js";
 
 export type {
+  IZohoListingLock,
+  IZohoListingRunReader,
+  IZohoListingRunStore,
+  IZohoListingSourceReader,
+  ListingLot,
+  ListingMove,
+  RegisterListingSource,
+  ZohoListingRun,
+  ZohoListingRunFailure,
+  ZohoListingRunMode,
+} from "./zoho-listing.js";
+
+export type {
   BidAlertLotNotice,
   IBidAlertLotNoticeWriter,
 } from "./bid-alert-lot-notice.js";

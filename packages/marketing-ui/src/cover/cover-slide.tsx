@@ -33,6 +33,15 @@ import type { CoverMedia, CoverSide, CoverSlide, CoverTone } from "./cover-types
 const BADGE_BASE =
   "inline-flex h-5 shrink-0 items-center rounded-[4px] px-2 font-body text-xs font-medium leading-4";
 
+/**
+ * The widest the type column may be beside a plate: the near half of the cover less the page
+ * gutter and a gap, so the title wraps instead of running under the picture at any width.
+ */
+export const PLATE_TEXT_CAP = "md:max-w-[min(640px,calc(50%-4.5rem))]";
+
+const PLATE_NARROW_TITLE =
+  "md:max-[1023px]:text-[32px] md:max-[1023px]:leading-[40px] md:max-[1023px]:tracking-[-0.015em]";
+
 /** What the cover is drawn on: a photograph, a plate, or nothing but the page. */
 type Ground =
   | {
@@ -275,6 +284,8 @@ export function CoverSlideView({
         className={cn(
           "relative flex flex-col px-4 pb-8 pt-5",
           "md:absolute md:bottom-14 md:w-[640px] md:max-w-[calc(100%-5rem)] md:p-0",
+          // The plate fills the far half, so the type stays in the near half and never meets it.
+          ground.mode === "plate" && PLATE_TEXT_CAP,
           textLeft ? "md:left-10" : "md:right-10",
         )}
       >
@@ -291,6 +302,9 @@ export function CoverSlideView({
             "font-headline font-medium text-balance text-on-surface",
             onImage && "md:text-[color:var(--cover-title)]",
             coverTitleClass(slide.title),
+            // A plate leaves the type only the near half; below 1024px that is too narrow for
+            // the largest steps, so the title takes the smallest desktop step.
+            ground.mode === "plate" && PLATE_NARROW_TITLE,
           )}
         >
           {slide.title}

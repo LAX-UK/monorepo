@@ -5,6 +5,7 @@ import {
   DrizzleArtworkRegisterQueueReader,
   DrizzleArtworkRegisterRepository,
   DrizzleZohoArtworkSyncStore,
+  DrizzleZohoListingRunStore,
 } from "@auction/persistence/repositories";
 import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
@@ -80,6 +81,7 @@ import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-aler
 import { ShopAlertSubscriberEraser } from "./infrastructure/alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
+import { createDrizzleArtListingLookup } from "./infrastructure/drizzle-art-listing-lookup.js";
 import { createDrizzleArtistCatalogueWriter } from "./infrastructure/drizzle-artist-catalogue.writer.js";
 import { createDrizzleArtistDirectoryRepository } from "./infrastructure/drizzle-artist-directory.repository.js";
 import { createDrizzleArtistSeoWriter } from "./infrastructure/drizzle-artist-seo.repository.js";
@@ -639,6 +641,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           register: artworkRegisterRepository,
           resolver: artworkRegisterRepository,
           runs: new DrizzleZohoArtworkSyncStore(db),
+          listingRuns: new DrizzleZohoListingRunStore(db),
           staffNames: createDrizzleStaffNameReader(db),
           listings: laxArtListings,
           auction: inventoryMoves,
@@ -714,6 +717,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       },
       inventory: {
         reopen: reopenArtListing,
+        lookup: createDrizzleArtListingLookup(db),
         machine: {
           clientId: env.INVENTORY_MACHINE_CLIENT_ID,
           clientSecret: env.INVENTORY_MACHINE_CLIENT_SECRET,

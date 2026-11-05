@@ -22,6 +22,7 @@ function app(
     deps: createMinimalShopApiTestDeps({
       inventory: {
         reopen: { reopen },
+        lookup: { findByZohoProductIds: async () => [] },
         machine: { clientId: credentials.clientId, clientSecret: credentials.clientSecret },
       },
     }),

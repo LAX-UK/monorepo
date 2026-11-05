@@ -7,8 +7,11 @@ import {
   checkFigures,
   checkFootnote,
   conflictDecisionCopy,
+  failedDeliveriesNote,
   hasActiveZohoFilters,
   laxArtOfferAvailability,
+  listingFailureLabel,
+  listingFigures,
   missingSummary,
   pageLinks,
   pageSummary,
@@ -320,6 +323,41 @@ describe("laxArtOfferAvailability", () => {
       kind: "blocked",
       reason: "This artwork is in a LAX Bid sale. Zoho shows this artwork as reserved.",
     });
+  });
+});
+
+describe("the LAX listing check", () => {
+  const listingRun: NonNullable<AdminRegisterLastCheck["listing"]["run"]> = {
+    mode: "dry_run",
+    finishedAt: "2026-11-05T03:00:00.000Z",
+    checked: 668,
+    changed: 12,
+    unchanged: 655,
+    failed: 1,
+    failures: [],
+  };
+
+  it("says would be corrected in a dry run and corrected once live", () => {
+    expect(listingFigures(listingRun).map((f) => [f.label, f.value])).toEqual([
+      ["Artworks checked", "668"],
+      ["Would be corrected", "12"],
+      ["Already right", "655"],
+      ["Not written", "1"],
+    ]);
+    expect(listingFigures({ ...listingRun, mode: "live" })[1]?.label).toBe("Corrected");
+  });
+
+  it("names why a write failed, with a plain fallback", () => {
+    expect(listingFailureLabel("product_not_found")).toBe("No longer in Zoho");
+    expect(listingFailureLabel("SOMETHING_NEW")).toBe("Zoho did not accept it");
+  });
+
+  it("counts the writes that stopped, in the singular and the plural", () => {
+    expect(failedDeliveriesNote(0)).toBeNull();
+    expect(failedDeliveriesNote(1)).toBe(
+      "1 update to Zoho stopped after its retries. It is waiting in Failed jobs in LAX Bid admin.",
+    );
+    expect(failedDeliveriesNote(3)).toContain("3 updates to Zoho stopped after their retries.");
   });
 });
 
