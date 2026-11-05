@@ -24,7 +24,7 @@ export class DrizzlePaymentWebhookLookupReader implements IPaymentWebhookLookupR
         everCaptured: sql<boolean>`exists (
           select 1 from ${domainEvent} e
           where e.aggregate_type = 'payment'
-            and e.aggregate_id = ${payment.id}::text
+            and e.aggregate_id = "payment"."id"::text
             and e.event_type = 'payment.captured'
         )`,
       })
