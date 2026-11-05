@@ -4,17 +4,18 @@ import type { LinkKeyring } from "./codec.js";
 const trim = (url: string) => url.replace(/\/$/, "");
 
 /**
- * A product's links, all on its own web origin: the confirm page, the stop page (which is also
- * the address mail apps POST to for one-click), and the manage page when it has one.
+ * A product's links, all on its own web origin: the confirm page and the stop page (which is also
+ * the address mail apps POST to for one-click). Managing alerts is one page for every product, so
+ * its address is given whole (null when there is none).
  */
-export function webAlertUrls(origin: string, managePath: string | null): AlertUrls {
+export function webAlertUrls(origin: string, manageUrl: string | null): AlertUrls {
   const base = trim(origin);
   const stop = (token: string) => `${base}/alerts/unsubscribe?t=${encodeURIComponent(token)}`;
   return {
     confirm: (token) => `${base}/alerts/confirm?t=${encodeURIComponent(token)}`,
     stop,
     oneClick: stop,
-    manage: () => (managePath ? `${base}${managePath}` : null),
+    manage: () => manageUrl,
     site: (path) => `${base}${path}`,
   };
 }

@@ -87,6 +87,7 @@ import {
   CHANNEL_LABELS,
   SALE_STATE_LABELS,
   VISIBILITY_ACTION_LABELS,
+  isEditionRelease,
   presentArtworkState,
 } from "@/server/domain/artwork-list.vm";
 import {
@@ -483,8 +484,7 @@ export function ArtworkEditor({
 
   const visibility = record ? artworkVisibilityActions(record) : null;
   // Only an edition sold in the Shop is a release; originals and lax.art works are not.
-  const offersReleaseAlert =
-    record !== null && record.salesChannel === "shop" && record.run !== null && permissions.write;
+  const offersReleaseAlert = record !== null && isEditionRelease(record) && permissions.write;
   // The money field resets its text whenever `value` differs from what it last parsed, so it is
   // fed its own reading of the text; the form's stricter rules apply on validation.
   const typedPence = parsePoundsToPence(values.priceText);
@@ -1289,7 +1289,7 @@ export function ArtworkEditor({
                 onCheckedChange={(checked) => setSendReleaseAlert(checked === true)}
               />
             }
-            label="Send release alert"
+            label="Tell subscribers"
             description="Emails everyone who asked to hear about new editions. Each person is emailed once for this edition."
           />
         ) : null}

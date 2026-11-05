@@ -1149,6 +1149,9 @@ importers:
       '@auction/identity-db':
         specifier: workspace:*
         version: link:../../packages/identity-db
+      '@auction/lax-ecosystem':
+        specifier: workspace:*
+        version: link:../../packages/lax-ecosystem
       '@auction/lot-lifecycle-app':
         specifier: workspace:*
         version: link:../../packages/lot-lifecycle-app

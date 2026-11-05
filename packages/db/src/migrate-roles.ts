@@ -129,8 +129,6 @@ export const SHOP_COMMERCE_TABLES = [
   /** Guest checkout: the guest and lead behind guest orders, and their emailed order links. */
   "shop_guest_customer",
   "shop_guest_order_link",
-  /** People who asked to hear about new editions: confirmed by email, stopped with one click. */
-  "shop_release_alert_subscription",
   /** The alert engine for LAX Shop and lax.art: subscribers, topic switches, matches, digests. */
   "shop_alert_subscriber",
   "shop_alert_topic",

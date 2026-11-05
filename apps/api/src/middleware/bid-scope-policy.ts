@@ -12,6 +12,13 @@ export const PORTFOLIO_READ_SCOPE = "lax.portfolio.read";
  */
 export const STAFF_TOOLS_READ_SCOPE = "lax.staff.tools.read";
 
+/**
+ * Scopes LAX Account exchanges for to read and switch the person's own email alerts. They open
+ * the alert routes under /alerts/me and nothing else.
+ */
+export const ALERTS_READ_SCOPE = "lax.alerts.read";
+export const ALERTS_WRITE_SCOPE = "lax.alerts.write";
+
 const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /** Central resource-scope policy; product capability checks run after this gate. */

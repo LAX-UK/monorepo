@@ -10,6 +10,10 @@ import {
 import type { Database } from "@auction/db";
 import { OutboxAlertMailer } from "@auction/email";
 import type { IEmailService } from "@auction/email";
+import {
+  laxAccountPageUrl,
+  resolveLaxAccountOrigin,
+} from "@auction/lax-ecosystem/lax-account-origin";
 import type { IUserRepository } from "@auction/persistence/interfaces";
 import {
   BidAlertSaleReader,
@@ -68,7 +72,13 @@ export function createBidAlertEngine(input: {
     topics,
     mailer: new OutboxAlertMailer({ email }),
     codec,
-    urls: webAlertUrls(env.WEB_ORIGIN, "/settings#alerts"),
+    urls: webAlertUrls(
+      env.WEB_ORIGIN,
+      laxAccountPageUrl(
+        resolveLaxAccountOrigin(env.LAX_ACCOUNT_PUBLIC_ORIGIN, env.NODE_ENV),
+        "alerts",
+      ),
+    ),
     addresses,
     clock,
   });
