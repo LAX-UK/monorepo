@@ -27,6 +27,7 @@ export type PaymentRowLookup = {
   status: string;
   amount: string;
   stripeChargeId?: string | null;
+  stripePaymentIntentId?: string | null;
   everCaptured?: boolean;
 };
 

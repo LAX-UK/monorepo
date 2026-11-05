@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readTrustedClientIp } from "./client-ip-headers.js";
 import { verifyTurnstileResponse } from "./turnstile-siteverify.js";
 
 const FAIL_THRESHOLD = 3;
@@ -37,14 +38,6 @@ function failureKeyForEmail(email: string): string {
   const normalised = email.trim().toLowerCase();
   const h = createHash("sha256").update(normalised, "utf8").digest("hex");
   return `auth:signin-fail:${h}`;
-}
-
-function clientIp(req: Request): string | undefined {
-  const xff = req.headers.get("x-forwarded-for");
-  const first = xff?.split(",")[0]?.trim();
-  if (first) return first;
-  const xr = req.headers.get("x-real-ip")?.trim();
-  return xr || undefined;
 }
 
 function stripTurnstileFromJsonBody(body: string): string {
@@ -125,7 +118,7 @@ export async function runSignInTurnstileGate(opts: {
       const ok = await verifyTurnstileResponse({
         secret,
         token: turnstileToken,
-        remoteip: clientIp(incoming),
+        remoteip: readTrustedClientIp(incoming.headers),
       });
       if (!ok) {
         return jsonResponse(

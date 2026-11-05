@@ -27,6 +27,7 @@ function build(
         buyerLegalEntityId: "le-1",
       }),
       checkoutSessionIds: vi.fn().mockResolvedValue(["cs_1"]),
+      databaseNow: vi.fn().mockResolvedValue(new Date("2026-11-05T11:59:59.000Z")),
       cancelIfUnpaid,
       markAuthorizedIfPending,
     },
@@ -55,7 +56,8 @@ describe("expireStalePayments", () => {
       paymentIntentId: null,
       checkoutSessionIds: ["cs_1"],
     });
-    expect(t.cancelIfUnpaid).toHaveBeenCalledWith("pay-1", NOW);
+    // The check start comes from the database clock, not the app's.
+    expect(t.cancelIfUnpaid).toHaveBeenCalledWith("pay-1", new Date("2026-11-05T11:59:59.000Z"));
     expect(t.publishCancelled).toHaveBeenCalledWith({
       paymentId: "pay-1",
       lotId: "lot-1",

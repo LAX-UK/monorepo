@@ -29,6 +29,8 @@ function reader(existing: string[] = []) {
     listOpen: vi.fn().mockResolvedValue([]),
     findOpen: vi.fn().mockResolvedValue(null),
     isChargeOfPaidInvoice: vi.fn().mockResolvedValue(false),
+    wasEverUnapplied: vi.fn().mockResolvedValue(false),
+    lockKey: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -115,6 +117,53 @@ describe("UnappliedMoneyRecorder", () => {
     );
   });
 
+  it("takes a per-key lock and checks for an earlier report inside the transaction", async () => {
+    const r = reader();
+    await new UnappliedMoneyRecorder(r, mockDomainEventSink()).record(tx, money, null);
+    expect(r.lockKey).toHaveBeenCalledWith(tx, "invoice_already_paid:pi_2");
+    expect(r.exists).toHaveBeenCalledWith("invoice_already_paid:pi_2", tx);
+    expect(r.lockKey.mock.invocationCallOrder[0]).toBeLessThan(
+      r.exists.mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
+  it("a new report of a customer's balance replaces the earlier open ones", async () => {
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const r = reader();
+    const earlier = {
+      ...money,
+      reason: "customer_balance_unapplied" as const,
+      paymentId: null,
+      stripePaymentIntentId: null,
+      stripeChargeId: null,
+      stripeCustomerId: "cus_1",
+      dedupeKey: "customer_balance_unapplied:evt_1:gbp",
+      eventId: 3,
+      receivedAt: new Date(),
+    };
+    r.listOpen.mockResolvedValue([earlier]);
+    await new UnappliedMoneyRecorder(r, mockDomainEventSink(publish)).record(
+      tx,
+      { ...earlier, stripeEventId: "evt_2:gbp", amountCents: 50_000 },
+      null,
+    );
+    expect(r.listOpen).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reasons: ["customer_balance_unapplied"],
+        stripeCustomerId: "cus_1",
+      }),
+    );
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "payment.unapplied_money_resolved",
+        payload: { dedupeKey: "customer_balance_unapplied:evt_1:gbp", via: "superseded" },
+      }),
+    );
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "payment.unapplied_money_received" }),
+    );
+  });
+
   it("an unwired recorder fails loudly, so money is never dropped", async () => {
     await expect(NO_UNAPPLIED_MONEY_RECORDER.record(tx, money, null)).rejects.toThrow(
       "unapplied_money_recorder_not_configured",
@@ -136,6 +185,7 @@ describe("UnappliedMoneyRefundHandler", () => {
       reader: {
         listOpenByChargeId: vi.fn().mockResolvedValue([]),
         isChargeOfPaidInvoice: vi.fn().mockResolvedValue(false),
+        wasEverUnapplied: vi.fn().mockResolvedValue(false),
       },
       recorder: { resolveRefundedCharge: vi.fn() },
     });
@@ -149,6 +199,7 @@ describe("UnappliedMoneyRefundHandler", () => {
       reader: {
         listOpenByChargeId: vi.fn().mockResolvedValue([{ dedupeKey: "k" }]),
         isChargeOfPaidInvoice: vi.fn().mockResolvedValue(false),
+        wasEverUnapplied: vi.fn().mockResolvedValue(true),
       },
       recorder: { resolveRefundedCharge },
     });
@@ -167,11 +218,29 @@ describe("UnappliedMoneyRefundHandler", () => {
       reader: {
         listOpenByChargeId: vi.fn().mockResolvedValue([{ dedupeKey: "k" }]),
         isChargeOfPaidInvoice: vi.fn().mockResolvedValue(true),
+        wasEverUnapplied: vi.fn().mockResolvedValue(true),
       },
       recorder: { resolveRefundedCharge },
     });
     await expect(handler.handle(event, charge(125000))).resolves.toBeNull();
     expect(resolveRefundedCharge).not.toHaveBeenCalled();
+  });
+
+  it("a charge whose task was closed (marked handled) still never takes the invoice path", async () => {
+    const resolveRefundedCharge = vi.fn();
+    const handler = new UnappliedMoneyRefundHandler({
+      transactionRunner: runner,
+      reader: {
+        listOpenByChargeId: vi.fn().mockResolvedValue([]),
+        isChargeOfPaidInvoice: vi.fn().mockResolvedValue(false),
+        wasEverUnapplied: vi.fn().mockResolvedValue(true),
+      },
+      recorder: { resolveRefundedCharge },
+    });
+    await expect(handler.handle(event, charge(125000))).resolves.toMatchObject({
+      processed: true,
+      action: "unapplied_money_refunded",
+    });
   });
 
   it("a part refund keeps the task open and still does not touch the invoice", async () => {
@@ -181,6 +250,7 @@ describe("UnappliedMoneyRefundHandler", () => {
       reader: {
         listOpenByChargeId: vi.fn().mockResolvedValue([{ dedupeKey: "k" }]),
         isChargeOfPaidInvoice: vi.fn().mockResolvedValue(false),
+        wasEverUnapplied: vi.fn().mockResolvedValue(true),
       },
       recorder: { resolveRefundedCharge },
     });

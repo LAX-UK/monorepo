@@ -254,4 +254,31 @@ describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
     expect(result).toMatchObject({ reason: "refund_of_money_not_applied" });
     expect(await refundLines()).toEqual([]);
   });
+
+  it("a duplicate payment on an invoice marked paid by staff, handled then refunded, claws back nobody", async () => {
+    // Staff recorded the invoice as paid (no Stripe charge on it); the buyer also paid by card.
+    await db.update(payment).set({ status: "captured" }).where(eq(payment.id, paymentId));
+    const { pi, ch } = money();
+    const result = await webhooks.handlePaymentIntentSucceeded(
+      eventOf("payment_intent.succeeded", succeeded(pi, ch)),
+      succeeded(pi, ch),
+    );
+    expect(result).toMatchObject({ reason: "invoice_already_paid" });
+    // Finance marks it handled, then later refunds the duplicate in Stripe.
+    const [task] = await reader.listOpen({ chargeId: ch, limit: 5 });
+    await runner.runInTransaction((tx) =>
+      recorder.resolve(tx, task ? [task] : [], {
+        via: "staff",
+        actorUserId: buyerId,
+        note: "Refunding the duplicate from Stripe.",
+      }),
+    );
+    const refund = await webhooks.handleChargeRefunded(
+      eventOf("charge.refunded", refunded(pi, ch)),
+      refunded(pi, ch),
+    );
+    expect(refund).toMatchObject({ processed: true, action: "unapplied_money_refunded" });
+    expect((await payments.findById(paymentId))?.status).toBe("captured");
+    expect(await refundLines()).toEqual([]);
+  });
 });

@@ -21,6 +21,7 @@ export class DrizzlePaymentWebhookLookupReader implements IPaymentWebhookLookupR
         status: payment.status,
         amount: payment.amount,
         stripeChargeId: payment.stripeChargeId,
+        stripePaymentIntentId: payment.stripePaymentIntentId,
         everCaptured: sql<boolean>`exists (
           select 1 from ${domainEvent} e
           where e.aggregate_type = 'payment'
@@ -38,6 +39,7 @@ export class DrizzlePaymentWebhookLookupReader implements IPaymentWebhookLookupR
       status: row.status,
       amount: String(row.amount),
       stripeChargeId: row.stripeChargeId ?? null,
+      stripePaymentIntentId: row.stripePaymentIntentId ?? null,
       everCaptured: Boolean(row.everCaptured),
     };
   }

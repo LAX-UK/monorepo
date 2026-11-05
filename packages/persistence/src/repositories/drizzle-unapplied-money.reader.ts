@@ -27,8 +27,8 @@ const field = (name: string) => sql`${domainEvent.payload}->>${name}`;
 export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
   constructor(private readonly db: Database) {}
 
-  async exists(dedupeKey: string): Promise<boolean> {
-    const [row] = await this.db
+  async exists(dedupeKey: string, tx?: Database): Promise<boolean> {
+    const [row] = await (tx ?? this.db)
       .select({ id: domainEvent.id })
       .from(domainEvent)
       .where(
@@ -48,6 +48,24 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
   async findOpen(dedupeKey: string): Promise<OpenUnappliedMoney | null> {
     const [open] = await this.listOpen({ dedupeKey, limit: 1 });
     return open ?? null;
+  }
+
+  async wasEverUnapplied(chargeId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: domainEvent.id })
+      .from(domainEvent)
+      .where(
+        and(
+          eq(domainEvent.eventType, UNAPPLIED_MONEY_EVENT),
+          sql`${field("stripeChargeId")} = ${chargeId}`,
+        ),
+      )
+      .limit(1);
+    return Boolean(row);
+  }
+
+  async lockKey(tx: Database, dedupeKey: string): Promise<void> {
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`unapplied:${dedupeKey}`}))`);
   }
 
   async isChargeOfPaidInvoice(chargeId: string): Promise<boolean> {
@@ -101,6 +119,9 @@ export class DrizzleUnappliedMoneyReader implements IUnappliedMoneyReader {
               )})`
             : undefined,
           input.dedupeKey ? sql`${field("dedupeKey")} = ${input.dedupeKey}` : undefined,
+          input.stripeCustomerId
+            ? sql`${field("stripeCustomerId")} = ${input.stripeCustomerId}`
+            : undefined,
         ),
       )
       .orderBy(desc(domainEvent.occurredAt))

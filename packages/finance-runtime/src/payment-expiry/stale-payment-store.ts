@@ -46,6 +46,10 @@ export class StalePaymentStore implements IStalePaymentStore {
     return this.sessions.listSessionIds(paymentId);
   }
 
+  databaseNow() {
+    return this.canceller.now();
+  }
+
   cancelIfUnpaid(paymentId: string, checkStartedAt: Date) {
     return this.canceller.cancelIfUntouchedSince(paymentId, checkStartedAt);
   }

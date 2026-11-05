@@ -48,6 +48,8 @@ export const NO_UNAPPLIED_MONEY_RECORDER: IUnappliedMoneyRecorder = {
 export type UnappliedMoneyResolution =
   | { via: "charge_refunded"; chargeId: string }
   | { via: "captured" }
+  /** A newer report of a customer's Stripe balance replaced this one. */
+  | { via: "superseded" }
   | { via: "staff"; actorUserId: string; note: string };
 
 export class UnappliedMoneyRecorder implements IUnappliedMoneyRecorder {
@@ -63,7 +65,18 @@ export class UnappliedMoneyRecorder implements IUnappliedMoneyRecorder {
     actingLegalEntityId: string | null,
   ): Promise<void> {
     const payload = unappliedMoneyPayload(money);
-    if (await this.reader.exists(payload.dedupeKey)) return;
+    await this.reader.lockKey(tx, payload.dedupeKey);
+    if (await this.reader.exists(payload.dedupeKey, tx)) return;
+    // Stripe reports a customer's whole balance each time: the newest report replaces the
+    // earlier open ones, so the same money is never shown twice.
+    if (money.reason === "customer_balance_unapplied" && money.stripeCustomerId) {
+      const earlier = await this.reader.listOpen({
+        reasons: ["customer_balance_unapplied"],
+        stripeCustomerId: money.stripeCustomerId,
+        limit: 50,
+      });
+      await this.resolve(tx, earlier, { via: "superseded" });
+    }
     this.metrics.record(`unapplied_money_${money.reason}`);
     console.error(JSON.stringify({ msg: "unapplied_money_received", ...payload }));
     await this.events.withTx(tx).publish({

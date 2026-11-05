@@ -7,6 +7,7 @@ export type PaymentWebhookRow = {
   amount: string;
   /** The charge recorded as paying this invoice, if any. */
   stripeChargeId?: string | null;
+  stripePaymentIntentId?: string | null;
   /** Whether the invoice was ever captured (paid and recorded), whatever its status now. */
   everCaptured?: boolean;
 };

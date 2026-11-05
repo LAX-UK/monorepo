@@ -260,6 +260,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
@@ -339,6 +340,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
@@ -408,6 +410,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
@@ -497,6 +500,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
@@ -557,6 +561,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {
@@ -1760,6 +1765,7 @@ describe("PaymentService", () => {
       retrievePaymentIntent: vi.fn(),
       retrieveCheckoutSession: vi.fn(),
       findChargeIdForPayment: vi.fn(),
+      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
   }

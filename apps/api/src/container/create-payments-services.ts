@@ -444,6 +444,7 @@ export function createPaymentsServices(
     stalePaymentMaintenance,
     unappliedMoneyHandling: new UnappliedMoneyHandlingService({
       reader: unappliedMoneyReader,
+      payments: paymentRepo,
       recorder: unappliedMoney,
       transactionRunner: platform.transactionRunner,
     }),
