@@ -42,3 +42,6 @@ export function badgeCountText(count: number): string | null {
   if (!Number.isFinite(count) || count <= 0) return null;
   return count > BOTTOM_TAB_COUNT_CAP ? `${BOTTOM_TAB_COUNT_CAP}+` : String(Math.floor(count));
 }
+
+/** The solid red of a count badge, with white text; the same in the header and the tab bar. */
+export const MARKETING_COUNT_BADGE_CLASS = "bg-[#b42318] text-white dark:bg-[#c13a2e]";
