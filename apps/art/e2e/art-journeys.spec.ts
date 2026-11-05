@@ -266,10 +266,13 @@ test.describe("lax.art journeys", () => {
     test.skip(testInfo.project.name !== "chromium-desktop", "mega menus are lg+ only");
     await page.goto("/artworks");
     const header = page.getByTestId("art-header");
-    await expect(header.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+    // Signed out, the single Account control opens a small menu that carries Sign in.
+    await header.getByRole("button", { name: "Account menu" }).click();
+    await expect(page.getByRole("menu").getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
       "/login?returnTo=%2Fartworks",
     );
+    await page.keyboard.press("Escape");
     await expect(header.getByRole("link", { name: "Enquire" })).toHaveAttribute("href", "/contact");
 
     const primary = header.getByRole("navigation", { name: "Primary" });
