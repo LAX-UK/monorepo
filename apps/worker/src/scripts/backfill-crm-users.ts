@@ -31,6 +31,7 @@ function parseArgs(argv: string[]): { dryRun: boolean } {
 
 function mapperContextFromEnv(env: ReturnType<typeof loadWorkerEnv>) {
   return {
+    leadStatusNew: env.ZOHO_CRM_LEAD_STATUS_NEW,
     auctionPipeline: env.ZOHO_CRM_AUCTION_PIPELINE,
     dealStageLotWon: env.ZOHO_CRM_DEAL_STAGE_LOT_WON,
     dealStagePaymentCaptured: env.ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED,

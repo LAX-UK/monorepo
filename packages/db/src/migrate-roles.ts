@@ -129,8 +129,6 @@ export const SHOP_COMMERCE_TABLES = [
   /** Guest checkout: the guest and lead behind guest orders, and their emailed order links. */
   "shop_guest_customer",
   "shop_guest_order_link",
-  /** People who asked to hear about new editions: confirmed by email, stopped with one click. */
-  "shop_release_alert_subscription",
   /** The alert engine for LAX Shop and lax.art: subscribers, topic switches, matches, digests. */
   "shop_alert_subscriber",
   "shop_alert_topic",
@@ -282,6 +280,8 @@ export const WORKER_READ_TABLES = [
   "marketing_enquiry_attachment",
   /** The CRM projector reads an enquiry by id to build its Zoho lead (the event carries no personal data). */
   "marketing_enquiry",
+  /** ... and the artist a private sale enquiry names, for the lead's Interest: Artist. */
+  "private_sale_enquiry_detail",
   /** The follow-up projector reads the confirmed choice it opens work for. */
   "unsold_lot_choice",
   /** The payout statement names the private sale a payout line settles by its PS reference. */
