@@ -217,6 +217,7 @@ export { DrizzleSaleSoftDeleteSideEffects } from "./drizzle-sale-soft-delete.sid
 export { DrizzleLotFulfilmentRepository } from "./drizzle-lot-fulfilment.repository.js";
 export { DrizzleAttentionFeedReader } from "./drizzle-attention-feed.reader.js";
 export { DrizzleAdminWorkItemsReader } from "./drizzle-admin-work-items.reader.js";
+export { DrizzlePaymentCheckoutSessionRepository } from "./drizzle-payment-checkout-session.repository.js";
 export { DrizzleUnappliedMoneyReader } from "./drizzle-unapplied-money.reader.js";
 export { DrizzleAdminSaleReadinessReader } from "./drizzle-admin-sale-readiness.reader.js";
 export { DrizzleSaleAttentionSignalsReader } from "./drizzle-sale-attention-signals.reader.js";

@@ -50,7 +50,6 @@ import {
   type EntityWonLotDTO,
   cancelPendingAsBuyer,
   createPendingForWinner,
-  expireStalePendingPayments,
   getBuyerComplianceGateStatus,
   listEntityPaymentsForBuyerApi,
   listEntityWonLots,
@@ -315,13 +314,6 @@ export class PaymentService
     paymentId: string,
   ): Promise<Result<void, AuthzError | LotError>> {
     return cancelPendingAsBuyer(this.deps, buyerId, paymentId);
-  }
-
-  expireStalePendingPayments(
-    pendingMaxAgeDays: number,
-    authorizedMaxAgeDays?: number,
-  ): Promise<number> {
-    return expireStalePendingPayments(this.deps, pendingMaxAgeDays, authorizedMaxAgeDays);
   }
 
   syncPaymentFromXeroAsAdmin(

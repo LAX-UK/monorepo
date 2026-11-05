@@ -1761,58 +1761,6 @@ describe("PaymentService", () => {
     expect(stripe.revokeOpenCheckoutForPayment).toHaveBeenCalledWith(pendingPay.id, "pi_cancel");
   });
 
-  it("revokes the open Stripe checkout session when a stale payment expires", async () => {
-    const stalePay: PaymentRecord = {
-      ...payment,
-      id: "pay-stale",
-      stripePaymentIntentId: "pi_stale",
-      status: "pending",
-    };
-    const payments = {
-      listStalePendingBefore: vi
-        .fn()
-        .mockResolvedValue([{ id: stalePay.id, lotId: lot.id, buyerId: "buyer-1" }]),
-      listStaleAuthorizedBefore: vi.fn().mockResolvedValue([]),
-      updateStatus: vi.fn().mockResolvedValue(undefined),
-      findById: vi.fn().mockResolvedValue(stalePay),
-    } as unknown as IPaymentWriteRepository;
-    const stripe = mockRevokableStripe();
-    const service = new PaymentService(
-      {} as ILotRepository,
-      payments,
-      null,
-      new NotificationFactory(),
-      {} as IUserRepository,
-      mockAccounting(),
-      defaultTierPolicy,
-      undefined,
-      undefined,
-      undefined,
-      stripe,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      winnerPaysForTests,
-    );
-
-    const expired = await service.expireStalePendingPayments(14, 30);
-
-    expect(expired).toBe(1);
-    expect(payments.updateStatus).toHaveBeenCalledWith(stalePay.id, "cancelled");
-    expect(stripe.revokeOpenCheckoutForPayment).toHaveBeenCalledWith(stalePay.id, "pi_stale");
-  });
-
   it("backfills a missing Xero invoice for a settleable payment", async () => {
     const accounting = mockAccounting({
       isConfigured: vi.fn().mockReturnValue(true),

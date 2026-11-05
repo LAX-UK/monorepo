@@ -701,6 +701,7 @@ export type {
   AdminWorkItemSourceRow,
   IAdminWorkItemsReader,
 } from "./admin-work-items.reader.js";
+export type { IPaymentCheckoutSessionStore } from "./payment-checkout-session.store.js";
 export type { IUnappliedMoneyReader, OpenUnappliedMoney } from "./unapplied-money.reader.js";
 
 export type {

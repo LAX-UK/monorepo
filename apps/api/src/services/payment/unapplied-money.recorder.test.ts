@@ -90,7 +90,9 @@ describe("UnappliedMoneyRecorder", () => {
 });
 
 describe("UnappliedMoneyRefundHandler", () => {
-  const runner = { runInTransaction: async <T>(fn: (t: Database) => Promise<T>) => fn(tx) };
+  const runner = {
+    runInTransaction: async (fn: (t: Database) => Promise<unknown>) => fn(tx),
+  } as never;
   const charge = (refunded: number) =>
     ({ id: "ch_2", amount: 125000, amount_refunded: refunded }) as Stripe.Charge;
   const event = { id: "evt_refund" } as Stripe.Event;

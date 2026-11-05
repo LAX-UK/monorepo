@@ -1,8 +1,4 @@
 import type { IStalePaymentMaintenance } from "@auction/finance-cron-app";
-import {
-  type PaymentMaintenanceCronPorts,
-  expireStalePaymentsWithPorts,
-} from "@auction/finance-cron-app";
 import type { IInvoiceAccountingProvider } from "@auction/finance-runtime";
 import { ensureXeroInvoiceForPayment } from "@auction/finance-runtime";
 import type {
@@ -20,7 +16,8 @@ export class WorkerPaymentMaintenanceAdapter implements IStalePaymentMaintenance
       accounting: IInvoiceAccountingProvider | null;
       lots: ILotRepository;
       users: IUserRepository;
-      publishCancelled?: PaymentMaintenanceCronPorts["publishPaymentCancelled"];
+      /** The shared expiry job (see `createWorkerStalePaymentExpiry`). */
+      expireStale: (pendingMaxAgeDays: number, authorizedMaxAgeDays: number) => Promise<number>;
     },
   ) {
     this.accounting = deps.accounting;
@@ -30,23 +27,8 @@ export class WorkerPaymentMaintenanceAdapter implements IStalePaymentMaintenance
     this.accounting = provider;
   }
 
-  async expireStalePendingPayments(pendingMaxAgeDays: number, authorizedMaxAgeDays: number) {
-    const ports: PaymentMaintenanceCronPorts = {
-      listStalePendingBefore: (cutoff) => this.deps.payments.listStalePendingBefore(cutoff),
-      listStaleAuthorizedBefore: (cutoff) => this.deps.payments.listStaleAuthorizedBefore(cutoff),
-      cancelPayment: (paymentId) => this.deps.payments.updateStatus(paymentId, "cancelled"),
-      publishPaymentCancelled:
-        this.deps.publishCancelled ??
-        (async () => {
-          /* optional domain event */
-        }),
-    };
-    const result = await expireStalePaymentsWithPorts(
-      ports,
-      pendingMaxAgeDays,
-      authorizedMaxAgeDays,
-    );
-    return result.expired;
+  expireStalePendingPayments(pendingMaxAgeDays: number, authorizedMaxAgeDays: number) {
+    return this.deps.expireStale(pendingMaxAgeDays, authorizedMaxAgeDays);
   }
 
   async backfillXeroInvoiceForPayment(paymentId: string): Promise<{ ok: boolean; error?: string }> {

@@ -111,9 +111,4 @@ export interface IPaymentMaintenanceService {
   sumCapturedBetween(start: Date, end: Date): Promise<string>;
 
   backfillXeroInvoiceForPayment(paymentId: string): Promise<{ ok: boolean; error?: string }>;
-
-  expireStalePendingPayments(
-    pendingMaxAgeDays: number,
-    authorizedMaxAgeDays?: number,
-  ): Promise<number>;
 }
