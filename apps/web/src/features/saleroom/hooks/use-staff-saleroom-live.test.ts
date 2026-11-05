@@ -4,6 +4,32 @@ import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const fetchSaleroomStatus = vi.fn();
+const sockets: Array<{
+  connected: boolean;
+  handlers: Map<string, Set<() => void>>;
+}> = [];
+
+// The default adapter wraps the shared browser socket; a fake stands in for it.
+vi.mock("@/lib/socket", () => ({
+  getSocket: () => {
+    // Like the real one, a single socket shared by every caller.
+    if (sockets[0]) return sockets[0];
+    const handlers = new Map<string, Set<() => void>>();
+    const socket = {
+      connected: true,
+      handlers,
+      emit: () => {},
+      on: (event: string, handler: () => void) => {
+        handlers.set(event, (handlers.get(event) ?? new Set()).add(handler));
+      },
+      off: (event: string, handler: () => void) => {
+        handlers.get(event)?.delete(handler);
+      },
+    };
+    sockets.push(socket);
+    return socket;
+  },
+}));
 const mockReportNotice = vi.fn();
 const mockClearNotice = vi.fn();
 
@@ -87,6 +113,37 @@ describe("useStaffSaleroomLive", () => {
     expect(result.current.session.status).toBe("paused");
     expect(result.current.session.currentLotId).toBe("lot-9");
     expect(mockClearNotice).toHaveBeenCalledWith("saleroom-hydrate-failed-sale-1");
+  });
+
+  it("hydrates after a reconnect when it builds its own socket adapter", async () => {
+    sockets.length = 0;
+    fetchSaleroomStatus.mockResolvedValue({ status: "paused", currentLotId: "lot-1" });
+
+    const { result } = renderHook(() =>
+      useStaffSaleroomLive({ saleId: "sale-1", initial: initialSession }),
+    );
+    const fire = (event: string) => {
+      for (const socket of sockets) {
+        for (const handler of socket.handlers.get(event) ?? []) handler();
+      }
+    };
+
+    // The drop re-renders the hook. A fresh adapter each render would re-run the effect with the
+    // socket already down and forget that it had connected.
+    act(() => {
+      for (const socket of sockets) socket.connected = false;
+      fire("disconnect");
+    });
+    expect(result.current.session.connectionStatus).toBe("disconnected");
+
+    await act(async () => {
+      for (const socket of sockets) socket.connected = true;
+      fire("connect");
+    });
+
+    expect(fetchSaleroomStatus).toHaveBeenCalledWith("sale-1");
+    expect(result.current.session.status).toBe("paused");
+    expect(result.current.session.connectionStatus).toBe("connected");
   });
 
   it("sets connectionStatus to disconnected when socket drops", () => {

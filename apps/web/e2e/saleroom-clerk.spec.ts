@@ -1,4 +1,4 @@
-import { type Page, expect, test } from "@playwright/test";
+import { type Page, type WebSocketRoute, expect, test } from "@playwright/test";
 import { e2eEnabled, e2eSkipReason, seededHybridLotId, seededHybridSaleId } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
 
@@ -32,23 +32,18 @@ test.describe("hybrid saleroom clerk @journey", () => {
   test("staff can pause and resume a live session", async ({ page }) => {
     await clerkConsole(page);
     const controls = page.getByRole("region", { name: /session controls/i });
-    await controls.getByRole("button", { name: /^pause$/i }).click();
-    // The console follows the session through the realtime sidecar, which the stabilization stack
-    // does not run, so the saved state is read from a fresh load.
-    await expect(async () => {
-      await clerkConsole(page);
-      await expect(controls.getByRole("button", { name: /^resume$/i })).toBeVisible({
-        timeout: 2_000,
-      });
-    }).toPass({ timeout: 15_000 });
-
-    await controls.getByRole("button", { name: /^resume$/i }).click();
-    await expect(async () => {
-      await clerkConsole(page);
-      await expect(controls.getByRole("button", { name: /^pause$/i })).toBeVisible({
-        timeout: 2_000,
-      });
-    }).toPass({ timeout: 15_000 });
+    // A click before the page has hydrated does nothing, so press again until the state moves.
+    const press = async (from: RegExp, to: RegExp) => {
+      await expect(async () => {
+        if (await controls.getByRole("button", { name: from }).isVisible()) {
+          await controls.getByRole("button", { name: from }).click();
+        }
+        await expect(controls.getByRole("button", { name: to })).toBeVisible({ timeout: 3_000 });
+      }).toPass({ timeout: 20_000 });
+    };
+    // The console follows the session through the realtime sidecar: no reload in between.
+    await press(/^pause$/i, /^resume$/i);
+    await press(/^resume$/i, /^pause$/i);
   });
 
   test("a quick amount fills the paddle bid, and placing it needs a paddle number", async ({
@@ -58,17 +53,33 @@ test.describe("hybrid saleroom clerk @journey", () => {
 
     const paddleAmount = page.locator('input[id^="paddle-bid-amount-"]');
     await expect(paddleAmount).toBeVisible();
-    await page.getByRole("button", { name: /^minimum bid/i }).click();
+    // The telephone form has its own quick amounts; the paddle form comes first.
+    await page
+      .getByRole("button", { name: /^minimum bid/i })
+      .first()
+      .click();
     await expect(paddleAmount).toHaveValue(/^7,?100(\.00)?$/);
 
     const place = page.getByRole("button", { name: /^place paddle bid$/i });
     await expect(place).toBeDisabled();
     await page.getByRole("textbox", { name: "Paddle number" }).fill("142");
     await expect(paddleAmount).toHaveValue(/^7,?100(\.00)?$/);
+  });
 
-    // No telephone line is confirmed for this lot, so there is no telephone amount to fill.
-    await expect(page.getByText(/no confirmed telephone lines for this lot/i)).toBeVisible();
-    await expect(page.locator('input[id^="telephone-bid-amount-"]')).toHaveCount(0);
+  test("paddle and telephone bid amounts are independent", async ({ page }) => {
+    await clerkConsole(page);
+
+    // The seed confirms a telephone line (Room A, lot on the block), so the telephone form shows.
+    const paddleAmount = page.locator('input[id^="paddle-bid-amount-"]');
+    const telephoneAmount = page.locator('input[id^="telephone-bid-amount-"]');
+    await expect(paddleAmount).toBeVisible();
+    await expect(telephoneAmount).toBeVisible();
+    await expect(page.getByText(/no confirmed telephone lines for this lot/i)).toHaveCount(0);
+
+    await paddleAmount.fill("1500");
+    await expect(telephoneAmount).toHaveValue("");
+    await telephoneAmount.fill("2000");
+    await expect(paddleAmount).toHaveValue("1500");
   });
 
   test("clerk console refreshes roster after check-in redirect", async ({ page }) => {
@@ -98,7 +109,87 @@ test.describe("hybrid saleroom clerk @journey", () => {
     ).toBeVisible({ timeout: 15_000 });
   });
 
-  test("operations tab shows the lot the clerk moved to", async ({ browser }) => {
+  test("clerk console hydrates after reconnect", async ({ page, browser }) => {
+    test.setTimeout(90_000);
+    // Chromium keeps an open socket through setOffline, so the sidecar link is cut where the
+    // page opens it: live sockets are closed, and new ones are held unanswered until the test
+    // lets them through.
+    let sidecarReachable = true;
+    const sockets: WebSocketRoute[] = [];
+    const held: WebSocketRoute[] = [];
+    const connect = (socket: WebSocketRoute) => {
+      socket.connectToServer();
+      sockets.push(socket);
+    };
+    await page.routeWebSocket(/:3002\//, (socket) => {
+      if (sidecarReachable) connect(socket);
+      else held.push(socket);
+    });
+
+    await clerkConsole(page);
+    const controls = page.getByRole("region", { name: /session controls/i });
+    const connection = page.getByRole("status").filter({ hasText: /connected|reconnecting|lost/i });
+    await expect(controls.getByRole("button", { name: /^pause$/i })).toBeVisible();
+    await expect.poll(() => sockets.length, { timeout: 15_000 }).toBeGreaterThan(0);
+
+    // A second clerk pauses the session while this console has no connection to hear it.
+    const otherContext = await browser.newContext({ storageState: roleAuthState.staff });
+    const otherPage = await otherContext.newPage();
+    const otherControls = otherPage.getByRole("region", { name: /session controls/i });
+    try {
+      sidecarReachable = false;
+      for (const socket of sockets.splice(0)) await socket.close();
+      await expect(connection).not.toContainText("Connected · Listening");
+      await expect(connection).toContainText(/reconnecting|connection lost/i);
+
+      await clerkConsole(otherPage);
+      // A click before the page has hydrated does nothing: press Pause again until it takes.
+      await expect(async () => {
+        if (await otherControls.getByRole("button", { name: /^pause$/i }).isVisible()) {
+          await otherControls.getByRole("button", { name: /^pause$/i }).click();
+        }
+        await expect(otherControls.getByRole("button", { name: /^resume$/i })).toBeVisible({
+          timeout: 3_000,
+        });
+      }).toPass({ timeout: 20_000 });
+      // Still cut off: this console has not heard about the pause.
+      await expect(controls.getByRole("button", { name: /^pause$/i })).toBeVisible();
+
+      sidecarReachable = true;
+      for (const socket of held.splice(0)) {
+        try {
+          connect(socket);
+        } catch {
+          // The page gave up on this attempt; its next one connects.
+        }
+      }
+      // The console reconnects and re-reads the session: it shows the pause it missed, with no
+      // reload of the page.
+      await expect(controls.getByRole("button", { name: /^resume$/i })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(connection).toContainText("Connected");
+    } finally {
+      sidecarReachable = true;
+      for (const socket of held.splice(0)) {
+        try {
+          connect(socket);
+        } catch {
+          // Already closed by the page.
+        }
+      }
+      // Leave the session running for the tests that follow.
+      if (await otherControls.getByRole("button", { name: /^resume$/i }).isVisible()) {
+        await otherControls.getByRole("button", { name: /^resume$/i }).click();
+        await expect(otherControls.getByRole("button", { name: /^pause$/i })).toBeVisible({
+          timeout: 15_000,
+        });
+      }
+      await otherContext.close();
+    }
+  });
+
+  test("operations tab reflects the clerk's move without a full reload", async ({ browser }) => {
     const context = await browser.newContext({ storageState: roleAuthState.staff });
     const opsPage = await context.newPage();
     const clerkPage = await context.newPage();
@@ -106,15 +197,22 @@ test.describe("hybrid saleroom clerk @journey", () => {
     await opsPage.goto(`/admin/sales/${seededHybridSaleId}/operations`);
     await expect(opsPage.getByRole("heading", { name: /saleroom operations/i })).toBeVisible();
     await expect(opsPage.getByText(/meridian drift/i).first()).toBeVisible();
+    const loadMarker = await opsPage.evaluate(() => {
+      const marker = `ops-${Math.random()}`;
+      (window as unknown as { __opsLoad: string }).__opsLoad = marker;
+      return marker;
+    });
 
     await clerkConsole(clerkPage);
     await clerkPage.getByRole("button", { name: /^advance next/i }).click();
 
-    // Live updates come through the realtime sidecar, which this stack does not run: reload.
-    await expect(async () => {
-      await opsPage.reload();
-      await expect(opsPage.getByText(/glass horizon/i).first()).toBeVisible({ timeout: 2_000 });
-    }).toPass({ timeout: 20_000 });
+    // The sidecar pushes the move to the open operations tab; the page is never reloaded.
+    await expect(opsPage.getByText(/on the block/i).first()).toBeVisible();
+    await expect
+      .poll(() => opsPage.evaluate(() => (window as unknown as { __opsLoad?: string }).__opsLoad), {
+        timeout: 15_000,
+      })
+      .toBe(loadMarker);
 
     await context.close();
   });
