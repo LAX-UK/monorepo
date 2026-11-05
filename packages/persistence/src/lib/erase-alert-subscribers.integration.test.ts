@@ -27,7 +27,7 @@ describe.skipIf(!HAS_DB)("alert subscriber erasure (integration)", () => {
           .returning();
         await tx
           .insert(bidAlertTopic)
-          .values({ subscriberId: mine?.id as string, topic: "followed_artist", emailOn: true });
+          .values({ subscriberId: mine?.id as string, topic: "bid.artists", emailOn: true });
         await tx
           .insert(bidAlertSubscriber)
           .values({ product: "bid", email: other, status: "confirmed", ...consent });
