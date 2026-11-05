@@ -6,7 +6,7 @@ import { createDbFromPool } from "@auction/db";
 import { shopAdminAudit, shopArtist, shopArtwork, shopArtworkImage } from "@auction/db/schema";
 import { DrizzleArtworkRegisterRepository } from "@auction/persistence/repositories";
 import { ShopDomainError } from "@auction/shop-domain";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { OfferOnLaxArtService } from "../application/artwork-register/offer-on-lax-art.service.js";
@@ -367,5 +367,60 @@ describe.skipIf(!hasShopIntegrationDb)("offer on lax.art (Postgres)", () => {
     await sync(NOW);
     const [again] = await db.select().from(shopArtwork).where(eq(shopArtwork.id, artworkId));
     expect(again?.updatedAt.getTime()).toBe(after?.updatedAt.getTime());
+  });
+
+  it("follows Zoho's pictures in order, and keeps the alt text written for a picture it still shows", async () => {
+    const { service, db, register } = setup();
+    const entry = await record();
+    const chosen = await artist("pictures");
+    const source = (id: string) => ({
+      zohoFileId: id,
+      fingerprint: "1:1",
+      sha256: id.repeat(64).slice(0, 64),
+      key: `shop/artwork/zoho-${id}.jpg`,
+    });
+    await register.replaceZohoImages({
+      zohoProductId: entry.zohoProductId,
+      sources: [source("a"), source("b")],
+      now: NOW,
+    });
+    const { artworkId } = await service.offer({
+      registerId: entry.id,
+      body: { artistId: chosen.artistId, saleState: "for_sale", slug: slugFor("pictures") },
+      actorSubjectId: ACTOR,
+      idempotencyKey: key(),
+    });
+    const keys = () =>
+      db
+        .select({ key: shopArtworkImage.mediaKey, alt: shopArtworkImage.alt })
+        .from(shopArtworkImage)
+        .where(eq(shopArtworkImage.artworkId, artworkId))
+        .orderBy(shopArtworkImage.position);
+    expect((await keys()).map((i) => i.key)).toEqual([
+      "shop/artwork/zoho-a.jpg",
+      "shop/artwork/zoho-b.jpg",
+    ]);
+    await db
+      .update(shopArtworkImage)
+      .set({ alt: "Front, signed" })
+      .where(
+        and(
+          eq(shopArtworkImage.artworkId, artworkId),
+          eq(shopArtworkImage.mediaKey, "shop/artwork/zoho-b.jpg"),
+        ),
+      );
+
+    // Zoho puts b first and adds c.
+    await register.replaceZohoImages({
+      zohoProductId: entry.zohoProductId,
+      sources: [source("b"), source("c"), source("a")],
+      now: new Date(NOW.getTime() + 60_000),
+    });
+    await createLinkedListingSyncRunner(db)(NOW);
+    expect(await keys()).toEqual([
+      { key: "shop/artwork/zoho-b.jpg", alt: "Front, signed" },
+      { key: "shop/artwork/zoho-c.jpg", alt: null },
+      { key: "shop/artwork/zoho-a.jpg", alt: null },
+    ]);
   });
 });

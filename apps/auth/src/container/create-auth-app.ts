@@ -1,4 +1,8 @@
-import { type HostedAuthCapabilities, normalizeAuthorizePromptForCreate } from "@auction/auth";
+import {
+  type HostedAuthCapabilities,
+  normalizeAuthorizePromptForCreate,
+  stampTrustedClientIp,
+} from "@auction/auth";
 import { Sentry } from "@auction/observability";
 import { Hono } from "hono";
 import type pino from "pino";
@@ -32,6 +36,15 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
     options.log.error({ ...serializeError(err), path: c.req.path }, "auth_http_error");
     Sentry.captureException(err);
     return c.json({ error: "Internal server error" }, 500);
+  });
+  const clientIp = createClientIpResolver(
+    options.oidc.env.AUTH_TRUSTED_PROXY_CIDRS,
+    options.oidc.env.AUTH_TRUSTED_CLOUDFLARE_PROXY_CIDRS,
+  );
+  // Better Auth hooks only see headers: hand them the peer-checked address, never a client's copy.
+  app.use("*", async (c, next) => {
+    stampTrustedClientIp(c.req.raw.headers, clientIp(c));
+    await next();
   });
   app.use(
     "*",
@@ -77,10 +90,6 @@ export function createAuthApp(options: CreateAuthAppOptions): Hono {
             : "other";
     options.issuerHttpOutcomes.inc({ operation, status: String(c.res.status) });
   });
-  const clientIp = createClientIpResolver(
-    options.oidc.env.AUTH_TRUSTED_PROXY_CIDRS,
-    options.oidc.env.AUTH_TRUSTED_CLOUDFLARE_PROXY_CIDRS,
-  );
   mountHostedAuthAssets(app);
   mountHostedAuthPages(app, {
     ...hostedCapabilities,

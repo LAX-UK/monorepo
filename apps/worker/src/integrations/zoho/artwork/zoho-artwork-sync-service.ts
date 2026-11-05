@@ -1,4 +1,7 @@
-import type { IArtworkRegisterRepository } from "@auction/persistence/interfaces";
+import type {
+  IArtworkImageStore,
+  IArtworkRegisterRepository,
+} from "@auction/persistence/interfaces";
 import type {
   IZohoArtworkSyncReport,
   IZohoArtworkSyncWatermark,
@@ -10,7 +13,13 @@ import type { Logger } from "pino";
 import { type ProductAssessment, assessProduct } from "./assess-product.js";
 import type { CatalogueProduct } from "./catalogue-product.js";
 import { type ArtworkDecision, decideArtworkOutcome } from "./decide-outcome.js";
+import type { ImageSyncReport } from "./images/zoho-image-sync.service.js";
 import type { ZohoCatalogueReader } from "./zoho-catalogue-reader.js";
+
+/** The picture side of the sync: what the service needs, not how pictures are fetched or stored. */
+export interface ZohoProductImages {
+  syncProduct(productId: string, mode: ZohoArtworkSyncMode): Promise<ImageSyncReport>;
+}
 
 /** `off` does nothing; `dry_run` reports what would change; `live` changes the register. */
 export type ZohoArtworkSyncModeSetting = "off" | ZohoArtworkSyncMode;
@@ -18,7 +27,9 @@ export type ZohoArtworkSyncModeSetting = "off" | ZohoArtworkSyncMode;
 export type ZohoArtworkSyncDeps = {
   mode: ZohoArtworkSyncModeSetting;
   reader: ZohoCatalogueReader;
+  images: ZohoProductImages;
   register: IArtworkRegisterRepository;
+  imageCheck: IArtworkImageStore;
   report: IZohoArtworkSyncReport;
   watermark: IZohoArtworkSyncWatermark;
   log: Logger;
@@ -30,6 +41,14 @@ export type ZohoArtworkSyncRunResult =
   | { ran: true; runId: string; summary: ZohoArtworkSyncSummary };
 
 const REGISTER_ACTOR = "zoho";
+
+/**
+ * Zoho does not always move a Product's modified time when a picture is added or replaced, so
+ * pictures are also compared on a schedule of their own: each record at least this often.
+ */
+const IMAGE_RECHECK_AFTER_MS = 20 * 60 * 60 * 1000;
+/** The most records re-checked for pictures in one nightly pass, oldest check first. */
+const IMAGE_RECHECK_LIMIT = 300;
 
 function dayOf(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -108,12 +127,40 @@ export class ZohoArtworkSyncService {
     if (newest && (!since || newest > since)) {
       await watermark.advance(mode, newest, this.now());
     }
+    const images = await this.recheckPictures(mode, startedAt);
     const summary = await report.summarise(runId);
     log.info(
-      { runId, mode, firstPass: since === null, read, summary },
+      { runId, mode, firstPass: since === null, read, summary, images },
       "zoho artwork nightly check finished",
     );
     return { ran: true, runId, summary };
+  }
+
+  /**
+   * Compares the pictures of records not checked recently, which catches pictures changed in Zoho
+   * without the Product's modified time moving, and retries any that could not be fetched before.
+   * A problem with one record never stops the others.
+   */
+  private async recheckPictures(
+    mode: ZohoArtworkSyncMode,
+    startedAt: Date,
+  ): Promise<{ checked: number; changed: number; unavailable: number }> {
+    const { imageCheck, images, log } = this.deps;
+    const before = new Date(startedAt.getTime() - IMAGE_RECHECK_AFTER_MS);
+    const due = await imageCheck.listImageCheckCandidates(before, IMAGE_RECHECK_LIMIT);
+    const totals = { checked: 0, changed: 0, unavailable: 0 };
+    for (const candidate of due) {
+      try {
+        const result = await images.syncProduct(candidate.zohoProductId, mode);
+        totals.checked += 1;
+        if (result.changed) totals.changed += 1;
+        if (result.status === "unavailable" || result.failed > 0) totals.unavailable += 1;
+      } catch (error) {
+        totals.unavailable += 1;
+        log.warn({ err: error, productId: candidate.zohoProductId }, "zoho picture check failed");
+      }
+    }
+    return totals;
   }
 
   private async processProducts(
@@ -141,7 +188,25 @@ export class ZohoArtworkSyncService {
     let decision = decideArtworkOutcome(assessment, { existing, holderOfStockCode });
     if (mode === "live") decision = await this.apply(assessment, decision);
 
-    return toOutcome(assessment, decision);
+    const kind = existing?.kind ?? assessment.newEntry?.kind;
+    const pictures =
+      kind === "original" && decision.outcome !== "skipped"
+        ? await this.checkPictures(mode, assessment.productId)
+        : null;
+    return toOutcome(assessment, decision, pictures);
+  }
+
+  /** Only originals carry pictures to lax.art. A failure here never fails the Product itself. */
+  private async checkPictures(
+    mode: ZohoArtworkSyncMode,
+    productId: string,
+  ): Promise<ImageSyncReport | null> {
+    try {
+      return await this.deps.images.syncProduct(productId, mode);
+    } catch (error) {
+      this.deps.log.warn({ err: error, productId }, "zoho pictures could not be synced");
+      return null;
+    }
   }
 
   /** Carries a decision out on the register. A refusal turns it into a skip, never an error. */
@@ -175,12 +240,14 @@ function skip(reason: string): ArtworkDecision {
 function toOutcome(
   assessment: ProductAssessment,
   decision: ArtworkDecision,
+  pictures: ImageSyncReport | null,
 ): ZohoArtworkSyncOutcomeInput {
   const detail: Record<string, unknown> = {};
   if (assessment.gaps.length > 0) detail.gaps = assessment.gaps;
   if (assessment.blockers.length > 0) detail.blockers = assessment.blockers;
   if (Object.keys(decision.changes).length > 0) detail.changes = decision.changes;
   if (decision.conflicts.length > 0) detail.conflicts = decision.conflicts;
+  if (pictures) detail.images = pictures;
   if (decision.outcome === "create" && assessment.newEntry) {
     const { title, stockCode, kind, artist, medium, dimensions, year, catalogueStatus } =
       assessment.newEntry;

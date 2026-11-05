@@ -2,6 +2,7 @@ import type { BetterAuthOptions } from "better-auth";
 import type { BetterAuthPlugin } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { phoneNumber } from "better-auth/plugins";
+import { readTrustedClientIp } from "./client-ip-headers.js";
 import { maskPhoneE164 } from "./mask-phone-e164.js";
 import {
   InvalidPhoneNumberError,
@@ -10,16 +11,6 @@ import {
 import type { PhoneNumberStore } from "./ports/phone-number-store.js";
 import type { SecurityNoticePublisher } from "./ports/security-notice.js";
 import type { SmsSender } from "./ports/sms-sender.js";
-
-function extractClientIp(headers: Headers | undefined): string | undefined {
-  if (!headers) return undefined;
-  const forwarded = headers.get("x-forwarded-for");
-  if (forwarded) {
-    const first = forwarded.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  return headers.get("x-real-ip")?.trim() ?? undefined;
-}
 
 export function buildPhoneNumberPlugin(options: {
   phoneNumberStore: PhoneNumberStore;
@@ -36,7 +27,7 @@ export function buildPhoneNumberPlugin(options: {
           message: "Phone verification is not configured",
         });
       }
-      const ipAddress = extractClientIp(ctx?.request?.headers);
+      const ipAddress = readTrustedClientIp(ctx?.request?.headers);
       try {
         await phoneVerification.sendOtp(phoneE164, { ipAddress });
         await phoneNumberStore.purgeExpiredVerifications();

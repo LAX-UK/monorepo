@@ -7,12 +7,15 @@ import {
   type StockCodeKind,
   type StockCodeSeries,
   type ZohoChange,
+  type ZohoImageSource,
   assertSeries,
   canAcceptZohoValue,
+  imageKeysOf,
   nextStockCode,
   parseStockCode,
   printCodeForOriginal,
   reconcileZohoChange,
+  sameImageSources,
   transitionOffer,
 } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
@@ -22,14 +25,16 @@ import {
   artworkRegisterEvent as event,
   artworkRegister as register,
 } from "@auction/db/schema";
-import { and, asc, desc, eq, gt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 import type {
   ApplyZohoChangeResult,
   ConflictCursor,
   CreateRegisterEntryResult,
   IArtworkDraftHistory,
+  IArtworkImageStore,
   IArtworkMoveHistory,
   IArtworkRegisterRepository,
+  ImageCheckCandidate,
   IssueRegisterEntry,
   IssueRegisterEntryResult,
   MoveOfferInput,
@@ -42,6 +47,8 @@ import type {
   RegisterConflict,
   RegisterEvent,
   RegisterEventType,
+  ReplaceZohoImagesInput,
+  ReplaceZohoImagesResult,
   ResolveConflictInput,
   ResolveConflictResult,
 } from "../../interfaces/artwork-register.js";
@@ -56,7 +63,11 @@ type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
  * history/event writes are unchanged.
  */
 export class DrizzleArtworkRegisterRepository
-  implements IArtworkRegisterRepository, IArtworkMoveHistory, IArtworkDraftHistory
+  implements
+    IArtworkRegisterRepository,
+    IArtworkMoveHistory,
+    IArtworkDraftHistory,
+    IArtworkImageStore
 {
   constructor(private readonly db: Database) {}
 
@@ -524,6 +535,68 @@ export class DrizzleArtworkRegisterRepository
     });
   }
 
+  async findImageSources(zohoProductId: string): Promise<ZohoImageSource[] | null> {
+    const [row] = await this.db
+      .select({ sources: register.imageSources })
+      .from(register)
+      .where(eq(register.zohoProductId, zohoProductId))
+      .limit(1);
+    return row ? row.sources : null;
+  }
+
+  async replaceZohoImages(input: ReplaceZohoImagesInput): Promise<ReplaceZohoImagesResult> {
+    return this.db.transaction(async (tx) => {
+      const [locked] = await tx
+        .select()
+        .from(register)
+        .where(eq(register.zohoProductId, input.zohoProductId))
+        .for("update");
+      if (!locked) return { status: "not_found" };
+
+      const sources = [...input.sources];
+      const refs = imageKeysOf(sources);
+      if (sameImageSources(locked.imageSources, sources) && sameKeys(locked.imageRefs, refs)) {
+        await tx
+          .update(register)
+          .set({ imagesCheckedAt: input.now })
+          .where(eq(register.id, locked.id));
+        return { status: "unchanged" };
+      }
+
+      const [row] = await tx
+        .update(register)
+        .set({
+          imageSources: sources,
+          imageRefs: refs,
+          imagesCheckedAt: input.now,
+          updatedAt: input.now,
+          version: sql`${register.version} + 1`,
+        })
+        .where(eq(register.id, locked.id))
+        .returning();
+      if (!row) return { status: "not_found" };
+      await this.record(tx, row.id, "zoho_change_applied", "zoho", input.now, {
+        fields: { imageRefs: { from: locked.imageRefs, to: refs } },
+      });
+      return { status: "replaced", entry: toEntry(row) };
+    });
+  }
+
+  async listImageCheckCandidates(before: Date, limit: number): Promise<ImageCheckCandidate[]> {
+    const rows = await this.db
+      .select({ zohoProductId: register.zohoProductId, sources: register.imageSources })
+      .from(register)
+      .where(
+        and(
+          eq(register.kind, "original"),
+          or(isNull(register.imagesCheckedAt), lt(register.imagesCheckedAt, before)),
+        ),
+      )
+      .orderBy(sql`${register.imagesCheckedAt} NULLS FIRST`, asc(register.id))
+      .limit(limit);
+    return rows.map((row) => ({ zohoProductId: row.zohoProductId, sources: row.sources }));
+  }
+
   private async findOne(where: ReturnType<typeof eq>): Promise<ArtworkRegisterEntry | null> {
     const [row] = await this.db.select().from(register).where(where).limit(1);
     return row ? toEntry(row) : null;
@@ -622,4 +695,8 @@ function registrationYear(now: Date): number {
     year: "numeric",
   }).format(now);
   return Number(year) % 100;
+}
+
+function sameKeys(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((key, i) => key === b[i]);
 }

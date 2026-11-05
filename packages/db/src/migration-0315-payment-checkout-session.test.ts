@@ -8,18 +8,19 @@ import { paymentCheckoutSession } from "./schema/payment-checkout-session.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0314_payment_checkout_session.sql");
-const rollback = read("0314_rollback.sql");
+const migration = read("0315_payment_checkout_session.sql");
+const rollback = read("0315_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0314 payment checkout session", () => {
-  it("is journalled as entry 309, after 0313", () => {
-    const entry = journal.entries.find((e) => e.tag === "0314_payment_checkout_session");
-    expect(entry?.idx).toBe(309);
-    expect(entry?.when).toBe(1802246400000);
-    expect(journal.entries.at(-1)?.tag).toBe("0314_payment_checkout_session");
+describe("migration 0315 payment checkout session", () => {
+  it("is journalled as entry 310, after 0314", () => {
+    const entry = journal.entries.find((e) => e.tag === "0315_payment_checkout_session");
+    expect(entry?.idx).toBe(310);
+    expect(entry?.when).toBe(1802332800000);
+    const index = journal.entries.findIndex((e) => e.tag === "0315_payment_checkout_session");
+    expect(journal.entries[index - 1]?.tag).toBe("0314_artwork_register_zoho_images");
   });
 
   it("only adds one table and its index, idempotently", () => {

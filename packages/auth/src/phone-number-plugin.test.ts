@@ -1,5 +1,6 @@
 import { APIError } from "better-auth/api";
 import { describe, expect, it, vi } from "vitest";
+import { TRUSTED_CLIENT_IP_HEADER } from "./client-ip-headers.js";
 import {
   InvalidPhoneNumberError,
   PhoneVerificationRateLimitedError,
@@ -40,13 +41,37 @@ describe("buildPhoneNumberPlugin", () => {
     if (!sendOTP) throw new Error("sendOTP not defined");
 
     await sendOTP({ phoneNumber: "+14155550100", code: "000000" }, {
-      request: { headers: new Headers({ "x-forwarded-for": "203.0.113.1" }) },
+      request: { headers: new Headers({ [TRUSTED_CLIENT_IP_HEADER]: "203.0.113.1" }) },
     } as never);
 
     expect(phoneVerification.sendOtp).toHaveBeenCalledWith("+14155550100", {
       ipAddress: "203.0.113.1",
     });
     expect(phoneNumberStore.purgeExpiredVerifications).toHaveBeenCalled();
+  });
+
+  it("ignores client-controlled forwarding headers when no trusted address is present", async () => {
+    const phoneVerification = fakePhoneService();
+    const plugin = buildPhoneNumberPlugin({
+      phoneNumberStore: fakePhoneNumberStore(),
+      phoneVerification,
+    });
+    const sendOTP = plugin.options?.sendOTP;
+    if (!sendOTP) throw new Error("sendOTP not defined");
+
+    await sendOTP({ phoneNumber: "+14155550100", code: "000000" }, {
+      request: {
+        headers: new Headers({
+          "x-forwarded-for": "198.51.100.9",
+          "x-real-ip": "198.51.100.10",
+          "cf-connecting-ip": "198.51.100.11",
+        }),
+      },
+    } as never);
+
+    expect(phoneVerification.sendOtp).toHaveBeenCalledWith("+14155550100", {
+      ipAddress: undefined,
+    });
   });
 
   it("maps InvalidPhoneNumberError to BAD_REQUEST on send", async () => {
