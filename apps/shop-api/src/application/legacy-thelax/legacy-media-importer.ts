@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { ImageFormat, ImageNormalizerPort, NormalizedImage } from "@auction/image-processing";
 import type { ObjectStoragePort } from "@auction/object-storage";
 import {
   type ShopMediaKind,
@@ -6,11 +7,6 @@ import {
   matchesDeclaredImageType,
   shopMediaPolicy,
 } from "../../domain/shop-media-upload-policy.js";
-import type {
-  ImageFormat,
-  ImageNormalizerPort,
-  NormalizedImage,
-} from "../ports/image-normalizer.port.js";
 import type { ImageProbePort } from "../ports/image-probe.port.js";
 import type { LegacyMediaFetcher } from "../ports/legacy-thelax-import.ports.js";
 import type { ShopMediaAssetRepository } from "../ports/shop-media-asset.repository.js";

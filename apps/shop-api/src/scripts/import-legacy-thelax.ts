@@ -9,6 +9,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
+import { createSharpImageNormalizer } from "@auction/image-processing";
 import {
   LEGACY_THELAX_IMPORT_ACTOR,
   importLegacyThelax,
@@ -26,7 +27,6 @@ import { createDrizzleShopMediaAssetRepository } from "../infrastructure/drizzle
 import { createDrizzleLegacyThelaxContentStore } from "../infrastructure/legacy-thelax/drizzle-legacy-thelax-content.store.js";
 import { createHttpLegacyMediaFetcher } from "../infrastructure/legacy-thelax/http-legacy-media.fetcher.js";
 import { createJsonFileLegacyExportSource } from "../infrastructure/legacy-thelax/json-file-legacy-export.source.js";
-import { createSharpImageNormalizer } from "../infrastructure/sharp-image-normalizer.js";
 import { createSharpImageProbe } from "../infrastructure/sharp-image-probe.js";
 import { resolveShopMediaStorage } from "../infrastructure/shop-media-storage.js";
 

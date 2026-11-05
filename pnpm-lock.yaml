@@ -716,6 +716,9 @@ importers:
       '@auction/lax-ecosystem':
         specifier: workspace:*
         version: link:../../packages/lax-ecosystem
+      '@auction/image-processing':
+        specifier: workspace:*
+        version: link:../../packages/image-processing
       '@auction/object-storage':
         specifier: workspace:*
         version: link:../../packages/object-storage
@@ -1152,6 +1155,9 @@ importers:
       '@auction/observability':
         specifier: workspace:*
         version: link:../../packages/observability
+      '@auction/image-processing':
+        specifier: workspace:*
+        version: link:../../packages/image-processing
       '@auction/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
@@ -1737,6 +1743,25 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.2.6
+        version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
+
+  packages/image-processing:
+    dependencies:
+      sharp:
+        specifier: 0.35.0
+        version: 0.35.0
+    devDependencies:
+      '@auction/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      '@types/node':
+        specifier: ^22.10.5
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.5
         version: 3.2.6(@types/node@22.20.1)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.9.1)
 
   packages/lax-ecosystem:

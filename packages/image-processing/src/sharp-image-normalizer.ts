@@ -1,9 +1,5 @@
 import sharp from "sharp";
-import type {
-  ImageFormat,
-  ImageNormalizerPort,
-  NormalizedImage,
-} from "../application/ports/image-normalizer.port.js";
+import type { ImageFormat, ImageNormalizerPort, NormalizedImage } from "./image-normalizer.port.js";
 
 /** Longest side kept when an image is scaled down. */
 export const NORMALIZED_MAX_EDGE_PX = 4000;

@@ -1,4 +1,5 @@
 import type { createDb } from "@auction/db";
+import { createSharpImageNormalizer } from "@auction/image-processing";
 import {
   DrizzleArtworkRegisterRepository,
   DrizzleZohoArtworkSyncStore,
@@ -6,7 +7,6 @@ import {
 import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
 import { CrmProductImageGateway } from "../integrations/zoho/artwork/images/crm-product-image-gateway.js";
-import { createSharpImageNormalizer } from "../integrations/zoho/artwork/images/image-normalizer.js";
 import { createUploadStorageImageStore } from "../integrations/zoho/artwork/images/upload-storage-image-store.js";
 import { ZohoImageSyncService } from "../integrations/zoho/artwork/images/zoho-image-sync.service.js";
 import {

@@ -34,6 +34,7 @@
     "@auction/lot-lifecycle-app": "workspace:*",
     "@auction/marketing-events": "workspace:*",
     "@auction/observability": "workspace:*",
+    "@auction/image-processing": "workspace:*",
     "@auction/persistence": "workspace:*",
     "@auction/queues": "workspace:*",
     "@auction/types": "workspace:*",

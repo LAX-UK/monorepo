@@ -1,9 +1,15 @@
 import type { ZohoImageSource } from "@auction/artwork-register-contracts";
+import type { ImageNormalizerPort } from "@auction/image-processing";
 import type { IArtworkImageStore, ZohoArtworkSyncMode } from "@auction/persistence/interfaces";
 import type { Logger } from "pino";
-import { type ImageNormalizer, ImageUndecodableError } from "./image-normalizer.js";
 import { planImageSync } from "./plan-image-sync.js";
-import { MAX_IMAGE_BYTES, sha256Hex, sniffImageType, storedImageKey } from "./validate-image.js";
+import {
+  MAX_IMAGE_BYTES,
+  type StoredImageType,
+  sha256Hex,
+  sniffImageType,
+  storedImageKey,
+} from "./validate-image.js";
 import {
   type RemoteProductImage,
   ZohoImageFetchError,
@@ -52,7 +58,7 @@ export type ZohoImageSyncDeps = {
   gateway: ZohoProductImageGateway;
   store: IArtworkImageStore;
   objects: ImageObjectStore;
-  normalizer: ImageNormalizer;
+  normalizer: ImageNormalizerPort;
   log: Logger;
   now?: () => Date;
 };
@@ -142,7 +148,7 @@ export class ZohoImageSyncService {
   }
 
   private async ingest(productId: string, image: RemoteProductImage): Promise<Ingested> {
-    const { gateway, objects, normalizer, log } = this.deps;
+    const { gateway, objects, log } = this.deps;
     let bytes: Buffer;
     try {
       bytes = await gateway.downloadImage(productId, image, MAX_IMAGE_BYTES * 2);
@@ -164,18 +170,14 @@ export class ZohoImageSyncService {
     const key = storedImageKey(sha256, type);
     try {
       if (!(await objects.exists(key))) {
-        const clean = await normalizer.normalize(bytes, type, MAX_IMAGE_BYTES);
-        if (clean.bytes.byteLength > MAX_IMAGE_BYTES) {
-          log.warn({ productId, fileId: image.fileId }, "zoho picture is too large to store");
+        const clean = await this.clean(bytes, type);
+        if (!clean) {
+          log.warn({ productId, fileId: image.fileId }, "zoho picture is unusable");
           return { ok: false, kind: "rejected" };
         }
-        await objects.put(key, clean.bytes, type);
+        await objects.put(key, clean, type);
       }
     } catch (error) {
-      if (error instanceof ImageUndecodableError) {
-        log.warn({ productId, fileId: image.fileId }, "zoho picture could not be decoded");
-        return { ok: false, kind: "rejected" };
-      }
       log.warn({ err: error, productId, fileId: image.fileId }, "zoho picture not stored");
       return { ok: false, kind: "failed" };
     }
@@ -183,5 +185,15 @@ export class ZohoImageSyncService {
       ok: true,
       source: { zohoFileId: image.fileId, fingerprint: image.fingerprint, sha256, key },
     };
+  }
+
+  /** The cleaned bytes, or null when the file cannot be decoded or stays over the size limit. */
+  private async clean(bytes: Buffer, type: StoredImageType): Promise<Buffer | null> {
+    try {
+      const { bytes: out } = await this.deps.normalizer.normalize(bytes, type);
+      return out.byteLength > MAX_IMAGE_BYTES ? null : out;
+    } catch {
+      return null;
+    }
   }
 }

@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
+import { NORMALIZED_MAX_BYTES } from "@auction/image-processing";
 
 export type StoredImageType = "image/jpeg" | "image/png" | "image/webp";
 
 /** The most a stored picture may weigh; the same limit Shop applies to artwork images. */
-export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+export const MAX_IMAGE_BYTES = NORMALIZED_MAX_BYTES;
 
 const EXTENSIONS: Record<StoredImageType, string> = {
   "image/jpeg": "jpg",

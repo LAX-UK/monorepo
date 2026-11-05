@@ -1,6 +1,5 @@
 import type { ZohoImageSource } from "@auction/artwork-register-contracts";
 import { describe, expect, it, vi } from "vitest";
-import { ImageUndecodableError } from "./image-normalizer.js";
 import { sha256Hex, storedImageKey } from "./validate-image.js";
 import { ZohoImageSyncService } from "./zoho-image-sync.service.js";
 import {
@@ -56,7 +55,12 @@ function setup(options: {
     }),
   };
   const normalizer = {
-    normalize: vi.fn(async (bytes: Buffer) => ({ bytes, width: 10, height: 10 })),
+    normalize: vi.fn(async (bytes: Buffer) => ({
+      bytes,
+      contentType: "image/jpeg" as const,
+      original: { width: 10, height: 10, bytes: bytes.byteLength },
+      stored: { width: 10, height: 10, bytes: bytes.byteLength },
+    })),
   };
   const log = { warn: vi.fn(), info: vi.fn(), debug: vi.fn() };
   const service = new ZohoImageSyncService({
@@ -161,7 +165,7 @@ describe("ZohoImageSyncService live", () => {
       listed: [remote("att1"), remote("att2")],
       files: { att1: JPEG_A, att2: new ZohoImageFetchError("too_large", false) },
     });
-    t.normalizer.normalize.mockRejectedValueOnce(new ImageUndecodableError());
+    t.normalizer.normalize.mockRejectedValueOnce(new Error("image_missing_dimensions"));
     const report = await t.service.syncProduct("p1", "live");
     expect(report).toMatchObject({ rejected: 2, downloaded: 0, changed: true });
     expect(t.objectStore.put).not.toHaveBeenCalled();
