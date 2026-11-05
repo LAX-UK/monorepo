@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopEditorialExhibition, shopEditorialStory } from "@auction/db/schema";
+import { containsPattern as sharedContainsPattern } from "@auction/persistence/lib";
 import { and, desc, eq, ilike, or } from "drizzle-orm";
 import type { EditorialSearchReader } from "../application/ports/editorial-search.reader.js";
 import {
@@ -14,7 +15,7 @@ export const EDITORIAL_SEARCH_LIMIT = 50;
 
 /** `%term%` with LIKE wildcards in the term escaped, so "50%" matches literally. */
 export function containsPattern(query: string): string {
-  return `%${query.trim().replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+  return sharedContainsPattern(query.trim());
 }
 
 /** Reuses the editorial summary selects so search results carry the same fields as the lists. */

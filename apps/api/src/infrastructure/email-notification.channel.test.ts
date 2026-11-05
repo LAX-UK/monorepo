@@ -230,6 +230,34 @@ describe("EmailNotificationChannel invoices to the billing email", () => {
   });
 });
 
+describe("EmailNotificationChannel payment reminders to the billing email", () => {
+  it("copies each reminder step to the billing email once, as the invoice is", async () => {
+    const { channel, enqueued } = setup("accounts@northbank.example");
+    const reminder: NotificationPayload = {
+      type: "payment_reminder",
+      legalEntityId: ORG_ID,
+      title: "Payment due today",
+      message: "Payment due today",
+      lotId: LOT_ID,
+      meta: {
+        paymentId: "pay-1",
+        amount: "1250.00",
+        dueDate: "8 November 2026",
+        reminderStep: "due_day",
+      },
+    };
+    await channel.send(USER_ID, reminder);
+    expect(enqueued.map((e) => [e.template, e.to])).toEqual([
+      ["payment-reminder", "ada@example.com"],
+      ["payment-reminder", "accounts@northbank.example"],
+    ]);
+    expect(enqueued[1]).toMatchObject({
+      recipientResolution: "snapshot",
+      idempotencyKey: `payment-reminder-billing:${ORG_ID}:pay-1:due_day`,
+    });
+  });
+});
+
 describe("EmailNotificationChannel watched-lot reminder", () => {
   it("prints the person's note and the close, with an unsubscribe for this switch only", async () => {
     const { channel, enqueued } = setup();

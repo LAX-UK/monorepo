@@ -51,6 +51,7 @@ export function createMinimalShopApiTestDeps(
       SHOP_THIRD_PARTY_ENABLED: false,
       SHOP_ORIGINALS_ENABLED: false,
       SHOP_MERCHANDISE_ENABLED: false,
+      SHOP_LAX_CERTIFICATES_ENABLED: false,
       SHOP_EDITORIAL_ENABLED: false,
       SHOP_PERSONALISED_GOODS_CANCELLATION_EXEMPT: false,
       SHOP_ADMIN_FINANCE_MAX_AUTH_AGE_SECONDS: 900,
@@ -180,6 +181,10 @@ export function createMinimalShopApiTestDeps(
         unsubscribe: async () => false,
       },
       releaseAlertRateLimiter: createReleaseAlertRateLimiter(createInMemoryFixedWindowCounter()),
+      accountEmailAlerts: {
+        view: async () => ({ topics: [], waitingEditions: 0 }),
+        setTopic: async () => null,
+      },
     },
     staffReader: {
       findActiveByIdentitySubject: async () => null,
@@ -268,6 +273,11 @@ export function createMinimalShopApiTestDeps(
         listingRuns: { latestRun: async () => null, countFailedDeliveries: async () => 0 },
         staffNames: { namesFor: async () => new Map() },
         listings: { findByZohoProductId: async () => null, findZohoProductId: async () => null },
+        auction: {
+          assessRegister: async () => {
+            throw new Error("assessRegister is not stubbed");
+          },
+        },
       }),
       offerOnLaxArt: {
         assess: async () => {
@@ -399,17 +409,18 @@ export function createMinimalShopApiTestDeps(
         slug: "test-product",
       }),
       inventoryMoves: {
-        assess: async (artworkId: string) => ({
-          artworkId,
-          title: "Test artwork",
-          stockCode: null,
-          onLaxArt: false,
-          eligible: false,
-          reasons: ["Not set up in tests."],
-        }),
-        listSales: async () => [],
+        assess: async () => {
+          throw new Error("inventoryMoves.assess is not stubbed");
+        },
+        assessRegister: async () => {
+          throw new Error("inventoryMoves.assessRegister is not stubbed");
+        },
+        listSales: async () => ({ connected: true, sales: [] }),
         offerAtAuction: async () => {
-          throw new Error("not implemented");
+          throw new Error("inventoryMoves.offerAtAuction is not stubbed");
+        },
+        offerRegisterAtAuction: async () => {
+          throw new Error("inventoryMoves.offerRegisterAtAuction is not stubbed");
         },
       },
       merchandiseCatalogue: {
@@ -497,6 +508,40 @@ export function createMinimalShopApiTestDeps(
             artworkId: "00000000-0000-4000-8000-000000000032",
             slug: input.slug,
             version: "2026-01-01T00:00:00.000Z",
+          }),
+        },
+      },
+      printFulfilment: {
+        pickAndPack: {
+          forOrder: async (orderId) => ({ orderId, lines: [] }),
+        },
+        confirm: {
+          confirm: async () => ({
+            outcome: "confirmed" as const,
+            label: "7/24",
+            certificate: {
+              status: "none" as const,
+              certificateId: null,
+              note: null,
+              issuedAt: null,
+            },
+          }),
+        },
+        swap: {
+          swap: async () => ({
+            label: "9/24",
+            previousLabel: "7/24",
+            payoutMoved: false,
+            buyerNotified: false,
+          }),
+        },
+        certificates: {
+          listToSend: async () => ({ items: [] }),
+          markSent: async () => ({ issuedAt: "2026-01-01T00:00:00.000Z" }),
+          recordAuthority: async () => ({ recordedAt: "2026-01-01T00:00:00.000Z" }),
+          approveHorsCommerce: async () => ({
+            approvedAt: "2026-01-01T00:00:00.000Z",
+            approvedBy: "staff-1",
           }),
         },
       },

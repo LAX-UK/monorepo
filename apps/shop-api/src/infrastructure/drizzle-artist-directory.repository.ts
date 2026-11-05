@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopArtist, shopArtwork, shopHomePlacement, shopParty } from "@auction/db/schema";
+import { containsPattern } from "@auction/persistence/lib";
 import { maxItemsForPlacement } from "@auction/shop-domain";
 import { type SQL, and, asc, desc, eq, exists, gt, ilike, lt, or, sql } from "drizzle-orm";
 import type {
@@ -136,7 +137,10 @@ export function createDrizzleArtistDirectoryRepository(
 
       const listFilters = [
         input.q
-          ? or(ilike(shopParty.displayName, `%${input.q}%`), ilike(shopArtist.slug, `%${input.q}%`))
+          ? or(
+              ilike(shopParty.displayName, containsPattern(input.q)),
+              ilike(shopArtist.slug, containsPattern(input.q)),
+            )
           : undefined,
         letter && /^[A-Z]$/.test(letter)
           ? sql`upper(substr(${shopParty.displayName}, 1, 1)) = ${letter}`

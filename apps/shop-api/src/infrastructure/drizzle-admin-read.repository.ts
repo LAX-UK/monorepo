@@ -44,10 +44,11 @@ import type { AdminOrderListFilters, AdminReadPorts } from "../application/ports
 import type { ShopApiEnv } from "../env.js";
 import { notFound } from "../errors/shop-api-error.js";
 import {
-  keysetAfter,
+  createdAtMicros,
+  keysetAfterRaw,
   keysetBeforeCreatedAtId,
-  orderByMsTimestampId,
   orderByMsTimestampIdDesc,
+  orderByRawTimestampId,
 } from "./admin-created-at-keyset.js";
 import { orderBuyer } from "./admin-order-buyer.js";
 import { createDrizzleAdminArtworkReader } from "./drizzle-admin-artwork.reader.js";
@@ -56,7 +57,6 @@ import { createDrizzleAdminLookupReader } from "./drizzle-admin-lookup.reader.js
 import { createDrizzleAdminPeopleListsReader } from "./drizzle-admin-people-lists.reader.js";
 import { createDrizzleAdminWorkListsReader } from "./drizzle-admin-work-lists.reader.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
-import { escapeLikePattern } from "./escape-like-pattern.js";
 import { loadShopCancellationPolicy } from "./shop-cancellation-policy.js";
 import { loadShopVatPolicy } from "./shop-vat-policy.js";
 
@@ -111,11 +111,10 @@ function resolveLimit(limit: number | undefined): number {
   return Math.min(Math.max(limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT);
 }
 
-function paginateByCreatedAtId<T extends { createdAt: Date; id: string }, R>(
-  rows: T[],
-  limit: number,
-  mapRow: (row: T) => R,
-): { items: R[]; nextCursor: string | null } {
+function paginateByCreatedAtId<
+  T extends { createdAt: Date; id: string; createdAtMicros?: string },
+  R,
+>(rows: T[], limit: number, mapRow: (row: T) => R): { items: R[]; nextCursor: string | null } {
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
   const last = page.at(-1);
@@ -126,6 +125,7 @@ function paginateByCreatedAtId<T extends { createdAt: Date; id: string }, R>(
         ? encodeCatalogueCursor({
             createdAt: truncateCatalogueCursorDate(last.createdAt),
             id: last.id,
+            createdAtMicros: last.createdAtMicros,
           })
         : null,
   };
@@ -164,6 +164,7 @@ export function createDrizzleAdminReadRepository(
             buyerEmail: shopUserProfile.email,
             guestName: shopGuestCustomer.name,
             guestEmail: shopGuestCustomer.email,
+            createdAtMicros: createdAtMicros(shopOrder.createdAt),
           })
           .from(shopOrder)
           .leftJoin(
@@ -178,11 +179,11 @@ export function createDrizzleAdminReadRepository(
                 ...filters,
                 input.status ? eq(shopOrder.status, input.status as OrderStatus) : undefined,
                 cursor
-                  ? keysetBeforeCreatedAtId(shopOrder.createdAt, shopOrder.id, cursor)
+                  ? keysetAfterRaw(shopOrder.createdAt, shopOrder.id, cursor, "desc")
                   : undefined,
               ),
             )
-            .orderBy(...orderByMsTimestampIdDesc(shopOrder.createdAt, shopOrder.id))
+            .orderBy(...orderByRawTimestampId(shopOrder.createdAt, shopOrder.id, "desc"))
             .limit(limit + 1),
           db
             .select({ status: shopOrder.status, total: count() })
@@ -196,7 +197,11 @@ export function createDrizzleAdminReadRepository(
             .groupBy(shopOrder.status),
         ]);
         const page = paginateByCreatedAtId(
-          rows.map((row) => ({ ...row, id: row.order.id, createdAt: row.order.createdAt })),
+          rows.map((row) => ({
+            ...row,
+            id: row.order.id,
+            createdAt: row.order.createdAt,
+          })),
           limit,
           ({ order, buyerName, buyerEmail, guestName, guestEmail }) => ({
             orderId: order.id,
@@ -288,12 +293,13 @@ export function createDrizzleAdminReadRepository(
           ? direction === "asc"
             ? [asc(shopParty.displayName), asc(shopArtist.id)]
             : [desc(shopParty.displayName), desc(shopArtist.id)]
-          : [...orderByMsTimestampId(shopArtist.createdAt, shopArtist.id, direction)];
+          : [...orderByRawTimestampId(shopArtist.createdAt, shopArtist.id, direction)];
         const [rows, countRows] = await Promise.all([
           db
             .select({
               artist: shopArtist,
               displayName: shopParty.displayName,
+              createdAtMicros: createdAtMicros(shopArtist.createdAt),
               artworkCount: sql<number>`(
                 select count(*)::int from ${shopArtwork} where ${shopArtwork.artistId} = ${shopArtist.id}
               )`,
@@ -310,7 +316,7 @@ export function createDrizzleAdminReadRepository(
                     : undefined,
                 nameAfter,
                 cursor
-                  ? keysetAfter(shopArtist.createdAt, shopArtist.id, cursor, direction)
+                  ? keysetAfterRaw(shopArtist.createdAt, shopArtist.id, cursor, direction)
                   : undefined,
               ),
             )
@@ -345,6 +351,7 @@ export function createDrizzleAdminReadRepository(
                 : encodeCatalogueCursor({
                     createdAt: truncateCatalogueCursorDate(last.artist.createdAt),
                     id: last.artist.id,
+                    createdAtMicros: last.createdAtMicros,
                   })
               : null,
           counts: {
@@ -382,7 +389,7 @@ export function createDrizzleAdminReadRepository(
         const limit = resolveLimit(input.limit);
         const cursor = decodeCatalogueCursor(input.cursor);
         const search = input.q?.trim();
-        const pattern = search ? `%${escapeLikePattern(search)}%` : null;
+        const pattern = search ? containsPattern(search) : null;
         // The search applies to the page and to the view counts alike; the status only to the page.
         const matchesSearch = pattern
           ? or(

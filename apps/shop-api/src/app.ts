@@ -36,6 +36,7 @@ import { registerAdminHomeFeatureRoutes } from "./routes/admin/v1/home-features.
 import { registerAdminInventoryMoveRoutes } from "./routes/admin/v1/inventory-moves.routes.js";
 import { registerAdminOperationsRoutes } from "./routes/admin/v1/operations.routes.js";
 import { registerAdminOriginalSaleRoutes } from "./routes/admin/v1/original-sales.routes.js";
+import { registerAdminPrintFulfilmentRoutes } from "./routes/admin/v1/print-fulfilment.routes.js";
 import { registerAdminSessionRoutes } from "./routes/admin/v1/session.routes.js";
 import { registerAdminThirdPartyRoutes } from "./routes/admin/v1/third-party.routes.js";
 import { registerHealthRoutes } from "./routes/health.routes.js";
@@ -43,6 +44,7 @@ import { registerIdentityDeletionEligibilityRoutes } from "./routes/internal/ide
 import { registerIdentitySubjectExportRoutes } from "./routes/internal/identity-subject-export.routes.js";
 import { registerInventoryArtListingLookupRoutes } from "./routes/internal/inventory-art-listing-lookup.routes.js";
 import { registerInventoryArtListingRoutes } from "./routes/internal/inventory-art-listing.routes.js";
+import { registerAccountEmailAlertRoutes } from "./routes/v1/account-email-alerts.routes.js";
 import { registerArtistApplicationRoutes } from "./routes/v1/artist-application.routes.js";
 import { registerArtistRoutes } from "./routes/v1/artists.routes.js";
 import { registerArtworkInterestRoutes } from "./routes/v1/artwork-interest.routes.js";
@@ -153,6 +155,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerArtworkInterestRoutes(app, options.deps.interest);
   void registerEditionAlertRoutes(app, options.deps.interest);
   void registerReleaseAlertRoutes(app, options.deps.interest);
+  void registerAccountEmailAlertRoutes(app, options.deps.interest);
   void registerBasketRoutes(app, options.deps.commerce);
   void registerOrderRoutes(app, options.deps.commerce);
   void registerGuestCheckoutRoutes(app, options.deps.commerce.guestCheckout);
@@ -206,6 +209,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
         void registerAdminInventoryMoveRoutes(adminScope, options.deps.admin);
         void registerAdminEditionRunRoutes(adminScope, options.deps.admin);
+        void registerAdminPrintFulfilmentRoutes(adminScope, options.deps.admin);
         void registerAdminHomeFeatureRoutes(adminScope, options.deps.admin);
         void registerAdminMediaRoutes(adminScope, options.deps.admin);
         if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {

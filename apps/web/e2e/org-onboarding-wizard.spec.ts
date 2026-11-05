@@ -55,10 +55,12 @@ test.describe("org onboarding wizard @journey", () => {
     await clientSession(page);
     await page.goto("/onboarding/organisation/step/type?fresh=1");
 
-    await expect(page.getByRole("heading", { name: /organisation type/i })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /organisation type/i, level: 2 })).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByText(/choose the category that best describes/i)).toBeVisible();
+    await expect(
+      page.getByText(/choose the category that best describes your organisation/i),
+    ).toBeVisible();
   });
 });
 

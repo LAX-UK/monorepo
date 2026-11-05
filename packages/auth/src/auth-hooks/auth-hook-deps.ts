@@ -3,7 +3,12 @@ import type { AuthPorts, EmailSender } from "../ports/index.js";
 export type AuthHookDeps = {
   ports: Pick<
     AuthPorts,
-    "subjectStatusReader" | "accountLinkReader" | "phoneNumberStore" | "email" | "securityNotices"
+    | "subjectStatusReader"
+    | "accountLinkReader"
+    | "phoneNumberStore"
+    | "email"
+    | "securityNotices"
+    | "legalAcceptance"
   >;
   /** Invoked from `databaseHooks.user.create.after` for every new auth user (email + OAuth). */
   onUserCreated?:

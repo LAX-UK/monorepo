@@ -701,6 +701,10 @@ export type {
   AdminWorkItemSourceRow,
   IAdminWorkItemsReader,
 } from "./admin-work-items.reader.js";
+export type { IPaymentCheckoutSessionStore } from "./payment-checkout-session.store.js";
+export type { IStalePaymentCanceller } from "./stale-payment-canceller.js";
+export type { OpenUnappliedMoneyFilter } from "./unapplied-money.reader.js";
+export type { IUnappliedMoneyReader, OpenUnappliedMoney } from "./unapplied-money.reader.js";
 
 export type {
   AdminSaleReadinessSourceRow,
@@ -1058,10 +1062,24 @@ export type {
   IEnquiryErasureRepository,
 } from "./enquiry-erasure.repository.js";
 export type {
+  AlertSubscriberErasureCounts,
+  AlertSubscriberErasureTarget,
+  IAlertSubscriberErasureRepository,
+} from "./alert-subscriber-erasure.repository.js";
+export type {
   IPurchaseProblemRepository,
   NewPurchaseProblem,
   PurchaseProblemRecord,
 } from "./purchase-problem.repository.js";
+export type {
+  IPurchaseProblemDeskRepository,
+  IPurchaseProblemNoteRepository,
+  PurchaseProblemChange,
+  PurchaseProblemDeskQuery,
+  PurchaseProblemDeskRecord,
+  PurchaseProblemNoteRecord,
+  PurchaseProblemStatusCounts,
+} from "./purchase-problem-desk.repository.js";
 export type {
   AccountSearchCriteria,
   AccountSearchHits,
@@ -1188,8 +1206,13 @@ export type {
   ConflictCursor,
   CreateRegisterEntryResult,
   AuctionOfferDraftLot,
+  AuctionOfferDraftLotSummary,
   AuctionOfferSale,
+  IArtworkImageStore,
   IArtworkMoveHistory,
+  ImageCheckCandidate,
+  ReplaceZohoImagesInput,
+  ReplaceZohoImagesResult,
   IAuctionOfferReader,
   RecordMoveConfirmedInput,
   ILotRegisterLinkReader,

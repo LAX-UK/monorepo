@@ -3,6 +3,7 @@ import { z } from "zod";
 export const adminWorkItemKindSchema = z.enum([
   "payment_manual_review",
   "payment_capture_blocked",
+  "payment_money_unapplied",
   "payment_overdue",
   "aml_screening",
   "sof_case",
@@ -43,6 +44,7 @@ export const adminWorkItemActionSchema = z.enum([
   "capture",
   "refund",
   "reinstate_payment",
+  "mark_handled",
   "approve_registration",
   "reject_registration",
   "confirm_telephone",

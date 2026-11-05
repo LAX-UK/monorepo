@@ -30,6 +30,7 @@ import {
   createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
+import { createAccountEmailAlertHandlers } from "./application/handlers/account-email-alerts.handler.js";
 import { createCountArtworkFacetsHandler } from "./application/handlers/count-artwork-facets.handler.js";
 import { createEditionAlertHandlers } from "./application/handlers/edition-alerts.handler.js";
 import { createGetArtworkInterestHandler } from "./application/handlers/get-artwork-interest.handler.js";
@@ -62,6 +63,7 @@ import type {
   ReleaseStockHoldCommand,
 } from "./application/ports/stock-hold.writer.js";
 import type { RecordThirdPartySaleCommand } from "./application/ports/third-party-sale.writer.js";
+import { createPrintFulfilmentServices } from "./application/print-fulfilment/print-fulfilment-services.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
 import { createSavedViewService } from "./application/saved-view.service.js";
 import { SubjectExportService } from "./application/subject-export/subject-export.service.js";
@@ -76,6 +78,7 @@ import type {
   IdentitySubjectExportRouteDeps,
 } from "./identity-route-deps.js";
 import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
+import { ShopAlertSubscriberEraser } from "./infrastructure/alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtListingLookup } from "./infrastructure/drizzle-art-listing-lookup.js";
@@ -159,6 +162,10 @@ import { createHttpAuctionOfferGateway } from "./infrastructure/http-auction-off
 import { idempotentAdminCommand } from "./infrastructure/idempotent-admin-command.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createDrizzleOriginalSaleWriter } from "./infrastructure/phase/drizzle-original-sale.writer.js";
+import {
+  createDrizzlePickListReader,
+  createDrizzlePrintFulfilmentUnitOfWork,
+} from "./infrastructure/print-fulfilment/drizzle-print-fulfilment.unit-of-work.js";
 import { createRedisFixedWindowCounter } from "./infrastructure/redis-fixed-window-counter.js";
 import { createRegisterOriginalOffers } from "./infrastructure/register-original-offers.js";
 import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
@@ -340,6 +347,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   );
   const artworkRegisterRepository = new DrizzleArtworkRegisterRepository(db);
   const laxArtListings = createDrizzleLaxArtListingReader(db);
+  const auctionOffers = createHttpAuctionOfferGateway(env);
   const baseAdminRead = createDrizzleAdminReadRepository(db, env, { resolveMediaUrl });
   const adminRead = {
     ...baseAdminRead,
@@ -347,6 +355,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       links: new ArtworkZohoLinkService({
         register: artworkRegisterRepository,
         staffNames: createDrizzleStaffNameReader(db),
+        bidDrafts: auctionOffers,
       }),
       listings: laxArtListings,
     }),
@@ -434,6 +443,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     uow: createDrizzleEditionRunUnitOfWork(shopUow),
     clock: { now: () => new Date() },
   });
+  const printFulfilment = createPrintFulfilmentServices({
+    uow: createDrizzlePrintFulfilmentUnitOfWork(shopUow),
+    pickList: createDrizzlePickListReader(db),
+    staffNames: createDrizzleStaffNameReader(db),
+    certificateSettings: { laxCertificatesEnabled: () => env.SHOP_LAX_CERTIFICATES_ENABLED },
+    clock: { now: () => new Date() },
+  });
   const artworkCatalogue = createDrizzleArtworkCatalogueWriter(shopUow, {
     resolveMediaUrl,
     editionRuns: editionRuns.recorder,
@@ -448,7 +464,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     originals: originalMoveReader,
     register: artworkRegister,
     history: artworkRegister,
-    auction: createHttpAuctionOfferGateway(env),
+    auction: auctionOffers,
     withdrawFromLaxArt: async ({ artworkId, actorSubjectId }) => {
       await artworkCatalogue.setVisibility({
         artworkId,
@@ -628,6 +644,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           listingRuns: new DrizzleZohoListingRunStore(db),
           staffNames: createDrizzleStaffNameReader(db),
           listings: laxArtListings,
+          auction: inventoryMoves,
         }),
         offerOnLaxArt: new OfferOnLaxArtService({
           register: artworkRegisterRepository,
@@ -642,6 +659,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {
             domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+            alerts: new ShopAlertSubscriberEraser(),
           }),
         ),
         productionTasks: createProductionTaskService({
@@ -668,6 +686,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         artworkCatalogue,
         inventoryMoves,
         editionRuns,
+        printFulfilment,
         artistCatalogue,
         artCache,
         homeFeatures,
@@ -749,6 +768,11 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         editionAlertRateLimiter,
         releaseAlerts,
         releaseAlertRateLimiter,
+        accountEmailAlerts: createAccountEmailAlertHandlers({
+          preferences: shopAlerts.preferences,
+          countWaitingEditions: async (identitySubjectId) =>
+            (await editionAlerts.listForSubject(identitySubjectId)).length,
+        }),
       },
       editorial,
     },

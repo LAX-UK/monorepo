@@ -176,6 +176,9 @@ export function createInMemoryEditionRuns() {
         artwork.updatedAt = new Date(artwork.updatedAt.getTime() + 1000);
         return artwork.updatedAt.toISOString();
       },
+      async recordHorsCommerceApproval(artworkId) {
+        if (!artworks.has(artworkId)) throw new Error("missing artwork");
+      },
     },
     facts: {
       async get(artworkId) {

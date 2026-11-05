@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import type { ContainerQrRoutesSlice } from "../container.js";
 import { readQrScanGeoFromHeaders } from "../lib/qr-scan-geo.js";
 import { zValidator } from "../lib/z-validator.js";
+import { clientIpOrNull } from "../middleware/client-ip.js";
 
 const shortCodeSegment = ":shortCode{[0-9A-Za-z]{6,12}}";
 
@@ -24,8 +25,7 @@ export function createQrRoutes(container: ContainerQrRoutesSlice) {
     const geo = readQrScanGeoFromHeaders(c);
     void container.qrCodeService.enqueueScan({
       qrCodeId: resolved.qrCodeId,
-      ip:
-        c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ?? c.req.header("x-real-ip") ?? null,
+      ip: clientIpOrNull(c),
       userAgent: c.req.header("user-agent") ?? null,
       referrer: c.req.header("referer") ?? c.req.header("referrer") ?? null,
       requestId: c.req.header("x-request-id") ?? null,

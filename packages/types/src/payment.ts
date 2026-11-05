@@ -42,7 +42,11 @@ export type ManualReviewReason =
   | "aml_hold"
   | "source_of_funds_required"
   /** Compliance/tier checks passed; finance must release before Stripe checkout. */
-  | "finance_release_required";
+  | "finance_release_required"
+  /** A personal buyer verifies their identity first; the invoice stays owed meanwhile. */
+  | "identity_verification_required"
+  /** LAX is still checking the organisation; its invoices can be paid once it has. */
+  | "organisation_under_review";
 
 export type CreatePaymentResponse = {
   paymentId: string;

@@ -1,12 +1,11 @@
 import "server-only";
 
 import { headers } from "next/headers";
+import { currentVisitorIp } from "../http/visitor-ip.server";
 
-/** The visitor's address, as the web server was told it, for per-visitor rate limits. */
+/** The visitor's address, as the platform resolves it, for per-visitor rate limits. */
 export async function visitorAddress(): Promise<string> {
-  const h = await headers();
-  const forwarded = h.get("x-forwarded-for");
-  return forwarded?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? "unknown";
+  return currentVisitorIp();
 }
 
 /** The page the visitor sent a form from, as a path; undefined when it is not ours to record. */

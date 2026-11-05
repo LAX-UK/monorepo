@@ -1,5 +1,5 @@
 import { type ArtworkRegisterEntry, CATALOGUE_GAPS } from "@auction/artwork-register-contracts";
-import { REGISTER_GAP_VALUES } from "@auction/shop-contracts";
+import { type AdminAuctionOfferAssessment, REGISTER_GAP_VALUES } from "@auction/shop-contracts";
 import { describe, expect, it, vi } from "vitest";
 import type {
   ArtworkRegisterQueue,
@@ -54,6 +54,22 @@ function conflict(overrides: Partial<RegisterConflictRecord> = {}): RegisterConf
   };
 }
 
+function assessment(over: Partial<AdminAuctionOfferAssessment> = {}): AdminAuctionOfferAssessment {
+  return {
+    registerId: ID,
+    artworkId: null,
+    title: "Harbour at dusk",
+    stockCode: "LAX-ORI-PH-GAC-26-0001",
+    onLaxArt: false,
+    laxArtDraft: false,
+    draftLot: null,
+    holdingLotId: null,
+    eligible: true,
+    blockers: [],
+    ...over,
+  };
+}
+
 function service(overrides: Partial<ArtworkRegisterReviewDeps> = {}) {
   const queue: ArtworkRegisterQueue = {
     listHeld: vi.fn(async () => ({ entries: [entry()], total: 31 })),
@@ -87,6 +103,7 @@ function service(overrides: Partial<ArtworkRegisterReviewDeps> = {}) {
       findByZohoProductId: vi.fn(async () => null),
       findZohoProductId: vi.fn(async () => null),
     },
+    auction: { assessRegister: vi.fn(async () => assessment()) },
     now: () => T0,
     ...overrides,
   };
@@ -245,6 +262,26 @@ describe("ArtworkRegisterReviewService", () => {
       slug: "aidan-phelan-harbour-at-dusk",
       published: false,
     });
+  });
+
+  it("says a draft lot in LAX Bid is where the artwork is, and links the lot", async () => {
+    const lot = { lotId: "b0000000-0000-4000-8000-000000000002", saleTitle: "Winter sale" };
+    const { service: s } = service({
+      auction: { assessRegister: async () => assessment({ draftLot: lot }) },
+    });
+    const detail = await s.get(ID);
+    expect(detail?.whereItIs).toMatchObject({ key: "draft_bid_lot", bidLot: lot });
+    expect(detail?.auctionBlockers).toEqual([]);
+  });
+
+  it("carries why the artwork cannot be offered at auction", async () => {
+    const blocker = { message: "Zoho shows this artwork as reserved.", link: null };
+    const { service: s } = service({
+      auction: {
+        assessRegister: async () => assessment({ eligible: false, blockers: [blocker] }),
+      },
+    });
+    expect((await s.get(ID))?.auctionBlockers).toEqual([blocker]);
   });
 
   it("finds nothing for an unknown artwork", async () => {

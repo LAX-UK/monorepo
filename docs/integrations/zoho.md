@@ -43,7 +43,7 @@ Set these **variables** (not secrets) on the monorepo test environment; Terrafor
 | `ZOHO_CRM_DEAL_STAGE_SHOP_PAID` | empty | e.g. `Paid` |
 | `ZOHO_CRM_DEAL_STAGE_SHOP_ENQUIRY` | empty | Enquiry deals (Phase 4; not shop-paid stage) |
 | `SHOP_ZOHO_CATALOGUE_SYNC_ENABLED` | `false` | `shop.artwork.created` → Products |
-| `ZOHO_CRM_LEAD_CONVERSION_ENABLED` | `false` | Set `true` before lot-win conversion tests |
+| `ZOHO_CRM_LEAD_STATUS_NEW` | `New (Unassigned)` | Lead Status a new website lead starts with; must exist in the org's Lead Status picklist (the sandbox has `New`) |
 
 After changing vars, re-run **Terraform test up** (with image contracts) or **Terraform apply test** so the worker spec updates.
 
@@ -61,7 +61,7 @@ After changing vars, re-run **Terraform test up** (with image contracts) or **Te
 | `ZOHO_CRM_UPSERT_TRIGGER` | JSON array; default `[]` suppresses workflows |
 | `ZOHO_CRM_AUCTION_PIPELINE` | Deal pipeline name (required before deal events write) |
 | `ZOHO_CRM_DEAL_STAGE_*` | Stage names per milestone (required when that event type is enabled) |
-| `ZOHO_CRM_LEAD_CONVERSION_ENABLED` | `true` to allow Convert Lead on `bid.lot_won` (default `false`) |
+| `ZOHO_CRM_LEAD_STATUS_NEW` | Lead Status written when the platform creates a lead (default `New (Unassigned)`) |
 | `ZOHO_CRM_CURSOR_BATCH_SIZE` | Domain events ingested into the delivery ledger per projector tick (default `100`) |
 | `ZOHO_CRM_TICK_TIME_BUDGET_MS` | Max ms per projector tick spent claiming and running Zoho deliveries (one claim at a time) |
 
@@ -86,7 +86,42 @@ Production worker keeps `ZOHO_CRM_SYNC_MODE=off` until [Phase 0 runbook](../runb
 
 **Enable order (test/canary):** turn on `user.registered` and run `backfill:crm-users` before any patch-only types (`user.email_verified`, `user.profile_updated`, `bid.first_for_user`) or deal/payment events. Patch handlers retry then dead-letter when the subject has no CRM link yet.
 
-Registrants upsert **Leads** with `Lead_Source = LAX Platform`. Lot win may convert Lead → Contact when `ZOHO_CRM_LEAD_CONVERSION_ENABLED=true`, then creates a Deal keyed by `LAX_Deal_Key`.
+### Website leads and admin conversion
+
+The platform never converts a lead. Clients are created only when an admin converts a lead in Zoho (`ZOHO_CRM_LEAD_CONVERSION_ENABLED` and the Convert Lead call are gone).
+
+**Lead fields.** Every lead the platform creates or updates carries these. "Create only" fields are sent when the platform creates the lead and never again, so an admin's later edit is never overwritten.
+
+| Owners' field | Zoho API name | Source | Written |
+| --- | --- | --- | --- |
+| Lead Status | `Lead_Status` | `ZOHO_CRM_LEAD_STATUS_NEW` (`New (Unassigned)`) | create only |
+| Lead Source (Primary) | `Lead_Source` | `Website` | create only |
+| Lead Source (Detailed) | `Lead_Source_Detailed` | product and form: `LAX Account sign-up`, `LAX Bid enquiry`, `LAX Bid private sale enquiry`, `LAX Shop guest <source>: <status>` | every sync |
+| Enquiry Type | `Enquiry_Type` | enquiry intent and department (below); sign-ups `General`; Shop guest leads `Prints` | every sync |
+| Interest: Artist | `Interested_Artist` | artist named on a private sale enquiry | when known |
+| Interest: Collection | `Interested_Collection` | none yet: no form records a stock code | not sent |
+| Marketing Opt-In | `Consent_Marketing_Opt_In` | consent recorded with the enquiry or guest checkout; `false` when not given | every sync of a consent-recording form |
+| Consent Timestamp | `Consent_Timestamp` (date) | day the opt-in was recorded; only with an opt-in | with an opt-in |
+| Consent Source | `Consent_Source` | `Website`; only with an opt-in | with an opt-in |
+| Consent wording | `Consent_Wording_Version` | Shop guest checkout wording version | with an opt-in |
+| Data Processing Notice Confirmed | `Data_Processing_Notice_Confirmed` | `true` on enquiry and guest checkout forms (they show the notice) | every sync of those forms |
+
+Sign-ups (`user.registered`) record no marketing consent, so no consent fields are sent and the lead is never opted in. `Email_Opt_Out` mirrors the opt-in. Visitor alert sign-ups do not create leads. Lead-only fields are not sent when the person is already a Contact.
+
+Enquiry Type: department `prints`/`editions` is Prints, `corporate` is Corporate, `auction(s)` is Auction; otherwise intent `private_sale_buy`/`buying` is Original, `private_sale_sell`/`selling` is Auction, anything else General.
+
+**Paying buyer.** When a lot is won and paid (`payment.captured`), or a Shop order is paid (`shop.order.paid`), and the person has no Contact yet:
+
+1. Their Lead Status becomes `Qualified`, but only from `New`, `New (Unassigned)`, `Assigned` or `Contacted`. Any other status (`Not Proceeding`, `Meeting Booked`, `Converted to Client`, ...) is left alone.
+2. A Note on the lead records the purchase: deal name, amount, date and product.
+3. A Task `Paid customer: please convert` is created on the lead, due the next day (London), owned by the lead owner when there is one, else Zoho's default owner.
+4. The deal is **held**, not created: no Deal exists without a Contact.
+
+**Held deals.** A held deal is a row in `crm_record_link` (`entity_type = 'deal'`, `zoho_module = '__held__'`) whose fields wait in `held_payload`. The note and task are recorded in the same table (`note`/`task` rows keyed `paid-customer:<deal id>`), so a retry never doubles them. A Contact that already exists (found by link or email) gets its deals directly.
+
+**Release.** The worker re-checks each held deal's lead at most every 15 minutes (ten per tick, oldest check first, `canary` and `live` only): it reads the lead (`GET /Leads/{id}`) and, once `Converted_Detail.contact` is present, links the subject to the new Contact, sets `LAX_Subject_ID` on it and creates the waiting Deals on that Contact (keyed by `LAX_Deal_Key`, so repeating is safe). It also runs when a later sync finds the person's Contact. Polling the lead was chosen over a Zoho webhook because it needs no Zoho workflow, secret or public endpoint, and a missed notice cannot strand a deal.
+
+**Erasure.** Erasing a person also deletes their purchase notes and tasks in Zoho (and empties the recycle bin) and drops their held deals with the stored fields, before the lead itself is deleted.
 
 ## Artworks from Zoho Products (inbound)
 

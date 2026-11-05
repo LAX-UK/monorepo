@@ -142,6 +142,8 @@ const LABELS: Record<string, string> = {
   "payment.cancelled": "Payment cancelled",
   "payment.bank_transfer_partially_funded": "Bank transfer partly received",
   "payment.capture_blocked_terminal_status": "Capture blocked on a closed payment",
+  "payment.unapplied_money_received": "Money received that could not be applied",
+  "payment.unapplied_money_resolved": "Unapplied money refunded",
   "payment.checkout_failed": "Checkout failed",
   "payment.manual_review_required": "Manual review required",
   "payment.requires_manual_review": "Manual review required",
@@ -186,6 +188,9 @@ const LABELS: Record<string, string> = {
   "private_sale_deal.payout_queued": "Private sale payout queued",
   "payout.transfer_reversed": "Payout transfer reversed",
   "purchase_problem.reported": "Purchase problem reported",
+  "purchase_problem.assigned": "Purchase problem assigned",
+  "purchase_problem.status_changed": "Purchase problem status changed",
+  "purchase_problem.note_added": "Purchase problem note added",
 
   "sale.created": "Sale created",
   "sale.published": "Sale published",

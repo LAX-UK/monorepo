@@ -7,6 +7,8 @@ export function isComplianceManualReviewReason(
 }
 
 export function manualReviewQueueEyebrow(reason: ManualReviewReason | null | undefined): string {
+  if (reason === "identity_verification_required") return "Verify your identity";
+  if (reason === "organisation_under_review") return "Organisation being checked";
   if (isComplianceManualReviewReason(reason)) return "More checks needed";
   if (reason) return "Our team checks this payment";
   return "Payment being checked";

@@ -1,5 +1,4 @@
 import type { Lot } from "@auction/types";
-import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import type { PaymentCheckoutContext } from "../interfaces/checkout-rail.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type {
@@ -52,17 +51,6 @@ export function buildStatementDescriptorSuffix(lotNumber: number | null, lotTitl
   return truncateForStripe(lotTitle.trim() || "AUCTION", STRIPE_DESCRIPTOR_SUFFIX_MAX);
 }
 
-function premiumPercentLabel(
-  checkoutPricing: NonNullable<PaymentCheckoutContext["lot"]["checkoutPricing"]>,
-): string {
-  if (checkoutPricing.kind === "tiered") return "Tiered";
-  const hammer = Number.parseFloat(checkoutPricing.hammerMajor);
-  const premium = Number.parseFloat(checkoutPricing.premiumMajor);
-  if (!Number.isFinite(hammer) || hammer <= 0 || !Number.isFinite(premium)) return "";
-  const pct = Math.min(100, Math.max(0, Math.round((premium / hammer) * 100)));
-  return `${pct}%`;
-}
-
 function withOptionalImages(
   item: Omit<StripeCheckoutLineItem, "images">,
   images?: string[],
@@ -77,7 +65,6 @@ export function buildStripeCheckoutLineItems(input: {
   lotNumber: number | null;
   medium: string | null;
   amountCents: number;
-  checkoutPricing?: PaymentCheckoutContext["lot"]["checkoutPricing"];
   imageUrl?: string | null;
 }): StripeCheckoutLineItem[] {
   const title = truncateForStripe(input.lotTitle.trim() || "Untitled lot", STRIPE_PRODUCT_NAME_MAX);
@@ -91,33 +78,9 @@ export function buildStripeCheckoutLineItems(input: {
   const images = image?.startsWith("https://") ? [image] : undefined;
   const baseMetadata = { lotId: input.lotId, paymentId: input.paymentId };
 
-  const pricing = input.checkoutPricing;
-  if (pricing) {
-    const hammerCents = gbpAmountToPence(pricing.hammerMajor);
-    const premiumCents = gbpAmountToPence(pricing.premiumMajor);
-    if (hammerCents + premiumCents === input.amountCents && hammerCents > 0 && premiumCents >= 0) {
-      const label = premiumPercentLabel(pricing);
-      const premiumName = label ? `Buyer's premium (${label})` : "Buyer's premium";
-      return [
-        withOptionalImages(
-          {
-            name: truncateForStripe(`Hammer price — ${title}`, STRIPE_PRODUCT_NAME_MAX),
-            description,
-            unitAmountCents: hammerCents,
-            metadata: baseMetadata,
-          },
-          images,
-        ),
-        {
-          name: truncateForStripe(premiumName, STRIPE_PRODUCT_NAME_MAX),
-          description,
-          unitAmountCents: premiumCents,
-          metadata: baseMetadata,
-        },
-      ];
-    }
-  }
-
+  // One line at the invoice's stored total: the charge is never recalculated from the lot or
+  // sale as they are now. Hammer and premium become separate lines once they are stored with
+  // the invoice.
   return [
     withOptionalImages(
       {
@@ -162,7 +125,6 @@ export function buildCreateCheckoutSessionInput(
     lotNumber: lot.lotNumber,
     medium: lot.medium,
     amountCents: ctx.amountPence,
-    checkoutPricing: lot.checkoutPricing,
   };
   if (opts.imageUrl !== undefined) {
     lineItemInput.imageUrl = opts.imageUrl;

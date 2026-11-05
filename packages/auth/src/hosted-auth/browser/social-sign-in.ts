@@ -5,7 +5,14 @@ function asButton(node: Element | null): HTMLButtonElement | null {
   return node instanceof HTMLButtonElement ? node : null;
 }
 
-export function bindSocialSignIn(auth: HostedAuthApi): void {
+/**
+ * `additionalData` is carried through the provider round trip and read back when the callback
+ * creates the account; the sign-up and sign-in pages use it to say which Terms and Privacy notice it showed.
+ */
+export function bindSocialSignIn(
+  auth: HostedAuthApi,
+  additionalData?: () => Record<string, unknown>,
+): void {
   for (const node of document.querySelectorAll("[data-social-provider]")) {
     const button = asButton(node);
     if (!button) continue;
@@ -20,6 +27,7 @@ export function bindSocialSignIn(auth: HostedAuthApi): void {
           provider: button.getAttribute("data-social-provider"),
           callbackURL,
           errorCallbackURL: callbackURL,
+          ...(additionalData ? { additionalData: additionalData() } : {}),
         });
         if (!response.ok) {
           auth.showError(auth.GENERIC_NETWORK);

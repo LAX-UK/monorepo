@@ -30,6 +30,7 @@ function createReader(overrides: Partial<IAdminWorkItemsReader> = {}): IAdminWor
   return {
     listManualReviewPayments: vi.fn().mockResolvedValue([]),
     listBlockedCaptures: vi.fn().mockResolvedValue([]),
+    listUnappliedMoney: vi.fn().mockResolvedValue([]),
     listOverduePayments: vi.fn().mockResolvedValue([]),
     listPendingReviewTasks: vi.fn().mockResolvedValue([]),
     listSubmissionReviews: vi.fn().mockResolvedValue([]),

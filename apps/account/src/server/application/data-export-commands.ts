@@ -1,3 +1,4 @@
+import { createServerClientIpResolver } from "@auction/http-headers/client-ip";
 import { buildRateLimitedMessage } from "../domain/data-export.vm";
 import type { IdentityActor } from "../ports/account-identity-gateway";
 import type { DataExportClient, DataExportGateway } from "../ports/data-export-gateway";
@@ -70,11 +71,18 @@ export async function deleteDataExportCopy(
   }
 }
 
-/** Where the person's browser came from, as far as the proxy in front of Account says. */
+const resolveVisitorIp = createServerClientIpResolver();
+
+/**
+ * Where the person's browser came from: the address the platform resolved, never the first
+ * forwarded entry, which the browser chooses. Recorded as audit evidence.
+ */
 export function dataExportClientFromHeaders(headers: Pick<Headers, "get">): DataExportClient {
-  const forwarded = headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const ip = forwarded || headers.get("x-real-ip")?.trim() || null;
-  return { ip: ip || null, userAgent: headers.get("user-agent")?.trim() || null };
+  const ip = resolveVisitorIp(headers);
+  return {
+    ip: ip === "unknown" ? null : ip,
+    userAgent: headers.get("user-agent")?.trim() || null,
+  };
 }
 
 export type DownloadDataExportResult =

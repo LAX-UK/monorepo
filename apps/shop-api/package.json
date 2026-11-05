@@ -35,6 +35,7 @@
     "@auction/email": "workspace:*",
     "@auction/identity-contracts": "workspace:*",
     "@auction/lax-ecosystem": "workspace:*",
+    "@auction/image-processing": "workspace:*",
     "@auction/object-storage": "workspace:*",
     "@auction/observability": "workspace:*",
     "@auction/persistence": "workspace:*",

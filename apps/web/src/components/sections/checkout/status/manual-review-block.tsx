@@ -4,6 +4,7 @@ import { manualReviewQueueEyebrow } from "@/lib/admin/compliance-manual-review";
 import { manualReviewReasonCopy } from "@/lib/checkout/checkout-payment-errors";
 import { formatSettlementsContactLine } from "@/lib/checkout/settlements-contact";
 import { dashboardSofRequirementsUrl } from "@/lib/dashboard/dashboard-copy";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { ManualReviewReason } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -35,6 +36,11 @@ export function ManualReviewBlock({ reason }: Props) {
             <Link href={dashboardSofRequirementsUrl()}>View requirements &amp; upload</Link>
           </Button>
         </>
+      ) : null}
+      {reason === "identity_verification_required" ? (
+        <Button className="mt-6" asChild>
+          <Link href={CLIENT_ROUTES.verifyIdentity}>Verify your identity</Link>
+        </Button>
       ) : null}
       <p className="mt-4 break-all font-body text-sm text-on-surface">
         {compliance ? "Support: " : "Settlements: "}

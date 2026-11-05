@@ -175,6 +175,8 @@ export const AdminRegisterDetailSchema = Type.Object({
   laxArt: Type.Union([AdminLaxArtListingSchema, Type.Null()]),
   /** Why it cannot go on lax.art now, most important first; empty when it can. */
   offerBlockers: Type.Array(AdminLaxArtOfferBlockerSchema),
+  /** Why it cannot be offered at auction now, most important first; empty when it can. */
+  auctionBlockers: Type.Array(AdminLaxArtOfferBlockerSchema),
   missing: Type.Array(GapSchema),
   zohoModifiedAt: Type.Union([Type.String({ format: "date-time" }), Type.Null()]),
   createdAt: Type.String({ format: "date-time" }),

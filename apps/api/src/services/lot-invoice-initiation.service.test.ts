@@ -106,6 +106,7 @@ function buildService(
         .fn()
         .mockResolvedValue({ id: "buyer-1", email: "buyer@example.com", name: "Buyer" }),
     } as unknown as IUserRepository,
+    { forInvoice: async ({ winnerUserId }) => [winnerUserId] },
   );
 
   return {
@@ -128,6 +129,7 @@ describe("LotInvoiceInitiationService.ensureForLot", () => {
       created: false,
       reason: "payment_already_exists",
       paymentId: "pay-existing",
+      lotId: baseLot.id,
     });
   });
 
@@ -138,7 +140,7 @@ describe("LotInvoiceInitiationService.ensureForLot", () => {
       },
     });
     const result = await service.ensureForLot(baseLot.id);
-    expect(result).toEqual({ created: false, reason: "no_winner" });
+    expect(result).toEqual({ created: false, reason: "no_winner", lotId: baseLot.id });
   });
 
   it("creates pending payment, stages payment_due with dueDate, and calls Xero", async () => {
@@ -194,6 +196,7 @@ describe("LotInvoiceInitiationService.ensureForLot", () => {
     expect(result).toEqual({
       created: false,
       reason: "payment_already_exists",
+      lotId: baseLot.id,
       paymentId: "pay-raced",
     });
   });

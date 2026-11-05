@@ -57,7 +57,7 @@ export type ZohoListingRunFailureRow = { registerId: string; stockCode: string; 
 
 /**
  * One row per nightly pass of the LAX listing on Zoho Products: how many artworks it checked,
- * corrected (or in a dry run would have) and could not. Constraints are in migration 0303.
+ * corrected (or in a dry run would have) and could not. Constraints are in migration 0317.
  */
 export const zohoListingSyncRun = pgTable(
   "zoho_listing_sync_run",

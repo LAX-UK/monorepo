@@ -669,10 +669,15 @@ export {
 } from "./purchase-invoice-state.js";
 export {
   PURCHASE_PROBLEM_CATEGORIES,
+  PURCHASE_PROBLEM_NOTE_MAX,
   PURCHASE_PROBLEM_STATUSES,
+  PURCHASE_PROBLEM_UNRESOLVED_STATUSES,
+  purchaseProblemNextStatuses,
   purchaseProblemReference,
+  purchaseProblemTransitionRefusal,
   type PurchaseProblemCategory,
   type PurchaseProblemStatus,
+  type PurchaseProblemTransitionRefusal,
 } from "./purchase-problem.js";
 export {
   DELIVERY_QUOTE_STATUSES,
@@ -969,3 +974,23 @@ export {
   type PaymentReminderStep,
 } from "./payment-reminder.js";
 export * from "./private-sale-deal/index.js";
+export {
+  UNAPPLIED_MONEY_CLOSED_BY_CAPTURE,
+  UNAPPLIED_MONEY_EVENT,
+  UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
+  UNAPPLIED_MONEY_REASONS,
+  UNAPPLIED_MONEY_RESOLVED_EVENT,
+  unappliedMoneyDedupeKey,
+  unappliedMoneyPayload,
+  type UnappliedMoney,
+  type UnappliedMoneyPayload,
+  type UnappliedMoneyReason,
+} from "./unapplied-money.js";
+export {
+  PAYMENT_CLOSED_ORGANISATION_STATUSES,
+  paymentEligibility,
+  type PaymentEligibility,
+  type PaymentEligibilityFacts,
+  type PaymentEligibilityHold,
+  type PaymentEligibilityRefusal,
+} from "./payment-eligibility.js";

@@ -1,6 +1,7 @@
 import type { ICrmRecordLinkRepository } from "@auction/persistence/interfaces";
 import { CRM_ENTITY } from "../crm-field-constants.js";
 import { CrmGatewayError } from "../crm-gateway-error.js";
+import type { CrmModule } from "../crm-gateway.js";
 import type { CrmGateway } from "../crm-gateway.js";
 import { formatProviderReference } from "../crm-sync-policy.js";
 import type { CrmSyncResult } from "../crm-sync-result.js";
@@ -54,6 +55,10 @@ export class CrmSubjectLifecycleHandler {
 
   async eraseSubject(subjectId: string): Promise<CrmSyncResult> {
     const link = await this.deps.linkRepo.findByEntity(CRM_ENTITY.subject, subjectId);
+    const notesAndTasks = await this.deleteNotesAndTasksForSubject(subjectId);
+    if (notesAndTasks) return notesAndTasks;
+    // Purchases still waiting for a Contact exist only in the ledger: drop them and their fields.
+    await this.deps.linkRepo.eraseHeldDealsBySubject(subjectId);
     const cascade = await this.cascadeDeleteDealsForSubject(subjectId, link);
     if (cascade) return cascade;
 
@@ -142,6 +147,53 @@ export class CrmSubjectLifecycleHandler {
         tombstoneRecordId: CRM_TOMBSTONE_RECORD_ID,
       });
     }
+  }
+
+  /** The purchase notes and "please convert" tasks the platform created for the subject. */
+  private async deleteNotesAndTasksForSubject(subjectId: string): Promise<CrmSyncResult | null> {
+    const rows = await this.deps.linkRepo.listActiveLinksBySubject(subjectId, [
+      CRM_ENTITY.note,
+      CRM_ENTITY.task,
+    ]);
+    for (const row of rows) {
+      if (isRealZohoLink(row.zohoModule, row.zohoRecordId)) {
+        const deleted = await this.deps.gateway.deleteRecord({
+          module: row.zohoModule as CrmModule,
+          recordId: row.zohoRecordId,
+        });
+        if (deleted.status === "error") {
+          return {
+            outcome: "retry",
+            error: new CrmGatewayError({
+              code: deleted.code ?? "record_delete_failed",
+              message: `${row.entityType}_delete_failed:${row.zohoRecordId}`,
+              status: 503,
+              retryable: true,
+            }),
+          };
+        }
+        try {
+          await this.deps.gateway.purgeFromRecycleBin(row.zohoRecordId);
+        } catch (err) {
+          return {
+            outcome: "retry",
+            error: new CrmGatewayError({
+              code: "recycle_bin_purge_failed",
+              message: err instanceof Error ? err.message : "recycle_purge_failed",
+              status: 503,
+              retryable: true,
+            }),
+          };
+        }
+      }
+      await this.deps.linkRepo.tombstone({
+        entityType: row.entityType,
+        entityId: row.entityId,
+        tombstoneModule: CRM_TOMBSTONE_MODULE,
+        tombstoneRecordId: CRM_TOMBSTONE_RECORD_ID,
+      });
+    }
+    return null;
   }
 
   private async cascadeDeleteDealsForSubject(

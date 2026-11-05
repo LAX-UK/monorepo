@@ -1,65 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  AUCTION_MOVE_BLOCKERS,
-  AUCTION_MOVE_BLOCKER_MESSAGES,
-  type AuctionMoveFacts,
   RETURN_MOVE_BLOCKERS,
   RETURN_MOVE_BLOCKER_MESSAGES,
   type ReturnMoveFacts,
-  auctionMoveBlockers,
   draftLotRequestSchema,
   returnMoveBlockers,
 } from "./move-originals.js";
-
-const facts = (over: Partial<AuctionMoveFacts> = {}): AuctionMoveFacts => ({
-  kind: "original",
-  offerState: "lax_art",
-  openOriginalSale: false,
-  markedSold: false,
-  ...over,
-});
-
-describe("auctionMoveBlockers", () => {
-  it("lets an original on lax.art, held or withdrawn move", () => {
-    for (const offerState of ["lax_art", "held", "withdrawn"] as const) {
-      expect(auctionMoveBlockers(facts({ offerState }))).toEqual([]);
-    }
-  });
-
-  it("needs a register record", () => {
-    expect(auctionMoveBlockers(facts({ kind: null, offerState: null }))).toEqual([
-      "no_register_record",
-    ]);
-  });
-
-  it("refuses prints", () => {
-    expect(auctionMoveBlockers(facts({ kind: "print" }))).toEqual(["not_original"]);
-  });
-
-  it("refuses a sold artwork, whichever side says so", () => {
-    expect(auctionMoveBlockers(facts({ offerState: "sold" }))).toEqual(["sold"]);
-    expect(auctionMoveBlockers(facts({ markedSold: true }))).toEqual(["sold"]);
-  });
-
-  it("refuses while a buyer has reserved it, and names every reason", () => {
-    expect(auctionMoveBlockers(facts({ openOriginalSale: true }))).toEqual(["buyer_reserved"]);
-    expect(auctionMoveBlockers(facts({ offerState: "bid_sale", openOriginalSale: true }))).toEqual([
-      "buyer_reserved",
-      "in_auction",
-    ]);
-  });
-
-  it("refuses an artwork in a private sale or already in a Bid sale", () => {
-    expect(auctionMoveBlockers(facts({ offerState: "private_sale" }))).toEqual(["in_private_sale"]);
-    expect(auctionMoveBlockers(facts({ offerState: "bid_sale" }))).toEqual(["in_auction"]);
-  });
-
-  it("has a staff message for every blocker", () => {
-    for (const blocker of AUCTION_MOVE_BLOCKERS) {
-      expect(AUCTION_MOVE_BLOCKER_MESSAGES[blocker].length).toBeGreaterThan(20);
-    }
-  });
-});
 
 const lotFacts = (over: Partial<ReturnMoveFacts> = {}): ReturnMoveFacts => ({
   registerLinked: true,

@@ -7,6 +7,7 @@ import {
   LOTS_READ_ACCESS,
   LOT_FULFILMENT_ACCESS,
   ONBOARDING_QUEUES_ACCESS,
+  PURCHASE_PROBLEMS_ACCESS,
   SALEROOM_ACCESS,
   SALES_ACCESS,
   SALE_CATALOG_READ_ACCESS,
@@ -64,6 +65,12 @@ export const ADMIN_ROUTE_TABLE = [
     requirement: CONDITION_REPORTS_READ_ACCESS,
   },
   { pattern: "/admin/enquiries/[reference]", area: "platform", requirement: ENQUIRIES_ACCESS },
+  { pattern: "/admin/purchase-problems", area: "platform", requirement: PURCHASE_PROBLEMS_ACCESS },
+  {
+    pattern: "/admin/purchase-problems/[id]",
+    area: "platform",
+    requirement: PURCHASE_PROBLEMS_ACCESS,
+  },
   {
     pattern: "/admin/failed-jobs",
     area: "shared",
@@ -124,6 +131,11 @@ export const adminRoutes = {
   },
   /** An enquiry record; the page accepts its reference or its id. */
   enquiry: (referenceOrId: string) => `/admin/enquiries/${seg(referenceOrId)}`,
+  /** The purchase problems list, and one report's record. */
+  purchaseProblems: {
+    list: () => "/admin/purchase-problems",
+    record: (id: string) => `/admin/purchase-problems/${seg(id)}`,
+  },
   /** One client's record. */
   client: (id: string) => `/admin/clients/${seg(id)}`,
   conditionReports: { list: () => "/admin/condition-reports" },

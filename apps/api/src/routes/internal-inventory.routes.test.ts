@@ -40,14 +40,24 @@ function createApp(
     .mockResolvedValue([
       { id: body.saleId, title: "Winter sale", startsAt: "2026-12-01T10:00:00.000Z" },
     ]);
+  const findDraft = vi.fn().mockResolvedValue({
+    lotId: "33333333-3333-4333-8333-333333333333",
+    saleId: body.saleId,
+    saleTitle: "Winter sale",
+  });
   const app = new Hono().route(
     "/internal/inventory",
     createInternalInventoryRoutes(
-      { inventoryMoves: { draftLots: { listSales, createDraft }, returnToLaxArt: {} as never } },
+      {
+        inventoryMoves: {
+          draftLots: { listSales, createDraft, findDraft },
+          returnToLaxArt: {} as never,
+        },
+      },
       env as never,
     ),
   );
-  return { app, listSales, createDraft };
+  return { app, listSales, createDraft, findDraft };
 }
 
 describe("internal inventory routes (Bid)", () => {
@@ -75,6 +85,40 @@ describe("internal inventory routes (Bid)", () => {
     expect(await response.json()).toEqual({
       sales: [{ id: body.saleId, title: "Winter sale", startsAt: "2026-12-01T10:00:00.000Z" }],
     });
+  });
+
+  it("tells LAX Admin which draft lot holds a record's place", async () => {
+    const { app, findDraft } = createApp();
+    const response = await app.request(`/internal/inventory/draft-lots/${body.registerId}`, {
+      headers,
+    });
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      lot: {
+        lotId: "33333333-3333-4333-8333-333333333333",
+        saleId: body.saleId,
+        saleTitle: "Winter sale",
+      },
+    });
+    expect(findDraft).toHaveBeenCalledWith(body.registerId);
+  });
+
+  it("answers no lot when there is none, and refuses an id that is not an id", async () => {
+    const { app, findDraft } = createApp();
+    findDraft.mockResolvedValueOnce(null);
+    const none = await app.request(`/internal/inventory/draft-lots/${body.registerId}`, {
+      headers,
+    });
+    expect(await none.json()).toEqual({ lot: null });
+    const bad = await app.request("/internal/inventory/draft-lots/nope", { headers });
+    expect(bad.status).toBe(400);
+  });
+
+  it("keeps the draft-lot lookup behind the credential", async () => {
+    const { app, findDraft } = createApp();
+    const response = await app.request(`/internal/inventory/draft-lots/${body.registerId}`);
+    expect(response.status).toBe(401);
+    expect(findDraft).not.toHaveBeenCalled();
   });
 
   it("makes the draft lot and answers with it", async () => {

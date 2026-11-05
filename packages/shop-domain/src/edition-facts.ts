@@ -318,6 +318,26 @@ function numberedPrintText(
   };
 }
 
+/** What a page can say about a run before staff have confirmed its facts. */
+export function describeEditionRun(run: EditionRunSpec): { eyebrow: string; edition: string } {
+  return { eyebrow: eyebrow(run), edition: editionRow(run) };
+}
+
+/**
+ * How another run of the same image is named beside this one: "As an artist's proof",
+ * "Unsigned, open edition", "Hand-signed, limited edition of 24". Without confirmed facts only the
+ * run is named.
+ */
+export function describeAlsoAvailable(run: EditionRunSpec, facts: EditionFacts | null): string {
+  if (run.type === "proof") {
+    const noun = PROOF_NAMES[run.proofType].singular;
+    return `As ${/^[aeiou]/.test(noun) ? "an" : "a"} ${noun}`;
+  }
+  const name = runName(run);
+  if (!facts) return name;
+  return `${signatureShort(facts.signature)}, ${name.charAt(0).toLowerCase()}${name.slice(1)}`;
+}
+
 /** Writes every public sentence about a run and its confirmed facts. */
 export function describeEditionFacts(
   run: EditionRunSpec,
@@ -329,6 +349,7 @@ export function describeEditionFacts(
   const signed = signatureShort(signature);
   const open = isOpenRun(run);
   const certificateText = certificateShort(certificate);
+  const horsCommerce = run.type === "proof" && run.proofType === "hc";
   return {
     eyebrow: eyebrow(run),
     rows: {
@@ -349,6 +370,7 @@ export function describeEditionFacts(
       const numbered = numberedPrintText(run, numbering, print);
       return [
         numbered?.order ?? name,
+        ...(horsCommerce ? [capitalise(HORS_COMMERCE_NOTE)] : []),
         signed,
         ...(numbering === "none" && !open ? ["Not numbered"] : []),
         ...(certificateText ? [certificateText] : []),
@@ -358,6 +380,7 @@ export function describeEditionFacts(
       const numbered = numberedPrintText(run, numbering, print);
       return [
         numbered && run.type !== "proof" ? `${name}, ${numbered.invoice}` : name,
+        ...(horsCommerce ? [HORS_COMMERCE_NOTE] : []),
         ...(numbered && run.type === "proof" ? [numbered.invoice] : []),
         signatureForInvoice(signature),
         ...(certificate.kind === "included" ? ["with certificate of authenticity"] : []),

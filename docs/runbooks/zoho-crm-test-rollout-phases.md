@@ -57,10 +57,10 @@ Verify: email verify + profile edit patch the Lead/Contact.
 | `ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED` | `Paid` |
 | `ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED` | `Refunded` |
 | `ZOHO_CRM_DEAL_STAGE_SHOP_PAID` | `Paid` |
-| `ZOHO_CRM_LEAD_CONVERSION_ENABLED` | `true` |
+| `ZOHO_CRM_LEAD_STATUS_NEW` | `New` (the sandbox picklist has no `New (Unassigned)`) |
 | `ZOHO_CRM_ENABLED_EVENT_TYPES` | add `bid.lot_won,payment.captured,payment.refunded,shop.order.paid` |
 
-Verify: lot win → Contact + Deal at Lot Won; Stripe test payment → Paid; refund → Refunded; Shop order → Paid deal.
+Verify: lot win → held deal (no Deal until an admin converts the lead); after conversion → Deal at Lot Won on the Contact; Stripe test payment → Paid; refund → Refunded; Shop order → Paid deal.
 
 ## Phase 4 — GDPR and live
 

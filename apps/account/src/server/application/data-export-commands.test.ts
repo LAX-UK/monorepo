@@ -134,9 +134,9 @@ describe("signDataExportDownload", () => {
 });
 
 describe("dataExportClientFromHeaders", () => {
-  it("uses the first forwarded address and the browser", () => {
+  it("records the platform-resolved address, not the first forwarded entry the browser chose", () => {
     const headers = new Headers({
-      "x-forwarded-for": "203.0.113.9, 10.0.0.1",
+      "x-forwarded-for": "1.2.3.4, 203.0.113.9, 10.0.0.1",
       "user-agent": "Mozilla/5.0",
     });
     expect(dataExportClientFromHeaders(headers)).toEqual(CLIENT);

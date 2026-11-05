@@ -8,3 +8,4 @@ export * from "./access-policy.js";
 export * from "./address.js";
 export * from "./subject-export.js";
 export * from "./data-request.js";
+export * from "./legal-acceptance.js";

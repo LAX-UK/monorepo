@@ -71,7 +71,58 @@ describe("createOrRenewCheckoutSession", () => {
     });
     expect(create).toHaveBeenCalledTimes(2);
     expect(create.mock.calls[0]?.[0]).toBe("checkout:card:payment:pay_1");
-    expect(String(create.mock.calls[1]?.[0])).toMatch(/^checkout:card:payment:pay_1:renewed:/);
+    expect(create.mock.calls[1]?.[0]).toBe("checkout:card:payment:pay_1:renewed:cs_old");
+  });
+
+  it("two requests renewing the same expired session use one key, so Stripe opens one session", async () => {
+    const expired = { id: "cs_old", status: "expired", url: "https://checkout.stripe.com/x" };
+    const fresh = {
+      id: "cs_new",
+      status: "open",
+      url: "https://checkout.stripe.com/pay/cs_new",
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    };
+    const run = async () => {
+      const create = vi.fn(async (key: string) => ({
+        sessionId: key.includes(":renewed:") ? "cs_new" : "cs_old",
+        url: "https://checkout.stripe.com/pay/cs",
+        paymentIntentId: null,
+      }));
+      const gateway = {
+        retrieveCheckoutSession: vi.fn(async (id: string) => (id === "cs_old" ? expired : fresh)),
+      } as unknown as IStripePaymentGateway;
+      await createOrRenewCheckoutSession(gateway, "card", "pay_1", create);
+      return create.mock.calls.map((call) => call[0]);
+    };
+    const [first, second] = await Promise.all([run(), run()]);
+    expect(first).toEqual(second);
+    expect(first?.[1]).toBe("checkout:card:payment:pay_1:renewed:cs_old");
+  });
+
+  it("steps over a renewed session that has expired too, by the same rule", async () => {
+    const create = vi.fn(async (key: string) => ({
+      sessionId: key.endsWith(":renewed:cs_a")
+        ? "cs_b"
+        : key.endsWith(":renewed:cs_b")
+          ? "cs_c"
+          : "cs_a",
+      url: "https://checkout.stripe.com/pay/cs",
+      paymentIntentId: null,
+    }));
+    const gateway = {
+      retrieveCheckoutSession: vi.fn(async (id: string) =>
+        id === "cs_c"
+          ? { id, status: "open", url: "u", expires_at: Math.floor(Date.now() / 1000) + 3600 }
+          : { id, status: "expired", url: "u" },
+      ),
+    } as unknown as IStripePaymentGateway;
+    const outcome = await createOrRenewCheckoutSession(gateway, "card", "pay_1", create);
+    expect(outcome).toMatchObject({ kind: "ready", session: { sessionId: "cs_c" } });
+    expect(create.mock.calls.map((c) => c[0])).toEqual([
+      "checkout:card:payment:pay_1",
+      "checkout:card:payment:pay_1:renewed:cs_a",
+      "checkout:card:payment:pay_1:renewed:cs_b",
+    ]);
   });
 
   it("returns already_complete when Stripe session is complete", async () => {

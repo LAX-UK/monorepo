@@ -3,6 +3,7 @@ import {
   type NewArtworkRegisterEntry,
   type RegisterFieldValues,
   type ZohoChange,
+  nonConformingCodePart,
   parseStockCode,
 } from "@auction/artwork-register-contracts";
 import { type CatalogueProduct, isDemoArtist } from "./catalogue-product.js";
@@ -22,7 +23,9 @@ export type CatalogueGap =
   | "missing_price"
   | "missing_medium"
   | "missing_dimensions"
-  | "artist_code_differs_from_stock_code";
+  | "artist_code_differs_from_stock_code"
+  /** The artist or collection code is outside what LAX issues today; the code is still read. */
+  | "non_standard_code_parts";
 
 export type ProductAssessment = {
   productId: string;
@@ -71,6 +74,9 @@ export function assessProduct(product: CatalogueProduct): ProductAssessment {
   if (!product.artist) blockers.push("missing_artist");
   else if (!artist) blockers.push("missing_artist_code");
 
+  if (parts && nonConformingCodePart(product.stockCode ?? "") !== null) {
+    gaps.push("non_standard_code_parts");
+  }
   if (!product.medium) gaps.push("missing_medium");
   if (!product.dimensions) gaps.push("missing_dimensions");
   if (product.unitPrice === null || product.unitPrice <= 0) gaps.push("missing_price");

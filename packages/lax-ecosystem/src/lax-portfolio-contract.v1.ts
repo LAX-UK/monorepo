@@ -101,6 +101,11 @@ export const LaxPortfolioDocumentV1 = Type.Object({
   href: Type.Optional(Type.String({ minLength: 1 })),
   /** Plain-language note on when a missing document arrives. */
   expectedNote: Type.Optional(Type.String({ minLength: 1 })),
+  /**
+   * What the product calls this document when it can say more than its kind does, such as
+   * "Certificate of authenticity No. 7/24". A consumer falls back to the kind's name without it.
+   */
+  label: Type.Optional(Type.String({ minLength: 1 })),
 });
 export type LaxPortfolioDocumentV1 = Static<typeof LaxPortfolioDocumentV1>;
 
@@ -144,6 +149,11 @@ export const LaxPortfolioItemV1 = Type.Object({
   business: LaxBusinessV1,
   /** Present on a work awaiting payment when the product knows the amount due. */
   owed: Type.Optional(LaxPortfolioOwedV1),
+  /**
+   * Which print of a limited edition this is, as the product describes it to the owner:
+   * "No. 7 of 24 · Hand-signed". Present only for a work that has an edition to describe.
+   */
+  edition: Type.Optional(Type.String({ minLength: 1 })),
 });
 export type LaxPortfolioItemV1 = Static<typeof LaxPortfolioItemV1>;
 

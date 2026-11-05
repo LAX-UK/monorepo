@@ -40,6 +40,7 @@ import type {
   RecordThirdPartySaleCommand,
   ThirdPartySaleWriter,
 } from "./application/ports/third-party-sale.writer.js";
+import type { PrintFulfilmentServices } from "./application/print-fulfilment/print-fulfilment-services.js";
 import type { ProductionTaskService } from "./application/production-task.service.js";
 import type { SavedViewService } from "./application/saved-view.service.js";
 import type { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
@@ -119,9 +120,14 @@ export type AdminRoutesDeps = {
   merchandiseCatalogue: MerchandiseCatalogueWriter;
   artworkCatalogue: ArtworkCatalogueWriter;
   /** Offering an original at auction in LAX Bid. */
-  inventoryMoves: Pick<OriginalMoveService, "assess" | "listSales" | "offerAtAuction">;
+  inventoryMoves: Pick<
+    OriginalMoveService,
+    "assess" | "assessRegister" | "listSales" | "offerAtAuction" | "offerRegisterAtAuction"
+  >;
   /** Runs of prints: change a draft's run, edition facts, open edition stock, linked listings. */
   editionRuns: Omit<EditionRunServices, "recorder" | "originalPrintsRecorder">;
+  /** Packing: the pick list, confirming the print in hand, swaps and certificates. */
+  printFulfilment: PrintFulfilmentServices;
   artistCatalogue: ArtistCatalogueWriter;
   /** Refreshes lax.art after catalogue writes that change what it serves. */
   artCache: ArtCacheInvalidator;

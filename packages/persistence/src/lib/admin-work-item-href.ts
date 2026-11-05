@@ -6,7 +6,7 @@ export type AdminWorkItemLinkIds = {
   /** The payment, submission, lot, legal entity, case or screening the item is about. */
   subjectId?: string | null;
   saleId?: string | null;
-  /** The payment a purchase problem was reported against. */
+  /** The payment a blocked capture is about. */
   paymentId?: string | null;
   /** Telephone booking status the item is filtered by on its sale tab. */
   status?: string | null;
@@ -49,8 +49,14 @@ export function adminWorkItemHref(
     case "marketing_enquiry":
       return requireId(kind, subjectId, adminRoutes.enquiry);
     case "purchase_problem":
+      return requireId(kind, subjectId, adminRoutes.purchaseProblems.record);
     case "payment_capture_blocked":
       return requireId(kind, ids.paymentId ?? null, adminRoutes.payments.panel);
+    case "payment_money_unapplied":
+      // Money with no single invoice (a group, or a Stripe balance) opens the payments list.
+      return ids.paymentId
+        ? adminRoutes.payments.panel(ids.paymentId)
+        : adminRoutes.payments.list();
     case "deletion_hold":
       return requireId(kind, subjectId, adminRoutes.client);
     case "condition_report":

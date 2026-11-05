@@ -31,6 +31,10 @@ const dotWhen = (value: string | null) => {
   return text ? ` · ${text}` : "";
 };
 
+/** " · Winter sale": the sale a LAX Bid lot is in, when LAX Bid said which. */
+const inSale = (place: AdminWhereItIs) =>
+  place.bidLot?.saleTitle ? ` · ${place.bidLot.saleTitle}` : "";
+
 export function whereItIsLine(
   place: AdminWhereItIs,
   context: WhereItIsContext = {},
@@ -66,11 +70,13 @@ export function whereItIsLine(
     case "draft_bid_lot":
       return {
         lead: "Draft lot in LAX Bid",
+        trail: inSale(place),
         note: "Buyers can't see it. Publishing the lot puts the artwork in the sale and holds it there.",
       };
     case "bid_sale":
       return {
         lead: "In a LAX Bid sale",
+        trail: inSale(place),
         note: "Withdraw the lot in LAX Bid to offer it anywhere else.",
       };
     case "private_sale":
