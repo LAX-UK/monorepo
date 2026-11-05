@@ -16,7 +16,7 @@ const vm: FeaturedAuctionCardVM = {
   auctionTypeLabel: "Online Auction",
   dateLabel: "1 JAN 2026 | 10:00 AM GMT",
   locationLabel: "London",
-  itemsLabel: "12 items",
+  itemsLabel: "12 lots",
   status: "scheduled",
   deliveryMode: "online",
 };

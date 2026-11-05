@@ -18,6 +18,8 @@ describe("catalogue handlers", () => {
         priceBands: [],
         sizes: [],
         techniques: [],
+        objectTypes: [],
+        saleStates: [],
       }),
     });
     const input = {

@@ -21,6 +21,7 @@ import {
 } from "@/lib/home/art-home-galleries.vm";
 import { ART_HOME_HERO_HEADLINE } from "@/lib/home/art-home-hero.vm";
 import { type ArtHomeGuidePromoVm, buildArtHomeGuidePromoVm } from "@/lib/home/art-home-promos.vm";
+import { isTextLedSection } from "@/lib/home/art-home-text-led";
 import type {
   ArtCataloguePort,
   ArtEcosystemPort,
@@ -78,6 +79,8 @@ export type ArtHomePageVm = {
   stories: EditorialCardVm[];
   guidePromo: ArtHomeGuidePromoVm;
   galleries: ArtHomeGalleryCardVm[];
+  /** Sections with no image among their items; they lead with text instead of placeholders. */
+  textLed: { whatsOn: boolean; stories: boolean; galleries: boolean };
   viewer: ArtViewerState;
   favoriteAuth: ArtFavoriteAuth;
   /** Sections whose upstream read failed; the page shows an inline error instead. */
@@ -245,6 +248,11 @@ export async function composeArtHomePage(services: {
     stories,
     guidePromo: buildArtHomeGuidePromoVm(editorial.kind === "ok" ? editorial.guide : []),
     galleries,
+    textLed: {
+      whatsOn: isTextLedSection(whatsOn),
+      stories: isTextLedSection(stories),
+      galleries: isTextLedSection(galleries),
+    },
     viewer: favorites.viewer,
     favoriteAuth: favorites.favoriteAuth,
     sectionErrors,

@@ -10,6 +10,7 @@ import {
   MARKETING_FILTER_RAIL_STICKY,
   MARKETING_FILTER_RESULT_COUNT,
 } from "@/lib/marketing/filter-rail";
+import type { SalesFacetCounts } from "@/lib/marketing/sales-calendar-facets";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
 import {
   SALES_FILTER_SIDEBAR_DEFAULT_OPEN,
@@ -25,6 +26,7 @@ type Props = {
   resultCount: number;
   categories: Category[];
   years: number[];
+  facets: SalesFacetCounts | null;
   className?: string;
   showResultCount?: boolean;
   onLinkClick?: () => void;
@@ -37,6 +39,7 @@ export function SalesFilterSidebar({
   resultCount,
   categories,
   years,
+  facets,
   className,
   showResultCount = true,
   onLinkClick,
@@ -76,6 +79,7 @@ export function SalesFilterSidebar({
                 state={state}
                 categories={categories}
                 years={years}
+                facets={facets}
                 {...(onLinkClick ? { onLinkClick } : {})}
               />
             </AccordionContent>

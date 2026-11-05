@@ -1,137 +1,45 @@
-import { LegalH2, LegalPage } from "@/components/marketing/legal-page";
-import {
-  MARKETING_HUB_BREADCRUMB_CLASS,
-  MarketingBreadcrumb,
-} from "@/components/marketing/marketing-breadcrumb";
-import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
-import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
-import { SellCtaLink } from "@/components/marketing/sell-cta-link";
-import { SellDepartmentsSection } from "@/components/marketing/sell-journey/sell-departments-section";
-import { SellPhotosSection } from "@/components/marketing/sell-journey/sell-photos-section";
-import { SellPrepareSection } from "@/components/marketing/sell-journey/sell-prepare-section";
-import { SellProcessSection } from "@/components/marketing/sell-journey/sell-process-section";
-import { SellValuationSection } from "@/components/marketing/sell-journey/sell-valuation-section";
-import { SellPageClosingPromo } from "@/components/marketing/sell-page-closing-promo";
+import { faqGroups } from "@/components/marketing/faq/faq-data";
+import { SellLandingView } from "@/components/marketing/sell/sell-landing-view";
+import { SellLegacyAnchorRedirect } from "@/components/marketing/sell/sell-legacy-anchor-redirect";
 import { SITE_SEO_NAME } from "@/lib/brand";
-import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
-import { SELL_PAGE_INTRO, SELL_TIME_EXPECTATIONS } from "@/lib/marketing/sell-flow-copy";
-import { sellIntakeHref } from "@/lib/marketing/sell-intake";
-import { SELL_PAGE_TOC } from "@/lib/marketing/sell-page-toc";
+import { loadRecentlySold } from "@/lib/marketing/load-recently-sold";
+import { SELL_FAQ_IDS, SELL_HERO_TITLE } from "@/lib/marketing/sell-landing";
+import { SELL_SPECIALISTS } from "@/lib/marketing/sell-specialists";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
-import { MarketingSectionReveal } from "@auction/marketing-ui";
-import { buttonVariants } from "@auction/ui/lax";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = metadataForStatic({
-  title: "Selling with LAX Bid",
-  description: `How to sell with ${SITE_SEO_NAME}: submit a consignment, work with specialists, prepare catalogue materials, and settle after auction.`,
+  title: SELL_HERO_TITLE,
+  description: `Sell with ${SITE_SEO_NAME}: free valuations from our specialists, no obligation to sell, and a payout after the buyer has paid.`,
   path: "/sell",
 });
 
-export default function SellPage() {
+const FAQ_ITEMS = faqGroups
+  .flatMap((group) => (group.id === "selling" ? group.items : []))
+  .filter((item) => (SELL_FAQ_IDS as readonly string[]).includes(item.id))
+  .sort((a, b) => SELL_FAQ_IDS.indexOf(a.id as never) - SELL_FAQ_IDS.indexOf(b.id as never));
+
+export default async function SellPage() {
+  const recentlySold = await loadRecentlySold();
   const jsonLdText = jsonLdScript(
     breadcrumbJsonLd([
       { name: "Home", path: "/" },
-      { name: "Selling with LAX Bid", path: "/sell" },
+      { name: "Sell", path: "/sell" },
     ]),
   );
 
   return (
-    <PolicyHubLayout>
+    <>
       <script type="application/ld+json" suppressHydrationWarning>
         {jsonLdText}
       </script>
-      <LegalPage
-        title="Selling with LAX Bid"
-        breadcrumb={
-          <MarketingBreadcrumb
-            items={[
-              { label: "Home", href: "/" },
-              { label: "Selling", current: true },
-            ]}
-            className={MARKETING_HUB_BREADCRUMB_CLASS}
-          />
-        }
-        kicker="Consign with LAX"
-        embedded
-        toc={SELL_PAGE_TOC}
-      >
-        <p>{SELL_PAGE_INTRO}</p>
-        <p>{SELL_TIME_EXPECTATIONS}</p>
-
-        <MarketingPromoCta
-          className="mt-8"
-          title="Start your submission"
-          description="Create an account and complete the consignment wizard in about 3 minutes."
-          actions={
-            <SellCtaLink
-              href={sellIntakeHref()}
-              source="sell_intro"
-              className={buttonVariants({ variant: "primary" })}
-            >
-              Start your submission
-            </SellCtaLink>
-          }
-        />
-
-        <LegalH2 id="departments" className="scroll-mt-28 mt-10">
-          What we accept
-        </LegalH2>
-        <MarketingSectionReveal index={0}>
-          <SellDepartmentsSection />
-        </MarketingSectionReveal>
-
-        <LegalH2 id="how-it-works" className="scroll-mt-28">
-          How consignment works
-        </LegalH2>
-        <MarketingSectionReveal index={1}>
-          <SellProcessSection />
-        </MarketingSectionReveal>
-
-        <LegalH2 id="prepare" className="scroll-mt-28">
-          Prepare your submission
-        </LegalH2>
-        <MarketingSectionReveal index={2}>
-          <SellPrepareSection />
-        </MarketingSectionReveal>
-
-        <LegalH2 id="photos" className="scroll-mt-28">
-          Photographing your item
-        </LegalH2>
-        <MarketingSectionReveal index={3}>
-          <SellPhotosSection />
-        </MarketingSectionReveal>
-
-        <LegalH2 id="fees" className="scroll-mt-28">
-          Fees &amp; specialist support
-        </LegalH2>
-        <p>
-          Fees, reserves, photography, storage, shipping, and settlement timing are agreed before a
-          lot is entered into sale. The governing sale terms are available in our{" "}
-          <Link href="/terms" className={MARKETING_PROSE_LINK}>
-            Conditions of Business
-          </Link>
-          .
-        </p>
-        <p>
-          A small specialist desk leads each sale: a head of department vets consignments, a
-          cataloguer writes condition notes, and a registrar coordinates payment, packing, and
-          delivery. Every catalogue is reviewed by two specialists before publication.
-        </p>
-
-        <LegalH2 id="valuation" className="scroll-mt-28">
-          Get a valuation
-        </LegalH2>
-        <MarketingSectionReveal index={4}>
-          <SellValuationSection />
-        </MarketingSectionReveal>
-
-        <MarketingSectionReveal index={5}>
-          <SellPageClosingPromo />
-        </MarketingSectionReveal>
-      </LegalPage>
-    </PolicyHubLayout>
+      <SellLegacyAnchorRedirect />
+      <SellLandingView
+        recentlySold={recentlySold.ok ? recentlySold.value : []}
+        specialists={SELL_SPECIALISTS}
+        faqItems={FAQ_ITEMS}
+      />
+    </>
   );
 }

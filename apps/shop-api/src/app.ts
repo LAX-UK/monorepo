@@ -15,6 +15,7 @@ import { registerShopAuthPlugin } from "./plugins/shop-auth.js";
 import { registerAdminArtistApplicationRoutes } from "./routes/admin/v1/admin-artist-applications.routes.js";
 import { registerAdminArtistIdentityRoutes } from "./routes/admin/v1/admin-artist-identity.routes.js";
 import { registerAdminArtistRoutes } from "./routes/admin/v1/admin-artists.routes.js";
+import { registerAdminArtworkRegisterRoutes } from "./routes/admin/v1/admin-artwork-register.routes.js";
 import { registerAdminEditorialRoutes } from "./routes/admin/v1/admin-editorial.routes.js";
 import { registerAdminEnquiryRoutes } from "./routes/admin/v1/admin-enquiries.routes.js";
 import { registerAdminGuestRoutes } from "./routes/admin/v1/admin-guests.routes.js";
@@ -31,6 +32,7 @@ import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js
 import { registerAdminEditionRunRoutes } from "./routes/admin/v1/edition-runs.routes.js";
 import { registerAdminHealthRoutes } from "./routes/admin/v1/health.routes.js";
 import { registerAdminHomeFeatureRoutes } from "./routes/admin/v1/home-features.routes.js";
+import { registerAdminInventoryMoveRoutes } from "./routes/admin/v1/inventory-moves.routes.js";
 import { registerAdminOperationsRoutes } from "./routes/admin/v1/operations.routes.js";
 import { registerAdminOriginalSaleRoutes } from "./routes/admin/v1/original-sales.routes.js";
 import { registerAdminSessionRoutes } from "./routes/admin/v1/session.routes.js";
@@ -38,6 +40,7 @@ import { registerAdminThirdPartyRoutes } from "./routes/admin/v1/third-party.rou
 import { registerHealthRoutes } from "./routes/health.routes.js";
 import { registerIdentityDeletionEligibilityRoutes } from "./routes/internal/identity-deletion-eligibility.routes.js";
 import { registerIdentitySubjectExportRoutes } from "./routes/internal/identity-subject-export.routes.js";
+import { registerInventoryArtListingRoutes } from "./routes/internal/inventory-art-listing.routes.js";
 import { registerArtistApplicationRoutes } from "./routes/v1/artist-application.routes.js";
 import { registerArtistRoutes } from "./routes/v1/artists.routes.js";
 import { registerArtworkInterestRoutes } from "./routes/v1/artwork-interest.routes.js";
@@ -138,6 +141,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerHealthRoutes(app, options.deps.health);
   void registerIdentityDeletionEligibilityRoutes(app, options.deps.identityDeletion);
   void registerIdentitySubjectExportRoutes(app, options.deps.identitySubjectExport);
+  void registerInventoryArtListingRoutes(app, options.deps.inventory);
   void registerStripeWebhookRoutes(app, options.deps.stripeWebhook);
   if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
     void registerStripeConnectWebhookRoutes(app, options.deps.stripeConnectWebhook);
@@ -187,6 +191,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminSavedViewRoutes(adminScope, options.deps.admin.savedViews);
         void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
         void registerAdminGuestRoutes(adminScope, options.deps.admin);
+        void registerAdminArtworkRegisterRoutes(adminScope, options.deps.admin.artworkRegister);
         void registerAdminReleaseAlertRoutes(adminScope, options.deps.admin.releaseAlertSummary);
         void registerAdminArtistApplicationRoutes(
           adminScope,
@@ -195,6 +200,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminArtistIdentityRoutes(adminScope, options.deps.admin);
         void registerAdminArtistRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
+        void registerAdminInventoryMoveRoutes(adminScope, options.deps.admin);
         void registerAdminEditionRunRoutes(adminScope, options.deps.admin);
         void registerAdminHomeFeatureRoutes(adminScope, options.deps.admin);
         void registerAdminMediaRoutes(adminScope, options.deps.admin);

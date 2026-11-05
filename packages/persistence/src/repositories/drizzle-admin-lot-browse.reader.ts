@@ -7,6 +7,7 @@ import type {
   IAdminLotBrowseReader,
 } from "../interfaces/admin-lot-browse.reader.js";
 import type { AdminLotBrowseInput } from "../lib/admin-lot-browse.types.js";
+import { containsPattern } from "../lib/like-pattern.js";
 
 function buildAttachableWhere(input: AdminLotBrowseInput) {
   const state = input.state ?? "available";
@@ -31,11 +32,8 @@ function buildAttachableWhere(input: AdminLotBrowseInput) {
     if (excludeSaleCondition) conditions.push(excludeSaleCondition);
   }
   if (input.q?.trim()) {
-    const safe = input.q
-      .trim()
-      .slice(0, 200)
-      .replace(/[%_\\]/g, "");
-    if (safe.length > 0) conditions.push(ilike(lot.title, `%${safe}%`));
+    const text = input.q.trim().slice(0, 200);
+    if (text.length > 0) conditions.push(ilike(lot.title, containsPattern(text)));
   }
   if (input.categoryIds?.length) {
     conditions.push(

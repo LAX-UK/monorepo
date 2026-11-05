@@ -52,3 +52,23 @@ export interface IZohoArtworkSyncReport {
   listForRun(runId: string, limit: number): Promise<ZohoArtworkSyncOutcome[]>;
   summarise(runId: string): Promise<ZohoArtworkSyncSummary>;
 }
+
+/** What the latest nightly check did, as staff read it. */
+export type ZohoArtworkSyncRunSummary = {
+  runId: string;
+  mode: ZohoArtworkSyncMode;
+  /** When the pass last recorded a result. */
+  finishedAt: Date;
+  total: number;
+  byOutcome: ZohoArtworkSyncSummary;
+  /** Skipped Products grouped by why, most common first. */
+  skippedReasons: { reason: string; count: number }[];
+  /** Products that would be created, grouped by what they lack, most common first. */
+  gaps: { gap: string; count: number }[];
+};
+
+/** Reads the report for LAX Admin. Nothing here changes a pass. */
+export interface IZohoArtworkSyncRunReader {
+  /** The newest nightly pass in any mode, or null before the first one. */
+  latestNightlyRun(): Promise<ZohoArtworkSyncRunSummary | null>;
+}

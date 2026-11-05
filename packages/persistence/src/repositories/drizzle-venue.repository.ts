@@ -8,6 +8,7 @@ import type {
   ListVenuesFilter,
   VenueListRow,
 } from "../interfaces/venue.repository.js";
+import { containsPattern } from "../lib/like-pattern.js";
 
 function toNumber(value: string | null): number | null {
   if (value == null) return null;
@@ -47,10 +48,6 @@ export function mapVenueRow(row: typeof venue.$inferSelect): Venue {
   };
 }
 
-function escapeIlike(value: string): string {
-  return value.replace(/[%_\\]/g, "");
-}
-
 function buildListConditions(filter: ListVenuesFilter = {}) {
   const conditions = [venueNotDeleted()];
   if (!filter.includeArchived) {
@@ -61,7 +58,7 @@ function buildListConditions(filter: ListVenuesFilter = {}) {
   }
   const q = filter.q?.trim();
   if (q) {
-    const pattern = `%${escapeIlike(q)}%`;
+    const pattern = containsPattern(q);
     const search = or(
       ilike(venue.name, pattern),
       ilike(venue.city, pattern),

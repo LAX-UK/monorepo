@@ -368,6 +368,16 @@ export const ENQUIRY_ASSIGN_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "support.respond", "private_sale.manage"],
 };
 
+/** Open a private sale deal and move it through its stages. */
+export const PRIVATE_SALE_DEALS_MANAGE_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "private_sale.manage"],
+};
+
+/** Read a private sale deal: those who run it, and Compliance, who decide its checks. */
+export const PRIVATE_SALE_DEALS_READ_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "private_sale.manage", "aml.review", "compliance.mlro"],
+};
+
 /** Choose which specialist receives each department's enquiries. */
 export const ENQUIRY_ROUTING_MANAGE_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "auction.manage"],

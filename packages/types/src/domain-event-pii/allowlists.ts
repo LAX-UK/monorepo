@@ -240,9 +240,10 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "legal_entity.payout_bank_changed": new Set(["bank_last4", "bank_name"]),
   /** lot voided at close (anti-shilling). */
   "lot.voided": new Set(["reason"]),
-  "sale.created": new Set(["from_status", "to_status", "deliveryMode", "lotCount"]),
+  "sale.created": new Set(["from_status", "to_status", "deliveryMode", "lotCount", "isTest"]),
   "sale.published": new Set(["from_status", "to_status", "lotCount", "deliveryMode"]),
   "sale.unpublished": new Set(["from_status", "to_status"]),
+  "sale.test_flag_changed": new Set(["isTest", "status"]),
   "sale.cancelled": new Set(["from_status", "to_status", "lotCount", "cancelledLotIds"]),
   "sale.soft_deleted": new Set(["title", "from_status", "lotCount", "deleted_at"]),
   "lot.soft_deleted": new Set(["title", "from_status", "saleId", "deleted_at"]),
@@ -421,6 +422,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   ]),
   "marketing_enquiry.status_changed": new Set(["enquiryId", "intent", "from", "to", "closeReason"]),
   "marketing_enquiry.converted": new Set(["enquiryId", "intent", "from"]),
+  /** Row counts and the reason staff typed; the address that was erased is never recorded. */
+  "marketing_enquiry.erased": new Set(["enquiries", "notes", "attachments", "held", "reason"]),
   /** Codes and dates; the note is typed by staff, and the address itself is never recorded. */
   "email.block_lifted": new Set([
     "userId",
@@ -431,6 +434,30 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "provider",
   ]),
   /** One event per changed routing row: a department slug (or none for the fallback) and staff user ids. */
+  /** Identifiers and stage codes only: the parties, the price and the cancel reason stay on the deal. */
+  "private_sale_deal.created": new Set(["dealId", "reference", "stage"]),
+  "private_sale_deal.stage_changed": new Set(["dealId", "reference", "from", "to"]),
+  "private_sale_deal.payment_started": new Set([
+    "dealId",
+    "reference",
+    "paymentId",
+    "rail",
+    "amountMinor",
+  ]),
+  "private_sale_deal.payment_paid": new Set(["dealId", "reference", "paymentId", "amountMinor"]),
+  "private_sale_deal.payment_cancelled": new Set(["dealId", "reference", "paymentId", "reason"]),
+  "private_sale_deal.payment_refunded": new Set([
+    "dealId",
+    "reference",
+    "paymentId",
+    "amountMinor",
+  ]),
+  "private_sale_deal.payout_queued": new Set([
+    "dealId",
+    "reference",
+    "payoutId",
+    "netToSellerMinor",
+  ]),
   "enquiry_routing.changed": new Set([
     "departmentSlug",
     "assignedToUserId",

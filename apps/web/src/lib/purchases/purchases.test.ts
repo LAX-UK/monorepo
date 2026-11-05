@@ -1,6 +1,6 @@
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
-import type { AccountHold } from "@auction/domain";
+import { type AccountHold, PURCHASE_LIST_LIMIT } from "@auction/domain";
 import type { Lot, PortfolioRow } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { owedFor } from "./owed-fixtures.test-util";
@@ -197,6 +197,22 @@ describe("buildPurchasesVm", () => {
     expect(vm.cardsByTab.completed.map((card) => card.lotId)).toEqual(["lot-7"]);
     expect(vm.total).toBe(3);
     expect(vm.sales).toEqual([{ id: "sale-2", title: "Jewels and objects of vertu" }]);
+  });
+
+  it("lists every purchase the amounts owed follow, and says so when it reaches that limit", () => {
+    const many = (count: number) =>
+      buildPurchasesVm(
+        sources({
+          rows: Array.from({ length: count }, (_, i) => row(`lot-${i}`, i + 1, null)),
+        }),
+      );
+    expect(many(PURCHASE_LIST_LIMIT - 1)).toMatchObject({
+      total: PURCHASE_LIST_LIMIT - 1,
+      truncated: false,
+    });
+    const full = many(PURCHASE_LIST_LIMIT);
+    expect(full.truncated).toBe(true);
+    expect(full.cardsByTab["to-pay"]).toHaveLength(PURCHASE_LIST_LIMIT);
   });
 
   it("keeps a purchase with a cancelled payment row in To pay, with Pay available", () => {

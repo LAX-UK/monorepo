@@ -9,7 +9,7 @@ export function SellProcessSection() {
       <p>{SELL_PAGE_CONSIGNMENT_WORKS}</p>
       <p>
         From first enquiry to catalogue listing, the seller journey below takes about three minutes
-        to submit.
+        to send.
       </p>
       <MarketingProcessSteps steps={SELL_MARKETING_JOURNEY_STEPS} />
     </div>

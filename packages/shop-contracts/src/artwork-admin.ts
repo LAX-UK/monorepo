@@ -174,7 +174,7 @@ export type AdminArtworkVisibilityAction = (typeof ADMIN_ARTWORK_VISIBILITY_ACTI
 export const AdminArtworkVersionResponseSchema = Type.Object({
   version: CatalogueVersionSchema,
   state: AdminArtworkStateSchema,
-  /** Publishing only: how many release alert subscribers were emailed about the edition. */
+  /** Publishing only: how many release alert subscribers will hear about the edition in their next daily email. */
   releaseAlertsQueued: Type.Optional(Type.Integer({ minimum: 0 })),
 });
 export type AdminArtworkVersionResponse = Static<typeof AdminArtworkVersionResponseSchema>;
@@ -187,6 +187,11 @@ export const AdminArtworkBulkVisibilityBodySchema = Type.Object(
       maxItems: ARTWORK_BULK_MAX,
       uniqueItems: true,
     }),
+    /**
+     * Publishing only: include the editions in the next release alert. Left out, they are
+     * published without telling subscribers.
+     */
+    sendReleaseAlert: Type.Optional(Type.Boolean()),
   },
   { additionalProperties: false },
 );

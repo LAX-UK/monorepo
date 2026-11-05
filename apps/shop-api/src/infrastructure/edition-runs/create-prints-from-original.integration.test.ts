@@ -58,7 +58,7 @@ describe.skipIf(!hasShopIntegrationDb)("prints from an original", { timeout: 60_
         originalPrints: wrapRecorder
           ? wrapRecorder(services.originalPrintsRecorder)
           : services.originalPrintsRecorder,
-        releaseAlerts: { announce: async () => ({ queued: 0 }) },
+        releaseAlerts: { recordPublished: async () => ({ queued: 0 }) },
       }),
       artists: createDrizzleArtistCatalogueWriter(uow),
       reader: createDrizzleAdminArtworkReader(db, { resolveMediaUrl }),

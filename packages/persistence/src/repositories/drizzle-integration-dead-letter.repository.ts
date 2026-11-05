@@ -15,6 +15,7 @@ import type {
   IntegrationSearchResult,
   IntegrationView,
 } from "../interfaces/integration-dead-letter.reader.js";
+import { containsPattern } from "../lib/like-pattern.js";
 
 /** Marks a decision row as belonging to an integration delivery, not to a background job. */
 export const INTEGRATION_DISPOSITION_QUEUE = "integrations";
@@ -29,10 +30,6 @@ const VIEW_PREDICATES: Readonly<Record<IntegrationView, SQL>> = {
 };
 
 const LONDON_DAY = sql`((i.failed_at AT TIME ZONE 'Europe/London')::date)`;
-
-function escapeLike(text: string): string {
-  return text.replace(/[\\%_]/g, (char) => `\\${char}`);
-}
 
 function nameCondition(column: SQL, filter: IntegrationNameFilter | null): SQL | null {
   if (filter === null) return null;
@@ -60,7 +57,7 @@ function filterConditions(input: IntegrationSearch, options: { ignoreQueue?: boo
   if (input.fromDay) conditions.push(sql`${LONDON_DAY} >= ${input.fromDay}::date`);
   if (input.toDay) conditions.push(sql`${LONDON_DAY} <= ${input.toDay}::date`);
   if (input.q) {
-    const pattern = `%${escapeLike(input.q)}%`;
+    const pattern = containsPattern(input.q);
     conditions.push(
       sql`(i.id ILIKE ${pattern} OR i.name ILIKE ${pattern} OR i.event_type ILIKE ${pattern}
         OR i.event_key ILIKE ${pattern} OR i.error_message ILIKE ${pattern})`,

@@ -10,6 +10,7 @@ import { salesPaletteSource } from "@/components/layout/palette/sources/sales-so
 import type { PaletteSource } from "@/components/layout/palette/types";
 import { getStaffNavGroups } from "@/components/layout/staff-nav";
 import { StaffRouteRecentTracker } from "@/components/layout/staff-route-recent-tracker";
+import { staffNavCountTone } from "@/components/shell/bid-staff-nav-tone";
 import { ContextBannerSlot } from "@/components/shell/context-banner-slot";
 import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
 import { staffRolesLabel } from "@/lib/admin/staff-role-presenter";
@@ -97,12 +98,7 @@ function toStaffNav(
       ...(item.badge
         ? {
             count: item.badge,
-            countTone:
-              item.badgeTone === "warning" ||
-              item.badgeTone === "danger" ||
-              item.badgeTone === "live"
-                ? ("attention" as const)
-                : ("neutral" as const),
+            countTone: staffNavCountTone(item.badgeTone),
           }
         : {}),
     })),

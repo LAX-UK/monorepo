@@ -2035,7 +2035,77 @@
     {
       "idx": 290,
       "version": "7",
-      "when": 1801900800000,
+      "when": 1800604800000,
+      "tag": "0290_alert_followers",
+      "breakpoints": true
+    },
+    {
+      "idx": 292,
+      "version": "7",
+      "when": 1800777600000,
+      "tag": "0292_shop_alert_engine",
+      "breakpoints": true
+    },
+    {
+      "idx": 293,
+      "version": "7",
+      "when": 1800864000000,
+      "tag": "0293_drop_marketing_contact_sync_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 294,
+      "version": "7",
+      "when": 1800950400000,
+      "tag": "0294_lot_artwork_register_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 295,
+      "version": "7",
+      "when": 1801036800000,
+      "tag": "0295_private_sale_deal",
+      "breakpoints": true
+    },
+    {
+      "idx": 296,
+      "version": "7",
+      "when": 1801123200000,
+      "tag": "0296_artwork_register_move_event",
+      "breakpoints": true
+    },
+    {
+      "idx": 297,
+      "version": "7",
+      "when": 1801209600000,
+      "tag": "0297_bid_search_trigram_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 298,
+      "version": "7",
+      "when": 1801296000000,
+      "tag": "0298_private_sale_deal_payment",
+      "breakpoints": true
+    },
+    {
+      "idx": 299,
+      "version": "7",
+      "when": 1801382400000,
+      "tag": "0299_alert_in_app_notices",
+      "breakpoints": true
+    },
+    {
+      "idx": 300,
+      "version": "7",
+      "when": 1801468800000,
+      "tag": "0300_sale_test_flag",
+      "breakpoints": true
+    },
+    {
+      "idx": 301,
+      "version": "7",
+      "when": 1801555200000,
       "tag": "0305_purchase_problem_workflow",
       "breakpoints": true
     }

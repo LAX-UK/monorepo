@@ -16,6 +16,7 @@ import type {
   ISaleroomCheckInRepository,
 } from "../interfaces/saleroom-check-in.repository.js";
 import { PaddleTakenError } from "../interfaces/saleroom-check-in.repository.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import { groupEligibleCheckInEntities } from "../lib/saleroom-check-in-entities.js";
 import { isPaddleUniqueViolation } from "./drizzle-paddle.repository.js";
 
@@ -32,7 +33,7 @@ export class DrizzleSaleroomCheckInRepository implements ISaleroomCheckInReposit
   constructor(private readonly db: Database) {}
 
   async searchCandidates(saleId: string, q: string, limit = 10): Promise<CheckInCandidateRow[]> {
-    const needle = `%${q.trim()}%`;
+    const needle = containsPattern(q.trim());
     const userRows = await this.db
       .select({
         id: bidIdentityDirectory.subjectId,

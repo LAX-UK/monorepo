@@ -55,6 +55,8 @@ export type ListSalesFilter = {
   needsSetup?: boolean | undefined;
   /** Public lists: also match draft sales owned by ATG (live matches scheduled/active, sold matches ended). */
   includeAtgOwnedDrafts?: boolean | undefined;
+  /** Public lists: leave out test sales, so counts and pages never include them. */
+  excludeTestSales?: boolean | undefined;
   limit: number;
   offset: number;
   sort?: ListSalesSort | undefined;

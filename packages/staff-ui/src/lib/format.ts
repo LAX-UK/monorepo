@@ -72,6 +72,29 @@ export function formatStaffDateTime(value: DateLike, { zoneLabel = false } = {})
   return `${DATE.format(date)}, ${formatStaffTime(date, { zoneLabel })}`;
 }
 
+const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: STAFF_TIME_ZONE });
+const DAY_MONTH = staffShortDateFormat({ day: "numeric", month: "short" });
+
+function londonYear(date: Date): string {
+  return new Intl.DateTimeFormat("en-GB", { year: "numeric", timeZone: STAFF_TIME_ZONE }).format(
+    date,
+  );
+}
+
+/**
+ * The one date style: "Thu 12 Nov, 04:49 GMT". London time, the weekday leads, and the year is
+ * shown only when it is not `now`'s ("Thu 12 Nov 2026, 04:49 GMT" when read in another year).
+ * The same words as the public products' `formatLondonWhen`.
+ */
+export function formatStaffWhen(value: DateLike, now: DateLike = new Date()): string {
+  const date = toDate(value);
+  if (!date) return String(value);
+  const reference = toDate(now) ?? new Date();
+  const day = DAY_MONTH.format(date);
+  const dayMonth = londonYear(date) === londonYear(reference) ? day : `${day} ${londonYear(date)}`;
+  return `${WEEKDAY.format(date)} ${dayMonth}, ${formatStaffTime(date, { zoneLabel: true })}`;
+}
+
 const RELATIVE = new Intl.RelativeTimeFormat("en-GB", { numeric: "auto" });
 
 const RELATIVE_STEPS: ReadonlyArray<[Intl.RelativeTimeFormatUnit, number]> = [

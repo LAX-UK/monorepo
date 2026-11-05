@@ -15,7 +15,7 @@ import type {
   NotificationListFilter,
   NotificationListTab,
 } from "../interfaces/notification-read.repository.js";
-import { escapeLikePattern } from "../lib/like-pattern.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import { notificationTypesForFilter } from "../lib/notification-type-filter.js";
 
 type Row = InferSelectModel<typeof notification>;
@@ -67,7 +67,7 @@ function inboxCondition(
   }
   const query = filter.query?.trim();
   if (query) {
-    const contains = `%${escapeLikePattern(query)}%`;
+    const contains = containsPattern(query);
     const matches = or(ilike(notification.title, contains), ilike(notification.message, contains));
     if (matches) parts.push(matches);
   }
@@ -84,6 +84,7 @@ function mapRow(row: Row): UserNotification {
     lotId: row.lotId,
     submissionId: row.submissionId,
     saleId: row.saleId,
+    linkPath: row.linkPath,
     legalEntityId: row.legalEntityId,
     read: row.read,
     archivedAt: row.archivedAt ?? null,

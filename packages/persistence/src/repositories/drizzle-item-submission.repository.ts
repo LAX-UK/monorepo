@@ -20,6 +20,7 @@ import type {
   SubmissionSenderFilter,
 } from "../interfaces/index.js";
 import { mapItemSubmissionRow } from "../lib/entity-row-mappers.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
 import { submissionSenderSql } from "./submission-sender.sql.js";
 
@@ -39,12 +40,9 @@ function qualityGapsSql() {
 
 function titleSearchSql(q: string | undefined) {
   if (!q?.trim()) return undefined;
-  const safe = q
-    .trim()
-    .slice(0, 200)
-    .replace(/[%_\\]/g, "");
-  if (safe.length === 0) return undefined;
-  return ilike(itemSubmission.title, `%${safe}%`);
+  const text = q.trim().slice(0, 200);
+  if (text.length === 0) return undefined;
+  return ilike(itemSubmission.title, containsPattern(text));
 }
 
 function sellerWhere(legalEntityId: string, f: Omit<ListSubmissionsFilter, "limit" | "offset">) {

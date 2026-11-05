@@ -7,6 +7,7 @@ import {
 import type { SalesBrowseView } from "@/components/sections/sales/sales-view-switcher";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { SaleListRow } from "@/lib/data/http/sales.server";
+import type { SalesFacetCounts } from "@/lib/marketing/sales-calendar-facets";
 import type { CalendarOverview } from "@/lib/marketing/sales-calendar-overview";
 import { calendarTabCounts } from "@/lib/marketing/sales-calendar-overview";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
@@ -54,6 +55,8 @@ export type SalesBrowsePageVM = {
   listState: CalendarListState;
   featuredVms: ReturnType<typeof mapSaleToFeaturedAuctionCardVM>[];
   yearOptions: number[];
+  /** Sales per rail option; null when they could not be counted. */
+  facets: SalesFacetCounts | null;
   /** Counts, filters, rail and view switcher: only around a list, or a filtered miss. */
   showBrowseControls: boolean;
   rowVms: ReturnType<typeof mapSaleToAuctionRowVM>[];
@@ -79,6 +82,7 @@ export type BuildSalesBrowsePageVMInput = {
   saleRows: SaleListRow[];
   featuredRows: SaleListRow[];
   filteredSales: SaleListRow[];
+  facets?: SalesFacetCounts | null;
   calendarPage: number;
   calendarHasMore: boolean;
   now: Date;
@@ -121,6 +125,7 @@ export function buildSalesBrowsePageVM(input: BuildSalesBrowsePageVMInput): Sale
     listState,
     featuredVms,
     yearOptions,
+    facets: input.facets ?? null,
     showBrowseControls: listState === "results" || listState === "filteredEmpty",
     rowVms: input.filteredSales.map((row) =>
       mapSaleToAuctionRowVM(row, { showRegisterButton: showRegisterButton(row) }),

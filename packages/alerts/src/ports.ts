@@ -139,6 +139,23 @@ export interface AlertMailer {
   sendDigest(message: DigestMessage): Promise<void>;
 }
 
+/** What a digest tells a signed-in person in the app, alongside the email. */
+export type DigestNoticeInput = {
+  digestId: string;
+  /** The account the subscription belongs to; visitors have none and get no notice. */
+  subjectId: string;
+  localDate: string;
+  vm: DigestVm;
+};
+
+export interface DigestNoticeWriter {
+  /**
+   * Writes the person's in-app notices for one digest. Idempotent per digest: writing the same
+   * digest again adds nothing, and a person whose app switch is off gets nothing.
+   */
+  write(input: DigestNoticeInput): Promise<void>;
+}
+
 export interface VerifiedAddressLookup {
   /** The account's address and whether it is verified; null when the account does not exist. */
   find(subjectId: string): Promise<{ email: string; verified: boolean } | null>;

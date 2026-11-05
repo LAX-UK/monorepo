@@ -1,4 +1,8 @@
 import {
+  type ArtworkFacetCountsVm,
+  buildArtworkFacetCountsVm,
+} from "@/lib/catalogue/artwork-facet-counts";
+import {
   type CatalogueArtworkCardVm,
   buildCatalogueArtworkCards,
 } from "@/lib/catalogue/catalogue-artwork-card.vm";
@@ -60,6 +64,8 @@ export type SearchResultsVm = {
   artistLink: SearchArtistLinkVm | null;
   panel: SearchPanelVm;
   activeFilterCount: number;
+  /** Works behind the medium and availability options; null when they did not load. */
+  filterCounts: ArtworkFacetCountsVm | null;
   /** Nothing matched in any tab and no filter narrowed it (Figma `826:15255`). */
   noResults: boolean;
   favoriteAuth: ArtFavoriteAuth;
@@ -142,7 +148,7 @@ export async function composeSearchPage(
       : { ...artworkQuery(state, tab), limit: 1 };
 
   // One page for the active artwork tab plus a limit-1 read for the other tab's total.
-  const [[available, sold], artists, exhibitions, stories] = await Promise.all([
+  const [[available, sold], artists, exhibitions, stories, facetRead] = await Promise.all([
     Promise.allSettled([
       services.catalogue.listArtworks(pageQuery("available")),
       services.catalogue.listArtworks(pageQuery("sold")),
@@ -157,6 +163,11 @@ export async function composeSearchPage(
     services.editorialSearch
       .searchStories(state.q)
       .catch((): ArtEditorialFetchResult<ArtEditorialStoryList> => UNAVAILABLE_EDITORIAL),
+    // The options count the works they would give, with the search and the other filters applied.
+    services.catalogue
+      .countArtworkFacets(artworkQuery(state, requestedArtworkTab ?? "available"))
+      .then(buildArtworkFacetCountsVm)
+      .catch(() => null),
   ]);
 
   const counts: SearchTabCounts = {
@@ -212,6 +223,7 @@ export async function composeSearchPage(
     artistLink,
     panel,
     activeFilterCount,
+    filterCounts: facetRead,
     noResults,
     favoriteAuth: favorites.favoriteAuth,
   };

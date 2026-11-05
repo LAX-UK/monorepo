@@ -1,5 +1,14 @@
 import { cn } from "../lib/cn.js";
 
+export type ProgressTone = "neutral" | "warning" | "danger";
+
+/** The fill colour per tone: extend here rather than branching in the component. */
+const FILL_BY_TONE: Record<ProgressTone, string> = {
+  neutral: "bg-staff-ink",
+  warning: "bg-staff-warning-dot",
+  danger: "bg-staff-danger-dot",
+};
+
 /**
  * How far along something is, as a thin bar with a readable name ("12 of 40 lots complete").
  * The number it stands for belongs beside it in words; the bar only adds the shape.
@@ -8,12 +17,15 @@ export function ProgressBar({
   value,
   max,
   label,
+  tone = "neutral",
   className,
 }: {
   value: number;
   max: number;
   /** What is counted: "Lots complete". Spoken with the numbers. */
   label: string;
+  /** Neutral by default; warning or danger when the time or allowance is running out. */
+  tone?: ProgressTone;
   className?: string;
 }) {
   const safeMax = Math.max(0, max);
@@ -31,7 +43,11 @@ export function ProgressBar({
       className={cn("h-1.5 w-full overflow-hidden rounded-full bg-staff-sunken", className)}
     >
       <div
-        className="h-full rounded-full bg-staff-ink transition-[width] duration-200 ease-out motion-reduce:transition-none"
+        data-tone={tone}
+        className={cn(
+          "h-full rounded-full transition-[width] duration-200 ease-out motion-reduce:transition-none",
+          FILL_BY_TONE[tone],
+        )}
         style={{ width: `${percent}%` }}
       />
     </div>

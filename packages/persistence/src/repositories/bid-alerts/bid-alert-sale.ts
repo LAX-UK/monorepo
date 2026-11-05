@@ -34,6 +34,7 @@ export class BidAlertSaleReader implements IBidAlertSaleReader {
         endTime: sale.endTime,
         status: sale.status,
         deliveryMode: sale.deliveryMode,
+        isTest: sale.isTest,
       })
       .from(sale)
       .where(eq(sale.id, saleId))
@@ -58,7 +59,10 @@ export class BidAlertSaleReader implements IBidAlertSaleReader {
   }
 }
 
-/** Drops a new-sale match whose sale was withdrawn, cancelled or has ended by digest time. */
+/**
+ * Drops a new-sale match whose sale was withdrawn, cancelled or has ended by digest time, or that
+ * was marked as a test sale after it was matched.
+ */
 export class BidAlertMatchValidator implements MatchValidator {
   constructor(private readonly db: Database) {}
 
@@ -70,7 +74,9 @@ export class BidAlertMatchValidator implements MatchValidator {
     const live = await this.db
       .select({ id: sale.id })
       .from(sale)
-      .where(and(inArray(sale.id, ids), inArray(sale.status, [...ANNOUNCEABLE])));
+      .where(
+        and(inArray(sale.id, ids), inArray(sale.status, [...ANNOUNCEABLE]), eq(sale.isTest, false)),
+      );
     const liveIds = new Set(live.map((r) => r.id));
     const stale = new Map<string, string>();
     for (const match of matches) {
@@ -143,6 +149,7 @@ export class BidAlertSeed {
         .select({ id: sale.id })
         .from(sale)
         .where(and(ne(sale.status, "draft"), isNotNull(sale.id)));
+      // Test sales are included on purpose: marked as announced, they can never be announced later.
       let alreadyAnnounced = 0;
       for (let i = 0; i < published.length; i += 500) {
         const rows = await tx

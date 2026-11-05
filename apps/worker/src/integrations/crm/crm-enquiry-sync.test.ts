@@ -7,6 +7,12 @@ import type { CrmGateway } from "./crm-gateway.js";
 import type { CrmEnquiryRecord } from "./crm-readers.js";
 import { CrmSyncService } from "./crm-sync-service.js";
 
+const noDealNaming = {
+  forLotWon: vi.fn(),
+  forShopEnquiry: vi.fn(),
+  forShopOrder: vi.fn(),
+};
+
 const ENQUIRY_ID = "11111111-1111-4111-8111-111111111111";
 
 const event = {
@@ -166,6 +172,7 @@ function buildService(enquiryRecord: CrmEnquiryRecord | null) {
     paymentLotReader: { findLotIdForPayment: vi.fn() },
     attributionReader: { loadFirstTouchFields: vi.fn() },
     enquiryReader: { findById },
+    dealNamingReader: noDealNaming,
   });
   return { service, gateway, links, findById };
 }

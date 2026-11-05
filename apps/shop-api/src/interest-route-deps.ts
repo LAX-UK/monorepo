@@ -2,7 +2,7 @@ import type { EnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
 import type { EditionAlertHandlers } from "./application/handlers/edition-alerts.handler.js";
 import type { createGetArtworkInterestHandler } from "./application/handlers/get-artwork-interest.handler.js";
 import type { createRegisterArtworkInterestHandler } from "./application/handlers/register-artwork-interest.handler.js";
-import type { ReleaseAlertHandlers } from "./application/handlers/release-alerts.handler.js";
+import type { ShopAlertHandlers } from "./application/handlers/shop-alerts.handler.js";
 
 export type InterestRoutesDeps = {
   registerArtworkInterest: ReturnType<typeof createRegisterArtworkInterestHandler>;
@@ -10,6 +10,6 @@ export type InterestRoutesDeps = {
   enquiryRateLimiter: EnquiryRateLimiter;
   editionAlerts: EditionAlertHandlers;
   editionAlertRateLimiter: EnquiryRateLimiter;
-  releaseAlerts: ReleaseAlertHandlers;
+  releaseAlerts: ShopAlertHandlers;
   releaseAlertRateLimiter: EnquiryRateLimiter;
 };

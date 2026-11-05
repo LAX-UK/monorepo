@@ -1,6 +1,7 @@
 "use client";
 
 import type { UploadGalleryItem } from "@/lib/forms/image/use-upload-gallery";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { UploadProgress } from "@auction/ui/components/upload-progress";
 
@@ -12,11 +13,19 @@ type Props = {
 export function UploadItem({ item, onRetry }: Props) {
   const showProgress = item.status === "uploading" || item.status === "validating";
   return (
-    <li className="rounded-md border border-outline-variant/25 bg-surface-container-low/50 px-3 py-2">
+    <li
+      className={cn(
+        "rounded-md border bg-surface-container-low/50 px-3 py-2",
+        item.status === "error" ? "border-error/50" : "border-outline-variant/25",
+      )}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="font-body text-xs text-on-surface">{item.fileName}</span>
         <span
-          className="font-body text-xs text-on-surface-variant"
+          className={cn(
+            "font-body text-xs",
+            item.status === "error" ? "font-medium text-error" : "text-on-surface-variant",
+          )}
           role={item.status === "error" ? "alert" : undefined}
         >
           {item.message ?? item.status}
@@ -29,7 +38,7 @@ export function UploadItem({ item, onRetry }: Props) {
           label={`Uploading ${item.fileName}`}
         />
       ) : null}
-      {item.status === "error" && onRetry ? (
+      {item.status === "error" && item.retryable !== false && onRetry ? (
         <Button
           type="button"
           variant="outline"

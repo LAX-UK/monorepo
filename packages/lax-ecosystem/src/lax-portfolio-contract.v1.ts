@@ -39,8 +39,13 @@ export const LaxBusinessV1 = Type.Object({
 });
 export type LaxBusinessV1 = Static<typeof LaxBusinessV1>;
 
+/**
+ * `awaiting_payment`: owed and not yet paid. `payment_confirming`: the buyer has paid and the
+ * payment is still being confirmed, so it is neither owed nor paid yet.
+ */
 export const LAX_PORTFOLIO_ITEM_STATUSES = [
   "awaiting_payment",
+  "payment_confirming",
   "awaiting_shipment",
   "owned",
   "consigned",

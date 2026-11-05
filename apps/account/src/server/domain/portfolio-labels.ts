@@ -17,6 +17,7 @@ export const PRODUCT_LABELS: Readonly<Record<LaxProductId, string>> = {
 
 export const STATUS_LABELS: Readonly<Record<LaxPortfolioItemStatus, string>> = {
   awaiting_payment: "Awaiting payment",
+  payment_confirming: "Payment being confirmed",
   awaiting_shipment: "Awaiting shipment",
   owned: "Owned",
   consigned: "Consigned",
@@ -31,6 +32,7 @@ export type StatusTone = "neutral" | "info" | "success";
 /** Only states that need the person, or that are settled, stand out from the neutral rest. */
 export const STATUS_TONES: Readonly<Record<LaxPortfolioItemStatus, StatusTone>> = {
   awaiting_payment: "info",
+  payment_confirming: "neutral",
   awaiting_shipment: "info",
   owned: "neutral",
   consigned: "neutral",

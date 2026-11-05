@@ -19,6 +19,8 @@ type ArtEditorialCardProps = {
   sizes?: string;
   /** `h2` when the cards follow the page title directly, with no section heading between. */
   titleAs?: MarketingEditorialCardProps["titleAs"];
+  /** Leaves out the image and its placeholder; for a section where no card has an image. */
+  textLed?: boolean;
 };
 
 const SIZES = {
@@ -40,6 +42,7 @@ export function ArtEditorialCard({
   layout = "stacked",
   sizes,
   titleAs,
+  textLed = false,
 }: ArtEditorialCardProps) {
   return (
     <MarketingEditorialCard
@@ -52,17 +55,21 @@ export function ArtEditorialCard({
       title={card.headline}
       kicker={[card.kicker, card.kickerDetail].filter((part): part is string => Boolean(part))}
       details={card.meta ? [card.meta] : []}
-      media={
-        <ArtMediaImage
-          src={card.imageUrl}
-          alt=""
-          label={card.kicker ?? "lax.art"}
-          sizes={sizes ?? (layout === "stacked" ? SIZES[aspect] : SIZES[layout])}
-          priority={priority}
-          className="absolute inset-0 size-full"
-          imgClassName="object-cover"
-        />
-      }
+      {...(textLed
+        ? {}
+        : {
+            media: (
+              <ArtMediaImage
+                src={card.imageUrl}
+                alt=""
+                label={card.kicker ?? "lax.art"}
+                sizes={sizes ?? (layout === "stacked" ? SIZES[aspect] : SIZES[layout])}
+                priority={priority}
+                className="absolute inset-0 size-full"
+                imgClassName="object-cover"
+              />
+            ),
+          })}
     />
   );
 }

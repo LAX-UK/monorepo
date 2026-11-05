@@ -21,9 +21,14 @@ export function costBasisLines(item: LaxPortfolioItemV1): LaxCostLineV1[] {
   return item.paid.lines.filter((line) => line.kind !== "shipping");
 }
 
+/** Whether the work has been paid for: not owed, and not a payment still being confirmed. */
+export function isPaidFor(item: LaxPortfolioItemV1): boolean {
+  return item.status !== "awaiting_payment" && item.status !== "payment_confirming";
+}
+
 /**
  * "Paid so far" counts only works that have been paid for: an invoice still awaiting payment
- * is a liability, not a payment. It is a fact in the currency paid, not a valuation.
+ * is a liability, and a payment still being confirmed is not settled. It is a fact in the currency paid, not a valuation.
  */
 export function buildPortfolioHeader(items: readonly LaxPortfolioItemV1[]): PortfolioHeaderVm {
   const count = (...statuses: LaxPortfolioItemV1["status"][]) =>
@@ -38,8 +43,6 @@ export function buildPortfolioHeader(items: readonly LaxPortfolioItemV1[]): Port
     inReview: items.filter(
       (item) => item.status === "awaiting_payment" && item.owed?.state === "in_review",
     ).length,
-    paidSoFar: sumByCurrency(
-      items.filter((item) => item.status !== "awaiting_payment").flatMap(costBasisLines),
-    ),
+    paidSoFar: sumByCurrency(items.filter(isPaidFor).flatMap(costBasisLines)),
   };
 }

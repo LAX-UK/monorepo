@@ -112,7 +112,12 @@ export function MarketingArtistDirectory({
               <MarketingFilterLinkGroups
                 groups={[
                   ...controls.railGroups,
-                  { id: "sort", title: "Sort by", links: controls.sortLinks },
+                  {
+                    id: "sort",
+                    title: "Sort by",
+                    links: controls.sortLinks,
+                    selection: "single" as const,
+                  },
                 ]}
                 clearHref={controls.clearHref}
                 hasFilters={hasFilters}

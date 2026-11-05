@@ -17,6 +17,7 @@ import {
   userUiPreference,
   watchlist,
 } from "@auction/db/schema";
+import { anonymiseEnquiries } from "@auction/persistence/lib";
 import { inArray } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
@@ -30,6 +31,10 @@ import type { ProjectorDbConnection } from "../interfaces/worker-db.types.js";
  * - delete: the rows only describe the person (address book, alerts, preferences) and are removed.
  * - scrub: the row stays because other records point at it, with the personal fields nulled or
  *   replaced by the person's pseudonym.
+ *
+ * Enquiries the person sent are scrubbed too (see the enquiry rule): the sender details and
+ * message are replaced, internal notes are cleared, and their photos and documents are detached
+ * and deleted. A converted private sale enquiry belongs to its deal and is held, not changed.
  *
  * Kept as they are, on purpose (legal or accounting records, or auction history):
  * bids, absentee bids, sale registrations, lots and sales, payments, payment groups, invoices,
@@ -54,8 +59,14 @@ export type BidAnonymisationRule = {
   treatment: "delete" | "scrub";
   /** Fields changed by a scrub; empty for a delete. Documentation and test oracle. */
   fields: readonly string[];
-  /** Returns the number of rows changed. */
-  apply(tx: ProjectorDbConnection, scope: BidAnonymisationScope): Promise<number>;
+  /**
+   * Returns the number of rows changed, or, when one rule touches several tables, the rows changed
+   * per table name.
+   */
+  apply(
+    tx: ProjectorDbConnection,
+    scope: BidAnonymisationScope,
+  ): Promise<number | Record<string, number>>;
 };
 
 async function countDeleted(
@@ -93,6 +104,24 @@ function deleteByPersonalEntity(
     apply: (tx, scope) => countDeleted(tx, table, column, scope.personalLegalEntityIds),
   };
 }
+
+const enquiryRule: BidAnonymisationRule = {
+  table: "marketing_enquiry",
+  treatment: "scrub",
+  fields: ["name", "email", "phone", "message", "note_body", "location", "looking_for"],
+  async apply(tx, scope) {
+    const counts = await anonymiseEnquiries(tx as never, {
+      kind: "accounts",
+      userIds: scope.subjectIds,
+    });
+    return {
+      marketing_enquiry: counts.enquiries,
+      marketing_enquiry_note: counts.notes,
+      marketing_enquiry_attachment: counts.attachments,
+      marketing_enquiry_held: counts.held,
+    };
+  },
+};
 
 export const BID_ANONYMISATION_RULES: readonly BidAnonymisationRule[] = [
   {
@@ -186,4 +215,5 @@ export const BID_ANONYMISATION_RULES: readonly BidAnonymisationRule[] = [
   ),
   deleteBySubject(marketingClickIds, "marketing_click_ids", marketingClickIds.userId),
   deleteBySubject(userUiPreference, "user_ui_preference", userUiPreference.userId),
+  enquiryRule,
 ];

@@ -28,6 +28,12 @@ const LAYOUT_CLASS = {
   },
 } as const;
 
+/** A card without media: the text under a hairline, at a readable measure. */
+const TEXT_LED_CLASS = {
+  card: "flex h-full flex-col border-t border-outline-variant pt-5",
+  text: "flex max-w-[40rem] flex-col gap-4",
+} as const;
+
 const TITLE_CLASS: Record<keyof typeof LAYOUT_CLASS, string> = {
   stacked: "text-lg leading-7 md:text-xl",
   split: "text-xl leading-7 md:text-[1.75rem] md:leading-tight",
@@ -39,8 +45,11 @@ type EditorialCardLinkProps = { href: string; className?: string; children: Reac
 export type MarketingEditorialCardProps = {
   /** Heading level of the title: `h2` on a page whose cards follow the page title directly. */
   titleAs?: "h2" | "h3";
-  /** Fills the media slot (`absolute inset-0 size-full`). */
-  media: ReactNode;
+  /**
+   * Fills the media slot (`absolute inset-0 size-full`). Without it the card is text-led: a
+   * hairline above the text instead of an image or placeholder, at any layout.
+   */
+  media?: ReactNode;
   /**
    * `landscape` 4:3 for features and rails; `portrait` 8:11 for story grids (Figma `251:1312`);
    * `wide` 21:10 for a full-width lead (Figma `285:3008`, drawn about 1200×568).
@@ -79,16 +88,21 @@ export function MarketingEditorialCard({
   "data-testid": testId,
 }: MarketingEditorialCardProps) {
   const Title = titleAs;
+  const textLed = media === undefined;
+  const classes = textLed ? TEXT_LED_CLASS : LAYOUT_CLASS[layout];
   return (
     <article
-      className={cn("group relative", LAYOUT_CLASS[layout].card)}
+      className={cn("group relative", classes.card)}
       data-layout={layout}
+      data-text-led={textLed ? "" : undefined}
       data-testid={testId}
     >
-      <MarketingCardMedia className={cn("bg-surface-container", ASPECT_CLASS[aspect])}>
-        {media}
-      </MarketingCardMedia>
-      <div className={LAYOUT_CLASS[layout].text}>
+      {textLed ? null : (
+        <MarketingCardMedia className={cn("bg-surface-container", ASPECT_CLASS[aspect])}>
+          {media}
+        </MarketingCardMedia>
+      )}
+      <div className={classes.text}>
         <div className="flex flex-col gap-1">
           {kicker.length > 0 ? (
             <p className="flex flex-wrap items-center font-label text-xs leading-[1.125rem] text-on-surface-variant">

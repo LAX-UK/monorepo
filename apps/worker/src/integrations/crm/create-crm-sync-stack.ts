@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import type { ICrmRecordLinkRepository } from "@auction/persistence/interfaces";
 import type { WorkerEnv } from "../../env.js";
+import { createDrizzleCrmDealNamingReader } from "./crm-deal-naming-reader.js";
 import type { CrmGateway } from "./crm-gateway.js";
 import {
   createDrizzleCrmAttributionReader,
@@ -22,6 +23,7 @@ export function createCrmSyncService(input: {
     paymentLotReader: createDrizzleCrmPaymentLotReader(input.db),
     attributionReader: createDrizzleCrmAttributionReader(input.db),
     enquiryReader: createDrizzleCrmEnquiryReader(input.db),
+    dealNamingReader: createDrizzleCrmDealNamingReader(input.db),
     mapperContext: {
       auctionPipeline: input.env.ZOHO_CRM_AUCTION_PIPELINE,
       dealStageLotWon: input.env.ZOHO_CRM_DEAL_STAGE_LOT_WON,

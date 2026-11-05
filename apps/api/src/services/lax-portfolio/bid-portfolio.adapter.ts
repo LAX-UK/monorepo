@@ -110,7 +110,7 @@ function wonLotStatus(
   fulfilmentStatus: string | null,
 ): LaxPortfolioItemV1["status"] | null {
   if (owed) return owed.state === "cancelled" ? null : "awaiting_payment";
-  if (payment?.status === "authorized") return "awaiting_payment";
+  if (payment?.status === "authorized") return "payment_confirming";
   if (payment?.status !== "captured") return null;
   return fulfilmentStatus !== null && IN_FULFILMENT_STATUSES.has(fulfilmentStatus)
     ? "awaiting_shipment"
@@ -147,7 +147,8 @@ function wonLotItem(
     if (owedEntry?.state !== "in-review") {
       actions.push({ kind: "pay", href: `${ctx.webOrigin}/purchases/checkout/${lot.lotId}` });
     }
-  } else {
+  } else if (status !== "payment_confirming") {
+    // A payment being confirmed leaves nothing to pay and nothing to consign yet.
     actions.push({ kind: "consign", href: `${ctx.webOrigin}/selling/new` });
   }
   actions.push({

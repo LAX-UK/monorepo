@@ -30,6 +30,7 @@ describe("SalesCalendarFilterSheet", () => {
         resultCount={8}
         categories={[]}
         years={[2026]}
+        facets={null}
         resultCountLabel="Show 8 sales"
       />,
     );
@@ -47,6 +48,7 @@ describe("SalesCalendarFilterSheet", () => {
         resultCount={3}
         categories={[{ id: "cat-1", name: "Modern Art" }]}
         years={[2026]}
+        facets={null}
         resultCountLabel="Show 3 sales"
       />,
     );

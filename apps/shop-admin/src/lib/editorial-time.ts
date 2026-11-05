@@ -20,20 +20,6 @@ export function formatLondonTime(iso: string): string {
   }).format(date);
 }
 
-export function formatLondonDateTime(iso: string): string {
-  const date = parse(iso);
-  if (!date) return iso;
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-    timeZone: LONDON,
-  }).format(date);
-}
-
 const DAY = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",
   month: "short",

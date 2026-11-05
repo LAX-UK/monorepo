@@ -55,7 +55,7 @@ export function ReviewStep({
   const sections: { stepId: (typeof WIZARD_STEPS)[number]["id"]; title: string; body: string }[] = [
     {
       stepId: "basics",
-      title: "Basics",
+      title: "About the work",
       body: [v.title, `Categories: ${v.categoryIds.length}`, v.yearOfWork, v.edition]
         .filter(Boolean)
         .join(" · "),
@@ -79,7 +79,7 @@ export function ReviewStep({
     },
     {
       stepId: "pricing",
-      title: "Pricing & notes",
+      title: "Price and notes",
       body: [
         v.askingPrice ? `Asking ${formatMoney(v.askingPrice, PLATFORM_DEFAULT_CURRENCY)}` : null,
         v.reservePrice ? `Reserve ${formatMoney(v.reservePrice, PLATFORM_DEFAULT_CURRENCY)}` : null,
