@@ -17,7 +17,7 @@ import {
 import { ERASED_ENQUIRY_MESSAGE } from "@auction/shop-domain";
 import { and, inArray, ne, or, sql } from "drizzle-orm";
 import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
-import { DrizzleShopAlertSubscriberErasure } from "../alerts/drizzle-shop-alert-subscriber-erasure.js";
+import { createShopAlertSubscriberErasure } from "../alerts/drizzle-shop-alert-subscriber-erasure.js";
 
 /**
  * What Shop does with a person's data when Identity purges their account. This file is the single
@@ -78,7 +78,7 @@ function deleteBySubject(name: string, table: PgTable, column: AnyPgColumn): Sho
   };
 }
 
-const alertErasure = new DrizzleShopAlertSubscriberErasure();
+const alertErasure = createShopAlertSubscriberErasure();
 
 const EMPTY_JSON_LIST = sql`'[]'::jsonb`;
 

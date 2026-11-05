@@ -4,6 +4,7 @@ import { and, inArray, or, sql } from "drizzle-orm";
 import type {
   ShopAlertErasureCounts,
   ShopAlertErasureTarget,
+  ShopAlertErasureTx,
   ShopAlertSubscriberErasure,
 } from "../../application/ports/shop-alert-subscriber-erasure.js";
 
@@ -13,8 +14,12 @@ const normalise = (email: string) => email.trim().toLowerCase();
  * Shop's and lax.art's alert subscriptions for an address, deleted. A subscriber stopped because
  * the address complained is kept, detached from any account, so that address is not mailed again.
  */
-export class DrizzleShopAlertSubscriberErasure implements ShopAlertSubscriberErasure {
-  async erase(tx: Database, target: ShopAlertErasureTarget): Promise<ShopAlertErasureCounts> {
+export class ShopAlertSubscriberEraser implements ShopAlertSubscriberErasure {
+  async erase(
+    transaction: ShopAlertErasureTx,
+    target: ShopAlertErasureTarget,
+  ): Promise<ShopAlertErasureCounts> {
+    const tx = transaction as Database;
     const subjectIds = [...new Set(target.subjectIds ?? [])];
     const accountEmails = subjectIds.length > 0 ? await this.addressesOf(tx, subjectIds) : [];
     const emails = [
@@ -53,4 +58,9 @@ export class DrizzleShopAlertSubscriberErasure implements ShopAlertSubscriberEra
       .where(inArray(shopAlertSubscriber.subjectId, subjectIds));
     return current.map((row) => row.email);
   }
+}
+
+/** For callers outside the container, such as the purge policy, that cannot construct a repository. */
+export function createShopAlertSubscriberErasure(): ShopAlertSubscriberErasure {
+  return new ShopAlertSubscriberEraser();
 }

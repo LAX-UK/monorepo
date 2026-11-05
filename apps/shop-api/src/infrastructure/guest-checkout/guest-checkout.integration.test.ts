@@ -30,7 +30,7 @@ import {
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
-import { DrizzleShopAlertSubscriberErasure } from "../alerts/drizzle-shop-alert-subscriber-erasure.js";
+import { ShopAlertSubscriberEraser } from "../alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { createDrizzleOrderRepository } from "../drizzle-order.repository.js";
 import { createDrizzleShopNotificationPublisher } from "../drizzle-shop-notification.publisher.js";
 import { createEnquiryFollowUp } from "../enquiry-follow-up.js";
@@ -245,7 +245,7 @@ describe.skipIf(!hasShopIntegrationDb)("guest checkout persistence", () => {
     const service = new GuestErasureService(
       createDrizzleGuestErasureStore(db, {
         domainEventMode: "off",
-        alerts: new DrizzleShopAlertSubscriberErasure(),
+        alerts: new ShopAlertSubscriberEraser(),
       }),
     );
     const request = {

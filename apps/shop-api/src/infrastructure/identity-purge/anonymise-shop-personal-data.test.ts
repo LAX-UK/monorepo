@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { describe, expect, it, vi } from "vitest";
-import { DrizzleShopAlertSubscriberErasure } from "../alerts/drizzle-shop-alert-subscriber-erasure.js";
+import { ShopAlertSubscriberEraser } from "../alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { anonymiseShopPersonalData } from "./anonymise-shop-personal-data.js";
 import {
   SHOP_ANONYMISATION_RULES,
@@ -126,7 +126,7 @@ describe("alert sign-ups on purge", () => {
 
   it("erases by the subject and merged aliases, with no typed address", async () => {
     const erase = vi
-      .spyOn(DrizzleShopAlertSubscriberErasure.prototype, "erase")
+      .spyOn(ShopAlertSubscriberEraser.prototype, "erase")
       .mockResolvedValue({ alertSubscribers: 1, suppressionsKept: 1 });
     const policy = SHOP_ANONYMISATION_RULES.filter((r) => r.table === "shop_alert_subscriber");
     const counts = await anonymiseShopPersonalData(aliasTx(["old_1"]), "user_1", now, policy);

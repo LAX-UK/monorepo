@@ -7,7 +7,7 @@ import {
   hasShopIntegrationDb,
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
-import { DrizzleShopAlertSubscriberErasure } from "./drizzle-shop-alert-subscriber-erasure.js";
+import { ShopAlertSubscriberEraser } from "./drizzle-shop-alert-subscriber-erasure.js";
 
 let pools: { ownerPool: pg.Pool; shopPool: pg.Pool } | null = null;
 afterAll(async () => {
@@ -26,7 +26,7 @@ describe.skipIf(!hasShopIntegrationDb)("Shop alert subscriber erasure (integrati
   it("erases both products by normalised email, keeps complaint suppressions, and is idempotent", async () => {
     pools ??= await setupShopIntegrationPools();
     const db = createShopDb(pools.shopPool);
-    const erasure = new DrizzleShopAlertSubscriberErasure();
+    const erasure = new ShopAlertSubscriberEraser();
 
     const [mine] = await db
       .insert(shopAlertSubscriber)
@@ -71,7 +71,7 @@ describe.skipIf(!hasShopIntegrationDb)("Shop alert subscriber erasure (integrati
   it("erases an account's own rows and the email-only row for the same address", async () => {
     pools ??= await setupShopIntegrationPools();
     const db = createShopDb(pools.shopPool);
-    const erasure = new DrizzleShopAlertSubscriberErasure();
+    const erasure = new ShopAlertSubscriberEraser();
     const accountEmail = `acct-${tag}@example.com`;
     await db.insert(shopAlertSubscriber).values([
       {
@@ -93,7 +93,7 @@ describe.skipIf(!hasShopIntegrationDb)("Shop alert subscriber erasure (integrati
     pools ??= await setupShopIntegrationPools();
     const db = createShopDb(pools.shopPool);
     const counts = await db.transaction((tx) =>
-      new DrizzleShopAlertSubscriberErasure().erase(tx as never, { emails: [" "] }),
+      new ShopAlertSubscriberEraser().erase(tx as never, { emails: [" "] }),
     );
     expect(counts).toEqual({ alertSubscribers: 0, suppressionsKept: 0 });
   });

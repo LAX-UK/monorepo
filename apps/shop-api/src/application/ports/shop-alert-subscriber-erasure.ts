@@ -1,4 +1,5 @@
-import type { Database } from "@auction/db";
+/** The caller's open transaction; the application layer never sees the database type. */
+export type ShopAlertErasureTx = unknown;
 
 /** What one erasure changed. Counts only; never any address. */
 export type ShopAlertErasureCounts = {
@@ -20,5 +21,5 @@ export type ShopAlertErasureTarget = {
  * caller's transaction, so it commits or rolls back with the erasure around it. Safe to repeat.
  */
 export interface ShopAlertSubscriberErasure {
-  erase(tx: Database, target: ShopAlertErasureTarget): Promise<ShopAlertErasureCounts>;
+  erase(tx: ShopAlertErasureTx, target: ShopAlertErasureTarget): Promise<ShopAlertErasureCounts>;
 }
