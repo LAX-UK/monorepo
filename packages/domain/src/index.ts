@@ -974,3 +974,15 @@ export {
   type PaymentReminderStep,
 } from "./payment-reminder.js";
 export * from "./private-sale-deal/index.js";
+export {
+  UNAPPLIED_MONEY_CLOSED_BY_CAPTURE,
+  UNAPPLIED_MONEY_EVENT,
+  UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
+  UNAPPLIED_MONEY_REASONS,
+  UNAPPLIED_MONEY_RESOLVED_EVENT,
+  unappliedMoneyDedupeKey,
+  unappliedMoneyPayload,
+  type UnappliedMoney,
+  type UnappliedMoneyPayload,
+  type UnappliedMoneyReason,
+} from "./unapplied-money.js";

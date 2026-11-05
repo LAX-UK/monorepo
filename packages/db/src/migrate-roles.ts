@@ -286,6 +286,8 @@ export const WORKER_READ_TABLES = [
   "unsold_lot_choice",
   /** The payout statement names the private sale a payout line settles by its PS reference. */
   "private_sale_deal",
+  /** The payment expiry job closes each invoice's open Checkout sessions before cancelling it. */
+  "payment_checkout_session",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
@@ -452,6 +454,9 @@ export const WORKER_ANONYMISATION_DELETE_TABLES = [
   "notification_preference",
   "notification_account_mute",
   "user_ui_preference",
+  /** Email-only alert sign-ups: erased by account and by address (cascades to topics, matches, digests). */
+  "bid_alert_subscriber",
+  "visitor_sale_alert_subscriber",
 ] as const;
 
 /**

@@ -12,6 +12,9 @@ function isRetryableStripeError(
   attempt: number,
 ): boolean {
   return (
+    // Two requests with one idempotency key at once (a double click): Stripe answers the second
+    // only once the first finishes, with the same result, so it is retried rather than failed.
+    err.code === "idempotency_key_in_use" ||
     err.type === "StripeConnectionError" ||
     err.type === "StripeAPIError" ||
     (err.type === "StripeRateLimitError" && attempt < maxRetries)

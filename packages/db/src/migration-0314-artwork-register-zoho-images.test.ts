@@ -16,7 +16,9 @@ describe("migration 0314 artwork register Zoho images", () => {
     const entry = journal.entries.find((e) => e.tag === "0314_artwork_register_zoho_images");
     const previous = journal.entries.find((e) => e.tag === "0313_lax_art_draft_from_register");
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
-    expect(entry?.idx).toBe(309);
+    // Later migrations may follow it; it only has to come straight after 0313.
+    const index = journal.entries.findIndex((e) => e.tag === "0314_artwork_register_zoho_images");
+    expect(journal.entries[index - 1]?.tag).toBe("0313_lax_art_draft_from_register");
   });
 
   it("only adds columns with defaults, a check and an index", () => {

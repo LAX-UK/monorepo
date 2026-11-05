@@ -25,6 +25,7 @@ import { WORK_ITEM_KIND_ACCESS } from "./admin-work-items.service.js";
 
 const WORK_ITEM_SAMPLES: Record<AdminWorkItemSourceKind, AdminWorkItemLinkIds> = {
   payment_manual_review: { subjectId: "pay-1" },
+  payment_money_unapplied: { paymentId: "pay-1" },
   aml_screening: { subjectId: "scr-1" },
   sof_case: { subjectId: "sof-1" },
   submission_review: { subjectId: "sub-1" },

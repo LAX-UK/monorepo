@@ -701,6 +701,10 @@ export type {
   AdminWorkItemSourceRow,
   IAdminWorkItemsReader,
 } from "./admin-work-items.reader.js";
+export type { IPaymentCheckoutSessionStore } from "./payment-checkout-session.store.js";
+export type { IStalePaymentCanceller } from "./stale-payment-canceller.js";
+export type { OpenUnappliedMoneyFilter } from "./unapplied-money.reader.js";
+export type { IUnappliedMoneyReader, OpenUnappliedMoney } from "./unapplied-money.reader.js";
 
 export type {
   AdminSaleReadinessSourceRow,
@@ -1057,6 +1061,11 @@ export type {
   EnquiryErasureTarget,
   IEnquiryErasureRepository,
 } from "./enquiry-erasure.repository.js";
+export type {
+  AlertSubscriberErasureCounts,
+  AlertSubscriberErasureTarget,
+  IAlertSubscriberErasureRepository,
+} from "./alert-subscriber-erasure.repository.js";
 export type {
   IPurchaseProblemRepository,
   NewPurchaseProblem,

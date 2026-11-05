@@ -1,3 +1,6 @@
+import type { Database } from "@auction/db";
+import type { UnappliedMoneyReason } from "@auction/domain";
+import type { PaymentRecord } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
@@ -9,6 +12,12 @@ import {
   PAYMENT_WEBHOOK_EVENT_SOURCE,
   type PaymentWebhookResult,
 } from "./payment-webhook-types.js";
+
+/** True when this intent is the money already recorded against the paid invoice (a replay). */
+function isRecordedMoney(row: PaymentRecord, paymentIntentId: string, chargeId: string | null) {
+  if (row.stripePaymentIntentId && row.stripePaymentIntentId === paymentIntentId) return true;
+  return Boolean(chargeId && row.stripeChargeId && row.stripeChargeId === chargeId);
+}
 
 export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandler {
   constructor(private readonly deps: StripePaymentWebhookDeps) {}
@@ -29,11 +38,6 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
     }
 
     const expectedPence = gbpAmountToPence(paymentRow.amount);
-    if (paymentIntent.amount !== expectedPence) {
-      recordMoneyPathEvent("payment_intent_amount_mismatch");
-      return { processed: false, action: "skipped", reason: "amount_mismatch" };
-    }
-
     const chargeId = chargeIdFromPaymentIntent(paymentIntent);
 
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
@@ -44,6 +48,12 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
       );
       if (!claimed) {
         return { processed: false, action: "skipped", reason: "duplicate_event" };
+      }
+
+      // Money that does not match the frozen invoice total is never captured against it.
+      if (paymentIntent.amount !== expectedPence) {
+        recordMoneyPathEvent("payment_intent_amount_mismatch");
+        return this.unapplied(tx, paymentRow, paymentIntent, chargeId, "amount_mismatch");
       }
 
       if (paymentRow.status === "cancelled" || paymentRow.status === "refunded") {
@@ -58,6 +68,7 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
             stripeChargeId: chargeId,
           }),
         );
+        // A cancelled invoice keeps its own inbox item, where finance reinstates or refunds it.
         await this.deps.domainEventSink.withTx(tx).publish({
           aggregateType: "payment",
           aggregateId: paymentId,
@@ -74,11 +85,27 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
           actorUserId: null,
           actingLegalEntityId: paymentRow.buyerLegalEntityId ?? null,
         });
+        await this.unapplied(
+          tx,
+          paymentRow,
+          paymentIntent,
+          chargeId,
+          paymentRow.status === "refunded" ? "invoice_refunded" : "invoice_cancelled",
+        );
         return {
           processed: true,
           action: "payment_intent_succeeded_terminal_blocked",
           reason: "payment_terminal_status",
         };
+      }
+
+      if (
+        paymentRow.status === "captured" &&
+        !isRecordedMoney(paymentRow, paymentIntent.id, chargeId)
+      ) {
+        // Paid twice: a renewed checkout, or a single checkout and a "Pay several" both paid.
+        recordMoneyPathEvent("payment_paid_twice");
+        return this.unapplied(tx, paymentRow, paymentIntent, chargeId, "invoice_already_paid");
       }
 
       await this.deps.paymentCapture.capture({
@@ -92,5 +119,29 @@ export class PaymentIntentSucceededHandler implements IPaymentIntentWebhookHandl
 
       return { processed: true, action: "payment_intent_succeeded" };
     });
+  }
+
+  private async unapplied(
+    tx: Database,
+    row: PaymentRecord,
+    paymentIntent: Stripe.PaymentIntent,
+    chargeId: string | null,
+    reason: UnappliedMoneyReason,
+  ): Promise<PaymentWebhookResult> {
+    await this.deps.unappliedMoney.record(
+      tx,
+      {
+        reason,
+        paymentId: row.id,
+        paymentGroupId: row.paymentGroupId ?? null,
+        stripePaymentIntentId: paymentIntent.id,
+        stripeChargeId: chargeId,
+        stripeCustomerId: null,
+        amountCents: paymentIntent.amount_received || paymentIntent.amount,
+        currency: paymentIntent.currency,
+      },
+      row.buyerLegalEntityId ?? null,
+    );
+    return { processed: true, action: "unapplied_money_recorded", reason };
   }
 }

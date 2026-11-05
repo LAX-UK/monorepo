@@ -72,6 +72,32 @@ export function useWorkItemActions({ onDone }: { onDone?: () => void } = {}) {
         });
         return;
       }
+      if (action === "mark_handled") {
+        confirm.ask({
+          title: "Mark this money handled?",
+          description:
+            "Use this when the money has been dealt with another way than a refund, for example applied to another invoice. Nothing is paid or refunded.",
+          ...(item.subtitle
+            ? { body: <KeyValueList items={[{ label: "Money", value: item.subtitle }]} /> }
+            : {}),
+          confirmLabel: "Mark handled",
+          cancelLabel: "Keep open",
+          tone: "default",
+          reason: {
+            label: "What was done with the money",
+            description: "Kept on the record with your name.",
+            minLength: ADMIN_REFUND_BUYER_REASON_MIN,
+          },
+          stepUpAction: "mark the money handled",
+          run: ({ reason }) => runWorkItemAction(item, action, reason),
+          success: workActionDone(item, action),
+          onSuccess: () => {
+            onDone?.();
+            router.refresh();
+          },
+        });
+        return;
+      }
       const ask = workActionConfirm(item, action);
       if (ask) {
         confirm.ask({

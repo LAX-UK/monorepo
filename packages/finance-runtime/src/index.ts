@@ -146,3 +146,30 @@ export {
   settlementAmounts,
   DEFAULT_CURRENCY,
 } from "./payout/payout-helpers.js";
+export {
+  NO_UNAPPLIED_MONEY_RECORDER,
+  UnappliedMoneyRecorder,
+  type IUnappliedMoneyRecorder,
+} from "./unapplied-money.recorder.js";
+export {
+  staleExpiryAction,
+  type IPaymentProviderCloser,
+  type ProviderMoneyState,
+  type StaleExpiryAction,
+} from "./payment-expiry/provider-money-state.js";
+export { StripeCheckoutCloser } from "./payment-expiry/stripe-checkout-closer.js";
+export {
+  expireStalePayments,
+  type ILatePaymentRecorder,
+  type IStalePaymentEvents,
+  type IStalePaymentStore,
+  type StalePaymentExpiryDeps,
+  type StalePaymentExpiryReport,
+} from "./payment-expiry/stale-payment-expiry.js";
+export { StalePaymentStore } from "./payment-expiry/stale-payment-store.js";
+export { StripeClientFactory, type IStripeClientFactory } from "./stripe/stripe-client-factory.js";
+export {
+  CapturingLatePaymentRecorder,
+  FinanceTaskLatePaymentRecorder,
+  type ILatePaymentCapture,
+} from "./payment-expiry/late-payment-recorders.js";
