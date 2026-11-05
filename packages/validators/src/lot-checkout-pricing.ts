@@ -1,12 +1,13 @@
+import { majorGbpToPence } from "@auction/domain";
 import type { Lot, PublicLotView, Sale } from "@auction/types";
 import { buildBuyerPremiumPolicy } from "./buyer-premium.js";
 
 export type LotCheckoutPricing = NonNullable<Lot["checkoutPricing"]>;
 
-/** A money string in pounds ("1250.5", "1250.50") as whole pence. */
+/** A money string in pounds ("1250.5", "1250.50") as whole pence, through the shared rule. */
 function majorToPence(major: string): number {
   const n = Number.parseFloat(major);
-  return Number.isFinite(n) ? Math.round(n * 100) : 0;
+  return Number.isFinite(n) ? majorGbpToPence(n) : 0;
 }
 
 /**

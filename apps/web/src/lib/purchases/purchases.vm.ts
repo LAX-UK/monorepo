@@ -144,8 +144,16 @@ export type PurchaseSources = {
   showWonBy?: boolean;
 };
 
-const DAY_MONTH = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
-const DAY_MONTH_LONG = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" });
+const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  timeZone: "Europe/London",
+});
+const DAY_MONTH_LONG = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "long",
+  timeZone: "Europe/London",
+});
 
 function dueDate(row: PortfolioRow, facts: AccountPurchaseFacts | null = null): Date {
   if (facts?.invoice.dueAt) return facts.invoice.dueAt;

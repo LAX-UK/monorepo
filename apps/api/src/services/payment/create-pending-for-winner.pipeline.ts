@@ -249,7 +249,20 @@ export async function computeNewPaymentTerms(
   }
   const sellerLegalEntityId = lot.sellerLegalEntityId;
 
-  const amountPence = await computeTotalDuePence(deps.sales, lot);
+  let amountPence: number;
+  try {
+    amountPence = await computeTotalDuePence(deps.sales, lot);
+  } catch {
+    // The sale's premium could not be read: say so and let the buyer try again, rather than
+    // freezing a total priced on the wrong rate.
+    return err(
+      new LotError(
+        "We could not work out the total just now. Please try again in a moment.",
+        503,
+        "pricing_unavailable",
+      ),
+    );
+  }
   const amount = gbpPenceToMajorString(amountPence);
   const platformFee = deps.platformFeePolicy
     ? await deps.platformFeePolicy.computePlatformFeeFromPence(sellerLegalEntityId, amountPence)

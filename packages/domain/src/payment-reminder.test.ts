@@ -8,7 +8,8 @@ import {
 
 const DAY = 86_400_000;
 const raisedAt = new Date("2026-11-01T10:00:00Z");
-const dueAt = new Date(raisedAt.getTime() + 7 * DAY);
+// Raised 1 November (London); due at the end of 8 November; the due-day reminder is 09:00 that day.
+const dueAt = new Date("2026-11-08T09:00:00Z");
 
 const owed: PaymentReminderFacts = {
   lotStatus: "ended",
@@ -25,9 +26,10 @@ const at = (offsetMs: number) => new Date(dueAt.getTime() + offsetMs);
 describe("reminder schedule", () => {
   it("is two days before the due date, on it, and three days after", () => {
     expect(PAYMENT_REMINDER_STEPS).toEqual(["before_due", "due_day", "overdue"]);
-    expect(reminderDueAt("before_due", dueAt)).toEqual(at(-2 * DAY));
-    expect(reminderDueAt("due_day", dueAt)).toEqual(dueAt);
-    expect(reminderDueAt("overdue", dueAt)).toEqual(at(3 * DAY));
+    const endOfDueDay = new Date("2026-11-08T23:59:59.999Z");
+    expect(reminderDueAt("before_due", endOfDueDay)).toEqual(at(-2 * DAY));
+    expect(reminderDueAt("due_day", endOfDueDay)).toEqual(dueAt);
+    expect(reminderDueAt("overdue", endOfDueDay)).toEqual(at(3 * DAY));
   });
 });
 
