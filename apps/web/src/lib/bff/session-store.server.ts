@@ -57,6 +57,14 @@ redis.call('expire', KEYS[2], ARGV[2])
 return 1
 `;
 
+const CREATE_PENDING_SCRIPT = `
+-- bff:create-pending
+if redis.call('exists', KEYS[1]) == 1 then return 0 end
+redis.call('set', KEYS[1], ARGV[1], 'EX', ARGV[2])
+if ARGV[3] ~= '' then redis.call('set', KEYS[2], ARGV[3], 'EX', ARGV[2]) end
+return 1
+`;
+
 const ROTATE_SESSION_SCRIPT = `
 -- bff:rotate-session
 if redis.call('exists', KEYS[1]) == 0 or redis.call('exists', KEYS[3]) == 1
@@ -68,14 +76,46 @@ for _, indexKey in ipairs(pendingIndexes) do
   redis.call('srem', indexKey, ARGV[2])
   if redis.call('scard', indexKey) == 0 then redis.call('del', indexKey) end
 end
-redis.call('del', KEYS[1], KEYS[2])
+redis.call('del', KEYS[1], KEYS[2], KEYS[7])
 redis.call('set', KEYS[3], ARGV[1], 'EX', ARGV[3])
-for index = 6, #KEYS do
+redis.call('set', KEYS[6], ARGV[4], 'EX', ARGV[5])
+for index = 8, #KEYS do
   redis.call('sadd', KEYS[index], ARGV[4])
   redis.call('expire', KEYS[index], ARGV[3])
   redis.call('sadd', KEYS[4], KEYS[index])
 end
 redis.call('expire', KEYS[4], ARGV[3])
+return 1
+`;
+
+/**
+ * Signs a browser out in one step: marks the id revoked and ends its session, the session a login
+ * in flight for it replaces, and the session that login already rotated into. Doing this in one
+ * script means a rotation either commits before it (and is found through its marker) or is
+ * refused after it; there is no point between the two at which a live session can slip through.
+ */
+const REVOKE_SESSION_SCRIPT = `
+-- bff:revoke-session
+local function dropSession(prefix, fingerprint)
+  local key = prefix .. fingerprint
+  local refs = key .. ':indexes'
+  for _, indexKey in ipairs(redis.call('smembers', refs)) do
+    redis.call('srem', indexKey, fingerprint)
+    if redis.call('scard', indexKey) == 0 then redis.call('del', indexKey) end
+  end
+  redis.call('del', refs)
+  return redis.call('del', key)
+end
+redis.call('set', KEYS[1], '1', 'EX', ARGV[2])
+dropSession(ARGV[3], ARGV[1])
+for position = 2, 3 do
+  local fingerprint = redis.call('get', KEYS[position])
+  if fingerprint then
+    redis.call('set', ARGV[4] .. fingerprint, '1', 'EX', ARGV[2])
+    dropSession(ARGV[3], fingerprint)
+    redis.call('del', KEYS[position])
+  end
+end
 return 1
 `;
 
@@ -156,6 +196,16 @@ function revocationKey(id: string): string {
   return `bid:bff:revoked:${sessionFingerprint(id)}`;
 }
 
+/** Fingerprint of the session a pending login replaces, so logout can end it without decrypting. */
+function replacesKey(pendingId: string): string {
+  return `${sessionKey(pendingId)}:replaces`;
+}
+
+/** Fingerprint of the session a pending login rotated into; lets a later logout still end it. */
+function rotatedKey(pendingId: string): string {
+  return `${sessionKey(pendingId)}:rotated`;
+}
+
 function sessionIndexRefsKey(id: string): string {
   return `${sessionKey(id)}:indexes`;
 }
@@ -217,14 +267,16 @@ export class BidBffSessionStore {
     const redis = await ensureBffRedisConnected(this.redis);
     for (let attempt = 0; attempt < SESSION_ID_ATTEMPTS; attempt += 1) {
       const id = generateSessionId();
-      const stored = await redis.set(
+      const stored = await redis.eval(
+        CREATE_PENDING_SCRIPT,
+        2,
         sessionKey(id),
+        replacesKey(id),
         encryptSession(session),
-        "EX",
         LOGIN_TTL_SECONDS,
-        "NX",
+        session.replacesSessionId ? sessionFingerprint(session.replacesSessionId) : "",
       );
-      if (stored === "OK") return id;
+      if (stored === 1) return id;
     }
     throw new Error("Unable to allocate a unique BFF session");
   }
@@ -260,18 +312,21 @@ export class BidBffSessionStore {
     const authenticatedId = generateSessionId();
     const stored = await redis.eval(
       ROTATE_SESSION_SCRIPT,
-      7,
+      9,
       sessionKey(pendingId),
       sessionIndexRefsKey(pendingId),
       sessionKey(authenticatedId),
       sessionIndexRefsKey(authenticatedId),
       // The rotation is refused, atomically, when the session this login replaces signed out.
       revocationKey(replacesSessionId ?? pendingId),
+      rotatedKey(pendingId),
+      replacesKey(pendingId),
       ...authenticatedIndexKeys(session),
       encryptSession(session),
       sessionFingerprint(pendingId),
       SESSION_TTL_SECONDS,
       sessionFingerprint(authenticatedId),
+      LOGIN_TTL_SECONDS,
     );
     if (stored !== 1) return null;
     return authenticatedId;
@@ -296,18 +351,25 @@ export class BidBffSessionStore {
   /**
    * Signs a browser out: ends its session and, when a login is in flight (the cookie holds a
    * pending session that replaces an authenticated one), ends both and revokes the replaced id.
-   * A callback that arrives later finds the revocation and cannot revive the session.
+   * When that login has already rotated into a new session, that one ends too. All in one script,
+   * so a callback that completes concurrently cannot leave a live session behind, and a callback
+   * that arrives later finds the revocation and cannot revive the session. Revocations are keyed
+   * by single-use random ids and expire with the login window, so they never block a later login.
    */
   async revoke(id: string | null): Promise<void> {
     if (!isBidSessionId(id)) return;
     const redis = await ensureBffRedisConnected(this.redis);
-    const session = await this.read(id);
-    const replaced = session?.kind === "pending" ? session.replacesSessionId : undefined;
-    for (const target of [id, replaced]) {
-      if (!target) continue;
-      await redis.set(revocationKey(target), "1", "EX", LOGIN_TTL_SECONDS);
-      await this.invalidate(target);
-    }
+    await redis.eval(
+      REVOKE_SESSION_SCRIPT,
+      3,
+      revocationKey(id),
+      replacesKey(id),
+      rotatedKey(id),
+      sessionFingerprint(id),
+      LOGIN_TTL_SECONDS,
+      "bid:bff:session:",
+      "bid:bff:revoked:",
+    );
   }
 
   /** Whether `id` signed out: a login that would replace it must not complete. */
