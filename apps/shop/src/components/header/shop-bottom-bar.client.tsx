@@ -7,7 +7,7 @@ type ShopBottomBarProps = {
   pathname: string;
   basketCount: number;
   accountNeedsAction: boolean;
-  signedIn: boolean;
+  viewer: { displayName: string; email: string } | null;
   signInHref: string;
   onSearch: () => void;
 };

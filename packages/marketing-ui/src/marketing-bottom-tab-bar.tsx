@@ -5,6 +5,7 @@ import { cn } from "@auction/ui";
 import Link from "next/link";
 import { useEffect } from "react";
 import {
+  MARKETING_COUNT_BADGE_CLASS,
   type MarketingBottomTab,
   type MarketingBottomTabBadge,
   badgeCountText,
@@ -50,7 +51,10 @@ function Badge({ badge, label }: { badge: MarketingBottomTabBadge; label: string
     <span
       aria-hidden
       data-testid={`tab-badge-${label}`}
-      className="absolute top-1 left-1/2 ml-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-danger px-1 font-label text-[10px] font-semibold leading-4 text-danger-on-solid"
+      className={cn(
+        "absolute top-1 left-1/2 ml-1.5 inline-flex min-w-4 items-center justify-center rounded-full px-1 font-label text-[10px] font-semibold leading-4 ring-2 ring-surface",
+        MARKETING_COUNT_BADGE_CLASS,
+      )}
     >
       {text}
     </span>
@@ -104,7 +108,7 @@ export function MarketingBottomTabBar({
       inert={!visible}
       style={style}
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant/40 bg-surface pb-[env(safe-area-inset-bottom,0px)] transition-opacity duration-150 motion-reduce:transition-none md:hidden",
+        "fixed inset-x-0 bottom-0 z-40 bg-surface shadow-[inset_0_1px_0_0_color-mix(in_srgb,var(--color-outline-variant)_40%,transparent)] pb-[env(safe-area-inset-bottom,0px)] transition-opacity duration-150 motion-reduce:transition-none md:hidden",
         visible ? "opacity-100" : "pointer-events-none opacity-0",
         className,
       )}

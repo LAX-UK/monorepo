@@ -1,4 +1,5 @@
 import {
+  MarketingAvatar,
   MarketingBagIcon,
   type MarketingBottomTab,
   MarketingGridIcon,
@@ -24,7 +25,8 @@ export type ShopBottomTabsInput = {
   basketCount: number;
   /** An order needs the person (for example an unpaid checkout still reserved). */
   accountNeedsAction: boolean;
-  signedIn: boolean;
+  /** The signed-in person, drawn as the Account tab's icon; null when signed out. */
+  viewer: { displayName: string; email: string } | null;
   /** Where the Account tab goes when signed out: Sign in, returning to the current page. */
   signInHref: string;
 };
@@ -33,7 +35,7 @@ export type ShopBottomTabsInput = {
 export function buildShopBottomTabs({
   basketCount,
   accountNeedsAction,
-  signedIn,
+  viewer,
   signInHref,
 }: ShopBottomTabsInput): MarketingBottomTab[] {
   const count = Number.isFinite(basketCount) ? Math.max(0, Math.floor(basketCount)) : 0;
@@ -58,10 +60,17 @@ export function buildShopBottomTabs({
     {
       key: "account",
       label: "Account",
-      href: signedIn ? "/account" : signInHref,
+      href: viewer ? "/account" : signInHref,
       paths: ["/account"],
-      icon: <MarketingUserIcon />,
-      badge: signedIn && accountNeedsAction ? { kind: "dot" } : null,
+      icon: viewer ? (
+        <MarketingAvatar
+          viewer={viewer}
+          className="size-6 bg-surface-container-high text-[10px] font-semibold leading-none text-on-surface"
+        />
+      ) : (
+        <MarketingUserIcon />
+      ),
+      badge: viewer && accountNeedsAction ? { kind: "dot" } : null,
     },
   ];
 }

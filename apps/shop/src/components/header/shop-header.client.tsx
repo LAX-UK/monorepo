@@ -106,7 +106,6 @@ export function ShopHeaderClient({
     };
   }, [headerRef]);
 
-  const signedIn = account.kind === "authenticated";
   const homeLockup = (onClick?: () => void) => (
     <Link
       href="/"
@@ -238,7 +237,11 @@ export function ShopHeaderClient({
         pathname={pathname}
         basketCount={basketCount}
         accountNeedsAction={accountNeedsAction}
-        signedIn={signedIn}
+        viewer={
+          account.kind === "authenticated"
+            ? { displayName: account.displayName, email: account.email }
+            : null
+        }
         signInHref={shopStorefrontLoginHref(pathname || "/")}
         onSearch={() => setSearchOpen(true)}
       />

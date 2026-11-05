@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const base = {
   basketCount: 0,
   accountNeedsAction: false,
-  signedIn: false,
+  viewer: null,
   signInHref: "/login?returnTo=%2Fartworks",
 };
 
@@ -73,9 +73,11 @@ describe("Shop bottom tabs", () => {
 
   it("sends a signed-in Account tab to /account, with a dot only when an order needs action", () => {
     const tab = (needs: boolean) =>
-      buildShopBottomTabs({ ...base, signedIn: true, accountNeedsAction: needs }).find(
-        (t) => t.key === "account",
-      );
+      buildShopBottomTabs({
+        ...base,
+        viewer: { displayName: "Alex Collector", email: "alex@example.com" },
+        accountNeedsAction: needs,
+      }).find((t) => t.key === "account");
     expect(tab(false)?.href).toBe("/account");
     expect(tab(false)?.badge).toBeNull();
     expect(tab(true)?.badge).toEqual({ kind: "dot" });
@@ -94,6 +96,16 @@ describe("ShopBottomBar", () => {
   afterEach(cleanup);
 
   const props = { ...base, pathname: "/basket", onSearch: () => {} };
+
+  it("shows the signed-in person's initials on the Account tab", () => {
+    render(
+      <ShopBottomBar
+        {...props}
+        viewer={{ displayName: "Alex Collector", email: "alex@example.com" }}
+      />,
+    );
+    expect(screen.getByText("AC")).toBeTruthy();
+  });
 
   it("renders the bar with the basket count, capped at 9+", () => {
     render(<ShopBottomBar {...props} basketCount={14} />);
