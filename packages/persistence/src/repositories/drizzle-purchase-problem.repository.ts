@@ -1,7 +1,11 @@
 import type { Database } from "@auction/db";
 import { purchaseProblem } from "@auction/db/schema";
-import type { PurchaseProblemCategory, PurchaseProblemStatus } from "@auction/domain";
-import { and, eq } from "drizzle-orm";
+import {
+  PURCHASE_PROBLEM_UNRESOLVED_STATUSES,
+  type PurchaseProblemCategory,
+  type PurchaseProblemStatus,
+} from "@auction/domain";
+import { and, eq, inArray } from "drizzle-orm";
 import type {
   IPurchaseProblemRepository,
   NewPurchaseProblem,
@@ -26,7 +30,7 @@ function openCondition(lotId: string, buyerLegalEntityId: string) {
   return and(
     eq(purchaseProblem.lotId, lotId),
     eq(purchaseProblem.buyerLegalEntityId, buyerLegalEntityId),
-    eq(purchaseProblem.status, "open"),
+    inArray(purchaseProblem.status, [...PURCHASE_PROBLEM_UNRESOLVED_STATUSES]),
   );
 }
 

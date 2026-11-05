@@ -1,20 +1,60 @@
-import { type PayoutLineFacts, payoutTotals } from "@auction/domain";
-import type { IPayoutRepository } from "@auction/persistence/interfaces";
-import type { PayoutLine } from "@auction/types";
+import {
+  PRIVATE_SALE_DEAL_EVENT_AGGREGATE,
+  type PayoutLineFacts,
+  dealPayoutAmounts,
+  minorUnitsToMoneyString,
+  payoutTotals,
+} from "@auction/domain";
+import type {
+  IPayoutRepository,
+  IPrivateSaleDealPayoutStore,
+} from "@auction/persistence/interfaces";
+import type { PayoutLine, PrivateSalePayoutDeal } from "@auction/types";
 import {
   DEFAULT_CURRENCY,
   type PayoutSettlementDeps,
+  listSettlementEntityIds,
   settlementAmounts,
 } from "./payout-helpers.js";
 import type { CreateSettlementInput, CreateSettlementResult } from "./types.js";
 import type { BulkPayoutSettlementResult } from "./types.js";
 
+/** A deal queued on the payout, so the run can tell the deal it is on its way. */
+export type QueuedDealPayout = { dealId: string; reference: string; netToSellerMinor: number };
+
+export type CreatedSettlementResult = CreateSettlementResult & {
+  /** The deals this payout settles; empty for a payout of lot payments only. */
+  queuedDeals?: QueuedDealPayout[];
+};
+
+/** A released deal as a payout line: the price, split like a lot's into commission and costs. */
+function dealLine(deal: PrivateSalePayoutDeal) {
+  const amounts = dealPayoutAmounts({
+    priceMinor: deal.priceMinor,
+    sellerCommissionBps: deal.sellerCommissionBps,
+    costsMinor: deal.costsMinor,
+  });
+  if (!amounts) return null;
+  const gross = minorUnitsToMoneyString(BigInt(amounts.grossMinor));
+  const facts: PayoutLineFacts = {
+    kind: "sale",
+    amount: gross,
+    payment: {
+      amount: gross,
+      platformFee: minorUnitsToMoneyString(BigInt(amounts.deductionsMinor)),
+    },
+  };
+  return { gross, facts, netMinor: amounts.netMinor };
+}
+
 export async function createSettlementCore(
   r: IPayoutRepository,
   input: CreateSettlementInput,
-): Promise<CreateSettlementResult> {
+  deals?: IPrivateSaleDealPayoutStore | null,
+): Promise<CreatedSettlementResult> {
   const pending = await r.findUnlinkedCapturedPayments(input.legalEntityId);
-  if (pending.length === 0) {
+  const pendingDeals = (await deals?.findUnsettledReleased(input.legalEntityId)) ?? [];
+  if (pending.length === 0 && pendingDeals.length === 0) {
     return { ok: false, reason: "no_pending_payments" };
   }
 
@@ -26,8 +66,15 @@ export async function createSettlementCore(
     amount: saleAmount,
     payment: { amount: p.amount, platformFee: p.platformFee },
   });
+  const dealLines = pendingDeals.flatMap((deal) => {
+    const line = dealLine(deal);
+    return line ? [{ deal, ...line }] : [];
+  });
   const initial = payoutTotals(
-    pending.map((p, i) => saleLine(p, settled[i]?.saleAmount ?? p.amount)),
+    [
+      ...pending.map((p, i) => saleLine(p, settled[i]?.saleAmount ?? p.amount)),
+      ...dealLines.map((d) => d.facts),
+    ],
     stripeFee,
   );
   const { gross: grossAmount, platformFee, net: netAmount } = initial;
@@ -58,12 +105,28 @@ export async function createSettlementCore(
       inserted.push({ line, facts: saleLine(original ?? p, p.saleAmount) });
     }
   }
+  const queuedDeals: QueuedDealPayout[] = [];
+  for (const d of dealLines) {
+    const line = await deals?.insertSaleLine({
+      payoutId: created.id,
+      dealId: d.deal.dealId,
+      amount: d.gross,
+    });
+    if (line) {
+      inserted.push({ line, facts: d.facts });
+      queuedDeals.push({
+        dealId: d.deal.dealId,
+        reference: d.deal.reference,
+        netToSellerMinor: d.netMinor,
+      });
+    }
+  }
 
   if (inserted.length === 0) {
     throw new Error("no_settlement_lines_inserted");
   }
 
-  if (inserted.length < pending.length) {
+  if (inserted.length < pending.length + dealLines.length) {
     const adjusted = payoutTotals(
       inserted.map((x) => x.facts),
       stripeFee,
@@ -77,10 +140,11 @@ export async function createSettlementCore(
     return {
       ok: true,
       payout: { ...refreshed, lines: inserted.map((x) => x.line) },
+      queuedDeals,
     };
   }
 
-  return { ok: true, payout: { ...created, lines: inserted.map((x) => x.line) } };
+  return { ok: true, payout: { ...created, lines: inserted.map((x) => x.line) }, queuedDeals };
 }
 
 export async function createSettlement(
@@ -98,7 +162,7 @@ export async function createSettlement(
     // One settlement per legal entity at a time: a concurrent run waits here, then sees the
     // payments already on the first payout and finds nothing pending.
     await r.lockSettlementForEntity(input.legalEntityId);
-    const result = await createSettlementCore(r, input);
+    const result = await createSettlementCore(r, input, deps.dealPayoutsForTx?.(tx) ?? null);
     if (!result.ok) {
       return result;
     }
@@ -122,6 +186,21 @@ export async function createSettlement(
       actorUserId: actorUserId,
       actingLegalEntityId: input.legalEntityId,
     });
+    for (const deal of result.queuedDeals ?? []) {
+      await publisher.withTx(tx).publish({
+        aggregateType: PRIVATE_SALE_DEAL_EVENT_AGGREGATE,
+        aggregateId: deal.dealId,
+        eventType: "private_sale_deal.payout_queued",
+        payload: {
+          dealId: deal.dealId,
+          reference: deal.reference,
+          payoutId: result.payout.id,
+          netToSellerMinor: deal.netToSellerMinor,
+        },
+        actorUserId: null,
+        actingLegalEntityId: input.legalEntityId,
+      });
+    }
     return result;
   });
 }
@@ -131,7 +210,7 @@ export async function runBulkSettlement(
   actorUserId: string | null,
   opts?: { periodEnd?: Date },
 ): Promise<BulkPayoutSettlementResult> {
-  const legalEntityIds = await deps.repo.listLegalEntityIdsWithUnlinkedCapturedPayments();
+  const legalEntityIds = await listSettlementEntityIds(deps);
   const periodEnd = opts?.periodEnd ?? new Date();
   const periodStart = new Date(0);
   const items: BulkPayoutSettlementResult["items"] = [];

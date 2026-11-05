@@ -44,6 +44,7 @@ export function deal(overrides: Partial<PrivateSaleDealDetail> = {}): PrivateSal
     agreedAt: null,
     agreedByUserId: null,
     invoicedByUserId: null,
+    invoiceReference: null,
     cancelReason: null,
     cancelledAt: null,
     version: 1,

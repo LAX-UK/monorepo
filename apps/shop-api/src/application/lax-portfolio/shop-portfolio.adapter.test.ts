@@ -136,7 +136,14 @@ describe("buildShopPortfolioItems: editions", () => {
   it.each([
     [
       "issued",
-      [{ kind: "certificate", available: true, href: "https://shop.lax.art/account/documents" }],
+      [
+        {
+          kind: "certificate",
+          available: true,
+          href: "https://shop.lax.art/account/documents",
+          label: "Certificate of authenticity",
+        },
+      ],
     ],
     [
       "expected",
@@ -144,6 +151,7 @@ describe("buildShopPortfolioItems: editions", () => {
         {
           kind: "certificate",
           available: false,
+          label: "Certificate of authenticity",
           expectedNote: "Your certificate appears here once it has been issued.",
         },
       ],
@@ -152,6 +160,107 @@ describe("buildShopPortfolioItems: editions", () => {
   ] as const)("reports a %s certificate", (certificate, documents) => {
     const [item] = itemsFor({ editions: [edition({ certificate })] });
     expect(item?.documents).toEqual(documents);
+  });
+});
+
+describe("buildShopPortfolioItems: the print and its certificate", () => {
+  const confirmed = { by: "staff", at: new Date("2026-10-28T09:00:00Z") };
+  const handSigned = {
+    numbering: "on_print",
+    signature: { kind: "hand_signed", medium: "pencil", place: "front_lower_margin" },
+    certificate: {
+      kind: "included",
+      issuer: "artist",
+      form: "paper",
+      arrives: { kind: "with_print" },
+      numberedToMatch: true,
+    },
+    confirmed,
+  } as const;
+  const numbered = (patch: Partial<Parameters<typeof edition>[0]> = {}) =>
+    edition({
+      editionNumber: 7,
+      print: { editionNumber: 7, proofNumber: null, stockRef: 7 },
+      runFacts: { run: { type: "lax_standard" }, proofsKept: null, facts: handSigned },
+      ...patch,
+    });
+
+  it("says which print of the edition the owner holds", () => {
+    const [item] = itemsFor({ editions: [numbered()] });
+    expect(item?.edition).toBe("No. 7 of 24 · Hand-signed · Certificate from the artist");
+  });
+
+  it("leaves the edition out when the run has no recorded facts", () => {
+    const [item] = itemsFor({ editions: [edition()] });
+    expect(item).not.toHaveProperty("edition");
+  });
+
+  it("names an issued certificate by the print's number", () => {
+    const [item] = itemsFor({ editions: [numbered({ certificate: "issued" })] });
+    expect(item?.documents).toEqual([
+      {
+        kind: "certificate",
+        available: true,
+        href: "https://shop.lax.art/account/documents",
+        label: "Certificate of authenticity No. 7/24",
+      },
+    ]);
+  });
+
+  it("tells the owner when a promised certificate will arrive", () => {
+    const [withPrint] = itemsFor({ editions: [numbered()] });
+    expect(withPrint?.documents).toEqual([
+      {
+        kind: "certificate",
+        available: false,
+        label: "Certificate of authenticity No. 7/24",
+        expectedNote: "Your certificate comes with your print.",
+      },
+    ]);
+    const later = {
+      ...handSigned,
+      certificate: { ...handSigned.certificate, arrives: { kind: "separately", withinWeeks: 4 } },
+    } as const;
+    const [separate] = itemsFor({
+      editions: [
+        numbered({ runFacts: { run: { type: "lax_standard" }, proofsKept: null, facts: later } }),
+      ],
+    });
+    expect(separate?.documents[0]?.expectedNote).toBe(
+      "Your certificate is sent separately, within 4 weeks of delivery.",
+    );
+  });
+
+  it("has no certificate row when none was promised", () => {
+    const none = { ...handSigned, certificate: { kind: "none" } } as const;
+    const [item] = itemsFor({
+      editions: [
+        numbered({ runFacts: { run: { type: "lax_standard" }, proofsKept: null, facts: none } }),
+      ],
+    });
+    expect(item?.documents).toEqual([]);
+  });
+
+  it("never numbers an unnumbered print", () => {
+    const open = {
+      numbering: "none",
+      signature: { kind: "unsigned" },
+      certificate: { kind: "none" },
+      confirmed,
+    } as const;
+    const [item] = itemsFor({
+      editions: [
+        edition({
+          print: { editionNumber: null, proofNumber: null, stockRef: 21 },
+          runFacts: {
+            run: { type: "open", defaultSplit: { artistPct: 50, laxPct: 50 } },
+            proofsKept: null,
+            facts: open,
+          },
+        }),
+      ],
+    });
+    expect(item?.edition).toBe("Open edition · Unsigned");
   });
 });
 

@@ -12,9 +12,9 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0311 artwork register print code", () => {
-  it("is journal entry 311, later than the entry before it", () => {
+  it("is journal entry 306, later than the entry before it", () => {
     const at = journal.entries.findIndex((e) => e.tag === "0311_artwork_register_print_code");
-    expect(journal.entries[at]?.idx).toBe(311);
+    expect(journal.entries[at]?.idx).toBe(306);
     expect(journal.entries[at]?.when).toBeGreaterThan(
       journal.entries[at - 1]?.when ?? Number.POSITIVE_INFINITY,
     );

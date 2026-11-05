@@ -103,6 +103,8 @@ describe("registered OIDC clients", () => {
       "lax.portfolio.read",
       "lax.selling.read",
       "lax.selling.write",
+      "lax.alerts.read",
+      "lax.alerts.write",
     ]);
   });
 

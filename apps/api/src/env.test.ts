@@ -161,3 +161,23 @@ describe("envSchema ALERT_LINK_SECRET in production", () => {
     expect(envSchema.safeParse(productionEnvBase()).success).toBe(true);
   });
 });
+
+describe("envSchema trusted proxies", () => {
+  it("trusts the platform's private range by default and Cloudflare's published edges", () => {
+    const parsed = envSchema.safeParse(productionEnvBase());
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.API_TRUSTED_PROXY_CIDRS).toEqual(["10.0.0.0/8"]);
+    expect(parsed.data.API_TRUSTED_CLOUDFLARE_PROXY_CIDRS).toContain("173.245.48.0/20");
+    expect(parsed.data.API_SSR_CLIENT_IP_TOKEN).toBeUndefined();
+  });
+
+  it("reads a comma-separated override", () => {
+    const parsed = envSchema.safeParse(
+      productionEnvBase({ API_TRUSTED_PROXY_CIDRS: "10.0.0.0/8, 172.16.0.0/12" }),
+    );
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) return;
+    expect(parsed.data.API_TRUSTED_PROXY_CIDRS).toEqual(["10.0.0.0/8", "172.16.0.0/12"]);
+  });
+});

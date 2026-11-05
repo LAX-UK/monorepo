@@ -343,6 +343,33 @@ describe("buildShopOrderDetailVm", () => {
     }
   });
 
+  it("describes the print from the facts the buyer paid under", () => {
+    const summary = "No. 7 of 24 · Hand-signed · Certificate from the artist";
+    const described = order("paid");
+    const [line] = described.lines;
+    if (!line) throw new Error("fixture has a line");
+    const withSummary = { ...described, lines: [{ ...line, editionSummary: summary }] };
+    expect(buildShopOrderDetailVm(withSummary, NOW).lines[0]?.edition).toBe(summary);
+  });
+
+  it("shows an unnumbered print without a number", () => {
+    const described = order("paid");
+    const [line] = described.lines;
+    if (!line) throw new Error("fixture has a line");
+    const open = {
+      ...described,
+      lines: [
+        {
+          ...line,
+          editionNumber: null,
+          editionSize: null,
+          editionSummary: "Open edition · Unsigned",
+        },
+      ],
+    };
+    expect(buildShopOrderDetailVm(open, NOW).lines[0]?.edition).toBe("Open edition · Unsigned");
+  });
+
   it("says when the window to report a problem closed", () => {
     const vm = buildShopOrderDetailVm(
       order("paid", { problemReport: { open: false, endsAt: "2026-11-18T10:00:00.000Z" } }),

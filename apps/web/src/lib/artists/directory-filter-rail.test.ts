@@ -46,9 +46,37 @@ describe("buildArtistDirectoryFilterGroups", () => {
     ]);
   });
 
-  it("keeps All and Featured reachable under Show", () => {
+  it("offers Featured under Show, with its count", () => {
     const [group] = buildArtistDirectoryFilterGroups(input);
-    expect(group?.links.map((l) => l.label)).toEqual(["All", "Featured"]);
+    expect(group?.links).toEqual([
+      { label: "Featured", href: "/artists/featured", count: 2, active: false },
+    ]);
+  });
+
+  it("takes a chosen option off by going back to all artists", () => {
+    const featured = ARTIST_DIRECTORY_PRESETS.find((p) => p.id === "featured");
+    if (!featured) throw new Error("missing preset");
+    const [group] = buildArtistDirectoryFilterGroups({ ...input, preset: featured });
+    expect(group?.links[0]).toMatchObject({ active: true, href: "/artists" });
+  });
+
+  it("keeps the carried filters when an option is chosen or taken off", () => {
+    const [group] = buildArtistDirectoryFilterGroups({ ...input, carry: { q: "ada" } });
+    expect(group?.links[0]?.href).toBe("/artists/featured?q=ada");
+  });
+
+  it("counts a kind with no artists as zero so it shows disabled", () => {
+    const kind = buildArtistDirectoryFilterGroups(input).find((g) => g.id === "kind");
+    expect(kind?.links.find((l) => l.label === "Brands")?.count).toBe(0);
+  });
+
+  it("has no Any rows: an applied department is taken off by its own row", () => {
+    const group = buildArtistDirectoryFilterGroups({ ...input, categorySlug: "prints" }).find(
+      (g) => g.id === "department",
+    );
+    expect(group?.links).toHaveLength(1);
+    expect(group?.links[0]).toMatchObject({ active: true });
+    expect(group?.links[0]?.href).not.toContain("category=");
   });
 
   it("offers Living and Historical under Living or historical", () => {

@@ -1063,6 +1063,15 @@ export type {
   PurchaseProblemRecord,
 } from "./purchase-problem.repository.js";
 export type {
+  IPurchaseProblemDeskRepository,
+  IPurchaseProblemNoteRepository,
+  PurchaseProblemChange,
+  PurchaseProblemDeskQuery,
+  PurchaseProblemDeskRecord,
+  PurchaseProblemNoteRecord,
+  PurchaseProblemStatusCounts,
+} from "./purchase-problem-desk.repository.js";
+export type {
   AccountSearchCriteria,
   AccountSearchHits,
   BidSearchHit,
@@ -1145,6 +1154,14 @@ export type {
   IConsignmentStaffDirectory,
 } from "./consignment-staff-directory.reader.js";
 export type {
+  ClaimDealPaymentResult,
+  IPrivateSaleDealFinanceStore,
+  IPrivateSaleDealPaymentReader,
+  IPrivateSaleDealPaymentWriter,
+  IPrivateSaleDealPayoutStore,
+  NewPrivateSaleDealPayment,
+} from "./private-sale-deal-payment.repository.js";
+export type {
   ClaimPaymentGroupInput,
   ClaimPaymentGroupResult,
   IPaySeveralInvoiceFlagsReader,
@@ -1218,6 +1235,10 @@ export type {
   ZohoArtworkSyncSummary,
 } from "./zoho-artwork-sync.js";
 
+export type {
+  BidAlertLotNotice,
+  IBidAlertLotNoticeWriter,
+} from "./bid-alert-lot-notice.js";
 export type {
   AnnouncedSale,
   IBidAlertSaleNoticeWriter,

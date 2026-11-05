@@ -178,6 +178,49 @@ describe("artwork list", () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  it("offers to tell subscribers when publishing editions, ticked, and sends the choice", async () => {
+    bulkArtworkVisibility.mockResolvedValue({
+      ok: true,
+      data: { results: [{ artworkId: page.items[0]?.artworkId, outcome: "changed" }] },
+    });
+    renderList();
+    fireEvent.click(screen.getAllByRole("checkbox", { name: "Select row 1" })[0] as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: "Publish…" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Tell subscribers")).toBeInTheDocument();
+    expect(within(dialog).getByRole("checkbox")).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Publish artwork" }));
+    await waitFor(() => expect(bulkArtworkVisibility).toHaveBeenCalled());
+    expect(bulkArtworkVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "publish", sendReleaseAlert: true }),
+    );
+  });
+
+  it("publishes quietly when the box is unticked", async () => {
+    bulkArtworkVisibility.mockResolvedValue({
+      ok: true,
+      data: { results: [{ artworkId: page.items[0]?.artworkId, outcome: "changed" }] },
+    });
+    renderList();
+    fireEvent.click(screen.getAllByRole("checkbox", { name: "Select row 1" })[0] as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: "Publish…" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("checkbox"));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Publish artwork" }));
+    await waitFor(() => expect(bulkArtworkVisibility).toHaveBeenCalled());
+    expect(bulkArtworkVisibility).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "publish", sendReleaseAlert: false }),
+    );
+  });
+
+  it("does not offer the box for originals, nor for other actions", () => {
+    const original = item(3, { state: "draft", salesChannel: "art", run: null });
+    renderList({ page: { ...page, items: [original, item(2)] } });
+    fireEvent.click(screen.getAllByRole("checkbox", { name: "Select row 1" })[0] as HTMLElement);
+    fireEvent.click(screen.getByRole("button", { name: "Publish…" }));
+    expect(within(screen.getByRole("dialog")).queryByRole("checkbox")).toBeNull();
+  });
+
   it("confirms before archiving a selection, then reports refusals", async () => {
     bulkArtworkVisibility.mockResolvedValue({
       ok: true,

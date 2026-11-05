@@ -2,6 +2,7 @@ import {
   fetchArtChannelArtistBySlug,
   fetchArtChannelArtists,
   fetchArtChannelArtworkBySlug,
+  fetchArtChannelArtworkFacets,
   fetchArtChannelArtworkObjectTypes,
   fetchArtChannelArtworks,
   fetchArtChannelCategories,
@@ -37,6 +38,7 @@ import {
   fetchEditorialVenues,
 } from "@/lib/editorial/art-editorial.server";
 import {
+  loadArtFollowEmailsOn,
   loadArtFollowedArtistSlugs,
   loadArtSavedArtworkSlugs,
 } from "@/lib/favorites/art-favorites.server";
@@ -79,6 +81,7 @@ export const artServices: ArtServices = {
     getArtist: fetchArtChannelArtistBySlug,
     listCategories: fetchArtChannelCategories,
     listArtworkObjectTypes: fetchArtChannelArtworkObjectTypes,
+    countArtworkFacets: fetchArtChannelArtworkFacets,
     listShopEditionsOfOriginal: fetchShopEditionsOfOriginal,
     listShopEditionsByArtist: fetchShopEditionsByArtist,
   },
@@ -86,6 +89,7 @@ export const artServices: ArtServices = {
   favorites: {
     savedArtworkSlugs: loadArtSavedArtworkSlugs,
     followedArtistSlugs: loadArtFollowedArtistSlugs,
+    followEmailsOn: loadArtFollowEmailsOn,
     listSavedArtworks: fetchPortalSavedArtworks,
     listFollowedArtists: fetchPortalFollowedArtists,
   },

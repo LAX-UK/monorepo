@@ -6,6 +6,7 @@ import {
   type FavoriteTarget,
   mutateFavorite,
 } from "@/lib/favorites/favorite-mutation";
+import { type TurnOnFollowEmailsOutcome, turnOnFollowEmails } from "@/lib/favorites/follow-emails";
 import { revalidatePath } from "next/cache";
 
 async function runFavoriteMutation(
@@ -32,4 +33,15 @@ export async function followArtist(slug: string): Promise<FavoriteMutationOutcom
 
 export async function unfollowArtist(slug: string): Promise<FavoriteMutationOutcome> {
   return runFavoriteMutation("artist", slug, false);
+}
+
+/** Switches emails about followed artists back on, from the Follow button's "Turn on". */
+export async function turnOnFollowEmailsAction(): Promise<TurnOnFollowEmailsOutcome> {
+  return turnOnFollowEmails(artCommerceMutationClient);
+}
+
+/** Whether emails about followed artists are on right now, after a follow changed the answer. */
+export async function followEmailsStateAction(): Promise<boolean | null> {
+  const { loadArtFollowEmailsOn } = await import("@/lib/favorites/art-favorites.server");
+  return loadArtFollowEmailsOn();
 }

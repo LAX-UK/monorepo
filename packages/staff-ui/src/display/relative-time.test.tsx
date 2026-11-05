@@ -21,10 +21,10 @@ describe("RelativeTime", () => {
   it("says how long ago, and keeps the exact London time for readers and machines", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-10-24T13:08:00.000Z"));
-    render(<RelativeTime value="2026-10-24T13:05:00.000Z" zoneLabel />);
+    render(<RelativeTime value="2026-10-24T13:05:00.000Z" />);
     const time = screen.getByText("3 minutes ago").closest("time");
     expect(time).toHaveAttribute("dateTime", "2026-10-24T13:05:00.000Z");
-    expect(time).toHaveTextContent("3 minutes ago, 24 Oct 2026, 14:05 BST");
-    expect(screen.getByRole("tooltip")).toHaveTextContent("24 Oct 2026, 14:05 BST");
+    expect(time).toHaveTextContent("3 minutes ago, Sat 24 Oct, 14:05 BST");
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Sat 24 Oct, 14:05 BST");
   });
 });

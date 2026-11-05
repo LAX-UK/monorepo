@@ -329,6 +329,7 @@ export function describeEditionFacts(
   const signed = signatureShort(signature);
   const open = isOpenRun(run);
   const certificateText = certificateShort(certificate);
+  const horsCommerce = run.type === "proof" && run.proofType === "hc";
   return {
     eyebrow: eyebrow(run),
     rows: {
@@ -349,6 +350,7 @@ export function describeEditionFacts(
       const numbered = numberedPrintText(run, numbering, print);
       return [
         numbered?.order ?? name,
+        ...(horsCommerce ? [capitalise(HORS_COMMERCE_NOTE)] : []),
         signed,
         ...(numbering === "none" && !open ? ["Not numbered"] : []),
         ...(certificateText ? [certificateText] : []),
@@ -358,6 +360,7 @@ export function describeEditionFacts(
       const numbered = numberedPrintText(run, numbering, print);
       return [
         numbered && run.type !== "proof" ? `${name}, ${numbered.invoice}` : name,
+        ...(horsCommerce ? [HORS_COMMERCE_NOTE] : []),
         ...(numbered && run.type === "proof" ? [numbered.invoice] : []),
         signatureForInvoice(signature),
         ...(certificate.kind === "included" ? ["with certificate of authenticity"] : []),

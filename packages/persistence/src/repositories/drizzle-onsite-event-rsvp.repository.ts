@@ -13,6 +13,7 @@ import type {
   UpdateOnsiteEventCheckInTokenInput,
   UpsertOnsiteEventRsvpInput,
 } from "../interfaces/onsite-event-rsvp.repository.js";
+import { containsPattern } from "../lib/like-pattern.js";
 import { mapOnsiteEventRsvpRow } from "../lib/onsite-event-rsvp.mapper.js";
 
 function mapRsvpWithGuest(row: {
@@ -220,7 +221,7 @@ export class DrizzleOnsiteEventRsvpRepository implements IOnsiteEventRsvpReposit
     query: string,
     limit = 20,
   ): Promise<OnsiteEventCheckInSearchRow[]> {
-    const pattern = `%${query.replace(/[%_\\]/g, "\\$&")}%`;
+    const pattern = containsPattern(query);
     const rows = await this.db
       .select({
         id: onsiteEventRsvp.id,

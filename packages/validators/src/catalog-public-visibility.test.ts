@@ -248,3 +248,37 @@ describe("withdrawn lots", () => {
     ).toEqual({ statuses: [] });
   });
 });
+
+describe("test sales", () => {
+  const lot = { status: "active", saleId: "s1" } as const;
+
+  it.each(["draft", "scheduled", "active", "ended"] as const)(
+    "never treats a %s test sale as public",
+    (status) => {
+      expect(isPublicCatalogSale({ status, isTest: true })).toBe(false);
+    },
+  );
+
+  it("keeps an ordinary sale public", () => {
+    expect(isPublicCatalogSale({ status: "active", isTest: false })).toBe(true);
+    expect(isPublicCatalogSale({ status: "active" })).toBe(true);
+  });
+
+  it("hides every lot of a test sale, including withdrawn ones", () => {
+    const parent = { status: "active", isTest: true } as const;
+    expect(isPublicCatalogLot(lot, parent)).toBe(false);
+    expect(isPublicCatalogueLot(lot, parent)).toBe(false);
+    expect(isPublicCatalogueLot({ status: "cancelled", saleId: "s1" }, parent)).toBe(false);
+  });
+
+  it("hides an ATG-owned draft test sale", () => {
+    const parent = {
+      status: "draft",
+      isTest: true,
+      sellingPlatform: "atg",
+      atgDistribution: "public_marketplace",
+    } as const;
+    expect(isPublicCatalogSale(parent)).toBe(false);
+    expect(isPublicCatalogLot({ status: "draft", saleId: "s1" }, parent)).toBe(false);
+  });
+});

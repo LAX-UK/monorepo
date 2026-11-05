@@ -17,7 +17,7 @@ function emptyToUndefined(val: unknown): unknown {
   return val === "" || val === null ? undefined : val;
 }
 
-const envSchema = z
+export const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
     /** Deployment environment for financial / ops validation — decoupled from NODE_ENV. */
@@ -117,6 +117,8 @@ const envSchema = z
     CRON_INTERNAL_SECRET: z.preprocess(emptyToUndefined, z.string().min(24).optional()),
     /** Web app origin for constructing admin dashboard URLs in emails. */
     WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+    /** Where LAX Account lives; the "manage your alerts" link in alert emails goes there. */
+    LAX_ACCOUNT_PUBLIC_ORIGIN: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /** Platform admin email for ops notifications (refunds, disputes, etc.). */
     ADMIN_EMAIL_ADDRESS: z.preprocess(emptyToUndefined, z.string().email().optional()),
     SGTM_ENDPOINT_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
@@ -182,9 +184,8 @@ const envSchema = z
     SHOP_ZOHO_FINANCIALS_ENABLED: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),
-    ZOHO_CRM_LEAD_CONVERSION_ENABLED: z
-      .preprocess((val) => val === "true" || val === true, z.boolean())
-      .default(false),
+    /** Lead Status a new website lead starts with; must exist in the org's Lead Status picklist. */
+    ZOHO_CRM_LEAD_STATUS_NEW: z.string().trim().min(1).default("New (Unassigned)"),
     ZOHO_CRM_CURSOR_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(100),
     ZOHO_CRM_TICK_TIME_BUDGET_MS: z.coerce.number().int().min(100).max(120_000).default(2_000),
     XERO_PROJECTOR_MODE: z.enum(["off", "shadow", "canary", "live"]).default("off"),
@@ -307,11 +308,11 @@ const envSchema = z
     }
     // Admin email required only in production (test stack uses debug channels).
     if (e.APP_ENV === "production") {
-      if (e.ALERTS_SEND_MODE !== "off" && !isUsableAlertLinkSecret(e.ALERT_LINK_SECRET)) {
+      if (!isUsableAlertLinkSecret(e.ALERT_LINK_SECRET)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message:
-            "ALERT_LINK_SECRET is required in production when alerts are on (min 32 characters, not the development default)",
+            "ALERT_LINK_SECRET is required in production (min 32 characters, not the development default)",
           path: ["ALERT_LINK_SECRET"],
         });
       }

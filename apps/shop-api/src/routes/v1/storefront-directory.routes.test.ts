@@ -15,6 +15,8 @@ function createDeps() {
         priceBands: [],
         sizes: [],
         techniques: [],
+        objectTypes: [],
+        saleStates: [],
       }),
       listPublicCategories: async () => ({
         items: [{ slug: "art", label: "Art", imageUrl: null, artworkCount: 1 }],

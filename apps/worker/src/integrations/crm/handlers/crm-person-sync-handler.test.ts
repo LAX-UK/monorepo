@@ -22,6 +22,10 @@ function linkRepo(overrides: Partial<ICrmRecordLinkRepository> = {}): ICrmRecord
     listActiveByEntityType: vi.fn(),
     listErasedWithRealZohoLinks: vi.fn(),
     reassignDealLinksSubjectId: vi.fn(),
+    listActiveLinksBySubject: vi.fn().mockResolvedValue([]),
+    listHeldDeals: vi.fn().mockResolvedValue([]),
+    touchLink: vi.fn(),
+    eraseHeldDealsBySubject: vi.fn().mockResolvedValue(0),
     ...overrides,
   };
 }
@@ -34,7 +38,8 @@ function gateway(overrides: Partial<CrmGateway> = {}): CrmGateway {
     findByEmail: vi.fn(),
     findDealIdsByContact: vi.fn(),
     executeCoql: vi.fn(),
-    convertLead: vi.fn(),
+    createRecord: vi.fn(),
+    findLead: vi.fn(),
     deleteRecord: vi.fn(),
     purgeFromRecycleBin: vi.fn(),
     getMetrics: () => ({ apiCreditsRemaining: null }),
@@ -86,6 +91,7 @@ describe("CrmPersonSyncHandler", () => {
           erasedAt: null,
           deletionRequestedAt: null,
           recyclePurgedAt: null,
+          heldPayload: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         }),

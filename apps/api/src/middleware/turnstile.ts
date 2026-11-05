@@ -1,5 +1,6 @@
 import { createMiddleware } from "hono/factory";
 import { verifyTurnstileResponse } from "../lib/verify-turnstile.js";
+import { clientIpOrNull } from "./client-ip.js";
 
 type JsonWithTurnstile = { turnstileToken?: string | undefined };
 
@@ -18,14 +19,11 @@ export function createTurnstileMiddleware(secret: string | undefined) {
     if (!token) {
       return c.json({ error: "Captcha required", code: "captcha_required" }, 400);
     }
-    const ip =
-      c.req.header("x-forwarded-for")?.split(",")[0]?.trim() ??
-      c.req.header("x-real-ip") ??
-      undefined;
+    const ip = clientIpOrNull(c);
     const ok = await verifyTurnstileResponse({
       secret: trimmed,
       token,
-      remoteip: ip || undefined,
+      remoteip: ip ?? undefined,
     });
     if (!ok) {
       return c.json({ error: "Captcha verification failed", code: "captcha_invalid" }, 403);

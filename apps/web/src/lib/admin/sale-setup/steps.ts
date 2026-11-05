@@ -21,6 +21,7 @@ export const SALE_SETUP_SALE_STEP_FIELDS = {
     "heroPresentation",
     "heroVideoUrl",
     "categoryId",
+    "isTest",
   ],
   schedule: [
     "deliveryMode",

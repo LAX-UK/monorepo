@@ -2,24 +2,30 @@
 
 import { MarketingFilterSheet } from "@/components/marketing/marketing-filter-sheet";
 import { MarketingFilterTrigger } from "@/components/marketing/marketing-filter-trigger";
-import { SaleroomCatalogStatusChips } from "@/components/sections/saleroom/saleroom-catalog-status-chips";
 import {
+  SALEROOM_CATALOG_STATUS_OPTIONS,
   buildSaleroomClearStatusHref,
+  buildSaleroomStatusHref,
   countActiveSaleroomStatusFilters,
   parseSaleroomCatalogStatus,
 } from "@/lib/marketing/saleroom-catalog-status";
+import type { SaleroomStatusCounts } from "@/lib/marketing/saleroom-status-counts";
+import { MarketingFilterCheckboxRow } from "@auction/marketing-ui";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 
 export type SaleroomCatalogFilterSheetProps = {
   basePath: string;
   resultCountLabel: string;
+  /** Lots per status; null when they could not be counted. */
+  statusCounts: SaleroomStatusCounts | null;
 };
 
 /** Mobile filter sheet for saleroom lot status on `/sales/[slug]/[id]`. */
 export function SaleroomCatalogFilterSheet({
   basePath,
   resultCountLabel,
+  statusCounts,
 }: SaleroomCatalogFilterSheetProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -42,10 +48,31 @@ export function SaleroomCatalogFilterSheet({
         close();
       }}
     >
-      <div>
-        <p className="mb-3 font-label text-xs text-on-surface-variant">Lot status</p>
-        <SaleroomCatalogStatusChips basePath={basePath} layout="list" onSelect={close} />
-      </div>
+      <fieldset className="m-0 min-w-0 border-0 p-0">
+        <legend className="mb-1 font-label text-xs text-on-surface-variant">Lot status</legend>
+        {SALEROOM_CATALOG_STATUS_OPTIONS.filter((option) => option.value !== "all").map(
+          (option) => {
+            const active = status === option.value;
+            const count = option.value === "all" ? undefined : statusCounts?.[option.value];
+            return (
+              <MarketingFilterCheckboxRow
+                key={option.value}
+                id={`saleroom-status-${option.value}`}
+                label={option.label}
+                count={count}
+                checked={active}
+                onCheckedChange={() => {
+                  router.push(
+                    buildSaleroomStatusHref(basePath, active ? "all" : option.value, searchParams),
+                    { scroll: false },
+                  );
+                  close();
+                }}
+              />
+            );
+          },
+        )}
+      </fieldset>
     </MarketingFilterSheet>
   );
 }

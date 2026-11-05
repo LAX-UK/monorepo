@@ -51,6 +51,7 @@ export function toAdminSaleBoardRow(row: AdminSaleBoardInput): AdminSaleBoardRow
     endTimeLabel: endTime ? formatDateTime(endTime) : "—",
     sparklineValues: scheduleEndingSparkline(row.lots, 7),
     canDelete: row.deleteEligibility?.canDelete === true,
+    ...(row.sale.isTest ? { isTest: true } : {}),
     createdAtIso: toRequiredIsoString(row.sale.createdAt),
   };
 }

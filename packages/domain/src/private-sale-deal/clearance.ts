@@ -18,11 +18,19 @@ export type DealClearanceSnapshot = {
  * source-of-funds services, so staff here never decide a check: Compliance does.
  */
 export interface DealClearancePort {
-  snapshot(parties: {
-    sellerLegalEntityId: string;
-    buyerLegalEntityId: string | null;
+  snapshot(deal: {
+    dealId: string;
+    seller: DealPartyRef;
+    /** `null` while the buyer is not named. */
+    buyer: DealPartyRef | null;
   }): Promise<DealClearanceSnapshot>;
 }
+
+/**
+ * A party as the checks know them: identity and screening are recorded for the person acting for
+ * the legal entity, so the entity alone is not enough to read them.
+ */
+export type DealPartyRef = { legalEntityId: string; actingUserId: string | null };
 
 export const partyIsClear = (party: PartyClearance): boolean =>
   party.kyc === "clear" && party.aml === "clear";

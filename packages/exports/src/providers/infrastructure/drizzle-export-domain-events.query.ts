@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { domainEvent } from "@auction/db/schema";
+import { startsWithPattern } from "@auction/persistence/lib";
 import { redactDomainEventPayload } from "@auction/types";
 import { and, asc, desc, eq, like, sql } from "drizzle-orm";
 import type {
@@ -64,7 +65,7 @@ export class DrizzleExportDomainEventsQuery implements IExportDomainEventsQuery 
     }
     let q = this.db.select(DOMAIN_EVENT_LIST_COLUMNS).from(domainEvent);
     if (prefix) {
-      q = q.where(like(domainEvent.eventType, `${prefix}%`)) as typeof q;
+      q = q.where(like(domainEvent.eventType, startsWithPattern(prefix))) as typeof q;
     }
     const rows = await q.orderBy(desc(domainEvent.id)).offset(offset).limit(input.limit);
     return redactRows(rows, input.includePii);

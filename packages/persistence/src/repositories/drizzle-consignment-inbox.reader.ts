@@ -35,6 +35,7 @@ import type {
   ConsignmentInboxSummaryRecord,
   IConsignmentInboxReader,
 } from "../interfaces/consignment-inbox.reader.js";
+import { containsPattern } from "../lib/like-pattern.js";
 
 const specialistDirectory = alias(bidIdentityDirectory, "inbox_specialist_directory");
 const coveringDirectory = alias(bidIdentityDirectory, "inbox_covering_directory");
@@ -48,7 +49,7 @@ export const PRIVATE_SELLERS_FACET_ID = "private";
 
 /** Search text as a `like` pattern that matches it literally. */
 function containing(text: string): string {
-  return `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
+  return containsPattern(text);
 }
 
 /** A column or expression under a name of its own, so a subquery never has two of one name. */

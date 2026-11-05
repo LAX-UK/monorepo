@@ -40,7 +40,7 @@ export function AuditEventPanel({
       }}
       size="lg"
       title={row?.action ?? "Event"}
-      description={row ? formatStaffDateTime(row.at, { zoneLabel: true }) : undefined}
+      description={row ? formatStaffDateTime(row.at) : undefined}
       footer={
         row?.entity.href ? (
           <StaffButton asChild variant="primary" icon={<ArrowUpRight aria-hidden />}>

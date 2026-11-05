@@ -154,6 +154,9 @@ only what is staff: `requires` on buttons and menu items, read-only views, and e
   `StatGrid`, `ProgressBar`, `StatusBadge` with
   `defineStatusMap` (one map per domain status), `Notice` (info, warning or danger line above
   the work it concerns), `DangerZone` and `DangerZoneAction`.
+  `WhereItIsSection` and `WhereItIsChip` draw where an original is (hollow marker = buyers can't
+  see it yet, filled = they can, tick = sold). The words come from the artwork register contract;
+  the kit only draws the chip and facts it is given.
 - **Panels**: `DetailPanel` (side sheet; asks before closing over unsaved changes), `StaffDialog`,
   `ConfirmActionDialog` (Cancel focused first; optional audited `reason` and
   `typedConfirmation`), `StepUpDialog`, `StepUpNotice` and `useStaffStepUp` (the

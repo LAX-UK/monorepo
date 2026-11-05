@@ -50,6 +50,54 @@ describe("buildWorkDetail", () => {
     ]);
   });
 
+  it("names the print and the certificate the product described", () => {
+    const vm = buildWorkDetail(
+      item({
+        edition: "No. 7 of 24 · Hand-signed",
+        documents: [
+          {
+            kind: "certificate",
+            available: false,
+            label: "Certificate of authenticity No. 7/24",
+            expectedNote: "Your certificate comes with your print.",
+          },
+        ],
+      }),
+      ORIGINS,
+    );
+    expect(vm.edition).toBe("No. 7 of 24 · Hand-signed");
+    expect(vm.documents).toEqual([
+      {
+        key: "certificate",
+        label: "Certificate of authenticity No. 7/24",
+        href: null,
+        note: "Your certificate comes with your print.",
+      },
+    ]);
+  });
+
+  it("shows an issued certificate as a link under its number", () => {
+    const vm = buildWorkDetail(
+      item({
+        documents: [
+          {
+            kind: "certificate",
+            available: true,
+            href: "https://shop.lax.art/account/documents",
+            label: "Certificate of authenticity No. 7/24",
+          },
+        ],
+      }),
+      ORIGINS,
+    );
+    expect(vm.documents[0]).toMatchObject({
+      label: "Certificate of authenticity No. 7/24",
+      href: "https://shop.lax.art/account/documents",
+      note: null,
+    });
+    expect(vm.edition).toBeNull();
+  });
+
   it("drops actions whose link is not a safe web link", () => {
     expect(buildWorkDetail(full, ORIGINS).actions).toEqual([
       {

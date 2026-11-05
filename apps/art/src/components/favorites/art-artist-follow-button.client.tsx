@@ -5,6 +5,7 @@ import { followArtist, unfollowArtist } from "@/lib/favorites/art-favorites-acti
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { useEffect } from "react";
 
 export type ArtArtistFollowButtonProps = {
   slug: string;
@@ -13,6 +14,8 @@ export type ArtArtistFollowButtonProps = {
   auth: ArtFavoriteAuth;
   /** Followed-artist lists keep the outline treatment once following (Figma 867:15613). */
   followingVariant?: "default" | "secondaryOutline";
+  /** Told whenever the following state changes, so a caption beside the button can follow it. */
+  onActiveChange?: (active: boolean) => void;
   className?: string;
 };
 
@@ -22,6 +25,7 @@ export function ArtArtistFollowButton({
   initialFollowing,
   auth,
   followingVariant = "default",
+  onActiveChange,
   className,
 }: ArtArtistFollowButtonProps) {
   const { active, pending, announcement, error, toggle } = useFavoriteToggle({
@@ -30,6 +34,10 @@ export function ArtArtistFollowButton({
     mutate: (next) => (next ? followArtist(slug) : unfollowArtist(slug)),
     messages: { on: `Following ${name}.`, off: `Unfollowed ${name}.` },
   });
+
+  useEffect(() => {
+    onActiveChange?.(active);
+  }, [active, onActiveChange]);
 
   return (
     <>

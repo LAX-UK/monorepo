@@ -29,6 +29,7 @@ import type { IEnquiryRouting, IMarketingEnquiryDesk } from "../marketing-enquir
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
 import type { IOnsiteEventStaffCheckInService } from "../onsite-event-staff-check-in-service.js";
 import type { IStaffDeliveryQuoteService } from "../organisation-buying-service.js";
+import type { IPurchaseProblemDesk } from "../purchase-problem-desk-service.js";
 import type {
   ActorContext,
   IQueueInspector,
@@ -89,10 +90,11 @@ export type AdminSatelliteRouteServices = {
   deliveryOps: DeliveryOpsApplicationService;
 };
 
-/** Contact form enquiries in the staff work inbox. */
+/** Contact form enquiries and buyers' purchase problems in the staff work inbox. */
 export type AdminEnquiryRouteServices = {
   marketingEnquiries: IMarketingEnquiryDesk;
   enquiryRouting: IEnquiryRouting;
+  purchaseProblems: IPurchaseProblemDesk;
   /** Staff erase a sender's enquiries by email address. */
   enquiryErasure: IEnquiryErasure;
 };

@@ -589,7 +589,19 @@ export class DrizzleArtworkRegisterRepository
     now: Date,
     payload: Record<string, unknown>,
   ): Promise<void> {
-    await tx.insert(event).values({ registerId, type, actor, payload, createdAt: now });
+    // History is read in time order, so each entry is stamped strictly after the one before it,
+    // even when the caller's clock repeats or steps back.
+    const [latest] = await tx
+      .select({ createdAt: event.createdAt })
+      .from(event)
+      .where(eq(event.registerId, registerId))
+      .orderBy(desc(event.createdAt))
+      .limit(1);
+    const createdAt =
+      latest && latest.createdAt.getTime() >= now.getTime()
+        ? new Date(latest.createdAt.getTime() + 1)
+        : now;
+    await tx.insert(event).values({ registerId, type, actor, payload, createdAt });
   }
 }
 

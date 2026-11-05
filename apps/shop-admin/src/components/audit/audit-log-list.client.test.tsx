@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { pinClock } from "@/test/pin-clock";
 import type { AdminAuditFacets, AdminAuditList } from "@auction/shop-contracts";
 import { render, screen, within } from "@testing-library/react";
 import type * as React from "react";
@@ -72,6 +73,8 @@ function renderLog(query: Record<string, string> = {}) {
 const rowOf = (text: string) =>
   within(screen.getByRole("grid")).getByText(text).closest("tr") as HTMLElement;
 
+pinClock();
+
 describe("the audit log", () => {
   it("says who did what to which record, without codes or truncated ids", () => {
     renderLog();
@@ -104,7 +107,7 @@ describe("the audit log", () => {
       screen.getByRole("button", { name: "Remove filter: Action: Payout marked paid" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Remove filter: From 1 Oct 2026" }),
+      screen.getByRole("button", { name: "Remove filter: From Thu 1 Oct" }),
     ).toBeInTheDocument();
   });
 

@@ -59,9 +59,7 @@ export function DisputeCaseView({
   const now = new Date(nowIso);
   const header = disputeCaseHeader(found);
   const mode = disputeAllocationMode(found);
-  const deadline = disputeDeadlineBlock(found, now, (value) =>
-    formatStaffDateTime(value, { zoneLabel: true }),
-  );
+  const deadline = disputeDeadlineBlock(found, now, (value) => formatStaffDateTime(value));
   const deadlinePassed =
     disputeDeadline(
       {
