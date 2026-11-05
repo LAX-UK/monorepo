@@ -34,5 +34,11 @@ export function Toaster() {
   if (pathname && (isClientAreaPath(pathname) || pathname === CLIENT_KIT_REVIEW_PATH)) {
     return <LaxToaster density="client" />;
   }
-  return <AuctionToaster theme={resolvedTheme} />;
+  // A toast that sits at the bottom clears the docked tab bar.
+  return (
+    <AuctionToaster
+      theme={resolvedTheme}
+      mobileOffset={{ bottom: "calc(var(--lax-bottom-bar-space, 0px) + 1rem)" }}
+    />
+  );
 }

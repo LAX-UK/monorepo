@@ -3,26 +3,30 @@
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
+import { useTopBarScrollAway } from "@/hooks/use-top-bar-scroll-away";
 import { useAppSession } from "@/lib/auth/use-app-session";
-import { SITE_LOGO_SHORT_PATH } from "@/lib/brand";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
-import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
+import { MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
 import { restoreMegaMenuAuthedHrefs } from "@/lib/marketing/mega-menu-href-rewrite";
 import type { LaxFamilyLinkVm, LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { LaxFamilyBar, headerChromeClassName, useHeaderChrome } from "@auction/marketing-ui";
-import { TAP_AREA, cn } from "@auction/ui";
+import {
+  LaxFamilyBar,
+  MarketingTopBarSlots,
+  headerChromeClassName,
+  useHeaderChrome,
+} from "@auction/marketing-ui";
+import { cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
-import { HeaderAttentionChip } from "./header-attention-chip";
-import { HeaderAuthChip } from "./header-auth-chip";
+import { Suspense, forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import { BidAttentionPrompt } from "./bid-attention-prompt";
+import { BidHeaderAccount } from "./bid-header-account";
+import { BidHeaderLockup } from "./bid-header-lockup";
+import { BidPhoneMenu } from "./bid-phone-menu";
 import { HeaderMegaNav } from "./header-mega-nav";
+import { utilityNav } from "./header-nav-config";
 import { HeaderSearchTrigger } from "./header-search";
-import { HeaderUtilityBar } from "./header-utility-bar";
-import { LaxLogo } from "./lax-logo";
-import { MobileNavDrawer } from "./mobile-nav-drawer";
 import { ThemeToggle } from "./theme-toggle";
 
 type SiteHeaderChromeVariant = "solid" | "transparentUntilScroll";
@@ -64,12 +68,15 @@ function SiteHeaderShell({
     setMenuOpen(false);
   }, [pathname, searchKey]);
 
-  const { isTransparent, atTop, headerTone, attachHeader } = useHeaderChrome({
+  const { isTransparent, atTop, headerTone, attachHeader, headerRef } = useHeaderChrome({
     transparent: resolvedVariant === "transparentUntilScroll",
     overlayOpen: megaOpen || menuOpen,
     // Sticky sub-chrome on Bid positions itself from scroll events, so a height change re-runs it.
     onHeightChange: () => window.dispatchEvent(new Event("scroll")),
   });
+  // The 36px LAX top bar scrolls away on desktop; the main row stays.
+  useTopBarScrollAway(headerRef);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   return (
     <>
@@ -78,78 +85,58 @@ function SiteHeaderShell({
         data-chrome-variant={resolvedVariant}
         data-at-top={atTop ? "true" : "false"}
         data-header-tone={headerTone}
-        className={headerChromeClassName(isTransparent, megaOpen)}
+        className={cn(
+          headerChromeClassName(isTransparent, megaOpen),
+          "lg:translate-y-[calc(var(--lax-top-bar-shift,0px)*-1)]",
+        )}
       >
-        <div
-          className={cn(
-            "mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 py-2 lg:gap-4 lg:pt-0 lg:pb-4",
-            MARKETING_PAGE_GUTTER_X,
-          )}
-        >
-          <LaxFamilyBar
-            links={familyLinks}
-            tone={headerTone}
-            actions={<HeaderUtilityBar headerTone={headerTone} />}
-          />
+        <div className={cn("mx-auto max-w-[var(--container-max,1440px)]", MARKETING_PAGE_GUTTER_X)}>
+          {/* 36px, from 1024px. About us, Contact us and FAQ sit at its right. */}
+          <LaxFamilyBar links={familyLinks} helpLinks={utilityNav} tone={headerTone} />
 
-          <HeaderMegaNav
-            sections={nav}
-            pathname={pathname}
-            searchParams={searchParams}
-            onOpenChange={setMegaOpen}
-            headerTone={headerTone}
-            logo={
-              <Link
-                href="/"
-                className={cn(
-                  "site-header-logo shrink-0 rounded-sm sm:min-w-[76px]",
-                  TAP_AREA,
-                  FOCUS_RING,
-                )}
-              >
-                {/* Phones get the compact mark, as the workspace bar does, so the lockup never
-                    crowds the attention chip and the account controls. */}
-                <LaxLogo
-                  variant="header"
-                  imageSrc={SITE_LOGO_SHORT_PATH}
-                  imageWidth={172}
-                  imageHeight={201}
-                  surfaceTone={headerTone}
-                  className="sm:hidden [&_img]:h-8 [&_img]:w-auto"
-                />
-                <LaxLogo
-                  variant="header"
-                  imageWidth={1089}
-                  imageHeight={331}
-                  surfaceTone={headerTone}
-                  className="max-sm:hidden"
-                />
-              </Link>
-            }
-            trailing={
-              <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
-                <HeaderAttentionChip />
-                <HeaderSearchTrigger tone={headerTone} layout="both" fullBarFrom="2xl" />
-                <div className="hidden lg:flex">
-                  <ThemeToggle headerTone={headerTone} />
+          {/* The main row: 56px on a phone, 64px on a tablet, 72px on a desktop. */}
+          <div className="flex h-14 items-center md:h-16 lg:h-[72px]">
+            <HeaderMegaNav
+              sections={nav}
+              pathname={pathname}
+              searchParams={searchParams}
+              onOpenChange={setMegaOpen}
+              headerTone={headerTone}
+              logo={<BidHeaderLockup tone={headerTone} />}
+              trailing={
+                <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
+                  {/* From 640px the attention prompt is a chip in the row; below it is the
+                      strip under the bar. */}
+                  <BidAttentionPrompt placement="bar" />
+                  <MarketingTopBarSlots
+                    searchField={
+                      <HeaderSearchTrigger tone={headerTone} layout="pill" fullBarFrom="xl" />
+                    }
+                    searchIcon={
+                      <HeaderSearchTrigger tone={headerTone} layout="icon" fullBarFrom="xl" />
+                    }
+                    productAction={
+                      <div className="hidden lg:flex">
+                        <ThemeToggle headerTone={headerTone} />
+                      </div>
+                    }
+                    account={
+                      <BidHeaderAccount headerTone={headerTone} laxProductLinks={laxProductLinks} />
+                    }
+                    menuButton={
+                      <MobileMenuIconButton
+                        ref={menuButtonRef}
+                        menuOpen={menuOpen}
+                        headerTone={headerTone}
+                        onToggle={() => setMenuOpen((o) => !o)}
+                      />
+                    }
+                  />
                 </div>
-                {/* Phones reach notifications from the account sheet, which keeps room for the chip. */}
-                <div className="hidden sm:flex">
-                  <HeaderAuthChip variant="notifications" headerTone={headerTone} />
-                </div>
-                <HeaderAuthChip
-                  variant="account"
-                  headerTone={headerTone}
-                  laxProductLinks={laxProductLinks}
-                />
-                <MobileMenuIconButton
-                  menuOpen={menuOpen}
-                  headerTone={headerTone}
-                  onToggle={() => setMenuOpen((o) => !o)}
-                />
-              </div>
-            }
-          />
+              }
+            />
+          </div>
+          <BidAttentionPrompt placement="strip" />
           {marketingPageTitle ? (
             <div className="site-header-page-title border-t border-nav-border px-2 pb-2 pt-1 lg:hidden">
               <p className="truncate text-center font-headline text-sm font-semibold text-on-surface">
@@ -159,13 +146,14 @@ function SiteHeaderShell({
           ) : null}
         </div>
 
-        <MobileNavDrawer
+        <BidPhoneMenu
           open={menuOpen}
           onOpenChange={setMenuOpen}
           pathname={pathname}
           searchParams={searchParams}
           sections={nav}
           familyLinks={familyLinks}
+          returnFocusRef={menuButtonRef}
         />
       </header>
     </>
@@ -185,17 +173,13 @@ export function SiteHeader(props: SiteHeaderProps) {
   );
 }
 
-function MobileMenuIconButton({
-  menuOpen,
-  headerTone,
-  onToggle,
-}: {
-  menuOpen: boolean;
-  headerTone: SiteHeaderTone;
-  onToggle: () => void;
-}) {
+const MobileMenuIconButton = forwardRef<
+  HTMLButtonElement,
+  { menuOpen: boolean; headerTone: SiteHeaderTone; onToggle: () => void }
+>(function MobileMenuIconButton({ menuOpen, headerTone, onToggle }, ref) {
   return (
     <ChromeIconButton
+      ref={ref}
       label={menuOpen ? "Close menu" : "Open menu"}
       className={cn("lg:hidden", headerChromeIconClass(headerTone))}
       aria-haspopup="dialog"
@@ -205,4 +189,4 @@ function MobileMenuIconButton({
       {menuOpen ? <X aria-hidden /> : <Menu aria-hidden />}
     </ChromeIconButton>
   );
-}
+});

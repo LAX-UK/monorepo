@@ -11,7 +11,7 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/lax";
 import { ArrowRight, Check, ExternalLink, LogOut, Mail } from "lucide-react";
 import Link from "next/link";
-import { Fragment, type ReactNode } from "react";
+import { Fragment, type ReactElement, type ReactNode, createContext, useContext } from "react";
 
 /** `popover`: the desktop dropdown (a menu); `sheet`: the phone sheet (a plain list). */
 export type AccountMenuSurface = "popover" | "sheet";
@@ -31,6 +31,15 @@ const COUNT_TONE: Record<AttentionCount["tone"], string> = {
   danger: "bg-danger-container text-danger-on-surface",
   neutral: "bg-surface-container-high text-on-surface",
 };
+
+/**
+ * How a row is wrapped as a menu item. The sheet's rows are plain links; inside a Radix dropdown
+ * each row is wrapped (as its child) in the dropdown's own item, which gives arrow-key movement
+ * and typeahead. Identity by default.
+ */
+type WrapItem = (row: ReactElement) => ReactElement;
+const IDENTITY: WrapItem = (row) => row;
+const WrapItemContext = createContext<WrapItem>(IDENTITY);
 
 function itemProps(surface: AccountMenuSurface) {
   return surface === "popover" ? { role: "menuitem", "data-account-menu-item": "" } : {};
@@ -114,9 +123,10 @@ function PageLink({
       ) : null}
     </>
   );
+  const wrap = useContext(WrapItemContext);
   const className = cn(ROW_BASE, ROW[surface], link.current && CURRENT_ROW);
   if (link.external) {
-    return (
+    return wrap(
       <a
         href={link.href}
         rel="noopener noreferrer"
@@ -125,10 +135,10 @@ function PageLink({
         {...itemProps(surface)}
       >
         {body}
-      </a>
+      </a>,
     );
   }
-  return (
+  return wrap(
     <Link
       href={link.href}
       aria-current={link.current ? "page" : undefined}
@@ -137,7 +147,7 @@ function PageLink({
       {...itemProps(surface)}
     >
       {body}
-    </Link>
+    </Link>,
   );
 }
 
@@ -150,7 +160,8 @@ function AccountRow({
   surface: AccountMenuSurface;
   onNavigate: () => void;
 }) {
-  return (
+  const wrap = useContext(WrapItemContext);
+  return wrap(
     <Link
       href={account.href}
       // Opening another account goes through the switch hop: never prefetched, so showing the
@@ -185,7 +196,27 @@ function AccountRow({
           <ArrowRight className="size-3.5" aria-hidden />
         </span>
       )}
-    </Link>
+    </Link>,
+  );
+}
+
+function InvitationsRow({
+  href,
+  label,
+  surface,
+  onNavigate,
+}: { href: string; label: string; surface: AccountMenuSurface; onNavigate: () => void }) {
+  const wrap = useContext(WrapItemContext);
+  return wrap(
+    <Link
+      href={href}
+      className={cn(ROW_BASE, ROW[surface])}
+      onClick={onNavigate}
+      {...itemProps(surface)}
+    >
+      <Mail className="size-4 shrink-0 text-on-surface-variant" strokeWidth={1.75} aria-hidden />
+      <span>{label}</span>
+    </Link>,
   );
 }
 
@@ -194,7 +225,8 @@ function SignOutRow({
   onNavigate,
 }: { surface: AccountMenuSurface; onNavigate: () => void }) {
   const { logout, pending } = useLogout({ onBeforeNavigate: onNavigate });
-  return (
+  const wrap = useContext(WrapItemContext);
+  return wrap(
     <Button
       type="button"
       variant="ghost"
@@ -209,7 +241,7 @@ function SignOutRow({
     >
       <LogOut className="size-4 shrink-0 text-on-surface-variant" strokeWidth={1.75} aria-hidden />
       <span>{pending ? "Signing out…" : "Sign out"}</span>
-    </Button>
+    </Button>,
   );
 }
 
@@ -217,6 +249,8 @@ type ClientAccountMenuProps = {
   menu: HeaderAccountMenu;
   surface: AccountMenuSurface;
   onNavigate: () => void;
+  /** Wraps each row as a menu item; the dropdown passes its item wrapper, the sheet passes none. */
+  wrapItem?: WrapItem;
 };
 
 /**
@@ -224,10 +258,10 @@ type ClientAccountMenuProps = {
  * Buying, Selling and account pages with whatever is due, then Sign out. The same body serves
  * the desktop dropdown and the phone sheet.
  */
-export function ClientAccountMenu({ menu, surface, onNavigate }: ClientAccountMenuProps) {
+export function ClientAccountMenu({ menu, surface, onNavigate, wrapItem }: ClientAccountMenuProps) {
   const pad = surface === "popover" ? "p-1.5" : "px-0 py-2";
   return (
-    <>
+    <WrapItemContext.Provider value={wrapItem ?? IDENTITY}>
       {menu.accounts ? (
         <>
           <MenuGroup label="Your accounts" className={pad}>
@@ -247,19 +281,12 @@ export function ClientAccountMenu({ menu, surface, onNavigate }: ClientAccountMe
       {menu.invitations ? (
         <>
           <div className={pad}>
-            <Link
+            <InvitationsRow
               href={menu.invitations.href}
-              className={cn(ROW_BASE, ROW[surface])}
-              onClick={onNavigate}
-              {...itemProps(surface)}
-            >
-              <Mail
-                className="size-4 shrink-0 text-on-surface-variant"
-                strokeWidth={1.75}
-                aria-hidden
-              />
-              <span>{menu.invitations.label}</span>
-            </Link>
+              label={menu.invitations.label}
+              surface={surface}
+              onNavigate={onNavigate}
+            />
           </div>
           <Separator />
         </>
@@ -278,6 +305,6 @@ export function ClientAccountMenu({ menu, surface, onNavigate }: ClientAccountMe
       <div className={pad}>
         <SignOutRow surface={surface} onNavigate={onNavigate} />
       </div>
-    </>
+    </WrapItemContext.Provider>
   );
 }

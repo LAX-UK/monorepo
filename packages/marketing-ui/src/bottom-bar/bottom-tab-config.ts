@@ -10,6 +10,8 @@ type TabBase = {
   /** Paths that make this tab the current one. "/" matches only the home page. */
   paths: readonly string[];
   badge?: MarketingBottomTabBadge | null;
+  /** Set to `false` for a tab that goes through a sign-in redirect, so it is never prefetched. */
+  prefetch?: boolean;
 };
 
 /** A tab that goes to a page. */
