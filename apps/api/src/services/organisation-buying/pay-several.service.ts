@@ -109,15 +109,19 @@ export class PaySeveralService implements IPaySeveralService {
         false,
         plan.payable.map((p) => p.lotId),
       );
-      const hold = await evaluateSettlementSubjects(this.deps.compliance, [
-        { buyerUserId: actor.userId, amountPence: gbpAmountToPence(plan.total) },
-        ...plan.payable.flatMap((p) => {
-          const winner = winners.get(p.lotId);
-          return winner && winner !== actor.userId && p.totalDue
-            ? [{ buyerUserId: winner, amountPence: gbpAmountToPence(p.totalDue) }]
-            : [];
-        }),
-      ]);
+      const hold = await evaluateSettlementSubjects(
+        this.deps.compliance,
+        [
+          { buyerUserId: actor.userId, amountPence: gbpAmountToPence(plan.total) },
+          ...plan.payable.flatMap((p) => {
+            const winner = winners.get(p.lotId);
+            return winner && winner !== actor.userId && p.totalDue
+              ? [{ buyerUserId: winner, amountPence: gbpAmountToPence(p.totalDue) }]
+              : [];
+          }),
+        ],
+        plan.payable.flatMap((p) => (p.paymentId ? [p.paymentId] : [])),
+      );
       if (hold.hold) {
         return err(
           buyingError(

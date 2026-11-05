@@ -17,6 +17,8 @@ export type SettlementComplianceInput = {
    * exclude it from linked-transaction aggregation so exposure is not double-counted.
    */
   excludePaymentId?: string;
+  /** Several invoices paid together ("Pay several"): all are left out of the linked exposure. */
+  excludePaymentIds?: readonly string[];
 };
 
 export interface ISettlementCompliancePolicy {
@@ -97,8 +99,10 @@ export type SettlementSubject = { buyerUserId: string; amountPence: number };
 export async function evaluateSettlementSubjects(
   policy: Pick<ISettlementCompliancePolicy, "evaluate">,
   subjects: readonly SettlementSubject[],
-  excludePaymentId?: string,
+  /** The invoices this payment settles, left out of each subject's linked exposure. */
+  excludePaymentIds: string | readonly string[] = [],
 ): Promise<SettlementComplianceDecision & { subject: string | null }> {
+  const excluded = typeof excludePaymentIds === "string" ? [excludePaymentIds] : excludePaymentIds;
   const byUser = new Map<string, number>();
   for (const s of subjects)
     byUser.set(s.buyerUserId, (byUser.get(s.buyerUserId) ?? 0) + s.amountPence);
@@ -106,7 +110,8 @@ export async function evaluateSettlementSubjects(
     const decision = await policy.evaluate({
       buyerUserId,
       amountPence,
-      ...(excludePaymentId ? { excludePaymentId } : {}),
+      ...(excluded.length === 1 ? { excludePaymentId: excluded[0] } : {}),
+      ...(excluded.length > 1 ? { excludePaymentIds: excluded } : {}),
     });
     if (decision.hold) return { ...decision, subject: buyerUserId };
   }
