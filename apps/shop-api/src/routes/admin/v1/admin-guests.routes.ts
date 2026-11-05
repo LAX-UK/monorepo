@@ -135,6 +135,8 @@ export async function registerAdminGuestRoutes(app: FastifyInstance, deps: Admin
             orders: outcome.orders,
             enquiries: outcome.enquiries,
             links: outcome.links,
+            alertSubscribers: outcome.alertSubscribers,
+            suppressionsKept: outcome.suppressionsKept,
           };
         case "not_found":
           throw notFound("Guest");

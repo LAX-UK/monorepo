@@ -177,6 +177,9 @@ import PaymentRefundNoticeEmail, {
 import PaymentReminderEmail, {
   subject as paymentReminderSubject,
 } from "./templates/payment-reminder.js";
+import PaymentUnappliedMoneyAdminNoticeEmail, {
+  subject as paymentUnappliedMoneyAdminNoticeSubject,
+} from "./templates/payment-unapplied-money-admin-notice.js";
 import PayoutBankChangedNoticeEmail, {
   subject as payoutBankChangedNoticeSubject,
 } from "./templates/payout-bank-changed-notice.js";
@@ -488,6 +491,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "payment-manual-review-admin-notice": {
     subject: paymentManualReviewAdminNoticeSubject,
     component: (vars) => <PaymentManualReviewAdminNoticeEmail {...vars} />,
+  },
+  "payment-unapplied-money-admin-notice": {
+    subject: paymentUnappliedMoneyAdminNoticeSubject,
+    component: (vars) => <PaymentUnappliedMoneyAdminNoticeEmail {...vars} />,
   },
   "payout-initiated-notice": {
     subject: payoutInitiatedNoticeSubject,

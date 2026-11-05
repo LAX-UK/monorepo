@@ -1,3 +1,4 @@
+import { buildAlerts } from "@/lib/home-sections/alerts";
 import { buildHomeArtists } from "@/lib/home-sections/artists";
 import { buildComingUp } from "@/lib/home-sections/coming-up";
 import { buildDepartments } from "@/lib/home-sections/departments";
@@ -85,7 +86,11 @@ const BUILDERS: { [K in HomeSectionId]: Builder<K> } = {
     buildDepartments(source.categories, [...source.lotsBySale.values()].flat()),
   artists: (source) => buildHomeArtists(source.artists),
   selling,
-  alerts: () => true,
+  alerts: (source) => {
+    const bandId = source.state.resultsBandSaleIds[0];
+    const works = soldOrder(bandId ? (source.lotsBySale.get(bandId) ?? []) : []);
+    return buildAlerts(works.map((lot) => lot.images[0]));
+  },
   fromLaxAndPress: (source) => buildPress(source.press),
 };
 

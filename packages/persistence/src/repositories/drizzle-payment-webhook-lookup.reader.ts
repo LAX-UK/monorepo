@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import { payment } from "@auction/db/schema";
-import type { SQL } from "drizzle-orm";
+import { domainEvent, payment } from "@auction/db/schema";
+import { type SQL, sql } from "drizzle-orm";
 import type {
   IPaymentWebhookLookupReader,
   PaymentWebhookRow,
@@ -20,6 +20,14 @@ export class DrizzlePaymentWebhookLookupReader implements IPaymentWebhookLookupR
         sellerLegalEntityId: payment.sellerLegalEntityId,
         status: payment.status,
         amount: payment.amount,
+        stripeChargeId: payment.stripeChargeId,
+        stripePaymentIntentId: payment.stripePaymentIntentId,
+        everCaptured: sql<boolean>`exists (
+          select 1 from ${domainEvent} e
+          where e.aggregate_type = 'payment'
+            and e.aggregate_id = "payment"."id"::text
+            and e.event_type = 'payment.captured'
+        )`,
       })
       .from(payment)
       .where(where)
@@ -30,6 +38,9 @@ export class DrizzlePaymentWebhookLookupReader implements IPaymentWebhookLookupR
       sellerLegalEntityId: row.sellerLegalEntityId,
       status: row.status,
       amount: String(row.amount),
+      stripeChargeId: row.stripeChargeId ?? null,
+      stripePaymentIntentId: row.stripePaymentIntentId ?? null,
+      everCaptured: Boolean(row.everCaptured),
     };
   }
 }

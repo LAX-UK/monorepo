@@ -7,7 +7,10 @@ import type {
   OfferState,
   OfferTransitionRefusal,
   RegisterField,
+  StockCodeKind,
+  StockCodeSeries,
   ZohoChange,
+  ZohoImageSource,
 } from "@auction/artwork-register-contracts";
 
 /** `zoho`, `system`, or `staff:<user id>`. */
@@ -20,7 +23,8 @@ export type RegisterEventType =
   | "conflict_recorded"
   | "conflict_resolved"
   | "zoho_writeback_recorded"
-  | "move_confirmed";
+  | "move_confirmed"
+  | "lax_art_draft_created";
 
 export type RegisterEvent = {
   id: string;
@@ -52,8 +56,11 @@ export interface IArtworkRegisterReader {
   findById(id: string): Promise<ArtworkRegisterEntry | null>;
   findByZohoProductId(zohoProductId: string): Promise<ArtworkRegisterEntry | null>;
   findByStockCode(stockCode: string): Promise<ArtworkRegisterEntry | null>;
-  /** The highest number issued under a stock code prefix such as `LAX-ORI-PH-GAC-26`, or null. */
-  highestStockNumber(prefix: string): Promise<number | null>;
+  /**
+   * The highest number issued for a kind, artist and collection in any year, or null. Prints
+   * count both `LAX-PRT-` and the older `LAX-PRI-` codes.
+   */
+  highestStockNumber(series: StockCodeSeries): Promise<number | null>;
   listEvents(registerId: string, limit: number): Promise<RegisterEvent[]>;
   /** Open conflicts, oldest first. */
   listOpenConflicts(limit: number, after?: ConflictCursor): Promise<RegisterConflict[]>;
@@ -64,6 +71,31 @@ export type CreateRegisterEntryResult =
   | {
       ok: false;
       reason: "duplicate_zoho_product" | "duplicate_stock_code" | "source_original_invalid";
+    };
+
+/** A new artwork whose stock code LAX chooses. */
+export type IssueRegisterEntry = Omit<
+  NewArtworkRegisterEntry,
+  "stockCode" | "kind" | "sourceOriginalId"
+> & {
+  /** The collection code, 2 to 4 capital letters or digits. */
+  collectionCode: string;
+};
+
+export type IssueRegisterEntryResult =
+  | { ok: true; entry: ArtworkRegisterEntry }
+  | {
+      ok: false;
+      reason:
+        | "duplicate_zoho_product"
+        | "invalid_code"
+        | "original_not_found"
+        | "numbers_exhausted"
+        /** The mirrored print code already belongs to a print of a different original. */
+        | "print_code_taken_by_other_original"
+        /** This original already has its print group. */
+        | "print_group_exists";
+      message: string;
     };
 
 export type ApplyZohoChangeResult =
@@ -136,6 +168,28 @@ export interface IArtworkRegisterRepository extends IArtworkRegisterReader {
     now: Date,
   ): Promise<CreateRegisterEntryResult>;
   /**
+   * Adds a record under the next free stock code for its kind, artist and collection. The number
+   * runs across years, so the registration year is only written into the code. Issuing is
+   * serialised per kind, artist and collection, so concurrent calls never share a number.
+   */
+  issue(
+    kind: StockCodeKind,
+    entry: IssueRegisterEntry,
+    actor: RegisterActor,
+    now: Date,
+  ): Promise<IssueRegisterEntryResult>;
+  /**
+   * Adds the print group of an original, with the original's artist, collection, year and number
+   * (`LAX-ORI-MP-GAC-26-0037` becomes `LAX-PRT-MP-GAC-26-0037`). Never renumbers: a code already
+   * held by a print of another original is refused.
+   */
+  issuePrintGroup(
+    originalId: string,
+    entry: Omit<IssueRegisterEntry, "collectionCode" | "artist">,
+    actor: RegisterActor,
+    now: Date,
+  ): Promise<IssueRegisterEntryResult>;
+  /**
    * Applies a change reported by Zoho: Zoho-owned fields are updated, LAX-owned fields that
    * differ become open conflicts and are never applied. Safe to call twice with the same change.
    */
@@ -168,15 +222,70 @@ export type RecordMoveConfirmedInput = {
 
 /**
  * Keeps the reason behind a move in the register's history, next to the offer moves themselves:
- * who confirmed it, where it went, and whether the consignor's agreement was confirmed.
+ * who confirmed it, where it went, and whether the consignor's agreement was confirmed. A move
+ * that names a lot is recorded once per lot and direction, so a retry or a second click does not
+ * add a second entry.
  */
 export interface IArtworkMoveHistory {
   recordMoveConfirmed(
     input: RecordMoveConfirmedInput,
-  ): Promise<{ status: "not_found" | "recorded" }>;
+  ): Promise<{ status: "not_found" | "recorded" | "already_recorded" }>;
+}
+
+export type RecordLaxArtDraftCreatedInput = {
+  registerId: string;
+  /** `staff:<user id>` of the person who made the draft. */
+  actor: RegisterActor;
+  artworkId: string;
+  now: Date;
+};
+
+/** Keeps "a lax.art draft was made from this record" in the register's history. */
+export interface IArtworkDraftHistory {
+  recordLaxArtDraftCreated(input: RecordLaxArtDraftCreatedInput): Promise<void>;
+}
+
+export type ReplaceZohoImagesInput = {
+  zohoProductId: string;
+  /** Zoho's pictures in Zoho's order; the first is the cover. May be empty. */
+  sources: readonly ZohoImageSource[];
+  now: Date;
+};
+
+export type ReplaceZohoImagesResult =
+  | { status: "not_found" }
+  /** The pictures already matched; only the time they were checked moved. */
+  | { status: "unchanged" }
+  | { status: "replaced"; entry: ArtworkRegisterEntry };
+
+export type ImageCheckCandidate = {
+  zohoProductId: string;
+  sources: ZohoImageSource[];
+};
+
+/**
+ * The record of which Zoho picture each stored copy came from. Separate from the register's other
+ * Zoho-owned fields because pictures change without Zoho changing the Product's modified time.
+ */
+export interface IArtworkImageStore {
+  /** The pictures the register holds for a Product, or null when it has no record. */
+  findImageSources(zohoProductId: string): Promise<ZohoImageSource[] | null>;
+  /**
+   * Replaces the pictures with Zoho's current ones and notes the check. A change bumps the record's
+   * version and leaves a history entry; an unchanged list leaves both alone.
+   */
+  replaceZohoImages(input: ReplaceZohoImagesInput): Promise<ReplaceZohoImagesResult>;
+  /** Records never checked, then those checked longest ago before `before`. */
+  listImageCheckCandidates(before: Date, limit: number): Promise<ImageCheckCandidate[]>;
 }
 
 export type AuctionOfferSale = { id: string; title: string; startsAt: Date; endsAt: Date };
+
+export type AuctionOfferDraftLotSummary = {
+  lotId: string;
+  saleId: string | null;
+  saleTitle: string | null;
+};
 
 export type AuctionOfferDraftLot = {
   lotId: string;
@@ -190,6 +299,8 @@ export interface IAuctionOfferReader {
   listSalesOpenForOffer(now: Date): Promise<AuctionOfferSale[]>;
   /** The lot that currently holds this artwork's place in Bid (draft, scheduled or live), if any. */
   findOpenLotForRegister(registerId: string): Promise<AuctionOfferDraftLot | null>;
+  /** The artwork's draft lot, with its sale's title; null once the lot is scheduled or gone. */
+  findDraftLotForRegister(registerId: string): Promise<AuctionOfferDraftLotSummary | null>;
 }
 
 export type LotRegisterLink = {

@@ -824,6 +824,23 @@ describe("commerce enquiry routes", () => {
     expect(shopApiFetch).not.toHaveBeenCalled();
   });
 
+  it("keeps the email alert switches behind sign-in and refuses topics nobody switches", async () => {
+    const shopApiFetch = vi.fn();
+    const app = createGuestCommerceApp(shopApiFetch);
+    expect((await app.request("/commerce/me/email-alerts")).status).toBe(401);
+    const headers = await csrfHeaders(app);
+    const send = (topic: string, body: unknown) =>
+      app.request(`/commerce/me/email-alerts/topics/${topic}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify(body),
+      });
+    expect((await send("art.followed_artists", { on: true })).status).toBe(401);
+    expect((await send("shop.back_in_stock", { on: true })).status).toBe(400);
+    expect((await send("art.followed_artists", { on: "yes" })).status).toBe(400);
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["without name and email", { intent: "enquiry", message: "Hello" }],
     ["with an invalid email", { intent: "enquiry", message: "Hello", ...GUEST, email: "nope" }],

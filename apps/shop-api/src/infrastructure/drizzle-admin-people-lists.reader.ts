@@ -23,6 +23,7 @@ import {
   count,
   desc,
   eq,
+  ilike,
   inArray,
   isNotNull,
   isNull,
@@ -45,7 +46,13 @@ import type {
   CursorListResult,
   WorkListResult,
 } from "../application/ports/admin-readers.js";
-import { keysetAfter, orderByMsTimestampId } from "./admin-created-at-keyset.js";
+import {
+  createdAtMicros,
+  keysetAfter,
+  keysetAfterRaw,
+  orderByMsTimestampId,
+  orderByRawTimestampId,
+} from "./admin-created-at-keyset.js";
 import { parseAuditDetail } from "./drizzle-admin-detail.repository.js";
 import {
   countsOf,
@@ -78,10 +85,6 @@ function inRoleOrder(roles: readonly CurrentShopStaffRole[]): CurrentShopStaffRo
 const AUDIT_FACET_LIMIT = 200;
 
 const clean = (value: string | null | undefined) => value?.trim() || null;
-
-function ilike(column: AnyPgColumn | SQL, pattern: string): SQL {
-  return sql`${column} ILIKE ${pattern}`;
-}
 
 /** From the start of a calendar day in UK time (inclusive). */
 function fromLondonDay(column: AnyPgColumn, day: string): SQL {
@@ -339,6 +342,7 @@ export function createDrizzleAdminPeopleListsReader(db: Database) {
           audit: shopAdminAudit,
           actorName: shopUserProfile.name,
           actorEmail: shopUserProfile.email,
+          createdAtMicros: createdAtMicros(shopAdminAudit.createdAt),
         })
         .from(shopAdminAudit)
         .leftJoin(
@@ -362,16 +366,20 @@ export function createDrizzleAdminPeopleListsReader(db: Database) {
                 )
               : undefined,
             cursor
-              ? keysetAfter(shopAdminAudit.createdAt, shopAdminAudit.id, cursor, direction)
+              ? keysetAfterRaw(shopAdminAudit.createdAt, shopAdminAudit.id, cursor, direction)
               : undefined,
           ),
         )
-        .orderBy(...orderByMsTimestampId(shopAdminAudit.createdAt, shopAdminAudit.id, direction))
+        .orderBy(...orderByRawTimestampId(shopAdminAudit.createdAt, shopAdminAudit.id, direction))
         .limit(limit + 1);
       return pageOf(
         rows,
         limit,
-        ({ audit }) => ({ createdAt: audit.createdAt, id: audit.id }),
+        ({ audit, createdAtMicros }) => ({
+          createdAt: audit.createdAt,
+          id: audit.id,
+          createdAtMicros,
+        }),
         ({ audit, actorName, actorEmail }) => ({
           auditId: audit.id,
           actorSubjectId: audit.actorSubjectId,

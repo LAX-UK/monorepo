@@ -11,6 +11,14 @@ import type { AdminKpiPeriodDays, AdminKpiTrendBundle } from "../admin-kpi-trend
 import type { IStripeConnectService } from "../stripe-connect.js";
 
 export interface IAdminPaymentsApplicationService {
+  /** Finance closes an unapplied-money task by hand, with a reason kept on the record. */
+  markUnappliedMoneyHandled(
+    adminUserId: string,
+    userRole: string,
+    dedupeKey: string,
+    userStaffRoles: StaffRoles | undefined,
+    reason: string,
+  ): Promise<Result<void, AuthzError>>;
   releaseManualReviewForCapture(
     adminUserId: string,
     userRole: string,

@@ -79,7 +79,7 @@ describe("createRegisterOriginalOffers", () => {
     const refusal = createRegisterOriginalOffers(lock).assertCanPublish(session, original);
     await expect(refusal).rejects.toBeInstanceOf(ShopDomainError);
     await expect(refusal).rejects.toThrow(
-      "This artwork is already offered in a LAX Bid sale. Withdraw it there first.",
+      "This artwork is in a LAX Bid sale. Withdraw the lot there first.",
     );
     expect(new ArtworkOfferedElsewhereError("offered_elsewhere", "bid_sale").code).toBe(
       "artwork_offered_elsewhere",

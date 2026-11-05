@@ -1,0 +1,284 @@
+import { randomUUID } from "node:crypto";
+import { createDb } from "@auction/db";
+import {
+  domainEvent,
+  legalEntity,
+  lot,
+  payment,
+  payout,
+  payoutLine,
+  processedStripeEvents,
+} from "@auction/db/schema";
+import { FinanceTaskLatePaymentRecorder } from "@auction/finance-runtime";
+import {
+  DrizzlePaymentRepository,
+  DrizzlePaymentWebhookLookupReader,
+  DrizzlePayoutRepository,
+  DrizzleUnappliedMoneyReader,
+} from "@auction/persistence/repositories";
+import { eq, inArray, like } from "drizzle-orm";
+import type Stripe from "stripe";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
+import {
+  deleteIdentityUserFixtures,
+  seedIdentityUserFixtures,
+} from "../../testing/identity-user-fixtures.js";
+import { DomainEventSink } from "../domain-event-sink.js";
+import { DomainEventPublisher } from "../domain-event.publisher.js";
+import { PaymentCaptureService } from "../payment/payment-capture.service.js";
+import { UnappliedMoneyRecorder } from "../payment/unapplied-money.recorder.js";
+import { PayoutAdjustmentService } from "../payout/payout-adjustment.service.js";
+import { StripePaymentWebhookService } from "../stripe-payment-webhook.service.js";
+import { UnappliedMoneyRefundHandler } from "./unapplied-money-refund.handler.js";
+
+const HAS_DB = Boolean(process.env.DATABASE_URL);
+
+/**
+ * Refunds of money that was, or was not, applied to an invoice, end to end through the
+ * webhooks: the seller's payout is clawed back only for money that reached them.
+ */
+describe.skipIf(!HAS_DB)("refunds of unapplied money (integration)", () => {
+  // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+  const db = createDb(process.env.DATABASE_URL!);
+  const runner = transactionRunnerFromDb(db);
+  const payments = new DrizzlePaymentRepository(db);
+  const payouts = new DrizzlePayoutRepository(db);
+  const events = new DomainEventSink(new DomainEventPublisher(), db);
+  const reader = new DrizzleUnappliedMoneyReader(db);
+  const recorder = new UnappliedMoneyRecorder(reader, events);
+  const capture = new PaymentCaptureService(
+    runner,
+    payments,
+    { findById: async () => null } as never,
+    { findById: async () => null } as never,
+    events,
+    null,
+    {} as never,
+    null,
+    null,
+    null,
+    null,
+    null,
+    recorder,
+  );
+  const payoutAdjustments = new PayoutAdjustmentService(
+    runner,
+    payouts,
+    (_root, tx) => new DrizzlePayoutRepository(tx),
+  );
+  const webhooks = new StripePaymentWebhookService(
+    runner,
+    new DrizzlePaymentWebhookLookupReader(db),
+    payments,
+    payouts,
+    payoutAdjustments,
+    capture,
+    events,
+    { record: vi.fn() },
+    null,
+    null,
+    recorder,
+    new UnappliedMoneyRefundHandler({ transactionRunner: runner, reader, recorder }),
+  );
+
+  const run = randomUUID().slice(0, 8);
+  const buyerId = `um-buyer-${run}`;
+  const buyerEntityId = randomUUID();
+  const sellerId = randomUUID();
+  const lotId = randomUUID();
+  let paymentId: string;
+
+  const eventOf = (type: string, object: unknown) =>
+    ({ id: `evt_um_${run}_${randomUUID()}`, type, data: { object } }) as unknown as Stripe.Event;
+  const money = () => ({ pi: `pi_um_${run}_${randomUUID()}`, ch: `ch_um_${run}_${randomUUID()}` });
+  const succeeded = (pi: string, ch: string) =>
+    ({
+      id: pi,
+      amount: 10_000,
+      amount_received: 10_000,
+      currency: "gbp",
+      metadata: { paymentId },
+      latest_charge: ch,
+    }) as unknown as Stripe.PaymentIntent;
+  const refunded = (pi: string, ch: string) =>
+    ({
+      id: ch,
+      amount: 10_000,
+      amount_refunded: 10_000,
+      currency: "gbp",
+      payment_intent: pi,
+      metadata: { paymentId },
+    }) as unknown as Stripe.Charge;
+  const refundLines = () =>
+    db
+      .select({ amount: payoutLine.amount })
+      .from(payoutLine)
+      .where(eq(payoutLine.paymentId, paymentId));
+
+  beforeAll(async () => {
+    const now = new Date();
+    await seedIdentityUserFixtures(db, [
+      { id: buyerId, name: "Buyer", email: `${buyerId}@integration.test` },
+    ]);
+    await db.insert(legalEntity).values([
+      {
+        id: buyerEntityId,
+        displayName: "Buyer",
+        kind: "individual",
+        subkind: "private_collector",
+        createdByUserId: buyerId,
+        status: "approved",
+      },
+      {
+        id: sellerId,
+        displayName: "Seller",
+        kind: "individual",
+        subkind: "private_collector",
+        createdByUserId: buyerId,
+        status: "approved",
+      },
+    ]);
+    await db.insert(lot).values({
+      id: lotId,
+      title: "Work",
+      images: [],
+      auctionType: "english",
+      startingPrice: "10.00",
+      currentPrice: "100.00",
+      minBidIncrement: "10.00",
+      startTime: new Date(now.getTime() - 3 * 86_400_000),
+      endTime: new Date(now.getTime() - 86_400_000),
+      status: "ended",
+      sellerLegalEntityId: sellerId,
+      winnerId: buyerId,
+      buyerLegalEntityId: buyerEntityId,
+    });
+  });
+
+  const reset = async (status: "pending" | "cancelled") => {
+    const old = (
+      await db.select({ id: payment.id }).from(payment).where(eq(payment.lotId, lotId))
+    ).map((r) => r.id);
+    if (old.length) {
+      await db.delete(payoutLine).where(inArray(payoutLine.paymentId, old));
+      await db.delete(domainEvent).where(inArray(domainEvent.aggregateId, old));
+    }
+    await db.delete(payment).where(eq(payment.lotId, lotId));
+    const [row] = await db
+      .insert(payment)
+      .values({
+        lotId,
+        buyerId,
+        buyerLegalEntityId: buyerEntityId,
+        sellerLegalEntityId: sellerId,
+        amount: "100.00",
+        platformFee: "5.00",
+        status,
+      })
+      .returning({ id: payment.id });
+    paymentId = row?.id as string;
+  };
+
+  beforeEach(() => reset("pending"));
+
+  afterAll(async () => {
+    await reset("pending");
+    await db.delete(domainEvent).where(eq(domainEvent.aggregateId, paymentId));
+    await db.delete(payment).where(eq(payment.lotId, lotId));
+    await db.delete(payout).where(eq(payout.legalEntityId, sellerId));
+    await db.delete(lot).where(eq(lot.id, lotId));
+    await db
+      .delete(processedStripeEvents)
+      .where(like(processedStripeEvents.eventId, `evt_um_${run}_%`));
+    await db.delete(legalEntity).where(inArray(legalEntity.id, [buyerEntityId, sellerId]));
+    await deleteIdentityUserFixtures(db, [buyerId]);
+  });
+
+  it("a paid-not-recorded task closes when the webhook captures it, and a later refund claws back the seller", async () => {
+    const { pi, ch } = money();
+    await new FinanceTaskLatePaymentRecorder(recorder, runner).recordPaid({
+      paymentId,
+      amountPence: 10_000,
+      buyerLegalEntityId: buyerEntityId,
+      state: { kind: "paid", paymentIntentId: pi, chargeId: ch, amountReceivedPence: 10_000 },
+    });
+    expect(await reader.listOpen({ paymentIntentId: pi, limit: 5 })).toHaveLength(1);
+
+    await webhooks.handlePaymentIntentSucceeded(
+      eventOf("payment_intent.succeeded", succeeded(pi, ch)),
+      succeeded(pi, ch),
+    );
+    expect((await payments.findById(paymentId))?.status).toBe("captured");
+    expect(await reader.listOpen({ paymentIntentId: pi, limit: 5 })).toEqual([]);
+
+    const result = await webhooks.handleChargeRefunded(
+      eventOf("charge.refunded", refunded(pi, ch)),
+      refunded(pi, ch),
+    );
+    expect(result).toMatchObject({ processed: true, action: "refund_received" });
+    expect((await payments.findById(paymentId))?.status).toBe("refunded");
+    const lines = await refundLines();
+    expect(lines.map((l) => Number(l.amount))).toContain(-100);
+  });
+
+  it("money on a cancelled invoice that finance refunds never claws back the unpaid seller", async () => {
+    await reset("cancelled");
+    const { pi, ch } = money();
+    await webhooks.handlePaymentIntentSucceeded(
+      eventOf("payment_intent.succeeded", succeeded(pi, ch)),
+      succeeded(pi, ch),
+    );
+    // Finance refunds it from the closed-payment item (refundBlockedCapture marks it refunded).
+    await runner.runInTransaction((tx) =>
+      payments.applyRefundedFromCancelledInTransaction(tx, paymentId, `re_um_${run}`),
+    );
+    const result = await webhooks.handleChargeRefunded(
+      eventOf("charge.refunded", refunded(pi, ch)),
+      refunded(pi, ch),
+    );
+    expect(result).toMatchObject({ processed: true, action: "unapplied_money_refunded" });
+    expect(await refundLines()).toEqual([]);
+  });
+
+  it("a refunded closed invoice with no task (raised before this change) is not clawed back either", async () => {
+    await reset("cancelled");
+    const { pi, ch } = money();
+    await runner.runInTransaction((tx) =>
+      payments.applyRefundedFromCancelledInTransaction(tx, paymentId, `re_um_${run}`),
+    );
+    const result = await webhooks.handleChargeRefunded(
+      eventOf("charge.refunded", refunded(pi, ch)),
+      refunded(pi, ch),
+    );
+    expect(result).toMatchObject({ reason: "refund_of_money_not_applied" });
+    expect(await refundLines()).toEqual([]);
+  });
+
+  it("a duplicate payment on an invoice marked paid by staff, handled then refunded, claws back nobody", async () => {
+    // Staff recorded the invoice as paid (no Stripe charge on it); the buyer also paid by card.
+    await db.update(payment).set({ status: "captured" }).where(eq(payment.id, paymentId));
+    const { pi, ch } = money();
+    const result = await webhooks.handlePaymentIntentSucceeded(
+      eventOf("payment_intent.succeeded", succeeded(pi, ch)),
+      succeeded(pi, ch),
+    );
+    expect(result).toMatchObject({ reason: "invoice_already_paid" });
+    // Finance marks it handled, then later refunds the duplicate in Stripe.
+    const [task] = await reader.listOpen({ chargeId: ch, limit: 5 });
+    await runner.runInTransaction((tx) =>
+      recorder.resolve(tx, task ? [task] : [], {
+        via: "staff",
+        actorUserId: buyerId,
+        note: "Refunding the duplicate from Stripe.",
+      }),
+    );
+    const refund = await webhooks.handleChargeRefunded(
+      eventOf("charge.refunded", refunded(pi, ch)),
+      refunded(pi, ch),
+    );
+    expect(refund).toMatchObject({ processed: true, action: "unapplied_money_refunded" });
+    expect((await payments.findById(paymentId))?.status).toBe("captured");
+    expect(await refundLines()).toEqual([]);
+  });
+});

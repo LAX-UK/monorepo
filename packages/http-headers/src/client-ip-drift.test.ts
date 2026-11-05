@@ -16,10 +16,6 @@ const ALLOWED: Record<string, string> = {
   "packages/http-headers/src/client-ip.ts": "the resolver itself",
   "packages/auth/src/client-ip-headers.ts":
     "header names for the identity issuer, which must stay free of other workspace packages",
-  "packages/auth/src/phone-number-plugin.ts":
-    "Better Auth plugin inside the identity issuer; it has no TCP peer to check",
-  "packages/auth/src/sign-in-turnstile-gate.ts":
-    "Better Auth hook inside the identity issuer; it has no TCP peer to check",
   "apps/api/src/infrastructure/http-identity-issuer.client.ts":
     "passes the caller's headers on to the identity issuer, which resolves them itself",
   "apps/auth/src/container/mount-auth-operational-routes.ts":

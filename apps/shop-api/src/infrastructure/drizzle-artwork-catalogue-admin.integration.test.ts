@@ -468,7 +468,7 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
         calls.push(`check:${artwork.id}`);
         if (artwork.id === blocked.artworkId) {
           throw new ShopDomainError(
-            "This artwork is already offered in a LAX Bid sale. Withdraw it there first.",
+            "This artwork is in a LAX Bid sale. Withdraw the lot there first.",
           );
         }
       },
@@ -493,7 +493,7 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
         actorSubjectId: ACTOR,
         idempotencyKey: key(),
       }),
-    ).rejects.toThrow("already offered in a LAX Bid sale");
+    ).rejects.toThrow("is in a LAX Bid sale");
     expect((await detailOf(blocked.artworkId)).state).toBe("draft");
 
     const { results } = await writer.applyBulkVisibility({
@@ -507,7 +507,7 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
       {
         artworkId: blocked.artworkId,
         outcome: "refused",
-        message: "This artwork is already offered in a LAX Bid sale. Withdraw it there first.",
+        message: "This artwork is in a LAX Bid sale. Withdraw the lot there first.",
       },
     ]);
 

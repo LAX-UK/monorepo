@@ -7,6 +7,7 @@ import {
   adminStartSubmissionReviewResultAction,
 } from "@/lib/actions/admin-submissions";
 import {
+  markUnappliedMoneyHandledResultAction,
   refundBlockedCaptureResultAction,
   reinstateBlockedCaptureResultAction,
 } from "@/lib/actions/admin/admin-blocked-capture";
@@ -38,9 +39,10 @@ const workItemActionInput = z.object({
   notes: z.string().trim().max(2000).optional(),
 });
 
+/** The record an item is about: everything after "kind:" (a source id may itself hold colons). */
 function entityId(itemId: string): string {
-  const parts = itemId.split(":");
-  return parts.length > 1 ? (parts[1] ?? itemId) : itemId;
+  const at = itemId.indexOf(":");
+  return at >= 0 ? itemId.slice(at + 1) : itemId;
 }
 
 async function runWithTelemetry(
@@ -110,6 +112,13 @@ export async function executeWorkItemActionAction(input: unknown): Promise<Actio
           revalidatePath("/admin");
           return actionSuccess();
         });
+      }
+      case "mark_handled": {
+        const denied = await denyUnlessAdminCapability(PAYMENT_WRITE_ACCESS);
+        if (denied) return denied;
+        return runWithTelemetry(kind, action, () =>
+          markUnappliedMoneyHandledResultAction(id, { reason: notes ?? "" }),
+        );
       }
       case "reinstate_payment": {
         const denied = await denyUnlessAdminCapability(PAYMENT_WRITE_ACCESS);

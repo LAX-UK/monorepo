@@ -48,4 +48,22 @@ describe("ZOHO_ARTWORK_SYNC_MODE", () => {
     stubEnv({ ...CREDENTIALS, ZOHO_ARTWORK_SYNC_MODE: "dry_run", WEBHOOK_EVENTS_PROCESS: "false" });
     expect(() => loadWorkerEnv()).toThrow("Invalid worker environment variables");
   });
+
+  it("refuses live in production unless pictures go to S3 storage", () => {
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const live = { ...CREDENTIALS, WEBHOOK_EVENTS_PROCESS: "true", ZOHO_ARTWORK_SYNC_MODE: "live" };
+    stubEnv({ ...live, APP_ENV: "production", STORAGE_DRIVER: "local" });
+    expect(() => loadWorkerEnv()).toThrow("Invalid worker environment variables");
+    expect(JSON.stringify(errors.mock.calls)).toContain("STORAGE_DRIVER must be s3");
+  });
+
+  it("does not ask for S3 storage outside production", () => {
+    stubEnv({
+      ...CREDENTIALS,
+      WEBHOOK_EVENTS_PROCESS: "true",
+      ZOHO_ARTWORK_SYNC_MODE: "live",
+      STORAGE_DRIVER: "local",
+    });
+    expect(loadWorkerEnv().ZOHO_ARTWORK_SYNC_MODE).toBe("live");
+  });
 });

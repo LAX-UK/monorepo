@@ -9,16 +9,21 @@ import type {
   NotificationPayload,
   PaymentRecord,
 } from "@auction/persistence/interfaces";
-import { computeLotCheckoutPricing } from "@auction/validators";
-import { gbpAmountToPence, gbpPenceToMajorString } from "./decimal-money.js";
+import { lotTotalDuePence } from "@auction/validators";
+import { gbpPenceToMajorString } from "./decimal-money.js";
 import type { DomainEventPublishInput } from "./domain-event-sink-port.js";
 import { ensureXeroInvoiceForPayment } from "./ensure-xero-invoice.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import { isOpenPaymentUniqueViolation } from "./is-open-payment-unique-violation.js";
+import { type IMoneyPathMetrics, noMoneyPathMetrics } from "./money-path-metrics.js";
+import {
+  type IInvoiceRecipients,
+  paymentDueNoticeKey,
+} from "./notifications/invoice-recipients.js";
 import { formatPaymentDueDateFromCreated } from "./payment-due-date.js";
 import type { PaymentTierPolicy } from "./payment-tier.policy.js";
 import type { IPlatformFeePolicy } from "./platform-fee.policy.js";
-import { resolveNewPaymentReviewDecision } from "./resolve-new-payment-review.js";
+import { resolveNewPaymentReviewDecision } from "./resolve-manual-review-reason.js";
 import type { ISettlementCompliancePolicy } from "./settlement-compliance.policy.js";
 
 export type EnsureLotInvoiceResult = {
@@ -61,13 +66,19 @@ export interface ILotInvoiceDomainEventPublisher {
   publish(event: DomainEventPublishInput): Promise<void>;
 }
 
-/** Idempotently ensure a payment row (+ invoice staging) exists for a sold lot. */
+/**
+ * Idempotently ensure a payment row (+ invoice staging) exists for a sold lot. The one
+ * implementation behind the worker at lot end and the API backfill cron.
+ *
+ * The payment row is the invoice of record, so it is raised even when this process may not write
+ * to Xero: the Xero step then defers itself and the invoice-creation retry writes it later.
+ */
 export class LotInvoiceInitiationService {
   constructor(
     private readonly lots: ILotRepository,
     private readonly sales: ISaleRepository,
     private readonly payments: IPaymentWriteRepository,
-    private readonly settlementCompliance: ISettlementCompliancePolicy | null,
+    private readonly settlementCompliance: ISettlementCompliancePolicy,
     private readonly paymentTierPolicy: PaymentTierPolicy,
     private readonly platformFeePolicy: IPlatformFeePolicy,
     private readonly accounting: IInvoiceAccountingProvider,
@@ -77,14 +88,11 @@ export class LotInvoiceInitiationService {
     private readonly lotFulfilmentHooks: ILotFulfilmentPaymentHook | null,
     private readonly legalEntityRepository: ILegalEntityRepository | null,
     private readonly users: IUserRepository,
-    private readonly xeroWritesDisabled?: boolean,
+    private readonly recipients: IInvoiceRecipients,
+    private readonly metrics: IMoneyPathMetrics = noMoneyPathMetrics,
   ) {}
 
   async ensureForLot(lotId: string): Promise<EnsureLotInvoiceResult> {
-    if (this.xeroWritesDisabled) {
-      return { created: false, reason: "xero_api_writes_disabled", lotId };
-    }
-
     const lot = await this.lots.findById(lotId);
     if (!lot) {
       return { created: false, reason: "lot_not_found", lotId };
@@ -117,8 +125,7 @@ export class LotInvoiceInitiationService {
     }
 
     const sale = lot.saleId ? await this.sales.findById(lot.saleId) : null;
-    const pricing = computeLotCheckoutPricing(lot, sale);
-    const amountPence = gbpAmountToPence(pricing.totalMajor);
+    const amountPence = lotTotalDuePence(lot, sale);
     const amount = gbpPenceToMajorString(amountPence);
 
     const amountValidation = this.paymentTierPolicy.validateCheckoutAmountPence(amountPence);
@@ -143,6 +150,10 @@ export class LotInvoiceInitiationService {
       paymentTierPolicy: this.paymentTierPolicy,
       settlementCompliance: this.settlementCompliance,
     });
+
+    if (reviewDecision.complianceHold && reviewDecision.manualReviewReason) {
+      this.metrics.record(`settlement_compliance_hold_${reviewDecision.manualReviewReason}`);
+    }
 
     const platformFee = await this.platformFeePolicy.computePlatformFeeFromPence(
       sellerLegalEntityId,
@@ -198,18 +209,24 @@ export class LotInvoiceInitiationService {
     await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, created.id, null);
 
     const dueDate = formatPaymentDueDateFromCreated(created.createdAt);
-    await this.notificationOutbox.stageDispatch({
-      userId: buyerId,
-      payload: notificationRowToPayload(
-        this.notificationFactory.createPaymentDue(lot, buyerId, {
-          paymentId: created.id,
-          amount: created.amount,
-          checkoutUrl: null,
-          dueDate,
-        }),
-      ),
-      idempotencyKey: `payment_due:${created.id}`,
+    const recipients = await this.recipients.forInvoice({
+      buyerLegalEntityId: lot.buyerLegalEntityId,
+      winnerUserId: buyerId,
     });
+    for (const recipientId of recipients) {
+      await this.notificationOutbox.stageDispatch({
+        userId: recipientId,
+        payload: notificationRowToPayload(
+          this.notificationFactory.createPaymentDue(lot, recipientId, {
+            paymentId: created.id,
+            amount: created.amount,
+            checkoutUrl: null,
+            dueDate,
+          }),
+        ),
+        idempotencyKey: paymentDueNoticeKey(created.id, recipientId, buyerId),
+      });
+    }
 
     const xeroResult = await ensureXeroInvoiceForPayment(
       this.accounting,
@@ -218,9 +235,10 @@ export class LotInvoiceInitiationService {
       lot,
       buyerId,
       created.amount,
+      created.createdAt,
     );
     if (!xeroResult.ok) {
-      /* invoice deferred — payment row exists */
+      this.metrics.record("xero_invoice_deferred");
     }
 
     return { created: true, paymentId: created.id, lotId };

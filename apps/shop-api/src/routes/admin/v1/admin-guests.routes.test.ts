@@ -62,7 +62,13 @@ async function buildApp(
     },
   });
   const guest = options.guest === undefined ? GUEST : options.guest;
-  const erase = vi.fn(async () => ({ orders: 1, enquiries: 2, links: 1 }));
+  const erase = vi.fn(async () => ({
+    orders: 1,
+    enquiries: 2,
+    links: 1,
+    alertSubscribers: 3,
+    suppressionsKept: 0,
+  }));
   deps.admin.guestErasure = new GuestErasureService(
     {
       read: async () => guest,
@@ -96,6 +102,8 @@ describe("admin guest erasure routes", () => {
       orders: 1,
       enquiries: 2,
       links: 1,
+      alertSubscribers: 3,
+      suppressionsKept: 0,
     });
     expect(erase).toHaveBeenCalledOnce();
     await app.close();

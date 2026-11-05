@@ -38,6 +38,8 @@ export type NotificationPayload = {
     audience?: "buyer" | "seller" | "staff" | "underbidder";
     /** Which payment reminder this is, for the reminder email. */
     reminderStep?: "before_due" | "due_day" | "overdue";
+    /** The invoice cannot be paid yet; the reminder says what to do instead. */
+    heldReason?: "identity_verification_required" | "organisation_under_review";
     /** How a buyer default ended for the lot, for the notice's email. */
     defaultOutcome?: "returned_to_inventory" | "offered_to_underbidder";
     /** The buyer's bidding was paused with the default. */

@@ -163,4 +163,70 @@ describe.skipIf(!HAS_DB)("DrizzleCrmRecordLinkRepository (integration)", () => {
     expect(remaining.map((row) => row.entityId)).toEqual([guest]);
     expect(await repo.isErased("subject", enquiry)).toBe(true);
   });
+  it("holds a deal with its fields, lists it, releases it and erases held deals by subject", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const db = createDb(process.env.DATABASE_URL!);
+    const repo = new DrizzleCrmRecordLinkRepository(db);
+    const subjectId = `held-${randomUUID()}`;
+    const dealA = `shop-order:${randomUUID()}`;
+    const dealB = `shop-order:${randomUUID()}`;
+
+    for (const dealId of [dealA, dealB]) {
+      await repo.upsertLink({
+        entityType: "deal",
+        entityId: dealId,
+        zohoModule: "__held__",
+        zohoRecordId: "__none__",
+        subjectId,
+        heldPayload: { Deal_Name: dealId, Amount: 120 },
+      });
+    }
+    const held = (await repo.listHeldDeals(500)).filter((r) => r.subjectId === subjectId);
+    expect(held.map((r) => r.entityId).sort()).toEqual([dealA, dealB].sort());
+    expect(held[0]?.heldPayload).toMatchObject({ Amount: 120 });
+    expect(await repo.listActiveDealLinksBySubject(subjectId)).toHaveLength(2);
+
+    // Release one: a real record replaces the held row and drops the stored fields.
+    await repo.upsertLink({
+      entityType: "deal",
+      entityId: dealA,
+      zohoModule: "Deals",
+      zohoRecordId: `zoho-${randomUUID()}`,
+      subjectId,
+    });
+    const released = await repo.findByEntity("deal", dealA);
+    expect(released?.zohoModule).toBe("Deals");
+    expect(released?.heldPayload).toBeNull();
+
+    // Erasure drops only what is still held and clears its fields.
+    expect(await repo.eraseHeldDealsBySubject(subjectId)).toBe(1);
+    const erased = await repo.findByEntity("deal", dealB);
+    expect(erased?.erasedAt).not.toBeNull();
+    expect(erased?.heldPayload).toBeNull();
+    expect(erased?.zohoModule).toBe("__tombstone__");
+    expect((await repo.listHeldDeals(500)).some((r) => r.subjectId === subjectId)).toBe(false);
+  });
+
+  it("lists a subject's notes and tasks by entity type", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const db = createDb(process.env.DATABASE_URL!);
+    const repo = new DrizzleCrmRecordLinkRepository(db);
+    const subjectId = `notes-${randomUUID()}`;
+    await repo.upsertLink({
+      entityType: "note",
+      entityId: `n-${subjectId}`,
+      zohoModule: "Notes",
+      zohoRecordId: "n1",
+      subjectId,
+    });
+    await repo.upsertLink({
+      entityType: "task",
+      entityId: `t-${subjectId}`,
+      zohoModule: "Tasks",
+      zohoRecordId: "t1",
+      subjectId,
+    });
+    const rows = await repo.listActiveLinksBySubject(subjectId, ["note", "task"]);
+    expect(rows.map((r) => r.zohoModule).sort()).toEqual(["Notes", "Tasks"]);
+  });
 });

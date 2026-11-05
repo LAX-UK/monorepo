@@ -41,6 +41,7 @@ export const WORK_ACTION_LABELS: Record<AdminWorkItemAction, string> = {
   capture: "Capture payment",
   refund: "Refund payment",
   reinstate_payment: "Reinstate payment",
+  mark_handled: "Mark handled",
   approve_registration: "Approve registration",
   reject_registration: "Reject registration",
   confirm_telephone: "Confirm booking",
@@ -61,6 +62,7 @@ const WORK_ACTION_DONE: Record<AdminWorkItemAction, string> = {
   capture: "Payment captured",
   refund: "Refund started",
   reinstate_payment: "Payment reinstated",
+  mark_handled: "Marked handled",
   approve_registration: "Registration approved",
   reject_registration: "Registration rejected",
   confirm_telephone: "Booking confirmed",
@@ -229,8 +231,8 @@ export function sharedWorkAction(items: readonly AdminWorkItem[]): AdminWorkItem
 
 /** The record behind a work item: "payment:pay_1" is payment pay_1. */
 export function workItemEntityId(item: AdminWorkItem): string {
-  const [, id] = item.id.split(":");
-  return id ?? item.id;
+  const at = item.id.indexOf(":");
+  return at >= 0 ? item.id.slice(at + 1) : item.id;
 }
 
 /** "3 items · 1 urgent", or "Nothing waiting". */

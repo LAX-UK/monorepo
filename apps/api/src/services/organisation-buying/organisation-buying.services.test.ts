@@ -37,7 +37,8 @@ describe("AccountPurchasesService.list", () => {
       expect(byLot.get(LOTS.due)?.invoice.status).toBe("due");
       expect(byLot.get(LOTS.overdue)?.invoice).toMatchObject({
         status: "overdue",
-        dueAt: new Date("2026-11-17T12:00:00Z"),
+        // Due at the end of the London day, seven days after the London day it was raised.
+        dueAt: new Date("2026-11-17T23:59:59.999Z"),
       });
       expect(byLot.get(LOTS.agentWin)?.wonBy?.name).toBe("Tom Whitfield");
       expect(byLot.get(LOTS.due)?.paymentRole).toBe("payer");

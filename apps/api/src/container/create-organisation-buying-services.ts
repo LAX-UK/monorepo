@@ -39,6 +39,7 @@ import { PaySeveralService } from "../services/organisation-buying/pay-several.s
 import { PurchaseProblemService } from "../services/organisation-buying/purchase-problem.service.js";
 import { WonLotLookups } from "../services/organisation-buying/won-lot-lookups.js";
 import type { PaymentGroupCheckoutService } from "../services/payment-group/payment-group-checkout.service.js";
+import type { IPaymentEligibilityGate } from "../services/payment/payment-eligibility.gate.js";
 
 /** The client workspace's buying modules for the acting account. */
 export type OrganisationBuyingServices = {
@@ -69,6 +70,7 @@ export type CreateOrganisationBuyingInput = {
   payments: {
     tierLimits: PaymentTierLimits;
     compliance: Pick<ISettlementCompliancePolicy, "peek" | "evaluate"> | null;
+    eligibility: IPaymentEligibilityGate;
     groupCheckout: Pick<PaymentGroupCheckoutService, "start">;
   };
 };
@@ -91,6 +93,7 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
         flags: new DrizzlePaySeveralInvoiceFlagsReader(input.db),
         limits: input.payments.tierLimits,
         compliance: input.payments.compliance,
+        eligibility: input.payments.eligibility,
         checkout: input.payments.groupCheckout,
         now: () => new Date(),
       }),

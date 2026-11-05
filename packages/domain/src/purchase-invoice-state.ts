@@ -1,6 +1,5 @@
 import { INVOICE_PAYMENT_DUE_DAYS } from "@auction/types";
-
-const DAY_MS = 86_400_000;
+import { londonDateOf, londonMidnight } from "./calendar-year.js";
 
 /** The invoice behind a won lot, as far as its payment state needs to know it. */
 export type PurchaseInvoiceFacts = {
@@ -55,9 +54,15 @@ const SETTLED: Record<
   refunded: "refunded",
 };
 
-/** The due date of an invoice raised at `raisedAt`: the payment terms, the same for every sale. */
+/**
+ * The due date of an invoice raised at `raisedAt`, the same for every sale and every surface
+ * (page, emails, reminders, staff overdue list, Xero): the end of the London day that falls
+ * `INVOICE_PAYMENT_DUE_DAYS` days after the London day it was raised. It is overdue from the
+ * London midnight that follows.
+ */
 export function invoiceDueAt(raisedAt: Date): Date {
-  return new Date(raisedAt.getTime() + INVOICE_PAYMENT_DUE_DAYS * DAY_MS);
+  const { year, month, day } = londonDateOf(raisedAt);
+  return new Date(londonMidnight(year, month, day + INVOICE_PAYMENT_DUE_DAYS + 1).getTime() - 1);
 }
 
 /**

@@ -31,6 +31,34 @@ describe("payment-reminder", () => {
     expect(email.html).toContain("https://lax.bid/purchases/checkout/lot-1");
   });
 
+  it("a held invoice asks the buyer to verify their identity, with that link instead of Pay now", async () => {
+    const email = await renderEmail("payment-reminder", {
+      ...base,
+      step: "due_day",
+      amount: "£1,200.00",
+      dueDate: "10 November 2026",
+      payUrl: "https://lax.bid/purchases/checkout/lot-1",
+      held: "identity_verification_required",
+      actionUrl: "https://lax.bid/verify-identity",
+    });
+    expect(email.subject).toBe("Verify your identity to pay for Harbour at dusk");
+    expect(email.html).toContain("https://lax.bid/verify-identity");
+    expect(email.text).not.toContain("Pay now");
+  });
+
+  it("an organisation under review is told it cannot pay yet, with no payment button", async () => {
+    const email = await renderEmail("payment-reminder", {
+      ...base,
+      step: "overdue",
+      amount: "£1,200.00",
+      dueDate: "10 November 2026",
+      payUrl: "https://lax.bid/purchases/checkout/lot-1",
+      held: "organisation_under_review",
+    });
+    expect(email.text).toContain("cannot be paid yet");
+    expect(email.text).not.toContain("Pay now");
+  });
+
   it("uses the same words in the app as in the email", () => {
     const copy = paymentReminderCopy("due_day", {
       lotTitle: "Harbour at dusk",

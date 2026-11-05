@@ -72,6 +72,7 @@ import type { LotTransitionOrchestrator } from "../lot-transition-orchestrator.j
 import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { PaddleService } from "../paddle.service.js";
+import type { IUnappliedMoneyHandling } from "../payment/unapplied-money-handling.service.js";
 import type { ProfileService } from "../profile.service.js";
 import type { QrCodeAnalyticsService } from "../qr-code-analytics.service.js";
 import type { QrCodeService } from "../qr-code.service.js";
@@ -138,6 +139,7 @@ export type CreateAdminRouteServicesInput = {
   attentionFeedReader: IAttentionFeedReader;
   itemSubmissionAdminApi: IItemSubmissionAdminApi;
   paymentService: IPaymentAdminService;
+  unappliedMoneyHandling: IUnappliedMoneyHandling;
   adminPaymentListQueryService: AdminPaymentListQueryService;
   lotService: ILotService;
   adminLotBrowseService: AdminLotBrowseService;
@@ -276,6 +278,7 @@ export function createAdminRouteServices(
 
   const finance = createAdminFinanceServices({
     paymentService: input.paymentService,
+    unappliedMoneyHandling: input.unappliedMoneyHandling,
     adminPaymentListQueryService: input.adminPaymentListQueryService,
     stripeConnectService: input.stripeConnectService,
     xeroOAuthService: input.xeroOAuthService,

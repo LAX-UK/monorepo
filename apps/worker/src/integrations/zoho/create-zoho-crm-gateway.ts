@@ -1,5 +1,5 @@
 import type { WorkerEnv } from "../../env.js";
-import type { CrmCoqlQuery, CrmGateway } from "../crm/crm-gateway.js";
+import type { CrmBatchUpdate, CrmCoqlQuery, CrmGateway } from "../crm/crm-gateway.js";
 import { parseZohoCrmTrigger } from "./zoho-crm-config.js";
 import { ZohoCrmGatewayCrmErrorAdapter } from "./zoho-crm-gateway-crm-error-adapter.js";
 import { ZohoCrmGatewayLimiter } from "./zoho-crm-gateway-limiter.js";
@@ -21,6 +21,11 @@ export function createZohoCrmGateway(env: WorkerEnv): CrmGateway {
 
 /** One stack for the writeback's read (COQL) and write (update), so both share one rate limiter. */
 export function createZohoCrmGatewayWithCoql(env: WorkerEnv): CrmGateway & CrmCoqlQuery {
+  return createZohoCrmStack(env);
+}
+
+/** COQL reads and batched updates through one limiter, for the LAX listing on Zoho Products. */
+export function createZohoCrmBatchStack(env: WorkerEnv): CrmCoqlQuery & CrmBatchUpdate {
   return createZohoCrmStack(env);
 }
 

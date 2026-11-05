@@ -9,7 +9,10 @@ export type ManualReviewReason =
   | "seller_archived_and_high_value"
   | "aml_hold"
   | "source_of_funds_required"
-  | "finance_release_required";
+  | "finance_release_required"
+  /** Held for the account, not reviewed by staff: see `paymentEligibility`. */
+  | "identity_verification_required"
+  | "organisation_under_review";
 
 export type PaymentTierLimits = {
   cardMaxPence: number;

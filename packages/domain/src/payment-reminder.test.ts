@@ -8,7 +8,8 @@ import {
 
 const DAY = 86_400_000;
 const raisedAt = new Date("2026-11-01T10:00:00Z");
-const dueAt = new Date(raisedAt.getTime() + 7 * DAY);
+// Raised 1 November (London); due at the end of 8 November; the due-day reminder is 09:00 that day.
+const dueAt = new Date("2026-11-08T09:00:00Z");
 
 const owed: PaymentReminderFacts = {
   lotStatus: "ended",
@@ -25,9 +26,26 @@ const at = (offsetMs: number) => new Date(dueAt.getTime() + offsetMs);
 describe("reminder schedule", () => {
   it("is two days before the due date, on it, and three days after", () => {
     expect(PAYMENT_REMINDER_STEPS).toEqual(["before_due", "due_day", "overdue"]);
-    expect(reminderDueAt("before_due", dueAt)).toEqual(at(-2 * DAY));
-    expect(reminderDueAt("due_day", dueAt)).toEqual(dueAt);
-    expect(reminderDueAt("overdue", dueAt)).toEqual(at(3 * DAY));
+    const endOfDueDay = new Date("2026-11-08T23:59:59.999Z");
+    expect(reminderDueAt("before_due", endOfDueDay)).toEqual(at(-2 * DAY));
+    expect(reminderDueAt("due_day", endOfDueDay)).toEqual(dueAt);
+    expect(reminderDueAt("overdue", endOfDueDay)).toEqual(at(3 * DAY));
+  });
+});
+
+describe("reminder schedule in British Summer Time", () => {
+  it("sends at 09:00 London (08:00 UTC) in summer", () => {
+    const endOfDueDay = new Date("2026-07-08T22:59:59.999Z");
+    expect(reminderDueAt("before_due", endOfDueDay)).toEqual(new Date("2026-07-06T08:00:00Z"));
+    expect(reminderDueAt("due_day", endOfDueDay)).toEqual(new Date("2026-07-08T08:00:00Z"));
+    expect(reminderDueAt("overdue", endOfDueDay)).toEqual(new Date("2026-07-11T08:00:00Z"));
+  });
+
+  it("keeps 09:00 London either side of the October clock change", () => {
+    // Due at the end of Monday 26 October 2026 (GMT); the clocks went back on 25 October.
+    const endOfDueDay = new Date("2026-10-26T23:59:59.999Z");
+    expect(reminderDueAt("before_due", endOfDueDay)).toEqual(new Date("2026-10-24T08:00:00Z"));
+    expect(reminderDueAt("due_day", endOfDueDay)).toEqual(new Date("2026-10-26T09:00:00Z"));
   });
 });
 

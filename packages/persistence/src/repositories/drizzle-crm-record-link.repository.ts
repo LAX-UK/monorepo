@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { crmRecordLink } from "@auction/db/schema";
-import { and, eq, isNotNull, isNull, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lt, ne } from "drizzle-orm";
 import type {
   CrmRecordLinkRow,
   ICrmRecordLinkRepository,
@@ -8,9 +8,14 @@ import type {
   UpsertCrmRecordLinkInput,
 } from "../interfaces/crm-record-link.repository.js";
 
+const HELD_MODULE = "__held__";
+
 function isRealZohoLink(zohoModule: string, zohoRecordId: string): boolean {
   return (
-    zohoModule !== "__tombstone__" && zohoModule !== "__pending__" && zohoRecordId !== "__none__"
+    zohoModule !== "__tombstone__" &&
+    zohoModule !== "__pending__" &&
+    zohoModule !== HELD_MODULE &&
+    zohoRecordId !== "__none__"
   );
 }
 
@@ -24,6 +29,7 @@ function mapRow(row: typeof crmRecordLink.$inferSelect): CrmRecordLinkRow {
     erasedAt: row.erasedAt,
     deletionRequestedAt: row.deletionRequestedAt,
     recyclePurgedAt: row.recyclePurgedAt,
+    heldPayload: row.heldPayload ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -51,6 +57,7 @@ export class DrizzleCrmRecordLinkRepository implements ICrmRecordLinkRepository 
         zohoModule: input.zohoModule,
         zohoRecordId: input.zohoRecordId,
         subjectId: input.subjectId ?? null,
+        heldPayload: input.heldPayload ?? null,
         erasedAt: null,
         createdAt: now,
         updatedAt: now,
@@ -61,6 +68,7 @@ export class DrizzleCrmRecordLinkRepository implements ICrmRecordLinkRepository 
           zohoModule: input.zohoModule,
           zohoRecordId: input.zohoRecordId,
           ...(input.subjectId !== undefined ? { subjectId: input.subjectId } : {}),
+          heldPayload: input.heldPayload ?? null,
           erasedAt: null,
           updatedAt: now,
         },
@@ -163,6 +171,7 @@ export class DrizzleCrmRecordLinkRepository implements ICrmRecordLinkRepository 
         target: [crmRecordLink.entityType, crmRecordLink.entityId],
         set: {
           erasedAt: at,
+          heldPayload: null,
           updatedAt: at,
         },
       });
@@ -256,7 +265,7 @@ export class DrizzleCrmRecordLinkRepository implements ICrmRecordLinkRepository 
       .set({ subjectId: toSubjectId, updatedAt: at })
       .where(
         and(
-          eq(crmRecordLink.entityType, "deal"),
+          inArray(crmRecordLink.entityType, ["deal", "note", "task"]),
           eq(crmRecordLink.subjectId, fromSubjectId),
           isNull(crmRecordLink.erasedAt),
         ),
@@ -277,6 +286,72 @@ export class DrizzleCrmRecordLinkRepository implements ICrmRecordLinkRepository 
         ),
       );
     return rows.map(mapRow);
+  }
+
+  async listActiveLinksBySubject(
+    subjectId: string,
+    entityTypes: string[],
+  ): Promise<CrmRecordLinkRow[]> {
+    if (entityTypes.length === 0) return [];
+    const rows = await this.db
+      .select()
+      .from(crmRecordLink)
+      .where(
+        and(
+          eq(crmRecordLink.subjectId, subjectId),
+          inArray(crmRecordLink.entityType, entityTypes),
+          isNull(crmRecordLink.erasedAt),
+        ),
+      );
+    return rows.map(mapRow);
+  }
+
+  async listHeldDeals(limit: number, checkedBefore?: Date): Promise<CrmRecordLinkRow[]> {
+    const rows = await this.db
+      .select()
+      .from(crmRecordLink)
+      .where(
+        and(
+          eq(crmRecordLink.entityType, "deal"),
+          eq(crmRecordLink.zohoModule, HELD_MODULE),
+          isNull(crmRecordLink.erasedAt),
+          ...(checkedBefore ? [lt(crmRecordLink.updatedAt, checkedBefore)] : []),
+        ),
+      )
+      .orderBy(asc(crmRecordLink.updatedAt))
+      .limit(limit);
+    return rows.map(mapRow);
+  }
+
+  async touchLink(entityType: string, entityId: string, now?: Date): Promise<void> {
+    const at = now ?? new Date();
+    await this.db
+      .update(crmRecordLink)
+      .set({ updatedAt: at })
+      .where(and(eq(crmRecordLink.entityType, entityType), eq(crmRecordLink.entityId, entityId)));
+  }
+
+  async eraseHeldDealsBySubject(subjectId: string, now?: Date): Promise<number> {
+    const at = now ?? new Date();
+    const erased = await this.db
+      .update(crmRecordLink)
+      .set({
+        zohoModule: "__tombstone__",
+        zohoRecordId: "__none__",
+        heldPayload: null,
+        erasedAt: at,
+        updatedAt: at,
+      })
+      .where(
+        and(
+          eq(crmRecordLink.entityType, "deal"),
+          eq(crmRecordLink.subjectId, subjectId),
+          eq(crmRecordLink.zohoModule, HELD_MODULE),
+          isNull(crmRecordLink.erasedAt),
+        ),
+      )
+      .returning({ entityId: crmRecordLink.entityId });
+    return erased.length;
   }
 
   async listActiveByEntityType(
@@ -307,6 +382,7 @@ export class DrizzleCrmRecordLinkRepository implements ICrmRecordLinkRepository 
           isNotNull(crmRecordLink.erasedAt),
           ne(crmRecordLink.zohoModule, "__tombstone__"),
           ne(crmRecordLink.zohoModule, "__pending__"),
+          ne(crmRecordLink.zohoModule, HELD_MODULE),
           ne(crmRecordLink.zohoRecordId, "__none__"),
         ),
       )

@@ -29,6 +29,7 @@ import {
 } from "../services/payment-group/payment-group-settlement.service.js";
 import { revokeOpenStripeCheckoutForPayment } from "../services/payment/checkout-orchestrator.js";
 import { ensureXeroInvoiceForPayment } from "../services/payment/ensure-xero-invoice.js";
+import type { IUnappliedMoneyRecorder } from "../services/payment/unapplied-money.recorder.js";
 import { payoutRepoForTx } from "../services/payout/payout-helpers.js";
 import type { PaymentGroupWebhookDeps } from "../services/stripe-webhook/create-payment-webhook-handlers.js";
 import { PAYMENT_WEBHOOK_EVENT_SOURCE } from "../services/stripe-webhook/payment-webhook-types.js";
@@ -56,6 +57,7 @@ export type CreatePaymentGroupServicesInput = {
   accounting: IInvoiceAccountingProvider;
   stripePayments: IStripePaymentGateway;
   stripeCustomers: IStripeCustomerGateway;
+  unappliedMoney: Pick<IUnappliedMoneyRecorder, "record">;
 };
 
 /** Each invoice gets its accounting invoice first, as a single-invoice checkout does. */
@@ -74,6 +76,7 @@ function groupInvoiceAccounting(input: CreatePaymentGroupServicesInput): IGroupI
           lot,
           buyerId,
           payment.amount,
+          payment.createdAt,
         );
         if (!result.ok) {
           // As for one invoice: the retry job creates it later unless accounting must come first.
@@ -104,6 +107,7 @@ export function createPaymentGroupServices(
     events: input.events,
     claims,
     receipt: new PaymentGroupReceiptNotifier(input.notificationDispatcher),
+    unappliedMoney: input.unappliedMoney,
   });
   const checkout = new PaymentGroupCheckoutService({
     groups,

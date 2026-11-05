@@ -59,3 +59,38 @@ export function orderByMsTimestampId(
     ? orderByMsTimestampIdDesc(timestampColumn, idColumn)
     : ([asc(msTimestamp(timestampColumn)), asc(idColumn)] as const);
 }
+
+/**
+ * Full-precision (microsecond) keyset paging on the raw timestamp column.
+ *
+ * The millisecond helpers above order by `date_trunc('milliseconds', col)`, an expression a plain
+ * btree on (col, id) cannot serve. These order and compare on the column itself, so the list can
+ * walk the index. A JS `Date` only holds milliseconds, so the position is carried as the text
+ * `createdAtMicros(col)` selects alongside each row.
+ */
+export function createdAtMicros(column: AnyPgColumn): SQL<string> {
+  return sql<string>`to_char(${column} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+}
+
+/** The rows after `cursor` in `(column, id)` order, as one row comparison the btree can range-scan. */
+export function keysetAfterRaw(
+  timestampColumn: AnyPgColumn,
+  idColumn: AnyPgColumn,
+  cursor: CatalogueCursor,
+  direction: KeysetDirection,
+): SQL {
+  const op = direction === "desc" ? sql`<` : sql`>`;
+  const at = cursor.createdAtMicros ?? cursor.createdAt.toISOString();
+  return sql`(${timestampColumn}, ${idColumn}) ${op} (${at}::timestamptz, ${cursor.id}::uuid)`;
+}
+
+/** The ORDER BY that `keysetAfterRaw` pages through. */
+export function orderByRawTimestampId(
+  timestampColumn: AnyPgColumn,
+  idColumn: AnyPgColumn,
+  direction: KeysetDirection,
+) {
+  return direction === "desc"
+    ? ([desc(timestampColumn), desc(idColumn)] as const)
+    : ([asc(timestampColumn), asc(idColumn)] as const);
+}

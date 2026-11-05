@@ -1,10 +1,11 @@
+import { invoiceDueAt } from "@auction/domain";
 import { INVOICE_PAYMENT_DUE_DAYS } from "@auction/types";
 
 export { INVOICE_PAYMENT_DUE_DAYS };
 
-/** Human-readable payment due date from invoice (payment row) creation time. */
+/** The invoice's due date for emails ("12 November 2026"), on the London calendar. */
 export function formatPaymentDueDateFromCreated(createdAt: Date): string {
-  const due = new Date(createdAt);
-  due.setUTCDate(due.getUTCDate() + INVOICE_PAYMENT_DUE_DAYS);
-  return new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(due);
+  return new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "Europe/London" }).format(
+    invoiceDueAt(createdAt),
+  );
 }
