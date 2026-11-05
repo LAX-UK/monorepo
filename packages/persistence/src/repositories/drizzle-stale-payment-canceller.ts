@@ -1,10 +1,16 @@
 import type { Database } from "@auction/db";
 import { payment, paymentCheckoutSession } from "@auction/db/schema";
-import { and, eq, gte, inArray, isNull, notExists } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull, notExists, sql } from "drizzle-orm";
 import type { IStalePaymentCanceller } from "../interfaces/stale-payment-canceller.js";
 
 export class DrizzleStalePaymentCanceller implements IStalePaymentCanceller {
   constructor(private readonly db: Database) {}
+
+  async now(): Promise<Date> {
+    const result = await this.db.execute(sql`select now() as now`);
+    const row = (result.rows as { now: string | Date }[])[0];
+    return new Date(row?.now ?? Date.now());
+  }
 
   async cancelIfUntouchedSince(paymentId: string, since: Date): Promise<boolean> {
     // One statement, so nothing can change between the check and the cancel.

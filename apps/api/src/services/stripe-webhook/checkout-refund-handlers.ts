@@ -7,13 +7,23 @@ import {
   type PaymentWebhookResult,
 } from "./payment-webhook-types.js";
 
-/** Whether the refunded charge is the money that paid this invoice. */
+/**
+ * Whether the refunded charge is the money that paid this invoice: its recorded charge, or, when
+ * no charge was recorded, its recorded payment intent. An invoice with neither (marked paid by
+ * staff) owns no Stripe charge, so a Stripe refund is not its refund.
+ */
 function isInvoiceMoney(
-  row: { stripeChargeId?: string | null; everCaptured?: boolean },
-  chargeId: string,
+  row: {
+    stripeChargeId?: string | null;
+    stripePaymentIntentId?: string | null;
+    everCaptured?: boolean;
+  },
+  charge: { id: string; paymentIntentId: string | null },
 ): boolean {
   if (row.everCaptured === false) return false;
-  return !row.stripeChargeId || row.stripeChargeId === chargeId;
+  if (row.stripeChargeId) return row.stripeChargeId === charge.id;
+  if (row.stripePaymentIntentId) return row.stripePaymentIntentId === charge.paymentIntentId;
+  return row.everCaptured === undefined;
 }
 
 export async function handleChargeRefunded(
@@ -44,7 +54,11 @@ export async function handleChargeRefunded(
     }
     // Only money captured for this invoice is clawed back from its seller. A refund of money on a
     // closed invoice (sent back by finance) or of another charge never reached the seller.
-    if (!isInvoiceMoney(paymentRow, charge.id)) {
+    const chargeIntent =
+      typeof charge.payment_intent === "string"
+        ? charge.payment_intent
+        : (charge.payment_intent?.id ?? null);
+    if (!isInvoiceMoney(paymentRow, { id: charge.id, paymentIntentId: chargeIntent })) {
       return { processed: true, action: "skipped", reason: "refund_of_money_not_applied" };
     }
 

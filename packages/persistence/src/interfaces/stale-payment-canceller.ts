@@ -6,4 +6,6 @@ export interface IStalePaymentCanceller {
    * the next run looks again.
    */
   cancelIfUntouchedSince(paymentId: string, since: Date): Promise<boolean>;
+  /** The database's clock, so "since" is compared with the same clock that stamps sessions. */
+  now(): Promise<Date>;
 }

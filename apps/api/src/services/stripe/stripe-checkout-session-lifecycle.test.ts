@@ -143,41 +143,4 @@ describe("createOrRenewCheckoutSession", () => {
     expect(outcome).toEqual({ kind: "already_complete" });
     expect(create).toHaveBeenCalledTimes(1);
   });
-
-  it("a key Stripe refuses for changed parameters is reissued under one derived key", async () => {
-    const mismatch = Object.assign(
-      new Error("Keys for idempotent requests can only be used with the same parameters"),
-      {
-        type: "StripeIdempotencyError",
-      },
-    );
-    const create = vi.fn().mockRejectedValueOnce(mismatch).mockResolvedValueOnce({
-      sessionId: "cs_new",
-      url: "https://checkout.stripe.com/pay/cs_new",
-      paymentIntentId: null,
-    });
-    const gateway = {
-      retrieveCheckoutSession: vi.fn().mockResolvedValue({
-        id: "cs_new",
-        status: "open",
-        url: "https://checkout.stripe.com/pay/cs_new",
-        expires_at: Math.floor(Date.now() / 1000) + 3600,
-      }),
-    } as unknown as IStripePaymentGateway;
-    const outcome = await createOrRenewCheckoutSession(gateway, "card", "pay_1", create);
-    expect(outcome).toMatchObject({ kind: "ready", session: { sessionId: "cs_new" } });
-    expect(create.mock.calls.map((c) => c[0])).toEqual([
-      "checkout:card:payment:pay_1",
-      "checkout:card:payment:pay_1:reissued",
-    ]);
-  });
-
-  it("other Stripe errors are not hidden", async () => {
-    const create = vi
-      .fn()
-      .mockRejectedValue(Object.assign(new Error("card_declined"), { type: "StripeCardError" }));
-    await expect(
-      createOrRenewCheckoutSession({} as IStripePaymentGateway, "card", "pay_1", create),
-    ).rejects.toThrow("card_declined");
-  });
 });

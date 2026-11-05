@@ -588,6 +588,7 @@ describe("StripePaymentWebhookService.handlePaymentIntentSucceeded", () => {
       expect.objectContaining({
         reason: "customer_balance_unapplied",
         stripeCustomerId: "cus_1",
+        stripeEventId: "evt_cash:gbp",
         amountCents: 250000,
         currency: "gbp",
       }),

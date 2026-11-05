@@ -22,6 +22,8 @@ export interface IStalePaymentStore {
     buyerLegalEntityId: string | null;
   } | null>;
   checkoutSessionIds(paymentId: string): Promise<string[]>;
+  /** The database's clock: when a Stripe check starts, compared with session timestamps. */
+  databaseNow(): Promise<Date>;
   /**
    * Cancels only while the invoice is still unpaid, outside any "Pay several" payment, and with no
    * checkout opened since `checkStartedAt`; false otherwise (the next run looks again).
@@ -109,7 +111,7 @@ export async function expireStalePayments(
       // A payment in a "Pay several" group is released with its group, never on its own.
       if (current.paymentGroupId) continue;
 
-      const checkStartedAt = new Date((deps.now ?? (() => new Date()))().getTime());
+      const checkStartedAt = await deps.payments.databaseNow();
       const state = await deps.provider.closeAndRead({
         paymentId: row.id,
         paymentIntentId: current.stripePaymentIntentId,
