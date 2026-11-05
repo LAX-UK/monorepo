@@ -1,5 +1,10 @@
 import type { Database } from "@auction/db";
-import { marketingAttribution, marketingEnquiry, payment } from "@auction/db/schema";
+import {
+  marketingAttribution,
+  marketingEnquiry,
+  payment,
+  privateSaleEnquiryDetail,
+} from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import { CRM_FIELD } from "./crm-field-constants.js";
 import type { CrmFieldValue } from "./crm-gateway.js";
@@ -25,6 +30,10 @@ export type CrmEnquiryRecord = {
   email: string;
   phone: string | null;
   marketingOptIn: boolean;
+  /** When the enquiry was sent; the time consent was given when it opted in. */
+  createdAt: Date;
+  /** The artist a private sale enquiry names, when it does. */
+  artist: string | null;
   /** The signed-in account that sent the enquiry, when there was one. */
   userId: string | null;
 };
@@ -47,8 +56,14 @@ export function createDrizzleCrmEnquiryReader(db: Database): CrmEnquiryReader {
           phone: marketingEnquiry.phone,
           marketingOptIn: marketingEnquiry.marketingOptIn,
           userId: marketingEnquiry.userId,
+          createdAt: marketingEnquiry.createdAt,
+          artist: privateSaleEnquiryDetail.artist,
         })
         .from(marketingEnquiry)
+        .leftJoin(
+          privateSaleEnquiryDetail,
+          eq(privateSaleEnquiryDetail.enquiryId, marketingEnquiry.id),
+        )
         .where(eq(marketingEnquiry.id, enquiryId))
         .limit(1);
       return row ?? null;

@@ -8,9 +8,15 @@ export type SessionHandle = { sessionId: string; record: StaffSessionRecord };
 
 /**
  * The scopes Account may exchange its session for. `lax.portfolio.read` lists works and money;
- * the selling scopes open the person's own seller tools on Shop's API and nothing else.
+ * the selling scopes open the person's own seller tools on Shop's API and nothing else; the
+ * alert scopes read and switch the person's own alert emails on each product's alert routes.
  */
-export type AccountProductScope = "lax.portfolio.read" | "lax.selling.read" | "lax.selling.write";
+export type AccountProductScope =
+  | "lax.portfolio.read"
+  | "lax.selling.read"
+  | "lax.selling.write"
+  | "lax.alerts.read"
+  | "lax.alerts.write";
 
 export type ResourceTokenProvider = {
   /**

@@ -4,11 +4,24 @@ import type { CrmDealNamingFacts } from "./crm-deal-naming-reader.js";
 import {
   CRM_FIELD,
   CRM_LEAD_SOURCE_BID_ENQUIRY,
-  CRM_LEAD_SOURCE_PLATFORM,
+  CRM_LEAD_SOURCE_BID_PRIVATE_SALE_ENQUIRY,
+  CRM_LEAD_SOURCE_SHOP_GUEST,
+  CRM_LEAD_SOURCE_SIGN_UP,
+  lotWonDealEntityId,
   lotWonDealKey,
+  shopOrderDealEntityId,
   shopOrderDealKey,
 } from "./crm-field-constants.js";
 import type { CrmFieldValue } from "./crm-gateway.js";
+import {
+  consentFields,
+  enquiryTypeFor,
+  interestFields,
+  newLeadFields,
+  noticeConfirmedFields,
+  websiteLeadFields,
+} from "./crm-lead-fields.js";
+import type { CrmEnquiryType } from "./crm-lead-fields.js";
 import { splitDisplayName } from "./crm-name-fields.js";
 import type { CrmEnquiryRecord } from "./crm-readers.js";
 
@@ -27,6 +40,8 @@ export type CrmMappedIntent =
       subjectId: string;
       email: string;
       fields: Record<string, CrmFieldValue>;
+      /** Written only when the lead is created here; an admin's later edits are never overwritten. */
+      createOnlyFields: Record<string, CrmFieldValue>;
     }
   | { kind: "person_patch"; subjectId: string; fields: Record<string, CrmFieldValue> }
   | {
@@ -35,14 +50,19 @@ export type CrmMappedIntent =
       dealKey: string;
       subjectId: string;
       fields: Record<string, CrmFieldValue>;
+      /**
+       * A purchase: the deal waits in the ledger until an admin has converted the buyer's lead,
+       * and is never created without a Contact.
+       */
+      purchase?: CrmPurchase;
     }
   | { kind: "deal_stage"; dealEntityId: string; stage: string }
   | {
-      kind: "convert_lead_on_win";
-      subjectId: string;
+      kind: "purchase_paid";
       dealEntityId: string;
-      dealKey: string;
-      dealFields: Record<string, CrmFieldValue>;
+      stage: string;
+      amount: number;
+      paidAt: string;
     }
   | { kind: "merge_subjects"; subjectId: string; retiredSubjectId: string }
   | { kind: "deletion_requested"; subjectId: string }
@@ -56,7 +76,16 @@ export type CrmMappedIntent =
       eligibleForEditionAllocation: boolean;
     };
 
+/** What a paying buyer bought, for the note an admin reads before converting the lead. */
+export type CrmPurchase = {
+  product: "LAX Bid" | "LAX Shop";
+  /** True once the money is in: a Shop order is paid when it is recorded, a lot when captured. */
+  paid: boolean;
+};
+
 export type CrmMapperContext = {
+  /** Lead Status a new lead starts with. */
+  leadStatusNew: string;
   auctionPipeline: string;
   dealStageLotWon: string;
   dealStagePaymentCaptured: string;
@@ -130,40 +159,52 @@ const ENQUIRY_INTENT_GENERAL = "General";
 function mapEnquiryReceived(
   enquiry: CrmEnquiryRecord | null | undefined,
   attribution: Record<string, CrmFieldValue> | null | undefined,
+  leadStatusNew: string,
 ): CrmMappedIntent {
   if (!enquiry) return { kind: "skip", reason: "enquiry_not_found" };
   // A signed-in sender keeps their account's lead; a guest gets a lead keyed by the enquiry.
   const subjectId = enquiry.userId ?? `enquiry:${enquiry.id}`;
+  const isPrivateSale = enquiry.intent.startsWith("private_sale");
   const fields = withAttribution(
-    personBaseFields(enquiry.email, enquiry.name, "bid", "enquiry"),
+    personBaseFields(enquiry.email, enquiry.name, "bid", {
+      detailedSource: isPrivateSale
+        ? CRM_LEAD_SOURCE_BID_PRIVATE_SALE_ENQUIRY
+        : CRM_LEAD_SOURCE_BID_ENQUIRY,
+      enquiryType: enquiryTypeFor(enquiry.intent, enquiry.departmentSlug),
+    }),
     attribution,
   );
   fields[CRM_FIELD.subjectExternalId] = subjectId;
-  fields[CRM_FIELD.leadSourceDetailed] = CRM_LEAD_SOURCE_BID_ENQUIRY;
+  Object.assign(
+    fields,
+    interestFields(enquiry.artist),
+    consentFields({ optIn: enquiry.marketingOptIn, at: enquiry.createdAt }),
+    noticeConfirmedFields(),
+  );
   fields[CRM_FIELD.enquiryIntent] = ENQUIRY_INTENT_LABEL[enquiry.intent] ?? ENQUIRY_INTENT_GENERAL;
   fields[CRM_FIELD.enquiryReference] = enquiry.reference;
   if (enquiry.departmentSlug) fields[CRM_FIELD.enquiryDepartment] = enquiry.departmentSlug;
   if (enquiry.phone) fields.Phone = enquiry.phone;
-  fields[CRM_FIELD.emailOptOut] = !enquiry.marketingOptIn;
-  return { kind: "person_upsert", subjectId, email: enquiry.email, fields };
-}
-
-function leadSourceDetailed(source: string, channel: "bid" | "shop" | "identity"): string {
-  return `${channel}:${source}`.slice(0, 120);
+  return {
+    kind: "person_upsert",
+    subjectId,
+    email: enquiry.email,
+    fields,
+    createOnlyFields: newLeadFields(leadStatusNew),
+  };
 }
 
 function personBaseFields(
   email: string,
   name: string | undefined,
   channel: "bid" | "shop" | "identity",
-  source: string,
+  lead: { detailedSource: string; enquiryType: CrmEnquiryType },
 ): Record<string, CrmFieldValue> {
   const { firstName, lastName } = splitDisplayName(name ?? "", email);
   const fields: Record<string, CrmFieldValue> = {
     Email: email,
     Last_Name: lastName,
-    [CRM_FIELD.leadSource]: CRM_LEAD_SOURCE_PLATFORM,
-    [CRM_FIELD.leadSourceDetailed]: leadSourceDetailed(source, channel),
+    ...websiteLeadFields(lead),
   };
   if (firstName) fields.First_Name = firstName;
   if (channel === "bid") {
@@ -202,13 +243,23 @@ export function mapDomainEventToCrmIntent(
         source: string;
         phone?: string | null;
       };
+      // A sign-up records no marketing consent, so none is sent: the lead is never opted in.
       const fields = withAttribution(
-        personBaseFields(p.email, p.name, "identity", p.source),
+        personBaseFields(p.email, p.name, "identity", {
+          detailedSource: CRM_LEAD_SOURCE_SIGN_UP,
+          enquiryType: "General",
+        }),
         ctx.attribution,
       );
       fields[CRM_FIELD.subjectExternalId] = p.userId;
       if (p.phone) fields.Phone = p.phone;
-      return { kind: "person_upsert", subjectId: p.userId, email: p.email, fields };
+      return {
+        kind: "person_upsert",
+        subjectId: p.userId,
+        email: p.email,
+        fields,
+        createOnlyFields: newLeadFields(ctx.leadStatusNew),
+      };
     }
     case "user.email_verified": {
       const p = payload as { userId: string; email: string };
@@ -279,11 +330,12 @@ export function mapDomainEventToCrmIntent(
       const dealConfig = requireDealConfig(ctx, ctx.dealStageLotWon);
       if (!dealConfig.ok) return { kind: "skip", reason: dealConfig.reason };
       return {
-        kind: "convert_lead_on_win",
-        subjectId: p.userId,
-        dealEntityId: `lot-won:${p.lotId}`,
+        kind: "deal_upsert",
+        dealEntityId: lotWonDealEntityId(p.lotId),
         dealKey,
-        dealFields: {
+        subjectId: p.userId,
+        purchase: { product: "LAX Bid", paid: false },
+        fields: {
           Deal_Name: dealNameFor(resolved.dealNaming, "Acquisition", new Date(p.endedAt), p.lotId),
           Amount: p.amountCents / 100,
           Stage: dealConfig.stage,
@@ -295,13 +347,15 @@ export function mapDomainEventToCrmIntent(
     }
     case "payment.captured": {
       if (payload === null) return { kind: "skip", reason: "invalid_payload" };
-      const p = payload as { lotId: string };
+      const p = payload as { lotId: string; amountCents: number; capturedAt: string };
       const dealConfig = requireDealConfig(ctx, ctx.dealStagePaymentCaptured);
       if (!dealConfig.ok) return { kind: "skip", reason: dealConfig.reason };
       return {
-        kind: "deal_stage",
-        dealEntityId: `lot-won:${p.lotId}`,
+        kind: "purchase_paid",
+        dealEntityId: lotWonDealEntityId(p.lotId),
         stage: dealConfig.stage,
+        amount: p.amountCents / 100,
+        paidAt: p.capturedAt,
       };
     }
     case "payment.refunded": {
@@ -312,7 +366,7 @@ export function mapDomainEventToCrmIntent(
       if (!dealConfig.ok) return { kind: "skip", reason: dealConfig.reason };
       return {
         kind: "deal_stage",
-        dealEntityId: `lot-won:${lotId}`,
+        dealEntityId: lotWonDealEntityId(lotId),
         stage: dealConfig.stage,
       };
     }
@@ -371,20 +425,38 @@ export function mapDomainEventToCrmIntent(
         status: keyof typeof GUEST_LEAD_STATUS_LABEL;
         source: string;
         marketingConsent: boolean;
+        marketingConsentAt: string | null;
+        marketingConsentVersion: string | null;
       };
       // The detailed source says which kind of guest lead it is; the subject keys it until a
       // LAX account claims it.
       const fields = withAttribution(
-        personBaseFields(p.email, p.name ?? undefined, "shop", `guest_checkout_${p.status}`),
+        personBaseFields(p.email, p.name ?? undefined, "shop", {
+          detailedSource: `${CRM_LEAD_SOURCE_SHOP_GUEST} ${p.source}: ${GUEST_LEAD_STATUS_LABEL[p.status]}`,
+          enquiryType: "Prints",
+        }),
         ctx.attribution,
       );
       fields[CRM_FIELD.subjectExternalId] = p.leadSubjectId;
-      fields[CRM_FIELD.leadSourceDetailed] = `${p.source}: ${GUEST_LEAD_STATUS_LABEL[p.status]}`;
-      fields[CRM_FIELD.emailOptOut] = !p.marketingConsent;
-      return { kind: "person_upsert", subjectId: p.leadSubjectId, email: p.email, fields };
+      Object.assign(
+        fields,
+        consentFields({
+          optIn: p.marketingConsent,
+          at: p.marketingConsentAt,
+          wordingVersion: p.marketingConsentVersion,
+        }),
+        noticeConfirmedFields(),
+      );
+      return {
+        kind: "person_upsert",
+        subjectId: p.leadSubjectId,
+        email: p.email,
+        fields,
+        createOnlyFields: newLeadFields(ctx.leadStatusNew),
+      };
     }
     case "marketing_enquiry.received":
-      return mapEnquiryReceived(resolved.enquiry, ctx.attribution);
+      return mapEnquiryReceived(resolved.enquiry, ctx.attribution, ctx.leadStatusNew);
     case "shop.guest_lead.claimed": {
       if (payload === null) return { kind: "skip", reason: "invalid_payload" };
       const p = payload as { leadSubjectId: string; subjectId: string };
@@ -410,9 +482,10 @@ export function mapDomainEventToCrmIntent(
       if (!dealConfig.ok) return { kind: "skip", reason: dealConfig.reason };
       return {
         kind: "deal_upsert",
-        dealEntityId: `shop-order:${p.orderId}`,
+        dealEntityId: shopOrderDealEntityId(p.orderId),
         dealKey,
         subjectId: p.identitySubjectId,
+        purchase: { product: "LAX Shop", paid: true },
         fields: {
           Deal_Name: dealNameFor(
             resolved.dealNaming,

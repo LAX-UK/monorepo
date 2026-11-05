@@ -9,6 +9,8 @@ export type CrmRecordLinkRow = {
   erasedAt: Date | null;
   deletionRequestedAt: Date | null;
   recyclePurgedAt: Date | null;
+  /** Deal fields waiting for a Contact; set only on a held deal (module `__held__`). */
+  heldPayload: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -19,6 +21,7 @@ export type UpsertCrmRecordLinkInput = {
   zohoModule: string;
   zohoRecordId: string;
   subjectId?: string | null;
+  heldPayload?: Record<string, unknown> | null;
   now?: Date;
 };
 
@@ -57,6 +60,14 @@ export interface ICrmRecordLinkRepository {
   markRecyclePurged(entityType: string, entityId: string, now?: Date): Promise<void>;
   isErased(entityType: string, entityId: string): Promise<boolean>;
   listActiveDealLinksBySubject(subjectId: string): Promise<CrmRecordLinkRow[]>;
+  /** Not-yet-erased links of the given entity types that belong to one subject. */
+  listActiveLinksBySubject(subjectId: string, entityTypes: string[]): Promise<CrmRecordLinkRow[]>;
+  /** Held deals not checked since `checkedBefore`, least recently checked first. */
+  listHeldDeals(limit: number, checkedBefore?: Date): Promise<CrmRecordLinkRow[]>;
+  /** Records that a held deal was checked, so the sweep moves on to the next one. */
+  touchLink(entityType: string, entityId: string, now?: Date): Promise<void>;
+  /** Erases every held deal of a subject and drops its stored fields. */
+  eraseHeldDealsBySubject(subjectId: string, now?: Date): Promise<number>;
   /**
    * The people-and-leads links, not yet erased, that point at one Zoho record. A person's account,
    * guest checkout and enquiries share one record when they share an email address.

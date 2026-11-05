@@ -139,6 +139,8 @@ export async function bulkArtworkVisibility(input: {
   action: AdminArtworkVisibilityAction;
   artworkIds: string[];
   idempotencyKey: string;
+  /** Publishing editions: include them in the release alert. Left out, they publish quietly. */
+  sendReleaseAlert?: boolean;
 }): Promise<AdminMutationResult<AdminArtworkBulkVisibilityResponse>> {
   if (!VISIBILITY.has(input.action) || !input.artworkIds.every((id) => UUID.test(id))) {
     return invalidInput;
@@ -146,7 +148,11 @@ export async function bulkArtworkVisibility(input: {
   return forwardAdminJsonMutation({
     bffPath: "artworks/visibility",
     method: "POST",
-    jsonBody: { action: input.action, artworkIds: input.artworkIds },
+    jsonBody: {
+      action: input.action,
+      artworkIds: input.artworkIds,
+      ...(input.action === "publish" ? { sendReleaseAlert: input.sendReleaseAlert === true } : {}),
+    },
     idempotencyKey: input.idempotencyKey,
   });
 }

@@ -35,7 +35,7 @@ The worker uses the same predicate in `findDealIdsByContact`. If COQL rejects `C
 1. CRM owner confirms pipeline name and stage labels in Zoho UI.
 2. Test worker env: `ZOHO_CRM_AUCTION_PIPELINE`, `ZOHO_CRM_DEAL_STAGE_LOT_WON`, `ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED`, `ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED`, `ZOHO_CRM_DEAL_STAGE_SHOP_PAID`.
 3. GitHub **test** environment: OAuth secrets (`ZOHO_CLIENT_*`, `ZOHO_REFRESH_TOKEN`); CRM **variables** per [zoho.md](../integrations/zoho.md). Rollout: `dry_run` → `canary` → `live` via `ZOHO_CRM_SYNC_MODE`.
-4. **Lead conversion:** set `ZOHO_CRM_LEAD_CONVERSION_ENABLED=true` when testing `bid.lot_won` (requires Contacts `LAX_Subject_ID` external).
+4. **Lead conversion:** the platform never converts leads. An admin converts a paying customer's lead in Zoho; the worker then puts the held deals on the new Contact (see [zoho.md](../integrations/zoho.md), "Website leads and admin conversion"). Contacts need `LAX_Subject_ID`. The org's Lead Status picklist needs the value in `ZOHO_CRM_LEAD_STATUS_NEW`.
 
 ### Sandbox vs production MCP (2026-09-29)
 
