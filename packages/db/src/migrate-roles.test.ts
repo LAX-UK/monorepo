@@ -19,6 +19,7 @@ import {
   SHOP_ARTWORK_REGISTER_READ_TABLES,
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
+  SHOP_SUBJECT_EXPORT_READ_TABLES,
   WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
   WORKER_ARTWORK_REGISTER_TABLES,
   WORKER_BID_ALERT_TABLES,
@@ -499,6 +500,13 @@ describe("migrate-roles invariants", () => {
       expect([...SHOP_ARTWORK_REGISTER_EVENT_TABLES]).not.toContain(table);
     }
     expect([...WORKER_DENY_TABLES]).not.toContain("artwork_register");
+  });
+
+  it("lets Shop read the shared mail tables its data export needs, and nothing more", () => {
+    expect([...SHOP_SUBJECT_EXPORT_READ_TABLES].sort()).toEqual([
+      "email_suppression",
+      "newsletter_signup_log",
+    ]);
   });
 
   it("lets Shop move an original's offer through the register", () => {
