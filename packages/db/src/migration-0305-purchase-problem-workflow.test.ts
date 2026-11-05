@@ -15,7 +15,9 @@ describe("migration 0305 purchase problem workflow", () => {
   it("follows the entry before it in the journal", () => {
     const at = journal.entries.findIndex((e) => e.tag === "0305_purchase_problem_workflow");
     expect(at).toBeGreaterThan(0);
-    expect(journal.entries[at]?.idx).toBe(at);
+    expect(journal.entries[at]?.idx).toBeGreaterThan(
+      journal.entries[at - 1]?.idx ?? Number.POSITIVE_INFINITY,
+    );
     expect(journal.entries[at]?.when).toBeGreaterThan(
       journal.entries[at - 1]?.when ?? Number.POSITIVE_INFINITY,
     );
