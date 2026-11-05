@@ -81,16 +81,42 @@ function setup(
       watermarks.set(m, to);
     }),
   };
+  const images = {
+    syncProduct: vi.fn(async () => ({
+      status: "checked" as const,
+      remote: 2,
+      reused: 1,
+      downloaded: 1,
+      rejected: 0,
+      failed: 0,
+      removed: 0,
+      ignored: 0,
+      changed: mode === "live",
+    })),
+  };
+  const imageCheck = { listImageCheckCandidates: vi.fn(async () => []) };
   const service = new ZohoArtworkSyncService({
     mode,
     reader,
+    images,
+    imageCheck: imageCheck as never,
     register: registerRepo as never,
     report: report as never,
     watermark: watermark as never,
     log: { info: vi.fn(), debug: vi.fn(), warn: vi.fn() } as never,
     now: () => NOW,
   });
-  return { service, registerRepo, reader, report, watermark, recorded, watermarks };
+  return {
+    service,
+    registerRepo,
+    reader,
+    report,
+    watermark,
+    recorded,
+    watermarks,
+    images,
+    imageCheck,
+  };
 }
 
 const everyProduct = () => [1, 2, 3, 4, 5, 6, 7].map(product);
@@ -241,5 +267,59 @@ describe("ZohoArtworkSyncService notices", () => {
       changes: { title: { from: "Old title", to: "Harbour at dusk" } },
       conflicts: [{ field: "stockCode" }],
     });
+  });
+});
+
+describe("ZohoArtworkSyncService pictures", () => {
+  it("checks the pictures of each original it creates, and reports the counts with the outcome", async () => {
+    const t = setup("live", [everyProduct()]);
+    await t.service.runNightly();
+    // Prints draw no offer on lax.art, so only the originals among the three are checked.
+    const created = t.recorded.filter((r) => r.outcome === "create");
+    const withPictures = created.filter((r) => "images" in r.detail);
+    expect(created).toHaveLength(3);
+    expect(withPictures).toHaveLength(2);
+    expect(t.images.syncProduct).toHaveBeenCalledTimes(2);
+    expect(t.images.syncProduct).toHaveBeenCalledWith(expect.any(String), "live");
+    for (const row of withPictures) {
+      expect(row.stockCode).toContain("-ORI-");
+      expect(row.detail).toMatchObject({ images: { remote: 2, downloaded: 1, changed: true } });
+    }
+  });
+
+  it("does not look at pictures for a Product that was skipped", async () => {
+    const t = setup("live", [[product(3), product(4)]]);
+    await t.service.runNightly();
+    expect(t.images.syncProduct).not.toHaveBeenCalled();
+  });
+
+  it("in dry run asks for the counts only and the register stays untouched", async () => {
+    const t = setup("dry_run", [everyProduct()]);
+    await t.service.runNightly();
+    expect(t.images.syncProduct).toHaveBeenCalledWith(expect.any(String), "dry_run");
+    expect(t.registerRepo.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps the Product's outcome when the picture check fails", async () => {
+    const t = setup("live", [[product(1)]]);
+    t.images.syncProduct.mockRejectedValueOnce(new Error("zoho down"));
+    await t.service.runNightly();
+    expect(t.recorded[0]).toMatchObject({ outcome: "create" });
+    expect(t.recorded[0]?.detail).not.toHaveProperty("images");
+  });
+
+  it("re-checks records whose pictures were not compared recently, one failure not stopping the rest", async () => {
+    const t = setup("live", []);
+    t.imageCheck.listImageCheckCandidates.mockResolvedValueOnce([
+      { zohoProductId: "a", sources: [] },
+      { zohoProductId: "b", sources: [] },
+    ] as never);
+    t.images.syncProduct.mockRejectedValueOnce(new Error("boom"));
+    await t.service.runNightly();
+    expect(t.imageCheck.listImageCheckCandidates).toHaveBeenCalledWith(
+      new Date(NOW.getTime() - 20 * 60 * 60 * 1000),
+      300,
+    );
+    expect(t.images.syncProduct).toHaveBeenCalledTimes(2);
   });
 });

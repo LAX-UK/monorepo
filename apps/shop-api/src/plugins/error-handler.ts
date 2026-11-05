@@ -8,6 +8,13 @@ function isValidationError(error: unknown): error is { validation: unknown } {
   return typeof error === "object" && error !== null && "validation" in error;
 }
 
+/** The request limit (`@fastify/rate-limit`) refuses with a 429 and sets `Retry-After` first. */
+function isRateLimitError(error: unknown): boolean {
+  return (
+    typeof error === "object" && error !== null && "statusCode" in error && error.statusCode === 429
+  );
+}
+
 function isBodyTooLargeError(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -61,6 +68,14 @@ export function registerErrorHandler(app: FastifyInstance): void {
       return reply.status(413).send({
         code: SHOP_API_ERROR_CODES.VALIDATION,
         message: "Request body is too large",
+        requestId: request.id,
+      });
+    }
+    if (isRateLimitError(error)) {
+      request.log.warn({ statusCode: 429 }, "shop_api_rate_limited");
+      return reply.status(429).send({
+        code: SHOP_API_ERROR_CODES.RATE_LIMITED,
+        message: "Too many requests. Please try again shortly.",
         requestId: request.id,
       });
     }

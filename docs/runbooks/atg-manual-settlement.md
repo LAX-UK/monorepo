@@ -62,7 +62,7 @@ Create one invoice per winner per ATG auction, in Xero, matching LAX's automated
 | Line per lot | `Auction settlement — <lot title> (lot <lot number>)`, hammer price |
 | Buyer's premium | One line per lot: the sale's flat rate × hammer (ATG sales have exactly one rate) |
 | Account / tax | The production `XERO_DEFAULT_REVENUE_ACCOUNT_CODE` and `XERO_DEFAULT_TAX_TYPE`, unless finance has defined different codes for premium |
-| Due date | Invoice date + `XERO_INVOICE_DUE_DAYS` |
+| Due date | Invoice date + 7 days, the LAX payment term (`INVOICE_PAYMENT_DUE_DAYS`) |
 
 Attach the Toolbox results export. Send the invoice from Xero so the bank details come from
 Xero, not from an editable email.

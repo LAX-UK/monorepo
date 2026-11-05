@@ -400,6 +400,10 @@ export const shopArtwork = pgTable(
   (table) => [
     uniqueIndex("shop_artwork_slug_uid").on(table.slug),
     uniqueIndex("shop_artwork_import_key_uid").on(table.importKey),
+    // One listing per register record; migration 0300.
+    uniqueIndex("shop_artwork_zoho_product_uid")
+      .on(table.zohoProductId)
+      .where(sql`${table.zohoProductId} IS NOT NULL`),
     index("shop_artwork_artist_idx").on(table.artistId),
     index("shop_artwork_created_id_idx").on(table.createdAt, table.id),
     index("shop_artwork_source_original_idx").on(table.sourceOriginalArtworkId),
@@ -796,6 +800,7 @@ export const shopOrder = pgTable(
     uniqueIndex("shop_order_invoice_number_uid").on(table.invoiceNumber),
     index("shop_order_subject_idx").on(table.identitySubjectId),
     index("shop_order_subject_created_idx").on(table.identitySubjectId, table.createdAt),
+    index("shop_order_created_id_idx").on(table.createdAt, table.id),
     index("shop_order_status_created_idx").on(table.status, table.createdAt),
     index("shop_order_guest_customer_idx")
       .on(table.guestCustomerId)
@@ -1795,65 +1800,6 @@ export const shopArtworkInterest = pgTable(
     check(
       "shop_artwork_interest_closed_at_ck",
       sql`(${table.status} = 'closed') = (${table.closedAt} IS NOT NULL)`,
-    ),
-  ],
-);
-
-/**
- * People who asked to hear about new editions in LAX Shop: one row per email address. A visitor
- * confirms by email first (`pending` until then); a signed-in shopper is confirmed straight away
- * because the account address is already verified. Stopping keeps the row, so a stopped address is
- * never mailed again until the person asks again.
- */
-export const shopReleaseAlertSubscription = pgTable(
-  "shop_release_alert_subscription",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    /** Lower-cased and trimmed. */
-    email: text("email").notNull(),
-    /** The LAX Account behind the address, when the person subscribed signed in. */
-    identitySubjectId: text("identity_subject_id"),
-    status: text("status")
-      .$type<"pending" | "confirmed" | "stopped">()
-      .default("pending")
-      .notNull(),
-    /** What the person was shown when they asked, and the page they asked from. */
-    consentText: text("consent_text").notNull(),
-    consentSource: text("consent_source").notNull(),
-    /** SHA-256 of the confirmation token in the latest confirmation email. */
-    confirmTokenHash: text("confirm_token_hash"),
-    confirmRequestedAt: timestamp("confirm_requested_at", { mode: "date", withTimezone: true }),
-    /**
-     * Carried by every alert email to stop alerts without signing in. It only stops this
-     * address's alerts, and each email must repeat it, so it is kept rather than hashed.
-     */
-    unsubscribeToken: text("unsubscribe_token").notNull(),
-    confirmedAt: timestamp("confirmed_at", { mode: "date", withTimezone: true }),
-    stoppedAt: timestamp("stopped_at", { mode: "date", withTimezone: true }),
-    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
-    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    uniqueIndex("shop_release_alert_subscription_email_uid").on(table.email),
-    uniqueIndex("shop_release_alert_subscription_unsubscribe_uid").on(table.unsubscribeToken),
-    uniqueIndex("shop_release_alert_subscription_confirm_uid")
-      .on(table.confirmTokenHash)
-      .where(sql`${table.confirmTokenHash} IS NOT NULL`),
-    index("shop_release_alert_subscription_status_idx").on(table.status),
-    index("shop_release_alert_subscription_subject_idx")
-      .on(table.identitySubjectId)
-      .where(sql`${table.identitySubjectId} IS NOT NULL`),
-    check(
-      "shop_release_alert_subscription_status_ck",
-      sql`${table.status} IN ('pending', 'confirmed', 'stopped')`,
-    ),
-    check(
-      "shop_release_alert_subscription_email_ck",
-      sql`${table.email} = lower(btrim(${table.email}))`,
-    ),
-    check(
-      "shop_release_alert_subscription_stopped_ck",
-      sql`(${table.status} = 'stopped') = (${table.stoppedAt} IS NOT NULL)`,
     ),
   ],
 );

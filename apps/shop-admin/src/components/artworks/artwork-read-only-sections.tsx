@@ -1,7 +1,7 @@
 import { ArtworkThumbnail } from "@/components/artworks/artwork-thumbnail";
 import type { ArtworkFormValues } from "@/lib/artwork-form";
 import type { AdminArtworkDetail } from "@auction/shop-contracts";
-import { EmptyState, FormSection, KeyValueList, StatusBadge } from "@auction/staff-ui";
+import { EmptyState, FormSection, KeyValueList, SourceMark, StatusBadge } from "@auction/staff-ui";
 
 /*
  * What staff without catalogue access see in place of the editor's inputs: the stored values as
@@ -17,6 +17,16 @@ export function ReadOnlyDetails({
   values: ArtworkFormValues;
   record: AdminArtworkDetail;
 }) {
+  // On an original made from a Zoho record, what Zoho owns says so, as it does for editors.
+  const fromZoho = (text: string) =>
+    record.zohoLink ? (
+      <span className="flex w-full flex-wrap items-center justify-between gap-x-3">
+        <span>{text}</span>
+        <SourceMark source="From Zoho" />
+      </span>
+    ) : (
+      text
+    );
   return (
     <FormSection
       title="Details"
@@ -24,12 +34,12 @@ export function ReadOnlyDetails({
     >
       <KeyValueList
         items={[
-          { label: "Title", value: values.title },
+          { label: "Title", value: fromZoho(values.title) },
           { label: "Web address", value: `/artworks/${record.slug}`, copyValue: record.slug },
-          { label: "Artist", value: values.artistName ?? record.artist.displayName },
-          { label: "Year", value: or(values.yearCreated) },
-          { label: "Medium", value: or(values.medium) },
-          { label: "Dimensions", value: or(values.dimensions) },
+          { label: "Artist", value: fromZoho(values.artistName ?? record.artist.displayName) },
+          { label: "Year", value: fromZoho(or(values.yearCreated)) },
+          { label: "Medium", value: fromZoho(or(values.medium)) },
+          { label: "Dimensions", value: fromZoho(or(values.dimensions)) },
           {
             label: "Description",
             value: <span className="whitespace-pre-line">{or(values.description)}</span>,

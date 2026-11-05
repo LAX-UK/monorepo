@@ -1,14 +1,8 @@
 import type { Context } from "hono";
 
-export type ErrorSeverity = "info" | "warn" | "error";
+import type { ClassifiedError } from "@auction/finance-runtime";
 
-export type ClassifiedError = {
-  message: string;
-  status: number;
-  code?: string | undefined;
-  severity: ErrorSeverity;
-  cause?: unknown;
-};
+export type { ClassifiedError, ErrorSeverity, IErrorReporter } from "@auction/finance-runtime";
 
 export interface IErrorClassifier {
   classify(error: unknown): ClassifiedError;
@@ -16,10 +10,6 @@ export interface IErrorClassifier {
 
 export interface IErrorLogger {
   log(classified: ClassifiedError): void;
-}
-
-export interface IErrorReporter {
-  report(classified: ClassifiedError): void;
 }
 
 export interface IErrorResponseBuilder {

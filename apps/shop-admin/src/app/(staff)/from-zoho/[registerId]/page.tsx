@@ -1,6 +1,7 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { FromZohoRecord } from "@/components/from-zoho/from-zoho-record.client";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { loadBidAdminUrl } from "@/server/application/load-bid-admin-url";
 import { getShopAdminContainer } from "@/server/container";
 import { zohoProductUrl } from "@/server/domain/zoho-register.vm";
 import type { AdminRegisterDetail } from "@auction/shop-contracts";
@@ -27,6 +28,7 @@ export default async function FromZohoRecordPage({
   return (
     <FromZohoRecord
       detail={result.data}
+      bidAdminUrl={await loadBidAdminUrl()}
       zohoUrl={zohoProductUrl(
         getShopAdminContainer().config.crmRecordUrlTemplate,
         result.data.zohoProductId,

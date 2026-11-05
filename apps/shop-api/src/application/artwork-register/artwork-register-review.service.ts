@@ -5,11 +5,11 @@ import {
 } from "@auction/artwork-register-contracts";
 import {
   ADMIN_REGISTER_PAGE_SIZE,
+  type AdminAuctionOfferAssessment,
   type AdminRegisterArtworkSummary,
   type AdminRegisterConflict,
   type AdminRegisterConflictList,
   type AdminRegisterDetail,
-  type AdminRegisterEvent,
   type AdminRegisterLastCheck,
   type AdminRegisterNewList,
   type AdminRegisterQueueQuery,
@@ -21,11 +21,14 @@ import type {
   ArtworkRegisterRecords,
   ConflictResolver,
   RegisterConflictRecord,
-  RegisterEventRecord,
   RegisterQueueFilter,
   SyncRunReader,
 } from "../ports/artwork-register-review.ports.js";
+import type { LaxArtListingReader } from "../ports/offer-on-lax-art.ports.js";
 import type { StaffNameReader } from "../ports/staff-name.reader.js";
+import { DRAFT_PROBE, laxArtOfferBlockers } from "./lax-art-offer-blockers.js";
+import { presentRegisterEvent, staffIdsOf } from "./register-event.presenter.js";
+import { presentWhereItIs } from "./where-it-is.presenter.js";
 
 /** How much history one artwork's page shows. */
 const HISTORY_LIMIT = 100;
@@ -36,6 +39,10 @@ export type ArtworkRegisterReviewDeps = {
   resolver: ConflictResolver;
   runs: SyncRunReader;
   staffNames: StaffNameReader;
+  /** The lax.art listing made from a record, for "Where it is". */
+  listings: LaxArtListingReader;
+  /** Whether the record can be offered at auction, and the draft lot LAX Bid already holds. */
+  auction: { assessRegister(registerId: string): Promise<AdminAuctionOfferAssessment> };
   now?: () => Date;
 };
 
@@ -73,6 +80,7 @@ function pageOf(query: AdminRegisterQueueQuery) {
 export function presentArtworkSummary(entry: ArtworkRegisterEntry): AdminRegisterArtworkSummary {
   return {
     registerId: entry.id,
+    zohoProductId: entry.zohoProductId,
     title: entry.title,
     artistName: entry.artist.name,
     artistCode: entry.artist.code,
@@ -95,26 +103,6 @@ export function presentConflict(conflict: RegisterConflictRecord): AdminRegister
     resolvedAt: iso(conflict.resolvedAt),
     zohoModifiedAt: conflict.zohoModifiedAt.toISOString(),
     detectedAt: conflict.detectedAt.toISOString(),
-  };
-}
-
-/** A staff member is not named on the page; the actor says only which kind of party acted. */
-function presentEvent(
-  event: RegisterEventRecord,
-  names: ReadonlyMap<string, string>,
-): AdminRegisterEvent {
-  const actor = event.actor.startsWith("staff:")
-    ? "staff"
-    : event.actor === "zoho"
-      ? "zoho"
-      : "system";
-  return {
-    id: event.id,
-    type: event.type,
-    actor,
-    actorName: actor === "staff" ? (names.get(event.actor.slice("staff:".length)) ?? null) : null,
-    payload: event.payload,
-    createdAt: event.createdAt.toISOString(),
   };
 }
 
@@ -180,13 +168,13 @@ export class ArtworkRegisterReviewService {
   async get(registerId: string): Promise<AdminRegisterDetail | null> {
     const entry = await this.deps.register.findById(registerId);
     if (!entry) return null;
-    const [conflicts, events] = await Promise.all([
+    const [conflicts, events, laxArt, auction] = await Promise.all([
       this.deps.queue.listConflictsFor(registerId),
       this.deps.register.listEvents(registerId, HISTORY_LIMIT),
+      this.deps.listings.findByZohoProductId(entry.zohoProductId),
+      this.deps.auction.assessRegister(registerId),
     ]);
-    const names = await this.deps.staffNames.namesFor(
-      events.filter((e) => e.actor.startsWith("staff:")).map((e) => e.actor.slice("staff:".length)),
-    );
+    const names = await this.deps.staffNames.namesFor(staffIdsOf(events));
     return {
       registerId: entry.id,
       zohoProductId: entry.zohoProductId,
@@ -201,12 +189,25 @@ export class ArtworkRegisterReviewService {
       imageCount: entry.imageRefs.length,
       catalogueStatus: entry.catalogueStatus,
       offerState: entry.offer.state,
+      whereItIs: presentWhereItIs({
+        entry,
+        events,
+        laxArt,
+        bidDraft: auction.draftLot,
+        now: (this.deps.now ?? (() => new Date()))(),
+      }),
+      laxArt,
+      // The listing made from this record is the place; it does not block opening it again.
+      offerBlockers: laxArt
+        ? []
+        : laxArtOfferBlockers(entry, DRAFT_PROBE).map(({ message, link }) => ({ message, link })),
+      auctionBlockers: auction.blockers,
       missing: catalogueGapsOf(entry),
       zohoModifiedAt: iso(entry.zohoModifiedAt),
       createdAt: entry.createdAt.toISOString(),
       conflicts: conflicts.map(presentConflict),
       // Newest first, as the page reads it.
-      events: events.map((event) => presentEvent(event, names)).reverse(),
+      events: events.map((event) => presentRegisterEvent(event, names)).reverse(),
     };
   }
 

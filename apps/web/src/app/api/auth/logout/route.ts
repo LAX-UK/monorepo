@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
   const id = readBidSessionId(request);
   const sessions = new BidBffSessionStore(getBffRedis());
   const session = id ? await sessions.read(id) : null;
-  await sessions.invalidate(id);
+  // Also revokes a login still in flight, so a late OIDC callback cannot revive the session.
+  await sessions.revoke(id);
   const response = NextResponse.json({
     redirectTo:
       session?.kind === "authenticated"

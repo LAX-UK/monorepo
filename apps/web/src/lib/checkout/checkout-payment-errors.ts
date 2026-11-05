@@ -44,6 +44,8 @@ export function manualReviewReasonCopy(
     | "aml_hold"
     | "source_of_funds_required"
     | "finance_release_required"
+    | "identity_verification_required"
+    | "organisation_under_review"
     | null
     | undefined,
 ): string {
@@ -60,6 +62,10 @@ export function manualReviewReasonCopy(
       return "Before settlement we need to verify the source of funds for this purchase. Our compliance team will contact you with secure instructions. Typical documents include recent bank statements, proof of sale proceeds, or inheritance/ gift documentation where applicable.";
     case "finance_release_required":
       return "Our team checks your invoice before it can be paid. Once they have, you can pay here; refresh this page after you hear from us.";
+    case "identity_verification_required":
+      return "Verify your identity before you pay. It takes a few minutes; your invoice stays as it is meanwhile, and you can pay here once you are verified.";
+    case "organisation_under_review":
+      return "We are still checking your organisation's details. You can pay here once we have; we will let you know.";
     default:
       return "Your payment is set up. Our team will open checkout or contact you with payment instructions.";
   }

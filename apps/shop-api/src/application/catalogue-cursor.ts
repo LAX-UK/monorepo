@@ -1,7 +1,22 @@
 export type CatalogueCursor = {
   createdAt: Date;
   id: string;
+  /**
+   * The position to the microsecond, as `YYYY-MM-DDTHH:MM:SS.ffffffZ`. A `Date` only holds
+   * milliseconds, so lists that page on the raw column carry this. Cursors issued before it existed
+   * decode with the millisecond value padded with zeros.
+   */
+  createdAtMicros?: string | undefined;
 };
+
+const CURSOR_TIMESTAMP = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,6}))?Z$/;
+
+/** Normalises a cursor timestamp to six fractional digits, or null if it is not a UTC ISO timestamp. */
+export function normaliseCursorMicros(value: string): string | null {
+  const match = CURSOR_TIMESTAMP.exec(value);
+  if (!match) return null;
+  return `${match[1]}.${(match[2] ?? "").padEnd(6, "0")}Z`;
+}
 
 export class InvalidCatalogueCursorError extends Error {
   constructor() {
@@ -17,7 +32,10 @@ export function truncateCatalogueCursorDate(date: Date): Date {
 export function encodeCatalogueCursor(cursor: CatalogueCursor): string {
   const createdAt = truncateCatalogueCursorDate(cursor.createdAt);
   return Buffer.from(
-    JSON.stringify({ createdAt: createdAt.toISOString(), id: cursor.id }),
+    JSON.stringify({
+      createdAt: cursor.createdAtMicros ?? createdAt.toISOString(),
+      id: cursor.id,
+    }),
   ).toString("base64url");
 }
 
@@ -69,7 +87,15 @@ export function decodeCatalogueCursor(value: string | undefined): CatalogueCurso
     if (Number.isNaN(createdAt.getTime())) {
       throw new InvalidCatalogueCursorError();
     }
-    return { createdAt: truncateCatalogueCursorDate(createdAt), id: parsed.id };
+    // Only a timestamp finer than a millisecond carries extra information; an older cursor decodes
+    // exactly as before and the list falls back to its millisecond value.
+    const micros = normaliseCursorMicros(parsed.createdAt);
+    const createdAtMicros = micros && !micros.endsWith("000Z") ? micros : undefined;
+    return {
+      createdAt: truncateCatalogueCursorDate(createdAt),
+      id: parsed.id,
+      ...(createdAtMicros ? { createdAtMicros } : {}),
+    };
   } catch (error) {
     if (error instanceof InvalidCatalogueCursorError) throw error;
     throw new InvalidCatalogueCursorError();

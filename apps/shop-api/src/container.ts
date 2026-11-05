@@ -14,6 +14,11 @@ import { ReopenArtListingService } from "./application/admin/reopen-art-listing.
 import { createAlertingPortalFavorites } from "./application/alerts/alerting-portal-favorites.js";
 import type { ArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
 import { ArtworkRegisterReviewService } from "./application/artwork-register/artwork-register-review.service.js";
+import {
+  ArtworkZohoLinkService,
+  withZohoLinks,
+} from "./application/artwork-register/artwork-zoho-link.service.js";
+import { OfferOnLaxArtService } from "./application/artwork-register/offer-on-lax-art.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
 import { createEditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
@@ -24,6 +29,7 @@ import {
   createReleaseAlertRateLimiter,
 } from "./application/enquiry-rate-limit.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
+import { createAccountEmailAlertHandlers } from "./application/handlers/account-email-alerts.handler.js";
 import { createCountArtworkFacetsHandler } from "./application/handlers/count-artwork-facets.handler.js";
 import { createEditionAlertHandlers } from "./application/handlers/edition-alerts.handler.js";
 import { createGetArtworkInterestHandler } from "./application/handlers/get-artwork-interest.handler.js";
@@ -71,6 +77,7 @@ import type {
   IdentitySubjectExportRouteDeps,
 } from "./identity-route-deps.js";
 import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
+import { ShopAlertSubscriberEraser } from "./infrastructure/alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtistCatalogueWriter } from "./infrastructure/drizzle-artist-catalogue.writer.js";
@@ -88,6 +95,11 @@ import { createDrizzleEditorialSearchReader } from "./infrastructure/drizzle-edi
 import { createDrizzleEditorialRepository } from "./infrastructure/drizzle-editorial.repository.js";
 import { createDrizzleEnquiryInboxRepository } from "./infrastructure/drizzle-enquiry-inbox.repository.js";
 import { createDrizzleHelpRepository } from "./infrastructure/drizzle-help.repository.js";
+import {
+  createDrizzleLaxArtArtistDirectory,
+  createDrizzleLaxArtDraftWriter,
+  createDrizzleLaxArtListingReader,
+} from "./infrastructure/drizzle-lax-art-offer.js";
 import { createDrizzleLeadReader } from "./infrastructure/drizzle-lead.reader.js";
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
 import { createDrizzleMerchandiseCatalogueWriter } from "./infrastructure/drizzle-merchandise-catalogue.writer.js";
@@ -331,8 +343,21 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     createPortalFavoritesHandlers(createDrizzlePortalFavoritesRepository(db)),
     shopAlerts.followAlerts,
   );
-  const adminRead = createDrizzleAdminReadRepository(db, env, { resolveMediaUrl });
   const artworkRegisterRepository = new DrizzleArtworkRegisterRepository(db);
+  const laxArtListings = createDrizzleLaxArtListingReader(db);
+  const auctionOffers = createHttpAuctionOfferGateway(env);
+  const baseAdminRead = createDrizzleAdminReadRepository(db, env, { resolveMediaUrl });
+  const adminRead = {
+    ...baseAdminRead,
+    artworks: withZohoLinks(baseAdminRead.artworks, {
+      links: new ArtworkZohoLinkService({
+        register: artworkRegisterRepository,
+        staffNames: createDrizzleStaffNameReader(db),
+        bidDrafts: auctionOffers,
+      }),
+      listings: laxArtListings,
+    }),
+  };
   const shopUow = createDrizzleShopUnitOfWork(db, env.DOMAIN_EVENT_PUBLISH_VALIDATE);
   const cancellationPolicy = loadShopCancellationPolicy(env);
   const createProductionTask = createCreateProductionTaskHandler({ uow: shopUow });
@@ -437,7 +462,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     originals: originalMoveReader,
     register: artworkRegister,
     history: artworkRegister,
-    auction: createHttpAuctionOfferGateway(env),
+    auction: auctionOffers,
     withdrawFromLaxArt: async ({ artworkId, actorSubjectId }) => {
       await artworkCatalogue.setVisibility({
         artworkId,
@@ -615,11 +640,23 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           resolver: artworkRegisterRepository,
           runs: new DrizzleZohoArtworkSyncStore(db),
           staffNames: createDrizzleStaffNameReader(db),
+          listings: laxArtListings,
+          auction: inventoryMoves,
+        }),
+        offerOnLaxArt: new OfferOnLaxArtService({
+          register: artworkRegisterRepository,
+          artists: createDrizzleLaxArtArtistDirectory(db),
+          listings: laxArtListings,
+          drafts: createDrizzleLaxArtDraftWriter(shopUow, {
+            registerFor: (session) => artworkRegisterRepository.withExecutor(session),
+            listings: laxArtListings,
+          }),
         }),
         releaseAlertSummary: shopAlerts.summary,
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {
             domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+            alerts: new ShopAlertSubscriberEraser(),
           }),
         ),
         productionTasks: createProductionTaskService({
@@ -727,6 +764,11 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         editionAlertRateLimiter,
         releaseAlerts,
         releaseAlertRateLimiter,
+        accountEmailAlerts: createAccountEmailAlertHandlers({
+          preferences: shopAlerts.preferences,
+          countWaitingEditions: async (identitySubjectId) =>
+            (await editionAlerts.listForSubject(identitySubjectId)).length,
+        }),
       },
       editorial,
     },

@@ -24,6 +24,7 @@ import type { NotificationFactory } from "../notification.factory.js";
 import { chargeIdFromPaymentIntent } from "../stripe/stripe-charge-id.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import { dispatchPaymentReceived } from "./dispatch-payment-received.js";
+import type { IUnappliedMoneyRecorder } from "./unapplied-money.recorder.js";
 
 const XERO_CAPTURE_VIAS: CapturePaymentInput["via"][] = [
   "stripe_checkout_webhook",
@@ -47,6 +48,8 @@ export class PaymentCaptureService implements IPaymentCaptureService, IPaymentCa
     private readonly marketingEvents: IMarketingEventService | null,
     private readonly xeroPaymentRecorder: IXeroPaymentRecorder | null = null,
     private readonly stripePayments: IStripePaymentGateway | null = null,
+    /** Closes a "paid, not recorded" finance task once this capture records that money. */
+    private readonly unappliedMoney: Pick<IUnappliedMoneyRecorder, "resolveApplied"> | null = null,
   ) {}
 
   async capture(input: CapturePaymentInput): Promise<CapturePaymentResult> {
@@ -133,6 +136,10 @@ export class PaymentCaptureService implements IPaymentCaptureService, IPaymentCa
       captureOpts,
     );
     if (!captured) return { captured: false, afterCommit: NOTHING_AFTER_COMMIT };
+    await this.unappliedMoney?.resolveApplied(tx, {
+      paymentIntentId: input.stripePaymentIntentId ?? p.stripePaymentIntentId ?? null,
+      chargeId: resolvedChargeId,
+    });
     await this.domainEventSink.withTx(tx).publish({
       aggregateType: "payment",
       aggregateId: input.paymentId,

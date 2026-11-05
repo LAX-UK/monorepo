@@ -129,8 +129,6 @@ export const SHOP_COMMERCE_TABLES = [
   /** Guest checkout: the guest and lead behind guest orders, and their emailed order links. */
   "shop_guest_customer",
   "shop_guest_order_link",
-  /** People who asked to hear about new editions: confirmed by email, stopped with one click. */
-  "shop_release_alert_subscription",
   /** The alert engine for LAX Shop and lax.art: subscribers, topic switches, matches, digests. */
   "shop_alert_subscriber",
   "shop_alert_topic",
@@ -282,10 +280,14 @@ export const WORKER_READ_TABLES = [
   "marketing_enquiry_attachment",
   /** The CRM projector reads an enquiry by id to build its Zoho lead (the event carries no personal data). */
   "marketing_enquiry",
+  /** ... and the artist a private sale enquiry names, for the lead's Interest: Artist. */
+  "private_sale_enquiry_detail",
   /** The follow-up projector reads the confirmed choice it opens work for. */
   "unsold_lot_choice",
   /** The payout statement names the private sale a payout line settles by its PS reference. */
   "private_sale_deal",
+  /** The payment expiry job closes each invoice's open Checkout sessions before cancelling it. */
+  "payment_checkout_session",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,
@@ -394,6 +396,14 @@ export const WORKER_DOMAIN_EVENT_DELIVERY_TABLES = ["domain_event_delivery"] as 
 /** Worker-local finance cron: expire stale pending/authorized payments. */
 export const WORKER_PAYMENT_MAINTENANCE_TABLES = ["payment"] as const;
 
+/**
+ * Raising the invoice when a lot is sold, with the same implementation as the API: the payment
+ * row, its fulfilment record ("awaiting payment") and, when the amount needs it, a pending
+ * source-of-funds case. Inserts only; the worker still never deletes any of them.
+ */
+export const WORKER_INVOICE_RAISE_INSERT_TABLES = ["payment", "source_of_funds"] as const;
+export const WORKER_INVOICE_RAISE_FULFILMENT_TABLES = ["lot_fulfilment"] as const;
+
 /** Worker-local finance cron: Xero OAuth, external refs, webhook replay, refund reconcile. */
 export const WORKER_FINANCE_INTEGRATION_TABLES = [
   "xero_connection",
@@ -444,6 +454,9 @@ export const WORKER_ANONYMISATION_DELETE_TABLES = [
   "notification_preference",
   "notification_account_mute",
   "user_ui_preference",
+  /** Email-only alert sign-ups: erased by account and by address (cascades to topics, matches, digests). */
+  "bid_alert_subscriber",
+  "visitor_sale_alert_subscriber",
 ] as const;
 
 /**
@@ -851,6 +864,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_PAYMENT_MAINTENANCE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_INVOICE_RAISE_INSERT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_INVOICE_RAISE_FULFILMENT_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_FINANCE_INTEGRATION_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

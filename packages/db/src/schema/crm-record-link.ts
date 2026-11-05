@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
+import { index, jsonb, pgTable, primaryKey, text, timestamp } from "drizzle-orm/pg-core";
 
 /** Maps platform entities to Zoho CRM record ids (worker-owned projection). */
 export const crmRecordLink = pgTable(
@@ -16,6 +16,8 @@ export const crmRecordLink = pgTable(
       withTimezone: true,
     }),
     recyclePurgedAt: timestamp("recycle_purged_at", { mode: "date", withTimezone: true }),
+    /** Deal fields of a paid purchase held until the buyer's lead is converted (module __held__). */
+    heldPayload: jsonb("held_payload").$type<Record<string, unknown>>(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },

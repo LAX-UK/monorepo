@@ -43,6 +43,8 @@ export interface IStripeCheckoutGateway {
   ): Promise<CreateCheckoutSessionResult>;
   retrievePaymentIntent(paymentIntentId: string): Promise<Stripe.PaymentIntent>;
   retrieveCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session>;
+  /** Closes one Checkout session; one already closed or completed is left as it is. */
+  expireCheckoutSession(sessionId: string): Promise<void>;
   findChargeIdForPayment(paymentId: string): Promise<string | null>;
   /** Expire open Checkout sessions and cancel a cancellable PaymentIntent for this payment. */
   revokeOpenCheckoutForPayment(
@@ -257,6 +259,16 @@ export class StripePaymentGateway implements IStripePaymentGateway {
       );
     }
     return executeWithStripeRetries(() => stripe.checkout.sessions.retrieve(sessionId));
+  }
+
+  async expireCheckoutSession(sessionId: string): Promise<void> {
+    const stripe = this.stripe;
+    if (!stripe) return;
+    const session = await executeWithStripeRetries(() =>
+      stripe.checkout.sessions.retrieve(sessionId),
+    );
+    if (session.status !== "open") return;
+    await executeWithStripeRetries(() => stripe.checkout.sessions.expire(sessionId));
   }
 
   async revokeOpenCheckoutForPayment(

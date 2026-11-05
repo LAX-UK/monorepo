@@ -10,10 +10,12 @@ import { createIssuerAccountIdentityGateway } from "./infrastructure/issuer-acco
 import { createIssuerDataExportGateway } from "./infrastructure/issuer-data-export-gateway";
 import { createIssuerSecurityFactsReader } from "./infrastructure/issuer-security-facts-reader";
 import { createMemorySessionStore } from "./infrastructure/memory-session-store";
+import { createProductAlertPreferencesGateway } from "./infrastructure/product-alert-preferences-gateway";
 import { createProductPortfolioGateway } from "./infrastructure/product-portfolio-gateway";
 import { createRedisSessionStore } from "./infrastructure/redis-session-store";
 import { createShopSellingGateway } from "./infrastructure/shop-selling-gateway";
 import type { AccountIdentityGateway } from "./ports/account-identity-gateway";
+import type { AlertPreferencesGateway } from "./ports/alert-preferences-gateway";
 import type { DataExportGateway } from "./ports/data-export-gateway";
 import type { PortfolioGateway } from "./ports/portfolio-gateway";
 import type { SecurityFactsReader } from "./ports/security-facts-reader";
@@ -30,6 +32,7 @@ export type LaxAccountContainer = {
   dataExports: DataExportGateway;
   portfolio: PortfolioGateway;
   selling: SellingGateway;
+  alerts: AlertPreferencesGateway;
   startAccountLogin: typeof startAccountLogin;
   completeAccountLogin: typeof completeAccountLogin;
 };
@@ -70,6 +73,13 @@ export function createLaxAccountContainer(config: LaxAccountConfig): LaxAccountC
       tokens,
     }),
     selling: createShopSellingGateway({ apiUrl: config.shopApiUrl, tokens }),
+    alerts: createProductAlertPreferencesGateway({
+      apiUrls: {
+        ...(config.bidApiUrl ? { bid: config.bidApiUrl } : {}),
+        ...(config.shopApiUrl ? { shop: config.shopApiUrl } : {}),
+      },
+      tokens,
+    }),
     startAccountLogin,
     completeAccountLogin,
   };

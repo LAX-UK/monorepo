@@ -1,4 +1,9 @@
 import { type Static, Type } from "@sinclair/typebox";
+import {
+  AdminLaxArtListingSchema,
+  AdminLaxArtOfferBlockerSchema,
+} from "./admin-offer-on-lax-art.js";
+import { AdminWhereItIsSchema } from "./admin-where-it-is.js";
 
 /** What a record can still lack before it is offered anywhere. */
 export const REGISTER_GAP_VALUES = ["image", "size", "medium"] as const;
@@ -9,6 +14,8 @@ export const ADMIN_REGISTER_PAGE_SIZE = 25;
 /** One artwork in the register, as the queues list it. */
 export const AdminRegisterArtworkSummarySchema = Type.Object({
   registerId: Type.String({ format: "uuid" }),
+  /** The Zoho Product, for "Edit in Zoho". */
+  zohoProductId: Type.String(),
   title: Type.String(),
   artistName: Type.String(),
   artistCode: Type.String(),
@@ -136,6 +143,14 @@ export const AdminRegisterDetailSchema = Type.Object({
   imageCount: Type.Integer({ minimum: 0 }),
   catalogueStatus: Type.Union([Type.String(), Type.Null()]),
   offerState: Type.String(),
+  /** Where it is, drawn the same on every page (see `deriveWhereItIs`). */
+  whereItIs: AdminWhereItIsSchema,
+  /** The lax.art listing made from this record; null when there is none. */
+  laxArt: Type.Union([AdminLaxArtListingSchema, Type.Null()]),
+  /** Why it cannot go on lax.art now, most important first; empty when it can. */
+  offerBlockers: Type.Array(AdminLaxArtOfferBlockerSchema),
+  /** Why it cannot be offered at auction now, most important first; empty when it can. */
+  auctionBlockers: Type.Array(AdminLaxArtOfferBlockerSchema),
   missing: Type.Array(GapSchema),
   zohoModifiedAt: Type.Union([Type.String({ format: "date-time" }), Type.Null()]),
   createdAt: Type.String({ format: "date-time" }),

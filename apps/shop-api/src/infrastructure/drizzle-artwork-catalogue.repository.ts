@@ -9,6 +9,7 @@ import {
   shopMediaAsset,
   shopParty,
 } from "@auction/db/schema";
+import { containsPattern } from "@auction/persistence/lib";
 import {
   CATALOGUE_PRICE_BANDS,
   CATALOGUE_SIZE_BANDS,
@@ -56,6 +57,7 @@ import {
   toArtworkCatalogueRow,
   toPublicArtworkSummaries,
 } from "./public-artwork-rows.js";
+import { loadPublicEdition } from "./public-edition-source.js";
 import { listedOnSalesChannelSql } from "./sales-channel-listing-sql.js";
 import { artworkAvailableNowSql } from "./shop-edition-availability.js";
 import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js";
@@ -219,7 +221,7 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
   }
   const textQuery = filter.q?.trim();
   if (textQuery && textQuery.length > 0) {
-    const pattern = `%${textQuery}%`;
+    const pattern = containsPattern(textQuery);
     conditions.push(
       or(
         ilike(shopArtwork.title, pattern),
@@ -438,16 +440,18 @@ export function createDrizzleArtworkCatalogueRepository(
         return null;
       }
       const { printPaper, printSize, sourceOriginalArtworkId, ...selected } = row;
-      const [editionCounts, images, sourceOriginalSlug] = await Promise.all([
+      const [editionCounts, images, sourceOriginalSlug, edition] = await Promise.all([
         editionCountsByArtworkId(db, [row.artworkId]),
         loadArtworkImages(db, row.artworkId, resolveMediaUrl),
         sourceOriginalArtworkId ? loadLinkableOriginalSlug(db, sourceOriginalArtworkId) : null,
+        loadPublicEdition(db, row.artworkId),
       ]);
       return toPublicArtworkDetail({
         ...toArtworkCatalogueRow(selected, editionCounts, resolveMediaUrl, images),
         printPaper,
         printSize,
         sourceOriginalSlug,
+        edition,
       });
     },
 

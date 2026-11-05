@@ -174,6 +174,16 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "amountRemainingCents",
     "currency",
   ]),
+  /** Money we could not apply to an invoice: operational codes and provider references only. */
+  "payment.unapplied_money_received": new Set([
+    "reason",
+    "dedupeKey",
+    "stripeChargeId",
+    "stripeCustomerId",
+    "stripeEventId",
+  ]),
+  /** How it was closed; a staff note is kept, as a refund's staff reason is. */
+  "payment.unapplied_money_resolved": new Set(["dedupeKey", "stripeChargeId", "via", "note"]),
   /** Several invoices of one account put into one checkout ("Pay several"); amounts and rail. */
   "payment_group.created": new Set(["total", "checkoutRail"]),
   "payment_group.paid": new Set(["total"]),
@@ -423,7 +433,16 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "marketing_enquiry.status_changed": new Set(["enquiryId", "intent", "from", "to", "closeReason"]),
   "marketing_enquiry.converted": new Set(["enquiryId", "intent", "from"]),
   /** Row counts and the reason staff typed; the address that was erased is never recorded. */
-  "marketing_enquiry.erased": new Set(["enquiries", "notes", "attachments", "held", "reason"]),
+  "marketing_enquiry.erased": new Set([
+    "enquiries",
+    "notes",
+    "attachments",
+    "held",
+    "alertSubscribers",
+    "visitorSaleAlerts",
+    "suppressionsKept",
+    "reason",
+  ]),
   /** Codes and dates; the note is typed by staff, and the address itself is never recorded. */
   "email.block_lifted": new Set([
     "userId",

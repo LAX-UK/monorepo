@@ -71,3 +71,33 @@ export async function refundBlockedCaptureResultAction(
     return toResult(res, "The refund did not go through.");
   });
 }
+
+/** Closes an unapplied-money task once finance has dealt with the money another way. */
+export async function markUnappliedMoneyHandledResultAction(
+  key: string,
+  input: { reason: string },
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("markUnappliedMoneyHandledResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(PAYMENT_MANUAL_REVIEW_WRITE_ACCESS);
+    if (denied) return denied;
+    const id = key.trim();
+    if (!id) return actionFailure("Missing item");
+    const parsed = adminRefundBuyerBodySchema.safeParse({ reason: input.reason });
+    if (!parsed.success) {
+      const message = `Enter a reason of at least ${ADMIN_REFUND_BUYER_REASON_MIN} characters.`;
+      return actionFailure(message, { reason: [message] }, 400);
+    }
+    const res = await authedServerFetch(
+      `/admin/payments/unapplied-money/${encodeURIComponent(id)}/mark-handled`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [IDEMPOTENCY_KEY_HEADER]: crypto.randomUUID(),
+        },
+        body: JSON.stringify(parsed.data),
+      },
+    );
+    return toResult(res, "It could not be marked handled.");
+  });
+}

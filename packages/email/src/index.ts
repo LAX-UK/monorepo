@@ -9,6 +9,7 @@ export {
   type BuyerDefaultCopy,
   type BuyerDefaultOutcomeKey,
   type PaymentReminderCopy,
+  type PaymentReminderHoldKey,
   type PaymentReminderStepKey,
 } from "./buyer-default-copy.js";
 export { renderEmail } from "./render.js";
