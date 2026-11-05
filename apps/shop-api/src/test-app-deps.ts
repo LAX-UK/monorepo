@@ -76,6 +76,7 @@ export function createMinimalShopApiTestDeps(
           data: { artworkId: "00000000-0000-4000-8000-000000000001", reopened: false },
         }),
       },
+      lookup: { findByZohoProductIds: async () => [] },
       machine: { clientId: undefined, clientSecret: undefined },
     },
     identitySubjectExport: {

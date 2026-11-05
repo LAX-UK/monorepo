@@ -1,4 +1,6 @@
 import type {
+  CrmBatchUpdate,
+  CrmBatchUpdateInput,
   CrmBatchUpsertInput,
   CrmConvertLeadInput,
   CrmConvertLeadResult,
@@ -17,8 +19,8 @@ import type {
 import { mapZohoErrorToCrmGatewayError } from "./map-zoho-to-crm-gateway-error.js";
 
 /** Maps Zoho-layer throws to {@link CrmGatewayError} for CRM handlers. */
-export class ZohoCrmGatewayCrmErrorAdapter implements CrmGateway, CrmCoqlQuery {
-  constructor(private readonly inner: CrmGateway & CrmCoqlQuery) {}
+export class ZohoCrmGatewayCrmErrorAdapter implements CrmGateway, CrmCoqlQuery, CrmBatchUpdate {
+  constructor(private readonly inner: CrmGateway & CrmCoqlQuery & CrmBatchUpdate) {}
 
   getMetrics(): CrmGatewayMetrics {
     return this.inner.getMetrics();
@@ -34,6 +36,10 @@ export class ZohoCrmGatewayCrmErrorAdapter implements CrmGateway, CrmCoqlQuery {
 
   async updateById(input: CrmUpdateByIdInput): Promise<CrmRecordResult> {
     return this.guard(() => this.inner.updateById(input));
+  }
+
+  async updateMany(input: CrmBatchUpdateInput): Promise<CrmRecordResult[]> {
+    return this.guard(() => this.inner.updateMany(input));
   }
 
   async findByEmail(input: CrmSearchByEmailInput): Promise<CrmSearchByEmailResult> {

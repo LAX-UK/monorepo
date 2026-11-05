@@ -77,6 +77,7 @@ import type {
 import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
 import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
+import { createDrizzleArtListingLookup } from "./infrastructure/drizzle-art-listing-lookup.js";
 import { createDrizzleArtistCatalogueWriter } from "./infrastructure/drizzle-artist-catalogue.writer.js";
 import { createDrizzleArtistDirectoryRepository } from "./infrastructure/drizzle-artist-directory.repository.js";
 import { createDrizzleArtistSeoWriter } from "./infrastructure/drizzle-artist-seo.repository.js";
@@ -695,6 +696,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       },
       inventory: {
         reopen: reopenArtListing,
+        lookup: createDrizzleArtListingLookup(db),
         machine: {
           clientId: env.INVENTORY_MACHINE_CLIENT_ID,
           clientSecret: env.INVENTORY_MACHINE_CLIENT_SECRET,

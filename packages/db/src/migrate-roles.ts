@@ -209,6 +209,7 @@ export const SHOP_CRM_READ_TABLES = ["crm_record_link", "domain_event_delivery"]
 export const SHOP_ARTWORK_REGISTER_READ_TABLES = [
   "artwork_register",
   "zoho_artwork_sync_outcome",
+  "zoho_listing_sync_run",
 ] as const;
 export const SHOP_ARTWORK_REGISTER_CONFLICT_TABLES = ["artwork_register_conflict"] as const;
 export const SHOP_ARTWORK_REGISTER_EVENT_TABLES = ["artwork_register_event"] as const;
@@ -351,10 +352,14 @@ export const WORKER_ARTWORK_REGISTER_TABLES = [
   "artwork_register_conflict",
 ] as const;
 export const WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES = ["artwork_register_event"] as const;
-/** The Zoho artwork sync keeps its watermark and the result for each Product it reads. */
+/**
+ * The Zoho artwork sync keeps its watermark and the result for each Product it reads; the nightly
+ * LAX listing pass keeps its summary.
+ */
 export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
   "zoho_artwork_sync_state",
   "zoho_artwork_sync_outcome",
+  "zoho_listing_sync_run",
 ] as const;
 /**
  * The alert engine's Bid tables: the matching projector records matches and announcements, and the

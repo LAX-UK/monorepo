@@ -490,6 +490,7 @@ describe("migrate-roles invariants", () => {
     expect([...SHOP_ARTWORK_REGISTER_READ_TABLES].sort()).toEqual([
       "artwork_register",
       "zoho_artwork_sync_outcome",
+      "zoho_listing_sync_run",
     ]);
     expect([...SHOP_ARTWORK_REGISTER_CONFLICT_TABLES]).toEqual(["artwork_register_conflict"]);
     expect([...SHOP_ARTWORK_REGISTER_EVENT_TABLES]).toEqual(["artwork_register_event"]);
@@ -509,6 +510,7 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_ZOHO_ARTWORK_SYNC_TABLES].sort()).toEqual([
       "zoho_artwork_sync_outcome",
       "zoho_artwork_sync_state",
+      "zoho_listing_sync_run",
     ]);
     for (const table of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);

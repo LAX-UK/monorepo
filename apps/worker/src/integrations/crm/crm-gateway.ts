@@ -62,6 +62,12 @@ export type CrmBatchUpsertInput = {
   duplicateCheckFields: string[];
 };
 
+/** Updates to many records of one module in one request; each record carries its `id`. */
+export type CrmBatchUpdateInput = {
+  module: CrmModule;
+  records: ({ id: string } & Record<string, CrmFieldValue>)[];
+};
+
 export type CrmGatewayMetrics = {
   apiCreditsRemaining: number | null;
 };
@@ -76,6 +82,14 @@ export type CrmCoqlPage = {
 /** Narrow port for reading rows with a COQL select (separate from the write gateway). */
 export interface CrmCoqlQuery {
   queryCoql(selectQuery: string): Promise<CrmCoqlPage>;
+}
+
+/**
+ * Narrow port for updating many records in one request. Zoho answers per record, in the order
+ * sent, so one refused record never fails the others.
+ */
+export interface CrmBatchUpdate {
+  updateMany(input: CrmBatchUpdateInput): Promise<CrmRecordResult[]>;
 }
 
 /** Narrow port for outbound Zoho CRM writes (real adapter + fake for tests). */

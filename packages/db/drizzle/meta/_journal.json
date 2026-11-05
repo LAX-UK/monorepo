@@ -2115,6 +2115,13 @@
       "when": 1801641600000,
       "tag": "0302_lax_art_draft_from_register",
       "breakpoints": true
+    },
+    {
+      "idx": 303,
+      "version": "7",
+      "when": 1801728000000,
+      "tag": "0303_zoho_listing_sync_run",
+      "breakpoints": true
     }
   ]
 }
