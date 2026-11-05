@@ -39,6 +39,10 @@ import {
 } from "../services/payment/payment-tier.policy.js";
 import { PlatformFeePolicy } from "../services/payment/platform-fee.policy.js";
 import { StripeCheckoutService } from "../services/payment/stripe-checkout.service.js";
+import {
+  type IUnappliedMoneyHandling,
+  UnappliedMoneyHandlingService,
+} from "../services/payment/unapplied-money-handling.service.js";
 import { UnappliedMoneyRecorder } from "../services/payment/unapplied-money.recorder.js";
 import { StripePaymentWebhookService } from "../services/stripe-payment-webhook.service.js";
 import { UnappliedMoneyRefundHandler } from "../services/stripe-webhook/unapplied-money-refund.handler.js";
@@ -80,6 +84,8 @@ export type ContainerPaymentsServices = {
   paymentMaintenanceService: IPaymentMaintenanceService;
   /** Expires unpaid invoices only once Stripe confirms no money can still reach them. */
   stalePaymentMaintenance: IStalePaymentMaintenance;
+  /** Finance closing an unapplied-money task by hand. */
+  unappliedMoneyHandling: IUnappliedMoneyHandling;
   lotInvoiceInitiationService: LotInvoiceInitiationService;
   stripePaymentWebhookService: StripePaymentWebhookService | null;
   xeroOAuthService: XeroOAuthService | null;
@@ -418,6 +424,11 @@ export function createPaymentsServices(
     paymentAdminService: paymentService,
     paymentMaintenanceService: paymentService,
     stalePaymentMaintenance,
+    unappliedMoneyHandling: new UnappliedMoneyHandlingService({
+      reader: unappliedMoneyReader,
+      recorder: unappliedMoney,
+      transactionRunner: platform.transactionRunner,
+    }),
     lotInvoiceInitiationService,
     stripePaymentWebhookService,
     xeroOAuthService,

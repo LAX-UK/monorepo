@@ -116,6 +116,9 @@ function stampActions(
     case "payment_capture_blocked":
       if (can(PAYMENT_WRITE_ACCESS)) actions.push("reinstate_payment", "refund");
       break;
+    case "payment_money_unapplied":
+      if (can(PAYMENT_WRITE_ACCESS)) actions.push("mark_handled");
+      break;
     case "aml_screening":
       break;
     case "sof_case":

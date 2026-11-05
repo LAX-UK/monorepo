@@ -44,6 +44,7 @@ export const adminWorkItemActionSchema = z.enum([
   "capture",
   "refund",
   "reinstate_payment",
+  "mark_handled",
   "approve_registration",
   "reject_registration",
   "confirm_telephone",
