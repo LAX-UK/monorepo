@@ -25,7 +25,9 @@ import type {
   CategorySummaryReadModel,
 } from "../application/read-models/catalogue.read-model.js";
 
-export function presentArtworkSummary(model: ArtworkSummaryReadModel): PublicArtworkSummary {
+type SummaryWithoutCardLine = Omit<PublicArtworkSummary, "editionCardLine">;
+
+function presentArtworkBase(model: ArtworkSummaryReadModel): SummaryWithoutCardLine {
   return {
     slug: model.slug,
     title: model.title,
@@ -52,9 +54,13 @@ export function presentArtworkSummary(model: ArtworkSummaryReadModel): PublicArt
   };
 }
 
+export function presentArtworkSummary(model: ArtworkSummaryReadModel): PublicArtworkSummary {
+  return { ...presentArtworkBase(model), editionCardLine: model.editionCardLine ?? null };
+}
+
 export function presentArtworkDetail(model: ArtworkDetailReadModel): PublicArtworkDetail {
   return {
-    ...presentArtworkSummary(model),
+    ...presentArtworkBase(model),
     description: model.description,
     images: model.images.map((image) => ({ ...image })),
     heightCm: model.heightCm,

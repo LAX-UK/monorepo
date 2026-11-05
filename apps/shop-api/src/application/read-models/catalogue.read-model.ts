@@ -68,6 +68,8 @@ export type ArtworkSummaryReadModel = {
   updatedAt: string;
   /** When the work was first listed. */
   listedAt: string;
+  /** The shop-domain card line of an edition run with confirmed facts; otherwise null. */
+  editionCardLine?: string | null;
 };
 
 export type ArtworkDetailReadModel = ArtworkSummaryReadModel & {

@@ -79,6 +79,12 @@ export const PublicArtworkSummarySchema = Type.Object(
      * storefronts parse responses from an older shop-api.
      */
     listedAt: Type.Optional(Type.String({ format: "date-time" })),
+    /**
+     * The one line a shop card shows about an edition run, e.g. "Limited edition of 25 · Hand-signed",
+     * written by shop-domain from the confirmed facts. Null for originals and while no facts are
+     * confirmed. Never a remaining count. Optional so storefronts parse an older shop-api.
+     */
+    editionCardLine: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
   },
   { additionalProperties: false },
 );
