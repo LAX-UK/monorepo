@@ -143,7 +143,7 @@ describe("email sign-up through Better Auth", () => {
     const credentials = {
       name: "Sarah",
       email: "sarah@example.com",
-      password: "correct-horse-battery-staple-32",
+      password: "correct-horse-battery-staple-32", // gitleaks:allow synthetic fixture password
     };
     await auth.api.signUpEmail({
       body: { ...credentials, legalAcceptance: { product: "account" } },
