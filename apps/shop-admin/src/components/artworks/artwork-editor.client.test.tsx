@@ -910,6 +910,32 @@ describe("a lax.art original made from a Zoho record", () => {
     ).toBeInTheDocument();
   });
 
+  it("marks what Zoho owns for a view-only person too", () => {
+    renderEditor({
+      detail: linked,
+      permissions: {
+        write: false,
+        setPrice: false,
+        correctFacts: false,
+        approveHorsCommerce: false,
+      },
+    });
+    expect(screen.getAllByText("From Zoho")).toHaveLength(5);
+  });
+
+  it("shows no Zoho marks in the view-only details of an unlinked original", () => {
+    renderEditor({
+      detail: { ...linked, zohoLink: null },
+      permissions: {
+        write: false,
+        setPrice: false,
+        correctFacts: false,
+        approveHorsCommerce: false,
+      },
+    });
+    expect(screen.queryByText("From Zoho")).toBeNull();
+  });
+
   it("leaves an unlinked original exactly as it was", () => {
     renderEditor({ detail: { ...linked, zohoLink: null } });
     expect(screen.getByLabelText("Title")).toBeInTheDocument();

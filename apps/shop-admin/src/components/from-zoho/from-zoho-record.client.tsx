@@ -42,10 +42,6 @@ const NextLink: StaffLinkComponent = Link;
 const imagesLine = (count: number) =>
   count === 0 ? "None yet" : `${count} ${count === 1 ? "image" : "images"}`;
 
-/** The moves that put the artwork somewhere, newest first, for "Recent moves". */
-const MOVE_EVENT_TYPES = new Set(["offer_moved", "lax_art_draft_created", "move_confirmed"]);
-const RECENT_MOVES = 3;
-
 async function copy(text: string, what: string) {
   try {
     await navigator.clipboard.writeText(text);
@@ -74,9 +70,6 @@ export function FromZohoRecord({
   const decided = detail.conflicts.filter((conflict) => conflict.status === "resolved");
   const missing = missingSummary(detail.missing);
   const timeline = buildRegisterTimeline(detail.events);
-  const recentMoves = buildRegisterTimeline(
-    detail.events.filter((event) => MOVE_EVENT_TYPES.has(event.type)),
-  ).slice(0, RECENT_MOVES);
 
   const canOffer = useCanOfferOnLaxArt();
   const offerOnLaxArt = useOfferOnLaxArt({ registerId: detail.registerId, title: detail.title });
@@ -207,7 +200,6 @@ export function FromZohoRecord({
               </>
             ) : undefined
           }
-          {...(recentMoves.length > 0 ? { moves: { events: recentMoves } } : {})}
         />
 
         <Section title="Catalogue" description="Edited in Zoho and kept up to date here.">
