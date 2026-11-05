@@ -16,7 +16,8 @@ test.describe("marketing header auth @journey", () => {
   test("header shows authenticated state after client navigation to search", async ({ page }) => {
     test.skip(!e2eEnabled, e2eSkipReason);
 
-    await buyerLogin(page);
+    // This test does not sign out, so it shares the prepared session instead of signing in again.
+    await buyerSession(page);
     await page.goto("/");
     await expect(accountMenu(page)).toBeVisible({ timeout: 10_000 });
 

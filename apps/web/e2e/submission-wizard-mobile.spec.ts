@@ -56,8 +56,26 @@ test.describe("submission wizard mobile @journey", () => {
     });
     await expect(bottomNav).toHaveCount(0);
 
+    // A new submission starts empty, and each step is checked before the next opens. The form
+    // may still be hydrating when the first key is typed, so an entry counts once it has stuck.
+    const title = page.getByRole("textbox", { name: "Title", exact: true });
+    const year = page.getByRole("textbox", { name: "Year of work", exact: true });
+    await expect(async () => {
+      await title.fill("Harbour study");
+      await year.fill("2024");
+      await expect(title).toHaveValue("Harbour study");
+      await expect(year).toHaveValue("2024");
+    }).toPass({ timeout: 15_000 });
+    await page.getByRole("button", { name: /select categories/i }).click();
+    await page.getByRole("option").first().click();
+    await page.keyboard.press("Escape");
+
     await page.getByTestId("wizard-next").click();
     await expect(page.getByTestId("submission-wizard-step-details")).toBeVisible();
+
+    await page
+      .getByRole("textbox", { name: "Description", exact: true })
+      .fill("A small oil study, signed lower right, from a private collection.");
 
     const urlBefore = page.url();
     await page.getByTestId("wizard-next").click();
