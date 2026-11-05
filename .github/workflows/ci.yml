@@ -497,7 +497,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm turbo run test --affected --filter=@auction/shop-api --dry-run=json > /tmp/affected.json
-          if true; then # TEMP-PROOF
+          if jq -e '.tasks[] | select(.taskId == "@auction/shop-api#test")' /tmp/affected.json > /dev/null; then
             echo "run=true" >> "$GITHUB_OUTPUT"
           else
             echo "shop-api tests not affected; skipping shard ${{ matrix.shard }}/4."
