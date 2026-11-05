@@ -1,27 +1,29 @@
 import type { PublicArtworkDetail } from "@auction/shop-contracts";
 
 /**
- * A wall drawn to scale in centimetres: the artwork hung above a standard three-seat sofa, so a
- * shopper can judge its real size. Every number is in cm, and the drawing's viewBox uses the same
- * units, so nothing is resized for effect.
+ * The work drawn to scale beside a person 1.7 m tall, so a shopper can judge its real size. Every
+ * number is in cm, and the drawing's viewBox uses the same units, so nothing is resized for effect.
  */
 export type ArtworkScaleVm = {
   /** The whole wall, in cm. */
   scene: { width: number; height: number };
   /** Top-left corner and size, in cm from the top-left of the wall. */
   artwork: { x: number; y: number; width: number; height: number };
-  sofa: { x: number; y: number; width: number; height: number; seatHeight: number };
-  /** "50 × 40 cm, drawn to scale above a 200 cm sofa." */
+  /** The standing figure, in the same units, its feet on the floor. */
+  figure: { x: number; y: number; width: number; height: number };
+  /** "50 × 40 cm, drawn to scale beside a 1.7 m figure." */
   caption: string;
   /** Text equivalent of the drawing for screen readers. */
   description: string;
 };
 
-/** A typical three-seat sofa: 200 cm wide, back 85 cm high, seat 45 cm high. */
-export const SCALE_SOFA = { width: 200, height: 85, seatHeight: 45 } as const;
-/** Gallery hanging height: the centre of the work at 150 cm, and at least 20 cm above the sofa. */
+/** The figure the work is drawn beside: 1.7 m tall and about 50 cm across the shoulders. */
+export const SCALE_FIGURE = { height: 170, width: 50 } as const;
+/** Gallery hanging height: the centre of the work at 150 cm, and its foot at least 60 cm up. */
 const HANG_CENTRE_CM = 150;
-const CLEARANCE_ABOVE_SOFA_CM = 20;
+const MIN_FOOT_CM = 60;
+const GAP_CM = 40;
+const MARGIN_CM = 30;
 /** Larger than any edition on paper; a value beyond this is a catalogue error, not a size. */
 const MAX_PLAUSIBLE_CM = 1000;
 
@@ -40,26 +42,25 @@ export function presentArtworkScale(
   const { heightCm: height, widthCm: width } = artwork;
   if (!plausible(height) || !plausible(width)) return null;
 
-  const bottom = Math.max(SCALE_SOFA.height + CLEARANCE_ABOVE_SOFA_CM, HANG_CENTRE_CM - height / 2);
-  const sceneWidth = Math.max(SCALE_SOFA.width + 100, width + 60);
-  const sceneHeight = Math.max(240, bottom + height + 25);
+  const bottom = Math.max(MIN_FOOT_CM, HANG_CENTRE_CM - height / 2);
+  const sceneWidth = MARGIN_CM + SCALE_FIGURE.width + GAP_CM + width + MARGIN_CM;
+  const sceneHeight = Math.max(SCALE_FIGURE.height + 30, bottom + height + 25);
 
   return {
     scene: { width: sceneWidth, height: sceneHeight },
     artwork: {
-      x: (sceneWidth - width) / 2,
+      x: MARGIN_CM + SCALE_FIGURE.width + GAP_CM,
       y: sceneHeight - bottom - height,
       width,
       height,
     },
-    sofa: {
-      x: (sceneWidth - SCALE_SOFA.width) / 2,
-      y: sceneHeight - SCALE_SOFA.height,
-      width: SCALE_SOFA.width,
-      height: SCALE_SOFA.height,
-      seatHeight: SCALE_SOFA.seatHeight,
+    figure: {
+      x: MARGIN_CM,
+      y: sceneHeight - SCALE_FIGURE.height,
+      width: SCALE_FIGURE.width,
+      height: SCALE_FIGURE.height,
     },
-    caption: `${cm(height)} × ${cm(width)} cm, drawn to scale above a ${SCALE_SOFA.width} cm sofa.`,
-    description: `${artwork.title}, ${cm(height)} cm high and ${cm(width)} cm wide, drawn to scale on a wall above a sofa ${SCALE_SOFA.width} cm wide.`,
+    caption: `${cm(height)} × ${cm(width)} cm, drawn to scale beside a 1.7 m figure.`,
+    description: `${artwork.title}, ${cm(height)} cm high and ${cm(width)} cm wide, drawn to scale on a wall beside a figure 1.7 m tall.`,
   };
 }

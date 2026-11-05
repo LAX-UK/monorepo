@@ -173,6 +173,26 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     await db.select({ id: payment.id }).from(payment).limit(1);
   });
 
+  it("can raise an invoice: payment, fulfilment and source-of-funds rows (lot end path)", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
+    const db = createDb(WORKER_URL!);
+    const granted = await db.execute(sql`
+      select
+        has_table_privilege(current_user, 'payment', 'INSERT') as payment,
+        has_table_privilege(current_user, 'lot_fulfilment', 'INSERT') as fulfilment_insert,
+        has_table_privilege(current_user, 'lot_fulfilment', 'UPDATE') as fulfilment_update,
+        has_table_privilege(current_user, 'source_of_funds', 'INSERT') as source_of_funds,
+        has_table_privilege(current_user, 'payment', 'DELETE') as payment_delete
+    `);
+    expect(granted.rows[0]).toEqual({
+      payment: true,
+      fulfilment_insert: true,
+      fulfilment_update: true,
+      source_of_funds: true,
+      payment_delete: false,
+    });
+  });
+
   it("can read notification_outbox (lifecycle staging drain path)", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const db = createDb(WORKER_URL!);

@@ -53,6 +53,9 @@ describe.skipIf(!migrationUrl)("migration 0292 shop alert engine", { timeout: 30
   beforeEach(async () => {
     await client.query("rollback");
     await client.query("begin");
+    // 0309 drops the old release list on a fully migrated database; bring it back, inside this
+    // rolled-back transaction, so 0292 can be exercised against the shape it was written for.
+    await client.query(read("0309_rollback.sql"));
   });
 
   it("moves every release subscriber with its id, state and consent record", async () => {

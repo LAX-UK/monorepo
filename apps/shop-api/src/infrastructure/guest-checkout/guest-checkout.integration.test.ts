@@ -265,7 +265,6 @@ describe.skipIf(!hasShopIntegrationDb)("guest checkout persistence", () => {
       enquiries: 1,
       links: 1,
       alertSubscribers: 2,
-      releaseAlerts: 0,
       suppressionsKept: 0,
     });
     expect(

@@ -3,7 +3,7 @@ import type { GuestErasureSnapshot, GuestErasureStore } from "../ports/guest-era
 import { GuestErasureService } from "./guest-erasure.service.js";
 
 const GUEST_ID = "2f0b6d7e-0000-4000-8000-000000000001";
-const ALERTS = { alertSubscribers: 2, releaseAlerts: 1, suppressionsKept: 0 };
+const ALERTS = { alertSubscribers: 2, suppressionsKept: 0 };
 const NOW = new Date("2026-10-30T12:00:00Z");
 
 function storeWith(guest: GuestErasureSnapshot | null) {

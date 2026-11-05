@@ -25,6 +25,8 @@ export type EditionCardVm = {
   imageAlt: string;
   /** "Giclée print · Edition of 24"; null when neither is catalogued. */
   factsLine: string | null;
+  /** The shop-domain line about the run ("Limited edition of 25 · Hand-signed"); null when absent. */
+  editionLine: string | null;
   /** "£340" incl. VAT; null when sold out (the status takes its place) or not yet priced. */
   priceLabel: string | null;
   status: EditionCardStatus | null;
@@ -70,6 +72,7 @@ export function toEditionCardVm(item: PublicArtworkSummary, now: Date): EditionC
     imageUrl: item.imageUrl,
     imageAlt: `${item.title} by ${item.artistName}`,
     factsLine: factsLine(item),
+    editionLine: item.editionCardLine?.trim() || null,
     priceLabel:
       status?.kind === "sold_out" || item.printPricePence === null
         ? null

@@ -51,19 +51,18 @@ describe("guest erasure store: alert subscriptions", () => {
   it("erases the guest's alert subscriptions by their email, inside the transaction, and counts them", async () => {
     const erase = vi.fn(async () => ({
       alertSubscribers: 2,
-      releaseAlerts: 1,
       suppressionsKept: 1,
     }));
     const counts = await work({ erase });
     expect(erase).toHaveBeenCalledTimes(1);
     expect(erase).toHaveBeenCalledWith(expect.anything(), { emails: ["ada@example.com"] });
-    expect(counts).toMatchObject({ alertSubscribers: 2, releaseAlerts: 1, suppressionsKept: 1 });
+    expect(counts).toMatchObject({ alertSubscribers: 2, suppressionsKept: 1 });
   });
 
   it("reports zero when a repeat finds nothing left", async () => {
     const counts = await work({
-      erase: async () => ({ alertSubscribers: 0, releaseAlerts: 0, suppressionsKept: 0 }),
+      erase: async () => ({ alertSubscribers: 0, suppressionsKept: 0 }),
     });
-    expect(counts).toMatchObject({ alertSubscribers: 0, releaseAlerts: 0, suppressionsKept: 0 });
+    expect(counts).toMatchObject({ alertSubscribers: 0, suppressionsKept: 0 });
   });
 });

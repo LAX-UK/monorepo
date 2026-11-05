@@ -5,6 +5,7 @@ import type {
   BuyerDefaultOutcomeKey,
   PaymentReminderStepKey,
 } from "@auction/email";
+import { paymentDueNotification } from "@auction/finance-runtime";
 import type { AccessRequestRow, CreateNotificationRow } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import type { Lot } from "@auction/types";
@@ -191,23 +192,7 @@ export class NotificationFactory implements INotificationFactory {
     buyerId: string,
     input: { paymentId: string; amount: string; checkoutUrl: string | null; dueDate?: string },
   ): CreateNotificationRow {
-    const dueSuffix = input.dueDate ? ` Payment due by ${input.dueDate}.` : "";
-    return {
-      userId: buyerId,
-      type: "payment_due",
-      title: `Payment due — ${lot.title}`,
-      message: `Complete payment of ${formatMoneyMajor(input.amount) ?? input.amount} for this lot.${dueSuffix}`,
-      lotId: lot.id,
-      legalEntityId: lot.buyerLegalEntityId ?? null,
-      meta: {
-        paymentId: input.paymentId,
-        amount: input.amount,
-        invoiceUrl: input.checkoutUrl,
-        invoiceNumber: `PAY-${input.paymentId.slice(0, 8).toUpperCase()}`,
-        lotTitle: lot.title,
-        ...(input.dueDate ? { dueDate: input.dueDate } : {}),
-      },
-    };
+    return paymentDueNotification(lot, buyerId, input);
   }
 
   createPaymentReminder(input: {

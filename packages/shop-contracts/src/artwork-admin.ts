@@ -1,4 +1,7 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { AdminRegisterEventSchema } from "./admin-artwork-register.js";
+import { AdminWhereItIsSchema } from "./admin-where-it-is.js";
+import { CATALOGUE_SLUG_MAX_LENGTH, CATALOGUE_SLUG_PATTERN } from "./catalogue-slug.js";
 import { createCursorListResponseSchema } from "./cursor-list.js";
 import {
   AdminArtworkRunSummarySchema,
@@ -15,9 +18,7 @@ import { SEO_DESCRIPTION_MAX_LENGTH, SEO_TITLE_MAX_LENGTH } from "./seo-fields.j
  * show only `available` or `sold_out`.
  */
 
-/** Lower-case words joined by single hyphens, so every slug is a clean URL segment. */
-export const CATALOGUE_SLUG_PATTERN = "^[a-z0-9]+(?:-[a-z0-9]+)*$";
-export const CATALOGUE_SLUG_MAX_LENGTH = 120;
+export { CATALOGUE_SLUG_MAX_LENGTH, CATALOGUE_SLUG_PATTERN };
 
 export const ARTWORK_TITLE_MAX_LENGTH = 200;
 export const ARTWORK_MEDIUM_MAX_LENGTH = 200;
@@ -290,6 +291,9 @@ export const AdminArtworkPublishBlockerSchema = Type.Union([
   Type.Literal("archived"),
   Type.Literal("artist_archived"),
   Type.Literal("no_image"),
+  Type.Literal("no_zoho_image"),
+  Type.Literal("no_size"),
+  Type.Literal("no_medium"),
   Type.Literal("no_edition_price"),
   Type.Literal("edition_facts_incomplete"),
 ]);
@@ -354,6 +358,24 @@ export const AdminArtworkDetailSchema = Type.Object({
     byStatus: StatusCountsSchema,
     byAllocation: AllocationCountsSchema,
   }),
+  /**
+   * The Zoho record this original was made from. While it is set, Zoho owns the title, artist,
+   * medium, size, year and images. Absent from an older shop-api; null for an unlinked artwork.
+   */
+  zohoLink: Type.Optional(
+    Type.Union([
+      Type.Object({
+        registerId: Type.String({ format: "uuid" }),
+        zohoProductId: Type.String(),
+        stockCode: Type.String(),
+        zohoStatus: Type.Union([Type.String(), Type.Null()]),
+        whereItIs: AdminWhereItIsSchema,
+        /** The last few moves, newest first. */
+        recentMoves: Type.Array(AdminRegisterEventSchema),
+      }),
+      Type.Null(),
+    ]),
+  ),
   state: AdminArtworkStateSchema,
   publishBlockers: Type.Array(AdminArtworkPublishBlockerSchema),
   publishedAt: Type.Union([Type.String({ format: "date-time" }), Type.Null()]),

@@ -14,6 +14,8 @@ export type LaxResourceId = (typeof LAX_RESOURCE_IDS)[keyof typeof LAX_RESOURCE_
  * `lax.selling.read` and `lax.selling.write` are the scopes LAX Account exchanges for to act as
  * the person on their own Shop seller tools (sale limits requests, sales, payouts); Shop accepts
  * them on the seller routes only.
+ * `lax.alerts.read` and `lax.alerts.write` are the scopes LAX Account exchanges for to read and
+ * switch the person's own email alerts; each product accepts them on its alert routes only.
  */
 export type ProductScope =
   | "bid.read"
@@ -24,6 +26,8 @@ export type ProductScope =
   | "lax.portfolio.read"
   | "lax.selling.read"
   | "lax.selling.write"
+  | "lax.alerts.read"
+  | "lax.alerts.write"
   | "lax.staff.tools.read";
 
 export type LaxResourceMetadata = {
@@ -41,7 +45,14 @@ export const LAX_RESOURCES: Record<LaxResourceId, LaxResourceMetadata> = {
   [LAX_RESOURCE_IDS.LAX_BID_API]: {
     id: LAX_RESOURCE_IDS.LAX_BID_API,
     uri: "https://api.lax.bid",
-    allowedScopes: ["bid.read", "bid.write", "lax.portfolio.read", "lax.staff.tools.read"],
+    allowedScopes: [
+      "bid.read",
+      "bid.write",
+      "lax.portfolio.read",
+      "lax.alerts.read",
+      "lax.alerts.write",
+      "lax.staff.tools.read",
+    ],
   },
   [LAX_RESOURCE_IDS.LAX_WS]: {
     id: LAX_RESOURCE_IDS.LAX_WS,
@@ -58,6 +69,8 @@ export const LAX_RESOURCES: Record<LaxResourceId, LaxResourceMetadata> = {
       "lax.portfolio.read",
       "lax.selling.read",
       "lax.selling.write",
+      "lax.alerts.read",
+      "lax.alerts.write",
     ],
   },
 };

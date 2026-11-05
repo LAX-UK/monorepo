@@ -11,6 +11,7 @@ export const ACCOUNT_ROUTES = {
   profile: "/account/profile",
   security: "/account/security",
   deleteAccount: "/account/security/delete",
+  alerts: "/account/alerts",
   privacy: "/account/privacy",
   help: "/account/help",
 } as const;

@@ -2,7 +2,7 @@ import type { CrmRecordLinkRow, ICrmRecordLinkRepository } from "@auction/persis
 import { describe, expect, it, vi } from "vitest";
 import type { WorkerEnv } from "../../env.js";
 import { mapDomainEventToCrmIntent } from "./crm-event-mappers.js";
-import { CRM_FIELD, CRM_LEAD_SOURCE_BID_ENQUIRY } from "./crm-field-constants.js";
+import { CRM_FIELD, CRM_LEAD_SOURCE_BID_PRIVATE_SALE_ENQUIRY } from "./crm-field-constants.js";
 import type { CrmGateway } from "./crm-gateway.js";
 import type { CrmEnquiryRecord } from "./crm-readers.js";
 import { CrmSyncService } from "./crm-sync-service.js";
@@ -33,12 +33,15 @@ function enquiry(overrides: Partial<CrmEnquiryRecord> = {}): CrmEnquiryRecord {
     email: "ada@example.com",
     phone: "+447700900123",
     marketingOptIn: true,
+    createdAt: new Date("2026-11-03T09:30:00Z"),
+    artist: null,
     userId: null,
     ...overrides,
   };
 }
 
 const ctx = {
+  leadStatusNew: "New (Unassigned)",
   auctionPipeline: "",
   dealStageLotWon: "",
   dealStagePaymentCaptured: "",
@@ -59,7 +62,7 @@ describe("marketing_enquiry.received mapping", () => {
       First_Name: "Ada",
       Last_Name: "Lovelace",
       Phone: "+447700900123",
-      [CRM_FIELD.leadSourceDetailed]: CRM_LEAD_SOURCE_BID_ENQUIRY,
+      [CRM_FIELD.leadSourceDetailed]: CRM_LEAD_SOURCE_BID_PRIVATE_SALE_ENQUIRY,
       [CRM_FIELD.enquiryIntent]: "Sell privately",
       [CRM_FIELD.enquiryDepartment]: "modern-british",
       [CRM_FIELD.enquiryReference]: "E-1001",
@@ -123,6 +126,64 @@ describe("marketing_enquiry.received mapping", () => {
   });
 });
 
+describe("enquiry lead rules", () => {
+  const fieldsFor = (overrides: Partial<CrmEnquiryRecord>) => {
+    const mapped = mapDomainEventToCrmIntent(event, ctx, { enquiry: enquiry(overrides) });
+    if (mapped.kind !== "person_upsert") throw new Error("expected person_upsert");
+    return mapped;
+  };
+
+  it("starts a new lead as New (Unassigned) from the website, on creation only", () => {
+    const mapped = fieldsFor({});
+    expect(mapped.createOnlyFields).toEqual({
+      [CRM_FIELD.leadStatus]: "New (Unassigned)",
+      [CRM_FIELD.leadSource]: "Website",
+    });
+    expect(mapped.fields).not.toHaveProperty(CRM_FIELD.leadStatus);
+  });
+
+  it.each([
+    ["private_sale_buy", null, "Original"],
+    ["private_sale_sell", "modern-british", "Auction"],
+    ["general", null, "General"],
+    ["press", null, "General"],
+    ["buying", "prints", "Prints"],
+    ["general", "corporate", "Corporate"],
+  ])("maps intent %s / department %s to Enquiry Type %s", (intent, departmentSlug, expected) => {
+    expect(fieldsFor({ intent, departmentSlug }).fields[CRM_FIELD.enquiryType]).toBe(expected);
+  });
+
+  it("labels a general contact form enquiry separately from a private sale", () => {
+    expect(fieldsFor({ intent: "general" }).fields[CRM_FIELD.leadSourceDetailed]).toBe(
+      "LAX Bid enquiry",
+    );
+    expect(fieldsFor({ intent: "private_sale_buy" }).fields[CRM_FIELD.leadSourceDetailed]).toBe(
+      "LAX Bid private sale enquiry",
+    );
+  });
+
+  it("records consent with the day it was given when the sender opted in", () => {
+    expect(fieldsFor({ marketingOptIn: true }).fields).toMatchObject({
+      [CRM_FIELD.consentMarketingOptIn]: true,
+      [CRM_FIELD.consentTimestamp]: "2026-11-03",
+      [CRM_FIELD.consentSource]: "Website",
+      [CRM_FIELD.dataProcessingNoticeConfirmed]: true,
+    });
+  });
+
+  it("never defaults to opted in", () => {
+    const { fields } = fieldsFor({ marketingOptIn: false });
+    expect(fields[CRM_FIELD.consentMarketingOptIn]).toBe(false);
+    expect(fields).not.toHaveProperty(CRM_FIELD.consentTimestamp);
+    expect(fields).not.toHaveProperty(CRM_FIELD.consentSource);
+  });
+
+  it("carries the artist a private sale enquiry names", () => {
+    expect(fieldsFor({ artist: " Banksy " }).fields[CRM_FIELD.interestedArtist]).toBe("Banksy");
+    expect(fieldsFor({ artist: null }).fields).not.toHaveProperty(CRM_FIELD.interestedArtist);
+  });
+});
+
 function inMemoryLinkRepo() {
   const links = new Map<string, CrmRecordLinkRow>();
   const repo = {
@@ -140,6 +201,7 @@ function inMemoryLinkRepo() {
           erasedAt: null,
           deletionRequestedAt: null,
           recyclePurgedAt: null,
+          heldPayload: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         } as CrmRecordLinkRow);
@@ -167,7 +229,7 @@ function buildService(enquiryRecord: CrmEnquiryRecord | null) {
   const service = new CrmSyncService({
     gateway,
     linkRepo: repo,
-    env: { ZOHO_CRM_LEAD_CONVERSION_ENABLED: false } as WorkerEnv,
+    env: {} as WorkerEnv,
     mapperContext: ctx,
     paymentLotReader: { findLotIdForPayment: vi.fn() },
     attributionReader: { loadFirstTouchFields: vi.fn() },
@@ -204,7 +266,11 @@ describe("CrmSyncService marketing_enquiry.received (dry-run client)", () => {
     expect(links.size).toBe(1);
     const calls = vi.mocked(gateway.upsert).mock.calls;
     expect(calls).toHaveLength(2);
-    expect(calls[1]?.[0]).toEqual(calls[0]?.[0]);
+    // The repeat finds the lead it created: status and primary source are left to the admins.
+    const { Lead_Status, Lead_Source, ...firstFields } = calls[0]?.[0]?.fields ?? {};
+    expect(Lead_Status).toBe("New (Unassigned)");
+    expect(Lead_Source).toBe("Website");
+    expect(calls[1]?.[0]).toEqual({ ...calls[0]?.[0], fields: firstFields });
   });
 
   it("skips without calling the CRM when the enquiry is gone", async () => {

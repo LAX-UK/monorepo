@@ -1,8 +1,4 @@
-import {
-  shopAlertSubscriber,
-  shopAlertTopic,
-  shopReleaseAlertSubscription,
-} from "@auction/db/schema";
+import { shopAlertSubscriber, shopAlertTopic } from "@auction/db/schema";
 import { inArray } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, describe, expect, it } from "vitest";
@@ -51,18 +47,11 @@ describe.skipIf(!hasShopIntegrationDb)("Shop alert subscriber erasure (integrati
         ...consent,
       },
     ]);
-    await db.insert(shopReleaseAlertSubscription).values({
-      email,
-      status: "confirmed",
-      unsubscribeToken: `tok-${tag}`,
-      consentText: "x",
-      consentSource: "y",
-    });
 
     const first = await db.transaction((tx) =>
       erasure.erase(tx as never, { emails: [`  ${email.toUpperCase()} `, complained] }),
     );
-    expect(first).toEqual({ alertSubscribers: 2, releaseAlerts: 1, suppressionsKept: 1 });
+    expect(first).toEqual({ alertSubscribers: 2, suppressionsKept: 1 });
 
     const left = await db
       .select({ email: shopAlertSubscriber.email, subject: shopAlertSubscriber.subjectId })
@@ -72,7 +61,7 @@ describe.skipIf(!hasShopIntegrationDb)("Shop alert subscriber erasure (integrati
     expect(left.find((row) => row.email === complained)?.subject).toBeNull();
 
     const second = await db.transaction((tx) => erasure.erase(tx as never, { emails: [email] }));
-    expect(second).toEqual({ alertSubscribers: 0, releaseAlerts: 0, suppressionsKept: 0 });
+    expect(second).toEqual({ alertSubscribers: 0, suppressionsKept: 0 });
 
     await db
       .delete(shopAlertSubscriber)
@@ -97,7 +86,7 @@ describe.skipIf(!hasShopIntegrationDb)("Shop alert subscriber erasure (integrati
     const counts = await db.transaction((tx) =>
       erasure.erase(tx as never, { emails: [], subjectIds: [`acct_${tag}`] }),
     );
-    expect(counts).toEqual({ alertSubscribers: 2, releaseAlerts: 0, suppressionsKept: 0 });
+    expect(counts).toEqual({ alertSubscribers: 2, suppressionsKept: 0 });
   });
 
   it("does nothing for an empty target", async () => {
@@ -106,6 +95,6 @@ describe.skipIf(!hasShopIntegrationDb)("Shop alert subscriber erasure (integrati
     const counts = await db.transaction((tx) =>
       new DrizzleShopAlertSubscriberErasure().erase(tx as never, { emails: [" "] }),
     );
-    expect(counts).toEqual({ alertSubscribers: 0, releaseAlerts: 0, suppressionsKept: 0 });
+    expect(counts).toEqual({ alertSubscribers: 0, suppressionsKept: 0 });
   });
 });

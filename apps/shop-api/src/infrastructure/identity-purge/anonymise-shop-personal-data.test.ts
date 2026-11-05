@@ -75,7 +75,6 @@ describe("Shop anonymisation policy", () => {
         "shop_followed_artist",
         "shop_alert_subscriber",
         "shop_basket",
-        "shop_release_alert_subscription",
         "shop_artist_application",
         "shop_party_invite",
         "shop_identity_session",
@@ -89,7 +88,6 @@ describe("Shop anonymisation policy", () => {
     );
     for (const table of [
       "shop_basket",
-      "shop_release_alert_subscription",
       "shop_alert_subscriber",
       "shop_saved_artwork",
       "shop_followed_artist",
@@ -129,7 +127,7 @@ describe("alert sign-ups on purge", () => {
   it("erases by the subject and merged aliases, with no typed address", async () => {
     const erase = vi
       .spyOn(DrizzleShopAlertSubscriberErasure.prototype, "erase")
-      .mockResolvedValue({ alertSubscribers: 1, releaseAlerts: 1, suppressionsKept: 1 });
+      .mockResolvedValue({ alertSubscribers: 1, suppressionsKept: 1 });
     const policy = SHOP_ANONYMISATION_RULES.filter((r) => r.table === "shop_alert_subscriber");
     const counts = await anonymiseShopPersonalData(aliasTx(["old_1"]), "user_1", now, policy);
     expect(erase).toHaveBeenCalledWith(expect.anything(), {
@@ -138,7 +136,6 @@ describe("alert sign-ups on purge", () => {
     });
     expect(counts).toEqual({
       shop_alert_subscriber: 1,
-      shop_release_alert_subscription_by_email: 1,
       shop_alert_suppression_kept: 1,
     });
     erase.mockRestore();

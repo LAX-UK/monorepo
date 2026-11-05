@@ -13,7 +13,6 @@ const noDealNaming = {
 
 function baseEnv(): WorkerEnv {
   return {
-    ZOHO_CRM_LEAD_CONVERSION_ENABLED: false,
     ZOHO_CRM_SYNC_MODE: "live",
     ZOHO_CRM_ENABLED_EVENT_TYPES: "payment.refunded",
     ZOHO_CRM_AUCTION_PIPELINE: "Auction",
@@ -37,7 +36,8 @@ function baseGateway(): CrmGateway {
     findByEmail: vi.fn(),
     findDealIdsByContact: vi.fn(),
     executeCoql: vi.fn(),
-    convertLead: vi.fn(),
+    createRecord: vi.fn(),
+    findLead: vi.fn(),
     deleteRecord: vi.fn(),
     purgeFromRecycleBin: vi.fn(),
     getMetrics: () => ({ apiCreditsRemaining: null }),
@@ -55,6 +55,7 @@ function baseLinkRepo(): ICrmRecordLinkRepository {
       erasedAt: null,
       deletionRequestedAt: null,
       recyclePurgedAt: null,
+      heldPayload: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     }),
@@ -73,6 +74,10 @@ function baseLinkRepo(): ICrmRecordLinkRepository {
     listActiveByEntityType: vi.fn(),
     listErasedWithRealZohoLinks: vi.fn(),
     reassignDealLinksSubjectId: vi.fn(),
+    listActiveLinksBySubject: vi.fn().mockResolvedValue([]),
+    listHeldDeals: vi.fn().mockResolvedValue([]),
+    touchLink: vi.fn(),
+    eraseHeldDealsBySubject: vi.fn().mockResolvedValue(0),
   };
 }
 
@@ -86,6 +91,7 @@ describe("CrmSyncService payment.refunded", () => {
       linkRepo: baseLinkRepo(),
       env: baseEnv(),
       mapperContext: {
+        leadStatusNew: "New (Unassigned)",
         auctionPipeline: "Auction",
         dealStageLotWon: "Won",
         dealStagePaymentCaptured: "Paid",
@@ -126,6 +132,7 @@ describe("CrmSyncService payment.refunded", () => {
       linkRepo: baseLinkRepo(),
       env: baseEnv(),
       mapperContext: {
+        leadStatusNew: "New (Unassigned)",
         auctionPipeline: "Auction",
         dealStageLotWon: "Won",
         dealStagePaymentCaptured: "Paid",

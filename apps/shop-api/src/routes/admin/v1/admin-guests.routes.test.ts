@@ -67,7 +67,6 @@ async function buildApp(
     enquiries: 2,
     links: 1,
     alertSubscribers: 3,
-    releaseAlerts: 1,
     suppressionsKept: 0,
   }));
   deps.admin.guestErasure = new GuestErasureService(
@@ -104,7 +103,6 @@ describe("admin guest erasure routes", () => {
       enquiries: 2,
       links: 1,
       alertSubscribers: 3,
-      releaseAlerts: 1,
       suppressionsKept: 0,
     });
     expect(erase).toHaveBeenCalledOnce();

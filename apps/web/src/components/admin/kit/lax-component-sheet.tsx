@@ -9,6 +9,7 @@ import { SheetDensitiesProvider } from "./sheet-frame";
 import { SheetListToolbar, SheetOverlays } from "./sheet-lists";
 import { SheetMenus } from "./sheet-menus";
 import { SheetEmptyStates, SheetPresets, SheetToggles } from "./sheet-settings";
+import { SheetSourcedField } from "./sheet-sourced-field";
 import { SheetStatus } from "./sheet-status";
 import { SheetTabs } from "./sheet-tabs";
 import { SheetWhereItIs } from "./sheet-where-it-is";
@@ -49,6 +50,7 @@ export function LaxComponentSheet({
         <SheetToggles />
         <SheetEmptyStates />
         <SheetWhereItIs />
+        <SheetSourcedField />
       </div>
     </SheetDensitiesProvider>
   );

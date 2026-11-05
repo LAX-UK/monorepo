@@ -29,6 +29,8 @@ import {
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
   WORKER_FULL_TABLES,
+  WORKER_INVOICE_RAISE_FULFILMENT_TABLES,
+  WORKER_INVOICE_RAISE_INSERT_TABLES,
   WORKER_KYC_RETENTION_PURGE_TABLES,
   WORKER_KYC_RETENTION_TOMBSTONE_TABLES,
   WORKER_LIFECYCLE_READ_TABLES,
@@ -560,6 +562,11 @@ describe("migrate-roles invariants", () => {
 
   it("WORKER_DOMAIN_EVENT_DELIVERY_TABLES includes domain_event_delivery ledger", () => {
     expect([...WORKER_DOMAIN_EVENT_DELIVERY_TABLES]).toContain("domain_event_delivery");
+  });
+
+  it("the worker may raise an invoice: payment, source of funds and fulfilment, no deletes", () => {
+    expect([...WORKER_INVOICE_RAISE_INSERT_TABLES]).toEqual(["payment", "source_of_funds"]);
+    expect([...WORKER_INVOICE_RAISE_FULFILMENT_TABLES]).toEqual(["lot_fulfilment"]);
   });
 
   it("WORKER_PAYMENT_MAINTENANCE_TABLES includes payment (expire-stale-payments)", () => {

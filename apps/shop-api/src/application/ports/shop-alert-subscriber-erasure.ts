@@ -4,8 +4,6 @@ import type { Database } from "@auction/db";
 export type ShopAlertErasureCounts = {
   /** Alert engine subscribers deleted, for Shop and lax.art (topics, matches and digests go too). */
   alertSubscribers: number;
-  /** Rows of the earlier release alert list deleted. */
-  releaseAlerts: number;
   /** Subscribers kept as a suppression because the address complained about a mail. */
   suppressionsKept: number;
 };

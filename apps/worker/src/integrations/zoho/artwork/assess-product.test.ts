@@ -85,6 +85,22 @@ describe("assessProduct", () => {
     expect(a.newEntry?.artist.code).toBe("PH");
   });
 
+  it("reads a print issued as PRT, and an older PRI one, as a print", () => {
+    for (const stockCode of ["LAX-PRT-MP-GAC-26-0037", "LAX-PRI-MP-GAC-26-0037"]) {
+      const a = assessProduct({ ...product(1), stockCode });
+      expect(a.blockers).toEqual([]);
+      expect(a.newEntry?.kind).toBe("print");
+      expect(a.change?.fields.kind).toBe("print");
+    }
+  });
+
+  it("warns, without blocking, when a code part is outside what LAX issues today", () => {
+    const a = assessProduct({ ...product(1), stockCode: "LAX-ORI-M-GACGAC-26-0037" });
+    expect(a.blockers).not.toContain("invalid_stock_code");
+    expect(a.gaps).toContain("non_standard_code_parts");
+    expect(assessProduct(product(1)).gaps).not.toContain("non_standard_code_parts");
+  });
+
   it("cannot be created or changed without a readable modified time", () => {
     const a = assessProduct({ ...product(1), modifiedAt: null });
     expect(a.blockers).toContain("invalid_modified_time");

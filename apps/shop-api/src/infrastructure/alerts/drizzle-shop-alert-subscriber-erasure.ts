@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { shopAlertSubscriber, shopReleaseAlertSubscription } from "@auction/db/schema";
+import { shopAlertSubscriber } from "@auction/db/schema";
 import { and, inArray, or, sql } from "drizzle-orm";
 import type {
   ShopAlertErasureCounts,
@@ -21,7 +21,7 @@ export class DrizzleShopAlertSubscriberErasure implements ShopAlertSubscriberEra
       ...new Set([...target.emails, ...accountEmails].map(normalise).filter((e) => e.length > 0)),
     ];
     if (emails.length === 0 && subjectIds.length === 0) {
-      return { alertSubscribers: 0, releaseAlerts: 0, suppressionsKept: 0 };
+      return { alertSubscribers: 0, suppressionsKept: 0 };
     }
 
     const subscribers = or(
@@ -39,21 +39,8 @@ export class DrizzleShopAlertSubscriberErasure implements ShopAlertSubscriberEra
       .where(and(subscribers, complained))
       .returning({ id: shopAlertSubscriber.id });
 
-    const release = await tx
-      .delete(shopReleaseAlertSubscription)
-      .where(
-        or(
-          emails.length > 0 ? inArray(shopReleaseAlertSubscription.email, emails) : undefined,
-          subjectIds.length > 0
-            ? inArray(shopReleaseAlertSubscription.identitySubjectId, subjectIds)
-            : undefined,
-        ),
-      )
-      .returning({ id: shopReleaseAlertSubscription.id });
-
     return {
       alertSubscribers: deleted.length,
-      releaseAlerts: release.length,
       suppressionsKept: kept.length,
     };
   }
@@ -64,10 +51,6 @@ export class DrizzleShopAlertSubscriberErasure implements ShopAlertSubscriberEra
       .select({ email: shopAlertSubscriber.email })
       .from(shopAlertSubscriber)
       .where(inArray(shopAlertSubscriber.subjectId, subjectIds));
-    const release = await tx
-      .select({ email: shopReleaseAlertSubscription.email })
-      .from(shopReleaseAlertSubscription)
-      .where(inArray(shopReleaseAlertSubscription.identitySubjectId, subjectIds));
-    return [...current, ...release].map((row) => row.email);
+    return current.map((row) => row.email);
   }
 }
