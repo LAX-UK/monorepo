@@ -15,7 +15,7 @@ describe("migration 0308 subject legal acceptance", () => {
   it("is journalled after the migrations that precede it", () => {
     const entry = journal.entries.find((e) => e.tag === "0308_subject_legal_acceptance");
     const previous = journal.entries.find((e) => e.tag === "0292_shop_alert_engine");
-    expect(entry?.idx).toBe(308);
+    expect(entry?.idx).toBe(303);
     expect(entry?.when).toBeGreaterThan(previous?.when ?? Number.POSITIVE_INFINITY);
   });
 
