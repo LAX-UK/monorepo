@@ -68,7 +68,15 @@ const LINK =
 const HOVER_UNDERLINE = "hover:before:-bottom-[3px] hover:before:h-px hover:before:bg-current";
 
 /** One of the help links on the right of the bar (for example Help, Contact, Delivery). */
-export type LaxFamilyBarHelpLink = { label: string; href: string };
+export type LaxFamilyBarHelpLink = {
+  label: string;
+  href: string;
+  /**
+   * Replaces the anchor with the product's own control (for example a button that opens a sheet).
+   * It receives the help-link class so it matches its neighbours; `href` stays as the fallback.
+   */
+  render?: (className: string) => ReactNode;
+};
 
 export type LaxFamilyBarProps = {
   links: readonly LaxFamilyBarLink[];
@@ -163,12 +171,16 @@ export function LaxFamilyBar({
               <ul className="m-0 flex list-none items-center gap-4 p-0">
                 {help.map((link) => (
                   <li key={link.href} className="flex items-center">
-                    <a
-                      href={link.href}
-                      className={cn(HELP_LINK, colours.muted, "hover:underline", FOCUS_RING)}
-                    >
-                      {link.label}
-                    </a>
+                    {link.render ? (
+                      link.render(cn(HELP_LINK, colours.muted, "hover:underline", FOCUS_RING))
+                    ) : (
+                      <a
+                        href={link.href}
+                        className={cn(HELP_LINK, colours.muted, "hover:underline", FOCUS_RING)}
+                      >
+                        {link.label}
+                      </a>
+                    )}
                   </li>
                 ))}
               </ul>

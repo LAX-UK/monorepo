@@ -39,6 +39,57 @@ function stubStorage(setItem?: () => void) {
   });
 }
 
+describe("MarketingHeaderSearch iconOnly and openRequest", () => {
+  beforeEach(() => {
+    stubStorage();
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("shows only the icon trigger when iconOnly", () => {
+    render(
+      <MarketingHeaderSearch
+        action="/search"
+        recentStorageKey={KEY}
+        placeholder="Search artworks and artists"
+        compactBelowDesktop
+        iconOnly
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Search" })).toBeInTheDocument();
+    expect(screen.queryByText("Search artworks and artists")).toBeNull();
+    expect(screen.getByRole("button", { name: "Search" }).className).not.toContain("lg:hidden");
+  });
+
+  it("opens when openRequest goes up, and not on first render", () => {
+    const props = {
+      action: "/search",
+      recentStorageKey: KEY,
+      compactBelowDesktop: true,
+      iconOnly: true,
+    };
+    const { rerender } = render(<MarketingHeaderSearch {...props} openRequest={0} />);
+    expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+    rerender(<MarketingHeaderSearch {...props} openRequest={1} />);
+    expect(screen.getByRole("dialog", { name: "Search" })).toBeInTheDocument();
+  });
+
+  it("does not open for a request that was already there when it mounted", () => {
+    render(
+      <MarketingHeaderSearch
+        action="/search"
+        recentStorageKey={KEY}
+        compactBelowDesktop
+        iconOnly
+        openRequest={3}
+      />,
+    );
+    expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+  });
+});
+
 describe("MarketingHeaderSearch", () => {
   beforeEach(() => {
     stubStorage();

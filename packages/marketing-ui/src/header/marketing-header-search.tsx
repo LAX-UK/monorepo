@@ -71,6 +71,16 @@ export type MarketingHeaderSearchProps = {
    * sheet that holds focus until it closes.
    */
   compactBelowDesktop?: boolean;
+  /**
+   * Show only the icon trigger at every width (the field is rendered by another instance). The
+   * shelf still opens as a full-screen sheet on phones when `compactBelowDesktop` is set.
+   */
+  iconOnly?: boolean;
+  /**
+   * Opens the search when this number goes up, for a control elsewhere (the bottom bar's Search
+   * tab). The initial value never opens it.
+   */
+  openRequest?: number;
   headerTone?: MarketingHeaderTone;
   /** Reports the shelf opening or closing, so the header can turn solid while it is open. */
   onOpenChange?: (open: boolean) => void;
@@ -174,6 +184,8 @@ export function MarketingHeaderSearch({
   loadResults,
   placeholder = "Search",
   compactBelowDesktop = false,
+  iconOnly = false,
+  openRequest = 0,
   headerTone = "on-light",
   onOpenChange,
   variant = "auto",
@@ -260,6 +272,14 @@ export function MarketingHeaderSearch({
     }
     laidOutRef.current = open;
   }, [controlled, drawsShelf, open, recentStorageKey, variant]);
+
+  const lastOpenRequest = useRef(openRequest);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new request opens the search
+  useEffect(() => {
+    if (openRequest === lastOpenRequest.current) return;
+    lastOpenRequest.current = openRequest;
+    if (!open) openShelf(compactTriggerRef.current ?? triggerRef.current);
+  }, [openRequest]);
 
   useEffect(() => {
     if (active) inputRef.current?.focus();
@@ -482,7 +502,7 @@ export function MarketingHeaderSearch({
 
   return (
     <>
-      {variant === "icon" ? null : (
+      {variant === "icon" || iconOnly ? null : (
         <Button
           ref={triggerRef}
           type="button"
@@ -511,7 +531,7 @@ export function MarketingHeaderSearch({
           <MarketingSearchIcon className="site-header-search-icon size-5" aria-hidden />
         </Button>
       )}
-      {variant === "icon" || (compactBelowDesktop && variant === "auto") ? (
+      {variant === "icon" || iconOnly || (compactBelowDesktop && variant === "auto") ? (
         <MarketingChromeIconButton
           ref={compactTriggerRef}
           label="Search"
@@ -521,7 +541,7 @@ export function MarketingHeaderSearch({
           onClick={() => (open ? close(false) : openShelf(compactTriggerRef.current))}
           className={cn(
             "site-header-chrome site-header-chrome-icon bg-transparent",
-            variant === "auto" && "lg:hidden",
+            variant === "auto" && !iconOnly && "lg:hidden",
             headerTone === "on-dark"
               ? "text-hero-foreground hover:bg-white/10"
               : "text-brand-800 hover:bg-page-bg dark:text-on-surface dark:hover:bg-surface-container-low",

@@ -18,6 +18,31 @@ describe("cutAccountEntryName", () => {
   });
 });
 
+describe("MarketingAccountEntry auth links", () => {
+  it("renders Sign in and Create account through renderAuthLink when given", () => {
+    render(
+      <MarketingAccountEntry
+        viewer={null}
+        {...SIGNED_OUT}
+        renderAuthLink={({ href, className, children }) => (
+          <a href={href} className={className} data-plain="true">
+            {children}
+          </a>
+        )}
+      />,
+    );
+    open(screen.getByRole("button", { name: "Account menu" }));
+    expect(screen.getByRole("menuitem", { name: "Sign in" }).closest("a")).toHaveAttribute(
+      "data-plain",
+      "true",
+    );
+    expect(screen.getByRole("menuitem", { name: "Create account" }).closest("a")).toHaveAttribute(
+      "data-plain",
+      "true",
+    );
+  });
+});
+
 describe("MarketingAccountEntry signed out", () => {
   it("shows the person icon and the word Account", () => {
     render(<MarketingAccountEntry viewer={null} {...SIGNED_OUT} />);

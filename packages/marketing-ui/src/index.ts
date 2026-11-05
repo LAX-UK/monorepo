@@ -365,11 +365,6 @@ export {
   useBottomBarVisibility,
 } from "./bottom-bar/use-bottom-bar-visibility.js";
 export {
-  MarketingFloatingTabBar,
-  type MarketingFloatingTabBarProps,
-  type MarketingFloatingTabItem,
-} from "./marketing-floating-tab-bar.js";
-export {
   MarketingPhoneMenu,
   type MarketingPhoneMenuHelpLink,
   type MarketingPhoneMenuProps,

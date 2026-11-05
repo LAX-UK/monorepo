@@ -4,6 +4,7 @@ import {
   loadArtFamilyLinks,
   loadArtProductDirectoryLinks,
 } from "@/lib/ecosystem/product-directory.server";
+import { loadArtEnquiryReplyDot } from "@/lib/layout/art-enquiry-reply.server";
 import { toArtFooterAccountState } from "@/lib/layout/art-footer-account-state";
 import { buildArtFooterVm } from "@/lib/layout/art-footer.vm";
 import type { ArtFooterVm } from "@/lib/layout/art-footer.vm";
@@ -19,6 +20,8 @@ export type ArtChromeVm = {
   familyLinks: LaxFamilyLinkVm[];
   crossProductLinks: LaxProductLinkVm[];
   account: AccountChromeState;
+  /** A gallery reply to an enquiry is waiting (dot on Account). */
+  replyDot: boolean;
   headerNav: ArtHeaderNavData | null;
   footer: ArtFooterVm;
   /** Policies that can be linked on this deployment. */
@@ -34,8 +37,10 @@ export async function composeArtChrome(): Promise<ArtChromeVm> {
     loadArtHeaderNav(),
   ]);
 
+  const replyDot = await loadArtEnquiryReplyDot(account);
   const linkablePolicies = loadLinkableArtPolicies();
   return {
+    replyDot,
     linkablePolicies,
     productLinks,
     familyLinks: loadArtFamilyLinks(),
