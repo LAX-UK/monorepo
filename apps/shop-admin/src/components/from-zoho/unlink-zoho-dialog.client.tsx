@@ -26,7 +26,7 @@ export function UnlinkZohoDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function confirm({ reason }: { reason: string }) {
+  async function submit({ reason }: { reason: string }) {
     setSaving(true);
     setError(null);
     const result = await unlinkFromZoho({ artworkId, reason }).catch(() => null);
@@ -64,7 +64,7 @@ export function UnlinkZohoDialog({
         maxLength: 500,
         missingMessage: "Say why the link is being removed.",
       }}
-      onConfirm={(details) => void confirm(details)}
+      onConfirm={(details) => void submit(details)}
     >
       {error ? (
         <Notice tone="danger" alert title="The link was not removed">

@@ -100,6 +100,7 @@ describe("Link lax.art report contract", () => {
       zohoStatus: "Available",
       whereItIs: "Not offered",
       linkedTo: "Harbour at dusk",
+      imageUrl: null,
     };
     const listing = {
       artworkId: ARTWORK_ID,
@@ -111,6 +112,7 @@ describe("Link lax.art report contract", () => {
       dimensions: null,
       year: null,
       published: true,
+      imageUrl: null,
     };
     const row = {
       listing,
@@ -134,7 +136,14 @@ describe("Link lax.art report contract", () => {
       ],
     };
     const linked = {
-      listing: { artworkId: ARTWORK_ID, slug: "x", title: "X", artistName: "A", published: false },
+      listing: {
+        artworkId: ARTWORK_ID,
+        slug: "x",
+        title: "X",
+        artistName: "A",
+        published: false,
+        imageUrl: null,
+      },
       record: { registerId: REGISTER_ID, stockCode: "LAX-ORI-AR-X-26-0001", title: "X" },
       linkedAt: "2026-11-05T10:00:00.000Z",
       linkedBy: "Lena Hart",

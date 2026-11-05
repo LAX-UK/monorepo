@@ -942,10 +942,12 @@ describe("a lax.art original made from a Zoho record", () => {
     expect(screen.queryByText("From Zoho")).toBeNull();
   });
 
-  it("leaves an unlinked original exactly as it was", () => {
+  it("keeps an unlinked original editable, with Where it is saying nothing of Zoho facts", () => {
     renderEditor({ detail: { ...linked, zohoLink: null } });
     expect(screen.getByLabelText("Title")).toBeInTheDocument();
-    expect(screen.queryByRole("complementary", { name: "Where it is" })).toBeNull();
+    const rail = screen.getByRole("complementary", { name: "Where it is" });
+    expect(within(rail).queryByText("Zoho status")).toBeNull();
+    expect(within(rail).queryByRole("link", { name: "From Zoho record" })).toBeNull();
   });
 });
 
@@ -985,27 +987,68 @@ describe("an original on lax.art that is not linked to Zoho", () => {
 
   it("says it is not linked and offers Link to Zoho record to a catalogue editor", async () => {
     await withAccess(["catalogue.write", "artwork_register.review"], {});
-    expect(screen.getByText("Not linked to a Zoho record")).toBeInTheDocument();
+    expect(screen.getByText("Not linked to Zoho")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Link to Zoho record…" }));
-    expect(await screen.findByText(/Find the Zoho record for Harbour at Dusk/)).toBeInTheDocument();
+    expect(
+      await screen.findByText("Harbour at Dusk · Ada Artist · Draft on lax.art"),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Search Zoho records")).toBeInTheDocument();
+  });
+
+  it("says what is wrong in one sentence, beside the way to fix it", async () => {
+    await withAccess(["catalogue.write", "artwork_register.review"], {});
+    expect(
+      screen.getByText(
+        "LAX can't stop this artwork being offered twice, and Zoho doesn't see where it is.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Stock code")).toBeInTheDocument();
+    expect(screen.getByText("Not linked")).toBeInTheDocument();
+    expect(screen.getByText(/Once linked, these fields come from Zoho/)).toBeInTheDocument();
+  });
+
+  it("shows the Where it is panel for a draft, saying the lock does not cover it", async () => {
+    await withAccess(["catalogue.write", "artwork_register.review"], {});
+    const panel = screen.getByRole("region", { name: "Where it is" });
+    expect(within(panel).getByText("Draft on lax.art", { selector: "strong" })).toBeInTheDocument();
+    expect(
+      within(panel).getByText("Not linked to Zoho, so the one-place lock doesn't cover it."),
+    ).toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: /Link to Zoho record/ })).toBeNull();
+  });
+
+  it("shows a live original as On lax.art since it was published", async () => {
+    const { StaffAccessProvider } = await import("@auction/staff-ui");
+    const { laxStaffAccess } = await import("@/server/domain/lax-staff-access");
+    render(
+      <StaffAccessProvider access={laxStaffAccess(["catalogue.write"], "Catalogue editor")}>
+        <ArtworkEditor
+          detail={{ ...original, state: "live", publishedAt: "2026-10-09T10:00:00.000Z" }}
+          permissions={admin}
+          currentYear={2026}
+        />
+      </StaffAccessProvider>,
+    );
+    const panel = screen.getByRole("region", { name: "Where it is" });
+    expect(within(panel).getByText("On lax.art")).toBeInTheDocument();
+    expect(panel).toHaveTextContent("Live on lax.art since");
   });
 
   it("says it too to someone who can only view, with no way to link", async () => {
     await withAccess(["catalogue.read", "artwork_register.read"], { permissions: viewOnly });
-    expect(screen.getByText("Not linked to a Zoho record")).toBeInTheDocument();
+    expect(screen.getByText("Not linked to Zoho")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Link to Zoho record…" })).toBeNull();
   });
 
   it("offers no link without the permission to decide on the register", async () => {
     await withAccess(["catalogue.write"], {});
-    expect(screen.getByText("Not linked to a Zoho record")).toBeInTheDocument();
+    expect(screen.getByText("Not linked to Zoho")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Link to Zoho record…" })).toBeNull();
   });
 
   it("says nothing of Zoho linking on a print edition", async () => {
     await withAccess(["catalogue.write", "artwork_register.review"], { detail });
-    expect(screen.queryByText("Not linked to a Zoho record")).toBeNull();
+    expect(screen.queryByText("Not linked to Zoho")).toBeNull();
   });
 });
 

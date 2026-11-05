@@ -4,7 +4,10 @@ import {
 } from "@auction/artwork-register-contracts";
 import { createDbFromPool } from "@auction/db";
 import { shopAdminAudit, shopArtist, shopArtwork, shopArtworkImage } from "@auction/db/schema";
-import { DrizzleArtworkRegisterRepository } from "@auction/persistence/repositories";
+import {
+  DrizzleArtworkRegisterRepository,
+  registerRowToEntry,
+} from "@auction/persistence/repositories";
 import { eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -49,6 +52,7 @@ describe.skipIf(!hasShopIntegrationDb)("link lax.art originals to Zoho (Postgres
     const writer = createDrizzleZohoLinkWriter(uow, {
       registerFor: (session) => shopRegister.withExecutor(session),
       lockFor: (session) => new ArtworkOfferLock(shopRegister.withExecutor(session)),
+      toEntry: registerRowToEntry,
       now: () => NOW,
     });
     return {
@@ -56,7 +60,7 @@ describe.skipIf(!hasShopIntegrationDb)("link lax.art originals to Zoho (Postgres
       register,
       writer,
       listings: createDrizzleZohoLinkListingReader(db),
-      records: createDrizzleZohoLinkRecordReader(db),
+      records: createDrizzleZohoLinkRecordReader(db, registerRowToEntry),
       settings: createDrizzleZohoLinkSettings(db, () => NOW),
       artists: createDrizzleArtistCatalogueWriter(uow),
     };

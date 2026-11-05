@@ -40,6 +40,8 @@ export type ZohoLinkDeps = {
   writer: ZohoLinkWriter;
   settings: ZohoLinkSettingsStore;
   staffNames: StaffNameReader;
+  /** The address of a stored image, for the thumbnails. */
+  imageUrl?: (key: string | null | undefined) => string | null;
   now?: () => Date;
 };
 
@@ -65,9 +67,15 @@ const toMatchRecord = (entry: ArtworkRegisterEntry): MatchRecord => ({
   year: entry.year,
 });
 
-function presentRecord({ entry, linkedTo }: LinkableRecord): AdminZohoLinkRecord {
+type ImageUrl = (key: string | null | undefined) => string | null;
+
+function presentRecord(
+  { entry, linkedTo }: LinkableRecord,
+  imageUrl: ImageUrl,
+): AdminZohoLinkRecord {
   return {
     linkedTo,
+    imageUrl: imageUrl(entry.imageRefs[0]),
     registerId: entry.id,
     stockCode: entry.stockCode,
     title: entry.title,
@@ -80,8 +88,9 @@ function presentRecord({ entry, linkedTo }: LinkableRecord): AdminZohoLinkRecord
   };
 }
 
-function presentListing(listing: UnlinkedListing): AdminZohoLinkRow["listing"] {
+function presentListing(listing: UnlinkedListing, imageUrl: ImageUrl): AdminZohoLinkRow["listing"] {
   return {
+    imageUrl: imageUrl(listing.imageKeys[0]),
     artworkId: listing.artworkId,
     slug: listing.slug,
     title: listing.title,
@@ -100,6 +109,8 @@ function presentListing(listing: UnlinkedListing): AdminZohoLinkRow["listing"] {
  */
 export class ZohoLinkService {
   constructor(private readonly deps: ZohoLinkDeps) {}
+
+  private readonly imageUrl: ImageUrl = (key) => this.deps.imageUrl?.(key) ?? null;
 
   private now(): Date {
     return (this.deps.now ?? (() => new Date()))();
@@ -177,6 +188,7 @@ export class ZohoLinkService {
         title: item.title,
         artistName: item.artistName,
         published: item.published,
+        imageUrl: this.imageUrl(item.imageKey),
       },
       record: { registerId: item.registerId, stockCode: item.stockCode, title: item.recordTitle },
       linkedAt: item.linkedAt.toISOString(),
@@ -207,7 +219,7 @@ export class ZohoLinkService {
         );
     }
     return {
-      listing: presentListing(listing),
+      listing: presentListing(listing, this.imageUrl),
       candidates,
       rule: match.kind === "matched" ? match.rule : null,
       reason: match.kind === "none" ? match.reason : null,
@@ -223,7 +235,7 @@ export class ZohoLinkService {
     const plan = planLink(listing, entry, artist);
     const blockers = laxArtOfferBlockers(entry, { kind: "shop_artwork", id: listing.artworkId });
     return {
-      record: presentRecord(record),
+      record: presentRecord(record, this.imageUrl),
       differences: plan.differences,
       comparison: plan.comparison,
       refusal:
@@ -259,7 +271,7 @@ export class ZohoLinkService {
         404,
       );
     return {
-      listing: presentListing(listing),
+      listing: presentListing(listing, this.imageUrl),
       candidate: await this.candidate(
         listing,
         entry,
@@ -272,7 +284,7 @@ export class ZohoLinkService {
   async search(query: string): Promise<AdminZohoLinkSearchResult> {
     const found = await this.deps.records.search(query.trim(), SEARCH_LIMIT + 1);
     return {
-      items: found.slice(0, SEARCH_LIMIT).map(presentRecord),
+      items: found.slice(0, SEARCH_LIMIT).map((record) => presentRecord(record, this.imageUrl)),
       more: found.length > SEARCH_LIMIT,
     };
   }

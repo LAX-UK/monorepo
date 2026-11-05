@@ -16,7 +16,6 @@ import {
   shopParty,
 } from "@auction/db/schema";
 import type { IArtworkLinkHistory } from "@auction/persistence/interfaces";
-import { registerRowToEntry } from "@auction/persistence/repositories";
 import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { laxArtOfferBlockers } from "../application/artwork-register/lax-art-offer-blockers.js";
 import { planLink } from "../application/artwork-register/zoho-link-differences.js";
@@ -163,12 +162,17 @@ export function createDrizzleZohoLinkListingReader(db: Database): ZohoLinkListin
           ),
         )
         .orderBy(desc(latest.linkedAt), asc(shopArtwork.id));
+      const images = await imagesByArtwork(
+        db,
+        rows.map((row) => row.artworkId),
+      );
       return rows.map((row) => ({
         artworkId: row.artworkId,
         slug: row.slug,
         title: row.title,
         artistName: row.artistName,
         published: row.publishedAt !== null,
+        imageKey: images.get(row.artworkId)?.[0] ?? null,
         registerId: row.registerId,
         stockCode: row.stockCode,
         recordTitle: row.recordTitle,
@@ -212,24 +216,30 @@ const linkableSelect = (db: Database) =>
     .from(artworkRegister)
     .leftJoin(shopArtwork, eq(shopArtwork.zohoProductId, artworkRegister.zohoProductId));
 
+/** Maps a register row to its entry; the container supplies the persistence mapper. */
+export type RowToEntry = (row: typeof artworkRegister.$inferSelect) => ArtworkRegisterEntry;
+
 type LinkableRow = { row: typeof artworkRegister.$inferSelect; linkedTo: string | null };
 
-const toLinkable = ({ row, linkedTo }: LinkableRow): LinkableRecord => ({
-  entry: registerRowToEntry(row),
+const toLinkable = (toEntry: RowToEntry, { row, linkedTo }: LinkableRow): LinkableRecord => ({
+  entry: toEntry(row),
   linkedTo,
 });
 
-export function createDrizzleZohoLinkRecordReader(db: Database): ZohoLinkRecordReader {
+export function createDrizzleZohoLinkRecordReader(
+  db: Database,
+  toEntry: RowToEntry,
+): ZohoLinkRecordReader {
   return {
     async listLinkable() {
       const rows = await linkableSelect(db).where(eq(artworkRegister.kind, "original"));
-      return rows.map(toLinkable);
+      return rows.map((found) => toLinkable(toEntry, found));
     },
     async findById(registerId) {
       const [found] = await linkableSelect(db)
         .where(and(eq(artworkRegister.id, registerId), eq(artworkRegister.kind, "original")))
         .limit(1);
-      return found ? toLinkable(found) : null;
+      return found ? toLinkable(toEntry, found) : null;
     },
     async search(query, limit) {
       const pattern = `%${escapeLike(query)}%`;
@@ -247,7 +257,7 @@ export function createDrizzleZohoLinkRecordReader(db: Database): ZohoLinkRecordR
         )
         .orderBy(asc(artworkRegister.title), asc(artworkRegister.id))
         .limit(limit);
-      return rows.map(toLinkable);
+      return rows.map((found) => toLinkable(toEntry, found));
     },
   };
 }
@@ -260,6 +270,7 @@ export type LinkRegister = IArtworkLinkHistory & {
 type LinkOptions = {
   registerFor: (session: Database) => LinkRegister;
   lockFor: (session: Database) => ArtworkOfferLock;
+  toEntry: RowToEntry;
   now?: () => Date;
 };
 
@@ -476,7 +487,7 @@ export function createDrizzleZohoLinkWriter(
         .from(artworkRegister)
         .where(eq(artworkRegister.zohoProductId, listing.zohoProductId))
         .limit(1);
-      const entry = row ? registerRowToEntry(row) : null;
+      const entry = row ? options.toEntry(row) : null;
       if (entry?.offer.state === "bid_sale") {
         throw new ZohoLinkRefusedError(
           "This artwork is in a LAX Bid sale. Withdraw the lot there before removing the link.",

@@ -5,6 +5,7 @@ import {
   DrizzleArtworkRegisterQueueReader,
   DrizzleArtworkRegisterRepository,
   DrizzleZohoArtworkSyncStore,
+  registerRowToEntry,
 } from "@auction/persistence/repositories";
 import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
@@ -647,13 +648,15 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         }),
         zohoLink: new ZohoLinkService({
           listings: createDrizzleZohoLinkListingReader(db),
-          records: createDrizzleZohoLinkRecordReader(db),
+          records: createDrizzleZohoLinkRecordReader(db, registerRowToEntry),
           staffNames: createDrizzleStaffNameReader(db),
+          imageUrl: resolveMediaUrl,
           artists: createDrizzleLaxArtArtistDirectory(db),
           writer: createDrizzleZohoLinkWriter(shopUow, {
             registerFor: (session) => artworkRegisterRepository.withExecutor(session),
             lockFor: (session) =>
               new ArtworkOfferLock(artworkRegisterRepository.withExecutor(session)),
+            toEntry: registerRowToEntry,
           }),
           settings: createDrizzleZohoLinkSettings(db),
         }),

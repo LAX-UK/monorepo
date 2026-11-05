@@ -3,9 +3,34 @@
 import { whereItIsLine } from "@/server/domain/where-it-is.vm";
 import { ZOHO_QUEUE_PATH, buildRegisterTimeline } from "@/server/domain/zoho-register.vm";
 import type { AdminArtworkDetail } from "@auction/shop-contracts";
-import { StaffButton, WhereItIsSection, useStaffCan } from "@auction/staff-ui";
+import { StaffButton, WhereItIsSection, formatStaffDateTime, useStaffCan } from "@auction/staff-ui";
 import { ArrowUpRight } from "@auction/staff-ui/icons";
 import Link from "next/link";
+
+const LIVE_CHIP = { label: "On lax.art", tone: "success", marker: "filled" } as const;
+const DRAFT_CHIP = { label: "Draft on lax.art", tone: "info", marker: "hollow" } as const;
+
+/**
+ * Where an original is when it is not linked to Zoho: only on lax.art, with no register behind it.
+ * Same section and words as a linked artwork, and it says what is missing: the one-place lock does
+ * not cover it. Linking is offered by the notice above the page.
+ */
+export function UnlinkedWherePanel({
+  live,
+  publishedAt,
+}: {
+  live: boolean;
+  publishedAt: string | null;
+}) {
+  return (
+    <WhereItIsSection
+      chip={live ? LIVE_CHIP : DRAFT_CHIP}
+      lead={live ? "Live on lax.art" : "Draft on lax.art"}
+      {...(live && publishedAt ? { trail: ` since ${formatStaffDateTime(publishedAt)}` } : {})}
+      note="Not linked to Zoho, so the one-place lock doesn't cover it."
+    />
+  );
+}
 
 /**
  * Where a linked lax.art artwork is, in the rail of its page: the same section and words as on its

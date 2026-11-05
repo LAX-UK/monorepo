@@ -21,6 +21,8 @@ export type LinkedListing = {
   title: string;
   artistName: string;
   published: boolean;
+  /** The first image's key, or null. */
+  imageKey: string | null;
   registerId: string;
   stockCode: string;
   recordTitle: string;

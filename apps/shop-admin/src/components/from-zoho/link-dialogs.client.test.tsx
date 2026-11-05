@@ -1,14 +1,16 @@
 // @vitest-environment jsdom
 import { laxStaffAccess } from "@/server/domain/lax-staff-access";
+import type { AdminZohoLinkCandidate } from "@auction/shop-contracts";
 import { StaffAccessProvider, StaffTooltipProvider } from "@auction/staff-ui";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { DIFFERENT, candidate, idOf, row } from "./link-fixtures";
+import { DIFFERENT, SAME, candidate, idOf, row } from "./link-fixtures";
 
-const { search, preview, link, unlink, toastSuccess } = vi.hoisted(() => ({
+const { search, preview, link, linkMany, unlink, toastSuccess } = vi.hoisted(() => ({
   search: vi.fn(),
   preview: vi.fn(),
   link: vi.fn(),
+  linkMany: vi.fn(),
   unlink: vi.fn(),
   toastSuccess: vi.fn(),
 }));
@@ -22,7 +24,7 @@ vi.mock("@/server/application/admin-zoho-link-actions.server", () => ({
   getZohoLinkPreview: (...args: unknown[]) => preview(...args),
   linkToZoho: (...args: unknown[]) => link(...args),
   unlinkFromZoho: (...args: unknown[]) => unlink(...args),
-  linkManyToZoho: vi.fn(),
+  linkManyToZoho: (...args: unknown[]) => linkMany(...args),
   getZohoLinkReport: vi.fn(),
   setBlockUnlinkedPublish: vi.fn(),
 }));
@@ -33,10 +35,9 @@ vi.mock("sonner", () => ({
 
 const { installLayoutStubs } = await import("@/test/radix-stubs");
 installLayoutStubs();
-const { RecordSearchView, LinkToZohoDialog } = await import("./link-to-zoho-dialog.client");
-const { LinkConfirmView } = await import("./link-confirm-dialog.client");
+const { LinkToZohoView, LinkToZohoDialog } = await import("./link-to-zoho-dialog.client");
+const { BulkLinkView, BulkLinkDialog } = await import("./bulk-link-dialog.client");
 const { UnlinkZohoDialog } = await import("./unlink-zoho-dialog.client");
-const { LinkDifferences } = await import("./link-differences");
 
 const wrap = (node: React.ReactNode) =>
   render(
@@ -46,171 +47,382 @@ const wrap = (node: React.ReactNode) =>
   );
 
 beforeEach(() => {
-  for (const mock of [search, preview, link, unlink, toastSuccess]) mock.mockReset();
+  for (const mock of [search, preview, link, linkMany, unlink, toastSuccess]) mock.mockReset();
+});
+
+const SUBTITLE = "Harbour at dusk · Ben Ilsley · Live on lax.art";
+const changed = candidate(1, { comparison: DIFFERENT });
+const taken = candidate(2, {
+  refusal: "This record is already linked to ‘Harbour, early light’.",
+  record: { linkedTo: "Harbour, early light", title: "Harbour, early light" },
 });
 
 const viewProps = {
   open: true,
   onOpenChange: vi.fn(),
-  artworkTitle: "Harbour at Dusk",
+  subtitle: SUBTITLE,
+  published: true as boolean | null,
   query: "",
   onQueryChange: vi.fn(),
-  choosing: null,
-  chooseError: null,
-  onChoose: vi.fn(),
-  onRetry: vi.fn(),
+  search: { phase: "idle" } as const,
+  suggestions: [] as { candidate: AdminZohoLinkCandidate; rule: "stock_code" | null }[],
+  selectedId: null as string | null,
+  onSelect: vi.fn(),
+  detail: null,
+  onRetrySearch: vi.fn(),
+  saving: false,
+  error: null as string | null,
+  onConfirm: vi.fn(),
 };
 
-describe("searching the register for one artwork's record", () => {
-  it("asks for at least two characters before it searches", () => {
-    wrap(<RecordSearchView {...viewProps} search={{ phase: "idle" }} />);
-    expect(screen.getByText(/Type at least two characters/)).toBeInTheDocument();
+describe("Link to Zoho record: choosing the record", () => {
+  it("names the artwork and asks for at least two characters before it searches", () => {
+    wrap(<LinkToZohoView {...viewProps} />);
+    expect(screen.getByText(SUBTITLE)).toBeInTheDocument();
+    expect(screen.getByText(/at least two characters/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Link to Zoho record" })).toBeDisabled();
+  });
+
+  it("lists the suggested records with what each was matched on", () => {
+    wrap(
+      <LinkToZohoView
+        {...viewProps}
+        suggestions={[{ candidate: changed, rule: "stock_code" }]}
+        selectedId={changed.record.registerId}
+        detail={{ phase: "ready", candidate: changed }}
+      />,
+    );
+    const list = screen.getByRole("radiogroup", { name: "Zoho records" });
+    expect(within(list).getByText("Zoho title 1")).toBeInTheDocument();
+    expect(within(list).getByText("Stock code")).toBeInTheDocument();
+    expect(screen.getByText("Suggested")).toBeInTheDocument();
+  });
+
+  it("shows a record linked to another listing as such, and it cannot be chosen", () => {
+    wrap(
+      <LinkToZohoView
+        {...viewProps}
+        suggestions={[
+          { candidate: changed, rule: null },
+          { candidate: taken, rule: null },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Linked to ‘Harbour, early light’")).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /LAX-ORI-AR-TM-26-0002/ })).toBeDisabled();
+    expect(screen.getByRole("radio", { name: /LAX-ORI-AR-TM-26-0001/ })).not.toBeDisabled();
   });
 
   it("shows a loading state while it searches", () => {
-    wrap(<RecordSearchView {...viewProps} query="tidal" search={{ phase: "loading" }} />);
+    wrap(<LinkToZohoView {...viewProps} query="harbour" search={{ phase: "loading" }} />);
     expect(screen.getByRole("status", { name: "Searching Zoho" })).toBeInTheDocument();
   });
 
   it("says plainly when nothing matches", () => {
     wrap(
-      <RecordSearchView
+      <LinkToZohoView
         {...viewProps}
-        query="zzz"
+        query="zzzz"
         search={{ phase: "done", result: { items: [], more: false } }}
       />,
     );
-    expect(screen.getByText(/No unlinked original in Zoho matches “zzz”/)).toBeInTheDocument();
+    expect(screen.getByText(/No Zoho original matches “zzzz”/)).toBeInTheDocument();
   });
 
   it("offers Try again when the search fails", () => {
-    const onRetry = vi.fn();
+    const onRetrySearch = vi.fn();
     wrap(
-      <RecordSearchView
+      <LinkToZohoView
         {...viewProps}
-        onRetry={onRetry}
-        query="tidal"
-        search={{ phase: "error", message: "Could not search Zoho." }}
+        query="harbour"
+        search={{ phase: "error", message: "Could not search Zoho. Try again in a moment." }}
+        onRetrySearch={onRetrySearch}
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(onRetry).toHaveBeenCalled();
+    expect(onRetrySearch).toHaveBeenCalled();
   });
 
-  it("lists records with enough to be sure, and says when more match", () => {
-    const onChoose = vi.fn();
+  it("lists results, says when more match, and marks the linked ones", () => {
     wrap(
-      <RecordSearchView
+      <LinkToZohoView
         {...viewProps}
-        onChoose={onChoose}
-        query="zoho"
+        query="harbour"
         search={{
           phase: "done",
-          result: { items: [candidate(1).record, candidate(2).record], more: true },
+          result: { items: [changed.record, taken.record], more: true },
         }}
       />,
     );
-    expect(screen.getAllByRole("listitem")).toHaveLength(2);
-    expect(screen.getByText(/LAX-ORI-AR-TM-26-0001/)).toBeInTheDocument();
+    expect(screen.getByText("Results")).toBeInTheDocument();
     expect(screen.getByText(/More records match/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Choose Zoho title 2/ }));
-    expect(onChoose).toHaveBeenCalledWith(candidate(2).record);
+    expect(screen.getByText("Linked to ‘Harbour, early light’")).toBeInTheDocument();
+  });
+});
+
+describe("Link to Zoho record: what it will change", () => {
+  const ready = (candidateToShow: AdminZohoLinkCandidate, extra = {}) => (
+    <LinkToZohoView
+      {...viewProps}
+      suggestions={[{ candidate: candidateToShow, rule: null }]}
+      selectedId={candidateToShow.record.registerId}
+      detail={{ phase: "ready", candidate: candidateToShow }}
+      {...extra}
+    />
+  );
+
+  it("shows lax.art now beside Zoho after linking, with the changed rows highlighted", () => {
+    const { container } = wrap(ready(changed));
+    const table = screen.getByRole("table", { name: "What linking changes" });
+    expect(within(table).getByRole("columnheader", { name: "lax.art now" })).toBeInTheDocument();
+    expect(
+      within(table).getByRole("columnheader", { name: "From Zoho, after linking" }),
+    ).toBeInTheDocument();
+    expect(container.ownerDocument.querySelectorAll('tr[data-changes="true"]')).toHaveLength(2);
+    expect(screen.getByRole("row", { name: /Title/ })).toHaveTextContent("was Tidal Margin 4");
   });
 
-  it("says a record could not be read when the preview fails, and keeps the search", async () => {
-    search.mockResolvedValue({ ok: true, data: { items: [candidate(1).record], more: false } });
-    preview.mockResolvedValue({
-      ok: false,
-      kind: "failed",
-      message: "Could not read this record.",
+  it("counts the changes and says where a live artwork goes", () => {
+    wrap(ready(changed));
+    expect(
+      screen.getByText(
+        "2 fields change to Zoho's values. The web address stays the same. It becomes On lax.art in the register.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says a draft stays a draft until it is published", () => {
+    wrap(ready(changed, { published: false }));
+    expect(screen.getByText(/It stays a draft/)).toBeInTheDocument();
+  });
+
+  it("says nothing changes when lax.art and Zoho already agree", () => {
+    wrap(ready(candidate(1, { comparison: SAME })));
+    expect(screen.getByText(/lax.art and Zoho already agree\./)).toBeInTheDocument();
+  });
+
+  it("names the stock code on the button that links", () => {
+    wrap(ready(changed));
+    expect(screen.getByRole("button", { name: "Link to LAX-ORI-AR-TM-26-0001" })).toBeEnabled();
+  });
+
+  it("names the reason a record cannot be used and leaves out the changes", () => {
+    wrap(ready(taken));
+    expect(screen.getByText("This artwork can't be linked to that record now")).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "What linking changes" })).toBeNull();
+    expect(screen.getByRole("button", { name: /Link to/ })).toBeDisabled();
+  });
+
+  it("shows the busy state while linking", () => {
+    wrap(ready(changed, { saving: true }));
+    expect(
+      document.querySelector('button[aria-busy="true"], button[data-loading="true"]'),
+    ).not.toBeNull();
+  });
+
+  it("shows the register's refusal and offers Try again", () => {
+    wrap(ready(changed, { error: "Another lax.art artwork was linked to this record." }));
+    expect(screen.getByText("Not linked")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("shows a skeleton while the chosen record is read, and its error when it fails", () => {
+    const { rerender } = wrap(
+      <LinkToZohoView {...viewProps} selectedId="x" detail={{ phase: "loading" }} />,
+    );
+    expect(screen.getByRole("status", { name: "Checking this record" })).toBeInTheDocument();
+    rerender(
+      <StaffTooltipProvider>
+        <StaffAccessProvider access={laxStaffAccess([], undefined)}>
+          <LinkToZohoView
+            {...viewProps}
+            selectedId="x"
+            detail={{ phase: "error", message: "Could not read that record." }}
+          />
+        </StaffAccessProvider>
+      </StaffTooltipProvider>,
+    );
+    expect(screen.getByText("Could not read that record")).toBeInTheDocument();
+  });
+});
+
+describe("Link to Zoho record: the dialog", () => {
+  it("previews a searched record, then links it on confirm", async () => {
+    search.mockResolvedValue({
+      ok: true,
+      data: { items: [changed.record], more: false },
     });
+    preview.mockResolvedValue({ ok: true, data: { listing: row(1).listing, candidate: changed } });
+    link.mockResolvedValue({ ok: true, data: { status: "linked" } });
+    const onLinked = vi.fn();
     wrap(
       <LinkToZohoDialog
         open
         onOpenChange={vi.fn()}
         artworkId={idOf(1)}
-        artworkTitle="Harbour at Dusk"
-        onLinked={vi.fn()}
+        subtitle={SUBTITLE}
+        published
+        onLinked={onLinked}
       />,
     );
     fireEvent.change(screen.getByLabelText("Search Zoho records"), { target: { value: "zoho" } });
-    fireEvent.click(
-      await screen.findByRole("button", { name: /Choose Zoho title 1/ }, { timeout: 2000 }),
+    fireEvent.click(await screen.findByRole("radio", { name: /LAX-ORI-AR-TM-26-0001/ }));
+    expect(await screen.findByRole("table", { name: "What linking changes" })).toBeInTheDocument();
+    expect(preview).toHaveBeenCalledWith(idOf(1), changed.record.registerId);
+    fireEvent.click(screen.getByRole("button", { name: "Link to LAX-ORI-AR-TM-26-0001" }));
+    await waitFor(() => expect(onLinked).toHaveBeenCalled());
+    expect(link).toHaveBeenCalledWith({
+      artworkId: idOf(1),
+      registerId: changed.record.registerId,
+    });
+    expect(toastSuccess).toHaveBeenCalledWith("Linked to the Zoho record");
+  });
+
+  it("starts with the report's only suggestion chosen, with no extra request", () => {
+    wrap(
+      <LinkToZohoDialog
+        open
+        onOpenChange={vi.fn()}
+        artworkId={idOf(1)}
+        subtitle={SUBTITLE}
+        suggestions={[{ candidate: changed, rule: "stock_code" }]}
+        onLinked={vi.fn()}
+      />,
     );
-    expect(await screen.findByText("Could not read this record.")).toBeInTheDocument();
-    expect(screen.getByLabelText("Search Zoho records")).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "What linking changes" })).toBeInTheDocument();
+    expect(preview).not.toHaveBeenCalled();
+  });
+
+  it("keeps the dialog open and says why when the link is refused", async () => {
+    link.mockResolvedValue({ ok: false, kind: "conflict", message: "Held in a LAX Bid sale." });
+    const onLinked = vi.fn();
+    wrap(
+      <LinkToZohoDialog
+        open
+        onOpenChange={vi.fn()}
+        artworkId={idOf(1)}
+        subtitle={SUBTITLE}
+        suggestions={[{ candidate: changed, rule: "stock_code" }]}
+        onLinked={onLinked}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Link to LAX-ORI/ }));
+    expect(await screen.findByText(/Held in a LAX Bid sale/)).toBeInTheDocument();
+    expect(onLinked).not.toHaveBeenCalled();
   });
 });
 
-describe("the link confirmation", () => {
-  const listing = row(1).listing;
+describe("Link several listings", () => {
+  const rows = [
+    row(1, { candidates: [changed] }, { title: "Harbour at dusk" }),
+    row(2, { candidates: [candidate(2)] }, { title: "Sun disc", published: false }),
+    row(3, { candidates: [candidate(3, { comparison: DIFFERENT })] }, { title: "Blue weave" }),
+  ];
   const props = {
     open: true,
     onOpenChange: vi.fn(),
-    listing,
+    matched: rows,
     saving: false,
     error: null,
+    outcomes: null,
     onConfirm: vi.fn(),
   };
 
-  it("says where a live artwork will go", () => {
-    wrap(<LinkConfirmView {...props} candidate={candidate(1)} />);
-    expect(screen.getByText(/the register will show it as On lax.art/)).toBeInTheDocument();
+  it("says in three lines what will happen", () => {
+    wrap(<BulkLinkView {...props} />);
+    expect(screen.getByText("Link 3 lax.art listings to Zoho?")).toBeInTheDocument();
+    expect(screen.getByText("3 listings linked")).toBeInTheDocument();
+    expect(screen.getByText("Zoho's details replace lax.art's on 2 listings")).toBeInTheDocument();
+    expect(screen.getByText(/Harbour at dusk: title and year\./)).toBeInTheDocument();
+    expect(
+      screen.getByText("2 live listings become On lax.art in the register"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("The draft stays a draft.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Link 3 listings" })).toBeInTheDocument();
   });
 
-  it("says a draft stays where it is until published", () => {
+  it("offers the before and after of each listing that changes", () => {
+    wrap(<BulkLinkView {...props} />);
+    expect(screen.queryByRole("table")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "See what changes on each listing" }));
+    const tables = screen.getAllByRole("table");
+    expect(tables).toHaveLength(2);
+    expect(
+      screen.getByRole("table", { name: "What linking changes on Blue weave" }),
+    ).toBeInTheDocument();
+  });
+
+  it("says when nothing changes except the link", () => {
+    wrap(<BulkLinkView {...props} matched={[rows[1] as (typeof rows)[number]]} />);
+    expect(screen.getByText("lax.art and Zoho already agree")).toBeInTheDocument();
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("shows the error and offers Try again", () => {
+    wrap(<BulkLinkView {...props} error="Could not link the artworks." />);
+    expect(screen.getByText("Could not link the artworks.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("reports what happened to each listing", () => {
     wrap(
-      <LinkConfirmView
+      <BulkLinkView
         {...props}
-        listing={{ ...listing, published: false }}
-        candidate={candidate(1)}
+        outcomes={[
+          {
+            artworkId: idOf(1),
+            registerId: idOf(1001),
+            status: "linked",
+            message: null,
+            nowOnLaxArt: true,
+            replaced: [],
+          },
+          {
+            artworkId: idOf(2),
+            registerId: idOf(1002),
+            status: "refused",
+            message: "In a Bid sale.",
+            nowOnLaxArt: false,
+            replaced: [],
+          },
+        ]}
       />,
     );
-    expect(screen.getByText(/when it is published/)).toBeInTheDocument();
+    expect(screen.getByText("Linking finished")).toBeInTheDocument();
+    expect(screen.getByText(/Sun disc: In a Bid sale\./)).toBeInTheDocument();
   });
 
-  it("names the place that holds the record and offers no way to link", () => {
-    wrap(
-      <LinkConfirmView
-        {...props}
-        candidate={candidate(1, {
-          refusal: "This artwork is in a LAX Bid sale. Withdraw the lot there first.",
-        })}
-      />,
-    );
-    expect(screen.getByText(/in a LAX Bid sale\. Withdraw the lot/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Link artwork" })).toBeNull();
+  it("links on confirm and reads the report again when it closes", async () => {
+    linkMany.mockResolvedValue({
+      ok: true,
+      data: {
+        outcomes: rows.map((r) => ({
+          artworkId: r.listing.artworkId,
+          registerId: r.candidates[0]?.record.registerId,
+          status: "linked",
+          message: null,
+          nowOnLaxArt: true,
+          replaced: [],
+        })),
+      },
+    });
+    const onDone = vi.fn();
+    wrap(<BulkLinkDialog open onOpenChange={vi.fn()} matched={rows} onDone={onDone} />);
+    fireEvent.click(screen.getByRole("button", { name: "Link 3 listings" }));
+    expect(await screen.findByText("Linking finished")).toBeInTheDocument();
+    expect(linkMany).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(onDone).toHaveBeenCalled();
   });
 
-  it("shows the busy state while linking", () => {
-    wrap(<LinkConfirmView {...props} saving candidate={candidate(1)} />);
-    expect(screen.getByRole("button", { name: /Link artwork/ })).toHaveAttribute(
-      "aria-busy",
-      "true",
-    );
-  });
-});
-
-describe("what differs", () => {
-  it("highlights each differing row and strikes through lax.art's old value", () => {
-    const { container } = wrap(<LinkDifferences differences={[...DIFFERENT]} />);
-    expect(container.querySelectorAll("[data-difference]")).toHaveLength(2);
-    expect(screen.getByText("Tidal Margin 4").closest(".line-through")).not.toBeNull();
-    expect(screen.getByText("Tidal margin IV").closest(".line-through")).toBeNull();
-  });
-
-  it("says an empty value is empty", () => {
-    wrap(
-      <LinkDifferences
-        differences={[{ field: "size", label: "Size", zohoValue: null, laxArtValue: "80 x 100" }]}
-      />,
-    );
-    expect(screen.getByText("Empty")).toBeInTheDocument();
-  });
-
-  it("says nothing differs when it does not", () => {
-    wrap(<LinkDifferences differences={[]} />);
-    expect(screen.getByText(/already agree/)).toBeInTheDocument();
+  it("sends a long list in parts of 200", async () => {
+    const many = Array.from({ length: 205 }, (_, i) => row(100 + i));
+    linkMany.mockResolvedValue({ ok: true, data: { outcomes: [] } });
+    wrap(<BulkLinkDialog open onOpenChange={vi.fn()} matched={many} onDone={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Link 205 listings" }));
+    await waitFor(() => expect(linkMany).toHaveBeenCalledTimes(2));
+    expect(linkMany.mock.calls[0]?.[0]).toHaveLength(200);
+    expect(linkMany.mock.calls[1]?.[0]).toHaveLength(5);
   });
 });
 

@@ -24,7 +24,7 @@ import { ProofListingDialog } from "@/components/artworks/edition-runs/proof-lis
 import { OfferAtAuctionDialog } from "@/components/artworks/offer-at-auction-dialog.client";
 import { OriginalArtworkPicker } from "@/components/artworks/original-artwork-picker.client";
 import { ZohoOwnedDetails, ZohoOwnedMedia } from "@/components/artworks/zoho-owned-details";
-import { ZohoWherePanel } from "@/components/artworks/zoho-where-it-is-panel";
+import { UnlinkedWherePanel, ZohoWherePanel } from "@/components/artworks/zoho-where-it-is-panel";
 import { LinkToZohoDialog } from "@/components/from-zoho/link-to-zoho-dialog.client";
 import { UnlinkZohoDialog } from "@/components/from-zoho/unlink-zoho-dialog.client";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
@@ -640,6 +640,7 @@ export function ArtworkEditor({
           record ? (
             <>
               <MetaItem label="Artist">{record.artist.displayName}</MetaItem>
+              {unlinkedOriginal ? <MetaItem label="Stock code">Not linked</MetaItem> : null}
               <MetaItem label="Updated">{formatStaffDateTime(record.updatedAt)}</MetaItem>
             </>
           ) : undefined
@@ -737,7 +738,7 @@ export function ArtworkEditor({
       {record && unlinkedOriginal ? (
         <Notice
           tone="warning"
-          title="Not linked to a Zoho record"
+          title="Not linked to Zoho"
           {...(canLinkToZoho
             ? {
                 actions: (
@@ -754,8 +755,7 @@ export function ArtworkEditor({
               }
             : {})}
         >
-          This original was put on lax.art before Zoho. Until it is linked, the one-place lock and
-          moves between lax.art and Bid do not protect it.
+          LAX can't stop this artwork being offered twice, and Zoho doesn't see where it is.
         </Notice>
       ) : null}
       {priceOnly ? (
@@ -774,6 +774,8 @@ export function ArtworkEditor({
         rail={
           zohoLink && record ? (
             <ZohoWherePanel link={zohoLink} createdAt={record.createdAt} />
+          ) : unlinkedOriginal && record ? (
+            <UnlinkedWherePanel live={live} publishedAt={record.publishedAt ?? null} />
           ) : null
         }
       >
@@ -924,7 +926,11 @@ export function ArtworkEditor({
           ) : (
             <FormSection
               title="Details"
-              description="What the work is and who made it, as shown on its storefront page."
+              description={
+                unlinkedOriginal
+                  ? "What the work is and who made it, as shown on its storefront page. Once linked, these fields come from Zoho."
+                  : "What the work is and who made it, as shown on its storefront page."
+              }
             >
               <Field
                 label="Title"
@@ -1464,7 +1470,8 @@ export function ArtworkEditor({
           open
           onOpenChange={setLinkingToZoho}
           artworkId={record.artworkId}
-          artworkTitle={record.title}
+          subtitle={`${record.title} · ${record.artist.displayName} · ${live ? "Live on lax.art" : "Draft on lax.art"}`}
+          published={live}
           onLinked={() => router.refresh()}
         />
       ) : null}

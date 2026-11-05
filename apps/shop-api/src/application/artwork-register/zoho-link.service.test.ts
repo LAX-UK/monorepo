@@ -106,6 +106,7 @@ function build(
       blockUnlinkedPublish: vi.fn(async () => input.block ?? false),
       setBlockUnlinkedPublish: setBlock,
     },
+    imageUrl: (key) => (key ? `https://img.test/${key}` : null),
     now: () => T0,
   };
   return { service: new ZohoLinkService(deps), deps, writer, setBlock };
@@ -240,6 +241,7 @@ describe("ZohoLinkService.report", () => {
           title: "Tidal margin IV",
           artistName: "Ada Rowe",
           published: true,
+          imageKey: "tidal.jpg",
           registerId: REG_1,
           stockCode: "LAX-ORI-AR-TM-26-0004",
           recordTitle: "Tidal margin IV",
@@ -252,6 +254,7 @@ describe("ZohoLinkService.report", () => {
           title: "Other",
           artistName: "Ada Rowe",
           published: false,
+          imageKey: null,
           registerId: REG_2,
           stockCode: "LAX-ORI-AR-OT-26-0001",
           recordTitle: "Other",
@@ -265,7 +268,7 @@ describe("ZohoLinkService.report", () => {
     expect(report.counts.linked).toBe(2);
     expect(report.linked.map((row) => row.linkedBy)).toEqual(["Lena Hart", null]);
     expect(report.linked[0]).toMatchObject({
-      listing: { artworkId: ART_1, published: true },
+      listing: { artworkId: ART_1, published: true, imageUrl: "https://img.test/tidal.jpg" },
       record: { registerId: REG_1, stockCode: "LAX-ORI-AR-TM-26-0004" },
       linkedAt: T0.toISOString(),
     });

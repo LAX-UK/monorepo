@@ -1,10 +1,11 @@
 import type {
   AdminZohoLinkBody,
   AdminZohoLinkCandidate,
+  AdminZohoLinkComparison,
   AdminZohoLinkOutcome,
-  AdminZohoLinkReport,
   AdminZohoLinkRow,
 } from "@auction/shop-contracts";
+import type { ChangesRow } from "@auction/staff-ui";
 
 export type LinkRule = NonNullable<AdminZohoLinkRow["rule"]>;
 export type NoMatchReason = NonNullable<AdminZohoLinkRow["reason"]>;
@@ -24,12 +25,6 @@ export const NO_MATCH_REASON_LABEL: Record<NoMatchReason, string> = {
     "The artist has no Zoho artist code, and a title alone is never enough to match",
   no_record_for_artist_and_title: "No Zoho record has this artist and title",
 };
-
-export const LINK_GROUPS = [
-  { id: "matched", label: "Matched" },
-  { id: "needsChoice", label: "Needs a choice" },
-  { id: "noMatch", label: "No match" },
-] as const;
 
 /** The rows a bulk confirmation would link, and the matched rows it would leave out and why. */
 export function planBulkLink(matched: readonly AdminZohoLinkRow[]) {
@@ -79,14 +74,55 @@ export function outcomeSentence(outcomes: readonly AdminZohoLinkOutcome[]): stri
   return `${parts.join(", ")}.`;
 }
 
-/** The rows of the report in the order the groups are shown, with their counts. */
-export function groupRows(report: AdminZohoLinkReport) {
-  return [
-    { ...LINK_GROUPS[0], rows: report.matched },
-    { ...LINK_GROUPS[1], rows: report.needsChoice },
-    { ...LINK_GROUPS[2], rows: report.noMatch },
-  ];
+/** The table rows of a before and after comparison, as the kit's table draws them. */
+export function changeRows(comparison: readonly AdminZohoLinkComparison[]): ChangesRow[] {
+  return comparison.map((row) => ({
+    id: row.field,
+    label: row.label,
+    before: row.laxArtValue,
+    after: row.zohoValue,
+    changes: row.changes,
+  }));
 }
 
-/** Zoho's value for a difference as shown; an empty value is said so. */
-export const differenceValue = (value: string | null) => value ?? "Empty";
+/** "Title and size", "title, size and year": field names as a sentence fragment. */
+export function joinFields(labels: readonly string[]): string {
+  const lower = labels.map((label) => label.toLowerCase());
+  if (lower.length <= 1) return lower.join("");
+  return `${lower.slice(0, -1).join(", ")} and ${lower[lower.length - 1]}`;
+}
+
+/** The line under one link's table: what changes, that the web address stays, and where it goes. */
+export function linkFootnote(input: {
+  comparison: readonly AdminZohoLinkComparison[];
+  published: boolean | null;
+  whereItIs: string;
+}): string {
+  const changed = input.comparison.filter((row) => row.changes).length;
+  const first =
+    changed === 0
+      ? "lax.art and Zoho already agree."
+      : `${changed} ${changed === 1 ? "field changes" : "fields change"} to Zoho's values.`;
+  const place =
+    input.published === true
+      ? input.whereItIs === "Not offered"
+        ? "It becomes On lax.art in the register."
+        : "It is live on lax.art."
+      : input.published === false
+        ? "It stays a draft. The register shows it as On lax.art when it is published."
+        : "";
+  return [first, "The web address stays the same.", place].filter(Boolean).join(" ");
+}
+
+/** What a bulk link will do, in the three lines of its confirmation. */
+export function bulkSummary(plan: ReturnType<typeof planBulkLink>) {
+  const changed = plan.linkable
+    .filter((item) => item.candidate.differences.length > 0)
+    .map((item) => ({
+      row: item.row,
+      candidate: item.candidate,
+      fields: joinFields(item.candidate.differences.map((difference) => difference.label)),
+    }));
+  const live = plan.linkable.filter((item) => item.row.listing.published).length;
+  return { linked: plan.linkable.length, changed, live, drafts: plan.linkable.length - live };
+}

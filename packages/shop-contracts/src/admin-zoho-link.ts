@@ -22,6 +22,8 @@ export const AdminZohoLinkListingSchema = Type.Object({
   dimensions: Nullable(Type.String()),
   year: Nullable(Type.Integer()),
   published: Type.Boolean(),
+  /** The cover image's address, for the thumbnail; null when there is no image. */
+  imageUrl: Nullable(Type.String()),
 });
 export type AdminZohoLinkListing = Static<typeof AdminZohoLinkListingSchema>;
 
@@ -40,6 +42,8 @@ export const AdminZohoLinkRecordSchema = Type.Object({
   whereItIs: Type.String(),
   /** The title of the lax.art artwork already linked to this record, or null. Such a record cannot be chosen. */
   linkedTo: Nullable(Type.String()),
+  /** Zoho's first image, for the thumbnail; null when the record has none. */
+  imageUrl: Nullable(Type.String()),
 });
 export type AdminZohoLinkRecord = Static<typeof AdminZohoLinkRecordSchema>;
 
@@ -121,6 +125,7 @@ export const AdminZohoLinkedRowSchema = Type.Object({
     title: Type.String(),
     artistName: Type.String(),
     published: Type.Boolean(),
+    imageUrl: Nullable(Type.String()),
   }),
   record: Type.Object({
     registerId: Type.String({ format: "uuid" }),
