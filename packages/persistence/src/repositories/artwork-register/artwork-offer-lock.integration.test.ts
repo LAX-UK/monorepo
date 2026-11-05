@@ -79,7 +79,7 @@ describe.skipIf(!url)("one place at a time (Postgres)", { timeout: 30_000 }, () 
     await lock.offer({ zohoProductId: "5001" }, shop, "staff:u1");
 
     await expect(lock.offer({ registerId: entry.id }, lot, "staff:u2")).rejects.toThrow(
-      "This artwork is already offered in lax.art. Withdraw it there first.",
+      "This artwork is live on lax.art. Take it off lax.art first, or use Offer at auction to move it.",
     );
     await expect(lock.assertCanOffer({ registerId: entry.id }, lot)).rejects.toBeInstanceOf(
       ArtworkOfferedElsewhereError,
@@ -113,7 +113,7 @@ describe.skipIf(!url)("one place at a time (Postgres)", { timeout: 30_000 }, () 
 
     expect((await lock.markSold({ registerId: entry.id }, lot, "system")).status).toBe("unchanged");
     await expect(lock.offer({ registerId: entry.id }, shop, "staff:u1")).rejects.toThrow(
-      "already been sold",
+      "has been sold",
     );
   });
 

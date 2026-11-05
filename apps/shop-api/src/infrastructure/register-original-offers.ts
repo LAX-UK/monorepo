@@ -2,7 +2,7 @@ import {
   type ArtworkOfferLock,
   ArtworkOfferMoveError,
   ArtworkOfferedElsewhereError,
-  type OfferRef,
+  type OfferPlaceRef,
   type RegisterLink,
 } from "@auction/artwork-register-contracts";
 import type { Database } from "@auction/db";
@@ -18,7 +18,7 @@ function linkOf(artwork: OfferedArtwork): RegisterLink | null {
   return governed && artwork.zohoProductId ? { zohoProductId: artwork.zohoProductId } : null;
 }
 
-function refOf(artwork: OfferedArtwork): OfferRef {
+function refOf(artwork: OfferedArtwork): OfferPlaceRef {
   return { kind: "shop_artwork", id: artwork.id };
 }
 

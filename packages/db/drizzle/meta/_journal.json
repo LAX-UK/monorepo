@@ -2143,6 +2143,20 @@
       "when": 1801987200000,
       "tag": "0311_artwork_register_print_code",
       "breakpoints": true
+    },
+    {
+      "idx": 307,
+      "version": "7",
+      "when": 1802073600000,
+      "tag": "0312_artwork_register_gallery_sale_ref",
+      "breakpoints": true
+    },
+    {
+      "idx": 308,
+      "version": "7",
+      "when": 1802160000000,
+      "tag": "0313_lax_art_draft_from_register",
+      "breakpoints": true
     }
   ]
 }

@@ -68,7 +68,8 @@ describe("OfferLockLotLifecycleRecording.recordPublished", () => {
     const refusal = recording.recordPublished(tx, lotRow, "user-1");
     await expect(refusal).rejects.toBeInstanceOf(LotError);
     await expect(refusal).rejects.toMatchObject({
-      message: "This artwork is already offered in lax.art. Withdraw it there first.",
+      message:
+        "This artwork is live on lax.art. Take it off lax.art first, or use Offer at auction to move it.",
       status: 409,
       code: "artwork_offered_elsewhere",
     });

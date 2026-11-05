@@ -22,6 +22,7 @@ import { registerAdminGuestRoutes } from "./routes/admin/v1/admin-guests.routes.
 import { registerAdminHelpRoutes } from "./routes/admin/v1/admin-help.routes.js";
 import { registerAdminMediaRoutes } from "./routes/admin/v1/admin-media.routes.js";
 import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/admin-merchandise.routes.js";
+import { registerAdminOfferOnLaxArtRoutes } from "./routes/admin/v1/admin-offer-on-lax-art.routes.js";
 import { registerAdminPeopleRoutes } from "./routes/admin/v1/admin-people.routes.js";
 import { registerAdminProductionRoutes } from "./routes/admin/v1/admin-production.routes.js";
 import { registerAdminReadRoutes } from "./routes/admin/v1/admin-read.routes.js";
@@ -195,6 +196,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
         void registerAdminGuestRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRegisterRoutes(adminScope, options.deps.admin.artworkRegister);
+        void registerAdminOfferOnLaxArtRoutes(adminScope, options.deps.admin);
         void registerAdminReleaseAlertRoutes(adminScope, options.deps.admin.releaseAlertSummary);
         void registerAdminArtistApplicationRoutes(
           adminScope,
