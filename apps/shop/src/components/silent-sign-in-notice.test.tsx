@@ -1,6 +1,6 @@
 import { SHOP_SILENT_NOTICE_COOKIE } from "@/lib/silent-sign-in/config";
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SilentSignInNotice } from "./silent-sign-in-notice.client";
 
@@ -10,6 +10,8 @@ function setNoticeCookie() {
 
 describe("SilentSignInNotice", () => {
   afterEach(() => {
+    // The open dialog traps focus; leave nothing mounted for the next test file in the same worker.
+    cleanup();
     document.cookie = `${SHOP_SILENT_NOTICE_COOKIE}=; Max-Age=0; path=/`;
   });
 
