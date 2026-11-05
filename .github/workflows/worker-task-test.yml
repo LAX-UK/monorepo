@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: test
     timeout-minutes: 15
+    env:
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,8 +50,6 @@ jobs:
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
       # Same masked contract as the identity maintenance workflows: owner address and CA from Terraform.
       - name: Load masked test database contract
-        env:
-          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
         run: |
           set -euo pipefail
           tf_dir=.infra-config/terraform/ephemeral/test
