@@ -222,6 +222,13 @@ const envSchema = z
     STRIPE_CARD_CHECKOUT_MAX: z.coerce.number().positive().default(10_000),
     STRIPE_MANUAL_REVIEW_MIN: z.coerce.number().positive().default(500_000),
     STRIPE_ABSOLUTE_MAX: z.coerce.number().positive().default(999_999.99),
+    /**
+     * Source-of-funds threshold applied when an invoice is raised at lot end. Same names and
+     * defaults as the API, so both processes hold the same buyers.
+     */
+    SOF_THRESHOLD_AMOUNT: z.coerce.number().nonnegative().default(9000),
+    SOF_THRESHOLD_CURRENCY: z.string().min(3).max(3).default("GBP"),
+    SOF_APPROVAL_VALIDITY_DAYS: z.coerce.number().int().positive().default(365),
     DISABLE_PAYOUT_SETTLEMENT: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),

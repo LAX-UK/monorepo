@@ -1,13 +1,5 @@
-import {
-  type CheckoutRailKind,
-  type ManualReviewReason,
-  type PaymentTierLimits,
-  needsManualReviewGate,
-  resolveCheckoutRail,
-  resolveManualReviewReason,
-  validateCheckoutAmountPence,
-} from "@auction/domain";
-
+/** The one implementation lives in `@auction/finance-runtime`, shared with the worker. */
+export { PaymentTierPolicy } from "@auction/finance-runtime";
 export {
   STRIPE_GBP_MIN_PENCE,
   majorGbpToPence,
@@ -21,30 +13,3 @@ export {
   type PaymentTierKind,
   type PaymentTierLimits,
 } from "@auction/domain";
-
-export class PaymentTierPolicy {
-  constructor(private readonly limits: PaymentTierLimits) {}
-
-  get limitsSnapshot(): PaymentTierLimits {
-    return this.limits;
-  }
-
-  needsManualReviewGate(amountPence: number, sellerArchived: boolean): boolean {
-    return needsManualReviewGate(amountPence, this.limits, sellerArchived);
-  }
-
-  resolveManualReviewReason(
-    amountPence: number,
-    sellerArchived: boolean,
-  ): ManualReviewReason | null {
-    return resolveManualReviewReason(amountPence, this.limits, sellerArchived);
-  }
-
-  validateCheckoutAmountPence(amountPence: number): "ok" | "invalid_amount" | "blocked" {
-    return validateCheckoutAmountPence(amountPence, this.limits);
-  }
-
-  resolveCheckoutRail(amountPence: number): CheckoutRailKind | null {
-    return resolveCheckoutRail(amountPence, this.limits);
-  }
-}
