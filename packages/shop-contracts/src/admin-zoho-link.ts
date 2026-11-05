@@ -38,6 +38,8 @@ export const AdminZohoLinkRecordSchema = Type.Object({
   zohoStatus: Nullable(Type.String()),
   /** Where the artwork is offered now, in words for staff (for example "Not offered"). */
   whereItIs: Type.String(),
+  /** The title of the lax.art artwork already linked to this record, or null. Such a record cannot be chosen. */
+  linkedTo: Nullable(Type.String()),
 });
 export type AdminZohoLinkRecord = Static<typeof AdminZohoLinkRecordSchema>;
 
@@ -66,6 +68,19 @@ export const AdminZohoLinkDifferenceSchema = Type.Object({
 });
 export type AdminZohoLinkDifference = Static<typeof AdminZohoLinkDifferenceSchema>;
 
+/**
+ * One field, both sides, for the before and after table of a link. `changes` is true when Zoho's
+ * value replaces lax.art's; the rows that do not change are shown so the table reads as a whole.
+ */
+export const AdminZohoLinkComparisonSchema = Type.Object({
+  field: AdminZohoLinkFieldSchema,
+  label: Type.String(),
+  laxArtValue: Nullable(Type.String()),
+  zohoValue: Nullable(Type.String()),
+  changes: Type.Boolean(),
+});
+export type AdminZohoLinkComparison = Static<typeof AdminZohoLinkComparisonSchema>;
+
 export const AdminZohoLinkRuleSchema = Type.Union([
   Type.Literal("stock_code"),
   Type.Literal("artist_and_title"),
@@ -82,6 +97,8 @@ export const AdminZohoLinkNoMatchReasonSchema = Type.Union([
 export const AdminZohoLinkCandidateSchema = Type.Object({
   record: AdminZohoLinkRecordSchema,
   differences: Type.Array(AdminZohoLinkDifferenceSchema),
+  /** Every field with lax.art's value now and Zoho's after linking; the changed ones are flagged. */
+  comparison: Type.Array(AdminZohoLinkComparisonSchema),
   /** Why this record cannot be linked now (held elsewhere, sold, reserved), or null. */
   refusal: Nullable(Type.String()),
 });
@@ -96,6 +113,26 @@ export const AdminZohoLinkRowSchema = Type.Object({
 });
 export type AdminZohoLinkRow = Static<typeof AdminZohoLinkRowSchema>;
 
+/** A lax.art original that has been linked from this report, and by whom. */
+export const AdminZohoLinkedRowSchema = Type.Object({
+  listing: Type.Object({
+    artworkId: Type.String({ format: "uuid" }),
+    slug: Type.String(),
+    title: Type.String(),
+    artistName: Type.String(),
+    published: Type.Boolean(),
+  }),
+  record: Type.Object({
+    registerId: Type.String({ format: "uuid" }),
+    stockCode: Type.String(),
+    title: Type.String(),
+  }),
+  linkedAt: Type.String({ format: "date-time" }),
+  /** The staff member who linked it, when their name is known. */
+  linkedBy: Nullable(Type.String()),
+});
+export type AdminZohoLinkedRow = Static<typeof AdminZohoLinkedRowSchema>;
+
 export const AdminZohoLinkReportSchema = Type.Object({
   /** When the matching ran. Matching only reads; "Check again" runs it again. */
   checkedAt: Type.String({ format: "date-time" }),
@@ -104,10 +141,13 @@ export const AdminZohoLinkReportSchema = Type.Object({
     matched: Type.Integer({ minimum: 0 }),
     needsChoice: Type.Integer({ minimum: 0 }),
     noMatch: Type.Integer({ minimum: 0 }),
+    linked: Type.Integer({ minimum: 0 }),
   }),
   matched: Type.Array(AdminZohoLinkRowSchema),
   needsChoice: Type.Array(AdminZohoLinkRowSchema),
   noMatch: Type.Array(AdminZohoLinkRowSchema),
+  /** What has been linked from this report, newest first. */
+  linked: Type.Array(AdminZohoLinkedRowSchema),
   /** The switch that stops publishing an original that is not linked. */
   blockUnlinkedPublish: Type.Boolean(),
 });

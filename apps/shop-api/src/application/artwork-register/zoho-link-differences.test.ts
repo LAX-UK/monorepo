@@ -42,7 +42,8 @@ const ada: ArtistForCode = { artistId: "artist-1", displayName: "Ada Rowe", arch
 describe("planLink", () => {
   it("changes nothing when lax.art and Zoho agree", () => {
     const plan = planLink(listing(), entry(), ada);
-    expect(plan).toEqual({ differences: [], update: {}, artistRefusal: null, replaced: [] });
+    expect(plan).toMatchObject({ differences: [], update: {}, artistRefusal: null, replaced: [] });
+    expect(plan.comparison.every((row) => !row.changes)).toBe(true);
   });
 
   it("replaces each differing value with Zoho's and shows lax.art's beside it", () => {

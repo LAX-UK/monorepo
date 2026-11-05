@@ -14,19 +14,43 @@ export type UnlinkedListing = MatchListing &
     published: boolean;
   };
 
+/** A lax.art original that was linked from the report, with who linked it and when. */
+export type LinkedListing = {
+  artworkId: string;
+  slug: string;
+  title: string;
+  artistName: string;
+  published: boolean;
+  registerId: string;
+  stockCode: string;
+  recordTitle: string;
+  linkedAt: Date;
+  /** The register history's actor: `staff:<id>`, or something else when not a person. */
+  actor: string;
+};
+
 export interface ZohoLinkListingReader {
+  /** What has been linked from the report and is still linked, newest first. */
+  listLinked(): Promise<LinkedListing[]>;
   /** Every original on lax.art (draft or live, not archived) that has no Zoho Product id. */
   listUnlinked(): Promise<UnlinkedListing[]>;
   countUnlinked(): Promise<number>;
   findUnlinked(artworkId: string): Promise<UnlinkedListing | null>;
 }
 
+/** A register original, with the lax.art artwork already linked to it, if any. */
+export type LinkableRecord = {
+  entry: ArtworkRegisterEntry;
+  /** The title of the lax.art artwork linked to this record; null when none is. */
+  linkedTo: string | null;
+};
+
 export interface ZohoLinkRecordReader {
-  /** Register originals that no lax.art artwork is linked to yet. */
-  listLinkable(): Promise<ArtworkRegisterEntry[]>;
-  findById(registerId: string): Promise<ArtworkRegisterEntry | null>;
-  /** Linkable originals whose stock code, title or artist name contains `query`. */
-  search(query: string, limit: number): Promise<ArtworkRegisterEntry[]>;
+  /** Every register original. Those already linked say to which listing, so they are shown and cannot be chosen. */
+  listLinkable(): Promise<LinkableRecord[]>;
+  findById(registerId: string): Promise<LinkableRecord | null>;
+  /** Originals whose stock code, title, artist name or artist code contains `query`. */
+  search(query: string, limit: number): Promise<LinkableRecord[]>;
 }
 
 export type LinkCommand = { artworkId: string; registerId: string; actorSubjectId: string };

@@ -56,7 +56,7 @@ describe.skipIf(!hasShopIntegrationDb)("link lax.art originals to Zoho (Postgres
       register,
       writer,
       listings: createDrizzleZohoLinkListingReader(db),
-      records: createDrizzleZohoLinkRecordReader(db, shopRegister),
+      records: createDrizzleZohoLinkRecordReader(db),
       settings: createDrizzleZohoLinkSettings(db, () => NOW),
       artists: createDrizzleArtistCatalogueWriter(uow),
     };
@@ -337,12 +337,17 @@ describe.skipIf(!hasShopIntegrationDb)("link lax.art originals to Zoho (Postgres
     expect(await settings.blockUnlinkedPublish()).toBe(before);
   });
 
-  it("searches only the records no artwork is linked to", async () => {
-    const { records, writer } = setup();
+  it("searches every original, saying which listing a linked one belongs to", async () => {
+    const { records, writer, listings } = setup();
     const entry = await record({ title: `Searchable ${integrationSuffix("s")}` });
     const listing = await legacyListing("search", entry.artist.code);
-    expect((await records.search(entry.title, 10)).map((e) => e.id)).toContain(entry.id);
+    const before = (await records.search(entry.title, 10)).find((r) => r.entry.id === entry.id);
+    expect(before?.linkedTo).toBeNull();
     await writer.link({ artworkId: listing.id, registerId: entry.id, actorSubjectId: ACTOR });
-    expect((await records.search(entry.title, 10)).map((e) => e.id)).not.toContain(entry.id);
+    const after = (await records.search(entry.title, 10)).find((r) => r.entry.id === entry.id);
+    expect(after?.linkedTo).toBe(entry.title);
+    expect((await records.findById(entry.id))?.linkedTo).toBe(entry.title);
+    const linked = (await listings.listLinked()).find((l) => l.artworkId === listing.id);
+    expect(linked).toMatchObject({ registerId: entry.id, actor: `staff:${ACTOR}` });
   });
 });

@@ -8,21 +8,23 @@ import {
 import type { Database } from "@auction/db";
 import {
   artworkRegister,
+  artworkRegisterEvent,
   shopArtist,
   shopArtwork,
   shopArtworkImage,
   shopCatalogueSetting,
   shopParty,
 } from "@auction/db/schema";
-import type { IArtworkLinkHistory, IArtworkRegisterReader } from "@auction/persistence/interfaces";
+import type { IArtworkLinkHistory } from "@auction/persistence/interfaces";
 import { registerRowToEntry } from "@auction/persistence/repositories";
-import { and, asc, eq, ilike, inArray, isNull, notExists, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { laxArtOfferBlockers } from "../application/artwork-register/lax-art-offer-blockers.js";
 import { planLink } from "../application/artwork-register/zoho-link-differences.js";
 import type { ShopUnitOfWorkFactory } from "../application/ports/shop-unit-of-work.js";
 import {
   type LinkCommand,
   type LinkWritten,
+  type LinkableRecord,
   type UnlinkCommand,
   type UnlinkedListing,
   type ZohoLinkListingReader,
@@ -123,6 +125,57 @@ export function createDrizzleZohoLinkListingReader(db: Database): ZohoLinkListin
       .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
       .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id));
   return {
+    async listLinked() {
+      // The latest "linked" entry in each record's history says who made the link and when.
+      const latest = db
+        .selectDistinctOn([artworkRegisterEvent.registerId], {
+          registerId: artworkRegisterEvent.registerId,
+          actor: artworkRegisterEvent.actor,
+          linkedAt: artworkRegisterEvent.createdAt,
+        })
+        .from(artworkRegisterEvent)
+        .where(eq(artworkRegisterEvent.type, "zoho_link_linked"))
+        .orderBy(artworkRegisterEvent.registerId, desc(artworkRegisterEvent.createdAt))
+        .as("latest_link");
+      const rows = await db
+        .select({
+          artworkId: shopArtwork.id,
+          slug: shopArtwork.slug,
+          title: shopArtwork.title,
+          artistName: shopParty.displayName,
+          publishedAt: shopArtwork.publishedAt,
+          registerId: artworkRegister.id,
+          stockCode: artworkRegister.stockCode,
+          recordTitle: artworkRegister.title,
+          linkedAt: latest.linkedAt,
+          actor: latest.actor,
+        })
+        .from(shopArtwork)
+        .innerJoin(artworkRegister, eq(artworkRegister.zohoProductId, shopArtwork.zohoProductId))
+        .innerJoin(latest, eq(latest.registerId, artworkRegister.id))
+        .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+        .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+        .where(
+          and(
+            eq(shopArtwork.salesChannel, "art"),
+            isNull(shopArtwork.runKind),
+            isNull(shopArtwork.archivedAt),
+          ),
+        )
+        .orderBy(desc(latest.linkedAt), asc(shopArtwork.id));
+      return rows.map((row) => ({
+        artworkId: row.artworkId,
+        slug: row.slug,
+        title: row.title,
+        artistName: row.artistName,
+        published: row.publishedAt !== null,
+        registerId: row.registerId,
+        stockCode: row.stockCode,
+        recordTitle: row.recordTitle,
+        linkedAt: row.linkedAt,
+        actor: row.actor,
+      }));
+    },
     async listUnlinked() {
       const rows = await base()
         .where(unlinkedOriginal)
@@ -151,37 +204,39 @@ export function createDrizzleZohoLinkListingReader(db: Database): ZohoLinkListin
   };
 }
 
-const linkableOriginal = (db: Database) =>
-  and(
-    eq(artworkRegister.kind, "original"),
-    notExists(
-      db
-        .select({ one: sql`1` })
-        .from(shopArtwork)
-        .where(eq(shopArtwork.zohoProductId, artworkRegister.zohoProductId)),
-    ),
-  );
-
 const escapeLike = (value: string) => value.replace(/[\\%_]/g, (char) => `\\${char}`);
 
-export function createDrizzleZohoLinkRecordReader(
-  db: Database,
-  register: Pick<IArtworkRegisterReader, "findById">,
-): ZohoLinkRecordReader {
+const linkableSelect = (db: Database) =>
+  db
+    .select({ row: artworkRegister, linkedTo: shopArtwork.title })
+    .from(artworkRegister)
+    .leftJoin(shopArtwork, eq(shopArtwork.zohoProductId, artworkRegister.zohoProductId));
+
+type LinkableRow = { row: typeof artworkRegister.$inferSelect; linkedTo: string | null };
+
+const toLinkable = ({ row, linkedTo }: LinkableRow): LinkableRecord => ({
+  entry: registerRowToEntry(row),
+  linkedTo,
+});
+
+export function createDrizzleZohoLinkRecordReader(db: Database): ZohoLinkRecordReader {
   return {
     async listLinkable() {
-      const rows = await db.select().from(artworkRegister).where(linkableOriginal(db));
-      return rows.map(registerRowToEntry);
+      const rows = await linkableSelect(db).where(eq(artworkRegister.kind, "original"));
+      return rows.map(toLinkable);
     },
-    findById: (registerId) => register.findById(registerId),
+    async findById(registerId) {
+      const [found] = await linkableSelect(db)
+        .where(and(eq(artworkRegister.id, registerId), eq(artworkRegister.kind, "original")))
+        .limit(1);
+      return found ? toLinkable(found) : null;
+    },
     async search(query, limit) {
       const pattern = `%${escapeLike(query)}%`;
-      const rows = await db
-        .select()
-        .from(artworkRegister)
+      const rows = await linkableSelect(db)
         .where(
           and(
-            linkableOriginal(db),
+            eq(artworkRegister.kind, "original"),
             or(
               ilike(artworkRegister.stockCode, pattern),
               ilike(artworkRegister.title, pattern),
@@ -192,7 +247,7 @@ export function createDrizzleZohoLinkRecordReader(
         )
         .orderBy(asc(artworkRegister.title), asc(artworkRegister.id))
         .limit(limit);
-      return rows.map(registerRowToEntry);
+      return rows.map(toLinkable);
     },
   };
 }

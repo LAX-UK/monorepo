@@ -11,13 +11,17 @@ import {
   type AdminZohoLinkRow,
   type AdminZohoLinkSearchResult,
   type AdminZohoLinkSettings,
+  type AdminZohoLinkedRow,
   type AdminZohoUnlinkBody,
   type AdminZohoUnlinkResult,
   SHOP_API_ERROR_CODES,
 } from "@auction/shop-contracts";
 import { ShopApiError } from "../../errors/shop-api-error.js";
 import type { LaxArtArtistDirectory } from "../ports/offer-on-lax-art.ports.js";
+import type { StaffNameReader } from "../ports/staff-name.reader.js";
 import {
+  type LinkableRecord,
+  type LinkedListing,
   type UnlinkedListing,
   type ZohoLinkListingReader,
   type ZohoLinkRecordReader,
@@ -35,8 +39,11 @@ export type ZohoLinkDeps = {
   artists: LaxArtArtistDirectory;
   writer: ZohoLinkWriter;
   settings: ZohoLinkSettingsStore;
+  staffNames: StaffNameReader;
   now?: () => Date;
 };
+
+const STAFF_PREFIX = "staff:";
 
 const SEARCH_LIMIT = 20;
 
@@ -58,8 +65,9 @@ const toMatchRecord = (entry: ArtworkRegisterEntry): MatchRecord => ({
   year: entry.year,
 });
 
-function presentRecord(entry: ArtworkRegisterEntry): AdminZohoLinkRecord {
+function presentRecord({ entry, linkedTo }: LinkableRecord): AdminZohoLinkRecord {
   return {
+    linkedTo,
     registerId: entry.id,
     stockCode: entry.stockCode,
     title: entry.title,
@@ -103,13 +111,17 @@ export class ZohoLinkService {
 
   /** Matches every unlinked original. Reads only; "Check again" calls this again. */
   async report(): Promise<AdminZohoLinkReport> {
-    const [listings, records, block] = await Promise.all([
+    const [listings, records, block, linkedListings] = await Promise.all([
       this.deps.listings.listUnlinked(),
       this.deps.records.listLinkable(),
       this.deps.settings.blockUnlinkedPublish(),
+      this.deps.listings.listLinked(),
     ]);
-    const byId = new Map(records.map((record) => [record.id, record]));
-    const matches = matchListings(listings, records.map(toMatchRecord));
+    const byId = new Map(records.map((record) => [record.entry.id, record]));
+    const matches = matchListings(
+      listings,
+      records.map((record) => toMatchRecord(record.entry)),
+    );
     const artistCache = new Map<string, ArtistForCode>();
     const artistFor = async (code: string): Promise<ArtistForCode> => {
       if (!artistCache.has(code)) {
@@ -127,10 +139,14 @@ export class ZohoLinkService {
         reason: "no_record_for_artist_and_title" as const,
       };
       const row = await this.row(listing, match, byId, artistFor);
-      if (match.kind === "matched") matched.push(row);
-      else if (match.kind === "choice") needsChoice.push(row);
-      else noMatch.push(row);
+      // Matched means one record that is free to link. A single record that is linked elsewhere,
+      // sold or held in another place needs a person to look, so it is sorted with the choices.
+      const free = match.kind === "matched" && row.candidates.every((c) => c.refusal === null);
+      if (free) matched.push(row);
+      else if (match.kind === "none") noMatch.push(row);
+      else needsChoice.push(row);
     }
+    const linked = await this.linkedRows(linkedListings);
     return {
       checkedAt: this.now().toISOString(),
       counts: {
@@ -138,18 +154,42 @@ export class ZohoLinkService {
         matched: matched.length,
         needsChoice: needsChoice.length,
         noMatch: noMatch.length,
+        linked: linked.length,
       },
       matched,
       needsChoice,
       noMatch,
+      linked,
       blockUnlinkedPublish: block,
     };
+  }
+
+  private async linkedRows(items: readonly LinkedListing[]): Promise<AdminZohoLinkedRow[]> {
+    const ids = items
+      .filter((item) => item.actor.startsWith(STAFF_PREFIX))
+      .map((item) => item.actor.slice(STAFF_PREFIX.length));
+    const names =
+      ids.length > 0 ? await this.deps.staffNames.namesFor(ids) : new Map<string, string>();
+    return items.map((item) => ({
+      listing: {
+        artworkId: item.artworkId,
+        slug: item.slug,
+        title: item.title,
+        artistName: item.artistName,
+        published: item.published,
+      },
+      record: { registerId: item.registerId, stockCode: item.stockCode, title: item.recordTitle },
+      linkedAt: item.linkedAt.toISOString(),
+      linkedBy: item.actor.startsWith(STAFF_PREFIX)
+        ? (names.get(item.actor.slice(STAFF_PREFIX.length)) ?? null)
+        : null,
+    }));
   }
 
   private async row(
     listing: UnlinkedListing,
     match: ListingMatch,
-    byId: ReadonlyMap<string, ArtworkRegisterEntry>,
+    byId: ReadonlyMap<string, LinkableRecord>,
     artistFor: (code: string) => Promise<ArtistForCode>,
   ): Promise<AdminZohoLinkRow> {
     const ids =
@@ -162,7 +202,9 @@ export class ZohoLinkService {
     for (const id of ids) {
       const entry = byId.get(id);
       if (entry)
-        candidates.push(await this.candidate(listing, entry, await artistFor(entry.artist.code)));
+        candidates.push(
+          await this.candidate(listing, entry, await artistFor(entry.entry.artist.code)),
+        );
     }
     return {
       listing: presentListing(listing),
@@ -174,15 +216,20 @@ export class ZohoLinkService {
 
   private async candidate(
     listing: UnlinkedListing,
-    entry: ArtworkRegisterEntry,
+    record: LinkableRecord,
     artist: ArtistForCode,
   ): Promise<AdminZohoLinkCandidate> {
+    const { entry, linkedTo } = record;
     const plan = planLink(listing, entry, artist);
     const blockers = laxArtOfferBlockers(entry, { kind: "shop_artwork", id: listing.artworkId });
     return {
-      record: presentRecord(entry),
+      record: presentRecord(record),
       differences: plan.differences,
-      refusal: blockers[0]?.message ?? plan.artistRefusal,
+      comparison: plan.comparison,
+      refusal:
+        linkedTo !== null
+          ? `This record is already linked to ‘${linkedTo}’.`
+          : (blockers[0]?.message ?? plan.artistRefusal),
     };
   }
 
@@ -213,11 +260,15 @@ export class ZohoLinkService {
       );
     return {
       listing: presentListing(listing),
-      candidate: await this.candidate(listing, entry, await this.artistForCode(entry.artist.code)),
+      candidate: await this.candidate(
+        listing,
+        entry,
+        await this.artistForCode(entry.entry.artist.code),
+      ),
     };
   }
 
-  /** Looks through the register for the record of one artwork; records already linked are left out. */
+  /** Looks through the register for the record of one artwork; a record already linked says to which listing. */
   async search(query: string): Promise<AdminZohoLinkSearchResult> {
     const found = await this.deps.records.search(query.trim(), SEARCH_LIMIT + 1);
     return {
@@ -263,7 +314,11 @@ export class ZohoLinkService {
       this.deps.listings.listUnlinked(),
       this.deps.records.listLinkable(),
     ]);
-    const matches = matchListings(listings, records.map(toMatchRecord));
+    const free = records.filter((record) => record.linkedTo === null);
+    const matches = matchListings(
+      listings,
+      free.map((record) => toMatchRecord(record.entry)),
+    );
     const linkedAlready = new Set<string>();
     const outcomes: AdminZohoLinkOutcome[] = [];
     for (const link of links) {

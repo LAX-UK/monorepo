@@ -1,6 +1,8 @@
 import type { ArtworkRegisterEntry } from "@auction/artwork-register-contracts";
 import { describe, expect, it, vi } from "vitest";
 import {
+  type LinkableRecord,
+  type LinkedListing,
   type UnlinkedListing,
   ZohoLinkRefusedError,
   type ZohoLinkWriter,
@@ -58,10 +60,18 @@ function build(
     records?: ArtworkRegisterEntry[];
     writer?: Partial<ZohoLinkWriter>;
     block?: boolean;
+    /** Record id to the title of the lax.art artwork already linked to it. */
+    linkedTo?: Record<string, string>;
+    linked?: LinkedListing[];
+    names?: Record<string, string>;
   } = {},
 ) {
   const listings = input.listings ?? [listing()];
-  const records = input.records ?? [entry()];
+  const entries = input.records ?? [entry()];
+  const records: LinkableRecord[] = entries.map((e) => ({
+    entry: e,
+    linkedTo: input.linkedTo?.[e.id] ?? null,
+  }));
   const writer: ZohoLinkWriter = {
     link: vi.fn(async () => ({ linked: true, nowOnLaxArt: true, replaced: [] })),
     unlink: vi.fn(async () => true),
@@ -69,14 +79,21 @@ function build(
   };
   const setBlock = vi.fn(async () => undefined);
   const deps: ZohoLinkDeps = {
+    staffNames: {
+      namesFor: vi.fn(
+        async (ids: readonly string[]) =>
+          new Map(ids.flatMap((id) => (input.names?.[id] ? [[id, input.names[id]] as const] : []))),
+      ),
+    },
     listings: {
+      listLinked: vi.fn(async () => input.linked ?? []),
       listUnlinked: vi.fn(async () => listings),
       countUnlinked: vi.fn(async () => listings.length),
       findUnlinked: vi.fn(async (id: string) => listings.find((l) => l.artworkId === id) ?? null),
     },
     records: {
       listLinkable: vi.fn(async () => records),
-      findById: vi.fn(async (id: string) => records.find((r) => r.id === id) ?? null),
+      findById: vi.fn(async (id: string) => records.find((r) => r.entry.id === id) ?? null),
       search: vi.fn(async () => records),
     },
     artists: {
@@ -119,7 +136,13 @@ describe("ZohoLinkService.report", () => {
       ],
     });
     const report = await service.report();
-    expect(report.counts).toEqual({ unlinked: 3, matched: 1, needsChoice: 1, noMatch: 1 });
+    expect(report.counts).toEqual({
+      unlinked: 3,
+      matched: 1,
+      needsChoice: 1,
+      noMatch: 1,
+      linked: 0,
+    });
     expect(report.matched[0]).toMatchObject({
       rule: "artist_and_title",
       candidates: [{ record: { registerId: REG_1, stockCode: "LAX-ORI-AR-TM-26-0004" } }],
@@ -162,15 +185,141 @@ describe("ZohoLinkService.report", () => {
     ]);
   });
 
-  it("names the place that holds a matched record, so the refusal is seen before confirming", async () => {
+  it("names the place that holds a record, and sorts it with the rows that need a choice", async () => {
     const { service } = build({
       records: [entry({ offer: { state: "bid_sale", ref: { kind: "bid_lot", id: "lot-1" } } })],
     });
-    const [row] = (await service.report()).matched;
+    const report = await service.report();
+    expect(report.matched).toEqual([]);
+    const [row] = report.needsChoice;
     expect(row?.candidates[0]?.refusal).toBe(
       "This artwork is in a LAX Bid sale. Withdraw the lot there first.",
     );
     expect(row?.candidates[0]?.record.whereItIs).toBe("In a LAX Bid sale");
+  });
+
+  it("shows a record already linked to another listing, says which, and cannot be chosen", async () => {
+    const { service } = build({
+      listings: [listing()],
+      records: [
+        entry(),
+        entry({
+          id: REG_2,
+          zohoProductId: "5002",
+          stockCode: "LAX-ORI-AR-TM-26-0005",
+          title: "Tidal margin IV",
+        }),
+      ],
+      linkedTo: { [REG_2]: "Harbour at dusk" },
+    });
+    const report = await service.report();
+    expect(report.matched).toEqual([]);
+    const [row] = report.needsChoice;
+    const byId = new Map(row?.candidates.map((c) => [c.record.registerId, c]));
+    expect(byId.get(REG_1)).toMatchObject({ refusal: null, record: { linkedTo: null } });
+    expect(byId.get(REG_2)).toMatchObject({
+      refusal: "This record is already linked to ‘Harbour at dusk’.",
+      record: { linkedTo: "Harbour at dusk" },
+    });
+  });
+
+  it("does not match a listing to the only record when that record is linked elsewhere", async () => {
+    const { service } = build({ linkedTo: { [REG_1]: "Harbour at dusk" } });
+    const report = await service.report();
+    expect(report.counts).toMatchObject({ matched: 0, needsChoice: 1, noMatch: 0 });
+    expect(report.needsChoice[0]?.candidates[0]?.record.linkedTo).toBe("Harbour at dusk");
+  });
+
+  it("lists what has been linked with the name of who did it", async () => {
+    const { service } = build({
+      listings: [],
+      linked: [
+        {
+          artworkId: ART_1,
+          slug: "tidal-margin-iv",
+          title: "Tidal margin IV",
+          artistName: "Ada Rowe",
+          published: true,
+          registerId: REG_1,
+          stockCode: "LAX-ORI-AR-TM-26-0004",
+          recordTitle: "Tidal margin IV",
+          linkedAt: T0,
+          actor: "staff:s-1",
+        },
+        {
+          artworkId: ART_2,
+          slug: "other",
+          title: "Other",
+          artistName: "Ada Rowe",
+          published: false,
+          registerId: REG_2,
+          stockCode: "LAX-ORI-AR-OT-26-0001",
+          recordTitle: "Other",
+          linkedAt: T0,
+          actor: "system",
+        },
+      ],
+      names: { "s-1": "Lena Hart" },
+    });
+    const report = await service.report();
+    expect(report.counts.linked).toBe(2);
+    expect(report.linked.map((row) => row.linkedBy)).toEqual(["Lena Hart", null]);
+    expect(report.linked[0]).toMatchObject({
+      listing: { artworkId: ART_1, published: true },
+      record: { registerId: REG_1, stockCode: "LAX-ORI-AR-TM-26-0004" },
+      linkedAt: T0.toISOString(),
+    });
+  });
+
+  it("gives every field both sides for the before and after table", async () => {
+    const { service } = build({
+      listings: [
+        listing({
+          title: "Tidal Margin 4",
+          dimensions: "80 x 100 cm",
+          stockCode: "LAX-ORI-AR-TM-26-0004",
+        }),
+      ],
+    });
+    const [row] = (await service.report()).matched;
+    expect(row?.candidates[0]?.comparison).toEqual([
+      {
+        field: "title",
+        label: "Title",
+        laxArtValue: "Tidal Margin 4",
+        zohoValue: "Tidal margin IV",
+        changes: true,
+      },
+      {
+        field: "artist",
+        label: "Artist",
+        laxArtValue: "Ada Rowe",
+        zohoValue: "Ada Rowe",
+        changes: false,
+      },
+      {
+        field: "medium",
+        label: "Medium",
+        laxArtValue: "Oil on linen",
+        zohoValue: "Oil on linen",
+        changes: false,
+      },
+      {
+        field: "size",
+        label: "Size",
+        laxArtValue: "80 x 100 cm",
+        zohoValue: "90 × 120 cm",
+        changes: true,
+      },
+      { field: "year", label: "Year", laxArtValue: "2024", zohoValue: "2024", changes: false },
+      {
+        field: "images",
+        label: "Images",
+        laxArtValue: "1 image",
+        zohoValue: "1 image",
+        changes: false,
+      },
+    ]);
   });
 
   it("is never title-only: a listing whose artist has no Zoho code is No match", async () => {
@@ -191,6 +340,7 @@ describe("ZohoLinkService.report", () => {
       matched: 0,
       needsChoice: 0,
       noMatch: 0,
+      linked: 0,
     });
     expect(await service.count()).toEqual({ unlinked: 0 });
   });
@@ -222,6 +372,12 @@ describe("ZohoLinkService.preview and search", () => {
     expect(deps.records.search).toHaveBeenCalledWith("tidal", 21);
     expect(result.items).toHaveLength(20);
     expect(result.more).toBe(true);
+  });
+
+  it("says which listing a found record is already linked to", async () => {
+    const { service } = build({ linkedTo: { [REG_1]: "Harbour at dusk" } });
+    const result = await service.search("tidal");
+    expect(result.items[0]).toMatchObject({ registerId: REG_1, linkedTo: "Harbour at dusk" });
   });
 });
 
@@ -329,6 +485,13 @@ describe("ZohoLinkService.linkBulk", () => {
       ],
     });
     const result = await service.linkBulk([{ artworkId: ART_1, registerId: REG_2 }], "staff-1");
+    expect(result.outcomes[0]?.status).toBe("not_a_match");
+    expect(writer.link).not.toHaveBeenCalled();
+  });
+
+  it("does not link a record that another listing already holds", async () => {
+    const { service, writer } = build({ linkedTo: { [REG_1]: "Harbour at dusk" } });
+    const result = await service.linkBulk([{ artworkId: ART_1, registerId: REG_1 }], "staff-1");
     expect(result.outcomes[0]?.status).toBe("not_a_match");
     expect(writer.link).not.toHaveBeenCalled();
   });

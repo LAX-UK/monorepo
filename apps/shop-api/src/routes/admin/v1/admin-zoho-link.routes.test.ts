@@ -62,10 +62,11 @@ async function buildApp(role: ShopStaffRole, overrides: Record<string, unknown> 
     count: vi.fn(async () => ({ unlinked: 3 })),
     report: vi.fn(async () => ({
       checkedAt: "2026-11-05T09:00:00.000Z",
-      counts: { unlinked: 0, matched: 0, needsChoice: 0, noMatch: 0 },
+      counts: { unlinked: 0, matched: 0, needsChoice: 0, noMatch: 0, linked: 0 },
       matched: [],
       needsChoice: [],
       noMatch: [],
+      linked: [],
       blockUnlinkedPublish: false,
     })),
     preview: vi.fn(),
@@ -85,6 +86,75 @@ async function buildApp(role: ShopStaffRole, overrides: Record<string, unknown> 
 
 const headers = { authorization: `Bearer ${ADMIN_TOKEN}` };
 const base = "/admin/v1/artwork-register/zoho-link";
+
+describe("Link lax.art report contract", () => {
+  it("carries a record linked elsewhere, the before and after fields, and what has been linked", async () => {
+    const record = {
+      registerId: REGISTER_ID,
+      stockCode: "LAX-ORI-BI-HB-25-0001",
+      title: "Harbour, early light",
+      artistName: "Ben Ilsley",
+      artistCode: "BI",
+      dimensions: null,
+      year: null,
+      zohoStatus: "Available",
+      whereItIs: "Not offered",
+      linkedTo: "Harbour at dusk",
+    };
+    const listing = {
+      artworkId: ARTWORK_ID,
+      slug: "harbour",
+      title: "Harbour",
+      artistName: "Ben Ilsley",
+      artistCode: "BI",
+      stockCode: null,
+      dimensions: null,
+      year: null,
+      published: true,
+    };
+    const row = {
+      listing,
+      rule: "artist_and_title",
+      reason: null,
+      candidates: [
+        {
+          record,
+          differences: [],
+          comparison: [
+            {
+              field: "title",
+              label: "Title",
+              laxArtValue: "Harbour",
+              zohoValue: "Harbour, early light",
+              changes: true,
+            },
+          ],
+          refusal: "This record is already linked to ‘Harbour at dusk’.",
+        },
+      ],
+    };
+    const linked = {
+      listing: { artworkId: ARTWORK_ID, slug: "x", title: "X", artistName: "A", published: false },
+      record: { registerId: REGISTER_ID, stockCode: "LAX-ORI-AR-X-26-0001", title: "X" },
+      linkedAt: "2026-11-05T10:00:00.000Z",
+      linkedBy: "Lena Hart",
+    };
+    const body = {
+      checkedAt: "2026-11-05T09:00:00.000Z",
+      counts: { unlinked: 1, matched: 0, needsChoice: 1, noMatch: 0, linked: 1 },
+      matched: [],
+      needsChoice: [row],
+      noMatch: [],
+      linked: [linked],
+      blockUnlinkedPublish: false,
+    };
+    const { app } = await buildApp("shop_admin", { report: vi.fn(async () => body) });
+    const response = await app.inject({ method: "GET", url: `${base}/report`, headers });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(body);
+    await app.close();
+  });
+});
 
 describe("Link lax.art capabilities", () => {
   for (const role of ALL_ROLES) {

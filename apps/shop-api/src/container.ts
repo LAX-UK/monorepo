@@ -647,7 +647,8 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         }),
         zohoLink: new ZohoLinkService({
           listings: createDrizzleZohoLinkListingReader(db),
-          records: createDrizzleZohoLinkRecordReader(db, artworkRegisterRepository),
+          records: createDrizzleZohoLinkRecordReader(db),
+          staffNames: createDrizzleStaffNameReader(db),
           artists: createDrizzleLaxArtArtistDirectory(db),
           writer: createDrizzleZohoLinkWriter(shopUow, {
             registerFor: (session) => artworkRegisterRepository.withExecutor(session),

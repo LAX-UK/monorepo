@@ -1,5 +1,9 @@
 import type { ArtworkRegisterEntry } from "@auction/artwork-register-contracts";
-import type { AdminZohoLinkDifference, AdminZohoLinkField } from "@auction/shop-contracts";
+import type {
+  AdminZohoLinkComparison,
+  AdminZohoLinkDifference,
+  AdminZohoLinkField,
+} from "@auction/shop-contracts";
 
 /** The facts of the lax.art original that a link can change. */
 export type LinkListingFacts = {
@@ -34,6 +38,8 @@ export type LinkUpdate = {
 
 export type LinkPlan = {
   differences: AdminZohoLinkDifference[];
+  /** Every field with both sides, in the order the dialogs show them; fields both sides leave empty are left out. */
+  comparison: AdminZohoLinkComparison[];
   update: LinkUpdate;
   /** Set when the link cannot be made because of the artist; staff fix the artist first. */
   artistRefusal: string | null;
@@ -58,6 +64,26 @@ const sameName = (a: string, b: string) =>
 
 const imageCount = (keys: readonly string[]) =>
   keys.length === 0 ? null : keys.length === 1 ? "1 image" : `${keys.length} images`;
+
+const numberText = (value: number | null) => (value === null ? null : String(value));
+
+type ComparisonInput = readonly [AdminZohoLinkField, string, string | null, string | null];
+
+function comparisonOf(
+  rows: readonly ComparisonInput[],
+  differences: readonly AdminZohoLinkDifference[],
+): AdminZohoLinkComparison[] {
+  const changed = new Set(differences.map((difference) => difference.field));
+  return rows
+    .map(([field, label, laxArt, zoho]) => ({
+      field,
+      label,
+      laxArtValue: clean(laxArt),
+      zohoValue: clean(zoho),
+      changes: changed.has(field),
+    }))
+    .filter((row) => row.changes || row.laxArtValue !== null || row.zohoValue !== null);
+}
 
 /**
  * What linking this lax.art original to this register record would change. Zoho is master: where
@@ -144,8 +170,23 @@ export function planLink(
     update.images = zohoImages;
   }
 
+  // The artist after linking is the one Zoho's code points to when it moves; otherwise unchanged.
+  const afterArtist = update.artistId ? (artistForCode?.displayName ?? null) : listing.artistName;
+  const comparison = comparisonOf(
+    [
+      ["title", "Title", listing.title, entry.title],
+      ["artist", "Artist", listing.artistName, afterArtist],
+      ["medium", "Medium", listing.medium, entry.medium],
+      ["size", "Size", listing.dimensions, entry.dimensions],
+      ["year", "Year", numberText(listing.year), numberText(entry.year)],
+      ["images", "Images", imageCount(listing.imageKeys), imageCount(zohoImages)],
+    ],
+    differences,
+  );
+
   return {
     differences,
+    comparison,
     update,
     artistRefusal,
     replaced: differences.map((difference) => difference.field),
