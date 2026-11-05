@@ -297,7 +297,7 @@ export function FulfilmentList({
                 { label: "Delivery", value: fulfilmentOptionLabel(opened.option) },
                 {
                   label: "Last change",
-                  value: formatStaffDateTime(opened.updatedAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.updatedAt),
                 },
               ]
             : []
@@ -314,14 +314,12 @@ export function FulfilmentList({
                 {
                   label: "Possession",
                   value: opened.possessionAt
-                    ? formatStaffDateTime(opened.possessionAt, { zoneLabel: true })
+                    ? formatStaffDateTime(opened.possessionAt)
                     : "Not recorded",
                 },
                 {
                   label: "Paid",
-                  value: opened.paidAt
-                    ? formatStaffDateTime(opened.paidAt, { zoneLabel: true })
-                    : null,
+                  value: opened.paidAt ? formatStaffDateTime(opened.paidAt) : null,
                 },
               ])
             : []

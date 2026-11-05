@@ -1,4 +1,5 @@
 import type { LaxAdminRolesOverview, StaffRolesOverview } from "@/lib/data/http/staff-roles.server";
+import { pinClock } from "@/test/pin-clock";
 import { StaffAccessProvider, StaffTooltipProvider } from "@auction/staff-ui";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -89,6 +90,8 @@ function chooseRole(label: string) {
   fireEvent.click(screen.getByRole("button", { name: new RegExp(`^${label} `) }));
 }
 
+pinClock();
+
 describe("StaffRolesSection", () => {
   beforeEach(() => {
     for (const fn of [refresh, assignAction, removeAction, notifySuccess]) fn.mockReset();
@@ -99,7 +102,7 @@ describe("StaffRolesSection", () => {
     const roles = screen.getByRole("list", { name: "Grace Hopper's roles" });
     expect(within(roles).getByText("Finance")).toBeInTheDocument();
     expect(
-      within(roles).getByText("Since 3 Oct 2026 · Until 9 Nov 2026 · 13 days left"),
+      within(roles).getByText("Since Sat 3 Oct · Until Mon 9 Nov · 13 days left"),
     ).toBeVisible();
   });
 

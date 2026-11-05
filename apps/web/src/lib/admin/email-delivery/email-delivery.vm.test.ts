@@ -1,3 +1,4 @@
+import { pinClock } from "@/test/pin-clock";
 import type { EmailBlockView, PersonEmailDeliveryView } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { buildEmailDeliveryPanelVm } from "./email-delivery.vm";
@@ -37,12 +38,14 @@ const view = (over: Partial<PersonEmailDeliveryView> = {}): PersonEmailDeliveryV
 const build = (v: PersonEmailDeliveryView, viewerCanLift = true) =>
   buildEmailDeliveryPanelVm({ view: v, personName: "Ana Duarte", viewerCanLift });
 
+pinClock();
+
 describe("email delivery panel view model", () => {
   it("says what the block stops in the person's first name", () => {
     const vm = build(view());
     expect(vm.badge).toEqual({ label: "Blocked", tone: "danger" });
     expect(vm.block?.body).toContain("No email reaches Ana, including invoices");
-    expect(vm.block?.body.startsWith("Since 28 Oct 2026, 16:02 GMT.")).toBe(true);
+    expect(vm.block?.body.startsWith("Since Wed 28 Oct, 16:02 GMT.")).toBe(true);
     expect(vm.block?.detail).toBe("550 5.1.1 mailbox does not exist");
     expect(vm.skippedCount).toBe(1);
   });

@@ -235,12 +235,12 @@ export function OriginalSalesList({
                 {
                   label: "Reservation ends",
                   value: opened.reservationExpiresAt
-                    ? formatStaffDateTime(opened.reservationExpiresAt, { zoneLabel: true })
+                    ? formatStaffDateTime(opened.reservationExpiresAt)
                     : "Held until invoiced",
                 },
                 {
                   label: "Created",
-                  value: formatStaffDateTime(opened.createdAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.createdAt),
                 },
                 { label: "Sale ID", value: opened.saleId, copyValue: opened.saleId },
               ])

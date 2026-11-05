@@ -1,3 +1,4 @@
+import { pinClock } from "@/test/pin-clock";
 import { describe, expect, it } from "vitest";
 import {
   assigneeLabel,
@@ -20,6 +21,8 @@ const clock = (patch: Partial<Parameters<typeof waitingCue>[0]>) => ({
   overdueMinutes: 0,
   ...patch,
 });
+
+pinClock();
 
 describe("workingDuration", () => {
   it("counts a working day as nine hours", () => {
@@ -49,7 +52,7 @@ describe("dueWhen", () => {
       text: "tomorrow 09:45",
     });
     expect(dueWhen(new Date("2026-11-05T10:00:00Z"), now).text).toBe("Thu 10:00");
-    expect(dueWhen(new Date("2026-11-20T10:00:00Z"), now).text).toBe("20 Nov, 10:00");
+    expect(dueWhen(new Date("2026-11-20T10:00:00Z"), now).text).toBe("Fri 20 Nov, 10:00");
   });
 });
 
@@ -98,7 +101,7 @@ describe("assigneeLabel", () => {
         },
         "u1",
       ),
-    ).toMatch(/^James Hale, covering until 30 Nov( 2026)?$/);
+    ).toMatch(/^James Hale, covering until Mon 30 Nov$/);
     expect(assigneeLabel(null, "u1")).toBeNull();
   });
 });
@@ -124,10 +127,10 @@ describe("coverNote", () => {
     expect(coverNote({ coveringUntil: null })).toBe("Covering");
     const now = new Date("2026-11-01T10:00:00Z");
     expect(coverNote({ coveringUntil: "2026-11-13T00:00:00.000Z" }, now)).toBe(
-      "Covering until 12 Nov",
+      "Covering until Thu 12 Nov",
     );
     expect(coverNote({ coveringUntil: "2027-01-02T00:00:00.000Z" }, now)).toBe(
-      "Covering until 1 Jan 2027",
+      "Covering until Fri 1 Jan 2027",
     );
   });
 });

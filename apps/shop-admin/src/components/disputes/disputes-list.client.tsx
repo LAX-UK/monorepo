@@ -217,7 +217,7 @@ export function DisputesList({
                 { label: "Amount", value: formatStaffMoney(opened.amountPence) },
                 {
                   label: "Opened",
-                  value: formatStaffDateTime(opened.openedAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.openedAt),
                 },
               ]
             : []
@@ -233,9 +233,7 @@ export function DisputesList({
                 },
                 {
                   label: "Closed",
-                  value: opened.closedAt
-                    ? formatStaffDateTime(opened.closedAt, { zoneLabel: true })
-                    : null,
+                  value: opened.closedAt ? formatStaffDateTime(opened.closedAt) : null,
                 },
                 {
                   label: "Dispute reference",

@@ -1,3 +1,4 @@
+import { pinClock } from "@/test/pin-clock";
 import { describe, expect, it } from "vitest";
 import {
   emptyOfferAtAuctionForm,
@@ -9,6 +10,8 @@ import {
 
 const SALE = "33333333-3333-4333-8333-333333333333";
 const valid = { saleId: SALE, priceText: "1,250.5", consignorAgreed: true };
+
+pinClock();
 
 describe("startingPriceText", () => {
   it("reads pounds as typed into two decimals", () => {
@@ -59,7 +62,7 @@ describe("offerAtAuctionBody", () => {
 describe("saleOptionLabel", () => {
   it("shows the title and the start date in UK time", () => {
     expect(saleOptionLabel("Winter sale", "2026-12-01T10:00:00.000Z")).toBe(
-      "Winter sale · 1 Dec 2026",
+      "Winter sale · Tue 1 Dec",
     );
   });
 });

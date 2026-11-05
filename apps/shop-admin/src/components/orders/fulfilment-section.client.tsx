@@ -122,7 +122,7 @@ export function FulfilmentSection({
               {
                 label: "Possession",
                 value: fulfilment.possessionAt
-                  ? formatStaffDateTime(fulfilment.possessionAt, { zoneLabel: true })
+                  ? formatStaffDateTime(fulfilment.possessionAt)
                   : "Not recorded",
               },
               { label: "Last updated", value: formatStaffDateTime(fulfilment.updatedAt) },

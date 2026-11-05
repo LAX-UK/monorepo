@@ -36,8 +36,20 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Build worker dependencies
         run: pnpm turbo run build --filter=@auction/worker^...
+      - uses: digitalocean/action-doctl@v2
+        with:
+          version: 2.0.0
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      - name: Resolve the test database address
+        run: |
+          set -euo pipefail
+          db_id="$(doctl databases list --format ID,Name --no-header | awk '$2 == "lax-test-postgres" { print $1 }')"
+          if [ -z "$db_id" ]; then echo "::error::lax-test-postgres not found"; exit 1; fi
+          db_name="$(doctl databases db list "$db_id" --format Name --no-header | grep -vx defaultdb | head -n1)"
+          url="$(doctl databases connection "$db_id" --format URI --no-header)"
+          url="${url%/defaultdb*}/${db_name}?sslmode=require"
+          echo "::add-mask::$url"
+          echo "DATABASE_URL=$url" >> "$GITHUB_ENV"
       - name: Alerts first-run seed
         if: inputs.task == 'alerts-seed'
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL_OWNER }}
         run: pnpm --filter @auction/worker exec tsx src/scripts/seed-bid-alerts.ts

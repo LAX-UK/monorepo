@@ -214,13 +214,11 @@ export function SaleRequestsList({
                   : []),
                 {
                   label: "Sent",
-                  value: formatStaffDateTime(opened.createdAt, { zoneLabel: true }),
+                  value: formatStaffDateTime(opened.createdAt),
                 },
                 {
                   label: "Answered",
-                  value: opened.handledAt
-                    ? formatStaffDateTime(opened.handledAt, { zoneLabel: true })
-                    : null,
+                  value: opened.handledAt ? formatStaffDateTime(opened.handledAt) : null,
                 },
                 { label: "Request ID", value: opened.requestId, copyValue: opened.requestId },
               ])
