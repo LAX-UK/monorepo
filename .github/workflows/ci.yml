@@ -311,9 +311,6 @@ jobs:
       - name: Verify executable migration rollback pairs
         run: node scripts/ci/verify-migration-pairs.mjs
 
-      - name: Identity boundary conformance
-        run: pnpm ci:identity-boundary
-
       - name: Test affected packages (excluding web, api and shop-api)
         # One package at a time: shared auction_ci Postgres (migrations, role grants, shop integration).
         # shop-api runs sharded in its own job below (same suite, own database per shard).
@@ -327,6 +324,74 @@ jobs:
 
       - name: Cutover readiness defaults
         run: node scripts/ci/verify-cutover-readiness.mjs
+  identity-boundary:
+    name: identity boundary conformance
+    needs: build-packages
+    needs: build-packages
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
+      SHOP_APP_DB_PASSWORD: postgres
+      REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != '' && github.event_name != 'merge_group'
+        uses: ./.github/actions/setup-turbo-remote-cache
+        with:
+          team: ${{ vars.TURBO_TEAM }}
+
+      - name: Restore shared turbo build cache
+        uses: ./.github/actions/restore-turbo-build-cache
+
+      - name: Build db package dependencies
+        run: pnpm turbo run build --filter=@auction/db...
+
+      - name: Migrate test database
+        run: pnpm --filter @auction/db db:migrate
+      - name: Apply application role grants
+        run: pnpm --filter @auction/db db:roles
+
+      - name: Identity boundary conformance
+        run: pnpm ci:identity-boundary
 
   web-vitest:
     needs: build-packages
@@ -597,7 +662,7 @@ jobs:
               - ".github/workflows/shop-staging-acceptance.yml"
 
   shop-v1-phase-smoke:
-    # Three independent suites run as parallel parts; the job name keeps the shop-v1-phase-smoke prefix.
+    # Four independent suites run as parallel parts; the job name keeps the shop-v1-phase-smoke prefix.
     name: shop-v1-phase-smoke (${{ matrix.part }})
     needs: [shop-v1-paths, build-packages]
     if: needs.shop-v1-paths.outputs.shop_v1 == 'true'
@@ -605,7 +670,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [contracts, integration, shop-build]
+        part: [contracts, integration, admin-routes, shop-build]
     services:
       postgres:
         image: postgres:16
@@ -666,15 +731,16 @@ jobs:
           pnpm --filter @auction/shop-domain test
           pnpm --filter @auction/db test -- migration-0182 migration-0185 migration-0186 migration-0193 migration-0194
 
-      # --- integration: shop-api Postgres integration + admin route tests ---
+      # --- integration: shop-api Postgres integration ---
       - name: Build shop-api dependency graph
-        if: matrix.part == 'integration'
+        if: matrix.part == 'integration' || matrix.part == 'admin-routes'
         run: pnpm turbo run build --filter=@auction/shop-api...
       - name: Shop-api Postgres integration (no skips)
         if: matrix.part == 'integration'
         run: node scripts/ci/run-shop-v1-postgres-integration.mjs
+      # --- admin-routes: shop-api admin auth route tests (phase flags on) ---
       - name: Shop-api admin auth route tests (phase flags on)
-        if: matrix.part == 'integration'
+        if: matrix.part == 'admin-routes'
         run: pnpm --filter @auction/shop-api exec vitest run src/routes/admin --reporter=verbose
 
       # --- shop-build: shop package build (includes phase1 e2e spec) ---
@@ -976,6 +1042,7 @@ jobs:
       - identity-portability
       - build-packages
       - test
+      - identity-boundary
       - api-vitest
       - web-vitest
       - shop-api-vitest
