@@ -124,7 +124,7 @@ jobs:
           PORT=3003 pnpm --filter @auction/auth-app start > /tmp/e2e-logs/auth.log 2>&1 &
           PORT=3002 pnpm --filter @auction/ws start > /tmp/e2e-logs/ws.log 2>&1 &
           PORT=3000 node scripts/ci/start-e2e-web.mjs > /tmp/e2e-logs/web.log 2>&1 &
-          npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http://localhost:3002/health/live http://localhost:3003/health/live --timeout 120000
+          npx --yes wait-on http://localhost:3000 http://localhost:3001/health/live http-get://localhost:3002/health/live http://localhost:3003/health/live --timeout 120000
       - name: Prepare auth sessions
         run: pnpm --filter @auction/web exec node ../../scripts/ci/prepare-e2e-auth-states.mjs
       - name: Playwright stabilization suite
