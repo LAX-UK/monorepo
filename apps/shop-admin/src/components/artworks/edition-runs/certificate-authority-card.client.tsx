@@ -2,6 +2,7 @@
 
 import { useAdminAction } from "@/components/use-admin-action.client";
 import { recordCertificateAuthority } from "@/server/application/print-fulfilment-actions.server";
+import { legalEntityFor } from "@auction/branding";
 import { AUTHORITY_REFERENCE_FIELD_MAX } from "@auction/shop-contracts";
 import type { AdminEditionRunDetail } from "@auction/shop-contracts";
 import { Field, Section, StaffButton, TextInput, formatStaffDate } from "@auction/staff-ui";
@@ -53,7 +54,7 @@ export function CertificateAuthorityCard({
   return (
     <Section
       title="Certificate authority"
-      description="London Art Exchange Ltd issues this run's certificates on the artist's written authority."
+      description={`${legalEntityFor("shop").name} issues this run's certificates on the artist's written authority.`}
     >
       {canWrite ? (
         <form
