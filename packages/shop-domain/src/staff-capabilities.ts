@@ -53,6 +53,11 @@ export const SHOP_STAFF_CAPABILITIES = [
   "artwork_register.read",
   /** Deciding a conflict between Zoho and LAX on an artwork's record. */
   "artwork_register.review",
+  /**
+   * Undoing a link between a lax.art original and its Zoho record. Administrators only: the
+   * one-place lock and moves stop protecting the artwork until it is linked again.
+   */
+  "artwork_register.unlink",
 ] as const;
 
 export type ShopStaffCapability = (typeof SHOP_STAFF_CAPABILITIES)[number];

@@ -59,7 +59,7 @@ export function BulkActionBar({
     >
       <section
         aria-label="Bulk actions"
-        className="pointer-events-auto flex w-full max-w-full items-center gap-1 rounded-staff-md border border-staff-line bg-staff-raised p-1 pl-3 shadow-staff-md sm:w-auto"
+        className="pointer-events-auto flex w-full max-w-full items-center gap-1 max-sm:flex-wrap rounded-staff-md border border-staff-line bg-staff-raised p-1 pl-3 shadow-staff-md sm:w-auto"
       >
         <p className="mr-1 text-staff-sm font-medium whitespace-nowrap text-staff-fg tabular-nums sm:mr-2">
           {allMatching ? "All " : null}
@@ -67,12 +67,18 @@ export function BulkActionBar({
           selected
         </p>
         {scopeAction ? <div className="flex shrink-0 items-center">{scopeAction}</div> : null}
-        <span aria-hidden className="mx-1 h-5 w-px bg-staff-line" />
-        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] sm:flex-none">
+        <span aria-hidden className="mx-1 h-5 w-px bg-staff-line max-sm:hidden" />
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] max-sm:order-2 max-sm:basis-full sm:flex-none">
           {children}
         </div>
-        <span aria-hidden className="mx-1 h-5 w-px bg-staff-line" />
-        <StaffButton variant="ghost" size="icon-sm" aria-label="Clear selection" onClick={onClear}>
+        <span aria-hidden className="mx-1 h-5 w-px bg-staff-line max-sm:hidden" />
+        <StaffButton
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Clear selection"
+          onClick={onClear}
+          className="max-sm:order-1 max-sm:ml-auto"
+        >
           <X aria-hidden />
         </StaffButton>
       </section>

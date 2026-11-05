@@ -22,6 +22,7 @@ import type {
   ConflictCursor,
   CreateRegisterEntryResult,
   IArtworkDraftHistory,
+  IArtworkLinkHistory,
   IArtworkMoveHistory,
   IArtworkRegisterRepository,
   MoveOfferInput,
@@ -30,6 +31,7 @@ import type {
   RecordCatalogueStatusWrittenResult,
   RecordLaxArtDraftCreatedInput,
   RecordMoveConfirmedInput,
+  RecordZohoLinkInput,
   RegisterActor,
   RegisterConflict,
   RegisterEvent,
@@ -48,7 +50,11 @@ type Tx = Parameters<Parameters<Database["transaction"]>[0]>[0];
  * history/event writes are unchanged.
  */
 export class DrizzleArtworkRegisterRepository
-  implements IArtworkRegisterRepository, IArtworkMoveHistory, IArtworkDraftHistory
+  implements
+    IArtworkRegisterRepository,
+    IArtworkMoveHistory,
+    IArtworkDraftHistory,
+    IArtworkLinkHistory
 {
   constructor(private readonly db: Database) {}
 
@@ -379,6 +385,24 @@ export class DrizzleArtworkRegisterRepository
     await this.db.transaction(async (tx) => {
       await this.record(tx, input.registerId, "lax_art_draft_created", input.actor, input.now, {
         artworkId: input.artworkId,
+      });
+    });
+  }
+
+  async recordZohoLinked(input: RecordZohoLinkInput): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await this.record(tx, input.registerId, "zoho_link_linked", input.actor, input.now, {
+        artworkId: input.artworkId,
+        ...input.detail,
+      });
+    });
+  }
+
+  async recordZohoUnlinked(input: RecordZohoLinkInput): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      await this.record(tx, input.registerId, "zoho_link_unlinked", input.actor, input.now, {
+        artworkId: input.artworkId,
+        ...input.detail,
       });
     });
   }

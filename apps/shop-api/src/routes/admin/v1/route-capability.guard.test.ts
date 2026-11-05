@@ -55,6 +55,9 @@ async function appWithNoCapabilities() {
       SHOP_ORIGINALS_ENABLED: true,
       SHOP_MERCHANDISE_ENABLED: true,
       SHOP_PORTAL_OWNERSHIP_ENABLED: true,
+      // One probe per admin route: the probes must not run into the per-minute request limit as
+      // the admin API grows.
+      SHOP_API_RATE_LIMIT_PER_MINUTE: 10_000,
     },
     staffReader: {
       findActiveByIdentitySubject: async (subject) => ({ roles: [], identitySubjectId: subject }),

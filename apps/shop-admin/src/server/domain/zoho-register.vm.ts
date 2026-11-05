@@ -11,12 +11,13 @@ import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-s
 
 export const ZOHO_QUEUE_PATH = "/from-zoho";
 
-export const ZOHO_QUEUE_TABS = ["new", "decisions", "check"] as const;
+export const ZOHO_QUEUE_TABS = ["new", "decisions", "link", "check"] as const;
 export type ZohoQueueTab = (typeof ZOHO_QUEUE_TABS)[number];
 
 export const ZOHO_QUEUE_TAB_LABEL: Record<ZohoQueueTab, string> = {
   new: "New from Zoho",
   decisions: "Needs a decision",
+  link: "Link lax.art",
   check: "Last check",
 };
 
@@ -26,7 +27,29 @@ export type ZohoQueueQuery = {
   artist?: string;
   missing?: AdminRegisterGap;
   page?: string;
+  /** Link lax.art: the part of the report shown (Matched when absent). */
+  view?: Exclude<ZohoLinkView, "matched">;
+  /** Link lax.art: words in the title, artist or stock code. */
+  q?: string;
+  /** Link lax.art: only rows matched by this rule. */
+  matched?: ZohoLinkRule;
+  /** Link lax.art: only live or only draft listings. */
+  on?: "live" | "draft";
+  /** Link lax.art: the order of the rows (by title when absent). */
+  sort?: "artist";
 };
+
+export const ZOHO_LINK_VIEWS = ["matched", "choice", "none", "linked"] as const;
+export type ZohoLinkView = (typeof ZOHO_LINK_VIEWS)[number];
+export const ZOHO_LINK_RULES = [
+  "stock_code",
+  "artist_and_title",
+  "artist_title_and_size",
+  "artist_title_and_year",
+] as const;
+export type ZohoLinkRule = (typeof ZOHO_LINK_RULES)[number];
+
+export const ZOHO_LINK_SEARCH_MAX = 100;
 
 export const GAP_LABEL: Record<AdminRegisterGap, string> = {
   image: "Image",
@@ -40,14 +63,24 @@ export const GAP_OPTIONS = REGISTER_GAP_VALUES.map((value) => ({
 }));
 
 export function parseZohoQueueQuery(params: RawSearchParams): ZohoQueueQuery {
-  const tab = oneOf(singleParam(params.tab), ["decisions", "check"] as const);
-  const artist = singleParam(params.artist)?.slice(0, 20);
+  const tab = oneOf(singleParam(params.tab), ["decisions", "link", "check"] as const);
+  const artist = singleParam(params.artist)?.slice(0, 80);
+  const view = oneOf(singleParam(params.view), ["choice", "none", "linked"] as const);
+  const q = singleParam(params.q)?.trim().slice(0, ZOHO_LINK_SEARCH_MAX);
+  const matched = oneOf(singleParam(params.matched), ZOHO_LINK_RULES);
+  const on = oneOf(singleParam(params.on), ["live", "draft"] as const);
+  const sort = oneOf(singleParam(params.sort), ["artist"] as const);
   const missing = oneOf(singleParam(params.missing), REGISTER_GAP_VALUES);
   const page = singleParam(params.page);
   return {
     ...(tab ? { tab } : {}),
     ...(artist ? { artist } : {}),
     ...(missing ? { missing } : {}),
+    ...(view ? { view } : {}),
+    ...(q ? { q } : {}),
+    ...(matched ? { matched } : {}),
+    ...(on ? { on } : {}),
+    ...(sort ? { sort } : {}),
     ...(page && /^[1-9]\d{0,3}$/.test(page) && page !== "1" ? { page } : {}),
   };
 }
@@ -344,6 +377,18 @@ function describeEvent(
       return { title: `Moved from ${stateOf(payload.from)} to ${stateOf(payload.to)}` };
     case "lax_art_draft_created":
       return { title: "lax.art draft created", tone: "success" };
+    case "zoho_link_linked":
+      return {
+        title: "Linked to a lax.art artwork",
+        ...(typeof payload.slug === "string" ? { detail: `lax.art/${payload.slug}` } : {}),
+        tone: "success",
+      };
+    case "zoho_link_unlinked":
+      return {
+        title: "Link to the lax.art artwork removed",
+        ...(typeof payload.reason === "string" ? { detail: `Reason: ${payload.reason}` } : {}),
+        tone: "warning",
+      };
     default:
       return { title: "Changed" };
   }

@@ -56,12 +56,14 @@ export function LastCheckView({
   query,
   counts,
   check,
+  unlinked = 0,
 }: {
   query: ZohoQueueQuery;
   counts: { new: number; decisions: number };
   check: AdminRegisterLastCheck;
+  unlinked?: number;
 }) {
-  const { views } = useQueueFrame(query, counts);
+  const { views } = useQueueFrame(query, counts, unlinked);
   const { run } = check;
   const footnote = run ? checkFootnote(run) : null;
 

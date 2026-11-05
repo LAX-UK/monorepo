@@ -21,6 +21,12 @@ import { createInMemorySavedViewRepository } from "./test-support/in-memory-save
 import { createStubEnquiryInboxRepository } from "./test-support/stub-enquiry-inbox-repository.js";
 import { createStubProductionTaskRepository } from "./test-support/stub-production-task-repository.js";
 
+function unstubbed(name: string) {
+  return async (): Promise<never> => {
+    throw new Error(`${name} is not stubbed`);
+  };
+}
+
 export function createMinimalShopApiTestDeps(
   overrides: Partial<ShopApiAppDeps> = {},
 ): ShopApiAppDeps {
@@ -274,6 +280,17 @@ export function createMinimalShopApiTestDeps(
         offer: async () => {
           throw new Error("offerOnLaxArt.offer is not stubbed");
         },
+      },
+      zohoLink: {
+        count: async () => ({ unlinked: 0 }),
+        report: unstubbed("zohoLink.report"),
+        preview: unstubbed("zohoLink.preview"),
+        search: unstubbed("zohoLink.search"),
+        link: unstubbed("zohoLink.link"),
+        linkBulk: unstubbed("zohoLink.linkBulk"),
+        unlink: unstubbed("zohoLink.unlink"),
+        settings: async () => ({ blockUnlinkedPublish: false }),
+        updateSettings: unstubbed("zohoLink.updateSettings"),
       },
       guestErasure: new GuestErasureService({
         read: async () => null,
