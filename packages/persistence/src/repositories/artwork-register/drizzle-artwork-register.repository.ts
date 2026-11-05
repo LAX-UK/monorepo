@@ -512,19 +512,46 @@ export class DrizzleArtworkRegisterRepository
 
   async recordMoveConfirmed(
     input: RecordMoveConfirmedInput,
-  ): Promise<{ status: "not_found" | "recorded" }> {
+  ): Promise<{ status: "not_found" | "recorded" | "already_recorded" }> {
     return this.db.transaction(async (tx) => {
+      // The register row is locked, so two requests for the same lot cannot both record it.
       const [found] = await tx
         .select({ id: register.id })
         .from(register)
         .where(eq(register.id, input.registerId))
-        .limit(1);
+        .limit(1)
+        .for("update");
       if (!found) return { status: "not_found" };
+      const { lotId, direction } = input.record;
+      if (lotId && (await this.moveAlreadyRecorded(tx, found.id, direction, lotId))) {
+        return { status: "already_recorded" };
+      }
       await this.record(tx, found.id, "move_confirmed", input.actor, input.now, {
         ...input.record,
       });
       return { status: "recorded" };
     });
+  }
+
+  private async moveAlreadyRecorded(
+    tx: Tx,
+    registerId: string,
+    direction: string,
+    lotId: string,
+  ): Promise<boolean> {
+    const [existing] = await tx
+      .select({ id: event.id })
+      .from(event)
+      .where(
+        and(
+          eq(event.registerId, registerId),
+          eq(event.type, "move_confirmed"),
+          sql`${event.payload}->>'direction' = ${direction}`,
+          sql`${event.payload}->>'lotId' = ${lotId}`,
+        ),
+      )
+      .limit(1);
+    return existing !== undefined;
   }
 
   async recordLaxArtDraftCreated(input: RecordLaxArtDraftCreatedInput): Promise<void> {

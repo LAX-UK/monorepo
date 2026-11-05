@@ -2,6 +2,7 @@ import type { AdminRegisterEvent, AdminRegisterLastCheck } from "@auction/shop-c
 import { describe, expect, it } from "vitest";
 import {
   activeZohoTab,
+  auctionOfferAvailability,
   buildRegisterTimeline,
   checkFigures,
   checkFootnote,
@@ -198,6 +199,44 @@ describe("buildRegisterTimeline", () => {
     ...over,
   });
 
+  it("tells a draft lot with the sale, the consignor's agreement and a take-down", () => {
+    const [moved, plain, back, writeback] = buildRegisterTimeline([
+      event({
+        type: "move_confirmed",
+        actor: "staff",
+        actorName: "Lena Hart",
+        payload: {
+          direction: "to_auction",
+          saleTitle: "Winter Modern and Contemporary",
+          consignorAgreed: true,
+          withdrawnFromLaxArt: true,
+        },
+      }),
+      event({
+        type: "move_confirmed",
+        payload: { direction: "to_auction", consignorAgreed: true },
+      }),
+      event({ type: "move_confirmed", payload: { direction: "to_lax_art" } }),
+      event({ type: "zoho_writeback_recorded", payload: { to: "In Auction" } }),
+    ]);
+    expect(moved).toMatchObject({
+      title: "Draft lot created",
+      actor: "Lena Hart",
+      detail: "Consignor agreement confirmed · Winter Modern and Contemporary · Taken off lax.art",
+    });
+    expect(plain).toMatchObject({ detail: "Consignor agreement confirmed" });
+    expect(back).toMatchObject({ title: "Returned to lax.art as a draft" });
+    expect(writeback).toMatchObject({
+      title: "Status set in Zoho",
+      detail: "Zoho Status is now In Auction",
+    });
+  });
+
+  it("never falls back to a bare Changed", () => {
+    const [first] = buildRegisterTimeline([event({ type: "created", payload: {} })]);
+    expect(first?.title).not.toBe("Changed");
+  });
+
   it("tells each kind of event in a sentence", () => {
     const titles = buildRegisterTimeline([
       event({ type: "created" }),
@@ -281,5 +320,48 @@ describe("laxArtOfferAvailability", () => {
       kind: "blocked",
       reason: "This artwork is in a LAX Bid sale. Zoho shows this artwork as reserved.",
     });
+  });
+});
+
+describe("auctionOfferAvailability", () => {
+  const place = (key: string) => ({ key }) as never;
+  const original = {
+    kind: "original" as const,
+    auctionBlockers: [],
+    whereItIs: place("not_offered"),
+  };
+
+  it("offers an original that can be offered, with or without a lax.art draft", () => {
+    expect(auctionOfferAvailability(original)).toEqual({ kind: "offer" });
+    expect(auctionOfferAvailability({ ...original, whereItIs: place("draft_lax_art") })).toEqual({
+      kind: "offer",
+    });
+  });
+
+  it("draws nothing for a print", () => {
+    expect(auctionOfferAvailability({ ...original, kind: "print" })).toEqual({ kind: "hidden" });
+  });
+
+  it("stays, disabled, with every reason in words", () => {
+    expect(
+      auctionOfferAvailability({
+        ...original,
+        auctionBlockers: [
+          { message: "Zoho shows this artwork as reserved.", link: null },
+          { message: "This artwork is in a private sale.", link: null },
+        ],
+      }),
+    ).toEqual({
+      kind: "blocked",
+      reason: "Zoho shows this artwork as reserved. This artwork is in a private sale.",
+    });
+  });
+
+  it("points at the draft lot once there is one, instead of offering again", () => {
+    const result = auctionOfferAvailability({ ...original, whereItIs: place("draft_bid_lot") });
+    expect(result).toMatchObject({ kind: "blocked" });
+    expect(result.kind === "blocked" ? result.reason : "").toMatch(
+      /draft lot is already in LAX Bid/,
+    );
   });
 });

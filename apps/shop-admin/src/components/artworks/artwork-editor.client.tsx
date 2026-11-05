@@ -221,6 +221,7 @@ export function ArtworkEditor({
   currentYear,
   arrivedFromZoho = false,
   zohoUrl = null,
+  bidAdminUrl = null,
 }: {
   detail: AdminArtworkDetail | null;
   /** For a new artwork started from an artist's page. */
@@ -233,6 +234,8 @@ export function ArtworkEditor({
   arrivedFromZoho?: boolean;
   /** The Zoho Product's page, for "Edit in Zoho" on a linked artwork. */
   zohoUrl?: string | null;
+  /** Where Bid admin lives, for a person who can open it; null for everyone else. */
+  bidAdminUrl?: string | null;
 }) {
   const router = useRouter();
   const mode = detail ? "edit" : "create";
@@ -708,7 +711,11 @@ export function ArtworkEditor({
       <MaybeColumns
         rail={
           zohoLink && record ? (
-            <ZohoWherePanel link={zohoLink} createdAt={record.createdAt} />
+            <ZohoWherePanel
+              link={zohoLink}
+              createdAt={record.createdAt}
+              bidAdminUrl={bidAdminUrl}
+            />
           ) : null
         }
       >
@@ -1399,8 +1406,9 @@ export function ArtworkEditor({
         <OfferAtAuctionDialog
           open={offeringAtAuction}
           onOpenChange={setOfferingAtAuction}
-          artworkId={record.artworkId}
+          target={{ kind: "artwork", artworkId: record.artworkId }}
           title={record.title}
+          links={{ bidAdminUrl, zohoUrl }}
         />
       ) : null}
       <UnsavedChangesDialog guard={guard} />

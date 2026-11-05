@@ -1206,6 +1206,7 @@ export type {
   ConflictCursor,
   CreateRegisterEntryResult,
   AuctionOfferDraftLot,
+  AuctionOfferDraftLotSummary,
   AuctionOfferSale,
   IArtworkImageStore,
   IArtworkMoveHistory,

@@ -271,6 +271,11 @@ export function createMinimalShopApiTestDeps(
         runs: { latestNightlyRun: async () => null },
         staffNames: { namesFor: async () => new Map() },
         listings: { findByZohoProductId: async () => null, findZohoProductId: async () => null },
+        auction: {
+          assessRegister: async () => {
+            throw new Error("assessRegister is not stubbed");
+          },
+        },
       }),
       offerOnLaxArt: {
         assess: async () => {
@@ -402,17 +407,18 @@ export function createMinimalShopApiTestDeps(
         slug: "test-product",
       }),
       inventoryMoves: {
-        assess: async (artworkId: string) => ({
-          artworkId,
-          title: "Test artwork",
-          stockCode: null,
-          onLaxArt: false,
-          eligible: false,
-          reasons: ["Not set up in tests."],
-        }),
-        listSales: async () => [],
+        assess: async () => {
+          throw new Error("inventoryMoves.assess is not stubbed");
+        },
+        assessRegister: async () => {
+          throw new Error("inventoryMoves.assessRegister is not stubbed");
+        },
+        listSales: async () => ({ connected: true, sales: [] }),
         offerAtAuction: async () => {
-          throw new Error("not implemented");
+          throw new Error("inventoryMoves.offerAtAuction is not stubbed");
+        },
+        offerRegisterAtAuction: async () => {
+          throw new Error("inventoryMoves.offerRegisterAtAuction is not stubbed");
         },
       },
       merchandiseCatalogue: {

@@ -2,14 +2,20 @@
 
 import { ConflictCard } from "@/components/from-zoho/conflict-card.client";
 import {
+  useCanOfferAtAuction,
+  useOfferAtAuction,
+} from "@/components/from-zoho/use-offer-at-auction.client";
+import {
   useCanOfferOnLaxArt,
   useOfferOnLaxArt,
 } from "@/components/from-zoho/use-offer-on-lax-art.client";
+import { bidLotUrl } from "@/lib/offer-at-auction-links";
 import { whereItIsLine } from "@/server/domain/where-it-is.vm";
 import {
   CONFLICT_FIELD_LABEL,
   RESOLUTION_LABEL,
   ZOHO_QUEUE_PATH,
+  auctionOfferAvailability,
   buildRegisterTimeline,
   kindLabel,
   laxArtOfferAvailability,
@@ -34,7 +40,7 @@ import {
   WhereItIsSection,
   toast,
 } from "@auction/staff-ui";
-import { Copy, ExternalLink, Globe, MoveRight } from "@auction/staff-ui/icons";
+import { Copy, ExternalLink, Gavel, Globe, MoveRight } from "@auction/staff-ui/icons";
 import Link from "next/link";
 
 const NextLink: StaffLinkComponent = Link;
@@ -61,10 +67,13 @@ async function copy(text: string, what: string) {
 export function FromZohoRecord({
   detail,
   zohoUrl,
+  bidAdminUrl = null,
 }: {
   detail: AdminRegisterDetail;
   /** The Product's page in Zoho; null when no CRM address is set. */
   zohoUrl: string | null;
+  /** Where Bid admin lives, for a person who can open it; null for everyone else. */
+  bidAdminUrl?: string | null;
 }) {
   const open = detail.conflicts.filter((conflict) => conflict.status === "open");
   const decided = detail.conflicts.filter((conflict) => conflict.status === "resolved");
@@ -73,6 +82,16 @@ export function FromZohoRecord({
 
   const canOffer = useCanOfferOnLaxArt();
   const offerOnLaxArt = useOfferOnLaxArt({ registerId: detail.registerId, title: detail.title });
+  const canOfferAtAuction = useCanOfferAtAuction();
+  const offerAtAuction = useOfferAtAuction({
+    registerId: detail.registerId,
+    title: detail.title,
+    links: { bidAdminUrl, zohoUrl },
+  });
+  const auction = auctionOfferAvailability(detail);
+  const lotHref = detail.whereItIs.bidLot
+    ? bidLotUrl(bidAdminUrl, detail.whereItIs.bidLot.lotId)
+    : null;
   const availability = laxArtOfferAvailability(detail);
   const isPrint = detail.kind !== "original";
   const line = whereItIsLine(detail.whereItIs, {
@@ -104,6 +123,32 @@ export function FromZohoRecord({
         <Link href={availability.href}>Open on lax.art</Link>
       </StaffButton>
     ) : null;
+
+  const lotButton = (variant: "primary" | "secondary") =>
+    lotHref ? (
+      <StaffButton variant={variant} icon={<ExternalLink aria-hidden />} asChild>
+        <a href={lotHref} target="_blank" rel="noopener noreferrer">
+          Open lot in LAX Bid
+          <span className="sr-only"> (opens in a new tab)</span>
+        </a>
+      </StaffButton>
+    ) : null;
+  // A lot in LAX Bid is where staff go next, the way a lax.art listing is.
+  const lotIsPrimary = lotHref !== null && availability.kind !== "open";
+
+  const auctionActions: OverflowAction[] =
+    canOfferAtAuction && auction.kind !== "hidden"
+      ? [
+          {
+            id: "offer-at-auction",
+            label: "Offer at auction…",
+            icon: Gavel,
+            ...(auction.kind === "blocked"
+              ? { disabledReason: auction.reason }
+              : { onSelect: offerAtAuction.start }),
+          },
+        ]
+      : [];
 
   const copyActions: OverflowAction[] = [
     {
@@ -141,11 +186,13 @@ export function FromZohoRecord({
           </>
         }
         primaryAction={
-          canOffer
-            ? availability.kind === "open"
-              ? openButton("primary")
-              : offerButton("primary")
-            : null
+          lotIsPrimary
+            ? lotButton("primary")
+            : canOffer
+              ? availability.kind === "open"
+                ? openButton("primary")
+                : offerButton("primary")
+              : null
         }
         secondaryActions={
           zohoUrl ? (
@@ -157,7 +204,7 @@ export function FromZohoRecord({
             </StaffButton>
           ) : null
         }
-        overflow={<OverflowMenu actions={copyActions} />}
+        overflow={<OverflowMenu actions={[...auctionActions, ...copyActions]} />}
         editRequires="artwork_register.review"
         resource="this artwork"
         notice={
@@ -193,10 +240,11 @@ export function FromZohoRecord({
           {...(line.trail ? { trail: line.trail } : {})}
           {...(line.note ? { note: line.note } : {})}
           actions={
-            canOffer ? (
+            canOffer || lotHref ? (
               <>
-                {offerButton("secondary")}
-                {openButton("secondary")}
+                {canOffer ? offerButton("secondary") : null}
+                {canOffer ? openButton("secondary") : null}
+                {lotButton("secondary")}
               </>
             ) : undefined
           }
@@ -249,6 +297,7 @@ export function FromZohoRecord({
         ) : null}
       </DetailPage>
       {offerOnLaxArt.dialog}
+      {offerAtAuction.dialog}
     </>
   );
 }
