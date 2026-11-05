@@ -169,12 +169,14 @@ export type RecordMoveConfirmedInput = {
 
 /**
  * Keeps the reason behind a move in the register's history, next to the offer moves themselves:
- * who confirmed it, where it went, and whether the consignor's agreement was confirmed.
+ * who confirmed it, where it went, and whether the consignor's agreement was confirmed. A move
+ * that names a lot is recorded once per lot and direction, so a retry or a second click does not
+ * add a second entry.
  */
 export interface IArtworkMoveHistory {
   recordMoveConfirmed(
     input: RecordMoveConfirmedInput,
-  ): Promise<{ status: "not_found" | "recorded" }>;
+  ): Promise<{ status: "not_found" | "recorded" | "already_recorded" }>;
 }
 
 export type RecordLaxArtDraftCreatedInput = {
@@ -192,6 +194,12 @@ export interface IArtworkDraftHistory {
 
 export type AuctionOfferSale = { id: string; title: string; startsAt: Date; endsAt: Date };
 
+export type AuctionOfferDraftLotSummary = {
+  lotId: string;
+  saleId: string | null;
+  saleTitle: string | null;
+};
+
 export type AuctionOfferDraftLot = {
   lotId: string;
   saleId: string | null;
@@ -204,6 +212,8 @@ export interface IAuctionOfferReader {
   listSalesOpenForOffer(now: Date): Promise<AuctionOfferSale[]>;
   /** The lot that currently holds this artwork's place in Bid (draft, scheduled or live), if any. */
   findOpenLotForRegister(registerId: string): Promise<AuctionOfferDraftLot | null>;
+  /** The artwork's draft lot, with its sale's title; null once the lot is scheduled or gone. */
+  findDraftLotForRegister(registerId: string): Promise<AuctionOfferDraftLotSummary | null>;
 }
 
 export type LotRegisterLink = {

@@ -1188,6 +1188,7 @@ export type {
   ConflictCursor,
   CreateRegisterEntryResult,
   AuctionOfferDraftLot,
+  AuctionOfferDraftLotSummary,
   AuctionOfferSale,
   IArtworkMoveHistory,
   IAuctionOfferReader,

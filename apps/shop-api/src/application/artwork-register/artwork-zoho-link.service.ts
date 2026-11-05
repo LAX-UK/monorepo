@@ -1,11 +1,20 @@
 import type { ArtworkRegisterEntry } from "@auction/artwork-register-contracts";
-import type { AdminArtworkDetail, AdminLaxArtListing } from "@auction/shop-contracts";
+import type {
+  AdminArtworkDetail,
+  AdminBidLotRef,
+  AdminLaxArtListing,
+} from "@auction/shop-contracts";
 import type { AdminArtworkReader } from "../ports/artwork-catalogue-admin.js";
 import type { RegisterEventRecord } from "../ports/artwork-register-review.ports.js";
 import type { LaxArtListingReader } from "../ports/offer-on-lax-art.ports.js";
 import type { StaffNameReader } from "../ports/staff-name.reader.js";
 import { presentRegisterEvent, recentMovesOf, staffIdsOf } from "./register-event.presenter.js";
 import { presentWhereItIs } from "./where-it-is.presenter.js";
+
+/** LAX Bid's draft lot for a record. Asking can fail; the page then reads as if there were none. */
+export type ZohoLinkBidDrafts = {
+  findDraftLot(registerId: string): Promise<AdminBidLotRef | null>;
+};
 
 export type ZohoLinkRegister = {
   findByZohoProductId(zohoProductId: string): Promise<ArtworkRegisterEntry | null>;
@@ -27,6 +36,7 @@ export class ArtworkZohoLinkService {
     private readonly deps: {
       register: ZohoLinkRegister;
       staffNames: StaffNameReader;
+      bidDrafts: ZohoLinkBidDrafts;
       now?: () => Date;
     },
   ) {}
@@ -41,7 +51,10 @@ export class ArtworkZohoLinkService {
     if (!artwork.zohoProductId) return null;
     const entry = await this.deps.register.findByZohoProductId(artwork.zohoProductId);
     if (!entry) return null;
-    const events = await this.deps.register.listEvents(entry.id, HISTORY_LIMIT);
+    const [events, bidDraft] = await Promise.all([
+      this.deps.register.listEvents(entry.id, HISTORY_LIMIT),
+      this.bidDraftFor(entry),
+    ]);
     const laxArt: AdminLaxArtListing = {
       artworkId: artwork.artworkId,
       slug: artwork.slug,
@@ -59,10 +72,19 @@ export class ArtworkZohoLinkService {
         entry,
         events,
         laxArt,
+        bidDraft,
         now: (this.deps.now ?? (() => new Date()))(),
       }),
       recentMoves: moves.map((event) => presentRegisterEvent(event, names)),
     };
+  }
+
+  /** Only a held or withdrawn artwork can have a draft lot; nothing else is worth asking about. */
+  private async bidDraftFor(entry: ArtworkRegisterEntry): Promise<AdminBidLotRef | null> {
+    const { state } = entry.offer;
+    if (state !== "held" && state !== "withdrawn") return null;
+    const draft = await this.deps.bidDrafts.findDraftLot(entry.id).catch(() => null);
+    return draft ? { lotId: draft.lotId, saleTitle: draft.saleTitle } : null;
   }
 }
 

@@ -338,6 +338,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   );
   const artworkRegisterRepository = new DrizzleArtworkRegisterRepository(db);
   const laxArtListings = createDrizzleLaxArtListingReader(db);
+  const auctionOffers = createHttpAuctionOfferGateway(env);
   const baseAdminRead = createDrizzleAdminReadRepository(db, env, { resolveMediaUrl });
   const adminRead = {
     ...baseAdminRead,
@@ -345,6 +346,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       links: new ArtworkZohoLinkService({
         register: artworkRegisterRepository,
         staffNames: createDrizzleStaffNameReader(db),
+        bidDrafts: auctionOffers,
       }),
       listings: laxArtListings,
     }),
@@ -446,7 +448,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     originals: originalMoveReader,
     register: artworkRegister,
     history: artworkRegister,
-    auction: createHttpAuctionOfferGateway(env),
+    auction: auctionOffers,
     withdrawFromLaxArt: async ({ artworkId, actorSubjectId }) => {
       await artworkCatalogue.setVisibility({
         artworkId,
@@ -625,6 +627,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           runs: new DrizzleZohoArtworkSyncStore(db),
           staffNames: createDrizzleStaffNameReader(db),
           listings: laxArtListings,
+          auction: inventoryMoves,
         }),
         offerOnLaxArt: new OfferOnLaxArtService({
           register: artworkRegisterRepository,

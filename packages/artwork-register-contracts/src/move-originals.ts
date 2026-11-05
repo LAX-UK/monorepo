@@ -18,6 +18,10 @@ export const DRAFT_LOT_SUBROUTE = "/draft-lots";
 /** LAX Shop: reopen an original's lax.art listing as a draft. */
 export const ART_LISTING_REOPEN_SUBROUTE = "/art-listings/reopen";
 
+/** What LAX Admin tells staff while LAX Bid's address and credential are not set on this environment. */
+export const BID_NOT_CONNECTED_MESSAGE =
+  "LAX Bid isn't connected to LAX Admin yet, so artworks can't be offered at auction from here.";
+
 /** Both products hold the same pair; either side answers 503 until it is set. */
 export const INVENTORY_MACHINE_HEADERS = {
   clientId: "x-inventory-client-id",
@@ -68,6 +72,23 @@ export const draftLotAnswerSchema = z.object({
   created: z.boolean(),
 });
 export type DraftLotAnswer = z.infer<typeof draftLotAnswerSchema>;
+
+export const registerIdSchema = z.string().uuid();
+
+/** What LAX Bid says about the draft lot an artwork has, if it has one. */
+export const draftLotSummarySchema = z.object({
+  lotId: z.string().uuid(),
+  saleId: z.string().uuid().nullable(),
+  saleTitle: z.string().nullable(),
+});
+export type DraftLotSummary = z.infer<typeof draftLotSummarySchema>;
+
+export const draftLotLookupAnswerSchema = z.object({ lot: draftLotSummarySchema.nullable() });
+export type DraftLotLookupAnswer = z.infer<typeof draftLotLookupAnswerSchema>;
+
+/** LAX Bid: the draft lot, in a sale that has not started, that holds a register record's place. */
+export const draftLotLookupSubroute = (registerId: string) =>
+  `${DRAFT_LOT_SUBROUTE}/${encodeURIComponent(registerId)}`;
 
 export const reopenListingRequestSchema = z.object({
   registerId: z.string().uuid(),
@@ -123,55 +144,6 @@ export class InventoryPeerRefusedError extends Error {
 /* ---------------------------------------------------------------------------------------------
  * Eligibility
  * ------------------------------------------------------------------------------------------- */
-
-export const AUCTION_MOVE_BLOCKERS = [
-  "not_original",
-  "no_register_record",
-  "sold",
-  "buyer_reserved",
-  "in_private_sale",
-  "in_auction",
-  "not_on_lax_art",
-] as const;
-export type AuctionMoveBlocker = (typeof AUCTION_MOVE_BLOCKERS)[number];
-
-export const AUCTION_MOVE_BLOCKER_MESSAGES: Record<AuctionMoveBlocker, string> = {
-  not_original: "Only originals can be offered at auction. Prints are sold in runs.",
-  no_register_record:
-    "This artwork is not in the artwork register yet, so it cannot be moved. Link it to its Zoho record first.",
-  sold: "This artwork has been sold, so it cannot be offered again.",
-  buyer_reserved:
-    "A buyer has reserved this artwork, or an offer on it is open. Finish or cancel that sale first.",
-  in_private_sale: "This artwork is in a private sale. Withdraw it there first.",
-  in_auction: "This artwork is already in a LAX Bid sale. Withdraw the lot there first.",
-  not_on_lax_art: "This artwork is not on lax.art right now, so there is nothing to move.",
-};
-
-export type AuctionMoveFacts = {
-  /** The register entry's kind; null when the artwork has no register record. */
-  kind: "original" | "print" | null;
-  offerState: OfferState | null;
-  /** A buyer holds a reservation, deposit, invoice or payment on this original. */
-  openOriginalSale: boolean;
-  /** The artwork is marked sold in the Shop catalogue. */
-  markedSold: boolean;
-};
-
-/**
- * What stops an original from moving to a LAX Bid sale, most important first. Empty means it can
- * go. An original that is on lax.art, held, or already withdrawn may move: staff may start from a
- * piece that is not listed anywhere.
- */
-export function auctionMoveBlockers(facts: AuctionMoveFacts): AuctionMoveBlocker[] {
-  if (facts.kind === null || facts.offerState === null) return ["no_register_record"];
-  if (facts.kind !== "original") return ["not_original"];
-  const blockers: AuctionMoveBlocker[] = [];
-  if (facts.offerState === "sold" || facts.markedSold) blockers.push("sold");
-  if (facts.openOriginalSale) blockers.push("buyer_reserved");
-  if (facts.offerState === "private_sale") blockers.push("in_private_sale");
-  if (facts.offerState === "bid_sale") blockers.push("in_auction");
-  return blockers;
-}
 
 export const RETURN_MOVE_BLOCKERS = [
   "no_register_record",

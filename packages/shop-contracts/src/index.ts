@@ -962,6 +962,8 @@ export {
   type AdminLaxArtOfferResponse,
 } from "./admin-offer-on-lax-art.js";
 export {
+  AdminBidLotRefSchema,
   AdminWhereItIsSchema,
+  type AdminBidLotRef,
   type AdminWhereItIs,
 } from "./admin-where-it-is.js";
