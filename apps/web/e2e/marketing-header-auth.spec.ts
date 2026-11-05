@@ -64,9 +64,11 @@ test.describe("marketing header auth @journey", () => {
     await page2.goto("/");
     await expect(accountMenu(page2)).toBeVisible({ timeout: 10_000 });
 
-    await page1.evaluate(async () => {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+    const logoutStatus = await page1.evaluate(async () => {
+      const response = await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
+      return response.status;
     });
+    expect(logoutStatus, "the logout request was accepted").toBe(200);
 
     await page2.reload();
     await expect(guestMenu(page2)).toBeVisible({ timeout: 10_000 });

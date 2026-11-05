@@ -14,7 +14,7 @@ import { Checkbox } from "@auction/ui/lax";
 
 export function DetailsStep({ form }: StepProps) {
   return (
-    <div className="space-y-6" data-testid="submission-wizard-step-details">
+    <div className="space-y-6">
       <div className="grid gap-6 sm:grid-cols-2">
         <FormField
           control={form.control}
