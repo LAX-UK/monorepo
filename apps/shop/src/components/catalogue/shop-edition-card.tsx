@@ -75,6 +75,7 @@ export function ShopEditionCard({
           </Link>
         </Title>
         {card.factsLine ? <p className="shop-edition-card__facts">{card.factsLine}</p> : null}
+        {card.editionLine ? <p className="shop-edition-card__facts">{card.editionLine}</p> : null}
         {status?.kind === "sold_out" ? (
           <p className="shop-edition-card__sold">
             <span>{status.label}</span>
