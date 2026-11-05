@@ -42,6 +42,7 @@ import { metadataForListing } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
+import { buildLotMediaTreatmentIndex } from "@auction/domain";
 import type { Lot } from "@auction/types";
 import { ButtonLink, EmptyState } from "@auction/ui/lax";
 import type { Metadata } from "next";
@@ -123,6 +124,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     getServerWatchedLotIdSet(),
   ]);
   const categories = catReader ? await catReader.listWithPublishedLots().catch(() => []) : [];
+  const treatments = buildLotMediaTreatmentIndex(categories);
 
   const layoutView = await resolveMarketingLayoutView({
     routeKey: "search",
@@ -389,6 +391,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               isAuthenticated={isAuthenticated}
               currentUserId={currentUserId}
               watchedLotIds={watchedLotIds}
+              treatments={treatments}
               watchedArtistIds={new Set(watchedArtistIds)}
               clearHref={clearFiltersHref}
               pastResultsHref={pastResultsHref}
@@ -443,6 +446,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                   isAuthenticated={isAuthenticated}
                   watchedLotIds={watchedLotIds}
                   loginNextPath={loginNextPath}
+                  treatments={treatments}
                   {...(lotCatalogLinkParams ? { catalogLinkParams: lotCatalogLinkParams } : {})}
                 />
               </div>

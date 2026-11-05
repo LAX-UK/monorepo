@@ -47,6 +47,7 @@ const lot: SaleLotCardVM = {
   title: "Test lot",
   imageUrl: "https://example.com/lot.jpg",
   imageAlt: "Test",
+  displayStyle: "wall",
   estimateValue: "£1,000",
   currentBidLabel: "Current bid",
   currentBidValue: "£500",

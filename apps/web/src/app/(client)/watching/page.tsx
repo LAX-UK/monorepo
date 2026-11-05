@@ -6,6 +6,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerMySavedSearches } from "@/lib/data/http/saved-searches.server";
 import { getServerWatchlistReminders } from "@/lib/data/http/watchlist-reminders.server";
 import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
+import { getLotMediaTreatments } from "@/lib/departments/lot-media-treatments.server";
 import { artistPath } from "@/lib/seo/url";
 import { buildWatchedLots, parseWatchingView, withReminders } from "@/lib/watching/watching.vm";
 import type { Metadata } from "next";
@@ -39,6 +40,7 @@ async function loadLots() {
     bids: bids ?? [],
     userId: user?.id,
     saleTitleById: await resolveSaleTitles(rows.map((row) => row.lot?.saleId)),
+    treatments: await getLotMediaTreatments(),
   });
   return withReminders(lots, reminders ?? []);
 }

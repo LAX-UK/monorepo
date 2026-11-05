@@ -6,6 +6,7 @@ import { type ArtistNames, homeLotCard } from "@/lib/home-sections/lot-card";
 import type { HomeResultsBand } from "@/lib/home-sections/types";
 import { RECENT_RESULTS_HREF } from "@/lib/marketing/recent-results-link";
 import type { SaleListRow } from "@/lib/sale-list-row";
+import type { LotMediaTreatmentIndex } from "@auction/domain";
 import type { Lot, SaleDeliveryMode } from "@auction/types";
 
 const DELIVERY: Record<SaleDeliveryMode, string> = {
@@ -34,6 +35,7 @@ export function buildResultsBand(input: {
   artistNames: ArtistNames;
   subtitle: string;
   now: Date;
+  treatments?: LotMediaTreatmentIndex;
 }): HomeResultsBand | null {
   const { row } = input;
   const summary = row?.resultsSummary;
@@ -70,7 +72,9 @@ export function buildResultsBand(input: {
     },
     lots:
       lots.length >= HOME_SECTION_LIMITS.resultsLots.min
-        ? lots.map((lot) => homeLotCard(lot, row.sale, input.artistNames, input.now))
+        ? lots.map((lot) =>
+            homeLotCard(lot, row.sale, input.artistNames, input.now, input.treatments),
+          )
         : [],
   };
 }

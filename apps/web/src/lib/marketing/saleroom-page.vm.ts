@@ -54,7 +54,7 @@ import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
-import { roleBidsThroughAuthorisation } from "@auction/domain";
+import { type LotMediaTreatmentIndex, roleBidsThroughAuthorisation } from "@auction/domain";
 import type { LegalEntityMemberRole, LegalEntityStatus, Lot, Sale } from "@auction/types";
 import {
   formatPostalAddressLines,
@@ -176,6 +176,8 @@ export type BuildSaleroomPageVMInput = {
   categoryLabels: string[];
   /** The lots the hang chooses from (display copies); empty when the page is filtered or paged. */
   hangLots?: readonly Lot[];
+  /** How each department shows its lots on a card. */
+  treatments?: LotMediaTreatmentIndex;
   statusCounts?: SaleroomStatusCounts | null;
   now?: Date;
 };
@@ -197,6 +199,7 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     categoryLabel,
     categoryLabels,
     hangLots = [],
+    treatments,
   } = input;
   const now = input.now ?? new Date();
   const bundle = shell;
@@ -258,6 +261,7 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
       initialWatching: secondary.watchedLotIds.has(lot.id),
       catalogLinkParams: lotLinkParams,
       premiumTiers: bundle.sale.buyerPremiumTiers,
+      ...(treatments ? { treatments } : {}),
       ...(atgState ? { atgState } : {}),
     }),
   );

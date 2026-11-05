@@ -9,20 +9,22 @@ import { SellSpecialistsSection } from "@/components/marketing/sell/sell-special
 import { SellSteps } from "@/components/marketing/sell/sell-steps";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { SellSpecialist } from "@/lib/marketing/sell-specialists";
+import type { LotMediaTreatmentIndex } from "@auction/domain";
 import type { Lot } from "@auction/types";
 
 type Props = {
   recentlySold: readonly Lot[];
+  treatments: LotMediaTreatmentIndex;
   specialists: readonly SellSpecialist[];
   faqItems: readonly FaqItem[];
 };
 
 /** The selling landing: what we sell, how it works, what it costs and how to begin. */
-export function SellLandingView({ recentlySold, specialists, faqItems }: Props) {
+export function SellLandingView({ recentlySold, treatments, specialists, faqItems }: Props) {
   return (
     <div className="bg-page-bg pt-[calc(var(--header-height)+1.5rem)] dark:bg-background">
       <SellHero />
-      <SellRecentlySold works={recentlySold} />
+      <SellRecentlySold works={recentlySold} treatments={treatments} />
       <SellSteps />
       <SellDepartmentGrid />
       <SellFees />

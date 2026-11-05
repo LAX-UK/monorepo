@@ -3,6 +3,7 @@ import type { HomeLotCard } from "@/lib/home-sections/types";
 import { lotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotPath } from "@/lib/seo/url";
+import { type LotMediaTreatmentIndex, lotMediaTreatment } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
 
 export type ArtistNames = Readonly<Record<string, string>>;
@@ -16,6 +17,7 @@ export function homeLotCard(
   sale: Pick<Sale, "buyerPremiumTiers"> | null,
   artistNames: ArtistNames,
   now: Date,
+  treatments: LotMediaTreatmentIndex = {},
 ): HomeLotCard {
   const label = hangLabelModel(lot, { sale, now });
   return {
@@ -24,6 +26,7 @@ export function homeLotCard(
     title: lot.title,
     artistName: (lot.artistId ? artistNames[lot.artistId] : undefined) ?? null,
     imageUrl: lot.images[0] ?? null,
+    displayStyle: lotMediaTreatment(lot, treatments).style,
     watchable: lot.status === "active" || lot.status === "scheduled",
     details: [label.eyebrow],
     estimate: lotEstimateLine(lot),

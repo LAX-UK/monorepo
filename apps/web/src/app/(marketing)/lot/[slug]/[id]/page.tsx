@@ -30,6 +30,7 @@ import { LotPortsProvider } from "@/lib/context/lot-ports";
 import { LotRealtimeProvider } from "@/lib/context/lot-realtime-provider";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { MaybeSaleroomLiveProvider } from "@/lib/context/saleroom-live-provider";
+import { getLotMediaTreatments } from "@/lib/departments/lot-media-treatments.server";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import {
   getServerWithdrawnLot,
@@ -45,6 +46,7 @@ import {
 import { restoreAccountHref } from "@/lib/navigation/account-link";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { lotPath, salePath } from "@/lib/seo/url";
+import { DEFAULT_LOT_MEDIA_TREATMENT, lotMediaTreatment } from "@auction/domain";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -152,6 +154,9 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
         actingEntityId: actingLegalEntityId,
       })
     : null;
+  const mediaTreatment = usesLotTemplate
+    ? lotMediaTreatment(auction, await getLotMediaTreatments())
+    : DEFAULT_LOT_MEDIA_TREATMENT;
 
   const bidEntry =
     atgReadOnlyCatalog && saleBundle ? (
@@ -302,6 +307,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                             bidding: templateReads.bidding,
                             viewer: templateReads.viewer,
                             history: templateReads.history,
+                            media: mediaTreatment,
                           })}
                           bidEntry={bidEntry}
                           banner={

@@ -1,4 +1,19 @@
 export {
+  DEFAULT_DEPARTMENT_DISPLAY_STYLE,
+  DEFAULT_LOT_MEDIA_TREATMENT,
+  DEPARTMENTS,
+  DEPARTMENT_DISPLAY_STYLES,
+  buildLotMediaTreatmentIndex,
+  departmentBySlug,
+  departmentDisplayStyle,
+  departmentMediaTreatment,
+  lotMediaTreatment,
+  type Department,
+  type DepartmentDisplayStyle,
+  type LotMediaTreatment,
+  type LotMediaTreatmentIndex,
+} from "./departments.js";
+export {
   lotNumberTakenInSale,
   nextLotNumberInSale,
 } from "./lot-number.js";

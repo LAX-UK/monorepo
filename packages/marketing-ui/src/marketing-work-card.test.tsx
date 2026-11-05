@@ -51,6 +51,63 @@ describe("MarketingWorkGrid", () => {
   });
 });
 
+describe("MarketingWorkCard media style", () => {
+  const frameOf = (container: HTMLElement) => container.querySelector("[data-media-style]");
+
+  it("keeps the product's own mat when no style is given", () => {
+    const { container } = render(
+      <MarketingWorkCard href="/a" title="A" media={<img src="/x.webp" alt="" />} />,
+    );
+    const mat = container.querySelector(".marketing-work-mat");
+    expect(mat?.className).toContain("aspect-[4/5]");
+    expect(frameOf(container)).toBeNull();
+  });
+
+  it.each([
+    ["wall", "aspect-[4/5]", "object-contain"],
+    ["object", "aspect-[4/5]", "object-contain"],
+    ["product", "aspect-square", "object-cover"],
+    ["showcase", "aspect-[3/2]", "object-cover"],
+    ["document", "aspect-[3/4]", "object-contain"],
+  ] as const)("frames a %s lot as %s and fits its picture with %s", (style, aspect, fit) => {
+    const { container } = render(
+      <MarketingWorkCard
+        href="/a"
+        title="A"
+        mediaStyle={style}
+        media={<img src="/x.webp" alt="" />}
+      />,
+    );
+    const frame = frameOf(container);
+    expect(frame?.getAttribute("data-media-style")).toBe(style);
+    expect(frame?.className).toContain(aspect);
+    expect(container.querySelector("a > span")?.className).toContain(fit);
+  });
+
+  it("puts the wall shadow on wall works only", () => {
+    const wall = render(
+      <MarketingWorkCard
+        href="/a"
+        title="A"
+        mediaStyle="wall"
+        media={<img src="/x.webp" alt="" />}
+      />,
+    );
+    expect(frameOf(wall.container)?.className).toContain("marketing-lot-wall");
+    wall.unmount();
+    const object = render(
+      <MarketingWorkCard
+        href="/a"
+        title="A"
+        mediaStyle="object"
+        media={<img src="/x.webp" alt="" />}
+      />,
+    );
+    expect(frameOf(object.container)?.className).not.toContain("marketing-lot-wall");
+    expect(frameOf(object.container)?.className).toContain("marketing-studio-ground");
+  });
+});
+
 describe("MarketingWorkCard overlay action", () => {
   it("shows a control over the mat only when given one", () => {
     const { rerender } = render(

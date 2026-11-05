@@ -1,6 +1,6 @@
 import { LotDetails } from "@/components/lot-page/lot-details";
 import { LotIdentity } from "@/components/lot-page/lot-identity";
-import { LotImageStage } from "@/components/lot-page/lot-image-stage";
+import { LotMedia } from "@/components/lot-page/lot-media/lot-media";
 import { LotPageViewStaticProvider } from "@/components/lot-page/lot-page-view-context";
 import { LotPriceBlock } from "@/components/lot-page/lot-price-block";
 import { LotWayfinding } from "@/components/lot-page/lot-wayfinding";
@@ -30,7 +30,7 @@ export function WithdrawnLotPage({ data, now }: { data: WithdrawnLotPageData; no
           />
           <LotPageViewStaticProvider view={view}>
             <div className="grid gap-6 pb-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start lg:gap-14">
-              <LotImageStage
+              <LotMedia
                 title={lot.title}
                 images={toGalleryImages(lot.images, undefined, lot.title, lot.imageAssets)}
               />

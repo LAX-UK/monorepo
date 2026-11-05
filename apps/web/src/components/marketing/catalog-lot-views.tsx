@@ -19,6 +19,8 @@ import { EDITORIAL_CALM_SLOTS, LOT_CARD_GRID_SLOTS } from "@/lib/media/overlay-s
 import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { lotPath } from "@/lib/seo/url";
 import type { OverlaySurface } from "@/lib/ui/overlay-tone-classes";
+import { type LotMediaTreatmentIndex, lotMediaTreatment } from "@auction/domain";
+import { lotCardMediaFrame } from "@auction/marketing-ui";
 import type { CatalogLotVM } from "@auction/types";
 
 export type CatalogLotViewsProps = {
@@ -27,6 +29,8 @@ export type CatalogLotViewsProps = {
   isAuthenticated: boolean;
   watchedLotIds: readonly string[];
   loginNextPath: string;
+  /** How each department shows its lots on a card; left out, every lot is a wall work. */
+  treatments?: LotMediaTreatmentIndex;
   /** Optional query params to preserve catalogue context (e.g. `view=list`). */
   catalogLinkParams?: CatalogLinkParams;
 };
@@ -80,6 +84,7 @@ export function CatalogLotGridView({
   isAuthenticated,
   watchedLotIds,
   loginNextPath,
+  treatments = {},
   catalogLinkParams,
 }: CatalogLotViewsProps) {
   return (
@@ -93,11 +98,13 @@ export function CatalogLotGridView({
         const est = lotEstimateLine(a);
         const subtitle = lotSubtitle(a);
         const owned = Boolean(currentUserId && a.sellerId === currentUserId);
+        const style = lotMediaTreatment(a, treatments).style;
         return (
           <LotCardGrid
             key={a.id}
             className="h-full"
             lotId={a.id}
+            mediaStyle={style}
             href={resolveLotHref(a, catalogLinkParams)}
             topLeft={owned ? <OwnerBadge owned className="pointer-events-auto" /> : null}
             imageOverlays={
@@ -111,7 +118,7 @@ export function CatalogLotGridView({
             }
             adaptiveMedia={{
               src: img,
-              objectFit: "contain",
+              objectFit: lotCardMediaFrame(style).fit,
               slots: LOT_CARD_GRID_SLOTS,
               alt: a.title,
               sizes: "(max-width: 768px) 50vw, (max-width: 1024px) 50vw, 33vw",
