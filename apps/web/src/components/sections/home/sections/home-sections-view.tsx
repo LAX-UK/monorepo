@@ -38,13 +38,19 @@ const RENDERERS: { [K in HomeSectionId]: Render<K> } = {
   inThisSale: lotRail("in-this-sale"),
   highlightsFromNextSale: lotRail("next-sale"),
   topLotsOfSale: lotRail("top-lots"),
-  comingUp: (comingUp) => <HomeComingUpSection comingUp={comingUp} />,
+  comingUp: (comingUp, _state, watch) => (
+    <HomeComingUpSection comingUp={comingUp} signedIn={watch.isAuthenticated} />
+  ),
   recentResults: (band, _state, watch) => <HomeResultsBandSection band={band} watch={watch} />,
   departments: (departments) => <HomeDepartmentsSection departments={departments} />,
   artists: (artists) => <HomeArtistsSection artists={artists} />,
   selling: (selling) => <HomeSellingBand selling={selling} />,
-  alerts: (_, _state, watch, alertsOutcome) => (
-    <HomeAlertsBand signedIn={watch.isAuthenticated} outcome={alertsOutcome} />
+  alerts: (alerts, _state, watch, alertsOutcome) => (
+    <HomeAlertsBand
+      signedIn={watch.isAuthenticated}
+      outcome={alertsOutcome}
+      thumbnails={alerts.thumbnails}
+    />
   ),
   fromLaxAndPress: (items) => <HomePressSection items={items} />,
 };
