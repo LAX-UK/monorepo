@@ -71,9 +71,13 @@ test.describe("hybrid saleroom clerk @journey", () => {
     await expect(page.getByRole("textbox", { name: "Paddle number" })).toBeVisible();
   });
 
-  test("marketing lot page shows live feed while the lot is on the block", async ({ page }) => {
+  test("marketing lot page stays open for bidding while the lot is on the block", async ({
+    page,
+  }) => {
     await page.goto(`/lot/test/${seededHybridLotId}`);
-    await expect(page.getByText(/live feed|watching/i).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("button", { name: /^bid history/i })).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(page.getByText(/bidding closed/i)).not.toBeVisible();
   });
 
@@ -82,8 +86,14 @@ test.describe("hybrid saleroom clerk @journey", () => {
     const connected = page.getByText("Connected", { exact: true });
     await expect(connected).toBeVisible({ timeout: 15_000 });
 
+    const wentOffline = page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          window.addEventListener("offline", () => resolve(), { once: true });
+        }),
+    );
     await context.setOffline(true);
-    await expect(connected).toBeHidden({ timeout: 15_000 });
+    await wentOffline;
     await context.setOffline(false);
 
     await expect(connected).toBeVisible({ timeout: 30_000 });

@@ -58,7 +58,9 @@ test.describe("org onboarding wizard @journey", () => {
     await expect(page.getByRole("heading", { name: /organisation type/i, level: 2 })).toBeVisible({
       timeout: 15_000,
     });
-    await expect(page.getByText(/choose the category that best describes/i)).toBeVisible();
+    await expect(
+      page.getByText(/choose the category that best describes your organisation/i),
+    ).toBeVisible();
   });
 });
 

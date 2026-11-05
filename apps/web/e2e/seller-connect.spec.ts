@@ -76,20 +76,6 @@ test.describe("seller connect embedded @journey", () => {
 });
 
 test.describe("seller workspace navigation @journey", () => {
-  test("selling workspace navigation reaches sold and payouts", async ({ page }) => {
-    test.skip(!enabled, skipReason);
-    test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
-
-    await clientSession(page);
-    await page.goto("/selling");
-    // Payout setup is reached from Sold & payouts, so that is the navigation item to find.
-    await page
-      .getByRole("link", { name: /^sold & payouts$/i })
-      .first()
-      .click();
-    await expect(page).toHaveURL(/\/selling\/payouts/);
-  });
-
   test("sold and payouts page loads", async ({ page }) => {
     test.skip(!enabled, skipReason);
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");

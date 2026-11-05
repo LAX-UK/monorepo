@@ -20,8 +20,8 @@ test.describe("admin invitations (query + nuqs) @journey", () => {
     await page.getByRole("button", { name: /^invite people$/i }).click();
     const dialog = page.getByRole("dialog", { name: /invite people/i });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByRole("radio", { name: /^client$/i })).toBeVisible();
-    await expect(dialog.getByRole("radio", { name: /^staff$/i })).toBeVisible();
+    await expect(dialog.getByRole("radio", { name: /^client\b/i })).toBeVisible();
+    await expect(dialog.getByRole("radio", { name: /^staff\b/i })).toBeVisible();
   });
 
   test("status view updates URL via nuqs", async ({ page }) => {
