@@ -268,7 +268,7 @@ test.describe("lax.art journeys", () => {
     const header = page.getByTestId("art-header");
     // Signed out, the single Account control opens a small menu that carries Sign in.
     await header.getByRole("button", { name: "Account menu" }).click();
-    await expect(page.getByRole("menu").getByRole("link", { name: "Sign in" })).toHaveAttribute(
+    await expect(page.getByRole("menuitem", { name: "Sign in" })).toHaveAttribute(
       "href",
       "/login?returnTo=%2Fartworks",
     );
