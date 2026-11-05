@@ -26,8 +26,7 @@ export function WizardResumeBanner({ draft, onResume, onDiscard }: Props) {
         </>
       }
     >
-      Saved {formatStaffDateTime(draft.savedAt, { zoneLabel: true })}, at step {draft.stepIndex + 1}
-      .
+      Saved {formatStaffDateTime(draft.savedAt)}, at step {draft.stepIndex + 1}.
     </Notice>
   );
 }

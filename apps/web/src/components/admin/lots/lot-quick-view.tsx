@@ -71,8 +71,8 @@ export function LotQuickView({
       notice={
         row?.withdrawalRequestedAt ? (
           <Notice tone="warning" title="The seller has asked to withdraw this lot">
-            Asked {formatStaffDateTime(row.withdrawalRequestedAt, { zoneLabel: true })}. Approve or
-            decline the request from the lot's actions.
+            Asked {formatStaffDateTime(row.withdrawalRequestedAt)}. Approve or decline the request
+            from the lot's actions.
           </Notice>
         ) : null
       }

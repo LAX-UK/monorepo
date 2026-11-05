@@ -1,4 +1,5 @@
 import type { AdminOfferAtAuctionBody } from "@auction/shop-contracts";
+import { formatStaffDate } from "@auction/staff-ui";
 
 export type OfferAtAuctionForm = {
   saleId: string | null;
@@ -47,11 +48,5 @@ export function offerAtAuctionBody(form: OfferAtAuctionForm): AdminOfferAtAuctio
 export function saleOptionLabel(title: string, startsAt: string): string {
   const date = new Date(startsAt);
   if (Number.isNaN(date.getTime())) return title;
-  const when = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "Europe/London",
-  }).format(date);
-  return `${title} · ${when}`;
+  return `${title} · ${formatStaffDate(date)}`;
 }

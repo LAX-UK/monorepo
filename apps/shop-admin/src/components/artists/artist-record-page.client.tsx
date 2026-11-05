@@ -501,7 +501,7 @@ export function ArtistRecordPage({
                 items={[
                   {
                     label: "Added",
-                    value: formatStaffDateTime(artist.createdAt, { zoneLabel: true }),
+                    value: formatStaffDateTime(artist.createdAt),
                   },
                   { label: "Artist ID", value: artist.artistId, copyValue: artist.artistId },
                 ]}

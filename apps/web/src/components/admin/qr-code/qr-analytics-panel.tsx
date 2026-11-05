@@ -14,6 +14,7 @@ import {
   Skeleton,
   StaffButton,
   StatGrid,
+  formatStaffTime,
 } from "@auction/staff-ui";
 import { AUCTION_ZONE_LABEL } from "@auction/ui/lib/datetime";
 import type {
@@ -297,7 +298,7 @@ function formatTrendLabel(bucket: string, granularity: "hour" | "day"): string {
   if (granularity === "day") return bucket.slice(5);
   const date = new Date(bucket);
   if (Number.isNaN(date.getTime())) return bucket;
-  return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return formatStaffTime(date);
 }
 
 function formatStatValue(value: string): string {

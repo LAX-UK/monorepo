@@ -1,6 +1,6 @@
 /**
  * Dates, times and money as staff read them: London time whatever the laptop's zone, absolute
- * dates ("24 Oct 2026", never "10/11/2026"), a 24-hour clock, and amounts with a currency symbol,
+ * dates ("Thu 12 Nov", never "10/11/2026"), a 24-hour clock, and amounts with a currency symbol,
  * two decimals and a true minus sign. One set of formatters for tables, headers and timelines,
  * so the same value never appears two ways.
  */
@@ -18,8 +18,6 @@ export function staffShortDateFormat(
   const inner = new Intl.DateTimeFormat("en-GB", { timeZone: STAFF_TIME_ZONE, ...options });
   return { format: (date) => inner.format(date).replace(/\bSept\b/, "Sep") };
 }
-
-const DATE = staffShortDateFormat({ day: "numeric", month: "short", year: "numeric" });
 
 const TIME = new Intl.DateTimeFormat("en-GB", {
   hour: "2-digit",
@@ -48,12 +46,6 @@ export function londonZoneLabel(value: DateLike = new Date()): "BST" | "GMT" {
   return name === "BST" || name === "GMT+1" ? "BST" : "GMT";
 }
 
-/** "24 Oct 2026". Unparseable input is returned unchanged so nothing is silently lost. */
-export function formatStaffDate(value: DateLike): string {
-  const date = toDate(value);
-  return date ? DATE.format(date) : String(value);
-}
-
 /** "14:05", London time, 24-hour clock; with `zoneLabel`, "14:05 BST". */
 export function formatStaffTime(value: DateLike, { zoneLabel = false } = {}): string {
   const date = toDate(value);
@@ -62,37 +54,46 @@ export function formatStaffTime(value: DateLike, { zoneLabel = false } = {}): st
   return zoneLabel ? `${time} ${londonZoneLabel(date)}` : time;
 }
 
-/**
- * "24 Oct 2026, 14:05", London time. Pass `zoneLabel` where the moment matters (closing times,
- * live sales, payouts): "24 Oct 2026, 14:05 BST".
- */
-export function formatStaffDateTime(value: DateLike, { zoneLabel = false } = {}): string {
-  const date = toDate(value);
-  if (!date) return String(value);
-  return `${DATE.format(date)}, ${formatStaffTime(date, { zoneLabel })}`;
-}
-
 const WEEKDAY = new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: STAFF_TIME_ZONE });
 const DAY_MONTH = staffShortDateFormat({ day: "numeric", month: "short" });
-
-function londonYear(date: Date): string {
-  return new Intl.DateTimeFormat("en-GB", { year: "numeric", timeZone: STAFF_TIME_ZONE }).format(
-    date,
-  );
-}
+const YEAR = new Intl.DateTimeFormat("en-GB", { year: "numeric", timeZone: STAFF_TIME_ZONE });
 
 /**
- * The one date style: "Thu 12 Nov, 04:49 GMT". London time, the weekday leads, and the year is
- * shown only when it is not `now`'s ("Thu 12 Nov 2026, 04:49 GMT" when read in another year).
- * The same words as the public products' `formatLondonWhen`.
+ * The date part of the one date style: "Thu 12 Nov". London time, the weekday leads, and the year
+ * is shown only when it is not `now`'s ("Thu 12 Nov 2026" when read in another year).
+ * Unparseable input is returned unchanged so nothing is silently lost.
  */
-export function formatStaffWhen(value: DateLike, now: DateLike = new Date()): string {
+export function formatStaffDate(value: DateLike, now: DateLike = new Date()): string {
   const date = toDate(value);
   if (!date) return String(value);
   const reference = toDate(now) ?? new Date();
   const day = DAY_MONTH.format(date);
-  const dayMonth = londonYear(date) === londonYear(reference) ? day : `${day} ${londonYear(date)}`;
-  return `${WEEKDAY.format(date)} ${dayMonth}, ${formatStaffTime(date, { zoneLabel: true })}`;
+  const year = YEAR.format(date);
+  const dayMonth = year === YEAR.format(reference) ? day : `${day} ${year}`;
+  return `${WEEKDAY.format(date)} ${dayMonth}`;
+}
+
+const EXPORT_DATE = staffShortDateFormat({ day: "numeric", month: "short", year: "numeric" });
+
+/**
+ * "24 Oct 2026": a London date with the year always present and no weekday. For files staff
+ * download (CSV), which are read and sorted outside the app and must not change with the clock.
+ * Screens use `formatStaffDate`.
+ */
+export function formatStaffExportDate(value: DateLike): string {
+  const date = toDate(value);
+  return date ? EXPORT_DATE.format(date) : String(value);
+}
+
+/**
+ * The one date style: "Thu 12 Nov, 04:49 GMT". The date as `formatStaffDate` reads it, then the
+ * London 24-hour time and zone ("BST" in summer, "GMT" in winter). The same words as the public
+ * products' `formatLondonWhen`. Fixed zone and explicit en-GB parts, so server and browser agree.
+ */
+export function formatStaffDateTime(value: DateLike, now: DateLike = new Date()): string {
+  const date = toDate(value);
+  if (!date) return String(value);
+  return `${formatStaffDate(date, now)}, ${formatStaffTime(date, { zoneLabel: true })}`;
 }
 
 const RELATIVE = new Intl.RelativeTimeFormat("en-GB", { numeric: "auto" });

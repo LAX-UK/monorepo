@@ -233,7 +233,7 @@ export function AttachExistingLotDialog({
     });
   };
 
-  const windowText = `${formatStaffDateTime(saleWindow.startTime, { zoneLabel: true })} to ${formatStaffDateTime(saleWindow.endTime, { zoneLabel: true })}`;
+  const windowText = `${formatStaffDateTime(saleWindow.startTime)} to ${formatStaffDateTime(saleWindow.endTime)}`;
   const startingPence = preview ? moneyMinor(preview.startingPrice) : null;
 
   return (
