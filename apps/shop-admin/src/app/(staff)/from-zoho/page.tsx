@@ -2,6 +2,7 @@ import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { NeedsDecisionList, NewFromZohoList } from "@/components/from-zoho/from-zoho-list.client";
 import { LastCheckView } from "@/components/from-zoho/last-check-view.client";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
+import { loadBidAdminUrl } from "@/server/application/load-bid-admin-url";
 import { getShopAdminContainer } from "@/server/container";
 import {
   activeZohoTab,
@@ -52,6 +53,7 @@ export default async function FromZohoPage({
     <NewFromZohoList
       query={query}
       page={result.data}
+      bidAdminUrl={await loadBidAdminUrl()}
       zohoUrlTemplate={getShopAdminContainer().config.crmRecordUrlTemplate ?? null}
     />
   );

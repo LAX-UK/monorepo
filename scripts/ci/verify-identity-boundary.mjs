@@ -211,9 +211,14 @@ function verifyStaticContracts() {
 
 function runFixtureVerification() {
   verifyStaticContracts();
-  for (const [packageName] of focusedTests) {
-    run("pnpm", ["--filter", `${packageName}^...`, "run", "build"]);
-  }
+  // One turbo invocation builds every package the focused tests depend on. Turbo replays
+  // cached builds (shared from the build-packages CI job / remote cache) and still rebuilds on a miss.
+  run("pnpm", [
+    "turbo",
+    "run",
+    "build",
+    ...focusedTests.map(([packageName]) => `--filter=${packageName}^...`),
+  ]);
   for (const [packageName, tests] of focusedTests) {
     run("pnpm", ["--filter", packageName, "exec", "vitest", "run", ...tests]);
   }

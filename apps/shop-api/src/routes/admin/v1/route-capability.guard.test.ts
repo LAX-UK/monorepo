@@ -49,6 +49,8 @@ async function appWithNoCapabilities() {
     env: {
       ...base,
       SHOP_ADMIN_ENABLED: true,
+      // One probe per route: keep the per-minute request limit out of the way of this check.
+      SHOP_API_RATE_LIMIT_PER_MINUTE: 10_000,
       SHOP_EDITORIAL_ENABLED: true,
       SHOP_PAYOUTS_ENABLED: true,
       SHOP_THIRD_PARTY_ENABLED: true,

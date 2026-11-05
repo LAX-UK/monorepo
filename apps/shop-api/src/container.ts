@@ -77,6 +77,7 @@ import type {
   IdentitySubjectExportRouteDeps,
 } from "./identity-route-deps.js";
 import { createShopAlertRuntime } from "./infrastructure/alerts/create-shop-alert-runtime.js";
+import { ShopAlertSubscriberEraser } from "./infrastructure/alerts/drizzle-shop-alert-subscriber-erasure.js";
 import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtistCatalogueWriter } from "./infrastructure/drizzle-artist-catalogue.writer.js";
@@ -344,6 +345,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   );
   const artworkRegisterRepository = new DrizzleArtworkRegisterRepository(db);
   const laxArtListings = createDrizzleLaxArtListingReader(db);
+  const auctionOffers = createHttpAuctionOfferGateway(env);
   const baseAdminRead = createDrizzleAdminReadRepository(db, env, { resolveMediaUrl });
   const adminRead = {
     ...baseAdminRead,
@@ -351,6 +353,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       links: new ArtworkZohoLinkService({
         register: artworkRegisterRepository,
         staffNames: createDrizzleStaffNameReader(db),
+        bidDrafts: auctionOffers,
       }),
       listings: laxArtListings,
     }),
@@ -459,7 +462,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     originals: originalMoveReader,
     register: artworkRegister,
     history: artworkRegister,
-    auction: createHttpAuctionOfferGateway(env),
+    auction: auctionOffers,
     withdrawFromLaxArt: async ({ artworkId, actorSubjectId }) => {
       await artworkCatalogue.setVisibility({
         artworkId,
@@ -638,6 +641,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           runs: new DrizzleZohoArtworkSyncStore(db),
           staffNames: createDrizzleStaffNameReader(db),
           listings: laxArtListings,
+          auction: inventoryMoves,
         }),
         offerOnLaxArt: new OfferOnLaxArtService({
           register: artworkRegisterRepository,
@@ -652,6 +656,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {
             domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+            alerts: new ShopAlertSubscriberEraser(),
           }),
         ),
         productionTasks: createProductionTaskService({

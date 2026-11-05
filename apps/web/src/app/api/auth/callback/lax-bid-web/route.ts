@@ -75,6 +75,22 @@ export async function GET(request: NextRequest) {
         }
       : { nextPath: "/home" };
 
+  // The session this login would replace signed out while the login was in flight: drop the
+  // callback, whatever it carries, and leave the browser signed out.
+  if (id && replacesSessionId && (await sessions.isRevoked(replacesSessionId))) {
+    await sessions.invalidate(id);
+    if (pending?.kind === "pending" && pending.entryIntent === "silent") {
+      return redirectSilentGuest(pending.nextPath);
+    }
+    const signedOut = NextResponse.redirect(
+      resolvePublicOriginUrl(loginErrorPath("oidc_callback", pendingCtx, false)),
+      302,
+    );
+    clearBidSessionCookie(signedOut);
+    signedOut.headers.set("cache-control", "no-store");
+    return signedOut;
+  }
+
   if (pending?.kind === "pending" && pending.entryIntent === "silent") {
     const silentOutcome = classifySilentCallback(oauthError);
     if (silentOutcome.kind !== "success" || !code) {
@@ -132,7 +148,11 @@ export async function GET(request: NextRequest) {
         replacesSessionId,
       );
     }
-    const authenticatedId = await sessions.rotateAuthenticated(id, authenticated);
+    const authenticatedId = await sessions.rotateAuthenticated(
+      id,
+      authenticated,
+      replacesSessionId,
+    );
     if (!authenticatedId) throw new Error("Login session rotation failed");
     if (replacesSessionId && replacesSessionId !== authenticatedId) {
       await sessions.invalidate(replacesSessionId);

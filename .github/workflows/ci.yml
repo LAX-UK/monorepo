@@ -201,7 +201,45 @@ jobs:
         if: steps.identity_paths.outputs.identity == 'true'
         run: pnpm ci:identity-extractability
 
+  build-packages:
+    # Builds every workspace package once and shares the local turbo cache with downstream jobs
+    # (see .github/actions/restore-turbo-build-cache). Cache hits replay the same outputs; a miss
+    # falls back to a normal build, so no downstream job loses coverage.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != '' && github.event_name != 'merge_group'
+        uses: ./.github/actions/setup-turbo-remote-cache
+        with:
+          team: ${{ vars.TURBO_TEAM }}
+
+      - name: Build workspace packages
+        run: pnpm turbo run build --filter='./packages/*'
+
+      - name: Upload shared turbo cache
+        uses: actions/upload-artifact@v4
+        with:
+          name: turbo-cache-packages
+          path: .turbo/cache
+          include-hidden-files: true
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: warn
+
   test:
+    needs: build-packages
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -262,8 +300,11 @@ jobs:
         with:
           team: ${{ vars.TURBO_TEAM }}
 
+      - name: Restore shared turbo build cache
+        uses: ./.github/actions/restore-turbo-build-cache
+
       - name: Build db package dependencies
-        run: pnpm --filter @auction/db... build
+        run: pnpm turbo run build --filter=@auction/db...
 
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
@@ -272,30 +313,96 @@ jobs:
       - name: Verify executable migration rollback pairs
         run: node scripts/ci/verify-migration-pairs.mjs
 
-      - name: Identity boundary conformance
-        run: pnpm ci:identity-boundary
-
       - name: Test affected packages (excluding web, api and shop-api)
         # One package at a time: shared auction_ci Postgres (migrations, role grants, shop integration).
         # shop-api runs sharded in its own job below (same suite, own database per shard).
         run: pnpm turbo run test --affected --filter=!@auction/web --filter=!@auction/api --filter=!@auction/shop-api --summarize --concurrency=1
 
       - name: Runtime ownership smoke gates
-        run: pnpm --filter @auction/types build && pnpm --filter @auction/background-runtime build && node scripts/ci/run-runtime-ownership-smoke-gates.mjs
+        # The smoke suites import several workspace packages by their built output; cache hits replay them.
+        run: pnpm turbo run build --filter='./packages/*' && node scripts/ci/run-runtime-ownership-smoke-gates.mjs
 
       - name: Domain event smoke gates
         run: node scripts/ci/run-domain-event-smoke-gates.mjs
 
       - name: Cutover readiness defaults
         run: node scripts/ci/verify-cutover-readiness.mjs
+  identity-boundary:
+    name: identity boundary conformance
+    needs: build-packages
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: auction_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      MIGRATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_OWNER: postgresql://postgres:postgres@localhost:5432/auction_ci
+      DATABASE_URL_SHOP: postgresql://shop_app:postgres@localhost:5432/auction_ci
+      SHOP_APP_DB_PASSWORD: postgres
+      REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup Turborepo remote cache
+        if: vars.TURBO_TEAM != '' && github.event_name != 'merge_group'
+        uses: ./.github/actions/setup-turbo-remote-cache
+        with:
+          team: ${{ vars.TURBO_TEAM }}
+
+      - name: Restore shared turbo build cache
+        uses: ./.github/actions/restore-turbo-build-cache
+
+      - name: Build db package dependencies
+        run: pnpm turbo run build --filter=@auction/db...
+
+      - name: Migrate test database
+        run: pnpm --filter @auction/db db:migrate
+      - name: Apply application role grants
+        run: pnpm --filter @auction/db db:roles
+
+      - name: Identity boundary conformance
+        run: pnpm ci:identity-boundary
 
   web-vitest:
-    name: web vitest (${{ matrix.shard }}/4)
+    needs: build-packages
+    name: web vitest (${{ matrix.shard }}/8)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     env:
       CI: "true"
     steps:
@@ -328,18 +435,22 @@ jobs:
         with:
           team: ${{ vars.TURBO_TEAM }}
 
+      - name: Restore shared turbo build cache
+        uses: ./.github/actions/restore-turbo-build-cache
+
       - name: Vitest shard
         run: |
           set -euo pipefail
           pnpm turbo run test --affected --filter=@auction/web --dry-run=json > /tmp/affected.json
           if ! jq -e '.tasks[] | select(.taskId == "@auction/web#test")' /tmp/affected.json > /dev/null; then
-            echo "Web tests not affected; skipping shard ${{ matrix.shard }}/4."
+            echo "Web tests not affected; skipping shard ${{ matrix.shard }}/8."
             exit 0
           fi
           pnpm turbo run build --filter=@auction/web^...
-          pnpm --filter @auction/web exec vitest run --shard=${{ matrix.shard }}/4
+          pnpm --filter @auction/web exec vitest run --shard=${{ matrix.shard }}/8
 
   api-vitest:
+    needs: build-packages
     name: api vitest (${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
     strategy:
@@ -406,8 +517,11 @@ jobs:
         with:
           team: ${{ vars.TURBO_TEAM }}
 
+      - name: Restore shared turbo build cache
+        uses: ./.github/actions/restore-turbo-build-cache
+
       - name: Build db package dependencies
-        run: pnpm --filter @auction/db... build
+        run: pnpm turbo run build --filter=@auction/db...
 
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
@@ -426,6 +540,7 @@ jobs:
           pnpm --filter @auction/api exec vitest run --shard=${{ matrix.shard }}/2
 
   shop-api-vitest:
+    needs: build-packages
     name: shop-api vitest (${{ matrix.shard }}/4)
     runs-on: ubuntu-latest
     strategy:
@@ -492,6 +607,9 @@ jobs:
         with:
           team: ${{ vars.TURBO_TEAM }}
 
+      - name: Restore shared turbo build cache
+        uses: ./.github/actions/restore-turbo-build-cache
+
       - name: Detect whether shop-api tests are affected
         id: affected
         run: |
@@ -546,9 +664,15 @@ jobs:
               - ".github/workflows/shop-staging-acceptance.yml"
 
   shop-v1-phase-smoke:
-    needs: shop-v1-paths
+    # Four independent suites run as parallel parts; the job name keeps the shop-v1-phase-smoke prefix.
+    name: shop-v1-phase-smoke (${{ matrix.part }})
+    needs: [shop-v1-paths, build-packages]
     if: needs.shop-v1-paths.outputs.shop_v1 == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [contracts, integration, admin-routes, shop-build]
     services:
       postgres:
         image: postgres:16
@@ -590,26 +714,44 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Restore shared turbo build cache
+        uses: ./.github/actions/restore-turbo-build-cache
+
+      # --- contracts: shop-domain + migration contract tests ---
       - name: Build db package
-        run: pnpm --filter @auction/db... build
+        if: matrix.part != 'shop-build'
+        run: pnpm turbo run build --filter=@auction/db...
       - name: Migrate test database
+        if: matrix.part != 'shop-build'
         run: pnpm --filter @auction/db db:migrate
       - name: Apply application role grants
+        if: matrix.part != 'shop-build'
         run: pnpm --filter @auction/db db:roles
       - name: Shop domain + db contract tests
+        if: matrix.part == 'contracts'
         run: |
           pnpm --filter @auction/shop-domain test
           pnpm --filter @auction/db test -- migration-0182 migration-0185 migration-0186 migration-0193 migration-0194
+
+      # --- integration: shop-api Postgres integration ---
       - name: Build shop-api dependency graph
-        run: pnpm --filter @auction/shop-api... build
+        if: matrix.part == 'integration' || matrix.part == 'admin-routes'
+        run: pnpm turbo run build --filter=@auction/shop-api...
       - name: Shop-api Postgres integration (no skips)
+        if: matrix.part == 'integration'
         run: node scripts/ci/run-shop-v1-postgres-integration.mjs
+      # --- admin-routes: shop-api admin auth route tests (phase flags on) ---
       - name: Shop-api admin auth route tests (phase flags on)
+        if: matrix.part == 'admin-routes'
         run: pnpm --filter @auction/shop-api exec vitest run src/routes/admin --reporter=verbose
+
+      # --- shop-build: shop package build (includes phase1 e2e spec) ---
       - name: Shop package build (includes phase1 e2e spec)
-        run: pnpm --filter @auction/shop... build
+        if: matrix.part == 'shop-build'
+        run: pnpm turbo run build --filter=@auction/shop...
 
   worker-role-contract:
+    needs: build-packages
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -646,8 +788,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Restore shared turbo build cache
+        uses: ./.github/actions/restore-turbo-build-cache
+
       - name: Build db package dependencies
-        run: pnpm --filter @auction/db... build
+        run: pnpm turbo run build --filter=@auction/db...
 
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
@@ -662,6 +807,7 @@ jobs:
         run: pnpm --filter @auction/db test -- worker-app-role
 
   auth-role-contract:
+    needs: build-packages
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -697,8 +843,10 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Restore shared turbo build cache
+        uses: ./.github/actions/restore-turbo-build-cache
       - name: Build db package dependencies
-        run: pnpm --filter @auction/db... build
+        run: pnpm turbo run build --filter=@auction/db...
 
       - name: Migrate test database
         run: pnpm --filter @auction/db db:migrate
@@ -713,6 +861,7 @@ jobs:
         run: pnpm --filter @auction/db test:shop-role-contract
 
   build:
+    needs: build-packages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -743,6 +892,9 @@ jobs:
         uses: ./.github/actions/setup-turbo-remote-cache
         with:
           team: ${{ vars.TURBO_TEAM }}
+
+      - name: Restore shared turbo build cache
+        uses: ./.github/actions/restore-turbo-build-cache
 
       - name: Build
         run: pnpm turbo run build --affected
@@ -890,7 +1042,9 @@ jobs:
     needs:
       - static-checks
       - identity-portability
+      - build-packages
       - test
+      - identity-boundary
       - api-vitest
       - web-vitest
       - shop-api-vitest

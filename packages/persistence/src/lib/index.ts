@@ -144,3 +144,4 @@ export {
 } from "./staff-role-assignment-sql.js";
 export * from "./like-pattern.js";
 export { anonymiseEnquiries } from "./anonymise-enquiries.js";
+export { eraseAlertSubscribers } from "./erase-alert-subscribers.js";

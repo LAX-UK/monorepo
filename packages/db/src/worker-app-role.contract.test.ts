@@ -5,7 +5,11 @@ import { describe, expect, it } from "vitest";
 import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import { createDb } from "./client.js";
 import { WORKER_DENY_TABLES } from "./migrate-roles.js";
-import { expectTablePrivileges, readTablePrivileges } from "./role-contract/table-privileges.js";
+import {
+  expectTablePrivileges,
+  expectUniformTablePrivileges,
+  readTablePrivileges,
+} from "./role-contract/table-privileges.js";
 import {
   absenteeBid,
   bid,
@@ -108,6 +112,23 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       can_select: true,
       can_update: true,
       can_delete: true,
+    });
+  });
+
+  it("can erase email-only alert subscribers on purge, and nothing else in the alert tables", async () => {
+    await withWorkerClient(async (client) => {
+      const rows = await readTablePrivileges(
+        client,
+        ["bid_alert_subscriber", "visitor_sale_alert_subscriber"],
+        ["SELECT", "DELETE"],
+      );
+      expectUniformTablePrivileges(rows, true);
+      const topics = await readTablePrivileges(
+        client,
+        ["bid_alert_topic", "bid_alert_match", "bid_alert_digest"],
+        ["DELETE"],
+      );
+      expectUniformTablePrivileges(topics, false);
     });
   });
 

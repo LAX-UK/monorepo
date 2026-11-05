@@ -7,6 +7,7 @@ import type {
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import {
+  DrizzleAlertSubscriberErasureRepository,
   DrizzleEnquiryAttachmentRepository,
   DrizzleEnquiryErasureRepository,
   DrizzleEnquiryNoteRepository,
@@ -148,6 +149,7 @@ export function createMarketingEnquiryServices(
     }),
     erasure: new EnquiryErasureService({
       erasure: new DrizzleEnquiryErasureRepository(),
+      alertSubscribers: new DrizzleAlertSubscriberErasureRepository(),
       transactionRunner: input.transactionRunner,
       events: input.events,
     }),

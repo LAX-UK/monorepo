@@ -61,4 +61,27 @@ describe("/restore-account", () => {
       expect(cookieValues.get("lax_acting_legal_entity_id")).not.toBe(PERSONAL_ID);
     },
   );
+
+  it("answers a client-router (RSC) request with one hard navigation and does not restore", async () => {
+    const res = await GET(
+      new Request("https://lax.bid/restore-account?next=%2Fhome&_rsc=abc", {
+        headers: { rsc: "1" },
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(res.headers.get("location")).toBeNull();
+    expect(res.headers.get("content-type")).toContain("text/html");
+    expect(res.headers.get("refresh")).toBe("0; url=/restore-account?next=%2Fhome");
+    expect(apiFetch).not.toHaveBeenCalled();
+    expect(setCookie).not.toHaveBeenCalled();
+  });
+
+  it("keeps the hard-navigation target same-origin and path-only", async () => {
+    const res = await GET(
+      new Request("https://lax.bid/restore-account?next=https%3A%2F%2Fevil.example%2F", {
+        headers: { rsc: "1" },
+      }),
+    );
+    expect(res.headers.get("refresh")).toBe("0; url=/restore-account?next=%2Fhome");
+  });
 });

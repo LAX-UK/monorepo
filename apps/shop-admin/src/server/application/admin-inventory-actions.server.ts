@@ -7,6 +7,7 @@ import type {
   AdminOfferAtAuctionResponse,
 } from "@auction/shop-contracts";
 import type { AdminMutationResult } from "./admin-mutation-result";
+import type { AuctionOfferTarget } from "./auction-offer-target";
 import { forwardAdminJsonMutation } from "./forward-admin-mutation";
 import { fetchAdminJson } from "./load-admin-data";
 
@@ -32,12 +33,20 @@ async function read<T>(path: string, failure: string): Promise<AdminMutationResu
   }
 }
 
+const idOf = (target: AuctionOfferTarget) =>
+  target.kind === "artwork" ? target.artworkId : target.registerId;
+
+const basePath = (target: AuctionOfferTarget) =>
+  target.kind === "artwork"
+    ? `artworks/${target.artworkId}`
+    : `artwork-register/${target.registerId}`;
+
 /** Whether an original can move to a LAX Bid sale now, and the reasons when it cannot. */
 export async function getAuctionOfferAssessment(
-  artworkId: string,
+  target: AuctionOfferTarget,
 ): Promise<AdminMutationResult<AdminAuctionOfferAssessment>> {
-  if (!UUID.test(artworkId)) return invalidInput;
-  return read(`artworks/${artworkId}/auction-offer`, "Could not check this artwork. Try again.");
+  if (!UUID.test(idOf(target))) return invalidInput;
+  return read(`${basePath(target)}/auction-offer`, "Could not check this artwork. Try again.");
 }
 
 /** LAX Bid sales that can take a new lot. */
@@ -45,14 +54,15 @@ export async function listAuctionSales(): Promise<AdminMutationResult<AdminAucti
   return read("inventory/auction-sales", "Could not load LAX Bid sales. Try again.");
 }
 
+/** Makes the draft lot. Asking again for the same sale returns the lot that is already there. */
 export async function offerAtAuction(input: {
-  artworkId: string;
+  target: AuctionOfferTarget;
   body: AdminOfferAtAuctionBody;
   idempotencyKey: string;
 }): Promise<AdminMutationResult<AdminOfferAtAuctionResponse>> {
-  if (!UUID.test(input.artworkId)) return invalidInput;
+  if (!UUID.test(idOf(input.target))) return invalidInput;
   return forwardAdminJsonMutation({
-    bffPath: `artworks/${input.artworkId}/offer-at-auction`,
+    bffPath: `${basePath(input.target)}/offer-at-auction`,
     method: "POST",
     jsonBody: input.body,
     idempotencyKey: input.idempotencyKey,

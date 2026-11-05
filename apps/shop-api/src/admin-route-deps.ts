@@ -120,7 +120,10 @@ export type AdminRoutesDeps = {
   merchandiseCatalogue: MerchandiseCatalogueWriter;
   artworkCatalogue: ArtworkCatalogueWriter;
   /** Offering an original at auction in LAX Bid. */
-  inventoryMoves: Pick<OriginalMoveService, "assess" | "listSales" | "offerAtAuction">;
+  inventoryMoves: Pick<
+    OriginalMoveService,
+    "assess" | "assessRegister" | "listSales" | "offerAtAuction" | "offerRegisterAtAuction"
+  >;
   /** Runs of prints: change a draft's run, edition facts, open edition stock, linked listings. */
   editionRuns: Omit<EditionRunServices, "recorder" | "originalPrintsRecorder">;
   /** Packing: the pick list, confirming the print in hand, swaps and certificates. */

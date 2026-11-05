@@ -843,6 +843,7 @@ describe("a lax.art original made from a Zoho record", () => {
         chip: { label: "Draft on lax.art", tone: "info", marker: "hollow" },
         from: null,
         since: null,
+        bidLot: null,
       },
       recentMoves: [],
     },
