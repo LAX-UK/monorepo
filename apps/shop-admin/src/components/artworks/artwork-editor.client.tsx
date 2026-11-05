@@ -824,7 +824,7 @@ export function ArtworkEditor({
                     </StaffButton>
                   }
                 >
-                  Originals come from Zoho. Find it in From Zoho and choose Offer on lax.art.
+                  Find it in From Zoho and choose Offer on lax.art.
                 </Notice>
               ) : null}
             </FormSection>

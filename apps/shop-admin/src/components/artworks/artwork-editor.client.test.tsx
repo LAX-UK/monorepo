@@ -1014,10 +1014,9 @@ describe("New artwork > Original", () => {
     renderEditor({ detail: null, initialArtist: { id: ARTIST, name: "Ada Artist" } });
     expect(screen.queryByText("Originals come from Zoho")).toBeNull();
     fireEvent.click(document.getElementById("artwork-kind-original") as HTMLElement);
+    expect(screen.getByText("Originals come from Zoho")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Originals come from Zoho. Find it in From Zoho and choose Offer on lax.art.",
-      ),
+      screen.getByText("Find it in From Zoho and choose Offer on lax.art."),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open From Zoho" })).toHaveAttribute(
       "href",

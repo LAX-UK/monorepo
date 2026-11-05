@@ -104,7 +104,7 @@ export function LinkConfirmView({
         {rule ? (
           <p className="text-staff-xs text-staff-muted">Matched by: {LINK_RULE_LABEL[rule]}.</p>
         ) : null}
-        <LinkDifferences differences={candidate.differences} />
+        {blocked ? null : <LinkDifferences differences={candidate.differences} />}
         {blocked ? null : (
           <p className="text-staff-sm text-staff-muted">
             {listing.published && record.whereItIs === "Not offered"

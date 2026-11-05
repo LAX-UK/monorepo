@@ -93,7 +93,7 @@ function CandidateLine({ candidate }: { candidate: AdminZohoLinkCandidate }) {
 }
 
 const rowClass =
-  "flex flex-col gap-2 border-b border-staff-line-subtle px-4 py-3 last:border-b-0 sm:flex-row sm:items-start sm:justify-between";
+  "grid gap-x-6 gap-y-2 border-b border-staff-line-subtle px-4 py-3 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_9.5rem] sm:items-start";
 
 /**
  * One-off: every lax.art original that is not linked to a register record, matched to Zoho. Each
@@ -282,15 +282,18 @@ export function LinkLaxArtReport({
                       <li key={row.listing.artworkId} className={rowClass}>
                         <ListingSummary row={row} />
                         {group.id === "matched" && row.candidates[0] ? (
-                          <div className="flex flex-col gap-2 sm:items-end">
-                            <CandidateLine candidate={row.candidates[0]} />
-                            <p className="text-staff-xs text-staff-muted">
-                              {row.rule ? LINK_RULE_LABEL[row.rule] : null}
-                            </p>
+                          <>
+                            <div className="flex min-w-0 flex-col gap-1">
+                              <CandidateLine candidate={row.candidates[0]} />
+                              <p className="text-staff-xs text-staff-muted">
+                                {row.rule ? LINK_RULE_LABEL[row.rule] : null}
+                              </p>
+                            </div>
                             {canLink ? (
                               <StaffButton
                                 variant="secondary"
                                 size="sm"
+                                className="sm:justify-self-end"
                                 onClick={() =>
                                   setReview({
                                     row,
@@ -300,24 +303,27 @@ export function LinkLaxArtReport({
                               >
                                 Review and link…
                               </StaffButton>
-                            ) : null}
-                          </div>
+                            ) : (
+                              <span aria-hidden="true" />
+                            )}
+                          </>
                         ) : null}
                         {group.id === "needsChoice" ? (
                           <ul
                             aria-label={`Records that could be ${row.listing.title}`}
-                            className="flex min-w-0 flex-col gap-3 sm:items-end"
+                            className="grid min-w-0 gap-3 sm:col-span-2 sm:grid-cols-subgrid"
                           >
                             {row.candidates.map((candidate) => (
                               <li
                                 key={candidate.record.registerId}
-                                className="flex flex-col gap-1 sm:items-end"
+                                className="grid gap-x-6 gap-y-2 sm:col-span-2 sm:grid-cols-subgrid sm:items-start"
                               >
                                 <CandidateLine candidate={candidate} />
                                 {canLink ? (
                                   <StaffButton
                                     variant="secondary"
                                     size="sm"
+                                    className="sm:justify-self-end"
                                     aria-label={`Choose ${candidate.record.stockCode} for ${row.listing.title}`}
                                     onClick={() => setReview({ row, candidate })}
                                   >
@@ -329,20 +335,21 @@ export function LinkLaxArtReport({
                           </ul>
                         ) : null}
                         {group.id === "noMatch" ? (
-                          <div className="flex flex-col gap-2 sm:items-end">
-                            <p className="max-w-sm text-staff-sm text-staff-muted sm:text-right">
+                          <>
+                            <p className="min-w-0 text-staff-sm text-staff-muted">
                               {row.reason ? NO_MATCH_REASON_LABEL[row.reason] : "No match"}
                             </p>
                             {canLink ? (
                               <StaffButton
                                 variant="secondary"
                                 size="sm"
+                                className="sm:justify-self-end"
                                 onClick={() => setFinding(row)}
                               >
                                 Find in Zoho…
                               </StaffButton>
                             ) : null}
-                          </div>
+                          </>
                         ) : null}
                       </li>
                     ))}
