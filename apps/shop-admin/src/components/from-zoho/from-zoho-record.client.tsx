@@ -207,10 +207,6 @@ export function FromZohoRecord({
               </>
             ) : undefined
           }
-          facts={[
-            { label: "Original or print", value: kindLabel(detail.kind) },
-            { label: "Status in Zoho", value: detail.catalogueStatus },
-          ]}
           {...(recentMoves.length > 0 ? { moves: { events: recentMoves } } : {})}
         />
 
