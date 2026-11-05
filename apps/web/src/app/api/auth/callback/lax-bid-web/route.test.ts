@@ -9,6 +9,7 @@ const clearBidSessionCookie = vi.fn();
 const readSession = vi.fn();
 const invalidateSession = vi.fn();
 const rotateAuthenticated = vi.fn();
+const isRevoked = vi.fn(async (_id: string) => false);
 
 vi.mock("@/lib/bff/oidc.server", () => ({
   exchangeAuthorizationCode,
@@ -30,6 +31,7 @@ vi.mock("@/lib/bff/session-store.server", () => ({
     read = readSession;
     invalidate = invalidateSession;
     rotateAuthenticated = rotateAuthenticated;
+    isRevoked = isRevoked;
   },
 }));
 const markBidSilentQuiet = vi.fn();
@@ -51,6 +53,7 @@ function request(query: string) {
 describe("Bid BFF OIDC callback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isRevoked.mockImplementation(async () => false);
     readBidSessionId.mockReturnValue("pending-session");
     readSession.mockResolvedValue({
       kind: "pending",
@@ -83,10 +86,11 @@ describe("Bid BFF OIDC callback", () => {
       requireRecentAuthentication: false,
       maxAgeSeconds: 300,
     });
-    expect(rotateAuthenticated).toHaveBeenCalledWith("pending-session", {
-      subject: "user-1",
-      sid: "identity-session-1",
-    });
+    expect(rotateAuthenticated).toHaveBeenCalledWith(
+      "pending-session",
+      { subject: "user-1", sid: "identity-session-1" },
+      undefined,
+    );
     expect(setBidSessionCookie).toHaveBeenCalledWith(
       response,
       "authenticated-session",
@@ -130,6 +134,27 @@ describe("Bid BFF OIDC callback", () => {
     await GET(request("state=expected-state&code=authorization-code"));
 
     expect(invalidateSession).toHaveBeenCalledWith("prior-session");
+  });
+
+  it("rejects a callback that arrives after logout and does not restore the old session", async () => {
+    readSession.mockResolvedValue({
+      kind: "pending",
+      state: "expected-state",
+      codeVerifier: "pkce-verifier",
+      nonce: "expected-nonce",
+      nextPath: "/home",
+      replacesSessionId: "prior-session",
+    });
+    isRevoked.mockImplementation(async (id: string) => id === "prior-session");
+
+    const response = await GET(request("state=expected-state&code=authorization-code"));
+
+    expect(exchangeAuthorizationCode).not.toHaveBeenCalled();
+    expect(rotateAuthenticated).not.toHaveBeenCalled();
+    expect(setBidSessionCookie).not.toHaveBeenCalled();
+    expect(clearBidSessionCookie).toHaveBeenCalledWith(response);
+    expect(invalidateSession).toHaveBeenCalledWith("pending-session");
+    expect(response.headers.get("location")).toContain("/login?error=oidc_callback");
   });
 
   it("invalidates a pending session when callback binding fails", async () => {

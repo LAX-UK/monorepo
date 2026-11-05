@@ -23,6 +23,24 @@ export function seeOther(location: string): Response {
 }
 
 /**
+ * The answer to a hop asked for by the client router (an RSC fetch). It is not an RSC payload, so
+ * the router drops its soft navigation and loads `location` as a whole page, once; that document
+ * request runs the hop with real redirects and cookies. Answering with a redirect instead sends
+ * the router round `layout → hop → page → layout` for as long as the hop's cookie is not yet in.
+ */
+export function hardNavigation(location: string): Response {
+  return new Response(null, {
+    status: 200,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      Vary: "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Url",
+      Refresh: `0; url=${location}`,
+    },
+  });
+}
+
+/**
  * The signed-in client for a hop, or the response that sends them elsewhere: to sign in (coming
  * back to `back`), or, for staff, who have no client accounts, to their admin area.
  */
