@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import type { IPaymentEligibilityGate } from "@auction/finance-runtime";
 import type {
   ILotRepository,
   IPaymentWriteRepository,
@@ -58,6 +59,7 @@ export type CreatePaymentGroupServicesInput = {
   stripePayments: IStripePaymentGateway;
   stripeCustomers: IStripeCustomerGateway;
   unappliedMoney: Pick<IUnappliedMoneyRecorder, "record">;
+  eligibility: IPaymentEligibilityGate;
 };
 
 /** Each invoice gets its accounting invoice first, as a single-invoice checkout does. */
@@ -108,6 +110,7 @@ export function createPaymentGroupServices(
     claims,
     receipt: new PaymentGroupReceiptNotifier(input.notificationDispatcher),
     unappliedMoney: input.unappliedMoney,
+    eligibility: input.eligibility,
   });
   const checkout = new PaymentGroupCheckoutService({
     groups,
