@@ -24,45 +24,31 @@ const render = (facts: AccountSecurityFacts) =>
   renderToStaticMarkup(<SecurityCheckupCard checkup={buildSecurityCheckup(facts, links)} />);
 
 describe("SecurityCheckupCard", () => {
-  it("shows 0 of 3 with an action link for every step", () => {
+  it("is one compact row with a 40px ring, progress and a way in", () => {
     const html = render(base);
-    expect(html).toContain("0 of 3 recommended steps done");
+    expect(html).toContain("Security checkup · 0 of 3 done");
     expect(html).toContain('aria-valuenow="0"');
     expect(html).toContain('aria-valuemax="3"');
-    expect(html).toContain("Verify email: Verify your email");
-    expect(html).toContain("Set up or review: Turn on two-step verification");
-    expect(html).toContain("Review devices: Review where you&#x27;re signed in");
-    expect(html).not.toContain("Nothing needs your attention");
+    expect(html).toContain('width="40"');
+    expect(html).toContain(">Review<");
+    expect(html).not.toContain("<ul");
   });
 
-  it("shows partial progress and drops the action of a finished step", () => {
+  it("lists what is left and drops nothing into a long step list", () => {
     const html = render({ ...base, emailVerified: true, twoStep: "on" });
-    expect(html).toContain("2 of 3 recommended steps done");
-    expect(html).toContain('aria-valuenow="2"');
-    expect(html).toContain('Verify your email<span class="sr-only"> (done)</span>');
-    expect(html).not.toContain("Verify email: Verify your email");
-    expect(html).toContain("Review devices: Review where you&#x27;re signed in");
+    expect(html).toContain("Security checkup · 2 of 3 done");
+    expect(html).toContain("Review where you&#x27;re signed in.");
   });
 
   it("confirms calmly when everything is done, in green rather than the accent", () => {
-    const html = render({
-      hasEmail: true,
-      emailVerified: true,
-      twoStep: "on",
-      hasPassword: true,
-      backupCodesRemaining: null,
-      otherSessionCount: 0,
-    });
-    expect(html).toContain("3 of 3 recommended steps done");
-    expect(html).toContain("Your account is up to date. Nothing needs your attention right now.");
-    expect(html).toContain("<output");
-    expect(html).toContain("bg-success-container");
-    expect(html).not.toContain('aria-label="Verify email');
+    const html = render({ ...base, emailVerified: true, twoStep: "on", otherSessionCount: 0 });
+    expect(html).toContain("Security checkup · all 3 done");
+    expect(html).toContain("text-success");
+    expect(html).not.toContain(">Review<");
+    expect(html).not.toContain("text-product-accent");
   });
 
-  it("tints the ring with the product accent and never marks a step done in teal", () => {
-    const html = render(base);
-    expect(html).toContain("text-product-accent");
-    expect(render({ ...base, emailVerified: true })).toContain("text-success");
+  it("tints the ring with the product accent while steps are open", () => {
+    expect(render(base)).toContain("text-product-accent");
   });
 });

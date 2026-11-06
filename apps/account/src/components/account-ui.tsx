@@ -32,6 +32,47 @@ export const NOTICE = "rounded-2xl px-4 py-4 sm:px-6";
 export const TAG =
   "inline-flex w-fit shrink-0 items-center rounded-full bg-surface-container-high px-2 py-0.5 text-xs leading-5 font-medium whitespace-nowrap text-on-surface-variant";
 
+/** The home cards' title: a clear step below the 20px section title. */
+const CARD_HEADER_TITLE = "font-headline text-base font-semibold text-on-surface";
+/** Figure scale under the page title: 28px summary counts, 20px card totals. */
+export const FIGURE_LARGE =
+  "font-headline text-[1.75rem] leading-9 font-semibold tabular-nums text-on-surface";
+export const FIGURE_MEDIUM = "font-headline text-xl font-semibold tabular-nums text-on-surface";
+/** Rows of a card keep the card's 16px side padding on a phone and 20px from `sm`. */
+export const CARD_ROW_PADDING = "px-4 sm:px-5";
+
+/**
+ * A card's header: the title at 16px/600 on the left and at most one text link on the right.
+ * The card supplies the border; the header sits 16px from the top and 20px from the sides.
+ */
+export function CardHeader({
+  id,
+  title,
+  linkHref,
+  linkLabel,
+}: {
+  id: string;
+  title: string;
+  linkHref?: string;
+  linkLabel?: string;
+}) {
+  return (
+    <div className={cn("flex items-center justify-between gap-4 pt-4 pb-3", CARD_ROW_PADDING)}>
+      <h2 id={id} className={CARD_HEADER_TITLE}>
+        {title}
+      </h2>
+      {linkHref && linkLabel ? (
+        <a
+          href={linkHref}
+          className="-my-2 inline-flex items-center rounded-sm py-2 text-sm font-medium text-on-surface underline underline-offset-[3px]"
+        >
+          {linkLabel}
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
 /** "Back to <where>" above a page that sits below another page. */
 export function BackLink({ href, label }: { href: string; label: string }) {
   return (
