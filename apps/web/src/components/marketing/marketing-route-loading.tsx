@@ -2,7 +2,8 @@ import { MarketingListSkeleton } from "@/components/marketing/marketing-list-ske
 import { MARKETING_CATALOG_PT, MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { cn } from "@auction/ui";
 
-export default function MarketingLoading() {
+/** The shell shown while a marketing page without a skeleton of its own loads. */
+export function MarketingRouteLoading() {
   return (
     <div
       className={cn(
