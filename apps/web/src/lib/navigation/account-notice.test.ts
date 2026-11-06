@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  accountNoticeDetail,
   accountNoticeMessage,
   decodeAccountNotice,
   encodeAccountNotice,
+  isChosenSwitch,
   notificationSwitchToast,
 } from "./account-notice";
 
 const names = (id: string) =>
-  id === "org-1" ? "Northbank Gallery" : id === "me" ? "Personal" : null;
+  id === "org-1"
+    ? { kind: "organisation" as const, name: "Northbank Gallery" }
+    : id === "me"
+      ? { kind: "personal" as const, name: "Personal" }
+      : null;
 
 describe("account notice", () => {
   it("round-trips through the cookie", () => {
@@ -67,5 +73,38 @@ describe("account notice", () => {
     expect(
       accountNoticeMessage({ kind: "removed", organisationName: "Northbank Gallery" }, names),
     ).toBe("You're no longer a member of Northbank Gallery, so Bid opened your personal account.");
+  });
+
+  describe("a switch the person chose", () => {
+    const org = { kind: "chose", accountId: "org-1" } as const;
+    const personal = { kind: "chose", accountId: "me" } as const;
+
+    it("round-trips through the cookie", () => {
+      expect(decodeAccountNotice(encodeAccountNotice(org))).toEqual(org);
+      expect(decodeAccountNotice(encodeURIComponent('{"kind":"chose"}'))).toBeNull();
+    });
+
+    it("says who they act as in an organisation", () => {
+      expect(accountNoticeMessage(org, names)).toBe("Now acting as Northbank Gallery");
+      expect(accountNoticeDetail(org, names)).toBe(
+        "Bids, purchases and consignments here are the organisation's.",
+      );
+    });
+
+    it("says they use their personal account", () => {
+      expect(accountNoticeMessage(personal, names)).toBe("Now using your personal account");
+      expect(accountNoticeDetail(personal, names)).toBe("Your own bids and purchases.");
+    });
+
+    it("says nothing when the account is no longer one they use", () => {
+      expect(accountNoticeMessage({ kind: "chose", accountId: "gone" }, names)).toBeNull();
+      expect(accountNoticeDetail({ kind: "chose", accountId: "gone" }, names)).toBeNull();
+    });
+
+    it("is the only notice that moves focus to the heading", () => {
+      expect(isChosenSwitch(org)).toBe(true);
+      expect(isChosenSwitch({ kind: "switched", accountId: "org-1" })).toBe(false);
+      expect(isChosenSwitch(null)).toBe(false);
+    });
   });
 });

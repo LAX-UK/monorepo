@@ -28,8 +28,11 @@ import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-modul
 import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import {
   ACCOUNT_NOTICE_COOKIE,
+  CHOSEN_SWITCH_SHOWN_MS,
+  accountNoticeDetail,
   accountNoticeMessage,
   decodeAccountNotice,
+  isChosenSwitch,
   notificationSwitchToast,
 } from "@/lib/navigation/account-notice";
 import { buildAccountChrome } from "@/lib/navigation/account-switcher-model";
@@ -129,16 +132,20 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   // Opening a notification for another account says so in a toast that offers the way back.
   const switchToast =
     notice?.kind === "opened_notification" ? notificationSwitchToast(notice, optionOf) : null;
-  const noticeMessage = switchToast
-    ? null
-    : accountNoticeMessage(notice, (id) => {
-        const option = optionOf(id);
-        if (!option) return null;
-        return option.kind === "personal" ? "your personal account" : option.name;
-      });
+  const noticeMessage = switchToast ? null : accountNoticeMessage(notice, optionOf);
   const banners = [
     ...(switchToast ? [<NotificationSwitchToast key="switch-toast" {...switchToast} />] : []),
-    ...(noticeMessage ? [<AccountNotice key={noticeMessage} message={noticeMessage} />] : []),
+    ...(noticeMessage
+      ? [
+          <AccountNotice
+            key={noticeMessage}
+            message={noticeMessage}
+            detail={accountNoticeDetail(notice, optionOf)}
+            focusHeading={isChosenSwitch(notice)}
+            {...(isChosenSwitch(notice) ? { autoDismissMs: CHOSEN_SWITCH_SHOWN_MS } : {})}
+          />,
+        ]
+      : []),
     ...layoutWarnings.map((w) => (
       <DashboardFetchWarningBanner key={w.title} title={w.title} message={w.message} />
     )),
