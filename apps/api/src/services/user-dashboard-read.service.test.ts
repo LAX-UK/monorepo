@@ -32,4 +32,59 @@ describe("UserDashboardReadService", () => {
     expect(saleLookup.findByIds).toHaveBeenCalledWith(["sale-1"]);
     expect(rows[0]?.lot?.checkoutPricing).toBeDefined();
   });
+
+  it("shows an invoiced lot at the invoice's figures, not at its price now", async () => {
+    const lot = {
+      id: "lot-1",
+      saleId: null,
+      images: [],
+      currentPrice: "9999.00",
+      buyerPremiumRate: "0.25",
+      winnerId: "user-1",
+      buyerLegalEntityId: "acct-1",
+    } as unknown as Lot;
+    const unsold = { ...lot, id: "lot-2", winnerId: null, buyerLegalEntityId: null } as Lot;
+    const dashboardQuery = {
+      listBidsWithLotsForBidder: vi.fn().mockResolvedValue([
+        { bid: { id: "b1" } as Bid, lot },
+        { bid: { id: "b2" } as Bid, lot: unsold },
+      ]),
+    } as unknown as DashboardQueryService;
+    const findLive = vi.fn(async (lotId: string) =>
+      lotId === "lot-1"
+        ? {
+            totalPence: 125_000,
+            pricingPolicyId: "flat:0.25",
+            lines: [
+              { kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 100_000 },
+              {
+                kind: "buyers_premium",
+                label: "Buyer's premium (25%)",
+                ratePercent: "25",
+                amountPence: 25_000,
+              },
+            ],
+          }
+        : null,
+    );
+
+    const service = new UserDashboardReadService(
+      dashboardQuery,
+      {} as WatchlistService,
+      undefined,
+      { findByIds: vi.fn().mockResolvedValue([]) },
+      undefined,
+      { findLiveByLotAndBuyerAccount: findLive as never },
+    );
+    const rows = await service.listBidsForUser("user-1");
+
+    expect(rows[0]?.lot?.checkoutPricing).toMatchObject({
+      hammerMajor: "1000.00",
+      premiumMajor: "250.00",
+      totalMajor: "1250.00",
+    });
+    // A lot nobody has won has no invoice to read, and is priced as it stands.
+    expect(findLive).toHaveBeenCalledTimes(1);
+    expect(rows[1]?.lot?.checkoutPricing?.hammerMajor).toBe("9999.00");
+  });
 });

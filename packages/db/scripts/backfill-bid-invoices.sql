@@ -90,15 +90,18 @@ FROM "bid_invoice" i
 WHERE i."source" = 'legacy_backfill'
   AND NOT EXISTS (SELECT 1 FROM "bid_invoice_line" x WHERE x."invoice_id" = i."id")
 ON CONFLICT ("invoice_id", "position") DO NOTHING;
--- Every payment row without an invoice points at the pair's live invoice, or, when the purchase
--- was voided, at its latest invoice.
+-- Every payment row without an invoice points at the invoice that existed when the payment was
+-- created, then at the pair's live invoice, or, when the purchase was voided, at its latest one.
+-- (Only this ordering differs from migration 0319, which has already run: it never meets a pair
+-- with more than one invoice, so the two agree wherever the migration has run.)
 UPDATE "payment" p
 SET "invoice_id" = (
   SELECT i."id"
   FROM "bid_invoice" i
   WHERE i."lot_id" = p."lot_id"
     AND i."buyer_legal_entity_id" = p."buyer_legal_entity_id"
-  ORDER BY (i."voided_at" IS NULL) DESC, i."created_at" DESC, i."id"
+  ORDER BY (i."raised_at" <= p."created_at") DESC, (i."voided_at" IS NULL) DESC,
+    i."created_at" DESC, i."id"
   LIMIT 1
 )
 WHERE p."invoice_id" IS NULL

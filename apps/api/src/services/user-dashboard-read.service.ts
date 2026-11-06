@@ -1,6 +1,8 @@
+import type { IBidInvoiceReader } from "@auction/persistence/interfaces";
 import type { Bid, Lot, Sale } from "@auction/types";
 import { computeLotCheckoutPricing } from "../lib/lot-checkout-pricing.js";
 import { presentLotsImages } from "../lib/media-presenters.js";
+import { checkoutPricingFromInvoice } from "../lib/stored-checkout-pricing.js";
 import type { DashboardQueryService } from "./dashboard-query.service.js";
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
@@ -22,6 +24,8 @@ export class UserDashboardReadService {
     private readonly mediaUrlResolver: MediaUrlResolver | undefined,
     private readonly saleLookup: SaleLookup,
     private readonly mediaAssetEnricher?: MediaAssetEnricher,
+    /** A lot that has been invoiced shows the invoice's figures, not its price now. */
+    private readonly invoices?: Pick<IBidInvoiceReader, "findLiveByLotAndBuyerAccount">,
   ) {}
 
   async listBidsForUser(userId: string): Promise<UserBidWithLot[]> {
@@ -79,9 +83,19 @@ export class UserDashboardReadService {
     ];
     const saleRows = await this.saleLookup.findByIds(saleIds);
     const saleById = new Map<string, Sale>(saleRows.map((s) => [s.id, s]));
-    return lots.map((lotRow) => {
-      const sale = lotRow.saleId ? (saleById.get(lotRow.saleId) ?? null) : null;
-      return { ...lotRow, checkoutPricing: computeLotCheckoutPricing(lotRow, sale) };
-    });
+    return Promise.all(
+      lots.map(async (lotRow) => {
+        const sale = lotRow.saleId ? (saleById.get(lotRow.saleId) ?? null) : null;
+        const live = computeLotCheckoutPricing(lotRow, sale);
+        const invoice =
+          this.invoices && lotRow.winnerId && lotRow.buyerLegalEntityId
+            ? await this.invoices.findLiveByLotAndBuyerAccount(lotRow.id, lotRow.buyerLegalEntityId)
+            : null;
+        return {
+          ...lotRow,
+          checkoutPricing: invoice ? checkoutPricingFromInvoice(live, invoice) : live,
+        };
+      }),
+    );
   }
 }

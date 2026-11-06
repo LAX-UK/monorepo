@@ -144,6 +144,49 @@ describe.skipIf(!HAS_DB)("stored invoice due dates (integration)", () => {
     }
   });
 
+  it("the staff overdue list puts the longest overdue first, by stored due date", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const db = createDb(process.env.DATABASE_URL!);
+    const rollback = new Error("rollback_test_tx");
+    const now = new Date();
+    const tag = randomUUID().slice(0, 8);
+
+    try {
+      await db.transaction(async (tx) => {
+        const base = await seedTwoInvoices(tx as unknown as Database, tag, now);
+        const common = {
+          buyerId: base.buyerId,
+          buyerEntityId: base.buyerEntityId,
+          sellerEntityId: base.sellerEntityId,
+        };
+        // Raised first, but its term was moved on and it fell due later.
+        await addInvoice(tx as unknown as Database, {
+          ...common,
+          lotId: base.lotIds[0] as string,
+          paymentCreatedAt: new Date(now.getTime() - 20 * DAY_MS),
+          dueAt: new Date(now.getTime() - 1 * DAY_MS),
+        });
+        // Raised later, but fell due earlier: the longer overdue of the two.
+        await addInvoice(tx as unknown as Database, {
+          ...common,
+          lotId: base.lotIds[1] as string,
+          paymentCreatedAt: new Date(now.getTime() - 10 * DAY_MS),
+          dueAt: new Date(now.getTime() - 5 * DAY_MS),
+        });
+
+        const reader = new DrizzleAdminWorkItemsReader(tx as unknown as Database);
+        const lotIds = (await reader.listOverduePayments(500, now)).map((item) => item.sourceId);
+        expect(lotIds.indexOf(base.lotIds[1] as string)).toBeGreaterThanOrEqual(0);
+        expect(lotIds.indexOf(base.lotIds[1] as string)).toBeLessThan(
+          lotIds.indexOf(base.lotIds[0] as string),
+        );
+        throw rollback;
+      });
+    } catch (error) {
+      if (error !== rollback) throw error;
+    }
+  });
+
   it("the staff overdue list does not drop a payment that has no stored invoice", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
     const db = createDb(process.env.DATABASE_URL!);
@@ -221,6 +264,108 @@ describe.skipIf(!HAS_DB)("stored invoice due dates (integration)", () => {
         // The expiry job reads it through the payment.
         const found = await new DrizzlePaymentRepository(database).findById(paymentId);
         expect(found?.invoiceDueAt).toEqual(later);
+        throw rollback;
+      });
+    } catch (error) {
+      if (error !== rollback) throw error;
+    }
+  });
+
+  it("a hold release reaches only the unpaid live invoices in scope, moves them later and is idempotent", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const db = createDb(process.env.DATABASE_URL!);
+    const rollback = new Error("rollback_test_tx");
+    const now = new Date();
+    const tag = randomUUID().slice(0, 8);
+
+    try {
+      await db.transaction(async (tx) => {
+        const database = tx as unknown as Database;
+        const base = await seedTwoInvoices(database, tag, now);
+        const common = {
+          buyerId: base.buyerId,
+          buyerEntityId: base.buyerEntityId,
+          sellerEntityId: base.sellerEntityId,
+          paymentCreatedAt: now,
+        };
+        const soon = new Date(now.getTime() + 2 * DAY_MS);
+        const open = await addInvoice(database, {
+          ...common,
+          lotId: base.lotIds[0] as string,
+          dueAt: soon,
+        });
+        const paid = await addInvoice(database, {
+          ...common,
+          lotId: base.lotIds[1] as string,
+          dueAt: soon,
+        });
+        await database
+          .update(payment)
+          .set({ status: "captured" })
+          .where(eq(payment.id, paid.paymentId));
+        const repo = new DrizzleBidInvoiceRepository(database);
+        const account = { kind: "account", legalEntityId: base.buyerEntityId } as const;
+
+        // Only the unpaid invoice is listed; a paid one is not.
+        expect(await repo.listUnpaidLiveInvoiceIds(account, database)).toEqual([open.invoiceId]);
+        // A held payment is not released by this, and a voided invoice is never listed.
+        await database
+          .update(payment)
+          .set({ status: "requires_manual_review" })
+          .where(eq(payment.id, open.paymentId));
+        expect(await repo.listUnpaidLiveInvoiceIds(account, database)).toEqual([]);
+        await database
+          .update(payment)
+          .set({ status: "pending" })
+          .where(eq(payment.id, open.paymentId));
+        await database
+          .update(bidInvoice)
+          .set({ voidedAt: now })
+          .where(eq(bidInvoice.id, paid.invoiceId));
+        expect(await repo.listUnpaidLiveInvoiceIds(account, database)).toEqual([open.invoiceId]);
+
+        // By winner: an organisation's invoice counts, unless only personal accounts are asked for.
+        const anyAccount = {
+          kind: "winner",
+          userId: base.buyerId,
+          personalAccountsOnly: false,
+        } as const;
+        const personal = { ...anyAccount, personalAccountsOnly: true };
+        expect(await repo.listUnpaidLiveInvoiceIds(anyAccount, database)).toEqual([open.invoiceId]);
+        expect(await repo.listUnpaidLiveInvoiceIds(personal, database)).toEqual([]);
+        await database
+          .update(legalEntity)
+          .set({ kind: "individual", subkind: "private_collector" })
+          .where(eq(legalEntity.id, base.buyerEntityId));
+        expect(await repo.listUnpaidLiveInvoiceIds(personal, database)).toEqual([open.invoiceId]);
+        expect(
+          await repo.listUnpaidLiveInvoiceIds(
+            { kind: "account", legalEntityId: randomUUID() },
+            database,
+          ),
+        ).toEqual([]);
+
+        // Moving the due date: later only, and a second release changes nothing.
+        // What the extender does: every listed invoice gets the date, and only a later one counts.
+        const extend = async (until: Date) => {
+          let count = 0;
+          for (const id of await repo.listUnpaidLiveInvoiceIds(account, database)) {
+            if (await repo.extendDueAt(id, until, database)) count += 1;
+          }
+          return count;
+        };
+        const releasedAt = new Date(now.getTime() + 10 * DAY_MS);
+        expect(await extend(releasedAt)).toBe(1);
+        const dueOf = async () =>
+          (await database.select().from(bidInvoice).where(eq(bidInvoice.id, open.invoiceId)))[0]
+            ?.dueAt;
+        const moved = await dueOf();
+        expect(moved?.getTime()).toBeGreaterThan(releasedAt.getTime());
+        expect(await extend(releasedAt)).toBe(0);
+        expect(await dueOf()).toEqual(moved);
+        // An earlier release never pulls it back.
+        expect(await extend(now)).toBe(0);
+        expect(await dueOf()).toEqual(moved);
         throw rollback;
       });
     } catch (error) {
