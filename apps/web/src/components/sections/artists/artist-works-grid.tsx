@@ -64,7 +64,7 @@ function LotCatalogCard({ lot, currentUserId }: LotCatalogCardProps) {
       footer={
         <div className="flex w-full min-w-0 flex-col gap-1.5">
           <LotCardLine model={line} />
-          <LotCardBidderState lotId={lot.id} />
+          <LotCardBidderState lotId={lot.id} lotHref={lotPath(lot)} lotTitle={lot.title} />
         </div>
       }
     />
