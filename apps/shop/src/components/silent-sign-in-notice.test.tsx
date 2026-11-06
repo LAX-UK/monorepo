@@ -1,6 +1,6 @@
 import { SHOP_SILENT_NOTICE_COOKIE } from "@/lib/silent-sign-in/config";
 import "@testing-library/jest-dom/vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SilentSignInNotice } from "./silent-sign-in-notice.client";
 
@@ -10,6 +10,7 @@ function setNoticeCookie() {
 
 describe("SilentSignInNotice", () => {
   afterEach(() => {
+    cleanup();
     document.cookie = `${SHOP_SILENT_NOTICE_COOKIE}=; Max-Age=0; path=/`;
   });
 
@@ -24,7 +25,7 @@ describe("SilentSignInNotice", () => {
     expect(screen.queryByTestId("silent-sign-in-notice")).not.toBeInTheDocument();
   });
 
-  it("opens the dialog and clears the cookie when authenticated props are present", async () => {
+  it("shows a polite corner toast, not a dialog, and clears the cookie", async () => {
     setNoticeCookie();
     render(
       <SilentSignInNotice
@@ -35,12 +36,14 @@ describe("SilentSignInNotice", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("dialog", { name: "You're signed in" })).toBeInTheDocument();
+      expect(screen.getByTestId("silent-sign-in-notice")).toBeInTheDocument();
     });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Signed in as Alex");
     expect(document.cookie).not.toMatch(new RegExp(`${SHOP_SILENT_NOTICE_COOKIE}=1`));
   });
 
-  it("posts to shop identity logout on Not you? Sign out", async () => {
+  it("posts to shop identity logout on Not you?", async () => {
     setNoticeCookie();
     const submitSpy = vi.spyOn(HTMLFormElement.prototype, "requestSubmit");
     render(
@@ -51,9 +54,9 @@ describe("SilentSignInNotice", () => {
       />,
     );
 
-    const signOutButton = await screen.findByRole("button", { name: "Not you? Sign out" });
-    fireEvent.click(signOutButton);
+    fireEvent.click(await screen.findByRole("button", { name: "Not you?" }));
     expect(submitSpy).toHaveBeenCalled();
+    expect(screen.queryByTestId("silent-sign-in-notice")).not.toBeInTheDocument();
     submitSpy.mockRestore();
   });
 });

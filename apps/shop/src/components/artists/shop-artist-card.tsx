@@ -19,6 +19,21 @@ export function ShopArtistCard({
       nameAs={nameAs}
       facts={card.discipline}
       caption={card.editionsLabel}
+      withoutImage="initials"
+      {...(card.workImage
+        ? {
+            work: (
+              <ShopMediaImage
+                src={card.workImage}
+                alt=""
+                aspect={[4, 5]}
+                sizes={CARD_SIZES}
+                className="absolute inset-0 size-full"
+                imgClassName="object-contain"
+              />
+            ),
+          }
+        : {})}
       {...(card.image
         ? {
             portrait: (

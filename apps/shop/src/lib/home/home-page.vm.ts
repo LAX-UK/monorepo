@@ -257,6 +257,7 @@ export function buildHomePageViewModel(
       : buildHomeNewEditions({
           editions: input.editions,
           releaseSlug,
+          releaseWorkSlug: choice?.item.workSlug ?? releaseSlug,
           availableCount: input.availableCount,
         });
   const artists = empty

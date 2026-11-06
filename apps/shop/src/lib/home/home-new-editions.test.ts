@@ -6,7 +6,7 @@ const editions = (count: number) =>
   Array.from({ length: count }, (_, i) => artworkSummary({ slug: `e${i + 1}` }));
 
 const slugs = (vm: ReturnType<typeof buildHomeNewEditions>) =>
-  vm?.items.map((item) => item.slug) ?? [];
+  vm?.groups.map((group) => group.lead.slug) ?? [];
 
 describe("buildHomeNewEditions", () => {
   it("leaves out the release and hides when nothing else is on sale", () => {

@@ -1,5 +1,6 @@
+import type { CoverPhotoMedia } from "@auction/marketing-ui";
 import { describe, expect, it } from "vitest";
-import { plateFromRelease, toShopCoverSlide } from "./home-cover.adapter";
+import { chooseShopHeroCover, plateFromRelease, toShopCoverSlide } from "./home-cover.adapter";
 import type { HomeHeroVm } from "./home-page.vm";
 
 const release = {
@@ -85,5 +86,62 @@ describe("plateFromRelease", () => {
     expect(plateFromRelease(null, plate)).toBeNull();
     expect(plateFromRelease(release, null)).toBeNull();
     expect(plateFromRelease(release, plate)?.src).toBe(release.imageUrl);
+  });
+});
+
+const staffCover = (over: Partial<CoverPhotoMedia> = {}): CoverPhotoMedia => ({
+  kind: "photo",
+  alt: "The studio wall",
+  side: "left",
+  colour: "#222222",
+  slots: {
+    default: {
+      src: "https://cdn.test/cover.jpg",
+      width: 3200,
+      height: 1800,
+      focal: { x: 0.7, y: 0.4 },
+      zoom: 1,
+    },
+  },
+  scrim: { desktop: { tone: "light", strength: 0.6, creditBand: 0.3 } as never },
+  ...over,
+});
+
+describe("hero cover choice", () => {
+  const plateMedia = plateFromRelease(release, plate);
+
+  it("uses the staff-chosen picture when there is one", () => {
+    expect(chooseShopHeroCover({ staffCover: staffCover(), plate: plateMedia })).toBe(
+      "staff-photo",
+    );
+  });
+
+  it("falls back to the newest edition's plate without a staff picture", () => {
+    expect(chooseShopHeroCover({ staffCover: null, plate: plateMedia })).toBe("release-plate");
+    expect(chooseShopHeroCover({ plate: plateMedia })).toBe("release-plate");
+  });
+
+  it("does not use a staff picture that cannot carry the type (no measured scrim)", () => {
+    const unmeasured = staffCover({ scrim: {} });
+    expect(chooseShopHeroCover({ staffCover: unmeasured, plate: plateMedia })).toBe(
+      "release-plate",
+    );
+    expect(chooseShopHeroCover({ staffCover: unmeasured, plate: null })).toBe("type");
+  });
+
+  it("is type only when there is no picture at all", () => {
+    expect(chooseShopHeroCover({ plate: null })).toBe("type");
+  });
+
+  it("puts the staff picture first and keeps the plate behind it for a failed load", () => {
+    const slide = toShopCoverSlide(hero(), { plate, staffCover: staffCover() });
+    expect(slide.media.map((m) => m.kind)).toEqual(["photo", "plate"]);
+    expect(slide.credit).toBeUndefined();
+  });
+
+  it("credits the release only while its plate leads", () => {
+    const slide = toShopCoverSlide(hero(), { plate });
+    expect(slide.media.map((m) => m.kind)).toEqual(["plate"]);
+    expect(slide.credit?.href).toBe(release.href);
   });
 });

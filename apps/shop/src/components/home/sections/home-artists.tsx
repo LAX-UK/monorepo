@@ -22,15 +22,20 @@ function ArtistPortrait({ card, sizes }: { card: CatalogueArtistCardVm; sizes: s
   return (
     <MarketingArtistPortraitFill
       name={card.name}
+      withoutImage="initials"
       image={
-        card.image ? (
+        card.image || card.workImage ? (
           <ShopMediaImage
-            src={card.image}
+            src={card.image ?? (card.workImage as string)}
             alt=""
             monogram={marketingArtistInitials(card.name)}
             aspect={[4, 5]}
             sizes={sizes}
-            className="absolute inset-0 size-full object-cover"
+            className={
+              card.image
+                ? "absolute inset-0 size-full object-cover"
+                : "absolute inset-0 size-full object-contain p-[7%]"
+            }
           />
         ) : null
       }

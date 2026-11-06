@@ -3,6 +3,7 @@ import { HomeArtistsSection } from "@/components/home/sections/home-artists";
 import { HomeBrowseSection } from "@/components/home/sections/home-browse";
 import { HomeCollectionsSection } from "@/components/home/sections/home-collections";
 import { NewEditionsSection } from "@/components/home/sections/home-new-editions";
+import { groupEditionVersions } from "@/lib/catalogue/edition-work-group";
 import { buildHomeArtists } from "@/lib/home/home-artists";
 import { artworkSummary } from "@/test/artwork-summary.fixture";
 import type { PublicArtistSummary } from "@auction/shop-contracts";
@@ -53,14 +54,14 @@ describe("home sections", () => {
     expect(screen.getByRole("link", { name: "Flora Powers, 1 edition" })).toBeTruthy();
   });
 
-  it("sets two new editions side by side, each saying where it leads", () => {
+  it("sets two new editions side by side, one card per work", () => {
     render(
       <NewEditionsSection
         editions={{
-          items: [
+          groups: groupEditionVersions([
             artworkSummary({ slug: "a", title: "A" }),
             artworkSummary({ slug: "b", title: "B" }),
-          ],
+          ]),
           viewAll: { label: "View all 3 editions", href: "/artworks?availability=available" },
         }}
         now={NOW}
@@ -68,7 +69,7 @@ describe("home sections", () => {
     );
     const list = screen.getByRole("list", { name: "New editions" });
     expect(list.getAttribute("data-layout")).toBe("pair");
-    expect(screen.getAllByText("See the edition")).toHaveLength(2);
+    expect(screen.getAllByTestId("shop-edition-card")).toHaveLength(2);
   });
 
   it("features one artist with their editions and their lax.art profile", () => {

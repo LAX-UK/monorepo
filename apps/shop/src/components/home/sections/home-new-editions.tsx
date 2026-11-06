@@ -3,7 +3,7 @@ import { ShopEditionFeature } from "@/components/catalogue/shop-edition-feature"
 import { ShopCatalogueState } from "@/components/home/shop-empty-state";
 import { ShopSection } from "@/components/layout/shop-section";
 import { SHOP_HOME_CONTENT } from "@/content/home/shop-home-content";
-import { toEditionCardVm } from "@/lib/catalogue/edition-card.vm";
+import { toWorkCardVm } from "@/lib/catalogue/edition-card.vm";
 import type { HomeNewEditionsVm } from "@/lib/home/home-new-editions";
 import { NEW_EDITIONS_SECTION_ID } from "@/lib/home/home-sections";
 import { MARKETING_ROW_MAX_COLUMNS, MarketingCardRow } from "@auction/marketing-ui";
@@ -36,7 +36,7 @@ export function NewEditionsSection({
       {editions ? (
         <MarketingCardRow
           aria-label={copy.title}
-          items={editions.items.map((item) => toEditionCardVm(item, now))}
+          items={editions.groups.map((group) => toWorkCardVm(group, now))}
           getKey={(card) => card.slug}
           max={MARKETING_ROW_MAX_COLUMNS}
           className="shop-home-editions"
@@ -47,7 +47,6 @@ export function NewEditionsSection({
               <ShopEditionCard
                 card={card}
                 titleAs="h3"
-                layout={layout === "pair" ? "side" : "stacked"}
                 sizes={
                   layout === "pair"
                     ? "(min-width: 48rem) 25vw, 50vw"

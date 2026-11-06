@@ -24,9 +24,10 @@ export type MarketingArtistCardProps = {
   work?: ReactNode;
   /**
    * What an artist with neither portrait nor work gets. `placeholder` keeps the hatched initials
-   * (Shop and lax.art); `text` is a card of text only: name, facts and caption, no image area.
+   * (lax.art); `initials` shows the initials alone on the plain surface, with no hatch (Shop);
+   * `text` is a card of text only: name, facts and caption, no image area.
    */
-  withoutImage?: "placeholder" | "text";
+  withoutImage?: "placeholder" | "initials" | "text";
   /** Badges over the top-left of the portrait, e.g. Featured. */
   badges?: ReactNode;
   /** Icon control over the bottom-right of the portrait, e.g. a watch heart. */
@@ -45,6 +46,19 @@ export function marketingArtistInitials(name: string): string {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("");
+}
+
+/** The artist's initials on the plain surface, for an artist with no portrait and no work image. */
+export function MarketingArtistInitials({ name }: { name: string }) {
+  return (
+    <span
+      className="absolute inset-0 flex items-center justify-center bg-surface-container-low font-headline text-4xl font-medium tracking-wide text-on-surface-variant"
+      data-testid="marketing-artist-initials"
+      aria-hidden
+    >
+      {marketingArtistInitials(name)}
+    </span>
+  );
 }
 
 /** Artist directory card shared by LAX Bid, LAX Shop and lax.art. */
@@ -75,7 +89,7 @@ export function MarketingArtistCard({
       )}
       data-testid="marketing-artist-card"
     >
-      {portrait || work || withoutImage === "placeholder" ? (
+      {portrait || work || withoutImage !== "text" ? (
         <MarketingCardMedia
           className={cn(
             "aspect-[4/5]",
@@ -91,6 +105,8 @@ export function MarketingArtistCard({
             {portrait ??
               (work ? (
                 <span className="relative block size-full [&_img]:!object-contain">{work}</span>
+              ) : withoutImage === "initials" ? (
+                <MarketingArtistInitials name={name} />
               ) : (
                 <MediaPlaceholder fill monogram={marketingArtistInitials(name)} />
               ))}

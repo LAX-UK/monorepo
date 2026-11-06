@@ -33,6 +33,34 @@ export type HomeCollectionVm = {
   covers: readonly PublicArtworkSummary[];
 };
 
+/** A tile shows at most this many works. */
+export const COLLECTION_COVERS_MAX = 2;
+
+/**
+ * The works on a collection tile: with a picture, each from a different work, never the same
+ * image twice. The versions of one work share a picture, so they count as one. Candidates come
+ * in the catalogue's order; fewer than two distinct works gives one cover, shown alone.
+ */
+export function pickCollectionCovers(
+  candidates: readonly PublicArtworkSummary[],
+  max: number = COLLECTION_COVERS_MAX,
+): PublicArtworkSummary[] {
+  const picked: PublicArtworkSummary[] = [];
+  const images = new Set<string>();
+  const works = new Set<string>();
+  for (const item of candidates) {
+    if (picked.length >= max) break;
+    const image = item.imageUrl?.trim();
+    if (!image) continue;
+    const work = `${item.artistSlug}::${item.workSlug ?? item.slug}`;
+    if (images.has(image) || works.has(work)) continue;
+    images.add(image);
+    works.add(work);
+    picked.push(item);
+  }
+  return picked;
+}
+
 export function editionCountLabel(count: number): string {
   return count === 1 ? "1 edition" : `${count} editions`;
 }
@@ -95,7 +123,7 @@ export function buildHomeCollections(input: {
       title: `Editions up to £${input.priceBand.maxPounds}`,
       countLabel: editionCountLabel(input.priceBand.count),
       href: priceBandHref(input.priceBand),
-      covers: input.priceBand.covers.slice(0, 2),
+      covers: pickCollectionCovers(input.priceBand.covers),
     });
   }
   for (const category of input.categories) {
@@ -105,7 +133,7 @@ export function buildHomeCollections(input: {
       title: category.label,
       countLabel: editionCountLabel(category.count),
       href: categoryHref(category.slug),
-      covers: (input.categoryCovers[category.slug] ?? []).slice(0, 2),
+      covers: pickCollectionCovers(input.categoryCovers[category.slug] ?? []),
     });
   }
   return tiles.length >= MIN_COLLECTIONS ? tiles : [];

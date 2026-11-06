@@ -85,6 +85,12 @@ export const PublicArtworkSummarySchema = Type.Object(
      * confirmed. Never a remaining count. Optional so storefronts parse an older shop-api.
      */
     editionCardLine: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    /**
+     * The slug of the listing every version of one work hangs from: the main run's slug for a
+     * proof or companion listing, the listing's own slug otherwise. Storefronts show one card per
+     * work by grouping on it. Optional so storefronts parse an older shop-api.
+     */
+    workSlug: Type.Optional(Type.String({ minLength: 1 })),
   },
   { additionalProperties: false },
 );

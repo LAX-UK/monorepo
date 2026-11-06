@@ -409,6 +409,11 @@ a.shop-home-trust__line {
   transition: outline-color var(--motion-duration-sm) ease;
 }
 
+/* One distinct work is shown alone, across the tile. */
+.shop-collection__mat[data-covers="1"] {
+  padding: var(--shop-space-4) var(--shop-space-8);
+}
+
 .shop-collection__print {
   position: relative;
   display: block;

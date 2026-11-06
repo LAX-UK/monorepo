@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ArtworkDetailReadModel } from "../application/read-models/catalogue.read-model.js";
-import { presentArtworkDetail, presentArtworkSummary } from "./catalogue.presenter.js";
+import {
+  presentArtistSummary,
+  presentArtworkDetail,
+  presentArtworkSummary,
+} from "./catalogue.presenter.js";
 
 const model: ArtworkDetailReadModel = {
   slug: "demo",
@@ -48,5 +52,21 @@ describe("presentArtworkSummary edition card line", () => {
 
   it("keeps the line off the detail response", () => {
     expect("editionCardLine" in presentArtworkDetail(model)).toBe(false);
+  });
+});
+
+describe("version grouping and artist lead image", () => {
+  it("passes the work slug on a summary only, so versions can be grouped", () => {
+    expect(presentArtworkSummary({ ...model, workSlug: "demo-main" }).workSlug).toBe("demo-main");
+    expect("workSlug" in presentArtworkSummary(model)).toBe(false);
+    expect("workSlug" in presentArtworkDetail({ ...model, workSlug: "demo-main" })).toBe(false);
+  });
+
+  it("passes an artist's lead image, and nothing from an older read model", () => {
+    const artist = { slug: "a", name: "A", discipline: null, portraitUrl: null, artworkCount: 1 };
+    expect(
+      presentArtistSummary({ ...artist, leadImageUrl: "https://cdn/x.jpg" }).leadImageUrl,
+    ).toBe("https://cdn/x.jpg");
+    expect("leadImageUrl" in presentArtistSummary(artist)).toBe(false);
   });
 });

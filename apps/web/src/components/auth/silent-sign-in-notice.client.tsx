@@ -5,15 +5,7 @@ import { BID_SILENT_NOTICE_COOKIE } from "@/lib/auth/silent-sign-in/config";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { useLogout } from "@/lib/auth/use-logout";
 import { setSignInNoticeActive } from "@/lib/ui/first-visit-overlays";
-import { maskAccountEmail } from "@auction/lax-ecosystem";
-import { Button } from "@auction/ui/components/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogTitle,
-} from "@auction/ui/components/dialog";
+import { MarketingSignedInToast, signedInFirstName } from "@auction/marketing-ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 function consumeNoticeCookie(cookieName: string): boolean {
@@ -23,7 +15,7 @@ function consumeNoticeCookie(cookieName: string): boolean {
   return true;
 }
 
-/** One-shot modal after a silent cross-product sign-in success on Bid. */
+/** One-shot toast after a silent cross-product sign-in success on Bid. */
 export function SilentSignInNotice() {
   const { user } = useAppSession();
   const { logout, pending: logoutPending } = useLogout();
@@ -63,45 +55,15 @@ export function SilentSignInNotice() {
     await logout();
   }, [logout]);
 
-  if (!user || !open) {
-    return null;
-  }
-
-  const maskedEmail = maskAccountEmail(user.email);
-  const displayName = user.name?.trim() || maskedEmail;
+  if (!user) return null;
 
   return (
-    <Dialog
+    <MarketingSignedInToast
       open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) dismiss();
-      }}
-    >
-      <DialogContent
-        data-testid="silent-sign-in-notice"
-        className="max-w-sm"
-        overlayProps={{ onClick: dismiss }}
-      >
-        <DialogTitle>You&apos;re signed in</DialogTitle>
-        <DialogDescription className="text-left text-sm leading-relaxed">
-          We signed you in with your LAX account as{" "}
-          <strong className="font-medium text-on-surface">{displayName}</strong> ({maskedEmail}).
-        </DialogDescription>
-        <DialogFooter className="flex-col gap-2 sm:flex-col">
-          <Button type="button" className="w-full" onClick={dismiss}>
-            Continue
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full"
-            disabled={logoutPending}
-            onClick={() => void signOut()}
-          >
-            Not you? Sign out
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      firstName={signedInFirstName(user.name, user.email)}
+      pending={logoutPending}
+      onDismiss={dismiss}
+      onNotYou={() => void signOut()}
+    />
   );
 }

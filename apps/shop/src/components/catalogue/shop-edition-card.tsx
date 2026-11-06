@@ -1,7 +1,7 @@
 import { ShopMediaImage } from "@/components/media/shop-media-image";
 import type { EditionCardVm } from "@/lib/catalogue/edition-card.vm";
 import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
-import { MarketingBellIcon } from "@auction/marketing-ui";
+import { MarketingBellIcon, MarketingWorkCard } from "@auction/marketing-ui";
 import Link from "next/link";
 
 export type ShopEditionCardProps = {
@@ -13,91 +13,73 @@ export type ShopEditionCardProps = {
   /** Above-the-fold cards load their image first. */
   priority?: boolean;
   sizes?: string;
-  /**
-   * `side` sets the mat beside the caption (five parts to four), for a pair of editions that
-   * would otherwise leave half a row empty; the caption ends with a "See the edition" cue.
-   */
-  layout?: "stacked" | "side";
 };
-
-const SEE_EDITION_CUE = "See the edition";
 
 const DEFAULT_SIZES = "(min-width: 80rem) 22vw, (min-width: 48rem) 30vw, 50vw";
 
+const BADGE_CLASS =
+  "inline-flex items-center rounded-full bg-surface px-2.5 py-0.5 font-body text-xs font-medium leading-5 text-on-surface shadow-sm";
+
 /**
- * The Shop product card, everywhere a list of editions appears: the work whole on a paper mat,
- * then the artist, the title, technique and edition size, and the price or "Sold out" in its
- * place. The title is the card's one link and stretches over the whole card; a sold-out card adds
- * "Get alerts", which sits above that stretched link so both can be reached.
+ * The Shop card for one work, on the shared LAX works card: the work whole on its mat, the title,
+ * the artist, one facts line and the price ("From £95 · 3 versions" when the work has several).
+ * "New" and "Sold out" sit on the mat; a sold-out work offers "Get alerts" in place of the price.
  */
 export function ShopEditionCard({
   card,
-  titleAs: Title = "h3",
+  titleAs = "h3",
   hideArtist = false,
   priority = false,
   sizes = DEFAULT_SIZES,
-  layout = "stacked",
 }: ShopEditionCardProps) {
   const status = card.status;
   return (
-    <article
-      className="shop-edition-card"
-      data-status={status?.kind ?? "none"}
-      data-layout={layout}
-    >
-      <div className="shop-edition-card__mat marketing-work-mat">
-        <span className="shop-edition-card__print">
-          <ShopMediaImage
-            src={card.imageUrl}
-            alt={card.imageAlt}
-            label={SHOP_MEDIA_LABELS.artwork}
-            sizes={sizes}
-            priority={priority}
-            className="absolute inset-0 size-full"
-            imgClassName="object-contain"
-          />
-        </span>
-      </div>
-      <div className="shop-edition-card__body">
-        {hideArtist && status?.kind !== "new" ? null : (
-          <p className="shop-edition-card__artist">
-            {hideArtist ? null : (
-              <span className="shop-edition-card__artist-name">{card.artistName}</span>
-            )}
-            {status?.kind === "new" ? (
-              <span className="shop-edition-card__new">{status.label}</span>
-            ) : null}
-          </p>
-        )}
-        <Title className="shop-edition-card__title">
-          <Link href={card.href} className="shop-edition-card__link">
-            {card.title}
-          </Link>
-        </Title>
-        {card.factsLine ? <p className="shop-edition-card__facts">{card.factsLine}</p> : null}
-        {card.editionLine ? <p className="shop-edition-card__facts">{card.editionLine}</p> : null}
-        {status?.kind === "sold_out" ? (
-          <p className="shop-edition-card__sold">
-            <span>{status.label}</span>
-            <Link
-              href={status.alertHref}
-              className="shop-edition-card__alert shop-focus-ring"
-              aria-label={`${status.alertLabel} for ${card.title}`}
-            >
-              <MarketingBellIcon className="shop-edition-card__alert-icon" />
-              {status.alertLabel}
-            </Link>
-          </p>
-        ) : card.priceLabel ? (
-          <p className="shop-edition-card__price">{card.priceLabel}</p>
-        ) : null}
-        {layout === "side" ? (
-          // The title's link already covers the card; this only says where it leads.
-          <span className="shop-edition-card__cue" aria-hidden="true">
-            {SEE_EDITION_CUE}
-          </span>
-        ) : null}
-      </div>
-    </article>
+    <MarketingWorkCard
+      data-testid="shop-edition-card"
+      href={card.href}
+      title={card.title}
+      titleAs={titleAs}
+      media={
+        <ShopMediaImage
+          src={card.imageUrl}
+          alt={card.imageAlt}
+          label={SHOP_MEDIA_LABELS.artwork}
+          sizes={sizes}
+          priority={priority}
+          className="absolute inset-0 size-full"
+          imgClassName="object-contain"
+        />
+      }
+      {...(status ? { mediaBadge: <span className={BADGE_CLASS}>{status.label}</span> } : {})}
+      {...(hideArtist
+        ? {}
+        : {
+            subtitle: (
+              <Link
+                href={card.artistHref}
+                className="shop-focus-ring rounded-sm hover:text-on-surface hover:underline"
+              >
+                {card.artistName}
+              </Link>
+            ),
+          })}
+      {...(card.factsLine ? { details: <p>{card.factsLine}</p> } : {})}
+      {...(status?.kind === "sold_out"
+        ? {
+            footer: (
+              <Link
+                href={status.alertHref}
+                className="shop-edition-card__alert shop-focus-ring"
+                aria-label={`${status.alertLabel} for ${card.title}`}
+              >
+                <MarketingBellIcon className="shop-edition-card__alert-icon" />
+                {status.alertLabel}
+              </Link>
+            ),
+          }
+        : card.priceLabel
+          ? { footer: <p className="tabular-nums">{card.priceLabel}</p> }
+          : {})}
+    />
   );
 }
