@@ -69,31 +69,37 @@ describe.skipIf(!hasShopIntegrationDb)("link lax.art originals to Zoho (Postgres
   async function record(patch: Partial<NewArtworkRegisterEntry> = {}) {
     const { register } = setup();
     const suffix = integrationSuffix("r");
-    const number = String(Math.floor(Math.random() * 9000) + 1000);
-    const created = await register.create(
-      {
-        zohoProductId: `zoho-${suffix}`,
-        stockCode: `LAX-ORI-AR-TM-26-${number}`,
-        kind: "original",
-        sourceOriginalId: null,
-        title: "Tidal margin IV",
-        artist: {
-          zohoArtistId: "77",
-          name: "Ada Rowe",
-          code: `Z${suffix.slice(-5).toUpperCase()}`,
+    // Stock codes are unique across the shared test database: draw another number on a clash.
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const number = String(Math.floor(Math.random() * 9000) + 1000);
+      const created = await register.create(
+        {
+          zohoProductId: `zoho-${suffix}`,
+          stockCode: `LAX-ORI-AR-TM-26-${number}`,
+          kind: "original",
+          sourceOriginalId: null,
+          title: "Tidal margin IV",
+          artist: {
+            zohoArtistId: "77",
+            name: "Ada Rowe",
+            code: `Z${suffix.slice(-5).toUpperCase()}`,
+          },
+          medium: "Oil on linen",
+          dimensions: "90 × 120 cm",
+          year: 2024,
+          imageRefs: ["zoho-a.jpg"],
+          catalogueStatus: "Available",
+          ...patch,
         },
-        medium: "Oil on linen",
-        dimensions: "90 × 120 cm",
-        year: 2024,
-        imageRefs: ["zoho-a.jpg"],
-        catalogueStatus: "Available",
-        ...patch,
-      },
-      "zoho",
-      NOW,
-    );
-    if (!created.ok) throw new Error(`register entry: ${created.reason}`);
-    return created.entry;
+        "zoho",
+        NOW,
+      );
+      if (created.ok) return created.entry;
+      if (created.reason !== "duplicate_stock_code") {
+        throw new Error(`register entry: ${created.reason}`);
+      }
+    }
+    throw new Error("register entry: no free stock code after 8 attempts");
   }
 
   /** An original made before the register: on lax.art, with no Zoho Product id. */
