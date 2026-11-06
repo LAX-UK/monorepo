@@ -8,6 +8,7 @@ const entry: DemoImageEntry = {
   kind: "lot",
   key: "demo/lot/a-12345678.jpg",
   longEdge: 1600,
+  trim: 0,
   licence: "CC0",
   provider: "The Met Open Access",
 };
