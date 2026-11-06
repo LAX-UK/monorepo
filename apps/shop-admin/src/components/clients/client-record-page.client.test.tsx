@@ -60,7 +60,7 @@ const detail: AdminClientDetail = {
       artworkId: "33333333-3333-4333-8333-333333333333",
       artworkSlug: "vessel-study",
       artworkTitle: "Vessel Study",
-      editionNumber: 4,
+      printLabel: "4/24",
       listingStatus: "authorised",
       custodyStatus: "stored",
     },

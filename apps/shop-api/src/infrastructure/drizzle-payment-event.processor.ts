@@ -13,6 +13,7 @@ import {
 } from "@auction/db/schema";
 import { computePayoutDueAt, isGuestOrderSubject, orderVatBreakdown } from "@auction/shop-domain";
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { describeReceiptEdition } from "../application/order-line-edition.js";
 import type { BasketOwner, PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import type { PaymentEventProcessor } from "../application/ports/payment-event.processor.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
@@ -465,12 +466,15 @@ export async function completeShopCheckoutSession(
           productSlug: shopProduct.slug,
           variantSku: shopProductVariant.sku,
           editionNumber: shopOrderLine.editionNumber,
+          editionSnapshot: shopOrderLine.editionFactsSnapshot,
+          proofNumber: shopEdition.proofNumber,
           productVariantId: shopOrderLine.productVariantId,
           unitPricePence: shopOrderLine.unitPricePence,
           vatRateBp: shopOrderLine.vatRateBp,
           vatPence: shopOrderLine.vatPence,
         })
         .from(shopOrderLine)
+        .leftJoin(shopEdition, eq(shopOrderLine.editionId, shopEdition.id))
         .leftJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
         .leftJoin(shopProductVariant, eq(shopOrderLine.productVariantId, shopProductVariant.id))
         .leftJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
@@ -487,7 +491,14 @@ export async function completeShopCheckoutSession(
           ? (line.productTitle ?? "Merchandise")
           : (line.artworkTitle ?? "Artwork"),
         artworkSlug: line.productVariantId ? (line.productSlug ?? "") : (line.artworkSlug ?? ""),
-        editionNumber: line.editionNumber,
+        // The order is paid and holds its prints, so the number is the buyer's to be told.
+        editionDetail: describeReceiptEdition({
+          snapshot: line.editionSnapshot,
+          live: undefined,
+          holdsPrint: true,
+          editionNumber: line.editionNumber,
+          proofNumber: line.proofNumber,
+        }),
         unitPricePence: line.unitPricePence,
       }));
 
@@ -504,7 +515,7 @@ export async function completeShopCheckoutSession(
         lines: receiptLines.map((line) => ({
           artworkTitle: line.artworkTitle,
           artworkSlug: line.artworkSlug,
-          editionNumber: line.editionNumber,
+          editionDetail: line.editionDetail,
           unitPricePence: line.unitPricePence,
         })),
       });

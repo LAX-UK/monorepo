@@ -34,8 +34,7 @@ export type PortfolioPurchase = {
 export type PortfolioEditionFact = {
   editionId: string;
   work: PortfolioWork;
-  editionNumber: number;
-  /** The numbers the print itself carries; unlike `editionNumber`, null where it has none. */
+  /** The numbers the print itself carries; null where it has none. */
   print: PrintIdentity;
   /**
    * The run and facts the owner was told about: those kept when they paid, else those staff have
