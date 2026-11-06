@@ -360,7 +360,7 @@ describe.skipIf(!HAS_DB)("stored invoice due dates (integration)", () => {
           (await database.select().from(bidInvoice).where(eq(bidInvoice.id, open.invoiceId)))[0]
             ?.dueAt;
         const moved = await dueOf();
-        expect(moved?.getTime()).toBeGreaterThan(releasedAt.getTime());
+        expect(moved).toEqual(releasedAt);
         expect(await extend(releasedAt)).toBe(0);
         expect(await dueOf()).toEqual(moved);
         // An earlier release never pulls it back.
