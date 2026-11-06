@@ -3,7 +3,6 @@
 import { trackLogin } from "@/lib/analytics/events";
 import { trackSellAuthHandoff } from "@/lib/analytics/sell-funnel";
 import { postAuthBroadcast } from "@/lib/auth/auth-broadcast";
-import { clearClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
 
 /** Client-side effects after a successful Bid BFF hosted-login callback. */
 export function runHostedPostLoginEffects(input: {
@@ -32,6 +31,9 @@ export function runHostedPostLoginEffects(input: {
       trackSellAuthHandoff();
     }
   }
-  clearClientActingLegalEntityId();
+  // The account cookie is left alone: the sign-in callback has just written the account the
+  // person opens Bid as, and clearing it here would send the first page through the restore hop.
+  // A cookie left by someone else on a shared device is replaced by that restore, or, when the
+  // API could not answer, found unusable by the client layout, which restores it.
   postAuthBroadcast({ type: "signed-in" });
 }
