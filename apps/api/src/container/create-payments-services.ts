@@ -3,12 +3,14 @@ import type { IStalePaymentMaintenance } from "@auction/finance-cron-app";
 import {
   HeldInvoiceCheckouts,
   type IInvoiceRecipients,
+  InvoiceRaiser,
   InvoiceRecipients,
   StalePaymentStore,
   StripeCheckoutCloser,
 } from "@auction/finance-runtime";
 import {
   DrizzleBidActorEligibilityReader,
+  DrizzleBidInvoiceRepository,
   DrizzleLotFulfilmentRepository,
   DrizzlePaymentCheckoutSessionRepository,
   DrizzlePaymentDomainEventsRepository,
@@ -309,6 +311,7 @@ export function createPaymentsServices(
     eligibility: paymentEligibility,
     listUnpaidWithCheckout: (limit: number) => staleCanceller.listUnpaidWithCheckout(limit),
   });
+  const bidInvoiceRepo = new DrizzleBidInvoiceRepository(db);
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
@@ -345,11 +348,12 @@ export function createPaymentsServices(
     paymentEligibility,
     invoiceRecipients,
     heldCheckouts,
+    bidInvoiceRepo,
   );
 
   const lotInvoiceInitiationService = new LotInvoiceInitiationService(
     lotRepo,
-    saleRepo,
+    new InvoiceRaiser({ invoices: bidInvoiceRepo, sales: saleRepo }),
     paymentRepo,
     settlementCompliancePolicy,
     paymentTierPolicy,

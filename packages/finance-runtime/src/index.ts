@@ -19,6 +19,13 @@ export type {
   ILotInvoiceNotificationFactory,
   ILotInvoiceNotificationOutbox,
 } from "./lot-invoice-initiation.service.js";
+export {
+  InvoiceInvariantError,
+  InvoicePricingUnavailableError,
+  InvoiceRaiser,
+  type InvoiceRaiserDeps,
+  type PricedInvoice,
+} from "./invoice-raiser.js";
 export { PaymentTierPolicy } from "./payment-tier.policy.js";
 export { PlatformFeePolicy, type IPlatformFeePolicy } from "./platform-fee.policy.js";
 export type {
@@ -72,7 +79,7 @@ export { executeWithStripeRetries } from "./stripe/stripe-retries.js";
 export { isOpenPaymentUniqueViolation } from "./is-open-payment-unique-violation.js";
 export {
   INVOICE_PAYMENT_DUE_DAYS,
-  formatPaymentDueDateFromCreated,
+  formatPaymentDueDate,
 } from "./payment-due-date.js";
 export { billToContextToXeroInvoiceToAddress } from "./bill-to-xero.js";
 export { InvoiceAddressingService, type InvoiceAddressingResult } from "./invoice-addressing.js";

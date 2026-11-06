@@ -1,4 +1,9 @@
-import type { IHeldInvoiceCheckouts, IInvoiceRecipients } from "@auction/finance-runtime";
+import type {
+  IHeldInvoiceCheckouts,
+  IInvoiceRecipients,
+  InvoiceRaiser,
+} from "@auction/finance-runtime";
+import type { IBidInvoiceReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
@@ -53,6 +58,10 @@ export type PaymentServiceDeps = {
   mediaUrlResolver: MediaUrlResolver | undefined;
   lotFulfilmentHooks: ILotFulfilmentPaymentHook | null;
   sales: ISaleRepository | null;
+  /** Prices and stores each invoice with its lines and payment: the one way an invoice is raised. */
+  invoiceRaiser: InvoiceRaiser;
+  /** The stored invoice behind a payment: its lines and due date. */
+  invoices: IBidInvoiceReader;
   platformFeePolicy: IPlatformFeePolicy | null;
   paymentCapture: IPaymentCaptureService | null;
   stripeCheckout: IStripeCheckoutService | null;

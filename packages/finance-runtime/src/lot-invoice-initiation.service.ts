@@ -4,23 +4,22 @@ import type {
   ILotFulfilmentPaymentHook,
   ILotRepository,
   IPaymentWriteRepository,
-  ISaleRepository,
   IUserRepository,
   NotificationPayload,
-  PaymentRecord,
+  RaisedInvoice,
 } from "@auction/persistence/interfaces";
-import { lotTotalDuePence } from "@auction/validators";
 import { gbpPenceToMajorString } from "./decimal-money.js";
 import type { DomainEventPublishInput } from "./domain-event-sink-port.js";
 import { ensureXeroInvoiceForPayment } from "./ensure-xero-invoice.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
+import type { InvoiceRaiser } from "./invoice-raiser.js";
 import { isOpenPaymentUniqueViolation } from "./is-open-payment-unique-violation.js";
 import { type IMoneyPathMetrics, noMoneyPathMetrics } from "./money-path-metrics.js";
 import {
   type IInvoiceRecipients,
   paymentDueNoticeKey,
 } from "./notifications/invoice-recipients.js";
-import { formatPaymentDueDateFromCreated } from "./payment-due-date.js";
+import { formatPaymentDueDate } from "./payment-due-date.js";
 import type { PaymentTierPolicy } from "./payment-tier.policy.js";
 import type { IPlatformFeePolicy } from "./platform-fee.policy.js";
 import { resolveNewPaymentReviewDecision } from "./resolve-manual-review-reason.js";
@@ -76,7 +75,7 @@ export interface ILotInvoiceDomainEventPublisher {
 export class LotInvoiceInitiationService {
   constructor(
     private readonly lots: ILotRepository,
-    private readonly sales: ISaleRepository,
+    private readonly invoiceRaiser: InvoiceRaiser,
     private readonly payments: IPaymentWriteRepository,
     private readonly settlementCompliance: ISettlementCompliancePolicy,
     private readonly paymentTierPolicy: PaymentTierPolicy,
@@ -124,8 +123,9 @@ export class LotInvoiceInitiationService {
       return { created: false, reason: "already_refunded", paymentId: priorRefund.id, lotId };
     }
 
-    const sale = lot.saleId ? await this.sales.findById(lot.saleId) : null;
-    const amountPence = lotTotalDuePence(lot, sale);
+    // A sale that cannot be read throws: the job is retried rather than raising a wrong total.
+    const priced = await this.invoiceRaiser.price(lot);
+    const amountPence = priced.totalPence;
     const amount = gbpPenceToMajorString(amountPence);
 
     const amountValidation = this.paymentTierPolicy.validateCheckoutAmountPence(amountPence);
@@ -160,17 +160,20 @@ export class LotInvoiceInitiationService {
       amountPence,
     );
 
-    let created: PaymentRecord;
+    let raised: RaisedInvoice;
     try {
-      created = await this.payments.create({
-        lotId,
-        paidByUserId: buyerId,
-        buyerLegalEntityId: lot.buyerLegalEntityId,
-        sellerLegalEntityId: lot.sellerLegalEntityId,
-        amount,
-        platformFee,
-        stripePaymentIntentId: null,
-        status: reviewDecision.requiresManualReview ? "requires_manual_review" : "pending",
+      raised = await this.invoiceRaiser.raise({
+        lot,
+        priced,
+        payment: {
+          lotId,
+          paidByUserId: buyerId,
+          buyerLegalEntityId: lot.buyerLegalEntityId,
+          sellerLegalEntityId: lot.sellerLegalEntityId,
+          platformFee,
+          stripePaymentIntentId: null,
+          status: reviewDecision.requiresManualReview ? "requires_manual_review" : "pending",
+        },
       });
     } catch (err) {
       if (isOpenPaymentUniqueViolation(err)) {
@@ -184,6 +187,8 @@ export class LotInvoiceInitiationService {
       }
       throw err;
     }
+
+    const created = raised.payment;
 
     if (reviewDecision.requiresManualReview && reviewDecision.manualReviewReason) {
       await this.domainEventSink.publish({
@@ -208,7 +213,7 @@ export class LotInvoiceInitiationService {
 
     await this.lotFulfilmentHooks?.ensureAwaitingPayment(lotId, created.id, null);
 
-    const dueDate = formatPaymentDueDateFromCreated(created.createdAt);
+    const dueDate = formatPaymentDueDate(raised.invoice.dueAt);
     const recipients = await this.recipients.forInvoice({
       buyerLegalEntityId: lot.buyerLegalEntityId,
       winnerUserId: buyerId,
@@ -235,7 +240,7 @@ export class LotInvoiceInitiationService {
       lot,
       buyerId,
       created.amount,
-      created.createdAt,
+      raised.invoice.raisedAt,
     );
     if (!xeroResult.ok) {
       this.metrics.record("xero_invoice_deferred");

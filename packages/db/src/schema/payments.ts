@@ -10,6 +10,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
+import { bidInvoice } from "./bid-invoice.js";
 import { legalEntity } from "./legal-entities.js";
 import { lot } from "./lots.js";
 import { paymentGroup } from "./payment-group.js";
@@ -55,9 +56,12 @@ export const payment = pgTable(
     paymentGroupId: uuid("payment_group_id").references(() => paymentGroup.id, {
       onDelete: "restrict",
     }),
+    /** The invoice this payment settles; a retried payment row points at the same invoice. */
+    invoiceId: uuid("invoice_id").references(() => bidInvoice.id, { onDelete: "restrict" }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
+    index("payment_invoice_id_idx").on(table.invoiceId).where(sql`${table.invoiceId} is not null`),
     index("payment_lot_id_idx").on(table.lotId),
     index("payment_buyer_id_idx").on(table.buyerId),
     index("payment_buyer_legal_entity_id_idx").on(table.buyerLegalEntityId),

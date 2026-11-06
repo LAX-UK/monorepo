@@ -10,16 +10,6 @@ function majorToPence(major: string): number {
   return Number.isFinite(n) ? majorGbpToPence(n) : 0;
 }
 
-/**
- * Hammer + buyer's premium in whole pence: the one calculator for an invoice total, used when
- * the invoice is raised (at lot end or at checkout) and for what pages show. Each part is
- * rounded to the penny first, then added, so the total always equals the sum of its lines.
- */
-export function lotTotalDuePence(lot: Lot | PublicLotView, sale: Sale | null): number {
-  const pricing = computeLotCheckoutPricing(lot, sale);
-  return majorToPence(pricing.hammerMajor) + majorToPence(pricing.premiumMajor);
-}
-
 /** Hammer + buyer's premium using the same policy factory as payment checkout. */
 export function computeLotCheckoutPricing(
   lot: Lot | PublicLotView,

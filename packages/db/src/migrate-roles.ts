@@ -405,9 +405,15 @@ export const WORKER_PAYMENT_MAINTENANCE_TABLES = ["payment"] as const;
 /**
  * Raising the invoice when a lot is sold, with the same implementation as the API: the payment
  * row, its fulfilment record ("awaiting payment") and, when the amount needs it, a pending
- * source-of-funds case. Inserts only; the worker still never deletes any of them.
+ * source-of-funds case. The invoice and its lines are stored with the payment row. Inserts only;
+ * the worker still never deletes any of them.
  */
-export const WORKER_INVOICE_RAISE_INSERT_TABLES = ["payment", "source_of_funds"] as const;
+export const WORKER_INVOICE_RAISE_INSERT_TABLES = [
+  "payment",
+  "source_of_funds",
+  "bid_invoice",
+  "bid_invoice_line",
+] as const;
 export const WORKER_INVOICE_RAISE_FULFILMENT_TABLES = ["lot_fulfilment"] as const;
 
 /** Worker-local finance cron: Xero OAuth, external refs, webhook replay, refund reconcile. */
