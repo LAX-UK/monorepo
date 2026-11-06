@@ -1,6 +1,8 @@
 import { CatalogLotViewClient } from "@/components/marketing/catalog-lot-view-client";
 import { SearchAlertButton } from "@/components/marketing/search-alert-button";
 import { ArtistBrowseGrid } from "@/components/sections/artists/catalog-artist-views";
+import { FeaturedAuctionsGrid } from "@/components/sections/sales/featured-auctions-grid";
+import { mapSaleToFeaturedAuctionCardVM } from "@/components/sections/sales/sales-view-models";
 import { toCatalogLotVMs } from "@/lib/lot/to-catalog-lot-vm";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import type { SearchFallback } from "@/lib/marketing/load-search-fallback";
@@ -69,7 +71,7 @@ function Group({
  */
 export function SearchNoMatches(props: Props) {
   const { q, fallback, categoryId } = props;
-  const { pastLots, pastCount, artists } = fallback;
+  const { pastLots, pastCount, artists, sales } = fallback;
   const sentence = pastResultsSentence(pastCount);
   const hint = "Check the spelling, or try an artist, a medium or a place.";
 
@@ -125,6 +127,12 @@ export function SearchNoMatches(props: Props) {
             treatments={props.treatments}
             {...(props.catalogLinkParams ? { catalogLinkParams: props.catalogLinkParams } : {})}
           />
+        </Group>
+      ) : null}
+
+      {sales.length > 0 ? (
+        <Group id="search-sales" title="Sales">
+          <FeaturedAuctionsGrid vms={sales.map(mapSaleToFeaturedAuctionCardVM)} />
         </Group>
       ) : null}
 

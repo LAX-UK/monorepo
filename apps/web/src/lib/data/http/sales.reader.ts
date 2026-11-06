@@ -56,6 +56,7 @@ function buildSalesQuery(params: ListSalesQuery): Record<string, string> {
   if (params.statuses?.length) q.statuses = params.statuses.join(",");
   else if (params.status) q.status = params.status;
   if (params.categoryId) q.categoryId = params.categoryId;
+  if (params.q?.trim()) q.q = params.q.trim();
   if (params.sort) q.sort = params.sort;
   return q;
 }

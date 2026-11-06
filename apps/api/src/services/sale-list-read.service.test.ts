@@ -198,3 +198,42 @@ describe("SaleListReadService ATG-owned drafts", () => {
     expect(data.map((row) => row.sale.id)).toEqual(["s1"]);
   });
 });
+
+describe("SaleListReadService title search", () => {
+  const build = () => {
+    const saleRepo = { list: vi.fn(async () => [sale("s1")]) };
+    const lotRepo = {
+      countLotsBySaleIds: vi.fn(async () => new Map<string, number>()),
+      findPreviewLotsBySaleIds: vi.fn(async () => []),
+    };
+    const svc = new SaleListReadService(
+      saleRepo as never,
+      lotRepo as never,
+      { resolveManyUnique: vi.fn(async () => new Map()) } as never,
+      {
+        lookupByKeys: vi.fn(async () => new Map()),
+        buildGalleryImages: vi.fn(async () => []),
+        buildGalleryImagesWithLookup: vi.fn(async () => []),
+      } as never,
+    );
+    return { svc, saleRepo };
+  };
+
+  it("passes the text on and keeps test sales out for the public", async () => {
+    const { svc, saleRepo } = build();
+
+    await svc.listForPublicApi({ q: "winter", limit: 3, offset: 0 });
+
+    expect(saleRepo.list).toHaveBeenCalledWith(
+      expect.objectContaining({ q: "winter", excludeTestSales: true }),
+    );
+  });
+
+  it("does not offer a hidden sale status to the public, whatever the text", async () => {
+    const { svc, saleRepo } = build();
+
+    await svc.listForPublicApi({ q: "winter", status: "draft", limit: 3, offset: 0 });
+
+    expect(saleRepo.list).toHaveBeenCalledWith(expect.objectContaining({ statuses: [] }));
+  });
+});

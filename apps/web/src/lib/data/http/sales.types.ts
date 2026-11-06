@@ -13,6 +13,8 @@ export type ListSalesQuery = {
   status?: Sale["status"];
   statuses?: Sale["status"][];
   categoryId?: string;
+  /** Text to find in sale titles; the API matches it literally, ignoring case. */
+  q?: string;
   limit?: number;
   offset?: number;
   /** `endDesc`: most recently ended first (results). */
