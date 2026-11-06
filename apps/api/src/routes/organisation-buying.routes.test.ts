@@ -57,6 +57,66 @@ function mount(
     flags: { flagsFor: async () => new Map() },
     now: () => NOW,
   });
+  const payPlan = new PayPlanService({
+    candidates,
+    invoices: {
+      findByPaymentIds: async (ids) =>
+        new Map(
+          ids.map((id) => {
+            const row = purchases.rows.find((r) => r.payment?.id === id);
+            const pence = Math.round(Number(row?.payment?.amount ?? 0) * 100);
+            return [
+              id,
+              {
+                id: `inv-${id}`,
+                totalPence: pence,
+                dueAt: new Date("2026-11-25T23:59:59.999Z"),
+                voidedAt: null,
+                lines: [
+                  {
+                    kind: "hammer",
+                    label: "Hammer price",
+                    ratePercent: null,
+                    amountPence: pence,
+                  },
+                ],
+              } as never,
+            ];
+          }),
+        ),
+    },
+    pricing: { price: async () => Promise.reject(new Error("not invoiced")) },
+    lots: { findById: async () => null },
+    accounts: {
+      findById: async () =>
+        ({
+          id: BUYING_ACCOUNT,
+          displayName: "Northbank Gallery",
+          kind: opts.personal ? "individual" : "organisation",
+        }) as never,
+    },
+    onboarding: { isComplete: async () => opts.onboarded ?? true },
+    eligibility: {
+      check: async () => {
+        if (opts.eligibilityFails) throw new Error("db down");
+        return { kind: "payable" as const };
+      },
+    },
+    compliance: null,
+    limits: {
+      minPence: 30,
+      cardMaxPence: 500_000,
+      manualReviewMinPence: 2_500_000,
+      absoluteMaxPence: 10_000_000,
+    },
+    issuer: {
+      name: "London Auction Xchange LTD",
+      address: "156 New Cavendish Street",
+      companyNumber: null,
+      vatNumber: null,
+    },
+    now: () => NOW,
+  });
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(opts.suspended ?? false) },
     requireLegalEntityContext: async (
@@ -69,68 +129,10 @@ function mount(
     organisationBuying: {
       registrations: new AccountRegistrationsService(new InMemoryRegistrations()),
       purchases: new AccountPurchasesService({ reader: purchases, now: () => NOW }),
-      payPlan: new PayPlanService({
-        candidates,
-        invoices: {
-          findByPaymentIds: async (ids) =>
-            new Map(
-              ids.map((id) => {
-                const row = purchases.rows.find((r) => r.payment?.id === id);
-                const pence = Math.round(Number(row?.payment?.amount ?? 0) * 100);
-                return [
-                  id,
-                  {
-                    id: `inv-${id}`,
-                    totalPence: pence,
-                    dueAt: new Date("2026-11-25T23:59:59.999Z"),
-                    voidedAt: null,
-                    lines: [
-                      {
-                        kind: "hammer",
-                        label: "Hammer price",
-                        ratePercent: null,
-                        amountPence: pence,
-                      },
-                    ],
-                  } as never,
-                ];
-              }),
-            ),
-        },
-        pricing: { price: async () => Promise.reject(new Error("not invoiced")) },
-        lots: { findById: async () => null },
-        accounts: {
-          findById: async () =>
-            ({
-              id: BUYING_ACCOUNT,
-              displayName: "Northbank Gallery",
-              kind: opts.personal ? "individual" : "organisation",
-            }) as never,
-        },
-        onboarding: { isComplete: async () => opts.onboarded ?? true },
-        eligibility: {
-          check: async () => {
-            if (opts.eligibilityFails) throw new Error("db down");
-            return { kind: "payable" as const };
-          },
-        },
-        compliance: null,
-        limits: {
-          minPence: 30,
-          cardMaxPence: 500_000,
-          manualReviewMinPence: 2_500_000,
-          absoluteMaxPence: 10_000_000,
-        },
-        issuer: {
-          name: "London Auction Xchange LTD",
-          address: "156 New Cavendish Street",
-          companyNumber: null,
-          vatNumber: null,
-        },
-        now: () => NOW,
-      }),
+      payPlan,
       paySeveral: new PaySeveralService({
-        candidates,
+        planner: payPlan,
+        invoices: { ensureForLot: async (lotId) => ({ created: false, lotId }) },
         limits: {
           minPence: 30,
           cardMaxPence: 500_000,
@@ -138,7 +140,6 @@ function mount(
           absoluteMaxPence: 10_000_000,
         },
         compliance: null,
-        eligibility: { check: async () => ({ kind: "payable" as const }) },
         checkout: {
           start: async (input) =>
             ok({

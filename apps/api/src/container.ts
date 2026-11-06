@@ -431,6 +431,7 @@ export function createContainer(env: Env): Container {
       groupCheckout: payments.paymentGroupCheckout,
       invoices: payments.bidInvoices,
       pricing: payments.invoiceRaiser,
+      invoiceInitiation: payments.lotInvoiceInitiationService,
     },
   });
   const marketingEnquiries = createMarketingEnquiryServices({

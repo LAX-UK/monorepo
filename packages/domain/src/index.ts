@@ -728,12 +728,7 @@ export {
 } from "./pay-plan.js";
 export {
   PAY_SEVERAL_MAX_INVOICES,
-  planPaySeveral,
-  type PayableInvoice,
-  type PaySeveralCandidate,
-  type PaySeveralDecision,
-  type PaySeveralPlan,
-  type PaySeveralRefusal,
+  paySeveralSkipReason,
   type PaySeveralSkipReason,
 } from "./pay-several.js";
 export {

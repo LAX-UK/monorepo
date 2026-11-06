@@ -2,7 +2,7 @@ import type {
   CheckoutRailKind,
   CollectionBookingOffer,
   DeliveryQuoteAction,
-  PaySeveralPlan,
+  PaySeveralSkipReason,
   PayTogetherDecision,
   PurchaseDeliveryStage,
   PurchaseInvoiceStatus,
@@ -41,7 +41,8 @@ export type OrganisationBuyingErrorCode =
   | "pay_several_needs_finance_review"
   | "pay_several_conflict"
   | "pay_several_unavailable"
-  | "pay_plan_unavailable";
+  | "pay_plan_unavailable"
+  | "onboarding_required";
 
 export type OrganisationBuyingError = {
   code: OrganisationBuyingErrorCode;
@@ -103,9 +104,17 @@ export interface IAccountPurchasesService {
 
 /**
  * Which picked invoices one payment settles, with the total and whether (and how) that total can
- * be paid at once.
+ * be paid at once. It is the pay plan, told in the combined-payment screen's terms.
  */
-export type PaySeveralQuote = PaySeveralPlan & { payTogether: PayTogetherDecision };
+export type PaySeveralQuote = {
+  /** The lots that will be paid together, in the order picked. */
+  payable: { lotId: string; totalDue: string }[];
+  skipped: { lotId: string; reason: PaySeveralSkipReason }[];
+  currency: string;
+  /** The sum of the payable lots, as a decimal string. */
+  total: string;
+  payTogether: PayTogetherDecision;
+};
 
 /** The combined payment opened for the payer: where to pay, and what it covers. */
 export type PaySeveralStarted = {
@@ -115,13 +124,24 @@ export type PaySeveralStarted = {
   total: string;
   currency: string;
   payable: { lotId: string; amount: string }[];
-  skipped: PaySeveralPlan["skipped"];
+  skipped: PaySeveralQuote["skipped"];
+};
+
+/** A pay plan with the winner of each picked lot, for deciding a payment from it. */
+export type PlannedPayment = {
+  plan: PayPlan;
+  winners: ReadonlyMap<string, string | null>;
 };
 
 /** The read behind the Pay page: what one payment of the picked lots covers, and whether to offer it. */
 export interface IPayPlanService {
   /** Only reads: raises no invoice, opens no check and starts no checkout. */
   plan(actor: OrganisationMemberActor, lotIds: readonly string[]): BuyingResult<PayPlan>;
+  /** The same plan with each lot's winner; also only reads. */
+  planWithWinners(
+    actor: OrganisationMemberActor,
+    lotIds: readonly string[],
+  ): BuyingResult<PlannedPayment>;
 }
 
 /** "Pay several": the account's payers settle several invoices with one payment. */

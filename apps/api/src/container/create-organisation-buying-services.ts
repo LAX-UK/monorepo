@@ -1,7 +1,7 @@
 import { SITE_CONTACT_EMAIL, legalEntityFor } from "@auction/branding";
 import type { Database } from "@auction/db";
 import type { PaymentTierLimits } from "@auction/domain";
-import type { InvoiceRaiser } from "@auction/finance-runtime";
+import type { InvoiceRaiser, LotInvoiceInitiationService } from "@auction/finance-runtime";
 import type {
   IBidInvoiceReader,
   ILegalEntityRepository,
@@ -90,6 +90,8 @@ export type CreateOrganisationBuyingInput = {
     invoices: IBidInvoiceReader;
     /** Prices a lot not invoiced yet with the calculator that raises invoices. */
     pricing: Pick<InvoiceRaiser, "price">;
+    /** Raises the invoice of a won lot that has none yet, as lot end does. */
+    invoiceInitiation: Pick<LotInvoiceInitiationService, "ensureForLot">;
   };
 };
 
@@ -106,35 +108,36 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
     now: () => new Date(),
   });
   const bid = legalEntityFor("bid");
+  const payPlan = new PayPlanService({
+    candidates,
+    invoices: input.payments.invoices,
+    pricing: input.payments.pricing,
+    lots: input.lots,
+    accounts: input.accounts,
+    onboarding: input.onboarding,
+    eligibility: input.payments.eligibility,
+    compliance: input.payments.compliance,
+    limits: input.payments.tierLimits,
+    issuer: {
+      name: bid.name,
+      address: bid.registeredAddress.inline,
+      companyNumber: bid.companyNumber ?? null,
+      vatNumber: bid.vatNumber ?? null,
+    },
+    now: () => new Date(),
+  });
   return {
     client: {
       registrations: new AccountRegistrationsService(
         new DrizzleAccountRegistrationsReader(input.db),
       ),
       purchases: new AccountPurchasesService({ reader: purchases, now: () => new Date() }),
-      payPlan: new PayPlanService({
-        candidates,
-        invoices: input.payments.invoices,
-        pricing: input.payments.pricing,
-        lots: input.lots,
-        accounts: input.accounts,
-        onboarding: input.onboarding,
-        eligibility: input.payments.eligibility,
-        compliance: input.payments.compliance,
-        limits: input.payments.tierLimits,
-        issuer: {
-          name: bid.name,
-          address: bid.registeredAddress.inline,
-          companyNumber: bid.companyNumber ?? null,
-          vatNumber: bid.vatNumber ?? null,
-        },
-        now: () => new Date(),
-      }),
+      payPlan,
       paySeveral: new PaySeveralService({
-        candidates,
+        planner: payPlan,
+        invoices: input.payments.invoiceInitiation,
         limits: input.payments.tierLimits,
         compliance: input.payments.compliance,
-        eligibility: input.payments.eligibility,
         checkout: input.payments.groupCheckout,
       }),
       deliveryQuotes: new DeliveryQuoteService({ quotes, purchases }),

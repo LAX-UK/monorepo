@@ -23,7 +23,11 @@ import {
   type ISettlementComplianceAssessor,
   assessSettlementSubjects,
 } from "../aml/settlement-compliance.policy.js";
-import type { BuyingResult, IPayPlanService } from "../interfaces/organisation-buying-service.js";
+import type {
+  BuyingResult,
+  IPayPlanService,
+  PlannedPayment,
+} from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import type { IPaymentEligibilityGate } from "../payment/payment-eligibility.gate.js";
 import type { PurchaseCandidateReader, PurchaseEntry } from "./purchase-candidate.reader.js";
@@ -60,6 +64,18 @@ export class PayPlanService implements IPayPlanService {
   constructor(private readonly deps: PayPlanDeps) {}
 
   async plan(actor: OrganisationMemberActor, lotIds: readonly string[]): BuyingResult<PayPlan> {
+    const planned = await this.planWithWinners(actor, lotIds);
+    return planned.map((p) => p.plan);
+  }
+
+  /**
+   * The plan together with each lot's winner. "Pay several" decides through this same call, so
+   * the plan a person is shown and the payment that is taken can never disagree.
+   */
+  async planWithWinners(
+    actor: OrganisationMemberActor,
+    lotIds: readonly string[],
+  ): BuyingResult<PlannedPayment> {
     const refusal = pickRefusal(lotIds);
     if (refusal) return err(buyingError(refusal));
     const scope = accountPurchaseScope(entityActorOf(actor));
@@ -81,7 +97,7 @@ export class PayPlanService implements IPayPlanService {
     actor: OrganisationMemberActor,
     ownOnly: boolean,
     lotIds: readonly string[],
-  ): Promise<PayPlan> {
+  ): Promise<PlannedPayment> {
     const account = await this.deps.accounts.findById(actor.legalEntityId);
     if (!account) throw new Error("The acting account could not be read");
 
@@ -112,7 +128,7 @@ export class PayPlanService implements IPayPlanService {
       }
     }
 
-    return buildPayPlan({
+    const plan = buildPayPlan({
       account: { legalEntityId: account.id, kind: account.kind, name: account.displayName },
       payerRole,
       entity: this.deps.issuer,
@@ -122,6 +138,7 @@ export class PayPlanService implements IPayPlanService {
       limits: this.deps.limits,
       classified,
     });
+    return { plan, winners };
   }
 
   /** What one picked lot is worth to the plan: stored lines for an invoice, priced lines if not. */
