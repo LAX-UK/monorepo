@@ -1,3 +1,4 @@
+import type { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IKycRepository } from "@auction/persistence/interfaces";
 import type { Env } from "../../env.js";
@@ -25,12 +26,14 @@ export class VeriffKycService implements IKycService {
     transactionRunner: ITransactionRunner | null = null,
     marketingEvents: IMarketingEventService | null = null,
     veriffClient?: VeriffClient,
+    invoiceTerms: Pick<InvoiceDueDateExtender, "extendOpenInvoices"> | null = null,
   ) {
     const deps = createKycServiceDeps({
       env,
       repo,
       transactionRunner,
       marketingEvents,
+      invoiceTerms,
       ...(veriffClient !== undefined ? { veriffClient } : {}),
     });
     this.session = new KycSessionService(

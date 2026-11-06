@@ -81,7 +81,21 @@ export interface IBidInvoiceRaiseRepository {
   }): Promise<RaisedInvoice>;
 }
 
+/** Whose unpaid invoices a hold release reaches. */
+export type OpenInvoiceScope =
+  /** Every invoice of one buyer account. */
+  | { kind: "account"; legalEntityId: string }
+  /** The invoices of lots a person won, in any account or only in their personal ones. */
+  | { kind: "winner"; userId: string; personalAccountsOnly: boolean };
+
 export interface IBidInvoiceDueDateRepository {
+  /**
+   * The ids of the live invoices in `scope` that are still unpaid: not voided, and with no payment
+   * that is paid, being confirmed, refunded or held for review. With `tx` it reads inside that
+   * transaction.
+   */
+  listUnpaidLiveInvoiceIds(scope: OpenInvoiceScope, tx?: Database): Promise<string[]>;
+
   /**
    * Moves the due date of an invoice to `notBefore` when that is later, once a hold that kept the
    * buyer from paying is released. It never moves a due date earlier. Returns whether it moved.

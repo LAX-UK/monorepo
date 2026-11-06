@@ -1,13 +1,14 @@
 import type { Database } from "@auction/db";
-import { bidInvoice, bidInvoiceLine, payment } from "@auction/db/schema";
+import { bidInvoice, bidInvoiceLine, legalEntity, lot, payment } from "@auction/db/schema";
 import type { InvoiceLine, InvoiceLineKind, InvoiceSource } from "@auction/types";
-import { and, asc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lt, notExists, sql } from "drizzle-orm";
 import {
   type BidInvoiceRecord,
   BidInvoiceTotalMismatchError,
   type IBidInvoiceDueDateRepository,
   type IBidInvoiceRaiseRepository,
   type IBidInvoiceReader,
+  type OpenInvoiceScope,
   type RaisedInvoice,
 } from "../interfaces/bid-invoice.repository.js";
 import type { CreatePaymentRow } from "../interfaces/payment-write.repository.js";
@@ -163,6 +164,40 @@ export class DrizzleBidInvoiceRepository
       if (!created) throw new Error("Payment insert failed");
       return { invoice: record, payment: mapPaymentRow(created, null), invoiceCreated: !!inserted };
     });
+  }
+
+  async listUnpaidLiveInvoiceIds(scope: OpenInvoiceScope, tx?: Database): Promise<string[]> {
+    const db = tx ?? this.db;
+    const noSettledPayment = notExists(
+      db
+        .select({ one: sql`1` })
+        .from(payment)
+        .where(
+          and(
+            eq(payment.invoiceId, bidInvoice.id),
+            inArray(payment.status, [
+              "captured",
+              "authorized",
+              "refunded",
+              "requires_manual_review",
+            ]),
+          ),
+        ),
+    );
+    const base = db
+      .select({ id: bidInvoice.id })
+      .from(bidInvoice)
+      .innerJoin(lot, eq(lot.id, bidInvoice.lotId))
+      .innerJoin(legalEntity, eq(legalEntity.id, bidInvoice.buyerLegalEntityId));
+    const owner =
+      scope.kind === "account"
+        ? eq(bidInvoice.buyerLegalEntityId, scope.legalEntityId)
+        : and(
+            eq(lot.winnerId, scope.userId),
+            scope.personalAccountsOnly ? eq(legalEntity.kind, "individual") : undefined,
+          );
+    const rows = await base.where(and(isNull(bidInvoice.voidedAt), owner, noSettledPayment));
+    return rows.map((r) => r.id);
   }
 
   async extendDueAt(invoiceId: string, notBefore: Date, tx?: Database): Promise<boolean> {

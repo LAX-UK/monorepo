@@ -1,3 +1,4 @@
+import type { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type { ISourceOfFundsGate } from "../aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
@@ -30,9 +31,10 @@ export class SourceOfFundsService implements ISourceOfFundsService, ISourceOfFun
     config: SourceOfFundsConfig,
     transactionRunner: import("@auction/persistence/interfaces").ITransactionRunner | null = null,
     events: IDomainEventSink | null = null,
+    invoiceTerms: Pick<InvoiceDueDateExtender, "extendOpenInvoices"> | null = null,
   ) {
     this.gate = new SourceOfFundsGateService(repo, config, transactionRunner, events);
-    this.review = new SourceOfFundsReviewService(repo, transactionRunner, events);
+    this.review = new SourceOfFundsReviewService(repo, transactionRunner, events, invoiceTerms);
   }
 
   requiresSourceOfFunds(...args: Parameters<SourceOfFundsGateService["requiresSourceOfFunds"]>) {

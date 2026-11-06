@@ -1,10 +1,12 @@
 import type { Database } from "@auction/db";
+import { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type {
   IAttributionStore,
   IClickIdStore,
   IMarketingEventPublisher,
 } from "@auction/marketing-events";
 import type { IWatchlistScreeningReader } from "@auction/persistence/interfaces";
+import { DrizzleBidInvoiceRepository } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import type { AdminSourceOfFundsQueryService } from "../services/admin/admin-source-of-funds-query.service.js";
 import type { LegalEntityDocumentAdminService } from "../services/admin/legal-entity-document-admin.service.js";
@@ -69,12 +71,14 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
   const { env, db, infra, repos, platform } = input;
 
   const marketing = createComplianceMarketing({ env, db, infra });
+  const invoiceTerms = new InvoiceDueDateExtender(new DrizzleBidInvoiceRepository(db));
   const kycAml = createComplianceKycAml({
     env,
     infra,
     repos,
     platform,
     marketing,
+    invoiceTerms,
   });
   const uploadExportMedia = createComplianceUploadExportMedia({
     env,
@@ -89,6 +93,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     platform,
     mediaUrlResolver: uploadExportMedia.mediaUrlResolver,
     objectStorage: infra.objectStorage,
+    invoiceTerms,
   });
 
   return {

@@ -1,3 +1,4 @@
+import type { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type { IWatchlistScreeningReader } from "@auction/persistence/interfaces";
 import type { Env } from "../env.js";
 import { VeriffScreeningProvider } from "../lib/veriff/veriff-screening-provider.js";
@@ -28,12 +29,14 @@ export type CreateComplianceKycAmlInput = {
   repos: ContainerRepositories;
   platform: ContainerPlatformServices;
   marketing: Pick<ComplianceMarketingSlice, "marketingEventService">;
+  /** Moves invoice due dates when a held buyer is verified. */
+  invoiceTerms: Pick<InvoiceDueDateExtender, "extendOpenInvoices">;
 };
 
 export function createComplianceKycAml(
   input: CreateComplianceKycAmlInput,
 ): ContainerComplianceKycAml {
-  const { env, infra, repos, platform, marketing } = input;
+  const { env, infra, repos, platform, marketing, invoiceTerms } = input;
   const { emailService } = infra;
   const { kycRepository, userRepo, notificationWriteRepo, amlScreeningRepository, amlHoldStore } =
     repos;
@@ -44,6 +47,8 @@ export function createComplianceKycAml(
     kycRepository,
     platform.transactionRunner,
     marketing.marketingEventService,
+    undefined,
+    invoiceTerms,
   );
   const kycResubmissionNotifier = new KycResubmissionNotifier(
     userRepo,

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SourceOfFundsService } from "./source-of-funds.service.js";
 import type {
   CreateSourceOfFundsCaseInput,
@@ -691,5 +691,48 @@ describe("SourceOfFundsService.wouldRequireSourceOfFunds (read-only)", () => {
     expect(await svc.wouldRequireSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 })).toBe(
       false,
     );
+  });
+});
+
+describe("SourceOfFundsService invoice terms", () => {
+  const TX = { marker: "tx" } as never;
+  const runner = { runInTransaction: async <T>(fn: (tx: never) => Promise<T>) => fn(TX) };
+
+  async function decideWith(decision: "approve" | "reject") {
+    const state: FakeState = {
+      cases: [makeCase({ id: "sof_1", userId: "u1" })],
+      linkedPence: 0,
+    };
+    const invoiceTerms = { extendOpenInvoices: vi.fn().mockResolvedValue(2) };
+    const svc = new SourceOfFundsService(
+      fakeRepo(state),
+      config,
+      runner as never,
+      null,
+      invoiceTerms as never,
+    );
+    await svc.triage({
+      caseId: "sof_1",
+      analystUserId: "analyst_1",
+      recommendation: decision,
+      notes: null,
+    });
+    await svc.decide({ caseId: "sof_1", reviewerUserId: "mlro_1", decision, notes: null });
+    return invoiceTerms;
+  }
+
+  it("moves the due dates of the person's unpaid invoices, in the decision's transaction, on approval", async () => {
+    const invoiceTerms = await decideWith("approve");
+    expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledTimes(1);
+    expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledWith(
+      { kind: "winner", userId: "u1", personalAccountsOnly: false },
+      expect.any(Date),
+      TX,
+    );
+  });
+
+  it("leaves them alone when the case is rejected", async () => {
+    const invoiceTerms = await decideWith("reject");
+    expect(invoiceTerms.extendOpenInvoices).not.toHaveBeenCalled();
   });
 });

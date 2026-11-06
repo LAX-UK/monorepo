@@ -605,6 +605,7 @@ export { BidInvoiceTotalMismatchError } from "./bid-invoice.repository.js";
 export type {
   BidInvoiceRecord,
   IBidInvoiceDueDateRepository,
+  OpenInvoiceScope,
   IBidInvoiceRaiseRepository,
   IBidInvoiceReader,
   NewBidInvoice,
