@@ -2,16 +2,16 @@ import { describe, expect, it } from "vitest";
 import { buildAccountProducts } from "./account-products.vm";
 
 describe("buildAccountProducts", () => {
-  it("lists LAX Bid, LAX Shop and lax.art in order with their configured URLs", () => {
+  it("lists lax.art, LAX Shop and LAX Bid in family order with their configured URLs", () => {
     const products = buildAccountProducts({
       bidPublicUrl: "https://lax.bid",
       shopPublicUrl: "https://shop.lax.bid",
       laxArtPublicUrl: "https://lax.art",
     });
     expect(products.map((p) => [p.id, p.name, p.href])).toEqual([
-      ["bid", "LAX Bid", "https://lax.bid"],
-      ["shop", "LAX Shop", "https://shop.lax.bid"],
       ["art", "lax.art", "https://lax.art"],
+      ["shop", "LAX Shop", "https://shop.lax.bid"],
+      ["bid", "LAX Bid", "https://lax.bid"],
     ]);
   });
 

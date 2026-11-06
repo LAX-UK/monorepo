@@ -18,9 +18,9 @@ export function buildAccountProducts(
   config: Pick<LaxAccountConfig, "bidPublicUrl" | "shopPublicUrl" | "laxArtPublicUrl">,
 ): AccountProductVm[] {
   const candidates: Array<[AccountProductId, string, string, string | undefined]> = [
-    ["bid", "LAX Bid", "Bid on auctions", config.bidPublicUrl],
-    ["shop", "LAX Shop", "Browse and buy", config.shopPublicUrl],
     ["art", "lax.art", "Discover and collect art", config.laxArtPublicUrl],
+    ["shop", "LAX Shop", "Browse and buy", config.shopPublicUrl],
+    ["bid", "LAX Bid", "Bid on auctions", config.bidPublicUrl],
   ];
   return candidates.flatMap(([id, name, tagline, href]) =>
     href ? [{ id, name, tagline, href }] : [],

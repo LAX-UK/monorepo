@@ -13,7 +13,10 @@ describe("buildAttentionRows", () => {
     expect(rows).toEqual([
       {
         key: "bid:lot-1",
+        kind: "pay",
         text: "Pay for Green Line",
+        workTitle: "Green Line",
+        owed: null,
         productLabel: "LAX Bid",
         href: "https://lax.bid/purchases/checkout/1",
         external: true,
@@ -40,9 +43,11 @@ describe("buildAttentionRows", () => {
       }),
     ]);
     expect(row).toMatchObject({
+      kind: "held",
       text: "Green Line is waiting on account checks",
-      href: "/account/portfolio/bid/lot-1",
-      external: false,
+      owed: { amount: 115_000, currency: "GBP" },
+      href: "https://lax.bid/purchases/checkout/1",
+      external: true,
     });
   });
 
