@@ -15,6 +15,7 @@ import type {
   CrmEnquiryRecord,
   CrmPaymentLotReader,
 } from "./crm-readers.js";
+import type { CrmShopEnquiryReader, CrmShopEnquiryRecord } from "./crm-shop-enquiry-reader.js";
 import type { CrmSyncResult } from "./crm-sync-result.js";
 import { CrmDealSyncHandler } from "./handlers/crm-deal-sync-handler.js";
 import {
@@ -37,6 +38,7 @@ export type CrmSyncServiceDeps = {
   attributionReader: CrmAttributionReader;
   enquiryReader: CrmEnquiryReader;
   dealNamingReader: CrmDealNamingReader;
+  shopEnquiryReader: CrmShopEnquiryReader;
 };
 
 export class CrmSyncService {
@@ -87,6 +89,18 @@ export class CrmSyncService {
     return this.deps.gateway.getMetrics();
   }
 
+  /** The sender and work of a signed-in Shop original enquiry; the event carries only ids. */
+  private async resolveShopEnquiry(
+    event: DomainEventRowForCrm,
+  ): Promise<CrmShopEnquiryRecord | null | undefined> {
+    if (event.eventType !== "shop.artwork.interest_registered") return undefined;
+    const p = event.payload as Record<string, unknown> | null;
+    if (!p || p.intent !== "enquiry") return undefined;
+    const { artworkId, identitySubjectId } = p;
+    if (typeof artworkId !== "string" || typeof identitySubjectId !== "string") return undefined;
+    return this.deps.shopEnquiryReader.find({ artworkId, subjectId: identitySubjectId });
+  }
+
   /** The client and work a deal is named after, read for the events that create a deal. */
   private async resolveDealNaming(
     event: DomainEventRowForCrm,
@@ -100,13 +114,6 @@ export class CrmSyncService {
         const lotId = text("lotId");
         const userId = text("userId");
         return lotId && userId ? reader.forLotWon({ lotId, userId }) : undefined;
-      }
-      case "shop.artwork.interest_registered": {
-        const artworkId = text("artworkId");
-        const subjectId = text("identitySubjectId");
-        return p.intent === "enquiry" && artworkId && subjectId
-          ? reader.forShopEnquiry({ artworkId, subjectId })
-          : undefined;
       }
       case "shop.order.paid": {
         const orderId = text("orderId");
@@ -149,6 +156,7 @@ export class CrmSyncService {
       enquiry = await this.deps.enquiryReader.findById(event.aggregateId);
     }
 
+    const shopEnquiry = await this.resolveShopEnquiry(event);
     const dealNaming = await this.resolveDealNaming(event);
 
     const intent = mapDomainEventToCrmIntent(
@@ -160,6 +168,7 @@ export class CrmSyncService {
       {
         ...(paymentRefundLotId !== undefined ? { paymentRefundLotId } : {}),
         ...(enquiry !== undefined ? { enquiry } : {}),
+        ...(shopEnquiry !== undefined ? { shopEnquiry } : {}),
         ...(dealNaming !== undefined ? { dealNaming } : {}),
       },
     );
