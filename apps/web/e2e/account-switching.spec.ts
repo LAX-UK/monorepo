@@ -18,9 +18,9 @@ import {
 type MenuAccount = { id: string; kind: "personal" | "organisation"; name: string };
 
 const ACTING_COOKIE = "lax_acting_legal_entity_id";
-/** Northbank Gallery in the dev seed: an organisation the owner is not a member of. */
-const FOREIGN_ORGANISATION_ID = "10000000-0000-4000-8000-000000000007";
-const FOREIGN_ORGANISATION_NAME = "Northbank Gallery";
+/** Crowley Fine Art Ltd in the dev seed: an organisation the owner is not a member of. */
+const FOREIGN_ORGANISATION_ID = "20000000-0000-4000-8000-000000000002";
+const FOREIGN_ORGANISATION_NAME = "Crowley Fine Art Ltd";
 
 const accountMenuButton = (page: Page) => page.getByRole("button", { name: /^account menu/i });
 const workspaceSwitcher = (page: Page) => page.getByTestId("account-switcher");
