@@ -7,6 +7,8 @@ const REPLACEABLE_PREFIXES = [
   "/art/seed/",
   "/shop/home/",
   `${DEMO_MEDIA_BASE_URL}/seed/demo/portrait/`,
+  // Copies first written under a prefix the bucket does not serve.
+  `${DEMO_MEDIA_BASE_URL}/demo/portrait/`,
 ];
 
 export function isReplaceablePortrait(portrait: string | null): boolean {
