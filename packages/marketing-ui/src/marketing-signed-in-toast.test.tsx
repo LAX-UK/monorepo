@@ -62,6 +62,11 @@ describe("MarketingSignedInToast", () => {
     expect(onNotYou).toHaveBeenCalledTimes(1);
   });
 
+  it("sits above the docked bottom tab bar on a phone", () => {
+    setup();
+    expect(screen.getByRole("status").className).toContain("--lax-bottom-bar-space");
+  });
+
   it("takes no focus by itself", () => {
     setup();
     expect(document.activeElement).toBe(document.body);

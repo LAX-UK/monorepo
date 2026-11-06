@@ -66,7 +66,7 @@ export function MarketingSignedInToast({
     <output
       aria-live="polite"
       aria-atomic="true"
-      className="pointer-events-none fixed bottom-4 left-4 right-4 z-50 flex justify-end sm:left-auto sm:max-w-sm"
+      className="pointer-events-none fixed bottom-[calc(var(--lax-bottom-bar-space,0px)+1rem)] left-4 right-4 z-50 flex justify-end sm:left-auto sm:max-w-sm"
     >
       {open ? (
         <div
