@@ -6,6 +6,7 @@ import { NotificationsAndMarketingCategory } from "./categories/notifications-an
 import { OrdersCategory } from "./categories/orders.category.js";
 import { PaymentsCategory } from "./categories/payments.category.js";
 import { SavedWorksCategory } from "./categories/saved-works.category.js";
+import { SellingPayoutsCategory } from "./categories/selling-payouts.category.js";
 import { SellingCategory } from "./categories/selling.category.js";
 import { ShopProfileCategory } from "./categories/shop-profile.category.js";
 import type { SubjectExportDeps } from "./subject-export-deps.js";
@@ -21,6 +22,7 @@ export function createShopSubjectExportRegistry(deps: SubjectExportDeps): Subjec
     new EnquiriesCategory(deps),
     new SavedWorksCategory(deps),
     new SellingCategory(deps),
+    new SellingPayoutsCategory(deps),
     new NotificationsAndMarketingCategory(deps),
   ]);
 }
