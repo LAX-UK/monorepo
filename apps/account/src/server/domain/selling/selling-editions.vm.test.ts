@@ -94,7 +94,7 @@ describe("buildEditionsPage", () => {
     expect(line({ authorisedCount: 0, committedCount: 0, lastGrantAt: null })).toBe(
       "Not approved yet",
     );
-    expect(line({})).toBe("Last approved 1 Sept 2026");
+    expect(line({})).toBe("Last approved Tue 1 Sep 2026");
   });
 
   it("drops the approval line, rather than contradict the count, when approved but undated", () => {
