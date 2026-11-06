@@ -47,6 +47,13 @@ export const MARKETING_CATALOG_GUTTER = MARKETING_PAGE_GUTTER;
 /** Negative margin to bleed sticky list toolbars to the shell edge (pairs with MARKETING_CATALOG_GUTTER). */
 export const MARKETING_LIST_TOOLBAR_BLEED = "-mx-4 md:-mx-6 lg:-mx-10";
 
+/**
+ * Where the visible header ends. Sticky bars and banners that sit under the fixed header use this
+ * as their `top`, so they follow the header as its LAX top bar slides away. Content that must
+ * clear the whole header at the top of the page keeps `--header-height`.
+ */
+export const STICKY_UNDER_HEADER_TOP = "top-[var(--header-offset,var(--header-height,4rem))]";
+
 /** Top padding for catalogue hubs with sticky toolbars (aligns with site header). */
 export const MARKETING_CATALOG_PT = "pt-[var(--header-height)]";
 

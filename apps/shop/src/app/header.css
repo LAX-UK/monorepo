@@ -25,14 +25,6 @@
   }
 }
 
-/* From 1024px the 36px LAX top bar scrolls away with the page and the 72px row stays: the header
-   slides up by the scroll distance, up to the top bar's height (set by the header's scroll handler). */
-@media (min-width: 64rem) {
-  .shop-header {
-    transform: translateY(calc(-1 * var(--shop-top-bar-shift, 0px)));
-  }
-}
-
 /* The active and open nav item carries Shop's accent underline. */
 .site-header-mega-trigger[aria-current="page"],
 .site-header-mega-trigger[aria-expanded="true"] {

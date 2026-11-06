@@ -42,7 +42,7 @@ export function SalesCalendarMonthGrid({ items }: { items: readonly SaleAgendaIt
     <div className="flex flex-col gap-10">
       {months.map((month) => (
         <section key={month.key} aria-label={month.label}>
-          <h3 className="sticky top-[var(--header-height)] z-[1] -mx-2 mb-3 bg-page-bg/90 px-2 py-2 font-headline text-lg font-semibold text-on-surface backdrop-blur-sm dark:bg-background/90">
+          <h3 className="sticky top-[var(--header-offset,var(--header-height,4rem))] z-[1] -mx-2 mb-3 bg-page-bg/90 px-2 py-2 font-headline text-lg font-semibold text-on-surface backdrop-blur-sm dark:bg-background/90">
             {month.label}
           </h3>
           <ul className="flex flex-col divide-y divide-border-hairline border-y border-border-hairline">

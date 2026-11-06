@@ -1,6 +1,6 @@
 "use client";
 
-import { MARKETING_CATALOG_GUTTER } from "@auction/branding";
+import { MARKETING_CATALOG_GUTTER, STICKY_UNDER_HEADER_TOP } from "@auction/branding";
 import { cn } from "@auction/ui";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { MarketingToolbarRow } from "./marketing-toolbar-row.js";
@@ -41,7 +41,7 @@ export function MarketingListToolbar({
   stackTrailingOnMobile = false,
   secondaryRow,
   activeFiltersRow,
-  stickyTopClassName = "top-[var(--header-height,4rem)]",
+  stickyTopClassName = STICKY_UNDER_HEADER_TOP,
   gutter = true,
   className,
 }: MarketingListToolbarProps) {

@@ -26,7 +26,7 @@ export function TocNav({
       aria-label={ariaLabel}
       className={cn(
         "rounded-lg border border-outline-variant/40 bg-surface-container-low/80 p-4 backdrop-blur-sm",
-        sticky && "lg:sticky lg:top-[calc(var(--header-height,114px)+1rem)]",
+        sticky && "lg:sticky lg:top-[calc(var(--header-offset,var(--header-height,114px))+1rem)]",
         className,
       )}
     >

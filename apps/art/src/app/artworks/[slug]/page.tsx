@@ -83,7 +83,7 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
 
           <section
             aria-label="Artwork summary"
-            className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-[calc(var(--header-height)+2rem)] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start"
+            className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-[calc(var(--header-offset,var(--header-height,4rem))+2rem)] lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-start"
           >
             <div className="flex flex-col gap-2">
               <div className="flex items-start justify-between gap-4">

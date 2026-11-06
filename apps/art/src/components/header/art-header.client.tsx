@@ -39,9 +39,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const RECENT_SEARCHES_KEY = "lax-art:recent-searches";
 
-/** The thin LAX top bar is 36px; it scrolls away and the 72px row stays. */
-const TOP_BAR_HEIGHT_PX = 36;
-
 type ArtHeaderClientProps = {
   account: AccountChromeState;
   productLinks: LaxProductLinkVm[];
@@ -70,7 +67,7 @@ export function ArtHeaderClient({
   const [searchRequest, setSearchRequest] = useState(0);
   const heroPresent = useArtHeroPresent();
   const overHero = artRouteMayHaveHero(pathname) && heroPresent;
-  const { isTransparent, atTop, headerTone, headerRef, attachHeader } = useHeaderChrome({
+  const { isTransparent, atTop, headerTone, attachHeader } = useHeaderChrome({
     transparent: overHero,
     overlayOpen: menuOpen || megaOpen || searchOpen || fieldSearchOpen,
   });
@@ -86,19 +83,6 @@ export function ArtHeaderClient({
     window.addEventListener(ART_SEARCH_REQUEST_EVENT, onRequest);
     return () => window.removeEventListener(ART_SEARCH_REQUEST_EVENT, onRequest);
   }, []);
-
-  // The 36px top bar follows the page up and off; the main row stays fixed.
-  useEffect(() => {
-    const header = headerRef.current;
-    if (!header) return;
-    const onScroll = () => {
-      const shift = Math.min(Math.max(window.scrollY, 0), TOP_BAR_HEIGHT_PX);
-      header.style.setProperty("--art-top-bar-shift", `${shift}px`);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [headerRef]);
 
   const helpLinks = buildArtTopBarHelpLinks(
     account.kind === "authenticated"
@@ -127,11 +111,7 @@ export function ArtHeaderClient({
       data-chrome-variant={overHero ? "transparentUntilScroll" : "solid"}
       data-at-top={atTop ? "true" : "false"}
       data-header-tone={headerTone}
-      className={cn(
-        MARKETING_HEADER_CHROME,
-        headerChromeClassName(isTransparent, megaOpen),
-        "lg:-translate-y-[var(--art-top-bar-shift,0px)]",
-      )}
+      className={cn(MARKETING_HEADER_CHROME, headerChromeClassName(isTransparent, megaOpen))}
     >
       <div
         className={cn(
