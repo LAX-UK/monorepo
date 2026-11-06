@@ -166,10 +166,11 @@ function noteFor(
   row: PortfolioRow,
   blocker: AmountOwedBlocker | null,
   fulfilment: LotFulfilmentSnapshot | undefined,
+  facts: AccountPurchaseFacts | null = null,
 ): string | null {
   switch (state) {
     case "payment-due":
-      return `Pay by ${DAY_MONTH_LONG.format(dueDate(row))}`;
+      return `Pay by ${DAY_MONTH_LONG.format(dueDate(row, facts))}`;
     case "in-review":
       return blocker === "documents"
         ? "We need to confirm the source of funds before you pay"
@@ -368,8 +369,9 @@ export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): Purch
         ? "Awaiting payment"
         : PURCHASE_STATE_LABEL[state],
     statusNote: informed
-      ? (informedNoteFor(state, sources.payerName) ?? noteFor(state, row, blocker, fulfilment))
-      : noteFor(state, row, blocker, fulfilment),
+      ? (informedNoteFor(state, sources.payerName) ??
+        noteFor(state, row, blocker, fulfilment, facts ?? null))
+      : noteFor(state, row, blocker, fulfilment, facts ?? null),
     amountLabel: amountLabel(state),
     amount: totalMajor ? formatMoney(totalMajor, currency) : "—",
     payable,

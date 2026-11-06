@@ -39,6 +39,12 @@ export class SourceOfFundsService implements ISourceOfFundsService, ISourceOfFun
     return this.gate.requiresSourceOfFunds(...args);
   }
 
+  wouldRequireSourceOfFunds(
+    ...args: Parameters<SourceOfFundsGateService["wouldRequireSourceOfFunds"]>
+  ) {
+    return this.gate.wouldRequireSourceOfFunds(...args);
+  }
+
   hasPendingCaseForUser(...args: Parameters<SourceOfFundsGateService["hasPendingCaseForUser"]>) {
     return this.gate.hasPendingCaseForUser(...args);
   }

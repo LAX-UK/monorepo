@@ -49,6 +49,7 @@ export * from "./admin-saved-views.js";
 export * from "./push-subscriptions.js";
 export * from "./payments.js";
 export * from "./payment-group.js";
+export * from "./bid-invoice.js";
 export * from "./payment-checkout-session.js";
 export * from "./disputes.js";
 export * from "./watchlist.js";

@@ -6,6 +6,7 @@ export * from "./category.js";
 export * from "./artist.js";
 export * from "./creator-kind.js";
 export * from "./payment.js";
+export * from "./pay-plan.js";
 export * from "./notification.js";
 export * from "./bid.js";
 export * from "./buyer-premium.js";

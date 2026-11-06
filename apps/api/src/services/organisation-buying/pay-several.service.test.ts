@@ -12,6 +12,7 @@ import {
 } from "../../testing/in-memory-workspace-buying.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import { PaySeveralService } from "./pay-several.service.js";
+import { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
 
 const LIMITS: PaymentTierLimits = {
   minPence: 30,
@@ -55,16 +56,18 @@ function service(
     })),
   };
   const svc = new PaySeveralService({
-    reader: new InMemoryPurchaseFacts(),
-    flags: {
-      flagsFor: async (ids) =>
-        new Map(ids.flatMap((id) => (over.flags?.[id] ? [[id, over.flags[id]]] : []))),
-    },
+    candidates: new PurchaseCandidateReader({
+      reader: new InMemoryPurchaseFacts(),
+      flags: {
+        flagsFor: async (ids) =>
+          new Map(ids.flatMap((id) => (over.flags?.[id] ? [[id, over.flags[id]]] : []))),
+      },
+      now: () => NOW,
+    }),
     limits: over.limits ?? LIMITS,
     compliance,
     eligibility: { check: vi.fn(async () => over.eligibility ?? { kind: "payable" as const }) },
     checkout: { start },
-    now: () => NOW,
   });
   return { svc, start, compliance };
 }
@@ -284,8 +287,11 @@ describe("PaySeveralService source of funds, counted once", () => {
       ok({ paymentGroupId: "group-1", checkoutUrl: "https://pay.example/g1", rail: input.rail }),
     );
     const svc = new PaySeveralService({
-      reader: new InMemoryPurchaseFacts(),
-      flags: { flagsFor: async () => new Map() },
+      candidates: new PurchaseCandidateReader({
+        reader: new InMemoryPurchaseFacts(),
+        flags: { flagsFor: async () => new Map() },
+        now: () => NOW,
+      }),
       limits: LIMITS,
       compliance: {
         peek: vi.fn(async () => ({ hold: false, reason: null })),
@@ -293,7 +299,6 @@ describe("PaySeveralService source of funds, counted once", () => {
       },
       eligibility: { check: vi.fn(async () => ({ kind: "payable" as const })) },
       checkout: { start } as never,
-      now: () => NOW,
     });
     const result = await svc.pay(actor("finance"), [LOTS.due, LOTS.overdue]);
     expect(result.isOk()).toBe(true);

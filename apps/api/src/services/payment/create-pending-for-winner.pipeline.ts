@@ -1,6 +1,11 @@
 import type { PaymentEligibilityHold } from "@auction/domain";
+import type { PricedInvoice } from "@auction/finance-runtime";
 import type { LotFulfilmentAddressSnapshot } from "@auction/persistence/interfaces";
-import type { PaymentRecord } from "@auction/persistence/interfaces";
+import {
+  BidInvoiceTotalMismatchError,
+  type PaymentRecord,
+  type RaisedInvoice,
+} from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence, gbpPenceToMajorString } from "../../lib/decimal-money.js";
@@ -11,12 +16,11 @@ import { notificationRowToPayload } from "../notification-payload.js";
 import { resolveCheckoutAddressSnapshot } from "./checkout-address.js";
 import { resolveCheckoutForPendingOrPromoteCompliance } from "./checkout-orchestrator.js";
 import { isOpenPaymentUniqueViolation } from "./is-open-payment-unique-violation.js";
-import { formatPaymentDueDateFromCreated } from "./payment-due-date.js";
+import { formatPaymentDueDate } from "./payment-due-date.js";
 import { PAYMENT_ELIGIBILITY_REFUSAL } from "./payment-eligibility.gate.js";
 import type { CreatePendingPaymentResult, PaymentServiceDeps } from "./payment-service-types.js";
 import type { CheckoutRailKind, ManualReviewReason } from "./payment-tier.policy.js";
 import { resolveNewPaymentReviewDecision } from "./resolve-manual-review-reason.js";
-import { computeTotalDuePence } from "./total-due.js";
 
 type ExistingPaymentHandlerContext = {
   deps: PaymentServiceDeps;
@@ -128,13 +132,13 @@ async function handleExistingOpenPayment(
       ),
     );
   }
+  // A payment with no stored invoice is refused there with a 503, before any session is opened.
   const checkout = await resolveCheckoutForPendingOrPromoteCompliance(
     deps.checkoutOrchestratorDeps,
     existing.id,
     lot,
     buyerId,
     existing.amount,
-    existing.createdAt,
   );
   if (checkout.isErr()) return err(checkout.error);
   return ok({
@@ -254,6 +258,7 @@ export async function computeNewPaymentTerms(
     {
       amount: string;
       amountPence: number;
+      priced: PricedInvoice;
       platformFee: string;
       requiresManualReview: boolean;
       manualReviewReason: ManualReviewReason | null;
@@ -273,9 +278,9 @@ export async function computeNewPaymentTerms(
   }
   const sellerLegalEntityId = lot.sellerLegalEntityId;
 
-  let amountPence: number;
+  let priced: PricedInvoice;
   try {
-    amountPence = await computeTotalDuePence(deps.sales, lot);
+    priced = await deps.invoiceRaiser.price(lot);
   } catch {
     // The sale's premium could not be read: say so and let the buyer try again, rather than
     // freezing a total priced on the wrong rate.
@@ -287,6 +292,7 @@ export async function computeNewPaymentTerms(
       ),
     );
   }
+  const amountPence = priced.totalPence;
   const amount = gbpPenceToMajorString(amountPence);
   const platformFee = deps.platformFeePolicy
     ? await deps.platformFeePolicy.computePlatformFeeFromPence(sellerLegalEntityId, amountPence)
@@ -323,7 +329,14 @@ export async function computeNewPaymentTerms(
     recordMoneyPathEvent(`settlement_compliance_hold_${manualReviewReason}`);
   }
 
-  return ok({ amount, amountPence, platformFee, requiresManualReview, manualReviewReason });
+  return ok({
+    amount,
+    amountPence,
+    priced,
+    platformFee,
+    requiresManualReview,
+    manualReviewReason,
+  });
 }
 
 export async function createPaymentRecordForWinner(
@@ -332,25 +345,30 @@ export async function createPaymentRecordForWinner(
   buyerId: string,
   terms: {
     amount: string;
+    priced: PricedInvoice;
     platformFee: string;
     requiresManualReview: boolean;
     manualReviewReason: ManualReviewReason | null;
   },
-): Promise<PaymentRecord> {
+): Promise<RaisedInvoice> {
   if (!lot.buyerLegalEntityId || !lot.sellerLegalEntityId) {
     throw new LotError("Winning legal entity is missing for this lot", 400);
   }
 
-  const created = await deps.payments.create({
-    lotId: lot.id,
-    paidByUserId: buyerId,
-    buyerLegalEntityId: lot.buyerLegalEntityId,
-    sellerLegalEntityId: lot.sellerLegalEntityId,
-    amount: terms.amount,
-    platformFee: terms.platformFee,
-    stripePaymentIntentId: null,
-    status: terms.requiresManualReview ? "requires_manual_review" : "pending",
+  const raised = await deps.invoiceRaiser.raise({
+    lot,
+    priced: terms.priced,
+    payment: {
+      lotId: lot.id,
+      paidByUserId: buyerId,
+      buyerLegalEntityId: lot.buyerLegalEntityId,
+      sellerLegalEntityId: lot.sellerLegalEntityId,
+      platformFee: terms.platformFee,
+      stripePaymentIntentId: null,
+      status: terms.requiresManualReview ? "requires_manual_review" : "pending",
+    },
   });
+  const created = raised.payment;
 
   if (terms.requiresManualReview && deps.domainEventSink && terms.manualReviewReason) {
     await deps.domainEventSink.publish({
@@ -372,7 +390,7 @@ export async function createPaymentRecordForWinner(
     });
   }
 
-  return created;
+  return raised;
 }
 
 /**
@@ -388,7 +406,7 @@ export async function createOrJoinPaymentRecord(
   terms: Parameters<typeof createPaymentRecordForWinner>[3],
   held: PaymentEligibilityHold | null = null,
 ): Promise<
-  | { kind: "created"; payment: PaymentRecord }
+  | { kind: "created"; raised: RaisedInvoice }
   | {
       kind: "joined";
       result: Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError>;
@@ -397,9 +415,23 @@ export async function createOrJoinPaymentRecord(
   try {
     return {
       kind: "created",
-      payment: await createPaymentRecordForWinner(deps, lot, buyerId, terms),
+      raised: await createPaymentRecordForWinner(deps, lot, buyerId, terms),
     };
   } catch (e) {
+    if (e instanceof BidInvoiceTotalMismatchError) {
+      // The lot's invoice was raised at another total in the meantime; it is never changed.
+      recordMoneyPathEvent("invoice_total_mismatch");
+      return {
+        kind: "joined",
+        result: err(
+          new LotError(
+            "This invoice changed while you were paying. Refresh and try again.",
+            409,
+            "invoice_total_changed",
+          ),
+        ),
+      };
+    }
     if (!isOpenPaymentUniqueViolation(e)) throw e;
     recordMoneyPathEvent("payment_create_race_joined");
     const joined = await handleExistingPaymentForWinner(deps, lot, buyerId, addressSnapshot, held);
@@ -414,7 +446,6 @@ export async function resolveCheckoutForNewPayment(
   lot: Lot,
   buyerId: string,
   amount: string,
-  raisedAt: Date,
 ): Promise<
   Result<
     {
@@ -431,7 +462,6 @@ export async function resolveCheckoutForNewPayment(
     lot,
     buyerId,
     amount,
-    raisedAt,
   );
   if (checkout.isErr()) return err(checkout.error);
   return ok({
@@ -445,15 +475,16 @@ export async function finalizePendingPaymentForWinner(
   deps: PaymentServiceDeps,
   lot: Lot,
   buyerId: string,
-  created: PaymentRecord,
+  raised: RaisedInvoice,
   addressSnapshot: LotFulfilmentAddressSnapshot,
   checkoutUrl: string | null,
   requiresManualReview: boolean,
 ): Promise<void> {
+  const created = raised.payment;
   await deps.lotFulfilmentHooks?.ensureAwaitingPayment(lot.id, created.id, addressSnapshot);
 
   if (deps.notificationDispatcher && !requiresManualReview) {
-    const dueDate = formatPaymentDueDateFromCreated(created.createdAt);
+    const dueDate = formatPaymentDueDate(raised.invoice.dueAt);
     // The winner and the account's payers, as when the invoice is raised at lot end.
     const recipients = await deps.invoiceRecipients.forInvoice({
       buyerLegalEntityId: lot.buyerLegalEntityId ?? null,
@@ -515,18 +546,19 @@ export async function createPendingForWinner(
 
   const termsResult = await computeNewPaymentTerms(deps, lot, buyerId);
   if (termsResult.isErr()) return err(termsResult.error);
-  const { amount, platformFee, requiresManualReview, manualReviewReason } = termsResult.value;
+  const { amount, priced, platformFee, requiresManualReview, manualReviewReason } =
+    termsResult.value;
 
   const record = await createOrJoinPaymentRecord(
     deps,
     lot,
     buyerId,
     addressSnapshot,
-    { amount, platformFee, requiresManualReview, manualReviewReason },
+    { amount, priced, platformFee, requiresManualReview, manualReviewReason },
     held,
   );
   if (record.kind === "joined") return record.result;
-  const created = record.payment;
+  const created = record.raised.payment;
 
   let checkoutUrl: string | null = null;
   let checkoutRail: CheckoutRailKind | null = null;
@@ -537,7 +569,6 @@ export async function createPendingForWinner(
       lot,
       buyerId,
       created.amount,
-      created.createdAt,
     );
     if (checkoutResult.isErr()) return err(checkoutResult.error);
     if (checkoutResult.value.manualReviewReason) {
@@ -556,7 +587,7 @@ export async function createPendingForWinner(
     deps,
     lot,
     buyerId,
-    created,
+    record.raised,
     addressSnapshot,
     checkoutUrl,
     requiresManualReview,

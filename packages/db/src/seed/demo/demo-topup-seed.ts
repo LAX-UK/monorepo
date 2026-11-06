@@ -19,6 +19,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import * as schema from "../../schema/index.js";
+import { insertSeedInvoices, penceToPounds, priceHammer } from "../shared/seed-invoice.js";
 import {
   BUYER_PREMIUM_RATE,
   type DemoActors,
@@ -43,9 +44,10 @@ const money = (pounds: number) => pounds.toFixed(2);
 
 /**
  * What the buyer pays for a hammer price, and LAX's commission on it. A payout's header and line
- * use the same two figures as the payment, so a payout's totals equal its lines added up.
+ * use the same two figures as the payment, so a payout's totals equal its lines added up. The
+ * amount paid is the invoice's total, worked out by the application's calculator.
  */
-const paidFor = (hammer: number) => hammer * (1 + BUYER_PREMIUM_RATE);
+const paidFor = (hammer: number) => priceHammer(hammer, BUYER_PREMIUM_RATE).totalPence / 100;
 const commissionOn = (hammer: number) => paidFor(hammer) * SELLER_COMMISSION_RATE;
 
 export type DemoTopUpResult = {
@@ -467,6 +469,33 @@ export async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Bas
   }
 
   if (catalogue.payments.length > 0) {
+    // Each payment is settled against a stored invoice with its lines; the invoices go first.
+    await insertSeedInvoices(
+      db,
+      catalogue.payments.map((p) => ({
+        lotId: p.lotId,
+        buyerLegalEntityId: p.buyerEntityId,
+        sellerLegalEntityId: p.sellerEntityId,
+        invoice: p.invoice,
+      })),
+    );
+    if (catalogue.paymentGroups.length > 0) {
+      await db
+        .insert(schema.paymentGroup)
+        .values(
+          catalogue.paymentGroups.map((g) => ({
+            id: g.id,
+            buyerLegalEntityId: g.buyerEntityId,
+            createdByUserId: g.createdByUserId,
+            status: "processing",
+            totalAmount: penceToPounds(g.totalPence),
+            checkoutRail: "gb_bank_transfer",
+            createdAt: g.createdAt,
+            updatedAt: g.createdAt,
+          })),
+        )
+        .onConflictDoNothing();
+    }
     await db
       .insert(schema.payment)
       .values(
@@ -476,10 +505,12 @@ export async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Bas
           buyerId: p.buyerUserId,
           buyerLegalEntityId: p.buyerEntityId,
           sellerLegalEntityId: p.sellerEntityId,
-          amount: money(paidFor(p.hammer)),
+          amount: penceToPounds(p.invoice.totalPence),
           platformFee: money(commissionOn(p.hammer)),
           stripePaymentIntentId: p.status === "captured" ? `pi_demo_${p.id.slice(-6)}` : null,
           status: p.status,
+          paymentGroupId: p.paymentGroupId,
+          invoiceId: p.invoice.id,
           createdAt: p.createdAt,
         })),
       )

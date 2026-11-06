@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import { bid, buyerDefault, lot, lotFulfilment, payment } from "@auction/db/schema";
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { bid, bidInvoice, buyerDefault, lot, lotFulfilment, payment } from "@auction/db/schema";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   BuyerDefaultConflictError,
   type BuyerDefaultLotFacts,
@@ -49,8 +49,10 @@ export class DrizzleBuyerDefaultReader implements IBuyerDefaultReader {
               status: payment.status,
               amount: payment.amount,
               raisedAt: payment.createdAt,
+              dueAt: bidInvoice.dueAt,
             })
             .from(payment)
+            .leftJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
             .where(
               and(eq(payment.lotId, lotId), eq(payment.buyerLegalEntityId, row.buyerLegalEntityId)),
             )
@@ -94,7 +96,13 @@ export class DrizzleBuyerDefaultReader implements IBuyerDefaultReader {
         wonAt: row.wonAt,
       },
       payment: p
-        ? { id: p.id, status: p.status, amount: String(p.amount), raisedAt: p.raisedAt }
+        ? {
+            id: p.id,
+            status: p.status,
+            amount: String(p.amount),
+            raisedAt: p.raisedAt,
+            dueAt: p.dueAt,
+          }
         : null,
       fulfilmentStatus: fulfilment[0]?.status ?? null,
       hasOpenDispute: counts.openDisputeCount > 0,
@@ -130,6 +138,18 @@ export class DrizzleBuyerDefaultRepository implements IBuyerDefaultRepository {
         .returning({ id: payment.id });
       if (voided.length === 0) throw new BuyerDefaultConflictError();
     }
+
+    // The invoice is voided with its payment, so the lot can be invoiced afresh if it is won again.
+    await tx
+      .update(bidInvoice)
+      .set({ voidedAt: new Date() })
+      .where(
+        and(
+          eq(bidInvoice.lotId, input.lotId),
+          eq(bidInvoice.buyerLegalEntityId, input.buyerLegalEntityId),
+          isNull(bidInvoice.voidedAt),
+        ),
+      );
 
     // The sale is cancelled: the buyer's purchase reads it as cancelled, never as owed.
     await tx

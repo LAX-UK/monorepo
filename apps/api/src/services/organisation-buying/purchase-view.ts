@@ -43,6 +43,7 @@ const STATUS: Record<OrganisationBuyingErrorCode, OrganisationBuyingError["statu
   pay_several_needs_finance_review: 409,
   pay_several_conflict: 409,
   pay_several_unavailable: 503,
+  pay_plan_unavailable: 503,
 };
 
 const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
@@ -73,6 +74,8 @@ const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
     "Some of these invoices started being paid in the meantime. Refresh and try again.",
   pay_several_unavailable:
     "Paying online isn't available just now. Nothing was charged. Try again shortly.",
+  pay_plan_unavailable:
+    "We couldn't check your payment just now. Nothing was charged. Try again shortly.",
 };
 
 /** The one place buying errors get their status and wording. */
@@ -105,7 +108,13 @@ function invoiceOf(row: AccountPurchaseFactsRow, now: Date) {
   const state = purchaseInvoiceState(
     {
       saleCancelled: row.fulfilment?.status === "cancelled",
-      payment: row.payment ? { status: row.payment.status, raisedAt: row.payment.raisedAt } : null,
+      payment: row.payment
+        ? {
+            status: row.payment.status,
+            raisedAt: row.payment.raisedAt,
+            dueAt: row.payment.dueAt,
+          }
+        : null,
     },
     now,
   );

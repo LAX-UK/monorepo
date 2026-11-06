@@ -21,6 +21,8 @@ export interface IStalePaymentStore {
     stripePaymentIntentId: string | null;
     paymentGroupId: string | null;
     buyerLegalEntityId: string | null;
+    /** The due date stored on the invoice; `null` for a payment with no stored invoice. */
+    dueAt: Date | null;
   } | null>;
   checkoutSessionIds(paymentId: string): Promise<string[]>;
   /** The database's clock: when a Stripe check starts, compared with session timestamps. */
@@ -114,6 +116,9 @@ export async function expireStalePayments(
       if (!current || (current.status !== "pending" && current.status !== "authorized")) continue;
       // A payment in a "Pay several" group is released with its group, never on its own.
       if (current.paymentGroupId) continue;
+      // The due date is stored on the invoice and can move later (a released hold), so an invoice
+      // is never expired while it is still inside its term.
+      if (current.dueAt && current.dueAt.getTime() > now) continue;
 
       const checkStartedAt = await deps.payments.databaseNow();
       const state = await deps.provider.closeAndRead({

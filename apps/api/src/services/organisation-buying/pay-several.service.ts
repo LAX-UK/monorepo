@@ -1,14 +1,9 @@
 import {
-  type PaySeveralCandidate,
   type PaymentTierLimits,
   accountPurchaseScope,
   payTogether,
   planPaySeveral,
 } from "@auction/domain";
-import type {
-  IAccountPurchaseFactsReader,
-  IPaySeveralInvoiceFlagsReader,
-} from "@auction/persistence/interfaces";
 import { err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import {
@@ -28,16 +23,8 @@ import type {
   PaymentGroupCheckoutService,
 } from "../payment-group/payment-group-checkout.service.js";
 import type { IPaymentEligibilityGate } from "../payment/payment-eligibility.gate.js";
-import {
-  buyingError,
-  entityActorOf,
-  memberIsPayer,
-  paySeveralCandidate,
-  purchaseView,
-} from "./purchase-view.js";
-
-/** Every invoice is raised in pounds sterling. */
-const INVOICE_CURRENCY = "GBP";
+import type { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
+import { buyingError, entityActorOf, memberIsPayer } from "./purchase-view.js";
 
 const CHECKOUT_ERRORS: Record<GroupCheckoutError, OrganisationBuyingErrorCode> = {
   conflict: "pay_several_conflict",
@@ -45,14 +32,13 @@ const CHECKOUT_ERRORS: Record<GroupCheckoutError, OrganisationBuyingErrorCode> =
 };
 
 export type PaySeveralDeps = {
-  reader: IAccountPurchaseFactsReader;
-  flags: IPaySeveralInvoiceFlagsReader;
+  /** The same reading of the picked lots as the pay plan, so the two never disagree. */
+  candidates: Pick<PurchaseCandidateReader, "read">;
   limits: PaymentTierLimits;
   compliance: Pick<ISettlementCompliancePolicy, "peek" | "evaluate"> | null;
   /** The same account checks as paying one invoice: closed organisations, unverified buyers. */
   eligibility: IPaymentEligibilityGate;
   checkout: Pick<PaymentGroupCheckoutService, "start">;
-  now: () => Date;
 };
 
 /**
@@ -62,6 +48,10 @@ export type PaySeveralDeps = {
  */
 export class PaySeveralService implements IPaySeveralService {
   constructor(private readonly deps: PaySeveralDeps) {}
+
+  private candidates(actor: OrganisationMemberActor, ownOnly: boolean, lotIds: readonly string[]) {
+    return this.deps.candidates.read(actor, ownOnly, lotIds);
+  }
 
   async plan(
     actor: OrganisationMemberActor,
@@ -154,54 +144,5 @@ export class PaySeveralService implements IPaySeveralService {
       payable: plan.payable.map((p) => ({ lotId: p.lotId, amount: p.totalDue })),
       skipped: plan.skipped,
     });
-  }
-
-  private async candidates(
-    actor: OrganisationMemberActor,
-    ownOnly: boolean,
-    lotIds: readonly string[],
-  ): Promise<{ picks: PaySeveralCandidate[]; winners: Map<string, string | null> }> {
-    const rows = lotIds.length
-      ? await this.deps.reader.list({
-          legalEntityId: actor.legalEntityId,
-          memberUserId: ownOnly ? actor.userId : null,
-          lotIds,
-          limit: lotIds.length,
-          offset: 0,
-        })
-      : [];
-    const now = this.deps.now();
-    const views = rows.map((row) => purchaseView(row, actor, now));
-    const winners = new Map(rows.map((row) => [row.lotId, row.wonBy?.userId ?? null]));
-    const paymentIds = views.flatMap((v) => (v.invoice.paymentId ? [v.invoice.paymentId] : []));
-    const flags = await this.deps.flags.flagsFor(paymentIds);
-    const byLot = new Map(
-      views.map((view) => {
-        const flag = view.invoice.paymentId ? flags.get(view.invoice.paymentId) : undefined;
-        return [
-          view.lotId,
-          paySeveralCandidate(view, actor.legalEntityId, INVOICE_CURRENCY, {
-            heldForReview: flag?.heldForReview ?? false,
-            inPaymentInProgress: flag?.inPaymentInProgress ?? false,
-          }),
-        ];
-      }),
-    );
-    // A pick outside what the member follows in this account is treated as another account's.
-    const picks = lotIds.map<PaySeveralCandidate>(
-      (lotId) =>
-        byLot.get(lotId) ?? {
-          lotId,
-          paymentId: null,
-          buyerAccountId: "",
-          invoice: "not_invoiced",
-          payerMayPay: false,
-          totalDue: null,
-          currency: INVOICE_CURRENCY,
-          heldForReview: false,
-          inPaymentInProgress: false,
-        },
-    );
-    return { picks, winners };
   }
 }

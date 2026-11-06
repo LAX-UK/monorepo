@@ -3,6 +3,7 @@ import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import {
   adminReviewTask,
   bidIdentityDirectory,
+  bidInvoice,
   conditionReportRequest,
   domainEvent,
   itemSubmission,
@@ -21,7 +22,7 @@ import {
 import {
   UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
   UNSOLD_LOT_END_STATUSES,
-  invoiceDueAt,
+  storedDueAt,
 } from "@auction/domain";
 import { INVOICE_PAYMENT_DUE_DAYS, type UnsoldLotChoiceKind } from "@auction/types";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
@@ -229,27 +230,46 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         saleId: lot.saleId,
         amount: payment.amount,
         raisedAt: payment.createdAt,
+        dueAt: bidInvoice.dueAt,
         winnerEmail: bidIdentityDirectory.email,
       })
       .from(payment)
+      .leftJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
       .innerJoin(lot, eq(payment.lotId, lot.id))
       .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, lot.id))
       .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
       .where(
         and(
+          isNull(bidInvoice.voidedAt),
           inArray(payment.status, ["pending", "cancelled"]),
           eq(lot.status, "ended"),
           eq(lot.winnerId, payment.buyerId),
           isNull(lot.deletedAt),
           or(isNull(lotFulfilment.status), ne(lotFulfilment.status, "cancelled")),
-          sql`((${payment.createdAt} at time zone 'Europe/London') + make_interval(days => ${INVOICE_PAYMENT_DUE_DAYS}))::date < (${now.toISOString()}::timestamptz at time zone 'Europe/London')::date`,
+          // An invoice is overdue by its stored due date. A payment with no stored invoice is
+          // never dropped: it is a candidate once it is old enough that its term could have
+          // ended, and the domain rule below decides.
+          or(
+            lt(bidInvoice.dueAt, now),
+            and(
+              isNull(bidInvoice.id),
+              lt(
+                payment.createdAt,
+                new Date(now.getTime() - INVOICE_PAYMENT_DUE_DAYS * 86_400_000),
+              ),
+            ),
+          ),
         ),
       )
       .orderBy(payment.createdAt)
       .limit(limit);
 
-    return rows.map((row) => {
-      const dueAt = invoiceDueAt(row.raisedAt);
+    const overdue = rows.flatMap((row) => {
+      const dueAt = storedDueAt({ raisedAt: row.raisedAt, dueAt: row.dueAt });
+      return dueAt.getTime() < now.getTime() ? [{ ...row, dueAt }] : [];
+    });
+    return overdue.map((row) => {
+      const dueAt = row.dueAt;
       return {
         sourceId: row.lotId,
         kind: "payment_overdue" as const,

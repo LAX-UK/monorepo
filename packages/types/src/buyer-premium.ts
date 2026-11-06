@@ -36,6 +36,8 @@ export interface BuyerPremiumPolicy {
    * Useful where call sites already pass decimal strings (legacy paths).
    */
   computePremiumMajor(hammerMajor: string): string;
+  /** The rate (a decimal fraction such as "0.2500") that applies to a hammer of `hammerMinor`. */
+  rateFor(hammerMinor: number): string;
   /**
    * Stable identifier for logs / event payloads / audit trails.
    * Format: `flat:0.1500` | `tiered:[{50000000,0.10},{0,0.15}]`.

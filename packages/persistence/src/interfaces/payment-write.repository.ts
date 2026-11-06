@@ -10,6 +10,8 @@ export type CreatePaymentRow = {
   stripePaymentIntentId: string | null;
   stripeChargeId?: string | null;
   status?: PaymentRecord["status"];
+  /** The invoice this payment settles. */
+  invoiceId?: string | null;
 };
 
 export type PaymentRecord = {
@@ -35,6 +37,10 @@ export type PaymentRecord = {
   createdAt: Date;
   /** The "Pay several" payment this invoice is settled through, if any. */
   paymentGroupId?: string | null;
+  /** The invoice this payment settles; a retried payment row points at the same invoice. */
+  invoiceId?: string | null;
+  /** The due date stored on that invoice; set by `findById` only. */
+  invoiceDueAt?: Date | null;
   /** Populated for admin listing when a Xero invoice row exists. */
   xeroInvoiceNumber?: string | null;
   xeroOnlineInvoiceUrl?: string | null;

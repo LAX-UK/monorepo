@@ -601,6 +601,15 @@ export type {
   NewLaxAdminRoleRemoval,
 } from "./lax-admin-roles.repository.js";
 
+export { BidInvoiceTotalMismatchError } from "./bid-invoice.repository.js";
+export type {
+  BidInvoiceRecord,
+  IBidInvoiceDueDateRepository,
+  IBidInvoiceRaiseRepository,
+  IBidInvoiceReader,
+  NewBidInvoice,
+  RaisedInvoice,
+} from "./bid-invoice.repository.js";
 export type {
   AdminPaymentTableRowDto,
   AdminPaymentsDailyAmounts,

@@ -25,6 +25,7 @@ export const DEMO_IDS = {
   member: (n: number) => id("de900000", n),
   authorisation: (n: number) => id("dea00000", n),
   fulfilment: (n: number) => id("deb00000", n),
+  paymentGroup: (n: number) => id("def00000", n),
   user: (n: number) => id("9de00000", n),
 } as const;
 
@@ -91,6 +92,8 @@ export const DEMO_PEOPLE = {
   rivalBidder: client(4, "rivalBidder", "bidder@lax.bid", "Thomas", "Avery"),
   /** Won a lot but has not verified their identity, so their invoice is held. */
   heldBuyer: client(5, "heldBuyer", "held-buyer@lax.bid", "Priya", "Nair"),
+  /** Identity verified and source of funds approved, with invoices to pay. */
+  payBuyer: client(6, "payBuyer", "pay-buyer@lax.bid", "Marcus", "Ellery"),
   // Bid staff: one sign-in per role. The emails match the local demo seed where it has the role.
   salesManager: staff(
     20,

@@ -1,7 +1,10 @@
+import { invoiceDueAt } from "@auction/domain";
 import { describe, expect, it } from "vitest";
 import { assertDemoFullTarget } from "../runners/demo-full-cli.js";
 import { buildFullCatalogue } from "./demo-full-catalogue.js";
+import { approvedExposurePounds } from "./demo-full-seed.js";
 import { DEPARTMENTS, WORKS } from "./demo-full-works.js";
+import { BUYER_PREMIUM_RATE } from "./demo-topup-catalogue.js";
 
 const actors = {
   collectorUserId: "collector",
@@ -12,6 +15,8 @@ const actors = {
   northbankId: "northbank",
   heldUserId: "held",
   heldEntityId: "held-entity",
+  payerUserId: "payer",
+  payerEntityId: "payer-entity",
   laxStockId: "lax",
 };
 const DAY = 86_400_000;
@@ -101,6 +106,70 @@ describe.each(CLOCKS)("full demo catalogue at %d", (now) => {
     expect(catalogue.payments.every((p) => catalogue.lots.some((l) => l.id === p.lotId))).toBe(
       true,
     );
+  });
+
+  describe("invoices", () => {
+    const owed = (userId: string) =>
+      catalogue.payments.filter((p) => p.buyerUserId === userId && p.status !== "captured");
+    const pence = (p: (typeof catalogue.payments)[number]) => p.invoice.totalPence;
+
+    it("stores lines for every invoice that add up to its total, due date and the payment", () => {
+      expect(catalogue.payments.length).toBeGreaterThan(0);
+      for (const p of catalogue.payments) {
+        const sum = p.invoice.lines.reduce((total, line) => total + line.amountPence, 0);
+        expect(sum).toBe(p.invoice.totalPence);
+        expect(p.invoice.lines.map((l) => l.kind)).toEqual(["hammer", "buyers_premium"]);
+        expect(p.invoice.lines[0]?.amountPence).toBe(Math.round(p.hammer * 100));
+        expect(p.invoice.totalPence).toBe(Math.round(p.hammer * 100 * (1 + BUYER_PREMIUM_RATE)));
+        expect(p.invoice.source).toBe("raised");
+        expect(p.invoice.raisedAt.getTime()).toBe(p.createdAt.getTime());
+        expect(p.invoice.dueAt.getTime()).toBe(invoiceDueAt(p.createdAt).getTime());
+      }
+      expect(new Set(catalogue.payments.map((p) => p.invoice.id)).size).toBe(
+        catalogue.payments.length,
+      );
+    });
+
+    it("gives the payer one invoice that is clear to pay and an approved source of funds that covers them", () => {
+      const open = owed("payer").filter((p) => p.paymentGroupId === null);
+      const single = open.find((p) => p.hammer === 1_500);
+      expect(single?.status).toBe("pending");
+      expect(single?.invoice.dueAt.getTime()).toBeGreaterThan(now);
+      const total = open.reduce((sum, p) => sum + pence(p), 0);
+      expect(approvedExposurePounds(catalogue.payments, "payer") * 100).toBeGreaterThanOrEqual(
+        total,
+      );
+    });
+
+    it("gives the payer three more due invoices over the card limit together", () => {
+      const three = owed("payer").filter((p) => p.hammer !== 1_500);
+      expect(three).toHaveLength(3);
+      expect(three.reduce((sum, p) => sum + pence(p), 0)).toBeGreaterThan(1_000_000);
+      for (const p of three) {
+        expect(pence(p)).toBeLessThanOrEqual(1_000_000);
+        expect(p.invoice.dueAt.getTime()).toBeGreaterThan(now);
+      }
+    });
+
+    it("has one bank transfer on its way for two authorised invoices of one account", () => {
+      const members = catalogue.payments.filter((p) => p.paymentGroupId !== null);
+      expect(members).toHaveLength(2);
+      expect(members.every((p) => p.status === "authorized")).toBe(true);
+      expect(new Set(members.map((p) => p.buyerEntityId)).size).toBe(1);
+      const [group] = catalogue.paymentGroups;
+      expect(catalogue.paymentGroups).toHaveLength(1);
+      expect(group?.id).toBe(members[0]?.paymentGroupId);
+      expect(group?.buyerEntityId).toBe(members[0]?.buyerEntityId);
+      expect(group?.totalPence).toBe(members.reduce((sum, p) => sum + pence(p), 0));
+      expect(group?.totalPence).toBeGreaterThan(1_000_000);
+    });
+
+    it("has a due organisation invoice for the account whose buyer agent won it", () => {
+      const org = owed("buyer").filter((p) => p.buyerEntityId === "northbank");
+      expect(org).toHaveLength(1);
+      expect(org[0]?.status).toBe("pending");
+      expect(org[0]?.invoice.dueAt.getTime()).toBeGreaterThan(now);
+    });
   });
 
   it("numbers lots uniquely and uses fixed ids", () => {

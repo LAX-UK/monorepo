@@ -20,6 +20,7 @@ export * from "./bid-anti-sniping-policy.js";
 export * from "./auto-bid.js";
 export * from "./buyer-premium.js";
 export * from "./lot-checkout-pricing.js";
+export * from "./invoice-lines.js";
 export * from "./category.js";
 export * from "./category-interests.js";
 export * from "./boolean-flag.js";

@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import {
   bidIdentityDirectory,
+  bidInvoice,
   buyerDefault,
   deliveryQuote,
   legalEntity,
@@ -127,12 +128,14 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
         paymentId: payment.id,
         amount: payment.amount,
         raisedAt: payment.createdAt,
+        dueAt: bidInvoice.dueAt,
       })
       .from(buyerDefault)
       .innerJoin(lot, eq(lot.id, buyerDefault.lotId))
       .innerJoin(legalEntity, eq(legalEntity.id, buyerDefault.buyerLegalEntityId))
       .leftJoin(sale, eq(sale.id, lot.saleId))
       .leftJoin(payment, eq(payment.id, buyerDefault.paymentId))
+      .leftJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
       .leftJoin(bidIdentityDirectory, eq(bidIdentityDirectory.subjectId, buyerDefault.buyerId))
       .where(
         and(
@@ -164,6 +167,7 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
               status: "cancelled" as const,
               amount: String(r.amount),
               raisedAt: r.raisedAt as Date,
+              dueAt: r.dueAt,
             }
           : null,
         fulfilment: {
@@ -221,8 +225,10 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
           status: payment.status,
           amount: payment.amount,
           raisedAt: payment.createdAt,
+          dueAt: bidInvoice.dueAt,
         })
         .from(payment)
+        .leftJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
         .where(
           and(inArray(payment.lotId, lotIds), eq(payment.buyerLegalEntityId, scope.legalEntityId)),
         )
@@ -267,7 +273,9 @@ export class DrizzleAccountPurchaseFactsReader implements IAccountPurchaseFactsR
         hammerPrice: l.hammerPrice,
         wonBy: l.winnerId ? { userId: l.winnerId, name: l.winnerName ?? null } : null,
         wonAt: l.wonAt,
-        payment: p ? { id: p.id, status: p.status, amount: p.amount, raisedAt: p.raisedAt } : null,
+        payment: p
+          ? { id: p.id, status: p.status, amount: p.amount, raisedAt: p.raisedAt, dueAt: p.dueAt }
+          : null,
         fulfilment: f
           ? {
               status: f.status,

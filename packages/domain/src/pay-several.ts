@@ -1,8 +1,9 @@
 import { addMoneyStrings } from "./money-compare.js";
+import { PAY_PLAN_MAX_LOTS, pickRefusal } from "./pay-plan.js";
 import { type PurchaseInvoiceStatus, invoiceIsOwed } from "./purchase-invoice-state.js";
 
 /** The most invoices one "Pay several" covers; larger batches are split by the person paying. */
-export const PAY_SEVERAL_MAX_INVOICES = 20;
+export const PAY_SEVERAL_MAX_INVOICES = PAY_PLAN_MAX_LOTS;
 
 /** One purchase the payer picked, with what the rule needs to know about it. */
 export type PaySeveralCandidate = {
@@ -92,13 +93,8 @@ export function planPaySeveral(
   accountId: string,
   picks: readonly PaySeveralCandidate[],
 ): PaySeveralDecision {
-  if (picks.length === 0) return { allowed: false, reason: "pay_several_empty" };
-  if (picks.length > PAY_SEVERAL_MAX_INVOICES) {
-    return { allowed: false, reason: "pay_several_too_many" };
-  }
-  if (new Set(picks.map((p) => p.lotId)).size !== picks.length) {
-    return { allowed: false, reason: "pay_several_duplicate" };
-  }
+  const refusal = pickRefusal(picks.map((p) => p.lotId));
+  if (refusal) return { allowed: false, reason: refusal };
   const payable: PayableInvoice[] = [];
   const skipped: PaySeveralPlan["skipped"] = [];
   for (const pick of picks) {

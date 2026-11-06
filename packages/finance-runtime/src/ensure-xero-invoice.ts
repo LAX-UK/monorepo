@@ -9,7 +9,6 @@ export async function ensureXeroInvoiceForPayment(
   lot: Lot,
   buyerId: string,
   amount: string,
-  raisedAt: Date,
 ): Promise<{ ok: boolean; error?: string }> {
   if (!accounting.isConfigured()) return { ok: true };
   const buyer = await users.findById(buyerId);
@@ -22,7 +21,6 @@ export async function ensureXeroInvoiceForPayment(
     buyerEmail: buyer.email,
     buyerName: buyer.name,
     amount,
-    raisedAt,
     buyerLegalEntityId: lot.buyerLegalEntityId ?? undefined,
   });
 }

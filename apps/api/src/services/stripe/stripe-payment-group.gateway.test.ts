@@ -18,8 +18,32 @@ const INPUT: CreateGroupCheckoutInput = {
   currency: "GBP",
   totalPence: 100_010,
   lines: [
-    { paymentId: "pay-2", lotId: "lot-2", lotTitle: "Harbour", lotNumber: 12, amountPence: 60_010 },
-    { paymentId: "pay-3", lotId: "lot-3", lotTitle: "Study", lotNumber: null, amountPence: 40_000 },
+    {
+      paymentId: "pay-2",
+      lotId: "lot-2",
+      lotTitle: "Harbour",
+      lotNumber: 12,
+      amountPence: 60_010,
+      invoiceLines: [
+        { kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 48_008 },
+        {
+          kind: "buyers_premium",
+          label: "Buyer's premium (25%)",
+          ratePercent: "25",
+          amountPence: 12_002,
+        },
+      ],
+    },
+    {
+      paymentId: "pay-3",
+      lotId: "lot-3",
+      lotTitle: "Study",
+      lotNumber: null,
+      amountPence: 40_000,
+      invoiceLines: [
+        { kind: "legacy_total", label: "Total", ratePercent: null, amountPence: 40_000 },
+      ],
+    },
   ],
   buyerEmail: "payer@example.com",
   stripeCustomerId: null,
@@ -50,8 +74,9 @@ describe("StripePaymentGroupGateway", () => {
     expect(
       params.line_items?.map((l) => [l.price_data?.unit_amount, l.price_data?.product_data?.name]),
     ).toEqual([
-      [60_010, "Lot 12 · Harbour"],
-      [40_000, "Study"],
+      [48_008, "Lot 12 · Hammer price"],
+      [12_002, "Lot 12 · Buyer's premium (25%)"],
+      [40_000, "Lot lot-3 · Total"],
     ]);
     expect(params.customer_email).toBe("payer@example.com");
   });

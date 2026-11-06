@@ -67,3 +67,33 @@ export type PortfolioRow = {
     createdAt?: string;
   } | null;
 };
+
+/**
+ * What one line of an invoice charges for. VAT, import VAT and Artist's Resale Right lines are
+ * kept in the contract so the page, Stripe and the invoice PDF can show them later; no amount is
+ * stored for them until the accountant has confirmed the rules.
+ */
+export const invoiceLineKinds = [
+  "hammer",
+  "buyers_premium",
+  "vat_on_hammer",
+  "import_vat",
+  "artists_resale_right",
+  "delivery",
+  /** One line for the whole total, on an invoice raised before its parts were stored. */
+  "legacy_total",
+] as const;
+export type InvoiceLineKind = (typeof invoiceLineKinds)[number];
+
+/** One stored line of an invoice. Money is whole pence in pounds sterling. */
+export type InvoiceLine = {
+  kind: InvoiceLineKind;
+  label: string;
+  /** The rate the amount was worked out at ("25", "12.5"), or `null` when it is not a rate. */
+  ratePercent: string | null;
+  amountPence: number;
+};
+
+/** How an invoice came to exist. */
+export const invoiceSources = ["raised", "legacy_backfill"] as const;
+export type InvoiceSource = (typeof invoiceSources)[number];

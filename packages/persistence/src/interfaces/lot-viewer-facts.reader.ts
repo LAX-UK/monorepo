@@ -33,6 +33,8 @@ export type LotViewerRawFacts = {
       | "requires_manual_review"
       | "cancelled";
     raisedAt: Date;
+    /** The due date stored on the invoice; `null` for a payment with no stored invoice. */
+    dueAt: Date | null;
   } | null;
 };
 

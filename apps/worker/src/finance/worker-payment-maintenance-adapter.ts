@@ -46,7 +46,6 @@ export class WorkerPaymentMaintenanceAdapter implements IStalePaymentMaintenance
       lot,
       payment.buyerId ?? payment.paidByUserId ?? "",
       payment.amount,
-      payment.createdAt,
     );
   }
 }

@@ -50,6 +50,7 @@ const ctx: PaymentCheckoutContext = {
   amount: "125.00",
   buyerLegalEntityId: "le-buyer",
   amountPence: 12_500,
+  invoiceLines: [{ kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 12_500 }],
 };
 
 describe("CardCheckoutRail", () => {

@@ -11,6 +11,7 @@ on:
         options:
           - alerts-seed
           - demo-full
+          - backfill-bid-invoices
 
 concurrency:
   group: worker-task-test
@@ -65,6 +66,10 @@ jobs:
             printf '%s\n' "$database_ca_cert"
             echo '__DATABASE_CA_CERT__'
           } >> "$GITHUB_ENV"
+      # Links payments created between the invoice migration and the release to invoices. Idempotent.
+      - name: Backfill bid invoices
+        if: inputs.task == 'backfill-bid-invoices'
+        run: pnpm --filter @auction/db exec tsx scripts/backfill-bid-invoices.ts
       - name: Alerts first-run seed
         if: inputs.task == 'alerts-seed'
         run: pnpm --filter @auction/worker exec tsx src/scripts/seed-bid-alerts.ts

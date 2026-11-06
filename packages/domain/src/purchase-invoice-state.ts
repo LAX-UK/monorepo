@@ -16,6 +16,12 @@ export type PurchaseInvoiceFacts = {
       | "cancelled";
     /** When the invoice was raised (the payment row was created). */
     raisedAt: Date;
+    /**
+     * The due date stored on the invoice when it was raised. Only a payment row with no stored
+     * invoice (a fixture, never a row raised by the application) leaves it out, and its due date
+     * is then worked out from `raisedAt` by {@link invoiceDueAt}.
+     */
+    dueAt: Date | null;
   } | null;
 };
 
@@ -66,6 +72,15 @@ export function invoiceDueAt(raisedAt: Date): Date {
 }
 
 /**
+ * The due date of a payment's invoice: the one stored when the invoice was raised, and only for a
+ * payment row with no stored invoice (a fixture), the date its term gives from `raisedAt`. Every
+ * surface reads the due date through here.
+ */
+export function storedDueAt(payment: { raisedAt: Date; dueAt: Date | null }): Date {
+  return payment.dueAt ?? invoiceDueAt(payment.raisedAt);
+}
+
+/**
  * The invoice state of a purchase at `now`. An unpaid invoice is overdue from the moment its due
  * date passes; it never stops being owed, so "overdue" replaces "due" rather than ending it.
  */
@@ -74,7 +89,7 @@ export function purchaseInvoiceState(facts: PurchaseInvoiceFacts, now: Date): Pu
   if (!payment) {
     return { status: facts.saleCancelled ? "cancelled" : "not_invoiced", dueAt: null };
   }
-  const dueAt = invoiceDueAt(payment.raisedAt);
+  const dueAt = storedDueAt(payment);
   if (facts.saleCancelled) return { status: "cancelled", dueAt };
   // A cancelled row ended an attempt, not the purchase: it stays owed from the original date.
   if (payment.status === "pending" || payment.status === "cancelled") {

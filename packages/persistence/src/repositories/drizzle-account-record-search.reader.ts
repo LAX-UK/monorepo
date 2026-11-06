@@ -4,6 +4,7 @@ import {
   artistProfile,
   bid,
   bidIdentityDirectory,
+  bidInvoice,
   itemSubmission,
   legalEntityMember,
   lot,
@@ -135,6 +136,7 @@ export class DrizzleAccountRecordSearchReader implements IAccountRecordSearchRea
     // The lot's latest payment billed to the account: its state and when the invoice was raised.
     const latest = (column: SQL | AnyPgColumn) => sql`(
       select ${column} from ${payment}
+      left join ${bidInvoice} on ${bidInvoice.id} = ${payment.invoiceId}
       where ${payment.lotId} = ${lot.id} and ${payment.buyerLegalEntityId} = ${criteria.legalEntityId}
       order by ${payment.createdAt} desc limit 1
     )`;
@@ -148,14 +150,19 @@ export class DrizzleAccountRecordSearchReader implements IAccountRecordSearchRea
         invoicedAt: latest(payment.createdAt).mapWith((value) =>
           value == null ? null : new Date(value),
         ) as SQL<Date | null>,
+        dueAt: latest(bidInvoice.dueAt).mapWith((value) =>
+          value == null ? null : new Date(value),
+        ) as SQL<Date | null>,
       },
     );
-    return rows.map(({ paymentStatus, invoicedAt, ...row }) => ({
+    return rows.map(({ paymentStatus, invoicedAt, dueAt, ...row }) => ({
       ...row,
       paymentState: purchaseInvoiceState(
         {
           payment:
-            paymentStatus && invoicedAt ? { status: paymentStatus, raisedAt: invoicedAt } : null,
+            paymentStatus && invoicedAt
+              ? { status: paymentStatus, raisedAt: invoicedAt, dueAt }
+              : null,
         },
         criteria.now,
       ).status,

@@ -122,6 +122,7 @@ export {
 } from "./drizzle-lax-staff-access.repository.js";
 export { DrizzleLaxAdminRolesRepository } from "./drizzle-lax-admin-roles.repository.js";
 export { DrizzlePaymentRepository } from "./drizzle-payment.repository.js";
+export { DrizzleBidInvoiceRepository } from "./drizzle-bid-invoice.repository.js";
 export { DrizzlePayoutRepository } from "./drizzle-payout.repository.js";
 export { DrizzlePaymentExternalRefRepository } from "./drizzle-payment-external-ref.repository.js";
 export { DrizzleXeroConnectionRepository } from "./drizzle-xero-connection.repository.js";

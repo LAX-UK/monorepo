@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
 import {
+  bidInvoice,
+  bidInvoiceLine,
   disputeAllocation,
   disputeCase,
   legalEntity,
@@ -14,6 +16,7 @@ import {
 import { UNAPPLIED_MONEY_EVENT } from "@auction/domain";
 import { PaymentEligibilityGate } from "@auction/finance-runtime";
 import {
+  DrizzleBidInvoiceRepository,
   DrizzleDisputeCaseRepository,
   DrizzleDisputePaymentReader,
   DrizzlePaymentGroupRepository,
@@ -103,6 +106,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
   });
   const checkout = new PaymentGroupCheckoutService({
     groups,
+    invoices: new DrizzleBidInvoiceRepository(db),
     gateway,
     stripeCustomers: { isConfigured: () => true, findOrCreateForLegalEntity: async () => "cus_1" },
     users: {
@@ -272,7 +276,30 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       await db.delete(payoutLine).where(inArray(payoutLine.paymentId, paymentIds));
     }
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
+    await db.delete(bidInvoice).where(inArray(bidInvoice.lotId, lotIds));
     await db.delete(paymentGroup).where(eq(paymentGroup.buyerLegalEntityId, orgId));
+    const invoices = await db
+      .insert(bidInvoice)
+      .values(
+        lotIds.map((lotId) => ({
+          lotId,
+          buyerLegalEntityId: orgId,
+          sellerLegalEntityId: sellerId,
+          totalPence: 10_000,
+          raisedAt: new Date(),
+          dueAt: new Date(Date.now() + 7 * 86_400_000),
+        })),
+      )
+      .returning({ id: bidInvoice.id, lotId: bidInvoice.lotId });
+    await db.insert(bidInvoiceLine).values(
+      invoices.map((invoice) => ({
+        invoiceId: invoice.id,
+        position: 1,
+        kind: "legacy_total",
+        label: "Total",
+        amountPence: 10_000,
+      })),
+    );
     const rows = await db
       .insert(payment)
       .values(
@@ -284,6 +311,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
           amount: "100.00",
           platformFee: "5.00",
           status: "pending" as const,
+          invoiceId: invoices.find((i) => i.lotId === lotId)?.id ?? null,
         })),
       )
       .returning({ id: payment.id, lotId: payment.lotId });
