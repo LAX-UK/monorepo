@@ -112,3 +112,21 @@ export const MONEY_STATUS_LABELS: Readonly<Record<LaxMoneyStatus, string>> = {
   completed: "Completed",
   cancelled: "Cancelled",
 };
+
+/** How soon a tone asks for the person: lower comes first. */
+const TONE_URGENCY: Readonly<Record<StatusTone, number>> = { warning: 0, info: 1, neutral: 2 };
+
+/**
+ * The status among several that asks the most of the person, judged by its tone: what they must
+ * act on, then what is in progress, then what is settled. Of statuses with the same tone the
+ * first given wins, which does not matter to a pill that takes only the tone and cue.
+ */
+export function mostUrgentStatus(
+  statuses: readonly [LaxPortfolioItemStatus, ...LaxPortfolioItemStatus[]],
+): LaxPortfolioItemStatus {
+  return statuses.reduce((urgent, status) =>
+    TONE_URGENCY[STATUS_STYLES[status].tone] < TONE_URGENCY[STATUS_STYLES[urgent].tone]
+      ? status
+      : urgent,
+  );
+}

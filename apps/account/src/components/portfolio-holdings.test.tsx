@@ -105,7 +105,7 @@ describe("PortfolioHoldings", () => {
     expect(html).toContain("Search your works by title or artist");
     expect(html).toContain("Filter</button>");
     expect(html).toContain('aria-haspopup="dialog"');
-    expect(html).toContain("Showing 2 of 2 items");
+    expect(html).toContain("2 works");
     expect(html).not.toContain("Filter by ");
   });
 
@@ -147,5 +147,62 @@ describe("PortfolioHoldings", () => {
     ]);
     expect(html).toContain("https://cdn.lax.bid/a.jpg");
     expect(html).not.toContain("evil.example");
+  });
+});
+
+describe("PortfolioHoldings grouped copies", () => {
+  const reed = (number: number, overrides: Parameters<typeof item>[0] = {}) =>
+    item({
+      product: "shop",
+      id: `reed-${number}`,
+      title: "Reed Study",
+      artist: "Flora Powers",
+      edition: `No. ${number} of 24 · Hand-signed`,
+      paid: { lines: [{ kind: "price", amount: 40_000, currency: "GBP" }] },
+      ...overrides,
+    });
+  const copies = Array.from({ length: 10 }, (_, index) => reed(index + 1));
+
+  it("shows ten copies as one row that is collapsed until asked", () => {
+    const html = render(copies);
+    const text = textOf(html);
+    expect(html.match(/<button type="button" aria-expanded="false"[^>]*>10 copies/g)).toHaveLength(
+      2,
+    );
+    expect(text).toContain("Reed Study");
+    expect(text).toContain("10 copies of Reed Study");
+    expect(text).toContain("10 works in 1 row");
+    expect(text).not.toContain("No. 3 of 24");
+    expect(text).toContain("£4,000.00");
+  });
+
+  it("names the toggle with a button a keyboard can reach", () => {
+    const html = render(copies);
+    expect(html).toMatch(/<button type="button" aria-expanded="false"[^>]*>10 copies/);
+  });
+
+  it("leaves a single copy as a plain row with a link and no toggle", () => {
+    const html = render([reed(1)]);
+    expect(html).not.toContain(" copies");
+    expect(html).toContain('href="/account/portfolio/shop/reed-1"');
+    expect(textOf(html)).toContain("1 work");
+  });
+
+  it("shows Mixed when the copies are in different statuses", () => {
+    const html = render([...copies, reed(11, { status: "awaiting_payment" })]);
+    expect(textOf(html)).toContain("Mixed");
+    expect(html).toContain('data-tone="warning"');
+  });
+
+  it("opens to the matching copies when a filter narrows the group", () => {
+    const items = [...copies, reed(11, { status: "in_sale" }), reed(12, { status: "in_sale" })];
+    const filter = { statuses: ["in_sale" as const] };
+    const html = render(items, filter);
+    const text = textOf(html);
+    expect(html).toContain('<button type="button" aria-expanded="true"');
+    expect(text).toContain("No. 11 of 24");
+    expect(text).toContain("No. 12 of 24");
+    expect(text).not.toContain("No. 3 of 24");
+    expect(text).toContain("Showing 2 of 12 works");
   });
 });

@@ -15,11 +15,15 @@ export function ProductBadge({ product }: { product: LaxProductId }) {
   );
 }
 
-export function PortfolioStatusBadge({ status }: { status: LaxPortfolioItemStatus }) {
+/** A status as a pill; `label` replaces its name when the pill stands for several, as "Mixed". */
+export function PortfolioStatusBadge({
+  status,
+  label,
+}: { status: LaxPortfolioItemStatus; label?: string | undefined }) {
   const { tone, cue } = STATUS_STYLES[status];
   return (
     <StatusBadge tone={tone} shape={cue}>
-      {STATUS_LABELS[status]}
+      {label ?? STATUS_LABELS[status]}
     </StatusBadge>
   );
 }
