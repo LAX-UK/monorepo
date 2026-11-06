@@ -3,7 +3,7 @@
  *
  * Source pictures are museum originals (several MB, 3,000 px and more). A worker step downloads
  * each one, resizes it for how the demo uses it, and uploads it to the test media bucket under
- * `demo/`. The seeds write the address of that copy, so the apps serve a small picture from the
+ * `seed/demo/`. The seeds write the address of that copy, so the apps serve a small picture from the
  * CDN. This module is the one list both sides read: the seeds ask it for an address, the step asks
  * it for what to mirror. It holds no I/O.
  */
@@ -21,7 +21,8 @@ export const DEMO_IMAGE_LONG_EDGE: Record<DemoImageKind, number> = {
 };
 
 export const DEMO_JPEG_QUALITY = 82;
-export const DEMO_KEY_PREFIX = "demo";
+/** Under `seed/`, which the bucket policy already serves publicly. */
+export const DEMO_KEY_PREFIX = "seed/demo";
 /** Public address of the test media bucket the apps read from. */
 export const DEMO_MEDIA_BASE_URL = "https://lax-media.lon1.cdn.digitaloceanspaces.com";
 

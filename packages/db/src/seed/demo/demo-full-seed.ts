@@ -8,11 +8,11 @@
  * Idempotent: fixed ids and `on conflict` writes; sales and lots refresh their dates so the live
  * sale is live again whenever it is run. Never deletes. Test and local databases only.
  */
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import * as schema from "../../schema/index.js";
 import { type FullActors, buildFullCatalogue } from "./demo-full-catalogue.js";
 import { COVER_IMAGES, DEPARTMENTS, WORKS } from "./demo-full-works.js";
-import { demoImageUrl, departmentHeroSource } from "./demo-images.js";
+import { DEMO_KEY_PREFIX, demoImageUrl, departmentHeroSource } from "./demo-images.js";
 import { DEMO_IDS, DEMO_PEOPLE } from "./demo-topup-ids.js";
 import {
   type Db,
@@ -78,16 +78,21 @@ export async function runDemoFull(db: Db, now: number = Date.now()): Promise<Dem
       .set({ images: [lot.image] })
       .where(eq(schema.lot.id, lot.id));
   }
-  for (const sale of catalogue.sales) {
+  const covers = [
+    ...catalogue.sales.map((s) => ({ id: s.id, image: s.coverImage })),
+    { id: DEMO_IDS.sale(3), image: demoImageUrl(COVER_IMAGES.vanGogh, "cover") },
+  ];
+  for (const { id, image } of covers) {
+    // Cover slots made from an earlier picture are cleared; the cover measuring step that follows
+    // the seeds rebuilds them from the copy.
     await db
       .update(schema.sale)
-      .set({ coverImages: [sale.coverImage] })
-      .where(eq(schema.sale.id, sale.id));
+      .set({
+        coverImages: [image],
+        coverSlots: sql`case when ${schema.sale.coverSlots}::text like ${`%${DEMO_KEY_PREFIX}/%`} then ${schema.sale.coverSlots} else '{}'::jsonb end`,
+      })
+      .where(eq(schema.sale.id, id));
   }
-  await db
-    .update(schema.sale)
-    .set({ coverImages: [demoImageUrl(COVER_IMAGES.vanGogh, "cover")] })
-    .where(eq(schema.sale.id, DEMO_IDS.sale(3)));
 
   await writeNotifications(db, now, people.ids, catalogue.lots);
   await writeEnquiries(db, now, people.ids);
