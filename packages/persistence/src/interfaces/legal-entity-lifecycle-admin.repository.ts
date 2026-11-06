@@ -11,6 +11,8 @@ export type LegalEntityLifecycleRow = {
   stripeConnectRequirementsErrors: StripeConnectRequirementError[];
   stripeConnectDisabledReason: string | null;
   isLaxManaged: boolean;
+  /** When it last stopped being able to pay; `null` if it never could, or can now. */
+  payHeldSince: Date | null;
 };
 
 export type LegalEntityLifecycleTransitionUpdate = {
@@ -18,6 +20,8 @@ export type LegalEntityLifecycleTransitionUpdate = {
   actorUserId: string;
   nextStatus: LegalEntityStatus;
   statusReason: string | null;
+  /** The organisation's hold on paying after this transition. */
+  payHeldSince: Date | null;
 };
 
 export interface ILegalEntityLifecycleAdminRepository {

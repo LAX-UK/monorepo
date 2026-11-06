@@ -5,6 +5,7 @@ import {
   PAY_SEVERAL_BLOCK_COPY,
   PAY_SEVERAL_SKIP_COPY,
   type PaySeveralPlanView,
+  planChangedNotice,
 } from "@/lib/purchases/pay-several";
 import { planPaySeveralAction, startPaySeveralAction } from "@/lib/purchases/purchase.actions";
 import type { PurchaseCardVm } from "@/lib/purchases/purchases.vm";
@@ -43,6 +44,7 @@ export function PaySeveralDialog({
   const [state, setState] = useState<PlanState>({ kind: "loading" });
   const [paying, startPaying] = useTransition();
   const [payError, setPayError] = useState<string | null>(null);
+  const [changedNotice, setChangedNotice] = useState<string | null>(null);
   const key = lotIds.join(",");
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the picked lot ids
@@ -51,6 +53,7 @@ export function PaySeveralDialog({
     let stale = false;
     setState({ kind: "loading" });
     setPayError(null);
+    setChangedNotice(null);
     void planPaySeveralAction([...lotIds]).then((result) => {
       if (stale) return;
       setState(
@@ -70,9 +73,23 @@ export function PaySeveralDialog({
   const pay = () =>
     startPaying(async () => {
       if (!plan) return;
-      const result = await startPaySeveralAction(plan.payable.map((item) => item.lotId));
-      if (result.ok) window.location.assign(result.url);
-      else setPayError(result.message);
+      setPayError(null);
+      setChangedNotice(null);
+      const result = await startPaySeveralAction({
+        lotIds: plan.payable.map((item) => item.lotId),
+        total: plan.total,
+      });
+      if (result.ok) {
+        window.location.assign(result.url);
+      } else if (result.changed) {
+        // What was shown is no longer what would be paid: show the new plan to check first.
+        setState({ kind: "ready", plan: result.changed });
+        setChangedNotice(
+          planChangedNotice(plan, result.changed, formatMoney(result.changed.total, plan.currency)),
+        );
+      } else {
+        setPayError(result.message);
+      }
     });
 
   return (
@@ -115,6 +132,9 @@ export function PaySeveralDialog({
       ) : (
         <PlanBody plan={state.plan} cardsById={cardsById} />
       )}
+      {changedNotice ? (
+        <Notice tone="warning" alert title={changedNotice} className="mt-4" />
+      ) : null}
       {payError ? <Notice tone="danger" alert title={payError} className="mt-4" /> : null}
     </Dialog>
   );

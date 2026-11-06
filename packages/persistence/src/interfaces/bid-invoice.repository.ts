@@ -49,6 +49,22 @@ export class BidInvoiceTotalMismatchError extends Error {
   }
 }
 
+/** Reading the live invoices of many lots at once, for lists. */
+export interface IBidInvoiceBatchReader {
+  /**
+   * The live invoice of each (lot, buyer account) pair that has one, with its lines, in one read.
+   * Keyed by `bidInvoiceKey(lotId, buyerLegalEntityId)`.
+   */
+  findLiveByLotsAndBuyerAccounts(
+    pairs: readonly { lotId: string; buyerLegalEntityId: string }[],
+  ): Promise<Map<string, BidInvoiceRecord>>;
+}
+
+/** The key of a (lot, buyer account) pair in a batch read. */
+export function bidInvoiceKey(lotId: string, buyerLegalEntityId: string): string {
+  return `${lotId}:${buyerLegalEntityId}`;
+}
+
 export interface IBidInvoiceReader {
   /** The invoice of a lot for a buyer account that has not been voided, with its lines. */
   findLiveByLotAndBuyerAccount(
@@ -81,7 +97,29 @@ export interface IBidInvoiceRaiseRepository {
   }): Promise<RaisedInvoice>;
 }
 
+/**
+ * Whose unpaid invoices a hold release reaches. `holdStartedAt` is when the hold began: an invoice
+ * whose due date had already passed by then was overdue before the hold and keeps its date.
+ */
+export type OpenInvoiceScope = { holdStartedAt: Date } & (
+  | /** Every invoice of one buyer account. */ { kind: "account"; legalEntityId: string }
+  | /** The invoices of lots a person won, in any account or only in their personal ones. */ {
+      kind: "winner";
+      userId: string;
+      personalAccountsOnly: boolean;
+    }
+);
+
 export interface IBidInvoiceDueDateRepository {
+  /**
+   * Moves, in one statement, the due date of every live invoice in `scope` that is still unpaid
+   * (not voided, and with no payment that is paid, being confirmed, refunded or held for review)
+   * to `until` when that is later. An invoice due before `scope.holdStartedAt` was overdue before
+   * the hold and is not touched. Never moves a date earlier; repeating it changes nothing. Returns
+   * how many moved. With `tx` it runs inside that transaction.
+   */
+  extendUnpaidDueDates(scope: OpenInvoiceScope, until: Date, tx?: Database): Promise<number>;
+
   /**
    * Moves the due date of an invoice to `notBefore` when that is later, once a hold that kept the
    * buyer from paying is released. It never moves a due date earlier. Returns whether it moved.

@@ -62,6 +62,11 @@ export const legalEntity = pgTable(
     statusChangedByUserId: text("status_changed_by_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
+    /**
+     * When the organisation last stopped being able to pay (a status that allows paying to one
+     * that does not); kept through held steps, cleared when it can pay again. Null if it never could.
+     */
+    payHeldSince: timestamp("pay_held_since", { mode: "date", withTimezone: true }),
     /** Human-readable reason for the current status (reject, request docs, etc.). */
     statusReason: text("status_reason"),
     stripeConnectAccountId: text("stripe_connect_account_id").unique(),

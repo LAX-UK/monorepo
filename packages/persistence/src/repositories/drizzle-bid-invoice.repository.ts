@@ -1,14 +1,17 @@
 import type { Database } from "@auction/db";
-import { bidInvoice, bidInvoiceLine, payment } from "@auction/db/schema";
+import { bidInvoice, bidInvoiceLine, legalEntity, lot, payment } from "@auction/db/schema";
 import type { InvoiceLine, InvoiceLineKind, InvoiceSource } from "@auction/types";
-import { and, asc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, notExists, sql } from "drizzle-orm";
 import {
   type BidInvoiceRecord,
   BidInvoiceTotalMismatchError,
+  type IBidInvoiceBatchReader,
   type IBidInvoiceDueDateRepository,
   type IBidInvoiceRaiseRepository,
   type IBidInvoiceReader,
+  type OpenInvoiceScope,
   type RaisedInvoice,
+  bidInvoiceKey,
 } from "../interfaces/bid-invoice.repository.js";
 import type { CreatePaymentRow } from "../interfaces/payment-write.repository.js";
 import { mapPaymentRow } from "./drizzle-payment.repository.js";
@@ -63,7 +66,11 @@ function groupLines(lines: readonly LineRow[]): Map<string, LineRow[]> {
 
 /** Bid invoices and their lines: read, raised with their payment, and due-date extension. */
 export class DrizzleBidInvoiceRepository
-  implements IBidInvoiceReader, IBidInvoiceRaiseRepository, IBidInvoiceDueDateRepository
+  implements
+    IBidInvoiceReader,
+    IBidInvoiceBatchReader,
+    IBidInvoiceRaiseRepository,
+    IBidInvoiceDueDateRepository
 {
   constructor(private readonly db: Database) {}
 
@@ -72,6 +79,39 @@ export class DrizzleBidInvoiceRepository
     buyerLegalEntityId: string,
   ): Promise<BidInvoiceRecord | null> {
     return findLive(this.db, lotId, buyerLegalEntityId);
+  }
+
+  async findLiveByLotsAndBuyerAccounts(
+    pairs: readonly { lotId: string; buyerLegalEntityId: string }[],
+  ): Promise<Map<string, BidInvoiceRecord>> {
+    if (pairs.length === 0) return new Map();
+    const wanted = new Set(pairs.map((p) => bidInvoiceKey(p.lotId, p.buyerLegalEntityId)));
+    const rows = await this.db
+      .select()
+      .from(bidInvoice)
+      .where(
+        and(
+          isNull(bidInvoice.voidedAt),
+          inArray(bidInvoice.lotId, [...new Set(pairs.map((p) => p.lotId))]),
+          inArray(bidInvoice.buyerLegalEntityId, [
+            ...new Set(pairs.map((p) => p.buyerLegalEntityId)),
+          ]),
+        ),
+      );
+    // The two filters above cover the product of lots and accounts; keep only the pairs asked for.
+    const matching = rows.filter((r) => wanted.has(bidInvoiceKey(r.lotId, r.buyerLegalEntityId)));
+    const lines = groupLines(
+      await linesOf(
+        this.db,
+        matching.map((r) => r.id),
+      ),
+    );
+    return new Map(
+      matching.map((r) => [
+        bidInvoiceKey(r.lotId, r.buyerLegalEntityId),
+        toRecord(r, lines.get(r.id) ?? []),
+      ]),
+    );
   }
 
   async findByPaymentIds(paymentIds: readonly string[]): Promise<Map<string, BidInvoiceRecord>> {
@@ -163,6 +203,54 @@ export class DrizzleBidInvoiceRepository
       if (!created) throw new Error("Payment insert failed");
       return { invoice: record, payment: mapPaymentRow(created, null), invoiceCreated: !!inserted };
     });
+  }
+
+  async extendUnpaidDueDates(scope: OpenInvoiceScope, until: Date, tx?: Database): Promise<number> {
+    const db = tx ?? this.db;
+    const untilAt = sql`${until.toISOString()}::timestamptz`;
+    const noSettledPayment = notExists(
+      db
+        .select({ one: sql`1` })
+        .from(payment)
+        .where(
+          and(
+            eq(payment.invoiceId, bidInvoice.id),
+            inArray(payment.status, [
+              "captured",
+              "authorized",
+              "refunded",
+              "requires_manual_review",
+            ]),
+          ),
+        ),
+    );
+    const owner =
+      scope.kind === "account"
+        ? eq(bidInvoice.buyerLegalEntityId, scope.legalEntityId)
+        : and(
+            eq(lot.winnerId, scope.userId),
+            scope.personalAccountsOnly ? eq(legalEntity.kind, "individual") : undefined,
+          );
+    const inScope = db
+      .select({ id: bidInvoice.id })
+      .from(bidInvoice)
+      .innerJoin(lot, eq(lot.id, bidInvoice.lotId))
+      .innerJoin(legalEntity, eq(legalEntity.id, bidInvoice.buyerLegalEntityId))
+      .where(
+        and(
+          isNull(bidInvoice.voidedAt),
+          owner,
+          noSettledPayment,
+          // Overdue before the hold began: that debt is not reset by the release.
+          gte(bidInvoice.dueAt, scope.holdStartedAt),
+        ),
+      );
+    const rows = await db
+      .update(bidInvoice)
+      .set({ dueAt: sql`greatest(${bidInvoice.dueAt}, ${untilAt})` })
+      .where(and(inArray(bidInvoice.id, inScope), lt(bidInvoice.dueAt, untilAt)))
+      .returning({ id: bidInvoice.id });
+    return rows.length;
   }
 
   async extendDueAt(invoiceId: string, notBefore: Date, tx?: Database): Promise<boolean> {

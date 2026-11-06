@@ -55,6 +55,12 @@ export {
   type OrganisationStatePolicy,
 } from "./organisation-state-policy.js";
 export {
+  holdStartAt,
+  identityHeldSinceAfter,
+  payHeldSinceAfter,
+  type HeldSince,
+} from "./pay-hold.js";
+export {
   evaluateSelfServiceActorIdentityEligibility,
   type SelfServiceActorIdentityEligibility,
   type SelfServiceActorIdentityEligibilityInput,
@@ -729,12 +735,7 @@ export {
 } from "./pay-plan.js";
 export {
   PAY_SEVERAL_MAX_INVOICES,
-  planPaySeveral,
-  type PayableInvoice,
-  type PaySeveralCandidate,
-  type PaySeveralDecision,
-  type PaySeveralPlan,
-  type PaySeveralRefusal,
+  paySeveralSkipReason,
   type PaySeveralSkipReason,
 } from "./pay-several.js";
 export {

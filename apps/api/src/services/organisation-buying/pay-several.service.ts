@@ -1,30 +1,34 @@
+import { type PaymentTierLimits, paySeveralSkipReason, payTogether } from "@auction/domain";
 import {
-  type PaymentTierLimits,
-  accountPurchaseScope,
-  payTogether,
-  planPaySeveral,
-} from "@auction/domain";
-import { err, ok } from "neverthrow";
-import { gbpAmountToPence } from "../../lib/decimal-money.js";
+  type IMoneyPathMetrics,
+  type LotInvoiceInitiationService,
+  noMoneyPathMetrics,
+} from "@auction/finance-runtime";
+import type { PayPlan } from "@auction/types";
+import { type Result, err, ok } from "neverthrow";
+import { gbpPenceToMajorString } from "../../lib/decimal-money.js";
 import {
   type ISettlementCompliancePolicy,
   evaluateSettlementSubjects,
 } from "../aml/settlement-compliance.policy.js";
 import type {
   BuyingResult,
+  IPayPlanService,
   IPaySeveralService,
+  OrganisationBuyingError,
   OrganisationBuyingErrorCode,
   PaySeveralQuote,
+  PaySeveralRequest,
   PaySeveralStarted,
+  PlannedPayment,
 } from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import type {
   GroupCheckoutError,
   PaymentGroupCheckoutService,
 } from "../payment-group/payment-group-checkout.service.js";
-import type { IPaymentEligibilityGate } from "../payment/payment-eligibility.gate.js";
-import type { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
-import { buyingError, entityActorOf, memberIsPayer } from "./purchase-view.js";
+import { accountGateRefusal } from "./pay-plan-gate-refusal.js";
+import { buyingError, memberIsPayer } from "./purchase-view.js";
 
 const CHECKOUT_ERRORS: Record<GroupCheckoutError, OrganisationBuyingErrorCode> = {
   conflict: "pay_several_conflict",
@@ -32,117 +36,249 @@ const CHECKOUT_ERRORS: Record<GroupCheckoutError, OrganisationBuyingErrorCode> =
 };
 
 export type PaySeveralDeps = {
-  /** The same reading of the picked lots as the pay plan, so the two never disagree. */
-  candidates: Pick<PurchaseCandidateReader, "read">;
+  /** The same planner as the Pay page, so what is shown and what is paid are one decision. */
+  planner: Pick<IPayPlanService, "planWithWinners">;
+  /** Raises the invoice of a won lot that has none yet: the lot-end path, with its guards. */
+  invoices: Pick<LotInvoiceInitiationService, "ensureForLot">;
   limits: PaymentTierLimits;
-  compliance: Pick<ISettlementCompliancePolicy, "peek" | "evaluate"> | null;
-  /** The same account checks as paying one invoice: closed organisations, unverified buyers. */
-  eligibility: IPaymentEligibilityGate;
+  /** The full check, which can open a source-of-funds case. Only run when money is about to move. */
+  compliance: Pick<ISettlementCompliancePolicy, "evaluate"> | null;
   checkout: Pick<PaymentGroupCheckoutService, "start">;
+  /** Counts the lots the lot-end guards would not invoice, by reason, so data defects show up. */
+  metrics?: IMoneyPathMetrics;
+};
+
+/** One invoice the payment will take, with the payment it settles. */
+type Charge = { lotId: string; paymentId: string; pence: number };
+
+/** The plan as the combined-payment screen tells it, and what charging it would take. */
+type PlanView = {
+  quote: PaySeveralQuote;
+  totalPence: number;
+  /** Payable lots with their payment; `null` while a lot still has no invoice. */
+  charges: { lotId: string; paymentId: string | null; pence: number }[];
 };
 
 /**
- * "Pay several": which of the picked invoices one payment settles, and opening that payment. The
- * domain decides what is payable (`planPaySeveral`) and whether the total can be paid at once and
- * how (`payTogether`); the payment group does the money side.
+ * "Pay several": which of the picked invoices one payment settles, and opening that payment.
+ *
+ * What is payable is decided once, by the pay plan. Starting the payment checks that the plan
+ * still is what the person was shown (the total and the lots), checks the limits on the total,
+ * then raises the invoices of lots that have none yet (as lot end would, without writing to
+ * accounting: the group checkout does that), reads the plan again and checks again. Only then does
+ * it run the compliance check and claim exactly what that plan lists. A plan that changed answers
+ * 409 with the fresh plan, so nothing is ever charged that was not shown. Nothing is claimed until
+ * every invoice exists; invoices already raised are ordinary invoices that lot end would have
+ * raised too, and raising is idempotent.
  */
 export class PaySeveralService implements IPaySeveralService {
-  constructor(private readonly deps: PaySeveralDeps) {}
+  private readonly metrics: IMoneyPathMetrics;
 
-  private candidates(actor: OrganisationMemberActor, ownOnly: boolean, lotIds: readonly string[]) {
-    return this.deps.candidates.read(actor, ownOnly, lotIds);
+  constructor(private readonly deps: PaySeveralDeps) {
+    this.metrics = deps.metrics ?? noMoneyPathMetrics;
   }
 
   async plan(
     actor: OrganisationMemberActor,
     lotIds: readonly string[],
   ): BuyingResult<PaySeveralQuote> {
-    const scope = accountPurchaseScope(entityActorOf(actor));
-    if (!scope) return err(buyingError("insufficient_entity_role"));
-    // The same account rule as paying one invoice: closed accounts are refused, and accounts that
-    // cannot pay yet are told what happens next instead of being offered a payment.
-    const eligibility = await this.deps.eligibility.check({
-      payerUserId: actor.userId,
-      buyerLegalEntityId: actor.legalEntityId,
-    });
-    if (eligibility.kind !== "payable") return err(buyingError(eligibility.reason));
-    const { picks } = await this.candidates(actor, scope === "own", lotIds);
-    const decision = planPaySeveral(actor.legalEntityId, picks);
-    if (!decision.allowed) return err(buyingError(decision.reason));
-    const payerOnHold = this.deps.compliance
-      ? (await this.deps.compliance.peek(actor.userId)).hold
-      : false;
-    return ok({
-      ...decision.plan,
-      payTogether: payTogether(
-        gbpAmountToPence(decision.plan.total),
-        this.deps.limits,
-        payerOnHold,
-      ),
-    });
+    const read = await this.read(actor, lotIds);
+    if (read.isErr()) return err(read.error);
+    return ok(this.view(read.value.plan, new Set()).quote);
   }
 
   async pay(
     actor: OrganisationMemberActor,
-    lotIds: readonly string[],
+    request: PaySeveralRequest,
   ): BuyingResult<PaySeveralStarted> {
     if (!memberIsPayer(actor)) return err(buyingError("insufficient_entity_role"));
-    const quote = await this.plan(actor, lotIds);
-    if (quote.isErr()) return err(quote.error);
-    const plan = quote.value;
-    if (!plan.payTogether.allowed) {
-      return err(buyingError(`pay_several_${plan.payTogether.reason}`));
+    const first = await this.read(actor, request.lotIds);
+    if (first.isErr()) return err(first.error);
+
+    let current = this.view(first.value.plan, new Set());
+    let winners = first.value.winners;
+    const early = this.refusal(current, request);
+    if (early) return err(early);
+
+    const missing = current.charges.filter((c) => c.paymentId === null).map((c) => c.lotId);
+    if (missing.length > 0) {
+      // A check on the amount that is still open is run (it opens the case) before anything is
+      // raised for a payment that cannot go ahead.
+      if (first.value.plan.gate.kind === "compliance") {
+        const hold = await this.complianceHold(actor, current, winners);
+        if (hold) return err(buyingError(hold));
+      }
+      const raised = await this.raise(missing);
+      if (!raised) return err(buyingError("pay_several_unavailable"));
+      const second = await this.read(actor, request.lotIds);
+      if (second.isErr()) return err(second.error);
+      winners = second.value.winners;
+      current = this.view(second.value.plan, new Set(raised.refused));
+      // A lot that still has no invoice for no stated reason cannot be charged; the whole payment
+      // waits rather than charging less than the person was shown.
+      if (current.charges.some((c) => c.paymentId === null)) {
+        return err(buyingError("pay_several_unavailable"));
+      }
+      const changed = this.refusal(current, request);
+      if (changed) return err(changed);
     }
+
     // The full check (which can open a source-of-funds case) runs only when money is about to
     // move: for the payer on the total, and for each lot's winner on what they won.
-    if (this.deps.compliance) {
-      const { winners } = await this.candidates(
-        actor,
-        false,
-        plan.payable.map((p) => p.lotId),
-      );
-      const hold = await evaluateSettlementSubjects(
-        this.deps.compliance,
-        [
-          { buyerUserId: actor.userId, amountPence: gbpAmountToPence(plan.total) },
-          ...plan.payable.flatMap((p) => {
-            const winner = winners.get(p.lotId);
-            return winner && winner !== actor.userId && p.totalDue
-              ? [{ buyerUserId: winner, amountPence: gbpAmountToPence(p.totalDue) }]
-              : [];
-          }),
-        ],
-        plan.payable.flatMap((p) => (p.paymentId ? [p.paymentId] : [])),
-      );
-      if (hold.hold) {
-        return err(
-          buyingError(
-            hold.subject === actor.userId
-              ? "pay_several_payer_on_hold"
-              : "pay_several_winner_on_hold",
-          ),
-        );
-      }
-    }
+    const hold = await this.complianceHold(actor, current, winners);
+    if (hold) return err(buyingError(hold));
+    const together = payTogether(current.totalPence, this.deps.limits, false);
+    if (!together.allowed) return err(buyingError(`pay_several_${together.reason}`));
+
+    const total = gbpPenceToMajorString(current.totalPence);
+    const charges = current.charges.map(settled);
     const started = await this.deps.checkout.start({
       payerUserId: actor.userId,
       buyerLegalEntityId: actor.legalEntityId,
-      currency: plan.currency,
-      total: plan.total,
-      rail: plan.payTogether.rail,
-      invoices: plan.payable.map((p) => ({
-        paymentId: p.paymentId,
-        lotId: p.lotId,
-        amount: p.totalDue,
+      currency: current.quote.currency,
+      total,
+      rail: together.rail,
+      invoices: charges.map((c) => ({
+        paymentId: c.paymentId,
+        lotId: c.lotId,
+        amount: gbpPenceToMajorString(c.pence),
       })),
     });
     if (started.isErr()) return err(buyingError(CHECKOUT_ERRORS[started.error]));
     return ok({
       ...started.value,
-      total: plan.total,
-      currency: plan.currency,
-      payable: plan.payable.map((p) => ({ lotId: p.lotId, amount: p.totalDue })),
-      skipped: plan.skipped,
+      total,
+      currency: current.quote.currency,
+      payable: charges.map((c) => ({ lotId: c.lotId, amount: gbpPenceToMajorString(c.pence) })),
+      skipped: current.quote.skipped,
     });
   }
+
+  /** The plan, refused when the account cannot pay or nothing in it can be paid. */
+  private async read(
+    actor: OrganisationMemberActor,
+    lotIds: readonly string[],
+  ): Promise<Result<PlannedPayment, OrganisationBuyingError>> {
+    const planned = await this.deps.planner.planWithWinners(actor, lotIds);
+    if (planned.isErr()) return err(planned.error);
+    const refusal = accountGateRefusal(planned.value.plan.gate);
+    if (refusal) return err(buyingError(refusal));
+    if (planned.value.plan.payable.length === 0) {
+      return err(buyingError("pay_several_nothing_payable"));
+    }
+    return ok(planned.value);
+  }
+
+  /** The plan told in the screen's terms; lots refused at raise time are left out as not invoiced. */
+  private view(plan: PayPlan, notInvoiced: ReadonlySet<string>): PlanView {
+    const payable = plan.payable.filter((p) => !notInvoiced.has(p.lotId));
+    const totalPence = payable.reduce((sum, p) => sum + p.totalPence, 0);
+    return {
+      totalPence,
+      charges: payable.map((p) => ({
+        lotId: p.lotId,
+        paymentId: p.paymentId,
+        pence: p.totalPence,
+      })),
+      quote: {
+        payable: payable.map((p) => ({
+          lotId: p.lotId,
+          totalDue: gbpPenceToMajorString(p.totalPence),
+        })),
+        skipped: [
+          ...plan.leftOut.map((l) => ({
+            lotId: l.lotId,
+            reason: paySeveralSkipReason(l.reason),
+          })),
+          ...plan.payable
+            .filter((p) => notInvoiced.has(p.lotId))
+            .map((p) => ({ lotId: p.lotId, reason: "not_invoiced" as const })),
+        ],
+        currency: plan.currency,
+        total: gbpPenceToMajorString(totalPence),
+        // A check open on the amount stops the payment; the finance threshold and the limits are
+        // decided on the total by `payTogether`.
+        payTogether: payTogether(totalPence, this.deps.limits, plan.gate.kind === "compliance"),
+      },
+    };
+  }
+
+  /**
+   * Why this plan cannot be paid as asked: it is not the plan the person was shown (the fresh
+   * plan comes back with the 409), or its total cannot be paid at once.
+   */
+  private refusal(view: PlanView, request: PaySeveralRequest): OrganisationBuyingError | null {
+    // A request that names no plan was never shown one: it is told the current plan, not charged.
+    const shown = new Set(request.expectedLotIds ?? []);
+    const same =
+      request.expectedTotalPence !== undefined &&
+      request.expectedLotIds !== undefined &&
+      view.totalPence === request.expectedTotalPence &&
+      view.charges.length === shown.size &&
+      view.charges.every((c) => shown.has(c.lotId));
+    if (!same) return { ...buyingError("pay_plan_changed"), quote: view.quote };
+    const together = payTogether(view.totalPence, this.deps.limits, false);
+    return together.allowed ? null : buyingError(`pay_several_${together.reason}`);
+  }
+
+  /**
+   * Raises the invoices one after another. Returns `null`, having logged why, if one fails; else
+   * the lots the lot-end guards refused to invoice (they are left out, not retried).
+   */
+  private async raise(lotIds: readonly string[]): Promise<{ refused: string[] } | null> {
+    const refused: string[] = [];
+    for (const lotId of lotIds) {
+      try {
+        const result = await this.deps.invoices.ensureForLot(lotId, { accounting: "defer" });
+        if (!result.created && result.reason !== "payment_already_exists") {
+          this.metrics.record(`pay_several_lot_not_invoiced_${result.reason ?? "unknown"}`);
+          console.warn(
+            JSON.stringify({ msg: "pay_several_lot_not_invoiced", lotId, reason: result.reason }),
+          );
+          refused.push(lotId);
+        }
+      } catch (error) {
+        console.error(
+          JSON.stringify({
+            msg: "pay_several_raise_failed",
+            lotId,
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
+        return null;
+      }
+    }
+    return { refused };
+  }
+
+  /** The check on the amount, for the payer and for each lot's winner; the code if it holds. */
+  private async complianceHold(
+    actor: OrganisationMemberActor,
+    view: PlanView,
+    winners: ReadonlyMap<string, string | null>,
+  ): Promise<"pay_several_payer_on_hold" | "pay_several_winner_on_hold" | null> {
+    if (!this.deps.compliance) return null;
+    const hold = await evaluateSettlementSubjects(
+      this.deps.compliance,
+      [
+        { buyerUserId: actor.userId, amountPence: view.totalPence },
+        ...view.charges.flatMap((c) => {
+          const winner = winners.get(c.lotId);
+          return winner && winner !== actor.userId
+            ? [{ buyerUserId: winner, amountPence: c.pence }]
+            : [];
+        }),
+      ],
+      view.charges.flatMap((c) => (c.paymentId ? [c.paymentId] : [])),
+    );
+    if (!hold.hold) return null;
+    return hold.subject === actor.userId
+      ? "pay_several_payer_on_hold"
+      : "pay_several_winner_on_hold";
+  }
+}
+
+function settled(charge: PlanView["charges"][number]): Charge {
+  if (!charge.paymentId) throw new Error(`Lot ${charge.lotId} has no invoice to pay`);
+  return { lotId: charge.lotId, paymentId: charge.paymentId, pence: charge.pence };
 }

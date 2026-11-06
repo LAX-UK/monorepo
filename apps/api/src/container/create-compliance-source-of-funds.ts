@@ -1,3 +1,4 @@
+import type { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type { Env } from "../env.js";
 import { AdminSourceOfFundsQueryService } from "../services/admin/admin-source-of-funds-query.service.js";
 import type { MediaUrlResolver } from "../services/media-url-resolver.js";
@@ -23,12 +24,14 @@ export type CreateComplianceSourceOfFundsInput = {
   platform: ContainerPlatformServices;
   mediaUrlResolver: MediaUrlResolver;
   objectStorage: ContainerInfra["objectStorage"];
+  /** Moves invoice due dates when a source-of-funds check is approved. */
+  invoiceTerms: Pick<InvoiceDueDateExtender, "extendOpenInvoices">;
 };
 
 export function createComplianceSourceOfFunds(
   input: CreateComplianceSourceOfFundsInput,
 ): ContainerComplianceSourceOfFunds {
-  const { env, repos, platform, mediaUrlResolver, objectStorage } = input;
+  const { env, repos, platform, mediaUrlResolver, objectStorage, invoiceTerms } = input;
   const {
     sourceOfFundsRepository,
     sourceOfFundsDocumentRepository,
@@ -48,6 +51,7 @@ export function createComplianceSourceOfFunds(
     },
     transactionRunner,
     domainEventSink,
+    invoiceTerms,
   );
   const sourceOfFundsSettlementReadService = new SourceOfFundsSettlementReadService(
     sourceOfFundsSettlementReader,

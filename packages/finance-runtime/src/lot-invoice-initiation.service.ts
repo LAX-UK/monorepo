@@ -116,7 +116,14 @@ export class LotInvoiceInitiationService {
     }
   }
 
-  async ensureForLot(lotId: string): Promise<EnsureLotInvoiceResult> {
+  /**
+   * `accounting: "defer"` leaves the accounting write to the caller, for a request that goes on to
+   * open a checkout whose own step writes the invoices; lot end writes it here.
+   */
+  async ensureForLot(
+    lotId: string,
+    options: { accounting?: "write" | "defer" } = {},
+  ): Promise<EnsureLotInvoiceResult> {
     const lot = await this.lots.findById(lotId);
     if (!lot) {
       return { created: false, reason: "lot_not_found", lotId };
@@ -256,6 +263,10 @@ export class LotInvoiceInitiationService {
         ),
         idempotencyKey: paymentDueNoticeKey(created.id, recipientId, buyerId),
       });
+    }
+
+    if (options.accounting === "defer") {
+      return { created: true, paymentId: created.id, lotId };
     }
 
     const xeroResult = await ensureXeroInvoiceForPayment(

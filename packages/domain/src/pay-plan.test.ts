@@ -8,7 +8,6 @@ import {
   classifyPayPlanLots,
   pickRefusal,
 } from "./pay-plan.js";
-import { planPaySeveral } from "./pay-several.js";
 import { parsePaymentTierLimits, paymentMethodsFor } from "./payment-tier-policy.js";
 
 const ACCOUNT = "acct-1";
@@ -170,36 +169,6 @@ describe("classifyPayPlanLots: what is left out, and why", () => {
       lot("a", { invoice: "not_invoiced", paymentId: null, invoiceId: null, paymentStatus: null }),
     ]).payable;
     expect(p).toMatchObject({ lotId: "a", paymentId: null, invoiceId: null, totalPence: 125_000 });
-  });
-
-  it("agrees with Pay several on every invoiced lot: the same ones are payable", () => {
-    const picks = [
-      lot("a"),
-      lot("b", { invoice: "paid" }),
-      lot("c", { payerMayPay: false }),
-      lot("d", { heldForReview: true }),
-      lot("e", { inPaymentInProgress: true }),
-      lot("f", { buyerAccountId: "x" }),
-      lot("g", { invoice: "overdue" }),
-    ];
-    const old = planPaySeveral(
-      ACCOUNT,
-      picks.map((p) => ({
-        lotId: p.lotId,
-        paymentId: p.paymentId,
-        buyerAccountId: p.buyerAccountId,
-        invoice: p.invoice,
-        payerMayPay: p.payerMayPay,
-        totalDue: "1250.00",
-        currency: "GBP",
-        heldForReview: p.heldForReview,
-        inPaymentInProgress: p.inPaymentInProgress,
-      })),
-    );
-    const now = classifyPayPlanLots(ACCOUNT, picks);
-    expect(old.allowed && old.plan.payable.map((p) => p.lotId)).toEqual(
-      now.payable.map((p) => p.lotId),
-    );
   });
 });
 

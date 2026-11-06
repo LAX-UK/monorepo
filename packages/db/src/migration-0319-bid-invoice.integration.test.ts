@@ -381,6 +381,53 @@ describe.skipIf(!migrationUrl)("migration 0319 bid invoices", { timeout: 120_000
     });
   });
 
+  it("the re-run backfill links each payment to the invoice that existed when it was created", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransaction(pool);
+      const f = await fixture(pool);
+      const lotId = await f.lot("100.00");
+      const insert = (raisedAt: string, voidedAt: string | null) =>
+        pool.query<{ id: string }>(
+          `insert into bid_invoice (lot_id, buyer_legal_entity_id, seller_legal_entity_id,
+             total_pence, raised_at, due_at, voided_at, source)
+           values ($1, $2, $3, 12500, $4, $4::timestamptz + interval '7 days', $5, 'raised')
+           returning id`,
+          [lotId, f.buyer, f.seller, raisedAt, voidedAt],
+        );
+      // An invoice that was voided, then raised again for the same lot and buyer.
+      const first = await insert("2026-05-01T10:00:00Z", "2026-05-20T10:00:00Z");
+      const second = await insert("2026-06-01T10:00:00Z", null);
+      const early = await f.pay({
+        lotId,
+        amount: "125.00",
+        status: "cancelled",
+        createdAt: "2026-05-02T10:00:00Z",
+      });
+      const late = await f.pay({
+        lotId,
+        amount: "125.00",
+        status: "pending",
+        createdAt: "2026-06-02T10:00:00Z",
+      });
+
+      await pool.query(
+        await readFile(
+          resolve(import.meta.dirname, "../scripts/backfill-bid-invoices.sql"),
+          "utf8",
+        ),
+      );
+
+      const linked = async (paymentId: string) =>
+        (
+          await pool.query<{ invoice_id: string }>("select invoice_id from payment where id = $1", [
+            paymentId,
+          ])
+        ).rows[0]?.invoice_id;
+      expect(await linked(early)).toBe(first.rows[0]?.id);
+      expect(await linked(late)).toBe(second.rows[0]?.id);
+    });
+  });
+
   it("allows one live invoice per lot and buyer, and a new one once it is voided", async () => {
     await withTemporaryDatabase(async (pool) => {
       await runMigrationsPerTransaction(pool);

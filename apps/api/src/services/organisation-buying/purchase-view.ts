@@ -1,7 +1,5 @@
 import {
   type EntityActor,
-  type PaySeveralCandidate,
-  type PurchaseInvoiceStatus,
   deliveryQuoteActionsFor,
   entityActorCan,
   purchaseDeliveryStage,
@@ -44,6 +42,8 @@ const STATUS: Record<OrganisationBuyingErrorCode, OrganisationBuyingError["statu
   pay_several_conflict: 409,
   pay_several_unavailable: 503,
   pay_plan_unavailable: 503,
+  onboarding_required: 403,
+  pay_plan_changed: 409,
 };
 
 const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
@@ -76,6 +76,8 @@ const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
     "Paying online isn't available just now. Nothing was charged. Try again shortly.",
   pay_plan_unavailable:
     "We couldn't check your payment just now. Nothing was charged. Try again shortly.",
+  onboarding_required: "Finish setting up your account before you pay.",
+  pay_plan_changed: "The total has changed. Check it and pay again.",
 };
 
 /** The one place buying errors get their status and wording. */
@@ -164,25 +166,5 @@ export function purchaseView(
       collectedAt: row.fulfilment?.collectedAt ?? null,
       quote: row.quote ? quoteView(row.quote, actor) : null,
     },
-  };
-}
-
-/** A purchase as the pay-several rule sees it. */
-export function paySeveralCandidate(
-  view: AccountPurchaseView,
-  accountId: string,
-  currency: string,
-  flags: Pick<PaySeveralCandidate, "heldForReview" | "inPaymentInProgress">,
-): PaySeveralCandidate {
-  const invoice: PurchaseInvoiceStatus = view.invoice.status;
-  return {
-    lotId: view.lotId,
-    paymentId: view.invoice.paymentId,
-    buyerAccountId: accountId,
-    invoice,
-    payerMayPay: view.paymentRole === "payer",
-    totalDue: view.invoice.totalDue,
-    currency,
-    ...flags,
   };
 }

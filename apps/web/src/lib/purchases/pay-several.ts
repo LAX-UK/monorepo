@@ -39,8 +39,34 @@ export type PaySeveralPlanView = {
   block: PaySeveralBlock | null;
 };
 
-/** Where the payer goes to pay the one combined payment, or why it could not be opened. */
-export type PaySeveralStart = { ok: true; url: string } | { ok: false; message: string };
+/**
+ * Where the payer goes to pay the one combined payment, or why it could not be opened. When the
+ * plan changed since it was shown, `changed` is the plan as it now stands.
+ */
+export type PaySeveralStart =
+  | { ok: true; url: string }
+  | { ok: false; message: string; changed?: PaySeveralPlanView };
+
+export const PAY_SEVERAL_CHANGED_FALLBACK = "The total has changed. Check it and pay again.";
+
+/** A decimal pounds string such as "1000.10" as whole pence; `null` if it is not one. */
+export function penceOfMajor(major: string): number | null {
+  const match = /^(\d{1,7})(?:\.(\d{1,2}))?$/.exec(major.trim());
+  if (!match) return null;
+  const pence = Number(match[1]) * 100 + Number((match[2] ?? "").padEnd(2, "0"));
+  return pence > 0 ? pence : null;
+}
+
+/** What the dialog says when the plan it showed is no longer the plan. */
+export function planChangedNotice(
+  shown: PaySeveralPlanView,
+  now: PaySeveralPlanView,
+  nowTotalFormatted: string,
+): string {
+  return shown.total !== now.total
+    ? `The total has changed to ${nowTotalFormatted}. Check it and pay again.`
+    : "The invoices in this payment have changed. Check them and pay again.";
+}
 
 /** What a refused payment says, by the API's code; anything else reads as a passing failure. */
 export const PAY_SEVERAL_START_COPY: Readonly<Record<string, string>> = {

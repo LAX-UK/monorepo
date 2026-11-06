@@ -411,7 +411,9 @@ describe("VeriffKycService.createSession", () => {
         },
       }),
     });
-    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
+    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, {
+      veriffClient: veriffClient as never,
+    });
     const result = await svc.createSession("user-1", `${webOrigin}/verify-identity`);
     expect(result.verificationUrl).toBe("https://magic.veriff.me/v/reuse");
     expect(result.sessionId).toBe("session-reuse");
@@ -437,7 +439,9 @@ describe("VeriffKycService.createSession", () => {
       createWithCurrentSession: vi.fn().mockResolvedValue(created),
       update: vi.fn().mockResolvedValue(created),
     });
-    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
+    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, {
+      veriffClient: veriffClient as never,
+    });
     const result = await svc.createSession("user-1", `${webOrigin}/verify-identity`);
     expect(veriffClient.createSession).toHaveBeenCalled();
     expect(repo.createWithCurrentSession).toHaveBeenCalledWith(
@@ -467,7 +471,9 @@ describe("VeriffKycService.createSession", () => {
         },
       }),
     });
-    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
+    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, {
+      veriffClient: veriffClient as never,
+    });
     const result = await svc.createSession("user-1", `${webOrigin}/verify-identity`);
     expect(result.verificationUrl).toBe("https://magic.veriff.me/v/continue");
     expect(result.sessionId).toBe("session-created");
@@ -496,7 +502,9 @@ describe("VeriffKycService.createSession", () => {
         decisionPayload: mergedPayload,
       }),
     });
-    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
+    const svc = new VeriffKycService(envWithOrigin(), repo, null, null, {
+      veriffClient: veriffClient as never,
+    });
     const result = await svc.createSession("user-1", `${webOrigin}/verify-identity`);
     expect(result.verificationUrl).toBe("https://magic.veriff.me/v/reuse");
     expect(result.sessionId).toBe("session-reuse");

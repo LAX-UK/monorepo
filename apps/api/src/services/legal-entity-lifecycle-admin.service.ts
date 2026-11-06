@@ -1,5 +1,7 @@
 import { isStripeAccountConfigured } from "@auction/connect";
+import { holdStartAt, organisationStateAllows, payHeldSinceAfter } from "@auction/domain";
 import type { IEmailService } from "@auction/email";
+import type { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type {
   ILegalEntityLifecycleAdminRepository,
   ILegalEntityMemberRepository,
@@ -35,6 +37,8 @@ export type LegalEntityLifecycleAdminOptions = {
   memberRepository?: ILegalEntityMemberRepository;
   webOrigin?: string;
   supportContactEmail?: string;
+  /** Moves invoice due dates when an organisation held from paying is cleared to pay. */
+  invoiceTerms?: Pick<InvoiceDueDateExtender, "extendOpenInvoices">;
 };
 
 function resolveStatusReason(
@@ -128,7 +132,31 @@ export class LegalEntityLifecycleAdminService {
         actorUserId,
         nextStatus: navLocked.next,
         statusReason: resolveStatusReason(op, navLocked, reason),
+        payHeldSince: payHeldSinceAfter({
+          from: lockedStatus,
+          to: navLocked.next,
+          heldSince: row.payHeldSince ?? null,
+          at: new Date(),
+        }),
       });
+
+      // An organisation that could not pay (documents asked for or under review) now can: the
+      // term of its unpaid invoices runs from now, moved in the same transaction.
+      if (
+        !organisationStateAllows(lockedStatus, "pay") &&
+        organisationStateAllows(navLocked.next, "pay")
+      ) {
+        await this.options.invoiceTerms?.extendOpenInvoices(
+          {
+            kind: "account",
+            legalEntityId: entityId,
+            // Held since it last stopped being able to pay; never recorded means from the start.
+            holdStartedAt: holdStartAt(row.payHeldSince),
+          },
+          new Date(),
+          tx,
+        );
+      }
 
       await this.publisher.withTx(tx).publish({
         aggregateType: "legal_entity",

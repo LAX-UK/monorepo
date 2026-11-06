@@ -1,5 +1,5 @@
 import type { ISourceOfFundsSettlementReader } from "@auction/persistence/interfaces";
-import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
+import { lotTotalDuePence } from "@auction/validators";
 import { mapLotRow, mapSaleRow } from "../../lib/mappers.js";
 
 export type SourceOfFundsSettlementItem = {
@@ -64,7 +64,6 @@ export class SourceOfFundsSettlementReadService {
     const wonUnpaidItems: SourceOfFundsSettlementItem[] = wonUnpaidRows.map((row) => {
       const mappedLot = mapLotRow(row.lotRow);
       const mappedSale = mapSaleRow(row.saleRow);
-      const pricing = computeLotCheckoutPricing(mappedLot, mappedSale);
       return {
         kind: "won_unpaid" as const,
         lotId: mappedLot.id,
@@ -72,7 +71,8 @@ export class SourceOfFundsSettlementReadService {
         lotNumber: mappedLot.lotNumber ?? null,
         saleId: mappedSale.id,
         saleTitle: mappedSale.title,
-        amountPence: majorAmountToPence(pricing.totalMajor),
+        // The invoice total this lot would be raised at: the one calculator.
+        amountPence: lotTotalDuePence(mappedLot, mappedSale),
       };
     });
 
@@ -116,7 +116,6 @@ export class SourceOfFundsSettlementReadService {
       if (!row.winnerId) continue;
       const mappedLot = mapLotRow(row.lotRow);
       const mappedSale = mapSaleRow(row.saleRow);
-      const pricing = computeLotCheckoutPricing(mappedLot, mappedSale);
       const list = itemsByUser.get(row.winnerId) ?? [];
       list.push({
         kind: "won_unpaid",
@@ -125,7 +124,8 @@ export class SourceOfFundsSettlementReadService {
         lotNumber: mappedLot.lotNumber ?? null,
         saleId: mappedSale.id,
         saleTitle: mappedSale.title,
-        amountPence: majorAmountToPence(pricing.totalMajor),
+        // The invoice total this lot would be raised at: the one calculator.
+        amountPence: lotTotalDuePence(mappedLot, mappedSale),
       });
       itemsByUser.set(row.winnerId, list);
     }
