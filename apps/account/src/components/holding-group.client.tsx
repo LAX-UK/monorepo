@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/account-button";
 import { TableCell, TableRow } from "@auction/ui/components/table";
 import { type ReactNode, useId, useState } from "react";
 
@@ -38,17 +39,19 @@ function GroupHeading({
     <p className="flex flex-wrap items-center gap-x-1 font-medium break-words">
       <span>{title}</span>
       <span aria-hidden="true">·</span>
-      <button
+      <Button
         type="button"
+        variant="link"
+        size="inline"
         aria-expanded={open}
         aria-controls={controls}
         onClick={onToggle}
-        className="inline-flex min-h-11 items-center gap-1 rounded-sm underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
+        className="min-h-11 gap-1 text-on-surface underline underline-offset-4"
       >
         {copyCount} copies
         <span className="sr-only"> of {title}</span>
         <Chevron open={open} />
-      </button>
+      </Button>
     </p>
   );
 }
