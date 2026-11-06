@@ -25,6 +25,19 @@ ENV NEXT_PUBLIC_LAX_ACCOUNT_ORIGIN=$NEXT_PUBLIC_LAX_ACCOUNT_ORIGIN
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY apps/shop ./apps/shop
 RUN pnpm turbo run build --filter=@auction/shop
+# sharp's native addon loads libvips through its library path, not through `require`, so the
+# standalone trace keeps the addon and leaves libvips out. Copy libvips to where the addon looks
+# for it (beside it in pnpm's store), and stop the build if it is still missing.
+RUN set -e; \
+  found=0; \
+  for dir in node_modules/.pnpm/@img+sharp-linux*/node_modules/@img/sharp-libvips-linux*; do \
+    [ -d "$dir/lib" ] || continue; \
+    rm -rf "apps/shop/.next/standalone/$dir"; \
+    mkdir -p "apps/shop/.next/standalone/$dir"; \
+    cp -RL "$dir/." "apps/shop/.next/standalone/$dir/"; \
+    found=1; \
+  done; \
+  [ "$found" = 1 ] && ls apps/shop/.next/standalone/node_modules/.pnpm/@img+sharp-linux*/node_modules/@img/sharp-libvips-linux*/lib/libvips-cpp.so* >/dev/null
 
 FROM node:22-alpine AS runner
 WORKDIR /app
