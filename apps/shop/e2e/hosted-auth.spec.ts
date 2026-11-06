@@ -8,11 +8,10 @@ const issuerOrigin = (process.env.AUTH_BASE_URL ?? "http://localhost:3003").repl
 
 async function openHostedLogin(page: Page): Promise<void> {
   await page.goto("/");
-  const menu = page.getByRole("button", { name: "Open menu" });
-  if (await menu.isVisible()) {
-    await menu.click();
-    const mobileSignIn = page.getByRole("link", { name: "Sign in" });
-    await mobileSignIn.click();
+  const tabBar = page.getByRole("navigation", { name: "Shortcuts" });
+  if (await tabBar.isVisible()) {
+    // Phones: signed out, the Account tab is Sign in.
+    await tabBar.getByRole("link", { name: "Account" }).click();
     await expect(page).toHaveURL((url) => url.origin === issuerOrigin && url.pathname === "/login");
     return;
   }

@@ -99,6 +99,43 @@ describe("MarketingHeaderSearch", () => {
     vi.unstubAllGlobals();
   });
 
+  it("opens from outside when `open` is controlled and reports requests through onOpenChange", () => {
+    const onOpenChange = vi.fn();
+    const props = { action: "/search", recentStorageKey: KEY, onOpenChange };
+    const { rerender } = render(<MarketingHeaderSearch {...props} open={false} />);
+    expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(onOpenChange).toHaveBeenLastCalledWith(true);
+    expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+
+    rerender(<MarketingHeaderSearch {...props} open />);
+    expect(screen.getByRole("dialog", { name: "Search" })).toBeTruthy();
+  });
+
+  it("draws only its own trigger for the field and icon variants", () => {
+    const { unmount } = render(
+      <MarketingHeaderSearch action="/search" recentStorageKey={KEY} variant="icon" />,
+    );
+    expect(screen.getAllByRole("button", { name: "Search" })).toHaveLength(1);
+    expect(document.querySelector(".site-header-search-trigger")).toBeNull();
+    unmount();
+    render(<MarketingHeaderSearch action="/search" recentStorageKey={KEY} variant="field" />);
+    expect(document.querySelector(".site-header-search-trigger")).not.toBeNull();
+  });
+
+  it("lets only the instance for the current width draw the shared shelf", () => {
+    // jsdom has no matchMedia, so every width counts as narrow: the icon instance draws it.
+    const shared = { action: "/search", recentStorageKey: KEY, open: true } as const;
+    render(
+      <>
+        <MarketingHeaderSearch {...shared} variant="field" />
+        <MarketingHeaderSearch {...shared} variant="icon" />
+      </>,
+    );
+    expect(screen.getAllByRole("dialog", { name: "Search" })).toHaveLength(1);
+  });
+
   it("reports the shelf opening and closing so the header can turn solid", () => {
     const onOpenChange = vi.fn();
     render(

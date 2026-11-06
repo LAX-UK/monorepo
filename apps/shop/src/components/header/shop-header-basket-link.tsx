@@ -3,6 +3,7 @@
 import { shopBasketAccessibleLabel } from "@/components/header/shop-basket-accessible-label";
 import { FOCUS_RING } from "@auction/branding";
 import {
+  MARKETING_COUNT_BADGE_CLASS,
   MarketingBagIcon,
   type MarketingHeaderTone,
   headerChromeIconClass,
@@ -43,7 +44,10 @@ export function ShopHeaderBasketLink({
       <MarketingBagIcon className="size-5" />
       {showBadge ? (
         <span
-          className="absolute -top-0.5 -right-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-cta-bg px-1 font-label text-xs font-semibold leading-none text-cta-on"
+          className={cn(
+            "absolute -top-0.5 -right-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full px-1 font-label text-xs font-semibold leading-none",
+            MARKETING_COUNT_BADGE_CLASS,
+          )}
           aria-hidden
         >
           {safeCount > 99 ? "99+" : safeCount}
