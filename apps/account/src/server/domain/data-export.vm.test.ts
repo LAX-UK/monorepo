@@ -51,24 +51,24 @@ describe("buildDataExportRowSubtitle", () => {
     expect(buildDataExportRowSubtitle(view({ status: "failed" }), NOW)).toBe(
       "Taking longer than usual",
     );
-    expect(buildDataExportRowSubtitle(view(READY), NOW)).toBe("Ready until 9 Nov");
+    expect(buildDataExportRowSubtitle(view(READY), NOW)).toBe("Ready until Mon 9 Nov 2026");
     expect(
       buildDataExportRowSubtitle(
         view({ status: "expired", expiresAt: "2026-11-09T14:03:00.000Z" }),
         NOW,
       ),
-    ).toBe("Last copy expired 9 Nov");
+    ).toBe("Last copy expired Mon 9 Nov 2026");
     expect(
       buildDataExportRowSubtitle(
         view({ status: "deleted", deletedAt: "2026-11-04T09:00:00.000Z" }),
         NOW,
       ),
-    ).toBe("Last copy deleted 4 Nov");
+    ).toBe("Last copy deleted Wed 4 Nov 2026");
   });
 
   it("calls a ready copy past its time expired, even before the worker has marked it", () => {
     expect(buildDataExportRowSubtitle(view(READY), new Date("2026-11-10T00:00:00.000Z"))).toBe(
-      "Last copy expired 9 Nov",
+      "Last copy expired Mon 9 Nov 2026",
     );
   });
 });
@@ -101,7 +101,7 @@ describe("buildDataExportPageVm", () => {
     );
     expect(vm).toMatchObject({
       kind: "preparing",
-      requestedAt: "today at 14:02",
+      requestedAt: "today at 14:02 GMT",
       email: "s.whitfield@example.com",
     });
     if (vm.kind !== "preparing") throw new Error("expected preparing");
@@ -154,7 +154,7 @@ describe("buildDataExportPageVm", () => {
       { status: "ok", view: view({ requestedAt: "2026-11-01T10:00:00.000Z" }) },
       NOW,
     );
-    expect(vm).toMatchObject({ kind: "preparing", requestedAt: "1 Nov 2026 at 10:00" });
+    expect(vm).toMatchObject({ kind: "preparing", requestedAt: "Sun 1 Nov, 10:00 GMT" });
   });
 
   it("shows the legal due date when delayed, and the same page for a failure staff are handling (E)", () => {
@@ -166,7 +166,7 @@ describe("buildDataExportPageVm", () => {
         },
         NOW,
       );
-      expect(vm).toMatchObject({ kind: "delayed", dueOn: "2 December 2026" });
+      expect(vm).toMatchObject({ kind: "delayed", dueOn: "Wed 2 Dec 2026" });
       if (vm.kind !== "delayed") throw new Error("expected delayed");
       expect(vm.products.find((p) => p.product === "bid")?.label).toBe("Trying again");
     }
@@ -179,8 +179,8 @@ describe("buildDataExportPageVm", () => {
       fileName: "lax-data-2026-11-02.zip",
       size: "38 MB",
       largeFile: true,
-      preparedAt: "2 Nov 2026 at 14:03",
-      availableUntil: "9 Nov 2026",
+      preparedAt: "Mon 2 Nov, 14:03 GMT",
+      availableUntil: "Mon 9 Nov 2026",
       downloads: "not downloaded yet",
     });
     const once = buildDataExportPageVm(
@@ -208,7 +208,7 @@ describe("buildDataExportPageVm", () => {
     ).toEqual({
       kind: "expired",
       message:
-        "Your last copy, prepared on 2 November 2026, expired on 9 November 2026 and has been deleted.",
+        "Your last copy, prepared on Mon 2 Nov 2026, expired on Mon 9 Nov 2026 and has been deleted.",
     });
     expect(
       buildDataExportPageVm(
@@ -234,7 +234,7 @@ describe("helpers", () => {
 
   it("states the over-the-limit date", () => {
     expect(buildRateLimitedMessage("2026-11-20T09:00:00.000Z")).toContain(
-      "You can ask again from 20 November 2026.",
+      "You can ask again from Fri 20 Nov 2026.",
     );
   });
 

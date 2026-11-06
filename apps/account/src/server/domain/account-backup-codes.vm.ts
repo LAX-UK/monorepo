@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/format-date";
 import { type AccountSecurityFacts, LOW_BACKUP_CODES_THRESHOLD } from "./account-security-facts";
 
 export type BackupCodesSectionVm = {
@@ -48,12 +49,7 @@ export const BACKUP_CODES_FILENAME = "lax-account-backup-codes.txt";
 
 /** The text file offered for download: the codes with enough context to be useful in a drawer. */
 export function formatBackupCodesFile(codes: readonly string[], createdAt: Date): string {
-  const date = createdAt.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Europe/London",
-  });
+  const date = formatDate(createdAt);
   return [
     "LAX Account backup codes",
     `Created ${date}`,

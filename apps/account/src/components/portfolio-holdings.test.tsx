@@ -132,10 +132,10 @@ describe("PortfolioHoldings", () => {
     expect(html).not.toContain("<table");
   });
 
-  it("counts by artist and product, never as percentages", () => {
+  it("counts by artist, never as percentages, and leaves the product split to the summary chart", () => {
     const html = render(works);
     expect(html).toContain("Ada Artist 1");
-    expect(textOf(html)).toContain("LAX Shop 1");
+    expect(textOf(html)).not.toContain("By product");
     expect(textOf(html)).not.toMatch(/\d%/);
   });
 

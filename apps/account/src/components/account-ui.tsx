@@ -34,10 +34,11 @@ export const TAG =
 
 /** The home cards' title: a clear step below the 20px section title. */
 const CARD_HEADER_TITLE = "font-headline text-base font-semibold text-on-surface";
-/** Figure scale under the page title: 28px summary counts, 20px card totals. */
+/** Figure scale under the page title: 28px summary counts, 20px card totals, 14px in tables. */
 export const FIGURE_LARGE =
   "font-headline text-[1.75rem] leading-9 font-semibold tabular-nums text-on-surface";
 export const FIGURE_MEDIUM = "font-headline text-xl font-semibold tabular-nums text-on-surface";
+export const FIGURE_TABLE = "font-headline text-sm font-semibold tabular-nums text-on-surface";
 /** Rows of a card keep the card's 16px side padding on a phone and 20px from `sm`. */
 export const CARD_ROW_PADDING = "px-4 sm:px-5";
 

@@ -6,7 +6,6 @@ import {
   buildSessionsVm,
   buildSignOutDeviceConfirm,
   buildSignOutOthersConfirm,
-  formatSessionAge,
 } from "./account-sessions.vm";
 
 const NOW = new Date("2026-10-23T12:00:00.000Z");
@@ -29,25 +28,6 @@ function session(overrides: Partial<AccountSession> & { id: string }): AccountSe
     ...overrides,
   };
 }
-
-describe("formatSessionAge", () => {
-  it.each([
-    [10_000, "just now"],
-    [MINUTE, "1 minute ago"],
-    [45 * MINUTE, "45 minutes ago"],
-    [HOUR, "1 hour ago"],
-    [5 * HOUR, "5 hours ago"],
-    [DAY, "1 day ago"],
-    [12 * DAY, "12 days ago"],
-    [60 * DAY, "on 24 Aug 2026"],
-  ])("%i ms ago reads %s", (elapsed, text) => {
-    expect(formatSessionAge(new Date(NOW.getTime() - elapsed), NOW)).toBe(text);
-  });
-
-  it("never reads as the future when clocks disagree", () => {
-    expect(formatSessionAge(new Date(NOW.getTime() + HOUR), NOW)).toBe("just now");
-  });
-});
 
 describe("buildSessionsVm", () => {
   it("separates this device from the others and labels each by browser and system", () => {

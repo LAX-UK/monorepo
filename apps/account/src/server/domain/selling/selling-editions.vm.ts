@@ -1,4 +1,4 @@
-import { formatDate } from "@/lib/format-money";
+import { formatDate } from "@/lib/format-date";
 import type { PortalSaleAuthority, PortalSaleAuthorityRequest } from "@auction/shop-contracts";
 
 /**

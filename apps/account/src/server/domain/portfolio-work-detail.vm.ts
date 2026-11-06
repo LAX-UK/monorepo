@@ -11,8 +11,8 @@ import {
   DOCUMENT_LABELS,
   PRODUCT_LABELS,
   STATUS_LABELS,
-  STATUS_TONES,
-  type StatusTone,
+  STATUS_STYLES,
+  type StatusStyle,
 } from "./portfolio-labels";
 import { safeDeepLink } from "./safe-deep-link";
 
@@ -39,7 +39,7 @@ export type WorkDetailVm = {
   edition: string | null;
   image: string | null;
   statusLabel: string;
-  statusTone: StatusTone;
+  statusStyle: StatusStyle;
   productLabel: string;
   businessName: string;
   acquiredAt: string;
@@ -90,7 +90,7 @@ export function buildWorkDetail(
     edition: item.edition ?? null,
     image: safeImageUrl(item.image, imageOrigins),
     statusLabel: STATUS_LABELS[item.status],
-    statusTone: STATUS_TONES[item.status],
+    statusStyle: STATUS_STYLES[item.status],
     productLabel: PRODUCT_LABELS[item.product],
     businessName: item.business.legalName,
     acquiredAt: item.acquiredAt,

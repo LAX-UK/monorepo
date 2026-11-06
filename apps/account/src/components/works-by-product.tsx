@@ -1,4 +1,4 @@
-import type { WorksBarVm, WorksByProductVm } from "@/server/domain/home-works-by-product.vm";
+import type { WorksBarVm, WorksByProductVm } from "@/server/domain/works-by-product.vm";
 import { ProductName } from "./product-name";
 
 function worksText(count: number): string {

@@ -104,8 +104,8 @@ describe("buildPayoutsList", () => {
     ]);
     expect(list.totals).toEqual({ paidPence: 8_000, toComePence: 4_000 });
     expect(list.rows.map((row) => row.status.label)).toEqual([
-      "Due 2 Oct 2026",
-      "Paid 18 Sept 2026",
+      "Due Fri 2 Oct 2026",
+      "Paid Fri 18 Sep 2026",
       "Cancelled",
     ]);
   });

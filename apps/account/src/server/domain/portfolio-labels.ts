@@ -27,20 +27,49 @@ export const STATUS_LABELS: Readonly<Record<LaxPortfolioItemStatus, string>> = {
   payout_paid: "Payout paid",
 };
 
-export type StatusTone = "neutral" | "info" | "success";
+/**
+ * Tones come from the shared status kit, and only three are used: warning marks what the person
+ * must act on, info marks work in progress, neutral marks everything settled or inactive. Never
+ * green and never the product accent, so the one amber badge on a page is the one that needs them.
+ */
+export type StatusTone = "neutral" | "info" | "warning";
 
-/** Only states that need the person, or that are settled, stand out from the neutral rest. */
-export const STATUS_TONES: Readonly<Record<LaxPortfolioItemStatus, StatusTone>> = {
-  awaiting_payment: "info",
-  payment_confirming: "neutral",
-  awaiting_shipment: "info",
-  owned: "neutral",
-  consigned: "neutral",
-  in_sale: "neutral",
-  sold: "neutral",
-  payout_pending: "info",
-  payout_paid: "success",
+/** The cue drawn before the label, so a status never relies on its colour alone. */
+export type StatusCue = "ring" | "dot" | "check" | "alert";
+
+export type StatusStyle = { tone: StatusTone; cue: StatusCue };
+
+const NEEDS_YOU: StatusStyle = { tone: "warning", cue: "alert" };
+const IN_PROGRESS: StatusStyle = { tone: "info", cue: "dot" };
+const SETTLED: StatusStyle = { tone: "neutral", cue: "check" };
+const CLOSED: StatusStyle = { tone: "neutral", cue: "ring" };
+
+export const STATUS_STYLES: Readonly<Record<LaxPortfolioItemStatus, StatusStyle>> = {
+  awaiting_payment: NEEDS_YOU,
+  payment_confirming: IN_PROGRESS,
+  awaiting_shipment: IN_PROGRESS,
+  owned: SETTLED,
+  consigned: IN_PROGRESS,
+  in_sale: IN_PROGRESS,
+  sold: SETTLED,
+  payout_pending: IN_PROGRESS,
+  payout_paid: SETTLED,
 };
+
+/**
+ * How a money line reads. A pending line you owe needs you; any other pending line is on its
+ * way; a completed line is settled; a cancelled line is closed and counts for nothing.
+ */
+export function moneyStatusStyle(status: LaxMoneyStatus, section: MoneySectionKey): StatusStyle {
+  switch (status) {
+    case "pending":
+      return section === "owed_by_you" ? NEEDS_YOU : IN_PROGRESS;
+    case "completed":
+      return SETTLED;
+    case "cancelled":
+      return CLOSED;
+  }
+}
 
 export const COST_LINE_LABELS: Readonly<Record<LaxCostLineKind, string>> = {
   hammer: "Hammer price",

@@ -42,7 +42,7 @@ describe("buildSignInMethodsSection", () => {
     const vm = buildSignInMethodsSection(ok(true, [google]), "ada@example.com");
     if (vm.status !== "list") throw new Error("expected list");
     const row = vm.rows[1];
-    expect(row?.kind === "social" && row.detail).toBe("ada@example.com · Linked 1 Oct 2026");
+    expect(row?.kind === "social" && row.detail).toBe("ada@example.com · Linked Thu 1 Oct 2026");
   });
 
   it("allows removing either provider when there are two, and when a password is set", () => {
