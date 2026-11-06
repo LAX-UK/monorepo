@@ -43,7 +43,9 @@ describe("NeedsYouCard", () => {
 
   it("collapses to one calm line when nothing needs the person", () => {
     const html = renderToStaticMarkup(<NeedsYouCard needsYou={needsYou(item())} />);
+    expect(textOf(html)).toContain("Needs you");
     expect(textOf(html)).toContain("Nothing needs you right now.");
+    expect(textOf(html)).not.toContain("See all");
     expect(html).not.toContain("<ul");
   });
 });

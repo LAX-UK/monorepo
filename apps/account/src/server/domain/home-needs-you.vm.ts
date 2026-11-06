@@ -29,9 +29,12 @@ export type NeedsYouVm = { lines: NeedsYouLineVm[]; moreCount: number };
 /** Payments come first: they are the one thing a person can lose money or standing over. */
 const PAYMENT_KINDS: ReadonlySet<AttentionKind> = new Set(["pay", "held", "confirming"]);
 
+const owedAmount = (row: AttentionRowVm): string | null =>
+  row.owed ? formatMinorUnits(row.owed.amount, row.owed.currency) : null;
+
 const META_SUFFIX: Record<AttentionKind, (row: AttentionRowVm) => string | null> = {
-  pay: (row) => (row.owed ? formatMinorUnits(row.owed.amount, row.owed.currency) : null),
-  held: () => "Verify your identity to pay",
+  pay: owedAmount,
+  held: (row) => [owedAmount(row), "waiting on identity checks"].filter(Boolean).join(" · "),
   confirming: () => "payment being confirmed",
   track: () => "awaiting shipment",
   payout: () => "payout pending",
@@ -44,8 +47,6 @@ function titleOf(row: AttentionRowVm): string {
 
 function metaOf(row: AttentionRowVm): string {
   const suffix = META_SUFFIX[row.kind](row);
-  // A held line says only what to do; every other line names the product first.
-  if (row.kind === "held") return suffix ?? "";
   return suffix ? `${row.productLabel} · ${suffix}` : row.productLabel;
 }
 

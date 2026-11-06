@@ -1,7 +1,13 @@
 import { formatCurrencyTotals } from "@/lib/format-money";
 import type { PortfolioHeaderVm } from "@auction/lax-ecosystem";
 
-export type CollectionCountVm = { key: string; label: string; value: number };
+export type CollectionCountVm = {
+  key: string;
+  label: string;
+  /** The shorter label shown on a phone, where the long one would wrap. */
+  shortLabel: string;
+  value: number;
+};
 
 export type CollectionVm = {
   counts: CollectionCountVm[];
@@ -16,12 +22,20 @@ export type CollectionVm = {
  */
 export function buildCollection(header: PortfolioHeaderVm, totalWorks: number): CollectionVm {
   const counts = [
-    { key: "owned", label: "Works owned", value: header.worksOwned },
-    { key: "in-sale", label: "In sale or consigned", value: header.inSaleOrConsigned },
-    { key: "to-pay", label: "To pay", value: header.awaitingPayment },
+    { key: "owned", label: "Works owned", shortLabel: "Owned", value: header.worksOwned },
+    {
+      key: "in-sale",
+      label: "In sale or consigned",
+      shortLabel: "In sale",
+      value: header.inSaleOrConsigned,
+    },
+    { key: "to-pay", label: "To pay", shortLabel: "To pay", value: header.awaitingPayment },
   ].filter((count) => count.value > 0);
   return {
-    counts: counts.length > 0 ? counts : [{ key: "works", label: "Works", value: totalWorks }],
+    counts:
+      counts.length > 0
+        ? counts
+        : [{ key: "works", label: "Works", shortLabel: "Works", value: totalWorks }],
     totalDue:
       header.awaitingPayment > 0 && header.totalDue.length > 0
         ? formatCurrencyTotals(header.totalDue)
