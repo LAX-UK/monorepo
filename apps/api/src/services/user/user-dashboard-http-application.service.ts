@@ -1,4 +1,9 @@
-import { PURCHASE_LIST_LIMIT, accountBidScope, accountPurchaseScope } from "@auction/domain";
+import {
+  PURCHASE_LIST_LIMIT,
+  accountBidScope,
+  accountPurchaseScope,
+  decisivePaymentByLot,
+} from "@auction/domain";
 import type { IRecordPeopleReader } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import type { LotReadPort, SaleLookupPort } from "../../container/container-slices.js";
@@ -116,15 +121,12 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
     return data ? { status: 200, body: { data } } : NOT_YOURS;
   }
 
-  /** Won lots with images, checkout pricing and the latest payment for each. */
+  /** Won lots with images, checkout pricing and the deciding payment for each. */
   private async toPurchaseRows(
     lots: Lot[],
     payments: Awaited<ReturnType<IPaymentBuyerService["listMyPaymentsForBuyerApi"]>>["data"],
   ) {
-    const byLot = new Map<string, (typeof payments)[number]>();
-    for (const p of payments) {
-      if (!byLot.has(p.lotId)) byLot.set(p.lotId, p);
-    }
+    const byLot = decisivePaymentByLot(payments);
     const presentedLots = await presentLotsImages(
       this.deps.mediaUrlResolver,
       lots,

@@ -26,7 +26,7 @@ describe("buildWorkDetail", () => {
     ],
   });
 
-  it("keeps every cost line in its own currency and shipping apart from the cost basis", () => {
+  it("keeps every cost line in its own currency and totals them, delivery included", () => {
     const vm = buildWorkDetail(full, ORIGINS);
     expect(vm.costLines.map((line) => [line.label, line.currency])).toEqual([
       ["Hammer price", "GBP"],
@@ -34,9 +34,9 @@ describe("buildWorkDetail", () => {
       ["Shipping", "GBP"],
       ["Price", "EUR"],
     ]);
-    expect(vm.costBasis).toEqual([
+    expect(vm.total).toEqual([
       { currency: "EUR", amount: 90_000 },
-      { currency: "GBP", amount: 125_000 },
+      { currency: "GBP", amount: 129_000 },
     ]);
     expect(vm.shipping).toEqual([{ currency: "GBP", amount: 4_000 }]);
   });

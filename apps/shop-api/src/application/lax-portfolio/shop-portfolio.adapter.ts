@@ -55,6 +55,38 @@ const IN_FULFILMENT: ReadonlySet<string> = new Set([
 /** Listing states in which the owner has put the edition up for sale. */
 const OFFERED_FOR_SALE: ReadonlySet<string> = new Set(["authorised", "reserved", "held"]);
 
+/** Refund states that moved, or are moving, money back; the ledger counts exactly these. */
+function refundCountsAgainstPaid(status: string): boolean {
+  return status !== "failed" && status !== "cancelled";
+}
+
+/**
+ * The refunded money of each order that is still to be taken off its paid lines. A refund is
+ * recorded against the order, not a line, so it is handed to the order's works in turn: price
+ * first, then delivery. What a work shows as paid is then what was paid and kept, which is what
+ * Money's paid total less its refunded total says.
+ */
+class RefundPool {
+  private readonly remaining = new Map<string, number>();
+
+  constructor(refunds: PortalPortfolioFacts["refunds"]) {
+    for (const refund of refunds) {
+      if (!refundCountsAgainstPaid(refund.status)) continue;
+      this.remaining.set(
+        refund.orderId,
+        (this.remaining.get(refund.orderId) ?? 0) + refund.amountPence,
+      );
+    }
+  }
+
+  /** Takes the refund off a line, returning what the line still counts for. */
+  net(orderId: string, amount: number): number {
+    const refunded = Math.min(this.remaining.get(orderId) ?? 0, amount);
+    this.remaining.set(orderId, (this.remaining.get(orderId) ?? 0) - refunded);
+    return amount - refunded;
+  }
+}
+
 function businessOf(ctx: ShopPortfolioContext): LaxBusinessV1 {
   return { key: "lax_art", legalName: ctx.legalName };
 }
@@ -138,6 +170,7 @@ function editionStatus(fact: PortfolioEditionFact): LaxPortfolioItemV1["status"]
 function editionItem(
   fact: PortfolioEditionFact,
   ctx: ShopPortfolioContext,
+  refunds: RefundPool,
 ): LaxPortfolioItemV1 | null {
   const status = editionStatus(fact);
   if (!status) return null;
@@ -146,10 +179,10 @@ function editionItem(
 
   const lines: LaxCostLineV1[] = [];
   if (purchase) {
-    lines.push({ kind: "price", amount: purchase.unitPricePence, currency: CURRENCY });
-    if (purchase.shippingPence > 0) {
-      lines.push({ kind: "shipping", amount: purchase.shippingPence, currency: CURRENCY });
-    }
+    const price = refunds.net(purchase.orderId, purchase.unitPricePence);
+    const shipping = refunds.net(purchase.orderId, purchase.shippingPence);
+    if (price > 0) lines.push({ kind: "price", amount: price, currency: CURRENCY });
+    if (shipping > 0) lines.push({ kind: "shipping", amount: shipping, currency: CURRENCY });
   }
 
   const actions: LaxPortfolioActionV1[] = [];
@@ -202,6 +235,9 @@ function originalItem(fact: PortfolioOriginalFact, ctx: ShopPortfolioContext): L
     acquiredAt: fact.updatedAt.toISOString(),
     status,
     paid: { lines: [{ kind: "price", amount: fact.salePricePence, currency: CURRENCY }] },
+    ...(status === "awaiting_payment"
+      ? { owed: { amount: fact.salePricePence, currency: CURRENCY, state: "due" as const } }
+      : {}),
     documents: [],
     actions,
     business: businessOf(ctx),
@@ -227,6 +263,12 @@ function pendingLineItem(
     acquiredAt: fact.createdAt.toISOString(),
     status: "awaiting_payment",
     paid: { lines },
+    // The delivery charge rides on the order's first line, so the lines add up to the order total.
+    owed: {
+      amount: fact.unitPricePence + fact.shippingPence,
+      currency: CURRENCY,
+      state: "due",
+    },
     documents: [],
     actions: [
       { kind: "pay", href: orderHref(ctx, fact.channel, fact.orderId) },
@@ -261,8 +303,9 @@ export function buildShopPortfolioItems(
 ): LaxPortfolioItemV1[] {
   const compact = (items: (LaxPortfolioItemV1 | null)[]) =>
     items.filter((item): item is LaxPortfolioItemV1 => item !== null);
+  const refunds = new RefundPool(facts.refunds);
   return [
-    ...compact(facts.editions.map((fact) => editionItem(fact, ctx))),
+    ...compact(facts.editions.map((fact) => editionItem(fact, ctx, refunds))),
     ...facts.originals.map((fact) => originalItem(fact, ctx)),
     ...facts.pendingOrderLines.map((fact) => pendingLineItem(fact, ctx)),
     ...compact(facts.sales.map((fact) => saleItem(fact, ctx))),

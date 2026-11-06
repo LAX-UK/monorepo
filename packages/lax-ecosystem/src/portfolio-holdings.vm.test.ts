@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ART_BUSINESS, item } from "./portfolio-fixtures.test-util.js";
+import { buildPortfolioHeader } from "./portfolio-header.vm.js";
 import {
   UNKNOWN_ARTIST_LABEL,
   buildHoldings,
@@ -83,6 +84,30 @@ describe("buildHoldings", () => {
       documentsExpected: 1,
     });
     expect(c).toMatchObject({ paid: [], documentsAvailable: 0, documentsExpected: 0 });
+  });
+
+  it("adds the rows' paid figures up to the header's paid so far", () => {
+    const paidLinesOf = [
+      item({
+        id: "p1",
+        paid: {
+          lines: [
+            { kind: "price", amount: 5000, currency: "GBP" },
+            { kind: "shipping", amount: 900, currency: "GBP" },
+          ],
+        },
+      }),
+      item({
+        id: "p2",
+        status: "awaiting_payment",
+        paid: { lines: [{ kind: "price", amount: 7000, currency: "GBP" }] },
+      }),
+    ];
+    const { rows } = buildHoldings(paidLinesOf);
+    expect(rows.flatMap((row) => row.paid)).toEqual([{ currency: "GBP", amount: 5900 }]);
+    expect(buildPortfolioHeader(paidLinesOf).paidSoFar).toEqual([
+      { currency: "GBP", amount: 5900 },
+    ]);
   });
 
   it("counts allocation by artist and product over the filtered works", () => {

@@ -23,6 +23,48 @@ export type PurchaseStateFacts = {
  */
 export const OWED_PAYMENT_STATUSES = ["pending", "requires_manual_review", "cancelled"] as const;
 
+/** Payment states that mean the buyer has paid, or is paying: no later attempt can make it owed. */
+const SETTLING_PAYMENT_STATUSES: readonly PaymentStatus[] = ["captured", "authorized", "refunded"];
+
+/**
+ * The payment that decides where a lot stands, from all its payment attempts newest first. A
+ * checkout is attempted many times, so an abandoned or expired attempt never outranks a payment
+ * that was captured, authorised or refunded; otherwise the newest attempt decides.
+ */
+export function decisivePayment<T extends { status: PaymentStatus }>(
+  attemptsNewestFirst: readonly T[],
+): T | undefined {
+  return (
+    attemptsNewestFirst.find((attempt) => SETTLING_PAYMENT_STATUSES.includes(attempt.status)) ??
+    attemptsNewestFirst[0]
+  );
+}
+
+/**
+ * The deciding payment of every lot, from payments listed newest first (see `decisivePayment`).
+ *
+ * The Needs-you counts and the record search read the same fact in SQL and take the newest
+ * payment per lot. That is equal to the decisive one today because the partial unique indexes
+ * allow only one open or settled payment per lot, so a settled payment is always the newest.
+ * If those indexes ever change, change those readers with this function.
+ */
+export function decisivePaymentByLot<T extends { lotId: string; status: PaymentStatus }>(
+  paymentsNewestFirst: readonly T[],
+): Map<string, T> {
+  const attemptsByLot = new Map<string, T[]>();
+  for (const payment of paymentsNewestFirst) {
+    const attempts = attemptsByLot.get(payment.lotId);
+    if (attempts) attempts.push(payment);
+    else attemptsByLot.set(payment.lotId, [payment]);
+  }
+  const byLot = new Map<string, T>();
+  for (const [lotId, attempts] of attemptsByLot) {
+    const decisive = decisivePayment(attempts);
+    if (decisive) byLot.set(lotId, decisive);
+  }
+  return byLot;
+}
+
 /**
  * Whether the purchase was refunded or cancelled; such a purchase is never owed or owned. Only a
  * refund or a cancelled sale ends it: a cancelled payment row does not.

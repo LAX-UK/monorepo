@@ -91,9 +91,9 @@ function AcquisitionRecord({ work }: { work: WorkDetailVm }) {
           </TableBody>
           <TableFooter>
             <TableRow>
-              <TableCell>Total, shipping not included</TableCell>
+              <TableCell>Total</TableCell>
               <TableCell className="text-right">
-                <CurrencyAmounts totals={work.costBasis} />
+                <CurrencyAmounts totals={work.total} />
               </TableCell>
             </TableRow>
           </TableFooter>
