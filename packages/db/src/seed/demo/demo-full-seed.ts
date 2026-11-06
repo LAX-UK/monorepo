@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "../../schema/index.js";
 import { type FullActors, buildFullCatalogue } from "./demo-full-catalogue.js";
 import { COVER_IMAGES, DEPARTMENTS, WORKS } from "./demo-full-works.js";
+import { demoImageUrl, departmentHeroSource } from "./demo-images.js";
 import { DEMO_IDS, DEMO_PEOPLE } from "./demo-topup-ids.js";
 import {
   type Db,
@@ -85,7 +86,7 @@ export async function runDemoFull(db: Db, now: number = Date.now()): Promise<Dem
   }
   await db
     .update(schema.sale)
-    .set({ coverImages: [COVER_IMAGES.vanGogh] })
+    .set({ coverImages: [demoImageUrl(COVER_IMAGES.vanGogh, "cover")] })
     .where(eq(schema.sale.id, DEMO_IDS.sale(3)));
 
   await writeNotifications(db, now, people.ids, catalogue.lots);
@@ -103,7 +104,8 @@ export async function runDemoFull(db: Db, now: number = Date.now()): Promise<Dem
 /** The twelve departments exist, in order, each with a picture of one of its works. */
 async function ensureDepartments(db: Db, base: Awaited<ReturnType<typeof loadBase>>) {
   for (const [index, department] of DEPARTMENTS.entries()) {
-    const picture = Object.values(WORKS).find((w) => w.department === department.slug)?.image;
+    const source = departmentHeroSource(department.slug);
+    const picture = source ? demoImageUrl(source, "cover") : null;
     if (!base.categoryIdBySlug.has(department.slug)) {
       await db
         .insert(schema.category)
@@ -112,7 +114,7 @@ async function ensureDepartments(db: Db, base: Awaited<ReturnType<typeof loadBas
     }
     await db
       .update(schema.category)
-      .set({ heroImageKey: picture ?? null, sortOrder: index, archived: false })
+      .set({ heroImageKey: picture, sortOrder: index, archived: false })
       .where(eq(schema.category.slug, department.slug));
   }
 }

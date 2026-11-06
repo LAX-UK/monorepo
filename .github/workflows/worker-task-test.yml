@@ -79,6 +79,23 @@ jobs:
           test -n "$shop_url"
           echo "::add-mask::$shop_url"
           echo "DATABASE_URL_SHOP=$shop_url" >> "$GITHUB_ENV"
+      # Small copies of the museum pictures the seeds use, in the test media bucket under demo/. The
+      # seeds below write the addresses of these copies. Idempotent: a copy at the same size is kept.
+      - name: Mirror demo pictures
+        if: inputs.task == 'demo-full'
+        env:
+          APP_ENV: test
+          DATABASE_URL_WORKER: ${{ env.DATABASE_URL }}
+          STORAGE_DRIVER: s3
+          S3_ENDPOINT: https://lon1.digitaloceanspaces.com
+          S3_REGION: lon1
+          S3_BUCKET: lax-media
+          S3_PUBLIC_BASE_URL: https://lax-media.lon1.cdn.digitaloceanspaces.com
+          S3_ACCESS_KEY_ID: ${{ secrets.MEDIA_SPACES_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.MEDIA_SPACES_SECRET_ACCESS_KEY }}
+        run: |
+          CRON_INTERNAL_SECRET="$(openssl rand -hex 32)" \
+            pnpm --filter @auction/worker exec tsx src/scripts/mirror-demo-images.ts
       - name: Demo seed, Bid database
         if: inputs.task == 'demo-full'
         env:

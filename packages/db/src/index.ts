@@ -13,3 +13,15 @@ export {
   truncateIp,
   type QrCodeScanInput,
 } from "./services/qr-code-scan.js";
+export {
+  DEMO_IMAGE_LONG_EDGE,
+  DEMO_JPEG_QUALITY,
+  DEMO_MEDIA_BASE_URL,
+  DEMO_PORTRAIT_SOURCES,
+  demoImageCatalogue,
+  demoImageKey,
+  demoImageUrl,
+  demoPortraitUrl,
+  type DemoImageEntry,
+  type DemoImageKind,
+} from "./seed/demo/demo-images.js";

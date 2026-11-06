@@ -1,13 +1,14 @@
 /**
  * Fills the gaps a meeting demo of lax.art and LAX Shop shows: every artist has a portrait, every
  * story, exhibition and venue has a cover picture, and the seeded originals cover each sale
- * state (for sale, price on request, sold). Pictures are the repo's own seed assets.
+ * state (for sale, price on request, sold). Portraits are public-domain paintings mirrored to the media CDN; covers are the repo's own seed assets.
  *
- * Idempotent: it only fills empty pictures and sets fixed states, and never deletes. Test and
+ * Idempotent: it fills empty covers, refreshes stand-in portraits and sets fixed states, and never deletes. Test and
  * local databases only.
  */
 import type { Database } from "@auction/db";
 import { sql } from "drizzle-orm";
+import { planDemoPortraits } from "./demo-portrait-plan.js";
 
 const COVERS = [
   "/art/seed/hero-layer-1.webp",
@@ -16,12 +17,6 @@ const COVERS = [
   "/art/seed/original-2.webp",
   "/art/seed/original-3.webp",
   "/art/seed/signup-gallery.webp",
-] as const;
-
-const PORTRAITS = [
-  "/art/seed/artist-juno.webp",
-  "/art/seed/artist-elias.webp",
-  "/art/seed/artist-emmett.webp",
 ] as const;
 
 /** Sale states for the seeded originals, in the order of the seed: price in pence where for sale. */
@@ -62,30 +57,15 @@ function pick<T>(list: readonly T[], index: number): T {
 export async function seedDemoFull(db: Database): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};
 
-  // Artists without a portrait take the lead picture of one of their own works.
-  const fromWorks = await db.execute(sql`
-    update shop_artist artist
-    set portrait_image_url = lead.media_key
-    from (
-      select distinct on (work.artist_id) work.artist_id, image.media_key
-      from shop_artwork work
-      join shop_artwork_image image on image.artwork_id = work.id
-      order by work.artist_id, work.created_at, image.position
-    ) lead
-    where lead.artist_id = artist.id and (artist.portrait_image_url is null or artist.portrait_image_url = '')
-  `);
-  counts.portraitsFromWorks = fromWorks.rowCount ?? 0;
-
-  // Any artist still without one takes a seed portrait.
-  const bare = await db.execute<{ id: string }>(
-    sql`select id from shop_artist where portrait_image_url is null or portrait_image_url = '' order by slug`,
+  // Every artist without a portrait of their own gets a different one, mirrored to the media CDN.
+  const artists = await db.execute<{ id: string; slug: string; portrait: string | null }>(
+    sql`select id, slug, portrait_image_url as portrait from shop_artist`,
   );
-  for (const [index, row] of bare.rows.entries()) {
-    await db.execute(
-      sql`update shop_artist set portrait_image_url = ${pick(PORTRAITS, index)} where id = ${row.id}`,
-    );
+  const plan = planDemoPortraits(artists.rows);
+  for (const { id, portrait } of plan) {
+    await db.execute(sql`update shop_artist set portrait_image_url = ${portrait} where id = ${id}`);
   }
-  counts.portraitsFromSeed = bare.rows.length;
+  counts.portraits = plan.length;
 
   // Stories, exhibitions and venues without a cover take a seed cover.
   for (const table of [

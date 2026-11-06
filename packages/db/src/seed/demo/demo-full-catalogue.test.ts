@@ -55,7 +55,9 @@ describe.each(CLOCKS)("full demo catalogue at %d", (now) => {
     for (const key of ["photoPrints", "designWatches", "booksCoins"]) {
       expect(sale(key).status).toBe("scheduled");
       expect(sale(key).startTime.getTime()).toBeGreaterThan(now + 14 * DAY);
-      expect(sale(key).coverImage).toMatch(/^https:\/\/images\.metmuseum\.org\//);
+      expect(sale(key).coverImage).toMatch(
+        /^https:\/\/lax-media\.lon1\.cdn\.digitaloceanspaces\.com\/demo\/cover\//,
+      );
     }
   });
 
