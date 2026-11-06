@@ -68,10 +68,10 @@ describe("PortfolioMoney", () => {
     expect(html).toContain('href="/account/portfolio/money?business=lax_art#ledger"');
   });
 
-  it("lays the phone ledger out as compact rows: amount, type and business, date, status", () => {
+  it("lays the phone ledger out as compact rows: amount, product and type, date, status", () => {
     const html = render(entries);
     expect(html).toContain('aria-label="Ledger"');
-    expect(textOf(html)).toContain("Owed by you · LAX Bid Ltd");
+    expect(textOf(html)).toContain("LAX Bid · Owed by you");
     expect(html).toContain("1 Mar 2026");
   });
 
@@ -105,5 +105,59 @@ describe("PortfolioMoney", () => {
     const html = render(entries, { currency: "USD" });
     expect(html).toContain("No money entries match these filters");
     expect(html).toContain("Clear all filters");
+  });
+});
+
+describe("PortfolioMoney ledger product column", () => {
+  const ledgerEntries = [
+    moneyEntry({ id: "bid", occurredAt: "2026-03-03T10:00:00.000Z" }),
+    moneyEntry({
+      id: "shop",
+      business: ART_BUSINESS,
+      product: "shop",
+      occurredAt: "2026-03-02T10:00:00.000Z",
+      href: "https://shop.lax.art/account/orders/1",
+    }),
+    moneyEntry({
+      id: "art",
+      business: ART_BUSINESS,
+      product: "art",
+      occurredAt: "2026-03-01T10:00:00.000Z",
+      href: "https://lax.art/account/collection",
+    }),
+  ];
+
+  it("leads each line with the product in its accent, with the legal entity as a muted second line", () => {
+    const html = render(ledgerEntries);
+    expect(html).toContain("Product");
+    expect(html).not.toContain(">Business<");
+    for (const product of ["bid", "shop", "art"]) {
+      expect(html).toContain(`data-product="${product}"`);
+    }
+    expect(html).toContain('class="block text-xs text-on-surface-variant">London Art Exchange Ltd');
+  });
+
+  it("says LAX Shop and links to LAX Shop for a Shop payment", () => {
+    const text = textOf(render(ledgerEntries));
+    expect(text).toContain("Open in LAX Shop");
+    expect(text).toContain("Open in lax.art");
+    expect(text).toContain("Open in LAX Bid");
+  });
+
+  it("names the products each business covers under its summary card title", () => {
+    const html = render(ledgerEntries);
+    expect(textOf(html)).toContain("LAX Shop · lax.art");
+  });
+
+  it("reads an entry without a product as its business's product", () => {
+    const text = textOf(render([moneyEntry({ business: ART_BUSINESS })]));
+    expect(text).toContain("Open in lax.art");
+    expect(text).not.toContain("Open in LAX Shop");
+  });
+
+  it("puts the product first on a phone row", () => {
+    const html = render(ledgerEntries);
+    const phoneRows = html.slice(html.indexOf('aria-label="Ledger"'));
+    expect(phoneRows).toMatch(/data-product="shop"[^>]*>LAX Shop<\/span> · Paid/);
   });
 });
