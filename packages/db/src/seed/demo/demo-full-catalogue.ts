@@ -1,3 +1,4 @@
+import { workArtistId } from "./demo-artists.js";
 import { COVER_IMAGES, WORKS, type WorkKey } from "./demo-full-works.js";
 import { demoImageUrl } from "./demo-images.js";
 /**
@@ -465,6 +466,7 @@ export function buildFullCatalogue(now: number, actors: FullActors): DemoCatalog
         image: demoImageUrl(work.image, "lot"),
         categorySlug: work.department,
         sellerEntityId: actors.laxStockId,
+        artistId: workArtistId(lotSpec.work),
         startingPrice,
         reservePrice: reserve,
         estimateLow: low,
