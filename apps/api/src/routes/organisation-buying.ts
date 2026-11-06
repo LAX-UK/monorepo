@@ -2,6 +2,7 @@ import {
   accountPurchasesQuerySchema,
   payPlanQuerySchema,
   paySeveralBodySchema,
+  paySeveralStartBodySchema,
   purchaseLotIdParamSchema,
   reportPurchaseProblemSchema,
   requestDeliveryQuoteSchema,
@@ -33,7 +34,11 @@ function memberActor(c: BuyingContext): OrganisationMemberActor {
 function respond<T>(c: BuyingContext, result: Result<T, OrganisationBuyingError>) {
   return result.match(
     (data) => c.json({ data }),
-    (e) => c.json({ error: e.code, message: e.message }, e.status),
+    (e) =>
+      c.json(
+        { error: e.code, message: e.message, ...(e.quote ? { plan: e.quote } : {}) },
+        e.status,
+      ),
   );
 }
 
@@ -115,8 +120,8 @@ export function createOrganisationBuyingRoutes(
     requireAccountOnboarding,
     requireBuyerRole,
     requireContext,
-    zValidator("json", paySeveralBodySchema),
-    async (c) => respond(c, await paySeveral.pay(memberActor(c), c.req.valid("json").lotIds)),
+    zValidator("json", paySeveralStartBodySchema),
+    async (c) => respond(c, await paySeveral.pay(memberActor(c), c.req.valid("json"))),
   );
 
   r.post(

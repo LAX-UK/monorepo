@@ -20,6 +20,7 @@ import {
   deleteIdentityUserFixtures,
   seedIdentityUserFixtures,
 } from "../../testing/identity-user-fixtures.js";
+import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import { NotificationFactory } from "../notification.factory.js";
 import { PaymentTierPolicy, parsePaymentTierLimits } from "../payment/payment-tier.policy.js";
 import { PayPlanService } from "./pay-plan.service.js";
@@ -39,6 +40,24 @@ const LIMITS = {
  * Paying several lots when some are not invoiced yet, against the real tables: the plan, the
  * invoices raised for it and the group that claims them agree to the penny.
  */
+
+/** Pays the plan the person was shown for these lots, as the screen does. */
+async function payShown(
+  svc: Pick<PaySeveralService, "plan" | "pay">,
+  who: OrganisationMemberActor,
+  lots: readonly string[],
+  expected?: { expectedTotalPence: number; expectedLotIds: readonly string[] },
+) {
+  const shown = await svc.plan(who, lots);
+  const fromPlan = shown.isOk()
+    ? {
+        expectedTotalPence: Math.round(Number(shown.value.total) * 100),
+        expectedLotIds: shown.value.payable.map((p) => p.lotId),
+      }
+    : { expectedTotalPence: 1, expectedLotIds: [lots[0] as string] };
+  return svc.pay(who, { lotIds: lots, ...(expected ?? fromPlan) });
+}
+
 describe.skipIf(!HAS_DB)("pay several raises what the plan counts (integration)", () => {
   // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
   const db = createDb(process.env.DATABASE_URL!);
@@ -224,7 +243,7 @@ describe.skipIf(!HAS_DB)("pay several raises what the plan counts (integration)"
     expect(shown.totals.pence).toBe(125_000 + 250_000);
     expect(await invoicesFor(missing)).toHaveLength(0);
 
-    const started = (await paySeveral(lotEnd(false)).pay(actor, pick))._unsafeUnwrap();
+    const started = (await payShown(paySeveral(lotEnd(false)), actor, pick))._unsafeUnwrap();
 
     expect(started.total).toBe("3750.00");
     const [group] = await db
@@ -258,7 +277,7 @@ describe.skipIf(!HAS_DB)("pay several raises what the plan counts (integration)"
     const ok1 = await wonLot("500.00");
     await lotEnd(false).ensureForLot(ok1);
 
-    const started = (await paySeveral(lotEnd(true)).pay(actor, [ok1, held]))._unsafeUnwrap();
+    const started = (await payShown(paySeveral(lotEnd(true)), actor, [ok1, held]))._unsafeUnwrap();
 
     const [heldRow] = await rowsFor(held);
     expect(heldRow?.status).toBe("requires_manual_review");
@@ -277,7 +296,7 @@ describe.skipIf(!HAS_DB)("pay several raises what the plan counts (integration)"
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     const refused = (
-      await paySeveral(lotEnd(false, true)).pay(actor, [missing])
+      await payShown(paySeveral(lotEnd(false, true)), actor, [missing])
     )._unsafeUnwrapErr();
     logged.mockRestore();
 
@@ -298,8 +317,8 @@ describe.skipIf(!HAS_DB)("pay several raises what the plan counts (integration)"
     const svc = paySeveral(lotEnd(false));
 
     const results = await Promise.all([
-      svc.pay(actor, pick),
-      svc.pay(actor, pick),
+      payShown(svc, actor, pick),
+      payShown(svc, actor, pick),
       lotEnd(false).ensureForLot(missing),
     ]);
 

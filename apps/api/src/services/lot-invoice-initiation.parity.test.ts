@@ -188,6 +188,14 @@ describe("lot invoice initiation: one implementation for the API and the worker"
     );
   });
 
+  it("raising for a payment that goes on to a checkout leaves the accounting write to it", async () => {
+    const { service, ensureInvoiceForPayment, create } = build();
+    const result = await service.ensureForLot(LOT_ID, { accounting: "defer" });
+    expect(result).toEqual({ created: true, paymentId: "pay-new", lotId: LOT_ID });
+    expect(create).toHaveBeenCalled();
+    expect(ensureInvoiceForPayment).not.toHaveBeenCalled();
+  });
+
   it("changed: Xero writes switched off no longer stop the invoice; the Xero step defers", async () => {
     const { service, create, stageDispatch, record } = build({
       xero: { ok: false, error: "xero_api_writes_disabled" },

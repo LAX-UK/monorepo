@@ -42,12 +42,15 @@ export type OrganisationBuyingErrorCode =
   | "pay_several_conflict"
   | "pay_several_unavailable"
   | "pay_plan_unavailable"
-  | "onboarding_required";
+  | "onboarding_required"
+  | "pay_plan_changed";
 
 export type OrganisationBuyingError = {
   code: OrganisationBuyingErrorCode;
   status: 400 | 403 | 404 | 409 | 503;
   message: string;
+  /** The plan as it now stands, sent with `pay_plan_changed` so the screen can show it again. */
+  quote?: PaySeveralQuote;
 };
 
 export type BuyingResult<T> = Promise<Result<T, OrganisationBuyingError>>;
@@ -116,6 +119,15 @@ export type PaySeveralQuote = {
   payTogether: PayTogetherDecision;
 };
 
+/** What the person asked to pay: the picked lots and the plan they were shown for them. */
+export type PaySeveralRequest = {
+  lotIds: readonly string[];
+  /** The shown total, in whole pence. */
+  expectedTotalPence: number;
+  /** The lots the shown plan said would be paid. */
+  expectedLotIds: readonly string[];
+};
+
 /** The combined payment opened for the payer: where to pay, and what it covers. */
 export type PaySeveralStarted = {
   paymentGroupId: string;
@@ -148,8 +160,11 @@ export interface IPayPlanService {
 export interface IPaySeveralService {
   /** What one payment of the picked invoices would cover; nothing is held or charged. */
   plan(actor: OrganisationMemberActor, lotIds: readonly string[]): BuyingResult<PaySeveralQuote>;
-  /** Holds the payable invoices in one payment and opens its checkout. */
-  pay(actor: OrganisationMemberActor, lotIds: readonly string[]): BuyingResult<PaySeveralStarted>;
+  /**
+   * Holds the payable invoices in one payment and opens its checkout, provided the plan is still
+   * the one shown (`pay_plan_changed` with the fresh plan otherwise).
+   */
+  pay(actor: OrganisationMemberActor, request: PaySeveralRequest): BuyingResult<PaySeveralStarted>;
 }
 
 /** The buyer's side of a courier quote. Only the account's payers take these steps. */

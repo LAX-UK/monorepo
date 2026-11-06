@@ -286,7 +286,12 @@ const MATRIX: Record<
   },
   // Paying several invoices at once is for the people who pay one: owners, admins and finance.
   "POST /purchases/pay-several": {
-    call: (app) => post(app, "/purchases/pay-several", { lotIds: [LOTS.due, LOTS.overdue] }),
+    call: (app) =>
+      post(app, "/purchases/pay-several", {
+        lotIds: [LOTS.due, LOTS.overdue],
+        expectedTotalPence: 100_010,
+        expectedLotIds: [LOTS.due, LOTS.overdue],
+      }),
     expected: {
       owner: 200,
       admin: 200,
@@ -374,7 +379,11 @@ describe("organisation buying routes", () => {
       const res = await plan(app, [LOTS.due]);
       expect(res.status).toBe(200);
       expect(await res.json()).toMatchObject({ data: { gate: { kind: "onboarding_required" } } });
-      const pay = await post(app, "/purchases/pay-several", { lotIds: [LOTS.due] });
+      const pay = await post(app, "/purchases/pay-several", {
+        lotIds: [LOTS.due],
+        expectedTotalPence: 60_010,
+        expectedLotIds: [LOTS.due],
+      });
       expect(pay.status).toBe(403);
       expect(await pay.json()).toMatchObject({ code: "onboarding_required" });
     });
@@ -400,7 +409,11 @@ describe("organisation buying routes", () => {
           totals: { pence: 100_010 },
         },
       });
-      const pay = await post(app, "/purchases/pay-several", { lotIds: [LOTS.due, LOTS.overdue] });
+      const pay = await post(app, "/purchases/pay-several", {
+        lotIds: [LOTS.due, LOTS.overdue],
+        expectedTotalPence: 100_010,
+        expectedLotIds: [LOTS.due, LOTS.overdue],
+      });
       expect(pay.status).toBe(200);
       expect(await pay.json()).toMatchObject({ data: { total: "1000.10", rail: "card" } });
     });
@@ -457,6 +470,8 @@ describe("organisation buying routes", () => {
   it("opens one checkout for several invoices and says what it covers", async () => {
     const res = await post(mount("finance"), "/purchases/pay-several", {
       lotIds: [LOTS.due, LOTS.overdue, LOTS.paid],
+      expectedTotalPence: 100_010,
+      expectedLotIds: [LOTS.due, LOTS.overdue],
     });
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({
@@ -470,11 +485,31 @@ describe("organisation buying routes", () => {
     });
     const malformed = await post(mount("finance"), "/purchases/pay-several", { lotIds: [] });
     expect(malformed.status).toBe(400);
+    // The plan shown must come with the request.
+    const unshown = await post(mount("finance"), "/purchases/pay-several", {
+      lotIds: [LOTS.due],
+    });
+    expect(unshown.status).toBe(400);
+  });
+
+  it("answers 409 with the fresh plan when the plan shown is no longer the plan", async () => {
+    const res = await post(mount("finance"), "/purchases/pay-several", {
+      lotIds: [LOTS.due, LOTS.overdue],
+      expectedTotalPence: 90_000,
+      expectedLotIds: [LOTS.due, LOTS.overdue],
+    });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({
+      error: "pay_plan_changed",
+      plan: { total: "1000.10", payable: [{ lotId: LOTS.due }, { lotId: LOTS.overdue }] },
+    });
   });
 
   it("paying several needs completed account setup, as paying one does", async () => {
     const res = await post(mount("finance", { onboarded: false }), "/purchases/pay-several", {
       lotIds: [LOTS.due],
+      expectedTotalPence: 60_010,
+      expectedLotIds: [LOTS.due],
     });
     expect(res.status).toBe(403);
     expect(await res.json()).toMatchObject({ code: "onboarding_required" });
@@ -483,7 +518,11 @@ describe("organisation buying routes", () => {
   it("a staff account can neither plan nor pay several invoices", async () => {
     const app = mount("finance", { platformRole: "admin" });
     for (const path of ["/purchases/pay-several/plan", "/purchases/pay-several"]) {
-      const res = await post(app, path, { lotIds: [LOTS.due] });
+      const res = await post(app, path, {
+        lotIds: [LOTS.due],
+        expectedTotalPence: 60_010,
+        expectedLotIds: [LOTS.due],
+      });
       expect(res.status).toBe(403);
       expect(await res.json()).toMatchObject({ error: "bidding_not_allowed_for_role" });
     }

@@ -43,6 +43,7 @@ const STATUS: Record<OrganisationBuyingErrorCode, OrganisationBuyingError["statu
   pay_several_unavailable: 503,
   pay_plan_unavailable: 503,
   onboarding_required: 403,
+  pay_plan_changed: 409,
 };
 
 const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
@@ -76,6 +77,7 @@ const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
   pay_plan_unavailable:
     "We couldn't check your payment just now. Nothing was charged. Try again shortly.",
   onboarding_required: "Finish setting up your account before you pay.",
+  pay_plan_changed: "The total has changed. Check it and pay again.",
 };
 
 /** The one place buying errors get their status and wording. */

@@ -27,6 +27,23 @@ const LIMITS: PaymentTierLimits = {
   absoluteMaxPence: 10_000_000,
 };
 
+/** Pays the plan the person was shown for these lots, as the screen does. */
+async function payShown(
+  svc: Pick<PaySeveralService, "plan" | "pay">,
+  who: OrganisationMemberActor,
+  lots: readonly string[],
+  expected?: { expectedTotalPence: number; expectedLotIds: readonly string[] },
+) {
+  const shown = await svc.plan(who, lots);
+  const fromPlan = shown.isOk()
+    ? {
+        expectedTotalPence: Math.round(Number(shown.value.total) * 100),
+        expectedLotIds: shown.value.payable.map((p) => p.lotId),
+      }
+    : { expectedTotalPence: 1, expectedLotIds: [lots[0] as string] };
+  return svc.pay(who, { lotIds: lots, ...(expected ?? fromPlan) });
+}
+
 const NOT_INVOICED = "aaaaaaaa-0000-4000-8000-000000000006";
 const NOT_INVOICED_TOTAL = 250_000;
 
@@ -76,6 +93,10 @@ type World = {
   raiseFails?: boolean;
   /** Leave the lot without an invoice, as when the lot-end guards refuse it. */
   raiseCreatesNothing?: boolean;
+  /** What the raised invoice totals, as a decimal string (default £2,500.00). */
+  raiseAmount?: string;
+  /** Another payment starts on these invoices while this one is raising. */
+  flagsAfterRaise?: Record<string, PaySeveralInvoiceFlags>;
   flags?: Record<string, PaySeveralInvoiceFlags>;
   limits?: PaymentTierLimits;
   peekHold?: boolean;
@@ -131,11 +152,12 @@ function service(over: World = {}) {
     row.payment = {
       id: "pay-new",
       status: over.raiseStatus ?? "pending",
-      amount: "2500.00",
+      amount: over.raiseAmount ?? "2500.00",
       raisedAt: NOW,
       dueAt: null,
     };
     store();
+    if (over.flagsAfterRaise) over.flags = { ...over.flags, ...over.flagsAfterRaise };
     return { created: true, paymentId: "pay-new", lotId };
   });
 
@@ -281,7 +303,7 @@ describe("PaySeveralService.pay", () => {
   it("opens one checkout for the payable invoices, by their payments and amounts", async () => {
     const { svc, start, evaluate, ensureForLot } = service();
     const started = (
-      await svc.pay(actor("finance"), [LOTS.due, LOTS.overdue, LOTS.paid])
+      await payShown(svc, actor("finance"), [LOTS.due, LOTS.overdue, LOTS.paid])
     )._unsafeUnwrap();
     expect(ensureForLot).not.toHaveBeenCalled();
     expect(start).toHaveBeenCalledWith({
@@ -311,7 +333,7 @@ describe("PaySeveralService.pay", () => {
   it("refuses roles that do not pay, before anything is raised or held", async () => {
     for (const role of ["buyer_agent", "viewer", "consignor"] as const) {
       const { svc, start, ensureForLot } = service({ withNotInvoiced: true });
-      expect((await svc.pay(actor(role), [NOT_INVOICED]))._unsafeUnwrapErr()).toMatchObject({
+      expect((await payShown(svc, actor(role), [NOT_INVOICED]))._unsafeUnwrapErr()).toMatchObject({
         code: "insufficient_entity_role",
         status: 403,
       });
@@ -323,14 +345,14 @@ describe("PaySeveralService.pay", () => {
   it("refuses a total that cannot be paid at once, saying why, and holds nothing", async () => {
     const { svc, start } = service({ limits: { ...LIMITS, manualReviewMinPence: 100_000 } });
     expect(
-      (await svc.pay(actor("owner"), [LOTS.due, LOTS.overdue]))._unsafeUnwrapErr(),
+      (await payShown(svc, actor("owner"), [LOTS.due, LOTS.overdue]))._unsafeUnwrapErr(),
     ).toMatchObject({ code: "pay_several_needs_finance_review", status: 409 });
     expect(start).not.toHaveBeenCalled();
   });
 
   it("refuses when the compliance check on the total holds the payer", async () => {
     const { svc, start } = service({ evaluateHold: true });
-    expect((await svc.pay(actor("owner"), [LOTS.due]))._unsafeUnwrapErr().code).toBe(
+    expect((await payShown(svc, actor("owner"), [LOTS.due]))._unsafeUnwrapErr().code).toBe(
       "pay_several_payer_on_hold",
     );
     expect(start).not.toHaveBeenCalled();
@@ -342,7 +364,7 @@ describe("PaySeveralService.pay", () => {
       evaluateHold: true,
       withNotInvoiced: true,
     });
-    expect((await svc.pay(actor("owner"), [NOT_INVOICED]))._unsafeUnwrapErr().code).toBe(
+    expect((await payShown(svc, actor("owner"), [NOT_INVOICED]))._unsafeUnwrapErr().code).toBe(
       "pay_several_payer_on_hold",
     );
     expect(evaluate).toHaveBeenCalled();
@@ -353,7 +375,7 @@ describe("PaySeveralService.pay", () => {
   it("checks each lot's winner as well as the payer: a held winner stops the payment", async () => {
     // Maya (owner-1) won the lot; the finance member pays for it.
     const { svc, start, evaluate } = service({ holdFor: "owner-1" });
-    expect((await svc.pay(actor("finance"), [LOTS.due]))._unsafeUnwrapErr().code).toBe(
+    expect((await payShown(svc, actor("finance"), [LOTS.due]))._unsafeUnwrapErr().code).toBe(
       "pay_several_winner_on_hold",
     );
     expect(evaluate).toHaveBeenCalledWith(expect.objectContaining({ buyerUserId: "finance-1" }));
@@ -372,7 +394,7 @@ describe("PaySeveralService.pay", () => {
       expect((await svc.plan(actor("owner"), [LOTS.due]))._unsafeUnwrapErr().code).toBe(
         eligibility.reason,
       );
-      const paid = (await svc.pay(actor("owner"), [NOT_INVOICED]))._unsafeUnwrapErr();
+      const paid = (await payShown(svc, actor("owner"), [NOT_INVOICED]))._unsafeUnwrapErr();
       expect(paid.code).toBe(eligibility.reason);
       expect(paid.status).toBe(eligibility.kind === "refused" ? 403 : 409);
       expect(ensureForLot).not.toHaveBeenCalled();
@@ -382,15 +404,19 @@ describe("PaySeveralService.pay", () => {
 
   it("answers a race for the same invoices with a conflict, and an outage with unavailable", async () => {
     const conflict = service({ start: vi.fn(async () => err("conflict")) });
-    expect((await conflict.svc.pay(actor("owner"), [LOTS.due]))._unsafeUnwrapErr()).toMatchObject({
+    expect(
+      (await payShown(conflict.svc, actor("owner"), [LOTS.due]))._unsafeUnwrapErr(),
+    ).toMatchObject({
       code: "pay_several_conflict",
       status: 409,
     });
     const down = service({ start: vi.fn(async () => err("unavailable")) });
-    expect((await down.svc.pay(actor("owner"), [LOTS.due]))._unsafeUnwrapErr()).toMatchObject({
-      code: "pay_several_unavailable",
-      status: 503,
-    });
+    expect((await payShown(down.svc, actor("owner"), [LOTS.due]))._unsafeUnwrapErr()).toMatchObject(
+      {
+        code: "pay_several_unavailable",
+        status: 503,
+      },
+    );
   });
 });
 
@@ -401,7 +427,7 @@ describe("PaySeveralService.pay with a lot that is not invoiced yet", () => {
     const shown = (await world.svc.plan(actor("owner"), lots))._unsafeUnwrap();
     expect(shown.total).toBe("3100.10");
 
-    const started = (await world.svc.pay(actor("owner"), lots))._unsafeUnwrap();
+    const started = (await payShown(world.svc, actor("owner"), lots))._unsafeUnwrap();
 
     const [call] = world.start.mock.calls;
     expect(call?.[0]).toMatchObject({
@@ -420,12 +446,20 @@ describe("PaySeveralService.pay with a lot that is not invoiced yet", () => {
       world.start.mock.invocationCallOrder[0] ?? 0,
     );
     expect(world.ensureForLot).toHaveBeenCalledTimes(1);
-    expect(world.ensureForLot).toHaveBeenCalledWith(NOT_INVOICED);
+    expect(world.ensureForLot).toHaveBeenCalledWith(NOT_INVOICED, { accounting: "defer" });
   });
 
-  it("never charges a lot whose invoice is raised held for review", async () => {
+  it("never charges a lot whose invoice is raised held for review: the plan changed, so it asks again", async () => {
     const world = service({ withNotInvoiced: true, raiseStatus: "requires_manual_review" });
-    const started = (await world.svc.pay(actor("owner"), [LOTS.due, NOT_INVOICED]))._unsafeUnwrap();
+    const lots = [LOTS.due, NOT_INVOICED];
+    const refused = (await payShown(world.svc, actor("owner"), lots))._unsafeUnwrapErr();
+    expect(refused).toMatchObject({ code: "pay_plan_changed", status: 409 });
+    expect(refused.quote?.total).toBe("600.10");
+    expect(refused.quote?.skipped).toEqual([{ lotId: NOT_INVOICED, reason: "held_for_review" }]);
+    expect(world.start).not.toHaveBeenCalled();
+
+    // Paying the plan it was shown now charges only the lot that can be paid.
+    const started = (await payShown(world.svc, actor("owner"), lots))._unsafeUnwrap();
     expect(world.start.mock.calls[0]?.[0]).toMatchObject({
       total: "600.10",
       invoices: [{ paymentId: "pay-2", lotId: LOTS.due, amount: "600.10" }],
@@ -435,9 +469,9 @@ describe("PaySeveralService.pay with a lot that is not invoiced yet", () => {
 
   it("says nothing is payable, and claims nothing, when the only lot is held once raised", async () => {
     const world = service({ withNotInvoiced: true, raiseStatus: "requires_manual_review" });
-    expect((await world.svc.pay(actor("owner"), [NOT_INVOICED]))._unsafeUnwrapErr().code).toBe(
-      "pay_several_nothing_payable",
-    );
+    expect(
+      (await payShown(world.svc, actor("owner"), [NOT_INVOICED]))._unsafeUnwrapErr().code,
+    ).toBe("pay_several_nothing_payable");
     expect(world.start).not.toHaveBeenCalled();
   });
 
@@ -445,7 +479,7 @@ describe("PaySeveralService.pay with a lot that is not invoiced yet", () => {
     const world = service({ withNotInvoiced: true, raiseFails: true });
     const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
     expect(
-      (await world.svc.pay(actor("owner"), [LOTS.due, NOT_INVOICED]))._unsafeUnwrapErr(),
+      (await payShown(world.svc, actor("owner"), [LOTS.due, NOT_INVOICED]))._unsafeUnwrapErr(),
     ).toMatchObject({
       code: "pay_several_unavailable",
       status: 503,
@@ -455,11 +489,14 @@ describe("PaySeveralService.pay with a lot that is not invoiced yet", () => {
     logged.mockRestore();
   });
 
-  it("claims nothing, rather than charging less than shown, when a lot still has no invoice", async () => {
+  it("leaves out a lot the lot-end guards will not invoice, with the plan asked again", async () => {
     const world = service({ withNotInvoiced: true, raiseCreatesNothing: true });
-    expect(
-      (await world.svc.pay(actor("owner"), [LOTS.due, NOT_INVOICED]))._unsafeUnwrapErr().code,
-    ).toBe("pay_several_unavailable");
+    const refused = (
+      await payShown(world.svc, actor("owner"), [LOTS.due, NOT_INVOICED])
+    )._unsafeUnwrapErr();
+    expect(refused).toMatchObject({ code: "pay_plan_changed", status: 409 });
+    expect(refused.quote?.skipped).toEqual([{ lotId: NOT_INVOICED, reason: "not_invoiced" }]);
+    expect(refused.quote?.total).toBe("600.10");
     expect(world.start).not.toHaveBeenCalled();
   });
 
@@ -479,8 +516,8 @@ describe("PaySeveralService.pay with a lot that is not invoiced yet", () => {
     const world = service({ withNotInvoiced: true, start });
     const lots = [LOTS.due, NOT_INVOICED];
     const results = await Promise.all([
-      world.svc.pay(actor("owner"), lots),
-      world.svc.pay(actor("finance"), lots),
+      payShown(world.svc, actor("owner"), lots),
+      payShown(world.svc, actor("finance"), lots),
       // Lot end raises the same invoice at the same moment.
       world.ensureForLot(NOT_INVOICED),
     ]);
@@ -488,10 +525,128 @@ describe("PaySeveralService.pay with a lot that is not invoiced yet", () => {
     const outcomes = [a, b].map((r) => (r && "isOk" in r && r.isOk() ? "started" : "refused"));
     expect(outcomes.sort()).toEqual(["refused", "started"]);
     const refused = [a, b].find((r) => r && "isErr" in r && r.isErr());
-    expect(refused && "isErr" in refused ? refused.error.code : null).toBe("pay_several_conflict");
+    expect(refused && "isErr" in refused ? refused.error.code : null).toMatch(
+      /pay_several_conflict|pay_plan_changed|pay_several_nothing_payable/,
+    );
     // One invoice for the lot, however many callers asked for it.
     expect(claimed.has("pay-new")).toBe(true);
     expect([...claimed].filter((id) => id === "pay-new")).toHaveLength(1);
+  });
+});
+
+describe("PaySeveralService pays only the plan that was shown", () => {
+  const lots = [LOTS.due, NOT_INVOICED];
+
+  it("answers 409 with the fresh plan when the total changed since it was shown, and raises and claims nothing", async () => {
+    const world = service({ withNotInvoiced: true });
+    const shown = (await world.svc.plan(actor("owner"), lots))._unsafeUnwrap();
+    // The lot is repriced after the person saw the total.
+    world.price.mockResolvedValue({
+      lines: [
+        { kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 100_000 },
+        {
+          kind: "buyers_premium",
+          label: "Buyer's premium (25%)",
+          ratePercent: "25",
+          amountPence: 25_000,
+        },
+      ],
+      totalPence: 125_000,
+      policyId: "flat:0.25",
+      existing: null,
+    });
+    const refused = (
+      await world.svc.pay(actor("owner"), {
+        lotIds: lots,
+        expectedTotalPence: Math.round(Number(shown.total) * 100),
+        expectedLotIds: shown.payable.map((p) => p.lotId),
+      })
+    )._unsafeUnwrapErr();
+    expect(refused).toMatchObject({ code: "pay_plan_changed", status: 409 });
+    expect(refused.quote?.total).toBe("1850.10");
+    expect(world.ensureForLot).not.toHaveBeenCalled();
+    expect(world.evaluate).not.toHaveBeenCalled();
+    expect(world.start).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 when a repricing crosses the card limit, instead of switching to bank transfer", async () => {
+    const world = service({ withNotInvoiced: true });
+    const shown = (await world.svc.plan(actor("owner"), lots))._unsafeUnwrap();
+    expect(shown.payTogether).toEqual({ allowed: true, rail: "card" });
+    world.price.mockResolvedValue({
+      lines: [
+        { kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 360_000 },
+        {
+          kind: "buyers_premium",
+          label: "Buyer's premium (25%)",
+          ratePercent: "25",
+          amountPence: 90_000,
+        },
+      ],
+      totalPence: 450_000,
+      policyId: "flat:0.25",
+      existing: null,
+    });
+    const refused = (
+      await world.svc.pay(actor("owner"), {
+        lotIds: lots,
+        expectedTotalPence: 310_010,
+        expectedLotIds: lots,
+      })
+    )._unsafeUnwrapErr();
+    expect(refused.code).toBe("pay_plan_changed");
+    expect(refused.quote?.payTogether).toEqual({ allowed: true, rail: "gb_bank_transfer" });
+    expect(world.start).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 when the invoice is raised at a total that crosses the card limit", async () => {
+    const world = service({ withNotInvoiced: true, raiseAmount: "4600.00" });
+    const refused = (await payShown(world.svc, actor("owner"), lots))._unsafeUnwrapErr();
+    expect(refused).toMatchObject({ code: "pay_plan_changed", status: 409 });
+    expect(refused.quote?.total).toBe("5200.10");
+    expect(refused.quote?.payTogether).toEqual({ allowed: true, rail: "gb_bank_transfer" });
+    expect(world.start).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 when another payment takes some of the lots while this one is raising", async () => {
+    const world = service({
+      withNotInvoiced: true,
+      flagsAfterRaise: { "pay-2": { heldForReview: false, inPaymentInProgress: true } },
+    });
+    const refused = (await payShown(world.svc, actor("owner"), lots))._unsafeUnwrapErr();
+    expect(refused).toMatchObject({ code: "pay_plan_changed", status: 409 });
+    expect(refused.quote?.skipped).toEqual([{ lotId: LOTS.due, reason: "being_paid" }]);
+    expect(refused.quote?.payable.map((p) => p.lotId)).toEqual([NOT_INVOICED]);
+    expect(world.start).not.toHaveBeenCalled();
+  });
+
+  it("answers 409 when the shown lots differ even if the total happens to match", async () => {
+    const world = service();
+    const refused = (
+      await world.svc.pay(actor("owner"), {
+        lotIds: [LOTS.due, LOTS.overdue],
+        expectedTotalPence: 100_010,
+        expectedLotIds: [LOTS.due, LOTS.agentWin],
+      })
+    )._unsafeUnwrapErr();
+    expect(refused.code).toBe("pay_plan_changed");
+  });
+
+  it("refuses a total that cannot be paid at once before raising anything", async () => {
+    const world = service({
+      withNotInvoiced: true,
+      limits: { ...LIMITS, manualReviewMinPence: 100_000 },
+    });
+    const refused = (await payShown(world.svc, actor("owner"), lots))._unsafeUnwrapErr();
+    expect(refused.code).toBe("pay_several_needs_finance_review");
+    expect(world.ensureForLot).not.toHaveBeenCalled();
+    expect(world.start).not.toHaveBeenCalled();
+  });
+
+  it("leaves the accounting write to the group checkout when it raises", async () => {
+    const world = service({ withNotInvoiced: true });
+    (await payShown(world.svc, actor("owner"), lots))._unsafeUnwrap();
+    expect(world.ensureForLot).toHaveBeenCalledWith(NOT_INVOICED, { accounting: "defer" });
   });
 });
 
@@ -543,7 +698,7 @@ describe("PaySeveralService source of funds, counted once", () => {
       compliance: { evaluate: (i) => policy.evaluate(i) },
       checkout: { start } as never,
     });
-    const result = await svc.pay(actor("finance"), [LOTS.due, LOTS.overdue]);
+    const result = await payShown(svc, actor("finance"), [LOTS.due, LOTS.overdue]);
     expect(result.isOk()).toBe(true);
     expect(repo.create).not.toHaveBeenCalled();
     for (const [, exclude] of repo.sumActiveBuyerSettlementPence.mock.calls) {

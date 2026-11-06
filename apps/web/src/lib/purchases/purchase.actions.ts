@@ -23,12 +23,15 @@ import {
   newDeliveryAddressBody,
 } from "./delivery-addresses.vm";
 import {
+  PAY_SEVERAL_CHANGED_FALLBACK,
   PAY_SEVERAL_START_COPY,
   PAY_SEVERAL_START_FAILED,
   type PaySeveralBlock,
   type PaySeveralPlanView,
   type PaySeveralStart,
+  penceOfMajor,
 } from "./pay-several";
+import { parsePaySeveralPlan } from "./pay-several-plan";
 import { purchaseRequestAccountId } from "./purchase-account";
 import { type PurchaseProblemFormValues, purchaseProblemFormSchema } from "./purchase-problem";
 
@@ -54,31 +57,6 @@ async function post(
 }
 
 const lotIdsSchema = z.array(z.string().uuid()).min(1).max(20);
-
-const skipReason = z.enum([
-  "other_account",
-  "not_owed",
-  "not_payer",
-  "not_invoiced",
-  "held_for_review",
-  "being_paid",
-]) satisfies z.ZodType<PaySeveralSkipReason>;
-const planSchema = z.object({
-  payable: z.array(z.object({ lotId: z.string(), totalDue: z.string() })),
-  skipped: z.array(z.object({ lotId: z.string(), reason: skipReason })),
-  total: z.string(),
-  currency: z.string(),
-  /** Whether (and how) one payment can take the total. */
-  payTogether: z
-    .union([
-      z.object({ allowed: z.literal(true) }).passthrough(),
-      z.object({
-        allowed: z.literal(false),
-        reason: z.enum(["payer_on_hold", "below_minimum", "over_limit", "needs_finance_review"]),
-      }),
-    ])
-    .optional(),
-});
 
 const REFUSAL_BLOCK: Record<string, PaySeveralBlock> = {
   pay_several_nothing_payable: "nothing_payable",
@@ -122,15 +100,11 @@ export async function planPaySeveralAction(
       return { ok: false, message: "We couldn't work out the total. Try again in a moment." };
     }
     const body = (await res.json().catch(() => null)) as { data?: unknown } | null;
-    const parsed = planSchema.safeParse(body?.data);
-    if (!parsed.success) {
+    const plan = parsePaySeveralPlan(body?.data);
+    if (!plan) {
       return { ok: false, message: "We couldn't work out the total. Try again in a moment." };
     }
-    const { payTogether, ...plan } = parsed.data;
-    return {
-      ok: true,
-      plan: { ...plan, block: payTogether && !payTogether.allowed ? payTogether.reason : null },
-    };
+    return { ok: true, plan };
   });
 }
 
@@ -141,13 +115,31 @@ const startedSchema = z.object({ checkoutUrl: z.string().min(1) });
  * card or bank transfer and confirms. A refusal comes back in the payer's words; nothing is
  * charged until the checkout is completed.
  */
-export async function startPaySeveralAction(lotIds: string[]): Promise<PaySeveralStart> {
+export async function startPaySeveralAction(shown: {
+  lotIds: string[];
+  /** The total the person was shown, as the API sent it ("1000.10"). */
+  total: string;
+}): Promise<PaySeveralStart> {
   return instrumentServerAction("startPaySeveralAction", async () => {
-    const ids = lotIdsSchema.safeParse(lotIds);
-    if (!ids.success) return { ok: false, message: "Pick between 1 and 20 invoices." };
-    const res = await post("/legal-entities/purchases/pay-several", { lotIds: ids.data });
+    const ids = lotIdsSchema.safeParse(shown.lotIds);
+    const pence = penceOfMajor(shown.total);
+    if (!ids.success || pence === null) {
+      return { ok: false, message: "Pick between 1 and 20 invoices." };
+    }
+    const res = await post("/legal-entities/purchases/pay-several", {
+      lotIds: ids.data,
+      expectedTotalPence: pence,
+      expectedLotIds: ids.data,
+    });
     if (!res.ok) {
-      const code = await errorCode(res);
+      const body = (await res.json().catch(() => null)) as {
+        error?: unknown;
+        plan?: unknown;
+      } | null;
+      const code = typeof body?.error === "string" ? body.error : null;
+      // The plan changed since it was shown: the new one comes back to be checked and paid again.
+      const changed = code === "pay_plan_changed" ? parsePaySeveralPlan(body?.plan) : null;
+      if (changed) return { ok: false, message: PAY_SEVERAL_CHANGED_FALLBACK, changed };
       return {
         ok: false,
         message: (code && PAY_SEVERAL_START_COPY[code]) || PAY_SEVERAL_START_FAILED,
