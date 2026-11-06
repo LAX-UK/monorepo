@@ -4,7 +4,10 @@ import { ACCOUNT_QUERY_PARAM, CLIENT_ROUTES, isClientAreaPath } from "./client-r
 /**
  * Links that must open in a given account, and the hops that make that happen. Pages never
  * switch accounts themselves: they send the browser to `/switch-account` or `/restore-account`,
- * the only places (with the switch action) that write the acting-account cookie.
+ * the only places (with the switch action and the sign-in callback) that write the
+ * acting-account cookie. A hop is always opened as a page, from a server redirect, a form, an
+ * email or a plain `<a>`; never by the client router (`<Link>`), which cannot carry the cookie it
+ * sets into the layout it keeps. Inside Bid, `useAccountSwitch` is the way to switch.
  */
 
 /** Where a hop goes back to: a same-origin page other than a hop; anything else is Home. */

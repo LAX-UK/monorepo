@@ -62,26 +62,22 @@ describe("/restore-account", () => {
     },
   );
 
-  it("answers a client-router (RSC) request with one hard navigation and does not restore", async () => {
-    const res = await GET(
-      new Request("https://lax.bid/restore-account?next=%2Fhome&_rsc=abc", {
-        headers: { rsc: "1" },
-      }),
+  it("leaves a short marker so a restore that does not take cannot repeat", async () => {
+    apiFetch.mockResolvedValue(
+      new Response(JSON.stringify({ data: { accountId: ORG_ID, lostOrganisation: null } })),
     );
-    expect(res.status).toBe(200);
-    expect(res.headers.get("location")).toBeNull();
-    expect(res.headers.get("content-type")).toContain("text/html");
-    expect(res.headers.get("refresh")).toBe("0; url=/restore-account?next=%2Fhome");
-    expect(apiFetch).not.toHaveBeenCalled();
-    expect(setCookie).not.toHaveBeenCalled();
+    await GET(restore());
+    expect(cookieValues.get("lax_account_restored")).toBe("1");
   });
 
-  it("keeps the hard-navigation target same-origin and path-only", async () => {
+  it("does not restore for a prefetch", async () => {
     const res = await GET(
-      new Request("https://lax.bid/restore-account?next=https%3A%2F%2Fevil.example%2F", {
-        headers: { rsc: "1" },
+      new Request("https://lax.bid/restore-account?next=%2Fhome", {
+        headers: { "next-router-prefetch": "1" },
       }),
     );
-    expect(res.headers.get("refresh")).toBe("0; url=/restore-account?next=%2Fhome");
+    expect(res.status).toBe(204);
+    expect(apiFetch).not.toHaveBeenCalled();
+    expect(setCookie).not.toHaveBeenCalled();
   });
 });
