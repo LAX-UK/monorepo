@@ -70,13 +70,13 @@ export default async function EditConsignmentPage({ params }: PageProps) {
   }
   const submission = submissionRes.value;
   if (!submission) {
-    const switchHop = await openRecordInItsAccount({
+    const opened = await openRecordInItsAccount({
       kind: "consignment",
       id,
       actingId: sellerCtx.sellerEntityId,
       next: path,
     });
-    if (switchHop) return <AccountRestoreHop href={switchHop} />;
+    if (opened.kind === "hop") return <AccountRestoreHop href={opened.href} />;
     notFound();
   }
   const actions = consignmentActionsVm({

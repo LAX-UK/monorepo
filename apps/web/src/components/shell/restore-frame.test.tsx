@@ -12,12 +12,10 @@ vi.mock("next/headers", () => ({
 vi.mock("@/lib/navigation/client-request-path.server", () => ({
   resolveClientRequestPath: async () => "/team?tab=roles",
 }));
-const reportRestoreStalled = vi.fn();
-vi.mock("@/lib/observability/report-restore-stalled", () => ({
-  reportRestoreStalled: (...args: unknown[]) => reportRestoreStalled(...args),
-}));
-
 const { restoreContentFor, restoreFrameFor } = await import("./restore-frame");
+const { ReportRestoreStalled } = await import(
+  "@/components/layout/account-switcher/report-restore-stalled"
+);
 const { AccountRestoreFrame } = await import("./account-restore-frame");
 const { AccountsUnavailableFrame } = await import("./accounts-unavailable-frame");
 const { AccountRestoreHop } = await import(
@@ -32,7 +30,6 @@ const HREF = "/restore-account?next=%2Fteam%3Ftab%3Droles";
 describe("restoreFrameFor", () => {
   beforeEach(() => {
     markerPresent.value = false;
-    reportRestoreStalled.mockClear();
   });
 
   it("draws nothing for a browser that has an account", async () => {
@@ -43,22 +40,24 @@ describe("restoreFrameFor", () => {
     const frame = (await restoreFrameFor(true)) as ReactElement<{ href: string }>;
     expect(frame.type).toBe(AccountRestoreFrame);
     expect(frame.props.href).toBe(HREF);
-    expect(reportRestoreStalled).not.toHaveBeenCalled();
   });
 
-  it("stops and reports when a restore has just run and did not take", async () => {
+  it("stops with the retry state, reported when shown, when a restore did not take", async () => {
     markerPresent.value = true;
-    const frame = (await restoreFrameFor(true)) as ReactElement<{ retry: unknown }>;
-    expect(frame.type).toBe(AccountsUnavailableFrame);
-    expect(frame.props.retry).toEqual({ kind: "link", href: HREF });
-    expect(reportRestoreStalled).toHaveBeenCalledTimes(1);
+    const frame = (await restoreFrameFor(true)) as ReactElement<{
+      returnTo: string;
+      children: ReactElement<{ retry: unknown }>;
+    }>;
+    expect(frame.type).toBe(ReportRestoreStalled);
+    expect(frame.props.returnTo).toBe("/team?tab=roles");
+    expect(frame.props.children.type).toBe(AccountsUnavailableFrame);
+    expect(frame.props.children.props.retry).toEqual({ kind: "link", href: HREF });
   });
 });
 
 describe("restoreContentFor", () => {
   beforeEach(() => {
     markerPresent.value = false;
-    reportRestoreStalled.mockClear();
   });
 
   it("hops for a public page that bids as the client, and stops on a second restore", async () => {
@@ -67,8 +66,10 @@ describe("restoreContentFor", () => {
     expect(hop.props.href).toBe("/restore-account?next=%2Flot%2Fa%2Fb");
 
     markerPresent.value = true;
-    const stalled = (await restoreContentFor(true, "/lot/a/b")) as ReactElement;
-    expect(stalled.type).toBe(AccountsUnavailable);
-    expect(reportRestoreStalled).toHaveBeenCalledTimes(1);
+    const stalled = (await restoreContentFor(true, "/lot/a/b")) as ReactElement<{
+      children: ReactElement;
+    }>;
+    expect(stalled.type).toBe(ReportRestoreStalled);
+    expect(stalled.props.children.type).toBe(AccountsUnavailable);
   });
 });

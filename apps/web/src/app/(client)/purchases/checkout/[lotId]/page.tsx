@@ -59,13 +59,13 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
   const c = await getServerDataContainer();
   const scope = await c.buying.scope();
   // A purchase is paid from the account it was won as; a link opened in another one switches.
-  const switchHop = await openRecordInItsAccount({
+  const opened = await openRecordInItsAccount({
     kind: "purchase",
     id: lotId,
     actingId: scope.account.id,
     next: checkoutPath,
   });
-  if (switchHop) return <AccountRestoreHop href={switchHop} />;
+  if (opened.kind === "hop") return <AccountRestoreHop href={opened.href} />;
   const organisation = organisationOf(scope);
 
   const lot = await c.buyerLots.getById(lotId);

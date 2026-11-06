@@ -1,9 +1,5 @@
+import { pathOf } from "@/lib/navigation/path-of";
 import * as Sentry from "@sentry/nextjs";
-
-/** The page alone: a query string can carry an invitation token or other private values. */
-function pathOnly(href: string): string {
-  return href.split(/[?#]/)[0] ?? "";
-}
 
 /**
  * A restore ran and the browser still has no usable account. The person sees the retry state;
@@ -16,6 +12,6 @@ export function reportRestoreStalled(returnTo: string): void {
     level: "error",
     tags: { area: "account-switching" },
     fingerprint: ["account-restore-stalled"],
-    extra: { page: pathOnly(returnTo) },
+    extra: { page: pathOf(returnTo) },
   });
 }

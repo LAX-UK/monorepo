@@ -1,11 +1,14 @@
-import { canUseAccount, decideOpeningAccount } from "@auction/domain";
+import { canUseAccount, chooseCandidate, decideOpeningAccount } from "@auction/domain";
 import type {
   ILegalEntityRepository,
   IRememberedAccountStore,
 } from "@auction/persistence/interfaces";
 
 export type RememberedAccountPorts = {
-  accounts: Pick<ILegalEntityRepository, "listActiveMembershipsForUser" | "findById">;
+  accounts: Pick<
+    ILegalEntityRepository,
+    "listActiveMembershipsForUser" | "findById" | "hasEverBeenMember"
+  >;
   store: IRememberedAccountStore;
   /** Organisations can be switched off per environment; then only personal accounts are usable. */
   organisationsEnabled: () => boolean;
@@ -23,7 +26,9 @@ export type RestoredAccount = {
  * Remembers the account a person last used Bid as, on their profile, so every device opens in
  * it. Restoring checks the person may still use it; when they may not (removed from the
  * organisation, or organisations switched off) Bid opens their personal account instead, the
- * profile is corrected, and the lost organisation is named once so the page can say why.
+ * profile is corrected, and the lost organisation is named once so the page can say why. An id
+ * from the browser that the person never belonged to is ignored: nothing is named, and the
+ * profile keeps what it remembers.
  */
 export class RememberedAccountService {
   constructor(private readonly ports: RememberedAccountPorts) {}
@@ -46,10 +51,22 @@ export class RememberedAccountService {
       this.ports.accounts.listActiveMembershipsForUser(userId),
       this.ports.store.findRemembered(userId),
     ]);
+    const organisationsEnabled = this.ports.organisationsEnabled();
+    // A browser's id is only trusted when the person has, or had, a membership in it.
+    const browserIdWasMember =
+      candidateId !== null &&
+      !canUseAccount(candidateId, accounts, organisationsEnabled) &&
+      (await this.ports.accounts.hasEverBeenMember(userId, candidateId));
     const decision = decideOpeningAccount({
-      candidateId: candidateId ?? remembered,
+      candidateId: chooseCandidate({
+        browserId: candidateId,
+        rememberedId: remembered,
+        accounts,
+        organisationsEnabled,
+        browserIdWasMember,
+      }),
       accounts,
-      organisationsEnabled: this.ports.organisationsEnabled(),
+      organisationsEnabled,
     });
     if (decision.kind === "none") return null;
 

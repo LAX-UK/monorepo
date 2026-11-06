@@ -45,24 +45,24 @@ function senderFor(sessionId: string): ApiSender {
   };
 }
 
+/** The account to write on the sign-in redirect, and the notice to leave, if any. */
+export type SignInAccount = NonNullable<HopPlan["switchTo"]>;
+
 /**
  * The account a person opens Bid as right after signing in, so the first page already has it and
- * the browser never needs the restore hop. `null` when there is nothing to write: the cookie
- * belongs to a staff member viewing as a client (a restore would end that), the person is staff
- * (the hop and the switch action leave staff alone too), or the API could not answer in time.
- * Sign-in goes on either way, and the client layout restores the account if the cookie is still
- * missing.
+ * the browser never needs the restore hop. It is the account their profile remembers on any
+ * device (never this browser's old cookie, which may be someone else's). `null` when there is
+ * nothing to write: the person is staff (the hop and the switch action leave staff alone too),
+ * or the API could not answer in time. Sign-in goes on either way, and the client layout
+ * restores the account if the cookie is missing.
  *
  * The whole plan, including the token and the identity lookups before the API call, shares one
  * deadline, so sign-in never waits on it for longer than `RESTORE_TIMEOUT_MS`.
- *
- * @param actingCookie this browser's account cookie, if it has one (it survives sign-out).
  */
 export async function planSignInRestore(input: {
   sessionId: string;
-  actingCookie: string | undefined;
-}): Promise<HopPlan | null> {
-  return withDeadline(planWithoutDeadline(input), RESTORE_TIMEOUT_MS);
+}): Promise<SignInAccount | null> {
+  return withDeadline(planWithoutDeadline(input.sessionId), RESTORE_TIMEOUT_MS);
 }
 
 /** Resolves to `null` if `work` has not settled in time; a late result is dropped. */
@@ -79,17 +79,13 @@ function withDeadline<T>(work: Promise<T | null>, ms: number): Promise<T | null>
   return Promise.race([work, expired]).finally(() => clearTimeout(timer));
 }
 
-async function planWithoutDeadline(input: {
-  sessionId: string;
-  actingCookie: string | undefined;
-}): Promise<HopPlan | null> {
-  const cookie = readActingCookie(input.actingCookie);
-  if (cookie?.viewSessionId) return null;
-  const send = senderFor(input.sessionId);
+async function planWithoutDeadline(sessionId: string): Promise<SignInAccount | null> {
+  const send = senderFor(sessionId);
   if (!(await isClientSession(send))) return null;
-  const answer = await restoreAccountVia(send, cookie?.accountId ?? null);
+  // No candidate: a sign-in opens the profile's remembered account, whatever this browser held.
+  const answer = await restoreAccountVia(send, null);
   if (!answer.ok) return null;
-  return planRestoreHop({ next: CLIENT_ROUTES.home, restored: answer.restored });
+  return planRestoreHop({ next: CLIENT_ROUTES.home, restored: answer.restored }).switchTo ?? null;
 }
 
 /** Staff have no client accounts: nothing is restored or written for them. */
@@ -106,19 +102,27 @@ async function isClientSession(send: ApiSender): Promise<boolean> {
 }
 
 /**
- * Writes the restored account on the sign-in redirect, so the person's first page is already in
- * the right account. Writes nothing when `planSignInRestore` has nothing to say.
+ * Sets the account on the sign-in redirect, so the person's first page is already in the right
+ * account. When there is none to write (staff, the API failed or timed out) the browser's old
+ * account cookie is removed, because a sign-in must never inherit the previous person's account;
+ * the client layout then restores the right one. A staff member's "view as client" cookie is
+ * left alone.
  */
 export async function applySignInRestore(
   response: NextResponse,
   input: { sessionId: string; request: NextRequest },
 ): Promise<void> {
-  const plan = await planSignInRestore({
-    sessionId: input.sessionId,
-    actingCookie: input.request.cookies.get(ACTING_LEGAL_ENTITY_COOKIE)?.value,
-  });
-  if (!plan) return;
-  for (const { name, value, options } of cookiesForHop(plan)) {
+  const existing = readActingCookie(input.request.cookies.get(ACTING_LEGAL_ENTITY_COOKIE)?.value);
+  if (existing?.viewSessionId) return;
+  const account = await planSignInRestore({ sessionId: input.sessionId });
+  if (!account) {
+    response.cookies.delete(ACTING_LEGAL_ENTITY_COOKIE);
+    return;
+  }
+  for (const { name, value, options } of cookiesForHop({
+    redirect: CLIENT_ROUTES.home,
+    switchTo: account,
+  })) {
     response.cookies.set(name, value, options);
   }
 }

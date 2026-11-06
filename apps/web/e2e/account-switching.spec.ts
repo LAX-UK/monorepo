@@ -18,9 +18,12 @@ import {
 type MenuAccount = { id: string; kind: "personal" | "organisation"; name: string };
 
 const ACTING_COOKIE = "lax_acting_legal_entity_id";
-/** Crowley Fine Art Ltd in the dev seed: an organisation the owner is not a member of. */
-const FOREIGN_ORGANISATION_ID = "20000000-0000-4000-8000-000000000002";
-const FOREIGN_ORGANISATION_NAME = "Crowley Fine Art Ltd";
+/** Crowley Fine Art Ltd in the dev seed: an organisation the owner had a seat in and was removed from. */
+const LEFT_ORGANISATION_ID = "20000000-0000-4000-8000-000000000002";
+const LEFT_ORGANISATION_NAME = "Crowley Fine Art Ltd";
+/** Crowley Arts Foundation in the dev seed: an organisation the owner was never a member of. */
+const NEVER_MEMBER_ORGANISATION_ID = "20000000-0000-4000-8000-000000000003";
+const NEVER_MEMBER_ORGANISATION_NAME = "Crowley Arts Foundation";
 
 const accountMenuButton = (page: Page) => page.getByRole("button", { name: /^account menu/i });
 const workspaceSwitcher = (page: Page) => page.getByTestId("account-switcher");
@@ -129,12 +132,12 @@ test.describe("account switching on the production build @roles", () => {
     await buyerLogin(page);
     const restoreRequests = countRestoreRequests(page);
     // Sign-in leaves no restore marker (only the hop route does), so the first restore is allowed.
-    await useAccountInThisBrowser(context, origin, FOREIGN_ORGANISATION_ID);
+    await useAccountInThisBrowser(context, origin, LEFT_ORGANISATION_ID);
 
     await page.goto("/home");
 
     await expect(page.getByTestId("account-notice")).toContainText(
-      `You're no longer a member of ${FOREIGN_ORGANISATION_NAME}, so Bid opened your personal account.`,
+      `You're no longer a member of ${LEFT_ORGANISATION_NAME}, so Bid opened your personal account.`,
       { timeout: 30_000 },
     );
     await expect(workspaceSwitcher(page)).toHaveCount(0);
@@ -142,8 +145,26 @@ test.describe("account switching on the production build @roles", () => {
     expect(restoreRequests()).toBe(1);
     const cookies = await context.cookies(origin);
     expect(cookies.find((cookie) => cookie.name === ACTING_COOKIE)?.value).not.toBe(
-      FOREIGN_ORGANISATION_ID,
+      LEFT_ORGANISATION_ID,
     );
+  });
+
+  test("a sign-in with another person's organisation in the browser names nothing and keeps the person's own account", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    const origin = baseURL ?? "http://localhost:3000";
+    await useAccountInThisBrowser(context, origin, NEVER_MEMBER_ORGANISATION_ID);
+
+    await buyerLogin(page);
+
+    await expect(pageHeading(page)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("account-notice")).toHaveCount(0);
+    await expect(page.getByText(NEVER_MEMBER_ORGANISATION_NAME)).toHaveCount(0);
+    const { personal } = await accountsOf(page);
+    const cookies = await context.cookies(origin);
+    expect(cookies.find((cookie) => cookie.name === ACTING_COOKIE)?.value).toBe(personal.id);
   });
 
   test("the All accounts page switches to the organisation and opens its workspace, not the personal frame", async ({

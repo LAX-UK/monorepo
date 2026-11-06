@@ -32,6 +32,29 @@ function isUsable(account: UsableAccount, organisationsEnabled: boolean): boolea
   return account.kind === "individual" || organisationsEnabled;
 }
 
+/**
+ * Which account to try opening: what the browser asked for, when that is something the person
+ * has or had a membership in, otherwise what their profile remembers.
+ *
+ * A browser can carry any id (a cookie left by someone else on a shared device, or one typed in
+ * by hand). An id the person can use is trusted, and one they once belonged to is trusted so
+ * that losing it can be explained. Any other id is ignored: it must not be named back to them,
+ * and it must not overwrite what their profile remembers.
+ */
+export function chooseCandidate(input: {
+  browserId: string | null;
+  rememberedId: string | null;
+  accounts: readonly UsableAccount[];
+  organisationsEnabled: boolean;
+  /** The person once belonged to `browserId` (the membership has since ended). */
+  browserIdWasMember: boolean;
+}): string | null {
+  const { browserId } = input;
+  if (browserId === null) return input.rememberedId;
+  const usable = canUseAccount(browserId, input.accounts, input.organisationsEnabled);
+  return usable || input.browserIdWasMember ? browserId : input.rememberedId;
+}
+
 export function decideOpeningAccount(input: OpeningAccountInput): OpeningAccountDecision {
   const personal = input.accounts.find((account) => account.kind === "individual");
   if (!personal) return { kind: "none" };

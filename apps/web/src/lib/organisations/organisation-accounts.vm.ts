@@ -47,6 +47,14 @@ export type PersonalSource = { id: string; displayName: string; subkind: string 
 
 const IN_USE = "In use";
 
+/**
+ * An account's first page. The account in use opens as it is; any other names its account, which
+ * the list switches to before loading the page (see `AccountSwitchLink`).
+ */
+function opensIn(path: string, accountId: string, current: boolean): string {
+  return current ? path : withAccount(path, accountId);
+}
+
 /** An approved organisation has nothing to say; every other state is said once, in its own words. */
 function attentionFor(source: OrganisationSource): AccountAttention | null {
   if (source.status !== "approved") {
@@ -74,7 +82,7 @@ export function accountRows(input: {
       title: "Personal",
       tileName: input.personal.displayName,
       meta: [input.personal.displayName, ...(current ? [IN_USE] : [])],
-      href: withAccount(accountHomePathForKind("personal"), input.personal.id),
+      href: opensIn(accountHomePathForKind("personal"), input.personal.id, current),
       current,
       attention: null,
       step: null,
@@ -95,7 +103,7 @@ export function accountRows(input: {
         organisationRoleLabel(source.role),
         ...(current ? [IN_USE] : []),
       ],
-      href: withAccount(accountHomePathForKind("organisation"), source.id),
+      href: opensIn(accountHomePathForKind("organisation"), source.id, current),
       current,
       attention: attentionFor(source),
       step: setupStep(source.status, source.id, source.resumeHref),

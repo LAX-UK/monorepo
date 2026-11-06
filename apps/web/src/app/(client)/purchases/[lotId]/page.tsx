@@ -63,13 +63,13 @@ export default async function PurchaseDetailPage({ params }: PageProps) {
   const row = sources.rows.find((candidate) => candidate.lot.id === lotId);
   if (!row) {
     // Won in another account of this person: open it there. Otherwise it is not theirs to see.
-    const switchHop = await openRecordInItsAccount({
+    const opened = await openRecordInItsAccount({
       kind: "purchase",
       id: lotId,
       actingId: scope.account.id,
       next: `${CLIENT_ROUTES.purchases}/${lotId}`,
     });
-    if (switchHop) return <AccountRestoreHop href={switchHop} />;
+    if (opened.kind === "hop") return <AccountRestoreHop href={opened.href} />;
     notFound();
   }
   const card = purchaseCard(row, sources);

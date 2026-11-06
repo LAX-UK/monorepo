@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const postAuthBroadcast = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth/auth-broadcast", () => ({ postAuthBroadcast }));
+const expireSharedActingCookie = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/legal-entity/client-acting-context", () => ({ expireSharedActingCookie }));
 vi.mock("@/lib/analytics/events", () => ({ trackLogin: vi.fn() }));
 vi.mock("@/lib/analytics/sell-funnel", () => ({ trackSellAuthHandoff: vi.fn() }));
 
@@ -20,6 +22,7 @@ describe("runHostedPostLoginEffects", () => {
       marketingEnabled: false,
     });
     expect(document.cookie).toContain("lax_acting_legal_entity_id=11111111");
+    expect(expireSharedActingCookie).toHaveBeenCalledTimes(1);
     expect(postAuthBroadcast).toHaveBeenCalledWith({ type: "signed-in" });
   });
 });

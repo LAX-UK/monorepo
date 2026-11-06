@@ -1,4 +1,5 @@
-import { ACTING_LEGAL_ENTITY_COOKIE_NAME, decodeActingContextCookie } from "@auction/types";
+import { ACTING_LEGAL_ENTITY_COOKIE_NAME } from "@auction/types";
+import { readActingCookie } from "./client-acting-context";
 
 export type ActingEntityCookieDrift = {
   /** Entity id resolved server-side for this request (UI + SSR API headers). */
@@ -22,7 +23,7 @@ function extractRawActingCookie(cookieHeader: string | null | undefined): string
     new RegExp(`(?:^|; )${ACTING_LEGAL_ENTITY_COOKIE_NAME}=([^;]*)`),
   );
   if (!match?.[1]) return undefined;
-  return decodeURIComponent(match[1]).trim();
+  return match[1];
 }
 
 /** Compare SSR-resolved acting context with the browser cookie used by
@@ -34,9 +35,9 @@ export function detectActingEntityCookieDrift(
 ): ActingEntityCookieDrift | null {
   if (!serverActingId?.trim()) return null;
   const raw = extractRawActingCookie(cookieHeader);
-  const decoded = raw ? decodeActingContextCookie(raw) : null;
-  const cookieActingId = decoded?.e;
-  const isImpersonation = Boolean(decoded?.i?.sid);
+  const cookie = readActingCookie(raw);
+  const cookieActingId = cookie?.accountId;
+  const isImpersonation = Boolean(cookie?.viewSessionId);
   const hasDrift = Boolean(cookieActingId && cookieActingId !== serverActingId && !isImpersonation);
   // Never overwrite an impersonation cookie (a plain UUID would drop the
   // server-side session payload). Otherwise heal both stale and absent cookies.

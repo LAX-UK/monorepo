@@ -30,6 +30,10 @@ export class DrizzleLegalEntityRepository implements ILegalEntityRepository {
     return this.membership.listActiveMembershipsForUser(userId);
   }
 
+  hasEverBeenMember(userId: string, legalEntityId: string): Promise<boolean> {
+    return this.membership.hasEverBeenMember(userId, legalEntityId);
+  }
+
   setXeroContactId(legalEntityId: string, xeroContactId: string): Promise<void> {
     return this.entities.setXeroContactId(legalEntityId, xeroContactId);
   }

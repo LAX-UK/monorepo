@@ -27,6 +27,7 @@ function repo(
     findByIds: vi.fn().mockResolvedValue([]),
     listActiveMembershipsForUser: vi.fn(),
     findActiveMembership,
+    hasEverBeenMember: vi.fn(),
     listImpersonationNoticeRecipientEmails: vi.fn().mockResolvedValue([]),
     setXeroContactId: vi.fn(),
     setStripeCustomerId: vi.fn(),

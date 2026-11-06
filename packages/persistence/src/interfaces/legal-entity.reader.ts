@@ -28,6 +28,7 @@ export interface ILegalEntityReader {
 export interface ILegalEntityMembershipReader {
   listActiveMembershipsForUser(userId: string): Promise<LegalEntitySummary[]>;
   findActiveMembership(userId: string, legalEntityId: string): Promise<ActiveMembership | null>;
+  hasEverBeenMember(userId: string, legalEntityId: string): Promise<boolean>;
   listImpersonationNoticeRecipientEmails(
     legalEntityId: string,
   ): Promise<{ email: string; userId: string }[]>;

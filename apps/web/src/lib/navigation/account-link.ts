@@ -1,5 +1,6 @@
 import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import { ACCOUNT_QUERY_PARAM, CLIENT_ROUTES, isClientAreaPath } from "./client-routes";
+import { pathOf } from "./path-of";
 
 /**
  * Links that must open in a given account, and the hops that make that happen. Pages never
@@ -13,7 +14,7 @@ import { ACCOUNT_QUERY_PARAM, CLIENT_ROUTES, isClientAreaPath } from "./client-r
 /** Where a hop goes back to: a same-origin page other than a hop; anything else is Home. */
 export function safeHopNext(next: string | null | undefined): string {
   if (!next || !isSafeNextPath(next)) return CLIENT_ROUTES.home;
-  const path = next.split(/[?#]/)[0] ?? "";
+  const path = pathOf(next);
   return isAccountHop(path) ? CLIENT_ROUTES.home : next;
 }
 
@@ -23,7 +24,7 @@ export function safeHopNext(next: string | null | undefined): string {
  */
 export function refusedPageTarget(next: string | null | undefined): string | null {
   if (!next || !isSafeNextPath(next)) return null;
-  const path = next.split(/[?#]/)[0] ?? "";
+  const path = pathOf(next);
   return isAccountHop(path) ? null : next;
 }
 
@@ -77,7 +78,7 @@ export function accountsUnavailableHref(retry: string): string {
 /** Where "Try again" on the retry state may go: a hop, or a page `safeHopNext` allows. */
 export function safeRetryTarget(retry: string | null | undefined): string {
   if (!retry || !isSafeNextPath(retry)) return CLIENT_ROUTES.home;
-  return isHop(retry.split(/[?#]/)[0] ?? "") ? retry : safeHopNext(retry);
+  return isHop(pathOf(retry)) ? retry : safeHopNext(retry);
 }
 
 /** The hop that puts this browser back in the account the person used last. */

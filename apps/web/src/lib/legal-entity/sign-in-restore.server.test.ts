@@ -54,9 +54,9 @@ describe("planSignInRestore", () => {
   it("asks the API as the new session and opens the account it chose", async () => {
     mockApi(answer({ accountId: ORG_ID, lostOrganisation: null }));
 
-    const plan = await planSignInRestore({ sessionId: "session-1", actingCookie: undefined });
+    const plan = await planSignInRestore({ sessionId: "session-1" });
 
-    expect(plan?.switchTo?.accountId).toBe(ORG_ID);
+    expect(plan?.accountId).toBe(ORG_ID);
     expect(resourceToken).toHaveBeenCalledWith("session-1", "bid-api", "bid.read bid.write");
     const [url, init] = restoreCall();
     expect(url).toBe("https://api.test/legal-entities/me/remembered-account/restore");
@@ -67,12 +67,10 @@ describe("planSignInRestore", () => {
     expect(JSON.parse(String(init.body))).toEqual({ candidateId: null });
   });
 
-  it("offers the account this browser used last as the candidate", async () => {
-    mockApi(answer({ accountId: ORG_ID, lostOrganisation: null }));
-    await planSignInRestore({ sessionId: "session-1", actingCookie: ORG_ID });
-    expect(JSON.parse(String(restoreCall()[1].body))).toEqual({
-      candidateId: ORG_ID,
-    });
+  it("never offers this browser's old account: a sign-in opens the profile's account", async () => {
+    mockApi(answer({ accountId: PERSONAL_ID, lostOrganisation: null }));
+    await planSignInRestore({ sessionId: "session-1" });
+    expect(JSON.parse(String(restoreCall()[1].body))).toEqual({ candidateId: null });
   });
 
   it("carries the notice when the person was removed from the organisation", async () => {
@@ -82,8 +80,8 @@ describe("planSignInRestore", () => {
         lostOrganisation: { id: ORG_ID, displayName: "Northbank Gallery" },
       }),
     );
-    const plan = await planSignInRestore({ sessionId: "session-1", actingCookie: ORG_ID });
-    expect(plan?.switchTo).toMatchObject({
+    const plan = await planSignInRestore({ sessionId: "session-1" });
+    expect(plan).toMatchObject({
       accountId: PERSONAL_ID,
       notice: { kind: "removed", organisationName: "Northbank Gallery" },
     });
@@ -91,20 +89,14 @@ describe("planSignInRestore", () => {
 
   it.each([429, 500, 503])("does not block sign-in when the API answers %s", async (status) => {
     mockApi(new Response("{}", { status }));
-    await expect(
-      planSignInRestore({ sessionId: "session-1", actingCookie: undefined }),
-    ).resolves.toBeNull();
+    await expect(planSignInRestore({ sessionId: "session-1" })).resolves.toBeNull();
   });
 
   it("does not block sign-in when the API is unreachable or no token can be had", async () => {
     fetchApi.mockRejectedValue(new TypeError("fetch failed"));
-    await expect(
-      planSignInRestore({ sessionId: "session-1", actingCookie: undefined }),
-    ).resolves.toBeNull();
+    await expect(planSignInRestore({ sessionId: "session-1" })).resolves.toBeNull();
     resourceToken.mockRejectedValue(new Error("no session"));
-    await expect(
-      planSignInRestore({ sessionId: "session-1", actingCookie: undefined }),
-    ).resolves.toBeNull();
+    await expect(planSignInRestore({ sessionId: "session-1" })).resolves.toBeNull();
   });
 
   it("restores nothing for a staff member, and asks the API nothing beyond who they are", async () => {
@@ -113,9 +105,7 @@ describe("planSignInRestore", () => {
       role: "staff",
       staffRoles: ["admin"],
     });
-    await expect(
-      planSignInRestore({ sessionId: "session-1", actingCookie: undefined }),
-    ).resolves.toBeNull();
+    await expect(planSignInRestore({ sessionId: "session-1" })).resolves.toBeNull();
     expect(restoreCall()).toBeUndefined();
   });
 
@@ -123,7 +113,7 @@ describe("planSignInRestore", () => {
     vi.useFakeTimers();
     try {
       resourceToken.mockReturnValue(new Promise(() => {}));
-      const plan = planSignInRestore({ sessionId: "session-1", actingCookie: undefined });
+      const plan = planSignInRestore({ sessionId: "session-1" });
       let settled = false;
       void plan.then(() => {
         settled = true;
@@ -136,20 +126,6 @@ describe("planSignInRestore", () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it("reads an encoded or malformed cookie without failing", async () => {
-    mockApi(answer({ accountId: ORG_ID, lostOrganisation: null }));
-    await planSignInRestore({ sessionId: "session-1", actingCookie: "%E0%A4%A" });
-    expect(JSON.parse(String(restoreCall()[1].body))).toEqual({ candidateId: null });
-  });
-
-  it("leaves a staff member's view as a client alone", async () => {
-    const viewing = encodeActingContextCookie({ v: 1, e: ORG_ID, i: { sid: PERSONAL_ID } });
-    await expect(
-      planSignInRestore({ sessionId: "session-1", actingCookie: viewing }),
-    ).resolves.toBeNull();
-    expect(fetchApi).not.toHaveBeenCalled();
   });
 });
 
@@ -197,12 +173,68 @@ describe("applySignInRestore", () => {
     expect(response.cookies.get("lax_account_notice")).toBeDefined();
   });
 
-  it("writes nothing when the API cannot answer", async () => {
+  it("sends no candidate even when this browser holds another person's organisation", async () => {
+    mockApi(answer({ accountId: PERSONAL_ID, lostOrganisation: null }));
+    const response = NextResponse.redirect("https://lax.bid/auth/post-login");
+
+    await applySignInRestore(response, {
+      sessionId: "session-1",
+      request: signInRequest(`lax_acting_legal_entity_id=${ORG_ID}`),
+    });
+
+    expect(JSON.parse(String(restoreCall()[1].body))).toEqual({ candidateId: null });
+    expect(response.cookies.get("lax_acting_legal_entity_id")?.value).toBe(PERSONAL_ID);
+    expect(response.cookies.get("lax_account_notice")).toBeUndefined();
+  });
+
+  it("removes the old account cookie when the API cannot answer", async () => {
+    mockApi(new Response("{}", { status: 503 }));
+    const response = NextResponse.redirect("https://lax.bid/auth/post-login");
+
+    await applySignInRestore(response, {
+      sessionId: "session-1",
+      request: signInRequest(`lax_acting_legal_entity_id=${ORG_ID}`),
+    });
+
+    expect(response.cookies.get("lax_acting_legal_entity_id")?.value).toBe("");
+    expect(response.headers.get("set-cookie") ?? "").toMatch(/Expires=Thu, 01 Jan 1970/i);
+  });
+
+  it("removes the old account cookie for a staff member", async () => {
+    mockApi(answer({ accountId: ORG_ID, lostOrganisation: null }), {
+      ...CLIENT,
+      role: "staff",
+      staffRoles: ["admin"],
+    });
+    const response = NextResponse.redirect("https://lax.bid/auth/post-login");
+
+    await applySignInRestore(response, {
+      sessionId: "session-1",
+      request: signInRequest(`lax_acting_legal_entity_id=${ORG_ID}`),
+    });
+
+    expect(response.cookies.get("lax_acting_legal_entity_id")?.value).toBe("");
+  });
+
+  it("leaves a staff member's view as a client alone, without asking the API", async () => {
+    const viewing = encodeActingContextCookie({ v: 1, e: ORG_ID, i: { sid: PERSONAL_ID } });
+    const response = NextResponse.redirect("https://lax.bid/auth/post-login");
+
+    await applySignInRestore(response, {
+      sessionId: "session-1",
+      request: signInRequest(`lax_acting_legal_entity_id=${viewing}`),
+    });
+
+    expect(fetchApi).not.toHaveBeenCalled();
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("writes nothing when there was no cookie and the API cannot answer", async () => {
     mockApi(new Response("{}", { status: 503 }));
     const response = NextResponse.redirect("https://lax.bid/auth/post-login");
 
     await applySignInRestore(response, { sessionId: "session-1", request: signInRequest() });
 
-    expect(response.headers.get("set-cookie")).toBeNull();
+    expect(response.cookies.get("lax_acting_legal_entity_id")?.value ?? "").toBe("");
   });
 });

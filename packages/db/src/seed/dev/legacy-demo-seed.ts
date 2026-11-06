@@ -2112,6 +2112,16 @@ export async function runLegacyDemoSeed() {
       isPrimaryAdmin: true,
       acceptedAt: new Date(now - 20 * day),
     },
+    /** viewer — the estate owner once had a seat here and was removed (an organisation they left). */
+    {
+      legalEntityId: LEO.companyDocsRequested,
+      userId: ESTATE_OWNER_ID,
+      role: "viewer",
+      invitedByUserId: COMPANY_OWNER_ID,
+      invitedAt: new Date(now - 19 * day),
+      acceptedAt: new Date(now - 18 * day),
+      removedAt: new Date(now - 5 * day),
+    },
     {
       legalEntityId: LEO.charityDocsReceived,
       userId: COMPANY_OWNER_ID,

@@ -39,14 +39,21 @@ describe("accountRows", () => {
     expect(row?.current).toBe(true);
   });
 
-  it("opens each account in that account", () => {
+  it("opens each other account in that account, and the one in use as it is", () => {
     const rows = accountRows({
       personal,
       organisations: [organisation({ id: "nb" })],
       actingId: null,
     });
-    expect(rows[0]?.href).toBe("/bids?account=me");
+    expect(rows[0]?.href).toBe("/bids");
     expect(rows[1]?.href).toBe("/home?account=nb");
+    const inOrganisation = accountRows({
+      personal,
+      organisations: [organisation({ id: "nb" })],
+      actingId: "nb",
+    });
+    expect(inOrganisation[0]?.href).toBe("/bids?account=me");
+    expect(inOrganisation[1]?.href).toBe("/home");
   });
 
   it("shows no badge for an approved organisation", () => {
