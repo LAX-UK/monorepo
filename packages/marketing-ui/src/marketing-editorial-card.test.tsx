@@ -28,6 +28,27 @@ describe("MarketingEditorialCard", () => {
     expect(card.className).not.toContain("rounded");
   });
 
+  it("shows a story cover at 3:2", () => {
+    render(
+      <MarketingEditorialCard media={<span data-testid="media" />} aspect="cover" title="T" />,
+    );
+    expect(screen.getByTestId("media").parentElement?.className).toContain("aspect-[3/2]");
+  });
+
+  it("puts actions above the stretched link, each its own tab stop", () => {
+    render(
+      <MarketingEditorialCard
+        media={<span />}
+        title="Forms in Suspension"
+        href="/exhibitions/forms"
+        actions={<a href="/exhibitions/forms#works">See the works</a>}
+      />,
+    );
+    const action = screen.getByRole("link", { name: "See the works" });
+    expect(action.parentElement?.className).toContain("z-[1]");
+    expect(screen.getAllByRole("link")).toHaveLength(2);
+  });
+
   it("takes its heading level from the page", () => {
     render(<MarketingEditorialCard media={<span />} title="Forms in Suspension" titleAs="h2" />);
     expect(

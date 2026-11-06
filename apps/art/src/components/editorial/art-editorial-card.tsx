@@ -7,6 +7,7 @@ import {
   MarketingEditorialCard,
   type MarketingEditorialCardProps,
 } from "@auction/marketing-ui";
+import { Button } from "@auction/ui/components/button";
 
 type ArtEditorialCardProps = {
   card: EditorialCardVm;
@@ -25,6 +26,7 @@ type ArtEditorialCardProps = {
 
 const SIZES = {
   landscape: "(min-width: 64rem) 30vw, (min-width: 40rem) 45vw, 100vw",
+  cover: "(min-width: 64rem) 30vw, (min-width: 40rem) 45vw, 100vw",
   portrait: "(min-width: 40rem) 20rem, 80vw",
   wide: "(min-width: 90rem) 1360px, 100vw",
   split: "(min-width: 48rem) 55vw, 100vw",
@@ -55,6 +57,20 @@ export function ArtEditorialCard({
       title={card.headline}
       kicker={[card.kicker, card.kickerDetail].filter((part): part is string => Boolean(part))}
       details={card.meta ? [card.meta] : []}
+      {...(card.actions?.length
+        ? {
+            actions: card.actions.map((action, index) => (
+              <Button
+                key={action.href}
+                asChild
+                variant={index === 0 ? "default" : "secondaryOutline"}
+                size="lg"
+              >
+                <ArtEditorialLink href={action.href}>{action.label}</ArtEditorialLink>
+              </Button>
+            )),
+          }
+        : {})}
       {...(textLed
         ? {}
         : {

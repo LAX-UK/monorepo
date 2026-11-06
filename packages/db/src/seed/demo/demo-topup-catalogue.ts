@@ -54,7 +54,7 @@ export type DemoActors = {
 type SaleKey = "live" | "saleroom" | "upcoming" | "finished" | "older";
 
 export type DemoSale = {
-  key: SaleKey;
+  key: string;
   id: string;
   title: string;
   description: string;
@@ -84,7 +84,7 @@ export type DemoLot = {
   estimateLow: number;
   estimateHigh: number;
   minBidIncrement: number;
-  status: "scheduled" | "active" | "ended";
+  status: "scheduled" | "active" | "ended" | "cancelled";
   startTime: Date;
   endTime: Date;
   /** The highest bid, or the starting price when there are none. */
@@ -602,7 +602,7 @@ export function buildDemoCatalogue(now: number, actors: DemoActors): DemoCatalog
   let bidSeq = 0;
   let imageSeq = 0;
   for (const sale of sales) {
-    LOT_SPECS[sale.key].forEach((spec, index) => {
+    LOT_SPECS[sale.key as SaleKey].forEach((spec, index) => {
       lotSeq += 1;
       const id = DEMO_IDS.lot(lotSeq);
       lotIdByTitle.set(spec.title, id);

@@ -10,6 +10,33 @@ const LINKS = [
   { id: "account", label: "LAX Account", href: "https://account.lax.bid/account", current: false },
 ];
 
+describe("LaxFamilyBar help link controls", () => {
+  it("lets a product replace a help link with its own control", () => {
+    render(
+      <LaxFamilyBar
+        links={LINKS}
+        helpLinks={[
+          { label: "Visit us", href: "/visit" },
+          {
+            label: "Enquire",
+            href: "/contact",
+            render: (className) => (
+              <button type="button" className={className}>
+                Enquire
+              </button>
+            ),
+          },
+        ]}
+      />,
+    );
+    const help = screen.getByRole("navigation", { name: "Help" });
+    expect(within(help).getByRole("link", { name: "Visit us" })).toHaveAttribute("href", "/visit");
+    const enquire = within(help).getByRole("button", { name: "Enquire" });
+    expect(enquire.className).toContain("min-h-9");
+    expect(within(help).queryByRole("link", { name: "Enquire" })).toBeNull();
+  });
+});
+
 describe("LaxFamilyBar", () => {
   it("links the products in order, then LAX Account, each to its own URL", () => {
     render(<LaxFamilyBar links={LINKS} />);

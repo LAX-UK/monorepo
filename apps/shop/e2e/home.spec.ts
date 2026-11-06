@@ -27,7 +27,9 @@ test.describe("Shop home @a11y", () => {
     expect(blocking, `Axe on Shop home:\n${formatAxeViolations(blocking)}`).toEqual([]);
   });
 
-  test("mobile menu exposes account actions and closes with Escape", async ({ page }, testInfo) => {
+  test("phone menu has navigation and help links, no account block, and closes with Escape", async ({
+    page,
+  }, testInfo) => {
     test.skip(!enabled, skipReason);
     test.skip(testInfo.project.name !== "chromium-mobile", "mobile drawer only");
     await page.setViewportSize({ width: 375, height: 812 });
@@ -36,10 +38,9 @@ test.describe("Shop home @a11y", () => {
     await openMenu.click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-    const mobileAccount = dialog.locator(".shop-header__mobile-account");
-    await expect(mobileAccount).toBeVisible();
-    await expect(dialog.getByRole("link", { name: "Create account" })).toBeVisible();
-    await expect(dialog.getByRole("link", { name: "Sign in" })).toBeVisible();
+    await expect(dialog.getByRole("navigation", { name: "Help" })).toBeVisible();
+    await expect(dialog.getByRole("link", { name: "Delivery" })).toBeVisible();
+    await expect(dialog.getByRole("link", { name: "Sign in" })).toHaveCount(0);
     await expect(dialog.getByRole("button", { name: "Account menu" })).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(openMenu).toBeVisible();

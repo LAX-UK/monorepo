@@ -4,6 +4,7 @@ import { ArtEditorialCard } from "@/components/editorial/art-editorial-card";
 import { ArtGalleryTeamBand } from "@/components/gallery-team/art-gallery-team-band";
 import { ArtFeaturedArtists } from "@/components/home/art-featured-artists";
 import { ArtHomeHero } from "@/components/home/art-home-hero";
+import { ArtHomeWhatsOn } from "@/components/home/art-home-whats-on";
 import { ArtSection } from "@/components/layout/art-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { ArtProductDoors } from "@/components/product-doors/art-product-doors";
@@ -19,6 +20,7 @@ import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import {
   MarketingCardRow,
   MarketingFeatureGrid,
+  type MarketingFeatureGridRole,
   MarketingReveal,
   MarketingSplitFeature,
   MarketingVenueCard,
@@ -40,27 +42,19 @@ function Shell({ children }: { children: ReactNode }) {
   return <div className={MARKETING_PAGE_SHELL}>{children}</div>;
 }
 
+/** Three stories: a lead and two compact cards beside it, so the column never ends in empty space. */
+function storyCardLayout(role: MarketingFeatureGridRole, count: number) {
+  if (role === "solo") return "split";
+  return role === "item" && count > 2 ? "row" : "stacked";
+}
+
 function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
   switch (id) {
     case "whats-on":
       return (
         <Shell>
           <ArtSection id="home-whats-on" title="What's on across LAX" viewAllHref="/exhibitions">
-            <MarketingFeatureGrid
-              variant="lead-plus-row"
-              aria-label="What's on"
-              items={vm.whatsOn}
-              getKey={(card) => card.key}
-              renderItem={(card, role) => (
-                <ArtEditorialCard
-                  card={card}
-                  aspect={role === "feature" ? "wide" : "landscape"}
-                  layout={role === "solo" ? "split" : "stacked"}
-                  priority={card.key === vm.whatsOn[0]?.key}
-                  textLed={vm.textLed.whatsOn}
-                />
-              )}
-            />
+            <ArtHomeWhatsOn cards={vm.whatsOn} />
           </ArtSection>
         </Shell>
       );
@@ -108,9 +102,8 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
               renderItem={(card, role) => (
                 <ArtEditorialCard
                   card={card}
-                  aspect={role === "feature" ? "wide" : "landscape"}
-                  layout={role === "solo" ? "split" : "stacked"}
-                  textLed={vm.textLed.stories}
+                  aspect="cover"
+                  layout={storyCardLayout(role, vm.stories.length)}
                 />
               )}
             />

@@ -10,6 +10,7 @@ on:
         required: true
         options:
           - alerts-seed
+          - demo-full
 
 concurrency:
   group: worker-task-test
@@ -23,7 +24,7 @@ jobs:
     name: ${{ inputs.task }}
     runs-on: ubuntu-latest
     environment: test
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
     steps:
@@ -67,3 +68,40 @@ jobs:
       - name: Alerts first-run seed
         if: inputs.task == 'alerts-seed'
         run: pnpm --filter @auction/worker exec tsx src/scripts/seed-bid-alerts.ts
+      # Full demo data for the owner meeting. Test only: each seed refuses a production host or
+      # environment, is idempotent (fixed ids, upserts) and moves the live sale's dates to now.
+      - name: Load masked test Shop database address
+        if: inputs.task == 'demo-full'
+        run: |
+          set -euo pipefail
+          tf_dir=.infra-config/terraform/ephemeral/test
+          shop_url="$(terraform -chdir="$tf_dir" output -raw database_url_shop)"
+          test -n "$shop_url"
+          echo "::add-mask::$shop_url"
+          echo "DATABASE_URL_SHOP=$shop_url" >> "$GITHUB_ENV"
+      - name: Demo seed, Bid database
+        if: inputs.task == 'demo-full'
+        env:
+          APP_ENV: test
+        run: pnpm --filter @auction/db db:seed:demo-full
+      - name: Demo seed, Shop and lax.art database
+        if: inputs.task == 'demo-full'
+        env:
+          APP_ENV: test
+        run: pnpm --filter @auction/shop-api seed:demo-full
+      # Measures the new pictures and builds the cover slots the home cover and Coming up cards use.
+      - name: Measure cover pictures
+        if: inputs.task == 'demo-full'
+        env:
+          APP_ENV: test
+          # The worker reads its own database address; this one-off runs with the owner address the
+          # job already loaded. Covers are written to the test media bucket the test apps read from.
+          DATABASE_URL_WORKER: ${{ env.DATABASE_URL }}
+          STORAGE_DRIVER: s3
+          S3_ENDPOINT: https://lon1.digitaloceanspaces.com
+          S3_REGION: lon1
+          S3_BUCKET: lax-media
+          S3_PUBLIC_BASE_URL: https://lax-media.lon1.cdn.digitaloceanspaces.com
+          S3_ACCESS_KEY_ID: ${{ secrets.MEDIA_SPACES_ACCESS_KEY_ID }}
+          S3_SECRET_ACCESS_KEY: ${{ secrets.MEDIA_SPACES_SECRET_ACCESS_KEY }}
+        run: pnpm --filter @auction/worker exec tsx src/scripts/backfill-cover-data.ts --apply --materialise-covers

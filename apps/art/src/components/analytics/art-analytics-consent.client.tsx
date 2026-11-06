@@ -6,6 +6,8 @@ import {
   artConsentCookie,
   buildGtagInitSnippet,
 } from "@/lib/analytics/art-consent";
+import { BOTTOM_BAR_ABOVE_CLASS } from "@auction/marketing-ui";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import Script from "next/script";
@@ -77,7 +79,7 @@ export function ArtAnalyticsConsent({
       {open ? (
         <section
           aria-label="Cookie consent"
-          className="fixed inset-x-0 bottom-[var(--art-bottom-nav-height)] z-50 flex justify-center p-4 md:bottom-0"
+          className={cn("fixed inset-x-0 z-50 flex justify-center p-4", BOTTOM_BAR_ABOVE_CLASS)}
           data-testid="art-cookie-consent"
         >
           <div className="flex w-full max-w-3xl flex-col gap-4 rounded-lg border border-outline-variant/60 bg-surface p-5 shadow-lg sm:flex-row sm:items-center sm:justify-between">

@@ -39,6 +39,57 @@ function stubStorage(setItem?: () => void) {
   });
 }
 
+describe("MarketingHeaderSearch iconOnly and openRequest", () => {
+  beforeEach(() => {
+    stubStorage();
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("shows only the icon trigger when iconOnly", () => {
+    render(
+      <MarketingHeaderSearch
+        action="/search"
+        recentStorageKey={KEY}
+        placeholder="Search artworks and artists"
+        compactBelowDesktop
+        iconOnly
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Search" })).toBeInTheDocument();
+    expect(screen.queryByText("Search artworks and artists")).toBeNull();
+    expect(screen.getByRole("button", { name: "Search" }).className).not.toContain("lg:hidden");
+  });
+
+  it("opens when openRequest goes up, and not on first render", () => {
+    const props = {
+      action: "/search",
+      recentStorageKey: KEY,
+      compactBelowDesktop: true,
+      iconOnly: true,
+    };
+    const { rerender } = render(<MarketingHeaderSearch {...props} openRequest={0} />);
+    expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+    rerender(<MarketingHeaderSearch {...props} openRequest={1} />);
+    expect(screen.getByRole("dialog", { name: "Search" })).toBeInTheDocument();
+  });
+
+  it("does not open for a request that was already there when it mounted", () => {
+    render(
+      <MarketingHeaderSearch
+        action="/search"
+        recentStorageKey={KEY}
+        compactBelowDesktop
+        iconOnly
+        openRequest={3}
+      />,
+    );
+    expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+  });
+});
+
 describe("MarketingHeaderSearch", () => {
   beforeEach(() => {
     stubStorage();
@@ -46,6 +97,43 @@ describe("MarketingHeaderSearch", () => {
   });
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("opens from outside when `open` is controlled and reports requests through onOpenChange", () => {
+    const onOpenChange = vi.fn();
+    const props = { action: "/search", recentStorageKey: KEY, onOpenChange };
+    const { rerender } = render(<MarketingHeaderSearch {...props} open={false} />);
+    expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(onOpenChange).toHaveBeenLastCalledWith(true);
+    expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+
+    rerender(<MarketingHeaderSearch {...props} open />);
+    expect(screen.getByRole("dialog", { name: "Search" })).toBeTruthy();
+  });
+
+  it("draws only its own trigger for the field and icon variants", () => {
+    const { unmount } = render(
+      <MarketingHeaderSearch action="/search" recentStorageKey={KEY} variant="icon" />,
+    );
+    expect(screen.getAllByRole("button", { name: "Search" })).toHaveLength(1);
+    expect(document.querySelector(".site-header-search-trigger")).toBeNull();
+    unmount();
+    render(<MarketingHeaderSearch action="/search" recentStorageKey={KEY} variant="field" />);
+    expect(document.querySelector(".site-header-search-trigger")).not.toBeNull();
+  });
+
+  it("lets only the instance for the current width draw the shared shelf", () => {
+    // jsdom has no matchMedia, so every width counts as narrow: the icon instance draws it.
+    const shared = { action: "/search", recentStorageKey: KEY, open: true } as const;
+    render(
+      <>
+        <MarketingHeaderSearch {...shared} variant="field" />
+        <MarketingHeaderSearch {...shared} variant="icon" />
+      </>,
+    );
+    expect(screen.getAllByRole("dialog", { name: "Search" })).toHaveLength(1);
   });
 
   it("reports the shelf opening and closing so the header can turn solid", () => {

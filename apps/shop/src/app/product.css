@@ -342,7 +342,7 @@
 }
 
 /* Phone buy bar: appears once the main button scrolls away; the page reserves its height so it
-   never covers the footer or a focused control. */
+   never covers a focused control. It holds the shared bottom slot, so the tab bar steps aside. */
 .shop-buy-bar.shop-buy-bar {
   z-index: 40;
   justify-content: space-between;
@@ -403,11 +403,9 @@
   }
 }
 
+/* The page's one bottom spacer (MarketingBottomBarSpace) reserves the room; this only keeps a
+   focused control clear of the bar. */
 @media (max-width: 47.99rem) {
-  body:has(.shop-buy-bar) {
-    padding-bottom: 5.5rem;
-  }
-
   html:has(.shop-buy-bar) {
     scroll-padding-bottom: 6rem;
   }

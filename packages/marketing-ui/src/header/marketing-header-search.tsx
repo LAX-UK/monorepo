@@ -71,9 +71,31 @@ export type MarketingHeaderSearchProps = {
    * sheet that holds focus until it closes.
    */
   compactBelowDesktop?: boolean;
+  /**
+   * Show only the icon trigger at every width (the field is rendered by another instance). The
+   * shelf still opens as a full-screen sheet on phones when `compactBelowDesktop` is set.
+   */
+  iconOnly?: boolean;
+  /**
+   * Opens the search when this number goes up, for a control elsewhere (the bottom bar's Search
+   * tab). The initial value never opens it.
+   */
+  openRequest?: number;
   headerTone?: MarketingHeaderTone;
   /** Reports the shelf opening or closing, so the header can turn solid while it is open. */
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Which trigger this instance draws. "auto" (default) draws the field, plus the icon below
+   * 1024px when `compactBelowDesktop` is set. "field" draws only the field and "icon" only the
+   * icon, for headers that switch between them at 1280px; pair them with `open` so the two share
+   * one state, and only the one for the current width draws the shelf.
+   */
+  variant?: "auto" | "field" | "icon";
+  /**
+   * Controls the open state from outside (for example the bottom bar's Search tab). Changes are
+   * reported through `onOpenChange`.
+   */
+  open?: boolean;
   className?: string;
 };
 
@@ -82,6 +104,7 @@ const RECENT_LIMIT = 5;
 export const HEADER_SEARCH_MIN_QUERY = 2;
 const RESULTS_DEBOUNCE_MS = 180;
 const DESKTOP_QUERY = "(min-width: 64rem)";
+const WIDE_QUERY = "(min-width: 80rem)";
 
 // Storage can throw (private mode, blocked site data) or hold anything, so every access is guarded.
 function readRecent(key: string): string[] {
@@ -161,12 +184,37 @@ export function MarketingHeaderSearch({
   loadResults,
   placeholder = "Search",
   compactBelowDesktop = false,
+  iconOnly = false,
+  openRequest = 0,
   headerTone = "on-light",
   onOpenChange,
+  variant = "auto",
+  open: controlledOpen,
   className,
 }: MarketingHeaderSearchProps) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [innerOpen, setInnerOpen] = useState(false);
+  const controlled = controlledOpen !== undefined;
+  const open = controlledOpen ?? innerOpen;
+  const setOpen = useCallback(
+    (next: boolean) => {
+      if (controlled) onOpenChange?.(next);
+      else setInnerOpen(next);
+    },
+    [controlled, onOpenChange],
+  );
+  // With split triggers, only the instance for the current width draws the shelf.
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    if (variant === "auto" || typeof window.matchMedia !== "function") return;
+    const list = window.matchMedia(WIDE_QUERY);
+    const update = () => setWide(list.matches);
+    update();
+    list.addEventListener("change", update);
+    return () => list.removeEventListener("change", update);
+  }, [variant]);
+  const drawsShelf = variant === "auto" || (variant === "field") === wide;
+  const active = open && drawsShelf;
   const [sheet, setSheet] = useState(false);
   const [query, setQuery] = useState("");
   const [recent, setRecent] = useState<string[]>([]);
@@ -184,45 +232,76 @@ export function MarketingHeaderSearch({
   const recentTitleId = useId();
   const suggestedTitleId = useId();
 
-  const close = useCallback((restoreFocus: boolean) => {
-    setOpen(false);
-    setQuery("");
-    setResults({ status: "idle" });
-    setActiveIndex(-1);
-    if (restoreFocus) openerRef.current?.focus();
-  }, []);
+  const close = useCallback(
+    (restoreFocus: boolean) => {
+      setOpen(false);
+      setQuery("");
+      setResults({ status: "idle" });
+      setActiveIndex(-1);
+      if (restoreFocus) openerRef.current?.focus();
+    },
+    [setOpen],
+  );
 
   const openShelf = (opener: HTMLButtonElement | null) => {
     openerRef.current = opener;
     setRecent(readRecent(recentStorageKey));
-    const asSheet = compactBelowDesktop && !isDesktopViewport();
+    const asSheet =
+      variant === "field"
+        ? false
+        : (compactBelowDesktop || variant === "icon") && !isDesktopViewport();
     setSheet(asSheet);
     const anchor = opener?.closest("header") ?? opener;
     setTop(asSheet ? 0 : (anchor?.getBoundingClientRect().bottom ?? 0));
     setOpen(true);
   };
 
+  // Opened from outside (controlled): lay the shelf out as if a trigger had been pressed.
+  const laidOutRef = useRef(false);
   useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
+    if (!controlled || !drawsShelf) return;
+    if (open && !laidOutRef.current) {
+      const opener =
+        document.activeElement instanceof HTMLButtonElement ? document.activeElement : null;
+      openerRef.current = opener;
+      setRecent(readRecent(recentStorageKey));
+      const asSheet = variant !== "field" && !isDesktopViewport();
+      setSheet(asSheet);
+      const anchor = document.querySelector("header");
+      setTop(asSheet ? 0 : (anchor?.getBoundingClientRect().bottom ?? 0));
+    }
+    laidOutRef.current = open;
+  }, [controlled, drawsShelf, open, recentStorageKey, variant]);
+
+  const lastOpenRequest = useRef(openRequest);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only a new request opens the search
+  useEffect(() => {
+    if (openRequest === lastOpenRequest.current) return;
+    lastOpenRequest.current = openRequest;
+    if (!open) openShelf(compactTriggerRef.current ?? triggerRef.current);
+  }, [openRequest]);
 
   useEffect(() => {
-    onOpenChange?.(open);
-  }, [open, onOpenChange]);
+    if (active) inputRef.current?.focus();
+  }, [active]);
+
+  useEffect(() => {
+    if (!controlled) onOpenChange?.(open);
+  }, [controlled, open, onOpenChange]);
 
   // The phone sheet covers the page, so the page behind it does not scroll.
   useEffect(() => {
-    if (!open || !sheet) return;
+    if (!active || !sheet) return;
     const root = document.documentElement;
     const previous = root.style.overflow;
     root.style.overflow = "hidden";
     return () => {
       root.style.overflow = previous;
     };
-  }, [open, sheet]);
+  }, [active, sheet]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!active) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -264,14 +343,14 @@ export function MarketingHeaderSearch({
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("mousedown", onMouseDown, true);
     };
-  }, [open, sheet, close]);
+  }, [active, sheet, close]);
 
   const trimmed = query.trim();
   const live = Boolean(loadResults) && trimmed.length >= HEADER_SEARCH_MIN_QUERY;
 
   // Debounced live results; a newer query aborts the request before it.
   useEffect(() => {
-    if (!open || !loadResults || trimmed.length < HEADER_SEARCH_MIN_QUERY) {
+    if (!active || !loadResults || trimmed.length < HEADER_SEARCH_MIN_QUERY) {
       setResults({ status: "idle" });
       setActiveIndex(-1);
       return;
@@ -296,7 +375,7 @@ export function MarketingHeaderSearch({
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [open, loadResults, trimmed]);
+  }, [active, loadResults, trimmed]);
 
   const searchHref = (value: string) => `${action}?q=${encodeURIComponent(value)}`;
 
@@ -423,34 +502,36 @@ export function MarketingHeaderSearch({
 
   return (
     <>
-      <Button
-        ref={triggerRef}
-        type="button"
-        variant="ghost"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-controls={open ? shelfId : undefined}
-        onClick={() => (open ? close(false) : openShelf(triggerRef.current))}
-        className={headerSearchTriggerClass(
-          headerTone,
-          cn(
-            "min-h-11 w-[231px] justify-between gap-2 rounded-none border-b px-0 py-0 font-label text-sm font-normal",
-            compactBelowDesktop && "hidden lg:inline-flex",
-            className,
-          ),
-        )}
-      >
-        <span
-          className={cn(
-            "site-header-search-placeholder",
-            headerTone === "on-dark" ? "text-hero-foreground" : "text-on-surface-variant",
+      {variant === "icon" || iconOnly ? null : (
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="ghost"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-controls={open ? shelfId : undefined}
+          onClick={() => (open ? close(false) : openShelf(triggerRef.current))}
+          className={headerSearchTriggerClass(
+            headerTone,
+            cn(
+              "min-h-11 w-[231px] justify-between gap-2 rounded-none border-b px-0 py-0 font-label text-sm font-normal",
+              compactBelowDesktop && variant === "auto" && "hidden lg:inline-flex",
+              className,
+            ),
           )}
         >
-          {placeholder}
-        </span>
-        <MarketingSearchIcon className="site-header-search-icon size-5" aria-hidden />
-      </Button>
-      {compactBelowDesktop ? (
+          <span
+            className={cn(
+              "site-header-search-placeholder",
+              headerTone === "on-dark" ? "text-hero-foreground" : "text-on-surface-variant",
+            )}
+          >
+            {placeholder}
+          </span>
+          <MarketingSearchIcon className="site-header-search-icon size-5" aria-hidden />
+        </Button>
+      )}
+      {variant === "icon" || iconOnly || (compactBelowDesktop && variant === "auto") ? (
         <MarketingChromeIconButton
           ref={compactTriggerRef}
           label="Search"
@@ -459,7 +540,8 @@ export function MarketingHeaderSearch({
           aria-controls={open ? shelfId : undefined}
           onClick={() => (open ? close(false) : openShelf(compactTriggerRef.current))}
           className={cn(
-            "site-header-chrome site-header-chrome-icon bg-transparent lg:hidden",
+            "site-header-chrome site-header-chrome-icon bg-transparent",
+            variant === "auto" && !iconOnly && "lg:hidden",
             headerTone === "on-dark"
               ? "text-hero-foreground hover:bg-white/10"
               : "text-brand-800 hover:bg-page-bg dark:text-on-surface dark:hover:bg-surface-container-low",
@@ -468,7 +550,7 @@ export function MarketingHeaderSearch({
           <MarketingSearchIcon className="size-5" aria-hidden />
         </MarketingChromeIconButton>
       ) : null}
-      {open && typeof document !== "undefined"
+      {active && typeof document !== "undefined"
         ? createPortal(
             <div
               ref={shelfRef}

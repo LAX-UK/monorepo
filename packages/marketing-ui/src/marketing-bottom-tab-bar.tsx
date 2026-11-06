@@ -143,6 +143,15 @@ export function MarketingBottomTabBar({
                 >
                   {inner}
                 </button>
+              ) : tab.fullPageNavigation ? (
+                <a
+                  href={tab.href}
+                  aria-current={current ? "page" : undefined}
+                  aria-label={`${tab.label}${badgeSpeech(tab.badge)}`}
+                  className={cn(TAB_BASE, current && TAB_CURRENT, FOCUS_RING)}
+                >
+                  {inner}
+                </a>
               ) : (
                 <Link
                   href={tab.href}
