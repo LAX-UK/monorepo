@@ -125,4 +125,4 @@ jobs:
         # calls the cron routes, so it gets a throwaway value for the run.
         run: |
           CRON_INTERNAL_SECRET="$(openssl rand -hex 32)" \
-            pnpm --filter @auction/worker exec tsx src/scripts/backfill-cover-data.ts --apply --materialise-covers
+            pnpm --filter @auction/worker exec tsx src/scripts/backfill-cover-data.ts --apply --materialise-covers --retry-failed

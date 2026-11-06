@@ -88,6 +88,11 @@ describe.skipIf(!HAS_DB)("cover analysis job repository (integration)", () => {
         await repo.save(shared.analysisHash, { status: "failed" });
         expect(mine(await repo.listPending(1000)).map((row) => row.name)).toEqual(["wide"]);
 
+        // Forgetting failed outcomes makes that slot pending again.
+        expect(await repo.forgetFailed()).toBeGreaterThanOrEqual(1);
+        expect(mine(await repo.listPending(1000))).toHaveLength(2);
+        await repo.save(shared.analysisHash, { status: "failed" });
+
         // A later outcome replaces an earlier one.
         await repo.save(shared.analysisHash, {
           status: "ready",

@@ -2,10 +2,11 @@ import type { Database } from "@auction/db";
 import { coverAnalysis } from "@auction/db";
 import type { SaleCoverSlot, SaleCoverSlotName } from "@auction/types";
 import { SALE_COVER_SLOT_NAMES } from "@auction/types";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type {
   CoverAnalysisOutcome,
   ICoverAnalysisJobRepository,
+  ICoverAnalysisRetry,
   PendingCoverSlot,
 } from "../interfaces/cover-analysis-job.repository.js";
 
@@ -15,7 +16,9 @@ const isSlotName = (value: string): value is SaleCoverSlotName =>
   (SALE_COVER_SLOT_NAMES as readonly string[]).includes(value);
 
 /** Finds cover slots to measure and keeps what was measured, in `cover_analysis`. */
-export class DrizzleCoverAnalysisJobRepository implements ICoverAnalysisJobRepository {
+export class DrizzleCoverAnalysisJobRepository
+  implements ICoverAnalysisJobRepository, ICoverAnalysisRetry
+{
   constructor(private readonly db: Database) {}
 
   async listPending(limit: number): Promise<PendingCoverSlot[]> {
@@ -50,5 +53,13 @@ export class DrizzleCoverAnalysisJobRepository implements ICoverAnalysisJobRepos
         target: coverAnalysis.hash,
         set: { status: outcome.status, analysis, analysedAt: new Date() },
       });
+  }
+
+  async forgetFailed(): Promise<number> {
+    const removed = await this.db
+      .delete(coverAnalysis)
+      .where(eq(coverAnalysis.status, "failed"))
+      .returning({ hash: coverAnalysis.hash });
+    return removed.length;
   }
 }

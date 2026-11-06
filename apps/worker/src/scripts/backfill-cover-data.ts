@@ -24,6 +24,8 @@ import { createDb, sale } from "@auction/db";
  *
  * Optional:
  *   --limit=100            Visit at most this many pictures or slots per step
+ *   --retry-failed         Measure again the slots an earlier run marked failed (for example a
+ *                          picture that could not be found then). Needs a role that may delete.
  *   --materialise-covers   Turn the old cover array into named slots (default, phone, wide) with
  *                          a centred focal point, writing with DATABASE_URL (the worker role
  *                          cannot write sales). Run it once the admin sets slots, so the old
@@ -57,6 +59,7 @@ function parseArgs(argv: string[]) {
   return {
     apply: argv.includes("--apply"),
     materialise: argv.includes("--materialise-covers"),
+    retryFailed: argv.includes("--retry-failed"),
     limit,
   };
 }
@@ -146,7 +149,7 @@ async function measureExternal(
 }
 
 async function main() {
-  const { apply, materialise, limit } = parseArgs(process.argv.slice(2));
+  const { apply, materialise, retryFailed, limit } = parseArgs(process.argv.slice(2));
   const env = loadWorkerEnv();
   const db = createDb(env.DATABASE_URL_WORKER ?? env.DATABASE_URL);
   const storage = createUploadStorage(env);
@@ -286,11 +289,17 @@ async function main() {
   }
 
   // 3. Colours and scrim for every slot without them, a batch at a time.
+  if (retryFailed) {
+    log.info({ forgotten: await jobRepo.forgetFailed() }, "failed cover analyses queued again");
+  }
   const analyser = new SharpCoverImageAnalyser();
   let ready = 0;
   let failed = 0;
   for (let round = 0; round < 1000; round++) {
-    const result = await analyseSaleCoversJob({ repo: jobRepo, storage, analyser, log }, 25);
+    const result = await analyseSaleCoversJob(
+      { repo: jobRepo, storage, analyser, log, ...(publicBaseUrl ? { publicBaseUrl } : {}) },
+      25,
+    );
     ready += result.ready;
     failed += result.failed;
     if (result.ready + result.failed === 0) break;
