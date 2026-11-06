@@ -164,9 +164,9 @@ describe("HomeNewPerson", () => {
     const html = renderToStaticMarkup(
       <HomeNewPerson
         products={[
-          { id: "art", name: "lax.art", tagline: "", href: "https://lax.art" },
-          { id: "shop", name: "LAX Shop", tagline: "", href: "https://shop.lax.bid" },
-          { id: "bid", name: "LAX Bid", tagline: "", href: "https://lax.bid" },
+          { id: "art", name: "lax.art", invitation: "", href: "https://lax.art" },
+          { id: "shop", name: "LAX Shop", invitation: "", href: "https://shop.lax.bid" },
+          { id: "bid", name: "LAX Bid", invitation: "", href: "https://lax.bid" },
         ]}
       />,
     );
