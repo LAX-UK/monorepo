@@ -45,6 +45,8 @@ export {
   type PortfolioHeaderVm,
   buildPortfolioHeader,
   costBasisLines,
+  isPaidFor,
+  paidLines,
 } from "./portfolio-header.vm.js";
 export {
   type AllocationCount,

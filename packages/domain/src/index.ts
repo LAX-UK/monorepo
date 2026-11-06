@@ -644,6 +644,8 @@ export {
 } from "./amounts-owed.js";
 export {
   OWED_PAYMENT_STATUSES,
+  decisivePayment,
+  decisivePaymentByLot,
   purchaseEnding,
   purchaseIsOwned,
   purchaseIsToPay,

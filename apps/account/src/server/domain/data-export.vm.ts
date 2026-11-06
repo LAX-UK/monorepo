@@ -1,3 +1,4 @@
+import { formatDate, formatDateTime, formatTime, isSameLondonDay } from "@/lib/format-date";
 import {
   SUBJECT_EXPORT_PRODUCTS,
   SUBJECT_EXPORT_PRODUCT_INFO,
@@ -8,43 +9,6 @@ import {
 export const DEFAULT_DATA_EXPORT_SUBTITLE = "A copy of the information LAX holds about you";
 
 const LARGE_FILE_BYTES = 25_000_000;
-const ZONE = "Europe/London";
-
-function shortDate(date: Date): string {
-  return date.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: ZONE,
-  });
-}
-
-function longDate(date: Date): string {
-  return date.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: ZONE,
-  });
-}
-
-/** "9 Nov", for the row subtitle, where the year is clutter. */
-function dayAndMonth(date: Date): string {
-  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: ZONE });
-}
-
-function clock(date: Date): string {
-  return date.toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: ZONE,
-  });
-}
-
-function sameLondonDay(a: Date, b: Date): boolean {
-  return shortDate(a) === shortDate(b);
-}
 
 export function formatDataExportSize(bytes: number): string {
   if (bytes >= 1_000_000_000) return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
@@ -79,13 +43,13 @@ export function buildDataExportRowSubtitle(view: SubjectExportView | null, now: 
       return "Taking longer than usual";
     case "ready":
       return view.expiresAt
-        ? `Ready until ${dayAndMonth(new Date(view.expiresAt))}`
+        ? `Ready until ${formatDate(view.expiresAt)}`
         : DEFAULT_DATA_EXPORT_SUBTITLE;
     case "expired":
     case "deleted": {
       const when = status === "deleted" ? view.deletedAt : view.expiresAt;
       if (!when) return DEFAULT_DATA_EXPORT_SUBTITLE;
-      return `Last copy ${status === "deleted" ? "deleted" : "expired"} ${dayAndMonth(new Date(when))}`;
+      return `Last copy ${status === "deleted" ? "deleted" : "expired"} ${formatDate(when)}`;
     }
   }
 }
@@ -170,9 +134,9 @@ export function buildDataExportPageVm(
       const products = productProgress(view);
       return {
         kind: "preparing",
-        requestedAt: sameLondonDay(requested, now)
-          ? `today at ${clock(requested)}`
-          : `${shortDate(requested)} at ${clock(requested)}`,
+        requestedAt: isSameLondonDay(requested, now)
+          ? `today at ${formatTime(requested)}`
+          : formatDateTime(requested, now),
         email,
         products,
         assembling: products.every((entry) => entry.state === "done"),
@@ -182,7 +146,7 @@ export function buildDataExportPageVm(
     case "failed":
       return {
         kind: "delayed",
-        dueOn: longDate(new Date(view.dueAt)),
+        dueOn: formatDate(view.dueAt),
         email,
         products: productProgress(view),
       };
@@ -198,25 +162,25 @@ export function buildDataExportPageVm(
         fileName: view.fileName,
         size: formatDataExportSize(view.sizeBytes),
         largeFile: view.sizeBytes >= LARGE_FILE_BYTES,
-        preparedAt: `${shortDate(prepared)} at ${clock(prepared)}`,
-        availableUntil: shortDate(new Date(view.expiresAt)),
+        preparedAt: formatDateTime(prepared, now),
+        availableUntil: formatDate(view.expiresAt),
         downloads: downloadedLabel(view.downloadCount),
       };
     }
     case "expired":
     case "deleted": {
       const prepared = view.readyAt ? new Date(view.readyAt) : null;
-      const preparedOn = prepared ? `, prepared on ${longDate(prepared)},` : "";
+      const preparedOn = prepared ? `, prepared on ${formatDate(prepared)},` : "";
       if (status === "deleted" && view.deletedAt) {
         return {
           kind: "expired",
-          message: `You deleted your last copy on ${longDate(new Date(view.deletedAt))}. It has been removed.`,
+          message: `You deleted your last copy on ${formatDate(view.deletedAt)}. It has been removed.`,
         };
       }
       return {
         kind: "expired",
         message: view.expiresAt
-          ? `Your last copy${preparedOn} expired on ${longDate(new Date(view.expiresAt))} and has been deleted.`
+          ? `Your last copy${preparedOn} expired on ${formatDate(view.expiresAt)} and has been deleted.`
           : "Your last copy has expired and has been deleted.",
       };
     }
@@ -225,5 +189,5 @@ export function buildDataExportPageVm(
 
 /** What the page says after Identity answers that four copies were asked for in 30 days. */
 export function buildRateLimitedMessage(retryAfter: string): string {
-  return `You've asked for the most copies we can prepare in 30 days. You can ask again from ${longDate(new Date(retryAfter))}.`;
+  return `You've asked for the most copies we can prepare in 30 days. You can ask again from ${formatDate(retryAfter)}.`;
 }

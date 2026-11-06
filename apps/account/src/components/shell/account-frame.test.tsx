@@ -100,6 +100,14 @@ describe("AccountFrame signed in", () => {
     expect(html).not.toContain('href="/account/portfolio" aria-current');
   });
 
+  it("groups the menu under Your collection and Your account, as plain labels, in the rail and the sheet", () => {
+    for (const label of ["Your collection", "Your account"]) {
+      expect(html.split(`>${label}</p>`)).toHaveLength(3);
+      expect(html).not.toMatch(new RegExp(`<a[^>]*>[^<]*${label}`));
+    }
+    expect(html.indexOf("Your collection")).toBeLessThan(html.indexOf("Your account"));
+  });
+
   it("offers the same menu in a sheet opened from the header, with the other products", () => {
     expect(html).toContain('aria-label="Open menu"');
     const sheet = html.slice(html.indexOf('data-testid="menu-sheet"'));

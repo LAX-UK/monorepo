@@ -410,6 +410,7 @@ export function createPaymentsServices(
     stripePayments: stripePaymentGateway,
     stripeCustomers: stripeCustomerGateway,
     unappliedMoney,
+    eligibility: paymentEligibility,
   });
 
   const privateSaleDeals = createPrivateSaleDealServices({

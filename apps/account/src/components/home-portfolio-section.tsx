@@ -1,15 +1,16 @@
 import { isNewPerson, loadHomePortfolio } from "@/server/application/load-home-portfolio";
 import type { AccountProductVm } from "@/server/domain/account-products.vm";
 import { ACCOUNT_ROUTES } from "@/server/domain/account-settings.vm";
-import { buildCollection } from "@/server/domain/home-collection.vm";
+import { buildCollection } from "@/server/domain/collection.vm";
 import { buildNeedsYou } from "@/server/domain/home-needs-you.vm";
 import { unansweredProducts } from "@/server/domain/home-products-status";
-import { buildWorksByProduct } from "@/server/domain/home-works-by-product.vm";
 import { buildAttentionRows } from "@/server/domain/portfolio-attention.vm";
 import type { ComposedRows } from "@/server/domain/portfolio-composition";
+import { PORTFOLIO_ROUTES } from "@/server/domain/portfolio-routes";
+import { buildWorksByProduct } from "@/server/domain/works-by-product.vm";
 import { type LaxPortfolioItemV1, buildPortfolioHeader } from "@auction/lax-ecosystem";
 import { CARD } from "./account-ui";
-import { CollectionCard, CollectionCardSkeleton } from "./home-collection-card";
+import { CollectionCard, CollectionCardSkeleton } from "./collection-card";
 import { NeedsYouCard, NeedsYouCardSkeleton } from "./home-needs-you-card";
 import { HomeNewPerson } from "./home-new-person";
 import { ProductCards } from "./product-cards";
@@ -55,6 +56,7 @@ function Works({
           collection={buildCollection(header, composed.rows.length)}
           chart={buildWorksByProduct(composed.rows, unanswered)}
           incompleteNote={composed.complete ? null : INCOMPLETE_NOTE}
+          link={{ href: PORTFOLIO_ROUTES.overview, label: "View portfolio" }}
         />
       </CardsGrid>
       <ProductCards

@@ -1,20 +1,27 @@
 import { PASSWORD_COPY, type PasswordFormMode } from "@/server/domain/account-password.vm";
-import { AccountSection } from "./account-ui";
 import { ChangePasswordForm } from "./change-password-form.client";
 
-type PasswordSectionProps = {
+type PasswordPanelProps = {
   mode: PasswordFormMode;
   forgotPasswordHref: string;
-  /** The page this section sits on: where to return after signing in again. */
+  /** The page this panel sits on: where to return after signing in again. */
   pagePath: string;
 };
 
-/** The password, changed in the page: a form with the current password, the new one and a confirmation. */
-export function PasswordSection({ mode, forgotPasswordHref, pagePath }: PasswordSectionProps) {
-  const copy = PASSWORD_COPY[mode];
+/**
+ * The password form with the line that says what saving does. It has no heading of its own: it
+ * opens under the Password row of "How you sign in".
+ */
+export function PasswordPanel({ mode, forgotPasswordHref, pagePath }: PasswordPanelProps) {
   return (
-    <AccountSection id="password" title={copy.title} description={copy.description}>
-      <ChangePasswordForm mode={mode} forgotPasswordHref={forgotPasswordHref} returnTo={pagePath} />
-    </AccountSection>
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-on-surface-variant">{PASSWORD_COPY[mode].description}</p>
+      <ChangePasswordForm
+        mode={mode}
+        forgotPasswordHref={forgotPasswordHref}
+        returnTo={pagePath}
+        className="border-0 p-0 sm:p-0"
+      />
+    </div>
   );
 }

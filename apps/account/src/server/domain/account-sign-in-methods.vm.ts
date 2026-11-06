@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/format-date";
 import {
   ACCOUNT_SIGN_IN_METHOD_ERRORS,
   type AccountSignInMethodError,
@@ -19,8 +20,6 @@ export type PasswordRowVm = {
   status: string;
   detail: string;
   actionLabel: string;
-  /** The password form further down the same page, which changes the password or adds the first one. */
-  actionHref: "#password";
 };
 
 export type SocialRowVm = {
@@ -49,15 +48,6 @@ export type SignInMethodsSectionVm =
 export const ONLY_METHOD_REASON =
   "This is the only way you can sign in. Add a password first, then you can remove it.";
 
-function formatLinkedDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
 export function buildSignInMethodsSection(
   result: IdentityCallResult<AccountSignInMethodsResponse> | null,
   email: string | null,
@@ -79,14 +69,13 @@ export function buildSignInMethodsSection(
         ? "Sign in with your email and password."
         : "Add one to sign in with your email as well.",
       actionLabel: hasPassword ? "Change" : "Add a password",
-      actionHref: "#password",
     },
     ...social.map(
       (method): SocialRowVm => ({
         kind: "social",
         provider: method.provider,
         title: PROVIDER_LABEL[method.provider],
-        detail: [email, `Linked ${formatLinkedDate(method.linkedAt)}`].filter(Boolean).join(" · "),
+        detail: [email, `Linked ${formatDate(method.linkedAt)}`].filter(Boolean).join(" · "),
         blockedReason: isLastMethod ? ONLY_METHOD_REASON : null,
       }),
     ),

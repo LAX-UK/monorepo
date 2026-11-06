@@ -42,7 +42,7 @@ describe("Selling: application", () => {
       kind: "application",
       reference: "LAX-AP-10001",
       status: { label: "Submitted", tone: "info" },
-      sentOn: "28 October 2026",
+      sentOn: "Wed 28 Oct 2026",
       action: {
         label: "See it on lax.art",
         href: `${ART}/for-artists/apply`,
@@ -88,7 +88,7 @@ describe("Selling: application", () => {
       ),
     ).toMatchObject({
       message: { label: "From the gallery", text: "The programme is full." },
-      reapplyOn: "28 April 2027",
+      reapplyOn: "Wed 28 Apr 2027",
       action: null,
     });
   });

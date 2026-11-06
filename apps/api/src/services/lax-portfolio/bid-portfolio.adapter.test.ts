@@ -44,8 +44,12 @@ function itemsFor(overrides: Parameters<typeof facts>[0], owed: AmountOwedEntry[
   return items;
 }
 
-function entriesFor(overrides: Parameters<typeof facts>[0]) {
-  const entries = buildBidMoneyEntries(facts(overrides), ctx);
+function entriesFor(overrides: Parameters<typeof facts>[0], owed: AmountOwedEntry[] = []) {
+  const entries = buildBidMoneyEntries(
+    facts(overrides),
+    ctx,
+    new Map(owed.map((entry) => [entry.lotId, entry])),
+  );
   for (const entry of entries) expect(Value.Check(LaxMoneyEntryV1, entry)).toBe(true);
   return entries;
 }
@@ -252,18 +256,64 @@ describe("buildBidPortfolioItems: consigned and selling", () => {
 });
 
 describe("buildBidMoneyEntries", () => {
-  it("reports an unpaid win as owed by you", () => {
-    expect(entriesFor({ payments: [payment({ status: "pending" })] })).toEqual([
-      expect.objectContaining({
-        id: "payment:22222222-2222-4222-8222-222222222222",
+  it("reports an unpaid win as owed by you once, for the purchase's amount due", () => {
+    expect(entriesFor({ wonLots: [wonLot()] }, [owedEntry()])).toEqual([
+      {
+        id: `purchase:${WON_LOT_ID}:owed`,
         direction: "owed_by_you",
         status: "pending",
-        amount: 125_000,
+        amount: 115_000,
         currency: "GBP",
-        href: "https://lax.bid/purchases#payment-history",
+        occurredAt: "2026-03-01T10:00:00.000Z",
+        href: "https://lax.bid/purchases",
         business: { key: "lax_bid", legalName: "London Auction Xchange LTD" },
-      }),
+      },
     ]);
+  });
+
+  it("does not add a debt for each payment attempt on an unpaid lot", () => {
+    const attempts = [
+      payment({ id: "a", status: "pending" }),
+      payment({ id: "b", status: "cancelled" }),
+      payment({ id: "c", status: "pending" }),
+    ];
+    const entries = entriesFor({ wonLots: [wonLot()], payments: attempts }, [owedEntry()]);
+    expect(entries.filter((e) => e.direction === "owed_by_you")).toHaveLength(1);
+    expect(entries).toHaveLength(1);
+  });
+
+  it("owes nothing on a lot that is paid, even beside an abandoned attempt", () => {
+    const entries = entriesFor({
+      wonLots: [wonLot()],
+      payments: [payment({ id: "a", status: "pending" }), payment({ id: "b" })],
+    });
+    expect(entries.map((e) => [e.direction, e.id])).toEqual([["paid", "payment:b"]]);
+  });
+
+  it("keeps a held purchase owed, with the amount due", () => {
+    const entries = entriesFor({ wonLots: [wonLot()] }, [
+      owedEntry({ state: "in-review", blocker: "review" }),
+    ]);
+    expect(entries.map((e) => [e.direction, e.amount])).toEqual([["owed_by_you", 115_000]]);
+  });
+
+  it("leaves a sale cancelled at fulfilment out of the owed lines", () => {
+    expect(entriesFor({ wonLots: [wonLot()] }, [owedEntry({ state: "cancelled" })])).toEqual([]);
+  });
+
+  it("omits an owed line whose amount is unknown rather than inventing one", () => {
+    expect(entriesFor({ wonLots: [wonLot()] }, [owedEntry({ amountDue: null })])).toEqual([]);
+  });
+
+  it("does not list payment attempts that never completed", () => {
+    for (const status of [
+      "pending",
+      "authorized",
+      "requires_manual_review",
+      "cancelled",
+    ] as const) {
+      expect(entriesFor({ payments: [payment({ status })] })).toEqual([]);
+    }
   });
 
   it("reports a captured payment as paid", () => {
@@ -277,12 +327,6 @@ describe("buildBidMoneyEntries", () => {
     expect(entries.map((e) => [e.id.split(":").slice(2).join(":"), e.direction])).toEqual([
       ["", "paid"],
       ["refund", "refunded"],
-    ]);
-  });
-
-  it("keeps a cancelled invoice in the ledger as cancelled, not as owed", () => {
-    expect(entriesFor({ payments: [payment({ status: "cancelled" })] })).toEqual([
-      expect.objectContaining({ direction: "owed_by_you", status: "cancelled" }),
     ]);
   });
 

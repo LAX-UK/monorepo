@@ -17,6 +17,7 @@ import {
 } from "@/server/domain/account-password.vm";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import { MarketingCheckIcon, MarketingMinusIcon } from "@auction/marketing-ui";
+import { cn } from "@auction/ui";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { ErrorSummary, TextLink } from "@auction/ui/lax";
@@ -29,6 +30,8 @@ type ChangePasswordFormProps = {
   forgotPasswordHref: string;
   /** Where to come back to after a fresh sign-in, which changing the password may require. */
   returnTo: string;
+  /** Overrides the card look, for a form that opens inside another card. */
+  className?: string;
 };
 
 const EMPTY: PasswordFormValues = { current: "", next: "", confirm: "" };
@@ -49,6 +52,7 @@ export function ChangePasswordForm({
   mode,
   forgotPasswordHref,
   returnTo,
+  className,
 }: ChangePasswordFormProps) {
   const router = useRouter();
   const baseId = useId();
@@ -117,7 +121,10 @@ export function ChangePasswordForm({
 
   return (
     <form
-      className="flex flex-col gap-5 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6"
+      className={cn(
+        "flex flex-col gap-5 rounded-2xl border border-border-hairline bg-surface p-4 sm:p-6",
+        className,
+      )}
       noValidate
       onSubmit={(event) => {
         event.preventDefault();

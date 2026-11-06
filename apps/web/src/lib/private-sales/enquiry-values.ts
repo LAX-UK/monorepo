@@ -1,5 +1,6 @@
 import { errorCopy } from "@/lib/forms/error-copy";
 import { visibleSellDepartmentGroups } from "@/lib/marketing/sell-departments";
+import { parsePoundsToPence } from "@auction/ui";
 import { z } from "zod";
 
 export type EnquiryPath = "sell" | "buy";
@@ -63,11 +64,9 @@ export function parseLocation(text: string): { town: string; country: string } |
  * an amount. Commas and a leading £ are allowed; more than two decimals are not.
  */
 export function parsePriceInMindMinor(text: string): number | null | undefined {
-  const cleaned = text.trim().replace(/^£/, "").replaceAll(",", "").trim();
-  if (cleaned === "") return undefined;
-  if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
-  const pence = Math.round(Number(cleaned) * 100);
-  return pence > 0 ? pence : null;
+  const parsed = parsePoundsToPence(text);
+  if (!parsed.ok) return parsed.reason === "empty" ? undefined : null;
+  return parsed.pence > 0 ? parsed.pence : null;
 }
 
 /** Everything either path asks, held flat so switching paths keeps what was typed. */

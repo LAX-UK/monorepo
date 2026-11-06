@@ -1,39 +1,56 @@
-import type { CollectionVm } from "@/server/domain/home-collection.vm";
-import type { WorksByProductVm } from "@/server/domain/home-works-by-product.vm";
-import { PORTFOLIO_ROUTES } from "@/server/domain/portfolio-routes";
+import type { CollectionVm } from "@/server/domain/collection.vm";
+import type { WorksByProductVm } from "@/server/domain/works-by-product.vm";
 import { cn } from "@auction/ui";
 import { CARD, CARD_ROW_PADDING, CardHeader, FIGURE_LARGE, FIGURE_MEDIUM } from "./account-ui";
-import { WorksByProduct } from "./home-works-by-product";
+import { WorksByProduct } from "./works-by-product";
 
-function MoneyLine({ label, value }: { label: string; value: string }) {
+function MoneyLine({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string;
+  note: string | null;
+}) {
   return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-sm text-on-surface-variant">{label}</dt>
-      <dd className={FIGURE_MEDIUM}>{value}</dd>
+    <div className="flex flex-col gap-0.5">
+      <div className="flex items-baseline justify-between gap-4">
+        <dt className="text-sm text-on-surface-variant">{label}</dt>
+        <dd className={FIGURE_MEDIUM}>{value}</dd>
+      </div>
+      {note ? <dd className="text-xs text-on-surface-variant">{note}</dd> : null}
     </div>
   );
 }
 
 /**
- * The collection at a glance: up to three counts, what is due and what has been paid, and the
- * works by product. Zero figures are not shown; an incomplete read says so.
+ * The collection at a glance, on Home and at the top of Portfolio: up to three counts, what is
+ * due and what has been paid, and the works by product. Zero figures are not shown; an incomplete
+ * read says so. Home links to Portfolio from the header and keeps the money lines short;
+ * Portfolio has no link (it is the page) and explains each money line.
  */
 export function CollectionCard({
   collection,
   chart,
   incompleteNote,
+  link,
+  showNotes = false,
 }: {
   collection: CollectionVm;
   chart: WorksByProductVm | null;
   incompleteNote: string | null;
+  /** The one text link in the header; omitted where the card already sits on its destination. */
+  link?: { href: string; label: string };
+  /** Explain the money lines under each figure. */
+  showNotes?: boolean;
 }) {
   return (
     <section aria-labelledby="collection-heading" className={`overflow-hidden ${CARD}`}>
       <CardHeader
         id="collection-heading"
         title="Your collection"
-        linkHref={PORTFOLIO_ROUTES.overview}
-        linkLabel="View portfolio"
+        {...(link ? { linkHref: link.href, linkLabel: link.label } : {})}
       />
       <div
         className={cn("flex flex-col gap-5 border-t border-border-hairline py-5", CARD_ROW_PADDING)}
@@ -52,10 +69,18 @@ export function CollectionCard({
         {collection.totalDue || collection.paidSoFar ? (
           <dl className="flex flex-col gap-2 border-t border-border-hairline pt-4">
             {collection.totalDue ? (
-              <MoneyLine label="Total due" value={collection.totalDue} />
+              <MoneyLine
+                label="Total due"
+                value={collection.totalDue}
+                note={showNotes ? collection.totalDueNote : null}
+              />
             ) : null}
             {collection.paidSoFar ? (
-              <MoneyLine label="Paid so far" value={collection.paidSoFar} />
+              <MoneyLine
+                label="Paid so far"
+                value={collection.paidSoFar}
+                note={showNotes ? collection.paidSoFarNote : null}
+              />
             ) : null}
           </dl>
         ) : null}

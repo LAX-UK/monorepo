@@ -41,6 +41,7 @@ const works = [
     status: "awaiting_payment",
     acquiredAt: "2026-05-01T10:00:00.000Z",
     paid: { lines: [{ kind: "price", amount: 25_000, currency: "EUR" }] },
+    owed: { amount: 25_000, currency: "EUR", state: "due" },
   }),
 ];
 
@@ -132,10 +133,10 @@ describe("PortfolioHoldings", () => {
     expect(html).not.toContain("<table");
   });
 
-  it("counts by artist and product, never as percentages", () => {
+  it("counts by artist, never as percentages, and leaves the product split to the summary chart", () => {
     const html = render(works);
     expect(html).toContain("Ada Artist 1");
-    expect(textOf(html)).toContain("LAX Shop 1");
+    expect(textOf(html)).not.toContain("By product");
     expect(textOf(html)).not.toMatch(/\d%/);
   });
 

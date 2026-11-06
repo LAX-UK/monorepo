@@ -1,6 +1,6 @@
 "use client";
 
-import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { MARKETING_PAGE_SHELL, STICKY_UNDER_HEADER_TOP } from "@auction/branding";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Progress } from "@auction/ui/components/progress";
@@ -38,7 +38,7 @@ export type MarketingSubNavAnchorProps = {
   ariaLabel: string;
   /** Without items the bar is a reading bar: it overlays the page and appears once stuck. */
   items: readonly MarketingSubNavAnchorItem[];
-  /** Sticks below the fixed site header (`--header-height`). */
+  /** Sticks below the visible part of the fixed site header (`--header-offset`). */
   sticky?: boolean;
   /** Thumbnail (doubling as back-to-top), title and meta, shown while stuck. */
   identity?: MarketingSubNavIdentity;
@@ -66,10 +66,19 @@ function stickyOffset(sticky: HTMLElement | null, bar: HTMLElement | null): numb
  */
 function useStuck(enabled: boolean, stickyRef: RefObject<HTMLElement | null>) {
   const [stuck, setStuck] = useState(false);
+  // The sticky line follows the header as its top bar slides away, so it is read again on scroll.
+  const [top, setTop] = useState(() => Math.round(stickyOffset(stickyRef.current, null)));
   useEffect(() => {
     const sticky = stickyRef.current;
     if (!enabled || !sticky) return;
-    const top = Math.round(stickyOffset(sticky, null));
+    const readLine = () => setTop(Math.round(stickyOffset(sticky, null)));
+    readLine();
+    window.addEventListener("scroll", readLine, { passive: true });
+    return () => window.removeEventListener("scroll", readLine);
+  }, [enabled, stickyRef]);
+  useEffect(() => {
+    const sticky = stickyRef.current;
+    if (!enabled || !sticky) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry) {
@@ -80,7 +89,7 @@ function useStuck(enabled: boolean, stickyRef: RefObject<HTMLElement | null>) {
     );
     observer.observe(sticky);
     return () => observer.disconnect();
-  }, [enabled, stickyRef]);
+  }, [enabled, stickyRef, top]);
   return stuck;
 }
 
@@ -206,7 +215,7 @@ export function MarketingSubNavAnchor({
     <div
       ref={stickyRef}
       className={cn(
-        sticky && "sticky top-[var(--header-height,0px)] z-30",
+        sticky && cn("sticky z-30", STICKY_UNDER_HEADER_TOP),
         readingBar && "h-0",
         className,
       )}

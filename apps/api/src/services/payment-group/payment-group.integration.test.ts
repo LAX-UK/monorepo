@@ -13,6 +13,8 @@ import {
   payoutLine,
   processedStripeEvents,
 } from "@auction/db/schema";
+import { UNAPPLIED_MONEY_EVENT } from "@auction/domain";
+import { PaymentEligibilityGate } from "@auction/finance-runtime";
 import {
   DrizzleBidInvoiceRepository,
   DrizzleDisputeCaseRepository,
@@ -22,6 +24,7 @@ import {
   DrizzlePaymentWebhookLookupReader,
   DrizzlePayoutRepository,
   DrizzleUnappliedMoneyReader,
+  createDrizzleLegalEntityRepository,
 } from "@auction/persistence/repositories";
 import { and, eq, inArray, like, sql } from "drizzle-orm";
 import type Stripe from "stripe";
@@ -99,6 +102,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     claims,
     receipt,
     unappliedMoney: new UnappliedMoneyRecorder(new DrizzleUnappliedMoneyReader(db), events),
+    eligibility: new PaymentEligibilityGate(createDrizzleLegalEntityRepository(db), null),
   });
   const checkout = new PaymentGroupCheckoutService({
     groups,
@@ -367,6 +371,39 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       reason: "already_paid",
     });
     expect(receipt.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a group unpaid and opens one finance task when the organisation moves to review before the money lands", async () => {
+    const groupId = await startOk([ids.a, ids.b]);
+    const pi = succeeded(groupId);
+    await webhooks.handlePaymentIntentProcessing(eventOf("payment_intent.processing", pi), pi);
+    await db.update(legalEntity).set({ status: "under_review" }).where(eq(legalEntity.id, orgId));
+    try {
+      const result = await webhooks.handlePaymentIntentSucceeded(
+        eventOf("payment_intent.succeeded", pi),
+        pi,
+      );
+      expect(result).toMatchObject({
+        processed: true,
+        action: "skipped",
+        reason: "account_organisation_under_review",
+      });
+      for (const id of [ids.a, ids.b]) {
+        expect((await statusOf(id)).status).toBe("authorized");
+      }
+      expect((await groups.findById(groupId))?.status).toBe("processing");
+      const tasks = publish.mock.calls
+        .map(([event]) => event)
+        .filter((event) => event.eventType === UNAPPLIED_MONEY_EVENT);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].payload).toMatchObject({
+        reason: "group_not_settleable",
+        paymentGroupId: groupId,
+      });
+      expect(receipt.send).not.toHaveBeenCalled();
+    } finally {
+      await db.update(legalEntity).set({ status: "approved" }).where(eq(legalEntity.id, orgId));
+    }
   });
 
   it("applies nothing and raises an alert when the amount does not match", async () => {
