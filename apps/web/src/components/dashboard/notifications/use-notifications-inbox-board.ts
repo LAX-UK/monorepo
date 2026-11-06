@@ -1,8 +1,8 @@
-import { hopUrl, isHopHref } from "@/lib/navigation/hop-href";
-("use client");
+"use client";
 
 import { useAccountChrome } from "@/components/layout/account-switcher/account-chrome-context";
 import { useListQuery } from "@/components/workspace/use-list-query";
+import { hopUrl, isHopHref } from "@/lib/navigation/hop-href";
 import { type InboxQuery, inboxSearch } from "@/lib/notifications/inbox-query";
 import {
   type InboxAccounts,
