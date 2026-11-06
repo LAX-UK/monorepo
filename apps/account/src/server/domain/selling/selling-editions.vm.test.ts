@@ -88,6 +88,41 @@ describe("buildEditionsPage", () => {
     });
   });
 
+  it("says Not approved yet only when nothing is approved", () => {
+    const line = (overrides: Partial<PortalSaleAuthority>) =>
+      buildEditionsPage([edition(overrides)], []).rows[0]?.approvalLine;
+    expect(line({ authorisedCount: 0, committedCount: 0, lastGrantAt: null })).toBe(
+      "Not approved yet",
+    );
+    expect(line({})).toBe("Last approved Tue 1 Sep 2026");
+  });
+
+  it("drops the approval line, rather than contradict the count, when approved but undated", () => {
+    const page = buildEditionsPage([edition({ lastGrantAt: null })], []);
+    expect(page.rows[0]).toMatchObject({ approved: 5, approvalLine: null });
+  });
+
+  it("tells rows with the same title apart by what the seller holds, and only those", () => {
+    const page = buildEditionsPage(
+      [
+        edition({ artworkTitle: "Vessel Study", ownedCount: 24 }),
+        edition({ artworkId: ART_B, artworkTitle: "vessel study ", ownedCount: 1 }),
+        edition({ artworkId: "ffffffff-ffff-4fff-8fff-ffffffffffff", ownedCount: 3 }),
+      ],
+      [],
+    );
+    expect(page.rows.map((row) => row.editionLine)).toEqual([
+      "You hold 24 editions",
+      "You hold 1 edition",
+      null,
+    ]);
+  });
+
+  it("shows no edition line for a repeated title when Shop does not say what is held", () => {
+    const page = buildEditionsPage([edition(), edition({ artworkId: ART_B })], []);
+    expect(page.rows.map((row) => row.editionLine)).toEqual([null, null]);
+  });
+
   it("shows a pending request on its row in place of the action", () => {
     const page = buildEditionsPage([edition()], [request({ note: "  For the autumn fair " })]);
     expect(page.rows[0]?.action).toBeNull();

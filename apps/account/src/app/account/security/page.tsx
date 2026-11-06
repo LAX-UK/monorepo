@@ -1,8 +1,9 @@
 import { AccountShell } from "@/components/account-shell";
-import { AccountPageHeader, SettingsGroup } from "@/components/account-ui";
+import { AccountPageHeader } from "@/components/account-ui";
 import { AccountUnavailable } from "@/components/account-unavailable";
 import { BackupCodesSection } from "@/components/backup-codes-section";
-import { PasswordSection } from "@/components/password-section";
+import { DeleteAccountLink } from "@/components/delete-account-link";
+import { PasswordPanel } from "@/components/password-section";
 import { SignInMethodsSection } from "@/components/sign-in-methods-section";
 import { SignedInDevicesSection } from "@/components/signed-in-devices-section";
 import { loadAccountSession } from "@/server/application/load-account-session";
@@ -13,7 +14,7 @@ import { buildAccountLinks } from "@/server/domain/account-links";
 import { passwordFormMode } from "@/server/domain/account-password.vm";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import { readAccountSecurityFacts } from "@/server/domain/account-security-facts";
-import { ACCOUNT_ROUTES, buildSecurityGroups } from "@/server/domain/account-settings.vm";
+import { ACCOUNT_ROUTES, buildTwoStepRow } from "@/server/domain/account-settings.vm";
 import { buildSignInMethodsSection } from "@/server/domain/account-sign-in-methods.vm";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -34,10 +35,7 @@ export default async function SecurityPage() {
   const { overview, liveSecurity, liveSessions, liveSignInMethods } = session;
   const links = buildAccountLinks(getLaxAccountContainer().config, { email: overview.email });
   const facts = readAccountSecurityFacts(overview, liveSecurity);
-  const groups = buildSecurityGroups(facts, links);
   const backupCodes = buildBackupCodesSection(facts);
-  const settings = groups.filter((group) => group.id !== "your-account");
-  const accountGroups = groups.filter((group) => group.id === "your-account");
 
   return (
     <AccountShell>
@@ -49,15 +47,15 @@ export default async function SecurityPage() {
         section={buildSignInMethodsSection(liveSignInMethods, overview.email)}
         pagePath={ACCOUNT_ROUTES.security}
         reauthHref={buildReauthHref(ACCOUNT_ROUTES.security)}
+        passwordPanel={
+          <PasswordPanel
+            mode={passwordFormMode(facts)}
+            forgotPasswordHref={links.forgotPassword}
+            pagePath={ACCOUNT_ROUTES.security}
+          />
+        }
+        twoStep={buildTwoStepRow(facts, links)}
       />
-      <PasswordSection
-        mode={passwordFormMode(facts)}
-        forgotPasswordHref={links.forgotPassword}
-        pagePath={ACCOUNT_ROUTES.security}
-      />
-      {settings.map((group) => (
-        <SettingsGroup key={group.id} group={group} />
-      ))}
       {backupCodes ? (
         <BackupCodesSection section={backupCodes} pagePath={ACCOUNT_ROUTES.security} />
       ) : null}
@@ -66,10 +64,7 @@ export default async function SecurityPage() {
         pagePath={ACCOUNT_ROUTES.security}
         reauthHref={buildReauthHref(ACCOUNT_ROUTES.security)}
       />
-      {/* Deleting the account is the one irreversible step, so it comes last on the page. */}
-      {accountGroups.map((group) => (
-        <SettingsGroup key={group.id} group={group} />
-      ))}
+      <DeleteAccountLink />
     </AccountShell>
   );
 }

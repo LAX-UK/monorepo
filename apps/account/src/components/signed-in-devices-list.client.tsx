@@ -12,10 +12,13 @@ import {
   type SessionsVm,
   buildSignOutDeviceConfirm,
   buildSignOutOthersConfirm,
+  showMoreDevicesLabel,
+  splitOtherDevices,
 } from "@/server/domain/account-sessions.vm";
+import { cn } from "@auction/ui";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { type Ref, useEffect, useRef, useState } from "react";
 import { LIST_ROW, ListCard, TAG } from "./account-ui";
 import { ProductText } from "./product-name";
 
@@ -27,9 +30,22 @@ type SignedInDevicesListProps = {
   returnTo: string;
 };
 
-function DeviceRow({ row, onSignOut }: { row: SessionRowVm; onSignOut?: () => void }) {
+function DeviceRow({
+  row,
+  onSignOut,
+  rowRef,
+}: {
+  row: SessionRowVm;
+  onSignOut?: () => void;
+  /** Lets the list move focus to a row that has just been revealed. */
+  rowRef?: Ref<HTMLLIElement>;
+}) {
   return (
-    <li className={LIST_ROW}>
+    <li
+      ref={rowRef}
+      tabIndex={rowRef ? -1 : undefined}
+      className={cn(LIST_ROW, "outline-offset-[-2px]")}
+    >
       <div className="min-w-0 flex-1 basis-48">
         <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-on-surface">
           {row.deviceLabel}
@@ -62,6 +78,14 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const firstRevealed = useRef<HTMLLIElement>(null);
+  const { shown, hidden } = splitOtherDevices(sessions.others);
+
+  // The button that revealed the rest is gone, so focus goes to the first row it revealed.
+  useEffect(() => {
+    if (expanded) firstRevealed.current?.focus();
+  }, [expanded]);
 
   const confirm =
     target?.kind === "device"
@@ -106,10 +130,11 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
     <div className="flex flex-col gap-4">
       <ListCard>
         {sessions.current ? <DeviceRow row={sessions.current} /> : null}
-        {sessions.others.map((row) => (
+        {(expanded ? sessions.others : shown).map((row, index) => (
           <DeviceRow
             key={row.id}
             row={row}
+            {...(expanded && index === shown.length ? { rowRef: firstRevealed } : {})}
             onSignOut={() => {
               setNotice(null);
               setTarget({ kind: "device", row });
@@ -117,6 +142,17 @@ export function SignedInDevicesList({ sessions, returnTo }: SignedInDevicesListP
           />
         ))}
       </ListCard>
+      {!expanded && hidden.length > 0 ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 self-start"
+          aria-expanded={false}
+          onClick={() => setExpanded(true)}
+        >
+          {showMoreDevicesLabel(hidden.length)}
+        </Button>
+      ) : null}
       {sessions.others.length === 0 ? (
         <p className="text-xs text-on-surface-variant">You're not signed in on any other device.</p>
       ) : (
