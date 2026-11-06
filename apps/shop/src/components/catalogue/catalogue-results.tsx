@@ -50,7 +50,6 @@ export function CatalogueResultsRow({
           <ShopEditionCard
             card={card}
             titleAs={titleAs}
-            layout={layout === "pair" ? "side" : "stacked"}
             sizes={layout === "pair" ? PAIR_SIZES : GRID_SIZES}
             priority={index < PRIORITY_CARDS}
           />

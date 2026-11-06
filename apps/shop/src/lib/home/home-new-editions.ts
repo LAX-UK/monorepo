@@ -1,11 +1,12 @@
 import { artworkCatalogueHref } from "@/lib/catalogue/artwork-catalogue-params";
 import { isCatalogueArtworkSoldOut } from "@/lib/catalogue/catalogue-artwork-card.vm";
+import { type EditionWorkGroup, groupEditionVersions } from "@/lib/catalogue/edition-work-group";
 import { MARKETING_ROW_MAX_COLUMNS, marketingRowCap } from "@auction/marketing-ui";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
 
 export type HomeNewEditionsVm = {
-  /** One row at most: a feature for one, a pair for two, a row of three or four. */
-  items: PublicArtworkSummary[];
+  /** One row at most, one entry per work: a feature for one, a pair for two, a row of three or four. */
+  groups: EditionWorkGroup[];
   /** "View all 6 editions", to every edition on sale. */
   viewAll: { label: string; href: string };
 };
@@ -22,17 +23,25 @@ function editionsLabel(count: number): string {
 export function buildHomeNewEditions(input: {
   editions: readonly PublicArtworkSummary[];
   releaseSlug: string | null;
+  /** The release's work, so its other versions do not come back as a second card of the same work. */
+  releaseWorkSlug?: string | null;
   availableCount: number | null;
 }): HomeNewEditionsVm | null {
-  const pool = input.editions.filter(
-    (item) => item.slug !== input.releaseSlug && !isCatalogueArtworkSoldOut(item),
+  const releaseWork = input.releaseWorkSlug ?? input.releaseSlug;
+  const pool = groupEditionVersions(
+    input.editions.filter(
+      (item) =>
+        item.slug !== input.releaseSlug &&
+        (releaseWork === null || (item.workSlug ?? item.slug) !== releaseWork) &&
+        !isCatalogueArtworkSoldOut(item),
+    ),
   );
-  const items = pool.slice(0, marketingRowCap(pool.length, MARKETING_ROW_MAX_COLUMNS));
-  if (items.length === 0) return null;
+  const groups = pool.slice(0, marketingRowCap(pool.length, MARKETING_ROW_MAX_COLUMNS));
+  if (groups.length === 0) return null;
   const releaseShown = input.releaseSlug !== null ? 1 : 0;
-  const total = Math.max(input.availableCount ?? 0, items.length + releaseShown);
+  const total = Math.max(input.availableCount ?? 0, groups.length + releaseShown);
   return {
-    items,
+    groups,
     viewAll: {
       label: `View all ${editionsLabel(total)}`,
       href: artworkCatalogueHref({ sort: "newest", availability: "available" }),

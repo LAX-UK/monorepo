@@ -6,7 +6,8 @@ import {
   shopEdition,
   shopParty,
 } from "@auction/db/schema";
-import { asc, count, inArray } from "drizzle-orm";
+import { asc, count, eq, inArray } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { editionCardLines } from "../application/edition-runs/edition-card-lines.js";
 import type {
   ArtworkImageReadModel,
@@ -188,13 +189,31 @@ async function coverImagesForWorksWithoutPrimary(
   return firstImageByArtworkId(stored, resolveMediaUrl);
 }
 
+/**
+ * For proof and companion listings, the slug of the main run they hang from, keyed by artwork id.
+ * A listing that is itself a main run (or an original) is absent: its own slug names the work.
+ */
+export async function workSlugsByArtworkId(
+  db: Database,
+  artworkIds: string[],
+): Promise<Map<string, string>> {
+  if (artworkIds.length === 0) return new Map();
+  const main = alias(shopArtwork, "work_main_run");
+  const rows = await db
+    .select({ artworkId: shopArtwork.id, mainSlug: main.slug })
+    .from(shopArtwork)
+    .innerJoin(main, eq(main.id, shopArtwork.mainRunArtworkId))
+    .where(inArray(shopArtwork.id, artworkIds));
+  return new Map(rows.map((row) => [row.artworkId, row.mainSlug]));
+}
+
 /** Edition availability and missing covers are loaded in one batch for the whole page of rows. */
 export async function toPublicArtworkSummaries(
   db: Database,
   rows: SelectedArtworkRow[],
   resolveMediaUrl: ResolveArtworkMediaUrl,
 ): Promise<ArtworkSummaryReadModel[]> {
-  const [editionCounts, covers, cardLines] = await Promise.all([
+  const [editionCounts, covers, cardLines, workSlugs] = await Promise.all([
     editionCountsByArtworkId(
       db,
       rows.map((row) => row.artworkId),
@@ -204,12 +223,17 @@ export async function toPublicArtworkSummaries(
       createDrizzleEditionCardFactsReader(db),
       rows.map((row) => row.artworkId),
     ),
+    workSlugsByArtworkId(
+      db,
+      rows.map((row) => row.artworkId),
+    ),
   ]);
   return rows.map((row) => {
     const cover = covers.get(row.artworkId);
     return toPublicArtworkSummary(
       toArtworkCatalogueRow(row, editionCounts, resolveMediaUrl, cover ? [cover] : []),
       cardLines.get(row.artworkId) ?? null,
+      workSlugs.get(row.artworkId) ?? row.slug,
     );
   });
 }

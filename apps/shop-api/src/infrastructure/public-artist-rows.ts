@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopArtist, shopArtwork, shopParty } from "@auction/db/schema";
-import { and, count, inArray } from "drizzle-orm";
+import { and, count, desc, inArray, isNotNull } from "drizzle-orm";
 import { publicArtworkVisible } from "./artwork-visibility-sql.js";
 import type { ArtistDirectoryRow } from "./map-public-artist.js";
 import { listedOnSalesChannelSql } from "./sales-channel-listing-sql.js";
@@ -61,11 +61,44 @@ export async function artworkCountByArtistId(
   return new Map(rows.map((row) => [row.artistId, row.artworkCount]));
 }
 
+/**
+ * The picture of each artist's newest visible work on the channel, for a card without a portrait.
+ * An artist whose works have no picture is absent.
+ */
+export async function leadImageByArtistId(
+  db: Database,
+  artistIds: string[],
+  resolveMediaUrl: ResolveMediaUrl,
+  salesChannel?: "shop" | "art",
+): Promise<Map<string, string>> {
+  if (artistIds.length === 0) return new Map();
+  const rows = await db
+    .select({ artistId: shopArtwork.artistId, image: shopArtwork.primaryImageUrl })
+    .from(shopArtwork)
+    .where(
+      and(
+        inArray(shopArtwork.artistId, artistIds),
+        isNotNull(shopArtwork.primaryImageUrl),
+        publicArtworkVisible(),
+        salesChannel ? listedOnSalesChannelSql(salesChannel) : undefined,
+      ),
+    )
+    .orderBy(desc(shopArtwork.createdAt));
+  const leads = new Map<string, string>();
+  for (const row of rows) {
+    if (leads.has(row.artistId)) continue;
+    const url = resolveMediaUrl(row.image);
+    if (url) leads.set(row.artistId, url);
+  }
+  return leads;
+}
+
 export function mapArtistRow(
   row: Omit<PublicArtistColumnsRow, "artistId"> & {
     seoTitle?: string | null;
     seoDescription?: string | null;
     artworkCount: number;
+    leadImageUrl?: string | null;
   },
   resolveMediaUrl: ResolveMediaUrl,
 ): ArtistDirectoryRow {
@@ -85,6 +118,7 @@ export function mapArtistRow(
     artworkCount: row.artworkCount,
     portraitUrl: resolveMediaUrl(row.portraitImageUrl),
     heroUrl: resolveMediaUrl(row.heroMediaKey),
+    ...(row.leadImageUrl !== undefined ? { leadImageUrl: row.leadImageUrl } : {}),
   };
 }
 
@@ -94,12 +128,19 @@ export async function toArtistDirectoryRows(
   rows: PublicArtistColumnsRow[],
   options: { resolveMediaUrl: ResolveMediaUrl; salesChannel: "shop" | "art" },
 ): Promise<ArtistDirectoryRow[]> {
-  const counts = await artworkCountByArtistId(
-    db,
-    rows.map((row) => row.artistId),
-    options.salesChannel,
-  );
+  const ids = rows.map((row) => row.artistId);
+  const [counts, leads] = await Promise.all([
+    artworkCountByArtistId(db, ids, options.salesChannel),
+    leadImageByArtistId(db, ids, options.resolveMediaUrl, options.salesChannel),
+  ]);
   return rows.map(({ artistId, ...row }) =>
-    mapArtistRow({ ...row, artworkCount: counts.get(artistId) ?? 0 }, options.resolveMediaUrl),
+    mapArtistRow(
+      {
+        ...row,
+        artworkCount: counts.get(artistId) ?? 0,
+        leadImageUrl: leads.get(artistId) ?? null,
+      },
+      options.resolveMediaUrl,
+    ),
   );
 }

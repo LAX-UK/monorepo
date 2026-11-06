@@ -1,6 +1,10 @@
 /** @vitest-environment jsdom */
 import { ShopEditionCard } from "@/components/catalogue/shop-edition-card";
-import { toEditionCardVm } from "@/lib/catalogue/edition-card.vm";
+import {
+  type EditionCardVm,
+  buildEditionCards,
+  toEditionCardVm,
+} from "@/lib/catalogue/edition-card.vm";
 import { artworkSummary } from "@/test/artwork-summary.fixture";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -24,10 +28,11 @@ describe("ShopEditionCard", () => {
 
   it("is one link to the edition, named by its title, with the price", () => {
     renderCard(OLDER);
-    const links = screen.getAllByRole("link");
-    expect(links).toHaveLength(1);
-    expect(links[0]?.textContent).toBe("Harbour light");
-    expect(links[0]?.getAttribute("href")).toBe("/artworks/harbour-light");
+    const title = screen.getByRole("link", { name: "Harbour light" });
+    expect(title.getAttribute("href")).toBe("/artworks/harbour-light");
+    expect(screen.getByRole("link", { name: "Mara Ellison" }).getAttribute("href")).toBe(
+      "/artists/mara-ellison",
+    );
     expect(screen.getByRole("heading", { name: "Harbour light" })).toBeTruthy();
     expect(screen.getByText("Mara Ellison")).toBeTruthy();
     expect(screen.getByText("Giclée print · Edition of 50")).toBeTruthy();
@@ -38,7 +43,6 @@ describe("ShopEditionCard", () => {
   it("tags a new release once", () => {
     renderCard();
     expect(screen.getAllByText("New")).toHaveLength(1);
-    expect(screen.getByRole("article").getAttribute("data-status")).toBe("new");
   });
 
   it("shows sold out in place of the price, with a link to the alert", () => {
@@ -55,43 +59,37 @@ describe("ShopEditionCard", () => {
     expect(screen.queryByText("Mara Ellison")).toBeNull();
   });
 
-  describe("edition line", () => {
-    it.each([
-      ["limited", "Limited edition of 25 · Hand-signed"],
-      ["open", "Open edition · Plate-signed"],
-      ["proof", "Artist's proof · Hand-signed"],
-    ])("shows the %s line once, under the meta", (_name, line) => {
-      renderCard({ ...OLDER, editionCardLine: line });
-      expect(screen.getAllByText(line)).toHaveLength(1);
-      const meta = screen.getByText("Giclée print · Edition of 50");
-      expect(meta.nextElementSibling?.textContent).toBe(line);
-      expect(meta.nextElementSibling?.className).toBe(meta.className);
+  it("shows one facts line with the run and signature once", () => {
+    renderCard({
+      ...OLDER,
+      medium: "Giclée",
+      availability: { totalEditions: 30, state: "available" },
+      editionCardLine: "Limited edition of 30 · Hand-signed",
     });
+    expect(screen.getByText("Giclée · Edition of 30 · Hand-signed")).toBeTruthy();
+    expect(screen.queryByText(/limited edition/i)).toBeNull();
+  });
 
-    it("shows no line for an original", () => {
-      renderCard({ ...OLDER, editionCardLine: null });
-      expect(
-        screen.getByRole("article").querySelectorAll(".shop-edition-card__facts"),
-      ).toHaveLength(1);
-    });
-
-    it("shows no line while no facts are confirmed", () => {
-      renderCard(OLDER);
-      expect(
-        screen.getByRole("article").querySelectorAll(".shop-edition-card__facts"),
-      ).toHaveLength(1);
-    });
-
-    it("keeps the line and the sold-out treatment on a sold-out card, with no count", () => {
-      renderCard({
-        ...OLDER,
-        editionCardLine: "Limited edition of 25 · Hand-signed",
-        availability: { totalEditions: 25, state: "sold_out" },
-      });
-      expect(screen.getByText("Limited edition of 25 · Hand-signed")).toBeTruthy();
-      expect(screen.getByText("Sold out")).toBeTruthy();
-      expect(screen.getByRole("link", { name: "Get alerts for Harbour light" })).toBeTruthy();
-      expect(screen.queryByText(/left|remaining/i)).toBeNull();
-    });
+  it("stands for several versions with 'From £95 · 3 versions' and one link to the work", () => {
+    const base = { ...OLDER, workSlug: "harbour-light" };
+    render(
+      <ShopEditionCard
+        card={
+          buildEditionCards(
+            [
+              artworkSummary({ ...base, printPricePence: 20000 }),
+              artworkSummary({ ...base, slug: "harbour-light-ap", printPricePence: 9500 }),
+              artworkSummary({ ...base, slug: "harbour-light-hc", printPricePence: 12000 }),
+            ],
+            NOW,
+          )[0] as EditionCardVm
+        }
+      />,
+    );
+    expect(screen.getByText("From £95 · 3 versions")).toBeTruthy();
+    expect(screen.getAllByTestId("shop-edition-card")).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "Harbour light" }).getAttribute("href")).toBe(
+      "/artworks/harbour-light",
+    );
   });
 });

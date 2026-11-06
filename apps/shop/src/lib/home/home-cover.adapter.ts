@@ -1,6 +1,11 @@
 import type { HomeHeroVm } from "@/lib/home/home-page.vm";
 import { nextImageSrcSet } from "@/lib/media/next-image-src-set";
-import type { CoverPlateMedia, CoverSlide } from "@auction/marketing-ui";
+import type {
+  CoverMedia,
+  CoverPhotoMedia,
+  CoverPlateMedia,
+  CoverSlide,
+} from "@auction/marketing-ui";
 import { neutralCoverSlide } from "@auction/marketing-ui";
 
 /** The release's print photograph and the pale field taken from it. */
@@ -46,6 +51,30 @@ export function plateFromRelease(
   };
 }
 
+/** What leads the first screen, in order of preference. */
+export type ShopHeroCoverChoice = "staff-photo" | "release-plate" | "type";
+
+/** A staff cover can lead only when it can carry the type: it needs a measured scrim. */
+export function isUsableStaffCover(
+  cover: CoverPhotoMedia | null | undefined,
+): cover is CoverPhotoMedia {
+  return Boolean(cover?.slots.default.src && cover.scrim.desktop);
+}
+
+/**
+ * What leads the first screen: the picture staff chose (with its focal point) when there is one,
+ * otherwise the newest edition shown whole at its true ratio beside the headline (the plate), and
+ * type only when there is no picture at all. The cover never shows an empty plate: a plate exists
+ * only for an edition whose photograph was read.
+ */
+export function chooseShopHeroCover(input: {
+  staffCover?: CoverPhotoMedia | null | undefined;
+  plate: CoverPlateMedia | null;
+}): ShopHeroCoverChoice {
+  if (isUsableStaffCover(input.staffCover)) return "staff-photo";
+  return input.plate ? "release-plate" : "type";
+}
+
 /**
  * Maps the Shop home hero to the cover. The release leads when it has a photograph (a plate on
  * a pale field); without one the cover is type. With no edition on sale the one way on from
@@ -53,12 +82,23 @@ export function plateFromRelease(
  */
 export function toShopCoverSlide(
   hero: HomeHeroVm,
-  options: { plate: ShopCoverPlate | null; catalogueFailed?: boolean } = { plate: null },
+  options: {
+    plate: ShopCoverPlate | null;
+    catalogueFailed?: boolean;
+    /** The picture staff chose for the cover, with its focal point and measured scrim. */
+    staffCover?: CoverPhotoMedia | null;
+  } = { plate: null },
 ): CoverSlide {
   if (options.catalogueFailed) return neutralCoverSlide(CATALOGUE_UNAVAILABLE);
   const primary = hero.primary ?? hero.emptyAction;
   if (!primary) return neutralCoverSlide(CATALOGUE_UNAVAILABLE);
   const plate = plateFromRelease(hero.release, options.plate);
+  const choice = chooseShopHeroCover({ staffCover: options.staffCover, plate });
+  // The staff picture leads; the plate follows so a picture that fails to load falls back to it.
+  const media: CoverMedia[] = [
+    ...(choice === "staff-photo" && options.staffCover ? [options.staffCover] : []),
+    ...(plate ? [plate] : []),
+  ];
   return {
     id: "shop-home",
     ...(hero.eyebrow ? { time: hero.eyebrow } : {}),
@@ -66,9 +106,9 @@ export function toShopCoverSlide(
     fact: hero.lead,
     primary,
     ...(hero.link ? { link: hero.link } : {}),
-    ...(hero.release && plate
+    ...(hero.release && plate && choice === "release-plate"
       ? { credit: { text: hero.release.line, href: hero.release.href } }
       : {}),
-    media: plate ? [plate] : [],
+    media,
   };
 }

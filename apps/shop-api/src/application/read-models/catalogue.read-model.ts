@@ -72,6 +72,8 @@ export type ArtworkSummaryReadModel = {
   listedAt: string;
   /** The shop-domain card line of an edition run with confirmed facts; otherwise null. */
   editionCardLine?: string | null;
+  /** The slug of the listing all versions of this work hang from (its own when it is the main run). */
+  workSlug?: string;
 };
 
 export type ArtworkEditionReadModel = {
@@ -113,6 +115,8 @@ export type ArtistSummaryReadModel = {
   discipline: string | null;
   portraitUrl: string | null;
   artworkCount: number;
+  /** The newest listed work's picture; used when the artist has no portrait. */
+  leadImageUrl?: string | null;
 };
 
 export type ArtistDetailReadModel = ArtistSummaryReadModel & {

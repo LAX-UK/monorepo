@@ -75,6 +75,7 @@ function primaryImageUrl(row: ArtworkCatalogueRow): string | null {
 export function toPublicArtworkSummary(
   row: ArtworkCatalogueRow,
   editionCardLine: string | null = null,
+  workSlug: string = row.slug,
 ): ArtworkSummaryReadModel {
   return {
     slug: row.slug,
@@ -95,6 +96,7 @@ export function toPublicArtworkSummary(
     updatedAt: row.updatedAt.toISOString(),
     listedAt: row.listedAt.toISOString(),
     editionCardLine,
+    workSlug,
     availability: publicEditionAvailability({
       eligibleForEditionAllocation: row.eligibleForEditionAllocation,
       totalEditionCount: row.totalEditionCount,

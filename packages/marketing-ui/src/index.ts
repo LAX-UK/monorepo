@@ -428,6 +428,7 @@ export {
   MarketingArtistGrid,
   type MarketingArtistGridProps,
   MARKETING_ARTIST_GRID_CLASS,
+  MarketingArtistInitials,
   marketingArtistInitials,
 } from "./marketing-artist-card.js";
 export {
@@ -752,3 +753,10 @@ export {
   type AlertLinkCopy,
   type AlertLinkProduct,
 } from "./alerts/alert-link-copy.js";
+
+export {
+  MarketingSignedInToast,
+  type MarketingSignedInToastProps,
+  SIGNED_IN_TOAST_MS,
+  signedInFirstName,
+} from "./marketing-signed-in-toast.js";

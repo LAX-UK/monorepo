@@ -19,6 +19,7 @@ export type ArtistDirectoryRow = {
   artworkCount: number;
   portraitUrl: string | null;
   heroUrl: string | null;
+  leadImageUrl?: string | null;
 };
 
 export function toPublicArtistSummary(row: ArtistDirectoryRow): ArtistSummaryReadModel {
@@ -28,6 +29,7 @@ export function toPublicArtistSummary(row: ArtistDirectoryRow): ArtistSummaryRea
     discipline: row.discipline,
     portraitUrl: row.portraitUrl,
     artworkCount: row.artworkCount,
+    ...(row.leadImageUrl !== undefined ? { leadImageUrl: row.leadImageUrl } : {}),
   };
 }
 

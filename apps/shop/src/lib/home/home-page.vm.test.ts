@@ -280,7 +280,7 @@ describe("the hang", () => {
 describe("new editions", () => {
   it("leaves out the release already in the first screen", () => {
     const vm = build({ editions: editions(6), availableCount: 12 }, firstPhotographRead);
-    expect(vm.newEditions?.items.map((item) => item.slug)).toEqual([
+    expect(vm.newEditions?.groups.map((group) => group.lead.slug)).toEqual([
       "edition-2",
       "edition-3",
       "edition-4",
