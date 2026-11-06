@@ -80,12 +80,41 @@ describe("AccountSwitcherList", () => {
     expect(screen.queryByRole("link", { name: /Pending invitations/ })).toBeNull();
   });
 
-  it("locks the list while a switch is in flight", () => {
+  it("locks the list while a switch is in flight, and says Switching… on the chosen row", () => {
     renderList({ pendingId: "me" });
     for (const button of screen.getAllByRole("button")) expect(button).toBeDisabled();
+    const chosen = screen.getByRole("button", { name: /Jane Smith/ });
+    expect(chosen).toHaveAttribute("aria-busy", "true");
+    expect(chosen).toHaveTextContent("Switching…");
+    expect(screen.getByRole("button", { name: /Northbank Gallery/ })).not.toHaveTextContent(
+      "Switching…",
+    );
   });
 
-  it("shows a dot with its count where something needs the person, read when the list opens", async () => {
+  it("marks the account in use with the word Current", () => {
+    renderList();
+    expect(screen.getByRole("button", { name: /Northbank Gallery/ })).toHaveTextContent("Current");
+    expect(screen.getByRole("button", { name: /Jane Smith/ })).not.toHaveTextContent("Current");
+    expect(screen.getByText("Switch account")).toBeInTheDocument();
+  });
+
+  it("says why a switch failed and offers to try again", () => {
+    const onRetry = vi.fn();
+    renderList({
+      failure: { title: "Could not switch", description: "Please try again." },
+      onRetry,
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not switch. Please try again.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the links to a menu that has its own", () => {
+    renderList({ withLinks: false });
+    expect(screen.queryByRole("link", { name: "All accounts" })).toBeNull();
+  });
+
+  it("shows a number where something needs the person, read when the list opens", async () => {
     const read = vi.fn(async () => ({ northbank: 2, me: 0 }));
     render(
       <AccountNeedsYouProvider enabled read={read}>
@@ -105,6 +134,7 @@ describe("AccountSwitcherList", () => {
     );
     expect(screen.getByRole("button", { name: /Jane Smith/ })).not.toHaveAccessibleName(/need/);
     expect(document.querySelectorAll("[data-needs-you]")).toHaveLength(1);
+    expect(document.querySelector("[data-needs-you]")).toHaveTextContent("2");
   });
 
   it("shows no dots when the counts cannot be read", async () => {

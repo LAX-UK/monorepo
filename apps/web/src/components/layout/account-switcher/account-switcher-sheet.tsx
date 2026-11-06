@@ -44,7 +44,7 @@ function PersonRows({ onNavigate }: { onNavigate: () => void }) {
  * the bottom like the More sheet, through the kit's dialog.
  */
 export function AccountSwitcherSheet({ switcher, open, onOpenChange }: Props) {
-  const { pendingId, choose } = useAccountSwitch();
+  const { pendingId, failure, choose, retry } = useAccountSwitch(undefined, "inline");
   const close = () => onOpenChange(false);
   return (
     <Dialog open={open} onOpenChange={onOpenChange} title="Switch account">
@@ -52,10 +52,10 @@ export function AccountSwitcherSheet({ switcher, open, onOpenChange }: Props) {
         switcher={switcher}
         pendingId={pendingId}
         density="sheet"
-        onChoose={(option) => {
-          close();
-          void choose(option);
-        }}
+        // Stays open: the chosen row shows the progress, and a failure shows under the rows.
+        onChoose={(option) => void choose(option)}
+        failure={failure}
+        onRetry={() => void retry()}
         onNavigate={close}
         footer={<PersonRows onNavigate={close} />}
       />
