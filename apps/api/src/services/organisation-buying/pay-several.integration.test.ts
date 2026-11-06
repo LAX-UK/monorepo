@@ -277,11 +277,19 @@ describe.skipIf(!HAS_DB)("pay several raises what the plan counts (integration)"
     const ok1 = await wonLot("500.00");
     await lotEnd(false).ensureForLot(ok1);
 
-    const started = (await payShown(paySeveral(lotEnd(true)), actor, [ok1, held]))._unsafeUnwrap();
-
+    // The lot is raised into review, so the plan shown (which counted it) is no longer the plan:
+    // nothing is claimed and the fresh plan comes back.
+    const svc = paySeveral(lotEnd(true));
+    const refused = (await payShown(svc, actor, [ok1, held]))._unsafeUnwrapErr();
+    expect(refused).toMatchObject({ code: "pay_plan_changed", status: 409 });
+    expect(refused.quote?.skipped).toEqual([{ lotId: held, reason: "held_for_review" }]);
     const [heldRow] = await rowsFor(held);
     expect(heldRow?.status).toBe("requires_manual_review");
     expect(heldRow?.paymentGroupId).toBeNull();
+    expect((await rowsFor(ok1))[0]?.paymentGroupId).toBeNull();
+
+    // Paying the plan it was shown next charges only the lot that can be paid.
+    const started = (await payShown(svc, actor, [ok1, held]))._unsafeUnwrap();
     expect(started.payable.map((p) => p.lotId)).toEqual([ok1]);
     expect(started.skipped).toEqual([{ lotId: held, reason: "held_for_review" }]);
     expect(started.total).toBe("625.00");
