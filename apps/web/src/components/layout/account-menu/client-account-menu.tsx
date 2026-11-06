@@ -1,5 +1,6 @@
 "use client";
 
+import { useAccountSwitch } from "@/components/layout/account-switcher/use-account-switch";
 import { useLogout } from "@/lib/auth/use-logout";
 import type { AttentionCount } from "@/lib/navigation/client-attention";
 import type {
@@ -161,17 +162,42 @@ function AccountRow({
   onNavigate: () => void;
 }) {
   const wrap = useContext(WrapItemContext);
+  // One way to switch: the same server action and page load as the workspace switcher. A link to
+  // the switch hop would be followed by the client router, which keeps the old account's frame.
+  const { choose } = useAccountSwitch(account.href);
+  const className = cn(ROW_BASE, ROW[surface], "group gap-3 py-2", surface === "sheet" && "py-2.5");
+  if (account.here) {
+    return wrap(
+      <Link
+        href={account.href}
+        aria-current="true"
+        className={className}
+        onClick={onNavigate}
+        {...itemProps(surface)}
+      >
+        <AccountRowBody account={account} />
+      </Link>,
+    );
+  }
   return wrap(
-    <Link
-      href={account.href}
-      // Opening another account goes through the switch hop: never prefetched, so showing the
-      // menu can never change the account.
-      prefetch={false}
-      aria-current={account.here ? "true" : undefined}
-      className={cn(ROW_BASE, ROW[surface], "group gap-3 py-2", surface === "sheet" && "py-2.5")}
-      onClick={onNavigate}
+    <Button
+      type="button"
+      variant="ghost"
+      className={cn(className, "h-auto justify-start border-0 font-normal shadow-none")}
+      onClick={() => {
+        onNavigate();
+        void choose({ id: account.id, current: account.here });
+      }}
       {...itemProps(surface)}
     >
+      <AccountRowBody account={account} />
+    </Button>,
+  );
+}
+
+function AccountRowBody({ account }: { account: HeaderMenuAccount }) {
+  return (
+    <>
       <span
         aria-hidden
         className={cn(
@@ -181,7 +207,7 @@ function AccountRow({
       >
         {account.initials}
       </span>
-      <span className="min-w-0 flex-1">
+      <span className="min-w-0 flex-1 text-left">
         <span className="block truncate font-medium">{account.name}</span>
         <span className="block truncate text-xs text-on-surface-variant">{account.detail}</span>
       </span>
@@ -196,7 +222,7 @@ function AccountRow({
           <ArrowRight className="size-3.5" aria-hidden />
         </span>
       )}
-    </Link>,
+    </>
   );
 }
 
