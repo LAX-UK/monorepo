@@ -179,7 +179,6 @@ describe("buildShopPortfolioItems: the print and its certificate", () => {
   } as const;
   const numbered = (patch: Partial<Parameters<typeof edition>[0]> = {}) =>
     edition({
-      editionNumber: 7,
       print: { editionNumber: 7, proofNumber: null, stockRef: 7 },
       runFacts: { run: { type: "lax_standard" }, proofsKept: null, facts: handSigned },
       ...patch,

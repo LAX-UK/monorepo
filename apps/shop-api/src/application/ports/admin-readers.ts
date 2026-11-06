@@ -99,7 +99,8 @@ export type AdminStockHoldListItem = {
   holdId: string;
   editionId: string;
   artworkTitle: string;
-  editionNumber: number;
+  /** "7/24", "AP 2/3" or "OE-0021". */
+  printLabel: string;
   status: string;
   expiresAt: string;
   brokerPartyId: string | null;
@@ -114,7 +115,8 @@ export type AdminThirdPartySaleListItem = {
   saleId: string;
   editionId: string;
   artworkTitle: string;
-  editionNumber: number;
+  /** "7/24", "AP 2/3" or "OE-0021". */
+  printLabel: string;
   status: string;
   grossPence: number;
   recordedAt: string | null;

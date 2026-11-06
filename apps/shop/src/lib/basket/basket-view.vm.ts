@@ -9,7 +9,10 @@ export type BasketLineVm = {
   href: string | null;
   artistName: string | null;
   artistHref: string | null;
-  /** "Limited edition of 24", or the SKU for merchandise; null when neither is known. */
+  /**
+   * What the buyer is told about the print, as the edition contract words it ("Limited edition of
+   * 24 · Hand-signed"), or the SKU for merchandise; null when neither is known.
+   */
   detail: string | null;
   imageUrl: string | null;
   imageAlt: string;
@@ -48,7 +51,6 @@ export function presentBasketLine(line: BasketLine): BasketLineVm {
   const kind = line.productVariantId ? "merchandise" : "edition";
   const title = line.productTitle ?? line.artworkTitle ?? "Item";
   const artistName = line.artistName ?? null;
-  const editionSize = line.editionSize ?? null;
   const orderLimit = line.orderLimit ?? null;
   const maxQuantity = basketLineMaxQuantity(line);
   return {
@@ -63,9 +65,7 @@ export function presentBasketLine(line: BasketLine): BasketLineVm {
     artistHref: line.artistSlug ? `/artists/${line.artistSlug}` : null,
     detail:
       kind === "edition"
-        ? editionSize
-          ? `Limited edition of ${editionSize}`
-          : null
+        ? (line.editionLine ?? null)
         : line.variantSku
           ? `SKU ${line.variantSku}`
           : null,

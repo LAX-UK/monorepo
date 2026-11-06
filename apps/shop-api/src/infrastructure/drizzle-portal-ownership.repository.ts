@@ -31,8 +31,8 @@ import type {
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
+import { printLabelOf, printLabelSelection } from "./edition-runs/print-label.js";
 import { resolvePortalPartyIds } from "./portal-party-ids.js";
-import { printedEditionNumber } from "./printed-edition-number.js";
 import { createShopDocumentDownloadUrl } from "./shop-document-download-url.js";
 import type { ShopDocumentStorageConfig } from "./shop-document-download-url.js";
 
@@ -65,7 +65,7 @@ export function createDrizzlePortalOwnershipRepository(
           artworkId: shopArtwork.id,
           artworkSlug: shopArtwork.slug,
           artworkTitle: shopArtwork.title,
-          editionNumber: printedEditionNumber,
+          print: printLabelSelection,
           listingStatus: shopEdition.listingStatus,
           custodyStatus: shopEdition.custodyStatus,
           salesChannel: shopArtwork.salesChannel,
@@ -75,7 +75,7 @@ export function createDrizzlePortalOwnershipRepository(
         .where(inArray(shopEdition.ownerPartyId, partyIds))
         .orderBy(shopArtwork.title, shopEdition.editionNumber)
         .limit(PORTAL_ME_LIST_LIMIT);
-      return rows;
+      return rows.map(({ print, ...row }) => ({ ...row, printLabel: printLabelOf(print) }));
     },
 
     async listSaleAuthority(identitySubjectId: string): Promise<PortalSaleAuthorityRow[]> {
@@ -439,7 +439,7 @@ export function createDrizzlePortalOwnershipRepository(
           artworkId: shopArtwork.id,
           artworkSlug: shopArtwork.slug,
           artworkTitle: shopArtwork.title,
-          editionNumber: printedEditionNumber,
+          print: printLabelSelection,
           listingStatus: shopEdition.listingStatus,
           custodyStatus: shopEdition.custodyStatus,
           salesChannel: shopArtwork.salesChannel,
@@ -489,7 +489,7 @@ export function createDrizzlePortalOwnershipRepository(
           artworkSlug: row.artworkSlug,
           artworkTitle: row.artworkTitle,
           salesChannel: row.salesChannel,
-          editionNumber: row.editionNumber,
+          printLabel: printLabelOf(row.print),
           listingStatus: row.listingStatus,
           custodyStatus: row.custodyStatus,
         })),

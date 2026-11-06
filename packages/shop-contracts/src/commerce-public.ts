@@ -77,8 +77,13 @@ export const BasketLineSchema = Type.Object(
     // The fields below are optional so a storefront parses responses from an older shop-api.
     artistName: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
     artistSlug: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
-    /** The size of the edition run ("Limited edition of 24"); null for merchandise. */
+    /** The size of a limited edition's run; null for merchandise, an open edition or a proof. */
     editionSize: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.Null()])),
+    /**
+     * What the buyer is told about the print, worded by the shared edition contract: "Limited
+     * edition of 24 · Hand-signed · Numbered". Null for merchandise.
+     */
+    editionLine: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
     /** Copies of this item one order may hold ("Limit 2 per order"); null when only stock limits it. */
     orderLimit: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.Null()])),
     /**
