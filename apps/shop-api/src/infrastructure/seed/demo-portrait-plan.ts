@@ -3,7 +3,11 @@ import { DEMO_MEDIA_BASE_URL, demoPortraitUrl } from "@auction/db";
 export type ArtistPortraitRow = { id: string; slug: string; portrait: string | null };
 
 /** Stand-in portraits from earlier seeds and the copies this seed made before; real ones stay. */
-const REPLACEABLE_PREFIXES = ["/art/seed/", "/shop/home/", `${DEMO_MEDIA_BASE_URL}/demo/portrait/`];
+const REPLACEABLE_PREFIXES = [
+  "/art/seed/",
+  "/shop/home/",
+  `${DEMO_MEDIA_BASE_URL}/seed/demo/portrait/`,
+];
 
 export function isReplaceablePortrait(portrait: string | null): boolean {
   const value = portrait?.trim() ?? "";

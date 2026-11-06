@@ -56,7 +56,7 @@ describe.each(CLOCKS)("full demo catalogue at %d", (now) => {
       expect(sale(key).status).toBe("scheduled");
       expect(sale(key).startTime.getTime()).toBeGreaterThan(now + 14 * DAY);
       expect(sale(key).coverImage).toMatch(
-        /^https:\/\/lax-media\.lon1\.cdn\.digitaloceanspaces\.com\/demo\/cover\//,
+        /^https:\/\/lax-media\.lon1\.cdn\.digitaloceanspaces\.com\/seed\/demo\/cover\//,
       );
     }
   });

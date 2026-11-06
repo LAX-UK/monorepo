@@ -17,7 +17,9 @@ const SOURCE = "https://images.metmuseum.org/CRDImages/ep/original/DP-20101-001.
 describe("demo image keys", () => {
   it("is stable, readable and under the demo prefix", () => {
     expect(demoImageKey(SOURCE, "cover")).toBe(demoImageKey(SOURCE, "cover"));
-    expect(demoImageKey(SOURCE, "cover")).toMatch(/^demo\/cover\/dp-20101-001-[0-9a-f]{8}\.jpg$/);
+    expect(demoImageKey(SOURCE, "cover")).toMatch(
+      /^seed\/demo\/cover\/dp-20101-001-[0-9a-f]{8}\.jpg$/,
+    );
   });
 
   it("separates the copies a picture has for different uses", () => {
