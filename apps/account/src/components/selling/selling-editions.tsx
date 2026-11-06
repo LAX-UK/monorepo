@@ -1,4 +1,5 @@
 import { AccountSection, CARD, EMPTY_STATE, ListCard } from "@/components/account-ui";
+import { ProductName } from "@/components/product-name";
 import type {
   EditionRowVm,
   EditionsPageVm,
@@ -9,6 +10,18 @@ import { EmptyState } from "@auction/ui/components/empty-state";
 import { SaleRequestDialog } from "./sale-request-dialog.client";
 import { SellingStat, SellingStats, SellingStatus } from "./selling-parts";
 import { WithdrawRequestButton } from "./withdraw-request-button.client";
+
+/** The page title, with LAX Shop in its colour since these are the editions sold there. */
+export function EditionsPageTitle() {
+  return (
+    <>
+      Editions you can sell on{" "}
+      <ProductName product="shop" weight="inherit">
+        LAX Shop
+      </ProductName>
+    </>
+  );
+}
 
 function Count({ label, value, strong }: { label: string; value: number; strong?: boolean }) {
   return (
@@ -49,10 +62,15 @@ function EditionRow({ row }: { row: EditionRowVm }) {
     <li className="flex flex-col gap-4 px-4 py-5 sm:px-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-6">
         <div className="min-w-0 flex-1">
-          <h3 className="text-base font-semibold break-words text-on-surface">{row.title}</h3>
-          <p className="mt-0.5 text-xs text-on-surface-variant">
-            {row.lastApprovedOn ? `Last approved ${row.lastApprovedOn}` : "Not approved yet"}
-          </p>
+          <h3 className="text-base font-semibold break-words text-on-surface">
+            {row.title}
+            {row.editionLine ? (
+              <span className="font-normal text-on-surface-variant"> · {row.editionLine}</span>
+            ) : null}
+          </h3>
+          {row.approvalLine ? (
+            <p className="mt-0.5 text-xs text-on-surface-variant">{row.approvalLine}</p>
+          ) : null}
         </div>
         <dl className="grid grid-cols-3 gap-4 md:w-[26rem] md:shrink-0">
           <Count label="Approved to sell" value={row.approved} />

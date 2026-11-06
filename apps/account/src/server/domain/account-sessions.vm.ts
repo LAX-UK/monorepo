@@ -42,6 +42,21 @@ export function buildSessionsVm(sessions: readonly AccountSession[], now: Date):
   };
 }
 
+/** How many other devices show before "Show N more devices". */
+export const VISIBLE_OTHER_DEVICES = 4;
+
+/** The other devices split into those shown at first and those behind "Show N more devices". */
+export function splitOtherDevices(
+  others: readonly SessionRowVm[],
+  limit: number = VISIBLE_OTHER_DEVICES,
+): { shown: SessionRowVm[]; hidden: SessionRowVm[] } {
+  return { shown: others.slice(0, limit), hidden: others.slice(limit) };
+}
+
+export function showMoreDevicesLabel(count: number): string {
+  return `Show ${count} more ${count === 1 ? "device" : "devices"}`;
+}
+
 export type SignOutConfirmVm = { title: string; body: string; confirmLabel: string };
 
 export function buildSignOutDeviceConfirm(

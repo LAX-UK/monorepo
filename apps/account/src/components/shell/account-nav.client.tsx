@@ -1,6 +1,10 @@
 "use client";
 
-import { type AccountNavItemVm, activeAccountNavId } from "@/server/domain/account-nav.vm";
+import {
+  type AccountNavItemVm,
+  activeAccountNavId,
+  groupAccountNav,
+} from "@/server/domain/account-nav.vm";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,28 +30,58 @@ export function AccountNav({
   return (
     <nav aria-label="Account" className={className}>
       <ul className="flex flex-col gap-1">
-        {items.map((item) => {
-          const current = item.id === active;
-          return (
-            <li key={item.id}>
-              <Link
-                href={item.href}
-                aria-current={current ? "page" : undefined}
-                {...(onNavigate ? { onClick: onNavigate } : {})}
-                className={cn(
-                  "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors",
-                  current
-                    ? "bg-surface-container font-semibold text-on-surface"
-                    : "font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
-                )}
-              >
-                <AccountNavIcon id={item.id} />
-                {item.label}
-              </Link>
-            </li>
-          );
-        })}
+        {groupAccountNav(items).map((section) => (
+          <li key={section.key} className={section.label ? "mt-3 first:mt-0" : undefined}>
+            {section.label ? (
+              <p id={`nav-${section.key}`} className="px-3 pb-1 text-xs text-on-surface-variant">
+                {section.label}
+              </p>
+            ) : null}
+            <ul
+              className="flex flex-col gap-1"
+              {...(section.label ? { "aria-labelledby": `nav-${section.key}` } : {})}
+            >
+              {section.items.map((item) => (
+                <NavLink
+                  key={item.id}
+                  item={item}
+                  current={item.id === active}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </ul>
+          </li>
+        ))}
       </ul>
     </nav>
+  );
+}
+
+function NavLink({
+  item,
+  current,
+  onNavigate,
+}: {
+  item: AccountNavItemVm;
+  current: boolean;
+  onNavigate: (() => void) | undefined;
+}) {
+  return (
+    <li>
+      <Link
+        href={item.href}
+        aria-current={current ? "page" : undefined}
+        {...(onNavigate ? { onClick: onNavigate } : {})}
+        className={cn(
+          "flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm transition-colors",
+          current
+            ? "bg-surface-container font-semibold text-on-surface"
+            : "font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface",
+        )}
+      >
+        <AccountNavIcon id={item.id} />
+        {item.label}
+      </Link>
+    </li>
   );
 }

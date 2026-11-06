@@ -54,6 +54,17 @@ export type EditionRowVm = {
   soldOrReserved: number;
   availableNow: number;
   lastApprovedOn: string | null;
+  /**
+   * The small line under the title: when LAX last approved, or "Not approved yet" only when
+   * nothing is approved. Null when editions are approved but Shop gave no date, so the row never
+   * contradicts its own count.
+   */
+  approvalLine: string | null;
+  /**
+   * What tells two rows with the same title apart, from data on the row: "You hold 24 editions".
+   * Null unless the title repeats, and unless Shop says how many the seller holds.
+   */
+  editionLine: string | null;
   pending: PendingRequestVm | null;
   /**
    * Opens the request dialog; absent while a request is pending, because Shop takes one at a
@@ -102,6 +113,30 @@ function latestPendingByArtwork(requests: readonly PortalSaleAuthorityRequest[])
   return pending;
 }
 
+/** The small line about approval; see `EditionRowVm.approvalLine`. */
+export function approvalLine(approved: number, lastApprovedOn: string | null): string | null {
+  if (approved === 0) return "Not approved yet";
+  return lastApprovedOn ? `Last approved ${lastApprovedOn}` : null;
+}
+
+const titleKey = (title: string) => title.trim().toLowerCase();
+
+function repeatedTitles(editions: readonly PortalSaleAuthority[]): Set<string> {
+  const seen = new Set<string>();
+  const repeated = new Set<string>();
+  for (const { artworkTitle } of editions) {
+    const key = titleKey(artworkTitle);
+    if (seen.has(key)) repeated.add(key);
+    seen.add(key);
+  }
+  return repeated;
+}
+
+function editionLine(row: Pick<PortalSaleAuthority, "ownedCount">): string | null {
+  if (row.ownedCount === undefined) return null;
+  return `You hold ${row.ownedCount} ${row.ownedCount === 1 ? "edition" : "editions"}`;
+}
+
 function cleanNote(note: string | null): string | null {
   const trimmed = note?.trim();
   return trimmed ? trimmed : null;
@@ -116,15 +151,19 @@ export function buildEditionsPage(
   requests: readonly PortalSaleAuthorityRequest[],
 ): EditionsPageVm {
   const pending = latestPendingByArtwork(requests);
+  const repeated = repeatedTitles(editions);
   const rows = editions.map((row): EditionRowVm => {
     const counts = editionCounts(row);
     const max = maxAvailableToSell(row);
     const request = pending.get(row.artworkId);
+    const lastApprovedOn = row.lastGrantAt ? formatDate(row.lastGrantAt) : null;
     return {
       artworkId: row.artworkId,
       title: row.artworkTitle,
       ...counts,
-      lastApprovedOn: row.lastGrantAt ? formatDate(row.lastGrantAt) : null,
+      lastApprovedOn,
+      approvalLine: approvalLine(counts.approved, lastApprovedOn),
+      editionLine: repeated.has(titleKey(row.artworkTitle)) ? editionLine(row) : null,
       pending: request
         ? {
             requestId: request.requestId,

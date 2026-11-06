@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { buildAccountLinks } from "./account-links";
 import { buildPrivacyGroups } from "./account-privacy.vm";
 import {
+  ACCOUNT_ROUTES,
   accountInitials,
   buildHelpGroups,
   buildLaunchGroups,
-  buildSecurityGroups,
+  buildTwoStepRow,
 } from "./account-settings.vm";
 
 const withBid = buildAccountLinks({
@@ -18,35 +19,24 @@ const withoutBid = buildAccountLinks({
   oidcClientId: "lax-account-web",
 });
 
-describe("buildSecurityGroups", () => {
-  it("offers deleting the account as an Account page, not a link into another product", () => {
-    const groups = buildSecurityGroups({ twoStep: "on", backupCodesRemaining: null }, withBid);
-    expect(groups.map((group) => group.id)).toEqual(["sign-in", "your-account"]);
-    expect(groups[1]?.rows).toEqual([
-      {
-        title: "Delete your account",
-        subtitle: "Permanently delete your LAX account",
-        href: "/account/security/delete",
-      },
+describe("buildTwoStepRow", () => {
+  it("opens the hosted two-step page", () => {
+    const row = buildTwoStepRow({ twoStep: "unknown", backupCodesRemaining: null }, withBid);
+    expect([row.title, row.subtitle, row.href]).toEqual([
+      "Two-step verification",
+      "Set up or manage",
+      "https://test-auth.lax.bid/two-factor/manage?client_id=lax-account-web",
     ]);
   });
 
-  it("leaves the password to its own in-page section and opens the hosted two-step page", () => {
-    const [group] = buildSecurityGroups(
-      { twoStep: "unknown", backupCodesRemaining: null },
-      withBid,
-    );
-    expect(group?.rows.map((r) => [r.title, r.subtitle, r.href])).toEqual([
-      [
-        "Two-step verification",
-        "Set up or manage",
-        "https://test-auth.lax.bid/two-factor/manage?client_id=lax-account-web",
-      ],
-    ]);
+  it("points Security's one quiet delete link at the Privacy section that holds it", () => {
+    expect(ACCOUNT_ROUTES.deleteAccountOnPrivacy).toBe("/account/privacy#group-your-data");
+    const rows = buildPrivacyGroups(withBid).flatMap((group) => group.rows);
+    expect(rows.map((row) => row.title)).toContain("Delete your account");
   });
 
   const subtitle = (twoStep: "on" | "off" | "unknown", backupCodesRemaining: number | null) =>
-    buildSecurityGroups({ twoStep, backupCodesRemaining }, withBid)[0]?.rows[0]?.subtitle;
+    buildTwoStepRow({ twoStep, backupCodesRemaining }, withBid).subtitle;
 
   it("states On, Off or the neutral wording for each two-step state", () => {
     expect(subtitle("on", 8)).toBe("On");

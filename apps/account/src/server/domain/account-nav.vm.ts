@@ -16,7 +16,45 @@ export type AccountNavId =
   | "privacy"
   | "help";
 
-export type AccountNavItemVm = { id: AccountNavId; label: string; href: string };
+export type AccountNavGroupId = "collection" | "account";
+
+export const ACCOUNT_NAV_GROUP_LABEL: Record<AccountNavGroupId, string> = {
+  collection: "Your collection",
+  account: "Your account",
+};
+
+/** `group` is absent for Home and Help, which stand on their own at the top and the bottom. */
+export type AccountNavItemVm = {
+  id: AccountNavId;
+  label: string;
+  href: string;
+  group?: AccountNavGroupId;
+};
+
+/** A run of menu items under one label; `label` is null for the items that stand alone. */
+export type AccountNavSectionVm = {
+  key: string;
+  label: string | null;
+  items: AccountNavItemVm[];
+};
+
+/** Splits the ordered menu into its sections: one per group, and the ungrouped items on their own. */
+export function groupAccountNav(items: readonly AccountNavItemVm[]): AccountNavSectionVm[] {
+  const sections: AccountNavSectionVm[] = [];
+  for (const item of items) {
+    const key = item.group ?? "ungrouped";
+    const last = sections[sections.length - 1];
+    if (item.group && last?.key === key) last.items.push(item);
+    else if (!item.group && last && last.label === null) last.items.push(item);
+    else
+      sections.push({
+        key: item.group ? key : `${key}-${item.id}`,
+        label: item.group ? ACCOUNT_NAV_GROUP_LABEL[item.group] : null,
+        items: [item],
+      });
+  }
+  return sections;
+}
 
 /**
  * The signed-in menu, in the order a person looks for things. Selling is there only for people
@@ -29,15 +67,27 @@ export function buildAccountNav(
 ): AccountNavItemVm[] {
   const items: AccountNavItemVm[] = [
     { id: "home", label: "Home", href: ACCOUNT_ROUTES.overview },
-    { id: "personal-details", label: "Personal details", href: ACCOUNT_ROUTES.profile },
-    { id: "security", label: "Security", href: ACCOUNT_ROUTES.security },
-    { id: "portfolio", label: "Portfolio", href: PORTFOLIO_ROUTES.overview },
-    { id: "money", label: "Money", href: PORTFOLIO_ROUTES.money },
+    { id: "portfolio", label: "Portfolio", href: PORTFOLIO_ROUTES.overview, group: "collection" },
+    { id: "money", label: "Money", href: PORTFOLIO_ROUTES.money, group: "collection" },
     ...(options.selling
-      ? [{ id: "selling" as const, label: "Selling", href: SELLING_ROUTES.overview }]
+      ? [
+          {
+            id: "selling" as const,
+            label: "Selling",
+            href: SELLING_ROUTES.overview,
+            group: "collection" as const,
+          },
+        ]
       : []),
-    { id: "alerts", label: "Email alerts", href: ACCOUNT_ROUTES.alerts },
-    { id: "privacy", label: "Privacy", href: ACCOUNT_ROUTES.privacy },
+    {
+      id: "personal-details",
+      label: "Personal details",
+      href: ACCOUNT_ROUTES.profile,
+      group: "account",
+    },
+    { id: "security", label: "Security", href: ACCOUNT_ROUTES.security, group: "account" },
+    { id: "alerts", label: "Email alerts", href: ACCOUNT_ROUTES.alerts, group: "account" },
+    { id: "privacy", label: "Privacy", href: ACCOUNT_ROUTES.privacy, group: "account" },
   ];
   if (links.support) items.push({ id: "help", label: "Help", href: ACCOUNT_ROUTES.help });
   return items;

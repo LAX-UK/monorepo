@@ -18,7 +18,6 @@ const password = (isSet: boolean) =>
       ? "Sign in with your email and password."
       : "Add one to sign in with your email as well.",
     actionLabel: isSet ? "Change" : "Add a password",
-    actionHref: "#password",
   }) as const;
 const google = (blockedReason: string | null) =>
   ({
@@ -35,6 +34,8 @@ const render = (section: SignInMethodsSectionVm) =>
       section={section}
       pagePath="/account/security"
       reauthHref="/api/auth/login?returnTo=%2Faccount%2Fsecurity&intent=reauth"
+      passwordPanel={<form data-testid="password-form" />}
+      twoStep={{ title: "Two-step verification", subtitle: "On", href: "https://auth.example/2fa" }}
     />,
   );
 
@@ -63,7 +64,6 @@ describe("SignInMethodsSection", () => {
       hint: "Add a password so you can still get in.",
     });
     expect(html).toContain("Not set");
-    expect(html).toContain('href="#password"');
     expect(html).toContain("Add a password");
     expect(html).toMatch(
       /<button[^>]*aria-describedby="[^"]+"[^>]*disabled|<button[^>]*disabled[^>]*aria-describedby/,
@@ -71,10 +71,28 @@ describe("SignInMethodsSection", () => {
     expect(html).toContain(reason);
   });
 
+  it("is one section: Password opens its form in place, then Two-step verification", () => {
+    const html = render({ status: "list", rows: [password(true), google(null)], hint: null });
+    expect(html.match(/<h2/g)).toHaveLength(1);
+    expect(html).toContain("How you sign in");
+    expect(html).not.toContain("Sign-in methods");
+    expect(html).not.toContain('id="password"');
+    expect(html).not.toContain("Signing in");
+    expect(html).toMatch(
+      /<button[^>]*aria-expanded="false"[^>]*aria-controls="[^"]+"[^>]*>Change</,
+    );
+    const order = ["Password", "Google", "Two-step verification"].map((t) => html.indexOf(t));
+    expect(order).toEqual([...order].sort((a, b) => a - b));
+    expect(html.indexOf("password-form")).toBeLessThan(html.indexOf("Google"));
+    expect(html).toContain('href="https://auth.example/2fa"');
+  });
+
   it("asks to sign in again when the issuer no longer knows this sign-in", () => {
     const html = render({ status: "reauth_required" });
     expect(html).toContain("Sign in again to see your sign-in methods");
     expect(html).not.toContain("Remove");
+    expect(html).toContain("password-form");
+    expect(html).toContain("Two-step verification");
   });
 
   it("reports an unavailable list as a temporary problem with a retry, never as empty", () => {

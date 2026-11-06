@@ -2,7 +2,7 @@ import { formatDate } from "@/lib/format-date";
 import type { PortalPayout } from "@auction/shop-contracts";
 
 export type PayoutStatusVm = {
-  /** "Paid 18 Sept 2026", "Due 2 Oct 2026", "Waiting for refund period to end". */
+  /** "Paid Fri 18 Sep 2026", "Due Fri 2 Oct 2026", "Waiting for refund period to end". */
   label: string;
   tone: "success" | "info" | "warning" | "neutral";
   /** Whether the money has reached the seller, is still to come, or will not be paid. */
