@@ -14,6 +14,8 @@ type CatalogLotEditorialCalmCaptionProps = {
   title: string;
   subtitle: string | null;
   estimate: string | null;
+  /** The lot page, so an outbid bidder can go straight to bidding. */
+  lotHref: string;
 };
 
 /** Client-rendered caption for editorial calm cards — avoids RSC slot key warnings. */
@@ -22,6 +24,7 @@ export function CatalogLotEditorialCalmCaption({
   title,
   subtitle,
   estimate,
+  lotHref,
 }: CatalogLotEditorialCalmCaptionProps) {
   const line = lotCardLineModel(lot, new Date());
   return (
@@ -38,7 +41,7 @@ export function CatalogLotEditorialCalmCaption({
       <div className="flex flex-col gap-1.5 pt-2">
         <LotEstimateLine value={estimate} />
         <LotCardLine model={line} />
-        <LotCardBidderState lotId={lot.id} />
+        <LotCardBidderState lotId={lot.id} lotHref={lotHref} lotTitle={title} />
       </div>
     </div>
   );

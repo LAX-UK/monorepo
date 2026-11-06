@@ -41,6 +41,7 @@ const works = [
     status: "awaiting_payment",
     acquiredAt: "2026-05-01T10:00:00.000Z",
     paid: { lines: [{ kind: "price", amount: 25_000, currency: "EUR" }] },
+    owed: { amount: 25_000, currency: "EUR", state: "due" },
   }),
 ];
 

@@ -1,6 +1,12 @@
 import type { PaymentStatus } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { purchaseEnding, purchaseIsOwned, purchaseIsToPay } from "./purchase-state.js";
+import {
+  decisivePayment,
+  decisivePaymentByLot,
+  purchaseEnding,
+  purchaseIsOwned,
+  purchaseIsToPay,
+} from "./purchase-state.js";
 
 describe("purchaseEnding", () => {
   it.each([
@@ -66,5 +72,47 @@ describe("purchaseIsOwned", () => {
 
   it("does not own a paid purchase whose delivery was cancelled", () => {
     expect(purchaseIsOwned({ invoice: "paid", deliveryStage: "cancelled" })).toBe(false);
+  });
+});
+
+describe("decisivePayment", () => {
+  const attempt = (id: string, status: PaymentStatus) => ({ id, status });
+
+  it("is the newest attempt when none has settled", () => {
+    expect(decisivePayment([attempt("new", "pending"), attempt("old", "cancelled")])?.id).toBe(
+      "new",
+    );
+  });
+
+  it.each(["captured", "authorized", "refunded"] as const)(
+    "prefers a %s payment over a newer abandoned attempt",
+    (status) => {
+      expect(decisivePayment([attempt("new", "pending"), attempt("paid", status)])?.id).toBe(
+        "paid",
+      );
+    },
+  );
+
+  it("is undefined when there are no attempts", () => {
+    expect(decisivePayment([])).toBeUndefined();
+  });
+});
+
+describe("decisivePaymentByLot", () => {
+  const attempt = (id: string, lotId: string, status: PaymentStatus) => ({ id, lotId, status });
+
+  it("picks the deciding payment of each lot on its own", () => {
+    const byLot = decisivePaymentByLot([
+      attempt("a-new", "a", "pending"),
+      attempt("b-only", "b", "cancelled"),
+      attempt("a-paid", "a", "captured"),
+    ]);
+    expect(byLot.get("a")?.id).toBe("a-paid");
+    expect(byLot.get("b")?.id).toBe("b-only");
+    expect(byLot.size).toBe(2);
+  });
+
+  it("is empty without payments", () => {
+    expect(decisivePaymentByLot([]).size).toBe(0);
   });
 });

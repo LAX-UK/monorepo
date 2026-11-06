@@ -15,7 +15,7 @@ export function PolicyHubLoadingShell() {
       </div>
       <div className="grid min-h-[60vh] grid-cols-1 md:grid-cols-[220px_1fr]">
         <div className="hidden border-r border-outline-variant/40 px-6 py-10 md:block">
-          <div className="sticky top-[calc(var(--header-height)+2rem)] flex flex-col gap-2">
+          <div className="sticky top-[calc(var(--header-offset,var(--header-height,4rem))+2rem)] flex flex-col gap-2">
             {ROW_KEYS.map((k) => (
               <Skeleton key={`rail-${k}`} className="h-9 w-full rounded-md shimmer-sweep" />
             ))}

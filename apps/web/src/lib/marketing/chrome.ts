@@ -18,16 +18,19 @@ export {
   MARKETING_PAGE_INNER,
   MARKETING_PAGE_SHELL,
   MARKETING_PROSE_LINK,
+  STICKY_UNDER_HEADER_TOP,
 } from "@auction/branding";
+import { STICKY_UNDER_HEADER_TOP as STICKY_TOP } from "@auction/branding";
 
 /** Sticky `SaleAnchorTabs` bar height (`min-h-11` = 2.75rem). */
 export const SALE_ANCHOR_BAR_HEIGHT = "2.75rem";
 
 /** Sticky anchor tab bar — sits below site header. */
-export const SALE_ANCHOR_STICKY_CLASS = "sticky top-[var(--header-height)] z-[var(--z-sticky,30)]";
+export const SALE_ANCHOR_STICKY_CLASS = `sticky ${STICKY_TOP} z-[var(--z-sticky,30)]`;
 
-/** Catalogue toolbar offset — stacks below anchor tabs on sale detail pages. */
-export const SALE_CATALOG_TOOLBAR_STICKY_TOP = `top-[calc(var(--header-height,4rem)+${SALE_ANCHOR_BAR_HEIGHT})]`;
+/** Catalogue toolbar offset — stacks below anchor tabs on sale detail pages (2.75rem, the bar above). */
+export const SALE_CATALOG_TOOLBAR_STICKY_TOP =
+  "top-[calc(var(--header-offset,var(--header-height,4rem))+2.75rem)]";
 
 /** Scroll margin for `#catalog` / `#overview` anchor targets (header + anchor bar). */
 export const SALE_SECTION_SCROLL_MT = `scroll-mt-[calc(var(--header-height,4rem)+${SALE_ANCHOR_BAR_HEIGHT})]`;

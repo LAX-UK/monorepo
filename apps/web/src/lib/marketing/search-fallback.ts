@@ -4,6 +4,8 @@ import type { LotStatus } from "@auction/types";
 export const SEARCH_FALLBACK_LOT_LIMIT = 6;
 /** Artist matches shown beside them. */
 export const SEARCH_FALLBACK_ARTIST_LIMIT = 4;
+/** Sale matches shown beside them. */
+export const SEARCH_FALLBACK_SALE_LIMIT = 3;
 
 type FallbackContext = {
   /** The trimmed query text. */

@@ -34,7 +34,7 @@ export function WithdrawnLotPage({ data, now }: { data: WithdrawnLotPageData; no
                 title={lot.title}
                 images={toGalleryImages(lot.images, undefined, lot.title, lot.imageAssets)}
               />
-              <div className="min-w-0 lg:sticky lg:top-[calc(var(--header-height)+1.5rem)]">
+              <div className="min-w-0 lg:sticky lg:top-[calc(var(--header-offset,var(--header-height,4rem))+1.5rem)]">
                 <LotIdentity
                   lotNumber={lot.lotNumber}
                   title={lot.title}

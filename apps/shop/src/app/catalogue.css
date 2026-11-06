@@ -235,7 +235,7 @@
   .shop-detail__media {
     min-height: 38rem;
     position: sticky;
-    top: calc(var(--header-height, 4rem) + 1rem);
+    top: calc(var(--header-offset, var(--header-height, 4rem)) + 1rem);
   }
 }
 

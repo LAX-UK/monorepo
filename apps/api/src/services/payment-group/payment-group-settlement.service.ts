@@ -4,6 +4,7 @@ import {
   decidePaymentGroupSettlement,
   paymentGroupIsLive,
 } from "@auction/domain";
+import type { IPaymentEligibilityGate } from "@auction/finance-runtime";
 import type {
   IPaymentGroupRepository,
   IPaymentLifecycleRepository,
@@ -47,6 +48,8 @@ export type PaymentGroupSettlementDeps = {
   receipt: IPaymentGroupReceipt;
   /** The finance task for money that arrived but could not settle the group. */
   unappliedMoney: Pick<IUnappliedMoneyRecorder, "record">;
+  /** The same gate single-invoice payments use: a held or closed account's money is not captured. */
+  eligibility: IPaymentEligibilityGate;
 };
 
 const LIVE: PaymentGroupStatus[] = ["open", "processing"];
@@ -83,6 +86,8 @@ export class PaymentGroupSettlementService {
     currency: string;
   }): Promise<PaymentWebhookResult> {
     const afterCommit: (() => Promise<void>)[] = [];
+    // Read before the transaction opens; a failed read throws, so the provider retries the event.
+    const blocked = await this.accountBlock(input.groupId);
     let paid: { group: PaymentGroupRecord; members: PaymentGroupMember[] } | null = null;
 
     const result = await this.deps.transactionRunner.runInTransaction(async (tx) => {
@@ -109,6 +114,12 @@ export class PaymentGroupSettlementService {
           await this.alertRefused(tx, group, decision.reason, input);
         }
         return { processed: true, action: "skipped", reason: decision.reason } as const;
+      }
+      // Nothing is captured for an account that cannot pay: finance decides what happens to it.
+      if (blocked) {
+        const reason = `account_${blocked}`;
+        await this.alertRefused(tx, group, reason, input);
+        return { processed: true, action: "skipped", reason } as const;
       }
 
       for (const member of members) {
@@ -162,6 +173,21 @@ export class PaymentGroupSettlementService {
       recordMoneyPathEvent("payment_group_paid");
     }
     return result;
+  }
+
+  /**
+   * Why the paying account cannot pay now (identity, organisation review, closed), or null. A
+   * group with no recorded payer is not payable. An unknown group is left to `settle` to report.
+   */
+  private async accountBlock(groupId: string): Promise<string | null> {
+    const group = await this.deps.groups.findById(groupId);
+    if (!group) return null;
+    if (!group.createdByUserId) return "payer_unknown";
+    const eligibility = await this.deps.eligibility.check({
+      payerUserId: group.createdByUserId,
+      buyerLegalEntityId: group.buyerLegalEntityId,
+    });
+    return eligibility.kind === "payable" ? null : eligibility.reason;
   }
 
   /** A bank transfer was started for the group: its invoices are held while the money travels. */

@@ -4,6 +4,7 @@ import {
   PURCHASE_LIST_LIMIT,
   accountPurchaseScope,
   amountOwedEntry,
+  decisivePaymentByLot,
   purchasePaymentRole,
 } from "@auction/domain";
 import type { Lot } from "@auction/types";
@@ -106,10 +107,7 @@ export class AmountsOwedService implements IAmountsOwedService {
       this.deps.fulfilments.statusesForLots(lots.map((lot) => lot.id)),
       this.deps.paymentBuyerService.getBuyerComplianceGateStatus(userId),
     ]);
-    const paymentByLot = new Map<string, PaymentRow>();
-    for (const payment of payments) {
-      if (!paymentByLot.has(payment.lotId)) paymentByLot.set(payment.lotId, payment);
-    }
+    const paymentByLot = decisivePaymentByLot(payments);
     const hold: AccountHold = gate.status;
     const entries = priced.flatMap((lot) => {
       const payment = paymentByLot.get(lot.id);

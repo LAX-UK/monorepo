@@ -155,7 +155,7 @@
 
   .shop-edition__buy {
     position: sticky;
-    top: calc(var(--header-height, 4rem) + var(--shop-space-4));
+    top: calc(var(--header-offset, var(--header-height, 4rem)) + var(--shop-space-4));
     grid-row: 1 / span 2;
   }
 }

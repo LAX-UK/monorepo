@@ -65,7 +65,7 @@ export function LotTemplate({
                   displayStyle={media.style}
                   pairsTwoFaces={media.pairsTwoFaces}
                 />
-                <div className="min-w-0 lg:sticky lg:top-[calc(var(--header-height)+1.5rem)]">
+                <div className="min-w-0 lg:sticky lg:top-[calc(var(--header-offset,var(--header-height,4rem))+1.5rem)]">
                   <LotIdentity
                     lotNumber={lot.lotNumber}
                     title={lot.title}

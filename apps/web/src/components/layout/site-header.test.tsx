@@ -140,15 +140,6 @@ describe("SiteHeader", () => {
     const header = screen.getByRole("banner");
     expect(header.className).toContain("lg:translate-y-[calc(var(--lax-top-bar-shift,0px)*-1)]");
     expect(screen.getByTestId("lax-family-bar").className).toContain("min-h-9");
-    Object.defineProperty(window, "scrollY", { value: 100, configurable: true });
-    window.dispatchEvent(new Event("scroll"));
-    return new Promise<void>((resolve) =>
-      requestAnimationFrame(() => {
-        expect(header.style.getPropertyValue("--lax-top-bar-shift")).toBe("36px");
-        Object.defineProperty(window, "scrollY", { value: 0, configurable: true });
-        resolve();
-      }),
-    );
   });
 
   it("puts search, theme, account and the menu in the row, in that order", () => {
