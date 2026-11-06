@@ -502,4 +502,8 @@ export const COVER_IMAGES = {
   degas: met("ep/original/DP-20101-001.jpg"),
   depts: met("ep/original/DP-19279-001.jpg"),
   venice: WORKS.venice.image,
+  /** Pieter Bruegel the Elder, The Harvesters (1565). The Met, public domain. */
+  harvesters: met("ep/original/DP119115.jpg"),
+  /** Caspar David Friedrich, Two Men Contemplating the Moon (c. 1825–30). The Met, public domain. */
+  moon: met("ep/original/DP-31997-001-NEW.jpg"),
 } as const;

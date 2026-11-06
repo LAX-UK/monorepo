@@ -80,6 +80,9 @@ export async function runDemoFull(db: Db, now: number = Date.now()): Promise<Dem
   }
   const covers = [
     ...catalogue.sales.map((s) => ({ id: s.id, image: s.coverImage })),
+    // The top-up's two live sales lead the home page, so they get large covers too.
+    { id: DEMO_IDS.sale(1), image: demoImageUrl(COVER_IMAGES.harvesters, "cover") },
+    { id: DEMO_IDS.sale(2), image: demoImageUrl(COVER_IMAGES.moon, "cover") },
     { id: DEMO_IDS.sale(3), image: demoImageUrl(COVER_IMAGES.vanGogh, "cover") },
   ];
   for (const { id, image } of covers) {
