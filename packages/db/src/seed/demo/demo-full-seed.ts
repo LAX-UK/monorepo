@@ -12,7 +12,7 @@ import { eq, sql } from "drizzle-orm";
 import * as schema from "../../schema/index.js";
 import { type FullActors, buildFullCatalogue } from "./demo-full-catalogue.js";
 import { COVER_IMAGES, DEPARTMENTS, WORKS } from "./demo-full-works.js";
-import { DEMO_KEY_PREFIX, demoImageUrl, departmentHeroSource } from "./demo-images.js";
+import { demoImageUrl, departmentHeroSource } from "./demo-images.js";
 import { DEMO_IDS, DEMO_PEOPLE } from "./demo-topup-ids.js";
 import {
   type Db,
@@ -86,13 +86,14 @@ export async function runDemoFull(db: Db, now: number = Date.now()): Promise<Dem
     { id: DEMO_IDS.sale(3), image: demoImageUrl(COVER_IMAGES.vanGogh, "cover") },
   ];
   for (const { id, image } of covers) {
-    // Cover slots made from an earlier picture are cleared; the cover measuring step that follows
-    // the seeds rebuilds them from the copy.
+    // Cover slots made from any other picture, including an earlier copy of this one, are
+    // cleared; the cover measuring step that follows the seeds rebuilds them from this copy.
+    const copyKey = new URL(image).pathname.slice(1);
     await db
       .update(schema.sale)
       .set({
         coverImages: [image],
-        coverSlots: sql`case when ${schema.sale.coverSlots}::text like ${`%${DEMO_KEY_PREFIX}/%`} then ${schema.sale.coverSlots} else '{}'::jsonb end`,
+        coverSlots: sql`case when ${schema.sale.coverSlots}::text like ${`%${copyKey}%`} then ${schema.sale.coverSlots} else '{}'::jsonb end`,
       })
       .where(eq(schema.sale.id, id));
   }

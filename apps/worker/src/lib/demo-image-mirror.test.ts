@@ -8,6 +8,7 @@ const entry: DemoImageEntry = {
   kind: "lot",
   key: "demo/lot/a-12345678.jpg",
   longEdge: 1600,
+  trim: 0,
   licence: "CC0",
   provider: "The Met Open Access",
 };
@@ -80,5 +81,34 @@ describe("resizeDemoPicture", () => {
       .png()
       .toBuffer();
     expect((await sharp(await resizeDemoPicture(small, 1600)).metadata()).width).toBe(400);
+  });
+
+  it("trims a share of each side before resizing, so a scan's black frame is cut away", async () => {
+    // A 1000 x 500 picture with a 10 px black frame; a 3% trim cuts 30 px from the sides, 15 px top and bottom.
+    const framed = await sharp({
+      create: { width: 1000, height: 500, channels: 3, background: "#000000" },
+    })
+      .composite([
+        {
+          input: await sharp({
+            create: { width: 980, height: 480, channels: 3, background: "#d0c0a0" },
+          })
+            .png()
+            .toBuffer(),
+          left: 10,
+          top: 10,
+        },
+      ])
+      .png()
+      .toBuffer();
+    const out = await resizeDemoPicture(framed, 2000, 0.03);
+    const meta = await sharp(out).metadata();
+    expect(meta.width).toBe(940);
+    expect(meta.height).toBe(470);
+    const { data, info } = await sharp(out).greyscale().raw().toBuffer({ resolveWithObject: true });
+    const corner = data[0] ?? 0;
+    const edgeMid = data[Math.floor(info.height / 2) * info.width] ?? 0;
+    expect(corner).toBeGreaterThan(100);
+    expect(edgeMid).toBeGreaterThan(100);
   });
 });
