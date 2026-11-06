@@ -10,6 +10,7 @@ import {
   STATUS_STYLES,
   type StatusStyle,
   moneyStatusStyle,
+  mostUrgentStatus,
 } from "./portfolio-labels";
 
 const NEEDS_YOU: StatusStyle = { tone: "warning", cue: "alert" };
@@ -78,5 +79,21 @@ describe("moneyStatusStyle", () => {
       expect(MONEY_STATUS_LABELS[status]).toBeTruthy();
     }
     expect(moneyStatusStyle("pending", "paid")).not.toEqual(moneyStatusStyle("completed", "paid"));
+  });
+});
+
+describe("mostUrgentStatus", () => {
+  it("picks what needs the person over what is in progress or settled", () => {
+    expect(mostUrgentStatus(["owned", "in_sale", "awaiting_payment"])).toBe("awaiting_payment");
+    expect(mostUrgentStatus(["owned", "awaiting_shipment"])).toBe("awaiting_shipment");
+  });
+
+  it("keeps the first of statuses with the same tone", () => {
+    expect(mostUrgentStatus(["awaiting_shipment", "consigned"])).toBe("awaiting_shipment");
+    expect(mostUrgentStatus(["consigned", "awaiting_shipment"])).toBe("consigned");
+  });
+
+  it("returns the only status given", () => {
+    expect(mostUrgentStatus(["sold"])).toBe("sold");
   });
 });
