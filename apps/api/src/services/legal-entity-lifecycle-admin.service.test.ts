@@ -194,13 +194,17 @@ describe("LegalEntityLifecycleAdminService", () => {
 describe("LegalEntityLifecycleAdminService invoice terms", () => {
   const entityId = "00000000-0000-4000-8000-000000000001";
 
+  const enteredStatusAt = new Date("2026-11-02T10:00:00Z");
+
   async function run(op: LifecycleAdminOp, status: string, reason?: string) {
     const txHandle = {
       select: vi.fn().mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
             for: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue([{ id: entityId, status }]),
+              limit: vi
+                .fn()
+                .mockResolvedValue([{ id: entityId, status, statusChangedAt: enteredStatusAt }]),
             }),
           }),
         }),
@@ -235,7 +239,7 @@ describe("LegalEntityLifecycleAdminService invoice terms", () => {
     const { invoiceTerms, txHandle } = await run("approve", "under_review");
     expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledTimes(1);
     expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledWith(
-      { kind: "account", legalEntityId: entityId },
+      { kind: "account", legalEntityId: entityId, holdStartedAt: enteredStatusAt },
       expect.any(Date),
       txHandle,
     );

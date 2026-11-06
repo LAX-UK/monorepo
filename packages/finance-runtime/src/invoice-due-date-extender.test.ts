@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { InvoiceDueDateExtender } from "./invoice-due-date-extender.js";
 
-const repo = (extendDueAt: ReturnType<typeof vi.fn>, ids: string[] = []) => ({
-  extendDueAt,
-  listUnpaidLiveInvoiceIds: vi.fn().mockResolvedValue(ids),
-});
+const repo = (
+  extendDueAt: ReturnType<typeof vi.fn> = vi.fn(),
+  extendUnpaidDueDates: ReturnType<typeof vi.fn> = vi.fn().mockResolvedValue(0),
+) => ({ extendDueAt, extendUnpaidDueDates });
 
 describe("InvoiceDueDateExtender", () => {
   it("moves the due date to the term counted from the release (end of the London day, seven days on)", async () => {
@@ -41,12 +41,16 @@ describe("InvoiceDueDateExtender", () => {
 });
 
 describe("InvoiceDueDateExtender.extendOpenInvoices", () => {
-  const scope = { kind: "account", legalEntityId: "acct-1" } as const;
+  const scope = {
+    kind: "account",
+    legalEntityId: "acct-1",
+    holdStartedAt: new Date("2026-11-01T09:00:00.000Z"),
+  } as const;
   const releasedAt = new Date("2026-11-10T14:00:00.000Z");
 
-  it("gives every unpaid invoice of the scope the term counted from the release", async () => {
-    const extendDueAt = vi.fn().mockResolvedValue(true);
-    const invoices = repo(extendDueAt, ["inv-1", "inv-2"]);
+  it("gives the unpaid invoices of the scope the term counted from the release, in one statement", async () => {
+    const extendUnpaidDueDates = vi.fn().mockResolvedValue(2);
+    const invoices = repo(vi.fn(), extendUnpaidDueDates);
     const tx = { marker: "tx" } as never;
 
     const moved = await new InvoiceDueDateExtender(invoices).extendOpenInvoices(
@@ -56,25 +60,21 @@ describe("InvoiceDueDateExtender.extendOpenInvoices", () => {
     );
 
     expect(moved).toBe(2);
-    expect(invoices.listUnpaidLiveInvoiceIds).toHaveBeenCalledWith(scope, tx);
-    const until = new Date("2026-11-17T23:59:59.999Z");
-    expect(extendDueAt).toHaveBeenCalledWith("inv-1", until, tx);
-    expect(extendDueAt).toHaveBeenCalledWith("inv-2", until, tx);
+    expect(extendUnpaidDueDates).toHaveBeenCalledTimes(1);
+    expect(extendUnpaidDueDates).toHaveBeenCalledWith(
+      scope,
+      new Date("2026-11-17T23:59:59.999Z"),
+      tx,
+    );
+    expect(invoices.extendDueAt).not.toHaveBeenCalled();
   });
 
-  it("counts only the due dates that moved: one already due later keeps its date", async () => {
-    const extendDueAt = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false);
-    const moved = await new InvoiceDueDateExtender(
-      repo(extendDueAt, ["inv-1", "inv-2"]),
-    ).extendOpenInvoices(scope, releasedAt);
-    expect(moved).toBe(1);
-  });
-
-  it("does nothing when the scope owes nothing", async () => {
-    const extendDueAt = vi.fn();
-    expect(
-      await new InvoiceDueDateExtender(repo(extendDueAt)).extendOpenInvoices(scope, releasedAt),
-    ).toBe(0);
-    expect(extendDueAt).not.toHaveBeenCalled();
+  it("passes when the hold began, so debt that was overdue before it is left alone", async () => {
+    const extendUnpaidDueDates = vi.fn().mockResolvedValue(0);
+    await new InvoiceDueDateExtender(repo(vi.fn(), extendUnpaidDueDates)).extendOpenInvoices(
+      scope,
+      releasedAt,
+    );
+    expect(extendUnpaidDueDates.mock.calls[0]?.[0].holdStartedAt).toEqual(scope.holdStartedAt);
   });
 });

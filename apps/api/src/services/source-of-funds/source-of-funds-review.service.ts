@@ -119,7 +119,12 @@ export class SourceOfFundsReviewService implements ISourceOfFundsReviewService {
         // Paying was held for this check: the term runs from the approval, moved in the same
         // transaction as the decision.
         await this.invoiceTerms?.extendOpenInvoices(
-          { kind: "winner", userId: updated.userId, personalAccountsOnly: false },
+          {
+            kind: "winner",
+            userId: updated.userId,
+            personalAccountsOnly: false,
+            holdStartedAt: updated.createdAt,
+          },
           new Date(),
           conn,
         );

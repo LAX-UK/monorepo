@@ -25,9 +25,13 @@ export class VeriffKycService implements IKycService {
     repo: IKycRepository,
     transactionRunner: ITransactionRunner | null = null,
     marketingEvents: IMarketingEventService | null = null,
-    veriffClient?: VeriffClient,
-    invoiceTerms: Pick<InvoiceDueDateExtender, "extendOpenInvoices"> | null = null,
+    options: {
+      veriffClient?: VeriffClient;
+      /** Moves the due dates of a verified buyer's invoices, which were owed while held. */
+      invoiceTerms?: Pick<InvoiceDueDateExtender, "extendOpenInvoices">;
+    } = {},
   ) {
+    const { veriffClient, invoiceTerms = null } = options;
     const deps = createKycServiceDeps({
       env,
       repo,

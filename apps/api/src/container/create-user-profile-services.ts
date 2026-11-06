@@ -1,9 +1,6 @@
 import type { Database } from "@auction/db";
 import type { IUserInvitationRepository } from "@auction/persistence/interfaces";
-import {
-  DrizzleAccountOnboardingRepository,
-  DrizzleBidInvoiceRepository,
-} from "@auction/persistence/repositories";
+import { DrizzleAccountOnboardingRepository } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { CachedAccountOnboardingChecker } from "../infrastructure/cached-account-onboarding.checker.js";
 import { type OrgModuleGate, createOrgModuleGate } from "../lib/org-module-gate.js";
@@ -134,7 +131,7 @@ export function createUserProfileServices(
     mediaUrlResolver,
     saleService,
     mediaAssetEnricher,
-    new DrizzleBidInvoiceRepository(db),
+    repos.bidInvoiceRepository,
   );
   const savedSearchService = new SavedSearchService(savedSearchRepository);
   const artistWatchlistService = new ArtistWatchlistService(artistWatchlistRepo, {

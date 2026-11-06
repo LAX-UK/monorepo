@@ -725,7 +725,12 @@ describe("SourceOfFundsService invoice terms", () => {
     const invoiceTerms = await decideWith("approve");
     expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledTimes(1);
     expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledWith(
-      { kind: "winner", userId: "u1", personalAccountsOnly: false },
+      {
+        kind: "winner",
+        userId: "u1",
+        personalAccountsOnly: false,
+        holdStartedAt: new Date("2026-01-01T00:00:00Z"),
+      },
       expect.any(Date),
       TX,
     );

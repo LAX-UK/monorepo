@@ -6,7 +6,6 @@ import type {
   IMarketingEventPublisher,
 } from "@auction/marketing-events";
 import type { IWatchlistScreeningReader } from "@auction/persistence/interfaces";
-import { DrizzleBidInvoiceRepository } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import type { AdminSourceOfFundsQueryService } from "../services/admin/admin-source-of-funds-query.service.js";
 import type { LegalEntityDocumentAdminService } from "../services/admin/legal-entity-document-admin.service.js";
@@ -71,7 +70,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
   const { env, db, infra, repos, platform } = input;
 
   const marketing = createComplianceMarketing({ env, db, infra });
-  const invoiceTerms = new InvoiceDueDateExtender(new DrizzleBidInvoiceRepository(db));
+  const invoiceTerms = new InvoiceDueDateExtender(repos.bidInvoiceRepository);
   const kycAml = createComplianceKycAml({
     env,
     infra,

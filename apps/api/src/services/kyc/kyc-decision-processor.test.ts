@@ -42,7 +42,13 @@ function processor(
     invoiceTerms?: { extendOpenInvoices: ReturnType<typeof vi.fn> };
   } = {},
 ) {
-  const existing = { id: "v1", userId: "u1", providerSessionId: "sess-1", status: "created" };
+  const existing = {
+    id: "v1",
+    userId: "u1",
+    providerSessionId: "sess-1",
+    status: "created",
+    createdAt: new Date("2026-11-01T09:00:00Z"),
+  };
   const repo = {
     findByProviderSessionId: vi.fn().mockResolvedValue(existing),
     getUserKycState: vi.fn().mockResolvedValue({ kycStatus: opts.userKycStatus ?? "pending" }),
@@ -113,7 +119,12 @@ describe("KycDecisionProcessor invoice terms", () => {
     await processor({ invoiceTerms }).apply(input({}), CONN);
     expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledTimes(1);
     expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledWith(
-      { kind: "winner", userId: "u1", personalAccountsOnly: true },
+      {
+        kind: "winner",
+        userId: "u1",
+        personalAccountsOnly: true,
+        holdStartedAt: new Date("2026-11-01T09:00:00Z"),
+      },
       expect.any(Date),
       CONN,
     );

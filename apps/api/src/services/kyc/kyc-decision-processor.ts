@@ -141,7 +141,12 @@ export class KycDecisionProcessor {
           // A personal buyer was held until now: their invoices' terms run from the release,
           // moved in the same transaction as the verification.
           await this.invoiceTerms?.extendOpenInvoices(
-            { kind: "winner", userId: existing.userId, personalAccountsOnly: true },
+            {
+              kind: "winner",
+              userId: existing.userId,
+              personalAccountsOnly: true,
+              holdStartedAt: existing.createdAt,
+            },
             new Date(),
             conn ?? undefined,
           );

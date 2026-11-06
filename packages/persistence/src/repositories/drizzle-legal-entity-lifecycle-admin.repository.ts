@@ -18,6 +18,7 @@ const lifecycleColumns = {
   stripeConnectRequirementsErrors: legalEntity.stripeConnectRequirementsErrors,
   stripeConnectDisabledReason: legalEntity.stripeConnectDisabledReason,
   isLaxManaged: legalEntity.isLaxManaged,
+  statusChangedAt: legalEntity.statusChangedAt,
 };
 
 function toRow(

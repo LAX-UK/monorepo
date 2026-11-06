@@ -11,6 +11,8 @@ export type LegalEntityLifecycleRow = {
   stripeConnectRequirementsErrors: StripeConnectRequirementError[];
   stripeConnectDisabledReason: string | null;
   isLaxManaged: boolean;
+  /** When the organisation entered its current status; `null` if it never changed. */
+  statusChangedAt: Date | null;
 };
 
 export type LegalEntityLifecycleTransitionUpdate = {

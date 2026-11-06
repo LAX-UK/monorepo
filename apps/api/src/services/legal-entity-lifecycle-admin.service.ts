@@ -141,7 +141,12 @@ export class LegalEntityLifecycleAdminService {
         organisationStateAllows(navLocked.next, "pay")
       ) {
         await this.options.invoiceTerms?.extendOpenInvoices(
-          { kind: "account", legalEntityId: entityId },
+          {
+            kind: "account",
+            legalEntityId: entityId,
+            // Held since it entered the status it is leaving; never changed means since creation.
+            holdStartedAt: row.statusChangedAt ?? new Date(0),
+          },
           new Date(),
           tx,
         );

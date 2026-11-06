@@ -316,7 +316,7 @@ export function createPaymentsServices(
     eligibility: paymentEligibility,
     listUnpaidWithCheckout: (limit: number) => staleCanceller.listUnpaidWithCheckout(limit),
   });
-  const bidInvoiceRepo = new DrizzleBidInvoiceRepository(db);
+  const bidInvoiceRepo = repos.bidInvoiceRepository;
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,

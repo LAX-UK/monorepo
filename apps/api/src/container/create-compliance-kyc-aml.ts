@@ -47,8 +47,7 @@ export function createComplianceKycAml(
     kycRepository,
     platform.transactionRunner,
     marketing.marketingEventService,
-    undefined,
-    invoiceTerms,
+    { invoiceTerms },
   );
   const kycResubmissionNotifier = new KycResubmissionNotifier(
     userRepo,

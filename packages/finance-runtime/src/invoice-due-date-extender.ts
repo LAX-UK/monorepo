@@ -15,7 +15,7 @@ export class InvoiceDueDateExtender {
   constructor(
     private readonly invoices: Pick<
       IBidInvoiceDueDateRepository,
-      "extendDueAt" | "listUnpaidLiveInvoiceIds"
+      "extendDueAt" | "extendUnpaidDueDates"
     >,
   ) {}
 
@@ -27,19 +27,11 @@ export class InvoiceDueDateExtender {
   /**
    * Moves the due date of every unpaid invoice in `scope` when a hold on the buyer is released
    * (a source-of-funds case approved, an identity verified, an organisation approved): each
-   * invoice that was owed during the hold gets the term counted from the release. Idempotent, and
-   * an invoice already due later keeps its date. Returns how many due dates moved.
+   * invoice that fell due during the hold gets the term counted from the release. One statement,
+   * idempotent; an invoice already due later keeps its date, and one that was overdue before the
+   * hold began (`scope.holdStartedAt`) is not touched. Returns how many due dates moved.
    */
-  async extendOpenInvoices(
-    scope: OpenInvoiceScope,
-    releasedAt: Date,
-    tx?: Database,
-  ): Promise<number> {
-    const ids = await this.invoices.listUnpaidLiveInvoiceIds(scope, tx);
-    let moved = 0;
-    for (const id of ids) {
-      if (await this.extendAfterHold(id, releasedAt, tx)) moved += 1;
-    }
-    return moved;
+  extendOpenInvoices(scope: OpenInvoiceScope, releasedAt: Date, tx?: Database): Promise<number> {
+    return this.invoices.extendUnpaidDueDates(scope, invoiceDueAt(releasedAt), tx);
   }
 }
