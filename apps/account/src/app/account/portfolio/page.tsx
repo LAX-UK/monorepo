@@ -1,14 +1,15 @@
 import { AccountShell } from "@/components/account-shell";
 import { AccountPageHeader } from "@/components/account-ui";
 import { AccountUnavailable } from "@/components/account-unavailable";
+import { CollectionCard } from "@/components/collection-card";
 import { PortfolioAttention } from "@/components/portfolio-attention";
 import { PortfolioEmptyState } from "@/components/portfolio-empty-state";
-import { PortfolioHeader } from "@/components/portfolio-header";
 import { PortfolioHoldings } from "@/components/portfolio-holdings";
 import { PortfolioNotices } from "@/components/portfolio-notices";
 import { loadPortfolioItems } from "@/server/application/load-portfolio-data";
 import { getLaxAccountContainer } from "@/server/container";
 import { buildAccountProducts } from "@/server/domain/account-products.vm";
+import { unansweredProducts } from "@/server/domain/home-products-status";
 import { buildSourceNotices } from "@/server/domain/portfolio-composition";
 import { buildPortfolioPage } from "@/server/domain/portfolio-page.vm";
 import { type PortfolioSearchParams, parseHoldingsQuery } from "@/server/domain/portfolio-query";
@@ -33,7 +34,12 @@ export default async function PortfolioPage({
     redirect(`/api/auth/login?returnTo=${PORTFOLIO_ROUTES.overview}`);
 
   const filter = parseHoldingsQuery(params);
-  const page = buildPortfolioPage(loaded.rows, filter, loaded.complete);
+  const page = buildPortfolioPage(
+    loaded.rows,
+    filter,
+    loaded.complete,
+    unansweredProducts(loaded.unavailable),
+  );
   const notices = buildSourceNotices(loaded, "items");
   const payHref = page.attention.find((row) => row.external)?.href ?? null;
   const isNewCollector = page.emptyState === "new_collector";
@@ -54,7 +60,12 @@ export default async function PortfolioPage({
       ) : null}
       {isNewCollector || loaded.rows.length === 0 ? null : (
         <>
-          <PortfolioHeader header={page.header} />
+          <CollectionCard
+            collection={page.collection}
+            chart={page.worksByProduct}
+            incompleteNote={null}
+            showNotes
+          />
           <PortfolioAttention rows={page.attention} />
           <PortfolioHoldings
             holdings={page.holdings}

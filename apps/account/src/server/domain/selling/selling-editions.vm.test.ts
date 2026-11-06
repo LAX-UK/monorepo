@@ -76,7 +76,7 @@ describe("buildEditionsPage", () => {
       approved: 5,
       soldOrReserved: 2,
       availableNow: 3,
-      lastApprovedOn: "1 Sept 2026",
+      lastApprovedOn: "Tue 1 Sep 2026",
       pending: null,
       action: { label: "Request more", current: 3 },
     });
@@ -93,7 +93,7 @@ describe("buildEditionsPage", () => {
     expect(page.rows[0]?.action).toBeNull();
     expect(page.rows[0]?.pending).toEqual({
       requestId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
-      summary: "Request pending: 3 more · sent 12 Oct 2026",
+      summary: "Request pending: 3 more · sent Mon 12 Oct 2026",
       note: "For the autumn fair",
     });
   });
@@ -155,9 +155,9 @@ describe("buildEditionsPage", () => {
       ["Harbour Print", "Withdrawn"],
     ]);
     expect(page.history[0]?.detail).toBe(
-      "Asked for 2 available to sell · sent 20 Sept 2026 · answered 22 Sept 2026",
+      "Asked for 2 available to sell · sent Sun 20 Sep 2026 · answered Tue 22 Sep 2026",
     );
-    expect(page.history[2]?.detail).toContain("withdrawn 2 Jul 2026");
+    expect(page.history[2]?.detail).toContain("withdrawn Thu 2 Jul 2026");
     expect(page.history.every((row) => row.declineReason === null)).toBe(true);
   });
 });

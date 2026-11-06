@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildWorksByProduct } from "./home-works-by-product.vm";
 import { item } from "./portfolio-fixtures.test-util";
+import { buildWorksByProduct } from "./works-by-product.vm";
 
 const works = (product: "bid" | "shop" | "art", count: number) =>
   Array.from({ length: count }, (_, index) => item({ product, id: `${product}-${index}` }));

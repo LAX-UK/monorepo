@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/format-date";
 import {
   ARTIST_APPLICATION_JOURNEY,
   type ArtistApplicationStatusTone,
@@ -41,14 +42,7 @@ export type SellingApplicationVm =
       action: SellingApplicationAction | null;
     };
 
-const LONG_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-  timeZone: "Europe/London",
-});
-
-const longDate = (value: string | null) => (value ? LONG_DATE.format(new Date(value)) : null);
+const dateOrNull = (value: string | null) => (value ? formatDate(value) : null);
 
 /**
  * The Selling area's view of an artist application. Writing and answering happen on lax.art,
@@ -96,7 +90,7 @@ export function buildSellingApplication(
     next: isArtistApplicationAwaitingReply(application.status)
       ? `${vm.next} We reply by email.`
       : vm.next,
-    sentOn: longDate(application.submittedAt),
+    sentOn: dateOrNull(application.submittedAt),
     journey:
       application.status === "draft"
         ? []
@@ -107,7 +101,7 @@ export function buildSellingApplication(
             current: index === step,
           })),
     message,
-    reapplyOn: state.next === "wait" ? longDate(state.availableFrom) : null,
+    reapplyOn: state.next === "wait" ? dateOrNull(state.availableFrom) : null,
     action,
   };
 }

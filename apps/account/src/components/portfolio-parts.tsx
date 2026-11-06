@@ -1,5 +1,5 @@
 import { formatCurrencyTotals } from "@/lib/format-money";
-import { PRODUCT_LABELS, STATUS_LABELS, STATUS_TONES } from "@/server/domain/portfolio-labels";
+import { PRODUCT_LABELS, STATUS_LABELS, STATUS_STYLES } from "@/server/domain/portfolio-labels";
 import type { CurrencyTotal, LaxPortfolioItemStatus, LaxProductId } from "@auction/lax-ecosystem";
 import { MediaPlaceholder } from "@auction/ui/components/media-placeholder";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -16,7 +16,12 @@ export function ProductBadge({ product }: { product: LaxProductId }) {
 }
 
 export function PortfolioStatusBadge({ status }: { status: LaxPortfolioItemStatus }) {
-  return <StatusBadge tone={STATUS_TONES[status]}>{STATUS_LABELS[status]}</StatusBadge>;
+  const { tone, cue } = STATUS_STYLES[status];
+  return (
+    <StatusBadge tone={tone} shape={cue}>
+      {STATUS_LABELS[status]}
+    </StatusBadge>
+  );
 }
 
 /** One figure per currency, side by side. "None recorded" is shown instead of a zero. */

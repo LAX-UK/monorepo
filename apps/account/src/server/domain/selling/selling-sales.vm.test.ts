@@ -77,8 +77,8 @@ const NOW = Date.parse("2026-10-25T12:00:00Z");
 
 describe("describePayoutStatus", () => {
   it("dates paid and due payouts, and leaves the refund-period placeholder date out", () => {
-    expect(describePayoutStatus("paid", PAYOUTS[0] ?? null).label).toBe("Paid 18 Sept 2026");
-    expect(describePayoutStatus("due", PAYOUTS[1] ?? null).label).toBe("Due 2 Oct 2026");
+    expect(describePayoutStatus("paid", PAYOUTS[0] ?? null).label).toBe("Paid Fri 18 Sep 2026");
+    expect(describePayoutStatus("due", PAYOUTS[1] ?? null).label).toBe("Due Fri 2 Oct 2026");
     expect(describePayoutStatus("pending_refund_period", PAYOUTS[2] ?? null).label).toBe(
       "Waiting for refund period to end",
     );
@@ -99,9 +99,9 @@ describe("buildSalesPage", () => {
     expect(
       page.rows.map((row) => [row.channel, row.edition, row.soldOn, row.payout.label]),
     ).toEqual([
-      ["lax.art", null, "20 Oct 2026", "Waiting for refund period to end"],
-      ["LAX Shop", "Edition 7", "10 Sept 2026", "Paid 18 Sept 2026"],
-      ["Sold outside LAX", "Edition 7", "1 Apr 2026", "Due 2 Oct 2026"],
+      ["lax.art", null, "Tue 20 Oct 2026", "Waiting for refund period to end"],
+      ["LAX Shop", "Edition 7", "Thu 10 Sep 2026", "Paid Fri 18 Sep 2026"],
+      ["Sold outside LAX", "Edition 7", "Wed 1 Apr 2026", "Due Fri 2 Oct 2026"],
     ]);
     expect(page.summary).toEqual({
       count: 3,
@@ -117,10 +117,10 @@ describe("buildSalesPage", () => {
   it("filters to the UK tax year, which starts on 6 April", () => {
     const page = buildSalesPage(SALES, PAYOUTS, "this-tax-year", NOW);
     expect(page.rows).toHaveLength(2);
-    expect(page.periodRange).toBe("6 Apr 2026 to 5 Apr 2027");
+    expect(page.periodRange).toBe("Mon 6 Apr 2026 to Mon 5 Apr 2027");
     const last = buildSalesPage(SALES, PAYOUTS, "last-tax-year", NOW);
-    expect(last.rows.map((row) => row.soldOn)).toEqual(["1 Apr 2026"]);
-    expect(describeSalesPeriod("last-tax-year", NOW)).toBe("6 Apr 2025 to 5 Apr 2026");
+    expect(last.rows.map((row) => row.soldOn)).toEqual(["Wed 1 Apr 2026"]);
+    expect(describeSalesPeriod("last-tax-year", NOW)).toBe("Sun 6 Apr 2025 to Sun 5 Apr 2026");
   });
 
   it("says when sales exist but none fall in the period", () => {
@@ -146,7 +146,7 @@ describe("salesStatementCsv", () => {
       `2026-10-20,"'=HYPERLINK(""x""), ""Salt""",,lax.art,100.00,20.00,80.00,Waiting for refund period to end`,
     );
     expect(lines[2]).toBe(
-      "2026-09-10,Harbour Print,Edition 7,LAX Shop,850.00,170.00,680.00,Paid 18 Sept 2026",
+      "2026-09-10,Harbour Print,Edition 7,LAX Shop,850.00,170.00,680.00,Paid Fri 18 Sep 2026",
     );
   });
 });

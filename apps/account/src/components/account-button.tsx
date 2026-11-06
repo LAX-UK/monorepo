@@ -17,10 +17,11 @@ const ACCOUNT_SIZE = "min-h-11 rounded-md px-5 text-sm";
 /**
  * The outline button on the card surface with a visible edge. The shared outline sits on the
  * lowest surface with a 25% border, which reads as a dark well on Account's dark cards and as
- * an edgeless button on white.
+ * an edgeless button on white. The edge is the control-border token, the one Account's text
+ * fields use, which clears 3:1 against the card in light and dark.
  */
 const ACCOUNT_OUTLINE =
-  "border-outline-variant bg-surface shadow-none hover:bg-surface-container-low active:bg-surface-container";
+  "border-control-border bg-surface shadow-none hover:bg-surface-container-low active:bg-surface-container";
 
 const TEXT_SHAPED = new Set(["link", "underline", "tertiary", "ctaLink", "chevron"]);
 

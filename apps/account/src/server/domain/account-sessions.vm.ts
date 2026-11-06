@@ -1,3 +1,4 @@
+import { formatRelativeAge } from "@/lib/format-date";
 import type { AccountSession } from "@auction/identity-contracts";
 import { formatDeviceLabel } from "@auction/identity-contracts/account";
 
@@ -15,33 +16,13 @@ export type SessionsVm = {
   others: SessionRowVm[];
 };
 
-const MINUTE = 60_000;
-const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
-
 function plural(count: number, unit: string): string {
   return `${count} ${unit}${count === 1 ? "" : "s"}`;
 }
 
-/** "just now", "5 minutes ago", "2 days ago", then a plain date once it stops being recent. */
-export function formatSessionAge(then: Date, now: Date): string {
-  const elapsed = Math.max(0, now.getTime() - then.getTime());
-  if (elapsed < MINUTE) return "just now";
-  if (elapsed < HOUR) return `${plural(Math.floor(elapsed / MINUTE), "minute")} ago`;
-  if (elapsed < DAY) return `${plural(Math.floor(elapsed / HOUR), "hour")} ago`;
-  if (elapsed < 30 * DAY) return `${plural(Math.floor(elapsed / DAY), "day")} ago`;
-  const date = then.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-  return `on ${date}`;
-}
-
 function toRow(session: AccountSession, now: Date): SessionRowVm {
-  const lastActive = formatSessionAge(new Date(session.lastActiveAt), now);
-  const signedIn = formatSessionAge(new Date(session.createdAt), now);
+  const lastActive = formatRelativeAge(new Date(session.lastActiveAt), now);
+  const signedIn = formatRelativeAge(new Date(session.createdAt), now);
   const activity = lastActive === "just now" ? "Active now" : `Last active ${lastActive}`;
   return {
     id: session.id,

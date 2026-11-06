@@ -1,3 +1,4 @@
+import { formatDate } from "@/lib/format-date";
 import {
   ACCOUNT_DELETION_CONFIRMATION_PHRASE,
   ACCOUNT_DELETION_GRACE_DAYS,
@@ -47,15 +48,6 @@ export type DeletionPageVm =
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function longDate(date: Date): string {
-  return date.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
-
 export function buildDeletionPageVm(status: AccountDeletionStatus | null): DeletionPageVm {
   if (!status) return { kind: "unavailable" };
   const verdict = accountDeletionVerdict(status);
@@ -66,7 +58,7 @@ export function buildDeletionPageVm(status: AccountDeletionStatus | null): Delet
   if (verdict === "requested" && status.requestedAt && status.hold) {
     return {
       kind: "held",
-      requestedOn: longDate(new Date(status.requestedAt)),
+      requestedOn: formatDate(new Date(status.requestedAt)),
       title: DELETION_HOLD_COPY.title,
       basis: DELETION_HOLD_COPY.basis,
       reasonsIntro: DELETION_HOLD_COPY.reasonsIntro,
@@ -79,8 +71,8 @@ export function buildDeletionPageVm(status: AccountDeletionStatus | null): Delet
     const requested = new Date(status.requestedAt);
     return {
       kind: "requested",
-      requestedOn: longDate(requested),
-      deleteOn: longDate(new Date(requested.getTime() + ACCOUNT_DELETION_GRACE_DAYS * DAY_MS)),
+      requestedOn: formatDate(requested),
+      deleteOn: formatDate(new Date(requested.getTime() + ACCOUNT_DELETION_GRACE_DAYS * DAY_MS)),
     };
   }
   if (verdict === "blocked") {

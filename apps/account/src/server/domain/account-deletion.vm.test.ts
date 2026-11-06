@@ -118,8 +118,8 @@ describe("buildDeletionPageVm", () => {
     it("gives the date it was asked for and the date it will happen, thirty days on", () => {
       expect(buildDeletionPageVm(status({ requestedAt: "2026-10-23T12:00:00.000Z" }))).toEqual({
         kind: "requested",
-        requestedOn: "23 October 2026",
-        deleteOn: "22 November 2026",
+        requestedOn: "Fri 23 Oct 2026",
+        deleteOn: "Sun 22 Nov 2026",
       });
     });
 
@@ -127,8 +127,8 @@ describe("buildDeletionPageVm", () => {
       expect(
         buildDeletionPageVm(status({ requestedAt: "2026-12-31T23:30:00.000Z" })),
       ).toMatchObject({
-        requestedOn: "31 December 2026",
-        deleteOn: "30 January 2027",
+        requestedOn: "Thu 31 Dec 2026",
+        deleteOn: "Sat 30 Jan 2027",
       });
     });
 
@@ -152,7 +152,7 @@ describe("buildDeletionPageVm", () => {
     it("explains why, lists what is open, and says it is checked daily", () => {
       expect(buildDeletionPageVm(held)).toEqual({
         kind: "held",
-        requestedOn: "23 October 2026",
+        requestedOn: "Fri 23 Oct 2026",
         title: "Your account deletion is on hold",
         basis: expect.stringContaining("contract"),
         reasonsIntro: "What is still open:",

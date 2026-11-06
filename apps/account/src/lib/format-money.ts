@@ -26,13 +26,3 @@ export function formatCurrencyTotals(
 ): string {
   return totals.map((total) => formatMinorUnits(total.amount, total.currency)).join(" · ");
 }
-
-/** A calendar date in British format, read in UTC so server and browser agree. */
-export function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat(LOCALE, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(iso));
-}

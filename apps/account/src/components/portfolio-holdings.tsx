@@ -1,6 +1,6 @@
 import { EMPTY_STATE, SECTION_TITLE } from "@/components/account-ui";
 import type { FilterFieldVm } from "@/lib/filter-query";
-import { formatDate } from "@/lib/format-money";
+import { formatDate } from "@/lib/format-date";
 import { safeImageUrl } from "@/lib/media-origins";
 import { PRODUCT_LABELS, STATUS_LABELS } from "@/server/domain/portfolio-labels";
 import { workDetailHref } from "@/server/domain/portfolio-routes";
@@ -290,16 +290,7 @@ export function PortfolioHoldings({
         <>
           <HoldingsTable rows={holdings.rows} imageOrigins={imageOrigins} />
           <HoldingsCards rows={holdings.rows} imageOrigins={imageOrigins} />
-          <div className="flex flex-col gap-1">
-            <AllocationLine label="By artist" counts={holdings.allocation.byArtist} />
-            <AllocationLine
-              label="By product"
-              counts={holdings.allocation.byProduct.map((entry) => ({
-                ...entry,
-                label: PRODUCT_LABELS[entry.label as keyof typeof PRODUCT_LABELS] ?? entry.label,
-              }))}
-            />
-          </div>
+          <AllocationLine label="By artist" counts={holdings.allocation.byArtist} />
         </>
       )}
     </section>

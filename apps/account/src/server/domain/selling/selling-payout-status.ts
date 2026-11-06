@@ -1,4 +1,4 @@
-import { formatDate } from "@/lib/format-money";
+import { formatDate } from "@/lib/format-date";
 import type { PortalPayout } from "@auction/shop-contracts";
 
 export type PayoutStatusVm = {

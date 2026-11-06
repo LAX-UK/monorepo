@@ -3,11 +3,18 @@ import {
   CARD_PADDING,
   CARD_TITLE,
   EMPTY_STATE,
+  FIGURE_MEDIUM,
+  FIGURE_TABLE,
   SECTION_TITLE,
 } from "@/components/account-ui";
 import type { FilterFieldVm } from "@/lib/filter-query";
-import { formatDate, formatMinorUnits } from "@/lib/format-money";
-import { MONEY_SECTION_LABELS, MONEY_STATUS_LABELS } from "@/server/domain/portfolio-labels";
+import { formatDate } from "@/lib/format-date";
+import { formatMinorUnits } from "@/lib/format-money";
+import {
+  MONEY_SECTION_LABELS,
+  MONEY_STATUS_LABELS,
+  moneyStatusStyle,
+} from "@/server/domain/portfolio-labels";
 import {
   LEDGER_ANCHOR,
   type MoneyPageVm,
@@ -41,7 +48,7 @@ const BUSINESS_NAMES: Record<LaxBusinessKey, string> = {
 };
 
 export const MONEY_SEPARATION_NOTE =
-  "Money is shown per business and per currency. What you owe is never netted against what you are owed, and none of it is a valuation of your works.";
+  "Totals are kept separate for each business and currency. They are what you paid or owe, not what your works are worth.";
 
 function EntryLink({ entry }: { entry: LaxMoneyEntryV1 }) {
   const href = safeDeepLink(entry.href);
@@ -57,8 +64,9 @@ function EntryLink({ entry }: { entry: LaxMoneyEntryV1 }) {
 }
 
 function EntryStatus({ entry }: { entry: LaxMoneyEntryV1 }) {
+  const { tone, cue } = moneyStatusStyle(entry.status, moneySectionOf(entry));
   return (
-    <StatusBadge tone={entry.status === "cancelled" ? "danger" : "neutral"}>
+    <StatusBadge tone={tone} shape={cue}>
       {MONEY_STATUS_LABELS[entry.status]}
     </StatusBadge>
   );
@@ -83,7 +91,7 @@ function SummaryCards({ cards }: { cards: MoneySummaryCardVm[] }) {
                 className="flex items-baseline justify-between gap-4 py-2 first:pt-0"
               >
                 <dt className="text-sm text-on-surface-variant">{line.label}</dt>
-                <dd className="flex flex-col items-end font-headline text-base font-semibold tabular-nums">
+                <dd className={`flex flex-col items-end ${FIGURE_MEDIUM}`}>
                   {line.totals.length > 0 ? (
                     line.totals.map((total) => (
                       <span key={total.currency}>
@@ -149,7 +157,7 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
                 <TableCell>
                   <EntryStatus entry={entry} />
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className={`text-right ${FIGURE_TABLE}`}>
                   {formatMinorUnits(entry.amount, entry.currency)}
                 </TableCell>
                 <TableCell className="text-right">
@@ -164,9 +172,7 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
         {ledger.map((entry) => (
           <li key={`${entry.business.key}:${entry.id}`} className="flex flex-col gap-0.5 py-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="font-headline text-base font-semibold tabular-nums">
-                {formatMinorUnits(entry.amount, entry.currency)}
-              </p>
+              <p className={FIGURE_TABLE}>{formatMinorUnits(entry.amount, entry.currency)}</p>
               <EntryStatus entry={entry} />
             </div>
             <p className="text-sm">
