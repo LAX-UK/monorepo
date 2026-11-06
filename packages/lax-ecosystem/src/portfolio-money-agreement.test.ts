@@ -29,6 +29,8 @@ describe("portfolioMoneyAgreement", () => {
         owedByYou: 700,
         paidSoFar: 500,
         moneyPaid: 500,
+        moneyRefunded: 0,
+        moneyNetPaid: 500,
       },
       {
         business: "lax_art",
@@ -37,8 +39,27 @@ describe("portfolioMoneyAgreement", () => {
         owedByYou: 0,
         paidSoFar: 900,
         moneyPaid: 900,
+        moneyRefunded: 0,
+        moneyNetPaid: 900,
       },
     ]);
+  });
+
+  it("states what was paid and kept as paid less refunded", () => {
+    const [row] = portfolioMoneyAgreement(
+      [item({ paid: { lines: [{ kind: "price", amount: 700, currency: "GBP" }] } })],
+      [
+        moneyEntry({ id: "p", amount: 1000 }),
+        moneyEntry({ id: "r", direction: "refunded", amount: 300 }),
+        moneyEntry({ id: "x", direction: "refunded", status: "cancelled", amount: 50 }),
+      ],
+    );
+    expect(row).toMatchObject({
+      paidSoFar: 700,
+      moneyPaid: 1000,
+      moneyRefunded: 300,
+      moneyNetPaid: 700,
+    });
   });
 
   it("is empty when there is nothing to compare", () => {

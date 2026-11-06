@@ -98,4 +98,26 @@ describe("purchases list only ended lots", () => {
       expect.objectContaining({ buyerLegalEntityId: ACCOUNT, statuses: ["ended"] }),
     );
   });
+
+  it("shows a paid lot as paid when an abandoned attempt is the newest payment row", async () => {
+    const payments = [
+      { id: "abandoned", lotId: "lot-1", status: "pending", createdAt: "2026-10-03" },
+      { id: "paid", lotId: "lot-1", status: "captured", createdAt: "2026-10-02" },
+    ];
+    const service = new UserDashboardHttpApplicationService({
+      lotService: { list: vi.fn(async () => [{ id: "lot-1", saleId: "sale-1", images: [] }]) },
+      paymentBuyerService: {
+        listMyPaymentsForBuyerApi: vi.fn(async () => ({ data: payments })),
+        listEntityPaymentsForBuyerApi: vi.fn(async () => ({ data: payments })),
+      },
+      saleService: { findByIds: vi.fn(async () => []) },
+      mediaUrlResolver: { resolveManyUnique: vi.fn(async () => new Map()) },
+      mediaAssetEnricher: undefined,
+    } as never);
+    const res = await service.listAccountPurchases({
+      userId: "owner-1",
+      account: { legalEntityId: ACCOUNT, role: "owner" },
+    });
+    expect(res.body).toMatchObject({ data: [{ payment: { id: "paid", status: "captured" } }] });
+  });
 });

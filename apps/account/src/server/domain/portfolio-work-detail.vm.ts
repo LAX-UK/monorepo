@@ -2,7 +2,8 @@ import { safeImageUrl } from "@/lib/media-origins";
 import {
   type CurrencyTotal,
   type LaxPortfolioItemV1,
-  costBasisLines,
+  isPaidFor,
+  paidLines,
   sumByCurrency,
 } from "@auction/lax-ecosystem";
 import {
@@ -46,7 +47,8 @@ export type WorkDetailVm = {
   /** Each cost line in the currency it was charged in. */
   costLines: WorkCostLineVm[];
   /** Everything except shipping, per currency; never converted or combined. */
-  costBasis: CurrencyTotal[];
+  /** What the listed cost lines come to, delivery included: the amount paid, or the amount due. */
+  total: CurrencyTotal[];
   shipping: CurrencyTotal[];
   /** True while the invoice is unpaid, so the amounts read as due rather than paid. */
   costsAreDue: boolean;
@@ -100,7 +102,7 @@ export function buildWorkDetail(
       amount: line.amount,
       currency: line.currency,
     })),
-    costBasis: sumByCurrency(costBasisLines(item)),
+    total: sumByCurrency(isPaidFor(item) ? paidLines(item) : item.paid.lines),
     shipping: sumByCurrency(item.paid.lines.filter((line) => line.kind === "shipping")),
     costsAreDue: item.status === "awaiting_payment",
     paymentConfirming: item.status === "payment_confirming",

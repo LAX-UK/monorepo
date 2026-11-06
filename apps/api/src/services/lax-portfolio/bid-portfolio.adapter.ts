@@ -1,4 +1,4 @@
-import { type AmountOwedEntry, decisivePayment } from "@auction/domain";
+import { type AmountOwedEntry, decisivePaymentByLot } from "@auction/domain";
 import type {
   LaxBusinessV1,
   LaxCostLineV1,
@@ -58,19 +58,6 @@ function purchasesPage(ctx: BidPortfolioContext): string {
 
 function payoutsPage(ctx: BidPortfolioContext): string {
   return `${ctx.webOrigin}/selling/payouts`;
-}
-
-/** The payment that decides where each lot stands; see `decisivePayment`. */
-function decisivePaymentByLot(payments: readonly BidPaymentFact[]): Map<string, BidPaymentFact> {
-  const byLot = new Map<string, BidPaymentFact[]>();
-  for (const payment of payments)
-    byLot.set(payment.lotId, [...(byLot.get(payment.lotId) ?? []), payment]);
-  const decisive = new Map<string, BidPaymentFact>();
-  for (const [lotId, attempts] of byLot) {
-    const chosen = decisivePayment(attempts);
-    if (chosen) decisive.set(lotId, chosen);
-  }
-  return decisive;
 }
 
 /**

@@ -31,8 +31,8 @@ describe("PortfolioWorkDetail", () => {
     for (const text of ["Hammer price", "£1,000.00", "Buyer&#x27;s premium", "Shipping"]) {
       expect(html).toContain(text);
     }
-    expect(html).toContain("Total, shipping not included");
-    expect(html).toContain("£1,250.00");
+    expect(html).toContain("Total");
+    expect(html).toContain("£1,290.00");
   });
 
   it("names the seller business and the product", () => {

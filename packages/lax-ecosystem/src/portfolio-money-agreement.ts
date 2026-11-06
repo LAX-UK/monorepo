@@ -19,6 +19,10 @@ export type PortfolioMoneyAgreement = {
   paidSoFar: number;
   /** Money "Paid". */
   moneyPaid: number;
+  /** Money "Refunded". */
+  moneyRefunded: number;
+  /** Money's paid less refunded: what was paid and kept. Portfolio "Paid so far" must equal it. */
+  moneyNetPaid: number;
 };
 
 const amountIn = (totals: readonly { currency: string; amount: number }[], currency: string) =>
@@ -26,8 +30,9 @@ const amountIn = (totals: readonly { currency: string; amount: number }[], curre
 
 /**
  * Reads Portfolio and Money from the same facts and lines their figures up per business and
- * currency. Both pages must state one number for what is owed and one for what was paid; this
- * is the single place that pairs them, so a test can assert they agree.
+ * currency. Both pages must state one number for what is owed and one for what was paid and
+ * kept (paid less refunded); this is the single place that pairs them, so a test can assert they
+ * agree.
  */
 export function portfolioMoneyAgreement(
   items: readonly LaxPortfolioItemV1[],
@@ -45,15 +50,22 @@ export function portfolioMoneyAgreement(
         ...header.paidSoFar,
         ...subtotals("owed_by_you"),
         ...subtotals("paid"),
+        ...subtotals("refunded"),
       ].map((total) => total.currency),
     );
-    return [...currencies].sort().map((currency) => ({
-      business,
-      currency,
-      totalDue: amountIn(header.totalDue, currency),
-      owedByYou: amountIn(subtotals("owed_by_you"), currency),
-      paidSoFar: amountIn(header.paidSoFar, currency),
-      moneyPaid: amountIn(subtotals("paid"), currency),
-    }));
+    return [...currencies].sort().map((currency) => {
+      const moneyPaid = amountIn(subtotals("paid"), currency);
+      const moneyRefunded = amountIn(subtotals("refunded"), currency);
+      return {
+        business,
+        currency,
+        totalDue: amountIn(header.totalDue, currency),
+        owedByYou: amountIn(subtotals("owed_by_you"), currency),
+        paidSoFar: amountIn(header.paidSoFar, currency),
+        moneyPaid,
+        moneyRefunded,
+        moneyNetPaid: moneyPaid - moneyRefunded,
+      };
+    });
   });
 }

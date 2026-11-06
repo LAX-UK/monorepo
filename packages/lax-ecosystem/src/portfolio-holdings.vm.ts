@@ -1,6 +1,6 @@
 import { type CurrencyTotal, sumByCurrency } from "./currency-totals.js";
 import type { LaxPortfolioItemStatus, LaxPortfolioItemV1 } from "./lax-portfolio-contract.v1.js";
-import { costBasisLines } from "./portfolio-header.vm.js";
+import { paidLines } from "./portfolio-header.vm.js";
 import type { LaxProductId } from "./product-directory.js";
 
 export type HoldingsSort = "acquired_desc" | "acquired_asc" | "title_asc";
@@ -84,7 +84,7 @@ export function buildHoldings(
     rows: visible.map((item) => ({
       key: `${item.product}:${item.id}`,
       item,
-      paid: sumByCurrency(costBasisLines(item)),
+      paid: sumByCurrency(paidLines(item)),
       due: item.status === "awaiting_payment" && item.owed ? [item.owed] : [],
       documentsAvailable: item.documents.filter((doc) => doc.available).length,
       documentsExpected: item.documents.filter((doc) => !doc.available).length,

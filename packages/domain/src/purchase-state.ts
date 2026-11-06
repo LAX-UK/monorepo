@@ -41,6 +41,31 @@ export function decisivePayment<T extends { status: PaymentStatus }>(
 }
 
 /**
+ * The deciding payment of every lot, from payments listed newest first (see `decisivePayment`).
+ *
+ * The Needs-you counts and the record search read the same fact in SQL and take the newest
+ * payment per lot. That is equal to the decisive one today because the partial unique indexes
+ * allow only one open or settled payment per lot, so a settled payment is always the newest.
+ * If those indexes ever change, change those readers with this function.
+ */
+export function decisivePaymentByLot<T extends { lotId: string; status: PaymentStatus }>(
+  paymentsNewestFirst: readonly T[],
+): Map<string, T> {
+  const attemptsByLot = new Map<string, T[]>();
+  for (const payment of paymentsNewestFirst) {
+    const attempts = attemptsByLot.get(payment.lotId);
+    if (attempts) attempts.push(payment);
+    else attemptsByLot.set(payment.lotId, [payment]);
+  }
+  const byLot = new Map<string, T>();
+  for (const [lotId, attempts] of attemptsByLot) {
+    const decisive = decisivePayment(attempts);
+    if (decisive) byLot.set(lotId, decisive);
+  }
+  return byLot;
+}
+
+/**
  * Whether the purchase was refunded or cancelled; such a purchase is never owed or owned. Only a
  * refund or a cancelled sale ends it: a cancelled payment row does not.
  */

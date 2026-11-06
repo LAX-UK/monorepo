@@ -51,7 +51,10 @@ export class LaxPortfolioHttpApplicationService implements IUserLaxPortfolioHttp
       this.deps.reader.loadForPerson(userId),
       this.deps.amountsOwed.forPerson(userId),
     ]);
-    return { facts, owed: new Map(owed.entries.map((entry) => [entry.lotId, entry])) };
+    // Only what the person pays themselves is theirs to see as owed: a lot won for an
+    // organisation is paid by it, and the amounts-owed summary leaves it out for the same reason.
+    const payable = owed.entries.filter((entry) => entry.role === "payer");
+    return { facts, owed: new Map(payable.map((entry) => [entry.lotId, entry])) };
   }
 
   private context(): Omit<BidPortfolioContext, "imageUrl"> {

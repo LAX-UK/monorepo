@@ -1,5 +1,5 @@
 import { type AmountOwedEntry, amountOwedEntry, decisivePayment } from "@auction/domain";
-import { portfolioMoneyAgreement } from "@auction/lax-ecosystem";
+import { portfolioMoneyAgreement } from "@auction/lax-ecosystem/testing";
 import type { BidPaymentFact, BidPortfolioFacts } from "@auction/persistence/interfaces";
 import { describe, expect, it } from "vitest";
 import { facts, payment, wonLot } from "../../testing/bid-portfolio-facts.js";
@@ -11,7 +11,8 @@ import {
 
 /**
  * Portfolio and Money are two readings of the same account. Whatever the payment history looks
- * like, "Total due" must equal "Owed by you" and "Paid so far" must equal what Money reports as paid.
+ * like, "Total due" must equal "Owed by you" and "Paid so far" must equal what Money reports as paid
+ * less refunded.
  */
 const ctx: BidPortfolioContext = {
   webOrigin: "https://lax.bid",
@@ -49,10 +50,16 @@ function owedFor(
 }
 
 function agreementFor(bid: BidPortfolioFacts, owed: Map<string, AmountOwedEntry>) {
-  return portfolioMoneyAgreement(
+  const rows = portfolioMoneyAgreement(
     buildBidPortfolioItems(bid, ctx, owed),
     buildBidMoneyEntries(bid, ctx, owed),
   );
+  // The two pages must always agree, whatever the history.
+  for (const row of rows) {
+    expect(row.totalDue).toBe(row.owedByYou);
+    expect(row.paidSoFar).toBe(row.moneyNetPaid);
+  }
+  return rows;
 }
 
 describe("Bid Portfolio and Money agree", () => {
@@ -76,6 +83,8 @@ describe("Bid Portfolio and Money agree", () => {
       owedByYou: 0,
       paidSoFar: 125_000,
       moneyPaid: 125_000,
+      moneyRefunded: 0,
+      moneyNetPaid: 125_000,
     });
   });
 
@@ -140,18 +149,19 @@ describe("Bid Portfolio and Money agree", () => {
     expect(agreementFor(bid, owedFor(bid, { fulfilment: { [LOT]: "cancelled" } }))).toEqual([]);
   });
 
-  it("treats a refunded payment as paid and then returned", () => {
+  it("reports a refunded payment as paid and then returned, net nothing on both pages", () => {
     const bid = facts({ wonLots: [wonLot()], payments: [payment({ status: "refunded" })] });
-    const owed = owedFor(bid);
-    const entries = buildBidMoneyEntries(bid, ctx, owed);
-    const refunded = entries
-      .filter((e) => e.direction === "refunded")
-      .reduce((sum, e) => sum + e.amount, 0);
-    const [row] = agreementFor(bid, owed);
-    // The refunded work is no longer held, so Portfolio's paid figure is net of the refund.
-    expect(row).toMatchObject({ totalDue: 0, owedByYou: 0, paidSoFar: 0 });
-    expect(row?.moneyPaid).toBe(125_000);
-    expect(row ? row.moneyPaid - refunded : null).toBe(row?.paidSoFar);
+    const [row] = agreementFor(bid, owedFor(bid));
+    expect(row).toEqual({
+      business: "lax_bid",
+      currency: "GBP",
+      totalDue: 0,
+      owedByYou: 0,
+      paidSoFar: 0,
+      moneyPaid: 125_000,
+      moneyRefunded: 125_000,
+      moneyNetPaid: 0,
+    });
   });
 
   it("agrees across several lots with mixed histories", () => {
