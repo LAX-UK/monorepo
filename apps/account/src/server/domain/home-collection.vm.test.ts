@@ -20,9 +20,9 @@ describe("buildCollection", () => {
     ];
     expect(buildCollection(buildPortfolioHeader(items), items.length)).toEqual({
       counts: [
-        { key: "owned", label: "Works owned", value: 1 },
-        { key: "in-sale", label: "In sale or consigned", value: 1 },
-        { key: "to-pay", label: "To pay", value: 1 },
+        { key: "owned", label: "Works owned", shortLabel: "Owned", value: 1 },
+        { key: "in-sale", label: "In sale or consigned", shortLabel: "In sale", value: 1 },
+        { key: "to-pay", label: "To pay", shortLabel: "To pay", value: 1 },
       ],
       totalDue: "£2,375.00",
       paidSoFar: "£1,000.00",
@@ -40,7 +40,7 @@ describe("buildCollection", () => {
   it("still shows a count when every work is in a state the three counts skip", () => {
     const items = [item({ status: "sold" })];
     expect(buildCollection(buildPortfolioHeader(items), 1).counts).toEqual([
-      { key: "works", label: "Works", value: 1 },
+      { key: "works", label: "Works", shortLabel: "Works", value: 1 },
     ]);
   });
 });

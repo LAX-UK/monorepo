@@ -60,11 +60,16 @@ function NeedsYouLine({ line }: { line: NeedsYouLineVm }) {
 export function NeedsYouCard({ needsYou }: { needsYou: NeedsYouVm }) {
   if (needsYou.lines.length === 0) {
     return (
-      <section aria-labelledby="needs-you-heading" className={cn(CARD, "px-4 py-4 sm:px-5")}>
-        <h2 id="needs-you-heading" className="sr-only">
-          Needs you
-        </h2>
-        <p className="text-sm text-on-surface-variant">Nothing needs you right now.</p>
+      <section aria-labelledby="needs-you-heading" className={`overflow-hidden ${CARD}`}>
+        <CardHeader id="needs-you-heading" title="Needs you" />
+        <p
+          className={cn(
+            "border-t border-border-hairline py-4 text-sm text-on-surface-variant",
+            CARD_ROW_PADDING,
+          )}
+        >
+          Nothing needs you right now.
+        </p>
       </section>
     );
   }

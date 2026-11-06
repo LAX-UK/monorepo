@@ -40,8 +40,11 @@ export function CollectionCard({
       >
         <dl className="grid grid-cols-3 gap-3">
           {collection.counts.map((count) => (
-            <div key={count.key} className="flex flex-col-reverse gap-1">
-              <dt className="text-xs leading-4 text-on-surface-variant">{count.label}</dt>
+            <div key={count.key} className="flex flex-col-reverse justify-end gap-1">
+              <dt className="text-xs leading-4 text-on-surface-variant">
+                <span className="sm:hidden">{count.shortLabel}</span>
+                <span className="max-sm:hidden">{count.label}</span>
+              </dt>
               <dd className={FIGURE_LARGE}>{count.value}</dd>
             </div>
           ))}
