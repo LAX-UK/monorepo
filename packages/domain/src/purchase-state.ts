@@ -23,6 +23,23 @@ export type PurchaseStateFacts = {
  */
 export const OWED_PAYMENT_STATUSES = ["pending", "requires_manual_review", "cancelled"] as const;
 
+/** Payment states that mean the buyer has paid, or is paying: no later attempt can make it owed. */
+const SETTLING_PAYMENT_STATUSES: readonly PaymentStatus[] = ["captured", "authorized", "refunded"];
+
+/**
+ * The payment that decides where a lot stands, from all its payment attempts newest first. A
+ * checkout is attempted many times, so an abandoned or expired attempt never outranks a payment
+ * that was captured, authorised or refunded; otherwise the newest attempt decides.
+ */
+export function decisivePayment<T extends { status: PaymentStatus }>(
+  attemptsNewestFirst: readonly T[],
+): T | undefined {
+  return (
+    attemptsNewestFirst.find((attempt) => SETTLING_PAYMENT_STATUSES.includes(attempt.status)) ??
+    attemptsNewestFirst[0]
+  );
+}
+
 /**
  * Whether the purchase was refunded or cancelled; such a purchase is never owed or owned. Only a
  * refund or a cancelled sale ends it: a cancelled payment row does not.

@@ -40,6 +40,10 @@ export {
   normalizeProductBaseUrl,
 } from "./safe-product-url.js";
 export { type CurrencyTotal, sumByCurrency } from "./currency-totals.js";
+export {
+  type PortfolioMoneyAgreement,
+  portfolioMoneyAgreement,
+} from "./portfolio-money-agreement.js";
 export * from "./lax-portfolio-contract.v1.js";
 export {
   type PortfolioHeaderVm,

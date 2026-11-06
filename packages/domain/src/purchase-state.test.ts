@@ -1,6 +1,11 @@
 import type { PaymentStatus } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { purchaseEnding, purchaseIsOwned, purchaseIsToPay } from "./purchase-state.js";
+import {
+  decisivePayment,
+  purchaseEnding,
+  purchaseIsOwned,
+  purchaseIsToPay,
+} from "./purchase-state.js";
 
 describe("purchaseEnding", () => {
   it.each([
@@ -66,5 +71,28 @@ describe("purchaseIsOwned", () => {
 
   it("does not own a paid purchase whose delivery was cancelled", () => {
     expect(purchaseIsOwned({ invoice: "paid", deliveryStage: "cancelled" })).toBe(false);
+  });
+});
+
+describe("decisivePayment", () => {
+  const attempt = (id: string, status: PaymentStatus) => ({ id, status });
+
+  it("is the newest attempt when none has settled", () => {
+    expect(decisivePayment([attempt("new", "pending"), attempt("old", "cancelled")])?.id).toBe(
+      "new",
+    );
+  });
+
+  it.each(["captured", "authorized", "refunded"] as const)(
+    "prefers a %s payment over a newer abandoned attempt",
+    (status) => {
+      expect(decisivePayment([attempt("new", "pending"), attempt("paid", status)])?.id).toBe(
+        "paid",
+      );
+    },
+  );
+
+  it("is undefined when there are no attempts", () => {
+    expect(decisivePayment([])).toBeUndefined();
   });
 });

@@ -10,6 +10,8 @@ const ORG = "org-1";
 type Fixture = {
   lotId: string;
   payment?: { status: PaymentStatus; manualReviewReason?: string | null };
+  /** A checkout attempt started after `payment` and abandoned: the newest row for the lot. */
+  newerAbandonedAttempt?: boolean;
   fulfilment?: string;
   buyerLegalEntityId?: string;
   winnerId?: string;
@@ -35,6 +37,18 @@ function build(
   const payments = fixtures.flatMap((f) =>
     f.payment
       ? [
+          ...(f.newerAbandonedAttempt
+            ? [
+                {
+                  id: `abandoned-${f.lotId}`,
+                  lotId: f.lotId,
+                  status: "pending" as PaymentStatus,
+                  manualReviewReason: null,
+                  amount: "1150.00",
+                  createdAt: "2026-10-02T00:00:00.000Z",
+                },
+              ]
+            : []),
           {
             id: `pay-${f.lotId}`,
             lotId: f.lotId,
@@ -117,6 +131,16 @@ describe("amounts owed for a person", () => {
       currency: "GBP",
       blocker: null,
     });
+  });
+
+  it("owes nothing on a paid lot whose newest payment row is an abandoned attempt", async () => {
+    expect(
+      await entryFor({
+        lotId: "a",
+        payment: { status: "captured" },
+        newerAbandonedAttempt: true,
+      }),
+    ).toBeNull();
   });
 
   it("owes an unpaid invoice", async () => {

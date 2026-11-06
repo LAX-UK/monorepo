@@ -27,8 +27,10 @@ export function isPaidFor(item: LaxPortfolioItemV1): boolean {
 }
 
 /**
- * "Paid so far" counts only works that have been paid for: an invoice still awaiting payment
- * is a liability, and a payment still being confirmed is not settled. It is a fact in the currency paid, not a valuation.
+ * "Paid so far" is the money actually paid, as Money's paid total reads it. It counts only works
+ * that have been paid for: an invoice still awaiting payment is a liability, and a payment still
+ * being confirmed is not settled. Every cost line counts, delivery included, because it was paid.
+ * It is a fact in the currency paid, not a valuation.
  */
 export function buildPortfolioHeader(items: readonly LaxPortfolioItemV1[]): PortfolioHeaderVm {
   const count = (...statuses: LaxPortfolioItemV1["status"][]) =>
@@ -43,6 +45,6 @@ export function buildPortfolioHeader(items: readonly LaxPortfolioItemV1[]): Port
     inReview: items.filter(
       (item) => item.status === "awaiting_payment" && item.owed?.state === "in_review",
     ).length,
-    paidSoFar: sumByCurrency(items.filter(isPaidFor).flatMap(costBasisLines)),
+    paidSoFar: sumByCurrency(items.filter(isPaidFor).flatMap((item) => item.paid.lines)),
   };
 }

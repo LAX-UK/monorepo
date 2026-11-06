@@ -4,6 +4,7 @@ import {
   PURCHASE_LIST_LIMIT,
   accountPurchaseScope,
   amountOwedEntry,
+  decisivePayment,
   purchasePaymentRole,
 } from "@auction/domain";
 import type { Lot } from "@auction/types";
@@ -34,6 +35,20 @@ export type AmountsOwedDeps = {
   /** The id of the person's own account, to tell it from an organisation's. */
   personalAccount: { idFor(userId: string): Promise<string> };
 };
+
+/** Each lot's deciding payment: attempts arrive newest first, and a paid one outranks the rest. */
+function decisivePaymentByLot(payments: readonly PaymentRow[]): Map<string, PaymentRow> {
+  const attemptsByLot = new Map<string, PaymentRow[]>();
+  for (const payment of payments) {
+    attemptsByLot.set(payment.lotId, [...(attemptsByLot.get(payment.lotId) ?? []), payment]);
+  }
+  const byLot = new Map<string, PaymentRow>();
+  for (const [lotId, attempts] of attemptsByLot) {
+    const decisive = decisivePayment(attempts);
+    if (decisive) byLot.set(lotId, decisive);
+  }
+  return byLot;
+}
 
 /**
  * What an account owes, worked out once for every screen that says so. The lots and payments are
@@ -106,10 +121,7 @@ export class AmountsOwedService implements IAmountsOwedService {
       this.deps.fulfilments.statusesForLots(lots.map((lot) => lot.id)),
       this.deps.paymentBuyerService.getBuyerComplianceGateStatus(userId),
     ]);
-    const paymentByLot = new Map<string, PaymentRow>();
-    for (const payment of payments) {
-      if (!paymentByLot.has(payment.lotId)) paymentByLot.set(payment.lotId, payment);
-    }
+    const paymentByLot = decisivePaymentByLot(payments);
     const hold: AccountHold = gate.status;
     const entries = priced.flatMap((lot) => {
       const payment = paymentByLot.get(lot.id);
