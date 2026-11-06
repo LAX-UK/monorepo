@@ -959,7 +959,7 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
 @media (min-width: 64rem) {
   .shop-basket__summary-panel {
     position: sticky;
-    top: calc(var(--shop-header-height, 5rem) + var(--shop-space-6));
+    top: calc(var(--header-offset, var(--header-height, 7rem)) + var(--shop-space-6));
   }
 }
 
@@ -1114,7 +1114,7 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
 .shop-checkout label,
 .shop-checkout input,
 .shop-checkout__saved {
-  scroll-margin-top: calc(var(--shop-header-height, 5rem) + var(--shop-space-6));
+  scroll-margin-top: calc(var(--header-offset, var(--header-height, 7rem)) + var(--shop-space-6));
 }
 
 /* After a guest order: the offer to keep it in a LAX account. */
