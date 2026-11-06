@@ -1,5 +1,5 @@
 import { AccountShell } from "@/components/account-shell";
-import { SellingEditions } from "@/components/selling/selling-editions";
+import { EditionsPageTitle, SellingEditions } from "@/components/selling/selling-editions";
 import { SellingPageHeader, openSellingPage } from "@/components/selling/selling-page";
 import {
   SellingListSkeleton,
@@ -14,7 +14,7 @@ import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Editions you can sell · LAX Account" };
+export const metadata: Metadata = { title: "Editions you can sell on LAX Shop · LAX Account" };
 
 async function EditionsSection({ handle }: { handle: SessionHandle }) {
   const loaded = await loadEditionsSection(handle);
@@ -38,7 +38,7 @@ export default async function SellingEditionsPage() {
       <SellingPageHeader
         ready={opened.ready}
         tool="editions"
-        title="Editions you can sell"
+        title={<EditionsPageTitle />}
         description="How many editions of each artwork LAX has approved you to sell, and how many are available now."
       />
       <Suspense

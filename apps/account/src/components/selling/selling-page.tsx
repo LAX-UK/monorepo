@@ -40,7 +40,7 @@ export function SellingPageHeader({
 }: {
   ready: Ready;
   tool: SellingTool;
-  title: string;
+  title: ReactNode;
   description: string;
 }) {
   return (

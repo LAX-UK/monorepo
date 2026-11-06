@@ -28,7 +28,6 @@ describe("buildSignInMethodsSection", () => {
       kind: "password",
       status: "Not set",
       actionLabel: "Add a password",
-      actionHref: "#password",
     });
     expect(vm.rows[1]).toMatchObject({
       kind: "social",

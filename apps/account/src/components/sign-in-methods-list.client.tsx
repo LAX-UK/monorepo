@@ -4,6 +4,7 @@ import { Button } from "@/components/account-button";
 import { removeSignInMethodAction } from "@/server/application/account-identity-actions.server";
 import type { AccountActionResult } from "@/server/domain/account-action-result";
 import { buildReauthHref } from "@/server/domain/account-reauth";
+import type { SettingsRowVm } from "@/server/domain/account-settings.vm";
 import {
   PROVIDER_LABEL,
   type SignInMethodRowVm,
@@ -12,8 +13,8 @@ import {
 } from "@/server/domain/account-sign-in-methods.vm";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
-import { LIST_ROW, ListCard, TAG } from "./account-ui";
+import { type ReactNode, useId, useState } from "react";
+import { LIST_ROW, ListCard, ListCardRow, TAG } from "./account-ui";
 import { ProductText } from "./product-name";
 
 type SignInMethodsListProps = {
@@ -22,7 +23,42 @@ type SignInMethodsListProps = {
   hint: string | null;
   /** Where to come back to after a fresh sign-in, which removing a method may require. */
   returnTo: string;
+  /** The password form, opened under the Password row by its Change button. */
+  passwordPanel: ReactNode;
+  /** Two-step verification, the last row: it opens the issuer's hosted page. */
+  twoStep: SettingsRowVm;
 };
+
+function PasswordRow({
+  row,
+  panel,
+}: {
+  row: Extract<SignInMethodRowVm, { kind: "password" }>;
+  panel: ReactNode;
+}) {
+  const panelId = useId();
+  const [open, setOpen] = useState(false);
+  return (
+    <li>
+      <div className={LIST_ROW}>
+        <RowText title={row.title} status={row.status} detail={row.detail} />
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => setOpen((shown) => !shown)}
+        >
+          {row.actionLabel}
+        </Button>
+      </div>
+      <div id={panelId} hidden={!open} className="px-4 pt-1 pb-5 sm:px-6">
+        {panel}
+      </div>
+    </li>
+  );
+}
 
 function RowText({ title, status, detail }: { title: string; status?: string; detail: string }) {
   return (
@@ -63,10 +99,16 @@ function SocialRow({ row, onRemove }: { row: SocialRowVm; onRemove: () => void }
 
 /**
  * The person's sign-in methods, with a confirmed Remove for each linked Google or Apple account.
- * The password row leads to the password form further down the page, which already changes the
- * password or adds the first one.
+ * The password row opens the password form in place, which changes the password or adds the first
+ * one; two-step verification is the last row.
  */
-export function SignInMethodsList({ rows, hint, returnTo }: SignInMethodsListProps) {
+export function SignInMethodsList({
+  rows,
+  hint,
+  returnTo,
+  passwordPanel,
+  twoStep,
+}: SignInMethodsListProps) {
   const router = useRouter();
   const [target, setTarget] = useState<SocialRowVm | null>(null);
   const [busy, setBusy] = useState(false);
@@ -117,12 +159,7 @@ export function SignInMethodsList({ rows, hint, returnTo }: SignInMethodsListPro
       <ListCard>
         {rows.map((row) =>
           row.kind === "password" ? (
-            <li key="password" className={LIST_ROW}>
-              <RowText title={row.title} status={row.status} detail={row.detail} />
-              <Button asChild variant="outline" className="shrink-0">
-                <a href={row.actionHref}>{row.actionLabel}</a>
-              </Button>
-            </li>
+            <PasswordRow key="password" row={row} panel={passwordPanel} />
           ) : (
             <SocialRow
               key={row.provider}
@@ -134,6 +171,11 @@ export function SignInMethodsList({ rows, hint, returnTo }: SignInMethodsListPro
             />
           ),
         )}
+        <ListCardRow
+          title={twoStep.title}
+          {...(twoStep.subtitle ? { subtitle: twoStep.subtitle } : {})}
+          href={twoStep.href}
+        />
       </ListCard>
       {hint ? <p className="px-4 text-xs text-on-surface-variant">{hint}</p> : null}
       <output aria-live="polite" className="block px-4 text-sm text-success empty:hidden">

@@ -98,7 +98,8 @@ export function AccountPageHeader({
   backHref,
   backLabel,
 }: {
-  title: string;
+  /** Plain text, or text that names a product with `ProductName`. */
+  title: ReactNode;
   description?: string;
   backHref?: string;
   backLabel?: string;

@@ -20,8 +20,6 @@ export type PasswordRowVm = {
   status: string;
   detail: string;
   actionLabel: string;
-  /** The password form further down the same page, which changes the password or adds the first one. */
-  actionHref: "#password";
 };
 
 export type SocialRowVm = {
@@ -71,7 +69,6 @@ export function buildSignInMethodsSection(
         ? "Sign in with your email and password."
         : "Add one to sign in with your email as well.",
       actionLabel: hasPassword ? "Change" : "Add a password",
-      actionHref: "#password",
     },
     ...social.map(
       (method): SocialRowVm => ({
