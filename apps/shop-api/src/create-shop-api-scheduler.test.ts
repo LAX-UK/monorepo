@@ -18,6 +18,7 @@ function taskNames(env: Record<string, unknown>): string[] {
     db: {} as never,
     env: env as never,
     log: {} as never,
+    alertRetention: { name: "shop", prune: async () => ({}) as never },
   }).map((task) => task.name);
 }
 
@@ -28,6 +29,7 @@ describe("createShopApiScheduler", () => {
     expect(names).toContain("identity-merge");
     expect(names).toContain("staff-access");
     expect(names).toContain("personal-data-anonymisation");
+    expect(names).toContain("alert-retention");
     expect(names).toContain("notify-me-dispatch");
     expect(names).toContain("linked-listing-sync");
     expect(names).not.toContain("payout-eligibility");

@@ -391,6 +391,16 @@ export const WORKER_BID_ALERT_TABLES = [
   "bid_alert_digest",
   "bid_alert_announcement",
 ] as const;
+/**
+ * The retention prune (apps/worker, `purge-alert-retention`) deletes old match and digest logs and
+ * trims a complaint-stopped subscriber's topics, matches and digests. Subscribers themselves are
+ * deleted through WORKER_ANONYMISATION_DELETE_TABLES. bid_alert_announcement is never deleted.
+ */
+export const WORKER_BID_ALERT_PRUNE_DELETE_TABLES = [
+  "bid_alert_topic",
+  "bid_alert_match",
+  "bid_alert_digest",
+] as const;
 /** Worker provisions personal legal entities from `user.registered` domain events. */
 export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
 /** Worker processes async CSV exports and purges expired rows (data-export + purge-expired jobs). */
@@ -855,6 +865,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_BID_ALERT_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_BID_ALERT_PRUNE_DELETE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
         }
         for (const tableName of WORKER_ARTWORK_REGISTER_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

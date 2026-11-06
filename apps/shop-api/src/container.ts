@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { AlertRetentionStore } from "@auction/alerts";
 import { ArtworkOfferLock } from "@auction/artwork-register-contracts";
 import { type Database, closeDb, createDb } from "@auction/db";
 import {
@@ -6,6 +7,7 @@ import {
   DrizzleArtworkRegisterRepository,
   DrizzleZohoArtworkSyncStore,
   DrizzleZohoListingRunStore,
+  createShopAlertRetentionStore,
   registerRowToEntry,
 } from "@auction/persistence/repositories";
 import { sql } from "drizzle-orm";
@@ -231,6 +233,8 @@ export type ShopApiAppDeps = {
 
 export type ShopApiContainer = {
   db: Database;
+  /** Prunes stale alert sign-ups and old alert logs; run by the scheduler. */
+  alertRetention: AlertRetentionStore;
   app: ShopApiAppDeps;
   importArtwork: ReturnType<typeof createImportArtworkHandler>;
   grantStaffRole(input: {
@@ -611,6 +615,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       : null;
   return {
     db,
+    alertRetention: createShopAlertRetentionStore(db),
     app: {
       env,
       auth: {

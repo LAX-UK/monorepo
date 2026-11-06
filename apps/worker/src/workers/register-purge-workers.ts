@@ -1,4 +1,9 @@
-import { PURGE_KYC_RETENTION_QUEUE_NAME, PURGE_QR_CODE_SCANS_QUEUE_NAME } from "@auction/queues";
+import { pruneAlertRetention } from "@auction/alerts";
+import {
+  PURGE_ALERT_RETENTION_QUEUE_NAME,
+  PURGE_KYC_RETENTION_QUEUE_NAME,
+  PURGE_QR_CODE_SCANS_QUEUE_NAME,
+} from "@auction/queues";
 import { Queue, Worker } from "bullmq";
 import { purgeKycRetentionJob } from "../jobs/purge-kyc-retention.js";
 import { purgeQrCodeScans } from "../jobs/purge-qr-code-scans.js";
@@ -19,6 +24,7 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
     queueOpts,
     qrCodeScanPurgeRepo,
     kycRetentionStores,
+    alertRetentionStores,
     uploadStorage,
     sentryMonitorSlugs,
     reportWorkerJobFailure,
@@ -89,10 +95,38 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
     },
   );
 
+  // Bid's alert sign-ups and logs, pruned by the shared rules in @auction/alerts.
+  const purgeAlertRetentionQueue = new Queue(
+    PURGE_ALERT_RETENTION_QUEUE_NAME,
+    queueOpts(PURGE_ALERT_RETENTION_QUEUE_NAME),
+  );
+  const purgeAlertRetentionWorker = new Worker(
+    PURGE_ALERT_RETENTION_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor("purge-alert-retention", sentryMonitorSlugs, async () => {
+        await pruneAlertRetention({ stores: alertRetentionStores, log });
+      });
+    },
+    bullConnection,
+  );
+  purgeAlertRetentionWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(PURGE_ALERT_RETENTION_QUEUE_NAME, job, err);
+  });
+  void purgeAlertRetentionQueue.add(
+    "purge",
+    {},
+    {
+      jobId: "purge-alert-retention-daily",
+      repeat: { every: 24 * 60 * 60 * 1000 },
+      removeOnComplete: 5,
+    },
+  );
+
   return {
     errorHandlers: [
       { worker: purgeQrCodeScansWorker, queue: PURGE_QR_CODE_SCANS_QUEUE_NAME },
       { worker: purgeKycRetentionWorker, queue: PURGE_KYC_RETENTION_QUEUE_NAME },
+      { worker: purgeAlertRetentionWorker, queue: PURGE_ALERT_RETENTION_QUEUE_NAME },
     ],
     close: () =>
       closeAll([
@@ -100,6 +134,8 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
         purgeQrCodeScansQueue,
         purgeKycRetentionWorker,
         purgeKycRetentionQueue,
+        purgeAlertRetentionWorker,
+        purgeAlertRetentionQueue,
       ]),
   };
 }
