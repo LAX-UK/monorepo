@@ -55,6 +55,12 @@ export {
   type OrganisationStatePolicy,
 } from "./organisation-state-policy.js";
 export {
+  holdStartAt,
+  identityHeldSinceAfter,
+  payHeldSinceAfter,
+  type HeldSince,
+} from "./pay-hold.js";
+export {
   evaluateSelfServiceActorIdentityEligibility,
   type SelfServiceActorIdentityEligibility,
   type SelfServiceActorIdentityEligibilityInput,

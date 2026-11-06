@@ -1,5 +1,9 @@
 import { type PaymentTierLimits, paySeveralSkipReason, payTogether } from "@auction/domain";
-import type { LotInvoiceInitiationService } from "@auction/finance-runtime";
+import {
+  type IMoneyPathMetrics,
+  type LotInvoiceInitiationService,
+  noMoneyPathMetrics,
+} from "@auction/finance-runtime";
 import type { PayPlan } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { gbpPenceToMajorString } from "../../lib/decimal-money.js";
@@ -40,6 +44,8 @@ export type PaySeveralDeps = {
   /** The full check, which can open a source-of-funds case. Only run when money is about to move. */
   compliance: Pick<ISettlementCompliancePolicy, "evaluate"> | null;
   checkout: Pick<PaymentGroupCheckoutService, "start">;
+  /** Counts the lots the lot-end guards would not invoice, by reason, so data defects show up. */
+  metrics?: IMoneyPathMetrics;
 };
 
 /** One invoice the payment will take, with the payment it settles. */
@@ -66,7 +72,11 @@ type PlanView = {
  * raised too, and raising is idempotent.
  */
 export class PaySeveralService implements IPaySeveralService {
-  constructor(private readonly deps: PaySeveralDeps) {}
+  private readonly metrics: IMoneyPathMetrics;
+
+  constructor(private readonly deps: PaySeveralDeps) {
+    this.metrics = deps.metrics ?? noMoneyPathMetrics;
+  }
 
   async plan(
     actor: OrganisationMemberActor,
@@ -198,8 +208,11 @@ export class PaySeveralService implements IPaySeveralService {
    * plan comes back with the 409), or its total cannot be paid at once.
    */
   private refusal(view: PlanView, request: PaySeveralRequest): OrganisationBuyingError | null {
-    const shown = new Set(request.expectedLotIds);
+    // A request that names no plan was never shown one: it is told the current plan, not charged.
+    const shown = new Set(request.expectedLotIds ?? []);
     const same =
+      request.expectedTotalPence !== undefined &&
+      request.expectedLotIds !== undefined &&
       view.totalPence === request.expectedTotalPence &&
       view.charges.length === shown.size &&
       view.charges.every((c) => shown.has(c.lotId));
@@ -218,6 +231,7 @@ export class PaySeveralService implements IPaySeveralService {
       try {
         const result = await this.deps.invoices.ensureForLot(lotId, { accounting: "defer" });
         if (!result.created && result.reason !== "payment_already_exists") {
+          this.metrics.record(`pay_several_lot_not_invoiced_${result.reason ?? "unknown"}`);
           console.warn(
             JSON.stringify({ msg: "pay_several_lot_not_invoiced", lotId, reason: result.reason }),
           );

@@ -1,5 +1,5 @@
 import { isStripeAccountConfigured } from "@auction/connect";
-import { organisationStateAllows } from "@auction/domain";
+import { holdStartAt, organisationStateAllows, payHeldSinceAfter } from "@auction/domain";
 import type { IEmailService } from "@auction/email";
 import type { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type {
@@ -132,6 +132,12 @@ export class LegalEntityLifecycleAdminService {
         actorUserId,
         nextStatus: navLocked.next,
         statusReason: resolveStatusReason(op, navLocked, reason),
+        payHeldSince: payHeldSinceAfter({
+          from: lockedStatus,
+          to: navLocked.next,
+          heldSince: row.payHeldSince ?? null,
+          at: new Date(),
+        }),
       });
 
       // An organisation that could not pay (documents asked for or under review) now can: the
@@ -144,8 +150,8 @@ export class LegalEntityLifecycleAdminService {
           {
             kind: "account",
             legalEntityId: entityId,
-            // Held since it entered the status it is leaving; never changed means since creation.
-            holdStartedAt: row.statusChangedAt ?? new Date(0),
+            // Held since it last stopped being able to pay; never recorded means from the start.
+            holdStartedAt: holdStartAt(row.payHeldSince),
           },
           new Date(),
           tx,

@@ -30,6 +30,8 @@ export const bidUserProfile = pgTable(
     currentKycSessionId: text("current_kyc_session_id"),
     kycRetryCount: integer("kyc_retry_count").notNull().default(0),
     kycVerifiedAt: timestamp("kyc_verified_at", { mode: "date", withTimezone: true }),
+    /** When an approved identity last stopped being approved; null if never approved. */
+    identityHeldSince: timestamp("identity_held_since", { mode: "date", withTimezone: true }),
     preferredPaddleNumber: integer("preferred_paddle_number"),
     amlHoldStatus: userAmlHoldStatusEnum("aml_hold_status").notNull().default("none"),
     amlHoldReason: text("aml_hold_reason"),

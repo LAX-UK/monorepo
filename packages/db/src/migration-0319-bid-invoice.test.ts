@@ -16,9 +16,9 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0319 bid invoices", () => {
-  it("is the last journal entry, one day after the entry before it", () => {
+  it("follows the entry before it by one day, in sequence the entry before it", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0319_bid_invoice");
-    expect(index).toBe(journal.entries.length - 1);
+    expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);

@@ -38,6 +38,7 @@ function input(over: Partial<KycDecisionApplyInput>): KycDecisionApplyInput {
 function processor(
   opts: {
     userKycStatus?: string;
+    identityHeldSince?: Date | null;
     currentSession?: string;
     invoiceTerms?: { extendOpenInvoices: ReturnType<typeof vi.fn> };
   } = {},
@@ -51,7 +52,10 @@ function processor(
   };
   const repo = {
     findByProviderSessionId: vi.fn().mockResolvedValue(existing),
-    getUserKycState: vi.fn().mockResolvedValue({ kycStatus: opts.userKycStatus ?? "pending" }),
+    getUserKycState: vi.fn().mockResolvedValue({
+      kycStatus: opts.userKycStatus ?? "pending",
+      identityHeldSince: opts.identityHeldSince ?? null,
+    }),
     getDecisionPayload: vi.fn().mockResolvedValue({}),
     update: vi.fn().mockResolvedValue(existing),
     getUserKycWebhookState: vi
@@ -123,11 +127,24 @@ describe("KycDecisionProcessor invoice terms", () => {
         kind: "winner",
         userId: "u1",
         personalAccountsOnly: true,
-        holdStartedAt: new Date("2026-11-01T09:00:00Z"),
+        // Never approved before: held from the start, so every unpaid invoice moves.
+        holdStartedAt: new Date(0),
       },
       expect.any(Date),
       CONN,
     );
+  });
+
+  it("holds from the moment an approved identity was lost, not from the session, when it is approved again", async () => {
+    const lostAt = new Date("2026-09-15T08:00:00Z");
+    const invoiceTerms = terms();
+    await processor({ userKycStatus: "rejected", identityHeldSince: lostAt, invoiceTerms }).apply(
+      input({}),
+      CONN,
+    );
+    expect(invoiceTerms.extendOpenInvoices.mock.calls[0]?.[0]).toMatchObject({
+      holdStartedAt: lostAt,
+    });
   });
 
   it("leaves them alone when the person was already verified, so a repeat changes nothing", async () => {

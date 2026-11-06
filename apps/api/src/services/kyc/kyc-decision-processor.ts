@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { holdStartAt } from "@auction/domain";
 import type { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type { IKycSessionRepository } from "@auction/persistence/interfaces";
 import type { KycVerification, MarketingEvent, UserKycStatus } from "@auction/types";
@@ -145,7 +146,8 @@ export class KycDecisionProcessor {
               kind: "winner",
               userId: existing.userId,
               personalAccountsOnly: true,
-              holdStartedAt: existing.createdAt,
+              // Held since the identity last stopped being approved, or from the start if never.
+              holdStartedAt: holdStartAt(userState?.identityHeldSince),
             },
             new Date(),
             conn ?? undefined,

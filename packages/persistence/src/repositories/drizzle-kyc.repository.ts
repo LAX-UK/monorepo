@@ -8,6 +8,7 @@ import {
   lot,
   payment,
 } from "@auction/db/schema";
+import { identityHeldSinceAfter } from "@auction/domain";
 import type { KycVerification } from "@auction/types";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { incrementBidProfileKycRetryCount, writeBidUserProfile } from "../bid-user-profile-sync.js";
@@ -123,12 +124,14 @@ export class DrizzleKycRepository implements IKycRepository, IKycSessionReposito
   ): Promise<{
     kycStatus: "unverified" | "pending" | "approved" | "rejected";
     kycVerifiedAt: Date | null;
+    identityHeldSince: Date | null;
   } | null> {
     const db = this.resolveConn(conn);
     const rows = await db
       .select({
         kycStatus: bidUserProfile.kycStatus,
         kycVerifiedAt: bidUserProfile.kycVerifiedAt,
+        identityHeldSince: bidUserProfile.identityHeldSince,
       })
       .from(bidUserProfile)
       .where(eq(bidUserProfile.userId, userId))
@@ -138,6 +141,7 @@ export class DrizzleKycRepository implements IKycRepository, IKycSessionReposito
     return {
       kycStatus: row.kycStatus,
       kycVerifiedAt: row.kycVerifiedAt ?? null,
+      identityHeldSince: row.identityHeldSince ?? null,
     };
   }
 
@@ -301,9 +305,17 @@ export class DrizzleKycRepository implements IKycRepository, IKycSessionReposito
     conn?: Database,
   ): Promise<void> {
     const db = this.resolveConn(conn);
+    const before = await this.getUserKycState(userId, conn);
     await writeBidUserProfile(db, userId, {
       kycStatus: status,
       kycVerifiedAt: verifiedAt,
+      // When an approved identity stops being approved the hold starts; approval clears it.
+      identityHeldSince: identityHeldSinceAfter({
+        from: before?.kycStatus ?? "unverified",
+        to: status,
+        heldSince: before?.identityHeldSince ?? null,
+        at: new Date(),
+      }),
       ...(status === "approved" ? { kycRetryCount: 0 } : {}),
     });
   }

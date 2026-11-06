@@ -485,11 +485,15 @@ describe("organisation buying routes", () => {
     });
     const malformed = await post(mount("finance"), "/purchases/pay-several", { lotIds: [] });
     expect(malformed.status).toBe(400);
-    // The plan shown must come with the request.
+    // A request that names no plan (a page from before this check) is told the current one.
     const unshown = await post(mount("finance"), "/purchases/pay-several", {
       lotIds: [LOTS.due],
     });
-    expect(unshown.status).toBe(400);
+    expect(unshown.status).toBe(409);
+    expect(await unshown.json()).toMatchObject({
+      error: "pay_plan_changed",
+      plan: { total: "600.10" },
+    });
   });
 
   it("answers 409 with the fresh plan when the plan shown is no longer the plan", async () => {

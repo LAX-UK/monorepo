@@ -17,6 +17,7 @@ import {
   DrizzlePurchaseProblemRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
+import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import type {
   ISettlementComplianceAssessor,
   ISettlementCompliancePolicy,
@@ -139,6 +140,7 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
         limits: input.payments.tierLimits,
         compliance: input.payments.compliance,
         checkout: input.payments.groupCheckout,
+        metrics: { record: recordMoneyPathEvent },
       }),
       deliveryQuotes: new DeliveryQuoteService({ quotes, purchases }),
       problems: new PurchaseProblemService({

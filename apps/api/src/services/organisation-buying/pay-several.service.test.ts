@@ -107,6 +107,7 @@ type World = {
   eligibility?: PaymentEligibility;
   start?: ReturnType<typeof vi.fn>;
   withNotInvoiced?: boolean;
+  metrics?: { record: (event: string) => void };
 };
 
 function service(over: World = {}) {
@@ -216,6 +217,7 @@ function service(over: World = {}) {
     limits,
     compliance: { evaluate },
     checkout: { start },
+    ...(over.metrics ? { metrics: over.metrics } : {}),
   });
   return { svc, planner, start, evaluate, ensureForLot, price };
 }
@@ -641,6 +643,26 @@ describe("PaySeveralService pays only the plan that was shown", () => {
     expect(refused.code).toBe("pay_several_needs_finance_review");
     expect(world.ensureForLot).not.toHaveBeenCalled();
     expect(world.start).not.toHaveBeenCalled();
+  });
+
+  it("is told the current plan, and charges nothing, when the request names no plan", async () => {
+    const world = service({ withNotInvoiced: true });
+    const refused = (await world.svc.pay(actor("owner"), { lotIds: lots }))._unsafeUnwrapErr();
+    expect(refused).toMatchObject({ code: "pay_plan_changed", status: 409 });
+    expect(refused.quote?.total).toBe("3100.10");
+    expect(world.ensureForLot).not.toHaveBeenCalled();
+    expect(world.start).not.toHaveBeenCalled();
+  });
+
+  it("counts each lot the lot-end guards will not invoice, by reason", async () => {
+    const record = vi.fn();
+    const world = service({
+      withNotInvoiced: true,
+      raiseCreatesNothing: true,
+      metrics: { record },
+    });
+    await payShown(world.svc, actor("owner"), lots);
+    expect(record).toHaveBeenCalledWith("pay_several_lot_not_invoiced_lot_not_ended");
   });
 
   it("leaves the accounting write to the group checkout when it raises", async () => {

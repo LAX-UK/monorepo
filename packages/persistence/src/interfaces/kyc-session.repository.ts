@@ -67,6 +67,8 @@ export interface IKycSessionRepository {
   ): Promise<{
     kycStatus: UserKycStatus;
     kycVerifiedAt: Date | null;
+    /** When an approved identity last stopped being approved; null if never approved. */
+    identityHeldSince: Date | null;
   } | null>;
 
   setUserKycStatus(

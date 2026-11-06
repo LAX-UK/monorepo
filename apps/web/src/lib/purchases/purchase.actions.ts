@@ -123,9 +123,9 @@ export async function startPaySeveralAction(shown: {
   return instrumentServerAction("startPaySeveralAction", async () => {
     const ids = lotIdsSchema.safeParse(shown.lotIds);
     const pence = penceOfMajor(shown.total);
-    if (!ids.success || pence === null) {
-      return { ok: false, message: "Pick between 1 and 20 invoices." };
-    }
+    if (!ids.success) return { ok: false, message: "Pick between 1 and 20 invoices." };
+    // A total that cannot be read is a fault on our side, not a problem with the pick.
+    if (pence === null) return { ok: false, message: PAY_SEVERAL_START_FAILED };
     const res = await post("/legal-entities/purchases/pay-several", {
       lotIds: ids.data,
       expectedTotalPence: pence,

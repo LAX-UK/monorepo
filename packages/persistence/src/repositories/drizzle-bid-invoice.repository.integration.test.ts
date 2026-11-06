@@ -1,11 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { type Database, createDb } from "@auction/db";
 import { bidInvoice, bidUserProfile, legalEntity, lot, payment, user } from "@auction/db/schema";
+import { holdStartAt, payHeldSinceAfter } from "@auction/domain";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { bidInvoiceKey } from "../interfaces/bid-invoice.repository.js";
 import { DrizzleAdminWorkItemsReader } from "./drizzle-admin-work-items.reader.js";
 import { DrizzleBidInvoiceRepository } from "./drizzle-bid-invoice.repository.js";
+import { DrizzleKycRepository } from "./drizzle-kyc.repository.js";
+import { DrizzleLegalEntityLifecycleAdminRepository } from "./drizzle-legal-entity-lifecycle-admin.repository.js";
 import { DrizzlePaymentRepository } from "./drizzle-payment.repository.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -464,6 +467,168 @@ describe.skipIf(!HAS_DB)("stored invoice due dates (integration)", () => {
           first.invoiceId,
         );
         expect(await repo.findLiveByLotsAndBuyerAccounts([])).toEqual(new Map());
+        throw rollback;
+      });
+    } catch (error) {
+      if (error !== rollback) throw error;
+    }
+  });
+
+  it("an organisation's hold starts when it stops being able to pay and survives the review steps", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const db = createDb(process.env.DATABASE_URL!);
+    const rollback = new Error("rollback_test_tx");
+    const now = new Date();
+    const tag = randomUUID().slice(0, 8);
+    const at = (days: number) => new Date(now.getTime() + days * DAY_MS);
+
+    try {
+      await db.transaction(async (tx) => {
+        const database = tx as unknown as Database;
+        const base = await seedTwoInvoices(database, tag, now);
+        const common = {
+          buyerId: base.buyerId,
+          buyerEntityId: base.buyerEntityId,
+          sellerEntityId: base.sellerEntityId,
+          paymentCreatedAt: now,
+        };
+        // Overdue before the organisation was held, and falling due while it was.
+        const early = await addInvoice(database, {
+          ...common,
+          lotId: base.lotIds[0] as string,
+          dueAt: at(-5),
+        });
+        const during = await addInvoice(database, {
+          ...common,
+          lotId: base.lotIds[1] as string,
+          dueAt: at(1),
+        });
+        const lifecycle = new DrizzleLegalEntityLifecycleAdminRepository(database);
+        const repo = new DrizzleBidInvoiceRepository(database);
+
+        // approved -> documents asked for -> received -> under review, a day apart.
+        const path = ["approved", "docs_requested", "docs_received", "under_review"] as const;
+        const stepTo = async (i: number, to: "approved" | (typeof path)[number], from: string) => {
+          const row = await lifecycle.findByIdForUpdate(database, base.buyerEntityId);
+          await lifecycle.applyTransitionUpdate(database, {
+            entityId: base.buyerEntityId,
+            actorUserId: base.buyerId,
+            nextStatus: to,
+            statusReason: null,
+            payHeldSince: payHeldSinceAfter({
+              from: from as (typeof path)[number],
+              to,
+              heldSince: row?.payHeldSince ?? null,
+              at: at(-2 + i),
+            }),
+          });
+        };
+        for (let i = 1; i < path.length; i += 1) {
+          await stepTo(i, path[i] as (typeof path)[number], path[i - 1] as string);
+        }
+        // Held since the first step, not since the last: each step kept the start.
+        const held = await lifecycle.findByIdForUpdate(database, base.buyerEntityId);
+        expect(held?.status).toBe("under_review");
+        expect(held?.payHeldSince).toEqual(at(-1));
+
+        // Released: only the invoice that fell due during the hold moves.
+        const until = at(8);
+        const moved = await repo.extendUnpaidDueDates(
+          {
+            kind: "account",
+            legalEntityId: base.buyerEntityId,
+            holdStartedAt: holdStartAt(held?.payHeldSince),
+          },
+          until,
+          database,
+        );
+        expect(moved).toBe(1);
+        const dueOf = async (id: string) =>
+          (await database.select().from(bidInvoice).where(eq(bidInvoice.id, id)))[0]?.dueAt;
+        expect(await dueOf(early.invoiceId)).toEqual(at(-5));
+        expect(await dueOf(during.invoiceId)).toEqual(until);
+
+        // And the release itself clears the record.
+        await stepTo(4, "approved", "under_review");
+        expect(
+          (await lifecycle.findByIdForUpdate(database, base.buyerEntityId))?.payHeldSince,
+        ).toBeNull();
+        throw rollback;
+      });
+    } catch (error) {
+      if (error !== rollback) throw error;
+    }
+  });
+
+  it("an identity's hold starts when approval is lost; a verified period's debt is not reset", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const db = createDb(process.env.DATABASE_URL!);
+    const rollback = new Error("rollback_test_tx");
+    const now = new Date();
+    const tag = randomUUID().slice(0, 8);
+
+    try {
+      await db.transaction(async (tx) => {
+        const database = tx as unknown as Database;
+        const base = await seedTwoInvoices(database, tag, now);
+        const kyc = new DrizzleKycRepository(database);
+        const repo = new DrizzleBidInvoiceRepository(database);
+        const heldSinceOf = async () =>
+          (await kyc.getUserKycState(base.buyerId, database))?.identityHeldSince;
+
+        // Never approved: nothing recorded, so a release reaches every invoice.
+        await kyc.setUserKycStatus(base.buyerId, "pending", null, database);
+        expect(await heldSinceOf()).toBeNull();
+        await kyc.setUserKycStatus(base.buyerId, "approved", now, database);
+        expect(await heldSinceOf()).toBeNull();
+
+        // Approval lost, then a step between held statuses: the loss is what is recorded.
+        await kyc.setUserKycStatus(base.buyerId, "rejected", null, database);
+        const lostAt = await heldSinceOf();
+        expect(lostAt).toBeInstanceOf(Date);
+        await kyc.setUserKycStatus(base.buyerId, "pending", null, database);
+        expect(await heldSinceOf()).toEqual(lostAt);
+
+        // One invoice fell due during the verified period (before the loss), one after it.
+        const common = {
+          buyerId: base.buyerId,
+          buyerEntityId: base.buyerEntityId,
+          sellerEntityId: base.sellerEntityId,
+          paymentCreatedAt: now,
+        };
+        const verifiedPeriod = await addInvoice(database, {
+          ...common,
+          lotId: base.lotIds[0] as string,
+          dueAt: new Date((lostAt as Date).getTime() - 2 * DAY_MS),
+        });
+        const heldPeriod = await addInvoice(database, {
+          ...common,
+          lotId: base.lotIds[1] as string,
+          dueAt: new Date((lostAt as Date).getTime() + 2 * DAY_MS),
+        });
+
+        const until = new Date((lostAt as Date).getTime() + 9 * DAY_MS);
+        const moved = await repo.extendUnpaidDueDates(
+          {
+            kind: "winner",
+            userId: base.buyerId,
+            personalAccountsOnly: false,
+            holdStartedAt: holdStartAt(await heldSinceOf()),
+          },
+          until,
+          database,
+        );
+        expect(moved).toBe(1);
+        const dueOf = async (id: string) =>
+          (await database.select().from(bidInvoice).where(eq(bidInvoice.id, id)))[0]?.dueAt;
+        expect(await dueOf(heldPeriod.invoiceId)).toEqual(until);
+        expect((await dueOf(verifiedPeriod.invoiceId))?.getTime()).toBeLessThan(
+          (lostAt as Date).getTime(),
+        );
+
+        // Approved again: the hold is cleared.
+        await kyc.setUserKycStatus(base.buyerId, "approved", now, database);
+        expect(await heldSinceOf()).toBeNull();
         throw rollback;
       });
     } catch (error) {

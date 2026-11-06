@@ -122,10 +122,10 @@ export type PaySeveralQuote = {
 /** What the person asked to pay: the picked lots and the plan they were shown for them. */
 export type PaySeveralRequest = {
   lotIds: readonly string[];
-  /** The shown total, in whole pence. */
-  expectedTotalPence: number;
+  /** The shown total, in whole pence. Absent from a page that predates the check. */
+  expectedTotalPence?: number | undefined;
   /** The lots the shown plan said would be paid. */
-  expectedLotIds: readonly string[];
+  expectedLotIds?: readonly string[] | undefined;
 };
 
 /** The combined payment opened for the payer: where to pay, and what it covers. */
