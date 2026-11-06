@@ -8,6 +8,7 @@ import {
   createDrizzleCrmEnquiryReader,
   createDrizzleCrmPaymentLotReader,
 } from "./crm-readers.js";
+import { createDrizzleCrmShopEnquiryReader } from "./crm-shop-enquiry-reader.js";
 import { CrmSyncService, type CrmSyncServiceDeps } from "./crm-sync-service.js";
 
 export function createCrmSyncService(input: {
@@ -24,14 +25,15 @@ export function createCrmSyncService(input: {
     attributionReader: createDrizzleCrmAttributionReader(input.db),
     enquiryReader: createDrizzleCrmEnquiryReader(input.db),
     dealNamingReader: createDrizzleCrmDealNamingReader(input.db),
+    shopEnquiryReader: createDrizzleCrmShopEnquiryReader(input.db),
     mapperContext: {
       leadStatusNew: input.env.ZOHO_CRM_LEAD_STATUS_NEW,
+      ...(input.env.LAX_ART_PUBLIC_URL ? { artPublicUrl: input.env.LAX_ART_PUBLIC_URL } : {}),
       auctionPipeline: input.env.ZOHO_CRM_AUCTION_PIPELINE,
       dealStageLotWon: input.env.ZOHO_CRM_DEAL_STAGE_LOT_WON,
       dealStagePaymentCaptured: input.env.ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED,
       dealStagePaymentRefunded: input.env.ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED,
       dealStageShopPaid: input.env.ZOHO_CRM_DEAL_STAGE_SHOP_PAID,
-      dealStageShopEnquiry: input.env.ZOHO_CRM_DEAL_STAGE_SHOP_ENQUIRY,
     },
   };
   return new CrmSyncService(deps);

@@ -5,6 +5,7 @@ import {
   CRM_FIELD,
   CRM_LEAD_SOURCE_BID_ENQUIRY,
   CRM_LEAD_SOURCE_BID_PRIVATE_SALE_ENQUIRY,
+  CRM_LEAD_SOURCE_SHOP_ENQUIRY,
   CRM_LEAD_SOURCE_SHOP_GUEST,
   CRM_LEAD_SOURCE_SIGN_UP,
   lotWonDealEntityId,
@@ -24,6 +25,7 @@ import {
 import type { CrmEnquiryType } from "./crm-lead-fields.js";
 import { splitDisplayName } from "./crm-name-fields.js";
 import type { CrmEnquiryRecord } from "./crm-readers.js";
+import type { CrmShopEnquiryRecord } from "./crm-shop-enquiry-reader.js";
 
 export type DomainEventRowForCrm = {
   id: number;
@@ -91,8 +93,9 @@ export type CrmMapperContext = {
   dealStagePaymentCaptured: string;
   dealStagePaymentRefunded: string;
   dealStageShopPaid: string;
-  dealStageShopEnquiry: string;
   attribution?: Record<string, CrmFieldValue> | null;
+  /** lax.art origin, for the link to the enquired work; no link is sent without it. */
+  artPublicUrl?: string;
 };
 
 /** Values resolved outside the catalog payload (e.g. lot id for refunds). */
@@ -100,7 +103,9 @@ export type CrmMapperResolved = {
   paymentRefundLotId?: string;
   /** The enquiry a `marketing_enquiry.received` event refers to; null when it no longer exists. */
   enquiry?: CrmEnquiryRecord | null;
-  /** The client and work a deal is named after (lot won, Shop enquiry, Shop order). */
+  /** The signed-in sender and the work a Shop original enquiry is about; null when gone. */
+  shopEnquiry?: CrmShopEnquiryRecord | null;
+  /** The client and work a deal is named after (lot won, Shop order). */
   dealNaming?: CrmDealNamingFacts;
   /** When the event is processed; names the month of a deal whose event carries no timestamp. */
   now?: Date;
@@ -191,6 +196,39 @@ function mapEnquiryReceived(
     email: enquiry.email,
     fields,
     createOnlyFields: newLeadFields(leadStatusNew),
+  };
+}
+
+/**
+ * A signed-in person's enquiry about a Shop original is a Lead, like every website enquiry:
+ * staff convert it by hand. The Lead is the account's own, so a repeat enquiry updates it.
+ */
+function mapShopEnquiryInterest(
+  enquiry: CrmShopEnquiryRecord | null | undefined,
+  subjectId: string,
+  ctx: CrmMapperContext,
+): CrmMappedIntent {
+  if (!enquiry) return { kind: "skip", reason: "shop_enquiry_not_found" };
+  const link = ctx.artPublicUrl
+    ? `${ctx.artPublicUrl.replace(/\/+$/, "")}/artworks/${encodeURIComponent(enquiry.artworkSlug)}`
+    : `/artworks/${encodeURIComponent(enquiry.artworkSlug)}`;
+  const work = [enquiry.stockCode, link, enquiry.artworkTitle].filter(Boolean).join(" ");
+  const fields = withAttribution(
+    personBaseFields(enquiry.email, enquiry.name ?? undefined, "shop", {
+      detailedSource: `${CRM_LEAD_SOURCE_SHOP_ENQUIRY}: ${work}`,
+      enquiryType: "Original",
+    }),
+    ctx.attribution,
+  );
+  fields[CRM_FIELD.subjectExternalId] = subjectId;
+  if (enquiry.reference) fields[CRM_FIELD.enquiryReference] = enquiry.reference;
+  if (enquiry.phone) fields.Phone = enquiry.phone;
+  return {
+    kind: "person_upsert",
+    subjectId,
+    email: enquiry.email,
+    fields,
+    createOnlyFields: newLeadFields(ctx.leadStatusNew),
   };
 }
 
@@ -395,26 +433,7 @@ export function mapDomainEventToCrmIntent(
       if (p.intent !== "enquiry") {
         return { kind: "skip", reason: "interest_not_enquiry" };
       }
-      const dealKey = `shop-enquiry:${p.artworkId}:${p.identitySubjectId}`;
-      const dealConfig = requireDealConfig(ctx, ctx.dealStageShopEnquiry);
-      if (!dealConfig.ok) return { kind: "skip", reason: dealConfig.reason };
-      return {
-        kind: "deal_upsert",
-        dealEntityId: dealKey,
-        dealKey,
-        subjectId: p.identitySubjectId,
-        fields: {
-          Deal_Name: dealNameFor(
-            resolved.dealNaming,
-            "Acquisition",
-            resolved.now ?? new Date(),
-            p.artworkId.slice(0, 8),
-          ),
-          Stage: dealConfig.stage,
-          Pipeline: dealConfig.pipeline,
-          [CRM_FIELD.dealExternalKey]: dealKey,
-        },
-      };
+      return mapShopEnquiryInterest(resolved.shopEnquiry, p.identitySubjectId, ctx);
     }
     case "shop.guest_lead.recorded": {
       if (payload === null) return { kind: "skip", reason: "invalid_payload" };
