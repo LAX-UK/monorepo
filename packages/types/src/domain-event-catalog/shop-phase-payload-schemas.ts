@@ -15,6 +15,28 @@ export const shopFulfilmentDispatchedPayloadSchemaV1 = z.object({
   orderId: z.string().uuid(),
 });
 
+export const shopPrintPackConfirmedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  orderLineId: z.string().uuid(),
+  orderId: z.string().uuid(),
+  editionId: z.string().uuid(),
+});
+
+export const shopPrintSwappedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  orderLineId: z.string().uuid(),
+  orderId: z.string().uuid(),
+  fromEditionId: z.string().uuid(),
+  toEditionId: z.string().uuid(),
+});
+
+export const shopFulfilmentStatusChangedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  fulfilmentId: z.string().uuid(),
+  orderId: z.string().uuid(),
+  status: z.string().min(1),
+});
+
 export const shopPossessionRecordedPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   fulfilmentId: z.string().uuid(),
