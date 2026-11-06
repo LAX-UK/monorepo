@@ -72,7 +72,39 @@ describe("findHopRedirects", () => {
 
   it("does not mistake a method called redirect or a longer name", () => {
     assert.deepEqual(findHopRedirects("response.redirect(switchAccountHref(id, n));"), []);
-    assert.deepEqual(findHopRedirects("permanentRedirect(switchAccountHref(id, n));"), []);
+    assert.deepEqual(findHopRedirects("unpermanentRedirect(switchAccountHref(id, n));"), []);
+  });
+});
+
+describe("findHopLinks: RecordRow, HopHref and the switching link", () => {
+  it("flags a record row given the framework link and a hop", () => {
+    const source = "<RecordRow\n  href={withAccount('/home', id)}\n  linkAs={Link}\n/>";
+    assert.deepEqual(findHopLinks(source), [1]);
+    assert.deepEqual(findHopLinks("<RecordRow href={hopUrl(row.href)} linkAs={Link} />"), [1]);
+  });
+
+  it("allows a record row that renders a plain anchor", () => {
+    assert.deepEqual(findHopLinks("<RecordRow href={withAccount('/home', id)} />"), []);
+  });
+
+  it("flags an unwrapped HopHref on a router link", () => {
+    assert.deepEqual(findHopLinks("<Link href={hopUrl(row.href)}>Go</Link>"), [1]);
+    assert.deepEqual(findHopRouterCalls("router.push(hopUrl(row.href));"), [1]);
+  });
+
+  it("allows the switching link to carry a hop", () => {
+    const row = "<RecordRow href={hopUrl(row.href)} linkAs={AccountSwitchLink} />";
+    assert.deepEqual(findHopLinks(row), []);
+    const button =
+      "<ButtonLink href={hopUrl(h)} Link={AccountSwitchLink} size='sm'>Open</ButtonLink>";
+    assert.deepEqual(findHopLinks(button), []);
+  });
+});
+
+describe("findHopRedirects: permanentRedirect", () => {
+  it("flags permanentRedirect to a hop", () => {
+    assert.deepEqual(findHopRedirects("permanentRedirect(switchAccountHref(id, n));"), [1]);
+    assert.deepEqual(findHopRedirects("permanentRedirect(hopUrl(h));"), [1]);
   });
 });
 

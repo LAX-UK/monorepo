@@ -1,3 +1,4 @@
+import { hopHref } from "@/lib/navigation/hop-href";
 import { describe, expect, it } from "vitest";
 import { buildInvitationLinkView } from "./invitation-link.vm";
 
@@ -60,7 +61,7 @@ describe("buildInvitationLinkView", () => {
     expect(view.accept).toBeNull();
     expect(view.primary).toEqual({
       label: "Open Northbank Gallery",
-      href: `/switch-account?to=${ORG_ID}&next=%2Fhome`,
+      href: hopHref(`/switch-account?to=${ORG_ID}&next=%2Fhome`),
     });
   });
 

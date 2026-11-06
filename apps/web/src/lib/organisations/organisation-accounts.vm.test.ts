@@ -1,3 +1,4 @@
+import { hopHref } from "@/lib/navigation/hop-href";
 import { describe, expect, it } from "vitest";
 import { type OrganisationSource, accountRows, invitationRows } from "./organisation-accounts.vm";
 
@@ -46,13 +47,13 @@ describe("accountRows", () => {
       actingId: null,
     });
     expect(rows[0]?.href).toBe("/bids");
-    expect(rows[1]?.href).toBe("/home?account=nb");
+    expect(rows[1]?.href).toEqual(hopHref("/home?account=nb"));
     const inOrganisation = accountRows({
       personal,
       organisations: [organisation({ id: "nb" })],
       actingId: "nb",
     });
-    expect(inOrganisation[0]?.href).toBe("/bids?account=me");
+    expect(inOrganisation[0]?.href).toEqual(hopHref("/bids?account=me"));
     expect(inOrganisation[1]?.href).toBe("/home");
   });
 

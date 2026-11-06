@@ -1,4 +1,5 @@
-"use client";
+import { hopUrl, isHopHref } from "@/lib/navigation/hop-href";
+("use client");
 
 import { useAccountChrome } from "@/components/layout/account-switcher/account-chrome-context";
 import { useListQuery } from "@/components/workspace/use-list-query";
@@ -145,7 +146,7 @@ export function useNotificationsInboxBoard(input: InboxBoardInput) {
       if (!row.href) return;
       opened(row);
       // The switch hop is a server route: load it in full rather than through the client router.
-      if (row.viaHop) window.location.assign(row.href);
+      if (isHopHref(row.href)) window.location.assign(hopUrl(row.href));
       else router.push(row.href);
     },
     [opened, router],

@@ -1,5 +1,6 @@
 import { accountHomePathForKind } from "@/lib/navigation/account-home";
 import { withAccount } from "@/lib/navigation/client-routes";
+import { type HopHref, hopHref } from "@/lib/navigation/hop-href";
 import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { organisationStatusView } from "@/lib/presenters/organisation-status/organisation-status-presentation";
 import { formatDate } from "@/lib/ui/format";
@@ -24,8 +25,11 @@ export type AccountRowVm = {
   tileName: string;
   /** Facts after the title: what it is, the person's role, and "In use". */
   meta: string[];
-  /** The account's first page, opened in that account. */
-  href: string;
+  /**
+   * The account's first page, opened in that account. Another account's page is a `HopHref`: it
+   * switches account, so it is opened as a page load (see `AccountSwitchLink`).
+   */
+  href: string | HopHref;
   current: boolean;
   attention: AccountAttention | null;
   step: SetupStep | null;
@@ -51,8 +55,8 @@ const IN_USE = "In use";
  * An account's first page. The account in use opens as it is; any other names its account, which
  * the list switches to before loading the page (see `AccountSwitchLink`).
  */
-function opensIn(path: string, accountId: string, current: boolean): string {
-  return current ? path : withAccount(path, accountId);
+function opensIn(path: string, accountId: string, current: boolean): string | HopHref {
+  return current ? path : hopHref(withAccount(path, accountId));
 }
 
 /** An approved organisation has nothing to say; every other state is said once, in its own words. */

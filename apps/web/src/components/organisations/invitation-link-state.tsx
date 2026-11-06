@@ -1,6 +1,7 @@
 "use client";
 
 import { AccountTile } from "@/components/layout/account-switcher/account-tile";
+import { hopUrl } from "@/lib/navigation/hop-href";
 import type { InvitationLinkView } from "@/lib/organisations/invitation-link.vm";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { EmptyState } from "@auction/ui/components/empty-state";
@@ -74,7 +75,7 @@ export function InvitationLinkState({ view, acceptAction }: Props) {
             {view.primary ? (
               <Button asChild variant="primary">
                 {/* A plain link: the primary step can be an account hop, which needs a page load. */}
-                <a href={view.primary.href}>{view.primary.label}</a>
+                <a href={hopUrl(view.primary.href)}>{view.primary.label}</a>
               </Button>
             ) : null}
             <Button asChild variant="secondary">
