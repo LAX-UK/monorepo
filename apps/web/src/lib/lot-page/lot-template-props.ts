@@ -3,7 +3,11 @@ import { type LotDetailsView, buildLotDetails, lotFactsLine } from "@/lib/lot-pa
 import type { LotViewerView } from "@/lib/lot-page/lot-viewer";
 import type { LotPageLot, LotPageViewSource } from "@/lib/lot-page/use-lot-page-view";
 import { salePath } from "@/lib/seo/url";
-import type { PublicBidHistory } from "@auction/domain";
+import {
+  DEFAULT_LOT_MEDIA_TREATMENT,
+  type LotMediaTreatment,
+  type PublicBidHistory,
+} from "@auction/domain";
 import type { GalleryImage, Lot, PublicLotView, Sale } from "@auction/types";
 import { toGalleryImages } from "@auction/types";
 
@@ -28,6 +32,8 @@ export type LotTemplateData = {
   premiumPercent: string | null;
   sale: { href: string; label: string };
   initialWatching: boolean;
+  /** How the lot's department presents its pictures. */
+  media: LotMediaTreatment;
 };
 
 export type LotTemplateInput = {
@@ -43,6 +49,8 @@ export type LotTemplateInput = {
   bidding: LotBiddingView;
   viewer: LotViewerView | null;
   history: PublicBidHistory | null;
+  /** Left out, the lot is shown as a wall work. */
+  media?: LotMediaTreatment;
 };
 
 const NOT_FOR_SALE: ReadonlySet<Lot["status"]> = new Set(["voided", "cancelled"]);
@@ -112,5 +120,6 @@ export function toLotTemplateData(input: LotTemplateInput): LotTemplateData {
       ? { href: salePath(input.parentSale), label: "Back to the sale" }
       : { href: "/search", label: "Search lots" },
     initialWatching: input.watching,
+    media: input.media ?? DEFAULT_LOT_MEDIA_TREATMENT,
   };
 }

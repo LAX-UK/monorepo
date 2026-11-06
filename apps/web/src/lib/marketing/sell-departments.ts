@@ -1,4 +1,5 @@
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
+import { departmentBySlug } from "@auction/domain";
 
 /** Anchor id on `/sell` for department grid and navigation deep links. */
 export const SELL_DEPARTMENTS_ANCHOR = "departments";
@@ -26,50 +27,48 @@ export type SellDepartmentGroup = {
   departments: readonly SellDepartment[];
 };
 
+/**
+ * The id, name and category slug of one of the twelve departments, read from the department
+ * list in the domain so the sell page never keeps its own copy of them.
+ */
+function departmentIdentity(slug: string): Pick<SellDepartment, "id" | "label" | "slug"> {
+  const department = departmentBySlug(slug);
+  if (!department) throw new Error(`Unknown department: ${slug}`);
+  return { id: department.slug, label: department.label, slug: department.slug };
+}
+
 export const SELL_DEPARTMENT_GROUPS: readonly SellDepartmentGroup[] = [
   {
     id: "fine-art",
     label: "Fine art",
     departments: [
       {
-        id: "paintings",
-        label: "Paintings",
-        slug: "paintings",
+        ...departmentIdentity("paintings"),
         examples: ["Contemporary", "Impressionist", "Modern British"],
         intake: "wizard",
       },
       {
-        id: "sculpture",
-        label: "Sculpture",
-        slug: "sculpture",
+        ...departmentIdentity("sculpture"),
         examples: ["Bronze", "Marble", "Installation"],
         intake: "wizard",
       },
       {
-        id: "photography",
-        label: "Photography",
-        slug: "photography",
+        ...departmentIdentity("photography"),
         examples: ["Vintage prints", "Contemporary editions"],
         intake: "wizard",
       },
       {
-        id: "digital-art",
-        label: "Digital art",
-        slug: "digital-art",
+        ...departmentIdentity("digital-art"),
         examples: ["Digital editions", "Video and screen works"],
         intake: "wizard",
       },
       {
-        id: "mixed-media",
-        label: "Mixed media",
-        slug: "mixed-media",
+        ...departmentIdentity("mixed-media"),
         examples: ["Collage", "Assemblage"],
         intake: "wizard",
       },
       {
-        id: "drawings",
-        label: "Drawings",
-        slug: "drawings",
+        ...departmentIdentity("drawings"),
         examples: ["Works on paper", "Watercolour", "Ink"],
         intake: "wizard",
       },
@@ -80,35 +79,27 @@ export const SELL_DEPARTMENT_GROUPS: readonly SellDepartmentGroup[] = [
     label: "Luxury & collectibles",
     departments: [
       {
-        id: "watches-clocks",
-        label: "Watches & clocks",
-        slug: "watches-clocks",
+        ...departmentIdentity("watches-clocks"),
         examples: ["Wristwatches", "Pocket watches", "Desk clocks"],
         photoHints: ["Dial", "Caseback", "Movement", "Box and papers"],
         intake: "wizard",
         landing: "/sell/watches",
       },
       {
-        id: "motor-cars",
-        label: "Motor cars",
-        slug: "motor-cars",
+        ...departmentIdentity("motor-cars"),
         examples: ["Classic", "Modern collectibles", "Competition cars"],
         photoHints: ["Exterior angles", "Interior", "VIN plate", "Odometer"],
         intake: "wizard",
         landing: "/sell/motor-cars",
       },
       {
-        id: "coins-medals",
-        label: "Coins & medals",
-        slug: "coins-medals",
+        ...departmentIdentity("coins-medals"),
         examples: ["Ancient", "British", "Commemorative"],
         photoHints: ["Obverse and reverse", "Edge detail", "Certification"],
         intake: "wizard",
       },
       {
-        id: "design-decorative-arts",
-        label: "Design & decorative arts",
-        slug: "design-decorative-arts",
+        ...departmentIdentity("design-decorative-arts"),
         examples: ["Furniture", "Ceramics", "Lighting"],
         photoHints: ["Overall view", "Maker marks", "Dimensions reference"],
         intake: "wizard",
@@ -120,9 +111,7 @@ export const SELL_DEPARTMENT_GROUPS: readonly SellDepartmentGroup[] = [
     label: "Prints & multiples",
     departments: [
       {
-        id: "fine-prints",
-        label: "Fine prints",
-        slug: "fine-prints",
+        ...departmentIdentity("fine-prints"),
         examples: ["Limited editions", "Portfolios", "Multiples"],
         photoHints: ["Overall", "Signature", "Edition number"],
         intake: "wizard",
@@ -135,9 +124,7 @@ export const SELL_DEPARTMENT_GROUPS: readonly SellDepartmentGroup[] = [
     label: "Books & manuscripts",
     departments: [
       {
-        id: "books-manuscripts",
-        label: "Books & manuscripts",
-        slug: "books-manuscripts",
+        ...departmentIdentity("books-manuscripts"),
         examples: ["First editions", "Manuscripts", "Illustrated books"],
         photoHints: ["Title page", "Binding", "Condition details"],
         intake: "wizard",

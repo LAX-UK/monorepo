@@ -448,6 +448,13 @@ export {
   type MarketingArtistCrossLinksProps,
 } from "./marketing-artist-cross-links.js";
 export {
+  LOT_CARD_MEDIA_FRAMES,
+  lotCardMediaClasses,
+  lotCardMediaFrame,
+  type LotCardMediaClasses,
+  type LotCardMediaFrame,
+} from "./lot-media/lot-card-media-frame.js";
+export {
   MarketingWorkCard,
   type MarketingWorkCardProps,
   MarketingWorkGrid,

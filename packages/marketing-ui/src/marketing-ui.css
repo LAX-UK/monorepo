@@ -200,6 +200,38 @@ html.lenis {
   filter: var(--filter-work-mat-image, none);
 }
 
+/* Lot cards by department display style (see lot-card-media-frame.ts). The studio ground is the
+   plain neutral an object, product, showcase or document sits on; the wall shadow is the soft
+   drop shadow under a work shown whole, kept to the picture's own outline. */
+:root {
+  --color-studio-ground: #ecebe8;
+  --filter-lot-wall-shadow: drop-shadow(0 1px 1px rgb(0 0 0 / 0.12))
+    drop-shadow(0 6px 10px rgb(0 0 0 / 0.2));
+}
+
+.dark {
+  --color-studio-ground: #26282a;
+  --filter-lot-wall-shadow: drop-shadow(0 1px 1px rgb(0 0 0 / 0.45))
+    drop-shadow(0 6px 10px rgb(0 0 0 / 0.55));
+}
+
+.marketing-studio-ground {
+  background-color: var(--color-studio-ground);
+}
+
+.marketing-studio-ground::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px var(--color-work-mat-edge, transparent);
+}
+
+.marketing-lot-wall img {
+  filter: var(--filter-work-mat-image, var(--filter-lot-wall-shadow));
+}
+
 /* The hang: a work hung on the paper wall. The shadow is stronger in dark, where the wall sits
    almost on the page tone; the hover state deepens it. */
 :root {

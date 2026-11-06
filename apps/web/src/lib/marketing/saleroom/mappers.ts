@@ -24,6 +24,7 @@ import { saleVenueLabel } from "@/lib/sale-location-label";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
+import { type LotMediaTreatmentIndex, lotMediaTreatment } from "@auction/domain";
 import type { BuyerPremiumTier, Lot, Sale, SaleDayMedia } from "@auction/types";
 import { toLotCardTimingVM, toSaleCardTimingVM, toSaleCountdownEndIso } from "@auction/validators";
 import {
@@ -234,6 +235,8 @@ export function mapLotToCardVM(
     atgState?: "live" | "ended";
     /** The sale's premium tiers, so a sold lot reads the buyer's price like the lot page. */
     premiumTiers?: Sale["buyerPremiumTiers"];
+    /** How each department shows its lots; left out, every lot is a wall work. */
+    treatments?: LotMediaTreatmentIndex;
   },
 ): SaleLotCardVM {
   const estimate = lotEstimateLine(lot);
@@ -263,6 +266,7 @@ export function mapLotToCardVM(
     title: lot.title,
     imageUrl: lot.images[0] ?? null,
     imageAlt: lot.title,
+    displayStyle: lotMediaTreatment(lot, opts.treatments ?? {}).style,
     estimateValue: estimate,
     currentBidLabel: price.label,
     currentBidValue: price.value,

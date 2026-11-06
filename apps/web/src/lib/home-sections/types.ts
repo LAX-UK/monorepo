@@ -1,5 +1,5 @@
 import type { LotCardLineModel } from "@/lib/lot-card/lot-card-line";
-import type { HomeSectionId } from "@auction/domain";
+import type { DepartmentDisplayStyle, HomeSectionId } from "@auction/domain";
 
 export type HomeLink = { href: string; label: string };
 
@@ -10,6 +10,8 @@ export type HomeLotCard = {
   title: string;
   artistName: string | null;
   imageUrl: string | null;
+  /** How the lot's department shows its picture on a card. */
+  displayStyle: DepartmentDisplayStyle;
   /** Whether a person can still follow the lot: it is live or coming up, not sold or ended. */
   watchable: boolean;
   /** "Lot 4". */
@@ -79,7 +81,17 @@ export type HomeResultsBand = {
   lots: HomeLotCard[];
 };
 
-export type HomeDepartment = { id: string; name: string; href: string; imageUrl: string | null };
+export type HomeDepartment = {
+  id: string;
+  name: string;
+  href: string;
+  imageUrl: string;
+  /**
+   * `staff` is the picture staff chose for the department, which fills the tile. `lot` is a work's
+   * photograph, shown whole on the mat so a consigned work is never cropped.
+   */
+  imageSource: "staff" | "lot";
+};
 
 export type HomeArtistCard = {
   id: string;

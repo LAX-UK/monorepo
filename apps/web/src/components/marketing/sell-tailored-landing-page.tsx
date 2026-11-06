@@ -13,6 +13,7 @@ import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { sellContactHref } from "@/lib/marketing/sell-intake";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
+import { departmentDisplayStyle } from "@auction/domain";
 import { Notice } from "@auction/ui/lax";
 import type { Metadata } from "next";
 
@@ -98,6 +99,7 @@ export function SellDepartmentView({
           evidence={evidence}
           department={breadcrumbLabel}
           noun={departmentNoun}
+          displayStyle={departmentDisplayStyle(categorySlug)}
         />
       ) : null}
 

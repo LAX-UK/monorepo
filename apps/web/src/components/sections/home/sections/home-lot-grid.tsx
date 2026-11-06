@@ -16,6 +16,7 @@ function LotCard({ lot, watch }: { lot: HomeLotCard; watch: HomeLotWatch }) {
     <MarketingWorkCard
       href={lot.href}
       title={lot.title}
+      mediaStyle={lot.displayStyle}
       media={
         <MediaImage
           src={lot.imageUrl}

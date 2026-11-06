@@ -4,7 +4,7 @@ export const HOME_SECTION_LIMITS = {
   lotRail: { max: 8, min: 4, row: 4 },
   resultsLots: { max: 4, min: 4 },
   comingUp: { max: 3, min: 1 },
-  departments: { max: 6, min: 3 },
+  departments: { max: 12, min: 3 },
   artists: { max: 4, min: 3 },
   alertThumbnails: { max: 3 },
   press: { max: 3, min: 2 },

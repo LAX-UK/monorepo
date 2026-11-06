@@ -2,6 +2,7 @@ import { faqGroups } from "@/components/marketing/faq/faq-data";
 import { SellLandingView } from "@/components/marketing/sell/sell-landing-view";
 import { SellLegacyAnchorRedirect } from "@/components/marketing/sell/sell-legacy-anchor-redirect";
 import { SITE_SEO_NAME } from "@/lib/brand";
+import { getLotMediaTreatments } from "@/lib/departments/lot-media-treatments.server";
 import { loadRecentlySold } from "@/lib/marketing/load-recently-sold";
 import { SELL_FAQ_IDS, SELL_HERO_TITLE } from "@/lib/marketing/sell-landing";
 import { SELL_SPECIALISTS } from "@/lib/marketing/sell-specialists";
@@ -21,7 +22,10 @@ const FAQ_ITEMS = faqGroups
   .sort((a, b) => SELL_FAQ_IDS.indexOf(a.id as never) - SELL_FAQ_IDS.indexOf(b.id as never));
 
 export default async function SellPage() {
-  const recentlySold = await loadRecentlySold();
+  const [recentlySold, treatments] = await Promise.all([
+    loadRecentlySold(),
+    getLotMediaTreatments(),
+  ]);
   const jsonLdText = jsonLdScript(
     breadcrumbJsonLd([
       { name: "Home", path: "/" },
@@ -37,6 +41,7 @@ export default async function SellPage() {
       <SellLegacyAnchorRedirect />
       <SellLandingView
         recentlySold={recentlySold.ok ? recentlySold.value : []}
+        treatments={treatments}
         specialists={SELL_SPECIALISTS}
         faqItems={FAQ_ITEMS}
       />

@@ -19,6 +19,7 @@ export function CatalogLotView({
   isAuthenticated,
   watchedLotIds,
   loginNextPath,
+  treatments,
   catalogLinkParams,
 }: CatalogLotViewProps) {
   const viewProps = {
@@ -27,6 +28,7 @@ export function CatalogLotView({
     isAuthenticated,
     watchedLotIds,
     loginNextPath,
+    ...(treatments ? { treatments } : {}),
     ...(catalogLinkParams ? { catalogLinkParams } : {}),
   };
 

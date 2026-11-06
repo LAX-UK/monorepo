@@ -85,6 +85,7 @@ const lot = {
   lotLabel: "Lot 1",
   imageUrl: "https://example.com/lot.jpg",
   imageAlt: "",
+  displayStyle: "wall",
   estimateValue: "£1,000",
   currentBidLabel: "Current bid",
   currentBidValue: "£500",

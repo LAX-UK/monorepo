@@ -24,7 +24,8 @@ import {
 } from "@/lib/watching/watching.vm";
 import { matchesEveryWord } from "@/lib/workspace/list-search";
 import type { ArtistAlertCriteria } from "@auction/domain";
-import { InlineActionMenu, RecordList, RecordRow, RecordRowMedia } from "@auction/ui";
+import { lotCardMediaFrame } from "@auction/marketing-ui";
+import { InlineActionMenu, RecordList, RecordRow, RecordRowMedia, cn } from "@auction/ui";
 import {
   Button,
   ButtonLink,
@@ -206,6 +207,25 @@ export function WatchingView({ view, lots, artists, searches, organisation }: Wa
   );
 }
 
+/** The lot's picture as its department shows it: whole where the style does, filling where not. */
+function WatchedLotThumb({ lot }: { lot: WatchedLotRowVm }) {
+  const frame = lotCardMediaFrame(lot.displayStyle);
+  return (
+    <RecordRowMedia>
+      <span className={cn("block size-full", frame.inset)}>
+        <span
+          className={cn(
+            "relative block size-full",
+            frame.fit === "contain" ? "[&_img]:!object-contain" : "[&_img]:!object-cover",
+          )}
+        >
+          <MediaImage src={lot.image} alt="" sizes="48px" />
+        </span>
+      </span>
+    </RecordRowMedia>
+  );
+}
+
 function LotsList({
   lots,
   query,
@@ -247,11 +267,7 @@ function LotsList({
             aria-label={`${lot.title}, ${lot.standing.label}`}
             href={lot.href}
             linkAs={Link}
-            leading={
-              <RecordRowMedia>
-                <MediaImage src={lot.image} alt="" sizes="48px" />
-              </RecordRowMedia>
-            }
+            leading={<WatchedLotThumb lot={lot} />}
             title={lot.title}
             meta={[lot.lotLabel, lot.saleTitle, lot.moment, reminderRowLabel(lot.reminder)]}
             figures={[lot.figure]}
