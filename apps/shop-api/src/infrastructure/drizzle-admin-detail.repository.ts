@@ -30,7 +30,7 @@ import { notFound } from "../errors/shop-api-error.js";
 import { readClientCommerce } from "./admin-client-commerce.js";
 import { orderBuyer } from "./admin-order-buyer.js";
 import { artworkStateSql } from "./artwork-visibility-sql.js";
-import { printedEditionNumber } from "./printed-edition-number.js";
+import { printLabelOf, printLabelSelection } from "./edition-runs/print-label.js";
 import { listArtistSalesForArtworkIds } from "./shop-artist-sales-query.js";
 
 const CLIENT_KINDS = ["person", "gallery"] as const;
@@ -65,7 +65,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           artworkId: shopArtwork.id,
           artworkSlug: shopArtwork.slug,
           artworkTitle: shopArtwork.title,
-          editionNumber: printedEditionNumber,
+          print: printLabelSelection,
           listingStatus: shopEdition.listingStatus,
           custodyStatus: shopEdition.custodyStatus,
         })
@@ -181,7 +181,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           artworkId: row.artworkId,
           artworkSlug: row.artworkSlug,
           artworkTitle: row.artworkTitle,
-          editionNumber: row.editionNumber,
+          printLabel: printLabelOf(row.print),
           listingStatus: row.listingStatus,
           custodyStatus: row.custodyStatus,
         })),
@@ -247,7 +247,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
             editionId: shopEdition.id,
             artworkId: shopEdition.artworkId,
             artworkTitle: shopArtwork.title,
-            editionNumber: printedEditionNumber,
+            print: printLabelSelection,
             listingStatus: shopEdition.listingStatus,
             ownerPartyId: shopEdition.ownerPartyId,
             ownerDisplayName: shopParty.displayName,
@@ -264,7 +264,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
             editionId: row.editionId,
             artworkId: row.artworkId,
             artworkTitle: row.artworkTitle,
-            editionNumber: row.editionNumber,
+            printLabel: printLabelOf(row.print),
             listingStatus: row.listingStatus,
             ownerPartyId: row.ownerPartyId,
             ownerDisplayName: row.ownerDisplayName,

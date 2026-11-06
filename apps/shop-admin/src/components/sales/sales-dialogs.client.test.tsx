@@ -88,7 +88,7 @@ beforeEach(() => {
     { id: "a-1", label: "Vessel Study", description: "Theo Marsh" },
   ]);
   searchEditionOptions.mockResolvedValue([
-    { id: "e-1", label: "Vessel Study, edition 2", description: "Theo Marsh", meta: "Available" },
+    { id: "e-1", label: "Vessel Study, 2/24", description: "Theo Marsh", meta: "Available" },
   ]);
 });
 
@@ -172,10 +172,7 @@ describe("recording a third-party sale", () => {
 
   it("chooses the edition, seller and buyer by name and takes pounds", async () => {
     const dialog = renderDialog();
-    await choose(
-      within(dialog).getByRole("combobox", { name: "Edition" }),
-      /Vessel Study, edition 2/,
-    );
+    await choose(within(dialog).getByRole("combobox", { name: "Edition" }), /Vessel Study, 2\/24/);
     await choose(within(dialog).getByRole("combobox", { name: "Seller" }), /Ada Lovelace/);
     await choose(within(dialog).getByRole("combobox", { name: "Buyer" }), /Grace Hopper/);
     fireEvent.change(within(dialog).getByLabelText("Amount the buyer paid"), {
@@ -318,7 +315,7 @@ describe("the lists offer each action only where the record and the role allow i
         saleId: "t1",
         editionId: "e1",
         artworkTitle: "Vessel Study",
-        editionNumber: 1,
+        printLabel: "1/24",
         status: "recorded",
         grossPence: 120000,
         recordedAt: "2026-10-02T09:00:00.000Z",
@@ -331,7 +328,7 @@ describe("the lists offer each action only where the record and the role allow i
         saleId: "t2",
         editionId: "e2",
         artworkTitle: "Night Garden",
-        editionNumber: 4,
+        printLabel: "4/24",
         status: "recorded",
         grossPence: 90000,
         recordedAt: "2026-10-03T09:00:00.000Z",
@@ -356,13 +353,13 @@ describe("the lists offer each action only where the record and the role allow i
       />,
     );
     expect(screen.queryByRole("button", { name: "Record sale" })).not.toBeInTheDocument();
-    expect(item("Night Garden, edition 4", /Approve/)).not.toBeInTheDocument();
+    expect(item("Night Garden, 4/24", /Approve/)).not.toBeInTheDocument();
 
-    const approve = item("Vessel Study, edition 1", /Approve £120.00 fee/);
+    const approve = item("Vessel Study, 1/24", /Approve £120.00 fee/);
     if (!approve) throw new Error("no approve item");
     fireEvent.click(approve);
     const dialog = await screen.findByRole("dialog", {
-      name: "Approve the £120.00 commission fee on Vessel Study, edition 1?",
+      name: "Approve the £120.00 commission fee on Vessel Study, 1/24?",
     });
     fireEvent.click(within(dialog).getByRole("button", { name: "Approve £120.00 fee" }));
 
@@ -392,7 +389,7 @@ describe("the lists offer each action only where the record and the role allow i
         holdId: "h1",
         editionId: "e1",
         artworkTitle: "Vessel Study",
-        editionNumber: 2,
+        printLabel: "2/24",
         status: "active",
         expiresAt: "2026-11-01T09:00:00.000Z",
         brokerPartyId: null,
@@ -406,7 +403,7 @@ describe("the lists offer each action only where the record and the role allow i
         holdId: "h2",
         editionId: "e2",
         artworkTitle: "Night Garden",
-        editionNumber: 4,
+        printLabel: "4/24",
         status: "expired",
         expiresAt: "2026-09-01T09:00:00.000Z",
         brokerPartyId: null,
@@ -423,13 +420,13 @@ describe("the lists offer each action only where the record and the role allow i
 
   it("releases an active hold after confirming, and not an ended one", async () => {
     render(<HoldsList state={holdsList.parse({})} page={holds} canHold />);
-    expect(item("Night Garden, edition 4", /Release/)).not.toBeInTheDocument();
+    expect(item("Night Garden, 4/24", /Release/)).not.toBeInTheDocument();
 
-    const release = item("Vessel Study, edition 2", /Release hold/);
+    const release = item("Vessel Study, 2/24", /Release hold/);
     if (!release) throw new Error("no release item");
     fireEvent.click(release);
     const dialog = await screen.findByRole("dialog", {
-      name: "Release the hold on Vessel Study, edition 2?",
+      name: "Release the hold on Vessel Study, 2/24?",
     });
     expect(dialog).toHaveTextContent("Ada Lovelace loses their hold on it");
     fireEvent.click(within(dialog).getByRole("button", { name: "Release hold" }));

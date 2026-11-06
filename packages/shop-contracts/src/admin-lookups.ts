@@ -37,7 +37,7 @@ export const AdminEditionLookupItemSchema = Type.Object({
   artworkId: Type.String({ format: "uuid" }),
   artworkTitle: Type.String(),
   artistName: Type.String(),
-  editionNumber: Type.Integer(),
+  printLabel: Type.String({ minLength: 1 }),
   listingStatus: Type.String(),
 });
 export const AdminEditionLookupSchema = Type.Object({

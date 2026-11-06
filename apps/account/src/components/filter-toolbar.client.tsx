@@ -39,6 +39,8 @@ export type FilterToolbarProps = {
   /** How many rows match now, and how many exist before any filter. */
   shown: number;
   total: number;
+  /** Replaces "Showing 3 of 12 works" when the rows are not one per work, as with grouped copies. */
+  countText?: string;
 };
 
 function SearchIcon() {
@@ -181,7 +183,15 @@ export function ActiveFilterChips({
  * something navigates in place: the server page re-renders with the new results, Back steps
  * through the choices, and nothing reloads.
  */
-export function FilterToolbar({ action, noun, search, fields, shown, total }: FilterToolbarProps) {
+export function FilterToolbar({
+  action,
+  noun,
+  search,
+  fields,
+  shown,
+  total,
+  countText: customCountText,
+}: FilterToolbarProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -226,7 +236,7 @@ export function FilterToolbar({ action, noun, search, fields, shown, total }: Fi
 
   const activeCount = fields.filter((field) => field.value).length;
   const hasSearch = Boolean(searchValue);
-  const countText = `Showing ${shown} of ${total} ${noun}`;
+  const countText = customCountText ?? `Showing ${shown} of ${total} ${noun}`;
 
   function removeChip(name: string) {
     go({ kind: "field", name, value: "" });

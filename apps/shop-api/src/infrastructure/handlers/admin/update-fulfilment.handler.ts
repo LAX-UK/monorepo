@@ -109,6 +109,17 @@ export function createUpdateFulfilmentHandler(deps: {
             targetId: command.fulfilmentId,
             afterJson: { status: nextStatus },
           });
+          await tx.events.append({
+            aggregateType: "shop_fulfilment",
+            aggregateId: command.fulfilmentId,
+            eventType: "shop.fulfilment.status_changed",
+            payload: {
+              schemaVersion: 1,
+              fulfilmentId: command.fulfilmentId,
+              orderId: existing.orderId,
+              status: nextStatus,
+            },
+          });
           if (nextStatus === "in_transit") {
             await tx.events.append({
               aggregateType: "shop_fulfilment",

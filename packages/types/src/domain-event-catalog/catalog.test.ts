@@ -70,6 +70,46 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     ).toBe(false);
   });
 
+  it("routes the print fulfilment events to the Zoho fulfilment consumer", () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    const other = "22222222-2222-4222-8222-222222222222";
+    const fresh = [
+      [
+        "shop.print.pack_confirmed",
+        { schemaVersion: 1, orderLineId: id, orderId: id, editionId: id },
+      ],
+      [
+        "shop.print.swapped",
+        { schemaVersion: 1, orderLineId: id, orderId: id, fromEditionId: id, toEditionId: other },
+      ],
+      [
+        "shop.fulfilment.status_changed",
+        { schemaVersion: 1, fulfilmentId: id, orderId: id, status: "in_transit" },
+      ],
+    ] as const;
+    for (const [type, payload] of fresh) {
+      const entry = DOMAIN_EVENT_REGISTRY[type];
+      expect(entry.consumers).toEqual(["zoho_fulfilment"]);
+      expect(entry.producers).toEqual(["shop-api"]);
+      expect(entry.idempotencyPolicy).toBe("aggregate_event_unique");
+      expect(entry.piiClassification).toBe("none");
+      expect(parseDomainEventPayload(type, 1, payload).ok).toBe(true);
+      expect(parseDomainEventPayload(type, 1, { ...payload, orderId: "not-a-uuid" }).ok).toBe(
+        false,
+      );
+    }
+    for (const type of [
+      "shop.order.paid",
+      "shop.editions.allocated",
+      "shop.artwork.updated",
+      "shop.edition.sold",
+      "shop.edition.released",
+      "shop.fulfilment.dispatched",
+    ] as const) {
+      expect(DOMAIN_EVENT_REGISTRY[type].consumers).toContain("zoho_fulfilment");
+    }
+  });
+
   it("fails safely for unknown schema versions", () => {
     const result = parseDomainEventPayload("bid.outbid", 99, {
       previousBidId: "33333333-3333-4333-8333-333333333333",

@@ -227,11 +227,7 @@ export function ArtistRecordPage({
       header: "Artwork",
       mobile: "title",
       cell: (row) => (
-        <PrimaryCell
-          href={`/artworks/${row.artworkId}`}
-          Link={NextLink}
-          secondary={`Edition ${row.editionNumber}`}
-        >
+        <PrimaryCell href={`/artworks/${row.artworkId}`} Link={NextLink} secondary={row.printLabel}>
           {row.artworkTitle}
         </PrimaryCell>
       ),

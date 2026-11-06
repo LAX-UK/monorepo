@@ -44,7 +44,7 @@ describe("picker searches", () => {
     expect(new URLSearchParams(path.split("?")[1]).get("q")).toHaveLength(100);
   });
 
-  it("show editions as the work and its number, with the artist and status", async () => {
+  it("show editions as the work and its print label, with the artist and status", async () => {
     fetchAdminJson.mockResolvedValue({
       status: "ok",
       data: {
@@ -54,14 +54,14 @@ describe("picker searches", () => {
             artworkId: "a1",
             artworkTitle: "Vessel Study",
             artistName: "Theo Marsh",
-            editionNumber: 2,
+            printLabel: "2/24",
             listingStatus: "held",
           },
         ],
       },
     });
     expect(await searchEditionOptions("vessel")).toEqual([
-      { id: "e1", label: "Vessel Study, edition 2", description: "Theo Marsh", meta: "Held" },
+      { id: "e1", label: "Vessel Study, 2/24", description: "Theo Marsh", meta: "Held" },
     ]);
   });
 

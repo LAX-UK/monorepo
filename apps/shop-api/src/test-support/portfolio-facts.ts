@@ -38,7 +38,6 @@ export function edition(overrides: Partial<PortfolioEditionFact> = {}): Portfoli
   return {
     editionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
     work: work(),
-    editionNumber: 3,
     print: { editionNumber: 3, proofNumber: null, stockRef: 3 },
     runFacts: null,
     listingStatus: "sold",

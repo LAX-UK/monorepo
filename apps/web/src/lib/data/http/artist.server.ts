@@ -4,6 +4,7 @@ export {
   fetchPublicArtistAliases,
   fetchPublicArtistBrowse,
   fetchRegistryArtistById,
+  registryArtistPageExists,
   getServerArtistById,
   getServerArtistReader,
   fetchArtistBySlug,

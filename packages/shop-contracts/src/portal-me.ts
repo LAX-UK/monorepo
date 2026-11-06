@@ -6,7 +6,7 @@ export const PortalEditionSchema = Type.Object({
   artworkId: Type.String({ format: "uuid" }),
   artworkSlug: Type.String(),
   artworkTitle: Type.String(),
-  editionNumber: Type.Integer(),
+  printLabel: Type.String({ minLength: 1 }),
   listingStatus: Type.String(),
   custodyStatus: Type.String(),
 });
@@ -179,7 +179,7 @@ export const PortalCollectionEditionItemSchema = Type.Object({
   artworkSlug: Type.String(),
   artworkTitle: Type.String(),
   salesChannel: Type.Union([Type.Literal("shop"), Type.Literal("art")]),
-  editionNumber: Type.Integer(),
+  printLabel: Type.String({ minLength: 1 }),
   listingStatus: Type.String(),
   custodyStatus: Type.String(),
 });

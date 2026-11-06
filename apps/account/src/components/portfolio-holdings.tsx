@@ -2,8 +2,12 @@ import { EMPTY_STATE, SECTION_TITLE } from "@/components/account-ui";
 import type { FilterFieldVm } from "@/lib/filter-query";
 import { formatDate } from "@/lib/format-date";
 import { safeImageUrl } from "@/lib/media-origins";
+import {
+  type HoldingGroupVm,
+  groupHoldingRows,
+  holdingsCountLine,
+} from "@/server/domain/holding-groups.vm";
 import { PRODUCT_LABELS, STATUS_LABELS } from "@/server/domain/portfolio-labels";
-import { workDetailHref } from "@/server/domain/portfolio-routes";
 import {
   type AllocationCount,
   type HoldingRowVm,
@@ -24,6 +28,15 @@ import {
   TableRow,
 } from "@auction/ui/components/table";
 import { FilterToolbar } from "./filter-toolbar.client";
+import { HoldingGroupPhoneCard, HoldingGroupTable } from "./holding-group-views";
+import {
+  InReviewNote,
+  PaidCell,
+  WorkTitle,
+  amountLabel,
+  amountsOf,
+  documentsSummary,
+} from "./holding-row-parts";
 import {
   CurrencyAmounts,
   PortfolioStatusBadge,
@@ -34,69 +47,44 @@ import { ProductText } from "./product-name";
 
 type FilterOptions = ReturnType<typeof holdingsFilterOptions>;
 
-function documentsSummary(row: HoldingRowVm): string {
-  const { documentsAvailable: available, documentsExpected: expected } = row;
-  if (available === 0 && expected === 0) return "None";
-  const parts = [];
-  if (available > 0) parts.push(`${available} available`);
-  if (expected > 0) parts.push(`${expected} expected`);
-  return parts.join(", ");
-}
+type GroupsProps = {
+  groups: HoldingGroupVm[];
+  imageOrigins: readonly string[];
+  /** Groups open at first when a search or filter is narrowing the list. */
+  filtered: boolean;
+};
 
-function WorkTitle({ row }: { row: HoldingRowVm }) {
+/** A work held once: an ordinary row. */
+function SingleRow({ row, imageOrigins }: { row: HoldingRowVm; imageOrigins: readonly string[] }) {
   return (
-    <>
-      <a
-        href={workDetailHref(row.item)}
-        className="inline-flex min-h-11 items-center font-medium break-words text-on-surface underline underline-offset-4"
-      >
-        {row.item.title || "Untitled work"}
-      </a>
-      {row.item.artist ? (
-        <span className="block text-xs text-on-surface-variant">{row.item.artist}</span>
-      ) : null}
-      {row.item.edition ? (
-        <span className="block text-xs text-on-surface-variant">{row.item.edition}</span>
-      ) : null}
-    </>
+    <TableRow>
+      <TableCell>
+        <div className="flex items-center gap-3">
+          <WorkThumbnail
+            src={safeImageUrl(row.item.image, imageOrigins)}
+            className="size-12 shrink-0"
+          />
+          <div className="min-w-0">
+            <WorkTitle row={row} />
+          </div>
+        </div>
+      </TableCell>
+      <TableCell>
+        <ProductBadge product={row.item.product} />
+      </TableCell>
+      <TableCell className="whitespace-nowrap">{formatDate(row.item.acquiredAt)}</TableCell>
+      <TableCell className="text-right whitespace-nowrap">
+        <PaidCell row={row} />
+      </TableCell>
+      <TableCell>
+        <PortfolioStatusBadge status={row.item.status} />
+      </TableCell>
+      <TableCell className="text-on-surface-variant">{documentsSummary(row)}</TableCell>
+    </TableRow>
   );
 }
 
-/** The amount to show: the total due while awaiting payment, else what was paid. */
-function amountsOf(row: HoldingRowVm) {
-  return row.due.length > 0 ? row.due : row.paid;
-}
-
-/** What the amount in a row is: owed, being confirmed, or paid. */
-function amountLabel(status: HoldingRowVm["item"]["status"]): string {
-  if (status === "awaiting_payment") return "Due";
-  return status === "payment_confirming" ? "Confirming" : "Paid";
-}
-
-/** A work whose payment waits on account checks says so beside its amount. */
-function InReviewNote({ row }: { row: HoldingRowVm }) {
-  if (row.item.owed?.state !== "in_review") return null;
-  return <span className="block text-xs text-on-surface-variant">Waiting on account checks</span>;
-}
-
-function PaidCell({ row }: { row: HoldingRowVm }) {
-  const amounts = amountsOf(row);
-  return (
-    <>
-      {(row.item.status === "awaiting_payment" || row.item.status === "payment_confirming") &&
-      amounts.length > 0 ? (
-        <span className="mr-1 text-xs text-on-surface-variant">{amountLabel(row.item.status)}</span>
-      ) : null}
-      <CurrencyAmounts totals={amounts} />
-      <InReviewNote row={row} />
-    </>
-  );
-}
-
-function HoldingsTable({
-  rows,
-  imageOrigins,
-}: { rows: HoldingRowVm[]; imageOrigins: readonly string[] }) {
+function HoldingsTable({ groups, imageOrigins, filtered }: GroupsProps) {
   return (
     <div className="hidden md:block">
       <Table>
@@ -116,75 +104,70 @@ function HoldingsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.key}>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <WorkThumbnail
-                    src={safeImageUrl(row.item.image, imageOrigins)}
-                    className="size-12 shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <WorkTitle row={row} />
-                  </div>
-                </div>
-              </TableCell>
-              <TableCell>
-                <ProductBadge product={row.item.product} />
-              </TableCell>
-              <TableCell className="whitespace-nowrap">{formatDate(row.item.acquiredAt)}</TableCell>
-              <TableCell className="text-right whitespace-nowrap">
-                <PaidCell row={row} />
-              </TableCell>
-              <TableCell>
-                <PortfolioStatusBadge status={row.item.status} />
-              </TableCell>
-              <TableCell className="text-on-surface-variant">{documentsSummary(row)}</TableCell>
-            </TableRow>
-          ))}
+          {groups.map((group) =>
+            group.rows.length === 1 ? (
+              <SingleRow key={group.key} row={group.lead} imageOrigins={imageOrigins} />
+            ) : (
+              <HoldingGroupTable
+                key={`${group.key}:${filtered}`}
+                group={group}
+                imageOrigins={imageOrigins}
+                defaultOpen={filtered}
+              />
+            ),
+          )}
         </TableBody>
       </Table>
     </div>
   );
 }
 
-function HoldingsCards({
-  rows,
-  imageOrigins,
-}: { rows: HoldingRowVm[]; imageOrigins: readonly string[] }) {
+function SingleCard({ row, imageOrigins }: { row: HoldingRowVm; imageOrigins: readonly string[] }) {
+  return (
+    <li className="flex gap-3 rounded-2xl border border-border-hairline bg-surface p-4">
+      <WorkThumbnail
+        src={safeImageUrl(row.item.image, imageOrigins)}
+        className="size-16 shrink-0"
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <div>
+          <WorkTitle row={row} />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <ProductBadge product={row.item.product} />
+          <PortfolioStatusBadge status={row.item.status} />
+        </div>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+          <dt className="text-on-surface-variant">Acquired</dt>
+          <dd>{formatDate(row.item.acquiredAt)}</dd>
+          <dt className="text-on-surface-variant">{amountLabel(row.item.status)}</dt>
+          <dd>
+            <CurrencyAmounts totals={amountsOf(row)} />
+            <InReviewNote row={row} />
+          </dd>
+          <dt className="text-on-surface-variant">Documents</dt>
+          <dd>{documentsSummary(row)}</dd>
+        </dl>
+      </div>
+    </li>
+  );
+}
+
+function HoldingsCards({ groups, imageOrigins, filtered }: GroupsProps) {
   return (
     <ul className="flex flex-col gap-3 md:hidden" aria-label="Works and purchases">
-      {rows.map((row) => (
-        <li
-          key={row.key}
-          className="flex gap-3 rounded-2xl border border-border-hairline bg-surface p-4"
-        >
-          <WorkThumbnail
-            src={safeImageUrl(row.item.image, imageOrigins)}
-            className="size-16 shrink-0"
+      {groups.map((group) =>
+        group.rows.length === 1 ? (
+          <SingleCard key={group.key} row={group.lead} imageOrigins={imageOrigins} />
+        ) : (
+          <HoldingGroupPhoneCard
+            key={`${group.key}:${filtered}`}
+            group={group}
+            imageOrigins={imageOrigins}
+            defaultOpen={filtered}
           />
-          <div className="flex min-w-0 flex-1 flex-col gap-2">
-            <div>
-              <WorkTitle row={row} />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <ProductBadge product={row.item.product} />
-              <PortfolioStatusBadge status={row.item.status} />
-            </div>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-              <dt className="text-on-surface-variant">Acquired</dt>
-              <dd>{formatDate(row.item.acquiredAt)}</dd>
-              <dt className="text-on-surface-variant">{amountLabel(row.item.status)}</dt>
-              <dd>
-                <CurrencyAmounts totals={amountsOf(row)} />
-                <InReviewNote row={row} />
-              </dd>
-              <dt className="text-on-surface-variant">Documents</dt>
-              <dd>{documentsSummary(row)}</dd>
-            </dl>
-          </div>
-        </li>
-      ))}
+        ),
+      )}
     </ul>
   );
 }
@@ -238,7 +221,22 @@ function toFields(options: FilterOptions, filter: HoldingsFilter): FilterFieldVm
   ];
 }
 
-/** Search and filters, the works as a table (cards on a phone), and counts by artist and product. */
+/**
+ * Search and filters, the works as a table (cards on a phone) with copies of one artwork in one
+ * row that expands, and counts by artist.
+ */
+/** True when a search or filter is narrowing the list. */
+function isFiltered(filter: HoldingsFilter): boolean {
+  return Boolean(
+    filter.search?.trim() ||
+      filter.statuses?.length ||
+      filter.products?.length ||
+      filter.artist ||
+      filter.year !== undefined ||
+      filter.currency,
+  );
+}
+
 export function PortfolioHoldings({
   holdings,
   options,
@@ -255,6 +253,8 @@ export function PortfolioHoldings({
   totalCount: number;
   imageOrigins: readonly string[];
 }) {
+  const groups = groupHoldingRows(holdings.rows);
+  const filtered = isFiltered(filter);
   return (
     <section aria-labelledby="portfolio-holdings-heading" className="flex flex-col gap-4">
       <h2 id="portfolio-holdings-heading" className={SECTION_TITLE}>
@@ -262,7 +262,7 @@ export function PortfolioHoldings({
       </h2>
       <FilterToolbar
         action={action}
-        noun="items"
+        noun="works"
         search={{
           name: "q",
           value: filter.search ?? "",
@@ -272,6 +272,7 @@ export function PortfolioHoldings({
         fields={toFields(options, filter)}
         shown={holdings.rows.length}
         total={totalCount}
+        countText={holdingsCountLine(holdings.rows.length, totalCount, groups.length)}
       />
       {holdings.noResults ? (
         <EmptyState
@@ -288,8 +289,8 @@ export function PortfolioHoldings({
         />
       ) : (
         <>
-          <HoldingsTable rows={holdings.rows} imageOrigins={imageOrigins} />
-          <HoldingsCards rows={holdings.rows} imageOrigins={imageOrigins} />
+          <HoldingsTable groups={groups} imageOrigins={imageOrigins} filtered={filtered} />
+          <HoldingsCards groups={groups} imageOrigins={imageOrigins} filtered={filtered} />
           <AllocationLine label="By artist" counts={holdings.allocation.byArtist} />
         </>
       )}

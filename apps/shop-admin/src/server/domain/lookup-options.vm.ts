@@ -58,8 +58,9 @@ export function artworkOption(item: AdminArtworkLookupItem): LookupOption {
   return { id: item.artworkId, label: item.title, description: item.artistName };
 }
 
-export function editionLabel(item: { artworkTitle: string; editionNumber: number }): string {
-  return `${item.artworkTitle}, edition ${item.editionNumber}`;
+/** "Vessel Study, 7/24": the work and the print's label as the API words it. */
+export function editionLabel(item: { artworkTitle: string; printLabel: string }): string {
+  return `${item.artworkTitle}, ${item.printLabel}`;
 }
 
 export function editionOption(item: AdminEditionLookupItem): LookupOption {
@@ -76,18 +77,16 @@ export function editionOption(item: AdminEditionLookupItem): LookupOption {
  * editions of the same work is offered the work once), with which editions they hold.
  */
 export function ownedArtworkOptions(editions: AdminClientDetail["editions"]): LookupOption[] {
-  const byArtwork = new Map<string, { title: string; numbers: number[] }>();
+  const byArtwork = new Map<string, { title: string; labels: string[] }>();
   for (const edition of editions) {
-    const entry = byArtwork.get(edition.artworkId) ?? { title: edition.artworkTitle, numbers: [] };
-    entry.numbers.push(edition.editionNumber);
+    const entry = byArtwork.get(edition.artworkId) ?? { title: edition.artworkTitle, labels: [] };
+    entry.labels.push(edition.printLabel);
     byArtwork.set(edition.artworkId, entry);
   }
-  return [...byArtwork.entries()].map(([artworkId, entry]) => {
-    const numbers = [...entry.numbers].sort((a, b) => a - b);
-    return {
-      id: artworkId,
-      label: entry.title,
-      description: `Holds ${numbers.length === 1 ? "edition" : "editions"} ${numbers.join(", ")}`,
-    };
-  });
+  // The prints arrive in the order the API lists them, which is the order of their numbers.
+  return [...byArtwork.entries()].map(([artworkId, entry]) => ({
+    id: artworkId,
+    label: entry.title,
+    description: `Holds ${entry.labels.length === 1 ? "print" : "prints"} ${entry.labels.join(", ")}`,
+  }));
 }

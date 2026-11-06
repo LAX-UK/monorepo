@@ -17,20 +17,45 @@ export type WithdrawnLotPageData = {
   sale: { href: string; label: string; title: string | null };
 };
 
+type WithdrawnLotRead =
+  | { kind: "withdrawn"; lot: WithdrawnLotPageLot }
+  | { kind: "other" }
+  | { kind: "missing" }
+  | { kind: "failed"; error: unknown };
+
+/** One cached read of the lot row, keeping a definite 404 apart from a failed read. */
+const readWithdrawnLot = cache(async (lotId: string): Promise<WithdrawnLotRead> => {
+  try {
+    const client = await getServerHc();
+    const res = await client.lots[":id"].$get({ param: { id: lotId } });
+    if (res.status === 404) return { kind: "missing" };
+    if (!res.ok) return { kind: "failed", error: new Error(`Failed to load lot: ${res.status}`) };
+    const body = await readJsonBody(res);
+    const lot = parseWithdrawnLot(isIndexableObject(body) ? body.data : null);
+    return lot ? { kind: "withdrawn", lot } : { kind: "other" };
+  } catch (error) {
+    return { kind: "failed", error };
+  }
+});
+
 /** The slim public row of a lot, when the lot has been withdrawn; `null` for any other lot. */
 export const getServerWithdrawnLot = cache(
   async (lotId: string): Promise<WithdrawnLotPageLot | null> => {
-    try {
-      const client = await getServerHc();
-      const res = await client.lots[":id"].$get({ param: { id: lotId } });
-      if (!res.ok) return null;
-      const body = await readJsonBody(res);
-      return parseWithdrawnLot(isIndexableObject(body) ? body.data : null);
-    } catch {
-      return null;
-    }
+    const read = await readWithdrawnLot(lotId);
+    return read.kind === "withdrawn" ? read.lot : null;
   },
 );
+
+/**
+ * For a lot the public reader returned nothing for: is it withdrawn (keeps its page), definitely
+ * missing (404), or unknown because the read failed? Throws on a failure, never answers
+ * "missing" for one.
+ */
+export async function withdrawnLotPageExists(lotId: string): Promise<"exists" | "missing"> {
+  const read = await readWithdrawnLot(lotId);
+  if (read.kind === "failed") throw read.error;
+  return read.kind === "withdrawn" ? "exists" : "missing";
+}
 
 /**
  * What the withdrawn lot page needs: the lot, its artist and the sale to go back to. Returns
