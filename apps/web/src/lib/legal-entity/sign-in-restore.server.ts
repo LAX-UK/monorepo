@@ -21,19 +21,26 @@ const RESTORE_TIMEOUT_MS = 3_000;
  */
 function senderFor(sessionId: string): ApiSender {
   return async (path, init) => {
-    const { token } = await new BidBffTokenService().resourceToken(
-      sessionId,
-      BID_API_AUDIENCE,
-      "bid.read bid.write",
-    );
-    const headers = new Headers(init.headers);
-    headers.set("Authorization", `Bearer ${token}`);
-    headers.set("Origin", await deriveSsrOrigin());
-    return fetch(`${getServerApiBase()}${path}`, {
-      ...init,
-      headers,
-      signal: AbortSignal.timeout(RESTORE_TIMEOUT_MS),
-    });
+    try {
+      const { token } = await new BidBffTokenService().resourceToken(
+        sessionId,
+        BID_API_AUDIENCE,
+        "bid.read bid.write",
+      );
+      const headers = new Headers(init.headers);
+      headers.set("Authorization", `Bearer ${token}`);
+      headers.set("Origin", await deriveSsrOrigin());
+      const res = await fetch(`${getServerApiBase()}${path}`, {
+        ...init,
+        headers,
+        signal: AbortSignal.timeout(RESTORE_TIMEOUT_MS),
+      });
+      if (!res.ok) console.warn(`Sign-in account restore: the API answered ${res.status}`);
+      return res;
+    } catch (error) {
+      console.warn("Sign-in account restore failed", error);
+      throw error;
+    }
   };
 }
 

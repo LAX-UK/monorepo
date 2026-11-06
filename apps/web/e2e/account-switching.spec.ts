@@ -52,15 +52,15 @@ async function useAccountInThisBrowser(context: BrowserContext, baseURL: string,
   await context.addCookies([{ name: ACTING_COOKIE, value: id, url: baseURL }]);
 }
 
-async function openAccountMenuItem(page: Page, name: RegExp) {
+/** Opens the avatar menu and clicks a row, trying again if the menu re-renders under the pointer. */
+async function clickAccountMenuItem(page: Page, name: RegExp) {
   await dismissCookieConsentIfVisible(page);
   const item = page.getByRole("menuitem", { name });
-  // The menu opens only once the header has hydrated, so a click before that is lost.
+  // The menu opens only once the header has hydrated, and re-renders as its facts arrive.
   await expect(async () => {
     if (!(await item.isVisible())) await accountMenuButton(page).click();
-    await expect(item).toBeVisible({ timeout: 2_000 });
+    await item.click({ timeout: 2_000 });
   }).toPass({ timeout: 15_000 });
-  return item;
 }
 
 test.describe("account switching on the production build @roles", () => {
@@ -96,8 +96,7 @@ test.describe("account switching on the production build @roles", () => {
     await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
 
     // Personal to the organisation, from the avatar menu: the workspace frame, not the website's.
-    const row = await openAccountMenuItem(page, new RegExp(organisation.name));
-    await row.click();
+    await clickAccountMenuItem(page, new RegExp(organisation.name));
     await expect(workspaceSwitcher(page)).toContainText(organisation.name, { timeout: 30_000 });
     await expect(workspaceSwitcher(page)).toHaveAttribute(
       "aria-label",
@@ -120,6 +119,8 @@ test.describe("account switching on the production build @roles", () => {
     const origin = baseURL ?? "http://localhost:3000";
     await buyerLogin(page);
     const restoreRequests = countRestoreRequests(page);
+    // A restore during sign-in leaves a 30-second marker; this test starts without one.
+    await context.clearCookies({ name: "lax_account_restored" });
     await useAccountInThisBrowser(context, origin, FOREIGN_ORGANISATION_ID);
 
     await page.goto("/home");
