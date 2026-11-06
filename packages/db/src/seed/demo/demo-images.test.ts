@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { buildFullCatalogue } from "./demo-full-catalogue.js";
-import { DEPARTMENTS } from "./demo-full-works.js";
+import { COVER_IMAGES, DEPARTMENTS } from "./demo-full-works.js";
 import {
   DEMO_IMAGE_LONG_EDGE,
+  DEMO_IMAGE_TRIM,
   DEMO_MEDIA_BASE_URL,
   DEMO_PORTRAIT_SOURCES,
   demoImageCatalogue,
@@ -29,6 +30,22 @@ describe("demo image keys", () => {
   it("separates different pictures that share a file name", () => {
     const other = "https://openaccess-cdn.clevelandart.org/1939.678/DP-20101-001.jpg";
     expect(demoImageKey(other, "lot")).not.toBe(demoImageKey(SOURCE, "lot"));
+  });
+
+  it("gives a trimmed copy its own address, so a cached untrimmed copy is never served", () => {
+    const moon = COVER_IMAGES.moon;
+    expect(DEMO_IMAGE_TRIM[moon]).toBeGreaterThan(0);
+    expect(demoImageKey(moon, "cover")).toMatch(
+      /^seed\/demo\/cover\/dp-31997-001-new-[0-9a-f]{8}\.jpg$/,
+    );
+    // e3148272 is the address the untrimmed copy was stored under.
+    expect(demoImageKey(moon, "cover")).not.toContain("e3148272");
+  });
+
+  it("asks the copy step to trim only the pictures listed", () => {
+    const byKey = new Map(demoImageCatalogue().map((e) => [e.source + e.kind, e.trim]));
+    expect(byKey.get(`${COVER_IMAGES.moon}cover`)).toBe(DEMO_IMAGE_TRIM[COVER_IMAGES.moon]);
+    expect(byKey.get(`${COVER_IMAGES.harvesters}cover`)).toBe(0);
   });
 
   it("builds the public address on the media CDN", () => {

@@ -81,4 +81,33 @@ describe("resizeDemoPicture", () => {
       .toBuffer();
     expect((await sharp(await resizeDemoPicture(small, 1600)).metadata()).width).toBe(400);
   });
+
+  it("trims a share of each side before resizing, so a scan's black frame is cut away", async () => {
+    // A 1000 x 500 picture with a 20 px black frame around a light canvas.
+    const framed = await sharp({
+      create: { width: 1000, height: 500, channels: 3, background: "#000000" },
+    })
+      .composite([
+        {
+          input: await sharp({
+            create: { width: 960, height: 460, channels: 3, background: "#d0c0a0" },
+          })
+            .png()
+            .toBuffer(),
+          left: 20,
+          top: 20,
+        },
+      ])
+      .png()
+      .toBuffer();
+    const out = await resizeDemoPicture(framed, 2000, 0.03);
+    const meta = await sharp(out).metadata();
+    expect(meta.width).toBe(940);
+    expect(meta.height).toBe(470);
+    const { data, info } = await sharp(out).greyscale().raw().toBuffer({ resolveWithObject: true });
+    const corner = data[0] ?? 0;
+    const edgeMid = data[Math.floor(info.height / 2) * info.width] ?? 0;
+    expect(corner).toBeGreaterThan(100);
+    expect(edgeMid).toBeGreaterThan(100);
+  });
 });

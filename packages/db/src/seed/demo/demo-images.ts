@@ -26,6 +26,18 @@ export const DEMO_KEY_PREFIX = "seed/demo";
 /** Public address of the test media bucket the apps read from. */
 export const DEMO_MEDIA_BASE_URL = "https://lax-media.lon1.cdn.digitaloceanspaces.com";
 
+/**
+ * Pictures whose scan includes the museum's black frame around the canvas, with the share of each
+ * side the copy trims so the frame never shows at the edge of a full-width cover.
+ */
+export const DEMO_IMAGE_TRIM: Readonly<Record<string, number>> = {
+  [COVER_IMAGES.moon]: 0.03,
+};
+
+function trimOf(source: string): number | undefined {
+  return DEMO_IMAGE_TRIM[source];
+}
+
 /** The Met and Cleveland Open Access collections are CC0; so is the generative work made for the demo. */
 function licenceOf(source: string): string {
   return new URL(source).hostname.endsWith("test.lax.bid") ? "CC0 (made for this demo)" : "CC0";
@@ -38,7 +50,10 @@ function providerOf(source: string): string {
   return hostname;
 }
 
-/** Stable storage key for a source picture shown as `kind`: readable name plus a short hash. */
+/**
+ * Stable storage key for a source picture shown as `kind`: readable name plus a short hash. A
+ * trimmed copy hashes its trim too, so it never reuses the address of an untrimmed copy.
+ */
 export function demoImageKey(source: string, kind: DemoImageKind): string {
   const file = new URL(source).pathname.split("/").pop() ?? "picture";
   const name = file
@@ -46,7 +61,9 @@ export function demoImageKey(source: string, kind: DemoImageKind): string {
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/^-+|-+$/g, "")
     .toLowerCase();
-  const hash = createHash("sha1").update(source).digest("hex").slice(0, 8);
+  const trim = trimOf(source);
+  const hashed = trim === undefined ? source : `${source}#trim=${trim}`;
+  const hash = createHash("sha1").update(hashed).digest("hex").slice(0, 8);
   return `${DEMO_KEY_PREFIX}/${kind}/${name || "picture"}-${hash}.jpg`;
 }
 
@@ -97,6 +114,8 @@ export type DemoImageEntry = {
   kind: DemoImageKind;
   key: string;
   longEdge: number;
+  /** Share of each side to cut before resizing (see `DEMO_IMAGE_TRIM`); 0 keeps the whole picture. */
+  trim: number;
   licence: string;
   provider: string;
 };
@@ -107,6 +126,7 @@ function entryOf(source: string, kind: DemoImageKind): DemoImageEntry {
     kind,
     key: demoImageKey(source, kind),
     longEdge: DEMO_IMAGE_LONG_EDGE[kind],
+    trim: trimOf(source) ?? 0,
     licence: licenceOf(source),
     provider: providerOf(source),
   };
