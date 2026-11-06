@@ -8,6 +8,7 @@ import type {
   ICoverAnalysisJobRepository,
   PendingCoverSlot,
 } from "../interfaces/cover-analysis-job.repository.js";
+import { normalizeCatalogueKey } from "../lib/catalogue-image-keys.js";
 import type { CoverImageAnalyser } from "../lib/cover-image-analyser.js";
 import type { UploadStorage } from "../lib/upload-storage.js";
 
@@ -19,6 +20,8 @@ type Dependencies = {
   storage: UploadStorage;
   analyser: CoverImageAnalyser;
   log: pino.Logger;
+  /** Public address of the media bucket; a slot holding a full address under it is read by its storage key. */
+  publicBaseUrl?: string;
 };
 
 /**
@@ -31,12 +34,16 @@ export async function analyseCoverSlot(
   pending: PendingCoverSlot,
 ): Promise<"ready" | "failed"> {
   const { slot, name } = pending;
-  const key = (slot.fromLot?.imageKey ?? slot.key ?? "").trim().replace(/^\/+/, "");
+  const key =
+    normalizeCatalogueKey(slot.fromLot?.imageKey ?? slot.key ?? "", deps.publicBaseUrl) ?? "";
   const head = key ? await deps.storage.headObject(key) : null;
   const bytes =
     head && head.byteSize > 0 ? await deps.storage.getObjectBytes(key, head.byteSize) : null;
   if (!bytes || bytes.byteLength === 0) {
-    deps.log.warn({ saleId: pending.saleId, slot: name, key }, "cover analysis: picture missing");
+    deps.log.warn(
+      { saleId: pending.saleId, slot: name, key, slotKey: slot.fromLot?.imageKey ?? slot.key },
+      "cover analysis: picture missing in storage",
+    );
     await deps.repo.save(slot.analysisHash, { status: "failed" });
     return "failed";
   }

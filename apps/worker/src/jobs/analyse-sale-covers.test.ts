@@ -9,7 +9,8 @@ import type {
 import type { CoverImageAnalyser } from "../lib/cover-image-analyser.js";
 import { analyseSaleCoversJob } from "./analyse-sale-covers.js";
 
-const log = { info: vi.fn(), warn: vi.fn() } as never;
+const warn = vi.fn();
+const log = { info: vi.fn(), warn } as never;
 
 function slot(key: string, overrides: Partial<SaleCoverSlot> = {}): SaleCoverSlot {
   const draft = {
@@ -110,6 +111,31 @@ describe("analysing sale covers", () => {
       textSide: "right",
       preCrop: { x: 0, y: 0, width: 0.5, height: 0.5 },
     });
+  });
+
+  it("reads a slot held as a full address under the media bucket by its storage key", async () => {
+    const base = "https://media.example.test";
+    const stored = slot(`${base}/seed/demo/cover/harbour.jpg`);
+    const { deps, saved, measure } = setup([{ saleId: "s1", name: "default", slot: stored }], {
+      "seed/demo/cover/harbour.jpg": Buffer.from("bytes"),
+    });
+    expect(await analyseSaleCoversJob({ ...deps, publicBaseUrl: base })).toEqual({
+      ready: 1,
+      failed: 0,
+    });
+    expect(saved[0]?.outcome.status).toBe("ready");
+    expect(measure).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs the slot's own key when a picture is missing, and fails an address outside the bucket", async () => {
+    const stored = slot("https://elsewhere.example.test/a.jpg");
+    const { deps, saved } = setup([{ saleId: "s1", name: "default", slot: stored }], {});
+    await analyseSaleCoversJob({ ...deps, publicBaseUrl: "https://media.example.test" });
+    expect(saved[0]?.outcome).toEqual({ status: "failed" });
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ slotKey: "https://elsewhere.example.test/a.jpg" }),
+      "cover analysis: picture missing in storage",
+    );
   });
 
   it("records a missing picture as failed so it is not retried every minute", async () => {
