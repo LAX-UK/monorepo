@@ -1,33 +1,30 @@
 import {
   browserAccountId,
   carryOutHop,
-  hardNavigation,
   hopNext,
   hopUser,
   isImpersonating,
   seeOther,
 } from "@/lib/legal-entity/account-hop.server";
 import { planRestoreHop } from "@/lib/legal-entity/account-hops";
+import { writeRestoreMarkerCookie } from "@/lib/legal-entity/acting-cookie.server";
 import { restoreAccount } from "@/lib/legal-entity/remembered-account.server";
 import { accountsUnavailableHref, restoreAccountHref } from "@/lib/navigation/account-link";
-import { isPrefetchRequest, isRscRequest } from "@/lib/security/fetch-metadata";
+import { isPrefetchRequest } from "@/lib/security/fetch-metadata";
 
 export const dynamic = "force-dynamic";
 
 /**
- * `/restore-account?next=<page>`: a browser with no usable account choice (a new device, or an
- * organisation the person has left) opens in the account they used last, or in their own with a
- * notice saying why. When the API cannot answer, the browser keeps its choice and the person
- * sees the retry state; it is never moved to the personal account on a guess.
+ * `/restore-account?next=<page>`: a browser with no usable account choice (an organisation the
+ * person has left, or a cookie cleared mid-session) opens in the account they used last, or in
+ * their own with a notice saying why. A new sign-in does this in the sign-in callback; this is
+ * the fallback, and it is always opened as a page, never by the client router. When the API
+ * cannot answer, the browser keeps its choice and the person sees the retry state; it is never
+ * moved to the personal account on a guess.
  */
 export async function GET(request: Request) {
   if (isPrefetchRequest(request.headers)) {
     return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
-  }
-  // The client router cannot run this hop: tell it, once, to open the page as a document.
-  if (isRscRequest(request.headers)) {
-    const url = new URL(request.url);
-    return hardNavigation(`${url.pathname}?${new URLSearchParams({ next: hopNext(request) })}`);
   }
   const signedIn = await hopUser(request);
   if (signedIn instanceof Response) return signedIn;
@@ -36,5 +33,7 @@ export async function GET(request: Request) {
 
   const answer = await restoreAccount(await browserAccountId());
   if (!answer.ok) return seeOther(accountsUnavailableHref(restoreAccountHref(next)));
+  // If the page after this still asks for a restore, the layout stops instead of looping.
+  await writeRestoreMarkerCookie();
   return carryOutHop(planRestoreHop({ next, restored: answer.restored }));
 }

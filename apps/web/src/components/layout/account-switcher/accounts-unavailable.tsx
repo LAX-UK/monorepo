@@ -4,7 +4,6 @@ import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { Button } from "@auction/ui/lax";
 import { Loader2, RotateCw } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
@@ -76,10 +75,11 @@ export function AccountsUnavailable({ retry }: Props) {
             <RefreshButton reset={retry.reset} />
           ) : (
             <Button asChild variant="primary" data-testid="accounts-unavailable-retry">
-              <Link href={retry.href} prefetch={false}>
+              {/* A plain link: the retry target can be an account hop, which only a page load can run. */}
+              <a href={retry.href}>
                 <RotateCw className="size-4" strokeWidth={1.75} aria-hidden />
                 Try again
-              </Link>
+              </a>
             </Button>
           )}
           <Button asChild variant="secondary">

@@ -4,6 +4,7 @@ import { RememberedAccountService } from "./remembered-account.service.js";
 
 const PERSONAL = "00000000-0000-4000-8000-000000000001";
 const GALLERY = "00000000-0000-4000-8000-000000000002";
+const FOREIGN = "00000000-0000-4000-8000-0000000000aa";
 
 function summary(id: string, kind: LegalEntitySummary["kind"]): LegalEntitySummary {
   return {
@@ -21,11 +22,15 @@ function harness(options: {
   memberships: LegalEntitySummary[];
   remembered?: string | null;
   organisationsEnabled?: boolean;
+  /** Organisations the person belonged to once and no longer does. */
+  formerly?: string[];
 }) {
   const store = { value: options.remembered ?? null, writes: [] as string[] };
   const service = new RememberedAccountService({
     accounts: {
       listActiveMembershipsForUser: async () => options.memberships,
+      hasEverBeenMember: async (_userId, id) =>
+        (options.formerly ?? []).includes(id) || options.memberships.some((m) => m.id === id),
       findById: async (id) =>
         id === GALLERY
           ? ({ id, displayName: "Northbank Gallery", kind: "organisation" } as LegalEntity)
@@ -102,6 +107,53 @@ describe("RememberedAccountService.restore", () => {
     });
     expect(store.value).toBe(PERSONAL);
     await expect(service.restore("u1", null)).resolves.toEqual({
+      accountId: PERSONAL,
+      lostOrganisation: null,
+    });
+  });
+
+  it("names an organisation the person left when this browser still holds it", async () => {
+    const { service, store } = harness({
+      memberships: [summary(PERSONAL, "individual")],
+      remembered: PERSONAL,
+      formerly: [GALLERY],
+    });
+    await expect(service.restore("u1", GALLERY)).resolves.toEqual({
+      accountId: PERSONAL,
+      lostOrganisation: { id: GALLERY, displayName: "Northbank Gallery" },
+    });
+    expect(store.value).toBe(PERSONAL);
+  });
+
+  it("ignores an organisation the person never belonged to: no name, nothing overwritten", async () => {
+    const { service, store } = harness({ memberships: member, remembered: GALLERY });
+    await expect(service.restore("u1", FOREIGN)).resolves.toEqual({
+      accountId: GALLERY,
+      lostOrganisation: null,
+    });
+    expect(store.writes).toEqual([]);
+    expect(store.value).toBe(GALLERY);
+  });
+
+  it("keeps the remembered account when another person's organisation is in the browser", async () => {
+    const { service, store } = harness({
+      memberships: [summary(PERSONAL, "individual")],
+      remembered: PERSONAL,
+    });
+    await expect(service.restore("u1", FOREIGN)).resolves.toEqual({
+      accountId: PERSONAL,
+      lostOrganisation: null,
+    });
+    expect(store.writes).toEqual([]);
+  });
+
+  it("opens personal without a lost-organisation notice while organisations are switched off", async () => {
+    const { service } = harness({
+      memberships: member,
+      remembered: GALLERY,
+      organisationsEnabled: false,
+    });
+    await expect(service.restore("u1", GALLERY)).resolves.toEqual({
       accountId: PERSONAL,
       lostOrganisation: null,
     });

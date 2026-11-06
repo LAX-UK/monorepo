@@ -70,7 +70,7 @@ describe("buildHeaderAccountMenu", () => {
     expect(menu().accounts).toBeNull();
   });
 
-  it("shows the account in use as here and opens an organisation in its workspace", () => {
+  it("shows the account in use as here and lands an organisation on its workspace Home", () => {
     expect(menu({ accounts: ACCOUNTS }).accounts).toEqual([
       {
         id: "me",
@@ -88,7 +88,7 @@ describe("buildHeaderAccountMenu", () => {
         detail: "Organisation workspace · Buyer",
         initials: "NC",
         here: false,
-        href: "/switch-account?to=org-1&next=%2Fhome",
+        href: "/home",
       },
     ]);
   });
@@ -97,7 +97,7 @@ describe("buildHeaderAccountMenu", () => {
     const fromOrg = ACCOUNTS.map((option) => ({ ...option, current: option.kind !== "personal" }));
     expect(menu({ accounts: fromOrg }).accounts?.[0]).toMatchObject({
       here: false,
-      href: "/switch-account?to=me&next=%2Fbids",
+      href: "/bids",
     });
   });
 

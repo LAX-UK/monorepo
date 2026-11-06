@@ -32,10 +32,16 @@ export async function rememberAccount(legalEntityId: string): Promise<boolean> {
   }
 }
 
-/** The account this browser should use, given the one it used last (`null` on a new device). */
-export async function restoreAccount(candidateId: string | null): Promise<RestoreAnswer> {
+/** Sends one request to the API; how the caller is authenticated is up to the sender. */
+export type ApiSender = (path: string, init: RequestInit) => Promise<Response>;
+
+/** The account this browser should use, asked through `send` (`null` candidate on a new device). */
+export async function restoreAccountVia(
+  send: ApiSender,
+  candidateId: string | null,
+): Promise<RestoreAnswer> {
   try {
-    const res = await authedServerFetch("/legal-entities/me/remembered-account/restore", {
+    const res = await send("/legal-entities/me/remembered-account/restore", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ candidateId }),
@@ -47,6 +53,11 @@ export async function restoreAccount(candidateId: string | null): Promise<Restor
   } catch {
     return { ok: false };
   }
+}
+
+/** The account this browser should use, for the signed-in request being served. */
+export function restoreAccount(candidateId: string | null): Promise<RestoreAnswer> {
+  return restoreAccountVia(authedServerFetch, candidateId);
 }
 
 /**

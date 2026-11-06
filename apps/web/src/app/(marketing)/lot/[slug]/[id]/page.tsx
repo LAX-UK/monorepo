@@ -20,6 +20,7 @@ import { OnlineVideoStreamPanel } from "@/components/sections/artwork/online/onl
 import { OnsiteLotUnavailable } from "@/components/sections/artwork/onsite/onsite-lot-unavailable";
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
 import { SaleroomLiveLotBanner } from "@/components/sections/saleroom/saleroom-live-lot-banner";
+import { restoreContentFor } from "@/components/shell/restore-frame";
 import { usesBidAsClient } from "@/lib/auth/client-audience";
 import { resolveKycBidGate } from "@/lib/bid/resolve-kyc-bid-gate";
 import { isStrictBidEligibilityEnabled } from "@/lib/bid/strict-bid-eligibility-rollout.server";
@@ -43,12 +44,10 @@ import {
   loadLotDetailMetadata,
   loadLotDetailPage,
 } from "@/lib/marketing/load-lot-detail-page";
-import { restoreAccountHref } from "@/lib/navigation/account-link";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { lotPath, salePath } from "@/lib/seo/url";
 import { DEFAULT_LOT_MEDIA_TREATMENT, lotMediaTreatment } from "@auction/domain";
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{ slug: string; id: string }>;
@@ -136,9 +135,11 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
 
   // A signed-in person on a new device bids as the account they used last, not by default as
   // themselves: put this browser in it first.
-  if (session && usesBidAsClient(session) && actingCtx.needsRestore) {
-    redirect(restoreAccountHref(lotPath(auction)));
-  }
+  const restore =
+    session && usesBidAsClient(session)
+      ? await restoreContentFor(actingCtx.needsRestore, lotPath(auction))
+      : null;
+  if (restore) return restore;
 
   const atgReadOnlyCatalog = isAtgReadOnlyCatalogSale(saleBundle?.sale ?? null);
   const atgLotSold = saleLots?.find((l) => l.id === auction.id)?.atgSold;

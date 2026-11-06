@@ -1,16 +1,15 @@
 "use client";
 
-import { switchAccountHref } from "@/lib/navigation/account-link";
 import {
   ACCOUNT_NOTICE_COOKIE,
   type NotificationSwitchToastView,
 } from "@/lib/navigation/account-notice";
-import { ButtonLink } from "@auction/ui/lax";
 import { Button } from "@auction/ui/lax";
 import { X } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AccountTile } from "./account-tile";
+import { useAccountSwitch } from "./use-account-switch";
 
 /** Long enough to read and reach "Switch back"; it stays while hovered or focused. */
 const SHOWN_MS = 12_000;
@@ -23,6 +22,8 @@ const SHOWN_MS = 12_000;
 export function NotificationSwitchToast({ account, fromAccountId }: NotificationSwitchToastView) {
   const pathname = usePathname();
   const search = useSearchParams().toString();
+  // Switching back reopens this same page, in the account the notification was opened from.
+  const { pendingId, choose } = useAccountSwitch(`${pathname}${search ? `?${search}` : ""}`);
   const [open, setOpen] = useState(true);
   const [held, setHeld] = useState(false);
 
@@ -36,7 +37,6 @@ export function NotificationSwitchToast({ account, fromAccountId }: Notification
   }, [open, held]);
 
   if (!open) return null;
-  const here = `${pathname}${search ? `?${search}` : ""}`;
   return (
     <section
       aria-label="Account changed"
@@ -53,9 +53,15 @@ export function NotificationSwitchToast({ account, fromAccountId }: Notification
         <p className="text-lax-14 font-medium text-lax-fg">Now acting as {account.name}</p>
         <p className="text-lax-13 text-lax-muted">You opened a notification for that account.</p>
       </div>
-      <ButtonLink href={switchAccountHref(fromAccountId, here)} size="sm" className="shrink-0">
+      <Button
+        size="sm"
+        className="shrink-0"
+        aria-busy={pendingId !== null || undefined}
+        disabled={pendingId !== null}
+        onClick={() => void choose({ id: fromAccountId, current: false })}
+      >
         Switch back
-      </ButtonLink>
+      </Button>
       <Button
         variant="ghost"
         size="icon-sm"

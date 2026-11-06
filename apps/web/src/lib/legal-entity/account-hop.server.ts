@@ -4,11 +4,10 @@ import { clientAreaRedirectFor } from "@/lib/auth/client-audience";
 import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { safeHopNext } from "@/lib/navigation/account-link";
-import { decodeActingContextCookie } from "@auction/types";
 import { cookies } from "next/headers";
 import type { HopPlan } from "./account-hops";
 import { writeAccountNoticeCookie, writeActingAccountCookie } from "./acting-cookie.server";
-import { ACTING_LEGAL_ENTITY_COOKIE, parseActingLegalEntityId } from "./client-acting-context";
+import { ACTING_LEGAL_ENTITY_COOKIE, readActingCookie } from "./client-acting-context";
 import { rememberAccount } from "./remembered-account.server";
 
 /**
@@ -19,24 +18,6 @@ export function seeOther(location: string): Response {
   return new Response(null, {
     status: 303,
     headers: { Location: location, "Cache-Control": "no-store" },
-  });
-}
-
-/**
- * The answer to a hop asked for by the client router (an RSC fetch). It is not an RSC payload, so
- * the router drops its soft navigation and loads `location` as a whole page, once; that document
- * request runs the hop with real redirects and cookies. Answering with a redirect instead sends
- * the router round `layout → hop → page → layout` for as long as the hop's cookie is not yet in.
- */
-export function hardNavigation(location: string): Response {
-  return new Response(null, {
-    status: 200,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store",
-      Vary: "RSC, Next-Router-State-Tree, Next-Router-Prefetch, Next-Url",
-      Refresh: `0; url=${location}`,
-    },
   });
 }
 
@@ -63,14 +44,13 @@ export function hopNext(request: Request): string {
 /** Whether this browser is a staff member viewing as a client; hops leave that untouched. */
 export async function isImpersonating(): Promise<boolean> {
   const raw = (await cookies()).get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
-  if (!raw) return false;
-  return Boolean(decodeActingContextCookie(decodeURIComponent(raw))?.i?.sid);
+  return Boolean(readActingCookie(raw)?.viewSessionId);
 }
 
 /** The account this browser used last, from its cookie; `null` on a new device. */
 export async function browserAccountId(): Promise<string | null> {
   const raw = (await cookies()).get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
-  return raw ? (parseActingLegalEntityId(`${ACTING_LEGAL_ENTITY_COOKIE}=${raw}`) ?? null) : null;
+  return readActingCookie(raw)?.accountId ?? null;
 }
 
 /** Carries out a hop plan: writes the account, remembers it, leaves the notice, redirects. */

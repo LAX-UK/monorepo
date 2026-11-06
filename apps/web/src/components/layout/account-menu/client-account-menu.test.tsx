@@ -1,6 +1,6 @@
 import { NO_ATTENTION } from "@/lib/navigation/client-attention";
 import { buildHeaderAccountMenu } from "@/lib/navigation/header-account-menu.vm";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ClientAccountMenu } from "./client-account-menu";
@@ -8,6 +8,14 @@ import { ClientAccountMenu } from "./client-account-menu";
 vi.mock("@/lib/auth/use-logout", () => ({
   useLogout: () => ({ logout: vi.fn(), pending: false }),
 }));
+
+const switchAccount = vi.fn();
+vi.mock("@/lib/navigation/switch-account", () => ({
+  switchAccount: (...args: unknown[]) => switchAccount(...args),
+}));
+vi.mock("@/lib/legal-entity/acting-context.actions", () => ({ switchActingLegalEntity: vi.fn() }));
+vi.mock("@/lib/legal-entity/account-switch-channel", () => ({ announceAccountSwitch: vi.fn() }));
+vi.mock("@/lib/ui/notify", () => ({ notify: { error: vi.fn() } }));
 
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: { href: string; children: ReactNode }) => (
@@ -62,7 +70,25 @@ describe("ClientAccountMenu", () => {
     );
     expect(
       within(accounts).getByRole("menuitem", { name: /Northgate Collection Ltd.*Open/ }),
-    ).toHaveAttribute("href", "/switch-account?to=org-1&next=%2Fhome");
+    ).toBeVisible();
+  });
+
+  it("switches through the switch action and a page load, never a link to the hop", async () => {
+    const assign = vi.fn();
+    const realLocation = window.location;
+    Object.defineProperty(window, "location", { value: { assign }, configurable: true });
+    switchAccount.mockResolvedValue({ kind: "switched" });
+    try {
+      const accounts = within(renderMenu()).getByRole("group", { name: "Your accounts" });
+      const row = within(accounts).getByRole("menuitem", { name: /Northgate Collection Ltd/ });
+      expect(row.tagName).toBe("BUTTON");
+      expect(row).not.toHaveAttribute("href");
+      fireEvent.click(row);
+      await waitFor(() => expect(assign).toHaveBeenCalledWith("/home"));
+      expect(switchAccount).toHaveBeenCalledWith("org-1", expect.any(Function));
+    } finally {
+      Object.defineProperty(window, "location", { value: realLocation, configurable: true });
+    }
   });
 
   it("marks the page in view and reads out what is due", () => {

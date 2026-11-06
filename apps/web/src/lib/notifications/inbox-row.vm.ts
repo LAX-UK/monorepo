@@ -1,5 +1,6 @@
 import { initials } from "@/components/organisations/initials";
 import { switchAccountHref } from "@/lib/navigation/account-link";
+import { type HopHref, hopHref } from "@/lib/navigation/hop-href";
 import { notificationHref } from "@/lib/notifications/notification-link";
 import type { UserNotificationListItem } from "@auction/types";
 
@@ -34,14 +35,9 @@ export type InboxRowView = {
    * Where the row opens: in the account in use, or through the switch hop to the notification's
    * account (which says so, and offers the way back). `null` when there is nothing to open.
    */
-  href: string | null;
+  href: string | HopHref | null;
   /** Opening it changes the account in use. */
   switchesAccount: boolean;
-  /**
-   * The link goes through the switch hop (a server route that sets the account), so it must be a
-   * full page load: never prefetched or opened by the client router.
-   */
-  viaHop: boolean;
   /** "Don't notify me about …" for an organisation the person still belongs to. */
   mute: { legalEntityId: string; name: string; muted: boolean } | null;
 };
@@ -90,7 +86,8 @@ export function inboxRowView(
   const switchesAccount = Boolean(target && accountId && accountId !== accounts.currentId);
   const href =
     target && accountId && switchesAccount
-      ? switchAccountHref(accountId, target, { notificationFrom: accounts.currentId })
+      ? // The switch hop sets the account, so it is a `HopHref`: a full page load, never the router.
+        hopHref(switchAccountHref(accountId, target, { notificationFrom: accounts.currentId }))
       : target;
   return {
     id: item.id,
@@ -102,7 +99,6 @@ export function inboxRowView(
     account: tag,
     href,
     switchesAccount: switchesAccount && member,
-    viaHop: switchesAccount,
     mute:
       tag.kind === "organisation" && member && accountId
         ? { legalEntityId: accountId, name: tag.name, muted: mutedIds.has(accountId) }

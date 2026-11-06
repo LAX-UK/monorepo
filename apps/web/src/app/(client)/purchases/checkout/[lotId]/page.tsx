@@ -2,6 +2,7 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardErrorAlert, DashboardSection } from "@/components/dashboard/primitives";
 import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
+import { AccountRestoreHop } from "@/components/layout/account-switcher/account-restore-hop";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
 import { CheckoutReadinessStrip } from "@/components/sections/checkout/checkout-readiness-strip";
@@ -58,12 +59,13 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
   const c = await getServerDataContainer();
   const scope = await c.buying.scope();
   // A purchase is paid from the account it was won as; a link opened in another one switches.
-  await openRecordInItsAccount({
+  const opened = await openRecordInItsAccount({
     kind: "purchase",
     id: lotId,
     actingId: scope.account.id,
     next: checkoutPath,
   });
+  if (opened.kind === "hop") return <AccountRestoreHop href={opened.href} />;
   const organisation = organisationOf(scope);
 
   const lot = await c.buyerLots.getById(lotId);

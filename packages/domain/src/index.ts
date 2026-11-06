@@ -391,6 +391,7 @@ export {
 } from "./entity-capabilities.js";
 export {
   canUseAccount,
+  chooseCandidate,
   decideOpeningAccount,
   type OpeningAccountDecision,
   type OpeningAccountInput,

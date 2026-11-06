@@ -8,14 +8,13 @@ import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts";
-import { decodeActingContextCookie } from "@auction/types";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { listMyAccounts } from "./acting-context.server";
 import { writeActingAccountCookie } from "./acting-cookie.server";
-import { ACTING_LEGAL_ENTITY_COOKIE } from "./client-acting-context";
+import { ACTING_LEGAL_ENTITY_COOKIE, readActingCookie } from "./client-acting-context";
 import { rememberAccount } from "./remembered-account.server";
 
 const IMPERSONATION_COOKIE_MAX_AGE = 60 * 60 * 5;
@@ -57,14 +56,9 @@ async function readImpersonationSnapshot(): Promise<{
   const jar = await cookies();
   const raw = jar.get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
   if (!raw) return null;
-  let decoded: ReturnType<typeof decodeActingContextCookie> = null;
-  try {
-    decoded = decodeActingContextCookie(decodeURIComponent(raw.trim()));
-  } catch {
-    decoded = decodeActingContextCookie(raw.trim());
-  }
-  if (!decoded?.i?.sid || !decoded.e) return null;
-  return { sessionId: decoded.i.sid, legalEntityId: decoded.e };
+  const cookie = readActingCookie(raw);
+  if (!cookie?.viewSessionId) return null;
+  return { sessionId: cookie.viewSessionId, legalEntityId: cookie.accountId };
 }
 
 type SwitchResult =

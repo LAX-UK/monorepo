@@ -85,7 +85,7 @@ jobs:
         run: pnpm lint:admin-capability-drift
 
       - name: Web guardrails
-        run: pnpm lint:web-guardrails
+        run: pnpm lint:web-guardrails && pnpm lint:web-hop-links
 
       - name: Admin lib boundaries
         run: pnpm lint:lib-admin-boundaries

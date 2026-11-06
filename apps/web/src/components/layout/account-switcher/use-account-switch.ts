@@ -8,20 +8,26 @@ import { switchAccount } from "@/lib/navigation/switch-account";
 import { notify } from "@/lib/ui/notify";
 import { useCallback, useState } from "react";
 
+/** What switching needs to know about an account: which one, and whether it is already in use. */
+export type SwitchTarget = Pick<AccountOption, "id" | "current">;
+
 /**
  * Switches the account Bid is used as. A new account has a different set of pages, so it opens
  * on that account's Home unless a `destination` is given, loading it afresh so nothing of the
  * previous account is left on screen. Other open tabs are told, so a bid panel there refreshes
  * who it bids as before the next bid.
+ *
+ * This is the one way to switch from inside Bid: the client router never visits the switch or
+ * restore hops, because it cannot carry the cookie they set through to the layout it keeps.
  */
 export function useAccountSwitch(destination: string = CLIENT_ROUTES.home): {
   pendingId: string | null;
-  choose: (option: AccountOption) => Promise<void>;
+  choose: (target: SwitchTarget) => Promise<void>;
 } {
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const choose = useCallback(
-    async (option: AccountOption) => {
+    async (option: SwitchTarget) => {
       if (option.current) return;
       setPendingId(option.id);
       const outcome = await switchAccount(option.id, switchActingLegalEntity);

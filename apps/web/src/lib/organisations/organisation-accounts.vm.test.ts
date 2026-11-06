@@ -1,3 +1,4 @@
+import { hopHref } from "@/lib/navigation/hop-href";
 import { describe, expect, it } from "vitest";
 import { type OrganisationSource, accountRows, invitationRows } from "./organisation-accounts.vm";
 
@@ -39,14 +40,21 @@ describe("accountRows", () => {
     expect(row?.current).toBe(true);
   });
 
-  it("opens each account in that account", () => {
+  it("opens each other account in that account, and the one in use as it is", () => {
     const rows = accountRows({
       personal,
       organisations: [organisation({ id: "nb" })],
       actingId: null,
     });
-    expect(rows[0]?.href).toBe("/bids?account=me");
-    expect(rows[1]?.href).toBe("/home?account=nb");
+    expect(rows[0]?.href).toBe("/bids");
+    expect(rows[1]?.href).toEqual(hopHref("/home?account=nb"));
+    const inOrganisation = accountRows({
+      personal,
+      organisations: [organisation({ id: "nb" })],
+      actingId: "nb",
+    });
+    expect(inOrganisation[0]?.href).toEqual(hopHref("/bids?account=me"));
+    expect(inOrganisation[1]?.href).toBe("/home");
   });
 
   it("shows no badge for an approved organisation", () => {

@@ -26,6 +26,13 @@ export interface ILegalEntityRepository {
    */
   listActiveMembershipsForUser(userId: string): Promise<LegalEntitySummary[]>;
 
+  /**
+   * Whether the user ever belonged to the entity: an accepted membership, still active or since
+   * removed. A removed membership keeps its row (`removed_at` is set), so this is the record that
+   * a person really lost an organisation, as opposed to an id they never had.
+   */
+  hasEverBeenMember(userId: string, legalEntityId: string): Promise<boolean>;
+
   /** Single active membership lookup; used by the require-context middleware. */
   findActiveMembership(userId: string, legalEntityId: string): Promise<ActiveMembership | null>;
 
