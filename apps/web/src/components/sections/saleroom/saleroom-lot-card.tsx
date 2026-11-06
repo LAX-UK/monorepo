@@ -106,7 +106,7 @@ export function SaleroomLotCard({
           <div className="mt-auto flex flex-col gap-1">
             <LotEstimateLine value={lot.estimateValue} />
             <LotCardLine model={lot.cardLine} />
-            <LotCardBidderState lotId={lot.id} />
+            <LotCardBidderState lotId={lot.id} lotHref={lot.href} lotTitle={lot.title} />
           </div>
 
           {actions ? <div className="mt-1 w-full min-w-0">{actions}</div> : null}
@@ -190,7 +190,7 @@ export function SaleroomLotCard({
         <div className="mt-auto flex flex-col gap-1.5">
           <LotEstimateLine value={lot.estimateValue} />
           <LotCardLine model={lot.cardLine} />
-          <LotCardBidderState lotId={lot.id} />
+          <LotCardBidderState lotId={lot.id} lotHref={lot.href} lotTitle={lot.title} />
           {actions ? <div className="mt-1 w-full min-w-0">{actions}</div> : null}
         </div>
       </div>

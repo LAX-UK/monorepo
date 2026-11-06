@@ -140,7 +140,11 @@ export function CatalogLotGridView({
               <div className="mt-2 flex flex-col gap-1.5">
                 <LotEstimateLine value={est} />
                 <LotCardLine model={lotCardLineModel(a, new Date())} />
-                <LotCardBidderState lotId={a.id} />
+                <LotCardBidderState
+                  lotId={a.id}
+                  lotHref={resolveLotHref(a, catalogLinkParams)}
+                  lotTitle={a.title}
+                />
               </div>
             }
           />
@@ -199,6 +203,7 @@ export function CatalogLotCardView({
                   title={a.title}
                   subtitle={subtitle}
                   estimate={est}
+                  lotHref={resolveLotHref(a, catalogLinkParams)}
                 />
               }
             />
@@ -272,7 +277,11 @@ export function CatalogLotListView({
                   <div className="flex w-full min-w-0 flex-col gap-1.5">
                     <LotEstimateLine value={est} />
                     <LotCardLine model={lotCardLineModel(a, new Date())} />
-                    <LotCardBidderState lotId={a.id} />
+                    <LotCardBidderState
+                      lotId={a.id}
+                      lotHref={resolveLotHref(a, catalogLinkParams)}
+                      lotTitle={a.title}
+                    />
                   </div>
                 }
               />
