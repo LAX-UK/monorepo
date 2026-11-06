@@ -10,7 +10,7 @@ import {
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { AdminLookupReader } from "../application/ports/admin-readers.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
-import { printedEditionNumber } from "./printed-edition-number.js";
+import { printLabelOf, printLabelSelection } from "./edition-runs/print-label.js";
 
 /**
  * Small, name-first searches behind the staff pickers. Each returns one bounded page of the best
@@ -100,7 +100,7 @@ export function createDrizzleAdminLookupReader(db: Database): AdminLookupReader 
           artworkId: shopArtwork.id,
           artworkTitle: shopArtwork.title,
           artistName: shopParty.displayName,
-          editionNumber: printedEditionNumber,
+          print: printLabelSelection,
           listingStatus: shopEdition.listingStatus,
         })
         .from(shopEdition)
@@ -120,7 +120,7 @@ export function createDrizzleAdminLookupReader(db: Database): AdminLookupReader 
         )
         .orderBy(asc(shopArtwork.title), asc(shopEdition.editionNumber), asc(shopEdition.id))
         .limit(input.limit);
-      return rows;
+      return rows.map(({ print, ...row }) => ({ ...row, printLabel: printLabelOf(print) }));
     },
   };
 }

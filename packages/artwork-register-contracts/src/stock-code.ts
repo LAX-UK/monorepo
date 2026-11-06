@@ -107,7 +107,7 @@ export function nonConformingCodePart(value: string): "artist" | "collection" | 
 }
 
 /** The part of a code shared by a run of numbers, for example `LAX-ORI-PH-GAC-26`. */
-export function formatStockCodePrefix(prefix: StockCodePrefix): string {
+function formatStockCodePrefix(prefix: StockCodePrefix): string {
   assertPrefix(prefix);
   const year = String(prefix.year).padStart(2, "0");
   return `LAX-${KIND_SEGMENT[prefix.kind]}-${prefix.artist}-${prefix.second}-${year}`;
@@ -135,14 +135,6 @@ export function nextStockCode(prefix: StockCodePrefix, highestIssued: number | n
     );
   }
   return formatStockCode({ ...prefix, number: next });
-}
-
-/** The shared prefix of an existing code, or null when the code is malformed. */
-export function stockCodePrefixOf(value: string): string | null {
-  const parts = parseStockCode(value);
-  if (!parts) return null;
-  const { number: _number, ...prefix } = parts;
-  return formatStockCodePrefix(prefix);
 }
 
 /**

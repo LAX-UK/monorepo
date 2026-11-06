@@ -1,7 +1,9 @@
 import {
+  BUSINESS_PRODUCTS,
   type CurrencyTotal,
   type LaxBusinessKey,
   type LaxMoneyEntryV1,
+  type LaxProductId,
   type MoneyFilter,
   type MoneySectionKey,
   type MoneyVm,
@@ -22,6 +24,8 @@ export type MoneySummaryLineVm = {
 export type MoneySummaryCardVm = {
   key: LaxBusinessKey;
   legalName: string;
+  /** The products this business covers, in the order they are named. */
+  products: readonly LaxProductId[];
   lines: MoneySummaryLineVm[];
   /** The ledger filtered to this business; other active filters are kept. */
   ledgerHref: string;
@@ -61,6 +65,7 @@ export function buildMoneyPage(
     summary: money.groups.map((group) => ({
       key: group.key,
       legalName: group.legalName,
+      products: BUSINESS_PRODUCTS[group.key],
       ledgerHref: ledgerHrefFor(group.key, filter),
       lines: group.sections.map((section) => ({
         section: section.section,

@@ -25,8 +25,10 @@ export type BasketLineRecord = {
   imageUrl: string | null;
   artistName: string | null;
   artistSlug: string | null;
-  /** Editions in the run, for an artwork line; null for merchandise. */
+  /** The run's size, for a limited edition line; null for merchandise, an open edition or a proof. */
   editionSize: number | null;
+  /** The shared contract's wording for the print ("Limited edition of 24 · Hand-signed"); null for merchandise. */
+  editionLine: string | null;
 };
 
 export type BasketRecord = {

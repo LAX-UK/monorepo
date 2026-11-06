@@ -62,7 +62,7 @@ import {
   orderByMsTimestampId,
 } from "./admin-created-at-keyset.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
-import { printedEditionNumber } from "./printed-edition-number.js";
+import { printLabelOf, printLabelSelection } from "./edition-runs/print-label.js";
 
 /*
  * The staff work lists for sales and operations. Each one filters by its views' status, a search
@@ -331,7 +331,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
           .select({
             hold: shopStockHold,
             artworkTitle: shopArtwork.title,
-            editionNumber: printedEditionNumber,
+            print: printLabelSelection,
             clientName: clientParty.displayName,
             brokerName: brokerParty.displayName,
           })
@@ -366,11 +366,11 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
             createdAt: key === "expires" ? hold.expiresAt : hold.createdAt,
             id: hold.id,
           }),
-          ({ hold, artworkTitle, editionNumber, clientName, brokerName }) => ({
+          ({ hold, artworkTitle, print, clientName, brokerName }) => ({
             holdId: hold.id,
             editionId: hold.editionId,
             artworkTitle,
-            editionNumber,
+            printLabel: printLabelOf(print),
             status: hold.status,
             expiresAt: hold.expiresAt.toISOString(),
             brokerPartyId: hold.brokerPartyId,
@@ -419,7 +419,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
           .select({
             sale: shopThirdPartySale,
             artworkTitle: shopArtwork.title,
-            editionNumber: printedEditionNumber,
+            print: printLabelSelection,
             sellerName: sellerParty.displayName,
             buyerName: buyerParty.displayName,
           })
@@ -475,11 +475,11 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
             .orderBy(asc(shopSaleFee.createdAt), asc(shopSaleFee.id))
         : [];
       return {
-        items: page.items.map(({ sale, artworkTitle, editionNumber, sellerName, buyerName }) => ({
+        items: page.items.map(({ sale, artworkTitle, print, sellerName, buyerName }) => ({
           saleId: sale.id,
           editionId: sale.editionId,
           artworkTitle,
-          editionNumber,
+          printLabel: printLabelOf(print),
           status: sale.status,
           grossPence: sale.grossPence,
           recordedAt: iso(sale.recordedAt),

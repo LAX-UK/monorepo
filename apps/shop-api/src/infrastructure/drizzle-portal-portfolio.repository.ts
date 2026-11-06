@@ -27,7 +27,6 @@ import type {
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { liveEditionSnapshots } from "./edition-snapshot-source.js";
 import { resolvePortalPartyIds } from "./portal-party-ids.js";
-import { printedEditionNumber } from "./printed-edition-number.js";
 
 const ORIGINAL_SALE_STATUSES = ["deposit_due", "invoiced", "paid", "assigned"] as const;
 
@@ -67,7 +66,6 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
       db
         .select({
           editionId: shopEdition.id,
-          editionNumber: printedEditionNumber,
           printedNumber: shopEdition.editionNumber,
           proofNumber: shopEdition.proofNumber,
           stockRef: shopEdition.stockRef,
@@ -251,7 +249,6 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
           {
             editionId: row.editionId,
             work,
-            editionNumber: row.editionNumber,
             print: {
               editionNumber: row.printedNumber,
               proofNumber: row.proofNumber,

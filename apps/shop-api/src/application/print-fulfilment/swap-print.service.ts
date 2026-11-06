@@ -111,6 +111,18 @@ export function createSwapPrintService(deps: { uow: PrintFulfilmentUnitOfWork })
               actorSubjectId: command.actorSubjectId,
               orderId: line.orderId,
             });
+            await tx.domainEvents.append({
+              aggregateType: "shop_order_line",
+              aggregateId: line.orderLineId,
+              eventType: "shop.print.swapped",
+              payload: {
+                schemaVersion: 1,
+                orderLineId: line.orderLineId,
+                orderId: line.orderId,
+                fromEditionId: line.print.editionId,
+                toEditionId: chosen.editionId,
+              },
+            });
             await tx.audit.append({
               actorSubjectId: command.actorSubjectId,
               capability: crossOwner ? CROSS_OWNER_CAPABILITY : CAPABILITY,

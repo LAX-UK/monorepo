@@ -124,6 +124,19 @@ describe("confirming the print in hand", () => {
     await services.confirm.confirm({ ...staff(), ...command });
     expect(memory.events.filter((e) => e.kind === "pack_confirmed")).toHaveLength(1);
     expect(memory.certificates).toHaveLength(1);
+    expect(memory.domainEvents).toEqual([
+      {
+        aggregateType: "shop_order_line",
+        aggregateId: line.orderLineId,
+        eventType: "shop.print.pack_confirmed",
+        payload: {
+          schemaVersion: 1,
+          orderLineId: line.orderLineId,
+          orderId: line.orderId,
+          editionId: "e7",
+        },
+      },
+    ]);
   });
 
   it("refuses an unpaid or cancelled line", async () => {
@@ -252,6 +265,20 @@ describe("sending another print in place of the one sold", () => {
     expect(memory.prints.get("e8")).toMatchObject({ listingStatus: "sold", ownerPartyId: "buyer" });
     expect(memory.lines.get(line.orderLineId)?.printId).toBe("e8");
     expect(memory.events.map((e) => e.kind)).toEqual(["print_set_aside", "print_sent_instead"]);
+    expect(memory.domainEvents).toEqual([
+      {
+        aggregateType: "shop_order_line",
+        aggregateId: line.orderLineId,
+        eventType: "shop.print.swapped",
+        payload: {
+          schemaVersion: 1,
+          orderLineId: line.orderLineId,
+          orderId: line.orderId,
+          fromEditionId: "e7",
+          toEditionId: "e8",
+        },
+      },
+    ]);
     expect(memory.notices).toEqual([
       expect.objectContaining({
         newLabel: "8/24",

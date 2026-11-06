@@ -3,7 +3,8 @@ export type PortalOwnedEditionRow = {
   artworkId: string;
   artworkSlug: string;
   artworkTitle: string;
-  editionNumber: number;
+  /** "7/24", "AP 2/3" or "OE-0021". */
+  printLabel: string;
   listingStatus: string;
   custodyStatus: string;
 };
@@ -75,7 +76,8 @@ export type PortalCollectionEditionItem = {
   artworkSlug: string;
   artworkTitle: string;
   salesChannel: "shop" | "art";
-  editionNumber: number;
+  /** "7/24", "AP 2/3" or "OE-0021". */
+  printLabel: string;
   listingStatus: string;
   custodyStatus: string;
 };

@@ -19,6 +19,7 @@ const edition: BasketLine = {
   artistName: "Emmett King",
   artistSlug: "emmett-king",
   editionSize: 24,
+  editionLine: "Limited edition of 24 · Hand-signed",
   orderLimit: 2,
   maxQuantity: 2,
 };
@@ -30,7 +31,7 @@ describe("presentBasketLine", () => {
       href: "/artworks/warm-basket",
       artistName: "Emmett King",
       artistHref: "/artists/emmett-king",
-      detail: "Limited edition of 24",
+      detail: "Limited edition of 24 · Hand-signed",
       imageAlt: "Warm Basket by Emmett King",
       unitPrice: "£120.00",
       maxQuantity: 2,
@@ -64,6 +65,7 @@ describe("presentBasketLine", () => {
       artistName: _a,
       artistSlug: _s,
       editionSize: _e,
+      editionLine: _l,
       ...older
     } = edition;
     const vm = presentBasketLine(older);
@@ -72,6 +74,15 @@ describe("presentBasketLine", () => {
     expect(vm.artistName).toBeNull();
     expect(vm.detail).toBeNull();
     expect(vm.imageAlt).toBe("Warm Basket");
+  });
+
+  it("words an open edition from the contract, with no size", () => {
+    const vm = presentBasketLine({
+      ...edition,
+      editionSize: null,
+      editionLine: "Open edition · Unsigned",
+    });
+    expect(vm.detail).toBe("Open edition · Unsigned");
   });
 
   it("shows a merchandise line by its SKU", () => {
@@ -86,6 +97,7 @@ describe("presentBasketLine", () => {
       artistName: null,
       artistSlug: null,
       editionSize: null,
+      editionLine: null,
       orderLimit: null,
       maxQuantity: 24,
     });

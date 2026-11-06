@@ -2,6 +2,7 @@ import {
   type EditionFactsSnapshot,
   type PrintDescription,
   describeSnapshotPrint,
+  printLabel,
   readEditionSnapshot,
 } from "@auction/shop-domain";
 
@@ -29,5 +30,22 @@ export function describeOrderLineEdition(input: OrderLineEditionInput): PrintDes
     input.holdsPrint
       ? { editionNumber: input.editionNumber, proofNumber: input.proofNumber }
       : undefined,
+  );
+}
+
+/**
+ * The words after a print's title in a receipt: the facts the buyer was told when they paid, or
+ * the print's own label ("7/24") while no facts are recorded. Null when the run is unknown or the
+ * print has no number to give.
+ */
+export function describeReceiptEdition(input: OrderLineEditionInput): string | null {
+  const described = describeOrderLineEdition(input);
+  if (described) return described.summary;
+  const source = readEditionSnapshot(input.snapshot) ?? readEditionSnapshot(input.live);
+  const stockRef = input.editionNumber ?? input.proofNumber;
+  if (!source || !input.holdsPrint || stockRef === null) return null;
+  return printLabel(
+    { editionNumber: input.editionNumber, proofNumber: input.proofNumber, stockRef },
+    source.run,
   );
 }

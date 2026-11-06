@@ -50,7 +50,9 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle basket repository artwork upsert
     expect(basket.lines[0]?.artworkSlug).toBe(imported.slug);
     expect(basket.lines[0]?.artistSlug).toEqual(expect.any(String));
     expect(basket.lines[0]?.artistName).toEqual(expect.any(String));
-    expect(basket.lines[0]?.editionSize).toEqual(expect.any(Number));
+    // The size is the run's, worded by the edition contract; it is not a count of print rows.
+    expect(basket.lines[0]?.editionSize).toBe(24);
+    expect(basket.lines[0]?.editionLine).toBe("Limited edition of 24");
   });
 
   it("refuses more of one edition than an order may hold, whatever the stock", async () => {

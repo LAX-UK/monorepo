@@ -24,6 +24,7 @@ function bind(effects: ShopTransactionEffects): PrintFulfilmentTx {
     swaps: createDrizzlePrintSwapStore(db),
     certificates: createDrizzleCertificateStore(db),
     events: createDrizzlePrintEventWriter(db),
+    domainEvents: effects.events,
     horsCommerce: createDrizzleHorsCommerceApprovals(db),
     notifier: {
       printSwapped: (notice) => effects.notifications.queuePrintSwapped(effects.session, notice),

@@ -53,6 +53,7 @@ describe("createShopApiApp", () => {
                 artistName: null,
                 artistSlug: null,
                 editionSize: null,
+                editionLine: null,
               },
             ],
           };

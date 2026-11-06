@@ -330,6 +330,7 @@ function orderEntries(
       business,
       amount: order.totalPence,
       currency: CURRENCY,
+      product: order.channel,
       href: orderHref(ctx, order.channel, order.orderId),
     };
     if (PAID_ORDER_STATUSES.has(order.status)) {
@@ -376,6 +377,7 @@ function refundEntries(facts: PortalPortfolioFacts, ctx: ShopPortfolioContext) {
         amount: refund.amountPence,
         currency: CURRENCY,
         occurredAt: refund.createdAt.toISOString(),
+        product: refund.channel,
         href: orderHref(ctx, refund.channel, refund.orderId),
       },
     ];
@@ -394,6 +396,7 @@ function originalEntries(facts: PortalPortfolioFacts, ctx: ShopPortfolioContext)
       amount: original.salePricePence,
       currency: CURRENCY,
       occurredAt: original.updatedAt.toISOString(),
+      product: original.channel,
       href: collectionHref(ctx, original.channel),
     }),
   );
@@ -402,12 +405,14 @@ function originalEntries(facts: PortalPortfolioFacts, ctx: ShopPortfolioContext)
 function saleEntries(facts: PortalPortfolioFacts, ctx: ShopPortfolioContext) {
   return facts.sales.flatMap((sale): LaxMoneyEntryV1[] => {
     const status = payoutStatus(sale.status);
+    const payoutChannel = sale.work?.channel ?? "shop";
     const base = {
       business: businessOf(ctx),
       status,
       currency: CURRENCY,
       occurredAt: (sale.paidAt ?? sale.payoutDueAt).toISOString(),
-      href: payoutsHref(ctx, sale.work?.channel ?? "shop"),
+      product: payoutChannel,
+      href: payoutsHref(ctx, payoutChannel),
     };
     const entries: LaxMoneyEntryV1[] = [
       { ...base, id: `payout:${sale.payoutId}`, direction: "owed_to_you", amount: sale.netPence },

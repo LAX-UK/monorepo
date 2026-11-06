@@ -50,6 +50,18 @@ function formatPence(pence: number): string {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
 }
 
+type ReceiptLine = { artworkTitle: string; editionDetail: string | null; unitPricePence: number };
+
+/** One line per item: "Harbour at dusk (No. 7 of 24 · Hand-signed) — £420.00". */
+export function receiptLineSummary(lines: readonly ReceiptLine[]): string {
+  return lines
+    .map((line) => {
+      const detail = line.editionDetail ? ` (${line.editionDetail})` : "";
+      return `${line.artworkTitle}${detail} — ${formatPence(line.unitPricePence)}`;
+    })
+    .join("\n");
+}
+
 /** Queues one transactional email in the same transaction as the change it reports. */
 export async function insertShopEmailOutbox(
   tx: Database,
@@ -94,13 +106,7 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
       const orderUrl =
         input.guestOrderUrl ??
         `${input.storefrontUrl.replace(/\/+$/, "")}/account/orders/${input.orderId}`;
-      const lineSummary = input.lines
-        .map((line) => {
-          const editionSuffix =
-            line.editionNumber != null ? ` (edition ${line.editionNumber})` : "";
-          return `${line.artworkTitle}${editionSuffix} — ${formatPence(line.unitPricePence)}`;
-        })
-        .join("\n");
+      const lineSummary = receiptLineSummary(input.lines);
 
       await insertShopEmailOutbox(db, {
         idempotencyKey: input.idempotencyKey,

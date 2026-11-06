@@ -3,13 +3,11 @@ import {
   StockCodeError,
   assertSeries,
   formatStockCode,
-  formatStockCodePrefix,
   isStockCode,
   nextStockCode,
   nonConformingCodePart,
   parseStockCode,
   printCodeForOriginal,
-  stockCodePrefixOf,
 } from "./stock-code.js";
 
 describe("parseStockCode", () => {
@@ -187,16 +185,28 @@ describe("printCodeForOriginal", () => {
   });
 });
 
-describe("stock code prefix", () => {
-  it("formats the shared prefix", () => {
-    expect(formatStockCodePrefix({ kind: "original", artist: "PH", second: "GAC", year: 26 })).toBe(
-      "LAX-ORI-PH-GAC-26",
-    );
+describe("stock code prefix, through formatStockCode", () => {
+  it("writes the kind, artist, collection and two-digit year before the number", () => {
+    expect(
+      formatStockCode({ kind: "original", artist: "PH", second: "GAC", year: 26, number: 1 }),
+    ).toBe("LAX-ORI-PH-GAC-26-0001");
   });
 
-  it("reads the prefix of an existing code", () => {
-    expect(stockCodePrefixOf("LAX-PRT-BA-PC-26-0008")).toBe("LAX-PRT-BA-PC-26");
-    expect(stockCodePrefixOf("LAX-PRI-BA-PC-26-0008")).toBe("LAX-PRT-BA-PC-26");
-    expect(stockCodePrefixOf("nonsense")).toBeNull();
+  it("pads a single-digit year", () => {
+    expect(
+      formatStockCode({ kind: "print", artist: "PH", second: "GAC", year: 5, number: 12 }),
+    ).toBe("LAX-PRT-PH-GAC-05-0012");
+  });
+
+  it("rejects a year that is not two digits and codes LAX would not issue", () => {
+    const base = { kind: "original", artist: "PH", second: "GAC", number: 1 } as const;
+    expect(() => formatStockCode({ ...base, year: 100 })).toThrow(StockCodeError);
+    expect(() => formatStockCode({ ...base, year: -1 })).toThrow(StockCodeError);
+    expect(() => formatStockCode({ ...base, year: 26, artist: "p" })).toThrow(StockCodeError);
+  });
+
+  it("issues print codes under PRT even when the source was read as PRI", () => {
+    const parts = parseStockCode("LAX-PRI-BA-PC-26-0008");
+    expect(parts && formatStockCode(parts)).toBe("LAX-PRT-BA-PC-26-0008");
   });
 });

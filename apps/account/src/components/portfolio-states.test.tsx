@@ -10,8 +10,8 @@ import { PortfolioNotices } from "./portfolio-notices";
 import { OrganisationsCard } from "./portfolio-overview-cards";
 
 const products = [
-  { id: "bid" as const, name: "LAX Bid", tagline: "", href: "https://lax.bid" },
-  { id: "shop" as const, name: "LAX Shop", tagline: "", href: "https://shop.lax.art" },
+  { id: "bid" as const, name: "LAX Bid", invitation: "", href: "https://lax.bid" },
+  { id: "shop" as const, name: "LAX Shop", invitation: "", href: "https://shop.lax.art" },
 ];
 
 describe("PortfolioEmptyState", () => {

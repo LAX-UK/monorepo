@@ -37,23 +37,23 @@ describe("picker options read by name, never by id", () => {
     ).toEqual({ id: "a1", label: "Vessel Study", description: "Theo Marsh" });
   });
 
-  it("shows an edition as the work and its number, with the artist and status", () => {
+  it("shows an edition as the work and its print label, with the artist and status", () => {
     const option = editionOption({
       editionId: "e2",
       artworkId: "a1",
       artworkTitle: "Vessel Study",
       artistName: "Theo Marsh",
-      editionNumber: 2,
+      printLabel: "2/24",
       listingStatus: "authorised",
     });
     expect(option).toEqual({
       id: "e2",
-      label: "Vessel Study, edition 2",
+      label: "Vessel Study, 2/24",
       description: "Theo Marsh",
       meta: "Available",
     });
-    expect(editionLabel({ artworkTitle: "Vessel Study", editionNumber: 2 })).toBe(
-      "Vessel Study, edition 2",
+    expect(editionLabel({ artworkTitle: "Open study", printLabel: "OE-0021" })).toBe(
+      "Open study, OE-0021",
     );
   });
 
@@ -64,26 +64,25 @@ describe("picker options read by name, never by id", () => {
 });
 
 describe("ownedArtworkOptions", () => {
-  const edition = (artworkId: string, artworkTitle: string, editionNumber: number) => ({
-    editionId: `${artworkId}-${editionNumber}`,
+  const edition = (artworkId: string, artworkTitle: string, printLabel: string) => ({
+    editionId: `${artworkId}-${printLabel}`,
     artworkId,
     artworkTitle,
     artworkSlug: artworkTitle.toLowerCase().replaceAll(" ", "-"),
-    editionNumber,
+    printLabel,
     listingStatus: "authorised",
     custodyStatus: "stored",
   });
 
   it("offers an artwork once however many editions of it the client holds", () => {
-    // The old select joined "Vessel Study · ed. 1" and "Vessel Study · ed. 2" into one broken option.
     const options = ownedArtworkOptions([
-      edition("a1", "Vessel Study", 2),
-      edition("a2", "Night Garden", 7),
-      edition("a1", "Vessel Study", 1),
+      edition("a1", "Vessel Study", "1/24"),
+      edition("a2", "Night Garden", "OE-0007"),
+      edition("a1", "Vessel Study", "2/24"),
     ]);
     expect(options).toEqual([
-      { id: "a1", label: "Vessel Study", description: "Holds editions 1, 2" },
-      { id: "a2", label: "Night Garden", description: "Holds edition 7" },
+      { id: "a1", label: "Vessel Study", description: "Holds prints 1/24, 2/24" },
+      { id: "a2", label: "Night Garden", description: "Holds print OE-0007" },
     ]);
   });
 

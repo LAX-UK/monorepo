@@ -259,6 +259,7 @@ function owedEntries(
         amount: due.amount,
         currency: due.currency,
         occurredAt: lot.endedAt.toISOString(),
+        product: "bid",
         href: purchasesPage(ctx),
       },
     ];
@@ -279,6 +280,7 @@ function paymentEntries(payment: BidPaymentFact, ctx: BidPortfolioContext): LaxM
     amount,
     currency: PAYMENT_CURRENCY,
     occurredAt: payment.createdAt.toISOString(),
+    product: "bid" as const,
     href: paymentsPage(ctx),
   };
   const entry = (suffix: string, direction: LaxMoneyEntryV1["direction"]): LaxMoneyEntryV1 => ({
@@ -301,6 +303,7 @@ function payoutEntries(payout: BidPayoutFact, ctx: BidPortfolioContext): LaxMone
     status,
     currency: payout.currency,
     occurredAt: (payout.processedAt ?? payout.periodEnd).toISOString(),
+    product: "bid" as const,
     href: payoutsPage(ctx),
   };
   const entries: LaxMoneyEntryV1[] = [];

@@ -122,14 +122,14 @@ describe("staff picker lookups", () => {
           artworkId: "55555555-5555-4555-8555-555555555555",
           artworkTitle: "Vessel Study",
           artistName: "Theo Marsh",
-          editionNumber: 2,
+          printLabel: "2/24",
           listingStatus: "available",
         },
       ];
     });
     expect(response.json().items[0]).toMatchObject({
       artworkTitle: "Vessel Study",
-      editionNumber: 2,
+      printLabel: "2/24",
     });
   });
 });
@@ -154,7 +154,7 @@ describe("GET /admin/v1/third-party-sales", () => {
             saleId: "66666666-6666-4666-8666-666666666666",
             editionId: "44444444-4444-4444-8444-444444444444",
             artworkTitle: "Vessel Study",
-            editionNumber: 1,
+            printLabel: "1/24",
             status: "recorded",
             grossPence: 120000,
             recordedAt: null,

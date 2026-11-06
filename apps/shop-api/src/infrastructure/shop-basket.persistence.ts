@@ -10,9 +10,11 @@ import {
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { and, eq, isNull, sql } from "drizzle-orm";
+import { basketEditions } from "../application/edition-runs/basket-edition.js";
 import type { BasketOwner, BasketRecord } from "../application/ports/commerce.ports.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
+import { createDrizzleEditionRunsReader } from "./edition-runs/drizzle-edition-card-facts.reader.js";
 import { editionCountsByArtworkId } from "./public-artwork-rows.js";
 import { sellableCountsByVariantIds } from "./shop-variant-availability.js";
 
@@ -127,14 +129,16 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
   const variantIds = lines
     .map((line) => line.productVariantId)
     .filter((id): id is string => id !== null);
-  const [editionCounts, sellableByVariant] = await Promise.all([
+  const [editionCounts, editions, sellableByVariant] = await Promise.all([
     editionCountsByArtworkId(db, artworkIds),
+    basketEditions(createDrizzleEditionRunsReader(db), artworkIds),
     sellableCountsByVariantIds(db, variantIds),
   ]);
 
   const enriched = lines.map((line) => {
     if (line.artworkId) {
       const counts = editionCounts.get(line.artworkId);
+      const edition = editions.get(line.artworkId);
       return {
         lineId: line.lineId,
         artworkId: line.artworkId,
@@ -151,7 +155,8 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
         imageUrl: line.primaryImageUrl,
         artistName: line.artistName,
         artistSlug: line.artistSlug,
-        editionSize: counts && counts.total > 0 ? counts.total : null,
+        editionSize: edition?.size ?? null,
+        editionLine: edition?.line ?? null,
       };
     }
     const variantId = line.productVariantId;
@@ -175,6 +180,7 @@ export async function loadBasketRecord(db: Database, basketId: string): Promise<
       artistName: null,
       artistSlug: null,
       editionSize: null,
+      editionLine: null,
     };
   });
 

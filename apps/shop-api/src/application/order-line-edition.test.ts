@@ -1,6 +1,6 @@
 import { type EditionFacts, LAX_STANDARD_RUN, createEditionSnapshot } from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
-import { describeOrderLineEdition } from "./order-line-edition.js";
+import { describeOrderLineEdition, describeReceiptEdition } from "./order-line-edition.js";
 
 const handSigned: EditionFacts = {
   numbering: "on_print",
@@ -76,5 +76,60 @@ describe("describeOrderLineEdition", () => {
         live: liveOf(unsigned),
       })?.summary,
     ).toBe("Limited edition of 24 · Unsigned · Not numbered");
+  });
+});
+
+describe("describeReceiptEdition", () => {
+  it("gives the facts the buyer was told, with their number", () => {
+    expect(
+      describeReceiptEdition({ ...base, snapshot: storedOf(handSigned), live: undefined }),
+    ).toBe("No. 7 of 24 · Hand-signed");
+  });
+
+  it("falls back to the print's label while the run has no recorded facts", () => {
+    expect(describeReceiptEdition({ ...base, snapshot: storedOf(null), live: undefined })).toBe(
+      "7/24",
+    );
+  });
+
+  it("labels a proof by its proof number", () => {
+    const proofRun = {
+      type: "proof",
+      proofType: "ap",
+      size: 3,
+      owner: "artist",
+      mainRunId: "main",
+      proofsKeptOnMain: 3,
+    } as const;
+    const snapshot = createEditionSnapshot({ run: proofRun, proofsKept: null, facts: null });
+    expect(
+      describeReceiptEdition({
+        snapshot,
+        live: undefined,
+        holdsPrint: true,
+        editionNumber: null,
+        proofNumber: 2,
+      }),
+    ).toBe("AP 2/3");
+  });
+
+  it("says nothing when the run is unknown, the print has no number or the order does not hold it", () => {
+    expect(describeReceiptEdition({ ...base, snapshot: null, live: undefined })).toBeNull();
+    expect(
+      describeReceiptEdition({
+        ...base,
+        editionNumber: null,
+        snapshot: storedOf(null),
+        live: undefined,
+      }),
+    ).toBeNull();
+    expect(
+      describeReceiptEdition({
+        ...base,
+        holdsPrint: false,
+        snapshot: storedOf(null),
+        live: undefined,
+      }),
+    ).toBeNull();
   });
 });

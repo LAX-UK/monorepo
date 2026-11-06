@@ -6,6 +6,15 @@ export const MIN_PRODUCTS_FOR_CHART = 2;
 
 const FAMILY_ORDER: readonly LaxProductId[] = ["art", "shop", "bid"];
 
+/** How many works the person holds in each product: the one count Home's chart and cards share. */
+export function countWorksByProduct(
+  items: readonly LaxPortfolioItemV1[],
+): ReadonlyMap<string, number> {
+  return new Map(
+    buildHoldings(items).allocation.byProduct.map((entry) => [entry.label, entry.count]),
+  );
+}
+
 export type WorksBarVm =
   | {
       product: LaxProductId;
@@ -27,9 +36,7 @@ export function buildWorksByProduct(
   items: readonly LaxPortfolioItemV1[],
   unanswered: readonly LaxProductId[] = [],
 ): WorksByProductVm | null {
-  const counted = new Map<string, number>(
-    buildHoldings(items).allocation.byProduct.map((entry) => [entry.label, entry.count]),
-  );
+  const counted = countWorksByProduct(items);
   const answered = FAMILY_ORDER.filter((product) => !unanswered.includes(product)).map(
     (product) => ({ product, count: counted.get(product) ?? 0 }),
   );
