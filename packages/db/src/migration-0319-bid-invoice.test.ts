@@ -74,6 +74,20 @@ describe("migration 0319 bid invoices", () => {
     expect(getTableColumns(payment).invoiceId.notNull).toBe(false);
   });
 
+  it("keeps the re-runnable backfill script identical to the migration's backfill", () => {
+    const script = read("../scripts/backfill-bid-invoices.sql");
+    const fromMigration = migration.slice(migration.indexOf("-- Backfill: one invoice per lot"));
+    const normalise = (text: string) =>
+      text.replaceAll("--> statement-breakpoint", "").replace(/\s+/g, " ").trim();
+    expect(normalise(script)).toContain(normalise(fromMigration));
+    expect(script).toMatch(/Safe to re-run/);
+  });
+
+  it("links a payment to any invoice for its lot and account, not only backfilled ones", () => {
+    const update = migration.slice(migration.lastIndexOf('UPDATE "payment" p'));
+    expect(update).not.toMatch(/legacy_backfill/);
+  });
+
   it("lets the worker raise invoices, with inserts only", () => {
     expect(WORKER_INVOICE_RAISE_INSERT_TABLES).toContain("bid_invoice");
     expect(WORKER_INVOICE_RAISE_INSERT_TABLES).toContain("bid_invoice_line");

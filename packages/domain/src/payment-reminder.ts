@@ -32,7 +32,7 @@ export type PaymentReminderFacts = {
   /** The account holder the invoice is raised to. */
   buyerId: string;
   /** The lot's latest invoice, or `null` while none is raised. */
-  payment: { status: PaymentStatus; raisedAt: Date; dueAt?: Date | null } | null;
+  payment: { status: PaymentStatus; raisedAt: Date; dueAt: Date | null } | null;
   fulfilmentStatus: string | null;
   /** The buyer is on an AML or source-of-funds hold, so LAX itself is what stops payment. */
   onComplianceHold: boolean;

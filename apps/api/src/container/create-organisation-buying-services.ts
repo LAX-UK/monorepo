@@ -100,7 +100,11 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
   const purchases = new DrizzleAccountPurchaseFactsReader(input.db);
   const quotes = new DrizzleDeliveryQuoteRepository(input.db);
   const lookups = new WonLotLookups(input.lots, input.sales);
-  const flags = new DrizzlePaySeveralInvoiceFlagsReader(input.db);
+  const candidates = new PurchaseCandidateReader({
+    reader: purchases,
+    flags: new DrizzlePaySeveralInvoiceFlagsReader(input.db),
+    now: () => new Date(),
+  });
   const bid = legalEntityFor("bid");
   return {
     client: {
@@ -109,11 +113,7 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
       ),
       purchases: new AccountPurchasesService({ reader: purchases, now: () => new Date() }),
       payPlan: new PayPlanService({
-        candidates: new PurchaseCandidateReader({
-          reader: purchases,
-          flags,
-          now: () => new Date(),
-        }),
+        candidates,
         invoices: input.payments.invoices,
         pricing: input.payments.pricing,
         lots: input.lots,
@@ -131,13 +131,11 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
         now: () => new Date(),
       }),
       paySeveral: new PaySeveralService({
-        reader: purchases,
-        flags,
+        candidates,
         limits: input.payments.tierLimits,
         compliance: input.payments.compliance,
         eligibility: input.payments.eligibility,
         checkout: input.payments.groupCheckout,
-        now: () => new Date(),
       }),
       deliveryQuotes: new DeliveryQuoteService({ quotes, purchases }),
       problems: new PurchaseProblemService({

@@ -1,6 +1,6 @@
-import { majorGbpToPence } from "@auction/domain";
 import type { InvoiceLine, Lot, Sale } from "@auction/types";
 import { buildBuyerPremiumPolicy } from "./buyer-premium.js";
+import { majorToPence } from "./major-to-pence.js";
 
 /** The sale a lot belongs to could not be found, so its buyer's premium cannot be priced. */
 export class InvoiceSaleMissingError extends Error {
@@ -16,11 +16,6 @@ export type InvoiceLines = {
   /** The premium policy the lines were worked out with (`flat:0.2500`, `tiered:[…]`). */
   policyId: string;
 };
-
-function majorToPence(major: string): number {
-  const n = Number.parseFloat(major);
-  return Number.isFinite(n) ? majorGbpToPence(n) : 0;
-}
 
 /** A fraction such as "0.2500" as a percentage without trailing zeros ("25", "12.5"). */
 function percentOf(fraction: string): string {

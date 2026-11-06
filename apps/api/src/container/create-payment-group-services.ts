@@ -81,7 +81,6 @@ function groupInvoiceAccounting(input: CreatePaymentGroupServicesInput): IGroupI
           lot,
           buyerId,
           payment.amount,
-          payment.createdAt,
         );
         if (!result.ok) {
           // As for one invoice: the retry job creates it later unless accounting must come first.

@@ -42,6 +42,8 @@ export type PayPlanLot = {
   dueAt: Date;
 };
 
+type PayPlanRole = PayPlan["payerRole"];
+
 export type PickRefusal = "pay_several_empty" | "pay_several_too_many" | "pay_several_duplicate";
 
 /** The most lots one payment covers. */
@@ -55,7 +57,11 @@ export function pickRefusal(lotIds: readonly string[]): PickRefusal | null {
   return null;
 }
 
-function leftOutReason(lot: PayPlanLot, accountId: string): PayPlanLeftOutReason | null {
+function leftOutReason(
+  lot: PayPlanLot,
+  accountId: string,
+  payerRole: PayPlanRole,
+): PayPlanLeftOutReason | null {
   if (lot.buyerAccountId !== accountId) return "other_account";
   if (lot.invoiceVoided) return "voided";
   switch (lot.invoice) {
@@ -72,7 +78,9 @@ function leftOutReason(lot: PayPlanLot, accountId: string): PayPlanLeftOutReason
       break;
   }
   if (!invoiceIsOwed(lot.invoice)) return "being_confirmed";
-  if (!lot.payerMayPay) return "not_payer";
+  // Someone who does not pay for the account still sees its invoices (the gate stops Pay); a
+  // payer is told about the lots they may not pay.
+  if (payerRole === "payer" && !lot.payerMayPay) return "not_payer";
   if (lot.heldForReview) return "held_for_review";
   if (lot.inPaymentInProgress) return "being_paid";
   return null;
@@ -92,11 +100,12 @@ export type ClassifiedPayPlanLots = {
 export function classifyPayPlanLots(
   accountId: string,
   lots: readonly PayPlanLot[],
+  payerRole: PayPlanRole = "payer",
 ): ClassifiedPayPlanLots {
   const payable: PayPlanPayable[] = [];
   const leftOut: ClassifiedPayPlanLots["leftOut"] = [];
   for (const lot of lots) {
-    const reason = leftOutReason(lot, accountId);
+    const reason = leftOutReason(lot, accountId, payerRole);
     if (reason) {
       leftOut.push({ lotId: lot.lotId, reason });
       continue;

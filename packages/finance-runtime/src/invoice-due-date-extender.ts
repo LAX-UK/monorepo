@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import { invoiceDueAt } from "@auction/domain";
 import type { IBidInvoiceDueDateRepository } from "@auction/persistence/interfaces";
 
@@ -10,8 +11,8 @@ import type { IBidInvoiceDueDateRepository } from "@auction/persistence/interfac
 export class InvoiceDueDateExtender {
   constructor(private readonly invoices: Pick<IBidInvoiceDueDateRepository, "extendDueAt">) {}
 
-  /** Returns whether the due date moved. */
-  extendAfterHold(invoiceId: string, releasedAt: Date): Promise<boolean> {
-    return this.invoices.extendDueAt(invoiceId, invoiceDueAt(releasedAt));
+  /** Returns whether the due date moved. With `tx` it joins that transaction. */
+  extendAfterHold(invoiceId: string, releasedAt: Date, tx?: Database): Promise<boolean> {
+    return this.invoices.extendDueAt(invoiceId, invoiceDueAt(releasedAt), tx);
   }
 }

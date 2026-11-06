@@ -9,7 +9,22 @@ describe("InvoiceDueDateExtender", () => {
       new Date("2026-11-10T14:00:00.000Z"),
     );
     expect(moved).toBe(true);
-    expect(extendDueAt).toHaveBeenCalledWith("inv-1", new Date("2026-11-17T23:59:59.999Z"));
+    expect(extendDueAt).toHaveBeenCalledWith(
+      "inv-1",
+      new Date("2026-11-17T23:59:59.999Z"),
+      undefined,
+    );
+  });
+
+  it("joins the transaction it is given", async () => {
+    const extendDueAt = vi.fn().mockResolvedValue(true);
+    const tx = { marker: "tx" } as never;
+    await new InvoiceDueDateExtender({ extendDueAt }).extendAfterHold(
+      "inv-1",
+      new Date("2026-11-10T14:00:00.000Z"),
+      tx,
+    );
+    expect(extendDueAt).toHaveBeenCalledWith("inv-1", expect.any(Date), tx);
   });
 
   it("reports that nothing moved when the stored due date is already later", async () => {

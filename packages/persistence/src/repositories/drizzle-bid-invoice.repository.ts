@@ -165,8 +165,8 @@ export class DrizzleBidInvoiceRepository
     });
   }
 
-  async extendDueAt(invoiceId: string, notBefore: Date): Promise<boolean> {
-    const rows = await this.db
+  async extendDueAt(invoiceId: string, notBefore: Date, tx?: Database): Promise<boolean> {
+    const rows = await (tx ?? this.db)
       .update(bidInvoice)
       .set({ dueAt: notBefore })
       .where(

@@ -4,10 +4,6 @@ import {
   payTogether,
   planPaySeveral,
 } from "@auction/domain";
-import type {
-  IAccountPurchaseFactsReader,
-  IPaySeveralInvoiceFlagsReader,
-} from "@auction/persistence/interfaces";
 import { err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import {
@@ -27,7 +23,7 @@ import type {
   PaymentGroupCheckoutService,
 } from "../payment-group/payment-group-checkout.service.js";
 import type { IPaymentEligibilityGate } from "../payment/payment-eligibility.gate.js";
-import { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
+import type { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
 import { buyingError, entityActorOf, memberIsPayer } from "./purchase-view.js";
 
 const CHECKOUT_ERRORS: Record<GroupCheckoutError, OrganisationBuyingErrorCode> = {
@@ -36,14 +32,13 @@ const CHECKOUT_ERRORS: Record<GroupCheckoutError, OrganisationBuyingErrorCode> =
 };
 
 export type PaySeveralDeps = {
-  reader: IAccountPurchaseFactsReader;
-  flags: IPaySeveralInvoiceFlagsReader;
+  /** The same reading of the picked lots as the pay plan, so the two never disagree. */
+  candidates: Pick<PurchaseCandidateReader, "read">;
   limits: PaymentTierLimits;
   compliance: Pick<ISettlementCompliancePolicy, "peek" | "evaluate"> | null;
   /** The same account checks as paying one invoice: closed organisations, unverified buyers. */
   eligibility: IPaymentEligibilityGate;
   checkout: Pick<PaymentGroupCheckoutService, "start">;
-  now: () => Date;
 };
 
 /**
@@ -52,14 +47,10 @@ export type PaySeveralDeps = {
  * how (`payTogether`); the payment group does the money side.
  */
 export class PaySeveralService implements IPaySeveralService {
-  private readonly candidateReader: PurchaseCandidateReader;
-
-  constructor(private readonly deps: PaySeveralDeps) {
-    this.candidateReader = new PurchaseCandidateReader(deps);
-  }
+  constructor(private readonly deps: PaySeveralDeps) {}
 
   private candidates(actor: OrganisationMemberActor, ownOnly: boolean, lotIds: readonly string[]) {
-    return this.candidateReader.read(actor, ownOnly, lotIds);
+    return this.deps.candidates.read(actor, ownOnly, lotIds);
   }
 
   async plan(

@@ -52,6 +52,11 @@ function mount(
     role,
     isPrimaryAdmin: role === "owner",
   };
+  const candidates = new PurchaseCandidateReader({
+    reader: purchases,
+    flags: { flagsFor: async () => new Map() },
+    now: () => NOW,
+  });
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(opts.suspended ?? false) },
     requireLegalEntityContext: async (
@@ -65,11 +70,7 @@ function mount(
       registrations: new AccountRegistrationsService(new InMemoryRegistrations()),
       purchases: new AccountPurchasesService({ reader: purchases, now: () => NOW }),
       payPlan: new PayPlanService({
-        candidates: new PurchaseCandidateReader({
-          reader: purchases,
-          flags: { flagsFor: async () => new Map() },
-          now: () => NOW,
-        }),
+        candidates,
         invoices: {
           findByPaymentIds: async (ids) =>
             new Map(
@@ -129,8 +130,7 @@ function mount(
         now: () => NOW,
       }),
       paySeveral: new PaySeveralService({
-        reader: purchases,
-        flags: { flagsFor: async () => new Map() },
+        candidates,
         limits: {
           minPence: 30,
           cardMaxPence: 500_000,
@@ -147,7 +147,6 @@ function mount(
               rail: input.rail,
             }),
         },
-        now: () => NOW,
       }),
       deliveryQuotes: new DeliveryQuoteService({ quotes, purchases }),
       problems: new PurchaseProblemService({

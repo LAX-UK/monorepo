@@ -90,12 +90,11 @@ export class PayPlanService implements IPayPlanService {
       entries.flatMap((e) => (e.row?.payment ? [e.row.payment.id] : [])),
     );
     const now = this.deps.now();
-    const lots = await Promise.all(
-      entries.map((entry) => this.lotFacts(entry, actor, invoices, now)),
-    );
-    const classified = classifyPayPlanLots(actor.legalEntityId, lots);
-
     const payerRole = memberIsPayer(actor) ? "payer" : "informed";
+    const lots = await Promise.all(
+      entries.map((entry) => this.lotFacts(entry, actor, invoices, now, payerRole)),
+    );
+    const classified = classifyPayPlanLots(actor.legalEntityId, lots, payerRole);
     // The checks run in the order the gate reports them, and stop at the first that applies.
     let onboardingComplete = true;
     let eligibility: PaymentEligibility = PAYABLE;
@@ -131,6 +130,7 @@ export class PayPlanService implements IPayPlanService {
     actor: OrganisationMemberActor,
     invoices: ReadonlyMap<string, BidInvoiceRecord>,
     now: Date,
+    payerRole: "payer" | "informed",
   ): Promise<PayPlanLot> {
     const { row, view } = entry;
     if (!row || !view) return notThisAccount(entry.lotId, now);
@@ -156,8 +156,10 @@ export class PayPlanService implements IPayPlanService {
     };
     if (invoice) return { ...base, lines: invoice.lines, dueAt: invoice.dueAt };
 
-    // Not invoiced yet: price it as it would be invoiced now, only when it could be paid.
-    if (view.invoice.status !== "not_invoiced" || !base.payerMayPay) {
+    // Not invoiced yet: price it as it would be invoiced now. A payer who may not pay this lot
+    // sees it left out, so it is not priced; someone who does not pay still sees its figures.
+    const leftOutForPayer = payerRole === "payer" && !base.payerMayPay;
+    if (view.invoice.status !== "not_invoiced" || leftOutForPayer) {
       return { ...base, lines: [], dueAt: now };
     }
     const lot = await this.deps.lots.findById(row.lotId);

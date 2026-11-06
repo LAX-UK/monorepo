@@ -23,7 +23,6 @@ const ctx: InvoiceAccountingContext = {
   buyerEmail: "buyer@example.com",
   buyerName: "Buyer",
   amount: "1250.00",
-  raisedAt: new Date("2026-11-02T23:30:00.000Z"),
 };
 
 const storedInvoice = {

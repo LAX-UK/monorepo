@@ -235,7 +235,7 @@ describe("issueCheckoutForPendingPayment charges from the stored invoice", () =>
   }
 
   const run = (deps: CheckoutOrchestratorDeps) =>
-    issueCheckoutForPendingPayment(deps, "pay-1", baseLot(), "buyer-1", "125.00", new Date());
+    issueCheckoutForPendingPayment(deps, "pay-1", baseLot(), "buyer-1", "125.00");
 
   it("passes the stored lines to the rail", async () => {
     const { deps, createCheckout } = checkoutDeps(new Map([["pay-1", invoice(12_500)]]));

@@ -19,8 +19,12 @@ import {
   unsoldLotChoice,
   unsoldLotFollowUp,
 } from "@auction/db/schema";
-import { UNAPPLIED_MONEY_HANDLED_ELSEWHERE, UNSOLD_LOT_END_STATUSES } from "@auction/domain";
-import type { UnsoldLotChoiceKind } from "@auction/types";
+import {
+  UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
+  UNSOLD_LOT_END_STATUSES,
+  storedDueAt,
+} from "@auction/domain";
+import { INVOICE_PAYMENT_DUE_DAYS, type UnsoldLotChoiceKind } from "@auction/types";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type {
   AdminAssignableWorkItemsQuery,
@@ -225,11 +229,12 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         lotNumber: lot.lotNumber,
         saleId: lot.saleId,
         amount: payment.amount,
+        raisedAt: payment.createdAt,
         dueAt: bidInvoice.dueAt,
         winnerEmail: bidIdentityDirectory.email,
       })
       .from(payment)
-      .innerJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
+      .leftJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
       .innerJoin(lot, eq(payment.lotId, lot.id))
       .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, lot.id))
       .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
@@ -241,13 +246,29 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
           eq(lot.winnerId, payment.buyerId),
           isNull(lot.deletedAt),
           or(isNull(lotFulfilment.status), ne(lotFulfilment.status, "cancelled")),
-          lt(bidInvoice.dueAt, now),
+          // An invoice is overdue by its stored due date. A payment with no stored invoice is
+          // never dropped: it is a candidate once it is old enough that its term could have
+          // ended, and the domain rule below decides.
+          or(
+            lt(bidInvoice.dueAt, now),
+            and(
+              isNull(bidInvoice.id),
+              lt(
+                payment.createdAt,
+                new Date(now.getTime() - INVOICE_PAYMENT_DUE_DAYS * 86_400_000),
+              ),
+            ),
+          ),
         ),
       )
-      .orderBy(bidInvoice.dueAt)
+      .orderBy(payment.createdAt)
       .limit(limit);
 
-    return rows.map((row) => {
+    const overdue = rows.flatMap((row) => {
+      const dueAt = storedDueAt({ raisedAt: row.raisedAt, dueAt: row.dueAt });
+      return dueAt.getTime() < now.getTime() ? [{ ...row, dueAt }] : [];
+    });
+    return overdue.map((row) => {
       const dueAt = row.dueAt;
       return {
         sourceId: row.lotId,

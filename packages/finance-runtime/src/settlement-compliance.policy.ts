@@ -71,30 +71,27 @@ export class AmlSettlementCompliancePolicy
     private readonly sourceOfFundsGate: ISourceOfFundsGate | null = null,
   ) {}
 
-  async evaluate(input: SettlementComplianceInput): Promise<SettlementComplianceDecision> {
-    const hold = await this.holdStore.getHold(input.buyerUserId);
-    if (hold && hold.status !== "none") {
-      return { hold: true, reason: "aml_hold" };
-    }
-    if (this.sourceOfFundsGate) {
-      const requiresSof = await this.sourceOfFundsGate.requiresSourceOfFunds(input);
-      if (requiresSof) {
-        return { hold: true, reason: "source_of_funds_required" };
-      }
-    }
-    return { hold: false, reason: null };
+  /** Decides and, where a source-of-funds case is needed, opens it. */
+  evaluate(input: SettlementComplianceInput): Promise<SettlementComplianceDecision> {
+    return this.decide(input, (gate) => gate.requiresSourceOfFunds(input));
   }
 
-  async assess(input: SettlementComplianceInput): Promise<SettlementComplianceDecision> {
+  /** Decides the same way as {@link evaluate}, without opening anything. */
+  assess(input: SettlementComplianceInput): Promise<SettlementComplianceDecision> {
+    return this.decide(input, (gate) => gate.wouldRequireSourceOfFunds(input));
+  }
+
+  /** One decision for both: an AML hold first, then whatever the source-of-funds check says. */
+  private async decide(
+    input: SettlementComplianceInput,
+    requiresSourceOfFunds: (gate: ISourceOfFundsGate) => Promise<boolean>,
+  ): Promise<SettlementComplianceDecision> {
     const hold = await this.holdStore.getHold(input.buyerUserId);
     if (hold && hold.status !== "none") {
       return { hold: true, reason: "aml_hold" };
     }
-    if (this.sourceOfFundsGate) {
-      const requiresSof = await this.sourceOfFundsGate.wouldRequireSourceOfFunds(input);
-      if (requiresSof) {
-        return { hold: true, reason: "source_of_funds_required" };
-      }
+    if (this.sourceOfFundsGate && (await requiresSourceOfFunds(this.sourceOfFundsGate))) {
+      return { hold: true, reason: "source_of_funds_required" };
     }
     return { hold: false, reason: null };
   }

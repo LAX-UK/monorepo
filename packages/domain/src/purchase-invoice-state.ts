@@ -21,7 +21,7 @@ export type PurchaseInvoiceFacts = {
      * invoice (a fixture, never a row raised by the application) leaves it out, and its due date
      * is then worked out from `raisedAt` by {@link invoiceDueAt}.
      */
-    dueAt?: Date | null;
+    dueAt: Date | null;
   } | null;
 };
 
@@ -76,7 +76,7 @@ export function invoiceDueAt(raisedAt: Date): Date {
  * payment row with no stored invoice (a fixture), the date its term gives from `raisedAt`. Every
  * surface reads the due date through here.
  */
-export function storedDueAt(payment: { raisedAt: Date; dueAt?: Date | null }): Date {
+export function storedDueAt(payment: { raisedAt: Date; dueAt: Date | null }): Date {
   return payment.dueAt ?? invoiceDueAt(payment.raisedAt);
 }
 

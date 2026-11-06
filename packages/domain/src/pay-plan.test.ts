@@ -121,6 +121,28 @@ describe("classifyPayPlanLots: what is left out, and why", () => {
     expect(reasonFor({ invoiceVoided: true, invoice: "cancelled" })).toBe("voided");
   });
 
+  it("someone who does not pay for the account still sees its lots, totals and due date", () => {
+    const informed = classifyPayPlanLots(ACCOUNT, [lot("a", { payerMayPay: false })], "informed");
+    expect(informed.payable.map((p) => p.lotId)).toEqual(["a"]);
+    expect(informed.leftOut).toEqual([]);
+    const built = buildPayPlan(facts({ payerRole: "informed", classified: informed }));
+    expect(built.totals.pence).toBe(125_000);
+    expect(built.firstDueAt).toBe("2026-11-12T23:59:59.999Z");
+    expect(built.gate.kind).toBe("not_payer");
+  });
+
+  it("a payer is told about a lot they may not pay, and other lots are left out as usual", () => {
+    const result = classifyPayPlanLots(
+      ACCOUNT,
+      [lot("a", { payerMayPay: false }), lot("b", { invoice: "paid" })],
+      "payer",
+    );
+    expect(result.leftOut).toEqual([
+      { lotId: "a", reason: "not_payer" },
+      { lotId: "b", reason: "paid" },
+    ]);
+  });
+
   it("another account's lot is reported first, whatever else is true of it", () => {
     expect(reasonFor({ buyerAccountId: "x", invoice: "paid", payerMayPay: false })).toBe(
       "other_account",

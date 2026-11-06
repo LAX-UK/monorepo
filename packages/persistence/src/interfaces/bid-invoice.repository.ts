@@ -1,3 +1,4 @@
+import type { Database } from "@auction/db";
 import type { InvoiceLine, InvoiceSource } from "@auction/types";
 import type { CreatePaymentRow, PaymentRecord } from "./payment-write.repository.js";
 
@@ -84,6 +85,7 @@ export interface IBidInvoiceDueDateRepository {
   /**
    * Moves the due date of an invoice to `notBefore` when that is later, once a hold that kept the
    * buyer from paying is released. It never moves a due date earlier. Returns whether it moved.
+   * With `tx` it runs inside that transaction, so it commits or rolls back with the release.
    */
-  extendDueAt(invoiceId: string, notBefore: Date): Promise<boolean>;
+  extendDueAt(invoiceId: string, notBefore: Date, tx?: Database): Promise<boolean>;
 }

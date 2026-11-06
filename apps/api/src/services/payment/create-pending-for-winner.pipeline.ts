@@ -1,7 +1,11 @@
 import type { PaymentEligibilityHold } from "@auction/domain";
 import type { PricedInvoice } from "@auction/finance-runtime";
 import type { LotFulfilmentAddressSnapshot } from "@auction/persistence/interfaces";
-import type { PaymentRecord, RaisedInvoice } from "@auction/persistence/interfaces";
+import {
+  BidInvoiceTotalMismatchError,
+  type PaymentRecord,
+  type RaisedInvoice,
+} from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence, gbpPenceToMajorString } from "../../lib/decimal-money.js";
@@ -110,13 +114,6 @@ async function handleExistingManualReviewPayment(
   });
 }
 
-/** When the invoice behind a payment was raised; a retried payment keeps the original date. */
-async function invoiceRaisedAt(deps: PaymentServiceDeps, existing: PaymentRecord): Promise<Date> {
-  const invoice = (await deps.invoices.findByPaymentIds([existing.id])).get(existing.id);
-  if (!invoice) throw new Error(`Payment ${existing.id} has no invoice`);
-  return invoice.raisedAt;
-}
-
 async function handleExistingOpenPayment(
   ctx: ExistingPaymentHandlerContext,
 ): Promise<Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError>> {
@@ -135,13 +132,13 @@ async function handleExistingOpenPayment(
       ),
     );
   }
+  // A payment with no stored invoice is refused there with a 503, before any session is opened.
   const checkout = await resolveCheckoutForPendingOrPromoteCompliance(
     deps.checkoutOrchestratorDeps,
     existing.id,
     lot,
     buyerId,
     existing.amount,
-    await invoiceRaisedAt(deps, existing),
   );
   if (checkout.isErr()) return err(checkout.error);
   return ok({
@@ -421,6 +418,20 @@ export async function createOrJoinPaymentRecord(
       raised: await createPaymentRecordForWinner(deps, lot, buyerId, terms),
     };
   } catch (e) {
+    if (e instanceof BidInvoiceTotalMismatchError) {
+      // The lot's invoice was raised at another total in the meantime; it is never changed.
+      recordMoneyPathEvent("invoice_total_mismatch");
+      return {
+        kind: "joined",
+        result: err(
+          new LotError(
+            "This invoice changed while you were paying. Refresh and try again.",
+            409,
+            "invoice_total_changed",
+          ),
+        ),
+      };
+    }
     if (!isOpenPaymentUniqueViolation(e)) throw e;
     recordMoneyPathEvent("payment_create_race_joined");
     const joined = await handleExistingPaymentForWinner(deps, lot, buyerId, addressSnapshot, held);
@@ -435,7 +446,6 @@ export async function resolveCheckoutForNewPayment(
   lot: Lot,
   buyerId: string,
   amount: string,
-  raisedAt: Date,
 ): Promise<
   Result<
     {
@@ -452,7 +462,6 @@ export async function resolveCheckoutForNewPayment(
     lot,
     buyerId,
     amount,
-    raisedAt,
   );
   if (checkout.isErr()) return err(checkout.error);
   return ok({
@@ -560,7 +569,6 @@ export async function createPendingForWinner(
       lot,
       buyerId,
       created.amount,
-      record.raised.invoice.raisedAt,
     );
     if (checkoutResult.isErr()) return err(checkoutResult.error);
     if (checkoutResult.value.manualReviewReason) {

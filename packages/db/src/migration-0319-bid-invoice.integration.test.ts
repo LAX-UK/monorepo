@@ -335,6 +335,52 @@ describe.skipIf(!migrationUrl)("migration 0319 bid invoices", { timeout: 120_000
     });
   });
 
+  it("the re-run backfill links payments the previous release created after the migration", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransaction(pool);
+      const f = await fixture(pool);
+      // A raised invoice exists for this lot; a stray payment row has no invoice.
+      const raised = await f.lot("100.00");
+      const raisedInvoice = await pool.query<{ id: string }>(
+        `insert into bid_invoice (lot_id, buyer_legal_entity_id, seller_legal_entity_id,
+           total_pence, raised_at, due_at, source)
+         values ($1, $2, $3, 12500, now(), now() + interval '7 days', 'raised') returning id`,
+        [raised, f.buyer, f.seller],
+      );
+      const stray = await f.pay({
+        lotId: raised,
+        amount: "125.00",
+        status: "pending",
+        createdAt: "2026-05-01T10:00:00Z",
+      });
+      // A lot with no invoice at all gets one.
+      const bare = await f.lot("200.00");
+      await f.pay({
+        lotId: bare,
+        amount: "250.00",
+        status: "pending",
+        createdAt: "2026-05-02T10:00:00Z",
+      });
+
+      await pool.query(
+        await readFile(
+          resolve(import.meta.dirname, "../scripts/backfill-bid-invoices.sql"),
+          "utf8",
+        ),
+      );
+
+      const link = await pool.query<{ invoice_id: string }>(
+        "select invoice_id from payment where id = $1",
+        [stray],
+      );
+      expect(link.rows[0]?.invoice_id).toBe(raisedInvoice.rows[0]?.id);
+      expect(await invoices(pool, raised)).toHaveLength(1);
+      expect(await invoices(pool, bare)).toHaveLength(1);
+      const unlinked = await pool.query("select 1 from payment where invoice_id is null");
+      expect(unlinked.rowCount).toBe(0);
+    });
+  });
+
   it("allows one live invoice per lot and buyer, and a new one once it is voided", async () => {
     await withTemporaryDatabase(async (pool) => {
       await runMigrationsPerTransaction(pool);

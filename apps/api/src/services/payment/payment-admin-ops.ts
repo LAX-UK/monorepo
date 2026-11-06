@@ -65,7 +65,6 @@ export async function backfillXeroInvoiceForPayment(
     lot,
     buyerId,
     p.amount,
-    p.createdAt,
   );
   if (result.ok) {
     recordMoneyPathEvent("xero_invoice_backfilled");
@@ -237,6 +236,10 @@ export async function releaseManualReviewForCapture(
         actorUserId: adminUserId,
         actingLegalEntityId: p.sellerLegalEntityId ?? null,
       });
+      // The term runs from the release: moved in the same transaction, so both happen or neither.
+      if (p.invoiceId && deps.invoiceDueDates) {
+        await deps.invoiceDueDates.extendAfterHold(p.invoiceId, new Date(), tx);
+      }
     });
   } catch (e) {
     if (e instanceof Error && e.message === "payment_not_in_manual_review") {
@@ -244,13 +247,13 @@ export async function releaseManualReviewForCapture(
     }
     throw e;
   }
-  await extendDueDateAfterRelease(deps, p);
   return ok(undefined);
 }
 
 /**
  * The invoice was held for review, so its term runs from the release: the due date moves to the
- * term counted from now, and never earlier. A failure is logged and does not undo the release.
+ * term counted from now, and never earlier. Used only where there is no transaction to join, so a
+ * failure is logged and does not undo the release.
  */
 async function extendDueDateAfterRelease(
   deps: PaymentServiceDeps,

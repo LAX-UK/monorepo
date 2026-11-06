@@ -4,7 +4,8 @@
 -- raised again points at the same invoice, so the due date does not restart. Amounts are whole
 -- pence in pounds sterling.
 --
--- Existing payments are backfilled idempotently, one invoice per lot and buyer account:
+-- Existing payments are backfilled idempotently (the same statements are in
+-- packages/db/scripts/backfill-bid-invoices.sql, to run again after a deploy), one invoice per lot and buyer account:
 --   * raised_at is the earliest payment row's created_at, due_at is the end of the London day
 --     seven days after the London day it was raised (the same rule as invoiceDueAt in the app);
 --   * the total is the amount of the live (or latest) payment row;
@@ -176,11 +177,20 @@ WHERE i."source" = 'legacy_backfill'
   AND NOT EXISTS (SELECT 1 FROM "bid_invoice_line" x WHERE x."invoice_id" = i."id")
 ON CONFLICT ("invoice_id", "position") DO NOTHING;
 --> statement-breakpoint
--- Every payment row of the pair points at its invoice (a voided one included).
+-- Every payment row without an invoice points at the pair's live invoice, or, when the purchase
+-- was voided, at its latest invoice.
 UPDATE "payment" p
-SET "invoice_id" = i."id"
-FROM "bid_invoice" i
+SET "invoice_id" = (
+  SELECT i."id"
+  FROM "bid_invoice" i
+  WHERE i."lot_id" = p."lot_id"
+    AND i."buyer_legal_entity_id" = p."buyer_legal_entity_id"
+  ORDER BY (i."voided_at" IS NULL) DESC, i."created_at" DESC, i."id"
+  LIMIT 1
+)
 WHERE p."invoice_id" IS NULL
-  AND i."lot_id" = p."lot_id"
-  AND i."buyer_legal_entity_id" = p."buyer_legal_entity_id"
-  AND i."source" = 'legacy_backfill';
+  AND EXISTS (
+    SELECT 1 FROM "bid_invoice" i
+    WHERE i."lot_id" = p."lot_id"
+      AND i."buyer_legal_entity_id" = p."buyer_legal_entity_id"
+  );

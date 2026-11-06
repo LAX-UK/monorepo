@@ -144,6 +144,46 @@ describe.skipIf(!HAS_DB)("stored invoice due dates (integration)", () => {
     }
   });
 
+  it("the staff overdue list does not drop a payment that has no stored invoice", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+    const db = createDb(process.env.DATABASE_URL!);
+    const rollback = new Error("rollback_test_tx");
+    const now = new Date();
+    const tag = randomUUID().slice(0, 8);
+
+    try {
+      await db.transaction(async (tx) => {
+        const database = tx as unknown as Database;
+        const base = await seedTwoInvoices(database, tag, now);
+        const bare = (lotId: string, daysAgo: number) =>
+          database.insert(payment).values({
+            lotId,
+            buyerId: base.buyerId,
+            buyerLegalEntityId: base.buyerEntityId,
+            sellerLegalEntityId: base.sellerEntityId,
+            amount: "312.50",
+            platformFee: "0.00",
+            status: "pending",
+            createdAt: new Date(now.getTime() - daysAgo * DAY_MS),
+          });
+        // Raised ten days ago with no invoice: its term has ended. Raised two days ago: it has not.
+        await bare(base.lotIds[0] as string, 10);
+        await bare(base.lotIds[1] as string, 2);
+
+        const overdue = await new DrizzleAdminWorkItemsReader(database).listOverduePayments(
+          500,
+          now,
+        );
+        const lotIds = overdue.map((item) => item.sourceId);
+        expect(lotIds).toContain(base.lotIds[0]);
+        expect(lotIds).not.toContain(base.lotIds[1]);
+        throw rollback;
+      });
+    } catch (error) {
+      if (error !== rollback) throw error;
+    }
+  });
+
   it("extending a due date moves it later and never earlier", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
     const db = createDb(process.env.DATABASE_URL!);

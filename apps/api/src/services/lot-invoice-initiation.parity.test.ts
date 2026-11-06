@@ -1,4 +1,7 @@
-import { LotInvoiceInitiationService as SharedLotInvoiceInitiationService } from "@auction/finance-runtime";
+import {
+  InvoicePricingUnavailableError,
+  LotInvoiceInitiationService as SharedLotInvoiceInitiationService,
+} from "@auction/finance-runtime";
 import type {
   ILegalEntityRepository,
   ILotFulfilmentPaymentHook,
@@ -44,7 +47,13 @@ const baseLot = {
   buyerPremiumRate: "0.25",
 } as unknown as Lot;
 
-function build(scenario: { hold?: boolean; xero?: { ok: boolean; error?: string } } = {}) {
+function build(
+  scenario: {
+    hold?: boolean;
+    xero?: { ok: boolean; error?: string };
+    salePricingFails?: boolean;
+  } = {},
+) {
   const create = vi.fn(async (input: { amount: string; status?: string }) => ({
     id: "pay-new",
     lotId: LOT_ID,
@@ -57,11 +66,18 @@ function build(scenario: { hold?: boolean; xero?: { ok: boolean; error?: string 
   const ensureInvoiceForPayment = vi.fn().mockResolvedValue(scenario.xero ?? { ok: true });
   const ensureAwaitingPayment = vi.fn().mockResolvedValue(undefined);
   const record = vi.fn();
-  const { raiser, invoices } = inMemoryInvoiceRaiser(
+  const { raiser: realRaiser, invoices } = inMemoryInvoiceRaiser(
     (row) => create(row) as never,
     null,
     () => new Date("2026-06-26T12:00:00.000Z"),
   );
+  const raiser = scenario.salePricingFails
+    ? ({
+        price: async () => {
+          throw new InvoicePricingUnavailableError({ cause: new Error("sale not found") });
+        },
+      } as unknown as typeof realRaiser)
+    : realRaiser;
   const service = new ApiLotInvoiceInitiationService(
     { findById: vi.fn().mockResolvedValue(baseLot) } as unknown as ILotRepository,
     raiser,
@@ -129,6 +145,18 @@ describe("lot invoice initiation: one implementation for the API and the worker"
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({ amount: "1250.00", invoiceId: invoice?.id }),
     );
+  });
+
+  it("counts and logs a lot whose sale cannot be read, and leaves the job to retry", async () => {
+    const { service, create, record } = build({ salePricingFails: true });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await expect(service.ensureForLot(LOT_ID)).rejects.toBeInstanceOf(
+      InvoicePricingUnavailableError,
+    );
+    expect(create).not.toHaveBeenCalled();
+    expect(record).toHaveBeenCalledWith("invoice_pricing_unavailable");
+    expect(logged).toHaveBeenCalledWith(expect.stringContaining(`"lotId":"${LOT_ID}"`));
+    logged.mockRestore();
   });
 
   it("kept from the API copy: a buyer on an AML hold is held, with no payment-due notice", async () => {

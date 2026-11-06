@@ -1,3 +1,4 @@
+import { BidInvoiceTotalMismatchError } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { createOrJoinPaymentRecord } from "./create-pending-for-winner.pipeline.js";
@@ -37,14 +38,9 @@ const raceError = {
   },
 };
 
-const raisedAt = new Date("2026-06-01T10:00:00.000Z");
-
 function deps(raise: () => Promise<unknown>, existing: unknown) {
   return {
     invoiceRaiser: { raise: vi.fn(raise) },
-    invoices: {
-      findByPaymentIds: vi.fn().mockResolvedValue(new Map([["pay-raced", { raisedAt }]])),
-    },
     payments: {
       findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(existing),
     },
@@ -73,6 +69,19 @@ describe("createOrJoinPaymentRecord (two first Pay requests at once)", () => {
     if (outcome.kind !== "joined") return;
     expect(outcome.result.isOk()).toBe(true);
     expect(outcome.result._unsafeUnwrap()).toMatchObject({ paymentId: "pay-raced" });
+  });
+
+  it("answers a conflict, not a 500, when the live invoice has a different total", async () => {
+    const d = deps(async () => {
+      throw new BidInvoiceTotalMismatchError("inv-1", 125_000, 99_900);
+    }, null);
+    const outcome = await createOrJoinPaymentRecord(d, lot, "buyer-1", {} as never, terms);
+    expect(outcome.kind).toBe("joined");
+    if (outcome.kind !== "joined") return;
+    expect(outcome.result._unsafeUnwrapErr()).toMatchObject({
+      status: 409,
+      code: "invoice_total_changed",
+    });
   });
 
   it("any other failure is not hidden", async () => {

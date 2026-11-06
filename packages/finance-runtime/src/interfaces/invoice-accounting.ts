@@ -7,11 +7,7 @@ export type InvoiceAccountingContext = {
   buyerEmail: string;
   buyerName: string;
   amount: string;
-  /**
-   * When the payment row was raised. The books copy is dated and due from the stored invoice
-   * (its raised and due dates), which the writer reads by payment id.
-   */
-  raisedAt: Date;
+  // The books copy is dated and due from the stored invoice, which the writer reads by payment id.
   buyerLegalEntityId?: string | undefined;
 };
 

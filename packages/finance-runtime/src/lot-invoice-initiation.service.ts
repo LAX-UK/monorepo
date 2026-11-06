@@ -8,11 +8,12 @@ import type {
   NotificationPayload,
   RaisedInvoice,
 } from "@auction/persistence/interfaces";
+import type { Lot } from "@auction/types";
 import { gbpPenceToMajorString } from "./decimal-money.js";
 import type { DomainEventPublishInput } from "./domain-event-sink-port.js";
 import { ensureXeroInvoiceForPayment } from "./ensure-xero-invoice.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
-import type { InvoiceRaiser } from "./invoice-raiser.js";
+import { InvoicePricingUnavailableError, type InvoiceRaiser } from "./invoice-raiser.js";
 import { isOpenPaymentUniqueViolation } from "./is-open-payment-unique-violation.js";
 import { type IMoneyPathMetrics, noMoneyPathMetrics } from "./money-path-metrics.js";
 import {
@@ -91,6 +92,30 @@ export class LotInvoiceInitiationService {
     private readonly metrics: IMoneyPathMetrics = noMoneyPathMetrics,
   ) {}
 
+  /**
+   * Prices the invoice. When the sale cannot be read the job is retried, and every retry is
+   * counted and logged with the lot, so a lot that stays unpriced shows up instead of retrying
+   * unseen.
+   */
+  private async priceOrReport(lot: Lot) {
+    try {
+      return await this.invoiceRaiser.price(lot);
+    } catch (error) {
+      if (error instanceof InvoicePricingUnavailableError) {
+        this.metrics.record("invoice_pricing_unavailable");
+        console.error(
+          JSON.stringify({
+            msg: "invoice_pricing_unavailable",
+            lotId: lot.id,
+            saleId: lot.saleId,
+            cause: error.cause instanceof Error ? error.cause.message : String(error.cause ?? ""),
+          }),
+        );
+      }
+      throw error;
+    }
+  }
+
   async ensureForLot(lotId: string): Promise<EnsureLotInvoiceResult> {
     const lot = await this.lots.findById(lotId);
     if (!lot) {
@@ -124,7 +149,7 @@ export class LotInvoiceInitiationService {
     }
 
     // A sale that cannot be read throws: the job is retried rather than raising a wrong total.
-    const priced = await this.invoiceRaiser.price(lot);
+    const priced = await this.priceOrReport(lot);
     const amountPence = priced.totalPence;
     const amount = gbpPenceToMajorString(amountPence);
 
@@ -240,7 +265,6 @@ export class LotInvoiceInitiationService {
       lot,
       buyerId,
       created.amount,
-      raised.invoice.raisedAt,
     );
     if (!xeroResult.ok) {
       this.metrics.record("xero_invoice_deferred");

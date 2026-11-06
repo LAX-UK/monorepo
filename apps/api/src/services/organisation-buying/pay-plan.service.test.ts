@@ -204,7 +204,7 @@ describe("PayPlanService.plan", () => {
   });
 
   describe("a lot won but not invoiced yet", () => {
-    const facts = () =>
+    const facts = (winner = { userId: "owner-1", name: "Maya Okafor" }) =>
       new InMemoryPurchaseFacts([
         ...seedPurchases(),
         {
@@ -216,7 +216,7 @@ describe("PayPlanService.plan", () => {
           saleId: "sale-1",
           saleTitle: "Spring Modern British",
           hammerPrice: "2000.00",
-          wonBy: { userId: "owner-1", name: "Maya Okafor" },
+          wonBy: winner,
           wonAt: new Date(NOW.getTime() - 86_400_000),
           payment: null,
           fulfilment: null,
@@ -237,11 +237,18 @@ describe("PayPlanService.plan", () => {
       expect(plan.payable[1]?.dueAt).toBe("2026-11-27T23:59:59.999Z");
     });
 
-    it("is not priced when the person does not pay for it", async () => {
-      const { svc, price } = build({ facts: facts() });
+    it("is priced for someone who does not pay, who sees it without Pay", async () => {
+      const { svc, price } = build({
+        facts: facts({ userId: "buyer_agent-1", name: "Tom Whitfield" }),
+      });
       const plan = (await svc.plan(actor("buyer_agent"), [NOT_INVOICED]))._unsafeUnwrap();
-      expect(price).not.toHaveBeenCalled();
-      expect(plan.payable).toEqual([]);
+      expect(price).toHaveBeenCalledTimes(1);
+      expect(plan.gate.kind).toBe("not_payer");
+      expect(plan.payable.map((p) => [p.lotId, p.paymentId, p.totalPence])).toEqual([
+        [NOT_INVOICED, null, 250_000],
+      ]);
+      expect(plan.totals.pence).toBe(250_000);
+      expect(plan.firstDueAt).not.toBeNull();
     });
 
     it("is left out when its total cannot be paid online", async () => {
@@ -269,6 +276,10 @@ describe("PayPlanService.plan", () => {
       const plan = (await svc.plan(actor("buyer_agent"), [LOTS.agentWin]))._unsafeUnwrap();
       expect(plan.payerRole).toBe("informed");
       expect(plan.gate).toEqual({ kind: "not_payer", payingAccountName: "Northbank Gallery" });
+      // They still see what they won, with its stored lines, totals and due date.
+      expect(plan.payable.map((p) => [p.lotId, p.totalPence])).toEqual([[LOTS.agentWin, 30_000]]);
+      expect(plan.totals.pence).toBe(30_000);
+      expect(plan.leftOut).toEqual([]);
       expect(isComplete).not.toHaveBeenCalled();
       expect(eligibilityCheck).not.toHaveBeenCalled();
       expect(assess).not.toHaveBeenCalled();
