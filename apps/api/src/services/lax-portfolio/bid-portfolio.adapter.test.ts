@@ -266,9 +266,23 @@ describe("buildBidMoneyEntries", () => {
         currency: "GBP",
         occurredAt: "2026-03-01T10:00:00.000Z",
         href: "https://lax.bid/purchases",
+        product: "bid",
         business: { key: "lax_bid", legalName: "London Auction Xchange LTD" },
       },
     ]);
+  });
+
+  it("tags every kind of money entry as LAX Bid", () => {
+    const entries = entriesFor(
+      {
+        wonLots: [wonLot()],
+        payments: [payment({ id: "p", status: "refunded" })],
+        payouts: [payout()],
+      },
+      [owedEntry()],
+    );
+    expect(entries.length).toBeGreaterThan(3);
+    expect(entries.every((entry) => entry.product === "bid")).toBe(true);
   });
 
   it("does not add a debt for each payment attempt on an unpaid lot", () => {

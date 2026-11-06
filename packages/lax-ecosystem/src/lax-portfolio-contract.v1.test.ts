@@ -116,6 +116,21 @@ describe("LaxMoneyEntryV1", () => {
   });
 });
 
+describe("money entry product", () => {
+  it("is optional, so a payload from before the field stays valid", () => {
+    expect(Value.Check(LaxMoneyEntryV1, moneyEntry())).toBe(true);
+    expect(Value.Check(LaxMoneyResponseV1, { entries: [moneyEntry()] })).toBe(true);
+  });
+
+  it.each(["bid", "shop", "art"])("accepts %s", (product) => {
+    expect(Value.Check(LaxMoneyEntryV1, { ...moneyEntry(), product })).toBe(true);
+  });
+
+  it("rejects a product LAX does not have", () => {
+    expect(Value.Check(LaxMoneyEntryV1, { ...moneyEntry(), product: "stock" })).toBe(false);
+  });
+});
+
 describe("portfolio and money responses", () => {
   it("accepts an empty list, with or without the partial flag", () => {
     expect(Value.Check(LaxPortfolioResponseV1, { items: [] })).toBe(true);

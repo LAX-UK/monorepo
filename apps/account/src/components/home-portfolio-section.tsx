@@ -7,6 +7,7 @@ import { unansweredProducts } from "@/server/domain/home-products-status";
 import { buildAttentionRows } from "@/server/domain/portfolio-attention.vm";
 import type { ComposedRows } from "@/server/domain/portfolio-composition";
 import { PORTFOLIO_ROUTES } from "@/server/domain/portfolio-routes";
+import { buildProductSummaries, unansweredSummaries } from "@/server/domain/product-summary.vm";
 import { buildWorksByProduct } from "@/server/domain/works-by-product.vm";
 import { type LaxPortfolioItemV1, buildPortfolioHeader } from "@auction/lax-ecosystem";
 import { CARD } from "./account-ui";
@@ -34,7 +35,7 @@ export function HomePortfolioSkeleton({ products }: { products: AccountProductVm
         <NeedsYouCardSkeleton />
         <CollectionCardSkeleton />
       </CardsGrid>
-      <ProductCards products={products} />
+      <ProductCards products={products} summaries={null} />
     </>
   );
 }
@@ -61,7 +62,7 @@ function Works({
       </CardsGrid>
       <ProductCards
         products={products}
-        unanswered={unanswered}
+        summaries={buildProductSummaries(composed.rows, unanswered)}
         retryHref={ACCOUNT_ROUTES.overview}
       />
     </>
@@ -82,20 +83,16 @@ export async function HomePortfolioSection({ products }: { products: AccountProd
     return <Works composed={loaded} products={products} />;
   }
   // Nothing could be read: show the products, each with a way to try again.
-  const unanswered =
+  const summaries =
     loaded.status === "ok"
-      ? unansweredProducts(loaded.unavailable)
-      : products.map((product) => product.id);
+      ? buildProductSummaries([], unansweredProducts(loaded.unavailable))
+      : unansweredSummaries();
   return (
     <>
       <p className={`${CARD} px-4 py-4 text-sm text-on-surface-variant sm:px-5`}>
         We can't show your works right now. Please try again in a moment.
       </p>
-      <ProductCards
-        products={products}
-        unanswered={unanswered}
-        retryHref={ACCOUNT_ROUTES.overview}
-      />
+      <ProductCards products={products} summaries={summaries} retryHref={ACCOUNT_ROUTES.overview} />
     </>
   );
 }
