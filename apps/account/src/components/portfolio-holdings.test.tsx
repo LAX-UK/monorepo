@@ -150,6 +150,20 @@ describe("PortfolioHoldings", () => {
   });
 });
 
+/** The copies toggles in rendered markup: each `<button>` and whether it is expanded, in any attribute order. */
+function copyToggles(html: string): { expanded: boolean; text: string }[] {
+  return [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)]
+    .map(([, attrs = "", inner = ""]) => ({
+      attrs,
+      text: inner.replace(/<[^>]+>/g, ""),
+    }))
+    .filter((button) => / copies/.test(button.text) && /aria-expanded=/.test(button.attrs))
+    .map((button) => ({
+      expanded: /aria-expanded="true"/.test(button.attrs),
+      text: button.text,
+    }));
+}
+
 describe("PortfolioHoldings grouped copies", () => {
   const reed = (number: number, overrides: Parameters<typeof item>[0] = {}) =>
     item({
@@ -166,8 +180,10 @@ describe("PortfolioHoldings grouped copies", () => {
   it("shows ten copies as one row that is collapsed until asked", () => {
     const html = render(copies);
     const text = textOf(html);
-    expect(html.match(/<button type="button" aria-expanded="false"[^>]*>10 copies/g)).toHaveLength(
-      2,
+    const toggles = copyToggles(html);
+    expect(toggles).toHaveLength(2);
+    expect(toggles.every((toggle) => !toggle.expanded && toggle.text.startsWith("10 copies"))).toBe(
+      true,
     );
     expect(text).toContain("Reed Study");
     expect(text).toContain("10 copies of Reed Study");
@@ -178,7 +194,9 @@ describe("PortfolioHoldings grouped copies", () => {
 
   it("names the toggle with a button a keyboard can reach", () => {
     const html = render(copies);
-    expect(html).toMatch(/<button type="button" aria-expanded="false"[^>]*>10 copies/);
+    const [toggle] = copyToggles(html);
+    expect(toggle?.expanded).toBe(false);
+    expect(toggle?.text).toContain("10 copies");
   });
 
   it("leaves a single copy as a plain row with a link and no toggle", () => {
@@ -199,7 +217,7 @@ describe("PortfolioHoldings grouped copies", () => {
     const filter = { statuses: ["in_sale" as const] };
     const html = render(items, filter);
     const text = textOf(html);
-    expect(html).toContain('<button type="button" aria-expanded="true"');
+    expect(copyToggles(html).some((toggle) => toggle.expanded)).toBe(true);
     expect(text).toContain("No. 11 of 24");
     expect(text).toContain("No. 12 of 24");
     expect(text).not.toContain("No. 3 of 24");
