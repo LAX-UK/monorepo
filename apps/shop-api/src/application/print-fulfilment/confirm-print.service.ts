@@ -204,6 +204,17 @@ export function createConfirmPrintService(deps: {
               actorSubjectId: command.actorSubjectId,
               orderId: line.orderId,
             });
+            await tx.domainEvents.append({
+              aggregateType: "shop_order_line",
+              aggregateId: line.orderLineId,
+              eventType: "shop.print.pack_confirmed",
+              payload: {
+                schemaVersion: 1,
+                orderLineId: line.orderLineId,
+                orderId: line.orderId,
+                editionId: line.print.editionId,
+              },
+            });
             const certificate = await issueCertificate(tx, {
               line,
               context,

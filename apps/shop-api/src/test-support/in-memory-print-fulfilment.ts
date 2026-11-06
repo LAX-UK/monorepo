@@ -1,6 +1,7 @@
 import type { EditionFacts, EditionRunSpec } from "@auction/shop-domain";
 import { LAX_STANDARD_RUN } from "@auction/shop-domain";
 import type { ShopAdminAuditRecord } from "../application/ports/shop-admin-audit.writer.js";
+import type { ShopDomainEventRecord } from "../application/ports/shop-domain-event.writer.js";
 import type {
   CertificateAuthority,
   HorsCommerceListing,
@@ -44,6 +45,7 @@ export function createInMemoryPrintFulfilment(options?: {
   const certificates: StoredCertificate[] = [];
   const events: PrintEvent[] = [];
   const audit: ShopAdminAuditRecord[] = [];
+  const domainEvents: ShopDomainEventRecord[] = [];
   const notices: PrintSwappedNotice[] = [];
   const payouts = new Map<string, { ownerPartyId: string | null; status: string }>();
   const commands = new Map<string, unknown>();
@@ -221,6 +223,7 @@ export function createInMemoryPrintFulfilment(options?: {
       },
     },
     events: { append: async (event) => void events.push(event) },
+    domainEvents: { append: async (event) => void domainEvents.push(event) },
     horsCommerce: {
       async lock(artworkId) {
         return hc.get(artworkId) ?? null;
@@ -261,6 +264,7 @@ export function createInMemoryPrintFulfilment(options?: {
     lines,
     certificates,
     events,
+    domainEvents,
     audit,
     notices,
     payouts,
