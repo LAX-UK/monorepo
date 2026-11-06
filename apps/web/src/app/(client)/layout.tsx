@@ -15,6 +15,7 @@ import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { AccountsUnavailableFrame } from "@/components/shell/accounts-unavailable-frame";
 import { ClientShell } from "@/components/shell/client-shell";
 import { ClientWebsiteFrame } from "@/components/shell/client-website-frame";
+import { restoreFrameFor } from "@/components/shell/restore-frame";
 import { clientAreaRedirectFor } from "@/lib/auth/client-audience";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { dashboardSliceFailureMessage } from "@/lib/dashboard/dashboard-fetch-errors";
@@ -25,7 +26,6 @@ import { lookupActingContext } from "@/lib/legal-entity/acting-context.server";
 import { deriveActingContext } from "@/lib/legal-entity/derive-acting-context";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
-import { restoreAccountHref } from "@/lib/navigation/account-link";
 import {
   ACCOUNT_NOTICE_COOKIE,
   accountNoticeMessage,
@@ -35,7 +35,6 @@ import {
 import { buildAccountChrome } from "@/lib/navigation/account-switcher-model";
 import { chooseClientLayout } from "@/lib/navigation/client-layout";
 import { clientNavScopeFor } from "@/lib/navigation/client-nav-scope";
-import { resolveClientRequestPath } from "@/lib/navigation/client-request-path.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { navCountsFrom } from "@/lib/workspace/needs-you-counts";
@@ -71,9 +70,8 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   if (!lookup.ok) return <AccountsUnavailableFrame />;
   const actingContext = lookup.context;
   // A new device, or an organisation the person has left: open the account they used last.
-  if (actingContext.needsRestore) {
-    redirect(restoreAccountHref(await resolveClientRequestPath()));
-  }
+  const restore = await restoreFrameFor(actingContext.needsRestore);
+  if (restore) return restore;
   const { acting, safeActing } = deriveActingContext({ actingContext, orgModuleEnabled });
   const actingOrganisation = safeActing?.kind === "organisation" ? safeActing : null;
 
