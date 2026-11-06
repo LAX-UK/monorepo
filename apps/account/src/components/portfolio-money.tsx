@@ -13,6 +13,7 @@ import { formatMinorUnits } from "@/lib/format-money";
 import {
   MONEY_SECTION_LABELS,
   MONEY_STATUS_LABELS,
+  PRODUCT_LABELS,
   moneyStatusStyle,
 } from "@/server/domain/portfolio-labels";
 import {
@@ -25,8 +26,10 @@ import {
   LAX_BUSINESS_KEYS,
   type LaxBusinessKey,
   type LaxMoneyEntryV1,
+  type LaxProductId,
   MONEY_SECTION_KEYS,
   type MoneyFilter,
+  moneyProductOf,
   moneySectionOf,
 } from "@auction/lax-ecosystem";
 import { EmptyState } from "@auction/ui/components/empty-state";
@@ -40,7 +43,9 @@ import {
   TableHeader,
   TableRow,
 } from "@auction/ui/components/table";
+import { Fragment } from "react";
 import { FilterToolbar } from "./filter-toolbar.client";
+import { ProductName } from "./product-name";
 
 const BUSINESS_NAMES: Record<LaxBusinessKey, string> = {
   lax_bid: "LAX Bid",
@@ -58,8 +63,27 @@ function EntryLink({ entry }: { entry: LaxMoneyEntryV1 }) {
       href={href}
       className="inline-flex min-h-11 items-center rounded-sm whitespace-nowrap underline underline-offset-4"
     >
-      Open in {BUSINESS_NAMES[entry.business.key]}
+      Open in {PRODUCT_LABELS[moneyProductOf(entry)]}
     </a>
+  );
+}
+
+function EntryProduct({ entry }: { entry: LaxMoneyEntryV1 }) {
+  const product = moneyProductOf(entry);
+  return <ProductName product={product}>{PRODUCT_LABELS[product]}</ProductName>;
+}
+
+/** The products joined with a dot: "LAX Shop · lax.art". */
+function ProductList({ products }: { products: readonly LaxProductId[] }) {
+  return (
+    <>
+      {products.map((product, index) => (
+        <Fragment key={product}>
+          {index > 0 ? " · " : null}
+          <ProductName product={product}>{PRODUCT_LABELS[product]}</ProductName>
+        </Fragment>
+      ))}
+    </>
   );
 }
 
@@ -81,9 +105,14 @@ function SummaryCards({ cards }: { cards: MoneySummaryCardVm[] }) {
           aria-labelledby={`money-${card.key}-heading`}
           className={`flex flex-col gap-4 ${CARD} ${CARD_PADDING}`}
         >
-          <h2 id={`money-${card.key}-heading`} className={CARD_TITLE}>
-            {card.legalName}
-          </h2>
+          <div className="flex flex-col gap-1">
+            <h2 id={`money-${card.key}-heading`} className={CARD_TITLE}>
+              {card.legalName}
+            </h2>
+            <p className="text-sm text-on-surface-variant">
+              <ProductList products={card.products} />
+            </p>
+          </div>
           <dl className="flex flex-col divide-y divide-border-hairline">
             {card.lines.map((line) => (
               <div
@@ -137,7 +166,7 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
           <TableHeader>
             <TableRow>
               <TableHead scope="col">Date</TableHead>
-              <TableHead scope="col">Business</TableHead>
+              <TableHead scope="col">Product</TableHead>
               <TableHead scope="col">Type</TableHead>
               <TableHead scope="col">Status</TableHead>
               <TableHead scope="col" className="text-right">
@@ -152,7 +181,12 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
             {ledger.map((entry) => (
               <TableRow key={`${entry.business.key}:${entry.id}`}>
                 <TableCell className="whitespace-nowrap">{formatDate(entry.occurredAt)}</TableCell>
-                <TableCell>{entry.business.legalName}</TableCell>
+                <TableCell>
+                  <EntryProduct entry={entry} />
+                  <span className="block text-xs text-on-surface-variant">
+                    {entry.business.legalName}
+                  </span>
+                </TableCell>
                 <TableCell>{MONEY_SECTION_LABELS[moneySectionOf(entry)]}</TableCell>
                 <TableCell>
                   <EntryStatus entry={entry} />
@@ -176,8 +210,9 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
               <EntryStatus entry={entry} />
             </div>
             <p className="text-sm">
-              {MONEY_SECTION_LABELS[moneySectionOf(entry)]} · {entry.business.legalName}
+              <EntryProduct entry={entry} /> · {MONEY_SECTION_LABELS[moneySectionOf(entry)]}
             </p>
+            <p className="text-xs text-on-surface-variant">{entry.business.legalName}</p>
             <p className="text-xs text-on-surface-variant">
               {formatDate(entry.occurredAt)} · <EntryLink entry={entry} />
             </p>

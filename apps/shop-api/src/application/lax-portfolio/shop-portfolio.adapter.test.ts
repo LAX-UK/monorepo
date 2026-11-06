@@ -315,6 +315,7 @@ describe("buildShopMoneyEntries", () => {
         currency: "GBP",
         occurredAt: "2026-05-02T12:00:00.000Z",
         href: "https://shop.lax.art/account/orders/cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+        product: "shop",
         business: { key: "lax_art", legalName: "London Art Exchange Ltd" },
       }),
     ]);
@@ -355,6 +356,26 @@ describe("buildShopMoneyEntries", () => {
       status: expected,
       amount: 47_500,
     });
+  });
+
+  it("tags each money entry with the product its channel belongs to", () => {
+    const entries = entriesFor({
+      orders: [
+        order({ channel: "shop" }),
+        order({ orderId: "44444444-4444-4444-8444-444444444444", channel: "art" }),
+      ],
+      refunds: [refund({ channel: "art" })],
+      originals: [original({ channel: "art" })],
+      sales: [sale({ work: work({ channel: "shop" }) })],
+    });
+    expect(entries.map((e) => [e.id.split(":")[0], e.product])).toEqual([
+      ["order", "shop"],
+      ["order", "art"],
+      ["refund", "art"],
+      ["original", "art"],
+      ["payout", "shop"],
+      ["payout", "shop"],
+    ]);
   });
 
   it("ignores a failed refund because no money moved", () => {

@@ -4,6 +4,7 @@ import {
   type LaxBusinessKey,
   type LaxMoneyEntryV1,
 } from "./lax-portfolio-contract.v1.js";
+import type { LaxProductId } from "./product-directory.js";
 
 /**
  * The contract's `owed_to_you` direction covers both payouts still to come and payouts already
@@ -18,6 +19,23 @@ export const MONEY_SECTION_KEYS = [
   "fee",
 ] as const;
 export type MoneySectionKey = (typeof MONEY_SECTION_KEYS)[number];
+
+/** The products each business covers, in the order they are named. LAX Shop and lax.art share one. */
+export const BUSINESS_PRODUCTS: Readonly<Record<LaxBusinessKey, readonly LaxProductId[]>> = {
+  lax_bid: ["bid"],
+  lax_art: ["shop", "art"],
+};
+
+/** The product an entry is read as when its payload predates the `product` field. */
+const LEGACY_PRODUCT: Readonly<Record<LaxBusinessKey, LaxProductId>> = {
+  lax_bid: "bid",
+  lax_art: "art",
+};
+
+/** The product a money entry belongs to: the one the product reported, else its business's default. */
+export function moneyProductOf(entry: LaxMoneyEntryV1): LaxProductId {
+  return entry.product ?? LEGACY_PRODUCT[entry.business.key];
+}
 
 export function moneySectionOf(entry: LaxMoneyEntryV1): MoneySectionKey {
   if (entry.direction !== "owed_to_you") return entry.direction;
