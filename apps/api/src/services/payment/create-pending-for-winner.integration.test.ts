@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
-import { bidInvoice, bidInvoiceLine, legalEntity, lot, payment, user } from "@auction/db/schema";
+import { bidInvoice, bidInvoiceLine, legalEntity, lot, payment } from "@auction/db/schema";
 import { parsePaymentTierLimits } from "@auction/domain";
 import {
   InvoiceRaiser,
@@ -16,6 +16,10 @@ import {
 import type { Lot } from "@auction/types";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import {
+  deleteIdentityUserFixtures,
+  seedIdentityUserFixtures,
+} from "../../testing/identity-user-fixtures.js";
 import { createPaymentRecordForWinner } from "./create-pending-for-winner.pipeline.js";
 import type { PaymentServiceDeps } from "./payment-service-types.js";
 
@@ -90,14 +94,9 @@ describe.skipIf(!HAS_DB)("raising an invoice (integration)", () => {
   }
 
   beforeAll(async () => {
-    await db.insert(user).values({
-      id: buyerId,
-      name: buyerId,
-      email: `${buyerId}@integration.test`,
-      emailVerified: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
+    await seedIdentityUserFixtures(db, [
+      { id: buyerId, name: buyerId, email: `${buyerId}@integration.test` },
+    ]);
     for (const [id, kind, subkind] of [
       [buyerEntity, "individual", "private_collector"],
       [sellerEntity, "organisation", "gallery"],
@@ -118,7 +117,7 @@ describe.skipIf(!HAS_DB)("raising an invoice (integration)", () => {
     await db.delete(bidInvoice).where(inArray(bidInvoice.lotId, lotIds));
     await db.delete(lot).where(inArray(lot.id, lotIds));
     await db.delete(legalEntity).where(inArray(legalEntity.id, [buyerEntity, sellerEntity]));
-    await db.delete(user).where(eq(user.id, buyerId));
+    await deleteIdentityUserFixtures(db, [buyerId]);
   });
 
   it("stores the invoice, its lines and the payment together, and they add up", async () => {

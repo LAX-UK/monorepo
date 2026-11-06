@@ -110,7 +110,8 @@ export class DrizzleBidInvoiceRepository
         // that raced this one): it is used as it is, never priced again.
         .onConflictDoNothing({
           target: [bidInvoice.lotId, bidInvoice.buyerLegalEntityId],
-          where: isNull(bidInvoice.voidedAt),
+          // The partial unique index's predicate, written unqualified as Postgres infers it.
+          where: sql`"voided_at" is null`,
         })
         .returning();
 
