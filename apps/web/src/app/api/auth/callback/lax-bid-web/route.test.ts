@@ -113,6 +113,25 @@ describe("Bid BFF OIDC callback", () => {
     });
   });
 
+  it("still signs the person in when the account restore throws", async () => {
+    applySignInRestore.mockRejectedValueOnce(new Error("restore exploded"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const response = await GET(request("state=expected-state&code=authorization-code"));
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe(
+      "https://lax.bid/auth/post-login?next=%2Fhome&auth_fresh=1",
+    );
+    expect(setBidSessionCookie).toHaveBeenCalledWith(
+      response,
+      "authenticated-session",
+      "authenticated",
+    );
+    expect(invalidateSession).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
   it("does not try to restore an account when the callback does not sign anyone in", async () => {
     validateCallbackState.mockReturnValue(false);
     await GET(request("state=other-state&code=authorization-code"));

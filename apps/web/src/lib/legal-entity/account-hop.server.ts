@@ -4,11 +4,10 @@ import { clientAreaRedirectFor } from "@/lib/auth/client-audience";
 import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { safeHopNext } from "@/lib/navigation/account-link";
-import { decodeActingContextCookie } from "@auction/types";
 import { cookies } from "next/headers";
 import type { HopPlan } from "./account-hops";
 import { writeAccountNoticeCookie, writeActingAccountCookie } from "./acting-cookie.server";
-import { ACTING_LEGAL_ENTITY_COOKIE, parseActingLegalEntityId } from "./client-acting-context";
+import { ACTING_LEGAL_ENTITY_COOKIE, readActingCookie } from "./client-acting-context";
 import { rememberAccount } from "./remembered-account.server";
 
 /**
@@ -45,14 +44,13 @@ export function hopNext(request: Request): string {
 /** Whether this browser is a staff member viewing as a client; hops leave that untouched. */
 export async function isImpersonating(): Promise<boolean> {
   const raw = (await cookies()).get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
-  if (!raw) return false;
-  return Boolean(decodeActingContextCookie(decodeURIComponent(raw))?.i?.sid);
+  return Boolean(readActingCookie(raw)?.viewSessionId);
 }
 
 /** The account this browser used last, from its cookie; `null` on a new device. */
 export async function browserAccountId(): Promise<string | null> {
   const raw = (await cookies()).get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
-  return raw ? (parseActingLegalEntityId(`${ACTING_LEGAL_ENTITY_COOKIE}=${raw}`) ?? null) : null;
+  return readActingCookie(raw)?.accountId ?? null;
 }
 
 /** Carries out a hop plan: writes the account, remembers it, leaves the notice, redirects. */

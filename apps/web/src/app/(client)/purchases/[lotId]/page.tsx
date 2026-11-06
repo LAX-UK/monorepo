@@ -1,6 +1,7 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
 import { PurchaseDetail } from "@/components/dashboard/purchases/purchase-detail";
+import { AccountRestoreHop } from "@/components/layout/account-switcher/account-restore-hop";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
 import { SITE_CONTACT_EMAIL } from "@/lib/brand";
@@ -62,12 +63,13 @@ export default async function PurchaseDetailPage({ params }: PageProps) {
   const row = sources.rows.find((candidate) => candidate.lot.id === lotId);
   if (!row) {
     // Won in another account of this person: open it there. Otherwise it is not theirs to see.
-    await openRecordInItsAccount({
+    const switchHop = await openRecordInItsAccount({
       kind: "purchase",
       id: lotId,
       actingId: scope.account.id,
       next: `${CLIENT_ROUTES.purchases}/${lotId}`,
     });
+    if (switchHop) return <AccountRestoreHop href={switchHop} />;
     notFound();
   }
   const card = purchaseCard(row, sources);

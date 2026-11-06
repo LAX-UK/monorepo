@@ -1,8 +1,4 @@
-import {
-  ACTING_LEGAL_ENTITY_COOKIE_NAME,
-  decodeActingContextCookie,
-  isUuidString,
-} from "@auction/types";
+import { ACTING_LEGAL_ENTITY_COOKIE_NAME, decodeActingContextCookie } from "@auction/types";
 import type { LegalEntitySummary } from "@auction/types";
 
 export const ACTING_LEGAL_ENTITY_COOKIE = ACTING_LEGAL_ENTITY_COOKIE_NAME;
@@ -21,17 +17,39 @@ export function getClientActingLegalEntityId(): string | undefined {
   return parseActingLegalEntityId(document.cookie);
 }
 
+/** What the account cookie says: the account it names, and the staff view session it carries. */
+export type ActingCookie = {
+  accountId: string;
+  /** A staff "view as client" session id; `null` for an ordinary choice. */
+  viewSessionId: string | null;
+};
+
+function urlDecode(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+/**
+ * The one reader of the account cookie's value (a bare account id, or the encoded form with a
+ * staff view). It URL-decodes first, whether the value came from a request header or from
+ * `document.cookie`, and returns `null` for an empty or unreadable value.
+ */
+export function readActingCookie(raw: string | undefined | null): ActingCookie | null {
+  if (!raw) return null;
+  const decoded = decodeActingContextCookie(urlDecode(raw).trim());
+  return decoded ? { accountId: decoded.e, viewSessionId: decoded.i?.sid ?? null } : null;
+}
+
 /** Parse a cookie header / `document.cookie` for the acting entity id. */
 export function parseActingLegalEntityId(
   cookieHeader: string | undefined | null,
 ): string | undefined {
   if (!cookieHeader) return undefined;
   const match = cookieHeader.match(new RegExp(`(?:^|; )${ACTING_LEGAL_ENTITY_COOKIE}=([^;]*)`));
-  if (!match?.[1]) return undefined;
-  const raw = decodeURIComponent(match[1]).trim();
-  const decoded = decodeActingContextCookie(raw);
-  if (decoded) return decoded.e;
-  return isUuidString(raw) ? raw : undefined;
+  return readActingCookie(match?.[1])?.accountId;
 }
 
 const EXPIRED = "Thu, 01 Jan 1970 00:00:00 GMT";

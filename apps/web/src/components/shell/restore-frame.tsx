@@ -20,7 +20,7 @@ async function pendingRestore(needsRestore: boolean, returnTo: string): Promise<
   const step = nextRestoreStep({ needsRestore, markerPresent });
   if (step === "none") return null;
   const href = restoreAccountHref(returnTo);
-  if (step === "stalled") reportRestoreStalled(href);
+  if (step === "stalled") reportRestoreStalled(returnTo);
   return { step, href };
 }
 

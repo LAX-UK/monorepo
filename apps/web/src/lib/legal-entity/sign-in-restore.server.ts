@@ -1,15 +1,16 @@
 import "server-only";
 
+import { usesBidAsClient } from "@/lib/auth/client-audience";
 import { BID_API_AUDIENCE } from "@/lib/bff/config.server";
 import { BidBffTokenService } from "@/lib/bff/token-service.server";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
 import { deriveSsrOrigin } from "@/lib/data/http/server-request-headers";
+import { sessionUserSchema } from "@/lib/data/http/session.schema";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import { decodeActingContextCookie, isUuidString } from "@auction/types";
 import type { NextRequest, NextResponse } from "next/server";
 import { type HopPlan, planRestoreHop } from "./account-hops";
 import { cookiesForHop } from "./acting-cookie.server";
-import { ACTING_LEGAL_ENTITY_COOKIE } from "./client-acting-context";
+import { ACTING_LEGAL_ENTITY_COOKIE, readActingCookie } from "./client-acting-context";
 import { type ApiSender, restoreAccountVia } from "./remembered-account.server";
 
 /** Sign-in must not wait on this: past it, the layout restores the account on the first page. */
@@ -44,23 +45,16 @@ function senderFor(sessionId: string): ApiSender {
   };
 }
 
-/** What this browser's account cookie says: the account it names, and whether it is a staff view. */
-function readAccountCookie(value: string | undefined): {
-  id: string | null;
-  impersonating: boolean;
-} {
-  if (!value) return { id: null, impersonating: false };
-  const decoded = decodeActingContextCookie(value);
-  if (decoded) return { id: decoded.e, impersonating: Boolean(decoded.i?.sid) };
-  return { id: isUuidString(value) ? value : null, impersonating: false };
-}
-
 /**
  * The account a person opens Bid as right after signing in, so the first page already has it and
  * the browser never needs the restore hop. `null` when there is nothing to write: the cookie
- * belongs to a staff member viewing as a client (a restore would end that), or the API could not
- * answer. Sign-in goes on either way, and the client layout restores the account if the cookie
- * is still missing.
+ * belongs to a staff member viewing as a client (a restore would end that), the person is staff
+ * (the hop and the switch action leave staff alone too), or the API could not answer in time.
+ * Sign-in goes on either way, and the client layout restores the account if the cookie is still
+ * missing.
+ *
+ * The whole plan, including the token and the identity lookups before the API call, shares one
+ * deadline, so sign-in never waits on it for longer than `RESTORE_TIMEOUT_MS`.
  *
  * @param actingCookie this browser's account cookie, if it has one (it survives sign-out).
  */
@@ -68,11 +62,47 @@ export async function planSignInRestore(input: {
   sessionId: string;
   actingCookie: string | undefined;
 }): Promise<HopPlan | null> {
-  const cookie = readAccountCookie(input.actingCookie);
-  if (cookie.impersonating) return null;
-  const answer = await restoreAccountVia(senderFor(input.sessionId), cookie.id);
+  return withDeadline(planWithoutDeadline(input), RESTORE_TIMEOUT_MS);
+}
+
+/** Resolves to `null` if `work` has not settled in time; a late result is dropped. */
+function withDeadline<T>(work: Promise<T | null>, ms: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      console.warn("Sign-in account restore timed out");
+      resolve(null);
+    }, ms);
+  });
+  // The work may fail after the deadline has passed; nobody is waiting for it then.
+  work.catch(() => {});
+  return Promise.race([work, expired]).finally(() => clearTimeout(timer));
+}
+
+async function planWithoutDeadline(input: {
+  sessionId: string;
+  actingCookie: string | undefined;
+}): Promise<HopPlan | null> {
+  const cookie = readActingCookie(input.actingCookie);
+  if (cookie?.viewSessionId) return null;
+  const send = senderFor(input.sessionId);
+  if (!(await isClientSession(send))) return null;
+  const answer = await restoreAccountVia(send, cookie?.accountId ?? null);
   if (!answer.ok) return null;
   return planRestoreHop({ next: CLIENT_ROUTES.home, restored: answer.restored });
+}
+
+/** Staff have no client accounts: nothing is restored or written for them. */
+async function isClientSession(send: ApiSender): Promise<boolean> {
+  try {
+    const res = await send("/users/me", { method: "GET", cache: "no-store" });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { data?: unknown };
+    const user = sessionUserSchema.safeParse(body.data);
+    return user.success && usesBidAsClient(user.data);
+  } catch {
+    return false;
+  }
 }
 
 /**

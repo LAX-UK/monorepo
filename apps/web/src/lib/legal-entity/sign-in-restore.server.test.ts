@@ -20,10 +20,26 @@ vi.mock("next/headers", () => ({ cookies: vi.fn() }));
 const fetchApi = vi.fn();
 vi.stubGlobal("fetch", fetchApi);
 
+const CLIENT = { id: "u1", email: "a@b.test", name: "A", role: "client" };
+
+/** The API as the sign-in sees it: who the person is, and the answer to the restore. */
+function mockApi(restore: Response | (() => Promise<Response>), me: object = CLIENT): void {
+  fetchApi.mockImplementation(async (url: string) => {
+    if (url.endsWith("/users/me")) return new Response(JSON.stringify({ data: me }));
+    return typeof restore === "function" ? restore() : restore.clone();
+  });
+}
+
 const { applySignInRestore, planSignInRestore } = await import("./sign-in-restore.server");
 
 const ORG_ID = "22222222-2222-4222-8222-222222222222";
 const PERSONAL_ID = "11111111-1111-4111-8111-111111111111";
+
+/** The call to the restore endpoint (the identity lookup comes before it). */
+function restoreCall(): [string, RequestInit] {
+  const call = fetchApi.mock.calls.find(([url]) => String(url).includes("remembered-account"));
+  return call as [string, RequestInit];
+}
 
 function answer(data: unknown): Response {
   return new Response(JSON.stringify({ data }));
@@ -36,13 +52,13 @@ describe("planSignInRestore", () => {
   });
 
   it("asks the API as the new session and opens the account it chose", async () => {
-    fetchApi.mockResolvedValue(answer({ accountId: ORG_ID, lostOrganisation: null }));
+    mockApi(answer({ accountId: ORG_ID, lostOrganisation: null }));
 
     const plan = await planSignInRestore({ sessionId: "session-1", actingCookie: undefined });
 
     expect(plan?.switchTo?.accountId).toBe(ORG_ID);
     expect(resourceToken).toHaveBeenCalledWith("session-1", "bid-api", "bid.read bid.write");
-    const [url, init] = fetchApi.mock.calls[0] as [string, RequestInit];
+    const [url, init] = restoreCall();
     expect(url).toBe("https://api.test/legal-entities/me/remembered-account/restore");
     expect(init.method).toBe("POST");
     const headers = new Headers(init.headers);
@@ -52,15 +68,15 @@ describe("planSignInRestore", () => {
   });
 
   it("offers the account this browser used last as the candidate", async () => {
-    fetchApi.mockResolvedValue(answer({ accountId: ORG_ID, lostOrganisation: null }));
+    mockApi(answer({ accountId: ORG_ID, lostOrganisation: null }));
     await planSignInRestore({ sessionId: "session-1", actingCookie: ORG_ID });
-    expect(JSON.parse(String((fetchApi.mock.calls[0] as [string, RequestInit])[1].body))).toEqual({
+    expect(JSON.parse(String(restoreCall()[1].body))).toEqual({
       candidateId: ORG_ID,
     });
   });
 
   it("carries the notice when the person was removed from the organisation", async () => {
-    fetchApi.mockResolvedValue(
+    mockApi(
       answer({
         accountId: PERSONAL_ID,
         lostOrganisation: { id: ORG_ID, displayName: "Northbank Gallery" },
@@ -74,7 +90,7 @@ describe("planSignInRestore", () => {
   });
 
   it.each([429, 500, 503])("does not block sign-in when the API answers %s", async (status) => {
-    fetchApi.mockResolvedValue(new Response("{}", { status }));
+    mockApi(new Response("{}", { status }));
     await expect(
       planSignInRestore({ sessionId: "session-1", actingCookie: undefined }),
     ).resolves.toBeNull();
@@ -89,6 +105,43 @@ describe("planSignInRestore", () => {
     await expect(
       planSignInRestore({ sessionId: "session-1", actingCookie: undefined }),
     ).resolves.toBeNull();
+  });
+
+  it("restores nothing for a staff member, and asks the API nothing beyond who they are", async () => {
+    mockApi(answer({ accountId: ORG_ID, lostOrganisation: null }), {
+      ...CLIENT,
+      role: "staff",
+      staffRoles: ["admin"],
+    });
+    await expect(
+      planSignInRestore({ sessionId: "session-1", actingCookie: undefined }),
+    ).resolves.toBeNull();
+    expect(restoreCall()).toBeUndefined();
+  });
+
+  it("gives up at one deadline for the whole restore, even when the token never arrives", async () => {
+    vi.useFakeTimers();
+    try {
+      resourceToken.mockReturnValue(new Promise(() => {}));
+      const plan = planSignInRestore({ sessionId: "session-1", actingCookie: undefined });
+      let settled = false;
+      void plan.then(() => {
+        settled = true;
+      });
+      await vi.advanceTimersByTimeAsync(2_999);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(2);
+      await expect(plan).resolves.toBeNull();
+      expect(fetchApi).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("reads an encoded or malformed cookie without failing", async () => {
+    mockApi(answer({ accountId: ORG_ID, lostOrganisation: null }));
+    await planSignInRestore({ sessionId: "session-1", actingCookie: "%E0%A4%A" });
+    expect(JSON.parse(String(restoreCall()[1].body))).toEqual({ candidateId: null });
   });
 
   it("leaves a staff member's view as a client alone", async () => {
@@ -113,7 +166,7 @@ describe("applySignInRestore", () => {
   }
 
   it("writes the account cookie with the same flags the switch uses", async () => {
-    fetchApi.mockResolvedValue(answer({ accountId: ORG_ID, lostOrganisation: null }));
+    mockApi(answer({ accountId: ORG_ID, lostOrganisation: null }));
     const response = NextResponse.redirect("https://lax.bid/auth/post-login");
 
     await applySignInRestore(response, { sessionId: "session-1", request: signInRequest() });
@@ -127,7 +180,7 @@ describe("applySignInRestore", () => {
   });
 
   it("writes the removed-from-organisation notice beside it", async () => {
-    fetchApi.mockResolvedValue(
+    mockApi(
       answer({
         accountId: PERSONAL_ID,
         lostOrganisation: { id: ORG_ID, displayName: "Northbank Gallery" },
@@ -145,7 +198,7 @@ describe("applySignInRestore", () => {
   });
 
   it("writes nothing when the API cannot answer", async () => {
-    fetchApi.mockResolvedValue(new Response("{}", { status: 503 }));
+    mockApi(new Response("{}", { status: 503 }));
     const response = NextResponse.redirect("https://lax.bid/auth/post-login");
 
     await applySignInRestore(response, { sessionId: "session-1", request: signInRequest() });

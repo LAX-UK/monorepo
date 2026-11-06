@@ -2,6 +2,7 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
+import { AccountRestoreHop } from "@/components/layout/account-switcher/account-restore-hop";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -69,12 +70,13 @@ export default async function EditConsignmentPage({ params }: PageProps) {
   }
   const submission = submissionRes.value;
   if (!submission) {
-    await openRecordInItsAccount({
+    const switchHop = await openRecordInItsAccount({
       kind: "consignment",
       id,
       actingId: sellerCtx.sellerEntityId,
       next: path,
     });
+    if (switchHop) return <AccountRestoreHop href={switchHop} />;
     notFound();
   }
   const actions = consignmentActionsVm({

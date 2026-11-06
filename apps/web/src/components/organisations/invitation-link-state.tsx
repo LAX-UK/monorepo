@@ -73,9 +73,8 @@ export function InvitationLinkState({ view, acceptAction }: Props) {
             {view.accept ? <AcceptForm label={view.accept.label} action={acceptAction} /> : null}
             {view.primary ? (
               <Button asChild variant="primary">
-                <Link href={view.primary.href} prefetch={false}>
-                  {view.primary.label}
-                </Link>
+                {/* A plain link: the primary step can be an account hop, which needs a page load. */}
+                <a href={view.primary.href}>{view.primary.label}</a>
               </Button>
             ) : null}
             <Button asChild variant="secondary">

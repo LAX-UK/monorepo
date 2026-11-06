@@ -27,7 +27,8 @@ export function refusedPageTarget(next: string | null | undefined): string | nul
   return isAccountHop(path) ? null : next;
 }
 
-function isHop(path: string): boolean {
+/** The two routes that write the account cookie (not their confirm or retry pages). */
+export function isHop(path: string): boolean {
   return path === CLIENT_ROUTES.accountSwitch || path === CLIENT_ROUTES.accountRestore;
 }
 
@@ -90,12 +91,19 @@ export function restoreAccountHref(next: string): string {
  * URL needs nothing.
  */
 export function accountLinkRedirect(url: Pick<URL, "pathname" | "search" | "hash">): string | null {
+  const target = accountLinkTarget(url);
+  return target ? switchAccountHref(target.accountId, target.next) : null;
+}
+
+/** The account a client-area link names and the page it opens there, or `null` for a plain link. */
+export function accountLinkTarget(
+  url: Pick<URL, "pathname" | "search" | "hash">,
+): { accountId: string; next: string } | null {
   if (!isClientAreaPath(url.pathname) || isAccountHop(url.pathname)) return null;
   const params = new URLSearchParams(url.search);
   const accountId = params.get(ACCOUNT_QUERY_PARAM);
   if (!accountId) return null;
   params.delete(ACCOUNT_QUERY_PARAM);
   const rest = params.toString();
-  const next = `${url.pathname}${rest ? `?${rest}` : ""}${url.hash}`;
-  return switchAccountHref(accountId, next);
+  return { accountId, next: `${url.pathname}${rest ? `?${rest}` : ""}${url.hash}` };
 }

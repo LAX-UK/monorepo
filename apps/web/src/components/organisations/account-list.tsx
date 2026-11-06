@@ -2,7 +2,7 @@ import { AccountTile } from "@/components/layout/account-switcher/account-tile";
 import type { AccountRowVm } from "@/lib/organisations/organisation-accounts.vm";
 import { RecordList, RecordRow } from "@auction/ui";
 import { ButtonLink, StatusBadge } from "@auction/ui/lax";
-import Link from "next/link";
+import { AccountSwitchLink } from "./account-switch-link";
 import { initials } from "./initials";
 
 /**
@@ -18,7 +18,7 @@ export function AccountList({ rows }: { rows: readonly AccountRowVm[] }) {
           key={row.id}
           aria-label={row.title}
           href={row.href}
-          linkAs={Link}
+          linkAs={AccountSwitchLink}
           leading={<AccountTile account={{ kind: row.kind, initials: initials(row.tileName) }} />}
           title={row.title}
           meta={row.meta}
@@ -32,7 +32,7 @@ export function AccountList({ rows }: { rows: readonly AccountRowVm[] }) {
           action={
             <ButtonLink
               href={row.step?.href ?? row.href}
-              Link={Link}
+              Link={AccountSwitchLink}
               size="sm"
               // Row steps are secondary: a list never holds the page's one primary action.
               variant="secondary"

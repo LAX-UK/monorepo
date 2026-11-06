@@ -174,7 +174,12 @@ export async function GET(request: NextRequest) {
     }
     setBidSessionCookie(response, authenticatedId, "authenticated");
     // The first page opens in the person's account; if the API cannot say, the layout restores it.
-    await applySignInRestore(response, { sessionId: authenticatedId, request });
+    // Never let this fail the sign-in: the session is already authenticated.
+    try {
+      await applySignInRestore(response, { sessionId: authenticatedId, request });
+    } catch (error) {
+      console.warn("Sign-in account restore failed; the first page restores the account", error);
+    }
     response.headers.set("cache-control", "no-store");
     return response;
   } catch {

@@ -1,7 +1,9 @@
+import { encodeActingContextCookie } from "@auction/types";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   expireSharedActingCookie,
   parseActingLegalEntityId,
+  readActingCookie,
   setClientActingLegalEntityId,
 } from "./client-acting-context";
 
@@ -69,5 +71,29 @@ describe("acting legal entity cookie", () => {
     expect(parseActingLegalEntityId(`theme=dark; lax_acting_legal_entity_id=${ENTITY_ID}`)).toBe(
       ENTITY_ID,
     );
+  });
+});
+
+describe("readActingCookie", () => {
+  const VIEW_ID = "22222222-2222-4222-8222-222222222222";
+
+  it("reads a bare account id", () => {
+    expect(readActingCookie(ENTITY_ID)).toEqual({ accountId: ENTITY_ID, viewSessionId: null });
+  });
+
+  it("reads the encoded form, with a staff view session", () => {
+    const value = encodeActingContextCookie({ v: 1, e: ENTITY_ID, i: { sid: VIEW_ID } });
+    expect(readActingCookie(value)).toEqual({ accountId: ENTITY_ID, viewSessionId: VIEW_ID });
+  });
+
+  it("URL-decodes first, so a header value and a decoded value read alike", () => {
+    expect(readActingCookie(encodeURIComponent(` ${ENTITY_ID} `))?.accountId).toBe(ENTITY_ID);
+  });
+
+  it("returns null for nothing, or for a value it cannot read", () => {
+    expect(readActingCookie(undefined)).toBeNull();
+    expect(readActingCookie("")).toBeNull();
+    expect(readActingCookie("not-an-account")).toBeNull();
+    expect(readActingCookie("%E0%A4%A")).toBeNull();
   });
 });
