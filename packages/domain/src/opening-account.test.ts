@@ -47,7 +47,7 @@ describe("decideOpeningAccount", () => {
         accounts: [personal, gallery],
         organisationsEnabled: false,
       }),
-    ).toEqual({ kind: "fallback", accountId: "me", lostAccountId: "northbank" });
+    ).toEqual({ kind: "fallback", accountId: "me", lostAccountId: null });
   });
 
   it("has nothing to open without a personal account", () => {

@@ -56,7 +56,7 @@ describe("planSignInRestore", () => {
 
     const plan = await planSignInRestore({ sessionId: "session-1" });
 
-    expect(plan?.accountId).toBe(ORG_ID);
+    expect(plan).toMatchObject({ kind: "client", account: { accountId: ORG_ID } });
     expect(resourceToken).toHaveBeenCalledWith("session-1", "bid-api", "bid.read bid.write");
     const [url, init] = restoreCall();
     expect(url).toBe("https://api.test/legal-entities/me/remembered-account/restore");
@@ -82,8 +82,11 @@ describe("planSignInRestore", () => {
     );
     const plan = await planSignInRestore({ sessionId: "session-1" });
     expect(plan).toMatchObject({
-      accountId: PERSONAL_ID,
-      notice: { kind: "removed", organisationName: "Northbank Gallery" },
+      kind: "client",
+      account: {
+        accountId: PERSONAL_ID,
+        notice: { kind: "removed", organisationName: "Northbank Gallery" },
+      },
     });
   });
 
@@ -105,7 +108,9 @@ describe("planSignInRestore", () => {
       role: "staff",
       staffRoles: ["admin"],
     });
-    await expect(planSignInRestore({ sessionId: "session-1" })).resolves.toBeNull();
+    await expect(planSignInRestore({ sessionId: "session-1" })).resolves.toEqual({
+      kind: "staff",
+    });
     expect(restoreCall()).toBeUndefined();
   });
 
@@ -216,17 +221,47 @@ describe("applySignInRestore", () => {
     expect(response.cookies.get("lax_acting_legal_entity_id")?.value).toBe("");
   });
 
-  it("leaves a staff member's view as a client alone, without asking the API", async () => {
-    const viewing = encodeActingContextCookie({ v: 1, e: ORG_ID, i: { sid: PERSONAL_ID } });
+  const viewing = () => encodeActingContextCookie({ v: 1, e: ORG_ID, i: { sid: PERSONAL_ID } });
+
+  it("keeps a staff member's own view as a client when staff sign in", async () => {
+    mockApi(answer({ accountId: ORG_ID, lostOrganisation: null }), {
+      ...CLIENT,
+      role: "staff",
+      staffRoles: ["admin"],
+    });
     const response = NextResponse.redirect("https://lax.bid/auth/post-login");
 
     await applySignInRestore(response, {
       sessionId: "session-1",
-      request: signInRequest(`lax_acting_legal_entity_id=${viewing}`),
+      request: signInRequest(`lax_acting_legal_entity_id=${viewing()}`),
     });
 
-    expect(fetchApi).not.toHaveBeenCalled();
+    expect(restoreCall()).toBeUndefined();
     expect(response.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("replaces a staff view-as cookie left on a shared browser when a client signs in", async () => {
+    mockApi(answer({ accountId: PERSONAL_ID, lostOrganisation: null }));
+    const response = NextResponse.redirect("https://lax.bid/auth/post-login");
+
+    await applySignInRestore(response, {
+      sessionId: "session-1",
+      request: signInRequest(`lax_acting_legal_entity_id=${viewing()}`),
+    });
+
+    expect(response.cookies.get("lax_acting_legal_entity_id")?.value).toBe(PERSONAL_ID);
+  });
+
+  it("removes a staff view-as cookie for a client when nothing could be written", async () => {
+    mockApi(new Response("{}", { status: 503 }));
+    const response = NextResponse.redirect("https://lax.bid/auth/post-login");
+
+    await applySignInRestore(response, {
+      sessionId: "session-1",
+      request: signInRequest(`lax_acting_legal_entity_id=${viewing()}`),
+    });
+
+    expect(response.cookies.get("lax_acting_legal_entity_id")?.value).toBe("");
   });
 
   it("writes nothing when there was no cookie and the API cannot answer", async () => {

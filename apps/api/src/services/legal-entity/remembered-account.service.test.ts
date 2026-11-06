@@ -147,6 +147,18 @@ describe("RememberedAccountService.restore", () => {
     expect(store.writes).toEqual([]);
   });
 
+  it("opens personal without a lost-organisation notice while organisations are switched off", async () => {
+    const { service } = harness({
+      memberships: member,
+      remembered: GALLERY,
+      organisationsEnabled: false,
+    });
+    await expect(service.restore("u1", GALLERY)).resolves.toEqual({
+      accountId: PERSONAL,
+      lostOrganisation: null,
+    });
+  });
+
   it("drops an unknown id without a notice", async () => {
     const { service } = harness({ memberships: member });
     await expect(service.restore("u1", "00000000-0000-4000-8000-0000000000ff")).resolves.toEqual({

@@ -10,9 +10,9 @@ type Props = {
 /**
  * Puts a browser in the right account (no usable choice yet, or a record owned by another
  * account), by loading the restore or switch hop as a page. A page load is what lets the hop's
- * cookie and redirect take effect and leaves nothing of this layout in the router's cache; a `redirect()` here would be followed by the client
- * router, which keeps the layout that asked for it and asks again. The link is for the rare
- * browser where the script does not run.
+ * cookie and redirect take effect and leaves nothing of this layout in the router's cache; a
+ * `redirect()` here would be followed by the client router, which keeps the layout that asked
+ * for it and asks again. The link is for the rare browser where the script does not run.
  */
 export function AccountRestoreHop({ href }: Props) {
   const started = useRef(false);

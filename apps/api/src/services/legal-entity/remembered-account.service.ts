@@ -76,7 +76,9 @@ export class RememberedAccountService {
     if (decision.kind === "use") return { accountId: decision.accountId, lostOrganisation: null };
     return {
       accountId: decision.accountId,
-      lostOrganisation: await this.lostOrganisation(decision.lostAccountId),
+      lostOrganisation: decision.lostAccountId
+        ? await this.lostOrganisation(decision.lostAccountId)
+        : null,
     };
   }
 
