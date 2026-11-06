@@ -2,6 +2,7 @@ import { AccountingReplayCronService } from "@auction/finance-cron-app";
 import type { IAccountingReplayPaymentMaintenance } from "@auction/finance-cron-app";
 import type {
   IAddressRepository,
+  IBidInvoiceReader,
   IInvoiceDetailsReader,
   ILegalEntityRepository,
   IPaymentExternalRefRepository,
@@ -32,6 +33,7 @@ export type CreateXeroAccountingStackInput = {
   connections: IXeroConnectionRepository;
   externalRefs: IPaymentExternalRefRepository;
   payments: IPaymentWriteRepository;
+  invoices: Pick<IBidInvoiceReader, "findByPaymentIds">;
   payouts: IPayoutRepository;
   refundReconcileRepo: IPaymentRefundReconcileRepository;
   webhookEvents: IXeroWebhookEventRepository;
@@ -78,6 +80,7 @@ export function createXeroAccountingStack(
         invoiceAddressing,
         errorReporter,
         input.redis,
+        input.invoices,
       )
     : new NoOpAccountingProvider();
 

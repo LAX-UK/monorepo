@@ -1,9 +1,10 @@
 import type { Lot, Sale } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { computeLotCheckoutPricing, lotTotalDuePence } from "./lot-checkout-pricing.js";
+import { lotTotalDuePence } from "./invoice-lines.js";
+import { computeLotCheckoutPricing } from "./lot-checkout-pricing.js";
 
 const lot = (currentPrice: string, buyerPremiumRate = "0.25") =>
-  ({ currentPrice, buyerPremiumRate }) as Lot;
+  ({ currentPrice, buyerPremiumRate, saleId: null }) as Lot;
 const tiered = {
   buyerPremiumTiers: [
     { hammerThresholdMinor: 0, rate: "0.1500" },

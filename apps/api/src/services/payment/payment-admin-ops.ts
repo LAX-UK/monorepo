@@ -211,6 +211,7 @@ export async function releaseManualReviewForCapture(
   const publisher = deps.domainEventSink;
   if (!transactionRunner || !publisher) {
     await deps.payments.updateStatus(paymentId, "pending");
+    await extendDueDateAfterRelease(deps, p);
     return ok(undefined);
   }
 
@@ -243,7 +244,31 @@ export async function releaseManualReviewForCapture(
     }
     throw e;
   }
+  await extendDueDateAfterRelease(deps, p);
   return ok(undefined);
+}
+
+/**
+ * The invoice was held for review, so its term runs from the release: the due date moves to the
+ * term counted from now, and never earlier. A failure is logged and does not undo the release.
+ */
+async function extendDueDateAfterRelease(
+  deps: PaymentServiceDeps,
+  released: { id: string; invoiceId?: string | null },
+): Promise<void> {
+  if (!released.invoiceId || !deps.invoiceDueDates) return;
+  try {
+    await deps.invoiceDueDates.extendAfterHold(released.invoiceId, new Date());
+  } catch (error) {
+    recordMoneyPathEvent("invoice_due_date_extension_failed");
+    console.error(
+      JSON.stringify({
+        msg: "invoice_due_date_extension_failed",
+        paymentId: released.id,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
 }
 
 export async function syncPaymentFromXeroAsAdmin(

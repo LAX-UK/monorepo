@@ -1,4 +1,7 @@
-import type { IPaymentDomainEventsRepository } from "@auction/persistence/interfaces";
+import type {
+  IBidInvoiceReader,
+  IPaymentDomainEventsRepository,
+} from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
 import type { IUserRepository } from "@auction/persistence/interfaces";
@@ -16,6 +19,11 @@ import type { IErrorReporter } from "../interfaces/error-handling.js";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import { ensureXeroInvoiceForPayment } from "./ensure-xero-invoice.js";
+import {
+  type CheckedInvoiceLines,
+  InvoiceLinesError,
+  checkInvoiceLines,
+} from "./invoice-stripe-lines.js";
 import type {
   CheckoutRailKind,
   ManualReviewReason,
@@ -25,6 +33,8 @@ import { manualReviewReasonFromCheckoutBlockCode } from "./resolve-manual-review
 
 export type CheckoutOrchestratorDeps = {
   payments: IPaymentWriteRepository;
+  /** The stored invoice behind each payment: Stripe is charged from its lines. */
+  invoices: Pick<IBidInvoiceReader, "findByPaymentIds">;
   users: IUserRepository;
   accounting: IInvoiceAccountingProvider;
   stripeCheckout: IStripeCheckoutService | null;
@@ -248,9 +258,26 @@ export async function issueCheckoutForPendingPayment(
     return err(new PaymentProviderError("Buyer legal entity is required for checkout", 400));
   }
 
+  let invoiceLines: CheckedInvoiceLines;
+  try {
+    const invoices = await deps.invoices.findByPaymentIds([paymentId]);
+    invoiceLines = checkInvoiceLines(invoices.get(paymentId), paymentId, amountPence);
+  } catch (e) {
+    if (!(e instanceof InvoiceLinesError)) throw e;
+    recordMoneyPathEvent(`checkout_${e.code}`);
+    return err(
+      new PaymentProviderError(
+        "We could not confirm the invoice figures just now. Nothing was charged.",
+        503,
+        "invoice_unavailable",
+      ),
+    );
+  }
+
   const checkout = await deps.stripeCheckout.createCheckout(rail, {
     paymentId,
     lot,
+    invoiceLines: invoiceLines.lines,
     buyerEmail: buyer.email,
     buyerName: buyer.name,
     amount,

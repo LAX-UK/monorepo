@@ -1469,6 +1469,9 @@ importers:
       '@auction/alerts':
         specifier: workspace:*
         version: link:../alerts
+      '@auction/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@auction/identity-contracts':
         specifier: workspace:*
         version: link:../identity-contracts

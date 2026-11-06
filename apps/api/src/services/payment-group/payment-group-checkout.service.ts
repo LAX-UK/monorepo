@@ -1,5 +1,6 @@
 import type { CheckoutRailKind } from "@auction/domain";
 import type {
+  IBidInvoiceReader,
   IPaymentGroupRepository,
   IUserRepository,
   PaymentGroupMember,
@@ -10,6 +11,7 @@ import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IStripeCustomerGateway } from "../interfaces/stripe-customer.js";
+import { loadCheckedInvoiceLines } from "../payment/invoice-stripe-lines.js";
 import type { IPaymentGroupGateway } from "./payment-group-ports.js";
 import type {
   PaymentGroupReleaseReason,
@@ -53,6 +55,8 @@ export interface IGroupInvoiceAccounting {
 
 export type PaymentGroupCheckoutDeps = {
   groups: IPaymentGroupRepository;
+  /** The stored invoices behind the members: the checkout is charged from their lines. */
+  invoices: Pick<IBidInvoiceReader, "findByPaymentIds">;
   gateway: IPaymentGroupGateway;
   stripeCustomers: IStripeCustomerGateway;
   users: Pick<IUserRepository, "findById">;
@@ -147,6 +151,10 @@ export class PaymentGroupCheckoutService {
               buyerName: payer.name,
             })
           : null;
+      const checked = await loadCheckedInvoiceLines(
+        this.deps.invoices,
+        members.map((m) => ({ paymentId: m.paymentId, amountPence: gbpAmountToPence(m.amount) })),
+      );
       return await this.deps.gateway.createCheckout({
         paymentGroupId: group.id,
         rail: group.checkoutRail,
@@ -158,6 +166,7 @@ export class PaymentGroupCheckoutService {
           lotTitle: m.lotTitle,
           lotNumber: m.lotNumber,
           amountPence: gbpAmountToPence(m.amount),
+          invoiceLines: checked.get(m.paymentId)?.lines ?? [],
         })),
         buyerEmail: payer.email,
         stripeCustomerId,

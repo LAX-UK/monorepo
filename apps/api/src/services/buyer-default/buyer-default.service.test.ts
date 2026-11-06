@@ -37,6 +37,7 @@ function facts(over: Partial<BuyerDefaultLotFacts> = {}): BuyerDefaultLotFacts {
       status: "pending",
       amount: "1200.00",
       raisedAt: new Date("2026-11-01T10:00:00Z"),
+      dueAt: null,
     },
     fulfilmentStatus: "awaiting_payment",
     hasOpenDispute: false,
@@ -102,7 +103,7 @@ describe("BuyerDefaultService permissions and guards", () => {
   it("refuses a lot that is paid, held for checks or not found", async () => {
     for (const status of ["captured", "requires_manual_review"] as const) {
       const { service, deps } = setup(
-        facts({ payment: { id: "p", status, amount: "1", raisedAt: new Date() } }),
+        facts({ payment: { id: "p", status, amount: "1", raisedAt: new Date(), dueAt: null } }),
       );
       const result = await service.record(salesManager, "lot-1", input);
       expect(result.isErr() && result.error.status).toBe(409);

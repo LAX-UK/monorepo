@@ -1,4 +1,4 @@
-import type { Lot } from "@auction/types";
+import type { InvoiceLine, Lot } from "@auction/types";
 import type { CheckoutRailKind } from "../payment/payment-tier.policy.js";
 
 export type PaymentCheckoutContext = {
@@ -9,6 +9,8 @@ export type PaymentCheckoutContext = {
   amount: string;
   buyerLegalEntityId: string;
   amountPence: number;
+  /** The invoice's stored lines; they add up to `amountPence`. */
+  invoiceLines: readonly InvoiceLine[];
 };
 
 export type PaymentCheckoutResult = {

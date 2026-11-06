@@ -13,6 +13,7 @@ import * as schema from "../../schema/index.js";
 import { type FullActors, buildFullCatalogue } from "./demo-full-catalogue.js";
 import { COVER_IMAGES, DEPARTMENTS, WORKS } from "./demo-full-works.js";
 import { demoImageUrl, departmentHeroSource } from "./demo-images.js";
+import type { DemoPayment } from "./demo-topup-catalogue.js";
 import { DEMO_IDS, DEMO_PEOPLE } from "./demo-topup-ids.js";
 import {
   type Db,
@@ -66,10 +67,19 @@ export async function runDemoFull(db: Db, now: number = Date.now()): Promise<Dem
     northbankId: base.northbankId,
     heldUserId: people.ids.heldBuyer,
     heldEntityId: personalEntityOf(DEMO_PEOPLE.heldBuyer),
+    payerUserId: people.ids.payBuyer,
+    payerEntityId: personalEntityOf(DEMO_PEOPLE.payBuyer),
     laxStockId: base.laxStockId,
   };
   const catalogue = buildFullCatalogue(now, actors);
   await writeCatalogue(db, catalogue, refreshed);
+  await writeApprovedSourceOfFunds(
+    db,
+    now,
+    people.ids.payBuyer,
+    refreshed.userIds.admin,
+    catalogue,
+  );
 
   // Lot pictures on rows from earlier runs, and a large cover on the top-up's upcoming sale.
   for (const lot of catalogue.lots) {
@@ -108,6 +118,52 @@ export async function runDemoFull(db: Db, now: number = Date.now()): Promise<Dem
     bids: catalogue.bids.length,
     departments: DEPARTMENTS.length,
   };
+}
+
+/**
+ * The exposure the approved case covers: the buyer's open invoices, rounded up to the next
+ * £1,000 so a small change to the lots does not break the cover.
+ */
+export function approvedExposurePounds(
+  payments: readonly Pick<DemoPayment, "buyerUserId" | "status" | "invoice">[],
+  userId: string,
+): number {
+  const openPence = payments
+    .filter((p) => p.buyerUserId === userId && p.status !== "captured")
+    .reduce((sum, p) => sum + p.invoice.totalPence, 0);
+  return Math.ceil(openPence / 100_000) * 1_000;
+}
+
+/**
+ * The payer's source of funds is approved, for more than their open invoices add up to, so the
+ * check on the amount does not hold their payment.
+ */
+async function writeApprovedSourceOfFunds(
+  db: Db,
+  now: number,
+  userId: string,
+  reviewerUserId: string,
+  catalogue: ReturnType<typeof buildFullCatalogue>,
+) {
+  const exposurePounds = approvedExposurePounds(catalogue.payments, userId);
+  await db
+    .insert(schema.sourceOfFunds)
+    .values({
+      id: extraId("dee00000", 1),
+      userId,
+      status: "approved",
+      trigger: "threshold",
+      thresholdAmount: "9000.00",
+      exposureAmount: exposurePounds.toFixed(2),
+      currency: "GBP",
+      declaredSource: "Sale of a family property (demo).",
+      reviewedByUserId: reviewerUserId,
+      reviewedAt: new Date(now - 2 * DAY),
+      reviewNotes: "Documents checked (demo).",
+      createdAt: new Date(now - 9 * DAY),
+      updatedAt: new Date(now - 2 * DAY),
+    })
+    .onConflictDoNothing();
 }
 
 /** The twelve departments exist, in order, each with a picture of one of its works. */

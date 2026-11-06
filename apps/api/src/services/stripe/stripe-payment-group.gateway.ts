@@ -7,8 +7,10 @@ import type {
   GroupCheckoutSession,
   IPaymentGroupGateway,
 } from "../payment-group/payment-group-ports.js";
+import { InvoiceLinesError, assertWithinStripeLineLimit } from "../payment/invoice-stripe-lines.js";
 import {
   buildStripeCheckoutCustomText,
+  stripeLineName,
   truncateForStripe,
 } from "../payment/stripe-checkout-product-display.js";
 
@@ -24,10 +26,47 @@ export function groupCheckoutIdempotencyKey(
   return `checkout:${rail === "card" ? "card" : "bank"}:group:${paymentGroupId}`;
 }
 
-function lineName(line: CreateGroupCheckoutInput["lines"][number]): string {
-  const title = line.lotTitle.trim() || "Untitled lot";
-  const ref = line.lotNumber != null ? `Lot ${line.lotNumber} · ` : "";
-  return truncateForStripe(`${ref}${title}`, PRODUCT_NAME_MAX);
+/** One Stripe line per stored invoice line, at exactly the stored pence. */
+export function groupStripeLineItems(
+  input: Pick<CreateGroupCheckoutInput, "currency" | "lines" | "totalPence">,
+  metadata: Record<string, string>,
+): NonNullable<Stripe.Checkout.SessionCreateParams["line_items"]> {
+  const items = input.lines.flatMap((line) => {
+    const sum = line.invoiceLines.reduce((total, l) => total + l.amountPence, 0);
+    if (line.invoiceLines.length === 0 || sum !== line.amountPence) {
+      throw new InvoiceLinesError(
+        "invoice_mismatch",
+        `Invoice lines for payment ${line.paymentId} add up to ${sum} pence, not ${line.amountPence}`,
+      );
+    }
+    const title = line.lotTitle.trim() || "Untitled lot";
+    return line.invoiceLines.map((invoiceLine) => ({
+      quantity: 1,
+      price_data: {
+        currency: input.currency.toLowerCase(),
+        unit_amount: invoiceLine.amountPence,
+        product_data: {
+          name: stripeLineName(line, invoiceLine),
+          description: truncateForStripe(title, PRODUCT_NAME_MAX),
+          metadata: {
+            lotId: line.lotId,
+            paymentId: line.paymentId,
+            lineKind: invoiceLine.kind,
+            ...metadata,
+          },
+        },
+      },
+    }));
+  });
+  assertWithinStripeLineLimit(items.length);
+  const total = items.reduce((sum, item) => sum + (item.price_data?.unit_amount ?? 0), 0);
+  if (total !== input.totalPence) {
+    throw new InvoiceLinesError(
+      "invoice_mismatch",
+      `Checkout lines add up to ${total} pence, not the group total of ${input.totalPence}`,
+    );
+  }
+  return items;
 }
 
 /** Stripe Checkout for "Pay several": one session and one PaymentIntent for the whole group. */
@@ -48,18 +87,7 @@ export class StripePaymentGroupGateway implements IPaymentGroupGateway {
     const params: Stripe.Checkout.SessionCreateParams = {
       mode: "payment",
       locale: "en-GB",
-      line_items: input.lines.map((line) => ({
-        quantity: 1,
-        price_data: {
-          currency: input.currency.toLowerCase(),
-          unit_amount: line.amountPence,
-          product_data: {
-            name: lineName(line),
-            description: "LAX auction settlement",
-            metadata: { lotId: line.lotId, paymentId: line.paymentId, ...metadata },
-          },
-        },
-      })),
+      line_items: groupStripeLineItems(input, metadata),
       custom_text: buildStripeCheckoutCustomText(),
       metadata,
       payment_intent_data: {

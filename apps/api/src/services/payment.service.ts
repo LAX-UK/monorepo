@@ -1,6 +1,7 @@
 import {
   type IHeldInvoiceCheckouts,
   type IInvoiceRecipients,
+  type InvoiceDueDateExtender,
   InvoiceRaiser,
 } from "@auction/finance-runtime";
 import type {
@@ -144,10 +145,12 @@ export class PaymentService
     invoiceRecipients: IInvoiceRecipients | null = null,
     heldCheckouts: Pick<IHeldInvoiceCheckouts, "close"> | null = null,
     invoices: (IBidInvoiceReader & IBidInvoiceRaiseRepository) | null = null,
+    invoiceDueDates: InvoiceDueDateExtender | null = null,
   ) {
     const invoiceStore = invoices ?? UNWIRED_INVOICES;
     const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
       payments,
+      invoices: invoiceStore,
       users,
       accounting,
       stripeCheckout,
@@ -176,6 +179,7 @@ export class PaymentService
       sales,
       invoiceRaiser: new InvoiceRaiser({ invoices: invoiceStore, sales }),
       invoices: invoiceStore,
+      invoiceDueDates,
       platformFeePolicy,
       paymentCapture,
       stripeCheckout,

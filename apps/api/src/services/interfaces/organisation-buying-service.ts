@@ -15,6 +15,7 @@ import type {
   DeliveryQuoteRow,
   RecordPerson,
 } from "@auction/persistence/interfaces";
+import type { PayPlan } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { OrganisationMemberActor } from "./organisation-membership-service.js";
 
@@ -39,7 +40,8 @@ export type OrganisationBuyingErrorCode =
   | "pay_several_over_limit"
   | "pay_several_needs_finance_review"
   | "pay_several_conflict"
-  | "pay_several_unavailable";
+  | "pay_several_unavailable"
+  | "pay_plan_unavailable";
 
 export type OrganisationBuyingError = {
   code: OrganisationBuyingErrorCode;
@@ -115,6 +117,12 @@ export type PaySeveralStarted = {
   payable: { lotId: string; amount: string }[];
   skipped: PaySeveralPlan["skipped"];
 };
+
+/** The read behind the Pay page: what one payment of the picked lots covers, and whether to offer it. */
+export interface IPayPlanService {
+  /** Only reads: raises no invoice, opens no check and starts no checkout. */
+  plan(actor: OrganisationMemberActor, lotIds: readonly string[]): BuyingResult<PayPlan>;
+}
 
 /** "Pay several": the account's payers settle several invoices with one payment. */
 export interface IPaySeveralService {

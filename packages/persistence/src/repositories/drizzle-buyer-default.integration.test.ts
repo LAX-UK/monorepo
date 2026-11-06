@@ -3,6 +3,7 @@ import { createDb } from "@auction/db";
 import {
   bid,
   bidIdentityDirectory,
+  bidInvoice,
   buyerDefault,
   legalEntity,
   lot,
@@ -11,6 +12,7 @@ import {
   paymentReminder,
   user,
 } from "@auction/db/schema";
+import { invoiceDueAt } from "@auction/domain";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { BuyerDefaultConflictError } from "../interfaces/buyer-default.js";
@@ -150,16 +152,28 @@ describe.skipIf(!HAS_DB)("buyer default (integration)", () => {
         amount: "900.00",
       },
     ]);
-    await db
-      .insert(payment)
-      .values([
-        invoice(lots.defaulted, "pending", 8),
-        invoice(lots.overdue, "pending", 9),
-        invoice(lots.notYetOverdue, "pending", 7),
-        invoice(lots.held, "requires_manual_review", 9),
-        invoice(lots.paid, "captured", 9),
-        invoice(lots.cancelledSale, "cancelled", 9),
-      ]);
+    // Each payment settles a stored invoice, raised when the payment was.
+    for (const row of [
+      invoice(lots.defaulted, "pending", 8),
+      invoice(lots.overdue, "pending", 9),
+      invoice(lots.notYetOverdue, "pending", 7),
+      invoice(lots.held, "requires_manual_review", 9),
+      invoice(lots.paid, "captured", 9),
+      invoice(lots.cancelledSale, "cancelled", 9),
+    ]) {
+      const [stored] = await db
+        .insert(bidInvoice)
+        .values({
+          lotId: row.lotId,
+          buyerLegalEntityId: row.buyerLegalEntityId,
+          sellerLegalEntityId: row.sellerLegalEntityId,
+          totalPence: 120_000,
+          raisedAt: row.createdAt,
+          dueAt: invoiceDueAt(row.createdAt),
+        })
+        .returning({ id: bidInvoice.id });
+      await db.insert(payment).values({ ...row, invoiceId: stored?.id });
+    }
     await db.insert(lotFulfilment).values([
       { lotId: lots.defaulted, status: "awaiting_payment" },
       { lotId: lots.cancelledSale, status: "cancelled" },
@@ -171,6 +185,7 @@ describe.skipIf(!HAS_DB)("buyer default (integration)", () => {
     await db.delete(buyerDefault).where(inArray(buyerDefault.lotId, lotIds));
     await db.delete(lotFulfilment).where(inArray(lotFulfilment.lotId, lotIds));
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
+    await db.delete(bidInvoice).where(inArray(bidInvoice.lotId, lotIds));
     await db.delete(bid).where(inArray(bid.lotId, lotIds));
     await db.delete(lot).where(inArray(lot.id, lotIds));
     await db
@@ -256,6 +271,13 @@ describe.skipIf(!HAS_DB)("buyer default (integration)", () => {
       const voided = await paymentOf(lots.defaulted);
       expect(voided?.id).toBe(original?.id);
       expect(voided?.status).toBe("cancelled");
+
+      // The stored invoice is voided with its payment, not deleted.
+      const [voidedInvoice] = await db
+        .select()
+        .from(bidInvoice)
+        .where(eq(bidInvoice.id, original?.invoiceId as string));
+      expect(voidedInvoice?.voidedAt).toBeInstanceOf(Date);
 
       const [fulfilment] = await db
         .select()

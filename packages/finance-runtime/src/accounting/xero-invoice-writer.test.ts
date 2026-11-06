@@ -1,4 +1,5 @@
 import type {
+  BidInvoiceRecord,
   IPaymentExternalRefRepository,
   IXeroConnectionRepository,
 } from "@auction/persistence/interfaces";
@@ -25,7 +26,12 @@ const ctx: InvoiceAccountingContext = {
   raisedAt: new Date("2026-11-02T23:30:00.000Z"),
 };
 
-function build(overrides: { env?: Partial<typeof env> } = {}) {
+const storedInvoice = {
+  raisedAt: new Date("2026-11-02T23:30:00.000Z"),
+  dueAt: new Date("2026-11-09T23:59:59.999Z"),
+} as BidInvoiceRecord;
+
+function build(overrides: { env?: Partial<typeof env>; invoice?: BidInvoiceRecord | null } = {}) {
   const createInvoices = vi.fn().mockResolvedValue({
     body: { invoices: [{ invoiceID: "xero-inv-1", invoiceNumber: "INV-0001" }] },
   });
@@ -49,6 +55,15 @@ function build(overrides: { env?: Partial<typeof env> } = {}) {
     } as unknown as XeroTokenService,
     { resolveContactId: vi.fn().mockResolvedValue("contact-1") } as unknown as XeroContactSync,
     null,
+    {
+      findByPaymentIds: vi
+        .fn()
+        .mockResolvedValue(
+          overrides.invoice === null
+            ? new Map()
+            : new Map([["pay-1", overrides.invoice ?? storedInvoice]]),
+        ),
+    },
   );
   return { writer, createInvoices, externalRefs };
 }
@@ -94,14 +109,36 @@ describe("XeroInvoiceWriter.ensureInvoiceForPayment", () => {
   });
 
   it("uses the London calendar day, so a late-evening invoice in summer is not a day early", async () => {
-    const { writer, createInvoices } = build();
-    await writer.ensureInvoiceForPayment({
-      ...ctx,
-      raisedAt: new Date("2026-07-01T23:30:00.000Z"),
+    const { writer, createInvoices } = build({
+      invoice: {
+        raisedAt: new Date("2026-07-01T23:30:00.000Z"),
+        dueAt: new Date("2026-07-09T22:59:59.999Z"),
+      } as BidInvoiceRecord,
     });
+    await writer.ensureInvoiceForPayment(ctx);
     const invoice = createInvoices.mock.calls[0]?.[1].invoices[0];
     expect(invoice.date).toBe("2026-07-02");
     expect(invoice.dueDate).toBe("2026-07-09");
+  });
+
+  it("takes the due date from the stored invoice, even when its term was moved on", async () => {
+    const { writer, createInvoices } = build({
+      invoice: {
+        raisedAt: new Date("2026-11-02T23:30:00.000Z"),
+        dueAt: new Date("2026-11-20T23:59:59.999Z"),
+      } as BidInvoiceRecord,
+    });
+    await writer.ensureInvoiceForPayment(ctx);
+    expect(createInvoices.mock.calls[0]?.[1].invoices[0].dueDate).toBe("2026-11-20");
+  });
+
+  it("writes nothing for a payment with no stored invoice", async () => {
+    const { writer, createInvoices } = build({ invoice: null });
+    await expect(writer.ensureInvoiceForPayment(ctx)).resolves.toEqual({
+      ok: false,
+      error: "payment_has_no_invoice",
+    });
+    expect(createInvoices).not.toHaveBeenCalled();
   });
 
   it("writes nothing while Xero writes are switched off in this process", async () => {

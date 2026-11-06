@@ -9,10 +9,24 @@ const lot = {
 } as Lot;
 const terms = {
   amount: "1250.00",
+  priced: {
+    lines: [
+      { kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 100_000 },
+      {
+        kind: "buyers_premium",
+        label: "Buyer's premium (25%)",
+        ratePercent: "25",
+        amountPence: 25_000,
+      },
+    ],
+    totalPence: 125_000,
+    policyId: "flat:0.25",
+    existing: null,
+  },
   platformFee: "62.50",
   requiresManualReview: false,
   manualReviewReason: null,
-};
+} as unknown as Parameters<typeof createOrJoinPaymentRecord>[4];
 const raceError = {
   message: "Failed query: insert into payment",
   cause: {
@@ -23,10 +37,15 @@ const raceError = {
   },
 };
 
-function deps(create: () => Promise<unknown>, existing: unknown) {
+const raisedAt = new Date("2026-06-01T10:00:00.000Z");
+
+function deps(raise: () => Promise<unknown>, existing: unknown) {
   return {
+    invoiceRaiser: { raise: vi.fn(raise) },
+    invoices: {
+      findByPaymentIds: vi.fn().mockResolvedValue(new Map([["pay-raced", { raisedAt }]])),
+    },
     payments: {
-      create: vi.fn(create),
       findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(existing),
     },
     lotFulfilmentHooks: { ensureAwaitingPayment: vi.fn().mockResolvedValue(undefined) },
@@ -35,9 +54,10 @@ function deps(create: () => Promise<unknown>, existing: unknown) {
 
 describe("createOrJoinPaymentRecord (two first Pay requests at once)", () => {
   it("creates the invoice when it is the first", async () => {
-    const d = deps(async () => ({ id: "pay-new" }), null);
+    const raised = { invoice: { id: "inv-1" }, payment: { id: "pay-new" }, invoiceCreated: true };
+    const d = deps(async () => raised, null);
     await expect(createOrJoinPaymentRecord(d, lot, "buyer-1", {} as never, terms)).resolves.toEqual(
-      { kind: "created", payment: { id: "pay-new" } },
+      { kind: "created", raised },
     );
   });
 

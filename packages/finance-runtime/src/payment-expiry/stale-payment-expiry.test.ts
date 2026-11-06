@@ -7,7 +7,7 @@ const row = { id: "pay-1", lotId: "lot-1", buyerId: "buyer-1" };
 
 function build(
   state: ProviderMoneyState,
-  current: { status?: string; paymentGroupId?: string | null } = {},
+  current: { status?: string; paymentGroupId?: string | null; dueAt?: Date | null } = {},
 ) {
   const cancelIfUnpaid = vi.fn().mockResolvedValue(true);
   const markAuthorizedIfPending = vi.fn().mockResolvedValue(true);
@@ -25,6 +25,7 @@ function build(
         stripePaymentIntentId: null,
         paymentGroupId: current.paymentGroupId ?? null,
         buyerLegalEntityId: "le-1",
+        dueAt: current.dueAt ?? null,
       }),
       checkoutSessionIds: vi.fn().mockResolvedValue(["cs_1"]),
       databaseNow: vi.fn().mockResolvedValue(new Date("2026-11-05T11:59:59.000Z")),
@@ -48,6 +49,19 @@ function build(
 }
 
 describe("expireStalePayments", () => {
+  it("leaves an invoice whose stored due date has not come, however old its payment row", async () => {
+    const t = build({ kind: "no_money" }, { dueAt: new Date("2026-11-12T23:59:59.999Z") });
+    const report = await expireStalePayments(t.deps, 14, 30);
+    expect(t.closeAndRead).not.toHaveBeenCalled();
+    expect(t.cancelIfUnpaid).not.toHaveBeenCalled();
+    expect(report.expired).toBe(0);
+  });
+
+  it("expires an invoice once its stored due date has passed", async () => {
+    const t = build({ kind: "no_money" }, { dueAt: new Date("2026-11-05T11:59:59.999Z") });
+    expect((await expireStalePayments(t.deps, 14, 30)).expired).toBe(1);
+  });
+
   it("cancels only after every checkout is closed and no money was taken", async () => {
     const t = build({ kind: "no_money" });
     const report = await expireStalePayments(t.deps, 14, 30);

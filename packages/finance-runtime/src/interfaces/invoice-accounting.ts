@@ -7,7 +7,10 @@ export type InvoiceAccountingContext = {
   buyerEmail: string;
   buyerName: string;
   amount: string;
-  /** When the invoice was raised: the Xero invoice is dated then and due on the same term. */
+  /**
+   * When the payment row was raised. The books copy is dated and due from the stored invoice
+   * (its raised and due dates), which the writer reads by payment id.
+   */
   raisedAt: Date;
   buyerLegalEntityId?: string | undefined;
 };

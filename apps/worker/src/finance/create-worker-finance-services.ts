@@ -9,6 +9,7 @@ import {
 } from "@auction/finance-runtime";
 import {
   DrizzleAddressRepository,
+  DrizzleBidInvoiceRepository,
   DrizzleDisplayPairingRepository,
   DrizzleInvoiceDetailsRepository,
   DrizzleLegalEntityMembershipReader,
@@ -100,6 +101,7 @@ export function createWorkerFinanceServices(
     connections: new DrizzleXeroConnectionRepository(db),
     externalRefs: new DrizzlePaymentExternalRefRepository(db),
     payments,
+    invoices: new DrizzleBidInvoiceRepository(db),
     payouts: new DrizzlePayoutRepository(db),
     refundReconcileRepo: new DrizzlePaymentRefundReconcileRepository(db),
     webhookEvents: new DrizzleXeroWebhookEventRepository(db),

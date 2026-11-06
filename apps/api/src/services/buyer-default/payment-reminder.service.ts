@@ -1,4 +1,4 @@
-import { invoiceDueAt, paymentReminderToSend } from "@auction/domain";
+import { paymentReminderToSend, storedDueAt } from "@auction/domain";
 import type { PaymentReminderStep } from "@auction/domain";
 import type { IInvoiceRecipients } from "@auction/finance-runtime";
 import type {
@@ -74,7 +74,7 @@ export class PaymentReminderService {
                 lotTitle: candidate.lotTitle,
                 paymentId: candidate.paymentId,
                 amount: candidate.amount,
-                dueDate: DUE_DATE.format(invoiceDueAt(candidate.raisedAt)),
+                dueDate: DUE_DATE.format(storedDueAt(candidate)),
                 step,
                 held,
               }),
@@ -99,7 +99,11 @@ export class PaymentReminderService {
       lotStatus: candidate.lotStatus,
       winnerId: candidate.winnerId,
       buyerId: candidate.buyerId,
-      payment: { status: candidate.paymentStatus, raisedAt: candidate.raisedAt },
+      payment: {
+        status: candidate.paymentStatus,
+        raisedAt: candidate.raisedAt,
+        dueAt: candidate.dueAt,
+      },
       fulfilmentStatus: candidate.fulfilmentStatus,
       onComplianceHold: false,
       sentSteps: candidate.sentSteps as PaymentReminderStep[],

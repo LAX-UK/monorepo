@@ -39,6 +39,8 @@ export type PaymentRecord = {
   paymentGroupId?: string | null;
   /** The invoice this payment settles; a retried payment row points at the same invoice. */
   invoiceId?: string | null;
+  /** The due date stored on that invoice; set by `findById` only. */
+  invoiceDueAt?: Date | null;
   /** Populated for admin listing when a Xero invoice row exists. */
   xeroInvoiceNumber?: string | null;
   xeroOnlineInvoiceUrl?: string | null;

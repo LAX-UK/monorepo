@@ -3,6 +3,7 @@ import type { IStalePaymentMaintenance } from "@auction/finance-cron-app";
 import {
   HeldInvoiceCheckouts,
   type IInvoiceRecipients,
+  InvoiceDueDateExtender,
   InvoiceRaiser,
   InvoiceRecipients,
   StalePaymentStore,
@@ -104,6 +105,9 @@ export type ContainerPaymentsServices = {
   /** Finance closing an unapplied-money task by hand. */
   unappliedMoneyHandling: IUnappliedMoneyHandling;
   lotInvoiceInitiationService: LotInvoiceInitiationService;
+  /** The stored invoices and the one way they are priced and raised. */
+  bidInvoices: DrizzleBidInvoiceRepository;
+  invoiceRaiser: InvoiceRaiser;
   stripePaymentWebhookService: StripePaymentWebhookService | null;
   xeroOAuthService: XeroOAuthService | null;
   adminMetricsService: AdminMetricsService;
@@ -187,6 +191,7 @@ export function createPaymentsServices(
         invoiceAddressingService,
         errorReporter,
         redis,
+        new DrizzleBidInvoiceRepository(db),
       )
     : new NoOpAccountingProvider();
 
@@ -349,11 +354,13 @@ export function createPaymentsServices(
     invoiceRecipients,
     heldCheckouts,
     bidInvoiceRepo,
+    new InvoiceDueDateExtender(bidInvoiceRepo),
   );
 
+  const invoiceRaiser = new InvoiceRaiser({ invoices: bidInvoiceRepo, sales: saleRepo });
   const lotInvoiceInitiationService = new LotInvoiceInitiationService(
     lotRepo,
-    new InvoiceRaiser({ invoices: bidInvoiceRepo, sales: saleRepo }),
+    invoiceRaiser,
     paymentRepo,
     settlementCompliancePolicy,
     paymentTierPolicy,
@@ -460,6 +467,8 @@ export function createPaymentsServices(
 
   return {
     errorReporter,
+    bidInvoices: bidInvoiceRepo,
+    invoiceRaiser,
     accountingProvider,
     xeroPayoutBillWriter,
     stripePaymentGateway,

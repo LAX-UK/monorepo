@@ -4,11 +4,11 @@ import type {
   ILotFulfilmentPaymentHook,
   ILotRepository,
   IPaymentWriteRepository,
-  ISaleRepository,
   IUserRepository,
 } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
+import { inMemoryInvoiceRaiser } from "../testing/in-memory-bid-invoices.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
@@ -45,7 +45,7 @@ const baseLot = {
 } as unknown as Lot;
 
 function build(scenario: { hold?: boolean; xero?: { ok: boolean; error?: string } } = {}) {
-  const create = vi.fn(async (input: { amount: string; status: string }) => ({
+  const create = vi.fn(async (input: { amount: string; status?: string }) => ({
     id: "pay-new",
     lotId: LOT_ID,
     amount: input.amount,
@@ -57,9 +57,14 @@ function build(scenario: { hold?: boolean; xero?: { ok: boolean; error?: string 
   const ensureInvoiceForPayment = vi.fn().mockResolvedValue(scenario.xero ?? { ok: true });
   const ensureAwaitingPayment = vi.fn().mockResolvedValue(undefined);
   const record = vi.fn();
+  const { raiser, invoices } = inMemoryInvoiceRaiser(
+    (row) => create(row) as never,
+    null,
+    () => new Date("2026-06-26T12:00:00.000Z"),
+  );
   const service = new ApiLotInvoiceInitiationService(
     { findById: vi.fn().mockResolvedValue(baseLot) } as unknown as ILotRepository,
-    { findById: vi.fn().mockResolvedValue(null) } as unknown as ISaleRepository,
+    raiser,
     {
       findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
       findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
@@ -95,12 +100,35 @@ function build(scenario: { hold?: boolean; xero?: { ok: boolean; error?: string 
     { forInvoice: async ({ winnerUserId }) => [winnerUserId, "finance-1"] },
     { record },
   );
-  return { service, create, stageDispatch, ensureInvoiceForPayment, ensureAwaitingPayment, record };
+  return {
+    service,
+    create,
+    invoices,
+    stageDispatch,
+    ensureInvoiceForPayment,
+    ensureAwaitingPayment,
+    record,
+  };
 }
 
 describe("lot invoice initiation: one implementation for the API and the worker", () => {
   it("the API module is the shared finance-runtime class, not a copy", () => {
     expect(ApiLotInvoiceInitiationService).toBe(SharedLotInvoiceInitiationService);
+  });
+
+  it("raises through the one invoice raiser: the invoice, its lines and the payment together", async () => {
+    const { service, create, invoices } = build();
+    await service.ensureForLot(LOT_ID);
+    expect(invoices.invoices).toHaveLength(1);
+    const [invoice] = invoices.invoices;
+    expect(invoice?.totalPence).toBe(125_000);
+    expect(invoice?.lines.map((l) => [l.kind, l.amountPence])).toEqual([
+      ["hammer", 100_000],
+      ["buyers_premium", 25_000],
+    ]);
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ amount: "1250.00", invoiceId: invoice?.id }),
+    );
   });
 
   it("kept from the API copy: a buyer on an AML hold is held, with no payment-due notice", async () => {

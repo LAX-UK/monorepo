@@ -15,6 +15,7 @@ import * as schema from "../../schema/index.js";
 import { buildPgPoolConfig } from "../../ssl.js";
 import { assertDevSeedMayRunDestructiveClear } from "../runners/dev-seed-guard.js";
 import { buildPressDemoSaleRow } from "../shared/press-demo.js";
+import { insertSeedInvoices, totalOnlySeedInvoice } from "../shared/seed-invoice.js";
 import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 import { seedOrganisationJourneys } from "./organisation-journeys-seed.js";
 
@@ -446,6 +447,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(legalEntityPayoutMethod);
   await db.delete(paymentExternalRef);
   await db.delete(payment);
+  await db.delete(schema.bidInvoice);
   await db.delete(xeroConnection);
   await db.delete(notification);
   await db.delete(artistWatchlist);
@@ -4472,14 +4474,36 @@ export async function runLegacyDemoSeed() {
       createdAt: new Date(now - 3 * day),
     },
   ];
-  await db.insert(payment).values(
-    paymentRows.map(({ sellerId, buyerId, ...row }) => ({
-      ...row,
-      buyerId,
-      buyerLegalEntityId: legalEntityIdForUser(buyerId),
-      sellerLegalEntityId: legalEntityIdForUser(sellerId),
+  // Each payment settles a stored invoice. These amounts are fixtures, not worked out from a
+  // hammer price, so each invoice is one total line.
+  const invoicedPayments = paymentRows.map(({ sellerId, buyerId, ...row }) => {
+    const raisedAt = row.createdAt ?? new Date(now);
+    return {
+      invoice: totalOnlySeedInvoice({
+        paymentId: row.id as string,
+        amountPounds: row.amount as string,
+        raisedAt,
+      }),
+      row: {
+        ...row,
+        buyerId,
+        buyerLegalEntityId: legalEntityIdForUser(buyerId),
+        sellerLegalEntityId: legalEntityIdForUser(sellerId),
+      },
+    };
+  });
+  await insertSeedInvoices(
+    db,
+    invoicedPayments.map(({ invoice, row }) => ({
+      lotId: row.lotId,
+      buyerLegalEntityId: row.buyerLegalEntityId,
+      sellerLegalEntityId: row.sellerLegalEntityId,
+      invoice,
     })),
   );
+  await db
+    .insert(payment)
+    .values(invoicedPayments.map(({ invoice, row }) => ({ ...row, invoiceId: invoice.id })));
 
   // ── Compliance & finance queue fixtures (deterministic E2E) ────────────────
   await db.insert(kycWatchlistScreening).values([

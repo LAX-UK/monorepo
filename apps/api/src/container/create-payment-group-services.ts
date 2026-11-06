@@ -6,7 +6,10 @@ import type {
   ITransactionRunner,
   IUserRepository,
 } from "@auction/persistence/interfaces";
-import { DrizzlePaymentGroupRepository } from "@auction/persistence/repositories";
+import {
+  DrizzleBidInvoiceRepository,
+  DrizzlePaymentGroupRepository,
+} from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import type { IStripeClientFactory } from "../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
@@ -111,6 +114,7 @@ export function createPaymentGroupServices(
   });
   const checkout = new PaymentGroupCheckoutService({
     groups,
+    invoices: new DrizzleBidInvoiceRepository(input.db),
     gateway,
     stripeCustomers: input.stripeCustomers,
     users: input.users,

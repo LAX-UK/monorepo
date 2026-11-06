@@ -26,6 +26,7 @@ export {
   type InvoiceRaiserDeps,
   type PricedInvoice,
 } from "./invoice-raiser.js";
+export { InvoiceDueDateExtender } from "./invoice-due-date-extender.js";
 export { PaymentTierPolicy } from "./payment-tier.policy.js";
 export { PlatformFeePolicy, type IPlatformFeePolicy } from "./platform-fee.policy.js";
 export type {
@@ -39,9 +40,11 @@ export type {
 } from "./interfaces/error-handling.js";
 export {
   AmlSettlementCompliancePolicy,
+  assessSettlementSubjects,
   evaluateSettlementSubjects,
   type SettlementSubject,
   type ISettlementCompliancePolicy,
+  type ISettlementComplianceAssessor,
   type ISourceOfFundsGate,
   type SettlementComplianceDecision,
   type SettlementComplianceInput,

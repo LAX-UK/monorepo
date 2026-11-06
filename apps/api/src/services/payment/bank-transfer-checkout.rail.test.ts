@@ -43,6 +43,9 @@ const ctx: PaymentCheckoutContext = {
   amount: "312500.00",
   buyerLegalEntityId: "le-buyer",
   amountPence: 31_250_000,
+  invoiceLines: [
+    { kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 31_250_000 },
+  ],
 };
 
 describe("BankTransferCheckoutRail", () => {

@@ -1,6 +1,7 @@
 import type {
   IHeldInvoiceCheckouts,
   IInvoiceRecipients,
+  InvoiceDueDateExtender,
   InvoiceRaiser,
 } from "@auction/finance-runtime";
 import type { IBidInvoiceReader } from "@auction/persistence/interfaces";
@@ -60,6 +61,8 @@ export type PaymentServiceDeps = {
   sales: ISaleRepository | null;
   /** Prices and stores each invoice with its lines and payment: the one way an invoice is raised. */
   invoiceRaiser: InvoiceRaiser;
+  /** Moves an invoice's due date when a hold on it is released. */
+  invoiceDueDates: InvoiceDueDateExtender | null;
   /** The stored invoice behind a payment: its lines and due date. */
   invoices: IBidInvoiceReader;
   platformFeePolicy: IPlatformFeePolicy | null;

@@ -24,6 +24,10 @@ export interface ISourceOfFundsEventSink {
   withTx(tx: DomainEventConnection): { publish(event: DomainEventInput): Promise<void> };
 }
 
+type SourceOfFundsAssessment =
+  | { required: false }
+  | { required: true; exposurePence: number; trigger: SourceOfFundsTrigger };
+
 export const SOURCE_OF_FUNDS_REQUIRED_EVENT = "source_of_funds.required";
 
 function penceToMajor(pence: number): string {
@@ -55,27 +59,41 @@ export class SourceOfFundsGateService implements ISourceOfFundsGate {
     return Math.round(this.config.thresholdAmount * 100);
   }
 
-  async requiresSourceOfFunds(input: SettlementComplianceInput): Promise<boolean> {
+  /**
+   * Whether this amount needs approved source of funds, with no side effects: it opens no case
+   * and publishes nothing, so a page can ask before anything is paid.
+   */
+  private async assess(input: SettlementComplianceInput): Promise<SourceOfFundsAssessment> {
     const thresholdPence = this.thresholdPence();
-    if (thresholdPence <= 0) return false;
+    if (thresholdPence <= 0) return { required: false };
 
     const linkedPence = await this.repo.sumActiveBuyerSettlementPence(
       input.buyerUserId,
       input.excludePaymentIds ?? input.excludePaymentId,
     );
     const exposurePence = linkedPence + input.amountPence;
-    if (exposurePence < thresholdPence) return false;
+    if (exposurePence < thresholdPence) return { required: false };
 
     const approved = await this.repo.findLatestApprovedForUser(input.buyerUserId);
     if (approved && this.isApprovalStillValid(approved, exposurePence)) {
-      return false;
+      return { required: false };
     }
-
-    await this.ensurePendingCase(
-      input.buyerUserId,
+    return {
+      required: true,
       exposurePence,
-      linkedPence > 0 ? "linked_transactions" : "threshold",
-    );
+      trigger: linkedPence > 0 ? "linked_transactions" : "threshold",
+    };
+  }
+
+  async wouldRequireSourceOfFunds(input: SettlementComplianceInput): Promise<boolean> {
+    return (await this.assess(input)).required;
+  }
+
+  /** As {@link wouldRequireSourceOfFunds}, and opens the pending case when it is required. */
+  async requiresSourceOfFunds(input: SettlementComplianceInput): Promise<boolean> {
+    const assessment = await this.assess(input);
+    if (!assessment.required) return false;
+    await this.ensurePendingCase(input.buyerUserId, assessment.exposurePence, assessment.trigger);
     return true;
   }
 

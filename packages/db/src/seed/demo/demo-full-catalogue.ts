@@ -15,9 +15,11 @@ import {
   type DemoFulfilment,
   type DemoLot,
   type DemoPayment,
+  type DemoPaymentGroup,
   type DemoRegistration,
   type DemoSale,
   type DemoWatch,
+  demoPayment,
 } from "./demo-topup-catalogue.js";
 import { DEMO_IDS } from "./demo-topup-ids.js";
 
@@ -33,10 +35,12 @@ export type FullActors = {
   northbankId: string;
   heldUserId: string;
   heldEntityId: string;
+  payerUserId: string;
+  payerEntityId: string;
   laxStockId: string;
 };
 
-type BidderKey = "collector" | "rival" | "northbank" | "held";
+type BidderKey = "collector" | "rival" | "northbank" | "held" | "payer";
 
 type LotSpec = {
   work: WorkKey;
@@ -46,6 +50,11 @@ type LotSpec = {
   bids?: [BidderKey, number][];
   /** Ended lots only. */
   outcome?: "sold" | "unsold" | "withdrawn";
+  /**
+   * An invoice still to be paid, raised this many days ago (it is due 7 days after the raise).
+   * `transfer` puts it in the one bank transfer that is on its way: its payment is authorised.
+   */
+  invoice?: { raisedDaysAgo: number; transfer?: boolean };
 };
 
 type SaleSpec = {
@@ -308,6 +317,80 @@ const SALES: SaleSpec[] = [
         ],
         outcome: "sold",
       },
+      // Purchases that are still to be paid, for the Pay page. The payer's one invoice is clear
+      // to pay; three more take the payer past the card limit, so they pay by bank transfer.
+      {
+        work: "flowField",
+        reserve: 1_200,
+        bids: [
+          ["rival", 1_400],
+          ["payer", 1_500],
+        ],
+        outcome: "sold",
+        invoice: { raisedDaysAgo: 2 },
+      },
+      {
+        work: "brockbank",
+        reserve: 3_000,
+        bids: [
+          ["rival", 3_600],
+          ["payer", 3_800],
+        ],
+        outcome: "sold",
+        invoice: { raisedDaysAgo: 1 },
+      },
+      {
+        work: "bugattiTable",
+        reserve: 7_000,
+        bids: [
+          ["rival", 7_600],
+          ["payer", 7_800],
+        ],
+        outcome: "sold",
+        invoice: { raisedDaysAgo: 3 },
+      },
+      {
+        work: "stater",
+        reserve: 6_000,
+        bids: [
+          ["rival", 6_200],
+          ["payer", 6_400],
+        ],
+        outcome: "sold",
+        invoice: { raisedDaysAgo: 4 },
+      },
+      // The rival's two invoices, paid by one bank transfer that has not yet arrived.
+      {
+        work: "muybridge",
+        reserve: 12_000,
+        bids: [
+          ["payer", 13_000],
+          ["rival", 14_000],
+        ],
+        outcome: "sold",
+        invoice: { raisedDaysAgo: 2, transfer: true },
+      },
+      {
+        work: "vivienMerlin",
+        reserve: 8_000,
+        bids: [
+          ["payer", 9_500],
+          ["rival", 10_000],
+        ],
+        outcome: "sold",
+        invoice: { raisedDaysAgo: 2, transfer: true },
+      },
+      // Northbank Gallery's buyer agent won this; its owner pays the invoice.
+      {
+        work: "leRoyClock",
+        reserve: 14_000,
+        bids: [
+          ["rival", 14_500],
+          ["northbank", 15_000],
+        ],
+        outcome: "sold",
+        invoice: { raisedDaysAgo: 3 },
+      },
     ],
   },
 ];
@@ -318,12 +401,14 @@ export function buildFullCatalogue(now: number, actors: FullActors): DemoCatalog
     rival: { userId: actors.rivalUserId, entityId: actors.rivalEntityId },
     northbank: { userId: actors.northbankBuyerUserId, entityId: actors.northbankId },
     held: { userId: actors.heldUserId, entityId: actors.heldEntityId },
+    payer: { userId: actors.payerUserId, entityId: actors.payerEntityId },
   };
 
   const sales: DemoSale[] = [];
   const lots: DemoLot[] = [];
   const bids: DemoBid[] = [];
   const payments: DemoPayment[] = [];
+  const paymentGroups: DemoPaymentGroup[] = [];
   const fulfilments: DemoFulfilment[] = [];
   const registrations: DemoRegistration[] = [];
   const watches: DemoWatch[] = [];
@@ -422,18 +507,28 @@ export function buildFullCatalogue(now: number, actors: FullActors): DemoCatalog
       if (sold && top) {
         paymentSeq += 1;
         const paymentId = DEMO_IDS.payment(paymentSeq);
-        // The held buyer's invoice is still open; the others were settled after the close.
-        const open = top[0] === "held";
-        payments.push({
-          id: paymentId,
-          lotId: id,
-          buyerUserId: bidder[top[0]].userId,
-          buyerEntityId: bidder[top[0]].entityId,
-          sellerEntityId: lot.sellerEntityId,
-          hammer: top[1],
-          status: open ? "pending" : "captured",
-          createdAt: open ? new Date(now - 4 * DAY) : new Date(sale.endTime.getTime() + 5 * HOUR),
-        });
+        // The held buyer's invoice is still open, and so are the ones that ask for it; the others
+        // were settled after the close.
+        const open = top[0] === "held" || lotSpec.invoice !== undefined;
+        const transfer = lotSpec.invoice?.transfer === true;
+        const raisedAt = lotSpec.invoice
+          ? new Date(now - lotSpec.invoice.raisedDaysAgo * DAY)
+          : open
+            ? new Date(now - 4 * DAY)
+            : new Date(sale.endTime.getTime() + 5 * HOUR);
+        payments.push(
+          demoPayment({
+            id: paymentId,
+            lotId: id,
+            buyerUserId: bidder[top[0]].userId,
+            buyerEntityId: bidder[top[0]].entityId,
+            sellerEntityId: lot.sellerEntityId,
+            hammer: top[1],
+            status: transfer ? "authorized" : open ? "pending" : "captured",
+            createdAt: raisedAt,
+            paymentGroupId: transfer ? DEMO_IDS.paymentGroup(1) : null,
+          }),
+        );
         if (!open && lotSpec.work === "hiroshige") {
           fulfilments.push({
             id: DEMO_IDS.fulfilment(100 + fulfilments.length + 1),
@@ -450,7 +545,7 @@ export function buildFullCatalogue(now: number, actors: FullActors): DemoCatalog
       spec.key === "depts"
         ? ["collector", "rival", "northbank"]
         : spec.key === "autumnPast"
-          ? ["collector", "rival", "northbank", "held"]
+          ? ["collector", "rival", "northbank", "held", "payer"]
           : spec.key === "room"
             ? ["collector", "rival"]
             : [];
@@ -464,6 +559,18 @@ export function buildFullCatalogue(now: number, actors: FullActors): DemoCatalog
         requestedAt: new Date(sale.previewStartTime.getTime() + HOUR),
       });
     }
+  }
+
+  const transferring = payments.filter((p) => p.paymentGroupId !== null);
+  const [firstTransfer] = transferring;
+  if (firstTransfer?.paymentGroupId) {
+    paymentGroups.push({
+      id: firstTransfer.paymentGroupId,
+      buyerEntityId: firstTransfer.buyerEntityId,
+      createdByUserId: firstTransfer.buyerUserId,
+      totalPence: transferring.reduce((sum, p) => sum + p.invoice.totalPence, 0),
+      createdAt: new Date(Math.max(...transferring.map((p) => p.createdAt.getTime())) + HOUR),
+    });
   }
 
   const lotOf = (saleKey: string, work: WorkKey): DemoLot => {
@@ -494,6 +601,7 @@ export function buildFullCatalogue(now: number, actors: FullActors): DemoCatalog
     lots,
     bids,
     payments,
+    paymentGroups,
     submissions: [],
     payouts: [],
     registrations,
