@@ -47,6 +47,11 @@ describe("isReplaceablePortrait", () => {
     expect(isReplaceablePortrait(null)).toBe(true);
     expect(isReplaceablePortrait("  ")).toBe(true);
     expect(isReplaceablePortrait("/shop/home/artist-juno.webp")).toBe(true);
+    expect(
+      isReplaceablePortrait(
+        "https://lax-media.lon1.cdn.digitaloceanspaces.com/demo/portrait/x.jpg",
+      ),
+    ).toBe(true);
     expect(isReplaceablePortrait("uploads/artists/x.jpg")).toBe(false);
   });
 });
