@@ -1,3 +1,4 @@
+import type { AlertRetentionStore } from "@auction/alerts";
 import type { Database } from "@auction/db";
 import type { FastifyBaseLogger } from "fastify";
 import { registerMissingMediaAssets } from "./application/artwork-register/register-media-assets.js";
@@ -25,6 +26,7 @@ import type { ShopSchedulerTask } from "./scheduler/shop-scheduler-task.js";
 import { createAdminCommandPruneTask } from "./scheduler/tasks/admin-command-prune.task.js";
 import { createAlertDigestTask } from "./scheduler/tasks/alert-digest.task.js";
 import { createAlertMatchingTask } from "./scheduler/tasks/alert-matching.task.js";
+import { createAlertRetentionTask } from "./scheduler/tasks/alert-retention.task.js";
 import { createConnectPayoutTransferTask } from "./scheduler/tasks/connect-payout-transfer.task.js";
 import { createGuestOrderClaimTask } from "./scheduler/tasks/guest-order-claim.task.js";
 import { createIdentityMergeTask } from "./scheduler/tasks/identity-merge.task.js";
@@ -62,6 +64,7 @@ export function buildShopApiSchedulerTasks(input: {
   db: Database;
   env: ShopApiEnv;
   log: FastifyBaseLogger;
+  alertRetention: AlertRetentionStore;
 }): ShopSchedulerTask[] {
   const notifications = createDrizzleShopNotificationPublisher();
   const paymentGateway = createStripeShopCheckoutGateway({
@@ -95,6 +98,13 @@ export function buildShopApiSchedulerTasks(input: {
   return [
     createAlertMatchingTask(alerts.matching),
     createAlertDigestTask({ mode: alerts.mode, runs: alerts.digests }),
+    createAlertRetentionTask({
+      store: input.alertRetention,
+      log: {
+        info: (fields, message) => input.log.info(fields, message),
+        error: (fields, message) => input.log.error(fields, message),
+      },
+    }),
     createStaleCheckoutReaperTask(input.db, paymentGateway),
     createIdentityMergeTask(input.db, opsAlertEmail),
     createGuestOrderClaimTask(input.db, input.env),
@@ -145,6 +155,7 @@ export function createShopApiScheduler(input: {
   db: Database;
   env: ShopApiEnv;
   log: FastifyBaseLogger;
+  alertRetention: AlertRetentionStore;
 }): ShopSchedulerHandle | null {
   if (!input.env.SHOP_SCHEDULER_ENABLED) {
     return null;
