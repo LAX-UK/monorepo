@@ -1,4 +1,5 @@
 import { COVER_IMAGES, WORKS, type WorkKey } from "./demo-full-works.js";
+import { demoImageUrl } from "./demo-images.js";
 /**
  * The full demo catalogue, as plain data on top of the top-up: a timed sale that is live now with
  * lots in every department, a saleroom sale in a few days, three more upcoming sales with large
@@ -268,7 +269,7 @@ const SALES: SaleSpec[] = [
     n: 16,
     title: "Autumn Collectors' Sale",
     description: "Paintings, drawings and works of art. Results are final.",
-    cover: WORKS.venice.image,
+    cover: COVER_IMAGES.venice,
     deliveryMode: "online",
     status: "ended",
     atVenue: false,
@@ -341,7 +342,7 @@ export function buildFullCatalogue(now: number, actors: FullActors): DemoCatalog
       id: DEMO_IDS.sale(spec.n),
       title: spec.title,
       description: spec.description,
-      coverImage: spec.cover,
+      coverImage: demoImageUrl(spec.cover, "cover"),
       deliveryMode: spec.deliveryMode,
       status: spec.status,
       startTime: onTheHour(now + spec.startsIn),
@@ -376,7 +377,7 @@ export function buildFullCatalogue(now: number, actors: FullActors): DemoCatalog
         description: `${work.maker}. ${work.note}`,
         medium: work.medium,
         dimensions: work.dimensions,
-        image: work.image,
+        image: demoImageUrl(work.image, "lot"),
         categorySlug: work.department,
         sellerEntityId: actors.laxStockId,
         startingPrice,

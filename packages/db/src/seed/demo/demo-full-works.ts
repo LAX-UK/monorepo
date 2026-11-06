@@ -501,4 +501,5 @@ export const COVER_IMAGES = {
   poussin: met("ep/original/DP-29324-001.jpg"),
   degas: met("ep/original/DP-20101-001.jpg"),
   depts: met("ep/original/DP-19279-001.jpg"),
+  venice: WORKS.venice.image,
 } as const;
