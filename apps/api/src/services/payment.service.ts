@@ -1,4 +1,13 @@
-import type { IHeldInvoiceCheckouts, IInvoiceRecipients } from "@auction/finance-runtime";
+import {
+  type IHeldInvoiceCheckouts,
+  type IInvoiceRecipients,
+  type InvoiceDueDateExtender,
+  InvoiceRaiser,
+} from "@auction/finance-runtime";
+import type {
+  IBidInvoiceRaiseRepository,
+  IBidInvoiceReader,
+} from "@auction/persistence/interfaces";
 import type { IPaymentDomainEventsRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
@@ -87,6 +96,13 @@ const WINNER_ONLY: IInvoiceRecipients = {
   forInvoice: async ({ winnerUserId }) => [winnerUserId],
 };
 
+/** Without the invoice store nothing can be raised or read, so every use fails. */
+const UNWIRED_INVOICES: IBidInvoiceReader & IBidInvoiceRaiseRepository = {
+  findLiveByLotAndBuyerAccount: () => Promise.reject(new Error("Invoices are not wired")),
+  findByPaymentIds: () => Promise.reject(new Error("Invoices are not wired")),
+  raise: () => Promise.reject(new Error("Invoices are not wired")),
+};
+
 /** Without the account to read, nothing can be checked, so nothing is paid. */
 const REFUSE_ALL_ELIGIBILITY: IPaymentEligibilityGate = {
   check: async () => ({ kind: "refused", reason: "organisation_closed" }),
@@ -128,9 +144,13 @@ export class PaymentService
     paymentEligibility: IPaymentEligibilityGate | null = null,
     invoiceRecipients: IInvoiceRecipients | null = null,
     heldCheckouts: Pick<IHeldInvoiceCheckouts, "close"> | null = null,
+    invoices: (IBidInvoiceReader & IBidInvoiceRaiseRepository) | null = null,
+    invoiceDueDates: InvoiceDueDateExtender | null = null,
   ) {
+    const invoiceStore = invoices ?? UNWIRED_INVOICES;
     const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
       payments,
+      invoices: invoiceStore,
       users,
       accounting,
       stripeCheckout,
@@ -157,6 +177,9 @@ export class PaymentService
       mediaUrlResolver,
       lotFulfilmentHooks,
       sales,
+      invoiceRaiser: new InvoiceRaiser({ invoices: invoiceStore, sales }),
+      invoices: invoiceStore,
+      invoiceDueDates,
       platformFeePolicy,
       paymentCapture,
       stripeCheckout,

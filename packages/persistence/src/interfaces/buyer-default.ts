@@ -17,7 +17,14 @@ export type BuyerDefaultLotFacts = {
     wonAt: Date;
   };
   /** The latest invoice for the lot and winning account, or `null` before one is raised. */
-  payment: { id: string; status: PaymentStatus; amount: string; raisedAt: Date } | null;
+  payment: {
+    id: string;
+    status: PaymentStatus;
+    amount: string;
+    raisedAt: Date;
+    /** The due date stored on the invoice; `null` for a payment with no stored invoice. */
+    dueAt: Date | null;
+  } | null;
   fulfilmentStatus: string | null;
   hasOpenDispute: boolean;
   /** Every bid on the lot with the account behind it, to find the next bidder. */
@@ -77,6 +84,8 @@ export type PaymentReminderCandidate = {
   amount: string;
   paymentStatus: PaymentStatus;
   raisedAt: Date;
+  /** The due date stored on the invoice; `null` for a payment with no stored invoice. */
+  dueAt: Date | null;
   fulfilmentStatus: string | null;
   sentSteps: string[];
 };

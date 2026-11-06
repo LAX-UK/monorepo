@@ -119,7 +119,7 @@ describe("LotViewerStateService.forLot", () => {
         lotStatus: "ended",
         won: true,
         hasBid: true,
-        payment: { id: "pay-1", status: "pending", raisedAt },
+        payment: { id: "pay-1", status: "pending", raisedAt, dueAt: null },
       }),
     ]);
     const view = await svc.forLot({ actor: owner, lotId: "lot-1" });
@@ -129,13 +129,28 @@ describe("LotViewerStateService.forLot", () => {
     expect(view?.purchase?.dueAt).toBe("2026-11-08T23:59:59.999Z");
   });
 
+  it("reads the due date stored on the invoice, not one worked out from when it was raised", async () => {
+    const raisedAt = new Date("2026-11-01T12:00:00.000Z");
+    const storedDueAt = new Date("2026-11-20T23:59:59.999Z");
+    const { svc } = service([
+      facts({
+        lotStatus: "ended",
+        won: true,
+        hasBid: true,
+        payment: { id: "pay-1", status: "pending", raisedAt, dueAt: storedDueAt },
+      }),
+    ]);
+    const view = await svc.forLot({ actor: owner, lotId: "lot-1" });
+    expect(view?.purchase?.dueAt).toBe("2026-11-20T23:59:59.999Z");
+  });
+
   it("leaves the purchase out for a lot the account did not win", async () => {
     const { svc } = service([
       facts({
         lotStatus: "ended",
         won: false,
         hasBid: true,
-        payment: { id: "pay-1", status: "pending", raisedAt: NOW },
+        payment: { id: "pay-1", status: "pending", raisedAt: NOW, dueAt: null },
       }),
     ]);
     expect((await svc.forLot({ actor: owner, lotId: "lot-1" }))?.purchase).toBeNull();

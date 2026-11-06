@@ -6,6 +6,7 @@ import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.p
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import {
   type CheckoutOrchestratorDeps,
+  issueCheckoutForPendingPayment,
   promotePendingToComplianceManualReview,
   resolvePendingCheckoutManualReviewReason,
   revokeOpenStripeCheckoutForPayment,
@@ -33,6 +34,7 @@ function baseDeps(overrides: Partial<CheckoutOrchestratorDeps> = {}): CheckoutOr
       findById: vi.fn().mockResolvedValue({ id: "pay-1", stripePaymentIntentId: "pi_1" }),
       updateStatus: vi.fn().mockResolvedValue(undefined),
     } as unknown as IPaymentWriteRepository,
+    invoices: { findByPaymentIds: vi.fn().mockResolvedValue(new Map()) },
     users: {} as never,
     accounting: {} as never,
     stripeCheckout: null,
@@ -196,5 +198,64 @@ describe("promotePendingToComplianceManualReview", () => {
       checkoutRail: null,
       manualReviewReason: "aml_hold",
     });
+  });
+});
+
+describe("issueCheckoutForPendingPayment charges from the stored invoice", () => {
+  const invoice = (totalPence: number, linePence = totalPence) => ({
+    id: "inv-1",
+    lotId: "lot-1",
+    buyerLegalEntityId: "le-buyer",
+    sellerLegalEntityId: "le-seller",
+    totalPence,
+    raisedAt: new Date("2026-11-01T10:00:00Z"),
+    dueAt: new Date("2026-11-08T23:59:59Z"),
+    pricingPolicyId: null,
+    number: null,
+    source: "raised" as const,
+    voidedAt: null,
+    lines: [
+      { kind: "legacy_total" as const, label: "Total", ratePercent: null, amountPence: linePence },
+    ],
+  });
+
+  function checkoutDeps(stored: Map<string, ReturnType<typeof invoice>>) {
+    const createCheckout = vi
+      .fn()
+      .mockResolvedValue({ checkoutUrl: "https://pay", checkoutRail: "card" });
+    const deps = baseDeps({
+      invoices: { findByPaymentIds: vi.fn().mockResolvedValue(stored) },
+      users: {
+        findById: vi.fn().mockResolvedValue({ email: "b@example.com", name: "B" }),
+      } as never,
+      accounting: { isConfigured: () => false } as never,
+      stripeCheckout: { isAvailable: () => true, createCheckout },
+    });
+    return { deps, createCheckout };
+  }
+
+  const run = (deps: CheckoutOrchestratorDeps) =>
+    issueCheckoutForPendingPayment(deps, "pay-1", baseLot(), "buyer-1", "125.00");
+
+  it("passes the stored lines to the rail", async () => {
+    const { deps, createCheckout } = checkoutDeps(new Map([["pay-1", invoice(12_500)]]));
+    expect((await run(deps)).isOk()).toBe(true);
+    expect(createCheckout).toHaveBeenCalledWith(
+      "card",
+      expect.objectContaining({ invoiceLines: invoice(12_500).lines, amountPence: 12_500 }),
+    );
+  });
+
+  it("opens no checkout when the payment has no stored invoice", async () => {
+    const { deps, createCheckout } = checkoutDeps(new Map());
+    const result = await run(deps);
+    expect(result._unsafeUnwrapErr().stripeCode).toBe("invoice_unavailable");
+    expect(createCheckout).not.toHaveBeenCalled();
+  });
+
+  it("opens no checkout when the invoice total is not the payment amount", async () => {
+    const { deps, createCheckout } = checkoutDeps(new Map([["pay-1", invoice(12_499)]]));
+    expect((await run(deps)).isErr()).toBe(true);
+    expect(createCheckout).not.toHaveBeenCalled();
   });
 });

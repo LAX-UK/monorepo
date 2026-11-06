@@ -1,4 +1,8 @@
-import type { PaymentGroupMember, PaymentGroupRecord } from "@auction/persistence/interfaces";
+import type {
+  BidInvoiceRecord,
+  PaymentGroupMember,
+  PaymentGroupRecord,
+} from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import {
@@ -42,6 +46,25 @@ const MEMBERS: PaymentGroupMember[] = [
   },
 ];
 
+const invoiceOf = (id: string, lotId: string, pence: number): BidInvoiceRecord => ({
+  id: `inv-${id}`,
+  lotId,
+  buyerLegalEntityId: "org-1",
+  sellerLegalEntityId: "seller-1",
+  totalPence: pence,
+  raisedAt: new Date("2026-11-01T10:00:00Z"),
+  dueAt: new Date("2026-11-08T23:59:59Z"),
+  pricingPolicyId: null,
+  number: null,
+  source: "raised",
+  voidedAt: null,
+  lines: [{ kind: "legacy_total", label: "Total", ratePercent: null, amountPence: pence }],
+});
+const INVOICES: [string, BidInvoiceRecord][] = [
+  ["pay-2", invoiceOf("2", "lot-2", 60_010)],
+  ["pay-3", invoiceOf("3", "lot-3", 40_000)],
+];
+
 const INPUT: StartGroupCheckoutInput = {
   payerUserId: "payer-1",
   buyerLegalEntityId: "org-1",
@@ -60,6 +83,7 @@ function setup(
     accountingOk?: boolean;
     createCheckout?: ReturnType<typeof vi.fn>;
     group?: Partial<PaymentGroupRecord>;
+    invoices?: [string, BidInvoiceRecord][];
   } = {},
 ) {
   const group = { ...GROUP, ...over.group };
@@ -90,8 +114,10 @@ function setup(
     isConfigured: () => true,
     findOrCreateForLegalEntity: vi.fn(async () => "cus_org"),
   };
+  const invoices = { findByPaymentIds: vi.fn(async () => new Map(over.invoices ?? INVOICES)) };
   const svc = new PaymentGroupCheckoutService({
     groups: groups as never,
+    invoices,
     gateway,
     stripeCustomers,
     users: {
@@ -166,6 +192,39 @@ describe("PaymentGroupCheckoutService.start", () => {
       groupId: "group-1",
       reason: "accounting_unavailable",
     });
+  });
+
+  it("sends the gateway each invoice's stored lines", async () => {
+    const { svc, gateway } = setup();
+    await svc.start(INPUT);
+    expect(gateway.createCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lines: [
+          expect.objectContaining({ paymentId: "pay-2", invoiceLines: INVOICES[0]?.[1].lines }),
+          expect.objectContaining({ paymentId: "pay-3", invoiceLines: INVOICES[1]?.[1].lines }),
+        ],
+      }),
+    );
+  });
+
+  it("opens no checkout when an invoice is missing, and lets the invoices go", async () => {
+    const { svc, gateway, settlement } = setup({
+      invoices: [INVOICES[0] as [string, BidInvoiceRecord]],
+    });
+    expect((await svc.start(INPUT))._unsafeUnwrapErr()).toBe("unavailable");
+    expect(gateway.createCheckout).not.toHaveBeenCalled();
+    expect(settlement.release).toHaveBeenCalledWith(
+      expect.objectContaining({ reason: "checkout_unavailable" }),
+    );
+  });
+
+  it("opens no checkout when an invoice total differs from its payment amount", async () => {
+    const stale: [string, BidInvoiceRecord] = ["pay-3", invoiceOf("3", "lot-3", 39_999)];
+    const { svc, gateway } = setup({
+      invoices: [INVOICES[0] as [string, BidInvoiceRecord], stale],
+    });
+    expect((await svc.start(INPUT))._unsafeUnwrapErr()).toBe("unavailable");
+    expect(gateway.createCheckout).not.toHaveBeenCalled();
   });
 
   it("lets the invoices go at once when the checkout cannot be opened", async () => {

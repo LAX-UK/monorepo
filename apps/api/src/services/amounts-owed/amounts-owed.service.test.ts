@@ -15,6 +15,8 @@ type Fixture = {
   fulfilment?: string;
   buyerLegalEntityId?: string;
   winnerId?: string;
+  /** The lot's hammer price as it reads now, if edited after the invoice was raised. */
+  hammerNow?: string;
 };
 
 function lotFor(fixture: Fixture) {
@@ -63,7 +65,7 @@ function build(
   const lotList = vi.fn(async () =>
     lots.map((lot) => ({
       ...lot,
-      currentPrice: "1000.00",
+      currentPrice: fixtures.find((f) => f.lotId === lot.id)?.hammerNow ?? "1000.00",
       buyerPremiumRate: "0.15",
       endTime: new Date(),
     })),
@@ -130,6 +132,16 @@ describe("amounts owed for a person", () => {
       amountDue: "1150.00",
       currency: "GBP",
       blocker: null,
+    });
+  });
+
+  it("owes the invoice total even when the hammer price is edited after the invoice was raised", async () => {
+    expect(
+      await entryFor({ lotId: "a", payment: { status: "pending" }, hammerNow: "5000.00" }),
+    ).toMatchObject({ state: "payment-due", amountDue: "1150.00" });
+    // Before any invoice, the lot is priced as it reads now.
+    expect(await entryFor({ lotId: "b", hammerNow: "5000.00" })).toMatchObject({
+      amountDue: "5750.00",
     });
   });
 

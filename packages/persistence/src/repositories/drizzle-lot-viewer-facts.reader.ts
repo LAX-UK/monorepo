@@ -1,5 +1,5 @@
 import { type Database, lotNotDeleted } from "@auction/db";
-import { absenteeBid, bid, lot, payment, saleRegistration } from "@auction/db/schema";
+import { absenteeBid, bid, bidInvoice, lot, payment, saleRegistration } from "@auction/db/schema";
 import { and, desc, eq, inArray, max, sql } from "drizzle-orm";
 import type {
   ILotViewerFactsReader,
@@ -85,8 +85,10 @@ export class DrizzleLotViewerFactsReader implements ILotViewerFactsReader {
           lotId: payment.lotId,
           status: payment.status,
           raisedAt: payment.createdAt,
+          dueAt: bidInvoice.dueAt,
         })
         .from(payment)
+        .leftJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
         .where(and(inArray(payment.lotId, foundIds), eq(payment.buyerLegalEntityId, legalEntityId)))
         .orderBy(desc(payment.createdAt)),
     ]);
@@ -101,6 +103,7 @@ export class DrizzleLotViewerFactsReader implements ILotViewerFactsReader {
           id: row.id,
           status: row.status,
           raisedAt: row.raisedAt,
+          dueAt: row.dueAt,
         });
       }
     }

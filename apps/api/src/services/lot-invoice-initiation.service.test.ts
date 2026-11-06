@@ -1,12 +1,9 @@
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository, PaymentRecord } from "@auction/persistence/interfaces";
-import type {
-  ILotRepository,
-  ISaleRepository,
-  IUserRepository,
-} from "@auction/persistence/interfaces";
+import type { ILotRepository, IUserRepository } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
+import { inMemoryInvoiceRaiser } from "../testing/in-memory-bid-invoices.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
@@ -51,25 +48,30 @@ function buildService(
   const publish = vi.fn().mockResolvedValue(undefined);
   const ensureInvoiceForPayment = vi.fn().mockResolvedValue({ ok: true });
 
+  const payments = {
+    findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
+    findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
+    create: vi.fn().mockResolvedValue({
+      id: "pay-new",
+      lotId: baseLot.id,
+      amount: "1250.00",
+      createdAt: new Date("2026-06-26T12:00:00.000Z"),
+    } as PaymentRecord),
+    ...overrides.payments,
+  } as unknown as IPaymentWriteRepository;
+  const { raiser } = inMemoryInvoiceRaiser(
+    (row) => payments.create(row),
+    { findById: vi.fn().mockResolvedValue({ id: baseLot.saleId, buyerPremiumTiers: null }) },
+    () => new Date("2026-06-26T12:00:00.000Z"),
+  );
+
   const service = new LotInvoiceInitiationService(
     {
       findById: vi.fn().mockResolvedValue(baseLot),
       ...overrides.lots,
     } as unknown as ILotRepository,
-    {
-      findById: vi.fn().mockResolvedValue(null),
-    } as unknown as ISaleRepository,
-    {
-      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
-      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
-      create: vi.fn().mockResolvedValue({
-        id: "pay-new",
-        lotId: baseLot.id,
-        amount: "1250.00",
-        createdAt: new Date("2026-06-26T12:00:00.000Z"),
-      } as PaymentRecord),
-      ...overrides.payments,
-    } as unknown as IPaymentWriteRepository,
+    raiser,
+    payments,
     {
       evaluate: vi.fn().mockResolvedValue({ hold: false, reason: null }),
       ...overrides.settlement,

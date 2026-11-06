@@ -1,10 +1,11 @@
-import type { Lot } from "@auction/types";
+import type { InvoiceLine, Lot } from "@auction/types";
 import type { PaymentCheckoutContext } from "../interfaces/checkout-rail.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type {
   CreateCheckoutSessionInput,
   StripeCheckoutLineItem,
 } from "../stripe/stripe-checkout-session.types.js";
+import { InvoiceLinesError, assertWithinStripeLineLimit } from "./invoice-stripe-lines.js";
 
 const STRIPE_PRODUCT_NAME_MAX = 250;
 const STRIPE_DESCRIPTOR_SUFFIX_MAX = 22;
@@ -58,6 +59,21 @@ function withOptionalImages(
   return images?.length ? { ...item, images } : item;
 }
 
+/** The name Stripe shows for one invoice line: "Lot 12 · Hammer price". */
+export function stripeLineName(
+  lot: { lotNumber: number | null; lotId: string },
+  line: Pick<InvoiceLine, "label">,
+): string {
+  return truncateForStripe(
+    `Lot ${formatLotReference(lot.lotNumber, lot.lotId)} · ${line.label}`,
+    STRIPE_PRODUCT_NAME_MAX,
+  );
+}
+
+/**
+ * One Stripe line per stored invoice line, at exactly the stored pence. The lines must add up to
+ * `amountCents`, the amount charged; nothing is recalculated from the lot or sale as they are now.
+ */
 export function buildStripeCheckoutLineItems(input: {
   paymentId: string;
   lotId: string;
@@ -65,9 +81,17 @@ export function buildStripeCheckoutLineItems(input: {
   lotNumber: number | null;
   medium: string | null;
   amountCents: number;
+  invoiceLines: readonly InvoiceLine[];
   imageUrl?: string | null;
 }): StripeCheckoutLineItem[] {
-  const title = truncateForStripe(input.lotTitle.trim() || "Untitled lot", STRIPE_PRODUCT_NAME_MAX);
+  const sum = input.invoiceLines.reduce((total, line) => total + line.amountPence, 0);
+  if (input.invoiceLines.length === 0 || sum !== input.amountCents) {
+    throw new InvoiceLinesError(
+      "invoice_mismatch",
+      `Invoice lines add up to ${sum} pence but ${input.amountCents} pence is being charged`,
+    );
+  }
+  assertWithinStripeLineLimit(input.invoiceLines.length);
   const description = formatStripeSettlementDescription({
     lotTitle: input.lotTitle,
     lotNumber: input.lotNumber,
@@ -78,20 +102,17 @@ export function buildStripeCheckoutLineItems(input: {
   const images = image?.startsWith("https://") ? [image] : undefined;
   const baseMetadata = { lotId: input.lotId, paymentId: input.paymentId };
 
-  // One line at the invoice's stored total: the charge is never recalculated from the lot or
-  // sale as they are now. Hammer and premium become separate lines once they are stored with
-  // the invoice.
-  return [
+  return input.invoiceLines.map((line, index) =>
     withOptionalImages(
       {
-        name: title,
+        name: stripeLineName({ lotNumber: input.lotNumber, lotId: input.lotId }, line),
         description,
-        unitAmountCents: input.amountCents,
-        metadata: baseMetadata,
+        unitAmountCents: line.amountPence,
+        metadata: { ...baseMetadata, lineKind: line.kind },
       },
-      images,
+      index === 0 ? images : undefined,
     ),
-  ];
+  );
 }
 
 export function buildStripeCheckoutCustomText(): {
@@ -125,6 +146,7 @@ export function buildCreateCheckoutSessionInput(
     lotNumber: lot.lotNumber,
     medium: lot.medium,
     amountCents: ctx.amountPence,
+    invoiceLines: ctx.invoiceLines,
   };
   if (opts.imageUrl !== undefined) {
     lineItemInput.imageUrl = opts.imageUrl;

@@ -2192,6 +2192,13 @@
       "when": 1802592000000,
       "tag": "0318_zoho_link_report",
       "breakpoints": true
+    },
+    {
+      "idx": 314,
+      "version": "7",
+      "when": 1802678400000,
+      "tag": "0319_bid_invoice",
+      "breakpoints": true
     }
   ]
 }

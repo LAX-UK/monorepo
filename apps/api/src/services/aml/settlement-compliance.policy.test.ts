@@ -19,6 +19,7 @@ function holdStore(
 function sofGate(requires: boolean, pending = requires): ISourceOfFundsGate {
   return {
     requiresSourceOfFunds: async () => requires,
+    wouldRequireSourceOfFunds: async () => requires,
     hasPendingCaseForUser: async () => pending,
   };
 }
@@ -87,6 +88,10 @@ describe("AmlSettlementCompliancePolicy", () => {
             sofCalled = true;
             return true;
           },
+          wouldRequireSourceOfFunds: async () => {
+            sofCalled = true;
+            return true;
+          },
           hasPendingCaseForUser: async () => {
             sofCalled = true;
             return true;
@@ -125,11 +130,50 @@ describe("AmlSettlementCompliancePolicy", () => {
             requiresCalled = true;
             return true;
           },
+          wouldRequireSourceOfFunds: async () => true,
           hasPendingCaseForUser: async () => false,
         },
       );
       await policy.peek("u1");
       expect(requiresCalled).toBe(false);
+    });
+  });
+
+  describe("assess (read-only, on an amount)", () => {
+    it("says what evaluate would decide without opening a source-of-funds case", async () => {
+      let opened = 0;
+      const policy = new AmlSettlementCompliancePolicy(
+        holdStore({ status: "none", reason: null }),
+        {
+          requiresSourceOfFunds: async () => {
+            opened += 1;
+            return true;
+          },
+          wouldRequireSourceOfFunds: async () => true,
+          hasPendingCaseForUser: async () => false,
+        },
+      );
+      expect(await policy.assess(input)).toEqual({
+        hold: true,
+        reason: "source_of_funds_required",
+      });
+      expect(opened).toBe(0);
+    });
+
+    it("reports an AML hold first", async () => {
+      const policy = new AmlSettlementCompliancePolicy(
+        holdStore({ status: "hold", reason: "screening_review" }),
+        sofGate(true),
+      );
+      expect(await policy.assess(input)).toEqual({ hold: true, reason: "aml_hold" });
+    });
+
+    it("is clear when the amount needs no source of funds", async () => {
+      const policy = new AmlSettlementCompliancePolicy(
+        holdStore({ status: "none", reason: null }),
+        sofGate(false),
+      );
+      expect(await policy.assess(input)).toEqual({ hold: false, reason: null });
     });
   });
 });

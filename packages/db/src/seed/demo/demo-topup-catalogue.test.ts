@@ -1,3 +1,4 @@
+import { invoiceDueAt } from "@auction/domain";
 import { describe, expect, it } from "vitest";
 import { assertDemoTopUpTarget } from "../runners/demo-topup-cli.js";
 import { buildDemoCatalogue } from "./demo-topup-catalogue.js";
@@ -15,6 +16,23 @@ const actors = {
 };
 const catalogue = buildDemoCatalogue(NOW, actors);
 const DAY = 86_400_000;
+
+describe("demo top-up invoices", () => {
+  it("stores an invoice for every payment, with lines that add up to its total", () => {
+    for (const p of catalogue.payments) {
+      expect(p.invoice.lines.reduce((sum, l) => sum + l.amountPence, 0)).toBe(p.invoice.totalPence);
+      expect(p.invoice.dueAt.getTime()).toBe(invoiceDueAt(p.createdAt).getTime());
+    }
+  });
+
+  it("has an invoice raised more than 8 days ago that is overdue", () => {
+    const paleShore = catalogue.payments.find(
+      (p) => p.status === "pending" && p.invoice.dueAt.getTime() < NOW,
+    );
+    expect(paleShore).toBeDefined();
+    expect(NOW - (paleShore?.createdAt.getTime() ?? NOW)).toBeGreaterThan(8 * DAY);
+  });
+});
 
 describe("demo top-up catalogue", () => {
   it("has a live, a saleroom, an upcoming and two finished sales around the clock", () => {

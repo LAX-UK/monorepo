@@ -90,7 +90,9 @@ describe("Money, Portfolio and the amounts-owed summary agree", () => {
   it("owes a held purchase once on all three", async () => {
     const bid = facts({
       wonLots: [wonLot({ lotId: HELD })],
-      payments: [payment({ id: "held", lotId: HELD, status: "requires_manual_review" })],
+      payments: [
+        payment({ id: "held", lotId: HELD, status: "requires_manual_review", amount: "1150.00" }),
+      ],
     });
     const result = await threeReadings(bid, [lotRow(HELD, PERSONAL)]);
     expect(result.summaryOwed).toBe(1150);
@@ -124,7 +126,9 @@ describe("Money, Portfolio and the amounts-owed summary agree", () => {
   it("leaves a lot won for an organisation out of all three", async () => {
     const bid = facts({
       wonLots: [wonLot({ lotId: HELD }), wonLot({ lotId: ORG_LOT, title: "For the firm" })],
-      payments: [payment({ id: "held", lotId: HELD, status: "requires_manual_review" })],
+      payments: [
+        payment({ id: "held", lotId: HELD, status: "requires_manual_review", amount: "1150.00" }),
+      ],
     });
     const result = await threeReadings(bid, [lotRow(HELD, PERSONAL), lotRow(ORG_LOT, ORG)]);
     expect(result.summaryOwed).toBe(1150);

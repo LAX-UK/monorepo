@@ -567,7 +567,12 @@ describe("migrate-roles invariants", () => {
   });
 
   it("the worker may raise an invoice: payment, source of funds and fulfilment, no deletes", () => {
-    expect([...WORKER_INVOICE_RAISE_INSERT_TABLES]).toEqual(["payment", "source_of_funds"]);
+    expect([...WORKER_INVOICE_RAISE_INSERT_TABLES]).toEqual([
+      "payment",
+      "source_of_funds",
+      "bid_invoice",
+      "bid_invoice_line",
+    ]);
     expect([...WORKER_INVOICE_RAISE_FULFILMENT_TABLES]).toEqual(["lot_fulfilment"]);
   });
 

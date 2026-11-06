@@ -65,7 +65,6 @@ export async function backfillXeroInvoiceForPayment(
     lot,
     buyerId,
     p.amount,
-    p.createdAt,
   );
   if (result.ok) {
     recordMoneyPathEvent("xero_invoice_backfilled");
@@ -211,6 +210,7 @@ export async function releaseManualReviewForCapture(
   const publisher = deps.domainEventSink;
   if (!transactionRunner || !publisher) {
     await deps.payments.updateStatus(paymentId, "pending");
+    await extendDueDateAfterRelease(deps, p);
     return ok(undefined);
   }
 
@@ -236,6 +236,10 @@ export async function releaseManualReviewForCapture(
         actorUserId: adminUserId,
         actingLegalEntityId: p.sellerLegalEntityId ?? null,
       });
+      // The term runs from the release: moved in the same transaction, so both happen or neither.
+      if (p.invoiceId && deps.invoiceDueDates) {
+        await deps.invoiceDueDates.extendAfterHold(p.invoiceId, new Date(), tx);
+      }
     });
   } catch (e) {
     if (e instanceof Error && e.message === "payment_not_in_manual_review") {
@@ -244,6 +248,30 @@ export async function releaseManualReviewForCapture(
     throw e;
   }
   return ok(undefined);
+}
+
+/**
+ * The invoice was held for review, so its term runs from the release: the due date moves to the
+ * term counted from now, and never earlier. Used only where there is no transaction to join, so a
+ * failure is logged and does not undo the release.
+ */
+async function extendDueDateAfterRelease(
+  deps: PaymentServiceDeps,
+  released: { id: string; invoiceId?: string | null },
+): Promise<void> {
+  if (!released.invoiceId || !deps.invoiceDueDates) return;
+  try {
+    await deps.invoiceDueDates.extendAfterHold(released.invoiceId, new Date());
+  } catch (error) {
+    recordMoneyPathEvent("invoice_due_date_extension_failed");
+    console.error(
+      JSON.stringify({
+        msg: "invoice_due_date_extension_failed",
+        paymentId: released.id,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
+  }
 }
 
 export async function syncPaymentFromXeroAsAdmin(

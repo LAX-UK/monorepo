@@ -44,6 +44,25 @@ export const paySeveralBodySchema = z
   .strict();
 export type PaySeveralBody = z.infer<typeof paySeveralBodySchema>;
 
+/**
+ * The lots to plan one payment for, as a comma-separated list of lot ids in the URL. Only the
+ * shape is checked here (ids are UUIDs); the count and duplicates are the domain's pick rule, so
+ * the refusals ("choose at least one", "up to 20", "chosen twice") come back with their own codes.
+ */
+export const payPlanQuerySchema = z.object({
+  lots: z
+    .string()
+    .optional()
+    .transform((value) =>
+      (value ?? "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0),
+    )
+    .pipe(z.array(z.string().uuid())),
+});
+export type PayPlanQuery = z.infer<typeof payPlanQuerySchema>;
+
 /** Ask for a courier quote: where the work should go, as the buyer writes it. */
 export const requestDeliveryQuoteSchema = z
   .object({ destination: z.string().trim().min(5).max(500) })

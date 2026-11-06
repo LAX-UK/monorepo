@@ -82,6 +82,8 @@ export type AccountPurchaseFactsRow = {
       | "cancelled";
     amount: string;
     raisedAt: Date;
+    /** The due date stored on the invoice; `null` for a payment with no stored invoice. */
+    dueAt: Date | null;
   } | null;
   fulfilment:
     | (FulfilmentFacts & {

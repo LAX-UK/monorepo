@@ -1,6 +1,6 @@
 import type { LotStatus, PaymentStatus } from "@auction/types";
 import { londonDateOf, londonMidnight } from "./calendar-year.js";
-import { invoiceDueAt } from "./purchase-invoice-state.js";
+import { storedDueAt } from "./purchase-invoice-state.js";
 import { purchaseEnding } from "./purchase-state.js";
 
 const HOUR_MS = 3_600_000;
@@ -32,7 +32,7 @@ export type PaymentReminderFacts = {
   /** The account holder the invoice is raised to. */
   buyerId: string;
   /** The lot's latest invoice, or `null` while none is raised. */
-  payment: { status: PaymentStatus; raisedAt: Date } | null;
+  payment: { status: PaymentStatus; raisedAt: Date; dueAt: Date | null } | null;
   fulfilmentStatus: string | null;
   /** The buyer is on an AML or source-of-funds hold, so LAX itself is what stops payment. */
   onComplianceHold: boolean;
@@ -59,7 +59,7 @@ export function paymentReminderToSend(
     return null;
   }
 
-  const dueAt = invoiceDueAt(payment.raisedAt);
+  const dueAt = storedDueAt(payment);
   let latest: PaymentReminderStep | null = null;
   for (const step of PAYMENT_REMINDER_STEPS) {
     if (reminderDueAt(step, dueAt).getTime() <= now.getTime()) latest = step;

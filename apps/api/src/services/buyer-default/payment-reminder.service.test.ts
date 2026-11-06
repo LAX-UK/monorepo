@@ -24,6 +24,7 @@ function candidate(over: Partial<PaymentReminderCandidate> = {}): PaymentReminde
     amount: "1200.00",
     paymentStatus: "pending",
     raisedAt,
+    dueAt: null,
     fulfilmentStatus: "awaiting_payment",
     sentSteps: [],
     ...over,
@@ -78,6 +79,17 @@ function setup(
 }
 
 describe("PaymentReminderService", () => {
+  it("names the stored due date, not one worked out from the payment row", async () => {
+    const stored = new Date("2026-11-20T23:59:59.999Z");
+    const { service, dispatch } = setup([candidate({ dueAt: stored })], {
+      at: new Date("2026-11-20T10:00:00Z"),
+    });
+    expect(await service.sendDueReminders()).toEqual({ reminded: 1 });
+    const [, payload] = dispatch.mock.calls[0] ?? [];
+    expect(payload.meta.dueDate).toBe("20 November 2026");
+    expect(payload.meta.reminderStep).toBe("due_day");
+  });
+
   it("sends the step that has been reached, with the due date in words", async () => {
     const { service, dispatch } = setup([candidate()], { at: dueAt });
     expect(await service.sendDueReminders()).toEqual({ reminded: 1 });

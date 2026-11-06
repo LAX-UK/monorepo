@@ -11,7 +11,9 @@ const reviewed = {
   sellerLegalEntityId: "le-s",
 };
 
-function depsFor(row: Record<string, unknown>) {
+const TX = { marker: "transaction" };
+
+function depsFor(row: Record<string, unknown>, extendAfterHold = vi.fn().mockResolvedValue(true)) {
   const capture = vi.fn().mockResolvedValue({ captured: true });
   const applyReleasedFromManualReviewInTransaction = vi.fn().mockResolvedValue(true);
   const deps = {
@@ -22,10 +24,11 @@ function depsFor(row: Record<string, unknown>) {
     },
     settlementCompliance: null,
     paymentCapture: { capture },
-    transactionRunner: { runInTransaction: async (fn: (tx: never) => unknown) => fn({} as never) },
+    transactionRunner: { runInTransaction: async (fn: (tx: never) => unknown) => fn(TX as never) },
     domainEventSink: { withTx: () => ({ publish: vi.fn() }), publish: vi.fn() },
+    invoiceDueDates: { extendAfterHold },
   } as unknown as PaymentServiceDeps;
-  return { deps, capture, applyReleasedFromManualReviewInTransaction };
+  return { deps, capture, applyReleasedFromManualReviewInTransaction, extendAfterHold };
 }
 
 describe("releaseManualReviewForCapture", () => {
@@ -56,5 +59,46 @@ describe("releaseManualReviewForCapture", () => {
     await releaseManualReviewForCapture(deps, "finance-1", "staff", "pay-1", ["finance"]);
     expect(capture).not.toHaveBeenCalled();
     expect(applyReleasedFromManualReviewInTransaction).toHaveBeenCalled();
+  });
+
+  it("moves the invoice's due date to the term counted from the release", async () => {
+    const { deps, extendAfterHold } = depsFor({ ...reviewed, invoiceId: "inv-1" });
+    await releaseManualReviewForCapture(deps, "finance-1", "staff", "pay-1", ["finance"]);
+    // It joins the release's own transaction.
+    expect(extendAfterHold).toHaveBeenCalledWith("inv-1", expect.any(Date), TX);
+  });
+
+  it("leaves the due date alone when money was already taken and is captured instead", async () => {
+    const { deps, extendAfterHold } = depsFor({
+      ...reviewed,
+      invoiceId: "inv-1",
+      stripePaymentIntentId: "pi_1",
+      stripeChargeId: "ch_1",
+    });
+    await releaseManualReviewForCapture(deps, "finance-1", "staff", "pay-1", ["finance"]);
+    expect(extendAfterHold).not.toHaveBeenCalled();
+  });
+
+  it("does not release the invoice when its due date cannot be moved: both happen or neither", async () => {
+    const { deps } = depsFor(
+      { ...reviewed, invoiceId: "inv-1" },
+      vi.fn().mockRejectedValue(new Error("db down")),
+    );
+    await expect(
+      releaseManualReviewForCapture(deps, "finance-1", "staff", "pay-1", ["finance"]),
+    ).rejects.toThrow("db down");
+  });
+
+  it("without a transaction to join, a failed move is logged and the release stands", async () => {
+    const { deps } = depsFor(
+      { ...reviewed, invoiceId: "inv-1" },
+      vi.fn().mockRejectedValue(new Error("db down")),
+    );
+    (deps as unknown as { transactionRunner: undefined }).transactionRunner = undefined;
+    const result = await releaseManualReviewForCapture(deps, "finance-1", "staff", "pay-1", [
+      "finance",
+    ]);
+    expect(result.isOk()).toBe(true);
+    expect(deps.payments.updateStatus).toHaveBeenCalledWith("pay-1", "pending");
   });
 });

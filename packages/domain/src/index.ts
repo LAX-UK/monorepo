@@ -85,6 +85,7 @@ export { determineHighestBid } from "./highest-bid-winner.js";
 export {
   majorGbpToPence,
   needsManualReviewGate,
+  paymentMethodsFor,
   parsePaymentTierLimits,
   resolveCheckoutRail,
   resolveManualReviewReason,
@@ -92,6 +93,7 @@ export {
   STRIPE_GBP_MIN_PENCE,
   type CheckoutRailKind,
   type ManualReviewReason,
+  type PaymentMethodAvailability,
   type PaymentTierKind,
   type PaymentTierLimits,
 } from "./payment-tier-policy.js";
@@ -680,6 +682,7 @@ export {
   invoiceDueAt,
   invoiceIsOwed,
   purchaseInvoiceState,
+  storedDueAt,
   type PurchaseInvoiceFacts,
   type PurchaseInvoiceState,
   type PurchaseInvoiceStatus,
@@ -712,6 +715,17 @@ export {
   type PurchaseDeliveryFacts,
   type PurchaseDeliveryStage,
 } from "./purchase-delivery-stage.js";
+export {
+  PAY_PLAN_MAX_LOTS,
+  buildPayPlan,
+  classifyPayPlanLots,
+  pickRefusal,
+  type ClassifiedPayPlanLots,
+  type PayPlanComplianceHold,
+  type PayPlanFacts,
+  type PayPlanLot,
+  type PickRefusal,
+} from "./pay-plan.js";
 export {
   PAY_SEVERAL_MAX_INVOICES,
   planPaySeveral,

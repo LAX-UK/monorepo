@@ -1,4 +1,5 @@
 import type { CheckoutRailKind } from "@auction/domain";
+import type { InvoiceLine } from "@auction/types";
 
 /** One invoice as it appears on the combined checkout. */
 export type GroupCheckoutLine = {
@@ -7,6 +8,8 @@ export type GroupCheckoutLine = {
   lotTitle: string;
   lotNumber: number | null;
   amountPence: number;
+  /** The invoice's stored lines; they add up to `amountPence`. */
+  invoiceLines: readonly InvoiceLine[];
 };
 
 export type CreateGroupCheckoutInput = {

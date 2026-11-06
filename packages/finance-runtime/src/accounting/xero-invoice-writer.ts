@@ -1,5 +1,5 @@
-import { invoiceDueAt } from "@auction/domain";
 import type {
+  IBidInvoiceReader,
   IPaymentExternalRefRepository,
   IXeroConnectionRepository,
 } from "@auction/persistence/interfaces";
@@ -35,6 +35,7 @@ export class XeroInvoiceWriter {
     private readonly tokens: XeroTokenService,
     private readonly contacts: XeroContactSync,
     private readonly invoiceAddressing: InvoiceAddressingService | null,
+    private readonly invoices: Pick<IBidInvoiceReader, "findByPaymentIds">,
   ) {}
 
   async ensureInvoiceForPayment(
@@ -54,6 +55,11 @@ export class XeroInvoiceWriter {
     if (existingRef?.xeroInvoiceId) {
       return { ok: true };
     }
+
+    // The books copy takes its date and due date from the stored invoice, so it can never
+    // disagree with the buyer's invoice; without one nothing is written and the retry job tries again.
+    const invoice = (await this.invoices.findByPaymentIds([ctx.paymentId])).get(ctx.paymentId);
+    if (!invoice) return { ok: false, error: "payment_has_no_invoice" };
 
     const { xero, tenantId } = await this.tokens.initializeAuthenticatedClient(conn);
     const lot = ctx.lot as Lot;
@@ -104,8 +110,8 @@ export class XeroInvoiceWriter {
           : LineAmountTypes.Exclusive;
       // Dated when the invoice was raised and due on the buyer's term, so the books show the
       // same due date as the buyer's invoice and reminders, however late Xero is written.
-      inv.date = londonDate(ctx.raisedAt);
-      inv.dueDate = londonDate(invoiceDueAt(ctx.raisedAt));
+      inv.date = londonDate(invoice.raisedAt);
+      inv.dueDate = londonDate(invoice.dueAt);
       inv.reference = `payment:${ctx.paymentId}`;
       inv.status = Invoice.StatusEnum.AUTHORISED;
 

@@ -39,6 +39,7 @@ export class StalePaymentStore implements IStalePaymentStore {
       stripePaymentIntentId: row.stripePaymentIntentId ?? null,
       paymentGroupId: row.paymentGroupId ?? null,
       buyerLegalEntityId: row.buyerLegalEntityId ?? null,
+      dueAt: row.invoiceDueAt ?? null,
     };
   }
 

@@ -21,6 +21,21 @@ const owed: PaymentReminderFacts = {
   sentSteps: [],
 };
 
+describe("reminders follow the stored due date", () => {
+  it("waits for a due date that was moved later, and sends nothing while it is ahead", () => {
+    const moved: PaymentReminderFacts = {
+      ...owed,
+      payment: {
+        status: "pending",
+        raisedAt,
+        dueAt: new Date("2026-11-20T23:59:59.999Z"),
+      },
+    };
+    expect(paymentReminderToSend(moved, new Date("2026-11-08T09:00:00Z"))).toBeNull();
+    expect(paymentReminderToSend(moved, new Date("2026-11-20T09:00:00Z"))).toBe("due_day");
+  });
+});
+
 const at = (offsetMs: number) => new Date(dueAt.getTime() + offsetMs);
 
 describe("reminder schedule", () => {

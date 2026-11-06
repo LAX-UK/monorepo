@@ -649,3 +649,47 @@ describe("SourceOfFundsService listByStatus", () => {
     expect(await svc.countByStatus("approved")).toBe(1);
   });
 });
+
+describe("SourceOfFundsService.wouldRequireSourceOfFunds (read-only)", () => {
+  it("gives the same answer as requiresSourceOfFunds but opens no case", async () => {
+    const state: FakeState = { cases: [], linkedPence: 0 };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.wouldRequireSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 })).toBe(
+      true,
+    );
+    expect(state.cases).toHaveLength(0);
+    expect(await svc.requiresSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 })).toBe(true);
+    expect(state.cases).toHaveLength(1);
+  });
+
+  it("counts the buyer's other invoices toward the threshold, as the real check does", async () => {
+    const state: FakeState = { cases: [], linkedPence: 800_000 };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.wouldRequireSourceOfFunds({ buyerUserId: "u1", amountPence: 200_000 })).toBe(
+      true,
+    );
+    expect(await svc.wouldRequireSourceOfFunds({ buyerUserId: "u1", amountPence: 50_000 })).toBe(
+      false,
+    );
+  });
+
+  it("is clear while a valid approved case covers the exposure", async () => {
+    const state: FakeState = {
+      cases: [
+        makeCase({
+          id: "sof_1",
+          userId: "u1",
+          status: "approved",
+          exposureAmount: "9000.00",
+          reviewedByUserId: "mlro_1",
+          reviewedAt: new Date(),
+        }),
+      ],
+      linkedPence: 0,
+    };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.wouldRequireSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 })).toBe(
+      false,
+    );
+  });
+});
