@@ -84,28 +84,6 @@ export function ShopHeaderClient({
     if (open) setMegaMenuResetNonce((nonce) => nonce + 1);
   };
 
-  // From 1024px the LAX top bar scrolls away while the main row stays: publish how far to slide.
-  useEffect(() => {
-    const header = headerRef.current;
-    if (!header) return;
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const bar = header.querySelector<HTMLElement>('[data-testid="lax-family-bar"]');
-      const shift = Math.min(Math.max(window.scrollY, 0), bar?.offsetHeight ?? 0);
-      header.style.setProperty("--shop-top-bar-shift", `${shift}px`);
-    };
-    const onScroll = () => {
-      if (!frame) frame = window.requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (frame) window.cancelAnimationFrame(frame);
-    };
-  }, [headerRef]);
-
   const homeLockup = (onClick?: () => void) => (
     <Link
       href="/"

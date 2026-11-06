@@ -41,6 +41,7 @@ describe("useHeaderChrome", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     cleanup();
     vi.unstubAllGlobals();
   });
@@ -116,6 +117,49 @@ describe("useHeaderChrome", () => {
     });
     expect(document.documentElement.style.getPropertyValue("--header-height")).toBe("96px");
     expect(onHeightChange).toHaveBeenLastCalledWith(96);
+  });
+
+  it("publishes --header-offset as the header height less the top bar that has slid away", () => {
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return this.dataset.testid === "lax-family-bar" ? 36 : 110;
+    });
+    // Frames run on the next tick, as in a browser, so the hook's pending-frame guard is real.
+    vi.useFakeTimers();
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) =>
+      setTimeout(() => cb(0), 0),
+    );
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => clearTimeout(id));
+    const rootStyle = document.documentElement.style;
+    function WithBar() {
+      latest = useHeaderChrome({ transparent: false, overlayOpen: false });
+      return (
+        <header ref={latest.attachHeader}>
+          <div data-testid="lax-family-bar" />
+        </header>
+      );
+    }
+    render(<WithBar />);
+    expect(rootStyle.getPropertyValue("--header-offset")).toBe("110px");
+
+    const scrollToFrame = (y: number) => {
+      scrollTo(y);
+      act(() => {
+        vi.runAllTimers();
+      });
+    };
+
+    scrollToFrame(10);
+    expect(rootStyle.getPropertyValue("--lax-top-bar-shift")).toBe("10px");
+    expect(rootStyle.getPropertyValue("--header-offset")).toBe("100px");
+
+    scrollToFrame(500);
+    expect(rootStyle.getPropertyValue("--header-offset")).toBe("74px");
+    expect(rootStyle.getPropertyValue("--header-height")).toBe("110px");
+
+    scrollToFrame(0);
+    expect(rootStyle.getPropertyValue("--header-offset")).toBe("110px");
   });
 });
 

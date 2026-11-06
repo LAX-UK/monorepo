@@ -37,7 +37,7 @@ export function ConnectivityBannerShell({
       className={cn(
         variant === "fixed-top"
           ? cn(
-              "fixed inset-x-0 top-[var(--header-height,0px)] z-[var(--z-banner,50)]",
+              "fixed inset-x-0 top-[var(--header-offset,var(--header-height,0px))] z-[var(--z-banner,50)]",
               "border-b px-4 py-2 text-center font-body text-xs",
               isError
                 ? "border-error/30 bg-error/95 text-on-error"

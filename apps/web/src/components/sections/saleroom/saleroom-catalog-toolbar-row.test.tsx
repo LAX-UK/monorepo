@@ -96,6 +96,6 @@ describe("SaleroomCatalogToolbarRow", () => {
     searchParams = new URLSearchParams();
     const { container } = render(<SaleroomCatalogToolbarRow {...baseProps} />);
     const sticky = container.querySelector(".sticky");
-    expect(sticky?.className).toContain("calc(var(--header-height");
+    expect(sticky?.className).toContain("calc(var(--header-offset");
   });
 });

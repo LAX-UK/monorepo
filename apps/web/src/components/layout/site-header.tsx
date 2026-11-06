@@ -3,7 +3,6 @@
 import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
-import { useTopBarScrollAway } from "@/hooks/use-top-bar-scroll-away";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
@@ -68,14 +67,12 @@ function SiteHeaderShell({
     setMenuOpen(false);
   }, [pathname, searchKey]);
 
-  const { isTransparent, atTop, headerTone, attachHeader, headerRef } = useHeaderChrome({
+  const { isTransparent, atTop, headerTone, attachHeader } = useHeaderChrome({
     transparent: resolvedVariant === "transparentUntilScroll",
     overlayOpen: megaOpen || menuOpen,
     // Sticky sub-chrome on Bid positions itself from scroll events, so a height change re-runs it.
     onHeightChange: () => window.dispatchEvent(new Event("scroll")),
   });
-  // The 36px LAX top bar scrolls away on desktop; the main row stays.
-  useTopBarScrollAway(headerRef);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   return (
@@ -85,10 +82,7 @@ function SiteHeaderShell({
         data-chrome-variant={resolvedVariant}
         data-at-top={atTop ? "true" : "false"}
         data-header-tone={headerTone}
-        className={cn(
-          headerChromeClassName(isTransparent, megaOpen),
-          "lg:translate-y-[calc(var(--lax-top-bar-shift,0px)*-1)]",
-        )}
+        className={headerChromeClassName(isTransparent, megaOpen)}
       >
         <div className={cn("mx-auto max-w-[var(--container-max,1440px)]", MARKETING_PAGE_GUTTER_X)}>
           {/* 36px, from 1024px. About us, Contact us and FAQ sit at its right. */}

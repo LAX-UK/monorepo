@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import type { MarketingHeaderTone } from "./header-chrome-tone.js";
+import { TOP_BAR_SELECTOR, publishHeaderVars, topBarShift } from "./header-offset.js";
 
 /** Scroll distance below which the page still counts as "at the top". */
 export const HEADER_SCROLL_FADE_THRESHOLD_PX = 12;
@@ -31,7 +32,11 @@ export type HeaderChrome = {
   headerTone: MarketingHeaderTone;
   /** Holds the `<header>` element once `attachHeader` has run. */
   headerRef: RefObject<HTMLElement | null>;
-  /** Pass as the header's `ref`; keeps `--header-height` in step with the element. */
+  /**
+   * Pass as the header's `ref`; keeps `--header-height` in step with the element and
+   * `--header-offset` (where the visible header ends while the top bar slides away) in step with
+   * the scroll.
+   */
   attachHeader: RefCallback<HTMLElement>;
 };
 
@@ -48,21 +53,45 @@ export function useHeaderChrome({
   const headerRef = useRef<HTMLElement | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const lastHeightRef = useRef(0);
+  const frameRef = useRef(0);
+  const scrollCleanupRef = useRef<(() => void) | null>(null);
   const onHeightChangeRef = useRef(onHeightChange);
   onHeightChangeRef.current = onHeightChange;
 
   const attachHeader = useCallback((el: HTMLElement | null) => {
     resizeObserverRef.current?.disconnect();
     resizeObserverRef.current = null;
+    scrollCleanupRef.current?.();
+    scrollCleanupRef.current = null;
     headerRef.current = el;
     if (!el) return;
+
+    const publish = () => {
+      const topBar = el.querySelector<HTMLElement>(TOP_BAR_SELECTOR);
+      const shift = topBarShift(window.scrollY, topBar?.offsetHeight ?? 0);
+      publishHeaderVars(document.documentElement, { height: lastHeightRef.current, shift });
+    };
 
     const sync = () => {
       const height = el.offsetHeight;
       if (height === lastHeightRef.current) return;
       lastHeightRef.current = height;
-      document.documentElement.style.setProperty("--header-height", `${height}px`);
+      publish();
       onHeightChangeRef.current?.(height);
+    };
+
+    const onScroll = () => {
+      if (frameRef.current !== 0) return;
+      frameRef.current = window.requestAnimationFrame(() => {
+        frameRef.current = 0;
+        publish();
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    scrollCleanupRef.current = () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frameRef.current !== 0) window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = 0;
     };
 
     sync();
@@ -93,12 +122,13 @@ export function useHeaderChrome({
 }
 
 /**
- * Surface classes for the fixed header. The transition is dropped under reduced motion so the
+ * Surface classes for the fixed header. From 1024px it slides up with the page by the top bar's
+ * height (scroll-linked, so there is no animation to reduce). The transition is dropped under reduced motion so the
  * header switches state without animating.
  */
 export function headerChromeClassName(isTransparent: boolean, megaOpen: boolean): string {
   return cn(
-    "fixed top-0 z-50 w-full border-b pt-[env(safe-area-inset-top,0px)] transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none",
+    "fixed top-0 z-50 w-full border-b pt-[env(safe-area-inset-top,0px)] lg:translate-y-[calc(var(--lax-top-bar-shift,0px)*-1)] transition-[background-color,border-color,box-shadow,backdrop-filter] duration-300 ease-out motion-reduce:transition-none",
     isTransparent
       ? "border-transparent bg-transparent"
       : cn(
