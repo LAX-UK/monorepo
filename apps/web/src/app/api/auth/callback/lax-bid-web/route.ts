@@ -15,6 +15,7 @@ import {
   setBidSessionCookie,
 } from "@/lib/bff/session-cookie.server";
 import { BidBffSessionStore, type PendingBidSession } from "@/lib/bff/session-store.server";
+import { applySignInRestore } from "@/lib/legal-entity/sign-in-restore.server";
 import { classifyAuthorizationError, classifySilentCallback } from "@auction/identity-rp";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -172,6 +173,8 @@ export async function GET(request: NextRequest) {
       markBidSilentNotice(response);
     }
     setBidSessionCookie(response, authenticatedId, "authenticated");
+    // The first page opens in the person's account; if the API cannot say, the layout restores it.
+    await applySignInRestore(response, { sessionId: authenticatedId, request });
     response.headers.set("cache-control", "no-store");
     return response;
   } catch {

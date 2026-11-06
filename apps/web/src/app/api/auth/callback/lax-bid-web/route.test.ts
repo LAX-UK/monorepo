@@ -44,6 +44,9 @@ vi.mock("@/lib/auth/silent-sign-in/cookies.server", () => ({
   clearBidSilentSuppressed: vi.fn(),
 }));
 
+const applySignInRestore = vi.fn(async () => {});
+vi.mock("@/lib/legal-entity/sign-in-restore.server", () => ({ applySignInRestore }));
+
 const { GET } = await import("./route");
 
 function request(query: string) {
@@ -98,6 +101,26 @@ describe("Bid BFF OIDC callback", () => {
     );
     expect(invalidateSession).not.toHaveBeenCalled();
     expect(markBidSilentNotice).not.toHaveBeenCalled();
+  });
+
+  it("restores the person's account on the sign-in redirect, once the session exists", async () => {
+    const response = await GET(request("state=expected-state&code=authorization-code"));
+
+    expect(applySignInRestore).toHaveBeenCalledTimes(1);
+    expect(applySignInRestore).toHaveBeenCalledWith(response, {
+      sessionId: "authenticated-session",
+      request: expect.any(NextRequest),
+    });
+  });
+
+  it("does not try to restore an account when the callback does not sign anyone in", async () => {
+    validateCallbackState.mockReturnValue(false);
+    await GET(request("state=other-state&code=authorization-code"));
+    exchangeAuthorizationCode.mockRejectedValueOnce(new Error("exchange failed"));
+    validateCallbackState.mockReturnValue(true);
+    await GET(request("state=expected-state&code=authorization-code"));
+
+    expect(applySignInRestore).not.toHaveBeenCalled();
   });
 
   it("sets silent notice cookie after successful silent probe exchange", async () => {
