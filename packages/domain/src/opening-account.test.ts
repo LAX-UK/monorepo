@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { type UsableAccount, canUseAccount, decideOpeningAccount } from "./opening-account.js";
+import {
+  type UsableAccount,
+  canUseAccount,
+  chooseCandidate,
+  decideOpeningAccount,
+} from "./opening-account.js";
 
 const personal: UsableAccount = { id: "me", kind: "individual" };
 const gallery: UsableAccount = { id: "northbank", kind: "organisation" };
@@ -42,7 +47,7 @@ describe("decideOpeningAccount", () => {
         accounts: [personal, gallery],
         organisationsEnabled: false,
       }),
-    ).toEqual({ kind: "fallback", accountId: "me", lostAccountId: "northbank" });
+    ).toEqual({ kind: "fallback", accountId: "me", lostAccountId: null });
   });
 
   it("has nothing to open without a personal account", () => {
@@ -64,5 +69,38 @@ describe("canUseAccount", () => {
 
   it("refuses organisations while they are switched off", () => {
     expect(canUseAccount("northbank", [personal, gallery], false)).toBe(false);
+  });
+});
+
+describe("chooseCandidate", () => {
+  const base = {
+    rememberedId: "me",
+    accounts: [personal, gallery],
+    organisationsEnabled: true,
+    browserIdWasMember: false,
+  };
+
+  it("uses what the profile remembers when the browser asks for nothing", () => {
+    expect(chooseCandidate({ ...base, browserId: null })).toBe("me");
+  });
+
+  it("trusts an account the person can use", () => {
+    expect(chooseCandidate({ ...base, browserId: "northbank" })).toBe("northbank");
+  });
+
+  it("trusts an account the person belonged to, so losing it can be explained", () => {
+    expect(
+      chooseCandidate({
+        ...base,
+        accounts: [personal],
+        browserId: "northbank",
+        browserIdWasMember: true,
+      }),
+    ).toBe("northbank");
+  });
+
+  it("ignores an account the person never belonged to", () => {
+    expect(chooseCandidate({ ...base, browserId: "someone-elses" })).toBe("me");
+    expect(chooseCandidate({ ...base, browserId: "someone-elses", rememberedId: null })).toBeNull();
   });
 });

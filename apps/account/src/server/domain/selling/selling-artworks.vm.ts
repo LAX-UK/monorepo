@@ -1,4 +1,4 @@
-import { formatDate } from "@/lib/format-money";
+import { formatDate } from "@/lib/format-date";
 import type { PortalArtistArtworks, PortalArtistSales } from "../../ports/selling-gateway";
 
 const SALE_STATE_LABELS: Record<string, { label: string; tone: "success" | "neutral" }> = {

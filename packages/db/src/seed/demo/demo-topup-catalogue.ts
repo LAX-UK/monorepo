@@ -7,6 +7,7 @@
  * Pure: no database access, so the rules (one winning bid per lot, prices matching bids, sale
  * windows around the clock) are tested without I/O.
  */
+import { type SeedInvoice, priceSeedInvoice } from "../shared/seed-invoice.js";
 import { DEMO_IDS } from "./demo-topup-ids.js";
 
 const HOUR = 3_600_000;
@@ -54,7 +55,7 @@ export type DemoActors = {
 type SaleKey = "live" | "saleroom" | "upcoming" | "finished" | "older";
 
 export type DemoSale = {
-  key: SaleKey;
+  key: string;
   id: string;
   title: string;
   description: string;
@@ -84,7 +85,7 @@ export type DemoLot = {
   estimateLow: number;
   estimateHigh: number;
   minBidIncrement: number;
-  status: "scheduled" | "active" | "ended";
+  status: "scheduled" | "active" | "ended" | "cancelled";
   startTime: Date;
   endTime: Date;
   /** The highest bid, or the starting price when there are none. */
@@ -110,8 +111,38 @@ export type DemoPayment = {
   buyerEntityId: string;
   sellerEntityId: string;
   hammer: number;
-  status: "pending" | "captured";
+  /** `authorized`: a bank transfer on its way. */
+  status: "pending" | "authorized" | "captured";
   /** When the invoice was raised: it is due 7 days later. */
+  createdAt: Date;
+  /** The stored invoice, priced by the application's calculator at the premium rate. */
+  invoice: SeedInvoice;
+  /** The payment group (one transfer paying several invoices) this payment belongs to. */
+  paymentGroupId: string | null;
+};
+
+/** A seeded payment with its invoice priced by the application's own calculator. */
+export function demoPayment(
+  input: Omit<DemoPayment, "invoice" | "paymentGroupId"> & { paymentGroupId?: string | null },
+): DemoPayment {
+  return {
+    ...input,
+    paymentGroupId: input.paymentGroupId ?? null,
+    invoice: priceSeedInvoice({
+      paymentId: input.id,
+      hammerPounds: input.hammer,
+      rate: BUYER_PREMIUM_RATE,
+      raisedAt: input.createdAt,
+    }),
+  };
+}
+
+/** One transfer that pays several invoices of an account, still on its way. */
+export type DemoPaymentGroup = {
+  id: string;
+  buyerEntityId: string;
+  createdByUserId: string;
+  totalPence: number;
   createdAt: Date;
 };
 
@@ -160,6 +191,7 @@ export type DemoCatalogue = {
   lots: DemoLot[];
   bids: DemoBid[];
   payments: DemoPayment[];
+  paymentGroups: DemoPaymentGroup[];
   submissions: DemoSubmission[];
   payouts: DemoPayout[];
   registrations: DemoRegistration[];
@@ -602,7 +634,7 @@ export function buildDemoCatalogue(now: number, actors: DemoActors): DemoCatalog
   let bidSeq = 0;
   let imageSeq = 0;
   for (const sale of sales) {
-    LOT_SPECS[sale.key].forEach((spec, index) => {
+    LOT_SPECS[sale.key as SaleKey].forEach((spec, index) => {
       lotSeq += 1;
       const id = DEMO_IDS.lot(lotSeq);
       lotIdByTitle.set(spec.title, id);
@@ -682,7 +714,7 @@ export function buildDemoCatalogue(now: number, actors: DemoActors): DemoCatalog
     if (!sold.winnerUserId || !sold.buyerEntityId) {
       throw new Error(`demo catalogue: "${title}" has no buyer`);
     }
-    return {
+    return demoPayment({
       id: DEMO_IDS.payment(index + 1),
       lotId: sold.id,
       buyerUserId: sold.winnerUserId,
@@ -691,7 +723,7 @@ export function buildDemoCatalogue(now: number, actors: DemoActors): DemoCatalog
       hammer: sold.currentPrice,
       status,
       createdAt: new Date(raisedAt),
-    };
+    });
   });
   const paymentFor = (title: string): DemoPayment => {
     const lotId = lot(title).id;
@@ -785,6 +817,7 @@ export function buildDemoCatalogue(now: number, actors: DemoActors): DemoCatalog
     lots,
     bids,
     payments,
+    paymentGroups: [],
     submissions,
     payouts,
     registrations,

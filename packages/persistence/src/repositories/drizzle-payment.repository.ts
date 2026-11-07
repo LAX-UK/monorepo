@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import {
   bidIdentityDirectory,
+  bidInvoice,
   buyerDefault,
   lot,
   lotFulfilment,
@@ -70,7 +71,7 @@ export function adminTableWhere(filter: Omit<ListPaymentsAdminTableFilter, "limi
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
-function mapRow(
+export function mapPaymentRow(
   row: Row,
   xero?: {
     xeroInvoiceNumber: string | null;
@@ -93,6 +94,7 @@ function mapRow(
     status: row.status,
     createdAt: row.createdAt,
     paymentGroupId: row.paymentGroupId,
+    invoiceId: row.invoiceId,
     xeroInvoiceNumber: xero?.xeroInvoiceNumber ?? null,
     xeroOnlineInvoiceUrl: xero?.xeroOnlineInvoiceUrl ?? null,
     xeroSyncStatus: xero?.xeroSyncStatus ?? null,
@@ -116,16 +118,22 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
         stripePaymentIntentId: row.stripePaymentIntentId,
         stripeChargeId: row.stripeChargeId ?? null,
         status: row.status ?? "pending",
+        invoiceId: row.invoiceId ?? null,
       })
       .returning();
     if (!created) throw new Error("Payment insert failed");
-    return mapRow(created, null);
+    return mapPaymentRow(created, null);
   }
 
   async findById(id: string): Promise<PaymentRecord | null> {
-    const rows = await this.db.select().from(payment).where(eq(payment.id, id)).limit(1);
+    const rows = await this.db
+      .select({ payment, dueAt: bidInvoice.dueAt })
+      .from(payment)
+      .leftJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
+      .where(eq(payment.id, id))
+      .limit(1);
     const row = rows[0];
-    return row ? mapRow(row, null) : null;
+    return row ? { ...mapPaymentRow(row.payment, null), invoiceDueAt: row.dueAt } : null;
   }
 
   async isVoidedByBuyerDefault(paymentId: string): Promise<boolean> {
@@ -154,7 +162,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       )
       .limit(1);
     const row = rows[0];
-    return row ? mapRow(row, null) : null;
+    return row ? mapPaymentRow(row, null) : null;
   }
 
   async findRefundedByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null> {
@@ -166,7 +174,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       )
       .limit(1);
     const row = rows[0];
-    return row ? mapRow(row, null) : null;
+    return row ? mapPaymentRow(row, null) : null;
   }
 
   async findOpenByLotAndBuyerAccount(
@@ -185,7 +193,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       )
       .limit(1);
     const row = rows[0];
-    return row ? mapRow(row, null) : null;
+    return row ? mapPaymentRow(row, null) : null;
   }
 
   async findRefundedByLotAndBuyerAccount(
@@ -204,7 +212,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       )
       .limit(1);
     const row = rows[0];
-    return row ? mapRow(row, null) : null;
+    return row ? mapPaymentRow(row, null) : null;
   }
 
   async updateStatus(id: string, status: PaymentRecord["status"]): Promise<void> {
@@ -226,7 +234,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .where(eq(payment.stripePaymentIntentId, stripePaymentIntentId))
       .limit(1);
     const row = rows[0];
-    return row ? mapRow(row, null) : null;
+    return row ? mapPaymentRow(row, null) : null;
   }
 
   async applyAuthorizedInTransaction(tx: Database, id: string): Promise<boolean> {
@@ -242,6 +250,23 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     const rows = await tx
       .update(payment)
       .set({ status: "cancelled" })
+      .where(and(eq(payment.id, id), inArray(payment.status, ["pending", "authorized"])))
+      .returning({ id: payment.id });
+    return rows.length > 0;
+  }
+
+  async applyHeldMoneyInTransaction(
+    tx: Database,
+    id: string,
+    money: { stripePaymentIntentId: string; stripeChargeId: string | null },
+  ): Promise<boolean> {
+    const rows = await tx
+      .update(payment)
+      .set({
+        status: "requires_manual_review",
+        stripePaymentIntentId: money.stripePaymentIntentId,
+        ...(money.stripeChargeId ? { stripeChargeId: money.stripeChargeId } : {}),
+      })
       .where(and(eq(payment.id, id), inArray(payment.status, ["pending", "authorized"])))
       .returning({ id: payment.id });
     return rows.length > 0;
@@ -338,7 +363,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .limit(filter.limit)
       .offset(filter.offset);
     return rows.map((r) =>
-      mapRow(r.payment, {
+      mapPaymentRow(r.payment, {
         xeroInvoiceNumber: r.refInvoiceNumber ?? null,
         xeroOnlineInvoiceUrl: r.refOnlineUrl ?? null,
         xeroSyncStatus: r.refSyncStatus ?? null,
@@ -377,7 +402,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .where(where)
       .orderBy(desc(payment.createdAt));
     return rows.map((r) =>
-      mapRow(r.payment, {
+      mapPaymentRow(r.payment, {
         xeroInvoiceNumber: r.refInvoiceNumber ?? null,
         xeroOnlineInvoiceUrl: r.refOnlineUrl ?? null,
         xeroSyncStatus: r.refSyncStatus ?? null,
@@ -484,7 +509,7 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .limit(filter.limit)
       .offset(filter.offset);
     return rows.map((r) => {
-      const mapped = mapRow(r.payment, {
+      const mapped = mapPaymentRow(r.payment, {
         xeroInvoiceNumber: r.refInvoiceNumber ?? null,
         xeroOnlineInvoiceUrl: r.refOnlineUrl ?? null,
         xeroSyncStatus: r.refSyncStatus ?? null,

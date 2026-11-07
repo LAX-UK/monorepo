@@ -39,7 +39,7 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
     });
   });
 
-  it("routes artwork register events to the Zoho artwork writeback only", () => {
+  it("routes artwork register events to the Zoho artwork writeback, and moves to the listing", () => {
     const base = {
       schemaVersion: 1,
       registerId: "11111111-1111-4111-8111-111111111111",
@@ -50,10 +50,17 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
       ["artwork_register.offer_changed", { ...base, fromState: "held", toState: "bid_sale" }],
       ["artwork_register.stock_code_assigned", base],
     ] as const) {
-      expect(DOMAIN_EVENT_REGISTRY[type].consumers).toEqual(["zoho_artwork_writeback"]);
+      expect(DOMAIN_EVENT_REGISTRY[type].consumers[0]).toBe("zoho_artwork_writeback");
       expect(DOMAIN_EVENT_REGISTRY[type].piiClassification).toBe("operational");
       expect(parseDomainEventPayload(type, 1, payload).ok).toBe(true);
     }
+    expect(DOMAIN_EVENT_REGISTRY["artwork_register.offer_changed"].consumers).toEqual([
+      "zoho_artwork_writeback",
+      "zoho_artwork_listing",
+    ]);
+    expect(DOMAIN_EVENT_REGISTRY["artwork_register.stock_code_assigned"].consumers).toEqual([
+      "zoho_artwork_writeback",
+    ]);
     expect(
       parseDomainEventPayload("artwork_register.offer_changed", 1, {
         ...base,
@@ -61,6 +68,46 @@ describe("DOMAIN_EVENT_REGISTRY", () => {
         toState: "nowhere",
       }).ok,
     ).toBe(false);
+  });
+
+  it("routes the print fulfilment events to the Zoho fulfilment consumer", () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    const other = "22222222-2222-4222-8222-222222222222";
+    const fresh = [
+      [
+        "shop.print.pack_confirmed",
+        { schemaVersion: 1, orderLineId: id, orderId: id, editionId: id },
+      ],
+      [
+        "shop.print.swapped",
+        { schemaVersion: 1, orderLineId: id, orderId: id, fromEditionId: id, toEditionId: other },
+      ],
+      [
+        "shop.fulfilment.status_changed",
+        { schemaVersion: 1, fulfilmentId: id, orderId: id, status: "in_transit" },
+      ],
+    ] as const;
+    for (const [type, payload] of fresh) {
+      const entry = DOMAIN_EVENT_REGISTRY[type];
+      expect(entry.consumers).toEqual(["zoho_fulfilment"]);
+      expect(entry.producers).toEqual(["shop-api"]);
+      expect(entry.idempotencyPolicy).toBe("aggregate_event_unique");
+      expect(entry.piiClassification).toBe("none");
+      expect(parseDomainEventPayload(type, 1, payload).ok).toBe(true);
+      expect(parseDomainEventPayload(type, 1, { ...payload, orderId: "not-a-uuid" }).ok).toBe(
+        false,
+      );
+    }
+    for (const type of [
+      "shop.order.paid",
+      "shop.editions.allocated",
+      "shop.artwork.updated",
+      "shop.edition.sold",
+      "shop.edition.released",
+      "shop.fulfilment.dispatched",
+    ] as const) {
+      expect(DOMAIN_EVENT_REGISTRY[type].consumers).toContain("zoho_fulfilment");
+    }
   });
 
   it("fails safely for unknown schema versions", () => {

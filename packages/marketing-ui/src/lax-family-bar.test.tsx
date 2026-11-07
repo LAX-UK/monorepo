@@ -10,6 +10,33 @@ const LINKS = [
   { id: "account", label: "LAX Account", href: "https://account.lax.bid/account", current: false },
 ];
 
+describe("LaxFamilyBar help link controls", () => {
+  it("lets a product replace a help link with its own control", () => {
+    render(
+      <LaxFamilyBar
+        links={LINKS}
+        helpLinks={[
+          { label: "Visit us", href: "/visit" },
+          {
+            label: "Enquire",
+            href: "/contact",
+            render: (className) => (
+              <button type="button" className={className}>
+                Enquire
+              </button>
+            ),
+          },
+        ]}
+      />,
+    );
+    const help = screen.getByRole("navigation", { name: "Help" });
+    expect(within(help).getByRole("link", { name: "Visit us" })).toHaveAttribute("href", "/visit");
+    const enquire = within(help).getByRole("button", { name: "Enquire" });
+    expect(enquire.className).toContain("min-h-9");
+    expect(within(help).queryByRole("link", { name: "Enquire" })).toBeNull();
+  });
+});
+
 describe("LaxFamilyBar", () => {
   it("links the products in order, then LAX Account, each to its own URL", () => {
     render(<LaxFamilyBar links={LINKS} />);
@@ -154,5 +181,32 @@ describe("LaxFamilyMenuLinks", () => {
   it("renders nothing when no product is configured", () => {
     const { container } = render(<LaxFamilyMenuLinks links={[]} />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("lists up to three help links in a Help landmark with 36px hit areas", () => {
+    render(
+      <LaxFamilyBar
+        links={LINKS}
+        helpLinks={[
+          { label: "Help", href: "/help" },
+          { label: "Contact", href: "/contact" },
+          { label: "Delivery", href: "/delivery" },
+          { label: "Extra", href: "/extra" },
+        ]}
+      />,
+    );
+    const nav = screen.getByRole("navigation", { name: "Help" });
+    const links = within(nav).getAllByRole("link");
+    expect(links.map((link) => link.textContent)).toEqual(["Help", "Contact", "Delivery"]);
+    for (const link of links) {
+      expect(link.className).toContain("min-h-9");
+      expect(link.className).toContain("text-xs");
+      expect(link.className).toContain("text-on-surface-variant");
+    }
+  });
+
+  it("renders no Help landmark without help links", () => {
+    render(<LaxFamilyBar links={LINKS} />);
+    expect(screen.queryByRole("navigation", { name: "Help" })).toBeNull();
   });
 });

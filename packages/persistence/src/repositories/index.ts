@@ -122,6 +122,7 @@ export {
 } from "./drizzle-lax-staff-access.repository.js";
 export { DrizzleLaxAdminRolesRepository } from "./drizzle-lax-admin-roles.repository.js";
 export { DrizzlePaymentRepository } from "./drizzle-payment.repository.js";
+export { DrizzleBidInvoiceRepository } from "./drizzle-bid-invoice.repository.js";
 export { DrizzlePayoutRepository } from "./drizzle-payout.repository.js";
 export { DrizzlePaymentExternalRefRepository } from "./drizzle-payment-external-ref.repository.js";
 export { DrizzleXeroConnectionRepository } from "./drizzle-xero-connection.repository.js";
@@ -217,6 +218,9 @@ export { DrizzleSaleSoftDeleteSideEffects } from "./drizzle-sale-soft-delete.sid
 export { DrizzleLotFulfilmentRepository } from "./drizzle-lot-fulfilment.repository.js";
 export { DrizzleAttentionFeedReader } from "./drizzle-attention-feed.reader.js";
 export { DrizzleAdminWorkItemsReader } from "./drizzle-admin-work-items.reader.js";
+export { DrizzlePaymentCheckoutSessionRepository } from "./drizzle-payment-checkout-session.repository.js";
+export { DrizzleStalePaymentCanceller } from "./drizzle-stale-payment-canceller.js";
+export { DrizzleUnappliedMoneyReader } from "./drizzle-unapplied-money.reader.js";
 export { DrizzleAdminSaleReadinessReader } from "./drizzle-admin-sale-readiness.reader.js";
 export { DrizzleSaleAttentionSignalsReader } from "./drizzle-sale-attention-signals.reader.js";
 export { DrizzleSaleResultLotsReader } from "./drizzle-sale-result-lots.reader.js";
@@ -257,6 +261,7 @@ export {
   DrizzleEnquiryRoutingRepository,
 } from "./drizzle-enquiry-workflow.repositories.js";
 export { DrizzleEnquiryErasureRepository } from "./drizzle-enquiry-erasure.repository.js";
+export { DrizzleAlertSubscriberErasureRepository } from "./drizzle-alert-subscriber-erasure.repository.js";
 export { DrizzleDeliveryQuoteRepository } from "./drizzle-delivery-quote.repository.js";
 export { DrizzlePurchaseProblemRepository } from "./drizzle-purchase-problem.repository.js";
 export {

@@ -17,3 +17,9 @@ export interface ICoverAnalysisJobRepository {
   /** Keeps the outcome for a fingerprint, replacing an earlier one. */
   save(hash: string, outcome: CoverAnalysisOutcome): Promise<void>;
 }
+
+/** Lets a one-off run measure again the slots an earlier run could not. */
+export interface ICoverAnalysisRetry {
+  /** Forgets every failed outcome so those slots are pending again; returns how many. */
+  forgetFailed(): Promise<number>;
+}

@@ -1,3 +1,4 @@
+import { buildAlerts } from "@/lib/home-sections/alerts";
 import { buildHomeArtists } from "@/lib/home-sections/artists";
 import { buildComingUp } from "@/lib/home-sections/coming-up";
 import { buildDepartments } from "@/lib/home-sections/departments";
@@ -9,7 +10,12 @@ import { buildResultsBand } from "@/lib/home-sections/results-band";
 import { buildSelling } from "@/lib/home-sections/selling";
 import type { HomeSections } from "@/lib/home-sections/types";
 import type { SaleListRow } from "@/lib/sale-list-row";
-import { type HomeSectionId, type HomeStateResult, pruneEmptyHomeSections } from "@auction/domain";
+import {
+  type HomeSectionId,
+  type HomeStateResult,
+  type LotMediaTreatmentIndex,
+  pruneEmptyHomeSections,
+} from "@auction/domain";
 import type { Category, Lot, PressArchiveEntry, PublicArtistDirectoryRow } from "@auction/types";
 
 export type HomeSectionsSource = {
@@ -25,6 +31,8 @@ export type HomeSectionsSource = {
   categories: readonly Category[];
   artists: readonly PublicArtistDirectoryRow[];
   press: readonly PressArchiveEntry[];
+  /** How each department shows its lots on a card. Left out, every lot is a wall work. */
+  treatments?: LotMediaTreatmentIndex;
 };
 
 type Builder<K extends HomeSectionId> = (source: HomeSectionsSource) => HomeSections[K] | null;
@@ -43,6 +51,7 @@ function railBuilder<K extends LotRailKind>(kind: K): Builder<K> {
       lotCount: row.lotCount,
       artistNames: source.artistNames,
       now: source.now,
+      treatments: source.treatments ?? {},
     });
   };
 }
@@ -59,6 +68,7 @@ const resultsBand: Builder<"recentResults"> = (source) => {
         ? "The last twelve months at LAX Bid"
         : "Prices include buyer’s premium",
     now: source.now,
+    treatments: source.treatments ?? {},
   });
 };
 
@@ -85,7 +95,11 @@ const BUILDERS: { [K in HomeSectionId]: Builder<K> } = {
     buildDepartments(source.categories, [...source.lotsBySale.values()].flat()),
   artists: (source) => buildHomeArtists(source.artists),
   selling,
-  alerts: () => true,
+  alerts: (source) => {
+    const bandId = source.state.resultsBandSaleIds[0];
+    const works = soldOrder(bandId ? (source.lotsBySale.get(bandId) ?? []) : []);
+    return buildAlerts(works.map((lot) => lot.images[0]));
+  },
   fromLaxAndPress: (source) => buildPress(source.press),
 };
 

@@ -10,7 +10,7 @@ export type BasketAddedItem = {
   title: string;
   artistName: string;
   imageUrl: string | null;
-  editionSize: string;
+  editionLine: string | null;
   priceLabel: string;
 };
 
@@ -62,7 +62,7 @@ export function BasketAddedPanel({
           <div className="shop-added-panel__text">
             <p className="shop-added-panel__item-title">{item.title}</p>
             <p className="shop-added-panel__meta">{item.artistName}</p>
-            <p className="shop-added-panel__meta">{item.editionSize}</p>
+            {item.editionLine ? <p className="shop-added-panel__meta">{item.editionLine}</p> : null}
           </div>
           <p className="shop-added-panel__price">{item.priceLabel}</p>
         </div>

@@ -102,6 +102,9 @@ export class FlatRateBuyerPremiumPolicy implements BuyerPremiumPolicy {
   computePremiumMinor(hammerMinor: number): number {
     return roundPremiumMinor(hammerMinor, this.rate);
   }
+  rateFor(): string {
+    return this.rate;
+  }
   computePremiumMajor(hammerMajor: string): string {
     return minorToMajor(this.computePremiumMinor(majorToMinor(hammerMajor)));
   }
@@ -135,6 +138,10 @@ export class TieredBuyerPremiumPolicy implements BuyerPremiumPolicy {
   computePremiumMinor(hammerMinor: number): number {
     const tier = this.selectTier(hammerMinor);
     return roundPremiumMinor(hammerMinor, tier.rate);
+  }
+
+  rateFor(hammerMinor: number): string {
+    return this.selectTier(hammerMinor).rate;
   }
 
   computePremiumMajor(hammerMajor: string): string {

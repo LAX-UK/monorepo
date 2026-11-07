@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { type ComplianceDecisionRefusal, complianceDecisionRefusal } from "@auction/domain";
+import type { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
@@ -30,6 +31,8 @@ export class SourceOfFundsReviewService implements ISourceOfFundsReviewService {
     private readonly repo: ISourceOfFundsRepository,
     private readonly transactionRunner: ITransactionRunner | null = null,
     private readonly events: IDomainEventSink | null = null,
+    /** Moves the due dates of invoices that were owed while the check was open. */
+    private readonly invoiceTerms: Pick<InvoiceDueDateExtender, "extendOpenInvoices"> | null = null,
   ) {}
 
   async listPending(limit = 50): Promise<SourceOfFundsCase[]> {
@@ -112,6 +115,20 @@ export class SourceOfFundsReviewService implements ISourceOfFundsReviewService {
         conn,
       );
       if (!updated) throw new Error("source_of_funds_not_pending");
+      if (updated.status === "approved") {
+        // Paying was held for this check: the term runs from the approval, moved in the same
+        // transaction as the decision.
+        await this.invoiceTerms?.extendOpenInvoices(
+          {
+            kind: "winner",
+            userId: updated.userId,
+            personalAccountsOnly: false,
+            holdStartedAt: updated.createdAt,
+          },
+          new Date(),
+          conn,
+        );
+      }
 
       if (conn && this.events) {
         await this.events.withTx(conn).publish({

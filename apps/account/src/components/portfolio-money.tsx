@@ -3,11 +3,19 @@ import {
   CARD_PADDING,
   CARD_TITLE,
   EMPTY_STATE,
+  FIGURE_MEDIUM,
+  FIGURE_TABLE,
   SECTION_TITLE,
 } from "@/components/account-ui";
 import type { FilterFieldVm } from "@/lib/filter-query";
-import { formatDate, formatMinorUnits } from "@/lib/format-money";
-import { MONEY_SECTION_LABELS, MONEY_STATUS_LABELS } from "@/server/domain/portfolio-labels";
+import { formatDate } from "@/lib/format-date";
+import { formatMinorUnits } from "@/lib/format-money";
+import {
+  MONEY_SECTION_LABELS,
+  MONEY_STATUS_LABELS,
+  PRODUCT_LABELS,
+  moneyStatusStyle,
+} from "@/server/domain/portfolio-labels";
 import {
   LEDGER_ANCHOR,
   type MoneyPageVm,
@@ -18,8 +26,10 @@ import {
   LAX_BUSINESS_KEYS,
   type LaxBusinessKey,
   type LaxMoneyEntryV1,
+  type LaxProductId,
   MONEY_SECTION_KEYS,
   type MoneyFilter,
+  moneyProductOf,
   moneySectionOf,
 } from "@auction/lax-ecosystem";
 import { EmptyState } from "@auction/ui/components/empty-state";
@@ -33,7 +43,9 @@ import {
   TableHeader,
   TableRow,
 } from "@auction/ui/components/table";
+import { Fragment } from "react";
 import { FilterToolbar } from "./filter-toolbar.client";
+import { ProductName } from "./product-name";
 
 const BUSINESS_NAMES: Record<LaxBusinessKey, string> = {
   lax_bid: "LAX Bid",
@@ -41,7 +53,7 @@ const BUSINESS_NAMES: Record<LaxBusinessKey, string> = {
 };
 
 export const MONEY_SEPARATION_NOTE =
-  "Money is shown per business and per currency. What you owe is never netted against what you are owed, and none of it is a valuation of your works.";
+  "Totals are kept separate for each business and currency. They are what you paid or owe, not what your works are worth.";
 
 function EntryLink({ entry }: { entry: LaxMoneyEntryV1 }) {
   const href = safeDeepLink(entry.href);
@@ -51,14 +63,34 @@ function EntryLink({ entry }: { entry: LaxMoneyEntryV1 }) {
       href={href}
       className="inline-flex min-h-11 items-center rounded-sm whitespace-nowrap underline underline-offset-4"
     >
-      Open in {BUSINESS_NAMES[entry.business.key]}
+      Open in {PRODUCT_LABELS[moneyProductOf(entry)]}
     </a>
   );
 }
 
-function EntryStatus({ entry }: { entry: LaxMoneyEntryV1 }) {
+function EntryProduct({ entry }: { entry: LaxMoneyEntryV1 }) {
+  const product = moneyProductOf(entry);
+  return <ProductName product={product}>{PRODUCT_LABELS[product]}</ProductName>;
+}
+
+/** The products joined with a dot: "LAX Shop · lax.art". */
+function ProductList({ products }: { products: readonly LaxProductId[] }) {
   return (
-    <StatusBadge tone={entry.status === "cancelled" ? "danger" : "neutral"}>
+    <>
+      {products.map((product, index) => (
+        <Fragment key={product}>
+          {index > 0 ? " · " : null}
+          <ProductName product={product}>{PRODUCT_LABELS[product]}</ProductName>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+function EntryStatus({ entry }: { entry: LaxMoneyEntryV1 }) {
+  const { tone, cue } = moneyStatusStyle(entry.status, moneySectionOf(entry));
+  return (
+    <StatusBadge tone={tone} shape={cue}>
       {MONEY_STATUS_LABELS[entry.status]}
     </StatusBadge>
   );
@@ -73,9 +105,14 @@ function SummaryCards({ cards }: { cards: MoneySummaryCardVm[] }) {
           aria-labelledby={`money-${card.key}-heading`}
           className={`flex flex-col gap-4 ${CARD} ${CARD_PADDING}`}
         >
-          <h2 id={`money-${card.key}-heading`} className={CARD_TITLE}>
-            {card.legalName}
-          </h2>
+          <div className="flex flex-col gap-1">
+            <h2 id={`money-${card.key}-heading`} className={CARD_TITLE}>
+              {card.legalName}
+            </h2>
+            <p className="text-sm text-on-surface-variant">
+              <ProductList products={card.products} />
+            </p>
+          </div>
           <dl className="flex flex-col divide-y divide-border-hairline">
             {card.lines.map((line) => (
               <div
@@ -83,7 +120,7 @@ function SummaryCards({ cards }: { cards: MoneySummaryCardVm[] }) {
                 className="flex items-baseline justify-between gap-4 py-2 first:pt-0"
               >
                 <dt className="text-sm text-on-surface-variant">{line.label}</dt>
-                <dd className="flex flex-col items-end font-headline text-base font-semibold tabular-nums">
+                <dd className={`flex flex-col items-end ${FIGURE_MEDIUM}`}>
                   {line.totals.length > 0 ? (
                     line.totals.map((total) => (
                       <span key={total.currency}>
@@ -129,7 +166,7 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
           <TableHeader>
             <TableRow>
               <TableHead scope="col">Date</TableHead>
-              <TableHead scope="col">Business</TableHead>
+              <TableHead scope="col">Product</TableHead>
               <TableHead scope="col">Type</TableHead>
               <TableHead scope="col">Status</TableHead>
               <TableHead scope="col" className="text-right">
@@ -144,12 +181,17 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
             {ledger.map((entry) => (
               <TableRow key={`${entry.business.key}:${entry.id}`}>
                 <TableCell className="whitespace-nowrap">{formatDate(entry.occurredAt)}</TableCell>
-                <TableCell>{entry.business.legalName}</TableCell>
+                <TableCell>
+                  <EntryProduct entry={entry} />
+                  <span className="block text-xs text-on-surface-variant">
+                    {entry.business.legalName}
+                  </span>
+                </TableCell>
                 <TableCell>{MONEY_SECTION_LABELS[moneySectionOf(entry)]}</TableCell>
                 <TableCell>
                   <EntryStatus entry={entry} />
                 </TableCell>
-                <TableCell className="text-right tabular-nums">
+                <TableCell className={`text-right ${FIGURE_TABLE}`}>
                   {formatMinorUnits(entry.amount, entry.currency)}
                 </TableCell>
                 <TableCell className="text-right">
@@ -164,14 +206,13 @@ function Ledger({ ledger }: { ledger: LaxMoneyEntryV1[] }) {
         {ledger.map((entry) => (
           <li key={`${entry.business.key}:${entry.id}`} className="flex flex-col gap-0.5 py-3">
             <div className="flex items-center justify-between gap-3">
-              <p className="font-headline text-base font-semibold tabular-nums">
-                {formatMinorUnits(entry.amount, entry.currency)}
-              </p>
+              <p className={FIGURE_TABLE}>{formatMinorUnits(entry.amount, entry.currency)}</p>
               <EntryStatus entry={entry} />
             </div>
             <p className="text-sm">
-              {MONEY_SECTION_LABELS[moneySectionOf(entry)]} · {entry.business.legalName}
+              <EntryProduct entry={entry} /> · {MONEY_SECTION_LABELS[moneySectionOf(entry)]}
             </p>
+            <p className="text-xs text-on-surface-variant">{entry.business.legalName}</p>
             <p className="text-xs text-on-surface-variant">
               {formatDate(entry.occurredAt)} · <EntryLink entry={entry} />
             </p>

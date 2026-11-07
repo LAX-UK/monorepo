@@ -1,7 +1,5 @@
 import {
   type EntityActor,
-  type PaySeveralCandidate,
-  type PurchaseInvoiceStatus,
   deliveryQuoteActionsFor,
   entityActorCan,
   purchaseDeliveryStage,
@@ -16,6 +14,10 @@ import type {
   PurchaseQuoteView,
 } from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
+import {
+  PAYMENT_ELIGIBILITY_HOLD,
+  PAYMENT_ELIGIBILITY_REFUSAL,
+} from "../payment/payment-eligibility.gate.js";
 
 const STATUS: Record<OrganisationBuyingErrorCode, OrganisationBuyingError["status"]> = {
   insufficient_entity_role: 403,
@@ -30,11 +32,18 @@ const STATUS: Record<OrganisationBuyingErrorCode, OrganisationBuyingError["statu
   pay_several_nothing_payable: 409,
   pay_several_mixed_currency: 409,
   pay_several_payer_on_hold: 409,
+  pay_several_winner_on_hold: 409,
+  organisation_closed: PAYMENT_ELIGIBILITY_REFUSAL.organisation_closed.status,
+  organisation_under_review: PAYMENT_ELIGIBILITY_HOLD.organisation_under_review.status,
+  identity_verification_required: PAYMENT_ELIGIBILITY_HOLD.identity_verification_required.status,
   pay_several_below_minimum: 409,
   pay_several_over_limit: 409,
   pay_several_needs_finance_review: 409,
   pay_several_conflict: 409,
   pay_several_unavailable: 503,
+  pay_plan_unavailable: 503,
+  onboarding_required: 403,
+  pay_plan_changed: 409,
 };
 
 const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
@@ -51,6 +60,11 @@ const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
   pay_several_mixed_currency: "Invoices in different currencies are paid separately.",
   pay_several_payer_on_hold:
     "We need to complete a check on your account before you can pay. Our team will be in touch.",
+  pay_several_winner_on_hold:
+    "We need to complete a check on one of these purchases before it can be paid. Our team will be in touch.",
+  organisation_closed: PAYMENT_ELIGIBILITY_REFUSAL.organisation_closed.message,
+  organisation_under_review: PAYMENT_ELIGIBILITY_HOLD.organisation_under_review.message,
+  identity_verification_required: PAYMENT_ELIGIBILITY_HOLD.identity_verification_required.message,
   pay_several_below_minimum: "The total is too small to pay online. Choose more invoices.",
   pay_several_over_limit:
     "The total is more than one online payment can take. Choose fewer invoices, or contact our settlements team.",
@@ -60,6 +74,10 @@ const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
     "Some of these invoices started being paid in the meantime. Refresh and try again.",
   pay_several_unavailable:
     "Paying online isn't available just now. Nothing was charged. Try again shortly.",
+  pay_plan_unavailable:
+    "We couldn't check your payment just now. Nothing was charged. Try again shortly.",
+  onboarding_required: "Finish setting up your account before you pay.",
+  pay_plan_changed: "The total has changed. Check it and pay again.",
 };
 
 /** The one place buying errors get their status and wording. */
@@ -92,7 +110,13 @@ function invoiceOf(row: AccountPurchaseFactsRow, now: Date) {
   const state = purchaseInvoiceState(
     {
       saleCancelled: row.fulfilment?.status === "cancelled",
-      payment: row.payment ? { status: row.payment.status, raisedAt: row.payment.raisedAt } : null,
+      payment: row.payment
+        ? {
+            status: row.payment.status,
+            raisedAt: row.payment.raisedAt,
+            dueAt: row.payment.dueAt,
+          }
+        : null,
     },
     now,
   );
@@ -142,25 +166,5 @@ export function purchaseView(
       collectedAt: row.fulfilment?.collectedAt ?? null,
       quote: row.quote ? quoteView(row.quote, actor) : null,
     },
-  };
-}
-
-/** A purchase as the pay-several rule sees it. */
-export function paySeveralCandidate(
-  view: AccountPurchaseView,
-  accountId: string,
-  currency: string,
-  flags: Pick<PaySeveralCandidate, "heldForReview" | "inPaymentInProgress">,
-): PaySeveralCandidate {
-  const invoice: PurchaseInvoiceStatus = view.invoice.status;
-  return {
-    lotId: view.lotId,
-    paymentId: view.invoice.paymentId,
-    buyerAccountId: accountId,
-    invoice,
-    payerMayPay: view.paymentRole === "payer",
-    totalDue: view.invoice.totalDue,
-    currency,
-    ...flags,
   };
 }

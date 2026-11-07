@@ -1,5 +1,11 @@
+import type { PaymentEligibilityHold } from "@auction/domain";
+import type { PricedInvoice } from "@auction/finance-runtime";
 import type { LotFulfilmentAddressSnapshot } from "@auction/persistence/interfaces";
-import type { PaymentRecord } from "@auction/persistence/interfaces";
+import {
+  BidInvoiceTotalMismatchError,
+  type PaymentRecord,
+  type RaisedInvoice,
+} from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence, gbpPenceToMajorString } from "../../lib/decimal-money.js";
@@ -9,11 +15,12 @@ import type { PaymentRefusal } from "../interfaces/buyer-payment-authority.js";
 import { notificationRowToPayload } from "../notification-payload.js";
 import { resolveCheckoutAddressSnapshot } from "./checkout-address.js";
 import { resolveCheckoutForPendingOrPromoteCompliance } from "./checkout-orchestrator.js";
-import { formatPaymentDueDateFromCreated } from "./payment-due-date.js";
+import { isOpenPaymentUniqueViolation } from "./is-open-payment-unique-violation.js";
+import { formatPaymentDueDate } from "./payment-due-date.js";
+import { PAYMENT_ELIGIBILITY_REFUSAL } from "./payment-eligibility.gate.js";
 import type { CreatePendingPaymentResult, PaymentServiceDeps } from "./payment-service-types.js";
 import type { CheckoutRailKind, ManualReviewReason } from "./payment-tier.policy.js";
 import { resolveNewPaymentReviewDecision } from "./resolve-manual-review-reason.js";
-import { computeTotalDuePence } from "./total-due.js";
 
 type ExistingPaymentHandlerContext = {
   deps: PaymentServiceDeps;
@@ -21,6 +28,8 @@ type ExistingPaymentHandlerContext = {
   lot: Lot;
   buyerId: string;
   addressSnapshot: LotFulfilmentAddressSnapshot;
+  /** The account cannot pay yet (identity, organisation review): no checkout is opened. */
+  held: PaymentEligibilityHold | null;
 };
 
 type ExistingPaymentHandler = (
@@ -36,6 +45,35 @@ const TERMINAL_CHECKOUT_RESULT = (
     checkoutRail: null,
     manualReviewReason: null,
   });
+
+/** An invoice the account cannot pay yet: no checkout, and the reason the page shows. */
+function heldResult(
+  paymentId: string,
+  reason: PaymentEligibilityHold,
+): Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError> {
+  return ok({ paymentId, checkoutUrl: null, checkoutRail: null, manualReviewReason: reason });
+}
+
+/**
+ * A checkout opened before the hold must not stay payable. Closing it is best effort here: the
+ * page still shows the hold, the expiry pass closes it again, and any money that still arrives
+ * goes to manual review rather than being captured.
+ */
+async function closeHeldCheckouts(deps: PaymentServiceDeps, paymentId: string): Promise<void> {
+  if (!deps.heldCheckouts) return;
+  try {
+    await deps.heldCheckouts.close(paymentId);
+  } catch (e) {
+    recordMoneyPathEvent("held_checkout_close_failed");
+    console.error(
+      JSON.stringify({
+        msg: "held_checkout_close_failed",
+        paymentId,
+        error: e instanceof Error ? e.message : String(e),
+      }),
+    );
+  }
+}
 
 export const EXISTING_PAYMENT_STATUS_HANDLERS: Partial<
   Record<PaymentRecord["status"], ExistingPaymentHandler>
@@ -80,6 +118,10 @@ async function handleExistingOpenPayment(
   ctx: ExistingPaymentHandlerContext,
 ): Promise<Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError>> {
   const { deps, existing, lot, buyerId } = ctx;
+  if (ctx.held) {
+    await closeHeldCheckouts(deps, existing.id);
+    return heldResult(existing.id, ctx.held);
+  }
   if (existing.paymentGroupId) {
     // Held by a "Pay several" payment: a second checkout could take the same money twice.
     return err(
@@ -90,6 +132,7 @@ async function handleExistingOpenPayment(
       ),
     );
   }
+  // A payment with no stored invoice is refused there with a 503, before any session is opened.
   const checkout = await resolveCheckoutForPendingOrPromoteCompliance(
     deps.checkoutOrchestratorDeps,
     existing.id,
@@ -182,6 +225,7 @@ export async function handleExistingPaymentForWinner(
   lot: Lot,
   buyerId: string,
   addressSnapshot: LotFulfilmentAddressSnapshot,
+  held: PaymentEligibilityHold | null = null,
 ): Promise<Result<
   CreatePendingPaymentResult,
   AuthzError | LotError | PaymentProviderError
@@ -193,7 +237,14 @@ export async function handleExistingPaymentForWinner(
 
   await deps.lotFulfilmentHooks?.ensureAwaitingPayment(lot.id, existing.id, addressSnapshot);
 
-  const ctx: ExistingPaymentHandlerContext = { deps, existing, lot, buyerId, addressSnapshot };
+  const ctx: ExistingPaymentHandlerContext = {
+    deps,
+    existing,
+    lot,
+    buyerId,
+    addressSnapshot,
+    held,
+  };
   const handler = EXISTING_PAYMENT_STATUS_HANDLERS[existing.status] ?? handleExistingOpenPayment;
   return handler(ctx);
 }
@@ -207,6 +258,7 @@ export async function computeNewPaymentTerms(
     {
       amount: string;
       amountPence: number;
+      priced: PricedInvoice;
       platformFee: string;
       requiresManualReview: boolean;
       manualReviewReason: ManualReviewReason | null;
@@ -226,7 +278,21 @@ export async function computeNewPaymentTerms(
   }
   const sellerLegalEntityId = lot.sellerLegalEntityId;
 
-  const amountPence = await computeTotalDuePence(deps.sales, lot);
+  let priced: PricedInvoice;
+  try {
+    priced = await deps.invoiceRaiser.price(lot);
+  } catch {
+    // The sale's premium could not be read: say so and let the buyer try again, rather than
+    // freezing a total priced on the wrong rate.
+    return err(
+      new LotError(
+        "We could not work out the total just now. Please try again in a moment.",
+        503,
+        "pricing_unavailable",
+      ),
+    );
+  }
+  const amountPence = priced.totalPence;
   const amount = gbpPenceToMajorString(amountPence);
   const platformFee = deps.platformFeePolicy
     ? await deps.platformFeePolicy.computePlatformFeeFromPence(sellerLegalEntityId, amountPence)
@@ -263,7 +329,14 @@ export async function computeNewPaymentTerms(
     recordMoneyPathEvent(`settlement_compliance_hold_${manualReviewReason}`);
   }
 
-  return ok({ amount, amountPence, platformFee, requiresManualReview, manualReviewReason });
+  return ok({
+    amount,
+    amountPence,
+    priced,
+    platformFee,
+    requiresManualReview,
+    manualReviewReason,
+  });
 }
 
 export async function createPaymentRecordForWinner(
@@ -272,25 +345,30 @@ export async function createPaymentRecordForWinner(
   buyerId: string,
   terms: {
     amount: string;
+    priced: PricedInvoice;
     platformFee: string;
     requiresManualReview: boolean;
     manualReviewReason: ManualReviewReason | null;
   },
-): Promise<PaymentRecord> {
+): Promise<RaisedInvoice> {
   if (!lot.buyerLegalEntityId || !lot.sellerLegalEntityId) {
     throw new LotError("Winning legal entity is missing for this lot", 400);
   }
 
-  const created = await deps.payments.create({
-    lotId: lot.id,
-    paidByUserId: buyerId,
-    buyerLegalEntityId: lot.buyerLegalEntityId,
-    sellerLegalEntityId: lot.sellerLegalEntityId,
-    amount: terms.amount,
-    platformFee: terms.platformFee,
-    stripePaymentIntentId: null,
-    status: terms.requiresManualReview ? "requires_manual_review" : "pending",
+  const raised = await deps.invoiceRaiser.raise({
+    lot,
+    priced: terms.priced,
+    payment: {
+      lotId: lot.id,
+      paidByUserId: buyerId,
+      buyerLegalEntityId: lot.buyerLegalEntityId,
+      sellerLegalEntityId: lot.sellerLegalEntityId,
+      platformFee: terms.platformFee,
+      stripePaymentIntentId: null,
+      status: terms.requiresManualReview ? "requires_manual_review" : "pending",
+    },
   });
+  const created = raised.payment;
 
   if (terms.requiresManualReview && deps.domainEventSink && terms.manualReviewReason) {
     await deps.domainEventSink.publish({
@@ -312,7 +390,54 @@ export async function createPaymentRecordForWinner(
     });
   }
 
-  return created;
+  return raised;
+}
+
+/**
+ * Creates the invoice, or joins the one another request created a moment earlier: two first
+ * "Pay" requests at once (a double click, two tabs) both continue the same invoice and get the
+ * same checkout, instead of the second failing on the open-payment unique index.
+ */
+export async function createOrJoinPaymentRecord(
+  deps: PaymentServiceDeps,
+  lot: Lot,
+  buyerId: string,
+  addressSnapshot: LotFulfilmentAddressSnapshot,
+  terms: Parameters<typeof createPaymentRecordForWinner>[3],
+  held: PaymentEligibilityHold | null = null,
+): Promise<
+  | { kind: "created"; raised: RaisedInvoice }
+  | {
+      kind: "joined";
+      result: Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError>;
+    }
+> {
+  try {
+    return {
+      kind: "created",
+      raised: await createPaymentRecordForWinner(deps, lot, buyerId, terms),
+    };
+  } catch (e) {
+    if (e instanceof BidInvoiceTotalMismatchError) {
+      // The lot's invoice was raised at another total in the meantime; it is never changed.
+      recordMoneyPathEvent("invoice_total_mismatch");
+      return {
+        kind: "joined",
+        result: err(
+          new LotError(
+            "This invoice changed while you were paying. Refresh and try again.",
+            409,
+            "invoice_total_changed",
+          ),
+        ),
+      };
+    }
+    if (!isOpenPaymentUniqueViolation(e)) throw e;
+    recordMoneyPathEvent("payment_create_race_joined");
+    const joined = await handleExistingPaymentForWinner(deps, lot, buyerId, addressSnapshot, held);
+    if (!joined) throw e;
+    return { kind: "joined", result: joined };
+  }
 }
 
 export async function resolveCheckoutForNewPayment(
@@ -350,26 +475,34 @@ export async function finalizePendingPaymentForWinner(
   deps: PaymentServiceDeps,
   lot: Lot,
   buyerId: string,
-  created: PaymentRecord,
+  raised: RaisedInvoice,
   addressSnapshot: LotFulfilmentAddressSnapshot,
   checkoutUrl: string | null,
   requiresManualReview: boolean,
 ): Promise<void> {
+  const created = raised.payment;
   await deps.lotFulfilmentHooks?.ensureAwaitingPayment(lot.id, created.id, addressSnapshot);
 
   if (deps.notificationDispatcher && !requiresManualReview) {
-    const dueDate = formatPaymentDueDateFromCreated(created.createdAt);
-    await deps.notificationDispatcher.dispatch(
-      buyerId,
-      notificationRowToPayload(
-        deps.notificationFactory.createPaymentDue(lot, buyerId, {
-          paymentId: created.id,
-          amount: created.amount,
-          checkoutUrl,
-          dueDate,
-        }),
-      ),
-    );
+    const dueDate = formatPaymentDueDate(raised.invoice.dueAt);
+    // The winner and the account's payers, as when the invoice is raised at lot end.
+    const recipients = await deps.invoiceRecipients.forInvoice({
+      buyerLegalEntityId: lot.buyerLegalEntityId ?? null,
+      winnerUserId: lot.winnerId ?? buyerId,
+    });
+    for (const recipientId of new Set([...recipients, buyerId])) {
+      await deps.notificationDispatcher.dispatch(
+        recipientId,
+        notificationRowToPayload(
+          deps.notificationFactory.createPaymentDue(lot, recipientId, {
+            paymentId: created.id,
+            amount: created.amount,
+            checkoutUrl,
+            dueDate,
+          }),
+        ),
+      );
+    }
   }
 }
 
@@ -391,23 +524,45 @@ export async function createPendingForWinner(
   if (addressResult.isErr()) return err(addressResult.error);
   const addressSnapshot = addressResult.value;
 
-  const existingResult = await handleExistingPaymentForWinner(deps, lot, buyerId, addressSnapshot);
+  // Closed accounts are refused; accounts that cannot pay yet keep the invoice, with no checkout.
+  const eligibility = await deps.paymentEligibility.check({
+    payerUserId: buyerId,
+    buyerLegalEntityId: lot.buyerLegalEntityId as string,
+  });
+  if (eligibility.kind === "refused") {
+    const { message, status } = PAYMENT_ELIGIBILITY_REFUSAL[eligibility.reason];
+    return err(new AuthzError(message, status, { code: eligibility.reason }));
+  }
+  const held = eligibility.kind === "held" ? eligibility.reason : null;
+
+  const existingResult = await handleExistingPaymentForWinner(
+    deps,
+    lot,
+    buyerId,
+    addressSnapshot,
+    held,
+  );
   if (existingResult) return existingResult;
 
   const termsResult = await computeNewPaymentTerms(deps, lot, buyerId);
   if (termsResult.isErr()) return err(termsResult.error);
-  const { amount, platformFee, requiresManualReview, manualReviewReason } = termsResult.value;
+  const { amount, priced, platformFee, requiresManualReview, manualReviewReason } =
+    termsResult.value;
 
-  const created = await createPaymentRecordForWinner(deps, lot, buyerId, {
-    amount,
-    platformFee,
-    requiresManualReview,
-    manualReviewReason,
-  });
+  const record = await createOrJoinPaymentRecord(
+    deps,
+    lot,
+    buyerId,
+    addressSnapshot,
+    { amount, priced, platformFee, requiresManualReview, manualReviewReason },
+    held,
+  );
+  if (record.kind === "joined") return record.result;
+  const created = record.raised.payment;
 
   let checkoutUrl: string | null = null;
   let checkoutRail: CheckoutRailKind | null = null;
-  if (!requiresManualReview) {
+  if (!requiresManualReview && !held) {
     const checkoutResult = await resolveCheckoutForNewPayment(
       deps,
       created.id,
@@ -432,7 +587,7 @@ export async function createPendingForWinner(
     deps,
     lot,
     buyerId,
-    created,
+    record.raised,
     addressSnapshot,
     checkoutUrl,
     requiresManualReview,
@@ -442,6 +597,6 @@ export async function createPendingForWinner(
     paymentId: created.id,
     checkoutUrl,
     checkoutRail,
-    manualReviewReason,
+    manualReviewReason: manualReviewReason ?? held,
   });
 }

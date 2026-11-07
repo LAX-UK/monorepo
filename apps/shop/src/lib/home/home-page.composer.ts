@@ -22,7 +22,8 @@ export type HomeSectionKey = "editions" | "artists";
 export const HOME_NEW_EDITIONS_LIMIT = 5;
 /** The placed prints the release is chosen from; LAX Admin reads the same limit. */
 const FEATURED_LIMIT = HOME_RELEASE_CANDIDATE_LIMIT;
-const COVERS_PER_COLLECTION = 2;
+/** More than a tile shows, so two distinct works can be picked when some share a picture. */
+const COVERS_PER_COLLECTION = 8;
 /** Enough newest artists to fill the section after the featured ones are taken out. */
 const NEWEST_ARTISTS_LIMIT = HOME_ARTISTS_MAX * 2;
 

@@ -2,16 +2,21 @@ import { ViewItemListTracker } from "@/components/analytics/view-item-list-track
 import { DepartmentWorkCard } from "@/components/marketing/department/department-work-card";
 import { MarketingSection } from "@/components/marketing/marketing-section";
 import { SELL_SECTION_IDS } from "@/lib/marketing/sell-landing";
+import { type LotMediaTreatmentIndex, lotMediaTreatment } from "@auction/domain";
 import type { Lot } from "@auction/types";
 import { ScrollRow } from "@auction/ui";
 
-type Props = { works: readonly Lot[] };
+type Props = {
+  works: readonly Lot[];
+  /** How each department shows its lots, so a mixed row shows every work its own way. */
+  treatments: LotMediaTreatmentIndex;
+};
 
 /**
  * Works the house has sold, each with the price it reached. A row of two on a phone that scrolls
  * sideways, a grid from a tablet up. Nothing is shown when nothing has sold.
  */
-export function SellRecentlySold({ works }: Props) {
+export function SellRecentlySold({ works, treatments }: Props) {
   if (works.length === 0) return null;
   return (
     <MarketingSection
@@ -32,7 +37,10 @@ export function SellRecentlySold({ works }: Props) {
         >
           {works.map((lot) => (
             <li key={lot.id} className="w-[calc((100vw-3rem)/2)] min-w-0 md:w-auto">
-              <DepartmentWorkCard lot={lot} />
+              <DepartmentWorkCard
+                lot={lot}
+                displayStyle={lotMediaTreatment(lot, treatments).style}
+              />
             </li>
           ))}
         </ul>

@@ -19,11 +19,20 @@ export const loadShopSearchResults: MarketingHeaderSearchLoader = async (query, 
 
 type ShopHeaderSearchProps = {
   headerTone: MarketingHeaderTone;
+  /** "field" is the underlined field from 1280px; "icon" is the icon below it. */
+  variant?: "field" | "icon";
+  /** Shared by both triggers and the bottom bar's Search tab. */
+  open?: boolean;
   onOpenChange?: (open: boolean) => void;
 };
 
-/** Header search: a field on desktop, an icon and a full-screen sheet on phones. */
-export function ShopHeaderSearch({ headerTone, onOpenChange }: ShopHeaderSearchProps) {
+/** Header search: a field from 1280px, an icon below it, and a full-screen sheet below 1024px. */
+export function ShopHeaderSearch({
+  headerTone,
+  variant = "field",
+  open,
+  onOpenChange,
+}: ShopHeaderSearchProps) {
   return (
     <MarketingHeaderSearch
       action="/artworks"
@@ -31,7 +40,9 @@ export function ShopHeaderSearch({ headerTone, onOpenChange }: ShopHeaderSearchP
       placeholder="Search editions and artists"
       loadResults={loadShopSearchResults}
       compactBelowDesktop
+      variant={variant}
       headerTone={headerTone}
+      {...(open !== undefined ? { open } : {})}
       {...(onOpenChange ? { onOpenChange } : {})}
     />
   );

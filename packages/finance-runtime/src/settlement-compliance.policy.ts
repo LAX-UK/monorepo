@@ -1,14 +1,161 @@
-import type { ManualReviewReason } from "@auction/domain";
+import type { IAmlHoldStore } from "@auction/persistence/interfaces";
+
+export type SettlementComplianceReason = "aml_hold" | "source_of_funds_required";
 
 export type SettlementComplianceDecision = {
+  /** When true, settlement must be gated through manual compliance review. */
   hold: boolean;
-  reason: ManualReviewReason | null;
+  reason: SettlementComplianceReason | null;
+};
+
+export type SettlementComplianceInput = {
+  buyerUserId: string;
+  /** Settlement value in pence (platform is GBP-only). */
+  amountPence: number;
+  /**
+   * When re-evaluating an existing payment (manual review release, checkout retry),
+   * exclude it from linked-transaction aggregation so exposure is not double-counted.
+   */
+  excludePaymentId?: string;
+  /** Several invoices paid together ("Pay several"): all are left out of the linked exposure. */
+  excludePaymentIds?: readonly string[];
 };
 
 export interface ISettlementCompliancePolicy {
-  evaluate(input: {
-    buyerUserId: string;
-    amountPence: number;
-    excludePaymentId?: string;
-  }): Promise<SettlementComplianceDecision>;
+  evaluate(input: SettlementComplianceInput): Promise<SettlementComplianceDecision>;
+  /**
+   * Read-only, amount-independent compliance snapshot for a buyer. Unlike
+   * `evaluate`, this MUST NOT mutate state (no SoF case creation, no events) and
+   * does not require a transaction amount — it is safe to call from GET
+   * endpoints to surface blockers before any payment row exists.
+   */
+  peek(buyerUserId: string): Promise<SettlementComplianceDecision>;
+}
+
+/**
+ * What a GET endpoint needs to say whether paying an amount would be held, before any payment
+ * exists: what `evaluate` would decide, without opening a source-of-funds case or changing anything.
+ */
+export interface ISettlementComplianceAssessor {
+  assess(input: SettlementComplianceInput): Promise<SettlementComplianceDecision>;
+}
+
+/**
+ * Source-of-Funds gate (implemented by the SoF service). Returns true when SoF
+ * evidence must be collected/approved before settlement for this buyer+amount.
+ */
+export interface ISourceOfFundsGate {
+  requiresSourceOfFunds(input: SettlementComplianceInput): Promise<boolean>;
+  /** The same decision as {@link requiresSourceOfFunds}, without opening a case. */
+  wouldRequireSourceOfFunds(input: SettlementComplianceInput): Promise<boolean>;
+  /**
+   * Read-only check: does the buyer have an unresolved (pending) SoF case that
+   * is currently gating settlement? No side effects (does not open a case).
+   */
+  hasPendingCaseForUser(buyerUserId: string): Promise<boolean>;
+}
+
+/**
+ * Pre-settlement compliance gate (CDD Sections 5 & 6). Halts settlement when:
+ *  - the buyer is on an AML/sanctions hold (screening review or confirmed block), or
+ *  - the transaction crosses the Source-of-Funds threshold without approved SoF.
+ *
+ * Reused inside the existing `requires_manual_review` payment flow so settlement
+ * is paused without inventing a parallel state machine (Open/Closed).
+ */
+export class AmlSettlementCompliancePolicy
+  implements ISettlementCompliancePolicy, ISettlementComplianceAssessor
+{
+  constructor(
+    private readonly holdStore: IAmlHoldStore,
+    private readonly sourceOfFundsGate: ISourceOfFundsGate | null = null,
+  ) {}
+
+  /** Decides and, where a source-of-funds case is needed, opens it. */
+  evaluate(input: SettlementComplianceInput): Promise<SettlementComplianceDecision> {
+    return this.decide(input, (gate) => gate.requiresSourceOfFunds(input));
+  }
+
+  /** Decides the same way as {@link evaluate}, without opening anything. */
+  assess(input: SettlementComplianceInput): Promise<SettlementComplianceDecision> {
+    return this.decide(input, (gate) => gate.wouldRequireSourceOfFunds(input));
+  }
+
+  /** One decision for both: an AML hold first, then whatever the source-of-funds check says. */
+  private async decide(
+    input: SettlementComplianceInput,
+    requiresSourceOfFunds: (gate: ISourceOfFundsGate) => Promise<boolean>,
+  ): Promise<SettlementComplianceDecision> {
+    const hold = await this.holdStore.getHold(input.buyerUserId);
+    if (hold && hold.status !== "none") {
+      return { hold: true, reason: "aml_hold" };
+    }
+    if (this.sourceOfFundsGate && (await requiresSourceOfFunds(this.sourceOfFundsGate))) {
+      return { hold: true, reason: "source_of_funds_required" };
+    }
+    return { hold: false, reason: null };
+  }
+
+  async peek(buyerUserId: string): Promise<SettlementComplianceDecision> {
+    const hold = await this.holdStore.getHold(buyerUserId);
+    if (hold && hold.status !== "none") {
+      return { hold: true, reason: "aml_hold" };
+    }
+    if (this.sourceOfFundsGate) {
+      const pending = await this.sourceOfFundsGate.hasPendingCaseForUser(buyerUserId);
+      if (pending) {
+        return { hold: true, reason: "source_of_funds_required" };
+      }
+    }
+    return { hold: false, reason: null };
+  }
+}
+
+/** Who a payment is checked for, and the amount each one is exposed to. */
+export type SettlementSubject = { buyerUserId: string; amountPence: number };
+
+type SubjectCheck = (input: SettlementComplianceInput) => Promise<SettlementComplianceDecision>;
+
+async function firstHoldAcrossSubjects(
+  check: SubjectCheck,
+  subjects: readonly SettlementSubject[],
+  excludePaymentIds: string | readonly string[],
+): Promise<SettlementComplianceDecision & { subject: string | null }> {
+  const excluded = typeof excludePaymentIds === "string" ? [excludePaymentIds] : excludePaymentIds;
+  const byUser = new Map<string, number>();
+  for (const s of subjects)
+    byUser.set(s.buyerUserId, (byUser.get(s.buyerUserId) ?? 0) + s.amountPence);
+  for (const [buyerUserId, amountPence] of byUser) {
+    const decision = await check({
+      buyerUserId,
+      amountPence,
+      ...(excluded.length === 1 ? { excludePaymentId: excluded[0] } : {}),
+      ...(excluded.length > 1 ? { excludePaymentIds: excluded } : {}),
+    });
+    if (decision.hold) return { ...decision, subject: buyerUserId };
+  }
+  return { hold: false, reason: null, subject: null };
+}
+
+/**
+ * A payment is checked for everyone it settles for: the person paying and the winner of each lot
+ * (an organisation's payer is often not its winner). The first hold found stops the payment.
+ * Subjects named twice are checked once, on their combined amount.
+ */
+export function evaluateSettlementSubjects(
+  policy: Pick<ISettlementCompliancePolicy, "evaluate">,
+  subjects: readonly SettlementSubject[],
+  /** The invoices this payment settles, left out of each subject's linked exposure. */
+  excludePaymentIds: string | readonly string[] = [],
+): Promise<SettlementComplianceDecision & { subject: string | null }> {
+  return firstHoldAcrossSubjects((input) => policy.evaluate(input), subjects, excludePaymentIds);
+}
+
+/** As {@link evaluateSettlementSubjects}, without opening a source-of-funds case. */
+export function assessSettlementSubjects(
+  policy: ISettlementComplianceAssessor,
+  subjects: readonly SettlementSubject[],
+  excludePaymentIds: string | readonly string[] = [],
+): Promise<SettlementComplianceDecision & { subject: string | null }> {
+  return firstHoldAcrossSubjects((input) => policy.assess(input), subjects, excludePaymentIds);
 }

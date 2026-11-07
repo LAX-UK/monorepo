@@ -1,5 +1,6 @@
 import type { Lot, PublicLotView, Sale } from "@auction/types";
 import { buildBuyerPremiumPolicy } from "./buyer-premium.js";
+import { majorToPence } from "./major-to-pence.js";
 
 export type LotCheckoutPricing = NonNullable<Lot["checkoutPricing"]>;
 
@@ -14,14 +15,11 @@ export function computeLotCheckoutPricing(
   });
   const hammerMajor = lot.currentPrice;
   const premiumMajor = policy.computePremiumMajor(hammerMajor);
-  const h = Number.parseFloat(hammerMajor);
-  const p = Number.parseFloat(premiumMajor);
-  const safeH = Number.isFinite(h) ? h : 0;
-  const safeP = Number.isFinite(p) ? p : 0;
+  const totalPence = majorToPence(hammerMajor) + majorToPence(premiumMajor);
   return {
     hammerMajor,
     premiumMajor,
-    totalMajor: (safeH + safeP).toFixed(2),
+    totalMajor: (totalPence / 100).toFixed(2),
     policyId: policy.id,
     kind: policy.id.startsWith("tiered:") ? ("tiered" as const) : ("flat" as const),
   };

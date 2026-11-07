@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { ChangePasswordForm } from "./change-password-form.client";
-import { PasswordSection } from "./password-section";
+import { PasswordPanel } from "./password-section";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 vi.mock("@/server/application/account-identity-actions.server", () => ({
@@ -61,10 +61,10 @@ describe("ChangePasswordForm", () => {
   });
 });
 
-describe("PasswordSection", () => {
+describe("PasswordPanel", () => {
   it("says what a change does to other devices", () => {
     const html = renderToStaticMarkup(
-      <PasswordSection mode="change" forgotPasswordHref={FORGOT} pagePath="/account/security" />,
+      <PasswordPanel mode="change" forgotPasswordHref={FORGOT} pagePath="/account/security" />,
     );
     expect(html).toContain("signs you out on every other device");
     expect(html).toContain("Update password");

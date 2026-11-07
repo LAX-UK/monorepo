@@ -187,6 +187,7 @@ function paymentRow(
     stripeRefundId: null,
     status: "pending",
     paymentGroupId: null,
+    invoiceId: null,
     createdAt: now,
     ...overrides,
   };

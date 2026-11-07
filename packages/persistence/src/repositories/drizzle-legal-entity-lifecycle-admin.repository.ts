@@ -18,6 +18,7 @@ const lifecycleColumns = {
   stripeConnectRequirementsErrors: legalEntity.stripeConnectRequirementsErrors,
   stripeConnectDisabledReason: legalEntity.stripeConnectDisabledReason,
   isLaxManaged: legalEntity.isLaxManaged,
+  payHeldSince: legalEntity.payHeldSince,
 };
 
 function toRow(
@@ -65,6 +66,7 @@ export class DrizzleLegalEntityLifecycleAdminRepository
         statusChangedAt: new Date(),
         statusChangedByUserId: input.actorUserId,
         statusReason: input.statusReason,
+        payHeldSince: input.payHeldSince,
         updatedAt: new Date(),
       })
       .where(eq(legalEntity.id, input.entityId));

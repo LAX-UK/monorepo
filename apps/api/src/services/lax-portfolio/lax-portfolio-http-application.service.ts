@@ -21,10 +21,7 @@ export class LaxPortfolioHttpApplicationService implements IUserLaxPortfolioHttp
   constructor(private readonly deps: LaxPortfolioHttpDeps) {}
 
   async getPortfolio(input: { userId: string }): Promise<UserHttpJson> {
-    const [facts, owed] = await Promise.all([
-      this.deps.reader.loadForPerson(input.userId),
-      this.deps.amountsOwed.forPerson(input.userId),
-    ]);
+    const { facts, owed } = await this.loadFactsAndOwed(input.userId);
     const keys = [
       ...facts.wonLots.map((lot) => lot.firstImageKey),
       ...facts.submissions.map((submission) => submission.firstImageKey),
@@ -37,15 +34,27 @@ export class LaxPortfolioHttpApplicationService implements IUserLaxPortfolioHttp
         ...this.context(),
         imageUrl: (key) => (key === null ? null : (urls.get(key) ?? null)),
       },
-      new Map(owed.entries.map((entry) => [entry.lotId, entry])),
+      owed,
     );
     return { status: 200, body: { items } };
   }
 
   async getMoney(input: { userId: string }): Promise<UserHttpJson> {
-    const facts = await this.deps.reader.loadForPerson(input.userId);
-    const entries = buildBidMoneyEntries(facts, { ...this.context(), imageUrl: () => null });
+    const { facts, owed } = await this.loadFactsAndOwed(input.userId);
+    const entries = buildBidMoneyEntries(facts, { ...this.context(), imageUrl: () => null }, owed);
     return { status: 200, body: { entries } };
+  }
+
+  /** Portfolio and Money read the same facts and the same amounts owed, so they cannot disagree. */
+  private async loadFactsAndOwed(userId: string) {
+    const [facts, owed] = await Promise.all([
+      this.deps.reader.loadForPerson(userId),
+      this.deps.amountsOwed.forPerson(userId),
+    ]);
+    // Only what the person pays themselves is theirs to see as owed: a lot won for an
+    // organisation is paid by it, and the amounts-owed summary leaves it out for the same reason.
+    const payable = owed.entries.filter((entry) => entry.role === "payer");
+    return { facts, owed: new Map(payable.map((entry) => [entry.lotId, entry])) };
   }
 
   private context(): Omit<BidPortfolioContext, "imageUrl"> {

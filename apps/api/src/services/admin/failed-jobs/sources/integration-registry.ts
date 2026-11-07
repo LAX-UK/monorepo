@@ -48,6 +48,13 @@ export const DELIVERY_ENDPOINTS: Readonly<Record<string, IntegrationEndpoint>> =
       "Reads the Zoho Product again first and sends only what differs, so a retry can't write twice.",
     mayRepeat: false,
   },
+  zoho_artwork_listing: {
+    scope: "integrations.zoho",
+    label: "Zoho artworks (LAX listing)",
+    retryEffect:
+      "Works out where the artwork is now and sends the listing only if Zoho shows something else, so a retry can't write twice.",
+    mayRepeat: false,
+  },
 };
 
 /** Webhooks we receive, by sender. */

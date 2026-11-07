@@ -22,6 +22,7 @@ function ArtistPortrait({ card, sizes }: { card: CatalogueArtistCardVm; sizes: s
   return (
     <MarketingArtistPortraitFill
       name={card.name}
+      withoutImage="initials"
       image={
         card.image ? (
           <ShopMediaImage
@@ -32,6 +33,20 @@ function ArtistPortrait({ card, sizes }: { card: CatalogueArtistCardVm; sizes: s
             sizes={sizes}
             className="absolute inset-0 size-full object-cover"
           />
+        ) : card.workImage ? (
+          // The lead edition is shown whole on the paper mat, as on the artist card in a row.
+          <span className="marketing-work-mat absolute inset-0 block p-[7%]">
+            <span className="relative block size-full">
+              <ShopMediaImage
+                src={card.workImage}
+                alt=""
+                aspect={[4, 5]}
+                sizes={sizes}
+                className="absolute inset-0 size-full"
+                imgClassName="object-contain"
+              />
+            </span>
+          </span>
         ) : null
       }
     />

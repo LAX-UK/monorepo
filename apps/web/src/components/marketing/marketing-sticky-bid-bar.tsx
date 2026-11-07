@@ -2,6 +2,7 @@
 
 import { CookieDockSlot } from "@/components/marketing/consent/cookie-dock";
 import { MARKETING_PAGE_INNER } from "@/lib/marketing/chrome";
+import { useClaimBottomSlot } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
@@ -13,13 +14,16 @@ export type MarketingStickyBidBarProps = {
 
 /**
  * The sale page's bar on phones. It sits in the cookie dock, stacked under the cookie banner, so the
- * two never cover each other, and the dock reserves the space at the end of the page.
+ * two never cover each other, and the dock reserves the space at the end of the page. It holds the
+ * shared bottom slot, so the docked tab bar steps aside while it shows.
  */
 export function MarketingStickyBidBar({
   children,
   className,
   innerClassName,
 }: MarketingStickyBidBarProps) {
+  // Holds the shared bottom slot, so the docked tab bar never stacks under this bar.
+  useClaimBottomSlot("sale-sticky-bid-bar");
   return (
     <CookieDockSlot>
       <section

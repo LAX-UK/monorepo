@@ -50,10 +50,19 @@ const baseCtx: PaymentCheckoutContext = {
   amount: "125.00",
   buyerLegalEntityId: "le-buyer",
   amountPence: 12_500,
+  invoiceLines: [
+    { kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 10_000 },
+    {
+      kind: "buyers_premium",
+      label: "Buyer's premium (25%)",
+      ratePercent: "25",
+      amountPence: 2_500,
+    },
+  ],
 };
 
 describe("stripe-checkout-product-display", () => {
-  it("builds hammer and premium line items when checkoutPricing sums to amount", () => {
+  it("charges one line per stored invoice line, whatever the lot's pricing says now", () => {
     const items = buildStripeCheckoutLineItems({
       paymentId: "pay-1",
       lotId: "lot-uuid",
@@ -61,39 +70,37 @@ describe("stripe-checkout-product-display", () => {
       lotNumber: 42,
       medium: "Oil on canvas",
       amountCents: 12_500,
-      checkoutPricing: baseCtx.lot.checkoutPricing,
+      invoiceLines: baseCtx.invoiceLines,
       imageUrl: "https://cdn.test/lot.jpg",
     });
 
-    expect(items).toHaveLength(2);
-    expect(items[0]?.name).toContain("Hammer price");
-    expect(items[0]?.name).toContain("Blue Canvas Study");
-    expect(items[0]?.unitAmountCents).toBe(10_000);
+    expect(items.map((i) => [i.name, i.unitAmountCents])).toEqual([
+      ["Lot 42 · Hammer price", 10_000],
+      ["Lot 42 · Buyer's premium (25%)", 2_500],
+    ]);
     expect(items[0]?.images).toEqual(["https://cdn.test/lot.jpg"]);
-    expect(items[1]?.name).toContain("Buyer's premium (25%)");
-    expect(items[1]?.unitAmountCents).toBe(2500);
   });
 
-  it("falls back to single line when pricing does not match amount", () => {
-    const items = buildStripeCheckoutLineItems({
-      paymentId: "pay-1",
-      lotId: "lot-uuid",
-      lotTitle: "Blue Canvas Study",
-      lotNumber: 42,
-      medium: null,
-      amountCents: 12_500,
-      checkoutPricing: {
-        hammerMajor: "100.00",
-        premiumMajor: "20.00",
-        totalMajor: "120.00",
-        policyId: "flat:0.2",
-        kind: "flat",
+  it("the session total equals the invoice amount even after the premium rate changed", () => {
+    const input = buildCreateCheckoutSessionInput(
+      {
+        ...baseCtx,
+        // The lot now prices at 20%; the invoice was raised at 25% and is £125.00.
+        lot: {
+          ...baseCtx.lot,
+          checkoutPricing: {
+            hammerMajor: "100.00",
+            premiumMajor: "20.00",
+            totalMajor: "120.00",
+            policyId: "flat:0.2",
+            kind: "flat",
+          },
+        },
       },
-    });
-
-    expect(items).toHaveLength(1);
-    expect(items[0]?.name).toBe("Blue Canvas Study");
-    expect(items[0]?.unitAmountCents).toBe(12_500);
+      { successUrl: "https://app/s", cancelUrl: "https://app/c" },
+    );
+    const total = input.lineItems.reduce((sum, item) => sum + item.unitAmountCents, 0);
+    expect(total).toBe(12_500);
   });
 
   it("truncates long titles and descriptor suffixes", () => {

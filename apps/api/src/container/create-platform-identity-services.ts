@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import {
   DrizzleMemberBidInstructionsRepository,
   DrizzleMemberBuyerAgentAuthorisationRevoker,
@@ -204,6 +205,7 @@ export function createPlatformIdentityServices(
       },
       emailService,
       legalEntityRepository,
+      invoiceTerms: new InvoiceDueDateExtender(repos.bidInvoiceRepository),
       memberRepository: repos.legalEntityMemberRepository,
       webOrigin: env.WEB_ORIGIN,
       supportContactEmail: env.OPS_SUPPORT_EMAIL ?? "events@lax.bid",

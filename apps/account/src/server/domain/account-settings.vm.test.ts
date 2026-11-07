@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { buildAccountLinks } from "./account-links";
 import { buildPrivacyGroups } from "./account-privacy.vm";
 import {
+  ACCOUNT_ROUTES,
   accountInitials,
   buildHelpGroups,
   buildLaunchGroups,
-  buildSecurityGroups,
+  buildTwoStepRow,
 } from "./account-settings.vm";
 
 const withBid = buildAccountLinks({
@@ -18,35 +19,24 @@ const withoutBid = buildAccountLinks({
   oidcClientId: "lax-account-web",
 });
 
-describe("buildSecurityGroups", () => {
-  it("offers deleting the account as an Account page, not a link into another product", () => {
-    const groups = buildSecurityGroups({ twoStep: "on", backupCodesRemaining: null }, withBid);
-    expect(groups.map((group) => group.id)).toEqual(["sign-in", "your-account"]);
-    expect(groups[1]?.rows).toEqual([
-      {
-        title: "Delete your account",
-        subtitle: "Permanently delete your LAX account",
-        href: "/account/security/delete",
-      },
+describe("buildTwoStepRow", () => {
+  it("opens the hosted two-step page", () => {
+    const row = buildTwoStepRow({ twoStep: "unknown", backupCodesRemaining: null }, withBid);
+    expect([row.title, row.subtitle, row.href]).toEqual([
+      "Two-step verification",
+      "Set up or manage",
+      "https://test-auth.lax.bid/two-factor/manage?client_id=lax-account-web",
     ]);
   });
 
-  it("leaves the password to its own in-page section and opens the hosted two-step page", () => {
-    const [group] = buildSecurityGroups(
-      { twoStep: "unknown", backupCodesRemaining: null },
-      withBid,
-    );
-    expect(group?.rows.map((r) => [r.title, r.subtitle, r.href])).toEqual([
-      [
-        "Two-step verification",
-        "Set up or manage",
-        "https://test-auth.lax.bid/two-factor/manage?client_id=lax-account-web",
-      ],
-    ]);
+  it("points Security's one quiet delete link at the Privacy section that holds it", () => {
+    expect(ACCOUNT_ROUTES.deleteAccountOnPrivacy).toBe("/account/privacy#group-your-data");
+    const rows = buildPrivacyGroups(withBid).flatMap((group) => group.rows);
+    expect(rows.map((row) => row.title)).toContain("Delete your account");
   });
 
   const subtitle = (twoStep: "on" | "off" | "unknown", backupCodesRemaining: number | null) =>
-    buildSecurityGroups({ twoStep, backupCodesRemaining }, withBid)[0]?.rows[0]?.subtitle;
+    buildTwoStepRow({ twoStep, backupCodesRemaining }, withBid).subtitle;
 
   it("states On, Off or the neutral wording for each two-step state", () => {
     expect(subtitle("on", 8)).toBe("On");
@@ -102,14 +92,14 @@ describe("accountInitials", () => {
 });
 
 describe("buildPrivacyGroups", () => {
-  it("links notifications and policies to Bid, and downloading and deleting to Account", () => {
+  it("links alerts, downloading and deleting to Account, and policies to Bid", () => {
     const groups = buildPrivacyGroups(withBid);
     expect(groups.map((g) => g.rows.map((r) => r.title))).toEqual([
-      ["Notification preferences"],
+      ["Email alerts"],
       ["Download your data", "Delete your account"],
       ["Privacy policy", "Terms of use"],
     ]);
-    expect(groups[0]?.rows[0]?.href).toBe("https://test.lax.bid/settings/notifications");
+    expect(groups[0]?.rows[0]?.href).toBe("/account/alerts");
     expect(groups[1]?.rows.map((r) => r.href)).toEqual([
       "/account/privacy/download",
       "/account/security/delete",
@@ -128,17 +118,17 @@ describe("buildPrivacyGroups", () => {
     );
   });
 
-  it("still offers downloading and deleting without Bid, since Account owns them", () => {
+  it("still offers alerts, downloading and deleting without Bid, since Account owns them", () => {
     const groups = buildPrivacyGroups(withoutBid);
-    expect(groups.map((g) => g.id)).toEqual(["your-data"]);
-    expect(groups[0]?.rows.map((r) => r.href)).toEqual([
+    expect(groups.map((g) => g.id)).toEqual(["notifications", "your-data"]);
+    expect(groups[1]?.rows.map((r) => r.href)).toEqual([
       "/account/privacy/download",
       "/account/security/delete",
     ]);
   });
 
   it("tells people what deletion checks and that they can cancel", () => {
-    const footer = buildPrivacyGroups(withoutBid)[0]?.footer ?? "";
+    const footer = buildPrivacyGroups(withoutBid)[1]?.footer ?? "";
     expect(footer).toMatch(/LAX Bid, LAX Shop and lax\.art/);
     expect(footer).toMatch(/cancel for 30 days/);
   });

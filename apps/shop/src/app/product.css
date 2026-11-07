@@ -40,7 +40,7 @@
 
   .shop-product__media {
     position: sticky;
-    top: calc(var(--header-height, 4rem) + var(--shop-space-4));
+    top: calc(var(--header-offset, var(--header-height, 4rem)) + var(--shop-space-4));
   }
 }
 
@@ -179,7 +179,7 @@
 
 .shop-buy__remove {
   min-height: 1.5rem;
-  padding: 0 var(--shop-space-1);
+  padding: 0;
   color: var(--color-link);
   font-family: var(--font-body);
   font-size: var(--shop-text-sm);
@@ -342,7 +342,7 @@
 }
 
 /* Phone buy bar: appears once the main button scrolls away; the page reserves its height so it
-   never covers the footer or a focused control. */
+   never covers a focused control. It holds the shared bottom slot, so the tab bar steps aside. */
 .shop-buy-bar.shop-buy-bar {
   z-index: 40;
   justify-content: space-between;
@@ -403,11 +403,9 @@
   }
 }
 
+/* The page's one bottom spacer (MarketingBottomBarSpace) reserves the room; this only keeps a
+   focused control clear of the bar. */
 @media (max-width: 47.99rem) {
-  body:has(.shop-buy-bar) {
-    padding-bottom: 5.5rem;
-  }
-
   html:has(.shop-buy-bar) {
     scroll-padding-bottom: 6rem;
   }
@@ -421,7 +419,7 @@
 
 /* Basket confirmation: a small non-modal panel under the header. */
 .shop-added-panel.shop-added-panel {
-  top: calc(var(--header-height, 4rem) + var(--shop-space-2));
+  top: calc(var(--header-offset, var(--header-height, 4rem)) + var(--shop-space-2));
   right: var(--shop-page-gutter);
   bottom: auto;
   left: auto;
@@ -642,8 +640,9 @@
 }
 
 .shop-scale__floor,
-.shop-scale__sofa rect,
-.shop-scale__sofa line {
+.shop-scale__figure circle,
+.shop-scale__figure path,
+.shop-scale__figure line {
   fill: none;
   stroke: var(--color-on-surface-variant);
   stroke-width: 1.5;

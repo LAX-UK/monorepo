@@ -1,4 +1,7 @@
-import type { IPaymentDomainEventsRepository } from "@auction/persistence/interfaces";
+import type {
+  IBidInvoiceReader,
+  IPaymentDomainEventsRepository,
+} from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
 import type { IUserRepository } from "@auction/persistence/interfaces";
@@ -7,12 +10,20 @@ import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { PaymentProviderError } from "../../lib/errors.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
-import type { ISettlementCompliancePolicy } from "../aml/settlement-compliance.policy.js";
+import {
+  type ISettlementCompliancePolicy,
+  evaluateSettlementSubjects,
+} from "../aml/settlement-compliance.policy.js";
 import type { IStripeCheckoutService } from "../interfaces/checkout-rail.js";
 import type { IErrorReporter } from "../interfaces/error-handling.js";
 import type { IInvoiceAccountingProvider } from "../interfaces/invoice-accounting.js";
 import type { IStripePaymentGateway } from "../stripe/stripe-payment-gateway.js";
 import { ensureXeroInvoiceForPayment } from "./ensure-xero-invoice.js";
+import {
+  type CheckedInvoiceLines,
+  InvoiceLinesError,
+  checkInvoiceLines,
+} from "./invoice-stripe-lines.js";
 import type {
   CheckoutRailKind,
   ManualReviewReason,
@@ -22,6 +33,8 @@ import { manualReviewReasonFromCheckoutBlockCode } from "./resolve-manual-review
 
 export type CheckoutOrchestratorDeps = {
   payments: IPaymentWriteRepository;
+  /** The stored invoice behind each payment: Stripe is charged from its lines. */
+  invoices: Pick<IBidInvoiceReader, "findByPaymentIds">;
   users: IUserRepository;
   accounting: IInvoiceAccountingProvider;
   stripeCheckout: IStripeCheckoutService | null;
@@ -34,6 +47,19 @@ export type CheckoutOrchestratorDeps = {
   /** Where a failed revoke is reported, so someone can check the payment was not charged. */
   errorReporter?: IErrorReporter | undefined;
 };
+
+/**
+ * Who an invoice is checked for at checkout: the person paying, and the lot's winner when someone
+ * else pays for them (an organisation's finance member paying for a colleague's win).
+ */
+export function settlementSubjects(lot: Lot, payerId: string, amountPence: number) {
+  return [
+    { buyerUserId: payerId, amountPence },
+    ...(lot.winnerId && lot.winnerId !== payerId
+      ? [{ buyerUserId: lot.winnerId, amountPence }]
+      : []),
+  ];
+}
 
 export async function revokeOpenStripeCheckoutForPayment(
   deps: Pick<CheckoutOrchestratorDeps, "payments" | "stripePayments" | "errorReporter">,
@@ -73,11 +99,11 @@ export async function resolvePendingCheckoutManualReviewReason(
 ): Promise<ManualReviewReason | null> {
   const amountPence = gbpAmountToPence(amount);
   if (deps.settlementCompliance) {
-    const compliance = await deps.settlementCompliance.evaluate({
-      buyerUserId: buyerId,
-      amountPence,
-      excludePaymentId: paymentId,
-    });
+    const compliance = await evaluateSettlementSubjects(
+      deps.settlementCompliance,
+      settlementSubjects(lot, buyerId, amountPence),
+      paymentId,
+    );
     if (compliance.hold && compliance.reason) {
       return compliance.reason;
     }
@@ -145,11 +171,11 @@ export async function issueCheckoutForPendingPayment(
 > {
   const amountPence = gbpAmountToPence(amount);
   if (deps.settlementCompliance) {
-    const compliance = await deps.settlementCompliance.evaluate({
-      buyerUserId: buyerId,
-      amountPence,
-      excludePaymentId: paymentId,
-    });
+    const compliance = await evaluateSettlementSubjects(
+      deps.settlementCompliance,
+      settlementSubjects(lot, buyerId, amountPence),
+      paymentId,
+    );
     if (compliance.hold) {
       const code =
         compliance.reason === "aml_hold"
@@ -229,9 +255,26 @@ export async function issueCheckoutForPendingPayment(
     return err(new PaymentProviderError("Buyer legal entity is required for checkout", 400));
   }
 
+  let invoiceLines: CheckedInvoiceLines;
+  try {
+    const invoices = await deps.invoices.findByPaymentIds([paymentId]);
+    invoiceLines = checkInvoiceLines(invoices.get(paymentId), paymentId, amountPence);
+  } catch (e) {
+    if (!(e instanceof InvoiceLinesError)) throw e;
+    recordMoneyPathEvent(`checkout_${e.code}`);
+    return err(
+      new PaymentProviderError(
+        "We could not confirm the invoice figures just now. Nothing was charged.",
+        503,
+        "invoice_unavailable",
+      ),
+    );
+  }
+
   const checkout = await deps.stripeCheckout.createCheckout(rail, {
     paymentId,
     lot,
+    invoiceLines: invoiceLines.lines,
     buyerEmail: buyer.email,
     buyerName: buyer.name,
     amount,

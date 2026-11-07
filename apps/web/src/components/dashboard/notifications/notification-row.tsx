@@ -1,6 +1,7 @@
 "use client";
 
 import { AccountTile } from "@/components/layout/account-switcher/account-tile";
+import { hopUrl, isHopHref } from "@/lib/navigation/hop-href";
 import type { InboxAccountTag, InboxRowView } from "@/lib/notifications/inbox-row.vm";
 import { InlineActionMenu, type InlineActionMenuItem, cn } from "@auction/ui";
 import { Checkbox } from "@auction/ui/lax";
@@ -119,10 +120,10 @@ export function NotificationRow({
             {row.unread ? "Unread. " : ""}
             {label}:{" "}
           </span>
-          {row.href && row.viaHop ? (
+          {isHopHref(row.href) ? (
             // The switch hop is a server route: a plain link, so it is a full load and never prefetched.
             <a
-              href={row.href}
+              href={hopUrl(row.href)}
               data-row-link
               className="after:absolute after:inset-0 focus-visible:outline-none"
               onClick={() => actions.onOpened(row)}

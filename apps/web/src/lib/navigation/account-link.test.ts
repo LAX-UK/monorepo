@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   accountLinkRedirect,
+  accountLinkTarget,
   accountsUnavailableHref,
   confirmSwitchHref,
+  isHop,
   refusedPageTarget,
   restoreAccountHref,
   safeHopNext,
@@ -31,6 +33,30 @@ describe("accountLinkRedirect", () => {
     expect(accountLinkRedirect(url("/bids"))).toBeNull();
     expect(accountLinkRedirect(url("/lots/abc?account=org-1"))).toBeNull();
     expect(accountLinkRedirect(url("/switch-account?account=org-1"))).toBeNull();
+  });
+});
+
+describe("accountLinkTarget", () => {
+  it("names the account and the page without the parameter", () => {
+    expect(accountLinkTarget(url("/home?tab=a&account=org-1#top"))).toEqual({
+      accountId: "org-1",
+      next: "/home?tab=a#top",
+    });
+  });
+
+  it("is null for a plain link, a page outside the client area, or a hop", () => {
+    expect(accountLinkTarget(url("/home"))).toBeNull();
+    expect(accountLinkTarget(url("/lots/a?account=org-1"))).toBeNull();
+    expect(accountLinkTarget(url("/restore-account?account=org-1"))).toBeNull();
+  });
+});
+
+describe("isHop", () => {
+  it("is true for the two routes that write the cookie, not their own pages", () => {
+    expect(isHop("/switch-account")).toBe(true);
+    expect(isHop("/restore-account")).toBe(true);
+    expect(isHop("/switch-account/unavailable")).toBe(false);
+    expect(isHop("/switch-account/confirm")).toBe(false);
   });
 });
 

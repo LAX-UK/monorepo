@@ -45,6 +45,8 @@ export {
   type PortfolioHeaderVm,
   buildPortfolioHeader,
   costBasisLines,
+  isPaidFor,
+  paidLines,
 } from "./portfolio-header.vm.js";
 export {
   type AllocationCount,
@@ -67,6 +69,8 @@ export {
   type MoneyVm,
   buildMoney,
   moneySectionOf,
+  moneyProductOf,
+  BUSINESS_PRODUCTS,
 } from "./portfolio-money.vm.js";
 export {
   ARTIST_APPLICATION_JOURNEY,

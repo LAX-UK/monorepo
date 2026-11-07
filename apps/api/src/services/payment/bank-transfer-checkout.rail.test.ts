@@ -43,6 +43,9 @@ const ctx: PaymentCheckoutContext = {
   amount: "312500.00",
   buyerLegalEntityId: "le-buyer",
   amountPence: 31_250_000,
+  invoiceLines: [
+    { kind: "hammer", label: "Hammer price", ratePercent: null, amountPence: 31_250_000 },
+  ],
 };
 
 describe("BankTransferCheckoutRail", () => {
@@ -71,6 +74,7 @@ describe("BankTransferCheckoutRail", () => {
         expires_at: Math.floor(Date.now() / 1000) + 3600,
       }),
       findChargeIdForPayment: vi.fn(),
+      expireCheckoutSession: vi.fn().mockResolvedValue(undefined),
       revokeOpenCheckoutForPayment: vi.fn().mockResolvedValue(undefined),
     };
     const payments = {

@@ -1,8 +1,9 @@
 import type { LotStatus, PaymentStatus } from "@auction/types";
-import { invoiceDueAt } from "./purchase-invoice-state.js";
+import { londonDateOf, londonMidnight } from "./calendar-year.js";
+import { storedDueAt } from "./purchase-invoice-state.js";
 import { purchaseEnding } from "./purchase-state.js";
 
-const DAY_MS = 86_400_000;
+const HOUR_MS = 3_600_000;
 
 /** The reminders a buyer gets for an unpaid invoice, in the order they are sent. */
 export const PAYMENT_REMINDER_STEPS = ["before_due", "due_day", "overdue"] as const;
@@ -15,8 +16,14 @@ const STEP_OFFSET_DAYS: Record<PaymentReminderStep, number> = {
   overdue: 3,
 };
 
+/** Reminders go out at 09:00 London on their day, not at the end-of-day due moment. */
+const SEND_HOUR_LONDON = 9;
+
+/** When a step is sent: 09:00 London on the due day, or that many London days before or after. */
 export function reminderDueAt(step: PaymentReminderStep, dueAt: Date): Date {
-  return new Date(dueAt.getTime() + STEP_OFFSET_DAYS[step] * DAY_MS);
+  const { year, month, day } = londonDateOf(dueAt);
+  const midnight = londonMidnight(year, month, day + STEP_OFFSET_DAYS[step]);
+  return new Date(midnight.getTime() + SEND_HOUR_LONDON * HOUR_MS);
 }
 
 export type PaymentReminderFacts = {
@@ -25,7 +32,7 @@ export type PaymentReminderFacts = {
   /** The account holder the invoice is raised to. */
   buyerId: string;
   /** The lot's latest invoice, or `null` while none is raised. */
-  payment: { status: PaymentStatus; raisedAt: Date } | null;
+  payment: { status: PaymentStatus; raisedAt: Date; dueAt: Date | null } | null;
   fulfilmentStatus: string | null;
   /** The buyer is on an AML or source-of-funds hold, so LAX itself is what stops payment. */
   onComplianceHold: boolean;
@@ -52,7 +59,7 @@ export function paymentReminderToSend(
     return null;
   }
 
-  const dueAt = invoiceDueAt(payment.raisedAt);
+  const dueAt = storedDueAt(payment);
   let latest: PaymentReminderStep | null = null;
   for (const step of PAYMENT_REMINDER_STEPS) {
     if (reminderDueAt(step, dueAt).getTime() <= now.getTime()) latest = step;

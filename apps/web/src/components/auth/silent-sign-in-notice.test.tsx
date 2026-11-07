@@ -1,6 +1,6 @@
 import { BID_SILENT_NOTICE_COOKIE } from "@/lib/auth/silent-sign-in/config";
 import type { SessionUser } from "@/lib/data/contracts";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { SilentSignInNotice } from "./silent-sign-in-notice.client";
 
@@ -34,6 +34,7 @@ function setNoticeCookie() {
 
 describe("SilentSignInNotice", () => {
   afterEach(() => {
+    cleanup();
     document.cookie = `${BID_SILENT_NOTICE_COOKIE}=; Max-Age=0; path=/`;
     vi.clearAllMocks();
   });
@@ -44,54 +45,57 @@ describe("SilentSignInNotice", () => {
     expect(screen.queryByTestId("silent-sign-in-notice")).not.toBeInTheDocument();
   });
 
-  it("opens the dialog, clears the cookie, and tracks signed_in", async () => {
+  it("shows a polite corner toast, not a dialog, clears the cookie, and tracks signed_in", async () => {
     setNoticeCookie();
     vi.mocked(useAppSession).mockReturnValue({ user, pending: false });
     render(<SilentSignInNotice />);
 
     await waitFor(() => {
-      expect(screen.getByRole("dialog", { name: "You're signed in" })).toBeInTheDocument();
+      expect(screen.getByTestId("silent-sign-in-notice")).toBeInTheDocument();
     });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Signed in as Alex");
     expect(document.cookie).not.toMatch(new RegExp(`${BID_SILENT_NOTICE_COOKIE}=1`));
     expect(trackSilentSignInResult).toHaveBeenCalledWith({
       strategy: "redirect",
       outcome: "signed_in",
     });
-    expect(screen.getByText(/Alex Member/)).toBeInTheDocument();
-    expect(screen.getByText(/m\*\*\*@example\.com/)).toBeInTheDocument();
   });
 
-  it("Continue tracks notice_continue and closes the dialog", async () => {
+  it("goes away by itself after about six seconds and tracks notice_continue", async () => {
+    vi.useFakeTimers();
+    try {
+      setNoticeCookie();
+      vi.mocked(useAppSession).mockReturnValue({ user, pending: false });
+      render(<SilentSignInNotice />);
+      expect(screen.getByTestId("silent-sign-in-notice")).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(6000);
+      });
+      expect(screen.queryByTestId("silent-sign-in-notice")).not.toBeInTheDocument();
+      expect(trackSilentSignInResult).toHaveBeenCalledWith({
+        strategy: "redirect",
+        outcome: "notice_continue",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("Not you? tracks notice_sign_out, closes the toast and calls logout", async () => {
     setNoticeCookie();
     vi.mocked(useAppSession).mockReturnValue({ user, pending: false });
     render(<SilentSignInNotice />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Not you?" })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-    expect(trackSilentSignInResult).toHaveBeenCalledWith({
-      strategy: "redirect",
-      outcome: "notice_continue",
-    });
-    await waitFor(() => {
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    });
-  });
-
-  it("Not you? Sign out tracks notice_sign_out and calls logout", async () => {
-    setNoticeCookie();
-    vi.mocked(useAppSession).mockReturnValue({ user, pending: false });
-    render(<SilentSignInNotice />);
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Not you? Sign out" })).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Not you? Sign out" }));
+    fireEvent.click(screen.getByRole("button", { name: "Not you?" }));
     expect(trackSilentSignInResult).toHaveBeenCalledWith({
       strategy: "redirect",
       outcome: "notice_sign_out",
     });
     expect(logout).toHaveBeenCalled();
+    expect(screen.queryByTestId("silent-sign-in-notice")).not.toBeInTheDocument();
   });
 });

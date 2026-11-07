@@ -23,7 +23,8 @@ export type ShopNotificationPublisher = {
       lines: Array<{
         artworkTitle: string;
         artworkSlug: string;
-        editionNumber: number | null;
+        /** What the buyer was told about the print, worded by the edition contract; null when nothing is recorded. */
+        editionDetail: string | null;
         unitPricePence: number;
       }>;
     },

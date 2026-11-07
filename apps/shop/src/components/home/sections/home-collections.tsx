@@ -8,7 +8,7 @@ import Link from "next/link";
 function CollectionTile({ tile }: { tile: HomeCollectionVm }) {
   return (
     <li className="shop-collection">
-      <div className="shop-collection__mat" aria-hidden="true">
+      <div className="shop-collection__mat" data-covers={tile.covers.length} aria-hidden="true">
         {tile.covers.map((cover) => (
           <span key={cover.slug} className="shop-collection__print">
             <ShopMediaImage

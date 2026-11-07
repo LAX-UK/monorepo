@@ -1,4 +1,4 @@
-import type { AmountOwedEntry } from "@auction/domain";
+import { type AmountOwedEntry, decisivePaymentByLot } from "@auction/domain";
 import type {
   LaxBusinessV1,
   LaxCostLineV1,
@@ -36,13 +36,6 @@ const PAYMENT_CURRENCY = "GBP";
 /** What the account owes, by lot: the one reading Purchases, the header chip and the menu share. */
 export type BidOwedByLot = ReadonlyMap<string, AmountOwedEntry>;
 
-/** Payments that are open, whether or not anything is still owed on them. */
-const UNPAID_PAYMENT_STATUSES: ReadonlySet<BidPaymentFact["status"]> = new Set([
-  "pending",
-  "authorized",
-  "requires_manual_review",
-]);
-
 /** Fulfilment stages before the work has reached the buyer. */
 const IN_FULFILMENT_STATUSES: ReadonlySet<string> = new Set([
   "awaiting_release",
@@ -59,17 +52,12 @@ function paymentsPage(ctx: BidPortfolioContext): string {
   return `${ctx.webOrigin}/purchases#payment-history`;
 }
 
-function payoutsPage(ctx: BidPortfolioContext): string {
-  return `${ctx.webOrigin}/selling/payouts`;
+function purchasesPage(ctx: BidPortfolioContext): string {
+  return `${ctx.webOrigin}/purchases`;
 }
 
-/** Newest payment per lot; the facts arrive newest first. */
-function latestPaymentByLot(payments: readonly BidPaymentFact[]): Map<string, BidPaymentFact> {
-  const byLot = new Map<string, BidPaymentFact>();
-  for (const payment of payments) {
-    if (!byLot.has(payment.lotId)) byLot.set(payment.lotId, payment);
-  }
-  return byLot;
+function payoutsPage(ctx: BidPortfolioContext): string {
+  return `${ctx.webOrigin}/selling/payouts`;
 }
 
 /**
@@ -219,7 +207,7 @@ export function buildBidPortfolioItems(
   ctx: BidPortfolioContext,
   owed: BidOwedByLot,
 ): LaxPortfolioItemV1[] {
-  const paymentByLot = latestPaymentByLot(facts.payments);
+  const paymentByLot = decisivePaymentByLot(facts.payments);
   const won = facts.wonLots.flatMap((lot) => {
     const item = wonLotItem(lot, paymentByLot.get(lot.lotId), owed.get(lot.lotId), ctx);
     return item ? [item] : [];
@@ -249,7 +237,42 @@ function moneyStatus(status: string): LaxMoneyEntryV1["status"] {
   return "pending";
 }
 
+/**
+ * One owed line per won lot still awaiting payment, for the amount due on that purchase. It
+ * follows exactly the rule the holdings use (`owedOf`), so the Money total owed and the
+ * Portfolio total due are the same figure. Payment attempts never add to it.
+ */
+function owedEntries(
+  wonLots: readonly BidWonLotFact[],
+  owed: BidOwedByLot,
+  ctx: BidPortfolioContext,
+): LaxMoneyEntryV1[] {
+  return wonLots.flatMap((lot): LaxMoneyEntryV1[] => {
+    const due = owedOf(owed.get(lot.lotId));
+    if (!due) return [];
+    return [
+      {
+        id: `purchase:${lot.lotId}:owed`,
+        business: businessOf(ctx),
+        direction: "owed_by_you",
+        status: "pending",
+        amount: due.amount,
+        currency: due.currency,
+        occurredAt: lot.endedAt.toISOString(),
+        product: "bid",
+        href: purchasesPage(ctx),
+      },
+    ];
+  });
+}
+
+/**
+ * What a completed payment contributes to the ledger. A payment that never completed (still
+ * pending, awaiting confirmation or review, or cancelled) moved no money and is not a ledger
+ * line; what is still owed comes from the purchase, not from the attempt.
+ */
 function paymentEntries(payment: BidPaymentFact, ctx: BidPortfolioContext): LaxMoneyEntryV1[] {
+  if (payment.status !== "captured" && payment.status !== "refunded") return [];
   const amount = toPence(payment.amount);
   if (amount === null || amount < 0) return [];
   const base = {
@@ -257,22 +280,20 @@ function paymentEntries(payment: BidPaymentFact, ctx: BidPortfolioContext): LaxM
     amount,
     currency: PAYMENT_CURRENCY,
     occurredAt: payment.createdAt.toISOString(),
+    product: "bid" as const,
     href: paymentsPage(ctx),
   };
-  const entry = (
-    suffix: string,
-    direction: LaxMoneyEntryV1["direction"],
-    status: LaxMoneyEntryV1["status"],
-  ): LaxMoneyEntryV1 => ({ id: `payment:${payment.id}${suffix}`, direction, status, ...base });
+  const entry = (suffix: string, direction: LaxMoneyEntryV1["direction"]): LaxMoneyEntryV1 => ({
+    id: `payment:${payment.id}${suffix}`,
+    direction,
+    status: "completed",
+    ...base,
+  });
 
-  if (UNPAID_PAYMENT_STATUSES.has(payment.status)) return [entry("", "owed_by_you", "pending")];
-  if (payment.status === "cancelled") return [entry("", "owed_by_you", "cancelled")];
   // A refund can only follow a capture, and the payment keeps only its final status, so both
   // facts are reported: what was paid, and that it came back.
-  if (payment.status === "refunded") {
-    return [entry("", "paid", "completed"), entry(":refund", "refunded", "completed")];
-  }
-  return [entry("", "paid", "completed")];
+  if (payment.status === "refunded") return [entry("", "paid"), entry(":refund", "refunded")];
+  return [entry("", "paid")];
 }
 
 function payoutEntries(payout: BidPayoutFact, ctx: BidPortfolioContext): LaxMoneyEntryV1[] {
@@ -282,6 +303,7 @@ function payoutEntries(payout: BidPayoutFact, ctx: BidPortfolioContext): LaxMone
     status,
     currency: payout.currency,
     occurredAt: (payout.processedAt ?? payout.periodEnd).toISOString(),
+    product: "bid" as const,
     href: payoutsPage(ctx),
   };
   const entries: LaxMoneyEntryV1[] = [];
@@ -313,8 +335,10 @@ function payoutEntries(payout: BidPayoutFact, ctx: BidPortfolioContext): LaxMone
 export function buildBidMoneyEntries(
   facts: BidPortfolioFacts,
   ctx: BidPortfolioContext,
+  owed: BidOwedByLot,
 ): LaxMoneyEntryV1[] {
   return [
+    ...owedEntries(facts.wonLots, owed, ctx),
     ...facts.payments.flatMap((payment) => paymentEntries(payment, ctx)),
     ...facts.payouts.flatMap((payout) => payoutEntries(payout, ctx)),
   ];

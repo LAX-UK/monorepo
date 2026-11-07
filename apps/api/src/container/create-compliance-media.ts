@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type {
   IAttributionStore,
   IClickIdStore,
@@ -69,12 +70,14 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
   const { env, db, infra, repos, platform } = input;
 
   const marketing = createComplianceMarketing({ env, db, infra });
+  const invoiceTerms = new InvoiceDueDateExtender(repos.bidInvoiceRepository);
   const kycAml = createComplianceKycAml({
     env,
     infra,
     repos,
     platform,
     marketing,
+    invoiceTerms,
   });
   const uploadExportMedia = createComplianceUploadExportMedia({
     env,
@@ -89,6 +92,7 @@ export function createComplianceMedia(input: CreateComplianceMediaInput): Contai
     platform,
     mediaUrlResolver: uploadExportMedia.mediaUrlResolver,
     objectStorage: infra.objectStorage,
+    invoiceTerms,
   });
 
   return {

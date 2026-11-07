@@ -20,6 +20,7 @@ import { SubmissionRejectionPanel } from "@/components/dashboard/submission-reje
 import { SubmissionSellerDocumentsPanel } from "@/components/dashboard/submission-seller-documents-panel";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
 import { ClientFlashNotice } from "@/components/flash/client-flash-notice";
+import { AccountRestoreHop } from "@/components/layout/account-switcher/account-restore-hop";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
 import { MediaImage } from "@/components/ui/media-image";
@@ -144,12 +145,13 @@ export default async function SubmissionDetailPage({
   if (!s) {
     // Not in this account: a link to another account's consignment switches to it, or explains
     // there is no access.
-    await openRecordInItsAccount({
+    const opened = await openRecordInItsAccount({
       kind: "consignment",
       id,
       actingId: sellerEntityId,
       next: `/selling/consignments/${id}`,
     });
+    if (opened.kind === "hop") return <AccountRestoreHop href={opened.href} />;
   }
   if (!loadFailure && !s) notFound();
 

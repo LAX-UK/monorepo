@@ -37,7 +37,7 @@ export const AdminClientEditionSchema = Type.Object({
   artworkId: Type.String({ format: "uuid" }),
   artworkSlug: Type.String(),
   artworkTitle: Type.String(),
-  editionNumber: Type.Integer(),
+  printLabel: Type.String({ minLength: 1 }),
   listingStatus: Type.String(),
   custodyStatus: Type.String(),
 });
@@ -109,7 +109,7 @@ export const AdminArtistEditionSchema = Type.Object({
   editionId: Type.String({ format: "uuid" }),
   artworkId: Type.String({ format: "uuid" }),
   artworkTitle: Type.String(),
-  editionNumber: Type.Integer(),
+  printLabel: Type.String({ minLength: 1 }),
   listingStatus: Type.String(),
   ownerPartyId: Type.String({ format: "uuid" }),
   ownerDisplayName: Type.String(),

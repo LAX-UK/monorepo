@@ -21,6 +21,13 @@
   }
 }
 
+/* The cover is the same component as LAX Bid's and runs edge to edge: it keeps its own inner
+   gutter, so inside the page gutter its type would sit twice as far in as every band below. */
+.shop-home--marketing > section:has([data-cover-mode]) {
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+}
+
 /* A cover with no photograph is only type, so on a phone it has no picture to set apart from the
    rows below it: its own bottom padding and the browse rows' margin are the space, not a
    whole band gap on top of them. */
@@ -407,6 +414,11 @@ a.shop-home-trust__line {
   outline: 2px solid transparent;
   outline-offset: 4px;
   transition: outline-color var(--motion-duration-sm) ease;
+}
+
+/* One distinct work is shown alone, across the tile. */
+.shop-collection__mat[data-covers="1"] {
+  padding: var(--shop-space-4) var(--shop-space-8);
 }
 
 .shop-collection__print {

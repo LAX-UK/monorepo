@@ -14,6 +14,7 @@ import {
   getServerSaleShell,
 } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { getLotMediaTreatments } from "@/lib/departments/lot-media-treatments.server";
 import { lookupActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { saleroomPageDataService } from "@/lib/marketing/saleroom-page-data.service";
@@ -152,6 +153,7 @@ export async function loadSaleroomDetailPage(input: {
     categoryLabel,
     categoryLabels,
     hangLots,
+    treatments: await getLotMediaTreatments(),
     statusCounts,
   });
 

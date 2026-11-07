@@ -44,6 +44,7 @@ export function presentBasket(
       artistName: line.artistName,
       artistSlug: line.artistSlug,
       editionSize: line.editionSize,
+      editionLine: line.editionLine,
       orderLimit: line.artworkId ? options.editionOrderLimit : null,
       maxQuantity: basketLineMaxQuantity({
         orderLimit: line.artworkId ? options.editionOrderLimit : null,

@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { mapDomainEventToCrmIntent } from "./crm-event-mappers.js";
-import { CRM_FIELD, CRM_LEAD_SOURCE_PLATFORM } from "./crm-field-constants.js";
+import { CRM_FIELD } from "./crm-field-constants.js";
 
 const ctx = {
+  leadStatusNew: "New (Unassigned)",
   auctionPipeline: "LAX Auction Pipeline",
   dealStageLotWon: "Closed Won",
   dealStagePaymentCaptured: "Closed Won",
@@ -12,7 +13,7 @@ const ctx = {
 };
 
 describe("mapDomainEventToCrmIntent", () => {
-  it("maps user.registered to Lead fields with LAX Platform source", () => {
+  it("maps user.registered to a New (Unassigned) website lead", () => {
     const intent = mapDomainEventToCrmIntent(
       {
         id: 1,
@@ -30,7 +31,17 @@ describe("mapDomainEventToCrmIntent", () => {
     );
     expect(intent.kind).toBe("person_upsert");
     if (intent.kind === "person_upsert") {
-      expect(intent.fields[CRM_FIELD.leadSource]).toBe(CRM_LEAD_SOURCE_PLATFORM);
+      expect(intent.createOnlyFields).toEqual({
+        [CRM_FIELD.leadStatus]: "New (Unassigned)",
+        [CRM_FIELD.leadSource]: "Website",
+      });
+      expect(intent.fields).not.toHaveProperty(CRM_FIELD.leadStatus);
+      expect(intent.fields).not.toHaveProperty(CRM_FIELD.leadSource);
+      expect(intent.fields[CRM_FIELD.leadSourceDetailed]).toBe("LAX Account sign-up");
+      expect(intent.fields[CRM_FIELD.enquiryType]).toBe("General");
+      // A sign-up records no consent, so none is sent and the lead is never opted in.
+      expect(intent.fields).not.toHaveProperty(CRM_FIELD.consentMarketingOptIn);
+      expect(intent.fields).not.toHaveProperty(CRM_FIELD.consentTimestamp);
       expect(intent.fields[CRM_FIELD.subjectExternalId]).toBe("u1");
       expect(intent.fields.Last_Name).toBe("Lovelace");
     }
@@ -154,11 +165,16 @@ describe("mapDomainEventToCrmIntent", () => {
     expect(intent.kind).toBe("person_upsert");
     if (intent.kind === "person_upsert") {
       expect(intent.subjectId).toBe(`guest:${guestId}`);
-      expect(intent.fields[CRM_FIELD.leadSource]).toBe(CRM_LEAD_SOURCE_PLATFORM);
+      expect(intent.createOnlyFields[CRM_FIELD.leadSource]).toBe("Website");
       expect(intent.fields[CRM_FIELD.leadSourceDetailed]).toBe(
-        "Shop guest checkout: abandoned checkout",
+        "LAX Shop guest Shop guest checkout: abandoned checkout",
       );
+      expect(intent.fields[CRM_FIELD.enquiryType]).toBe("Prints");
       expect(intent.fields[CRM_FIELD.emailOptOut]).toBe(true);
+      expect(intent.fields[CRM_FIELD.consentMarketingOptIn]).toBe(false);
+      expect(intent.fields).not.toHaveProperty(CRM_FIELD.consentTimestamp);
+      expect(intent.fields).not.toHaveProperty(CRM_FIELD.consentSource);
+      expect(intent.fields[CRM_FIELD.dataProcessingNoticeConfirmed]).toBe(true);
     }
   });
 
@@ -189,8 +205,116 @@ describe("mapDomainEventToCrmIntent", () => {
       ctx,
     );
     expect(intent.kind === "person_upsert" && intent.fields[CRM_FIELD.leadSourceDetailed]).toBe(
-      "lax.art enquiry: enquired",
+      "LAX Shop guest lax.art enquiry: enquired",
     );
+  });
+
+  it("carries the recorded consent of a guest who opted in", () => {
+    const guestId = "6f1c3c2a-1d2b-4c3e-9f4a-5b6c7d8e9f01";
+    const intent = mapDomainEventToCrmIntent(
+      {
+        id: 14,
+        eventType: "shop.guest_lead.recorded",
+        aggregateId: guestId,
+        schemaVersion: 1,
+        payload: {
+          schemaVersion: 1,
+          guestCustomerId: guestId,
+          leadSubjectId: `guest:${guestId}`,
+          email: "ada@example.com",
+          name: "Ada Moreno",
+          status: "ordered",
+          source: "Shop guest checkout",
+          marketingConsent: true,
+          marketingConsentAt: "2026-10-30T12:15:00.000Z",
+          marketingConsentVersion: "2026-10",
+          firstSeenAt: "2026-10-30T12:00:00.000Z",
+          lastSeenAt: "2026-10-30T12:00:00.000Z",
+          paidOrderCount: 1,
+        },
+      },
+      ctx,
+    );
+    expect(intent.kind === "person_upsert" && intent.fields).toMatchObject({
+      [CRM_FIELD.consentMarketingOptIn]: true,
+      [CRM_FIELD.consentTimestamp]: "2026-10-30",
+      [CRM_FIELD.consentSource]: "Website",
+      [CRM_FIELD.consentWordingVersion]: "2026-10",
+      [CRM_FIELD.emailOptOut]: false,
+    });
+  });
+
+  it("holds a lot win as a purchase and marks the capture as the payment", () => {
+    const lotId = "11111111-1111-4111-8111-111111111111";
+    const won = mapDomainEventToCrmIntent(
+      {
+        id: 20,
+        eventType: "bid.lot_won",
+        aggregateId: lotId,
+        schemaVersion: 1,
+        payload: {
+          lotId,
+          userId: "u1",
+          winningBidId: "22222222-2222-4222-8222-222222222222",
+          amountCents: 125_000,
+          endedAt: "2026-11-02T18:00:00.000Z",
+        },
+      },
+      ctx,
+    );
+    expect(won.kind).toBe("deal_upsert");
+    if (won.kind === "deal_upsert") {
+      expect(won.purchase).toEqual({ product: "LAX Bid", paid: false });
+      expect(won.dealEntityId).toBe(`lot-won:${lotId}`);
+    }
+    const paid = mapDomainEventToCrmIntent(
+      {
+        id: 21,
+        eventType: "payment.captured",
+        aggregateId: "pay-1",
+        schemaVersion: 1,
+        payload: {
+          paymentId: "33333333-3333-4333-8333-333333333333",
+          lotId,
+          userId: "u1",
+          amountCents: 125_000,
+          capturedAt: "2026-11-04T09:00:00.000Z",
+          via: "stripe_checkout_webhook",
+        },
+      },
+      ctx,
+    );
+    expect(paid).toEqual({
+      kind: "purchase_paid",
+      dealEntityId: `lot-won:${lotId}`,
+      stage: ctx.dealStagePaymentCaptured,
+      amount: 1250,
+      paidAt: "2026-11-04T09:00:00.000Z",
+    });
+  });
+
+  it("marks a paid Shop order as a paid purchase", () => {
+    const intent = mapDomainEventToCrmIntent(
+      {
+        id: 22,
+        eventType: "shop.order.paid",
+        aggregateId: "o1",
+        schemaVersion: 1,
+        payload: {
+          schemaVersion: 1,
+          orderId: "44444444-4444-4444-8444-444444444444",
+          identitySubjectId: "u1",
+          totalPence: 48_000,
+          paidAt: "2026-11-03T10:00:00.000Z",
+          lineCount: 1,
+        },
+      },
+      ctx,
+    );
+    expect(intent.kind === "deal_upsert" && intent.purchase).toEqual({
+      product: "LAX Shop",
+      paid: true,
+    });
   });
 
   it("merges a claimed guest lead into the account that verified the email", () => {
@@ -247,11 +371,7 @@ describe("mapDomainEventToCrmIntent", () => {
       reference: null,
     };
     const name = (intent: ReturnType<typeof mapDomainEventToCrmIntent>) =>
-      intent.kind === "convert_lead_on_win"
-        ? intent.dealFields.Deal_Name
-        : intent.kind === "deal_upsert"
-          ? intent.fields.Deal_Name
-          : undefined;
+      intent.kind === "deal_upsert" ? intent.fields.Deal_Name : undefined;
 
     const lotWon = {
       id: 20,

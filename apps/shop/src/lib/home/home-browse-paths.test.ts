@@ -7,6 +7,7 @@ import {
   buildHomeCollections,
   chooseCollectionCategories,
   choosePriceBand,
+  pickCollectionCovers,
 } from "./home-browse-paths";
 
 const band = (maxPounds: number, count: number): PriceBandCount => ({
@@ -103,5 +104,61 @@ describe("browse by rows", () => {
     });
     expect(rows.map((row) => row.label)).toEqual(["Available now"]);
     expect(buildHomeBrowseRows({ facets: null, priceRanges: [] })).toEqual([]);
+  });
+});
+
+describe("collection tile covers", () => {
+  const work = (slug: string, imageUrl: string | null, workSlug?: string) =>
+    artworkSummary({ slug, imageUrl, ...(workSlug ? { workSlug } : {}) });
+
+  it("picks two works with different pictures", () => {
+    const covers = pickCollectionCovers([
+      work("a", "/a.jpg"),
+      work("b", "/b.jpg"),
+      work("c", "/c.jpg"),
+    ]);
+    expect(covers.map((c) => c.slug)).toEqual(["a", "b"]);
+  });
+
+  it("never shows the same image twice: skips a repeated picture for the next distinct work", () => {
+    const covers = pickCollectionCovers([
+      work("a", "/a.jpg"),
+      work("a2", "/a.jpg"),
+      work("b", "/b.jpg"),
+    ]);
+    expect(covers.map((c) => c.slug)).toEqual(["a", "b"]);
+  });
+
+  it("counts versions of one work as one work, even with different pictures", () => {
+    const covers = pickCollectionCovers([
+      work("a", "/a.jpg", "a"),
+      work("a-ap", "/a-ap.jpg", "a"),
+      work("b", "/b.jpg"),
+    ]);
+    expect(covers.map((c) => c.slug)).toEqual(["a", "b"]);
+  });
+
+  it("skips works without a picture", () => {
+    expect(pickCollectionCovers([work("a", null), work("b", "/b.jpg")]).map((c) => c.slug)).toEqual(
+      ["b"],
+    );
+  });
+
+  it("gives one cover, to be shown alone, when only one distinct work exists", () => {
+    expect(pickCollectionCovers([work("a", "/a.jpg"), work("a2", "/a.jpg")])).toHaveLength(1);
+    expect(pickCollectionCovers([])).toEqual([]);
+  });
+
+  it("feeds the tiles the same way", () => {
+    const tiles = buildHomeCollections({
+      priceBand: {
+        maxPounds: 150,
+        count: 4,
+        covers: [work("a", "/same.jpg"), work("b", "/same.jpg"), work("c", "/c.jpg")],
+      },
+      categories: [{ slug: "prints", label: "Prints", count: 5 }],
+      categoryCovers: { prints: [work("p", "/p.jpg"), work("p2", "/p.jpg")] },
+    });
+    expect(tiles.map((t) => t.covers.map((c) => c.slug))).toEqual([["a", "c"], ["p"]]);
   });
 });

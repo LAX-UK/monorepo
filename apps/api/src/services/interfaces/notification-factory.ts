@@ -1,3 +1,4 @@
+import type { PaymentReminderHoldKey } from "@auction/email";
 import type {
   BuyerDefaultAudience,
   BuyerDefaultOutcomeKey,
@@ -37,6 +38,8 @@ export interface INotificationFactory {
     amount: string;
     dueDate: string;
     step: PaymentReminderStepKey;
+    /** The invoice cannot be paid yet: the reminder says what to do instead. */
+    held?: PaymentReminderHoldKey | null;
   }): CreateNotificationRow;
 
   createBuyerDefaultNotice(input: {

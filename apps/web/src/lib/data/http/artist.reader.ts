@@ -94,6 +94,26 @@ export async function fetchRegistryArtistById(
   }
 }
 
+/** Whether a registry artist page exists, told apart from a failed read. `fetchRegistryArtistById`
+ * folds every failure into `null`; this answers "missing" only for a definite 404 (or while the
+ * artist pages are off) and throws on a 5xx, a network error or a malformed body, so a short
+ * outage is never mistaken for a page that is gone. Same URL and fetch policy as the profile
+ * read, so the framework's fetch cache serves both. */
+export const registryArtistPageExists = cache(
+  async (artistId: string): Promise<"exists" | "missing"> => {
+    if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return "missing";
+    const res = await catalogueFetch(
+      `${getServerApiBase()}/artists/${encodeURIComponent(artistId)}`,
+      CATALOGUE_FETCH_POLICIES.artists,
+    );
+    if (res.status === 404) return "missing";
+    if (!res.ok) throw new Error(`Failed to load artist: ${res.status}`);
+    const body = await readJsonBody(res);
+    readDataEnvelope(body, registryArtistProfileSchema, `GET /artists/${artistId}`);
+    return "exists";
+  },
+);
+
 /** Public alias chips for the artist hero (`GET /artists/:id/aliases-public`). */
 export async function fetchPublicArtistAliases(artistId: string): Promise<string[]> {
   if (process.env.NEXT_PUBLIC_ENABLE_ARTISTS === "false") return [];

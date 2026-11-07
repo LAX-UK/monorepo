@@ -1,5 +1,6 @@
 import { accountHomePathForKind } from "@/lib/navigation/account-home";
 import { withAccount } from "@/lib/navigation/client-routes";
+import { type HopHref, hopHref } from "@/lib/navigation/hop-href";
 import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { organisationStatusView } from "@/lib/presenters/organisation-status/organisation-status-presentation";
 import { formatDate } from "@/lib/ui/format";
@@ -24,8 +25,11 @@ export type AccountRowVm = {
   tileName: string;
   /** Facts after the title: what it is, the person's role, and "In use". */
   meta: string[];
-  /** The account's first page, opened in that account. */
-  href: string;
+  /**
+   * The account's first page, opened in that account. Another account's page is a `HopHref`: it
+   * switches account, so it is opened as a page load (see `AccountSwitchLink`).
+   */
+  href: string | HopHref;
   current: boolean;
   attention: AccountAttention | null;
   step: SetupStep | null;
@@ -46,6 +50,14 @@ export type OrganisationSource = {
 export type PersonalSource = { id: string; displayName: string; subkind: string };
 
 const IN_USE = "In use";
+
+/**
+ * An account's first page. The account in use opens as it is; any other names its account, which
+ * the list switches to before loading the page (see `AccountSwitchLink`).
+ */
+function opensIn(path: string, accountId: string, current: boolean): string | HopHref {
+  return current ? path : hopHref(withAccount(path, accountId));
+}
 
 /** An approved organisation has nothing to say; every other state is said once, in its own words. */
 function attentionFor(source: OrganisationSource): AccountAttention | null {
@@ -74,7 +86,7 @@ export function accountRows(input: {
       title: "Personal",
       tileName: input.personal.displayName,
       meta: [input.personal.displayName, ...(current ? [IN_USE] : [])],
-      href: withAccount(accountHomePathForKind("personal"), input.personal.id),
+      href: opensIn(accountHomePathForKind("personal"), input.personal.id, current),
       current,
       attention: null,
       step: null,
@@ -95,7 +107,7 @@ export function accountRows(input: {
         organisationRoleLabel(source.role),
         ...(current ? [IN_USE] : []),
       ],
-      href: withAccount(accountHomePathForKind("organisation"), source.id),
+      href: opensIn(accountHomePathForKind("organisation"), source.id, current),
       current,
       attention: attentionFor(source),
       step: setupStep(source.status, source.id, source.resumeHref),

@@ -124,6 +124,7 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
         storage: uploadStorage,
         analyser: coverImageAnalyser,
         log,
+        ...(publicUploadBase ? { publicBaseUrl: publicUploadBase } : {}),
       });
       await heartbeat(COVER_ANALYSIS_QUEUE_NAME);
     },

@@ -1,11 +1,11 @@
 "use client";
 
+import { useAccountSwitch } from "@/components/layout/account-switcher/use-account-switch";
 import {
   acceptInvitationByIdAction,
   declineInvitationByIdAction,
 } from "@/lib/legal-entity/invitation.actions";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
-import { CLIENT_ROUTES, withAccount } from "@/lib/navigation/client-routes";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/lax";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,7 @@ type Props = { invitation: PendingInvitationRow };
 
 export function InvitationReviewActions({ invitation }: Props) {
   const router = useRouter();
+  const { choose } = useAccountSwitch();
   const [pending, start] = useTransition();
 
   return (
@@ -30,8 +31,8 @@ export function InvitationReviewActions({ invitation }: Props) {
               notify.success("Invitation accepted", {
                 description: `You've joined ${invitation.orgDisplayName}.`,
               });
-              router.push(withAccount(CLIENT_ROUTES.home, r.data.legalEntityId));
-              router.refresh();
+              // Joining changes the account in use: switch, then load the organisation's Home afresh.
+              await choose({ id: r.data.legalEntityId, current: false });
               return;
             }
             notify.error("Could not accept invitation", { description: r.error });

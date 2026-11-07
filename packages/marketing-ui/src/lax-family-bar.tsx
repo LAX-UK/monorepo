@@ -12,6 +12,12 @@ export type LaxFamilyBarLink = {
   current: boolean;
 };
 
+const MAX_HELP_LINKS = 3;
+
+/** A help link: muted 12px type inside a box as tall as the bar (36px). */
+const HELP_LINK =
+  "inline-flex min-h-9 items-center rounded-sm font-label text-xs leading-4 normal-case tracking-normal transition-colors motion-reduce:transition-none";
+
 /** The shared account every product links to; it closes the bar after a divider. */
 const ACCOUNT_ID = "account";
 
@@ -61,11 +67,30 @@ const LINK =
  */
 const HOVER_UNDERLINE = "hover:before:-bottom-[3px] hover:before:h-px hover:before:bg-current";
 
+/** One of the help links on the right of the bar (for example Help, Contact, Delivery). */
+export type LaxFamilyBarHelpLink = {
+  label: string;
+  href: string;
+  /**
+   * Replaces the anchor with the product's own control (for example a button that opens a sheet).
+   * It receives the help-link class so it matches its neighbours; `href` stays as the fallback.
+   */
+  render?: (className: string) => ReactNode;
+};
+
 export type LaxFamilyBarProps = {
   links: readonly LaxFamilyBarLink[];
-  /** A short note on the right, such as delivery terms. Plain text, one line. */
+  /** Up to three help links on the right: 12px muted type, each with a 36px hit area. */
+  helpLinks?: readonly LaxFamilyBarHelpLink[];
+  /**
+   * A short note on the right. Plain text, one line.
+   * @deprecated Use `helpLinks`. Kept until every product has adopted the shared header.
+   */
   message?: string;
-  /** Product controls that share the row (theme, sign in), after the message. */
+  /**
+   * Product controls that share the row.
+   * @deprecated Controls move to the product action row. Kept until every product has adopted it.
+   */
   actions?: ReactNode;
   tone?: MarketingHeaderTone;
   className?: string;
@@ -99,6 +124,7 @@ function FamilyLink({ link, tone }: { link: LaxFamilyBarLink; tone: ToneClasses 
  */
 export function LaxFamilyBar({
   links,
+  helpLinks,
   message,
   actions,
   tone = "on-light",
@@ -108,7 +134,8 @@ export function LaxFamilyBar({
   const colours = TONES[tone];
   const products = links.filter((link) => link.id !== ACCOUNT_ID);
   const account = links.find((link) => link.id === ACCOUNT_ID);
-  const hasAside = Boolean(message) || Boolean(actions);
+  const help = (helpLinks ?? []).slice(0, MAX_HELP_LINKS);
+  const hasAside = Boolean(message) || Boolean(actions) || help.length > 0;
 
   return (
     <div
@@ -138,6 +165,26 @@ export function LaxFamilyBar({
         <div className="flex shrink-0 items-center gap-6">
           {message ? (
             <p className={cn("m-0 font-label text-xs leading-4", colours.muted)}>{message}</p>
+          ) : null}
+          {help.length > 0 ? (
+            <nav aria-label="Help">
+              <ul className="m-0 flex list-none items-center gap-4 p-0">
+                {help.map((link) => (
+                  <li key={link.href} className="flex items-center">
+                    {link.render ? (
+                      link.render(cn(HELP_LINK, colours.muted, "hover:underline", FOCUS_RING))
+                    ) : (
+                      <a
+                        href={link.href}
+                        className={cn(HELP_LINK, colours.muted, "hover:underline", FOCUS_RING)}
+                      >
+                        {link.label}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </nav>
           ) : null}
           {actions}
         </div>

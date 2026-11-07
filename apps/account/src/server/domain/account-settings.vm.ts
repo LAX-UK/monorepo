@@ -11,6 +11,9 @@ export const ACCOUNT_ROUTES = {
   profile: "/account/profile",
   security: "/account/security",
   deleteAccount: "/account/security/delete",
+  /** Where Privacy lists "Delete your account", the one place that offers it. */
+  deleteAccountOnPrivacy: "/account/privacy#group-your-data",
+  alerts: "/account/alerts",
   privacy: "/account/privacy",
   help: "/account/help",
 } as const;
@@ -30,38 +33,19 @@ function twoStepSubtitle(
 }
 
 /**
- * Password and security page. The password is changed in the page itself (see the password
- * section); two-step verification opens the issuer's hosted page, which owns that change; deleting
- * the account is an Account page that asks every product first.
+ * The two-step verification row of "How you sign in". It opens the issuer's hosted page, which
+ * owns that change. (The password is changed in the page; deleting the account is offered on
+ * Privacy only.)
  */
-export function buildSecurityGroups(
+export function buildTwoStepRow(
   facts: Pick<AccountSecurityFacts, "twoStep" | "backupCodesRemaining">,
   links: Pick<AccountLinksVm, "manageTwoStep">,
-): SettingsGroupVm[] {
-  return [
-    {
-      id: "sign-in",
-      label: "Signing in",
-      rows: [
-        {
-          title: "Two-step verification",
-          subtitle: twoStepSubtitle(facts),
-          href: links.manageTwoStep,
-        },
-      ],
-    },
-    {
-      id: "your-account",
-      label: "Your account",
-      rows: [
-        {
-          title: "Delete your account",
-          subtitle: "Permanently delete your LAX account",
-          href: ACCOUNT_ROUTES.deleteAccount,
-        },
-      ],
-    },
-  ];
+): SettingsRowVm {
+  return {
+    title: "Two-step verification",
+    subtitle: twoStepSubtitle(facts),
+    href: links.manageTwoStep,
+  };
 }
 
 /** Help page rows; empty without Bid, which publishes the help centre. */

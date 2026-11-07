@@ -4,6 +4,11 @@ import type { BidWithLot, WatchlistWithLotRow } from "@/lib/data/dto/dashboard-d
 import { formatEstimateRange, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { matchesEveryWord, searchParam } from "@/lib/workspace/list-search";
+import {
+  type DepartmentDisplayStyle,
+  type LotMediaTreatmentIndex,
+  lotMediaTreatment,
+} from "@auction/domain";
 import type { Lot, LotStatus } from "@auction/types";
 import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
 import type { WatchedLotReminderVm } from "./watched-lot-reminder.vm";
@@ -60,6 +65,8 @@ export type WatchedLotRowVm = {
   href: string;
   title: string;
   image: string | null;
+  /** How the lot's department shows its picture. */
+  displayStyle: DepartmentDisplayStyle;
   lotLabel: string | null;
   saleTitle: string | null;
   /** "closes Today 18:00", "opens 26 Nov", "closed 2 Nov". */
@@ -107,6 +114,8 @@ export function buildWatchedLots(input: {
   bids: readonly BidWithLot[];
   userId: string | undefined;
   saleTitleById?: Readonly<Record<string, string>>;
+  /** How each department shows its lots; left out, every lot is a wall work. */
+  treatments?: LotMediaTreatmentIndex;
   now?: Date;
 }): WatchedLotRowVm[] {
   const now = input.now ?? new Date();
@@ -122,6 +131,7 @@ export function buildWatchedLots(input: {
         href: lotPath(lot),
         title: lot.title,
         image: lot.images[0] ?? null,
+        displayStyle: lotMediaTreatment(lot, input.treatments ?? {}).style,
         lotLabel: lot.lotNumber == null ? null : `Lot ${lot.lotNumber}`,
         saleTitle: lot.saleId ? (input.saleTitleById?.[lot.saleId] ?? null) : null,
         moment: momentFor(lot, now),

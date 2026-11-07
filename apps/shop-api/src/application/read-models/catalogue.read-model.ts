@@ -1,3 +1,5 @@
+import type { PublicEditionFacts, PublicEditionRun, PublicProofsKept } from "@auction/shop-domain";
+
 export type ArtworkSaleState = "for_sale" | "price_on_application" | "sold";
 
 export type EditionAvailabilityReadModel = {
@@ -68,6 +70,24 @@ export type ArtworkSummaryReadModel = {
   updatedAt: string;
   /** When the work was first listed. */
   listedAt: string;
+  /** The shop-domain card line of an edition run with confirmed facts; otherwise null. */
+  editionCardLine?: string | null;
+  /** The slug of the listing all versions of this work hang from (its own when it is the main run). */
+  workSlug?: string;
+};
+
+export type ArtworkEditionReadModel = {
+  run: PublicEditionRun;
+  /** Null until staff confirm the facts. */
+  facts: PublicEditionFacts | null;
+  proofsKept: PublicProofsKept | null;
+  otherRuns: Array<{
+    slug: string;
+    run: PublicEditionRun;
+    facts: PublicEditionFacts | null;
+    printPricePence: number | null;
+    availability: "available" | "sold_out";
+  }>;
 };
 
 export type ArtworkDetailReadModel = ArtworkSummaryReadModel & {
@@ -85,6 +105,8 @@ export type ArtworkDetailReadModel = ArtworkSummaryReadModel & {
   exhibitionHistory: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
+  /** The run and its confirmed facts; absent for an original. */
+  edition?: ArtworkEditionReadModel | null;
 };
 
 export type ArtistSummaryReadModel = {
@@ -93,6 +115,8 @@ export type ArtistSummaryReadModel = {
   discipline: string | null;
   portraitUrl: string | null;
   artworkCount: number;
+  /** The newest listed work's picture; used when the artist has no portrait. */
+  leadImageUrl?: string | null;
 };
 
 export type ArtistDetailReadModel = ArtistSummaryReadModel & {

@@ -1,3 +1,4 @@
+import { hopUrl, isHopHref } from "@/lib/navigation/hop-href";
 import type { UserNotificationListItem } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { type InboxAccounts, inboxRowView } from "./inbox-row.vm";
@@ -64,7 +65,7 @@ describe("inboxRowView", () => {
       new Set([CEDAR]),
     );
     expect(row.switchesAccount).toBe(true);
-    const url = new URL(row.href ?? "", "https://bid.test");
+    const url = new URL(hopUrl(row.href ?? ""), "https://bid.test");
     expect(url.pathname).toBe("/switch-account");
     expect(url.searchParams.get("to")).toBe(CEDAR);
     expect(url.searchParams.get("from")).toBe(NORTH);
@@ -74,7 +75,7 @@ describe("inboxRowView", () => {
   it("tags a personal notification Personal and opens it in the personal account", () => {
     const row = inboxRowView(item({ account: null }), accounts, new Set());
     expect(row.account.name).toBe("Personal");
-    expect(new URL(row.href ?? "", "https://bid.test").searchParams.get("to")).toBe(ME);
+    expect(new URL(hopUrl(row.href ?? ""), "https://bid.test").searchParams.get("to")).toBe(ME);
     expect(row.mute).toBeNull();
   });
 
@@ -94,7 +95,7 @@ describe("inboxRowView", () => {
     expect(row.mute).toBeNull();
     expect(row.switchesAccount).toBe(false);
     // The hop explains there is no access rather than opening it in the wrong account.
-    expect(row.href).toMatch(/^\/switch-account\?/);
+    expect(isHopHref(row.href) && hopUrl(row.href)).toMatch(/^\/switch-account\?/);
   });
 
   it("has nothing to open for a notice without a page", () => {

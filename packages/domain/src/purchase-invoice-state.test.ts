@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { invoiceDueAt, invoiceIsOwed, purchaseInvoiceState } from "./purchase-invoice-state.js";
+import {
+  invoiceDueAt,
+  invoiceIsOwed,
+  purchaseInvoiceState,
+  storedDueAt,
+} from "./purchase-invoice-state.js";
 
 const raisedAt = new Date("2026-11-01T10:00:00Z");
-const dueAt = new Date("2026-11-08T10:00:00Z");
+const dueAt = new Date("2026-11-08T23:59:59.999Z");
 const pending = { payment: { status: "pending" as const, raisedAt } };
 
 describe("purchaseInvoiceState", () => {
@@ -19,6 +24,32 @@ describe("purchaseInvoiceState", () => {
       status: "due",
       dueAt,
     });
+  });
+
+  it("reads the due date stored on the invoice, so a retried payment does not restart the term", () => {
+    // The invoice was raised on 1 November; its payment row is new, and its term was moved on.
+    const stored = new Date("2026-11-20T23:59:59.999Z");
+    const facts = { payment: { status: "pending" as const, raisedAt, dueAt: stored } };
+    expect(purchaseInvoiceState(facts, new Date("2026-11-15T00:00:00Z"))).toEqual({
+      status: "due",
+      dueAt: stored,
+    });
+    expect(storedDueAt(facts.payment)).toEqual(stored);
+  });
+
+  it("works the due date out from the raise date only when no due date is stored", () => {
+    expect(storedDueAt({ raisedAt, dueAt: null })).toEqual(dueAt);
+    expect(storedDueAt({ raisedAt })).toEqual(dueAt);
+  });
+
+  it("uses the London calendar: a late summer evening counts as the next London day", () => {
+    // 23:30 UTC on 1 July is 00:30 on 2 July in London (BST): due at the end of 9 July, London.
+    expect(invoiceDueAt(new Date("2026-07-01T23:30:00Z"))).toEqual(
+      new Date("2026-07-09T22:59:59.999Z"),
+    );
+    expect(invoiceDueAt(new Date("2026-07-01T22:30:00Z"))).toEqual(
+      new Date("2026-07-08T22:59:59.999Z"),
+    );
   });
 
   it("is still due at the due moment and overdue just after", () => {
@@ -74,7 +105,7 @@ describe("a cancelled sale", () => {
       now,
     );
     expect(state.status).toBe("cancelled");
-    expect(state.dueAt).toEqual(new Date("2026-11-08T10:00:00Z"));
+    expect(state.dueAt).toEqual(new Date("2026-11-08T23:59:59.999Z"));
     expect(invoiceIsOwed(state.status)).toBe(false);
   });
 

@@ -498,6 +498,17 @@ export function storyFormFromDetail(detail: StoryDetail): StoryForm {
   };
 }
 
+export const STORY_COVER_REQUIRED_TO_FEATURE = "Add a cover image before featuring this story.";
+export const STORY_COVER_REQUIRED_TO_PUBLISH = "Add a cover image before publishing this story.";
+
+/**
+ * Problems that stop a saved story being published, found before the request is sent. Mirrors
+ * the API rule, which still decides.
+ */
+export function storyPublishErrors(form: StoryForm): FieldErrors {
+  return form.coverMediaKey ? {} : { coverMediaKey: STORY_COVER_REQUIRED_TO_PUBLISH };
+}
+
 export function buildStoryPayload(
   form: StoryForm,
   blocks: EditorialBlock[],
@@ -509,6 +520,9 @@ export function buildStoryPayload(
   checkRequired(title, "title", "Enter a title.", errors);
   const videoUrl = blankToNull(form.videoUrl);
   checkHttps(videoUrl, "videoUrl", errors);
+  if (form.featured && !form.coverMediaKey) {
+    errors.coverMediaKey = STORY_COVER_REQUIRED_TO_FEATURE;
+  }
 
   // Changing the kind drops values the new kind does not use; an unchanged kind keeps whatever
   // is stored, so saving an older story never erases fields the form does not show for it.

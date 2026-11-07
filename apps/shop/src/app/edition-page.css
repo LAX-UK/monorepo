@@ -5,16 +5,6 @@
   max-width: var(--container-max, 90rem);
 }
 
-@media (min-width: 64rem) {
-  .shop-page--edition .shop-gallery__stage {
-    aspect-ratio: 5 / 4;
-  }
-
-  .shop-page--edition .shop-gallery__mat {
-    inset: 9%;
-  }
-}
-
 /* The sold-out alert is the target of a card's "Get alerts"; keep it clear of the header. */
 #edition-alert {
   scroll-margin-top: calc(var(--header-height, 7rem) + var(--shop-space-6));
@@ -29,7 +19,7 @@
   color: var(--color-on-surface-variant);
 }
 
-/* ── About limited editions ─────────────────────────────────────────────────────────────── */
+/* ── Disclosure ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
 .shop-disclosure {
   border-top: 1px solid var(--color-border-hairline);
   border-bottom: 1px solid var(--color-border-hairline);
@@ -72,147 +62,6 @@
   color: var(--color-on-surface-variant);
 }
 
-/* ── See the original at lax.art ─────────────────────────────────────────────────────────── */
-.shop-original-link {
-  display: flex;
-  align-items: center;
-  gap: var(--shop-space-4);
-  padding: var(--shop-space-4);
-  border: 1px solid var(--color-border-hairline);
-  border-radius: var(--radius-card);
-  color: var(--color-on-surface);
-  text-decoration: none;
-  transition: border-color var(--motion-duration-sm) ease;
-}
-
-.shop-original-link:hover {
-  border-color: var(--color-input-border);
-}
-
-.shop-original-link__text {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--shop-space-1);
-  min-width: 0;
-}
-
-.shop-original-link__title {
-  font-size: var(--shop-text-md);
-  font-weight: 600;
-}
-
-.shop-original-link:hover .shop-original-link__title {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.shop-original-link__body {
-  font-size: var(--shop-text-sm);
-  color: var(--color-on-surface-variant);
-}
-
-.shop-original-link__icon {
-  flex: none;
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-/* ── The artist ──────────────────────────────────────────────────────────────────────────── */
-.shop-artist-block {
-  display: grid;
-  gap: var(--shop-space-8);
-  align-items: center;
-  margin-top: var(--shop-space-16);
-  padding: var(--shop-space-6);
-  background: var(--color-paper);
-}
-
-@media (min-width: 48rem) {
-  .shop-artist-block {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: var(--shop-space-12);
-    padding: var(--shop-space-12);
-  }
-}
-
-@media (min-width: 64rem) {
-  .shop-artist-block {
-    gap: var(--shop-space-16);
-    margin-top: var(--shop-space-24);
-    padding: var(--shop-space-16);
-  }
-}
-
-/* With no related row, the artist stands on the page so the gallery team band never touches it. */
-.shop-artist-block[data-surface="plain"] {
-  padding: 0;
-  background: transparent;
-}
-
-.shop-artist-block__portrait {
-  position: relative;
-  aspect-ratio: 4 / 5;
-  max-width: 26rem;
-  overflow: hidden;
-  background: var(--color-surface-container-low);
-}
-
-.shop-artist-block__initials {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-headline);
-  font-size: 2.25rem;
-  font-weight: 500;
-  color: var(--color-on-surface-variant);
-}
-
-.shop-artist-block__body {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--shop-space-3);
-}
-
-.shop-artist-block__name {
-  margin: 0;
-  font-family: var(--font-headline);
-  font-size: clamp(1.75rem, 3vw, 2rem);
-  font-weight: 500;
-  line-height: 1.25;
-}
-
-.shop-artist-block__discipline {
-  margin: 0;
-  font-size: var(--shop-text-md);
-  color: var(--color-on-surface-variant);
-}
-
-.shop-artist-block__summary {
-  margin: 0;
-  max-width: 56ch;
-  font-size: var(--shop-text-lg);
-  line-height: 1.75rem;
-  color: var(--color-on-surface-variant);
-}
-
-.shop-artist-block__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--shop-space-3) var(--shop-space-6);
-  margin-top: var(--shop-space-3);
-}
-
-/* The related row follows the artist on the same wall rhythm, without a rule above it. */
-.shop-page--edition .shop-product__related {
-  border-top: 0;
-  padding-top: 0;
-}
-
 .shop-page--edition .shop-gallery-team {
   margin-top: var(--shop-space-16);
 }
@@ -226,14 +75,6 @@
 /* One commerce action, the full width of the buy column. */
 .shop-page--edition .shop-buy__action .shop-buy__button {
   width: 100%;
-}
-
-/* The work stays in view beside the details: the gallery column holds under the header while the
-   longer buy column scrolls past it. */
-@media (min-width: 64rem) {
-  .shop-page--edition .shop-product__media {
-    top: calc(7rem + var(--shop-space-4));
-  }
 }
 
 /* ── More about this edition: a phone disclosure, always open from tablet width ──────────── */
@@ -271,4 +112,250 @@
   .shop-more-about__body {
     padding-bottom: 0;
   }
+}
+
+/* ── The edition page: the stage, the sticky buy column, the facts, then the closing rows ───── */
+.shop-edition {
+  display: grid;
+  gap: var(--shop-space-8);
+  grid-template-areas:
+    "stage"
+    "buy"
+    "details";
+}
+
+.shop-edition__stage {
+  grid-area: stage;
+  min-width: 0;
+}
+
+.shop-edition__buy {
+  grid-area: buy;
+  min-width: 0;
+}
+
+.shop-edition__details {
+  grid-area: details;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-10);
+  min-width: 0;
+}
+
+/* 7 of 12 columns for the stage; the buy column holds under the header while the facts scroll. */
+@media (min-width: 64rem) {
+  .shop-edition {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-areas:
+      "stage stage stage stage stage stage stage buy buy buy buy buy"
+      "details details details details details details details buy buy buy buy buy";
+    column-gap: var(--shop-space-12);
+    align-items: start;
+  }
+
+  .shop-edition__buy {
+    position: sticky;
+    top: calc(var(--header-offset, var(--header-height, 4rem)) + var(--shop-space-4));
+    grid-row: 1 / span 2;
+  }
+}
+
+/* The stage: the paper mat up to 72vh, with the work at about 86% of it. */
+.shop-page--edition .shop-gallery__stage {
+  aspect-ratio: 1 / 1;
+  max-height: 72vh;
+  width: 100%;
+}
+
+.shop-page--edition .shop-gallery__mat {
+  inset: 7%;
+}
+
+.shop-page--edition .shop-scale {
+  padding: 7% 7% var(--shop-space-12);
+}
+
+.shop-page--edition .shop-gallery__thumbs {
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+}
+
+/* Buy column */
+.shop-edition-buy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-5);
+}
+
+.shop-edition-buy__heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-2);
+}
+
+.shop-edition-buy__heading p {
+  margin: 0;
+}
+
+.shop-edition-buy .shop-product__title {
+  font-size: 2.25rem;
+  line-height: 1.15;
+}
+
+.shop-edition-buy__year {
+  font-weight: 400;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-edition-buy__meta {
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-md);
+}
+
+.shop-edition-buy .shop-buy {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.shop-edition-buy .shop-buy__amount {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.shop-buy__delivery {
+  color: var(--color-on-surface-variant);
+  font-size: var(--shop-text-sm);
+  line-height: 1.5;
+}
+
+.shop-buy__in-basket-line {
+  display: flex;
+  align-items: center;
+  gap: var(--shop-space-2);
+  min-height: 3rem;
+  font-weight: 500;
+}
+
+.shop-buy__in-basket-line.is-bar {
+  min-height: 0;
+}
+
+/* Facts and the work */
+.shop-edition-section__title {
+  margin: 0 0 var(--shop-space-4);
+  font-size: var(--shop-text-lg);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.shop-edition-facts,
+.shop-edition-about {
+  display: flex;
+  flex-direction: column;
+}
+
+.shop-edition-facts > .shop-edition-section__title,
+.shop-edition-about > .shop-edition-section__title {
+  margin-bottom: var(--shop-space-4);
+}
+
+.shop-edition-facts__statement {
+  margin: var(--shop-space-5) 0 0;
+  color: var(--color-on-surface-variant);
+  line-height: 1.6;
+}
+
+.shop-edition-facts__also {
+  margin-top: var(--shop-space-5);
+}
+
+.shop-edition-facts__also-title {
+  margin: 0 0 var(--shop-space-2);
+  font-size: var(--shop-text-sm);
+  font-weight: 600;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-edition-facts__also-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shop-edition-facts__also-trailing {
+  color: var(--color-on-surface-variant);
+}
+
+.shop-edition-facts__original {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shop-space-1);
+  align-self: flex-start;
+  margin-top: var(--shop-space-5);
+  min-height: 2.75rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+.shop-edition-facts__original-icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.shop-edition-about__prose {
+  margin: 0 0 var(--shop-space-5);
+  line-height: 1.6;
+}
+
+/* The artist and more by them, on the page's rhythm */
+.shop-edition-artist {
+  margin-top: var(--shop-space-16);
+  max-width: 48rem;
+}
+
+.shop-edition-more {
+  margin-top: var(--shop-space-16);
+}
+
+.shop-edition-more__row[data-count="2"] {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--shop-space-6);
+  align-items: stretch;
+}
+
+/* The lone edition fills its half of the pair instead of a quarter of it. */
+.shop-edition-more__row[data-count="2"] .shop-catalogue__list--four {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.shop-edition-more__tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--shop-space-2);
+  min-height: 12rem;
+  padding: var(--shop-space-6);
+  background: var(--color-surface-paper);
+  font-weight: 500;
+}
+
+.shop-edition-more__tile-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.shop-edition-more__all {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shop-space-2);
+  margin-top: var(--shop-space-6);
+  min-height: 2.75rem;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
 }

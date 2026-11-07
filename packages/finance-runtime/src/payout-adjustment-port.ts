@@ -1,3 +1,5 @@
+import type { Database } from "@auction/db";
+
 export interface IPayoutAdjustmentPort {
   addPaymentLineToOpenPayoutOrCreateClawback(input: {
     legalEntityId: string;
@@ -6,6 +8,6 @@ export interface IPayoutAdjustmentPort {
     kind: "refund";
     sourceEventId: string;
     note: string;
-    tx: unknown;
+    tx: Database;
   }): Promise<void>;
 }

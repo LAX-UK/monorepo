@@ -10,6 +10,7 @@ const names = [
   "payment-reminder",
   "buyer-default-notice",
   "payment-manual-review-admin-notice",
+  "payment-unapplied-money-admin-notice",
   "dispute-opened-notice",
   "dispute-closed-notice",
 ] as const;
@@ -72,7 +73,10 @@ type PaymentTemplateVars = {
     dueDate: string;
     /** Checkout for this lot. */
     payUrl: string;
-    supportContactEmail: string;
+    supportContactEmail: string /** The invoice cannot be paid yet; the email says what to do instead of "Pay now". */;
+    held?: "identity_verification_required" | "organisation_under_review" | null;
+    /** Where the held step is done (identity verification). */
+    actionUrl?: string | null;
   };
   /** After a buyer default: told to the buyer, the seller or the next bidder. */
   "buyer-default-notice": {
@@ -101,6 +105,17 @@ type PaymentTemplateVars = {
     amount: string;
     currency: string;
     adminReviewUrl: string;
+  };
+  "payment-unapplied-money-admin-notice": {
+    recipientFirstName?: string | null;
+    /** One sentence saying what happened, in plain words. */
+    situation: string;
+    /** Formatted for display ("£1,250.00"). */
+    amount: string;
+    /** The Stripe payment or balance reference finance looks the money up by. */
+    reference: string;
+    lotTitle?: string | null;
+    reviewUrl: string;
   };
   "dispute-opened-notice": {
     recipientFirstName?: string | null;
@@ -132,6 +147,7 @@ export const paymentTemplates = {
     "payment-reminder": "live",
     "buyer-default-notice": "live",
     "payment-manual-review-admin-notice": "live",
+    "payment-unapplied-money-admin-notice": "live",
     "dispute-opened-notice": "live",
     "dispute-closed-notice": "live",
   },

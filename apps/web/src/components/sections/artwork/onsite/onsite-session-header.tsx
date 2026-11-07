@@ -17,7 +17,7 @@ export function OnsiteSessionHeader({ vm, sale, className }: Props) {
   return (
     <header
       className={cn(
-        "sticky top-[var(--header-height)] z-20 border-b border-outline-variant/30 bg-page-bg/95 pb-4 pt-3 backdrop-blur-md dark:bg-background/95",
+        "sticky top-[var(--header-offset,var(--header-height,4rem))] z-20 border-b border-outline-variant/30 bg-page-bg/95 pb-4 pt-3 backdrop-blur-md dark:bg-background/95",
         className,
       )}
     >

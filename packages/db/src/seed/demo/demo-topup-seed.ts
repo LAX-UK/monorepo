@@ -19,6 +19,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import * as schema from "../../schema/index.js";
+import { insertSeedInvoices, penceToPounds, priceHammer } from "../shared/seed-invoice.js";
 import {
   BUYER_PREMIUM_RATE,
   type DemoActors,
@@ -36,16 +37,17 @@ import {
 } from "./demo-topup-ids.js";
 
 /** A database or a transaction on it. */
-type Db = PgDatabase<NodePgQueryResultHKT, typeof schema>;
+export type Db = PgDatabase<NodePgQueryResultHKT, typeof schema>;
 
 const DAY = 86_400_000;
 const money = (pounds: number) => pounds.toFixed(2);
 
 /**
  * What the buyer pays for a hammer price, and LAX's commission on it. A payout's header and line
- * use the same two figures as the payment, so a payout's totals equal its lines added up.
+ * use the same two figures as the payment, so a payout's totals equal its lines added up. The
+ * amount paid is the invoice's total, worked out by the application's calculator.
  */
-const paidFor = (hammer: number) => hammer * (1 + BUYER_PREMIUM_RATE);
+const paidFor = (hammer: number) => priceHammer(hammer, BUYER_PREMIUM_RATE).totalPence / 100;
 const commissionOn = (hammer: number) => paidFor(hammer) * SELLER_COMMISSION_RATE;
 
 export type DemoTopUpResult = {
@@ -85,16 +87,16 @@ export async function runDemoTopUp(db: Db, now: number = Date.now()): Promise<De
   };
 }
 
-function personalEntityOf(person: DemoPerson): string {
+export function personalEntityOf(person: DemoPerson): string {
   if (!person.personalEntityId) throw new Error(`[demo-topup] ${person.email} has no account`);
   return person.personalEntityId;
 }
 
 // ─── People ────────────────────────────────────────────────────────────────────
 
-type PeopleIds = Record<keyof typeof DEMO_PEOPLE, string>;
+export type PeopleIds = Record<keyof typeof DEMO_PEOPLE, string>;
 
-async function ensurePeople(db: Db, now: number) {
+export async function ensurePeople(db: Db, now: number) {
   const passwordHash = await hashPassword(DEMO_PASSWORD);
   const ids = {} as PeopleIds;
   const created: string[] = [];
@@ -209,7 +211,7 @@ async function createPerson(db: Db, person: DemoPerson, passwordHash: string, no
 
 // ─── What the top-up builds on ─────────────────────────────────────────────────
 
-type Base = {
+export type Base = {
   northbankId: string;
   laxStockId: string;
   venueId: string | null;
@@ -217,7 +219,7 @@ type Base = {
   userIds: Record<keyof typeof BASE_EMAILS, string>;
 };
 
-async function loadBase(db: Db): Promise<Base> {
+export async function loadBase(db: Db): Promise<Base> {
   const entities = await db
     .select({ id: schema.legalEntity.id, slug: schema.legalEntity.slug })
     .from(schema.legalEntity)
@@ -259,7 +261,7 @@ async function loadBase(db: Db): Promise<Base> {
 
 // ─── Northbank Gallery's team ──────────────────────────────────────────────────
 
-async function ensureNorthbankTeam(db: Db, now: number, base: Base, ids: PeopleIds) {
+export async function ensureNorthbankTeam(db: Db, now: number, base: Base, ids: PeopleIds) {
   const members: [string, "owner" | "buyer_agent", number][] = [
     [ids.northbankOwner, "owner", 1],
     [ids.northbankBuyer, "buyer_agent", 2],
@@ -325,7 +327,7 @@ async function ensureNorthbankTeam(db: Db, now: number, base: Base, ids: PeopleI
 
 // ─── Sales, lots and what follows from them ────────────────────────────────────
 
-async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Base) {
+export async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Base) {
   const category = (slug: string) => base.categoryIdBySlug.get(slug) ?? null;
 
   for (const sale of catalogue.sales) {
@@ -434,70 +436,107 @@ async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Base) {
       .onConflictDoNothing();
   }
 
-  await db
-    .insert(schema.saleRegistration)
-    .values(
-      catalogue.registrations.map((r) => ({
-        id: r.id,
-        saleId: r.saleId,
-        userId: r.userId,
-        buyerLegalEntityId: r.buyerEntityId,
-        status: "approved" as const,
-        requestedAt: r.requestedAt,
-        decidedAt: r.requestedAt,
-        decidedByUserId: base.userIds.admin,
-      })),
-    )
-    .onConflictDoNothing();
+  if (catalogue.registrations.length > 0) {
+    await db
+      .insert(schema.saleRegistration)
+      .values(
+        catalogue.registrations.map((r) => ({
+          id: r.id,
+          saleId: r.saleId,
+          userId: r.userId,
+          buyerLegalEntityId: r.buyerEntityId,
+          status: "approved" as const,
+          requestedAt: r.requestedAt,
+          decidedAt: r.requestedAt,
+          decidedByUserId: base.userIds.admin,
+        })),
+      )
+      .onConflictDoNothing();
+  }
 
-  await db
-    .insert(schema.watchlist)
-    .values(
-      catalogue.watches.map((w) => ({
-        id: w.id,
-        userId: w.userId,
-        lotId: w.lotId,
-        createdAt: w.createdAt,
-      })),
-    )
-    .onConflictDoNothing();
+  if (catalogue.watches.length > 0) {
+    await db
+      .insert(schema.watchlist)
+      .values(
+        catalogue.watches.map((w) => ({
+          id: w.id,
+          userId: w.userId,
+          lotId: w.lotId,
+          createdAt: w.createdAt,
+        })),
+      )
+      .onConflictDoNothing();
+  }
 
-  await db
-    .insert(schema.payment)
-    .values(
+  if (catalogue.payments.length > 0) {
+    // Each payment is settled against a stored invoice with its lines; the invoices go first.
+    await insertSeedInvoices(
+      db,
       catalogue.payments.map((p) => ({
-        id: p.id,
         lotId: p.lotId,
-        buyerId: p.buyerUserId,
         buyerLegalEntityId: p.buyerEntityId,
         sellerLegalEntityId: p.sellerEntityId,
-        amount: money(paidFor(p.hammer)),
-        platformFee: money(commissionOn(p.hammer)),
-        stripePaymentIntentId: p.status === "captured" ? `pi_demo_${p.id.slice(-6)}` : null,
-        status: p.status,
-        createdAt: p.createdAt,
+        invoice: p.invoice,
       })),
-    )
-    .onConflictDoNothing();
+    );
+    if (catalogue.paymentGroups.length > 0) {
+      await db
+        .insert(schema.paymentGroup)
+        .values(
+          catalogue.paymentGroups.map((g) => ({
+            id: g.id,
+            buyerLegalEntityId: g.buyerEntityId,
+            createdByUserId: g.createdByUserId,
+            status: "processing",
+            totalAmount: penceToPounds(g.totalPence),
+            checkoutRail: "gb_bank_transfer",
+            createdAt: g.createdAt,
+            updatedAt: g.createdAt,
+          })),
+        )
+        .onConflictDoNothing();
+    }
+    await db
+      .insert(schema.payment)
+      .values(
+        catalogue.payments.map((p) => ({
+          id: p.id,
+          lotId: p.lotId,
+          buyerId: p.buyerUserId,
+          buyerLegalEntityId: p.buyerEntityId,
+          sellerLegalEntityId: p.sellerEntityId,
+          amount: penceToPounds(p.invoice.totalPence),
+          platformFee: money(commissionOn(p.hammer)),
+          stripePaymentIntentId: p.status === "captured" ? `pi_demo_${p.id.slice(-6)}` : null,
+          status: p.status,
+          paymentGroupId: p.paymentGroupId,
+          invoiceId: p.invoice.id,
+          createdAt: p.createdAt,
+        })),
+      )
+      .onConflictDoNothing();
+  }
 
-  await db
-    .insert(schema.lotFulfilment)
-    .values(
-      catalogue.fulfilments.map((f) => ({
-        id: f.id,
-        lotId: f.lotId,
-        paymentId: f.paymentId,
-        status: f.status,
-        fulfilmentMethod: "shipping" as const,
-        shippingCarrier: "LAX Fine Art Logistics",
-        trackingNumber: `LAX${f.id.slice(-6)}`,
-        releaseApprovedByUserId: base.userIds.admin,
-        releaseApprovedAt: f.updatedAt,
-        createdAt: f.updatedAt,
-        updatedAt: f.updatedAt,
-      })),
-    )
-    .onConflictDoNothing();
+  if (catalogue.fulfilments.length > 0) {
+    await db
+      .insert(schema.lotFulfilment)
+      .values(
+        catalogue.fulfilments.map((f) => ({
+          id: f.id,
+          lotId: f.lotId,
+          paymentId: f.paymentId,
+          status: f.status,
+          fulfilmentMethod: "shipping" as const,
+          shippingCarrier: "LAX Fine Art Logistics",
+          trackingNumber: `LAX${f.id.slice(-6)}`,
+          releaseApprovedByUserId: base.userIds.admin,
+          releaseApprovedAt: f.updatedAt,
+          createdAt: f.updatedAt,
+          updatedAt: f.updatedAt,
+        })),
+      )
+      .onConflictDoNothing();
+  }
 
   for (const payout of catalogue.payouts) {
     const settled = paidFor(payout.hammer);
@@ -532,32 +571,34 @@ async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Base) {
       .onConflictDoNothing();
   }
 
-  await db
-    .insert(schema.itemSubmission)
-    .values(
-      catalogue.submissions.map((s) => ({
-        id: s.id,
-        legalEntityId: s.legalEntityId,
-        submittedByUserId: s.submittedByUserId,
-        title: s.title,
-        description: s.description,
-        medium: s.medium || null,
-        dimensions: s.dimensions || null,
-        yearOfWork: s.yearOfWork || null,
-        images: [s.image],
-        isSigned: true,
-        askingPrice: money(s.askingPrice),
-        status: s.status,
-        convertedLotId: s.convertedLotId,
-        changesRequestedNote: s.changesRequestedNote,
-        changesRequestedAt: s.changesRequestedNote ? s.updatedAt : null,
-        reviewedBy: s.status === "draft" || s.status === "submitted" ? null : base.userIds.admin,
-        reviewedAt: s.status === "draft" || s.status === "submitted" ? null : s.updatedAt,
-        createdAt: s.createdAt,
-        updatedAt: s.updatedAt,
-      })),
-    )
-    .onConflictDoNothing();
+  if (catalogue.submissions.length > 0) {
+    await db
+      .insert(schema.itemSubmission)
+      .values(
+        catalogue.submissions.map((s) => ({
+          id: s.id,
+          legalEntityId: s.legalEntityId,
+          submittedByUserId: s.submittedByUserId,
+          title: s.title,
+          description: s.description,
+          medium: s.medium || null,
+          dimensions: s.dimensions || null,
+          yearOfWork: s.yearOfWork || null,
+          images: [s.image],
+          isSigned: true,
+          askingPrice: money(s.askingPrice),
+          status: s.status,
+          convertedLotId: s.convertedLotId,
+          changesRequestedNote: s.changesRequestedNote,
+          changesRequestedAt: s.changesRequestedNote ? s.updatedAt : null,
+          reviewedBy: s.status === "draft" || s.status === "submitted" ? null : base.userIds.admin,
+          reviewedAt: s.status === "draft" || s.status === "submitted" ? null : s.updatedAt,
+          createdAt: s.createdAt,
+          updatedAt: s.updatedAt,
+        })),
+      )
+      .onConflictDoNothing();
+  }
   const paintings = category("paintings");
   if (paintings) {
     for (const s of catalogue.submissions) {

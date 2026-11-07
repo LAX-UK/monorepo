@@ -2,7 +2,8 @@ import { safeImageUrl } from "@/lib/media-origins";
 import {
   type CurrencyTotal,
   type LaxPortfolioItemV1,
-  costBasisLines,
+  isPaidFor,
+  paidLines,
   sumByCurrency,
 } from "@auction/lax-ecosystem";
 import {
@@ -11,8 +12,8 @@ import {
   DOCUMENT_LABELS,
   PRODUCT_LABELS,
   STATUS_LABELS,
-  STATUS_TONES,
-  type StatusTone,
+  STATUS_STYLES,
+  type StatusStyle,
 } from "./portfolio-labels";
 import { safeDeepLink } from "./safe-deep-link";
 
@@ -39,14 +40,15 @@ export type WorkDetailVm = {
   edition: string | null;
   image: string | null;
   statusLabel: string;
-  statusTone: StatusTone;
+  statusStyle: StatusStyle;
   productLabel: string;
   businessName: string;
   acquiredAt: string;
   /** Each cost line in the currency it was charged in. */
   costLines: WorkCostLineVm[];
   /** Everything except shipping, per currency; never converted or combined. */
-  costBasis: CurrencyTotal[];
+  /** What the listed cost lines come to, delivery included: the amount paid, or the amount due. */
+  total: CurrencyTotal[];
   shipping: CurrencyTotal[];
   /** True while the invoice is unpaid, so the amounts read as due rather than paid. */
   costsAreDue: boolean;
@@ -90,7 +92,7 @@ export function buildWorkDetail(
     edition: item.edition ?? null,
     image: safeImageUrl(item.image, imageOrigins),
     statusLabel: STATUS_LABELS[item.status],
-    statusTone: STATUS_TONES[item.status],
+    statusStyle: STATUS_STYLES[item.status],
     productLabel: PRODUCT_LABELS[item.product],
     businessName: item.business.legalName,
     acquiredAt: item.acquiredAt,
@@ -100,7 +102,7 @@ export function buildWorkDetail(
       amount: line.amount,
       currency: line.currency,
     })),
-    costBasis: sumByCurrency(costBasisLines(item)),
+    total: sumByCurrency(isPaidFor(item) ? paidLines(item) : item.paid.lines),
     shipping: sumByCurrency(item.paid.lines.filter((line) => line.kind === "shipping")),
     costsAreDue: item.status === "awaiting_payment",
     paymentConfirming: item.status === "payment_confirming",

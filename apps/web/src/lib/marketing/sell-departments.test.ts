@@ -1,3 +1,4 @@
+import { DEPARTMENTS } from "@auction/domain";
 import { describe, expect, it } from "vitest";
 import {
   SELL_DEPARTMENT_GROUPS,
@@ -26,6 +27,21 @@ describe("departmentIntakeHref", () => {
   it("routes prints through the wizard with category preselect", () => {
     const prints = departmentById("fine-prints");
     expect(departmentIntakeHref(prints)).toBe("/selling/new?categorySlug=fine-prints");
+  });
+});
+
+describe("the department list", () => {
+  it("is the domain's twelve, in the same order and names, on the sell page", () => {
+    const sell = visibleSellDepartmentGroups()
+      .flatMap((g) => g.departments)
+      .filter((d) => d.slug)
+      .map((d) => ({ slug: d.slug, label: d.label }));
+    const domain = DEPARTMENTS.map((d) => ({ slug: d.slug, label: d.label }));
+    // The sell page groups by kind, so compare as sets of slug and name.
+    expect(new Set(sell.map((d) => `${d.slug}|${d.label}`))).toEqual(
+      new Set(domain.map((d) => `${d.slug}|${d.label}`)),
+    );
+    expect(sell).toHaveLength(12);
   });
 });
 

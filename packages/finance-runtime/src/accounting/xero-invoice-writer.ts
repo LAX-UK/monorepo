@@ -1,4 +1,5 @@
 import type {
+  IBidInvoiceReader,
   IPaymentExternalRefRepository,
   IXeroConnectionRepository,
 } from "@auction/persistence/interfaces";
@@ -15,14 +16,9 @@ import { assertXeroApiWritesAllowed } from "../xero-api-writes-guard.js";
 import type { XeroContactSync } from "./xero-contact-sync.js";
 import type { XeroTokenService } from "./xero-token.service.js";
 
-function isoDate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function dueDate(from: Date, days: number): string {
-  const t = new Date(from);
-  t.setUTCDate(t.getUTCDate() + days);
-  return isoDate(t);
+/** The calendar day in London, as Xero dates are (YYYY-MM-DD). */
+function londonDate(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(d);
 }
 
 export class XeroInvoiceWriter {
@@ -31,7 +27,6 @@ export class XeroInvoiceWriter {
       FinanceRuntimeEnv,
       | "XERO_DEFAULT_REVENUE_ACCOUNT_CODE"
       | "XERO_DEFAULT_TAX_TYPE"
-      | "XERO_INVOICE_DUE_DAYS"
       | "XERO_USE_LEGAL_ENTITY_CONTACT"
       | "XERO_API_WRITES_DISABLED"
     >,
@@ -40,6 +35,7 @@ export class XeroInvoiceWriter {
     private readonly tokens: XeroTokenService,
     private readonly contacts: XeroContactSync,
     private readonly invoiceAddressing: InvoiceAddressingService | null,
+    private readonly invoices: Pick<IBidInvoiceReader, "findByPaymentIds">,
   ) {}
 
   async ensureInvoiceForPayment(
@@ -59,6 +55,11 @@ export class XeroInvoiceWriter {
     if (existingRef?.xeroInvoiceId) {
       return { ok: true };
     }
+
+    // The books copy takes its date and due date from the stored invoice, so it can never
+    // disagree with the buyer's invoice; without one nothing is written and the retry job tries again.
+    const invoice = (await this.invoices.findByPaymentIds([ctx.paymentId])).get(ctx.paymentId);
+    if (!invoice) return { ok: false, error: "payment_has_no_invoice" };
 
     const { xero, tenantId } = await this.tokens.initializeAuthenticatedClient(conn);
     const lot = ctx.lot as Lot;
@@ -107,9 +108,10 @@ export class XeroInvoiceWriter {
         this.env.XERO_DEFAULT_TAX_TYPE === "NONE"
           ? LineAmountTypes.NoTax
           : LineAmountTypes.Exclusive;
-      const today = new Date();
-      inv.date = isoDate(today);
-      inv.dueDate = dueDate(today, this.env.XERO_INVOICE_DUE_DAYS);
+      // Dated when the invoice was raised and due on the buyer's term, so the books show the
+      // same due date as the buyer's invoice and reminders, however late Xero is written.
+      inv.date = londonDate(invoice.raisedAt);
+      inv.dueDate = londonDate(invoice.dueAt);
       inv.reference = `payment:${ctx.paymentId}`;
       inv.status = Invoice.StatusEnum.AUTHORISED;
 

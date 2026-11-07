@@ -36,12 +36,24 @@ export const artworkRegister = pgTable(
     dimensions: text("dimensions"),
     year: integer("year"),
     imageRefs: jsonb("image_refs").$type<string[]>().notNull().default([]),
+    /**
+     * Where each picture came from in Zoho and which stored copy it became, in Zoho's order.
+     * `imageRefs` is always the distinct keys of this list.
+     */
+    imageSources: jsonb("image_sources")
+      .$type<{ zohoFileId: string; fingerprint: string; sha256: string; key: string }[]>()
+      .notNull()
+      .default([]),
+    /** When the pictures were last compared with Zoho's; null until the first check. */
+    imagesCheckedAt: timestamp("images_checked_at", { mode: "date", withTimezone: true }),
     catalogueStatus: text("catalogue_status"),
     offerState: text("offer_state")
       .$type<"held" | "lax_art" | "bid_sale" | "private_sale" | "sold" | "withdrawn">()
       .notNull()
       .default("held"),
-    offerRefKind: text("offer_ref_kind").$type<"shop_artwork" | "bid_lot" | "private_sale">(),
+    offerRefKind: text("offer_ref_kind").$type<
+      "shop_artwork" | "bid_lot" | "private_sale" | "gallery_sale"
+    >(),
     offerRefId: text("offer_ref_id"),
     zohoModifiedAt: timestamp("zoho_modified_at", { mode: "date", withTimezone: true }),
     version: integer("version").notNull().default(1),
@@ -55,6 +67,7 @@ export const artworkRegister = pgTable(
       .on(table.sourceOriginalId)
       .where(sql`${table.sourceOriginalId} IS NOT NULL`),
     index("artwork_register_offer_state_idx").on(table.offerState),
+    index("artwork_register_images_checked_idx").on(table.imagesCheckedAt),
     index("artwork_register_offer_ref_idx")
       .on(table.offerRefKind, table.offerRefId)
       .where(sql`${table.offerRefId} IS NOT NULL`),
@@ -80,6 +93,9 @@ export const artworkRegisterEvent = pgTable(
         | "conflict_resolved"
         | "zoho_writeback_recorded"
         | "move_confirmed"
+        | "lax_art_draft_created"
+        | "zoho_link_linked"
+        | "zoho_link_unlinked"
       >()
       .notNull(),
     /** `zoho`, `system`, or `staff:<user id>`. */

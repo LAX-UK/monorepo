@@ -55,7 +55,7 @@ describe("requestDataExport", () => {
     });
     const result = await requestDataExport(deps);
     expect(result).toMatchObject({ status: "limited" });
-    expect(JSON.stringify(result)).toContain("20 November 2026");
+    expect(JSON.stringify(result)).toContain("Fri 20 Nov 2026");
   });
 
   it("sends a signed-out person, or a refused sign-in, to sign in again", async () => {

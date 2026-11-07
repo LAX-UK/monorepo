@@ -1,6 +1,7 @@
+/* Below 1024px the compact lockup's mark is 28px tall (LOCKUP_HEIGHTS.phoneMark). */
 .shop-header__logo .lax-lockup {
   width: auto;
-  height: 2.5rem;
+  height: 1.75rem;
 }
 
 /* Phones and tablets show the compact lockup (the mark and .SHOP); desktop shows the full

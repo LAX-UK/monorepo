@@ -14,6 +14,8 @@ export {
   MarketingClockIcon,
   MarketingCloseIcon,
   MarketingExpandIcon,
+  MarketingEyeIcon,
+  MarketingGavelIcon,
   MarketingGridIcon,
   MarketingHeartIcon,
   MarketingHomeIcon,
@@ -123,7 +125,24 @@ export {
 } from "./marketing-horizontal-rail.js";
 export { MarketingOverlayCard, type MarketingOverlayCardProps } from "./marketing-overlay-card.js";
 export { MARKETING_SURFACE_TONE } from "./marketing-surface-tone.js";
-export { LaxFamilyBar, type LaxFamilyBarLink, type LaxFamilyBarProps } from "./lax-family-bar.js";
+export {
+  LaxFamilyBar,
+  type LaxFamilyBarHelpLink,
+  type LaxFamilyBarLink,
+  type LaxFamilyBarProps,
+} from "./lax-family-bar.js";
+export { ACCOUNT_ENTRY_NAME_MAX, cutAccountEntryName } from "./account-entry-name.js";
+export {
+  MarketingAccountEntry,
+  MarketingAvatar,
+  type MarketingAccountEntryProps,
+  type MarketingAccountEntryViewer,
+} from "./marketing-account-entry.js";
+export {
+  MarketingAttentionStrip,
+  type MarketingAttentionStripProps,
+  type MarketingAttentionTone,
+} from "./marketing-attention-strip.js";
 export { LaxFamilyMenuLinks, type LaxFamilyMenuLinksProps } from "./lax-family-menu-links.js";
 export { LaxLockup, type LaxLockupProps } from "./lax-lockup.js";
 export { LaxLogo, type LaxLogoProps } from "./lax-logo.js";
@@ -318,10 +337,46 @@ export {
   type MarketingHeartToggleProps,
 } from "./marketing-heart-toggle.js";
 export {
+  BOTTOM_BAR_ABOVE_CLASS,
+  MarketingBottomBarSpace,
   MarketingBottomTabBar,
   type MarketingBottomTabBarProps,
-  type MarketingBottomTabItem,
 } from "./marketing-bottom-tab-bar.js";
+export {
+  BOTTOM_TAB_COUNT_CAP,
+  MARKETING_COUNT_BADGE_CLASS,
+  badgeCountText,
+  isTabCurrent,
+  type MarketingBottomTab,
+  type MarketingBottomTabAction,
+  type MarketingBottomTabBadge,
+  type MarketingBottomTabLink,
+} from "./bottom-bar/bottom-tab-config.js";
+export {
+  claimBottomSlot,
+  useBottomSlotClaimed,
+  useClaimBottomSlot,
+} from "./bottom-bar/bottom-slot.js";
+export {
+  type BottomBarVisibility,
+  KEYBOARD_VIEWPORT_RATIO,
+  isTextFieldFocused,
+  isViewportShrunk,
+  useBottomBarVisibility,
+} from "./bottom-bar/use-bottom-bar-visibility.js";
+export {
+  MarketingPhoneMenu,
+  type MarketingPhoneMenuHelpLink,
+  type MarketingPhoneMenuProps,
+} from "./header/marketing-phone-menu.js";
+export {
+  MarketingAccountSheet,
+  type MarketingAccountSheetProps,
+} from "./header/marketing-account-sheet.js";
+export {
+  MarketingTopBarSlots,
+  type MarketingTopBarSlotsProps,
+} from "./header/marketing-top-bar-slots.js";
 export {
   MarketingSideSheet,
   type MarketingSideSheetProps,
@@ -373,6 +428,7 @@ export {
   MarketingArtistGrid,
   type MarketingArtistGridProps,
   MARKETING_ARTIST_GRID_CLASS,
+  MarketingArtistInitials,
   marketingArtistInitials,
 } from "./marketing-artist-card.js";
 export {
@@ -392,6 +448,13 @@ export {
   type MarketingArtistCrossLink,
   type MarketingArtistCrossLinksProps,
 } from "./marketing-artist-cross-links.js";
+export {
+  LOT_CARD_MEDIA_FRAMES,
+  lotCardMediaClasses,
+  lotCardMediaFrame,
+  type LotCardMediaClasses,
+  type LotCardMediaFrame,
+} from "./lot-media/lot-card-media-frame.js";
 export {
   MarketingWorkCard,
   type MarketingWorkCardProps,
@@ -690,3 +753,10 @@ export {
   type AlertLinkCopy,
   type AlertLinkProduct,
 } from "./alerts/alert-link-copy.js";
+
+export {
+  MarketingSignedInToast,
+  type MarketingSignedInToastProps,
+  SIGNED_IN_TOAST_MS,
+  signedInFirstName,
+} from "./marketing-signed-in-toast.js";

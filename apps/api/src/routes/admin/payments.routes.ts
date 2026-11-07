@@ -6,7 +6,7 @@ import {
   requirePaymentManualReviewWrite,
 } from "../../middleware/require-capability.js";
 import type { AdminPaymentsRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
-import { adminPaymentIdParamSchema } from "./_schemas.js";
+import { adminPaymentIdParamSchema, unappliedMoneyKeyParamSchema } from "./_schemas.js";
 import type { AdminHono, AdminStaffMutationGuards } from "./_shared.js";
 
 export function attachAdminPaymentsListRoutes(
@@ -140,6 +140,31 @@ export function attachAdminPaymentsManualReviewRoutes(
         c.get("userId") as string,
         c.get("userRole") ?? "client",
         id,
+        c.get("userStaffRoles"),
+        reason,
+      );
+      return result.match(
+        () => c.json({ ok: true }),
+        (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
+      );
+    },
+  );
+
+  // Finance closes an unapplied-money task once they have dealt with the money another way.
+  finance.post(
+    "/payments/unapplied-money/:key/mark-handled",
+    requirePaymentManualReviewWrite,
+    guards.requireStepUp,
+    guards.idempotent("payments.unapplied-money-mark-handled"),
+    zValidator("param", unappliedMoneyKeyParamSchema),
+    zValidator("json", adminRefundBuyerBodySchema),
+    async (c) => {
+      const { key } = c.req.valid("param");
+      const { reason } = c.req.valid("json");
+      const result = await container.admin.payments.markUnappliedMoneyHandled(
+        c.get("userId") as string,
+        c.get("userRole") ?? "client",
+        key,
         c.get("userStaffRoles"),
         reason,
       );

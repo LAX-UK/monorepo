@@ -27,8 +27,18 @@ export function isPaidFor(item: LaxPortfolioItemV1): boolean {
 }
 
 /**
- * "Paid so far" counts only works that have been paid for: an invoice still awaiting payment
- * is a liability, and a payment still being confirmed is not settled. It is a fact in the currency paid, not a valuation.
+ * What was paid for a work and kept: its cost lines once it has been paid for, none before. An
+ * invoice still awaiting payment is a liability and a payment still being confirmed is not
+ * settled. Delivery counts, because it was paid, and money refunded is already off the lines, so
+ * the lines add up to what Money reports as paid less refunded. Every "paid" figure reads this.
+ */
+export function paidLines(item: LaxPortfolioItemV1): LaxCostLineV1[] {
+  return isPaidFor(item) ? item.paid.lines : [];
+}
+
+/**
+ * "Paid so far" is net: the money paid and kept, per currency, the same figure Portfolio, Home
+ * and Money show. It is a fact in the currency paid, not a valuation.
  */
 export function buildPortfolioHeader(items: readonly LaxPortfolioItemV1[]): PortfolioHeaderVm {
   const count = (...statuses: LaxPortfolioItemV1["status"][]) =>
@@ -43,6 +53,6 @@ export function buildPortfolioHeader(items: readonly LaxPortfolioItemV1[]): Port
     inReview: items.filter(
       (item) => item.status === "awaiting_payment" && item.owed?.state === "in_review",
     ).length,
-    paidSoFar: sumByCurrency(items.filter(isPaidFor).flatMap(costBasisLines)),
+    paidSoFar: sumByCurrency(items.flatMap(paidLines)),
   };
 }

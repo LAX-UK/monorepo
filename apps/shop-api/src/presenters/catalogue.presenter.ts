@@ -25,7 +25,9 @@ import type {
   CategorySummaryReadModel,
 } from "../application/read-models/catalogue.read-model.js";
 
-export function presentArtworkSummary(model: ArtworkSummaryReadModel): PublicArtworkSummary {
+type SummaryWithoutCardLine = Omit<PublicArtworkSummary, "editionCardLine" | "workSlug">;
+
+function presentArtworkBase(model: ArtworkSummaryReadModel): SummaryWithoutCardLine {
   return {
     slug: model.slug,
     title: model.title,
@@ -52,9 +54,17 @@ export function presentArtworkSummary(model: ArtworkSummaryReadModel): PublicArt
   };
 }
 
+export function presentArtworkSummary(model: ArtworkSummaryReadModel): PublicArtworkSummary {
+  return {
+    ...presentArtworkBase(model),
+    editionCardLine: model.editionCardLine ?? null,
+    ...(model.workSlug ? { workSlug: model.workSlug } : {}),
+  };
+}
+
 export function presentArtworkDetail(model: ArtworkDetailReadModel): PublicArtworkDetail {
   return {
-    ...presentArtworkSummary(model),
+    ...presentArtworkBase(model),
     description: model.description,
     images: model.images.map((image) => ({ ...image })),
     heightCm: model.heightCm,
@@ -68,6 +78,7 @@ export function presentArtworkDetail(model: ArtworkDetailReadModel): PublicArtwo
     exhibitionHistory: model.exhibitionHistory,
     seoTitle: model.seoTitle,
     seoDescription: model.seoDescription,
+    ...(model.edition !== undefined ? { edition: model.edition } : {}),
   };
 }
 
@@ -86,6 +97,7 @@ export function presentArtistSummary(model: ArtistSummaryReadModel): PublicArtis
     discipline: model.discipline,
     portraitUrl: model.portraitUrl,
     artworkCount: model.artworkCount,
+    ...(model.leadImageUrl !== undefined ? { leadImageUrl: model.leadImageUrl } : {}),
   };
 }
 

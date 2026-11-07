@@ -15,6 +15,8 @@ import {
 } from "@/lib/marketing/chrome";
 import { toneAwareScrimStops } from "@/lib/media/tone-aware-scrim";
 import { LOT_TRANSITION_IMAGE_ATTR, LOT_TRANSITION_ROOT_ATTR } from "@/lib/view-transitions";
+import type { DepartmentDisplayStyle } from "@auction/domain";
+import { lotCardMediaClasses } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
@@ -54,6 +56,8 @@ export type LotCardGridProps = {
   /** Full-bleed media when `adaptiveMedia` is not set. */
   image?: ReactNode;
   adaptiveMedia?: AdaptiveMediaConfig;
+  /** How the lot's department shows its picture; a wall work by default. */
+  mediaStyle?: DepartmentDisplayStyle;
   title: ReactNode;
   meta?: ReactNode;
   topLeft?: ReactNode;
@@ -84,6 +88,7 @@ export function LotCardGrid({
   lotId,
   image,
   adaptiveMedia,
+  mediaStyle = "wall",
   title,
   meta,
   topLeft,
@@ -92,6 +97,7 @@ export function LotCardGrid({
   imageOverlays,
   className,
 }: LotCardGridProps) {
+  const media = lotCardMediaClasses(mediaStyle);
   const article = (
     <article
       className={cn(cardShell, "flex h-full min-h-0 flex-col", className)}
@@ -100,11 +106,11 @@ export function LotCardGrid({
       <LotCardNavLink lotId={lotId} href={href} className="flex min-h-0 flex-1 flex-col">
         <AdaptiveMediaFrameContainer
           {...{ [LOT_TRANSITION_IMAGE_ATTR]: true }}
-          className="relative aspect-[4/5] shrink-0 bg-surface-container-low"
+          className={cn("relative shrink-0", media.frame)}
         >
           <div
             key={lotId ? `${lotId}-media` : "media"}
-            className={cn("absolute inset-0", mediaHover)}
+            className={cn("absolute inset-0", media.inset, media.image, mediaHover)}
           >
             {adaptiveMedia ? (
               <AdaptiveFrameImage

@@ -1,5 +1,5 @@
 import type { LotCardLineModel } from "@/lib/lot-card/lot-card-line";
-import type { HomeSectionId } from "@auction/domain";
+import type { DepartmentDisplayStyle, HomeSectionId } from "@auction/domain";
 
 export type HomeLink = { href: string; label: string };
 
@@ -10,6 +10,8 @@ export type HomeLotCard = {
   title: string;
   artistName: string | null;
   imageUrl: string | null;
+  /** How the lot's department shows its picture on a card. */
+  displayStyle: DepartmentDisplayStyle;
   /** Whether a person can still follow the lot: it is live or coming up, not sold or ended. */
   watchable: boolean;
   /** "Lot 4". */
@@ -27,6 +29,12 @@ export type HomeLotRail = {
   lots: HomeLotCard[];
 };
 
+/** A sale's staff-chosen cover as a card shows it: the file and the point that stays in frame. */
+export type HomeCardImage = { src: string; alt: string; focal: { x: number; y: number } };
+
+/** The line under the date: static text, counting every second in the final hour. */
+export type HomeComingUpTime = { text: string; tick?: { endsAt: string; template: string } };
+
 export type HomeComingUpRow = {
   id: string;
   href: string;
@@ -37,10 +45,25 @@ export type HomeComingUpRow = {
   title: string;
   /** "In the room, London · 6 lots". */
   meta: string;
+  /** How the sale is held: "Online", "In the room, London". */
+  typeLabel: string;
+  /** "6 lots"; null while the catalogue is empty. */
+  lotsLabel: string | null;
+  /** The sale's cover; null when staff set none, and the card then stands on plain surface. */
+  image: HomeCardImage | null;
+  /** "Opens Tue 10 Nov, 18:00 GMT · in 2 days"; null when the sale has no start. */
+  time: HomeComingUpTime | null;
   action: HomeLink;
 };
 
-export type HomeComingUp = { rows: HomeComingUpRow[]; seeAll: HomeLink };
+/** One sale is a wide feature card; two or three are a row of cards. */
+export type HomeComingUpLayout = "feature" | "row";
+
+export type HomeComingUp = {
+  rows: HomeComingUpRow[];
+  layout: HomeComingUpLayout;
+  seeAll: HomeLink;
+};
 
 export type HomeResultsFacts = {
   saleTitle: string;
@@ -58,7 +81,17 @@ export type HomeResultsBand = {
   lots: HomeLotCard[];
 };
 
-export type HomeDepartment = { id: string; name: string; href: string; imageUrl: string | null };
+export type HomeDepartment = {
+  id: string;
+  name: string;
+  href: string;
+  imageUrl: string;
+  /**
+   * `staff` is the picture staff chose for the department, which fills the tile. `lot` is a work's
+   * photograph, shown whole on the mat so a consigned work is never cropped.
+   */
+  imageSource: "staff" | "lot";
+};
 
 export type HomeArtistCard = {
   id: string;
@@ -85,6 +118,10 @@ export type HomePressItem = {
 };
 
 /** Every home section below the hero that has something to show; a missing key is hidden. */
+/** The alerts panel: a few works from recent sales shown beside the sign-up. */
+export type HomeAlertThumbnail = { src: string };
+export type HomeAlerts = { thumbnails: HomeAlertThumbnail[] };
+
 export type HomeSections = {
   inThisSale?: HomeLotRail;
   highlightsFromNextSale?: HomeLotRail;
@@ -94,7 +131,7 @@ export type HomeSections = {
   departments?: HomeDepartment[];
   artists?: HomeArtistCard[];
   selling?: HomeSelling;
-  alerts?: true;
+  alerts?: HomeAlerts;
   fromLaxAndPress?: HomePressItem[];
 };
 

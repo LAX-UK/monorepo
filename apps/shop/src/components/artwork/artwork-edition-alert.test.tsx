@@ -29,7 +29,7 @@ describe("ArtworkEditionAlert", () => {
 
   it("checks the address before sending: one message under the field, focus on the field", async () => {
     render(<ArtworkEditionAlert slug="reed-study" viewer={{ kind: "guest" }} />);
-    fireEvent.click(screen.getByRole("button", { name: "Email me" }));
+    fireEvent.click(screen.getByRole("button", { name: "Get an email if it comes back" }));
     const input = screen.getByLabelText("Email address");
     expect(screen.queryByText("There is a problem")).toBeNull();
     expect(screen.getAllByText("Enter your email address")).toHaveLength(1);
@@ -37,7 +37,7 @@ describe("ArtworkEditionAlert", () => {
     expect(input.getAttribute("aria-describedby")).toContain("-error");
     expect(document.activeElement).toBe(input);
     fireEvent.change(input, { target: { value: "nope" } });
-    fireEvent.click(screen.getByRole("button", { name: "Email me" }));
+    fireEvent.click(screen.getByRole("button", { name: "Get an email if it comes back" }));
     expect(screen.getByText(/like name@example.com/)).toBeTruthy();
     expect(registerMock).not.toHaveBeenCalled();
   });
@@ -48,7 +48,7 @@ describe("ArtworkEditionAlert", () => {
     fireEvent.change(screen.getByLabelText("Email address"), {
       target: { value: " grace@example.com " },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Email me" }));
+    fireEvent.click(screen.getByRole("button", { name: "Get an email if it comes back" }));
     await waitFor(() => expect(screen.getByText("You are on the list")).toBeTruthy());
     expect(registerMock).toHaveBeenCalledWith("reed-study", { email: "grace@example.com" });
     const status = screen.getByRole("status");
@@ -62,7 +62,7 @@ describe("ArtworkEditionAlert", () => {
     fireEvent.change(screen.getByLabelText("Email address"), {
       target: { value: "grace@example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Email me" }));
+    fireEvent.click(screen.getByRole("button", { name: "Get an email if it comes back" }));
     await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("Too many"));
     expect(screen.getByLabelText("Email address")).toBeTruthy();
   });
@@ -76,11 +76,13 @@ describe("ArtworkEditionAlert", () => {
         viewer={{ kind: "account", email: "robert@example.test" }}
       />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "Email me if it is back" }));
+    fireEvent.click(screen.getByRole("button", { name: "Get an email if it comes back" }));
     await waitFor(() => expect(screen.getByText("You are on the list")).toBeTruthy());
     expect(registerMock).toHaveBeenCalledWith("reed-study", {});
     fireEvent.click(await screen.findByRole("button", { name: "Stop this alert" }));
     await waitFor(() => expect(screen.getByText(/Alert stopped/)).toBeTruthy());
-    expect(await screen.findByRole("button", { name: "Email me if it is back" })).toBeTruthy();
+    expect(
+      await screen.findByRole("button", { name: "Get an email if it comes back" }),
+    ).toBeTruthy();
   });
 });

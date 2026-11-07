@@ -4,6 +4,7 @@ import {
   PURCHASE_LIST_LIMIT,
   accountPurchaseScope,
   amountOwedEntry,
+  decisivePaymentByLot,
   purchasePaymentRole,
 } from "@auction/domain";
 import type { Lot } from "@auction/types";
@@ -106,10 +107,7 @@ export class AmountsOwedService implements IAmountsOwedService {
       this.deps.fulfilments.statusesForLots(lots.map((lot) => lot.id)),
       this.deps.paymentBuyerService.getBuyerComplianceGateStatus(userId),
     ]);
-    const paymentByLot = new Map<string, PaymentRow>();
-    for (const payment of payments) {
-      if (!paymentByLot.has(payment.lotId)) paymentByLot.set(payment.lotId, payment);
-    }
+    const paymentByLot = decisivePaymentByLot(payments);
     const hold: AccountHold = gate.status;
     const entries = priced.flatMap((lot) => {
       const payment = paymentByLot.get(lot.id);
@@ -120,8 +118,8 @@ export class AmountsOwedService implements IAmountsOwedService {
           fulfilmentStatus: fulfilments.get(lot.id) ?? null,
           paymentReviewReason: payment?.manualReviewReason ?? null,
           role: roleOf(lot as Lot),
-          // The total with the buyer's premium: what Purchases shows and one payment covers.
-          amountDue: lot.checkoutPricing?.totalMajor ?? payment?.amount ?? null,
+          // The invoice total once raised (it never changes); the lot priced now only before that.
+          amountDue: payment?.amount ?? lot.checkoutPricing?.totalMajor ?? null,
           currency: PLATFORM_CURRENCY,
         },
         hold,

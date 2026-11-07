@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { lot, lotFulfilment, payment, paymentReminder } from "@auction/db/schema";
+import { bidInvoice, lot, lotFulfilment, payment, paymentReminder } from "@auction/db/schema";
 import { PAYMENT_REMINDER_STEPS } from "@auction/domain";
 import { and, asc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import type {
@@ -27,6 +27,7 @@ export class DrizzlePaymentReminderStore implements IPaymentReminderStore {
         amount: payment.amount,
         paymentStatus: payment.status,
         raisedAt: payment.createdAt,
+        dueAt: bidInvoice.dueAt,
         fulfilmentStatus: lotFulfilment.status,
         sentSteps: sql<
           string[] | null
@@ -34,6 +35,7 @@ export class DrizzlePaymentReminderStore implements IPaymentReminderStore {
       })
       .from(payment)
       .innerJoin(lot, eq(lot.id, payment.lotId))
+      .leftJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
       .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, payment.lotId))
       .where(
         and(

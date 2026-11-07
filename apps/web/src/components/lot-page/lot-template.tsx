@@ -3,7 +3,7 @@ import { LotAnnouncerProvider } from "@/components/lot-page/lot-announcer";
 import { LotBidHistory } from "@/components/lot-page/lot-bid-history";
 import { LotDetails } from "@/components/lot-page/lot-details";
 import { LotIdentity } from "@/components/lot-page/lot-identity";
-import { LotImageStage } from "@/components/lot-page/lot-image-stage";
+import { LotMedia } from "@/components/lot-page/lot-media/lot-media";
 import { LotPageViewProvider } from "@/components/lot-page/lot-page-view-context";
 import { LotPriceBlock } from "@/components/lot-page/lot-price-block";
 import { LotSecondaryActions } from "@/components/lot-page/lot-secondary-actions";
@@ -37,6 +37,7 @@ export function LotTemplate({
   bidEntry,
   sale,
   initialWatching,
+  media,
   banner,
   supplementary,
   footer,
@@ -58,8 +59,13 @@ export function LotTemplate({
             <LotAnnouncerProvider>
               {banner ? <div className="mb-4">{banner}</div> : null}
               <div className="grid gap-6 pb-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start lg:gap-14">
-                <LotImageStage title={lot.title} images={lot.images} />
-                <div className="min-w-0 lg:sticky lg:top-[calc(var(--header-height)+1.5rem)]">
+                <LotMedia
+                  title={lot.title}
+                  images={lot.images}
+                  displayStyle={media.style}
+                  pairsTwoFaces={media.pairsTwoFaces}
+                />
+                <div className="min-w-0 lg:sticky lg:top-[calc(var(--header-offset,var(--header-height,4rem))+1.5rem)]">
                   <LotIdentity
                     lotNumber={lot.lotNumber}
                     title={lot.title}

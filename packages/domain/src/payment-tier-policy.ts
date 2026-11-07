@@ -9,7 +9,10 @@ export type ManualReviewReason =
   | "seller_archived_and_high_value"
   | "aml_hold"
   | "source_of_funds_required"
-  | "finance_release_required";
+  | "finance_release_required"
+  /** Held for the account, not reviewed by staff: see `paymentEligibility`. */
+  | "identity_verification_required"
+  | "organisation_under_review";
 
 export type PaymentTierLimits = {
   cardMaxPence: number;
@@ -66,6 +69,37 @@ export function validateCheckoutAmountPence(
   if (amountPence < limits.minPence) return "invalid_amount";
   if (amountPence > limits.absoluteMaxPence) return "blocked";
   return "ok";
+}
+
+export type PaymentMethodAvailability = {
+  method: "card" | "bank_transfer";
+  available: boolean;
+  /** Why it is unavailable; `null` while it is available. */
+  reason: "over_card_limit" | "within_card_limit" | "over_online_limit" | null;
+};
+
+/**
+ * How a total can be paid. Card takes up to and including the card limit; bank transfer takes
+ * the amounts above it, as the server does today. Neither takes more than one online payment can.
+ */
+export function paymentMethodsFor(
+  totalPence: number,
+  limits: PaymentTierLimits,
+): PaymentMethodAvailability[] {
+  const overOnlineLimit = totalPence > limits.absoluteMaxPence;
+  const overCardLimit = totalPence > limits.cardMaxPence;
+  return [
+    {
+      method: "card",
+      available: !overCardLimit,
+      reason: overCardLimit ? (overOnlineLimit ? "over_online_limit" : "over_card_limit") : null,
+    },
+    {
+      method: "bank_transfer",
+      available: overCardLimit && !overOnlineLimit,
+      reason: overOnlineLimit ? "over_online_limit" : overCardLimit ? null : "within_card_limit",
+    },
+  ];
 }
 
 /** Stripe Checkout rail for a pending payment that is cleared for checkout. */

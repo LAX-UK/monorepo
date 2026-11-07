@@ -87,6 +87,7 @@ describe("parsePriceInMindMinor", () => {
     ["£45,000", 4_500_000],
     ["45000.50", 4_500_050],
     [" 1,250 ", 125_000],
+    ["£1,200.50", 120_050],
   ])("reads %j as pence", (text, pence) => {
     expect(parsePriceInMindMinor(text)).toBe(pence);
   });
@@ -95,9 +96,12 @@ describe("parsePriceInMindMinor", () => {
     expect(parsePriceInMindMinor(text)).toBeUndefined();
   });
 
-  it.each(["abc", "0", "-5", "12.345", "1e5"])("cannot read %j", (text) => {
-    expect(parsePriceInMindMinor(text)).toBeNull();
-  });
+  it.each(["abc", "0", "-5", "12.345", "1e5", "1,2,0,0", "1.234", "£1,200.505"])(
+    "cannot read %j",
+    (text) => {
+      expect(parsePriceInMindMinor(text)).toBeNull();
+    },
+  );
 });
 
 describe("enquiryFormSchema, selling", () => {

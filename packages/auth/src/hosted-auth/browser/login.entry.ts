@@ -1,4 +1,5 @@
 import { HOSTED_AUTH_POLICY } from "../policy.js";
+import { legalAcceptanceFields } from "./legal-acceptance.js";
 import {
   type HostedLoginStep,
   announcementForLoginStep,
@@ -11,8 +12,10 @@ import { asButton, hostedAuth, inputValue, submitButton } from "./window-auth.js
 
 const auth = hostedAuth();
 bindSocialCallbackError(auth);
-bindSocialSignIn(auth);
 const root = document.getElementById("login-root");
+// Google and Apple can create the account here, so they carry the statement the page showed;
+// email and password sign-in does not.
+bindSocialSignIn(auth, () => legalAcceptanceFields(root?.dataset.legalProduct));
 const form = document.getElementById("login-form");
 const emailFirst = root?.getAttribute("data-email-first") === "true";
 const cooldownMs = HOSTED_AUTH_POLICY.magicLinkCooldownMs;

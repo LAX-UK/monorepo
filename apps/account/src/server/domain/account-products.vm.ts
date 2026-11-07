@@ -5,7 +5,8 @@ export type AccountProductId = "bid" | "shop" | "art";
 export type AccountProductVm = {
   id: AccountProductId;
   name: string;
-  tagline: string;
+  /** What the card says when the person has nothing in the product yet. */
+  invitation: string;
   href: string;
 };
 
@@ -18,11 +19,11 @@ export function buildAccountProducts(
   config: Pick<LaxAccountConfig, "bidPublicUrl" | "shopPublicUrl" | "laxArtPublicUrl">,
 ): AccountProductVm[] {
   const candidates: Array<[AccountProductId, string, string, string | undefined]> = [
-    ["bid", "LAX Bid", "Bid on auctions", config.bidPublicUrl],
-    ["shop", "LAX Shop", "Browse and buy", config.shopPublicUrl],
-    ["art", "lax.art", "Discover and collect art", config.laxArtPublicUrl],
+    ["art", "lax.art", "Discover original art.", config.laxArtPublicUrl],
+    ["shop", "LAX Shop", "Browse signed and limited editions.", config.shopPublicUrl],
+    ["bid", "LAX Bid", "Find your next lot.", config.bidPublicUrl],
   ];
-  return candidates.flatMap(([id, name, tagline, href]) =>
-    href ? [{ id, name, tagline, href }] : [],
+  return candidates.flatMap(([id, name, invitation, href]) =>
+    href ? [{ id, name, invitation, href }] : [],
   );
 }

@@ -76,7 +76,7 @@ describe("buildEditionsPage", () => {
       approved: 5,
       soldOrReserved: 2,
       availableNow: 3,
-      lastApprovedOn: "1 Sept 2026",
+      lastApprovedOn: "Tue 1 Sep 2026",
       pending: null,
       action: { label: "Request more", current: 3 },
     });
@@ -88,12 +88,47 @@ describe("buildEditionsPage", () => {
     });
   });
 
+  it("says Not approved yet only when nothing is approved", () => {
+    const line = (overrides: Partial<PortalSaleAuthority>) =>
+      buildEditionsPage([edition(overrides)], []).rows[0]?.approvalLine;
+    expect(line({ authorisedCount: 0, committedCount: 0, lastGrantAt: null })).toBe(
+      "Not approved yet",
+    );
+    expect(line({})).toBe("Last approved Tue 1 Sep 2026");
+  });
+
+  it("drops the approval line, rather than contradict the count, when approved but undated", () => {
+    const page = buildEditionsPage([edition({ lastGrantAt: null })], []);
+    expect(page.rows[0]).toMatchObject({ approved: 5, approvalLine: null });
+  });
+
+  it("tells rows with the same title apart by what the seller holds, and only those", () => {
+    const page = buildEditionsPage(
+      [
+        edition({ artworkTitle: "Vessel Study", ownedCount: 24 }),
+        edition({ artworkId: ART_B, artworkTitle: "vessel study ", ownedCount: 1 }),
+        edition({ artworkId: "ffffffff-ffff-4fff-8fff-ffffffffffff", ownedCount: 3 }),
+      ],
+      [],
+    );
+    expect(page.rows.map((row) => row.editionLine)).toEqual([
+      "You hold 24 editions",
+      "You hold 1 edition",
+      null,
+    ]);
+  });
+
+  it("shows no edition line for a repeated title when Shop does not say what is held", () => {
+    const page = buildEditionsPage([edition(), edition({ artworkId: ART_B })], []);
+    expect(page.rows.map((row) => row.editionLine)).toEqual([null, null]);
+  });
+
   it("shows a pending request on its row in place of the action", () => {
     const page = buildEditionsPage([edition()], [request({ note: "  For the autumn fair " })]);
     expect(page.rows[0]?.action).toBeNull();
     expect(page.rows[0]?.pending).toEqual({
       requestId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
-      summary: "Request pending: 3 more · sent 12 Oct 2026",
+      summary: "Request pending: 3 more · sent Mon 12 Oct 2026",
       note: "For the autumn fair",
     });
   });
@@ -155,9 +190,9 @@ describe("buildEditionsPage", () => {
       ["Harbour Print", "Withdrawn"],
     ]);
     expect(page.history[0]?.detail).toBe(
-      "Asked for 2 available to sell · sent 20 Sept 2026 · answered 22 Sept 2026",
+      "Asked for 2 available to sell · sent Sun 20 Sep 2026 · answered Tue 22 Sep 2026",
     );
-    expect(page.history[2]?.detail).toContain("withdrawn 2 Jul 2026");
+    expect(page.history[2]?.detail).toContain("withdrawn Thu 2 Jul 2026");
     expect(page.history.every((row) => row.declineReason === null)).toBe(true);
   });
 });

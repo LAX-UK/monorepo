@@ -10,9 +10,13 @@ const ORG = "org-1";
 type Fixture = {
   lotId: string;
   payment?: { status: PaymentStatus; manualReviewReason?: string | null };
+  /** A checkout attempt started after `payment` and abandoned: the newest row for the lot. */
+  newerAbandonedAttempt?: boolean;
   fulfilment?: string;
   buyerLegalEntityId?: string;
   winnerId?: string;
+  /** The lot's hammer price as it reads now, if edited after the invoice was raised. */
+  hammerNow?: string;
 };
 
 function lotFor(fixture: Fixture) {
@@ -35,6 +39,18 @@ function build(
   const payments = fixtures.flatMap((f) =>
     f.payment
       ? [
+          ...(f.newerAbandonedAttempt
+            ? [
+                {
+                  id: `abandoned-${f.lotId}`,
+                  lotId: f.lotId,
+                  status: "pending" as PaymentStatus,
+                  manualReviewReason: null,
+                  amount: "1150.00",
+                  createdAt: "2026-10-02T00:00:00.000Z",
+                },
+              ]
+            : []),
           {
             id: `pay-${f.lotId}`,
             lotId: f.lotId,
@@ -49,7 +65,7 @@ function build(
   const lotList = vi.fn(async () =>
     lots.map((lot) => ({
       ...lot,
-      currentPrice: "1000.00",
+      currentPrice: fixtures.find((f) => f.lotId === lot.id)?.hammerNow ?? "1000.00",
       buyerPremiumRate: "0.15",
       endTime: new Date(),
     })),
@@ -117,6 +133,26 @@ describe("amounts owed for a person", () => {
       currency: "GBP",
       blocker: null,
     });
+  });
+
+  it("owes the invoice total even when the hammer price is edited after the invoice was raised", async () => {
+    expect(
+      await entryFor({ lotId: "a", payment: { status: "pending" }, hammerNow: "5000.00" }),
+    ).toMatchObject({ state: "payment-due", amountDue: "1150.00" });
+    // Before any invoice, the lot is priced as it reads now.
+    expect(await entryFor({ lotId: "b", hammerNow: "5000.00" })).toMatchObject({
+      amountDue: "5750.00",
+    });
+  });
+
+  it("owes nothing on a paid lot whose newest payment row is an abandoned attempt", async () => {
+    expect(
+      await entryFor({
+        lotId: "a",
+        payment: { status: "captured" },
+        newerAbandonedAttempt: true,
+      }),
+    ).toBeNull();
   });
 
   it("owes an unpaid invoice", async () => {

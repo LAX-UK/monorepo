@@ -216,8 +216,11 @@ export function StoryFields(props: EntityFieldsProps<StoryForm>) {
         <EditorialImageField
           name="coverMediaKey"
           label="Cover image"
+          optional={false}
+          description="Needed before the story can be published or featured. It leads every card for the story, at 3:2."
           kind="editorial_cover"
           value={form.coverMediaKey}
+          error={errors.coverMediaKey}
           disabled={disabled}
           onChange={(key) => set("coverMediaKey", key)}
         />

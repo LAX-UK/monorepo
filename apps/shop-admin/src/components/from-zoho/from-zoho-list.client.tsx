@@ -1,10 +1,15 @@
 "use client";
 
+import { OfferAtAuctionDialog } from "@/components/artworks/offer-at-auction-dialog.client";
+import { OfferOnLaxArtDialog } from "@/components/from-zoho/offer-on-lax-art-dialog.client";
+import { useCanOfferAtAuction } from "@/components/from-zoho/use-offer-at-auction.client";
+import { useCanOfferOnLaxArt } from "@/components/from-zoho/use-offer-on-lax-art.client";
 import {
   FROM_ZOHO_DESCRIPTION,
   FROM_ZOHO_TITLE,
   useQueueFrame,
 } from "@/components/from-zoho/use-queue-frame.client";
+import { NO_OFFER_LINKS } from "@/lib/offer-at-auction-links";
 import {
   CONFLICT_FIELD_LABEL,
   GAP_LABEL,
@@ -14,6 +19,7 @@ import {
   pageLinks,
   pageSummary,
   presentConflictValue,
+  zohoProductUrl,
   zohoQueueHref,
 } from "@/server/domain/zoho-register.vm";
 import type {
@@ -26,12 +32,15 @@ import {
   type DataColumn,
   FilterSheet,
   ListPage,
+  type OverflowAction,
   PrimaryCell,
   StaffDate,
   StatusBadge,
+  toast,
 } from "@auction/staff-ui";
+import { Copy, ExternalLink, Gavel, Globe, PanelRight } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 const recordHref = (registerId: string) => `/from-zoho/${registerId}`;
 
@@ -70,16 +79,25 @@ const MISSING_COLUMN: DataColumn<AdminRegisterArtworkSummary> = {
 /**
  * Artworks that came in from Zoho and are not offered anywhere yet, on the staff list template:
  * what each one still lacks, filters for artist and for one missing part, and a link to each
- * record. Catalogue details are changed in Zoho, so the rows carry no actions.
+ * record. Catalogue details are changed in Zoho; each row's "…" menu offers the artwork on
+ * lax.art or at auction from here.
  */
 export function NewFromZohoList({
   query,
   page,
+  zohoUrlTemplate = null,
+  unlinked = 0,
+  bidAdminUrl = null,
 }: {
   query: ZohoQueueQuery;
   page: AdminRegisterNewList;
+  zohoUrlTemplate?: string | null;
+  /** lax.art originals not linked to Zoho yet; the Link lax.art tab shows while there are any. */
+  unlinked?: number;
+  /** Where Bid admin lives, for a person who can open it. */
+  bidAdminUrl?: string | null;
 }) {
-  const { pending, navigate, ListLink, views } = useQueueFrame(query, page.counts);
+  const { pending, navigate, ListLink, views } = useQueueFrame(query, page.counts, unlinked);
   const filtered = hasActiveZohoFilters(query);
   const artistName = page.artists.find((artist) => artist.code === query.artist)?.name;
 
@@ -120,72 +138,164 @@ export function NewFromZohoList({
       : []),
   ];
   const links = pageLinks(query, page);
+  const canOffer = useCanOfferOnLaxArt();
+  const canOfferAtAuction = useCanOfferAtAuction();
+  const [offering, setOffering] = useState<AdminRegisterArtworkSummary | null>(null);
+  const [offeringAtAuction, setOfferingAtAuction] = useState<AdminRegisterArtworkSummary | null>(
+    null,
+  );
+
+  const rowActions = useCallback(
+    (row: AdminRegisterArtworkSummary): OverflowAction[] => {
+      const zohoUrl = zohoProductUrl(zohoUrlTemplate, row.zohoProductId);
+      return [
+        {
+          id: "open",
+          label: "Open",
+          icon: PanelRight,
+          onSelect: () => navigate(recordHref(row.registerId)),
+        },
+        ...(canOffer && row.kind === "original"
+          ? [
+              {
+                id: "offer-on-lax-art",
+                label: "Offer on lax.art…",
+                icon: Globe,
+                onSelect: () => setOffering(row),
+              },
+            ]
+          : []),
+        ...(canOfferAtAuction && row.kind === "original"
+          ? [
+              {
+                id: "offer-at-auction",
+                label: "Offer at auction…",
+                icon: Gavel,
+                onSelect: () => setOfferingAtAuction(row),
+              },
+            ]
+          : []),
+        ...(zohoUrl
+          ? [
+              {
+                id: "edit-in-zoho",
+                label: "Edit in Zoho",
+                icon: ExternalLink,
+                onSelect: () => window.open(zohoUrl, "_blank", "noopener,noreferrer"),
+              },
+            ]
+          : []),
+        {
+          id: "copy-stock-code",
+          label: "Copy stock code",
+          icon: Copy,
+          onSelect: () => {
+            navigator.clipboard
+              .writeText(row.stockCode)
+              .then(() => toast.success("Stock code copied"))
+              .catch(() => toast.error("Could not copy the stock code"));
+          },
+        },
+      ];
+    },
+    [canOffer, canOfferAtAuction, navigate, zohoUrlTemplate],
+  );
 
   return (
-    <ListPage<AdminRegisterArtworkSummary>
-      title={FROM_ZOHO_TITLE}
-      description={FROM_ZOHO_DESCRIPTION}
-      Link={ListLink}
-      listKey="from-zoho-new"
-      views={views}
-      filters={
-        <FilterSheet
-          title="Filter new artworks"
-          sections={[
-            {
-              kind: "radio",
-              id: "artist",
-              label: "Artist",
-              anyLabel: "Any artist",
-              options: page.artists.map((artist) => ({
-                value: artist.code,
-                label: `${artist.name} (${artist.count})`,
-              })),
-              value: query.artist ?? "",
-            },
-            {
-              kind: "radio",
-              id: "missing",
-              label: "Missing",
-              anyLabel: "Anything",
-              options: GAP_OPTIONS,
-              value: query.missing ?? "",
-            },
-          ]}
-          onApply={(values) =>
-            navigate(
-              zohoQueueHref(query, {
-                artist: (values.artist as string) || null,
-                missing: (values.missing as ZohoQueueQuery["missing"] | "") || null,
-              }),
-            )
-          }
+    <>
+      <ListPage<AdminRegisterArtworkSummary>
+        title={FROM_ZOHO_TITLE}
+        description={FROM_ZOHO_DESCRIPTION}
+        Link={ListLink}
+        listKey="from-zoho-new"
+        views={views}
+        filters={
+          <FilterSheet
+            title="Filter new artworks"
+            sections={[
+              {
+                kind: "radio",
+                id: "artist",
+                label: "Artist",
+                anyLabel: "Any artist",
+                options: page.artists.map((artist) => ({
+                  value: artist.code,
+                  label: `${artist.name} (${artist.count})`,
+                })),
+                value: query.artist ?? "",
+              },
+              {
+                kind: "radio",
+                id: "missing",
+                label: "Missing",
+                anyLabel: "Anything",
+                options: GAP_OPTIONS,
+                value: query.missing ?? "",
+              },
+            ]}
+            onApply={(values) =>
+              navigate(
+                zohoQueueHref(query, {
+                  artist: (values.artist as string) || null,
+                  missing: (values.missing as ZohoQueueQuery["missing"] | "") || null,
+                }),
+              )
+            }
+          />
+        }
+        activeFilters={activeFilters}
+        onClearFilters={() => navigate(zohoQueueHref({}))}
+        loading={pending}
+        filtered={filtered}
+        empty={{
+          illustration: "plinth",
+          title: "Nothing new from Zoho",
+          description:
+            "Artworks that come in from Zoho and are not offered anywhere yet appear here.",
+        }}
+        noResults={{ noun: "artworks" }}
+        table={{
+          columns,
+          data: page.items,
+          getRowId: (row) => row.registerId,
+          defaultDensity: "comfortable",
+          onRowOpen: (row) => navigate(recordHref(row.registerId)),
+          rowActions: { label: (row) => `Actions for ${row.title}`, actions: rowActions },
+        }}
+        pagination={
+          page.items.length > 0
+            ? { summary: pageSummary(page), prevLabel: "Previous page", ...links }
+            : null
+        }
+      />
+      {offering ? (
+        <OfferOnLaxArtDialog
+          key={offering.registerId}
+          open
+          onOpenChange={(open) => {
+            if (!open) setOffering(null);
+          }}
+          registerId={offering.registerId}
+          title={offering.title}
         />
-      }
-      activeFilters={activeFilters}
-      onClearFilters={() => navigate(zohoQueueHref({}))}
-      loading={pending}
-      filtered={filtered}
-      empty={{
-        illustration: "plinth",
-        title: "Nothing new from Zoho",
-        description:
-          "Artworks that come in from Zoho and are not offered anywhere yet appear here.",
-      }}
-      noResults={{ noun: "artworks" }}
-      table={{
-        columns,
-        data: page.items,
-        getRowId: (row) => row.registerId,
-        defaultDensity: "comfortable",
-        onRowOpen: (row) => navigate(recordHref(row.registerId)),
-      }}
-      pagination={
-        page.items.length > 0
-          ? { summary: pageSummary(page), prevLabel: "Previous page", ...links }
-          : null
-      }
-    />
+      ) : null}
+      {offeringAtAuction ? (
+        <OfferAtAuctionDialog
+          key={offeringAtAuction.registerId}
+          open
+          onOpenChange={(open) => {
+            if (!open) setOfferingAtAuction(null);
+          }}
+          target={{ kind: "register", registerId: offeringAtAuction.registerId }}
+          title={offeringAtAuction.title}
+          links={{
+            ...NO_OFFER_LINKS,
+            bidAdminUrl,
+            zohoUrl: zohoProductUrl(zohoUrlTemplate, offeringAtAuction.zohoProductId),
+          }}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -193,11 +303,13 @@ export function NewFromZohoList({
 export function NeedsDecisionList({
   query,
   page,
+  unlinked = 0,
 }: {
   query: ZohoQueueQuery;
   page: AdminRegisterConflictList;
+  unlinked?: number;
 }) {
-  const { pending, navigate, ListLink, views } = useQueueFrame(query, page.counts);
+  const { pending, navigate, ListLink, views } = useQueueFrame(query, page.counts, unlinked);
   const links = pageLinks(query, page);
 
   const columns = useMemo<DataColumn<AdminRegisterConflictItem>[]>(

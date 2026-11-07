@@ -4,6 +4,7 @@ import { type ArtistNames, homeLotCard } from "@/lib/home-sections/lot-card";
 import type { HomeLotRail } from "@/lib/home-sections/types";
 import { formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { salePath } from "@/lib/seo/url";
+import type { LotMediaTreatmentIndex } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
 
 export type LotRailKind = "inThisSale" | "highlightsFromNextSale" | "topLotsOfSale";
@@ -46,6 +47,7 @@ export function buildLotRail(input: {
   lotCount: number;
   artistNames: ArtistNames;
   now: Date;
+  treatments?: LotMediaTreatmentIndex;
 }): HomeLotRail | null {
   if (input.lots.length < HOME_SECTION_LIMITS.lotRail.min) return null;
   const copy = RAIL_COPY[input.kind];
@@ -56,6 +58,8 @@ export function buildLotRail(input: {
       href: salePath(input.sale),
       label: copy.seeAll(Math.max(input.lotCount, input.lots.length)),
     },
-    lots: input.lots.map((lot) => homeLotCard(lot, input.sale, input.artistNames, input.now)),
+    lots: input.lots.map((lot) =>
+      homeLotCard(lot, input.sale, input.artistNames, input.now, input.treatments),
+    ),
   };
 }

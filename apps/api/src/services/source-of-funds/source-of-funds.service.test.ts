@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SourceOfFundsService } from "./source-of-funds.service.js";
 import type {
   CreateSourceOfFundsCaseInput,
@@ -647,5 +647,97 @@ describe("SourceOfFundsService listByStatus", () => {
     expect(approved).toHaveLength(1);
     expect(approved[0]?.id).toBe("sof_approved");
     expect(await svc.countByStatus("approved")).toBe(1);
+  });
+});
+
+describe("SourceOfFundsService.wouldRequireSourceOfFunds (read-only)", () => {
+  it("gives the same answer as requiresSourceOfFunds but opens no case", async () => {
+    const state: FakeState = { cases: [], linkedPence: 0 };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.wouldRequireSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 })).toBe(
+      true,
+    );
+    expect(state.cases).toHaveLength(0);
+    expect(await svc.requiresSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 })).toBe(true);
+    expect(state.cases).toHaveLength(1);
+  });
+
+  it("counts the buyer's other invoices toward the threshold, as the real check does", async () => {
+    const state: FakeState = { cases: [], linkedPence: 800_000 };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.wouldRequireSourceOfFunds({ buyerUserId: "u1", amountPence: 200_000 })).toBe(
+      true,
+    );
+    expect(await svc.wouldRequireSourceOfFunds({ buyerUserId: "u1", amountPence: 50_000 })).toBe(
+      false,
+    );
+  });
+
+  it("is clear while a valid approved case covers the exposure", async () => {
+    const state: FakeState = {
+      cases: [
+        makeCase({
+          id: "sof_1",
+          userId: "u1",
+          status: "approved",
+          exposureAmount: "9000.00",
+          reviewedByUserId: "mlro_1",
+          reviewedAt: new Date(),
+        }),
+      ],
+      linkedPence: 0,
+    };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    expect(await svc.wouldRequireSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 })).toBe(
+      false,
+    );
+  });
+});
+
+describe("SourceOfFundsService invoice terms", () => {
+  const TX = { marker: "tx" } as never;
+  const runner = { runInTransaction: async <T>(fn: (tx: never) => Promise<T>) => fn(TX) };
+
+  async function decideWith(decision: "approve" | "reject") {
+    const state: FakeState = {
+      cases: [makeCase({ id: "sof_1", userId: "u1" })],
+      linkedPence: 0,
+    };
+    const invoiceTerms = { extendOpenInvoices: vi.fn().mockResolvedValue(2) };
+    const svc = new SourceOfFundsService(
+      fakeRepo(state),
+      config,
+      runner as never,
+      null,
+      invoiceTerms as never,
+    );
+    await svc.triage({
+      caseId: "sof_1",
+      analystUserId: "analyst_1",
+      recommendation: decision,
+      notes: null,
+    });
+    await svc.decide({ caseId: "sof_1", reviewerUserId: "mlro_1", decision, notes: null });
+    return invoiceTerms;
+  }
+
+  it("moves the due dates of the person's unpaid invoices, in the decision's transaction, on approval", async () => {
+    const invoiceTerms = await decideWith("approve");
+    expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledTimes(1);
+    expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledWith(
+      {
+        kind: "winner",
+        userId: "u1",
+        personalAccountsOnly: false,
+        holdStartedAt: new Date("2026-01-01T00:00:00Z"),
+      },
+      expect.any(Date),
+      TX,
+    );
+  });
+
+  it("leaves them alone when the case is rejected", async () => {
+    const invoiceTerms = await decideWith("reject");
+    expect(invoiceTerms.extendOpenInvoices).not.toHaveBeenCalled();
   });
 });

@@ -61,4 +61,23 @@ describe("/restore-account", () => {
       expect(cookieValues.get("lax_acting_legal_entity_id")).not.toBe(PERSONAL_ID);
     },
   );
+
+  it("leaves a short marker so a restore that does not take cannot repeat", async () => {
+    apiFetch.mockResolvedValue(
+      new Response(JSON.stringify({ data: { accountId: ORG_ID, lostOrganisation: null } })),
+    );
+    await GET(restore());
+    expect(cookieValues.get("lax_account_restored")).toBe("1");
+  });
+
+  it("does not restore for a prefetch", async () => {
+    const res = await GET(
+      new Request("https://lax.bid/restore-account?next=%2Fhome", {
+        headers: { "next-router-prefetch": "1" },
+      }),
+    );
+    expect(res.status).toBe(204);
+    expect(apiFetch).not.toHaveBeenCalled();
+    expect(setCookie).not.toHaveBeenCalled();
+  });
 });

@@ -1,15 +1,18 @@
 import {
   accountPurchasesQuerySchema,
+  payPlanQuerySchema,
   paySeveralBodySchema,
+  paySeveralStartBodySchema,
   purchaseLotIdParamSchema,
   reportPurchaseProblemSchema,
   requestDeliveryQuoteSchema,
 } from "@auction/validators";
-import { type Context, Hono } from "hono";
+import { type Context, Hono, type MiddlewareHandler } from "hono";
 import type { Result } from "neverthrow";
 import type { ContainerOrganisationBuyingRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
+import { requireBuyerRole } from "../middleware/require-buyer-role.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { OrganisationBuyingError } from "../services/interfaces/organisation-buying-service.js";
@@ -31,7 +34,11 @@ function memberActor(c: BuyingContext): OrganisationMemberActor {
 function respond<T>(c: BuyingContext, result: Result<T, OrganisationBuyingError>) {
   return result.match(
     (data) => c.json({ data }),
-    (e) => c.json({ error: e.code, message: e.message }, e.status),
+    (e) =>
+      c.json(
+        { error: e.code, message: e.message, ...(e.quote ? { plan: e.quote } : {}) },
+        e.status,
+      ),
   );
 }
 
@@ -44,12 +51,13 @@ function respond<T>(c: BuyingContext, result: Result<T, OrganisationBuyingError>
 export function createOrganisationBuyingRoutes(
   container: ContainerOrganisationBuyingRoutesSlice,
   authenticator: IAuthenticator,
+  requireAccountOnboarding: MiddlewareHandler,
 ) {
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const requireContext = container.requireLegalEntityContext;
-  const { registrations, purchases, paySeveral, deliveryQuotes, collection, problems } =
+  const { registrations, purchases, payPlan, paySeveral, deliveryQuotes, collection, problems } =
     container.organisationBuying;
   const r = new Hono<{ Variables: Variables }>();
 
@@ -79,9 +87,27 @@ export function createOrganisationBuyingRoutes(
     return c.body(result.value);
   });
 
+  // What one payment of the picked lots covers, and whether Pay is offered. Only reads. Signed in
+  // and not suspended, a buyer account (staff never pay) and the acting account; whether the
+  // account finished onboarding is reported as a gate so the page can show where it stands.
+  r.get(
+    "/purchases/pay-plan",
+    requireAuth,
+    requireBuyerRole,
+    requireContext,
+    zValidator("query", payPlanQuerySchema),
+    async (c) => {
+      c.header("Cache-Control", "no-store");
+      return respond(c, await payPlan.plan(memberActor(c), c.req.valid("query").lots));
+    },
+  );
+
+  // Paying several invoices passes the same gates as paying one (`POST /payments`): signed in
+  // and not suspended, onboarding complete, and a buyer account (staff accounts never pay).
   r.post(
     "/purchases/pay-several/plan",
     requireAuth,
+    requireBuyerRole,
     requireContext,
     zValidator("json", paySeveralBodySchema),
     async (c) => respond(c, await paySeveral.plan(memberActor(c), c.req.valid("json").lotIds)),
@@ -91,9 +117,11 @@ export function createOrganisationBuyingRoutes(
   r.post(
     "/purchases/pay-several",
     requireAuth,
+    requireAccountOnboarding,
+    requireBuyerRole,
     requireContext,
-    zValidator("json", paySeveralBodySchema),
-    async (c) => respond(c, await paySeveral.pay(memberActor(c), c.req.valid("json").lotIds)),
+    zValidator("json", paySeveralStartBodySchema),
+    async (c) => respond(c, await paySeveral.pay(memberActor(c), c.req.valid("json"))),
   );
 
   r.post(

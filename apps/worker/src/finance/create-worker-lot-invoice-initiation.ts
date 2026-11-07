@@ -1,19 +1,30 @@
 import type { Database } from "@auction/db";
 import { parsePaymentTierLimits } from "@auction/domain";
 import {
+  AmlSettlementCompliancePolicy,
+  InvoiceRaiser,
+  InvoiceRecipients,
+  LotFulfilmentPaymentSync,
   LotInvoiceInitiationService,
   PaymentTierPolicy,
   PlatformFeePolicy,
+  SourceOfFundsGateService,
 } from "@auction/finance-runtime";
 import type { XeroAccountingStack } from "@auction/finance-runtime";
 import {
+  DrizzleAmlHoldStore,
+  DrizzleBidInvoiceRepository,
   DrizzleLegalEntityMembershipReader,
+  DrizzleLegalEntityNotificationRecipientRepository,
   DrizzleLegalEntityReader,
   DrizzleLegalEntityRepository,
+  DrizzleLotFulfilmentRepository,
   DrizzleLotRepository,
   DrizzleNotificationOutboxRepository,
   DrizzlePaymentRepository,
   DrizzleSaleRepository,
+  DrizzleSourceOfFundsRepository,
+  DrizzleTransactionRunner,
   DrizzleUserRepository,
 } from "@auction/persistence/repositories";
 import type { WorkerEnv } from "../env.js";
@@ -22,6 +33,27 @@ import {
   WorkerNotificationFactory,
   notificationRowToPayload,
 } from "../lifecycle/worker-notification-factory.js";
+
+/** The same hold the API applies: an AML hold, or source of funds needed for this amount. */
+function createWorkerSettlementCompliance(
+  db: Database,
+  env: WorkerEnv,
+  domainEventSink: IWorkerDomainEventSink,
+) {
+  return new AmlSettlementCompliancePolicy(
+    new DrizzleAmlHoldStore(db),
+    new SourceOfFundsGateService(
+      new DrizzleSourceOfFundsRepository(db),
+      {
+        thresholdAmount: env.SOF_THRESHOLD_AMOUNT,
+        currency: env.SOF_THRESHOLD_CURRENCY,
+        approvalValidityDays: env.SOF_APPROVAL_VALIDITY_DAYS,
+      },
+      new DrizzleTransactionRunner(db),
+      domainEventSink,
+    ),
+  );
+}
 
 export function createWorkerLotInvoiceInitiationService(input: {
   db: Database;
@@ -48,9 +80,9 @@ export function createWorkerLotInvoiceInitiationService(input: {
 
   return new LotInvoiceInitiationService(
     lots,
-    sales,
+    new InvoiceRaiser({ invoices: new DrizzleBidInvoiceRepository(db), sales }),
     payments,
-    null,
+    createWorkerSettlementCompliance(db, env, domainEventSink),
     new PaymentTierPolicy(tierLimits),
     new PlatformFeePolicy(legalEntities),
     xeroStack.accountingProvider,
@@ -73,10 +105,10 @@ export function createWorkerLotInvoiceInitiationService(input: {
         });
       },
     },
-    null,
+    new LotFulfilmentPaymentSync(new DrizzleLotFulfilmentRepository(db)),
     legalEntities,
     new DrizzleUserRepository(db),
-    env.XERO_API_WRITES_DISABLED,
+    new InvoiceRecipients(new DrizzleLegalEntityNotificationRecipientRepository(db)),
   );
 }
 

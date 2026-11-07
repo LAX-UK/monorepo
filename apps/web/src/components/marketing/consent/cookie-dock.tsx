@@ -1,5 +1,6 @@
 "use client";
 
+import { BOTTOM_BAR_ABOVE_CLASS } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { type ReactNode, useEffect, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
@@ -56,7 +57,8 @@ function usePublishedHeight(name: string): (element: HTMLElement | null) => void
 /**
  * The fixed dock at the bottom edge. The cookie banner sits first; below it is a slot for one more
  * bar (the lot page's phone bid bar), so the two stack and never cover each other. It is not a
- * modal and traps no focus. Its height is published as `--cookie-dock-height` and the page body
+ * modal and traps no focus. It sits above the docked tab bar (`--lax-bottom-bar-space`, zero
+ * where no bar shows). Its height is published as `--cookie-dock-height` and the page body
  * pads by that much, so the last control on a page stays reachable while the banner is open.
  */
 export function CookieDock({ children }: { children?: ReactNode }) {
@@ -65,7 +67,10 @@ export function CookieDock({ children }: { children?: ReactNode }) {
     <div
       ref={publishHeight}
       data-cookie-dock=""
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-site-chrome,50)] flex flex-col"
+      className={cn(
+        "pointer-events-none fixed inset-x-0 z-[var(--z-site-chrome,50)] flex flex-col",
+        BOTTOM_BAR_ABOVE_CLASS,
+      )}
     >
       {children}
       <div

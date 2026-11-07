@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/adaptive-media-frame";
 import { saleroomOnBlockBadge, saleroomOnBlockRingClass } from "@/lib/lot/lot-lifecycle";
 import { LOT_CARD_GRID_SLOTS, LOT_CARD_TIMER_SLOTS } from "@/lib/media/overlay-slot-presets";
+import { lotCardMediaClasses, lotCardMediaFrame } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
@@ -105,7 +106,7 @@ export function SaleroomLotCard({
           <div className="mt-auto flex flex-col gap-1">
             <LotEstimateLine value={lot.estimateValue} />
             <LotCardLine model={lot.cardLine} />
-            <LotCardBidderState lotId={lot.id} />
+            <LotCardBidderState lotId={lot.id} lotHref={lot.href} lotTitle={lot.title} />
           </div>
 
           {actions ? <div className="mt-1 w-full min-w-0">{actions}</div> : null}
@@ -122,25 +123,32 @@ export function SaleroomLotCard({
     );
   }
 
+  const media = lotCardMediaClasses(lot.displayStyle);
+  const fit = lotCardMediaFrame(lot.displayStyle).fit;
   const tile = (
     <article className="group flex h-full w-full min-w-0 flex-col gap-4 motion-safe:transition-transform motion-safe:duration-300 motion-safe:ease-out motion-safe:hover:-translate-y-0.5">
       <div className="relative w-full">
         <Link
           href={lot.href}
           className={cn(
-            "relative block aspect-[4/5] w-full min-h-0 overflow-hidden rounded-lg bg-surface-container-high transition-shadow motion-safe:group-hover:ring-1 motion-safe:group-hover:ring-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring dark:bg-surface-container-high",
+            "relative block w-full min-h-0 overflow-hidden rounded-lg transition-shadow motion-safe:group-hover:ring-1 motion-safe:group-hover:ring-primary/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+            media.frame,
             lot.isOnBlock && saleroomOnBlockRingClass,
           )}
           aria-label={`${lot.lotLabel ? `${lot.lotLabel}: ` : ""}${lot.title}`}
         >
           <AdaptiveMediaFrameContainer className="absolute inset-0">
-            <AdaptiveFrameImage
-              src={lot.imageUrl}
-              alt={lot.imageAlt}
-              objectFit="cover"
-              sizes={sizes}
-              imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
-            />
+            <span className={cn("block size-full", media.inset)}>
+              <span className={cn("relative block size-full", media.image)}>
+                <AdaptiveFrameImage
+                  src={lot.imageUrl}
+                  alt={lot.imageAlt}
+                  objectFit={fit}
+                  sizes={sizes}
+                  imgClassName="transition-transform duration-700 ease-out motion-safe:group-hover:scale-[1.02] motion-reduce:group-hover:scale-100"
+                />
+              </span>
+            </span>
           </AdaptiveMediaFrameContainer>
           <SaleroomLotCatalogOverlay
             lot={lot}
@@ -182,7 +190,7 @@ export function SaleroomLotCard({
         <div className="mt-auto flex flex-col gap-1.5">
           <LotEstimateLine value={lot.estimateValue} />
           <LotCardLine model={lot.cardLine} />
-          <LotCardBidderState lotId={lot.id} />
+          <LotCardBidderState lotId={lot.id} lotHref={lot.href} lotTitle={lot.title} />
           {actions ? <div className="mt-1 w-full min-w-0">{actions}</div> : null}
         </div>
       </div>
@@ -192,7 +200,7 @@ export function SaleroomLotCard({
   return (
     <AdaptiveMediaFrame
       src={lot.imageUrl}
-      objectFit="cover"
+      objectFit={fit}
       slots={LOT_CARD_TIMER_SLOTS}
       className="flex h-full min-w-0 flex-col"
     >

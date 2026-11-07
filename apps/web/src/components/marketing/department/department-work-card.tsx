@@ -7,16 +7,19 @@ import { lotCardLineModel, lotCardShowsStatusBadge } from "@/lib/lot-card/lot-ca
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotStatusBadgeProps } from "@/lib/presenters/lot-status-badge-props";
 import { lotPath } from "@/lib/seo/url";
+import type { DepartmentDisplayStyle } from "@auction/domain";
 import { MarketingWorkCard } from "@auction/marketing-ui";
 import type { Lot } from "@auction/types";
 import { isPublicLotStatus } from "@auction/validators";
 
 type Props = {
   lot: Lot;
+  /** How the lot's department shows its picture; a wall work by default. */
+  displayStyle?: DepartmentDisplayStyle;
 };
 
 /** One work in a department row: the shared work card with the lot's status, medium and price. */
-export function DepartmentWorkCard({ lot }: Props) {
+export function DepartmentWorkCard({ lot, displayStyle = "wall" }: Props) {
   const estimate = lotEstimateLine(lot);
   const medium = lot.medium?.trim() || null;
   const line = lotCardLineModel(lot, new Date());
@@ -24,6 +27,7 @@ export function DepartmentWorkCard({ lot }: Props) {
     <MarketingWorkCard
       href={lotPath(lot)}
       title={lot.title}
+      mediaStyle={displayStyle}
       media={
         <MediaImage
           src={lot.images[0]}
@@ -44,7 +48,7 @@ export function DepartmentWorkCard({ lot }: Props) {
       footer={
         <div className="flex w-full min-w-0 flex-col gap-1.5">
           <LotCardLine model={line} />
-          <LotCardBidderState lotId={lot.id} />
+          <LotCardBidderState lotId={lot.id} lotHref={lotPath(lot)} lotTitle={lot.title} />
         </div>
       }
     />

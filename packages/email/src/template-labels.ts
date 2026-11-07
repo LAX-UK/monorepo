@@ -60,6 +60,7 @@ export const EMAIL_TEMPLATE_LABELS: Readonly<Record<TemplateName, string>> = {
   "payment-manual-review-buyer-notice": "Payment under review",
   "payment-failed-notice": "Payment failed",
   "payment-manual-review-admin-notice": "Payment review (staff)",
+  "payment-unapplied-money-admin-notice": "Money that could not be applied (staff)",
   "dispute-opened-notice": "Payment dispute opened",
   "dispute-closed-notice": "Payment dispute closed",
   "payout-transfer-failed-notice": "Payout transfer failed",

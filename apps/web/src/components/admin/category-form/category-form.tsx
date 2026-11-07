@@ -197,7 +197,7 @@ export function AdminCategoryForm({
             id={staffFieldId(CATEGORY_FORM_ID, "heroImageKey")}
             label="Hero image"
             optional
-            description="A banner shown at the top of the category page."
+            description="Shown at the top of the category page and as this department's picture on the LAX Bid home page. Without one, the home page uses the latest sold lot's photograph."
             error={hero.fieldState.error?.message}
           >
             <StaffSingleImage

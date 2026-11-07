@@ -11,6 +11,7 @@ import type {
   IXeroWebhookEventRepository,
 } from "@auction/persistence/interfaces";
 import {
+  DrizzleBidInvoiceRepository,
   DrizzleBidPortfolioReader,
   DrizzleConnectTransferRepository,
   DrizzlePaymentExternalRefRepository,
@@ -23,6 +24,8 @@ import {
 } from "@auction/persistence/repositories";
 
 export type PaymentsRepositories = {
+  /** Stored Bid invoices: read, raised, and their due dates moved. */
+  bidInvoiceRepository: DrizzleBidInvoiceRepository;
   bidPortfolioReader: IBidPortfolioReader;
   payoutRepository: IPayoutRepository;
   connectTransferRepository: IConnectTransferRepository;
@@ -47,6 +50,7 @@ export function createPaymentsRepositories(db: Database): PaymentsRepositories {
   const xeroWebhookEventRepository = new DrizzleXeroWebhookEventRepository(db);
 
   return {
+    bidInvoiceRepository: new DrizzleBidInvoiceRepository(db),
     bidPortfolioReader,
     payoutRepository,
     connectTransferRepository,

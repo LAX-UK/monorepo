@@ -1,6 +1,5 @@
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import { accountHomePathForKind } from "./account-home";
-import { switchAccountHref } from "./account-link";
 import type { AccountMenuEntry } from "./account-menu-model";
 import { type AccountOption, pendingInvitationsLabel } from "./account-switcher-model";
 import { type AttentionCount, type ClientAttention, attentionCountFor } from "./client-attention";
@@ -22,7 +21,7 @@ export type HeaderMenuAccount = {
   initials: string;
   /** The account in use ("Here"). */
   here: boolean;
-  /** Its first page when in use; otherwise the hop that switches to it and opens that page. */
+  /** Its first page: where the account in use goes, and where switching to it lands. */
   href: string;
 };
 
@@ -73,7 +72,7 @@ function menuAccount(option: AccountOption): HeaderMenuAccount {
       option.kind === "personal" ? PERSONAL_DETAIL : `Organisation workspace · ${option.detail}`,
     initials: option.initials,
     here: option.current,
-    href: option.current ? destination : switchAccountHref(option.id, destination),
+    href: destination,
   };
 }
 

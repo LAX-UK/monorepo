@@ -2,11 +2,14 @@ import { initials } from "@/components/organisations/initials";
 import type { InvitationLinkPreview } from "@/lib/legal-entity/invitation-link.gateway.server";
 import { switchAccountHref } from "@/lib/navigation/account-link";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { type HopHref, hopHref } from "@/lib/navigation/hop-href";
 import { organisationRoleInSentence } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { formatDate } from "@/lib/ui/format";
 import type { LaxIllustrationName } from "@auction/ui/components/lax-illustration";
 
 type Link = { label: string; href: string };
+/** The primary step may be a hop, which is opened as a page load. */
+type PrimaryLink = { label: string; href: string | HopHref };
 
 /** What the invitation page shows for one state of the link. */
 export type InvitationLinkView = {
@@ -16,7 +19,7 @@ export type InvitationLinkView = {
   /** "Accept invitation", posted to the accept route; only while the invitation is open. */
   accept: { label: string } | null;
   /** The main way on when there is nothing to accept ("Open Northbank Gallery"). */
-  primary: Link | null;
+  primary: PrimaryLink | null;
   secondary: Link;
   /** Shown above the actions after an accept the API could not complete. */
   retryNotice: string | null;
@@ -58,7 +61,7 @@ const OUTCOME_VIEWS: {
     accept: null,
     primary: {
       label: `Open ${preview.organisationName}`,
-      href: switchAccountHref(preview.legalEntityId, CLIENT_ROUTES.home),
+      href: hopHref(switchAccountHref(preview.legalEntityId, CLIENT_ROUTES.home)),
     },
     secondary: INVITATIONS,
     retryNotice: null,

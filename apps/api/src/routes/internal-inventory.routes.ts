@@ -2,6 +2,7 @@ import {
   AUCTION_SALES_SUBROUTE,
   DRAFT_LOT_SUBROUTE,
   draftLotRequestSchema,
+  registerIdSchema,
 } from "@auction/artwork-register-contracts";
 import { Hono } from "hono";
 import type { ContainerInternalInventoryRoutesSlice } from "../container.js";
@@ -32,6 +33,14 @@ export function createInternalInventoryRoutes(
     }
     const outcome = await container.inventoryMoves.draftLots.createDraft(parsed.data);
     return outcome.ok ? c.json(outcome.data) : c.json(outcome.refusal, outcome.status);
+  });
+
+  routes.get(`${DRAFT_LOT_SUBROUTE}/:registerId`, async (c) => {
+    const registerId = registerIdSchema.safeParse(c.req.param("registerId"));
+    if (!registerId.success) {
+      return c.json({ error: "invalid_request", message: "The request was not understood." }, 400);
+    }
+    return c.json({ lot: await container.inventoryMoves.draftLots.findDraft(registerId.data) });
   });
 
   return routes;

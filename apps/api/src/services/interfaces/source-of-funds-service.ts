@@ -4,13 +4,7 @@ import type {
   SourceOfFundsStatus,
 } from "../source-of-funds/source-of-funds.types.js";
 
-export type SourceOfFundsConfig = {
-  /** SoF threshold in GBP major units (no FX; platform is GBP-only). */
-  thresholdAmount: number;
-  currency: string;
-  /** Days an approved SoF case clears future settlements before re-validation. */
-  approvalValidityDays: number;
-};
+export type { SourceOfFundsConfig } from "@auction/finance-runtime";
 
 export type SourceOfFundsTriageCommand = {
   caseId: string;

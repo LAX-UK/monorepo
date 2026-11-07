@@ -9,6 +9,7 @@ import {
 } from "@auction/finance-runtime";
 import {
   DrizzleAddressRepository,
+  DrizzleBidInvoiceRepository,
   DrizzleDisplayPairingRepository,
   DrizzleInvoiceDetailsRepository,
   DrizzleLegalEntityMembershipReader,
@@ -34,6 +35,7 @@ import type { WorkerEnv } from "../env.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
 import { createWorkerLotInvoiceInitiationService } from "./create-worker-lot-invoice-initiation.js";
 import { createWorkerPayoutSettlementContext } from "./create-worker-payout-settlement-runtime.js";
+import { createWorkerStalePaymentExpiry } from "./create-worker-stale-payment-expiry.js";
 import { runWorkerBulkPayoutSettlement } from "./worker-bulk-payout-settlement.js";
 import { workerFinanceDomainEventSinkPort } from "./worker-finance-domain-event-port.js";
 import { WorkerNotificationOutboxDrain } from "./worker-notification-outbox-drain.js";
@@ -65,7 +67,6 @@ export function financeRuntimeEnvFromWorkerEnv(env: WorkerEnv): FinanceRuntimeEn
     XERO_REDIRECT_URI: env.XERO_REDIRECT_URI,
     XERO_DEFAULT_REVENUE_ACCOUNT_CODE: env.XERO_DEFAULT_REVENUE_ACCOUNT_CODE,
     XERO_DEFAULT_TAX_TYPE: env.XERO_DEFAULT_TAX_TYPE,
-    XERO_INVOICE_DUE_DAYS: env.XERO_INVOICE_DUE_DAYS,
     XERO_USE_LEGAL_ENTITY_CONTACT: env.XERO_USE_LEGAL_ENTITY_CONTACT,
     XERO_PAYOUT_BILL_ACCOUNT_CODE: env.XERO_PAYOUT_BILL_ACCOUNT_CODE,
     XERO_PAYMENT_BANK_ACCOUNT_CODE: env.XERO_PAYMENT_BANK_ACCOUNT_CODE,
@@ -90,21 +91,7 @@ export function createWorkerFinanceServices(
     accounting: null,
     lots,
     users,
-    publishCancelled: async (event) => {
-      await domainEventSink.publish({
-        aggregateType: "payment",
-        aggregateId: event.paymentId,
-        eventType: "payment.cancelled",
-        payload: {
-          lotId: event.lotId,
-          buyerUserId: event.buyerUserId,
-          reason: event.reason,
-        },
-        actorUserId: null,
-        actingLegalEntityId: null,
-        producer: "apps/worker",
-      });
-    },
+    expireStale: createWorkerStalePaymentExpiry({ db, env, domainEventSink }),
   });
 
   const xeroStack = createXeroAccountingStack({
@@ -114,6 +101,7 @@ export function createWorkerFinanceServices(
     connections: new DrizzleXeroConnectionRepository(db),
     externalRefs: new DrizzlePaymentExternalRefRepository(db),
     payments,
+    invoices: new DrizzleBidInvoiceRepository(db),
     payouts: new DrizzlePayoutRepository(db),
     refundReconcileRepo: new DrizzlePaymentRefundReconcileRepository(db),
     webhookEvents: new DrizzleXeroWebhookEventRepository(db),

@@ -1,5 +1,6 @@
 import { Button } from "@/components/account-button";
-import { formatDate, formatMinorUnits } from "@/lib/format-money";
+import { formatDate } from "@/lib/format-date";
+import { formatMinorUnits } from "@/lib/format-money";
 import type { WorkDetailVm } from "@/server/domain/portfolio-work-detail.vm";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -90,9 +91,9 @@ function AcquisitionRecord({ work }: { work: WorkDetailVm }) {
           </TableBody>
           <TableFooter>
             <TableRow>
-              <TableCell>Total, shipping not included</TableCell>
+              <TableCell>Total</TableCell>
               <TableCell className="text-right">
-                <CurrencyAmounts totals={work.costBasis} />
+                <CurrencyAmounts totals={work.total} />
               </TableCell>
             </TableRow>
           </TableFooter>
@@ -175,7 +176,9 @@ export function PortfolioWorkDetail({ work }: { work: WorkDetailVm }) {
           </h1>
           {work.artist ? <p className="text-sm text-on-surface-variant">{work.artist}</p> : null}
           {work.edition ? <p className="text-sm text-on-surface-variant">{work.edition}</p> : null}
-          <StatusBadge tone={work.statusTone}>{work.statusLabel}</StatusBadge>
+          <StatusBadge tone={work.statusStyle.tone} shape={work.statusStyle.cue}>
+            {work.statusLabel}
+          </StatusBadge>
         </div>
       </header>
       <AcquisitionRecord work={work} />

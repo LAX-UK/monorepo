@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopArtist, shopArtwork, shopHomePlacement, shopParty } from "@auction/db/schema";
+import { containsPattern } from "@auction/persistence/lib";
 import { maxItemsForPlacement } from "@auction/shop-domain";
 import { type SQL, and, asc, desc, eq, exists, gt, ilike, lt, or, sql } from "drizzle-orm";
 import type {
@@ -10,7 +11,7 @@ import type {
 } from "../application/ports/artist-directory.reader.js";
 import { publicArtistVisible, publicArtworkVisible } from "./artwork-visibility-sql.js";
 import { toPublicArtistDetail, toPublicArtistSummary } from "./map-public-artist.js";
-import { artworkCountByArtistId, mapArtistRow } from "./public-artist-rows.js";
+import { artworkCountByArtistId, leadImageByArtistId, mapArtistRow } from "./public-artist-rows.js";
 import { listedOnSalesChannelSql } from "./sales-channel-listing-sql.js";
 import { artworkAvailableNowSql } from "./shop-edition-availability.js";
 import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js";
@@ -110,6 +111,12 @@ export function createDrizzleArtistDirectoryRepository(
           rows.map((row) => row.artistId),
           input.salesChannel,
         );
+        const leads = await leadImageByArtistId(
+          db,
+          rows.map((row) => row.artistId),
+          resolveMediaUrl,
+          input.salesChannel,
+        );
         return {
           items: rows.map((row) =>
             toPublicArtistSummary(
@@ -126,6 +133,7 @@ export function createDrizzleArtistDirectoryRepository(
                   birthYear: row.birthYear,
                   deathYear: row.deathYear,
                   artworkCount: counts.get(row.artistId) ?? 0,
+                  leadImageUrl: leads.get(row.artistId) ?? null,
                 },
                 resolveMediaUrl,
               ),
@@ -136,7 +144,10 @@ export function createDrizzleArtistDirectoryRepository(
 
       const listFilters = [
         input.q
-          ? or(ilike(shopParty.displayName, `%${input.q}%`), ilike(shopArtist.slug, `%${input.q}%`))
+          ? or(
+              ilike(shopParty.displayName, containsPattern(input.q)),
+              ilike(shopArtist.slug, containsPattern(input.q)),
+            )
           : undefined,
         letter && /^[A-Z]$/.test(letter)
           ? sql`upper(substr(${shopParty.displayName}, 1, 1)) = ${letter}`
@@ -196,6 +207,12 @@ export function createDrizzleArtistDirectoryRepository(
         page.map((row) => row.artistId),
         input.salesChannel,
       );
+      const leads = await leadImageByArtistId(
+        db,
+        page.map((row) => row.artistId),
+        resolveMediaUrl,
+        input.salesChannel,
+      );
       const items = page.map((row) =>
         toPublicArtistSummary(
           mapArtistRow(
@@ -211,6 +228,7 @@ export function createDrizzleArtistDirectoryRepository(
               birthYear: row.birthYear,
               deathYear: row.deathYear,
               artworkCount: counts.get(row.artistId) ?? 0,
+              leadImageUrl: leads.get(row.artistId) ?? null,
             },
             resolveMediaUrl,
           ),

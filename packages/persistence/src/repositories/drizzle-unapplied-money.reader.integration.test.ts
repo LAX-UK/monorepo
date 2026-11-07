@@ -1,0 +1,86 @@
+import { randomUUID } from "node:crypto";
+import { createDb } from "@auction/db";
+import { domainEvent } from "@auction/db/schema";
+import {
+  UNAPPLIED_MONEY_EVENT,
+  UNAPPLIED_MONEY_RESOLVED_EVENT,
+  unappliedMoneyPayload,
+} from "@auction/domain";
+import { like } from "drizzle-orm";
+import { afterAll, describe, expect, it } from "vitest";
+import { DrizzleAdminWorkItemsReader } from "./drizzle-admin-work-items.reader.js";
+import { DrizzleUnappliedMoneyReader } from "./drizzle-unapplied-money.reader.js";
+
+const HAS_DB = Boolean(process.env.DATABASE_URL);
+
+describe.skipIf(!HAS_DB)("unapplied money reader (integration)", () => {
+  // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
+  const db = createDb(process.env.DATABASE_URL!);
+  const reader = new DrizzleUnappliedMoneyReader(db);
+  const run = randomUUID().slice(0, 8);
+  const pi = (n: string) => `pi_unapplied_${run}_${n}`;
+
+  afterAll(async () => {
+    await db.delete(domainEvent).where(like(domainEvent.aggregateId, `%${run}%`));
+  });
+
+  const received = (n: string, paymentId: string | null) => {
+    const payload = unappliedMoneyPayload({
+      reason: "invoice_already_paid",
+      paymentId,
+      paymentGroupId: null,
+      stripePaymentIntentId: pi(n),
+      stripeChargeId: `ch_unapplied_${run}_${n}`,
+      stripeCustomerId: null,
+      amountCents: 50_000,
+      currency: "gbp",
+    });
+    return {
+      aggregateType: "payment",
+      aggregateId: paymentId ?? `grp-${run}-${n}`,
+      eventType: UNAPPLIED_MONEY_EVENT,
+      payload,
+      producer: "integration-test",
+    };
+  };
+
+  it("an open task is found by key and by charge, and shows in finance's inbox", async () => {
+    const paymentId = `${randomUUID().slice(0, 28)}${run}`;
+    await db.insert(domainEvent).values([received("open", paymentId)]);
+
+    expect(await reader.exists(`invoice_already_paid:${pi("open")}`)).toBe(true);
+    expect(await reader.exists(`invoice_already_paid:${pi("never")}`)).toBe(false);
+    const byCharge = await reader.listOpenByChargeId(`ch_unapplied_${run}_open`);
+    expect(byCharge.map((m) => m.dedupeKey)).toEqual([`invoice_already_paid:${pi("open")}`]);
+
+    const items = await new DrizzleAdminWorkItemsReader(db).listUnappliedMoney(200);
+    const mine = items.find((i) => i.sourceId === `invoice_already_paid:${pi("open")}`);
+    expect(mine).toMatchObject({
+      kind: "payment_money_unapplied",
+      domain: "finance",
+      href: `/admin/payments?payment=${paymentId}`,
+      subtitle: "Invoice already paid · £500.00",
+    });
+  });
+
+  it("a resolved task leaves the inbox but is still known, so it is never raised again", async () => {
+    const event = received("done", null);
+    await db.insert(domainEvent).values([
+      event,
+      {
+        aggregateType: "payment_group",
+        aggregateId: event.aggregateId,
+        eventType: UNAPPLIED_MONEY_RESOLVED_EVENT,
+        payload: {
+          dedupeKey: event.payload.dedupeKey,
+          stripeChargeId: event.payload.stripeChargeId,
+        },
+        producer: "integration-test",
+      },
+    ]);
+    expect(await reader.exists(event.payload.dedupeKey)).toBe(true);
+    const open = await reader.listOpen({ limit: 500 });
+    expect(open.some((m) => m.dedupeKey === event.payload.dedupeKey)).toBe(false);
+    expect(await reader.listOpenByChargeId(`ch_unapplied_${run}_done`)).toEqual([]);
+  });
+});

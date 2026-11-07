@@ -1,11 +1,27 @@
 import type { Database } from "@auction/db";
+import type { IStalePaymentMaintenance } from "@auction/finance-cron-app";
 import {
+  HeldInvoiceCheckouts,
+  type IInvoiceRecipients,
+  InvoiceDueDateExtender,
+  InvoiceRaiser,
+  InvoiceRecipients,
+  StalePaymentStore,
+  StripeCheckoutCloser,
+} from "@auction/finance-runtime";
+import {
+  DrizzleBidActorEligibilityReader,
+  DrizzleBidInvoiceRepository,
   DrizzleLotFulfilmentRepository,
+  DrizzlePaymentCheckoutSessionRepository,
   DrizzlePaymentDomainEventsRepository,
+  DrizzleStalePaymentCanceller,
+  DrizzleUnappliedMoneyReader,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { NoOpErrorReporter } from "../infrastructure/no-op-error.reporter.js";
 import { SentryErrorReporter } from "../infrastructure/sentry-error.reporter.js";
+import { recordMoneyPathEvent } from "../middleware/metrics.js";
 import { NoOpAccountingProvider } from "../services/accounting/no-op-accounting.provider.js";
 import { XeroAccountingProvider } from "../services/accounting/xero-accounting.provider.js";
 import { XeroPaymentRecorder } from "../services/accounting/xero-payment-recorder.js";
@@ -29,12 +45,23 @@ import { CardCheckoutRail } from "../services/payment/card-checkout.rail.js";
 import { LegalEntityBuyerPaymentAuthority } from "../services/payment/legal-entity-buyer-payment-authority.js";
 import { PaymentCaptureService } from "../services/payment/payment-capture.service.js";
 import {
+  type IPaymentEligibilityGate,
+  PaymentEligibilityGate,
+} from "../services/payment/payment-eligibility.gate.js";
+import {
   PaymentTierPolicy,
   parsePaymentTierLimits,
 } from "../services/payment/payment-tier.policy.js";
 import { PlatformFeePolicy } from "../services/payment/platform-fee.policy.js";
 import { StripeCheckoutService } from "../services/payment/stripe-checkout.service.js";
+import {
+  type IUnappliedMoneyHandling,
+  UnappliedMoneyHandlingService,
+} from "../services/payment/unapplied-money-handling.service.js";
+import { UnappliedMoneyRecorder } from "../services/payment/unapplied-money.recorder.js";
 import { StripePaymentWebhookService } from "../services/stripe-payment-webhook.service.js";
+import { UnappliedMoneyRefundHandler } from "../services/stripe-webhook/unapplied-money-refund.handler.js";
+import { SessionRecordingStripeGateway } from "../services/stripe/session-recording-stripe-gateway.js";
 import { StripeCustomerGateway } from "../services/stripe/stripe-customer.gateway.js";
 import { StripePaymentGateway } from "../services/stripe/stripe-payment-gateway.js";
 import { XeroOAuthService } from "../services/xero-oauth.service.js";
@@ -55,6 +82,7 @@ import {
   createPrivateSaleDealServices,
 } from "./create-private-sale-deal-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
+import { createStalePaymentExpiry } from "./create-stale-payment-expiry.js";
 
 export type ContainerPaymentsServices = {
   errorReporter: IErrorReporter;
@@ -69,7 +97,17 @@ export type ContainerPaymentsServices = {
   paymentBuyerService: IPaymentBuyerService;
   paymentAdminService: IPaymentAdminService;
   paymentMaintenanceService: IPaymentMaintenanceService;
+  /** Expires unpaid invoices only once Stripe confirms no money can still reach them. */
+  stalePaymentMaintenance: IStalePaymentMaintenance;
+  /** The account checks both ways of paying share (closed organisations, unverified buyers). */
+  paymentEligibility: IPaymentEligibilityGate;
+  invoiceRecipients: IInvoiceRecipients;
+  /** Finance closing an unapplied-money task by hand. */
+  unappliedMoneyHandling: IUnappliedMoneyHandling;
   lotInvoiceInitiationService: LotInvoiceInitiationService;
+  /** The stored invoices and the one way they are priced and raised. */
+  bidInvoices: DrizzleBidInvoiceRepository;
+  invoiceRaiser: InvoiceRaiser;
   stripePaymentWebhookService: StripePaymentWebhookService | null;
   xeroOAuthService: XeroOAuthService | null;
   adminMetricsService: AdminMetricsService;
@@ -97,6 +135,7 @@ export function createPaymentsServices(
 ): ContainerPaymentsServices {
   const { env, db, infra, repos, platform, complianceMedia, catalog } = input;
   const { redis, stripeClientFactory } = infra;
+  const checkoutSessions = new DrizzlePaymentCheckoutSessionRepository(db);
   const {
     legalEntityRepository,
     xeroConnRepo,
@@ -143,7 +182,6 @@ export function createPaymentsServices(
           XERO_REDIRECT_URI: env.XERO_REDIRECT_URI,
           XERO_DEFAULT_REVENUE_ACCOUNT_CODE: env.XERO_DEFAULT_REVENUE_ACCOUNT_CODE,
           XERO_DEFAULT_TAX_TYPE: env.XERO_DEFAULT_TAX_TYPE,
-          XERO_INVOICE_DUE_DAYS: env.XERO_INVOICE_DUE_DAYS,
           XERO_USE_LEGAL_ENTITY_CONTACT: env.XERO_USE_LEGAL_ENTITY_CONTACT,
           XERO_API_WRITES_DISABLED: env.XERO_API_WRITES_DISABLED,
         },
@@ -153,6 +191,7 @@ export function createPaymentsServices(
         invoiceAddressingService,
         errorReporter,
         redis,
+        new DrizzleBidInvoiceRepository(db),
       )
     : new NoOpAccountingProvider();
 
@@ -202,6 +241,10 @@ export function createPaymentsServices(
     buyerPaymentAuthority,
   );
 
+  const unappliedMoneyReader = new DrizzleUnappliedMoneyReader(db);
+  const unappliedMoney = new UnappliedMoneyRecorder(unappliedMoneyReader, domainEventSink, {
+    record: recordMoneyPathEvent,
+  });
   const paymentCaptureService = new PaymentCaptureService(
     platform.transactionRunner,
     paymentRepo,
@@ -220,6 +263,7 @@ export function createPaymentsServices(
     marketingEventService,
     xeroPaymentRecorder,
     stripePaymentGateway,
+    unappliedMoney,
   );
   const stripeCustomerGateway = new StripeCustomerGateway(
     env,
@@ -227,12 +271,13 @@ export function createPaymentsServices(
     stripeClientFactory,
   );
 
+  const checkoutGateway = new SessionRecordingStripeGateway(stripePaymentGateway, checkoutSessions);
   const stripeCheckoutService = stripePaymentGateway.isConfigured()
     ? new StripeCheckoutService([
-        new CardCheckoutRail(env, stripePaymentGateway, paymentRepo, mediaUrlResolver),
+        new CardCheckoutRail(env, checkoutGateway, paymentRepo, mediaUrlResolver),
         new BankTransferCheckoutRail(
           env,
-          stripePaymentGateway,
+          checkoutGateway,
           stripeCustomerGateway,
           paymentRepo,
           mediaUrlResolver,
@@ -247,6 +292,31 @@ export function createPaymentsServices(
   const paymentDomainEventsRepository = new DrizzlePaymentDomainEventsRepository(db, {
     publish: (conn, event) => domainEventSink.withTx(conn).publish(event),
   });
+  // The payment-due notice and reminders go to the winner and the account's payers.
+  const invoiceRecipients = new InvoiceRecipients(legalEntityNotificationRecipients);
+  // Personal buyers must be verified to pay. In production a missing identity provider holds
+  // them (nobody can be verified) rather than letting them pay unchecked.
+  const paymentEligibility = new PaymentEligibilityGate(
+    legalEntityRepository,
+    complianceMedia.kycService.isConfigured() ? new DrizzleBidActorEligibilityReader(db) : null,
+    { identityRequired: env.NODE_ENV === "production" },
+  );
+  // A held invoice keeps no open checkout: closed when the hold is seen, and swept with expiry.
+  const staleCanceller = new DrizzleStalePaymentCanceller(db);
+  const heldCheckouts = new HeldInvoiceCheckouts({
+    payments: new StalePaymentStore(
+      paymentRepo,
+      checkoutSessions,
+      staleCanceller,
+      platform.transactionRunner,
+    ),
+    provider: new StripeCheckoutCloser(stripeClientFactory, {
+      stripeExpected: env.NODE_ENV === "production",
+    }),
+    eligibility: paymentEligibility,
+    listUnpaidWithCheckout: (limit: number) => staleCanceller.listUnpaidWithCheckout(limit),
+  });
+  const bidInvoiceRepo = repos.bidInvoiceRepository;
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
@@ -280,11 +350,17 @@ export function createPaymentsServices(
     paymentDomainEventsRepository,
     buyerPaymentAuthority,
     errorReporter,
+    paymentEligibility,
+    invoiceRecipients,
+    heldCheckouts,
+    bidInvoiceRepo,
+    new InvoiceDueDateExtender(bidInvoiceRepo),
   );
 
+  const invoiceRaiser = new InvoiceRaiser({ invoices: bidInvoiceRepo, sales: saleRepo });
   const lotInvoiceInitiationService = new LotInvoiceInitiationService(
     lotRepo,
-    saleRepo,
+    invoiceRaiser,
     paymentRepo,
     settlementCompliancePolicy,
     paymentTierPolicy,
@@ -301,8 +377,22 @@ export function createPaymentsServices(
     },
     legalEntityRepository,
     userRepo,
+    invoiceRecipients,
+    { record: recordMoneyPathEvent },
   );
 
+  const stalePaymentMaintenance = createStalePaymentExpiry({
+    payments: paymentRepo,
+    checkoutSessions,
+    canceller: staleCanceller,
+    stripeExpected: env.NODE_ENV === "production",
+    transactionRunner: platform.transactionRunner,
+    stripeClientFactory,
+    paymentCapture: paymentCaptureService,
+    unappliedMoney,
+    events: domainEventSink,
+    heldCheckouts,
+  });
   const paymentGroups = createPaymentGroupServices({
     db,
     env,
@@ -319,6 +409,8 @@ export function createPaymentsServices(
     accounting: accountingProvider,
     stripePayments: stripePaymentGateway,
     stripeCustomers: stripeCustomerGateway,
+    unappliedMoney,
+    eligibility: paymentEligibility,
   });
 
   const privateSaleDeals = createPrivateSaleDealServices({
@@ -355,6 +447,13 @@ export function createPaymentsServices(
           }),
           paymentGroups.webhooks,
           privateSaleDeals.webhooks,
+          unappliedMoney,
+          new UnappliedMoneyRefundHandler({
+            transactionRunner: platform.transactionRunner,
+            reader: unappliedMoneyReader,
+            recorder: unappliedMoney,
+          }),
+          paymentEligibility,
         )
       : null;
 
@@ -369,6 +468,8 @@ export function createPaymentsServices(
 
   return {
     errorReporter,
+    bidInvoices: bidInvoiceRepo,
+    invoiceRaiser,
     accountingProvider,
     xeroPayoutBillWriter,
     stripePaymentGateway,
@@ -380,6 +481,13 @@ export function createPaymentsServices(
     paymentBuyerService: paymentService,
     paymentAdminService: paymentService,
     paymentMaintenanceService: paymentService,
+    stalePaymentMaintenance,
+    unappliedMoneyHandling: new UnappliedMoneyHandlingService({
+      reader: unappliedMoneyReader,
+      payments: paymentRepo,
+      recorder: unappliedMoney,
+      transactionRunner: platform.transactionRunner,
+    }),
     lotInvoiceInitiationService,
     stripePaymentWebhookService,
     xeroOAuthService,
@@ -394,5 +502,7 @@ export function createPaymentsServices(
     }),
     paymentTierPolicy,
     settlementCompliancePolicy,
+    paymentEligibility,
+    invoiceRecipients,
   };
 }

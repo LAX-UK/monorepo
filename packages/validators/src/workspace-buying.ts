@@ -44,6 +44,39 @@ export const paySeveralBodySchema = z
   .strict();
 export type PaySeveralBody = z.infer<typeof paySeveralBodySchema>;
 
+/**
+ * Paying the invoices picked: the lots, and the plan the person was shown for them (its total in
+ * whole pence and the lots it covers). The server pays only that plan; if it has changed, or none
+ * was sent (a page from before this check), it answers 409 with the current one.
+ */
+export const paySeveralStartBodySchema = z
+  .object({
+    lotIds: z.array(z.string().uuid()).min(1).max(20),
+    expectedTotalPence: z.number().int().positive().max(99_999_999).optional(),
+    expectedLotIds: z.array(z.string().uuid()).min(1).max(20).optional(),
+  })
+  .strict();
+export type PaySeveralStartBody = z.infer<typeof paySeveralStartBodySchema>;
+
+/**
+ * The lots to plan one payment for, as a comma-separated list of lot ids in the URL. Only the
+ * shape is checked here (ids are UUIDs); the count and duplicates are the domain's pick rule, so
+ * the refusals ("choose at least one", "up to 20", "chosen twice") come back with their own codes.
+ */
+export const payPlanQuerySchema = z.object({
+  lots: z
+    .string()
+    .optional()
+    .transform((value) =>
+      (value ?? "")
+        .split(",")
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0),
+    )
+    .pipe(z.array(z.string().uuid())),
+});
+export type PayPlanQuery = z.infer<typeof payPlanQuerySchema>;
+
 /** Ask for a courier quote: where the work should go, as the buyer writes it. */
 export const requestDeliveryQuoteSchema = z
   .object({ destination: z.string().trim().min(5).max(500) })

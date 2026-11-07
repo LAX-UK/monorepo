@@ -52,6 +52,11 @@ export function adminWorkItemHref(
       return requireId(kind, subjectId, adminRoutes.purchaseProblems.record);
     case "payment_capture_blocked":
       return requireId(kind, ids.paymentId ?? null, adminRoutes.payments.panel);
+    case "payment_money_unapplied":
+      // Money with no single invoice (a group, or a Stripe balance) opens the payments list.
+      return ids.paymentId
+        ? adminRoutes.payments.panel(ids.paymentId)
+        : adminRoutes.payments.list();
     case "deletion_hold":
       return requireId(kind, subjectId, adminRoutes.client);
     case "condition_report":

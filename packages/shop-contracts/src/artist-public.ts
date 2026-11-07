@@ -8,6 +8,13 @@ export const PublicArtistSummarySchema = Type.Object(
     discipline: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
     portraitUrl: Type.Union([Type.String({ minLength: 1, maxLength: 2048 }), Type.Null()]),
     artworkCount: Type.Integer({ minimum: 0 }),
+    /**
+     * The picture of the artist's newest edition on sale, for a card to show when there is no
+     * portrait. Optional so storefronts parse responses from an older shop-api.
+     */
+    leadImageUrl: Type.Optional(
+      Type.Union([Type.String({ minLength: 1, maxLength: 2048 }), Type.Null()]),
+    ),
   },
   { additionalProperties: false },
 );

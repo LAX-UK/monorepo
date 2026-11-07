@@ -32,6 +32,7 @@ function sampleBasket(overrides: Partial<BasketRecord> = {}): BasketRecord {
         artistName: null,
         artistSlug: null,
         editionSize: null,
+        editionLine: null,
       },
     ],
     ...overrides,
@@ -96,6 +97,7 @@ describe("basket routes", () => {
             artistName: null,
             artistSlug: null,
             editionSize: null,
+            editionLine: null,
           },
         ],
       });

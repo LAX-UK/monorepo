@@ -10,7 +10,6 @@ import { resolveClientRequestPath } from "@/lib/navigation/client-request-path.s
 import {
   type StaffRoles,
   canAccessPlatformAdminRoutes,
-  decodeActingContextCookie,
   normalizeUserRoleOrClient,
 } from "@auction/types";
 import { cookies } from "next/headers";
@@ -26,7 +25,11 @@ import {
   type ResolvedActingImpersonation,
   resolveActingContextWith,
 } from "./acting-context-resolver";
-import { ACTING_LEGAL_ENTITY_COOKIE, X_LEGAL_ENTITY_ID_HEADER } from "./client-acting-context";
+import {
+  ACTING_LEGAL_ENTITY_COOKIE,
+  X_LEGAL_ENTITY_ID_HEADER,
+  readActingCookie,
+} from "./client-acting-context";
 import { HttpAccountDirectory } from "./http-account-directory";
 
 export type {
@@ -78,8 +81,7 @@ export async function listMyAccounts(options?: {
 /** What this browser's acting cookie says; `null` when it has none it can read. */
 async function readBrowserChoice(): Promise<BrowserAccountChoice | null> {
   const raw = (await cookies()).get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
-  const decoded = raw ? decodeActingContextCookie(decodeURIComponent(raw)) : null;
-  return decoded ? { accountId: decoded.e, viewSessionId: decoded.i?.sid ?? null } : null;
+  return readActingCookie(raw);
 }
 
 /**

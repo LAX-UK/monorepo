@@ -1,4 +1,6 @@
 import type { Database } from "@auction/db";
+import { holdStartAt } from "@auction/domain";
+import type { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type { IKycSessionRepository } from "@auction/persistence/interfaces";
 import type { KycVerification, MarketingEvent, UserKycStatus } from "@auction/types";
 import { buildMarketingEventConsent, nowUnixSeconds } from "../../lib/marketing-event-factory.js";
@@ -48,6 +50,8 @@ export class KycDecisionProcessor {
   constructor(
     private readonly repo: IKycSessionRepository,
     private readonly marketingEvents: IMarketingEventService | null = null,
+    /** Moves the due dates of a verified buyer's invoices, which were owed while held. */
+    private readonly invoiceTerms: Pick<InvoiceDueDateExtender, "extendOpenInvoices"> | null = null,
   ) {}
 
   async apply(
@@ -131,6 +135,21 @@ export class KycDecisionProcessor {
             existing.userId,
             setStatus,
             verifiedAt,
+            conn ?? undefined,
+          );
+        }
+        if (setStatus === "approved" && !userAlreadyApproved) {
+          // A personal buyer was held until now: their invoices' terms run from the release,
+          // moved in the same transaction as the verification.
+          await this.invoiceTerms?.extendOpenInvoices(
+            {
+              kind: "winner",
+              userId: existing.userId,
+              personalAccountsOnly: true,
+              // Held since the identity last stopped being approved, or from the start if never.
+              holdStartedAt: holdStartAt(userState?.identityHeldSince),
+            },
+            new Date(),
             conn ?? undefined,
           );
         }

@@ -22,11 +22,13 @@ import { registerAdminGuestRoutes } from "./routes/admin/v1/admin-guests.routes.
 import { registerAdminHelpRoutes } from "./routes/admin/v1/admin-help.routes.js";
 import { registerAdminMediaRoutes } from "./routes/admin/v1/admin-media.routes.js";
 import { registerAdminMerchandiseRoutes } from "./routes/admin/v1/admin-merchandise.routes.js";
+import { registerAdminOfferOnLaxArtRoutes } from "./routes/admin/v1/admin-offer-on-lax-art.routes.js";
 import { registerAdminPeopleRoutes } from "./routes/admin/v1/admin-people.routes.js";
 import { registerAdminProductionRoutes } from "./routes/admin/v1/admin-production.routes.js";
 import { registerAdminReadRoutes } from "./routes/admin/v1/admin-read.routes.js";
 import { registerAdminReleaseAlertRoutes } from "./routes/admin/v1/admin-release-alerts.routes.js";
 import { registerAdminSavedViewRoutes } from "./routes/admin/v1/admin-saved-views.routes.js";
+import { registerAdminZohoLinkRoutes } from "./routes/admin/v1/admin-zoho-link.routes.js";
 import { registerArtCacheInvalidation } from "./routes/admin/v1/art-cache-invalidation.js";
 import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js";
 import { registerAdminEditionRunRoutes } from "./routes/admin/v1/edition-runs.routes.js";
@@ -41,7 +43,9 @@ import { registerAdminThirdPartyRoutes } from "./routes/admin/v1/third-party.rou
 import { registerHealthRoutes } from "./routes/health.routes.js";
 import { registerIdentityDeletionEligibilityRoutes } from "./routes/internal/identity-deletion-eligibility.routes.js";
 import { registerIdentitySubjectExportRoutes } from "./routes/internal/identity-subject-export.routes.js";
+import { registerInventoryArtListingLookupRoutes } from "./routes/internal/inventory-art-listing-lookup.routes.js";
 import { registerInventoryArtListingRoutes } from "./routes/internal/inventory-art-listing.routes.js";
+import { registerAccountEmailAlertRoutes } from "./routes/v1/account-email-alerts.routes.js";
 import { registerArtistApplicationRoutes } from "./routes/v1/artist-application.routes.js";
 import { registerArtistRoutes } from "./routes/v1/artists.routes.js";
 import { registerArtworkInterestRoutes } from "./routes/v1/artwork-interest.routes.js";
@@ -143,6 +147,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerIdentityDeletionEligibilityRoutes(app, options.deps.identityDeletion);
   void registerIdentitySubjectExportRoutes(app, options.deps.identitySubjectExport);
   void registerInventoryArtListingRoutes(app, options.deps.inventory);
+  void registerInventoryArtListingLookupRoutes(app, options.deps.inventory);
   void registerStripeWebhookRoutes(app, options.deps.stripeWebhook);
   if (options.deps.env.SHOP_PAYOUTS_ENABLED) {
     void registerStripeConnectWebhookRoutes(app, options.deps.stripeConnectWebhook);
@@ -151,6 +156,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerArtworkInterestRoutes(app, options.deps.interest);
   void registerEditionAlertRoutes(app, options.deps.interest);
   void registerReleaseAlertRoutes(app, options.deps.interest);
+  void registerAccountEmailAlertRoutes(app, options.deps.interest);
   void registerBasketRoutes(app, options.deps.commerce);
   void registerOrderRoutes(app, options.deps.commerce);
   void registerGuestCheckoutRoutes(app, options.deps.commerce.guestCheckout);
@@ -193,6 +199,8 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
         void registerAdminGuestRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRegisterRoutes(adminScope, options.deps.admin.artworkRegister);
+        void registerAdminOfferOnLaxArtRoutes(adminScope, options.deps.admin);
+        void registerAdminZohoLinkRoutes(adminScope, options.deps.admin);
         void registerAdminReleaseAlertRoutes(adminScope, options.deps.admin.releaseAlertSummary);
         void registerAdminArtistApplicationRoutes(
           adminScope,

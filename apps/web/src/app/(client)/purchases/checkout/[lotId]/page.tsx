@@ -2,6 +2,7 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardErrorAlert, DashboardSection } from "@/components/dashboard/primitives";
 import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
+import { AccountRestoreHop } from "@/components/layout/account-switcher/account-restore-hop";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
 import { CheckoutReadinessStrip } from "@/components/sections/checkout/checkout-readiness-strip";
@@ -21,7 +22,7 @@ import {
   getServerBuyerComplianceGate,
   getServerEntityPayments,
 } from "@/lib/data/http/payments.server";
-import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
+import { buildInvoiceTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { openRecordInItsAccount } from "@/lib/legal-entity/open-record-in-account.server";
 import { checkoutIntro } from "@/lib/purchases/checkout-intro";
@@ -58,12 +59,13 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
   const c = await getServerDataContainer();
   const scope = await c.buying.scope();
   // A purchase is paid from the account it was won as; a link opened in another one switches.
-  await openRecordInItsAccount({
+  const opened = await openRecordInItsAccount({
     kind: "purchase",
     id: lotId,
     actingId: scope.account.id,
     next: checkoutPath,
   });
+  if (opened.kind === "hop") return <AccountRestoreHop href={opened.href} />;
   const organisation = organisationOf(scope);
 
   const lot = await c.buyerLots.getById(lotId);
@@ -114,6 +116,8 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
           "Could not load your payment history for this lot.",
         )
       : null;
+  // A gate that could not be read never shows Pay: the page shows its load error instead.
+  const complianceGateFailed = complianceGateR.status === "rejected";
   const complianceGate = complianceGateR.status === "fulfilled" ? complianceGateR.value : "clear";
   const { paymentComplete, openPayment } = resolveCheckoutPagePaymentState(
     myPayments,
@@ -124,7 +128,10 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
 
   const lotCheckoutPricing = auction.checkoutPricing;
   const hasPricing = lotCheckoutPricing != null;
-  const totalsVm = lotCheckoutPricing ? buildCheckoutTotalsVm(lotCheckoutPricing) : null;
+  // Once an invoice exists its stored total is what is shown, as it is what Stripe charges.
+  const totalsVm = lotCheckoutPricing
+    ? buildInvoiceTotalsVm(lotCheckoutPricing, openPayment?.amount ?? null)
+    : null;
 
   const hammerLabel = totalsVm
     ? formatMoney(totalsVm.hammer.toFixed(2), PLATFORM_DEFAULT_CURRENCY)
@@ -150,7 +157,7 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
     openPaymentStatus: openPayment?.status ?? null,
     openPaymentManualReviewReason: openPayment?.manualReviewReason ?? null,
     openPaymentCheckoutRail: openPayment?.checkoutRail ?? null,
-    paymentsLoadFailed: paymentsFailure != null,
+    paymentsLoadFailed: paymentsFailure != null || complianceGateFailed,
     preflightComplianceGate: complianceGate,
     stripeReturnSuccess,
   };

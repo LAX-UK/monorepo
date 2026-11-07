@@ -22,6 +22,13 @@ export type MarketingSplitFeatureProps = {
    */
   mobileOrder?: "media-first" | "text-first";
   tone?: MarketingSurfaceTone;
+  /**
+   * A compact panel for a secondary prompt: one row from md up (`leading`, the copy, the action),
+   * stacked on a phone, with a heading-sized title. Ignores `media`.
+   */
+  compact?: boolean;
+  /** Small pictures at the start of a compact row. */
+  leading?: ReactNode;
   /** `h1` when the feature leads the page. */
   headingLevel?: "h1" | "h2" | "h3";
   className?: string;
@@ -37,11 +44,45 @@ export function MarketingSplitFeature({
   mediaSide = "right",
   mobileOrder = "media-first",
   tone = "feature",
+  compact = false,
+  leading,
   headingLevel: Heading = "h2",
   className,
 }: MarketingSplitFeatureProps) {
   const headingId = useId();
   const toneClass = MARKETING_SURFACE_TONE[tone];
+
+  if (compact) {
+    return (
+      <section
+        aria-labelledby={headingId}
+        data-compact=""
+        className={cn(
+          "grid items-center gap-4 px-5 py-6 md:gap-8 md:px-8",
+          leading
+            ? "md:grid-cols-[auto_minmax(0,1fr)_minmax(0,auto)]"
+            : "md:grid-cols-[minmax(0,1fr)_minmax(0,auto)]",
+          toneClass.surface,
+          className,
+        )}
+      >
+        {leading ? <div className="flex items-center justify-start">{leading}</div> : null}
+        <div className="min-w-0">
+          {eyebrow ? <p className="m-0 mb-1 font-label text-xs font-medium">{eyebrow}</p> : null}
+          <Heading
+            id={headingId}
+            className="m-0 text-balance font-headline text-xl font-medium leading-7"
+          >
+            {title}
+          </Heading>
+          {body ? (
+            <div className={cn("mt-1 text-sm leading-[22px]", toneClass.body)}>{body}</div>
+          ) : null}
+        </div>
+        {action ? <div className="flex min-w-0 flex-wrap items-center gap-3">{action}</div> : null}
+      </section>
+    );
+  }
 
   return (
     <section

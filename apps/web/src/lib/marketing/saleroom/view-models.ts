@@ -1,5 +1,6 @@
 import type { LotCardLineModel } from "@/lib/lot-card/lot-card-line";
 import type { StreamPresentation } from "@/lib/sale-stream-policy";
+import type { DepartmentDisplayStyle } from "@auction/domain";
 import type { LotCardTimingVM, Sale, SaleDayMedia } from "@auction/types";
 
 /** View-models for the saleroom page (ISP).
@@ -65,6 +66,8 @@ export type SaleLotCardVM = {
   title: string;
   imageUrl: string | null;
   imageAlt: string;
+  /** How the lot's department shows its picture on a card. */
+  displayStyle: DepartmentDisplayStyle;
   /** Raw estimate value line (e.g. "$1,200,000") for the Estimate column. */
   estimateValue: string | null;
   currentBidLabel: string;

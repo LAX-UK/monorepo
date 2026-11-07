@@ -1,3 +1,13 @@
+import {
+  type IHeldInvoiceCheckouts,
+  type IInvoiceRecipients,
+  type InvoiceDueDateExtender,
+  InvoiceRaiser,
+} from "@auction/finance-runtime";
+import type {
+  IBidInvoiceRaiseRepository,
+  IBidInvoiceReader,
+} from "@auction/persistence/interfaces";
 import type { IPaymentDomainEventsRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentPaymentHook } from "@auction/persistence/interfaces";
@@ -50,13 +60,16 @@ import {
   type EntityWonLotDTO,
   cancelPendingAsBuyer,
   createPendingForWinner,
-  expireStalePendingPayments,
   getBuyerComplianceGateStatus,
   listEntityPaymentsForBuyerApi,
   listEntityWonLots,
   listForBuyer,
   listMyPaymentsForBuyerApi,
 } from "./payment/payment-buyer-ops.js";
+import {
+  type IPaymentEligibilityGate,
+  PaymentEligibilityGate,
+} from "./payment/payment-eligibility.gate.js";
 import { refundManualReviewPayment, refundPayment } from "./payment/payment-refund-ops.js";
 import type { PaymentRefundReconcileService } from "./payment/payment-refund-reconcile.service.js";
 import type {
@@ -76,6 +89,23 @@ export type {
 /** Without a way to read accounts nobody can be shown to be a payer, so checkout stays closed. */
 const REFUSE_ALL_PAYMENTS: IBuyerPaymentAuthority = {
   canPay: async () => ({ allowed: false, reason: "not_member" }),
+};
+
+/** Where the account's payers are not wired (tests of checkout itself), only the winner is told. */
+const WINNER_ONLY: IInvoiceRecipients = {
+  forInvoice: async ({ winnerUserId }) => [winnerUserId],
+};
+
+/** Without the invoice store nothing can be raised or read, so every use fails. */
+const UNWIRED_INVOICES: IBidInvoiceReader & IBidInvoiceRaiseRepository = {
+  findLiveByLotAndBuyerAccount: () => Promise.reject(new Error("Invoices are not wired")),
+  findByPaymentIds: () => Promise.reject(new Error("Invoices are not wired")),
+  raise: () => Promise.reject(new Error("Invoices are not wired")),
+};
+
+/** Without the account to read, nothing can be checked, so nothing is paid. */
+const REFUSE_ALL_ELIGIBILITY: IPaymentEligibilityGate = {
+  check: async () => ({ kind: "refused", reason: "organisation_closed" }),
 };
 
 export class PaymentService
@@ -111,9 +141,16 @@ export class PaymentService
     paymentDomainEvents: IPaymentDomainEventsRepository | null = null,
     buyerPaymentAuthority: IBuyerPaymentAuthority | null = null,
     errorReporter: IErrorReporter | null = null,
+    paymentEligibility: IPaymentEligibilityGate | null = null,
+    invoiceRecipients: IInvoiceRecipients | null = null,
+    heldCheckouts: Pick<IHeldInvoiceCheckouts, "close"> | null = null,
+    invoices: (IBidInvoiceReader & IBidInvoiceRaiseRepository) | null = null,
+    invoiceDueDates: InvoiceDueDateExtender | null = null,
   ) {
+    const invoiceStore = invoices ?? UNWIRED_INVOICES;
     const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
       payments,
+      invoices: invoiceStore,
       users,
       accounting,
       stripeCheckout,
@@ -140,6 +177,9 @@ export class PaymentService
       mediaUrlResolver,
       lotFulfilmentHooks,
       sales,
+      invoiceRaiser: new InvoiceRaiser({ invoices: invoiceStore, sales }),
+      invoices: invoiceStore,
+      invoiceDueDates,
       platformFeePolicy,
       paymentCapture,
       stripeCheckout,
@@ -155,6 +195,13 @@ export class PaymentService
         (legalEntityRepository
           ? new LegalEntityBuyerPaymentAuthority(legalEntityRepository)
           : REFUSE_ALL_PAYMENTS),
+      paymentEligibility:
+        paymentEligibility ??
+        (legalEntityRepository
+          ? new PaymentEligibilityGate(legalEntityRepository, null)
+          : REFUSE_ALL_ELIGIBILITY),
+      invoiceRecipients: invoiceRecipients ?? WINNER_ONLY,
+      heldCheckouts,
     };
   }
 
@@ -315,13 +362,6 @@ export class PaymentService
     paymentId: string,
   ): Promise<Result<void, AuthzError | LotError>> {
     return cancelPendingAsBuyer(this.deps, buyerId, paymentId);
-  }
-
-  expireStalePendingPayments(
-    pendingMaxAgeDays: number,
-    authorizedMaxAgeDays?: number,
-  ): Promise<number> {
-    return expireStalePendingPayments(this.deps, pendingMaxAgeDays, authorizedMaxAgeDays);
   }
 
   syncPaymentFromXeroAsAdmin(

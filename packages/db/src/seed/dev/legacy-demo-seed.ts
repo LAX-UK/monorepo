@@ -15,6 +15,7 @@ import * as schema from "../../schema/index.js";
 import { buildPgPoolConfig } from "../../ssl.js";
 import { assertDevSeedMayRunDestructiveClear } from "../runners/dev-seed-guard.js";
 import { buildPressDemoSaleRow } from "../shared/press-demo.js";
+import { insertSeedInvoices, totalOnlySeedInvoice } from "../shared/seed-invoice.js";
 import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 import { seedOrganisationJourneys } from "./organisation-journeys-seed.js";
 
@@ -446,6 +447,7 @@ async function clearAll(db: ReturnType<typeof drizzle<typeof schema>>) {
   await db.delete(legalEntityPayoutMethod);
   await db.delete(paymentExternalRef);
   await db.delete(payment);
+  await db.delete(schema.bidInvoice);
   await db.delete(xeroConnection);
   await db.delete(notification);
   await db.delete(artistWatchlist);
@@ -2109,6 +2111,16 @@ export async function runLegacyDemoSeed() {
       role: "owner",
       isPrimaryAdmin: true,
       acceptedAt: new Date(now - 20 * day),
+    },
+    /** viewer — the estate owner once had a seat here and was removed (an organisation they left). */
+    {
+      legalEntityId: LEO.companyDocsRequested,
+      userId: ESTATE_OWNER_ID,
+      role: "viewer",
+      invitedByUserId: COMPANY_OWNER_ID,
+      invitedAt: new Date(now - 19 * day),
+      acceptedAt: new Date(now - 18 * day),
+      removedAt: new Date(now - 5 * day),
     },
     {
       legalEntityId: LEO.charityDocsReceived,
@@ -3993,6 +4005,24 @@ export async function runLegacyDemoSeed() {
     },
   ]);
 
+  // A confirmed telephone line for Room A's lot on the block, so the clerk console offers a
+  // telephone bid beside the paddle bid. Sale deletion cascades to it on a re-seed.
+  await db.insert(schema.telephoneBidBooking).values({
+    id: "d1000001-0000-4000-8000-000000000001",
+    saleId: S.hybridA,
+    userId: USER1_ID,
+    buyerLegalEntityId: LE.user1,
+    phoneE164: "+442079460958",
+    lotIds: [L.hybridA3],
+    reserveAltMax: "20000.00",
+    status: "confirmed",
+    clerkUserId: STAFF_AUCTION_MGR_ID,
+    approvedByUserId: STAFF_AUCTION_MGR_ID,
+    confirmedAt: new Date(now - 60 * 60_000),
+    createdAt: stamp,
+    updatedAt: stamp,
+  });
+
   // ── Admin review tasks ──────────────────────────────────────────────────────
   await db.insert(adminReviewTask).values([
     {
@@ -4454,14 +4484,36 @@ export async function runLegacyDemoSeed() {
       createdAt: new Date(now - 3 * day),
     },
   ];
-  await db.insert(payment).values(
-    paymentRows.map(({ sellerId, buyerId, ...row }) => ({
-      ...row,
-      buyerId,
-      buyerLegalEntityId: legalEntityIdForUser(buyerId),
-      sellerLegalEntityId: legalEntityIdForUser(sellerId),
+  // Each payment settles a stored invoice. These amounts are fixtures, not worked out from a
+  // hammer price, so each invoice is one total line.
+  const invoicedPayments = paymentRows.map(({ sellerId, buyerId, ...row }) => {
+    const raisedAt = row.createdAt ?? new Date(now);
+    return {
+      invoice: totalOnlySeedInvoice({
+        paymentId: row.id as string,
+        amountPounds: row.amount as string,
+        raisedAt,
+      }),
+      row: {
+        ...row,
+        buyerId,
+        buyerLegalEntityId: legalEntityIdForUser(buyerId),
+        sellerLegalEntityId: legalEntityIdForUser(sellerId),
+      },
+    };
+  });
+  await insertSeedInvoices(
+    db,
+    invoicedPayments.map(({ invoice, row }) => ({
+      lotId: row.lotId,
+      buyerLegalEntityId: row.buyerLegalEntityId,
+      sellerLegalEntityId: row.sellerLegalEntityId,
+      invoice,
     })),
   );
+  await db
+    .insert(payment)
+    .values(invoicedPayments.map(({ invoice, row }) => ({ ...row, invoiceId: invoice.id })));
 
   // ── Compliance & finance queue fixtures (deterministic E2E) ────────────────
   await db.insert(kycWatchlistScreening).values([

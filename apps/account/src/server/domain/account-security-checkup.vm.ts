@@ -27,7 +27,23 @@ export type SecurityCheckupVm = {
   complete: boolean;
   /** "2 of 3 recommended steps done" */
   summary: string;
+  /** The compact Home row's title: "Security checkup · 1 of 3 done", or "all 3 done". */
+  headline: string;
+  /** The open steps as one sentence; empty when the checkup is complete. */
+  nextSteps: string;
+  /** One open step goes straight to it; several (or none) go to the Security page. */
+  reviewHref: string;
 };
+
+/** ["Verify your email", "Turn on two-step verification"] → "Verify your email and turn on two-step verification." */
+function sentenceOf(titles: readonly string[]): string {
+  if (titles.length === 0) return "";
+  const parts = titles.map((title, index) =>
+    index === 0 ? title : `${title.charAt(0).toLowerCase()}${title.slice(1)}`,
+  );
+  const last = parts.pop();
+  return `${parts.length > 0 ? `${parts.join(", ")} and ` : ""}${last}.`;
+}
 
 function sessionsDescription(otherSessionCount: number | null): string {
   if (otherSessionCount === null) {
@@ -109,11 +125,18 @@ export function buildSecurityCheckup(
   });
 
   const doneCount = steps.filter((step) => step.done).length;
+  const complete = steps.length > 0 && doneCount === steps.length;
+  const open = steps.filter((step) => !step.done);
   return {
     steps,
     doneCount,
     total: steps.length,
-    complete: steps.length > 0 && doneCount === steps.length,
+    complete,
     summary: `${doneCount} of ${steps.length} recommended steps done`,
+    headline: complete
+      ? `Security checkup · all ${steps.length} done`
+      : `Security checkup · ${doneCount} of ${steps.length} done`,
+    nextSteps: sentenceOf(open.map((step) => step.title)),
+    reviewHref: open.length === 1 && open[0] ? open[0].href : ACCOUNT_ROUTES.security,
   };
 }

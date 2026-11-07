@@ -418,6 +418,8 @@ export function createContainer(env: Env): Container {
     env,
     lots: repos.lotRepo,
     sales: repos.saleRepo,
+    accounts: repos.legalEntityRepository,
+    onboarding: userMisc.accountOnboardingGate,
     transactionRunner: platform.transactionRunner,
     events: platform.domainEventSink,
     notificationDispatcher: platform.notificationDispatcher,
@@ -425,7 +427,11 @@ export function createContainer(env: Env): Container {
     payments: {
       tierLimits: payments.paymentTierPolicy.limitsSnapshot,
       compliance: payments.settlementCompliancePolicy,
+      eligibility: payments.paymentEligibility,
       groupCheckout: payments.paymentGroupCheckout,
+      invoices: payments.bidInvoices,
+      pricing: payments.invoiceRaiser,
+      invoiceInitiation: payments.lotInvoiceInitiationService,
     },
   });
   const marketingEnquiries = createMarketingEnquiryServices({

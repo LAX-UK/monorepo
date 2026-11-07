@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { AccountOverviewHeader } from "./account-overview-header";
 
 describe("AccountOverviewHeader", () => {
-  it("greets the person by first name, with initials and email, and no repeated tagline", () => {
+  it("greets the person by first name with their email, and no avatar or repeated tagline", () => {
     const html = renderToStaticMarkup(
       <AccountOverviewHeader
         overview={{ displayName: "Ada Lovelace", name: "Ada Lovelace", email: "ada@example.com" }}
@@ -12,7 +12,7 @@ describe("AccountOverviewHeader", () => {
     expect(html).toContain("<h1");
     expect(html).toContain("Welcome, Ada");
     expect(html).toContain("ada@example.com");
-    expect(html).toContain(">AL<");
+    expect(html).not.toContain(">AL<");
     expect(html).not.toContain("One LAX Account");
   });
 
@@ -25,10 +25,10 @@ describe("AccountOverviewHeader", () => {
     expect(html.match(/ada@example\.com/g)).toHaveLength(1);
     // Without a name the greeting stays "Welcome" rather than welcoming an email address.
     expect(html).toContain(">Welcome<");
-    expect(html).toContain(">A<");
+    expect(html).not.toContain(">A<");
   });
 
-  it("omits the avatar when there is neither a name nor an email", () => {
+  it("greets without a name or email", () => {
     const html = renderToStaticMarkup(
       <AccountOverviewHeader
         overview={{ displayName: "Your LAX Account", name: null, email: null }}

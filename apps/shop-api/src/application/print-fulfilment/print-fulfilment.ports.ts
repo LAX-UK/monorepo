@@ -7,6 +7,7 @@ import type {
 } from "@auction/shop-domain";
 import type { ShopAdminAuditWriter } from "../ports/shop-admin-audit.writer.js";
 import type { ShopAdminCommandWriter } from "../ports/shop-admin-command.writer.js";
+import type { ShopDomainEventWriter } from "../ports/shop-domain-event.writer.js";
 
 /** The print an order line was sold, as packing sees it. */
 export type PackPrint = {
@@ -193,6 +194,8 @@ export type PrintFulfilmentTx = {
   swaps: PrintSwapStore;
   certificates: CertificateStore;
   events: PrintEventWriter;
+  /** Domain events other systems follow; written in the same transaction as the change. */
+  domainEvents: ShopDomainEventWriter;
   horsCommerce: HorsCommerceApprovals;
   notifier: PrintSwapNotifier;
   audit: ShopAdminAuditWriter;

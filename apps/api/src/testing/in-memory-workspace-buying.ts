@@ -53,6 +53,7 @@ export function seedPurchases() {
         status: "captured",
         amount: "1250.00",
         raisedAt: new Date(NOW.getTime() - 3 * DAY),
+        dueAt: null,
       },
     }),
     purchase(LOTS.due, {
@@ -61,6 +62,7 @@ export function seedPurchases() {
         status: "pending",
         amount: "600.10",
         raisedAt: new Date(NOW.getTime() - 2 * DAY),
+        dueAt: null,
       },
     }),
     purchase(LOTS.overdue, {
@@ -69,6 +71,7 @@ export function seedPurchases() {
         status: "pending",
         amount: "400.00",
         raisedAt: new Date(NOW.getTime() - 10 * DAY),
+        dueAt: null,
       },
     }),
     purchase(LOTS.agentWin, {
@@ -78,6 +81,7 @@ export function seedPurchases() {
         status: "pending",
         amount: "300.00",
         raisedAt: new Date(NOW.getTime() - DAY),
+        dueAt: null,
       },
     }),
     purchase(LOTS.otherAccount, { account: OTHER_ACCOUNT }),

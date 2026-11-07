@@ -76,6 +76,21 @@ export class DrizzleLegalEntityMembershipReader implements ILegalEntityMembershi
     return rows[0] ?? null;
   }
 
+  async hasEverBeenMember(userId: string, legalEntityId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: legalEntityMember.id })
+      .from(legalEntityMember)
+      .where(
+        and(
+          eq(legalEntityMember.userId, userId),
+          eq(legalEntityMember.legalEntityId, legalEntityId),
+          isNotNull(legalEntityMember.acceptedAt),
+        ),
+      )
+      .limit(1);
+    return rows.length > 0;
+  }
+
   async listImpersonationNoticeRecipientEmails(
     legalEntityId: string,
   ): Promise<{ email: string; userId: string }[]> {

@@ -180,6 +180,12 @@ export const LaxMoneyEntryV1 = Type.Object({
   occurredAt: isoDateTimeSchema,
   /** Deep link to the product's invoice or payout page. */
   href: Type.String({ minLength: 1 }),
+  /**
+   * The product the money belongs to. LAX Shop and lax.art share one business, so the business
+   * cannot say it. Optional so payloads from before the field stay valid; a consumer falls back
+   * to the business's default product (see `moneyProductOf`).
+   */
+  product: Type.Optional(stringEnum(LAX_PRODUCT_IDS)),
 });
 export type LaxMoneyEntryV1 = Static<typeof LaxMoneyEntryV1>;
 

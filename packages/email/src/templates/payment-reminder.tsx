@@ -29,7 +29,11 @@ export default function PaymentReminderEmail(vars: TemplateVarsByName["payment-r
           { label: "Due", value: vars.dueDate },
         ]}
       />
-      <Button href={vars.payUrl}>Pay now</Button>
+      {vars.held === "identity_verification_required" && vars.actionUrl ? (
+        <Button href={vars.actionUrl}>Verify your identity</Button>
+      ) : vars.held ? null : (
+        <Button href={vars.payUrl}>Pay now</Button>
+      )}
       <HelpBlock email={vars.supportContactEmail} />
     </Layout>
   );

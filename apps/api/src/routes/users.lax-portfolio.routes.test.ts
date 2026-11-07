@@ -69,6 +69,8 @@ function portfolioApp(opts: {
   return { app, loadForPerson };
 }
 
+const UNPAID_LOT_ID = "99999999-9999-4999-8999-999999999999";
+
 const get = (app: Hono, path: string) => app.request(`/users/me/${path}`);
 
 describe.each([
@@ -186,8 +188,9 @@ describe("GET /users/me/lax-money", () => {
   it("reports unpaid, paid, refunded and payout money without netting them", async () => {
     const { app } = portfolioApp({
       facts: facts({
+        wonLots: [wonLot({ lotId: UNPAID_LOT_ID })],
         payments: [
-          payment({ id: "a", status: "pending" }),
+          payment({ id: "a", lotId: UNPAID_LOT_ID, status: "pending" }),
           payment({ id: "b", status: "captured" }),
           payment({ id: "c", status: "refunded" }),
         ],

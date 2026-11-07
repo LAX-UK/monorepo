@@ -98,7 +98,7 @@ describe("email sign-up through Better Auth", () => {
     oauthState.current = null;
     const { recorder, recordSignUp } = recorderDouble();
     const auth = betterAuth({
-      secret: "test-secret-that-is-long-enough",
+      secret: "test-secret-that-is-long-enough", // gitleaks:allow synthetic fixture secret
       baseURL: "http://localhost:3003",
       database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
       emailAndPassword: { enabled: true, autoSignIn: false },
@@ -108,7 +108,7 @@ describe("email sign-up through Better Auth", () => {
       body: {
         name: "Sarah",
         email: "sarah@example.com",
-        password: "correct-horse-battery-staple-32",
+        password: "correct-horse-battery-staple-32", // gitleaks:allow synthetic fixture password
         ...body,
       },
     });
@@ -127,6 +127,32 @@ describe("email sign-up through Better Auth", () => {
 
   it("records nothing for a sign-up that carries no statement", async () => {
     const { recordSignUp } = await signUp({});
+    expect(recordSignUp).not.toHaveBeenCalled();
+  });
+
+  it("records nothing when an existing account signs in again", async () => {
+    oauthState.current = null;
+    const { recorder, recordSignUp } = recorderDouble();
+    const auth = betterAuth({
+      secret: "test-secret-that-is-long-enough",
+      baseURL: "http://localhost:3003",
+      database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+      emailAndPassword: { enabled: true, autoSignIn: false },
+      databaseHooks: { user: buildUserDatabaseHooks(deps(recorder)) },
+    });
+    const credentials = {
+      name: "Sarah",
+      email: "sarah@example.com",
+      password: "correct-horse-battery-staple-32", // gitleaks:allow synthetic fixture password
+    };
+    await auth.api.signUpEmail({
+      body: { ...credentials, legalAcceptance: { product: "account" } },
+    });
+    expect(recordSignUp).toHaveBeenCalledTimes(1);
+    recordSignUp.mockClear();
+    await auth.api.signInEmail({
+      body: { email: credentials.email, password: credentials.password },
+    });
     expect(recordSignUp).not.toHaveBeenCalled();
   });
 });

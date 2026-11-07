@@ -1,7 +1,9 @@
 import { FOCUS_RING } from "@auction/branding";
+import type { DepartmentDisplayStyle } from "@auction/domain";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { Children, type ReactNode, isValidElement } from "react";
+import { lotCardMediaClasses } from "./lot-media/lot-card-media-frame.js";
 import { MarketingCardMedia } from "./marketing-card-media.js";
 import { MarketingCardReveal } from "./motion/index.js";
 
@@ -17,6 +19,11 @@ export type MarketingWorkCardProps = {
    * `--filter-work-mat-image` (`.marketing-work-mat`).
    */
   media: ReactNode;
+  /**
+   * How a lot's department shows its picture (Bid lots): see `lotCardMediaFrame`. Left out, the
+   * card keeps the product's own mat, as on Shop and lax.art.
+   */
+  mediaStyle?: DepartmentDisplayStyle;
   /** Badge over the top-left of the mat, e.g. "Yours". */
   mediaBadge?: ReactNode;
   /** Status over the bottom-left of the mat, e.g. a lot status. */
@@ -49,6 +56,7 @@ export function MarketingWorkCard({
   title,
   titleAs: Title = "h3",
   media,
+  mediaStyle,
   mediaBadge,
   mediaStatus,
   overlayAction,
@@ -60,14 +68,30 @@ export function MarketingWorkCard({
   className,
   "data-testid": testId = "marketing-work-card",
 }: MarketingWorkCardProps) {
+  const styled = mediaStyle ? lotCardMediaClasses(mediaStyle) : null;
   return (
     <article
       className={cn("group relative flex h-full min-w-0 flex-col", className)}
       data-testid={testId}
     >
-      <MarketingCardMedia className="marketing-work-mat aspect-[4/5]">
-        <Link href={href} tabIndex={-1} aria-hidden className="absolute inset-0 block p-[7%]">
-          <span className="relative block size-full [&_img]:!object-contain">{media}</span>
+      <MarketingCardMedia
+        className={styled ? styled.frame : "marketing-work-mat aspect-[4/5]"}
+        data-media-style={mediaStyle}
+      >
+        <Link
+          href={href}
+          tabIndex={-1}
+          aria-hidden
+          className={cn("absolute inset-0 block", styled ? styled.inset : "p-[7%]")}
+        >
+          <span
+            className={cn(
+              "relative block size-full",
+              styled ? styled.image : "[&_img]:!object-contain",
+            )}
+          >
+            {media}
+          </span>
         </Link>
         {mediaBadge ? (
           <div className="pointer-events-none absolute left-2 top-2 z-[1]">{mediaBadge}</div>

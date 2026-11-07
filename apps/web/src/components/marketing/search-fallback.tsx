@@ -1,11 +1,14 @@
 import { CatalogLotViewClient } from "@/components/marketing/catalog-lot-view-client";
 import { SearchAlertButton } from "@/components/marketing/search-alert-button";
 import { ArtistBrowseGrid } from "@/components/sections/artists/catalog-artist-views";
+import { FeaturedAuctionsGrid } from "@/components/sections/sales/featured-auctions-grid";
+import { mapSaleToFeaturedAuctionCardVM } from "@/components/sections/sales/sales-view-models";
 import { toCatalogLotVMs } from "@/lib/lot/to-catalog-lot-vm";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import type { SearchFallback } from "@/lib/marketing/load-search-fallback";
 import { pastResultsSentence } from "@/lib/marketing/search-fallback";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
+import type { LotMediaTreatmentIndex } from "@auction/domain";
 import { ButtonLink, EmptyState } from "@auction/ui/lax";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -18,6 +21,8 @@ type Props = {
   isAuthenticated: boolean;
   currentUserId: string | null;
   watchedLotIds: string[];
+  /** How each department shows its lots on a card. */
+  treatments: LotMediaTreatmentIndex;
   watchedArtistIds: ReadonlySet<string>;
   /** Search with every filter cleared. */
   clearHref: string;
@@ -66,7 +71,7 @@ function Group({
  */
 export function SearchNoMatches(props: Props) {
   const { q, fallback, categoryId } = props;
-  const { pastLots, pastCount, artists } = fallback;
+  const { pastLots, pastCount, artists, sales } = fallback;
   const sentence = pastResultsSentence(pastCount);
   const hint = "Check the spelling, or try an artist, a medium or a place.";
 
@@ -119,8 +124,15 @@ export function SearchNoMatches(props: Props) {
             isAuthenticated={props.isAuthenticated}
             watchedLotIds={props.watchedLotIds}
             loginNextPath={props.alertReturnHref}
+            treatments={props.treatments}
             {...(props.catalogLinkParams ? { catalogLinkParams: props.catalogLinkParams } : {})}
           />
+        </Group>
+      ) : null}
+
+      {sales.length > 0 ? (
+        <Group id="search-sales" title="Sales">
+          <FeaturedAuctionsGrid vms={sales.map(mapSaleToFeaturedAuctionCardVM)} />
         </Group>
       ) : null}
 

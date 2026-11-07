@@ -6,6 +6,7 @@ import { MarketingCardMedia } from "./marketing-card-media.js";
 
 const ASPECT_CLASS = {
   landscape: "aspect-[4/3]",
+  cover: "aspect-[3/2]",
   portrait: "aspect-[8/11]",
   wide: "aspect-[21/10]",
 } as const;
@@ -52,15 +53,21 @@ export type MarketingEditorialCardProps = {
   media?: ReactNode;
   /**
    * `landscape` 4:3 for features and rails; `portrait` 8:11 for story grids (Figma `251:1312`);
-   * `wide` 21:10 for a full-width lead (Figma `285:3008`, drawn about 1200×568).
+   * `wide` 21:10 for a full-width lead (Figma `285:3008`, drawn about 1200×568); `cover` 3:2
+   * for a story, whose cover image is always shown at that ratio.
    */
-  aspect?: "landscape" | "portrait" | "wide";
+  aspect?: "landscape" | "portrait" | "wide" | "cover";
   layout?: keyof typeof LAYOUT_CLASS;
   /** Uppercase parts divided by a rule, e.g. ["Exhibition", "London"] or ["Article", "16 Apr 2026"]. */
   kicker?: readonly string[];
   title: string;
   /** Secondary lines under the title (date range, time and place, standfirst). */
   details?: readonly ReactNode[];
+  /**
+   * Buttons under the details, above the card's stretched link so each stays its own tab stop.
+   * The card's own link still covers the rest of the card.
+   */
+  actions?: ReactNode;
   /** Beside the title, outside the link, so a nested control (heart) stays its own tab stop. */
   trailing?: ReactNode;
   /** Missing href renders the title as plain text. */
@@ -83,6 +90,7 @@ export function MarketingEditorialCard({
   title,
   details = [],
   trailing,
+  actions,
   href,
   linkAs: LinkComponent = Link,
   "data-testid": testId,
@@ -153,6 +161,7 @@ export function MarketingEditorialCard({
             ))}
           </div>
         ) : null}
+        {actions ? <div className="relative z-[1] flex flex-wrap gap-3 pt-2">{actions}</div> : null}
       </div>
     </article>
   );

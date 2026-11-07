@@ -86,6 +86,7 @@ import { createAtgSyncRuntime } from "./create-atg-sync-runtime.js";
 import { createBidAlertRuntime } from "./create-bid-alert-runtime.js";
 import { createExportProviderDeps } from "./create-export-provider-deps.js";
 import { createWorkerRepositories } from "./create-worker-repositories.js";
+import { createZohoArtworkListing } from "./create-zoho-artwork-listing.js";
 import { createZohoArtworkSyncRuntime } from "./create-zoho-artwork-sync.js";
 import { createZohoArtworkWriteback } from "./create-zoho-artwork-writeback.js";
 
@@ -352,6 +353,7 @@ export function createWorkerContainer(): WorkerContainer {
 
   const zohoArtworkSync = createZohoArtworkSyncRuntime({ env, db, log });
   const zohoArtworkWriteback = createZohoArtworkWriteback({ env, db, log });
+  const zohoArtworkListing = createZohoArtworkListing({ env, db, log });
   const webhookProcessorDeps: ProcessInboundWebhookDeps = {
     env,
     log,
@@ -372,6 +374,13 @@ export function createWorkerContainer(): WorkerContainer {
     webhookProcessorDeps,
     ...(zohoArtworkSync.scheduleNightly
       ? { runZohoArtworkNightlyCheck: zohoArtworkSync.jobs.runNightlyCheck }
+      : {}),
+    ...(zohoArtworkListing
+      ? {
+          runZohoListingNightlyCheck: async () => {
+            await zohoArtworkListing.reconcile.run();
+          },
+        }
       : {}),
   });
   const mediaWorkers = registerMediaWorkers(deps);
@@ -527,6 +536,7 @@ export function createWorkerContainer(): WorkerContainer {
       crmRecordLinkRepo: repositories.crmRecordLinkRepo,
       crmSyncService,
       ...(zohoArtworkWriteback ? { zohoArtworkWriteback } : {}),
+      ...(zohoArtworkListing ? { zohoArtworkListing: zohoArtworkListing.writeback } : {}),
       artworkOfferLock: new BidOfferLockRecorder(
         new ArtworkOfferLock(new DrizzleArtworkRegisterRepository(db)),
         new DrizzleLotRegisterLinkReader(db),

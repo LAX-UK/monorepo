@@ -1,84 +1,189 @@
+"use client";
+
 import { FOCUS_RING } from "@auction/branding";
 import { cn } from "@auction/ui";
 import Link from "next/link";
-import type { ReactNode } from "react";
-
-export type MarketingBottomTabItem = {
-  href: string;
-  label: string;
-  icon?: ReactNode;
-  active: boolean;
-};
+import { useEffect } from "react";
+import {
+  MARKETING_COUNT_BADGE_CLASS,
+  type MarketingBottomTab,
+  type MarketingBottomTabBadge,
+  badgeCountText,
+  isTabCurrent,
+} from "./bottom-bar/bottom-tab-config.js";
+import { useBottomBarVisibility } from "./bottom-bar/use-bottom-bar-visibility.js";
 
 export type MarketingBottomTabBarProps = {
-  items: readonly MarketingBottomTabItem[];
-  /** Landmark name; defaults to “Mobile”. */
+  tabs: readonly MarketingBottomTab[];
+  /** The current path, from the router. */
+  pathname: string;
+  /** Opens the product's existing search dialog; used by the tab whose `action` is "search". */
+  onSearch: () => void;
+  /** Colour of the current tab and its indicator (a CSS colour); defaults to the theme primary. */
+  accent?: string;
+  /** The same accent in dark mode. */
+  accentOnDark?: string;
+  /** Hides the bar from outside, e.g. while the product's own phone menu is open. */
+  hidden?: boolean;
   ariaLabel?: string;
-  /**
-   * `floating` is an inset rounded pill with a filled active tab (lax.art Figma `546:9946`).
-   * It sits 1rem above the safe area and is 66px tall, so pages reserve that space below it.
-   */
-  variant?: "default" | "floating";
   className?: string;
   "data-testid"?: string;
 };
 
-const NAV_CLASS = {
-  default:
-    "fixed inset-x-0 bottom-0 z-40 border-t border-outline-variant/40 bg-surface pb-[env(safe-area-inset-bottom,0px)] md:hidden",
-  floating:
-    "fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] z-40 rounded-full border border-outline-variant/40 bg-surface/90 p-1 shadow-lg backdrop-blur-md md:hidden",
-} as const;
+const TAB_BASE =
+  "relative flex h-14 w-full flex-col items-center justify-center gap-0.5 font-label text-[11px] leading-none text-on-surface-variant transition-colors hover:text-on-surface motion-reduce:transition-none";
+const TAB_CURRENT =
+  "font-semibold text-[var(--lax-tab-accent)] dark:text-[var(--lax-tab-accent-dark,var(--lax-tab-accent))] after:absolute after:inset-x-5 after:top-0 after:h-0.5 after:rounded-full after:bg-[var(--lax-tab-accent)] dark:after:bg-[var(--lax-tab-accent-dark,var(--lax-tab-accent))]";
 
-function tabClass(variant: "default" | "floating", active: boolean): string {
-  if (variant === "floating") {
-    return cn(
-      "flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-full font-label text-xs font-medium transition-colors motion-reduce:transition-none",
-      active
-        ? "bg-surface-container-high text-on-surface"
-        : "text-on-surface-variant hover:text-on-surface",
+function Badge({ badge, label }: { badge: MarketingBottomTabBadge; label: string }) {
+  if (badge.kind === "dot") {
+    return (
+      <span
+        aria-hidden
+        data-testid={`tab-badge-${label}`}
+        className="absolute top-1.5 left-1/2 ml-2 size-2 rounded-full bg-danger"
+      />
     );
   }
-  return cn(
-    "relative flex min-h-14 flex-col items-center justify-center gap-1 font-label text-xs transition-colors motion-reduce:transition-none",
-    active
-      ? "text-on-surface after:absolute after:inset-x-6 after:top-0 after:h-0.5 after:rounded-full after:bg-primary"
-      : "text-on-surface-variant hover:text-on-surface",
+  const text = badgeCountText(badge.count);
+  if (!text) return null;
+  return (
+    <span
+      aria-hidden
+      data-testid={`tab-badge-${label}`}
+      className={cn(
+        "absolute top-1 left-1/2 ml-1.5 inline-flex min-w-4 items-center justify-center rounded-full px-1 font-label text-[10px] font-semibold leading-4 ring-2 ring-surface",
+        MARKETING_COUNT_BADGE_CLASS,
+      )}
+    >
+      {text}
+    </span>
   );
 }
 
-/** Fixed mobile tab bar below `md`; active tab is exposed with `aria-current="page"`. */
+/** What a screen reader hears for a badge, appended to the tab's name. */
+function badgeSpeech(badge: MarketingBottomTabBadge | null | undefined): string {
+  if (!badge) return "";
+  if (badge.kind === "dot") return ", needs attention";
+  const text = badgeCountText(badge.count);
+  return text ? `, ${text} items` : "";
+}
+
+/**
+ * The docked bottom bar on phones: five shortcuts, each a 24px icon over an 11px label in a 56px
+ * row plus the safe area. It shows below 768px only. Tabs are plain links (the current one has
+ * `aria-current="page"` and a 2px indicator); the search tab is a button. It hides, and becomes
+ * `inert`, while the keyboard is up, a modal is open, or another bar holds the bottom slot.
+ */
 export function MarketingBottomTabBar({
-  items,
-  ariaLabel = "Mobile",
-  variant = "default",
+  tabs,
+  pathname,
+  onSearch,
+  accent,
+  accentOnDark,
+  hidden = false,
+  ariaLabel = "Shortcuts",
   className,
-  "data-testid": testId,
+  "data-testid": testId = "marketing-bottom-tab-bar",
 }: MarketingBottomTabBarProps) {
+  const { visible, reason } = useBottomBarVisibility({ forceHidden: hidden });
+
+  // Tells the page's single bottom spacer (see marketing-ui.css) that the bar takes the bottom
+  // edge. Another bar holding the slot (or the bar being forced off) gives the space back, so
+  // that bar sits at the screen edge instead of floating above an empty strip.
+  const reservesSpace = reason !== "slot-claimed" && reason !== "forced";
+  useEffect(() => {
+    if (!reservesSpace) return;
+    document.documentElement.setAttribute("data-lax-bottom-bar", "");
+    return () => document.documentElement.removeAttribute("data-lax-bottom-bar");
+  }, [reservesSpace]);
+
+  const style = {
+    ...(accent ? { "--lax-tab-accent": accent } : { "--lax-tab-accent": "var(--color-primary)" }),
+    ...(accentOnDark ? { "--lax-tab-accent-dark": accentOnDark } : {}),
+  } as React.CSSProperties;
+
   return (
     <nav
       aria-label={ariaLabel}
       data-testid={testId}
-      data-variant={variant}
-      className={cn(NAV_CLASS[variant], className)}
+      data-visible={visible ? "true" : "false"}
+      data-hidden-reason={reason ?? undefined}
+      inert={!visible}
+      style={style}
+      className={cn(
+        "fixed inset-x-0 bottom-0 z-40 bg-surface shadow-[inset_0_1px_0_0_color-mix(in_srgb,var(--color-outline-variant)_40%,transparent)] pb-[env(safe-area-inset-bottom,0px)] transition-opacity duration-150 motion-reduce:transition-none md:hidden",
+        visible ? "opacity-100" : "pointer-events-none opacity-0",
+        className,
+      )}
     >
       <ul
-        className="grid"
-        style={{ gridTemplateColumns: `repeat(${Math.max(items.length, 1)}, minmax(0, 1fr))` }}
+        className="m-0 grid list-none p-0"
+        style={{ gridTemplateColumns: `repeat(${Math.max(tabs.length, 1)}, minmax(0, 1fr))` }}
       >
-        {items.map((item) => (
-          <li key={item.href}>
-            <Link
-              href={item.href}
-              aria-current={item.active ? "page" : undefined}
-              className={cn(tabClass(variant, item.active), FOCUS_RING)}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </Link>
-          </li>
-        ))}
+        {tabs.map((tab) => {
+          const current = tab.href !== undefined && isTabCurrent(tab, pathname);
+          const inner = (
+            <>
+              <span className="relative flex size-6 items-center justify-center [&>svg]:size-6">
+                {tab.icon}
+                {tab.badge ? <Badge badge={tab.badge} label={tab.label} /> : null}
+              </span>
+              <span>{tab.label}</span>
+            </>
+          );
+          return (
+            <li key={tab.key}>
+              {tab.action === "search" ? (
+                <button
+                  type="button"
+                  onClick={onSearch}
+                  aria-haspopup="dialog"
+                  className={cn(TAB_BASE, FOCUS_RING)}
+                >
+                  {inner}
+                </button>
+              ) : tab.fullPageNavigation ? (
+                <a
+                  href={tab.href}
+                  aria-current={current ? "page" : undefined}
+                  aria-label={`${tab.label}${badgeSpeech(tab.badge)}`}
+                  className={cn(TAB_BASE, current && TAB_CURRENT, FOCUS_RING)}
+                >
+                  {inner}
+                </a>
+              ) : (
+                <Link
+                  href={tab.href}
+                  {...(tab.prefetch === false ? { prefetch: false } : {})}
+                  aria-current={current ? "page" : undefined}
+                  aria-label={`${tab.label}${badgeSpeech(tab.badge)}`}
+                  className={cn(TAB_BASE, current && TAB_CURRENT, FOCUS_RING)}
+                >
+                  {inner}
+                </Link>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );
 }
+
+/**
+ * The one spacer at the end of the page that keeps content clear of the docked bar. Cookie docks
+ * and toasts sit above it with `BOTTOM_BAR_ABOVE_CLASS`; nothing else reserves this space.
+ */
+export function MarketingBottomBarSpace() {
+  return (
+    <div
+      aria-hidden
+      data-testid="bottom-bar-space"
+      className="h-[var(--lax-bottom-bar-space,0px)]"
+    />
+  );
+}
+
+/** Raise a bottom-fixed element (cookie dock, toast stack) above the docked bar. */
+export const BOTTOM_BAR_ABOVE_CLASS = "bottom-[var(--lax-bottom-bar-space,0px)]";

@@ -21,6 +21,7 @@ import {
   SHOP_COMMERCE_APPEND_ONLY_TABLES,
   SHOP_COMMERCE_TABLES,
   SHOP_SUBJECT_EXPORT_READ_TABLES,
+  WORKER_ANONYMISATION_DELETE_TABLES,
   WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
   WORKER_ARTWORK_REGISTER_TABLES,
   WORKER_BID_ALERT_TABLES,
@@ -28,6 +29,8 @@ import {
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
   WORKER_FULL_TABLES,
+  WORKER_INVOICE_RAISE_FULFILMENT_TABLES,
+  WORKER_INVOICE_RAISE_INSERT_TABLES,
   WORKER_KYC_RETENTION_PURGE_TABLES,
   WORKER_KYC_RETENTION_TOMBSTONE_TABLES,
   WORKER_LIFECYCLE_READ_TABLES,
@@ -470,7 +473,7 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_FULL_TABLES]).toContain("media_asset");
   });
 
-  it("lets the worker read and write the Bid alert tables, and never delete from them", () => {
+  it("lets the worker read and write the Bid alert tables, deleting only through the anonymisation list", () => {
     expect([...WORKER_BID_ALERT_TABLES].sort()).toEqual([
       "bid_alert_announcement",
       "bid_alert_digest",
@@ -481,6 +484,21 @@ describe("migrate-roles invariants", () => {
     for (const table of WORKER_BID_ALERT_TABLES) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);
     }
+  });
+
+  it("lets the worker erase email-only alert subscribers, and only those, on purge", () => {
+    // eraseAlertSubscribers deletes from both tables; topics, matches and digests go by cascade.
+    expect([...WORKER_ANONYMISATION_DELETE_TABLES]).toContain("bid_alert_subscriber");
+    expect([...WORKER_ANONYMISATION_DELETE_TABLES]).toContain("visitor_sale_alert_subscriber");
+    for (const table of [
+      "bid_alert_topic",
+      "bid_alert_match",
+      "bid_alert_digest",
+      "bid_alert_announcement",
+    ]) {
+      expect([...WORKER_ANONYMISATION_DELETE_TABLES]).not.toContain(table);
+    }
+    expect([...WORKER_DENY_TABLES]).not.toContain("visitor_sale_alert_subscriber");
   });
 
   it("lets the worker maintain the artwork register but only append to its history", () => {
@@ -501,6 +519,7 @@ describe("migrate-roles invariants", () => {
     expect([...SHOP_ARTWORK_REGISTER_READ_TABLES].sort()).toEqual([
       "artwork_register",
       "zoho_artwork_sync_outcome",
+      "zoho_listing_sync_run",
     ]);
     expect([...SHOP_ARTWORK_REGISTER_CONFLICT_TABLES]).toEqual(["artwork_register_conflict"]);
     expect([...SHOP_ARTWORK_REGISTER_EVENT_TABLES]).toEqual(["artwork_register_event"]);
@@ -527,6 +546,7 @@ describe("migrate-roles invariants", () => {
     expect([...WORKER_ZOHO_ARTWORK_SYNC_TABLES].sort()).toEqual([
       "zoho_artwork_sync_outcome",
       "zoho_artwork_sync_state",
+      "zoho_listing_sync_run",
     ]);
     for (const table of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);
@@ -544,6 +564,16 @@ describe("migrate-roles invariants", () => {
 
   it("WORKER_DOMAIN_EVENT_DELIVERY_TABLES includes domain_event_delivery ledger", () => {
     expect([...WORKER_DOMAIN_EVENT_DELIVERY_TABLES]).toContain("domain_event_delivery");
+  });
+
+  it("the worker may raise an invoice: payment, source of funds and fulfilment, no deletes", () => {
+    expect([...WORKER_INVOICE_RAISE_INSERT_TABLES]).toEqual([
+      "payment",
+      "source_of_funds",
+      "bid_invoice",
+      "bid_invoice_line",
+    ]);
+    expect([...WORKER_INVOICE_RAISE_FULFILMENT_TABLES]).toEqual(["lot_fulfilment"]);
   });
 
   it("WORKER_PAYMENT_MAINTENANCE_TABLES includes payment (expire-stale-payments)", () => {

@@ -3,6 +3,7 @@ import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import {
   adminReviewTask,
   bidIdentityDirectory,
+  bidInvoice,
   conditionReportRequest,
   domainEvent,
   itemSubmission,
@@ -18,7 +19,11 @@ import {
   unsoldLotChoice,
   unsoldLotFollowUp,
 } from "@auction/db/schema";
-import { UNSOLD_LOT_END_STATUSES, invoiceDueAt } from "@auction/domain";
+import {
+  UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
+  UNSOLD_LOT_END_STATUSES,
+  storedDueAt,
+} from "@auction/domain";
 import { INVOICE_PAYMENT_DUE_DAYS, type UnsoldLotChoiceKind } from "@auction/types";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type {
@@ -28,6 +33,7 @@ import type {
 } from "../interfaces/admin-work-items.reader.js";
 import { adminWorkItemHref } from "../lib/admin-work-item-href.js";
 import { BLOCKED_CAPTURE_EVENT, toBlockedCapture } from "./blocked-capture.query.js";
+import { DrizzleUnappliedMoneyReader } from "./drizzle-unapplied-money.reader.js";
 import { lotWorkItemTitle, sentenceCase } from "./work-item-labels.js";
 
 const DUE_DATE = new Intl.DateTimeFormat("en-GB", {
@@ -193,6 +199,25 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
     });
   }
 
+  async listUnappliedMoney(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const open = await new DrizzleUnappliedMoneyReader(this.db).listOpen({
+      limit,
+      excludeReasons: UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
+    });
+    return open.map((money) => ({
+      sourceId: money.dedupeKey,
+      kind: "payment_money_unapplied" as const,
+      domain: "finance" as const,
+      title: "Money received that could not be applied",
+      subtitle: `${sentenceCase(money.reason)} · ${formatWorkItemAmount(money.amountCents / 100)}`,
+      href: adminWorkItemHref("payment_money_unapplied", { paymentId: money.paymentId }),
+      saleId: null,
+      createdAt: money.receivedAt,
+      sourceUpdatedAt: money.receivedAt,
+      assignedToUserId: null,
+    }));
+  }
+
   async listOverduePayments(limit: number, now: Date): Promise<AdminWorkItemSourceRow[]> {
     // Unpaid won lots from the day after their due date (London calendar days). A payment held
     // for our own checks is already in finance's manual-review list and is not the buyer's
@@ -205,27 +230,50 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
         saleId: lot.saleId,
         amount: payment.amount,
         raisedAt: payment.createdAt,
+        dueAt: bidInvoice.dueAt,
         winnerEmail: bidIdentityDirectory.email,
       })
       .from(payment)
+      .leftJoin(bidInvoice, eq(bidInvoice.id, payment.invoiceId))
       .innerJoin(lot, eq(payment.lotId, lot.id))
       .leftJoin(lotFulfilment, eq(lotFulfilment.lotId, lot.id))
       .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
       .where(
         and(
+          isNull(bidInvoice.voidedAt),
           inArray(payment.status, ["pending", "cancelled"]),
           eq(lot.status, "ended"),
           eq(lot.winnerId, payment.buyerId),
           isNull(lot.deletedAt),
           or(isNull(lotFulfilment.status), ne(lotFulfilment.status, "cancelled")),
-          sql`((${payment.createdAt} at time zone 'Europe/London') + make_interval(days => ${INVOICE_PAYMENT_DUE_DAYS}))::date < (${now.toISOString()}::timestamptz at time zone 'Europe/London')::date`,
+          // An invoice is overdue by its stored due date. A payment with no stored invoice is
+          // never dropped: it is a candidate once it is old enough that its term could have
+          // ended, and the domain rule below decides.
+          or(
+            lt(bidInvoice.dueAt, now),
+            and(
+              isNull(bidInvoice.id),
+              lt(
+                payment.createdAt,
+                new Date(now.getTime() - INVOICE_PAYMENT_DUE_DAYS * 86_400_000),
+              ),
+            ),
+          ),
         ),
       )
-      .orderBy(payment.createdAt)
+      // Longest overdue first: by the stored due date, which a released hold may have moved;
+      // a payment with no stored invoice by the due date its age gives (the same term as above).
+      .orderBy(
+        sql`coalesce(${bidInvoice.dueAt}, ${payment.createdAt} + (${INVOICE_PAYMENT_DUE_DAYS}::int * interval '1 day'))`,
+      )
       .limit(limit);
 
-    return rows.map((row) => {
-      const dueAt = invoiceDueAt(row.raisedAt);
+    const overdue = rows.flatMap((row) => {
+      const dueAt = storedDueAt({ raisedAt: row.raisedAt, dueAt: row.dueAt });
+      return dueAt.getTime() < now.getTime() ? [{ ...row, dueAt }] : [];
+    });
+    return overdue.map((row) => {
+      const dueAt = row.dueAt;
       return {
         sourceId: row.lotId,
         kind: "payment_overdue" as const,

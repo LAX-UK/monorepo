@@ -365,6 +365,23 @@ describe("buildPurchasesVm", () => {
     expect(vm.winners).toEqual(["Tom Whitfield"]);
   });
 
+  it("says Pay by the stored due date, not one worked out from the payment's age", () => {
+    const vm = buildPurchasesVm(
+      sources({
+        rows: [row("lot-6", 6, { id: "p6", status: "pending", manualReviewReason: null })],
+        factsByLot: {
+          "lot-6": facts("lot-6", {
+            status: "due",
+            dueAt: new Date("2026-12-24T12:00:00Z"),
+            paymentId: "p6",
+            totalDue: "2875.00",
+          }),
+        },
+      }),
+    );
+    expect(vm.cardsByTab["to-pay"][0]?.statusNote).toBe("Pay by 24 December");
+  });
+
   it("shows a due purchase with its deadline, breakdown and its own page", () => {
     const [card] = buildPurchasesVm(sources()).cardsByTab["to-pay"];
     expect(card).toMatchObject({

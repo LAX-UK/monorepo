@@ -133,6 +133,12 @@ vi.mock("@auction/ui/components/checkbox", () => ({
     />
   ),
 }));
+vi.mock("@/server/application/admin-zoho-link-actions.server", () => ({
+  searchZohoRecords: vi.fn(async () => ({ ok: true, data: { items: [], more: false } })),
+  getZohoLinkPreview: vi.fn(),
+  linkToZoho: vi.fn(),
+  unlinkFromZoho: vi.fn(),
+}));
 vi.mock("@/server/application/edition-run-actions.server", () => ({
   saveEditionRun: vi.fn(),
   saveEditionFacts: vi.fn(),
@@ -816,5 +822,253 @@ describe("artwork editor", () => {
     );
     expect(saveArtwork).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: "Unpublish" })).toBeNull();
+  });
+});
+
+describe("a lax.art original made from a Zoho record", () => {
+  const linked: AdminArtworkDetail = {
+    ...detail,
+    run: null,
+    salesChannel: "art",
+    printPricePence: null,
+    dimensions: null,
+    editions: {
+      size: 0,
+      committed: 0,
+      byStatus: { not_authorised: 0, authorised: 0, reserved: 0, held: 0, sold: 0, withdrawn: 0 },
+      byAllocation: { original_buyer_entitlement: 0, artist: 0, lax: 0 },
+    },
+    publishBlockers: ["no_zoho_image", "no_size"],
+    zohoLink: {
+      registerId: "33333333-3333-4333-8333-333333333333",
+      zohoProductId: "1023341000017963004",
+      stockCode: "LAX-ORI-AR-TM-26-0004",
+      zohoStatus: "Available",
+      whereItIs: {
+        key: "draft_lax_art",
+        chip: { label: "Draft on lax.art", tone: "info", marker: "hollow" },
+        from: null,
+        since: null,
+        bidLot: null,
+      },
+      recentMoves: [],
+    },
+  };
+
+  beforeEach(() => {
+    window.history.replaceState(null, "", "/artworks/a-1");
+  });
+
+  it("marks the details Zoho owns, and leaves only LAX's own fields to type into", () => {
+    renderEditor({ detail: linked, zohoUrl: "https://crm.example/Products/1" });
+    expect(screen.getAllByText("From Zoho").length).toBeGreaterThanOrEqual(5);
+    expect(screen.getAllByText("Harbour at Dusk").length).toBeGreaterThan(1);
+    expect(screen.queryByLabelText("Title")).toBeNull();
+    expect(screen.queryByLabelText(/Medium/)).toBeNull();
+    expect(screen.getByLabelText(/Description/)).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: /Edit in Zoho/ })[0]).toHaveAttribute(
+      "href",
+      "https://crm.example/Products/1",
+    );
+  });
+
+  it("says size is not in Zoho yet instead of leaving a blank", () => {
+    renderEditor({ detail: linked });
+    expect(screen.getByText("Not in Zoho yet")).toBeInTheDocument();
+  });
+
+  it("shows where it is in the rail, with the record behind it", () => {
+    renderEditor({ detail: linked });
+    const rail = screen.getByRole("complementary", { name: "Where it is" });
+    expect(within(rail).getAllByText("Draft on lax.art").length).toBeGreaterThan(0);
+    expect(within(rail).getByText("LAX-ORI-AR-TM-26-0004")).toBeInTheDocument();
+    expect(within(rail).getByRole("link", { name: "From Zoho record" })).toHaveAttribute(
+      "href",
+      "/from-zoho/33333333-3333-4333-8333-333333333333",
+    );
+  });
+
+  it("names what Zoho lacks before publishing, with a way to fix it", () => {
+    renderEditor({ detail: linked, zohoUrl: "https://crm.example/Products/1" });
+    const notice = screen.getByText("Not ready to publish").closest("[role=status]") as HTMLElement;
+    expect(notice).toHaveTextContent("Zoho has no image for this artwork. Add one in Zoho.");
+    expect(notice).toHaveTextContent("Zoho has no size for this artwork. Add it in Zoho.");
+    expect(within(notice).getByRole("link", { name: /Edit in Zoho/ })).toBeInTheDocument();
+  });
+
+  it("tells staff what to do next on arrival, and lets them dismiss it", () => {
+    renderEditor({ detail: linked, arrivedFromZoho: true });
+    expect(screen.getByText("Draft created from Zoho")).toBeInTheDocument();
+    expect(
+      screen.getByText("Write the description, check the images, then publish."),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(screen.queryByText("Draft created from Zoho")).toBeNull();
+  });
+
+  it("does not show the arrival notice on an ordinary visit", () => {
+    renderEditor({ detail: linked });
+    expect(screen.queryByText("Draft created from Zoho")).toBeNull();
+  });
+
+  it("shows the images as Zoho's, with no upload", () => {
+    renderEditor({ detail: linked });
+    expect(screen.getByText("No images in Zoho yet")).toBeInTheDocument();
+    expect(
+      screen.getByText("Add or reorder images in Zoho. They arrive here by themselves."),
+    ).toBeInTheDocument();
+  });
+
+  it("marks what Zoho owns for a view-only person too", () => {
+    renderEditor({
+      detail: linked,
+      permissions: {
+        write: false,
+        setPrice: false,
+        correctFacts: false,
+        approveHorsCommerce: false,
+      },
+    });
+    expect(screen.getAllByText("From Zoho")).toHaveLength(5);
+  });
+
+  it("shows no Zoho marks in the view-only details of an unlinked original", () => {
+    renderEditor({
+      detail: { ...linked, zohoLink: null },
+      permissions: {
+        write: false,
+        setPrice: false,
+        correctFacts: false,
+        approveHorsCommerce: false,
+      },
+    });
+    expect(screen.queryByText("From Zoho")).toBeNull();
+  });
+
+  it("keeps an unlinked original editable, with Where it is saying nothing of Zoho facts", () => {
+    renderEditor({ detail: { ...linked, zohoLink: null } });
+    expect(screen.getByLabelText("Title")).toBeInTheDocument();
+    const rail = screen.getByRole("complementary", { name: "Where it is" });
+    expect(within(rail).queryByText("Zoho status")).toBeNull();
+    expect(within(rail).queryByRole("link", { name: "From Zoho record" })).toBeNull();
+  });
+});
+
+describe("an original on lax.art that is not linked to Zoho", () => {
+  const original: AdminArtworkDetail = {
+    ...detail,
+    run: null,
+    salesChannel: "art",
+    printPricePence: null,
+    editions: {
+      size: 0,
+      committed: 0,
+      byStatus: { not_authorised: 0, authorised: 0, reserved: 0, held: 0, sold: 0, withdrawn: 0 },
+      byAllocation: { original_buyer_entitlement: 0, artist: 0, lax: 0 },
+    },
+    zohoLink: null,
+  };
+  const viewOnly = {
+    write: false,
+    setPrice: false,
+    correctFacts: false,
+    approveHorsCommerce: false,
+  };
+
+  async function withAccess(
+    capabilities: string[],
+    props: Partial<React.ComponentProps<typeof ArtworkEditor>>,
+  ) {
+    const { StaffAccessProvider } = await import("@auction/staff-ui");
+    const { laxStaffAccess } = await import("@/server/domain/lax-staff-access");
+    return render(
+      <StaffAccessProvider access={laxStaffAccess(capabilities, "Catalogue editor")}>
+        <ArtworkEditor detail={original} permissions={admin} currentYear={2026} {...props} />
+      </StaffAccessProvider>,
+    );
+  }
+
+  it("says it is not linked and offers Link to Zoho record to a catalogue editor", async () => {
+    await withAccess(["catalogue.write", "artwork_register.review"], {});
+    expect(screen.getByText("Not linked to Zoho")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Link to Zoho record…" }));
+    expect(
+      await screen.findByText("Harbour at Dusk · Ada Artist · Draft on lax.art"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Search Zoho records")).toBeInTheDocument();
+  });
+
+  it("says what is wrong in one sentence, beside the way to fix it", async () => {
+    await withAccess(["catalogue.write", "artwork_register.review"], {});
+    expect(
+      screen.getByText(
+        "LAX can't stop this artwork being offered twice, and Zoho doesn't see where it is.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Stock code")).toBeInTheDocument();
+    expect(screen.getByText("Not linked")).toBeInTheDocument();
+    expect(screen.getByText(/Once linked, these fields come from Zoho/)).toBeInTheDocument();
+  });
+
+  it("shows the Where it is panel for a draft, saying the lock does not cover it", async () => {
+    await withAccess(["catalogue.write", "artwork_register.review"], {});
+    const panel = screen.getByRole("region", { name: "Where it is" });
+    expect(within(panel).getByText("Draft on lax.art", { selector: "strong" })).toBeInTheDocument();
+    expect(
+      within(panel).getByText("Not linked to Zoho, so the one-place lock doesn't cover it."),
+    ).toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: /Link to Zoho record/ })).toBeNull();
+  });
+
+  it("shows a live original as On lax.art since it was published", async () => {
+    const { StaffAccessProvider } = await import("@auction/staff-ui");
+    const { laxStaffAccess } = await import("@/server/domain/lax-staff-access");
+    render(
+      <StaffAccessProvider access={laxStaffAccess(["catalogue.write"], "Catalogue editor")}>
+        <ArtworkEditor
+          detail={{ ...original, state: "live", publishedAt: "2026-10-09T10:00:00.000Z" }}
+          permissions={admin}
+          currentYear={2026}
+        />
+      </StaffAccessProvider>,
+    );
+    const panel = screen.getByRole("region", { name: "Where it is" });
+    expect(within(panel).getByText("On lax.art")).toBeInTheDocument();
+    expect(panel).toHaveTextContent("Live on lax.art since");
+  });
+
+  it("says it too to someone who can only view, with no way to link", async () => {
+    await withAccess(["catalogue.read", "artwork_register.read"], { permissions: viewOnly });
+    expect(screen.getByText("Not linked to Zoho")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Link to Zoho record…" })).toBeNull();
+  });
+
+  it("offers no link without the permission to decide on the register", async () => {
+    await withAccess(["catalogue.write"], {});
+    expect(screen.getByText("Not linked to Zoho")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Link to Zoho record…" })).toBeNull();
+  });
+
+  it("says nothing of Zoho linking on a print edition", async () => {
+    await withAccess(["catalogue.write", "artwork_register.review"], { detail });
+    expect(screen.queryByText("Not linked to Zoho")).toBeNull();
+  });
+});
+
+describe("New artwork > Original", () => {
+  it("sends staff to From Zoho for an original, and not for prints", () => {
+    renderEditor({ detail: null, initialArtist: { id: ARTIST, name: "Ada Artist" } });
+    expect(screen.queryByText("Originals come from Zoho")).toBeNull();
+    fireEvent.click(document.getElementById("artwork-kind-original") as HTMLElement);
+    expect(screen.getByText("Originals come from Zoho")).toBeInTheDocument();
+    expect(
+      screen.getByText("Find it in From Zoho and choose Offer on lax.art."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open From Zoho" })).toHaveAttribute(
+      "href",
+      "/from-zoho",
+    );
+    fireEvent.click(document.getElementById("artwork-kind-prints") as HTMLElement);
+    expect(screen.queryByText("Originals come from Zoho")).toBeNull();
   });
 });

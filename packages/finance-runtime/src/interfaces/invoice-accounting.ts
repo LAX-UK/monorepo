@@ -7,6 +7,7 @@ export type InvoiceAccountingContext = {
   buyerEmail: string;
   buyerName: string;
   amount: string;
+  // The books copy is dated and due from the stored invoice, which the writer reads by payment id.
   buyerLegalEntityId?: string | undefined;
 };
 

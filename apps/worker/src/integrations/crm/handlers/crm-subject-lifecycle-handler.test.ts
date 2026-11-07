@@ -16,6 +16,7 @@ describe("CrmSubjectLifecycleHandler", () => {
         erasedAt: null,
         deletionRequestedAt: null,
         recyclePurgedAt: null,
+        heldPayload: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       }),
@@ -29,6 +30,7 @@ describe("CrmSubjectLifecycleHandler", () => {
           erasedAt: null,
           deletionRequestedAt: null,
           recyclePurgedAt: null,
+          heldPayload: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         },
@@ -47,6 +49,10 @@ describe("CrmSubjectLifecycleHandler", () => {
       listActiveByEntityType: vi.fn(),
       listErasedWithRealZohoLinks: vi.fn(),
       reassignDealLinksSubjectId: vi.fn(),
+      listActiveLinksBySubject: vi.fn().mockResolvedValue([]),
+      listHeldDeals: vi.fn().mockResolvedValue([]),
+      touchLink: vi.fn(),
+      eraseHeldDealsBySubject: vi.fn().mockResolvedValue(0),
     } satisfies ICrmRecordLinkRepository;
 
     const gateway = {
@@ -61,7 +67,8 @@ describe("CrmSubjectLifecycleHandler", () => {
       updateById: vi.fn(),
       findByEmail: vi.fn(),
       executeCoql: vi.fn(),
-      convertLead: vi.fn(),
+      createRecord: vi.fn(),
+      findLead: vi.fn(),
       getMetrics: () => ({ apiCreditsRemaining: null }),
     } satisfies CrmGateway;
 
@@ -101,6 +108,8 @@ describe("CrmSubjectLifecycleHandler", () => {
         updatedAt: new Date(),
       }),
       listActiveDealLinksBySubject: vi.fn().mockResolvedValue([dealLink("1")]),
+      listActiveLinksBySubject: vi.fn().mockResolvedValue([]),
+      eraseHeldDealsBySubject: vi.fn().mockResolvedValue(0),
       listActiveSubjectLinksByZohoRecord: vi.fn().mockResolvedValue([]),
       tombstone: vi.fn(),
       tombstoneDealByZohoRecordId: vi.fn(),
@@ -140,7 +149,8 @@ describe("CrmSubjectLifecycleHandler", () => {
         findByEmail: vi.fn(),
         findDealIdsByContact: vi.fn(),
         executeCoql: vi.fn(),
-        convertLead: vi.fn(),
+        createRecord: vi.fn(),
+        findLead: vi.fn(),
         deleteRecord: vi.fn(),
         purgeFromRecycleBin: vi.fn(),
         getMetrics: () => ({ apiCreditsRemaining: null }),
@@ -162,6 +172,10 @@ describe("CrmSubjectLifecycleHandler", () => {
         listActiveByEntityType: vi.fn(),
         listErasedWithRealZohoLinks: vi.fn(),
         reassignDealLinksSubjectId: vi.fn(),
+        listActiveLinksBySubject: vi.fn().mockResolvedValue([]),
+        listHeldDeals: vi.fn().mockResolvedValue([]),
+        touchLink: vi.fn(),
+        eraseHeldDealsBySubject: vi.fn().mockResolvedValue(0),
       },
     });
     const result = await handler.handleDeletionRequested("sub-1");
@@ -179,6 +193,7 @@ describe("CrmSubjectLifecycleHandler", () => {
       erasedAt,
       deletionRequestedAt: null,
       recyclePurgedAt: null,
+      heldPayload: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -191,6 +206,8 @@ describe("CrmSubjectLifecycleHandler", () => {
       const linkRepo = {
         findByEntity: vi.fn(async (_type: string, id: string) => options.links[id] ?? null),
         listActiveDealLinksBySubject: vi.fn().mockResolvedValue([]),
+        listActiveLinksBySubject: vi.fn().mockResolvedValue([]),
+        eraseHeldDealsBySubject: vi.fn().mockResolvedValue(0),
         listActiveSubjectLinksByZohoRecord: vi.fn().mockResolvedValue(options.sharing ?? []),
         tombstone: vi.fn().mockResolvedValue(undefined),
         markRecyclePurged: vi.fn().mockResolvedValue(undefined),

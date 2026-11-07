@@ -1,6 +1,5 @@
 import { INVOICE_PAYMENT_DUE_DAYS } from "@auction/types";
-
-const DAY_MS = 86_400_000;
+import { londonDateOf, londonMidnight } from "./calendar-year.js";
 
 /** The invoice behind a won lot, as far as its payment state needs to know it. */
 export type PurchaseInvoiceFacts = {
@@ -17,6 +16,12 @@ export type PurchaseInvoiceFacts = {
       | "cancelled";
     /** When the invoice was raised (the payment row was created). */
     raisedAt: Date;
+    /**
+     * The due date stored on the invoice when it was raised. Only a payment row with no stored
+     * invoice (a fixture, never a row raised by the application) leaves it out, and its due date
+     * is then worked out from `raisedAt` by {@link invoiceDueAt}.
+     */
+    dueAt: Date | null;
   } | null;
 };
 
@@ -55,9 +60,24 @@ const SETTLED: Record<
   refunded: "refunded",
 };
 
-/** The due date of an invoice raised at `raisedAt`: the payment terms, the same for every sale. */
+/**
+ * The due date of an invoice raised at `raisedAt`, the same for every sale and every surface
+ * (page, emails, reminders, staff overdue list, Xero): the end of the London day that falls
+ * `INVOICE_PAYMENT_DUE_DAYS` days after the London day it was raised. It is overdue from the
+ * London midnight that follows.
+ */
 export function invoiceDueAt(raisedAt: Date): Date {
-  return new Date(raisedAt.getTime() + INVOICE_PAYMENT_DUE_DAYS * DAY_MS);
+  const { year, month, day } = londonDateOf(raisedAt);
+  return new Date(londonMidnight(year, month, day + INVOICE_PAYMENT_DUE_DAYS + 1).getTime() - 1);
+}
+
+/**
+ * The due date of a payment's invoice: the one stored when the invoice was raised, and only for a
+ * payment row with no stored invoice (a fixture), the date its term gives from `raisedAt`. Every
+ * surface reads the due date through here.
+ */
+export function storedDueAt(payment: { raisedAt: Date; dueAt: Date | null }): Date {
+  return payment.dueAt ?? invoiceDueAt(payment.raisedAt);
 }
 
 /**
@@ -69,7 +89,7 @@ export function purchaseInvoiceState(facts: PurchaseInvoiceFacts, now: Date): Pu
   if (!payment) {
     return { status: facts.saleCancelled ? "cancelled" : "not_invoiced", dueAt: null };
   }
-  const dueAt = invoiceDueAt(payment.raisedAt);
+  const dueAt = storedDueAt(payment);
   if (facts.saleCancelled) return { status: "cancelled", dueAt };
   // A cancelled row ended an attempt, not the purchase: it stays owed from the original date.
   if (payment.status === "pending" || payment.status === "cancelled") {

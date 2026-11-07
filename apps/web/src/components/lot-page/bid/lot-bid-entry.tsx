@@ -9,6 +9,7 @@ import {
   type BidEntryHrefs,
 } from "@/components/lot-page/bid/bid-entry-controls";
 import { LotBidBlocker } from "@/components/lot-page/bid/lot-bid-blocker";
+import { useOpenBidFromLink } from "@/components/lot-page/bid/use-open-bid-from-link";
 import { useViewerAnnouncements } from "@/components/lot-page/bid/use-viewer-announcements";
 import { useAnnounce } from "@/components/lot-page/lot-announcer";
 import { useLotPageViewContext } from "@/components/lot-page/lot-page-view-context";
@@ -33,6 +34,7 @@ import { buildPhoneBarSummary } from "@/lib/lot-page/phone-bar";
 import { lotPageKeys } from "@/lib/lot-page/use-lot-reads";
 import { notify } from "@/lib/ui/notify";
 import {
+  type BidEntry,
   type BidMode,
   type BuyersPremiumTerms,
   type ResolvedLotAction,
@@ -89,6 +91,18 @@ function hrefsOf(gate: LotBidEntryGate): BidEntryHrefs {
     client_services: "/contact",
     ask_admin: "/organisations",
   };
+}
+
+/** Renders where the policies allow bidding, so a link that asks for the dialog cannot skip them. */
+function OpenBidFromLink({
+  primary,
+  onOpen,
+}: {
+  primary: BidEntry["primary"];
+  onOpen: (start: BidMode) => void;
+}) {
+  useOpenBidFromLink(primary, onOpen);
+  return null;
 }
 
 /**
@@ -217,6 +231,7 @@ export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: L
             <LotBidBlocker presentation={decision.presentation} />
           ) : (
             <>
+              <OpenBidFromLink primary={entry.primary} onOpen={open} />
               <BidEntryControls entry={entry} hrefs={hrefsOf(gate)} onOpen={open} />
               {phoneBar && barControl ? (
                 <LotPhoneBar summary={phoneBar} target={entryRef}>

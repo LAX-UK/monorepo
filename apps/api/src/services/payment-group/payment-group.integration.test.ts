@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
 import {
+  bidInvoice,
+  bidInvoiceLine,
   disputeAllocation,
   disputeCase,
   legalEntity,
@@ -11,13 +13,18 @@ import {
   payoutLine,
   processedStripeEvents,
 } from "@auction/db/schema";
+import { UNAPPLIED_MONEY_EVENT } from "@auction/domain";
+import { PaymentEligibilityGate } from "@auction/finance-runtime";
 import {
+  DrizzleBidInvoiceRepository,
   DrizzleDisputeCaseRepository,
   DrizzleDisputePaymentReader,
   DrizzlePaymentGroupRepository,
   DrizzlePaymentRepository,
   DrizzlePaymentWebhookLookupReader,
   DrizzlePayoutRepository,
+  DrizzleUnappliedMoneyReader,
+  createDrizzleLegalEntityRepository,
 } from "@auction/persistence/repositories";
 import { and, eq, inArray, like, sql } from "drizzle-orm";
 import type Stripe from "stripe";
@@ -33,6 +40,7 @@ import { DisputeAllocationService } from "../disputes/dispute-allocation.service
 import { DisputeCaseRecorder } from "../disputes/dispute-case-recorder.js";
 import { DisputeLineEffects } from "../disputes/dispute-line-effects.js";
 import { PaymentCaptureService } from "../payment/payment-capture.service.js";
+import { UnappliedMoneyRecorder } from "../payment/unapplied-money.recorder.js";
 import { PayoutAdjustmentService } from "../payout/payout-adjustment.service.js";
 import { StripePaymentWebhookService } from "../stripe-payment-webhook.service.js";
 import { PAYMENT_WEBHOOK_EVENT_SOURCE } from "../stripe-webhook/payment-webhook-types.js";
@@ -93,9 +101,12 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     events,
     claims,
     receipt,
+    unappliedMoney: new UnappliedMoneyRecorder(new DrizzleUnappliedMoneyReader(db), events),
+    eligibility: new PaymentEligibilityGate(createDrizzleLegalEntityRepository(db), null),
   });
   const checkout = new PaymentGroupCheckoutService({
     groups,
+    invoices: new DrizzleBidInvoiceRepository(db),
     gateway,
     stripeCustomers: { isConfigured: () => true, findOrCreateForLegalEntity: async () => "cus_1" },
     users: {
@@ -265,7 +276,30 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       await db.delete(payoutLine).where(inArray(payoutLine.paymentId, paymentIds));
     }
     await db.delete(payment).where(inArray(payment.lotId, lotIds));
+    await db.delete(bidInvoice).where(inArray(bidInvoice.lotId, lotIds));
     await db.delete(paymentGroup).where(eq(paymentGroup.buyerLegalEntityId, orgId));
+    const invoices = await db
+      .insert(bidInvoice)
+      .values(
+        lotIds.map((lotId) => ({
+          lotId,
+          buyerLegalEntityId: orgId,
+          sellerLegalEntityId: sellerId,
+          totalPence: 10_000,
+          raisedAt: new Date(),
+          dueAt: new Date(Date.now() + 7 * 86_400_000),
+        })),
+      )
+      .returning({ id: bidInvoice.id, lotId: bidInvoice.lotId });
+    await db.insert(bidInvoiceLine).values(
+      invoices.map((invoice) => ({
+        invoiceId: invoice.id,
+        position: 1,
+        kind: "legacy_total",
+        label: "Total",
+        amountPence: 10_000,
+      })),
+    );
     const rows = await db
       .insert(payment)
       .values(
@@ -277,6 +311,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
           amount: "100.00",
           platformFee: "5.00",
           status: "pending" as const,
+          invoiceId: invoices.find((i) => i.lotId === lotId)?.id ?? null,
         })),
       )
       .returning({ id: payment.id, lotId: payment.lotId });
@@ -336,6 +371,39 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       reason: "already_paid",
     });
     expect(receipt.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps a group unpaid and opens one finance task when the organisation moves to review before the money lands", async () => {
+    const groupId = await startOk([ids.a, ids.b]);
+    const pi = succeeded(groupId);
+    await webhooks.handlePaymentIntentProcessing(eventOf("payment_intent.processing", pi), pi);
+    await db.update(legalEntity).set({ status: "under_review" }).where(eq(legalEntity.id, orgId));
+    try {
+      const result = await webhooks.handlePaymentIntentSucceeded(
+        eventOf("payment_intent.succeeded", pi),
+        pi,
+      );
+      expect(result).toMatchObject({
+        processed: true,
+        action: "skipped",
+        reason: "account_organisation_under_review",
+      });
+      for (const id of [ids.a, ids.b]) {
+        expect((await statusOf(id)).status).toBe("authorized");
+      }
+      expect((await groups.findById(groupId))?.status).toBe("processing");
+      const tasks = publish.mock.calls
+        .map(([event]) => event)
+        .filter((event) => event.eventType === UNAPPLIED_MONEY_EVENT);
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].payload).toMatchObject({
+        reason: "group_not_settleable",
+        paymentGroupId: groupId,
+      });
+      expect(receipt.send).not.toHaveBeenCalled();
+    } finally {
+      await db.update(legalEntity).set({ status: "approved" }).where(eq(legalEntity.id, orgId));
+    }
   });
 
   it("applies nothing and raises an alert when the amount does not match", async () => {

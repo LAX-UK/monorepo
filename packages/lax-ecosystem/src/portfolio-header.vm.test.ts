@@ -56,7 +56,7 @@ describe("buildPortfolioHeader", () => {
     ]);
   });
 
-  it("excludes shipping from the cost basis", () => {
+  it("counts delivery as paid, since it is part of what the buyer paid", () => {
     const header = buildPortfolioHeader([
       item({
         paid: {
@@ -67,7 +67,7 @@ describe("buildPortfolioHeader", () => {
         },
       }),
     ]);
-    expect(header.paidSoFar).toEqual([{ currency: "GBP", amount: 5000 }]);
+    expect(header.paidSoFar).toEqual([{ currency: "GBP", amount: 5900 }]);
   });
 
   it("does not count an unpaid invoice as paid", () => {

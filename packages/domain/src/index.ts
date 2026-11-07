@@ -1,4 +1,19 @@
 export {
+  DEFAULT_DEPARTMENT_DISPLAY_STYLE,
+  DEFAULT_LOT_MEDIA_TREATMENT,
+  DEPARTMENTS,
+  DEPARTMENT_DISPLAY_STYLES,
+  buildLotMediaTreatmentIndex,
+  departmentBySlug,
+  departmentDisplayStyle,
+  departmentMediaTreatment,
+  lotMediaTreatment,
+  type Department,
+  type DepartmentDisplayStyle,
+  type LotMediaTreatment,
+  type LotMediaTreatmentIndex,
+} from "./departments.js";
+export {
   lotNumberTakenInSale,
   nextLotNumberInSale,
 } from "./lot-number.js";
@@ -40,6 +55,12 @@ export {
   type OrganisationStatePolicy,
 } from "./organisation-state-policy.js";
 export {
+  holdStartAt,
+  identityHeldSinceAfter,
+  payHeldSinceAfter,
+  type HeldSince,
+} from "./pay-hold.js";
+export {
   evaluateSelfServiceActorIdentityEligibility,
   type SelfServiceActorIdentityEligibility,
   type SelfServiceActorIdentityEligibilityInput,
@@ -70,6 +91,7 @@ export { determineHighestBid } from "./highest-bid-winner.js";
 export {
   majorGbpToPence,
   needsManualReviewGate,
+  paymentMethodsFor,
   parsePaymentTierLimits,
   resolveCheckoutRail,
   resolveManualReviewReason,
@@ -77,6 +99,7 @@ export {
   STRIPE_GBP_MIN_PENCE,
   type CheckoutRailKind,
   type ManualReviewReason,
+  type PaymentMethodAvailability,
   type PaymentTierKind,
   type PaymentTierLimits,
 } from "./payment-tier-policy.js";
@@ -374,6 +397,7 @@ export {
 } from "./entity-capabilities.js";
 export {
   canUseAccount,
+  chooseCandidate,
   decideOpeningAccount,
   type OpeningAccountDecision,
   type OpeningAccountInput,
@@ -627,6 +651,8 @@ export {
 } from "./amounts-owed.js";
 export {
   OWED_PAYMENT_STATUSES,
+  decisivePayment,
+  decisivePaymentByLot,
   purchaseEnding,
   purchaseIsOwned,
   purchaseIsToPay,
@@ -663,6 +689,7 @@ export {
   invoiceDueAt,
   invoiceIsOwed,
   purchaseInvoiceState,
+  storedDueAt,
   type PurchaseInvoiceFacts,
   type PurchaseInvoiceState,
   type PurchaseInvoiceStatus,
@@ -696,13 +723,19 @@ export {
   type PurchaseDeliveryStage,
 } from "./purchase-delivery-stage.js";
 export {
+  PAY_PLAN_MAX_LOTS,
+  buildPayPlan,
+  classifyPayPlanLots,
+  pickRefusal,
+  type ClassifiedPayPlanLots,
+  type PayPlanComplianceHold,
+  type PayPlanFacts,
+  type PayPlanLot,
+  type PickRefusal,
+} from "./pay-plan.js";
+export {
   PAY_SEVERAL_MAX_INVOICES,
-  planPaySeveral,
-  type PayableInvoice,
-  type PaySeveralCandidate,
-  type PaySeveralDecision,
-  type PaySeveralPlan,
-  type PaySeveralRefusal,
+  paySeveralSkipReason,
   type PaySeveralSkipReason,
 } from "./pay-several.js";
 export {
@@ -974,3 +1007,23 @@ export {
   type PaymentReminderStep,
 } from "./payment-reminder.js";
 export * from "./private-sale-deal/index.js";
+export {
+  UNAPPLIED_MONEY_CLOSED_BY_CAPTURE,
+  UNAPPLIED_MONEY_EVENT,
+  UNAPPLIED_MONEY_HANDLED_ELSEWHERE,
+  UNAPPLIED_MONEY_REASONS,
+  UNAPPLIED_MONEY_RESOLVED_EVENT,
+  unappliedMoneyDedupeKey,
+  unappliedMoneyPayload,
+  type UnappliedMoney,
+  type UnappliedMoneyPayload,
+  type UnappliedMoneyReason,
+} from "./unapplied-money.js";
+export {
+  PAYMENT_CLOSED_ORGANISATION_STATUSES,
+  paymentEligibility,
+  type PaymentEligibility,
+  type PaymentEligibilityFacts,
+  type PaymentEligibilityHold,
+  type PaymentEligibilityRefusal,
+} from "./payment-eligibility.js";

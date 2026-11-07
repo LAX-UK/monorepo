@@ -37,7 +37,7 @@ describe("formatBackupCodesFile", () => {
     );
     expect(text.split("\n")).toEqual([
       "LAX Account backup codes",
-      "Created 24 October 2026",
+      "Created Sat 24 Oct 2026",
       "",
       "Each code works once, in place of the code from your authenticator app.",
       "Creating new codes makes these stop working.",

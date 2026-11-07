@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ART_BUSINESS, moneyEntry } from "./portfolio-fixtures.test-util.js";
-import { buildMoney } from "./portfolio-money.vm.js";
+import { BUSINESS_PRODUCTS, buildMoney, moneyProductOf } from "./portfolio-money.vm.js";
 
 describe("buildMoney", () => {
   it("is empty for no entries", () => {
@@ -108,5 +108,21 @@ describe("buildMoney", () => {
       noResults: true,
       isEmpty: false,
     });
+  });
+});
+
+describe("moneyProductOf", () => {
+  it("uses the product the entry names, so a Shop payment is LAX Shop although its business is lax.art", () => {
+    expect(moneyProductOf(moneyEntry({ business: ART_BUSINESS, product: "shop" }))).toBe("shop");
+  });
+
+  it("falls back to the business's own product for an entry that predates the field", () => {
+    expect(moneyProductOf(moneyEntry())).toBe("bid");
+    expect(moneyProductOf(moneyEntry({ business: ART_BUSINESS }))).toBe("art");
+  });
+
+  it("lists LAX Shop and lax.art under their shared business", () => {
+    expect(BUSINESS_PRODUCTS.lax_art).toEqual(["shop", "art"]);
+    expect(BUSINESS_PRODUCTS.lax_bid).toEqual(["bid"]);
   });
 });

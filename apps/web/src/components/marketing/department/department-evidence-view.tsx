@@ -2,6 +2,7 @@ import { ViewItemListTracker } from "@/components/analytics/view-item-list-track
 import { DepartmentWorkCard } from "@/components/marketing/department/department-work-card";
 import { MarketingSection } from "@/components/marketing/marketing-section";
 import type { DepartmentEvidence } from "@/lib/departments/department-evidence";
+import type { DepartmentDisplayStyle } from "@auction/domain";
 import { MarketingWorkGrid } from "@auction/marketing-ui";
 import { ButtonLink, EmptyState } from "@auction/ui/lax";
 import Link from "next/link";
@@ -12,13 +13,15 @@ type Props = {
   department: string;
   /** Lower case, for running text: "watches and clocks". */
   noun: string;
+  /** How this department shows its lots. */
+  displayStyle: DepartmentDisplayStyle;
 };
 
 /**
  * What the house has done in this department: works it sold and works on sale now. A row with
  * nothing to show is left out; "On sale" says so honestly when sold works are shown beside it.
  */
-export function DepartmentEvidenceView({ evidence, department, noun }: Props) {
+export function DepartmentEvidenceView({ evidence, department, noun, displayStyle }: Props) {
   const { sold, onSale } = evidence;
   const showOnSaleEmpty = onSale.length === 0 && sold.length > 0;
 
@@ -39,7 +42,7 @@ export function DepartmentEvidenceView({ evidence, department, noun }: Props) {
           />
           <MarketingWorkGrid aria-label={`Recently sold in ${noun}`}>
             {sold.map(({ lot }) => (
-              <DepartmentWorkCard key={lot.id} lot={lot} />
+              <DepartmentWorkCard key={lot.id} lot={lot} displayStyle={displayStyle} />
             ))}
           </MarketingWorkGrid>
         </MarketingSection>
@@ -59,7 +62,7 @@ export function DepartmentEvidenceView({ evidence, department, noun }: Props) {
           />
           <MarketingWorkGrid aria-label={`On sale in ${noun}`}>
             {onSale.map((lot) => (
-              <DepartmentWorkCard key={lot.id} lot={lot} />
+              <DepartmentWorkCard key={lot.id} lot={lot} displayStyle={displayStyle} />
             ))}
           </MarketingWorkGrid>
         </MarketingSection>

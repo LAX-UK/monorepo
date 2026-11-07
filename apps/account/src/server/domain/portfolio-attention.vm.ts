@@ -3,9 +3,16 @@ import { PRODUCT_LABELS } from "./portfolio-labels";
 import { workDetailHref } from "./portfolio-routes";
 import { safeDeepLink } from "./safe-deep-link";
 
+export type AttentionKind = "pay" | "held" | "confirming" | "track" | "payout" | "invoice";
+
 export type AttentionRowVm = {
   key: string;
+  kind: AttentionKind;
   text: string;
+  /** The work's title, for views that word the line themselves. */
+  workTitle: string;
+  /** What is owed, for views that show the amount beside a payment line. */
+  owed: { amount: number; currency: string } | null;
   /** The product that owns the next step, named in the row's secondary line. */
   productLabel: string;
   href: string;
@@ -21,38 +28,45 @@ function rowFor(item: LaxPortfolioItemV1): AttentionRowVm | null {
   const key = `${item.product}:${item.id}`;
   const detail = { href: workDetailHref(item), external: false };
   const title = item.title || "Untitled work";
-  const productLabel = PRODUCT_LABELS[item.product];
+  const base = {
+    key,
+    workTitle: title,
+    owed: item.owed ? { amount: item.owed.amount, currency: item.owed.currency } : null,
+    productLabel: PRODUCT_LABELS[item.product],
+  };
   switch (item.status) {
     case "awaiting_payment": {
-      // Payment cannot start while the account's checks are open, so there is nothing to pay yet.
-      if (item.owed?.state === "in_review") {
-        return { key, text: `${title} is waiting on account checks`, productLabel, ...detail };
-      }
       const pay = actionHref(item, "pay");
-      return {
-        key,
-        text: `Pay for ${title}`,
-        productLabel,
-        ...(pay ? { href: pay, external: true } : detail),
-      };
+      const target = pay ? { href: pay, external: true } : detail;
+      // Payment cannot start while the account's checks are open; the product's page is where
+      // the person completes them.
+      if (item.owed?.state === "in_review") {
+        return { ...base, kind: "held", text: `${title} is waiting on account checks`, ...target };
+      }
+      return { ...base, kind: "pay", text: `Pay for ${title}`, ...target };
     }
     case "payment_confirming":
-      return { key, text: `Payment for ${title} is being confirmed`, productLabel, ...detail };
+      return {
+        ...base,
+        kind: "confirming",
+        text: `Payment for ${title} is being confirmed`,
+        ...detail,
+      };
     case "awaiting_shipment": {
       const track = actionHref(item, "track_shipping");
       return {
-        key,
+        ...base,
+        kind: "track",
         text: `Track shipping for ${title}`,
-        productLabel,
         ...(track ? { href: track, external: true } : detail),
       };
     }
     case "payout_pending":
-      return { key, text: `Payout pending for ${title}`, productLabel, ...detail };
+      return { ...base, kind: "payout", text: `Payout pending for ${title}`, ...detail };
     default: {
       const invoiceMissing = item.documents.some((doc) => doc.kind === "invoice" && !doc.available);
       return invoiceMissing
-        ? { key, text: `Invoice for ${title} is not available yet`, productLabel, ...detail }
+        ? { ...base, kind: "invoice", text: `Invoice for ${title} is not available yet`, ...detail }
         : null;
     }
   }

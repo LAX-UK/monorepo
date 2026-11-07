@@ -28,6 +28,7 @@ function sampleBasket(overrides: Partial<BasketRecord> = {}): BasketRecord {
         artistName: null,
         artistSlug: null,
         editionSize: null,
+        editionLine: null,
       },
     ],
     ...overrides,
@@ -63,6 +64,7 @@ describe("presentBasket", () => {
             artistName: null,
             artistSlug: null,
             editionSize: null,
+            editionLine: null,
           },
         ],
       }),
@@ -122,7 +124,15 @@ describe("presentBasket", () => {
     if (!line) throw new Error("fixture");
     const view = presentBasket(
       sampleBasket({
-        lines: [{ ...line, artistName: "Emmett King", artistSlug: "emmett-king", editionSize: 24 }],
+        lines: [
+          {
+            ...line,
+            artistName: "Emmett King",
+            artistSlug: "emmett-king",
+            editionSize: 24,
+            editionLine: "Limited edition of 24 · Hand-signed",
+          },
+        ],
       }),
       LIMIT,
     );
@@ -130,6 +140,7 @@ describe("presentBasket", () => {
       artistName: "Emmett King",
       artistSlug: "emmett-king",
       editionSize: 24,
+      editionLine: "Limited edition of 24 · Hand-signed",
     });
   });
 });

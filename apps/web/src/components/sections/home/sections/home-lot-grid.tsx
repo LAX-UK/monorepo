@@ -16,6 +16,7 @@ function LotCard({ lot, watch }: { lot: HomeLotCard; watch: HomeLotWatch }) {
     <MarketingWorkCard
       href={lot.href}
       title={lot.title}
+      mediaStyle={lot.displayStyle}
       media={
         <MediaImage
           src={lot.imageUrl}
@@ -49,7 +50,7 @@ function LotCard({ lot, watch }: { lot: HomeLotCard; watch: HomeLotWatch }) {
         <div className="flex w-full min-w-0 flex-col gap-1.5">
           <LotEstimateLine value={lot.estimate} />
           <LotCardLine model={lot.line} />
-          <LotCardBidderState lotId={lot.id} />
+          <LotCardBidderState lotId={lot.id} lotHref={lot.href} lotTitle={lot.title} />
         </div>
       }
     />

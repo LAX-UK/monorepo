@@ -4,6 +4,7 @@ import {
   isFixedPayBarRoute,
   isHideDashboardTabBarRoute,
   pageBottomPadding,
+  showsPublicBottomBar,
 } from "@/lib/layout/bottom-chrome";
 import { describe, expect, it } from "vitest";
 
@@ -45,5 +46,30 @@ describe("bottom-chrome", () => {
   it("computes bulk bar offset when dashboard tab bar is active", () => {
     expect(bulkBarBottomOffset(true)).toContain("--bottom-nav-height");
     expect(bulkBarBottomOffset(false)).toBe("0px");
+  });
+
+  describe("showsPublicBottomBar", () => {
+    it("shows on the public pages", () => {
+      for (const path of ["/", "/sales", "/sales/spring", "/lot/a/1", "/search", "/artists"]) {
+        expect(showsPublicBottomBar(path)).toBe(true);
+      }
+    });
+
+    it("is replaced by the account area's own bar inside the account area", () => {
+      for (const path of ["/home", "/bids", "/purchases", "/watching", "/notifications"]) {
+        expect(showsPublicBottomBar(path)).toBe(false);
+      }
+    });
+
+    it("never shows on pay and checkout routes", () => {
+      for (const path of [
+        "/purchases/checkout",
+        "/purchases/checkout/abc",
+        "/pay",
+        "/checkout/x",
+      ]) {
+        expect(showsPublicBottomBar(path)).toBe(false);
+      }
+    });
   });
 });

@@ -15,6 +15,7 @@ import {
   setBidSessionCookie,
 } from "@/lib/bff/session-cookie.server";
 import { BidBffSessionStore, type PendingBidSession } from "@/lib/bff/session-store.server";
+import { applySignInRestore } from "@/lib/legal-entity/sign-in-restore.server";
 import { classifyAuthorizationError, classifySilentCallback } from "@auction/identity-rp";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -75,6 +76,22 @@ export async function GET(request: NextRequest) {
         }
       : { nextPath: "/home" };
 
+  // The session this login would replace signed out while the login was in flight: drop the
+  // callback, whatever it carries, and leave the browser signed out.
+  if (id && replacesSessionId && (await sessions.isRevoked(replacesSessionId))) {
+    await sessions.invalidate(id);
+    if (pending?.kind === "pending" && pending.entryIntent === "silent") {
+      return redirectSilentGuest(pending.nextPath);
+    }
+    const signedOut = NextResponse.redirect(
+      resolvePublicOriginUrl(loginErrorPath("oidc_callback", pendingCtx, false)),
+      302,
+    );
+    clearBidSessionCookie(signedOut);
+    signedOut.headers.set("cache-control", "no-store");
+    return signedOut;
+  }
+
   if (pending?.kind === "pending" && pending.entryIntent === "silent") {
     const silentOutcome = classifySilentCallback(oauthError);
     if (silentOutcome.kind !== "success" || !code) {
@@ -132,7 +149,11 @@ export async function GET(request: NextRequest) {
         replacesSessionId,
       );
     }
-    const authenticatedId = await sessions.rotateAuthenticated(id, authenticated);
+    const authenticatedId = await sessions.rotateAuthenticated(
+      id,
+      authenticated,
+      replacesSessionId,
+    );
     if (!authenticatedId) throw new Error("Login session rotation failed");
     if (replacesSessionId && replacesSessionId !== authenticatedId) {
       await sessions.invalidate(replacesSessionId);
@@ -152,6 +173,13 @@ export async function GET(request: NextRequest) {
       markBidSilentNotice(response);
     }
     setBidSessionCookie(response, authenticatedId, "authenticated");
+    // The first page opens in the person's account; if the API cannot say, the layout restores it.
+    // Never let this fail the sign-in: the session is already authenticated.
+    try {
+      await applySignInRestore(response, { sessionId: authenticatedId, request });
+    } catch (error) {
+      console.warn("Sign-in account restore failed; the first page restores the account", error);
+    }
     response.headers.set("cache-control", "no-store");
     return response;
   } catch {

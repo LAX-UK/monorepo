@@ -42,7 +42,11 @@ export type ManualReviewReason =
   | "aml_hold"
   | "source_of_funds_required"
   /** Compliance/tier checks passed; finance must release before Stripe checkout. */
-  | "finance_release_required";
+  | "finance_release_required"
+  /** A personal buyer verifies their identity first; the invoice stays owed meanwhile. */
+  | "identity_verification_required"
+  /** LAX is still checking the organisation; its invoices can be paid once it has. */
+  | "organisation_under_review";
 
 export type CreatePaymentResponse = {
   paymentId: string;
@@ -63,3 +67,33 @@ export type PortfolioRow = {
     createdAt?: string;
   } | null;
 };
+
+/**
+ * What one line of an invoice charges for. VAT, import VAT and Artist's Resale Right lines are
+ * kept in the contract so the page, Stripe and the invoice PDF can show them later; no amount is
+ * stored for them until the accountant has confirmed the rules.
+ */
+export const invoiceLineKinds = [
+  "hammer",
+  "buyers_premium",
+  "vat_on_hammer",
+  "import_vat",
+  "artists_resale_right",
+  "delivery",
+  /** One line for the whole total, on an invoice raised before its parts were stored. */
+  "legacy_total",
+] as const;
+export type InvoiceLineKind = (typeof invoiceLineKinds)[number];
+
+/** One stored line of an invoice. Money is whole pence in pounds sterling. */
+export type InvoiceLine = {
+  kind: InvoiceLineKind;
+  label: string;
+  /** The rate the amount was worked out at ("25", "12.5"), or `null` when it is not a rate. */
+  ratePercent: string | null;
+  amountPence: number;
+};
+
+/** How an invoice came to exist. */
+export const invoiceSources = ["raised", "legacy_backfill"] as const;
+export type InvoiceSource = (typeof invoiceSources)[number];

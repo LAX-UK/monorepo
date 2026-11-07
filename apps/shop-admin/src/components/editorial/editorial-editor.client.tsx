@@ -81,6 +81,11 @@ export type EditorialEditorConfig<F, D extends EditorialDetailBase> = {
   empty: () => F;
   fromDetail: (detail: D) => F;
   buildPayload: (form: F, blocks: EditorialBlock[]) => PayloadResult<unknown>;
+  /**
+   * Problems that stop a saved item being published (a story needs a cover image). They show on
+   * their fields, so publishing is not attempted until they are fixed. The API still decides.
+   */
+  publishErrors?: (form: F) => FieldErrors;
   /** Names the item in confirmations, e.g. its title. */
   nameOf: (form: F) => string;
   /** Where the item lives on lax.art ("lax.art/exhibitions/summer-show"), when it has an address. */
@@ -105,6 +110,17 @@ const DEFAULT_BODY = {
 };
 const SLUG_IN_USE = "That slug is already in use. Choose a different slug.";
 const newKey = () => crypto.randomUUID();
+
+/** Field problems the API names in a 400 (`issues: [{ field, message }]`), keyed by field. */
+function fieldErrorsFromIssues(issues: unknown[] | undefined): FieldErrors {
+  const errors: FieldErrors = {};
+  for (const issue of issues ?? []) {
+    if (!issue || typeof issue !== "object") continue;
+    const { field, message } = issue as { field?: unknown; message?: unknown };
+    if (typeof field === "string" && typeof message === "string") errors[field] = message;
+  }
+  return errors;
+}
 
 function failureFrom(
   result: Exclude<AdminMutationResult<unknown>, { ok: true }>,
@@ -252,6 +268,9 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
         } else if (result.kind === "conflict") {
           setServerErrors({ slug: SLUG_IN_USE });
           setFailedSubmits((count) => count + 1);
+        } else if (result.kind === "validation" && showIssues(result.issues)) {
+          // Fields the API names show inline, with no banner or toast.
+          return;
         } else {
           setFailure(failureFrom(result, `save the ${entity.singular}`));
         }
@@ -280,6 +299,27 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
     toast.success("Changes saved");
   }
 
+  /** Shows the fields the API named on the form; false when it named none. */
+  function showIssues(issues: unknown[] | undefined): boolean {
+    const named = fieldErrorsFromIssues(issues);
+    if (Object.keys(named).length === 0) return false;
+    setServerErrors(named);
+    setFailedSubmits((count) => count + 1);
+    return true;
+  }
+
+  /** Opens the publish confirmation, unless the item has problems that stop it being published. */
+  function requestPublication() {
+    const blocked = publishing ? (config.publishErrors?.(form) ?? {}) : {};
+    if (Object.keys(blocked).length === 0) {
+      setDialog("publish");
+      return;
+    }
+    setFailure(null);
+    setServerErrors(blocked);
+    setFailedSubmits((count) => count + 1);
+  }
+
   async function changePublication() {
     if (!id) return;
     const publish = status !== "published";
@@ -295,6 +335,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
     setBusy(null);
     setDialog(null);
     if (!result.ok) {
+      if (result.kind === "validation" && showIssues(result.issues)) return;
       setFailure(
         failureFrom(result, `${publish ? "publish" : "unpublish"} the ${entity.singular}`),
       );
@@ -412,7 +453,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
                 requires={EDITORIAL_PUBLISH}
                 icon={publishing ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
                 disabled={disabled || unsaved}
-                onClick={() => setDialog("publish")}
+                onClick={requestPublication}
               >
                 {publishing ? "Publish" : "Unpublish"}
               </StaffButton>

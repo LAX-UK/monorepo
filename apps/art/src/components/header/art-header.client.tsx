@@ -1,35 +1,38 @@
 "use client";
 
+import { ArtGeneralEnquirySheet } from "@/components/enquiry/art-general-enquiry-sheet.client";
+import { ArtAccountEntry } from "@/components/header/art-account-entry";
 import { ArtHeaderFavoritesLink } from "@/components/header/art-header-favorites-link";
-import { ArtHeaderUtilityActions } from "@/components/header/art-header-utility-actions";
-import { ArtMobileNavDrawer } from "@/components/header/art-mobile-nav-drawer";
+import { ArtLockup } from "@/components/header/art-lockup";
+import { ArtPhoneMenu } from "@/components/header/art-phone-menu";
 import { ArtThemeToggle } from "@/components/header/art-theme-toggle";
 import { artRouteMayHaveHero } from "@/lib/layout/art-header-chrome.vm";
+import { buildArtTopBarHelpLinks } from "@/lib/layout/art-help-links";
 import { useArtHeroPresent } from "@/lib/layout/art-hero-presence";
 import {
   type ArtHeaderNavData,
   buildArtMegaNavSections,
-  buildArtNavItems,
   buildArtSearchSuggestions,
   resolveArtNavKey,
 } from "@/lib/layout/art-nav.vm";
+import { ART_SEARCH_REQUEST_EVENT } from "@/lib/layout/art-search-request";
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@auction/branding";
 import type { AccountChromeState, LaxFamilyLinkVm, LaxProductLinkVm } from "@auction/lax-ecosystem";
 import {
   LaxFamilyBar,
-  LaxLogo,
   MARKETING_HEADER_CHROME,
   MarketingChromeIconButton,
   MarketingCloseIcon,
   MarketingHeaderMegaNav,
   MarketingHeaderSearch,
   MarketingMenuIcon,
-  MarketingSearchIcon,
+  MarketingTopBarSlots,
   headerChromeClassName,
   headerChromeIconClass,
   useHeaderChrome,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -41,6 +44,8 @@ type ArtHeaderClientProps = {
   productLinks: LaxProductLinkVm[];
   familyLinks: LaxFamilyLinkVm[];
   headerNav: ArtHeaderNavData | null;
+  /** A gallery reply to an enquiry is waiting. */
+  replyDot?: boolean;
 };
 
 export function ArtHeaderClient({
@@ -48,34 +53,56 @@ export function ArtHeaderClient({
   productLinks,
   familyLinks,
   headerNav,
+  replyDot = false,
 }: ArtHeaderClientProps) {
   const pathname = usePathname();
-  const nav = buildArtNavItems(pathname);
   const activeKey = resolveArtNavKey(pathname);
   const megaSections = useMemo(() => buildArtMegaNavSections(headerNav), [headerNav]);
   const searchSuggestions = useMemo(() => buildArtSearchSuggestions(headerNav), [headerNav]);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const wasMenuOpenRef = useRef(false);
   const [megaOpen, setMegaOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [fieldSearchOpen, setFieldSearchOpen] = useState(false);
+  const [searchRequest, setSearchRequest] = useState(0);
   const heroPresent = useArtHeroPresent();
   const overHero = artRouteMayHaveHero(pathname) && heroPresent;
   const { isTransparent, atTop, headerTone, attachHeader } = useHeaderChrome({
     transparent: overHero,
-    overlayOpen: menuOpen || megaOpen || searchOpen,
+    overlayOpen: menuOpen || megaOpen || searchOpen || fieldSearchOpen,
   });
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: close the mobile menu when the route changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: close the menu when the route changes
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
 
-  // The drawer has no Radix trigger, so focus is handed back to the menu button once the trap releases.
+  // The bottom bar's Search tab asks for the search sheet.
   useEffect(() => {
-    if (wasMenuOpenRef.current && !menuOpen) menuButtonRef.current?.focus();
-    wasMenuOpenRef.current = menuOpen;
-  }, [menuOpen]);
+    const onRequest = () => setSearchRequest((count) => count + 1);
+    window.addEventListener(ART_SEARCH_REQUEST_EVENT, onRequest);
+    return () => window.removeEventListener(ART_SEARCH_REQUEST_EVENT, onRequest);
+  }, []);
+
+  const helpLinks = buildArtTopBarHelpLinks(
+    account.kind === "authenticated"
+      ? (className) => (
+          <ArtGeneralEnquirySheet
+            viewerKind="authenticated"
+            contact={{
+              name: account.displayName,
+              email: account.email,
+              phone: account.verifiedPhone ?? "",
+            }}
+            renderTrigger={(open) => (
+              <Button type="button" variant="link" className={className} onClick={open}>
+                Enquire
+              </Button>
+            )}
+          />
+        )
+      : undefined,
+  );
 
   return (
     <header
@@ -88,28 +115,13 @@ export function ArtHeaderClient({
     >
       <div
         className={cn(
-          "mx-auto flex max-w-[var(--container-max,1440px)] flex-col py-2 lg:pt-1 lg:pb-0",
+          "mx-auto flex max-w-[var(--container-max,1440px)] flex-col",
           MARKETING_PAGE_GUTTER_X,
         )}
       >
-        <LaxFamilyBar
-          links={familyLinks}
-          tone={headerTone}
-          actions={
-            <>
-              {/* Figma has no theme control; the utility row keeps it out of the busy nav row. */}
-              <ArtThemeToggle headerTone={headerTone} />
-              <ArtHeaderUtilityActions
-                account={account}
-                productLinks={productLinks}
-                pathname={pathname}
-                headerTone={headerTone}
-              />
-            </>
-          }
-        />
+        <LaxFamilyBar links={familyLinks} helpLinks={helpLinks} tone={headerTone} />
 
-        <div className="flex h-14 items-center lg:h-auto">
+        <div className="flex h-14 items-center md:h-[72px]">
           <MarketingHeaderMegaNav
             sections={megaSections}
             isSectionActive={(section) => section.key === activeKey}
@@ -120,61 +132,80 @@ export function ArtHeaderClient({
             logo={
               <Link
                 href="/"
-                className={cn("min-w-[76px] shrink-0 rounded-sm lg:py-2.5", FOCUS_RING)}
+                className={cn("min-w-[76px] shrink-0 rounded-sm", FOCUS_RING)}
                 aria-label="lax.art home"
               >
-                <LaxLogo className="art-header__logo" />
+                <ArtLockup />
               </Link>
             }
             trailing={
-              <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2">
-                {/* Narrower desktops cannot fit the five nav labels and the 231px field. */}
-                <div className="hidden min-[88rem]:flex">
+              <MarketingTopBarSlots
+                className="shrink-0 justify-end"
+                searchField={
                   <MarketingHeaderSearch
                     action="/search"
                     recentStorageKey={RECENT_SEARCHES_KEY}
                     suggestions={searchSuggestions}
+                    placeholder="Search artworks and artists"
                     headerTone={headerTone}
+                    onOpenChange={setFieldSearchOpen}
+                    className="w-full"
+                  />
+                }
+                searchIcon={
+                  <MarketingHeaderSearch
+                    action="/search"
+                    recentStorageKey={RECENT_SEARCHES_KEY}
+                    suggestions={searchSuggestions}
+                    placeholder="Search artworks and artists"
+                    headerTone={headerTone}
+                    compactBelowDesktop
+                    iconOnly
+                    openRequest={searchRequest}
                     onOpenChange={setSearchOpen}
                   />
-                </div>
-                <Link
-                  href="/search"
-                  aria-label="Search"
-                  className={cn(
-                    "inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-sm min-[88rem]:hidden",
-                    headerChromeIconClass(headerTone),
-                    FOCUS_RING,
-                  )}
-                >
-                  <MarketingSearchIcon className="size-5" aria-hidden />
-                </Link>
-                {/* Below md the bottom tab bar carries Favourites. */}
-                <div className="hidden md:flex">
-                  <ArtHeaderFavoritesLink headerTone={headerTone} />
-                </div>
-                <MarketingChromeIconButton
-                  ref={menuButtonRef}
-                  label={menuOpen ? "Close menu" : "Open menu"}
-                  className={cn("lg:hidden", headerChromeIconClass(headerTone))}
-                  aria-haspopup="dialog"
-                  aria-expanded={menuOpen}
-                  onClick={() => setMenuOpen((open) => !open)}
-                >
-                  {menuOpen ? <MarketingCloseIcon /> : <MarketingMenuIcon />}
-                </MarketingChromeIconButton>
-              </div>
+                }
+                productAction={
+                  <div className="flex items-center gap-1">
+                    <div className="hidden lg:flex">
+                      <ArtThemeToggle headerTone={headerTone} />
+                    </div>
+                    <ArtHeaderFavoritesLink headerTone={headerTone} />
+                  </div>
+                }
+                account={
+                  <ArtAccountEntry
+                    account={account}
+                    productLinks={productLinks}
+                    pathname={pathname}
+                    headerTone={headerTone}
+                    replyDot={replyDot}
+                  />
+                }
+                menuButton={
+                  <MarketingChromeIconButton
+                    ref={menuButtonRef}
+                    label={menuOpen ? "Close menu" : "Open menu"}
+                    className={cn("lg:hidden", headerChromeIconClass(headerTone))}
+                    aria-haspopup="dialog"
+                    aria-expanded={menuOpen}
+                    onClick={() => setMenuOpen((open) => !open)}
+                  >
+                    {menuOpen ? <MarketingCloseIcon /> : <MarketingMenuIcon />}
+                  </MarketingChromeIconButton>
+                }
+              />
             }
           />
         </div>
 
-        <ArtMobileNavDrawer
+        <ArtPhoneMenu
           open={menuOpen}
           onOpenChange={setMenuOpen}
           pathname={pathname}
-          navItems={nav}
-          account={account}
+          activeKey={activeKey}
           familyLinks={familyLinks}
+          returnFocusRef={menuButtonRef}
         />
       </div>
     </header>
