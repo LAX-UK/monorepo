@@ -7,6 +7,7 @@ import {
   userHasAccessTo,
 } from "@auction/types";
 import {
+  adminDealConvertSchema,
   adminEnquiryListQuerySchema,
   adminEnquiryPatchSchema,
   adminEnquiryRoutingSchema,
@@ -18,9 +19,11 @@ import { zValidator } from "../../lib/z-validator.js";
 import {
   requireEnquiries,
   requireEnquiryRoutingManage,
+  requirePrivateSaleDealsManage,
 } from "../../middleware/require-capability.js";
 import type { AdminEnquiryRoutesContainer } from "../../services/interfaces/admin-routes/index.js";
 import type { EnquiryStaffViewer } from "../../services/interfaces/marketing-enquiry-service.js";
+import type { ConvertEnquiryError } from "../../services/interfaces/private-sale-deal-desk.js";
 import type { AdminHono } from "./_shared.js";
 
 /** What the signed-in person may read and do, from their capabilities. */
@@ -48,6 +51,20 @@ const UPDATE_ERROR_STATUS = {
   conversion_unavailable: 422,
   conversion_not_manual: 422,
 } as const;
+
+const CONVERT_ERROR_STATUS = {
+  enquiry_not_found: 404,
+  not_a_private_sale_enquiry: 422,
+  not_ready: 422,
+  already_converted: 409,
+  account_required: 422,
+  work_required: 422,
+  work_not_found: 422,
+  work_has_no_seller_contact: 422,
+  buyer_is_seller: 422,
+  stale_version: 409,
+  unavailable: 503,
+} as const satisfies Record<ConvertEnquiryError, 404 | 409 | 422 | 503>;
 
 /**
  * Enquiries for client services, specialists and administrators. Who sees which enquiry is
@@ -98,6 +115,24 @@ export function attachAdminMarketingEnquiryRoutes(
         },
         UPDATE_ERROR_STATUS[result.error],
       );
+    },
+  );
+
+  /** POST /admin/enquiries/:ref/convert — a private sale enquiry becomes a proposed deal. */
+  platform.post(
+    "/enquiries/:ref/convert",
+    requirePrivateSaleDealsManage,
+    zValidator("param", enquiryRefParamSchema),
+    zValidator("json", adminDealConvertSchema),
+    async (c) => {
+      const viewer = viewerOf(c);
+      const result = await container.admin.enquiryConversion.convert(
+        { userId: viewer.userId, readsPrivateSale: viewer.readsPrivateSale },
+        c.req.valid("param").ref,
+        c.req.valid("json"),
+      );
+      if (result.ok) return c.json({ data: { reference: result.reference } }, 201);
+      return c.json({ error: result.error }, CONVERT_ERROR_STATUS[result.error]);
     },
   );
 

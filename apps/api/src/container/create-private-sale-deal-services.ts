@@ -3,26 +3,38 @@ import type { DealInvoiceIssuer, PrivateSalePolicy } from "@auction/domain";
 import type {
   IAmlHoldStore,
   IKycRepository,
+  ILegalEntityMembershipReader,
   ISourceOfFundsRepository,
   ITransactionRunner,
   IUserRepository,
   IWatchlistScreeningReader,
 } from "@auction/persistence/interfaces";
 import {
+  DrizzleDealWorkStore,
+  DrizzleMarketingEnquiryRepository,
   DrizzlePrivateSaleDealFinanceStore,
   DrizzlePrivateSaleDealPaymentRepository,
   DrizzlePrivateSaleDealPayoutStore,
+  DrizzlePrivateSaleDealQueryRepository,
   DrizzlePrivateSaleDealRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import type { IStripeClientFactory } from "../lib/stripe-client.js";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
 import type { IDomainEventSink } from "../services/domain-event-sink.js";
+import type {
+  IEnquiryConversion,
+  IPrivateSaleDealDesk,
+  IPrivateSaleDealParties,
+} from "../services/interfaces/private-sale-deal-desk.js";
 import type { IStripeCustomerGateway } from "../services/interfaces/stripe-customer.js";
 import type { IProviderEventClaim } from "../services/payment-group/payment-group-settlement.service.js";
 import type { PaymentTierPolicy } from "../services/payment/payment-tier.policy.js";
 import { ComplianceDealClearanceReader } from "../services/private-sale-deal/deal-clearance.reader.js";
+import { PrivateSaleDealDeskService } from "../services/private-sale-deal/deal-desk.service.js";
 import { DealInvoiceService } from "../services/private-sale-deal/deal-invoice.service.js";
+import { DealPartyResolver } from "../services/private-sale-deal/deal-party-resolver.js";
+import { PrivateSaleDealPartyService } from "../services/private-sale-deal/deal-party.service.js";
 import {
   type DealPaymentScope,
   DealPaymentSettlementService,
@@ -31,7 +43,9 @@ import { DealPaymentService } from "../services/private-sale-deal/deal-payment.s
 import { DealPayoutSettlementService } from "../services/private-sale-deal/deal-payout-settlement.service.js";
 import { DealReversalService } from "../services/private-sale-deal/deal-reversal.service.js";
 import { DealTransitionService } from "../services/private-sale-deal/deal-transition.service.js";
+import { EnquiryConversionService } from "../services/private-sale-deal/enquiry-conversion.service.js";
 import { privateSalePolicyFromEnv } from "../services/private-sale-deal/private-sale-policy.config.js";
+import { UserRepositoryActorNames } from "../services/private-sale-deal/user-repository-actor-names.js";
 import type { DealPaymentWebhookDeps } from "../services/stripe-webhook/deal-payment-webhook-handlers.js";
 import { PAYMENT_WEBHOOK_EVENT_SOURCE } from "../services/stripe-webhook/payment-webhook-types.js";
 import { StripeDealCheckoutGateway } from "../services/stripe/stripe-deal-checkout.gateway.js";
@@ -45,6 +59,12 @@ export type PrivateSaleDealServices = {
   reversal: DealReversalService;
   payoutSettlement: DealPayoutSettlementService;
   webhooks: DealPaymentWebhookDeps;
+  /** Staff work on deals: the lists, the record and every move. */
+  desk: IPrivateSaleDealDesk;
+  /** A private sale enquiry becomes a proposed deal. */
+  conversion: IEnquiryConversion;
+  /** A buyer's and a seller's own deals. */
+  parties: IPrivateSaleDealParties;
 };
 
 export type CreatePrivateSaleDealServicesInput = {
@@ -57,6 +77,7 @@ export type CreatePrivateSaleDealServicesInput = {
   stripePayments: IStripePaymentGateway;
   stripeCustomers: IStripeCustomerGateway;
   users: IUserRepository;
+  memberships: Pick<ILegalEntityMembershipReader, "findActiveMembership" | "ensurePersonalEntity">;
   kyc: IKycRepository;
   amlHolds: IAmlHoldStore;
   screenings: IWatchlistScreeningReader;
@@ -108,38 +129,79 @@ export function createPrivateSaleDealServices(
     claims,
   });
   const gateway = new StripeDealCheckoutGateway(input.stripeClientFactory);
+  const invoices = new DealInvoiceService({
+    transitions,
+    finance,
+    issuer: input.invoiceIssuer ?? null,
+  });
+  const dealPayments = new DealPaymentService({
+    deals,
+    payments,
+    clearance,
+    tiers: input.tiers,
+    gateway,
+    stripeCustomers: input.stripeCustomers,
+    users: input.users,
+    events,
+    webOrigin: env.WEB_ORIGIN,
+  });
+  const reversal = new DealReversalService({
+    deals,
+    payments,
+    payouts,
+    refunds: input.stripePayments,
+    checkout: gateway,
+    settlement,
+    transitions,
+    transactionRunner: input.transactionRunner,
+    scopeForTx,
+  });
+  const queries = new DrizzlePrivateSaleDealQueryRepository(db);
+  const parties = new DealPartyResolver({
+    memberships: input.memberships,
+    users: input.users,
+  });
+  const enquiries = new DrizzleMarketingEnquiryRepository(db);
 
   return {
     policy,
     transitions,
-    invoices: new DealInvoiceService({
-      transitions,
-      finance,
-      issuer: input.invoiceIssuer ?? null,
-    }),
-    payments: new DealPaymentService({
-      deals,
-      payments,
-      clearance,
-      tiers: input.tiers,
-      gateway,
-      stripeCustomers: input.stripeCustomers,
-      users: input.users,
-      events,
-      webOrigin: env.WEB_ORIGIN,
-    }),
-    reversal: new DealReversalService({
-      deals,
-      payments,
-      payouts,
-      refunds: input.stripePayments,
-      checkout: gateway,
-      settlement,
-      transitions,
-      transactionRunner: input.transactionRunner,
-      scopeForTx,
-    }),
+    invoices,
+    payments: dealPayments,
+    reversal,
     payoutSettlement: new DealPayoutSettlementService({ payouts, transitions }),
     webhooks: { settlement, payments },
+    desk: new PrivateSaleDealDeskService({
+      deals,
+      queries,
+      payments,
+      payouts,
+      transitions,
+      invoices,
+      reversal,
+      clearance,
+      policy,
+      parties,
+      enquiries,
+      names: new UserRepositoryActorNames(input.users),
+      events,
+    }),
+    conversion: new EnquiryConversionService({
+      enquiries,
+      works: new DrizzleDealWorkStore(db),
+      dealsForTx: (tx) => new DrizzlePrivateSaleDealRepository(tx),
+      parties,
+      policy,
+      transactionRunner: input.transactionRunner,
+      events,
+    }),
+    parties: new PrivateSaleDealPartyService({
+      deals,
+      queries,
+      clearance,
+      policy,
+      payments: dealPayments,
+      events,
+    }),
   };
 }

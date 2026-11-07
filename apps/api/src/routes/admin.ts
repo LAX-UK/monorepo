@@ -46,6 +46,7 @@ import {
   attachAdminPaymentsManualReviewRoutes,
 } from "./admin/payments.routes.js";
 import { attachAdminPersonEmailDeliveryRoutes } from "./admin/person-email-delivery.routes.js";
+import { attachAdminPrivateSaleDealRoutes } from "./admin/private-sale-deals.routes.js";
 import { attachAdminPurchaseProblemRoutes } from "./admin/purchase-problems.routes.js";
 import { attachAdminQrCodesRoutes } from "./admin/qr-codes.routes.js";
 import { attachAdminSaleCoverRoutes } from "./admin/sale-cover.routes.js";
@@ -183,6 +184,10 @@ export function createAdminRoutes(
   attachAdminFinanceIssueRoutes(finance, container);
   attachAdminFinanceRoutes(finance, container);
   attachAdminDisputeDeskRoutes(finance, container, guards);
+
+  // Private sale deals are worked by sales and finance alike, so like payments they mount here:
+  // each route carries its own capability guard and the platform shell is not required.
+  attachAdminPrivateSaleDealRoutes(finance, container, guards);
 
   // Failed jobs is shared with finance, who handles the Xero deliveries; each route and the
   // service narrow it to the sources the person's roles cover.

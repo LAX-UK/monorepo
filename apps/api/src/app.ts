@@ -75,6 +75,7 @@ import { createPaymentRoutes } from "./routes/payments.js";
 import { createLegalEntityPayoutStatementRoutes } from "./routes/payout-statements.js";
 import { createAdminPayoutRoutes, createPayoutRoutes } from "./routes/payouts.js";
 import { createPressRoutes } from "./routes/press.js";
+import { createPrivateSaleDealRoutes } from "./routes/private-sale-deals.js";
 import { createQrRoutes } from "./routes/qr.js";
 import { createLegacySaleAlertRoutes } from "./routes/sale-alerts-legacy.js";
 import { createSaleDocumentRoutes } from "./routes/sale-documents.js";
@@ -296,6 +297,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/artists", createArtistRoutes(container, authenticator))
     .route("/stripe-connect", createStripeConnectRoutes(container, authenticator))
     .route("/payouts", createPayoutRoutes(container, authenticator))
+    .route("/private-sales", createPrivateSaleDealRoutes(container, authenticator))
     .route("/admin/payouts", createAdminPayoutRoutes(container, authenticator))
     .route("/webhooks/stripe", createStripeWebhookRoutes(container))
     .route("/webhooks/veriff", createVeriffWebhookRoutes(container))

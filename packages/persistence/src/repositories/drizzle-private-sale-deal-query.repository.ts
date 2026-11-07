@@ -1,0 +1,176 @@
+import type { Database } from "@auction/db";
+import {
+  itemSubmission,
+  legalEntity,
+  privateSaleDeal,
+  privateSaleDealParty,
+} from "@auction/db/schema";
+import { consignmentReference, dealViewCriteria } from "@auction/domain";
+import type { PrivateSaleDealStage } from "@auction/types";
+import { type SQL, and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
+import type {
+  DealWork,
+  IDealWorkStore,
+  IPrivateSaleDealQueryReader,
+  NewDealWork,
+  PrivateSaleDealListFilter,
+  PrivateSaleDealListRow,
+  PrivateSaleDealStageCount,
+} from "../interfaces/private-sale-deal-query.repository.js";
+
+const seller = alias(privateSaleDealParty, "deal_seller");
+const buyer = alias(privateSaleDealParty, "deal_buyer");
+const sellerEntity = alias(legalEntity, "deal_seller_entity");
+const buyerEntity = alias(legalEntity, "deal_buyer_entity");
+
+/** The deal lists staff work from, and the deals a person is named to act in. */
+export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQueryReader {
+  constructor(private readonly db: Database) {}
+
+  async list(filter: PrivateSaleDealListFilter): Promise<PrivateSaleDealListRow[]> {
+    const criteria = dealViewCriteria(filter.view);
+    const oldestFirst = criteria.order === "oldest_first";
+    const conditions: SQL[] = [];
+    if (criteria.stages) {
+      conditions.push(inArray(privateSaleDeal.stage, [...criteria.stages]));
+    }
+    if (criteria.ownedByViewer) {
+      conditions.push(eq(privateSaleDeal.ownerUserId, filter.viewerUserId));
+    }
+    if (filter.after) {
+      const { updatedAt, id } = filter.after;
+      // Keyset on (updatedAt, id), in the direction of the view's order.
+      conditions.push(
+        oldestFirst
+          ? (or(
+              sql`${privateSaleDeal.updatedAt} > ${updatedAt}`,
+              and(eq(privateSaleDeal.updatedAt, updatedAt), sql`${privateSaleDeal.id} > ${id}`),
+            ) as SQL)
+          : (or(
+              sql`${privateSaleDeal.updatedAt} < ${updatedAt}`,
+              and(eq(privateSaleDeal.updatedAt, updatedAt), sql`${privateSaleDeal.id} < ${id}`),
+            ) as SQL),
+      );
+    }
+    const rows = await this.db
+      .select({
+        id: privateSaleDeal.id,
+        reference: privateSaleDeal.reference,
+        stage: privateSaleDeal.stage,
+        itemSubmissionId: privateSaleDeal.itemSubmissionId,
+        workTitle: itemSubmission.title,
+        workNumber: itemSubmission.referenceNumber,
+        sellerName: sellerEntity.displayName,
+        buyerName: buyerEntity.displayName,
+        priceMinor: privateSaleDeal.priceMinor,
+        ownerUserId: privateSaleDeal.ownerUserId,
+        offerExpiresAt: privateSaleDeal.offerExpiresAt,
+        paymentDueAt: privateSaleDeal.paymentDueAt,
+        collectionDueAt: privateSaleDeal.collectionDueAt,
+        updatedAt: privateSaleDeal.updatedAt,
+      })
+      .from(privateSaleDeal)
+      .innerJoin(itemSubmission, eq(itemSubmission.id, privateSaleDeal.itemSubmissionId))
+      .innerJoin(seller, and(eq(seller.dealId, privateSaleDeal.id), eq(seller.role, "seller")))
+      .innerJoin(sellerEntity, eq(sellerEntity.id, seller.legalEntityId))
+      .leftJoin(buyer, and(eq(buyer.dealId, privateSaleDeal.id), eq(buyer.role, "buyer")))
+      .leftJoin(buyerEntity, eq(buyerEntity.id, buyer.legalEntityId))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(
+        oldestFirst ? asc(privateSaleDeal.updatedAt) : desc(privateSaleDeal.updatedAt),
+        oldestFirst ? asc(privateSaleDeal.id) : desc(privateSaleDeal.id),
+      )
+      .limit(filter.limit + 1);
+    return rows.map(({ workNumber, stage, ...row }) => ({
+      ...row,
+      stage: stage as PrivateSaleDealStage,
+      workReference: consignmentReference(workNumber),
+    }));
+  }
+
+  async countByStage(viewerUserId: string): Promise<PrivateSaleDealStageCount[]> {
+    const rows = await this.db
+      .select({
+        stage: privateSaleDeal.stage,
+        total: sql<number>`count(*)::int`,
+        ownedByViewer: sql<number>`count(*) filter (where ${privateSaleDeal.ownerUserId} = ${viewerUserId})::int`,
+      })
+      .from(privateSaleDeal)
+      .groupBy(privateSaleDeal.stage);
+    return rows.map((row) => ({ ...row, stage: row.stage as PrivateSaleDealStage }));
+  }
+
+  async listIdsForActingUser(userId: string, limit: number): Promise<string[]> {
+    const rows = await this.db
+      .selectDistinct({ id: privateSaleDeal.id, updatedAt: privateSaleDeal.updatedAt })
+      .from(privateSaleDeal)
+      .innerJoin(privateSaleDealParty, eq(privateSaleDealParty.dealId, privateSaleDeal.id))
+      .where(eq(privateSaleDealParty.actingUserId, userId))
+      .orderBy(desc(privateSaleDeal.updatedAt), desc(privateSaleDeal.id))
+      .limit(limit);
+    return rows.map((row) => row.id);
+  }
+
+  async findWorkSummary(
+    itemSubmissionId: string,
+  ): Promise<{ title: string; reference: string; legalEntityId: string } | null> {
+    const [row] = await this.db
+      .select({
+        title: itemSubmission.title,
+        referenceNumber: itemSubmission.referenceNumber,
+        legalEntityId: itemSubmission.legalEntityId,
+      })
+      .from(itemSubmission)
+      .where(eq(itemSubmission.id, itemSubmissionId));
+    return row
+      ? {
+          title: row.title,
+          reference: consignmentReference(row.referenceNumber),
+          legalEntityId: row.legalEntityId,
+        }
+      : null;
+  }
+}
+
+/** Opens and finds the works deals are made of. */
+export class DrizzleDealWorkStore implements IDealWorkStore {
+  constructor(private readonly db: Database) {}
+
+  async createDraftInTransaction(tx: Database, input: NewDealWork): Promise<DealWork> {
+    const [row] = await tx
+      .insert(itemSubmission)
+      .values({
+        legalEntityId: input.legalEntityId,
+        title: input.title,
+        description: input.description,
+        medium: input.medium,
+        dimensions: input.dimensions,
+        submittedByUserId: input.submittedByUserId,
+        status: "draft",
+      })
+      .returning();
+    if (!row) throw new Error("the work was not created");
+    return toWork(row);
+  }
+
+  async findByReference(reference: string): Promise<DealWork | null> {
+    const match = /^C-?(\d{1,15})$/i.exec(reference.trim());
+    if (!match?.[1]) return null;
+    const [row] = await this.db
+      .select()
+      .from(itemSubmission)
+      .where(eq(itemSubmission.referenceNumber, Number(match[1])));
+    return row ? toWork(row) : null;
+  }
+}
+
+function toWork(row: typeof itemSubmission.$inferSelect): DealWork {
+  return {
+    id: row.id,
+    reference: consignmentReference(row.referenceNumber),
+    legalEntityId: row.legalEntityId,
+    submittedByUserId: row.submittedByUserId,
+    title: row.title,
+  };
+}

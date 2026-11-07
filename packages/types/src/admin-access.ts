@@ -373,9 +373,32 @@ export const PRIVATE_SALE_DEALS_MANAGE_ACCESS: CapabilityRequirement = {
   anyOf: ["platform.admin.full", "private_sale.manage"],
 };
 
-/** Read a private sale deal: those who run it, and Compliance, who decide its checks. */
+/**
+ * Read a private sale deal: those who run it, those who answer its enquiries, Finance, who
+ * invoice it, and Compliance, who decide its checks.
+ */
 export const PRIVATE_SALE_DEALS_READ_ACCESS: CapabilityRequirement = {
-  anyOf: ["platform.admin.full", "private_sale.manage", "aml.review", "compliance.mlro"],
+  anyOf: [
+    "platform.admin.full",
+    "private_sale.manage",
+    "enquiries.private_sale.read",
+    "finance.read",
+    "aml.review",
+    "compliance.mlro",
+  ],
+};
+
+/**
+ * Set a deal's VAT treatment, issue its invoice and return the buyer's money. These move money,
+ * so they follow platform-wide finance write, like releasing or refunding a held payment.
+ */
+export const PRIVATE_SALE_DEALS_FINANCE_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "finance.platform.write"],
+};
+
+/** Hand a paid work over (collection or shipping), through the same fulfilment role as a lot. */
+export const PRIVATE_SALE_DEALS_RELEASE_ACCESS: CapabilityRequirement = {
+  anyOf: ["platform.admin.full", "operations.fulfilment"],
 };
 
 /** Choose which specialist receives each department's enquiries. */

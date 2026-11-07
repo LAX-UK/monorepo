@@ -9,3 +9,4 @@ export * from "./policy.js";
 export * from "./settlement-amounts.js";
 export * from "./terms.js";
 export * from "./transitions.js";
+export * from "./views.js";

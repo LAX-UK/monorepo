@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { artworkRegister } from "./artwork-register.js";
 import { user } from "./auth.js";
 import { itemSubmission } from "./item-submissions.js";
 import { legalEntity } from "./legal-entities.js";
@@ -38,8 +39,10 @@ export const privateSaleDeal = pgTable(
     itemSubmissionId: uuid("item_submission_id")
       .notNull()
       .references(() => itemSubmission.id, { onDelete: "restrict" }),
-    /** The artwork register entry for the work. Optional, and not a foreign key: the register is a separate service. */
-    artworkRegisterId: text("artwork_register_id"),
+    /** The artwork register entry for the work. Optional: a deal may start before the register holds the work. */
+    artworkRegisterId: uuid("artwork_register_id").references(() => artworkRegister.id, {
+      onDelete: "restrict",
+    }),
     sourceEnquiryId: uuid("source_enquiry_id").references(() => marketingEnquiry.id, {
       onDelete: "set null",
     }),
@@ -76,6 +79,9 @@ export const privateSaleDeal = pgTable(
     uniqueIndex("private_sale_deal_reference_uidx").on(table.reference),
     index("private_sale_deal_submission_idx").on(table.itemSubmissionId),
     index("private_sale_deal_owner_idx").on(table.ownerUserId),
+    index("private_sale_deal_artwork_register_idx")
+      .on(table.artworkRegisterId)
+      .where(sql`${table.artworkRegisterId} IS NOT NULL`),
     index("private_sale_deal_open_idx")
       .on(table.updatedAt)
       .where(sql`${table.stage} NOT IN ('settled', 'cancelled')`),

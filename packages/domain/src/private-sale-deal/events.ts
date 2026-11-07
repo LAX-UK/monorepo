@@ -1,5 +1,6 @@
 import type {
   PrivateSaleDealStage,
+  PrivateSalePartyRole,
   PrivateSalePaymentRail,
   PrivateSaleStageChange,
 } from "@auction/types";
@@ -21,6 +22,18 @@ export type PrivateSaleDealEvent =
         from: PrivateSaleDealStage;
         to: PrivateSaleDealStage;
       };
+    }
+  | {
+      eventType: "private_sale_deal.terms_changed";
+      payload: { dealId: string; reference: string; fields: string[] };
+    }
+  | {
+      eventType: "private_sale_deal.party_named";
+      payload: { dealId: string; reference: string; role: PrivateSalePartyRole };
+    }
+  | {
+      eventType: "private_sale_deal.terms_accepted";
+      payload: { dealId: string; reference: string; role: PrivateSalePartyRole; version: string };
     }
   | {
       eventType: "private_sale_deal.payment_started";
@@ -67,6 +80,37 @@ export function dealStageChangedEvent(
   return {
     eventType: "private_sale_deal.stage_changed",
     payload: { dealId: deal.id, reference: deal.reference, from: change.from, to: change.to },
+  };
+}
+
+/** Which terms changed, by name. The values stay on the deal. */
+export function dealTermsChangedEvent(
+  deal: DealRef,
+  fields: readonly string[],
+): PrivateSaleDealEvent {
+  return {
+    eventType: "private_sale_deal.terms_changed",
+    payload: { dealId: deal.id, reference: deal.reference, fields: [...fields] },
+  };
+}
+
+export function dealPartyNamedEvent(
+  deal: DealRef,
+  role: PrivateSalePartyRole,
+): PrivateSaleDealEvent {
+  return {
+    eventType: "private_sale_deal.party_named",
+    payload: { dealId: deal.id, reference: deal.reference, role },
+  };
+}
+
+export function dealTermsAcceptedEvent(
+  deal: DealRef,
+  accepted: { role: PrivateSalePartyRole; version: string },
+): PrivateSaleDealEvent {
+  return {
+    eventType: "private_sale_deal.terms_accepted",
+    payload: { dealId: deal.id, reference: deal.reference, ...accepted },
   };
 }
 

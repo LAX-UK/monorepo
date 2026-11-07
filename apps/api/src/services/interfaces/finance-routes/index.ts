@@ -35,6 +35,7 @@ export type {
 } from "./finance-stripe-connect-http.js";
 export type { IXeroWebhookIngressApplicationService } from "./finance-xero-webhook-ingress.js";
 
+import type { IPrivateSaleDealParties } from "../private-sale-deal-desk.js";
 import type { IFinanceAccountingCronApplicationService } from "./finance-accounting-cron.js";
 import type { IBuyerPaymentHttpApplicationService } from "./finance-buyer-payment-http.js";
 import type { IEntityStaffPaymentApplicationService } from "./finance-entity-staff-payment.js";
@@ -47,6 +48,8 @@ import type { IStripeWebhookIngressApplicationService } from "./finance-stripe-w
 import type { IXeroWebhookIngressApplicationService } from "./finance-xero-webhook-ingress.js";
 
 export type FinanceRouteServices = {
+  /** A buyer's and a seller's own private sale deals. */
+  privateSaleDealParties: IPrivateSaleDealParties;
   payoutStatement: IPayoutStatementApplicationService;
   sellerPayoutHttp: ISellerPayoutHttpApplicationService;
   stripeConnectHttp: IStripeConnectHttpApplicationService;

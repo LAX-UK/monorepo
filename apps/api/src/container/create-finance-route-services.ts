@@ -33,6 +33,7 @@ import type {
   IPaymentBuyerService,
 } from "../services/interfaces/payment-service.js";
 import type { IPayoutSellerService } from "../services/interfaces/payout.js";
+import type { IPrivateSaleDealParties } from "../services/interfaces/private-sale-deal-desk.js";
 import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
 import type { IDealPayoutSettler } from "../services/private-sale-deal/deal-payout-settlement.service.js";
 import type { SourceOfFundsDocumentCollectionService } from "../services/source-of-funds/source-of-funds-document-collection.service.js";
@@ -41,6 +42,7 @@ import type { StripePaymentWebhookService } from "../services/stripe-payment-web
 export type CreateFinanceRouteServicesInput = {
   /** Settles private sale deals whose payout was paid, after each bulk payout run. */
   dealPayoutSettler: IDealPayoutSettler;
+  privateSaleDealParties: IPrivateSaleDealParties;
   redis: Redis;
   legalEntityRepository: ILegalEntityRepository;
   payoutRepository: IPayoutRepository;
@@ -71,6 +73,7 @@ export function createFinanceRouteServices(
   input: CreateFinanceRouteServicesInput,
 ): FinanceRouteServices {
   return {
+    privateSaleDealParties: input.privateSaleDealParties,
     payoutStatement: new PayoutStatementApplicationService(
       input.legalEntityRepository,
       input.payoutRepository,
