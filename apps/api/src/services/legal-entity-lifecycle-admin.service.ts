@@ -58,6 +58,16 @@ function resolveStatusReason(
   return null;
 }
 
+/** The transitions that explain themselves to the members; every other one clears the message. */
+const CLIENT_MESSAGE_OPS: ReadonlySet<LifecycleAdminOp> = new Set(["restrict", "reject"]);
+
+/** The message members read for this transition, or `null` when it carries none. */
+function resolveClientMessage(op: LifecycleAdminOp, clientMessage?: string | null): string | null {
+  if (!CLIENT_MESSAGE_OPS.has(op)) return null;
+  const trimmed = clientMessage?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 /** The Connect promoter's readiness rule, so a lifted restriction never outruns Stripe. */
 function isConnectReady(row: LegalEntityLifecycleRow): boolean {
   return isStripeAccountConfigured(row);
@@ -76,6 +86,7 @@ export class LegalEntityLifecycleAdminService {
     entityId: string,
     op: LifecycleAdminOp,
     reason?: string | null,
+    clientMessage?: string | null,
   ): Promise<Result<{ id: string; status: LegalEntityStatus }, LegalEntityLifecycleFailure>> {
     const pre = await this.lifecycleRepo.findById(entityId);
     if (!pre) {
@@ -132,6 +143,7 @@ export class LegalEntityLifecycleAdminService {
         actorUserId,
         nextStatus: navLocked.next,
         statusReason: resolveStatusReason(op, navLocked, reason),
+        clientMessage: resolveClientMessage(op, clientMessage),
         payHeldSince: payHeldSinceAfter({
           from: lockedStatus,
           to: navLocked.next,

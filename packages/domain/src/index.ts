@@ -55,6 +55,14 @@ export {
   type OrganisationStatePolicy,
 } from "./organisation-state-policy.js";
 export {
+  ORGANISATION_ABILITY_KEYS,
+  type OrganisationAbility,
+  type OrganisationAbilityKey,
+  type OrganisationRecoveryKind,
+  organisationAbilities,
+  organisationRecoveryKind,
+} from "./organisation-recovery.js";
+export {
   holdStartAt,
   identityHeldSinceAfter,
   payHeldSinceAfter,

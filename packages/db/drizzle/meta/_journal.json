@@ -2213,6 +2213,13 @@
       "when": 1802851200000,
       "tag": "0321_alert_match_matched_at_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 317,
+      "version": "7",
+      "when": 1803110400000,
+      "tag": "0324_legal_entity_client_message",
+      "breakpoints": true
     }
   ]
 }

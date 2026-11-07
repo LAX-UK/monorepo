@@ -27,8 +27,9 @@ export class AdminLegalEntityLifecycleApplicationService
     entityId: string,
     op: LifecycleAdminOp,
     reason?: string | null,
+    clientMessage?: string | null,
   ): Promise<Result<{ id: string; status: LegalEntityStatus }, LegalEntityLifecycleFailure>> {
-    return this.lifecycle.runTransition(userId, entityId, op, reason);
+    return this.lifecycle.runTransition(userId, entityId, op, reason, clientMessage);
   }
 
   listDocuments(entityId: string) {

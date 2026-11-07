@@ -19,7 +19,12 @@ const reasonBodySchema = z.object({
   reason: z.string().min(3).max(4000),
 });
 
-const rejectBodySchema = reasonBodySchema.extend({
+/** What members read about a restriction or refusal; optional, and empty means none. */
+const clientMessageSchema = z.string().trim().max(600).optional();
+
+const restrictBodySchema = reasonBodySchema.extend({ clientMessage: clientMessageSchema });
+
+const rejectBodySchema = restrictBodySchema.extend({
   confirmationPhrase: z.literal("REJECT"),
 });
 
@@ -43,10 +48,17 @@ async function runLifecycle(
   entityId: string,
   op: LifecycleAdminOp,
   reason?: string | null,
+  clientMessage?: string | null,
 ) {
   const userId = c.get("userId");
   if (!userId) return c.json({ error: "Unauthorized" }, 401);
-  const result = await legalEntityLifecycle.runTransition(userId, entityId, op, reason);
+  const result = await legalEntityLifecycle.runTransition(
+    userId,
+    entityId,
+    op,
+    reason,
+    clientMessage,
+  );
   return result.match(
     (data) => c.json({ data }),
     (e) => c.json({ error: e.code, message: e.message }, asHttpStatus(e.status)),
@@ -141,11 +153,11 @@ export function attachAdminLegalEntityLifecycleRoutes(
     requireLegalEntityWrite,
     guards.requireStepUp,
     zValidator("param", legalEntityIdParamSchema),
-    zValidator("json", reasonBodySchema),
+    zValidator("json", restrictBodySchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      const { reason } = c.req.valid("json");
-      return runLifecycle(c, legalEntityLifecycle, id, "restrict", reason);
+      const { reason, clientMessage } = c.req.valid("json");
+      return runLifecycle(c, legalEntityLifecycle, id, "restrict", reason, clientMessage);
     },
   );
 
@@ -169,8 +181,8 @@ export function attachAdminLegalEntityLifecycleRoutes(
     zValidator("json", rejectBodySchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      const { reason } = c.req.valid("json");
-      return runLifecycle(c, legalEntityLifecycle, id, "reject", reason);
+      const { reason, clientMessage } = c.req.valid("json");
+      return runLifecycle(c, legalEntityLifecycle, id, "reject", reason, clientMessage);
     },
   );
 

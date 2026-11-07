@@ -61,6 +61,8 @@ export type LegalEntity = {
   statusChangedAt: Date | null;
   statusChangedByUserId: string | null;
   statusReason?: string | null;
+  /** Staff's message to the members about a restriction or refusal; `null` when none. */
+  clientMessage?: string | null;
   stripeConnectAccountId: string | null;
   stripeCustomerId: string | null;
   stripeConnectChargesEnabled: boolean;
@@ -85,6 +87,7 @@ export type LegalEntitySummary = {
   subkind: LegalEntitySubkind;
   status: LegalEntityStatus;
   statusReason?: string | null;
+  clientMessage?: string | null;
   role: LegalEntityMemberRole;
   isPrimaryAdmin: boolean;
   /** synthetic acting row when a platform admin impersonates. */
