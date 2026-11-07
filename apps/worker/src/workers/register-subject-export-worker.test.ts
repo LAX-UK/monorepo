@@ -14,6 +14,7 @@ const bullmq = vi.hoisted(() => ({
 
 vi.mock("bullmq", () => ({
   UnrecoverableError: class UnrecoverableError extends Error {},
+  DelayedError: class DelayedError extends Error {},
   Queue: class {
     constructor(name: string) {
       bullmq.queueNames.push(name);
@@ -31,6 +32,12 @@ vi.mock("bullmq", () => ({
   },
 }));
 
+const runtime = vi.hoisted(() => ({ run: vi.fn() }));
+vi.mock("../subject-export/create-subject-export-runtime.js", () => ({
+  createSubjectExportRuntime: () => ({ assembler: { run: runtime.run }, ledger: {}, store: {} }),
+}));
+
+const { DelayedError } = await import("bullmq");
 const { registerSubjectExportWorker } = await import("./register-subject-export-worker.js");
 
 const CONFIGURED = {
@@ -78,11 +85,11 @@ describe("registerSubjectExportWorker", () => {
     await expect(handle.close()).resolves.toBeUndefined();
   });
 
-  it("consumes the queue two copies at a time and schedules the hourly purge", () => {
+  it("consumes the queue one copy at a time and schedules the hourly purge", () => {
     for (const [key, value] of Object.entries(CONFIGURED)) vi.stubEnv(key, value);
     const handle = registerSubjectExportWorker(deps());
 
-    expect(bullmq.workerOptions[0]).toMatchObject({ concurrency: 2 });
+    expect(bullmq.workerOptions[0]).toMatchObject({ concurrency: 1 });
     expect(handle.errorHandlers.map((entry) => entry.queue)).toEqual(["subject-data-export"]);
     expect(handle.dlqHandlers.map((entry) => entry.name)).toEqual(["subject-data-export"]);
     expect(bullmq.queueAdd).toHaveBeenCalledWith(
@@ -111,5 +118,25 @@ describe("registerSubjectExportWorker", () => {
       { exportId, subjectId: "subject-1" },
       { jobId: `subject-data-export__${exportId}` },
     );
+  });
+
+  it("moves a copy to the delayed set, without failing it, when the temp disk is low", async () => {
+    for (const [key, value] of Object.entries(CONFIGURED)) vi.stubEnv(key, value);
+    const { SubjectExportDeferredError } = await import("../subject-export/export-disk-guard.js");
+    runtime.run.mockRejectedValueOnce(new SubjectExportDeferredError(1, 2));
+    registerSubjectExportWorker(deps());
+    const moveToDelayed = vi.fn().mockResolvedValue(undefined);
+    const job = {
+      name: "assemble",
+      data: { exportId: "e", subjectId: "s" },
+      opts: { attempts: 13 },
+      timestamp: 0,
+      attemptsMade: 0,
+      attemptsStarted: 1,
+      moveToDelayed,
+    };
+    const processor = bullmq.processors.at(-1) as (j: unknown, token?: string) => Promise<unknown>;
+    await expect(processor(job, "tok")).rejects.toBeInstanceOf(DelayedError);
+    expect(moveToDelayed).toHaveBeenCalledWith(expect.any(Number), "tok");
   });
 });
