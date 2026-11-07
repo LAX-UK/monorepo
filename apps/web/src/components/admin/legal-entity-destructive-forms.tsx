@@ -1,5 +1,6 @@
 "use client";
 
+import { ClientMessageField } from "@/components/admin/legal-entities/client-message-field";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import {
   legalEntityArchiveAction,
@@ -66,6 +67,7 @@ export function LegalEntityRejectForm({ legalEntityId, displayName }: FormProps)
   const confirm = useStaffConfirm();
   const id = useId();
   const [reason, setReason] = useState("");
+  const [clientMessage, setClientMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const ask = () => {
@@ -86,6 +88,7 @@ export function LegalEntityRejectForm({ legalEntityId, displayName }: FormProps)
         run(legalEntityRejectAction, {
           legalEntityId,
           reason: reason.trim(),
+          clientMessage: clientMessage.trim(),
           confirmationPhrase: "REJECT",
         }),
       success: `${displayName} rejected`,
@@ -104,6 +107,7 @@ export function LegalEntityRejectForm({ legalEntityId, displayName }: FormProps)
         error={error}
         description="Why this organisation is rejected. Kept in the audit log."
       />
+      <ClientMessageField purpose="to explain why it wasn't approved" onChange={setClientMessage} />
       <div>
         <StaffButton variant="danger-secondary" onClick={ask}>
           Reject organisation

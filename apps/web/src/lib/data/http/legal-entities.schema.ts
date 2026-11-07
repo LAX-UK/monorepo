@@ -13,6 +13,9 @@ export const legalEntitySummarySchema = z
       status: row.status as LegalEntityStatus,
       role: row.role as LegalEntityMemberRole,
       isPrimaryAdmin: Boolean(row.isPrimaryAdmin),
+      ...(typeof row.clientMessage === "string" && row.clientMessage.trim() !== ""
+        ? { clientMessage: row.clientMessage }
+        : {}),
       ...(row.isImpersonation === true ? { isImpersonation: true as const } : {}),
       ...(row.welcomePending === true ? { welcomePending: true as const } : {}),
     }),
