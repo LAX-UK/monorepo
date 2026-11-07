@@ -4,7 +4,7 @@
 -- The build blocks writes to each match table for the few seconds it takes at current table sizes;
 -- the lock timeout makes it fail fast, rather than queue behind a long transaction, and it is safe to
 -- run again.
-SET LOCAL lock_timeout = '5s';
+SET LOCAL lock_timeout = '30s';
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "bid_alert_match_matched_at_idx" ON "bid_alert_match" USING btree ("matched_at");
 --> statement-breakpoint
