@@ -119,8 +119,7 @@ export function mapSaleAuthorityRequest(
 
 /**
  * Artist applications and sale-authority requests the person made. A person who never applied has
- * none, and the category is then empty. Payout and sale ledgers are LAX's accounting records and
- * are not part of this category.
+ * none, and the category is then empty. Payouts are in the `selling-payouts` category.
  */
 export class SellingCategory extends SourcedExportCategory {
   readonly id = "selling";

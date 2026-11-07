@@ -25,7 +25,6 @@ const FORBIDDEN_TABLES = [
   "shopStaffSavedView",
   "shopDispute", // the processor's dispute record
   "shopProcessedPaymentEvent",
-  "shopPayoutLedger", // the seller's accounting side
   "shopPayeeConnectAccount",
   "shopPayeeCompliance",
   "shopClientAssignment", // which broker handles the client
@@ -61,6 +60,15 @@ const FORBIDDEN_COLUMNS = [
   "shopOrderLine.swappedFromEditionId",
   "shopFulfilment.storageLocation",
   "shopOrder.buyerPartyId",
+  // the seller's payout ledger: staff payment handling, holds and accounting flags
+  "shopPayoutLedger.paidBySubjectId",
+  "shopPayoutLedger.blockedReason",
+  "shopPayoutLedger.sellerAcquisitionSource",
+  "shopPayoutLedger.laxActedAsAgent",
+  "shopPayoutLedger.arrApplicable",
+  "shopThirdPartySale.buyerPartyId",
+  "shopThirdPartySale.brokerPartyId",
+  "shopThirdPartySale.recordedBySubjectId",
   // staff triage and notes
   "shopArtworkInterest.assigneeSubject",
   "shopArtworkInterest.unsubscribeTokenHash",
@@ -108,6 +116,14 @@ describe("Shop subject export: what each reader may read", () => {
     }
   });
 
+  it("reads the payout ledger only in the selling payouts category", () => {
+    for (const { name, text: source } of sources) {
+      expect(references(source, "shopPayoutLedger"), name).toBe(
+        name === "selling-payouts.category.ts",
+      );
+    }
+  });
+
   it("selects named columns, never a whole row", () => {
     for (const { name, text: source } of sources) {
       expect(source.match(/\.select\(\)/g) ?? [], name).toEqual([]);
@@ -125,6 +141,9 @@ describe("Shop subject export: what each reader may read", () => {
     expect(text("enquiries.category.ts")).toContain("eq(shopArtworkInterest.identitySubjectId, s)");
     expect(text("enquiries.category.ts")).toContain("eq(shopGeneralEnquiry.identitySubjectId, s)");
     expect(text("saved-works.category.ts")).toContain("eq(shopSavedArtwork.identitySubjectId, s)");
+    expect(text("selling-payouts.category.ts")).toContain(
+      "inArray(shopPayoutLedger.ownerPartyId, partyIds)",
+    );
     expect(text("selling.category.ts")).toContain(
       "eq(shopArtistApplication.applicantSubjectId, s)",
     );
