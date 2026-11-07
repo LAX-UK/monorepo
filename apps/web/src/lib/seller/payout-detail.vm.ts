@@ -5,6 +5,7 @@ import { formatDeduction } from "@/lib/money/currency";
 import { addMoneyStrings } from "@auction/domain";
 import type { PayoutStatus } from "@auction/types";
 import { payoutStatuses } from "@auction/types";
+import { formatPayoutReference } from "./payout-reference";
 import { PAYOUT_STATUS_BADGE } from "./sold-and-payouts-list";
 
 /** Lines other than sales, in the seller's words. */
@@ -89,7 +90,7 @@ export function payoutDetailVm(
           : null;
   return {
     title: `Payout of ${money(detail.netAmount)}`,
-    subtitle: `Sales ${period} · reference ${detail.id.slice(0, 8).toUpperCase()}`,
+    subtitle: `Sales ${period} · reference ${formatPayoutReference(detail)}`,
     status,
     statusNote,
     gross: money(detail.grossAmount),
