@@ -8,13 +8,13 @@ import {
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
-import type { LegalEntity, LegalEntitySummary } from "@auction/types";
+import type { LegalEntitySummary, MemberLegalEntity } from "@auction/types";
 import { createOrganisationHubGateway } from "./organisation-hub.gateway.server";
 
 /** Membership + entity detail for a single organisation the user can access. */
 export type PerOrganisationContext = {
   member: LegalEntitySummary;
-  entity: LegalEntity | null;
+  entity: MemberLegalEntity | null;
 };
 
 export type OrgAccessResult =

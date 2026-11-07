@@ -4,6 +4,8 @@ import type { StripeConnectRequirementError } from "@auction/types";
 export type ConnectLegalEntityFields = {
   status: string;
   stripeConnectAccountId?: string | null;
+  /** Members are told whether an account is linked, not its id. */
+  stripeConnectAccountLinked?: boolean;
   stripeConnectChargesEnabled?: boolean;
   stripeConnectPayoutsEnabled: boolean;
   stripeConnectRequirementsCurrentlyDue?: string[] | null;

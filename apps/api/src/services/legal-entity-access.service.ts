@@ -1,15 +1,19 @@
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ActingContextCookieV1, StaffRoles } from "@auction/types";
-import type { LegalEntity, LegalEntityMemberRole } from "@auction/types";
+import type { LegalEntity, LegalEntityMemberRole, MemberLegalEntity } from "@auction/types";
 import { canAccessPlatformAdminRoutes, normalizeUserRoleOrClient } from "@auction/types";
+import { toMemberLegalEntity } from "../lib/member-legal-entity.js";
 import type { ImpersonationAuditService } from "./impersonation-audit.service.js";
 import type { ImpersonationSessionService } from "./impersonation-session.service.js";
 
-export type LegalEntityDetailMemberPayload = LegalEntity & {
+/** A member reads the listed fields only; the full record is for staff. */
+export type LegalEntityDetailMemberPayload = MemberLegalEntity & {
   membership: { role: LegalEntityMemberRole; isPrimaryAdmin: boolean };
 };
 
+/** Staff viewing as the client read the full record, plus the facts members are told. */
 export type LegalEntityDetailImpersonationPayload = LegalEntity & {
+  stripeConnectAccountLinked: boolean;
   membership: {
     role: "admin";
     isPrimaryAdmin: true;
@@ -55,7 +59,7 @@ export class LegalEntityAccessService {
         status: 200,
         body: {
           data: {
-            ...entity,
+            ...toMemberLegalEntity(entity),
             membership: {
               role: membership.role,
               isPrimaryAdmin: membership.isPrimaryAdmin,
@@ -107,6 +111,7 @@ export class LegalEntityAccessService {
           body: {
             data: {
               ...entity,
+              stripeConnectAccountLinked: entity.stripeConnectAccountId !== null,
               membership: {
                 role: "admin",
                 isPrimaryAdmin: true,
