@@ -812,7 +812,9 @@ export function createContainer(env: Env): Container {
           },
         },
       }),
-      stepUp: new StaffStepUpService(identityIssuer),
+      stepUp: new StaffStepUpService(identityIssuer, {
+        maxAgeSeconds: env.STAFF_STEP_UP_MAX_AGE_SECONDS,
+      }),
       idempotencyStore: new RedisIdempotencyStore(infra.redis),
     },
     finance,

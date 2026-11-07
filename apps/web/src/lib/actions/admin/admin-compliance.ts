@@ -6,6 +6,7 @@ import { getWriteContainer } from "@/lib/data/write-container.server";
 import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import { normalizeApiErrorMessage } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -22,6 +23,18 @@ function serviceErrorMessage(body: unknown, fallback: string, status: number): s
   } catch {
     return `${fallback} (${status})`;
   }
+}
+
+/** A decision the API refused because the sign-in is too old; the page then asks to sign in again. */
+function staleSignIn(res: {
+  status: number;
+  body?: unknown;
+  code?: string;
+}): ActionResult<never> | null {
+  const bodyCode =
+    res.body && typeof res.body === "object" ? (res.body as { code?: unknown }).code : undefined;
+  if (res.status !== 403 || (res.code ?? bodyCode) !== STAFF_STEP_UP_REQUIRED) return null;
+  return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
 }
 
 const amlTriageInput = z.object({
@@ -95,7 +108,10 @@ export async function amlDecideAction(input: unknown): Promise<ActionResult<void
       notes || undefined,
     );
     if (!res.ok) {
-      return actionFailure(serviceErrorMessage(res.body, "Decision failed", res.status));
+      return (
+        staleSignIn(res) ??
+        actionFailure(serviceErrorMessage(res.body, "Decision failed", res.status))
+      );
     }
 
     revalidatePath("/admin/compliance/aml");
@@ -149,7 +165,10 @@ export async function sofDecideAction(input: unknown): Promise<ActionResult<void
       notes || undefined,
     );
     if (!res.ok) {
-      return actionFailure(serviceErrorMessage(res.body, "Decision failed", res.status));
+      return (
+        staleSignIn(res) ??
+        actionFailure(serviceErrorMessage(res.body, "Decision failed", res.status))
+      );
     }
 
     revalidatePath("/admin/compliance/source-of-funds");
@@ -173,7 +192,10 @@ export async function sofReopenAction(input: unknown): Promise<ActionResult<void
     const { caseId } = parsed.data;
     const res = await getWriteContainer().adminCompliance.sofReopen(caseId);
     if (!res.ok) {
-      return actionFailure(serviceErrorMessage(res.body, "Reopen failed", res.status));
+      return (
+        staleSignIn(res) ??
+        actionFailure(serviceErrorMessage(res.body, "Reopen failed", res.status))
+      );
     }
 
     revalidatePath("/admin/compliance/source-of-funds");

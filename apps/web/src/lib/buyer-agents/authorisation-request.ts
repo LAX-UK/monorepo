@@ -1,3 +1,4 @@
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import type { BuyerAgentAuthorisationView } from "@auction/types";
 import {
   type AuthorisationDraft,
@@ -9,7 +10,7 @@ import {
 
 export type AuthorisationActionResult =
   | { ok: true; authorisation: BuyerAgentAuthorisationView }
-  | { ok: false; error: string; fieldErrors?: AuthorisationDraftErrors };
+  | { ok: false; error: string; fieldErrors?: AuthorisationDraftErrors; errorCode?: string };
 
 /** Plain words for the API's refusal codes, shared by the client and staff actions. */
 const API_ERROR_COPY: Record<string, string> = {
@@ -31,8 +32,12 @@ async function readResult(res: Response, fallback: string): Promise<Authorisatio
   const body = (await res.json().catch(() => null)) as {
     data?: BuyerAgentAuthorisationView;
     error?: string;
+    code?: string;
   } | null;
   if (res.ok && body?.data) return { ok: true, authorisation: body.data };
+  if (res.status === 403 && body?.code === STAFF_STEP_UP_REQUIRED) {
+    return { ok: false, error: "Recent sign-in required", errorCode: STAFF_STEP_UP_REQUIRED };
+  }
   return { ok: false, error: authorisationErrorMessage(body?.error, fallback) };
 }
 
