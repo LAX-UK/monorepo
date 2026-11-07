@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { focusPageHeading } from "./focus-page-heading";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { focusPageHeading, focusPageHeadingWhenSettled } from "./focus-page-heading";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -22,5 +22,28 @@ describe("focusPageHeading", () => {
   it("does nothing when there is no heading", () => {
     document.body.innerHTML = "<main><p>Hello</p></main>";
     expect(focusPageHeading()).toBe(false);
+  });
+});
+
+describe("focusPageHeadingWhenSettled", () => {
+  it("puts focus back on the heading if the page drops it while loading", () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = "<main><h1>Home</h1></main>";
+    focusPageHeadingWhenSettled();
+    expect(document.activeElement?.textContent).toBe("Home");
+    (document.activeElement as HTMLElement).blur();
+    vi.advanceTimersByTime(150);
+    expect(document.activeElement?.textContent).toBe("Home");
+    vi.useRealTimers();
+  });
+
+  it("leaves focus alone once something else has it", () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = '<main><h1>Home</h1><button type="button">Go</button></main>';
+    focusPageHeadingWhenSettled();
+    document.querySelector("button")?.focus();
+    vi.advanceTimersByTime(2000);
+    expect(document.activeElement?.textContent).toBe("Go");
+    vi.useRealTimers();
   });
 });

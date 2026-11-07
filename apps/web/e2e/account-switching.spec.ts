@@ -143,18 +143,18 @@ test.describe("account switching on the production build @roles", () => {
     await buyerLogin(page);
     const { personal, organisation } = await accountsOf(page);
     await useAccountInThisBrowser(context, origin, personal.id);
-    await page.goto("/sales");
+    await page.goto("/about");
     await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
 
     await clickAccountMenuItem(page, new RegExp(organisation.name));
 
-    // The sales page is the same for every account, so the person stays on it; the root greeting
+    // The About page is the same for every account, so the person stays on it; the root greeting
     // still speaks, in a polite live region, and does not linger on later pages.
     await expect(switchNotice(page)).toContainText(`Now acting as ${organisation.name}`, {
       timeout: 30_000,
     });
     await expect(switchNotice(page)).toHaveAttribute("aria-live", "polite");
-    expect(pathOf(page)).toBe("/sales");
+    expect(pathOf(page)).toBe("/about");
     const cookies = await context.cookies(origin);
     expect(cookies.find((cookie) => cookie.name === ACTING_COOKIE)?.value).not.toBe(personal.id);
     expect(cookies.find((cookie) => cookie.name === "lax_account_notice")).toBeUndefined();
@@ -164,7 +164,7 @@ test.describe("account switching on the production build @roles", () => {
     await expect(switchNotice(page)).toContainText("Now using your personal account", {
       timeout: 30_000,
     });
-    expect(pathOf(page)).toBe("/sales");
+    expect(pathOf(page)).toBe("/about");
   });
 
   test("a page only one account has opens the other account's first page", async ({
@@ -328,6 +328,8 @@ test.describe("account switching on the production build @roles", () => {
     await buyerLogin(page);
     const { personal, organisation } = await accountsOf(page);
     await useAccountInThisBrowser(context, origin, personal.id);
+    // Sign-in may still be settling onto its landing page; wait for it before asking for this one.
+    await page.waitForLoadState("networkidle");
     await page.goto("/organisations");
     await expect(workspaceSwitcher(page)).toHaveCount(0);
     const switchRequests = countRequestsTo(page, "/switch-account");

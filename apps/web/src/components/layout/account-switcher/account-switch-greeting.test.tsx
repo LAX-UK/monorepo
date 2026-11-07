@@ -13,7 +13,9 @@ vi.mock("@/lib/navigation/account-notice-cookie.client", () => ({
 vi.mock("@/lib/legal-entity/client-acting-context", () => ({
   getClientActingLegalEntityId: () => actingId.value,
 }));
-vi.mock("@/lib/ui/focus-page-heading", () => ({ focusPageHeading: () => focusPageHeading() }));
+vi.mock("@/lib/ui/focus-page-heading", () => ({
+  focusPageHeadingWhenSettled: () => focusPageHeading(),
+}));
 
 import { AccountSwitchGreeting, GREETING_SHOWN_MS } from "./account-switch-greeting";
 

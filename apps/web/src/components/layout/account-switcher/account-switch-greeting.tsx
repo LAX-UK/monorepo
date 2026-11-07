@@ -10,7 +10,7 @@ import {
   clearAccountNotice,
   readAccountNotice,
 } from "@/lib/navigation/account-notice-cookie.client";
-import { focusPageHeading } from "@/lib/ui/focus-page-heading";
+import { focusPageHeadingWhenSettled } from "@/lib/ui/focus-page-heading";
 import { useEffect, useState } from "react";
 import { AccountToast } from "./account-toast";
 
@@ -47,7 +47,7 @@ export function AccountSwitchGreeting() {
       detail={accountNoticeDetail(chosen, accountOf) ?? undefined}
       autoDismissMs={GREETING_SHOWN_MS}
       testId="account-switch-greeting"
-      onAnnounced={focusPageHeading}
+      onAnnounced={focusPageHeadingWhenSettled}
     />
   );
 }

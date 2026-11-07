@@ -11,3 +11,21 @@ export function focusPageHeading(root: ParentNode = document): boolean {
   heading.focus({ preventScroll: true });
   return true;
 }
+
+/** When to look again: a page that is still streaming in can replace the heading just focused. */
+const SETTLE_DELAYS_MS = [100, 300, 700, 1500] as const;
+
+/**
+ * Focuses the page's heading now and again as the page settles, for as long as nothing else has
+ * focus. A heading that is replaced while the page streams in drops focus to the document; this
+ * puts it back. As soon as the person (or the page) puts focus somewhere else it stops.
+ */
+export function focusPageHeadingWhenSettled(): void {
+  focusPageHeading();
+  for (const delay of SETTLE_DELAYS_MS) {
+    window.setTimeout(() => {
+      const idle = document.activeElement === null || document.activeElement === document.body;
+      if (idle) focusPageHeading();
+    }, delay);
+  }
+}
