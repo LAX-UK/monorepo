@@ -3910,10 +3910,23 @@ export async function runLegacyDemoSeed() {
       { id: L.hybridC3, num: 3, title: "Cast Shadow III", status: "scheduled" },
     ]),
   ];
+  // Every dev lot is attributed: an explicit artist wins, then the department's marque or maker,
+  // then one of the two seeded painters.
+  const departmentArtist: Record<string, string> = {
+    [CAT.motorCars]: ARTIST.ferrarispa,
+    [CAT.watches]: ARTIST.patekPhilippe,
+    [CAT.books]: ARTIST.janeAusten,
+    [CAT.coins]: ARTIST.royalMint,
+    [CAT.design]: ARTIST.northbankDesign,
+  };
   await db.insert(lot).values(
     lotRows.map(
-      ({ categoryId: _categoryId, sellerId, sellerLegalEntityId: explicitSellerLe, ...row }) => ({
+      ({ categoryId, sellerId, sellerLegalEntityId: explicitSellerLe, ...row }, index) => ({
         ...row,
+        artistId:
+          row.artistId ??
+          departmentArtist[categoryId] ??
+          (index % 2 === 0 ? ARTIST.carolina : ARTIST.robert),
         sellerLegalEntityId: explicitSellerLe ?? legalEntityIdForUser(sellerId),
       }),
     ),
