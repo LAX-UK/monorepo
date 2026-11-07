@@ -34,7 +34,7 @@ export default async function OrganisationLayout({ children }: { children: React
   if (!active) {
     return (
       <DashboardPage>
-        <OrganisationSettingsUnavailable reason="personal" />
+        <OrganisationSettingsUnavailable reason="personal" page="organisation" />
       </DashboardPage>
     );
   }

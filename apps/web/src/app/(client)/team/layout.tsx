@@ -31,7 +31,7 @@ export default async function TeamLayout({ children }: { children: ReactNode }) 
   if (!scope) {
     return (
       <DashboardPage>
-        <OrganisationSettingsUnavailable reason="personal" />
+        <OrganisationSettingsUnavailable reason="personal" page="team" />
       </DashboardPage>
     );
   }
