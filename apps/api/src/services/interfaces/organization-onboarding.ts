@@ -1,4 +1,4 @@
-import type { LegalEntity } from "@auction/types";
+import type { MemberLegalEntity } from "@auction/types";
 import type { CreateOrganizationInput, PublicOrganisationSubkind } from "@auction/validators";
 
 export type OrgOnboardingNextStep =
@@ -8,7 +8,7 @@ export type OrgOnboardingNextStep =
   | "ready_to_consign";
 
 export type CreateOrganizationResult = {
-  entity: LegalEntity;
+  entity: MemberLegalEntity;
   /** Inferred personal-onboarding next steps for the creator. */
   nextSteps: OrgOnboardingNextStep[];
 };

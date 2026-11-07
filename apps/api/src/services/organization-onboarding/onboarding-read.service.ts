@@ -1,4 +1,5 @@
 import { ORG_ONBOARDING_STEPS, type OrgOnboardingStepKey } from "@auction/types";
+import { toMemberLegalEntity } from "../../lib/member-legal-entity.js";
 import type { IOnboardingReadService } from "./onboarding-context.js";
 import type { OnboardingContext } from "./onboarding-context.js";
 import { rowToEntity } from "./org-onboarding-mappers.js";
@@ -22,7 +23,7 @@ export class OnboardingReadService implements IOnboardingReadService {
     const addr = await this.ctx.onboardingRepo.findRegisteredOfficeAddress(entityId);
 
     return {
-      entity: rowToEntity(row),
+      entity: toMemberLegalEntity(rowToEntity(row)),
       completedSteps,
       documents: docRows,
       primaryAddress: addr
