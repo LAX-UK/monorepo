@@ -1,5 +1,6 @@
 import { finished } from "node:stream/promises";
 import { legalEntityFor, productCopyrightLine } from "@auction/branding";
+import { formatPayoutReference } from "@auction/domain";
 import PDFDocument from "pdfkit";
 import type { WorkerEnv } from "../env.js";
 import type {
@@ -51,7 +52,7 @@ export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput
   if (entityRow.vatNumber) {
     doc.text(`VAT number: ${entityRow.vatNumber}`);
   }
-  doc.text(`Payout reference: ${payoutId}`);
+  doc.text(`Payout reference: ${formatPayoutReference(pRow)}`);
   doc.moveDown();
 
   const gross = pRow.grossAmount;
@@ -99,6 +100,7 @@ export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput
   doc.fontSize(12).text("Administrator appendix", { underline: true });
   doc.moveDown();
   doc.fontSize(10);
+  doc.text(`Payout id: ${payoutId}`);
   doc.text(`Xero bill id: ${pRow.xeroBillId ?? "—"}`);
   doc.text(`Stripe transfer id: ${pRow.stripeTransferId ?? "—"}`);
   doc.moveDown();

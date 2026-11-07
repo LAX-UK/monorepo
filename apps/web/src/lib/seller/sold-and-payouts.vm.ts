@@ -5,13 +5,13 @@ import { formatDeduction } from "@/lib/money/currency";
 import { payoutBankLineWithCurrency } from "@/lib/organisation-team/payout-bank-account.vm";
 import { formatPeriod } from "@/lib/ui/format";
 import { csvDocument } from "@/lib/workspace/csv";
+import { formatPayoutReference } from "@auction/domain";
 import type { Payout } from "@auction/types";
-import { formatPayoutReference } from "./payout-reference";
 
 export type PayoutRow = {
   id: string;
   period: string;
-  /** The readable reference, such as PO-2026-3FA9C1. */
+  /** The readable reference, such as PO-2026-3FA9C1D2. */
   reference: string;
   gross: string;
   /** LAX's commission and fees, plus the transfer fee when there was one. */
