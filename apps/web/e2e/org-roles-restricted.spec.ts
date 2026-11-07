@@ -34,6 +34,20 @@ test.describe("restricted organisation journey @roles", () => {
       await expect(page.getByText("Bidding and selling paused.").first()).toBeVisible();
     });
 
+    await test.step("it says what LAX wrote, what stays open and what is paused", async () => {
+      await expect(page.getByTestId("organisation-state-message")).toContainText(
+        "Message from LAX: We need an updated proof of address",
+      );
+      const panel = page.getByTestId("organisation-recovery");
+      await expect(panel.getByRole("heading", { name: "What you can do now" })).toBeVisible();
+      await expect(panel.getByRole("listitem")).toHaveText([
+        /Read sales, purchases and invoices\s*Available/,
+        /Pay invoices already issued\s*Available/,
+        /Bid, register and send works\s*Paused/,
+      ]);
+      await expect(page.getByRole("link", { name: "Contact us" })).toBeVisible();
+    });
+
     await test.step("a bid is refused with the reason", async () => {
       const bid = await placeBid(owner, ORGANISATION_JOURNEY_IDS.lotForOwner, 2150);
       expect(bid.status).toBe(403);
@@ -49,6 +63,13 @@ test.describe("restricted organisation journey @roles", () => {
       await page.goto(`/purchases/pay?lots=${ORGANISATION_JOURNEY_IDS.lotInvoiceRestricted}`);
       await expect(page.getByRole("region", { name: "Payment" })).toBeVisible();
       await expect(page.getByText(/You don't have access to/)).toHaveCount(0);
+    });
+
+    await test.step("Keep bidding as yourself moves to the personal account", async () => {
+      await page.goto("/home");
+      await page.getByRole("link", { name: "Keep bidding as yourself" }).click();
+      await page.waitForURL(/\/bids/);
+      await expect(page.getByTestId("account-switcher")).not.toContainText(restricted);
     });
 
     await owner.close();

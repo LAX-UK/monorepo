@@ -188,8 +188,9 @@ describe("buildOrganisationRecoveryView", () => {
 describe("organisationRecoveryForPage", () => {
   it("drops the checklist on the Documents tab, which lists it in full", () => {
     const view = recovery("docs_requested");
-    expect(organisationRecoveryForPage(view!, "/organisation/documents").documents).toBeNull();
-    expect(organisationRecoveryForPage(view!, "/organisation").documents).not.toBeNull();
-    expect(organisationRecoveryForPage(view!, "/home").documents).not.toBeNull();
+    if (!view) throw new Error("expected a recovery");
+    expect(organisationRecoveryForPage(view, "/organisation/documents").documents).toBeNull();
+    expect(organisationRecoveryForPage(view, "/organisation").documents).not.toBeNull();
+    expect(organisationRecoveryForPage(view, "/home").documents).not.toBeNull();
   });
 });
