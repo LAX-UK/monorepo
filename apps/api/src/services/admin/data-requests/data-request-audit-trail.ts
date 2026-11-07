@@ -2,7 +2,11 @@ import type { IDomainEventSink } from "../../domain-event-sink.js";
 
 export const DATA_REQUEST_AGGREGATE = "data_request";
 
-/** What staff did: opened a record, or logged, edited, extended, closed or continued a request, or erased a person's enquiries from it. */
+/**
+ * What staff did: opened a record, or logged, edited, extended, closed or continued a request, or
+ * erased a person's enquiries from it. An erasure leaves two rows: `enquiry_erasure_requested`
+ * before it runs and `enquiries_erased` once it has.
+ */
 export const DATA_REQUEST_AUDIT_ACTIONS = [
   "viewed",
   "logged",
@@ -10,6 +14,7 @@ export const DATA_REQUEST_AUDIT_ACTIONS = [
   "extended",
   "closed",
   "continued",
+  "enquiry_erasure_requested",
   "enquiries_erased",
 ] as const;
 export type DataRequestAuditAction = (typeof DATA_REQUEST_AUDIT_ACTIONS)[number];

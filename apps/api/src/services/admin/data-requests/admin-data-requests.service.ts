@@ -11,7 +11,10 @@ import type {
   DataRequestOutcome,
   IIdentityDataRequestsClient,
 } from "../../interfaces/identity-data-requests-client.js";
-import type { IEnquiryErasure } from "../../marketing-enquiry/enquiry-erasure.service.js";
+import {
+  type IEnquiryErasure,
+  checkEnquiryErasureInput,
+} from "../../marketing-enquiry/enquiry-erasure.service.js";
 import type { DataRequestAuditAction, IDataRequestAuditTrail } from "./data-request-audit-trail.js";
 import type { IDataRequestErasureHistory } from "./data-request-erasure-history.js";
 
@@ -119,8 +122,11 @@ export class AdminDataRequestsService {
    * Erases the enquiries from the request's own email address. The address and the request's
    * state come from Identity, never from the caller: only a manual request being worked on, about
    * someone else, with an email address, may erase. The typed confirmation is compared with that
-   * address. Bid's audit row is written once the request is
-   * known to allow it and before anything is erased; the erasure's own audit event names the request and carries the counts, and `record` shows it in the request's History.
+   * address, and the reason is checked, before anything is recorded, so a mistyped confirmation
+   * leaves no row. Like the other actions, the request is audited before the work
+   * (`enquiry_erasure_requested`) and the outcome after it (`enquiries_erased`, only once
+   * the enquiries are erased). The erasure's own audit event names the request and carries the
+   * counts, and `record` shows it in the request's History.
    */
   async eraseEnquiries(
     reference: string,
@@ -134,7 +140,13 @@ export class AdminDataRequestsService {
     const blocked = enquiryErasureBlock(request);
     if (blocked) return { ok: false, status: 409, error: "erasure_not_allowed" };
     if (!person.email) return { ok: false, status: 422, error: "no_email" };
-    await this.audit("enquiries_erased", request.reference, actorUserId);
+    const checked = checkEnquiryErasureInput({
+      email: person.email,
+      confirmation: body.confirmation,
+      reason: body.reason,
+    });
+    if (!checked.ok) return { ok: false, status: 422, error: checked.error };
+    await this.audit("enquiry_erasure_requested", request.reference, actorUserId);
     const outcome = await this.deps.enquiryErasure.eraseByEmail({
       email: person.email,
       confirmation: body.confirmation,
@@ -143,6 +155,7 @@ export class AdminDataRequestsService {
       requestReference: request.reference,
     });
     if (!outcome.ok) return { ok: false, status: 422, error: outcome.error };
+    await this.audit("enquiries_erased", request.reference, actorUserId);
     const { ok: _ok, ...counts } = outcome;
     return { ok: true, value: counts };
   }

@@ -416,6 +416,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "data_request.extended": new Set(["reference"]),
   "data_request.closed": new Set(["reference"]),
   "data_request.continued": new Set(["reference"]),
+  "data_request.enquiry_erasure_requested": new Set(["reference"]),
   "data_request.enquiries_erased": new Set(["reference"]),
   "failed_job.retried": new Set(["queue", "jobName", "confirmRepeat"]),
   "failed_job.discarded": new Set(["queue", "jobName", "reason", "note"]),

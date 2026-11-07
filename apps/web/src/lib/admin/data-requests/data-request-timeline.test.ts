@@ -53,7 +53,7 @@ describe("dataRequestTimeline", () => {
     );
   });
 
-  it("labels an enquiry erasure with its count, or without one", () => {
+  it("names who erased the enquiries, with the count beneath, and says when there were none", () => {
     const entry = (at: string, detail: Record<string, number>) => ({
       at,
       event: "data_request.enquiries_erased",
@@ -63,12 +63,15 @@ describe("dataRequestTimeline", () => {
     });
     const events = dataRequestTimeline([
       entry("2026-11-02T10:00:00.000Z", { enquiries: 3 }),
-      entry("2026-11-03T10:00:00.000Z", {}),
+      entry("2026-11-03T10:00:00.000Z", { enquiries: 0 }),
+      entry("2026-11-04T10:00:00.000Z", {}),
     ]);
     expect(events.map((event) => event.title)).toEqual([
-      "Enquiries erased",
-      "Enquiries erased (3)",
+      "Enquiries erased by Hana Ito",
+      "No enquiries to erase",
+      "Enquiries erased by Hana Ito",
     ]);
+    expect(events.map((event) => event.detail)).toEqual([undefined, undefined, "3 enquiries"]);
   });
 
   it("shows an event it does not know instead of dropping it", () => {
