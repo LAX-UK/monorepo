@@ -124,13 +124,16 @@ describe("usePayoutMoneyActions", () => {
     expect(transfer).toHaveValue("tr_gallery_one");
 
     fireEvent.change(transfer, { target: { value: "tr_bank_run" } });
+    fireEvent.change(screen.getByLabelText("Reason for marking it paid"), {
+      target: { value: REASON },
+    });
     fireEvent.click(
       screen.getAllByRole("button", { name: "Mark £4,500.00 paid" }).at(-1) as HTMLElement,
     );
     await waitFor(() =>
       expect(markPaidAction).toHaveBeenCalledWith(
         "payout_1",
-        expect.objectContaining({ stripeTransferId: "tr_bank_run" }),
+        expect.objectContaining({ stripeTransferId: "tr_bank_run", reason: REASON }),
       ),
     );
     await waitFor(() =>
@@ -142,6 +145,9 @@ describe("usePayoutMoneyActions", () => {
   it("will not mark a payout paid without a transfer ID", () => {
     render(<Harness row={{ ...payout, stripeTransferId: null }} />);
     fireEvent.click(screen.getByRole("button", { name: "Mark £4,500.00 paid" }));
+    fireEvent.change(screen.getByLabelText("Reason for marking it paid"), {
+      target: { value: REASON },
+    });
     fireEvent.click(
       screen.getAllByRole("button", { name: "Mark £4,500.00 paid" }).at(-1) as HTMLElement,
     );
@@ -248,6 +254,9 @@ describe("usePayoutMoneyActions", () => {
     });
     render(<Harness row={payout} />);
     fireEvent.click(screen.getByRole("button", { name: "Mark £4,500.00 paid" }));
+    fireEvent.change(screen.getByLabelText("Reason for marking it paid"), {
+      target: { value: REASON },
+    });
     fireEvent.click(
       screen.getAllByRole("button", { name: "Mark £4,500.00 paid" }).at(-1) as HTMLElement,
     );
@@ -285,11 +294,14 @@ describe("usePayoutMoneyActions", () => {
     expect(screen.getByText(/account_closed/)).toBeInTheDocument();
     expect(retryAction).not.toHaveBeenCalled();
 
+    fireEvent.change(screen.getByLabelText("Reason for the retry"), {
+      target: { value: REASON },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Retry £4,500.00 transfer" }));
     await waitFor(() =>
       expect(retryAction).toHaveBeenCalledWith(
         "payout_1",
-        expect.objectContaining({ idempotencyKey: expect.any(String) }),
+        expect.objectContaining({ reason: REASON, idempotencyKey: expect.any(String) }),
       ),
     );
     await waitFor(() =>
@@ -307,6 +319,9 @@ describe("usePayoutMoneyActions", () => {
     });
     render(<Harness row={failedPayout} />);
     fireEvent.click(screen.getByRole("button", { name: "Retry transfer" }));
+    fireEvent.change(screen.getByLabelText("Reason for the retry"), {
+      target: { value: REASON },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Retry £4,500.00 transfer" }));
 
     expect(

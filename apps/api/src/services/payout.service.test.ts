@@ -127,6 +127,7 @@ describe("PayoutService.previewPending", () => {
       pendingNet: "0.00",
       paymentCount: 0,
       currency: "GBP",
+      earliestCapturedAt: null,
     });
   });
 
@@ -395,9 +396,12 @@ describe("PayoutService.markPaid", () => {
       findById: vi.fn().mockResolvedValue(payout({ status: "paid" })),
     });
     const svc = serviceFor(repo);
-    await expect(svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_1" })).rejects.toMatchObject(
-      { code: "payout_already_paid" },
-    );
+    await expect(
+      svc.markPaid(ACTOR_ID, "po1", {
+        stripeTransferId: "tr_1",
+        reason: "Matched to the Stripe dashboard",
+      }),
+    ).rejects.toMatchObject({ code: "payout_already_paid" });
   });
 
   it("rejects markPaid on reversed/failed", async () => {
@@ -405,9 +409,12 @@ describe("PayoutService.markPaid", () => {
       findById: vi.fn().mockResolvedValue(payout({ status: "reversed" })),
     });
     const svc = serviceFor(repo);
-    await expect(svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_1" })).rejects.toMatchObject(
-      { code: "cannot_pay_payout_in_state" },
-    );
+    await expect(
+      svc.markPaid(ACTOR_ID, "po1", {
+        stripeTransferId: "tr_1",
+        reason: "Matched to the Stripe dashboard",
+      }),
+    ).rejects.toMatchObject({ code: "cannot_pay_payout_in_state" });
   });
 
   it("transitions to paid with the supplied transfer id and a processedAt", async () => {
@@ -422,7 +429,10 @@ describe("PayoutService.markPaid", () => {
       updateStatusIfCurrent: vi.fn().mockResolvedValue(updated),
     });
     const svc = serviceFor(repo);
-    const result = await svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_test_1" });
+    const result = await svc.markPaid(ACTOR_ID, "po1", {
+      stripeTransferId: "tr_test_1",
+      reason: "Matched to the Stripe dashboard",
+    });
     expect(result.status).toBe("paid");
     expect(repo.updateStatusIfCurrent).toHaveBeenCalledWith(
       "po1",

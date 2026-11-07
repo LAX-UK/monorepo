@@ -44,6 +44,7 @@ export function PayoutSettlementWorkspace({
   searchEntities = searchLegalEntityOptions,
 }: Props) {
   const formRef = useRef<HTMLFormElement>(null);
+  const reasonRef = useRef<HTMLInputElement>(null);
   const [entity, setEntity] = useState<EntityOption | null>(null);
   const [preview, setPreview] = useState<AdminSettlementPreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -157,6 +158,7 @@ export function PayoutSettlementWorkspace({
 
       <form ref={formRef} action={runPayoutSettlementAction} hidden>
         <input type="hidden" name="legalEntityId" value={entity?.id ?? ""} />
+        <input type="hidden" name="reason" ref={reasonRef} defaultValue="" />
         <IdempotencyKeyField />
       </form>
 
@@ -170,7 +172,17 @@ export function PayoutSettlementWorkspace({
         confirmLabel={`Pay ${net ?? ""}`}
         cancelLabel="Not now"
         loading={running}
-        onConfirm={() => startRun(() => formRef.current?.requestSubmit())}
+        reason={{
+          label: "Reason for running this settlement",
+          description: "Kept with the payout and in the audit log.",
+          minLength: 10,
+        }}
+        onConfirm={({ reason }) =>
+          startRun(() => {
+            if (reasonRef.current) reasonRef.current.value = reason;
+            formRef.current?.requestSubmit();
+          })
+        }
       />
     </div>
   );
