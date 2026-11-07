@@ -18,4 +18,8 @@ describe("enquiryErasureBlock", () => {
     );
     expect(enquiryErasureBlock({ kind: "manual", status: "closed" })).toBe("closed");
   });
+
+  it("blocks any status it does not know, so a new status never allows erasure by default", () => {
+    expect(enquiryErasureBlock({ kind: "manual", status: "on_hold" })).toBe("closed");
+  });
 });

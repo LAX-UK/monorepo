@@ -125,9 +125,9 @@ export function enquiryErasureBlock(request: {
   status: string;
 }): EnquiryErasureBlock | null {
   if (request.kind === "download") return "download";
-  if (request.status === "waiting_for_id") return "waiting_for_id";
-  if (request.status === "closed") return "closed";
-  return null;
+  // Only a request in progress may erase; any other status, including one added later, is blocked.
+  if (request.status === "in_progress") return null;
+  return request.status === "waiting_for_id" ? "waiting_for_id" : "closed";
 }
 
 // Masking -----------------------------------------------------------------------------------
