@@ -15,6 +15,7 @@ import {
 } from "@/lib/forms/form-result";
 import { INVITATIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import {
   adminBulkInvitationsBodySchema,
   adminCreateInvitationBodySchema,
@@ -73,7 +74,8 @@ export async function adminCreateInvitationAction(formData: FormData): Promise<v
         targetRole: String(formData.get("targetRole") ?? "").trim(),
       });
       if (!r.ok) {
-        if (r.errorCode) await redirectToStaffReauth("/admin/invitations");
+        if (r.errorCode === STAFF_STEP_UP_REQUIRED)
+          await redirectToStaffReauth("/admin/invitations");
         return redirectWithAdminFlash("/admin/invitations", "error", r.error);
       }
       redirect("/admin/invitations");
