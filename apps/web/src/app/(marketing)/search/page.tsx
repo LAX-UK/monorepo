@@ -38,7 +38,7 @@ import { countSearchActiveFilters } from "@/lib/marketing/search-active-filter-c
 import { findSearchAlert, searchAlertState } from "@/lib/marketing/search-fallback";
 import { shouldOfferPastResults } from "@/lib/marketing/search-fallback";
 import { buildSearchQs } from "@/lib/marketing/search-qs";
-import { engineAlertStateOf } from "@/lib/notifications/engine-alert-state";
+import { searchTopicEmailOn } from "@/lib/notifications/engine-alert-state";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { metadataForListing } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -214,8 +214,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
       ])
     : [null, [] as string[], null, null];
   // A failed read falls back to the plain button; saving still avoids a duplicate.
-  const searchTopic = engineAlertStateOf(accountAlerts)?.email["bid.searches"];
-  const topicEmailOn = searchTopic === undefined ? null : searchTopic;
+  const topicEmailOn = searchTopicEmailOn(accountAlerts, session?.emailVerified);
   const alertSearchId = savedSearches
     ? (findSearchAlert(savedSearches, trimmed, categoryId)?.id ?? null)
     : null;
