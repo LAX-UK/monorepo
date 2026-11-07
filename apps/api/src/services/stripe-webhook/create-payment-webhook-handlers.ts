@@ -11,6 +11,7 @@ import {
   GroupAwareCheckoutSessionHandler,
   GroupAwarePaymentIntentHandler,
   GroupPaymentAttemptFailedHandler,
+  GroupPaymentPartiallyFundedHandler,
   GroupPaymentProcessingHandler,
   GroupPaymentReleasedHandler,
   GroupPaymentSucceededHandler,
@@ -81,7 +82,7 @@ export function createPaymentWebhookHandlers(
     ),
     paymentIntentPartiallyFunded: new GroupAwarePaymentIntentHandler(
       single.paymentIntentPartiallyFunded,
-      processing,
+      new GroupPaymentPartiallyFundedHandler(settlement),
     ),
     paymentIntentFailed: new GroupAwarePaymentIntentHandler(
       single.paymentIntentFailed,

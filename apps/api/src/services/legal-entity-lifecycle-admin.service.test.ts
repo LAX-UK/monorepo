@@ -190,3 +190,75 @@ describe("LegalEntityLifecycleAdminService", () => {
     expect(db.transaction).not.toHaveBeenCalled();
   });
 });
+
+describe("LegalEntityLifecycleAdminService invoice terms", () => {
+  const entityId = "00000000-0000-4000-8000-000000000001";
+
+  const heldSince = new Date("2026-11-02T10:00:00Z");
+
+  async function run(op: LifecycleAdminOp, status: string, reason?: string) {
+    const txHandle = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            for: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([{ id: entityId, status, payHeldSince: heldSince }]),
+            }),
+          }),
+        }),
+      }),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) }),
+      }),
+    };
+    const db = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([{ id: entityId, status }]),
+          }),
+        }),
+      }),
+      transaction: vi.fn(async (fn: (tx: typeof txHandle) => Promise<unknown>) => fn(txHandle)),
+    };
+    const invoiceTerms = { extendOpenInvoices: vi.fn().mockResolvedValue(1) };
+    const svc = new LegalEntityLifecycleAdminService(
+      transactionRunnerFromDb(db as never),
+      new DrizzleLegalEntityLifecycleAdminRepository(db as never),
+      mockDomainEventSink(vi.fn().mockResolvedValue(undefined)) as never,
+      { invoiceTerms: invoiceTerms as never },
+    );
+    const result = await svc.runTransition("actor-1", entityId, op, reason);
+    expect(result.isOk()).toBe(true);
+    return { invoiceTerms, txHandle };
+  }
+
+  it("moves the due dates of the organisation's unpaid invoices when it leaves review approved", async () => {
+    const { invoiceTerms, txHandle } = await run("approve", "under_review");
+    expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledTimes(1);
+    expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledWith(
+      { kind: "account", legalEntityId: entityId, holdStartedAt: heldSince },
+      expect.any(Date),
+      txHandle,
+    );
+  });
+
+  it("leaves them alone while the organisation is still held: review starting, docs asked for", async () => {
+    expect(
+      (await run("start_review", "docs_received")).invoiceTerms.extendOpenInvoices,
+    ).not.toHaveBeenCalled();
+    expect(
+      (await run("request_docs", "lead")).invoiceTerms.extendOpenInvoices,
+    ).not.toHaveBeenCalled();
+  });
+
+  it("leaves them alone when the organisation could already pay: restricting it, rejecting it", async () => {
+    expect(
+      (await run("restrict", "approved", "Ownership under review")).invoiceTerms.extendOpenInvoices,
+    ).not.toHaveBeenCalled();
+    expect(
+      (await run("reject", "lead", "Does not meet the documentation standard.")).invoiceTerms
+        .extendOpenInvoices,
+    ).not.toHaveBeenCalled();
+  });
+});

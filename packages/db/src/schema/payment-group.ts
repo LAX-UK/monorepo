@@ -42,6 +42,13 @@ export const paymentGroup = pgTable(
     stripeCheckoutSessionId: text("stripe_checkout_session_id"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     stripeChargeId: text("stripe_charge_id"),
+    /**
+     * What a bank transfer has delivered so far, from the provider's own events. Only ever
+     * raised, and only by an event that is not older than the last one applied.
+     */
+    amountReceived: numeric("amount_received", { precision: 18, scale: 2 }).notNull().default("0"),
+    /** The provider's time of the event that set `amount_received`; orders late deliveries. */
+    receivedEventAt: timestamp("received_event_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     /** When it was paid or cancelled. */
@@ -61,5 +68,9 @@ export const paymentGroup = pgTable(
     ),
     check("payment_group_rail_check", sql`${table.checkoutRail} in ('card', 'gb_bank_transfer')`),
     check("payment_group_total_check", sql`${table.totalAmount} > 0`),
+    check(
+      "payment_group_amount_received_check",
+      sql`${table.amountReceived} >= 0 and ${table.amountReceived} <= ${table.totalAmount}`,
+    ),
   ],
 );

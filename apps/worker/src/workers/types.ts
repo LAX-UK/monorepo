@@ -1,3 +1,4 @@
+import type { AlertRetentionStore } from "@auction/alerts";
 import type { createDb } from "@auction/db";
 import type { IExportProviderDeps } from "@auction/exports/providers";
 import type { IMarketingProfileReader } from "@auction/marketing-events";
@@ -68,6 +69,7 @@ export type WorkerBootstrapDeps = {
   staffRoleReader: IStaffRoleAssignmentReader;
   newsletterSignupSyncRepo: INewsletterSignupSyncRepository;
   kycRetentionStores: readonly IKycRetentionSubjectStore[];
+  alertRetentionStores: readonly AlertRetentionStore[];
   staffOpsRecipientReader: IStaffOpsRecipientReader;
   complianceRecipientReader: IComplianceRecipientReader;
   mediaAssetProcessorRepo: IMediaAssetProcessorRepository;

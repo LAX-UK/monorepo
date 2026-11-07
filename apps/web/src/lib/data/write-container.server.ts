@@ -31,7 +31,6 @@ import {
   ConsignmentAfterSaleService,
 } from "@/lib/services/impl/consignment-after-sale.service";
 import { NotificationPrefsService } from "@/lib/services/impl/notification-prefs.service";
-import { PaymentService } from "@/lib/services/impl/payment.service";
 import { ProfileService } from "@/lib/services/impl/profile.service";
 import { SubmissionService } from "@/lib/services/impl/submission.service";
 import { UiPrefsService } from "@/lib/services/impl/ui-prefs.service";
@@ -68,7 +67,6 @@ import type {
   IConsignmentAfterSaleService,
 } from "@/lib/services/interfaces/consignment-after-sale-service";
 import type { INotificationPrefsService } from "@/lib/services/interfaces/notification-prefs-service";
-import type { IPaymentService } from "@/lib/services/interfaces/payment-service";
 import type { IProfileService } from "@/lib/services/interfaces/profile-service";
 import type { ISubmissionService } from "@/lib/services/interfaces/submission-service";
 import type { IUiPrefsService } from "@/lib/services/interfaces/ui-prefs-service";
@@ -82,7 +80,6 @@ export type WriteServiceContainer = {
   biddingPrefs: IBiddingPrefsService;
   notificationPrefs: INotificationPrefsService;
   uiPrefs: IUiPrefsService;
-  payments: IPaymentService;
   buyerSof: IBuyerSofService;
   adminCategories: IAdminCategoryService;
   adminSaleroom: IAdminSaleroomService;
@@ -127,7 +124,6 @@ export function getWriteContainer(): WriteServiceContainer {
     biddingPrefs: new BiddingPrefsService(api),
     notificationPrefs: new NotificationPrefsService(api),
     uiPrefs: new UiPrefsService(api),
-    payments: new PaymentService(api),
     buyerSof: new BuyerSofService(api),
     adminCategories: new AdminCategoryService(api),
     adminSaleroom: new AdminSaleroomService(api),

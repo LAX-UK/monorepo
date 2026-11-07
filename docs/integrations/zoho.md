@@ -41,7 +41,6 @@ Set these **variables** (not secrets) on the monorepo test environment; Terrafor
 | `ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED` | empty | e.g. `Paid` |
 | `ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED` | empty | e.g. `Refunded` |
 | `ZOHO_CRM_DEAL_STAGE_SHOP_PAID` | empty | e.g. `Paid` |
-| `ZOHO_CRM_DEAL_STAGE_SHOP_ENQUIRY` | empty | Enquiry deals (Phase 4; not shop-paid stage) |
 | `SHOP_ZOHO_CATALOGUE_SYNC_ENABLED` | `false` | `shop.artwork.created` → Products |
 | `ZOHO_CRM_LEAD_STATUS_NEW` | `New (Unassigned)` | Lead Status a new website lead starts with; must exist in the org's Lead Status picklist (the sandbox has `New`) |
 
@@ -67,7 +66,7 @@ After changing vars, re-run **Terraform test up** (with image contracts) or **Te
 
 Production worker keeps `ZOHO_CRM_SYNC_MODE=off` until [Phase 0 runbook](../runbooks/zoho-crm-phase0-prerequisites.md) exit criteria pass.
 
-**Shop gaps:** refund/fulfilment domain events are not emitted yet; enquiry stage and catalogue sync require the env vars above.
+**Shop gaps:** refund/fulfilment domain events are not emitted yet; catalogue sync requires the env var above. A Shop original enquiry creates a Lead and needs no stage variable.
 
 ## Architecture
 
@@ -96,7 +95,7 @@ The platform never converts a lead. Clients are created only when an admin conve
 | --- | --- | --- | --- |
 | Lead Status | `Lead_Status` | `ZOHO_CRM_LEAD_STATUS_NEW` (`New (Unassigned)`) | create only |
 | Lead Source (Primary) | `Lead_Source` | `Website` | create only |
-| Lead Source (Detailed) | `Lead_Source_Detailed` | product and form: `LAX Account sign-up`, `LAX Bid enquiry`, `LAX Bid private sale enquiry`, `LAX Shop guest <source>: <status>` | every sync |
+| Lead Source (Detailed) | `Lead_Source_Detailed` | product and form: `LAX Account sign-up`, `LAX Bid enquiry`, `LAX Bid private sale enquiry`, `LAX Shop guest <source>: <status>`, `LAX Shop enquiry: <stock code> <link to the work> <title>` (the link is left out when `LAX_ART_PUBLIC_URL` is not set) | every sync |
 | Enquiry Type | `Enquiry_Type` | enquiry intent and department (below); sign-ups `General`; Shop guest leads `Prints` | every sync |
 | Interest: Artist | `Interested_Artist` | artist named on a private sale enquiry | when known |
 | Interest: Collection | `Interested_Collection` | none yet: no form records a stock code | not sent |

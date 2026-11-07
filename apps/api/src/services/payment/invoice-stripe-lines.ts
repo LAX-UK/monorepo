@@ -7,7 +7,7 @@ export const STRIPE_MAX_LINE_ITEMS = 100;
 /** The stored invoice cannot back a charge, so no checkout is opened. */
 export class InvoiceLinesError extends Error {
   constructor(
-    readonly code: "invoice_missing" | "invoice_mismatch" | "too_many_lines",
+    readonly code: "invoice_missing" | "invoice_voided" | "invoice_mismatch" | "too_many_lines",
     message: string,
   ) {
     super(message);
@@ -19,8 +19,9 @@ export class InvoiceLinesError extends Error {
 export type CheckedInvoiceLines = { invoiceId: string; lines: InvoiceLine[]; totalPence: number };
 
 /**
- * The invoice's lines, provided they add up to the invoice total and the invoice total is the
- * amount charged. Anything else throws: money is never taken on figures that disagree.
+ * The invoice's lines, provided the invoice is live, they add up to the invoice total and the
+ * invoice total is the amount charged. Anything else throws: money is never taken on a voided
+ * invoice or on figures that disagree.
  */
 export function checkInvoiceLines(
   invoice: BidInvoiceRecord | undefined,
@@ -29,6 +30,12 @@ export function checkInvoiceLines(
 ): CheckedInvoiceLines {
   if (!invoice) {
     throw new InvoiceLinesError("invoice_missing", `Payment ${paymentId} has no stored invoice`);
+  }
+  if (invoice.voidedAt) {
+    throw new InvoiceLinesError(
+      "invoice_voided",
+      `Invoice ${invoice.id} was voided, so payment ${paymentId} cannot be charged`,
+    );
   }
   const sum = invoice.lines.reduce((total, line) => total + line.amountPence, 0);
   if (invoice.lines.length === 0 || sum !== invoice.totalPence) {

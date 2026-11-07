@@ -1,3 +1,4 @@
+import type { InvoiceDueDateExtender } from "@auction/finance-runtime";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IKycSessionRepository } from "@auction/persistence/interfaces";
 import type { IKycRepository } from "@auction/persistence/interfaces";
@@ -26,16 +27,17 @@ export function createKycServiceDeps(input: {
   repo: IKycRepository;
   transactionRunner: ITransactionRunner | null;
   marketingEvents: IMarketingEventService | null;
+  invoiceTerms: Pick<InvoiceDueDateExtender, "extendOpenInvoices"> | null;
   veriffClient?: VeriffClient;
 }): KycServiceDeps {
-  const { env, repo, transactionRunner, marketingEvents, veriffClient } = input;
+  const { env, repo, transactionRunner, marketingEvents, invoiceTerms, veriffClient } = input;
   return {
     sessionRepo: repo,
     repo,
     transactionRunner,
     veriffClient: veriffClient ?? VeriffClient.fromEnv(env),
     webhookVerifier: new VeriffWebhookVerifier(env.VERIFF_API_KEY, env.VERIFF_SHARED_SECRET),
-    decisionProcessor: new KycDecisionProcessor(repo, marketingEvents),
+    decisionProcessor: new KycDecisionProcessor(repo, marketingEvents, invoiceTerms),
     thresholdAmount: env.KYC_THRESHOLD_AMOUNT,
     thresholdCurrency: env.KYC_THRESHOLD_CURRENCY,
     webOrigin: env.WEB_ORIGIN,

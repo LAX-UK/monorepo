@@ -23,7 +23,6 @@ export type WorkspacePage = {
 /** Records with an address of their own; who may open one depends on whose it is. */
 const RECORD_PAGES: readonly { pattern: RegExp; label: string }[] = [
   { pattern: /^\/selling\/consignments\/[^/]+$/, label: "this consignment" },
-  { pattern: /^\/purchases\/checkout\/[^/]+$/, label: "this purchase" },
   { pattern: /^\/bids\/telephone\/[^/]+$/, label: "this telephone bid" },
 ];
 

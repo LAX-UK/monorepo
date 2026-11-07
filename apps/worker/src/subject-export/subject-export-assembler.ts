@@ -10,6 +10,12 @@ import {
 import { ArchiveBudget } from "./archive-budget.js";
 import type { SubjectExportArchiveStore } from "./archive-store.js";
 import { controllerNamesFor } from "./controller-names.js";
+import {
+  type IFreeSpaceProbe,
+  NodeFreeSpaceProbe,
+  SubjectExportDeferredError,
+  decidePreflight,
+} from "./export-disk-guard.js";
 import { HttpExportFileMaterialiser } from "./export-file-materialiser.js";
 import { ExportStaging } from "./export-staging.js";
 import { decideFailure } from "./failure-policy.js";
@@ -74,6 +80,8 @@ export type SubjectExportAssemblerDeps = {
   /** The size cap for one copy; tests use a small one. */
   createBudget?: () => ArchiveBudget;
   tempRoot?: string;
+  /** Reads free space on the temp disk; tests pass a fake. */
+  freeSpace?: IFreeSpaceProbe;
   now?: () => Date;
   attemptTimeoutMs?: number;
 };
@@ -98,9 +106,9 @@ export class SubjectExportAssembler {
   async run(request: AssembleRequest, attempt: AssembleAttempt): Promise<void> {
     const { log, progress } = this.deps;
     const signal = AbortSignal.timeout(this.deps.attemptTimeoutMs ?? ATTEMPT_TIMEOUT_MS);
-    const staging = await ExportStaging.create(
-      await mkdtemp(join(this.deps.tempRoot ?? tmpdir(), "subject-export-")),
-    );
+    const tempRoot = this.deps.tempRoot ?? tmpdir();
+    await this.preflight(request, tempRoot);
+    const staging = await ExportStaging.create(await mkdtemp(join(tempRoot, "subject-export-")));
     try {
       await this.assemble(request, staging, signal);
       log.info({ exportId: request.exportId, attempt: attempt.number }, "subject export ready");
@@ -140,6 +148,29 @@ export class SubjectExportAssembler {
         log.warn({ exportId: request.exportId, err: error }, "subject export temp cleanup failed");
       });
     }
+  }
+
+  /**
+   * Puts the copy off, without spending an attempt, when the temp disk cannot hold a full-size
+   * archive plus the margin. Concurrency is 1, so nothing else of ours is filling it meanwhile.
+   */
+  private async preflight(request: AssembleRequest, tempRoot: string): Promise<void> {
+    const budget = this.deps.createBudget?.() ?? new ArchiveBudget();
+    const probe = this.deps.freeSpace ?? new NodeFreeSpaceProbe();
+    const decision = decidePreflight({
+      freeBytes: await probe.freeBytes(tempRoot),
+      archiveCapBytes: budget.capBytes,
+    });
+    if (decision.action === "proceed") return;
+    this.deps.log.warn(
+      {
+        exportId: request.exportId,
+        freeBytes: decision.freeBytes,
+        requiredBytes: decision.requiredBytes,
+      },
+      "subject export deferred: temp disk low",
+    );
+    throw new SubjectExportDeferredError(decision.freeBytes, decision.requiredBytes);
   }
 
   private async assemble(
@@ -228,11 +259,14 @@ export class SubjectExportAssembler {
     );
     try {
       const parts: ArchivedPart[] = [];
+      // Read before the staged account files are consumed below.
+      const recipient = await readRecipient(staging);
       const ordered = [...staging.entries].sort((a, b) => a.zipPath.localeCompare(b.zipPath));
       for (const entry of ordered) {
-        parts.push(await zip.addFile(entry.zipPath, entry.diskPath, entry.compress));
+        parts.push(
+          await zip.addFile(entry.zipPath, entry.diskPath, entry.compress, { consume: true }),
+        );
       }
-      const recipient = await readRecipient(staging);
       parts.push(
         await zip.addBuffer(
           README_FILE_NAME,

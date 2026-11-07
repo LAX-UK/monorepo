@@ -55,6 +55,12 @@ export {
   type OrganisationStatePolicy,
 } from "./organisation-state-policy.js";
 export {
+  holdStartAt,
+  identityHeldSinceAfter,
+  payHeldSinceAfter,
+  type HeldSince,
+} from "./pay-hold.js";
+export {
   evaluateSelfServiceActorIdentityEligibility,
   type SelfServiceActorIdentityEligibility,
   type SelfServiceActorIdentityEligibilityInput,
@@ -87,11 +93,13 @@ export {
   needsManualReviewGate,
   paymentMethodsFor,
   parsePaymentTierLimits,
+  resolveChosenRail,
   resolveCheckoutRail,
   resolveManualReviewReason,
   validateCheckoutAmountPence,
   STRIPE_GBP_MIN_PENCE,
   type CheckoutRailKind,
+  type ChosenPaymentMethod,
   type ManualReviewReason,
   type PaymentMethodAvailability,
   type PaymentTierKind,
@@ -109,8 +117,11 @@ export {
   type AmlScreeningMatchStatus,
 } from "./aml-decision.js";
 export {
+  assertNotPayHoldStart,
   nextStatusForLifecycleOp,
   nextStatusForSelfOp,
+  OUTSIDE_LIFECYCLE_TRANSITIONS,
+  PayHoldTransitionRefusedError,
   type LifecycleAdminOp,
   type LifecycleSelfOp,
   type LifecycleTransitionContext,
@@ -729,12 +740,7 @@ export {
 } from "./pay-plan.js";
 export {
   PAY_SEVERAL_MAX_INVOICES,
-  planPaySeveral,
-  type PayableInvoice,
-  type PaySeveralCandidate,
-  type PaySeveralDecision,
-  type PaySeveralPlan,
-  type PaySeveralRefusal,
+  paySeveralSkipReason,
   type PaySeveralSkipReason,
 } from "./pay-several.js";
 export {
@@ -767,6 +773,7 @@ export {
   type DisputeDeadlineState,
   type DisputeView,
 } from "./dispute-case-view.js";
+export { payProgressOf, type PayProgressFacts } from "./pay-progress.js";
 export {
   payTogether,
   type PayTogetherDecision,

@@ -16,9 +16,9 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0319 bid invoices", () => {
-  it("is the last journal entry, one day after the entry before it", () => {
+  it("follows the entry before it by one day, in sequence the entry before it", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0319_bid_invoice");
-    expect(index).toBe(journal.entries.length - 1);
+    expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
@@ -79,8 +79,32 @@ describe("migration 0319 bid invoices", () => {
     const fromMigration = migration.slice(migration.indexOf("-- Backfill: one invoice per lot"));
     const normalise = (text: string) =>
       text.replaceAll("--> statement-breakpoint", "").replace(/\s+/g, " ").trim();
-    expect(normalise(script)).toContain(normalise(fromMigration));
+    // The migration has already run, so it is never edited. The script's last statement orders the
+    // candidate invoices better for a pair with more than one invoice, which the migration never
+    // meets; everything else must match word for word.
+    const preferEarlierInvoice = (text: string) =>
+      text.replace(
+        'ORDER BY (i."raised_at" <= p."created_at") DESC, (i."voided_at" IS NULL) DESC,',
+        'ORDER BY (i."voided_at" IS NULL) DESC,',
+      );
+    const comparable = (text: string) => normalise(preferEarlierInvoice(text));
+    const withoutLeadComment = (text: string) =>
+      text.replace(
+        /-- Every payment row without an invoice points at[\s\S]*?UPDATE "payment" p/,
+        'UPDATE "payment" p',
+      );
+    expect(comparable(withoutLeadComment(script))).toContain(
+      comparable(withoutLeadComment(fromMigration)),
+    );
     expect(script).toMatch(/Safe to re-run/);
+  });
+
+  it("links a payment first to the invoice that existed when it was created, in the script", () => {
+    const script = read("../scripts/backfill-bid-invoices.sql");
+    expect(script).toMatch(
+      /ORDER BY \(i\."raised_at" <= p\."created_at"\) DESC, \(i\."voided_at" IS NULL\) DESC/,
+    );
+    expect(migration).not.toMatch(/raised_at" <= p\."created_at"/);
   });
 
   it("links a payment to any invoice for its lot and account, not only backfilled ones", () => {

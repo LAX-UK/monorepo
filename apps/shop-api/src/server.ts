@@ -15,7 +15,12 @@ if (env.SENTRY_DSN_SHOP_API) {
 
 const container = createShopApiContainer(env);
 const app = createShopApiApp({ deps: container.app });
-const scheduler = createShopApiScheduler({ db: container.db, env, log: app.log });
+const scheduler = createShopApiScheduler({
+  db: container.db,
+  env,
+  log: app.log,
+  alertRetention: container.alertRetention,
+});
 
 const shutdown = async () => {
   scheduler?.stop();

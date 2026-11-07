@@ -11,7 +11,10 @@ import { AccountRegistrationsService } from "../services/organisation-buying/acc
 import { CollectionBookingService } from "../services/organisation-buying/collection-booking.service.js";
 import { DeliveryQuoteService } from "../services/organisation-buying/delivery-quote.service.js";
 import { PayPlanService } from "../services/organisation-buying/pay-plan.service.js";
+import { PayProgressReadService } from "../services/organisation-buying/pay-progress-read.service.js";
+import { PayProgressResolver } from "../services/organisation-buying/pay-progress.resolver.js";
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
+import { PayTransferService } from "../services/organisation-buying/pay-transfer.service.js";
 import { PurchaseCandidateReader } from "../services/organisation-buying/purchase-candidate.reader.js";
 import { PurchaseProblemService } from "../services/organisation-buying/purchase-problem.service.js";
 import { InMemoryPurchaseProblems } from "../testing/in-memory-purchase-problems.js";
@@ -57,6 +60,68 @@ function mount(
     flags: { flagsFor: async () => new Map() },
     now: () => NOW,
   });
+  const payPlan = new PayPlanService({
+    // Every live group counts as a payment the payer finished.
+    progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
+    candidates,
+    invoices: {
+      findByPaymentIds: async (ids) =>
+        new Map(
+          ids.map((id) => {
+            const row = purchases.rows.find((r) => r.payment?.id === id);
+            const pence = Math.round(Number(row?.payment?.amount ?? 0) * 100);
+            return [
+              id,
+              {
+                id: `inv-${id}`,
+                totalPence: pence,
+                dueAt: new Date("2026-11-25T23:59:59.999Z"),
+                voidedAt: null,
+                lines: [
+                  {
+                    kind: "hammer",
+                    label: "Hammer price",
+                    ratePercent: null,
+                    amountPence: pence,
+                  },
+                ],
+              } as never,
+            ];
+          }),
+        ),
+    },
+    pricing: { price: async () => Promise.reject(new Error("not invoiced")) },
+    lots: { findById: async () => null },
+    accounts: {
+      findById: async () =>
+        ({
+          id: BUYING_ACCOUNT,
+          displayName: "Northbank Gallery",
+          kind: opts.personal ? "individual" : "organisation",
+        }) as never,
+    },
+    onboarding: { isComplete: async () => opts.onboarded ?? true },
+    eligibility: {
+      check: async () => {
+        if (opts.eligibilityFails) throw new Error("db down");
+        return { kind: "payable" as const };
+      },
+    },
+    compliance: null,
+    limits: {
+      minPence: 30,
+      cardMaxPence: 500_000,
+      manualReviewMinPence: 2_500_000,
+      absoluteMaxPence: 10_000_000,
+    },
+    issuer: {
+      name: "London Auction Xchange LTD",
+      address: "156 New Cavendish Street",
+      companyNumber: null,
+      vatNumber: null,
+    },
+    now: () => NOW,
+  });
   const container = {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(opts.suspended ?? false) },
     requireLegalEntityContext: async (
@@ -69,68 +134,10 @@ function mount(
     organisationBuying: {
       registrations: new AccountRegistrationsService(new InMemoryRegistrations()),
       purchases: new AccountPurchasesService({ reader: purchases, now: () => NOW }),
-      payPlan: new PayPlanService({
-        candidates,
-        invoices: {
-          findByPaymentIds: async (ids) =>
-            new Map(
-              ids.map((id) => {
-                const row = purchases.rows.find((r) => r.payment?.id === id);
-                const pence = Math.round(Number(row?.payment?.amount ?? 0) * 100);
-                return [
-                  id,
-                  {
-                    id: `inv-${id}`,
-                    totalPence: pence,
-                    dueAt: new Date("2026-11-25T23:59:59.999Z"),
-                    voidedAt: null,
-                    lines: [
-                      {
-                        kind: "hammer",
-                        label: "Hammer price",
-                        ratePercent: null,
-                        amountPence: pence,
-                      },
-                    ],
-                  } as never,
-                ];
-              }),
-            ),
-        },
-        pricing: { price: async () => Promise.reject(new Error("not invoiced")) },
-        lots: { findById: async () => null },
-        accounts: {
-          findById: async () =>
-            ({
-              id: BUYING_ACCOUNT,
-              displayName: "Northbank Gallery",
-              kind: opts.personal ? "individual" : "organisation",
-            }) as never,
-        },
-        onboarding: { isComplete: async () => opts.onboarded ?? true },
-        eligibility: {
-          check: async () => {
-            if (opts.eligibilityFails) throw new Error("db down");
-            return { kind: "payable" as const };
-          },
-        },
-        compliance: null,
-        limits: {
-          minPence: 30,
-          cardMaxPence: 500_000,
-          manualReviewMinPence: 2_500_000,
-          absoluteMaxPence: 10_000_000,
-        },
-        issuer: {
-          name: "London Auction Xchange LTD",
-          address: "156 New Cavendish Street",
-          companyNumber: null,
-          vatNumber: null,
-        },
-        now: () => NOW,
-      }),
+      payPlan,
       paySeveral: new PaySeveralService({
-        candidates,
+        planner: payPlan,
+        invoices: { ensureForLot: async (lotId) => ({ created: false, lotId }) },
         limits: {
           minPence: 30,
           cardMaxPence: 500_000,
@@ -138,7 +145,6 @@ function mount(
           absoluteMaxPence: 10_000_000,
         },
         compliance: null,
-        eligibility: { check: async () => ({ kind: "payable" as const }) },
         checkout: {
           start: async (input) =>
             ok({
@@ -147,6 +153,15 @@ function mount(
               rail: input.rail,
             }),
         },
+      }),
+      payProgress: new PayProgressReadService({
+        candidates,
+        progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
+      }),
+      payTransfer: new PayTransferService({
+        candidates,
+        progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
+        gateway: { bankTransferInstructions: async () => null },
       }),
       deliveryQuotes: new DeliveryQuoteService({ quotes, purchases }),
       problems: new PurchaseProblemService({
@@ -283,9 +298,38 @@ const MATRIX: Record<
       viewer: 403,
     },
   },
+  // Following a payment under way is for everyone who follows purchases.
+  "GET /purchases/pay-progress": {
+    call: (app) => app.request(`/legal-entities/purchases/pay-progress?lots=${LOTS.due}`),
+    expected: {
+      owner: 200,
+      admin: 200,
+      finance: 200,
+      buyer_agent: 200,
+      consignor: 403,
+      viewer: 403,
+    },
+  },
+  // Bank details are for the people who pay.
+  "GET /purchases/pay-transfer": {
+    call: (app) => app.request(`/legal-entities/purchases/pay-transfer?lots=${LOTS.due}`),
+    expected: {
+      owner: 200,
+      admin: 200,
+      finance: 200,
+      buyer_agent: 403,
+      consignor: 403,
+      viewer: 403,
+    },
+  },
   // Paying several invoices at once is for the people who pay one: owners, admins and finance.
   "POST /purchases/pay-several": {
-    call: (app) => post(app, "/purchases/pay-several", { lotIds: [LOTS.due, LOTS.overdue] }),
+    call: (app) =>
+      post(app, "/purchases/pay-several", {
+        lotIds: [LOTS.due, LOTS.overdue],
+        expectedTotalPence: 100_010,
+        expectedLotIds: [LOTS.due, LOTS.overdue],
+      }),
     expected: {
       owner: 200,
       admin: 200,
@@ -373,7 +417,11 @@ describe("organisation buying routes", () => {
       const res = await plan(app, [LOTS.due]);
       expect(res.status).toBe(200);
       expect(await res.json()).toMatchObject({ data: { gate: { kind: "onboarding_required" } } });
-      const pay = await post(app, "/purchases/pay-several", { lotIds: [LOTS.due] });
+      const pay = await post(app, "/purchases/pay-several", {
+        lotIds: [LOTS.due],
+        expectedTotalPence: 60_010,
+        expectedLotIds: [LOTS.due],
+      });
       expect(pay.status).toBe(403);
       expect(await pay.json()).toMatchObject({ code: "onboarding_required" });
     });
@@ -399,7 +447,11 @@ describe("organisation buying routes", () => {
           totals: { pence: 100_010 },
         },
       });
-      const pay = await post(app, "/purchases/pay-several", { lotIds: [LOTS.due, LOTS.overdue] });
+      const pay = await post(app, "/purchases/pay-several", {
+        lotIds: [LOTS.due, LOTS.overdue],
+        expectedTotalPence: 100_010,
+        expectedLotIds: [LOTS.due, LOTS.overdue],
+      });
       expect(pay.status).toBe(200);
       expect(await pay.json()).toMatchObject({ data: { total: "1000.10", rail: "card" } });
     });
@@ -442,6 +494,30 @@ describe("organisation buying routes", () => {
     });
   });
 
+  describe("GET /purchases/pay-transfer", () => {
+    it("answers with no details when no transfer is waiting, and is never cached", async () => {
+      const res = await mount("finance").request(
+        `/legal-entities/purchases/pay-transfer?lots=${LOTS.due}`,
+      );
+      expect(res.status).toBe(200);
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(await res.json()).toEqual({ data: { instructions: null } });
+    });
+
+    it("is for signed-in buyer accounts only", async () => {
+      const url = `/legal-entities/purchases/pay-transfer?lots=${LOTS.due}`;
+      expect((await mount("finance", { signedOut: true }).request(url)).status).toBe(401);
+      expect((await mount("finance", { platformRole: "admin" }).request(url)).status).toBe(403);
+    });
+
+    it("refuses an id that is not a lot id", async () => {
+      const res = await mount("finance").request(
+        "/legal-entities/purchases/pay-transfer?lots=nope",
+      );
+      expect(res.status).toBe(400);
+    });
+  });
+
   it("plans pay several and rejects malformed picks before the rule runs", async () => {
     const app = mount("finance");
     const plan = await post(app, "/purchases/pay-several/plan", {
@@ -456,6 +532,8 @@ describe("organisation buying routes", () => {
   it("opens one checkout for several invoices and says what it covers", async () => {
     const res = await post(mount("finance"), "/purchases/pay-several", {
       lotIds: [LOTS.due, LOTS.overdue, LOTS.paid],
+      expectedTotalPence: 100_010,
+      expectedLotIds: [LOTS.due, LOTS.overdue],
     });
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({
@@ -469,11 +547,35 @@ describe("organisation buying routes", () => {
     });
     const malformed = await post(mount("finance"), "/purchases/pay-several", { lotIds: [] });
     expect(malformed.status).toBe(400);
+    // A request that names no plan (a page from before this check) is told the current one.
+    const unshown = await post(mount("finance"), "/purchases/pay-several", {
+      lotIds: [LOTS.due],
+    });
+    expect(unshown.status).toBe(409);
+    expect(await unshown.json()).toMatchObject({
+      error: "pay_plan_changed",
+      plan: { total: "600.10" },
+    });
+  });
+
+  it("answers 409 with the fresh plan when the plan shown is no longer the plan", async () => {
+    const res = await post(mount("finance"), "/purchases/pay-several", {
+      lotIds: [LOTS.due, LOTS.overdue],
+      expectedTotalPence: 90_000,
+      expectedLotIds: [LOTS.due, LOTS.overdue],
+    });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({
+      error: "pay_plan_changed",
+      plan: { total: "1000.10", payable: [{ lotId: LOTS.due }, { lotId: LOTS.overdue }] },
+    });
   });
 
   it("paying several needs completed account setup, as paying one does", async () => {
     const res = await post(mount("finance", { onboarded: false }), "/purchases/pay-several", {
       lotIds: [LOTS.due],
+      expectedTotalPence: 60_010,
+      expectedLotIds: [LOTS.due],
     });
     expect(res.status).toBe(403);
     expect(await res.json()).toMatchObject({ code: "onboarding_required" });
@@ -482,7 +584,11 @@ describe("organisation buying routes", () => {
   it("a staff account can neither plan nor pay several invoices", async () => {
     const app = mount("finance", { platformRole: "admin" });
     for (const path of ["/purchases/pay-several/plan", "/purchases/pay-several"]) {
-      const res = await post(app, path, { lotIds: [LOTS.due] });
+      const res = await post(app, path, {
+        lotIds: [LOTS.due],
+        expectedTotalPence: 60_010,
+        expectedLotIds: [LOTS.due],
+      });
       expect(res.status).toBe(403);
       expect(await res.json()).toMatchObject({ error: "bidding_not_allowed_for_role" });
     }

@@ -11,6 +11,7 @@ const BASE_ROW = {
   slug: null,
   createdByUserId: "u1",
   statusChangedAt: null,
+  payHeldSince: null,
   statusChangedByUserId: null,
   statusReason: null,
   stripeConnectAccountId: null,

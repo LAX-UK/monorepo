@@ -601,10 +601,12 @@ export type {
   NewLaxAdminRoleRemoval,
 } from "./lax-admin-roles.repository.js";
 
-export { BidInvoiceTotalMismatchError } from "./bid-invoice.repository.js";
+export { BidInvoiceTotalMismatchError, bidInvoiceKey } from "./bid-invoice.repository.js";
 export type {
   BidInvoiceRecord,
+  IBidInvoiceBatchReader,
   IBidInvoiceDueDateRepository,
+  OpenInvoiceScope,
   IBidInvoiceRaiseRepository,
   IBidInvoiceReader,
   NewBidInvoice,
@@ -1184,6 +1186,7 @@ export type {
   ClaimPaymentGroupResult,
   IPaySeveralInvoiceFlagsReader,
   IPaymentGroupRepository,
+  LivePaymentGroupFacts,
   LockedPaymentGroup,
   PaySeveralInvoiceFlags,
   PaymentGroupMember,

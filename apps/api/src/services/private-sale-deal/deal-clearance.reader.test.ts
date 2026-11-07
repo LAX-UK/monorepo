@@ -19,7 +19,13 @@ function reader(o: Overrides = {}) {
   const deps = {
     kyc: {
       getUserKycState: async () =>
-        o.kyc === null ? null : { kycStatus: (o.kyc ?? "approved") as never, kycVerifiedAt: null },
+        o.kyc === null
+          ? null
+          : {
+              kycStatus: (o.kyc ?? "approved") as never,
+              kycVerifiedAt: null,
+              identityHeldSince: null,
+            },
     },
     amlHolds: {
       getHold: async () => (o.hold === null ? null : { status: o.hold ?? "none", reason: null }),

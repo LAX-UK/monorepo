@@ -644,6 +644,28 @@ const SHOP_CATEGORIES = [
     ],
   ),
   category(
+    "selling-payouts",
+    "Selling payouts",
+    ["made_by_us"],
+    "Payouts for your sales on LAX Shop and lax.art, with the gross amount, fees and net amount of each sale. Present only if you sold.",
+    [
+      f(
+        "source",
+        "Whether the sale was an online order, a sale recorded by LAX or an original work.",
+      ),
+      f("orderReference", "The reference of the order, for a sale made through an order."),
+      f("work", "The work that was sold, with its title and public link."),
+      f("soldAt", "When the sale was made or recorded."),
+      f("gross", "The sale amount before fees, as minor units and currency."),
+      f("fees", "The fees and deductions taken from the sale, as minor units and currency."),
+      f("net", "The amount due to you after fees, as minor units and currency."),
+      f("status", "Whether the payout is waiting for the refund period, due, paid or cancelled."),
+      f("dueAt", "When the payout falls due."),
+      f("paidAt", "When the payout was paid, or null."),
+      f("paymentReference", "The reference of the payment made to you, or null."),
+    ],
+  ),
+  category(
     "notifications-and-marketing",
     "Notifications and marketing",
     ["observed", "provided"],

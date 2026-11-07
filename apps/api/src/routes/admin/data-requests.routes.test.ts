@@ -19,6 +19,7 @@ function createApp(staffRoles: StaffRoles | undefined) {
     extend: vi.fn().mockResolvedValue(ok),
     close: vi.fn().mockResolvedValue(ok),
     continueDownload: vi.fn().mockResolvedValue(ok),
+    eraseEnquiries: vi.fn().mockResolvedValue({ ok: true, value: { enquiries: 2, held: 1 } }),
   };
   const container = { env: { LOG_LEVEL: "silent", NODE_ENV: "test" }, admin: { dataRequests } };
   const app = new Hono<{
@@ -60,6 +61,11 @@ describe("data requests access", () => {
     ["PATCH", "/data-requests/DR-0001", { version: 1, notes: "x" }],
     ["POST", "/data-requests/DR-0001/close", { version: 1, outcome: "sent" }],
     ["POST", "/data-requests/DL-7F3C1A/continue"],
+    [
+      "POST",
+      "/data-requests/DR-0001/enquiry-erasure",
+      { confirmation: "lena@north.com", reason: "Asked to be forgotten" },
+    ],
   ];
 
   it.each(userStaffRoles)(
@@ -252,5 +258,38 @@ describe("data requests routes", () => {
     const res = await app.request("http://test/data-requests/summary");
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ error: "data_requests_unavailable" });
+  });
+});
+
+describe("POST /data-requests/:reference/enquiry-erasure", () => {
+  const body = { confirmation: "lena@north.com", reason: "Asked to be forgotten" };
+  const url = "http://test/data-requests/dr-0001/enquiry-erasure";
+
+  it("passes the reference and the typed confirmation, never an email address, and returns counts", async () => {
+    const { app, dataRequests } = createApp(["compliance"]);
+    const res = await app.request(url, send("POST", { ...body, email: "someone@else.com" }));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
+    expect(await res.json()).toEqual({ data: { enquiries: 2, held: 1 } });
+    expect(dataRequests.eraseEnquiries).toHaveBeenCalledWith("DR-0001", body, "staff-1");
+  });
+
+  it("keeps the service's refusal status and code", async () => {
+    const { app, dataRequests } = createApp(["compliance"]);
+    dataRequests.eraseEnquiries.mockResolvedValueOnce({
+      ok: false,
+      status: 409,
+      error: "erasure_not_allowed",
+    });
+    const res = await app.request(url, send("POST", body));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "erasure_not_allowed" });
+  });
+
+  it("refuses a short reason", async () => {
+    const { app, dataRequests } = createApp(["compliance"]);
+    const res = await app.request(url, send("POST", { ...body, reason: "no" }));
+    expect(res.status).toBe(400);
+    expect(dataRequests.eraseEnquiries).not.toHaveBeenCalled();
   });
 });

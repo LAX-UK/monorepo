@@ -110,6 +110,20 @@ describe("checking a stored invoice before it is charged", () => {
     expect(() => checkInvoiceLines(undefined, "pay-1", 100)).toThrow(/no stored invoice/);
   });
 
+  it("throws, with its own code, for a voided invoice, even when the figures agree", () => {
+    const voided = {
+      ...invoiceFor(lot("1000.00"), null),
+      voidedAt: new Date("2026-11-02T09:00:00Z"),
+    };
+    expect(() => checkInvoiceLines(voided, "pay-1", 125_000)).toThrow(/voided/);
+    try {
+      checkInvoiceLines(voided, "pay-1", 125_000);
+    } catch (error) {
+      expect(error).toBeInstanceOf(InvoiceLinesError);
+      expect((error as InvoiceLinesError).code).toBe("invoice_voided");
+    }
+  });
+
   it("throws when the invoice total is not the payment amount", () => {
     expect(() => checkInvoiceLines(invoiceFor(lot("1000.00"), null), "pay-1", 124_999)).toThrow(
       InvoiceLinesError,

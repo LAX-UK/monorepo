@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SourceOfFundsService } from "./source-of-funds.service.js";
 import type {
   CreateSourceOfFundsCaseInput,
@@ -86,7 +86,7 @@ function fakeRepo(state: FakeState): ISourceOfFundsRepository {
         currency: input.currency,
       });
       state.cases.push(created);
-      return created;
+      return { case: created, created: true };
     },
     async setTriage(input: SourceOfFundsTriageInput) {
       const existing = state.cases.find((c) => c.id === input.id);
@@ -291,7 +291,7 @@ describe("SourceOfFundsService.requiresSourceOfFunds", () => {
     expect(state.cases.filter((c) => c.status === "pending")).toHaveLength(1);
   });
 
-  it("reuses the pending case when create races on the unique index", async () => {
+  it("reuses the pending case when create finds one opened concurrently", async () => {
     const pendingCase = makeCase({
       id: "sof_pending",
       userId: "u1",
@@ -309,15 +309,12 @@ describe("SourceOfFundsService.requiresSourceOfFunds", () => {
         return base.findPendingForUser(userId, conn);
       },
       async create() {
-        throw Object.assign(new Error("duplicate key value violates unique constraint"), {
-          code: "23505",
-        });
+        return { case: pendingCase, created: false };
       },
     };
     const svc = new SourceOfFundsService(repo, config);
     expect(await svc.requiresSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 })).toBe(true);
     expect(state.cases).toHaveLength(1);
-    expect(pendingReads).toBeGreaterThanOrEqual(2);
   });
 
   it("clears while a valid approved case is on file", async () => {
@@ -691,5 +688,53 @@ describe("SourceOfFundsService.wouldRequireSourceOfFunds (read-only)", () => {
     expect(await svc.wouldRequireSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 })).toBe(
       false,
     );
+  });
+});
+
+describe("SourceOfFundsService invoice terms", () => {
+  const TX = { marker: "tx" } as never;
+  const runner = { runInTransaction: async <T>(fn: (tx: never) => Promise<T>) => fn(TX) };
+
+  async function decideWith(decision: "approve" | "reject") {
+    const state: FakeState = {
+      cases: [makeCase({ id: "sof_1", userId: "u1" })],
+      linkedPence: 0,
+    };
+    const invoiceTerms = { extendOpenInvoices: vi.fn().mockResolvedValue(2) };
+    const svc = new SourceOfFundsService(
+      fakeRepo(state),
+      config,
+      runner as never,
+      null,
+      invoiceTerms as never,
+    );
+    await svc.triage({
+      caseId: "sof_1",
+      analystUserId: "analyst_1",
+      recommendation: decision,
+      notes: null,
+    });
+    await svc.decide({ caseId: "sof_1", reviewerUserId: "mlro_1", decision, notes: null });
+    return invoiceTerms;
+  }
+
+  it("moves the due dates of the person's unpaid invoices, in the decision's transaction, on approval", async () => {
+    const invoiceTerms = await decideWith("approve");
+    expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledTimes(1);
+    expect(invoiceTerms.extendOpenInvoices).toHaveBeenCalledWith(
+      {
+        kind: "winner",
+        userId: "u1",
+        personalAccountsOnly: false,
+        holdStartedAt: new Date("2026-01-01T00:00:00Z"),
+      },
+      expect.any(Date),
+      TX,
+    );
+  });
+
+  it("leaves them alone when the case is rejected", async () => {
+    const invoiceTerms = await decideWith("reject");
+    expect(invoiceTerms.extendOpenInvoices).not.toHaveBeenCalled();
   });
 });

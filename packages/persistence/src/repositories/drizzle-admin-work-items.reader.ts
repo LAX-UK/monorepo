@@ -261,7 +261,11 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
           ),
         ),
       )
-      .orderBy(payment.createdAt)
+      // Longest overdue first: by the stored due date, which a released hold may have moved;
+      // a payment with no stored invoice by the due date its age gives (the same term as above).
+      .orderBy(
+        sql`coalesce(${bidInvoice.dueAt}, ${payment.createdAt} + (${INVOICE_PAYMENT_DUE_DAYS}::int * interval '1 day'))`,
+      )
       .limit(limit);
 
     const overdue = rows.flatMap((row) => {

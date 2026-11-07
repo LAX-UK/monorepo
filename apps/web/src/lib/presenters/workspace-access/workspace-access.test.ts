@@ -25,7 +25,6 @@ describe("workspacePageAt", () => {
       anyCapability: [],
       record: true,
     });
-    expect(workspacePageAt("/purchases/checkout/lot-9")?.label).toBe("this purchase");
   });
 
   it("knows nothing of an address outside the workspace", () => {

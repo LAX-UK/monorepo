@@ -1,4 +1,3 @@
-import type { PaySeveralCandidate } from "@auction/domain";
 import type {
   AccountPurchaseFactsRow,
   IAccountPurchaseFactsReader,
@@ -7,10 +6,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { AccountPurchaseView } from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
-import { paySeveralCandidate, purchaseView } from "./purchase-view.js";
-
-/** Every invoice is raised in pounds sterling. */
-export const INVOICE_CURRENCY = "GBP";
+import { purchaseView } from "./purchase-view.js";
 
 /** A picked lot as read from the account: the row, how the member sees it, and its flags. */
 export type PurchaseEntry = {
@@ -24,7 +20,6 @@ export type PurchaseEntry = {
 export type PurchaseCandidates = {
   /** In the order picked. */
   entries: PurchaseEntry[];
-  picks: PaySeveralCandidate[];
   /** The winner of each lot found, for checking them as well as the payer. */
   winners: Map<string, string | null>;
 };
@@ -35,7 +30,11 @@ export type PurchaseCandidateReaderDeps = {
   now: () => Date;
 };
 
-const NO_FLAGS: PaySeveralInvoiceFlags = { heldForReview: false, inPaymentInProgress: false };
+const NO_FLAGS: PaySeveralInvoiceFlags = {
+  heldForReview: false,
+  inPaymentInProgress: false,
+  group: null,
+};
 
 /**
  * Reads the lots picked for a payment, the one way both the pay plan and "Pay several" see them,
@@ -76,22 +75,6 @@ export class PurchaseCandidateReader {
         flags: (paymentId ? flags.get(paymentId) : undefined) ?? NO_FLAGS,
       };
     });
-    // A pick outside what the member follows in this account is treated as another account's.
-    const picks = entries.map<PaySeveralCandidate>((entry) =>
-      entry.view
-        ? paySeveralCandidate(entry.view, actor.legalEntityId, INVOICE_CURRENCY, entry.flags)
-        : {
-            lotId: entry.lotId,
-            paymentId: null,
-            buyerAccountId: "",
-            invoice: "not_invoiced",
-            payerMayPay: false,
-            totalDue: null,
-            currency: INVOICE_CURRENCY,
-            heldForReview: false,
-            inPaymentInProgress: false,
-          },
-    );
-    return { entries, picks, winners };
+    return { entries, winners };
   }
 }

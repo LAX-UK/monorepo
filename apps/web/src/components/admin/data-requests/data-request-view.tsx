@@ -1,5 +1,6 @@
 "use client";
 
+import { eraseDataRequestEnquiriesAction } from "@/lib/actions/admin/admin-data-requests";
 import { recordActions } from "@/lib/admin/data-requests/data-request-actions";
 import { dataRequestTimeline } from "@/lib/admin/data-requests/data-request-timeline";
 import { dataRequestHref } from "@/lib/admin/data-requests/data-requests-search";
@@ -15,6 +16,9 @@ import {
   kindParts,
   requestStatus,
 } from "@/lib/admin/data-requests/data-requests.vm";
+import { enquiryErasureState } from "@/lib/admin/data-requests/enquiry-erasure";
+import { erasureOutcome } from "@/lib/admin/data-requests/enquiry-erasure";
+import { DATA_REQUESTS_MANAGE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { copyToClipboard } from "@/lib/ui/copy-to-clipboard";
 import { notify } from "@/lib/ui/notify";
 import type {
@@ -35,7 +39,7 @@ import {
   Timeline,
   toastUndo,
 } from "@auction/staff-ui";
-import { ArrowRight, CalendarPlus, Check, Copy } from "@auction/staff-ui/icons";
+import { ArrowRight, CalendarPlus, Check, Copy, Trash2 } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -49,13 +53,14 @@ import {
   ProductsSection,
   RequestSection,
 } from "./data-request-sections";
+import { EraseEnquiriesDialog } from "./erase-enquiries-dialog";
 import { ExtendDataRequestDialog } from "./extend-data-request-dialog";
 import { IdReceivedDialog } from "./id-received-dialog";
 import { useDataRequestWrites } from "./use-data-request-writes";
 
 const NextLink: StaffLinkComponent = Link;
 
-type Dialog = "extend" | "close" | "continue" | "id-received" | null;
+type Dialog = "extend" | "close" | "continue" | "id-received" | "erase" | null;
 
 export type DataRequestViewProps = {
   record: DataRequestRecord;
@@ -182,6 +187,7 @@ export function DataRequestView({
   const { request } = record;
   const actions = recordActions(record);
   const writes = useDataRequestWrites(request.reference, record.version);
+  const erasure = enquiryErasureState(record);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [busyProduct, setBusyProduct] = useState<DataRequestProduct | null>(null);
 
@@ -266,6 +272,17 @@ export function DataRequestView({
           Continue manually…
         </StaffButton>
       ) : null}
+      {erasure.kind === "hidden" ? null : (
+        <StaffButton
+          variant="danger-secondary"
+          requires={DATA_REQUESTS_MANAGE_ACCESS}
+          icon={<Trash2 aria-hidden />}
+          onClick={() => setDialog("erase")}
+          {...(erasure.kind === "disabled" ? { disabledReason: erasure.reason } : {})}
+        >
+          Erase enquiries…
+        </StaffButton>
+      )}
     </>
   );
 
@@ -391,6 +408,29 @@ export function DataRequestView({
           <Timeline label="Request history" events={dataRequestTimeline(record.timeline)} />
         </Section>
       </DetailPage>
+
+      {record.person.email ? (
+        <EraseEnquiriesDialog
+          key={`erase-${record.version}`}
+          open={dialog === "erase"}
+          onOpenChange={(open) => setDialog(open ? "erase" : null)}
+          reference={request.reference}
+          email={record.person.email}
+          submit={(input) => eraseDataRequestEnquiriesAction(request.reference, input)}
+          onDone={(counts) => {
+            const outcome = erasureOutcome(counts);
+            if (outcome.kind === "erased") {
+              notify.success(outcome.message, {
+                ...(outcome.heldMessage ? { description: outcome.heldMessage } : {}),
+              });
+            } else if (outcome.kind === "held_only") {
+              notify.warning(outcome.message, { description: outcome.heldMessage });
+            } else {
+              notify.warning(outcome.message);
+            }
+          }}
+        />
+      ) : null}
 
       {request.kind === "manual" ? (
         <>

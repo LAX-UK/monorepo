@@ -9,7 +9,6 @@ import { CrmSyncService } from "./crm-sync-service.js";
 
 const noDealNaming = {
   forLotWon: vi.fn(),
-  forShopEnquiry: vi.fn(),
   forShopOrder: vi.fn(),
 };
 
@@ -47,7 +46,6 @@ const ctx = {
   dealStagePaymentCaptured: "",
   dealStagePaymentRefunded: "",
   dealStageShopPaid: "",
-  dealStageShopEnquiry: "",
 };
 
 describe("marketing_enquiry.received mapping", () => {
@@ -235,6 +233,7 @@ function buildService(enquiryRecord: CrmEnquiryRecord | null) {
     attributionReader: { loadFirstTouchFields: vi.fn() },
     enquiryReader: { findById },
     dealNamingReader: noDealNaming,
+    shopEnquiryReader: { find: vi.fn() },
   });
   return { service, gateway, links, findById };
 }

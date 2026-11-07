@@ -20,6 +20,7 @@ import {
   seedIdentityUserFixtures,
 } from "../../testing/identity-user-fixtures.js";
 import { PayPlanService } from "./pay-plan.service.js";
+import { PayProgressResolver } from "./pay-progress.resolver.js";
 import { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -80,6 +81,8 @@ describe.skipIf(!HAS_DB)("pay plan (integration)", () => {
   }
 
   const service = new PayPlanService({
+    // Every live group counts as a payment the payer finished.
+    progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
     candidates: new PurchaseCandidateReader({
       reader: new DrizzleAccountPurchaseFactsReader(db),
       flags: new DrizzlePaySeveralInvoiceFlagsReader(db),

@@ -133,6 +133,15 @@ export const envSchema = z
      * dry run: it logs what it would purge and deletes nothing.
      */
     KYC_RETENTION_PURGE_ENABLED: z.preprocess(parseOptionalBooleanFlag, z.boolean().default(false)),
+    /**
+     * Turns on the Bid alert retention prune (stale sign-ups, stopped subscribers, old match and
+     * digest logs). Off (the default) it runs as a dry run: it logs what it would remove and
+     * deletes nothing.
+     */
+    ALERT_RETENTION_PURGE_ENABLED: z.preprocess(
+      parseOptionalBooleanFlag,
+      z.boolean().default(false),
+    ),
     QR_SCAN_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(90),
     /** Optional ClamAV daemon for SoF document malware scanning. */
     CLAMAV_HOST: z.preprocess(emptyToUndefined, z.string().optional()),
@@ -191,7 +200,6 @@ export const envSchema = z
     ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED: z.string().default(""),
     ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED: z.string().default(""),
     ZOHO_CRM_DEAL_STAGE_SHOP_PAID: z.string().default(""),
-    ZOHO_CRM_DEAL_STAGE_SHOP_ENQUIRY: z.string().default(""),
     SHOP_ZOHO_CATALOGUE_SYNC_ENABLED: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),

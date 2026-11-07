@@ -54,6 +54,16 @@ describe("EnquiryErasureService", () => {
     expect(JSON.stringify(event)).not.toContain("ada@");
   });
 
+  it("puts the data request's reference in the audit event when one asked for it", async () => {
+    const { service, publish } = setup();
+    await service.eraseByEmail({ ...input, requestReference: "DR-0007" });
+    expect(publish.mock.calls[0]?.[0]).toMatchObject({
+      payload: { ...counts, reason: "Asked to be forgotten", requestReference: "DR-0007" },
+    });
+    await service.eraseByEmail(input);
+    expect(publish.mock.calls[1]?.[0].payload).not.toHaveProperty("requestReference");
+  });
+
   it("erases the address's alert subscriptions in the same transaction, by normalised email", async () => {
     const { service, tx, eraseInTransaction } = setup();
     await service.eraseByEmail(input);

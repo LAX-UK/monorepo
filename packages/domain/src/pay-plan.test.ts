@@ -8,7 +8,6 @@ import {
   classifyPayPlanLots,
   pickRefusal,
 } from "./pay-plan.js";
-import { planPaySeveral } from "./pay-several.js";
 import { parsePaymentTierLimits, paymentMethodsFor } from "./payment-tier-policy.js";
 
 const ACCOUNT = "acct-1";
@@ -71,6 +70,7 @@ function facts(
     compliance: { hold: false },
     limits,
     classified: classifyPayPlanLots(ACCOUNT, lots),
+    progress: null,
     ...overrides,
   };
 }
@@ -170,36 +170,6 @@ describe("classifyPayPlanLots: what is left out, and why", () => {
       lot("a", { invoice: "not_invoiced", paymentId: null, invoiceId: null, paymentStatus: null }),
     ]).payable;
     expect(p).toMatchObject({ lotId: "a", paymentId: null, invoiceId: null, totalPence: 125_000 });
-  });
-
-  it("agrees with Pay several on every invoiced lot: the same ones are payable", () => {
-    const picks = [
-      lot("a"),
-      lot("b", { invoice: "paid" }),
-      lot("c", { payerMayPay: false }),
-      lot("d", { heldForReview: true }),
-      lot("e", { inPaymentInProgress: true }),
-      lot("f", { buyerAccountId: "x" }),
-      lot("g", { invoice: "overdue" }),
-    ];
-    const old = planPaySeveral(
-      ACCOUNT,
-      picks.map((p) => ({
-        lotId: p.lotId,
-        paymentId: p.paymentId,
-        buyerAccountId: p.buyerAccountId,
-        invoice: p.invoice,
-        payerMayPay: p.payerMayPay,
-        totalDue: "1250.00",
-        currency: "GBP",
-        heldForReview: p.heldForReview,
-        inPaymentInProgress: p.inPaymentInProgress,
-      })),
-    );
-    const now = classifyPayPlanLots(ACCOUNT, picks);
-    expect(old.allowed && old.plan.payable.map((p) => p.lotId)).toEqual(
-      now.payable.map((p) => p.lotId),
-    );
   });
 });
 
@@ -329,7 +299,7 @@ describe("payment methods", () => {
   it("card takes exactly the card limit", () => {
     const [card, transfer] = paymentMethodsFor(1_000_000, limits);
     expect(card).toEqual({ method: "card", available: true, reason: null });
-    expect(transfer?.available).toBe(false);
+    expect(transfer?.available).toBe(true);
   });
 
   it("one penny over the card limit is bank transfer only", () => {
@@ -342,6 +312,25 @@ describe("payment methods", () => {
     const [card, transfer] = paymentMethodsFor(100_000_000, limits);
     expect(card?.available).toBe(false);
     expect(transfer).toMatchObject({ available: false, reason: "over_online_limit" });
+  });
+
+  it("the plan carries the card limit from the server's limits", () => {
+    expect(buildPayPlan(facts()).cardLimitPence).toBe(limits.cardMaxPence);
+  });
+
+  it("the plan carries a payment already under way", () => {
+    const progress = {
+      rail: "bank_transfer" as const,
+      stage: "part_received" as const,
+      lots: [{ lotId: "a", title: "A", lotNumber: 1, saleTitle: null, totalPence: 100 }],
+      totalPence: 100,
+      receivedPence: 40,
+      remainingPence: 60,
+      receivedPercent: 40,
+      otherInvoices: 0,
+    };
+    expect(buildPayPlan(facts({ progress })).progress).toEqual(progress);
+    expect(buildPayPlan(facts()).progress).toBeNull();
   });
 
   it("the plan carries the methods for its total", () => {

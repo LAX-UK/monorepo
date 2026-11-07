@@ -1,8 +1,9 @@
 import type {
   CheckoutRailKind,
+  ChosenPaymentMethod,
   CollectionBookingOffer,
   DeliveryQuoteAction,
-  PaySeveralPlan,
+  PaySeveralSkipReason,
   PayTogetherDecision,
   PurchaseDeliveryStage,
   PurchaseInvoiceStatus,
@@ -15,7 +16,7 @@ import type {
   DeliveryQuoteRow,
   RecordPerson,
 } from "@auction/persistence/interfaces";
-import type { PayPlan } from "@auction/types";
+import type { BankTransferInstructions, PayPlan, PayPlanProgress } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { OrganisationMemberActor } from "./organisation-membership-service.js";
 
@@ -39,14 +40,20 @@ export type OrganisationBuyingErrorCode =
   | "pay_several_below_minimum"
   | "pay_several_over_limit"
   | "pay_several_needs_finance_review"
+  | "pay_several_card_over_limit"
+  | "payment_in_progress_elsewhere"
   | "pay_several_conflict"
   | "pay_several_unavailable"
-  | "pay_plan_unavailable";
+  | "pay_plan_unavailable"
+  | "onboarding_required"
+  | "pay_plan_changed";
 
 export type OrganisationBuyingError = {
   code: OrganisationBuyingErrorCode;
   status: 400 | 403 | 404 | 409 | 503;
   message: string;
+  /** The plan as it now stands, sent with `pay_plan_changed` so the screen can show it again. */
+  quote?: PaySeveralQuote;
 };
 
 export type BuyingResult<T> = Promise<Result<T, OrganisationBuyingError>>;
@@ -103,9 +110,28 @@ export interface IAccountPurchasesService {
 
 /**
  * Which picked invoices one payment settles, with the total and whether (and how) that total can
- * be paid at once.
+ * be paid at once. It is the pay plan, told in the combined-payment screen's terms.
  */
-export type PaySeveralQuote = PaySeveralPlan & { payTogether: PayTogetherDecision };
+export type PaySeveralQuote = {
+  /** The lots that will be paid together, in the order picked. */
+  payable: { lotId: string; totalDue: string }[];
+  skipped: { lotId: string; reason: PaySeveralSkipReason }[];
+  currency: string;
+  /** The sum of the payable lots, as a decimal string. */
+  total: string;
+  payTogether: PayTogetherDecision;
+};
+
+/** What the person asked to pay: the picked lots and the plan they were shown for them. */
+export type PaySeveralRequest = {
+  lotIds: readonly string[];
+  /** The shown total, in whole pence. Absent from a page that predates the check. */
+  expectedTotalPence?: number | undefined;
+  /** The lots the shown plan said would be paid. */
+  expectedLotIds?: readonly string[] | undefined;
+  /** How the payer chose to pay. Absent from a page that predates the choice: the amount decides. */
+  method?: ChosenPaymentMethod | undefined;
+};
 
 /** The combined payment opened for the payer: where to pay, and what it covers. */
 export type PaySeveralStarted = {
@@ -115,21 +141,52 @@ export type PaySeveralStarted = {
   total: string;
   currency: string;
   payable: { lotId: string; amount: string }[];
-  skipped: PaySeveralPlan["skipped"];
+  skipped: PaySeveralQuote["skipped"];
+};
+
+/** A pay plan with the winner of each picked lot, for deciding a payment from it. */
+export type PlannedPayment = {
+  plan: PayPlan;
+  winners: ReadonlyMap<string, string | null>;
 };
 
 /** The read behind the Pay page: what one payment of the picked lots covers, and whether to offer it. */
 export interface IPayPlanService {
   /** Only reads: raises no invoice, opens no check and starts no checkout. */
   plan(actor: OrganisationMemberActor, lotIds: readonly string[]): BuyingResult<PayPlan>;
+  /** The same plan with each lot's winner; also only reads. */
+  planWithWinners(
+    actor: OrganisationMemberActor,
+    lotIds: readonly string[],
+  ): BuyingResult<PlannedPayment>;
+}
+
+/** The account details and reference of a bank transfer already chosen for the picked lots. */
+export interface IPayTransferService {
+  /** `null` while there is no transfer waiting for its money, or the provider cannot be read. */
+  instructions(
+    actor: OrganisationMemberActor,
+    lotIds: readonly string[],
+  ): BuyingResult<{ instructions: BankTransferInstructions | null }>;
+}
+
+/** Only where a payment under way for the picked lots stands: what a waiting page asks for. */
+export interface IPayProgressReadService {
+  progress(
+    actor: OrganisationMemberActor,
+    lotIds: readonly string[],
+  ): BuyingResult<{ progress: PayPlanProgress | null }>;
 }
 
 /** "Pay several": the account's payers settle several invoices with one payment. */
 export interface IPaySeveralService {
   /** What one payment of the picked invoices would cover; nothing is held or charged. */
   plan(actor: OrganisationMemberActor, lotIds: readonly string[]): BuyingResult<PaySeveralQuote>;
-  /** Holds the payable invoices in one payment and opens its checkout. */
-  pay(actor: OrganisationMemberActor, lotIds: readonly string[]): BuyingResult<PaySeveralStarted>;
+  /**
+   * Holds the payable invoices in one payment and opens its checkout, provided the plan is still
+   * the one shown (`pay_plan_changed` with the fresh plan otherwise).
+   */
+  pay(actor: OrganisationMemberActor, request: PaySeveralRequest): BuyingResult<PaySeveralStarted>;
 }
 
 /** The buyer's side of a courier quote. Only the account's payers take these steps. */

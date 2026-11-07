@@ -20,6 +20,7 @@ import type { NodePgQueryResultHKT } from "drizzle-orm/node-postgres";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import * as schema from "../../schema/index.js";
 import { insertSeedInvoices, penceToPounds, priceHammer } from "../shared/seed-invoice.js";
+import { DEMO_ARTIST_LIST } from "./demo-artists.js";
 import {
   BUYER_PREMIUM_RATE,
   type DemoActors,
@@ -327,6 +328,24 @@ export async function ensureNorthbankTeam(db: Db, now: number, base: Base, ids: 
 
 // ─── Sales, lots and what follows from them ────────────────────────────────────
 
+/** Registers the demo artists the lots point at. An artist already there is left as it is. */
+async function writeArtists(db: Db, wanted: Set<string | null>) {
+  const rows = DEMO_ARTIST_LIST.filter((a) => wanted.has(a.id)).map((a) => ({
+    id: a.id,
+    slug: a.slug,
+    displayName: a.displayName,
+    kind: a.kind,
+    nationality: a.nationality,
+    countryCode: a.countryCode,
+    birthYear: a.birthYear ?? null,
+    deathYear: a.deathYear ?? null,
+    foundedYear: a.foundedYear ?? null,
+    verified: true,
+    status: "approved" as const,
+  }));
+  if (rows.length > 0) await db.insert(schema.artistProfile).values(rows).onConflictDoNothing();
+}
+
 export async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Base) {
   const category = (slug: string) => base.categoryIdBySlug.get(slug) ?? null;
 
@@ -374,6 +393,8 @@ export async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Bas
     }
   }
 
+  await writeArtists(db, new Set(catalogue.lots.map((l) => l.artistId)));
+
   for (const lot of catalogue.lots) {
     const dates = { status: lot.status, startTime: lot.startTime, endTime: lot.endTime };
     await db
@@ -394,6 +415,7 @@ export async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Bas
         minBidIncrement: money(lot.minBidIncrement),
         buyerPremiumRate: BUYER_PREMIUM_RATE.toFixed(4),
         sellerLegalEntityId: lot.sellerEntityId,
+        artistId: lot.artistId,
         winnerId: lot.winnerUserId,
         buyerLegalEntityId: lot.buyerEntityId,
         marketingDetails: {
@@ -402,7 +424,11 @@ export async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Bas
         },
         ...dates,
       })
-      .onConflictDoUpdate({ target: schema.lot.id, set: dates });
+      .onConflictDoUpdate({
+        target: schema.lot.id,
+        // Fills a missing artist on a lot from an earlier run; one set since is left alone.
+        set: { ...dates, artistId: sql`coalesce(${schema.lot.artistId}, excluded.artist_id)` },
+      });
     const categoryId = category(lot.categorySlug);
     if (categoryId) {
       const linked = await db

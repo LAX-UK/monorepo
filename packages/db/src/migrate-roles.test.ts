@@ -24,6 +24,7 @@ import {
   WORKER_ANONYMISATION_DELETE_TABLES,
   WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
   WORKER_ARTWORK_REGISTER_TABLES,
+  WORKER_BID_ALERT_PRUNE_DELETE_TABLES,
   WORKER_BID_ALERT_TABLES,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DENY_TABLES,
@@ -40,6 +41,7 @@ import {
   WORKER_PROVISIONING_TABLES,
   WORKER_QR_CODE_SCAN_TABLES,
   WORKER_READ_TABLES,
+  WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_ZOHO_ARTWORK_SYNC_TABLES,
 } from "./migrate-roles.js";
 
@@ -483,6 +485,35 @@ describe("migrate-roles invariants", () => {
     ]);
     for (const table of WORKER_BID_ALERT_TABLES) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);
+    }
+  });
+
+  it("lets the worker delete only Bid's alert logs and topics for the retention prune, never announcements", () => {
+    expect([...WORKER_BID_ALERT_PRUNE_DELETE_TABLES].sort()).toEqual([
+      "bid_alert_digest",
+      "bid_alert_match",
+      "bid_alert_topic",
+    ]);
+    expect([...WORKER_BID_ALERT_PRUNE_DELETE_TABLES]).not.toContain("bid_alert_announcement");
+    for (const table of WORKER_BID_ALERT_PRUNE_DELETE_TABLES) {
+      expect([...WORKER_BID_ALERT_TABLES]).toContain(table);
+    }
+  });
+
+  it("lets the worker read the Shop enquiry columns the Lead needs, and no whole Shop table", () => {
+    const columns = Object.fromEntries(WORKER_SHOP_ENQUIRY_READ_COLUMNS);
+    expect(Object.keys(columns).sort()).toEqual(["shop_artwork", "shop_artwork_interest"]);
+    expect([...columns.shop_artwork].sort()).toEqual(["id", "slug", "title"]);
+    expect([...columns.shop_artwork_interest].sort()).toEqual([
+      "artwork_id",
+      "contact_phone",
+      "identity_subject_id",
+      "intent",
+      "reference",
+    ]);
+    // Column grants only: both tables stay in the deny list and in no whole-table worker list.
+    for (const table of Object.keys(columns)) {
+      expect([...WORKER_DENY_TABLES]).toContain(table);
     }
   });
 

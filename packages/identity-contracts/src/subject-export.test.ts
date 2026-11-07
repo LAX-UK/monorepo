@@ -97,6 +97,7 @@ describe("export categories", () => {
       "enquiries",
       "saved-works",
       "selling",
+      "selling-payouts",
       "notifications-and-marketing",
     ]);
   });

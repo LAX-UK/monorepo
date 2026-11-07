@@ -391,6 +391,16 @@ export const WORKER_BID_ALERT_TABLES = [
   "bid_alert_digest",
   "bid_alert_announcement",
 ] as const;
+/**
+ * The retention prune (apps/worker, `purge-alert-retention`) deletes old match and digest logs and
+ * trims a complaint-stopped subscriber's topics, matches and digests. Subscribers themselves are
+ * deleted through WORKER_ANONYMISATION_DELETE_TABLES. bid_alert_announcement is never deleted.
+ */
+export const WORKER_BID_ALERT_PRUNE_DELETE_TABLES = [
+  "bid_alert_topic",
+  "bid_alert_match",
+  "bid_alert_digest",
+] as const;
 /** Worker provisions personal legal entities from `user.registered` domain events. */
 export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
 /** Worker processes async CSV exports and purges expired rows (data-export + purge-expired jobs). */
@@ -479,6 +489,19 @@ export const WORKER_ANONYMISATION_SCRUB_COLUMNS = [
   ["legal_entity", ["display_name", "legal_name", "slug", "vat_number"]],
   ["legal_entity_contact_details", ["email", "phone", "website"]],
   ["telephone_bid_booking", ["phone_e164", "buyer_notes"]],
+] as const;
+
+/**
+ * The CRM projector builds a Lead for a signed-in person's Shop original enquiry from these
+ * columns and no others. The tables stay denied to the worker as a whole (SHOP_COMMERCE_TABLES);
+ * only a column-level SELECT is granted, covering what the reader selects and filters on.
+ */
+export const WORKER_SHOP_ENQUIRY_READ_COLUMNS = [
+  ["shop_artwork", ["id", "title", "slug"]],
+  [
+    "shop_artwork_interest",
+    ["artwork_id", "identity_subject_id", "intent", "reference", "contact_phone"],
+  ],
 ] as const;
 
 type RoleName = "auth_app" | "api_app" | "shop_app" | "worker_app";
@@ -647,6 +670,20 @@ async function grantColumnUpdateIfExists(
   const columnList = columns.map(quoteIdent).join(", ");
   await client.query(
     `grant update (${columnList}) on table ${quoteIdent(schemaName)}.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
+  );
+}
+
+async function grantColumnSelectIfExists(
+  client: pg.Client,
+  role: RoleName,
+  tableName: string,
+  columns: readonly string[],
+  schemaName = "public",
+): Promise<void> {
+  if (!(await tableExists(client, tableName, schemaName)) || columns.length === 0) return;
+  const columnList = columns.map(quoteIdent).join(", ");
+  await client.query(
+    `grant select (${columnList}) on table ${quoteIdent(schemaName)}.${quoteIdent(tableName)} to ${quoteIdent(role)}`,
   );
 }
 
@@ -856,6 +893,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of WORKER_BID_ALERT_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
+        for (const tableName of WORKER_BID_ALERT_PRUNE_DELETE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
+        }
         for (const tableName of WORKER_ARTWORK_REGISTER_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
@@ -922,6 +962,10 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of WORKER_ANONYMISATION_DELETE_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
         }
+        for (const [tableName, columns] of WORKER_SHOP_ENQUIRY_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
+
         for (const [tableName, columns] of WORKER_ANONYMISATION_SCRUB_COLUMNS) {
           await grantIfExists(client, "worker_app", tableName, "SELECT");
           await grantColumnUpdateIfExists(client, "worker_app", tableName, columns);

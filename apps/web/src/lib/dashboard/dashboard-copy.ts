@@ -1,5 +1,6 @@
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { payHref } from "@/lib/pay/pay-links";
 
 /** Canonical dashboard meta labels (page headers). Aliases for workspace helpers — prefer `clientWorkspacePageMeta` / `clientWorkspaceOverviewMeta`. */
 export const DASHBOARD_META = {
@@ -47,7 +48,6 @@ export const DASHBOARD_ROUTES = {
   sellerConnect: CLIENT_ROUTES.payoutSetup,
   organisations: CLIENT_ROUTES.organisations,
   invitations: CLIENT_ROUTES.invitations,
-  checkout: CLIENT_ROUTES.checkout,
   sofCompliance: CLIENT_ROUTES.sourceOfFunds,
   signIn: "/login",
 } as const;
@@ -57,9 +57,9 @@ export function dashboardSofRequirementsUrl(): string {
   return DASHBOARD_ROUTES.sofCompliance;
 }
 
-/** Per-lot checkout session (buying workspace). */
+/** The Pay page for one lot (buying workspace). */
 export function dashboardCheckoutLotUrl(lotId: string): string {
-  return `${DASHBOARD_ROUTES.checkout}/${lotId}`;
+  return payHref([lotId]);
 }
 
 /** Login URL with optional post-auth return path. */
@@ -143,6 +143,10 @@ export const ACCOUNT_LOAD_ERROR = {
   purchases: {
     title: "We couldn't load your purchases",
     description: "This is on our side. Your purchases, payments and invoices are safe.",
+  },
+  pay: {
+    title: "We couldn't load this payment",
+    description: "This is on our side. Nothing was charged, and your invoices are safe.",
   },
   purchase: {
     title: "We couldn't load this purchase",

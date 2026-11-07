@@ -23,9 +23,14 @@ import {
   type ISettlementComplianceAssessor,
   assessSettlementSubjects,
 } from "../aml/settlement-compliance.policy.js";
-import type { BuyingResult, IPayPlanService } from "../interfaces/organisation-buying-service.js";
+import type {
+  BuyingResult,
+  IPayPlanService,
+  PlannedPayment,
+} from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import type { IPaymentEligibilityGate } from "../payment/payment-eligibility.gate.js";
+import { type PayProgressResolver, groupedLotsOf } from "./pay-progress.resolver.js";
 import type { PurchaseCandidateReader, PurchaseEntry } from "./purchase-candidate.reader.js";
 import { buyingError, entityActorOf, memberIsPayer } from "./purchase-view.js";
 
@@ -42,6 +47,8 @@ export type PayPlanDeps = {
   /** Reads whether paying this amount would be held, without opening a case. */
   compliance: ISettlementComplianceAssessor | null;
   limits: PaymentTierLimits;
+  /** Where a payment already under way for the picked lots stands. */
+  progress: Pick<PayProgressResolver, "resolve">;
   /** The company that issues Bid invoices. */
   issuer: PayPlan["entity"];
   now: () => Date;
@@ -60,6 +67,18 @@ export class PayPlanService implements IPayPlanService {
   constructor(private readonly deps: PayPlanDeps) {}
 
   async plan(actor: OrganisationMemberActor, lotIds: readonly string[]): BuyingResult<PayPlan> {
+    const planned = await this.planWithWinners(actor, lotIds);
+    return planned.map((p) => p.plan);
+  }
+
+  /**
+   * The plan together with each lot's winner. "Pay several" decides through this same call, so
+   * the plan a person is shown and the payment that is taken can never disagree.
+   */
+  async planWithWinners(
+    actor: OrganisationMemberActor,
+    lotIds: readonly string[],
+  ): BuyingResult<PlannedPayment> {
     const refusal = pickRefusal(lotIds);
     if (refusal) return err(buyingError(refusal));
     const scope = accountPurchaseScope(entityActorOf(actor));
@@ -81,7 +100,7 @@ export class PayPlanService implements IPayPlanService {
     actor: OrganisationMemberActor,
     ownOnly: boolean,
     lotIds: readonly string[],
-  ): Promise<PayPlan> {
+  ): Promise<PlannedPayment> {
     const account = await this.deps.accounts.findById(actor.legalEntityId);
     if (!account) throw new Error("The acting account could not be read");
 
@@ -91,8 +110,16 @@ export class PayPlanService implements IPayPlanService {
     );
     const now = this.deps.now();
     const payerRole = memberIsPayer(actor) ? "payer" : "informed";
+    // A payment the payer left unfinished does not hold its invoices; one they finished does.
+    const progressByGroup = await this.deps.progress.resolve(groupedLotsOf(entries));
+    const underWay = (entry: PurchaseEntry) => {
+      const group = entry.flags.group;
+      return group ? (progressByGroup.get(group.id) ?? null) !== null : false;
+    };
     const lots = await Promise.all(
-      entries.map((entry) => this.lotFacts(entry, actor, invoices, now, payerRole)),
+      entries.map((entry) =>
+        this.lotFacts(entry, actor, invoices, now, payerRole, underWay(entry)),
+      ),
     );
     const classified = classifyPayPlanLots(actor.legalEntityId, lots, payerRole);
     // The checks run in the order the gate reports them, and stop at the first that applies.
@@ -112,7 +139,7 @@ export class PayPlanService implements IPayPlanService {
       }
     }
 
-    return buildPayPlan({
+    const plan = buildPayPlan({
       account: { legalEntityId: account.id, kind: account.kind, name: account.displayName },
       payerRole,
       entity: this.deps.issuer,
@@ -121,7 +148,9 @@ export class PayPlanService implements IPayPlanService {
       compliance,
       limits: this.deps.limits,
       classified,
+      progress: firstProgress(entries, progressByGroup),
     });
+    return { plan, winners };
   }
 
   /** What one picked lot is worth to the plan: stored lines for an invoice, priced lines if not. */
@@ -131,6 +160,7 @@ export class PayPlanService implements IPayPlanService {
     invoices: ReadonlyMap<string, BidInvoiceRecord>,
     now: Date,
     payerRole: "payer" | "informed",
+    inPaymentInProgress: boolean,
   ): Promise<PayPlanLot> {
     const { row, view } = entry;
     if (!row || !view) return notThisAccount(entry.lotId, now);
@@ -152,7 +182,7 @@ export class PayPlanService implements IPayPlanService {
       invoiceVoided: invoice?.voidedAt != null,
       payerMayPay: view.paymentRole === "payer",
       heldForReview: entry.flags.heldForReview,
-      inPaymentInProgress: entry.flags.inPaymentInProgress,
+      inPaymentInProgress,
     };
     if (invoice) return { ...base, lines: invoice.lines, dueAt: invoice.dueAt };
 
@@ -206,6 +236,18 @@ export class PayPlanService implements IPayPlanService {
       subject: hold.subject === actor.userId ? "payer" : "winner",
     };
   }
+}
+
+/** The payment under way for the first picked lot that has one. */
+function firstProgress(
+  entries: readonly PurchaseEntry[],
+  progressByGroup: ReadonlyMap<string, PayPlan["progress"]>,
+): PayPlan["progress"] {
+  for (const entry of entries) {
+    const progress = entry.flags.group ? progressByGroup.get(entry.flags.group.id) : null;
+    if (progress) return progress;
+  }
+  return null;
 }
 
 /** A pick that is not one of this account's purchases: left out, never described. */

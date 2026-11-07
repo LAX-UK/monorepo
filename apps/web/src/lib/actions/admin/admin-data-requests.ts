@@ -2,6 +2,12 @@
 
 import { dataRequestErrorMessage } from "@/lib/admin/data-requests/data-request-errors";
 import { DATA_REQUESTS_PATH } from "@/lib/admin/data-requests/data-requests-search";
+import {
+  type EnquiryErasureCounts,
+  enquiryErasureCountsSchema,
+  erasureErrorMessage,
+  validateErasureReason,
+} from "@/lib/admin/data-requests/enquiry-erasure";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
@@ -156,5 +162,44 @@ export async function findDataRequestAccountAction(
     return actionSuccess(
       readDataEnvelope(await readJsonBody(res), foundAccountSchema, `GET ${API}/account`),
     );
+  });
+}
+
+/**
+ * Erases every enquiry from the request's email address. The browser sends only the reference,
+ * the typed confirmation and the reason: the Bid API reads the address and the request's state
+ * from Identity, compares the confirmation with that address, anonymises the enquiries, holds
+ * those tied to a deal and writes the audit event and the request's timeline entry.
+ */
+export async function eraseDataRequestEnquiriesAction(
+  reference: string,
+  input: { confirmation: string; reason: string },
+): Promise<ActionResult<EnquiryErasureCounts>> {
+  return instrumentServerAction("eraseDataRequestEnquiriesAction", async () => {
+    const denied = await denyUnlessAdminCapability(DATA_REQUESTS_MANAGE_ACCESS);
+    if (denied) return denied;
+    const invalid = validateErasureReason(input.reason);
+    if (invalid) return actionFailure(invalid, undefined, 400);
+    const path = `${API}/${encodeURIComponent(reference)}/enquiry-erasure`;
+    const res = await authedServerFetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        confirmation: input.confirmation.trim(),
+        reason: input.reason.trim(),
+      }),
+    }).catch(() => null);
+    if (!res) return actionFailure(erasureErrorMessage(undefined, undefined), undefined, 503);
+    if (!res.ok) {
+      const code = await errorCodeOf(res);
+      return actionFailure(erasureErrorMessage(code, res.status), undefined, res.status, code);
+    }
+    const counts = readDataEnvelope(
+      await readJsonBody(res),
+      enquiryErasureCountsSchema,
+      `POST ${path}`,
+    );
+    revalidatePath(`${DATA_REQUESTS_PATH}/${encodeURIComponent(reference)}`);
+    return actionSuccess(counts);
   });
 }

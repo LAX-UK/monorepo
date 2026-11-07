@@ -38,10 +38,6 @@ function majorToPence(major: string): number {
   return Math.round(Number.parseFloat(major) * 100);
 }
 
-function isUniqueViolation(err: unknown): boolean {
-  return typeof err === "object" && err !== null && (err as { code?: unknown }).code === "23505";
-}
-
 /**
  * Payment hot path: settlement gate evaluation and pending-case creation.
  * Used by the settlement compliance policy in every process that raises or
@@ -123,43 +119,36 @@ export class SourceOfFundsGateService implements ISourceOfFundsGate {
       const latest = await this.repo.findLatestForUser(userId, conn);
       if (latest && latest.status === "rejected") return latest;
 
-      let created: SourceOfFundsCase;
-      try {
-        created = await this.repo.create(
-          {
-            userId,
-            trigger,
-            thresholdAmount: this.config.thresholdAmount.toFixed(2),
-            exposureAmount: penceToMajor(exposurePence),
-            currency: this.config.currency,
-          },
-          conn,
-        );
-      } catch (err) {
-        if (isUniqueViolation(err)) {
-          const raced = await this.repo.findPendingForUser(userId, conn);
-          if (raced) return raced;
-        }
-        throw err;
-      }
+      const { case: opened, created } = await this.repo.create(
+        {
+          userId,
+          trigger,
+          thresholdAmount: this.config.thresholdAmount.toFixed(2),
+          exposureAmount: penceToMajor(exposurePence),
+          currency: this.config.currency,
+        },
+        conn,
+      );
+      // A concurrent request opened it first: it owns the "required" event.
+      if (!created) return opened;
 
       if (conn && this.events) {
         await this.events.withTx(conn).publish({
           aggregateType: "source_of_funds",
-          aggregateId: created.id,
+          aggregateId: opened.id,
           eventType: SOURCE_OF_FUNDS_REQUIRED_EVENT,
           actorUserId: userId,
           payload: {
-            sourceOfFundsId: created.id,
-            userId: created.userId,
-            trigger: created.trigger,
-            thresholdAmount: created.thresholdAmount,
-            exposureAmount: created.exposureAmount,
-            currency: created.currency,
+            sourceOfFundsId: opened.id,
+            userId: opened.userId,
+            trigger: opened.trigger,
+            thresholdAmount: opened.thresholdAmount,
+            exposureAmount: opened.exposureAmount,
+            currency: opened.currency,
           },
         });
       }
-      return created;
+      return opened;
     };
 
     if (this.transactionRunner) return this.transactionRunner.runInTransaction((tx) => run(tx));

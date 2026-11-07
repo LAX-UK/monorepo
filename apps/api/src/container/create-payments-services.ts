@@ -113,6 +113,7 @@ export type ContainerPaymentsServices = {
   adminMetricsService: AdminMetricsService;
   /** "Pay several": one checkout for several invoices of an account. */
   paymentGroupCheckout: PaymentGroupServices["checkout"];
+  paymentGroupGateway: PaymentGroupServices["gateway"];
   privateSaleDeals: PrivateSaleDealServices;
   /** Allocates a dispute across the invoices it falls on, moving each seller's payout. */
   disputeAllocationService: DisputeAllocationService;
@@ -316,7 +317,7 @@ export function createPaymentsServices(
     eligibility: paymentEligibility,
     listUnpaidWithCheckout: (limit: number) => staleCanceller.listUnpaidWithCheckout(limit),
   });
-  const bidInvoiceRepo = new DrizzleBidInvoiceRepository(db);
+  const bidInvoiceRepo = repos.bidInvoiceRepository;
   const paymentService = new PaymentService(
     lotRepo,
     paymentRepo,
@@ -493,6 +494,7 @@ export function createPaymentsServices(
     xeroOAuthService,
     adminMetricsService,
     paymentGroupCheckout: paymentGroups.checkout,
+    paymentGroupGateway: paymentGroups.gateway,
     privateSaleDeals,
     disputeAllocationService: createDisputeAllocationService({
       db,

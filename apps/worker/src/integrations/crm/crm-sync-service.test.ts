@@ -7,7 +7,6 @@ import { CrmSyncService } from "./crm-sync-service.js";
 
 const noDealNaming = {
   forLotWon: vi.fn(),
-  forShopEnquiry: vi.fn(),
   forShopOrder: vi.fn(),
 };
 
@@ -97,12 +96,12 @@ describe("CrmSyncService payment.refunded", () => {
         dealStagePaymentCaptured: "Paid",
         dealStagePaymentRefunded: "Refunded",
         dealStageShopPaid: "Shop Paid",
-        dealStageShopEnquiry: "Qualification",
       },
       paymentLotReader,
       attributionReader: { loadFirstTouchFields: vi.fn() } satisfies CrmAttributionReader,
       enquiryReader: { findById: vi.fn() },
       dealNamingReader: noDealNaming,
+      shopEnquiryReader: { find: vi.fn() },
     });
 
     const result = await service.syncEvent({
@@ -138,12 +137,12 @@ describe("CrmSyncService payment.refunded", () => {
         dealStagePaymentCaptured: "Paid",
         dealStagePaymentRefunded: "Refunded",
         dealStageShopPaid: "Shop Paid",
-        dealStageShopEnquiry: "Qualification",
       },
       paymentLotReader,
       attributionReader: { loadFirstTouchFields: vi.fn() } satisfies CrmAttributionReader,
       enquiryReader: { findById: vi.fn() },
       dealNamingReader: noDealNaming,
+      shopEnquiryReader: { find: vi.fn() },
     });
 
     const result = await service.syncEvent({
