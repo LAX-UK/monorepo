@@ -1,5 +1,6 @@
 import { type Database, createDb } from "@auction/db";
 import {
+  artworkRegister,
   itemSubmission,
   legalEntity,
   privateSaleDeal,
@@ -107,10 +108,35 @@ describe.skipIf(!HAS_DB)("private sale deals (integration)", () => {
   it("points at the artwork register when it is given and does not need it", async () => {
     await inRollback(async (db, submissionId) => {
       const repo = new DrizzlePrivateSaleDealRepository(db);
-      const withRegister = await repo.create(newDeal(submissionId, { artworkRegisterId: "AR-77" }));
-      expect(withRegister.artworkRegisterId).toBe("AR-77");
+      const [entry] = await db
+        .insert(artworkRegister)
+        .values({
+          zohoProductId: "psd-it-zoho",
+          stockCode: "LAX-ORI-PSD-IT-26-0001",
+          kind: "original",
+          title: "Low tide at Maldon",
+          artistName: "Test Artist",
+          artistCode: "TA",
+        })
+        .returning({ id: artworkRegister.id });
+      const registerId = entry?.id as string;
+      const withRegister = await repo.create(
+        newDeal(submissionId, { artworkRegisterId: registerId }),
+      );
+      expect(withRegister.artworkRegisterId).toBe(registerId);
       const without = await repo.create(newDeal(submissionId));
       expect(without.artworkRegisterId).toBeNull();
+    });
+  });
+
+  it("refuses a register entry that does not exist", async () => {
+    await inRollback(async (db, submissionId) => {
+      const repo = new DrizzlePrivateSaleDealRepository(db);
+      await expect(
+        repo.create(
+          newDeal(submissionId, { artworkRegisterId: "a0d00000-0000-4000-8000-0000000000ff" }),
+        ),
+      ).rejects.toThrow();
     });
   });
 

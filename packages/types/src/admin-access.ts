@@ -375,7 +375,7 @@ export const PRIVATE_SALE_DEALS_MANAGE_ACCESS: CapabilityRequirement = {
 
 /**
  * Read a private sale deal: those who run it, those who answer its enquiries, Finance, who
- * invoice it, and Compliance, who decide its checks.
+ * invoice it, Fulfilment, who hand the work over, and Compliance, who decide its checks.
  */
 export const PRIVATE_SALE_DEALS_READ_ACCESS: CapabilityRequirement = {
   anyOf: [
@@ -383,6 +383,7 @@ export const PRIVATE_SALE_DEALS_READ_ACCESS: CapabilityRequirement = {
     "private_sale.manage",
     "enquiries.private_sale.read",
     "finance.read",
+    "operations.fulfilment",
     "aml.review",
     "compliance.mlro",
   ],

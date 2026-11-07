@@ -7,7 +7,7 @@ import {
 } from "@auction/db/schema";
 import { consignmentReference, dealViewCriteria } from "@auction/domain";
 import type { PrivateSaleDealStage } from "@auction/types";
-import { type SQL, and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { type SQL, and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type {
   DealWork,
@@ -38,19 +38,13 @@ export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQu
     if (criteria.ownedByViewer) {
       conditions.push(eq(privateSaleDeal.ownerUserId, filter.viewerUserId));
     }
+    // Compared at the millisecond a cursor can carry, so a row on a page boundary is never repeated.
+    const changedAt = sql`date_trunc('milliseconds', ${privateSaleDeal.updatedAt})`;
     if (filter.after) {
       const { updatedAt, id } = filter.after;
-      // Keyset on (updatedAt, id), in the direction of the view's order.
+      const op = oldestFirst ? sql`>` : sql`<`;
       conditions.push(
-        oldestFirst
-          ? (or(
-              sql`${privateSaleDeal.updatedAt} > ${updatedAt}`,
-              and(eq(privateSaleDeal.updatedAt, updatedAt), sql`${privateSaleDeal.id} > ${id}`),
-            ) as SQL)
-          : (or(
-              sql`${privateSaleDeal.updatedAt} < ${updatedAt}`,
-              and(eq(privateSaleDeal.updatedAt, updatedAt), sql`${privateSaleDeal.id} < ${id}`),
-            ) as SQL),
+        sql`(${changedAt}, ${privateSaleDeal.id}) ${op} (${updatedAt.toISOString()}::timestamptz, ${id}::uuid)`,
       );
     }
     const rows = await this.db
@@ -78,7 +72,7 @@ export class DrizzlePrivateSaleDealQueryRepository implements IPrivateSaleDealQu
       .leftJoin(buyerEntity, eq(buyerEntity.id, buyer.legalEntityId))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(
-        oldestFirst ? asc(privateSaleDeal.updatedAt) : desc(privateSaleDeal.updatedAt),
+        oldestFirst ? asc(changedAt) : desc(changedAt),
         oldestFirst ? asc(privateSaleDeal.id) : desc(privateSaleDeal.id),
       )
       .limit(filter.limit + 1);

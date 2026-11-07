@@ -12,6 +12,9 @@ function createApp(staffRoles: StaffRoles | undefined) {
     update: vi.fn().mockResolvedValue({ ok: true, enquiry: { id: ID, status: "in_progress" } }),
     markHandled: vi.fn().mockResolvedValue({ ok: true, enquiry: { id: ID, status: "closed" } }),
   };
+  const enquiryConversion = {
+    convert: vi.fn().mockResolvedValue({ ok: true, reference: "PS-0012" }),
+  };
   const enquiryRouting = {
     rules: vi.fn().mockResolvedValue([]),
     assignees: vi.fn().mockResolvedValue([{ id: "u1", name: "Sofia Okafor" }]),
@@ -29,10 +32,10 @@ function createApp(staffRoles: StaffRoles | undefined) {
   attachAdminMarketingEnquiryRoutes(
     app as never,
     {
-      admin: { marketingEnquiries, enquiryRouting },
+      admin: { marketingEnquiries, enquiryRouting, enquiryConversion },
     } as never,
   );
-  return { app, marketingEnquiries, enquiryRouting };
+  return { app, marketingEnquiries, enquiryRouting, enquiryConversion };
 }
 
 const json = (body: unknown) => ({
@@ -155,6 +158,65 @@ describe("PATCH /enquiries/:ref", () => {
     const { app, marketingEnquiries } = createApp(["administrator"]);
     expect((await app.request("http://test/enquiries/E-1042", json(body))).status).toBe(400);
     expect(marketingEnquiries.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /enquiries/:ref/convert", () => {
+  const post = (body: unknown) => ({
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  it("turns the enquiry into a deal as the signed-in person and returns its reference", async () => {
+    const { app, enquiryConversion } = createApp(["specialist"]);
+    const res = await app.request("http://test/enquiries/E-1042/convert", post({}));
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ data: { reference: "PS-0012" } });
+    expect(enquiryConversion.convert).toHaveBeenCalledWith(
+      { userId: "staff-1", readsPrivateSale: true },
+      "E-1042",
+      {},
+    );
+  });
+
+  it("passes the work a buy enquiry is about", async () => {
+    const { app, enquiryConversion } = createApp(["sales_manager"]);
+    await app.request("http://test/enquiries/E-1042/convert", post({ workReference: "C-1042" }));
+    expect(enquiryConversion.convert).toHaveBeenCalledWith(expect.anything(), "E-1042", {
+      workReference: "C-1042",
+    });
+  });
+
+  it("is for those who run deals: client services can read the enquiry but not convert it", async () => {
+    const { app, enquiryConversion } = createApp(["client_services"]);
+    expect((await app.request("http://test/enquiries/E-1042/convert", post({}))).status).toBe(403);
+    expect(enquiryConversion.convert).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["enquiry_not_found", 404],
+    ["already_converted", 409],
+    ["stale_version", 409],
+    ["account_required", 422],
+    ["work_required", 422],
+    ["not_ready", 422],
+  ] as const)("answers %s with %i", async (error, status) => {
+    const { app, enquiryConversion } = createApp(["specialist"]);
+    enquiryConversion.convert.mockResolvedValueOnce({ ok: false, error });
+    const res = await app.request("http://test/enquiries/E-1042/convert", post({}));
+    expect(res.status).toBe(status);
+    expect(await res.json()).toEqual({ error });
+  });
+
+  it("rejects a work reference that is not one", async () => {
+    const { app, enquiryConversion } = createApp(["specialist"]);
+    const res = await app.request(
+      "http://test/enquiries/E-1042/convert",
+      post({ workReference: "hello" }),
+    );
+    expect(res.status).toBe(400);
+    expect(enquiryConversion.convert).not.toHaveBeenCalled();
   });
 });
 
