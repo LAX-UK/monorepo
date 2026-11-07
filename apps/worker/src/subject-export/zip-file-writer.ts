@@ -1,6 +1,7 @@
 import { type Hash, createHash } from "node:crypto";
 import { once } from "node:events";
 import { type WriteStream, createReadStream, createWriteStream } from "node:fs";
+import { rm } from "node:fs/promises";
 import { Zip, ZipDeflate, ZipPassThrough } from "fflate";
 
 /** The size and checksum of something put into the ZIP, as it was before compression. */
@@ -48,7 +49,16 @@ export class ZipFileWriter {
     return { path, bytes: body.length, sha256: hash.digest("hex") };
   }
 
-  async addFile(path: string, diskPath: string, compress: boolean): Promise<ArchivedPart> {
+  /**
+   * Streams a file from disk into the ZIP. With `consume`, the source is deleted once it is in, so
+   * staged files and the growing ZIP never both hold the same bytes for long.
+   */
+  async addFile(
+    path: string,
+    diskPath: string,
+    compress: boolean,
+    options: { consume?: boolean } = {},
+  ): Promise<ArchivedPart> {
     const entry = this.entry(path, compress);
     const hash = createHash("sha256");
     let bytes = 0;
@@ -61,6 +71,7 @@ export class ZipFileWriter {
     }
     entry.push(new Uint8Array(0), true);
     await this.settle();
+    if (options.consume) await rm(diskPath, { force: true });
     return { path, bytes, sha256: hash.digest("hex") };
   }
 
