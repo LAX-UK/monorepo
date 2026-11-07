@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { ContainerAdminPlatformRoutesSlice } from "../container.js";
 import { createAdminIdempotency } from "../middleware/admin-idempotency.js";
+import { createDangerousStaffActionGate } from "../middleware/dangerous-staff-action-gate.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
   requireFinanceAccess,
@@ -84,6 +85,9 @@ export function createAdminRoutes(
     requireStepUp: createRequireRecentStaffAuth(container.admin.stepUp),
     idempotent: (scope) => createAdminIdempotency(container.admin.idempotencyStore, scope),
   };
+
+  // One gate for every dangerous staff action in the registry (middleware/dangerous-staff-actions).
+  r.use("*", createDangerousStaffActionGate(guards.requireStepUp));
 
   const platform: AdminHono = new Hono();
   platform.use("*", requirePlatformShell);

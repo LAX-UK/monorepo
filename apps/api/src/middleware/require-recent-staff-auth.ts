@@ -11,8 +11,10 @@ import type { IStaffStepUpGuard } from "../services/staff-step-up.service.js";
  */
 export function createRequireRecentStaffAuth(guard: IStaffStepUpGuard) {
   return createMiddleware<{
-    Variables: { userId?: string; identitySessionId?: string };
+    Variables: { userId?: string; identitySessionId?: string; staffStepUpVerified?: true };
   }>(async (c, next) => {
+    // The registry gate already verified this request; do not ask Identity a second time.
+    if (c.get("staffStepUpVerified") === true) return next();
     const userId = c.get("userId");
     if (!userId) {
       return c.json({ error: "Unauthorized", code: "session_required" }, 401);
@@ -39,6 +41,7 @@ export function createRequireRecentStaffAuth(guard: IStaffStepUpGuard) {
     if (!recent) {
       return c.json({ error: "Recent sign-in required", code: STAFF_STEP_UP_REQUIRED }, 403);
     }
+    c.set("staffStepUpVerified", true);
     await next();
   });
 }

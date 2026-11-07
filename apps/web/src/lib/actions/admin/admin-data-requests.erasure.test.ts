@@ -70,6 +70,17 @@ describe("eraseDataRequestEnquiriesAction", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("hands a stale staff sign-in back as step_up_required, so the page sends them to sign in again", async () => {
+    fetchMock.mockResolvedValue(
+      json({ error: "Recent sign-in required", code: "step_up_required" }, 403),
+    );
+    expect(await eraseDataRequestEnquiriesAction("DR-0012", INPUT)).toMatchObject({
+      ok: false,
+      status: 403,
+      errorCode: "step_up_required",
+    });
+  });
+
   it("explains a request that is not in progress", async () => {
     fetchMock.mockResolvedValue(json({ error: "erasure_not_allowed" }, 409));
     expect(await eraseDataRequestEnquiriesAction("DL-7F3C1A", INPUT)).toMatchObject({

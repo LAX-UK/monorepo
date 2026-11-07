@@ -3,6 +3,7 @@
 import { AuthoriseBuyerAgentDialog } from "@/components/admin/legal-entities/buyer-agents/authorise-buyer-agent-dialog";
 import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
 import { adminRevokeBuyerAgentAuthorisationAction } from "@/lib/admin/legal-entities/buyer-agent-authorisation.actions";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import {
   authorisationState,
   authorisationStatePresentation,
@@ -219,6 +220,7 @@ export function LegalEntityBuyerAgentsTab({ entityId, entityName, overview, canM
                 reason,
               );
               if (!result.ok) {
+                if (handleStaffStepUp(result)) return;
                 notify.error("Could not revoke", { description: result.error });
                 return;
               }

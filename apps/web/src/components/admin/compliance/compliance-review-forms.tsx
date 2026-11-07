@@ -7,6 +7,7 @@ import {
   sofDecideAction,
   sofTriageAction,
 } from "@/lib/actions/compliance";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { notify } from "@/lib/ui/notify";
 import { Field, Notice, Section, StaffButton, TextArea } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
@@ -189,6 +190,7 @@ export function ComplianceDecideForm({
         router.refresh();
         return;
       }
+      if (handleStaffStepUp(r)) return;
       setFailure(r.error);
     });
   };
