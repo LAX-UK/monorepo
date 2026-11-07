@@ -5,6 +5,7 @@ import { useListQuery } from "@/components/workspace/use-list-query";
 import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { ConsignmentRecord } from "@/lib/seller/consignment-records";
+import { CONSIGNMENT_STATUS } from "@/lib/seller/consignment-status";
 import { consignmentStep } from "@/lib/seller/consignment-step";
 import {
   CONSIGNMENT_SORTS,
@@ -23,7 +24,6 @@ import {
   isConsignmentListNarrowed,
   needsChangesBadge,
 } from "@/lib/seller/consignments-list";
-import { CONSIGNMENT_STATUS } from "@/lib/seller/consignment-status";
 import { RecordList } from "@auction/ui";
 import {
   ButtonLink,

@@ -7,6 +7,8 @@ import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title"
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerAccountPurchaseFacts } from "@/lib/data/http/account-buying.server";
+import { listServerReturnedWorks } from "@/lib/data/http/workspace-selling.server";
 import {
   EMPTY_SUBMISSION_FORM_VALUES,
   itemSubmissionToFormValues,
@@ -15,7 +17,9 @@ import { findCategoryIdBySlug } from "@/lib/forms/submission/resolve-category-sl
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { REGISTER_ORGANISATION_HREF } from "@/lib/navigation/account-switcher-model";
+import { decideConsignLink } from "@/lib/seller/consign-link";
 import { actingForOrganisation, sellerAccountChoice } from "@/lib/seller/seller-account-options";
+import { Notice } from "@auction/ui/lax";
 import { redirect } from "next/navigation";
 
 /**
@@ -24,6 +28,32 @@ import { redirect } from "next/navigation";
  * across; the price and anything about the earlier sale do not.
  */
 async function consignAgainValues(
+  c: Awaited<ReturnType<typeof getServerDataContainer>>,
+  sp: { fromLot?: string; fromSubmission?: string },
+  accountId: string | null,
+): Promise<{ values: ConsignValues | null; refusal: string | null }> {
+  if (!sp.fromLot && !sp.fromSubmission) return { values: null, refusal: null };
+  // A link is only an address: the server checks the same rule the collection uses to offer it.
+  const [purchases, returned] = await Promise.all([
+    sp.fromLot && accountId
+      ? getServerAccountPurchaseFacts(accountId).catch(() => null)
+      : Promise.resolve(null),
+    sp.fromSubmission ? listServerReturnedWorks().catch(() => null) : Promise.resolve(null),
+  ]);
+  const decision = decideConsignLink({
+    ...sp,
+    canSell: accountId !== null,
+    purchases,
+    returned,
+  });
+  if (decision.kind === "refused") return { values: null, refusal: decision.note };
+  const values = await consignValuesFor(c, sp);
+  return { values, refusal: null };
+}
+
+type ConsignValues = NonNullable<Awaited<ReturnType<typeof consignValuesFor>>>;
+
+async function consignValuesFor(
   c: Awaited<ReturnType<typeof getServerDataContainer>>,
   sp: { fromLot?: string; fromSubmission?: string },
 ) {
@@ -94,7 +124,11 @@ export default async function NewSubmissionPage({
         }
       : null;
 
-  const consignFrom = await consignAgainValues(c, sp);
+  const { values: consignFrom, refusal: consignRefusal } = await consignAgainValues(
+    c,
+    sp,
+    sellerCtx.sellerEntityId,
+  );
   const preselectedCategoryId = categorySlug
     ? findCategoryIdBySlug(categories, categorySlug)
     : null;
@@ -117,6 +151,11 @@ export default async function NewSubmissionPage({
           rejectionReason={resubmitFrom.rejectionReason}
           reviewNotes={resubmitFrom.reviewNotes}
         />
+      ) : null}
+      {consignRefusal ? (
+        <Notice tone="info" title="We didn't start from that work.">
+          {consignRefusal}
+        </Notice>
       ) : null}
       <SetMobileShellTitle title={SELL_A_WORK_LABEL} />
       <SellWithLaxFlow

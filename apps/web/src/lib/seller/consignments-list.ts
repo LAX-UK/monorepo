@@ -167,7 +167,9 @@ export function isConsignmentListNarrowed(query: ConsignmentsListQuery): boolean
 export type NeedsChangesBadge = { label: string; count: number; text: string };
 
 /** The badge over In review for works sent back, or `null` when none waits on the member. */
-export function needsChangesBadge(needsChanges: number | null | undefined): NeedsChangesBadge | null {
+export function needsChangesBadge(
+  needsChanges: number | null | undefined,
+): NeedsChangesBadge | null {
   if (!needsChanges || needsChanges < 1) return null;
   return {
     label: NEEDS_CHANGES_LABEL,
