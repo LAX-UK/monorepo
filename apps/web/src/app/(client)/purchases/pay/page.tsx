@@ -86,7 +86,10 @@ export default async function PayRoute({ searchParams }: PageProps) {
   const context = { returnTo, contactHref: contactHref(), returned, details };
   if (underWay) {
     // The account details are only read for a transfer that is waiting for its money.
-    const transfer = underWay.rail === "bank_transfer" ? await loadPayTransfer(lots.ids) : null;
+    const transfer =
+      underWay.rail === "bank_transfer" && plan.payerRole === "payer"
+        ? await loadPayTransfer(lots.ids)
+        : null;
     return <Shell vm={buildPayProgressVm(plan, underWay, context, transfer)} />;
   }
   return <Shell vm={buildPayPageVm(plan, new Date(), context)} />;

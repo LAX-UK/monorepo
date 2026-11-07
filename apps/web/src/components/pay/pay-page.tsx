@@ -72,7 +72,7 @@ export function PayPage({ vm }: { vm: PayPageVm }) {
         {vm.progress && vm.lots.length > 0 && vm.money ? (
           // A payment under way: the bank details first when there are any, then the money, then the lots.
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-            {vm.state === "transfer" ? (
+            {vm.progress.details || vm.progress.detailsUnavailable ? (
               <div className="min-w-0 lg:col-start-1">
                 <PayTransferPanel progress={vm.progress} />
               </div>

@@ -54,7 +54,10 @@ test.describe("Pay page @roles", () => {
       );
     });
 
-    await test.step("has one action and none of the old checkout", async () => {
+    await test.step("offers card and bank transfer, then one action", async () => {
+      const how = page.getByRole("radiogroup", { name: "How you pay" });
+      await expect(how.getByRole("radio", { name: "Card" })).toBeChecked();
+      await expect(how.getByRole("radio", { name: "UK bank transfer" })).toBeEnabled();
       await expect(page.getByRole("button", { name: /^Pay £/ }).first()).toBeEnabled();
       await expect(page.getByText(/Concierge|Insured shipping|Payment protection/)).toHaveCount(0);
       await expect(page.getByRole("checkbox")).toHaveCount(0);
@@ -65,8 +68,10 @@ test.describe("Pay page @roles", () => {
       await expect(page).toHaveURL(
         new RegExp(`/purchases/pay\\?lots=${clearLot}&returned=cancelled$`),
       );
-      await expect(page.getByText("Payment not completed")).toBeVisible();
-      await expect(page.getByRole("button", { name: /^Pay £/ }).first()).toBeEnabled();
+      await expect(page.getByRole("alert")).toContainText(
+        "Payment not completed. You were not charged.",
+      );
+      await expect(page.getByRole("button", { name: /^Try again · £/ }).first()).toBeEnabled();
     });
 
     await finance.close();

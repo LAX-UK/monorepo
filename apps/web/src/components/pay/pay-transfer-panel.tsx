@@ -1,6 +1,6 @@
 import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-panel";
 import { PAY_COPY } from "@/lib/pay/pay-copy";
-import type { PayProgressVm } from "@/lib/pay/pay-progress.vm";
+import type { PayProgressVm } from "@/lib/pay/pay-page.vm";
 import { ButtonLink, FactList } from "@auction/ui/lax";
 import { PayCopyButton } from "./pay-copy-button";
 

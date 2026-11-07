@@ -7,12 +7,12 @@ import type {
   PayPlanGate,
   PayPlanLeftOutReason,
   PayPlanPayable,
+  PayPlanProgress,
 } from "@auction/types";
 import { formatGbp } from "@auction/ui";
 import type { NoticeTone } from "@auction/ui/lax";
 import { GATE_COPY, INVOICE_LINE_KIND_LABEL, LEFT_OUT_REASON_COPY, PAY_COPY } from "./pay-copy";
 import { type PayMethod, type PayMethodsVm, payMethodsVm } from "./pay-methods";
-import type { PayProgressVm } from "./pay-progress.vm";
 
 /** What the page is showing, which decides its layout and whether Pay is offered at all. */
 export type PayState =
@@ -59,6 +59,28 @@ export type PayLotVm = {
 
 /** What the purchases read knows about a lot that the plan does not. */
 export type PayLotDetails = { image: string | null; wonAt: Date | null; wonBy: string | null };
+
+/** One line of the bank details, with what copying it puts on the clipboard. */
+export type BankDetailRow = {
+  label: string;
+  value: string;
+  /** What the copy button copies; `null` for a row that is only read. */
+  copy: string | null;
+};
+
+/** What the page needs to run a payment that is under way. */
+export type PayProgressVm = {
+  stage: PayPlanProgress["stage"];
+  /** Changes whenever the payment moves; the page reads the server's again when it differs. */
+  signature: string;
+  lotIds: string[];
+  refreshHref: string;
+  contactHref: string;
+  /** The account details to send to, or `null` for a card payment or when they could not be read. */
+  details: { rows: BankDetailRow[] } | null;
+  /** The details were wanted (a transfer) but the provider could not give them. */
+  detailsUnavailable: boolean;
+};
 
 /** What the page needs besides the plan. */
 export type PayVmContext = {

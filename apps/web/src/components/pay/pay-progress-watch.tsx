@@ -1,8 +1,8 @@
 "use client";
 
 import { PAY_COPY } from "@/lib/pay/pay-copy";
+import type { PayProgressVm } from "@/lib/pay/pay-page.vm";
 import { nextPollDelay, pollPolicyFor } from "@/lib/pay/pay-poll";
-import type { PayProgressVm } from "@/lib/pay/pay-progress.vm";
 import { payProgressAction } from "@/lib/pay/pay.actions";
 import { Button, ButtonLink, Notice } from "@auction/ui/lax";
 import { useRouter } from "next/navigation";

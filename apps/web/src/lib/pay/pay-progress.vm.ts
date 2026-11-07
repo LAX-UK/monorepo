@@ -3,6 +3,7 @@ import type { BankTransferInstructions, PayPlan, PayPlanProgress } from "@auctio
 import { formatGbp } from "@auction/ui";
 import { PAY_COPY } from "./pay-copy";
 import {
+  type BankDetailRow,
   type PayLotVm,
   type PayMoneyVm,
   type PayPageVm,
@@ -11,28 +12,6 @@ import {
   entityLines,
   lotSubtitle,
 } from "./pay-page.vm";
-
-/** One line of the bank details, with what copying it puts on the clipboard. */
-export type BankDetailRow = {
-  label: string;
-  value: string;
-  /** What the copy button copies; `null` for a row that is only read. */
-  copy: string | null;
-};
-
-/** What the page needs to run a payment that is under way. */
-export type PayProgressVm = {
-  stage: PayPlanProgress["stage"];
-  /** Changes whenever the payment moves; the page reads the server's again when it differs. */
-  signature: string;
-  lotIds: string[];
-  refreshHref: string;
-  contactHref: string;
-  /** The account details to send to, or `null` for a card payment or when they could not be read. */
-  details: { rows: BankDetailRow[] } | null;
-  /** The details were wanted (a transfer) but the provider could not give them. */
-  detailsUnavailable: boolean;
-};
 
 /** "231470" as banks write it, "23-14-70"; anything else is left as it came. */
 export function formatSortCode(sortCode: string): string {
@@ -171,6 +150,8 @@ export function buildPayProgressVm(
   const organisation = plan.account.kind === "organisation" ? plan.account.name : null;
   const isTransfer = progress.rail === "bank_transfer";
   const part = progress.stage === "part_received";
+  // Only the people who pay send the money; others follow along without the account details.
+  const wantsDetails = isTransfer && plan.payerRole === "payer";
   const { title, subtitle } = heading(progress, organisation);
   const note = isTransfer ? PAY_COPY.transferBadge : PAY_COPY.confirmingBadge;
   return {
@@ -204,8 +185,8 @@ export function buildPayProgressVm(
       lotIds: progress.lots.map((lot) => lot.lotId),
       refreshHref: context.returnTo,
       contactHref: context.contactHref,
-      details: isTransfer && transfer ? { rows: detailRows(transfer, progress) } : null,
-      detailsUnavailable: isTransfer && transfer === null,
+      details: wantsDetails && transfer ? { rows: detailRows(transfer, progress) } : null,
+      detailsUnavailable: wantsDetails && transfer === null,
     },
   };
 }

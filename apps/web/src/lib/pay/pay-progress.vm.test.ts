@@ -116,6 +116,17 @@ describe("a bank transfer waiting for its money (S7)", () => {
   });
 });
 
+describe("a bank transfer followed by someone who does not pay", () => {
+  it("shows the money and the lots but not the account details", () => {
+    const progress = progressOf();
+    const plan = { ...planWith(progress), payerRole: "informed" as const };
+    const vm = buildPayProgressVm(plan, progress, CONTEXT, DETAILS);
+    expect(vm.progress?.details).toBeNull();
+    expect(vm.progress?.detailsUnavailable).toBe(false);
+    expect(vm.money?.total).toBe("£11,701.00");
+  });
+});
+
 describe("a bank transfer that arrived in part (S8)", () => {
   const vm = build(
     progressOf({
