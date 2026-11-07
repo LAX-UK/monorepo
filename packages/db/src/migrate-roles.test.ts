@@ -29,6 +29,7 @@ import {
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DENY_TABLES,
   WORKER_DOMAIN_EVENT_DELIVERY_TABLES,
+  WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
   WORKER_FULL_TABLES,
   WORKER_INVOICE_RAISE_FULFILMENT_TABLES,
   WORKER_INVOICE_RAISE_INSERT_TABLES,
@@ -590,7 +591,15 @@ describe("migrate-roles invariants", () => {
       "zoho_campaigns_suppression_state",
     ]);
     const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
-    expect(source).toContain('"worker_app", "email_suppression", "INSERT, SELECT, UPDATE"');
+    // UPDATE on email_suppression is column-level: reason, source and created_at, never the key.
+    expect([...WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS]).toEqual([
+      "reason",
+      "source",
+      "created_at",
+    ]);
+    expect(source).toContain('"worker_app", "email_suppression", "INSERT, SELECT");');
+    expect(source).not.toContain('"worker_app", "email_suppression", "INSERT, SELECT, UPDATE"');
+    expect(source).toContain("WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,");
   });
 
   it("WORKER_QR_CODE_SCAN_TABLES includes scan tables (qr-code-scan worker job)", () => {

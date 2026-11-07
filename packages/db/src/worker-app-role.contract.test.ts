@@ -4,7 +4,11 @@ import pg from "pg";
 import { describe, expect, it } from "vitest";
 import { readUserReadCutoverFromEnv } from "./applied-user-read-cutover.js";
 import { createDb } from "./client.js";
-import { WORKER_DENY_TABLES, WORKER_SHOP_ENQUIRY_READ_COLUMNS } from "./migrate-roles.js";
+import {
+  WORKER_DENY_TABLES,
+  WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
+  WORKER_SHOP_ENQUIRY_READ_COLUMNS,
+} from "./migrate-roles.js";
 import {
   expectTablePrivileges,
   expectUniformTablePrivileges,
@@ -72,6 +76,25 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
         const whole = await readTablePrivileges(client, [table], ["INSERT", "UPDATE", "DELETE"]);
         expectUniformTablePrivileges(whole, false);
       }
+    });
+  });
+
+  it("updates only the reason, source and created_at of a suppression, and cannot delete one", async () => {
+    await withWorkerClient(async (client) => {
+      const columns = await client.query<{ column_name: string; allowed: boolean }>(
+        `select column_name,
+                has_column_privilege(current_user, 'public.email_suppression', column_name, 'UPDATE') as allowed
+           from information_schema.columns
+          where table_schema = 'public' and table_name = 'email_suppression'`,
+      );
+      const updatable = columns.rows.filter((row) => row.allowed).map((row) => row.column_name);
+      expect(updatable.sort()).toEqual([...WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS].sort());
+      const whole = await client.query<{ update: boolean; insert: boolean; del: boolean }>(
+        `select has_table_privilege(current_user, 'public.email_suppression', 'UPDATE') as update,
+                has_table_privilege(current_user, 'public.email_suppression', 'INSERT') as insert,
+                has_table_privilege(current_user, 'public.email_suppression', 'DELETE') as del`,
+      );
+      expect(whole.rows[0]).toEqual({ update: false, insert: true, del: false });
     });
   });
 

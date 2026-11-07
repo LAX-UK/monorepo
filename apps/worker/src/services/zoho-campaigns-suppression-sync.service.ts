@@ -14,9 +14,9 @@ export type ZohoCampaignsSuppressionSyncSummary = {
   mode: ZohoCampaignsSuppressionSyncMode;
   /** Rows read from Zoho. */
   read: number;
-  /** Events past the watermark that were (or in dry run would be) recorded. */
+  /** Events newer than the watermark: what is new since the last pass. A metric only. */
   due: number;
-  /** Entries that changed the table; repeats and narrower reports do not count. */
+  /** Entries that changed the table; repeats and narrower reports do not count (live only). */
   applied: number;
   skipped: Partial<Record<CampaignsSkipReason, number>>;
 };
@@ -28,8 +28,10 @@ const KINDS: readonly CampaignsContactKind[] = ["unsubscribed", "bounced"];
 
 /**
  * Copies Zoho Campaigns unsubscribes and hard bounces into LAX's suppression list. Read-only
- * towards Zoho. Off does nothing, not even a read. The watermark moves only after every event
- * has been handled, and an event on the watermark is read again, which the upsert absorbs.
+ * towards Zoho. Off does nothing, not even a read. Every pass reads the whole lists anyway, and
+ * the upsert is idempotent and only ever widens an entry, so every row is applied, however old:
+ * an unsubscribe that reaches the list late is still recorded. The watermark is kept for the
+ * summary only (how much is new since the last pass); it never decides what is recorded.
  */
 export class ZohoCampaignsSuppressionSyncService {
   constructor(
@@ -71,8 +73,7 @@ export class ZohoCampaignsSuppressionSyncService {
             continue;
           }
           const event = mapped.event;
-          if (!isDue(event, since)) continue;
-          summary.due++;
+          if (isNewSince(event, since)) summary.due++;
           if (event.occurredAt && (!newest || event.occurredAt > newest)) newest = event.occurredAt;
           if (mode === "live" && (await repo.suppress(event.emailHash, event.reason))) {
             summary.applied++;
@@ -88,8 +89,8 @@ export class ZohoCampaignsSuppressionSyncService {
   }
 }
 
-/** A row with no readable time is always handled, since an upsert of a repeat changes nothing. */
-function isDue(event: CampaignsSuppressionEvent, since: Date | null): boolean {
+/** A row with no readable time counts as new: it cannot be shown to be old. */
+function isNewSince(event: CampaignsSuppressionEvent, since: Date | null): boolean {
   if (!since || !event.occurredAt) return true;
   return event.occurredAt >= since;
 }

@@ -8,7 +8,7 @@ import {
   webAlertUrls,
 } from "@auction/alerts";
 import type { Database } from "@auction/db";
-import { OutboxAlertMailer } from "@auction/email";
+import { OutboxAlertMailer, emailHash } from "@auction/email";
 import type { IEmailService } from "@auction/email";
 import {
   laxAccountPageUrl,
@@ -19,6 +19,7 @@ import {
   BidAlertSaleReader,
   BidAlertSubscriberStore,
   BidAlertTopicStore,
+  DrizzleEmailSuppressionRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 
@@ -44,6 +45,7 @@ export function createBidAlertEngine(input: {
 }): BidAlertEngine {
   const { env, db, email, userRepo } = input;
   const subscribers = new BidAlertSubscriberStore(db);
+  const suppressions = new DrizzleEmailSuppressionRepository(db);
   const topics = new BidAlertTopicStore(db);
   const clock = { now: () => new Date() };
   const codec = new AlertLinkCodec(
@@ -90,6 +92,10 @@ export function createBidAlertEngine(input: {
       codec,
       clock,
       topicsToEnable: () => BID_CONFIRM_TOPICS,
+      // A confirmation is the person asking for alerts, so an old Campaigns opt-out no longer holds.
+      afterConfirm: async (address) => {
+        await suppressions.liftMarketingOptOut(emailHash(address));
+      },
     }),
     stop: new StopService({ subscribers, topics, codec, clock }),
     preferences: new PreferencesService({ subscribers, topics, subscribe, addresses, clock }),
