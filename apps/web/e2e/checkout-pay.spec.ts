@@ -68,9 +68,9 @@ test.describe("Pay page @roles", () => {
       await expect(page).toHaveURL(
         new RegExp(`/purchases/pay\\?lots=${clearLot}&returned=cancelled$`),
       );
-      await expect(page.getByRole("alert")).toContainText(
-        "Payment not completed. You were not charged.",
-      );
+      await expect(
+        page.getByRole("alert").filter({ hasText: "Payment not completed" }),
+      ).toContainText("Payment not completed. You were not charged.");
       await expect(page.getByRole("button", { name: /^Try again · £/ }).first()).toBeEnabled();
     });
 
