@@ -12,7 +12,7 @@ import type { PaymentGroupSettlementService } from "./payment-group-settlement.s
 export type OpenCheckoutsOutcome = "clear" | "in_progress" | "unavailable";
 
 export type OpenGroupCheckoutsDeps = {
-  groups: Pick<IPaymentGroupRepository, "findLiveByPaymentIds">;
+  groups: Pick<IPaymentGroupRepository, "findLiveByPaymentIds" | "findById">;
   gateway: Pick<IPaymentGroupGateway, "expireCheckout" | "checkoutStatus">;
   settlement: Pick<PaymentGroupSettlementService, "release">;
   now?: () => Date;
@@ -81,7 +81,14 @@ export class OpenGroupCheckouts {
       eventId: null,
       groupId: group.id,
       reason: "checkout_abandoned",
+      // Looked at without a checkout: if a slow start has recorded one since, do not let go of
+      // a group whose checkout can be paid. End it through the provider like any other.
+      onlyIfNoCheckout: !sessionId,
     });
+    if (released.reason === "checkout_recorded") {
+      const fresh = await this.deps.groups.findById(group.id);
+      return fresh?.stripeCheckoutSessionId ? this.endOne(fresh, payerUserId) : "in_progress";
+    }
     // A group that was settled or released meanwhile is not ours to hand back.
     if (released.action === "skipped") return "in_progress";
     recordMoneyPathEvent("payment_group_abandoned_checkout_ended");
