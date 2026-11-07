@@ -21,6 +21,8 @@ export type OrganisationDocumentRecord = {
   kind: string;
   label: string | null;
   reviewStatus: string;
+  /** When the copy was sent (ISO date). */
+  uploadedAt?: string | null;
 };
 
 /** What to send for one row: the document's kind and, for "other" documents, its name. */
@@ -93,6 +95,17 @@ export function longDateOrNull(value: Date | string | null | undefined): string 
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(value);
   return Number.isNaN(date.getTime()) ? null : CHECK_DATE.format(date);
+}
+
+/** The most recent time a copy was sent, or `null` when none carries a usable date. */
+export function latestUploadedAt(records: readonly OrganisationDocumentRecord[]): Date | null {
+  let latest: Date | null = null;
+  for (const record of records) {
+    if (!record.uploadedAt) continue;
+    const at = new Date(record.uploadedAt);
+    if (!Number.isNaN(at.getTime()) && (!latest || at > latest)) latest = at;
+  }
+  return latest;
 }
 
 /** "Checked on 9 May 2026", or `null` without a usable date. */

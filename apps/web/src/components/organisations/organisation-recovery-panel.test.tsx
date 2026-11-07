@@ -43,9 +43,9 @@ describe("OrganisationRecoveryPanel", () => {
     expect(screen.getByRole("heading", { name: "What you can do now" })).toBeInTheDocument();
     const rows = screen.getAllByRole("listitem");
     expect(rows.map((row) => row.textContent)).toEqual([
-      "Read sales, purchases and invoicesAvailable",
-      "Pay invoices already issuedAvailable",
-      "Bid, register and send worksPaused",
+      expect.stringMatching(/^Read sales, purchases and invoices\s*Available$/),
+      expect.stringMatching(/^Pay invoices already issued\s*Available$/),
+      expect.stringMatching(/^Bid, register and send works\s*Paused$/),
     ]);
     expect(screen.queryByText("Documents we asked for")).not.toBeInTheDocument();
   });
@@ -98,19 +98,30 @@ describe("OrganisationRecoveryPanel", () => {
     );
   });
 
-  it("says how far the check has got and offers Contact us", () => {
+  it("says how far the check has got, and offers Contact us only when given", () => {
+    const { unmount } = render(
+      <OrganisationRecoveryPanel
+        view={{
+          ...restricted,
+          progress: { line: "Documents received on 5 November 2026.", contact: null },
+        }}
+      />,
+    );
+    expect(screen.getByText("Documents received on 5 November 2026.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Contact us" })).not.toBeInTheDocument();
+    unmount();
     render(
       <OrganisationRecoveryPanel
         view={{
           ...restricted,
           progress: {
-            line: "Review started on 5 November 2026. Waiting longer than 3 working days?",
+            line: "Documents received on 5 November 2026. Waiting longer than 3 working days?",
             contact: { label: "Contact us", href: "mailto:help@example.com" },
           },
         }}
       />,
     );
-    expect(screen.getByText(/Review started on 5 November 2026/)).toBeInTheDocument();
+    expect(screen.getByText(/Documents received on 5 November 2026/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Contact us" })).toHaveAttribute(
       "href",
       "mailto:help@example.com",

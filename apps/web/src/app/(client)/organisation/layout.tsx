@@ -86,7 +86,6 @@ export default async function OrganisationLayout({ children }: { children: React
       viewer: user,
       organisation: member,
       actor: active.actor,
-      statusChangedAt: entity?.statusChangedAt,
     }),
   ]);
   const status = organisationStatusView(member.status);

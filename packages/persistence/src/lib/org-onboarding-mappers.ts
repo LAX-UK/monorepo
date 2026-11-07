@@ -54,6 +54,7 @@ export type OrganizationOnboardingDocumentDto = {
   kind: string;
   label: string | null;
   reviewStatus: string;
+  uploadedAt: Date;
 };
 
 export type OrganizationOnboardingGetResult = {

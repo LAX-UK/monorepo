@@ -111,7 +111,7 @@ const NOTHING_OWED: AmountsOwedView = { entries: [] };
  * use; Home works out no task itself. Every other list degrades to empty on failure.
  */
 export async function loadOrganisationHome(
-  user: Pick<SessionUser, "role" | "staffRoles">,
+  user: Pick<SessionUser, "role" | "staffRoles" | "kycStatus">,
   organisation: LegalEntitySummary,
 ): Promise<LoadedOrganisationHome> {
   const actor: EntityActor = {

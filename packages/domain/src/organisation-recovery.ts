@@ -1,5 +1,6 @@
 import type { LegalEntityStatus } from "@auction/types";
 import { type OrganisationAction, organisationStateAllows } from "./organisation-state-policy.js";
+import { LONDON_WORKING_CALENDAR, workingMinutesBetween } from "./working-hours.js";
 
 /**
  * Why an organisation is held back from trading and what its members can do about it. A state
@@ -55,4 +56,19 @@ export function organisationAbilities(status: LegalEntityStatus): OrganisationAb
     key,
     open: ABILITY_ACTIONS[key].every((action) => organisationStateAllows(status, action)),
   }));
+}
+
+/** How long LAX says a check takes, in working days. */
+export const ORGANISATION_REVIEW_WORKING_DAYS = 3;
+
+/**
+ * Whether the check has taken longer than it should since the documents arrived, counting only
+ * the London office's working hours (weekends and bank holidays do not count).
+ */
+export function organisationReviewOverdue(receivedAt: Date, now: Date): boolean {
+  const workingDayMinutes = LONDON_WORKING_CALENDAR.closesAt - LONDON_WORKING_CALENDAR.opensAt;
+  return (
+    workingMinutesBetween(LONDON_WORKING_CALENDAR, receivedAt, now) >=
+    ORGANISATION_REVIEW_WORKING_DAYS * workingDayMinutes
+  );
 }

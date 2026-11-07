@@ -15,9 +15,9 @@ import {
   KEEP_BIDDING_LABEL,
   OPEN_TAG,
   RECOVERY_HEADING,
-  REVIEW_DATE_LINE,
   REVIEW_TAKING_LONG,
   type RecoveryTag,
+  documentsReceivedLine,
 } from "@/lib/presenters/organisation-state/organisation-recovery-copy";
 import {
   type OrganisationAbilityKey,
@@ -25,6 +25,7 @@ import {
   type OrganisationRecoveryKind,
   organisationAbilities,
   organisationRecoveryKind,
+  organisationReviewOverdue,
 } from "@auction/domain";
 import type { LegalEntityStatus } from "@auction/types";
 
@@ -59,10 +60,14 @@ export type OrganisationRecoveryInput = {
   status: LegalEntityStatus;
   /** The Documents tab's view, when the state is about documents; `null` otherwise. */
   documents: OrganisationDocumentsView | null;
-  /** When the status last changed: when the documents arrived, or the review began. */
-  statusChangedAt: Date | string | null | undefined;
+  /** When the latest document was sent, or `null` when none carries a date. */
+  documentsReceivedAt: Date | null;
+  /** The moment the screen is built for, to tell whether the check is taking long. */
+  now: Date;
   /** The person's own account, or `null` when they have none to switch to. */
   personalAccountId: string | null;
+  /** The personal account can bid now: its identity check is clear. */
+  personalCanBid: boolean;
   /** Support staff viewing as the client cannot change the account in use. */
   impersonating: boolean;
 };
@@ -88,12 +93,15 @@ function documentRow(row: OrganisationDocumentRowView): RecoveryDocumentRow {
 
 function progressFor(
   status: LegalEntityStatus,
-  changedAt: OrganisationRecoveryInput["statusChangedAt"],
+  receivedAt: Date | null,
+  now: Date,
 ): OrganisationRecoveryView["progress"] {
   if (status !== "docs_received" && status !== "under_review") return null;
-  const date = longDateOrNull(changedAt);
-  const line = date ? REVIEW_DATE_LINE[status]?.(date) : null;
-  if (!line) return null;
+  const date = longDateOrNull(receivedAt);
+  if (!date || !receivedAt) return null;
+  const line = documentsReceivedLine(date);
+  // Contact us appears only once the check has run past the time we promise.
+  if (!organisationReviewOverdue(receivedAt, now)) return { line, contact: null };
   return {
     line: `${line} ${REVIEW_TAKING_LONG}`,
     contact: { label: "Contact us", href: supportMailto("Organisation under review") },
@@ -103,7 +111,7 @@ function progressFor(
 /**
  * What a held organisation shows beneath its banner: what is still open and what is paused (from
  * the one state policy), the documents asked for while they are the way forward, where the check
- * has got to, and the way to keep buying as the person themselves. `null` for a state that
+ * has got to, and the way to keep buying as the person themselves once they can bid. `null` for a state that
  * needs no recovery (approved, setting up payouts, closed).
  */
 export function buildOrganisationRecoveryView(
@@ -125,9 +133,9 @@ export function buildOrganisationRecoveryView(
       tag: open ? OPEN_TAG : CLOSED_TAG[kind],
     })),
     documents,
-    progress: progressFor(input.status, input.statusChangedAt),
+    progress: progressFor(input.status, input.documentsReceivedAt, input.now),
     personal:
-      input.personalAccountId && !input.impersonating
+      input.personalAccountId && input.personalCanBid && !input.impersonating
         ? {
             label: KEEP_BIDDING_LABEL,
             href: hopHref(withAccount(accountHomePathForKind("personal"), input.personalAccountId)),

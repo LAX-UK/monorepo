@@ -34,14 +34,18 @@ function recovery(
     role?: LegalEntityMemberRole;
     personal?: string | null;
     impersonating?: boolean;
-    changedAt?: Date | string | null;
+    receivedAt?: Date | null;
+    now?: Date;
+    canBid?: boolean;
   } = {},
 ) {
   return buildOrganisationRecoveryView({
     status,
     documents: recoveryShowsDocuments(status) ? documents(options.role ?? "owner", status) : null,
-    statusChangedAt: options.changedAt ?? null,
+    documentsReceivedAt: options.receivedAt ?? null,
+    now: options.now ?? new Date("2026-11-06T12:00:00Z"),
     personalAccountId: options.personal === undefined ? "person-1" : options.personal,
+    personalCanBid: options.canBid ?? true,
     impersonating: options.impersonating ?? false,
   });
 }
@@ -131,8 +135,10 @@ describe("buildOrganisationRecoveryView", () => {
       const view = buildOrganisationRecoveryView({
         status: "docs_requested",
         documents: { intro: "", rows: [], empty: null, closedNote: null },
-        statusChangedAt: null,
+        documentsReceivedAt: null,
+        now: new Date(),
         personalAccountId: null,
+        personalCanBid: false,
         impersonating: false,
       });
       expect(view?.documents).toBeNull();
@@ -140,25 +146,38 @@ describe("buildOrganisationRecoveryView", () => {
   });
 
   describe("how far the check has got", () => {
-    it("names the day the documents arrived", () => {
-      const view = recovery("docs_received", { changedAt: "2026-11-04T10:00:00Z" });
-      expect(view?.progress?.line).toBe(
+    const received = new Date("2026-11-04T10:00:00Z");
+
+    it("names the day the latest document arrived, with no way to chase while it is in time", () => {
+      for (const status of ["docs_received", "under_review"] as const) {
+        const view = recovery(status, { receivedAt: received });
+        expect(view?.progress).toEqual({
+          line: "Documents received on 4 November 2026.",
+          contact: null,
+        });
+      }
+    });
+
+    it("offers Contact us only once three working days have passed", () => {
+      const late = recovery("under_review", {
+        receivedAt: received,
+        now: new Date("2026-11-09T12:00:00Z"),
+      });
+      expect(late?.progress?.line).toBe(
         "Documents received on 4 November 2026. Waiting longer than 3 working days?",
       );
-      expect(view?.progress?.contact?.label).toBe("Contact us");
+      expect(late?.progress?.contact?.label).toBe("Contact us");
+      const weekend = recovery("under_review", {
+        receivedAt: received,
+        now: new Date("2026-11-08T12:00:00Z"),
+      });
+      expect(weekend?.progress?.contact).toBeNull();
     });
 
-    it("names the day the review began", () => {
-      const view = recovery("under_review", { changedAt: new Date("2026-11-05T09:00:00Z") });
-      expect(view?.progress?.line).toBe(
-        "Review started on 5 November 2026. Waiting longer than 3 working days?",
-      );
-    });
-
-    it("says nothing without a usable date, and nothing for other states", () => {
-      expect(recovery("under_review", { changedAt: null })?.progress).toBeNull();
-      expect(recovery("under_review", { changedAt: "not a date" })?.progress).toBeNull();
-      expect(recovery("restricted", { changedAt: "2026-11-04T10:00:00Z" })?.progress).toBeNull();
+    it("says nothing without a document date, and nothing for other states", () => {
+      expect(recovery("under_review", { receivedAt: null })?.progress).toBeNull();
+      expect(recovery("restricted", { receivedAt: received })?.progress).toBeNull();
+      expect(recovery("docs_requested", { receivedAt: received })?.progress).toBeNull();
     });
   });
 
@@ -173,6 +192,10 @@ describe("buildOrganisationRecoveryView", () => {
       for (const status of ["docs_requested", "under_review", "restricted", "rejected"] as const) {
         expect(recovery(status)?.personal).not.toBeNull();
       }
+    });
+
+    it("is hidden until the personal account can bid", () => {
+      expect(recovery("restricted", { canBid: false })?.personal).toBeNull();
     });
 
     it("is hidden without a personal account to switch to", () => {

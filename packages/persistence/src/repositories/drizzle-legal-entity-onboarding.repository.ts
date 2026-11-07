@@ -180,6 +180,7 @@ export class DrizzleLegalEntityOnboardingRepository implements ILegalEntityOnboa
         kind: legalEntityDocument.kind,
         label: legalEntityDocument.label,
         reviewStatus: legalEntityDocument.reviewStatus,
+        uploadedAt: legalEntityDocument.uploadedAt,
       })
       .from(legalEntityDocument)
       .where(eq(legalEntityDocument.legalEntityId, entityId));

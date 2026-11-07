@@ -73,6 +73,11 @@ test.describe("restricted organisation journey @roles", () => {
       await expect(page.getByTestId("account-switcher")).toHaveCount(0);
     });
 
+    await test.step("and back to the organisation, so the profile ends where it began", async () => {
+      await page.goto(`/home?account=${owner.organisation.id}`);
+      await expectActingAs(page, restricted, "Owner");
+    });
+
     await owner.close();
   });
 });

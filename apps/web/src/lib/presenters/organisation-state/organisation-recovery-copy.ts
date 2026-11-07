@@ -36,12 +36,7 @@ export const KEEP_BIDDING_LABEL = "Keep bidding as yourself";
 /** Said before the LAX message in the banner. */
 export const LAX_MESSAGE_LABEL = "Message from LAX";
 
-/** Where the person is in the check, from the date the status last changed. */
-export const REVIEW_DATE_LINE: Readonly<
-  Partial<Record<"docs_received" | "under_review", (date: string) => string>>
-> = {
-  docs_received: (date) => `Documents received on ${date}.`,
-  under_review: (date) => `Review started on ${date}.`,
-};
+/** Where the check is, from the day the latest document arrived. */
+export const documentsReceivedLine = (date: string) => `Documents received on ${date}.`;
 
 export const REVIEW_TAKING_LONG = "Waiting longer than 3 working days?";
