@@ -85,7 +85,9 @@ export function OrganisationHome({ home }: { home: LoadedOrganisationHome }) {
             personal={home.recovery?.personal ?? null}
           />
         ) : null}
-        {home.recovery ? <OrganisationRecoveryPanel view={home.recovery} /> : null}
+        {home.recovery ? (
+          <OrganisationRecoveryPanel view={home.recovery} showPersonal={!view.banner} />
+        ) : null}
         {home.authority ? (
           <p className="flex items-start gap-2 text-lax-14 text-lax-muted">
             <Info className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden />

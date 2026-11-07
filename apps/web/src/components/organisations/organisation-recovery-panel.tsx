@@ -1,3 +1,4 @@
+import { hopUrl } from "@/lib/navigation/hop-href";
 import type {
   OrganisationRecoveryView,
   RecoveryDocumentRow,
@@ -5,6 +6,7 @@ import type {
 import { Surface } from "@auction/ui/components/surface";
 import { ButtonLink, StatusBadge } from "@auction/ui/lax";
 import Link from "next/link";
+import { AccountSwitchLink } from "./account-switch-link";
 
 function AbilityRows({ abilities }: Pick<OrganisationRecoveryView, "abilities">) {
   return (
@@ -54,7 +56,14 @@ function DocumentRow({ row }: { row: RecoveryDocumentRow }) {
  * and how far the check has got. Words and rows come from the recovery view; nothing is decided
  * here.
  */
-export function OrganisationRecoveryPanel({ view }: { view: OrganisationRecoveryView }) {
+export function OrganisationRecoveryPanel({
+  view,
+  showPersonal = false,
+}: {
+  view: OrganisationRecoveryView;
+  /** Set when no banner above carries the button that keeps the person bidding as themselves. */
+  showPersonal?: boolean;
+}) {
   return (
     <Surface
       variant="section"
@@ -86,6 +95,17 @@ export function OrganisationRecoveryPanel({ view }: { view: OrganisationRecovery
             ))}
           </ul>
         </section>
+      ) : null}
+      {showPersonal && view.personal ? (
+        <ButtonLink
+          size="sm"
+          variant="secondary"
+          className="h-11 w-full sm:h-lax-control-md sm:w-auto"
+          href={hopUrl(view.personal.href)}
+          Link={AccountSwitchLink}
+        >
+          {view.personal.label}
+        </ButtonLink>
       ) : null}
       {view.progress ? (
         <p className="font-body text-sm text-on-surface-variant">

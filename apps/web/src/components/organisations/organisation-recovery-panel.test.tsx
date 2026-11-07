@@ -86,6 +86,18 @@ describe("OrganisationRecoveryPanel", () => {
     expect(within(group).getByText("Accepted")).toBeInTheDocument();
   });
 
+  it("carries the personal button itself only when asked, as no banner has it", () => {
+    const { rerender } = render(<OrganisationRecoveryPanel view={restricted} />);
+    expect(
+      screen.queryByRole("link", { name: "Keep bidding as yourself" }),
+    ).not.toBeInTheDocument();
+    rerender(<OrganisationRecoveryPanel view={restricted} showPersonal />);
+    expect(screen.getByRole("link", { name: "Keep bidding as yourself" })).toHaveAttribute(
+      "href",
+      "/bids?account=person-1",
+    );
+  });
+
   it("says how far the check has got and offers Contact us", () => {
     render(
       <OrganisationRecoveryPanel
