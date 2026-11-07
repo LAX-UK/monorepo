@@ -27,7 +27,7 @@ export function AccountSwitcherPopover({
   destination,
 }: Props) {
   const [open, setOpen] = useState(false);
-  const { pendingId, choose } = useAccountSwitch(destination);
+  const { pendingId, failure, choose, retry } = useAccountSwitch(destination, "inline");
   // Pointing at or focusing the trigger reads the dots, so they are there when the list opens.
   const { request } = useAccountNeedsYou();
   return (
@@ -45,10 +45,10 @@ export function AccountSwitcherPopover({
         <AccountSwitcherList
           switcher={switcher}
           pendingId={pendingId}
-          onChoose={(option) => {
-            setOpen(false);
-            void choose(option);
-          }}
+          // Stays open: the chosen row shows the progress, and a failure shows under the rows.
+          onChoose={(option) => void choose(option)}
+          failure={failure}
+          onRetry={() => void retry()}
           onNavigate={() => setOpen(false)}
         />
       </PopoverContent>

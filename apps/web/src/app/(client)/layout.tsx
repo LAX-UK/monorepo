@@ -30,6 +30,7 @@ import {
   ACCOUNT_NOTICE_COOKIE,
   accountNoticeMessage,
   decodeAccountNotice,
+  noticeBelongsToAccount,
   notificationSwitchToast,
 } from "@/lib/navigation/account-notice";
 import { buildAccountChrome } from "@/lib/navigation/account-switcher-model";
@@ -124,18 +125,18 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
     pendingInvitations: pendingInvites.length,
   });
 
-  const notice = decodeAccountNotice(jar.get(ACCOUNT_NOTICE_COOKIE)?.value);
+  // A notice is shown only when it is true of the account in use, and "chose" is greeted by the
+  // root toast, which reaches public pages too.
+  const rawNotice = decodeAccountNotice(jar.get(ACCOUNT_NOTICE_COOKIE)?.value);
+  const notice =
+    rawNotice?.kind !== "chose" && noticeBelongsToAccount(rawNotice, account.current.id)
+      ? rawNotice
+      : null;
   const optionOf = (id: string) => account.switcher?.options.find((o) => o.id === id) ?? null;
   // Opening a notification for another account says so in a toast that offers the way back.
   const switchToast =
     notice?.kind === "opened_notification" ? notificationSwitchToast(notice, optionOf) : null;
-  const noticeMessage = switchToast
-    ? null
-    : accountNoticeMessage(notice, (id) => {
-        const option = optionOf(id);
-        if (!option) return null;
-        return option.kind === "personal" ? "your personal account" : option.name;
-      });
+  const noticeMessage = switchToast ? null : accountNoticeMessage(notice, optionOf);
   const banners = [
     ...(switchToast ? [<NotificationSwitchToast key="switch-toast" {...switchToast} />] : []),
     ...(noticeMessage ? [<AccountNotice key={noticeMessage} message={noticeMessage} />] : []),

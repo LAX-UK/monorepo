@@ -28,6 +28,9 @@ const NEVER_MEMBER_ORGANISATION_NAME = "Crowley Arts Foundation";
 const accountMenuButton = (page: Page) => page.getByRole("button", { name: /^account menu/i });
 const workspaceSwitcher = (page: Page) => page.getByTestId("account-switcher");
 const pageHeading = (page: Page) => page.getByRole("heading", { level: 1 }).first();
+/** The greeting after a chosen switch: a polite live region the message is put into once loaded. */
+const switchNotice = (page: Page) => page.getByTestId("account-switch-greeting");
+const pathOf = (page: Page) => new URL(page.url()).pathname;
 
 /** Counts the requests a page makes to one path, however they are reached. */
 function countRequestsTo(page: Page, pathname: string): () => number {
@@ -114,13 +117,152 @@ test.describe("account switching on the production build @roles", () => {
       "aria-label",
       new RegExp(`Account: ${organisation.name},`),
     );
+    // Bids exist in both accounts, so the person stays on them; the new page says who they act
+    // as, once, and focus is on its heading.
+    expect(pathOf(page)).toBe("/bids");
+    await expect(switchNotice(page)).toContainText(`Now acting as ${organisation.name}`);
+    await expect(page.locator("h1:focus")).toHaveCount(1);
 
-    // The organisation to Personal, from the sidebar: the website frame again.
+    // The organisation to Personal, from the sidebar: the website frame again, still on Bids.
     await workspaceSwitcher(page).click();
     await page.getByTestId("switch-account-personal").click();
     await expect(workspaceSwitcher(page)).toHaveCount(0, { timeout: 30_000 });
     await expect(accountMenuButton(page)).toBeVisible();
     await expect(pageHeading(page)).toBeVisible();
+    expect(pathOf(page)).toBe("/bids");
+    await expect(switchNotice(page)).toContainText("Now using your personal account");
+    await expect(page.locator("h1:focus")).toHaveCount(1);
+  });
+
+  test("a page only one account has opens the other account's first page, and a public page stays put", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    const origin = baseURL ?? "http://localhost:3000";
+    await buyerLogin(page);
+    const { personal, organisation } = await accountsOf(page);
+    await useAccountInThisBrowser(context, origin, personal.id);
+    await page.goto("/selling/new");
+    await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
+
+    await clickAccountMenuItem(page, new RegExp(organisation.name));
+
+    await expect(workspaceSwitcher(page)).toContainText(organisation.name, { timeout: 30_000 });
+    expect(pathOf(page)).toBe("/home");
+
+    // Back to Personal so the profile ends where the other specs expect it.
+    await workspaceSwitcher(page).click();
+    await page.getByTestId("switch-account-personal").click();
+    await expect(workspaceSwitcher(page)).toHaveCount(0, { timeout: 30_000 });
+
+    await page.goto("/about");
+    await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
+
+    await clickAccountMenuItem(page, new RegExp(organisation.name));
+
+    // The About page is the same for every account, so the person stays on it; the root greeting
+    // still speaks, in a polite live region, and does not linger on later pages.
+    await expect(switchNotice(page)).toContainText(`Now acting as ${organisation.name}`, {
+      timeout: 30_000,
+    });
+    await expect(switchNotice(page)).toHaveAttribute("aria-live", "polite");
+    expect(pathOf(page)).toBe("/about");
+    const cookies = await context.cookies(origin);
+    expect(cookies.find((cookie) => cookie.name === ACTING_COOKIE)?.value).not.toBe(personal.id);
+    expect(cookies.find((cookie) => cookie.name === "lax_account_notice")).toBeUndefined();
+
+    // Back to Personal so the profile ends where the other specs expect it.
+    await clickAccountMenuItem(page, /Personal/);
+    await expect(switchNotice(page)).toContainText("Now using your personal account", {
+      timeout: 30_000,
+    });
+    expect(pathOf(page)).toBe("/about");
+  });
+
+  test("on a phone the account button switches in the Switch account sheet, in Personal and back", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    const origin = baseURL ?? "http://localhost:3000";
+    await buyerLogin(page);
+    const { personal, organisation } = await accountsOf(page);
+    await useAccountInThisBrowser(context, origin, personal.id);
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto("/bids");
+    await dismissCookieConsentIfVisible(page);
+
+    // Personal: a round avatar and the word Personal, and a sheet with every account.
+    const accountButton = page.getByTestId("phone-account-button");
+    await expect(accountButton).toBeVisible({ timeout: 30_000 });
+    await expect(accountButton).toHaveAccessibleName(/^Your accounts, .+, Personal$/);
+    await accountButton.click();
+    const sheet = page.getByRole("dialog", { name: "Switch account" });
+    await expect(sheet).toBeVisible();
+    await expect(sheet.getByTestId("switch-account-personal")).toContainText("Current");
+    await sheet.getByRole("button", { name: new RegExp(organisation.name) }).click();
+
+    // The organisation: its tile with the person's badge, on the same page, with the greeting.
+    await expect(switchNotice(page)).toContainText(`Now acting as ${organisation.name}`, {
+      timeout: 30_000,
+    });
+    expect(pathOf(page)).toBe("/bids");
+    await expect(page.getByTestId("phone-account-button")).toHaveAccessibleName(
+      `Your accounts, acting as ${organisation.name}`,
+    );
+
+    // And back, from the same button.
+    await page.getByTestId("phone-account-button").click();
+    await page
+      .getByRole("dialog", { name: "Switch account" })
+      .getByTestId("switch-account-personal")
+      .click();
+    await expect(switchNotice(page)).toContainText("Now using your personal account", {
+      timeout: 30_000,
+    });
+    expect(pathOf(page)).toBe("/bids");
+    await expect(page.getByTestId("phone-account-button")).toHaveAccessibleName(
+      /^Your accounts, .+, Personal$/,
+    );
+  });
+
+  test("an organisation page in Personal offers a one-tap switch and never switches by itself", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    const origin = baseURL ?? "http://localhost:3000";
+    await buyerLogin(page);
+    const { personal, organisation } = await accountsOf(page);
+    await useAccountInThisBrowser(context, origin, personal.id);
+
+    // Sign-in may still be settling onto its landing page; wait for it before asking for Team.
+    await page.waitForLoadState("networkidle");
+    await page.goto("/team");
+
+    // One organisation names it and offers a link; several offer the account switcher.
+    await expect(page.getByRole("heading", { level: 1, name: /^Team belongs to/ })).toBeVisible({
+      timeout: 30_000,
+    });
+    const cookies = await context.cookies(origin);
+    expect(cookies.find((cookie) => cookie.name === ACTING_COOKIE)?.value).toBe(personal.id);
+
+    const switchLink = page.getByRole("link", { name: /^Switch to / });
+    if (await switchLink.count()) {
+      await switchLink.click();
+    } else {
+      await page.getByTestId("no-access-switch").click();
+      await page.getByRole("button", { name: new RegExp(organisation.name) }).click();
+    }
+
+    await expect(workspaceSwitcher(page)).toContainText(organisation.name, { timeout: 30_000 });
+    expect(pathOf(page)).toBe("/team");
+
+    // Back to Personal so the profile ends where the other specs expect it.
+    await workspaceSwitcher(page).click();
+    await page.getByTestId("switch-account-personal").click();
+    await expect(workspaceSwitcher(page)).toHaveCount(0, { timeout: 30_000 });
   });
 
   test("a cookie for an organisation the person left opens Personal with a notice, after one restore", async ({
@@ -134,6 +276,8 @@ test.describe("account switching on the production build @roles", () => {
     // Sign-in leaves no restore marker (only the hop route does), so the first restore is allowed.
     await useAccountInThisBrowser(context, origin, LEFT_ORGANISATION_ID);
 
+    // Sign-in may still be settling onto its landing page; wait for it before asking for this one.
+    await page.waitForLoadState("networkidle");
     await page.goto("/home");
 
     await expect(page.getByTestId("account-notice")).toContainText(
@@ -176,6 +320,8 @@ test.describe("account switching on the production build @roles", () => {
     await buyerLogin(page);
     const { personal, organisation } = await accountsOf(page);
     await useAccountInThisBrowser(context, origin, personal.id);
+    // Sign-in may still be settling onto its landing page; wait for it before asking for this one.
+    await page.waitForLoadState("networkidle");
     await page.goto("/organisations");
     await expect(workspaceSwitcher(page)).toHaveCount(0);
     const switchRequests = countRequestsTo(page, "/switch-account");

@@ -57,8 +57,17 @@ export function createOrganisationBuyingRoutes(
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const requireContext = container.requireLegalEntityContext;
-  const { registrations, purchases, payPlan, paySeveral, deliveryQuotes, collection, problems } =
-    container.organisationBuying;
+  const {
+    registrations,
+    purchases,
+    payPlan,
+    paySeveral,
+    payTransfer,
+    payProgress,
+    deliveryQuotes,
+    collection,
+    problems,
+  } = container.organisationBuying;
   const r = new Hono<{ Variables: Variables }>();
 
   r.get("/registrations", requireAuth, requireContext, async (c) =>
@@ -99,6 +108,33 @@ export function createOrganisationBuyingRoutes(
     async (c) => {
       c.header("Cache-Control", "no-store");
       return respond(c, await payPlan.plan(memberActor(c), c.req.valid("query").lots));
+    },
+  );
+
+  // Where a payment under way for the picked lots stands: a light read for a page that waits.
+  r.get(
+    "/purchases/pay-progress",
+    requireAuth,
+    requireBuyerRole,
+    requireContext,
+    zValidator("query", payPlanQuerySchema),
+    async (c) => {
+      c.header("Cache-Control", "no-store");
+      return respond(c, await payProgress.progress(memberActor(c), c.req.valid("query").lots));
+    },
+  );
+
+  // The account details and reference of a bank transfer already chosen for the picked lots.
+  // Only reads; shown to the members who pay for the account, never cached.
+  r.get(
+    "/purchases/pay-transfer",
+    requireAuth,
+    requireBuyerRole,
+    requireContext,
+    zValidator("query", payPlanQuerySchema),
+    async (c) => {
+      c.header("Cache-Control", "no-store");
+      return respond(c, await payTransfer.instructions(memberActor(c), c.req.valid("query").lots));
     },
   );
 

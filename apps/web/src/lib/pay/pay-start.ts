@@ -31,6 +31,11 @@ const REFUSAL: Readonly<Record<string, { message: string; refresh: boolean }>> =
     message: "The total is more than one online payment can take. Pick fewer invoices.",
     refresh: true,
   },
+  pay_several_card_over_limit: {
+    message:
+      "This total is more than a card payment takes. Choose UK bank transfer, or pay fewer invoices.",
+    refresh: true,
+  },
   pay_several_needs_finance_review: {
     message:
       "A total this size is checked by our finance team first. Pick fewer invoices to pay now.",

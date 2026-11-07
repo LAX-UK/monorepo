@@ -13,6 +13,8 @@ const SITUATION: Record<UnappliedMoneyReason, string> = {
   amount_mismatch: "A payment arrived for a different amount from the invoice total.",
   group_not_settleable:
     "A payment for several invoices arrived, but they could no longer all be settled by it.",
+  group_overpaid:
+    "A bank transfer for several invoices sent more than their total. The excess is for finance to return or apply.",
   customer_balance_unapplied:
     "A bank transfer is sitting in a buyer's Stripe balance with no open invoice to pay.",
   paid_not_recorded: "Stripe shows an invoice paid, but the payment has not been recorded here.",

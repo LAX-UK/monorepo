@@ -72,9 +72,17 @@ export const PAY_COPY = {
   conditionsLink: "Conditions of Business",
   conditionsTail: " you accepted when you registered to bid.",
   howYouPay: "How you pay",
-  card: "Card: Visa, Mastercard, Amex. Your bank may ask you to confirm.",
-  bankTransfer: "UK bank transfer: you get our account details and a reference. No card fees.",
-  cardLimit: "Card payments have a limit. Pick fewer invoices to pay by card.",
+  methodCard: "Card",
+  methodCardNote: "Visa, Mastercard, Amex. Your bank may ask you to confirm.",
+  methodBank: "UK bank transfer",
+  methodBankNote: "You get our account details and a reference. No card fees.",
+  /** `limit` is the server's card limit, formatted. */
+  cardLimit: (limit: string) =>
+    `Card payments go up to ${limit}. Pick fewer invoices to pay by card.`,
+  bankUnderButton:
+    "We give you our account details and a reference for this payment. Your invoices are marked paid once all of the money has arrived.",
+  tryAgain: "Try again",
+  tryAgainTotal: (total: string) => `Try again · ${total}`,
   overOnlineLimit:
     "The total is more than one online payment can take. Pick fewer invoices to pay now.",
   openPurchases: "Open purchases",
@@ -104,9 +112,11 @@ export const PAY_COPY = {
   overdueTitle: (date: string) => `Payment was due on ${date}. Please pay now.`,
   overdueBody: "If something is stopping you, contact settlements and we'll help.",
   contactSettlements: "Contact settlements",
-  notCompletedTitle: "Payment not completed",
+  openFailedTitle: "We couldn't open the secure payment page",
+  openFailedBody: "Nothing was charged. Check your connection and try again.",
+  notCompletedTitle: "Payment not completed. You were not charged.",
   notCompletedBody:
-    "Nothing was charged. Your bank's check may not have finished, or the card was declined. You can try again.",
+    "Your bank's check (3D Secure) was not finished, or the card was declined. Try again, use another card, or pay by UK bank transfer.",
   verifyToPay: "Verify your identity to pay",
   backToPurchase: "Back to purchase",
   backToPurchases: "Back to purchases",
@@ -124,8 +134,41 @@ export const PAY_COPY = {
   confirmingTitle: "Confirming your payment",
   confirmingBody:
     "This usually takes under a minute. Refresh to see it update. Please don't pay again.",
+  confirmingLiveBody:
+    "This usually takes under a minute and this page updates by itself. Please don't pay again.",
+  stillConfirmingTitle: "Still confirming",
+  stillConfirmingBody:
+    "Your bank has taken the payment and we're waiting for confirmation. Please don't pay again.",
   confirmingBadge: "Confirming payment",
+  beingPaid: "Being paid",
   refresh: "Refresh",
+  transferBadge: "Waiting for your transfer",
+  partBadge: "Part received",
+  transferPanelTitle: "Send a UK bank transfer",
+  transferToSend: "To send",
+  transferLeftToSend: "Left to send",
+  otherInvoices: (count: number) =>
+    `This payment also covers ${count} other ${count === 1 ? "invoice" : "invoices"}.`,
+  transferTotal: "Total",
+  transferReceived: "Received",
+  transferAmount: "Amount to send",
+  transferAccountName: "Account name",
+  transferSortCode: "Sort code",
+  transferAccountNumber: "Account number",
+  transferReference: "Reference",
+  transferNote:
+    "Use the reference exactly, so we can match your money. Transfers usually arrive within 2 hours, and we email you when it does. These details come from our payment provider.",
+  transferUnavailable:
+    "We couldn't load the bank details just now. We also emailed them to you. If you can't find them, contact settlements.",
+  transferSubtitle: (count: number) => `One bank transfer for ${count} lots`,
+  partTitle: (received: string, total: string) => `${received} of ${total} received`,
+  partBody: (remaining: string) =>
+    `Send the remaining ${remaining} with the same reference. Your invoices are marked paid together once all of it has arrived.`,
+  receivedShare: (percent: number) => `${percent}% received`,
+  referenceCaption: (reference: string) => `Reference ${reference}`,
+  copy: "Copy",
+  copied: (what: string) => `${what} copied`,
+  copyLabel: (what: string) => `Copy ${what.toLowerCase()}`,
   inReviewBadge: "In review",
   financeCheckBadge: "Finance check",
   identityBadge: "Identity needed",

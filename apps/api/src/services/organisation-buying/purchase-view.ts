@@ -39,6 +39,8 @@ const STATUS: Record<OrganisationBuyingErrorCode, OrganisationBuyingError["statu
   pay_several_below_minimum: 409,
   pay_several_over_limit: 409,
   pay_several_needs_finance_review: 409,
+  pay_several_card_over_limit: 409,
+  payment_in_progress_elsewhere: 409,
   pay_several_conflict: 409,
   pay_several_unavailable: 503,
   pay_plan_unavailable: 503,
@@ -70,6 +72,10 @@ const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
     "The total is more than one online payment can take. Choose fewer invoices, or contact our settlements team.",
   pay_several_needs_finance_review:
     "The total is large enough that our finance team reviews it first. Choose fewer invoices, or pay them one at a time.",
+  pay_several_card_over_limit:
+    "The total is more than a card payment takes. Choose bank transfer, or choose fewer invoices.",
+  payment_in_progress_elsewhere:
+    "A payment for these invoices is already under way. Check its progress on the Pay page.",
   pay_several_conflict:
     "Some of these invoices started being paid in the meantime. Refresh and try again.",
   pay_several_unavailable:
