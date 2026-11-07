@@ -2,11 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { createAlertRetentionTask } from "./alert-retention.task.js";
 
 const zero = { unconfirmed: 0, stopped: 0, suppressionsTrimmed: 0, matches: 0, digests: 0 };
-const setup = () => {
+const setup = (dryRun = false) => {
   const prune = vi.fn(async () => zero);
   const task = createAlertRetentionTask({
     store: { name: "shop", prune },
     log: { info: vi.fn(), error: vi.fn() },
+    dryRun,
   });
   return { prune, task };
 };
@@ -19,6 +20,15 @@ describe("alert retention task", () => {
     expect(prune).not.toHaveBeenCalled();
     await task.run(new Date("2026-11-06T03:05:00Z"));
     expect(prune).toHaveBeenCalledOnce();
+  });
+
+  it("only reports what it would remove while the purge switch is off", async () => {
+    const off = setup(true);
+    await off.task.run(new Date("2026-11-06T03:00:00Z"));
+    expect(off.prune).toHaveBeenCalledWith(expect.anything(), { dryRun: true });
+    const on = setup(false);
+    await on.task.run(new Date("2026-11-06T03:00:00Z"));
+    expect(on.prune).toHaveBeenCalledWith(expect.anything(), { dryRun: false });
   });
 
   it("runs once a day, and again the next day", async () => {

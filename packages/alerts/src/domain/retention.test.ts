@@ -16,20 +16,30 @@ describe("alertRetentionCutoffs", () => {
     expect(now.getTime() - unconfirmedBefore.getTime()).toBeGreaterThan(CONFIRM_LINK_TTL_MS);
   });
 
-  it("keeps a stopped subscriber for 30 days after the stop", () => {
+  it("keeps a stopped subscriber, and its consent evidence, for 2 years after the stop", () => {
     const { stoppedBefore } = alertRetentionCutoffs(now);
-    expect(now.getTime() - stoppedBefore.getTime()).toBe(30 * DAY);
+    expect(now.getTime() - stoppedBefore.getTime()).toBe(730 * DAY);
+    expect(stoppedBefore.toISOString()).toBe("2024-11-06T03:00:00.000Z");
   });
 
-  it("keeps alert logs for 12 calendar months", () => {
+  it("keeps alert logs for 90 days", () => {
     const { logsBefore } = alertRetentionCutoffs(now);
-    expect(logsBefore.toISOString()).toBe("2025-11-06T03:00:00.000Z");
+    expect(now.getTime() - logsBefore.getTime()).toBe(90 * DAY);
+    expect(logsBefore.toISOString()).toBe("2026-08-08T03:00:00.000Z");
+  });
+
+  it("keeps the evidence far longer than the logs", () => {
+    const { stoppedBefore, logsBefore } = alertRetentionCutoffs(now);
+    expect(stoppedBefore.getTime()).toBeLessThan(logsBefore.getTime());
   });
 
   it("handles a leap day without producing an invalid date", () => {
-    const { logsBefore } = alertRetentionCutoffs(new Date("2028-02-29T03:00:00.000Z"));
+    const { logsBefore, stoppedBefore } = alertRetentionCutoffs(
+      new Date("2028-02-29T03:00:00.000Z"),
+    );
     expect(Number.isNaN(logsBefore.getTime())).toBe(false);
-    expect(logsBefore.getUTCFullYear()).toBe(2027);
+    expect(logsBefore.toISOString()).toBe("2027-12-01T03:00:00.000Z");
+    expect(Number.isNaN(stoppedBefore.getTime())).toBe(false);
   });
 
   it("does not move the instant it was given", () => {
@@ -39,6 +49,6 @@ describe("alertRetentionCutoffs", () => {
   });
 
   it("states the periods the rules document", () => {
-    expect(ALERT_RETENTION).toEqual({ unconfirmedDays: 30, stoppedDays: 30, logMonths: 12 });
+    expect(ALERT_RETENTION).toEqual({ unconfirmedDays: 30, stoppedDays: 730, logDays: 90 });
   });
 });

@@ -121,6 +121,19 @@ export const shopApiEnvSchema = z.object({
    * in stock notices are not held back by this switch.
    */
   ALERTS_SEND_MODE: z.enum(["off", "dry_run", "on"]).default("off"),
+  /**
+   * Turns on the Shop and lax.art alert retention prune. Off (the default) it runs as a dry run:
+   * it logs what it would remove and deletes nothing. Read like the worker's flags: `1`, `true`,
+   * `yes` and `on` turn it on; anything else leaves it off.
+   */
+  ALERT_RETENTION_PURGE_ENABLED: z.preprocess(
+    (value) =>
+      typeof value === "boolean"
+        ? value
+        : typeof value === "string" &&
+          ["1", "true", "yes", "on"].includes(value.trim().toLowerCase()),
+    z.boolean(),
+  ),
   /** Signs the confirm and stop links in alert emails. Not shared with LAX Bid. */
   ALERT_LINK_SECRET: z.string().min(16).default(DEV_ALERT_LINK_SECRET),
   ALERT_LINK_KEY_ID: z.string().min(1).max(32).default("k1"),

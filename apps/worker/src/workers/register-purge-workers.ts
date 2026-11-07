@@ -104,7 +104,11 @@ export function registerPurgeWorkers(deps: WorkerBootstrapDeps): PurgeWorkersHan
     PURGE_ALERT_RETENTION_QUEUE_NAME,
     async () => {
       await withSentryCronMonitor("purge-alert-retention", sentryMonitorSlugs, async () => {
-        await pruneAlertRetention({ stores: alertRetentionStores, log });
+        await pruneAlertRetention({
+          stores: alertRetentionStores,
+          log,
+          dryRun: !env.ALERT_RETENTION_PURGE_ENABLED,
+        });
       });
     },
     bullConnection,

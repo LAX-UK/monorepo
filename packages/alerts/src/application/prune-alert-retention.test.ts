@@ -26,7 +26,8 @@ describe("pruneAlertRetention", () => {
     expect(prune).toHaveBeenCalledWith(
       expect.objectContaining({
         unconfirmedBefore: new Date("2026-10-07T03:00:00.000Z"),
-        logsBefore: new Date("2025-11-06T03:00:00.000Z"),
+        stoppedBefore: new Date("2024-11-06T03:00:00.000Z"),
+        logsBefore: new Date("2026-08-08T03:00:00.000Z"),
       }),
       { dryRun: false },
     );

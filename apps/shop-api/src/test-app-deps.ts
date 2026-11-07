@@ -46,6 +46,7 @@ export function createMinimalShopApiTestDeps(
       SHOP_SCHEDULER_ENABLED: false,
       SHOP_SCHEDULER_INTERVAL_MS: 60_000,
       ALERTS_SEND_MODE: "off",
+      ALERT_RETENTION_PURGE_ENABLED: false,
       ALERT_LINK_SECRET: "test-alert-link-secret-not-for-production", // gitleaks:allow
       ALERT_LINK_KEY_ID: "k1",
       SHOP_REQUIRE_STRIPE: true,

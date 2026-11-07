@@ -100,6 +100,7 @@ export function buildShopApiSchedulerTasks(input: {
     createAlertDigestTask({ mode: alerts.mode, runs: alerts.digests }),
     createAlertRetentionTask({
       store: input.alertRetention,
+      dryRun: !input.env.ALERT_RETENTION_PURGE_ENABLED,
       log: {
         info: (fields, message) => input.log.info(fields, message),
         error: (fields, message) => input.log.error(fields, message),

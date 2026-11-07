@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { alertRetentionCutoffs } from "@auction/alerts";
 import { createDb } from "@auction/db";
 import {
+  bidAlertAnnouncement,
   bidAlertDigest,
   bidAlertMatch,
   bidAlertSubscriber,
@@ -11,18 +12,23 @@ import {
 } from "@auction/db/schema";
 import { eq, inArray, sql } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
+import { DrizzleAlertRetentionStore } from "./alert-retention.store.js";
 import { createBidAlertRetentionStores } from "./bid-alert-retention.stores.js";
 
 const url = process.env.DATABASE_URL;
+const workerUrl = process.env.DATABASE_URL_WORKER;
 const HAS_DB = Boolean(url);
 // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
 const db = HAS_DB ? createDb(url!) : (null as never);
+// The stores run as the worker's database role when it is configured (CI role-contract setup), so
+// a missing grant fails here; fixtures are always written and cleaned up by the owner connection.
+const storeDb = workerUrl ? createDb(workerUrl) : db;
 
 const NOW = new Date("2026-11-06T03:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
 const ago = (days: number) => new Date(NOW.getTime() - days * DAY);
 const cutoffs = alertRetentionCutoffs(NOW);
-const [bidStore, visitorStore] = HAS_DB ? createBidAlertRetentionStores(db) : [];
+const [bidStore, visitorStore] = HAS_DB ? createBidAlertRetentionStores(storeDb) : [];
 
 async function clean() {
   for (const table of [
@@ -110,18 +116,19 @@ describe.skipIf(!HAS_DB)("Bid alert retention prune (DB)", () => {
     const stoppedOld = await subscriber("stopped-old", {
       status: "stopped",
       stopReason: "link",
-      stoppedAt: ago(40),
+      stoppedAt: ago(731),
     });
+    // A stop under two years ago is still the consent evidence of the subscription.
     const stoppedNew = await subscriber("stopped-new", {
       status: "stopped",
       stopReason: "link",
-      stoppedAt: ago(10),
+      stoppedAt: ago(729),
     });
     const stoppedNoDate = await subscriber("stopped-nodate", {
       status: "stopped",
       stopReason: "settings",
       stoppedAt: null,
-      updatedAt: ago(40),
+      updatedAt: ago(800),
     });
 
     const counts = await bidStore?.prune(cutoffs, { dryRun: false });
@@ -149,7 +156,7 @@ describe.skipIf(!HAS_DB)("Bid alert retention prune (DB)", () => {
     const complained = await subscriber("complained", {
       status: "stopped",
       stopReason: "complaint",
-      stoppedAt: ago(40),
+      stoppedAt: ago(800),
     });
     const complainedRecent = await subscriber("complained-recent", {
       status: "stopped",
@@ -215,6 +222,41 @@ describe.skipIf(!HAS_DB)("Bid alert retention prune (DB)", () => {
     expect(await present(bidAlertSubscriber, [sub])).toEqual([sub]);
   });
 
+  it("keeps alert logs for 90 days and removes them after", async () => {
+    await clean();
+    const sub = await subscriber("log-age");
+    const inside = await match(sub, ago(89), { droppedReason: "stale" });
+    const outside = await match(sub, ago(91), { droppedReason: "stale" });
+    const counts = await bidStore?.prune(cutoffs, { dryRun: false });
+    expect(counts?.matches).toBe(1);
+    const left = (await db.select({ id: bidAlertMatch.id }).from(bidAlertMatch)).map((r) => r.id);
+    expect(left).toEqual([inside]);
+    expect(left).not.toContain(outside);
+  });
+
+  it("stops after its batch limit and carries on in the next run", async () => {
+    await clean();
+    for (let i = 0; i < 5; i += 1) {
+      await subscriber(`capped-${i}`, { status: "pending", requestedAt: ago(40) });
+    }
+    const capped = new DrizzleAlertRetentionStore(
+      "bid",
+      storeDb,
+      {
+        subscriber: bidAlertSubscriber,
+        topic: bidAlertTopic,
+        match: bidAlertMatch,
+        digest: bidAlertDigest,
+        announcement: bidAlertAnnouncement,
+      },
+      2,
+      2,
+    );
+    expect((await capped.prune(cutoffs, { dryRun: false })).unconfirmed).toBe(4);
+    expect((await capped.prune(cutoffs, { dryRun: false })).unconfirmed).toBe(1);
+    expect((await capped.prune(cutoffs, { dryRun: false })).unconfirmed).toBe(0);
+  });
+
   it("deletes nothing in a dry run, and counts what it would", async () => {
     await clean();
     const pending = await subscriber("dry", { status: "pending", requestedAt: ago(40) });
@@ -229,7 +271,7 @@ describe.skipIf(!HAS_DB)("Bid alert retention prune (DB)", () => {
     for (let i = 0; i < 3; i += 1) {
       ids.push(await subscriber(`bulk-${i}`, { status: "pending", requestedAt: ago(40) }));
     }
-    const small = createBidAlertRetentionStores(db);
+    const small = createBidAlertRetentionStores(storeDb);
     expect(small).toHaveLength(2);
     const first = await bidStore?.prune(cutoffs, { dryRun: false });
     const second = await bidStore?.prune(cutoffs, { dryRun: false });
@@ -284,8 +326,8 @@ describe.skipIf(!HAS_DB)("Visitor sale alert retention prune (DB)", () => {
     const confirmed = await visitor("confirmed", { confirmedAt: ago(150) });
     const pendingOld = await visitor("pending", { requestedAt: ago(40) });
     const pendingNew = await visitor("pending", { requestedAt: ago(5) });
-    const goneOld = await visitor("unsubscribed", { unsubscribedAt: ago(40) });
-    const goneNew = await visitor("unsubscribed", { unsubscribedAt: ago(5) });
+    const goneOld = await visitor("unsubscribed", { unsubscribedAt: ago(731) });
+    const goneNew = await visitor("unsubscribed", { unsubscribedAt: ago(729) });
 
     const counts = await visitorStore?.prune(cutoffs, { dryRun: false });
 

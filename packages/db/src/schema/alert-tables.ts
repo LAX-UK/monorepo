@@ -166,6 +166,8 @@ export function defineAlertTables(config: AlertTablesConfig) {
         .on(t.subscriberId)
         .where(sql`${t.digestId} IS NULL AND ${t.droppedReason} IS NULL`),
       index(`${prefix}_alert_match_digest_idx`).on(t.digestId),
+      /** The retention prune picks settled matches by age. */
+      index(`${prefix}_alert_match_matched_at_idx`).on(t.matchedAt),
       check(`${prefix}_alert_match_topic_check`, sql`${t.topic} IN (${list(config.topics)})`),
     ],
   );

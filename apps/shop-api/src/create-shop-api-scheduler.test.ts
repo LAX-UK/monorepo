@@ -11,6 +11,7 @@ const baseEnv = {
   SHOP_CONNECT_TRANSFERS_ENABLED: false,
   STRIPE_SHOP_CONNECT_PLATFORM_KEY: "bid_sandbox",
   DOMAIN_EVENT_PUBLISH_VALIDATE: "observe",
+  ALERT_RETENTION_PURGE_ENABLED: false,
 } as const;
 
 function taskNames(env: Record<string, unknown>): string[] {
