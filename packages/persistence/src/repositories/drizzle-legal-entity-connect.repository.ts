@@ -7,6 +7,7 @@ import {
   legalEntityAddress,
   userAddress,
 } from "@auction/db/schema";
+import { assertNotPayHoldStart } from "@auction/domain";
 import { and, desc, eq } from "drizzle-orm";
 import type { ILegalEntityConnectReader } from "../interfaces/legal-entity-connect.reader.js";
 import type { ILegalEntityConnectRepository } from "../interfaces/legal-entity-connect.repository.js";
@@ -175,6 +176,7 @@ export class DrizzleLegalEntityConnectRepository
     input: ApplyConnectStatusTransitionInput,
     db: Database = this.db,
   ): Promise<LegalEntityConnectRow | null> {
+    assertNotPayHoldStart(input.expectedStatus, input.nextStatus);
     const [updated] = await db
       .update(legalEntity)
       .set({
