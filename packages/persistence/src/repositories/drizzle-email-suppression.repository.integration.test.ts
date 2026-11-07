@@ -18,7 +18,13 @@ describe.skipIf(!HAS_DB)("DrizzleEmailSuppressionRepository (integration)", () =
     await db.delete(emailSuppression).where(inArray(emailSuppression.emailHash, hashes));
     await db
       .delete(zohoCampaignsOptOutLift)
-      .where(inArray(zohoCampaignsOptOutLift.emailHash, [...hashes, "suppression-it-missing", "suppression-it-latest"]));
+      .where(
+        inArray(zohoCampaignsOptOutLift.emailHash, [
+          ...hashes,
+          "suppression-it-missing",
+          "suppression-it-latest",
+        ]),
+      );
   });
 
   const read = async (hash: string) =>
