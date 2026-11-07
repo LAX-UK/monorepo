@@ -283,6 +283,49 @@ describe.skipIf(!HAS_DB)("payment groups (integration)", () => {
     expect(await groups.findLiveByPaymentIds([])).toEqual([]);
   });
 
+  describe("the newest bank-transfer group of a Stripe customer", () => {
+    const customer = `cus_pg_${randomUUID()}`;
+    const since = new Date(Date.now() - 30 * 86_400_000);
+
+    it("finds the account's newest live or paid bank-transfer group, and nothing else", async () => {
+      const [a, b, c] = paymentIds as [string, string, string];
+      await db
+        .update(legalEntity)
+        .set({ stripeCustomerId: customer })
+        .where(eq(legalEntity.id, orgId));
+      try {
+        expect(await groups.findLatestBankTransferGroupForCustomer(customer, since)).toBeNull();
+        const card = await groups.claim(claimInput([a]));
+        expect(await groups.findLatestBankTransferGroupForCustomer(customer, since)).toBeNull();
+        const bank = await groups.claim({
+          ...claimInput([b, c]),
+          checkoutRail: "gb_bank_transfer",
+        });
+        if (card.kind !== "claimed" || bank.kind !== "claimed") throw new Error("expected claims");
+        expect((await groups.findLatestBankTransferGroupForCustomer(customer, since))?.id).toBe(
+          bank.group.id,
+        );
+        // Old groups and other customers do not count.
+        expect(
+          await groups.findLatestBankTransferGroupForCustomer(
+            customer,
+            new Date(Date.now() + 60_000),
+          ),
+        ).toBeNull();
+        expect(await groups.findLatestBankTransferGroupForCustomer("cus_other", since)).toBeNull();
+        await db.transaction(async (tx) => {
+          await groups.transitionInTransaction(tx, bank.group.id, ["open"], "cancelled");
+        });
+        expect(await groups.findLatestBankTransferGroupForCustomer(customer, since)).toBeNull();
+      } finally {
+        await db
+          .update(legalEntity)
+          .set({ stripeCustomerId: null })
+          .where(eq(legalEntity.id, orgId));
+      }
+    });
+  });
+
   describe("money received so far", () => {
     const at = (seconds: number) => new Date(1_793_000_000_000 + seconds * 1000);
     const record = (groupId: string, amount: string, eventAt: Date) =>

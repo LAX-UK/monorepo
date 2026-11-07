@@ -69,6 +69,14 @@ export interface IPaymentGroupRepository {
     paymentIntentId?: string | null;
   }): Promise<PaymentGroupRecord | null>;
   listMembers(groupId: string): Promise<PaymentGroupMember[]>;
+  /**
+   * The newest bank-transfer group (`open`, `processing` or `paid`) created since `since` for the
+   * account that owns this Stripe customer; `null` when there is none.
+   */
+  findLatestBankTransferGroupForCustomer(
+    stripeCustomerId: string,
+    since: Date,
+  ): Promise<PaymentGroupRecord | null>;
   /** The groups still holding any of these payments (`open` or `processing`). */
   findLiveByPaymentIds(paymentIds: readonly string[]): Promise<PaymentGroupRecord[]>;
   /**
