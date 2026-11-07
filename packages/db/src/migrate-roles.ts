@@ -375,6 +375,9 @@ export const WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES = ["artwork_register_eve
  * The Zoho artwork sync keeps its watermark and the result for each Product it reads; the nightly
  * LAX listing pass keeps its summary.
  */
+export const WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES = [
+  "zoho_campaigns_suppression_state",
+] as const;
 export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
   "zoho_artwork_sync_state",
   "zoho_artwork_sync_outcome",
@@ -852,8 +855,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         /** The impersonation sweeper ends sessions that have expired. */
         await grantIfExists(client, "worker_app", "impersonation_session", "SELECT, UPDATE");
-        /** worker send-email reads suppression list and inserts manual suppressions for missing users. */
-        await grantIfExists(client, "worker_app", "email_suppression", "INSERT, SELECT");
+        /** worker send-email reads suppression list and inserts manual suppressions for missing users;
+         * the Zoho Campaigns suppression sync upserts unsubscribes and hard bounces (UPDATE). */
+        await grantIfExists(client, "worker_app", "email_suppression", "INSERT, SELECT, UPDATE");
         /** worker enqueues mail from notification-fanout projectors (INSERT) and the send-email
          * job updates rows to sent/failed/sending (SELECT, UPDATE). DELETE remains denied so the
          * outbox stays an immutable audit trail of attempted delivery. */
@@ -901,6 +905,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
+        }
+        for (const tableName of WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
         for (const tableName of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

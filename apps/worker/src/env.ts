@@ -167,6 +167,12 @@ export const envSchema = z
      * nightly pass reports it in LAX Admin; `live` writes. Never `live` unless set on purpose.
      */
     ZOHO_ARTWORK_LISTING_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
+    /**
+     * Unsubscribes and hard bounces from Zoho Campaigns into LAX's own suppression list. `off`
+     * does nothing and never calls Zoho; `dry_run` reads Zoho and logs what it would record;
+     * `live` records it. Read-only towards Zoho in every mode.
+     */
+    ZOHO_CAMPAIGNS_SUPPRESSION_SYNC_MODE: z.enum(["off", "dry_run", "live"]).default("off"),
     /** LAX Shop's API, for the inventory machine routes the listing reads lax.art through. */
     SHOP_API_INVENTORY_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     /** The credential pair LAX Shop and LAX Bid hold for the inventory machine routes. */
@@ -400,6 +406,23 @@ export const envSchema = z
           "ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET and ZOHO_REFRESH_TOKEN are required when ZOHO_ARTWORK_WRITEBACK_MODE is live",
         path: ["ZOHO_ARTWORK_WRITEBACK_MODE"],
       });
+    }
+    if (e.ZOHO_CAMPAIGNS_SUPPRESSION_SYNC_MODE !== "off") {
+      const missing = (
+        [
+          "ZOHO_CLIENT_ID",
+          "ZOHO_CLIENT_SECRET",
+          "ZOHO_REFRESH_TOKEN",
+          "ZOHO_CAMPAIGNS_LIST_KEY",
+        ] as const
+      ).filter((key) => !e[key]);
+      if (missing.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${missing.join(", ")} required when ZOHO_CAMPAIGNS_SUPPRESSION_SYNC_MODE is not off`,
+          path: ["ZOHO_CAMPAIGNS_SUPPRESSION_SYNC_MODE"],
+        });
+      }
     }
     if (e.ZOHO_ARTWORK_LISTING_MODE !== "off") {
       const listingSettings = [

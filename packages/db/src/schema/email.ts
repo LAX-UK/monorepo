@@ -29,7 +29,10 @@ export type EmailSuppressionReason =
   | "complaint"
   | "manual"
   | "unsubscribe"
+  | "unsubscribed_marketing"
   | "soft_bounce_threshold";
+/** Where a suppression entry came from. Null on entries written before the source was kept. */
+export type EmailSuppressionSource = "zoho_campaigns";
 export type NewsletterSignupStatus = "queued" | "pushed" | "rejected" | "failed";
 
 export const emailOutbox = pgTable(
@@ -93,6 +96,8 @@ export const emailEvent = pgTable(
 export const emailSuppression = pgTable("email_suppression", {
   emailHash: text("email_hash").primaryKey(),
   reason: text("reason").$type<EmailSuppressionReason>().notNull(),
+  /** Set when another system reported the entry; null for Postmark and LAX's own. Migration 0322. */
+  source: text("source").$type<EmailSuppressionSource>(),
   createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
 });
 

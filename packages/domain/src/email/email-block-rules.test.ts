@@ -30,6 +30,13 @@ describe("email block rules", () => {
     expect(emailLiftAccessRefusal("complaint", ADMIN)).toBeNull();
   });
 
+  it("lets nobody lift a marketing opt-out, and it never stops essential email", () => {
+    expect(emailLiftAccessRefusal("unsubscribed_marketing", ADMIN)).toBe(
+      "unsubscribe_not_liftable",
+    );
+    expect(EMAIL_BLOCK_RULES.unsubscribed_marketing.stopsEssentialEmail).toBe(false);
+  });
+
   it("lets nobody lift an unsubscribe", () => {
     expect(emailLiftAccessRefusal("unsubscribe", ADMIN)).toBe("unsubscribe_not_liftable");
     expect(EMAIL_BLOCK_RULES.unsubscribe.stopsEssentialEmail).toBe(false);
