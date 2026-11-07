@@ -25,13 +25,14 @@ describe("AccountNotice", () => {
   });
 
   it("moves focus to the page's heading when the person chose the switch", () => {
+    vi.useRealTimers();
     render(
       <main>
         <h1>Home</h1>
         <AccountNotice message="Now acting as Northbank Gallery" focusHeading />
       </main>,
     );
-    expect(screen.getByRole("heading", { name: "Home" })).toHaveFocus();
+    return vi.waitFor(() => expect(screen.getByRole("heading", { name: "Home" })).toHaveFocus());
   });
 
   it("leaves focus alone for a change the person did not choose", () => {

@@ -26,7 +26,10 @@ export function AccountNotice({ message, detail, focusHeading = false, autoDismi
 
   useEffect(() => {
     clearAccountNotice();
-    if (focusHeading) focusPageHeading();
+    if (!focusHeading) return;
+    // After the frame, so nothing that settles on load takes focus back.
+    const frame = window.requestAnimationFrame(() => focusPageHeading());
+    return () => window.cancelAnimationFrame(frame);
   }, [focusHeading]);
 
   useEffect(() => {

@@ -120,7 +120,7 @@ test.describe("account switching on the production build @roles", () => {
     // as, once, and focus is on its heading.
     expect(pathOf(page)).toBe("/bids");
     await expect(switchNotice(page)).toContainText(`Now acting as ${organisation.name}`);
-    await expect(pageHeading(page)).toBeFocused();
+    await expect(page.locator("h1:focus")).toHaveCount(1);
 
     // The organisation to Personal, from the sidebar: the website frame again, still on Bids.
     await workspaceSwitcher(page).click();
@@ -130,7 +130,7 @@ test.describe("account switching on the production build @roles", () => {
     await expect(pageHeading(page)).toBeVisible();
     expect(pathOf(page)).toBe("/bids");
     await expect(switchNotice(page)).toContainText("Now using your personal account");
-    await expect(pageHeading(page)).toBeFocused();
+    await expect(page.locator("h1:focus")).toHaveCount(1);
   });
 
   test("a page only one account has opens the other account's first page", async ({
@@ -213,6 +213,8 @@ test.describe("account switching on the production build @roles", () => {
     const { personal, organisation } = await accountsOf(page);
     await useAccountInThisBrowser(context, origin, personal.id);
 
+    // Sign-in may still be settling onto its landing page; wait for it before asking for Team.
+    await page.waitForLoadState("networkidle");
     await page.goto("/team");
 
     // One organisation names it and offers a link; several offer the account switcher.
