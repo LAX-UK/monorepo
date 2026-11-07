@@ -21,7 +21,9 @@ import {
   consignmentsInView,
   consignmentsListSearch,
   isConsignmentListNarrowed,
+  needsChangesBadge,
 } from "@/lib/seller/consignments-list";
+import { CONSIGNMENT_STATUS } from "@/lib/seller/consignment-status";
 import { RecordList } from "@auction/ui";
 import {
   ButtonLink,
@@ -32,6 +34,7 @@ import {
   Notice,
   ShowingCount,
   SortMenu,
+  StatusBadge,
   type TabNavItem,
 } from "@auction/ui/lax";
 import Link from "next/link";
@@ -81,6 +84,7 @@ export function ConsignmentsView({
   canSell,
   pausedReason,
   truncated,
+  needsChanges = null,
 }: {
   /** `null` when the consignments could not be read. */
   records: ConsignmentRecord[] | null;
@@ -91,6 +95,8 @@ export function ConsignmentsView({
   /** Why selling is held for the account, when its state holds it. */
   pausedReason: string | null;
   truncated: boolean;
+  /** Works staff sent back, from the submissions summary; `null` when it could not be read. */
+  needsChanges?: number | null;
 }) {
   const { query, setQuery, search, setSearch } = useListQuery(initialQuery, consignmentsListSearch);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -145,6 +151,8 @@ export function ConsignmentsView({
   const clearAll = () => setQuery({ ...query, q: "", sentBy: null, sale: null, stage: null });
   const empty = EMPTY_VIEW[query.view];
   const access = { canSell, pausedReason };
+  const changesBadge = query.view === "in-review" ? needsChangesBadge(needsChanges) : null;
+  const changesStatus = CONSIGNMENT_STATUS.needs_changes;
 
   return (
     <div className="flex flex-col gap-6">
@@ -176,6 +184,13 @@ export function ConsignmentsView({
             onClearAll: clearAll,
           }}
         />
+        {changesBadge ? (
+          <div>
+            <StatusBadge tone={changesStatus.tone} shape={changesStatus.shape}>
+              {changesBadge.text}
+            </StatusBadge>
+          </div>
+        ) : null}
         {shown.length === 0 ? (
           isConsignmentListNarrowed(query) ? (
             <ListNoResults query={query.q} onClear={clearAll} />

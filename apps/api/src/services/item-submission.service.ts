@@ -1,6 +1,7 @@
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type { SubmissionSummary } from "@auction/domain";
 import type {
   IItemSubmissionRepository,
   IStaffRoleAssignmentReader,
@@ -13,7 +14,6 @@ import type { IConsignmentAgreementRepository } from "@auction/persistence/inter
 import type {
   CreateItemSubmissionInput,
   ItemSubmission,
-  ItemSubmissionStatus,
   Lot,
   StaffRoles,
 } from "@auction/types";
@@ -222,7 +222,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
   getSubmissionSummaryForSellerApi(
     legalEntityId: string,
     visibleTo?: SubmissionSenderFilter,
-  ): Promise<{ counts: Record<ItemSubmissionStatus, number>; total: number }> {
+  ): Promise<SubmissionSummary> {
     return getSubmissionSummaryForSellerApi(this.deps, legalEntityId, visibleTo);
   }
 

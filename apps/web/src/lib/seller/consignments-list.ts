@@ -164,6 +164,18 @@ export function isConsignmentListNarrowed(query: ConsignmentsListQuery): boolean
   return Boolean(query.q || query.sentBy || query.sale || query.stage);
 }
 
+export type NeedsChangesBadge = { label: string; count: number; text: string };
+
+/** The badge over In review for works sent back, or `null` when none waits on the member. */
+export function needsChangesBadge(needsChanges: number | null | undefined): NeedsChangesBadge | null {
+  if (!needsChanges || needsChanges < 1) return null;
+  return {
+    label: NEEDS_CHANGES_LABEL,
+    count: needsChanges,
+    text: `${needsChanges} ${NEEDS_CHANGES_LABEL.toLowerCase()}`,
+  };
+}
+
 /** The members who sent anything, for the "Sent by" filter. */
 export function consignmentSenders(records: readonly ConsignmentRecord[]): string[] {
   return [...new Set(records.flatMap((r) => (r.sentBy ? [r.sentBy] : [])))].sort((a, b) =>
