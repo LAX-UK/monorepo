@@ -215,13 +215,20 @@ test.describe("account switching on the production build @roles", () => {
 
     await page.goto("/team");
 
-    await expect(
-      page.getByRole("heading", { level: 1, name: `Team belongs to ${organisation.name}` }),
-    ).toBeVisible({ timeout: 30_000 });
+    // One organisation names it and offers a link; several offer the account switcher.
+    await expect(page.getByRole("heading", { level: 1, name: /^Team belongs to/ })).toBeVisible({
+      timeout: 30_000,
+    });
     const cookies = await context.cookies(origin);
     expect(cookies.find((cookie) => cookie.name === ACTING_COOKIE)?.value).toBe(personal.id);
 
-    await page.getByRole("link", { name: `Switch to ${organisation.name}` }).click();
+    const switchLink = page.getByRole("link", { name: /^Switch to / });
+    if (await switchLink.count()) {
+      await switchLink.click();
+    } else {
+      await page.getByTestId("no-access-switch").click();
+      await page.getByRole("button", { name: new RegExp(organisation.name) }).click();
+    }
 
     await expect(workspaceSwitcher(page)).toContainText(organisation.name, { timeout: 30_000 });
     expect(pathOf(page)).toBe("/team");
