@@ -191,7 +191,6 @@ export const envSchema = z
     ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED: z.string().default(""),
     ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED: z.string().default(""),
     ZOHO_CRM_DEAL_STAGE_SHOP_PAID: z.string().default(""),
-    ZOHO_CRM_DEAL_STAGE_SHOP_ENQUIRY: z.string().default(""),
     SHOP_ZOHO_CATALOGUE_SYNC_ENABLED: z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(false),

@@ -209,9 +209,10 @@ function mapShopEnquiryInterest(
   ctx: CrmMapperContext,
 ): CrmMappedIntent {
   if (!enquiry) return { kind: "skip", reason: "shop_enquiry_not_found" };
+  // A relative link is no use in the CRM: without the public origin, send no link at all.
   const link = ctx.artPublicUrl
     ? `${ctx.artPublicUrl.replace(/\/+$/, "")}/artworks/${encodeURIComponent(enquiry.artworkSlug)}`
-    : `/artworks/${encodeURIComponent(enquiry.artworkSlug)}`;
+    : null;
   const work = [enquiry.stockCode, link, enquiry.artworkTitle].filter(Boolean).join(" ");
   const fields = withAttribution(
     personBaseFields(enquiry.email, enquiry.name ?? undefined, "shop", {

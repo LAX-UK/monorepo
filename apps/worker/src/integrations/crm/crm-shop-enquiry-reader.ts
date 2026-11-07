@@ -44,7 +44,8 @@ export function createDrizzleCrmShopEnquiryReader(db: Database): CrmShopEnquiryR
         .from(bidIdentityDirectory)
         .where(eq(bidIdentityDirectory.subjectId, subjectId))
         .limit(1);
-      const email = profile?.email ?? identity?.email;
+      // The identity directory is the account's current address; the Shop profile is a copy.
+      const email = identity?.email ?? profile?.email;
       if (!email) return null;
       const [interest] = await db
         .select({
@@ -72,7 +73,7 @@ export function createDrizzleCrmShopEnquiryReader(db: Database): CrmShopEnquiryR
         .limit(1);
       return {
         email,
-        name: profile?.name ?? identity?.name ?? null,
+        name: identity?.name ?? profile?.name ?? null,
         phone: interest?.phone ?? null,
         reference: interest?.reference ?? null,
         artworkTitle: work.title,

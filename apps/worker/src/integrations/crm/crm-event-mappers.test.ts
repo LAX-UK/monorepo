@@ -137,6 +137,15 @@ describe("mapDomainEventToCrmIntent", () => {
       );
     });
 
+    it("sends no link, not a relative one, when the lax.art origin is not set", () => {
+      const intent = mapDomainEventToCrmIntent(interest("enquiry"), ctx, { shopEnquiry });
+      if (intent.kind !== "person_upsert") throw new Error("expected person_upsert");
+      expect(intent.fields[CRM_FIELD.leadSourceDetailed]).toBe(
+        "LAX Shop enquiry: LAX-ORI-MP-GAC-26-0037 Blue Study",
+      );
+      expect(JSON.stringify(intent)).not.toContain("/artworks/");
+    });
+
     it("sends no consent, so an existing opt-in is never overwritten", () => {
       const intent = mapDomainEventToCrmIntent(interest("enquiry"), ctx, { shopEnquiry });
       if (intent.kind !== "person_upsert") throw new Error("expected person_upsert");
