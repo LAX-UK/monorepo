@@ -1,13 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { type PayProgressFacts, payProgressOf } from "./pay-progress.js";
 
+const LOTS = [
+  { lotId: "a", title: "Harbour", lotNumber: 1, saleTitle: "Autumn", totalPence: 525_000 },
+  { lotId: "b", title: "Study", lotNumber: 2, saleTitle: "Autumn", totalPence: 645_100 },
+];
+
 const BASE: PayProgressFacts = {
   rail: "gb_bank_transfer",
   status: "open",
   checkoutFinished: true,
   totalPence: 1_170_100,
   receivedPence: 0,
-  lotIds: ["a", "b"],
+  lots: LOTS,
 };
 
 describe("payProgressOf", () => {
@@ -26,7 +31,7 @@ describe("payProgressOf", () => {
     expect(payProgressOf(BASE)).toEqual({
       rail: "bank_transfer",
       stage: "awaiting_transfer",
-      lotIds: ["a", "b"],
+      lots: LOTS,
       totalPence: 1_170_100,
       receivedPence: 0,
       remainingPence: 1_170_100,

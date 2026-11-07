@@ -322,7 +322,7 @@ describe("payment methods", () => {
     const progress = {
       rail: "bank_transfer" as const,
       stage: "part_received" as const,
-      lotIds: ["a"],
+      lots: [{ lotId: "a", title: "A", lotNumber: 1, saleTitle: null, totalPence: 100 }],
       totalPence: 100,
       receivedPence: 40,
       remainingPence: 60,

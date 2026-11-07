@@ -7,7 +7,7 @@ import type {
 } from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import type { IPaymentGroupGateway } from "../payment-group/payment-group-ports.js";
-import type { PayProgressResolver } from "./pay-progress.resolver.js";
+import { type PayProgressResolver, groupedLotsOf } from "./pay-progress.resolver.js";
 import type { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
 import { buyingError, entityActorOf, memberIsPayer } from "./purchase-view.js";
 
@@ -36,11 +36,11 @@ export class PayTransferService implements IPayTransferService {
     if (!scope || !memberIsPayer(actor)) return err(buyingError("insufficient_entity_role"));
 
     const { entries } = await this.deps.candidates.read(actor, scope === "own", lotIds);
-    const lots = entries.map((e) => ({ lotId: e.lotId, group: e.flags.group }));
+    const lots = groupedLotsOf(entries);
     const progress = await this.deps.progress.resolve(lots);
     const transfer = lots.find(
       ({ group }) =>
-        group?.checkoutRail === "gb_bank_transfer" &&
+        group.checkoutRail === "gb_bank_transfer" &&
         group.stripeCheckoutSessionId !== null &&
         progress.get(group.id)?.rail === "bank_transfer",
     )?.group;

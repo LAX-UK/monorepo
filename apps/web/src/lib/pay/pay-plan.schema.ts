@@ -75,9 +75,29 @@ const payPlanSchema = z.object({
     z.object({
       method: z.enum(["card", "bank_transfer"]),
       available: z.boolean(),
-      reason: z.enum(["over_card_limit", "within_card_limit", "over_online_limit"]).nullable(),
+      reason: z.enum(["over_card_limit", "over_online_limit"]).nullable(),
     }),
   ),
+  cardLimitPence: z.number().int().nonnegative(),
+  progress: z
+    .object({
+      rail: z.enum(["card", "bank_transfer"]),
+      stage: z.enum(["confirming", "awaiting_transfer", "part_received"]),
+      lots: z.array(
+        z.object({
+          lotId: z.string(),
+          title: z.string(),
+          lotNumber: z.number().int().nullable(),
+          saleTitle: z.string().nullable(),
+          totalPence: z.number().int(),
+        }),
+      ),
+      totalPence: z.number().int(),
+      receivedPence: z.number().int(),
+      remainingPence: z.number().int(),
+      receivedPercent: z.number().int(),
+    })
+    .nullable(),
   currency: z.literal("GBP"),
 }) satisfies z.ZodType<PayPlan, z.ZodTypeDef, unknown>;
 

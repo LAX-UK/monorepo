@@ -528,7 +528,10 @@ describe("PayPlanService.plan: a payment already under way", () => {
     expect(plan.progress).toEqual({
       rail: "bank_transfer",
       stage: "awaiting_transfer",
-      lotIds: [LOTS.due, LOTS.overdue],
+      lots: [
+        expect.objectContaining({ lotId: LOTS.due }),
+        expect.objectContaining({ lotId: LOTS.overdue }),
+      ],
       totalPence: 100_010,
       receivedPence: 0,
       remainingPence: 100_010,

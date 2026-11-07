@@ -31,7 +31,7 @@ const group = (over: Partial<LivePaymentGroupFacts> = {}): LivePaymentGroupFacts
 const PROGRESS: PayPlanProgress = {
   rail: "bank_transfer",
   stage: "awaiting_transfer",
-  lotIds: [LOT],
+  lots: [{ lotId: LOT, title: "Harbour", lotNumber: 1, saleTitle: "Autumn", totalPence: 10_000 }],
   totalPence: 10_000,
   receivedPence: 0,
   remainingPence: 10_000,
@@ -52,7 +52,13 @@ function setup(
       entries: [
         {
           lotId: LOT,
-          row: {} as never,
+          row: {
+            lotId: LOT,
+            lotTitle: "Harbour",
+            lotNumber: 1,
+            saleTitle: "Autumn",
+            payment: { amount: "100.00" },
+          } as never,
           view: {} as never,
           flags: { heldForReview: false, inPaymentInProgress: g !== null, group: g },
         },

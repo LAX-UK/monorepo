@@ -44,6 +44,16 @@ export type PayPlanMethod = {
   reason: "over_card_limit" | "over_online_limit" | null;
 };
 
+/** One lot in a payment under way, as the Pay page lists it. */
+export type PayPlanProgressLot = {
+  lotId: string;
+  title: string;
+  lotNumber: number | null;
+  saleTitle: string | null;
+  /** The invoice total, in whole pence. */
+  totalPence: number;
+};
+
 /**
  * A payment already under way for these lots: a card payment being confirmed, or a bank transfer
  * waiting for its money. Every figure is whole pence from the server's records.
@@ -51,8 +61,8 @@ export type PayPlanMethod = {
 export type PayPlanProgress = {
   rail: "card" | "bank_transfer";
   stage: "confirming" | "awaiting_transfer" | "part_received";
-  /** The lots the payment covers (it may cover more than the link names). */
-  lotIds: string[];
+  /** The lots of the link that this payment covers (it may cover more), with their invoice totals. */
+  lots: PayPlanProgressLot[];
   totalPence: number;
   receivedPence: number;
   remainingPence: number;

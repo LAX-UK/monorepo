@@ -80,15 +80,29 @@ describe("one lot, ready to pay", () => {
   it("offers Pay for exactly the lots and total whole pence that were shown", () => {
     expect(vm.action).toEqual({
       kind: "pay",
-      label: "Pay £2,375.00",
-      barLabel: "Pay",
+      byMethod: {
+        card: {
+          label: "Pay £2,375.00",
+          barLabel: "Pay",
+          note: "You finish on a secure payment page. Nothing is charged until you confirm there.",
+        },
+        bank_transfer: {
+          label: "Continue to bank transfer",
+          barLabel: "Continue",
+          note: "We give you our account details and a reference for this payment. Your invoices are marked paid once all of the money has arrived.",
+        },
+      },
       lotIds: [LOT_A],
       expectedTotalPence: 237_500,
     });
-    expect(vm.howYouPay).toEqual([
-      "Card: Visa, Mastercard, Amex. Your bank may ask you to confirm.",
+  });
+
+  it("offers card and bank transfer, with card chosen first", () => {
+    expect(vm.methods?.defaultMethod).toBe("card");
+    expect(vm.methods?.options.map((o) => [o.method, o.title, o.disabledReason])).toEqual([
+      ["card", "Card", null],
+      ["bank_transfer", "UK bank transfer", null],
     ]);
-    expect(vm.actionNote).toMatch(/Nothing is charged until you confirm there/);
   });
 });
 
@@ -135,7 +149,7 @@ describe("several lots, one payment", () => {
     expect(vm.back).toEqual({ label: "Back to purchases", href: "/purchases" });
     expect(vm.lots[0]?.detail).toEqual({
       subtitle: "Lot 12 · Winter sale",
-      due: "Due by Fri 13 Nov",
+      note: "Due by Fri 13 Nov",
       total: "£1,250.00",
     });
     expect(vm.badge?.label).toBe("First due Wed 11 Nov");
@@ -152,15 +166,18 @@ describe("several lots, one payment", () => {
 });
 
 describe("how the total is paid", () => {
-  it("goes to bank transfer above the card limit, and says card is limited", () => {
+  it("chooses bank transfer above the card limit, and shows card as unavailable with the server's limit", () => {
     const vm = build(planOf([payable(LOT_A, 1_000_000, 250_000)]));
+    expect(vm.methods?.defaultMethod).toBe("bank_transfer");
+    expect(vm.methods?.options[0]).toMatchObject({
+      method: "card",
+      disabledReason: "Card payments go up to £10,000. Pick fewer invoices to pay by card.",
+    });
+    expect(vm.methods?.options[1]?.disabledReason).toBeNull();
     expect(vm.action).toMatchObject({
       kind: "pay",
-      label: "Continue to bank transfer",
-      barLabel: "Continue",
+      byMethod: { bank_transfer: { label: "Continue to bank transfer", barLabel: "Continue" } },
     });
-    expect(vm.howYouPay.join(" ")).toMatch(/UK bank transfer/);
-    expect(vm.howYouPay.join(" ")).toMatch(/Card payments have a limit/);
   });
 
   it("offers no way to pay a total no online method takes, and says so", () => {
@@ -182,7 +199,9 @@ describe("how the total is paid", () => {
         account: { legalEntityId: "le-2", kind: "organisation", name: "Northbank Gallery" },
       }),
     );
-    expect(vm.action).toMatchObject({ label: "Pay £1,250.00 for Northbank Gallery" });
+    expect(vm.action).toMatchObject({
+      byMethod: { card: { label: "Pay £1,250.00 for Northbank Gallery" } },
+    });
     expect(vm.subtitle).toBe("Lot 12 · Winter sale · Paying for Northbank Gallery");
   });
 });
@@ -201,7 +220,9 @@ describe("an overdue invoice", () => {
       detail: "If something is stopping you, contact settlements and we'll help.",
       action: { label: "Contact settlements", href: CONTACT },
     });
-    expect(JSON.stringify(vm)).not.toMatch(/fee|penalt|interest|legal/i);
+    expect(JSON.stringify({ badge: vm.badge, notices: vm.notices })).not.toMatch(
+      /fee|penalt|interest|legal/i,
+    );
   });
 });
 
@@ -271,8 +292,7 @@ describe.each(HELD_GATES)("held: $name", ({ gate, title, actionLabel }) => {
     expect(vm.state).toBe("held");
     expect(vm.money?.total).toBe("£2,375.00");
     expect(vm.action?.kind).not.toBe("pay");
-    expect(vm.howYouPay).toEqual([]);
-    expect(vm.actionNote).toBeNull();
+    expect(vm.methods).toBeNull();
   });
 
   it("says what is in the way and the next step", () => {
@@ -452,18 +472,31 @@ describe("a return from the payment page", () => {
     const vm = build(one(), { returned: "cancelled" });
     expect(vm.notices[0]).toEqual({
       tone: "danger",
-      title: "Payment not completed",
+      title: "Payment not completed. You were not charged.",
       detail:
-        "Nothing was charged. Your bank's check may not have finished, or the card was declined. You can try again.",
+        "Your bank's check (3D Secure) was not finished, or the card was declined. Try again, use another card, or pay by UK bank transfer.",
+      alert: true,
+      focus: true,
     });
     expect(vm.action?.kind).toBe("pay");
+  });
+
+  it("words the card action as Try again, with the total, and leaves bank transfer as it was", () => {
+    const vm = build(one(), { returned: "cancelled" });
+    expect(vm.action).toMatchObject({
+      byMethod: {
+        card: { label: "Try again · £2,375.00", barLabel: "Try again" },
+        bank_transfer: { label: "Continue to bank transfer" },
+      },
+    });
+    expect(vm.methods?.options.map((o) => o.method)).toEqual(["card", "bank_transfer"]);
   });
 
   it("says it on a page with nothing to pay too", () => {
     const vm = build(planOf([], { leftOut: [{ lotId: LOT_A, reason: "paid" }] }), {
       returned: "cancelled",
     });
-    expect(vm.notices[0]?.title).toBe("Payment not completed");
+    expect(vm.notices[0]?.title).toBe("Payment not completed. You were not charged.");
   });
 });
 

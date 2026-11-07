@@ -7,13 +7,14 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { settlementsEmail } from "@/lib/checkout/settlements-contact";
 import { ACCOUNT_LOAD_ERROR } from "@/lib/dashboard/dashboard-copy";
 import { payAccountHop } from "@/lib/pay/pay-account-hop.server";
-import { loadPayPlan } from "@/lib/pay/pay-api.server";
+import { loadPayPlan, loadPayTransfer } from "@/lib/pay/pay-api.server";
 import { belongsToAnotherAccount, payLandingRedirect } from "@/lib/pay/pay-landing";
 import { payLinkProblemVm, payRefusalVm } from "@/lib/pay/pay-link-vm";
 import { parsePayReturned, payHref } from "@/lib/pay/pay-links";
 import { loadPayLotDetails } from "@/lib/pay/pay-lot-details.server";
 import { parsePayLots } from "@/lib/pay/pay-lots";
 import { type PayPageVm, buildPayPageVm } from "@/lib/pay/pay-page.vm";
+import { buildPayProgressVm, paymentUnderWay } from "@/lib/pay/pay-progress.vm";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
@@ -80,12 +81,13 @@ export default async function PayRoute({ searchParams }: PageProps) {
     if (hop) return <AccountRestoreHop href={hop} />;
   }
 
-  const details = plan.payable.length > 0 ? await loadPayLotDetails(lots.ids) : {};
-  const vm = buildPayPageVm(plan, new Date(), {
-    returnTo,
-    contactHref: contactHref(),
-    returned,
-    details,
-  });
-  return <Shell vm={vm} />;
+  const underWay = paymentUnderWay(plan);
+  const details = plan.payable.length > 0 || underWay ? await loadPayLotDetails(lots.ids) : {};
+  const context = { returnTo, contactHref: contactHref(), returned, details };
+  if (underWay) {
+    // The account details are only read for a transfer that is waiting for its money.
+    const transfer = underWay.rail === "bank_transfer" ? await loadPayTransfer(lots.ids) : null;
+    return <Shell vm={buildPayProgressVm(plan, underWay, context, transfer)} />;
+  }
+  return <Shell vm={buildPayPageVm(plan, new Date(), context)} />;
 }

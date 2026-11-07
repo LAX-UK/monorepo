@@ -30,7 +30,7 @@ import type {
 } from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import type { IPaymentEligibilityGate } from "../payment/payment-eligibility.gate.js";
-import type { PayProgressResolver } from "./pay-progress.resolver.js";
+import { type PayProgressResolver, groupedLotsOf } from "./pay-progress.resolver.js";
 import type { PurchaseCandidateReader, PurchaseEntry } from "./purchase-candidate.reader.js";
 import { buyingError, entityActorOf, memberIsPayer } from "./purchase-view.js";
 
@@ -111,9 +111,7 @@ export class PayPlanService implements IPayPlanService {
     const now = this.deps.now();
     const payerRole = memberIsPayer(actor) ? "payer" : "informed";
     // A payment the payer left unfinished does not hold its invoices; one they finished does.
-    const progressByGroup = await this.deps.progress.resolve(
-      entries.map((e) => ({ lotId: e.lotId, group: e.flags.group })),
-    );
+    const progressByGroup = await this.deps.progress.resolve(groupedLotsOf(entries));
     const underWay = (entry: PurchaseEntry) => {
       const group = entry.flags.group;
       return group ? (progressByGroup.get(group.id) ?? null) !== null : false;

@@ -1,4 +1,4 @@
-import type { PayPlanProgress } from "@auction/types";
+import type { PayPlanProgress, PayPlanProgressLot } from "@auction/types";
 import type { CheckoutRailKind } from "./payment-tier-policy.js";
 
 /** What is known about a payment that has been opened for a group of invoices. */
@@ -14,7 +14,7 @@ export type PayProgressFacts = {
   totalPence: number;
   /** What the bank transfer has delivered so far, from the provider's own records. */
   receivedPence: number;
-  lotIds: readonly string[];
+  lots: readonly PayPlanProgressLot[];
 };
 
 /**
@@ -33,7 +33,7 @@ export function payProgressOf(facts: PayProgressFacts): PayPlanProgress | null {
   return {
     rail: method,
     stage,
-    lotIds: [...facts.lotIds],
+    lots: [...facts.lots],
     totalPence: facts.totalPence,
     receivedPence,
     remainingPence,
