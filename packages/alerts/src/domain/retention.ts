@@ -21,17 +21,18 @@ export const ALERT_RETENTION = {
    */
   unconfirmedDays: 30,
   /**
-   * Rule 2. A subscriber who stopped (link, one-click, settings, staff or erasure) keeps nothing for
-   * 30 days after the stop, then the row and everything under it goes. A complaint-stopped row keeps
-   * only the row itself (address, status, stop reason, consent proof); its topics, matches and
-   * digests go after the same 30 days.
+   * Rule 2. A subscriber who stopped (link, one-click, settings, staff or erasure) is kept for two
+   * years (730 days) after the stop: the consent evidence (when and how they agreed, and when and
+   * why they stopped) answers a later complaint. Then the row and everything under it goes. A
+   * complaint-stopped row keeps only the row itself (address, status, stop reason, consent proof);
+   * its topics, matches and digests go after the same two years.
    */
-  stoppedDays: 30,
+  stoppedDays: 730,
   /**
-   * Rule 3. Match and digest logs go after 12 months. Only settled matches (in a digest or dropped)
+   * Rule 3. Match and digest logs go after 90 days. Only settled matches (in a digest or dropped)
    * and sent digests are removed, so nothing still waiting to be sent is ever lost.
    */
-  logMonths: 12,
+  logDays: 90,
 } as const;
 
 /** The instants before which each kind of alert data is due for removal. */
@@ -47,11 +48,9 @@ export type AlertRetentionCutoffs = {
 export function alertRetentionCutoffs(now: Date): AlertRetentionCutoffs {
   // Never shorter than the confirm link: a link that still works must find its row.
   const unconfirmedMs = Math.max(ALERT_RETENTION.unconfirmedDays * DAY_MS, CONFIRM_LINK_TTL_MS);
-  const logsBefore = new Date(now);
-  logsBefore.setUTCMonth(logsBefore.getUTCMonth() - ALERT_RETENTION.logMonths);
   return {
     unconfirmedBefore: new Date(now.getTime() - unconfirmedMs),
     stoppedBefore: new Date(now.getTime() - ALERT_RETENTION.stoppedDays * DAY_MS),
-    logsBefore,
+    logsBefore: new Date(now.getTime() - ALERT_RETENTION.logDays * DAY_MS),
   };
 }

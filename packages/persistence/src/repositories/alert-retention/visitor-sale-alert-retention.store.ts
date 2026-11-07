@@ -2,6 +2,7 @@ import type { AlertPruneCounts, AlertRetentionCutoffs, AlertRetentionStore } fro
 import type { Database } from "@auction/db";
 import { visitorSaleAlertSubscriber as v } from "@auction/db/schema";
 import { and, eq, inArray, lt, sql } from "drizzle-orm";
+import { DEFAULT_MAX_BATCHES } from "./alert-retention.store.js";
 
 const DEFAULT_BATCH = 500;
 
@@ -17,6 +18,7 @@ export class DrizzleVisitorSaleAlertRetentionStore implements AlertRetentionStor
   constructor(
     private readonly db: Database,
     private readonly batch = DEFAULT_BATCH,
+    private readonly maxBatches = DEFAULT_MAX_BATCHES,
   ) {}
 
   async prune(
@@ -43,7 +45,7 @@ export class DrizzleVisitorSaleAlertRetentionStore implements AlertRetentionStor
       return row?.n ?? 0;
     }
     let total = 0;
-    for (;;) {
+    for (let round = 0; round < this.maxBatches; round += 1) {
       const rows = await this.db
         .delete(v)
         .where(inArray(v.id, this.db.select({ id: v.id }).from(v).where(due).limit(this.batch)))
@@ -51,5 +53,6 @@ export class DrizzleVisitorSaleAlertRetentionStore implements AlertRetentionStor
       total += rows.length;
       if (rows.length < this.batch) return total;
     }
+    return total;
   }
 }

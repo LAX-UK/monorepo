@@ -9,11 +9,14 @@ type Logger = Parameters<typeof pruneAlertRetention>[0]["log"];
 /**
  * Prunes Shop's and lax.art's stale alert sign-ups and old alert logs once a day, by the rules in
  * `@auction/alerts`. The scheduler ticks all day; this runs in one hour and not again that day once
- * it has succeeded. A failure is retried on the next tick in the hour.
+ * it has succeeded. A failure is retried on the next tick in the hour. Unless
+ * `ALERT_RETENTION_PURGE_ENABLED` is on, the run only logs what it would remove.
  */
 export function createAlertRetentionTask(input: {
   store: AlertRetentionStore;
   log: Logger;
+  /** True (the default of the env switch) logs what would go and deletes nothing. */
+  dryRun: boolean;
 }): ShopSchedulerTask {
   let lastDoneDay: string | null = null;
   return {
@@ -21,7 +24,12 @@ export function createAlertRetentionTask(input: {
     run: async (now) => {
       const day = now.toISOString().slice(0, 10);
       if (now.getUTCHours() !== ALERT_RETENTION_HOUR_UTC || lastDoneDay === day) return;
-      await pruneAlertRetention({ stores: [input.store], log: input.log, now });
+      await pruneAlertRetention({
+        stores: [input.store],
+        log: input.log,
+        now,
+        dryRun: input.dryRun,
+      });
       lastDoneDay = day;
     },
   };

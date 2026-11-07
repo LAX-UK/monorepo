@@ -4,6 +4,12 @@ import type { AlertTables } from "@auction/db/schema";
 import { and, eq, exists, inArray, isNotNull, lt, not, or, sql } from "drizzle-orm";
 
 const DEFAULT_BATCH = 500;
+/**
+ * Batches one step may run in one prune. A run removes at most `batch * maxBatches` rows per step
+ * (10,000 by default); the daily job repeats, so a backlog clears over several runs and one run
+ * never holds the database for long.
+ */
+export const DEFAULT_MAX_BATCHES = 20;
 
 type Options = { dryRun: boolean };
 
@@ -11,7 +17,8 @@ type Options = { dryRun: boolean };
  * Prunes one product's alert engine tables by the retention rules in `@auction/alerts`. Bid and
  * Shop each build one over their own tables and database; nothing here crosses products.
  *
- * Each step deletes in batches, so a large backlog never holds one long lock. A confirmed
+ * Each step deletes in batches, and stops after `maxBatches` of them, so a large backlog never
+ * holds one long lock or one long run; the next run carries on. A confirmed
  * subscriber is never selected: every subscriber step names its status.
  */
 export class DrizzleAlertRetentionStore implements AlertRetentionStore {
@@ -20,6 +27,7 @@ export class DrizzleAlertRetentionStore implements AlertRetentionStore {
     private readonly db: Database,
     private readonly tables: AlertTables,
     private readonly batch = DEFAULT_BATCH,
+    private readonly maxBatches = DEFAULT_MAX_BATCHES,
   ) {}
 
   async prune(cutoffs: AlertRetentionCutoffs, options: Options): Promise<AlertPruneCounts> {
@@ -63,7 +71,7 @@ export class DrizzleAlertRetentionStore implements AlertRetentionStore {
     const s = this.tables.subscriber;
     if (dryRun) return this.count(s, due);
     let total = 0;
-    for (;;) {
+    for (let round = 0; round < this.maxBatches; round += 1) {
       // Topics, matches and digests go with the subscriber by cascade.
       const rows = await this.db
         .delete(s)
@@ -72,6 +80,7 @@ export class DrizzleAlertRetentionStore implements AlertRetentionStore {
       total += rows.length;
       if (rows.length < this.batch) return total;
     }
+    return total;
   }
 
   /**
@@ -94,7 +103,7 @@ export class DrizzleAlertRetentionStore implements AlertRetentionStore {
     );
     if (dryRun) return this.count(s, due);
     let total = 0;
-    for (;;) {
+    for (let round = 0; round < this.maxBatches; round += 1) {
       const ids = (await this.db.select({ id: s.id }).from(s).where(due).limit(this.batch)).map(
         (row) => row.id,
       );
@@ -108,6 +117,7 @@ export class DrizzleAlertRetentionStore implements AlertRetentionStore {
       });
       total += ids.length;
     }
+    return total;
   }
 
   /** Matches that have been mailed (in a sent digest) or dropped; a waiting match is never due. */
@@ -127,7 +137,7 @@ export class DrizzleAlertRetentionStore implements AlertRetentionStore {
     );
     if (dryRun) return this.count(m, due);
     let total = 0;
-    for (;;) {
+    for (let round = 0; round < this.maxBatches; round += 1) {
       const rows = await this.db
         .delete(m)
         .where(inArray(m.id, this.db.select({ id: m.id }).from(m).where(due).limit(this.batch)))
@@ -135,6 +145,7 @@ export class DrizzleAlertRetentionStore implements AlertRetentionStore {
       total += rows.length;
       if (rows.length < this.batch) return total;
     }
+    return total;
   }
 
   /** Sent digests with no match left; an unsent digest is still owed to the person. */
@@ -147,7 +158,7 @@ export class DrizzleAlertRetentionStore implements AlertRetentionStore {
     );
     if (dryRun) return this.count(d, due);
     let total = 0;
-    for (;;) {
+    for (let round = 0; round < this.maxBatches; round += 1) {
       const rows = await this.db
         .delete(d)
         .where(inArray(d.id, this.db.select({ id: d.id }).from(d).where(due).limit(this.batch)))
@@ -155,6 +166,7 @@ export class DrizzleAlertRetentionStore implements AlertRetentionStore {
       total += rows.length;
       if (rows.length < this.batch) return total;
     }
+    return total;
   }
 
   private async count(

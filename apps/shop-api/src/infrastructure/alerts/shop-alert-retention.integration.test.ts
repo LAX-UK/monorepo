@@ -78,12 +78,12 @@ describe.skipIf(!hasShopIntegrationDb)("Shop alert retention prune (DB, as shop_
     const stoppedOld = await add("shop", {
       status: "stopped",
       stopReason: "one_click",
-      stoppedAt: ago(31),
+      stoppedAt: ago(731),
     });
     const stoppedNew = await add("shop", {
       status: "stopped",
       stopReason: "one_click",
-      stoppedAt: ago(29),
+      stoppedAt: ago(729),
     });
 
     const counts = await store.prune(cutoffs, { dryRun: false });
@@ -105,7 +105,7 @@ describe.skipIf(!hasShopIntegrationDb)("Shop alert retention prune (DB, as shop_
     const complained = await add("shop", {
       status: "stopped",
       stopReason: "complaint",
-      stoppedAt: ago(60),
+      stoppedAt: ago(800),
       subjectId: "subject-1",
     });
     const [d] = await db
