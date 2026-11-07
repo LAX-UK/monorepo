@@ -2,11 +2,16 @@ import type { Database } from "@auction/db";
 import { shopArtwork, shopArtworkImage, shopEdition } from "@auction/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { assertArtworkImportIdentityUnchanged } from "../application/artwork-import-policy.js";
+import { becameSoldByHand } from "../application/original-sold-by-hand.js";
 import type {
   ArtworkImportWriter,
   ImportArtworkCommand,
   ImportArtworkResult,
 } from "../application/ports/artwork-import.writer.js";
+import {
+  type OriginalOfferRegister,
+  noOriginalOfferRegister,
+} from "../application/ports/original-offer-register.js";
 import { insertPlannedEditions } from "./insert-planned-editions.js";
 import type { ShopDomainEventPublisherMode } from "./shop-domain-event-publisher.js";
 import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
@@ -59,6 +64,8 @@ async function replaceArtworkImages(
 export function createDrizzleArtworkImportRepository(
   db: Db,
   eventPublishMode: ShopDomainEventPublisherMode = "observe",
+  /** One place at a time for originals; an import to Sold reaches the register like a sale. */
+  offers: OriginalOfferRegister = noOriginalOfferRegister,
 ): ArtworkImportWriter {
   const events = createShopDomainEventPublisher(eventPublishMode);
   return {
@@ -72,6 +79,7 @@ export function createDrizzleArtworkImportRepository(
             slug: shopArtwork.slug,
             artistId: shopArtwork.artistId,
             eligibleForEditionAllocation: shopArtwork.eligibleForEditionAllocation,
+            saleState: shopArtwork.saleState,
           })
           .from(shopArtwork)
           .where(eq(shopArtwork.importKey, command.importKey))
@@ -79,7 +87,7 @@ export function createDrizzleArtworkImportRepository(
         const existingRow = existing[0];
         if (existingRow) {
           assertArtworkImportIdentityUnchanged(existingRow, command);
-          await tx
+          const [updated] = await tx
             .update(shopArtwork)
             .set({
               title: command.title,
@@ -93,7 +101,11 @@ export function createDrizzleArtworkImportRepository(
               ...optionalArtworkColumns(command),
               updatedAt: new Date(),
             })
-            .where(eq(shopArtwork.id, existingRow.id));
+            .where(eq(shopArtwork.id, existingRow.id))
+            .returning();
+          if (updated && becameSoldByHand(existingRow.saleState, updated.saleState)) {
+            await offers.recordSold(tx, updated, "system");
+          }
           await replaceArtworkImages(tx as Database, existingRow.id, command.images);
           await updateShopArtist(tx as Database, existingRow.artistId, {
             displayName: command.artistDisplayName,
@@ -136,8 +148,11 @@ export function createDrizzleArtworkImportRepository(
             publishedAt: command.publishOnCreate ? new Date() : null,
             ...optionalArtworkColumns(command),
           })
-          .returning({ id: shopArtwork.id });
+          .returning();
         if (!artwork) throw new Error("Failed to create shop artwork");
+        if (becameSoldByHand(null, artwork.saleState)) {
+          await offers.recordSold(tx, artwork, "system");
+        }
         await replaceArtworkImages(tx as Database, artwork.id, command.images);
 
         await events.insertInTransaction(tx as Database, {

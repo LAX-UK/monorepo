@@ -90,7 +90,11 @@ describe("ReturnLotToLaxArtService.describe", () => {
 describe("ReturnLotToLaxArtService.returnToLaxArt", () => {
   it("withdraws the artwork from the lot, reopens the lax.art draft and records who confirmed", async () => {
     const { service, moveOffer, reopen, recordMoveConfirmed } = setup();
-    expect(await service.returnToLaxArt(LOT_ID, "user-1")).toEqual({ ok: true, reopened: true });
+    expect(await service.returnToLaxArt(LOT_ID, "user-1")).toEqual({
+      ok: true,
+      reopened: true,
+      laxArtListing: true,
+    });
     expect(moveOffer).toHaveBeenCalledWith(
       expect.objectContaining({ to: "withdrawn", actor: "staff:user-1", registerId: REGISTER_ID }),
     );
@@ -113,7 +117,11 @@ describe("ReturnLotToLaxArtService.returnToLaxArt", () => {
       entry: entry({ offer: { state: "withdrawn", ref: null } }),
       reopen: async () => ({ artworkId: SHOP_ARTWORK_ID, reopened: false }),
     });
-    expect(await service.returnToLaxArt(LOT_ID, "user-1")).toEqual({ ok: true, reopened: false });
+    expect(await service.returnToLaxArt(LOT_ID, "user-1")).toEqual({
+      ok: true,
+      reopened: false,
+      laxArtListing: true,
+    });
     expect(moveOffer).not.toHaveBeenCalled();
   });
 
@@ -142,8 +150,8 @@ describe("ReturnLotToLaxArtService.returnToLaxArt", () => {
     expect(recordMoveConfirmed).not.toHaveBeenCalled();
   });
 
-  it("passes on LAX Shop's reason when it refuses", async () => {
-    const { service } = setup({
+  it("ends a return for an artwork consigned on LAX Bid in the register alone", async () => {
+    const { service, moveOffer, recordMoveConfirmed } = setup({
       reopen: async () => {
         throw new InventoryPeerRefusedError(
           { error: "no_listing", message: "There is no lax.art record for this artwork yet." },
@@ -152,10 +160,52 @@ describe("ReturnLotToLaxArtService.returnToLaxArt", () => {
       },
     });
     expect(await service.returnToLaxArt(LOT_ID, "user-1")).toEqual({
+      ok: true,
+      reopened: false,
+      laxArtListing: false,
+    });
+    expect(moveOffer).toHaveBeenCalledWith(expect.objectContaining({ to: "withdrawn" }));
+    expect(recordMoveConfirmed).toHaveBeenCalledWith({
+      registerId: REGISTER_ID,
+      actor: "staff:user-1",
+      record: {
+        direction: "to_lax_art",
+        lotId: LOT_ID,
+        noLaxArtListing: true,
+        confirmedBy: "staff:user-1",
+      },
+      now: new Date("2026-11-03T12:00:00Z"),
+    });
+  });
+
+  it("is safe to repeat for an artwork with no lax.art record", async () => {
+    const { service, moveOffer } = setup({
+      entry: entry({ offer: { state: "withdrawn", ref: null } }),
+      reopen: async () => {
+        throw new InventoryPeerRefusedError({ error: "no_listing", message: "None." }, 409);
+      },
+    });
+    expect(await service.returnToLaxArt(LOT_ID, "user-1")).toMatchObject({
+      ok: true,
+      laxArtListing: false,
+    });
+    expect(moveOffer).not.toHaveBeenCalled();
+  });
+
+  it("passes on LAX Shop's reason when it refuses", async () => {
+    const { service } = setup({
+      reopen: async () => {
+        throw new InventoryPeerRefusedError(
+          { error: "artwork_offered_elsewhere", message: "It is on lax.art already." },
+          409,
+        );
+      },
+    });
+    expect(await service.returnToLaxArt(LOT_ID, "user-1")).toEqual({
       ok: false,
       status: 409,
-      code: "no_listing",
-      error: "There is no lax.art record for this artwork yet.",
+      code: "artwork_offered_elsewhere",
+      error: "It is on lax.art already.",
     });
   });
 });

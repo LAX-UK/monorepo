@@ -34,7 +34,12 @@ export type ReturnToLaxArtView =
     };
 
 export type ReturnToLaxArtResult =
-  | { ok: true; reopened: boolean }
+  | {
+      ok: true;
+      reopened: boolean;
+      /** False for an artwork consigned on LAX Bid that has no lax.art record to reopen. */
+      laxArtListing: boolean;
+    }
   | { ok: false; status: 404 | 409 | 502; error: string; code: string };
 
 const messages = (blockers: ReturnMoveBlocker[]): string[] =>
@@ -95,21 +100,40 @@ export class ReturnLotToLaxArtService {
     const registerId = facts.entry.id;
     try {
       await this.deps.lock.withdraw({ registerId }, { kind: "bid_lot", id: lotId }, actor);
-      const listing = await this.deps.shop.reopen({ registerId, actor });
+      const listing = await this.reopenListing(registerId, actor);
       await this.deps.history.recordMoveConfirmed({
         registerId,
         actor,
         record: {
           direction: "to_lax_art",
           lotId,
-          shopArtworkId: listing.artworkId,
+          ...(listing ? { shopArtworkId: listing.artworkId } : { noLaxArtListing: true }),
           confirmedBy: actor,
         },
         now: (this.deps.now ?? (() => new Date()))(),
       });
-      return { ok: true, reopened: listing.reopened };
+      return { ok: true, reopened: listing?.reopened ?? false, laxArtListing: listing !== null };
     } catch (error) {
       return this.failure(error);
+    }
+  }
+
+  /**
+   * Asks LAX Shop to reopen the listing. An artwork consigned on LAX Bid has no lax.art record, so
+   * Shop answers `no_listing`: the return then ends in the register alone (null here), and nothing
+   * is created or updated on lax.art.
+   */
+  private async reopenListing(
+    registerId: string,
+    actor: string,
+  ): Promise<ReopenListingAnswer | null> {
+    try {
+      return await this.deps.shop.reopen({ registerId, actor });
+    } catch (error) {
+      if (error instanceof InventoryPeerRefusedError && error.refusal.error === "no_listing") {
+        return null;
+      }
+      throw error;
     }
   }
 

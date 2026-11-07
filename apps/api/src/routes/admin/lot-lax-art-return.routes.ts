@@ -32,7 +32,7 @@ export function attachAdminLotLaxArtReturnRoutes(
         c.get("userId") as string,
       );
       return result.ok
-        ? c.json({ data: { reopened: result.reopened } })
+        ? c.json({ data: { reopened: result.reopened, laxArtListing: result.laxArtListing } })
         : c.json({ error: result.error, code: result.code }, result.status);
     },
   );
