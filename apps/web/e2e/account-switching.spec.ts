@@ -186,7 +186,7 @@ test.describe("account switching on the production build @roles", () => {
     expect(pathOf(page)).toBe("/about");
   });
 
-  test("the top-right account button shows the account in use on every page and switches from both frames", async ({
+  test("the top-right account button shows the account in use, record links say where they opened, and sign-out clears the choice", async ({
     page,
     context,
     baseURL,
@@ -219,47 +219,24 @@ test.describe("account switching on the production build @roles", () => {
     await page.getByTestId("switch-account-personal").click();
     await expect(workspaceSwitcher(page)).toHaveCount(0, { timeout: 30_000 });
     await expect(accountMenuButton(page)).toHaveAccessibleName(/^Your accounts, .+, Personal$/);
-  });
 
-  test("a link that opens the other account says so and offers the way back", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
-    const origin = baseURL ?? "http://localhost:3000";
-    await buyerLogin(page);
-    const { personal, organisation } = await accountsOf(page);
-    await useAccountInThisBrowser(context, origin, personal.id);
+    // A record link that opens the other account says so and offers the way back. It is a link on
+    // this site, as a record page sends it: same-origin, so no confirmation.
     await page.goto("/about");
     await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
-
-    // A link on this site, as a record page would send it: same-origin, so no confirmation.
     await page.evaluate((href) => window.location.assign(href), switchHrefFor(organisation.id));
-
     const toast = page.getByTestId("record-switch-toast");
     await expect(toast).toContainText(`Opened in ${organisation.name}`, { timeout: 30_000 });
     await expect(toast).toContainText("This record belongs to the organisation.");
     await toast.getByRole("button", { name: "Back to Personal" }).click();
     await expect(workspaceSwitcher(page)).toHaveCount(0, { timeout: 30_000 });
     await expect(accountMenuButton(page)).toHaveAccessibleName(/^Your accounts, .+, Personal$/);
-  });
 
-  test("signing out clears the account choice, so the next sign-in starts from its own account", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
-    const origin = baseURL ?? "http://localhost:3000";
-    await buyerLogin(page);
-    const { organisation } = await accountsOf(page);
+    // Signing out clears the account choice on the server, whatever the page does after: the
+    // browser's own cleanup (which also runs) is not what this proves.
     await useAccountInThisBrowser(context, origin, organisation.id);
-    expect((await context.cookies(origin)).some((c) => c.name === ACTING_COOKIE)).toBe(true);
-
-    // The server ends the session and clears the choice together, whatever the page does after:
-    // the browser's own cleanup (which also runs) is not what this proves.
     const response = await page.request.post("/api/auth/logout", { headers: { origin } });
     expect(response.ok()).toBe(true);
-
     expect((await context.cookies(origin)).some((c) => c.name === ACTING_COOKIE)).toBe(false);
   });
 
