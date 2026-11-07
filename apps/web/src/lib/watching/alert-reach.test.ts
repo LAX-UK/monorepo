@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reachLabel, searchReachLabel, watchingAlertReach } from "./alert-reach";
+import { reachLabel, searchEmailIsOn, searchReachLabel, watchingAlertReach } from "./alert-reach";
 
 const engine = {
   subscribed: { "bid.artists": true, "bid.searches": true },
@@ -39,6 +39,9 @@ describe("labels", () => {
     expect(searchReachLabel(true, { emailOn: true, appOn: true })).toBe("email on");
     expect(searchReachLabel(true, { emailOn: false, appOn: false })).toBe("email off");
     expect(searchReachLabel(false, { emailOn: true, appOn: true })).toBe("email off");
-    expect(searchReachLabel(true, null)).toBe("email on");
+    expect(searchReachLabel(true, null)).toBeNull();
+    expect(searchEmailIsOn(true, false)).toBe(false);
+    expect(searchEmailIsOn(true, null)).toBe(true);
+    expect(searchEmailIsOn(false, true)).toBe(false);
   });
 });

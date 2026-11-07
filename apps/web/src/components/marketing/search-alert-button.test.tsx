@@ -58,6 +58,18 @@ describe("SearchAlertButton", () => {
     );
   });
 
+  it("signed in, saved while the topic's email is off: says nothing will be sent", async () => {
+    ensure.mockResolvedValue("created");
+    render(
+      <SearchAlertButton {...base} isAuthenticated saveOnArrival={false} topicEmailOn={false} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: NAME }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Saved search · email off");
+    expect(success).toHaveBeenCalledWith(
+      "Alert saved. Email is off for saved searches, so nothing will be sent.",
+    );
+  });
+
   it("signed in: saves on click and shows Alert set", async () => {
     ensure.mockResolvedValue("created");
     render(<SearchAlertButton {...base} isAuthenticated saveOnArrival={false} />);

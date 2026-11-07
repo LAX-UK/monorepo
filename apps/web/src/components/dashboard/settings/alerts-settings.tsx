@@ -245,6 +245,22 @@ function AlertSwitch({
       </ReasonTooltip>
     );
   }
+  if (cell.disabledReason) {
+    const label = `${row.label} by ${channel.label.toLowerCase()}`;
+    return (
+      <ReasonTooltip reason={cell.disabledReason}>
+        <span
+          role="img"
+          aria-label={`${label}. Off. ${cell.disabledReason}`}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a disabled switch can't be focused, so this carries the reason.
+          tabIndex={0}
+          className="lax-focus inline-flex rounded-lax-control"
+        >
+          <Switch aria-hidden tabIndex={-1} aria-label={label} checked={false} disabled />
+        </span>
+      </ReasonTooltip>
+    );
+  }
   return (
     <span className="inline-flex justify-center">
       <Switch

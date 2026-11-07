@@ -1,3 +1,4 @@
+import { searchEmailIsOn } from "@/lib/watching/alert-reach";
 import type { LotStatus } from "@auction/types";
 
 /** Past results shown under an empty on-sale search. More are one click away. */
@@ -73,11 +74,13 @@ export function searchAlertState(
   saved: readonly { query: Readonly<Record<string, string>>; notifyEmail: boolean }[],
   q: string,
   categoryId?: string,
+  /** Whether the saved-search alerts topic's email is on; null when it could not be read. */
+  topicEmailOn: boolean | null = null,
 ): SearchAlertState {
   const query = searchAlertQuery(q, categoryId);
   const found = saved.find((row) => sameQuery(row.query, query));
   if (!found) return "none";
-  return found.notifyEmail ? "on" : "email_off";
+  return searchEmailIsOn(found.notifyEmail, topicEmailOn) ? "on" : "email_off";
 }
 
 export function searchAlertLabel(q: string): string {

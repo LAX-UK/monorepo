@@ -460,7 +460,10 @@ function SearchesList({
               </RecordRowMedia>
             }
             title={search.label}
-            meta={[savedSearchSummary(search.query), searchReachLabel(search.notifyEmail, reach)]}
+            meta={[
+              savedSearchSummary(search.query),
+              searchReachLabel(search.notifyEmail, reach),
+            ].filter((part): part is string => part !== null)}
             menu={
               <InlineActionMenu
                 label={`More for ${search.label}`}
@@ -492,7 +495,7 @@ function SearchesList({
 function AlertReachNote() {
   return (
     <p className="text-lax-13 text-lax-muted">
-      Matches reach you in one email at 08:00 London and in the app.{" "}
+      When email is on, matches come in one email at 08:00 London and in the app.{" "}
       <Link
         href={NOTIFICATION_SETTINGS_HREF}
         className="lax-focus rounded-lax-control text-lax-fg underline underline-offset-2"

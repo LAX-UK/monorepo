@@ -33,8 +33,17 @@ export function reachLabel(reach: TopicReach): string {
   return reach.appOn ? "email and app" : "email only";
 }
 
-/** A saved search's own email switch and the topic's switch both have to be on. */
-export function searchReachLabel(notifyEmail: boolean, reach: TopicReach | null): string {
-  const on = notifyEmail && (reach ? reach.emailOn : true);
-  return on ? "email on" : "email off";
+/**
+ * Whether a saved search reaches the person by email: its own switch and the saved-search
+ * alerts topic's switch both have to be on. `topicEmailOn` is null when the topic's switch could
+ * not be read, and then only the search's own switch can be judged.
+ */
+export function searchEmailIsOn(notifyEmail: boolean, topicEmailOn: boolean | null): boolean {
+  return notifyEmail && topicEmailOn !== false;
+}
+
+/** "email on" or "email off"; nothing when where the alert reaches the person is unknown. */
+export function searchReachLabel(notifyEmail: boolean, reach: TopicReach | null): string | null {
+  if (!reach) return null;
+  return searchEmailIsOn(notifyEmail, reach.emailOn) ? "email on" : "email off";
 }

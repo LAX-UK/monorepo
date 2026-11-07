@@ -55,6 +55,7 @@ function draw(fallback: SearchFallback) {
       alertReturnHref="/search?q=winter&alert=1"
       saveAlertOnArrival={false}
       alertState="none"
+      topicEmailOn={null}
     />,
   );
 }

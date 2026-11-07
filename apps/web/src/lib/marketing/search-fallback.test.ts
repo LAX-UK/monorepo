@@ -74,4 +74,10 @@ describe("searchAlertState", () => {
     expect(searchAlertState(saved, "oil")).toBe("none");
     expect(searchAlertState([], "harbour")).toBe("none");
   });
+
+  it("says email off when the topic's email is off, and trusts the search when it is unknown", () => {
+    expect(searchAlertState(saved, "harbour", undefined, false)).toBe("email_off");
+    expect(searchAlertState(saved, "harbour", undefined, true)).toBe("on");
+    expect(searchAlertState(saved, "harbour", undefined, null)).toBe("on");
+  });
 });

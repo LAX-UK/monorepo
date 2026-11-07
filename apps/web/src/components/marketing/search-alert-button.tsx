@@ -5,6 +5,7 @@ import { ensureSearchAlert } from "@/lib/marketing/search-alert";
 import type { SearchAlertState } from "@/lib/marketing/search-fallback";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { notify } from "@/lib/ui/notify";
+import { searchEmailIsOn } from "@/lib/watching/alert-reach";
 import { Button, ButtonLink } from "@auction/ui/lax";
 import { Bell, BellRing } from "lucide-react";
 import Link from "next/link";
@@ -21,6 +22,8 @@ type Props = {
   saveOnArrival: boolean;
   /** What the account's saved searches hold for this search, read on the server. */
   alertState?: SearchAlertState;
+  /** Whether the saved-search alerts topic's email is on; null when it could not be read. */
+  topicEmailOn?: boolean | null;
   /** Where saved search alerts are managed. */
   manageHref?: string;
 };
@@ -41,6 +44,7 @@ export function SearchAlertButton({
   returnHref,
   saveOnArrival,
   alertState = "none",
+  topicEmailOn = null,
   manageHref = CLIENT_ROUTES.watchingSearches,
 }: Props) {
   const router = useRouter();
@@ -56,13 +60,19 @@ export function SearchAlertButton({
       notify.error("Could not set the alert. Try again in a moment.");
       return;
     }
+    // The search is saved with email on, but nothing is emailed while the topic's email is off.
+    if (!searchEmailIsOn(true, topicEmailOn)) {
+      setPhase("email_off");
+      notify.success("Alert saved. Email is off for saved searches, so nothing will be sent.");
+      return;
+    }
     setPhase("saved");
     notify.success(
       outcome === "existing"
         ? "You already have an alert for this search."
         : "Alert set. Matches arrive in your 08:00 email and in the app.",
     );
-  }, [q, categoryId]);
+  }, [q, categoryId, topicEmailOn]);
 
   useEffect(() => {
     if (!saveOnArrival || !isAuthenticated || asked.current) return;
