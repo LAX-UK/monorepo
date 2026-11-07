@@ -121,7 +121,7 @@ describe("ZohoCampaignsSuppressionSyncService", () => {
     expect(repo.entries.get(emailHash("c@example.com"))).toBe("hard_bounce");
   });
 
-  it("moves the watermark to the newest event and reads only newer ones next time", async () => {
+  it("keeps the watermark at the newest event, for the summary only", async () => {
     const repo = new FakeRepo();
     const lists = {
       unsubscribed: [
@@ -129,15 +129,37 @@ describe("ZohoCampaignsSuppressionSyncService", () => {
         unsub("new@example.com", "2026-11-03T00:00:00Z"),
       ],
     };
-    await service("live", repo, lists).svc.run();
+    const first = await service("live", repo, lists).svc.run();
     expect(repo.watermarks.get("live")).toEqual(new Date("2026-11-03T00:00:00Z"));
+    expect(first.due).toBe(2);
 
-    // Someone is removed from LAX's list; only events at or after the watermark come back.
+    // An entry is removed from LAX's list; the next pass applies every row again, old or not.
     repo.entries.clear();
     const next = await service("live", repo, lists).svc.run();
 
     expect(next.due).toBe(1);
-    expect([...repo.entries.keys()]).toEqual([emailHash("new@example.com")]);
+    expect(next.applied).toBe(2);
+    expect([...repo.entries.keys()].sort()).toEqual(
+      [emailHash("new@example.com"), emailHash("old@example.com")].sort(),
+    );
+  });
+
+  it("records a late-arriving unsubscribe dated before the watermark", async () => {
+    const repo = new FakeRepo();
+    repo.watermarks.set("live", new Date("2026-11-05T00:00:00Z"));
+    const lists = {
+      unsubscribed: [
+        unsub("late@example.com", "2026-11-01T10:00:00Z"),
+        unsub("fresh@example.com", "2026-11-06T10:00:00Z"),
+      ],
+    };
+
+    const summary = await service("live", repo, lists).svc.run();
+
+    expect(repo.entries.get(emailHash("late@example.com"))).toBe("unsubscribed_marketing");
+    expect(repo.entries.get(emailHash("fresh@example.com"))).toBe("unsubscribed_marketing");
+    expect(summary).toMatchObject({ read: 2, due: 1, applied: 2 });
+    expect(repo.watermarks.get("live")).toEqual(new Date("2026-11-06T10:00:00Z"));
   });
 
   it("does not move the watermark when a write fails, so nothing is skipped next time", async () => {

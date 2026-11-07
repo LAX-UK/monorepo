@@ -37,7 +37,8 @@ export const fetchCampaignsGet: CampaignsHttpGet = async (url, headers) => {
  *   200 { "status": "success", "list_of_details": [ { "contact_email": "...",
  *         "unsubscribed_time" | "bounced_time": "<ISO or epoch ms>", "bounce_type": "hard|soft" } ] }
  * Auth is the same OAuth refresh token the CRM sync uses, sent as `Zoho-oauthtoken`.
- * The list has no "changed since" filter, so the sync reads whole lists and filters by time.
+ * The list has no "changed since" filter, so the sync reads whole lists every pass.
+ * A 200 whose `status` is not "success", or that has no `list_of_details`, is an error.
  */
 export const CAMPAIGNS_LIST_PATH = "/api/v1.1/getlistsubscribers";
 const STATUS_BY_KIND: Record<CampaignsContactKind, string> = {
@@ -71,9 +72,13 @@ export class HttpZohoCampaignsContactSource implements ZohoCampaignsContactSourc
     if (res.status < 200 || res.status >= 300) {
       throw new Error(`zoho_campaigns_list_failed_${res.status}`);
     }
-    const body = res.body as { list_of_details?: unknown } | null;
-    const rows = body?.list_of_details;
-    if (rows === undefined) return [];
+    // A 200 that is not a plain success must stop the pass: reading it as an empty list would
+    // look like "nobody has unsubscribed" and move on without recording anyone.
+    const body = res.body as { status?: unknown; list_of_details?: unknown } | null;
+    if (!body || typeof body !== "object" || body.status !== "success") {
+      throw new Error("zoho_campaigns_list_status_not_success");
+    }
+    const rows = body.list_of_details;
     if (!Array.isArray(rows)) throw new Error("zoho_campaigns_list_unexpected_shape");
     return rows.filter((r): r is CampaignsContactRow => typeof r === "object" && r !== null);
   }

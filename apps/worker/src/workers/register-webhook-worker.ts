@@ -38,7 +38,7 @@ export type RegisterWebhookWorkerInput = WorkerBootstrapDeps & {
   runZohoArtworkNightlyCheck?: () => Promise<void>;
   /** Set when the LAX listing on Zoho is on; schedules its nightly pass on this queue. */
   runZohoListingNightlyCheck?: () => Promise<void>;
-  /** Set when the Zoho Campaigns suppression sync is on; schedules its hourly pass here. */
+  /** Set when the Zoho Campaigns suppression sync is on; schedules its daily pass here. */
   runZohoCampaignsSuppressionSync?: () => Promise<void>;
 };
 

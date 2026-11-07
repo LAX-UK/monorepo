@@ -56,7 +56,7 @@ export const BLOCK_COPY: Record<EmailBlockReason, BlockCopy> = {
     title: "Marketing and alert email is off",
     name: "Marketing email off",
     body: (who) =>
-      `${who} unsubscribed from LAX marketing email. Alert email stops too. Invoices, receipts and account email still go. Only ${who} can turn it back on.`,
+      `${who} unsubscribed from LAX marketing email. Alert email stops too. Invoices, receipts and account email still go. Lift this if ${who} asks to hear from LAX again.`,
   },
 };
 

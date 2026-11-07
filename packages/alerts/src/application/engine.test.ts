@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RecordingNotices, createEngineHarness } from "../testing/harness.js";
+import { ConfirmService } from "./confirm.service.js";
 
 const snapshot = { title: "Modern British and Irish Art", path: "/sales/modern" };
 
@@ -24,6 +25,50 @@ async function confirmedVisitor(
 }
 
 describe("sign-up and confirmation", () => {
+  it("runs the after-confirm hook with the address, on the press and again on a repeat", async () => {
+    const h = createEngineHarness();
+    const lifted: string[] = [];
+    const confirm = new ConfirmService({
+      subscribers: h.stores,
+      topics: h.stores,
+      codec: h.codec,
+      clock: { now: () => h.now },
+      topicsToEnable: () => ["bid.new_sales"],
+      afterConfirm: async (email) => {
+        lifted.push(email);
+      },
+    });
+    await h.subscribe.requestAsVisitor({
+      product: "bid",
+      topic: "bid.new_sales",
+      email: "Opted.Out@Example.com",
+      source: "web_home_alerts",
+    });
+    const token = tokenOf(h.mailer.confirmations[0]?.confirmUrl ?? "");
+    expect(await confirm.preview(token, "bid")).toMatchObject({ state: "ready" });
+    expect(lifted).toEqual([]);
+    expect(await confirm.confirm(token, "bid")).toBe("confirmed");
+    expect(await confirm.confirm(token, "bid")).toBe("already_confirmed");
+    expect(lifted).toEqual(["opted.out@example.com", "opted.out@example.com"]);
+  });
+
+  it("does not run the hook for an invalid link", async () => {
+    const h = createEngineHarness();
+    let called = false;
+    const confirm = new ConfirmService({
+      subscribers: h.stores,
+      topics: h.stores,
+      codec: h.codec,
+      clock: { now: () => h.now },
+      topicsToEnable: () => ["bid.new_sales"],
+      afterConfirm: async () => {
+        called = true;
+      },
+    });
+    expect(await confirm.confirm("not-a-token", "bid")).toBe("invalid");
+    expect(called).toBe(false);
+  });
+
   it("sends one confirmation, and no second one inside the pause", async () => {
     const h = createEngineHarness();
     const input = {

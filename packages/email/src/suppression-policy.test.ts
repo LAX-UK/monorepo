@@ -63,6 +63,11 @@ describe("suppression policy", () => {
       }
     });
 
+    it("does not stop an alert confirmation, which answers the person's own request", () => {
+      expect(MARKETING_OPT_OUT_EMAIL_TEMPLATES).not.toContain("alert-confirm");
+      expect(suppressionBlocksTemplate("unsubscribed_marketing", "alert-confirm")).toBe(false);
+    });
+
     it("does not block a receipt, an invoice, security mail or any other transactional mail", () => {
       expect(suppressionBlocksTemplate("unsubscribed_marketing", "payment-receipt")).toBe(false);
       for (const template of TRANSACTIONAL) {

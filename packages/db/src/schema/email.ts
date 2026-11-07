@@ -96,7 +96,7 @@ export const emailEvent = pgTable(
 export const emailSuppression = pgTable("email_suppression", {
   emailHash: text("email_hash").primaryKey(),
   reason: text("reason").$type<EmailSuppressionReason>().notNull(),
-  /** Set when another system reported the entry; null for Postmark and LAX's own. Migration 0322. */
+  /** Set when another system reported the entry; null for Postmark and LAX's own. Migration 0323. */
   source: text("source").$type<EmailSuppressionSource>(),
   createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
 });
