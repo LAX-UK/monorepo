@@ -60,8 +60,9 @@ describe("buildClientBreadcrumbTrail", () => {
     ]);
   });
 
-  it("labels checkout and a consignment without raw ids", () => {
-    expect(labels("/purchases/checkout/lot-abc")).toEqual(["Purchases", "Checkout"]);
+  it("labels the Pay page, the old checkout address and a consignment without raw ids", () => {
+    expect(labels("/purchases/pay")).toEqual(["Purchases", "Pay"]);
+    expect(labels("/purchases/checkout/lot-abc")).toEqual(["Purchases", "Pay"]);
     expect(labels("/selling/consignments/s1")).toEqual(["Consignments", "Consignment"]);
     expect(labels("/selling/new")).toEqual(["Consignments", "New submission"]);
   });
