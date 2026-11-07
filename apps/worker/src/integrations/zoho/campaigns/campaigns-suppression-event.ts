@@ -13,7 +13,14 @@ export type CampaignsSuppressionEvent = {
   occurredAt: Date | null;
 };
 
-export type CampaignsSkipReason = "no_email" | "soft_bounce" | "unknown_bounce_type";
+export type CampaignsSkipReason =
+  | "no_email"
+  | "soft_bounce"
+  | "unknown_bounce_type"
+  | "no_subscribe_time";
+
+/** Every list the sync reads: the two that suppress, and the subscribed list that can lift. */
+export type CampaignsListKind = CampaignsContactKind | "subscribed";
 
 export type CampaignsMapResult =
   | { ok: true; event: CampaignsSuppressionEvent }
@@ -24,6 +31,15 @@ const TIME_FIELDS: Record<CampaignsContactKind, readonly string[]> = {
   unsubscribed: ["unsubscribed_time", "unsubscribe_time", "Unsubscribed Time", "modified_time"],
   bounced: ["bounced_time", "bounce_time", "Bounced Time", "modified_time"],
 };
+/** Not `modified_time`: editing a contact's name must not look like asking for mail again. */
+const SUBSCRIBE_TIME_FIELDS = [
+  "subscribed_time",
+  "subscribe_time",
+  "Subscribed Time",
+  "added_time",
+  "Added Time",
+  "created_time",
+] as const;
 const BOUNCE_TYPE_FIELDS = ["bounce_type", "Bounce Type", "bouncetype"] as const;
 
 function firstString(row: CampaignsContactRow, fields: readonly string[]): string | null {
@@ -73,4 +89,26 @@ export function mapCampaignsContact(
   if (bounceType.startsWith("soft")) return { ok: false, skip: "soft_bounce" };
   if (!bounceType.startsWith("hard")) return { ok: false, skip: "unknown_bounce_type" };
   return { ok: true, event: { emailHash: emailHash(email), reason: "hard_bounce", occurredAt } };
+}
+
+export type CampaignsSubscriber = {
+  emailHash: string;
+  /** When the contact subscribed, as Zoho says; always known (a row without it is skipped). */
+  subscribedAt: Date;
+};
+
+export type CampaignsSubscriberResult =
+  | { ok: true; subscriber: CampaignsSubscriber }
+  | { ok: false; skip: "no_email" | "no_subscribe_time" };
+
+/**
+ * Turns one row of the subscribed list into a person and the time they subscribed. A row with no
+ * readable subscribe time is skipped: nothing can show it is newer than an opt-out.
+ */
+export function mapCampaignsSubscriber(row: CampaignsContactRow): CampaignsSubscriberResult {
+  const email = firstString(row, EMAIL_FIELDS)?.toLowerCase();
+  if (!email?.includes("@")) return { ok: false, skip: "no_email" };
+  const subscribedAt = parseTime(row, SUBSCRIBE_TIME_FIELDS);
+  if (!subscribedAt) return { ok: false, skip: "no_subscribe_time" };
+  return { ok: true, subscriber: { emailHash: emailHash(email), subscribedAt } };
 }

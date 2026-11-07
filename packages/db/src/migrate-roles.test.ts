@@ -14,6 +14,7 @@ import {
   AUTH_LEGAL_ACCEPTANCE_TABLES,
   AUTH_POLICY_TABLES,
   AUTH_READ_TABLES,
+  LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES,
   SHOP_ARTWORK_REGISTER_CONFLICT_TABLES,
   SHOP_ARTWORK_REGISTER_EVENT_TABLES,
   SHOP_ARTWORK_REGISTER_OFFER_TABLES,
@@ -44,6 +45,7 @@ import {
   WORKER_READ_TABLES,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_ZOHO_ARTWORK_SYNC_TABLES,
+  WORKER_ZOHO_CAMPAIGNS_LIFT_READ_TABLES,
   WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES,
 } from "./migrate-roles.js";
 
@@ -600,6 +602,13 @@ describe("migrate-roles invariants", () => {
     expect(source).toContain('"worker_app", "email_suppression", "INSERT, SELECT");');
     expect(source).not.toContain('"worker_app", "email_suppression", "INSERT, SELECT, UPDATE"');
     expect(source).toContain("WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,");
+    // A lift is written by one definer function; the worker reads the record and holds no DELETE.
+    expect([...WORKER_ZOHO_CAMPAIGNS_LIFT_READ_TABLES]).toEqual(["zoho_campaigns_optout_lift"]);
+    expect([...LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES]).toEqual(["api_app", "worker_app"]);
+    expect(source).toContain(
+      'grantIfExists(client, "worker_app", tableName, "SELECT");\n        }\n        for (const role of LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES)',
+    );
+    expect(source).not.toMatch(/"(?:shop_app|worker_app)", "email_suppression", "[^"]*DELETE/);
   });
 
   it("WORKER_QR_CODE_SCAN_TABLES includes scan tables (qr-code-scan worker job)", () => {

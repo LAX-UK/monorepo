@@ -1,15 +1,15 @@
 import type { WorkerEnv } from "../../../env.js";
 import { getZohoCrmAccessToken } from "../oauth-token-refresh.js";
-import type { CampaignsContactKind, CampaignsContactRow } from "./campaigns-suppression-event.js";
+import type { CampaignsContactRow, CampaignsListKind } from "./campaigns-suppression-event.js";
 
 /**
- * Reads the Campaigns lists of unsubscribed and bounced contacts. The sync depends on this port,
+ * Reads the Campaigns lists of unsubscribed, bounced and subscribed contacts. The sync depends on this port,
  * never on Zoho's API, and it only ever reads.
  */
 export interface ZohoCampaignsContactSource {
   /** One page of a list, in Zoho's own order. A page shorter than `limit` is the last one. */
   listContacts(
-    kind: CampaignsContactKind,
+    kind: CampaignsListKind,
     page: { offset: number; limit: number },
   ): Promise<CampaignsContactRow[]>;
 }
@@ -33,17 +33,18 @@ export const fetchCampaignsGet: CampaignsHttpGet = async (url, headers) => {
 /**
  * EXPECTED SHAPE, NOT YET CONFIRMED against the Campaigns sandbox:
  *   GET {ZOHO_API_HOST}/api/v1.1/getlistsubscribers
- *       ?resfmt=JSON&listkey=<list>&status=<unsub|bounce>&fromindex=<1-based>&range=<n>
+ *       ?resfmt=JSON&listkey=<list>&status=<unsub|bounce|active>&fromindex=<1-based>&range=<n>
  *   200 { "status": "success", "list_of_details": [ { "contact_email": "...",
- *         "unsubscribed_time" | "bounced_time": "<ISO or epoch ms>", "bounce_type": "hard|soft" } ] }
+ *         "unsubscribed_time" | "bounced_time" | "subscribed_time": "<ISO or epoch ms>", "bounce_type": "hard|soft" } ] }
  * Auth is the same OAuth refresh token the CRM sync uses, sent as `Zoho-oauthtoken`.
  * The list has no "changed since" filter, so the sync reads whole lists every pass.
  * A 200 whose `status` is not "success", or that has no `list_of_details`, is an error.
  */
 export const CAMPAIGNS_LIST_PATH = "/api/v1.1/getlistsubscribers";
-const STATUS_BY_KIND: Record<CampaignsContactKind, string> = {
+const STATUS_BY_KIND: Record<CampaignsListKind, string> = {
   unsubscribed: "unsub",
   bounced: "bounce",
+  subscribed: "active",
 };
 
 export class HttpZohoCampaignsContactSource implements ZohoCampaignsContactSource {
@@ -54,7 +55,7 @@ export class HttpZohoCampaignsContactSource implements ZohoCampaignsContactSourc
   ) {}
 
   async listContacts(
-    kind: CampaignsContactKind,
+    kind: CampaignsListKind,
     page: { offset: number; limit: number },
   ): Promise<CampaignsContactRow[]> {
     const token = await this.getToken(this.env);

@@ -383,6 +383,17 @@ export const WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS = ["reason", "source", "cre
 export const WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES = [
   "zoho_campaigns_suppression_state",
 ] as const;
+/**
+ * The sync reads when each person last asked for mail again. It never writes it: a lift goes
+ * through LIFT_ZOHO_CAMPAIGNS_OPT_OUT_FUNCTION, which also removes the opt-out, so neither
+ * worker_app nor shop_app needs DELETE on email_suppression.
+ */
+export const WORKER_ZOHO_CAMPAIGNS_LIFT_READ_TABLES = ["zoho_campaigns_optout_lift"] as const;
+/** Migration 0323's definer function; the one writer of a lift. */
+export const LIFT_ZOHO_CAMPAIGNS_OPT_OUT_FUNCTION =
+  "lift_zoho_campaigns_opt_out(text, timestamptz, boolean)";
+/** Roles that may call it: the Bid API (confirm link) and the worker (Shop event, sync, newsletter). */
+export const LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES = ["api_app", "worker_app"] as const;
 export const WORKER_ZOHO_ARTWORK_SYNC_TABLES = [
   "zoho_artwork_sync_state",
   "zoho_artwork_sync_outcome",
@@ -707,6 +718,22 @@ async function grantColumnSelectIfExists(
   );
 }
 
+async function grantExecuteIfFunctionExists(
+  client: pg.Client,
+  role: RoleName,
+  signature: string,
+  schemaName = "public",
+): Promise<void> {
+  const found = await client.query(
+    "select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = $1 and p.oid = to_regprocedure($2)",
+    [schemaName, `${schemaName}.${signature}`],
+  );
+  if (found.rowCount === 0) return;
+  await client.query(
+    `grant execute on function ${quoteIdent(schemaName)}.${signature} to ${quoteIdent(role)}`,
+  );
+}
+
 async function revokeIfExists(
   client: pg.Client,
   role: RoleName,
@@ -936,6 +963,12 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         }
         for (const tableName of WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_ZOHO_CAMPAIGNS_LIFT_READ_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT");
+        }
+        for (const role of LIFT_ZOHO_CAMPAIGNS_OPT_OUT_ROLES) {
+          await grantExecuteIfFunctionExists(client, role, LIFT_ZOHO_CAMPAIGNS_OPT_OUT_FUNCTION);
         }
         for (const tableName of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

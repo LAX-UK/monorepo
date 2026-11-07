@@ -1,11 +1,14 @@
 -- Rollback for 0323_zoho_campaigns_suppression. Roll back the application release first: the
 -- previous release does not know the new reason. Marketing opt-outs become plain 'unsubscribe'
 -- (which silences optional mail only), so no one who opted out is mailed again. The sync
--- watermark is lost; the next pass starts from the beginning.
+-- watermark and the lift record are lost; if the release is deployed again, the sync re-reads
+-- Campaigns and silences, until they confirm again, anyone who had lifted an older opt-out.
 BEGIN;
 
 SET LOCAL lock_timeout = '30s';
 
+DROP FUNCTION IF EXISTS public.lift_zoho_campaigns_opt_out(text, timestamptz, boolean);
+DROP TABLE IF EXISTS "zoho_campaigns_optout_lift";
 DROP TABLE IF EXISTS "zoho_campaigns_suppression_state";
 
 UPDATE "email_suppression" SET "reason" = 'unsubscribe' WHERE "reason" = 'unsubscribed_marketing';

@@ -1,7 +1,6 @@
-import type { Database } from "@auction/db";
+import { type Database, liftZohoCampaignsOptOut } from "@auction/db";
 import type { EmailSuppressionReason } from "@auction/db/schema";
 import { emailSuppression } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
 import type { IEmailSuppressionRepository } from "../interfaces/email-suppression.repository.js";
 
 export class DrizzleEmailSuppressionRepository implements IEmailSuppressionRepository {
@@ -18,17 +17,7 @@ export class DrizzleEmailSuppressionRepository implements IEmailSuppressionRepos
       });
   }
 
-  async liftMarketingOptOut(emailHash: string): Promise<boolean> {
-    const removed = await this.db
-      .delete(emailSuppression)
-      .where(
-        and(
-          eq(emailSuppression.emailHash, emailHash),
-          eq(emailSuppression.reason, "unsubscribed_marketing"),
-          eq(emailSuppression.source, "zoho_campaigns"),
-        ),
-      )
-      .returning({ emailHash: emailSuppression.emailHash });
-    return removed.length > 0;
+  async liftMarketingOptOut(emailHash: string, at: Date): Promise<boolean> {
+    return liftZohoCampaignsOptOut(this.db, emailHash, at);
   }
 }

@@ -8,7 +8,7 @@ import {
   webAlertUrls,
 } from "@auction/alerts";
 import type { Database } from "@auction/db";
-import { OutboxAlertMailer, emailHash } from "@auction/email";
+import { OutboxAlertMailer } from "@auction/email";
 import type { IEmailService } from "@auction/email";
 import {
   laxAccountPageUrl,
@@ -22,6 +22,7 @@ import {
   DrizzleEmailSuppressionRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
+import { liftOptOutOnConfirm } from "./lift-opt-out-on-confirm.js";
 
 /** The Bid alert engine as the API uses it: sign-up, links, stopping and a client's own switches. */
 export type BidAlertEngine = {
@@ -69,6 +70,8 @@ export function createBidAlertEngine(input: {
       };
     },
   };
+  // One step for the confirm link and for an account turning alerts on.
+  const liftOptOut = liftOptOutOnConfirm(suppressions);
   const subscribe = new SubscribeService({
     subscribers,
     topics,
@@ -83,6 +86,7 @@ export function createBidAlertEngine(input: {
     ),
     addresses,
     clock,
+    afterConfirm: liftOptOut,
   });
   return {
     subscribe,
@@ -92,10 +96,7 @@ export function createBidAlertEngine(input: {
       codec,
       clock,
       topicsToEnable: () => BID_CONFIRM_TOPICS,
-      // A confirmation is the person asking for alerts, so an old Campaigns opt-out no longer holds.
-      afterConfirm: async (address) => {
-        await suppressions.liftMarketingOptOut(emailHash(address));
-      },
+      afterConfirm: liftOptOut,
     }),
     stop: new StopService({ subscribers, topics, codec, clock }),
     preferences: new PreferencesService({ subscribers, topics, subscribe, addresses, clock }),

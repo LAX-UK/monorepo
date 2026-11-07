@@ -98,6 +98,18 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
+  it("lifts an opt-out only through the definer function, and reads the lift record", async () => {
+    await withWorkerClient(async (client) => {
+      const result = await client.query<{ run: boolean; select: boolean; write: boolean }>(
+        `select has_function_privilege(current_user, 'public.lift_zoho_campaigns_opt_out(text, timestamptz, boolean)', 'EXECUTE') as run,
+                has_table_privilege(current_user, 'public.zoho_campaigns_optout_lift', 'SELECT') as select,
+                (has_table_privilege(current_user, 'public.zoho_campaigns_optout_lift', 'INSERT')
+                 or has_table_privilege(current_user, 'public.zoho_campaigns_optout_lift', 'UPDATE')) as write`,
+      );
+      expect(result.rows[0]).toEqual({ run: true, select: true, write: false });
+    });
+  });
+
   it("has the DML required by each product identity projection", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const db = createDb(WORKER_URL!);

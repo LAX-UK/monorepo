@@ -1,5 +1,5 @@
 import { createDb } from "@auction/db";
-import { emailSuppression } from "@auction/db/schema";
+import { emailSuppression, zohoCampaignsOptOutLift } from "@auction/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 import { DrizzleEmailSuppressionRepository } from "./drizzle-email-suppression.repository.js";
@@ -16,6 +16,9 @@ describe.skipIf(!HAS_DB)("DrizzleEmailSuppressionRepository (integration)", () =
 
   afterAll(async () => {
     await db.delete(emailSuppression).where(inArray(emailSuppression.emailHash, hashes));
+    await db
+      .delete(zohoCampaignsOptOutLift)
+      .where(inArray(zohoCampaignsOptOutLift.emailHash, [...hashes, "suppression-it-missing"]));
   });
 
   const read = async (hash: string) =>
@@ -40,13 +43,26 @@ describe.skipIf(!HAS_DB)("DrizzleEmailSuppressionRepository (integration)", () =
     await db.insert(emailSuppression).values({ emailHash: bounce, reason: "hard_bounce" });
     await db.insert(emailSuppression).values({ emailHash: plainUnsub, reason: "unsubscribe" });
 
-    expect(await repo.liftMarketingOptOut(campaigns)).toBe(true);
-    expect(await repo.liftMarketingOptOut(bounce)).toBe(false);
-    expect(await repo.liftMarketingOptOut(plainUnsub)).toBe(false);
-    expect(await repo.liftMarketingOptOut("suppression-it-missing")).toBe(false);
+    expect(await repo.liftMarketingOptOut(campaigns, new Date())).toBe(true);
+    expect(await repo.liftMarketingOptOut(bounce, new Date())).toBe(false);
+    expect(await repo.liftMarketingOptOut(plainUnsub, new Date())).toBe(false);
+    expect(await repo.liftMarketingOptOut("suppression-it-missing", new Date())).toBe(false);
 
     expect(await read(campaigns)).toBeUndefined();
     expect(await read(bounce)).toMatchObject({ reason: "hard_bounce" });
     expect(await read(plainUnsub)).toMatchObject({ reason: "unsubscribe" });
+  });
+
+  it("records the lift even when there is no entry, keeping the latest time", async () => {
+    const hash = "suppression-it-missing";
+    const early = new Date("2026-01-01T00:00:00Z");
+    const late = new Date("2026-02-01T00:00:00Z");
+    await repo.liftMarketingOptOut(hash, late);
+    await repo.liftMarketingOptOut(hash, early);
+    const [row] = await db
+      .select()
+      .from(zohoCampaignsOptOutLift)
+      .where(eq(zohoCampaignsOptOutLift.emailHash, hash));
+    expect(row?.liftedAt).toEqual(late);
   });
 });
