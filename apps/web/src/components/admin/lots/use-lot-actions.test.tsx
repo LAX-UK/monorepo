@@ -305,9 +305,7 @@ describe("useLotActions", () => {
       fireEvent.click(screen.getByRole("button", { name: "Return to lax.art…" }));
       fireEvent.click(screen.getByRole("button", { name: "Return to lax.art" }));
       await waitFor(() =>
-        expect(notifySuccess).toHaveBeenCalledWith(
-          "Blue Interior is back with LAX. It was never listed on lax.art, so no draft was made.",
-        ),
+        expect(notifySuccess).toHaveBeenCalledWith("Blue Interior is back in the LAX register"),
       );
       expect(notifySuccess).not.toHaveBeenCalledWith(expect.stringContaining('draft"'));
       expect(notifySuccessDescription).toHaveBeenCalledWith(

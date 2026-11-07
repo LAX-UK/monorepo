@@ -31,7 +31,7 @@ export function laxArtReturnSuccessMessage(
   outcome: LaxArtReturnOutcome | null,
 ): string {
   if (outcome && !outcome.laxArtListing) {
-    return `${title} is back with LAX. It was never listed on lax.art, so no draft was made.`;
+    return `${title} is back in the LAX register`;
   }
   return `${title} is back on lax.art as a draft`;
 }

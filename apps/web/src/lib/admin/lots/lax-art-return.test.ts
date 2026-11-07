@@ -14,7 +14,7 @@ describe("laxArtReturnSuccessMessage", () => {
 
   it("says no draft was made when the artwork was never listed", () => {
     expect(laxArtReturnSuccessMessage("Blue", { laxArtListing: false })).toBe(
-      "Blue is back with LAX. It was never listed on lax.art, so no draft was made.",
+      "Blue is back in the LAX register",
     );
   });
 });
