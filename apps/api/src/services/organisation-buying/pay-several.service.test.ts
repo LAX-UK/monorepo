@@ -694,7 +694,10 @@ describe("PaySeveralService source of funds, counted once", () => {
       findLatestApprovedForUser: vi.fn(async () => null),
       findPendingForUser: vi.fn(async () => null),
       findLatestForUser: vi.fn(async () => null),
-      create: vi.fn(async (input: { userId: string }) => ({ id: "sof-1", ...input })),
+      create: vi.fn(async (input: { userId: string }) => ({
+        case: { id: "sof-1", ...input },
+        created: true,
+      })),
     };
     const policy = new AmlSettlementCompliancePolicy(
       { getHold: vi.fn(async () => null) } as never,

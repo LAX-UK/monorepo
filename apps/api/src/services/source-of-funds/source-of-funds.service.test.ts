@@ -86,7 +86,7 @@ function fakeRepo(state: FakeState): ISourceOfFundsRepository {
         currency: input.currency,
       });
       state.cases.push(created);
-      return created;
+      return { case: created, created: true };
     },
     async setTriage(input: SourceOfFundsTriageInput) {
       const existing = state.cases.find((c) => c.id === input.id);
@@ -291,7 +291,7 @@ describe("SourceOfFundsService.requiresSourceOfFunds", () => {
     expect(state.cases.filter((c) => c.status === "pending")).toHaveLength(1);
   });
 
-  it("reuses the pending case when create races on the unique index", async () => {
+  it("reuses the pending case when create finds one opened concurrently", async () => {
     const pendingCase = makeCase({
       id: "sof_pending",
       userId: "u1",
@@ -309,15 +309,12 @@ describe("SourceOfFundsService.requiresSourceOfFunds", () => {
         return base.findPendingForUser(userId, conn);
       },
       async create() {
-        throw Object.assign(new Error("duplicate key value violates unique constraint"), {
-          code: "23505",
-        });
+        return { case: pendingCase, created: false };
       },
     };
     const svc = new SourceOfFundsService(repo, config);
     expect(await svc.requiresSourceOfFunds({ buyerUserId: "u1", amountPence: 900_000 })).toBe(true);
     expect(state.cases).toHaveLength(1);
-    expect(pendingReads).toBeGreaterThanOrEqual(2);
   });
 
   it("clears while a valid approved case is on file", async () => {
