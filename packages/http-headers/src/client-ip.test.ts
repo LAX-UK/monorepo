@@ -3,6 +3,7 @@ import {
   createClientIpPolicy,
   createServerClientIpResolver,
   parseCidrList,
+  parseTrustedProxyHops,
   resolveClientIpFromHeaders,
   serverClientIpHeaders,
 } from "./client-ip.js";
@@ -102,6 +103,90 @@ describe("resolveClientIp", () => {
     expect(() => createClientIpPolicy({ trustedProxyCidrs: ["10.0.0.0/99"] })).toThrow(
       "Invalid trusted proxy CIDRs prefix",
     );
+  });
+});
+
+describe("forged headers", () => {
+  const real = "203.0.113.9";
+
+  it("keeps the key when a caller prepends its own leftmost x-forwarded-for entry", () => {
+    const keys = ["1.1.1.1", "2.2.2.2", "8.8.4.4", "10.9.9.9"].map((forged) =>
+      resolve("10.0.0.2", { "x-forwarded-for": `${forged}, ${real}` }),
+    );
+    expect(new Set(keys)).toEqual(new Set([real]));
+  });
+
+  it("never returns a forged leftmost entry when every hop is a trusted proxy", () => {
+    expect(resolve("10.0.0.2", { "x-forwarded-for": "10.1.2.3, 10.0.0.1" })).toBe("10.0.0.2");
+  });
+
+  it("ignores x-forwarded-for entirely from an untrusted peer", () => {
+    expect(resolve("198.51.100.7", { "x-forwarded-for": "1.1.1.1" })).toBe("198.51.100.7");
+  });
+
+  it("uses cf-connecting-ip when the request came through Cloudflare", () => {
+    expect(
+      resolve("10.0.0.2", {
+        "do-connecting-ip": "172.64.1.1",
+        "cf-connecting-ip": real,
+        "x-forwarded-for": "1.1.1.1",
+      }),
+    ).toBe(real);
+  });
+
+  it("ignores cf-connecting-ip that did not come through Cloudflare", () => {
+    expect(resolve("10.0.0.2", { "cf-connecting-ip": "1.1.1.1", "x-forwarded-for": real })).toBe(
+      real,
+    );
+  });
+
+  it("falls back to the socket address when no header is present", () => {
+    expect(resolve("198.51.100.7", {})).toBe("198.51.100.7");
+    expect(resolve("10.0.0.2", {})).toBe("10.0.0.2");
+  });
+});
+
+describe("multi-hop chains", () => {
+  const read = (xff: string) => (name: string) => ({ "x-forwarded-for": xff })[name];
+
+  it("takes the right-most untrusted entry across several known proxies", () => {
+    expect(
+      resolveClientIpFromHeaders(read("9.9.9.9, 203.0.113.9, 10.0.0.5, 10.0.0.6"), policy, {
+        remoteAddress: "10.0.0.2",
+      }),
+    ).toBe("203.0.113.9");
+  });
+
+  it("skips extra operated hops outside the CIDR lists when configured", () => {
+    const twoHops = createClientIpPolicy({ trustedProxyHops: 2 });
+    expect(
+      resolveClientIpFromHeaders(read("9.9.9.9, 203.0.113.9, 198.51.100.50"), twoHops, {
+        remoteAddress: "10.0.0.2",
+      }),
+    ).toBe("203.0.113.9");
+    // The default of one hop treats that outer entry as the client.
+    expect(
+      resolveClientIpFromHeaders(read("9.9.9.9, 203.0.113.9, 198.51.100.50"), policy, {
+        remoteAddress: "10.0.0.2",
+      }),
+    ).toBe("198.51.100.50");
+  });
+
+  it("never reaches the leftmost entry through a larger hop count", () => {
+    const many = createClientIpPolicy({ trustedProxyHops: 5 });
+    expect(
+      resolveClientIpFromHeaders(read("1.1.1.1, 198.51.100.50"), many, {
+        remoteAddress: "10.0.0.2",
+      }),
+    ).toBe("10.0.0.2");
+  });
+
+  it("parses the hop-count setting with a safe default", () => {
+    expect(parseTrustedProxyHops(undefined)).toBe(1);
+    expect(parseTrustedProxyHops("2")).toBe(2);
+    expect(parseTrustedProxyHops("0")).toBe(1);
+    expect(parseTrustedProxyHops("abc")).toBe(1);
+    expect(parseTrustedProxyHops("99")).toBe(1);
   });
 });
 

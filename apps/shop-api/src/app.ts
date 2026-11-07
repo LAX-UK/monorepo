@@ -92,6 +92,9 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   const app = Fastify({
     logger: options.logger ?? true,
     genReqId: () => crypto.randomUUID(),
+    // Never read the forwarded-for chain here: `request.ip` is the socket peer, so a caller cannot choose
+    // its rate-limit bucket. Browser addresses arrive only via the BFF-token header.
+    trustProxy: false,
     bodyLimit: 1024,
     ajv: {
       customOptions: {

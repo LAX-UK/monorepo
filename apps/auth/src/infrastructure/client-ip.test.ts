@@ -89,8 +89,22 @@ describe("auth client IP resolution", () => {
         cfConnectingIp: "not-an-ip",
         doConnectingIp: "also-not-an-ip",
         isTrustedProxy: trusted,
-        isTrustedCloudflareProxy: () => true,
+        isTrustedCloudflareProxy: (address) => address.startsWith("173.245."),
       }),
     ).toBe("203.0.113.9");
+  });
+
+  it("never uses a forged leftmost entry, even when every hop is a trusted proxy", () => {
+    expect(
+      resolveClientIp({
+        remoteAddress: "10.0.0.2",
+        forwardedFor: "10.9.9.9, 10.0.0.1",
+        realIp: undefined,
+        cfConnectingIp: undefined,
+        doConnectingIp: undefined,
+        isTrustedProxy: trusted,
+        isTrustedCloudflareProxy: () => false,
+      }),
+    ).toBe("10.0.0.2");
   });
 });
