@@ -17,7 +17,9 @@ export function PayFeedbackNotice() {
   if (!feedback) return null;
   return (
     <div ref={ref} tabIndex={-1} className="outline-none">
-      <Notice tone={feedback.tone} alert title={feedback.message} />
+      <Notice tone={feedback.tone} alert title={feedback.message}>
+        {feedback.detail}
+      </Notice>
     </div>
   );
 }
