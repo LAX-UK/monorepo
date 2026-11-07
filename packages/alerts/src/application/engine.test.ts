@@ -34,7 +34,7 @@ describe("sign-up and confirmation", () => {
       codec: h.codec,
       clock: { now: () => h.now },
       topicsToEnable: () => ["bid.new_sales"],
-      afterConfirm: async (email) => {
+      afterConfirm: async ({ email }) => {
         lifted.push(email);
       },
     });
@@ -695,5 +695,67 @@ describe("announcing and the daily digest", () => {
       expect(h.mailer.digests).toHaveLength(1);
       expect(notices.written).toHaveLength(0);
     });
+  });
+});
+
+describe("the subscription-confirmed step", () => {
+  it("runs for an account switching email alerts on, with the address and the time", async () => {
+    const seen: { email: string; at: Date; product: string }[] = [];
+    const h = createEngineHarness(undefined, {
+      afterConfirm: async ({ email, at, product }) => {
+        seen.push({ email, at, product });
+      },
+    });
+    h.accounts.set("u1", { email: "Client@Example.com", verified: true });
+    await h.subscribe.enableForAccount({
+      product: "bid",
+      subjectId: "u1",
+      topic: "bid.new_sales",
+      source: "web_home_alerts",
+    });
+    expect(seen).toEqual([{ email: "client@example.com", at: h.now, product: "bid" }]);
+  });
+
+  it("runs when a signed-in person turns a topic on in their preferences, not when off", async () => {
+    const seen: string[] = [];
+    const h = createEngineHarness(undefined, {
+      afterConfirm: async ({ email }) => {
+        seen.push(email);
+      },
+    });
+    h.accounts.set("u1", { email: "client@example.com", verified: true });
+    const base = { product: "bid", subjectId: "u1", topic: "bid.new_sales" } as const;
+    await h.preferences.setTopic({ ...base, on: true });
+    expect(seen).toEqual(["client@example.com"]);
+    await h.preferences.setTopic({ ...base, on: false });
+    await h.preferences.setTopic({ ...base, on: true, email: false });
+    expect(seen).toEqual(["client@example.com"]);
+  });
+
+  it("does not run for an unverified address or an unknown account", async () => {
+    const seen: string[] = [];
+    const h = createEngineHarness(undefined, {
+      afterConfirm: async ({ email }) => {
+        seen.push(email);
+      },
+    });
+    h.accounts.set("u2", { email: "new@example.com", verified: false });
+    const base = { product: "bid", topic: "bid.new_sales", source: "s" } as const;
+    await h.subscribe.enableForAccount({ ...base, subjectId: "u2" });
+    await h.subscribe.enableForAccount({ ...base, subjectId: "nobody" });
+    expect(seen).toEqual([]);
+  });
+
+  it("passes the subscriber and the time of the confirm press", async () => {
+    const seen: { subscriberId: string; at: Date }[] = [];
+    const h = createEngineHarness(undefined, {
+      afterConfirm: async ({ subscriberId, at }) => {
+        seen.push({ subscriberId, at });
+      },
+    });
+    const msg = await confirmedVisitor(h, "press@example.com");
+    expect(msg.to).toBe("press@example.com");
+    expect(seen).toHaveLength(1);
+    expect(seen[0]?.at).toEqual(h.now);
   });
 });

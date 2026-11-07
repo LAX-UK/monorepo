@@ -35,6 +35,7 @@ import type {
 } from "../../interfaces/source-of-funds-review-projector.repository.js";
 import type { IStaffOpsRecipientReader } from "../../interfaces/staff-ops-recipient.reader.js";
 import type { Db, ProjectorDbConnection } from "../../interfaces/worker-db.types.js";
+import type { IZohoCampaignsOptOutLiftRepository } from "../../interfaces/zoho-campaigns-suppression.repository.js";
 import type { ShopIdentityProjectionService } from "../../services/shop-identity-projection.service.js";
 
 export type { Db, ProjectorDbConnection };
@@ -51,6 +52,7 @@ export type ProjectorRunContext = {
   paymentRefundNotifyReader: IPaymentRefundNotifyReader;
   payoutTransferFailedNotifyReader: IPayoutTransferFailedNotifyReader;
   clearArtistBlocksRepo: IClearArtistBlocksRepository;
+  zohoCampaignsOptOutLiftRepo: IZohoCampaignsOptOutLiftRepository;
   ensurePersonalLegalEntity: IEnsurePersonalLegalEntityService;
   sourceOfFundsSettlementReader: ISourceOfFundsSettlementReader;
   sourceOfFundsBuyerReader: ISourceOfFundsBuyerReader;

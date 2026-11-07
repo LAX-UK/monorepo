@@ -24,6 +24,7 @@ export type DomainEventConsumer =
   | "notification_fanout"
   | "admin_impersonation_notify"
   | "clear_artist_blocks"
+  | "zoho_campaigns_opt_out_lift"
   | "legal_entity_provisioning"
   | "bid_profile_provisioning"
   | "bid_identity_directory"

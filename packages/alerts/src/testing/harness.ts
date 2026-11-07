@@ -13,6 +13,7 @@ import type {
   DigestNoticeInput,
   DigestNoticeWriter,
   MatchValidator,
+  SubscriptionConfirmedHook,
   VerifiedAddressLookup,
 } from "../ports.js";
 import { MemoryAlertStores } from "./memory-stores.js";
@@ -57,7 +58,10 @@ export const testUrls: AlertUrls = {
 };
 
 /** The engine wired to in-memory stores and a recording mailer, with a clock the test moves. */
-export function createEngineHarness(start = new Date("2026-11-03T09:00:00Z")) {
+export function createEngineHarness(
+  start = new Date("2026-11-03T09:00:00Z"),
+  options: { afterConfirm?: SubscriptionConfirmedHook } = {},
+) {
   let current = start;
   const clock = { now: () => current };
   const stores = new MemoryAlertStores();
@@ -81,6 +85,7 @@ export function createEngineHarness(start = new Date("2026-11-03T09:00:00Z")) {
     urls: testUrls,
     addresses,
     clock,
+    ...(options.afterConfirm ? { afterConfirm: options.afterConfirm } : {}),
   });
   const common = { subscribers: stores, topics: stores, codec, clock };
   return {
@@ -90,7 +95,11 @@ export function createEngineHarness(start = new Date("2026-11-03T09:00:00Z")) {
     accounts,
     stale,
     subscribe,
-    confirm: new ConfirmService({ ...common, topicsToEnable: () => ["bid.new_sales"] }),
+    confirm: new ConfirmService({
+      ...common,
+      topicsToEnable: () => ["bid.new_sales"],
+      ...(options.afterConfirm ? { afterConfirm: options.afterConfirm } : {}),
+    }),
     stop: new StopService(common),
     preferences: new PreferencesService({
       subscribers: stores,

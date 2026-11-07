@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { alertSubscriptionConfirmedPayloadSchemaV1 } from "./alert-payload-schemas.js";
 import {
   artworkRegisterOfferChangedPayloadSchemaV1,
   artworkRegisterStockCodeAssignedPayloadSchemaV1,
@@ -89,6 +90,7 @@ import type {
 export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "admin.impersonation_ended",
   "admin.impersonation_started",
+  "alert.subscription.confirmed",
   "aml.match_flagged",
   "aml.screening_evaluated",
   "artist.approved",
@@ -334,6 +336,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     piiClassification: "contains_pii",
   },
   "admin.impersonation_ended": { piiClassification: "contains_pii" },
+  "alert.subscription.confirmed": {
+    schema: alertSubscriptionConfirmedPayloadSchemaV1,
+    producers: ["shop-api"],
+    consumers: ["zoho_campaigns_opt_out_lift"],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
+  },
   "aml.match_flagged": {
     consumers: ["aml_match_review"],
     schema: amlScreeningPayloadSchemaV1,

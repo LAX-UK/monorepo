@@ -34,6 +34,28 @@ describe("migration 0323 Zoho Campaigns suppression", () => {
     expect(migration).toContain(`"mode" IN ('dry_run', 'live')`);
   });
 
+  it("records lifts in a table and one definer function, callable by no one by default", () => {
+    expect(migration).toContain('CREATE TABLE IF NOT EXISTS "zoho_campaigns_optout_lift"');
+    expect(migration).toContain("FUNCTION public.lift_zoho_campaigns_opt_out(");
+    expect(migration).toContain("SECURITY DEFINER");
+    expect(migration).toContain("SET search_path = pg_catalog, public");
+    expect(migration).toContain(
+      "REVOKE ALL ON FUNCTION public.lift_zoho_campaigns_opt_out(text, timestamptz, boolean) FROM PUBLIC",
+    );
+  });
+
+  it("the function removes only a Campaigns marketing opt-out, never a bounce or complaint", () => {
+    const deletes = migration.match(/DELETE FROM public\."email_suppression"[^;]*;/g) ?? [];
+    expect(deletes).toHaveLength(1);
+    expect(deletes[0]).toContain(`"reason" = 'unsubscribed_marketing'`);
+    expect(deletes[0]).toContain(`"source" = 'zoho_campaigns'`);
+  });
+
+  it("drops the lift table and function on rollback", () => {
+    expect(rollback).toContain("DROP FUNCTION IF EXISTS public.lift_zoho_campaigns_opt_out");
+    expect(rollback).toContain('DROP TABLE IF EXISTS "zoho_campaigns_optout_lift"');
+  });
+
   it("runs its rollback in one transaction, like 0321", () => {
     expect(rollback).toMatch(/^BEGIN;$/m);
     expect(rollback.trimEnd().endsWith("COMMIT;")).toBe(true);

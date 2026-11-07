@@ -1,6 +1,6 @@
 import { emailHash } from "@auction/email";
 import { describe, expect, it } from "vitest";
-import { mapCampaignsContact } from "./campaigns-suppression-event.js";
+import { mapCampaignsContact, mapCampaignsSubscriber } from "./campaigns-suppression-event.js";
 
 describe("mapCampaignsContact", () => {
   it("maps an unsubscribed contact to a marketing opt-out", () => {
@@ -64,5 +64,35 @@ describe("mapCampaignsContact", () => {
       unsubscribed_time: "last Tuesday",
     });
     expect(result).toMatchObject({ ok: true, event: { occurredAt: null } });
+  });
+});
+
+describe("mapCampaignsSubscriber", () => {
+  it("maps a subscribed contact to a hash and the time they subscribed", () => {
+    expect(
+      mapCampaignsSubscriber({
+        contact_email: " Reader@Example.com",
+        subscribed_time: "2026-11-01T10:00:00Z",
+      }),
+    ).toEqual({
+      ok: true,
+      subscriber: {
+        emailHash: emailHash("reader@example.com"),
+        subscribedAt: new Date("2026-11-01T10:00:00Z"),
+      },
+    });
+  });
+
+  it("skips a row with no address or no subscribe time; an edit time is not a subscribe time", () => {
+    expect(mapCampaignsSubscriber({ subscribed_time: "2026-11-01T10:00:00Z" })).toEqual({
+      ok: false,
+      skip: "no_email",
+    });
+    expect(
+      mapCampaignsSubscriber({
+        contact_email: "a@example.com",
+        modified_time: "2026-11-01T10:00:00Z",
+      }),
+    ).toEqual({ ok: false, skip: "no_subscribe_time" });
   });
 });

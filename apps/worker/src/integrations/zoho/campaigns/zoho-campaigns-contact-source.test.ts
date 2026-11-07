@@ -40,6 +40,18 @@ describe("HttpZohoCampaignsContactSource", () => {
     expect(get.mock.calls[0]?.[0].searchParams.get("status")).toBe("bounce");
   });
 
+  it("reads the subscribed list with status=active", async () => {
+    const get = vi.fn<CampaignsHttpGet>(async () => ({
+      status: 200,
+      body: { status: "success", list_of_details: [] },
+    }));
+    const source = new HttpZohoCampaignsContactSource(env, get, async () => "tok");
+
+    await source.listContacts("subscribed", { offset: 0, limit: 200 });
+
+    expect(get.mock.calls[0]?.[0].searchParams.get("status")).toBe("active");
+  });
+
   it("fails on a 200 whose status is not success", async () => {
     for (const body of [
       { status: "error", message: "Invalid list", list_of_details: [] },

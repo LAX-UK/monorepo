@@ -34,6 +34,7 @@ function makeCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunCont
     paymentRefundNotifyReader: {} as never,
     payoutTransferFailedNotifyReader: {} as never,
     clearArtistBlocksRepo: {} as never,
+    zohoCampaignsOptOutLiftRepo: {} as never,
     ensurePersonalLegalEntity: { ensure: vi.fn() },
     sourceOfFundsSettlementReader: {} as never,
     sourceOfFundsBuyerReader: {
