@@ -62,6 +62,29 @@ describe("RecordRow", () => {
     );
   });
 
+  it("keeps facts on one line when wide, truncating only the named fact, in tabular figures", () => {
+    const long = "The Annual Spring Sale of Modern and Post-War British Art and Design, Part Two";
+    const li = row(
+      <RecordRow title="Work" meta={["Lot 12", long, null, "Max £1,200"]} metaShrink={1} />,
+    );
+    const meta = li.querySelector("[data-record-meta]") as HTMLElement;
+    expect(meta.className).toContain("tabular-nums");
+    expect((meta.firstElementChild as HTMLElement).className).toContain("@2xl:flex-nowrap");
+    const facts = [...meta.querySelectorAll<HTMLElement>("[data-record-fact]")];
+    expect(facts.map((f) => f.className.includes("@2xl:shrink-0"))).toEqual([true, false, true]);
+    // The long name still truncates, and every fact keeps its separator dot.
+    expect(facts[1]?.textContent).toBe(long);
+    expect(facts[1]?.firstElementChild?.className).toContain("truncate");
+    for (const fact of facts) expect(fact.className).toContain("before:content-['·'_/_'']");
+  });
+
+  it("wraps facts at every width without metaShrink", () => {
+    const li = row(<RecordRow title="Work" meta={["Lot 12", "Spring sale"]} />);
+    const meta = li.querySelector("[data-record-meta]") as HTMLElement;
+    expect(meta.className).not.toContain("tabular-nums");
+    expect((meta.firstElementChild as HTMLElement).className).not.toContain("flex-nowrap");
+  });
+
   it("draws no facts line when there are none", () => {
     const li = row(<RecordRow title="Work" meta={[null]} />);
     expect(li.querySelector("[data-record-meta]")).toBeNull();
