@@ -68,6 +68,8 @@ export type PayPlanProgress = {
   remainingPence: number;
   /** Whole percent received, rounded down. */
   receivedPercent: number;
+  /** Invoices in this payment beyond the lots of the link. */
+  otherInvoices: number;
 };
 
 /** Where to send a bank transfer, as the payment provider issued it for this payment. */

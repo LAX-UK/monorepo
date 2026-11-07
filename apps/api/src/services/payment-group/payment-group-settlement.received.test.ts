@@ -28,18 +28,19 @@ const group = (over: Partial<PaymentGroupRecord> = {}): PaymentGroupRecord => ({
 });
 
 function setup(
-  record = group(),
+  current = group(),
   over: { moved?: boolean; recorded?: boolean; claimed?: boolean } = {},
 ) {
   const publish = vi.fn().mockResolvedValue(undefined);
   const applyAuthorizedInTransaction = vi.fn();
   const recordReceivedInTransaction = vi.fn().mockResolvedValue(over.recorded ?? true);
   const transitionInTransaction = vi.fn().mockResolvedValue(over.moved ?? true);
+  const record = vi.fn().mockResolvedValue(undefined);
   const deps: PaymentGroupSettlementDeps = {
     transactionRunner: { runInTransaction: async (fn: (tx: never) => unknown) => fn(TX) } as never,
     groups: {
       lockInTransaction: vi.fn().mockResolvedValue({
-        group: record,
+        group: current,
         members: [{ paymentId: "pay_a" }, { paymentId: "pay_b" }],
       }),
       transitionInTransaction,
@@ -50,7 +51,7 @@ function setup(
     events: mockDomainEventSink(publish),
     claims: { claim: vi.fn().mockResolvedValue(over.claimed ?? true) },
     receipt: { send: vi.fn() },
-    unappliedMoney: { record: vi.fn() },
+    unappliedMoney: { record },
     eligibility: { check: vi.fn() },
   };
   return {
@@ -59,6 +60,7 @@ function setup(
     applyAuthorizedInTransaction,
     recordReceivedInTransaction,
     transitionInTransaction,
+    record,
   };
 }
 
@@ -68,7 +70,7 @@ describe("PaymentGroupSettlementService.markProcessing: money received so far", 
     const result = await t.service.markProcessing({
       eventId: "evt_1",
       groupId: "grp_1",
-      received: { amountPence: 600_000, eventAt: EVENT_AT },
+      received: { amountPence: 600_000, paymentIntentId: "pi_1", eventAt: EVENT_AT },
     });
     expect(result).toEqual({ processed: true, action: "payment_intent_partially_funded" });
     expect(t.transitionInTransaction).toHaveBeenCalledWith(TX, "grp_1", ["open"], "processing");
@@ -90,7 +92,7 @@ describe("PaymentGroupSettlementService.markProcessing: money received so far", 
     const result = await t.service.markProcessing({
       eventId: "evt_2",
       groupId: "grp_1",
-      received: { amountPence: 900_000, eventAt: EVENT_AT },
+      received: { amountPence: 900_000, paymentIntentId: "pi_1", eventAt: EVENT_AT },
     });
     expect(result).toEqual({ processed: true, action: "payment_intent_partially_funded" });
     expect(t.applyAuthorizedInTransaction).not.toHaveBeenCalled();
@@ -102,7 +104,7 @@ describe("PaymentGroupSettlementService.markProcessing: money received so far", 
     const result = await t.service.markProcessing({
       eventId: "evt_old",
       groupId: "grp_1",
-      received: { amountPence: 100_000, eventAt: EVENT_AT },
+      received: { amountPence: 100_000, paymentIntentId: "pi_1", eventAt: EVENT_AT },
     });
     expect(result).toMatchObject({ action: "skipped", reason: "payment_group_not_open" });
     expect(t.publish).not.toHaveBeenCalled();
@@ -113,7 +115,7 @@ describe("PaymentGroupSettlementService.markProcessing: money received so far", 
     const result = await t.service.markProcessing({
       eventId: "evt_1",
       groupId: "grp_1",
-      received: { amountPence: 600_000, eventAt: EVENT_AT },
+      received: { amountPence: 600_000, paymentIntentId: "pi_1", eventAt: EVENT_AT },
     });
     expect(result).toMatchObject({ processed: false, reason: "duplicate_event" });
     expect(t.recordReceivedInTransaction).not.toHaveBeenCalled();
@@ -126,7 +128,7 @@ describe("PaymentGroupSettlementService.markProcessing: money received so far", 
       const result = await t.service.markProcessing({
         eventId: "evt_1",
         groupId: "grp_1",
-        received: { amountPence: 600_000, eventAt: EVENT_AT },
+        received: { amountPence: 600_000, paymentIntentId: "pi_1", eventAt: EVENT_AT },
       });
       expect(result).toMatchObject({ action: "skipped", reason: "payment_group_not_open" });
       expect(t.recordReceivedInTransaction).not.toHaveBeenCalled();
@@ -140,5 +142,34 @@ describe("PaymentGroupSettlementService.markProcessing: money received so far", 
     expect(result).toEqual({ processed: true, action: "payment_intent_processing" });
     expect(t.recordReceivedInTransaction).not.toHaveBeenCalled();
     expect(t.applyAuthorizedInTransaction).toHaveBeenCalledTimes(2);
+  });
+
+  it("raises a finance task, never a refund, when more than the total arrived", async () => {
+    const t = setup(group({ status: "processing" }), { moved: false });
+    await t.service.markProcessing({
+      eventId: "evt_over",
+      groupId: "grp_1",
+      received: { amountPence: 1_200_000, paymentIntentId: "pi_1", eventAt: EVENT_AT },
+    });
+    expect(t.record).toHaveBeenCalledExactlyOnceWith(
+      TX,
+      expect.objectContaining({
+        reason: "group_overpaid",
+        paymentGroupId: "grp_1",
+        stripePaymentIntentId: "pi_1",
+        amountCents: 29_900,
+      }),
+      "org_1",
+    );
+  });
+
+  it("raises nothing when the total or less arrived", async () => {
+    const t = setup();
+    await t.service.markProcessing({
+      eventId: "evt_ok",
+      groupId: "grp_1",
+      received: { amountPence: 1_170_100, paymentIntentId: "pi_1", eventAt: EVENT_AT },
+    });
+    expect(t.record).not.toHaveBeenCalled();
   });
 });

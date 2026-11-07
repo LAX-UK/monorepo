@@ -88,14 +88,18 @@ export function PaySessionProvider({
 
   // Coming back to this page from the payment page must not stay "opening", and the method the
   // person chose before leaving is chosen again (if the server still allows it).
+  const methodsRef = useRef(methods);
+  methodsRef.current = methods;
   useEffect(() => {
-    if (methods) setMethod(usableMethod(methods, remembered(storageKey)));
+    if (methodsRef.current) {
+      setMethod(usableMethod(methodsRef.current, remembered(storageKey)));
+    }
     const reset = (event: PageTransitionEvent) => {
       if (event.persisted) setOpening(false);
     };
     window.addEventListener("pageshow", reset);
     return () => window.removeEventListener("pageshow", reset);
-  }, [methods, storageKey]);
+  }, [storageKey]);
 
   useEffect(
     () => () => {

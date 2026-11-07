@@ -15,23 +15,33 @@ export type OpenGroupCheckoutsDeps = {
   groups: Pick<IPaymentGroupRepository, "findLiveByPaymentIds">;
   gateway: Pick<IPaymentGroupGateway, "expireCheckout" | "checkoutStatus">;
   settlement: Pick<PaymentGroupSettlementService, "release">;
+  now?: () => Date;
 };
+
+/**
+ * How long a group may be without a checkout before it is taken as one whose start failed. Until
+ * then another payment is still being opened for it, and ending it would leave a checkout that
+ * is paid against a group that has been let go. The same time protects a checkout another
+ * member opened a moment ago.
+ */
+export const START_GRACE_MS = 2 * 60_000;
 
 /**
  * Ends the checkouts the payer walked away from, so the invoices can be paid again by the method
  * they now choose. A checkout is ended only after the provider confirms it can no longer be paid:
  * it is expired first, then read back, and one that turns out to be finished (a card submitted,
  * a transfer chosen) is left alone and reported as in progress. Money on its way is never ended.
- * Every doubt leaves the invoices held rather than free.
+ * Every doubt leaves the invoices held rather than free, and a payment that is still being
+ * opened (no checkout recorded yet) is left to finish.
  */
 export class OpenGroupCheckouts {
   constructor(private readonly deps: OpenGroupCheckoutsDeps) {}
 
-  async endFor(paymentIds: readonly string[]): Promise<OpenCheckoutsOutcome> {
+  async endFor(paymentIds: readonly string[], payerUserId: string): Promise<OpenCheckoutsOutcome> {
     const groups = await this.deps.groups.findLiveByPaymentIds(paymentIds);
     let outcome: OpenCheckoutsOutcome = "clear";
     for (const group of groups) {
-      const ended = await this.endOne(group);
+      const ended = await this.endOne(group, payerUserId);
       if (ended === "in_progress") return "in_progress";
       if (ended === "unavailable") outcome = "unavailable";
     }
@@ -40,9 +50,15 @@ export class OpenGroupCheckouts {
 
   private async endOne(
     group: Awaited<ReturnType<IPaymentGroupRepository["findLiveByPaymentIds"]>>[number],
+    payerUserId: string,
   ): Promise<OpenCheckoutsOutcome> {
     if (group.status !== "open") return "in_progress";
     const sessionId = group.stripeCheckoutSessionId;
+    const age = (this.deps.now?.() ?? new Date()).getTime() - group.createdAt.getTime();
+    // Still being opened, or another member's recent checkout: not ours to end.
+    if (age < START_GRACE_MS && (!sessionId || group.createdByUserId !== payerUserId)) {
+      return "in_progress";
+    }
     if (sessionId) {
       try {
         await this.deps.gateway.expireCheckout(sessionId);

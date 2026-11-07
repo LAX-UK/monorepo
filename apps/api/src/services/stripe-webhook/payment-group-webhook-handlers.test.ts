@@ -82,7 +82,45 @@ describe("payment webhooks with pay several", () => {
     expect(settlement.markProcessing).toHaveBeenCalledWith({
       eventId: "evt_part",
       groupId: "group-1",
-      received: { amountPence: 12_000, eventAt: new Date(1_793_000_000 * 1000) },
+      received: {
+        amountPence: 12_000,
+        paymentIntentId: "pi_g",
+        eventAt: new Date(1_793_000_000 * 1000),
+      },
+    });
+  });
+
+  it("reads what arrived from the provider's remaining amount, as the single-invoice handler does", async () => {
+    const { handlers, settlement } = setup();
+    const realistic = {
+      ...groupIntent,
+      amount: 30_000,
+      amount_received: 0,
+      status: "requires_action",
+      next_action: {
+        type: "display_bank_transfer_instructions",
+        display_bank_transfer_instructions: {
+          amount_remaining: 18_000,
+          currency: "gbp",
+          financial_addresses: [],
+          hosted_instructions_url: "https://payments.stripe.com/instructions/test",
+          reference: "LAXB7KQ2R9",
+          type: "gb_bank_transfer",
+        },
+      },
+    } as unknown as Stripe.PaymentIntent;
+    await handlers.paymentIntentPartiallyFunded.handle(
+      { ...event, id: "evt_real", created: 1_793_000_000 } as Stripe.Event,
+      realistic,
+    );
+    expect(settlement.markProcessing).toHaveBeenCalledWith({
+      eventId: "evt_real",
+      groupId: "group-1",
+      received: {
+        amountPence: 12_000,
+        paymentIntentId: "pi_g",
+        eventAt: new Date(1_793_000_000 * 1000),
+      },
     });
   });
 

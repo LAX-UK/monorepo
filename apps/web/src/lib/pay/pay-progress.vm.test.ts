@@ -45,6 +45,7 @@ function progressOf(over: Partial<PayPlanProgress> = {}): PayPlanProgress {
     receivedPence: 0,
     remainingPence: 1_170_100,
     receivedPercent: 0,
+    otherInvoices: 0,
     ...over,
   };
 }
@@ -168,6 +169,16 @@ describe("a bank transfer that arrived in part (S8)", () => {
   it("keeps every invoice waiting: none is shown as paid before all of it is in", () => {
     expect(vm.lots.every((l) => l.detail?.note === "Waiting for your transfer")).toBe(true);
     expect(vm.action).toBeNull();
+  });
+});
+
+describe("a payment that also covers invoices the link does not name", () => {
+  it("says so beside the total", () => {
+    const one = build(progressOf({ otherInvoices: 1 }));
+    expect(one.money?.due).toBe("This payment also covers 1 other invoice.");
+    const many = build(progressOf({ otherInvoices: 3 }));
+    expect(many.money?.due).toBe("This payment also covers 3 other invoices.");
+    expect(build(progressOf()).money?.due).toBeNull();
   });
 });
 

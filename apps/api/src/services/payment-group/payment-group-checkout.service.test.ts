@@ -87,6 +87,7 @@ function setup(
     group?: Partial<PaymentGroupRecord>;
     invoices?: [string, BidInvoiceRecord][];
     earlier?: "clear" | "in_progress" | "unavailable";
+    recorded?: boolean;
   } = {},
 ) {
   const group = { ...GROUP, ...over.group };
@@ -97,7 +98,7 @@ function setup(
         : { kind: "claimed" as const, group },
     ),
     listMembers: vi.fn(async () => MEMBERS),
-    recordCheckout: vi.fn(async () => {}),
+    recordCheckout: vi.fn(async () => over.recorded ?? true),
   };
   const gateway = {
     isConfigured: () => true,
@@ -187,10 +188,16 @@ describe("PaymentGroupCheckoutService.start", () => {
   it("ends a checkout the payer left open before it takes the invoices", async () => {
     const { svc, groups, openCheckouts } = setup();
     await svc.start(INPUT);
-    expect(openCheckouts.endFor).toHaveBeenCalledWith(["pay-2", "pay-3"]);
+    expect(openCheckouts.endFor).toHaveBeenCalledWith(["pay-2", "pay-3"], "payer-1");
     expect(openCheckouts.endFor.mock.invocationCallOrder[0]).toBeLessThan(
       groups.claim.mock.invocationCallOrder[0] ?? 0,
     );
+  });
+
+  it("expires a checkout it just opened if the group was let go meanwhile, and says conflict", async () => {
+    const { svc, gateway } = setup({ recorded: false });
+    expect((await svc.start(INPUT))._unsafeUnwrapErr()).toBe("conflict");
+    expect(gateway.expireCheckout).toHaveBeenCalledExactlyOnceWith("cs_1");
   });
 
   it("opens nothing while a payment for the invoices is finished or on its way", async () => {

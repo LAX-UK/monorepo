@@ -101,7 +101,10 @@ function moneyFor(
   progress: PayPlanProgress,
   transfer: BankTransferInstructions | null,
 ): PayMoneyVm {
-  const base = { due: null, ...entityLines(plan.entity) };
+  const base = {
+    due: progress.otherInvoices > 0 ? PAY_COPY.otherInvoices(progress.otherInvoices) : null,
+    ...entityLines(plan.entity),
+  };
   if (progress.stage === "confirming") {
     return {
       ...base,

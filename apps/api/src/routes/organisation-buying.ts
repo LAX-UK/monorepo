@@ -63,6 +63,7 @@ export function createOrganisationBuyingRoutes(
     payPlan,
     paySeveral,
     payTransfer,
+    payProgress,
     deliveryQuotes,
     collection,
     problems,
@@ -107,6 +108,19 @@ export function createOrganisationBuyingRoutes(
     async (c) => {
       c.header("Cache-Control", "no-store");
       return respond(c, await payPlan.plan(memberActor(c), c.req.valid("query").lots));
+    },
+  );
+
+  // Where a payment under way for the picked lots stands: a light read for a page that waits.
+  r.get(
+    "/purchases/pay-progress",
+    requireAuth,
+    requireBuyerRole,
+    requireContext,
+    zValidator("query", payPlanQuerySchema),
+    async (c) => {
+      c.header("Cache-Control", "no-store");
+      return respond(c, await payProgress.progress(memberActor(c), c.req.valid("query").lots));
     },
   );
 

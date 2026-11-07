@@ -99,7 +99,7 @@ export class PaymentGroupCheckoutService {
     input: StartGroupCheckoutInput,
   ): Promise<Result<StartedGroupCheckout, GroupCheckoutError>> {
     const paymentIds = input.invoices.map((i) => i.paymentId);
-    const earlier = await this.deps.openCheckouts.endFor(paymentIds);
+    const earlier = await this.deps.openCheckouts.endFor(paymentIds, input.payerUserId);
     if (earlier === "in_progress") {
       recordMoneyPathEvent("payment_group_start_refused_in_progress");
       return err("in_progress");
@@ -152,10 +152,17 @@ export class PaymentGroupCheckoutService {
     const session = await this.openCheckout(group, members, input.payerUserId);
     if (!session) return this.letGo(group.id, "checkout_unavailable");
 
-    await this.deps.groups.recordCheckout(group.id, {
+    const recorded = await this.deps.groups.recordCheckout(group.id, {
       sessionId: session.sessionId,
       paymentIntentId: session.paymentIntentId,
     });
+    if (!recorded) {
+      // The group was let go while its checkout was being opened (another payment ended it):
+      // that checkout must not be payable against a group that no longer holds the invoices.
+      await this.deps.gateway.expireCheckout(session.sessionId);
+      recordMoneyPathEvent("payment_group_checkout_orphaned");
+      return err("conflict");
+    }
     recordMoneyPathEvent(`payment_group_checkout_created_${input.rail}`);
     return ok({ paymentGroupId: group.id, checkoutUrl: session.url, rail: input.rail });
   }

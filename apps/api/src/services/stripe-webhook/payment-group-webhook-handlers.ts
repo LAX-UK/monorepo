@@ -10,6 +10,7 @@ import type {
   PaymentGroupSettlementService,
 } from "../payment-group/payment-group-settlement.service.js";
 import { chargeIdFromPaymentIntent } from "../stripe/stripe-charge-id.js";
+import { transferFunding } from "./bank-transfer-funding.js";
 import type { ICheckoutSessionWebhookHandler } from "./checkout-session-webhook-handler.js";
 import type { IPaymentIntentWebhookHandler } from "./payment-intent-webhook-handler.js";
 import type { PaymentWebhookResult } from "./payment-webhook-types.js";
@@ -93,7 +94,8 @@ export class GroupPaymentPartiallyFundedHandler implements IPaymentIntentWebhook
       eventId: event.id,
       groupId: paymentGroupIdOf(paymentIntent) as string,
       received: {
-        amountPence: paymentIntent.amount_received ?? 0,
+        amountPence: transferFunding(paymentIntent).receivedPence,
+        paymentIntentId: paymentIntent.id,
         eventAt: new Date(event.created * 1000),
       },
     });

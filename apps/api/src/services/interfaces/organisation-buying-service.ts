@@ -16,7 +16,7 @@ import type {
   DeliveryQuoteRow,
   RecordPerson,
 } from "@auction/persistence/interfaces";
-import type { BankTransferInstructions, PayPlan } from "@auction/types";
+import type { BankTransferInstructions, PayPlan, PayPlanProgress } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { OrganisationMemberActor } from "./organisation-membership-service.js";
 
@@ -168,6 +168,14 @@ export interface IPayTransferService {
     actor: OrganisationMemberActor,
     lotIds: readonly string[],
   ): BuyingResult<{ instructions: BankTransferInstructions | null }>;
+}
+
+/** Only where a payment under way for the picked lots stands: what a waiting page asks for. */
+export interface IPayProgressReadService {
+  progress(
+    actor: OrganisationMemberActor,
+    lotIds: readonly string[],
+  ): BuyingResult<{ progress: PayPlanProgress | null }>;
 }
 
 /** "Pay several": the account's payers settle several invoices with one payment. */

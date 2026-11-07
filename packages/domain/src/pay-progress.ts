@@ -15,6 +15,8 @@ export type PayProgressFacts = {
   /** What the bank transfer has delivered so far, from the provider's own records. */
   receivedPence: number;
   lots: readonly PayPlanProgressLot[];
+  /** How many invoices the payment holds in all. */
+  invoiceCount: number;
 };
 
 /**
@@ -34,6 +36,7 @@ export function payProgressOf(facts: PayProgressFacts): PayPlanProgress | null {
     rail: method,
     stage,
     lots: [...facts.lots],
+    otherInvoices: Math.max(0, facts.invoiceCount - facts.lots.length),
     totalPence: facts.totalPence,
     receivedPence,
     remainingPence,

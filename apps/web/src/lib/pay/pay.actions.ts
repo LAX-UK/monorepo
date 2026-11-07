@@ -4,7 +4,7 @@ import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { loadPayPlan, postPay } from "./pay-api.server";
+import { loadPayPlan, loadPayProgress, postPay } from "./pay-api.server";
 import { PAY_COPY } from "./pay-copy";
 import type { PayMethod } from "./pay-methods";
 import { progressSignature } from "./pay-progress.vm";
@@ -55,7 +55,7 @@ export async function payProgressAction(lotIds: string[]): Promise<string | null
   return instrumentServerAction("payProgressAction", async () => {
     const parsed = lotIdsSchema.safeParse(lotIds);
     if (!parsed.success) return null;
-    const read = await loadPayPlan(parsed.data);
-    return read.kind === "ok" ? progressSignature(read.plan.progress) : null;
+    const read = await loadPayProgress(parsed.data);
+    return read ? progressSignature(read.progress) : null;
   });
 }

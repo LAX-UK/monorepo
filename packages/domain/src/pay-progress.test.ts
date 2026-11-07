@@ -13,6 +13,7 @@ const BASE: PayProgressFacts = {
   totalPence: 1_170_100,
   receivedPence: 0,
   lots: LOTS,
+  invoiceCount: 2,
 };
 
 describe("payProgressOf", () => {
@@ -32,6 +33,7 @@ describe("payProgressOf", () => {
       rail: "bank_transfer",
       stage: "awaiting_transfer",
       lots: LOTS,
+      otherInvoices: 0,
       totalPence: 1_170_100,
       receivedPence: 0,
       remainingPence: 1_170_100,
@@ -52,6 +54,11 @@ describe("payProgressOf", () => {
     expect(
       payProgressOf({ ...BASE, status: "processing", receivedPence: 1_170_099 }),
     ).toMatchObject({ remainingPence: 1, receivedPercent: 99 });
+  });
+
+  it("counts the invoices of the payment that the link does not name", () => {
+    expect(payProgressOf({ ...BASE, invoiceCount: 5 })?.otherInvoices).toBe(3);
+    expect(payProgressOf({ ...BASE, invoiceCount: 1 })?.otherInvoices).toBe(0);
   });
 
   it("clamps money beyond the total, so the remainder is never negative", () => {

@@ -37,6 +37,31 @@ const gate = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("finance_check") }),
 ]);
 
+const progressSchema = z.object({
+  rail: z.enum(["card", "bank_transfer"]),
+  stage: z.enum(["confirming", "awaiting_transfer", "part_received"]),
+  lots: z.array(
+    z.object({
+      lotId: z.string(),
+      title: z.string(),
+      lotNumber: z.number().int().nullable(),
+      saleTitle: z.string().nullable(),
+      totalPence: z.number().int(),
+    }),
+  ),
+  totalPence: z.number().int(),
+  receivedPence: z.number().int(),
+  remainingPence: z.number().int(),
+  receivedPercent: z.number().int(),
+  otherInvoices: z.number().int().nonnegative(),
+});
+
+/** The payment under way as the progress read sends it; `undefined` when it is not that shape. */
+export function parsePayProgressRead(data: unknown): { progress: PayPlan["progress"] } | undefined {
+  const parsed = z.object({ progress: progressSchema.nullable() }).safeParse(data);
+  return parsed.success ? parsed.data : undefined;
+}
+
 const payPlanSchema = z.object({
   account: z.object({
     legalEntityId: z.string(),
@@ -79,25 +104,7 @@ const payPlanSchema = z.object({
     }),
   ),
   cardLimitPence: z.number().int().nonnegative(),
-  progress: z
-    .object({
-      rail: z.enum(["card", "bank_transfer"]),
-      stage: z.enum(["confirming", "awaiting_transfer", "part_received"]),
-      lots: z.array(
-        z.object({
-          lotId: z.string(),
-          title: z.string(),
-          lotNumber: z.number().int().nullable(),
-          saleTitle: z.string().nullable(),
-          totalPence: z.number().int(),
-        }),
-      ),
-      totalPence: z.number().int(),
-      receivedPence: z.number().int(),
-      remainingPence: z.number().int(),
-      receivedPercent: z.number().int(),
-    })
-    .nullable(),
+  progress: progressSchema.nullable(),
   currency: z.literal("GBP"),
 }) satisfies z.ZodType<PayPlan, z.ZodTypeDef, unknown>;
 

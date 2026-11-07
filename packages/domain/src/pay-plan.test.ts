@@ -327,6 +327,7 @@ describe("payment methods", () => {
       receivedPence: 40,
       remainingPence: 60,
       receivedPercent: 40,
+      otherInvoices: 0,
     };
     expect(buildPayPlan(facts({ progress })).progress).toEqual(progress);
     expect(buildPayPlan(facts()).progress).toBeNull();

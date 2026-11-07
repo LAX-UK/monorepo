@@ -25,6 +25,7 @@ const group = (over: Partial<LivePaymentGroupFacts> = {}): LivePaymentGroupFacts
   stripeCheckoutSessionId: "cs_1",
   totalAmount: "100.00",
   amountReceived: "0.00",
+  memberCount: 2,
   ...over,
 });
 
@@ -36,6 +37,7 @@ const PROGRESS: PayPlanProgress = {
   receivedPence: 0,
   remainingPence: 10_000,
   receivedPercent: 0,
+  otherInvoices: 0,
 };
 
 function setup(

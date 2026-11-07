@@ -30,6 +30,7 @@ import type {
   ICollectionBookingService,
   IDeliveryQuoteService,
   IPayPlanService,
+  IPayProgressReadService,
   IPaySeveralService,
   IPayTransferService,
   IPurchaseProblemService,
@@ -45,6 +46,7 @@ import {
   StaffDeliveryQuoteService,
 } from "../services/organisation-buying/delivery-quote.service.js";
 import { PayPlanService } from "../services/organisation-buying/pay-plan.service.js";
+import { PayProgressReadService } from "../services/organisation-buying/pay-progress-read.service.js";
 import { PayProgressResolver } from "../services/organisation-buying/pay-progress.resolver.js";
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
 import { PayTransferService } from "../services/organisation-buying/pay-transfer.service.js";
@@ -62,6 +64,7 @@ export type OrganisationBuyingServices = {
   payPlan: IPayPlanService;
   paySeveral: IPaySeveralService;
   payTransfer: IPayTransferService;
+  payProgress: IPayProgressReadService;
   deliveryQuotes: IDeliveryQuoteService;
   collection: ICollectionBookingService;
   problems: IPurchaseProblemService;
@@ -151,6 +154,7 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
         checkout: input.payments.groupCheckout,
         metrics: { record: recordMoneyPathEvent },
       }),
+      payProgress: new PayProgressReadService({ candidates, progress }),
       payTransfer: new PayTransferService({
         candidates,
         progress,

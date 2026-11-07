@@ -31,7 +31,8 @@ describe("migration 0322 payment group received", () => {
     expect(migration).toMatch(
       /ADD COLUMN IF NOT EXISTS "received_event_at" timestamp with time zone;/,
     );
-    expect(migration).toMatch(/CHECK \("payment_group"\."amount_received" >= 0/);
+    expect(migration).toMatch(/CHECK \("payment_group"\."amount_received" >= 0[^;]*NOT VALID;/);
+    expect(migration).toMatch(/VALIDATE CONSTRAINT "payment_group_amount_received_check"/);
     expect(migration).not.toMatch(/DROP (TABLE|COLUMN)/);
   });
 

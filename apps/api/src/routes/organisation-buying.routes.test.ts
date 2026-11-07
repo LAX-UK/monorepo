@@ -11,6 +11,7 @@ import { AccountRegistrationsService } from "../services/organisation-buying/acc
 import { CollectionBookingService } from "../services/organisation-buying/collection-booking.service.js";
 import { DeliveryQuoteService } from "../services/organisation-buying/delivery-quote.service.js";
 import { PayPlanService } from "../services/organisation-buying/pay-plan.service.js";
+import { PayProgressReadService } from "../services/organisation-buying/pay-progress-read.service.js";
 import { PayProgressResolver } from "../services/organisation-buying/pay-progress.resolver.js";
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
 import { PayTransferService } from "../services/organisation-buying/pay-transfer.service.js";
@@ -153,6 +154,10 @@ function mount(
             }),
         },
       }),
+      payProgress: new PayProgressReadService({
+        candidates,
+        progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
+      }),
       payTransfer: new PayTransferService({
         candidates,
         progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
@@ -284,6 +289,18 @@ const MATRIX: Record<
   // The plan is for everyone who follows purchases; whether they pay is told by its gate.
   "GET /purchases/pay-plan": {
     call: (app) => app.request(`/legal-entities/purchases/pay-plan?lots=${LOTS.due}`),
+    expected: {
+      owner: 200,
+      admin: 200,
+      finance: 200,
+      buyer_agent: 200,
+      consignor: 403,
+      viewer: 403,
+    },
+  },
+  // Following a payment under way is for everyone who follows purchases.
+  "GET /purchases/pay-progress": {
+    call: (app) => app.request(`/legal-entities/purchases/pay-progress?lots=${LOTS.due}`),
     expected: {
       owner: 200,
       admin: 200,

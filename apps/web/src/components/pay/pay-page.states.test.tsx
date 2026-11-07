@@ -134,32 +134,52 @@ describe("opening the secure payment page (S4)", () => {
     expect(within(alert).getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 
-  it("tries the same payment again from the notice, and the late first answer is ignored", async () => {
+  it("keeps Try again disabled until the first attempt has answered, so two pages never open", async () => {
     vi.useFakeTimers();
     let answerFirst: (value: unknown) => void = () => undefined;
-    payAction
-      .mockReturnValueOnce(
-        new Promise((resolve) => {
-          answerFirst = resolve;
-        }),
-      )
-      .mockResolvedValueOnce({ kind: "redirect", url: "https://pay.example/second" });
+    payAction.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answerFirst = resolve;
+      }),
+    );
     drawReady(small());
     fireEvent.click(screen.getAllByRole("button", { name: "Pay £2,375.00" })[0] as HTMLElement);
     await act(async () => {
       vi.advanceTimersByTime(OPEN_TIMEOUT_MS);
     });
-    fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Try again" }));
+    const retry = within(screen.getByRole("alert")).getByRole("button", { name: "Try again" });
+    expect(retry).toBeDisabled();
+    fireEvent.click(retry);
+    expect(payAction).toHaveBeenCalledTimes(1);
+
+    // When the first attempt answers late with a refusal, the notice gives way to the answer.
     await act(async () => {
+      answerFirst({ kind: "failed", message: "Paying is paused for a moment.", refresh: false });
       await Promise.resolve();
     });
-    expect(payAction).toHaveBeenCalledTimes(2);
-    expect(assign).toHaveBeenCalledExactlyOnceWith("https://pay.example/second");
+    expect(screen.getByRole("alert")).toHaveTextContent("Paying is paused for a moment.");
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(assign).not.toHaveBeenCalled();
+  });
+
+  it("goes to the payment page if the first attempt answers after the notice showed", async () => {
+    vi.useFakeTimers();
+    let answerFirst: (value: unknown) => void = () => undefined;
+    payAction.mockReturnValueOnce(
+      new Promise((resolve) => {
+        answerFirst = resolve;
+      }),
+    );
+    drawReady(small());
+    fireEvent.click(screen.getAllByRole("button", { name: "Pay £2,375.00" })[0] as HTMLElement);
+    await act(async () => {
+      vi.advanceTimersByTime(OPEN_TIMEOUT_MS);
+    });
     await act(async () => {
       answerFirst({ kind: "redirect", url: "https://pay.example/first" });
       await Promise.resolve();
     });
-    expect(assign).toHaveBeenCalledTimes(1);
+    expect(assign).toHaveBeenCalledExactlyOnceWith("https://pay.example/first");
   });
 });
 
@@ -208,6 +228,7 @@ function progressOf(over: Partial<PayPlanProgress> = {}): PayPlanProgress {
     receivedPence: 0,
     remainingPence: 1_170_100,
     receivedPercent: 0,
+    otherInvoices: 0,
     ...over,
   };
 }

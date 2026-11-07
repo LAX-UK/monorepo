@@ -54,6 +54,7 @@ export class PayProgressResolver {
           totalPence: gbpAmountToPence(group.totalAmount),
           receivedPence: gbpAmountToPence(group.amountReceived),
           lots,
+          invoiceCount: group.memberCount,
         });
         return [group.id, progress] as const;
       }),

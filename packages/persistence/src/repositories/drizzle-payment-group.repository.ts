@@ -165,22 +165,25 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
   async recordCheckout(
     groupId: string,
     checkout: { sessionId: string; paymentIntentId: string | null },
-  ): Promise<void> {
-    await this.db.transaction(async (tx) => {
-      await tx
+  ): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const updated = await tx
         .update(paymentGroup)
         .set({
           stripeCheckoutSessionId: checkout.sessionId,
           ...(checkout.paymentIntentId ? { stripePaymentIntentId: checkout.paymentIntentId } : {}),
           updatedAt: new Date(),
         })
-        .where(eq(paymentGroup.id, groupId));
+        .where(and(eq(paymentGroup.id, groupId), inArray(paymentGroup.status, LIVE_STATUSES)))
+        .returning({ id: paymentGroup.id });
+      if (updated.length === 0) return false;
       if (checkout.paymentIntentId) {
         await tx
           .update(payment)
           .set({ stripePaymentIntentId: checkout.paymentIntentId })
           .where(eq(payment.paymentGroupId, groupId));
       }
+      return true;
     });
   }
 
@@ -263,6 +266,7 @@ export class DrizzlePaySeveralInvoiceFlagsReader implements IPaySeveralInvoiceFl
         groupSession: paymentGroup.stripeCheckoutSessionId,
         groupTotal: paymentGroup.totalAmount,
         groupReceived: paymentGroup.amountReceived,
+        groupMembers: sql<number>`(select count(*)::int from payment member where member.payment_group_id = ${paymentGroup.id})`,
       })
       .from(payment)
       .innerJoin(legalEntity, eq(legalEntity.id, payment.sellerLegalEntityId))
@@ -288,6 +292,7 @@ export class DrizzlePaySeveralInvoiceFlagsReader implements IPaySeveralInvoiceFl
                     stripeCheckoutSessionId: r.groupSession,
                     totalAmount: String(r.groupTotal),
                     amountReceived: String(r.groupReceived),
+                    memberCount: Number(r.groupMembers),
                   }
                 : null,
           },

@@ -83,12 +83,13 @@ export interface IPaymentGroupRepository {
   ): Promise<boolean>;
   /**
    * Records the group's checkout, and its PaymentIntent (when the provider made one up front) on
-   * the group and on each of its invoices' payments.
+   * the group and on each of its invoices' payments. Only a live group takes it; `false` when
+   * the group was let go meanwhile, in which case nothing is recorded.
    */
   recordCheckout(
     groupId: string,
     checkout: { sessionId: string; paymentIntentId: string | null },
-  ): Promise<void>;
+  ): Promise<boolean>;
   /** Locks the group and its invoices' payments (`FOR UPDATE`) inside `tx`. */
   lockInTransaction(tx: Database, groupId: string): Promise<LockedPaymentGroup | null>;
   /**
@@ -129,6 +130,8 @@ export type LivePaymentGroupFacts = {
   /** Decimal strings, as stored. */
   totalAmount: string;
   amountReceived: string;
+  /** How many invoices the group holds. */
+  memberCount: number;
 };
 
 export interface IPaySeveralInvoiceFlagsReader {

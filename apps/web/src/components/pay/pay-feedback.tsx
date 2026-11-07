@@ -11,7 +11,7 @@ import { usePaySession } from "./pay-session";
  * takes focus, so a person who pressed Pay finds out why nothing opened.
  */
 export function PayFeedbackNotice() {
-  const { feedback, openTimedOut, retry } = usePaySession();
+  const { feedback, openTimedOut, retry, pending } = usePaySession();
   const ref = useRef<HTMLDivElement>(null);
   const showing = Boolean(feedback) || openTimedOut;
   useEffect(() => {
@@ -26,7 +26,7 @@ export function PayFeedbackNotice() {
           alert
           title={PAY_COPY.openFailedTitle}
           actions={
-            <Button variant="secondary" onClick={retry}>
+            <Button variant="secondary" disabled={pending} onClick={retry}>
               {PAY_COPY.tryAgain}
             </Button>
           }

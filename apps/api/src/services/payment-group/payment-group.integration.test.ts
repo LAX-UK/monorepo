@@ -352,13 +352,36 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     await deleteIdentityUserFixtures(db, [payerId]);
   });
 
-  it("lets only one of two concurrent payments over overlapping invoices hold them", async () => {
-    const [first, second] = await Promise.all([start([ids.a, ids.b]), start([ids.b, ids.c])]);
-    const results = [first, second];
-    expect(results.filter((r) => r.isOk())).toHaveLength(1);
-    expect(results.filter((r) => r.isErr() && r.error === "conflict")).toHaveLength(1);
-    // Only the winner's checkout was opened.
-    expect(gateway.createCheckout).toHaveBeenCalledTimes(1);
+  it("lets only one of two concurrent claims over overlapping invoices hold them", async () => {
+    const claim = (paymentIds: string[]) =>
+      groups.claim({
+        buyerLegalEntityId: orgId,
+        createdByUserId: payerId,
+        currency: "GBP",
+        totalAmount: `${paymentIds.length * 100}.00`,
+        checkoutRail: "card",
+        paymentIds,
+      });
+    const results = await Promise.all([claim([ids.a, ids.b]), claim([ids.b, ids.c])]);
+    expect(results.filter((r) => r.kind === "claimed")).toHaveLength(1);
+    expect(results.filter((r) => r.kind === "conflict")).toHaveLength(1);
+  });
+
+  it("lets a payment that is still being opened finish: a second start over its invoices waits", async () => {
+    const claimed = await groups.claim({
+      buyerLegalEntityId: orgId,
+      createdByUserId: payerId,
+      currency: "GBP",
+      totalAmount: "200.00",
+      checkoutRail: "card",
+      paymentIds: [ids.a, ids.b],
+    });
+    if (claimed.kind !== "claimed") throw new Error("expected a claim");
+    // The group exists but its checkout is not recorded yet, so the first start is mid-way.
+    expect((await start([ids.b, ids.c]))._unsafeUnwrapErr()).toBe("in_progress");
+    expect(gateway.expireCheckout).not.toHaveBeenCalled();
+    expect((await groups.findById(claimed.group.id))?.status).toBe("open");
+    expect(await statusOf(ids.b)).toEqual({ status: "pending", group: claimed.group.id });
   });
 
   it("settles every invoice in one go, and a replayed or repeated notice changes nothing", async () => {
@@ -671,6 +694,37 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     });
   });
 
+  describe("the cut-off for a payment that is still being opened", () => {
+    it("lets go of a group whose start failed long ago and never got a checkout", async () => {
+      const claimed = await groups.claim({
+        buyerLegalEntityId: orgId,
+        createdByUserId: payerId,
+        currency: "GBP",
+        totalAmount: "200.00",
+        checkoutRail: "card",
+        paymentIds: [ids.a, ids.b],
+      });
+      if (claimed.kind !== "claimed") throw new Error("expected a claim");
+      await db
+        .update(paymentGroup)
+        .set({ createdAt: new Date(Date.now() - 10 * 60_000) })
+        .where(eq(paymentGroup.id, claimed.group.id));
+      expect((await start([ids.a, ids.b])).isOk()).toBe(true);
+      expect((await groups.findById(claimed.group.id))?.status).toBe("cancelled");
+    });
+
+    it("does not record a checkout against a group that was let go meanwhile", async () => {
+      const groupId = await startOk([ids.a, ids.b]);
+      await db.transaction(async (tx) => {
+        await groups.transitionInTransaction(tx, groupId, ["open"], "cancelled");
+      });
+      expect(
+        await groups.recordCheckout(groupId, { sessionId: "cs_late", paymentIntentId: null }),
+      ).toBe(false);
+      expect((await groups.findById(groupId))?.stripeCheckoutSessionId).not.toBe("cs_late");
+    });
+  });
+
   describe("starting again after leaving a checkout", () => {
     it("ends the abandoned checkout and opens a new one by the chosen method", async () => {
       const first = await startOk([ids.a, ids.b]);
@@ -691,6 +745,74 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       expect((await groups.findById(first))?.status).toBe("open");
       expect(await statusOf(ids.a)).toEqual({ status: "pending", group: first });
       gateway.checkoutStatus.mockResolvedValue("expired");
+    });
+  });
+
+  describe("recorded provider payloads for the three flows", () => {
+    const withCreated = (event: Stripe.Event, created: number) =>
+      ({ ...event, created }) as Stripe.Event;
+
+    it("card success: a submitted checkout is settled by the succeeded notice", async () => {
+      const groupId = await startOk([ids.a, ids.b]);
+      const pi = succeeded(groupId, { status: "succeeded", amount_received: 20_000 });
+      await webhooks.handlePaymentIntentSucceeded(eventOf("payment_intent.succeeded", pi), pi);
+      expect((await groups.findById(groupId))?.status).toBe("paid");
+      expect(await statusOf(ids.a)).toEqual({ status: "captured", group: groupId });
+    });
+
+    it("3D Secure failure: the group stays open, the invoices stay held, and a retry replaces it", async () => {
+      const groupId = await startOk([ids.a, ids.b]);
+      const failed = succeeded(groupId, {
+        status: "requires_payment_method",
+        last_payment_error: { code: "payment_intent_authentication_failure", type: "card_error" },
+      } as Partial<Stripe.PaymentIntent>);
+      expect(
+        await webhooks.handlePaymentIntentFailed(
+          eventOf("payment_intent.payment_failed", failed),
+          failed,
+        ),
+      ).toMatchObject({ reason: "payment_group_attempt_failed" });
+      expect((await groups.findById(groupId))?.status).toBe("open");
+      // The person comes back and tries again: the unfinished checkout is ended, a new one opens.
+      gateway.checkoutStatus.mockResolvedValue("expired");
+      const retry = await start([ids.a, ids.b]);
+      expect(retry.isOk()).toBe(true);
+      expect((await groups.findById(groupId))?.status).toBe("cancelled");
+    });
+
+    it("transfer part-funded then funded: held, progress stored, then settled in one", async () => {
+      const groupId = await startOk([ids.a, ids.b]);
+      const part = succeeded(groupId, {
+        status: "requires_action",
+        amount_received: 0,
+        next_action: {
+          type: "display_bank_transfer_instructions",
+          display_bank_transfer_instructions: {
+            amount_remaining: 14_000,
+            currency: "gbp",
+            financial_addresses: [],
+            hosted_instructions_url: "https://payments.stripe.com/instructions/test",
+            reference: "LAXB7KQ2R9",
+            type: "gb_bank_transfer",
+          },
+        },
+      } as unknown as Partial<Stripe.PaymentIntent>);
+      await webhooks.handlePaymentIntentPartiallyFunded(
+        withCreated(eventOf("payment_intent.partially_funded", part), 1_793_000_100),
+        part,
+      );
+      const held = await groups.findById(groupId);
+      expect(held?.status).toBe("processing");
+      expect(held?.amountReceived).toBe("60.00");
+      expect(await statusOf(ids.a)).toEqual({ status: "authorized", group: groupId });
+
+      const funded = succeeded(groupId, { status: "succeeded", amount_received: 20_000 });
+      await webhooks.handlePaymentIntentSucceeded(
+        eventOf("payment_intent.succeeded", funded),
+        funded,
+      );
+      expect((await groups.findById(groupId))?.status).toBe("paid");
+      expect(await statusOf(ids.b)).toEqual({ status: "captured", group: groupId });
     });
   });
 });

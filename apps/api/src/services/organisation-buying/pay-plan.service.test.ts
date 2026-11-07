@@ -190,6 +190,7 @@ describe("PayPlanService.plan", () => {
             stripeCheckoutSessionId: "cs_9",
             totalAmount: "100.00",
             amountReceived: "0.00",
+            memberCount: 2,
           },
         },
       },
@@ -499,6 +500,7 @@ describe("PayPlanService.plan: a payment already under way", () => {
     stripeCheckoutSessionId: "cs_9",
     totalAmount: "1000.10",
     amountReceived: "0.00",
+    memberCount: 2,
     ...over,
   });
   const flags = (g: ReturnType<typeof group>) => ({
@@ -536,6 +538,7 @@ describe("PayPlanService.plan: a payment already under way", () => {
       receivedPence: 0,
       remainingPence: 100_010,
       receivedPercent: 0,
+      otherInvoices: 0,
     });
   });
 

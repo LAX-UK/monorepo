@@ -12,4 +12,6 @@ ALTER TABLE "payment_group" ADD COLUMN IF NOT EXISTS "received_event_at" timesta
 --> statement-breakpoint
 ALTER TABLE "payment_group" DROP CONSTRAINT IF EXISTS "payment_group_amount_received_check";
 --> statement-breakpoint
-ALTER TABLE "payment_group" ADD CONSTRAINT "payment_group_amount_received_check" CHECK ("payment_group"."amount_received" >= 0 and "payment_group"."amount_received" <= "payment_group"."total_amount");
+ALTER TABLE "payment_group" ADD CONSTRAINT "payment_group_amount_received_check" CHECK ("payment_group"."amount_received" >= 0 and "payment_group"."amount_received" <= "payment_group"."total_amount") NOT VALID;
+--> statement-breakpoint
+ALTER TABLE "payment_group" VALIDATE CONSTRAINT "payment_group_amount_received_check";

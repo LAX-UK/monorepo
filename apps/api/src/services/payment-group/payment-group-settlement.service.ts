@@ -201,7 +201,7 @@ export class PaymentGroupSettlementService {
   async markProcessing(input: {
     eventId: string;
     groupId: string;
-    received?: { amountPence: number; eventAt: Date };
+    received?: { amountPence: number; paymentIntentId: string; eventAt: Date };
   }): Promise<PaymentWebhookResult> {
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
       if (!(await this.deps.claims.claim(tx, input.eventId))) return DUPLICATE;
@@ -252,6 +252,7 @@ export class PaymentGroupSettlementService {
         });
         recordMoneyPathEvent("payment_group_part_received");
       }
+      await this.alertIfOverpaid(tx, locked.group, input.received);
       if (!moved && !recorded) {
         return { processed: true, action: "skipped", reason: "payment_group_not_open" };
       }
@@ -295,6 +296,35 @@ export class PaymentGroupSettlementService {
       recordMoneyPathEvent(`payment_group_released_${input.reason}`);
       return { processed: true, action: "payment_intent_canceled" };
     });
+  }
+
+  /**
+   * More money arrived than the group's total. The group is held and the excess is a finance task
+   * and alert, never refunded automatically.
+   */
+  private async alertIfOverpaid(
+    tx: Database,
+    group: PaymentGroupRecord,
+    received: { amountPence: number; paymentIntentId: string } | undefined,
+  ): Promise<void> {
+    if (!received) return;
+    const excess = received.amountPence - gbpAmountToPence(group.totalAmount);
+    if (excess <= 0) return;
+    recordMoneyPathEvent("payment_group_overpaid");
+    await this.deps.unappliedMoney.record(
+      tx,
+      {
+        reason: "group_overpaid",
+        paymentId: null,
+        paymentGroupId: group.id,
+        stripePaymentIntentId: received.paymentIntentId,
+        stripeChargeId: null,
+        stripeCustomerId: null,
+        amountCents: excess,
+        currency: group.currency,
+      },
+      group.buyerLegalEntityId,
+    );
   }
 
   private async alertRefused(

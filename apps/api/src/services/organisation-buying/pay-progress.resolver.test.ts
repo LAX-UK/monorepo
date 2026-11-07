@@ -11,6 +11,7 @@ function group(overrides: Partial<LivePaymentGroupFacts> = {}): LivePaymentGroup
     stripeCheckoutSessionId: "cs_1",
     totalAmount: "11701.00",
     amountReceived: "0.00",
+    memberCount: 2,
     ...overrides,
   };
 }

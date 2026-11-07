@@ -147,6 +147,8 @@ export const PAY_COPY = {
   transferPanelTitle: "Send a UK bank transfer",
   transferToSend: "To send",
   transferLeftToSend: "Left to send",
+  otherInvoices: (count: number) =>
+    `This payment also covers ${count} other ${count === 1 ? "invoice" : "invoices"}.`,
   transferTotal: "Total",
   transferReceived: "Received",
   transferAmount: "Amount to send",
