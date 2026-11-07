@@ -172,7 +172,7 @@ export function needsChangesBadge(needsChanges: number | null | undefined): Need
   return {
     label: NEEDS_CHANGES_LABEL,
     count: needsChanges,
-    text: `${needsChanges} ${NEEDS_CHANGES_LABEL.toLowerCase()}`,
+    text: `${needsChanges} ${needsChanges === 1 ? "needs" : "need"} changes`,
   };
 }
 
