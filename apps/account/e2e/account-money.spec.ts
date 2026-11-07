@@ -1,21 +1,15 @@
 import { expect, test } from "@playwright/test";
-import {
-  accountE2eEnabled,
-  accountE2eSkipReason,
-  collectorCredentials,
-  expectPageHeading,
-  signInAccount,
-} from "./helpers/account-e2e";
+import { accountAuthState } from "./helpers/account-auth-state";
+import { collectorSkipReason, expectPageHeading } from "./helpers/account-e2e";
+
+const skipReason = collectorSkipReason();
 
 test.describe("Account Money @journey", () => {
-  test.beforeEach(async ({ page }) => {
-    test.skip(!accountE2eEnabled, accountE2eSkipReason);
-    const collector = collectorCredentials();
-    test.skip(!collector, "ACCOUNT_E2E_COLLECTOR_EMAIL / _PASSWORD not set");
-    if (collector) await signInAccount(page, collector, "/account/portfolio/money");
-  });
+  test.skip(skipReason !== null, skipReason ?? "");
+  test.use({ storageState: accountAuthState.collector });
 
   test("shows per-business totals and a ledger with product names", async ({ page }) => {
+    await page.goto("/account/portfolio/money");
     await expectPageHeading(page, "Money");
     const totals = page.getByRole("region", { name: "Totals by business" });
     await expect(totals).toBeVisible();

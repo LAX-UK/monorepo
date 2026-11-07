@@ -14,10 +14,14 @@ export default defineConfig({
     baseURL,
     trace: "on-first-retry",
   },
-  // One desktop project; specs that need a phone width resize the page to 375px themselves.
+  // Sign-in happens once, in the setup project; the desktop project reuses the saved states.
+  // Specs that need a phone width resize the page to 375px themselves.
   projects: [
+    { name: "setup", testMatch: /auth\.setup\.ts/ },
     {
       name: "chromium-desktop",
+      testIgnore: /auth\.setup\.ts/,
+      dependencies: ["setup"],
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
   ],

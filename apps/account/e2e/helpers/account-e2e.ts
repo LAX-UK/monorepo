@@ -26,6 +26,18 @@ export function newPersonCredentials(): AccountCredentials | null {
   return email && password ? { email, password } : null;
 }
 
+/** Why the collector journeys cannot run here, or null when they can. */
+export function collectorSkipReason(): string | null {
+  if (!accountE2eEnabled) return accountE2eSkipReason;
+  return collectorCredentials() ? null : "ACCOUNT_E2E_COLLECTOR_EMAIL / _PASSWORD not set";
+}
+
+/** Why the no-data journeys cannot run here, or null when they can. */
+export function newPersonSkipReason(): string | null {
+  if (!accountE2eEnabled) return accountE2eSkipReason;
+  return newPersonCredentials() ? null : "ACCOUNT_E2E_EMPTY_EMAIL / _PASSWORD not set";
+}
+
 /**
  * Signs in through Account's own login route, which hands off to the hosted sign-in on apps/auth
  * (the same email, Continue, password steps the Art helper drives), then waits for `returnTo`.

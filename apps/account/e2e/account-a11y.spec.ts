@@ -1,12 +1,9 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import {
-  accountE2eEnabled,
-  accountE2eSkipReason,
-  collectorCredentials,
-  expectPageHeading,
-  signInAccount,
-} from "./helpers/account-e2e";
+import { accountAuthState } from "./helpers/account-auth-state";
+import { collectorSkipReason, expectPageHeading } from "./helpers/account-e2e";
+
+const skipReason = collectorSkipReason();
 
 const BLOCKING_IMPACTS = ["critical", "serious", "moderate"];
 
@@ -17,16 +14,12 @@ const ROUTES = [
 ] as const;
 
 test.describe("Account accessibility @a11y", () => {
-  test.beforeEach(() => {
-    test.skip(!accountE2eEnabled, accountE2eSkipReason);
-  });
+  test.skip(skipReason !== null, skipReason ?? "");
+  test.use({ storageState: accountAuthState.collector });
 
   for (const { path, heading } of ROUTES) {
     test(`${path} has no blocking axe violations`, async ({ page }) => {
-      const collector = collectorCredentials();
-      test.skip(!collector, "ACCOUNT_E2E_COLLECTOR_EMAIL / _PASSWORD not set");
-      if (!collector) return;
-      await signInAccount(page, collector, path);
+      await page.goto(path);
       await expectPageHeading(page, heading);
       await page.waitForLoadState("networkidle");
       const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();

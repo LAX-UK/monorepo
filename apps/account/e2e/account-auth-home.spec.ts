@@ -1,16 +1,15 @@
 import { expect, test } from "@playwright/test";
+import { accountAuthState, signedOutState } from "./helpers/account-auth-state";
 import {
   accountE2eEnabled,
   accountE2eSkipReason,
-  collectorCredentials,
+  collectorSkipReason,
   expectPageHeading,
-  signInAccount,
 } from "./helpers/account-e2e";
 
-test.describe("Account sign-in and Home @smoke", () => {
-  test.beforeEach(() => {
-    test.skip(!accountE2eEnabled, accountE2eSkipReason);
-  });
+test.describe("Account sign-in @smoke", () => {
+  test.skip(!accountE2eEnabled, accountE2eSkipReason);
+  test.use({ storageState: signedOutState });
 
   test("signed out, /account sends the person to sign-in", async ({ page }) => {
     const authorize = page.waitForRequest(
@@ -21,23 +20,21 @@ test.describe("Account sign-in and Home @smoke", () => {
     const url = new URL((await authorize).url());
     expect(url.searchParams.get("client_id")).toBe("lax-account-web");
   });
-
-  test("after sign-in the collector lands on Home with a greeting", async ({ page }) => {
-    const collector = collectorCredentials();
-    test.skip(!collector, "ACCOUNT_E2E_COLLECTOR_EMAIL / _PASSWORD not set");
-    if (!collector) return;
-    await signInAccount(page, collector);
-    await expectPageHeading(page, /^Welcome, \S+/);
-    await expect(page).toHaveURL(/\/account$/);
-  });
 });
 
+const skipReason = collectorSkipReason();
+
 test.describe("Account Home for the demo collector @journey", () => {
+  test.skip(skipReason !== null, skipReason ?? "");
+  test.use({ storageState: accountAuthState.collector });
+
   test.beforeEach(async ({ page }) => {
-    test.skip(!accountE2eEnabled, accountE2eSkipReason);
-    const collector = collectorCredentials();
-    test.skip(!collector, "ACCOUNT_E2E_COLLECTOR_EMAIL / _PASSWORD not set");
-    if (collector) await signInAccount(page, collector);
+    await page.goto("/account");
+  });
+
+  test("greets the collector by name on Home", async ({ page }) => {
+    await expectPageHeading(page, /^Welcome, \S+/);
+    await expect(page).toHaveURL(/\/account$/);
   });
 
   test("shows Needs you, the collection, works by product, product cards and the checkup", async ({
