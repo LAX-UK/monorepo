@@ -3,10 +3,12 @@ export {
   type ConnectOnboardingLink,
   type ConnectSessionSurface,
   type ConnectTransferInput,
+  type ConnectTransferLookupClient,
   connectSessionComponents,
   createConnectAccountSession,
   createConnectOnboardingLink,
   createConnectTransfer,
+  findExistingConnectTransfer,
   platformCollectedConnectController,
 } from "./connect-adapters.js";
 export type {

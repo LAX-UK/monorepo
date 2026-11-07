@@ -1,6 +1,6 @@
 import type { IConnectTransferRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
-import { createConnectTransfer } from "@auction/stripe-connect";
+import { createConnectTransfer, findExistingConnectTransfer } from "@auction/stripe-connect";
 import type Stripe from "stripe";
 import StripeSdk from "stripe";
 import type { Env } from "../../../env.js";
@@ -165,20 +165,39 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
     }
 
     try {
-      const transfer = await executeWithStripeRetries(() =>
-        createConnectTransfer(stripe, {
-          amountMinor: amountCents,
-          currency: payout.currency,
+      // Stripe forgets idempotency keys after 24h, so a retry must adopt a transfer that Stripe
+      // already accepted (but we failed to save) rather than create a second one.
+      const transferGroup = `payout:${payoutId}`;
+      const existing = await executeWithStripeRetries(() =>
+        findExistingConnectTransfer(stripe, {
+          transferGroup,
           destinationAccountId,
-          transferGroup: `payout:${payoutId}`,
-          ...(sourceChargeId ? { sourceChargeId } : {}),
-          metadata: {
-            payoutId: payout.id,
-            legalEntityId: payout.legalEntityId,
-          },
-          idempotencyKey: transferIdempotencyKey(payout, opts),
+          payoutId: payout.id,
         }),
       );
+      const adopted = existing !== null;
+      const transfer =
+        existing ??
+        (await executeWithStripeRetries(() =>
+          createConnectTransfer(stripe, {
+            amountMinor: amountCents,
+            currency: payout.currency,
+            destinationAccountId,
+            transferGroup,
+            ...(sourceChargeId ? { sourceChargeId } : {}),
+            metadata: {
+              payoutId: payout.id,
+              legalEntityId: payout.legalEntityId,
+            },
+            idempotencyKey: transferIdempotencyKey(payout, opts),
+          }),
+        ));
+      if (adopted) {
+        this.logger.warn(
+          { payoutId, stripeTransferId: transfer.id },
+          "payout_transfer_adopted_existing",
+        );
+      }
 
       const updated = await this.payoutRepository.updateStatusIfCurrent(payoutId, startStatus, {
         status: "in_transit",
@@ -219,6 +238,7 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
             amountCents,
             currency: payout.currency,
             stripeConnectAccountId: entity.stripeConnectAccountId,
+            ...(adopted ? { adopted: true, adoptionSource: "stripe_transfer_group" } : {}),
           },
           actorUserId: null,
           actingLegalEntityId: payout.legalEntityId,

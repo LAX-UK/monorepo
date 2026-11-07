@@ -4,6 +4,7 @@ import {
   createConnectAccountSession,
   createConnectOnboardingLink,
   createConnectTransfer,
+  findExistingConnectTransfer,
   platformCollectedConnectController,
 } from "./connect-adapters.js";
 
@@ -122,5 +123,27 @@ describe("createConnectTransfer", () => {
       },
     );
     expect(create.mock.calls[0]?.[0]).toMatchObject({ source_transaction: "ch_1" });
+  });
+});
+
+describe("findExistingConnectTransfer", () => {
+  const input = { transferGroup: "payout:p1", destinationAccountId: "acct_1", payoutId: "p1" };
+  const client = (data: unknown[]) => ({
+    transfers: { list: vi.fn().mockResolvedValue({ data }) },
+  });
+
+  it("looks up by transfer group and adopts a live matching transfer", async () => {
+    const c = client([
+      { id: "tr_rev", destination: "acct_1", reversed: true, metadata: { payoutId: "p1" } },
+      { id: "tr_other", destination: "acct_2", metadata: { payoutId: "p1" } },
+      { id: "tr_ok", destination: { id: "acct_1" }, metadata: { payoutId: "p1" } },
+    ]);
+    await expect(findExistingConnectTransfer(c as never, input)).resolves.toEqual({ id: "tr_ok" });
+    expect(c.transfers.list).toHaveBeenCalledWith({ transfer_group: "payout:p1", limit: 20 });
+  });
+
+  it("returns null when nothing matches", async () => {
+    const c = client([{ id: "tr_x", destination: "acct_1", metadata: { payoutId: "p2" } }]);
+    await expect(findExistingConnectTransfer(c as never, input)).resolves.toBeNull();
   });
 });

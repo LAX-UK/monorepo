@@ -62,6 +62,8 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "amountCents",
     "currency",
     "stripeConnectAccountId",
+    "adopted",
+    "adoptionSource",
   ]),
   /** Stripe transfer failure — error details are operational, not PII. */
   "payout.transfer_failed": new Set([
