@@ -1,5 +1,4 @@
 export type {
-  ComplianceGateStatus,
   EntityWonLot,
   LotFulfilmentSnapshot,
   MyPaymentRow,
@@ -7,7 +6,6 @@ export type {
 } from "@/lib/data/http/payments.schema";
 export {
   ENTITY_WORKS_PAGING,
-  getServerBuyerComplianceGate,
   getServerEntityPayments,
   getServerEntityWonLots,
   getServerLotFulfilmentForWinner,

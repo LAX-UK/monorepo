@@ -112,6 +112,24 @@ export const dataRequestReferenceSchema = z
     message: "Not a request reference",
   });
 
+/** Why enquiries cannot be erased from a request now; null when they can. */
+export type EnquiryErasureBlock = "download" | "waiting_for_id" | "closed";
+
+/**
+ * Erasing a person's enquiries belongs to a manual request staff are working on: never to an
+ * automatic download, and not before proof of identity has arrived or after the request closed.
+ * Bid admin hides or disables the action by this, and the Bid API refuses by it again.
+ */
+export function enquiryErasureBlock(request: {
+  kind: DataRequestKind;
+  status: string;
+}): EnquiryErasureBlock | null {
+  if (request.kind === "download") return "download";
+  // Only a request in progress may erase; any other status, including one added later, is blocked.
+  if (request.status === "in_progress") return null;
+  return request.status === "waiting_for_id" ? "waiting_for_id" : "closed";
+}
+
 // Masking -----------------------------------------------------------------------------------
 
 const BULLETS = "•••••";

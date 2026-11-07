@@ -10,7 +10,7 @@ import { and, eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { OfferOnLaxArtService } from "../application/artwork-register/offer-on-lax-art.service.js";
-import { integrationSuffix } from "../test-support/shop-fixtures.js";
+import { integrationSuffix, uniqueStockCode } from "../test-support/shop-fixtures.js";
 import {
   createShopDb,
   hasShopIntegrationDb,
@@ -73,11 +73,10 @@ describe.skipIf(!hasShopIntegrationDb)("offer on lax.art (Postgres)", () => {
   async function record(patch: Partial<NewArtworkRegisterEntry> = {}) {
     const { register } = setup();
     const suffix = integrationSuffix("r");
-    const number = String(Math.floor(Math.random() * 9000) + 1000);
     const created = await register.create(
       {
         zohoProductId: `zoho-${suffix}`,
-        stockCode: `LAX-ORI-AR-TM-26-${number}`,
+        stockCode: uniqueStockCode("original"),
         kind: "original",
         sourceOriginalId: null,
         title: "Tidal margin IV",
@@ -259,7 +258,7 @@ describe.skipIf(!hasShopIntegrationDb)("offer on lax.art (Postgres)", () => {
     const original = await record();
     const print = await record({
       kind: "print",
-      stockCode: `LAX-PRI-AR-TM-26-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+      stockCode: uniqueStockCode("print"),
       sourceOriginalId: original.id,
     });
     const assessment = await service.assess(print.id);

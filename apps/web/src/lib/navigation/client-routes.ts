@@ -9,6 +9,9 @@ export const CLIENT_ROUTES = {
   home: "/home",
   bids: "/bids",
   purchases: "/purchases",
+  /** One payment for one invoice or several: `/purchases/pay?lots=a,b`. */
+  pay: "/purchases/pay",
+  /** The old checkout pages, kept only as redirects to the Pay page (emailed links live on). */
   checkout: "/purchases/checkout",
   watching: "/watching",
   /** Saved searches and their alerts, a view of Watching. */

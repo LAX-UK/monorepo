@@ -1,3 +1,4 @@
+import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-panel";
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { DeliveryPanelVm } from "@/lib/purchases/purchase-delivery.vm";
 import type { PurchaseProblemPanelVm } from "@/lib/purchases/purchase-problem";
@@ -6,24 +7,7 @@ import { cn } from "@auction/ui";
 import { ButtonLink, StatusBadge, pageTitleClass } from "@auction/ui/lax";
 import { Download, FileText } from "lucide-react";
 import Link from "next/link";
-import type { ReactNode } from "react";
 import { DeliveryPanel } from "./delivery-panel";
-
-function Panel({
-  title,
-  children,
-  className,
-}: { title: string; children: ReactNode; className?: string }) {
-  return (
-    <section
-      aria-label={title}
-      className={cn("rounded-lax-card border border-lax-line bg-lax-surface p-5 md:p-6", className)}
-    >
-      <h2 className="font-lax-display text-lax-18 font-semibold text-lax-fg">{title}</h2>
-      <div className="mt-4">{children}</div>
-    </section>
-  );
-}
 
 /** The steps as a vertical line: done steps filled, the current one ringed. */
 function Progress({ card }: { card: PurchaseCardVm }) {
@@ -121,17 +105,17 @@ export function PurchaseDetail({
       </div>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-6">
-          <Panel title="Progress">
+          <WorkspacePanel title="Progress">
             <Progress card={card} />
-          </Panel>
+          </WorkspacePanel>
           {panel ? (
-            <Panel title="Delivery">
+            <WorkspacePanel title="Delivery">
               <DeliveryPanel lotId={card.lotId} panel={panel} shipperEmail={shipperEmail} />
-            </Panel>
+            </WorkspacePanel>
           ) : null}
         </div>
         <div className="flex min-w-0 flex-col gap-6">
-          <Panel title="Payment">
+          <WorkspacePanel title="Payment">
             <dl className="flex flex-col gap-2 text-lax-14">
               {card.breakdown.map((line) => (
                 <div key={line.label} className="flex justify-between gap-4">
@@ -147,8 +131,8 @@ export function PurchaseDetail({
                 <dd className="tabular-nums text-lax-fg">{card.amount}</dd>
               </div>
             </dl>
-          </Panel>
-          <Panel title="Documents">
+          </WorkspacePanel>
+          <WorkspacePanel title="Documents">
             {card.invoiceHref ? (
               <a
                 href={card.invoiceHref}
@@ -171,9 +155,9 @@ export function PurchaseDetail({
                 The invoice appears here once it is raised.
               </p>
             )}
-          </Panel>
+          </WorkspacePanel>
           {problem ? (
-            <Panel title={problem.title}>
+            <WorkspacePanel title={problem.title}>
               <p className="text-lax-14 font-medium text-lax-fg">Reference {problem.reference}</p>
               <dl className="mt-3 flex flex-col gap-2 text-lax-14">
                 {problem.facts.map((fact) => (
@@ -184,7 +168,7 @@ export function PurchaseDetail({
                 ))}
               </dl>
               <p className="mt-3 text-lax-13 text-lax-muted">{problem.nextStep}</p>
-            </Panel>
+            </WorkspacePanel>
           ) : card.problemHref ? (
             <Link
               href={card.problemHref}

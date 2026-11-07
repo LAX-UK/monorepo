@@ -5,13 +5,11 @@ import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { authedServerFetch as authedActingServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody, readListEnvelope } from "@/lib/data/http/envelope";
 import {
-  complianceGateEnvelopeSchema,
   entityWonLotSchema,
   lotFulfilmentSnapshotSchema,
   myPaymentRowSchema,
 } from "@/lib/data/http/payments.schema";
 import type {
-  ComplianceGateStatus,
   EntityWonLot,
   LotFulfilmentSnapshot,
   MyPaymentRow,
@@ -20,7 +18,6 @@ import type {
 import { type PagedRead, readAllPages } from "@/lib/data/paging/read-all-pages";
 
 export type {
-  ComplianceGateStatus,
   EntityWonLot,
   LotFulfilmentSnapshot,
   MyPaymentRow,
@@ -39,29 +36,6 @@ export async function getServerMyPayments(
   const body = await readJsonBody(res);
   const { rows } = readListEnvelope(body, myPaymentRowSchema, "GET /payments/me");
   return rows;
-}
-
-/**
- * Buyer pre-flight compliance gate. Returns the user-level compliance status
- * without requiring an existing payment row — used by checkout + portfolio to
- * surface blockers proactively. Fails open (returns "clear") on network error
- * so the buyer can still attempt checkout and see the block on submit.
- */
-export async function getServerBuyerComplianceGate(): Promise<ComplianceGateStatus> {
-  try {
-    const res = await authedServerFetch("/payments/me/compliance-gate", { cache: "no-store" });
-    if (!res.ok) return "clear";
-    const body = await readJsonBody(res);
-    const parsed = readDataEnvelope(
-      body,
-      complianceGateEnvelopeSchema,
-      "GET /payments/me/compliance-gate",
-    );
-    const s = parsed.status;
-    return s === "aml_hold" || s === "source_of_funds_required" ? s : "clear";
-  } catch {
-    return "clear";
-  }
 }
 
 /** Winner checkout: current fulfilment / logistics state for the lot. */

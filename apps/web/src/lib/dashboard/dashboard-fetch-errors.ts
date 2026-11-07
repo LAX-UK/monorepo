@@ -30,7 +30,6 @@ export type DashboardSlice =
   | "submissions"
   | "orgMembers"
   | "invitations"
-  | "checkout"
   | "kyc"
   | "orgOnboarding"
   | "settings";
@@ -183,11 +182,6 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
     title: "Could not load invitations",
     message: () => "Something went wrong while loading invitations. Try again.",
     retryHref: DASHBOARD_ROUTES.invitations,
-  },
-  checkout: {
-    title: "Checkout issue",
-    message: () => "Something went wrong preparing checkout. Try again.",
-    retryHref: "/purchases/checkout",
   },
   kyc: {
     title: "Verification unavailable",

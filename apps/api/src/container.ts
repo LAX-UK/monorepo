@@ -792,7 +792,6 @@ export function createContainer(env: Env): Container {
         transactionRunner: platform.transactionRunner,
         events: platform.domainEventSink,
       }),
-      enquiryErasure: marketingEnquiries.erasure,
       dataRequests: new AdminDataRequestsService({
         identity: new HttpIdentityDataRequestsClient({
           issuerBaseUrl: env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL,
@@ -800,6 +799,7 @@ export function createContainer(env: Env): Container {
           clientSecret: env.IDENTITY_DATA_REQUESTS_CLIENT_SECRET,
         }),
         audit: new DomainEventDataRequestAuditTrail(platform.domainEventSink),
+        enquiryErasure: marketingEnquiries.erasure,
         accounts: {
           findByEmail: async (email) => {
             const subject = await identityIssuer.findSubjectByEmail(email);

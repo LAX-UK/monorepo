@@ -33,15 +33,12 @@ export function PurchaseRow({
   card,
   selection,
   selectColumn,
-  onPay,
 }: {
   card: PurchaseCardVm;
   /** Some row of the list can be picked, so every row keeps the box's column. */
   selectColumn: boolean;
   /** Set while the member can pick this invoice to pay together with others. */
   selection: { selected: boolean; onSelectedChange: (selected: boolean) => void } | null;
-  /** Pays this invoice on its own. */
-  onPay: (card: PurchaseCardVm) => void;
 }) {
   const step = purchaseRowStep(card);
   const router = useRouter();
@@ -104,15 +101,7 @@ export function PurchaseRow({
       }
       action={
         step ? (
-          step.kind === "pay" ? (
-            <RowStep
-              label={step.label}
-              accessibleName={step.accessibleName}
-              onSelect={() => onPay(card)}
-            />
-          ) : (
-            <RowStep label={step.label} accessibleName={step.accessibleName} href={step.href} />
-          )
+          <RowStep label={step.label} accessibleName={step.accessibleName} href={step.href} />
         ) : null
       }
       needsYou={step !== null}

@@ -37,7 +37,7 @@ describe("needsActionRows", () => {
       "Outbid on “Abstract in Cobalt”",
       "Pay for “Estuary at Dusk”",
     ]);
-    expect(rows[1]?.action).toEqual({ label: "Pay", href: "/purchases/checkout/p1" });
+    expect(rows[1]?.action).toEqual({ label: "Pay", href: "/purchases/pay?lots=p1" });
   });
 
   it("says the reader failed rather than that nothing needs the person", () => {

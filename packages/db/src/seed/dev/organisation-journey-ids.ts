@@ -9,6 +9,8 @@ export const ORGANISATION_JOURNEY_IDS = {
   lotUnsold: "b1000403-0000-4000-8000-000000000403",
   lotInvoiceNorthbank: "b1000404-0000-4000-8000-000000000404",
   lotInvoiceRestricted: "b1000405-0000-4000-8000-000000000405",
+  /** An invoice whose winner and payer have no source-of-funds or anti-money-laundering exposure. */
+  lotInvoiceNorthbankClear: "b1000406-0000-4000-8000-000000000406",
   submissionDraft: "d2000101-0000-4000-8000-000000000101",
   submissionNeedsChanges: "d2000102-0000-4000-8000-000000000102",
   submissionUnsold: "d2000103-0000-4000-8000-000000000103",

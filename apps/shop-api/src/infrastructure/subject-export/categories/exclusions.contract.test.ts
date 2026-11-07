@@ -18,6 +18,7 @@ import {
 import { mapOrder, mapOriginalSale } from "./orders.category.js";
 import { mapOrderPayment, mapRefund } from "./payments.category.js";
 import { mapAvailabilityAlert, mapFollowedArtist, mapSavedWork } from "./saved-works.category.js";
+import { mapPayoutLedgerRow } from "./selling-payouts.category.js";
 import { mapApplication, mapSaleAuthorityRequest } from "./selling.category.js";
 import { mapShopProfile } from "./shop-profile.category.js";
 
@@ -348,6 +349,36 @@ const cases: Case[] = [
     ),
   },
   {
+    category: "selling-payouts",
+    record: mapPayoutLedgerRow(
+      {
+        id: "pl1",
+        source: "order_line",
+        orderReference: "LAX-S-10001",
+        soldAt: AT,
+        grossPence: 12000,
+        deductionsPence: 3000,
+        netPence: 9000,
+        status: "paid",
+        payoutDueAt: AT,
+        paidAt: AT,
+        paidReference: "BACS-1",
+        createdAt: AT,
+        artworkId: "w1",
+        artworkTitle: "Blue Study",
+        artworkSlug: "blue-study",
+        salesChannel: "art",
+        buyerName: LEAK,
+        buyerEmail: LEAK,
+        deliveryLine1: LEAK,
+        blockedReason: LEAK,
+        paidBySubjectId: LEAK,
+        ...forbidden,
+      } as never,
+      ORIGINS,
+    ),
+  },
+  {
     category: "notifications-and-marketing",
     record: mapSentEmail({
       id: "m1",
@@ -387,6 +418,7 @@ describe("Shop subject export: what each category may contain", () => {
       "enquiries",
       "saved-works",
       "selling",
+      "selling-payouts",
       "notifications-and-marketing",
     ]) {
       expect(covered.has(id), id).toBe(true);
@@ -420,6 +452,40 @@ describe("Shop subject export: what each category may contain", () => {
     const record = mapOrder(orderRow, [lineRow], null, [], ORIGINS);
     expect(record.total).toEqual({ minor: 12000, currency: "GBP" });
     expect(record.placedAt).toBe("2026-10-28T19:42:05.000Z");
+  });
+
+  it("returns a payout as minor units plus currency, with the order reference as the only buyer link", () => {
+    const record = mapPayoutLedgerRow(
+      {
+        id: "pl2",
+        source: "original_sale",
+        orderReference: null,
+        soldAt: null,
+        grossPence: 500000,
+        deductionsPence: 100000,
+        netPence: 400000,
+        status: "due",
+        payoutDueAt: AT,
+        paidAt: null,
+        paidReference: null,
+        createdAt: AT,
+        artworkId: "w1",
+        artworkTitle: "Blue Study",
+        artworkSlug: "blue-study",
+        salesChannel: "art",
+      },
+      ORIGINS,
+    );
+    expect(record.gross).toEqual({ minor: 500000, currency: "GBP" });
+    expect(record.fees).toEqual({ minor: 100000, currency: "GBP" });
+    expect(record.net).toEqual({ minor: 400000, currency: "GBP" });
+    expect(record.soldAt).toBe(AT.toISOString());
+    expect(record.paidAt).toBeNull();
+    expect(record.work).toEqual({
+      id: "w1",
+      title: "Blue Study",
+      url: "https://art.example/artworks/blue-study",
+    });
   });
 
   it("marks each enquiry with its site", () => {

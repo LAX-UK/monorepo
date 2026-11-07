@@ -8,6 +8,7 @@
  * windows around the clock) are tested without I/O.
  */
 import { type SeedInvoice, priceSeedInvoice } from "../shared/seed-invoice.js";
+import { topupLotArtistId } from "./demo-artists.js";
 import { DEMO_IDS } from "./demo-topup-ids.js";
 
 const HOUR = 3_600_000;
@@ -80,6 +81,8 @@ export type DemoLot = {
   image: string;
   categorySlug: string;
   sellerEntityId: string;
+  /** The registry artist behind the work; `null` where the maker is not known by name. */
+  artistId: string | null;
   startingPrice: number;
   reservePrice: number;
   estimateLow: number;
@@ -658,6 +661,7 @@ export function buildDemoCatalogue(now: number, actors: DemoActors): DemoCatalog
         image: ART[imageSeq++ % ART.length] ?? ART[0],
         categorySlug: CATEGORY_BY_MEDIUM(spec.medium),
         sellerEntityId: spec.seller === "northbank" ? actors.northbankId : actors.laxStockId,
+        artistId: topupLotArtistId(spec.title),
         startingPrice,
         // Sold lots met their reserve; an unsold lot's top bid fell short of it.
         reservePrice: sold || !ended ? Math.round(low * 0.8) : Math.round(low * 0.9),

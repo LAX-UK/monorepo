@@ -57,6 +57,6 @@ export function portfolioSettlementAttentionAction(row: PortfolioRow): {
   }
   return {
     href: dashboardCheckoutLotUrl(row.lot.id),
-    label: reason === "aml_hold" ? "View status" : "Complete checkout",
+    label: reason === "aml_hold" ? "View status" : "Pay now",
   };
 }

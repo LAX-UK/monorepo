@@ -53,14 +53,16 @@ export function isDashboardTabBarRoute(pathname: string): boolean {
   return isClientAreaPath(pathname);
 }
 
-/** Single-lot checkout — fixed pay bar replaces tab bar on mobile. */
+/** The Pay page: its fixed pay bar replaces the tab bar on a phone. */
 export function isFixedPayBarRoute(pathname: string): boolean {
-  return /^\/purchases\/checkout\/[^/]+$/.test(pathname);
+  return pathname === "/purchases/pay";
 }
 
-/** Routes that hide the dashboard tab bar while mounted. */
+/**
+ * Routes that hide the dashboard tab bar for as long as they are open. The Pay page is not one:
+ * its phone bar hides the tab bar only while it is shown.
+ */
 export function isHideDashboardTabBarRoute(pathname: string): boolean {
-  if (isFixedPayBarRoute(pathname)) return true;
   if (pathname.startsWith("/selling/new")) return true;
   if (/^\/selling\/consignments\/[^/]+$/.test(pathname)) return true;
   return false;

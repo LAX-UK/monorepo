@@ -63,6 +63,8 @@ export const CRM_LEAD_SOURCE_SIGN_UP = "LAX Account sign-up";
 export const CRM_LEAD_SOURCE_BID_ENQUIRY = "LAX Bid enquiry";
 export const CRM_LEAD_SOURCE_BID_PRIVATE_SALE_ENQUIRY = "LAX Bid private sale enquiry";
 export const CRM_LEAD_SOURCE_SHOP_GUEST = "LAX Shop guest";
+/** Detailed source of a signed-in person's enquiry about a Shop or lax.art original. */
+export const CRM_LEAD_SOURCE_SHOP_ENQUIRY = "LAX Shop enquiry";
 
 export const CRM_ENTITY = {
   subject: "subject",
