@@ -5,8 +5,8 @@ import Link from "next/link";
 
 /**
  * The checks that stand in the way and what was left out, each as a kit notice with at most one
- * action. They are status messages, read when the page loads; a failure of Pay itself is the
- * alert in `PayFeedbackNotice`. On a phone the bar at the bottom already offers the page's one
+ * action. They are status messages, read when the page loads; a failure of Pay itself, and a
+ * payment that did not complete, are the alert in `PayFeedbackNotice`. On a phone the bar at the bottom already offers the page's one
  * action, so a notice that offers the same step does not show it a second time.
  */
 export function PayNotices({

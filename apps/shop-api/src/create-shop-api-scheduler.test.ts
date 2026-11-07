@@ -11,6 +11,7 @@ const baseEnv = {
   SHOP_CONNECT_TRANSFERS_ENABLED: false,
   STRIPE_SHOP_CONNECT_PLATFORM_KEY: "bid_sandbox",
   DOMAIN_EVENT_PUBLISH_VALIDATE: "observe",
+  ALERT_RETENTION_PURGE_ENABLED: false,
 } as const;
 
 function taskNames(env: Record<string, unknown>): string[] {
@@ -18,6 +19,7 @@ function taskNames(env: Record<string, unknown>): string[] {
     db: {} as never,
     env: env as never,
     log: {} as never,
+    alertRetention: { name: "shop", prune: async () => ({}) as never },
   }).map((task) => task.name);
 }
 
@@ -28,6 +30,7 @@ describe("createShopApiScheduler", () => {
     expect(names).toContain("identity-merge");
     expect(names).toContain("staff-access");
     expect(names).toContain("personal-data-anonymisation");
+    expect(names).toContain("alert-retention");
     expect(names).toContain("notify-me-dispatch");
     expect(names).toContain("linked-listing-sync");
     expect(names).not.toContain("payout-eligibility");

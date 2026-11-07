@@ -1,3 +1,4 @@
+import type { AlertRetentionStore } from "@auction/alerts";
 import type { IMarketingProfileReader } from "@auction/marketing-events";
 import type {
   ICrmRecordLinkRepository,
@@ -12,7 +13,10 @@ import {
   type IEnsurePersonalLegalEntityService,
   MuteAwareNotificationWriter,
 } from "@auction/persistence/lib";
-import { DrizzleTransactionRunner } from "@auction/persistence/repositories";
+import {
+  DrizzleTransactionRunner,
+  createBidAlertRetentionStores,
+} from "@auction/persistence/repositories";
 import {
   DrizzleCrmRecordLinkRepository,
   DrizzleDomainEventDeliveryRepository,
@@ -115,6 +119,7 @@ export type WorkerRepositories = {
   staffRoleReader: IStaffRoleAssignmentReader;
   newsletterSignupSyncRepo: INewsletterSignupSyncRepository;
   kycRetentionStores: readonly IKycRetentionSubjectStore[];
+  alertRetentionStores: readonly AlertRetentionStore[];
   staffOpsRecipientReader: IStaffOpsRecipientReader;
   complianceRecipientReader: IComplianceRecipientReader;
   mediaAssetProcessorRepo: IMediaAssetProcessorRepository;
@@ -174,6 +179,7 @@ export function createWorkerRepositories(
       new DrizzleKycRetentionPersonStore(db),
       new DrizzleKycRetentionLegalEntityStore(db),
     ],
+    alertRetentionStores: createBidAlertRetentionStores(db),
     staffOpsRecipientReader: new DrizzleStaffOpsRecipientReader(db),
     complianceRecipientReader: new DrizzleComplianceRecipientReader(db),
     mediaAssetProcessorRepo: new DrizzleMediaAssetProcessorRepository(db),

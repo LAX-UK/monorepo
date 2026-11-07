@@ -7,10 +7,12 @@ import type {
   PayPlanGate,
   PayPlanLeftOutReason,
   PayPlanPayable,
+  PayPlanProgress,
 } from "@auction/types";
 import { formatGbp } from "@auction/ui";
 import type { NoticeTone } from "@auction/ui/lax";
 import { GATE_COPY, INVOICE_LINE_KIND_LABEL, LEFT_OUT_REASON_COPY, PAY_COPY } from "./pay-copy";
+import { type PayMethod, type PayMethodsVm, payMethodsVm } from "./pay-methods";
 
 /** What the page is showing, which decides its layout and whether Pay is offered at all. */
 export type PayState =
@@ -22,6 +24,8 @@ export type PayState =
   | "informed"
   /** Every invoice is being paid or the payment is being confirmed. */
   | "confirming"
+  /** A bank transfer is waiting for its money, in whole or in part. */
+  | "transfer"
   /** Nothing can be paid from this link. */
   | "empty";
 
@@ -42,15 +46,37 @@ export type PayLotVm = {
   /**
    * What only a payment of several lots needs to say about each: the lot's reference, the day it
    * is due and its invoice total. For a single lot the title row and the payment panel say them
-   * once, so they are `null` here.
+   * once, so they are `null` here. `note` is the day it is due, or where the payment stands.
    */
-  detail: { subtitle: string; due: string; total: string } | null;
+  detail: { subtitle: string; note: string; total: string } | null;
   /** The purchase page of the lot. */
   href: string;
 };
 
 /** What the purchases read knows about a lot that the plan does not. */
 export type PayLotDetails = { image: string | null; wonAt: Date | null; wonBy: string | null };
+
+/** One line of the bank details, with what copying it puts on the clipboard. */
+export type BankDetailRow = {
+  label: string;
+  value: string;
+  /** What the copy button copies; `null` for a row that is only read. */
+  copy: string | null;
+};
+
+/** What the page needs to run a payment that is under way. */
+export type PayProgressVm = {
+  stage: PayPlanProgress["stage"];
+  /** Changes whenever the payment moves; the page reads the server's again when it differs. */
+  signature: string;
+  lotIds: string[];
+  refreshHref: string;
+  contactHref: string;
+  /** The account details to send to, or `null` for a card payment or when they could not be read. */
+  details: { rows: BankDetailRow[] } | null;
+  /** The details were wanted (a transfer) but the provider could not give them. */
+  detailsUnavailable: boolean;
+};
 
 /** What the page needs besides the plan. */
 export type PayVmContext = {
@@ -67,20 +93,30 @@ export type PayMoneyVm = {
   lines: PayLine[];
   totalLabel: string;
   total: string;
-  /** "Due by Fri 13 Nov" for one invoice, the earliest date for several. */
-  due: string;
+  /** "Due by Fri 13 Nov" for one invoice, the earliest date for several; `null` once paid for. */
+  due: string | null;
   /** The company that issues the invoices: "Invoice from London Auction Xchange LTD, 156 …". */
   company: string;
   registration: string[];
+  /** How much of a bank transfer has arrived, as a labelled bar. */
+  meter: { percent: number; label: string; caption: string } | null;
+};
+
+/** What the one action says for a chosen method. */
+export type PayMethodAction = {
+  label: string;
+  /** The label where the total is already beside the button (the phone bar). */
+  barLabel: string;
+  /** The sentence under the action. */
+  note: string;
 };
 
 /** The one thing the rail and the phone bar offer. */
 export type PayAction =
   | {
       kind: "pay";
-      label: string;
-      /** The label where the total is already beside the button (the phone bar). */
-      barLabel: string;
+      /** What the action says for each way to pay; the person's choice picks one. */
+      byMethod: Record<PayMethod, PayMethodAction>;
       /** The lots and the total (whole pence) that were shown: all the server is asked to charge. */
       lotIds: string[];
       expectedTotalPence: number;
@@ -103,13 +139,13 @@ export type PayPageVm = {
   notices: PayNotice[];
   lots: PayLotVm[];
   money: PayMoneyVm | null;
-  /** How the payment is taken, said once, only while Pay is offered. */
-  howYouPay: string[];
+  /** The choice of how to pay, only while Pay is offered. */
+  methods: PayMethodsVm | null;
   action: PayAction | null;
   /** A Pay button that cannot be pressed yet, with why (the desktop rail while identity is open). */
   railPay: { label: string; reason: string } | null;
-  /** The sentence under the action. */
-  actionNote: string | null;
+  /** A payment already under way: confirming, or a bank transfer waiting for its money. */
+  progress: PayProgressVm | null;
   /**
    * The payment page sent the person back without paying: the note to show once, and this page's
    * clean address to replace the URL with so a refresh does not show it again.
@@ -127,7 +163,7 @@ function dayLabel(iso: string, now: Date): string {
   return `${formatLondonWeekday(date)} ${formatLondonDayMonth(date, now)}`;
 }
 
-function lotSubtitle(payable: PayPlanPayable): string {
+export function lotSubtitle(payable: Pick<PayPlanPayable, "lotNumber" | "saleTitle">): string {
   return [payable.lotNumber === null ? null : `Lot ${payable.lotNumber}`, payable.saleTitle]
     .filter((part): part is string => Boolean(part))
     .join(" · ");
@@ -151,7 +187,7 @@ function lotVm(
     detail: several
       ? {
           subtitle: lotSubtitle(payable),
-          due: payable.overdue ? PAY_COPY.wasDue(due) : PAY_COPY.dueBy(due),
+          note: payable.overdue ? PAY_COPY.wasDue(due) : PAY_COPY.dueBy(due),
           total: formatGbp(payable.totalPence),
         }
       : null,
@@ -169,21 +205,30 @@ function moneyLines(plan: PayPlan): PayLine[] {
   }));
 }
 
-function moneyVm(plan: PayPlan, now: Date, totalLabel: string): PayMoneyVm | null {
-  if (plan.payable.length === 0 || plan.firstDueAt === null) return null;
-  const overdue = plan.payable.some((p) => p.overdue);
-  const due = dayLabel(plan.firstDueAt, now);
-  const { entity } = plan;
+/** The company that issues the invoices, and its numbers once they exist. */
+export function entityLines(
+  entity: PayPlan["entity"],
+): Pick<PayMoneyVm, "company" | "registration"> {
   return {
-    lines: moneyLines(plan),
-    totalLabel,
-    total: formatGbp(plan.totals.pence),
-    due: overdue ? PAY_COPY.wasDue(due) : PAY_COPY.dueBy(due),
     company: PAY_COPY.invoiceFrom(entity.name, entity.address),
     registration: [
       entity.companyNumber ? `Company number ${entity.companyNumber}` : null,
       entity.vatNumber ? `VAT number ${entity.vatNumber}` : null,
     ].filter((part): part is string => part !== null),
+  };
+}
+
+function moneyVm(plan: PayPlan, now: Date, totalLabel: string): PayMoneyVm | null {
+  if (plan.payable.length === 0 || plan.firstDueAt === null) return null;
+  const overdue = plan.payable.some((p) => p.overdue);
+  const due = dayLabel(plan.firstDueAt, now);
+  return {
+    lines: moneyLines(plan),
+    totalLabel,
+    total: formatGbp(plan.totals.pence),
+    due: overdue ? PAY_COPY.wasDue(due) : PAY_COPY.dueBy(due),
+    ...entityLines(plan.entity),
+    meter: null,
   };
 }
 
@@ -371,12 +416,12 @@ export function blankPayVm(): PayPageVm {
     notices: [],
     lots: [],
     money: null,
-    howYouPay: [],
+    methods: null,
     action: null,
     railPay: null,
-    actionNote: null,
-    back: null,
+    progress: null,
     returned: null,
+    back: null,
     empty: null,
   };
 }
@@ -468,59 +513,61 @@ function nothingPayable(plan: PayPlan, returnTo: string): PayPageVm {
   };
 }
 
-/** How the total is taken: the method the server says is open for it, with what to tell the payer. */
-type OpenMethod = { method: "card" | "bank_transfer"; how: string[] };
-
-function openMethod(plan: PayPlan): OpenMethod | null {
-  const open = (method: OpenMethod["method"]) =>
-    plan.methods.some((m) => m.method === method && m.available);
-  if (open("card")) return { method: "card", how: [PAY_COPY.card] };
-  if (open("bank_transfer")) {
-    return { method: "bank_transfer", how: [PAY_COPY.bankTransfer, PAY_COPY.cardLimit] };
-  }
-  return null;
-}
-
-function payLabels(
-  method: OpenMethod["method"],
+/** What the action says for each way to pay, in the words of the approved design. */
+function methodActions(
   total: string,
   organisation: string | null,
-): { label: string; barLabel: string } {
-  if (method === "bank_transfer") {
-    return { label: PAY_COPY.continueToBankTransfer, barLabel: PAY_COPY.continueBar };
-  }
+  returned: PayVmContext["returned"],
+): Record<PayMethod, PayMethodAction> {
+  const retry = returned === "cancelled";
+  const card = retry
+    ? { label: PAY_COPY.tryAgainTotal(total), barLabel: PAY_COPY.tryAgain }
+    : {
+        label: organisation
+          ? PAY_COPY.payForOrganisation(total, organisation)
+          : PAY_COPY.payLabel(total),
+        barLabel: PAY_COPY.payBar,
+      };
   return {
-    label: organisation
-      ? PAY_COPY.payForOrganisation(total, organisation)
-      : PAY_COPY.payLabel(total),
-    barLabel: PAY_COPY.payBar,
+    card: { ...card, note: PAY_COPY.underButton },
+    bank_transfer: {
+      label: PAY_COPY.continueToBankTransfer,
+      barLabel: PAY_COPY.continueBar,
+      note: PAY_COPY.bankUnderButton,
+    },
   };
 }
 
-function payActionFor(plan: PayPlan): {
-  action: PayAction | null;
-  how: string[];
-  notice: PayNotice | null;
-} {
-  const method = openMethod(plan);
-  if (!method) {
+function payActionFor(
+  plan: PayPlan,
+  returned: PayVmContext["returned"],
+): { action: PayAction | null; methods: PayMethodsVm | null; notice: PayNotice | null } {
+  const methods = payMethodsVm(plan);
+  if (!methods) {
     // The total is more than one online payment takes: say so, offer no way to pay it.
-    return { action: null, how: [], notice: { tone: "warning", title: PAY_COPY.overOnlineLimit } };
+    return {
+      action: null,
+      methods: null,
+      notice: { tone: "warning", title: PAY_COPY.overOnlineLimit },
+    };
   }
   const organisation = plan.account.kind === "organisation" ? plan.account.name : null;
   return {
     action: {
       kind: "pay",
-      ...payLabels(method.method, formatGbp(plan.totals.pence), organisation),
+      byMethod: methodActions(formatGbp(plan.totals.pence), organisation, returned),
       lotIds: plan.payable.map((p) => p.lotId),
       expectedTotalPence: plan.totals.pence,
     },
-    how: method.how,
+    methods,
     notice: null,
   };
 }
 
-/** The note for a payment the payment page sent the person back from, shown once. */
+/**
+ * The note for a payment the payment page sent the person back from, shown once. It is announced
+ * and takes focus, so someone who left a bank's check unfinished finds out what happened.
+ */
 function returnedNote(
   returned: PayVmContext["returned"],
   cleanHref: string,
@@ -572,8 +619,8 @@ function buildPayBody(
     subtitle,
     lots: plan.payable.map((p) => lotVm(p, now, several, details)),
     empty: null,
-    actionNote: null,
-    howYouPay: [] as string[],
+    methods: null as PayMethodsVm | null,
+    progress: null,
     railPay: null as PayPageVm["railPay"],
     back:
       !several && only
@@ -615,7 +662,7 @@ function buildPayBody(
     };
   }
 
-  const pay = payActionFor(plan);
+  const pay = payActionFor(plan, context.returned);
   return {
     ...common,
     state: "ready",
@@ -626,8 +673,7 @@ function buildPayBody(
       ...(leftOut ? [leftOut] : []),
     ],
     money: moneyVm(plan, now, PAY_COPY.totalToPay),
-    howYouPay: pay.how,
+    methods: pay.methods,
     action: pay.action,
-    actionNote: pay.action ? PAY_COPY.underButton : null,
   };
 }

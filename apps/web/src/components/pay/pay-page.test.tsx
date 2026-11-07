@@ -77,6 +77,7 @@ describe("the Pay page, ready to pay", () => {
     expect(payAction).toHaveBeenCalledExactlyOnceWith({
       lotIds: [LOT_A],
       expectedTotalPence: 237_500,
+      method: "card",
     });
   });
 
@@ -136,6 +137,7 @@ describe("the Pay page, several lots", () => {
       expect(payAction).toHaveBeenCalledWith({
         lotIds: [LOT_A, LOT_B],
         expectedTotalPence: 375_000,
+        method: "card",
       }),
     );
   });
@@ -281,7 +283,7 @@ describe("the Pay page, back from the payment page without paying", () => {
     draw(ready(), "cancelled");
     const note = screen.getByRole("alert");
     expect(note).toHaveTextContent("Payment not completed");
-    expect(note).toHaveTextContent(/Nothing was charged/);
+    expect(note).toHaveTextContent(/You were not charged/);
     await waitFor(() =>
       expect(replace).toHaveBeenCalledExactlyOnceWith("/purchases/pay?lots=a", { scroll: false }),
     );
@@ -301,11 +303,11 @@ describe("the Pay page, back from the payment page without paying", () => {
       message: "The total has changed to £2,400.00. Check it and pay again.",
     });
     draw(ready(), "cancelled");
-    fireEvent.click(screen.getAllByRole("button", { name: /Pay/ })[0] as HTMLElement);
+    fireEvent.click(screen.getAllByRole("button", { name: /Try again/ })[0] as HTMLElement);
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("The total has changed to £2,400.00"),
     );
-    expect(screen.queryByText("Payment not completed")).toBeNull();
+    expect(screen.queryByText(/Payment not completed/)).toBeNull();
   });
 
   it("names the phone bar's button by the amount, except while it is opening the payment", async () => {

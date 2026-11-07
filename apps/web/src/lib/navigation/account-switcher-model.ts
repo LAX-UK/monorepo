@@ -19,6 +19,17 @@ export type AccountOption = {
   underReview: boolean;
 };
 
+/** The accounts a person can switch between, and the places that manage them. */
+export type AccountSwitcher = {
+  options: AccountOption[];
+  /** Organisation invitations waiting for an answer. */
+  pendingInvitations: number;
+  invitationsHref: string;
+  /** Every account and invitation on one page. */
+  accountsHref: string;
+  registerHref: string;
+};
+
 /** What the Bid menu shows about whose account is in use. */
 export type AccountChrome = {
   /** The account in use. */
@@ -27,15 +38,7 @@ export type AccountChrome = {
    * The switcher, or `null` for people with no organisation: they have one account, so the menu
    * just shows their name and nothing can be switched.
    */
-  switcher: {
-    options: AccountOption[];
-    /** Organisation invitations waiting for an answer. */
-    pendingInvitations: number;
-    invitationsHref: string;
-    /** Every account and invitation on one page. */
-    accountsHref: string;
-    registerHref: string;
-  } | null;
+  switcher: AccountSwitcher | null;
 };
 
 type Input = {
@@ -78,6 +81,20 @@ function organisationOption(member: LegalEntitySummary, current: boolean): Accou
   };
 }
 
+/** The switcher for these accounts, with where its links go. */
+export function buildAccountSwitcher(
+  options: AccountOption[],
+  pendingInvitations: number,
+): AccountSwitcher {
+  return {
+    options,
+    pendingInvitations,
+    invitationsHref: CLIENT_ROUTES.invitations,
+    accountsHref: CLIENT_ROUTES.organisations,
+    registerHref: REGISTER_ORGANISATION_HREF,
+  };
+}
+
 /** The account switcher for the signed-in person: the one place the chrome names the account. */
 export function buildAccountChrome(input: Input): AccountChrome {
   const personal = input.memberships.find((m) => m.kind === "individual");
@@ -97,15 +114,7 @@ export function buildAccountChrome(input: Input): AccountChrome {
   return {
     current,
     switcher:
-      organisations.length > 0
-        ? {
-            options,
-            pendingInvitations: input.pendingInvitations,
-            invitationsHref: CLIENT_ROUTES.invitations,
-            accountsHref: CLIENT_ROUTES.organisations,
-            registerHref: REGISTER_ORGANISATION_HREF,
-          }
-        : null,
+      organisations.length > 0 ? buildAccountSwitcher(options, input.pendingInvitations) : null,
   };
 }
 
@@ -146,6 +155,46 @@ export function accountRowText(option: AccountOption): { title: string; caption:
 /** The accessible name of an account's needs-you dot: "1 needs you", "2 need you". */
 export function needsYouLabel(count: number): string {
   return `${count} ${count === 1 ? "needs" : "need"} you`;
+}
+
+/** The one heading and the one word for the account in use, on every switcher surface. */
+export const SWITCH_ACCOUNT_HEADING = "Switch account";
+export const CURRENT_ACCOUNT_LABEL = "Current";
+/** Replaces the role line on the row being switched to. */
+export const SWITCHING_LABEL = "Switching…";
+
+/** The most a row's count shows before it reads "9+". */
+const NEEDS_YOU_CAP = 9;
+
+/** What a switcher row says, whichever surface draws it. */
+export type AccountRowView = {
+  title: string;
+  /** The role (or "Personal"), or "Switching…" while this row's switch is in flight. */
+  caption: string;
+  /** The needs-you number as shown ("5", "9+"), or `null` when nothing needs the person. */
+  needsText: string | null;
+  /** Its accessible name ("5 need you"), or `null` with no count. */
+  needsLabel: string | null;
+  /** The account in use: shown as "Current" with a check. */
+  current: boolean;
+  pending: boolean;
+};
+
+export function accountRowView(
+  option: AccountOption,
+  state: { needs: number; pending: boolean },
+): AccountRowView {
+  const { title, caption } = accountRowText(option);
+  const counted = state.needs > 0;
+  const shown = state.needs > NEEDS_YOU_CAP ? `${NEEDS_YOU_CAP}+` : String(state.needs);
+  return {
+    title,
+    caption: state.pending ? SWITCHING_LABEL : caption,
+    needsText: counted ? shown : null,
+    needsLabel: counted ? needsYouLabel(state.needs) : null,
+    current: option.current,
+    pending: state.pending,
+  };
 }
 
 /** "Pending invitations (2)", capped so the row never grows. */

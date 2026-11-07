@@ -30,7 +30,9 @@ import type {
   ICollectionBookingService,
   IDeliveryQuoteService,
   IPayPlanService,
+  IPayProgressReadService,
   IPaySeveralService,
+  IPayTransferService,
   IPurchaseProblemService,
   IStaffDeliveryQuoteService,
 } from "../services/interfaces/organisation-buying-service.js";
@@ -44,11 +46,15 @@ import {
   StaffDeliveryQuoteService,
 } from "../services/organisation-buying/delivery-quote.service.js";
 import { PayPlanService } from "../services/organisation-buying/pay-plan.service.js";
+import { PayProgressReadService } from "../services/organisation-buying/pay-progress-read.service.js";
+import { PayProgressResolver } from "../services/organisation-buying/pay-progress.resolver.js";
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
+import { PayTransferService } from "../services/organisation-buying/pay-transfer.service.js";
 import { PurchaseCandidateReader } from "../services/organisation-buying/purchase-candidate.reader.js";
 import { PurchaseProblemService } from "../services/organisation-buying/purchase-problem.service.js";
 import { WonLotLookups } from "../services/organisation-buying/won-lot-lookups.js";
 import type { PaymentGroupCheckoutService } from "../services/payment-group/payment-group-checkout.service.js";
+import type { IPaymentGroupGateway } from "../services/payment-group/payment-group-ports.js";
 import type { IPaymentEligibilityGate } from "../services/payment/payment-eligibility.gate.js";
 
 /** The client workspace's buying modules for the acting account. */
@@ -57,6 +63,8 @@ export type OrganisationBuyingServices = {
   purchases: IAccountPurchasesService;
   payPlan: IPayPlanService;
   paySeveral: IPaySeveralService;
+  payTransfer: IPayTransferService;
+  payProgress: IPayProgressReadService;
   deliveryQuotes: IDeliveryQuoteService;
   collection: ICollectionBookingService;
   problems: IPurchaseProblemService;
@@ -88,6 +96,8 @@ export type CreateOrganisationBuyingInput = {
       | null;
     eligibility: IPaymentEligibilityGate;
     groupCheckout: Pick<PaymentGroupCheckoutService, "start">;
+    /** Asks the payment provider how a combined checkout stands, and for transfer details. */
+    groupGateway: Pick<IPaymentGroupGateway, "checkoutStatus" | "bankTransferInstructions">;
     invoices: IBidInvoiceReader;
     /** Prices a lot not invoiced yet with the calculator that raises invoices. */
     pricing: Pick<InvoiceRaiser, "price">;
@@ -109,6 +119,7 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
     now: () => new Date(),
   });
   const bid = legalEntityFor("bid");
+  const progress = new PayProgressResolver(input.payments.groupGateway);
   const payPlan = new PayPlanService({
     candidates,
     invoices: input.payments.invoices,
@@ -119,6 +130,7 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
     eligibility: input.payments.eligibility,
     compliance: input.payments.compliance,
     limits: input.payments.tierLimits,
+    progress,
     issuer: {
       name: bid.name,
       address: bid.registeredAddress.inline,
@@ -141,6 +153,12 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
         compliance: input.payments.compliance,
         checkout: input.payments.groupCheckout,
         metrics: { record: recordMoneyPathEvent },
+      }),
+      payProgress: new PayProgressReadService({ candidates, progress }),
+      payTransfer: new PayTransferService({
+        candidates,
+        progress,
+        gateway: input.payments.groupGateway,
       }),
       deliveryQuotes: new DeliveryQuoteService({ quotes, purchases }),
       problems: new PurchaseProblemService({

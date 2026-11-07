@@ -391,6 +391,16 @@ export const WORKER_BID_ALERT_TABLES = [
   "bid_alert_digest",
   "bid_alert_announcement",
 ] as const;
+/**
+ * The retention prune (apps/worker, `purge-alert-retention`) deletes old match and digest logs and
+ * trims a complaint-stopped subscriber's topics, matches and digests. Subscribers themselves are
+ * deleted through WORKER_ANONYMISATION_DELETE_TABLES. bid_alert_announcement is never deleted.
+ */
+export const WORKER_BID_ALERT_PRUNE_DELETE_TABLES = [
+  "bid_alert_topic",
+  "bid_alert_match",
+  "bid_alert_digest",
+] as const;
 /** Worker provisions personal legal entities from `user.registered` domain events. */
 export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
 /** Worker processes async CSV exports and purges expired rows (data-export + purge-expired jobs). */
@@ -492,6 +502,17 @@ export const WORKER_SHOP_ENQUIRY_READ_COLUMNS = [
     "shop_artwork_interest",
     ["artwork_id", "identity_subject_id", "intent", "reference", "contact_phone"],
   ],
+] as const;
+
+/**
+ * The CRM projector names a Shop order's Deal from these columns and no others (the order, its
+ * first line and the guest behind it). The tables stay denied to the worker as a whole; only a
+ * column-level SELECT is granted, covering what the reader selects, joins and filters on.
+ */
+export const WORKER_SHOP_ORDER_READ_COLUMNS = [
+  ["shop_order", ["id", "reference", "guest_customer_id", "delivery_recipient_name"]],
+  ["shop_order_line", ["id", "order_id", "artwork_id", "created_at"]],
+  ["shop_guest_customer", ["id", "name"]],
 ] as const;
 
 type RoleName = "auth_app" | "api_app" | "shop_app" | "worker_app";
@@ -883,6 +904,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of WORKER_BID_ALERT_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
+        for (const tableName of WORKER_BID_ALERT_PRUNE_DELETE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
+        }
         for (const tableName of WORKER_ARTWORK_REGISTER_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
         }
@@ -950,6 +974,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
         }
         for (const [tableName, columns] of WORKER_SHOP_ENQUIRY_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
+        for (const [tableName, columns] of WORKER_SHOP_ORDER_READ_COLUMNS) {
           await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
         }
 

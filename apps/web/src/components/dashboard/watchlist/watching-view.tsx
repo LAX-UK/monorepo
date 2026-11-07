@@ -8,7 +8,14 @@ import { deleteSavedSearch } from "@/lib/data/http/saved-searches.client";
 import { removeWatchlistLot } from "@/lib/data/http/watchlist.client";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { NOTIFICATION_SETTINGS_HREF } from "@/lib/navigation/settings-links";
 import { notify } from "@/lib/ui/notify";
+import {
+  type TopicReach,
+  type WatchingAlertReach,
+  reachLabel,
+  searchReachLabel,
+} from "@/lib/watching/alert-reach";
 import { artistAlertSummary } from "@/lib/watching/artist-alert";
 import { savedSearchHref, savedSearchSummary } from "@/lib/watching/saved-search";
 import { reminderRowLabel } from "@/lib/watching/watched-lot-reminder.vm";
@@ -56,6 +63,8 @@ export type WatchingViewProps = {
   lots: WatchedLotRowVm[] | null;
   artists: WatchedArtistVm[] | null;
   searches: SavedSearchRow[] | null;
+  /** Where artist and search alerts reach the person; null when it could not be read. */
+  reach: WatchingAlertReach;
   /** The organisation the person acts for: the list is theirs alone, and says so. */
   organisation: string | null;
 };
@@ -70,7 +79,14 @@ function tabHref(view: WatchingViewId): string {
  * Watching: the lots, artists and searches the person follows, each a view with its count. The
  * alert on an artist is edited here; how alerts reach the person stays in Bid settings.
  */
-export function WatchingView({ view, lots, artists, searches, organisation }: WatchingViewProps) {
+export function WatchingView({
+  view,
+  lots,
+  artists,
+  searches,
+  reach,
+  organisation,
+}: WatchingViewProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<WatchedLotSort>("closing");
@@ -174,6 +190,7 @@ export function WatchingView({ view, lots, artists, searches, organisation }: Wa
       {view === "artists" ? (
         <ArtistsList
           artists={artists}
+          reach={reach?.artists ?? null}
           query={query}
           onClear={() => setQuery("")}
           onEdit={setEditing}
@@ -183,6 +200,7 @@ export function WatchingView({ view, lots, artists, searches, organisation }: Wa
       {view === "searches" ? (
         <SearchesList
           searches={searches}
+          reach={reach?.searches ?? null}
           query={query}
           onClear={() => setQuery("")}
           onRemove={removeSearch}
@@ -315,12 +333,14 @@ function LotsList({
 
 function ArtistsList({
   artists,
+  reach,
   query,
   onClear,
   onEdit,
   onUnfollow,
 }: {
   artists: WatchedArtistVm[] | null;
+  reach: TopicReach | null;
   query: string;
   onClear: () => void;
   onEdit: (artist: WatchedArtistVm) => void;
@@ -344,60 +364,65 @@ function ArtistsList({
   const rows = artists.filter((artist) => matchesEveryWord([artist.name], query));
   if (rows.length === 0) return <ListNoResults query={query} onClear={onClear} />;
   return (
-    <RecordList aria-label="Artists you follow">
-      {rows.map((artist) => (
-        <RecordRow
-          key={artist.artistId}
-          href={artist.href}
-          linkAs={Link}
-          leading={
-            <RecordRowMedia className="grid place-items-center rounded-full after:rounded-full">
-              {artist.portraitUrl ? (
-                <MediaImage src={artist.portraitUrl} alt="" sizes="48px" />
-              ) : (
-                <UserRound aria-hidden className="size-5 text-lax-muted" strokeWidth={1.5} />
-              )}
-            </RecordRowMedia>
-          }
-          title={artist.name}
-          meta={[`Alert: ${artistAlertSummary(artist.alert)}`]}
-          action={
-            <Button
-              size="sm"
-              onClick={() => onEdit(artist)}
-              aria-label={`Edit alert for ${artist.name}`}
-            >
-              Edit alert
-            </Button>
-          }
-          menu={
-            <InlineActionMenu
-              label={`More for ${artist.name}`}
-              items={[
-                { type: "item", label: "Edit alert", onSelect: () => onEdit(artist) },
-                { type: "separator" },
-                {
-                  type: "item",
-                  label: "Stop following",
-                  destructive: true,
-                  onSelect: () => onUnfollow(artist),
-                },
-              ]}
-            />
-          }
-        />
-      ))}
-    </RecordList>
+    <>
+      <RecordList aria-label="Artists you follow">
+        {rows.map((artist) => (
+          <RecordRow
+            key={artist.artistId}
+            href={artist.href}
+            linkAs={Link}
+            leading={
+              <RecordRowMedia className="grid place-items-center rounded-full after:rounded-full">
+                {artist.portraitUrl ? (
+                  <MediaImage src={artist.portraitUrl} alt="" sizes="48px" />
+                ) : (
+                  <UserRound aria-hidden className="size-5 text-lax-muted" strokeWidth={1.5} />
+                )}
+              </RecordRowMedia>
+            }
+            title={artist.name}
+            meta={[artistAlertSummary(artist.alert), ...(reach ? [reachLabel(reach)] : [])]}
+            action={
+              <Button
+                size="sm"
+                onClick={() => onEdit(artist)}
+                aria-label={`Edit alert for ${artist.name}`}
+              >
+                Edit alert
+              </Button>
+            }
+            menu={
+              <InlineActionMenu
+                label={`More for ${artist.name}`}
+                items={[
+                  { type: "item", label: "Edit alert", onSelect: () => onEdit(artist) },
+                  { type: "separator" },
+                  {
+                    type: "item",
+                    label: "Stop following",
+                    destructive: true,
+                    onSelect: () => onUnfollow(artist),
+                  },
+                ]}
+              />
+            }
+          />
+        ))}
+      </RecordList>
+      <AlertReachNote />
+    </>
   );
 }
 
 function SearchesList({
   searches,
+  reach,
   query,
   onClear,
   onRemove,
 }: {
   searches: SavedSearchRow[] | null;
+  reach: TopicReach | null;
   query: string;
   onClear: () => void;
   onRemove: (search: SavedSearchRow) => void;
@@ -422,43 +447,61 @@ function SearchesList({
   );
   if (rows.length === 0) return <ListNoResults query={query} onClear={onClear} />;
   return (
-    <RecordList aria-label="Saved searches">
-      {rows.map((search) => (
-        <RecordRow
-          key={search.id}
-          href={savedSearchHref(search.query)}
-          linkAs={Link}
-          leading={
-            <RecordRowMedia className="grid place-items-center">
-              <Search aria-hidden className="size-5 text-lax-muted" strokeWidth={1.5} />
-            </RecordRowMedia>
-          }
-          title={search.label}
-          meta={[
-            savedSearchSummary(search.query),
-            search.notifyEmail ? "email alerts on" : "no email alerts",
-          ]}
-          menu={
-            <InlineActionMenu
-              label={`More for ${search.label}`}
-              items={[
-                {
-                  type: "item",
-                  label: "Run search",
-                  onSelect: () => window.location.assign(savedSearchHref(search.query)),
-                },
-                { type: "separator" },
-                {
-                  type: "item",
-                  label: "Remove",
-                  destructive: true,
-                  onSelect: () => onRemove(search),
-                },
-              ]}
-            />
-          }
-        />
-      ))}
-    </RecordList>
+    <>
+      <RecordList aria-label="Saved searches">
+        {rows.map((search) => (
+          <RecordRow
+            key={search.id}
+            href={savedSearchHref(search.query)}
+            linkAs={Link}
+            leading={
+              <RecordRowMedia className="grid place-items-center">
+                <Search aria-hidden className="size-5 text-lax-muted" strokeWidth={1.5} />
+              </RecordRowMedia>
+            }
+            title={search.label}
+            meta={[
+              savedSearchSummary(search.query),
+              searchReachLabel(search.notifyEmail, reach),
+            ].filter((part): part is string => part !== null)}
+            menu={
+              <InlineActionMenu
+                label={`More for ${search.label}`}
+                items={[
+                  {
+                    type: "item",
+                    label: "Run search",
+                    onSelect: () => window.location.assign(savedSearchHref(search.query)),
+                  },
+                  { type: "separator" },
+                  {
+                    type: "item",
+                    label: "Remove",
+                    destructive: true,
+                    onSelect: () => onRemove(search),
+                  },
+                ]}
+              />
+            }
+          />
+        ))}
+      </RecordList>
+      <AlertReachNote />
+    </>
+  );
+}
+
+/** Under the artist and search lists: how their matches arrive, and where to change that. */
+function AlertReachNote() {
+  return (
+    <p className="text-lax-13 text-lax-muted">
+      When email is on, matches come in one email at 08:00 London and in the app.{" "}
+      <Link
+        href={NOTIFICATION_SETTINGS_HREF}
+        className="lax-focus rounded-lax-control text-lax-fg underline underline-offset-2"
+      >
+        Where alerts reach you
+      </Link>
+    </p>
   );
 }

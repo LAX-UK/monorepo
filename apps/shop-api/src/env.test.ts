@@ -230,6 +230,24 @@ describe("loadShopApiEnv email alerts", () => {
     expect(env.ALERT_LINK_KEY_ID).toBe("k1");
   });
 
+  it("keeps the alert retention purge off unless it is switched on", () => {
+    expect(loadShopApiEnv(productionNodeBase()).ALERT_RETENTION_PURGE_ENABLED).toBe(false);
+    for (const value of ["", "false", "0", "off", "nonsense"]) {
+      expect(
+        loadShopApiEnv(productionNodeBase({ ALERT_RETENTION_PURGE_ENABLED: value }))
+          .ALERT_RETENTION_PURGE_ENABLED,
+        value,
+      ).toBe(false);
+    }
+    for (const value of ["true", "1", "yes", "ON", " true "]) {
+      expect(
+        loadShopApiEnv(productionNodeBase({ ALERT_RETENTION_PURGE_ENABLED: value }))
+          .ALERT_RETENTION_PURGE_ENABLED,
+        value,
+      ).toBe(true);
+    }
+  });
+
   it("refuses to send in production without a strong link secret", () => {
     expect(() => loadShopApiEnv(productionNodeBase({ ALERTS_SEND_MODE: "on" }))).toThrow(
       "ALERT_LINK_SECRET",

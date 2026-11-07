@@ -145,6 +145,8 @@ export type PayPlanFacts = {
   compliance: PayPlanComplianceHold;
   limits: PaymentTierLimits;
   classified: ClassifiedPayPlanLots;
+  /** A payment already under way for any of the lots, if one is. */
+  progress: PayPlan["progress"];
 };
 
 /** The first thing that stops the payment, or clear. The order is part of the contract. */
@@ -201,6 +203,8 @@ export function buildPayPlan(facts: PayPlanFacts): PayPlan {
     },
     firstDueAt: firstDue === null ? null : new Date(firstDue).toISOString(),
     methods: paymentMethodsFor(totalPence, facts.limits),
+    cardLimitPence: facts.limits.cardMaxPence,
+    progress: facts.progress,
     currency: "GBP",
   };
 }
