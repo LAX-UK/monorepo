@@ -87,7 +87,10 @@ describe("ClientAccountMenu", () => {
   it("switches through the switch action and a page load, never a link to the hop", async () => {
     const assign = vi.fn();
     const realLocation = window.location;
-    Object.defineProperty(window, "location", { value: { assign }, configurable: true });
+    Object.defineProperty(window, "location", {
+      value: { assign, search: "" },
+      configurable: true,
+    });
     switchAccount.mockResolvedValue({ kind: "switched" });
     try {
       const accounts = within(renderMenu()).getByRole("group", { name: "Switch account" });

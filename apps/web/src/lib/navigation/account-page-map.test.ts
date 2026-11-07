@@ -51,6 +51,14 @@ describe("public pages", () => {
   });
 });
 
+describe("task pages", () => {
+  it("open the account's first page, since they belong to the task being done", () => {
+    expect(pageAfterSwitch("/onboarding/organisation", "organisation")).toBe("/home");
+    expect(pageAfterSwitch("/onboarding", "personal")).toBe("/bids");
+    expect(pageAfterSwitch("/invitations/abc", "organisation")).toBe("/home");
+  });
+});
+
 describe("existsInBothAccounts", () => {
   it("is false for pages of one kind of account", () => {
     expect(existsInBothAccounts("/home")).toBe(false);

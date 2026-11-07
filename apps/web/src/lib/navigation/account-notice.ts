@@ -18,16 +18,10 @@ export type AccountNotice =
   /** Opening a notification switched to `accountId`; switching back goes to `fromAccountId`. */
   | { kind: "opened_notification"; accountId: string; fromAccountId: string }
   /**
-   * The person chose `accountId` in the switcher on the page they have just left. It carries the
-   * account's name, so any page, in or out of the client area, can greet them without a lookup.
+   * The person chose `accountId` in the switcher on the page they have just left. Only the id is
+   * kept: the greeting finds the name in the server's account list, never in the cookie.
    */
-  | {
-      kind: "chose";
-      accountId: string;
-      accountKind: "personal" | "organisation";
-      accountName: string;
-      accountInitials: string;
-    }
+  | { kind: "chose"; accountId: string }
   /** The person switched to `accountId` in another tab; this tab followed. */
   | { kind: "switched_elsewhere"; accountId: string }
   /** The organisation the person used last no longer has them as a member. */
@@ -65,26 +59,21 @@ const NOTICE_KINDS: {
   },
   chose: {
     decode: (value) =>
-      typeof value.accountId === "string" &&
-      (value.accountKind === "personal" || value.accountKind === "organisation") &&
-      typeof value.accountName === "string" &&
-      typeof value.accountInitials === "string"
-        ? {
-            kind: "chose",
-            accountId: value.accountId,
-            accountKind: value.accountKind,
-            accountName: value.accountName.slice(0, 120),
-            accountInitials: value.accountInitials.slice(0, 3),
-          }
-        : null,
-    message: (notice) =>
-      notice.accountKind === "personal"
+      typeof value.accountId === "string" ? { kind: "chose", accountId: value.accountId } : null,
+    message: (notice, accountOf) => {
+      const account = accountOf(notice.accountId);
+      if (!account) return null;
+      return account.kind === "personal"
         ? "Now using your personal account"
-        : `Now acting as ${notice.accountName}`,
-    detail: (notice) =>
-      notice.accountKind === "personal"
+        : `Now acting as ${account.name}`;
+    },
+    detail: (notice, accountOf) => {
+      const account = accountOf(notice.accountId);
+      if (!account) return null;
+      return account.kind === "personal"
         ? "Your own bids and purchases."
-        : "Bids, purchases and consignments here are the organisation's.",
+        : "Bids, purchases and consignments here are the organisation's.";
+    },
   },
   opened_notification: {
     decode: (value) =>

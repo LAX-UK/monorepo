@@ -157,10 +157,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <PushBootstrap />
               <PwaInstallPrompt />
               {children}
+              <AccountSwitchGreeting />
             </AppQueryProvider>
           </AuthSessionProvider>
           <Toaster />
-          <AccountSwitchGreeting />
           <WebVitalsReporter />
           <ConsentShell />
           <AnalyticsDebugPanel />

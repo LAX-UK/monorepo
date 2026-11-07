@@ -77,38 +77,38 @@ describe("account notice", () => {
   });
 
   describe("a switch the person chose", () => {
-    const org = {
-      kind: "chose",
-      accountId: "org-1",
-      accountKind: "organisation",
-      accountName: "Northbank Gallery",
-      accountInitials: "NG",
-    } as const;
-    const personal = {
-      kind: "chose",
-      accountId: "me",
-      accountKind: "personal",
-      accountName: "Personal",
-      accountInitials: "OG",
-    } as const;
+    const org = { kind: "chose", accountId: "org-1" } as const;
 
-    it("round-trips through the cookie, carrying who it names", () => {
+    it("round-trips through the cookie, carrying only the id", () => {
       expect(decodeAccountNotice(encodeAccountNotice(org))).toEqual(org);
-      expect(
-        decodeAccountNotice(encodeURIComponent('{"kind":"chose","accountId":"x"}')),
-      ).toBeNull();
+      expect(decodeAccountNotice(encodeURIComponent('{"kind":"chose"}'))).toBeNull();
     });
 
-    it("says who they act as in an organisation", () => {
-      expect(accountNoticeMessage(org, () => null)).toBe("Now acting as Northbank Gallery");
-      expect(accountNoticeDetail(org, () => null)).toBe(
+    it("ignores a name placed in the cookie", () => {
+      const forged = encodeURIComponent(
+        '{"kind":"chose","accountId":"org-1","accountName":"Evil Ltd","accountKind":"organisation"}',
+      );
+      expect(decodeAccountNotice(forged)).toEqual(org);
+      expect(accountNoticeMessage(decodeAccountNotice(forged), names)).toBe(
+        "Now acting as Northbank Gallery",
+      );
+    });
+
+    it("says who they act as in an organisation, from the account list", () => {
+      expect(accountNoticeMessage(org, names)).toBe("Now acting as Northbank Gallery");
+      expect(accountNoticeDetail(org, names)).toBe(
         "Bids, purchases and consignments here are the organisation's.",
       );
     });
 
     it("says they use their personal account", () => {
-      expect(accountNoticeMessage(personal, () => null)).toBe("Now using your personal account");
-      expect(accountNoticeDetail(personal, () => null)).toBe("Your own bids and purchases.");
+      const personal = { kind: "chose", accountId: "me" } as const;
+      expect(accountNoticeMessage(personal, names)).toBe("Now using your personal account");
+      expect(accountNoticeDetail(personal, names)).toBe("Your own bids and purchases.");
+    });
+
+    it("says nothing for an account that is not in the list", () => {
+      expect(accountNoticeMessage({ kind: "chose", accountId: "gone" }, names)).toBeNull();
     });
   });
 

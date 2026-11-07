@@ -24,6 +24,29 @@ const PAGES_IN_BOTH_ACCOUNTS: ReadonlySet<string> = new Set([
   CLIENT_ROUTES.selling,
 ]);
 
+/**
+ * Pages of the sign-in and onboarding tasks. They are not the client area, but they are not the
+ * public site either: each belongs to the person doing the task, so a switch opens the account's
+ * first page instead of staying.
+ */
+const TASK_PAGE_PREFIXES = [
+  "/auth",
+  "/forgot-password",
+  "/invitations",
+  "/login",
+  "/onboarding",
+  "/register",
+  "/reset-password",
+  "/verify-email",
+] as const;
+
+function isTaskPage(path: string): boolean {
+  const pathname = pathOf(path);
+  return TASK_PAGE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
 function withoutTrailingSlash(path: string): string {
   return pathOf(path).replace(/\/+$/, "");
 }
@@ -41,7 +64,9 @@ export function pageAfterSwitch(
   currentPath: string | null,
   target: AccountContext["kind"],
 ): string {
-  if (currentPath && !isClientAreaPath(pathOf(currentPath))) return currentPath;
+  if (currentPath && !isClientAreaPath(pathOf(currentPath)) && !isTaskPage(currentPath)) {
+    return currentPath;
+  }
   if (currentPath && existsInBothAccounts(currentPath)) return withoutTrailingSlash(currentPath);
   return accountHomePathForKind(target);
 }

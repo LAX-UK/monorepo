@@ -5,6 +5,9 @@ import { X } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { AccountTile } from "./account-tile";
 
+/** How long after the message goes in before the callback runs. */
+export const FOCUS_AFTER_ANNOUNCE_MS = 200;
+
 type Props = {
   account: { kind: "personal" | "organisation"; initials: string };
   title: string;
@@ -14,7 +17,7 @@ type Props = {
   /** Goes away by itself after this long; it stays while hovered or focused. */
   autoDismissMs: number;
   testId: string;
-  /** Called once the message is in the live region, for example to move focus. */
+  /** Called a moment after the message is in the live region, for example to move focus. */
   onAnnounced?: () => void;
 };
 
@@ -37,12 +40,16 @@ export function AccountToast({
   const [held, setHeld] = useState(false);
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      setAnnounced(true);
-      onAnnounced?.();
-    });
+    const frame = window.requestAnimationFrame(() => setAnnounced(true));
     return () => window.cancelAnimationFrame(frame);
-  }, [onAnnounced]);
+  }, []);
+
+  // Later than the message, so a screen reader reads it before focus moves to the heading.
+  useEffect(() => {
+    if (!announced || !onAnnounced) return;
+    const timer = window.setTimeout(onAnnounced, FOCUS_AFTER_ANNOUNCE_MS);
+    return () => window.clearTimeout(timer);
+  }, [announced, onAnnounced]);
 
   useEffect(() => {
     if (!announced || !open || held) return;

@@ -33,7 +33,10 @@ const assign = vi.fn();
 const realLocation = window.location;
 
 beforeEach(() => {
-  Object.defineProperty(window, "location", { value: { assign }, configurable: true });
+  Object.defineProperty(window, "location", {
+    value: { assign, search: "" },
+    configurable: true,
+  });
 });
 
 afterEach(() => {
@@ -53,13 +56,7 @@ describe("useAccountSwitch", () => {
     switchAccount.mockResolvedValue({ kind: "switched" });
     const { result } = renderHook(() => useAccountSwitch("/home"));
     await act(() => result.current.choose(option));
-    expect(leaveAccountNotice).toHaveBeenCalledWith({
-      kind: "chose",
-      accountId: "org-1",
-      accountKind: "organisation",
-      accountName: "Northbank Gallery",
-      accountInitials: "NG",
-    });
+    expect(leaveAccountNotice).toHaveBeenCalledWith({ kind: "chose", accountId: "org-1" });
   });
 
   it("stays on a page both accounts have, and opens the first page otherwise", async () => {
@@ -72,6 +69,19 @@ describe("useAccountSwitch", () => {
     const next = renderHook(() => useAccountSwitch());
     await act(() => next.result.current.choose({ ...option, kind: "organisation" }));
     expect(assign).toHaveBeenLastCalledWith("/home");
+    pathname.current = "/bids";
+  });
+
+  it("keeps the query on a public page, where it names nothing of the account", async () => {
+    switchAccount.mockResolvedValue({ kind: "switched" });
+    pathname.current = "/sales/spring";
+    Object.defineProperty(window, "location", {
+      value: { assign, search: "?tab=lots" },
+      configurable: true,
+    });
+    const { result } = renderHook(() => useAccountSwitch());
+    await act(() => result.current.choose({ ...option, kind: "organisation" }));
+    expect(assign).toHaveBeenLastCalledWith("/sales/spring?tab=lots");
     pathname.current = "/bids";
   });
 

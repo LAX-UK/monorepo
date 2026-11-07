@@ -10,14 +10,13 @@ import { switchAccount } from "@/lib/navigation/switch-account";
 import { notify } from "@/lib/ui/notify";
 import { usePathname } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
-import { useAccountChrome } from "./account-chrome-context";
 
 /**
  * What switching needs to know about an account: which one, and whether it is already in use.
  * With its kind, the page after the switch follows the page map; without, it is Home.
  */
 export type SwitchTarget = Pick<AccountOption, "id" | "current"> &
-  Partial<Pick<AccountOption, "kind" | "name" | "initials">>;
+  Partial<Pick<AccountOption, "kind">>;
 
 /** Why a switch did not happen, in words the person can read. */
 export type SwitchFailure = { title: string; description: string };
@@ -50,7 +49,6 @@ export function useAccountSwitch(
   retry: () => Promise<void>;
 } {
   const pathname = usePathname();
-  const chrome = useAccountChrome();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [failure, setFailure] = useState<SwitchFailure | null>(null);
   const lastChoice = useRef<SwitchTarget | null>(null);
@@ -76,28 +74,21 @@ export function useAccountSwitch(
         return;
       }
       announceAccountSwitch(option.id);
-      // Who the next page greets, from the choice itself or the accounts this page knows.
-      const named = option.name
-        ? option
-        : chrome?.switcher?.options.find((o) => o.id === option.id);
-      if (named?.kind && named.name && named.initials) {
-        leaveAccountNotice({
-          kind: "chose",
-          accountId: option.id,
-          accountKind: named.kind,
-          accountName: named.name,
-          accountInitials: named.initials,
-        });
-      }
+      // Only the id travels: the next page greets from the server's own account list.
+      leaveAccountNotice({ kind: "chose", accountId: option.id });
       // A full page load, on purpose. Switching account changes who every request is for, so
       // nothing the browser holds for the previous account may survive: not the router's cached
       // pages (same address, different cookie), not a query cache, not component state. A load
       // drops all of them at once, where a push or refresh drops only what the router knows of.
       window.location.assign(
-        destination ?? (option.kind ? pageAfterSwitch(pathname, option.kind) : CLIENT_ROUTES.home),
+        destination ??
+          (option.kind
+            ? // A public page keeps its query, which the router's pathname leaves out.
+              pageAfterSwitch(`${pathname ?? ""}${window.location.search}`, option.kind)
+            : CLIENT_ROUTES.home),
       );
     },
-    [destination, pathname, reporting, chrome],
+    [destination, pathname, reporting],
   );
 
   const retry = useCallback(async () => {

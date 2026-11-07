@@ -15,9 +15,6 @@ function readCookie(): string | undefined {
 const NOTICE = {
   kind: "chose",
   accountId: "org-1",
-  accountKind: "organisation",
-  accountName: "Northbank Gallery",
-  accountInitials: "NG",
 } as const;
 
 afterEach(() => clearAccountNotice());
