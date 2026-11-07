@@ -31,9 +31,24 @@ export function attachAdminLotLaxArtReturnRoutes(
         lotId,
         c.get("userId") as string,
       );
-      return result.ok
-        ? c.json({ data: { reopened: result.reopened, laxArtListing: result.laxArtListing } })
-        : c.json({ error: result.error, code: result.code }, result.status);
+      if (result.ok) {
+        return c.json({
+          data: {
+            reopened: result.reopened,
+            laxArtListing: result.laxArtListing,
+            ...(result.hint ? { hint: result.hint } : {}),
+          },
+        });
+      }
+      return c.json(
+        {
+          error: result.error,
+          code: result.code,
+          ...(result.laxArtListing === false ? { laxArtListing: false } : {}),
+          ...(result.hint ? { hint: result.hint } : {}),
+        },
+        result.status,
+      );
     },
   );
 }
