@@ -1,7 +1,7 @@
+import type { SubmissionSummary } from "@auction/domain";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
-import type { SubmissionSummary } from "@auction/domain";
 import type {
   IItemSubmissionRepository,
   IStaffRoleAssignmentReader,
@@ -11,12 +11,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { IConsignmentAgreementRepository } from "@auction/persistence/interfaces";
-import type {
-  CreateItemSubmissionInput,
-  ItemSubmission,
-  Lot,
-  StaffRoles,
-} from "@auction/types";
+import type { CreateItemSubmissionInput, ItemSubmission, Lot, StaffRoles } from "@auction/types";
 import type { UserRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../lib/errors.js";
