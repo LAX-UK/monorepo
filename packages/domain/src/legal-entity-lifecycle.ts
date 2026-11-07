@@ -1,4 +1,5 @@
 import type { LegalEntityStatus } from "@auction/types";
+import { organisationStateAllows } from "./organisation-state-policy.js";
 
 export type LifecycleAdminOp =
   | "request_docs"
@@ -72,4 +73,47 @@ export function nextStatusForSelfOp(
     return "docs_received";
   }
   return null;
+}
+
+/**
+ * Status changes made outside the lifecycle admin service: the Stripe Connect promoter and
+ * readiness sync, Connect account creation, the post-KYC advance and `submit_for_review`. That
+ * service keeps `pay_held_since` for the changes it makes; these writers do not, so none may go
+ * from a status that allows paying to one that does not.
+ */
+export const OUTSIDE_LIFECYCLE_TRANSITIONS: readonly {
+  readonly from: LegalEntityStatus;
+  readonly to: LegalEntityStatus;
+  readonly via: string;
+}[] = [
+  { from: "lead", to: "connect_pending", via: "connect account created; individual KYC passed" },
+  { from: "connect_pending", to: "approved", via: "connect promoter / readiness sync" },
+  {
+    from: "approved",
+    to: "connect_pending",
+    via: "connect promoter / readiness sync / deauthorized",
+  },
+  { from: "lead", to: "docs_received", via: "submit_for_review" },
+  { from: "docs_requested", to: "docs_received", via: "submit_for_review" },
+];
+
+/** A status change outside the lifecycle admin service that would start a pay hold. */
+export class PayHoldTransitionRefusedError extends Error {
+  readonly code = "pay_hold_transition_refused";
+  constructor(
+    readonly from: LegalEntityStatus,
+    readonly to: LegalEntityStatus,
+  ) {
+    super(
+      `Refusing legal entity status change ${from} -> ${to}: it ends the right to pay and must go through the lifecycle admin service, which records pay_held_since.`,
+    );
+    this.name = "PayHoldTransitionRefusedError";
+  }
+}
+
+/** Throws when `from` -> `to` goes from a pay-allowed status to a held one. */
+export function assertNotPayHoldStart(from: LegalEntityStatus, to: LegalEntityStatus): void {
+  if (organisationStateAllows(from, "pay") && !organisationStateAllows(to, "pay")) {
+    throw new PayHoldTransitionRefusedError(from, to);
+  }
 }

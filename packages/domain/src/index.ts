@@ -115,8 +115,11 @@ export {
   type AmlScreeningMatchStatus,
 } from "./aml-decision.js";
 export {
+  assertNotPayHoldStart,
   nextStatusForLifecycleOp,
   nextStatusForSelfOp,
+  OUTSIDE_LIFECYCLE_TRANSITIONS,
+  PayHoldTransitionRefusedError,
   type LifecycleAdminOp,
   type LifecycleSelfOp,
   type LifecycleTransitionContext,

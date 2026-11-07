@@ -2,9 +2,13 @@ import type { LegalEntityStatus } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   type LifecycleAdminOp,
+  OUTSIDE_LIFECYCLE_TRANSITIONS,
+  PayHoldTransitionRefusedError,
+  assertNotPayHoldStart,
   nextStatusForLifecycleOp,
   nextStatusForSelfOp,
 } from "./legal-entity-lifecycle.js";
+import { organisationStateAllows } from "./organisation-state-policy.js";
 
 const STATUSES = [
   "lead",
@@ -97,5 +101,24 @@ describe("nextStatusForSelfOp", () => {
   it.each(STATUSES)("submit_for_review from %s", (status) => {
     const allowed = status === "lead" || status === "docs_requested";
     expect(nextStatusForSelfOp(status, "submit_for_review")).toBe(allowed ? "docs_received" : null);
+  });
+});
+
+describe("transitions outside the lifecycle admin service", () => {
+  it("never go from a pay-allowed status to a held one", () => {
+    for (const { from, to } of OUTSIDE_LIFECYCLE_TRANSITIONS) {
+      expect(
+        organisationStateAllows(from, "pay") && !organisationStateAllows(to, "pay"),
+        `${from} -> ${to}`,
+      ).toBe(false);
+      expect(() => assertNotPayHoldStart(from, to)).not.toThrow();
+    }
+  });
+
+  it("refuses a pay-allowed to held change", () => {
+    expect(() => assertNotPayHoldStart("approved", "archived")).toThrow(
+      PayHoldTransitionRefusedError,
+    );
+    expect(() => assertNotPayHoldStart("connect_pending", "rejected")).toThrow(/pay_held_since/);
   });
 });
