@@ -142,6 +142,32 @@ describe("LaxAdminRolesService changes", () => {
     expect(notifier.notifyChanged).not.toHaveBeenCalled();
   });
 
+  it("refuses giving yourself a role, before any request or notice", async () => {
+    const { service, requestWriter, notifier } = setup([]);
+    const result = await service.assign({
+      ...change,
+      userId: "admin-1",
+      role: "editor",
+      endsAt: null,
+    });
+    expect(result._unsafeUnwrapErr()).toMatchObject({
+      status: 403,
+      code: "cannot_change_own_role",
+    });
+    expect(requestWriter.requestGrant).not.toHaveBeenCalled();
+    expect(notifier.notifyChanged).not.toHaveBeenCalled();
+  });
+
+  it("refuses removing your own role, even with another Administrator in place", async () => {
+    const { service, requestWriter } = setup([held("shop_admin")], [], 2);
+    const result = await service.remove({ ...change, userId: "admin-1", role: "shop_admin" });
+    expect(result._unsafeUnwrapErr()).toMatchObject({
+      status: 403,
+      code: "cannot_change_own_role",
+    });
+    expect(requestWriter.requestRemoval).not.toHaveBeenCalled();
+  });
+
   it("counts a role still waiting for LAX Admin when checking a new one", async () => {
     const { service } = setup([], [request("assign", "broker", 1)]);
     const result = await service.assign({ ...change, role: "finance", endsAt: null });
