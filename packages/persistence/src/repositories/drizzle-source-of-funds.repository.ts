@@ -136,8 +136,14 @@ export class DrizzleSourceOfFundsRepository implements ISourceOfFundsRepository 
     };
   }
 
-  async create(input: CreateSourceOfFundsCaseInput, conn?: Database): Promise<SourceOfFundsCase> {
-    const [row] = await this.conn(conn)
+  async create(
+    input: CreateSourceOfFundsCaseInput,
+    conn?: Database,
+  ): Promise<{ case: SourceOfFundsCase; created: boolean }> {
+    const db = this.conn(conn);
+    // Idempotent at the database: `source_of_funds_pending_user_uidx` makes a concurrent insert a
+    // no-op instead of an error, so an enclosing transaction is never aborted.
+    const [row] = await db
       .insert(sourceOfFunds)
       .values({
         userId: input.userId,
@@ -146,9 +152,15 @@ export class DrizzleSourceOfFundsRepository implements ISourceOfFundsRepository 
         exposureAmount: input.exposureAmount,
         currency: input.currency,
       })
+      .onConflictDoNothing({
+        target: sourceOfFunds.userId,
+        where: sql`${sourceOfFunds.status} = 'pending'`,
+      })
       .returning();
-    if (!row) throw new Error("source_of_funds_create_failed");
-    return rowToCase(row);
+    if (row) return { case: rowToCase(row), created: true };
+    const existing = await this.findPendingForUser(input.userId, conn);
+    if (!existing) throw new Error("source_of_funds_create_failed");
+    return { case: existing, created: false };
   }
 
   async setTriage(
