@@ -14,6 +14,7 @@ import type {
   IArtworkMoveHistory,
   IArtworkRegisterReader,
   ILotRegisterLinkReader,
+  RegisterEvent,
 } from "@auction/persistence/interfaces";
 
 /** LAX Shop's half of a return: reopen the artwork's lax.art listing as a draft. */
@@ -33,14 +34,59 @@ export type ReturnToLaxArtView =
       reasons: string[];
     };
 
+/** What staff do when a work that was on lax.art has lost its Shop record. */
+const CREATE_FROM_ZOHO_HINT = "Create it from the Zoho record in LAX Admin first.";
+
+/** Said when a return ends in the register alone. */
+const REGISTER_ONLY_HINT =
+  "This artwork was consigned on LAX Bid and has no lax.art record, so only the register was updated.";
+
+/** Events to read when checking where an artwork has been; a longer history is not trusted. */
+const HISTORY_LIMIT = 500;
+
 export type ReturnToLaxArtResult =
   | {
       ok: true;
       reopened: boolean;
       /** False for an artwork consigned on LAX Bid that has no lax.art record to reopen. */
       laxArtListing: boolean;
+      /** Why there is no lax.art listing, when there is none. */
+      hint?: string;
     }
-  | { ok: false; status: 404 | 409 | 502; error: string; code: string };
+  | {
+      ok: false;
+      status: 404 | 409 | 502;
+      error: string;
+      code: string;
+      /** Set when Shop has no listing to reopen for a work that has been on lax.art. */
+      laxArtListing?: false;
+      hint?: string;
+    };
+
+const PLACE_STATE_LAX_ART = "lax_art";
+const SHOP_REF_KIND = "shop_artwork";
+
+const placeOf = (value: unknown): { state?: unknown; ref?: { kind?: unknown } | null } =>
+  typeof value === "object" && value !== null ? value : {};
+
+/** True when a register event shows the artwork was, or was made ready to be, on lax.art. */
+function touchesLaxArt(event: RegisterEvent): boolean {
+  const payload = event.payload;
+  switch (event.type) {
+    case "offer_moved":
+      return [placeOf(payload.from), placeOf(payload.to)].some(
+        (place) => place.state === PLACE_STATE_LAX_ART || place.ref?.kind === SHOP_REF_KIND,
+      );
+    case "move_confirmed":
+      return Boolean(payload.withdrawnFromLaxArt) || typeof payload.shopArtworkId === "string";
+    case "lax_art_draft_created":
+    case "zoho_link_linked":
+    case "zoho_link_unlinked":
+      return true;
+    default:
+      return false;
+  }
+}
 
 const messages = (blockers: ReturnMoveBlocker[]): string[] =>
   blockers.map((blocker) => RETURN_MOVE_BLOCKER_MESSAGES[blocker]);
@@ -56,7 +102,7 @@ export class ReturnLotToLaxArtService {
   constructor(
     private readonly deps: {
       links: ILotRegisterLinkReader;
-      register: Pick<IArtworkRegisterReader, "findById">;
+      register: Pick<IArtworkRegisterReader, "findById" | "listEvents">;
       lock: ArtworkOfferLock;
       shop: ArtListingGateway;
       history: IArtworkMoveHistory;
@@ -112,16 +158,19 @@ export class ReturnLotToLaxArtService {
         },
         now: (this.deps.now ?? (() => new Date()))(),
       });
-      return { ok: true, reopened: listing?.reopened ?? false, laxArtListing: listing !== null };
+      return listing
+        ? { ok: true, reopened: listing.reopened, laxArtListing: true }
+        : { ok: true, reopened: false, laxArtListing: false, hint: REGISTER_ONLY_HINT };
     } catch (error) {
       return this.failure(error);
     }
   }
 
   /**
-   * Asks LAX Shop to reopen the listing. An artwork consigned on LAX Bid has no lax.art record, so
-   * Shop answers `no_listing`: the return then ends in the register alone (null here), and nothing
-   * is created or updated on lax.art.
+   * Asks LAX Shop to reopen the listing. Shop also answers `no_listing` when a lax.art work's
+   * record is missing or its Zoho product is a print run, so that answer ends the return in the
+   * register alone (null here) only when the register's history shows the work was never on
+   * lax.art. Otherwise the refusal stands and staff are told to create the record first.
    */
   private async reopenListing(
     registerId: string,
@@ -130,16 +179,34 @@ export class ReturnLotToLaxArtService {
     try {
       return await this.deps.shop.reopen({ registerId, actor });
     } catch (error) {
-      if (error instanceof InventoryPeerRefusedError && error.refusal.error === "no_listing") {
+      if (
+        error instanceof InventoryPeerRefusedError &&
+        error.refusal.error === "no_listing" &&
+        (await this.neverOnLaxArt(registerId))
+      ) {
         return null;
       }
       throw error;
     }
   }
 
+  /** The history holds no sign of lax.art. A history too long to read in full proves nothing. */
+  private async neverOnLaxArt(registerId: string): Promise<boolean> {
+    const events = await this.deps.register.listEvents(registerId, HISTORY_LIMIT);
+    return events.length < HISTORY_LIMIT && !events.some(touchesLaxArt);
+  }
+
   private failure(error: unknown): ReturnToLaxArtResult {
     if (error instanceof InventoryPeerRefusedError) {
-      return { ok: false, status: 409, code: error.refusal.error, error: error.message };
+      return {
+        ok: false,
+        status: 409,
+        code: error.refusal.error,
+        error: error.message,
+        ...(error.refusal.error === "no_listing"
+          ? { laxArtListing: false as const, hint: CREATE_FROM_ZOHO_HINT }
+          : {}),
+      };
     }
     if (error instanceof InventoryPeerUnavailableError) {
       return { ok: false, status: 502, code: "inventory_peer_unavailable", error: error.message };

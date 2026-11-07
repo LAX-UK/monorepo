@@ -4,7 +4,7 @@ import {
   InventoryPeerRefusedError,
   InventoryPeerUnavailableError,
 } from "@auction/artwork-register-contracts";
-import type { LotRegisterLink } from "@auction/persistence/interfaces";
+import type { LotRegisterLink, RegisterEvent } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { ReturnLotToLaxArtService } from "./return-lot-to-lax-art.service.js";
 
@@ -23,6 +23,26 @@ const entry = (over: Partial<ArtworkRegisterEntry> = {}): ArtworkRegisterEntry =
     ...over,
   }) as ArtworkRegisterEntry;
 
+const event = (type: RegisterEvent["type"], payload: Record<string, unknown>): RegisterEvent => ({
+  id: `event-${type}`,
+  registerId: REGISTER_ID,
+  type,
+  actor: "staff:user-9",
+  payload,
+  createdAt: new Date("2026-10-01T09:00:00Z"),
+});
+
+const noListing = () => {
+  throw new InventoryPeerRefusedError(
+    {
+      error: "no_listing",
+      message:
+        "There is no lax.art record for this artwork yet. Create it from the Zoho record in LAX Admin first.",
+    },
+    409,
+  );
+};
+
 const link = (over: Partial<LotRegisterLink> = {}): LotRegisterLink => ({
   registerId: REGISTER_ID,
   status: "ended",
@@ -35,6 +55,7 @@ function setup(
     link?: LotRegisterLink | null;
     entry?: ArtworkRegisterEntry | null;
     reopen?: () => Promise<{ artworkId: string; reopened: boolean }>;
+    events?: RegisterEvent[];
   } = {},
 ) {
   let current = over.entry === undefined ? entry() : over.entry;
@@ -48,6 +69,7 @@ function setup(
   const register = {
     findById: vi.fn(async () => current),
     findByZohoProductId: vi.fn(async () => current),
+    listEvents: vi.fn(async () => over.events ?? []),
     moveOffer,
   };
   const reopen = vi.fn(
@@ -163,6 +185,7 @@ describe("ReturnLotToLaxArtService.returnToLaxArt", () => {
       ok: true,
       reopened: false,
       laxArtListing: false,
+      hint: expect.stringMatching(/only the register was updated/),
     });
     expect(moveOffer).toHaveBeenCalledWith(expect.objectContaining({ to: "withdrawn" }));
     expect(recordMoveConfirmed).toHaveBeenCalledWith({
@@ -190,6 +213,70 @@ describe("ReturnLotToLaxArtService.returnToLaxArt", () => {
       laxArtListing: false,
     });
     expect(moveOffer).not.toHaveBeenCalled();
+  });
+
+  const bidBornHistory = [
+    event("offer_moved", {
+      from: { state: "held", ref: null },
+      to: { state: "bid_sale", ref: { kind: "bid_lot", id: LOT_ID } },
+    }),
+    event("move_confirmed", { direction: "to_lax_art", lotId: "lot-0", noLaxArtListing: true }),
+  ];
+
+  it("treats no_listing as register-only when the history shows a Bid-born work", async () => {
+    const { service, recordMoveConfirmed } = setup({ reopen: noListing, events: bidBornHistory });
+    expect(await service.returnToLaxArt(LOT_ID, "user-1")).toMatchObject({
+      ok: true,
+      laxArtListing: false,
+    });
+    expect(recordMoveConfirmed).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    [
+      "it was offered at lax.art",
+      event("offer_moved", {
+        from: { state: "lax_art", ref: { kind: "shop_artwork", id: SHOP_ARTWORK_ID } },
+        to: { state: "bid_sale", ref: { kind: "bid_lot", id: LOT_ID } },
+      }),
+    ],
+    [
+      "a lax.art draft was made from it",
+      event("lax_art_draft_created", { artworkId: SHOP_ARTWORK_ID }),
+    ],
+    [
+      "it was linked to a lax.art record",
+      event("zoho_link_linked", { artworkId: SHOP_ARTWORK_ID }),
+    ],
+    [
+      "a return reopened a Shop artwork",
+      event("move_confirmed", { direction: "to_lax_art", shopArtworkId: SHOP_ARTWORK_ID }),
+    ],
+  ])("keeps the refusal when no_listing follows a history where %s", async (_why, placed) => {
+    const { service, recordMoveConfirmed } = setup({
+      reopen: noListing,
+      events: [...bidBornHistory, placed],
+    });
+    expect(await service.returnToLaxArt(LOT_ID, "user-1")).toEqual({
+      ok: false,
+      status: 409,
+      code: "no_listing",
+      error: expect.stringMatching(/Create it from the Zoho record in LAX Admin first/),
+      laxArtListing: false,
+      hint: "Create it from the Zoho record in LAX Admin first.",
+    });
+    expect(recordMoveConfirmed).not.toHaveBeenCalled();
+  });
+
+  it("keeps the refusal when the history is too long to read in full", async () => {
+    const { service } = setup({
+      reopen: noListing,
+      events: Array.from({ length: 500 }, () => event("zoho_change_applied", {})),
+    });
+    expect(await service.returnToLaxArt(LOT_ID, "user-1")).toMatchObject({
+      ok: false,
+      code: "no_listing",
+    });
   });
 
   it("passes on LAX Shop's reason when it refuses", async () => {
