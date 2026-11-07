@@ -83,3 +83,13 @@ export {
   type DigestRunStats,
   type SendMode,
 } from "./application/digest-run.js";
+export {
+  ALERT_RETENTION,
+  alertRetentionCutoffs,
+  type AlertRetentionCutoffs,
+} from "./domain/retention.js";
+export {
+  pruneAlertRetention,
+  type AlertPruneCounts,
+  type AlertRetentionStore,
+} from "./application/prune-alert-retention.js";

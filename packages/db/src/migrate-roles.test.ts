@@ -24,6 +24,7 @@ import {
   WORKER_ANONYMISATION_DELETE_TABLES,
   WORKER_ARTWORK_REGISTER_APPEND_ONLY_TABLES,
   WORKER_ARTWORK_REGISTER_TABLES,
+  WORKER_BID_ALERT_PRUNE_DELETE_TABLES,
   WORKER_BID_ALERT_TABLES,
   WORKER_DATA_EXPORT_TABLES,
   WORKER_DENY_TABLES,
@@ -484,6 +485,18 @@ describe("migrate-roles invariants", () => {
     ]);
     for (const table of WORKER_BID_ALERT_TABLES) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);
+    }
+  });
+
+  it("lets the worker delete only Bid's alert logs and topics for the retention prune, never announcements", () => {
+    expect([...WORKER_BID_ALERT_PRUNE_DELETE_TABLES].sort()).toEqual([
+      "bid_alert_digest",
+      "bid_alert_match",
+      "bid_alert_topic",
+    ]);
+    expect([...WORKER_BID_ALERT_PRUNE_DELETE_TABLES]).not.toContain("bid_alert_announcement");
+    for (const table of WORKER_BID_ALERT_PRUNE_DELETE_TABLES) {
+      expect([...WORKER_BID_ALERT_TABLES]).toContain(table);
     }
   });
 

@@ -15,7 +15,7 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0320 pay held since", () => {
-  it("follows the entry before it, in sequence and in time", () => {
+  it("is a journal entry, one day after the entry before it", () => {
     const index = journal.entries.findIndex((e) => e.tag === "0320_pay_held_since");
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
