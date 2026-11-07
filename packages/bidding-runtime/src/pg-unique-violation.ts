@@ -1,3 +1,1 @@
-export function isPgUniqueViolation(err: unknown): boolean {
-  return typeof err === "object" && err !== null && (err as { code?: unknown }).code === "23505";
-}
+export { isPgUniqueViolation } from "@auction/persistence/lib";
