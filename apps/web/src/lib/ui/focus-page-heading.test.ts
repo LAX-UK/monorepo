@@ -37,6 +37,26 @@ describe("focusPageHeadingWhenSettled", () => {
     vi.useRealTimers();
   });
 
+  it("never takes focus once the person has started using the page", () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = "<main><h1>Home</h1></main>";
+    focusPageHeadingWhenSettled(() => true);
+    vi.advanceTimersByTime(2000);
+    expect(document.activeElement).toBe(document.body);
+    vi.useRealTimers();
+  });
+
+  it("leaves an open popover its focus", () => {
+    vi.useFakeTimers();
+    document.body.innerHTML =
+      '<main><h1>Home</h1></main><div role="dialog" tabindex="-1" id="pop">x</div>';
+    document.getElementById("pop")?.focus();
+    focusPageHeadingWhenSettled();
+    vi.advanceTimersByTime(2000);
+    expect(document.activeElement?.id).toBe("pop");
+    vi.useRealTimers();
+  });
+
   it("leaves focus alone once something else has it", () => {
     vi.useFakeTimers();
     document.body.innerHTML = '<main><h1>Home</h1><button type="button">Go</button></main>';

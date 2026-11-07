@@ -15,7 +15,7 @@ import {
 } from "@/lib/navigation/account-notice-cookie.client";
 import { useAccountMenuContext } from "@/lib/navigation/use-account-menu-context.client";
 import { focusPageHeadingWhenSettled } from "@/lib/ui/focus-page-heading";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountToast } from "./account-toast";
 
 /** How long "Now acting as …" stays before it goes by itself. */
@@ -36,6 +36,23 @@ export function AccountSwitchGreeting() {
   const { user } = useAppSession();
   const [chosen, setChosen] = useState<Chosen | null>(null);
   const context = useAccountMenuContext(user?.id ?? "", user !== null && usesBidAsClient(user));
+
+  // Once the person presses a key or touches the page, focus is theirs: the heading never takes it.
+  const personActed = useRef(false);
+  useEffect(() => {
+    const note = () => {
+      personActed.current = true;
+    };
+    document.addEventListener("pointerdown", note, true);
+    document.addEventListener("keydown", note, true);
+    return () => {
+      document.removeEventListener("pointerdown", note, true);
+      document.removeEventListener("keydown", note, true);
+    };
+  }, []);
+  const moveFocusToHeading = useCallback(() => {
+    focusPageHeadingWhenSettled(() => personActed.current);
+  }, []);
 
   // Read the cookie once, as soon as the page is up, and clear it whatever comes next.
   useEffect(() => {
@@ -60,7 +77,7 @@ export function AccountSwitchGreeting() {
       detail={accountNoticeDetail(chosen, accountOf) ?? undefined}
       autoDismissMs={GREETING_SHOWN_MS}
       testId="account-switch-greeting"
-      onAnnounced={focusPageHeadingWhenSettled}
+      onAnnounced={moveFocusToHeading}
     />
   );
 }

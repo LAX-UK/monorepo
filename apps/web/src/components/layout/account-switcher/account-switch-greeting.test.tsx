@@ -23,7 +23,9 @@ vi.mock("@/lib/navigation/use-account-menu-context.client", () => ({
   useAccountMenuContext: () => menuContext.value,
 }));
 vi.mock("@/lib/ui/focus-page-heading", () => ({
-  focusPageHeadingWhenSettled: () => focusPageHeading(),
+  focusPageHeadingWhenSettled: (stop: () => boolean) => {
+    if (!stop()) focusPageHeading();
+  },
 }));
 
 import { AccountSwitchGreeting, GREETING_SHOWN_MS } from "./account-switch-greeting";
@@ -82,6 +84,16 @@ describe("AccountSwitchGreeting", () => {
     advance(FOCUS_AFTER_ANNOUNCE_MS);
     expect(focusPageHeading).toHaveBeenCalledTimes(1);
     expect(clearAccountNotice).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not move focus once the person has started using the page", () => {
+    render(<AccountSwitchGreeting />);
+    act(() => {
+      document.dispatchEvent(new Event("pointerdown"));
+    });
+    advance(20);
+    advance(FOCUS_AFTER_ANNOUNCE_MS);
+    expect(focusPageHeading).not.toHaveBeenCalled();
   });
 
   it("ignores a name in the cookie and shows the server's", () => {
