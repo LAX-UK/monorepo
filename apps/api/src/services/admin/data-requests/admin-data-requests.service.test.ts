@@ -216,7 +216,7 @@ describe("AdminDataRequestsService.eraseEnquiries", () => {
     const { service, identity, enquiryErasure, audit, calls } = setup();
     (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce(record());
     const outcome = await service.eraseEnquiries("DR-0007", body, "staff-1");
-    expect(calls).toEqual(["audit", "erase"]);
+    expect(calls).toEqual(["audit", "erase", "audit"]);
     expect(outcome).toEqual({
       ok: true,
       value: { enquiries: 2, notes: 1, attachments: 0, held: 1 },
@@ -228,11 +228,37 @@ describe("AdminDataRequestsService.eraseEnquiries", () => {
       actorUserId: "staff-1",
       requestReference: "DR-0007",
     });
-    expect(audit.record).toHaveBeenCalledWith({
+    expect(
+      (audit.record as ReturnType<typeof vi.fn>).mock.calls.map(([row]) => row.action),
+    ).toEqual(["enquiry_erasure_requested", "enquiries_erased"]);
+    expect(audit.record).toHaveBeenLastCalledWith({
       action: "enquiries_erased",
       reference: "DR-0007",
       actorUserId: "staff-1",
     });
+  });
+
+  it.each([
+    [
+      "a mistyped confirmation",
+      { confirmation: "lena@north.co", reason: "Asked to be forgotten" },
+      "confirmation_mismatch",
+    ],
+    [
+      "a reason that is too short",
+      { confirmation: "lena@north.com", reason: "no" },
+      "reason_invalid",
+    ],
+  ])("refuses %s before recording or erasing anything", async (_name, typed, error) => {
+    const { service, identity, enquiryErasure, audit } = setup();
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce(record());
+    expect(await service.eraseEnquiries("DR-0007", typed, "staff-1")).toEqual({
+      ok: false,
+      status: 422,
+      error,
+    });
+    expect(audit.record).not.toHaveBeenCalled();
+    expect(enquiryErasure.eraseByEmail).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -269,7 +295,7 @@ describe("AdminDataRequestsService.eraseEnquiries", () => {
     expect(enquiryErasure.eraseByEmail).not.toHaveBeenCalled();
   });
 
-  it("passes Identity's refusal back; the audit row comes before the erasure, so a failed confirmation leaves it", async () => {
+  it("passes Identity's refusal back, and leaves only the request row when the erasure itself is refused", async () => {
     const { service, identity, enquiryErasure, audit } = setup();
     const mock = identity.record as ReturnType<typeof vi.fn>;
     mock.mockResolvedValueOnce({ ok: false, status: 404, error: "not_found" });
@@ -289,6 +315,9 @@ describe("AdminDataRequestsService.eraseEnquiries", () => {
       error: "confirmation_mismatch",
     });
     expect(audit.record).toHaveBeenCalledTimes(1);
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "enquiry_erasure_requested" }),
+    );
   });
 });
 

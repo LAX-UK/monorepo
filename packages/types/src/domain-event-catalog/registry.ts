@@ -133,6 +133,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "data_request.extended",
   "data_request.closed",
   "data_request.continued",
+  "data_request.enquiry_erasure_requested",
   "data_request.enquiries_erased",
   "category.archived",
   "category.created",
