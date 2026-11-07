@@ -115,7 +115,7 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
     });
   });
 
-  it("can erase email-only alert subscribers on purge, and nothing else in the alert tables", async () => {
+  it("can erase email-only alert subscribers on purge and prune its own alert topics, matches and digests", async () => {
     await withWorkerClient(async (client) => {
       const rows = await readTablePrivileges(
         client,
@@ -126,9 +126,16 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
       const topics = await readTablePrivileges(
         client,
         ["bid_alert_topic", "bid_alert_match", "bid_alert_digest"],
-        ["DELETE"],
+        ["SELECT", "DELETE"],
       );
-      expectUniformTablePrivileges(topics, false);
+      // The alert retention prune deletes stale topics, matches and digests; nothing else.
+      expectUniformTablePrivileges(topics, true);
+      const writes = await readTablePrivileges(
+        client,
+        ["bid_alert_topic", "bid_alert_match", "bid_alert_digest"],
+        ["TRUNCATE"],
+      );
+      expectUniformTablePrivileges(writes, false);
     });
   });
 
