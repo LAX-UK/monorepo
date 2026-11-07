@@ -26,7 +26,7 @@ describe("migration 0321 alert match matched_at index", () => {
   it("only adds one index per match table, with a short lock timeout and no CONCURRENTLY", () => {
     expect(migration).not.toMatch(/\bDROP\b|\bALTER TABLE\b/);
     expect(migration).not.toMatch(/CREATE INDEX CONCURRENTLY/);
-    expect(migration).toMatch(/SET LOCAL lock_timeout = '5s'/);
+    expect(migration).toMatch(/SET LOCAL lock_timeout = '30s'/);
     expect(migration).toContain(
       'CREATE INDEX IF NOT EXISTS "bid_alert_match_matched_at_idx" ON "bid_alert_match" USING btree ("matched_at");',
     );
