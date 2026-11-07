@@ -79,6 +79,7 @@ describe("demo image catalogue", () => {
       rivalUserId: "r",
       rivalEntityId: "re",
       northbankBuyerUserId: "b",
+      northbankOwnerUserId: "o",
       northbankId: "n",
       heldUserId: "h",
       heldEntityId: "he",
