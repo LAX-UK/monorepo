@@ -3,17 +3,25 @@ import {
   SUBJECT_DATA_EXPORT_QUEUE_NAME,
   type SubjectDataExportJobPayload,
 } from "@auction/queues";
-import { type Job, Queue, UnrecoverableError, Worker } from "bullmq";
+import { DelayedError, type Job, Queue, UnrecoverableError, Worker } from "bullmq";
 import { createSubjectExportRequestRelay } from "../jobs/subject-export-request-relay.js";
 import { createSubjectExportRuntime } from "../subject-export/create-subject-export-runtime.js";
+import {
+  SubjectExportDeferredError,
+  deferralDelayMs,
+} from "../subject-export/export-disk-guard.js";
 import { purgeSubjectExportObjects } from "../subject-export/purge-subject-export-objects.js";
 import { SubjectExportTerminalError } from "../subject-export/subject-export-assembler.js";
 import { subjectExportConfigFromEnv } from "../subject-export/subject-export.config.js";
 import type { DlqHandlerEntry, WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
 import { closeAll } from "./worker-utils.js";
 
-/** Two copies at once: each streams to disk, so more would only compete for it. */
-export const SUBJECT_EXPORT_CONCURRENCY = 2;
+/**
+ * One copy at a time: each can use up to the archive cap on the worker's small temp disk, and the
+ * free-space check looks at the disk as it is now, so two starting together could both pass it and
+ * then fill the disk between them. Requests are rare; waiting a little is cheaper than a crash.
+ */
+export const SUBJECT_EXPORT_CONCURRENCY = 1;
 const PURGE_EVERY_MS = 60 * 60 * 1000;
 
 export type SubjectExportWorkerHandle = {
@@ -46,7 +54,7 @@ export function registerSubjectExportWorker(deps: WorkerBootstrapDeps): SubjectE
   const runtime = createSubjectExportRuntime(config, log);
   const worker = new Worker<SubjectDataExportJobPayload>(
     SUBJECT_DATA_EXPORT_QUEUE_NAME,
-    async (job: Job<SubjectDataExportJobPayload>) => {
+    async (job: Job<SubjectDataExportJobPayload>, token?: string) => {
       if (job.name === SUBJECT_DATA_EXPORT_JOB_NAMES.purgeObjects) {
         // Copies that could not be deleted stay pending and are tried again at the next run.
         await purgeSubjectExportObjects({ ledger: runtime.ledger, store: runtime.store, log });
@@ -63,6 +71,12 @@ export function registerSubjectExportWorker(deps: WorkerBootstrapDeps): SubjectE
         );
       } catch (error) {
         // Identity has been told how it ended; the queue must not run it again by itself.
+        if (error instanceof SubjectExportDeferredError) {
+          // Put back in the queue for later; this is not a failed attempt and spends none.
+          const deferrals = Math.max(0, job.attemptsStarted - 1 - job.attemptsMade);
+          await job.moveToDelayed(Date.now() + deferralDelayMs(deferrals), token);
+          throw new DelayedError();
+        }
         if (error instanceof SubjectExportTerminalError) throw new UnrecoverableError(error.code);
         throw error;
       }

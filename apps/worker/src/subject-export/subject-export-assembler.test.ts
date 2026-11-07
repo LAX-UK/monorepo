@@ -9,6 +9,7 @@ import {
 } from "@auction/identity-contracts";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ArchiveBudget } from "./archive-budget.js";
+import { type IFreeSpaceProbe, SubjectExportDeferredError } from "./export-disk-guard.js";
 import { HttpExportFileMaterialiser } from "./export-file-materialiser.js";
 import {
   EXPORT_ID,
@@ -31,7 +32,19 @@ const noop = () => undefined;
 
 type World = ReturnType<typeof createWorld>;
 
-function createWorld(tempRoot: string, options: { budget?: () => ArchiveBudget } = {}) {
+class FakeFreeSpace implements IFreeSpaceProbe {
+  readonly asked: string[] = [];
+  constructor(public free = Number.MAX_SAFE_INTEGER) {}
+  async freeBytes(directory: string): Promise<number> {
+    this.asked.push(directory);
+    return this.free;
+  }
+}
+
+function createWorld(
+  tempRoot: string,
+  options: { budget?: () => ArchiveBudget; freeSpace?: IFreeSpaceProbe } = {},
+) {
   const account = new FakeProduct("account", "bearer")
     .set("profile", [record("p1", { name: "Sarah <Whitfield>" })])
     .set("contact", [record("c1", { email: "sarah@example.test" })])
@@ -54,6 +67,7 @@ function createWorld(tempRoot: string, options: { budget?: () => ArchiveBudget }
     store,
     log: { info: noop, warn: noop },
     tempRoot,
+    freeSpace: options.freeSpace ?? new FakeFreeSpace(),
     now: () => NOW,
     ...(options.budget ? { createBudget: options.budget } : {}),
     createFiles: (staging, budget) =>
@@ -430,5 +444,62 @@ describe("what is written into the ZIP besides data", () => {
     const html = text(entries["lax-data-2026-11-02/Your LAX data.html"]);
     expect(html).toContain("Sarah &lt;Whitfield&gt; (sarah@example.test)");
     expect(html).not.toContain("<Whitfield>");
+  });
+});
+
+describe("temp disk safety", () => {
+  it("removes its temp directory when an attempt fails", async () => {
+    const world = createWorld(tempRoot);
+    world.bid.set("bids", []);
+    world.host.put("Invoice 1.pdf", new Uint8Array(0));
+    world.store.uploadFile = async () => {
+      throw new Error("bucket down");
+    };
+    await expect(world.assembler.run(request, firstAttempt())).rejects.toBeInstanceOf(
+      SubjectExportError,
+    );
+    expect(await readdir(tempRoot)).toEqual([]);
+  });
+
+  it("removes its temp directory when the budget overflows", async () => {
+    const world = createWorld(tempRoot, { budget: () => new ArchiveBudget(500, 0) });
+    await expect(world.assembler.run(request, firstAttempt())).rejects.toBeInstanceOf(
+      SubjectExportTerminalError,
+    );
+    expect(await readdir(tempRoot)).toEqual([]);
+  });
+
+  it("holds only the archive on disk when the upload starts", async () => {
+    const world = createWorld(tempRoot);
+    let onDisk: string[] = [];
+    const upload = world.store.uploadFile.bind(world.store);
+    world.store.uploadFile = async (key, path) => {
+      const [dir] = await readdir(tempRoot);
+      onDisk = await readdir(join(tempRoot, dir as string));
+      return upload(key, path);
+    };
+    await world.assembler.run(request, firstAttempt());
+    expect(onDisk).toEqual(["archive.zip"]);
+  });
+
+  it("defers without staging, spending an attempt or reporting when free space is short", async () => {
+    const free = new FakeFreeSpace(10);
+    const world = createWorld(tempRoot, { freeSpace: free });
+    await expect(world.assembler.run(request, firstAttempt())).rejects.toBeInstanceOf(
+      SubjectExportDeferredError,
+    );
+    expect(free.asked).toEqual([tempRoot]);
+    expect(world.progress.reports).toEqual([]);
+    expect(world.bid.requests).toEqual([]);
+    expect(await readdir(tempRoot)).toEqual([]);
+  });
+
+  it("runs once free space covers the cap plus the margin", async () => {
+    const world = createWorld(tempRoot, {
+      budget: () => new ArchiveBudget(1_000_000, 0),
+      freeSpace: new FakeFreeSpace(1_000_000 + 256 * 1024 * 1024),
+    });
+    await world.assembler.run(request, firstAttempt());
+    expect(world.progress.reports.at(-1)?.event).toBe("ready");
   });
 });

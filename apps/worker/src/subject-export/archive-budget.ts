@@ -18,6 +18,11 @@ export class ArchiveBudget {
     private readonly reserve = ARCHIVE_RESERVE_BYTES,
   ) {}
 
+  /** The size cap this budget enforces. */
+  get capBytes(): number {
+    return this.cap;
+  }
+
   get usedBytes(): number {
     return this.spent;
   }
