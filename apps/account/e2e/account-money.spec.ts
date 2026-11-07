@@ -20,8 +20,13 @@ test.describe("Account Money @journey", () => {
     const totals = page.getByRole("region", { name: "Totals by business" });
     await expect(totals).toBeVisible();
     await expect(totals.getByRole("heading", { level: 2 }).first()).toBeVisible();
-    // The collector's Bid payments put LAX Bid in the totals.
-    await expect(totals.getByRole("heading", { name: "LAX Bid" })).toBeVisible();
+    // The collector's Bid payments put LAX Bid's legal entity in the totals, with the product
+    // named under its heading.
+    const bidCard = totals.getByRole("article", { name: "London Auction Xchange LTD" });
+    await expect(
+      bidCard.getByRole("heading", { name: "London Auction Xchange LTD" }),
+    ).toBeVisible();
+    await expect(bidCard.getByText("LAX Bid")).toBeVisible();
 
     const ledger = page.getByRole("region", { name: "Ledger" });
     await expect(ledger).toBeVisible();

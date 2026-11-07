@@ -112,8 +112,9 @@ jobs:
       # Charlotte Hayes: Bid works from the demo seed plus one Shop edition seeded below.
       ACCOUNT_E2E_COLLECTOR_EMAIL: collector@lax.bid
       ACCOUNT_E2E_COLLECTOR_PASSWORD: Password123!
-      # A dev-seeded person with no lots, orders or payments.
-      ACCOUNT_E2E_EMPTY_EMAIL: apple-test@lax.bid
+      # Felix Nakamura: a dev-seeded password user with no lots, bids, orders or payments in any
+      # product (apple-test@lax.bid has bids, so it is not an empty account).
+      ACCOUNT_E2E_EMPTY_EMAIL: unverified@lax.bid
       ACCOUNT_E2E_EMPTY_PASSWORD: Password123!
     steps:
       - uses: actions/checkout@v4

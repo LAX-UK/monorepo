@@ -8,6 +8,8 @@ function accountPort(): string {
   return new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3040").port;
 }
 
+const PASSWORD_STEP_TIMEOUT_MS = 10_000;
+
 export type AccountCredentials = { email: string; password: string };
 
 /** Demo collector (Charlotte Hayes): Bid works from the demo seed, one Shop edition from CI. */
@@ -48,7 +50,12 @@ export async function signInAccount(
   ]).catch(() => {});
   if (await email.isVisible().catch(() => false)) await email.fill(credentials.email);
   if (await continueButton.isVisible().catch(() => false)) await continueButton.click();
-  await password.waitFor({ state: "visible", timeout: 45_000 });
+  // The password step follows Continue at once; if it does not, say where sign-in stopped.
+  await password.waitFor({ state: "visible", timeout: PASSWORD_STEP_TIMEOUT_MS }).catch(() => {
+    throw new Error(
+      `Sign-in for ${credentials.email} never reached the password step (stopped at ${page.url()}). Check the person has a password and is not held at a verification or onboarding step.`,
+    );
+  });
   await password.fill(credentials.password);
   await page
     .getByRole("button", { name: /sign in|log in|continue/i })
