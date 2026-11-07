@@ -35,3 +35,24 @@ describe("worker ALERT_LINK_SECRET in production", () => {
     ).toEqual([]);
   });
 });
+
+describe("worker ALERT_RETENTION_PURGE_ENABLED", () => {
+  const parse = (extra: Record<string, unknown>) => {
+    const result = envSchema.safeParse({ DATABASE_URL: "postgres://localhost/test", ...extra });
+    // Other settings may fail in a bare environment; only this flag is read here.
+    return result.success ? result.data.ALERT_RETENTION_PURGE_ENABLED : null;
+  };
+
+  it("is off unless it is switched on, so the prune only logs", () => {
+    const off = envSchema.safeParse({ DATABASE_URL: "postgres://localhost/test" });
+    expect(off.success && off.data.ALERT_RETENTION_PURGE_ENABLED).toBe(false);
+    expect(parse({ ALERT_RETENTION_PURGE_ENABLED: "" })).toBe(false);
+    expect(parse({ ALERT_RETENTION_PURGE_ENABLED: "false" })).toBe(false);
+  });
+
+  it("is read like KYC_RETENTION_PURGE_ENABLED", () => {
+    for (const value of ["true", "1", "yes", "on"]) {
+      expect(parse({ ALERT_RETENTION_PURGE_ENABLED: value }), value).toBe(true);
+    }
+  });
+});

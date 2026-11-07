@@ -327,6 +327,7 @@ export function createWorkerContainer(): WorkerContainer {
     staffRoleReader: repositories.staffRoleReader,
     newsletterSignupSyncRepo: repositories.newsletterSignupSyncRepo,
     kycRetentionStores: repositories.kycRetentionStores,
+    alertRetentionStores: repositories.alertRetentionStores,
     staffOpsRecipientReader: repositories.staffOpsRecipientReader,
     complianceRecipientReader: repositories.complianceRecipientReader,
     mediaAssetProcessorRepo: repositories.mediaAssetProcessorRepo,
