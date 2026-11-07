@@ -104,7 +104,7 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
         cancelledAt: new Date(),
       });
 
-      const active = await queries.list({ view: "active", viewerUserId: staffId, limit: 25 });
+      const active = await queries.list({ view: "active", viewerUserId: staffId, limit: 100 });
       const ours = active.filter((row) => [proposed.id, offered.id].includes(row.id));
       expect(ours.map((row) => row.id).sort()).toEqual([proposed.id, offered.id].sort());
       expect(ours.find((row) => row.id === offered.id)).toMatchObject({
@@ -119,14 +119,16 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
       });
       expect(ours.find((row) => row.id === proposed.id)?.buyerName).toBeNull();
 
-      const mine = await queries.list({ view: "needs_me", viewerUserId: staffId, limit: 25 });
+      const mine = await queries.list({ view: "needs_me", viewerUserId: staffId, limit: 100 });
       expect(mine.map((row) => row.id)).toContain(proposed.id);
       expect(mine.map((row) => row.id)).not.toContain(offered.id);
 
-      const closed = await queries.list({ view: "cancelled", viewerUserId: staffId, limit: 25 });
+      const closed = await queries.list({ view: "cancelled", viewerUserId: staffId, limit: 100 });
       expect(closed.map((row) => row.id)).toContain(cancelled.id);
       expect(
-        (await queries.list({ view: "active", viewerUserId: staffId, limit: 25 })).map((r) => r.id),
+        (await queries.list({ view: "active", viewerUserId: staffId, limit: 100 })).map(
+          (r) => r.id,
+        ),
       ).not.toContain(cancelled.id);
 
       const counts = await queries.countByStage(staffId);

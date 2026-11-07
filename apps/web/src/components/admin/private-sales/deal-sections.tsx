@@ -332,7 +332,7 @@ export function PartiesSection({ deal }: { deal: DealRecord }) {
             <div key="buyer-missing">
               <h3 className="m-0 text-staff-sm font-semibold text-staff-fg">Buyer</h3>
               <p className="m-0 mt-1 text-staff-sm text-staff-muted">
-                No buyer named yet. Identity and funds are checked once there is one.
+                The buyer isn't named. Their identity and funds are checked once there is one.
               </p>
             </div>
           ),
