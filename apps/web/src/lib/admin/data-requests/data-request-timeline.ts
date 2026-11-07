@@ -122,6 +122,13 @@ const EVENTS: Readonly<Record<string, EventSpec>> = {
           : null,
       ]),
   },
+  "data_request.enquiries_erased": {
+    title: (detail) => {
+      const count = num(detail.enquiries);
+      return count === null ? "Enquiries erased" : `Enquiries erased (${count})`;
+    },
+    tone: "success",
+  },
   "data_request.closed": {
     title: (_, actor) => `Closed${by(actor)}`,
     note: (detail) => {

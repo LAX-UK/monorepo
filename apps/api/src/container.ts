@@ -19,6 +19,7 @@ import {
   DrizzleStaffRoster,
   DrizzleWatchlistReminderRepository,
 } from "@auction/persistence/repositories";
+import { DrizzleDataRequestErasureHistory } from "./container/adapters/drizzle-data-request-erasure-history.js";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
 import { createContainerAuthenticator } from "./container/create-auth.js";
@@ -800,6 +801,7 @@ export function createContainer(env: Env): Container {
         }),
         audit: new DomainEventDataRequestAuditTrail(platform.domainEventSink),
         enquiryErasure: marketingEnquiries.erasure,
+        erasureHistory: new DrizzleDataRequestErasureHistory(db),
         accounts: {
           findByEmail: async (email) => {
             const subject = await identityIssuer.findSubjectByEmail(email);

@@ -5,6 +5,7 @@ import type {
   ExtendDataRequestInput,
   PatchDataRequestInput,
 } from "@auction/identity-contracts";
+import type { DataRequestRecord } from "@auction/identity-contracts";
 import { enquiryErasureBlock } from "@auction/identity-contracts";
 import type {
   DataRequestOutcome,
@@ -12,6 +13,7 @@ import type {
 } from "../../interfaces/identity-data-requests-client.js";
 import type { IEnquiryErasure } from "../../marketing-enquiry/enquiry-erasure.service.js";
 import type { DataRequestAuditAction, IDataRequestAuditTrail } from "./data-request-audit-trail.js";
+import type { IDataRequestErasureHistory } from "./data-request-erasure-history.js";
 
 type Body<T> = Omit<T, "actorSubjectId">;
 
@@ -28,6 +30,8 @@ export type AdminDataRequestsDeps = {
   audit: IDataRequestAuditTrail;
   accounts: IDataRequestAccountFinder;
   enquiryErasure: IEnquiryErasure;
+  /** Bid's record of erasures done for a request; completes Identity's timeline. */
+  erasureHistory: IDataRequestErasureHistory;
 };
 
 /** What an erasure answers with: the counts the erasure service reports. */
@@ -61,7 +65,28 @@ export class AdminDataRequestsService {
 
   async record(reference: string, actorUserId: string) {
     await this.audit("viewed", reference, actorUserId);
-    return this.deps.identity.record(reference, actorUserId);
+    return this.withErasures(await this.deps.identity.record(reference, actorUserId));
+  }
+
+  /**
+   * Identity's timeline has no sign of an erasure done in Bid, so Bid's own record of each one is
+   * merged in, as `data_request.enquiries_erased` entries, in time order.
+   */
+  private async withErasures(
+    outcome: DataRequestOutcome<DataRequestRecord>,
+  ): Promise<DataRequestOutcome<DataRequestRecord>> {
+    if (!outcome.ok) return outcome;
+    const erasures = await this.deps.erasureHistory.forReference(outcome.value.request.reference);
+    if (erasures.length === 0) return outcome;
+    const added = erasures.map((erasure) => ({
+      at: erasure.at.toISOString(),
+      event: "data_request.enquiries_erased",
+      actorName: erasure.actorName,
+      device: null,
+      detail: { enquiries: erasure.enquiries },
+    }));
+    const timeline = [...outcome.value.timeline, ...added].sort((a, b) => a.at.localeCompare(b.at));
+    return { ok: true, value: { ...outcome.value, timeline } };
   }
 
   async create(body: Body<CreateDataRequestInput>, actorUserId: string) {
@@ -94,7 +119,8 @@ export class AdminDataRequestsService {
    * Erases the enquiries from the request's own email address. The address and the request's
    * state come from Identity, never from the caller: only a manual request being worked on, about
    * someone else, with an email address, may erase. The typed confirmation is compared with that
-   * address. The erasure's audit event names the request, and the request's timeline records it.
+   * address. Bid's audit row is written once the request is
+   * known to allow it and before anything is erased; the erasure's own audit event names the request and carries the counts, and `record` shows it in the request's History.
    */
   async eraseEnquiries(
     reference: string,
@@ -108,6 +134,7 @@ export class AdminDataRequestsService {
     const blocked = enquiryErasureBlock(request);
     if (blocked) return { ok: false, status: 409, error: "erasure_not_allowed" };
     if (!person.email) return { ok: false, status: 422, error: "no_email" };
+    await this.audit("enquiries_erased", request.reference, actorUserId);
     const outcome = await this.deps.enquiryErasure.eraseByEmail({
       email: person.email,
       confirmation: body.confirmation,
@@ -116,7 +143,6 @@ export class AdminDataRequestsService {
       requestReference: request.reference,
     });
     if (!outcome.ok) return { ok: false, status: 422, error: outcome.error };
-    await this.audit("enquiries_erased", request.reference, actorUserId);
     const { ok: _ok, ...counts } = outcome;
     return { ok: true, value: counts };
   }

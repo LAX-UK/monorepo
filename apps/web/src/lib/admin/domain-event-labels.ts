@@ -65,6 +65,7 @@ const LABELS: Record<string, string> = {
   "data_request.extended": "Data request extended",
   "data_request.closed": "Data request closed",
   "data_request.continued": "Data request continued manually",
+  "data_request.enquiries_erased": "Data request enquiries erased",
 
   "failed_job.retried": "Failed job retried",
   "failed_job.discarded": "Failed job discarded",

@@ -53,6 +53,24 @@ describe("dataRequestTimeline", () => {
     );
   });
 
+  it("labels an enquiry erasure with its count, or without one", () => {
+    const entry = (at: string, detail: Record<string, number>) => ({
+      at,
+      event: "data_request.enquiries_erased",
+      actorName: "Hana Ito",
+      device: null,
+      detail,
+    });
+    const events = dataRequestTimeline([
+      entry("2026-11-02T10:00:00.000Z", { enquiries: 3 }),
+      entry("2026-11-03T10:00:00.000Z", {}),
+    ]);
+    expect(events.map((event) => event.title)).toEqual([
+      "Enquiries erased",
+      "Enquiries erased (3)",
+    ]);
+  });
+
   it("shows an event it does not know instead of dropping it", () => {
     const [event] = dataRequestTimeline([
       {
