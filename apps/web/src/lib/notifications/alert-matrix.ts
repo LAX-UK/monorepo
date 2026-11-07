@@ -24,6 +24,11 @@ export type AlertRow = {
    * switch, not a notification preference, and its App switch only counts once subscribed.
    */
   engineTopic?: string;
+  /**
+   * The app notice is built from the daily email, so it only arrives while the email is on. Its
+   * App switch reads off, and is held, until the Email switch is on.
+   */
+  appComesWithEmail?: boolean;
 };
 
 /** What the alert engine holds for the signed-in client, per topic. */
@@ -99,6 +104,24 @@ export const ALERT_ROWS: readonly AlertRow[] = [
     app: ["newSalesInApp"],
     engineTopic: "bid.new_sales",
   },
+  {
+    id: "artists",
+    label: "Artists you follow",
+    description: "New lots that match each artist's alert",
+    email: null,
+    app: ["artistAlertsInApp"],
+    engineTopic: "bid.artists",
+    appComesWithEmail: true,
+  },
+  {
+    id: "searches",
+    label: "Saved searches",
+    description: "New lots that match a search with email on",
+    email: null,
+    app: ["searchAlertsInApp"],
+    engineTopic: "bid.searches",
+    appComesWithEmail: true,
+  },
 ];
 
 export type AlertChannel = "email" | "app";
@@ -106,7 +129,16 @@ export type AlertChannel = "email" | "app";
 /** A cell of the matrix: whether it exists, is on, and is held on (with the reason). */
 export type AlertCell =
   | { kind: "none" }
-  | { kind: "switch"; checked: boolean; lockedReason: string | null };
+  | {
+      kind: "switch";
+      checked: boolean;
+      lockedReason: string | null;
+      /** Off and not changeable for now, and why. */
+      disabledReason?: string;
+    };
+
+/** Why an app notice cannot be switched on while its email is off. */
+export const APP_COMES_WITH_EMAIL_REASON = "Comes with the email";
 
 export function alertCell(
   row: AlertRow,
@@ -124,6 +156,14 @@ export function alertCell(
       };
     }
     const [field] = row.app;
+    if (row.appComesWithEmail && engine.email[row.engineTopic] !== true) {
+      return {
+        kind: "switch",
+        checked: false,
+        lockedReason: null,
+        disabledReason: APP_COMES_WITH_EMAIL_REASON,
+      };
+    }
     return {
       kind: "switch",
       checked:
