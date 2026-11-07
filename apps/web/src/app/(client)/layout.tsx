@@ -28,11 +28,9 @@ import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-modul
 import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import {
   ACCOUNT_NOTICE_COOKIE,
-  CHOSEN_SWITCH_SHOWN_MS,
-  accountNoticeDetail,
   accountNoticeMessage,
   decodeAccountNotice,
-  isChosenSwitch,
+  noticeBelongsToAccount,
   notificationSwitchToast,
 } from "@/lib/navigation/account-notice";
 import { buildAccountChrome } from "@/lib/navigation/account-switcher-model";
@@ -127,7 +125,13 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
     pendingInvitations: pendingInvites.length,
   });
 
-  const notice = decodeAccountNotice(jar.get(ACCOUNT_NOTICE_COOKIE)?.value);
+  // A notice is shown only when it is true of the account in use, and "chose" is greeted by the
+  // root toast, which reaches public pages too.
+  const rawNotice = decodeAccountNotice(jar.get(ACCOUNT_NOTICE_COOKIE)?.value);
+  const notice =
+    rawNotice?.kind !== "chose" && noticeBelongsToAccount(rawNotice, account.current.id)
+      ? rawNotice
+      : null;
   const optionOf = (id: string) => account.switcher?.options.find((o) => o.id === id) ?? null;
   // Opening a notification for another account says so in a toast that offers the way back.
   const switchToast =
@@ -135,17 +139,7 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   const noticeMessage = switchToast ? null : accountNoticeMessage(notice, optionOf);
   const banners = [
     ...(switchToast ? [<NotificationSwitchToast key="switch-toast" {...switchToast} />] : []),
-    ...(noticeMessage
-      ? [
-          <AccountNotice
-            key={noticeMessage}
-            message={noticeMessage}
-            detail={accountNoticeDetail(notice, optionOf)}
-            focusHeading={isChosenSwitch(notice)}
-            {...(isChosenSwitch(notice) ? { autoDismissMs: CHOSEN_SWITCH_SHOWN_MS } : {})}
-          />,
-        ]
-      : []),
+    ...(noticeMessage ? [<AccountNotice key={noticeMessage} message={noticeMessage} />] : []),
     ...layoutWarnings.map((w) => (
       <DashboardFetchWarningBanner key={w.title} title={w.title} message={w.message} />
     )),

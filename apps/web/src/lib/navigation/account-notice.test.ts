@@ -4,7 +4,7 @@ import {
   accountNoticeMessage,
   decodeAccountNotice,
   encodeAccountNotice,
-  isChosenSwitch,
+  noticeBelongsToAccount,
   notificationSwitchToast,
 } from "./account-notice";
 
@@ -60,6 +60,7 @@ describe("account notice", () => {
     expect(notificationSwitchToast(notice, accountOf)).toEqual({
       account: { kind: "organisation", name: "Cedar & Stone Fine Art", initials: "CS" },
       fromAccountId: "me",
+      fromKind: "personal",
     });
     expect(notificationSwitchToast({ ...notice, fromAccountId: "gone" }, accountOf)).toBeNull();
   });
@@ -76,35 +77,53 @@ describe("account notice", () => {
   });
 
   describe("a switch the person chose", () => {
-    const org = { kind: "chose", accountId: "org-1" } as const;
-    const personal = { kind: "chose", accountId: "me" } as const;
+    const org = {
+      kind: "chose",
+      accountId: "org-1",
+      accountKind: "organisation",
+      accountName: "Northbank Gallery",
+      accountInitials: "NG",
+    } as const;
+    const personal = {
+      kind: "chose",
+      accountId: "me",
+      accountKind: "personal",
+      accountName: "Personal",
+      accountInitials: "OG",
+    } as const;
 
-    it("round-trips through the cookie", () => {
+    it("round-trips through the cookie, carrying who it names", () => {
       expect(decodeAccountNotice(encodeAccountNotice(org))).toEqual(org);
-      expect(decodeAccountNotice(encodeURIComponent('{"kind":"chose"}'))).toBeNull();
+      expect(
+        decodeAccountNotice(encodeURIComponent('{"kind":"chose","accountId":"x"}')),
+      ).toBeNull();
     });
 
     it("says who they act as in an organisation", () => {
-      expect(accountNoticeMessage(org, names)).toBe("Now acting as Northbank Gallery");
-      expect(accountNoticeDetail(org, names)).toBe(
+      expect(accountNoticeMessage(org, () => null)).toBe("Now acting as Northbank Gallery");
+      expect(accountNoticeDetail(org, () => null)).toBe(
         "Bids, purchases and consignments here are the organisation's.",
       );
     });
 
     it("says they use their personal account", () => {
-      expect(accountNoticeMessage(personal, names)).toBe("Now using your personal account");
-      expect(accountNoticeDetail(personal, names)).toBe("Your own bids and purchases.");
+      expect(accountNoticeMessage(personal, () => null)).toBe("Now using your personal account");
+      expect(accountNoticeDetail(personal, () => null)).toBe("Your own bids and purchases.");
+    });
+  });
+
+  describe("noticeBelongsToAccount", () => {
+    it("is true only for the account the notice names", () => {
+      expect(noticeBelongsToAccount({ kind: "switched", accountId: "org-1" }, "org-1")).toBe(true);
+      expect(noticeBelongsToAccount({ kind: "switched", accountId: "org-1" }, "me")).toBe(false);
+      expect(noticeBelongsToAccount({ kind: "switched_elsewhere", accountId: "x" }, "me")).toBe(
+        false,
+      );
     });
 
-    it("says nothing when the account is no longer one they use", () => {
-      expect(accountNoticeMessage({ kind: "chose", accountId: "gone" }, names)).toBeNull();
-      expect(accountNoticeDetail({ kind: "chose", accountId: "gone" }, names)).toBeNull();
-    });
-
-    it("is the only notice that moves focus to the heading", () => {
-      expect(isChosenSwitch(org)).toBe(true);
-      expect(isChosenSwitch({ kind: "switched", accountId: "org-1" })).toBe(false);
-      expect(isChosenSwitch(null)).toBe(false);
+    it("keeps the removal notice, which names no account in use", () => {
+      expect(noticeBelongsToAccount({ kind: "removed", organisationName: "N" }, "me")).toBe(true);
+      expect(noticeBelongsToAccount(null, "me")).toBe(false);
     });
   });
 });

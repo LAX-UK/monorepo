@@ -1,5 +1,5 @@
 import { type AccountContext, accountHomePathForKind } from "./account-home";
-import { CLIENT_ROUTES } from "./client-routes";
+import { CLIENT_ROUTES, isClientAreaPath } from "./client-routes";
 import { pathOf } from "./path-of";
 
 /**
@@ -7,6 +7,9 @@ import { pathOf } from "./path-of";
  * stays open, so switching changes whose Bids or Purchases are shown, not which page. Any other
  * page (an organisation's Team, a record that belongs to one account) opens the new account's
  * first page.
+ *
+ * Public pages (a lot, a sale, an artist) are the same for every account and stay as they are,
+ * query included.
  *
  * The table lists the pages that exist for both. A new shared page is one more row, so no
  * component decides this for itself. Only list pages are listed: a page under one, such as a
@@ -18,6 +21,7 @@ const PAGES_IN_BOTH_ACCOUNTS: ReadonlySet<string> = new Set([
   CLIENT_ROUTES.watching,
   CLIENT_ROUTES.notifications,
   CLIENT_ROUTES.settings,
+  CLIENT_ROUTES.selling,
 ]);
 
 function withoutTrailingSlash(path: string): string {
@@ -37,6 +41,7 @@ export function pageAfterSwitch(
   currentPath: string | null,
   target: AccountContext["kind"],
 ): string {
+  if (currentPath && !isClientAreaPath(pathOf(currentPath))) return currentPath;
   if (currentPath && existsInBothAccounts(currentPath)) return withoutTrailingSlash(currentPath);
   return accountHomePathForKind(target);
 }

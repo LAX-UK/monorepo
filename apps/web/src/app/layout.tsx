@@ -7,6 +7,7 @@ import { GtmNoscript } from "@/components/analytics/gtm-noscript";
 import { MarketingAttributionSync } from "@/components/analytics/marketing-attribution-sync";
 import { MarketingClickIdsSync } from "@/components/analytics/marketing-click-ids-sync";
 import { SilentSignInNotice } from "@/components/auth/silent-sign-in-notice.client";
+import { AccountSwitchGreeting } from "@/components/layout/account-switcher/account-switch-greeting";
 import { BottomChromeSync } from "@/components/layout/bottom-chrome-sync";
 import { SessionThemeSync } from "@/components/layout/session-theme-sync";
 import { ThemeInit } from "@/components/layout/theme-init";
@@ -159,6 +160,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             </AppQueryProvider>
           </AuthSessionProvider>
           <Toaster />
+          <AccountSwitchGreeting />
           <WebVitalsReporter />
           <ConsentShell />
           <AnalyticsDebugPanel />

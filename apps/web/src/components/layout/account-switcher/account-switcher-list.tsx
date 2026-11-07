@@ -22,6 +22,12 @@ import type { SwitchFailure } from "./use-account-switch";
 type Switcher = NonNullable<AccountChrome["switcher"]>;
 type Density = "popover" | "sheet";
 
+/**
+ * How a menu makes a row its own item. `keepOpen` asks the menu not to close when the row is
+ * chosen, so the progress of a switch and a failure stay in view.
+ */
+export type WrapItem = (row: ReactElement, options?: { keepOpen?: boolean }) => ReactElement;
+
 type Props = {
   switcher: Switcher;
   /** The account being switched to, while the switch is in flight. */
@@ -40,7 +46,7 @@ type Props = {
    * Inside a menu, each account row is a menu item: the dropdown passes its item wrapper and the
    * rows sit in a group instead of a list.
    */
-  wrapItem?: (row: ReactElement) => ReactElement;
+  wrapItem?: WrapItem;
   /** Whether the invitations, All accounts and Register links follow the rows (a menu has its own). */
   withLinks?: boolean;
 };
@@ -71,23 +77,26 @@ function AccountRow({
   locked: boolean;
   density: Density;
   onChoose: (option: AccountOption) => void;
-  wrapItem?: (row: ReactElement) => ReactElement;
+  wrapItem?: WrapItem;
 }) {
   const view = accountRowView(option, { needs, pending });
   return wrapItem(
     <Button
       variant="ghost"
-      onClick={() => onChoose(option)}
-      disabled={locked}
+      onClick={() => {
+        if (!locked) onChoose(option);
+      }}
+      // The row being switched to stays focusable (and readable) so focus is not lost mid-switch;
+      // only the other rows are disabled.
+      disabled={locked && !pending}
+      aria-disabled={pending || undefined}
       aria-current={option.current ? "true" : undefined}
       aria-busy={pending || undefined}
       className={cn(
         SWITCHER_ROW,
         ACCOUNT_HEIGHT[density],
         "py-2",
-        // The row being switched to stays readable; only the others dim.
-        pending && "disabled:opacity-100",
-        density === "sheet" && option.current && "bg-lax-selected hover:bg-lax-selected",
+        option.current && "bg-lax-selected hover:bg-lax-selected",
       )}
       data-testid={`switch-account-${option.kind}`}
     >
@@ -118,6 +127,7 @@ function AccountRow({
         </span>
       ) : null}
     </Button>,
+    { keepOpen: true },
   );
 }
 
@@ -125,9 +135,11 @@ function AccountRow({
 function SwitchFailureNotice({
   failure,
   onRetry,
+  density,
 }: {
   failure: SwitchFailure;
   onRetry: (() => void) | undefined;
+  density: Density;
 }) {
   return (
     <div role="alert" className="flex items-center gap-3 px-3 py-2">
@@ -135,7 +147,12 @@ function SwitchFailureNotice({
         <span className="font-medium">{failure.title}.</span> {failure.description}
       </p>
       {onRetry ? (
-        <Button size="sm" variant="secondary" onClick={onRetry} className="shrink-0">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={onRetry}
+          className={cn("shrink-0", density === "sheet" && "min-h-11")}
+        >
           Try again
         </Button>
       ) : null}
@@ -181,13 +198,14 @@ function Rows({
 /** Pending invitations, every account on one page, and registering an organisation. */
 function SwitcherLinks({
   switcher,
-  rowHeight,
+  density,
   onNavigate,
 }: {
   switcher: Switcher;
-  rowHeight: string;
+  density: Density;
   onNavigate: () => void;
 }) {
+  const rowHeight = ROW_HEIGHT[density];
   return (
     <>
       <SwitcherSeparator />
@@ -213,14 +231,17 @@ function SwitcherLinks({
         <Users aria-hidden strokeWidth={1.75} />
         All accounts
       </Link>
-      <Link
-        href={switcher.registerHref}
-        onClick={onNavigate}
-        className={cn(SWITCHER_ROW, rowHeight)}
-      >
-        <Plus aria-hidden strokeWidth={1.75} />
-        Register an organisation
-      </Link>
+      {/* The sheet has the room for it; on desktop it is one step further, in All accounts. */}
+      {density === "sheet" ? (
+        <Link
+          href={switcher.registerHref}
+          onClick={onNavigate}
+          className={cn(SWITCHER_ROW, rowHeight)}
+        >
+          <Plus aria-hidden strokeWidth={1.75} />
+          Register an organisation
+        </Link>
+      ) : null}
     </>
   );
 }
@@ -252,6 +273,7 @@ export function AccountSwitcherList({
   useEffect(() => request(), [request]);
 
   const filterable = showsAccountFilter(switcher.options);
+  const pendingOption = switcher.options.find((option) => option.id === pendingId);
   const shown = filterable ? filterAccountOptions(switcher.options, query) : switcher.options;
 
   return (
@@ -297,13 +319,15 @@ export function AccountSwitcherList({
           No accounts match “{query.trim()}”.
         </output>
       ) : null}
-      {failure ? <SwitchFailureNotice failure={failure} onRetry={onRetry} /> : null}
+      {failure ? (
+        <SwitchFailureNotice failure={failure} onRetry={onRetry} density={density} />
+      ) : null}
+      {/* Said aloud while a switch runs; the row only shows it. */}
+      <output className="sr-only">
+        {pendingOption ? `Switching to ${pendingOption.name}…` : ""}
+      </output>
       {withLinks ? (
-        <SwitcherLinks
-          switcher={switcher}
-          rowHeight={ROW_HEIGHT[density]}
-          onNavigate={onNavigate}
-        />
+        <SwitcherLinks switcher={switcher} density={density} onNavigate={onNavigate} />
       ) : null}
       {footer ? (
         <>

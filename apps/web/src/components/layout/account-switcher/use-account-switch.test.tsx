@@ -22,7 +22,13 @@ vi.mock("@/lib/ui/notify", () => ({
 
 import { useAccountSwitch } from "./use-account-switch";
 
-const option = { id: "org-1", current: false } as AccountOption;
+const option = {
+  id: "org-1",
+  current: false,
+  kind: "organisation",
+  name: "Northbank Gallery",
+  initials: "NG",
+} as AccountOption;
 const assign = vi.fn();
 const realLocation = window.location;
 
@@ -47,7 +53,13 @@ describe("useAccountSwitch", () => {
     switchAccount.mockResolvedValue({ kind: "switched" });
     const { result } = renderHook(() => useAccountSwitch("/home"));
     await act(() => result.current.choose(option));
-    expect(leaveAccountNotice).toHaveBeenCalledWith({ kind: "chose", accountId: "org-1" });
+    expect(leaveAccountNotice).toHaveBeenCalledWith({
+      kind: "chose",
+      accountId: "org-1",
+      accountKind: "organisation",
+      accountName: "Northbank Gallery",
+      accountInitials: "NG",
+    });
   });
 
   it("stays on a page both accounts have, and opens the first page otherwise", async () => {

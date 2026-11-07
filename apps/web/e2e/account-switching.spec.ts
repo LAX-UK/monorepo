@@ -28,7 +28,8 @@ const NEVER_MEMBER_ORGANISATION_NAME = "Crowley Arts Foundation";
 const accountMenuButton = (page: Page) => page.getByRole("button", { name: /^account menu/i });
 const workspaceSwitcher = (page: Page) => page.getByTestId("account-switcher");
 const pageHeading = (page: Page) => page.getByRole("heading", { level: 1 }).first();
-const switchNotice = (page: Page) => page.getByTestId("account-notice");
+/** The greeting after a chosen switch: a polite live region the message is put into once loaded. */
+const switchNotice = (page: Page) => page.getByTestId("account-switch-greeting");
 const pathOf = (page: Page) => new URL(page.url()).pathname;
 
 /** Counts the requests a page makes to one path, however they are reached. */
@@ -131,6 +132,39 @@ test.describe("account switching on the production build @roles", () => {
     expect(pathOf(page)).toBe("/bids");
     await expect(switchNotice(page)).toContainText("Now using your personal account");
     await expect(page.locator("h1:focus")).toHaveCount(1);
+  });
+
+  test("a public page stays where it is after a switch, with the greeting announced", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    const origin = baseURL ?? "http://localhost:3000";
+    await buyerLogin(page);
+    const { personal, organisation } = await accountsOf(page);
+    await useAccountInThisBrowser(context, origin, personal.id);
+    await page.goto("/sales");
+    await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
+
+    await clickAccountMenuItem(page, new RegExp(organisation.name));
+
+    // The sales page is the same for every account, so the person stays on it; the root greeting
+    // still speaks, in a polite live region, and does not linger on later pages.
+    await expect(switchNotice(page)).toContainText(`Now acting as ${organisation.name}`, {
+      timeout: 30_000,
+    });
+    await expect(switchNotice(page)).toHaveAttribute("aria-live", "polite");
+    expect(pathOf(page)).toBe("/sales");
+    const cookies = await context.cookies(origin);
+    expect(cookies.find((cookie) => cookie.name === ACTING_COOKIE)?.value).not.toBe(personal.id);
+    expect(cookies.find((cookie) => cookie.name === "lax_account_notice")).toBeUndefined();
+
+    // Back to Personal so the profile ends where the other specs expect it.
+    await clickAccountMenuItem(page, /Personal/);
+    await expect(switchNotice(page)).toContainText("Now using your personal account", {
+      timeout: 30_000,
+    });
+    expect(pathOf(page)).toBe("/sales");
   });
 
   test("a page only one account has opens the other account's first page", async ({

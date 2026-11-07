@@ -1,6 +1,9 @@
 "use client";
 
-import { AccountSwitcherList } from "@/components/layout/account-switcher/account-switcher-list";
+import {
+  AccountSwitcherList,
+  type WrapItem,
+} from "@/components/layout/account-switcher/account-switcher-list";
 import { useAccountSwitch } from "@/components/layout/account-switcher/use-account-switch";
 import { useLogout } from "@/lib/auth/use-logout";
 import type { AttentionCount } from "@/lib/navigation/client-attention";
@@ -9,7 +12,7 @@ import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/lax";
 import { ExternalLink, LogOut, Mail } from "lucide-react";
 import Link from "next/link";
-import { Fragment, type ReactElement, type ReactNode, createContext, useContext } from "react";
+import { Fragment, type ReactNode, createContext, useContext } from "react";
 
 /** `popover`: the desktop dropdown (a menu); `sheet`: the phone sheet (a plain list). */
 export type AccountMenuSurface = "popover" | "sheet";
@@ -35,7 +38,6 @@ const COUNT_TONE: Record<AttentionCount["tone"], string> = {
  * each row is wrapped (as its child) in the dropdown's own item, which gives arrow-key movement
  * and typeahead. Identity by default.
  */
-type WrapItem = (row: ReactElement) => ReactElement;
 const IDENTITY: WrapItem = (row) => row;
 const WrapItemContext = createContext<WrapItem>(IDENTITY);
 

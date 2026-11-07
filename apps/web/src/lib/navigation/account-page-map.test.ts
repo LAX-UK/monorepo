@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { existsInBothAccounts, pageAfterSwitch } from "./account-page-map";
 
 describe("pageAfterSwitch", () => {
-  it.each(["/bids", "/purchases", "/watching", "/notifications", "/settings"])(
+  it.each(["/bids", "/purchases", "/watching", "/notifications", "/settings", "/selling"])(
     "stays on %s in either direction",
     (path) => {
       expect(pageAfterSwitch(path, "organisation")).toBe(path);
@@ -36,6 +36,18 @@ describe("pageAfterSwitch", () => {
   it("opens the account's first page when the current page is unknown", () => {
     expect(pageAfterSwitch(null, "organisation")).toBe("/home");
     expect(pageAfterSwitch(null, "personal")).toBe("/bids");
+  });
+});
+
+describe("public pages", () => {
+  it("stay where they are, query included, whichever account is chosen", () => {
+    expect(pageAfterSwitch("/lot/vase/abc-123", "organisation")).toBe("/lot/vase/abc-123");
+    expect(pageAfterSwitch("/sales/spring?tab=lots", "personal")).toBe("/sales/spring?tab=lots");
+    expect(pageAfterSwitch("/artists", "organisation")).toBe("/artists");
+  });
+
+  it("do not include the hops, which are client-area pages", () => {
+    expect(pageAfterSwitch("/switch-account", "organisation")).toBe("/home");
   });
 });
 

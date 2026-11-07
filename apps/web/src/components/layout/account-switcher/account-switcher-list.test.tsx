@@ -63,12 +63,18 @@ describe("AccountSwitcherList", () => {
     expect(onChoose).toHaveBeenCalledWith(expect.objectContaining({ id: "me" }));
   });
 
-  it("offers pending invitations with their count, and registering an organisation", () => {
+  it("offers pending invitations with their count and all accounts, but not registering, in the popover", () => {
     renderList();
     expect(screen.getByRole("link", { name: "Pending invitations (2)" })).toHaveAttribute(
       "href",
       "/organisations/invitations",
     );
+    expect(screen.getByRole("link", { name: "All accounts" })).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Register an organisation" })).toBeNull();
+  });
+
+  it("offers registering an organisation in the sheet", () => {
+    renderList({ density: "sheet" });
     expect(screen.getByRole("link", { name: "Register an organisation" })).toHaveAttribute(
       "href",
       "/onboarding/organisation?fresh=1",
@@ -81,14 +87,36 @@ describe("AccountSwitcherList", () => {
   });
 
   it("locks the list while a switch is in flight, and says Switching… on the chosen row", () => {
-    renderList({ pendingId: "me" });
-    for (const button of screen.getAllByRole("button")) expect(button).toBeDisabled();
+    const { onChoose } = renderList({ pendingId: "me" });
+    expect(screen.getByRole("button", { name: /Northbank Gallery/ })).toBeDisabled();
     const chosen = screen.getByRole("button", { name: /Jane Smith/ });
+    // The chosen row stays focusable, so focus is not dropped mid-switch, but does nothing.
+    expect(chosen).not.toBeDisabled();
+    expect(chosen).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(chosen);
+    expect(onChoose).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent("Switching to Personal…");
     expect(chosen).toHaveAttribute("aria-busy", "true");
     expect(chosen).toHaveTextContent("Switching…");
     expect(screen.getByRole("button", { name: /Northbank Gallery/ })).not.toHaveTextContent(
       "Switching…",
     );
+  });
+
+  it("tints the account in use on every density", () => {
+    renderList();
+    expect(screen.getByRole("button", { name: /Northbank Gallery/ })).toHaveClass(
+      "bg-lax-selected",
+    );
+  });
+
+  it("gives Try again a 44px target in the sheet", () => {
+    renderList({
+      density: "sheet",
+      failure: { title: "Could not switch", description: "Try later." },
+      onRetry: vi.fn(),
+    });
+    expect(screen.getByRole("button", { name: "Try again" })).toHaveClass("min-h-11");
   });
 
   it("marks the account in use with the word Current", () => {
@@ -167,7 +195,7 @@ describe("AccountSwitcherList", () => {
       expect.stringContaining("Galerie Ève"),
     ]);
     fireEvent.change(field, { target: { value: "zzz" } });
-    expect(screen.getByRole("status")).toHaveTextContent("No accounts match “zzz”.");
+    expect(screen.getByText("No accounts match “zzz”.")).toBeVisible();
   });
 
   it("has no field with fewer than six accounts", () => {

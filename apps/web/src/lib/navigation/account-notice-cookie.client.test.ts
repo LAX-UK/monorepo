@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { decodeAccountNotice } from "./account-notice";
-import { clearAccountNotice, leaveAccountNotice } from "./account-notice-cookie.client";
+import {
+  clearAccountNotice,
+  leaveAccountNotice,
+  readAccountNotice,
+} from "./account-notice-cookie.client";
 
 function readCookie(): string | undefined {
   return document.cookie
@@ -9,16 +12,24 @@ function readCookie(): string | undefined {
     ?.slice("lax_account_notice=".length);
 }
 
+const NOTICE = {
+  kind: "chose",
+  accountId: "org-1",
+  accountKind: "organisation",
+  accountName: "Northbank Gallery",
+  accountInitials: "NG",
+} as const;
+
 afterEach(() => clearAccountNotice());
 
 describe("account notice cookie", () => {
   it("leaves a notice the layout can read once", () => {
-    leaveAccountNotice({ kind: "chose", accountId: "org-1" });
-    expect(decodeAccountNotice(readCookie())).toEqual({ kind: "chose", accountId: "org-1" });
+    leaveAccountNotice(NOTICE);
+    expect(readAccountNotice()).toEqual(NOTICE);
   });
 
   it("clears it once shown", () => {
-    leaveAccountNotice({ kind: "chose", accountId: "org-1" });
+    leaveAccountNotice(NOTICE);
     clearAccountNotice();
     expect(readCookie()).toBeUndefined();
   });

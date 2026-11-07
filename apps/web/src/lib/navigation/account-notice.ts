@@ -17,8 +17,17 @@ export type AccountNotice =
   | { kind: "switched"; accountId: string }
   /** Opening a notification switched to `accountId`; switching back goes to `fromAccountId`. */
   | { kind: "opened_notification"; accountId: string; fromAccountId: string }
-  /** The person chose `accountId` in the switcher on the page they have just left. */
-  | { kind: "chose"; accountId: string }
+  /**
+   * The person chose `accountId` in the switcher on the page they have just left. It carries the
+   * account's name, so any page, in or out of the client area, can greet them without a lookup.
+   */
+  | {
+      kind: "chose";
+      accountId: string;
+      accountKind: "personal" | "organisation";
+      accountName: string;
+      accountInitials: string;
+    }
   /** The person switched to `accountId` in another tab; this tab followed. */
   | { kind: "switched_elsewhere"; accountId: string }
   /** The organisation the person used last no longer has them as a member. */
@@ -56,21 +65,26 @@ const NOTICE_KINDS: {
   },
   chose: {
     decode: (value) =>
-      typeof value.accountId === "string" ? { kind: "chose", accountId: value.accountId } : null,
-    message: (notice, accountOf) => {
-      const account = accountOf(notice.accountId);
-      if (!account) return null;
-      return account.kind === "personal"
+      typeof value.accountId === "string" &&
+      (value.accountKind === "personal" || value.accountKind === "organisation") &&
+      typeof value.accountName === "string" &&
+      typeof value.accountInitials === "string"
+        ? {
+            kind: "chose",
+            accountId: value.accountId,
+            accountKind: value.accountKind,
+            accountName: value.accountName.slice(0, 120),
+            accountInitials: value.accountInitials.slice(0, 3),
+          }
+        : null,
+    message: (notice) =>
+      notice.accountKind === "personal"
         ? "Now using your personal account"
-        : `Now acting as ${account.name}`;
-    },
-    detail: (notice, accountOf) => {
-      const account = accountOf(notice.accountId);
-      if (!account) return null;
-      return account.kind === "personal"
+        : `Now acting as ${notice.accountName}`,
+    detail: (notice) =>
+      notice.accountKind === "personal"
         ? "Your own bids and purchases."
-        : "Bids, purchases and consignments here are the organisation's.";
-    },
+        : "Bids, purchases and consignments here are the organisation's.",
   },
   opened_notification: {
     decode: (value) =>
@@ -151,9 +165,13 @@ export function accountNoticeDetail(
   return (NOTICE_KINDS[notice.kind] as KindReader).detail?.(notice, accountOf) ?? null;
 }
 
-/** Whether the person chose this change themselves, so the new page moves focus to its heading. */
-export function isChosenSwitch(notice: AccountNotice | null): boolean {
-  return notice?.kind === "chose";
+/**
+ * Whether a notice is still true of the account in use. A notice left for another account (a
+ * stale cookie, a second tab) says nothing about this page and is not shown.
+ */
+export function noticeBelongsToAccount(notice: AccountNotice | null, actingId: string): boolean {
+  if (!notice) return false;
+  return notice.kind === "removed" || notice.accountId === actingId;
 }
 
 type ToastAccount = { kind: "personal" | "organisation"; name: string; initials: string };
@@ -161,6 +179,8 @@ type ToastAccount = { kind: "personal" | "organisation"; name: string; initials:
 /** The toast after a notification opened another account: who you act as now, and the way back. */
 export type NotificationSwitchToastView = {
   account: ToastAccount;
+  /** The kind of account "Switch back" goes to, which decides the page it opens. */
+  fromKind: ToastAccount["kind"];
   /** "Switch back" opens the same page in the account the notification was opened from. */
   fromAccountId: string;
 };
@@ -171,8 +191,10 @@ export function notificationSwitchToast(
   accountOf: (id: string) => ToastAccount | null,
 ): NotificationSwitchToastView | null {
   const account = accountOf(notice.accountId);
-  if (!account || !accountOf(notice.fromAccountId)) return null;
+  const from = accountOf(notice.fromAccountId);
+  if (!account || !from) return null;
   return {
+    fromKind: from.kind,
     account: {
       kind: account.kind,
       name: account.kind === "personal" ? "your personal account" : account.name,

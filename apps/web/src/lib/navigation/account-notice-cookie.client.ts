@@ -2,8 +2,19 @@ import {
   ACCOUNT_NOTICE_COOKIE,
   ACCOUNT_NOTICE_MAX_AGE_SEC,
   type AccountNotice,
+  decodeAccountNotice,
   encodeAccountNotice,
 } from "./account-notice";
+
+/** The notice waiting for this page, if any. */
+export function readAccountNotice(): AccountNotice | null {
+  const prefix = `${ACCOUNT_NOTICE_COOKIE}=`;
+  const raw = document.cookie
+    .split("; ")
+    .find((part) => part.startsWith(prefix))
+    ?.slice(prefix.length);
+  return decodeAccountNotice(raw);
+}
 
 /**
  * Leaves a one-time notice for the next page load, from the browser. The layout reads it once and
