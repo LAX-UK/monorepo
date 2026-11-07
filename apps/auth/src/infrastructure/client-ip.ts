@@ -39,7 +39,13 @@ function createTrustedProxyMatcher(
   };
 }
 
+/**
+ * Same rules as `@auction/http-headers/client-ip`, kept as a copy because Identity may not depend
+ * on other workspace packages (docs/architecture/09-lax-identity-boundary.md). Change both together.
+ */
 export function resolveClientIp(input: {
+  /** Proxies we operate that append to the chain; the right-most `n - 1` entries are skipped. */
+  trustedProxyHops?: number;
   remoteAddress: string | undefined;
   forwardedFor: string | undefined;
   realIp: string | undefined;
@@ -64,12 +70,15 @@ export function resolveClientIp(input: {
   if (input.forwardedFor) {
     const forwardedChain = input.forwardedFor.split(",").map((value) => normalizedIp(value));
     if (forwardedChain.some((address) => address === null)) return remoteAddress;
-    const hops = [...(forwardedChain as string[]), remoteAddress];
-    for (let index = hops.length - 1; index >= 0; index -= 1) {
-      const hop = hops[index];
-      if (hop && !input.isTrustedProxy(hop)) return hop;
+    const entries = forwardedChain as string[];
+    const firstOwnHop = entries.length - Math.max(0, (input.trustedProxyHops ?? 1) - 1);
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const hop = entries[index];
+      if (!hop || index >= firstOwnHop) continue;
+      if (!input.isTrustedProxy(hop) && !input.isTrustedCloudflareProxy(hop)) return hop;
     }
-    return hops[0] ?? remoteAddress;
+    // Every hop is one of ours: never fall back to the leftmost, client-controlled entry.
+    return remoteAddress;
   }
 
   return normalizedIp(input.realIp) ?? remoteAddress;
@@ -78,6 +87,7 @@ export function resolveClientIp(input: {
 export function createClientIpResolver(
   trustedProxyCidrs: readonly string[],
   trustedCloudflareProxyCidrs: readonly string[] = [],
+  trustedProxyHops = 1,
 ): ClientIpResolver {
   const isTrustedProxy = createTrustedProxyMatcher(trustedProxyCidrs);
   const isTrustedCloudflareProxy = createTrustedProxyMatcher(
@@ -97,6 +107,7 @@ export function createClientIpResolver(
       realIp: context.req.header(CLIENT_IP_HEADER_NAMES.realIp),
       cfConnectingIp: context.req.header(CLIENT_IP_HEADER_NAMES.cloudflare),
       doConnectingIp: context.req.header(CLIENT_IP_HEADER_NAMES.digitalOcean),
+      trustedProxyHops,
       isTrustedProxy,
       isTrustedCloudflareProxy,
     });
