@@ -106,6 +106,8 @@ export type DealStaffRecord = {
   };
   /** The terms this person may change now. */
   editableTerms: (keyof AdminDealTerms)[];
+  /** This person may name or change the buyer: the price is not yet agreed. */
+  canNameBuyer: boolean;
   actions: DealActionState[];
 };
 

@@ -28,6 +28,7 @@ import {
   LOT_FULFILMENT_ACCESS,
   ONBOARDING_QUEUES_ACCESS,
   PLATFORM_ADMIN_ACCESS,
+  PRIVATE_SALE_DEALS_READ_ACCESS,
   PURCHASE_PROBLEMS_ACCESS,
   SALEROOM_ACCESS,
   SALE_CATALOG_READ_ACCESS,
@@ -48,6 +49,7 @@ import {
   ClipboardList,
   FileLock2,
   Gauge,
+  Handshake,
   History,
   Inbox,
   KeyRound,
@@ -205,6 +207,15 @@ function buildStaffNavGroupSpecs(
           ...navBadge(navCounts.withdrawalsPending, "warning"),
         },
         submissions,
+        {
+          // Works sold by private treaty, from the offer to the seller's payout.
+          id: "private-sales",
+          href: "/admin/private-sales",
+          label: "Private sales",
+          icon: Handshake,
+          match: exactOrNested("/admin/private-sales"),
+          requirement: PRIVATE_SALE_DEALS_READ_ACCESS,
+        },
         {
           id: "condition-reports",
           href: "/admin/condition-reports",

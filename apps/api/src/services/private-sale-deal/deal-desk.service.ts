@@ -432,6 +432,7 @@ export class PrivateSaleDealDeskService implements IPrivateSaleDealDesk {
       editableTerms: (Object.keys(TERM_RULES) as (keyof AdminDealTerms)[]).filter(
         (field) => canDo(viewer, TERM_RULES[field].ability) && this.termIsOpen(deal, field),
       ),
+      canNameBuyer: canDo(viewer, "manage") && OFFER_STAGES.has(deal.stage),
       actions: await this.actionsFor(viewer, deal, {
         hasPaidPayment: paid?.status === "paid",
         hasPayoutLine,

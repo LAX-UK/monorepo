@@ -3,9 +3,12 @@ import { enquiryHref } from "@/lib/admin/enquiries/enquiries-search";
 import { enquiryAbilities } from "@/lib/admin/enquiries/enquiry-access";
 import { loadAdminEnquiryPage } from "@/lib/admin/enquiries/load-enquiry-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { ENQUIRIES_ACCESS } from "@/lib/navigation/staff-nav-access";
+import {
+  ENQUIRIES_ACCESS,
+  PRIVATE_SALE_DEALS_MANAGE_ACCESS,
+} from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import type { UserRole } from "@auction/types";
+import { type UserRole, userHasAccessTo } from "@auction/types";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 
@@ -36,6 +39,11 @@ export default async function AdminEnquiryPage({ params }: Props) {
       assignees={page.assignees}
       viewerId={user.id}
       canWork={abilities.canWork}
+      canConvert={userHasAccessTo(
+        user.role as UserRole,
+        user.staffRoles,
+        PRIVATE_SALE_DEALS_MANAGE_ACCESS,
+      )}
       now={new Date().toISOString()}
     />
   );

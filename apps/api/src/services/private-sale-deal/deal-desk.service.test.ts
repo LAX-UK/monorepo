@@ -262,6 +262,16 @@ describe("PrivateSaleDealDeskService record", () => {
   });
 });
 
+describe("PrivateSaleDealDeskService buyer access", () => {
+  it("lets only those who run the deal name the buyer, and only until the price is agreed", async () => {
+    const offer = setup({ deal: stageDeal("offer") });
+    expect((await offer.desk.detail(MANAGER, "PS-0001"))?.canNameBuyer).toBe(true);
+    expect((await offer.desk.detail(FINANCE, "PS-0001"))?.canNameBuyer).toBe(false);
+    const agreed = setup({ deal: stageDeal("agreed") });
+    expect((await agreed.desk.detail(MANAGER, "PS-0001"))?.canNameBuyer).toBe(false);
+  });
+});
+
 describe("PrivateSaleDealDeskService updateTerms", () => {
   it("changes the terms a manager may change and records only the field names", async () => {
     const { desk, updateTerms, events } = setup();

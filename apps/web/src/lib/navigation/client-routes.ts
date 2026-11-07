@@ -21,6 +21,8 @@ export const CLIENT_ROUTES = {
   selling: "/selling",
   sellingNew: "/selling/new",
   consignments: "/selling/consignments",
+  /** One private sale the person is a party to: `/private-sales/PS-0012`. */
+  privateSales: "/private-sales",
   /** The organisation's own works, under the Collection heading. */
   collection: "/collection",
   payouts: "/selling/payouts",
@@ -49,6 +51,7 @@ export const CLIENT_AREA_PREFIXES = [
   "/home",
   "/bids",
   "/purchases",
+  "/private-sales",
   "/watching",
   "/notifications",
   "/settings",

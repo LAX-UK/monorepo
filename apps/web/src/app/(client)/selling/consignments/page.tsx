@@ -1,4 +1,5 @@
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
+import { PrivateSalesPanel } from "@/components/dashboard/private-sales/private-sales-panel";
 import { SellerProfileUnavailableAlert } from "@/components/dashboard/seller-profile-unavailable-alert";
 import { ConsignmentsExportButton } from "@/components/dashboard/seller/consignments-export-button";
 import { ConsignmentsView } from "@/components/dashboard/seller/consignments-view";
@@ -89,6 +90,7 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
       <SubmissionsListAutoRefresh
         enabled={Boolean(records?.some((record) => record.status === "in_review"))}
       />
+      <PrivateSalesPanel side="seller" />
       <ConsignmentsView
         records={records}
         query={query}
