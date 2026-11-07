@@ -596,6 +596,11 @@ export {
   type SubmissionSenderScope,
 } from "./submission-visibility.js";
 export {
+  summariseSubmissionCounts,
+  type SubmissionStatusCounts,
+  type SubmissionSummary,
+} from "./submission-summary.js";
+export {
   consignmentStage,
   type ConsignmentAfterSaleStage,
   type ConsignmentStage,
