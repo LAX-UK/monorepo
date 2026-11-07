@@ -26,6 +26,12 @@ const referenceParamSchema = z.object({
     .pipe(dataRequestReferenceSchema),
 });
 
+/** The address is Identity's, so staff type only the confirmation and the reason. */
+const enquiryErasureBodySchema = z.object({
+  confirmation: z.string().trim().max(320),
+  reason: z.string().trim().min(5).max(500),
+});
+
 const accountQuerySchema = z.object({ email: z.string().trim().email().max(320) });
 
 type RefusalStatus = 400 | 403 | 404 | 409 | 422 | 429;
@@ -142,6 +148,28 @@ export function attachAdminDataRequestsRoutes(
     (c) =>
       respond(c, async () =>
         answer(c, await service.continueDownload(c.req.valid("param").reference, actorId(c)), 201),
+      ),
+  );
+
+  /**
+   * POST /admin/data-requests/:reference/enquiry-erasure — anonymise every enquiry from the
+   * request's own email address. The address and the request's state are read from Identity here;
+   * only a manual request in progress, about someone else, may erase. Counts only in the answer.
+   */
+  platform.post(
+    "/data-requests/:reference/enquiry-erasure",
+    zValidator("param", referenceParamSchema),
+    zValidator("json", enquiryErasureBodySchema),
+    (c) =>
+      respond(c, async () =>
+        answer(
+          c,
+          await service.eraseEnquiries(
+            c.req.valid("param").reference,
+            c.req.valid("json"),
+            actorId(c),
+          ),
+        ),
       ),
   );
 }

@@ -26,6 +26,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("@/lib/actions/admin/admin-data-requests", () => ({
+  eraseDataRequestEnquiriesAction: vi.fn(),
   patchDataRequestAction: (...args: unknown[]) => patch(...args),
   extendDataRequestAction: (...args: unknown[]) => extend(...args),
   closeDataRequestAction: (...args: unknown[]) => close(...args),
@@ -158,6 +159,29 @@ describe("DataRequestView: products to gather", () => {
     expect(mark).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByRole("button", { name: "ID received on…" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Close with outcome…" })).toBeInTheDocument();
+  });
+});
+
+describe("DataRequestView: erase enquiries", () => {
+  it("offers it on a manual request in progress", () => {
+    renderView(manualRecord);
+    expect(screen.getByRole("button", { name: "Erase enquiries…" })).toBeEnabled();
+  });
+
+  it("does not offer it on a download request", () => {
+    renderView(downloadRecord);
+    expect(screen.queryByRole("button", { name: "Erase enquiries…" })).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ["waiting for ID", waitingRecord],
+    ["closed", closedRecord],
+  ])("disables it, with the reason, when the request is %s", (_name, record) => {
+    renderView(record);
+    expect(screen.getByRole("button", { name: "Erase enquiries…" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 });
 

@@ -47,11 +47,26 @@ function setup() {
       status: "active",
     })),
   };
+  const enquiryErasure = {
+    eraseByEmail: vi.fn(async (_input: unknown) => ({
+      ok: true as const,
+      enquiries: 2,
+      notes: 1,
+      attachments: 0,
+      held: 1,
+    })),
+  };
   return {
-    service: new AdminDataRequestsService({ identity, audit, accounts }),
+    service: new AdminDataRequestsService({
+      identity,
+      audit,
+      accounts,
+      enquiryErasure: enquiryErasure as never,
+    }),
     identity,
     audit,
     accounts,
+    enquiryErasure,
     calls,
   };
 }
@@ -170,6 +185,97 @@ describe("AdminDataRequestsService", () => {
     const { service, audit } = setup();
     await service.list({ view: "open", sort: "due" });
     await service.summary();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+});
+
+describe("AdminDataRequestsService.eraseEnquiries", () => {
+  const body = { confirmation: "lena@north.com", reason: "Asked to be forgotten" };
+  const record = (over: Record<string, unknown> = {}) => ({
+    ok: true as const,
+    value: {
+      request: { reference: "DR-0007", kind: "manual", status: "in_progress" },
+      person: { email: "lena@north.com" },
+      ownRequest: false,
+      ...over,
+    } as never,
+  });
+
+  it("erases by the request's own address, names the request and records it on the timeline", async () => {
+    const { service, identity, enquiryErasure, audit } = setup();
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce(record());
+    const outcome = await service.eraseEnquiries("DR-0007", body, "staff-1");
+    expect(outcome).toEqual({
+      ok: true,
+      value: { enquiries: 2, notes: 1, attachments: 0, held: 1 },
+    });
+    expect(enquiryErasure.eraseByEmail).toHaveBeenCalledWith({
+      email: "lena@north.com",
+      confirmation: "lena@north.com",
+      reason: "Asked to be forgotten",
+      actorUserId: "staff-1",
+      requestReference: "DR-0007",
+    });
+    expect(audit.record).toHaveBeenCalledWith({
+      action: "enquiries_erased",
+      reference: "DR-0007",
+      actorUserId: "staff-1",
+    });
+  });
+
+  it.each([
+    ["a download", { request: { reference: "DL-7F3C1A", kind: "download", status: "ready" } }],
+    [
+      "a request waiting for ID",
+      { request: { reference: "DR-0007", kind: "manual", status: "waiting_for_id" } },
+    ],
+    ["a closed request", { request: { reference: "DR-0007", kind: "manual", status: "closed" } }],
+  ])("refuses %s and erases nothing", async (_name, over) => {
+    const { service, identity, enquiryErasure, audit } = setup();
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce(record(over));
+    expect(await service.eraseEnquiries("DR-0007", body, "staff-1")).toEqual({
+      ok: false,
+      status: 409,
+      error: "erasure_not_allowed",
+    });
+    expect(enquiryErasure.eraseByEmail).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+  });
+
+  it("refuses a request about the signed-in person, and one with no email address", async () => {
+    const { service, identity, enquiryErasure } = setup();
+    const mock = identity.record as ReturnType<typeof vi.fn>;
+    mock.mockResolvedValueOnce(record({ ownRequest: true }));
+    expect(await service.eraseEnquiries("DR-0007", body, "staff-1")).toMatchObject({
+      status: 403,
+    });
+    mock.mockResolvedValueOnce(record({ person: { email: null } }));
+    expect(await service.eraseEnquiries("DR-0007", body, "staff-1")).toMatchObject({
+      status: 422,
+      error: "no_email",
+    });
+    expect(enquiryErasure.eraseByEmail).not.toHaveBeenCalled();
+  });
+
+  it("passes Identity's refusal back and does not record a failed confirmation", async () => {
+    const { service, identity, enquiryErasure, audit } = setup();
+    const mock = identity.record as ReturnType<typeof vi.fn>;
+    mock.mockResolvedValueOnce({ ok: false, status: 404, error: "not_found" });
+    expect(await service.eraseEnquiries("DR-0099", body, "staff-1")).toEqual({
+      ok: false,
+      status: 404,
+      error: "not_found",
+    });
+    mock.mockResolvedValueOnce(record());
+    enquiryErasure.eraseByEmail.mockResolvedValueOnce({
+      ok: false,
+      error: "confirmation_mismatch",
+    } as never);
+    expect(await service.eraseEnquiries("DR-0007", body, "staff-1")).toEqual({
+      ok: false,
+      status: 422,
+      error: "confirmation_mismatch",
+    });
     expect(audit.record).not.toHaveBeenCalled();
   });
 });

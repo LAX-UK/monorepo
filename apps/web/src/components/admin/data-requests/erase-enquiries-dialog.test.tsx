@@ -54,11 +54,20 @@ describe("EraseEnquiriesDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Erase enquiries" }));
     await waitFor(() => expect(onDone).toHaveBeenCalledWith(counts));
     expect(submit).toHaveBeenCalledWith({
-      email: EMAIL,
       confirmation: EMAIL,
       reason: "Asked to be forgotten",
     });
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("treats an ok answer with no counts as a failure and shows the error", async () => {
+    submit.mockResolvedValue({ ok: true });
+    open();
+    fill(EMAIL, "Asked to be forgotten");
+    fireEvent.click(screen.getByRole("button", { name: "Erase enquiries" }));
+    expect(await screen.findByText("The enquiries couldn't be erased")).toBeTruthy();
+    expect(onDone).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
   it("shows a refusal where it was made and keeps the dialog open", async () => {

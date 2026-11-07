@@ -17,7 +17,6 @@ import type { AdminDataRequestsService } from "../../admin/data-requests/admin-d
 import type { StaffAccessAdminService } from "../../admin/staff-access-admin.service.js";
 import type { DeliveryOpsApplicationService } from "../../delivery-ops.application.service.js";
 import type { InventoryMoveServices } from "../../inventory/inventory-move-services.js";
-import type { IEnquiryErasure } from "../../marketing-enquiry/enquiry-erasure.service.js";
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
 import type { IStaffStepUpGuard } from "../../staff-step-up.service.js";
 import type { LaxAdminRolesService } from "../../staff/lax-admin-roles.service.js";
@@ -95,8 +94,6 @@ export type AdminEnquiryRouteServices = {
   marketingEnquiries: IMarketingEnquiryDesk;
   enquiryRouting: IEnquiryRouting;
   purchaseProblems: IPurchaseProblemDesk;
-  /** Staff erase a sender's enquiries by email address. */
-  enquiryErasure: IEnquiryErasure;
 };
 
 /** Third-party integrations staff operate from the admin (composed in the container root). */
@@ -118,6 +115,7 @@ export type AdminIntegrationRouteServices = {
     | "extend"
     | "close"
     | "continueDownload"
+    | "eraseEnquiries"
   >;
   /** Originals moving between LAX Bid and lax.art. */
   inventoryMoves: InventoryMoveServices;

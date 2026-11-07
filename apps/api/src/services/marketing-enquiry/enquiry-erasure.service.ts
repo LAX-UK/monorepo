@@ -22,13 +22,15 @@ export interface IEnquiryErasure {
     confirmation: string;
     reason: string;
     actorUserId: string;
+    /** The data request the erasure answers; kept in the audit event. */
+    requestReference?: string;
   }): Promise<EnquiryErasureOutcome>;
 }
 
 /**
  * Staff erase a sender's enquiries by email address, for example a visitor without an account who
- * asks to be forgotten. The change and its audit event commit together; the event holds counts and
- * the reason, never the address. Enquiries tied to a deal are held and reported, not changed.
+ * asks to be forgotten. The change and its audit event commit together; the event holds counts, the
+ * reason and, when a data request asked for it, the request's reference; never the address. Enquiries tied to a deal are held and reported, not changed.
  * The same address's email-only alert subscriptions on Bid are erased in the same transaction.
  */
 export class EnquiryErasureService implements IEnquiryErasure {
@@ -46,6 +48,7 @@ export class EnquiryErasureService implements IEnquiryErasure {
     confirmation: string;
     reason: string;
     actorUserId: string;
+    requestReference?: string;
   }): Promise<EnquiryErasureOutcome> {
     const email = input.email.trim().toLowerCase();
     if (input.confirmation.trim().toLowerCase() !== email) {
@@ -69,7 +72,11 @@ export class EnquiryErasureService implements IEnquiryErasure {
         aggregateType: "marketing_enquiry_erasure",
         aggregateId: randomUUID(),
         eventType: "marketing_enquiry.erased",
-        payload: { ...changed, reason },
+        payload: {
+          ...changed,
+          reason,
+          ...(input.requestReference ? { requestReference: input.requestReference } : {}),
+        },
         actorUserId: input.actorUserId,
       });
       return changed;

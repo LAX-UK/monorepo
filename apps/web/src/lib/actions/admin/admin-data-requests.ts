@@ -6,7 +6,7 @@ import {
   type EnquiryErasureCounts,
   enquiryErasureCountsSchema,
   erasureErrorMessage,
-  validateErasure,
+  validateErasureReason,
 } from "@/lib/admin/data-requests/enquiry-erasure";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
@@ -166,25 +166,25 @@ export async function findDataRequestAccountAction(
 }
 
 /**
- * Erases every enquiry from the request's email address. The API checks the typed confirmation
- * and the reason, anonymises the enquiries, holds those tied to a deal and writes the audit
- * event with the counts and the reason in the same transaction.
+ * Erases every enquiry from the request's email address. The browser sends only the reference,
+ * the typed confirmation and the reason: the Bid API reads the address and the request's state
+ * from Identity, compares the confirmation with that address, anonymises the enquiries, holds
+ * those tied to a deal and writes the audit event and the request's timeline entry.
  */
 export async function eraseDataRequestEnquiriesAction(
   reference: string,
-  input: { email: string; confirmation: string; reason: string },
+  input: { confirmation: string; reason: string },
 ): Promise<ActionResult<EnquiryErasureCounts>> {
   return instrumentServerAction("eraseDataRequestEnquiriesAction", async () => {
     const denied = await denyUnlessAdminCapability(DATA_REQUESTS_MANAGE_ACCESS);
     if (denied) return denied;
-    const errors = validateErasure(input, input.email);
-    const invalid = errors.confirmation ?? errors.reason;
+    const invalid = validateErasureReason(input.reason);
     if (invalid) return actionFailure(invalid, undefined, 400);
-    const res = await authedServerFetch(`${API}/enquiry-erasure`, {
+    const path = `${API}/${encodeURIComponent(reference)}/enquiry-erasure`;
+    const res = await authedServerFetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: input.email.trim(),
         confirmation: input.confirmation.trim(),
         reason: input.reason.trim(),
       }),
@@ -197,7 +197,7 @@ export async function eraseDataRequestEnquiriesAction(
     const counts = readDataEnvelope(
       await readJsonBody(res),
       enquiryErasureCountsSchema,
-      `POST ${API}/enquiry-erasure`,
+      `POST ${path}`,
     );
     revalidatePath(`${DATA_REQUESTS_PATH}/${encodeURIComponent(reference)}`);
     return actionSuccess(counts);

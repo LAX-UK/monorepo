@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { manualRecord, ownRecord } from "./data-request.fixture";
 import {
+  closedRecord,
+  downloadRecord,
+  manualRecord,
+  ownRecord,
+  waitingRecord,
+} from "./data-request.fixture";
+import {
+  ERASURE_BLOCK_REASON,
   ERASURE_ERROR_COPY,
   NO_EMAIL_REASON,
   enquiryErasureState,
@@ -19,6 +26,29 @@ describe("enquiry erasure state", () => {
   it("is disabled, with the reason, when there is no email address", () => {
     const record = { ...manualRecord, person: { ...manualRecord.person, email: null } };
     expect(enquiryErasureState(record)).toEqual({ kind: "disabled", reason: NO_EMAIL_REASON });
+  });
+
+  it("is hidden on a download request", () => {
+    expect(enquiryErasureState(downloadRecord)).toEqual({ kind: "hidden" });
+  });
+
+  it("is disabled, with the reason, while the request waits for proof of identity", () => {
+    expect(enquiryErasureState(waitingRecord)).toEqual({
+      kind: "disabled",
+      reason: ERASURE_BLOCK_REASON.waiting_for_id,
+    });
+  });
+
+  it("is disabled, with the reason, once the request is closed", () => {
+    expect(enquiryErasureState(closedRecord)).toEqual({
+      kind: "disabled",
+      reason: ERASURE_BLOCK_REASON.closed,
+    });
+  });
+
+  it("is enabled only for a manual request in progress", () => {
+    expect(manualRecord.request).toMatchObject({ kind: "manual", status: "in_progress" });
+    expect(enquiryErasureState(manualRecord)).toEqual({ kind: "enabled" });
   });
 
   it("is hidden on a request about the signed-in person", () => {
@@ -86,6 +116,9 @@ describe("enquiry erasure checks", () => {
       ERASURE_ERROR_COPY.confirmation_mismatch,
     );
     expect(erasureErrorMessage("reason_invalid", 422)).toBe(ERASURE_ERROR_COPY.reason_invalid);
+    expect(erasureErrorMessage("erasure_not_allowed", 409)).toBe(
+      ERASURE_ERROR_COPY.erasure_not_allowed,
+    );
     expect(erasureErrorMessage(undefined, 403)).toMatch(/permission/);
     expect(erasureErrorMessage(undefined, 503)).toMatch(/Nothing was changed/);
   });

@@ -20,17 +20,15 @@ import {
 import { Trash2 } from "@auction/staff-ui/icons";
 import { useId, useRef, useState } from "react";
 
+const NO_ANSWER = "The enquiries service gave no answer. Nothing was confirmed. Try again.";
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   reference: string;
-  /** The address the enquiries are erased by: the person's, from the request. */
+  /** Shown to staff and used to check what they type; the server uses its own copy of the address. */
   email: string;
-  submit: (input: {
-    email: string;
-    confirmation: string;
-    reason: string;
-  }) => Promise<ActionResult<EnquiryErasureCounts>>;
+  submit: (input: ErasureDraft) => Promise<ActionResult<EnquiryErasureCounts>>;
   onDone: (counts: EnquiryErasureCounts) => void;
 };
 
@@ -73,13 +71,13 @@ export function EraseEnquiriesDialog({
     }
     setFailure(null);
     setBusy(true);
-    const result = await submit({ email, ...draft });
+    const result = await submit(draft);
     setBusy(false);
     if (result.ok && result.data) {
       onOpenChange(false);
       onDone(result.data);
-    } else if (!result.ok) {
-      setFailure(result.error);
+    } else {
+      setFailure(result.ok ? NO_ANSWER : result.error);
     }
   }
 
