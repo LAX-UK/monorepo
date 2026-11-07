@@ -21,7 +21,10 @@ export type DangerousActionCategory =
   | "erasure"
   | "kyc_sof_decision"
   | "amount_change"
-  | "sign_in_protection";
+  | "sign_in_protection"
+  | "destructive_catalogue"
+  | "personal_data_export"
+  | "goods_release";
 
 export type DangerousStaffAction = {
   id: string;
@@ -49,6 +52,7 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
     "/admin/payments/:id/refund-blocked-capture",
   ),
   a("refund", "payment.refund", "POST", "/payments/:id/refund", "route"),
+  a("payout_release", "payment.capture", "POST", "/payments/:id/capture", "route"),
   a(
     "payout_release",
     "payment.capture-and-process",
@@ -102,6 +106,8 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
     "POST",
     "/admin/staff/:userId/lax-admin-roles/remove",
   ),
+  a("role_permission", "invitation.create", "POST", "/admin/invitations"),
+  a("role_permission", "invitation.bulk", "POST", "/admin/invitations/bulk"),
   a("role_permission", "impersonation.start", "POST", "/admin/impersonation/start"),
   a(
     "role_permission",
@@ -171,7 +177,29 @@ export const DANGEROUS_STAFF_ACTIONS: readonly DangerousStaffAction[] = [
     "PUT",
     "/admin/lot-fulfilment/:lotId/delivery-quote",
   ),
+  a(
+    "amount_change",
+    "telephone-booking.approve-limit-increase",
+    "POST",
+    "/admin/sales/:saleId/telephone-bookings/:bookingId/approve-limit-increase",
+  ),
+  a("goods_release", "fulfilment.release", "POST", "/admin/lot-fulfilment/:lotId/release"),
+  // Personal data leaving the system
+  a("personal_data_export", "export.create", "POST", "/exports", "route"),
+  // Destructive catalogue actions (shared routes: sellers pass, staff need a recent sign-in)
+  a("destructive_catalogue", "lot.delete", "POST", "/lots/:id/delete", "route"),
+  a("destructive_catalogue", "lot.cancel", "POST", "/lots/:id/cancel", "route"),
+  a("destructive_catalogue", "sale.delete", "POST", "/sales/:id/delete", "route"),
+  a("destructive_catalogue", "sale.cancel", "POST", "/sales/:id/cancel", "route"),
 ];
+
+/**
+ * Left out on purpose, so nobody adds them by reflex:
+ * - `POST /sales/:id/lots/:lotId/status`: routine catalogue operation, done many times a day;
+ *   a sign-in prompt on each would train staff to click through it.
+ * - The live saleroom hammer (`/admin/saleroom/...`): a prompt mid-sale would stop the auction
+ *   and cost the room its bidders. Staff sign in before the sale and the session guards it.
+ */
 
 /**
  * Categories the audit named that have NO staff route in the Bid API yet. They are listed so a

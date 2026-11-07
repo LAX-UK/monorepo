@@ -5,8 +5,14 @@ import {
   SOF_STALE_RELOAD_MESSAGE,
   isSofStaleConflictMessage,
 } from "@/lib/admin/compliance-error-messages";
+import {
+  clearSofReviewNote,
+  readSofReviewNote,
+  stashSofReviewNote,
+} from "@/lib/admin/compliance/sof-review-note-draft";
 import { SOF_EVIDENCE_CHECKLIST } from "@/lib/admin/sof-evidence-checklist";
 import { apiBaseUrl } from "@/lib/auth/api-base";
+import { handleStaffStepUp, isStaffStepUpRequired } from "@/lib/auth/step-up/staff-step-up.client";
 import type { AdminSourceOfFundsDetail } from "@/lib/data/http/compliance.server";
 import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
 import { summarizeEvidenceSufficiency } from "@/lib/data/view-models/admin-sof-timeline.vm";
@@ -86,7 +92,8 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
     if (!doc) return;
     if (dirty) return;
     setChecks(sofEvidenceChecksFromDoc(doc));
-    setNote(doc.staffReview?.note ?? "");
+    // Notes parked before a sign-in round trip come back; otherwise the saved note shows.
+    setNote(readSofReviewNote(doc.id) ?? doc.staffReview?.note ?? "");
     setPreviewFailed(false);
     setError(null);
   }, [docs, selectedId, dirty]);
@@ -94,7 +101,7 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
   function applyDoc(doc: Doc) {
     setSelectedId(doc.id);
     setChecks(sofEvidenceChecksFromDoc(doc));
-    setNote(doc.staffReview?.note ?? "");
+    setNote(readSofReviewNote(doc.id) ?? doc.staffReview?.note ?? "");
     setError(null);
     setPreviewFailed(false);
   }
@@ -122,9 +129,13 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
     startTransition(async () => {
       const result = await reviewSofDocumentAction(caseId, selected.id, checks, note);
       if (!result.ok) {
+        // Park the notes first: the sign-in round trip reloads the page.
+        if (isStaffStepUpRequired(result)) stashSofReviewNote(selected.id, note);
+        if (handleStaffStepUp(result)) return;
         setError(result.error);
         return;
       }
+      clearSofReviewNote(selected.id);
       router.refresh();
     });
   }

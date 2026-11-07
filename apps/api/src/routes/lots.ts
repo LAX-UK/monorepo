@@ -7,6 +7,7 @@ import { createOptionalKycGate } from "../middleware/buyer-participation-policy.
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
+import { createStaffOnlyStepUp } from "../middleware/require-recent-staff-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createBidUserRateLimitMiddleware } from "./bids.js";
 import type { LotRouteDeps } from "./lots/_shared.js";
@@ -54,6 +55,7 @@ export function createLotRoutes(
     bidUserRateLimit,
     requireLegalEntity,
     requireAccountOnboarding,
+    requireStaffStepUp: createStaffOnlyStepUp(() => container.admin.stepUp),
   };
 
   // Registration order mirrors the original monolith:

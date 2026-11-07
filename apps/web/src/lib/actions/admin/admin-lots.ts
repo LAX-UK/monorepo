@@ -207,7 +207,7 @@ export async function adminCancelLotResultAction(
     const { adminLots } = getWriteContainer();
     const r = await adminLots.cancel(id, p.data);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
     }
     revalidatePath("/admin/lots");
     revalidatePath(`/admin/lots/${id}`);
@@ -233,7 +233,7 @@ export async function adminSoftDeleteLotResultAction(
     const { adminLots } = getWriteContainer();
     const r = await adminLots.softDelete(id, phrase);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
     }
     revalidatePath("/admin/lots");
     revalidatePath("/");

@@ -311,7 +311,9 @@ export async function requestSofDocumentsAction(
   });
 }
 
-export type ReviewSofDocumentResult = { ok: true } | { ok: false; error: string };
+export type ReviewSofDocumentResult =
+  | { ok: true }
+  | { ok: false; error: string; errorCode?: string | undefined };
 
 export async function reviewSofDocumentAction(
   caseId: string,
@@ -343,6 +345,10 @@ export async function reviewSofDocumentAction(
       note,
     );
     if (!res.ok) {
+      const stale = staleSignIn(res);
+      if (stale && !stale.ok) {
+        return { ok: false as const, error: stale.error, errorCode: stale.errorCode };
+      }
       return {
         ok: false as const,
         error: serviceErrorMessage(res.body, "Review save failed", res.status),

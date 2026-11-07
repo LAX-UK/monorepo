@@ -3,6 +3,7 @@
 import { notifyOrphanDraftSales } from "@/lib/admin/bulk-ops/orphan-draft-sale-notify";
 import type { BulkOperation, BulkOperationRunOptions } from "@/lib/admin/bulk-ops/types";
 import { handleBulkActionResult } from "@/lib/admin/catalog-bulk-result-handler";
+import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { notify } from "@/lib/ui/notify";
 import { ConfirmActionDialog, StaffButton } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
@@ -34,6 +35,10 @@ export function StaffBulkOperations({
   const execute = (operation: BulkOperation, options?: BulkOperationRunOptions) => {
     startTransition(async () => {
       const result = await operation.run(selectedIds, options);
+      if (!result.ok && handleStaffStepUp(result)) {
+        setPending(null);
+        return;
+      }
       const handled = handleBulkActionResult({
         operationLabel: operation.label,
         result,
