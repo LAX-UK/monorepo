@@ -6,6 +6,7 @@ import type { ContainerSaleRoutesSlice } from "../container.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import { createRequireKyc } from "../middleware/require-kyc.js";
+import { createStaffOnlyStepUp } from "../middleware/require-recent-staff-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { SaleRouteDeps } from "./sales/_shared.js";
 import { attachSaleFollowRoutes } from "./sales/follow.routes.js";
@@ -47,6 +48,7 @@ export function createSaleRoutes(
     kycGate,
     requireLegalEntity,
     requireAccountOnboarding,
+    requireStaffStepUp: createStaffOnlyStepUp(() => container.admin.stepUp),
   };
 
   attachSaleReadRoutes(r, deps);

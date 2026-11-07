@@ -124,6 +124,7 @@ function makeVeriffWebhookContainer(
   const compliance =
     overrides.compliance ??
     createComplianceRouteServices({
+      staffStepUp: { isRecent: async () => true },
       db,
       transactionRunner,
       legalEntityRepository,

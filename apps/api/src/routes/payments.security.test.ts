@@ -189,6 +189,19 @@ describe("payment finance entity authorization", () => {
     expect(entityStaffPayment.refundPayment).not.toHaveBeenCalled();
   });
 
+  it("asks staff for a recent sign-in before a manual capture, and captures nothing", async () => {
+    const { app, entityStaffPayment } = mount("staff", {
+      staffRoles: ["finance"],
+      recentSignIn: false,
+    });
+
+    const res = await app.request(`/payments/${paymentId}/capture`, { method: "POST" });
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: "step_up_required" });
+    expect(entityStaffPayment.markCapturedByAdmin).not.toHaveBeenCalled();
+  });
+
   it("lets finance capture platform-wide without an acting entity", async () => {
     const { app, entityStaffPayment } = mount("staff", { staffRoles: ["finance"] });
 

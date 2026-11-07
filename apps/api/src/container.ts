@@ -207,7 +207,12 @@ export function createContainer(env: Env): Container {
     payments,
   });
   const enquiryDrafts = createEnquiryDraftTokens(env);
+  // One step-up guard for the admin app and the shared routes staff also use (exports).
+  const staffStepUp = new StaffStepUpService(identityIssuer, {
+    maxAgeSeconds: env.STAFF_STEP_UP_MAX_AGE_SECONDS,
+  });
   const compliance = createComplianceRouteServices({
+    staffStepUp,
     db,
     transactionRunner: platform.transactionRunner,
     legalEntityRepository: repos.legalEntityRepository,
@@ -812,9 +817,7 @@ export function createContainer(env: Env): Container {
           },
         },
       }),
-      stepUp: new StaffStepUpService(identityIssuer, {
-        maxAgeSeconds: env.STAFF_STEP_UP_MAX_AGE_SECONDS,
-      }),
+      stepUp: staffStepUp,
       idempotencyStore: new RedisIdempotencyStore(infra.redis),
     },
     finance,

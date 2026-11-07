@@ -6,6 +6,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockRefresh = vi.fn();
 const mockCreate = vi.fn();
 const mockSuccess = vi.fn();
+const mockStepUp = vi.fn();
+
+vi.mock("@/lib/auth/step-up/staff-step-up.client", () => ({
+  handleStaffStepUp: (failure: unknown) => mockStepUp(failure),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: mockRefresh }),
@@ -34,6 +39,24 @@ describe("InvitePeopleDialog", () => {
     mockRefresh.mockReset();
     mockCreate.mockReset();
     mockSuccess.mockReset();
+    mockStepUp.mockReset();
+    mockStepUp.mockReturnValue(false);
+  });
+
+  it("sends a stale sign-in to re-authentication, stops sending and keeps the recipients", async () => {
+    const stale = actionFailure("Recent sign-in required", undefined, 403, "step_up_required");
+    mockCreate.mockResolvedValue(stale);
+    mockStepUp.mockReturnValue(true);
+    const onOpenChange = vi.fn();
+    render(<InvitePeopleDialog open onOpenChange={onOpenChange} />);
+    await addEmail("ada@example.com");
+    await addEmail("grace@example.com");
+    fireEvent.click(screen.getByRole("button", { name: /Send 2 invitations/ }));
+
+    await waitFor(() => expect(mockStepUp).toHaveBeenCalledWith(stale));
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(mockSuccess).not.toHaveBeenCalled();
   });
 
   it("asks for a recipient when submitted with none", async () => {

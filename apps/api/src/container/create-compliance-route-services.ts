@@ -20,8 +20,11 @@ import type { KycOutcomeNotifier } from "../services/kyc/kyc-outcome-notifier.js
 import type { KycResubmissionNotifier } from "../services/kyc/kyc-resubmission-notifier.js";
 import type { IEnquiryDraftTokens } from "../services/marketing-enquiry/enquiry-draft-token.js";
 import type { SourceOfFundsDocumentCollectionService } from "../services/source-of-funds/source-of-funds-document-collection.service.js";
+import type { IStaffStepUpGuard } from "../services/staff-step-up.service.js";
 
 export type CreateComplianceRouteServicesInput = {
+  /** Recent sign-in check for staff on shared routes (exports of personal data). */
+  staffStepUp: IStaffStepUpGuard;
   db: Database;
   transactionRunner: ITransactionRunner;
   legalEntityRepository: ILegalEntityRepository;
@@ -68,6 +71,7 @@ export function createComplianceRouteServices(
       input.enquiryDrafts,
     ),
     exportHttp: new ExportHttpApplicationService(input.exportService),
+    staffStepUp: input.staffStepUp,
     lotDocumentHttp: new LotDocumentHttpApplicationService(input.lotDocumentService),
     saleDocumentHttp: new SaleDocumentHttpApplicationService(input.saleDocumentService),
   };
