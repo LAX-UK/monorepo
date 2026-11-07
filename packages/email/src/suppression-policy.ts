@@ -31,14 +31,30 @@ export function isOptionalEmailTemplate(template: string): boolean {
 }
 
 /**
+ * The narrow set a Zoho Campaigns unsubscribe silences: shop and sale alerts. Marketing itself is
+ * sent from Campaigns, not through this outbox, so this is the only LAX-sent mail it can touch.
+ * Anything not listed here (receipts, invoices, security and account mail, and the other optional
+ * product notices) still goes out.
+ */
+export const MARKETING_OPT_OUT_EMAIL_TEMPLATES = [
+  "shop-edition-available-notify",
+  "shop-release-alert",
+  "alert-confirm",
+  "alert-digest",
+] as const satisfies readonly (typeof OPTIONAL_EMAIL_TEMPLATES)[number][];
+
+const MARKETING_OPT_OUT_SET: ReadonlySet<string> = new Set(MARKETING_OPT_OUT_EMAIL_TEMPLATES);
+
+/**
  * Whether a suppression entry stops this template. An unsubscribe is the person's choice about
- * optional mail only. Bounces, complaints and manual blocks mean the address cannot or must not
+ * optional mail only, and a marketing unsubscribe is narrower still: alert and marketing mail only. Bounces, complaints and manual blocks mean the address cannot or must not
  * be mailed, so they stop everything.
  */
 export function suppressionBlocksTemplate(
   reason: EmailSuppressionReason,
   template: string,
 ): boolean {
+  if (reason === "unsubscribed_marketing") return MARKETING_OPT_OUT_SET.has(template);
   if (reason === "unsubscribe") return isOptionalEmailTemplate(template);
   return true;
 }

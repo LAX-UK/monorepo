@@ -76,6 +76,16 @@ export const EMAIL_BLOCK_RULES: Readonly<Record<EmailBlockReason, EmailBlockRule
     isComplaint: false,
     providerReactivation: "none",
   },
+  // A marketing opt-out recorded from Zoho Campaigns: the person's own choice, made there.
+  unsubscribed_marketing: {
+    liftBy: "nobody",
+    stopsEssentialEmail: false,
+    liftReasons: [],
+    noteAlwaysRequired: false,
+    writtenRequestRequired: false,
+    isComplaint: false,
+    providerReactivation: "none",
+  },
 };
 
 export type EmailLiftActor = {

@@ -43,6 +43,7 @@ import {
   WORKER_READ_TABLES,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
   WORKER_ZOHO_ARTWORK_SYNC_TABLES,
+  WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES,
 } from "./migrate-roles.js";
 
 /** AST-based audit of every `db.update(user|userTable).set({ ... })` call in `apps/api`.
@@ -582,6 +583,14 @@ describe("migrate-roles invariants", () => {
     for (const table of WORKER_ZOHO_ARTWORK_SYNC_TABLES) {
       expect([...WORKER_DENY_TABLES]).not.toContain(table);
     }
+  });
+
+  it("lets the worker keep the Zoho Campaigns suppression watermark and update suppressions", async () => {
+    expect([...WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES]).toEqual([
+      "zoho_campaigns_suppression_state",
+    ]);
+    const source = await readFile(join(__dirname, "migrate-roles.ts"), "utf8");
+    expect(source).toContain('"worker_app", "email_suppression", "INSERT, SELECT, UPDATE"');
   });
 
   it("WORKER_QR_CODE_SCAN_TABLES includes scan tables (qr-code-scan worker job)", () => {

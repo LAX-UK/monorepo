@@ -89,6 +89,7 @@ import { createWorkerRepositories } from "./create-worker-repositories.js";
 import { createZohoArtworkListing } from "./create-zoho-artwork-listing.js";
 import { createZohoArtworkSyncRuntime } from "./create-zoho-artwork-sync.js";
 import { createZohoArtworkWriteback } from "./create-zoho-artwork-writeback.js";
+import { createZohoCampaignsSuppressionRuntime } from "./create-zoho-campaigns-suppression.js";
 
 export type WorkerContainer = {
   env: WorkerEnv;
@@ -355,6 +356,7 @@ export function createWorkerContainer(): WorkerContainer {
   const zohoArtworkSync = createZohoArtworkSyncRuntime({ env, db, log });
   const zohoArtworkWriteback = createZohoArtworkWriteback({ env, db, log });
   const zohoArtworkListing = createZohoArtworkListing({ env, db, log });
+  const zohoCampaignsSuppression = createZohoCampaignsSuppressionRuntime({ env, db, log });
   const webhookProcessorDeps: ProcessInboundWebhookDeps = {
     env,
     log,
@@ -375,6 +377,9 @@ export function createWorkerContainer(): WorkerContainer {
     webhookProcessorDeps,
     ...(zohoArtworkSync.scheduleNightly
       ? { runZohoArtworkNightlyCheck: zohoArtworkSync.jobs.runNightlyCheck }
+      : {}),
+    ...(zohoCampaignsSuppression
+      ? { runZohoCampaignsSuppressionSync: zohoCampaignsSuppression }
       : {}),
     ...(zohoArtworkListing
       ? {
