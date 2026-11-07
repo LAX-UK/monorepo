@@ -41,7 +41,9 @@ export class DrizzleZohoCampaignsSuppressionRepository
           return "lifted";
         }
       }
-      const at = occurredAt ?? new Date();
+      // An unsubscribe with no readable time is stored as epoch: it counts as old, so a later
+      // re-subscribe (which lifts only an opt-out older than the subscribe time) can lift it.
+      const at = occurredAt ?? (reason === "unsubscribed_marketing" ? new Date(0) : new Date());
       const changed = await tx
         .insert(emailSuppression)
         .values({ emailHash, reason, source: "zoho_campaigns", createdAt: at })
