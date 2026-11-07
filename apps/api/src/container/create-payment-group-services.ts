@@ -21,11 +21,13 @@ import type { IPaymentCaptureInTransaction } from "../services/interfaces/paymen
 import type { IPayoutAdjustmentService } from "../services/interfaces/payout-adjustment.js";
 import type { IStripeCustomerGateway } from "../services/interfaces/stripe-customer.js";
 import type { NotificationDispatcher } from "../services/notification.dispatcher.js";
+import { OpenGroupCheckouts } from "../services/payment-group/open-group-checkouts.js";
 import { PaymentGroupChargeEvents } from "../services/payment-group/payment-group-charge-events.js";
 import {
   type IGroupInvoiceAccounting,
   PaymentGroupCheckoutService,
 } from "../services/payment-group/payment-group-checkout.service.js";
+import type { IPaymentGroupGateway } from "../services/payment-group/payment-group-ports.js";
 import { PaymentGroupReceiptNotifier } from "../services/payment-group/payment-group-receipt.notifier.js";
 import {
   type IProviderEventClaim,
@@ -42,6 +44,7 @@ import { StripePaymentGroupGateway } from "../services/stripe/stripe-payment-gro
 
 export type PaymentGroupServices = {
   checkout: PaymentGroupCheckoutService;
+  gateway: IPaymentGroupGateway;
   webhooks: PaymentGroupWebhookDeps;
 };
 
@@ -127,6 +130,7 @@ export function createPaymentGroupServices(
           paymentId,
         ),
     },
+    openCheckouts: new OpenGroupCheckouts({ groups, gateway, settlement }),
     accounting: groupInvoiceAccounting(input),
     settlement,
     events: input.events,
@@ -145,6 +149,7 @@ export function createPaymentGroupServices(
   });
   return {
     checkout,
+    gateway,
     webhooks: { settlement, chargeEvents, groups, payments: input.payments, gateway },
   };
 }

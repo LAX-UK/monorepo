@@ -68,7 +68,7 @@ export class GroupPaymentSucceededHandler implements IPaymentIntentWebhookHandle
   }
 }
 
-/** A bank transfer for the group started (or arrived in part): its invoices are held. */
+/** A bank transfer for the group started: its invoices are held while the money travels. */
 export class GroupPaymentProcessingHandler implements IPaymentIntentWebhookHandler {
   constructor(private readonly settlement: Settlement) {}
 
@@ -76,6 +76,26 @@ export class GroupPaymentProcessingHandler implements IPaymentIntentWebhookHandl
     return this.settlement.markProcessing({
       eventId: event.id,
       groupId: paymentGroupIdOf(paymentIntent) as string,
+    });
+  }
+}
+
+/**
+ * Part of the group's bank transfer arrived: its invoices are held and what has arrived is stored,
+ * stamped with the provider's time of the event so a late delivery never overwrites a newer figure.
+ * Nothing is marked paid until the whole total is in.
+ */
+export class GroupPaymentPartiallyFundedHandler implements IPaymentIntentWebhookHandler {
+  constructor(private readonly settlement: Settlement) {}
+
+  handle(event: Stripe.Event, paymentIntent: Stripe.PaymentIntent): Promise<PaymentWebhookResult> {
+    return this.settlement.markProcessing({
+      eventId: event.id,
+      groupId: paymentGroupIdOf(paymentIntent) as string,
+      received: {
+        amountPence: paymentIntent.amount_received ?? 0,
+        eventAt: new Date(event.created * 1000),
+      },
     });
   }
 }

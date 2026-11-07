@@ -12,11 +12,25 @@ import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IStripeCustomerGateway } from "../interfaces/stripe-customer.js";
 import { loadCheckedInvoiceLines } from "../payment/invoice-stripe-lines.js";
+import type { OpenGroupCheckouts } from "./open-group-checkouts.js";
 import type { IPaymentGroupGateway } from "./payment-group-ports.js";
 import type {
   PaymentGroupReleaseReason,
   PaymentGroupSettlementService,
 } from "./payment-group-settlement.service.js";
+
+/**
+ * Where the payment page sends the payer back: the Pay page for the same lots, which reads the
+ * server's state rather than trusting this address. The address only says which way they left.
+ */
+export function payReturnUrl(
+  webOrigin: string,
+  members: readonly Pick<PaymentGroupMember, "lotId">[],
+  returned: "success" | "cancelled",
+): string {
+  const lots = members.map((m) => encodeURIComponent(m.lotId)).join(",");
+  return `${webOrigin}/purchases/pay?lots=${lots}&returned=${returned}`;
+}
 
 /** One invoice to settle in the group, as the validated plan picked it. */
 export type GroupCheckoutInvoice = { paymentId: string; lotId: string; amount: string };
@@ -39,6 +53,8 @@ export type StartedGroupCheckout = {
 export type GroupCheckoutError =
   /** Another payment took one of the invoices first; nothing was charged. */
   | "conflict"
+  /** A payment for one of the invoices is finished or on its way; nothing new was opened. */
+  | "in_progress"
   /** Online payment could not be opened just now; the invoices are due again on their own. */
   | "unavailable";
 
@@ -61,6 +77,8 @@ export type PaymentGroupCheckoutDeps = {
   stripeCustomers: IStripeCustomerGateway;
   users: Pick<IUserRepository, "findById">;
   singleCheckouts: ISingleInvoiceCheckoutRevoker;
+  /** Ends a checkout the payer walked away from, so the invoices can be paid another way. */
+  openCheckouts: Pick<OpenGroupCheckouts, "endFor">;
   accounting: IGroupInvoiceAccounting;
   settlement: Pick<PaymentGroupSettlementService, "release">;
   events: IDomainEventSink;
@@ -68,9 +86,10 @@ export type PaymentGroupCheckoutDeps = {
 };
 
 /**
- * Opens the one checkout that pays several invoices: takes the invoices into a new group (all or
- * none), closes any checkout already open for one of them, and issues the group's checkout for
- * the total. If the checkout cannot be opened the group is let go at once, so no invoice is left
+ * Opens the one checkout that pays several invoices: ends any checkout the payer left open for
+ * them (never one that is finished or has money on its way), takes the invoices into a new group
+ * (all or none), closes any single-invoice checkout still open for one of them, and issues the
+ * group's checkout for the total by the rail the payer chose. If the checkout cannot be opened the group is let go at once, so no invoice is left
  * held by a payment nobody can make.
  */
 export class PaymentGroupCheckoutService {
@@ -79,13 +98,21 @@ export class PaymentGroupCheckoutService {
   async start(
     input: StartGroupCheckoutInput,
   ): Promise<Result<StartedGroupCheckout, GroupCheckoutError>> {
+    const paymentIds = input.invoices.map((i) => i.paymentId);
+    const earlier = await this.deps.openCheckouts.endFor(paymentIds);
+    if (earlier === "in_progress") {
+      recordMoneyPathEvent("payment_group_start_refused_in_progress");
+      return err("in_progress");
+    }
+    if (earlier === "unavailable") return err("unavailable");
+
     const claim = await this.deps.groups.claim({
       buyerLegalEntityId: input.buyerLegalEntityId,
       createdByUserId: input.payerUserId,
       currency: input.currency,
       totalAmount: input.total,
       checkoutRail: input.rail,
-      paymentIds: input.invoices.map((i) => i.paymentId),
+      paymentIds,
     });
     if (claim.kind === "conflict") {
       recordMoneyPathEvent("payment_group_claim_conflict");
@@ -117,7 +144,7 @@ export class PaymentGroupCheckoutService {
       await this.deps.singleCheckouts.revoke(invoice.paymentId);
     }
 
-    if (!(await this.deps.accounting.ensureInvoices(input.invoices.map((i) => i.paymentId)))) {
+    if (!(await this.deps.accounting.ensureInvoices(paymentIds))) {
       return this.letGo(group.id, "accounting_unavailable");
     }
 
@@ -170,8 +197,8 @@ export class PaymentGroupCheckoutService {
         })),
         buyerEmail: payer.email,
         stripeCustomerId,
-        successUrl: `${web}/purchases?payment=success&paymentGroup=${group.id}`,
-        cancelUrl: `${web}/purchases?payment=cancelled&paymentGroup=${group.id}`,
+        successUrl: payReturnUrl(web, members, "success"),
+        cancelUrl: payReturnUrl(web, members, "cancelled"),
       });
     } catch (e) {
       console.error(

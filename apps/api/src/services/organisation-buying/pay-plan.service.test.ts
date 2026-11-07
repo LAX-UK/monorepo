@@ -16,7 +16,9 @@ import {
   seedPurchases,
 } from "../../testing/in-memory-workspace-buying.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
+import type { GroupCheckoutStatus } from "../payment-group/payment-group-ports.js";
 import { PayPlanService } from "./pay-plan.service.js";
+import { PayProgressResolver } from "./pay-progress.resolver.js";
 import { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
 
 const LIMITS: PaymentTierLimits = {
@@ -84,6 +86,8 @@ function build(
     priceTotal?: number;
     accountKind?: "individual" | "organisation";
     facts?: InMemoryPurchaseFacts;
+    /** What the payment provider says about a group's checkout; "complete" unless given. */
+    checkoutStatus?: GroupCheckoutStatus | Error;
   } = {},
 ) {
   const price = vi.fn(async (_lot: Lot) => ({
@@ -102,6 +106,13 @@ function build(
   });
   const assess = over.assess ?? vi.fn(async () => ({ hold: false, reason: null }));
   const svc = new PayPlanService({
+    // Every live group counts as a payment the payer finished.
+    progress: new PayProgressResolver({
+      checkoutStatus: async () => {
+        if (over.checkoutStatus instanceof Error) throw over.checkoutStatus;
+        return over.checkoutStatus ?? "complete";
+      },
+    }),
     candidates: new PurchaseCandidateReader({
       reader: over.facts ?? new InMemoryPurchaseFacts(),
       flags: {
@@ -168,8 +179,19 @@ describe("PayPlanService.plan", () => {
   it("leaves out paid, other accounts' and held lots, with the reason", async () => {
     const { svc } = build({
       flags: {
-        "pay-2": { heldForReview: true, inPaymentInProgress: false },
-        "pay-3": { heldForReview: false, inPaymentInProgress: true },
+        "pay-2": { heldForReview: true, inPaymentInProgress: false, group: null },
+        "pay-3": {
+          heldForReview: false,
+          inPaymentInProgress: true,
+          group: {
+            id: "group-9",
+            status: "open",
+            checkoutRail: "card",
+            stripeCheckoutSessionId: "cs_9",
+            totalAmount: "100.00",
+            amountReceived: "0.00",
+          },
+        },
       },
     });
     const plan = (
@@ -466,5 +488,85 @@ describe("PayPlanService.plan", () => {
       expect((await build().svc.plan(actor("owner"), lots)).isOk()).toBe(true);
       expect((await build().svc.plan(actor("owner"), [LOTS.due])).isOk()).toBe(true);
     });
+  });
+});
+
+describe("PayPlanService.plan: a payment already under way", () => {
+  const group = (over: Record<string, unknown> = {}) => ({
+    id: "group-9",
+    status: "open" as const,
+    checkoutRail: "gb_bank_transfer" as const,
+    stripeCheckoutSessionId: "cs_9",
+    totalAmount: "1000.10",
+    amountReceived: "0.00",
+    ...over,
+  });
+  const flags = (g: ReturnType<typeof group>) => ({
+    "pay-2": { heldForReview: false, inPaymentInProgress: true, group: g },
+    "pay-3": { heldForReview: false, inPaymentInProgress: true, group: g },
+  });
+
+  it("offers the invoices again when the payer never finished the checkout", async () => {
+    const { svc } = build({ flags: flags(group()), checkoutStatus: "open" });
+    const plan = (await svc.plan(actor("finance"), [LOTS.due, LOTS.overdue]))._unsafeUnwrap();
+    expect(plan.payable.map((p) => p.lotId)).toEqual([LOTS.due, LOTS.overdue]);
+    expect(plan.progress).toBeNull();
+  });
+
+  it("offers them again when the checkout ran out", async () => {
+    const { svc } = build({ flags: flags(group()), checkoutStatus: "expired" });
+    const plan = (await svc.plan(actor("finance"), [LOTS.due, LOTS.overdue]))._unsafeUnwrap();
+    expect(plan.payable).toHaveLength(2);
+    expect(plan.progress).toBeNull();
+  });
+
+  it("holds the invoices and reports a bank transfer waiting for its money once it is chosen", async () => {
+    const { svc } = build({ flags: flags(group()), checkoutStatus: "complete" });
+    const plan = (await svc.plan(actor("finance"), [LOTS.due, LOTS.overdue]))._unsafeUnwrap();
+    expect(plan.payable).toEqual([]);
+    expect(plan.leftOut.map((l) => l.reason)).toEqual(["being_paid", "being_paid"]);
+    expect(plan.progress).toEqual({
+      rail: "bank_transfer",
+      stage: "awaiting_transfer",
+      lotIds: [LOTS.due, LOTS.overdue],
+      totalPence: 100_010,
+      receivedPence: 0,
+      remainingPence: 100_010,
+      receivedPercent: 0,
+    });
+  });
+
+  it("reports what has arrived of a part-funded transfer", async () => {
+    const { svc } = build({
+      flags: flags(group({ status: "processing", amountReceived: "600.10" })),
+    });
+    const plan = (await svc.plan(actor("finance"), [LOTS.due, LOTS.overdue]))._unsafeUnwrap();
+    expect(plan.progress).toMatchObject({
+      stage: "part_received",
+      receivedPence: 60_010,
+      remainingPence: 40_000,
+      receivedPercent: 60,
+    });
+  });
+
+  it("holds the invoices rather than offering them when the provider cannot be asked", async () => {
+    const { svc } = build({
+      flags: flags(group({ checkoutRail: "card" })),
+      checkoutStatus: new Error("network"),
+    });
+    const plan = (await svc.plan(actor("finance"), [LOTS.due, LOTS.overdue]))._unsafeUnwrap();
+    expect(plan.payable).toEqual([]);
+    expect(plan.progress).toMatchObject({ rail: "card", stage: "confirming" });
+  });
+
+  it("carries the card limit from the server's limits and bank transfer for any amount", async () => {
+    const plan = (
+      await build().svc.plan(actor("finance"), [LOTS.due, LOTS.overdue])
+    )._unsafeUnwrap();
+    expect(plan.cardLimitPence).toBe(LIMITS.cardMaxPence);
+    expect(plan.methods).toEqual([
+      { method: "card", available: true, reason: null },
+      { method: "bank_transfer", available: true, reason: null },
+    ]);
   });
 });

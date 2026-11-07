@@ -12,7 +12,7 @@ import type {
   PaymentGroupMember,
   PaymentGroupRecord,
 } from "@auction/persistence/interfaces";
-import { gbpAmountToPence } from "../../lib/decimal-money.js";
+import { gbpAmountToPence, gbpPenceToMajorString } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPaymentCaptureInTransaction } from "../interfaces/payment-capture.js";
@@ -33,6 +33,8 @@ export interface IPaymentGroupReceipt {
 export type PaymentGroupReleaseReason =
   | "checkout_cancelled"
   | "checkout_expired"
+  /** The payer walked away and started again, possibly by another method. */
+  | "checkout_abandoned"
   | "bank_transfer_failed"
   | "checkout_unavailable"
   | "accounting_unavailable"
@@ -190,34 +192,73 @@ export class PaymentGroupSettlementService {
     return eligibility.kind === "payable" ? null : eligibility.reason;
   }
 
-  /** A bank transfer was started for the group: its invoices are held while the money travels. */
-  async markProcessing(input: { eventId: string; groupId: string }): Promise<PaymentWebhookResult> {
+  /**
+   * A bank transfer was started for the group, or part of it arrived: its invoices are held while
+   * the money travels. `received` is what the provider says has arrived so far and when it said
+   * so; it is stored (only ever raised, never from an older event than the last) so the payer and
+   * their Money page can say what is still to send. Nothing is marked paid until all of it is in.
+   */
+  async markProcessing(input: {
+    eventId: string;
+    groupId: string;
+    received?: { amountPence: number; eventAt: Date };
+  }): Promise<PaymentWebhookResult> {
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
       if (!(await this.deps.claims.claim(tx, input.eventId))) return DUPLICATE;
       const locked = await this.deps.groups.lockInTransaction(tx, input.groupId);
       if (!locked) return UNKNOWN_GROUP;
+      if (!paymentGroupIsLive(locked.group.status)) {
+        return { processed: true, action: "skipped", reason: "payment_group_not_open" };
+      }
       const moved = await this.deps.groups.transitionInTransaction(
         tx,
         input.groupId,
         ["open"],
         "processing",
       );
-      if (!moved) {
+      if (moved) {
+        for (const member of locked.members) {
+          await this.deps.payments.applyAuthorizedInTransaction(tx, member.paymentId);
+        }
+        await this.deps.events.withTx(tx).publish({
+          aggregateType: "payment_group",
+          aggregateId: input.groupId,
+          eventType: "payment_group.processing",
+          payload: { paymentGroupId: input.groupId },
+          actorUserId: null,
+          actingLegalEntityId: locked.group.buyerLegalEntityId,
+        });
+        recordMoneyPathEvent("payment_group_processing");
+      }
+      const recorded = input.received
+        ? await this.deps.groups.recordReceivedInTransaction(tx, input.groupId, {
+            amount: gbpPenceToMajorString(input.received.amountPence),
+            eventAt: input.received.eventAt,
+          })
+        : false;
+      if (recorded && input.received) {
+        await this.deps.events.withTx(tx).publish({
+          aggregateType: "payment_group",
+          aggregateId: input.groupId,
+          eventType: "payment_group.bank_transfer_partially_funded",
+          payload: {
+            paymentGroupId: input.groupId,
+            receivedCents: input.received.amountPence,
+            totalCents: gbpAmountToPence(locked.group.totalAmount),
+            currency: locked.group.currency,
+          },
+          actorUserId: null,
+          actingLegalEntityId: locked.group.buyerLegalEntityId,
+        });
+        recordMoneyPathEvent("payment_group_part_received");
+      }
+      if (!moved && !recorded) {
         return { processed: true, action: "skipped", reason: "payment_group_not_open" };
       }
-      for (const member of locked.members) {
-        await this.deps.payments.applyAuthorizedInTransaction(tx, member.paymentId);
-      }
-      await this.deps.events.withTx(tx).publish({
-        aggregateType: "payment_group",
-        aggregateId: input.groupId,
-        eventType: "payment_group.processing",
-        payload: { paymentGroupId: input.groupId },
-        actorUserId: null,
-        actingLegalEntityId: locked.group.buyerLegalEntityId,
-      });
-      recordMoneyPathEvent("payment_group_processing");
-      return { processed: true, action: "payment_intent_processing" };
+      return {
+        processed: true,
+        action: recorded ? "payment_intent_partially_funded" : "payment_intent_processing",
+      };
     });
   }
 

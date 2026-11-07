@@ -44,9 +44,14 @@ import { UnappliedMoneyRecorder } from "../payment/unapplied-money.recorder.js";
 import { PayoutAdjustmentService } from "../payout/payout-adjustment.service.js";
 import { StripePaymentWebhookService } from "../stripe-payment-webhook.service.js";
 import { PAYMENT_WEBHOOK_EVENT_SOURCE } from "../stripe-webhook/payment-webhook-types.js";
+import { OpenGroupCheckouts } from "./open-group-checkouts.js";
 import { PaymentGroupChargeEvents } from "./payment-group-charge-events.js";
 import { PaymentGroupCheckoutService } from "./payment-group-checkout.service.js";
-import type { GroupChargeRefund, IPaymentGroupGateway } from "./payment-group-ports.js";
+import type {
+  GroupChargeRefund,
+  GroupCheckoutStatus,
+  IPaymentGroupGateway,
+} from "./payment-group-ports.js";
 import { PaymentGroupSettlementService } from "./payment-group-settlement.service.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -62,7 +67,10 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
   const events = mockDomainEventSink(publish);
   const receipt = { send: vi.fn().mockResolvedValue(undefined) };
   let chargeRefunds: GroupChargeRefund[] = [];
-  const gateway: IPaymentGroupGateway & { createCheckout: ReturnType<typeof vi.fn> } = {
+  const gateway: IPaymentGroupGateway & {
+    createCheckout: ReturnType<typeof vi.fn>;
+    checkoutStatus: ReturnType<typeof vi.fn<(sessionId: string) => Promise<GroupCheckoutStatus>>>;
+  } = {
     isConfigured: () => true,
     createCheckout: vi.fn(async (input: { paymentGroupId: string }) => ({
       sessionId: `cs_${input.paymentGroupId}`,
@@ -70,6 +78,10 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       paymentIntentId: `pi_${input.paymentGroupId}`,
     })),
     expireCheckout: vi.fn().mockResolvedValue(undefined),
+    checkoutStatus: vi
+      .fn<(sessionId: string) => Promise<GroupCheckoutStatus>>()
+      .mockResolvedValue("expired"),
+    bankTransferInstructions: vi.fn().mockResolvedValue(null),
     listChargeRefunds: vi.fn(async () => chargeRefunds),
   };
   const claims = {
@@ -113,6 +125,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       findById: async (id: string) => ({ id, email: `${id}@integration.test`, name: "Payer" }),
     } as never,
     singleCheckouts: { revoke: vi.fn().mockResolvedValue(undefined) },
+    openCheckouts: new OpenGroupCheckouts({ groups, gateway, settlement }),
     accounting: { ensureInvoices: async () => true },
     settlement,
     events,
@@ -597,5 +610,87 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     await webhooks.handleDisputeClosed(eventOf("charge.dispute.closed", won), won);
     expect(await disputeLinesPence(ids.a)).toBe(0);
     expect(await disputeLinesPence(ids.b)).toBe(0);
+  });
+
+  describe("a bank transfer that arrives in part", () => {
+    const partial = (groupId: string, received: number, at: number, id?: string) => {
+      const pi = intent({
+        amount: 20_000,
+        amount_received: received,
+        metadata: { paymentGroupId: groupId },
+      });
+      const event = { ...eventOf("payment_intent.partially_funded", pi, id), created: at };
+      return webhooks.handlePaymentIntentPartiallyFunded(event, pi);
+    };
+    const stored = async (groupId: string) => {
+      const row = await groups.findById(groupId);
+      return { received: row?.amountReceived, at: row?.receivedEventAt?.getTime() ?? null };
+    };
+
+    it("holds the invoices and stores what has arrived, and only ever raises it", async () => {
+      const groupId = await startOk([ids.a, ids.b]);
+      await partial(groupId, 6_000, 1_793_000_100);
+      expect(await statusOf(ids.a)).toEqual({ status: "authorized", group: groupId });
+      expect(await stored(groupId)).toEqual({ received: "60.00", at: 1_793_000_100_000 });
+
+      await partial(groupId, 12_000, 1_793_000_200);
+      expect((await stored(groupId)).received).toBe("120.00");
+      // Still held: nothing is paid until all of it is in.
+      expect(await statusOf(ids.b)).toEqual({ status: "authorized", group: groupId });
+    });
+
+    it("ignores an older event delivered late, and a repeat of one it has seen", async () => {
+      const groupId = await startOk([ids.a, ids.b]);
+      await partial(groupId, 12_000, 1_793_000_200, `evt_ps_${run}_newer`);
+      await partial(groupId, 6_000, 1_793_000_100, `evt_ps_${run}_older`);
+      expect(await stored(groupId)).toEqual({ received: "120.00", at: 1_793_000_200_000 });
+      const again = await partial(groupId, 12_000, 1_793_000_200, `evt_ps_${run}_newer`);
+      expect(again).toMatchObject({ reason: "duplicate_event" });
+      expect((await stored(groupId)).received).toBe("120.00");
+    });
+
+    it("never stores more than the group's total", async () => {
+      const groupId = await startOk([ids.a, ids.b]);
+      await partial(groupId, 99_999, 1_793_000_100);
+      expect((await stored(groupId)).received).toBe("200.00");
+    });
+
+    it("stores nothing for a group that was already released", async () => {
+      const groupId = await startOk([ids.a, ids.b]);
+      const session = {
+        id: `cs_${groupId}`,
+        metadata: { paymentGroupId: groupId },
+      } as unknown as Stripe.Checkout.Session;
+      await webhooks.handleCheckoutSessionExpired(
+        eventOf("checkout.session.expired", session),
+        session,
+      );
+      await partial(groupId, 6_000, 1_793_000_100);
+      expect((await stored(groupId)).received).toBe("0.00");
+      expect(await statusOf(ids.a)).toEqual({ status: "pending", group: null });
+    });
+  });
+
+  describe("starting again after leaving a checkout", () => {
+    it("ends the abandoned checkout and opens a new one by the chosen method", async () => {
+      const first = await startOk([ids.a, ids.b]);
+      gateway.checkoutStatus.mockResolvedValue("expired");
+      const second = await start([ids.a, ids.b]);
+      expect(second.isOk()).toBe(true);
+      expect(gateway.expireCheckout).toHaveBeenCalledWith(`cs_${first}`);
+      expect((await groups.findById(first))?.status).toBe("cancelled");
+      const live = await groups.findLiveByPaymentIds([ids.a, ids.b]);
+      expect(live.map((g) => g.id)).toEqual([second._unsafeUnwrap().paymentGroupId]);
+    });
+
+    it("opens nothing while the earlier checkout was finished by the payer", async () => {
+      const first = await startOk([ids.a, ids.b]);
+      gateway.checkoutStatus.mockResolvedValue("complete");
+      const second = await start([ids.a, ids.b]);
+      expect(second._unsafeUnwrapErr()).toBe("in_progress");
+      expect((await groups.findById(first))?.status).toBe("open");
+      expect(await statusOf(ids.a)).toEqual({ status: "pending", group: first });
+      gateway.checkoutStatus.mockResolvedValue("expired");
+    });
   });
 });

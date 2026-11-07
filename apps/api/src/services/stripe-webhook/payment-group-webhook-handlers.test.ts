@@ -68,6 +68,33 @@ describe("payment webhooks with pay several", () => {
     expect(settlement.markProcessing).toHaveBeenCalledTimes(2);
   });
 
+  it("stores what a part-funded transfer has delivered, stamped with the provider's event time", async () => {
+    const { handlers, settlement } = setup();
+    const partial = {
+      ...event,
+      id: "evt_part",
+      created: 1_793_000_000,
+    } as Stripe.Event;
+    await handlers.paymentIntentPartiallyFunded.handle(partial, {
+      ...groupIntent,
+      amount_received: 12_000,
+    } as Stripe.PaymentIntent);
+    expect(settlement.markProcessing).toHaveBeenCalledWith({
+      eventId: "evt_part",
+      groupId: "group-1",
+      received: { amountPence: 12_000, eventAt: new Date(1_793_000_000 * 1000) },
+    });
+  });
+
+  it("stores no figure for a transfer that has only started", async () => {
+    const { handlers, settlement } = setup();
+    await handlers.paymentIntentProcessing.handle(event, groupIntent);
+    expect(settlement.markProcessing).toHaveBeenCalledWith({
+      eventId: "evt_1",
+      groupId: "group-1",
+    });
+  });
+
   it("keeps the group open after a declined card, and lets it go when the checkout ends", async () => {
     const { handlers, settlement } = setup();
     expect(await handlers.paymentIntentFailed.handle(event, groupIntent)).toMatchObject({

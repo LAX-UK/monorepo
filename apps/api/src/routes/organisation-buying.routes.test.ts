@@ -11,7 +11,9 @@ import { AccountRegistrationsService } from "../services/organisation-buying/acc
 import { CollectionBookingService } from "../services/organisation-buying/collection-booking.service.js";
 import { DeliveryQuoteService } from "../services/organisation-buying/delivery-quote.service.js";
 import { PayPlanService } from "../services/organisation-buying/pay-plan.service.js";
+import { PayProgressResolver } from "../services/organisation-buying/pay-progress.resolver.js";
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
+import { PayTransferService } from "../services/organisation-buying/pay-transfer.service.js";
 import { PurchaseCandidateReader } from "../services/organisation-buying/purchase-candidate.reader.js";
 import { PurchaseProblemService } from "../services/organisation-buying/purchase-problem.service.js";
 import { InMemoryPurchaseProblems } from "../testing/in-memory-purchase-problems.js";
@@ -58,6 +60,8 @@ function mount(
     now: () => NOW,
   });
   const payPlan = new PayPlanService({
+    // Every live group counts as a payment the payer finished.
+    progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
     candidates,
     invoices: {
       findByPaymentIds: async (ids) =>
@@ -148,6 +152,11 @@ function mount(
               rail: input.rail,
             }),
         },
+      }),
+      payTransfer: new PayTransferService({
+        candidates,
+        progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
+        gateway: { bankTransferInstructions: async () => null },
       }),
       deliveryQuotes: new DeliveryQuoteService({ quotes, purchases }),
       problems: new PurchaseProblemService({
@@ -280,6 +289,18 @@ const MATRIX: Record<
       admin: 200,
       finance: 200,
       buyer_agent: 200,
+      consignor: 403,
+      viewer: 403,
+    },
+  },
+  // Bank details are for the people who pay.
+  "GET /purchases/pay-transfer": {
+    call: (app) => app.request(`/legal-entities/purchases/pay-transfer?lots=${LOTS.due}`),
+    expected: {
+      owner: 200,
+      admin: 200,
+      finance: 200,
+      buyer_agent: 403,
       consignor: 403,
       viewer: 403,
     },
@@ -453,6 +474,30 @@ describe("organisation buying routes", () => {
       const res = await plan(mount("finance", { eligibilityFails: true }), [LOTS.due]);
       expect(res.status).toBe(503);
       expect(await res.json()).toMatchObject({ error: "pay_plan_unavailable" });
+    });
+  });
+
+  describe("GET /purchases/pay-transfer", () => {
+    it("answers with no details when no transfer is waiting, and is never cached", async () => {
+      const res = await mount("finance").request(
+        `/legal-entities/purchases/pay-transfer?lots=${LOTS.due}`,
+      );
+      expect(res.status).toBe(200);
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(await res.json()).toEqual({ data: { instructions: null } });
+    });
+
+    it("is for signed-in buyer accounts only", async () => {
+      const url = `/legal-entities/purchases/pay-transfer?lots=${LOTS.due}`;
+      expect((await mount("finance", { signedOut: true }).request(url)).status).toBe(401);
+      expect((await mount("finance", { platformRole: "admin" }).request(url)).status).toBe(403);
+    });
+
+    it("refuses an id that is not a lot id", async () => {
+      const res = await mount("finance").request(
+        "/legal-entities/purchases/pay-transfer?lots=nope",
+      );
+      expect(res.status).toBe(400);
     });
   });
 

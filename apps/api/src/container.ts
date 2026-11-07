@@ -429,6 +429,7 @@ export function createContainer(env: Env): Container {
       compliance: payments.settlementCompliancePolicy,
       eligibility: payments.paymentEligibility,
       groupCheckout: payments.paymentGroupCheckout,
+      groupGateway: payments.paymentGroupGateway,
       invoices: payments.bidInvoices,
       pricing: payments.invoiceRaiser,
       invoiceInitiation: payments.lotInvoiceInitiationService,

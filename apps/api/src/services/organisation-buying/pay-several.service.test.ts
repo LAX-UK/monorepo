@@ -17,6 +17,7 @@ import {
 } from "../../testing/in-memory-workspace-buying.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
 import { PayPlanService } from "./pay-plan.service.js";
+import { PayProgressResolver } from "./pay-progress.resolver.js";
 import { PaySeveralService } from "./pay-several.service.js";
 import { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
 
@@ -184,6 +185,8 @@ function service(over: World = {}) {
   }));
   const limits = over.limits ?? LIMITS;
   const planner = new PayPlanService({
+    // Every live group counts as a payment the payer finished.
+    progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
     candidates: new PurchaseCandidateReader({
       reader: facts,
       flags: {
@@ -247,8 +250,19 @@ describe("PaySeveralService.plan", () => {
   it("leaves out invoices held for review or already in another payment, saying why", async () => {
     const { svc } = service({
       flags: {
-        "pay-2": { heldForReview: true, inPaymentInProgress: false },
-        "pay-3": { heldForReview: false, inPaymentInProgress: true },
+        "pay-2": { heldForReview: true, inPaymentInProgress: false, group: null },
+        "pay-3": {
+          heldForReview: false,
+          inPaymentInProgress: true,
+          group: {
+            id: "group-9",
+            status: "open",
+            checkoutRail: "card",
+            stripeCheckoutSessionId: "cs_9",
+            totalAmount: "100.00",
+            amountReceived: "0.00",
+          },
+        },
       },
     });
     const plan = (
@@ -613,7 +627,20 @@ describe("PaySeveralService pays only the plan that was shown", () => {
   it("answers 409 when another payment takes some of the lots while this one is raising", async () => {
     const world = service({
       withNotInvoiced: true,
-      flagsAfterRaise: { "pay-2": { heldForReview: false, inPaymentInProgress: true } },
+      flagsAfterRaise: {
+        "pay-2": {
+          heldForReview: false,
+          inPaymentInProgress: true,
+          group: {
+            id: "group-9",
+            status: "open",
+            checkoutRail: "card",
+            stripeCheckoutSessionId: "cs_9",
+            totalAmount: "100.00",
+            amountReceived: "0.00",
+          },
+        },
+      },
     });
     const refused = (await payShown(world.svc, actor("owner"), lots))._unsafeUnwrapErr();
     expect(refused).toMatchObject({ code: "pay_plan_changed", status: 409 });
@@ -726,5 +753,71 @@ describe("PaySeveralService source of funds, counted once", () => {
     for (const [, exclude] of repo.sumActiveBuyerSettlementPence.mock.calls) {
       expect(exclude).toEqual(["pay-2", "pay-3"]);
     }
+  });
+});
+
+describe("PaySeveralService.pay: the method the payer chose", () => {
+  const request = (method?: "card" | "bank_transfer", over: { total?: number } = {}) => ({
+    lotIds: [LOTS.due, LOTS.overdue],
+    expectedTotalPence: over.total ?? 100_010,
+    expectedLotIds: [LOTS.due, LOTS.overdue],
+    ...(method ? { method } : {}),
+  });
+
+  it("opens a card checkout when the payer chose card within the card limit", async () => {
+    const { svc, start } = service();
+    expect((await svc.pay(actor("finance"), request("card"))).isOk()).toBe(true);
+    expect(start).toHaveBeenCalledWith(expect.objectContaining({ rail: "card" }));
+  });
+
+  it("opens a bank transfer for a small total when the payer chose it", async () => {
+    const { svc, start } = service();
+    expect((await svc.pay(actor("finance"), request("bank_transfer"))).isOk()).toBe(true);
+    expect(start).toHaveBeenCalledWith(
+      expect.objectContaining({ rail: "gb_bank_transfer", total: "1000.10" }),
+    );
+  });
+
+  it("refuses card above the card limit on the server, whatever the page asked for", async () => {
+    const { svc, start } = service({ limits: { ...LIMITS, cardMaxPence: 100_009 } });
+    const refused = (await svc.pay(actor("finance"), request("card")))._unsafeUnwrapErr();
+    expect(refused.code).toBe("pay_several_card_over_limit");
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it("takes card at exactly the card limit", async () => {
+    const { svc, start } = service({ limits: { ...LIMITS, cardMaxPence: 100_010 } });
+    expect((await svc.pay(actor("finance"), request("card"))).isOk()).toBe(true);
+    expect(start).toHaveBeenCalledWith(expect.objectContaining({ rail: "card" }));
+  });
+
+  it("keeps the finance review threshold for a bank transfer too", async () => {
+    const { svc, start } = service({ limits: { ...LIMITS, manualReviewMinPence: 100_010 } });
+    const refused = (await svc.pay(actor("finance"), request("bank_transfer")))._unsafeUnwrapErr();
+    expect(refused.code).toBe("pay_several_needs_finance_review");
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it("checks the total the payer was shown before it looks at the method, and charges nothing", async () => {
+    const { svc, start } = service();
+    const refused = (
+      await svc.pay(actor("finance"), request("card", { total: 99_999 }))
+    )._unsafeUnwrapErr();
+    expect(refused.code).toBe("pay_plan_changed");
+    expect(start).not.toHaveBeenCalled();
+  });
+
+  it("lets the amount decide when a page from before the choice sends no method", async () => {
+    const { svc, start } = service({ limits: { ...LIMITS, cardMaxPence: 100_009 } });
+    expect((await svc.pay(actor("finance"), request())).isOk()).toBe(true);
+    expect(start).toHaveBeenCalledWith(expect.objectContaining({ rail: "gb_bank_transfer" }));
+  });
+
+  it("tells the payer a payment is already under way when the checkout says so", async () => {
+    const start = vi.fn(async () => err("in_progress" as const));
+    const { svc } = service({ start: start as never });
+    const refused = (await svc.pay(actor("finance"), request("card")))._unsafeUnwrapErr();
+    expect(refused.code).toBe("payment_in_progress_elsewhere");
+    expect(refused.status).toBe(409);
   });
 });
