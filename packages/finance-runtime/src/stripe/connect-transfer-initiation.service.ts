@@ -123,22 +123,47 @@ export class ConnectTransferInitiationService {
     }
 
     try {
-      const transfer = await executeWithStripeRetries(() =>
-        stripe.transfers.create(
-          {
-            amount: amountCents,
-            currency: payout.currency.toLowerCase(),
-            destination: destinationAccountId,
-            transfer_group: `payout:${payoutId}`,
-            ...(sourceChargeId ? { source_transaction: sourceChargeId } : {}),
-            metadata: {
-              payoutId: payout.id,
-              legalEntityId: payout.legalEntityId,
+      // Stripe forgets idempotency keys after 24h, so a retry must adopt a transfer that Stripe
+      // already accepted (but we failed to save) rather than create a second one.
+      const transferGroup = `payout:${payoutId}`;
+      const existing = await executeWithStripeRetries(async () => {
+        const page = await stripe.transfers.list({ transfer_group: transferGroup, limit: 20 });
+        return (
+          page.data.find((t) => {
+            const dest = typeof t.destination === "string" ? t.destination : t.destination?.id;
+            return (
+              !t.reversed &&
+              dest === destinationAccountId &&
+              (t.metadata?.payoutId === undefined || t.metadata.payoutId === payout.id)
+            );
+          }) ?? null
+        );
+      });
+      const adopted = existing !== null;
+      const transfer =
+        existing ??
+        (await executeWithStripeRetries(() =>
+          stripe.transfers.create(
+            {
+              amount: amountCents,
+              currency: payout.currency.toLowerCase(),
+              destination: destinationAccountId,
+              transfer_group: transferGroup,
+              ...(sourceChargeId ? { source_transaction: sourceChargeId } : {}),
+              metadata: {
+                payoutId: payout.id,
+                legalEntityId: payout.legalEntityId,
+              },
             },
-          },
-          { idempotencyKey: `payout:transfer:${payoutId}` },
-        ),
-      );
+            { idempotencyKey: `payout:transfer:${payoutId}` },
+          ),
+        ));
+      if (adopted) {
+        this.log.warn(
+          { payoutId, stripeTransferId: transfer.id },
+          "payout_transfer_adopted_existing",
+        );
+      }
 
       const updated = await this.payoutRepository.updateStatusIfCurrent(payoutId, "scheduled", {
         status: "in_transit",
@@ -177,6 +202,7 @@ export class ConnectTransferInitiationService {
           amountCents,
           currency: payout.currency,
           stripeConnectAccountId: entity.stripeConnectAccountId,
+          ...(adopted ? { adopted: true, adoptionSource: "stripe_transfer_group" } : {}),
         },
         actorUserId: null,
         actingLegalEntityId: payout.legalEntityId,
