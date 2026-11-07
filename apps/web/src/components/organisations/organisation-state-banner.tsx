@@ -1,8 +1,12 @@
+import { hopUrl } from "@/lib/navigation/hop-href";
+import type { OrganisationRecoveryView } from "@/lib/organisations/organisation-recovery.vm";
+import { LAX_MESSAGE_LABEL } from "@/lib/presenters/organisation-state/organisation-recovery-copy";
 import type { OrganisationBannerView } from "@/lib/presenters/organisation-state/organisation-state-copy";
 import { cn } from "@auction/ui";
 import { ButtonLink } from "@auction/ui/lax";
 import { CircleSlash, Clock, type LucideIcon, TriangleAlert } from "lucide-react";
 import Link from "next/link";
+import { AccountSwitchLink } from "./account-switch-link";
 
 type Kind = OrganisationBannerView["kind"];
 
@@ -25,13 +29,25 @@ const KIND_STYLE: Record<Kind, { surface: string; icon: LucideIcon; iconClass: s
   },
 };
 
+/** The buttons are 44px tall on phones and the kit's control height from `sm` up. */
+const BUTTON_SIZE = "h-11 sm:h-lax-control-md";
+
 /**
- * The organisation's state as one line on Home and the Organisation page, with at most one way
- * on. It is part of the page, not news, so it is not announced as an alert.
+ * The organisation's state as one line on Home and the Organisation page, with LAX's message when
+ * it wrote one, and at most one way on plus, when the person can, a way to keep buying as
+ * themselves. It is part of the page, not news, so it is not announced as an alert.
  */
-export function OrganisationStateBanner({ banner }: { banner: OrganisationBannerView }) {
+export function OrganisationStateBanner({
+  banner,
+  personal = null,
+}: {
+  banner: OrganisationBannerView;
+  /** From the recovery: keeps the person bidding in their own name. */
+  personal?: OrganisationRecoveryView["personal"];
+}) {
   const style = KIND_STYLE[banner.kind];
   const Icon = style.icon;
+  const hasButtons = banner.action !== null || personal !== null;
   return (
     <div
       className={cn(
@@ -47,20 +63,42 @@ export function OrganisationStateBanner({ banner }: { banner: OrganisationBanner
           strokeWidth={1.75}
           aria-hidden
         />
-        <p className="font-body text-sm">
-          <strong className="font-semibold">{banner.title}</strong> {banner.line}
-        </p>
+        <div className="min-w-0 space-y-1">
+          <p className="font-body text-sm">
+            <strong className="font-semibold">{banner.title}</strong> {banner.line}
+          </p>
+          {banner.message ? (
+            <p className="break-words font-body text-sm" data-testid="organisation-state-message">
+              <span className="font-semibold">{LAX_MESSAGE_LABEL}:</span> {banner.message}
+            </p>
+          ) : null}
+        </div>
       </div>
-      {banner.action ? (
-        <ButtonLink
-          size="sm"
-          variant="secondary"
-          className="ml-7 shrink-0 self-start sm:ml-0 sm:self-center"
-          href={banner.action.href}
-          {...(banner.action.kind === "contact" ? {} : { Link })}
-        >
-          {banner.action.label}
-        </ButtonLink>
+      {hasButtons ? (
+        <div className="ml-7 flex shrink-0 flex-col gap-2 self-stretch sm:ml-0 sm:flex-row sm:self-center">
+          {banner.action ? (
+            <ButtonLink
+              size="sm"
+              variant="secondary"
+              className={BUTTON_SIZE}
+              href={banner.action.href}
+              {...(banner.action.kind === "contact" ? {} : { Link })}
+            >
+              {banner.action.label}
+            </ButtonLink>
+          ) : null}
+          {personal ? (
+            <ButtonLink
+              size="sm"
+              variant="secondary"
+              className={BUTTON_SIZE}
+              href={hopUrl(personal.href)}
+              Link={AccountSwitchLink}
+            >
+              {personal.label}
+            </ButtonLink>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );

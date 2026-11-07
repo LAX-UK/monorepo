@@ -1,6 +1,7 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
+import { OrganisationRecoveryPanel } from "@/components/organisations/organisation-recovery-panel";
 import { OrganisationStateBanner } from "@/components/organisations/organisation-state-banner";
 import type { LoadedOrganisationHome } from "@/lib/organisation-home/load-organisation-home.server";
 import { ButtonLink } from "@auction/ui/lax";
@@ -78,7 +79,13 @@ export function OrganisationHome({ home }: { home: LoadedOrganisationHome }) {
         {home.welcome ? (
           <WelcomeCard welcome={home.welcome} organisationName={home.organisationName} />
         ) : null}
-        {view.banner ? <OrganisationStateBanner banner={view.banner} /> : null}
+        {view.banner ? (
+          <OrganisationStateBanner
+            banner={view.banner}
+            personal={home.recovery?.personal ?? null}
+          />
+        ) : null}
+        {home.recovery ? <OrganisationRecoveryPanel view={home.recovery} /> : null}
         {home.authority ? (
           <p className="flex items-start gap-2 text-lax-14 text-lax-muted">
             <Info className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden />

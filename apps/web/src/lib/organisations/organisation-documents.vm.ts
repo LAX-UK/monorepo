@@ -88,11 +88,17 @@ const CHECK_DATE = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
+/** "9 May 2026", or `null` without a usable date. */
+export function longDateOrNull(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? null : CHECK_DATE.format(date);
+}
+
 /** "Checked on 9 May 2026", or `null` without a usable date. */
 export function checkedOnLine(checkedOn: Date | string | null | undefined): string | null {
-  if (!checkedOn) return null;
-  const date = checkedOn instanceof Date ? checkedOn : new Date(checkedOn);
-  return Number.isNaN(date.getTime()) ? null : `Checked on ${CHECK_DATE.format(date)}`;
+  const date = longDateOrNull(checkedOn);
+  return date ? `Checked on ${date}` : null;
 }
 
 function hintFor(

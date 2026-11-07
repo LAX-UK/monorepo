@@ -4,6 +4,7 @@ import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard
 import { LeaveOrCloseCard } from "@/components/organisation-team/leave-or-close-card";
 import { WorkspacePageTabs } from "@/components/organisation-team/workspace-page-tabs";
 import { subkindLabel } from "@/components/organisations/labels";
+import { OrganisationRecoveryForRoute } from "@/components/organisations/organisation-recovery-for-route";
 import { OrganisationSettingsUnavailable } from "@/components/organisations/organisation-settings-unavailable";
 import { OrganisationStateBannerForRoute } from "@/components/organisations/organisation-state-banner-for-route";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -12,6 +13,7 @@ import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-modul
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { organisationTabsFor } from "@/lib/navigation/organisation-tabs";
+import { loadOrganisationRecovery } from "@/lib/organisations/organisation-recovery.server";
 import { loadOrganisationStateBanner } from "@/lib/organisations/organisation-state-banner.server";
 import { organisationStatusView } from "@/lib/presenters/organisation-status/organisation-status-presentation";
 import { StatusBadge } from "@auction/ui/components/status-badge";
@@ -78,7 +80,15 @@ export default async function OrganisationLayout({ children }: { children: React
   }
 
   // The same state banner as Home, for the same audience: only people who can act are asked.
-  const banner = entity ? await loadOrganisationStateBanner(active.actor, entity) : null;
+  const [banner, recovery] = await Promise.all([
+    entity ? loadOrganisationStateBanner(active.actor, entity) : null,
+    loadOrganisationRecovery({
+      viewer: user,
+      organisation: member,
+      actor: active.actor,
+      statusChangedAt: entity?.statusChangedAt,
+    }),
+  ]);
   const status = organisationStatusView(member.status);
 
   return (
@@ -101,7 +111,10 @@ export default async function OrganisationLayout({ children }: { children: React
           label="Organisation"
           items={tabs.map((tab) => ({ id: tab.id, label: tab.label, href: tab.href }))}
         />
-        {banner ? <OrganisationStateBannerForRoute banner={banner} /> : null}
+        {banner ? (
+          <OrganisationStateBannerForRoute banner={banner} personal={recovery?.personal ?? null} />
+        ) : null}
+        {recovery ? <OrganisationRecoveryForRoute view={recovery} /> : null}
         <div className="min-w-0 space-y-6">{children}</div>
       </div>
     </DashboardPage>
