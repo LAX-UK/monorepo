@@ -1,5 +1,6 @@
 import type {
   CheckoutRailKind,
+  ChosenPaymentMethod,
   CollectionBookingOffer,
   DeliveryQuoteAction,
   PaySeveralSkipReason,
@@ -15,7 +16,7 @@ import type {
   DeliveryQuoteRow,
   RecordPerson,
 } from "@auction/persistence/interfaces";
-import type { PayPlan } from "@auction/types";
+import type { BankTransferInstructions, PayPlan, PayPlanProgress } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { OrganisationMemberActor } from "./organisation-membership-service.js";
 
@@ -39,6 +40,8 @@ export type OrganisationBuyingErrorCode =
   | "pay_several_below_minimum"
   | "pay_several_over_limit"
   | "pay_several_needs_finance_review"
+  | "pay_several_card_over_limit"
+  | "payment_in_progress_elsewhere"
   | "pay_several_conflict"
   | "pay_several_unavailable"
   | "pay_plan_unavailable"
@@ -126,6 +129,8 @@ export type PaySeveralRequest = {
   expectedTotalPence?: number | undefined;
   /** The lots the shown plan said would be paid. */
   expectedLotIds?: readonly string[] | undefined;
+  /** How the payer chose to pay. Absent from a page that predates the choice: the amount decides. */
+  method?: ChosenPaymentMethod | undefined;
 };
 
 /** The combined payment opened for the payer: where to pay, and what it covers. */
@@ -154,6 +159,23 @@ export interface IPayPlanService {
     actor: OrganisationMemberActor,
     lotIds: readonly string[],
   ): BuyingResult<PlannedPayment>;
+}
+
+/** The account details and reference of a bank transfer already chosen for the picked lots. */
+export interface IPayTransferService {
+  /** `null` while there is no transfer waiting for its money, or the provider cannot be read. */
+  instructions(
+    actor: OrganisationMemberActor,
+    lotIds: readonly string[],
+  ): BuyingResult<{ instructions: BankTransferInstructions | null }>;
+}
+
+/** Only where a payment under way for the picked lots stands: what a waiting page asks for. */
+export interface IPayProgressReadService {
+  progress(
+    actor: OrganisationMemberActor,
+    lotIds: readonly string[],
+  ): BuyingResult<{ progress: PayPlanProgress | null }>;
 }
 
 /** "Pay several": the account's payers settle several invoices with one payment. */

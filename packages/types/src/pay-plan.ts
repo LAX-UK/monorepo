@@ -41,7 +41,43 @@ export type PayPlanMethod = {
   method: "card" | "bank_transfer";
   available: boolean;
   /** Why it is unavailable: `null` while it is available. */
-  reason: "over_card_limit" | "within_card_limit" | "over_online_limit" | null;
+  reason: "over_card_limit" | "over_online_limit" | null;
+};
+
+/** One lot in a payment under way, as the Pay page lists it. */
+export type PayPlanProgressLot = {
+  lotId: string;
+  title: string;
+  lotNumber: number | null;
+  saleTitle: string | null;
+  /** The invoice total, in whole pence. */
+  totalPence: number;
+};
+
+/**
+ * A payment already under way for these lots: a card payment being confirmed, or a bank transfer
+ * waiting for its money. Every figure is whole pence from the server's records.
+ */
+export type PayPlanProgress = {
+  rail: "card" | "bank_transfer";
+  stage: "confirming" | "awaiting_transfer" | "part_received";
+  /** The lots of the link that this payment covers (it may cover more), with their invoice totals. */
+  lots: PayPlanProgressLot[];
+  totalPence: number;
+  receivedPence: number;
+  remainingPence: number;
+  /** Whole percent received, rounded down. */
+  receivedPercent: number;
+  /** Invoices in this payment beyond the lots of the link. */
+  otherInvoices: number;
+};
+
+/** Where to send a bank transfer, as the payment provider issued it for this payment. */
+export type BankTransferInstructions = {
+  accountName: string;
+  sortCode: string;
+  accountNumber: string;
+  reference: string;
 };
 
 /** One invoice on the Pay page: its lines and total are the stored figures. */
@@ -72,5 +108,9 @@ export type PayPlan = {
   /** ISO 8601 instant of the earliest due date among the payable invoices. */
   firstDueAt: string | null;
   methods: PayPlanMethod[];
+  /** The most one card payment takes, in whole pence. */
+  cardLimitPence: number;
+  /** A payment already under way for any of these lots; `null` when none. */
+  progress: PayPlanProgress | null;
   currency: "GBP";
 };
