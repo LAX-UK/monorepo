@@ -48,13 +48,22 @@ function setup() {
     })),
   };
   const enquiryErasure = {
-    eraseByEmail: vi.fn(async (_input: unknown) => ({
-      ok: true as const,
-      enquiries: 2,
-      notes: 1,
-      attachments: 0,
-      held: 1,
-    })),
+    eraseByEmail: vi.fn(async (_input: unknown) => {
+      calls.push("erase");
+      return {
+        ok: true as const,
+        enquiries: 2,
+        notes: 1,
+        attachments: 0,
+        held: 1,
+      };
+    }),
+  };
+  const erasureHistory = {
+    forReference: vi.fn(
+      async (_reference: string) =>
+        [] as Array<{ at: Date; actorName: string | null; enquiries: number }>,
+    ),
   };
   return {
     service: new AdminDataRequestsService({
@@ -62,7 +71,9 @@ function setup() {
       audit,
       accounts,
       enquiryErasure: enquiryErasure as never,
+      erasureHistory,
     }),
+    erasureHistory,
     identity,
     audit,
     accounts,
@@ -202,9 +213,10 @@ describe("AdminDataRequestsService.eraseEnquiries", () => {
   });
 
   it("erases by the request's own address, names the request and records it on the timeline", async () => {
-    const { service, identity, enquiryErasure, audit } = setup();
+    const { service, identity, enquiryErasure, audit, calls } = setup();
     (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce(record());
     const outcome = await service.eraseEnquiries("DR-0007", body, "staff-1");
+    expect(calls).toEqual(["audit", "erase"]);
     expect(outcome).toEqual({
       ok: true,
       value: { enquiries: 2, notes: 1, attachments: 0, held: 1 },
@@ -257,7 +269,7 @@ describe("AdminDataRequestsService.eraseEnquiries", () => {
     expect(enquiryErasure.eraseByEmail).not.toHaveBeenCalled();
   });
 
-  it("passes Identity's refusal back and does not record a failed confirmation", async () => {
+  it("passes Identity's refusal back; the audit row comes before the erasure, so a failed confirmation leaves it", async () => {
     const { service, identity, enquiryErasure, audit } = setup();
     const mock = identity.record as ReturnType<typeof vi.fn>;
     mock.mockResolvedValueOnce({ ok: false, status: 404, error: "not_found" });
@@ -276,7 +288,65 @@ describe("AdminDataRequestsService.eraseEnquiries", () => {
       status: 422,
       error: "confirmation_mismatch",
     });
-    expect(audit.record).not.toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("AdminDataRequestsService.record History", () => {
+  const timelineEntry = (at: string, event: string) => ({
+    at,
+    event,
+    actorName: null,
+    device: null,
+    detail: {},
+  });
+  const withTimeline = (timeline: unknown[]) => ({
+    ok: true as const,
+    value: { request: { reference: "DR-0007" }, timeline } as never,
+  });
+
+  it("merges Bid's erasures into Identity's timeline in time order", async () => {
+    const { service, identity, erasureHistory } = setup();
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      withTimeline([
+        timelineEntry("2026-11-01T09:00:00.000Z", "data_request.logged"),
+        timelineEntry("2026-11-03T09:00:00.000Z", "data_request.closed"),
+      ]),
+    );
+    erasureHistory.forReference.mockResolvedValueOnce([
+      { at: new Date("2026-11-02T10:00:00.000Z"), actorName: "Hana Ito", enquiries: 3 },
+    ]);
+    const outcome = await service.record("DR-0007", "staff-1");
+    expect(erasureHistory.forReference).toHaveBeenCalledWith("DR-0007");
+    if (!outcome.ok) throw new Error("expected a record");
+    expect(outcome.value.timeline.map((entry) => entry.event)).toEqual([
+      "data_request.logged",
+      "data_request.enquiries_erased",
+      "data_request.closed",
+    ]);
+    expect(outcome.value.timeline[1]).toEqual({
+      at: "2026-11-02T10:00:00.000Z",
+      event: "data_request.enquiries_erased",
+      actorName: "Hana Ito",
+      device: null,
+      detail: { enquiries: 3 },
+    });
+  });
+
+  it("leaves the timeline alone when nothing was erased, and does not look up a refused record", async () => {
+    const { service, identity, erasureHistory } = setup();
+    const timeline = [timelineEntry("2026-11-01T09:00:00.000Z", "data_request.logged")];
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce(withTimeline(timeline));
+    const outcome = await service.record("DR-0007", "staff-1");
+    expect(outcome).toMatchObject({ ok: true, value: { timeline } });
+    (identity.record as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      error: "not_found",
+    });
+    erasureHistory.forReference.mockClear();
+    expect(await service.record("DR-0099", "staff-1")).toMatchObject({ ok: false, status: 404 });
+    expect(erasureHistory.forReference).not.toHaveBeenCalled();
   });
 });
 
