@@ -19,6 +19,7 @@ import { SearchPaginationBar } from "@/components/marketing/search-pagination-ba
 import type { SearchSortValue } from "@/components/marketing/search-sort-select";
 import { SITE_SEO_NAME } from "@/lib/brand";
 import { getServerLotCount, getServerLotReader } from "@/lib/catalog/catalog.server";
+import { getServerAccountAlerts } from "@/lib/data/http/alerts.server";
 import { getServerMyArtistWatchIds } from "@/lib/data/http/artist-watchlist.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerMySavedSearches } from "@/lib/data/http/saved-searches.server";
@@ -34,9 +35,10 @@ import {
   searchStatusLabel,
 } from "@/lib/marketing/parse-search-params";
 import { countSearchActiveFilters } from "@/lib/marketing/search-active-filter-count";
-import { hasSearchAlert } from "@/lib/marketing/search-fallback";
+import { searchAlertState } from "@/lib/marketing/search-fallback";
 import { shouldOfferPastResults } from "@/lib/marketing/search-fallback";
 import { buildSearchQs } from "@/lib/marketing/search-qs";
+import { searchTopicEmailOn } from "@/lib/notifications/engine-alert-state";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import { metadataForListing } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
@@ -203,14 +205,19 @@ export default async function SearchPage({ searchParams }: PageProps) {
     onSaleCount: filtered.length,
     loadFailed: loadError !== null,
   });
-  const [fallback, watchedArtistIds, savedSearches] = offerPastResults
+  const [fallback, watchedArtistIds, savedSearches, accountAlerts] = offerPastResults
     ? await Promise.all([
         loadSearchFallback(trimmed, categoryId),
         isAuthenticated ? getServerMyArtistWatchIds() : Promise.resolve([] as string[]),
         isAuthenticated ? getServerMySavedSearches() : Promise.resolve(null),
+        isAuthenticated ? getServerAccountAlerts() : Promise.resolve(null),
       ])
-    : [null, [] as string[], null];
-  const alertSet = savedSearches ? hasSearchAlert(savedSearches, trimmed, categoryId) : false;
+    : [null, [] as string[], null, null];
+  // A failed read falls back to the plain button; saving still avoids a duplicate.
+  const topicEmailOn = searchTopicEmailOn(accountAlerts, session?.emailVerified);
+  const alertState = savedSearches
+    ? searchAlertState(savedSearches, trimmed, categoryId, topicEmailOn)
+    : "none";
   const catalogLots = toCatalogLotVMs(filtered);
   const hasPrev = offset > 0;
   const nextOffset = offset + PAGE_SIZE;
@@ -397,7 +404,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
               pastResultsHref={pastResultsHref}
               alertReturnHref={alertReturnHref}
               saveAlertOnArrival={firstString(alertRaw) === "1"}
-              alertSet={alertSet}
+              alertState={alertState}
+              topicEmailOn={topicEmailOn}
               {...(lotCatalogLinkParams ? { catalogLinkParams: lotCatalogLinkParams } : {})}
             />
           ) : filtered.length === 0 ? (

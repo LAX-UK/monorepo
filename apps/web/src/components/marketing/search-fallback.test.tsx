@@ -54,7 +54,8 @@ function draw(fallback: SearchFallback) {
       pastResultsHref="/search?status=ended"
       alertReturnHref="/search?q=winter&alert=1"
       saveAlertOnArrival={false}
-      alertSet={false}
+      alertState="none"
+      topicEmailOn={null}
     />,
   );
 }
