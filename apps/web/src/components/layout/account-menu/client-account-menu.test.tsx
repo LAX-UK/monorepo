@@ -1,7 +1,7 @@
 import { NO_ATTENTION } from "@/lib/navigation/client-attention";
 import { buildHeaderAccountMenu } from "@/lib/navigation/header-account-menu.vm";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { type ReactElement, type ReactNode, cloneElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ClientAccountMenu } from "./client-account-menu";
 
@@ -52,34 +52,48 @@ const MEMBER_MENU = buildHeaderAccountMenu({
   pathname: "/bids",
 });
 
+/** The dropdown makes each row a menu item; this stands in for it. */
+function asMenuItem(row: ReactElement): ReactElement {
+  return cloneElement(row, { role: "menuitem" } as object);
+}
+
 function renderMenu() {
   render(
     <div role="menu" aria-label="Account">
-      <ClientAccountMenu menu={MEMBER_MENU} surface="popover" onNavigate={() => {}} />
+      <ClientAccountMenu
+        menu={MEMBER_MENU}
+        surface="popover"
+        onNavigate={() => {}}
+        wrapItem={asMenuItem}
+      />
     </div>,
   );
   return screen.getByRole("menu", { name: "Account" });
 }
 
 describe("ClientAccountMenu", () => {
-  it("lists the person's accounts, the one in use marked Here and the others to open", () => {
-    const accounts = within(renderMenu()).getByRole("group", { name: "Your accounts" });
-    expect(within(accounts).getByRole("menuitem", { name: /Personal.*Here/ })).toHaveAttribute(
-      "aria-current",
-      "true",
-    );
+  it("lists the person's accounts under Switch account, the one in use marked Current", () => {
+    const accounts = within(renderMenu()).getByRole("group", { name: "Switch account" });
+    const current = within(accounts).getByRole("menuitem", {
+      name: /Jordan Hale.*Personal.*current/,
+    });
+    expect(current).toHaveAttribute("aria-current", "true");
+    expect(current).toHaveTextContent("Current");
     expect(
-      within(accounts).getByRole("menuitem", { name: /Northgate Collection Ltd.*Open/ }),
+      within(accounts).getByRole("menuitem", { name: /Northgate Collection Ltd.*Buyer/ }),
     ).toBeVisible();
   });
 
   it("switches through the switch action and a page load, never a link to the hop", async () => {
     const assign = vi.fn();
     const realLocation = window.location;
-    Object.defineProperty(window, "location", { value: { assign }, configurable: true });
+    Object.defineProperty(window, "location", {
+      value: { assign, search: "" },
+      configurable: true,
+    });
     switchAccount.mockResolvedValue({ kind: "switched" });
     try {
-      const accounts = within(renderMenu()).getByRole("group", { name: "Your accounts" });
+      const accounts = within(renderMenu()).getByRole("group", { name: "Switch account" });
       const row = within(accounts).getByRole("menuitem", { name: /Northgate Collection Ltd/ });
       expect(row.tagName).toBe("BUTTON");
       expect(row).not.toHaveAttribute("href");

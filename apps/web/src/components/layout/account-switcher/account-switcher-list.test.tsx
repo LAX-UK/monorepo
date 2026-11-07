@@ -63,12 +63,18 @@ describe("AccountSwitcherList", () => {
     expect(onChoose).toHaveBeenCalledWith(expect.objectContaining({ id: "me" }));
   });
 
-  it("offers pending invitations with their count, and registering an organisation", () => {
+  it("offers pending invitations with their count and all accounts, but not registering, in the popover", () => {
     renderList();
     expect(screen.getByRole("link", { name: "Pending invitations (2)" })).toHaveAttribute(
       "href",
       "/organisations/invitations",
     );
+    expect(screen.getByRole("link", { name: "All accounts" })).toBeVisible();
+    expect(screen.queryByRole("link", { name: "Register an organisation" })).toBeNull();
+  });
+
+  it("offers registering an organisation in the sheet", () => {
+    renderList({ density: "sheet" });
     expect(screen.getByRole("link", { name: "Register an organisation" })).toHaveAttribute(
       "href",
       "/onboarding/organisation?fresh=1",
@@ -80,12 +86,63 @@ describe("AccountSwitcherList", () => {
     expect(screen.queryByRole("link", { name: /Pending invitations/ })).toBeNull();
   });
 
-  it("locks the list while a switch is in flight", () => {
-    renderList({ pendingId: "me" });
-    for (const button of screen.getAllByRole("button")) expect(button).toBeDisabled();
+  it("locks the list while a switch is in flight, and says Switching… on the chosen row", () => {
+    const { onChoose } = renderList({ pendingId: "me" });
+    expect(screen.getByRole("button", { name: /Northbank Gallery/ })).toBeDisabled();
+    const chosen = screen.getByRole("button", { name: /Jane Smith/ });
+    // The chosen row stays focusable, so focus is not dropped mid-switch, but does nothing.
+    expect(chosen).not.toBeDisabled();
+    expect(chosen).toHaveAttribute("aria-disabled", "true");
+    fireEvent.click(chosen);
+    expect(onChoose).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent("Switching to Personal…");
+    expect(chosen).toHaveAttribute("aria-busy", "true");
+    expect(chosen).toHaveTextContent("Switching…");
+    expect(screen.getByRole("button", { name: /Northbank Gallery/ })).not.toHaveTextContent(
+      "Switching…",
+    );
   });
 
-  it("shows a dot with its count where something needs the person, read when the list opens", async () => {
+  it("tints the account in use on every density", () => {
+    renderList();
+    expect(screen.getByRole("button", { name: /Northbank Gallery/ })).toHaveClass(
+      "bg-lax-selected",
+    );
+  });
+
+  it("gives Try again a 44px target in the sheet", () => {
+    renderList({
+      density: "sheet",
+      failure: { title: "Could not switch", description: "Try later." },
+      onRetry: vi.fn(),
+    });
+    expect(screen.getByRole("button", { name: "Try again" })).toHaveClass("min-h-11");
+  });
+
+  it("marks the account in use with the word Current", () => {
+    renderList();
+    expect(screen.getByRole("button", { name: /Northbank Gallery/ })).toHaveTextContent("Current");
+    expect(screen.getByRole("button", { name: /Jane Smith/ })).not.toHaveTextContent("Current");
+    expect(screen.getByText("Switch account")).toBeInTheDocument();
+  });
+
+  it("says why a switch failed and offers to try again", () => {
+    const onRetry = vi.fn();
+    renderList({
+      failure: { title: "Could not switch", description: "Please try again." },
+      onRetry,
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Could not switch. Please try again.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the links to a menu that has its own", () => {
+    renderList({ withLinks: false });
+    expect(screen.queryByRole("link", { name: "All accounts" })).toBeNull();
+  });
+
+  it("shows a number where something needs the person, read when the list opens", async () => {
     const read = vi.fn(async () => ({ northbank: 2, me: 0 }));
     render(
       <AccountNeedsYouProvider enabled read={read}>
@@ -105,6 +162,7 @@ describe("AccountSwitcherList", () => {
     );
     expect(screen.getByRole("button", { name: /Jane Smith/ })).not.toHaveAccessibleName(/need/);
     expect(document.querySelectorAll("[data-needs-you]")).toHaveLength(1);
+    expect(document.querySelector("[data-needs-you]")).toHaveTextContent("2");
   });
 
   it("shows no dots when the counts cannot be read", async () => {
@@ -137,7 +195,7 @@ describe("AccountSwitcherList", () => {
       expect.stringContaining("Galerie Ève"),
     ]);
     fireEvent.change(field, { target: { value: "zzz" } });
-    expect(screen.getByRole("status")).toHaveTextContent("No accounts match “zzz”.");
+    expect(screen.getByText("No accounts match “zzz”.")).toBeVisible();
   });
 
   it("has no field with fewer than six accounts", () => {
