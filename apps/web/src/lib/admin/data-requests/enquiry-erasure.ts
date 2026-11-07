@@ -1,4 +1,8 @@
-import type { DataRequestRecord } from "@auction/identity-contracts/data-requests";
+import {
+  type DataRequestRecord,
+  type EnquiryErasureBlock,
+  enquiryErasureBlock,
+} from "@auction/identity-contracts/data-requests";
 import { z } from "zod";
 import type { ActionState } from "./data-request-actions";
 
@@ -14,11 +18,23 @@ export const ERASURE_REASON_MAX_LENGTH = 500;
 
 export const NO_EMAIL_REASON = "This request has no email address to erase enquiries by.";
 
-/** Hidden on a request about the signed-in person; disabled, with the reason, without an email. */
+export const ERASURE_BLOCK_REASON: Record<Exclude<EnquiryErasureBlock, "download">, string> = {
+  waiting_for_id: "Available once proof of identity has arrived.",
+  closed: "This request is closed.",
+};
+
+/**
+ * Hidden on a download and on a request about the signed-in person. On a manual request it is
+ * disabled, with the reason, unless the request is in progress and has an email address. The Bid
+ * API applies the same rule again from Identity's record.
+ */
 export function enquiryErasureState(
-  record: Pick<DataRequestRecord, "ownRequest" | "person">,
+  record: Pick<DataRequestRecord, "ownRequest" | "person" | "request">,
 ): ActionState {
   if (record.ownRequest) return { kind: "hidden" };
+  const blocked = enquiryErasureBlock(record.request);
+  if (blocked === "download") return { kind: "hidden" };
+  if (blocked) return { kind: "disabled", reason: ERASURE_BLOCK_REASON[blocked] };
   if (!record.person.email) return { kind: "disabled", reason: NO_EMAIL_REASON };
   return { kind: "enabled" };
 }
@@ -35,6 +51,8 @@ export type EnquiryErasureCounts = z.infer<typeof enquiryErasureCountsSchema>;
 /** The refusals the API gives, one sentence each. */
 export const ERASURE_ERROR_COPY = {
   confirmation_mismatch: "The email address you typed doesn't match.",
+  erasure_not_allowed: "Enquiries can only be erased while the request is in progress.",
+  no_email: NO_EMAIL_REASON,
   reason_invalid: `Give a reason of ${ERASURE_REASON_MIN_LENGTH} to ${ERASURE_REASON_MAX_LENGTH} characters.`,
 } as const;
 
@@ -42,7 +60,12 @@ const UNAVAILABLE = "The enquiries service didn't answer. Nothing was changed. T
 
 /** The sentence for a failed erasure: the API's own refusal, or a plain "didn't answer". */
 export function erasureErrorMessage(code: string | undefined, status: number | undefined): string {
-  if (code === "confirmation_mismatch" || code === "reason_invalid") {
+  if (
+    code === "confirmation_mismatch" ||
+    code === "reason_invalid" ||
+    code === "erasure_not_allowed" ||
+    code === "no_email"
+  ) {
     return ERASURE_ERROR_COPY[code];
   }
   if (status === 403) return "You don't have permission to erase enquiries.";
@@ -92,9 +115,15 @@ export function validateErasure(
   if (draft.confirmation.trim().toLowerCase() !== email.trim().toLowerCase()) {
     errors.confirmation = ERASURE_ERROR_COPY.confirmation_mismatch;
   }
-  const reason = draft.reason.trim();
-  if (reason.length < ERASURE_REASON_MIN_LENGTH || reason.length > ERASURE_REASON_MAX_LENGTH) {
-    errors.reason = ERASURE_ERROR_COPY.reason_invalid;
-  }
+  const reason = validateErasureReason(draft.reason);
+  if (reason) errors.reason = reason;
   return errors;
+}
+
+/** The reason's own rule, which the action checks without the address: that is the server's. */
+export function validateErasureReason(value: string): string | null {
+  const reason = value.trim();
+  return reason.length < ERASURE_REASON_MIN_LENGTH || reason.length > ERASURE_REASON_MAX_LENGTH
+    ? ERASURE_ERROR_COPY.reason_invalid
+    : null;
 }

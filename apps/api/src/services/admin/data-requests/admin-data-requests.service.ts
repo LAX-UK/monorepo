@@ -5,10 +5,12 @@ import type {
   ExtendDataRequestInput,
   PatchDataRequestInput,
 } from "@auction/identity-contracts";
+import { enquiryErasureBlock } from "@auction/identity-contracts";
 import type {
   DataRequestOutcome,
   IIdentityDataRequestsClient,
 } from "../../interfaces/identity-data-requests-client.js";
+import type { IEnquiryErasure } from "../../marketing-enquiry/enquiry-erasure.service.js";
 import type { DataRequestAuditAction, IDataRequestAuditTrail } from "./data-request-audit-trail.js";
 
 type Body<T> = Omit<T, "actorSubjectId">;
@@ -25,7 +27,14 @@ export type AdminDataRequestsDeps = {
   identity: IIdentityDataRequestsClient;
   audit: IDataRequestAuditTrail;
   accounts: IDataRequestAccountFinder;
+  enquiryErasure: IEnquiryErasure;
 };
+
+/** What an erasure answers with: the counts the erasure service reports. */
+export type EnquiryErasureCounts = Omit<
+  Extract<Awaited<ReturnType<IEnquiryErasure["eraseByEmail"]>>, { ok: true }>,
+  "ok"
+>;
 
 /**
  * Bid admin's Data requests. Identity owns the requests and the rules; this service adds who is
@@ -79,6 +88,37 @@ export class AdminDataRequestsService {
   async continueDownload(reference: string, actorUserId: string) {
     await this.audit("continued", reference, actorUserId);
     return this.deps.identity.continueDownload(reference, actorUserId);
+  }
+
+  /**
+   * Erases the enquiries from the request's own email address. The address and the request's
+   * state come from Identity, never from the caller: only a manual request being worked on, about
+   * someone else, with an email address, may erase. The typed confirmation is compared with that
+   * address. The erasure's audit event names the request, and the request's timeline records it.
+   */
+  async eraseEnquiries(
+    reference: string,
+    body: { confirmation: string; reason: string },
+    actorUserId: string,
+  ): Promise<DataRequestOutcome<EnquiryErasureCounts>> {
+    const found = await this.deps.identity.record(reference, actorUserId);
+    if (!found.ok) return found;
+    const { request, person, ownRequest } = found.value;
+    if (ownRequest) return { ok: false, status: 403, error: "own_request" };
+    const blocked = enquiryErasureBlock(request);
+    if (blocked) return { ok: false, status: 409, error: "erasure_not_allowed" };
+    if (!person.email) return { ok: false, status: 422, error: "no_email" };
+    const outcome = await this.deps.enquiryErasure.eraseByEmail({
+      email: person.email,
+      confirmation: body.confirmation,
+      reason: body.reason,
+      actorUserId,
+      requestReference: request.reference,
+    });
+    if (!outcome.ok) return { ok: false, status: 422, error: outcome.error };
+    await this.audit("enquiries_erased", request.reference, actorUserId);
+    const { ok: _ok, ...counts } = outcome;
+    return { ok: true, value: counts };
   }
 
   private audit(action: DataRequestAuditAction, reference: string, actorUserId: string) {

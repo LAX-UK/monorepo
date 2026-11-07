@@ -18,7 +18,7 @@ vi.mock("@/lib/data/http/authed-server-fetch", () => ({
 const { eraseDataRequestEnquiriesAction } = await import("./admin-data-requests");
 
 const EMAIL = "margaret.osei@outlook.co.uk";
-const INPUT = { email: EMAIL, confirmation: EMAIL, reason: "Asked to be forgotten" };
+const INPUT = { confirmation: EMAIL, reason: "Asked to be forgotten" };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status });
 
 describe("eraseDataRequestEnquiriesAction", () => {
@@ -44,14 +44,42 @@ describe("eraseDataRequestEnquiriesAction", () => {
     });
     expect(result).toEqual({ ok: true, data: { enquiries: 2, notes: 1, attachments: 0, held: 1 } });
     const [path, init] = fetchMock.mock.calls[0] as [string, { method: string; body: string }];
-    expect(path).toBe("/admin/data-requests/enquiry-erasure");
+    expect(path).toBe("/admin/data-requests/DR-0012/enquiry-erasure");
     expect(JSON.parse(init.body)).toEqual(INPUT);
   });
 
-  it("refuses a mismatched address or short reason without calling the API", async () => {
-    expect(
-      (await eraseDataRequestEnquiriesAction("DR-0012", { ...INPUT, confirmation: "x@y.com" })).ok,
-    ).toBe(false);
+  it("sends the reference and what was typed, never an email address from the browser", async () => {
+    fetchMock.mockResolvedValue(
+      json({ data: { enquiries: 0, notes: 0, attachments: 0, held: 0 } }),
+    );
+    await eraseDataRequestEnquiriesAction("DR-0012", {
+      ...INPUT,
+      email: "someone@else.com",
+    } as never);
+    const [, init] = fetchMock.mock.calls[0] as [string, { body: string }];
+    expect(Object.keys(JSON.parse(init.body)).sort()).toEqual(["confirmation", "reason"]);
+  });
+
+  it("leaves comparing the confirmation to the server, which holds the address", async () => {
+    fetchMock.mockResolvedValue(json({ error: "confirmation_mismatch" }, 422));
+    const result = await eraseDataRequestEnquiriesAction("DR-0012", {
+      ...INPUT,
+      confirmation: "x@y.com",
+    });
+    expect(result).toMatchObject({ ok: false, errorCode: "confirmation_mismatch" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("explains a request that is not in progress", async () => {
+    fetchMock.mockResolvedValue(json({ error: "erasure_not_allowed" }, 409));
+    expect(await eraseDataRequestEnquiriesAction("DL-7F3C1A", INPUT)).toMatchObject({
+      ok: false,
+      status: 409,
+      error: "Enquiries can only be erased while the request is in progress.",
+    });
+  });
+
+  it("refuses a short reason without calling the API", async () => {
     expect((await eraseDataRequestEnquiriesAction("DR-0012", { ...INPUT, reason: "no" })).ok).toBe(
       false,
     );
