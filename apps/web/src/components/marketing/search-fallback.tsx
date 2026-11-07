@@ -34,6 +34,7 @@ type Props = {
   /** True when the account already has an alert for this search. */
   alertState: SearchAlertState;
   topicEmailOn: boolean | null;
+  alertSearchId: string | null;
   catalogLinkParams?: CatalogLinkParams;
 };
 
@@ -94,6 +95,7 @@ export function SearchNoMatches(props: Props) {
                 saveOnArrival={props.saveAlertOnArrival}
                 alertState={props.alertState}
                 topicEmailOn={props.topicEmailOn}
+                alertSearchId={props.alertSearchId}
               />
               <ButtonLink Link={Link} variant="ghost" href={props.clearHref}>
                 Clear search

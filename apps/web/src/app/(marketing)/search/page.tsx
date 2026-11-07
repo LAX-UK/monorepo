@@ -35,7 +35,7 @@ import {
   searchStatusLabel,
 } from "@/lib/marketing/parse-search-params";
 import { countSearchActiveFilters } from "@/lib/marketing/search-active-filter-count";
-import { searchAlertState } from "@/lib/marketing/search-fallback";
+import { findSearchAlert, searchAlertState } from "@/lib/marketing/search-fallback";
 import { shouldOfferPastResults } from "@/lib/marketing/search-fallback";
 import { buildSearchQs } from "@/lib/marketing/search-qs";
 import { engineAlertStateOf } from "@/lib/notifications/engine-alert-state";
@@ -216,6 +216,9 @@ export default async function SearchPage({ searchParams }: PageProps) {
   // A failed read falls back to the plain button; saving still avoids a duplicate.
   const searchTopic = engineAlertStateOf(accountAlerts)?.email["bid.searches"];
   const topicEmailOn = searchTopic === undefined ? null : searchTopic;
+  const alertSearchId = savedSearches
+    ? (findSearchAlert(savedSearches, trimmed, categoryId)?.id ?? null)
+    : null;
   const alertState = savedSearches
     ? searchAlertState(savedSearches, trimmed, categoryId, topicEmailOn)
     : "none";
@@ -407,6 +410,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               saveAlertOnArrival={firstString(alertRaw) === "1"}
               alertState={alertState}
               topicEmailOn={topicEmailOn}
+              alertSearchId={alertSearchId}
               {...(lotCatalogLinkParams ? { catalogLinkParams: lotCatalogLinkParams } : {})}
             />
           ) : filtered.length === 0 ? (

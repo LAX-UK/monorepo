@@ -16,6 +16,10 @@ export class SavedSearchService {
     return this.savedSearches.create(userId, input);
   }
 
+  setNotifyEmail(userId: string, id: string, notifyEmail: boolean): Promise<SavedSearchRow | null> {
+    return this.savedSearches.setNotifyEmail(userId, id, notifyEmail);
+  }
+
   remove(userId: string, id: string): Promise<boolean> {
     return this.savedSearches.remove(userId, id);
   }

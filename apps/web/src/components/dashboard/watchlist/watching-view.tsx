@@ -14,10 +14,12 @@ import {
   type TopicReach,
   type WatchingAlertReach,
   reachLabel,
+  searchEmailIsOn,
   searchReachLabel,
 } from "@/lib/watching/alert-reach";
 import { artistAlertSummary } from "@/lib/watching/artist-alert";
 import { savedSearchHref, savedSearchSummary } from "@/lib/watching/saved-search";
+import { switchSearchEmail } from "@/lib/watching/search-email";
 import { reminderRowLabel } from "@/lib/watching/watched-lot-reminder.vm";
 import {
   WATCHED_LOT_SORTS,
@@ -40,6 +42,7 @@ import {
   ShowingCount,
   SortMenu,
   StatusBadge,
+  Switch,
   type TabNavItem,
 } from "@auction/ui/lax";
 import { Lock, Search, UserRound } from "lucide-react";
@@ -129,6 +132,14 @@ export function WatchingView({
       } else notify.error("We couldn't stop following that artist. Try again in a moment.");
       refresh();
     });
+  const setSearchEmail = (search: SavedSearchRow, on: boolean) =>
+    start(async () => {
+      const result = await switchSearchEmail(search.id, on);
+      if (result.ok)
+        notify.success(on ? "Email alerts on for this search" : "Email alerts off for this search");
+      else notify.error("We couldn't save that change", { description: result.error });
+      refresh();
+    });
   const removeSearch = (search: SavedSearchRow) =>
     start(async () => {
       if (await deleteSavedSearch(search.id)) notify.success("Saved search removed");
@@ -204,6 +215,8 @@ export function WatchingView({
           query={query}
           onClear={() => setQuery("")}
           onRemove={removeSearch}
+          onEmail={setSearchEmail}
+          busy={busy}
         />
       ) : null}
       <ArtistAlertDialog
@@ -420,12 +433,16 @@ function SearchesList({
   query,
   onClear,
   onRemove,
+  onEmail,
+  busy,
 }: {
   searches: SavedSearchRow[] | null;
   reach: TopicReach | null;
   query: string;
   onClear: () => void;
   onRemove: (search: SavedSearchRow) => void;
+  onEmail: (search: SavedSearchRow, on: boolean) => void;
+  busy: boolean;
 }) {
   if (!searches) return <ListLoadError />;
   if (searches.length === 0) {
@@ -464,6 +481,14 @@ function SearchesList({
               savedSearchSummary(search.query),
               searchReachLabel(search.notifyEmail, reach),
             ].filter((part): part is string => part !== null)}
+            action={
+              <Switch
+                aria-label={`Email alerts for ${search.label}`}
+                checked={searchEmailIsOn(search.notifyEmail, reach?.emailOn ?? null)}
+                disabled={busy}
+                onCheckedChange={(on) => onEmail(search, on === true)}
+              />
+            }
             menu={
               <InlineActionMenu
                 label={`More for ${search.label}`}

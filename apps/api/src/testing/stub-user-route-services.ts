@@ -43,6 +43,7 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
       setArtistAlert: vi.fn(),
       listSavedSearches: vi.fn(),
       createSavedSearch: vi.fn(),
+      setSavedSearchEmail: vi.fn(),
       removeSavedSearch: vi.fn(),
     },
     watchlistRemindersHttp: { list: vi.fn(), set: vi.fn(), clear: vi.fn() },

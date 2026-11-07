@@ -14,6 +14,10 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/marketing/search-alert", () => ({
   ensureSearchAlert: (...a: unknown[]) => ensure(...a),
 }));
+const switchEmail = vi.fn();
+vi.mock("@/lib/watching/search-email", () => ({
+  switchSearchEmail: (...a: unknown[]) => switchEmail(...a),
+}));
 vi.mock("@/lib/ui/notify", () => ({
   notify: { success: (m: string) => success(m), error: (m: string) => error(m) },
 }));
@@ -68,6 +72,34 @@ describe("SearchAlertButton", () => {
     expect(success).toHaveBeenCalledWith(
       "Alert saved. Email is off for saved searches, so nothing will be sent.",
     );
+  });
+
+  it("signed in, email off: Turn on email switches it on and shows Alert set", async () => {
+    switchEmail.mockResolvedValue({ ok: true });
+    render(
+      <SearchAlertButton
+        {...base}
+        isAuthenticated
+        saveOnArrival={false}
+        alertState="email_off"
+        alertSearchId="s1"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Turn on email" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Alert set");
+    expect(switchEmail).toHaveBeenCalledWith("s1", true);
+  });
+
+  it("signed in, email off: a failed Turn on email says why and stays email off", async () => {
+    switchEmail.mockResolvedValue({ ok: false, error: "Verify your email address to get alerts." });
+    render(
+      <SearchAlertButton {...base} isAuthenticated saveOnArrival={false} alertState="email_off" />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Turn on email" }));
+    await waitFor(() =>
+      expect(error).toHaveBeenCalledWith("Verify your email address to get alerts."),
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Saved search · email off");
   });
 
   it("signed in: saves on click and shows Alert set", async () => {

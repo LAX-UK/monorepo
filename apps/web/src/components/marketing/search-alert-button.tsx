@@ -6,6 +6,7 @@ import type { SearchAlertState } from "@/lib/marketing/search-fallback";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { notify } from "@/lib/ui/notify";
 import { searchEmailIsOn } from "@/lib/watching/alert-reach";
+import { switchSearchEmail } from "@/lib/watching/search-email";
 import { Button, ButtonLink } from "@auction/ui/lax";
 import { Bell, BellRing } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +25,8 @@ type Props = {
   alertState?: SearchAlertState;
   /** Whether the saved-search alerts topic's email is on; null when it could not be read. */
   topicEmailOn?: boolean | null;
+  /** The saved search holding this alert, when the server found it. */
+  alertSearchId?: string | null;
   /** Where saved search alerts are managed. */
   manageHref?: string;
 };
@@ -45,6 +48,7 @@ export function SearchAlertButton({
   saveOnArrival,
   alertState = "none",
   topicEmailOn = null,
+  alertSearchId = null,
   manageHref = CLIENT_ROUTES.watchingSearches,
 }: Props) {
   const router = useRouter();
@@ -73,6 +77,18 @@ export function SearchAlertButton({
         : "Alert set. Matches arrive in your 08:00 email and in the app.",
     );
   }, [q, categoryId, topicEmailOn]);
+
+  const turnOnEmail = useCallback(async () => {
+    setPhase("saving");
+    const result = await switchSearchEmail(alertSearchId, true);
+    if (!result.ok) {
+      setPhase("email_off");
+      notify.error(result.error);
+      return;
+    }
+    setPhase("saved");
+    notify.success("Email alerts are on for this search");
+  }, [alertSearchId]);
 
   useEffect(() => {
     if (!saveOnArrival || !isAuthenticated || asked.current) return;
@@ -104,6 +120,11 @@ export function SearchAlertButton({
           <BellRing className="size-4" aria-hidden />
           {phase === "saved" ? "Alert set" : "Saved search · email off"}
         </output>
+        {phase === "email_off" ? (
+          <Button variant="secondary" onClick={() => void turnOnEmail()}>
+            Turn on email
+          </Button>
+        ) : null}
         <ButtonLink Link={Link} variant="ghost" href={manageHref}>
           Manage alerts
         </ButtonLink>
