@@ -34,8 +34,6 @@ export type MyPaymentsListParams = {
   status?: PaymentStatus;
 };
 
-export type ComplianceGateStatus = "clear" | "aml_hold" | "source_of_funds_required";
-
 /** Winner checkout: current fulfilment / logistics state for the lot. */
 export type LotFulfilmentSnapshot = {
   id: string;
@@ -94,12 +92,6 @@ export const myPaymentRowSchema = z
           : null,
     };
   }) as z.ZodType<MyPaymentRow>;
-
-const complianceGateStatusSchema = z.enum(["clear", "aml_hold", "source_of_funds_required"]);
-
-export const complianceGateEnvelopeSchema = z.object({
-  status: complianceGateStatusSchema,
-});
 
 export const lotFulfilmentSnapshotSchema = z
   .preprocess(toObjectRecord, z.record(z.unknown()))

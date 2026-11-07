@@ -11,6 +11,6 @@ export function lookupErrorCode<T>(
   table: Readonly<Record<string, T>>,
 ): T | undefined {
   return errorCodesOf(body)
-    .map((code) => table[code])
+    .map((code) => (Object.hasOwn(table, code) ? table[code] : undefined))
     .find((found) => found !== undefined);
 }

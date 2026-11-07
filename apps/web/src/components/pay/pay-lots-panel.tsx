@@ -7,16 +7,11 @@ import { TextLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 /**
- * The lots in this payment: each with its artwork, its sale, the day it is due and its invoice
- * total, linked to its purchase.
+ * The lots in this payment: each with its artwork, linked to its purchase. A payment of several
+ * lots also gives each one's reference, due day and invoice total; for a single lot the title row
+ * and the payment panel already say them, so they are not repeated.
  */
-export function PayLotsPanel({
-  lots,
-  imageByLot,
-}: {
-  lots: readonly PayLotVm[];
-  imageByLot: Readonly<Record<string, string | null>>;
-}) {
+export function PayLotsPanel({ lots }: { lots: readonly PayLotVm[] }) {
   const title = lots.length === 1 ? PAY_COPY.panelLot : PAY_COPY.panelLots(lots.length);
   return (
     <WorkspacePanel title={title}>
@@ -24,7 +19,7 @@ export function PayLotsPanel({
         {lots.map((lot) => (
           <li key={lot.lotId} className="flex items-center gap-4 py-4 first:pt-0 last:pb-0">
             <RecordRowMedia className="size-[4.5rem] shrink-0">
-              <MediaImage src={imageByLot[lot.lotId] ?? null} alt="" sizes="72px" />
+              <MediaImage src={lot.image} alt="" sizes="72px" />
             </RecordRowMedia>
             <div className="min-w-0 flex-1">
               <p className="text-lax-14 font-medium text-lax-fg">
@@ -32,12 +27,20 @@ export function PayLotsPanel({
                   {lot.title}
                 </TextLink>
               </p>
-              {lot.subtitle ? <p className="text-lax-13 text-lax-muted">{lot.subtitle}</p> : null}
-              <p className="text-lax-13 text-lax-muted">{lot.due}</p>
+              {lot.detail ? (
+                <>
+                  {lot.detail.subtitle ? (
+                    <p className="text-lax-13 text-lax-muted">{lot.detail.subtitle}</p>
+                  ) : null}
+                  <p className="text-lax-13 text-lax-muted">{lot.detail.due}</p>
+                </>
+              ) : null}
             </div>
-            <p className="shrink-0 text-right text-lax-14 font-medium tabular-nums text-lax-fg">
-              {lot.total}
-            </p>
+            {lot.detail ? (
+              <p className="shrink-0 text-right text-lax-14 font-medium tabular-nums text-lax-fg">
+                {lot.detail.total}
+              </p>
+            ) : null}
           </li>
         ))}
       </ul>

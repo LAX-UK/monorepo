@@ -177,6 +177,40 @@ export async function seedOrganisationJourneys(db: Db, actors: OrganisationJourn
   ];
   await db.insert(schema.lot).values(lots);
 
+  // An invoice nothing stands in the way of: the buyer agent won it for Northbank, small enough
+  // to need no source-of-funds check, so finance sees Pay offered.
+  await db
+    .insert(schema.lot)
+    .values({
+      ...lotDefaults,
+      id: ids.lotInvoiceNorthbankClear,
+      title: "Harbour Light, ready to pay",
+      description: "Won for Northbank Gallery; nothing stands in the way of paying the invoice.",
+      startingPrice: "1000.00",
+      currentPrice: "1200.00",
+      minBidIncrement: "50.00",
+      startTime: new Date(today - 10 * DAY),
+      endTime: ended,
+      status: "ended",
+      winnerId: actors.buyerAgentId,
+      buyerLegalEntityId: actors.northbankId,
+    })
+    .onConflictDoNothing();
+  await db
+    .insert(schema.bid)
+    .values({
+      lotId: ids.lotInvoiceNorthbankClear,
+      bidderId: actors.buyerAgentId,
+      subjectId: actors.buyerAgentId,
+      buyerLegalEntityId: actors.northbankId,
+      amount: "1200.00",
+      isWinning: true,
+      isAutoBid: false,
+      maxAutoBidAmount: null,
+      createdAt: new Date(today - 4 * DAY),
+    })
+    .onConflictDoNothing();
+
   await db.insert(schema.bid).values([
     {
       lotId: ids.lotInvoiceNorthbank,

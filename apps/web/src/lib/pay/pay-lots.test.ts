@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { payHref } from "./pay-links";
+import { parsePayReturned, payHref } from "./pay-links";
 import { PAY_MAX_LOTS, parsePayLots } from "./pay-lots";
 import { LOT_A, LOT_B } from "./pay-plan-fixtures.test-util";
 
@@ -42,6 +42,16 @@ describe("payHref", () => {
   it("builds the Pay page address for the lots", () => {
     expect(payHref([LOT_A, LOT_B])).toBe(`/purchases/pay?lots=${LOT_A},${LOT_B}`);
     expect(payHref([])).toBe("/purchases/pay");
+  });
+
+  it("carries a return from the payment page", () => {
+    expect(payHref([LOT_A], { returned: "cancelled" })).toBe(
+      `/purchases/pay?lots=${LOT_A}&returned=cancelled`,
+    );
+    expect(parsePayReturned("cancelled")).toBe("cancelled");
+    expect(parsePayReturned(["cancelled"])).toBe("cancelled");
+    expect(parsePayReturned("anything")).toBeNull();
+    expect(parsePayReturned(undefined)).toBeNull();
   });
 
   it("round-trips through the parser", () => {

@@ -25,12 +25,17 @@ export async function payAction(input: {
     const parsed = payInputSchema.safeParse(input);
     if (!parsed.success) return { kind: "failed", message: PAY_COPY.startFailed, refresh: false };
     const { lotIds, expectedTotalPence } = parsed.data;
-    const response = await postPay({ lotIds, expectedTotalPence });
-    const result = await payStartResult(response, expectedTotalPence, async () => {
-      const now = await loadPayPlan(lotIds);
-      return now.kind === "ok" ? now.plan : null;
-    });
-    if (result.kind === "redirect") revalidatePath(CLIENT_ROUTES.purchases);
-    return result;
+    try {
+      const response = await postPay({ lotIds, expectedTotalPence });
+      const result = await payStartResult(response, expectedTotalPence, async () => {
+        const now = await loadPayPlan(lotIds);
+        return now.kind === "ok" ? now.plan : null;
+      });
+      if (result.kind === "redirect") revalidatePath(CLIENT_ROUTES.purchases);
+      return result;
+    } catch {
+      // A failure on our side before an answer: nothing was opened, so the page is read again.
+      return { kind: "failed", message: PAY_COPY.startFailed, refresh: true };
+    }
   });
 }

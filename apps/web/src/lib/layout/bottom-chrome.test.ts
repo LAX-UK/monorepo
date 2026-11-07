@@ -28,6 +28,8 @@ describe("bottom-chrome", () => {
     expect(isFixedPayBarRoute("/purchases/pay")).toBe(true);
     expect(isFixedPayBarRoute("/purchases/checkout/abc-123")).toBe(false);
     expect(isFixedPayBarRoute("/purchases")).toBe(false);
+    // The tab bar yields only while the page's own bar is mounted, not on every state of the page.
+    expect(isHideDashboardTabBarRoute("/purchases/pay")).toBe(false);
     expect(isHideDashboardTabBarRoute("/selling/new")).toBe(true);
     expect(isHideDashboardTabBarRoute("/selling/consignments/abc-123")).toBe(true);
     expect(isHideDashboardTabBarRoute("/selling/consignments")).toBe(false);

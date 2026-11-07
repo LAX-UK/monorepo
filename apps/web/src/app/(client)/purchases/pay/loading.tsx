@@ -1,5 +1,5 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { Skeleton } from "@auction/ui/lax";
+import { Skeleton, pageTitleClass } from "@auction/ui/lax";
 
 /** The Pay page while its plan is read: the title at once, then the lots and the payment. */
 export default function PayLoading() {
@@ -7,7 +7,7 @@ export default function PayLoading() {
     <DashboardPage>
       <output aria-label="Working out your payment" className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="font-lax-display text-lax-28 font-semibold text-lax-fg">Pay</h1>
+          <h1 className={pageTitleClass}>Pay</h1>
           <Skeleton className="h-4 w-56" />
         </div>
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">

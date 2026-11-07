@@ -52,6 +52,39 @@ const REFUSAL: Readonly<Record<string, { message: string; refresh: boolean }>> =
     message: "Paying is paused for a moment. Nothing was charged. Try again shortly.",
     refresh: false,
   },
+  identity_verification_required: {
+    message: "Verify your identity to pay. You can pay as soon as it is verified.",
+    refresh: true,
+  },
+  organisation_under_review: {
+    message: "We're still checking your organisation's details. You can pay once we have.",
+    refresh: true,
+  },
+  organisation_closed: {
+    message: "This organisation can't make payments. Contact client services and we'll help.",
+    refresh: true,
+  },
+  pay_plan_unavailable: {
+    message: "We couldn't check this payment just now. Nothing was charged. Try again in a moment.",
+    refresh: true,
+  },
+  payment_in_progress_elsewhere: {
+    message:
+      "A payment for this is already open. Finish it on the secure payment page, or try again later.",
+    refresh: true,
+  },
+  pay_several_empty: {
+    message: "Choose at least one invoice to pay.",
+    refresh: true,
+  },
+  pay_several_too_many: {
+    message: "Choose up to 20 invoices at a time.",
+    refresh: true,
+  },
+  pay_several_duplicate: {
+    message: "An invoice was chosen twice. Check the list and pay again.",
+    refresh: true,
+  },
   onboarding_required: {
     message: "Finish setting up your account before you pay.",
     refresh: true,

@@ -1,31 +1,34 @@
 import { WorkspacePanel } from "@/components/dashboard/primitives/workspace-panel";
 import { PAY_COPY } from "@/lib/pay/pay-copy";
-import type { PayAction, PayMoneyVm } from "@/lib/pay/pay-page.vm";
-import { TextLink } from "@auction/ui/lax";
+import type { PayAction, PayMoneyVm, PayPageVm } from "@/lib/pay/pay-page.vm";
+import { Button, TextLink } from "@auction/ui/lax";
 import Link from "next/link";
 import { PayActionButton } from "./pay-action-button";
 
 /**
  * The money as the invoice states it, who it is from, how it is paid and the one action. Every
- * figure was sent by the server; the page only sets them out.
+ * figure was sent by the server; the page only sets them out. While a check is open the rail
+ * shows what Pay will be, disabled with the reason; the step that clears it is in the notice.
  */
 export function PayPaymentPanel({
   money,
   howYouPay,
   action,
+  railPay,
   actionNote,
 }: {
   money: PayMoneyVm;
   howYouPay: readonly string[];
   action: PayAction | null;
+  railPay: PayPageVm["railPay"];
   actionNote: string | null;
 }) {
   const pays = action?.kind === "pay";
   return (
     <WorkspacePanel title={PAY_COPY.panelPayment}>
       <dl className="flex flex-col gap-2 text-lax-14">
-        {money.lines.map((line) => (
-          <div key={line.label} className="flex justify-between gap-4">
+        {money.lines.map((line, index) => (
+          <div key={`${index}-${line.label}`} className="flex justify-between gap-4">
             <dt className="text-lax-muted">{line.label}</dt>
             <dd className="text-right tabular-nums text-lax-fg">{line.amount}</dd>
           </div>
@@ -48,6 +51,22 @@ export function PayPaymentPanel({
               {line}
             </p>
           ))}
+        </div>
+      ) : null}
+      {railPay ? (
+        <div className="mt-5 max-lg:hidden">
+          <Button
+            variant="primary"
+            size="lg"
+            className="w-full"
+            disabledReason={railPay.reason}
+            aria-describedby="pay-rail-reason"
+          >
+            {railPay.label}
+          </Button>
+          <p id="pay-rail-reason" className="mt-3 text-lax-13 text-lax-muted">
+            {railPay.reason}
+          </p>
         </div>
       ) : null}
       {action && pays ? (

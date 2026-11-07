@@ -1,10 +1,20 @@
 import type { PayPlan, PayPlanGate } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { type PayPageVm, buildPayPageVm } from "./pay-page.vm";
+import { type PayLotDetails, type PayPageVm, buildPayPageVm } from "./pay-page.vm";
 import { LOT_A, LOT_B, LOT_C, NOW, payable, planOf } from "./pay-plan-fixtures.test-util";
 
 const RETURN_TO = "/purchases/pay?lots=a";
-const build = (plan: PayPlan): PayPageVm => buildPayPageVm(plan, NOW, RETURN_TO);
+const CONTACT = "mailto:settlements@lax.bid";
+const build = (
+  plan: PayPlan,
+  extra: { returned?: "cancelled" | null; details?: Record<string, PayLotDetails> } = {},
+): PayPageVm =>
+  buildPayPageVm(plan, NOW, {
+    returnTo: RETURN_TO,
+    contactHref: CONTACT,
+    returned: extra.returned ?? null,
+    details: extra.details ?? {},
+  });
 
 const one = () => planOf([payable(LOT_A, 190_000, 47_500, { title: "Coastal Notation" })]);
 
@@ -16,7 +26,25 @@ describe("one lot, ready to pay", () => {
     expect(vm.title).toBe("Pay for Coastal Notation");
     expect(vm.subtitle).toBe("Lot 12 · Winter sale");
     expect(vm.badge).toEqual({ label: "Due Fri 13 Nov", tone: "warning", shape: "dot" });
-    expect(vm.lots[0]?.due).toBe("Due by Fri 13 Nov");
+    expect(vm.money?.due).toBe("Due by Fri 13 Nov");
+  });
+
+  it("says the lot's reference, due day and total once: in the title row and the payment panel", () => {
+    expect(vm.lots[0]?.detail).toBeNull();
+    expect(vm.back).toEqual({ label: "Back to purchase", href: `/purchases/${LOT_A}` });
+  });
+
+  it("adds the day it was won, and who won it for an organisation", () => {
+    const details = {
+      [LOT_A]: { image: null, wonAt: new Date("2026-10-30T14:00:00Z"), wonBy: "Ada Lovelace" },
+    };
+    expect(build(one(), { details }).subtitle).toBe("Lot 12 · Winter sale · Won Fri 30 Oct");
+    const org = planOf([payable(LOT_A, 190_000, 47_500, { title: "Coastal Notation" })], {
+      account: { legalEntityId: "le-2", kind: "organisation", name: "Northbank Gallery" },
+    });
+    expect(build(org, { details }).subtitle).toBe(
+      "Lot 12 · Winter sale · Won Fri 30 Oct · Won by Ada Lovelace for Northbank Gallery",
+    );
   });
 
   it("shows the invoice's own lines and the server's total", () => {
@@ -104,6 +132,12 @@ describe("several lots, one payment", () => {
   it("titles the payment by its invoices and dates it by the first due", () => {
     expect(vm.title).toBe("Pay 2 invoices");
     expect(vm.subtitle).toBe("One payment for 2 lots you won");
+    expect(vm.back).toEqual({ label: "Back to purchases", href: "/purchases" });
+    expect(vm.lots[0]?.detail).toEqual({
+      subtitle: "Lot 12 · Winter sale",
+      due: "Due by Fri 13 Nov",
+      total: "£1,250.00",
+    });
     expect(vm.badge?.label).toBe("First due Wed 11 Nov");
     expect(vm.money?.due).toBe("Due by Wed 11 Nov");
   });
@@ -159,9 +193,14 @@ describe("an overdue invoice", () => {
       planOf([payable(LOT_A, 100_000, 25_000, { overdue: true, dueAt: "2026-11-04T23:59:59Z" })]),
     );
     expect(vm.badge).toEqual({ label: "Overdue since Wed 4 Nov", tone: "danger", shape: "alert" });
-    expect(vm.lots[0]?.due).toBe("Was due Wed 4 Nov");
     expect(vm.money?.due).toBe("Was due Wed 4 Nov");
     expect(vm.action?.kind).toBe("pay");
+    expect(vm.notices[0]).toEqual({
+      tone: "danger",
+      title: "Payment was due on Wed 4 Nov. Please pay now.",
+      detail: "If something is stopping you, contact settlements and we'll help.",
+      action: { label: "Contact settlements", href: CONTACT },
+    });
     expect(JSON.stringify(vm)).not.toMatch(/fee|penalt|interest|legal/i);
   });
 });
@@ -309,8 +348,9 @@ describe("lots left out of the payment", () => {
     expect(vm.notices).toEqual([
       {
         tone: "info",
-        title: "One lot in this link isn't in this payment",
-        detail: "1 was won for another account. The rest are below.",
+        title: "One lot in this link isn't yours to pay",
+        detail:
+          "It was won for another account, or it's already paid. We've left it out; the rest are below.",
       },
     ]);
   });
@@ -347,7 +387,13 @@ describe("nothing in the link can be paid", () => {
   });
 
   it("treats a payment already in another group as being paid", () => {
-    expect(none([{ lotId: LOT_A, reason: "being_paid" }]).state).toBe("confirming");
+    const open = none([{ lotId: LOT_A, reason: "being_paid" }]);
+    expect(open.state).toBe("confirming");
+    expect(open.notices[0]?.title).toBe("A payment for this is already open");
+    expect(open.notices[0]?.detail).toBe(
+      "Finish it on the secure payment page, or try again later.",
+    );
+    expect(JSON.stringify(open)).not.toMatch(/Confirming your payment/);
   });
 
   it("holds when every lot waits on a review, with no way to pay", () => {
@@ -386,5 +432,56 @@ describe("nothing in the link can be paid", () => {
   it("is empty with no lots at all", () => {
     expect(none([]).state).toBe("empty");
     expect(none([]).title).toBe("Pay");
+  });
+});
+
+describe("nothing to pay: why", () => {
+  const empty = (reason: PayPlan["leftOut"][number]["reason"]) =>
+    build(planOf([], { leftOut: [{ lotId: LOT_A, reason }] })).empty?.description ?? "";
+
+  it("gives cancelled, voided and refunded lots their own accurate words", () => {
+    expect(empty("cancelled")).toMatch(/did not go ahead/);
+    expect(empty("voided")).toMatch(/invoice for these lots was cancelled/);
+    expect(empty("refunded")).toMatch(/were refunded/);
+    expect(empty("cancelled")).not.toMatch(/another account/);
+  });
+});
+
+describe("a return from the payment page", () => {
+  it("says a payment that was not completed charged nothing, above everything else", () => {
+    const vm = build(one(), { returned: "cancelled" });
+    expect(vm.notices[0]).toEqual({
+      tone: "danger",
+      title: "Payment not completed",
+      detail:
+        "Nothing was charged. Your bank's check may not have finished, or the card was declined. You can try again.",
+    });
+    expect(vm.action?.kind).toBe("pay");
+  });
+
+  it("says it on a page with nothing to pay too", () => {
+    const vm = build(planOf([], { leftOut: [{ lotId: LOT_A, reason: "paid" }] }), {
+      returned: "cancelled",
+    });
+    expect(vm.notices[0]?.title).toBe("Payment not completed");
+  });
+});
+
+describe("identity: the rail shows Pay disabled, with why", () => {
+  it("offers a disabled Pay on desktop and the step that clears it", () => {
+    const vm = build(
+      planOf([payable(LOT_A, 190_000, 47_500)], {
+        gate: { kind: "held", reason: "identity_verification_required" },
+      }),
+    );
+    expect(vm.railPay).toEqual({ label: "Pay £2,375.00", reason: "Verify your identity to pay" });
+    expect(vm.action?.kind).toBe("link");
+  });
+
+  it("shows no disabled Pay for any other check", () => {
+    const vm = build(
+      planOf([payable(LOT_A, 190_000, 47_500)], { gate: { kind: "finance_check" } }),
+    );
+    expect(vm.railPay).toBeNull();
   });
 });

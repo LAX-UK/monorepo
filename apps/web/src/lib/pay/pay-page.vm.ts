@@ -38,14 +38,29 @@ export type PayLine = { label: string; amount: string };
 export type PayLotVm = {
   lotId: string;
   title: string;
-  /** "Lot 12 · Winter sale"; empty parts are left out. */
-  subtitle: string;
-  /** "Due by Fri 13 Nov", or "Was due Fri 13 Nov" once overdue. */
-  due: string;
-  overdue: boolean;
-  total: string;
+  image: string | null;
+  /**
+   * What only a payment of several lots needs to say about each: the lot's reference, the day it
+   * is due and its invoice total. For a single lot the title row and the payment panel say them
+   * once, so they are `null` here.
+   */
+  detail: { subtitle: string; due: string; total: string } | null;
   /** The purchase page of the lot. */
   href: string;
+};
+
+/** What the purchases read knows about a lot that the plan does not. */
+export type PayLotDetails = { image: string | null; wonAt: Date | null; wonBy: string | null };
+
+/** What the page needs besides the plan. */
+export type PayVmContext = {
+  /** This page's own address, for the steps that return to it. */
+  returnTo: string;
+  /** Where "Contact settlements" goes. */
+  contactHref: string;
+  /** The payment page sent the person back without paying. */
+  returned: "cancelled" | null;
+  details: Readonly<Record<string, PayLotDetails>>;
 };
 
 export type PayMoneyVm = {
@@ -91,8 +106,12 @@ export type PayPageVm = {
   /** How the payment is taken, said once, only while Pay is offered. */
   howYouPay: string[];
   action: PayAction | null;
+  /** A Pay button that cannot be pressed yet, with why (the desktop rail while identity is open). */
+  railPay: { label: string; reason: string } | null;
   /** The sentence under the action. */
   actionNote: string | null;
+  /** A way back to where the person came from. */
+  back: { label: string; href: string } | null;
   empty: PayEmptyVm | null;
 };
 
@@ -113,15 +132,24 @@ function lineVm(line: InvoiceLine): PayLine {
   return { label: line.label, amount: formatGbp(line.amountPence) };
 }
 
-function lotVm(payable: PayPlanPayable, now: Date): PayLotVm {
+function lotVm(
+  payable: PayPlanPayable,
+  now: Date,
+  several: boolean,
+  details: PayVmContext["details"],
+): PayLotVm {
   const due = dayLabel(payable.dueAt, now);
   return {
     lotId: payable.lotId,
     title: payable.title,
-    subtitle: lotSubtitle(payable),
-    due: payable.overdue ? PAY_COPY.wasDue(due) : PAY_COPY.dueBy(due),
-    overdue: payable.overdue,
-    total: formatGbp(payable.totalPence),
+    image: details[payable.lotId]?.image ?? null,
+    detail: several
+      ? {
+          subtitle: lotSubtitle(payable),
+          due: payable.overdue ? PAY_COPY.wasDue(due) : PAY_COPY.dueBy(due),
+          total: formatGbp(payable.totalPence),
+        }
+      : null,
     href: `${CLIENT_ROUTES.purchases}/${payable.lotId}`,
   };
 }
@@ -154,15 +182,26 @@ function moneyVm(plan: PayPlan, now: Date, totalLabel: string): PayMoneyVm | nul
   };
 }
 
-function heading(plan: PayPlan): { title: string; subtitle: string | null } {
+function heading(
+  plan: PayPlan,
+  now: Date,
+  details: PayVmContext["details"],
+): { title: string; subtitle: string | null } {
   const [only] = plan.payable;
   const organisation = plan.account.kind === "organisation" ? plan.account.name : null;
   if (plan.payable.length === 0) return { title: PAY_COPY.titleEmpty, subtitle: null };
   if (plan.payable.length === 1 && only) {
+    const known = details[only.lotId];
+    const wonAt = known?.wonAt ? PAY_COPY.wonOn(dayLabel(known.wonAt.toISOString(), now)) : null;
+    const who = !organisation
+      ? null
+      : known?.wonBy
+        ? PAY_COPY.wonByFor(known.wonBy, organisation)
+        : PAY_COPY.payingFor(organisation);
     return {
       title: PAY_COPY.titleOne(only.title),
       subtitle:
-        [lotSubtitle(only), organisation ? PAY_COPY.payingFor(organisation) : null]
+        [lotSubtitle(only), wonAt, who]
           .filter((part): part is string => Boolean(part))
           .join(" · ") || null,
     };
@@ -296,6 +335,14 @@ function leftOutDetail(leftOut: PayPlan["leftOut"]): string {
 function leftOutNotice(leftOut: PayPlan["leftOut"]): PayNotice | null {
   if (leftOut.length === 0) return null;
   const one = leftOut.length === 1;
+  // The usual case of a link with someone else's lot in it has its own approved wording.
+  if (leftOut.every((entry) => entry.reason === "other_account" || entry.reason === "paid")) {
+    return {
+      tone: "info",
+      title: one ? PAY_COPY.notYoursOne : PAY_COPY.notYoursMany(leftOut.length),
+      detail: one ? PAY_COPY.notYoursDetailOne : PAY_COPY.notYoursDetailMany,
+    };
+  }
   return {
     tone: "info",
     title: one
@@ -321,15 +368,29 @@ export function blankPayVm(): PayPageVm {
     money: null,
     howYouPay: [],
     action: null,
+    railPay: null,
     actionNote: null,
+    back: null,
     empty: null,
   };
+}
+
+/** What an empty page says, by why the lots are not payable. */
+function emptyDescription(leftOut: PayPlan["leftOut"]): string {
+  const only = (reason: PayPlanLeftOutReason) => leftOut.every((entry) => entry.reason === reason);
+  if (leftOut.length === 0) return PAY_COPY.emptyNotYours;
+  if (only("paid")) return PAY_COPY.emptyAllPaid;
+  if (only("cancelled")) return PAY_COPY.emptyCancelled;
+  if (only("voided")) return PAY_COPY.emptyVoided;
+  if (only("refunded")) return PAY_COPY.emptyRefunded;
+  if (has(leftOut, "other_account")) return PAY_COPY.emptyNotYours;
+  return PAY_COPY.emptyDone;
 }
 
 /** The page when no lot of the link can be paid now: why, in one state. */
 function nothingPayable(plan: PayPlan, returnTo: string): PayPageVm {
   const base = blankPayVm();
-  if (has(plan.leftOut, "being_confirmed", "being_paid")) {
+  if (has(plan.leftOut, "being_confirmed")) {
     return {
       ...base,
       state: "confirming",
@@ -339,6 +400,22 @@ function nothingPayable(plan: PayPlan, returnTo: string): PayPageVm {
           tone: "info",
           title: PAY_COPY.confirmingTitle,
           detail: PAY_COPY.confirmingBody,
+          action: { label: PAY_COPY.refresh, href: returnTo },
+        },
+      ],
+    };
+  }
+  if (has(plan.leftOut, "being_paid")) {
+    // Another payment holds these lots: not a payment being confirmed, so it says only that.
+    return {
+      ...base,
+      state: "confirming",
+      badge: { label: PAY_COPY.openBadge, tone: "info", shape: "dot" },
+      notices: [
+        {
+          tone: "info",
+          title: PAY_COPY.openTitle,
+          detail: PAY_COPY.openBody,
           action: { label: PAY_COPY.refresh, href: returnTo },
         },
       ],
@@ -374,14 +451,12 @@ function nothingPayable(plan: PayPlan, returnTo: string): PayPageVm {
       ],
     };
   }
-  const everyPaid =
-    plan.leftOut.length > 0 && plan.leftOut.every((entry) => entry.reason === "paid");
   return {
     ...base,
     empty: {
       illustration: "parcel",
       title: PAY_COPY.emptyTitle,
-      description: everyPaid ? PAY_COPY.emptyAllPaid : PAY_COPY.emptyNotYours,
+      description: emptyDescription(plan.leftOut),
       action: PURCHASES_LINK,
     },
   };
@@ -439,24 +514,55 @@ function payActionFor(plan: PayPlan): {
   };
 }
 
+/** The notice for a payment the payment page sent the person back from. */
+function returnedNotice(returned: PayVmContext["returned"]): PayNotice[] {
+  return returned === "cancelled"
+    ? [{ tone: "danger", title: PAY_COPY.notCompletedTitle, detail: PAY_COPY.notCompletedBody }]
+    : [];
+}
+
+/** The overdue invoice's notice: factual, with the date and an offer of help, no consequences. */
+function overdueNotice(plan: PayPlan, now: Date, contactHref: string): PayNotice[] {
+  if (!plan.payable.some((p) => p.overdue) || plan.firstDueAt === null) return [];
+  return [
+    {
+      tone: "danger",
+      title: PAY_COPY.overdueTitle(dayLabel(plan.firstDueAt, now)),
+      detail: PAY_COPY.overdueBody,
+      action: { label: PAY_COPY.contactSettlements, href: contactHref },
+    },
+  ];
+}
+
 /**
  * Everything the Pay page shows, from the server's plan alone. The figures are the plan's, only
  * formatted; nothing is added up here. A check that stands in the way leaves no way to pay: the
  * action becomes the one step that clears it.
  */
-export function buildPayPageVm(plan: PayPlan, now: Date, returnTo: string): PayPageVm {
-  if (plan.payable.length === 0) return nothingPayable(plan, returnTo);
+export function buildPayPageVm(plan: PayPlan, now: Date, context: PayVmContext): PayPageVm {
+  const { returnTo, details } = context;
+  const returned = returnedNotice(context.returned);
+  if (plan.payable.length === 0) {
+    const vm = nothingPayable(plan, returnTo);
+    return { ...vm, notices: [...returned, ...vm.notices] };
+  }
 
-  const { title, subtitle } = heading(plan);
-  const lots = plan.payable.map((p) => lotVm(p, now));
+  const several = plan.payable.length > 1;
+  const { title, subtitle } = heading(plan, now, details);
+  const [only] = plan.payable;
   const leftOut = leftOutNotice(plan.leftOut);
   const common = {
     title,
     subtitle,
-    lots,
+    lots: plan.payable.map((p) => lotVm(p, now, several, details)),
     empty: null,
     actionNote: null,
     howYouPay: [] as string[],
+    railPay: null as PayPageVm["railPay"],
+    back:
+      !several && only
+        ? { label: PAY_COPY.backToPurchase, href: `${CLIENT_ROUTES.purchases}/${only.lotId}` }
+        : { label: PAY_COPY.backToPurchases, href: CLIENT_ROUTES.purchases },
   };
 
   if (plan.gate.kind === "not_payer") {
@@ -466,6 +572,7 @@ export function buildPayPageVm(plan: PayPlan, now: Date, returnTo: string): PayP
       state: "informed",
       badge: { label: PAY_COPY.awaitingBadge, tone: "neutral", shape: "ring" },
       notices: [
+        ...returned,
         { tone: "info", title: copy.title, detail: copy.detail },
         ...(leftOut ? [leftOut] : []),
       ],
@@ -476,12 +583,17 @@ export function buildPayPageVm(plan: PayPlan, now: Date, returnTo: string): PayP
 
   if (plan.gate.kind !== "clear") {
     const outcome = gateOutcome(plan.gate, returnTo);
+    const identity =
+      plan.gate.kind === "held" && plan.gate.reason === "identity_verification_required";
     return {
       ...common,
       state: "held",
       badge: outcome.badge,
-      notices: [outcome.notice, ...(leftOut ? [leftOut] : [])],
+      notices: [...returned, outcome.notice, ...(leftOut ? [leftOut] : [])],
       money: moneyVm(plan, now, PAY_COPY.totalToPay),
+      railPay: identity
+        ? { label: PAY_COPY.payLabel(formatGbp(plan.totals.pence)), reason: PAY_COPY.verifyToPay }
+        : null,
       action: outcome.notice.action
         ? { kind: "link", label: outcome.notice.action.label, href: outcome.notice.action.href }
         : null,
@@ -493,7 +605,12 @@ export function buildPayPageVm(plan: PayPlan, now: Date, returnTo: string): PayP
     ...common,
     state: "ready",
     badge: readyBadge(plan, now),
-    notices: [...(pay.notice ? [pay.notice] : []), ...(leftOut ? [leftOut] : [])],
+    notices: [
+      ...returned,
+      ...overdueNotice(plan, now, context.contactHref),
+      ...(pay.notice ? [pay.notice] : []),
+      ...(leftOut ? [leftOut] : []),
+    ],
     money: moneyVm(plan, now, PAY_COPY.totalToPay),
     howYouPay: pay.how,
     action: pay.action,

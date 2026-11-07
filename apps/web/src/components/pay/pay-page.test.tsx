@@ -16,7 +16,16 @@ vi.mock("@/lib/pay/pay.actions", () => ({
 import { PayPage } from "./pay-page";
 
 const draw = (plan: PayPlan) =>
-  render(<PayPage vm={buildPayPageVm(plan, NOW, "/purchases/pay?lots=a")} imageByLot={{}} />);
+  render(
+    <PayPage
+      vm={buildPayPageVm(plan, NOW, {
+        returnTo: "/purchases/pay?lots=a",
+        contactHref: "/contact",
+        returned: null,
+        details: {},
+      })}
+    />,
+  );
 
 const assign = vi.fn();
 beforeEach(() => {
@@ -102,7 +111,7 @@ describe("the Pay page, ready to pay", () => {
     const { container } = draw(ready());
     const bar = container.querySelector("[data-pay-phone-bar]") as HTMLElement;
     expect(within(bar).getByText("£2,375.00")).toBeInTheDocument();
-    expect(within(bar).getByRole("button", { name: "Pay" })).toBeInTheDocument();
+    expect(within(bar).getByRole("button", { name: "Pay £2,375.00" })).toBeInTheDocument();
   });
 });
 
@@ -143,9 +152,14 @@ describe("the Pay page, held", () => {
     ["finance check", { kind: "finance_check" } as const],
     ["organisation review", { kind: "held", reason: "organisation_under_review" } as const],
     ["setup", { kind: "onboarding_required" } as const],
-  ])("never shows a Pay button for %s, and keeps the money visible", (_name, gate) => {
+  ])("never offers a way to pay for %s, and keeps the money visible", (_name, gate) => {
     const { container } = held(gate);
-    expect(screen.queryByRole("button", { name: /^Pay/ })).toBeNull();
+    // At most a Pay that cannot be pressed (identity); never one that can.
+    for (const button of screen.queryAllByRole("button", { name: /^Pay/ })) {
+      expect(button).toHaveAttribute("aria-disabled", "true");
+      fireEvent.click(button);
+    }
+    expect(payAction).not.toHaveBeenCalled();
     expect(screen.queryByRole("button", { name: /Opening/ })).toBeNull();
     expect(screen.getByText("£2,375.00", { selector: "dd" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toBeInTheDocument();
@@ -160,6 +174,19 @@ describe("the Pay page, held", () => {
       expect(link).toHaveAttribute("href", expect.stringContaining("/verify-identity?next="));
     }
     expect(container.querySelector("[data-pay-phone-bar]")).not.toBeNull();
+    // On a phone the bar offers it, so the notice does not show it a second time.
+    expect(links[0]?.className).toContain("max-lg:hidden");
+    expect(links[1]?.className).not.toContain("max-lg:hidden");
+  });
+
+  it("shows Pay disabled in the rail while identity is open, with the reason beside it", () => {
+    held({ kind: "held", reason: "identity_verification_required" });
+    const pay = screen.getByRole("button", { name: "Pay £2,375.00" });
+    expect(pay).toHaveAttribute("aria-disabled", "true");
+    expect(pay).toHaveAttribute("aria-describedby", "pay-rail-reason");
+    expect(
+      screen.getByText("Verify your identity to pay", { selector: "#pay-rail-reason" }),
+    ).toBeInTheDocument();
   });
 
   it("has no phone bar when there is no next step to take", () => {
@@ -214,7 +241,36 @@ describe("the Pay page, other states", () => {
         leftOut: [{ lotId: LOT_B, reason: "other_account" }],
       }),
     );
-    expect(screen.getByText("One lot in this link isn't in this payment")).toBeInTheDocument();
+    expect(screen.getByText("One lot in this link isn't yours to pay")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Pay £1,250.00/ }).length).toBeGreaterThan(0);
+  });
+});
+
+describe("the Pay page, a payment already open", () => {
+  it("says so, and that it is finished on the payment page", () => {
+    draw(planOf([], { leftOut: [{ lotId: LOT_A, reason: "being_paid" }] }));
+    expect(screen.getByText("A payment for this is already open")).toBeInTheDocument();
+    expect(screen.queryByText("Confirming your payment")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Pay/ })).toBeNull();
+  });
+});
+
+describe("the Pay page, a single lot", () => {
+  it("says the due day and the total once each, not again in the lot row", () => {
+    draw(ready());
+    const lot = screen.getByRole("region", { name: "Lot" });
+    expect(within(lot).queryByText(/Due by/)).toBeNull();
+    expect(within(lot).queryByText("£2,375.00")).toBeNull();
+    expect(screen.getAllByText("£2,375.00", { selector: "dd" })).toHaveLength(1);
+    expect(screen.getByRole("link", { name: /Back to purchase/ })).toHaveAttribute(
+      "href",
+      `/purchases/${LOT_A}`,
+    );
+  });
+
+  it("puts the phone bar's button name on the amount", () => {
+    const { container } = draw(ready());
+    const bar = container.querySelector("[data-pay-phone-bar]") as HTMLElement;
+    expect(within(bar).getByRole("button", { name: "Pay £2,375.00" })).toHaveTextContent("Pay");
   });
 });

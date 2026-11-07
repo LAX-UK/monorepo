@@ -85,6 +85,14 @@ describe("payStartResult", () => {
       "pay_several_mixed_currency",
       "pay_several_conflict",
       "pay_several_unavailable",
+      "identity_verification_required",
+      "organisation_under_review",
+      "organisation_closed",
+      "pay_plan_unavailable",
+      "payment_in_progress_elsewhere",
+      "pay_several_empty",
+      "pay_several_too_many",
+      "pay_several_duplicate",
       "onboarding_required",
       "insufficient_entity_role",
       "account_suspended",
@@ -96,6 +104,15 @@ describe("payStartResult", () => {
       const message = result.kind === "failed" ? result.message : "";
       expect(message, error).not.toMatch(/pay_several|_/);
       expect(message.length, error).toBeGreaterThan(10);
+      expect(result.kind === "failed" && result.refresh, error).toBe(
+        ![
+          "pay_several_below_minimum",
+          "pay_several_mixed_currency",
+          "pay_several_unavailable",
+          "account_suspended",
+          "bidding_not_allowed_for_role",
+        ].includes(error),
+      );
     }
   });
 

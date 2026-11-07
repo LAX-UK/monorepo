@@ -58,9 +58,11 @@ export function isFixedPayBarRoute(pathname: string): boolean {
   return pathname === "/purchases/pay";
 }
 
-/** Routes that hide the dashboard tab bar while mounted. */
+/**
+ * Routes that hide the dashboard tab bar for as long as they are open. The Pay page is not one:
+ * its phone bar hides the tab bar only while it is shown.
+ */
 export function isHideDashboardTabBarRoute(pathname: string): boolean {
-  if (isFixedPayBarRoute(pathname)) return true;
   if (pathname.startsWith("/selling/new")) return true;
   if (/^\/selling\/consignments\/[^/]+$/.test(pathname)) return true;
   return false;

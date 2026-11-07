@@ -67,8 +67,7 @@ export const PAY_COPY = {
   continueBar: "Continue",
   continueToBankTransfer: "Continue to bank transfer",
   opening: "Opening secure payment…",
-  tryAgain: "Try again",
-  underButton: "You finish on our secure payment page. Nothing is charged until you confirm there.",
+  underButton: "You finish on a secure payment page. Nothing is charged until you confirm there.",
   conditionsLine: "By paying you complete this purchase under the ",
   conditionsLink: "Conditions of Business",
   conditionsTail: " you accepted when you registered to bid.",
@@ -85,6 +84,34 @@ export const PAY_COPY = {
   planChangedLots: "The invoices in this payment have changed. Check them and pay again.",
   emptyTitle: "Nothing to pay",
   tooManyTitle: "Choose fewer invoices",
+  emptyCancelled:
+    "The sale of these lots did not go ahead, so there is nothing to pay. Your purchases show where each one stands.",
+  emptyVoided:
+    "The invoice for these lots was cancelled, so there is nothing to pay. Your purchases show where each one stands.",
+  emptyRefunded:
+    "These payments were refunded, so there is nothing left to pay. Your purchases show where each one stands.",
+  emptyDone:
+    "Nothing is left to pay on these lots: they are paid, cancelled or refunded. Your purchases show where each one stands.",
+  openTitle: "A payment for this is already open",
+  openBody: "Finish it on the secure payment page, or try again later.",
+  openBadge: "Payment open",
+  notYoursOne: "One lot in this link isn't yours to pay",
+  notYoursMany: (count: number) => `${count} lots in this link aren't yours to pay`,
+  notYoursDetailOne:
+    "It was won for another account, or it's already paid. We've left it out; the rest are below.",
+  notYoursDetailMany:
+    "They were won for another account, or are already paid. We've left them out; the rest are below.",
+  overdueTitle: (date: string) => `Payment was due on ${date}. Please pay now.`,
+  overdueBody: "If something is stopping you, contact settlements and we'll help.",
+  contactSettlements: "Contact settlements",
+  notCompletedTitle: "Payment not completed",
+  notCompletedBody:
+    "Nothing was charged. Your bank's check may not have finished, or the card was declined. You can try again.",
+  verifyToPay: "Verify your identity to pay",
+  backToPurchase: "Back to purchase",
+  backToPurchases: "Back to purchases",
+  wonOn: (date: string) => `Won ${date}`,
+  wonByFor: (member: string, organisation: string) => `Won by ${member} for ${organisation}`,
   emptyAllPaid:
     "Every invoice is paid. Lots you win appear in Purchases with their invoice, ready to pay here.",
   emptyNoLots:

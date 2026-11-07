@@ -39,7 +39,7 @@ describe("portfolioSettlementAttentionAction", () => {
   it("opens the Pay page for ordinary pending payments", () => {
     const action = portfolioSettlementAttentionAction(row());
     expect(action.href).toContain("/purchases/pay?lots=lot-1");
-    expect(action.label).toBe("Complete checkout");
+    expect(action.label).toBe("Pay now");
   });
 });
 
