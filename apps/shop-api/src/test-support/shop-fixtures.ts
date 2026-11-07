@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { Database } from "@auction/db";
 import {
   shopBasket,
@@ -22,6 +23,26 @@ export function requireDefined<T>(value: T | null | undefined, label: string): T
     throw new Error(`Missing ${label}`);
   }
   return value;
+}
+
+const CODE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const CODE_CHARS = `${CODE_LETTERS}0123456789`;
+
+function randomChars(alphabet: string, length: number): string {
+  const bytes = randomBytes(length);
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+}
+
+/**
+ * A register stock code no other test or earlier run can hold. The register enforces unique stock
+ * codes and the integration database is shared and long-lived, so a fixed or small-range number
+ * collides. The artist and collection parts are random too (about 10^10 series, times 9999
+ * numbers). The artist part is three letters, the collection four letters or digits.
+ */
+export function uniqueStockCode(kind: "original" | "print" = "original"): string {
+  const segment = kind === "original" ? "ORI" : "PRT";
+  const number = String(1 + (randomBytes(2).readUInt16BE(0) % 9999)).padStart(4, "0");
+  return `LAX-${segment}-${randomChars(CODE_LETTERS, 3)}-${randomChars(CODE_CHARS, 4)}-26-${number}`;
 }
 
 export function integrationSuffix(label: string): string {
