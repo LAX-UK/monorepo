@@ -29,7 +29,6 @@ export type CrmDealNamingFacts = {
 
 export interface CrmDealNamingReader {
   forLotWon(input: { lotId: string; userId: string }): Promise<CrmDealNamingFacts>;
-  forShopEnquiry(input: { artworkId: string; subjectId: string }): Promise<CrmDealNamingFacts>;
   /** The order's first line names the deal; `lineCount` is the paid event's count of lines. */
   forShopOrder(input: {
     orderId: string;
@@ -82,10 +81,6 @@ export function createDrizzleCrmDealNamingReader(db: Database): CrmDealNamingRea
   return {
     async forLotWon({ lotId, userId }) {
       return facts(await bidName(userId), await registerEntry("bid_lot", lotId));
-    },
-
-    async forShopEnquiry({ artworkId, subjectId }) {
-      return facts(await shopName(subjectId), await registerEntry("shop_artwork", artworkId));
     },
 
     async forShopOrder({ orderId, subjectId, lineCount }) {

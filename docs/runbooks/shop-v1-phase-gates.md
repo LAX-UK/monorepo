@@ -14,7 +14,6 @@ Phased delivery uses feature flags on `shop-api` (and related deployables). Do n
 | `SHOP_ORIGINALS_ENABLED` | 4 | Original sale admin workflow |
 | `SHOP_MERCHANDISE_ENABLED` | 4 | Merchandise catalogue, basket/checkout for variants, admin stock adjust |
 | `SHOP_ZOHO_CATALOGUE_SYNC_ENABLED` (worker) | 1 | `shop.artwork.created` → Zoho Products |
-| `ZOHO_CRM_DEAL_STAGE_SHOP_ENQUIRY` (worker) | 4 | Enquiry deals stage (do not reuse shop-paid stage) |
 
 ## Phase 1 deploy (migrations)
 
@@ -105,7 +104,7 @@ Then on shop-api (local dev uses `tsx`; production image uses built CLI under `d
 
 - Migrations `0190`–`0191` applied with the rest of the Phase 1 chain (`0182`–`0194`); post-audit **`0202`** (pending sale-authority request uniqueness), **`0203`** (artist identity subject), **`0204`** (`shop_product_variant` `reserved <= on_hand` CHECK).
 - Shop-api integration gate (no skips): `node scripts/ci/run-shop-v1-postgres-integration.mjs` with Postgres 16 and `MIGRATION_TEST_DATABASE_URL` + `DATABASE_URL_SHOP` set (see CI job `shop-v1-postgres-integration`).
-- Enquiry → Zoho Deal mapping enabled for `shop.artwork.interest_registered` with `intent=enquiry` and `ZOHO_CRM_DEAL_STAGE_SHOP_ENQUIRY` configured.
+- A signed-in person's enquiry about an original (`shop.artwork.interest_registered` with `intent=enquiry`) creates or updates a Zoho **Lead**, not a Deal, once the event is in `ZOHO_CRM_ENABLED_EVENT_TYPES`. Staff convert the Lead by hand. No stage variable applies. The worker role reads the enquiry through column grants on `shop_artwork` and `shop_artwork_interest` (`pnpm --filter @auction/db db:roles`).
 - Acceptance tests **#6** (original sale) and merchandise smoke.
 
 ## Phase 1 enable blockers (test / staging)
@@ -164,7 +163,7 @@ Enable staff-operations flags on test **one at a time** (payouts → third-party
 | --- | --- | --- |
 | Real cancellation / VAT / fulfilment prices | TEST placeholders on test `shop-api` only (see **Test environment configuration** below) | Legal, accountant, operations |
 | `isPersonalisedGoods` column | defaults `false` | Catalogue schema + legal exemption config |
-| Zoho order financials | stub path; enquiry deal optional | Wire `crm-shop-record-sync-handler` financials |
+| Zoho order financials | stub path; an original enquiry creates a Lead, not a Deal | Wire `crm-shop-record-sync-handler` financials |
 | Customer dispatch/refund emails | partial wiring | Wire remaining templates |
 | `apps/shop-admin` screens | Operational MVP (lists, detail, forms); gaps: settings page, audit log UI, disputes UI, full catalogue editor | Harden UX and remaining screens per phase gates |
 | Payout ledger nullable `order_line_id` | non-order sources tracked | Confirm accounting before prod payouts |

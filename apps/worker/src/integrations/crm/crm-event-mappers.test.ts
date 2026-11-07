@@ -9,7 +9,6 @@ const ctx = {
   dealStagePaymentCaptured: "Closed Won",
   dealStagePaymentRefunded: "Closed Lost",
   dealStageShopPaid: "Closed Won",
-  dealStageShopEnquiry: "Qualification",
 };
 
 describe("mapDomainEventToCrmIntent", () => {
@@ -87,30 +86,114 @@ describe("mapDomainEventToCrmIntent", () => {
     });
   });
 
-  it("uses subject-specific deal entity id for shop original enquiries", () => {
+  describe("signed-in Shop original enquiry", () => {
     const artworkId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
     const subjectId = "subject-enquirer-1";
+    const interest = (intent: string) => ({
+      id: 10,
+      eventType: "shop.artwork.interest_registered",
+      aggregateId: artworkId,
+      schemaVersion: 1,
+      payload: { schemaVersion: 1, artworkId, identitySubjectId: subjectId, intent },
+    });
+    const shopEnquiry = {
+      email: "ann@example.com",
+      name: "Ann Mears",
+      phone: "+447700900123",
+      reference: "E-2001",
+      artworkTitle: "Blue Study",
+      artworkSlug: "blue-study",
+      stockCode: "LAX-ORI-MP-GAC-26-0037",
+    };
+
+    it("creates a Lead keyed by the account, never a Deal", () => {
+      const intent = mapDomainEventToCrmIntent(interest("enquiry"), ctx, { shopEnquiry });
+      expect(intent.kind).toBe("person_upsert");
+      if (intent.kind !== "person_upsert") return;
+      expect(intent.subjectId).toBe(subjectId);
+      expect(intent.email).toBe("ann@example.com");
+      expect(intent.fields).toMatchObject({
+        Email: "ann@example.com",
+        First_Name: "Ann",
+        Last_Name: "Mears",
+        Phone: "+447700900123",
+        Enquiry_Type: "Original",
+        [CRM_FIELD.enquiryReference]: "E-2001",
+        [CRM_FIELD.subjectExternalId]: subjectId,
+      });
+      expect(intent.createOnlyFields).toMatchObject({ Lead_Status: "New (Unassigned)" });
+      expect(JSON.stringify(intent)).not.toContain("shop-enquiry:");
+    });
+
+    it("names the original: stock code, lax.art link and title", () => {
+      const intent = mapDomainEventToCrmIntent(
+        interest("enquiry"),
+        { ...ctx, artPublicUrl: "https://lax.art/" },
+        { shopEnquiry },
+      );
+      if (intent.kind !== "person_upsert") throw new Error("expected person_upsert");
+      expect(intent.fields[CRM_FIELD.leadSourceDetailed]).toBe(
+        "LAX Shop enquiry: LAX-ORI-MP-GAC-26-0037 https://lax.art/artworks/blue-study Blue Study",
+      );
+    });
+
+    it("sends no link, not a relative one, when the lax.art origin is not set", () => {
+      const intent = mapDomainEventToCrmIntent(interest("enquiry"), ctx, { shopEnquiry });
+      if (intent.kind !== "person_upsert") throw new Error("expected person_upsert");
+      expect(intent.fields[CRM_FIELD.leadSourceDetailed]).toBe(
+        "LAX Shop enquiry: LAX-ORI-MP-GAC-26-0037 Blue Study",
+      );
+      expect(JSON.stringify(intent)).not.toContain("/artworks/");
+    });
+
+    it("sends no consent, so an existing opt-in is never overwritten", () => {
+      const intent = mapDomainEventToCrmIntent(interest("enquiry"), ctx, { shopEnquiry });
+      if (intent.kind !== "person_upsert") throw new Error("expected person_upsert");
+      expect(intent.fields).not.toHaveProperty(CRM_FIELD.emailOptOut);
+      expect(intent.fields).not.toHaveProperty(CRM_FIELD.consentMarketingOptIn);
+    });
+
+    it("skips when the sender or work is gone, and for notify-me interest", () => {
+      expect(mapDomainEventToCrmIntent(interest("enquiry"), ctx, { shopEnquiry: null })).toEqual({
+        kind: "skip",
+        reason: "shop_enquiry_not_found",
+      });
+      expect(mapDomainEventToCrmIntent(interest("notify_me"), ctx, { shopEnquiry })).toEqual({
+        kind: "skip",
+        reason: "interest_not_enquiry",
+      });
+    });
+  });
+
+  it("maps a guest Shop enquiry to a Lead through the guest lead event", () => {
     const intent = mapDomainEventToCrmIntent(
       {
-        id: 10,
-        eventType: "shop.artwork.interest_registered",
-        aggregateId: artworkId,
+        id: 11,
+        eventType: "shop.guest_lead.recorded",
+        aggregateId: "guest-1",
         schemaVersion: 1,
         payload: {
           schemaVersion: 1,
-          artworkId,
-          identitySubjectId: subjectId,
-          intent: "enquiry",
+          guestCustomerId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          leadSubjectId: "guest:1",
+          email: "guest@example.com",
+          name: "Gus Guest",
+          status: "enquired",
+          source: "art_enquiry",
+          marketingConsent: false,
+          marketingConsentAt: null,
+          marketingConsentVersion: null,
+          firstSeenAt: "2026-11-01T10:00:00Z",
+          lastSeenAt: "2026-11-01T10:00:00Z",
+          paidOrderCount: 0,
         },
       },
       ctx,
     );
-    expect(intent.kind).toBe("deal_upsert");
-    if (intent.kind === "deal_upsert") {
-      const dealKey = `shop-enquiry:${artworkId}:${subjectId}`;
-      expect(intent.dealKey).toBe(dealKey);
-      expect(intent.dealEntityId).toBe(dealKey);
-    }
+    expect(intent.kind).toBe("person_upsert");
+    if (intent.kind !== "person_upsert") return;
+    expect(intent.subjectId).toBe("guest:1");
+    expect(intent.fields.Enquiry_Type).toBe("Prints");
   });
 
   it("maps payment.refunded webhook payload when lot id is resolved externally", () => {
@@ -458,26 +541,6 @@ describe("mapDomainEventToCrmIntent", () => {
       expect(name(mapDomainEventToCrmIntent(orderPaid, ctx, { dealNaming: merch }))).toBe(
         "Mears — LAX-S-10482 — Print Order — 2026-02",
       );
-    });
-
-    it("names a Shop original enquiry with the processing month", () => {
-      const intent = mapDomainEventToCrmIntent(
-        {
-          id: 22,
-          eventType: "shop.artwork.interest_registered",
-          aggregateId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-          schemaVersion: 1,
-          payload: {
-            schemaVersion: 1,
-            artworkId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-            identitySubjectId: "u1",
-            intent: "enquiry",
-          },
-        },
-        ctx,
-        { dealNaming: facts, now: new Date("2026-05-02T09:00:00Z") },
-      );
-      expect(name(intent)).toBe("Mears — MP — LAX-ORI-MP-GAC-26-0037 — Acquisition — 2026-05");
     });
 
     it("never puts an email address in a deal name", () => {
