@@ -134,7 +134,7 @@ test.describe("account switching on the production build @roles", () => {
     await expect(page.locator("h1:focus")).toHaveCount(1);
   });
 
-  test("a public page stays where it is after a switch, with the greeting announced", async ({
+  test("a page only one account has opens the other account's first page, and a public page stays put", async ({
     page,
     context,
     baseURL,
@@ -143,6 +143,19 @@ test.describe("account switching on the production build @roles", () => {
     await buyerLogin(page);
     const { personal, organisation } = await accountsOf(page);
     await useAccountInThisBrowser(context, origin, personal.id);
+    await page.goto("/selling/new");
+    await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
+
+    await clickAccountMenuItem(page, new RegExp(organisation.name));
+
+    await expect(workspaceSwitcher(page)).toContainText(organisation.name, { timeout: 30_000 });
+    expect(pathOf(page)).toBe("/home");
+
+    // Back to Personal so the profile ends where the other specs expect it.
+    await workspaceSwitcher(page).click();
+    await page.getByTestId("switch-account-personal").click();
+    await expect(workspaceSwitcher(page)).toHaveCount(0, { timeout: 30_000 });
+
     await page.goto("/about");
     await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
 
@@ -165,29 +178,6 @@ test.describe("account switching on the production build @roles", () => {
       timeout: 30_000,
     });
     expect(pathOf(page)).toBe("/about");
-  });
-
-  test("a page only one account has opens the other account's first page", async ({
-    page,
-    context,
-    baseURL,
-  }) => {
-    const origin = baseURL ?? "http://localhost:3000";
-    await buyerLogin(page);
-    const { personal, organisation } = await accountsOf(page);
-    await useAccountInThisBrowser(context, origin, personal.id);
-    await page.goto("/selling/new");
-    await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
-
-    await clickAccountMenuItem(page, new RegExp(organisation.name));
-
-    await expect(workspaceSwitcher(page)).toContainText(organisation.name, { timeout: 30_000 });
-    expect(pathOf(page)).toBe("/home");
-
-    // Back to Personal so the profile ends where the other specs expect it.
-    await workspaceSwitcher(page).click();
-    await page.getByTestId("switch-account-personal").click();
-    await expect(workspaceSwitcher(page)).toHaveCount(0, { timeout: 30_000 });
   });
 
   test("on a phone the account button switches in the Switch account sheet, in Personal and back", async ({
@@ -286,6 +276,8 @@ test.describe("account switching on the production build @roles", () => {
     // Sign-in leaves no restore marker (only the hop route does), so the first restore is allowed.
     await useAccountInThisBrowser(context, origin, LEFT_ORGANISATION_ID);
 
+    // Sign-in may still be settling onto its landing page; wait for it before asking for this one.
+    await page.waitForLoadState("networkidle");
     await page.goto("/home");
 
     await expect(page.getByTestId("account-notice")).toContainText(
