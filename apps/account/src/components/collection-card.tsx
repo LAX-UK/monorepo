@@ -14,12 +14,10 @@ function MoneyLine({
   note: string | null;
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <div className="flex items-baseline justify-between gap-4">
-        <dt className="text-sm text-on-surface-variant">{label}</dt>
-        <dd className={FIGURE_MEDIUM}>{value}</dd>
-      </div>
-      {note ? <dd className="text-xs text-on-surface-variant">{note}</dd> : null}
+    <div className="grid grid-cols-[1fr_auto] items-baseline gap-x-4 gap-y-0.5">
+      <dt className="text-sm text-on-surface-variant">{label}</dt>
+      <dd className={FIGURE_MEDIUM}>{value}</dd>
+      {note ? <dd className="col-span-2 text-xs text-on-surface-variant">{note}</dd> : null}
     </div>
   );
 }
