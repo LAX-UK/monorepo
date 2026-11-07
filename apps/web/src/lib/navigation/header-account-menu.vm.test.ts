@@ -65,40 +65,18 @@ describe("buildHeaderAccountMenu", () => {
     });
   });
 
-  it("hides Your accounts from people with only their own account", () => {
-    expect(menu({ accounts: [ACCOUNTS[0] as AccountOption] }).accounts).toBeNull();
-    expect(menu().accounts).toBeNull();
+  it("offers no switcher to people with only their own account", () => {
+    expect(menu({ accounts: [ACCOUNTS[0] as AccountOption] }).switcher).toBeNull();
+    expect(menu().switcher).toBeNull();
   });
 
-  it("shows the account in use as here and lands an organisation on its workspace Home", () => {
-    expect(menu({ accounts: ACCOUNTS }).accounts).toEqual([
-      {
-        id: "me",
-        kind: "personal",
-        name: "Personal",
-        detail: "Bids, purchases and selling",
-        initials: "JH",
-        here: true,
-        href: "/bids",
-      },
-      {
-        id: "org-1",
-        kind: "organisation",
-        name: "Northgate Collection Ltd",
-        detail: "Organisation workspace · Buyer",
-        initials: "NC",
-        here: false,
-        href: "/home",
-      },
+  it("builds the shared switcher from the accounts, the one in use marked current", () => {
+    const switcher = menu({ accounts: ACCOUNTS, pendingInvitations: 2 }).switcher;
+    expect(switcher?.options.map((o) => [o.id, o.current])).toEqual([
+      ["me", true],
+      ["org-1", false],
     ]);
-  });
-
-  it("opens the personal pages at My bids from an organisation", () => {
-    const fromOrg = ACCOUNTS.map((option) => ({ ...option, current: option.kind !== "personal" }));
-    expect(menu({ accounts: fromOrg }).accounts?.[0]).toMatchObject({
-      here: false,
-      href: "/bids",
-    });
+    expect(switcher?.pendingInvitations).toBe(2);
   });
 
   it("carries what is due to the matching pages", () => {

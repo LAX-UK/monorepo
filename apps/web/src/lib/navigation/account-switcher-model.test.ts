@@ -1,8 +1,12 @@
 import type { LegalEntitySummary } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
+  CURRENT_ACCOUNT_LABEL,
   REGISTER_ORGANISATION_HREF,
+  SWITCHING_LABEL,
+  SWITCH_ACCOUNT_HEADING,
   accountRowText,
+  accountRowView,
   buildAccountChrome,
   filterAccountOptions,
   needsYouLabel,
@@ -145,5 +149,42 @@ describe("switcher row text", () => {
   it("names the needs-you dot", () => {
     expect(needsYouLabel(1)).toBe("1 needs you");
     expect(needsYouLabel(2)).toBe("2 need you");
+  });
+});
+
+describe("switcher row words", () => {
+  const [own, org] = chrome().switcher?.options ?? [];
+
+  it("uses one heading and one word for the account in use", () => {
+    expect(SWITCH_ACCOUNT_HEADING).toBe("Switch account");
+    expect(CURRENT_ACCOUNT_LABEL).toBe("Current");
+  });
+
+  it("says Personal under the person's name and the role under an organisation", () => {
+    expect(own && accountRowView(own, { needs: 0, pending: false })).toMatchObject({
+      title: "Jane Smith",
+      caption: "Personal",
+      current: true,
+    });
+    expect(org && accountRowView(org, { needs: 0, pending: false })).toMatchObject({
+      title: "Northbank Gallery",
+      caption: "Admin",
+      current: false,
+    });
+  });
+
+  it("shows what needs the person as a number, capped at 9+", () => {
+    const view = (needs: number) => org && accountRowView(org, { needs, pending: false });
+    expect(view(0)).toMatchObject({ needsText: null, needsLabel: null });
+    expect(view(1)).toMatchObject({ needsText: "1", needsLabel: "1 needs you" });
+    expect(view(5)).toMatchObject({ needsText: "5", needsLabel: "5 need you" });
+    expect(view(12)).toMatchObject({ needsText: "9+", needsLabel: "12 need you" });
+  });
+
+  it("says Switching… on the row being switched to", () => {
+    expect(org && accountRowView(org, { needs: 0, pending: true })).toMatchObject({
+      caption: SWITCHING_LABEL,
+      pending: true,
+    });
   });
 });

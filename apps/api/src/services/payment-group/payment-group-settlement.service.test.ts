@@ -20,6 +20,8 @@ const group = (over: Partial<PaymentGroupRecord> = {}): PaymentGroupRecord => ({
   stripeCheckoutSessionId: "cs_1",
   stripePaymentIntentId: "pi_1",
   stripeChargeId: null,
+  amountReceived: "0.00",
+  receivedEventAt: null,
   createdAt: new Date("2026-01-01T00:00:00Z"),
   settledAt: null,
   ...over,

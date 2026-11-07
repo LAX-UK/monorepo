@@ -7,15 +7,15 @@ import { legalEntity } from "./schema/legal-entities.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0324_legal_entity_client_message.sql");
-const rollback = read("0324_rollback.sql");
+const migration = read("0323_legal_entity_client_message.sql");
+const rollback = read("0323_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0324 legal entity client message", () => {
+describe("migration 0323 legal entity client message", () => {
   it("is the last journal entry, after the entry before it", () => {
-    const index = journal.entries.findIndex((e) => e.tag === "0324_legal_entity_client_message");
+    const index = journal.entries.findIndex((e) => e.tag === "0323_legal_entity_client_message");
     expect(index).toBe(journal.entries.length - 1);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];

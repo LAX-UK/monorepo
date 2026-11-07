@@ -1,3 +1,4 @@
+import type { BankTransferInstructions } from "@auction/types";
 import Stripe from "stripe";
 import type { IStripeClientFactory } from "../../lib/stripe-client.js";
 import { executeWithStripeRetries } from "../../lib/stripe-retries.js";
@@ -5,6 +6,7 @@ import type {
   CreateGroupCheckoutInput,
   GroupChargeRefund,
   GroupCheckoutSession,
+  GroupCheckoutStatus,
   IPaymentGroupGateway,
 } from "../payment-group/payment-group-ports.js";
 import { InvoiceLinesError, assertWithinStripeLineLimit } from "../payment/invoice-stripe-lines.js";
@@ -124,10 +126,45 @@ export class StripePaymentGroupGateway implements IPaymentGroupGateway {
     return { sessionId: session.id, url: session.url, paymentIntentId };
   }
 
+  async checkoutStatus(sessionId: string): Promise<GroupCheckoutStatus> {
+    const stripe = this.stripeFactory.require();
+    const session = await executeWithStripeRetries(() =>
+      stripe.checkout.sessions.retrieve(sessionId),
+    );
+    if (session.status === "complete") return "complete";
+    if (session.status === "expired") return "expired";
+    // A session past its own expiry is over even before the provider marks it.
+    const lapsed = session.expires_at != null && session.expires_at * 1000 <= Date.now();
+    return lapsed ? "expired" : "open";
+  }
+
+  async bankTransferInstructions(sessionId: string): Promise<BankTransferInstructions | null> {
+    const stripe = this.stripeFactory.require();
+    const session = await executeWithStripeRetries(() =>
+      stripe.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] }),
+    );
+    const intent = session.payment_intent;
+    if (!intent || typeof intent === "string") return null;
+    const shown = intent.next_action?.display_bank_transfer_instructions;
+    const address = shown?.financial_addresses?.find((a) => a.sort_code);
+    const sortCode = address?.sort_code;
+    if (!shown || !sortCode || !shown.reference) return null;
+    return {
+      accountName: sortCode.account_holder_name,
+      sortCode: sortCode.sort_code,
+      accountNumber: sortCode.account_number,
+      reference: shown.reference,
+    };
+  }
+
   async expireCheckout(sessionId: string): Promise<void> {
     const stripe = this.stripeFactory.require();
     try {
-      await executeWithStripeRetries(() => stripe.checkout.sessions.expire(sessionId));
+      await executeWithStripeRetries(() =>
+        stripe.checkout.sessions.expire(sessionId, undefined, {
+          idempotencyKey: `checkout:expire:group:${sessionId}`,
+        }),
+      );
     } catch (err) {
       // Already complete or expired: nothing left to end.
       if (err instanceof Stripe.errors.StripeInvalidRequestError) return;

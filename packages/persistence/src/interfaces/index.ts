@@ -1186,6 +1186,7 @@ export type {
   ClaimPaymentGroupResult,
   IPaySeveralInvoiceFlagsReader,
   IPaymentGroupRepository,
+  LivePaymentGroupFacts,
   LockedPaymentGroup,
   PaySeveralInvoiceFlags,
   PaymentGroupMember,

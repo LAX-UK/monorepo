@@ -1,4 +1,4 @@
--- Rollback for 0324_legal_entity_client_message. The message is lost; screens fall back to
+-- Rollback for 0323_legal_entity_client_message. The message is lost; screens fall back to
 -- their standard wording.
 BEGIN;
 

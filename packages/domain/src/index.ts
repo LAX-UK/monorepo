@@ -103,11 +103,13 @@ export {
   needsManualReviewGate,
   paymentMethodsFor,
   parsePaymentTierLimits,
+  resolveChosenRail,
   resolveCheckoutRail,
   resolveManualReviewReason,
   validateCheckoutAmountPence,
   STRIPE_GBP_MIN_PENCE,
   type CheckoutRailKind,
+  type ChosenPaymentMethod,
   type ManualReviewReason,
   type PaymentMethodAvailability,
   type PaymentTierKind,
@@ -781,6 +783,7 @@ export {
   type DisputeDeadlineState,
   type DisputeView,
 } from "./dispute-case-view.js";
+export { payProgressOf, type PayProgressFacts } from "./pay-progress.js";
 export {
   payTogether,
   type PayTogetherDecision,

@@ -75,12 +75,15 @@ export type PaymentMethodAvailability = {
   method: "card" | "bank_transfer";
   available: boolean;
   /** Why it is unavailable; `null` while it is available. */
-  reason: "over_card_limit" | "within_card_limit" | "over_online_limit" | null;
+  reason: "over_card_limit" | "over_online_limit" | null;
 };
 
+/** How a payer chooses to pay on the Pay page. */
+export type ChosenPaymentMethod = PaymentMethodAvailability["method"];
+
 /**
- * How a total can be paid. Card takes up to and including the card limit; bank transfer takes
- * the amounts above it, as the server does today. Neither takes more than one online payment can.
+ * How a total can be paid. Card takes up to and including the card limit; UK bank transfer takes
+ * any amount an online payment can. Neither takes more than one online payment can.
  */
 export function paymentMethodsFor(
   totalPence: number,
@@ -96,10 +99,26 @@ export function paymentMethodsFor(
     },
     {
       method: "bank_transfer",
-      available: overCardLimit && !overOnlineLimit,
-      reason: overOnlineLimit ? "over_online_limit" : overCardLimit ? null : "within_card_limit",
+      available: !overOnlineLimit,
+      reason: overOnlineLimit ? "over_online_limit" : null,
     },
   ];
+}
+
+/**
+ * The Stripe rail for the method the payer chose, or why it cannot be used. Card above the card
+ * limit is refused here, on the server, whatever the page asked for.
+ */
+export function resolveChosenRail(
+  method: ChosenPaymentMethod,
+  amountPence: number,
+  limits: PaymentTierLimits,
+): { rail: CheckoutRailKind } | { refusal: "card_over_limit" | "below_minimum" | "over_limit" } {
+  const validation = validateCheckoutAmountPence(amountPence, limits);
+  if (validation === "invalid_amount") return { refusal: "below_minimum" };
+  if (validation === "blocked") return { refusal: "over_limit" };
+  if (method === "bank_transfer") return { rail: "gb_bank_transfer" };
+  return amountPence > limits.cardMaxPence ? { refusal: "card_over_limit" } : { rail: "card" };
 }
 
 /** Stripe Checkout rail for a pending payment that is cleared for checkout. */

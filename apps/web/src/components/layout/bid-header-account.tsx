@@ -2,6 +2,7 @@
 
 import { AccountMenuItems } from "@/components/layout/account-menu-items";
 import { AccountMenuIdentity } from "@/components/layout/account-menu/account-menu-identity";
+import { asDropdownItem } from "@/components/layout/account-menu/as-dropdown-item";
 import { ClientAccountMenu } from "@/components/layout/account-menu/client-account-menu";
 import {
   type HeaderAccountMenuState,
@@ -18,25 +19,13 @@ import type { AccountMenuEntry } from "@/lib/navigation/account-menu-model";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { MarketingAccountEntry, MarketingAccountSheet } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
-import { DropdownMenuItem } from "@auction/ui/components/dropdown-menu";
 import { usePathname } from "next/navigation";
-import { type ReactElement, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 type BidHeaderAccountProps = {
   headerTone?: SiteHeaderTone;
   laxProductLinks?: LaxProductLinkVm[];
 };
-
-const ITEM_CLASS = "block cursor-pointer rounded-md p-0 focus:bg-transparent";
-
-/** Each row of the dropdown becomes a Radix item, so arrow keys and typeahead work. */
-function asDropdownItem(row: ReactElement): ReactElement {
-  return (
-    <DropdownMenuItem asChild className={ITEM_CLASS}>
-      {row}
-    </DropdownMenuItem>
-  );
-}
 
 /** A staff account's menu: other LAX products, the admin area, LAX Account, Sign out. */
 function StaffMenuBody({
