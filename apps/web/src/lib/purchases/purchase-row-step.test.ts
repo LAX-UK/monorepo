@@ -1,12 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { purchaseRowStep } from "./purchase-row-step";
 
-const base = { title: "Red Kite", amount: "£1,875.00", payable: null, primaryAction: null };
+const base = {
+  lotId: "lot-1",
+  title: "Red Kite",
+  amount: "£1,875.00",
+  payable: null,
+  primaryAction: null,
+};
 
 describe("purchaseRowStep", () => {
-  it("pays an invoice the member can pay, naming the amount", () => {
+  it("opens the Pay page for an invoice the member can pay, naming the amount", () => {
     expect(purchaseRowStep({ ...base, payable: { totalDue: "1875.00", currency: "GBP" } })).toEqual(
-      { kind: "pay", label: "Pay £1,875.00", accessibleName: "Pay £1,875.00, Red Kite" },
+      {
+        label: "Pay £1,875.00",
+        accessibleName: "Pay £1,875.00, Red Kite",
+        href: "/purchases/pay?lots=lot-1",
+      },
     );
   });
 
@@ -17,7 +27,6 @@ describe("purchaseRowStep", () => {
         primaryAction: { label: "Arrange delivery", href: "/checkout/lot-1" },
       }),
     ).toEqual({
-      kind: "link",
       label: "Arrange delivery",
       href: "/checkout/lot-1",
       accessibleName: "Arrange delivery, Red Kite",

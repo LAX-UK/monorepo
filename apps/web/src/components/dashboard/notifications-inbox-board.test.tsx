@@ -204,7 +204,7 @@ describe("NotificationsInboxBoard", () => {
       expect(first.getByRole("link", { name: "Bid again" })).toBeInTheDocument();
       expect(within(rows[1] as HTMLElement).getByRole("link", { name: "Pay" })).toHaveAttribute(
         "href",
-        "/purchases/checkout/p1",
+        "/purchases/pay?lots=p1",
       );
     });
 

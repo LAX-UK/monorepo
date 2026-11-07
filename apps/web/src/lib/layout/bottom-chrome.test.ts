@@ -24,15 +24,18 @@ describe("bottom-chrome", () => {
     expect(padding).toBe("1.5rem");
   });
 
-  it("detects lot checkout pay bar routes", () => {
-    expect(isFixedPayBarRoute("/purchases/checkout/abc-123")).toBe(true);
-    expect(isFixedPayBarRoute("/purchases/checkout")).toBe(false);
+  it("detects the Pay page, which carries its own pay bar", () => {
+    expect(isFixedPayBarRoute("/purchases/pay")).toBe(true);
+    expect(isFixedPayBarRoute("/purchases/checkout/abc-123")).toBe(false);
+    expect(isFixedPayBarRoute("/purchases")).toBe(false);
+    // The tab bar yields only while the page's own bar is mounted, not on every state of the page.
+    expect(isHideDashboardTabBarRoute("/purchases/pay")).toBe(false);
     expect(isHideDashboardTabBarRoute("/selling/new")).toBe(true);
     expect(isHideDashboardTabBarRoute("/selling/consignments/abc-123")).toBe(true);
     expect(isHideDashboardTabBarRoute("/selling/consignments")).toBe(false);
   });
 
-  it("uses pay bar padding on lot checkout routes", () => {
+  it("uses pay bar padding on the Pay page", () => {
     const padding = pageBottomPadding({
       consentBannerVisible: false,
       dashboardTabBarActive: true,

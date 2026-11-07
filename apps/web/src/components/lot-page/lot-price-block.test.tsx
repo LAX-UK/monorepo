@@ -133,7 +133,7 @@ describe("LotPriceBlockView", () => {
       });
       expect(screen.getByRole("link", { name: "Pay £8,750" })).toHaveAttribute(
         "href",
-        expect.stringMatching(/checkout\/lot-1$/),
+        expect.stringMatching(/pay\?lots=lot-1$/),
       );
       expect(screen.getByText("Pay by Tue 10 Nov")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /alerts for/ })).toBeNull();

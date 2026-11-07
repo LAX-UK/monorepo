@@ -38,8 +38,8 @@ test.describe("organisation finance journey @roles", () => {
       await page.goto("/purchases");
       await expect(page.getByText("Harbour Light, won for Northbank").first()).toBeVisible();
 
-      await page.goto(`/purchases/checkout/${ORGANISATION_JOURNEY_IDS.lotInvoiceNorthbank}`);
-      await expect(page.getByText("Invoice and payment").first()).toBeVisible();
+      await page.goto(`/purchases/pay?lots=${ORGANISATION_JOURNEY_IDS.lotInvoiceNorthbank}`);
+      await expect(page.getByRole("region", { name: "Payment" })).toBeVisible();
       await expect(page.getByText(/You don't have access to/)).toHaveCount(0);
     });
 

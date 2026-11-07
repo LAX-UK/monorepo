@@ -36,10 +36,10 @@ describe("portfolioSettlementAttentionAction", () => {
     expect(action.label).toBe("View requirements");
   });
 
-  it("keeps checkout link for ordinary pending payments", () => {
+  it("opens the Pay page for ordinary pending payments", () => {
     const action = portfolioSettlementAttentionAction(row());
-    expect(action.href).toContain("/purchases/checkout/lot-1");
-    expect(action.label).toBe("Complete checkout");
+    expect(action.href).toContain("/purchases/pay?lots=lot-1");
+    expect(action.label).toBe("Pay now");
   });
 });
 

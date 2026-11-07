@@ -46,8 +46,8 @@ test.describe("restricted organisation journey @roles", () => {
         page.getByText("Harbour Light, won for a paused organisation").first(),
       ).toBeVisible();
 
-      await page.goto(`/purchases/checkout/${ORGANISATION_JOURNEY_IDS.lotInvoiceRestricted}`);
-      await expect(page.getByText("Invoice and payment").first()).toBeVisible();
+      await page.goto(`/purchases/pay?lots=${ORGANISATION_JOURNEY_IDS.lotInvoiceRestricted}`);
+      await expect(page.getByRole("region", { name: "Payment" })).toBeVisible();
       await expect(page.getByText(/You don't have access to/)).toHaveCount(0);
     });
 
