@@ -34,7 +34,7 @@ import {
   searchStatusLabel,
 } from "@/lib/marketing/parse-search-params";
 import { countSearchActiveFilters } from "@/lib/marketing/search-active-filter-count";
-import { hasSearchAlert } from "@/lib/marketing/search-fallback";
+import { searchAlertState } from "@/lib/marketing/search-fallback";
 import { shouldOfferPastResults } from "@/lib/marketing/search-fallback";
 import { buildSearchQs } from "@/lib/marketing/search-qs";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
@@ -210,7 +210,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
         isAuthenticated ? getServerMySavedSearches() : Promise.resolve(null),
       ])
     : [null, [] as string[], null];
-  const alertSet = savedSearches ? hasSearchAlert(savedSearches, trimmed, categoryId) : false;
+  // A failed read falls back to the plain button; saving still avoids a duplicate.
+  const alertState = savedSearches ? searchAlertState(savedSearches, trimmed, categoryId) : "none";
   const catalogLots = toCatalogLotVMs(filtered);
   const hasPrev = offset > 0;
   const nextOffset = offset + PAGE_SIZE;
@@ -397,7 +398,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
               pastResultsHref={pastResultsHref}
               alertReturnHref={alertReturnHref}
               saveAlertOnArrival={firstString(alertRaw) === "1"}
-              alertSet={alertSet}
+              alertState={alertState}
               {...(lotCatalogLinkParams ? { catalogLinkParams: lotCatalogLinkParams } : {})}
             />
           ) : filtered.length === 0 ? (

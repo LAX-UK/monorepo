@@ -65,6 +65,21 @@ export function hasSearchAlert(
   return saved.some((row) => sameQuery(row.query, query));
 }
 
+/** What the person's saved searches say about this search: no alert, an alert, or one with email off. */
+export type SearchAlertState = "none" | "on" | "email_off";
+
+/** The state of this search's alert, read from the saved searches with the same match as saving. */
+export function searchAlertState(
+  saved: readonly { query: Readonly<Record<string, string>>; notifyEmail: boolean }[],
+  q: string,
+  categoryId?: string,
+): SearchAlertState {
+  const query = searchAlertQuery(q, categoryId);
+  const found = saved.find((row) => sameQuery(row.query, query));
+  if (!found) return "none";
+  return found.notifyEmail ? "on" : "email_off";
+}
+
 export function searchAlertLabel(q: string): string {
   return `Search: ${q}`;
 }

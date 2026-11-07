@@ -67,6 +67,23 @@ describe("alert matrix", () => {
     });
   });
 
+  it("has Artists you follow and Saved searches rows on their own engine topics and app switches", () => {
+    const artists = row("artists");
+    const searches = row("searches");
+    expect([artists.engineTopic, artists.app]).toEqual(["bid.artists", ["artistAlertsInApp"]]);
+    expect([searches.engineTopic, searches.app]).toEqual(["bid.searches", ["searchAlertsInApp"]]);
+    const engine = {
+      subscribed: { "bid.artists": true, "bid.searches": true },
+      email: { "bid.artists": true, "bid.searches": false },
+    };
+    expect(alertCell(artists, "email", DEFAULTS, engine)).toMatchObject({ checked: true });
+    expect(alertCell(searches, "email", DEFAULTS, engine)).toMatchObject({ checked: false });
+    expect(
+      alertCell(searches, "app", { ...DEFAULTS, searchAlertsInApp: false }, engine),
+    ).toMatchObject({ checked: false });
+    expect(withAlertCell(DEFAULTS, artists, "app", false).artistAlertsInApp).toBe(false);
+  });
+
   it("shows nothing for New sales when the engine's state could not be read", () => {
     expect(alertCell(row("new-sales"), "email", DEFAULTS, null)).toEqual({ kind: "none" });
   });

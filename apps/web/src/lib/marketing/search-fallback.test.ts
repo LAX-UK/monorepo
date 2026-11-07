@@ -3,6 +3,7 @@ import {
   hasSearchAlert,
   pastResultsSentence,
   searchAlertQuery,
+  searchAlertState,
   shouldOfferPastResults,
 } from "./search-fallback";
 
@@ -58,5 +59,19 @@ describe("hasSearchAlert", () => {
     expect(hasSearchAlert(saved, "oil")).toBe(false);
     expect(hasSearchAlert(saved, "harbour", "c1")).toBe(false);
     expect(hasSearchAlert([], "harbour")).toBe(false);
+  });
+});
+
+describe("searchAlertState", () => {
+  const saved = [
+    { query: { q: "harbour" }, notifyEmail: true },
+    { query: { q: "oil", categoryId: "c1" }, notifyEmail: false },
+  ];
+
+  it("reads on, email off and none from the saved searches", () => {
+    expect(searchAlertState(saved, "harbour")).toBe("on");
+    expect(searchAlertState(saved, "oil", "c1")).toBe("email_off");
+    expect(searchAlertState(saved, "oil")).toBe("none");
+    expect(searchAlertState([], "harbour")).toBe("none");
   });
 });

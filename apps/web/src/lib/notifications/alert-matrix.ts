@@ -99,6 +99,22 @@ export const ALERT_ROWS: readonly AlertRow[] = [
     app: ["newSalesInApp"],
     engineTopic: "bid.new_sales",
   },
+  {
+    id: "artists",
+    label: "Artists you follow",
+    description: "New lots that match each artist's alert",
+    email: null,
+    app: ["artistAlertsInApp"],
+    engineTopic: "bid.artists",
+  },
+  {
+    id: "searches",
+    label: "Saved searches",
+    description: "New lots that match a search with email on",
+    email: null,
+    app: ["searchAlertsInApp"],
+    engineTopic: "bid.searches",
+  },
 ];
 
 export type AlertChannel = "email" | "app";

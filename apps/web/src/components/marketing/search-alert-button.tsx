@@ -2,6 +2,7 @@
 
 import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { ensureSearchAlert } from "@/lib/marketing/search-alert";
+import type { SearchAlertState } from "@/lib/marketing/search-fallback";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { notify } from "@/lib/ui/notify";
 import { Button, ButtonLink } from "@auction/ui/lax";
@@ -18,13 +19,19 @@ type Props = {
   returnHref: string;
   /** True when arriving from sign-in with the alert already asked for. */
   saveOnArrival: boolean;
-  /** True when the account's saved searches already hold an alert for this search. */
-  alertSet?: boolean;
+  /** What the account's saved searches hold for this search, read on the server. */
+  alertState?: SearchAlertState;
   /** Where saved search alerts are managed. */
   manageHref?: string;
 };
 
-type Phase = "idle" | "saving" | "saved";
+type Phase = "idle" | "saving" | "saved" | "email_off";
+
+const INITIAL_PHASE: Record<SearchAlertState, Phase> = {
+  none: "idle",
+  on: "saved",
+  email_off: "email_off",
+};
 
 /** "Get an alert for this search": emails the visitor when a lot matching the text goes on sale. */
 export function SearchAlertButton({
@@ -33,12 +40,12 @@ export function SearchAlertButton({
   categoryId,
   returnHref,
   saveOnArrival,
-  alertSet = false,
+  alertState = "none",
   manageHref = CLIENT_ROUTES.watchingSearches,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const [phase, setPhase] = useState<Phase>(alertSet ? "saved" : "idle");
+  const [phase, setPhase] = useState<Phase>(INITIAL_PHASE[alertState]);
   const asked = useRef(false);
 
   const save = useCallback(async () => {
@@ -53,7 +60,7 @@ export function SearchAlertButton({
     notify.success(
       outcome === "existing"
         ? "You already have an alert for this search."
-        : "Alert set. We’ll email you when a lot matches.",
+        : "Alert set. Matches arrive in your 08:00 email and in the app.",
     );
   }, [q, categoryId]);
 
@@ -80,12 +87,12 @@ export function SearchAlertButton({
     );
   }
 
-  if (phase === "saved") {
+  if (phase === "saved" || phase === "email_off") {
     return (
       <span className="inline-flex flex-wrap items-center gap-x-4 gap-y-1">
         <output className="inline-flex h-10 items-center gap-2 text-lax-14 font-medium text-lax-fg">
           <BellRing className="size-4" aria-hidden />
-          Alert set
+          {phase === "saved" ? "Alert set" : "Saved search · email off"}
         </output>
         <ButtonLink Link={Link} variant="ghost" href={manageHref}>
           Manage alerts
