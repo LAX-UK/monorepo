@@ -149,6 +149,8 @@ test.describe("account switching on the production build @roles", () => {
     await buyerLogin(page);
     const { personal, organisation } = await accountsOf(page);
     await useAccountInThisBrowser(context, origin, personal.id);
+    // Sign-in may still be settling onto its landing page; wait for it before asking for this one.
+    await page.waitForLoadState("networkidle");
     await page.goto("/selling/new");
     await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
 
