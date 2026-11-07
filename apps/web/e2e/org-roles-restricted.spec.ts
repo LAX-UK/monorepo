@@ -69,7 +69,8 @@ test.describe("restricted organisation journey @roles", () => {
       await page.goto("/home");
       await page.getByRole("link", { name: "Keep bidding as yourself" }).click();
       await page.waitForURL(/\/bids/);
-      await expect(page.getByTestId("account-switcher")).not.toContainText(restricted);
+      // The personal account uses the website frame, which has no workspace switcher.
+      await expect(page.getByTestId("account-switcher")).toHaveCount(0);
     });
 
     await owner.close();
