@@ -448,22 +448,28 @@ describe("nothing to pay: why", () => {
 });
 
 describe("a return from the payment page", () => {
-  it("says a payment that was not completed charged nothing, above everything else", () => {
+  it("carries a note that a payment not completed charged nothing, with the clean address", () => {
     const vm = build(one(), { returned: "cancelled" });
-    expect(vm.notices[0]).toEqual({
-      tone: "danger",
+    expect(vm.returned).toEqual({
       title: "Payment not completed",
       detail:
         "Nothing was charged. Your bank's check may not have finished, or the card was declined. You can try again.",
+      cleanHref: RETURN_TO,
     });
+    // The note is not a notice of the page, so it cannot come back with the page.
+    expect(vm.notices.map((n) => n.title)).not.toContain("Payment not completed");
     expect(vm.action?.kind).toBe("pay");
+  });
+
+  it("carries no note otherwise", () => {
+    expect(build(one()).returned).toBeNull();
   });
 
   it("says it on a page with nothing to pay too", () => {
     const vm = build(planOf([], { leftOut: [{ lotId: LOT_A, reason: "paid" }] }), {
       returned: "cancelled",
     });
-    expect(vm.notices[0]?.title).toBe("Payment not completed");
+    expect(vm.returned?.title).toBe("Payment not completed");
   });
 });
 

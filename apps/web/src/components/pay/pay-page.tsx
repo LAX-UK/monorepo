@@ -20,7 +20,7 @@ import { PaySessionProvider } from "./pay-session";
 export function PayPage({ vm }: { vm: PayPageVm }) {
   const bar = vm.action && vm.money ? { action: vm.action, money: vm.money } : null;
   return (
-    <PaySessionProvider>
+    <PaySessionProvider returned={vm.returned}>
       {/* Room for the bar at the bottom of a phone. */}
       <div className={bar ? "flex flex-col gap-6 max-lg:pb-24" : "flex flex-col gap-6"}>
         <div className="flex flex-col gap-3">
