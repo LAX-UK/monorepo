@@ -1,7 +1,4 @@
-import {
-  dashboardCheckoutLotUrl,
-  dashboardSofRequirementsUrl,
-} from "@/lib/dashboard/dashboard-copy";
+import { dashboardSofRequirementsUrl } from "@/lib/dashboard/dashboard-copy";
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
 import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
@@ -239,7 +236,7 @@ function primaryActionFor(
   row: PortfolioRow,
 ): PurchaseCardVm["primaryAction"] {
   if (state === "choose-delivery") {
-    return { label: "Arrange delivery", href: dashboardCheckoutLotUrl(row.lot.id) };
+    return { label: "Arrange delivery", href: `${CLIENT_ROUTES.purchases}/${row.lot.id}` };
   }
   return null;
 }

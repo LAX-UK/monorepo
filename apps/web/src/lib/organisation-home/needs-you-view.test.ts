@@ -134,7 +134,7 @@ describe("needsYouRowView", () => {
     );
     expect(hrefs).toMatchObject({
       outbid: "/lot/sun-over-arles/l88",
-      pay: "/purchases/checkout/l7",
+      pay: "/purchases/pay?lots=l7",
       won_awaiting_payment: "/purchases",
       unsold_due: "/selling/consignments?tab=unsold",
       agreement: "/selling/consignments/c1#agreement",

@@ -47,8 +47,8 @@ export const LEGACY_DASHBOARD_REDIRECTS: readonly LegacyDashboardRedirect[] = [
   rule("/dashboard/telephone-bids", "/bids#telephone-bids"),
   rule("/dashboard/condition-reports", "/bids#condition-reports"),
   rule("/dashboard/purchases", "/purchases"),
-  rule("/dashboard/checkout", "/purchases/checkout"),
-  rule("/dashboard/checkout/:lotId", "/purchases/checkout/:lotId"),
+  rule("/dashboard/checkout", "/purchases/pay"),
+  rule("/dashboard/checkout/:lotId", "/purchases/pay?lots=:lotId"),
   // Owned works and payments are one page of purchases.
   rule("/dashboard/portfolio", "/purchases"),
   rule("/dashboard/payments", "/purchases#payment-history"),

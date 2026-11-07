@@ -5,6 +5,7 @@ import { useListQuery } from "@/components/workspace/use-list-query";
 import { formatMoney } from "@/lib/format-currency";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { payHref } from "@/lib/pay/pay-links";
 import type { PurchaseTab } from "@/lib/purchases/purchase-progress";
 import {
   PURCHASE_SORTS,
@@ -38,7 +39,6 @@ import {
 import { X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { PaySeveralDialog } from "./pay-several-dialog";
 import { PurchaseRow } from "./purchase-row";
 
 const EMPTY_VIEW: Record<
@@ -82,7 +82,6 @@ export function PurchasesView({
   const [filterOpen, setFilterOpen] = useState(false);
   const [draft, setDraft] = useState(query);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
-  const [paying, setPaying] = useState<readonly string[] | null>(null);
   useEffect(() => {
     if (filterOpen) setDraft(query);
   }, [filterOpen, query]);
@@ -159,13 +158,14 @@ export function PurchasesView({
                 {vm.payNow.documentsAction.label}
               </ButtonLink>
             ) : null}
-            <Button
+            <ButtonLink
               // While invoices are picked, the selection bar holds the one primary action.
               variant={picks.length > 0 ? "secondary" : "primary"}
-              onClick={() => setPaying(vm.payNow?.kind === "pay" ? vm.payNow.lotIds : [])}
+              Link={Link}
+              href={payHref(vm.payNow.lotIds)}
             >
               Pay {formatMoney(vm.payNow.total)}
-            </Button>
+            </ButtonLink>
           </div>
         </section>
       ) : vm.payNow?.kind === "review" ? (
@@ -224,7 +224,6 @@ export function PurchasesView({
                   key={card.lotId}
                   card={card}
                   selectColumn={cards.some((each) => each.payable)}
-                  onPay={(each) => setPaying([each.lotId])}
                   selection={
                     card.payable
                       ? {
@@ -269,10 +268,10 @@ export function PurchasesView({
               {picks.length} selected · {formatMoney(picksTotal)}
             </p>
           </div>
-          <Button variant="primary" onClick={() => setPaying(picks)}>
+          <ButtonLink variant="primary" Link={Link} href={payHref(picks)}>
             Pay {picks.length === 1 ? "1 invoice" : `${picks.length} invoices`} ·{" "}
             {formatMoney(picksTotal)}
-          </Button>
+          </ButtonLink>
         </section>
       ) : null}
       {filterable ? (
@@ -313,15 +312,6 @@ export function PurchasesView({
           ) : null}
         </FilterSheet>
       ) : null}
-      <PaySeveralDialog
-        open={paying !== null}
-        onOpenChange={(open) => {
-          if (!open) setPaying(null);
-        }}
-        lotIds={paying ?? []}
-        cardsById={cardsById}
-        organisation={organisation}
-      />
     </div>
   );
 }

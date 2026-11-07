@@ -5,6 +5,7 @@ import {
   teamHref,
 } from "@/lib/navigation/client-routes";
 import { bidSettingsHref } from "@/lib/navigation/settings-links";
+import { payHref } from "@/lib/pay/pay-links";
 import { consignmentMessagesHref } from "@/lib/seller/consignment-records";
 import { consignmentStepLabel } from "@/lib/seller/consignment-step";
 import {
@@ -97,8 +98,8 @@ export function needsYouHref(task: NeedsYouTaskWithLink): string {
     case "bids":
       return CLIENT_ROUTES.bids;
     case "purchase":
-      // Paying for one purchase opens its checkout; the purchase page itself comes later.
-      return task.kind === "pay" ? `${CLIENT_ROUTES.checkout}/${link.id}` : CLIENT_ROUTES.purchases;
+      // Paying for one purchase opens the Pay page for it.
+      return task.kind === "pay" ? payHref([link.id]) : CLIENT_ROUTES.purchases;
     case "purchases":
       return CLIENT_ROUTES.purchases;
     case "consignment":
