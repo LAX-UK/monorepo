@@ -498,6 +498,14 @@ function SearchesList({
                     label: "Run search",
                     onSelect: () => window.location.assign(savedSearchHref(search.query)),
                   },
+                  {
+                    type: "item",
+                    label: searchEmailIsOn(search.notifyEmail, reach?.emailOn ?? null)
+                      ? "Turn off email"
+                      : "Turn on email",
+                    onSelect: () =>
+                      onEmail(search, !searchEmailIsOn(search.notifyEmail, reach?.emailOn ?? null)),
+                  },
                   { type: "separator" },
                   {
                     type: "item",
