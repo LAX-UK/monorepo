@@ -1,10 +1,8 @@
--- Rollback for 0322_private_sale_deal_register_fk. Roll back the application release first: the
--- previous release reads the column as text. Every value is kept, as the id's text form.
-SET LOCAL lock_timeout = '30s';
---> statement-breakpoint
-DROP INDEX IF EXISTS "private_sale_deal_artwork_register_idx";
---> statement-breakpoint
-ALTER TABLE "private_sale_deal" DROP CONSTRAINT IF EXISTS "private_sale_deal_artwork_register_id_fk";
---> statement-breakpoint
-ALTER TABLE "private_sale_deal"
-  ALTER COLUMN "artwork_register_id" TYPE text USING "artwork_register_id"::text;
+-- Rollback for 0322_payment_group_received. Roll back the application release first: it writes
+-- both columns from bank transfer events and reads them for the Pay page. Without them a part-funded
+-- transfer shows nothing received, as before.
+SET LOCAL lock_timeout = '5s';
+
+ALTER TABLE "payment_group" DROP CONSTRAINT IF EXISTS "payment_group_amount_received_check";
+ALTER TABLE "payment_group" DROP COLUMN IF EXISTS "received_event_at";
+ALTER TABLE "payment_group" DROP COLUMN IF EXISTS "amount_received";

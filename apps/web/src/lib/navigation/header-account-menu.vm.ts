@@ -1,7 +1,11 @@
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
-import { accountHomePathForKind } from "./account-home";
 import type { AccountMenuEntry } from "./account-menu-model";
-import { type AccountOption, pendingInvitationsLabel } from "./account-switcher-model";
+import {
+  type AccountOption,
+  type AccountSwitcher,
+  buildAccountSwitcher,
+  pendingInvitationsLabel,
+} from "./account-switcher-model";
 import { type AttentionCount, type ClientAttention, attentionCountFor } from "./client-attention";
 import {
   type ClientNavScope,
@@ -10,20 +14,6 @@ import {
   navItemMatches,
 } from "./client-nav-model";
 import { CLIENT_ROUTES } from "./client-routes";
-
-/** One account under "Your accounts": the one in use, or one to open. */
-export type HeaderMenuAccount = {
-  id: string;
-  kind: AccountOption["kind"];
-  name: string;
-  /** "Bids, purchases and selling", or "Organisation workspace · Buyer". */
-  detail: string;
-  initials: string;
-  /** The account in use ("Here"). */
-  here: boolean;
-  /** Its first page: where the account in use goes, and where switching to it lands. */
-  href: string;
-};
 
 /** One page in the menu, with whatever is due there. */
 export type HeaderMenuLink = {
@@ -45,7 +35,7 @@ export type HeaderMenuSection = {
 /** The header account menu for a client: their accounts, then their pages by section. */
 export type HeaderAccountMenu = {
   /** Shown only to organisation members, who have more than one account. */
-  accounts: HeaderMenuAccount[] | null;
+  switcher: AccountSwitcher | null;
   /** Invitations to answer, when there are any. */
   invitations: AccountMenuEntry | null;
   sections: HeaderMenuSection[];
@@ -59,22 +49,6 @@ export type HeaderAccountMenuInput = {
   attention: ClientAttention;
   pathname: string;
 };
-
-const PERSONAL_DETAIL = "Bids, purchases and selling";
-
-function menuAccount(option: AccountOption): HeaderMenuAccount {
-  const destination = accountHomePathForKind(option.kind);
-  return {
-    id: option.id,
-    kind: option.kind,
-    name: option.name,
-    detail:
-      option.kind === "personal" ? PERSONAL_DETAIL : `Organisation workspace · ${option.detail}`,
-    initials: option.initials,
-    here: option.current,
-    href: destination,
-  };
-}
 
 function menuLink(
   item: AppShellNavItem,
@@ -100,7 +74,10 @@ export function buildHeaderAccountMenu(input: HeaderAccountMenuInput): HeaderAcc
   const { scope, attention, pathname } = input;
   const hasOrganisations = input.accounts?.some((option) => option.kind === "organisation");
   return {
-    accounts: hasOrganisations && input.accounts ? input.accounts.map(menuAccount) : null,
+    switcher:
+      hasOrganisations && input.accounts
+        ? buildAccountSwitcher([...input.accounts], input.pendingInvitations)
+        : null,
     invitations:
       input.pendingInvitations > 0
         ? {

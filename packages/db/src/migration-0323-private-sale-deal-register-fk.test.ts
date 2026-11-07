@@ -7,16 +7,16 @@ import { privateSaleDeal } from "./schema/private-sale-deal.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
-const migration = read("0322_private_sale_deal_register_fk.sql");
-const rollback = read("0322_rollback.sql");
+const migration = read("0323_private_sale_deal_register_fk.sql");
+const rollback = read("0323_rollback.sql");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
 
-describe("migration 0322 private sale deal register link", () => {
-  it("is journalled one day after 0321", () => {
-    const entry = journal.entries.find((e) => e.tag === "0322_private_sale_deal_register_fk");
-    const previous = journal.entries.find((e) => e.tag === "0321_alert_match_matched_at_idx");
+describe("migration 0323 private sale deal register link", () => {
+  it("is journalled one day after 0322", () => {
+    const entry = journal.entries.find((e) => e.tag === "0323_private_sale_deal_register_fk");
+    const previous = journal.entries.find((e) => e.tag === "0322_payment_group_received");
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });

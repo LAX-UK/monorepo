@@ -54,6 +54,8 @@ export const paySeveralStartBodySchema = z
     lotIds: z.array(z.string().uuid()).min(1).max(20),
     expectedTotalPence: z.number().int().positive().max(99_999_999).optional(),
     expectedLotIds: z.array(z.string().uuid()).min(1).max(20).optional(),
+    /** How the payer chose to pay; absent from a page that predates the choice. */
+    method: z.enum(["card", "bank_transfer"]).optional(),
   })
   .strict();
 export type PaySeveralStartBody = z.infer<typeof paySeveralStartBodySchema>;

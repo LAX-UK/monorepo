@@ -55,5 +55,5 @@ use **Check clearance** once Compliance has decided.
 
 ## Rolling back
 
-`0322_rollback.sql` returns `private_sale_deal.artwork_register_id` to text and keeps its values.
+`0323_rollback.sql` returns `private_sale_deal.artwork_register_id` to text and keeps its values.
 Roll back the application release first.

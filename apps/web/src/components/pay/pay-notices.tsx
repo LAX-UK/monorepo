@@ -2,10 +2,12 @@ import type { PayAction, PayNotice } from "@/lib/pay/pay-page.vm";
 import { cn } from "@auction/ui";
 import { ButtonLink, Notice } from "@auction/ui/lax";
 import Link from "next/link";
+import { FocusOnMount } from "./focus-on-mount";
 
 /**
  * The checks that stand in the way and what was left out, each as a kit notice with at most one
- * action. They are status messages, read when the page loads; a failure of Pay itself is the
+ * action. They are status messages, read when the page loads; a notice marked as an alert (a
+ * payment that did not complete) is announced and takes focus. A failure of Pay itself is the
  * alert in `PayFeedbackNotice`. On a phone the bar at the bottom already offers the page's one
  * action, so a notice that offers the same step does not show it a second time.
  */
@@ -21,11 +23,12 @@ export function PayNotices({
     <div className="flex flex-col gap-3">
       {notices.map((notice) => {
         const inBar = barAction?.kind === "link" && barAction.href === notice.action?.href;
-        return (
+        const element = (
           <Notice
             key={notice.title}
             tone={notice.tone}
             title={notice.title}
+            {...(notice.alert ? { alert: true } : {})}
             actions={
               notice.action ? (
                 <ButtonLink
@@ -42,6 +45,7 @@ export function PayNotices({
             {notice.detail}
           </Notice>
         );
+        return notice.focus ? <FocusOnMount key={notice.title}>{element}</FocusOnMount> : element;
       })}
     </div>
   );

@@ -4,6 +4,22 @@ import { payStartResult, planChangedMessage } from "./pay-start";
 
 const unread = async () => null;
 
+describe("a card refused above the limit", () => {
+  it("points to bank transfer and reads the page again", async () => {
+    const result = await payStartResult(
+      { status: 409, body: { error: "pay_several_card_over_limit" } },
+      100,
+      async () => null,
+    );
+    expect(result).toEqual({
+      kind: "failed",
+      message:
+        "This total is more than a card payment takes. Choose UK bank transfer, or pay fewer invoices.",
+      refresh: true,
+    });
+  });
+});
+
 describe("planChangedMessage", () => {
   it("names the new total, from the plan read again", () => {
     const now = planOf([payable(LOT_A, 100_000, 25_000), payable(LOT_B, 200_000, 50_000)]);

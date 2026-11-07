@@ -24,6 +24,7 @@ import type { OrganisationMemberActor } from "../interfaces/organisation-members
 import { NotificationFactory } from "../notification.factory.js";
 import { PaymentTierPolicy, parsePaymentTierLimits } from "../payment/payment-tier.policy.js";
 import { PayPlanService } from "./pay-plan.service.js";
+import { PayProgressResolver } from "./pay-progress.resolver.js";
 import { PaySeveralService } from "./pay-several.service.js";
 import { PurchaseCandidateReader } from "./purchase-candidate.reader.js";
 
@@ -135,6 +136,8 @@ describe.skipIf(!HAS_DB)("pay several raises what the plan counts (integration)"
   }
 
   const planner = new PayPlanService({
+    // Every live group counts as a payment the payer finished.
+    progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
     candidates: new PurchaseCandidateReader({
       reader: new DrizzleAccountPurchaseFactsReader(db),
       flags: new DrizzlePaySeveralInvoiceFlagsReader(db),

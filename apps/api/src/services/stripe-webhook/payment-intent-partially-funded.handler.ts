@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
+import { transferFunding } from "./bank-transfer-funding.js";
 import type { IPaymentIntentWebhookHandler } from "./payment-intent-webhook-handler.js";
 import type { StripePaymentWebhookDeps } from "./payment-webhook-lookup.js";
 import {
@@ -33,9 +34,7 @@ export class PaymentIntentPartiallyFundedHandler implements IPaymentIntentWebhoo
       return { processed: false, action: "skipped", reason: "amount_mismatch" };
     }
 
-    const amountRemainingCents =
-      paymentIntent.next_action?.display_bank_transfer_instructions?.amount_remaining ??
-      Math.max(0, paymentIntent.amount - (paymentIntent.amount_received ?? 0));
+    const amountRemainingCents = transferFunding(paymentIntent).remainingPence;
 
     return this.deps.transactionRunner.runInTransaction(async (tx) => {
       const { claimed } = await tryClaimProcessedStripeEvent(
