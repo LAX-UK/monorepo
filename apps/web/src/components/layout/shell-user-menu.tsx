@@ -1,6 +1,8 @@
 "use client";
 
 import { AccountMenuItems, useAccountMenuGroups } from "@/components/layout/account-menu-items";
+import { DesktopAccountFace } from "@/components/layout/account-switcher/desktop-account-face";
+import { MenuAccountList } from "@/components/layout/account-switcher/menu-account-list";
 import { type AppShellRole, appShellRoleMeta } from "@/components/layout/app-shell-nav";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -10,6 +12,8 @@ import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { shellRolePillLabel } from "@/lib/admin/staff-role-presenter";
 import type { SessionUser } from "@/lib/data/contracts";
+import { accountButtonView } from "@/lib/navigation/account-button.vm";
+import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
@@ -35,9 +39,15 @@ function menuItemsFromPanel(panel: HTMLElement | null): HTMLElement[] {
 type ShellUserMenuProps = {
   user: SessionUser;
   role: AppShellRole;
+  /**
+   * The account in use and the accounts to switch between. When there is a switcher, the button
+   * shows the account in use and the menu opens with the accounts, so the top-right button is
+   * the switcher; the sidebar's tile opens the same list.
+   */
+  account?: AccountChrome | null;
 };
 
-export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
+export function ShellUserMenu({ user, role, account = null }: ShellUserMenuProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -106,6 +116,14 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
   const rolePillLabel = shellRolePillLabel(user);
   const isClient = role === "client";
   const groups = useAccountMenuGroups(user, isClient);
+  const switcher = account?.switcher ?? null;
+  const accountView =
+    account && switcher
+      ? accountButtonView(account.current, {
+          initials: initials(user.name, user.email),
+          name: displayName,
+        })
+      : null;
 
   return (
     <div className="relative shrink-0" ref={wrapRef}>
@@ -113,29 +131,40 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
         ref={triggerRef}
         type="button"
         variant="ghost"
-        className="h-auto max-w-[220px] justify-start gap-2 rounded-full bg-transparent py-1 pl-1 pr-2 text-left hover:bg-surface-container-low"
+        className={cn(
+          "h-auto justify-start gap-2 bg-transparent text-left hover:bg-surface-container-low",
+          accountView
+            ? "min-h-11 max-w-[280px] rounded-lg py-1 pl-1 pr-2 font-normal text-on-surface"
+            : "max-w-[220px] rounded-full py-1 pl-1 pr-2",
+        )}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={MENU_ID}
-        aria-label="Account menu"
+        aria-label={accountView ? accountView.label : "Account menu"}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={onTriggerKeyDown}
       >
-        <PersonAvatar
-          src={user.image}
-          name={displayName}
-          initials={initials(user.name, user.email)}
-        />
-        <span className="hidden max-w-[10rem] truncate font-label text-sm font-medium text-on-surface lg:inline">
-          {firstName}
-        </span>
-        <ChevronDown
-          className={cn(
-            "hidden size-4 shrink-0 text-on-surface-variant transition-transform duration-200 motion-reduce:transition-none lg:block",
-            open ? "rotate-180" : "",
-          )}
-          aria-hidden
-        />
+        {accountView ? (
+          <DesktopAccountFace view={accountView} user={user} />
+        ) : (
+          <>
+            <PersonAvatar
+              src={user.image}
+              name={displayName}
+              initials={initials(user.name, user.email)}
+            />
+            <span className="hidden max-w-[10rem] truncate font-label text-sm font-medium text-on-surface lg:inline">
+              {firstName}
+            </span>
+            <ChevronDown
+              className={cn(
+                "hidden size-4 shrink-0 text-on-surface-variant transition-transform duration-200 motion-reduce:transition-none lg:block",
+                open ? "rotate-180" : "",
+              )}
+              aria-hidden
+            />
+          </>
+        )}
       </Button>
 
       {open ? (
@@ -161,6 +190,12 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
               <span className="font-label text-xs font-semibold">{rolePillLabel}</span>
             </div>
           </div>
+
+          {switcher ? (
+            <div className="border-b border-shell-stroke p-1.5">
+              <MenuAccountList switcher={switcher} onNavigate={closeMenu} />
+            </div>
+          ) : null}
 
           {!isClient ? (
             <div className="border-b border-shell-stroke px-4 py-4">

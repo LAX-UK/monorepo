@@ -25,7 +25,9 @@ const LEFT_ORGANISATION_NAME = "Crowley Fine Art Ltd";
 const NEVER_MEMBER_ORGANISATION_ID = "20000000-0000-4000-8000-000000000003";
 const NEVER_MEMBER_ORGANISATION_NAME = "Crowley Arts Foundation";
 
-const accountMenuButton = (page: Page) => page.getByRole("button", { name: /^account menu/i });
+/** The top-right account button: "Account menu" alone, "Your accounts, …" with an organisation. */
+const accountMenuButton = (page: Page) =>
+  page.getByRole("button", { name: /^(account menu|your accounts)/i });
 const workspaceSwitcher = (page: Page) => page.getByTestId("account-switcher");
 const pageHeading = (page: Page) => page.getByRole("heading", { level: 1 }).first();
 /** The greeting after a chosen switch: a polite live region the message is put into once loaded. */
@@ -55,6 +57,10 @@ async function accountsOf(
   if (!personal || !organisation) throw new Error("The seeded owner needs both account kinds");
   return { personal, organisation };
 }
+
+/** The hop a record link takes to open `next` in an account (the app's own link, as written). */
+const switchHrefFor = (accountId: string, next = "/bids") =>
+  `/switch-account?${new URLSearchParams({ to: accountId, next }).toString()}`;
 
 /** Chooses an account in this browser as an earlier visit would have left it. */
 async function useAccountInThisBrowser(context: BrowserContext, baseURL: string, id: string) {
@@ -178,6 +184,83 @@ test.describe("account switching on the production build @roles", () => {
       timeout: 30_000,
     });
     expect(pathOf(page)).toBe("/about");
+  });
+
+  test("the top-right account button shows the account in use on every page and switches from both frames", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    const origin = baseURL ?? "http://localhost:3000";
+    await buyerLogin(page);
+    const { personal, organisation } = await accountsOf(page);
+    await useAccountInThisBrowser(context, origin, personal.id);
+    await page.setViewportSize({ width: 1440, height: 900 });
+
+    // A public page, in Personal: the person's avatar, their name and the word Personal.
+    await page.goto("/about");
+    const button = accountMenuButton(page);
+    await expect(button).toBeVisible({ timeout: 30_000 });
+    await expect(button).toHaveAccessibleName(/^Your accounts, .+, Personal$/);
+    await expect(button).toContainText("Personal");
+
+    // Switching there opens the workspace, whose top-right button shows the organisation's tile
+    // and is the switcher too.
+    await clickAccountMenuItem(page, new RegExp(organisation.name));
+    await expect(switchNotice(page)).toContainText(`Now acting as ${organisation.name}`, {
+      timeout: 30_000,
+    });
+    await page.goto("/home");
+    await expect(accountMenuButton(page)).toHaveAccessibleName(
+      `Your accounts, acting as ${organisation.name}`,
+      { timeout: 30_000 },
+    );
+    await accountMenuButton(page).click();
+    await page.getByTestId("switch-account-personal").click();
+    await expect(workspaceSwitcher(page)).toHaveCount(0, { timeout: 30_000 });
+    await expect(accountMenuButton(page)).toHaveAccessibleName(/^Your accounts, .+, Personal$/);
+  });
+
+  test("a link that opens the other account says so and offers the way back", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    const origin = baseURL ?? "http://localhost:3000";
+    await buyerLogin(page);
+    const { personal, organisation } = await accountsOf(page);
+    await useAccountInThisBrowser(context, origin, personal.id);
+    await page.goto("/about");
+    await expect(accountMenuButton(page)).toBeVisible({ timeout: 30_000 });
+
+    // A link on this site, as a record page would send it: same-origin, so no confirmation.
+    await page.evaluate((href) => window.location.assign(href), switchHrefFor(organisation.id));
+
+    const toast = page.getByTestId("record-switch-toast");
+    await expect(toast).toContainText(`Opened in ${organisation.name}`, { timeout: 30_000 });
+    await expect(toast).toContainText("This record belongs to the organisation.");
+    await toast.getByRole("button", { name: "Back to Personal" }).click();
+    await expect(workspaceSwitcher(page)).toHaveCount(0, { timeout: 30_000 });
+    await expect(accountMenuButton(page)).toHaveAccessibleName(/^Your accounts, .+, Personal$/);
+  });
+
+  test("signing out clears the account choice, so the next sign-in starts from its own account", async ({
+    page,
+    context,
+    baseURL,
+  }) => {
+    const origin = baseURL ?? "http://localhost:3000";
+    await buyerLogin(page);
+    const { organisation } = await accountsOf(page);
+    await useAccountInThisBrowser(context, origin, organisation.id);
+    expect((await context.cookies(origin)).some((c) => c.name === ACTING_COOKIE)).toBe(true);
+
+    // The server ends the session and clears the choice together, whatever the page does after:
+    // the browser's own cleanup (which also runs) is not what this proves.
+    const response = await page.request.post("/api/auth/logout", { headers: { origin } });
+    expect(response.ok()).toBe(true);
+
+    expect((await context.cookies(origin)).some((c) => c.name === ACTING_COOKIE)).toBe(false);
   });
 
   test("on a phone the account button switches in the Switch account sheet, in Personal and back", async ({

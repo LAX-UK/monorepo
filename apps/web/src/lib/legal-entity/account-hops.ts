@@ -38,7 +38,12 @@ export function planSwitchHop(input: {
   const notice: AccountNotice =
     from && from === input.actingId
       ? { kind: "opened_notification", accountId: requestedId, fromAccountId: from }
-      : { kind: "switched", accountId: requestedId };
+      : {
+          kind: "switched",
+          accountId: requestedId,
+          // A record link says where it came from, so the notice can offer the way back.
+          ...(input.actingId ? { fromAccountId: input.actingId } : {}),
+        };
   return {
     redirect: next,
     switchTo: { accountId: requestedId, remember: true, notice },

@@ -13,8 +13,11 @@ export const ACCOUNT_NOTICE_MAX_AGE_SEC = 60;
 export const CHOSEN_SWITCH_SHOWN_MS = 6000;
 
 export type AccountNotice =
-  /** Switched to `accountId` to show a record that belongs to it. */
-  | { kind: "switched"; accountId: string }
+  /**
+   * Switched to `accountId` to show a record that belongs to it. `fromAccountId` is the account
+   * the link was opened from, when there was one: the notice then offers the way back to it.
+   */
+  | { kind: "switched"; accountId: string; fromAccountId?: string }
   /** Opening a notification switched to `accountId`; switching back goes to `fromAccountId`. */
   | { kind: "opened_notification"; accountId: string; fromAccountId: string }
   /**
@@ -51,7 +54,15 @@ const NOTICE_KINDS: {
 } = {
   switched: {
     decode: (value) =>
-      typeof value.accountId === "string" ? { kind: "switched", accountId: value.accountId } : null,
+      typeof value.accountId === "string"
+        ? {
+            kind: "switched",
+            accountId: value.accountId,
+            ...(typeof value.fromAccountId === "string"
+              ? { fromAccountId: value.fromAccountId }
+              : {}),
+          }
+        : null,
     message: (notice, accountOf) => {
       const account = accountOf(notice.accountId);
       return account ? `Switched to ${accountPhrase(account)} to show this.` : null;

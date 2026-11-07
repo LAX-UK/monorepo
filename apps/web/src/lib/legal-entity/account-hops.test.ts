@@ -17,7 +17,7 @@ const memberships = [
 const next = "/selling/consignments/s1";
 
 describe("planSwitchHop", () => {
-  it("switches to an organisation the person belongs to, with the notice", () => {
+  it("switches to an organisation the person belongs to, with the notice and the way back", () => {
     expect(
       planSwitchHop({
         requestedId: "org-1",
@@ -31,9 +31,21 @@ describe("planSwitchHop", () => {
       switchTo: {
         accountId: "org-1",
         remember: true,
-        notice: { kind: "switched", accountId: "org-1" },
+        notice: { kind: "switched", accountId: "org-1", fromAccountId: "me" },
       },
     });
+  });
+
+  it("has no way back when the browser had no account yet", () => {
+    expect(
+      planSwitchHop({
+        requestedId: "org-1",
+        next,
+        actingId: null,
+        memberships,
+        orgModuleEnabled: true,
+      }).switchTo?.notice,
+    ).toEqual({ kind: "switched", accountId: "org-1" });
   });
 
   it("offers the way back after a notification opened another account", () => {
@@ -46,7 +58,7 @@ describe("planSwitchHop", () => {
     // Only the account this browser really used can be the way back.
     expect(
       planSwitchHop({ ...base, actingId: "me", notificationFrom: "org-7" }).switchTo?.notice,
-    ).toEqual({ kind: "switched", accountId: "org-1" });
+    ).toEqual({ kind: "switched", accountId: "org-1", fromAccountId: "me" });
   });
 
   it("goes straight through when the link is already in the right account", () => {
