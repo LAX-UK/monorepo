@@ -18,7 +18,7 @@ describe.skipIf(!HAS_DB)("DrizzleEmailSuppressionRepository (integration)", () =
     await db.delete(emailSuppression).where(inArray(emailSuppression.emailHash, hashes));
     await db
       .delete(zohoCampaignsOptOutLift)
-      .where(inArray(zohoCampaignsOptOutLift.emailHash, [...hashes, "suppression-it-missing"]));
+      .where(inArray(zohoCampaignsOptOutLift.emailHash, [...hashes, "suppression-it-missing", "suppression-it-latest"]));
   });
 
   const read = async (hash: string) =>
@@ -54,7 +54,7 @@ describe.skipIf(!HAS_DB)("DrizzleEmailSuppressionRepository (integration)", () =
   });
 
   it("records the lift even when there is no entry, keeping the latest time", async () => {
-    const hash = "suppression-it-missing";
+    const hash = "suppression-it-latest";
     const early = new Date("2026-01-01T00:00:00Z");
     const late = new Date("2026-02-01T00:00:00Z");
     await repo.liftMarketingOptOut(hash, late);
