@@ -26,6 +26,7 @@ import {
   StaffDate,
   type StaffLinkComponent,
   StatusBadge,
+  TableSearch,
   staffButtonVariants,
 } from "@auction/staff-ui";
 import Link from "next/link";
@@ -58,7 +59,8 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
     typeof search.payout === "string" && search.payout ? search.payout : null,
   );
   const money = usePayoutMoneyActions(capabilities);
-  const filtered = Boolean(search.status || search.legalEntityId);
+  const q = typeof search.q === "string" ? search.q : "";
+  const filtered = Boolean(search.status || search.legalEntityId || q);
 
   // The panel opens and closes without asking the server for the list again; the URL follows.
   const showPanel = (id: string | null) => {
@@ -105,6 +107,13 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
             {row.period}
           </PrimaryCell>
         ),
+      },
+      {
+        id: "reference",
+        header: "Reference",
+        width: "190px",
+        mobile: "meta",
+        cell: (row) => <span className="font-mono text-xs">{row.reference}</span>,
       },
       {
         id: "status",
@@ -206,6 +215,16 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
             entityType="payouts"
             filters={props.exportFilters}
             className={staffButtonVariants({ variant: "secondary", size: "sm" })}
+          />
+        }
+        search={
+          <TableSearch
+            key={q}
+            fullWidth
+            label="Search payouts"
+            placeholder="Search by reference (PO-2026-3FA9C1D2) or payout id"
+            value={q}
+            onSearch={(next) => navigate(payoutsListHref(search, { q: next || null }))}
           />
         }
         attention={payoutsAttention(search, props.summary, props.disputesOpen)}

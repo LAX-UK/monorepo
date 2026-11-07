@@ -26,6 +26,8 @@ export type AdminManualReversePayoutInput = z.infer<typeof adminManualReversePay
 export const listPayoutsQuerySchema = z.object({
   legalEntityId: z.string().uuid().optional(),
   status: z.enum(payoutStatuses).optional(),
+  /** Admin list search: a payout reference, the start of a payout id, or a seller name. */
+  search: z.string().trim().max(100).optional(),
   periodStart: z.coerce.date().optional(),
   periodEnd: z.coerce.date().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),

@@ -489,6 +489,13 @@ export {
 } from "./money-totals.js";
 export { BUSINESS_TIME_ZONE, londonCalendarYear, type CalendarYear } from "./calendar-year.js";
 export {
+  formatPayoutReference,
+  parsePayoutReference,
+  parsePayoutSearch,
+  type ParsedPayoutReference,
+  type PayoutSearch,
+} from "./payout-reference.js";
+export {
   MEMBER_REMOVED_STOP_REASON,
   stopsOnRemoval,
   type StandingInstructionCandidate,

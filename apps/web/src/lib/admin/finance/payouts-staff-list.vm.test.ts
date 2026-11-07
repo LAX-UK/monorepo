@@ -61,6 +61,13 @@ const row: AdminPayoutRow = {
 pinClock();
 
 describe("payouts staff list view model", () => {
+  it("gives each payout the reference people quote", () => {
+    const [scheduled] = toPayoutsStaffRows([
+      { ...row, id: "3fa9c1d2-7b44-4e0a-9d51-aa11bb22cc33" },
+    ]);
+    expect(scheduled?.reference).toBe("PO-2026-3FA9C1D2");
+  });
+
   it("shows a paid date only for a payout that was paid", () => {
     const at = "2026-10-05T09:00:00.000Z";
     const paidAt = (status: AdminPayoutRow["status"]) =>
