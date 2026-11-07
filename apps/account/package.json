@@ -10,7 +10,8 @@
     "start": "next start --port 3040",
     "lint": "biome check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "node ../../scripts/ci/require-node-version.mjs && playwright test"
   },
   "dependencies": {
     "@auction/branding": "workspace:*",
@@ -32,6 +33,8 @@
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
+    "@axe-core/playwright": "^4.10.1",
+    "@playwright/test": "^1.55.0",
     "@tailwindcss/postcss": "^4.1.13",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^22.10.5",
