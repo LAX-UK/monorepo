@@ -2,7 +2,7 @@ import { formatLotMoment } from "@/lib/bid/lot-moment";
 import type { PayoutDetail, PayoutLine } from "@/lib/data/http/workspace-selling.schema";
 import { formatMoney } from "@/lib/format-currency";
 import { formatDeduction } from "@/lib/money/currency";
-import { addMoneyStrings } from "@auction/domain";
+import { addMoneyStrings, formatPayoutReference } from "@auction/domain";
 import type { PayoutStatus } from "@auction/types";
 import { payoutStatuses } from "@auction/types";
 import { PAYOUT_STATUS_BADGE } from "./sold-and-payouts-list";
@@ -89,7 +89,7 @@ export function payoutDetailVm(
           : null;
   return {
     title: `Payout of ${money(detail.netAmount)}`,
-    subtitle: `Sales ${period} · reference ${detail.id.slice(0, 8).toUpperCase()}`,
+    subtitle: `Sales ${period} · reference ${formatPayoutReference(detail)}`,
     status,
     statusNote,
     gross: money(detail.grossAmount),

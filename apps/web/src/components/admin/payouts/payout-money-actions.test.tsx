@@ -30,6 +30,7 @@ const REASON = "Seller asked for the fee to be waived";
 
 const payout: PayoutsStaffRow = {
   id: "payout_1",
+  reference: "PO-2026-PAYOUT1",
   legalEntityId: "entity_1",
   seller: "Gallery One",
   period: "1 Oct 2026 – 31 Oct 2026",

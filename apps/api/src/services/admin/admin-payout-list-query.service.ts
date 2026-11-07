@@ -20,6 +20,7 @@ export class AdminPayoutListQueryService {
     const listFilter = {
       ...(filter.legalEntityId !== undefined ? { legalEntityId: filter.legalEntityId } : {}),
       ...(filter.status !== undefined ? { status: filter.status } : {}),
+      ...(filter.search ? { search: filter.search } : {}),
     };
     const [rows, total, summary] = await Promise.all([
       this.payouts.list({

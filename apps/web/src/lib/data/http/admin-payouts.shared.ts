@@ -31,6 +31,8 @@ export type AdminPayoutsPageParams = {
   offset: number;
   status?: PayoutStatus;
   legalEntityId?: string;
+  /** A payout reference (PO-YYYY-XXXXXXXX), the start of a payout id, or a seller name. */
+  search?: string;
 };
 
 export type AdminPayoutsPage = {
@@ -104,6 +106,7 @@ export function buildAdminPayoutsSearchParams(params: AdminPayoutsPageParams): U
   });
   if (params.status) qs.set("status", params.status);
   if (params.legalEntityId) qs.set("legalEntityId", params.legalEntityId);
+  if (params.search) qs.set("search", params.search);
   return qs;
 }
 
