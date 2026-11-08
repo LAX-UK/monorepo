@@ -19,6 +19,7 @@ export type AdminNavIcon =
   | "featured"
   | "enquiries"
   | "products"
+  | "framing"
   | "orders"
   | "production"
   | "fulfilment"
@@ -173,6 +174,12 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
               },
             ]
           : []),
+        {
+          href: "/framing",
+          icon: "framing" as const,
+          label: "Framing",
+          capability: "catalogue.read" as const,
+        },
         { href: "/orders", icon: "orders" as const, label: "Orders", capability: "order.read" },
         ...(input.features.payouts
           ? [
