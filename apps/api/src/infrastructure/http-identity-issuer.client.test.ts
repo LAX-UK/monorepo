@@ -447,6 +447,49 @@ describe("HttpIdentityIssuerClient", () => {
         });
       });
 
+      describe("cancelling", () => {
+        const cancelInput = {
+          subjectId: "user-1",
+          actorUserId: "staff-2",
+          reason: "Caller found the old mailbox again.",
+        } as const;
+
+        it("asks the staff route with the staff token and sends the actor and reason", async () => {
+          const { client, fetchImpl } = staffClient(() => Response.json({ cancelled: true }));
+          await expect(client.cancelStaffAssistedEmailChange(cancelInput)).resolves.toBeUndefined();
+          const [, tokenInit] = fetchImpl.mock.calls[0] ?? [];
+          expect(String(tokenInit?.body)).toContain("scope=staff_email_change");
+          const [url, init] = fetchImpl.mock.calls[1] ?? [];
+          expect(String(url)).toBe(
+            "https://identity.example.com/internal/identity/subjects/user-1/staff-email-change/cancel",
+          );
+          expect((init?.headers as Record<string, string>).authorization).toBe(
+            "Bearer scoped-token",
+          );
+          expect(JSON.parse(String(init?.body))).toEqual({
+            actorSubjectId: "staff-2",
+            reason: cancelInput.reason,
+          });
+        });
+
+        it("surfaces the refusal code when nothing is waiting", async () => {
+          const { client } = staffClient(() =>
+            Response.json({ error: "none_in_progress" }, { status: 409 }),
+          );
+          await expect(client.cancelStaffAssistedEmailChange(cancelInput)).rejects.toMatchObject({
+            status: 409,
+            code: "none_in_progress",
+          });
+        });
+
+        it("rejects an answer that does not say it was cancelled", async () => {
+          const { client } = staffClient(() => Response.json({ ok: true }));
+          await expect(client.cancelStaffAssistedEmailChange(cancelInput)).rejects.toBeInstanceOf(
+            IdentityIssuerClientError,
+          );
+        });
+      });
+
       it("fails clearly when the credential is not configured", async () => {
         const client = new HttpIdentityIssuerClient({
           issuerBaseUrl: "https://identity.example.com",

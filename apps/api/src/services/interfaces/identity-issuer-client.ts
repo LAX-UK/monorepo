@@ -178,6 +178,16 @@ export interface IIdentityStaffEmailChangeClient {
     reason: string;
     proof: StaffEmailChangeProof;
   }): Promise<{ pendingEmail: string }>;
+  /**
+   * Withdraws a change that is waiting for its link: the pending address is cleared, which ends
+   * the link already sent. Rejects with an IdentityIssuerClientError coded `subject_not_found`
+   * or `none_in_progress`.
+   */
+  cancelStaffAssistedEmailChange(input: {
+    subjectId: string;
+    actorUserId: string;
+    reason: string;
+  }): Promise<void>;
 }
 
 export interface IIdentityProfileClient {

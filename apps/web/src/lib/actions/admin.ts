@@ -114,10 +114,12 @@ export const adminSuspendUserResultAction = _adminSuspendUserResultAction;
 import { adminResetTwoFactorResultAction as _adminResetTwoFactorResultAction } from "./admin/admin-users";
 export const adminResetTwoFactorResultAction = _adminResetTwoFactorResultAction;
 import {
+  adminCancelEmailChangeResultAction as _adminCancelEmailChangeResultAction,
   adminEmailChangeKycRecordResultAction as _adminEmailChangeKycRecordResultAction,
   adminStartEmailChangeResultAction as _adminStartEmailChangeResultAction,
 } from "./admin/admin-users";
 export const adminStartEmailChangeResultAction = _adminStartEmailChangeResultAction;
+export const adminCancelEmailChangeResultAction = _adminCancelEmailChangeResultAction;
 export const adminEmailChangeKycRecordResultAction = _adminEmailChangeKycRecordResultAction;
 
 import { adminUnsuspendUserResultAction as _adminUnsuspendUserResultAction } from "./admin/admin-users";

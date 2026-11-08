@@ -1,5 +1,9 @@
 import type { EmailSender } from "@auction/auth";
-import type { StaffEmailChangeFailure, StaffEmailChangeRequest } from "@auction/identity-contracts";
+import type {
+  StaffEmailChangeCancelRequest,
+  StaffEmailChangeFailure,
+  StaffEmailChangeRequest,
+} from "@auction/identity-contracts";
 import {
   EMAIL_CHANGE_TOKEN_TTL_SECONDS,
   createEmailChangeToken,
@@ -13,6 +17,10 @@ import {
 export type StaffEmailChangeResult =
   | { ok: true; pendingEmail: string }
   | { ok: false; kind: StaffEmailChangeFailure };
+
+export type StaffEmailChangeCancelResult =
+  | { ok: true }
+  | { ok: false; kind: Extract<StaffEmailChangeFailure, "subject_not_found" | "none_in_progress"> };
 
 export type StaffEmailChangeDeps = {
   operations: Pick<
@@ -91,6 +99,33 @@ export class StaffEmailChangeService {
       "staff_assisted_email_change_started",
     );
     return { ok: true, pendingEmail: target };
+  }
+
+  /**
+   * Withdraws a change that is waiting for its link to be followed. Clearing the pending address
+   * is what ends the link: a confirmation checks the pending address and the current one, so the
+   * link already sent no longer matches anything and is refused as out of date. Nothing else is
+   * touched: the sessions that were ended stay ended and the account keeps its old address.
+   */
+  async cancel(
+    subjectId: string,
+    request: StaffEmailChangeCancelRequest,
+  ): Promise<StaffEmailChangeCancelResult> {
+    const subject = await this.deps.operations.readSubject(subjectId);
+    if (!subject) return { ok: false, kind: "subject_not_found" };
+    try {
+      await this.deps.operations.cancelEmailChange(subjectId);
+    } catch (error) {
+      if (error instanceof IdentityOperationError && error.code === "none_in_progress") {
+        return { ok: false, kind: "none_in_progress" };
+      }
+      throw error;
+    }
+    this.deps.audit(
+      { subjectId, actorSubjectId: request.actorSubjectId, reason: request.reason },
+      "staff_assisted_email_change_cancelled",
+    );
+    return { ok: true };
   }
 
   private async sendNotices(input: {

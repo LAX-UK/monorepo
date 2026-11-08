@@ -1,17 +1,16 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import {
+  STAFF_EMAIL_CHANGE_CANCEL_SUBROUTE,
   STAFF_EMAIL_CHANGE_SUBROUTE,
+  staffEmailChangeCancelRequestSchema,
   staffEmailChangeRequestSchema,
 } from "@auction/identity-contracts";
 import type { Context, Hono } from "hono";
-import type {
-  StaffEmailChangeResult,
-  StaffEmailChangeService,
-} from "../services/staff-email-change.service.js";
+import type { StaffEmailChangeService } from "../services/staff-email-change.service.js";
 
 /** The credential Bid admin uses to start a staff-assisted email change. It is not the lifecycle credential. */
 export type StaffEmailChangeMachineDeps = {
-  changes: Pick<StaffEmailChangeService, "start">;
+  changes: Pick<StaffEmailChangeService, "start" | "cancel">;
   /** Tokens issued for the `staff_email_change` scope are stored and looked up under their own key. */
   redis: { get(key: string): Promise<string | null> };
   clientId: string;
@@ -36,9 +35,10 @@ const FAILURE_STATUS = {
   same_email: 409,
   email_taken: 409,
   channel_unavailable: 503,
+  none_in_progress: 409,
 } as const;
 
-function failureStatus(result: Extract<StaffEmailChangeResult, { ok: false }>) {
+function failureStatus(result: { kind: keyof typeof FAILURE_STATUS }) {
   return FAILURE_STATUS[result.kind];
 }
 
@@ -67,6 +67,24 @@ export function mountStaffEmailChangeMachineRoutes(
       const result = await deps.changes.start(c.req.param("subjectId"), request.data);
       return result.ok
         ? c.json({ pendingEmail: result.pendingEmail })
+        : c.json({ error: result.kind }, failureStatus(result));
+    } catch (error) {
+      deps.onFailure?.(error);
+      return c.json({ error: "temporarily_unavailable" }, 503);
+    }
+  });
+
+  app.post(`/identity${STAFF_EMAIL_CHANGE_CANCEL_SUBROUTE}`, async (c) => {
+    c.header("Cache-Control", "no-store");
+    if (!(await hasToken(c))) return c.json({ error: "unauthorized" }, 401);
+    const request = staffEmailChangeCancelRequestSchema.safeParse(
+      await c.req.json().catch(() => null),
+    );
+    if (!request.success) return c.json({ error: "invalid_request" }, 400);
+    try {
+      const result = await deps.changes.cancel(c.req.param("subjectId"), request.data);
+      return result.ok
+        ? c.json({ cancelled: true })
         : c.json({ error: result.kind }, failureStatus(result));
     } catch (error) {
       deps.onFailure?.(error);

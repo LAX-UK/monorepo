@@ -180,3 +180,48 @@ describe("StaffEmailChangeService.start", () => {
     expect(operations.startStaffAssistedEmailChange).not.toHaveBeenCalled();
   });
 });
+
+describe("StaffEmailChangeService.cancel", () => {
+  const CANCEL = { actorSubjectId: "staff-2", reason: "Caller found the old mailbox again." };
+
+  it("clears the pending change, which ends the link already sent, and audits who and why", async () => {
+    const { service, operations, audit, email } = setup();
+    expect(await service.cancel(SUBJECT, CANCEL)).toEqual({ ok: true });
+    expect(operations.cancelEmailChange).toHaveBeenCalledWith(SUBJECT);
+    expect(audit).toHaveBeenCalledTimes(1);
+    const [entry, message] = audit.mock.calls[0] ?? [];
+    expect(message).toBe("staff_assisted_email_change_cancelled");
+    expect(entry).toEqual({
+      subjectId: SUBJECT,
+      actorSubjectId: "staff-2",
+      reason: CANCEL.reason,
+    });
+    // Cancelling sends no new link and ends no session: only the pending address goes.
+    expect(email.enqueue).not.toHaveBeenCalled();
+    expect(operations.revokeAllSessions).not.toHaveBeenCalled();
+  });
+
+  it("says so when no change is waiting, and audits nothing", async () => {
+    const { service, operations, audit } = setup();
+    operations.cancelEmailChange.mockRejectedValueOnce(
+      new IdentityOperationError("none_in_progress"),
+    );
+    expect(await service.cancel(SUBJECT, CANCEL)).toEqual({ ok: false, kind: "none_in_progress" });
+    expect(audit).not.toHaveBeenCalled();
+  });
+
+  it("reports an unknown account without touching anything", async () => {
+    const { service, operations, audit } = setup();
+    operations.readSubject.mockResolvedValueOnce(null as never);
+    expect(await service.cancel(SUBJECT, CANCEL)).toEqual({ ok: false, kind: "subject_not_found" });
+    expect(operations.cancelEmailChange).not.toHaveBeenCalled();
+    expect(audit).not.toHaveBeenCalled();
+  });
+
+  it("does not hide an unexpected failure", async () => {
+    const { service, operations, audit } = setup();
+    operations.cancelEmailChange.mockRejectedValueOnce(new Error("db down"));
+    await expect(service.cancel(SUBJECT, CANCEL)).rejects.toThrow("db down");
+    expect(audit).not.toHaveBeenCalled();
+  });
+});

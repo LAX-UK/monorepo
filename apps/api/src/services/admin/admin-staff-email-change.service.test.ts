@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { IdentityIssuerClientError } from "../../infrastructure/http-identity-issuer.client.js";
 import {
   AdminStaffEmailChangeService,
+  STAFF_EMAIL_CHANGE_CANCELLED_EVENT,
   STAFF_EMAIL_CHANGE_KYC_VIEWED_EVENT,
   STAFF_EMAIL_CHANGE_REQUESTED_EVENT,
   type StaffEmailChangeActor,
@@ -49,6 +50,7 @@ function setup(
 ) {
   const identity = {
     startStaffAssistedEmailChange: vi.fn().mockResolvedValue({ pendingEmail: "new@example.com" }),
+    cancelStaffAssistedEmailChange: vi.fn().mockResolvedValue(undefined),
   };
   const users = {
     getById: vi.fn().mockResolvedValue("target" in options ? options.target : { role: "client" }),
@@ -223,5 +225,85 @@ describe("AdminStaffEmailChangeService.kycRecord", () => {
     );
     expect(result._unsafeUnwrapErr()).toMatchObject({ status: 403 });
     expect(kyc.listSessionsForUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("AdminStaffEmailChangeService.cancel", () => {
+  const CANCEL = { reason: "Caller found the old mailbox again." };
+
+  it("records who withdrew it and why, then asks Identity to clear the pending change", async () => {
+    const { service, identity, audit } = setup();
+    const result = await service.cancel(SUPPORT, TARGET_ID, CANCEL);
+
+    expect(result._unsafeUnwrap()).toEqual({ cancelled: true });
+    expect(audit.publish).toHaveBeenCalledWith({
+      eventType: STAFF_EMAIL_CHANGE_CANCELLED_EVENT,
+      aggregateType: "user",
+      aggregateId: TARGET_ID,
+      actorUserId: SUPPORT.userId,
+      payload: { reason: CANCEL.reason },
+    });
+    expect(identity.cancelStaffAssistedEmailChange).toHaveBeenCalledWith({
+      subjectId: TARGET_ID,
+      actorUserId: SUPPORT.userId,
+      reason: CANCEL.reason,
+    });
+    // The record is made before Identity acts, so there is never a cancellation without it.
+    expect(audit.publish.mock.invocationCallOrder[0]).toBeLessThan(
+      identity.cancelStaffAssistedEmailChange.mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+
+  it.each([
+    ["a fulfilment member", { userId: "f", role: "staff", staffRoles: ["fulfilment"] }],
+    ["a finance member", { userId: "g", role: "staff", staffRoles: ["finance"] }],
+    ["a read-only member", { userId: "h", role: "staff", staffRoles: ["read_only"] }],
+    ["a client", { userId: "i", role: "client", staffRoles: [] }],
+  ] as [string, StaffEmailChangeActor][])("refuses %s", async (_name, actor) => {
+    const { service, identity, audit } = setup();
+    const result = await service.cancel(actor, TARGET_ID, CANCEL);
+    expect(result._unsafeUnwrapErr()).toMatchObject({ status: 403 });
+    expect(audit.publish).not.toHaveBeenCalled();
+    expect(identity.cancelStaffAssistedEmailChange).not.toHaveBeenCalled();
+  });
+
+  it("refuses staff acting on their own account", async () => {
+    const { service, identity } = setup();
+    const result = await service.cancel(ADMIN, ADMIN.userId, CANCEL);
+    expect(result._unsafeUnwrapErr()).toMatchObject({ status: 403 });
+    expect(identity.cancelStaffAssistedEmailChange).not.toHaveBeenCalled();
+  });
+
+  it("lets only an Administrator act on a staff account", async () => {
+    const { service, identity } = setup({ target: { role: "staff" } });
+    expect((await service.cancel(SUPPORT, TARGET_ID, CANCEL))._unsafeUnwrapErr()).toMatchObject({
+      status: 403,
+    });
+    expect(identity.cancelStaffAssistedEmailChange).not.toHaveBeenCalled();
+    expect((await service.cancel(ADMIN, TARGET_ID, CANCEL)).isOk()).toBe(true);
+  });
+
+  it("answers 404 for a person who does not exist, and records nothing", async () => {
+    const { service, audit, identity } = setup({ target: null });
+    const result = await service.cancel(ADMIN, TARGET_ID, CANCEL);
+    expect(result._unsafeUnwrapErr()).toEqual({ status: 404, message: "User not found" });
+    expect(audit.publish).not.toHaveBeenCalled();
+    expect(identity.cancelStaffAssistedEmailChange).not.toHaveBeenCalled();
+  });
+
+  it("says when nothing is waiting: already done, cancelled or lapsed", async () => {
+    const { service, identity } = setup();
+    identity.cancelStaffAssistedEmailChange.mockRejectedValueOnce(
+      new IdentityIssuerClientError("http", "refused", 409, "none_in_progress"),
+    );
+    const error = (await service.cancel(ADMIN, TARGET_ID, CANCEL))._unsafeUnwrapErr();
+    expect(error.status).toBe(409);
+    expect(error.message).toMatch(/No email change is waiting/);
+  });
+
+  it("reports an outage as a bad gateway rather than leaking the cause", async () => {
+    const { service, identity } = setup();
+    identity.cancelStaffAssistedEmailChange.mockRejectedValueOnce(new Error("socket hang up"));
+    expect((await service.cancel(ADMIN, TARGET_ID, CANCEL))._unsafeUnwrapErr().status).toBe(502);
   });
 });
