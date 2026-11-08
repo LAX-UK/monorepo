@@ -288,11 +288,7 @@ export function OverflowTabs({
                   <ChevronDown aria-hidden />
                 </Button>
               </MenuTrigger>
-              <MenuContent
-                align="start"
-                className="w-56"
-                landmarkLabel={`More ${label.toLowerCase()}`}
-              >
+              <MenuContent align="start" className="w-56">
                 {overflow.map((index) => {
                   const view = tabs[index];
                   if (!view) return null;

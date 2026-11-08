@@ -207,19 +207,4 @@ describe("TabNav that folds into More", () => {
       expect(screen.getAllByRole("link")).toHaveLength(3);
     });
   });
-
-  it("opens the folded tabs in a named region, so no menu content sits outside a landmark", () => {
-    withLayout(400, () => {
-      render(<TabNav items={sections} activeId="new" label="Views" Link={Link} />);
-      fireEvent.keyDown(screen.getByRole("button", { name: "More views, 1" }), { key: "Enter" });
-      const region = screen.getByRole("region", { name: "More views" });
-      expect(region).toContainElement(screen.getByRole("menu"));
-      expect(region).toContainElement(screen.getByRole("menuitem", { name: /All artworks/ }));
-      // Everything the menu draws at the end of the page is inside that region.
-      const wrapper = document.querySelector("[data-radix-popper-content-wrapper]");
-      expect(wrapper?.closest("section")).toBe(region);
-      // The region adds no box, so the menu sits exactly where it did.
-      expect(region).toHaveClass("contents");
-    });
-  });
 });

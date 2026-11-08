@@ -49,37 +49,24 @@ const DropdownMenuSubContent = React.forwardRef<
 ));
 DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName;
 
-type DropdownMenuContentProps = React.ComponentPropsWithoutRef<
-  typeof DropdownMenuPrimitive.Content
-> & {
-  /**
-   * The name of the landmark the open menu sits in. The menu is drawn at the end of the page,
-   * outside every landmark, which screen readers and axe's `region` rule both report; a labelled
-   * region around it keeps all of its content inside one. It adds no box of its own.
-   */
-  landmarkLabel?: string;
-};
-
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  DropdownMenuContentProps
->(({ className, sideOffset = 4, children, landmarkLabel = "Menu", ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
+>(({ className, sideOffset = 4, children, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
-    <section aria-label={landmarkLabel} className="contents">
-      <DropdownMenuPrimitive.Content
-        ref={ref}
-        sideOffset={sideOffset}
-        data-lenis-prevent
-        className={cn(
-          "z-[var(--z-floating,70)] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border border-outline-variant/20 bg-surface-container-lowest p-1 text-on-surface shadow-md",
-          className,
-        )}
-        {...props}
-      >
-        {children}
-        <InertOutside />
-      </DropdownMenuPrimitive.Content>
-    </section>
+    <DropdownMenuPrimitive.Content
+      ref={ref}
+      sideOffset={sideOffset}
+      data-lenis-prevent
+      className={cn(
+        "z-[var(--z-floating,70)] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border border-outline-variant/20 bg-surface-container-lowest p-1 text-on-surface shadow-md",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+      <InertOutside />
+    </DropdownMenuPrimitive.Content>
   </DropdownMenuPrimitive.Portal>
 ));
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
