@@ -16,6 +16,8 @@ export type CollectionRules = {
   windowDays: number;
   /** Whether a sale day at the place closes collections for the whole day. */
   closeOnSaleDays: boolean;
+  /** Minutes after a hand-over that staff can still undo it (the toast's Undo). */
+  undoHandOverMinutes: number;
 };
 
 export const DEFAULT_COLLECTION_RULES: CollectionRules = {
@@ -25,6 +27,7 @@ export const DEFAULT_COLLECTION_RULES: CollectionRules = {
   noticeWorkingDays: 1,
   windowDays: 28,
   closeOnSaleDays: true,
+  undoHandOverMinutes: 10,
 };
 
 /** The most lots one booking can hold. */
@@ -38,13 +41,16 @@ export const MIN_NOTICE_WORKING_DAYS = 1;
 export const MAX_NOTICE_WORKING_DAYS = 5;
 export const MIN_WINDOW_DAYS = 7;
 export const MAX_WINDOW_DAYS = 90;
+export const MIN_UNDO_HAND_OVER_MINUTES = 1;
+export const MAX_UNDO_HAND_OVER_MINUTES = 60;
 
 export type CollectionRulesIssue =
   | "visit_minutes"
   | "places_per_slot"
   | "notice_cutoff"
   | "notice_working_days"
-  | "window_days";
+  | "window_days"
+  | "undo_hand_over_minutes";
 
 const CUTOFF = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -65,5 +71,8 @@ export function collectionRulesIssues(rules: CollectionRules): CollectionRulesIs
     issues.push("notice_working_days");
   }
   if (!within(rules.windowDays, MIN_WINDOW_DAYS, MAX_WINDOW_DAYS)) issues.push("window_days");
+  if (!within(rules.undoHandOverMinutes, MIN_UNDO_HAND_OVER_MINUTES, MAX_UNDO_HAND_OVER_MINUTES)) {
+    issues.push("undo_hand_over_minutes");
+  }
   return issues;
 }

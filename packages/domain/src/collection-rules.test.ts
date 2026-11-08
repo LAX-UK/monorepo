@@ -15,6 +15,7 @@ describe("collection rules", () => {
       noticeWorkingDays: 1,
       windowDays: 28,
       closeOnSaleDays: true,
+      undoHandOverMinutes: 10,
     });
     expect(collectionRulesIssues(DEFAULT_COLLECTION_RULES)).toEqual([]);
   });
@@ -38,6 +39,13 @@ describe("collection rules", () => {
     expect(collectionRulesIssues(rules({ noticeWorkingDays: 6 }))).toEqual(["notice_working_days"]);
     expect(collectionRulesIssues(rules({ windowDays: 3 }))).toEqual(["window_days"]);
     expect(collectionRulesIssues(rules({ windowDays: 91 }))).toEqual(["window_days"]);
+    expect(collectionRulesIssues(rules({ undoHandOverMinutes: 0 }))).toEqual([
+      "undo_hand_over_minutes",
+    ]);
+    expect(collectionRulesIssues(rules({ undoHandOverMinutes: 61 }))).toEqual([
+      "undo_hand_over_minutes",
+    ]);
+    expect(collectionRulesIssues(rules({ undoHandOverMinutes: 60 }))).toEqual([]);
   });
 
   it("reports several issues together", () => {

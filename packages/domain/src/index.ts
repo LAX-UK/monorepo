@@ -922,6 +922,7 @@ export {
   transitionBooking,
   type CollectionActor,
   type CollectionBookingAction,
+  type CollectionAuditEvent,
   type CollectionBookingStatus,
   type TransitionContext,
   type TransitionRefusal,
@@ -932,7 +933,9 @@ export {
   collectionCalendarFilename,
   collectionCalendarUid,
   type CollectionCalendarMethod,
+  type CollectionIcsEvent,
   type CollectionIcsInput,
+  type CollectionIcsParty,
 } from "./collection-ics.js";
 export {
   formatCollectionReference,

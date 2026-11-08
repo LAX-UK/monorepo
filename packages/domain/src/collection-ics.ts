@@ -10,12 +10,36 @@ import { parseCollectionReference } from "./collection-reference.js";
  */
 export type CollectionCalendarMethod = "REQUEST" | "CANCEL";
 
-export type CollectionIcsInput = {
+/** A person in the file: the sender (organizer) or the recipient (attendee). */
+export type CollectionIcsParty = {
+  email: string;
+  name?: string | undefined;
+};
+
+/**
+ * What differs between the files:
+ * - REQUEST and CANCEL travel in emails. Mail clients need an organizer and an attendee
+ *   (RFC 5546) to update or remove the entry, so both are required. The organizer is the
+ *   configured sender; the attendee is the recipient of that email, whether the buyer or the
+ *   collector, each with their own file.
+ * - PUBLISH is the page's "Add to calendar" download. It names nobody.
+ */
+type CollectionIcsParties =
+  | {
+      method: CollectionCalendarMethod;
+      organizer: CollectionIcsParty;
+      attendee: CollectionIcsParty;
+    }
+  | { method: "PUBLISH"; organizer?: undefined; attendee?: undefined };
+
+export type CollectionIcsInput = CollectionIcsParties & CollectionIcsEvent;
+
+/** The visit itself, the same in every file. */
+export type CollectionIcsEvent = {
   /** "COL-4821". */
   reference: string;
   /** Starts at 0 and goes up by one for every change and for the cancellation. */
   sequence: number;
-  method: CollectionCalendarMethod;
   start: Date;
   end: Date;
   /** When the file was made, in UTC (DTSTAMP). */
@@ -28,6 +52,21 @@ export type CollectionIcsInput = {
   /** Minutes before the visit the alert goes; 120 by default. Cancellations carry none. */
   alertMinutesBefore?: number | undefined;
 };
+
+const ICS_EMAIL = /^[^\s@,;:"<>]+@[^\s@,;:"<>]+\.[^\s@,;:"<>]+$/;
+
+function partyLine(property: "ORGANIZER" | "ATTENDEE", party: CollectionIcsParty): string {
+  if (!ICS_EMAIL.test(party.email)) {
+    throw new RangeError(`Not an email address for ${property}: ${party.email}`);
+  }
+  const name = party.name?.replace(/[\r\n"]+/g, " ").trim();
+  const common = name ? `;CN="${name}"` : "";
+  const attendeeParams =
+    property === "ATTENDEE"
+      ? ";CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=FALSE"
+      : "";
+  return `${property}${common}${attendeeParams}:mailto:${party.email}`;
+}
 
 const CRLF = "\r\n";
 const MAX_LINE_OCTETS = 75;
@@ -171,6 +210,9 @@ export function buildCollectionIcs(input: CollectionIcsInput): string {
     `SUMMARY:${escapeIcsText(input.summary)}`,
     `LOCATION:${escapeIcsText(input.location)}`,
     `DESCRIPTION:${escapeIcsText(input.description.join("\n"))}`,
+    ...(input.method === "PUBLISH"
+      ? []
+      : [partyLine("ORGANIZER", input.organizer), partyLine("ATTENDEE", input.attendee)]),
     `STATUS:${cancelled ? "CANCELLED" : "CONFIRMED"}`,
     "TRANSP:OPAQUE",
   ];

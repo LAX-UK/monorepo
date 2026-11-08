@@ -141,6 +141,8 @@ export type BookerRefusal =
 export type BookerDecision = { allowed: true } | { allowed: false; reason: BookerRefusal };
 
 export type CollectionBookerInput = {
+  /** A platform admin acting as the account, whatever its kind: always read-only. */
+  isImpersonation?: boolean | undefined;
   userId: string;
   accountKind: LegalEntityKind;
   /** The person whose bid won the lot; `null` while it has no winner. */
@@ -160,6 +162,7 @@ const refuse = (reason: BookerRefusal): BookerDecision => ({ allowed: false, rea
  */
 export function collectionBooker(input: CollectionBookerInput): BookerDecision {
   const { userId, accountKind, winnerId, membership } = input;
+  if (input.isImpersonation === true) return refuse("read_only");
   if (accountKind === "individual") {
     return winnerId !== null && winnerId === userId ? ALLOWED : refuse("not_winner");
   }

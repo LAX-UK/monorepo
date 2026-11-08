@@ -45,6 +45,7 @@ describe("a booked visit, before the cut-off", () => {
       ok: true,
       status: "booked",
       calendarUpdate: true,
+      auditEvent: "collection.booking.changed",
     });
   });
 
@@ -53,6 +54,7 @@ describe("a booked visit, before the cut-off", () => {
       ok: true,
       status: "cancelled",
       calendarUpdate: true,
+      auditEvent: "collection.booking.cancelled",
     });
   });
 
@@ -127,6 +129,7 @@ describe("staff outcomes", () => {
       ok: true,
       status: "collected",
       calendarUpdate: false,
+      auditEvent: "collection.handed_over",
     });
   });
 
@@ -135,6 +138,7 @@ describe("staff outcomes", () => {
       ok: true,
       status: "partly_collected",
       calendarUpdate: false,
+      auditEvent: "collection.handed_over",
     });
   });
 
@@ -151,17 +155,107 @@ describe("staff outcomes", () => {
       ok: true,
       status: "not_collected",
       calendarUpdate: false,
+      auditEvent: "collection.not_collected",
     });
     expect(staff("mark_not_collected", "2026-11-11T09:00:00Z").ok).toBe(true);
   });
 });
 
+describe("undoing a hand-over", () => {
+  const HANDED_OVER = at("2026-11-10T10:05:00Z");
+  const undo = (over: Partial<TransitionContext>) =>
+    transitionBooking(
+      "undo_hand_over",
+      context({ actor: "staff", status: "collected", handedOverAt: HANDED_OVER, ...over }),
+    );
+
+  it.each(["collected", "partly_collected"] as const)(
+    "puts a %s booking back to booked, and records it",
+    (status) => {
+      expect(undo({ status, now: at("2026-11-10T10:07:00Z") })).toEqual({
+        ok: true,
+        status: "booked",
+        calendarUpdate: false,
+        auditEvent: "collection.hand_over_undone",
+      });
+    },
+  );
+
+  it("is open for 10 minutes, to the millisecond", () => {
+    expect(undo({ now: at("2026-11-10T10:15:00.000Z") }).ok).toBe(true);
+    expect(undo({ now: at("2026-11-10T10:15:00.001Z") })).toEqual({
+      ok: false,
+      reason: "undo_window_passed",
+    });
+  });
+
+  it("follows the minutes the rules set", () => {
+    const rules = { ...DEFAULT_COLLECTION_RULES, undoHandOverMinutes: 2 };
+    expect(undo({ rules, now: at("2026-11-10T10:07:00Z") }).ok).toBe(true);
+    expect(undo({ rules, now: at("2026-11-10T10:07:01Z") }).ok).toBe(false);
+  });
+
+  it("is refused when there is no record of when it was handed over", () => {
+    expect(undo({ handedOverAt: null, now: HANDED_OVER })).toEqual({
+      ok: false,
+      reason: "undo_window_passed",
+    });
+    expect(undo({ handedOverAt: undefined, now: HANDED_OVER }).ok).toBe(false);
+  });
+
+  it("is for staff only", () => {
+    expect(undo({ actor: "client", now: HANDED_OVER })).toEqual({
+      ok: false,
+      reason: "actor_not_allowed",
+    });
+  });
+
+  it("applies only to a handed-over booking", () => {
+    for (const status of ["booked", "not_collected", "cancelled"] as const) {
+      expect(undo({ status, now: HANDED_OVER })).toEqual({ ok: false, reason: "booking_closed" });
+    }
+  });
+
+  it("can be followed by a new hand-over", () => {
+    const back = undo({ now: at("2026-11-10T10:06:00Z") });
+    expect(back).toMatchObject({ ok: true, status: "booked" });
+    const again = transitionBooking(
+      "hand_over_all",
+      context({ actor: "staff", status: "booked", now: at("2026-11-10T10:08:00Z") }),
+    );
+    expect(again).toMatchObject({ ok: true, status: "collected" });
+  });
+
+  it("shows as an available action only inside the window", () => {
+    const inside = allowedBookingActions(
+      context({
+        actor: "staff",
+        status: "collected",
+        handedOverAt: HANDED_OVER,
+        now: at("2026-11-10T10:10:00Z"),
+      }),
+    );
+    expect(inside).toEqual(["undo_hand_over"]);
+    const outside = allowedBookingActions(
+      context({
+        actor: "staff",
+        status: "collected",
+        handedOverAt: HANDED_OVER,
+        now: at("2026-11-10T11:00:00Z"),
+      }),
+    );
+    expect(outside).toEqual([]);
+  });
+});
+
 describe("every other state is final", () => {
   const closed = COLLECTION_BOOKING_STATUSES.filter((s) => s !== "booked");
+  const handedOver = new Set(["collected", "partly_collected"]);
 
-  it.each(closed)("%s accepts no action from anyone", (status) => {
+  it.each(closed)("%s accepts no action from anyone, bar the timed undo", (status) => {
     for (const actor of ["client", "staff"] as const) {
       for (const action of COLLECTION_BOOKING_ACTIONS) {
+        if (action === "undo_hand_over" && handedOver.has(status)) continue;
         expect(
           transitionBooking(action, context({ status, actor, now: at("2026-11-10T11:00:00Z") })),
         ).toEqual({ ok: false, reason: "booking_closed" });
@@ -177,6 +271,7 @@ describe("the full table", () => {
       cancel: true,
       hand_over_all: false,
       hand_over_some: false,
+      undo_hand_over: false,
       mark_not_collected: false,
     },
     staff: {
@@ -184,6 +279,7 @@ describe("the full table", () => {
       cancel: true,
       hand_over_all: true,
       hand_over_some: true,
+      undo_hand_over: false,
       mark_not_collected: true,
     },
   };

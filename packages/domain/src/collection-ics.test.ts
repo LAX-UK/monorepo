@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  type CollectionIcsInput,
+  type CollectionIcsEvent,
+  type CollectionIcsParty,
   buildCollectionIcs,
   collectionCalendarFilename,
   collectionCalendarUid,
@@ -8,10 +9,13 @@ import {
   foldIcsLine,
 } from "./collection-ics.js";
 
-const base: CollectionIcsInput = {
+type Common = CollectionIcsEvent & { organizer: CollectionIcsParty; attendee: CollectionIcsParty };
+
+const base: Common = {
+  organizer: { email: "collections@lax.example", name: "LAX collections" },
+  attendee: { email: "charlotte@example.com", name: "Charlotte Hayes" },
   reference: "COL-4821",
   sequence: 0,
-  method: "REQUEST",
   start: new Date("2026-11-12T14:00:00Z"),
   end: new Date("2026-11-12T14:30:00Z"),
   stamp: new Date("2026-11-09T11:20:05Z"),
@@ -23,7 +27,12 @@ const base: CollectionIcsInput = {
     "Bring photo ID in the name of Charlotte Hayes.",
   ],
 };
-const ics = (over: Partial<CollectionIcsInput> = {}) => buildCollectionIcs({ ...base, ...over });
+const ics = (over: Partial<Common> & { method?: "REQUEST" | "CANCEL" } = {}) =>
+  buildCollectionIcs({ method: "REQUEST", ...base, ...over });
+const publish = (over: Partial<Omit<Common, "organizer" | "attendee">> = {}) => {
+  const { organizer: _o, attendee: _a, ...rest } = base;
+  return buildCollectionIcs({ ...rest, ...over, method: "PUBLISH" });
+};
 const unfold = (text: string) => text.replace(/\r\n /g, "");
 const lines = (text: string) => unfold(text).split("\r\n");
 
@@ -80,6 +89,74 @@ describe("the calendar file", () => {
 
   it("names the filename after the reference", () => {
     expect(collectionCalendarFilename("COL-4821")).toBe("collection-COL-4821.ics");
+  });
+});
+
+describe("organizer and attendee", () => {
+  it("names the sender as organizer, from the input, not a fixed address", () => {
+    expect(lines(ics())).toContain('ORGANIZER;CN="LAX collections":mailto:collections@lax.example');
+    expect(
+      lines(ics({ organizer: { email: "noreply@other.example" } })).find((l) =>
+        l.startsWith("ORGANIZER"),
+      ),
+    ).toBe("ORGANIZER:mailto:noreply@other.example");
+  });
+
+  it("names the recipient as attendee, so the mail client can update or remove the entry", () => {
+    expect(lines(ics())).toContain(
+      'ATTENDEE;CN="Charlotte Hayes";CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=FALSE:mailto:charlotte@example.com',
+    );
+  });
+
+  it("gives the collector their own file, with their address as attendee", () => {
+    const l = lines(ics({ attendee: { email: "sam@example.com", name: "Sam Okoro" } }));
+    expect(l.filter((x) => x.startsWith("ATTENDEE"))).toHaveLength(1);
+    expect(l.find((x) => x.startsWith("ATTENDEE"))).toContain("mailto:sam@example.com");
+    expect(l.join("\n")).not.toContain("charlotte@example.com");
+  });
+
+  it("carries organizer and attendee on a cancellation too", () => {
+    const l = lines(ics({ method: "CANCEL", sequence: 1 }));
+    expect(l.some((x) => x.startsWith("ORGANIZER"))).toBe(true);
+    expect(l.some((x) => x.startsWith("ATTENDEE"))).toBe(true);
+  });
+
+  it("keeps odd characters in a name from breaking the line", () => {
+    const l = lines(ics({ attendee: { email: "a@example.com", name: 'Sam "SJ"\nOkoro, Jr' } }));
+    expect(l.find((x) => x.startsWith("ATTENDEE"))).toContain('CN="Sam  SJ Okoro, Jr"');
+  });
+
+  it("refuses an address that is not an email", () => {
+    for (const email of ["", "sam", "sam@", "sam @example.com", "a@b", "a@b.c>\r\nX:y"]) {
+      expect(() => ics({ attendee: { email } })).toThrow(RangeError);
+      expect(() => ics({ organizer: { email } })).toThrow(RangeError);
+    }
+  });
+});
+
+describe("the add-to-calendar download (PUBLISH)", () => {
+  const l = () => lines(publish());
+
+  it("is METHOD:PUBLISH with no organizer and no attendee", () => {
+    expect(l()).toContain("METHOD:PUBLISH");
+    expect(l().some((x) => x.startsWith("ORGANIZER") || x.startsWith("ATTENDEE"))).toBe(false);
+    expect(publish()).not.toContain("mailto:");
+  });
+
+  it("is the same entry as the email: same UID, sequence, times and details", () => {
+    const email = lines(ics());
+    for (const prefix of ["UID:", "SEQUENCE:", "DTSTART", "DTEND", "SUMMARY:", "LOCATION:"]) {
+      expect(l().find((x) => x.startsWith(prefix))).toBe(email.find((x) => x.startsWith(prefix)));
+    }
+  });
+
+  it("is confirmed, with the alert", () => {
+    expect(l()).toContain("STATUS:CONFIRMED");
+    expect(l()).toContain("TRIGGER:-PT120M");
+  });
+
+  it("still validates the visit", () => {
+    expect(() => publish({ end: base.start })).toThrow(RangeError);
   });
 });
 

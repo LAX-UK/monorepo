@@ -202,6 +202,51 @@ describe("collectionBooker", () => {
     expect(org("stranger", null, "stranger")).toEqual({ allowed: false, reason: "not_member" });
   });
 
+  it("keeps an impersonating admin read-only on every kind of account, checked first", () => {
+    expect(
+      collectionBooker({
+        userId: "u1",
+        accountKind: "individual",
+        winnerId: "u1",
+        membership: null,
+        isImpersonation: true,
+      }),
+    ).toEqual({ allowed: false, reason: "read_only" });
+    for (const role of ["owner", "admin", "finance", "buyer_agent"] as const) {
+      expect(
+        collectionBooker({
+          userId: "u1",
+          accountKind: "organisation",
+          winnerId: "u1",
+          membership: { role },
+          isImpersonation: true,
+        }),
+      ).toEqual({ allowed: false, reason: "read_only" });
+    }
+    // Checked before membership: even a non-member is told read-only, not "not a member".
+    expect(
+      collectionBooker({
+        userId: "admin",
+        accountKind: "organisation",
+        winnerId: null,
+        membership: null,
+        isImpersonation: true,
+      }),
+    ).toEqual({ allowed: false, reason: "read_only" });
+  });
+
+  it("does not treat an explicit isImpersonation of false as read-only", () => {
+    expect(
+      collectionBooker({
+        userId: "u1",
+        accountKind: "individual",
+        winnerId: "u1",
+        membership: null,
+        isImpersonation: false,
+      }),
+    ).toEqual({ allowed: true });
+  });
+
   it("keeps a platform admin viewing as the organisation read-only", () => {
     expect(
       collectionBooker({
