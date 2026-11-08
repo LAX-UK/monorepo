@@ -93,8 +93,22 @@ describe("artist Follow with emails", () => {
     expect(caption()?.textContent).toContain("Emails about followed artists are off.");
   });
 
+  it("says the person stopped all alerts, and points to where to turn them back on", async () => {
+    followEmailsStateAction.mockResolvedValue({ on: false, stopped: true });
+    await render({ following: false, emailsOn: null });
+    await click(host.querySelector('[data-testid="art-artist-follow"]'));
+    expect(caption()?.textContent).toContain(
+      "You stopped all alerts, so we won't email you about this artist.",
+    );
+    expect(caption()?.querySelector("button")).toBeNull();
+    const link = caption()?.querySelector("a");
+    expect(link?.textContent).toBe("Turn alerts back on in LAX Account");
+    expect(link?.getAttribute("href")).toBe("https://account.test/account/alerts");
+    expect(turnOnFollowEmailsAction).not.toHaveBeenCalled();
+  });
+
   it("asks what happened to the emails once the person follows", async () => {
-    followEmailsStateAction.mockResolvedValue(true);
+    followEmailsStateAction.mockResolvedValue({ on: true, stopped: false });
     await render({ following: false, emailsOn: null });
     await click(host.querySelector('[data-testid="art-artist-follow"]'));
     expect(followEmailsStateAction).toHaveBeenCalled();

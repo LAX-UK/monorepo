@@ -312,6 +312,17 @@ describe("account preferences", () => {
     expect([...h.stores.subscribersById.values()][0]?.status).toBe("confirmed");
   });
 
+  it("answers blocked, not stopped, for an address that complained, even without a restart", async () => {
+    const h = createEngineHarness();
+    h.accounts.set("u1", { email: "client@example.com", verified: true });
+    const input = { product: "bid", subjectId: "u1", topic: "bid.new_sales", source: "s" } as const;
+    await h.subscribe.enableForAccount(input);
+    const [row] = [...h.stores.subscribersById.values()];
+    await h.stores.stop(row?.id ?? "", "complaint", h.now);
+    expect(await h.subscribe.enableForAccount(input)).toBe("blocked");
+    expect(await h.subscribe.enableForAccount({ ...input, restartStopped: true })).toBe("blocked");
+  });
+
   it("does not restart a stopped subscriber from a topic switch", async () => {
     const h = createEngineHarness();
     h.accounts.set("u1", { email: "client@example.com", verified: true });

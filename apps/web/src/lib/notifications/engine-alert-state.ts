@@ -9,6 +9,7 @@ export function engineAlertStateOf(mine: AccountAlerts | null): EngineAlertState
   return {
     subscribed: Object.fromEntries(mine.topics.map((t) => [t.topic, active])),
     email: Object.fromEntries(mine.topics.map((t) => [t.topic, active && t.emailOn])),
+    ...(mine.state === "stopped" ? { stopped: true } : {}),
   };
 }
 

@@ -35,6 +35,13 @@ describe("searchTopicEmailOn", () => {
   });
 });
 
+describe("engineAlertStateOf: stopped", () => {
+  it("says so when the client stopped all alerts", () => {
+    expect(engineAlertStateOf(mine("stopped", true))?.stopped).toBe(true);
+    expect(engineAlertStateOf(mine("confirmed", true))).not.toHaveProperty("stopped");
+  });
+});
+
 describe("alertAccessOf", () => {
   it("holds alerts once stopped or while the address is not verified", () => {
     expect(alertAccessOf(mine("stopped", true), true)).toBe("stopped");

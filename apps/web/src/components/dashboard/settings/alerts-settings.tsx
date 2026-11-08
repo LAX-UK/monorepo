@@ -100,6 +100,7 @@ export function AlertsSettings({
       subscribed: { ...engine.subscribed, [topic]: subscribe },
       email: { ...engine.email, [topic]: email },
     });
+    const restarting = engine.stopped === true && subscribe;
     setSaved("Saving…");
     const result = subscribe
       ? await setAlertTopic(topic, true, { email, restart: true })
@@ -110,6 +111,8 @@ export function AlertsSettings({
       notify.error("We couldn't save that change", { description: result.error });
       return;
     }
+    // Switching one on after stopping everything starts alerts again, with only this one on.
+    if (restarting) notify.success(`Your alerts are back on, with ${row.label} switched on`);
     if (channel === "app") save(withAlertCell(values, row, "app", true), values);
     else setSaved("All changes saved");
   };

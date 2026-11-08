@@ -38,6 +38,7 @@ export function ArtArtistFollowControl({
 }: ArtArtistFollowControlProps) {
   const [following, setFollowing] = useState(initialFollowing);
   const [emailsOn, setEmailsOn] = useState(initialEmailsOn);
+  const [stopped, setStopped] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const first = useRef(true);
@@ -52,7 +53,9 @@ export function ArtArtistFollowControl({
     let cancelled = false;
     void followEmailsStateAction()
       .then((state) => {
-        if (!cancelled) setEmailsOn(state);
+        if (cancelled) return;
+        setEmailsOn(state.on);
+        setStopped(state.stopped);
       })
       .catch(() => undefined);
     return () => {
@@ -96,6 +99,13 @@ export function ArtArtistFollowControl({
               You follow {name}. We&apos;ll email you when new works arrive.{" "}
               <a href={manageHref} className={link}>
                 Manage
+              </a>
+            </>
+          ) : stopped ? (
+            <>
+              You stopped all alerts, so we won&apos;t email you about this artist.{" "}
+              <a href={manageHref} className={link}>
+                Turn alerts back on in LAX Account
               </a>
             </>
           ) : (

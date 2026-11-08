@@ -35,7 +35,7 @@ export function createAccountEmailAlertHandlers(deps: AccountEmailAlertDeps) {
         const emailOn =
           view?.state === "confirmed" &&
           view.topics.some((entry) => entry.topic === topic && entry.emailOn);
-        return { topic, emailOn };
+        return view?.state === "stopped" ? { topic, emailOn, stopped: true } : { topic, emailOn };
       });
       return { topics, waitingEditions: await deps.countWaitingEditions(identitySubjectId) };
     },

@@ -87,7 +87,10 @@ export class SubscribeService {
           input.product,
           normaliseAlertEmail(address.email),
         ));
-      if (existing?.status === "stopped") return "stopped";
+      if (existing?.status === "stopped") {
+        // A complaint needs a person at LAX, not a settings switch, whoever asks.
+        return existing.stopReason === "complaint" ? "blocked" : "stopped";
+      }
     }
     const record = await this.deps.subscribers.saveConfirmedForAccount({
       product: input.product,
