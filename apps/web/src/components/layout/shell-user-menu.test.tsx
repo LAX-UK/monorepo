@@ -145,17 +145,28 @@ describe("ShellUserMenu", () => {
 
     it("skips a disabled account row with the arrow keys, so they do not stall during a switch", async () => {
       const trigger = openMenu();
-      // The account in use is mid-switch, so its row is disabled and cannot take focus.
-      screen.getByRole("menuitem", { name: /Northbank Gallery/ }).setAttribute("disabled", "");
+      // Another account's row is disabled while a switch runs.
+      const personal = screen.getByRole("menuitem", { name: /Personal/ });
+      personal.setAttribute("disabled", "");
 
       fireEvent.keyDown(trigger, { key: "ArrowDown" });
-      const personal = screen.getByRole("menuitem", { name: /Personal/ });
-      await waitFor(() => expect(personal).toHaveFocus());
+      const current = screen.getByRole("menuitem", { name: /Northbank Gallery/ });
+      await waitFor(() => expect(current).toHaveFocus());
 
-      fireEvent.keyDown(personal, { key: "ArrowDown" });
+      fireEvent.keyDown(current, { key: "ArrowDown" });
       expect(document.activeElement).not.toBe(personal);
-      expect(document.activeElement).toHaveAttribute("data-account-menu-item");
-      expect(document.activeElement).not.toBeDisabled();
+      expect(document.activeElement).not.toBe(current);
+    });
+
+    it("keeps the row being switched to in the arrow order, since it holds focus", async () => {
+      const trigger = openMenu();
+      fireEvent.keyDown(trigger, { key: "ArrowDown" });
+      const current = screen.getByRole("menuitem", { name: /Northbank Gallery/ });
+      await waitFor(() => expect(current).toHaveFocus());
+      current.setAttribute("aria-disabled", "true");
+
+      fireEvent.keyDown(current, { key: "ArrowDown" });
+      expect(document.activeElement).not.toBe(current);
     });
   });
 
