@@ -42,7 +42,8 @@ export function payable(
 
 /** A plan for the given invoices; the totals are what the server would send for them. */
 export function planOf(payables: PayPlanPayable[], overrides: Partial<PayPlan> = {}): PayPlan {
-  const totalPence = payables.reduce((sum, p) => sum + p.totalPence, 0);
+  const deliveryPence = (overrides.delivery ?? []).reduce((sum, d) => sum + d.amountPence, 0);
+  const totalPence = payables.reduce((sum, p) => sum + p.totalPence, 0) + deliveryPence;
   const byKind = new Map<InvoiceLine["kind"], number>();
   for (const p of payables) {
     for (const line of p.lines)
@@ -61,8 +62,11 @@ export function planOf(payables: PayPlanPayable[], overrides: Partial<PayPlan> =
     gate: { kind: "clear" },
     payable: payables,
     leftOut: [],
+    deliveryInPayment: false,
+    delivery: [],
     totals: {
       pence: totalPence,
+      deliveryPence,
       byKind: [...byKind].map(([kind, pence]) => ({ kind, pence })),
     },
     firstDueAt: dues.length > 0 ? new Date(Math.min(...dues)).toISOString() : null,

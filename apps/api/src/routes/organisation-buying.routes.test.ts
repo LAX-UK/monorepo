@@ -61,6 +61,7 @@ function mount(
     now: () => NOW,
   });
   const payPlan = new PayPlanService({
+    delivery: null,
     // Every live group counts as a payment the payer finished.
     progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
     candidates,

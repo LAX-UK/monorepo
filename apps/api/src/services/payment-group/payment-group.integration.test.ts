@@ -198,6 +198,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       total: `${invoiceIds.length * 100}.00`,
       rail: "card",
       invoices: invoiceIds.map((paymentId) => ({ paymentId, lotId: "", amount: "100.00" })),
+      deliveries: [],
     });
   const startOk = async (invoiceIds: string[]) => {
     const started = await start(invoiceIds);
@@ -361,6 +362,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
         totalAmount: `${paymentIds.length * 100}.00`,
         checkoutRail: "card",
         paymentIds,
+        deliveries: [],
       });
     const results = await Promise.all([claim([ids.a, ids.b]), claim([ids.b, ids.c])]);
     expect(results.filter((r) => r.kind === "claimed")).toHaveLength(1);
@@ -375,6 +377,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       totalAmount: "200.00",
       checkoutRail: "card",
       paymentIds: [ids.a, ids.b],
+      deliveries: [],
     });
     if (claimed.kind !== "claimed") throw new Error("expected a claim");
     // The group exists but its checkout is not recorded yet, so the first start is mid-way.
@@ -703,6 +706,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
         totalAmount: "200.00",
         checkoutRail: "card",
         paymentIds: [ids.a, ids.b],
+        deliveries: [],
       });
       if (claimed.kind !== "claimed") throw new Error("expected a claim");
       await db
@@ -722,6 +726,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
           totalAmount: "200.00",
           checkoutRail: "card",
           paymentIds: [ids.a, ids.b],
+          deliveries: [],
         });
         if (claimed.kind !== "claimed") throw new Error("expected a claim");
         await db

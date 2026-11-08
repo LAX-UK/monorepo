@@ -91,8 +91,19 @@ const payPlanSchema = z.object({
     }),
   ),
   leftOut: z.array(z.object({ lotId: z.string(), reason: leftOutReason })),
+  deliveryInPayment: z.boolean(),
+  delivery: z.array(
+    z.object({
+      lotId: z.string(),
+      quoteId: z.string(),
+      amountPence: z.number().int().positive(),
+      destination: z.string(),
+      note: z.string().nullable(),
+    }),
+  ),
   totals: z.object({
     pence: z.number().int(),
+    deliveryPence: z.number().int().nonnegative(),
     byKind: z.array(z.object({ kind: z.enum(invoiceLineKinds), pence: z.number().int() })),
   }),
   firstDueAt: z.string().nullable(),

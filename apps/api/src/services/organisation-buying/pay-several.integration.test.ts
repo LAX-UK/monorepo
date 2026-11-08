@@ -136,6 +136,7 @@ describe.skipIf(!HAS_DB)("pay several raises what the plan counts (integration)"
   }
 
   const planner = new PayPlanService({
+    delivery: null,
     // Every live group counts as a payment the payer finished.
     progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
     candidates: new PurchaseCandidateReader({
@@ -180,6 +181,7 @@ describe.skipIf(!HAS_DB)("pay several raises what the plan counts (integration)"
         totalAmount: input.total,
         checkoutRail: input.rail,
         paymentIds: input.invoices.map((i) => i.paymentId),
+        deliveries: [],
       });
       return claim.kind === "claimed"
         ? ok({

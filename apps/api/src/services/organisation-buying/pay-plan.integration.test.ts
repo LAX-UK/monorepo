@@ -81,6 +81,7 @@ describe.skipIf(!HAS_DB)("pay plan (integration)", () => {
   }
 
   const service = new PayPlanService({
+    delivery: null,
     // Every live group counts as a payment the payer finished.
     progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
     candidates: new PurchaseCandidateReader({

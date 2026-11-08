@@ -12,6 +12,7 @@ import type {
 import {
   DrizzleAccountPurchaseFactsReader,
   DrizzleAccountRegistrationsReader,
+  DrizzleChargeableDeliveryReader,
   DrizzleDeliveryQuoteRepository,
   DrizzlePaySeveralInvoiceFlagsReader,
   DrizzlePurchaseProblemRepository,
@@ -75,6 +76,7 @@ export type CreateOrganisationBuyingInput = {
   env: Pick<
     Env,
     | "COLLECTION_SELF_SERVE_ENABLED"
+    | "DELIVERY_IN_PAYMENT_ENABLED"
     | "COLLECTION_SLOT_CAPACITY_PER_HOUR"
     | "COLLECTION_HOURS"
     | "COLLECTION_BOOKING_EMAIL"
@@ -131,6 +133,9 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
     compliance: input.payments.compliance,
     limits: input.payments.tierLimits,
     progress,
+    delivery: input.env.DELIVERY_IN_PAYMENT_ENABLED
+      ? new DrizzleChargeableDeliveryReader(input.db)
+      : null,
     issuer: {
       name: bid.name,
       address: bid.registeredAddress.inline,
