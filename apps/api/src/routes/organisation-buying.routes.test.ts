@@ -1,3 +1,5 @@
+import { renderBidInvoicePdf } from "@auction/exports/documents";
+import type { IBidInvoiceReader } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { Hono } from "hono";
 import { ok } from "neverthrow";
@@ -16,6 +18,7 @@ import { PayProgressResolver } from "../services/organisation-buying/pay-progres
 import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
 import { PayTransferService } from "../services/organisation-buying/pay-transfer.service.js";
 import { PurchaseCandidateReader } from "../services/organisation-buying/purchase-candidate.reader.js";
+import { PurchaseInvoicePdfService } from "../services/organisation-buying/purchase-invoice-pdf.service.js";
 import { PurchaseProblemService } from "../services/organisation-buying/purchase-problem.service.js";
 import { InMemoryPurchaseProblems } from "../testing/in-memory-purchase-problems.js";
 import {
@@ -60,36 +63,39 @@ function mount(
     flags: { flagsFor: async () => new Map() },
     now: () => NOW,
   });
+  const invoices: Pick<IBidInvoiceReader, "findByPaymentIds"> = {
+    findByPaymentIds: async (ids) =>
+      new Map(
+        ids.map((id) => {
+          const row = purchases.rows.find((r) => r.payment?.id === id);
+          const pence = Math.round(Number(row?.payment?.amount ?? 0) * 100);
+          return [
+            id,
+            {
+              id: `inv-${id}`,
+              number: `LAXB-${id.slice(-4)}`,
+              raisedAt: new Date("2026-11-10T10:00:00Z"),
+              totalPence: pence,
+              dueAt: new Date("2026-11-25T23:59:59.999Z"),
+              voidedAt: null,
+              lines: [
+                {
+                  kind: "hammer",
+                  label: "Hammer price",
+                  ratePercent: null,
+                  amountPence: pence,
+                },
+              ],
+            } as never,
+          ];
+        }),
+      ),
+  };
   const payPlan = new PayPlanService({
     // Every live group counts as a payment the payer finished.
     progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
     candidates,
-    invoices: {
-      findByPaymentIds: async (ids) =>
-        new Map(
-          ids.map((id) => {
-            const row = purchases.rows.find((r) => r.payment?.id === id);
-            const pence = Math.round(Number(row?.payment?.amount ?? 0) * 100);
-            return [
-              id,
-              {
-                id: `inv-${id}`,
-                totalPence: pence,
-                dueAt: new Date("2026-11-25T23:59:59.999Z"),
-                voidedAt: null,
-                lines: [
-                  {
-                    kind: "hammer",
-                    label: "Hammer price",
-                    ratePercent: null,
-                    amountPence: pence,
-                  },
-                ],
-              } as never,
-            ];
-          }),
-        ),
-    },
+    invoices,
     pricing: { price: async () => Promise.reject(new Error("not invoiced")) },
     lots: { findById: async () => null },
     accounts: {
@@ -157,6 +163,15 @@ function mount(
       payProgress: new PayProgressReadService({
         candidates,
         progress: new PayProgressResolver({ checkoutStatus: async () => "complete" }),
+      }),
+      invoicePdf: new PurchaseInvoicePdfService({
+        candidates,
+        invoices,
+        accounts: {
+          findById: async () =>
+            ({ id: BUYING_ACCOUNT, displayName: "Northbank Gallery", legalName: null }) as never,
+        },
+        render: renderBidInvoicePdf,
       }),
       payTransfer: new PayTransferService({
         candidates,
@@ -306,6 +321,18 @@ const MATRIX: Record<
       admin: 200,
       finance: 200,
       buyer_agent: 200,
+      consignor: 403,
+      viewer: 403,
+    },
+  },
+  // The invoice is for the people who pay it.
+  "GET /purchases/:lotId/invoice.pdf": {
+    call: (app) => app.request(`/legal-entities/purchases/${LOTS.due}/invoice.pdf`),
+    expected: {
+      owner: 200,
+      admin: 200,
+      finance: 200,
+      buyer_agent: 403,
       consignor: 403,
       viewer: 403,
     },
@@ -491,6 +518,40 @@ describe("organisation buying routes", () => {
       const res = await plan(mount("finance", { eligibilityFails: true }), [LOTS.due]);
       expect(res.status).toBe(503);
       expect(await res.json()).toMatchObject({ error: "pay_plan_unavailable" });
+    });
+  });
+
+  describe("GET /purchases/:lotId/invoice.pdf", () => {
+    const get = (role: LegalEntityMemberRole, lot: string, opts = {}) =>
+      mount(role, opts).request(`/legal-entities/purchases/${lot}/invoice.pdf`);
+
+    it("downloads a PDF the payer keeps, never cached", async () => {
+      const res = await get("finance", LOTS.due);
+      expect(res.status).toBe(200);
+      expect(res.headers.get("content-type")).toBe("application/pdf");
+      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(res.headers.get("content-disposition")).toMatch(
+        /^attachment; filename="invoice-[A-Za-z0-9-]+\.pdf"$/,
+      );
+      const body = Buffer.from(await res.arrayBuffer());
+      expect(body.subarray(0, 5).toString()).toBe("%PDF-");
+    });
+
+    it("does not confirm the invoice of a lot that is another account's, or that does not exist", async () => {
+      for (const lot of [LOTS.otherAccount, "aaaaaaaa-0000-4000-8000-0000000000ff"]) {
+        const res = await get("finance", lot);
+        expect(res.status).toBe(404);
+        expect(await res.json()).toMatchObject({ error: "invoice_not_ready" });
+      }
+    });
+
+    it("is for signed-in buyer accounts only", async () => {
+      expect((await get("finance", LOTS.due, { signedOut: true })).status).toBe(401);
+      expect((await get("finance", LOTS.due, { platformRole: "admin" })).status).toBe(403);
+    });
+
+    it("refuses an id that is not a lot id", async () => {
+      expect((await get("finance", "nope")).status).toBe(400);
     });
   });
 

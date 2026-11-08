@@ -46,7 +46,9 @@ export type OrganisationBuyingErrorCode =
   | "pay_several_unavailable"
   | "pay_plan_unavailable"
   | "onboarding_required"
-  | "pay_plan_changed";
+  | "pay_plan_changed"
+  /** The invoice of this lot cannot be shown: none is raised, it was voided, or it is not the member's to see. */
+  | "invoice_not_ready";
 
 export type OrganisationBuyingError = {
   code: OrganisationBuyingErrorCode;
@@ -159,6 +161,13 @@ export interface IPayPlanService {
     actor: OrganisationMemberActor,
     lotIds: readonly string[],
   ): BuyingResult<PlannedPayment>;
+}
+
+/** The invoice of a won lot as a PDF, for the member who pays it. */
+export type PurchaseInvoicePdf = { pdf: Buffer; filename: string };
+
+export interface IPurchaseInvoicePdfService {
+  render(actor: OrganisationMemberActor, lotId: string): BuyingResult<PurchaseInvoicePdf>;
 }
 
 /** The account details and reference of a bank transfer already chosen for the picked lots. */
