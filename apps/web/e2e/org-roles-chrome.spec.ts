@@ -1,7 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { e2eEnabled, e2eSkipReason } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
-import { ORGANISATION_JOURNEY_NAMES, openAs } from "./helpers/organisation-journeys";
+import {
+  ORGANISATION_JOURNEY_IDS,
+  ORGANISATION_JOURNEY_NAMES,
+  openAs,
+} from "./helpers/organisation-journeys";
 
 /**
  * The shared header chrome in Bid for a signed-in person: the phone tab bar, the phone menu, the
@@ -75,20 +79,15 @@ test.describe("shared header chrome @roles", () => {
   });
 
   test("on a live lot page the bid bar replaces the tab bar", async ({ browser, baseURL }) => {
+    // Only a lot that is open for bidding has a bid bar; without a known live lot, skip
+    // rather than guess from search (an ended lot would fail for the wrong reason).
+    const lotPath = process.env.PLAYWRIGHT_LIVE_LOT_PATH;
+    test.skip(lotPath == null, "Set PLAYWRIGHT_LIVE_LOT_PATH to an active lot.");
     test.setTimeout(120_000);
     const session = await openAs(browser, roleAuthState.unapproved, approved, baseURL);
     const { page } = session;
     try {
       await page.setViewportSize({ width: 375, height: 812 });
-      // The same live lot the bid-flow specs use; otherwise the first lot the search lists.
-      let lotPath = process.env.PLAYWRIGHT_LIVE_LOT_PATH;
-      if (!lotPath) {
-        await page.goto("/search");
-        const firstLot = page.locator('a[href^="/lot/"]').first();
-        await expect(firstLot).toBeVisible({ timeout: 30_000 });
-        lotPath = (await firstLot.getAttribute("href")) ?? undefined;
-      }
-      test.skip(!lotPath, "no lot is seeded to open");
       await page.goto(lotPath as string);
 
       const tabBar = page.getByTestId("bid-bottom-tab-bar");
@@ -97,6 +96,23 @@ test.describe("shared header chrome @roles", () => {
       await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
       await expect(bidBar).toBeVisible({ timeout: 30_000 });
       await expect(tabBar).toBeHidden();
+    } finally {
+      await session.close();
+    }
+  });
+
+  test("a checkout page at 375px has no public tab bar", async ({ browser, baseURL }) => {
+    test.setTimeout(120_000);
+    const session = await openAs(browser, roleAuthState.unapproved, approved, baseURL);
+    const { page } = session;
+    try {
+      await page.setViewportSize({ width: 375, height: 812 });
+      // The same seeded invoice the Pay page spec opens; the old checkout link lands on Pay.
+      await page.goto(`/purchases/checkout/${ORGANISATION_JOURNEY_IDS.lotInvoiceNorthbankClear}`);
+      await expect(page.getByRole("heading", { level: 1, name: "Pay" })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByTestId("bid-bottom-tab-bar")).toHaveCount(0);
     } finally {
       await session.close();
     }

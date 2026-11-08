@@ -54,6 +54,8 @@ test.describe("lax.art shared chrome @smoke", () => {
     await expect(conversations).toBeVisible();
     const tabBar = page.getByTestId("art-bottom-tab-bar");
     const actionBar = page.getByRole("region", { name: "Artwork actions" });
+    // Wait until one of the two bars has rendered, so a late action bar is not read as "sold".
+    await expect(actionBar.or(tabBar).first()).toBeVisible({ timeout: 30_000 });
     // A sold work has no action bar; then the tab bar keeps the slot. Either way, one at a time.
     if ((await actionBar.count()) === 0) {
       await expect(tabBar).toBeVisible();
