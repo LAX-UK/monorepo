@@ -153,3 +153,23 @@ describe("NotificationFactory money wording", () => {
     expect(row.message).toContain("hammer price of £110,000.00.");
   });
 });
+
+describe("NotificationFactory payment reminder for a private sale", () => {
+  const input = {
+    userId: "user-1",
+    legalEntityId: null,
+    lotId: null,
+    lotTitle: "Harbour at dusk",
+    paymentId: "deal-1",
+    amount: "48000.00",
+    dueDate: "20 November 2026",
+    step: "due_day",
+  } as const;
+
+  it("marks a private sale reminder so its email says work, and a lot's is unchanged", () => {
+    expect(factory.createPaymentReminder({ ...input, privateSale: true }).meta).toMatchObject({
+      privateSale: true,
+    });
+    expect(factory.createPaymentReminder(input).meta).not.toHaveProperty("privateSale");
+  });
+});
