@@ -20,8 +20,9 @@ export type MarketingFilterLinkGroup = {
   title: string;
   links: readonly MarketingFilterLink[];
   /**
-   * `single` is a choice of one, such as a sort order: radios, where the chosen option cannot be
-   * taken off. The default is checkboxes, where choosing an applied option takes it off.
+   * `single` is a choice of one, such as a sort order: links drawn as radios and marked
+   * `aria-current`, where the chosen option cannot be taken off. The default is checkboxes,
+   * where choosing an applied option takes it off.
    */
   selection?: "multiple" | "single";
 };
@@ -70,10 +71,9 @@ export function MarketingFilterLinkGroups({
               <h2 id={headingId} className={MARKETING_FILTER_GROUP_TITLE}>
                 {group.title}
               </h2>
-              <div
-                role={group.selection === "single" ? "radiogroup" : "group"}
+              <fieldset
                 aria-labelledby={headingId}
-                className="flex flex-col"
+                className="m-0 flex min-w-0 flex-col border-0 p-0"
               >
                 {group.links.map((link) => (
                   <MarketingFilterLinkRow
@@ -86,7 +86,7 @@ export function MarketingFilterLinkGroups({
                     dense
                   />
                 ))}
-              </div>
+              </fieldset>
             </section>
           );
         })}

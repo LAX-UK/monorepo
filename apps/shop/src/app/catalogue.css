@@ -339,36 +339,6 @@
   border-radius: var(--radius-card);
 }
 
-/* Filter options: label left, count right, one row height for every option. */
-.shop-filter-option {
-  position: relative;
-  width: 100%;
-  min-height: 2.25rem;
-  justify-content: space-between;
-  gap: var(--shop-space-3);
-  text-align: left;
-}
-
-.shop-filter-option__label {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.shop-filter-option__count {
-  flex-shrink: 0;
-  color: var(--color-on-surface-variant);
-  font-size: var(--shop-text-sm);
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-}
-
-/* In the phone sheet options are touch targets. */
-@media (pointer: coarse) {
-  .shop-filter-option {
-    min-height: 2.75rem;
-  }
-}
-
 /* ── Catalogue (/artworks) ──────────────────────────────────────────────────────────────── */
 .shop-catalogue-hub__eyebrow {
   margin: 0;
