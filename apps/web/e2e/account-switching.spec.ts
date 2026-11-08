@@ -334,12 +334,14 @@ test.describe("account switching on the production build @roles", () => {
   }) => {
     const origin = baseURL ?? "http://localhost:3000";
     await buyerLogin(page);
+    // Sign-in is still moving on to its landing page. Let it finish before the stale cookie is set:
+    // a cookie set earlier is restored by that landing load, which shows the notice (and clears
+    // it) before this test opens the page it is checking, so the page then has nothing to say.
+    await page.waitForLoadState("networkidle");
+    await expect(pageHeading(page)).toBeVisible({ timeout: 30_000 });
     const restoreRequests = countRestoreRequests(page);
     // Sign-in leaves no restore marker (only the hop route does), so the first restore is allowed.
     await useAccountInThisBrowser(context, origin, LEFT_ORGANISATION_ID);
-
-    // Sign-in may still be settling onto its landing page; wait for it before asking for this one.
-    await page.waitForLoadState("networkidle");
     await page.goto("/home");
 
     await expect(page.getByTestId("account-notice")).toContainText(
