@@ -1,6 +1,7 @@
 import {
   type InvoiceLine,
   type PayPlan,
+  type PayPlanDelivery,
   type PayPlanGate,
   type PayPlanLeftOutReason,
   type PayPlanPayable,
@@ -145,6 +146,10 @@ export type PayPlanFacts = {
   compliance: PayPlanComplianceHold;
   limits: PaymentTierLimits;
   classified: ClassifiedPayPlanLots;
+  /** Whether accepted courier quotes are charged with the invoices at all. */
+  deliveryInPayment: boolean;
+  /** Accepted courier quotes that may join the payment; those for lots it does not cover are dropped. */
+  delivery: readonly PayPlanDelivery[];
   /** A payment already under way for any of the lots, if one is. */
   progress: PayPlan["progress"];
 };
@@ -177,7 +182,10 @@ function payPlanGate(facts: PayPlanFacts, totalPence: number): PayPlanGate {
  */
 export function buildPayPlan(facts: PayPlanFacts): PayPlan {
   const { payable, leftOut } = facts.classified;
-  const totalPence = payable.reduce((sum, p) => sum + p.totalPence, 0);
+  const covered = new Set(payable.map((p) => p.lotId));
+  const delivery = facts.delivery.filter((d) => covered.has(d.lotId));
+  const deliveryPence = delivery.reduce((sum, d) => sum + d.amountPence, 0);
+  const totalPence = payable.reduce((sum, p) => sum + p.totalPence, 0) + deliveryPence;
 
   const byKind = new Map<string, number>();
   for (const p of payable) {
@@ -194,8 +202,11 @@ export function buildPayPlan(facts: PayPlanFacts): PayPlan {
     gate: payPlanGate(facts, totalPence),
     payable,
     leftOut,
+    deliveryInPayment: facts.deliveryInPayment,
+    delivery,
     totals: {
       pence: totalPence,
+      deliveryPence,
       byKind: invoiceLineKinds.flatMap((kind) => {
         const pence = byKind.get(kind);
         return pence === undefined ? [] : [{ kind, pence }];
