@@ -1,8 +1,10 @@
 import type { ManualReviewReason, PaymentStatus } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
+  type AccountHold,
   type AmountOwedEntry,
   type AmountOwedFacts,
+  type HoldHolder,
   amountOwedEntry,
   summariseAmountsOwed,
 } from "./amounts-owed.js";
@@ -19,8 +21,9 @@ const base: AmountOwedFacts = {
 
 const entryFor = (
   patch: Partial<AmountOwedFacts>,
-  hold: "clear" | "aml_hold" | "source_of_funds_required" = "clear",
-) => amountOwedEntry({ ...base, ...patch }, hold);
+  hold: AccountHold = "clear",
+  holder: HoldHolder | null = null,
+) => amountOwedEntry({ ...base, ...patch }, hold, holder);
 
 describe("amountOwedEntry", () => {
   it("owes the full total when no payment has started", () => {
@@ -31,6 +34,7 @@ describe("amountOwedEntry", () => {
       amountDue: "1150.00",
       currency: "GBP",
       blocker: null,
+      holder: null,
     });
   });
 
@@ -53,6 +57,39 @@ describe("amountOwedEntry", () => {
     expect(entryFor({ paymentStatus: "requires_manual_review" })).toMatchObject({
       state: "in-review",
       blocker: "review",
+    });
+  });
+
+  describe("whose check holds it", () => {
+    it("names the holder of an account-level check and nobody for a clear account", () => {
+      expect(entryFor({}, "organisation_under_review", "organisation")).toMatchObject({
+        state: "in-review",
+        blocker: "review",
+        holder: "organisation",
+      });
+      expect(entryFor({}, "source_of_funds_required", "payer")).toMatchObject({
+        blocker: "documents",
+        holder: "payer",
+      });
+      expect(entryFor({}, "clear", null)).toMatchObject({ state: "payment-due", holder: null });
+    });
+
+    it("gives the payer nothing to upload for another person's check", () => {
+      expect(entryFor({}, "source_of_funds_required", "winner")).toMatchObject({
+        state: "in-review",
+        blocker: "review",
+        holder: "winner",
+      });
+    });
+
+    it("names no holder when the payment's own review holds it", () => {
+      expect(
+        entryFor(
+          { paymentStatus: "requires_manual_review", paymentReviewReason: "high_value" },
+          "organisation_under_review",
+          "organisation",
+        ),
+      ).toMatchObject({ state: "in-review", holder: null });
     });
   });
 
@@ -102,6 +139,7 @@ const entry = (patch: Partial<AmountOwedEntry>): AmountOwedEntry => ({
   amountDue: "100.00",
   currency: "GBP",
   blocker: null,
+  holder: null,
   ...patch,
 });
 
@@ -113,6 +151,7 @@ describe("summariseAmountsOwed", () => {
       payableCount: 0,
       inReview: false,
       blocker: null,
+      holder: null,
     });
   });
 
@@ -165,6 +204,18 @@ describe("summariseAmountsOwed", () => {
       inReview: false,
       blocker: "review",
     });
+  });
+
+  it("says whose check holds the purchases: the payer's own first, then the organisation's", () => {
+    const held = (lotId: string, holder: HoldHolder) =>
+      entry({ lotId, state: "in-review", blocker: "review", holder });
+    expect(summariseAmountsOwed([held("a", "winner"), held("b", "organisation")]).holder).toBe(
+      "organisation",
+    );
+    expect(summariseAmountsOwed([held("a", "organisation"), held("b", "payer")]).holder).toBe(
+      "payer",
+    );
+    expect(summariseAmountsOwed([entry({ lotId: "a" })]).holder).toBeNull();
   });
 
   it("counts a lot without a price but adds nothing to the total", () => {

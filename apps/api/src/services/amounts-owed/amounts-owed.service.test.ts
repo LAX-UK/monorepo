@@ -1,4 +1,4 @@
-import { PURCHASE_LIST_LIMIT } from "@auction/domain";
+import { PURCHASE_LIST_LIMIT, type PaymentEligibility } from "@auction/domain";
 import type { PaymentStatus } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AmountsOwedService } from "./amounts-owed.service.js";
@@ -29,9 +29,19 @@ function lotFor(fixture: Fixture) {
   };
 }
 
+type OrganisationChecks = {
+  eligibility?: PaymentEligibility;
+  /** What the compliance assessment says for the subjects it is asked about. */
+  assess?: (input: { buyerUserId: string; amountPence: number }) => {
+    hold: boolean;
+    reason: "aml_hold" | "source_of_funds_required" | null;
+  };
+};
+
 function build(
   fixtures: Fixture[],
   gate: "clear" | "aml_hold" | "source_of_funds_required" = "clear",
+  checks: OrganisationChecks = {},
 ) {
   const lots = fixtures.map(lotFor);
   // The hammer is 1000.00 and the lot carries a 15% buyer's premium.
@@ -62,6 +72,10 @@ function build(
         ]
       : [],
   );
+  const eligibilityCheck = vi.fn(async () => checks.eligibility ?? { kind: "payable" as const });
+  const assess = vi.fn(async (input: { buyerUserId: string; amountPence: number }) =>
+    (checks.assess ?? (() => ({ hold: false, reason: null })))(input),
+  );
   const lotList = vi.fn(async () =>
     lots.map((lot) => ({
       ...lot,
@@ -87,8 +101,12 @@ function build(
       ),
     },
     personalAccount: { idFor: async () => PERSONAL },
+    organisationChecks: {
+      eligibility: { check: eligibilityCheck },
+      compliance: { assess: assess as never },
+    },
   });
-  return { service, lotList };
+  return { service, lotList, eligibilityCheck, assess };
 }
 
 const entryFor = async (fixture: Fixture, gate?: Parameters<typeof build>[1]) => {
@@ -254,5 +272,121 @@ describe("amounts owed for an organisation", () => {
       account: { legalEntityId: PERSONAL, role: "owner" },
     });
     expect(view?.entries[0]).toMatchObject({ role: "payer", state: "payment-due" });
+  });
+});
+
+describe("what holds an organisation's purchases: the Pay page plan's own checks", () => {
+  const asFinance = (
+    service: ReturnType<typeof build>["service"],
+    userId = USER,
+  ): ReturnType<typeof service.forAccount> =>
+    service.forAccount({ userId, account: { legalEntityId: ORG, role: "finance" } });
+  const orgLot = (over: Partial<Fixture> = {}): Fixture => ({
+    lotId: "a",
+    buyerLegalEntityId: ORG,
+    winnerId: "winner-1",
+    ...over,
+  });
+
+  it("is clear when the organisation and the checks are clear, whatever the person's own gate says", async () => {
+    // The signed-in person has an open source-of-funds case of their own; acting for the
+    // organisation, what holds a purchase is the organisation's payer and winner checks.
+    const { service } = build([orgLot()], "source_of_funds_required");
+    const view = await asFinance(service);
+    expect(view?.entries[0]).toMatchObject({
+      state: "payment-due",
+      blocker: null,
+      holder: null,
+    });
+  });
+
+  it("is held by the organisation while LAX is still checking it, with nothing for the payer to upload", async () => {
+    const { service, assess } = build([orgLot()], "clear", {
+      eligibility: { kind: "held", reason: "organisation_under_review" },
+    });
+    const view = await asFinance(service);
+    expect(view?.entries[0]).toMatchObject({
+      state: "in-review",
+      blocker: "review",
+      holder: "organisation",
+    });
+    expect(assess).not.toHaveBeenCalled();
+  });
+
+  it("is held by the organisation when it is closed too", async () => {
+    const { service } = build([orgLot()], "clear", {
+      eligibility: { kind: "refused", reason: "organisation_closed" },
+    });
+    expect((await asFinance(service))?.entries[0]).toMatchObject({
+      state: "in-review",
+      holder: "organisation",
+    });
+  });
+
+  it("is held by the payer's own source-of-funds check, which they can answer with documents", async () => {
+    const { service } = build([orgLot()], "clear", {
+      assess: ({ buyerUserId }) =>
+        buyerUserId === USER
+          ? { hold: true, reason: "source_of_funds_required" }
+          : { hold: false, reason: null },
+    });
+    expect((await asFinance(service))?.entries[0]).toMatchObject({
+      state: "in-review",
+      blocker: "documents",
+      holder: "payer",
+    });
+  });
+
+  it("is held by the winner's check, which the payer can only wait for", async () => {
+    const { service } = build([orgLot()], "clear", {
+      assess: ({ buyerUserId }) =>
+        buyerUserId === "winner-1"
+          ? { hold: true, reason: "source_of_funds_required" }
+          : { hold: false, reason: null },
+    });
+    expect((await asFinance(service))?.entries[0]).toMatchObject({
+      state: "in-review",
+      blocker: "review",
+      holder: "winner",
+    });
+  });
+
+  it("checks the payer on everything they pay, and each winner on what they won", async () => {
+    const { service, assess } = build([
+      orgLot({ lotId: "a", winnerId: "winner-1" }),
+      orgLot({ lotId: "b", winnerId: USER }),
+    ]);
+    await asFinance(service);
+    const asked = assess.mock.calls.map(([input]) => [input.buyerUserId, input.amountPence]);
+    expect(asked).toEqual([
+      [USER, 230_000],
+      ["winner-1", 115_000],
+    ]);
+  });
+
+  it("asks nothing of the checks when nothing is owed, or when the person only follows the purchase", async () => {
+    const none = build([orgLot({ payment: { status: "captured" } })]);
+    await asFinance(none.service);
+    expect(none.assess).not.toHaveBeenCalled();
+    expect(none.eligibilityCheck).not.toHaveBeenCalled();
+    const informed = build([orgLot()]);
+    await informed.service.forAccount({
+      userId: USER,
+      account: { legalEntityId: ORG, role: "buyer_agent" },
+    });
+    expect(informed.assess).not.toHaveBeenCalled();
+  });
+
+  it("holds a personal purchase by the person's own gate, as before", async () => {
+    expect(await entryFor({ lotId: "a" }, "source_of_funds_required")).toMatchObject({
+      state: "in-review",
+      blocker: "documents",
+      holder: "payer",
+    });
+    expect(await entryFor({ lotId: "a" }, "aml_hold")).toMatchObject({
+      blocker: "review",
+      holder: "payer",
+    });
+    expect(await entryFor({ lotId: "a" })).toMatchObject({ holder: null });
   });
 });

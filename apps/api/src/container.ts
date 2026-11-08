@@ -744,6 +744,8 @@ export function createContainer(env: Env): Container {
       lotFulfilmentRepository: payments.lotFulfilmentRepository,
       personalLegalEntityResolver: userMisc.personalLegalEntityResolver,
       lotViewerState,
+      paymentEligibility: payments.paymentEligibility,
+      settlementCompliance: payments.settlementCompliancePolicy,
       categoryInterestsEligibilityReader: repos.categoryInterestsEligibilityReader,
       categoryInterestsRepository: repos.categoryInterestsRepository,
       accountOnboardingService: userMisc.accountOnboardingService,

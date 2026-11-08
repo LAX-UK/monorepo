@@ -15,6 +15,7 @@ import type { Env } from "../env.js";
 import type { CachedAccountOnboardingChecker } from "../infrastructure/cached-account-onboarding.checker.js";
 import type { AccountOnboardingService } from "../services/account-onboarding.service.js";
 import type { AddressService } from "../services/address.service.js";
+import type { ISettlementComplianceAssessor } from "../services/aml/settlement-compliance.policy.js";
 import { AmountsOwedService } from "../services/amounts-owed/amounts-owed.service.js";
 import type { ArtistWatchlistService } from "../services/artist-watchlist.service.js";
 import type { IAuthAuditPublisher } from "../services/interfaces/auth-audit-publisher.js";
@@ -30,6 +31,7 @@ import { LaxPortfolioHttpApplicationService } from "../services/lax-portfolio/la
 import type { IPersonalLegalEntityResolver } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
 import type { NotificationQueryService } from "../services/notification-query.service.js";
 import type { INotificationAccountMuteService } from "../services/notifications/notification-account-mute.service.js";
+import type { IPaymentEligibilityGate } from "../services/payment/payment-eligibility.gate.js";
 import type { ProfileService } from "../services/profile.service.js";
 import type { SavedSearchService } from "../services/saved-search.service.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
@@ -88,6 +90,9 @@ export type CreateUserRouteServicesInput = {
   lotFulfilmentRepository: Pick<ILotFulfilmentRepository, "statusesForLots">;
   personalLegalEntityResolver: IPersonalLegalEntityResolver;
   lotViewerState: ILotViewerStateService;
+  /** The account rule and compliance checks the Pay page plan applies to an organisation. */
+  paymentEligibility: IPaymentEligibilityGate;
+  settlementCompliance: ISettlementComplianceAssessor | null;
 };
 
 export function createUserRouteServices(input: CreateUserRouteServicesInput): UserRouteServices {
@@ -98,6 +103,10 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
     fulfilments: input.lotFulfilmentRepository,
     personalAccount: {
       idFor: async (userId) => (await input.personalLegalEntityResolver.resolveForUser(userId)).id,
+    },
+    organisationChecks: {
+      eligibility: input.paymentEligibility,
+      compliance: input.settlementCompliance,
     },
   });
   return {

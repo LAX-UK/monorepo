@@ -2,11 +2,12 @@ import { dashboardSofRequirementsUrl } from "@/lib/dashboard/dashboard-copy";
 import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
 import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
-import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes";
 import { lotPath } from "@/lib/seo/url";
 import {
   type AmountOwedBlocker,
   type AmountOwedEntry,
+  type AmountsOwedSummary,
   PURCHASE_LIST_LIMIT,
   type PurchasePaymentRole,
   addMoneyStrings,
@@ -135,6 +136,11 @@ export type PurchaseSources = {
   paymentRoleByLot: Readonly<Record<string, PurchasePaymentRole>>;
   /** The organisation that pays what the person does not, or `null` when it is not known. */
   payerName: string | null;
+  /**
+   * The organisation the person is acting for, when they are: so a hold can say whose it is, and
+   * whether the person can open the organisation's setup (owners and admins).
+   */
+  organisation?: { id: string; name: string; canManage: boolean } | null;
   /** The account's invoice and delivery state per lot, when it could be read. */
   factsByLot?: Readonly<Record<string, AccountPurchaseFacts>>;
   /** Several members win for the account, so rows name who won. */
@@ -394,15 +400,19 @@ function documentsActionFor(blocker: AmountOwedBlocker | null): PayNowDocumentsA
     : null;
 }
 
-/** What is due, in one line, and the payment that settles it. */
-function payNowFor(cards: readonly PurchaseCardVm[], sources: PurchaseSources): PayNowVm | null {
-  const owed = summariseAmountsOwed(Object.values(sources.owedByLot));
-  if (owed.count === 0) return null;
-  const documentsAction = documentsActionFor(owed.blocker);
-  const payable = cards.filter((card) => card.payable);
-  if (payable.length === 0) {
-    // Nothing can be paid yet: say so only when our checks are what holds it.
-    if (!owed.inReview) return null;
+/**
+ * The summary while checks hold everything that is owed, saying whose check it is. A person's own
+ * account is in review; for an organisation it is the organisation's (and its owners and admins
+ * can open its setup), the payer's own checks, or the winner's, which only we can finish.
+ */
+function reviewNow(
+  holder: AmountsOwedSummary["holder"],
+  blocker: AmountOwedBlocker | null,
+  sources: PurchaseSources,
+): PayNowVm {
+  const organisation = sources.organisation ?? null;
+  if (!organisation) {
+    const documentsAction = documentsActionFor(blocker);
     return {
       kind: "review",
       title: "Your account is in review",
@@ -412,6 +422,46 @@ function payNowFor(cards: readonly PurchaseCardVm[], sources: PurchaseSources): 
       documentsAction,
     };
   }
+  if (holder === "organisation") {
+    return {
+      kind: "review",
+      title: `${organisation.name} is in review`,
+      description: "We're checking this organisation's details. You can pay once we have.",
+      documentsAction: organisation.canManage
+        ? { label: "Open organisation setup", href: organisationHref("profile", organisation.id) }
+        : null,
+    };
+  }
+  if (holder === "winner") {
+    return {
+      kind: "review",
+      title: "A check on the person who won is in review",
+      description: "We're checking a few details. You can pay once we have.",
+      documentsAction: null,
+    };
+  }
+  const documentsAction = documentsActionFor(blocker);
+  return {
+    kind: "review",
+    title: "Your own checks are in review",
+    description: documentsAction
+      ? "We need some of your documents before you can pay for this organisation."
+      : "You can pay once our checks on you are done.",
+    documentsAction,
+  };
+}
+
+/** What is due, in one line, and the payment that settles it. */
+function payNowFor(cards: readonly PurchaseCardVm[], sources: PurchaseSources): PayNowVm | null {
+  const owed = summariseAmountsOwed(Object.values(sources.owedByLot));
+  if (owed.count === 0) return null;
+  const payable = cards.filter((card) => card.payable);
+  if (payable.length === 0) {
+    // Nothing can be paid yet: say so only when our checks are what holds it.
+    if (!owed.inReview) return null;
+    return reviewNow(owed.holder, owed.blocker, sources);
+  }
+  const documentsAction = documentsActionFor(owed.blocker);
   const [first] = payable;
   const currency = first?.payable?.currency ?? "GBP";
   const total = payable.reduce(

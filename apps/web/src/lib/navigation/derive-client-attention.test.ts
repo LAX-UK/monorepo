@@ -62,6 +62,7 @@ const owed = (lotId: string, patch: Partial<AmountOwedEntry> = {}): AmountOwedEn
   amountDue: "1250.00",
   currency: "GBP",
   blocker: null,
+  holder: null,
   ...patch,
 });
 
