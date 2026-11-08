@@ -29,6 +29,7 @@ const group = (over: Partial<BidPaymentGroupFact> = {}): BidPaymentGroupFact => 
   checkoutRail: "gb_bank_transfer",
   totalAmount: "11701.00",
   amountReceived: "6000.00",
+  members: [],
   ...over,
 });
 
@@ -36,11 +37,18 @@ function transfer(
   over: Partial<BidPaymentGroupFact> = {},
   status: BidPaymentFact["status"] = "authorized",
 ) {
+  const shared = group({
+    members: [
+      { lotId: LOT_A, status, amount: "8000.00" },
+      { lotId: LOT_B, status, amount: "3701.00" },
+    ],
+    ...over,
+  });
   return facts({
     wonLots: [wonLot({ lotId: LOT_A }), wonLot({ lotId: LOT_B, title: "Red Field" })],
     payments: [
-      payment({ id: "pa", lotId: LOT_A, amount: "8000.00", status, group: group(over) }),
-      payment({ id: "pb", lotId: LOT_B, amount: "3701.00", status, group: group(over) }),
+      payment({ id: "pa", lotId: LOT_A, amount: "8000.00", status, group: shared }),
+      payment({ id: "pb", lotId: LOT_B, amount: "3701.00", status, group: shared }),
     ],
   });
 }
@@ -128,6 +136,25 @@ describe("a part-funded bank transfer on Portfolio and Money", () => {
   it("shows nothing owed while nothing has arrived yet", () => {
     const { items } = read(transfer({ amountReceived: "0.00" }));
     expect(items.every((item) => item.owed?.state !== "still_to_send")).toBe(true);
+  });
+
+  it("shares the remainder across invoices the person does not hold, so each figure is exact", () => {
+    // A third invoice of £3,000.00 in the same transfer is billed to an organisation. It is not
+    // listed here, but it takes its share of the £5,701.00 left (£1,163.39), so these lots owe less.
+    const bid = transfer({
+      members: [
+        { lotId: LOT_A, status: "authorized", amount: "8000.00" },
+        { lotId: LOT_B, status: "authorized", amount: "3701.00" },
+        { lotId: "org-lot", status: "authorized", amount: "3000.00" },
+      ],
+      totalAmount: "14701.00",
+      amountReceived: "9000.00",
+    });
+    const { items } = read(bid);
+    expect(items.map((item) => [item.id, item.owed?.amount])).toEqual([
+      [LOT_A, 310_237],
+      [LOT_B, 143_524],
+    ]);
   });
 
   it("leaves an unrelated payment alone", () => {

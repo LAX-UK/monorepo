@@ -83,9 +83,8 @@ export class AccountPurchasesService implements IAccountPurchasesService {
   }
 
   /**
-   * What each listed invoice still has to send on a part-funded bank transfer. The remainder is
-   * spread over the purchases listed here only (this page), so a sibling invoice on another page
-   * or in another account is not counted in the shares.
+   * What each listed invoice still has to send on a part-funded bank transfer: its share of the
+   * group's remainder, the same on every page and for every member who sees it.
    */
   private stillToSendOf(rows: readonly AccountPurchaseFactsRow[]) {
     return this.deps.stillToSend.forPayments(

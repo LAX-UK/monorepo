@@ -2,6 +2,7 @@ import { PURCHASE_LIST_LIMIT } from "@auction/domain";
 import type { PaymentStatus } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import type { IStillToSendService } from "../payment-group/still-to-send.service.js";
+import { StillToSendService } from "../payment-group/still-to-send.service.js";
 import { AmountsOwedService } from "./amounts-owed.service.js";
 
 const USER = "user-1";
@@ -313,5 +314,40 @@ describe("amounts owed inside a part-funded bank transfer", () => {
   it("has nothing to send when no transfer is part-funded", async () => {
     const { service } = build([{ lotId: "a", payment: { status: "authorized" } }]);
     expect((await service.forPerson(USER)).stillToSend).toEqual([]);
+  });
+});
+
+describe("amounts owed across a transfer that includes an invoice not listed", () => {
+  it("states each listed lot's exact share, so the chip total is not the whole remainder", async () => {
+    // £3,450.00 asked for three equal invoices, £1,000.00 received, so £2,450.00 is left. The
+    // third invoice (another lot, not read here) takes its share; these two keep theirs only.
+    const group = {
+      id: "group-1",
+      status: "processing",
+      checkoutRail: "gb_bank_transfer",
+      totalAmount: "3450.00",
+      amountReceived: "1000.00",
+      members: ["a", "b", "z"].map((lotId) => ({
+        lotId,
+        status: "authorized" as const,
+        amount: "1150.00",
+      })),
+    };
+    const { service } = build(
+      [
+        { lotId: "a", payment: { status: "authorized" } },
+        { lotId: "b", payment: { status: "authorized" } },
+      ],
+      "clear",
+      new StillToSendService({
+        processingForPayments: async (ids) => new Map(ids.map((id) => [id, group])),
+      }),
+    );
+    const { stillToSend } = await service.forPerson(USER);
+    expect(stillToSend.map((entry) => [entry.lotId, entry.pence])).toEqual([
+      ["a", 81_667],
+      ["b", 81_667],
+    ]);
+    expect(stillToSend.reduce((sum, entry) => sum + entry.pence, 0)).toBeLessThan(245_000);
   });
 });

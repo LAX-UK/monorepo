@@ -14,8 +14,8 @@ export type InvoicePayment = {
 /** What a part-funded bank transfer still has to send, for the invoices a screen lists. */
 export interface IStillToSendService {
   /**
-   * The share each listed invoice still has to send, by lot. A transfer's remainder is spread over
-   * the invoices given here only, so pass every invoice the screen shows and nothing else.
+   * The share each listed invoice still has to send, by lot. A transfer's remainder is shared
+   * across the whole group, so a lot's share is the same whichever invoices are listed with it.
    */
   forPayments(payments: readonly InvoicePayment[]): Promise<Map<string, StillToSend>>;
 }
@@ -28,7 +28,7 @@ export class StillToSendService implements IStillToSendService {
     const onItsWay = payments.filter((payment) => payment.status === "authorized");
     const groups = await this.groups.processingForPayments(onItsWay.map((payment) => payment.id));
     return stillToSendOfPayments(
-      onItsWay.map((payment) => ({ ...payment, group: groups.get(payment.id) ?? null })),
+      onItsWay.map((payment) => ({ lotId: payment.lotId, group: groups.get(payment.id) ?? null })),
     );
   }
 }

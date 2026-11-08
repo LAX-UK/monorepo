@@ -136,9 +136,8 @@ export class AmountsOwedService implements IAmountsOwedService {
   }
 
   /**
-   * The lots the person pays that sit inside a part-funded bank transfer. The remainder is shared
-   * over the lots read here (the ones Purchases lists) only, so a sibling invoice outside that
-   * read carries a share this result does not account for.
+   * The lots the person pays that sit inside a part-funded bank transfer, each with its share of
+   * the group's remainder (the same figure Purchases and the LAX Account portfolio show).
    */
   private async stillToSendOf(
     lots: readonly { id: string }[],

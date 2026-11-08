@@ -16,6 +16,7 @@ import {
 import { and, desc, eq, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type {
   BidPaymentFact,
+  BidPaymentGroupFact,
   BidPayoutFact,
   BidPortfolioFacts,
   BidSellerLotFact,
@@ -23,15 +24,19 @@ import type {
   BidWonLotFact,
   IBidPortfolioReader,
 } from "../interfaces/bid-portfolio.reader.js";
+import { loadGroupMembers } from "./payment-group-members.js";
 
 /** The combined payment a row belongs to, or null when its invoice is paid on its own. */
-function groupOf(row: {
-  groupId: string | null;
-  groupStatus: string | null;
-  groupRail: string | null;
-  groupTotal: string | null;
-  groupReceived: string | null;
-}): BidPaymentFact["group"] {
+function groupOf(
+  members: ReadonlyMap<string, BidPaymentGroupFact["members"]>,
+  row: {
+    groupId: string | null;
+    groupStatus: string | null;
+    groupRail: string | null;
+    groupTotal: string | null;
+    groupReceived: string | null;
+  },
+): BidPaymentFact["group"] {
   const { groupId, groupStatus, groupRail, groupTotal, groupReceived } = row;
   if (!groupId || !groupStatus || !groupRail || groupTotal === null || groupReceived === null) {
     return null;
@@ -42,6 +47,7 @@ function groupOf(row: {
     checkoutRail: groupRail,
     totalAmount: groupTotal,
     amountReceived: groupReceived,
+    members: members.get(groupId) ?? [],
   };
 }
 
@@ -168,6 +174,10 @@ export class DrizzleBidPortfolioReader implements IBidPortfolioReader {
       )
       .orderBy(desc(payment.createdAt))
       .limit(MAX_ROWS);
+    // The remainder of a transfer is shared across its whole group, so every member is read.
+    const members = await loadGroupMembers(this.db, [
+      ...new Set(rows.flatMap((row) => (row.groupId ? [row.groupId] : []))),
+    ]);
     return rows.map((row) => ({
       id: row.id,
       lotId: row.lotId,
@@ -175,7 +185,7 @@ export class DrizzleBidPortfolioReader implements IBidPortfolioReader {
       status: row.status,
       createdAt: row.createdAt,
       hasInvoice: row.invoiceNumber !== null || row.invoiceUrl !== null,
-      group: groupOf(row),
+      group: groupOf(members, row),
     }));
   }
 

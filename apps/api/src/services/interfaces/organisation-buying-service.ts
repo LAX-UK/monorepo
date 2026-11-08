@@ -87,8 +87,7 @@ export type AccountPurchaseView = {
     totalDue: string | null;
     /**
      * What a part-funded bank transfer still has to send for this invoice, in whole pence; `null`
-     * when the invoice is not inside one. Its share of the remainder is worked out over the
-     * invoices listed alongside it only.
+     * when the invoice is not inside one. Its share of the group's whole remainder.
      */
     stillToSendPence: number | null;
   };

@@ -120,6 +120,7 @@ export type { IAccountDeletionEligibilityReader } from "./account-deletion-eligi
 export type {
   BidPaymentFact,
   BidPaymentGroupFact,
+  BidPaymentGroupMemberFact,
   BidPayoutFact,
   BidPortfolioFacts,
   BidSellerLotFact,

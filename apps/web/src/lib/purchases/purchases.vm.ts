@@ -163,8 +163,8 @@ function dueDate(row: PortfolioRow, facts: AccountPurchaseFacts | null = null): 
 /**
  * What the member still has to send on a part-funded bank transfer for this purchase, in whole
  * pence. Only the member who pays is asked; the one who merely won is told how payment goes. The
- * figure is the API's share of the transfer's remainder, spread over the purchases it listed, so
- * it is the same one the Pay page's transfer details and the LAX Account portfolio state.
+ * figure is the API's share of the transfer's whole remainder, so it is the same on every page
+ * and the same one the LAX Account portfolio and the header chip state.
  */
 function stillToSendOf(
   state: PurchaseState,

@@ -12,7 +12,7 @@ const HAS_DB = Boolean(process.env.DATABASE_URL);
  * transaction that is rolled back.
  */
 describe.skipIf(!HAS_DB)("payment group facts reader (integration)", () => {
-  it("reports the processing group of each payment, and nothing else", async () => {
+  it("reports the processing group of each payment, with every invoice in it, and nothing else", async () => {
     // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
     const db = createDb(process.env.DATABASE_URL!);
     const rollback = new Error("rollback_test_tx");
@@ -22,8 +22,18 @@ describe.skipIf(!HAS_DB)("payment group facts reader (integration)", () => {
     const entityId = randomUUID();
     const processingGroup = randomUUID();
     const openGroup = randomUUID();
-    const lots = { inProcessing: randomUUID(), inOpen: randomUUID(), alone: randomUUID() };
-    const payments = { inProcessing: randomUUID(), inOpen: randomUUID(), alone: randomUUID() };
+    const lots = {
+      inProcessing: randomUUID(),
+      sibling: randomUUID(),
+      inOpen: randomUUID(),
+      alone: randomUUID(),
+    };
+    const payments = {
+      inProcessing: randomUUID(),
+      sibling: randomUUID(),
+      inOpen: randomUUID(),
+      alone: randomUUID(),
+    };
 
     try {
       await db.transaction(async (tx) => {
@@ -98,6 +108,7 @@ describe.skipIf(!HAS_DB)("payment group facts reader (integration)", () => {
           .insert(payment)
           .values([
             newPayment(payments.inProcessing, lots.inProcessing, processingGroup),
+            newPayment(payments.sibling, lots.sibling, processingGroup),
             newPayment(payments.inOpen, lots.inOpen, openGroup),
             newPayment(payments.alone, lots.alone, null),
           ]);
@@ -105,14 +116,20 @@ describe.skipIf(!HAS_DB)("payment group facts reader (integration)", () => {
         const found = await new DrizzlePaymentGroupFactsReader(tx as never).processingForPayments(
           Object.values(payments),
         );
-        expect([...found.keys()]).toEqual([payments.inProcessing]);
+        expect([...found.keys()].sort()).toEqual([payments.inProcessing, payments.sibling].sort());
         expect(found.get(payments.inProcessing)).toEqual({
           id: processingGroup,
           status: "processing",
           checkoutRail: "gb_bank_transfer",
           totalAmount: "2000.00",
           amountReceived: "500.00",
+          // Every invoice of the group, including the one that was not asked about.
+          members: expect.arrayContaining([
+            { lotId: lots.inProcessing, status: "authorized", amount: "1000.00" },
+            { lotId: lots.sibling, status: "authorized", amount: "1000.00" },
+          ]),
         });
+        expect(found.get(payments.inProcessing)?.members).toHaveLength(2);
         expect(
           await new DrizzlePaymentGroupFactsReader(tx as never).processingForPayments([]),
         ).toEqual(new Map());
