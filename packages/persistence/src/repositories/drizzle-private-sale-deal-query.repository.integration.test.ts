@@ -262,9 +262,17 @@ describe.skipIf(!HAS_DB)("private sale deal lists and works (integration)", () =
       expect(await queries.hasOpenDealForWork(submissionId)).toBe(true);
 
       // The database refuses a second live deal for the same work, even if the check was raced.
-      await expect(deals.create(newDeal(submissionId))).rejects.toMatchObject({
-        message: expect.stringMatching(/private_sale_deal_one_open_per_work_uidx|duplicate key/),
-      });
+      const refused = await deals.create(newDeal(submissionId)).then(
+        () => null,
+        (error: unknown) => error,
+      );
+      // The driver wraps the database error; the unique index is named in the cause.
+      const chain: string[] = [];
+      for (let e = refused as { message?: string; cause?: unknown } | null; e; ) {
+        chain.push(e.message ?? "", String((e as { code?: unknown }).code ?? ""));
+        e = e.cause as typeof e;
+      }
+      expect(chain.join(" ")).toMatch(/private_sale_deal_one_open_per_work_uidx|23505/);
 
       await setStage(db, first.id, "cancelled", {
         cancelReason: "Seller withdrew",
