@@ -1,3 +1,4 @@
+import { type SettlementPeriodRefusal, resolveSettlementPeriod } from "@auction/domain";
 import type { CreatePayoutAdjustmentInput, ResolveBlockedPayoutInput } from "@auction/validators";
 import type { IAdminPayoutApplicationService } from "../interfaces/admin-routes/admin-finance-routes.js";
 import type { IPayoutStatementApplicationService } from "../interfaces/finance-routes/finance-payout-statement.js";
@@ -8,8 +9,6 @@ import type {
   PayoutReversalActor,
 } from "../interfaces/payout.js";
 import type { AdminListPayoutsFilter } from "../interfaces/payout.js";
-import type { SettlementPeriodRefusal } from "../payout/settlement-period.js";
-import { resolveSettlementPeriod } from "../payout/settlement-period.js";
 import type { AdminBlockedPayoutResolutionService } from "./admin-blocked-payout-resolution.service.js";
 import type { AdminFailedPayoutRetryService } from "./admin-failed-payout-retry.service.js";
 import type { AdminPayoutListPage } from "./admin-payout-list-query.service.js";

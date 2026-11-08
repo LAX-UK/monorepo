@@ -129,6 +129,12 @@ async function transitionOrThrow(
   throw new PayoutStatusTransitionError("payout_state_changed");
 }
 
+/** A Postgres unique violation, possibly wrapped by the driver layer. */
+function isUniqueViolation(err: unknown): boolean {
+  const e = err as { code?: unknown; cause?: { code?: unknown } } | null;
+  return e?.code === "23505" || e?.cause?.code === "23505";
+}
+
 function requireTransactional(deps: PayoutServiceDeps) {
   const runner = deps.transactionRunner;
   const publisher = deps.domainEventSink;
@@ -211,12 +217,21 @@ export async function adoptBlockedTransfer(
     if (linked && linked.id !== payoutId) {
       throw new PayoutStatusTransitionError("transfer_linked_to_other_payout");
     }
-    const updated = await transitionOrThrow(r, found, {
-      status: "in_transit",
-      stripeTransferId: input.stripeTransferId,
-      processedAt: null,
-      failureReason: null,
-    });
+    let updated: Payout;
+    try {
+      updated = await transitionOrThrow(r, found, {
+        status: "in_transit",
+        stripeTransferId: input.stripeTransferId,
+        processedAt: null,
+        failureReason: null,
+      });
+    } catch (err) {
+      // Two staff adopting the same transfer onto two payouts: the unique index lets one win.
+      if (isUniqueViolation(err)) {
+        throw new PayoutStatusTransitionError("transfer_linked_to_other_payout");
+      }
+      throw err;
+    }
     await publisher.withTx(tx).publish({
       aggregateType: "payout",
       aggregateId: updated.id,
