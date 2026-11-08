@@ -83,7 +83,8 @@ export type BulkSettlementEntityOutcomeLog = {
     | "transfer_failed"
     | "connect_not_ready"
     | "committed_no_transfer"
-    | "transfer_skipped";
+    | "transfer_skipped"
+    | "transfer_blocked";
   reason?: string;
   stripeTransferId?: string;
   stripeErrorCode?: string;

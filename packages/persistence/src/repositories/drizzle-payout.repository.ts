@@ -240,7 +240,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
             clawbackCount: sql<number>`count(*) filter (where ${payout.status} = 'clawback_pending')::int`,
             failedCount: sql<number>`count(*) filter (where ${payout.status} = 'failed')::int`,
             reversedCount: sql<number>`count(*) filter (where ${payout.status} = 'reversed')::int`,
-            blockerPayoutCount: sql<number>`count(*) filter (where ${payout.failureReason} is not null or ${payout.statementGenerationError} is not null or ${payout.status} in ('clawback_pending', 'failed', 'reversed'))::int`,
+            blockerPayoutCount: sql<number>`count(*) filter (where ${payout.failureReason} is not null or ${payout.statementGenerationError} is not null or ${payout.status} in ('clawback_pending', 'failed', 'reversed', 'transfer_blocked'))::int`,
           })
           .from(payout)
           .where(where)
@@ -261,7 +261,7 @@ export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProces
             clawbackCount: sql<number>`count(*) filter (where ${payout.status} = 'clawback_pending')::int`,
             failedCount: sql<number>`count(*) filter (where ${payout.status} = 'failed')::int`,
             reversedCount: sql<number>`count(*) filter (where ${payout.status} = 'reversed')::int`,
-            blockerPayoutCount: sql<number>`count(*) filter (where ${payout.failureReason} is not null or ${payout.statementGenerationError} is not null or ${payout.status} in ('clawback_pending', 'failed', 'reversed'))::int`,
+            blockerPayoutCount: sql<number>`count(*) filter (where ${payout.failureReason} is not null or ${payout.statementGenerationError} is not null or ${payout.status} in ('clawback_pending', 'failed', 'reversed', 'transfer_blocked'))::int`,
           })
           .from(payout));
 

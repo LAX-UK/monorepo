@@ -29,6 +29,17 @@ function setup(options: { found?: unknown; transfer?: unknown } = {}) {
 }
 
 describe("AdminFailedPayoutRetryService", () => {
+  it("skips a blocked payout: staff retry never sends a transfer for it", async () => {
+    const { service, initiateTransfer, publish } = setup({
+      found: { ...failed, status: "transfer_blocked" },
+    });
+
+    await expect(service.retry("staff-1", "payout-1")).rejects.toThrow(PayoutStatusTransitionError);
+
+    expect(initiateTransfer).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
   it("records the request against the actor, then sends the transfer again", async () => {
     const { service, initiateTransfer, publish } = setup();
 
