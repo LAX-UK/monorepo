@@ -4,6 +4,7 @@ import {
   privateSaleDeal,
   privateSaleDealDocument,
   privateSaleDealParty,
+  privateSaleDealPartyHistory,
   privateSaleDealStageHistory,
 } from "@auction/db/schema";
 import type {
@@ -78,6 +79,35 @@ function mapDeal(row: DealRow): Omit<PrivateSaleDealDetail, "seller" | "buyer" |
   };
 }
 
+/**
+ * Keeps who was named on a deal, in the transaction that names them. A person named again on the
+ * same side is already recorded.
+ */
+async function recordNamings(
+  tx: Database,
+  dealId: string,
+  parties: ReadonlyArray<{
+    role: PrivateSalePartyRole;
+    legalEntityId: string;
+    actingUserId: string | null;
+  }>,
+): Promise<void> {
+  const named = parties.flatMap((party) =>
+    party.actingUserId
+      ? [
+          {
+            dealId,
+            role: party.role,
+            legalEntityId: party.legalEntityId,
+            actingUserId: party.actingUserId,
+          },
+        ]
+      : [],
+  );
+  if (named.length === 0) return;
+  await tx.insert(privateSaleDealPartyHistory).values(named).onConflictDoNothing();
+}
+
 /** Private sale deals: the deal with its parties and documents, its stage history, and the writes that change them. */
 export class DrizzlePrivateSaleDealRepository
   implements IPrivateSaleDealReader, IPrivateSaleDealWriter, IPrivateSaleDocumentWriter
@@ -125,12 +155,21 @@ export class DrizzlePrivateSaleDealRepository
         .returning();
       if (!row) throw new Error("private sale deal was not created");
       const parties = [
-        { role: "seller", ...input.seller },
-        ...(input.buyer ? [{ role: "buyer", ...input.buyer }] : []),
+        { role: "seller" as const, ...input.seller },
+        ...(input.buyer ? [{ role: "buyer" as const, ...input.buyer }] : []),
       ];
       await tx.insert(privateSaleDealParty).values(
         parties.map((party) => ({
           dealId: row.id,
+          role: party.role,
+          legalEntityId: party.legalEntityId,
+          actingUserId: party.actingUserId,
+        })),
+      );
+      await recordNamings(
+        tx,
+        row.id,
+        parties.map((party) => ({
           role: party.role,
           legalEntityId: party.legalEntityId,
           actingUserId: party.actingUserId,
@@ -175,6 +214,7 @@ export class DrizzlePrivateSaleDealRepository
             updatedAt: sql`now()`,
           },
         });
+      await recordNamings(tx, dealId, [party]);
       return this.okOf(tx, dealId);
     });
   }
