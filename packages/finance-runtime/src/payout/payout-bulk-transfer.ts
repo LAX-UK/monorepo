@@ -77,7 +77,6 @@ export async function runBulkSettlementWithTransfers(
   opts?: { periodEnd?: Date },
 ): Promise<BulkSettlementWithTransfersResult> {
   const periodEnd = opts?.periodEnd ?? new Date();
-  const periodStart = new Date(0);
   const settlementItems: BulkPayoutSettlementResult["items"] = [];
   const transferLog: BulkSettlementEntityOutcomeLog[] = [];
   const attemptedTransferPayoutIds = new Set<string>();
@@ -91,11 +90,7 @@ export async function runBulkSettlementWithTransfers(
 
   for (const legalEntityId of legalEntityIds) {
     try {
-      const result = await createSettlement(deps, actorUserId, {
-        legalEntityId,
-        periodStart,
-        periodEnd,
-      });
+      const result = await createSettlement(deps, actorUserId, { legalEntityId, periodEnd });
       if (!result.ok) {
         settlementItems.push({ legalEntityId, outcome: "skipped", reason: result.reason });
         pushTransferLog({

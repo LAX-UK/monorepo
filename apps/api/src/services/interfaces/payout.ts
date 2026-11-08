@@ -1,3 +1,4 @@
+import type { SettlementPeriodRefusal } from "@auction/finance-runtime";
 import type {
   CreatePayoutAdjustmentInput,
   Payout,
@@ -37,9 +38,9 @@ export type AdminListPayoutsFilter = ListPayoutsFilter & {
 
 export type CreateSettlementInput = {
   legalEntityId: string;
-  /** Inclusive UTC start of period. */
-  periodStart: Date;
-  /** Inclusive UTC end of period. */
+  /** A start later than where the last settled period ended; left out, the run continues from it. */
+  periodStart?: Date;
+  /** Inclusive UTC end of period: the moment the run is made. */
   periodEnd: Date;
   /** Optional override of the platform fee rate (decimal, e.g. 0.18). */
   platformFeeRateOverride?: number;
@@ -49,7 +50,7 @@ export type CreateSettlementInput = {
 
 export type CreateSettlementResult =
   | { ok: true; payout: PayoutWithLines }
-  | { ok: false; reason: "no_pending_payments" };
+  | { ok: false; reason: "no_pending_payments" | SettlementPeriodRefusal };
 
 export type BulkPayoutSettlementItemResult = {
   legalEntityId: string;

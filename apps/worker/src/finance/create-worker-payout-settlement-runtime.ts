@@ -12,6 +12,7 @@ import {
 } from "@auction/persistence/repositories";
 import type pino from "pino";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
+import { workerMoneyPathMetrics } from "../lib/money-path-metrics.js";
 import { workerDomainEventPublisher } from "./worker-domain-event-publisher.js";
 import { workerFinanceDomainEventSinkPort } from "./worker-finance-domain-event-port.js";
 
@@ -31,6 +32,7 @@ export function createWorkerPayoutSettlementRuntime(input: {
     legalEntityConnectRepo: new DrizzleLegalEntityConnectRepository(input.db),
     domainEventSink: workerFinanceDomainEventSinkPort(input.domainEventSink),
     domainEventPublisher: workerDomainEventPublisher(input.domainEventSink),
+    metrics: workerMoneyPathMetrics,
   });
 }
 

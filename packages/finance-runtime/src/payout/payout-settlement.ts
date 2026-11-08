@@ -16,8 +16,13 @@ import {
   listSettlementEntityIds,
   settlementAmounts,
 } from "./payout-helpers.js";
-import type { CreateSettlementInput, CreateSettlementResult } from "./types.js";
-import type { BulkPayoutSettlementResult } from "./types.js";
+import { resolveSettlementPeriod } from "./settlement-period.js";
+import type {
+  BulkPayoutSettlementResult,
+  CreateSettlementInput,
+  CreateSettlementResult,
+  ResolvedSettlementInput,
+} from "./types.js";
 
 /** A deal queued on the payout, so the run can tell the deal it is on its way. */
 export type QueuedDealPayout = { dealId: string; reference: string; netToSellerMinor: number };
@@ -49,7 +54,7 @@ function dealLine(deal: PrivateSalePayoutDeal) {
 
 export async function createSettlementCore(
   r: IPayoutRepository,
-  input: CreateSettlementInput,
+  input: ResolvedSettlementInput,
   deals?: IPrivateSaleDealPayoutStore | null,
 ): Promise<CreatedSettlementResult> {
   const pending = await r.findUnlinkedCapturedPayments(input.legalEntityId);
@@ -162,7 +167,24 @@ export async function createSettlement(
     // One settlement per legal entity at a time: a concurrent run waits here, then sees the
     // payments already on the first payout and finds nothing pending.
     await r.lockSettlementForEntity(input.legalEntityId);
-    const result = await createSettlementCore(r, input, deps.dealPayoutsForTx?.(tx) ?? null);
+    // The period is read here, under the lock and through this transaction, so the settled period
+    // another run just wrote is already visible and the two cannot overlap.
+    const [latest] = await r.list({ legalEntityId: input.legalEntityId, limit: 1 });
+    const [oldestPending] = await r.findUnlinkedCapturedPayments(input.legalEntityId);
+    const period = resolveSettlementPeriod({
+      now: input.periodEnd,
+      requestedStart: input.periodStart,
+      lastSettledEnd: latest?.periodEnd ?? null,
+      earliestPending: oldestPending?.capturedAt ?? null,
+    });
+    if (!period.ok) return period;
+    const resolved: ResolvedSettlementInput = {
+      legalEntityId: input.legalEntityId,
+      periodStart: period.periodStart,
+      periodEnd: period.periodEnd,
+      ...(input.reason !== undefined ? { reason: input.reason } : {}),
+    };
+    const result = await createSettlementCore(r, resolved, deps.dealPayoutsForTx?.(tx) ?? null);
     if (!result.ok) {
       return result;
     }
@@ -179,8 +201,8 @@ export async function createSettlement(
         netAmount: result.payout.netAmount,
         currency: result.payout.currency,
         paymentLineCount: result.payout.lines.length,
-        periodStart: input.periodStart.toISOString(),
-        periodEnd: input.periodEnd.toISOString(),
+        periodStart: resolved.periodStart.toISOString(),
+        periodEnd: resolved.periodEnd.toISOString(),
         source,
         ...(input.reason !== undefined ? { reason: input.reason } : {}),
       },
@@ -213,17 +235,12 @@ export async function runBulkSettlement(
 ): Promise<BulkPayoutSettlementResult> {
   const legalEntityIds = await listSettlementEntityIds(deps);
   const periodEnd = opts?.periodEnd ?? new Date();
-  const periodStart = new Date(0);
   const items: BulkPayoutSettlementResult["items"] = [];
   let createdCount = 0;
 
   for (const legalEntityId of legalEntityIds) {
     try {
-      const result = await createSettlement(deps, actorUserId, {
-        legalEntityId,
-        periodStart,
-        periodEnd,
-      });
+      const result = await createSettlement(deps, actorUserId, { legalEntityId, periodEnd });
       if (result.ok) {
         createdCount += 1;
         items.push({
