@@ -20,6 +20,8 @@ export const UNAPPLIED_MONEY_REASONS = [
   "amount_mismatch",
   /** A "Pay several" payment arrived but its invoices could no longer all be settled. */
   "group_not_settleable",
+  /** A bank transfer for a "Pay several" payment sent more than its total; the excess is finance's. */
+  "group_overpaid",
   /** A bank transfer landed in the buyer's Stripe balance with no open invoice to apply it to. */
   "customer_balance_unapplied",
   /** Stripe shows the invoice paid, but this process cannot record the payment itself. */

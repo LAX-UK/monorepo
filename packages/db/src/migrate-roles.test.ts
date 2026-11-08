@@ -44,6 +44,7 @@ import {
   WORKER_QR_CODE_SCAN_TABLES,
   WORKER_READ_TABLES,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
+  WORKER_SHOP_ORDER_READ_COLUMNS,
   WORKER_ZOHO_ARTWORK_SYNC_TABLES,
   WORKER_ZOHO_CAMPAIGNS_LIFT_READ_TABLES,
   WORKER_ZOHO_CAMPAIGNS_SUPPRESSION_TABLES,
@@ -516,6 +517,31 @@ describe("migrate-roles invariants", () => {
       "reference",
     ]);
     // Column grants only: both tables stay in the deny list and in no whole-table worker list.
+    for (const table of Object.keys(columns)) {
+      expect([...WORKER_DENY_TABLES]).toContain(table);
+    }
+  });
+
+  it("lets the worker read the Shop order columns the Deal name needs, and no whole Shop table", () => {
+    const columns = Object.fromEntries(WORKER_SHOP_ORDER_READ_COLUMNS);
+    expect(Object.keys(columns).sort()).toEqual([
+      "shop_guest_customer",
+      "shop_order",
+      "shop_order_line",
+    ]);
+    expect([...columns.shop_order].sort()).toEqual([
+      "delivery_recipient_name",
+      "guest_customer_id",
+      "id",
+      "reference",
+    ]);
+    expect([...columns.shop_order_line].sort()).toEqual([
+      "artwork_id",
+      "created_at",
+      "id",
+      "order_id",
+    ]);
+    expect([...columns.shop_guest_customer].sort()).toEqual(["id", "name"]);
     for (const table of Object.keys(columns)) {
       expect([...WORKER_DENY_TABLES]).toContain(table);
     }

@@ -6,7 +6,7 @@ import { getServerAccountAlerts } from "@/lib/data/http/alerts.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerCategoryInterests } from "@/lib/data/http/category-interests.server";
 import { getServerNotificationMutes } from "@/lib/data/http/notifications-inbox.server";
-import type { EngineAlertState } from "@/lib/notifications/alert-matrix";
+import { engineAlertStateOf } from "@/lib/notifications/engine-alert-state";
 import { loadBiddingOrganisation, loadPersonalLimit } from "@/lib/settings/bidding-card.server";
 import { biddingRows } from "@/lib/settings/bidding-standing";
 import type { ThemePreference } from "@auction/validators";
@@ -46,18 +46,6 @@ export async function BiddingSettings({ user }: { user: SessionUser }) {
   );
 }
 
-/** The engine's rows as the matrix reads them; a stopped or unknown client has no subscription. */
-function engineStateOf(
-  mine: Awaited<ReturnType<typeof getServerAccountAlerts>>,
-): EngineAlertState | null {
-  if (!mine) return null;
-  const active = mine.state === "confirmed";
-  return {
-    subscribed: Object.fromEntries(mine.topics.map((t) => [t.topic, active])),
-    email: Object.fromEntries(mine.topics.map((t) => [t.topic, active && t.emailOn])),
-  };
-}
-
 /**
  * Alerts: the style, where each alert reaches you, quiet hours, and the organisations you muted.
  * Saved searches and artist alerts live in Watching.
@@ -85,7 +73,7 @@ export async function AlertsSection({
       {/* Alerts only reach an address that can receive them, so a problem shows here. */}
       <EmailStatusBanner user={user} />
       {prefs ? (
-        <AlertsSettings initial={prefs} initialEngine={engineStateOf(accountAlerts)} />
+        <AlertsSettings initial={prefs} initialEngine={engineAlertStateOf(accountAlerts)} />
       ) : (
         <BidSettingsSectionError what="alerts" />
       )}

@@ -36,7 +36,7 @@ describe("SearchAlertButton", () => {
   });
 
   it("signed in, alert already saved: reads Alert set after a reload, with a way to manage alerts", () => {
-    render(<SearchAlertButton {...base} isAuthenticated saveOnArrival={false} alertSet />);
+    render(<SearchAlertButton {...base} isAuthenticated saveOnArrival={false} alertState="on" />);
     expect(screen.getByRole("status")).toHaveTextContent("Alert set");
     expect(screen.queryByRole("button", { name: NAME })).toBeNull();
     expect(screen.getByRole("link", { name: "Manage alerts" })).toHaveAttribute(
@@ -46,13 +46,39 @@ describe("SearchAlertButton", () => {
     expect(ensure).not.toHaveBeenCalled();
   });
 
+  it("signed in, search saved with email off: says so and offers the manage link", () => {
+    render(
+      <SearchAlertButton {...base} isAuthenticated saveOnArrival={false} alertState="email_off" />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Saved search · email off");
+    expect(screen.queryByRole("button", { name: NAME })).toBeNull();
+    expect(screen.getByRole("link", { name: "Manage alerts" })).toHaveAttribute(
+      "href",
+      "/watching?tab=searches",
+    );
+  });
+
+  it("signed in, saved while the topic's email is off: says nothing will be sent", async () => {
+    ensure.mockResolvedValue("created");
+    render(
+      <SearchAlertButton {...base} isAuthenticated saveOnArrival={false} topicEmailOn={false} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: NAME }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Saved search · email off");
+    expect(success).toHaveBeenCalledWith(
+      "Alert saved. Email is off for saved searches, so nothing will be sent.",
+    );
+  });
+
   it("signed in: saves on click and shows Alert set", async () => {
     ensure.mockResolvedValue("created");
     render(<SearchAlertButton {...base} isAuthenticated saveOnArrival={false} />);
     fireEvent.click(screen.getByRole("button", { name: NAME }));
     expect(await screen.findByRole("status")).toHaveTextContent("Alert set");
     expect(ensure).toHaveBeenCalledWith("harbour", undefined);
-    expect(success).toHaveBeenCalledWith("Alert set. We’ll email you when a lot matches.");
+    expect(success).toHaveBeenCalledWith(
+      "Alert set. Matches arrive in your 08:00 email and in the app.",
+    );
   });
 
   it("signed in: says so when the alert already exists", async () => {

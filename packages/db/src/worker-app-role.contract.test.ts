@@ -8,6 +8,7 @@ import {
   WORKER_DENY_TABLES,
   WORKER_EMAIL_SUPPRESSION_UPDATE_COLUMNS,
   WORKER_SHOP_ENQUIRY_READ_COLUMNS,
+  WORKER_SHOP_ORDER_READ_COLUMNS,
 } from "./migrate-roles.js";
 import {
   expectTablePrivileges,
@@ -107,6 +108,24 @@ describe.skipIf(!WORKER_URL)("worker_app role contract", { timeout: 60_000 }, ()
                  or has_table_privilege(current_user, 'public.zoho_campaigns_optout_lift', 'UPDATE')) as write`,
       );
       expect(result.rows[0]).toEqual({ run: true, select: true, write: false });
+    });
+  });
+
+  it("reads the Shop order columns the Deal name needs, and no other column of those tables", async () => {
+    await withWorkerClient(async (client) => {
+      for (const [table, columns] of WORKER_SHOP_ORDER_READ_COLUMNS) {
+        const all = await client.query<{ column_name: string; allowed: boolean }>(
+          `select column_name,
+                  has_column_privilege(current_user, 'public.' || $1, column_name, 'SELECT') as allowed
+             from information_schema.columns
+            where table_schema = 'public' and table_name = $1`,
+          [table],
+        );
+        const allowed = all.rows.filter((row) => row.allowed).map((row) => row.column_name);
+        expect(allowed.sort(), table).toEqual([...columns].sort());
+        const whole = await readTablePrivileges(client, [table], ["INSERT", "UPDATE", "DELETE"]);
+        expectUniformTablePrivileges(whole, false);
+      }
     });
   });
 

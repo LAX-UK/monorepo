@@ -33,7 +33,7 @@ export function WorkspaceTopBar({
   search,
   phoneTitle,
   scrolledTitle,
-  phoneAccountSheet = null,
+  phoneAccount = null,
 }: {
   user: SessionUser;
   familyLinks: readonly LaxFamilyLinkVm[];
@@ -44,10 +44,11 @@ export function WorkspaceTopBar({
   /** The page's title, once its large title has scrolled out of view. */
   scrolledTitle: string | null;
   /**
-   * The accounts the person can switch between. When set, the avatar on a phone opens the
-   * account sheet instead of the person menu; from 1024px the person menu stays.
+   * The account in use and the accounts to switch between. When set, a phone shows the account
+   * button (which opens the account sheet) instead of the person menu; from 1024px the person
+   * menu stays.
    */
-  phoneAccountSheet?: AccountChrome["switcher"];
+  phoneAccount?: AccountChrome | null;
 }) {
   const viewingAs = useViewingAsClient();
   const showTitle = Boolean(scrolledTitle) || Boolean(phoneTitle.backHref);
@@ -110,10 +111,14 @@ export function WorkspaceTopBar({
           {search}
           {viewingAs ? (
             <ViewAsClientMenu name={viewingAs.name} />
-          ) : phoneAccountSheet ? (
+          ) : phoneAccount?.switcher ? (
             <>
               <div className="lg:hidden">
-                <PhoneAccountButton user={user} switcher={phoneAccountSheet} />
+                <PhoneAccountButton
+                  user={user}
+                  current={phoneAccount.current}
+                  switcher={phoneAccount.switcher}
+                />
               </div>
               <div className="max-lg:hidden">
                 <ShellUserMenu user={user} role={CLIENT_SHELL_ROLE} />

@@ -523,6 +523,17 @@ export const WORKER_SHOP_ENQUIRY_READ_COLUMNS = [
   ],
 ] as const;
 
+/**
+ * The CRM projector names a Shop order's Deal from these columns and no others (the order, its
+ * first line and the guest behind it). The tables stay denied to the worker as a whole; only a
+ * column-level SELECT is granted, covering what the reader selects, joins and filters on.
+ */
+export const WORKER_SHOP_ORDER_READ_COLUMNS = [
+  ["shop_order", ["id", "reference", "guest_customer_id", "delivery_recipient_name"]],
+  ["shop_order_line", ["id", "order_id", "artwork_id", "created_at"]],
+  ["shop_guest_customer", ["id", "name"]],
+] as const;
+
 type RoleName = "auth_app" | "api_app" | "shop_app" | "worker_app";
 
 export const APPLICATION_ROLE_GRANT_LOCK_KEY = "lax:application_role_grants";
@@ -1031,6 +1042,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
           await grantIfExists(client, "worker_app", tableName, "SELECT, DELETE");
         }
         for (const [tableName, columns] of WORKER_SHOP_ENQUIRY_READ_COLUMNS) {
+          await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
+        }
+        for (const [tableName, columns] of WORKER_SHOP_ORDER_READ_COLUMNS) {
           await grantColumnSelectIfExists(client, "worker_app", tableName, columns);
         }
 
