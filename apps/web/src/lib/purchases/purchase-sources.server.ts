@@ -8,6 +8,7 @@ import { getServerEntityPayments } from "@/lib/data/http/payments.server";
 import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
 import { accountPurchaseScope } from "@auction/domain";
 import type { PurchasePaymentRole } from "@auction/domain";
+import { purchaseInvoiceHref } from "./purchase-invoice";
 import type { PurchaseSources } from "./purchases.vm";
 
 /**
@@ -47,8 +48,10 @@ export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
 
   const invoiceByLot: Record<string, string> = {};
   if (paymentsResult.status === "fulfilled") {
+    // Our own PDF, from the stored invoice. Only the members who pay have the payments, so only
+    // they get the link; the API refuses everyone else again.
     for (const payment of paymentsResult.value) {
-      if (payment.invoiceUrl) invoiceByLot[payment.lotId] = payment.invoiceUrl;
+      invoiceByLot[payment.lotId] = purchaseInvoiceHref(payment.lotId);
     }
   }
 
