@@ -24,7 +24,9 @@ describe("migration 0323 Zoho Campaigns suppression", () => {
     const entry = journal.entries.find((e) => e.tag === "0323_zoho_campaigns_suppression");
     expect(entry?.idx).toBe(318);
     expect(entry?.when).toBe(1803024000000);
-    expect(journal.entries.some((e) => e.tag.startsWith("0322_"))).toBe(false);
+    const previous = journal.entries.find((e) => e.idx === 317);
+    expect(previous?.tag.startsWith("0322_")).toBe(true);
+    expect((entry?.when ?? 0) - (previous?.when ?? 0)).toBe(86_400_000);
   });
 
   it("adds the reason, the source and the watermark table", () => {
