@@ -1,6 +1,5 @@
 "use client";
 
-import { MediaLightbox } from "@/components/gallery/engine/media-lightbox";
 import { MarketingCatalogGrid } from "@/components/marketing/marketing-catalog-grid";
 import {
   DAY_GALLERY_INLINE_PREVIEW,
@@ -17,7 +16,14 @@ import type { DayGalleryVM } from "@/components/sections/saleroom/view-models";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import type { SaleDayMedia } from "@auction/types";
 import { cn } from "@auction/ui";
+import dynamic from "next/dynamic";
 import { useState } from "react";
+
+// The viewer (and its zoom and thumbnail plugins) is only needed once a picture is opened.
+const MediaLightbox = dynamic(
+  () => import("@/components/gallery/engine/media-lightbox").then((module) => module.MediaLightbox),
+  { ssr: false },
+);
 
 type Props = {
   vm: DayGalleryVM;
@@ -92,14 +98,16 @@ export function SaleroomDayGallery({ vm, className }: Props) {
         onSelectIndex={openLightboxAt}
       />
 
-      <MediaLightbox
-        items={vm.items}
-        open={lightboxIndex >= 0}
-        index={lightboxIndex}
-        onClose={() => setLightboxIndex(-1)}
-        onIndexChange={setLightboxIndex}
-        animation={animation}
-      />
+      {lightboxIndex >= 0 ? (
+        <MediaLightbox
+          items={vm.items}
+          open
+          index={lightboxIndex}
+          onClose={() => setLightboxIndex(-1)}
+          onIndexChange={setLightboxIndex}
+          animation={animation}
+        />
+      ) : null}
     </>
   );
 }

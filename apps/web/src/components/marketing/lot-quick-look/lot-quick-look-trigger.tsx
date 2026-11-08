@@ -13,6 +13,7 @@ import { Button } from "@auction/ui/lax";
 import { Eye } from "lucide-react";
 import { type MouseEvent, useRef } from "react";
 import { useLotQuickLookOptional } from "./lot-quick-look-context";
+import { preloadLotQuickLookDialog } from "./lot-quick-look-dialog.lazy";
 import type { LotQuickLookOpenOptions, LotQuickLookVM } from "./types";
 
 type LayoutMode = "overlay" | "inline";
@@ -71,6 +72,9 @@ export function LotQuickLookTrigger({
       variant="ghost"
       size="icon-md"
       onClick={handleClick}
+      onPointerEnter={() => void preloadLotQuickLookDialog()}
+      onFocus={() => void preloadLotQuickLookDialog()}
+      onTouchStart={() => void preloadLotQuickLookDialog()}
       className={cn(shell, className, "[&_svg]:pointer-events-none [&_svg]:size-5")}
       {...(useOverlayChrome ? overlayToneProps(overlayTone) : {})}
       aria-label={label}

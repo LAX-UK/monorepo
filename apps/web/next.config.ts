@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveSentryOrg } from "@auction/observability";
+import bundleAnalyzer from "@next/bundle-analyzer";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import { laxAccountOrigin } from "./src/lib/lax-account-url";
@@ -140,6 +141,14 @@ const nextConfig: NextConfig = {
   },
 };
 
+// `ANALYZE=true next build` writes the bundle report: `ANALYZE_MODE=json` for stats the budget
+// notes read, otherwise the interactive treemap.
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === "true",
+  analyzerMode: process.env.ANALYZE_MODE === "json" ? "json" : "static",
+  openAnalyzer: false,
+});
+
 // Skip Sentry webpack plugin locally when no DSN is configured.
 const hasSentry = Boolean(process.env.SENTRY_DSN_WEB || process.env.NEXT_PUBLIC_SENTRY_DSN_WEB);
 
@@ -154,4 +163,8 @@ const sentryBuildOptions = {
   ...(process.env.SENTRY_AUTH_TOKEN ? { authToken: process.env.SENTRY_AUTH_TOKEN } : {}),
 };
 
-export default hasSentry ? withSentryConfig(nextConfig, sentryBuildOptions) : nextConfig;
+const finalConfig = hasSentry ? withSentryConfig(nextConfig, sentryBuildOptions) : nextConfig;
+
+export default withBundleAnalyzer(
+  finalConfig as Parameters<typeof withBundleAnalyzer>[0],
+) as NextConfig;

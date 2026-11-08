@@ -85,7 +85,7 @@ describe("SaleroomDayGallery", () => {
     expect(screen.getByText("+19")).toBeTruthy();
   });
 
-  it("opens the sheet from View all and opens lightbox from a sheet item", () => {
+  it("opens the sheet from View all and opens lightbox from a sheet item", async () => {
     render(
       <SaleroomDayGallery vm={makeVm(Array.from({ length: 15 }, (_, i) => imageItem(i + 1)))} />,
     );
@@ -94,16 +94,17 @@ describe("SaleroomDayGallery", () => {
     expect(screen.getAllByRole("button", { name: /Open photo/i })).toHaveLength(15);
 
     clickFirstButton("Open photo 3 of 15: Photo 3");
-    expect(screen.getByTestId("media-lightbox")).toHaveAttribute("data-index", "2");
+    // The viewer is fetched when a picture is opened, so it arrives a moment later.
+    expect(await screen.findByTestId("media-lightbox")).toHaveAttribute("data-index", "2");
   });
 
-  it("opens lightbox directly from an inline preview thumb", () => {
+  it("opens lightbox directly from an inline preview thumb", async () => {
     render(
       <SaleroomDayGallery vm={makeVm(Array.from({ length: 15 }, (_, i) => imageItem(i + 1)))} />,
     );
 
     clickFirstButton("Open photo 1 of 15: Photo 1");
-    expect(screen.getByTestId("media-lightbox")).toHaveAttribute("data-index", "0");
+    expect(await screen.findByTestId("media-lightbox")).toHaveAttribute("data-index", "0");
   });
 
   it("opens the sheet from the overflow tile", () => {
