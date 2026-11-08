@@ -73,3 +73,18 @@ export type NewArtworkRegisterEntry = Omit<
   ArtworkRegisterEntry,
   "id" | "offer" | "createdAt" | "updatedAt" | "version" | "zohoModifiedAt"
 > & { zohoModifiedAt?: Date | null };
+
+/** The Zoho module a register row's record lives in. */
+export type ZohoRegisterModule = "Products" | "Print_Products";
+
+/**
+ * Which Zoho module holds this row's record. A print group LAX issued (`issuePrintGroup`) always
+ * names the original it mirrors and its Zoho id is a `Print_Products` record. A print that came
+ * in from Zoho (a LAX-PRI or LAX-PRT Product) has no original and its id is a Product, so the
+ * stock code's kind alone cannot say.
+ */
+export function zohoModuleOf(
+  entry: Pick<ArtworkRegisterEntry, "kind" | "sourceOriginalId">,
+): ZohoRegisterModule {
+  return entry.kind === "print" && entry.sourceOriginalId !== null ? "Print_Products" : "Products";
+}

@@ -19,6 +19,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("print group facts reader as worker_app
   const originalId = randomUUID();
   const printsId = randomUUID();
   const proofId = randomUUID();
+  const secondId = randomUUID();
   let owner: pg.Pool;
 
   beforeAll(async () => {
@@ -75,7 +76,11 @@ describe.skipIf(!ownerUrl || !workerUrl)("print group facts reader as worker_app
   afterAll(async () => {
     if (!owner) return;
     await owner.query("delete from shop_edition where artwork_id = $1", [printsId]);
-    await owner.query("delete from shop_artwork where id in ($1, $2)", [proofId, printsId]);
+    await owner.query("delete from shop_artwork where id in ($1, $2, $3)", [
+      proofId,
+      secondId,
+      printsId,
+    ]);
     await owner.query("delete from shop_artwork where id = $1", [originalId]);
     await owner.query("delete from shop_artist where id = $1", [artistId]);
     await owner.query("delete from shop_party where id = $1", [partyId]);
@@ -88,6 +93,7 @@ describe.skipIf(!ownerUrl || !workerUrl)("print group facts reader as worker_app
     expect(await reader.read(printsId)).toEqual({
       printsArtworkId: printsId,
       isMainRun: true,
+      otherMainRunsOnOriginal: 0,
       title: "Harbour at dusk (prints)",
       medium: "Screenprint",
       dimensions: "50 x 70 cm",
@@ -105,6 +111,21 @@ describe.skipIf(!ownerUrl || !workerUrl)("print group facts reader as worker_app
     // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
     const reader = createDrizzlePrintGroupFactsReader(createDb(workerUrl!));
     expect(await reader.read(proofId)).toMatchObject({ isMainRun: false, total: 0 });
+  });
+
+  it("counts another main run made from the same original, and not a proof", async () => {
+    // biome-ignore lint/style/noNonNullAssertion: gated by skipIf
+    const reader = createDrizzlePrintGroupFactsReader(createDb(workerUrl!));
+    expect((await reader.read(printsId))?.otherMainRunsOnOriginal).toBe(0);
+    await owner.query(
+      `insert into shop_artwork (id, slug, title, artist_id, eligible_for_edition_allocation, import_key,
+         source_original_artwork_id, run_kind, run_role, run_template, run_size, alloc_buyer,
+         alloc_artist, alloc_lax)
+       values ($1, $2, 'Harbour at dusk (second set)', $3, true, $4, $5, 'limited', 'main', 'custom',
+         4, 2, 1, 1)`,
+      [secondId, `harbour-second-${tag}`, artistId, `print-group:${tag}:s`, originalId],
+    );
+    expect((await reader.read(printsId))?.otherMainRunsOnOriginal).toBe(1);
   });
 
   it("says a listing with no original has none, and a missing listing is null", async () => {

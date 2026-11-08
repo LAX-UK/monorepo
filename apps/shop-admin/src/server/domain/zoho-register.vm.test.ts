@@ -133,12 +133,19 @@ describe("offer states and values", () => {
     expect(zohoProductUrl(undefined, "5001")).toBeNull();
   });
 
+  it("opens Products for a print that came in from Zoho, which is a Product", () => {
+    const template = "https://crm.zoho.eu/crm/org20111813184/tab/{module}/{recordId}";
+    expect(zohoProductUrl(template, "5002")).toBe(
+      "https://crm.zoho.eu/crm/org20111813184/tab/Products/5002",
+    );
+  });
+
   it("opens a print group's own module, not Products", () => {
     const template = "https://crm.zoho.eu/crm/org20111813184/tab/{module}/{recordId}";
-    expect(zohoProductUrl(template, "7001", "print")).toBe(
+    expect(zohoProductUrl(template, "7001", "Print_Products")).toBe(
       "https://crm.zoho.eu/crm/org20111813184/tab/Print_Products/7001",
     );
-    expect(zohoProductUrl(template, "7001", "original")).toContain("/tab/Products/");
+    expect(zohoProductUrl(template, "7001", "Products")).toContain("/tab/Products/");
   });
 });
 

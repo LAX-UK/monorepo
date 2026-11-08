@@ -10,6 +10,11 @@ export type PrintGroupFacts = {
    * copy its original, so they would map to the same group code as the main run.
    */
   isMainRun: boolean;
+  /**
+   * How many other main-run listings were made from the same original. Each would map to the same
+   * group code, so more than one cannot be mirrored without one overwriting the other.
+   */
+  otherMainRunsOnOriginal: number;
   /** The original the prints were made from; null for a listing that is not a print of one. */
   original: { artworkId: string; zohoProductId: string | null } | null;
   /** "Numbered" for a limited run, "Open" for an open edition; null while no run is recorded. */

@@ -228,10 +228,9 @@ export const RESOLUTION_LABEL = {
 export function zohoProductUrl(
   template: string | null | undefined,
   zohoProductId: string,
-  kind: "original" | "print" = "original",
+  module: "Products" | "Print_Products" = "Products",
 ): string | null {
   if (!template) return null;
-  const module = kind === "print" ? "Print_Products" : "Products";
   return template
     .replace("{module}", encodeURIComponent(module))
     .replace("{recordId}", encodeURIComponent(zohoProductId));

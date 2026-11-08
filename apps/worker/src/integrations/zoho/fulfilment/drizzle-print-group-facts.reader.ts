@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopArtwork, shopEdition } from "@auction/db/schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { PrintGroupFacts, PrintGroupFactsReader } from "./print-group-facts.js";
 
@@ -36,6 +36,19 @@ export function createDrizzlePrintGroupFactsReader(db: Database): PrintGroupFact
         .limit(1);
       if (!row) return null;
 
+      const [others] = row.originalId
+        ? await db
+            .select({ listings: sql<number>`count(*)::int` })
+            .from(shopArtwork)
+            .where(
+              and(
+                eq(shopArtwork.sourceOriginalArtworkId, row.originalId),
+                ne(shopArtwork.id, printsArtworkId),
+                eq(shopArtwork.runRole, "main"),
+              ),
+            )
+        : [];
+
       // Proofs are listed on their own and are not part of the numbered run.
       const counts = await db
         .select({
@@ -59,6 +72,7 @@ export function createDrizzlePrintGroupFactsReader(db: Database): PrintGroupFact
         medium: row.medium,
         dimensions: row.dimensions,
         year: row.year,
+        otherMainRunsOnOriginal: others?.listings ?? 0,
         original: row.originalId
           ? { artworkId: row.originalId, zohoProductId: row.originalZohoProductId ?? null }
           : null,

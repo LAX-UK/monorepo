@@ -50,6 +50,14 @@ export class PrintGroupMirror {
       this.deps.log.info({ printsArtworkId }, "print group left to the main run");
       return { outcome: "skipped", reason: "not_the_main_run" };
     }
+    if (facts.otherMainRunsOnOriginal > 0) {
+      // Two main runs from one original share a group code, so whichever wrote last would win.
+      // Nothing is written until staff have settled which listing is the group.
+      return fatal(
+        "original_has_several_main_runs",
+        "More than one main-run listing is made from this original, so its print group cannot be mirrored",
+      );
+    }
     if (!facts.original.zohoProductId) {
       return { outcome: "skipped", reason: "original_not_in_register" };
     }

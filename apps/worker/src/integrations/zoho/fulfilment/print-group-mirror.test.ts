@@ -18,6 +18,7 @@ const NOW = new Date("2026-11-09T09:00:00.000Z");
 const facts = (over: Partial<PrintGroupFacts> = {}): PrintGroupFacts => ({
   printsArtworkId: "prints-1",
   isMainRun: true,
+  otherMainRunsOnOriginal: 0,
   title: "Harbour at dusk (prints)",
   medium: "Screenprint",
   dimensions: "50 x 70 cm",
@@ -262,6 +263,20 @@ describe("PrintGroupMirror", () => {
       outcome: "skipped",
       reason: "print_group_already_in_sync",
     });
+  });
+
+  it("fails, writing nothing, when another main run is made from the same original", async () => {
+    const { mirror, register, upsertPrintProduct, upsertLedger } = setup({
+      facts: facts({ otherMainRunsOnOriginal: 1 }),
+    });
+
+    expect(await mirror.deliver("prints-1")).toMatchObject({
+      outcome: "fatal",
+      error: { code: "original_has_several_main_runs" },
+    });
+    expect(upsertPrintProduct).not.toHaveBeenCalled();
+    expect(upsertLedger).not.toHaveBeenCalled();
+    expect(register.issuePrintGroup).not.toHaveBeenCalled();
   });
 
   it("dry_run plans and logs but writes nothing anywhere", async () => {

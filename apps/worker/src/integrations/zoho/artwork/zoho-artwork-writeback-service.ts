@@ -1,4 +1,4 @@
-import type { ArtworkRegisterEntry } from "@auction/artwork-register-contracts";
+import { type ArtworkRegisterEntry, zohoModuleOf } from "@auction/artwork-register-contracts";
 import type { IArtworkRegisterRepository } from "@auction/persistence/interfaces";
 import type { Logger } from "pino";
 import { crmErrorOutcome } from "../../crm/classify-crm-error.js";
@@ -60,9 +60,11 @@ export class ZohoArtworkWritebackService {
       const entry = await this.deps.register.findById(registerId);
       if (!entry) return { outcome: "skipped", reason: "register_entry_missing" };
       // A print group's Zoho record is a Print_Products one, whose code is its Print_Group_ID; the
-      // Products fields written here do not exist for it.
-      if (entry.kind === "print")
+      // Products fields written here do not exist for it. A print that came in from Zoho is a
+      // Product and is written like any other.
+      if (zohoModuleOf(entry) === "Print_Products") {
         return { outcome: "skipped", reason: "print_group_not_a_product" };
+      }
       return event.eventType === OFFER_CHANGED_EVENT
         ? await this.sendStatus(entry, event)
         : await this.sendStockCode(entry, event);

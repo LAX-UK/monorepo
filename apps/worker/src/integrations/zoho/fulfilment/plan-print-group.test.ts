@@ -10,6 +10,7 @@ const facts: PrintGroupFacts = {
   dimensions: null,
   year: null,
   isMainRun: true,
+  otherMainRunsOnOriginal: 0,
   original: { artworkId: "o1", zohoProductId: "zp-orig" },
   editionType: "Numbered",
   total: 24,

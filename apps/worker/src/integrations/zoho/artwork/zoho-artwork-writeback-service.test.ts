@@ -92,6 +92,18 @@ function setup(
   };
 }
 
+describe("ZohoArtworkWritebackService prints that came in from Zoho", () => {
+  it("still writes them: a LAX-PRI Product is a Product, with no original behind it", async () => {
+    const { service, products } = setup("live", {
+      entry: entry({ kind: "print", stockCode: "LAX-PRI-PH-GAC-26-0001", sourceOriginalId: null }),
+    });
+    expect((await service.deliver(stockCodeEvent)).outcome).toBe("success");
+    expect(products.update).toHaveBeenCalledWith("5000000000001000001", {
+      Reference_Stock_Code: "LAX-PRI-PH-GAC-26-0001",
+    });
+  });
+});
+
 describe("ZohoArtworkWritebackService print groups", () => {
   it("leaves a print group alone: its code lives in Print_Group_ID, on a Print_Products record", async () => {
     for (const mode of ["dry_run", "live"] as const) {
