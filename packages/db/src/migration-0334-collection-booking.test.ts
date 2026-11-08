@@ -44,7 +44,7 @@ describe("migration 0334 collection booking", () => {
     expect(index).toBeGreaterThan(0);
     const entry = journal.entries[index];
     const previous = journal.entries[index - 1];
-    expect(previous?.tag).toBe("0328_shop_delivery_regions");
+    expect(previous?.tag).toBe("0329_private_sale_deal_party_history");
     expect(entry?.idx).toBe((previous?.idx ?? 0) + 1);
     expect(entry?.when).toBe((previous?.when ?? 0) + 24 * 60 * 60 * 1000);
   });

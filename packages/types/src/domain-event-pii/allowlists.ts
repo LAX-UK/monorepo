@@ -565,7 +565,14 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
 
 export function isExceptionPath(eventType: string, path: string): boolean {
   const set = EXCEPTION_PATHS[eventType];
-  return set ? set.has(path) : false;
+  if (!set) return false;
+  if (set.has(path)) return true;
+  // The elements of a listed array ("lotIds.0", "lotIds.1") are covered by the array's own path.
+  const withoutIndexes = path
+    .split(".")
+    .filter((segment) => !/^\d+$/.test(segment))
+    .join(".");
+  return withoutIndexes !== path && set.has(withoutIndexes);
 }
 
 export function isSafeLeaf(eventType: string, path: string, segment: string): boolean {

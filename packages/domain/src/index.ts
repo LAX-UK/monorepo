@@ -864,6 +864,7 @@ export {
 export {
   COLLECTION_VISIT_MINUTES,
   DEFAULT_COLLECTION_RULES,
+  DEFAULT_COLLECTION_WEEKLY_HOURS,
   MAX_LOTS_PER_COLLECTION,
   MAX_NOTICE_WORKING_DAYS,
   MAX_PLACES_PER_SLOT,
@@ -937,6 +938,17 @@ export {
   type CollectionIcsInput,
   type CollectionIcsParty,
 } from "./collection-ics.js";
+export {
+  COLLECTION_BOOKING_EVENT_AGGREGATE,
+  collectionBookingCancelled,
+  collectionBookingChanged,
+  collectionBookingCreated,
+  collectionBookingHandOverUndone,
+  collectionBookingHandedOver,
+  collectionBookingNotCollected,
+  type CollectionBookingEvent,
+  type CollectionBookingFacts,
+} from "./collection-events.js";
 export {
   formatCollectionReference,
   parseCollectionReference,

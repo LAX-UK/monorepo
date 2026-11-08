@@ -30,6 +30,13 @@ export const DEFAULT_COLLECTION_RULES: CollectionRules = {
   undoHandOverMinutes: 10,
 };
 
+/** The gallery's hours until staff change them: Monday to Friday, 10:00 to 19:00 (London time). */
+export const DEFAULT_COLLECTION_WEEKLY_HOURS: readonly {
+  weekday: number;
+  opensLocal: string;
+  closesLocal: string;
+}[] = [1, 2, 3, 4, 5].map((weekday) => ({ weekday, opensLocal: "10:00", closesLocal: "19:00" }));
+
 /** The most lots one booking can hold. */
 export const MAX_LOTS_PER_COLLECTION = 20;
 
