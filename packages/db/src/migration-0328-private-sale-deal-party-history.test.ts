@@ -27,7 +27,7 @@ describe("migration 0328 private sale deal party history", () => {
   });
 
   it("only adds a table and copies existing namings in, with a short lock timeout", () => {
-    expect(migration).not.toMatch(/\bDROP\b|\bALTER TABLE\b|\bDELETE FROM\b|\bUPDATE\b/);
+    expect(migration).not.toMatch(/\bALTER TABLE\b|\bDELETE FROM\b|^UPDATE\b/m);
     expect(migration).toMatch(/CREATE TABLE IF NOT EXISTS "private_sale_deal_party_history"/);
     expect(migration).toMatch(/SET LOCAL lock_timeout = '5s'/);
     expect(migration).toMatch(/FROM "private_sale_deal_party"/);
@@ -42,9 +42,20 @@ describe("migration 0328 private sale deal party history", () => {
     expect(columns.actingUserId.name).toBe("acting_user_id");
   });
 
-  it("is undone by dropping only that table", () => {
+  it("refuses every update and delete with a trigger", () => {
+    expect(migration).toMatch(/BEFORE UPDATE OR DELETE ON "private_sale_deal_party_history"/);
+    expect(migration).toMatch(/FOR EACH ROW EXECUTE FUNCTION/);
+    expect(migration).toMatch(/RAISE EXCEPTION 'private_sale_deal_party_history is append-only'/);
+  });
+
+  it("is undone by dropping the trigger, its function and that table, with no wrapper", () => {
+    expect(rollback).toMatch(
+      /DROP TRIGGER IF EXISTS "private_sale_deal_party_history_append_only"/,
+    );
+    expect(rollback).toMatch(
+      /DROP FUNCTION IF EXISTS "private_sale_deal_party_history_append_only"/,
+    );
     expect(rollback).toMatch(/DROP TABLE IF EXISTS "private_sale_deal_party_history"/);
-    expect(rollback).toMatch(/^BEGIN;/m);
-    expect(rollback).toMatch(/COMMIT;/);
+    expect(rollback).not.toMatch(/^(BEGIN|COMMIT);/m);
   });
 });

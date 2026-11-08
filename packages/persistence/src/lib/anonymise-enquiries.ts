@@ -244,7 +244,14 @@ async function checkTimesByUser(
       .from(bidUserProfile)
       .where(and(inArray(bidUserProfile.userId, ids), ne(bidUserProfile.amlHoldStatus, "none"))),
     tx
-      .select({ userId: bidUserProfile.userId, at: bidUserProfile.updatedAt })
+      .select({
+        userId: bidUserProfile.userId,
+        // When the identity check was decided, not when the profile was last touched.
+        at: sql<Date>`coalesce((
+          select max(${kycVerification.decisionAt}) from ${kycVerification}
+          where ${kycVerification.userId} = ${bidUserProfile.userId}
+        ), ${bidUserProfile.updatedAt})`,
+      })
       .from(bidUserProfile)
       .where(and(inArray(bidUserProfile.userId, ids), eq(bidUserProfile.kycStatus, "rejected"))),
     tx

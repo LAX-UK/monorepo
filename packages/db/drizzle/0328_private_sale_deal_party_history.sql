@@ -3,7 +3,7 @@
 -- replaced buyer still belong to the deal's record, so each naming is kept here, written in the
 -- same transaction as the party and never changed. `acting_user_id` has no foreign key on purpose:
 -- deleting an account must not erase who was named on a deal whose record is being kept.
--- Additive: one new table. Existing namings are copied in from the current parties and from the
+-- Append-only: a trigger refuses any update or delete. Additive: one new table and its trigger. Existing namings are copied in from the current parties and from the
 -- party-named events that carry a person.
 SET LOCAL lock_timeout = '5s';
 --> statement-breakpoint
@@ -38,3 +38,15 @@ WHERE e."aggregate_type" = 'private_sale_deal'
   AND e."payload"->>'actingUserId' IS NOT NULL
   AND e."payload"->>'role' IN ('seller', 'buyer')
 ON CONFLICT DO NOTHING;
+--> statement-breakpoint
+CREATE OR REPLACE FUNCTION "private_sale_deal_party_history_append_only"() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'private_sale_deal_party_history is append-only';
+END;
+$$ LANGUAGE plpgsql;
+--> statement-breakpoint
+DROP TRIGGER IF EXISTS "private_sale_deal_party_history_append_only" ON "private_sale_deal_party_history";
+--> statement-breakpoint
+CREATE TRIGGER "private_sale_deal_party_history_append_only"
+  BEFORE UPDATE OR DELETE ON "private_sale_deal_party_history"
+  FOR EACH ROW EXECUTE FUNCTION "private_sale_deal_party_history_append_only"();

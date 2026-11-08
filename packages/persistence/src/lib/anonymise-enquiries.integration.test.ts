@@ -9,6 +9,7 @@ import {
   marketingEnquiryAttachment,
   marketingEnquiryNote,
   privateSaleDeal,
+  privateSaleDealPartyHistory,
   privateSaleDealStageHistory,
   sourceOfFunds,
   uploadObject,
@@ -299,6 +300,29 @@ describe.skipIf(!HAS_DB)("enquiry erasure (integration)", () => {
           held: 1,
         });
         expect(await message(tx, enquiryId)).toBe("A painting to sell");
+      });
+    });
+
+    it("refuses to change or remove who was named on a deal", async () => {
+      await withDeal(async ({ tx, dealId, userId }) => {
+        const deals = new DrizzlePrivateSaleDealRepository(tx as never);
+        const current = await deals.findById(dealId);
+        expect(await tx.select().from(privateSaleDealPartyHistory)).not.toHaveLength(0);
+        expect(current?.seller.actingUserId).toBe(userId);
+        // Each attempt runs in its own savepoint so a refusal does not abort the scenario.
+        await expect(
+          tx.transaction((inner) =>
+            inner.update(privateSaleDealPartyHistory).set({ actingUserId: "someone-else" }),
+          ),
+        ).rejects.toThrow();
+        await expect(
+          tx.transaction((inner) => inner.delete(privateSaleDealPartyHistory)),
+        ).rejects.toThrow();
+        const kept = await tx
+          .select()
+          .from(privateSaleDealPartyHistory)
+          .where(eq(privateSaleDealPartyHistory.dealId, dealId));
+        expect(kept.map((row) => row.actingUserId)).toContain(userId);
       });
     });
 
