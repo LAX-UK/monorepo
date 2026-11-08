@@ -1,8 +1,12 @@
-import type { BidInvoiceDocument } from "@auction/exports/documents";
+import { type BidInvoiceDocument, InvoiceTotalMismatchError } from "@auction/exports/documents";
 import type { BidInvoiceRecord } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
-import { PurchaseInvoicePdfService, invoiceFilename } from "./purchase-invoice-pdf.service.js";
+import {
+  INVOICE_PDF_TOTAL_MISMATCH_EVENT,
+  PurchaseInvoicePdfService,
+  invoiceFilename,
+} from "./purchase-invoice-pdf.service.js";
 
 const LOT = "aaaaaaaa-0000-4000-8000-000000000002";
 const PAYMENT = "pay-2";
@@ -41,6 +45,7 @@ type Setup = {
   view?: object | null;
   invoice?: BidInvoiceRecord | null;
   account?: object | null;
+  refundedCents?: number;
 };
 
 function setup(over: Setup = {}) {
@@ -64,6 +69,8 @@ function setup(over: Setup = {}) {
     entries: [{ lotId: LOT, row, view, flags: {} }],
     winners: new Map(),
   }));
+  const record = vi.fn();
+  const refundedCents = vi.fn(async (_paymentId: string) => over.refundedCents ?? 0);
   const service = new PurchaseInvoicePdfService({
     candidates: { read: read as never },
     invoices: { findByPaymentIds },
@@ -78,8 +85,10 @@ function setup(over: Setup = {}) {
           : over.account) as never,
     },
     render,
+    refunds: { sumRefundLineCentsForPayment: refundedCents },
+    metrics: { record },
   });
-  return { service, render, read, findByPaymentIds };
+  return { service, render, read, findByPaymentIds, record, refundedCents };
 }
 
 describe("PurchaseInvoicePdfService", () => {
@@ -97,6 +106,7 @@ describe("PurchaseInvoicePdfService", () => {
       lines: INVOICE.lines,
       totalPence: 60_010,
       status: "awaiting_payment",
+      refundedPence: 0,
     });
   });
 
@@ -159,10 +169,57 @@ describe("PurchaseInvoicePdfService", () => {
     expect(read).toHaveBeenCalledWith(expect.objectContaining({ role: "finance" }), false, [LOT]);
   });
 
-  it("passes on a render that refuses lines that do not add up", async () => {
-    const { service, render } = setup();
-    render.mockRejectedValueOnce(new Error("Invoice lines add up to 1 pence"));
-    await expect(service.render(actor("finance"), LOT)).rejects.toThrow(/add up/);
+  it("reads as refunded once the payment was given back, never as awaiting payment", async () => {
+    const { service, render } = setup({
+      row: {
+        lotId: LOT,
+        lotTitle: "Harbour",
+        lotNumber: 4,
+        saleTitle: null,
+        payment: { id: PAYMENT, status: "refunded" },
+      },
+    });
+    await service.render(actor("owner"), LOT);
+    expect(render.mock.calls[0]?.[0].status).toBe("refunded");
+  });
+
+  it("passes on what was refunded from the refund records, even on a payment still captured", async () => {
+    const { service, render, refundedCents } = setup({
+      row: {
+        lotId: LOT,
+        lotTitle: "Harbour",
+        lotNumber: 4,
+        saleTitle: null,
+        payment: { id: PAYMENT, status: "captured" },
+      },
+      refundedCents: 15_000,
+    });
+    await service.render(actor("owner"), LOT);
+    expect(refundedCents).toHaveBeenCalledWith(PAYMENT);
+    expect(render.mock.calls[0]?.[0]).toMatchObject({ status: "paid", refundedPence: 15_000 });
+  });
+
+  it("does not look for refunds on an invoice that was never paid", async () => {
+    const { service, render, refundedCents } = setup({ refundedCents: 15_000 });
+    await service.render(actor("owner"), LOT);
+    expect(refundedCents).not.toHaveBeenCalled();
+    expect(render.mock.calls[0]?.[0].refundedPence).toBe(0);
+  });
+
+  it("refuses an invoice whose lines do not add up, clearly, and tells finance", async () => {
+    const { service, render, record } = setup();
+    render.mockRejectedValueOnce(new InvoiceTotalMismatchError(1, 60_010));
+    const error = (await service.render(actor("finance"), LOT))._unsafeUnwrapErr();
+    expect(error).toMatchObject({ code: "invoice_total_mismatch", status: 409 });
+    expect(error.message).toContain("finance team has been told");
+    expect(record).toHaveBeenCalledExactlyOnceWith(INVOICE_PDF_TOTAL_MISMATCH_EVENT);
+  });
+
+  it("does not hide other render failures", async () => {
+    const { service, render, record } = setup();
+    render.mockRejectedValueOnce(new Error("out of memory"));
+    await expect(service.render(actor("finance"), LOT)).rejects.toThrow("out of memory");
+    expect(record).not.toHaveBeenCalled();
   });
 });
 

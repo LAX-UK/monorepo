@@ -19,6 +19,7 @@ const base: BidInvoiceDocument = {
   ],
   totalPence: 237_500,
   status: "awaiting_payment",
+  refundedPence: 0,
 };
 
 describe("bidInvoiceView", () => {
@@ -63,6 +64,52 @@ describe("bidInvoiceView", () => {
     expect(view.total[0]).toBe("Total paid");
     expect(view.facts).toContainEqual(["Status", "Paid"]);
     expect(view.facts).toContainEqual(["Was due", "Fri 13 Nov 2026"]);
+  });
+
+  it("shows a full refund from the refund records, never as awaiting payment", () => {
+    const view = bidInvoiceView({ ...base, status: "refunded", refundedPence: 237_500 });
+    expect(view.total).toEqual(["Invoice total", "£2,375.00"]);
+    expect(view.refunds).toEqual([
+      ["Refunded", "£2,375.00"],
+      ["Net paid", "£0.00"],
+    ]);
+    expect(view.facts).toContainEqual(["Status", "Refunded"]);
+    expect(view.facts).toContainEqual(["Was due", "Fri 13 Nov 2026"]);
+    expect(JSON.stringify(view)).not.toContain("Awaiting payment");
+  });
+
+  it("shows a part refund as paid in full, what was refunded and the net paid, with charges as invoiced", () => {
+    const view = bidInvoiceView({ ...base, status: "paid", refundedPence: 50_000 });
+    expect(view.facts).toContainEqual(["Status", "Part refunded"]);
+    expect(view.total).toEqual(["Total paid", "£2,375.00"]);
+    expect(view.refunds).toEqual([
+      ["Refunded", "£500.00"],
+      ["Net paid", "£1,875.00"],
+    ]);
+    // The charge lines are the invoice as raised; a credit note is the formal instrument.
+    expect(view.lines).toEqual([
+      ["Hammer price", "£1,900.00"],
+      ["Buyer's premium (25%)", "£475.00"],
+    ]);
+  });
+
+  it("treats everything given back on a payment still marked paid as refunded", () => {
+    const view = bidInvoiceView({ ...base, status: "paid", refundedPence: 237_500 });
+    expect(view.facts).toContainEqual(["Status", "Refunded"]);
+  });
+
+  it("does not invent an amount for a refund with none on record, nor exceed the total", () => {
+    expect(bidInvoiceView({ ...base, status: "refunded", refundedPence: 0 }).refunds).toEqual([]);
+    const over = bidInvoiceView({ ...base, status: "paid", refundedPence: 999_999 });
+    expect(over.refunds).toEqual([
+      ["Refunded", "£2,375.00"],
+      ["Net paid", "£0.00"],
+    ]);
+  });
+
+  it("shows nothing refunded on a paid or unpaid invoice", () => {
+    expect(bidInvoiceView({ ...base, status: "paid" }).refunds).toEqual([]);
+    expect(bidInvoiceView(base).refunds).toEqual([]);
   });
 
   it("has no number in the title until one is assigned, and no lot line without a lot", () => {
@@ -117,6 +164,23 @@ describe("renderBidInvoicePdf", () => {
       status: "paid",
       lot: { title: "A very long title ".repeat(12), lotNumber: 1, saleTitle: null },
     });
+    expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
+  });
+
+  it("embeds a Unicode font so names in Greek and Cyrillic print", async () => {
+    const pdf = await renderBidInvoicePdf({
+      ...base,
+      billedTo: "Галерея «Северный берег»",
+      lot: { title: "Παράκτιος συμβολισμός", lotNumber: 3, saleTitle: "Škoda Ærø Łódź" },
+    });
+    const text = pdf.toString("latin1");
+    expect(text).toContain("NotoSans");
+    expect(text).not.toContain("Helvetica");
+  });
+
+  it("renders a part-refunded and a refunded invoice", async () => {
+    await renderBidInvoicePdf({ ...base, status: "paid", refundedPence: 50_000 });
+    const pdf = await renderBidInvoicePdf({ ...base, status: "refunded", refundedPence: 237_500 });
     expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
   });
 

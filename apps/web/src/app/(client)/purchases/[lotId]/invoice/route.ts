@@ -19,6 +19,7 @@ export async function GET(_request: Request, context: { params: Promise<{ lotId:
   return new NextResponse(res.body, {
     headers: {
       "Content-Type": "application/pdf",
+      "X-Content-Type-Options": "nosniff",
       "Content-Disposition":
         res.headers.get("content-disposition") ?? 'attachment; filename="invoice.pdf"',
       "Cache-Control": "no-store",

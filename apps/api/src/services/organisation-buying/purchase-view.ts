@@ -47,6 +47,7 @@ const STATUS: Record<OrganisationBuyingErrorCode, OrganisationBuyingError["statu
   onboarding_required: 403,
   pay_plan_changed: 409,
   invoice_not_ready: 404,
+  invoice_total_mismatch: 409,
 };
 
 const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
@@ -86,6 +87,8 @@ const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
   onboarding_required: "Finish setting up your account before you pay.",
   pay_plan_changed: "The total has changed. Check it and pay again.",
   invoice_not_ready: "This invoice isn't available. It appears once it is raised.",
+  invoice_total_mismatch:
+    "We can't show this invoice just now. Our finance team has been told and will sort it out.",
 };
 
 /** The one place buying errors get their status and wording. */

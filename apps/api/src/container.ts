@@ -439,6 +439,7 @@ export function createContainer(env: Env): Container {
       groupCheckout: payments.paymentGroupCheckout,
       groupGateway: payments.paymentGroupGateway,
       invoices: payments.bidInvoices,
+      refunds: repos.payoutRepository,
       pricing: payments.invoiceRaiser,
       invoiceInitiation: payments.lotInvoiceInitiationService,
     },

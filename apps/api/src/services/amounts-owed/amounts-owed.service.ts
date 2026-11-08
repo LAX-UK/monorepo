@@ -208,6 +208,8 @@ export class AmountsOwedService implements IAmountsOwedService {
       payerUserId: userId,
       buyerLegalEntityId: legalEntityId,
     });
+    // Rejected or archived is closed for good; anything else not yet payable is still being checked.
+    if (account.kind === "refused") return { hold: "organisation_closed", holder: "organisation" };
     if (account.kind !== "payable")
       return { hold: "organisation_under_review", holder: "organisation" };
     if (!compliance) return NO_HOLD;
