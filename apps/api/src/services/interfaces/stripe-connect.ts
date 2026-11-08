@@ -125,6 +125,8 @@ export type TransferAdoptionVerification =
         | "no_connect_account"
         | "transfer_not_found"
         | "stripe_error"
+        | "transfer_belongs_to_other_payout"
+        | "transfer_not_for_this_payout"
         | "transfer_reversed"
         | "destination_mismatch"
         | "currency_mismatch"

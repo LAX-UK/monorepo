@@ -8,6 +8,7 @@ const payout = {
   netAmount: "480.00",
   currency: "GBP",
   status: "transfer_blocked",
+  createdAt: new Date("2026-10-01T00:00:00Z"),
 };
 
 const goodTransfer = {
@@ -17,6 +18,7 @@ const goodTransfer = {
   amount: 48_000,
   amount_reversed: 0,
   reversed: false,
+  transfer_group: "payout:payout-1",
 };
 
 function setup(
@@ -74,6 +76,17 @@ describe("ConnectTransferInitiationService.verifyTransferForAdoption", () => {
       ok: false,
       reason,
     });
+  });
+
+  it("refuses a transfer Stripe records against another payout", async () => {
+    const { service, updateStatusIfCurrent } = setup({
+      retrieve: vi.fn().mockResolvedValue({ ...goodTransfer, transfer_group: "payout:payout-2" }),
+    });
+    await expect(service.verifyTransferForAdoption("payout-1", "tr_ok")).resolves.toEqual({
+      ok: false,
+      reason: "transfer_belongs_to_other_payout",
+    });
+    expect(updateStatusIfCurrent).not.toHaveBeenCalled();
   });
 
   it("reports a transfer Stripe does not know", async () => {

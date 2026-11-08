@@ -169,9 +169,9 @@ describe("decideConnectTransfer", () => {
       expect(stripe.transfers.list.mock.calls[0]?.[0].transfer_group).toBe("payout:p1");
     });
 
-    it("dates the cutoff at 2026-05-24 UTC", () => {
+    it("dates the cutoff at 2026-06-01 UTC, a week after the code reached release", () => {
       expect(new Date(TRANSFER_GROUP_MANDATORY_FROM_UNIX * 1000).toISOString()).toBe(
-        "2026-05-24T00:00:00.000Z",
+        "2026-06-01T00:00:00.000Z",
       );
     });
 
@@ -252,7 +252,14 @@ describe("decideConnectTransfer", () => {
 });
 
 describe("checkTransferForAdoption", () => {
-  const expected = { destinationAccountId: "acct_1", currency: "GBP", amountMinor: 48_000 };
+  // A legacy payout, so an unmarked transfer is judged on account, currency and amount alone.
+  const expected = {
+    payoutId: "p1",
+    payoutCreatedAtUnix: TRANSFER_GROUP_MANDATORY_FROM_UNIX - 86_400,
+    destinationAccountId: "acct_1",
+    currency: "GBP",
+    amountMinor: 48_000,
+  };
 
   it("accepts a live transfer to the right account, currency and amount", () => {
     expect(checkTransferForAdoption(good({ destination: { id: "acct_1" } }), expected)).toEqual({
@@ -271,5 +278,51 @@ describe("checkTransferForAdoption", () => {
     ["no amount", { amount: undefined }, "amount_mismatch"],
   ] as const)("refuses a transfer that is %s", (_name, over, reason) => {
     expect(checkTransferForAdoption(good(over), expected)).toEqual({ ok: false, reason });
+  });
+});
+
+describe("checkTransferForAdoption: which payout the transfer belongs to", () => {
+  const expected = {
+    payoutId: "po_A",
+    payoutCreatedAtUnix: Date.UTC(2026, 9, 1) / 1000,
+    destinationAccountId: "acct_1",
+    currency: "gbp",
+    amountMinor: 10_000,
+  };
+  const base = { id: "tr_1", destination: "acct_1", currency: "gbp", amount: 10_000 };
+
+  it("adopts a transfer in this payout's group", () => {
+    expect(checkTransferForAdoption({ ...base, transfer_group: "payout:po_A" }, expected)).toEqual({
+      ok: true,
+    });
+  });
+
+  it("refuses a transfer in another payout's group, even with a matching amount", () => {
+    expect(checkTransferForAdoption({ ...base, transfer_group: "payout:po_B" }, expected)).toEqual({
+      ok: false,
+      reason: "transfer_belongs_to_other_payout",
+    });
+  });
+
+  it("refuses a transfer whose metadata names another payout", () => {
+    expect(checkTransferForAdoption({ ...base, metadata: { payoutId: "po_B" } }, expected)).toEqual(
+      { ok: false, reason: "transfer_belongs_to_other_payout" },
+    );
+  });
+
+  it("refuses an unmarked transfer for a payout made after transfer groups were mandatory", () => {
+    expect(checkTransferForAdoption(base, expected)).toEqual({
+      ok: false,
+      reason: "transfer_not_for_this_payout",
+    });
+  });
+
+  it("allows an unmarked transfer only for a legacy payout", () => {
+    expect(
+      checkTransferForAdoption(base, {
+        ...expected,
+        payoutCreatedAtUnix: Date.UTC(2026, 3, 1) / 1000,
+      }),
+    ).toEqual({ ok: true });
   });
 });

@@ -14,6 +14,7 @@ export type ExistingTransferLike = {
   amount_reversed?: number;
   currency?: string;
   metadata?: Record<string, string> | null;
+  transfer_group?: string | null;
 };
 
 export type TransferListParams = {
@@ -68,7 +69,9 @@ export type ConnectTransferDecisionInput = {
  * From this instant every payout transfer is created with a `transfer_group` (commit f863dac10,
  * 2026-05-24), so a payout created at or after it has nothing in the metadata-only legacy shape.
  */
-export const TRANSFER_GROUP_MANDATORY_FROM_UNIX = Date.UTC(2026, 4, 24) / 1000;
+// The code reached the release branch on 2026-05-24 (17:50 UTC) and was deployed after that, so
+// the cutoff is set a week later: only payouts older than this pay for the legacy scan.
+export const TRANSFER_GROUP_MANDATORY_FROM_UNIX = Date.UTC(2026, 5, 1) / 1000;
 
 const PAGE_SIZE = 100;
 /** 100 pages of 100: past this we block rather than guess. */
@@ -196,6 +199,8 @@ export type TransferAdoptionCheck =
   | {
       ok: false;
       reason:
+        | "transfer_belongs_to_other_payout"
+        | "transfer_not_for_this_payout"
         | "transfer_reversed"
         | "destination_mismatch"
         | "currency_mismatch"
@@ -209,8 +214,22 @@ export type TransferAdoptionCheck =
  */
 export function checkTransferForAdoption(
   transfer: ExistingTransferLike,
-  expected: { destinationAccountId: string; currency: string; amountMinor: number },
+  expected: {
+    payoutId: string;
+    payoutCreatedAtUnix: number;
+    destinationAccountId: string;
+    currency: string;
+    amountMinor: number;
+  },
 ): TransferAdoptionCheck {
+  const ownership = transferOwnership(transfer, expected.payoutId);
+  if (ownership === "other") return { ok: false, reason: "transfer_belongs_to_other_payout" };
+  if (
+    ownership === "unknown" &&
+    expected.payoutCreatedAtUnix >= TRANSFER_GROUP_MANDATORY_FROM_UNIX
+  ) {
+    return { ok: false, reason: "transfer_not_for_this_payout" };
+  }
   if (isFullyReversed(transfer) || (transfer.amount_reversed ?? 0) > 0) {
     return { ok: false, reason: "transfer_reversed" };
   }
@@ -222,4 +241,21 @@ export function checkTransferForAdoption(
   }
   if (transfer.amount !== expected.amountMinor) return { ok: false, reason: "amount_mismatch" };
   return { ok: true };
+}
+
+/**
+ * Whose transfer this is, by its own Stripe fields: the payout's transfer group or its
+ * `metadata.payoutId`. "unknown" means neither is set, which only legacy transfers may be.
+ */
+function transferOwnership(
+  transfer: ExistingTransferLike,
+  payoutId: string,
+): "this" | "other" | "unknown" {
+  const metaPayoutId = transfer.metadata?.payoutId;
+  const group = transfer.transfer_group ?? null;
+  if ((metaPayoutId && metaPayoutId !== payoutId) || (group && group !== `payout:${payoutId}`)) {
+    return "other";
+  }
+  if (metaPayoutId === payoutId || group === `payout:${payoutId}`) return "this";
+  return "unknown";
 }

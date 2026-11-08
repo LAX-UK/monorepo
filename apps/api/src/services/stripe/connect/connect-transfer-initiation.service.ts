@@ -358,6 +358,8 @@ export class ConnectTransferInitiationService implements IConnectTransferInitiat
       };
     }
     const check = checkTransferForAdoption(transfer, {
+      payoutId: payout.id,
+      payoutCreatedAtUnix: Math.floor(payout.createdAt.getTime() / 1000),
       destinationAccountId: entity.stripeConnectAccountId,
       currency: payout.currency,
       amountMinor: Math.round(Number.parseFloat(payout.netAmount) * 100),

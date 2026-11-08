@@ -11,6 +11,8 @@ import type { IConnectTransferInitiator } from "../interfaces/stripe-connect.js"
 export type BlockedPayoutRefusalReason =
   | "transfer_linked_to_other_payout"
   | "transfer_not_found"
+  | "transfer_belongs_to_other_payout"
+  | "transfer_not_for_this_payout"
   | "transfer_reversed"
   | "destination_mismatch"
   | "currency_mismatch"
@@ -27,6 +29,10 @@ export type BlockedPayoutResolutionOutcome =
 const REFUSAL_MESSAGES: Record<string, string> = {
   transfer_linked_to_other_payout: "That Stripe transfer is already linked to another payout.",
   transfer_not_found: "Stripe has no transfer with that ID.",
+  transfer_belongs_to_other_payout:
+    "Stripe records that transfer against a different payout, so it cannot pay this one.",
+  transfer_not_for_this_payout:
+    "That transfer is not marked for this payout in Stripe (no matching transfer group or payout ID).",
   transfer_reversed: "That transfer has been reversed, in whole or in part, so it cannot be used.",
   destination_mismatch: "That transfer went to a different Stripe account than this seller's.",
   currency_mismatch: "That transfer is in a different currency from the payout.",
