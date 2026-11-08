@@ -1,7 +1,8 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
 import type { AdminEffectiveSettings } from "@auction/shop-contracts";
-import { KeyValueList, PageHeader, Section, StatusBadge } from "@auction/staff-ui";
+import { KeyValueList, PageHeader, Section, StatusBadge, TextLink } from "@auction/staff-ui";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Settings" };
@@ -53,6 +54,14 @@ export default async function SettingsPage() {
               { label: "VAT standard rate", value: vatRate(s.vatStandardRateBp) },
             ]}
           />
+        </Section>
+        <Section
+          title="Printers and publishers"
+          description="The studios and publishers the Edition facts card offers under Printed by and Published by."
+        >
+          <TextLink href="/settings/printers-and-publishers" Link={Link}>
+            Manage printers and publishers
+          </TextLink>
         </Section>
         <Section title="Areas switched on">
           <KeyValueList

@@ -8,10 +8,6 @@ import {
   ReadOnlyMedia,
   ReadOnlySearchListing,
 } from "@/components/artworks/artwork-read-only-sections";
-import {
-  CertificateAuthorityCard,
-  laxIssuesCertificate,
-} from "@/components/artworks/edition-runs/certificate-authority-card.client";
 import { CreatePrintsDialog } from "@/components/artworks/edition-runs/create-prints-dialog.client";
 import { EditionFactsCard } from "@/components/artworks/edition-runs/edition-facts-card.client";
 import { EditionRunCard } from "@/components/artworks/edition-runs/edition-run-card.client";
@@ -1375,13 +1371,6 @@ export function ArtworkEditor({
               run={run}
               permissions={{ write: permissions.write, correct: permissions.correctFacts }}
             />
-            {laxIssuesCertificate(run) ? (
-              <CertificateAuthorityCard
-                artworkId={record.artworkId}
-                authority={run.certificateAuthority}
-                canWrite={permissions.write}
-              />
-            ) : null}
             {run.horsCommerce ? (
               <HorsCommerceApprovalCard
                 artworkId={record.artworkId}

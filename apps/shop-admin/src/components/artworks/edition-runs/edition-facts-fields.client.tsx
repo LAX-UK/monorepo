@@ -1,10 +1,15 @@
 "use client";
 
+import { usePrintParties } from "@/components/artworks/edition-runs/use-print-parties.client";
 import {
   type FactsFormField,
   type FactsFormValues,
+  PUBLISHED_BY_ARTIST,
+  PUBLISHED_BY_LAX,
   certificateNeedsArrival,
+  certificateNeedsAuthority,
   factsFieldId,
+  publishedByNamedValue,
   signatureNeedsPlace,
 } from "@/lib/edition-facts-form";
 import type { AdminEditionRunSpec } from "@auction/shop-contracts";
@@ -16,6 +21,7 @@ import {
   Field,
   FieldRow,
   KeyValueList,
+  Notice,
   StaffCheckbox,
   StaffRadio,
   StaffRadioGroup,
@@ -52,6 +58,17 @@ const ISSUERS = [
   { value: "publisher", label: "The publisher" },
   { value: "lax", label: "London Art Exchange" },
 ] as const;
+const AUTHORITY_GIVERS = [
+  { value: "artist", label: "The artist" },
+  { value: "estate", label: "The artist's estate" },
+] as const;
+const STAMPS: ReadonlyArray<Option<FactsFormValues["stamp"]>> = [
+  { value: "none", label: "No stamp" },
+  { value: "publisher_blind", label: "Blind stamp of the publisher" },
+  { value: "printer_blind", label: "Blind stamp of the printer" },
+  { value: "estate_back", label: "Estate stamp on the back" },
+];
+const NOT_STATED = "@none";
 const FORMS = [
   { value: "paper", label: "Paper" },
   { value: "digital", label: "Digital, in LAX Account" },
@@ -64,6 +81,13 @@ const ARRIVALS = [
 
 const labelOf = <T extends string>(options: ReadonlyArray<Option<T>>, value: T | null) =>
   options.find((option) => option.value === value)?.label ?? null;
+
+function publishedLabel(value: string): string | null {
+  if (!value) return null;
+  if (value === PUBLISHED_BY_ARTIST) return "The artist";
+  if (value === PUBLISHED_BY_LAX) return "London Art Exchange";
+  return value.replace(/^name:/, "");
+}
 
 /** What is recorded, in the words the form uses, for the read-only view. */
 function factsSummary(values: FactsFormValues): Array<{ label: string; value: React.ReactNode }> {
@@ -87,10 +111,19 @@ function factsSummary(values: FactsFormValues): Array<{ label: string; value: Re
       : values.certificate === "none"
         ? "No certificate"
         : null;
+  const authority =
+    values.certificate === "included" && values.issuer === "lax" && values.authorityGivenBy
+      ? `${labelOf(AUTHORITY_GIVERS, values.authorityGivenBy)}, letter dated ${values.authorityDatedOn}`
+      : null;
+  const published = publishedLabel(values.publishedBy);
   return [
     { label: "Signature", value: signature.length ? signature.join(", ") : null },
     { label: "Numbering", value: labelOf(NUMBERINGS, values.numbering) },
     { label: "Certificate", value: certificate },
+    ...(authority ? [{ label: "Authority to certify", value: authority }] : []),
+    ...(values.stamp !== "none" ? [{ label: "Stamp", value: labelOf(STAMPS, values.stamp) }] : []),
+    ...(values.printedBy ? [{ label: "Printed by", value: values.printedBy }] : []),
+    ...(published ? [{ label: "Published by", value: published }] : []),
   ];
 }
 
@@ -275,6 +308,14 @@ export function EditionFactsFields({
                 />
               </Field>
             </FieldRow>
+            {certificateNeedsAuthority(values) ? (
+              <AuthorityToCertify
+                values={values}
+                errors={errors}
+                disabled={disabled}
+                onChange={onChange}
+              />
+            ) : null}
             {certificateNeedsArrival(values) ? (
               <FieldRow>
                 <Field
@@ -341,6 +382,178 @@ export function EditionFactsFields({
           </Nested>
         ) : null}
       </ChoiceFieldset>
+
+      <ChoiceFieldset legend="Stamp" id="facts-stamp" disabled={disabled}>
+        <StaffRadioGroup
+          value={values.stamp}
+          onValueChange={(value) => onChange({ stamp: value as FactsFormValues["stamp"] })}
+        >
+          {STAMPS.map((option) => (
+            <ChoiceRow
+              key={option.value}
+              htmlFor={`facts-stamp-${option.value}`}
+              control={<StaffRadio id={`facts-stamp-${option.value}`} value={option.value} />}
+              label={option.label}
+              disabled={disabled}
+            />
+          ))}
+        </StaffRadioGroup>
+      </ChoiceFieldset>
+
+      <PrintPartyFields values={values} disabled={disabled} onChange={onChange} />
+    </div>
+  );
+}
+
+/**
+ * Authority to certify: London Art Exchange issues a certificate only on the written authority
+ * of the artist or their estate, so who gave it, the date of the letter and where the signed
+ * letter is kept are all needed before the facts can be confirmed. Staff only; shoppers are told
+ * only whose authority it is.
+ */
+function AuthorityToCertify({
+  values,
+  errors,
+  disabled,
+  onChange,
+}: {
+  values: FactsFormValues;
+  errors: Partial<Record<FactsFormField, string>>;
+  disabled: boolean;
+  onChange: (patch: Partial<FactsFormValues>) => void;
+}) {
+  const invalid = Boolean(
+    errors.authorityGivenBy || errors.authorityDatedOn || errors.authorityReference,
+  );
+  return (
+    <fieldset
+      className={`flex min-w-0 flex-col gap-3 rounded-staff-md border bg-staff-surface p-4 ${
+        invalid ? "border-staff-danger" : "border-staff-line"
+      }`}
+    >
+      <legend className="float-left w-full p-0 text-staff-sm font-semibold text-staff-fg">
+        Authority to certify
+      </legend>
+      <p className="clear-both text-staff-xs text-staff-muted">
+        London Art Exchange issues a certificate only on the written authority of the artist or
+        their estate.
+      </p>
+      <FieldRow>
+        <Field
+          label="Given by"
+          error={errors.authorityGivenBy}
+          id={factsFieldId("authorityGivenBy")}
+          disabled={disabled}
+        >
+          <EnumSelect
+            value={values.authorityGivenBy}
+            placeholder="Choose"
+            options={AUTHORITY_GIVERS}
+            onValueChange={(authorityGivenBy) => onChange({ authorityGivenBy })}
+          />
+        </Field>
+        <Field
+          label="Dated"
+          error={errors.authorityDatedOn}
+          id={factsFieldId("authorityDatedOn")}
+          disabled={disabled}
+        >
+          <TextInput
+            type="date"
+            autoComplete="off"
+            value={values.authorityDatedOn}
+            onChange={(event) => onChange({ authorityDatedOn: event.target.value })}
+          />
+        </Field>
+      </FieldRow>
+      <Field
+        label="Where the signed letter is kept"
+        description="A document name, date or filing reference. Staff only; never shown to shoppers."
+        error={errors.authorityReference}
+        id={factsFieldId("authorityReference")}
+        disabled={disabled}
+      >
+        <TextInput
+          autoComplete="off"
+          maxLength={200}
+          value={values.authorityReference}
+          onChange={(event) => onChange({ authorityReference: event.target.value })}
+        />
+      </Field>
+    </fieldset>
+  );
+}
+
+/**
+ * Printed by and Published by, picked from the list kept in Settings so a name is spelled one
+ * way. Leaving either empty says nothing. A name already saved but since removed from the list
+ * stays selectable, so opening the card never changes what was recorded.
+ */
+function PrintPartyFields({
+  values,
+  disabled,
+  onChange,
+}: {
+  values: FactsFormValues;
+  disabled: boolean;
+  onChange: (patch: Partial<FactsFormValues>) => void;
+}) {
+  const parties = usePrintParties();
+  const listed = parties.status === "ready" ? parties.names : [];
+  const printedNames =
+    values.printedBy && !listed.includes(values.printedBy) ? [values.printedBy, ...listed] : listed;
+  const publishedName = values.publishedBy.startsWith("name:")
+    ? values.publishedBy.slice("name:".length)
+    : null;
+  const publishedNames =
+    publishedName && !listed.includes(publishedName) ? [publishedName, ...listed] : listed;
+  const hint =
+    parties.status === "failed"
+      ? "The list could not be loaded. Reload the page to try again."
+      : parties.status === "ready" && listed.length === 0
+        ? "No names yet. Add them in Settings › Printers and publishers."
+        : "Optional. From the list in Settings › Printers and publishers";
+  return (
+    <div className="flex flex-col gap-3">
+      {parties.status === "failed" ? (
+        <Notice tone="warning" title="Printers and publishers could not be loaded">
+          What is already recorded is kept. Reload the page to choose different names.
+        </Notice>
+      ) : null}
+      <FieldRow>
+        <Field label="Printed by" description={hint} id="facts-printedBy" disabled={disabled}>
+          <EnumSelect
+            value={values.printedBy || NOT_STATED}
+            placeholder="Not stated"
+            options={[
+              { value: NOT_STATED, label: "Not stated" },
+              ...printedNames.map((name) => ({ value: name, label: name })),
+            ]}
+            onValueChange={(name) => onChange({ printedBy: name === NOT_STATED ? "" : name })}
+          />
+        </Field>
+        <Field
+          label="Published by"
+          description="Optional"
+          id="facts-publishedBy"
+          disabled={disabled}
+        >
+          <EnumSelect
+            value={values.publishedBy || NOT_STATED}
+            placeholder="Not stated"
+            options={[
+              { value: NOT_STATED, label: "Not stated" },
+              { value: PUBLISHED_BY_ARTIST, label: "The artist" },
+              { value: PUBLISHED_BY_LAX, label: "London Art Exchange" },
+              ...publishedNames.map((name) => ({
+                value: publishedByNamedValue(name),
+                label: name,
+              })),
+            ]}
+            onValueChange={(value) => onChange({ publishedBy: value === NOT_STATED ? "" : value })}
+          />
+        </Field>
+      </FieldRow>
     </div>
   );
 }
