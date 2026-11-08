@@ -9,6 +9,12 @@ describe("nextImageSrcSet", () => {
     expect(set.endsWith("828w")).toBe(true);
   });
 
+  it("stops at the first file that covers the picture's own width", () => {
+    const set = nextImageSrcSet("/shop/home/a.webp", 500);
+    expect(set.split(", ")).toHaveLength(3);
+    expect(set).not.toContain("w=828");
+  });
+
   it("is empty without a picture", () => {
     expect(nextImageSrcSet("")).toBe("");
   });

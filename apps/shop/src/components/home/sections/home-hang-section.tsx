@@ -5,9 +5,6 @@ import { NEW_EDITIONS_SECTION_ID } from "@/lib/home/home-sections";
 import { nextImageSrcSet } from "@/lib/media/next-image-src-set";
 import { MarketingHang, MarketingHangLabel } from "@auction/marketing-ui";
 
-/** The widest a work is drawn: a tall landscape print on desktop, a phone-width slot otherwise. */
-const HANG_IMAGE_SIZES = "(min-width: 640px) 480px, 240px";
-
 /**
  * "New editions" hung on their sheets under the cover. The meta line says whether the wall is to
  * scale, so a wall with a missing size is honest about it.
@@ -23,8 +20,7 @@ export function HomeHangSection({ hang }: { hang: HomeHangVm }) {
         id: work.slug,
         href: work.href,
         imageSrc: work.imageSrc,
-        imageSrcSet: nextImageSrcSet(work.imageSrc),
-        imageSizes: HANG_IMAGE_SIZES,
+        imageSrcSet: nextImageSrcSet(work.imageSrc, work.sourceWidthPx),
         aspect: work.aspect,
         longSideCm: work.longSideCm,
         sourceWidthPx: work.sourceWidthPx,
