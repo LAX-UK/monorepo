@@ -32,7 +32,7 @@ function mergeStatusFromSync(
   },
 ): StripeConnectStatus {
   return {
-    stripeAccountId: prev?.stripeAccountId ?? null,
+    accountLinked: prev?.accountLinked ?? false,
     chargesEnabled: prev?.chargesEnabled ?? false,
     payoutsEnabled: synced.payoutsEnabled,
     requirementsCurrentlyDue: synced.requirementsDue,
@@ -87,7 +87,7 @@ export function useStripeConnectAccount({
       getConnectGapState(
         {
           status: entityStatus,
-          stripeConnectAccountId: localStatus?.stripeAccountId ?? null,
+          stripeConnectAccountLinked: localStatus?.accountLinked ?? false,
           stripeConnectPayoutsEnabled: localStatus?.payoutsEnabled ?? false,
           stripeConnectRequirementsCurrentlyDue: localStatus?.requirementsCurrentlyDue ?? [],
           stripeConnectRequirementsErrors: localStatus?.requirementsErrors ?? [],
@@ -119,7 +119,7 @@ export function useStripeConnectAccount({
       connectEnforced &&
       kycApproved &&
       canOnboard(memberRole) &&
-      !localStatus?.stripeAccountId &&
+      !localStatus?.accountLinked &&
       ensureAttempted &&
       !ensureError;
     if (!awaitingAccount) {
@@ -133,21 +133,21 @@ export function useStripeConnectAccount({
     ensureAttempted,
     ensureError,
     kycApproved,
-    localStatus?.stripeAccountId,
+    localStatus?.accountLinked,
     memberRole,
   ]);
 
   useEffect(() => {
     if (shouldSkipConnect({ isLaxManaged }) || !connectEnforced || !kycApproved) return;
     if (!canOnboard(memberRole)) return;
-    if (localStatus?.stripeAccountId || ensureAttempted) return;
+    if (localStatus?.accountLinked || ensureAttempted) return;
     runEnsureAccount();
   }, [
     connectEnforced,
     ensureAttempted,
     isLaxManaged,
     kycApproved,
-    localStatus?.stripeAccountId,
+    localStatus?.accountLinked,
     memberRole,
     runEnsureAccount,
   ]);

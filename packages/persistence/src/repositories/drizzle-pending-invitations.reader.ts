@@ -20,7 +20,6 @@ export class DrizzlePendingInvitationsReader implements IPendingInvitationsReade
         legalEntityId: userInvitation.targetLegalEntityId,
         orgDisplayName: legalEntity.displayName,
         orgSubkind: legalEntity.subkind,
-        inviterUserId: userInvitation.createdByUserId,
         inviterName: bidIdentityDirectory.name,
         roleOffered: userInvitation.targetLegalEntityMemberRole,
       })
@@ -48,7 +47,6 @@ export class DrizzlePendingInvitationsReader implements IPendingInvitationsReade
       legalEntityId: r.legalEntityId as string,
       orgDisplayName: r.orgDisplayName,
       orgSubkind: r.orgSubkind,
-      inviterUserId: r.inviterUserId,
       inviterName: r.inviterName ?? "",
       roleOffered: r.roleOffered as LegalEntityMemberRole,
     }));
