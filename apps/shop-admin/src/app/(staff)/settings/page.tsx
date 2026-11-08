@@ -1,8 +1,8 @@
 import { AdminFailedPage } from "@/components/admin-fetch-state";
-import { fetchAdminJson } from "@/server/application/load-admin-data";
-import type { AdminEffectiveSettings } from "@auction/shop-contracts";
-import { KeyValueList, PageHeader, Section, StatusBadge, TextLink } from "@auction/staff-ui";
-import Link from "next/link";
+import { PrintPartiesPanel } from "@/components/settings/print-parties-panel.client";
+import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
+import type { AdminEffectiveSettings, AdminPrintPartyList } from "@auction/shop-contracts";
+import { KeyValueList, PageHeader, Section, StatusBadge } from "@auction/staff-ui";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Settings" };
@@ -20,18 +20,24 @@ function vatRate(basisPoints: number | null | undefined): string {
 }
 
 export default async function SettingsPage() {
-  const result = await fetchAdminJson<AdminEffectiveSettings>("settings/effective");
-  if (result.status === "unauthorized") redirect("/login");
+  const [result, parties, session] = await Promise.all([
+    fetchAdminJson<AdminEffectiveSettings>("settings/effective"),
+    fetchAdminJson<AdminPrintPartyList>("print-parties"),
+    loadAdminSession(),
+  ]);
+  if (result.status === "unauthorized" || parties.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") {
     return <AdminFailedPage title="Settings" status={result.status} />;
   }
   const s = result.data;
+  const canEditParties =
+    session.status === "ok" && session.data.capabilities.includes("settings.write");
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Settings"
-        description="The policies in force on this environment. They are read-only here; ask the engineering team to change them."
+        description="The policies in force on this environment are read-only here; ask the engineering team to change them. The printers and publishers list below is yours to keep."
       />
       <div className="flex w-full max-w-[720px] flex-col gap-6">
         <Section title="Cancellation and tax">
@@ -55,14 +61,6 @@ export default async function SettingsPage() {
             ]}
           />
         </Section>
-        <Section
-          title="Printers and publishers"
-          description="The studios and publishers the Edition facts card offers under Printed by and Published by."
-        >
-          <TextLink href="/settings/printers-and-publishers" Link={Link}>
-            Manage printers and publishers
-          </TextLink>
-        </Section>
         <Section title="Areas switched on">
           <KeyValueList
             items={[
@@ -73,6 +71,15 @@ export default async function SettingsPage() {
             ]}
           />
         </Section>
+        {parties.status === "ok" ? (
+          <PrintPartiesPanel parties={parties.data.items} canEdit={canEditParties} />
+        ) : (
+          <Section title="Printers and publishers">
+            <p className="text-staff-sm text-staff-muted">
+              The list could not be loaded. Reload the page to try again.
+            </p>
+          </Section>
+        )}
       </div>
     </div>
   );
