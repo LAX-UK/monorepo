@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
 import { legalEntity } from "@auction/db/schema";
 import { sql } from "drizzle-orm";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { holdAlertTablesLock } from "../../testing/alert-tables-lock.js";
 import {
   BidAlertFollowerProvisioner,
   BidAlertLotReader,
@@ -104,6 +105,8 @@ async function insertLot(input: {
       ${input.lotStatus ?? "scheduled"}::lot_status, ${JSON.stringify(details)}::jsonb)`);
   return id;
 }
+
+holdAlertTablesLock({ beforeAll, afterAll }, "exclusive");
 
 describe.skipIf(!HAS_DB)("Bid lot alert adapters (integration)", () => {
   const subscribers = HAS_DB ? new BidAlertSubscriberStore(db) : (null as never);
