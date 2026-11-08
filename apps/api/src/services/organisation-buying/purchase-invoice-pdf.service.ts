@@ -1,6 +1,10 @@
 import { accountPurchaseScope } from "@auction/domain";
 import { type BidInvoiceDocument, InvoiceTotalMismatchError } from "@auction/exports/documents";
-import type { IBidInvoiceReader, ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type {
+  IBidInvoiceReader,
+  ILegalEntityRepository,
+  IPayoutRepository,
+} from "@auction/persistence/interfaces";
 import { err, ok } from "neverthrow";
 import type {
   BuyingResult,
@@ -17,6 +21,8 @@ export type PurchaseInvoicePdfDeps = {
   accounts: Pick<ILegalEntityRepository, "findById">;
   /** Renders the document; it refuses lines that do not add up to the invoice total. */
   render: (document: BidInvoiceDocument) => Promise<Buffer>;
+  /** What has been refunded for a payment so far, from the refund records, in whole pence. */
+  refunds: Pick<IPayoutRepository, "sumRefundLineCentsForPayment">;
   /** Tells finance when a stored invoice cannot be shown (an alert, not a page error). */
   metrics: { record(event: string): void };
 };
@@ -51,6 +57,11 @@ export class PurchaseInvoicePdfService implements IPurchaseInvoicePdfService {
     if (!account) return err(buyingError("invoice_not_ready"));
 
     const status = entry.row.payment?.status;
+    // A part refund leaves the payment captured, so what was given back comes from the records.
+    const refundedPence =
+      status === "captured" || status === "refunded"
+        ? await this.deps.refunds.sumRefundLineCentsForPayment(paymentId)
+        : 0;
     try {
       const pdf = await this.deps.render({
         number: invoice.number,
@@ -65,6 +76,7 @@ export class PurchaseInvoicePdfService implements IPurchaseInvoicePdfService {
         lines: invoice.lines,
         totalPence: invoice.totalPence,
         status: documentStatusOf(status),
+        refundedPence,
       });
       return ok({ pdf, filename: invoiceFilename(invoice.number, lotId) });
     } catch (error) {

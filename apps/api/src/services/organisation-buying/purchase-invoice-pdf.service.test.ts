@@ -45,6 +45,7 @@ type Setup = {
   view?: object | null;
   invoice?: BidInvoiceRecord | null;
   account?: object | null;
+  refundedCents?: number;
 };
 
 function setup(over: Setup = {}) {
@@ -69,6 +70,7 @@ function setup(over: Setup = {}) {
     winners: new Map(),
   }));
   const record = vi.fn();
+  const refundedCents = vi.fn(async (_paymentId: string) => over.refundedCents ?? 0);
   const service = new PurchaseInvoicePdfService({
     candidates: { read: read as never },
     invoices: { findByPaymentIds },
@@ -83,9 +85,10 @@ function setup(over: Setup = {}) {
           : over.account) as never,
     },
     render,
+    refunds: { sumRefundLineCentsForPayment: refundedCents },
     metrics: { record },
   });
-  return { service, render, read, findByPaymentIds, record };
+  return { service, render, read, findByPaymentIds, record, refundedCents };
 }
 
 describe("PurchaseInvoicePdfService", () => {
@@ -103,6 +106,7 @@ describe("PurchaseInvoicePdfService", () => {
       lines: INVOICE.lines,
       totalPence: 60_010,
       status: "awaiting_payment",
+      refundedPence: 0,
     });
   });
 
@@ -177,6 +181,29 @@ describe("PurchaseInvoicePdfService", () => {
     });
     await service.render(actor("owner"), LOT);
     expect(render.mock.calls[0]?.[0].status).toBe("refunded");
+  });
+
+  it("passes on what was refunded from the refund records, even on a payment still captured", async () => {
+    const { service, render, refundedCents } = setup({
+      row: {
+        lotId: LOT,
+        lotTitle: "Harbour",
+        lotNumber: 4,
+        saleTitle: null,
+        payment: { id: PAYMENT, status: "captured" },
+      },
+      refundedCents: 15_000,
+    });
+    await service.render(actor("owner"), LOT);
+    expect(refundedCents).toHaveBeenCalledWith(PAYMENT);
+    expect(render.mock.calls[0]?.[0]).toMatchObject({ status: "paid", refundedPence: 15_000 });
+  });
+
+  it("does not look for refunds on an invoice that was never paid", async () => {
+    const { service, render, refundedCents } = setup({ refundedCents: 15_000 });
+    await service.render(actor("owner"), LOT);
+    expect(refundedCents).not.toHaveBeenCalled();
+    expect(render.mock.calls[0]?.[0].refundedPence).toBe(0);
   });
 
   it("refuses an invoice whose lines do not add up, clearly, and tells finance", async () => {

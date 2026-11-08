@@ -27,6 +27,13 @@ export type BidInvoiceDocument = {
    * is otherwise awaiting payment.
    */
   status: "awaiting_payment" | "paid" | "refunded";
+  /**
+   * What has been given back so far, in whole pence, from the refund records (cumulative). A part
+   * refund leaves the payment paid, so this is what tells it apart; it is `0` when none is on
+   * record. The charge lines always stay as invoiced: a credit note, not this document, is the
+   * formal instrument that reverses charges.
+   */
+  refundedPence: number;
 };
 
 /** The invoice's lines do not add up to its total: it is not issued rather than shown wrongly. */
@@ -76,17 +83,33 @@ export function invoiceMoney(pence: number): string {
   return GBP.format(pence / 100);
 }
 
-const STATUS_WORDS: Record<BidInvoiceDocument["status"], string> = {
+/** How the payment stands once refunds on record are taken into account. */
+type Standing = "awaiting_payment" | "paid" | "part_refunded" | "refunded";
+
+const STATUS_WORDS: Record<Standing, string> = {
   awaiting_payment: "Awaiting payment",
   paid: "Paid",
+  part_refunded: "Part refunded",
   refunded: "Refunded",
 };
 
-const TOTAL_WORDS: Record<BidInvoiceDocument["status"], string> = {
+const TOTAL_WORDS: Record<Standing, string> = {
   awaiting_payment: "Total to pay",
   paid: "Total paid",
-  refunded: "Total refunded",
+  part_refunded: "Total paid",
+  refunded: "Invoice total",
 };
+
+/**
+ * A payment that was paid and then partly refunded stays paid in the records, so the refund
+ * records decide: some given back is a part refund, all of it is a refund. A refund with no
+ * amount on record is shown as refunded without inventing a figure.
+ */
+function standingOf(input: BidInvoiceDocument, refundedPence: number): Standing {
+  if (input.status === "awaiting_payment") return "awaiting_payment";
+  if (input.status === "refunded" || refundedPence >= input.totalPence) return "refunded";
+  return refundedPence > 0 ? "part_refunded" : "paid";
+}
 
 /** What the document says, in order, as plain text rows: the part under test. */
 export type BidInvoiceView = {
@@ -95,6 +118,8 @@ export type BidInvoiceView = {
   facts: [label: string, value: string][];
   lines: [label: string, amount: string][];
   total: [label: string, amount: string];
+  /** What was given back and what is left paid, after the total; empty when nothing was. */
+  refunds: [label: string, amount: string][];
   footer: string[];
 };
 
@@ -114,7 +139,9 @@ export function bidInvoiceView(input: BidInvoiceDocument): BidInvoiceView {
   ]
     .filter((part): part is string => Boolean(part))
     .join(" · ");
-  const settled = input.status !== "awaiting_payment";
+  const refundedPence = Math.min(Math.max(0, input.refundedPence), input.totalPence);
+  const standing = standingOf(input, refundedPence);
+  const settled = standing !== "awaiting_payment";
   return {
     issuer: {
       name: issuer.name,
@@ -131,10 +158,17 @@ export function bidInvoiceView(input: BidInvoiceDocument): BidInvoiceView {
       ...(lotRef ? ([["Lot", lotRef]] as [string, string][]) : []),
       ["Raised", dayLabel(input.raisedAt)],
       [settled ? "Was due" : "Due by", dayLabel(input.dueAt)],
-      ["Status", STATUS_WORDS[input.status]],
+      ["Status", STATUS_WORDS[standing]],
     ],
     lines: input.lines.map((line) => [line.label, invoiceMoney(line.amountPence)]),
-    total: [TOTAL_WORDS[input.status], invoiceMoney(input.totalPence)],
+    total: [TOTAL_WORDS[standing], invoiceMoney(input.totalPence)],
+    refunds:
+      refundedPence > 0
+        ? [
+            ["Refunded", invoiceMoney(refundedPence)],
+            ["Net paid", invoiceMoney(input.totalPence - refundedPence)],
+          ]
+        : [],
     footer: [`Invoice from ${issuer.name}, ${issuer.registeredAddress.inline}`],
   };
 }
@@ -188,6 +222,13 @@ export async function renderBidInvoicePdf(input: BidInvoiceDocument): Promise<Bu
   const y = doc.y;
   doc.font("Body-Bold").text(view.total[0], 50, y, { width: 360 });
   doc.text(view.total[1], 420, y, { width: 125, align: "right" });
+  for (const [index, [label, amount]] of view.refunds.entries()) {
+    doc.moveDown(0.4);
+    const rowY = doc.y;
+    doc.font(index === view.refunds.length - 1 ? "Body-Bold" : "Body");
+    doc.text(label, 50, rowY, { width: 360 });
+    doc.text(amount, 420, rowY, { width: 125, align: "right" });
+  }
 
   doc.moveDown(3);
   doc.font("Body").fontSize(8).fillColor("#555555");
