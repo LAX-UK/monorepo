@@ -914,6 +914,27 @@ export {
   type CollectByPolicy,
 } from "./collection-storage.js";
 export {
+  COLLECTION_BOOKING_ACTIONS,
+  COLLECTION_BOOKING_STATUSES,
+  allowedBookingActions,
+  bookingIsActive,
+  calendarMethodFor,
+  transitionBooking,
+  type CollectionActor,
+  type CollectionBookingAction,
+  type CollectionBookingStatus,
+  type TransitionContext,
+  type TransitionRefusal,
+  type TransitionResult,
+} from "./collection-booking-state.js";
+export {
+  buildCollectionIcs,
+  collectionCalendarFilename,
+  collectionCalendarUid,
+  type CollectionCalendarMethod,
+  type CollectionIcsInput,
+} from "./collection-ics.js";
+export {
   formatCollectionReference,
   parseCollectionReference,
 } from "./collection-reference.js";
