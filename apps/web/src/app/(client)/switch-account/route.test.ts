@@ -21,6 +21,7 @@ const ORG = {
   isPrimaryAdmin: false,
 };
 
+let signedOut = false;
 const cookieValues = new Map<string, string>();
 const setCookie = vi.fn((name: string, value: string) => cookieValues.set(name, value));
 vi.mock("next/headers", () => ({
@@ -39,7 +40,8 @@ vi.mock("@/lib/bff/config.server", () => ({
 }));
 
 vi.mock("@/lib/data/http/session.server", () => ({
-  getServerSessionUser: async () => ({ id: "user-1", role: "client", staffRoles: [] }),
+  getServerSessionUser: async () =>
+    signedOut ? null : { id: "user-1", role: "client", staffRoles: [] },
 }));
 
 const apiFetch = vi.fn();
@@ -71,6 +73,7 @@ function post(headers: Record<string, string>, to = ORG.id, next = "/home") {
 
 describe("/switch-account", () => {
   beforeEach(() => {
+    signedOut = false;
     cookieValues.clear();
     setCookie.mockClear();
     apiFetch.mockReset();
@@ -112,6 +115,25 @@ describe("/switch-account", () => {
     ).toContain('"record":true');
     expect(await noticeAfter(plain)).not.toContain("record");
     expect(await noticeAfter(plain)).toContain('"kind":"switched"');
+  });
+
+  it("keeps the record reason when a signed-out person confirms and is sent to sign in", async () => {
+    signedOut = true;
+    const res = await POST(
+      new Request("https://lax.bid/switch-account", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "sec-fetch-site": "same-origin",
+          origin: "https://lax.bid",
+        },
+        body: new URLSearchParams({ to: ORG.id, next: "/home", reason: "record" }).toString(),
+      }),
+    );
+    const back = `/switch-account/confirm?to=${ORG.id}&next=%2Fhome&reason=record`;
+    expect(res.headers.get("location")).toBe(
+      `/login?next=${encodeURIComponent(back)}&auth=required`,
+    );
   });
 
   it("keeps the record reason through the confirm page", async () => {
