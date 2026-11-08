@@ -7,6 +7,7 @@ import type {
   AlertUrls,
   Clock,
   SubscriberStore,
+  SubscriptionConfirmedHook,
   TopicStore,
   VerifiedAddressLookup,
 } from "../ports.js";
@@ -20,6 +21,8 @@ export type SubscribeDeps = {
   urls: AlertUrls;
   addresses: VerifiedAddressLookup;
   clock: Clock;
+  /** Runs when an account's email topic is switched on: the same step as a confirm link. */
+  afterConfirm?: SubscriptionConfirmedHook;
 };
 
 /**
@@ -101,7 +104,17 @@ export class SubscribeService {
       now,
     });
     if (record.status !== "confirmed") return "blocked";
-    await this.deps.topics.setEmail(record.id, input.topic, input.emailOn ?? true, "person", now);
+    const emailOn = input.emailOn ?? true;
+    await this.deps.topics.setEmail(record.id, input.topic, emailOn, "person", now);
+    // Asking for email is the person's own choice, so it counts as a confirmation of their address.
+    if (emailOn) {
+      await this.deps.afterConfirm?.({
+        subscriberId: record.id,
+        product: record.product,
+        email: record.email,
+        at: now,
+      });
+    }
     return "enabled";
   }
 }

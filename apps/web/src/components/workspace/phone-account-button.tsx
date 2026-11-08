@@ -1,9 +1,8 @@
 "use client";
 
 import { personInitials } from "@/components/layout/account-menu/person-initials";
+import { AccountButtonMark } from "@/components/layout/account-switcher/account-button-mark";
 import { AccountSwitcherSheet } from "@/components/layout/account-switcher/account-switcher-sheet";
-import { AccountTile } from "@/components/layout/account-switcher/account-tile";
-import { PersonAvatar } from "@/components/ui/person-avatar";
 import type { SessionUser } from "@/lib/data/contracts";
 import { accountButtonView } from "@/lib/navigation/account-button.vm";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
@@ -25,9 +24,10 @@ type Props = {
  */
 export function PhoneAccountButton({ user, current, switcher }: Props) {
   const [open, setOpen] = useState(false);
-  const name = user.name.trim() || user.email;
-  const initials = personInitials(user.name, user.email);
-  const view = accountButtonView(current, { initials });
+  const view = accountButtonView(current, {
+    initials: personInitials(user.name, user.email),
+    name: user.name.trim() || user.email,
+  });
   return (
     <>
       <Button
@@ -40,22 +40,10 @@ export function PhoneAccountButton({ user, current, switcher }: Props) {
         // The kit's ghost button, 44px tall around a 32px tile or avatar.
         className="min-h-11 min-w-11 shrink-0 gap-2 rounded-lax-control px-1.5 font-normal"
       >
-        {view.kind === "organisation" ? (
-          <span className="relative inline-flex">
-            <AccountTile account={{ kind: "organisation", initials: view.tileInitials }} />
-            <span
-              aria-hidden
-              className="absolute -right-1.5 -bottom-1.5 inline-flex size-5 items-center justify-center rounded-full bg-lax-neutral-bg font-lax text-lax-12 leading-none font-semibold tracking-tight text-lax-fg ring-2 ring-lax-page"
-            >
-              {view.badgeInitials}
-            </span>
-          </span>
-        ) : (
-          <>
-            <PersonAvatar src={user.image} name={name} initials={initials} className="size-8" />
-            <span className="text-lax-13 font-medium text-lax-fg">{view.text}</span>
-          </>
-        )}
+        <AccountButtonMark view={view} user={user} />
+        {view.kind === "personal" ? (
+          <span className="text-lax-13 font-medium text-lax-fg">{view.text}</span>
+        ) : null}
       </Button>
       <AccountSwitcherSheet switcher={switcher} open={open} onOpenChange={setOpen} />
     </>

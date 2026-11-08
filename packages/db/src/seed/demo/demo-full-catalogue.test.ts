@@ -12,6 +12,7 @@ const actors = {
   rivalUserId: "rival",
   rivalEntityId: "rival-entity",
   northbankBuyerUserId: "buyer",
+  northbankOwnerUserId: "owner",
   northbankId: "northbank",
   heldUserId: "held",
   heldEntityId: "held-entity",
@@ -169,6 +170,42 @@ describe.each(CLOCKS)("full demo catalogue at %d", (now) => {
       expect(org).toHaveLength(1);
       expect(org[0]?.status).toBe("pending");
       expect(org[0]?.invoice.dueAt.getTime()).toBeGreaterThan(now);
+    });
+  });
+
+  describe("Northbank's invoice that is clear to pay", () => {
+    const clear = catalogue.payments.filter(
+      (p) => p.buyerEntityId === "northbank" && p.buyerUserId === "owner",
+    );
+
+    it("is one open invoice, due in the future, under the source-of-funds threshold", () => {
+      expect(clear).toHaveLength(1);
+      expect(clear[0]?.status).toBe("pending");
+      expect(clear[0]?.paymentGroupId).toBeNull();
+      expect(clear[0]?.invoice.dueAt.getTime()).toBeGreaterThan(now);
+      expect(clear[0]?.invoice.totalPence).toBeLessThan(900_000);
+    });
+
+    it("is won by someone with no other open purchase, so nothing else counts toward the threshold", () => {
+      const open = catalogue.payments.filter(
+        (p) => p.buyerUserId === "owner" && p.status !== "captured",
+      );
+      expect(open).toHaveLength(1);
+      expect(approvedExposurePounds(catalogue.payments, "owner")).toBeLessThan(9_000);
+    });
+
+    it("leaves the buyer agent's larger invoice as it was", () => {
+      const agent = catalogue.payments.filter(
+        (p) =>
+          p.buyerUserId === "buyer" && p.buyerEntityId === "northbank" && p.status !== "captured",
+      );
+      expect(agent).toHaveLength(1);
+      expect(agent[0]?.invoice.totalPence).toBeGreaterThanOrEqual(900_000);
+    });
+
+    it("has the owner registered for the sale they won in", () => {
+      const registered = catalogue.registrations.filter((r) => r.userId === "owner");
+      expect(registered.map((r) => r.saleId)).toEqual([sale("autumnPast").id]);
     });
   });
 

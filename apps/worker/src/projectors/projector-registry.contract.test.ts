@@ -18,6 +18,7 @@ import { UNSOLD_FOLLOW_UP_PROJECTOR } from "./unsold-follow-up.js";
 import { XERO_PROJECTOR } from "./xero-projector.js";
 import { ZOHO_ARTWORK_LISTING_PROJECTOR } from "./zoho-artwork-listing-projector.js";
 import { ZOHO_ARTWORK_WRITEBACK_PROJECTOR } from "./zoho-artwork-writeback-projector.js";
+import { ZOHO_CAMPAIGNS_OPT_OUT_LIFT_PROJECTOR } from "./zoho-campaigns-opt-out-lift.js";
 import { ZOHO_PROJECTOR } from "./zoho-projector.js";
 
 /** Pin tick order and projector names from the pre-registry runner. */
@@ -47,6 +48,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   ARTWORK_OFFER_LOCK_PROJECTOR,
   ZOHO_ARTWORK_WRITEBACK_PROJECTOR,
   ZOHO_ARTWORK_LISTING_PROJECTOR,
+  ZOHO_CAMPAIGNS_OPT_OUT_LIFT_PROJECTOR,
 ] as const;
 
 function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunContext {
@@ -95,6 +97,7 @@ function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunCont
       getArtistStatus: vi.fn(),
       clearLotsArtistReviewRequired: vi.fn(),
     },
+    zohoCampaignsOptOutLiftRepo: { liftOptOut: vi.fn() },
     ensurePersonalLegalEntity: { ensure: vi.fn() },
     sourceOfFundsSettlementReader: {
       loadSettlementContext: vi.fn(),

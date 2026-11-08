@@ -452,7 +452,10 @@ export type ContainerSaleRoutesSlice = Pick<
   | "requireSubmissionsLegalEntityContext"
   | "catalogRoutes"
   | "bidding"
->;
+> & {
+  /** Staff sale delete and cancel need a recent sign-in. */
+  admin: Pick<AdminStaffSecurityRouteServices, "stepUp">;
+};
 
 /** Sale read routes — public/admin catalogue detail only. */
 export type ContainerSaleReadRoutesSlice = Pick<
@@ -491,7 +494,10 @@ export type ContainerLotRouteDepsSlice = ContainerBiddingRoutesSlice &
     | "userSuspensionChecker"
     | "requireSubmissionsLegalEntityContext"
     | "catalogRoutes"
-  >;
+  > & {
+    /** Staff lot delete and cancel need a recent sign-in. */
+    admin: Pick<AdminStaffSecurityRouteServices, "stepUp">;
+  };
 
 /** Lot read routes — public catalogue/detail only. */
 export type ContainerLotReadRoutesSlice = Pick<

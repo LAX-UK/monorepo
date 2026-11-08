@@ -13,8 +13,12 @@ export const ACCOUNT_NOTICE_MAX_AGE_SEC = 60;
 export const CHOSEN_SWITCH_SHOWN_MS = 6000;
 
 export type AccountNotice =
-  /** Switched to `accountId` to show a record that belongs to it. */
-  | { kind: "switched"; accountId: string }
+  /**
+   * A link opened `accountId`. `fromAccountId` is the account it was opened from, when there was
+   * one: the notice then offers the way back to it. `record` is set when the link was a record
+   * page's, so the notice can say the record belongs to the account.
+   */
+  | { kind: "switched"; accountId: string; fromAccountId?: string; record?: true }
   /** Opening a notification switched to `accountId`; switching back goes to `fromAccountId`. */
   | { kind: "opened_notification"; accountId: string; fromAccountId: string }
   /**
@@ -51,10 +55,23 @@ const NOTICE_KINDS: {
 } = {
   switched: {
     decode: (value) =>
-      typeof value.accountId === "string" ? { kind: "switched", accountId: value.accountId } : null,
+      typeof value.accountId === "string"
+        ? {
+            kind: "switched",
+            accountId: value.accountId,
+            ...(typeof value.fromAccountId === "string"
+              ? { fromAccountId: value.fromAccountId }
+              : {}),
+            ...(value.record === true ? { record: true as const } : {}),
+          }
+        : null,
     message: (notice, accountOf) => {
       const account = accountOf(notice.accountId);
-      return account ? `Switched to ${accountPhrase(account)} to show this.` : null;
+      if (!account) return null;
+      // Only a record page's link has something to show; any other link just opened the account.
+      return notice.record
+        ? `Switched to ${accountPhrase(account)} to show this.`
+        : `Now acting as ${accountPhrase(account)}`;
     },
   },
   chose: {

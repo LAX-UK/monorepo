@@ -65,12 +65,16 @@ test.describe("Pay page @roles", () => {
 
     await test.step("a return from the payment page without paying says nothing was charged", async () => {
       await page.goto(`/purchases/checkout/${clearLot}?payment=cancelled`);
-      await expect(page).toHaveURL(
-        new RegExp(`/purchases/pay\\?lots=${clearLot}&returned=cancelled$`),
-      );
       await expect(
         page.getByRole("alert").filter({ hasText: "Payment not completed" }),
       ).toContainText("Payment not completed. You were not charged.");
+      await expect(page.getByRole("button", { name: /^Try again · £/ }).first()).toBeEnabled();
+      // The note is shown once: the return is taken out of the address, and the note and the
+      // Try again wording stay on screen.
+      await expect(page).toHaveURL(new RegExp(`/purchases/pay\\?lots=${clearLot}$`));
+      await expect(
+        page.getByRole("alert").filter({ hasText: "Payment not completed" }),
+      ).toBeVisible();
       await expect(page.getByRole("button", { name: /^Try again · £/ }).first()).toBeEnabled();
     });
 

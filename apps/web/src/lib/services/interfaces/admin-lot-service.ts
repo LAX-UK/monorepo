@@ -18,6 +18,16 @@ export type BulkLotsBody = z.infer<typeof bulkLotsBodySchema>;
 export type RecordBuyerDefaultInput = z.infer<typeof recordBuyerDefaultBodySchema>;
 export type ReturnLotToInventoryBody = z.infer<typeof returnLotToInventoryBodySchema>;
 
+/** What the API answers to a return to lax.art. */
+export type LaxArtReturnAnswer = {
+  /** The lax.art listing went back to a draft (false if it was already open, or there is none). */
+  reopened: boolean;
+  /** False when the artwork has no lax.art listing, so only the LAX register was updated. */
+  laxArtListing: boolean;
+  /** Why, in words for staff; sent when there is no listing. */
+  hint?: string;
+};
+
 export interface IAdminLotService {
   create(input: CreateLotInput): Promise<ServiceResult<{ id: string }>>;
   update(id: string, input: UpdateLotInput): Promise<ServiceResult<Record<string, unknown>>>;
@@ -34,7 +44,7 @@ export interface IAdminLotService {
     body: ReturnLotToInventoryBody,
   ): Promise<ServiceResult<Record<string, unknown>>>;
   /** Reopens the artwork's lax.art listing as a draft; the lot must have ended unsold or been withdrawn. */
-  returnToLaxArt(id: string): Promise<ServiceResult<{ reopened: boolean }>>;
+  returnToLaxArt(id: string): Promise<ServiceResult<LaxArtReturnAnswer>>;
   recordBuyerDefault(
     id: string,
     body: RecordBuyerDefaultInput,

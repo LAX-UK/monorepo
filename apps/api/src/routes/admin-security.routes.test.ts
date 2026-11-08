@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { createAdminRoutes } from "./admin.js";
 
 function buildApp(staffRole: string) {
@@ -23,12 +24,14 @@ function buildApp(staffRole: string) {
         isSuspended: vi.fn().mockResolvedValue(false),
         reconcileAdminRequestCookie: vi.fn().mockResolvedValue(undefined),
       },
+      stepUp: stubStepUpGuard(true),
       staffTwoFactorPolicy: twoFactorPolicy,
     },
   } as unknown as Container;
   const authenticator: IAuthenticator = {
     getSessionUser: vi.fn().mockResolvedValue({
       id: "usr_admin",
+      identitySessionId: "session-1",
       role: "staff",
       staffRoles: normalizeStaffRoles([staffRole]),
       scopes: ["bid.read", "bid.write"],

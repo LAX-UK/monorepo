@@ -3,6 +3,7 @@ import {
   adminManualReversePayoutSchema,
   createPayoutAdjustmentSchema,
   listPayoutsQuerySchema,
+  payoutActionReasonSchema,
   runSettlementSchema,
 } from "@auction/validators";
 import { Hono } from "hono";
@@ -33,9 +34,13 @@ const payoutIdParam = z.object({ payoutId: z.string().uuid() });
 const settlementPreviewQuery = z.object({ legalEntityId: z.string().uuid() });
 const markPaidBodySchema = z.object({
   stripeTransferId: z.string().min(3).max(200),
+  reason: payoutActionReasonSchema,
 });
 
-const retryTransferBodySchema = z.object({ confirmed: z.literal(true) });
+const retryTransferBodySchema = z.object({
+  confirmed: z.literal(true),
+  reason: payoutActionReasonSchema,
+});
 
 function handleError(err: unknown) {
   if (err instanceof PayoutNotFoundError) return { status: 404 as const, code: err.code };
@@ -203,8 +208,8 @@ export function createAdminPayoutRoutes(
       try {
         const result = await container.admin.payouts.createSettlement(userId, {
           legalEntityId: body.legalEntityId,
-          periodStart: new Date(0),
-          periodEnd: new Date(),
+          reason: body.reason,
+          ...(body.periodStart ? { periodStart: new Date(body.periodStart) } : {}),
         });
         if (!result.ok) return c.json({ error: result.reason }, 409);
         return c.json({ data: result.payout }, 201);
@@ -274,8 +279,9 @@ export function createAdminPayoutRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const { payoutId } = c.req.valid("param");
+      const { reason } = c.req.valid("json");
       try {
-        const outcome = await container.admin.payouts.retryFailedTransfer(userId, payoutId);
+        const outcome = await container.admin.payouts.retryFailedTransfer(userId, payoutId, reason);
         if (!outcome.ok) {
           return c.json(
             {

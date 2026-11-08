@@ -22,7 +22,11 @@ import { PayTransferPanel } from "./pay-transfer-panel";
 export function PayPage({ vm }: { vm: PayPageVm }) {
   const bar = vm.action && vm.money ? { action: vm.action, money: vm.money } : null;
   return (
-    <PaySessionProvider methods={vm.methods} storageKey={vm.lots.map((lot) => lot.lotId).join(",")}>
+    <PaySessionProvider
+      methods={vm.methods}
+      storageKey={vm.lots.map((lot) => lot.lotId).join(",")}
+      returned={vm.returned}
+    >
       {/* Room for the bar at the bottom of a phone. */}
       <div className={bar ? "flex flex-col gap-6 max-lg:pb-24" : "flex flex-col gap-6"}>
         <div className="flex flex-col gap-3">

@@ -7,7 +7,6 @@ export type PendingInvitationRow = {
   legalEntityId: string;
   orgDisplayName: string;
   orgSubkind: string;
-  inviterUserId: string;
   inviterName: string;
   roleOffered: string;
 };

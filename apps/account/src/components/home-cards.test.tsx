@@ -120,6 +120,16 @@ describe("CollectionCard", () => {
     expect(textOf(render([held, pay("a"), paid]))).not.toContain("waiting on identity checks");
   });
 
+  it("puts each money note in the same div as its term and figure, never in a nested wrapper", () => {
+    const paid = item({
+      id: "p",
+      paid: { lines: [{ kind: "price", amount: 100_000, currency: "GBP" }] },
+    });
+    const html = render([pay("a"), paid], { showNotes: true });
+    expect(html).toMatch(/<\/dd><dd class="col-span-2[^"]*">/);
+    expect(html).not.toMatch(/<dl[^>]*><div[^>]*><div/);
+  });
+
   it("shows paid so far per currency, side by side, never as one total", () => {
     const html = render(
       [

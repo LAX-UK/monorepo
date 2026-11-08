@@ -6,7 +6,8 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const refresh = vi.fn();
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+const replace = vi.fn();
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh, replace }) }));
 vi.mock("@/lib/shell/shell-chrome-context", () => ({ HideBottomTabBarWhileMounted: () => null }));
 const notifySuccess = vi.fn();
 vi.mock("@/lib/ui/notify", () => ({
@@ -149,6 +150,14 @@ describe("opening the secure payment page (S4)", () => {
     });
     const retry = within(screen.getByRole("alert")).getByRole("button", { name: "Try again" });
     expect(retry).toBeDisabled();
+    // The first attempt may never answer: a fresh load of the page is offered, so nobody is stuck.
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", {
+      configurable: true,
+      value: { ...window.location, assign, reload },
+    });
+    fireEvent.click(within(screen.getByRole("alert")).getByRole("button", { name: "Refresh" }));
+    expect(reload).toHaveBeenCalledOnce();
     fireEvent.click(retry);
     expect(payAction).toHaveBeenCalledTimes(1);
 

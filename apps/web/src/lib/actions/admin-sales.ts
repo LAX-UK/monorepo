@@ -11,6 +11,7 @@ import {
   parseBulkSalesApiResponse,
 } from "@/lib/admin/bulk-ops/sale-bulk-result";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import { stepUpErrorCode } from "@/lib/auth/step-up/step-up-error-code";
 import { readDataEnvelope } from "@/lib/data/http/envelope";
 import { getWriteContainer } from "@/lib/data/write-container.server";
 import {
@@ -144,7 +145,7 @@ export async function adminSoftDeleteSaleResultAction(
     const { adminSales } = getWriteContainer();
     const r = await adminSales.softDelete(id, phrase);
     if (!r.ok) {
-      return actionFailure(r.message, undefined, r.status);
+      return actionFailure(r.message, undefined, r.status, stepUpErrorCode(r));
     }
     revalidatePath("/admin/sales");
     revalidatePath("/");

@@ -111,6 +111,9 @@ jobs:
       - name: Brand name
         run: pnpm lint:brand-name
 
+      - name: Legal names (from branding source only)
+        run: pnpm lint:legal-names
+
       - name: Lint
         run: pnpm turbo run lint --affected
 

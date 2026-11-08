@@ -12,6 +12,7 @@ const returnAction = vi.fn();
 const buyerDefaultAction = vi.fn();
 const returnToLaxArtAction = vi.fn();
 const notifySuccess = vi.fn();
+const notifySuccessDescription = vi.fn();
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/lib/actions/admin", () => ({
@@ -25,7 +26,13 @@ vi.mock("@/lib/actions/admin", () => ({
   adminRecordBuyerDefaultResultAction: (...args: unknown[]) => buyerDefaultAction(...args),
 }));
 vi.mock("@/lib/ui/notify", () => ({
-  notify: { success: (title: string) => notifySuccess(title), error: vi.fn() },
+  notify: {
+    success: (title: string, options?: { description?: string }) => {
+      notifySuccess(title);
+      if (options?.description) notifySuccessDescription(options.description);
+    },
+    error: vi.fn(),
+  },
 }));
 vi.mock("@/lib/auth/step-up/use-step-up-coordinator", () => ({
   redirectToHostedReauth: vi.fn(),
@@ -270,14 +277,39 @@ describe("useLotActions", () => {
     });
 
     it("asks first, then reopens the listing and says so", async () => {
-      returnToLaxArtAction.mockResolvedValue({ ok: true, data: undefined });
+      returnToLaxArtAction.mockResolvedValue({ ok: true, data: { laxArtListing: true } });
       render(<Harness target={{ ...lot, status: "ended", laxArtReturn: linked }} />);
       fireEvent.click(screen.getByRole("button", { name: "Return to lax.art…" }));
-      expect(screen.getByText(/Nothing goes live until you publish it in LAX Admin/)).toBeVisible();
+      expect(screen.getByText(/nothing goes live until you publish it in LAX Admin/)).toBeVisible();
       fireEvent.click(screen.getByRole("button", { name: "Return to lax.art" }));
       await waitFor(() => expect(returnToLaxArtAction).toHaveBeenCalledWith("lot_1"));
       await waitFor(() =>
         expect(notifySuccess).toHaveBeenCalledWith("Blue Interior is back on lax.art as a draft"),
+      );
+    });
+
+    it("does not promise a reopened listing in the confirm text", () => {
+      render(<Harness target={{ ...lot, status: "ended", laxArtReturn: linked }} />);
+      fireEvent.click(screen.getByRole("button", { name: "Return to lax.art…" }));
+      expect(
+        screen.getByText(/If it was never listed there, only the LAX register is updated/),
+      ).toBeVisible();
+    });
+
+    it("says the artwork was never listed, with the hint, when there is no lax.art listing", async () => {
+      returnToLaxArtAction.mockResolvedValue({
+        ok: true,
+        data: { laxArtListing: false, hint: "Create it from the Zoho record in LAX Admin first." },
+      });
+      render(<Harness target={{ ...lot, status: "ended", laxArtReturn: linked }} />);
+      fireEvent.click(screen.getByRole("button", { name: "Return to lax.art…" }));
+      fireEvent.click(screen.getByRole("button", { name: "Return to lax.art" }));
+      await waitFor(() =>
+        expect(notifySuccess).toHaveBeenCalledWith("Blue Interior is back in the LAX register"),
+      );
+      expect(notifySuccess).not.toHaveBeenCalledWith(expect.stringContaining('draft"'));
+      expect(notifySuccessDescription).toHaveBeenCalledWith(
+        "Create it from the Zoho record in LAX Admin first.",
       );
     });
 

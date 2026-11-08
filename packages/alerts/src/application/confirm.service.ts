@@ -2,7 +2,7 @@ import type { AlertProduct, AlertTopic } from "../domain/products.js";
 import { maskEmail } from "../domain/subscriber.js";
 import { evaluateConfirmation } from "../domain/subscriber.js";
 import type { AlertLinkCodec, LinkPayload } from "../links/codec.js";
-import type { Clock, SubscriberStore, TopicStore } from "../ports.js";
+import type { Clock, SubscriberStore, SubscriptionConfirmedHook, TopicStore } from "../ports.js";
 
 /** What opening a confirm link would do, shown on the page before the button is pressed. */
 export type ConfirmPreview =
@@ -20,6 +20,12 @@ export type ConfirmDeps = {
   clock: Clock;
   /** The topics a confirmation switches on, per product. */
   topicsToEnable: (product: AlertProduct) => readonly AlertTopic[];
+  /**
+   * Runs once the person's confirmation has been applied (and again on a repeat, so a retry after
+   * a partial failure finishes the job). Used to lift an old marketing opt-out: asking for alerts
+   * is the person's own, later choice. The same hook runs when an account turns alerts on.
+   */
+  afterConfirm?: SubscriptionConfirmedHook;
 };
 
 /** Reads and applies confirm links. Reading never changes anything; only `confirm` does. */
@@ -49,6 +55,12 @@ export class ConfirmService {
       for (const topic of this.deps.topicsToEnable(record.product)) {
         await this.deps.topics.setEmail(record.id, topic, true, "person", now);
       }
+      await this.deps.afterConfirm?.({
+        subscriberId: record.id,
+        product: record.product,
+        email: record.email,
+        at: now,
+      });
     }
     return outcome;
   }

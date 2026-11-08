@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { holdAlertTablesLock } from "../../testing/alert-tables-lock.js";
 import { BidAlertLotNoticeWriter } from "./bid-alert-lot-notice.writer.js";
 
 const url = process.env.DATABASE_URL;
@@ -56,6 +57,8 @@ afterAll(async () => {
     await db.execute(sql`delete from "user" where id = ${id}`);
   }
 });
+
+holdAlertTablesLock({ beforeAll, afterAll }, "shared");
 
 describe.skipIf(!HAS_DB)("Bid lot notices (Postgres)", () => {
   it("writes one notice per type for a digest, with its link, and none again for the same digest", async () => {

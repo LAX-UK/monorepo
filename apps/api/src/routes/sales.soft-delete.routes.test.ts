@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
+import { stubStepUpGuard } from "../testing/staff-mutation-guards.js";
 import { stubCatalogRouteServices } from "../testing/stub-catalog-route-services.js";
 import { createSaleRoutes } from "./sales.js";
 
@@ -16,15 +17,17 @@ describe("POST /sales/:id/delete", () => {
   const saleId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const phrase = saleDeleteConfirmationPhrase("Test Sale");
 
-  function appWithAuth(role: string, staffRole: string | null) {
+  function appWithAuth(role: string, staffRole: string | null, recent = true) {
     const app = new Hono<{
       Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
     }>();
     const softDelete = vi.fn();
+    const cancel = vi.fn();
     const bulkSoftDelete = vi.fn();
     const base = stubCatalogRouteServices();
     const container = {
       userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      admin: { stepUp: stubStepUpGuard(recent) },
       saleService: {},
       saleSoftDeleteService: { getDeleteEligibility: vi.fn() },
       saleFollowService: {},
@@ -32,7 +35,7 @@ describe("POST /sales/:id/delete", () => {
       mediaUrlResolver: {},
       kycService: { isConfigured: () => false },
       catalogRoutes: stubCatalogRouteServices({
-        saleLifecycleHttp: { ...base.saleLifecycleHttp, softDelete, bulkSoftDelete },
+        saleLifecycleHttp: { ...base.saleLifecycleHttp, softDelete, cancel, bulkSoftDelete },
       }),
     } as unknown as Container;
     const authenticator: IAuthenticator = {
@@ -41,11 +44,12 @@ describe("POST /sales/:id/delete", () => {
         role,
         staffRoles: normalizeStaffRoles([staffRole]),
 
+        identitySessionId: "session-1",
         scopes: ["bid.write"],
       }),
     };
     app.route("/sales", createSaleRoutes(container, authenticator, passThroughAccountOnboarding));
-    return { app, softDelete, bulkSoftDelete };
+    return { app, softDelete, cancel, bulkSoftDelete };
   }
 
   it("returns 204 when staff with auction.manage deletes a sale", async () => {
@@ -68,6 +72,30 @@ describe("POST /sales/:id/delete", () => {
         staffRoles: ["sales_manager"],
       }),
     );
+  });
+
+  it("asks staff for a recent sign-in before deleting, and does not delete", async () => {
+    const { app, softDelete } = appWithAuth("staff", "sales_manager", false);
+    const res = await app.request(`http://t/sales/${saleId}/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmationPhrase: phrase }),
+    });
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe("step_up_required");
+    expect(softDelete).not.toHaveBeenCalled();
+  });
+
+  it("asks staff for a recent sign-in before cancelling, and does not cancel", async () => {
+    const { app, cancel } = appWithAuth("staff", "sales_manager", false);
+    const res = await app.request(`http://t/sales/${saleId}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe("step_up_required");
+    expect(cancel).not.toHaveBeenCalled();
   });
 
   it("returns 403 for client role", async () => {

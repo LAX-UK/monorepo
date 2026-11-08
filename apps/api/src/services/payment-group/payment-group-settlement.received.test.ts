@@ -45,6 +45,7 @@ function setup(
       }),
       transitionInTransaction,
       recordReceivedInTransaction,
+      releaseMembersInTransaction: vi.fn().mockResolvedValue(["pay_a", "pay_b"]),
     } as never,
     payments: { applyAuthorizedInTransaction },
     capture: { captureInTransaction: vi.fn() } as never,
@@ -63,6 +64,41 @@ function setup(
     record,
   };
 }
+
+describe("PaymentGroupSettlementService.release: a start that recorded its checkout", () => {
+  it("lets the group stand when asked to release only a checkout-less group and one now exists", async () => {
+    const t = setup(group({ status: "open", stripeCheckoutSessionId: "cs_late" }));
+    const result = await t.service.release({
+      eventId: null,
+      groupId: "grp_1",
+      reason: "checkout_abandoned",
+      onlyIfNoCheckout: true,
+    });
+    expect(result).toMatchObject({ action: "skipped", reason: "checkout_recorded" });
+    expect(t.transitionInTransaction).not.toHaveBeenCalled();
+  });
+
+  it("releases a checkout-less group as before", async () => {
+    const t = setup(group({ status: "open", stripeCheckoutSessionId: null }));
+    const result = await t.service.release({
+      eventId: null,
+      groupId: "grp_1",
+      reason: "checkout_abandoned",
+      onlyIfNoCheckout: true,
+    });
+    expect(result).toMatchObject({ action: "payment_intent_canceled" });
+  });
+
+  it("still releases a group with a checkout when the provider ended it (no flag)", async () => {
+    const t = setup(group({ status: "open", stripeCheckoutSessionId: "cs_1" }));
+    const result = await t.service.release({
+      eventId: "evt_expired",
+      groupId: "grp_1",
+      reason: "checkout_expired",
+    });
+    expect(result).toMatchObject({ action: "payment_intent_canceled" });
+  });
+});
 
 describe("PaymentGroupSettlementService.markProcessing: money received so far", () => {
   it("holds the invoices and stores what arrived, in a decimal amount, with the event time", async () => {
