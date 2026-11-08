@@ -1,10 +1,10 @@
 "use server";
 
+import { checkoutReturnUrls } from "@/lib/checkout/checkout-return-urls.server";
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
 import { fetchShopCommerceCsrfForMutation } from "@/lib/shop-commerce-mutation.server";
 import { shopCommerceRequest } from "@/lib/shop-commerce-request.server";
 import { ShopContractParseError, parseCheckoutSession } from "@auction/shop-contracts";
-import { headers } from "next/headers";
 
 import type { ShopDeliveryAddressInput, ShopFulfilmentOption } from "@/lib/shop-fulfilment";
 import { isValidUkPostcode, normalizeUkPostcode } from "@/lib/uk-postcode";
@@ -40,10 +40,7 @@ export async function startCheckout(input: {
       message: commerceErrorMessage({ error: "csrf_failed" }, "Could not start checkout."),
     };
   }
-  const headerStore = await headers();
-  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "localhost:3020";
-  const proto = headerStore.get("x-forwarded-proto") ?? "http";
-  const origin = `${proto}://${host}`;
+  const { successUrl, cancelUrl } = checkoutReturnUrls();
   // One key per basket: a retry with changed delivery details updates the same pending order
   // (shop-api reconciles it), so a basket can never hold two pending orders.
   const idempotencyKey = `checkout:${input.basketId}:order`;
@@ -59,8 +56,8 @@ export async function startCheckout(input: {
         basketId: input.basketId,
         fulfilment: input.fulfilment,
         idempotencyKey,
-        successUrl: `${origin}/checkout/confirmation?orderId={ORDER_ID}`,
-        cancelUrl: `${origin}/checkout/cancel?orderId={ORDER_ID}`,
+        successUrl,
+        cancelUrl,
         ...(deliveryAddress ? { deliveryAddress } : {}),
         ...(input.deliveryPhone?.trim() ? { deliveryPhone: input.deliveryPhone.trim() } : {}),
         ...(deliveryAddress && input.saveAddress ? { saveAddress: true } : {}),

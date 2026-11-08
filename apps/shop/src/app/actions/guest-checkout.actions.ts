@@ -1,5 +1,6 @@
 "use server";
 
+import { checkoutReturnUrls } from "@/lib/checkout/checkout-return-urls.server";
 import {
   type GuestEmailStepResult,
   type GuestOrderStartResult,
@@ -11,7 +12,6 @@ import { fetchShopCommerceCsrfForMutation } from "@/lib/shop-commerce-mutation.s
 import { shopCommerceRequest } from "@/lib/shop-commerce-request.server";
 import type { ShopDeliveryAddressInput, ShopFulfilmentOption } from "@/lib/shop-fulfilment";
 import { isValidUkPostcode, normalizeUkPostcode } from "@/lib/uk-postcode";
-import { headers } from "next/headers";
 
 const JSON_HEADERS = { accept: "application/json", "content-type": "application/json" };
 
@@ -43,13 +43,6 @@ export async function checkGuestEmail(input: {
   return guestEmailStepResult(result.status, result.body);
 }
 
-async function storefrontOrigin(): Promise<string> {
-  const headerStore = await headers();
-  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "localhost:3020";
-  const proto = headerStore.get("x-forwarded-proto") ?? "http";
-  return `${proto}://${host}`;
-}
-
 /** Places the guest's order and opens the payment page. The server checks the email again. */
 export async function startGuestCheckout(input: {
   basketId: string;
@@ -76,7 +69,7 @@ export async function startGuestCheckout(input: {
       postcode: normalizeUkPostcode(deliveryAddress.postcode),
     };
   }
-  const origin = await storefrontOrigin();
+  const { successUrl, cancelUrl } = checkoutReturnUrls();
   const result = await postToCommerce("/commerce/guest-checkout/orders", {
     basketId: input.basketId,
     email: input.email.trim(),
@@ -85,8 +78,8 @@ export async function startGuestCheckout(input: {
     fulfilment: input.fulfilment,
     // One key per basket, as for account checkout: a retry updates the same pending order.
     idempotencyKey: `guest-checkout:${input.basketId}:order`,
-    successUrl: `${origin}/checkout/confirmation?orderId={ORDER_ID}`,
-    cancelUrl: `${origin}/checkout/cancel?orderId={ORDER_ID}`,
+    successUrl,
+    cancelUrl,
     ...(deliveryAddress ? { deliveryAddress } : {}),
     ...(input.deliveryPhone?.trim() ? { deliveryPhone: input.deliveryPhone.trim() } : {}),
   });
