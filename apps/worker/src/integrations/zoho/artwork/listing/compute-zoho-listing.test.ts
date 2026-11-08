@@ -80,6 +80,22 @@ describe("computeZohoListing", () => {
     });
   });
 
+  it("reads live now for a sale past its start time with no active lot, ended for an ended sale", () => {
+    const withSale = (saleStatus: "scheduled" | "ended", startTime: string) => {
+      const lot = lotIn("scheduled", saleStatus);
+      const sale = lot.sale ? { ...lot.sale, startTime: new Date(startTime) } : null;
+      return compute(factsFor("bid_sale", lotRef, { lot: { ...lot, sale } }));
+    };
+
+    expect(withSale("scheduled", "2026-11-05T18:00:00Z").value).toBe(
+      "In a LAX Bid sale — upcoming",
+    );
+    expect(withSale("scheduled", "2026-11-05T09:00:00Z").value).toBe(
+      "In a LAX Bid sale — live now",
+    );
+    expect(withSale("ended", "2026-11-05T09:00:00Z").value).toBe("In a LAX Bid sale — ended");
+  });
+
   it("links a lot in a test sale to the admin page, never the public one", () => {
     const lot = lotIn("scheduled", "scheduled");
     const testLot = { ...lot, sale: lot.sale ? { ...lot.sale, isTest: true } : null };
