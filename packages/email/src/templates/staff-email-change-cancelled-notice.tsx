@@ -20,8 +20,8 @@ export default function StaffEmailChangeCancelledNoticeEmail(
         address it has now, and the link we sent to the other address no longer works.
       </TextBlock>
       <TextBlock>
-        Any devices we signed out when the change began stay signed out, so sign in again to
-        continue. If you did not expect this, secure your account now and write to{" "}
+        If we signed any devices out when the change began, they stay signed out, so sign in again
+        to continue. If you did not expect this, secure your account now and write to{" "}
         {SITE_SUPPORT_EMAIL}.
       </TextBlock>
     </SecurityNotice>
