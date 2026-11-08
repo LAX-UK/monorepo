@@ -174,6 +174,21 @@ describe("buildOrganisationRecoveryView", () => {
       expect(weekend?.progress?.contact).toBeNull();
     });
 
+    it("tells a viewer, who sees no checklist, the day the documents arrived and when to chase", () => {
+      const view = buildOrganisationRecoveryView({
+        status: "under_review",
+        documents: null,
+        documentsReceivedAt: received,
+        now: new Date("2026-11-10T12:00:00Z"),
+        personalAccountId: null,
+        personalCanBid: false,
+        impersonating: false,
+      });
+      expect(view?.documents).toBeNull();
+      expect(view?.progress?.line).toContain("Documents received on 4 November 2026.");
+      expect(view?.progress?.contact?.label).toBe("Contact us");
+    });
+
     it("says nothing without a document date, and nothing for other states", () => {
       expect(recovery("under_review", { receivedAt: null })?.progress).toBeNull();
       expect(recovery("restricted", { receivedAt: received })?.progress).toBeNull();

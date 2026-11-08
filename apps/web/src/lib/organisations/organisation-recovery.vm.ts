@@ -111,8 +111,8 @@ function progressFor(
 /**
  * What a held organisation shows beneath its banner: what is still open and what is paused (from
  * the one state policy), the documents asked for while they are the way forward, where the check
- * has got to, and the way to keep buying as the person themselves once they can bid. `null` for a state that
- * needs no recovery (approved, setting up payouts, closed).
+ * has got to, and the way to keep buying as the person themselves once they can bid. `null` for a
+ * state that needs no recovery (approved, setting up payouts, closed).
  */
 export function buildOrganisationRecoveryView(
   input: OrganisationRecoveryInput,

@@ -1,6 +1,8 @@
 import "server-only";
 
+import { personalCanBid } from "@/lib/bid/personal-can-bid";
 import type { SessionUser } from "@/lib/data/contracts";
+import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
 import { lookupActingContext } from "@/lib/legal-entity/acting-context.server";
 import { loadOrganisationDocuments } from "@/lib/organisations/organisation-documents.server";
 import {
@@ -15,7 +17,7 @@ import {
 import { type EntityActor, entityActorCan, organisationRecoveryKind } from "@auction/domain";
 import type { LegalEntitySummary } from "@auction/types";
 
-type Viewer = Pick<SessionUser, "role" | "staffRoles" | "kycStatus">;
+type Viewer = Pick<SessionUser, "role" | "staffRoles">;
 
 /** A read that fails leaves its part out; it never blanks the page the recovery sits on. */
 async function settled<T>(read: () => Promise<T>, fallback: T): Promise<T> {
@@ -23,6 +25,15 @@ async function settled<T>(read: () => Promise<T>, fallback: T): Promise<T> {
     return await read();
   } catch {
     return fallback;
+  }
+}
+
+/** The identity summary the lot page reads; a status that cannot be read says so. */
+async function readKyc() {
+  try {
+    return { summary: await getServerKycStatusSummary(), unavailable: false };
+  } catch {
+    return { summary: null, unavailable: true };
   }
 }
 
@@ -38,18 +49,21 @@ async function readDocuments(
 ): Promise<DocumentsRead> {
   const none: DocumentsRead = { view: null, latestSentAt: null };
   if (!recoveryShowsDocuments(organisation.status)) return none;
-  // Whoever reads the Documents tab reads the same list here; other members see no checklist.
-  if (!entityActorCan(actor, "entity.profile.read")) return none;
   const loaded = await settled(() => loadOrganisationDocuments(organisation.id), null);
   if (!loaded?.ok) return none;
+  // Every member is told when the documents arrived; only whoever reads the Documents tab
+  // reads the same checklist here.
+  const readsChecklist = entityActorCan(actor, "entity.profile.read");
   return {
-    view: buildOrganisationDocumentsView({
-      actor,
-      status: organisation.status,
-      organisationName: organisation.displayName,
-      slots: loaded.slots,
-      received: loaded.received,
-    }),
+    view: readsChecklist
+      ? buildOrganisationDocumentsView({
+          actor,
+          status: organisation.status,
+          organisationName: organisation.displayName,
+          slots: loaded.slots,
+          received: loaded.received,
+        })
+      : null,
     latestSentAt: latestUploadedAt(loaded.received),
   };
 }
@@ -66,9 +80,10 @@ export async function loadOrganisationRecovery(input: {
 }): Promise<OrganisationRecoveryView | null> {
   const { organisation, actor, viewer } = input;
   if (!organisationRecoveryKind(organisation.status)) return null;
-  const [documents, acting] = await Promise.all([
+  const [documents, acting, kyc] = await Promise.all([
     readDocuments(organisation, actor),
     settled(() => lookupActingContext(viewer.role, viewer.staffRoles), null),
+    readKyc(),
   ]);
   const personal = (acting?.ok ? acting.context.memberships : []).find(
     (m) => m.kind === "individual",
@@ -79,8 +94,7 @@ export async function loadOrganisationRecovery(input: {
     documentsReceivedAt: documents.latestSentAt,
     now: new Date(),
     personalAccountId: personal?.id ?? null,
-    // The personal account bids once its identity check is clear.
-    personalCanBid: viewer.kycStatus === "approved",
+    personalCanBid: personalCanBid(kyc),
     impersonating: actor.isImpersonation === true,
   });
 }

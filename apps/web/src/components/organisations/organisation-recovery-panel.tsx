@@ -4,6 +4,7 @@ import type {
   RecoveryDocumentRow,
 } from "@/lib/organisations/organisation-recovery.vm";
 import { RecordList, RecordRow } from "@auction/ui";
+import { Surface } from "@auction/ui/components/surface";
 import { ButtonLink, StatusBadge } from "@auction/ui/lax";
 import Link from "next/link";
 import { useId } from "react";
@@ -53,12 +54,18 @@ export function OrganisationRecoveryPanel({
   const abilitiesId = useId();
   const documentsId = useId();
   return (
-    <div className="space-y-6" data-testid="organisation-recovery" data-kind={view.kind}>
+    <Surface
+      variant="section"
+      padding="md"
+      className="space-y-6"
+      data-testid="organisation-recovery"
+      data-kind={view.kind}
+    >
       <section aria-labelledby={abilitiesId} className="space-y-3">
         <h2 id={abilitiesId} className="font-lax-display text-lax-18 font-semibold text-lax-fg">
           {view.heading}
         </h2>
-        <RecordList aria-labelledby={abilitiesId}>
+        <RecordList>
           {view.abilities.map((ability) => (
             <RecordRow
               key={ability.key}
@@ -73,9 +80,7 @@ export function OrganisationRecoveryPanel({
           <h3 id={documentsId} className="font-lax-display text-lax-16 font-semibold text-lax-fg">
             {view.documents.heading}
           </h3>
-          <RecordList aria-labelledby={documentsId}>
-            {view.documents.rows.map(documentRow)}
-          </RecordList>
+          <RecordList>{view.documents.rows.map(documentRow)}</RecordList>
         </section>
       ) : null}
       {showPersonal && view.personal ? (
@@ -102,6 +107,6 @@ export function OrganisationRecoveryPanel({
           ) : null}
         </p>
       ) : null}
-    </div>
+    </Surface>
   );
 }
