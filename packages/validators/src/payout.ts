@@ -69,8 +69,11 @@ export const listPayoutsQuerySchema = z.object({
 
 /** Run Settlement Input (admin) */
 /** Money actions on a payout name why, for the audit log. */
-export const PAYOUT_ACTION_REASON_MIN = 10;
-export const payoutActionReasonSchema = z.string().trim().min(PAYOUT_ACTION_REASON_MIN).max(1000);
+export const payoutActionReasonSchema = z
+  .string()
+  .trim()
+  .min(PAYOUT_ACTION_REASON_MIN)
+  .max(PAYOUT_ACTION_REASON_MAX);
 
 export const runSettlementSchema = z.object({
   legalEntityId: z.string().uuid().optional(), // if omitted, runs for all eligible
