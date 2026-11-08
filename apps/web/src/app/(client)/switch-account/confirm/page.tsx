@@ -3,14 +3,18 @@ import { AccountsUnavailable } from "@/components/layout/account-switcher/accoun
 import { SwitchConfirmation } from "@/components/layout/account-switcher/switch-confirmation";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { planSwitchForBrowser } from "@/lib/legal-entity/switch-hop.server";
-import { confirmSwitchHref, safeHopNext } from "@/lib/navigation/account-link";
+import { confirmSwitchHref, hopReasonOf, safeHopNext } from "@/lib/navigation/account-link";
 import { buildSwitchConfirmation } from "@/lib/navigation/switch-confirmation.vm";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 export const metadata: Metadata = { title: "Switch account" };
 
-type SearchParams = { to?: string | string[]; next?: string | string[] };
+type SearchParams = {
+  to?: string | string[];
+  next?: string | string[];
+  reason?: string | string[];
+};
 
 function first(value: string | string[] | undefined): string | null {
   return (Array.isArray(value) ? value[0] : value) ?? null;
@@ -28,17 +32,21 @@ export default async function SwitchAccountConfirmPage({
   const params = await searchParams;
   const to = first(params.to);
   const next = safeHopNext(first(params.next));
+  const reason = hopReasonOf(first(params.reason));
   const user = await requireAuthenticatedUser({
     shell: "client",
-    loginNext: to ? confirmSwitchHref(to, next) : next,
+    loginNext: to ? confirmSwitchHref(to, next, reason ?? undefined) : next,
   });
 
-  const outcome = await planSwitchForBrowser(to, next);
+  const outcome = await planSwitchForBrowser(to, next, null, reason);
   if (outcome.kind === "unavailable") {
     return (
       <DashboardPage>
         <AccountsUnavailable
-          retry={{ kind: "link", href: to ? confirmSwitchHref(to, next) : next }}
+          retry={{
+            kind: "link",
+            href: to ? confirmSwitchHref(to, next, reason ?? undefined) : next,
+          }}
         />
       </DashboardPage>
     );
@@ -56,6 +64,7 @@ export default async function SwitchAccountConfirmPage({
         })}
         accountId={outcome.requested.id}
         next={next}
+        reason={reason}
       />
     </DashboardPage>
   );

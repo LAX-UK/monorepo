@@ -33,6 +33,13 @@ export type MarketingAccountEntryProps = {
   signedOutIntro?: string;
   signInLabel?: string;
   createAccountLabel?: string;
+  /**
+   * Signed in: what the button shows in place of the avatar, first name and chevron, for a
+   * product whose account is more than the person (an organisation they act for). Pair it with
+   * `triggerLabel`, which names the button for assistive technology.
+   */
+  triggerContent?: ReactNode;
+  triggerLabel?: string;
   /** Shows a dot on the entry while something needs the person. */
   attention?: boolean;
   /** Renders the Sign in and Create account links, e.g. a plain anchor for auth-start routes. */
@@ -88,6 +95,8 @@ export function MarketingAccountEntry({
   signInHref,
   createAccountHref,
   menuItems,
+  triggerContent,
+  triggerLabel,
   signedOutIntro = DEFAULT_INTRO,
   signInLabel = "Sign in",
   createAccountLabel = "Create account",
@@ -125,7 +134,7 @@ export function MarketingAccountEntry({
   const trigger = viewer ? (
     <button
       type="button"
-      aria-label={`Account menu, ${viewer.displayName.trim() || viewer.email}`}
+      aria-label={triggerLabel ?? `Account menu, ${viewer.displayName.trim() || viewer.email}`}
       className={cn(
         MARKETING_HEADER_CHROME,
         "relative inline-flex min-h-11 items-center gap-2 rounded-sm px-1 font-label text-sm font-medium",
@@ -134,17 +143,21 @@ export function MarketingAccountEntry({
         className,
       )}
     >
-      <MarketingAvatar
-        viewer={viewer}
-        className={cn(
-          "size-8 text-xs",
-          onDark ? "bg-hero-foreground/15" : "bg-surface-container-high",
-        )}
-      />
-      <span data-testid="account-entry-name">
-        {cutAccountEntryName(accountTriggerName(viewer.displayName, viewer.email))}
-      </span>
-      <MarketingChevronDownIcon className="size-4" />
+      {triggerContent ?? (
+        <>
+          <MarketingAvatar
+            viewer={viewer}
+            className={cn(
+              "size-8 text-xs",
+              onDark ? "bg-hero-foreground/15" : "bg-surface-container-high",
+            )}
+          />
+          <span data-testid="account-entry-name">
+            {cutAccountEntryName(accountTriggerName(viewer.displayName, viewer.email))}
+          </span>
+          <MarketingChevronDownIcon className="size-4" />
+        </>
+      )}
       {dot}
     </button>
   ) : (

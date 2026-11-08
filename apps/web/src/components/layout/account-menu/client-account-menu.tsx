@@ -1,10 +1,7 @@
 "use client";
 
-import {
-  AccountSwitcherList,
-  type WrapItem,
-} from "@/components/layout/account-switcher/account-switcher-list";
-import { useAccountSwitch } from "@/components/layout/account-switcher/use-account-switch";
+import type { WrapItem } from "@/components/layout/account-switcher/account-switcher-list";
+import { MenuAccountList } from "@/components/layout/account-switcher/menu-account-list";
 import { useLogout } from "@/lib/auth/use-logout";
 import type { AttentionCount } from "@/lib/navigation/client-attention";
 import type { HeaderAccountMenu, HeaderMenuLink } from "@/lib/navigation/header-account-menu.vm";
@@ -204,34 +201,6 @@ type ClientAccountMenuProps = {
   wrapItem?: WrapItem;
 };
 
-/** The accounts under "Switch account": the same list as the sidebar and the phone sheet. */
-function MenuAccounts({
-  switcher,
-  wrapItem,
-  inMenu,
-  onNavigate,
-}: {
-  switcher: NonNullable<HeaderAccountMenu["switcher"]>;
-  wrapItem: WrapItem;
-  inMenu: boolean;
-  onNavigate: () => void;
-}) {
-  const { pendingId, failure, choose, retry } = useAccountSwitch(undefined, "inline");
-  return (
-    <AccountSwitcherList
-      switcher={switcher}
-      pendingId={pendingId}
-      // Stays open: the chosen row shows the progress, and a failure shows under the rows.
-      onChoose={(option) => void choose(option)}
-      onNavigate={onNavigate}
-      failure={failure}
-      onRetry={() => void retry()}
-      withLinks={false}
-      {...(inMenu ? { wrapItem } : {})}
-    />
-  );
-}
-
 /**
  * A client's account menu: their accounts (for organisation members), their pages grouped as
  * Buying, Selling and account pages with whatever is due, then Sign out. The same body serves
@@ -239,17 +208,15 @@ function MenuAccounts({
  */
 export function ClientAccountMenu({ menu, surface, onNavigate, wrapItem }: ClientAccountMenuProps) {
   const pad = surface === "popover" ? "p-1.5" : "px-0 py-2";
-  const wrap = wrapItem ?? IDENTITY;
   return (
     <WrapItemContext.Provider value={wrapItem ?? IDENTITY}>
       {menu.switcher ? (
         <>
           <div className={pad}>
-            <MenuAccounts
+            <MenuAccountList
               switcher={menu.switcher}
-              wrapItem={wrap}
-              inMenu={wrapItem !== undefined}
               onNavigate={onNavigate}
+              {...(wrapItem ? { wrapItem } : {})}
             />
           </div>
           <Separator />

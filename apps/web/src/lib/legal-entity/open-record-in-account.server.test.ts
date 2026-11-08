@@ -31,7 +31,7 @@ describe("openRecordInItsAccount", () => {
     findRecordAccount.mockResolvedValue({ kind: "ok", legalEntityId: "org-1" });
     await expect(openRecordInItsAccount(input)).resolves.toEqual({
       kind: "hop",
-      href: `/switch-account?to=org-1&next=${encodeURIComponent(input.next)}`,
+      href: `/switch-account?to=org-1&next=${encodeURIComponent(input.next)}&reason=record`,
     });
     expect(redirect).not.toHaveBeenCalled();
   });
@@ -48,7 +48,7 @@ describe("openRecordInItsAccount", () => {
       findRecordAccount.mockResolvedValue({ kind: "ok", legalEntityId: "org-1" });
       requestHeaders = new Headers({ "sec-fetch-site": site });
       await expect(openRecordInItsAccount(input)).rejects.toThrow(
-        `redirect:/switch-account/confirm?to=org-1&next=${encodeURIComponent(input.next)}`,
+        `redirect:/switch-account/confirm?to=org-1&next=${encodeURIComponent(input.next)}&reason=record`,
       );
     },
   );
