@@ -3,6 +3,8 @@ import {
   DrizzleAdminSavedViewRepository,
   DrizzleBiddingExposureReader,
   DrizzleBuyerAgentAuthorisationRepository,
+  DrizzleCollectionBookingRepository,
+  DrizzleCollectionSettingsRepository,
   DrizzleConsignmentInboxReader,
   DrizzleConsignmentMessageRepository,
   DrizzleConsignmentSavedReplyRepository,
@@ -87,6 +89,7 @@ import {
   BuyerAgentAuthorisationService,
 } from "./services/buyer-agents/buyer-agent-authorisation.service.js";
 import { MyBuyerAgentAuthorisationsService } from "./services/buyer-agents/my-buyer-agent-authorisations.service.js";
+import { CollectionSettingsAdminService } from "./services/collection-settings/collection-settings.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { NotificationAccountMuteService } from "./services/notifications/notification-account-mute.service.js";
 import { TwoFactorPolicyService } from "./services/security/two-factor-policy.service.js";
@@ -509,6 +512,13 @@ export function createContainer(env: Env): Container {
     log: createAppLogger(env),
   });
 
+  const collectionSettings = new CollectionSettingsAdminService({
+    settings: new DrizzleCollectionSettingsRepository(db),
+    bookings: new DrizzleCollectionBookingRepository(db),
+    events: platform.domainEventSink,
+    now: () => new Date(),
+  });
+
   const atg = new AtgAdminService(
     repos.atgLinkReader,
     repos.atgSaleSettingsWriter,
@@ -788,6 +798,7 @@ export function createContainer(env: Env): Container {
     admin: {
       ...admin.admin,
       inventoryMoves,
+      collectionSettings,
       staffTwoFactorPolicy: twoFactorPolicy,
       twoFactorReset,
       staffEmailChange,
