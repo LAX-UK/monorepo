@@ -57,6 +57,9 @@ function draw(fallback: SearchFallback) {
       alertState="none"
       topicEmailOn={null}
       alertSearchId={null}
+      alertSearchNotifyEmail={false}
+      emailAccess="ok"
+      otherSearchesOn={0}
     />,
   );
 }

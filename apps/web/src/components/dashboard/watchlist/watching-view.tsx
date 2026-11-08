@@ -14,12 +14,18 @@ import {
   type TopicReach,
   type WatchingAlertReach,
   reachLabel,
-  searchEmailIsOn,
   searchReachLabel,
 } from "@/lib/watching/alert-reach";
 import { artistAlertSummary } from "@/lib/watching/artist-alert";
 import { savedSearchHref, savedSearchSummary } from "@/lib/watching/saved-search";
-import { switchSearchEmail } from "@/lib/watching/search-email";
+import {
+  type AlertAccess,
+  type SearchEmailControl,
+  needsOthersConfirmation,
+  searchEmailControl,
+  switchSearchEmail,
+  turnedOnMessage,
+} from "@/lib/watching/search-email";
 import { reminderRowLabel } from "@/lib/watching/watched-lot-reminder.vm";
 import {
   WATCHED_LOT_SORTS,
@@ -48,9 +54,11 @@ import {
 import { Lock, Search, UserRound } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
+import { HeldOffSwitch } from "../settings/held-off-switch";
 import { ArtistAlertDialog } from "./artist-alert-dialog";
 import { LotReminderDialog } from "./lot-reminder-dialog";
+import { TurnOnEmailDialog } from "./turn-on-email-dialog";
 
 export type WatchedArtistVm = {
   artistId: string;
@@ -68,6 +76,8 @@ export type WatchingViewProps = {
   searches: SavedSearchRow[] | null;
   /** Where artist and search alerts reach the person; null when it could not be read. */
   reach: WatchingAlertReach;
+  /** Whether email can be switched on from here, or alerts are stopped or the address unverified. */
+  emailAccess: AlertAccess;
   /** The organisation the person acts for: the list is theirs alone, and says so. */
   organisation: string | null;
 };
@@ -88,6 +98,7 @@ export function WatchingView({
   artists,
   searches,
   reach,
+  emailAccess,
   organisation,
 }: WatchingViewProps) {
   const router = useRouter();
@@ -95,6 +106,7 @@ export function WatchingView({
   const [sort, setSort] = useState<WatchedLotSort>("closing");
   const [editing, setEditing] = useState<WatchedArtistVm | null>(null);
   const [reminding, setReminding] = useState<WatchedLotRowVm | null>(null);
+  const [confirming, setConfirming] = useState<SavedSearchRow | null>(null);
   const [busy, start] = useTransition();
   const counts: Record<WatchingViewId, number | undefined> = {
     lots: lots?.length,
@@ -132,14 +144,33 @@ export function WatchingView({
       } else notify.error("We couldn't stop following that artist. Try again in a moment.");
       refresh();
     });
-  const setSearchEmail = (search: SavedSearchRow, on: boolean) =>
+  const topicEmailOn = reach?.searches.emailOn ?? null;
+  const othersOn = (search: SavedSearchRow) =>
+    (searches ?? []).filter((other) => other.id !== search.id && other.notifyEmail).length;
+  const runSearchEmail = (search: SavedSearchRow, on: boolean) =>
     start(async () => {
-      const result = await switchSearchEmail(search.id, on);
-      if (result.ok)
-        notify.success(on ? "Email alerts on for this search" : "Email alerts off for this search");
-      else notify.error("We couldn't save that change", { description: result.error });
+      const result = await switchSearchEmail({
+        id: search.id,
+        on,
+        previous: search.notifyEmail,
+        access: emailAccess,
+      });
+      if (result.ok) {
+        // Turning the topic back on brings back the others that already had their own switch on.
+        const broughtBack = on && topicEmailOn === false ? othersOn(search) : 0;
+        notify.success(on ? turnedOnMessage(broughtBack) : "Email alerts off for this search");
+      } else notify.error("We couldn't save that change", { description: result.error });
+      setConfirming(null);
       refresh();
     });
+  /** Turning on asks first when it would also bring back other searches' email. */
+  const setSearchEmail = (search: SavedSearchRow, on: boolean) => {
+    if (on && needsOthersConfirmation({ topicEmailOn, othersOn: othersOn(search) })) {
+      setConfirming(search);
+      return;
+    }
+    runSearchEmail(search, on);
+  };
   const removeSearch = (search: SavedSearchRow) =>
     start(async () => {
       if (await deleteSavedSearch(search.id)) notify.success("Saved search removed");
@@ -216,6 +247,7 @@ export function WatchingView({
           onClear={() => setQuery("")}
           onRemove={removeSearch}
           onEmail={setSearchEmail}
+          access={emailAccess}
           busy={busy}
         />
       ) : null}
@@ -226,6 +258,13 @@ export function WatchingView({
         }}
         artist={editing ? { id: editing.artistId, name: editing.name, alert: editing.alert } : null}
         onSaved={refresh}
+      />
+      <TurnOnEmailDialog
+        open={confirming !== null}
+        othersOn={confirming ? othersOn(confirming) : 0}
+        busy={busy}
+        onConfirm={() => confirming && runSearchEmail(confirming, true)}
+        onCancel={() => setConfirming(null)}
       />
       <LotReminderDialog
         lot={reminding}
@@ -434,6 +473,7 @@ function SearchesList({
   onClear,
   onRemove,
   onEmail,
+  access,
   busy,
 }: {
   searches: SavedSearchRow[] | null;
@@ -442,6 +482,7 @@ function SearchesList({
   onClear: () => void;
   onRemove: (search: SavedSearchRow) => void;
   onEmail: (search: SavedSearchRow, on: boolean) => void;
+  access: AlertAccess;
   busy: boolean;
 }) {
   if (!searches) return <ListLoadError />;
@@ -459,6 +500,28 @@ function SearchesList({
       />
     );
   }
+  const controlFor = (search: SavedSearchRow) =>
+    searchEmailControl({
+      access,
+      notifyEmail: search.notifyEmail,
+      topicEmailOn: reach?.emailOn ?? null,
+    });
+  /** The row menu's email item shares the switch's state: held rows lead to where it is fixed. */
+  const emailMenuItem = (search: SavedSearchRow) => {
+    const control = controlFor(search);
+    if (control.kind === "held") {
+      return {
+        type: "item" as const,
+        label: "Turn on email",
+        onSelect: () => window.location.assign(control.action.href),
+      };
+    }
+    return {
+      type: "item" as const,
+      label: control.checked ? "Turn off email" : "Turn on email",
+      onSelect: () => onEmail(search, !control.checked),
+    };
+  };
   const rows = searches.filter((search) =>
     matchesEveryWord([search.label, savedSearchSummary(search.query)], query),
   );
@@ -482,11 +545,11 @@ function SearchesList({
               searchReachLabel(search.notifyEmail, reach),
             ].filter((part): part is string => part !== null)}
             action={
-              <Switch
-                aria-label={`Email alerts for ${search.label}`}
-                checked={searchEmailIsOn(search.notifyEmail, reach?.emailOn ?? null)}
-                disabled={busy}
-                onCheckedChange={(on) => onEmail(search, on === true)}
+              <SearchEmailAction
+                search={search}
+                control={controlFor(search)}
+                busy={busy}
+                onEmail={onEmail}
               />
             }
             menu={
@@ -498,14 +561,7 @@ function SearchesList({
                     label: "Run search",
                     onSelect: () => window.location.assign(savedSearchHref(search.query)),
                   },
-                  {
-                    type: "item",
-                    label: searchEmailIsOn(search.notifyEmail, reach?.emailOn ?? null)
-                      ? "Turn off email"
-                      : "Turn on email",
-                    onSelect: () =>
-                      onEmail(search, !searchEmailIsOn(search.notifyEmail, reach?.emailOn ?? null)),
-                  },
+                  emailMenuItem(search),
                   { type: "separator" },
                   {
                     type: "item",
@@ -536,5 +592,47 @@ function AlertReachNote() {
         Where alerts reach you
       </Link>
     </p>
+  );
+}
+
+/** A saved search's email control: a switch, or the held switch with where to put it right. */
+function SearchEmailAction({
+  search,
+  control,
+  busy,
+  onEmail,
+}: {
+  search: SavedSearchRow;
+  control: SearchEmailControl;
+  busy: boolean;
+  onEmail: (search: SavedSearchRow, on: boolean) => void;
+}) {
+  const descriptionId = useId();
+  const label = `Email alerts for ${search.label}`;
+  if (control.kind === "held") {
+    return (
+      <span className="flex items-center gap-2">
+        <HeldOffSwitch label={label} reason={control.reason} />
+        <ButtonLink Link={Link} size="sm" variant="ghost" href={control.action.href}>
+          {control.action.label}
+        </ButtonLink>
+      </span>
+    );
+  }
+  return (
+    <>
+      <Switch
+        aria-label={label}
+        checked={control.checked}
+        disabled={busy}
+        onCheckedChange={(on) => onEmail(search, on === true)}
+        {...(control.description ? { "aria-describedby": descriptionId } : {})}
+      />
+      {control.description ? (
+        <span id={descriptionId} className="sr-only">
+          {control.description}
+        </span>
+      ) : null}
+    </>
   );
 }

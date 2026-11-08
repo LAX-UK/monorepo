@@ -8,6 +8,7 @@ import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import type { SearchFallback } from "@/lib/marketing/load-search-fallback";
 import { type SearchAlertState, pastResultsSentence } from "@/lib/marketing/search-fallback";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
+import type { AlertAccess } from "@/lib/watching/search-email";
 import type { LotMediaTreatmentIndex } from "@auction/domain";
 import { ButtonLink, EmptyState } from "@auction/ui/lax";
 import Link from "next/link";
@@ -35,6 +36,9 @@ type Props = {
   alertState: SearchAlertState;
   topicEmailOn: boolean | null;
   alertSearchId: string | null;
+  alertSearchNotifyEmail: boolean;
+  emailAccess: AlertAccess;
+  otherSearchesOn: number;
   catalogLinkParams?: CatalogLinkParams;
 };
 
@@ -96,6 +100,9 @@ export function SearchNoMatches(props: Props) {
                 alertState={props.alertState}
                 topicEmailOn={props.topicEmailOn}
                 alertSearchId={props.alertSearchId}
+                alertSearchNotifyEmail={props.alertSearchNotifyEmail}
+                emailAccess={props.emailAccess}
+                otherSearchesOn={props.otherSearchesOn}
               />
               <ButtonLink Link={Link} variant="ghost" href={props.clearHref}>
                 Clear search

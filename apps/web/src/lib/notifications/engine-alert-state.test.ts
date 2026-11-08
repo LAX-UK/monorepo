@@ -1,6 +1,6 @@
 import type { AccountAlerts } from "@/lib/data/http/alerts.server";
 import { describe, expect, it } from "vitest";
-import { engineAlertStateOf, searchTopicEmailOn } from "./engine-alert-state";
+import { alertAccessOf, engineAlertStateOf, searchTopicEmailOn } from "./engine-alert-state";
 
 const mine = (state: AccountAlerts["state"], emailOn: boolean): AccountAlerts => ({
   state,
@@ -32,5 +32,19 @@ describe("searchTopicEmailOn", () => {
   it("is unknown only when the read failed or the topic has no row", () => {
     expect(searchTopicEmailOn(null, true)).toBeNull();
     expect(searchTopicEmailOn({ state: "none", linked: false, topics: [] }, true)).toBeNull();
+  });
+});
+
+describe("alertAccessOf", () => {
+  it("holds alerts once stopped or while the address is not verified", () => {
+    expect(alertAccessOf(mine("stopped", true), true)).toBe("stopped");
+    expect(alertAccessOf(mine("confirmed", true), false)).toBe("unverified");
+    expect(alertAccessOf(mine("stopped", true), false)).toBe("unverified");
+  });
+
+  it("is ok otherwise, including when the read failed", () => {
+    expect(alertAccessOf(mine("confirmed", true), true)).toBe("ok");
+    expect(alertAccessOf(null, true)).toBe("ok");
+    expect(alertAccessOf(mine("confirmed", false), undefined)).toBe("ok");
   });
 });

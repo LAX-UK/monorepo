@@ -31,6 +31,7 @@ import { Lock } from "lucide-react";
 import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import { DevicePushRow } from "./device-push-row";
+import { HeldOffSwitch } from "./held-off-switch";
 
 const NOTE_LINK = "lax-focus rounded-lax-control text-lax-fg underline underline-offset-2";
 
@@ -246,24 +247,11 @@ function AlertSwitch({
     );
   }
   if (cell.disabledReason) {
-    const label = `${row.label} by ${channel.label.toLowerCase()}`;
     return (
-      <ReasonTooltip reason={cell.disabledReason}>
-        <span
-          role="switch"
-          aria-checked="false"
-          aria-disabled="true"
-          aria-label={label}
-          aria-describedby={`${row.id}-${channel.id}-reason`}
-          tabIndex={0}
-          className="lax-focus inline-flex rounded-lax-control"
-        >
-          <Switch aria-hidden tabIndex={-1} checked={false} disabled />
-          <span id={`${row.id}-${channel.id}-reason`} className="sr-only">
-            {cell.disabledReason}
-          </span>
-        </span>
-      </ReasonTooltip>
+      <HeldOffSwitch
+        label={`${row.label} by ${channel.label.toLowerCase()}`}
+        reason={cell.disabledReason}
+      />
     );
   }
   return (
