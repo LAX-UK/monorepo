@@ -1,5 +1,6 @@
 "use client";
 
+import { BidHeroSignal } from "@/components/layout/bid-hero-signal";
 import { type BidViewerSale, withBidViewer } from "@/lib/marketing-cover/bid-cover.adapter";
 import type { BidCoverViewer } from "@/lib/marketing-cover/bid-cover.adapter";
 import { fetchCoverViewer } from "@/lib/marketing-cover/cover-viewer.client";
@@ -48,5 +49,13 @@ export function HomeCover({ slides, leadSale, signedIn }: Props) {
         : slides,
     [slides, leadSale, viewer],
   );
-  return <MarketingCover slides={shown} label={HOME_COVER_LABEL} Link={Link} priority />;
+  return (
+    <MarketingCover
+      slides={shown}
+      label={HOME_COVER_LABEL}
+      Link={Link}
+      priority
+      headerSignal={<BidHeroSignal />}
+    />
+  );
 }

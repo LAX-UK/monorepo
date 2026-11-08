@@ -7,14 +7,11 @@ import { SaleroomSessionStatusBadge } from "@/components/marketing/saleroom-sess
 import { saleroomOnBlockBadge } from "@/lib/lot/lot-lifecycle";
 import {
   type SaleroomMobileSummaryBarMode,
-  saleroomBidNowCtaClassName,
   saleroomOnBlockCaption,
   saleroomPausedCaption,
 } from "@/lib/saleroom/saleroom-mobile-chrome";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
-
-const viewLotsCtaClassName =
-  "shrink-0 rounded-sm border border-outline-variant/40 px-4 py-3 font-label text-xs font-medium text-on-surface-variant";
 
 type Props = {
   mode: Exclude<SaleroomMobileSummaryBarMode, { kind: "live_no_lot" }>;
@@ -34,13 +31,13 @@ export function SaleroomMobileSummaryBar({ mode, saleTitle, canParticipate = tru
           <SaleroomSessionCaption caption={saleroomOnBlockCaption(mode.lot, mode.progressLabel)} />
         </div>
         {canParticipate ? (
-          <Link href={mode.lot.href} className={saleroomBidNowCtaClassName}>
-            Bid now
-          </Link>
+          <Button variant="primary" size="lg" asChild>
+            <Link href={mode.lot.href}>Bid now</Link>
+          </Button>
         ) : (
-          <Link href="#catalog" className={viewLotsCtaClassName}>
-            View lots
-          </Link>
+          <Button variant="secondary" size="lg" asChild>
+            <Link href="#catalog">View lots</Link>
+          </Button>
         )}
       </MarketingStickyBidBar>
     );
@@ -53,9 +50,9 @@ export function SaleroomMobileSummaryBar({ mode, saleTitle, canParticipate = tru
         <span className="sr-only">{saleTitle}</span>
         <SaleroomSessionCaption caption={saleroomPausedCaption(mode.onBlockLot)} />
       </div>
-      <Link href="#catalog" className={viewLotsCtaClassName}>
-        View lots
-      </Link>
+      <Button variant="secondary" size="lg" asChild>
+        <Link href="#catalog">View lots</Link>
+      </Button>
     </MarketingStickyBidBar>
   );
 }
