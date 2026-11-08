@@ -120,6 +120,7 @@ export type { IAccountDeletionEligibilityReader } from "./account-deletion-eligi
 export type {
   BidPaymentFact,
   BidPaymentGroupFact,
+  BidPaymentGroupMemberFact,
   BidPayoutFact,
   BidPortfolioFacts,
   BidSellerLotFact,
@@ -127,6 +128,7 @@ export type {
   BidWonLotFact,
   IBidPortfolioReader,
 } from "./bid-portfolio.reader.js";
+export type { IPaymentGroupFactsReader } from "./payment-group-facts.reader.js";
 export type {
   AwaitingConsignmentAgreement,
   ConsignmentAgreementProposalRow,

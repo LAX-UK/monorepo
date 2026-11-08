@@ -317,6 +317,7 @@ describe.skipIf(!HAS_DB)("bid portfolio reader (integration)", () => {
           checkoutRail: "gb_bank_transfer",
           totalAmount: "2500.00",
           amountReceived: "1000.00",
+          members: [{ lotId: wonRefunded, status: "refunded", amount: "1250.00" }],
         });
         expect(facts.payments.find((p) => p.id === paidPayment)?.group).toBeNull();
         expect(facts.payments.find((p) => p.id === paidPayment)?.hasInvoice).toBe(true);

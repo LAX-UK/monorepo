@@ -18,6 +18,14 @@ export type BidWonLotFact = {
   fulfilmentStatus: string | null;
 };
 
+/** One invoice inside a combined payment, whoever it is billed to. */
+export type BidPaymentGroupMemberFact = {
+  lotId: string;
+  status: BidPaymentFact["status"];
+  /** The invoice total, a `numeric(18,2)` string. */
+  amount: string;
+};
+
 /** The combined ("Pay several") payment an invoice is settled through, while it is under way. */
 export type BidPaymentGroupFact = {
   id: string;
@@ -26,6 +34,8 @@ export type BidPaymentGroupFact = {
   /** The group's total and what a bank transfer has delivered, both `numeric(18,2)` strings. */
   totalAmount: string;
   amountReceived: string;
+  /** Every invoice in the group, not only the ones the reader's caller may see. */
+  members: readonly BidPaymentGroupMemberFact[];
 };
 
 export type BidPaymentFact = {

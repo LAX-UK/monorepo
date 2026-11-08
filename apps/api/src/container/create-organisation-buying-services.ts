@@ -15,6 +15,7 @@ import {
   DrizzleChargeableDeliveryReader,
   DrizzleDeliveryQuoteRepository,
   DrizzlePaySeveralInvoiceFlagsReader,
+  DrizzlePaymentGroupFactsReader,
   DrizzlePurchaseProblemRepository,
 } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
@@ -56,6 +57,7 @@ import { PurchaseProblemService } from "../services/organisation-buying/purchase
 import { WonLotLookups } from "../services/organisation-buying/won-lot-lookups.js";
 import type { PaymentGroupCheckoutService } from "../services/payment-group/payment-group-checkout.service.js";
 import type { IPaymentGroupGateway } from "../services/payment-group/payment-group-ports.js";
+import { StillToSendService } from "../services/payment-group/still-to-send.service.js";
 import type { IPaymentEligibilityGate } from "../services/payment/payment-eligibility.gate.js";
 
 /** The client workspace's buying modules for the acting account. */
@@ -149,7 +151,11 @@ export function createOrganisationBuyingServices(input: CreateOrganisationBuying
       registrations: new AccountRegistrationsService(
         new DrizzleAccountRegistrationsReader(input.db),
       ),
-      purchases: new AccountPurchasesService({ reader: purchases, now: () => new Date() }),
+      purchases: new AccountPurchasesService({
+        reader: purchases,
+        stillToSend: new StillToSendService(new DrizzlePaymentGroupFactsReader(input.db)),
+        now: () => new Date(),
+      }),
       payPlan,
       paySeveral: new PaySeveralService({
         planner: payPlan,

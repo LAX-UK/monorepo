@@ -112,7 +112,7 @@ export function quoteView(
   };
 }
 
-function invoiceOf(row: AccountPurchaseFactsRow, now: Date) {
+function invoiceOf(row: AccountPurchaseFactsRow, now: Date, stillToSendPence: number | null) {
   const state = purchaseInvoiceState(
     {
       saleCancelled: row.fulfilment?.status === "cancelled",
@@ -131,6 +131,7 @@ function invoiceOf(row: AccountPurchaseFactsRow, now: Date) {
     dueAt: state.dueAt,
     paymentId: row.payment?.id ?? null,
     totalDue: row.payment?.amount ?? null,
+    stillToSendPence,
   };
 }
 
@@ -147,8 +148,10 @@ export function purchaseView(
   row: AccountPurchaseFactsRow,
   actor: OrganisationMemberActor,
   now: Date,
+  /** What a part-funded bank transfer still has to send for this invoice, when it is one. */
+  stillToSendPence: number | null = null,
 ): AccountPurchaseView {
-  const invoice = invoiceOf(row, now);
+  const invoice = invoiceOf(row, now, stillToSendPence);
   return {
     lotId: row.lotId,
     lotTitle: row.lotTitle,

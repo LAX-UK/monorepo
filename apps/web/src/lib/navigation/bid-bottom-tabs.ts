@@ -29,11 +29,13 @@ export function watchingBadge(attention: ClientAttention | null): MarketingBotto
 
 /**
  * Account shows a dot for what the header chip asks for besides being outbid: a payment due, an
- * account in review (both are `paymentsDue`), or unread notifications, which are read from here.
+ * account in review (both are `paymentsDue`), a bank transfer with money still to send, or unread
+ * notifications, which are read from here.
  */
 export function accountBadge(attention: ClientAttention | null): MarketingBottomTabBadge | null {
   if (!attention) return null;
   return attention.paymentsDue > 0 ||
+    attention.stillToSend.count > 0 ||
     attention.paymentsInReview ||
     attention.unreadNotifications > 0
     ? DOT

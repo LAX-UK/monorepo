@@ -134,7 +134,11 @@ function mount(
     },
     organisationBuying: {
       registrations: new AccountRegistrationsService(new InMemoryRegistrations()),
-      purchases: new AccountPurchasesService({ reader: purchases, now: () => NOW }),
+      purchases: new AccountPurchasesService({
+        reader: purchases,
+        stillToSend: { forPayments: async () => new Map() },
+        now: () => NOW,
+      }),
       payPlan,
       paySeveral: new PaySeveralService({
         planner: payPlan,

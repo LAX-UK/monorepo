@@ -136,7 +136,7 @@ describe("GET /users/me/account/amounts-owed", () => {
     const { get, lotList } = mount(role);
     const res = await get("amounts-owed");
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ data: { entries: [] } });
+    expect(await res.json()).toEqual({ data: { entries: [], stillToSend: [] } });
     expect(lotList).toHaveBeenCalledWith(
       expect.objectContaining({ buyerLegalEntityId: ORG, statuses: ["ended"] }),
     );
