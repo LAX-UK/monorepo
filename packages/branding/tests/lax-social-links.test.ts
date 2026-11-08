@@ -35,8 +35,13 @@ describe("socialProfilesFor", () => {
         label: "London Art Exchange on Instagram",
       },
       {
+        network: "x",
+        href: "https://x.com/TheLAX_art",
+        label: "London Art Exchange on X",
+      },
+      {
         network: "tiktok",
-        href: "https://www.tiktok.com/@londonartexchange",
+        href: "https://www.tiktok.com/@thelax_art",
         label: "London Art Exchange on TikTok",
       },
     ];

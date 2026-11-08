@@ -48,17 +48,31 @@ const RELEASE_1_0: LegalPolicyRelease = {
   dateLabel: "Effective date",
 };
 
+/**
+ * The contact email moved to info@thelax.art. Only the address changed, so this is a dated
+ * version and a change log entry; nothing asks anyone to accept the policies again.
+ */
+const RELEASE_1_1: LegalPolicyRelease = {
+  ...RELEASE_1_0,
+  version: "1.1",
+  lastUpdated: "2026-11-09",
+  changeLog: [
+    { version: "1.1", date: "2026-11-09", summary: "Contact email changed to info@thelax.art." },
+  ],
+};
+
 function policy(
   document: LegalPolicyDocument<LaxArtPolicySlug>,
   label: string,
   legacyPath: string,
+  release: LegalPolicyRelease = RELEASE_1_1,
 ): LaxArtPolicy {
   return {
     slug: document.slug,
     label,
     description: document.summary,
     document,
-    release: RELEASE_1_0,
+    release,
     artPath: `/legal/${document.slug}`,
     legacyPath,
   };
@@ -69,7 +83,8 @@ export const LAX_ART_POLICIES: Readonly<Record<LaxArtPolicySlug, LaxArtPolicy>> 
   returns: policy(RETURNS_POLICY, "Returns and cancellation", "/returns-cancellation"),
   shipping: policy(SHIPPING_POLICY, "Shipping and delivery", "/shipping-delivery"),
   privacy: policy(PRIVACY_POLICY, "Privacy notice", "/privacy-notice"),
-  cookies: policy(COOKIES_POLICY, "Cookie notice", "/cookie-notice"),
+  // The cookie notice quotes no email address, so it keeps version 1.0.
+  cookies: policy(COOKIES_POLICY, "Cookie notice", "/cookie-notice", RELEASE_1_0),
   complaints: policy(COMPLAINTS_POLICY, "Complaints and ADR", "/complaints-adr"),
   accessibility: policy(ACCESSIBILITY_POLICY, "Accessibility", "/accessibility"),
   "aml-identity-checks": policy(

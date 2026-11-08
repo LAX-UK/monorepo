@@ -47,11 +47,12 @@ export const LEGAL_DOCUMENT_SETS: Readonly<Record<LegalEntityId, LegalDocumentSe
     terms: { version: "2026-06-17", effectiveOn: "2026-06-17" },
     privacy: { version: "2026-04-21", effectiveOn: "2026-04-21" },
   },
-  // LAX Shop and lax.art publish one numbered release of the London Art Exchange policies.
+  // LAX Shop and lax.art publish one numbered release of the London Art Exchange policies. 1.1 only
+  // changed the contact email; sign-up records the version shown, and nothing asks anyone to accept again.
   "london-art-exchange": {
     entity: "london-art-exchange",
-    terms: { version: "1.0", effectiveOn: "2026-08-12" },
-    privacy: { version: "1.0", effectiveOn: "2026-08-12" },
+    terms: { version: "1.1", effectiveOn: "2026-11-09" },
+    privacy: { version: "1.1", effectiveOn: "2026-11-09" },
   },
 };
 
