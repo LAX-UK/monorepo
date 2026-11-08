@@ -17,9 +17,11 @@ import {
   EditorialVenueWriteBodySchema,
   SHOP_API_ERROR_CODES,
   ShopApiErrorBodySchema,
+  editorialBlocksPlainText,
 } from "@auction/shop-contracts";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { assertNoPrintClaims } from "../../../application/admin/print-claims.js";
 import type { EditorialUpdateOutcome } from "../../../application/ports/editorial.repository.js";
 import {
   type EditorialPreviewEntity,
@@ -33,6 +35,23 @@ import {
   requireShopStaffCapability,
 } from "../../../plugins/shop-admin-auth.js";
 import { registerAdminEditorialLinksRoutes } from "./admin-editorial-links.routes.js";
+
+/** A story's or exhibition's words may not make claims about a print (they belong in the facts). */
+function assertNoStoryClaims(body: {
+  title: string;
+  body: Parameters<typeof editorialBlocksPlainText>[0];
+  standfirst?: string | null;
+  summary?: string | null;
+  subtitle?: string | null;
+}): void {
+  assertNoPrintClaims([
+    body.title,
+    body.standfirst,
+    body.summary,
+    body.subtitle,
+    editorialBlocksPlainText(body.body),
+  ]);
+}
 
 const PreviewTokenBodySchema = Type.Object({
   entity: Type.Union([
@@ -550,6 +569,7 @@ export async function registerAdminEditorialRoutes(
       const subject = adminSubject(request);
       const body = request.body as Omit<Parameters<typeof repo.createStory>[0], "updatedBy">;
       assertStoryCover({ ...body, published: false });
+      assertNoStoryClaims(body);
       const created = await repo.createStory({ ...body, updatedBy: subject });
       return reply.status(201).send(created);
     },
@@ -572,6 +592,7 @@ export async function registerAdminEditorialRoutes(
       const body = request.body as Omit<Parameters<typeof repo.updateStory>[1], "updatedBy">;
       const current = await repo.getAdminStoryById(id);
       assertStoryCover({ ...body, published: current?.status === "published" });
+      assertNoStoryClaims(body);
       const outcome = await repo.updateStory(id, { ...body, updatedBy: subject });
       return sendUpdateOutcome(request, reply, "Story", outcome);
     },
@@ -650,6 +671,7 @@ export async function registerAdminEditorialRoutes(
       requireShopStaffCapability(request, "editorial.write");
       const subject = adminSubject(request);
       const body = request.body as Omit<Parameters<typeof repo.createExhibition>[0], "updatedBy">;
+      assertNoStoryClaims(body);
       const created = await repo.createExhibition({ ...body, updatedBy: subject });
       return reply.status(201).send(created);
     },
@@ -670,6 +692,7 @@ export async function registerAdminEditorialRoutes(
       const subject = adminSubject(request);
       const { id } = request.params as { id: string };
       const body = request.body as Omit<Parameters<typeof repo.updateExhibition>[1], "updatedBy">;
+      assertNoStoryClaims(body);
       const outcome = await repo.updateExhibition(id, { ...body, updatedBy: subject });
       return sendUpdateOutcome(request, reply, "Exhibition", outcome);
     },

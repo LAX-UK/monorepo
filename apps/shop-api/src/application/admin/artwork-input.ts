@@ -1,6 +1,7 @@
 import { type AdminArtworkUpdateBody, SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { ShopApiError } from "../../errors/shop-api-error.js";
 import type { ArtworkEditableFields } from "../ports/artwork-catalogue-admin.js";
+import { assertNoPrintClaims } from "./print-claims.js";
 
 type EditableBody = Omit<AdminArtworkUpdateBody, "expectedVersion">;
 
@@ -16,8 +17,15 @@ function required(value: string, what: string): string {
   return trimmed;
 }
 
-/** Trims staff-typed text; blank optional text is stored as no value, so pages fall back cleanly. */
-export function cleanArtworkFields(body: EditableBody): ArtworkEditableFields {
+/**
+ * Trims staff-typed text; blank optional text is stored as no value, so pages fall back cleanly.
+ * Text that makes a claim about the print is refused: that belongs in the Edition facts.
+ */
+export function cleanArtworkFields(
+  body: EditableBody,
+  options: { certificateStated?: boolean } = {},
+): ArtworkEditableFields {
+  assertNoPrintClaims([body.title, body.description, body.seoTitle, body.seoDescription], options);
   return {
     title: required(body.title, "Title"),
     artistId: body.artistId,

@@ -57,6 +57,12 @@ export {
   type RunUsage,
 } from "./edition-run.js";
 export {
+  PRINT_CLAIM_MESSAGE,
+  PRINT_CLAIM_WORDS,
+  findPrintClaimWord,
+  type PrintClaimWord,
+} from "./print-claims.js";
+export {
   AUTHORITY_GIVERS,
   CERTIFICATE_WITHIN_WEEKS_MAX,
   PARTY_NAME_MAX,
