@@ -1,11 +1,11 @@
 "use server";
 
+import { checkoutReturnUrls } from "@/lib/checkout/checkout-return-urls.server";
 import { orderCommercePath } from "@/lib/checkout/order-commerce-path.server";
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
 import { fetchShopCommerceCsrfForMutation } from "@/lib/shop-commerce-mutation.server";
 import { shopCommerceRequest } from "@/lib/shop-commerce-request.server";
 import { ShopContractParseError, parseCheckoutSession } from "@auction/shop-contracts";
-import { headers } from "next/headers";
 
 export async function resumeCheckoutPayment(
   orderId: string,
@@ -17,10 +17,7 @@ export async function resumeCheckoutPayment(
       message: commerceErrorMessage({ error: "csrf_failed" }, "Could not resume checkout."),
     };
   }
-  const headerStore = await headers();
-  const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host") ?? "localhost:3020";
-  const proto = headerStore.get("x-forwarded-proto") ?? "http";
-  const origin = `${proto}://${host}`;
+  const { successUrl, cancelUrl } = checkoutReturnUrls();
   const response = await shopCommerceRequest(
     await orderCommercePath(orderId, "resume-checkout"),
     {
@@ -30,8 +27,8 @@ export async function resumeCheckoutPayment(
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        successUrl: `${origin}/checkout/confirmation?orderId={ORDER_ID}`,
-        cancelUrl: `${origin}/checkout/cancel?orderId={ORDER_ID}`,
+        successUrl,
+        cancelUrl,
       }),
     },
     { applyCookies: true, csrfToken: csrf.token },
