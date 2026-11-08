@@ -647,7 +647,6 @@ export {
   AdminCertificateSchema,
   AdminPublisherSchema,
   AdminStampSchema,
-  PRINT_PARTY_NAME_MAX,
   AdminCompanionListingBodySchema,
   AdminEditionFactsBulkBodySchema,
   AdminEditionFactsBulkResponseSchema,
@@ -1074,3 +1073,13 @@ export {
   type AdminZohoUnlinkBody,
   type AdminZohoUnlinkResult,
 } from "./admin-zoho-link.js";
+
+export {
+  AdminPrintPartyCreateBodySchema,
+  AdminPrintPartyListSchema,
+  AdminPrintPartySchema,
+  PRINT_PARTY_NAME_MAX_LENGTH,
+  type AdminPrintParty,
+  type AdminPrintPartyCreateBody,
+  type AdminPrintPartyList,
+} from "./admin-print-parties.js";

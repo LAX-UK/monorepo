@@ -17,6 +17,7 @@ import { createSavedViewService } from "./application/saved-view.service.js";
 import type { ShopApiAppDeps } from "./container.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
 import { createInMemoryArtistApplications } from "./test-support/in-memory-artist-applications.js";
+import { createInMemoryPrintPartyStore } from "./test-support/in-memory-print-parties.js";
 import { createInMemorySavedViewRepository } from "./test-support/in-memory-saved-view-repository.js";
 import { createStubEnquiryInboxRepository } from "./test-support/stub-enquiry-inbox-repository.js";
 import { createStubProductionTaskRepository } from "./test-support/stub-production-task-repository.js";
@@ -258,6 +259,7 @@ export function createMinimalShopApiTestDeps(
       }),
       savedViews: createSavedViewService({ repository: createInMemorySavedViewRepository() }),
       releaseAlertSummary: { counts: async () => ({ confirmed: 0, awaitingConfirmation: 0 }) },
+      printParties: createInMemoryPrintPartyStore(),
       leads: new LeadsService({
         list: async () => ({
           rows: [],

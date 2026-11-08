@@ -65,11 +65,32 @@ const plain = editionFactsToPlain;
  * a shop admin can correct them, with a reason, and the orders already paid keep how they were
  * described. Confirming records who checked the facts and when; publishing waits for it.
  */
-export function createSaveEditionFactsService(deps: { uow: EditionRunUnitOfWork; clock: Clock }) {
+export function createSaveEditionFactsService(deps: {
+  uow: EditionRunUnitOfWork;
+  clock: Clock;
+  /** Whether certificates issued by London Art Exchange are switched on; off until the lawyer clears them. */
+  laxCertificatesEnabled?: () => boolean;
+}) {
   const { uow, clock } = deps;
+  const laxCertificatesEnabled = deps.laxCertificatesEnabled ?? (() => false);
+
+  /** A certificate London Art Exchange issues stays behind the certificates flag. */
+  function assertIssuerAllowed(facts: FactsInput): void {
+    const { certificate } = facts;
+    if (
+      certificate.kind === "included" &&
+      certificate.issuer === "lax" &&
+      !laxCertificatesEnabled()
+    ) {
+      throw new ShopDomainError(
+        "Certificates issued by London Art Exchange are not switched on yet",
+      );
+    }
+  }
 
   /** Checks and stores facts on a run already locked in `tx`. Returns the new facts version. */
   async function apply(tx: EditionRunTx, input: ApplyFactsInput): Promise<string> {
+    assertIssuerAllowed(input.facts);
     const at = clock.now();
     const facts: EditionFacts = {
       ...input.facts,
@@ -226,6 +247,7 @@ export function createSaveEditionFactsService(deps: { uow: EditionRunUnitOfWork;
                 continue;
               }
               try {
+                assertIssuerAllowed(command.facts);
                 assertEditionFacts(run.spec, { ...command.facts, confirmed: null });
               } catch (error) {
                 if (!(error instanceof ShopDomainError)) throw error;

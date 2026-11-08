@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { PRINT_PARTY_NAME_MAX_LENGTH } from "./admin-print-parties.js";
 
 /**
  * Staff contracts for edition runs: the run an artwork sells (LAX standard, custom limited, open,
@@ -139,8 +140,6 @@ export const AdminCertificateSchema = Type.Union([
   ),
 ]);
 
-export const PRINT_PARTY_NAME_MAX = 80;
-
 /** A blind stamp on the print. "none" and an absent value both say nothing. */
 export const AdminStampSchema = Type.Union([
   Type.Literal("none"),
@@ -156,7 +155,7 @@ export const AdminPublisherSchema = Type.Union([
   Type.Object(
     {
       kind: Type.Literal("named"),
-      name: Type.String({ minLength: 1, maxLength: PRINT_PARTY_NAME_MAX }),
+      name: Type.String({ minLength: 1, maxLength: PRINT_PARTY_NAME_MAX_LENGTH }),
     },
     { additionalProperties: false },
   ),
@@ -175,7 +174,10 @@ export const AdminEditionFactsSchema = Type.Object(
     stamp: Type.Optional(AdminStampSchema),
     /** A name from the printers and publishers list; absent says nothing. */
     printedBy: Type.Optional(
-      Type.Union([Type.String({ minLength: 1, maxLength: PRINT_PARTY_NAME_MAX }), Type.Null()]),
+      Type.Union([
+        Type.String({ minLength: 1, maxLength: PRINT_PARTY_NAME_MAX_LENGTH }),
+        Type.Null(),
+      ]),
     ),
     publishedBy: Type.Optional(Type.Union([AdminPublisherSchema, Type.Null()])),
   },
