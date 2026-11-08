@@ -12,11 +12,13 @@ export default function ResultsLoading() {
         </div>
       }
     >
-      <ul className="flex flex-col gap-4">
+      {/* Tall enough to fill a screen, so the footer is below the fold when the rows arrive and
+          does not jump (a real row is about 350px on a phone). */}
+      <ul className="flex min-h-[100svh] flex-col gap-4">
         {[0, 1, 2].map((key) => (
           <li
             key={key}
-            className="h-40 animate-pulse rounded-lax-card border border-lax-line bg-surface-container-low"
+            className="h-[22rem] animate-pulse rounded-lax-card border border-lax-line bg-surface-container-low md:h-40"
           />
         ))}
       </ul>

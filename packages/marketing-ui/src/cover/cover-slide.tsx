@@ -28,7 +28,13 @@ import type { PhotoScrims } from "./cover-scrim.js";
 import { CoverSeasons } from "./cover-seasons.js";
 import { CoverTimeLine } from "./cover-time-line.js";
 import { coverTitleClass } from "./cover-type-scale.js";
-import type { CoverMedia, CoverSide, CoverSlide, CoverTone } from "./cover-types.js";
+import type {
+  CoverMedia,
+  CoverSide,
+  CoverSlide,
+  CoverSrcSetFor,
+  CoverTone,
+} from "./cover-types.js";
 
 const BADGE_BASE =
   "inline-flex h-5 shrink-0 items-center rounded-[4px] px-2 font-body text-xs font-medium leading-4";
@@ -171,6 +177,9 @@ export type CoverSlideViewProps = {
   media: CoverMedia | null;
   Link: ElementType | undefined;
   priority: boolean;
+  /** Resized files for the cover's photographs, when the page can make them. */
+  srcSetFor?: CoverSrcSetFor | undefined;
+  onSrcSetFallback?: ((src: string) => void) | undefined;
   /** The cover starts under a transparent header: same layout for every slide of the cover. */
   underHeader?: boolean;
   onMediaFail: () => void;
@@ -184,6 +193,8 @@ export function CoverSlideView({
   media,
   Link,
   priority,
+  srcSetFor,
+  onSrcSetFallback,
   underHeader = false,
   onMediaFail,
   pager,
@@ -276,12 +287,19 @@ export function CoverSlideView({
         >
           <div className={cn("absolute inset-0", settles && "marketing-cover-settle")}>
             {ground.mode === "photo" ? (
-              <CoverPhoto media={ground.media} priority={priority} onFail={onMediaFail} />
+              <CoverPhoto
+                media={ground.media}
+                priority={priority}
+                srcSetFor={srcSetFor}
+                onFallback={onSrcSetFallback}
+                onFail={onMediaFail}
+              />
             ) : (
               <CoverPlate
                 media={ground.media}
                 credit={creditNode}
                 priority={priority}
+                onFallback={onSrcSetFallback}
                 onFail={onMediaFail}
               />
             )}

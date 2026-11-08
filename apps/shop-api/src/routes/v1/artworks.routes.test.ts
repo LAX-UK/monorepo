@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createShopApiApp } from "../../app.js";
 import { createListPublicArtworksHandler } from "../../application/handlers/list-public-artworks.handler.js";
-import { createMinimalShopApiTestDeps } from "../../test-app-deps.js";
+import { createMinimalShopApiTestDeps, testDeliveryRegionsState } from "../../test-app-deps.js";
 import {
   mockArtworkDetail,
   mockArtworkSummary,
@@ -10,6 +10,7 @@ import {
 function createCatalogueDeps() {
   return createMinimalShopApiTestDeps({
     catalogue: {
+      deliveryRegions: { read: async () => testDeliveryRegionsState() },
       listPublicArtworks: async () => ({
         items: [mockArtworkSummary()],
       }),

@@ -43,7 +43,7 @@ function setup(role: "staff" | "client" = "staff") {
   const changes = { assign: vi.fn().mockResolvedValue(undefined), remove: vi.fn() };
   const roles = {
     listCurrent: vi.fn().mockResolvedValue([assignment()]),
-    listActiveRoles: vi.fn(),
+    listActiveRoles: vi.fn().mockResolvedValue([]),
     countOtherActiveAdministrators: vi.fn().mockResolvedValue(2),
   };
   const users = {
@@ -170,6 +170,64 @@ describe("StaffRolesAdminService changes", () => {
       reason: "Leaving",
     });
     expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "last_administrator" });
+  });
+
+  describe("changing your own roles", () => {
+    const own = { userId: "ada", actorUserId: "ada", role: "finance" as const, reason: "Cover" };
+
+    it("is refused for anyone who is not an Administrator, whatever their other powers", async () => {
+      const { svc, changes, roles } = setup();
+      roles.listActiveRoles.mockResolvedValue(["sales_manager"]);
+      for (const result of [
+        await svc.assign(own),
+        await svc.remove({ ...own, reason: "Stepping back" }),
+      ]) {
+        expect(result._unsafeUnwrapErr()).toEqual({
+          status: 403,
+          code: "cannot_change_own_role",
+          message: "You cannot change your own staff role",
+        });
+      }
+      expect(changes.assign).not.toHaveBeenCalled();
+      expect(changes.remove).not.toHaveBeenCalled();
+    });
+
+    it("is refused for someone with no active role at all", async () => {
+      const { svc, changes } = setup();
+      expect((await svc.assign(own))._unsafeUnwrapErr()).toMatchObject({
+        status: 403,
+        code: "cannot_change_own_role",
+      });
+      expect(changes.assign).not.toHaveBeenCalled();
+    });
+
+    it("is allowed to an Administrator, whose change goes through the roster", async () => {
+      const { svc, changes, roles } = setup();
+      roles.listActiveRoles.mockResolvedValue(["administrator"]);
+      expect((await svc.assign(own)).isOk()).toBe(true);
+      expect(changes.assign).toHaveBeenCalledWith(own);
+    });
+
+    it("still keeps the last Administrator when an Administrator removes their own role", async () => {
+      const { svc, changes, roles } = setup();
+      roles.listActiveRoles.mockResolvedValue(["administrator"]);
+      changes.remove.mockRejectedValue(
+        new StaffRoleAssignmentRefused("last_administrator", "administrator"),
+      );
+      const result = await svc.remove({
+        userId: "ada",
+        actorUserId: "ada",
+        role: "administrator",
+        reason: "Leaving",
+      });
+      expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "last_administrator" });
+    });
+
+    it("does not look at the actor's roles when changing someone else's", async () => {
+      const { svc, roles } = setup();
+      await svc.assign({ ...own, actorUserId: "admin-1" });
+      expect(roles.listActiveRoles).not.toHaveBeenCalled();
+    });
   });
 
   it("lets other failures surface", async () => {

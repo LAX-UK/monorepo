@@ -60,4 +60,15 @@ describe("FormErrorSummary", () => {
     rerender(<Form shown={errors} focusKey={2} />);
     expect(screen.getByRole("alert")).toHaveFocus();
   });
+
+  it("sets each bullet apart from its link, so a message that wraps keeps it on the first line", () => {
+    render(<Form shown={errors} />);
+    const items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    for (const item of items) {
+      expect(item).toHaveClass("flex");
+      expect(item.firstElementChild).toHaveAttribute("aria-hidden", "true");
+      expect(item.querySelector("a")?.previousElementSibling).toBe(item.firstElementChild);
+    }
+  });
 });

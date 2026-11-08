@@ -62,6 +62,7 @@ export {
   checkStaffRoleSet,
   forbiddenStaffRoleCombination,
   isForbiddenStaffRoleCombination,
+  mayChangeOwnStaffRoles,
 } from "./role-policy/staff-role-assignment-rules.js";
 export type { AppShellLayout, CapabilityRequirement } from "./role-policy/role-route-policy.js";
 export {
