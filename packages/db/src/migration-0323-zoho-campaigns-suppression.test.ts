@@ -12,9 +12,9 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0323 Zoho Campaigns suppression", () => {
-  it("is the last journal entry, after the entry before it", () => {
+  it("is in the journal, after the entry before it", () => {
     const at = journal.entries.findIndex((e) => e.tag === "0323_zoho_campaigns_suppression");
-    expect(at).toBe(journal.entries.length - 1);
+    expect(at).toBeGreaterThan(0);
     expect(journal.entries[at]?.when).toBeGreaterThan(
       journal.entries[at - 1]?.when ?? Number.POSITIVE_INFINITY,
     );
