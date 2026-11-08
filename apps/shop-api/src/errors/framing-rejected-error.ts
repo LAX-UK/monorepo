@@ -10,7 +10,7 @@ const SUMMARY: Record<FramingIssueReason, string> = {
   lead_time_order: "has a longest lead time shorter than the shortest",
   price_missing: "needs a price for every size",
   price_invalid: "has a price that is not allowed",
-  placeholder_prices: "still has placeholder prices, so it cannot be offered",
+  placeholder_price: "still has a placeholder price, so it cannot be offered",
 };
 
 /** A framing option refused as a whole; names every field at fault so LAX Admin can mark each. */

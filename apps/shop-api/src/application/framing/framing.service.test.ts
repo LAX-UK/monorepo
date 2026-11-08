@@ -48,7 +48,7 @@ describe("creating a framing option", () => {
       code: "walnut-frame",
       name: "Walnut frame",
       status: "draft",
-      pricesPlaceholder: false,
+      placeholderBands: [],
       editionCount: 0,
     });
     expect(audit).toEqual([
@@ -112,47 +112,85 @@ describe("editing a framing option", () => {
     body: { ...body, name: "Natural oak frame", ...changes, expectedVersion: current.version },
   });
 
-  it("keeps the prices placeholders while none of them changes", async () => {
+  it("keeps every band a placeholder while none of its prices changes", async () => {
     const { service, stored } = seeded();
     const current = (await service.list()).items[0] as { version: string };
     const saved = await service.update(
       edit(current, { pricesPence: OAK_PRICES, name: "Oak frame, renamed" }),
     );
-    expect(saved).toMatchObject({ name: "Oak frame, renamed", pricesPlaceholder: true });
+    expect(saved).toMatchObject({
+      name: "Oak frame, renamed",
+      placeholderBands: ["up_to_40x50", "up_to_60x80", "up_to_80x100"],
+    });
     expect(stored.get(OAK)?.status).toBe("draft");
   });
 
-  it("makes the prices real once one of them changes", async () => {
+  it("makes only the band that changed real", async () => {
     const { service } = seeded();
     const current = (await service.list()).items[0] as { version: string };
     const saved = await service.update(
       edit(current, { pricesPence: { ...OAK_PRICES, up_to_60x80: 21000 } }),
     );
-    expect(saved.pricesPlaceholder).toBe(false);
     expect(saved.pricesPence.up_to_60x80).toBe(21000);
+    expect(saved.placeholderBands).toEqual(["up_to_40x50", "up_to_80x100"]);
   });
 
-  it("refuses to offer placeholder prices, against the Offered switch", async () => {
+  it("will not offer an option when only one band has been changed, and names the others", async () => {
     const { service, stored } = seeded();
     const current = (await service.list()).items[0] as { version: string };
     const issues = await issuesOf(
-      service.update(edit(current, { pricesPence: OAK_PRICES, offered: true })),
+      service.update(
+        edit(current, { pricesPence: { ...OAK_PRICES, up_to_60x80: 21000 }, offered: true }),
+      ),
     );
-    expect(issues).toEqual([{ field: "offered", reason: "placeholder_prices" }]);
+    expect(issues).toEqual([
+      { field: "price:up_to_40x50", reason: "placeholder_price" },
+      { field: "price:up_to_80x100", reason: "placeholder_price" },
+    ]);
     expect(stored.get(OAK)?.status).toBe("draft");
+    expect(stored.get(OAK)?.placeholderBands).toHaveLength(3);
   });
 
-  it("offers an option whose prices were changed in the same save", async () => {
+  it("offers an option once every band is changed or confirmed", async () => {
     const { service } = seeded();
     const current = (await service.list()).items[0] as { version: string };
     const saved = await service.update(
-      edit(current, { pricesPence: { ...OAK_PRICES, up_to_40x50: 13500 }, offered: true }),
+      edit(current, {
+        pricesPence: { ...OAK_PRICES, up_to_40x50: 13500 },
+        confirmedBands: ["up_to_60x80", "up_to_80x100"],
+        offered: true,
+      }),
     );
-    expect(saved).toMatchObject({ status: "active", pricesPlaceholder: false });
+    expect(saved).toMatchObject({ status: "active", placeholderBands: [] });
+    expect(saved.pricesPence).toEqual({ ...OAK_PRICES, up_to_40x50: 13500 });
+  });
+
+  it("lets staff confirm a price that already equals the placeholder", async () => {
+    const { service } = seeded();
+    const current = (await service.list()).items[0] as { version: string };
+    const saved = await service.update(
+      edit(current, { pricesPence: OAK_PRICES, confirmedBands: ["up_to_60x80"] }),
+    );
+    expect(saved.placeholderBands).toEqual(["up_to_40x50", "up_to_80x100"]);
+    expect(saved.pricesPence.up_to_60x80).toBe(OAK_PRICES.up_to_60x80);
+  });
+
+  it("remembers a confirmed band on a later save", async () => {
+    const { service } = seeded();
+    const first = await service.update(
+      edit((await service.list()).items[0] as { version: string }, {
+        pricesPence: OAK_PRICES,
+        confirmedBands: ["up_to_60x80"],
+      }),
+    );
+    const second = await service.update(
+      edit(first, { pricesPence: OAK_PRICES, name: "Natural oak frame" }),
+    );
+    expect(second.placeholderBands).toEqual(["up_to_40x50", "up_to_80x100"]);
   });
 
   it("pauses an active option when Offered is turned off", async () => {
-    const { service } = seeded({ status: "active", pricesPlaceholder: false });
+    const { service } = seeded({ status: "active", placeholderBands: [] });
     const current = (await service.list()).items[0] as { version: string };
     const saved = await service.update(edit(current, { pricesPence: OAK_PRICES, offered: false }));
     expect(saved.status).toBe("paused");
@@ -183,15 +221,15 @@ describe("editing a framing option", () => {
     expect(audit[0]).toMatchObject({
       action: "framing.update",
       targetId: OAK,
-      beforeJson: { pricesPlaceholder: true },
-      afterJson: { pricesPlaceholder: false },
+      beforeJson: { placeholderBands: ["up_to_40x50", "up_to_60x80", "up_to_80x100"] },
+      afterJson: { placeholderBands: ["up_to_40x50", "up_to_80x100"] },
     });
   });
 });
 
 describe("offering and pausing an option", () => {
   it("pauses an active option and audits the change", async () => {
-    const { service, audit } = seeded({ status: "active", pricesPlaceholder: false });
+    const { service, audit } = seeded({ status: "active", placeholderBands: [] });
     const current = (await service.list()).items[0] as { version: string };
     const paused = await service.offer({
       ...withKey(),
@@ -207,7 +245,7 @@ describe("offering and pausing an option", () => {
   });
 
   it("offers a paused option again", async () => {
-    const { service } = seeded({ status: "paused", pricesPlaceholder: false });
+    const { service } = seeded({ status: "paused", placeholderBands: [] });
     const current = (await service.list()).items[0] as { version: string };
     const offered = await service.offer({
       ...withKey(),
@@ -217,7 +255,7 @@ describe("offering and pausing an option", () => {
     expect(offered.status).toBe("active");
   });
 
-  it("will not offer an option whose prices are still placeholders", async () => {
+  it("will not offer an option while any price is a placeholder", async () => {
     const { service, stored } = seeded();
     const current = (await service.list()).items[0] as { version: string };
     const issues = await issuesOf(
@@ -227,7 +265,11 @@ describe("offering and pausing an option", () => {
         body: { offered: true, expectedVersion: current.version },
       }),
     );
-    expect(issues).toEqual([{ field: "offered", reason: "placeholder_prices" }]);
+    expect(issues).toEqual([
+      { field: "price:up_to_40x50", reason: "placeholder_price" },
+      { field: "price:up_to_60x80", reason: "placeholder_price" },
+      { field: "price:up_to_80x100", reason: "placeholder_price" },
+    ]);
     expect(stored.get(OAK)?.status).toBe("draft");
   });
 

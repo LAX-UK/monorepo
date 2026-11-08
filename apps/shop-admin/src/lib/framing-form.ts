@@ -13,6 +13,7 @@ import {
   FRAMING_NAME_MAX_LENGTH,
   FRAMING_PRICE_MAX_PENCE,
   type FramingBandCode,
+  type FramingBandPrices,
   type FramingFrame,
   type FramingGlazing,
   type FramingHanging,
@@ -21,7 +22,7 @@ import {
   type FramingPrices,
   framingBandLabel,
   framingSaveIssues,
-  pricesStayPlaceholder,
+  nextPlaceholderBands,
 } from "@auction/shop-domain";
 import type { EnumOption } from "@auction/staff-ui";
 import { type FieldErrors, collectFieldErrors } from "./form-validation";
@@ -43,6 +44,8 @@ export type FramingFormValues = {
   leadTimeMaxDays: string;
   /** Whole pence including VAT, or null while empty. */
   prices: Record<FramingBandCode, number | null>;
+  /** Placeholder bands whose current price staff have confirmed as right. */
+  confirmedBands: FramingBandCode[];
   offered: boolean;
 };
 
@@ -68,6 +71,7 @@ export function framingFormDefaults(option: FramingOption | null): FramingFormVa
       leadTimeMinDays: "",
       leadTimeMaxDays: "",
       prices: { up_to_40x50: null, up_to_60x80: null, up_to_80x100: null },
+      confirmedBands: [],
       offered: false,
     };
   }
@@ -80,6 +84,7 @@ export function framingFormDefaults(option: FramingOption | null): FramingFormVa
     leadTimeMinDays: String(option.leadTimeMinDays),
     leadTimeMaxDays: String(option.leadTimeMaxDays),
     prices: { ...option.pricesPence },
+    confirmedBands: [],
     offered: option.status === "active",
   };
 }
@@ -102,21 +107,44 @@ function bodyOf(values: FramingFormValues): FramingOptionBody {
     leadTimeMaxDays: wholeDays(values.leadTimeMaxDays),
     pricesPence: values.prices,
     offered: values.offered,
+    confirmedBands: values.confirmedBands,
   };
 }
 
-/** True while the option still carries its launch placeholder prices, unchanged. */
-export function stillPlaceholder(
-  previous: Pick<FramingOption, "pricesPlaceholder" | "pricesPence"> | null,
+/** The option's price in each band with whether it is still a placeholder. */
+function bandPricesOf(
+  option: Pick<FramingOption, "pricesPence" | "placeholderBands">,
+): FramingBandPrices {
+  const bands = {} as FramingBandPrices;
+  for (const band of FRAMING_BAND_CODES) {
+    bands[band] = {
+      pricePence: option.pricesPence[band],
+      placeholder: option.placeholderBands.includes(band),
+    };
+  }
+  return bands;
+}
+
+/**
+ * The bands still waiting for the framer's real price, with the prices as typed: a band is real
+ * once its price differs from the seeded one or staff have confirmed it. While a price is cleared
+ * the band keeps its status, so clearing and retyping does not lose it.
+ */
+export function stillPlaceholderBands(
+  previous: Pick<FramingOption, "pricesPence" | "placeholderBands"> | null,
   prices: Record<FramingBandCode, number | null>,
-): boolean {
-  if (!previous) return false;
-  const complete = FRAMING_BAND_CODES.every((band) => prices[band] !== null);
-  if (!complete) return previous.pricesPlaceholder;
-  return pricesStayPlaceholder(
-    { pricesPence: previous.pricesPence, placeholder: previous.pricesPlaceholder },
-    prices as FramingPrices,
-  );
+  confirmed: readonly FramingBandCode[],
+): FramingBandCode[] {
+  if (!previous) return [];
+  const typed = FRAMING_BAND_CODES.every((band) => prices[band] !== null);
+  if (!typed) {
+    return previous.placeholderBands.filter(
+      (band) =>
+        !confirmed.includes(band) &&
+        (prices[band] === null || prices[band] === previous.pricesPence[band]),
+    );
+  }
+  return nextPlaceholderBands(bandPricesOf(previous), prices as FramingPrices, confirmed);
 }
 
 /** The summary and field messages for one issue; each reads on its own, without the label. */
@@ -136,8 +164,8 @@ export function framingIssueMessage(issue: FramingIssue): string {
       return `Enter a price for ${bandOf(issue.field).toLowerCase()}`;
     case "price_invalid":
       return `Enter a price from £0.01 to ${MAX_PRICE_LABEL} for ${bandOf(issue.field).toLowerCase()}`;
-    case "placeholder_prices":
-      return "Replace the placeholder prices with the framer's prices before offering this option";
+    case "placeholder_price":
+      return `Enter the framer's price for ${bandOf(issue.field).toLowerCase()}, or confirm the price shown, before offering this option`;
   }
 }
 
@@ -156,12 +184,12 @@ export type FramingFormResult =
  */
 export function validateFramingForm(
   values: FramingFormValues,
-  previous: Pick<FramingOption, "pricesPlaceholder" | "pricesPence"> | null,
+  previous: Pick<FramingOption, "placeholderBands" | "pricesPence"> | null,
 ): FramingFormResult {
   const body = bodyOf(values);
   const issues = framingSaveIssues(body, {
     offered: values.offered,
-    pricesPlaceholder: stillPlaceholder(previous, values.prices),
+    placeholderBands: stillPlaceholderBands(previous, values.prices, values.confirmedBands),
   });
   if (issues.length === 0) return { ok: true, value: body };
   const checks: Record<string, string | null> = {};

@@ -2,6 +2,8 @@ import type { FramingOption } from "@auction/shop-contracts";
 import {
   FRAMING_GLAZING_LABELS,
   FRAMING_MOUNT_LABELS,
+  type FramingFrame,
+  framingBandLabel,
   framingLeadTimeLabel,
 } from "@auction/shop-domain";
 import { presentStatus } from "./staff-status";
@@ -34,9 +36,34 @@ export function framingUsedOn(option: Pick<FramingOption, "editionCount">): stri
 
 /** How many options still carry the launch placeholder prices. */
 export function placeholderOptionCount(
-  options: readonly Pick<FramingOption, "pricesPlaceholder">[],
+  options: readonly Pick<FramingOption, "placeholderBands">[],
 ) {
-  return options.filter((option) => option.pricesPlaceholder).length;
+  return options.filter((option) => option.placeholderBands.length > 0).length;
+}
+
+/** For the notice: each option that still needs prices, with the sizes waiting for one. */
+export function placeholderSummary(
+  options: readonly Pick<FramingOption, "id" | "name" | "placeholderBands">[],
+): { id: string; name: string; bands: string[] }[] {
+  return options
+    .filter((option) => option.placeholderBands.length > 0)
+    .map((option) => ({
+      id: option.id,
+      name: option.name,
+      bands: option.placeholderBands.map((band) => framingBandLabel(band)),
+    }));
+}
+
+/** The colour of a frame finish, drawn as a small swatch beside the option's name. */
+const FRAME_SWATCH: Record<FramingFrame, string> = {
+  black_wood: "#1d1d1d",
+  white_wood: "#f6f5f1",
+  natural_oak: "#b48b5a",
+};
+
+/** The swatch colour for a frame; every finish has one. */
+export function frameSwatchColour(frame: FramingFrame): string {
+  return FRAME_SWATCH[frame];
 }
 
 export type FramingRowAction =
@@ -44,21 +71,21 @@ export type FramingRowAction =
   | { kind: "pause" }
   | { kind: "offer"; blockedReason?: string };
 
-export const PLACEHOLDER_BLOCK_REASON = "Replace the placeholder prices first";
+export const PLACEHOLDER_BLOCK_REASON = "Replace or confirm the placeholder prices first";
 
 /**
  * The actions a row offers. Staff without edit rights get none. An active option can be paused;
  * a draft or paused one can be offered, unless its prices are still the launch placeholders.
  */
 export function framingRowActions(
-  option: Pick<FramingOption, "status" | "pricesPlaceholder">,
+  option: Pick<FramingOption, "status" | "placeholderBands">,
   options: { canEdit: boolean },
 ): FramingRowAction[] {
   if (!options.canEdit) return [];
   if (option.status === "active") return [{ kind: "edit" }, { kind: "pause" }];
   return [
     { kind: "edit" },
-    option.pricesPlaceholder
+    option.placeholderBands.length > 0
       ? { kind: "offer", blockedReason: PLACEHOLDER_BLOCK_REASON }
       : { kind: "offer" },
   ];

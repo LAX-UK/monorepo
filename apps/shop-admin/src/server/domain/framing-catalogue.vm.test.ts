@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   PLACEHOLDER_BLOCK_REASON,
+  frameSwatchColour,
   framingDetails,
   framingLeadTime,
   framingRowActions,
   framingUsedOn,
   pauseDescription,
   placeholderOptionCount,
+  placeholderSummary,
   presentFramingStatus,
 } from "./framing-catalogue.vm";
 
@@ -33,11 +35,28 @@ describe("framing catalogue view model", () => {
   it("counts the options that still have placeholder prices", () => {
     expect(
       placeholderOptionCount([
-        { pricesPlaceholder: true },
-        { pricesPlaceholder: false },
-        { pricesPlaceholder: true },
+        { placeholderBands: ["up_to_60x80"] },
+        { placeholderBands: [] },
+        { placeholderBands: ["up_to_40x50", "up_to_80x100"] },
       ]),
     ).toBe(2);
+  });
+
+  it("names each option's waiting sizes for the notice, and leaves out options that are done", () => {
+    expect(
+      placeholderSummary([
+        { id: "a", name: "Natural oak frame", placeholderBands: ["up_to_40x50", "up_to_80x100"] },
+        { id: "b", name: "Black wood frame", placeholderBands: [] },
+      ]),
+    ).toEqual([
+      { id: "a", name: "Natural oak frame", bands: ["Up to 40 × 50 cm", "Up to 80 × 100 cm"] },
+    ]);
+  });
+
+  it("gives every frame finish its own swatch colour", () => {
+    const colours = (["black_wood", "white_wood", "natural_oak"] as const).map(frameSwatchColour);
+    expect(new Set(colours).size).toBe(3);
+    expect(colours.every((colour) => /^#[0-9a-f]{6}$/i.test(colour))).toBe(true);
   });
 
   it("names the three statuses in words", () => {
@@ -50,25 +69,28 @@ describe("framing catalogue view model", () => {
 describe("framingRowActions", () => {
   it("offers staff without edit rights nothing", () => {
     expect(
-      framingRowActions({ status: "active", pricesPlaceholder: false }, { canEdit: false }),
+      framingRowActions({ status: "active", placeholderBands: [] }, { canEdit: false }),
     ).toEqual([]);
   });
 
   it("lets an active option be edited or paused", () => {
     expect(
-      framingRowActions({ status: "active", pricesPlaceholder: false }, { canEdit: true }),
+      framingRowActions({ status: "active", placeholderBands: [] }, { canEdit: true }),
     ).toEqual([{ kind: "edit" }, { kind: "pause" }]);
   });
 
   it("lets a paused option be offered again", () => {
     expect(
-      framingRowActions({ status: "paused", pricesPlaceholder: false }, { canEdit: true }),
+      framingRowActions({ status: "paused", placeholderBands: [] }, { canEdit: true }),
     ).toEqual([{ kind: "edit" }, { kind: "offer" }]);
   });
 
   it("blocks offering a draft with placeholder prices, and says why", () => {
     expect(
-      framingRowActions({ status: "draft", pricesPlaceholder: true }, { canEdit: true }),
+      framingRowActions(
+        { status: "draft", placeholderBands: ["up_to_40x50", "up_to_60x80", "up_to_80x100"] },
+        { canEdit: true },
+      ),
     ).toEqual([{ kind: "edit" }, { kind: "offer", blockedReason: PLACEHOLDER_BLOCK_REASON }]);
   });
 });

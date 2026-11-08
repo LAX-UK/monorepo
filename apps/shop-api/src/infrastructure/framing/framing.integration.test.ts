@@ -63,7 +63,7 @@ describe.skipIf(!hasShopIntegrationDb)("The framing catalogue against the databa
       });
     }
     // Staff may have worked on them since the seed; a fresh database has them as drafts.
-    const untouched = launch.filter(({ found }) => found?.pricesPlaceholder);
+    const untouched = launch.filter(({ found }) => found?.placeholderBands.length === 3);
     for (const { found } of untouched) expect(found?.status).toBe("draft");
     const order = items.map((item) => item.code);
     expect(order.indexOf("black-wood")).toBeLessThan(order.indexOf("natural-oak-float"));
@@ -86,7 +86,7 @@ describe.skipIf(!hasShopIntegrationDb)("The framing catalogue against the databa
         offered: false,
       },
     });
-    expect(created).toMatchObject({ name, status: "draft", pricesPlaceholder: false });
+    expect(created).toMatchObject({ name, status: "draft", placeholderBands: [] });
 
     const offered = await service.offer({
       ...actor(),
@@ -212,13 +212,15 @@ describe.skipIf(!hasShopIntegrationDb)("The framing catalogue against the databa
     expect(offer?.priceOverridePence).toBe(21000);
   });
 
-  it("holds the rules in the table too: no active option with placeholder prices", async () => {
+  it("holds the rules in the table too: no active option while a band is a placeholder", async () => {
     const [seeded] = await ownerPool
-      .query("select id from shop_framing_option where prices_placeholder limit 1")
+      .query(
+        "select o.id from shop_framing_option o where o.status = 'draft' and exists (select 1 from shop_framing_option_price p where p.option_id = o.id and p.is_placeholder) limit 1",
+      )
       .then((result) => result.rows as { id: string }[]);
     if (!seeded) return;
     await expect(
-      ownerPool.query(`update shop_framing_option set status = 'active' where id = $1`, [
+      ownerPool.query("update shop_framing_option set status = 'active' where id = $1", [
         seeded.id,
       ]),
     ).rejects.toThrow(/shop_framing_option_placeholder_not_offered_ck/);
@@ -227,9 +229,83 @@ describe.skipIf(!hasShopIntegrationDb)("The framing catalogue against the databa
         seeded.id,
       ]),
     ).rejects.toThrow(/shop_framing_option_lead_time_ck/);
-    // Leave the seeded row as it was found.
-    const rows = await shopPoolCheck(seeded.id);
-    expect(rows).toBe("draft");
+    expect(await shopPoolCheck(seeded.id)).toBe("draft");
+  });
+
+  it("will not let a price become a placeholder on an active option, and one band alone is not enough", async () => {
+    const { service } = serviceOn();
+    const created = await service.create({
+      ...actor(),
+      body: {
+        name: `Live ${integrationSuffix("framing")}`,
+        frame: "black_wood",
+        mount: "window_conservation",
+        glazing: "uv_acrylic",
+        hanging: "d_rings_cord",
+        leadTimeMinDays: 10,
+        leadTimeMaxDays: 15,
+        pricesPence: { up_to_40x50: 12000, up_to_60x80: 19500, up_to_80x100: 26000 },
+        offered: true,
+      },
+    });
+    expect(created.status).toBe("active");
+    await expect(
+      ownerPool.query(
+        "update shop_framing_option_price set is_placeholder = true where option_id = $1 and band = 'up_to_60x80'",
+        [created.id],
+      ),
+    ).rejects.toThrow(/shop_framing_option_placeholder_not_offered_ck/);
+  });
+
+  it("offers an option with placeholder prices only once every band is changed or confirmed", async () => {
+    const { service } = serviceOn();
+    // A copy of a seeded option, so the launch options themselves are left as they were.
+    const code = `placeholder-${integrationSuffix("framing")}`;
+    const inserted = await ownerPool.query(
+      `insert into shop_framing_option
+         (code, name, frame, mount, glazing, hanging, lead_time_min_days, lead_time_max_days, status, sort_order)
+       values ($1, $2, 'natural_oak', 'window_conservation', 'uv_acrylic', 'd_rings_cord', 10, 15, 'draft', 900)
+       returning id`,
+      [code, `Placeholder ${code}`],
+    );
+    const optionId = (inserted.rows[0] as { id: string }).id;
+    await ownerPool.query(
+      `insert into shop_framing_option_price (option_id, band, price_pence, is_placeholder)
+       values ($1, 'up_to_40x50', 14000, true), ($1, 'up_to_60x80', 22500, true), ($1, 'up_to_80x100', 29500, true)`,
+      [optionId],
+    );
+    const seeded = (await service.list()).items.find((item) => item.id === optionId);
+    expect(seeded?.placeholderBands).toHaveLength(3);
+    if (!seeded) return;
+
+    const body = {
+      name: seeded.name,
+      frame: seeded.frame,
+      mount: seeded.mount,
+      glazing: seeded.glazing,
+      hanging: seeded.hanging,
+      leadTimeMinDays: seeded.leadTimeMinDays,
+      leadTimeMaxDays: seeded.leadTimeMaxDays,
+      offered: true,
+      expectedVersion: seeded.version,
+    };
+    // One band changed: the other two are still placeholders, so it cannot be offered.
+    const oneBand = { ...seeded.pricesPence, up_to_60x80: 21000 };
+    await expect(
+      service.update({ ...actor(), optionId, body: { ...body, pricesPence: oneBand } }),
+    ).rejects.toThrow(/placeholder price/);
+    // The other two confirmed as right: now every band is real.
+    const offered = await service.update({
+      ...actor(),
+      optionId,
+      body: {
+        ...body,
+        pricesPence: oneBand,
+        confirmedBands: ["up_to_40x50", "up_to_80x100"],
+      },
+    });
+    expect(offered).toMatchObject({ status: "active", placeholderBands: [] });
+    expect(offered.pricesPence).toEqual(oneBand);
   });
 
   async function shopPoolCheck(id: string) {

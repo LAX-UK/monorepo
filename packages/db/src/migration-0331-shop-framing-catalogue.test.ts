@@ -30,9 +30,9 @@ describe("migration 0331 shop framing catalogue", () => {
   });
 
   it("only adds tables and seeds, with a short lock timeout", () => {
-    expect(migration).not.toMatch(/\bDROP\b/);
+    expect(migration).not.toMatch(/\bDROP (TABLE|COLUMN)\b/);
     expect(migration).not.toMatch(/\bALTER TABLE\b/);
-    expect(migration).toMatch(/SET LOCAL lock_timeout = '30s'/);
+    expect(migration).toMatch(/SET LOCAL lock_timeout = '5s'/);
     for (const table of [
       "shop_framing_option",
       "shop_framing_option_price",
@@ -43,19 +43,33 @@ describe("migration 0331 shop framing catalogue", () => {
   });
 
   it("seeds the launch options as drafts with placeholder prices, and can be re-applied", () => {
-    const seeded = migration.split('INSERT INTO "shop_framing_option"\n')[1] ?? "";
+    const seeded = (migration.split('INSERT INTO "shop_framing_option"\n')[1] ?? "").split(
+      "--> statement-breakpoint",
+    )[0] as string;
     for (const code of ["black-wood", "white-wood", "natural-oak", "natural-oak-float"]) {
       expect(seeded).toContain(`'${code}'`);
     }
     expect(seeded).toContain("'float_conservation'");
-    expect(seeded.match(/'draft', true/g)?.length).toBe(4);
-    expect(migration).not.toMatch(/'active'\s*,\s*true/);
+    expect(seeded.match(/'draft', [0-9]+\)/g)?.length).toBe(4);
+    expect(seeded).not.toContain("'active'");
     expect(migration.match(/\(('[a-z-]+'), 'up_to_[0-9x]+', [0-9]+\)/g)?.length).toBe(12);
+    // Every seeded price is a placeholder, band by band.
+    expect(migration).toContain('SELECT o."id", v."band", v."price_pence", true');
     expect(migration.match(/ON CONFLICT/g)?.length).toBe(2);
   });
 
-  it("keeps an option with placeholder prices from being active", () => {
-    expect(migration).toContain(`CHECK (NOT ("status" = 'active' AND "prices_placeholder"))`);
+  it("keeps an option from being active while any band's price is a placeholder, from either table", () => {
+    expect(migration).toContain('"is_placeholder" boolean DEFAULT false NOT NULL');
+    expect(migration).not.toContain("prices_placeholder");
+    expect(migration).toMatch(
+      /BEFORE INSERT OR UPDATE OF "status" ON "shop_framing_option"\s+FOR EACH ROW/,
+    );
+    expect(migration).toMatch(
+      /BEFORE INSERT OR UPDATE OF "is_placeholder" ON "shop_framing_option_price"\s+FOR EACH ROW/,
+    );
+    expect(
+      migration.match(/shop_framing_option_placeholder_not_offered_ck/g)?.length,
+    ).toBeGreaterThan(1);
   });
 
   it("is mirrored by the schema tables", () => {
@@ -71,11 +85,12 @@ describe("migration 0331 shop framing catalogue", () => {
         "leadTimeMinDays",
         "leadTimeMaxDays",
         "status",
-        "pricesPlaceholder",
         "sortOrder",
       ]),
     );
     expect(getTableName(shopFramingOptionPrice)).toBe("shop_framing_option_price");
+    expect(getTableColumns(shopFramingOptionPrice).isPlaceholder.notNull).toBe(true);
+    expect(Object.keys(getTableColumns(shopFramingOption))).not.toContain("pricesPlaceholder");
     expect(getTableColumns(shopFramingEditionOffer).priceOverridePence.notNull).toBe(false);
   });
 
@@ -89,14 +104,16 @@ describe("migration 0331 shop framing catalogue", () => {
     }
   });
 
-  it("is undone by dropping only the three tables, children first", () => {
-    // The pair check runs the rollback inside its own transaction, so it must not end one.
-    expect(rollback).not.toMatch(/\b(BEGIN|COMMIT)\b/);
+  it("is undone by dropping the three tables, children first, and the trigger function", () => {
+    expect(rollback).toMatch(/^BEGIN;/m);
+    expect(rollback).toMatch(/COMMIT;/);
+    expect(rollback).toMatch(/lock_timeout = '5s'/);
     const drops = [...rollback.matchAll(/DROP TABLE IF EXISTS "([a-z_]+)"/g)].map((m) => m[1]);
     expect(drops).toEqual([
       "shop_framing_edition_offer",
       "shop_framing_option_price",
       "shop_framing_option",
     ]);
+    expect(rollback).toContain('DROP FUNCTION IF EXISTS "shop_framing_no_placeholder_offer"()');
   });
 });

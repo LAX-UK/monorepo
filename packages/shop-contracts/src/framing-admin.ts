@@ -47,8 +47,11 @@ export const FramingOptionSchema = Type.Object({
   leadTimeMaxDays: Type.Integer({ minimum: 1 }),
   pricesPence: FramingPricesSchema,
   status: FramingStatusSchema,
-  /** The prices are the launch placeholders; the option cannot be offered until they change. */
-  pricesPlaceholder: Type.Boolean(),
+  /**
+   * The bands whose price is still the launch placeholder. While any band is listed the option
+   * cannot be offered: each price is entered, or confirmed as right, first.
+   */
+  placeholderBands: Type.Array(FramingBandSchema),
   /** Editions offering this option now. */
   editionCount: Type.Integer({ minimum: 0 }),
   /** The row's `updatedAt`, sent back as `expectedVersion` so a stale save is refused. */
@@ -83,6 +86,8 @@ export const FramingOptionBodySchema = Type.Object({
   }),
   /** Offered: editions can pick the option. Off keeps a draft a draft and pauses the rest. */
   offered: Type.Boolean(),
+  /** Placeholder bands whose current price staff confirm as right, so they stop being placeholders. */
+  confirmedBands: Type.Optional(Type.Array(FramingBandSchema, { uniqueItems: true })),
 });
 export type FramingOptionBody = Static<typeof FramingOptionBodySchema>;
 
@@ -116,7 +121,6 @@ export const FRAMING_ISSUE_FIELDS = [
   "price:up_to_40x50",
   "price:up_to_60x80",
   "price:up_to_80x100",
-  "offered",
 ] as const;
 
 export const FRAMING_ISSUE_REASONS = [
@@ -127,7 +131,7 @@ export const FRAMING_ISSUE_REASONS = [
   "lead_time_order",
   "price_missing",
   "price_invalid",
-  "placeholder_prices",
+  "placeholder_price",
 ] as const;
 
 /** One thing wrong with a submitted option, against the field it belongs to. */

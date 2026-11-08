@@ -1,5 +1,6 @@
 import type { FramingOption, FramingOptionList } from "@auction/shop-contracts";
 import type {
+  FramingBandCode,
   FramingFrame,
   FramingGlazing,
   FramingHanging,
@@ -23,7 +24,8 @@ export type StoredFramingOption = {
   leadTimeMaxDays: number;
   pricesPence: FramingPrices;
   status: FramingStatus;
-  pricesPlaceholder: boolean;
+  /** Bands whose price is still the launch placeholder. */
+  placeholderBands: FramingBandCode[];
   updatedAt: Date;
 };
 

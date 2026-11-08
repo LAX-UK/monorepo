@@ -15,7 +15,7 @@ export const OAK_PRICES: FramingPrices = {
   up_to_80x100: 29500,
 };
 
-/** An option as the catalogue holds it when a test starts: a draft with placeholder prices. */
+/** An option as the catalogue holds it when a test starts: a draft with a placeholder in every band. */
 export function seededOption(
   overrides: Partial<StoredFramingOption> & { id: string },
 ): StoredFramingOption {
@@ -30,7 +30,7 @@ export function seededOption(
     leadTimeMaxDays: 15,
     pricesPence: OAK_PRICES,
     status: "draft",
-    pricesPlaceholder: true,
+    placeholderBands: ["up_to_40x50", "up_to_60x80", "up_to_80x100"],
     updatedAt: new Date("2026-11-01T09:00:00.000Z"),
     ...overrides,
   };

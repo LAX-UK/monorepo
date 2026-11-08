@@ -5,12 +5,13 @@ import { useAdminAction } from "@/components/use-admin-action.client";
 import { setFramingOptionOffered } from "@/server/application/framing-actions.server";
 import {
   type FramingRowAction,
+  frameSwatchColour,
   framingDetails,
   framingLeadTime,
   framingRowActions,
   framingUsedOn,
   pauseDescription,
-  placeholderOptionCount,
+  placeholderSummary,
   presentFramingStatus,
 } from "@/server/domain/framing-catalogue.vm";
 import type { FramingOption } from "@auction/shop-contracts";
@@ -103,7 +104,7 @@ export function FramingCatalogue({
 }) {
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const close = () => setDialog(null);
-  const placeholders = placeholderOptionCount(options);
+  const waiting = placeholderSummary(options);
 
   const actionsFor = useCallback(
     (option: FramingOption): OverflowAction[] =>
@@ -144,7 +145,16 @@ export function FramingCatalogue({
         id: "option",
         header: "Option",
         mobile: "title",
-        cell: (row) => <PrimaryCell secondary={framingDetails(row)}>{row.name}</PrimaryCell>,
+        cell: (row) => (
+          <PrimaryCell secondary={framingDetails(row)}>
+            <span
+              aria-hidden
+              className="mr-2.5 inline-block size-4 rounded-staff-xs align-[-3px] shadow-[inset_0_0_0_1px_rgb(0_0_0/0.15)]"
+              style={{ backgroundColor: frameSwatchColour(row.frame) }}
+            />
+            {row.name}
+          </PrimaryCell>
+        ),
       },
       {
         id: "leadTime",
@@ -167,6 +177,11 @@ export function FramingCatalogue({
             <>
               <span className="md:hidden">{framingBandLabel(band)} </span>
               {formatStaffMoney(row.pricesPence[band])}
+              {row.placeholderBands.includes(band) ? (
+                <span className="block text-staff-xs font-normal text-staff-muted">
+                  Placeholder
+                </span>
+              ) : null}
             </>
           ),
         }),
@@ -220,12 +235,20 @@ export function FramingCatalogue({
             }
           : {})}
       />
-      {placeholders > 0 ? (
+      {waiting.length > 0 ? (
         <Notice tone="info" title="Placeholder prices">
-          {placeholders === 1
-            ? "One option still has placeholder prices."
-            : `${placeholders} options still have placeholder prices.`}{" "}
-          Replace them with the framer's prices before any edition offers framing in production.
+          <p>
+            Replace each with the framer's price, or confirm it where it is already right, before
+            any edition offers framing in production. An option can be offered once every size has a
+            price of its own.
+          </p>
+          <ul className="mt-2 flex list-disc flex-col gap-0.5 pl-5">
+            {waiting.map((option) => (
+              <li key={option.id}>
+                <span className="font-medium">{option.name}</span>: {option.bands.join(", ")}
+              </li>
+            ))}
+          </ul>
         </Notice>
       ) : null}
       <DataTable<FramingOption>

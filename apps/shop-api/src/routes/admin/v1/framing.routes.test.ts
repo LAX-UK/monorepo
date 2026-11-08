@@ -78,7 +78,7 @@ describe("admin framing routes", () => {
         id: OAK,
         code: "natural-oak",
         status: "draft",
-        pricesPlaceholder: true,
+        placeholderBands: ["up_to_40x50", "up_to_60x80", "up_to_80x100"],
         editionCount: 0,
         pricesPence: OAK_PRICES,
         version: "2026-11-01T09:00:00.000Z",
@@ -155,7 +155,7 @@ describe("admin framing routes", () => {
     await app.close();
   });
 
-  it("will not offer placeholder prices, and says which switch", async () => {
+  it("will not offer placeholder prices, and names each band that still has one", async () => {
     const { app } = await buildApp("shop_admin");
     const response = await app.inject({
       method: "PUT",
@@ -165,7 +165,11 @@ describe("admin framing routes", () => {
     });
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({
-      issues: [{ field: "offered", reason: "placeholder_prices" }],
+      issues: [
+        { field: "price:up_to_40x50", reason: "placeholder_price" },
+        { field: "price:up_to_60x80", reason: "placeholder_price" },
+        { field: "price:up_to_80x100", reason: "placeholder_price" },
+      ],
     });
     await app.close();
   });
@@ -198,7 +202,7 @@ describe("admin framing routes", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
-      pricesPlaceholder: false,
+      placeholderBands: ["up_to_40x50", "up_to_80x100"],
       version: "2026-11-02T12:00:00.000Z",
     });
     await app.close();

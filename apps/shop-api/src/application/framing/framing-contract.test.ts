@@ -46,7 +46,7 @@ describe("the framing contract and the domain rules", () => {
     });
     const reported: FramingIssue[] = [
       ...worst,
-      { field: "offered", reason: "placeholder_prices" },
+      { field: "price:up_to_40x50", reason: "placeholder_price" },
       { field: "name", reason: "name_too_long" },
       { field: "leadTimeMaxDays", reason: "lead_time_order" },
     ];

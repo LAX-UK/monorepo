@@ -7,6 +7,7 @@ import {
 import type { FramingOption } from "@auction/shop-contracts";
 import {
   FRAMING_BAND_CODES,
+  type FramingBandCode,
   type FramingFrame,
   type FramingGlazing,
   type FramingHanging,
@@ -28,12 +29,13 @@ const SORT_STEP = 10;
 const CODES_LOCK = "shop_framing_option.code";
 
 type OptionRow = typeof shopFramingOption.$inferSelect;
+type BandPrice = { pricePence: number; placeholder: boolean };
 
 async function pricesByOption(
   db: Database,
   optionIds: readonly string[],
-): Promise<Map<string, Partial<FramingPrices>>> {
-  const byOption = new Map<string, Partial<FramingPrices>>();
+): Promise<Map<string, Partial<Record<FramingBandCode, BandPrice>>>> {
+  const byOption = new Map<string, Partial<Record<FramingBandCode, BandPrice>>>();
   if (optionIds.length === 0) return byOption;
   const rows = await db
     .select()
@@ -41,28 +43,36 @@ async function pricesByOption(
     .where(inArray(shopFramingOptionPrice.optionId, [...optionIds]));
   for (const row of rows) {
     const prices = byOption.get(row.optionId) ?? {};
-    prices[row.band as keyof FramingPrices] = row.pricePence;
+    prices[row.band as FramingBandCode] = {
+      pricePence: row.pricePence,
+      placeholder: row.isPlaceholder,
+    };
     byOption.set(row.optionId, prices);
   }
   return byOption;
 }
 
 /** Every band has a price (the table is written whole); a gap would be a corrupt row. */
-function completePrices(optionId: string, prices: Partial<FramingPrices> | undefined) {
-  const complete: Partial<FramingPrices> = {};
+function completePrices(
+  optionId: string,
+  prices: Partial<Record<FramingBandCode, BandPrice>> | undefined,
+) {
+  const pricesPence: Partial<FramingPrices> = {};
+  const placeholderBands: FramingBandCode[] = [];
   for (const band of FRAMING_BAND_CODES) {
     const price = prices?.[band];
     if (price === undefined) {
       throw new Error(`Framing option ${optionId} has no price for ${band}`);
     }
-    complete[band] = price;
+    pricesPence[band] = price.pricePence;
+    if (price.placeholder) placeholderBands.push(band);
   }
-  return complete as FramingPrices;
+  return { pricesPence: pricesPence as FramingPrices, placeholderBands };
 }
 
 function storedFrom(
   row: OptionRow,
-  prices: Partial<FramingPrices> | undefined,
+  prices: Partial<Record<FramingBandCode, BandPrice>> | undefined,
 ): StoredFramingOption {
   return {
     id: row.id,
@@ -74,9 +84,8 @@ function storedFrom(
     hanging: row.hanging as FramingHanging,
     leadTimeMinDays: row.leadTimeMinDays,
     leadTimeMaxDays: row.leadTimeMaxDays,
-    pricesPence: completePrices(row.id, prices),
+    ...completePrices(row.id, prices),
     status: row.status as FramingStatus,
-    pricesPlaceholder: row.pricesPlaceholder,
     updatedAt: row.updatedAt,
   };
 }
@@ -127,17 +136,26 @@ function optionColumns(fields: FramingOptionFields) {
     leadTimeMinDays: fields.leadTimeMinDays,
     leadTimeMaxDays: fields.leadTimeMaxDays,
     status: fields.status,
-    pricesPlaceholder: fields.pricesPlaceholder,
   };
 }
 
-async function writePrices(db: Database, optionId: string, prices: FramingPrices) {
+async function writePrices(db: Database, optionId: string, fields: FramingOptionFields) {
   await db
     .insert(shopFramingOptionPrice)
-    .values(FRAMING_BAND_CODES.map((band) => ({ optionId, band, pricePence: prices[band] })))
+    .values(
+      FRAMING_BAND_CODES.map((band) => ({
+        optionId,
+        band,
+        pricePence: fields.pricesPence[band],
+        isPlaceholder: fields.placeholderBands.includes(band),
+      })),
+    )
     .onConflictDoUpdate({
       target: [shopFramingOptionPrice.optionId, shopFramingOptionPrice.band],
-      set: { pricePence: sql`excluded.price_pence` },
+      set: {
+        pricePence: sql`excluded.price_pence`,
+        isPlaceholder: sql`excluded.is_placeholder`,
+      },
     });
 }
 
@@ -179,16 +197,18 @@ export function createDrizzleFramingStore(db: Database): FramingStore {
         })
         .returning({ id: shopFramingOption.id });
       if (!row) throw new Error("Failed to save the framing option");
-      await writePrices(db, row.id, fields.pricesPence);
+      await writePrices(db, row.id, fields);
       return { id: row.id };
     },
 
     async update(optionId, fields) {
+      // Prices first: the database refuses an active option while any price is a placeholder, so
+      // the placeholders must be cleared before the option is switched on.
+      await writePrices(db, optionId, fields);
       await db
         .update(shopFramingOption)
         .set({ ...optionColumns(fields), updatedAt: new Date() })
         .where(eq(shopFramingOption.id, optionId));
-      await writePrices(db, optionId, fields.pricesPence);
     },
 
     async get(optionId) {

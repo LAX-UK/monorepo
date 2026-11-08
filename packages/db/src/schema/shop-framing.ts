@@ -34,8 +34,6 @@ export const shopFramingOption = pgTable(
     leadTimeMaxDays: integer("lead_time_max_days").notNull(),
     /** Draft until first offered, then active or paused. */
     status: text("status").notNull().default("draft"),
-    /** True while the prices are the launch placeholders; such an option cannot be offered. */
-    pricesPlaceholder: boolean("prices_placeholder").notNull().default(false),
     /** Where the option sits in the catalogue list; new options go last. */
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
@@ -57,10 +55,6 @@ export const shopFramingOption = pgTable(
       "shop_framing_option_lead_time_ck",
       sql`${table.leadTimeMinDays} >= 1 AND ${table.leadTimeMaxDays} >= ${table.leadTimeMinDays}`,
     ),
-    check(
-      "shop_framing_option_placeholder_not_offered_ck",
-      sql`NOT (${table.status} = 'active' AND ${table.pricesPlaceholder})`,
-    ),
     index("shop_framing_option_status_idx").on(table.status, table.sortOrder),
   ],
 );
@@ -74,6 +68,11 @@ export const shopFramingOptionPrice = pgTable(
       .references(() => shopFramingOption.id, { onDelete: "cascade" }),
     band: text("band").notNull(),
     pricePence: integer("price_pence").notNull(),
+    /**
+     * True while this price is the launch placeholder. An option with any placeholder band cannot
+     * be offered; triggers in migration 0331 hold that in the database.
+     */
+    isPlaceholder: boolean("is_placeholder").notNull().default(false),
   },
   (table) => [
     primaryKey({ columns: [table.optionId, table.band] }),

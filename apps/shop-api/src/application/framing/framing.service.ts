@@ -9,12 +9,14 @@ import {
 import {
   FRAMING_BAND_CODES,
   FRAMING_EDIT_CAPABILITY,
+  type FramingBandCode,
+  type FramingBandPrices,
   type FramingOptionInput,
   type FramingPrices,
   framingCodeFromName,
   framingSaveIssues,
   nextFramingStatus,
-  pricesStayPlaceholder,
+  nextPlaceholderBands,
 } from "@auction/shop-domain";
 import { FramingRejectedError } from "../../errors/framing-rejected-error.js";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
@@ -76,8 +78,20 @@ function summaryOf(option: StoredFramingOption | FramingOptionFields) {
     leadTimeMaxDays: option.leadTimeMaxDays,
     pricesPence: option.pricesPence,
     status: option.status,
-    pricesPlaceholder: option.pricesPlaceholder,
+    placeholderBands: option.placeholderBands,
   };
+}
+
+/** The option's price in each band with whether it is still a placeholder. */
+function bandPricesOf(option: StoredFramingOption): FramingBandPrices {
+  const bands = {} as FramingBandPrices;
+  for (const band of FRAMING_BAND_CODES) {
+    bands[band] = {
+      pricePence: option.pricesPence[band],
+      placeholder: option.placeholderBands.includes(band),
+    };
+  }
+  return bands;
 }
 
 async function lockCurrent(
@@ -132,7 +146,7 @@ export function createFramingService(deps: { uow: FramingUnitOfWork; lists: Fram
             const { body } = command;
             const issues = framingSaveIssues(inputOf(body), {
               offered: body.offered,
-              pricesPlaceholder: false,
+              placeholderBands: [],
             });
             const prices = completePrices(body.pricesPence);
             if (issues.length > 0 || !prices) throw new FramingRejectedError(issues);
@@ -148,7 +162,7 @@ export function createFramingService(deps: { uow: FramingUnitOfWork; lists: Fram
               leadTimeMaxDays: body.leadTimeMaxDays as number,
               pricesPence: prices,
               status: nextFramingStatus(null, body.offered),
-              pricesPlaceholder: false,
+              placeholderBands: [],
             };
             const { id } = await tx.framing.insert(await freeCode(tx, fields.name), fields);
             await tx.audit.append({
@@ -177,16 +191,13 @@ export function createFramingService(deps: { uow: FramingUnitOfWork; lists: Fram
             const { body } = command;
             const before = await lockCurrent(tx, command.optionId, body.expectedVersion);
             const prices = completePrices(body.pricesPence);
-            // A seeded option's prices stay placeholders until one of them changes.
-            const placeholder = prices
-              ? pricesStayPlaceholder(
-                  { pricesPence: before.pricesPence, placeholder: before.pricesPlaceholder },
-                  prices,
-                )
-              : before.pricesPlaceholder;
+            // A seeded band stays a placeholder until its price is changed or confirmed.
+            const placeholderBands: FramingBandCode[] = prices
+              ? nextPlaceholderBands(bandPricesOf(before), prices, body.confirmedBands ?? [])
+              : before.placeholderBands;
             const issues = framingSaveIssues(inputOf(body), {
               offered: body.offered,
-              pricesPlaceholder: placeholder,
+              placeholderBands,
             });
             if (issues.length > 0 || !prices) throw new FramingRejectedError(issues);
 
@@ -200,7 +211,7 @@ export function createFramingService(deps: { uow: FramingUnitOfWork; lists: Fram
               leadTimeMaxDays: body.leadTimeMaxDays as number,
               pricesPence: prices,
               status: nextFramingStatus(before.status, body.offered),
-              pricesPlaceholder: placeholder,
+              placeholderBands,
             };
             await tx.framing.update(command.optionId, fields);
             await tx.audit.append({
@@ -229,8 +240,13 @@ export function createFramingService(deps: { uow: FramingUnitOfWork; lists: Fram
           run: async () => {
             const { body } = command;
             const before = await lockCurrent(tx, command.optionId, body.expectedVersion);
-            if (body.offered && before.pricesPlaceholder) {
-              throw new FramingRejectedError([{ field: "offered", reason: "placeholder_prices" }]);
+            if (body.offered && before.placeholderBands.length > 0) {
+              throw new FramingRejectedError(
+                before.placeholderBands.map((band) => ({
+                  field: `price:${band}` as const,
+                  reason: "placeholder_price" as const,
+                })),
+              );
             }
             const fields: FramingOptionFields = {
               ...summaryOf(before),

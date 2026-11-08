@@ -10,7 +10,7 @@ import {
   HANGING_OPTIONS,
   MOUNT_OPTIONS,
   framingFormDefaults,
-  stillPlaceholder,
+  stillPlaceholderBands,
   validateFramingForm,
 } from "@/lib/framing-form";
 import {
@@ -31,10 +31,21 @@ import {
   FormErrorSummary,
   MoneyInput,
   Notice,
+  StaffButton,
   StaffCheckbox,
   TextInput,
 } from "@auction/staff-ui";
 import { useId, useState } from "react";
+
+/** "Up to 40 × 50 cm and up to 60 × 80 cm", for the bands still waiting for a price. */
+function waitingList(bands: readonly FramingBandCode[]): string {
+  const labels = bands.map((band, index) =>
+    index === 0 ? framingBandLabel(band) : framingBandLabel(band).toLowerCase(),
+  );
+  return labels.length > 1
+    ? `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`
+    : (labels[0] ?? "");
+}
 
 const PRICE_FIELD = (band: FramingBandCode) => `price:${band}` as const;
 
@@ -58,12 +69,15 @@ export function FramingOptionDialog({
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitCount, setSubmitCount] = useState(0);
 
-  const placeholder = stillPlaceholder(option, values.prices);
+  const waiting = stillPlaceholderBands(option, values.prices, values.confirmedBands);
+  const placeholder = waiting.length > 0;
 
   function change(patch: Partial<FramingFormValues>) {
     const next = { ...values, ...patch };
-    // Placeholder prices cannot be offered, so the switch goes back off when they come back.
-    if (stillPlaceholder(option, next.prices)) next.offered = false;
+    // An option cannot be offered while any band is a placeholder, so the switch goes back off.
+    if (stillPlaceholderBands(option, next.prices, next.confirmedBands).length > 0) {
+      next.offered = false;
+    }
     setValues(next);
     // After a first attempt, fields are rechecked as they change.
     if (submitCount > 0) {
@@ -128,7 +142,9 @@ export function FramingOptionDialog({
         {action.error}
         {placeholder ? (
           <Notice tone="info" title="Placeholder prices">
-            Replace them with the framer's prices to offer this option.
+            {waitingList(waiting)} still {waiting.length === 1 ? "needs" : "need"} the framer's
+            price. Enter it, or confirm the price shown if it is already right. An option is offered
+            once every size has a price of its own.
           </Notice>
         ) : null}
         <Field label="Name shoppers see" id={id("name")} error={errors.name}>
@@ -202,18 +218,36 @@ export function FramingOptionDialog({
           </legend>
           <div className="grid gap-4 sm:grid-cols-3">
             {FRAMING_BAND_CODES.map((band) => (
-              <Field
-                key={band}
-                label={framingBandLabel(band)}
-                id={id(`price-${band}`)}
-                error={errors[PRICE_FIELD(band)]}
-              >
-                <MoneyInput
-                  value={values.prices[band]}
-                  placeholder="0.00"
-                  onValueChange={(pence) => change({ prices: { ...values.prices, [band]: pence } })}
-                />
-              </Field>
+              <div key={band} className="flex min-w-0 flex-col gap-1.5">
+                <Field
+                  label={framingBandLabel(band)}
+                  id={id(`price-${band}`)}
+                  error={errors[PRICE_FIELD(band)]}
+                >
+                  <MoneyInput
+                    value={values.prices[band]}
+                    placeholder="0.00"
+                    onValueChange={(pence) =>
+                      change({ prices: { ...values.prices, [band]: pence } })
+                    }
+                  />
+                </Field>
+                {waiting.includes(band) ? (
+                  <div className="flex items-center justify-between gap-2 text-staff-xs text-staff-muted">
+                    <span>Placeholder price</span>
+                    <StaffButton
+                      variant="secondary"
+                      size="sm"
+                      aria-label={`Confirm price for ${framingBandLabel(band).toLowerCase()}`}
+                      onClick={() => change({ confirmedBands: [...values.confirmedBands, band] })}
+                    >
+                      Confirm price
+                    </StaffButton>
+                  </div>
+                ) : values.confirmedBands.includes(band) ? (
+                  <span className="text-staff-xs text-staff-muted">Price confirmed</span>
+                ) : null}
+              </div>
             ))}
           </div>
           <p className="text-staff-xs text-staff-muted">
@@ -226,7 +260,7 @@ export function FramingOptionDialog({
           label="Offered"
           description={
             placeholder
-              ? "Enter the framer's prices to offer this option."
+              ? `Enter or confirm the price for ${waitingList(waiting).toLowerCase()} to offer this option.`
               : "Editions can offer it. Turn off to pause it everywhere."
           }
           control={

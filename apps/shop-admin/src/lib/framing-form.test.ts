@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   framingFormDefaults,
   framingIssueMessage,
-  stillPlaceholder,
+  stillPlaceholderBands,
   validateFramingForm,
 } from "./framing-form";
 
@@ -19,7 +19,7 @@ const oak: FramingOption = {
   leadTimeMaxDays: 15,
   pricesPence: { up_to_40x50: 14000, up_to_60x80: 22500, up_to_80x100: 29500 },
   status: "draft",
-  pricesPlaceholder: true,
+  placeholderBands: ["up_to_40x50", "up_to_60x80", "up_to_80x100"],
   editionCount: 0,
   version: "2026-11-01T09:00:00.000Z",
 };
@@ -94,37 +94,88 @@ describe("validateFramingForm", () => {
     });
   });
 
-  it("will not offer the launch placeholder prices", () => {
+  it("will not offer while any band is still a placeholder, and marks each such band", () => {
     const values = { ...framingFormDefaults(oak), offered: true };
     expect(validateFramingForm(values, oak)).toEqual({
       ok: false,
       errors: {
-        offered:
-          "Replace the placeholder prices with the framer's prices before offering this option",
+        "price:up_to_40x50":
+          "Enter the framer's price for up to 40 × 50 cm, or confirm the price shown, before offering this option",
+        "price:up_to_60x80":
+          "Enter the framer's price for up to 60 × 80 cm, or confirm the price shown, before offering this option",
+        "price:up_to_80x100":
+          "Enter the framer's price for up to 80 × 100 cm, or confirm the price shown, before offering this option",
       },
     });
   });
 
-  it("offers the option once one price has changed", () => {
+  it("does not offer with one band changed: the other two still need a price", () => {
     const values = {
       ...framingFormDefaults(oak),
       offered: true,
       prices: { ...oak.pricesPence, up_to_60x80: 21000 },
     };
-    expect(validateFramingForm(values, oak).ok).toBe(true);
+    const result = validateFramingForm(values, oak);
+    expect(result.ok).toBe(false);
+    expect(Object.keys(result.ok ? {} : result.errors)).toEqual([
+      "price:up_to_40x50",
+      "price:up_to_80x100",
+    ]);
+  });
+
+  it("offers once every band is changed or confirmed, and sends the confirmed bands", () => {
+    const values = {
+      ...framingFormDefaults(oak),
+      offered: true,
+      prices: { ...oak.pricesPence, up_to_60x80: 21000 },
+      confirmedBands: ["up_to_40x50", "up_to_80x100"] as ("up_to_40x50" | "up_to_80x100")[],
+    };
+    const result = validateFramingForm(values, oak);
+    expect(result).toEqual({
+      ok: true,
+      value: expect.objectContaining({
+        offered: true,
+        confirmedBands: ["up_to_40x50", "up_to_80x100"],
+        pricesPence: { ...oak.pricesPence, up_to_60x80: 21000 },
+      }),
+    });
+  });
+
+  it("lets staff save placeholder prices without offering them", () => {
+    expect(validateFramingForm(framingFormDefaults(oak), oak).ok).toBe(true);
   });
 });
 
-describe("stillPlaceholder", () => {
-  it("is false for a new option and for real prices", () => {
-    expect(stillPlaceholder(null, oak.pricesPence)).toBe(false);
-    expect(stillPlaceholder({ ...oak, pricesPlaceholder: false }, oak.pricesPence)).toBe(false);
+describe("stillPlaceholderBands", () => {
+  it("has none for a new option and for real prices", () => {
+    expect(stillPlaceholderBands(null, oak.pricesPence, [])).toEqual([]);
+    expect(stillPlaceholderBands({ ...oak, placeholderBands: [] }, oak.pricesPence, [])).toEqual(
+      [],
+    );
   });
 
-  it("holds until a price changes, and while one is cleared", () => {
-    expect(stillPlaceholder(oak, oak.pricesPence)).toBe(true);
-    expect(stillPlaceholder(oak, { ...oak.pricesPence, up_to_80x100: null })).toBe(true);
-    expect(stillPlaceholder(oak, { ...oak.pricesPence, up_to_80x100: 30000 })).toBe(false);
+  it("holds every band until its own price changes", () => {
+    expect(stillPlaceholderBands(oak, oak.pricesPence, [])).toEqual(oak.placeholderBands);
+    expect(stillPlaceholderBands(oak, { ...oak.pricesPence, up_to_80x100: 30000 }, [])).toEqual([
+      "up_to_40x50",
+      "up_to_60x80",
+    ]);
+  });
+
+  it("keeps a band while its price is cleared, to be typed again", () => {
+    expect(stillPlaceholderBands(oak, { ...oak.pricesPence, up_to_80x100: null }, [])).toEqual(
+      oak.placeholderBands,
+    );
+  });
+
+  it("drops a band the moment staff confirm it", () => {
+    expect(stillPlaceholderBands(oak, oak.pricesPence, ["up_to_60x80"])).toEqual([
+      "up_to_40x50",
+      "up_to_80x100",
+    ]);
+    expect(
+      stillPlaceholderBands(oak, { ...oak.pricesPence, up_to_80x100: null }, ["up_to_60x80"]),
+    ).toEqual(["up_to_40x50", "up_to_80x100"]);
   });
 });
 

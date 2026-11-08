@@ -112,8 +112,7 @@ export type FramingField =
   | "name"
   | "leadTimeMinDays"
   | "leadTimeMaxDays"
-  | `price:${FramingBandCode}`
-  | "offered";
+  | `price:${FramingBandCode}`;
 
 export type FramingIssueReason =
   | "name_required"
@@ -123,7 +122,8 @@ export type FramingIssueReason =
   | "lead_time_order"
   | "price_missing"
   | "price_invalid"
-  | "placeholder_prices";
+  /** The band's price is still the launch placeholder, so the option cannot be offered. */
+  | "placeholder_price";
 
 export type FramingIssue = { field: FramingField; reason: FramingIssueReason };
 
@@ -163,29 +163,51 @@ export function framingLeadTimeLabel(minDays: number, maxDays: number): string {
   return minDays === maxDays ? `${minDays} working days` : `${minDays} to ${maxDays} working days`;
 }
 
+/** The price in each band, and whether it is still the launch placeholder. */
+export type FramingBandPrices = Record<
+  FramingBandCode,
+  { pricePence: number; placeholder: boolean }
+>;
+
 /**
- * Prices that were seeded as placeholders stay placeholders until staff change one of them. Saving
- * an option with the prices as they were does not make them real.
+ * Which bands are still placeholders after a save. A band stays a placeholder only while its
+ * price is unchanged and staff have not confirmed it as right: entering a price, or confirming
+ * the seeded one, makes that band real. Other bands are not affected.
  */
-export function pricesStayPlaceholder(
-  previous: { pricesPence: FramingPrices; placeholder: boolean },
+export function nextPlaceholderBands(
+  previous: FramingBandPrices,
   next: FramingPrices,
-): boolean {
-  if (!previous.placeholder) return false;
-  return FRAMING_BAND_CODES.every((band) => previous.pricesPence[band] === next[band]);
+  confirmed: readonly FramingBandCode[],
+): FramingBandCode[] {
+  return FRAMING_BAND_CODES.filter(
+    (band) =>
+      previous[band].placeholder &&
+      previous[band].pricePence === next[band] &&
+      !confirmed.includes(band),
+  );
+}
+
+/** The bands whose seeded price is still waiting for the framer's real one. */
+export function placeholderBandsOf(prices: FramingBandPrices): FramingBandCode[] {
+  return FRAMING_BAND_CODES.filter((band) => prices[band].placeholder);
 }
 
 /**
- * Everything wrong with saving an option. Offering with placeholder prices is refused, so a seeded
- * option cannot reach shoppers before staff enter the framer's prices.
+ * Everything wrong with saving an option. Offering while any band's price is a placeholder is
+ * refused, band by band, so a seeded option cannot reach shoppers before every price is the
+ * framer's.
  */
 export function framingSaveIssues(
   input: FramingOptionInput,
-  save: { offered: boolean; pricesPlaceholder: boolean },
+  save: { offered: boolean; placeholderBands: readonly FramingBandCode[] },
 ): FramingIssue[] {
   const issues = framingOptionIssues(input);
-  if (save.offered && save.pricesPlaceholder) {
-    issues.push({ field: "offered", reason: "placeholder_prices" });
+  if (!save.offered) return issues;
+  for (const band of save.placeholderBands) {
+    const field = `price:${band}` as const;
+    if (!issues.some((issue) => issue.field === field)) {
+      issues.push({ field, reason: "placeholder_price" });
+    }
   }
   return issues;
 }

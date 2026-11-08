@@ -40,7 +40,7 @@ installLayoutStubs();
 const { FramingCatalogue } = await import("./framing-catalogue.client");
 const { FramingOptionDialog } = await import("./framing-option-dialog.client");
 
-const base: Omit<FramingOption, "id" | "code" | "name" | "status" | "pricesPlaceholder"> = {
+const base: Omit<FramingOption, "id" | "code" | "name" | "status" | "placeholderBands"> = {
   frame: "natural_oak",
   mount: "window_conservation",
   glazing: "uv_acrylic",
@@ -58,7 +58,7 @@ const draft: FramingOption = {
   code: "natural-oak",
   name: "Natural oak frame",
   status: "draft",
-  pricesPlaceholder: true,
+  placeholderBands: ["up_to_40x50", "up_to_60x80", "up_to_80x100"],
 };
 const active: FramingOption = {
   ...base,
@@ -67,7 +67,7 @@ const active: FramingOption = {
   name: "Black wood frame",
   frame: "black_wood",
   status: "active",
-  pricesPlaceholder: false,
+  placeholderBands: [],
   editionCount: 3,
   pricesPence: { up_to_40x50: 12000, up_to_60x80: 19500, up_to_80x100: 26000 },
 };
@@ -118,8 +118,30 @@ describe("the framing catalogue", () => {
   it("says when prices are still placeholders, and how many options", () => {
     render(<FramingCatalogue options={[draft, active]} canEdit />);
     const notice = screen.getByRole("status", { name: "Placeholder prices" });
-    expect(notice).toHaveTextContent("One option still has placeholder prices.");
+    expect(notice).toHaveTextContent(
+      "Natural oak frame: Up to 40 × 50 cm, Up to 60 × 80 cm, Up to 80 × 100 cm",
+    );
     expect(notice).toHaveTextContent("before any edition offers framing in production");
+    expect(notice).not.toHaveTextContent("Black wood frame");
+  });
+
+  it("names the bands that still need a price when only some are placeholders", () => {
+    const partly: FramingOption = { ...draft, placeholderBands: ["up_to_80x100"] };
+    render(<FramingCatalogue options={[partly]} canEdit />);
+    const notice = screen.getByRole("status", { name: "Placeholder prices" });
+    expect(notice).toHaveTextContent("Natural oak frame: Up to 80 × 100 cm");
+    expect(notice).not.toHaveTextContent("Up to 40 × 50 cm");
+    const row = within(screen.getByRole("grid", { name: "Framing options" })).getByRole("row", {
+      name: /Natural oak frame/,
+    });
+    expect(within(row).getAllByText("Placeholder")).toHaveLength(1);
+  });
+
+  it("shows a swatch for the frame finish beside each name, hidden from assistive tech", () => {
+    render(<FramingCatalogue options={[draft]} canEdit />);
+    const swatch = document.querySelector("[style*='background-color']");
+    expect(swatch).not.toBeNull();
+    expect(swatch?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("shows no notice once every price is real", () => {
@@ -189,7 +211,7 @@ describe("the framing catalogue", () => {
       await screen.findAllByRole("menuitem", { name: /Offer option/ })
     )[0] as HTMLElement;
     expect(offer).toHaveAttribute("aria-disabled", "true");
-    expect(offer).toHaveTextContent("Replace the placeholder prices first");
+    expect(offer).toHaveTextContent("Replace or confirm the placeholder prices first");
   });
 });
 
@@ -250,22 +272,47 @@ describe("the framing option form", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
-  it("keeps Offered off while the prices are still placeholders, and says so", () => {
+  it("keeps Offered off while any band is a placeholder, and says which", () => {
     const { dialog } = renderDialog(draft);
     expect(within(dialog).getByText("Placeholder prices")).toBeInTheDocument();
     const offered = within(dialog).getByRole("checkbox", { name: /Offered/ });
     expect(offered).toBeDisabled();
     expect(
-      within(dialog).getByText("Enter the framer's prices to offer this option."),
+      within(dialog).getByText(
+        "Enter or confirm the price for up to 40 × 50 cm, up to 60 × 80 cm and up to 80 × 100 cm to offer this option.",
+      ),
     ).toBeInTheDocument();
+    expect(within(dialog).getAllByRole("button", { name: /Confirm price for/ })).toHaveLength(3);
   });
 
-  it("allows Offered once a price has been replaced, and saves from the version it opened", async () => {
+  it("does not allow Offered when only one band has been changed", () => {
     const { dialog } = renderDialog(draft);
     fireEvent.change(within(dialog).getByLabelText("Up to 60 × 80 cm"), {
       target: { value: "210" },
     });
+    expect(within(dialog).getByRole("checkbox", { name: /Offered/ })).toBeDisabled();
+    expect(within(dialog).getAllByRole("button", { name: /Confirm price for/ })).toHaveLength(2);
+    expect(
+      within(dialog).queryByRole("button", { name: "Confirm price for up to 60 × 80 cm" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/^Enter or confirm the price for up to 40 × 50 cm and/),
+    ).toBeInTheDocument();
+  });
+
+  it("allows Offered once every band is changed or confirmed, and saves the confirmed bands", async () => {
+    const { dialog } = renderDialog(draft);
+    fireEvent.change(within(dialog).getByLabelText("Up to 60 × 80 cm"), {
+      target: { value: "210" },
+    });
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Confirm price for up to 40 × 50 cm" }),
+    );
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Confirm price for up to 80 × 100 cm" }),
+    );
     expect(within(dialog).queryByText("Placeholder prices")).not.toBeInTheDocument();
+    expect(within(dialog).getAllByText("Price confirmed")).toHaveLength(2);
     const offered = within(dialog).getByRole("checkbox", { name: /Offered/ });
     expect(offered).toBeEnabled();
     fireEvent.click(offered);
@@ -276,11 +323,31 @@ describe("the framing option form", () => {
       optionId: draft.id,
       payload: expect.objectContaining({
         offered: true,
+        confirmedBands: ["up_to_40x50", "up_to_80x100"],
         pricesPence: { up_to_40x50: 14000, up_to_60x80: 21000, up_to_80x100: 29500 },
       }),
       expectedVersion: draft.version,
       idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
     });
+  });
+
+  it("confirms a price that is already right without changing it", async () => {
+    const { dialog } = renderDialog(draft);
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Confirm price for up to 60 × 80 cm" }),
+    );
+    expect(within(dialog).getAllByRole("button", { name: /Confirm price for/ })).toHaveLength(2);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save option" }));
+    await waitFor(() => expect(saveFramingOption).toHaveBeenCalledTimes(1));
+    expect(saveFramingOption).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          confirmedBands: ["up_to_60x80"],
+          pricesPence: { up_to_40x50: 14000, up_to_60x80: 22500, up_to_80x100: 29500 },
+          offered: false,
+        }),
+      }),
+    );
   });
 
   it("stays open and says so when someone else saved first", async () => {

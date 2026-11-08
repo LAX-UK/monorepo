@@ -9,7 +9,8 @@ import {
   framingOptionIssues,
   framingSaveIssues,
   nextFramingStatus,
-  pricesStayPlaceholder,
+  nextPlaceholderBands,
+  placeholderBandsOf,
 } from "./framing.js";
 
 const valid: FramingOptionInput = {
@@ -104,44 +105,94 @@ describe("framingOptionIssues", () => {
   });
 });
 
-describe("pricesStayPlaceholder", () => {
-  const seeded = {
-    pricesPence: { up_to_40x50: 14000, up_to_60x80: 22500, up_to_80x100: 29500 },
-    placeholder: true,
-  };
+const seededBands = {
+  up_to_40x50: { pricePence: 14000, placeholder: true },
+  up_to_60x80: { pricePence: 22500, placeholder: true },
+  up_to_80x100: { pricePence: 29500, placeholder: true },
+};
+const seededPrices = {
+  up_to_40x50: 14000,
+  up_to_60x80: 22500,
+  up_to_80x100: 29500,
+};
 
-  it("keeps them placeholders when nothing changed", () => {
-    expect(pricesStayPlaceholder(seeded, seeded.pricesPence)).toBe(true);
+describe("nextPlaceholderBands", () => {
+  it("keeps every band a placeholder when nothing changed", () => {
+    expect(nextPlaceholderBands(seededBands, seededPrices, [])).toEqual([
+      "up_to_40x50",
+      "up_to_60x80",
+      "up_to_80x100",
+    ]);
   });
 
-  it("makes them real once staff change any one price", () => {
-    expect(pricesStayPlaceholder(seeded, { ...seeded.pricesPence, up_to_60x80: 21000 })).toBe(
-      false,
-    );
+  it("makes only the band that changed real", () => {
+    expect(nextPlaceholderBands(seededBands, { ...seededPrices, up_to_60x80: 21000 }, [])).toEqual([
+      "up_to_40x50",
+      "up_to_80x100",
+    ]);
   });
 
-  it("never turns real prices back into placeholders", () => {
-    expect(pricesStayPlaceholder({ ...seeded, placeholder: false }, seeded.pricesPence)).toBe(
-      false,
-    );
+  it("makes a band real when staff confirm its price as right", () => {
+    expect(nextPlaceholderBands(seededBands, seededPrices, ["up_to_80x100"])).toEqual([
+      "up_to_40x50",
+      "up_to_60x80",
+    ]);
+  });
+
+  it("leaves nothing once every band is changed or confirmed", () => {
+    expect(
+      nextPlaceholderBands(seededBands, { ...seededPrices, up_to_40x50: 13000 }, [
+        "up_to_60x80",
+        "up_to_80x100",
+      ]),
+    ).toEqual([]);
+  });
+
+  it("never turns a real price back into a placeholder", () => {
+    const real = { ...seededBands, up_to_40x50: { pricePence: 14000, placeholder: false } };
+    expect(nextPlaceholderBands(real, seededPrices, [])).not.toContain("up_to_40x50");
+  });
+
+  it("lists the bands that are placeholders now", () => {
+    expect(placeholderBandsOf(seededBands)).toHaveLength(3);
+    expect(
+      placeholderBandsOf({ ...seededBands, up_to_60x80: { pricePence: 1, placeholder: false } }),
+    ).toEqual(["up_to_40x50", "up_to_80x100"]);
   });
 });
 
 describe("saving an option", () => {
-  it("refuses to offer placeholder prices, against the offered switch", () => {
-    expect(framingSaveIssues(valid, { offered: true, pricesPlaceholder: true })).toEqual([
-      { field: "offered", reason: "placeholder_prices" },
+  it("refuses to offer while any band is a placeholder, against each such band", () => {
+    expect(
+      framingSaveIssues(valid, {
+        offered: true,
+        placeholderBands: ["up_to_40x50", "up_to_80x100"],
+      }),
+    ).toEqual([
+      { field: "price:up_to_40x50", reason: "placeholder_price" },
+      { field: "price:up_to_80x100", reason: "placeholder_price" },
     ]);
   });
 
   it("lets staff save placeholder prices without offering them", () => {
-    expect(framingSaveIssues(valid, { offered: false, pricesPlaceholder: true })).toEqual([]);
+    expect(framingSaveIssues(valid, { offered: false, placeholderBands: ["up_to_40x50"] })).toEqual(
+      [],
+    );
   });
 
-  it("offers an option whose prices are real", () => {
-    expect(framingSaveIssues(valid, { offered: true, pricesPlaceholder: false })).toEqual([]);
+  it("offers an option whose bands are all real", () => {
+    expect(framingSaveIssues(valid, { offered: true, placeholderBands: [] })).toEqual([]);
   });
 
+  it("reports a missing price once, not also as a placeholder", () => {
+    const missing = { ...valid, pricesPence: { ...valid.pricesPence, up_to_40x50: null } };
+    expect(
+      framingSaveIssues(missing, { offered: true, placeholderBands: ["up_to_40x50"] }),
+    ).toEqual([{ field: "price:up_to_40x50", reason: "price_missing" }]);
+  });
+});
+
+describe("offering", () => {
   it("moves status by what staff choose", () => {
     expect(nextFramingStatus("draft", true)).toBe("active");
     expect(nextFramingStatus("paused", true)).toBe("active");
