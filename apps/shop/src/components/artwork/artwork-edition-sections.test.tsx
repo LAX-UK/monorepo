@@ -174,7 +174,7 @@ describe("ArtworkEditionFacts", () => {
         "Numbered by hand on the print. Your number appears in your order once payment is confirmed.",
       ),
     ).toBeTruthy();
-    expect(within(section).getByText(/A limited edition is a fixed number of prints/)).toBeTruthy();
+    expect(within(section).queryByText(/A limited edition is a fixed number of prints/)).toBeNull();
     expect(within(section).queryByText("Proofs")).toBeNull();
   });
 

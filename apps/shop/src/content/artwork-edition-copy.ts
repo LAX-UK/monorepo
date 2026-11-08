@@ -18,6 +18,7 @@ export const EDITION_PAGE_COPY = {
     certificate: "Certificate",
     proofs: "Proofs",
   },
+  explainerTitle: "About limited editions",
   alsoAvailableTitle: "Also available",
   originalLink: "See the original at lax.art",
   aboutWorkTitle: "About the work and the print",

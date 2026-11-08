@@ -7,8 +7,8 @@ import Link from "next/link";
 
 /**
  * "About this edition", always open: the run, signature, number, certificate and any kept proofs
- * as label-value rows, what a limited edition is, the other runs of the same image and the way to
- * the original. Every sentence about the edition is written by shop-domain.
+ * as label-value rows, the other runs of the same image and the way to
+ * the original. What a limited edition is lives in `ArtworkEditionExplainer`, after this block. Every sentence about the edition is written by shop-domain.
  */
 export function ArtworkEditionFacts({ facts }: { facts: ArtworkFactsVm }) {
   return (
@@ -17,7 +17,6 @@ export function ArtworkEditionFacts({ facts }: { facts: ArtworkFactsVm }) {
         {EDITION_PAGE_COPY.factsTitle}
       </h2>
       <MarketingSpecList items={facts.rows} />
-      {facts.statement ? <p className="shop-edition-facts__statement">{facts.statement}</p> : null}
 
       {facts.alsoAvailable.length > 0 ? (
         <div className="shop-edition-facts__also">
